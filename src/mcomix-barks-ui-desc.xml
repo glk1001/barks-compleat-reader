@@ -1,0 +1,164 @@
+<ui>
+    <toolbar name="Tool">
+        <toolitem action="first_page" />
+        <toolitem action="previous_page" />
+        <toolitem action="go_to" />
+        <toolitem action="next_page" />
+        <toolitem action="last_page" />
+        <separator />
+        <toolitem action="fullscreen" />
+        <toolitem action="expander" />
+        <toolitem action="best_fit_mode" />
+        <toolitem action="fit_width_mode" />
+        <toolitem action="fit_height_mode" />
+        <toolitem action="fit_size_mode" />
+        <toolitem action="fit_manual_mode" />
+        <separator />
+        <toolitem action="double_page" />
+        <toolitem action="manga_mode" />
+        <separator />
+        <toolitem action="lens" />
+    </toolbar>
+
+    <menubar name="Menu">
+        <menu action="menu_file">
+            <menuitem action="extract_page" />
+            <menuitem action="refresh_archive" />
+            <menuitem action="properties" />
+            <separator />
+            <menuitem action="minimize" />
+            <menuitem action="close" />
+            <menuitem action="quit" />
+        </menu>
+        <menu action="menu_edit">
+            <menuitem action="copy_page" />
+            <separator />
+            <menuitem action="comments" />
+            <separator />
+            <menuitem action="preferences" />
+        </menu>
+        <menu action="menu_view">
+            <menuitem action="fullscreen" />
+            <menuitem action="double_page" />
+            <menuitem action="manga_mode" />
+            <separator />
+            <menuitem action="best_fit_mode" />
+            <menuitem action="fit_width_mode" />
+            <menuitem action="fit_height_mode" />
+            <menuitem action="fit_size_mode" />
+            <menuitem action="fit_manual_mode" />
+            <separator />
+            <menuitem action="slideshow" />
+            <separator />
+            <menuitem action="stretch" />
+            <menuitem action="invert_scroll" />
+            <menuitem action="lens" />
+            <menu action="menu_zoom">
+                <menuitem action="zoom_in" />
+                <menuitem action="zoom_out" />
+                <menuitem action="zoom_original" />
+            </menu>
+            <separator />
+            <menu action="menu_toolbars">
+                <menuitem action="menubar" />
+                <menuitem action="toolbar" />
+                <menuitem action="statusbar" />
+                <menuitem action="scrollbar" />
+                <menuitem action="thumbnails" />
+                <separator />
+                <menuitem action="hide_all" />
+            </menu>
+        </menu>
+        <menu action="menu_go">
+            <menuitem action="next_page" />
+            <menuitem action="previous_page" />
+            <menuitem action="go_to" />
+            <menuitem action="first_page" />
+            <menuitem action="last_page" />
+            <separator />
+        </menu>
+        <menu action="menu_bookmarks">
+        </menu>
+        <menu action="menu_tools">
+            <menuitem action="enhance_image" />
+            <menu action="menu_transform">
+                <menuitem action="rotate_90" />
+                <menuitem action="rotate_270" />
+                <menuitem action="rotate_180" />
+                <separator />
+                <menu action="menu_autorotate">
+                    <menuitem action="no_autorotation" />
+                    <separator />
+                    <menuitem action="menu_autorotate_height" />
+                    <separator />
+                    <menuitem action="rotate_90_height" />
+                    <menuitem action="rotate_270_height" />
+                    <separator />
+                    <menuitem action="menu_autorotate_width" />
+                    <separator />
+                    <menuitem action="rotate_90_width" />
+                    <menuitem action="rotate_270_width" />
+                </menu>
+                <separator />
+                <menuitem action="flip_horiz" />
+                <menuitem action="flip_vert" />
+                <separator />
+                <menuitem action="keep_transformation" />
+            </menu>
+        </menu>
+        <menu action="menu_help">
+            <menuitem action="about" />
+        </menu>
+    </menubar>
+
+    <popup name="Popup">
+        <menu action="menu_go_popup">
+            <menuitem action="next_page" />
+            <menuitem action="previous_page" />
+            <menuitem action="go_to" />
+            <menuitem action="first_page" />
+            <menuitem action="last_page" />
+        </menu>
+        <menu action="menu_view_popup">
+            <menuitem action="fullscreen" />
+            <menuitem action="double_page" />
+            <menuitem action="manga_mode" />
+            <separator />
+            <menuitem action="best_fit_mode" />
+            <menuitem action="fit_width_mode" />
+            <menuitem action="fit_height_mode" />
+            <menuitem action="fit_size_mode" />
+            <menuitem action="fit_manual_mode" />
+            <separator />
+            <menuitem action="slideshow" />
+            <separator />
+            <menuitem action="enhance_image" />
+            <separator />
+            <menuitem action="stretch" />
+            <menuitem action="invert_scroll" />
+            <menuitem action="lens" />
+            <menu action="menu_zoom">
+                <menuitem action="zoom_in" />
+                <menuitem action="zoom_out" />
+                <menuitem action="zoom_original" />
+            </menu>
+            <separator />
+            <menu action="menu_toolbars">
+                <menuitem action="menubar" />
+                <menuitem action="toolbar" />
+                <menuitem action="statusbar" />
+                <menuitem action="scrollbar" />
+                <menuitem action="thumbnails" />
+                <separator />
+                <menuitem action="hide_all" />
+            </menu>
+        </menu>
+        <menu action="menu_bookmarks_popup">
+        </menu>
+        <separator />
+        <menuitem action="preferences" />
+        <separator />
+        <menuitem action="close" />
+        <menuitem action="quit" />
+    </popup>
+</ui>

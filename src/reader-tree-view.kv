@@ -1,0 +1,248 @@
+<ReaderTreeView>:
+    hide_root: True
+    indent_level: root.TREE_VIEW_INDENT_LEVEL
+    size_hint: (1, None)
+    minimum_height: self.height
+
+<MainTreeViewNode>:
+    color: root.TEXT_COLOR
+    color_selected: root.SELECTED_COLOR
+    background_color: root.BACKGROUND_COLOR
+    bold: True
+    size_hint: (None, None)
+    size: root.NODE_SIZE
+    halign: "left"
+    valign: "middle"
+    text_size: (self.width, self.height)
+
+<TitleSearchBoxTreeViewNode>:
+    size: root.NODE_SIZE
+    color_selected: root.SELECTED_COLOR
+
+    Label:
+        id: title_search_box_label
+        text: "Titles: "
+        color: root.TEXT_COLOR
+        background_color: root.TEXT_BACKGROUND_COLOR
+        size_hint: (0.08, 1)
+        x: root.x
+        y: root.y
+        halign: "left"
+        valign: "middle"
+        text_size: (self.width, self.height)
+
+    TextInput:
+        id: title_search_box
+        text: root.text  # Allow the root widget to deal with text
+        on_text: root.text = self.text  # Allow 'text' bind on root widget
+        font_size: sp(16)
+        multiline: False
+        foreground_color: root.TEXT_COLOR
+        disabled_foreground_color: (1,1,1,0.5)
+        background_color: root.TEXT_BACKGROUND_COLOR
+        size_hint: (0.2, 1)
+        x: root.ids.title_search_box_label.x + root.ids.title_search_box_label.width
+        y: root.y
+        halign: "left"
+        valign: "middle"
+        text_size: (self.width, self.height)
+
+    Spinner:
+        id: title_spinner
+        text: ""
+        values: []
+        bold: True
+        color: root.SPINNER_TEXT_COLOR
+        background_color: root.SPINNER_BACKGROUND_COLOR
+        text_autoupdate: False
+        is_open: False
+        size_hint: (0.715, 1)
+        x: root.ids.title_search_box.x + root.ids.title_search_box.width
+        y: root.y
+        halign: "center"
+        valign: "middle"
+        text_size: (self.width, self.height)
+
+<TagSearchBoxTreeViewNode>:
+    size: root.NODE_SIZE
+    color_selected: root.SELECTED_COLOR
+
+    Label:
+        id: tag_search_label
+        text: "Tags: "
+        color: root.TAG_LABEL_COLOR
+        background_color: root.TAG_LABEL_BACKGROUND_COLOR
+        size_hint: (0.08, 0.5)
+        x: root.x
+        y: root.y + root.ids.tag_search_box.height
+        halign: "left"
+        valign: "middle"
+        text_size: (self.width, self.height)
+
+    TextInput:
+        id: tag_search_box
+        text: root.text
+        on_text: root.text = self.text
+        font_size: sp(16)
+        multiline: False
+        foreground_color: root.TAG_TEXT_COLOR
+        disabled_foreground_color: (1,1,1,0.5)
+        background_color: root.TAG_TEXT_BACKGROUND_COLOR
+        size_hint: (0.2, 0.5)
+        x: root.ids.tag_search_label.x + root.ids.tag_search_label.width
+        y: root.y + root.ids.tag_search_box.height
+        halign: "left"
+        valign: "middle"
+        text_size: (self.width, self.height)
+
+    Spinner:
+        id: tag_spinner
+        text: ""
+        values: []
+        markup: True
+        color: root.TAG_SPINNER_TEXT_COLOR
+        background_color: root.TAG_SPINNER_BACKGROUND_COLOR
+        text_autoupdate: False
+        is_open: False
+        size_hint: (0.715, 0.5)
+        x: root.ids.tag_search_box.x + root.ids.tag_search_box.width
+        y: root.y + root.ids.tag_search_box.height
+        halign: "center"
+        valign: "middle"
+        text_size: (self.width, self.height)
+
+    Spinner:
+        id: tag_title_spinner
+        text: ""
+        values: ["one", "two", "three"]
+        bold: True
+        color: root.TAG_TITLE_SPINNER_TEXT_COLOR
+        background_color: root.TAG_TITLE_SPINNER_BACKGROUND_COLOR
+        text_autoupdate: False
+        is_open: False
+        size_hint: (0.715, 0.5)
+        x: root.ids.tag_search_box.x + root.ids.tag_search_box.width
+        y: root.y
+        halign: "center"
+        valign: "middle"
+        text_size: (self.width, self.height)
+
+<StoryGroupTreeViewNode>:
+    color: root.TEXT_COLOR
+    color_selected: root.SELECTED_COLOR
+    background_color: root.BACKGROUND_COLOR
+    markup: True
+    size_hint: (None, None)
+    height: root.NODE_HEIGHT
+    width: root.NODE_WIDTH
+    halign: "left"
+    valign: "middle"
+    text_size: (self.width, self.height)
+
+<YearRangeTreeViewNode>:
+    color: root.TEXT_COLOR
+    color_selected: root.SELECTED_COLOR
+    background_color: root.BACKGROUND_COLOR
+    markup: True
+    size_hint: (None, None)
+    height: root.NODE_HEIGHT
+    width: root.NODE_WIDTH
+    halign: "left"
+    valign: "middle"
+    text_size: (self.width, self.height)
+
+<TreeViewRowNode@BoxLayout>:
+    orientation: "horizontal"
+    spacing: 0
+
+<TitleTreeViewNode>:
+    orientation: "vertical"
+    color: root.TEXT_COLOR
+    color_selected: root.SELECTED_COLOR
+    background_color: root.BACKGROUND_COLOR
+    even_color:  self.EVEN_COLOR
+    odd_color:  self.ODD_COLOR
+    spacing: 0
+    size_hint_y: None
+    height: dp(2 * self.ROW_HEIGHT)
+    minimum_height: self.height
+    minimum_width: self.width
+
+    TreeViewRowNode:
+        TreeViewButton:
+            id: num_label
+            parent: root
+            color: root.NUM_LABEL_COLOR
+            background_color: root.ROW_BACKGROUND_COLOR
+            color_selected: (1,0,1,1)
+            bg_color: (1,1,0,0.5)
+            bold: True
+            size_hint: (None, None)
+            width: root.NUM_LABEL_WIDTH
+            height: root.ROW_HEIGHT
+            halign: "right"
+            valign: "middle"
+            text_size: (self.width, self.height)
+
+        TitleTreeViewLabel:
+            text: ""
+            parent: root
+            color: root.NUM_LABEL_COLOR
+            background_color: root.ROW_BACKGROUND_COLOR
+            size_hint: (None, None)
+            width: dp(10)
+            height: root.ROW_HEIGHT
+            halign: "right"
+            valign: "middle"
+            text_size: (self.width, self.height)
+
+        TitleTreeViewLabel:
+            id: title_label
+            parent: root
+            color: root.TITLE_LABEL_COLOR
+            background_color: root.ROW_BACKGROUND_COLOR
+            bold: True
+            size_hint: (None, None)
+            width: root.TITLE_LABEL_WIDTH
+            height: root.ROW_HEIGHT
+            halign: "left"
+            valign: "middle"
+            text_size: (self.width, self.height)
+
+    TreeViewRowNode:
+        TitleTreeViewLabel:
+            text: "   "
+            parent: root
+            color: root.NUM_LABEL_COLOR
+            background_color: root.ROW_BACKGROUND_COLOR
+            size_hint: (None, None)
+            width: root.NUM_LABEL_WIDTH
+            height: root.ROW_HEIGHT
+            halign: "right"
+            valign: "middle"
+            text_size: (self.width, self.height)
+
+        TitleTreeViewLabel:
+            text: ""
+            parent: root
+            color: root.NUM_LABEL_COLOR
+            background_color: root.ROW_BACKGROUND_COLOR
+            size_hint: (None, None)
+            width: dp(10)
+            height: root.ROW_HEIGHT
+            halign: "right"
+            valign: "middle"
+            text_size: (self.width, self.height)
+
+        TitleTreeViewLabel:
+            id: issue_label
+            parent: root
+            color: root.ISSUE_LABEL_COLOR
+            background_color: root.ROW_BACKGROUND_COLOR
+            markup: True
+            size_hint: (None, None)
+            width: root.ISSUE_LABEL_WIDTH
+            height: root.ROW_HEIGHT
+            halign: "left"
+            valign: "middle"
+            text_size: (self.width, self.height)

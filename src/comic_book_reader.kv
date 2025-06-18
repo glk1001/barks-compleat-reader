@@ -1,0 +1,73 @@
+<ComicBookReaderScreen>:
+    orientation: "vertical"
+
+    ActionBar:
+        id: comic_action_bar
+        height: root.ACTION_BAR_HEIGHT
+        background_image: root.ACTION_BAR_BACKGROUND_PATH
+        background_color: root.ACTION_BAR_BACKGROUND_COLOR
+
+        ActionView:
+            use_separator: False
+
+            ActionPrevious:
+                id: action_title
+                title: "test title" # Will be set dynamically
+                with_previous: False
+                app_icon: root.APP_ICON_FILE
+
+            ActionOverflow:
+
+            ActionButton:
+                id: close_button
+                text: "Close"
+                icon: root.ACTION_BAR_CLOSE_ICON
+                mipmap: False
+                important: True
+                draggable: False
+                background_normal: root.ACTION_BAR_BACKGROUND_PATH
+                background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
+                on_press: root.comic_book_reader_widget.close_comic_book_reader(root.ids.fullscreen_button)
+
+            ActionButton:
+                id: fullscreen_button
+                text: "Fullscreen"
+                icon: root.ACTION_BAR_FULLSCREEN_ICON
+                mipmap: False
+                important: True
+                draggable: False
+                background_normal: root.ACTION_BAR_BACKGROUND_PATH
+                background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
+                on_press: root.comic_book_reader_widget.toggle_fullscreen(self)
+
+            ActionSeparator:
+
+            ActionButton:
+                id: goto_start_page_button
+                text: "Goto Start"
+                icon: root.ACTION_BAR_GOTO_START_ICON
+                mipmap: True
+                draggable: False
+                background_normal: root.ACTION_BAR_BACKGROUND_PATH
+                background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
+                on_press: root.comic_book_reader_widget.goto_start_page(self)
+
+            ActionButton:
+                id: goto_last_page_button
+                text: "Goto End"
+                icon: root.ACTION_BAR_GOTO_END_ICON
+                mipmap: True
+                draggable: False
+                background_normal: root.ACTION_BAR_BACKGROUND_PATH
+                background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
+                on_press: root.comic_book_reader_widget.goto_last_page(self)
+
+            ActionButton:
+                id: goto_page_button
+                text: "Goto Page"
+                icon: root.ACTION_BAR_GOTO_ICON
+                mipmap: True
+                draggable: False
+                background_normal: root.ACTION_BAR_BACKGROUND_PATH
+                background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
+                on_press: root.comic_book_reader_widget.goto_page(self)

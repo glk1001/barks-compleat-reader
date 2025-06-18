@@ -1,0 +1,443 @@
+#: include reader-tree-view.kv
+
+<BackgroundColor@Widget>
+    background_color: (1, 1, 1, 1)
+    canvas.before:
+        Color:
+            rgba: root.background_color
+        Rectangle:
+            size: self.size
+            pos: self.pos
+
+<BgColorLabel@Label+BackgroundColor>
+    background_color: (0, 0, 0, 0)
+
+<LoadingDataPopup>:
+    background_color: (1,1,0,1)
+    title: "Please wait.   Loading all the titles ..."
+    title_size: sp(16)
+    title_font: "Carl Barks Script"
+    title_align: "left"
+    title_color: (1,1,0.4,1)
+    separator_color: (1, 0, 0, 0.0)
+    separator_height: dp(4)
+    size_hint: (1, 0.55)
+    x: 0
+    y: 0
+    auto_dismiss: False
+
+    BoxLayout:
+        orientation: "vertical"
+
+        Image:
+            color: (1,1,1,1)
+            opacity: 1.0
+            source: root.splash_image_path
+            size_hint: (1, 0.9)
+            fit_mode: "cover"
+            mipmap: True
+
+        Label:
+            text: "vertical filler"
+            color: (0,0,0,0)
+            size_hint: (1, 0.02)
+
+        ProgressBar:
+            id: loading_data_progress_bar
+            size_hint: (1, 0.05)
+            value: root.progress_bar_value
+            min: 0
+            max: 3
+
+<MainScreen>:
+    orientation: "vertical"
+    view_width: self.width
+    view_height: (self.height - self.ids.action_bar.height) / 2
+
+    ActionBar:
+        id: action_bar
+        x: 0
+        y: 0
+        size: root.width, root.ACTION_BAR_HEIGHT
+        background_image: root.ACTION_BAR_BACKGROUND_PATH
+        background_color: root.ACTION_BAR_BACKGROUND_COLOR
+
+        ActionView:
+            use_separator: False
+
+            ActionPrevious:
+                title: 'The Compleat Barks Reader'
+                with_previous: False  # can use to change screens
+                app_icon: root.APP_ICON_FILE
+
+            ActionOverflow:
+
+            ActionButton:
+                text: 'Quit'
+                draggable: False
+                background_normal: root.ACTION_BAR_BACKGROUND_PATH
+                background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
+                on_release: app.on_action_bar_quit()
+
+            ActionSeparator:
+
+            ActionButton:
+                text: 'Collapse'
+                draggable: False
+                background_normal: root.ACTION_BAR_BACKGROUND_PATH
+                background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
+                on_release: root.on_action_bar_collapse()
+
+            ActionButton:
+                text: 'Change Pics'
+                draggable: False
+                background_normal: root.ACTION_BAR_BACKGROUND_PATH
+                background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
+                on_release: root.on_action_bar_change_view_images()
+
+            ActionGroup:
+                canvas.before:
+                    Color:
+                        rgba: root.ACTION_BUTTON_BACKGROUND_COLOR
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+                        source: root.ACTION_BAR_GROUP_BACKGROUND_PATH
+                text: "Goto"
+                draggable: False
+                background_normal: root.ACTION_BAR_TRANSPARENT_BLANK_PATH
+                background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
+                mode: "spinner"
+                mipmap: True
+
+                ActionButton:
+                    text: 'Chronological'
+                    on_release: root.on_action_bar_goto(self)
+                ActionButton:
+                    text: 'Series'
+                    on_release: root.on_action_bar_goto(self)
+                ActionButton:
+                    text: 'Categories'
+                    on_release: root.on_action_bar_goto(self)
+                ActionButton:
+                    text: 'Upper Title'
+                    on_release: root.on_goto_top_view_title()
+                ActionButton:
+                    text: 'Lower Title'
+                    on_release: root.on_goto_fun_view_title(self)
+                    disabled: root.bottom_view_title_opacity > 0.99
+
+    BoxLayout:
+        orientation: 'vertical' if self.width < self.height else 'horizontal'
+
+        # Scroll view with top view image
+        AnchorLayout:
+            anchor_x: "left"
+            anchor_y: "bottom"
+
+            AnchorLayout:
+                anchor_x: "left"
+                anchor_y: "bottom"
+
+                Image:
+                    color: root.top_view_image_color
+                    opacity: root.top_view_image_opacity
+                    source: root.top_view_image_source
+                    width: root.view_width
+                    height: root.view_height
+                    fit_mode: root.top_view_image_fit_mode
+                    mipmap: True
+
+                BoxLayout:
+                    orientation: "vertical"
+
+                    # Vertical filler before scroll view.
+                    Widget:
+                        size_hint_y: 0.02
+
+                    ScrollView:
+                        id: scroll_view
+                        width: root.view_width
+                        height: root.view_height
+
+                        do_scroll_x: False
+                        do_scroll_y: True
+                        always_overscroll: False
+                        effect_cls: "ScrollEffect"
+                        scroll_type: ["bars", "content"]
+
+                        bar_color: (0.8, 0.8, 0.8, 1)
+                        bar_inactive_color: (0.8, 0.8, 0.8, 0.8)
+                        bar_width: dp(12)
+
+                        ReaderTreeView:
+                            id: reader_tree_view
+                            padding: dp(50)
+                            indent_start: dp(50)
+                            background_color: (0,1,0,1)
+                            size_hint_y: None
+                            height: self.minimum_height
+
+        # Bottom view
+        AnchorLayout:
+            anchor_x: "right"
+            anchor_y: "center"
+
+            TextInput:
+                text: root.intro_text
+                opacity: root.intro_text_opacity
+                background_color: (1, 1, 1, 1)
+                multiline: True
+                readonly: True
+                width: root.view_width
+                height: root.view_height
+
+            AnchorLayout:
+                anchor_x: "center"
+                anchor_y: "center"
+
+                AnchorLayout:
+                    anchor_x: "center"
+                    anchor_y: "center"
+                    opacity: root.bottom_view_title_opacity
+
+                    Image:
+                        color: root.bottom_view_title_image_color
+                        source: root.bottom_view_title_image_source
+                        x: self.parent.x
+                        y: self.parent.y
+                        width: root.view_width
+                        height: root.view_height
+                        fit_mode: root.bottom_view_title_image_fit_mode
+                        mipmap: True
+
+                    BoxLayout:
+                        orientation: "vertical"
+                        opacity: 1
+                        width: root.view_width
+                        height: root.view_height
+
+                        BgColorLabel:
+                            text: "before title filler"
+                            background_color: (1, 0, 1, 1)
+                            opacity: root.DEBUG_BACKGROUND_OPACITY
+                            size_hint: (1, 0.0)
+                            text_size: (self.width, self.height)
+
+                        BgColorLabel:
+                            text: root.main_title_text
+                            font_name: root.MAIN_TITLE_FONT_NAME
+                            font_size: root.MAIN_TITLE_FONT_SIZE
+                            color: root.MAIN_TITLE_COLOR
+                            background_color: root.MAIN_TITLE_BACKGROUND_COLOR
+                            bold: True
+                            multiline: True
+                            size_hint: (1, 0.23)
+                            pos_hint: {"y": 0.23}
+                            halign: "center"
+                            valign: "middle"
+                            text_size: (self.width, self.height)
+                            canvas.before:
+                                Color:
+                                    rgba: (0,0,1,0.1)
+                                Line:
+                                    width: 1.1
+                                    rectangle: self.x, self.y, self.width, self.height
+
+                        BgColorLabel:
+                            text: "after title filler"
+                            background_color: (1, 0, 1, 1)
+                            opacity: root.DEBUG_BACKGROUND_OPACITY
+                            size_hint: (1, 0.01)
+                            text_size: (self.width, self.height)
+
+                        BoxLayout:
+                            orientation: "horizontal"
+                            background_color: (0, 1, 0, 0)
+
+                            BoxLayout:
+                                orientation: "vertical"
+                                size_hint_x: 1.1
+                                size_hint_y: 1
+
+                                BgColorLabel:
+                                    text: "before title info filler"
+                                    background_color: (0, 0, 1, 1)
+                                    opacity: root.DEBUG_BACKGROUND_OPACITY
+                                    size_hint: (1, 0.02)
+                                    halign: "left"
+                                    valign: "top"
+                                    text_size: (self.width, self.height)
+
+                                BoxLayout:
+                                    orientation: "horizontal"
+                                    size_hint: (1, 0.2)
+
+                                    BgColorLabel:
+                                        text: "left1 filler"
+                                        background_color: (1.0, 1.0, 0.0, 0.5)
+                                        opacity: root.DEBUG_BACKGROUND_OPACITY
+                                        size_hint: (0.06, 1)
+                                        halign: "left"
+                                        valign: "top"
+                                        text_size: (self.width, self.height)
+
+                                    BgColorLabel:
+                                        text: root.title_info_text
+                                        color: root.TITLE_INFO_LABEL_COLOR
+                                        background_color: 0, 1, 0, root.DEBUG_BACKGROUND_OPACITY
+                                        markup: True
+                                        multiline: True
+                                        size_hint: (0.94, 1)
+                                        halign: "left"
+                                        valign: "middle"
+                                        text_size: (self.width, self.height)
+
+                                BoxLayout:
+                                    orientation: "horizontal"
+                                    size_hint: (1, 0.05)
+
+                                    BgColorLabel:
+                                        text: "left2 filler"
+                                        background_color: (0.01, 1.0, 1.0, 0.5)
+                                        opacity: root.DEBUG_BACKGROUND_OPACITY
+                                        size_hint: (0.06, 1)
+                                        halign: "left"
+                                        valign: "top"
+                                        text_size: (self.width, self.height)
+
+                                    BgColorLabel:
+                                        text: "after title info filler"
+                                        color: root.TITLE_INFO_LABEL_COLOR
+                                        background_color: 1, 1, 0, root.DEBUG_BACKGROUND_OPACITY
+                                        opacity: root.DEBUG_BACKGROUND_OPACITY
+                                        size_hint: (0.94, 1)
+                                        text_size: (self.width, self.height)
+
+                                BoxLayout:
+                                    orientation: "horizontal"
+                                    size_hint: (0.97, 0.5)
+
+                                    BgColorLabel:
+                                        text: "left2 filler"
+                                        background_color: (0.5, 1.0, 0.0, 0.5)
+                                        opacity: root.DEBUG_BACKGROUND_OPACITY
+                                        size_hint: (0.06, 1)
+                                        halign: "left"
+                                        valign: "top"
+                                        text_size: (self.width, self.height)
+
+                                    BgColorLabel:
+                                        text: root.extra_title_info_text
+                                        color: root.TITLE_EXTRA_INFO_LABEL_COLOR
+                                        background_color: 0, 1, 1, root.DEBUG_BACKGROUND_OPACITY
+                                        multiline: True
+                                        markup: True
+                                        size_hint: (0.94, 1)
+                                        halign: "justify"
+                                        valign: "top"
+                                        text_size: (self.width, self.height)
+
+                            AnchorLayout:
+                                anchor_x: "center"
+                                anchor_y: "center"
+                                size_hint_x: 0.90
+                                size_hint_y: 0.85
+
+                                BoxLayout
+                                    orientation: "horizontal"
+
+                                    BgColorLabel:
+                                        text: "left of title image filler"
+                                        background_color: (1.0, 1.0, 0.0, 0.5)
+                                        opacity: root.DEBUG_BACKGROUND_OPACITY
+                                        size_hint: (0.05, 0.9)
+                                        text_size: (self.width, self.height)
+
+                                    BoxLayout
+                                        orientation: "vertical"
+                                        size_hint: (1, 0.9)
+
+                                        BgColorLabel:
+                                            text: "top of button filler"
+                                            background_color: (1.0, 1.0, 0.0, 0.5)
+                                            opacity: root.DEBUG_BACKGROUND_OPACITY
+                                            size_hint: (1, 0.1)
+                                            text_size: (self.width, self.height)
+
+                                        Button:
+                                            canvas.before:
+                                                Color:
+                                                    rgba: 0, 0, 1, 0.85
+                                                BoxShadow:
+                                                    inset: False
+                                                    pos: self.pos
+                                                    size: self.size
+                                                    offset: 0, 0
+                                                    spread_radius: 1.5, 1.5
+                                                    border_radius: 0, 0, 0, 0
+                                                    blur_radius: 20 if self.state == "normal" else 10
+
+                                            disabled: root.bottom_view_title_opacity < 0.01
+                                            background_color: (0.3, 0.3, 1.0, 0.5)
+                                            size_hint: (1, 1)
+                                            halign: "left"
+                                            valign: "top"
+                                            text_size: (self.width, self.height)
+
+                                            TitlePageImage:
+                                                source: root.title_page_image_source
+                                                x: self.parent.x + 0.5 * (1.0 - self.TITLE_IMAGE_X_FRAC_OF_PARENT) * self.parent.size[0]
+                                                y: self.parent.y + 0.5 * (1.0 - self.TITLE_IMAGE_Y_FRAC_OF_PARENT) * self.parent.size[1]
+                                                size: (self.TITLE_IMAGE_X_FRAC_OF_PARENT * self.parent.size[0], self.TITLE_IMAGE_Y_FRAC_OF_PARENT * self.parent.size[1])
+                                                fit_mode: "cover"
+                                                mipmap: True
+                                                on_press: root.on_image_pressed()
+
+                                    BgColorLabel:
+                                        text: "right of title image filler"
+                                        background_color: (1.0, 1.0, 0.0, 0.5)
+                                        opacity: root.DEBUG_BACKGROUND_OPACITY
+                                        size_hint: (0.09, 0.8)
+                                        text_size: (self.width, self.height)
+
+                        BgColorLabel:
+                            text: "bottom of title image filler"
+                            background_color: (0.0, 1.0, 1.0, 0.5)
+                            opacity: root.DEBUG_BACKGROUND_OPACITY
+                            #height: root.TITLE_INFO_BORDER_WIDTH
+                            size_hint: (1, 0.06)
+                            text_size: (self.width, self.height)
+
+            AnchorLayout:
+                anchor_x: "center"
+                anchor_y: "center"
+                opacity: root.bottom_view_fun_image_opacity
+
+                Image:
+                    color: root.bottom_view_fun_image_color
+                    source: root.bottom_view_fun_image_source
+                    width: root.view_width
+                    height: root.view_height
+                    fit_mode: root.bottom_view_fun_image_fit_mode
+                    mipmap: True
+
+                    Button:
+                        text: ""
+                        on_press: root.on_goto_fun_view_title(self)
+                        background_color: (0.3, 0.3, 0.3, 0.0)
+                        background_normal: ""
+                        x: self.parent.x + self.parent.width - (root.UP_ARROW_WIDTH + dp(1))
+                        y: self.parent.y + dp(1)
+                        size: (root.UP_ARROW_WIDTH, root.UP_ARROW_WIDTH)
+                        halign: "left"
+                        valign: "top"
+                        text_size: (self.width, self.height)
+
+                        Image:
+                            source: root.UP_ARROW_FILE
+                            y: self.parent.y
+                            x: self.parent.x
+                            size: self.parent.size
+                            fit_mode: "cover"
+                            mipmap: True
