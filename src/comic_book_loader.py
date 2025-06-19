@@ -8,21 +8,34 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Union, Callable, OrderedDict, IO, Tuple
+from zipfile import ZipFile
 
 from PIL import Image as PilImage, ImageOps
 from kivy.clock import Clock
 
 from barks_fantagraphics.comics_consts import PageType, PNG_FILE_EXT, JPG_FILE_EXT
 from barks_fantagraphics.comics_utils import get_dest_comic_zip_file_stem
-from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+from barks_fantagraphics.fanta_comics_info import (
+    FantaComicBookInfo,
+    FIRST_VOLUME_NUMBER,
+    LAST_VOLUME_NUMBER,
+)
+from fantagraphics_volumes import FantagraphicsVolumeArchives, FantagraphicsArchive
 from file_paths import get_the_comic_zips_dir
+
+FANTA_VOLUME_ARCHIVES_ROOT = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes"
+FANTA_VOLUME_OVERRIDES_ROOT = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes Overrides"
+ALL_FANTA_VOLUMES = [i for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)]
+# ALL_FANTA_VOLUMES = [i for i in range(5, 7 + 1)]
 
 
 @dataclass
 class PageInfo:
     page_index: int
+    display_page_num: str
     page_type: PageType
-    image_filename: str
+    srce_image_filename: str
+    dest_image_filename: str
 
 
 class ComicBookLoader:
@@ -30,9 +43,19 @@ class ComicBookLoader:
         self,
         on_first_image_loaded: Callable[[], None],
         on_all_images_loaded: Callable[[], None],
+        on_load_error: Callable[[], None],
         max_window_width: int,
         max_window_height: int,
     ):
+        self.__use_prebuilt_archives = False
+
+        if self.__use_prebuilt_archives:
+            self.__fanta_volume_archives = None
+        else:
+            self.__fanta_volume_archives = FantagraphicsVolumeArchives(
+                FANTA_VOLUME_ARCHIVES_ROOT, FANTA_VOLUME_OVERRIDES_ROOT, ALL_FANTA_VOLUMES
+            )
+
         self.__image_loaded_events: List[threading.Event] = []
         self.__image_load_order: List[str] = []
         self.__page_map: OrderedDict[str, PageInfo] = OrderedDict()
@@ -42,9 +65,19 @@ class ComicBookLoader:
 
         self.__stop = False
         self.__current_comic_path = ""
+        self.__fanta_volume_archive: Union[FantagraphicsArchive, None] = None
 
         self.__on_first_image_loaded: Callable[[], None] = on_first_image_loaded
         self.__on_all_images_loaded: Callable[[], None] = on_all_images_loaded
+        self.__on_load_error = on_load_error
+
+    def load_data(self) -> None:
+        if self.__use_prebuilt_archives:
+            logging.debug("Using prebuilt archives. No extra data to load.")
+            return
+
+        logging.debug("Using Fantagraphics volume archives.")
+        self.__fanta_volume_archives.load()
 
     def get_image_ready_for_reading(self, page_index: int) -> Tuple[io.BytesIO, str]:
         assert 0 <= page_index < len(self.__images)
@@ -55,6 +88,13 @@ class ComicBookLoader:
         image_stream.seek(0)  # Ensure stream is at the beginning for reading
 
         return image_stream, image_ext
+
+    def get_image_info_str(self, page_str: str) -> str:
+        page_info = self.__page_map[page_str]
+        image_path, is_from_archive = self.__get_image_path(page_info)
+        file_source = "from archive" if is_from_archive else "from override"
+
+        return f'"{str(image_path)}" ({file_source})'
 
     def get_load_event(self, page_index: int) -> threading.Event:
         assert 0 <= page_index < len(self.__images)
@@ -68,6 +108,11 @@ class ComicBookLoader:
     ) -> None:
         assert len(image_load_order) == len(page_map)
 
+        if not self.__use_prebuilt_archives:
+            self.__fanta_volume_archive = self.__fanta_volume_archives.get_fantagraphics_archive(
+                int(fanta_info.fantagraphics_volume[-2:])
+            )
+
         self.__current_comic_path = self.__get_comic_path(fanta_info)
         self.__image_load_order = image_load_order
         self.__page_map = page_map
@@ -75,8 +120,10 @@ class ComicBookLoader:
 
         self.init_load_events()
 
-    @staticmethod
-    def __get_comic_path(fanta_info: FantaComicBookInfo) -> str:
+    def __get_comic_path(self, fanta_info: FantaComicBookInfo) -> str:
+        if not self.__use_prebuilt_archives:
+            return self.__fanta_volume_archive.archive_filename
+
         comic_file_stem = get_dest_comic_zip_file_stem(
             fanta_info.comic_book_info.get_title_str(),
             fanta_info.fanta_chronological_number,
@@ -92,6 +139,7 @@ class ComicBookLoader:
         return comic_path
 
     def close_comic(self) -> None:
+        logging.debug(f"Close the comic.")
         self.__images.clear()
         self.__image_loaded_events.clear()
         self.__image_load_order.clear()
@@ -107,8 +155,11 @@ class ComicBookLoader:
             self.__image_loaded_events.append(threading.Event())
 
     def load_comic(self):
+        logging.debug(f'Load comic: comic_path = "{self.__current_comic_path}"')
+
         self.__images = [None for _i in range(0, len(self.__page_map))]
 
+        load_error = False
         try:
             num_loaded = 0
             with zipfile.ZipFile(self.__current_comic_path, "r") as archive:
@@ -116,22 +167,23 @@ class ComicBookLoader:
 
                 for i in range(0, len(self.__image_load_order)):
                     if self.__stop:
-                        logging.warning("Image loading stopped.")
+                        logging.warning(f"For i = {i}, image loading stopped.")
                         return
 
-                    page_info = self.__page_map[self.__image_load_order[i]]
+                    load_index = self.__image_load_order[i]
+                    logging.debug(f'For i = {i}, load_index = "{load_index}".')
+
+                    page_info = self.__page_map[load_index]
+                    logging.debug(f"For i = {i}, page_info = {str(page_info)}.")
+
+                    # Double check stop flag before any more heavy processing.
+                    if self.__stop:
+                        logging.warning(f"For i = {i}, image loading stopped before getting image.")
+                        return
 
                     page_index = page_info.page_index
-                    image_path_in_archive = Path("images") / page_info.image_filename
-
-                    with archive.open(str(image_path_in_archive)) as file:
-                        ext = image_path_in_archive.suffix
-                        # Double check stop flag before heavy processing
-                        if self.__stop:
-                            logging.warning("Image loading stopped before processing file.")
-                            return
-                        self.__images[page_index] = self.__get_image_data(file, ext)
-                        num_loaded += 1
+                    self.__images[page_index] = self.__load_image_content(archive, page_info)
+                    num_loaded += 1
 
                     self.__image_loaded_events[page_index].set()
 
@@ -139,12 +191,16 @@ class ComicBookLoader:
                         first_loaded = True
                         logging.info(
                             f"Loaded first image,"
-                            f' index = {page_index}, image_filename = "{image_path_in_archive}".'
+                            f" page index = {page_index},"
+                            f" page = {page_info.display_page_num}."
                         )
                         Clock.schedule_once(lambda dt: self.__on_first_image_loaded(), 0)
 
             if self.__stop:
-                logging.warning("Image loading stopped before completion.")
+                logging.warning(
+                    "Image loading stopped before all images loaded."
+                    f" Loaded {num_loaded} out of {len(self.__page_map)} images."
+                )
                 return
 
             assert num_loaded == len(self.__page_map)
@@ -155,12 +211,15 @@ class ComicBookLoader:
 
         except FileNotFoundError:
             logging.error(f'Comic file not found: "{self.__current_comic_path}".')
+            load_error = True
         except zipfile.BadZipFile:
             logging.error(f'Bad zip file: "{self.__current_comic_path}".')
         except KeyError as ke:
             logging.error(
-                f"Error accessing page_map or image_load_order, possibly due to stop/reset: {ke}"
+                "Key error accessing page_map or image_load_order,"
+                f' possibly due to stop/reset: "{ke}"'
             )
+            load_error = True
         except IndexError:
             if not self.__stop:
                 logging.error(f'Unexpected index error reading comic: stop = "{self.__stop}".')
@@ -168,6 +227,7 @@ class ComicBookLoader:
                 logging.warning(
                     f'Index error reading comic: probably because stop = "{self.__stop}".'
                 )
+                load_error = True
         except Exception as _e:
             _, _, tb = sys.exc_info()
             tb_info = traceback.extract_tb(tb)
@@ -175,6 +235,47 @@ class ComicBookLoader:
             logging.error(
                 f'Error loading comic: "{_e}" at "{filename}:{line}" in "{func}" ({text}).'
             )
+            load_error = True
+
+        if load_error:
+            self.__close_and_report_load_error()
+
+    def __close_and_report_load_error(self) -> None:
+        self.__stop = True
+        self.close_comic()
+        Clock.schedule_once(lambda dt: self.__on_load_error(), 0)
+
+    def __load_image_content(self, archive: ZipFile, page_info: PageInfo) -> Tuple[io.BytesIO, str]:
+        image_path, is_from_archive = self.__get_image_path(page_info)
+        ext = image_path.suffix
+
+        if is_from_archive:
+            with archive.open(str(image_path), "r") as file:
+                image_data = self.__get_image_data(file, ext)
+        else:
+            with open(image_path, "rb") as file:
+                image_data = self.__get_image_data(file, ext)
+
+        logging.debug(
+            f'Getting image (page = "{page_info.display_page_num}"): '
+            f'image_path = "{image_path}", is_from_archive = {is_from_archive}.'
+        )
+
+        return image_data
+
+    def __get_image_path(self, page_info: PageInfo) -> Tuple[Path, bool]:
+        if self.__use_prebuilt_archives:
+            return Path("images") / page_info.dest_image_filename, True
+
+        page_str = Path(page_info.srce_image_filename).stem
+
+        if page_str in self.__fanta_volume_archive.extra_images_page_map:
+            return Path(self.__fanta_volume_archive.extra_images_page_map[page_str]), False
+
+        if page_str in self.__fanta_volume_archive.override_images_page_map:
+            return Path(self.__fanta_volume_archive.override_images_page_map[page_str]), False
+
+        return Path(self.__fanta_volume_archive.archive_images_page_map[page_str]), True
 
     @staticmethod
     def __get_pil_format_from_ext(ext: str) -> str:
@@ -191,7 +292,6 @@ class ComicBookLoader:
 
         pil_image = PilImage.open(io.BytesIO(file.read()))
 
-        # Corrected parameters for ImageOps.contain: (width, height)
         pil_image_resized = ImageOps.contain(
             pil_image,
             (self.__max_window_width, self.__max_window_height),

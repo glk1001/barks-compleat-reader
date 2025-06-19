@@ -23,7 +23,7 @@ from barks_fantagraphics.barks_tags import (
     is_tag_enum,
 )
 from barks_fantagraphics.barks_titles import ComicBookInfo, Titles, get_title_dict, BARKS_TITLES
-from barks_fantagraphics.comics_consts import PageType
+from barks_fantagraphics.comics_consts import PageType, JPG_FILE_EXT
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import (
     FantaComicBookInfo,
@@ -230,6 +230,8 @@ class MainScreen(BoxLayout, Screen):
         logging.debug(f"'on_finished_building_event' received: dismiss the popup.")
         if self.loading_data_popup_image_event:
             self.loading_data_popup_image_event.cancel()
+
+        self.comic_book_reader.load_data()
 
         # Linger on the last image...
         self.loading_data_popup.title = "All titles loaded!"
@@ -658,34 +660,48 @@ class MainScreen(BoxLayout, Screen):
     def comic_closed(self):
         title_str = self.fanta_info.comic_book_info.get_title_str()
         last_read_page = self.comic_book_reader.get_last_read_page()
-        self.store.put(title_str, last_read_page=last_read_page)
-        logging.debug(f'"{title_str}": Saved last read page "{last_read_page}".')
+        if not last_read_page:
+            logging.warning(f'"{title_str}": There was no valid last read page.')
+        else:
+            self.store.put(title_str, last_read_page=last_read_page)
+            logging.debug(f'"{title_str}": Saved last read page "{last_read_page}".')
 
     def get_comic_page_info(self, title_str: str) -> ComicBookPageInfo:
         comic = self.comics_database.get_comic_book(title_str)
         pages = get_srce_and_dest_pages_in_order(comic)
-        dest_pages = pages.dest_pages
 
+        page_map = OrderedDict()
         last_body_page = ""
         last_page = ""
-        page_map = OrderedDict()
         body_start_page_num = -1
         orig_page_num = 0
-        for page in dest_pages:
+
+        for srce_page, dest_page in zip(pages.srce_pages, pages.dest_pages):
             orig_page_num += 1
 
-            if page.page_type not in FRONT_MATTER_PAGES and body_start_page_num == -1:
+            srce_page_filename = os.path.basename(srce_page.page_filename)
+            dest_page_filename = os.path.basename(dest_page.page_filename)
+
+            # TODO: Need to handle other empty pages.
+            if srce_page_filename == "empty_page.png" and dest_page.page_type == PageType.TITLE:
+                srce_page_filename = title_str + JPG_FILE_EXT
+
+            if dest_page.page_type not in FRONT_MATTER_PAGES and body_start_page_num == -1:
                 body_start_page_num = orig_page_num
 
-            page_info = PageInfo(
-                orig_page_num - 1, page.page_type, os.path.basename(page.page_filename)
-            )
             if body_start_page_num == -1:
-                page_map[ROMAN_NUMERALS[orig_page_num]] = page_info
+                display_page_num = ROMAN_NUMERALS[orig_page_num]
             else:
-                last_page_str = str(orig_page_num - body_start_page_num + 1)
-                page_map[last_page_str] = page_info
-                if page.page_type == PageType.BODY:
-                    last_body_page = last_page_str
+                display_page_num = str(orig_page_num - body_start_page_num + 1)
+                if dest_page.page_type == PageType.BODY:
+                    last_body_page = display_page_num
+
+            page_map[display_page_num] = PageInfo(
+                orig_page_num - 1,
+                display_page_num,
+                dest_page.page_type,
+                srce_page_filename,
+                dest_page_filename,
+            )
 
         return ComicBookPageInfo(page_map, last_body_page, last_page)

@@ -74,6 +74,7 @@ class ComicBookReader(BoxLayout):
         self.comic_book_loader = ComicBookLoader(
             self.first_image_loaded,
             self.all_images_loaded,
+            self.load_error,
             self.MAX_WINDOW_WIDTH,
             self.MAX_WINDOW_HEIGHT,
         )
@@ -114,6 +115,8 @@ class ComicBookReader(BoxLayout):
         )
 
     def get_last_read_page(self) -> str:
+        if self.current_page_index == -1:
+            return ""
         return self.index_to_page_map[self.current_page_index]
 
     def set_action_bar(self, action_bar: ActionBar):
@@ -163,12 +166,17 @@ class ComicBookReader(BoxLayout):
     def is_in_right_margin(self, x: int, y: int) -> bool:
         return (x >= self.x_mid) and (y <= self.y_top_margin)
 
+    def load_data(self):
+        self.comic_book_loader.load_data()
+
     def read_comic(
         self,
         fanta_info: FantaComicBookInfo,
         page_to_first_goto: str,
         page_map: OrderedDict[str, PageInfo],
     ):
+        # wait for volume archives to be loaded
+
         assert page_to_first_goto in page_map
 
         self.all_loaded = False
@@ -196,7 +204,8 @@ class ComicBookReader(BoxLayout):
     def close_comic_book_reader(self, fullscreen_button: ActionButton):
         self.comic_book_loader.stop_now()
 
-        self.exit_fullscreen(fullscreen_button)
+        if fullscreen_button:
+            self.exit_fullscreen(fullscreen_button)
         self.comic_book_loader.close_comic()
         self.close_reader_func()
 
@@ -238,15 +247,21 @@ class ComicBookReader(BoxLayout):
         self.all_loaded = True
         logging.debug(f"All images loaded: current page index = {self.current_page_index}.")
 
+    def load_error(self):
+        self.all_loaded = False
+        logging.debug(f"There was a comic book load error.")
+        self.close_comic_book_reader(None)
+
     def show_page(self, _instance, _value):
         """Displays the image for the current_page_index."""
         if self.current_page_index == -1:
             logging.debug(f"Show page not ready: current_page_index = {self.current_page_index}.")
             return
 
+        page_str = self.index_to_page_map[self.current_page_index]
         logging.debug(
             f"Display image {self.current_page_index}:"
-            f' "{self.page_map[self.index_to_page_map[self.current_page_index]].image_filename}".'
+            f" {self.comic_book_loader.get_image_info_str(page_str)}."
         )
 
         self.wait_for_image_to_load()
