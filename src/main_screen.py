@@ -91,6 +91,14 @@ from reader_ui_classes import (
 
 @dataclass
 class ComicBookPageInfo:
+    # 'page_map' maps the comic book page numbers, starting with the roman numeral 'i',
+    # to the three digit comic archive page number. For example:
+    #     'i':  '210'   front matter
+    #     'ii': '211'   front matter
+    #     '1':  '220'   '1' is the first body page
+    #     '2':  '221'   '2' is the second body page
+    #     '3':  '222'   '3' is the last body page
+    #     '4':  '250'   '4' is a back matter page and the last page
     page_map: OrderedDict[str, PageInfo]
     last_body_page: str
     last_page: str
