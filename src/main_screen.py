@@ -88,6 +88,30 @@ from reader_ui_classes import (
     TagSearchBoxTreeViewNode,
 )
 
+NODE_TYPE_TO_VIEW_STATE_MAP = {
+    YearRangeTreeViewNode: ViewStates.ON_YEAR_RANGE_NODE,
+    CsYearRangeTreeViewNode: ViewStates.ON_CS_YEAR_RANGE_NODE,
+    UsYearRangeTreeViewNode: ViewStates.ON_US_YEAR_RANGE_NODE,
+}
+
+NODE_TEXT_TO_VIEW_STATE_MAP = {
+    INTRO_NODE_TEXT: ViewStates.ON_INTRO_NODE,
+    THE_STORIES_NODE_TEXT: ViewStates.ON_THE_STORIES_NODE,
+    SEARCH_NODE_TEXT: ViewStates.ON_SEARCH_NODE,
+    APPENDIX_NODE_TEXT: ViewStates.ON_APPENDIX_NODE,
+    INDEX_NODE_TEXT: ViewStates.ON_INDEX_NODE,
+    CHRONOLOGICAL_NODE_TEXT: ViewStates.ON_CHRONO_BY_YEAR_NODE,
+    SERIES_NODE_TEXT: ViewStates.ON_SERIES_NODE,
+    CATEGORIES_NODE_TEXT: ViewStates.ON_CATEGORIES_NODE,
+    SERIES_CS: ViewStates.ON_CS_NODE,
+    SERIES_DDA: ViewStates.ON_DD_NODE,
+    SERIES_USA: ViewStates.ON_US_NODE,
+    SERIES_DDS: ViewStates.ON_DDS_NODE,
+    SERIES_USS: ViewStates.ON_USS_NODE,
+    SERIES_GG: ViewStates.ON_GG_NODE,
+    SERIES_MISC: ViewStates.ON_MISC_NODE,
+}
+
 
 @dataclass
 class ComicBookPageInfo:
@@ -327,53 +351,42 @@ class MainScreen(BoxLayout, Screen):
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode):
         logging.debug(f'Node expanded: "{node.text}" ({type(node)}).')
 
-        if type(node) == YearRangeTreeViewNode:
-            self.update_background_views(ViewStates.ON_YEAR_RANGE_NODE, year_range=node.text)
-        elif type(node) == CsYearRangeTreeViewNode:
-            self.update_background_views(ViewStates.ON_CS_YEAR_RANGE_NODE, cs_year_range=node.text)
-        elif type(node) == UsYearRangeTreeViewNode:
-            self.update_background_views(ViewStates.ON_US_YEAR_RANGE_NODE, us_year_range=node.text)
-        elif isinstance(node, MainTreeViewNode):
-            if node.text == INTRO_NODE_TEXT:
-                self.update_background_views(ViewStates.ON_INTRO_NODE)
-            elif node.text == THE_STORIES_NODE_TEXT:
-                self.update_background_views(ViewStates.ON_THE_STORIES_NODE)
-            elif node.text == SEARCH_NODE_TEXT:
-                self.update_background_views(ViewStates.ON_SEARCH_NODE)
-            elif node.text == APPENDIX_NODE_TEXT:
-                self.update_background_views(ViewStates.ON_APPENDIX_NODE)
-            elif node.text == INDEX_NODE_TEXT:
-                self.update_background_views(ViewStates.ON_INDEX_NODE)
-        elif isinstance(node, StoryGroupTreeViewNode):
-            node_text = get_clean_text_without_extra(node.text)
-            logging.debug(f'Clean node text: "{node_text}"')
-            if node_text == CHRONOLOGICAL_NODE_TEXT:
-                self.update_background_views(ViewStates.ON_CHRONO_BY_YEAR_NODE)
-            elif node_text == SERIES_NODE_TEXT:
-                self.update_background_views(ViewStates.ON_SERIES_NODE)
-            elif node_text == CATEGORIES_NODE_TEXT:
-                self.update_background_views(ViewStates.ON_CATEGORIES_NODE)
-            elif node_text == SERIES_CS:
-                self.update_background_views(ViewStates.ON_CS_NODE)
-            elif node_text == SERIES_DDA:
-                self.update_background_views(ViewStates.ON_DD_NODE)
-            elif node_text == SERIES_USA:
-                self.update_background_views(ViewStates.ON_US_NODE)
-            elif node_text == SERIES_DDS:
-                self.update_background_views(ViewStates.ON_DDS_NODE)
-            elif node_text == SERIES_USS:
-                self.update_background_views(ViewStates.ON_USS_NODE)
-            elif node_text == SERIES_GG:
-                self.update_background_views(ViewStates.ON_GG_NODE)
-            elif node_text == SERIES_MISC:
-                self.update_background_views(ViewStates.ON_MISC_NODE)
-            elif node_text in BARKS_TAG_CATEGORIES_DICT:
-                self.update_background_views(ViewStates.ON_CATEGORY_NODE, category=node_text)
-            elif is_tag_enum(node_text):
-                logging.debug(f'Tag node expanded: "{node_text}".')
-                self.update_background_views(ViewStates.ON_TAG_NODE, tag=Tags(node_text))
+        view_state_params = {}
+        new_view_state = None
 
-        self.scroll_to_node(node.nodes[0])
+        node_type = type(node)
+        clean_node_text = get_clean_text_without_extra(node.text)
+
+        if node_type in NODE_TYPE_TO_VIEW_STATE_MAP:
+            new_view_state = NODE_TYPE_TO_VIEW_STATE_MAP[node_type]
+            if new_view_state == ViewStates.ON_YEAR_RANGE_NODE:
+                view_state_params["year_range"] = node.text
+            elif new_view_state == ViewStates.ON_CS_YEAR_RANGE_NODE:
+                view_state_params["cs_year_range"] = node.text
+            elif new_view_state == ViewStates.ON_US_YEAR_RANGE_NODE:
+                view_state_params["us_year_range"] = node.text
+        elif isinstance(node, MainTreeViewNode) and node.text in NODE_TEXT_TO_VIEW_STATE_MAP:
+            new_view_state = NODE_TEXT_TO_VIEW_STATE_MAP[node.text]
+        elif isinstance(node, StoryGroupTreeViewNode):
+            if clean_node_text in NODE_TEXT_TO_VIEW_STATE_MAP:
+                new_view_state = NODE_TEXT_TO_VIEW_STATE_MAP[clean_node_text]
+            elif clean_node_text in BARKS_TAG_CATEGORIES_DICT:
+                new_view_state = ViewStates.ON_CATEGORY_NODE
+                view_state_params["category"] = clean_node_text
+            elif is_tag_enum(clean_node_text):
+                logging.debug(f'Tag node expanded: "{clean_node_text}".')
+                new_view_state = ViewStates.ON_TAG_NODE
+                view_state_params["tag"] = Tags(clean_node_text)
+
+        if new_view_state:
+            self.update_background_views(new_view_state, **view_state_params)
+        else:
+            logging.warning(f"No view state mapping found for node: {node.text} ({node_type})")
+
+        if node.nodes:
+            self.scroll_to_node(node.nodes[0])
+        else:
+            self.scroll_to_node(node)
 
     def on_intro_pressed(self, _button: Button):
         self.update_background_views(ViewStates.ON_INTRO_NODE)
