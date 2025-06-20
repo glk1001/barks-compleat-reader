@@ -16,7 +16,6 @@ from kivy.uix.spinner import Spinner
 from kivy.uix.treeview import TreeViewNode
 
 from background_views import BackgroundViews, ViewStates
-from barks_fantagraphics.barks_payments import BARKS_PAYMENTS
 from barks_fantagraphics.barks_tags import (
     BARKS_TAG_CATEGORIES_DICT,
     Tags,
@@ -602,10 +601,8 @@ class MainScreen(BoxLayout, Screen):
             )
         self.background_views.set_bottom_view_title_image_file(title_image_file)
 
-        payment_info = BARKS_PAYMENTS[self.fanta_info.comic_book_info.title]
-
         self.main_title_text = self.get_main_title_str()
-        self.title_info_text = self.formatter.get_title_info(self.fanta_info, payment_info)
+        self.title_info_text = self.formatter.get_title_info(self.fanta_info)
         self.extra_title_info_text = self.formatter.get_extra_title_info(self.fanta_info)
         self.title_page_image_source = get_comic_inset_file(
             self.fanta_info.comic_book_info.title, use_edited_only=True

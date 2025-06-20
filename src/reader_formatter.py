@@ -1,15 +1,15 @@
 import re
 
 from barks_fantagraphics.barks_extra_info import BARKS_EXTRA_INFO
-from barks_fantagraphics.barks_payments import BARKS_PAYMENTS, PaymentInfo
+from barks_fantagraphics.barks_payments import BARKS_PAYMENTS
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
 from barks_fantagraphics.comics_utils import (
     get_formatted_first_published_str,
     get_long_formatted_submitted_date,
-    get_formatted_payment_info,
 )
 from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo, FANTA_SOURCE_COMICS, FAN
+from reader_utils import get_formatted_payment_info
 
 LONG_TITLE_SPLITS = {
     Titles.LOST_CROWN_OF_GENGHIS_KHAN_THE: "The Lost Crown\nof Genghis Khan!",
@@ -47,7 +47,7 @@ class ReaderFormatter:
         self.title_info_issue_name[Issues.CS] = "Comics & Stories"
         self.title_info_issue_name[Issues.MC] = "March of Comics"
 
-    def get_title_info(self, fanta_info: FantaComicBookInfo, payment_info: PaymentInfo) -> str:
+    def get_title_info(self, fanta_info: FantaComicBookInfo) -> str:
         # TODO: Clean this up.
         issue_info = get_formatted_first_published_str(
             fanta_info.comic_book_info, self.title_info_issue_name
