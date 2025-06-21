@@ -21,9 +21,13 @@ from barks_fantagraphics.fanta_comics_info import (
     LAST_VOLUME_NUMBER,
 )
 from fantagraphics_volumes import FantagraphicsVolumeArchives, FantagraphicsArchive
-from file_paths import get_the_comic_zips_dir
+from file_paths import (
+    get_the_comic_zips_dir,
+    get_fanta_volume_archives_root_dir,
+    get_empty_page_file,
+)
+from reader_utils import is_blank_page
 
-FANTA_VOLUME_ARCHIVES_ROOT = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes"
 FANTA_VOLUME_OVERRIDES_ROOT = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes Overrides"
 ALL_FANTA_VOLUMES = [i for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)]
 # ALL_FANTA_VOLUMES = [i for i in range(5, 7 + 1)]
@@ -53,7 +57,7 @@ class ComicBookLoader:
             self.__fanta_volume_archives = None
         else:
             self.__fanta_volume_archives = FantagraphicsVolumeArchives(
-                FANTA_VOLUME_ARCHIVES_ROOT, FANTA_VOLUME_OVERRIDES_ROOT, ALL_FANTA_VOLUMES
+                get_fanta_volume_archives_root_dir(), FANTA_VOLUME_OVERRIDES_ROOT, ALL_FANTA_VOLUMES
             )
 
         self.__image_loaded_events: List[threading.Event] = []
@@ -266,6 +270,9 @@ class ComicBookLoader:
     def __get_image_path(self, page_info: PageInfo) -> Tuple[Path, bool]:
         if self.__use_prebuilt_archives:
             return Path("images") / page_info.dest_image_filename, True
+
+        if is_blank_page(page_info.srce_image_filename, page_info.page_type):
+            return Path(get_empty_page_file()), False
 
         page_str = Path(page_info.srce_image_filename).stem
 

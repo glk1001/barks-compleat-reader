@@ -12,42 +12,45 @@ HOME_DIR = os.environ.get("HOME")
 THE_COMICS_DIR = os.path.join(HOME_DIR, "Books/Carl Barks/The Comics")
 THE_COMIC_ZIPS_DIR = os.path.join(THE_COMICS_DIR, "Chronological")
 THE_COMIC_FILES_DIR = os.path.join(THE_COMICS_DIR, "aaa-Chronological-dirs")
+FANTA_VOLUME_ARCHIVES_ROOT_DIR = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes"
+
 BARKS_READER_FILES_DIR = os.path.join(THE_COMICS_DIR, "Reader Files")
-BARKS_READER_INSET_FILES_DIR = os.path.join(BARKS_READER_FILES_DIR, "Insets")
-BARKS_READER_INSET_EDITED_FILES_DIR = os.path.join(BARKS_READER_INSET_FILES_DIR, EDITED_SUBDIR)
-BARKS_READER_COVER_FILES_DIR = os.path.join(BARKS_READER_FILES_DIR, "Covers")
-BARKS_READER_SILHOUETTE_FILES_DIR = os.path.join(BARKS_READER_FILES_DIR, "Silhouettes")
-BARKS_READER_SPLASH_FILES_DIR = os.path.join(BARKS_READER_FILES_DIR, "Splash")
-BARKS_READER_CENSORSHIP_FILES_DIR = os.path.join(BARKS_READER_FILES_DIR, "Censorship")
-BARKS_READER_FAVOURITE_FILES_DIR = os.path.join(BARKS_READER_FILES_DIR, "Favourites")
-BARKS_READER_ORIGINAL_ART_FILES_DIR = os.path.join(BARKS_READER_FILES_DIR, "Original Art")
-BARKS_READER_SEARCH_FILES_DIR = os.path.join(BARKS_READER_FILES_DIR, "Search")
-BARKS_READER_ICON_FILES_DIR = os.path.join(BARKS_READER_FILES_DIR, "Reader Icons")
-BARKS_READER_APP_SPLASH_IMAGES_DIR = os.path.join(BARKS_READER_FILES_DIR, "Reader Splashes")
-BARKS_READER_APP_ICON_PATH = os.path.join(BARKS_READER_ICON_FILES_DIR, "Barks Reader Icon 1.png")
-BARKS_READER_UP_ARROW_PATH = os.path.join(BARKS_READER_FILES_DIR, "up-arrow.png")
-BARKS_READER_CLOSE_ICON_PATH = os.path.join(BARKS_READER_FILES_DIR, "icon-close.png")
-BARKS_READER_FULLSCREEN_ICON_PATH = os.path.join(BARKS_READER_FILES_DIR, "icon-fullscreen.png")
-BARKS_READER_FULLSCREEN_EXIT_ICON_PATH = os.path.join(
-    BARKS_READER_FILES_DIR, "icon-fullscreen-exit.png"
-)
-BARKS_READER_NEXT_ICON_PATH = os.path.join(BARKS_READER_FILES_DIR, "icon-next.png")
-BARKS_READER_PREV_ICON_PATH = os.path.join(BARKS_READER_FILES_DIR, "icon-previous.png")
-BARKS_READER_GOTO_ICON_PATH = os.path.join(BARKS_READER_FILES_DIR, "icon-goto.png")
-BARKS_READER_GOTO_START_ICON_PATH = os.path.join(BARKS_READER_FILES_DIR, "icon-goto-start.png")
-BARKS_READER_GOTO_END_ICON_PATH = os.path.join(BARKS_READER_FILES_DIR, "icon-goto-end.png")
-BARKS_READER_ACTION_BAR_BACKGROUND_PATH = os.path.join(
-    BARKS_READER_FILES_DIR, "action-bar-background.png"
-)
-BARKS_READER_ACTION_BAR_GROUP_BACKGROUND_PATH = os.path.join(
-    BARKS_READER_FILES_DIR, "action-group-background.png"
-)
-BARKS_READER_TRANSPARENT_BLANK_PATH = os.path.join(BARKS_READER_FILES_DIR, "transparent-blank.png")
-BARKS_READER_USER_DATA_PATH = os.path.join(BARKS_READER_FILES_DIR, "barks-reader.json")
+
+BARKS_PANELS_DIR = os.path.join(BARKS_READER_FILES_DIR, "Barks Panels")
+INSET_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Insets")
+INSET_EDITED_FILES_DIR = os.path.join(INSET_FILES_DIR, EDITED_SUBDIR)
+COVER_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Covers")
+SILHOUETTE_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Silhouettes")
+SPLASH_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Splash")
+CENSORSHIP_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Censorship")
+FAVOURITE_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Favourites")
+ORIGINAL_ART_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Original Art")
+SEARCH_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Search")
+
+READER_ICON_FILES_DIR = os.path.join(BARKS_READER_FILES_DIR, "Reader Icons")
+APP_ICON_PATH = os.path.join(READER_ICON_FILES_DIR, "Barks Reader Icon 1.png")
+
+ACTION_BAR_ICONS_DIR = os.path.join(READER_ICON_FILES_DIR, "ActionBar Icons")
+CLOSE_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-close.png")
+FULLSCREEN_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-fullscreen.png")
+FULLSCREEN_EXIT_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-fullscreen-exit.png")
+NEXT_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-next.png")
+PREV_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-previous.png")
+GOTO_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-goto.png")
+GOTO_START_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-goto-start.png")
+GOTO_END_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-goto-end.png")
+ACTION_BAR_BACKGROUND_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "action-bar-background.png")
+ACTION_BAR_GROUP_BACKGROUND_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "action-group-background.png")
+
+VARIOUS_FILES_DIR = os.path.join(BARKS_READER_FILES_DIR, "Various")
+UP_ARROW_PATH = os.path.join(VARIOUS_FILES_DIR, "up-arrow.png")
+TRANSPARENT_BLANK_PATH = os.path.join(VARIOUS_FILES_DIR, "transparent-blank.png")
+EMPTY_PAGE_PATH = os.path.join(VARIOUS_FILES_DIR, "empty-page.jpg")
+USER_DATA_PATH = os.path.join(VARIOUS_FILES_DIR, "barks-reader.json")
 
 EMERGENCY_INSET_FILE = Titles.BICEPS_BLUES
 EMERGENCY_INSET_FILE_PATH = os.path.join(
-    BARKS_READER_INSET_FILES_DIR,
+    INSET_FILES_DIR,
     BARKS_TITLE_INFO[EMERGENCY_INSET_FILE].get_title_str() + JPG_FILE_EXT,
 )
 
@@ -57,34 +60,37 @@ def check_dirs_and_files() -> None:
         THE_COMICS_DIR,
         THE_COMIC_ZIPS_DIR,
         THE_COMIC_FILES_DIR,
-        BARKS_READER_FILES_DIR,
-        BARKS_READER_INSET_FILES_DIR,
-        BARKS_READER_INSET_EDITED_FILES_DIR,
-        BARKS_READER_COVER_FILES_DIR,
-        BARKS_READER_SILHOUETTE_FILES_DIR,
-        BARKS_READER_SPLASH_FILES_DIR,
-        BARKS_READER_CENSORSHIP_FILES_DIR,
-        BARKS_READER_FAVOURITE_FILES_DIR,
-        BARKS_READER_ORIGINAL_ART_FILES_DIR,
-        BARKS_READER_SEARCH_FILES_DIR,
-        BARKS_READER_APP_SPLASH_IMAGES_DIR,
-        BARKS_READER_ICON_FILES_DIR,
+        FANTA_VOLUME_ARCHIVES_ROOT_DIR,
+        BARKS_PANELS_DIR,
+        INSET_FILES_DIR,
+        INSET_EDITED_FILES_DIR,
+        COVER_FILES_DIR,
+        SILHOUETTE_FILES_DIR,
+        SPLASH_FILES_DIR,
+        CENSORSHIP_FILES_DIR,
+        FAVOURITE_FILES_DIR,
+        ORIGINAL_ART_FILES_DIR,
+        SEARCH_FILES_DIR,
+        READER_ICON_FILES_DIR,
+        ACTION_BAR_ICONS_DIR,
+        VARIOUS_FILES_DIR,
     ]
     files_to_check = [
         EMERGENCY_INSET_FILE_PATH,
-        BARKS_READER_APP_ICON_PATH,
-        BARKS_READER_UP_ARROW_PATH,
-        BARKS_READER_CLOSE_ICON_PATH,
-        BARKS_READER_FULLSCREEN_ICON_PATH,
-        BARKS_READER_FULLSCREEN_EXIT_ICON_PATH,
-        BARKS_READER_NEXT_ICON_PATH,
-        BARKS_READER_PREV_ICON_PATH,
-        BARKS_READER_GOTO_ICON_PATH,
-        BARKS_READER_GOTO_START_ICON_PATH,
-        BARKS_READER_GOTO_END_ICON_PATH,
-        BARKS_READER_ACTION_BAR_BACKGROUND_PATH,
-        BARKS_READER_ACTION_BAR_GROUP_BACKGROUND_PATH,
-        BARKS_READER_TRANSPARENT_BLANK_PATH,
+        APP_ICON_PATH,
+        UP_ARROW_PATH,
+        CLOSE_ICON_PATH,
+        FULLSCREEN_ICON_PATH,
+        FULLSCREEN_EXIT_ICON_PATH,
+        NEXT_ICON_PATH,
+        PREV_ICON_PATH,
+        GOTO_ICON_PATH,
+        GOTO_START_ICON_PATH,
+        GOTO_END_ICON_PATH,
+        ACTION_BAR_BACKGROUND_PATH,
+        ACTION_BAR_GROUP_BACKGROUND_PATH,
+        TRANSPARENT_BLANK_PATH,
+        EMPTY_PAGE_PATH,
     ]
 
     if HOME_DIR is None:
@@ -112,103 +118,107 @@ def get_the_comic_files_dir() -> str:
     return THE_COMIC_FILES_DIR
 
 
+def get_fanta_volume_archives_root_dir() -> str:
+    return FANTA_VOLUME_ARCHIVES_ROOT_DIR
+
+
 def get_comic_inset_files_dir() -> str:
-    return BARKS_READER_INSET_FILES_DIR
+    return INSET_FILES_DIR
 
 
 def get_barks_reader_user_data_file() -> str:
-    return BARKS_READER_USER_DATA_PATH
+    return USER_DATA_PATH
 
 
 def get_comic_cover_files_dir() -> str:
-    return BARKS_READER_COVER_FILES_DIR
+    return COVER_FILES_DIR
 
 
 def get_comic_silhouette_files_dir() -> str:
-    return BARKS_READER_SILHOUETTE_FILES_DIR
+    return SILHOUETTE_FILES_DIR
 
 
 def get_comic_splash_files_dir() -> str:
-    return BARKS_READER_SPLASH_FILES_DIR
+    return SPLASH_FILES_DIR
 
 
 def get_comic_censorship_files_dir() -> str:
-    return BARKS_READER_CENSORSHIP_FILES_DIR
+    return CENSORSHIP_FILES_DIR
 
 
 def get_comic_favourite_files_dir() -> str:
-    return BARKS_READER_FAVOURITE_FILES_DIR
+    return FAVOURITE_FILES_DIR
 
 
 def get_comic_original_art_files_dir() -> str:
-    return BARKS_READER_ORIGINAL_ART_FILES_DIR
+    return ORIGINAL_ART_FILES_DIR
 
 
 def get_comic_search_files_dir() -> str:
-    return BARKS_READER_SEARCH_FILES_DIR
-
-
-def get_app_splash_images_dir() -> str:
-    return BARKS_READER_APP_SPLASH_IMAGES_DIR
+    return SEARCH_FILES_DIR
 
 
 def get_barks_reader_app_icon_file() -> str:
-    return BARKS_READER_APP_ICON_PATH
+    return APP_ICON_PATH
 
 
-def get_barks_reader_up_arrow_file() -> str:
-    return BARKS_READER_UP_ARROW_PATH
+def get_up_arrow_file() -> str:
+    return UP_ARROW_PATH
 
 
 def get_barks_reader_close_icon_file() -> str:
-    return BARKS_READER_CLOSE_ICON_PATH
+    return CLOSE_ICON_PATH
 
 
 def get_barks_reader_fullscreen_icon_file() -> str:
-    return BARKS_READER_FULLSCREEN_ICON_PATH
+    return FULLSCREEN_ICON_PATH
 
 
 def get_barks_reader_fullscreen_exit_icon_file() -> str:
-    return BARKS_READER_FULLSCREEN_EXIT_ICON_PATH
+    return FULLSCREEN_EXIT_ICON_PATH
 
 
 def get_barks_reader_next_icon_file() -> str:
-    return BARKS_READER_NEXT_ICON_PATH
+    return NEXT_ICON_PATH
 
 
 def get_barks_reader_previous_icon_file() -> str:
-    return BARKS_READER_PREV_ICON_PATH
+    return PREV_ICON_PATH
 
 
 def get_barks_reader_goto_icon_file() -> str:
-    return BARKS_READER_GOTO_ICON_PATH
+    return GOTO_ICON_PATH
 
 
 def get_barks_reader_goto_start_icon_file() -> str:
-    return BARKS_READER_GOTO_START_ICON_PATH
+    return GOTO_START_ICON_PATH
 
 
 def get_barks_reader_goto_end_icon_file() -> str:
-    return BARKS_READER_GOTO_END_ICON_PATH
+    return GOTO_END_ICON_PATH
 
 
 def get_barks_reader_action_bar_background_file() -> str:
-    return BARKS_READER_ACTION_BAR_BACKGROUND_PATH
+    return ACTION_BAR_BACKGROUND_PATH
 
 
 def get_barks_reader_action_bar_group_background_file() -> str:
-    return BARKS_READER_ACTION_BAR_GROUP_BACKGROUND_PATH
+    return ACTION_BAR_GROUP_BACKGROUND_PATH
 
 
-def get_barks_reader_transparent_blank_file() -> str:
-    return BARKS_READER_TRANSPARENT_BLANK_PATH
+def get_transparent_blank_file() -> str:
+    return TRANSPARENT_BLANK_PATH
+
+
+def get_empty_page_file() -> str:
+    return EMPTY_PAGE_PATH
 
 
 def get_comic_inset_file(title: Titles, use_edited_only: bool = False) -> str:
     title_str = BARKS_TITLES[title]
 
     if use_edited_only:
-        edited_file = os.path.join(BARKS_READER_INSET_EDITED_FILES_DIR, title_str + PNG_FILE_EXT)
+        edited_file = os.path.join(INSET_EDITED_FILES_DIR, title_str + PNG_FILE_EXT)
         if os.path.isfile(edited_file):
             return edited_file
 

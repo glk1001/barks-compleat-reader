@@ -47,10 +47,10 @@ from file_paths import (
     get_comic_inset_file,
     get_edited_version,
     get_barks_reader_app_icon_file,
-    get_barks_reader_up_arrow_file,
+    get_up_arrow_file,
     get_barks_reader_action_bar_background_file,
     get_barks_reader_action_bar_group_background_file,
-    get_barks_reader_transparent_blank_file,
+    get_transparent_blank_file,
     get_barks_reader_user_data_file,
 )
 from filtered_title_lists import FilteredTitleLists
@@ -86,6 +86,7 @@ from reader_ui_classes import (
     TitleSearchBoxTreeViewNode,
     TagSearchBoxTreeViewNode,
 )
+from reader_utils import is_title_page
 
 NODE_TYPE_TO_VIEW_STATE_MAP = {
     YearRangeTreeViewNode: ViewStates.ON_YEAR_RANGE_NODE,
@@ -140,12 +141,12 @@ class MainScreen(BoxLayout, Screen):
     extra_title_info_text = StringProperty()
     title_page_image_source = StringProperty()
     APP_ICON_FILE = get_barks_reader_app_icon_file()
-    UP_ARROW_FILE = get_barks_reader_up_arrow_file()
+    UP_ARROW_FILE = get_up_arrow_file()
     UP_ARROW_WIDTH = dp(20)
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     ACTION_BAR_BACKGROUND_PATH = get_barks_reader_action_bar_background_file()
     ACTION_BAR_GROUP_BACKGROUND_PATH = get_barks_reader_action_bar_group_background_file()
-    ACTION_BAR_TRANSPARENT_BLANK_PATH = get_barks_reader_transparent_blank_file()
+    ACTION_BAR_TRANSPARENT_BLANK_PATH = get_transparent_blank_file()
     ACTION_BAR_BACKGROUND_COLOR = (0.6, 0.7, 0.2, 1)
     ACTION_BUTTON_BACKGROUND_COLOR = (0.6, 1.0, 0.2, 1)
 
@@ -676,12 +677,12 @@ class MainScreen(BoxLayout, Screen):
         for srce_page, dest_page in zip(pages.srce_pages, pages.dest_pages):
             orig_page_num += 1
 
-            srce_page_filename = os.path.basename(srce_page.page_filename)
             dest_page_filename = os.path.basename(dest_page.page_filename)
 
-            # TODO: Need to handle other empty pages.
-            if srce_page_filename == "empty_page.png" and dest_page.page_type == PageType.TITLE:
+            if is_title_page(srce_page):
                 srce_page_filename = title_str + JPG_FILE_EXT
+            else:
+                srce_page_filename = os.path.basename(srce_page.page_filename)
 
             if dest_page.page_type not in FRONT_MATTER_PAGES and body_start_page_num == -1:
                 body_start_page_num = orig_page_num
