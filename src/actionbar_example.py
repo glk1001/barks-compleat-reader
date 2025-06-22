@@ -10,9 +10,10 @@ if __name__ == "__main__":
 
     # XXX clean the first registration done from '__main__' here.
     # otherwise kivy.uix.actionbar.ActionPrevious != __main__.ActionPrevious
-    Factory.unregister('ActionPrevious')
+    Factory.unregister("ActionPrevious")
 
-    Builder.load_string('''
+    Builder.load_string(
+        """
 <MainScreen>:
     ActionBar:
         id: action_bar
@@ -64,7 +65,8 @@ if __name__ == "__main__":
                     text: 'Btn6'
                 ActionButton:
                     text: 'Btn7'
-''')
+"""
+    )
 
     class MainScreen(FloatLayout):
         pass

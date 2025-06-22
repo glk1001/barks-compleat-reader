@@ -5,7 +5,6 @@ import sys
 import threading
 import traceback
 import zipfile
-from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Union, Callable, OrderedDict, IO, Tuple
 from zipfile import ZipFile
@@ -13,13 +12,14 @@ from zipfile import ZipFile
 from PIL import Image as PilImage, ImageOps
 from kivy.clock import Clock
 
-from barks_fantagraphics.comics_consts import PageType, PNG_FILE_EXT, JPG_FILE_EXT
+from barks_fantagraphics.comics_consts import PNG_FILE_EXT, JPG_FILE_EXT
 from barks_fantagraphics.comics_utils import get_dest_comic_zip_file_stem
 from barks_fantagraphics.fanta_comics_info import (
     FantaComicBookInfo,
     FIRST_VOLUME_NUMBER,
     LAST_VOLUME_NUMBER,
 )
+from comic_book_page_info import PageInfo
 from fantagraphics_volumes import FantagraphicsVolumeArchives, FantagraphicsArchive
 from file_paths import (
     get_the_comic_zips_dir,
@@ -31,15 +31,6 @@ from reader_utils import is_blank_page
 FANTA_VOLUME_OVERRIDES_ROOT = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes Overrides"
 ALL_FANTA_VOLUMES = [i for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)]
 # ALL_FANTA_VOLUMES = [i for i in range(5, 7 + 1)]
-
-
-@dataclass
-class PageInfo:
-    page_index: int
-    display_page_num: str
-    page_type: PageType
-    srce_image_filename: str
-    dest_image_filename: str
 
 
 class ComicBookLoader:

@@ -1,7 +1,4 @@
 import logging
-import os
-from collections import OrderedDict
-from dataclasses import dataclass
 from typing import Union, Dict, List, Callable
 
 from kivy._clock import ClockEvent
@@ -22,7 +19,7 @@ from barks_fantagraphics.barks_tags import (
     is_tag_enum,
 )
 from barks_fantagraphics.barks_titles import ComicBookInfo, Titles, get_title_dict, BARKS_TITLES
-from barks_fantagraphics.comics_consts import PageType, JPG_FILE_EXT
+from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import (
     FantaComicBookInfo,
@@ -36,13 +33,10 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_DDS,
     SERIES_USA,
 )
-from barks_fantagraphics.pages import (
-    get_srce_and_dest_pages_in_order,
-    FRONT_MATTER_PAGES,
-    ROMAN_NUMERALS,
-)
+from barks_fantagraphics.pages import FRONT_MATTER_PAGES
 from barks_fantagraphics.title_search import BarksTitleSearch
-from comic_book_reader import PageInfo, ComicBookReader
+from comic_book_page_info import ComicBookPageInfo, get_comic_page_info
+from comic_book_reader import ComicBookReader
 from file_paths import (
     get_comic_inset_file,
     get_edited_version,
@@ -86,7 +80,6 @@ from reader_ui_classes import (
     TitleSearchBoxTreeViewNode,
     TagSearchBoxTreeViewNode,
 )
-from reader_utils import is_title_page
 
 NODE_TYPE_TO_VIEW_STATE_MAP = {
     YearRangeTreeViewNode: ViewStates.ON_YEAR_RANGE_NODE,
@@ -111,21 +104,6 @@ NODE_TEXT_TO_VIEW_STATE_MAP = {
     SERIES_GG: ViewStates.ON_GG_NODE,
     SERIES_MISC: ViewStates.ON_MISC_NODE,
 }
-
-
-@dataclass
-class ComicBookPageInfo:
-    # 'page_map' maps the comic book page numbers, starting with the roman numeral 'i',
-    # to the three digit comic archive page number. For example:
-    #     'i':  '210'   front matter
-    #     'ii': '211'   front matter
-    #     '1':  '220'   '1' is the first body page
-    #     '2':  '221'   '2' is the second body page
-    #     '3':  '222'   '3' is the last body page
-    #     '4':  '250'   '4' is a back matter page and the last page
-    page_map: OrderedDict[str, PageInfo]
-    last_body_page: str
-    last_page: str
 
 
 class MainScreen(BoxLayout, Screen):
@@ -629,7 +607,8 @@ class MainScreen(BoxLayout, Screen):
 
         self.switch_to_comic_book_reader()
 
-        comic_page_info = self.get_comic_page_info(title_str)
+        comic = self.comics_database.get_comic_book(title_str)
+        comic_page_info = get_comic_page_info(comic)
         page_to_first_goto = self.get_page_to_first_goto(comic_page_info, title_str)
 
         self.comic_book_reader.read_comic(
@@ -663,43 +642,3 @@ class MainScreen(BoxLayout, Screen):
         else:
             self.store.put(title_str, last_read_page=last_read_page)
             logging.debug(f'"{title_str}": Saved last read page "{last_read_page}".')
-
-    def get_comic_page_info(self, title_str: str) -> ComicBookPageInfo:
-        comic = self.comics_database.get_comic_book(title_str)
-        pages = get_srce_and_dest_pages_in_order(comic)
-
-        page_map = OrderedDict()
-        last_body_page = ""
-        last_page = ""
-        body_start_page_num = -1
-        orig_page_num = 0
-
-        for srce_page, dest_page in zip(pages.srce_pages, pages.dest_pages):
-            orig_page_num += 1
-
-            dest_page_filename = os.path.basename(dest_page.page_filename)
-
-            if is_title_page(srce_page):
-                srce_page_filename = title_str + JPG_FILE_EXT
-            else:
-                srce_page_filename = os.path.basename(srce_page.page_filename)
-
-            if dest_page.page_type not in FRONT_MATTER_PAGES and body_start_page_num == -1:
-                body_start_page_num = orig_page_num
-
-            if body_start_page_num == -1:
-                display_page_num = ROMAN_NUMERALS[orig_page_num]
-            else:
-                display_page_num = str(orig_page_num - body_start_page_num + 1)
-                if dest_page.page_type == PageType.BODY:
-                    last_body_page = display_page_num
-
-            page_map[display_page_num] = PageInfo(
-                orig_page_num - 1,
-                display_page_num,
-                dest_page.page_type,
-                srce_page_filename,
-                dest_page_filename,
-            )
-
-        return ComicBookPageInfo(page_map, last_body_page, last_page)

@@ -20,7 +20,8 @@ from screeninfo import get_monitors
 
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
-from comic_book_loader import PageInfo, ComicBookLoader
+from comic_book_loader import ComicBookLoader
+from comic_book_page_info import PageInfo
 from file_paths import (
     get_barks_reader_action_bar_background_file,
     get_barks_reader_close_icon_file,
