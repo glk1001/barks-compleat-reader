@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PageType
 from barks_fantagraphics.pages import (
-    get_srce_and_dest_pages_in_order,
+    get_sorted_srce_and_dest_pages,
     FRONT_MATTER_PAGES,
     ROMAN_NUMERALS,
 )
@@ -37,7 +37,9 @@ class ComicBookPageInfo:
 
 def get_comic_page_info(comic: ComicBook) -> ComicBookPageInfo:
     title_str = comic.get_ini_title()
-    srce_and_dest_pages = get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
+    srce_and_dest_pages = get_sorted_srce_and_dest_pages(
+        comic, get_full_paths=False, check_srce_page_timestamp=False
+    )
 
     page_map = OrderedDict()
     last_body_page = ""
