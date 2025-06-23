@@ -19,6 +19,8 @@ from barks_fantagraphics.fanta_comics_info import (
     FIRST_VOLUME_NUMBER,
     LAST_VOLUME_NUMBER,
 )
+from barks_fantagraphics.pil_image_utils import open_pil_image_for_reading
+from build_comic_images import ComicBookImageBuilder
 from comic_book_page_info import PageInfo
 from fantagraphics_volumes import FantagraphicsVolumeArchives, FantagraphicsArchive
 from file_paths import (
@@ -60,6 +62,7 @@ class ComicBookLoader:
 
         self.__stop = False
         self.__current_comic_path = ""
+        self.__comic_book_image_builder: Union[ComicBookImageBuilder, None] = None
         self.__fanta_volume_archive: Union[FantagraphicsArchive, None] = None
 
         self.__on_first_image_loaded: Callable[[], None] = on_first_image_loaded
@@ -98,6 +101,7 @@ class ComicBookLoader:
     def set_comic(
         self,
         fanta_info: FantaComicBookInfo,
+        comic_book_image_builder: ComicBookImageBuilder,
         image_load_order: List[str],
         page_map: OrderedDict[str, PageInfo],
     ) -> None:
@@ -109,6 +113,7 @@ class ComicBookLoader:
             )
 
         self.__current_comic_path = self.__get_comic_path(fanta_info)
+        self.__comic_book_image_builder = comic_book_image_builder
         self.__image_load_order = image_load_order
         self.__page_map = page_map
         self.__stop = False
@@ -246,10 +251,10 @@ class ComicBookLoader:
 
         if is_from_archive:
             with archive.open(str(image_path), "r") as file:
-                image_data = self.__get_image_data(file, ext)
+                image_data = self.__get_image_data(file, ext, page_info)
         else:
             with open(image_path, "rb") as file:
-                image_data = self.__get_image_data(file, ext)
+                image_data = self.__get_image_data(file, ext, page_info)
 
         logging.debug(
             f'Getting image (page = "{page_info.display_page_num}"): '
@@ -260,12 +265,12 @@ class ComicBookLoader:
 
     def __get_image_path(self, page_info: PageInfo) -> Tuple[Path, bool]:
         if self.__use_prebuilt_archives:
-            return Path("images") / page_info.dest_image_filename, True
+            return Path("images") / page_info.dest_page.page_filename, True
 
-        if is_blank_page(page_info.srce_image_filename, page_info.page_type):
+        if is_blank_page(page_info.srce_page.page_filename, page_info.page_type):
             return Path(get_empty_page_file()), False
 
-        page_str = Path(page_info.srce_image_filename).stem
+        page_str = Path(page_info.srce_page.page_filename).stem
 
         if page_str in self.__fanta_volume_archive.extra_images_page_map:
             return Path(self.__fanta_volume_archive.extra_images_page_map[page_str]), False
@@ -284,11 +289,18 @@ class ComicBookLoader:
             return "PNG"
         raise ValueError(f"Unsupported image extension for PIL: {ext}")
 
-    def __get_image_data(self, file: IO[bytes], ext: str) -> Tuple[io.BytesIO, str]:
+    def __get_image_data(
+        self, file: IO[bytes], ext: str, page_info: PageInfo
+    ) -> Tuple[io.BytesIO, str]:
         # Ensure extension is one of the supported ones before proceeding
         assert ext.lower() in [PNG_FILE_EXT.lower(), JPG_FILE_EXT.lower()]
 
-        pil_image = PilImage.open(io.BytesIO(file.read()))
+        pil_image = open_pil_image_for_reading(io.BytesIO(file.read()))
+
+        if not self.__use_prebuilt_archives:
+            pil_image = self.__comic_book_image_builder.get_dest_page_image(
+                pil_image, page_info.srce_page, page_info.dest_page
+            )
 
         pil_image_resized = ImageOps.contain(
             pil_image,

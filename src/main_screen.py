@@ -35,6 +35,7 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from barks_fantagraphics.pages import FRONT_MATTER_PAGES
 from barks_fantagraphics.title_search import BarksTitleSearch
+from build_comic_images import ComicBookImageBuilder
 from comic_book_page_info import ComicBookPageInfo, get_comic_page_info
 from comic_book_reader import ComicBookReader
 from file_paths import (
@@ -610,9 +611,11 @@ class MainScreen(BoxLayout, Screen):
         comic = self.comics_database.get_comic_book(title_str)
         comic_page_info = get_comic_page_info(comic)
         page_to_first_goto = self.get_page_to_first_goto(comic_page_info, title_str)
+        comic_book_image_builder = ComicBookImageBuilder(comic)
+        comic_book_image_builder.set_required_dim(comic_page_info.required_dim)
 
         self.comic_book_reader.read_comic(
-            self.fanta_info, page_to_first_goto, comic_page_info.page_map
+            self.fanta_info, comic_book_image_builder, page_to_first_goto, comic_page_info.page_map
         )
 
     def get_page_to_first_goto(self, comic_page_info: ComicBookPageInfo, title_str: str) -> str:

@@ -20,6 +20,7 @@ from screeninfo import get_monitors
 
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+from build_comic_images import ComicBookImageBuilder
 from comic_book_loader import ComicBookLoader
 from comic_book_page_info import PageInfo
 from file_paths import (
@@ -173,6 +174,7 @@ class ComicBookReader(BoxLayout):
     def read_comic(
         self,
         fanta_info: FantaComicBookInfo,
+        comic_book_image_builder: ComicBookImageBuilder,
         page_to_first_goto: str,
         page_map: OrderedDict[str, PageInfo],
     ):
@@ -193,7 +195,9 @@ class ComicBookReader(BoxLayout):
         self.init_first_and_last_page_index()
         self.init_image_load_order()
 
-        self.comic_book_loader.set_comic(fanta_info, self.image_load_order, self.page_map)
+        self.comic_book_loader.set_comic(
+            fanta_info, comic_book_image_builder, self.image_load_order, self.page_map
+        )
 
         self.load_current_comic()
 

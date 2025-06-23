@@ -7,8 +7,8 @@ from typing import List
 from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comics_cmd_args import CmdArgs, CmdArgNames
 from barks_fantagraphics.comics_consts import PageType, JPG_FILE_EXT
-from barks_fantagraphics.comics_image_io import open_pil_image_for_reading, SAVE_JPG_COMPRESS_LEVEL
 from barks_fantagraphics.comics_utils import setup_logging, get_abbrev_path
+from barks_fantagraphics.pil_image_utils import open_pil_image_for_reading, SAVE_JPG_COMPRESS_LEVEL
 from file_paths import get_comic_inset_files_dir, get_comic_cover_files_dir
 
 
