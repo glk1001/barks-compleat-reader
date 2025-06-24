@@ -2,14 +2,13 @@ from collections import OrderedDict
 from dataclasses import dataclass
 
 from barks_fantagraphics.comic_book import ComicBook
-from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PageType
+from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.page_classes import CleanPage, RequiredDimensions
 from barks_fantagraphics.pages import (
     FRONT_MATTER_PAGES,
     ROMAN_NUMERALS,
     get_sorted_srce_and_dest_pages_with_dimensions,
 )
-from reader_utils import is_title_page
 
 
 @dataclass
@@ -54,8 +53,8 @@ def get_comic_page_info(comic: ComicBook) -> ComicBookPageInfo:
     for srce_page, dest_page in zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages):
         orig_page_num += 1
 
-        if is_title_page(srce_page):
-            srce_page.page_filename = title_str + JPG_FILE_EXT
+        # if is_title_page(srce_page):
+        #     srce_page.page_filename = title_str + JPG_FILE_EXT
 
         if dest_page.page_type not in FRONT_MATTER_PAGES and body_start_page_num == -1:
             body_start_page_num = orig_page_num

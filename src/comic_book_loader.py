@@ -28,7 +28,7 @@ from file_paths import (
     get_fanta_volume_archives_root_dir,
     get_empty_page_file,
 )
-from reader_utils import is_blank_page
+from reader_utils import is_blank_page, is_title_page
 
 FANTA_VOLUME_OVERRIDES_ROOT = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes Overrides"
 ALL_FANTA_VOLUMES = [i for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)]
@@ -267,7 +267,9 @@ class ComicBookLoader:
         if self.__use_prebuilt_archives:
             return Path("images") / page_info.dest_page.page_filename, True
 
-        if is_blank_page(page_info.srce_page.page_filename, page_info.page_type):
+        if is_title_page(page_info.srce_page) or is_blank_page(
+            page_info.srce_page.page_filename, page_info.page_type
+        ):
             return Path(get_empty_page_file()), False
 
         page_str = Path(page_info.srce_page.page_filename).stem
