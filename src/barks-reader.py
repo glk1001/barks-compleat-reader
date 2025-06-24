@@ -72,7 +72,6 @@ class BarksReaderApp(App):
             self.comics_database,
             reader_tree_events,
             filtered_title_lists,
-            self.switch_to_comic_book_reader,
             name=MAIN_READER_SCREEN,
         )
 
@@ -101,7 +100,9 @@ class BarksReaderApp(App):
         root.add_widget(self.main_screen)
         root.current = MAIN_READER_SCREEN
 
-        comic_reader = get_barks_comic_reader(COMIC_BOOK_READER, self.close_comic_book_reader)
+        comic_reader = get_barks_comic_reader(
+            COMIC_BOOK_READER, self.switch_to_comic_book_reader, self.close_comic_book_reader
+        )
         root.add_widget(comic_reader)
 
         self.main_screen.comic_book_reader = comic_reader.children[0]

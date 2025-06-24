@@ -56,12 +56,20 @@ class ComicBookReader(BoxLayout):
     MAX_WINDOW_WIDTH = get_monitors()[0].width
     MAX_WINDOW_HEIGHT = get_monitors()[0].height
 
-    def __init__(self, close_reader_func: Callable[[], None], goto_page_widget: Widget, **kwargs):
+    def __init__(
+        self,
+        on_comic_is_ready_to_read: Callable[[], None],
+        on_close_reader: Callable[[], None],
+        goto_page_widget: Widget,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
 
-        self.action_bar = None
-        self.close_reader_func = close_reader_func
+        self.on_comic_is_ready_to_read = on_comic_is_ready_to_read
+        self.on_close_reader = on_close_reader
         self.goto_page_widget = goto_page_widget
+
+        self.action_bar = None
         self.__action_bar_fullscreen_icon = APP_ACTION_BAR_FULLSCREEN_ICON
         self.__action_bar_fullscreen_exit_icon = APP_ACTION_BAR_FULLSCREEN_EXIT_ICON
         self.current_comic_path = ""
@@ -178,8 +186,6 @@ class ComicBookReader(BoxLayout):
         page_to_first_goto: str,
         page_map: OrderedDict[str, PageInfo],
     ):
-        # wait for volume archives to be loaded
-
         assert page_to_first_goto in page_map
 
         self.all_loaded = False
@@ -212,7 +218,7 @@ class ComicBookReader(BoxLayout):
         if fullscreen_button:
             self.exit_fullscreen(fullscreen_button)
         self.comic_book_loader.close_comic()
-        self.close_reader_func()
+        self.on_close_reader()
 
         self.last_page_index = -1
 
@@ -247,6 +253,8 @@ class ComicBookReader(BoxLayout):
     def first_image_loaded(self):
         self.current_page_index = self.page_map[self.page_to_first_goto].page_index
         logging.debug(f"First image loaded: current page index = {self.current_page_index}.")
+
+        self.on_comic_is_ready_to_read()
 
     def all_images_loaded(self):
         self.all_loaded = True
@@ -445,12 +453,18 @@ class ComicBookReaderScreen(BoxLayout, Screen):
 KV_FILE = Path(__file__).stem + ".kv"
 
 
-def get_barks_comic_reader(screen_name: str, close_reader_func: Callable[[], None]):
+def get_barks_comic_reader(
+    screen_name: str,
+    on_comic_is_ready_to_read: Callable[[], None],
+    on_close_reader: Callable[[], None],
+):
     Builder.load_file(KV_FILE)
 
     root = ComicBookReaderScreen(name=screen_name)
 
-    comic_book_reader_widget = ComicBookReader(close_reader_func, root.ids.goto_page_button)
+    comic_book_reader_widget = ComicBookReader(
+        on_comic_is_ready_to_read, on_close_reader, root.ids.goto_page_button
+    )
     comic_book_reader_widget.set_action_bar(root.ids.comic_action_bar)
 
     root.add_reader_widget(comic_book_reader_widget)

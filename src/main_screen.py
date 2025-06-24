@@ -1,5 +1,5 @@
 import logging
-from typing import Union, Dict, List, Callable
+from typing import Union, Dict, List
 
 from kivy._clock import ClockEvent
 from kivy.clock import Clock
@@ -153,13 +153,11 @@ class MainScreen(BoxLayout, Screen):
         comics_database: ComicsDatabase,
         reader_tree_events: ReaderTreeBuilderEventDispatcher,
         filtered_title_lists: FilteredTitleLists,
-        switch_to_comic_reader: Callable[[], None],
         **kwargs,
     ):
         super().__init__(**kwargs)
 
         self.comics_database = comics_database
-        self.switch_to_comic_book_reader = switch_to_comic_reader
         self.filtered_title_lists: FilteredTitleLists = filtered_title_lists
         self.title_lists: Dict[str, List[FantaComicBookInfo]] = (
             filtered_title_lists.get_title_lists()
@@ -605,8 +603,6 @@ class MainScreen(BoxLayout, Screen):
         logging.debug(
             f'Image "{self.title_page_image_source}" pressed. Want to load "{title_str}".'
         )
-
-        self.switch_to_comic_book_reader()
 
         comic = self.comics_database.get_comic_book(title_str)
         comic_page_info = get_comic_page_info(comic)
