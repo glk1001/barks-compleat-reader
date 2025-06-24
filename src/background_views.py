@@ -57,6 +57,7 @@ class ViewStates(Enum):
     ON_TAG_SEARCH_BOX_NODE = auto()
 
 
+# TODO: Consolidate views and currents into classes.
 class BackgroundViews:
     TOP_VIEW_EVENT_TIMEOUT_SECS = 1000.0
     BOTTOM_VIEW_EVENT_TIMEOUT_SECS = 1000.0

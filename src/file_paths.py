@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 from barks_fantagraphics.barks_titles import Titles, BARKS_TITLE_INFO, BARKS_TITLES
 from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PNG_FILE_EXT
@@ -297,10 +297,10 @@ def get_all_files(image_dir: str) -> List[str]:
     return image_files
 
 
-def get_edited_version(image_file: str) -> str:
+def get_edited_version_if_possible(image_file: str) -> Tuple[str, bool]:
     dir_path = os.path.dirname(image_file)
     edited_image_file = os.path.join(dir_path, EDITED_SUBDIR, Path(image_file).stem + PNG_FILE_EXT)
     if os.path.isfile(edited_image_file):
-        return edited_image_file
+        return edited_image_file, True
 
-    return image_file
+    return image_file, False

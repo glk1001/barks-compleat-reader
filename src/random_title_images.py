@@ -18,6 +18,7 @@ from file_paths import (
     get_comic_original_art_files,
     get_comic_search_files,
 )
+from file_paths import get_edited_version_if_possible
 from reader_utils import prob_rand_less_equal
 
 NUM_RAND_ATTEMPTS = 10
@@ -185,11 +186,10 @@ class RandomTitleImages:
             assert candidates
             image_filename, file_type_enum = candidates[randrange(0, len(candidates))]
 
-            fit_mode = FIT_MODE_COVER
-            if use_random_fit_mode:
-                fit_mode = self.__get_random_fit_mode()
-            elif file_type_enum == FileTypes.COVER:
-                fit_mode = FIT_MODE_CONTAIN
+            fit_mode = self.__get_fit_mode(use_random_fit_mode)
+            image_filename, fit_mode = self.__get_better_fitting_image_if_possible(
+                image_filename, fit_mode, file_type_enum
+            )
 
             self.add_last_image(image_filename)
             self.last_title_image[title_str] = image_filename
@@ -200,6 +200,29 @@ class RandomTitleImages:
         return ImageInfo(
             get_comic_inset_file(EMERGENCY_INSET_FILE), Titles.GOOD_NEIGHBORS, FIT_MODE_COVER
         )
+
+    def __get_fit_mode(self, use_random_fit_mode: bool) -> str:
+        if use_random_fit_mode:
+            return self.__get_random_fit_mode()
+
+        return FIT_MODE_COVER
+
+    @staticmethod
+    def __get_random_fit_mode() -> str:
+        return FIT_MODE_COVER if prob_rand_less_equal(50) else FIT_MODE_CONTAIN
+
+    @staticmethod
+    def __get_better_fitting_image_if_possible(
+        image_filename: str, fit_mode: str, file_type_enum: FileTypes
+    ) -> Tuple[str, str]:
+        # If it's a cover image, and kivy fit_mode is 'cover', then try to use an edited image.
+        if (file_type_enum == FileTypes.COVER) and (fit_mode == FIT_MODE_COVER):
+            image_filename, is_edited = get_edited_version_if_possible(image_filename)
+            if is_edited:
+                return image_filename, fit_mode
+            return image_filename, FIT_MODE_CONTAIN
+
+        return image_filename, fit_mode
 
     def __get_possible_files_for_title(
         self, title_str: str, file_types: Set[FileTypes], use_edited_only: bool
@@ -212,13 +235,6 @@ class RandomTitleImages:
                         possible_files.append((filename, file_type))
 
         return possible_files
-
-    @staticmethod
-    def __get_random_fit_mode() -> str:
-        if prob_rand_less_equal(50):
-            return FIT_MODE_COVER
-
-        return FIT_MODE_CONTAIN
 
     # Inside RandomTitleImages class
     def __update_comic_files(self, title_str: str) -> None:

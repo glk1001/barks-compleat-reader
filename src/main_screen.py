@@ -40,7 +40,7 @@ from comic_book_page_info import ComicBookPageInfo, get_comic_page_info
 from comic_book_reader import ComicBookReader
 from file_paths import (
     get_comic_inset_file,
-    get_edited_version,
+    get_edited_version_if_possible,
     get_barks_reader_app_icon_file,
     get_up_arrow_file,
     get_barks_reader_action_bar_background_file,
@@ -572,7 +572,7 @@ class MainScreen(BoxLayout, Screen):
         logging.debug(f'Setting title to "{self.fanta_info.comic_book_info.get_title_str()}".')
 
         if title_image_file:
-            title_image_file = get_edited_version(title_image_file)
+            title_image_file = get_edited_version_if_possible(title_image_file)[0]
         else:
             title_image_file = self.random_title_images.get_random_image_for_title(
                 self.fanta_info.comic_book_info.get_title_str(),
