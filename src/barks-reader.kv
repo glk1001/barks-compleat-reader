@@ -425,10 +425,10 @@
                     Button:
                         text: ""
                         on_press: root.on_goto_fun_view_title(self)
-                        background_color: (0.3, 0.3, 0.3, 0.0)
+                        background_color: (1, 1, 1, 0)
                         background_normal: ""
-                        x: self.parent.x + self.parent.width - (root.UP_ARROW_WIDTH + dp(1))
-                        y: self.parent.y + dp(1)
+                        x: self.parent.x + self.parent.width - (root.UP_ARROW_WIDTH + dp(5))
+                        y: self.parent.y + dp(5)
                         size: (root.UP_ARROW_WIDTH, root.UP_ARROW_WIDTH)
                         halign: "left"
                         valign: "top"
@@ -436,8 +436,9 @@
 
                         Image:
                             source: root.UP_ARROW_FILE
+                            color: (1, 1, 1, 1)
                             y: self.parent.y
                             x: self.parent.x
                             size: self.parent.size
-                            fit_mode: "cover"
+                            fit_mode: "contain"
                             mipmap: True
