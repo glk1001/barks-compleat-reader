@@ -1,6 +1,7 @@
 import logging
 from typing import Union, Dict, List
 
+# noinspection PyProtectedMember
 from kivy._clock import ClockEvent
 from kivy.clock import Clock
 from kivy.metrics import dp, sp
@@ -47,6 +48,7 @@ from file_paths import (
     get_barks_reader_action_bar_group_background_file,
     get_transparent_blank_file,
     get_barks_reader_user_data_file,
+    get_empty_page_file,
 )
 from filtered_title_lists import FilteredTitleLists
 from random_title_images import (
@@ -607,7 +609,7 @@ class MainScreen(BoxLayout, Screen):
         comic = self.comics_database.get_comic_book(title_str)
         comic_page_info = get_comic_page_info(comic)
         page_to_first_goto = self.get_page_to_first_goto(comic_page_info, title_str)
-        comic_book_image_builder = ComicBookImageBuilder(comic)
+        comic_book_image_builder = ComicBookImageBuilder(comic, get_empty_page_file())
         comic_book_image_builder.set_required_dim(comic_page_info.required_dim)
 
         self.comic_book_reader.read_comic(

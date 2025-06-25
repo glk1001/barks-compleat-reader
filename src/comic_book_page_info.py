@@ -37,8 +37,6 @@ class ComicBookPageInfo:
 
 
 def get_comic_page_info(comic: ComicBook) -> ComicBookPageInfo:
-    title_str = comic.get_ini_title()
-
     # TODO: Don't need dimensions if using prebuilt comics.
     srce_and_dest_pages, _srce_dim, required_dim = get_sorted_srce_and_dest_pages_with_dimensions(
         comic, get_full_paths=False, check_srce_page_timestamps=False

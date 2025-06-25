@@ -7,6 +7,7 @@ import threading
 import zipfile
 from pathlib import Path
 from threading import Thread
+from typing import IO
 
 from PIL import Image as PilImage, ImageOps
 from kivy.app import App
@@ -120,7 +121,7 @@ class ComicReader(BoxLayout):
         self.popup = Popup(title="Select Comic File", content=filechooser, size_hint=(0.9, 0.9))
         self.popup.open()
 
-    def selected_file(self, instance, selection, touch):
+    def selected_file(self, _instance, selection, _touch):
         """Called when a file is selected in the file chooser."""
         if selection:
             self.current_comic_path = selection[0]
@@ -139,7 +140,7 @@ class ComicReader(BoxLayout):
 
     def init_load_events(self):
         self.image_loaded_events = []
-        for name in self.image_names:
+        for _name in self.image_names:
             self.image_loaded_events.append(threading.Event())
 
     def load_image_names(self):
@@ -219,7 +220,7 @@ class ComicReader(BoxLayout):
         self.current_page_index = 0
         logging.debug(f"First image loaded: current page index = {self.current_page_index}.")
 
-    def get_image_data(self, file: zipfile.ZipExtFile, ext: str) -> io.BytesIO:
+    def get_image_data(self, file: IO[bytes], ext: str) -> io.BytesIO:
         assert ext in [".png", ".jpg"]
         image_format = "jpeg" if ext == "jpeg" else "png"
         img_data = PilImage.open(io.BytesIO(file.read()))

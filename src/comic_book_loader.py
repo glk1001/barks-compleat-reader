@@ -6,13 +6,13 @@ import threading
 import traceback
 import zipfile
 from pathlib import Path
-from typing import List, Union, Callable, OrderedDict, IO, Tuple
+from typing import List, Union, Callable, OrderedDict, Tuple
 from zipfile import ZipFile
 
 from PIL import Image as PilImage, ImageOps
 from kivy.clock import Clock
 
-from barks_fantagraphics.comics_consts import PNG_FILE_EXT, JPG_FILE_EXT
+from barks_fantagraphics.comics_consts import PageType, PNG_FILE_EXT, JPG_FILE_EXT
 from barks_fantagraphics.comics_utils import get_dest_comic_zip_file_stem
 from barks_fantagraphics.fanta_comics_info import (
     FantaComicBookInfo,
@@ -68,6 +68,9 @@ class ComicBookLoader:
         self.__on_first_image_loaded: Callable[[], None] = on_first_image_loaded
         self.__on_all_images_loaded: Callable[[], None] = on_all_images_loaded
         self.__on_load_error = on_load_error
+
+        with open(get_empty_page_file(), "rb") as file:
+            self.__empty_page_image = file.read()
 
     def load_data(self) -> None:
         if self.__use_prebuilt_archives:
@@ -182,6 +185,7 @@ class ComicBookLoader:
                         return
 
                     page_index = page_info.page_index
+                    # noinspection PyTypeChecker
                     self.__images[page_index] = self.__load_image_content(archive, page_info)
                     num_loaded += 1
 
@@ -245,24 +249,6 @@ class ComicBookLoader:
         self.close_comic()
         Clock.schedule_once(lambda dt: self.__on_load_error(), 0)
 
-    def __load_image_content(self, archive: ZipFile, page_info: PageInfo) -> Tuple[io.BytesIO, str]:
-        image_path, is_from_archive = self.__get_image_path(page_info)
-        ext = image_path.suffix
-
-        if is_from_archive:
-            with archive.open(str(image_path), "r") as file:
-                image_data = self.__get_image_data(file, ext, page_info)
-        else:
-            with open(image_path, "rb") as file:
-                image_data = self.__get_image_data(file, ext, page_info)
-
-        logging.debug(
-            f'Getting image (page = "{page_info.display_page_num}"): '
-            f'image_path = "{image_path}", is_from_archive = {is_from_archive}.'
-        )
-
-        return image_data
-
     def __get_image_path(self, page_info: PageInfo) -> Tuple[Path, bool]:
         if self.__use_prebuilt_archives:
             return Path("images") / page_info.dest_page.page_filename, True
@@ -282,22 +268,32 @@ class ComicBookLoader:
 
         return Path(self.__fanta_volume_archive.archive_images_page_map[page_str]), True
 
-    @staticmethod
-    def __get_pil_format_from_ext(ext: str) -> str:
-        ext_lower = ext.lower()
-        if ext_lower == JPG_FILE_EXT:  # e.g., ".jpg"
-            return "JPEG"
-        elif ext_lower == PNG_FILE_EXT:  # e.g., ".png"
-            return "PNG"
-        raise ValueError(f"Unsupported image extension for PIL: {ext}")
+    def __load_image_content(self, archive: ZipFile, page_info: PageInfo) -> Tuple[io.BytesIO, str]:
+        image_path, is_from_archive = self.__get_image_path(page_info)
+        ext = image_path.suffix
+
+        if is_from_archive:
+            with archive.open(str(image_path), "r") as file:
+                file_data = file.read()
+        elif page_info.srce_page.page_type in [PageType.BLANK_PAGE, PageType.TITLE]:
+            file_data = self.__empty_page_image
+        else:
+            with open(image_path, "rb") as file:
+                file_data = file.read()
+
+        image_data = self.__get_image_data(file_data, ext, page_info)
+
+        logging.debug(
+            f'Getting image (page = "{page_info.display_page_num}"): '
+            f'image_path = "{image_path}", is_from_archive = {is_from_archive}.'
+        )
+
+        return image_data
 
     def __get_image_data(
-        self, file: IO[bytes], ext: str, page_info: PageInfo
+        self, file_data: bytes, ext: str, page_info: PageInfo
     ) -> Tuple[io.BytesIO, str]:
-        # Ensure extension is one of the supported ones before proceeding
-        assert ext.lower() in [PNG_FILE_EXT.lower(), JPG_FILE_EXT.lower()]
-
-        pil_image = open_pil_image_for_reading(io.BytesIO(file.read()))
+        pil_image = open_pil_image_for_reading(io.BytesIO(file_data))
 
         if not self.__use_prebuilt_archives:
             pil_image = self.__comic_book_image_builder.get_dest_page_image(
@@ -315,3 +311,12 @@ class ComicBookLoader:
         pil_image_resized.save(data, format=pil_format)
 
         return data, ext[1:]
+
+    @staticmethod
+    def __get_pil_format_from_ext(ext: str) -> str:
+        ext_lower = ext.lower()
+        if ext_lower == JPG_FILE_EXT:  # e.g., ".jpg"
+            return "JPEG"
+        elif ext_lower == PNG_FILE_EXT:  # e.g., ".png"
+            return "PNG"
+        raise ValueError(f"Unsupported image extension for PIL: {ext}")

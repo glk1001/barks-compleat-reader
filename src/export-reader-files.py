@@ -14,7 +14,7 @@ from file_paths import get_comic_inset_files_dir, get_comic_cover_files_dir
 
 def export_reader_files_for_title(ttl: str) -> None:
     comic = comics_database.get_comic_book(ttl)
-    ini_file = comic.ini_file
+    # ini_file = comic.ini_file
 
     # export_inset_file(ttl, comic.intro_inset_file)
 

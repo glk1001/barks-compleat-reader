@@ -2,7 +2,7 @@ import logging
 from collections import OrderedDict
 from pathlib import Path
 from threading import Thread
-from typing import Callable, List, Dict
+from typing import Callable, List, Dict, Union
 
 from kivy.core.image import Image as CoreImage
 from kivy.core.window import Window
@@ -212,7 +212,7 @@ class ComicBookReader(BoxLayout):
         t.daemon = True
         t.start()
 
-    def close_comic_book_reader(self, fullscreen_button: ActionButton):
+    def close_comic_book_reader(self, fullscreen_button: Union[ActionButton, None]):
         self.comic_book_loader.stop_now()
 
         if fullscreen_button:
