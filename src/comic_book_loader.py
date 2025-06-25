@@ -40,7 +40,7 @@ class ComicBookLoader:
         self,
         on_first_image_loaded: Callable[[], None],
         on_all_images_loaded: Callable[[], None],
-        on_load_error: Callable[[], None],
+        on_load_error: Callable[[bool], None],
         max_window_width: int,
         max_window_height: int,
     ):
@@ -142,7 +142,11 @@ class ComicBookLoader:
         return comic_path
 
     def close_comic(self) -> None:
-        logging.debug(f"Close the comic.")
+        if not self.__current_comic_path:
+            return
+
+        logging.debug(f'Close the comic: "{self.__current_comic_path}".')
+
         self.__images.clear()
         self.__image_loaded_events.clear()
         self.__image_load_order.clear()
@@ -163,6 +167,7 @@ class ComicBookLoader:
         self.__images = [None for _i in range(0, len(self.__page_map))]
 
         load_error = False
+        load_warning_only = False
         try:
             num_loaded = 0
             with zipfile.ZipFile(self.__current_comic_path, "r") as archive:
@@ -231,6 +236,7 @@ class ComicBookLoader:
                 logging.warning(
                     f'Index error reading comic: probably because stop = "{self.__stop}".'
                 )
+                load_warning_only = True
                 load_error = True
         except Exception as _e:
             _, _, tb = sys.exc_info()
@@ -242,12 +248,12 @@ class ComicBookLoader:
             load_error = True
 
         if load_error:
-            self.__close_and_report_load_error()
+            self.__close_and_report_load_error(load_warning_only)
 
-    def __close_and_report_load_error(self) -> None:
+    def __close_and_report_load_error(self, load_warning_only: bool) -> None:
         self.__stop = True
         self.close_comic()
-        Clock.schedule_once(lambda dt: self.__on_load_error(), 0)
+        Clock.schedule_once(lambda dt: self.__on_load_error(load_warning_only), 0)
 
     def __get_image_path(self, page_info: PageInfo) -> Tuple[Path, bool]:
         if self.__use_prebuilt_archives:

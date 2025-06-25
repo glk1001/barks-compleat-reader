@@ -93,6 +93,7 @@ class ComicBookReader(BoxLayout):
         self.page_to_first_goto = ""
         self.last_page_index = -1
         self.all_loaded = False
+        self.closed = False
         self.page_map: OrderedDict[str, PageInfo] = OrderedDict()
         self.index_to_page_map: Dict[int, str] = {}
 
@@ -205,6 +206,8 @@ class ComicBookReader(BoxLayout):
             fanta_info, comic_book_image_builder, self.image_load_order, self.page_map
         )
 
+        self.closed = False
+
         self.load_current_comic()
 
     def load_current_comic(self):
@@ -213,6 +216,9 @@ class ComicBookReader(BoxLayout):
         t.start()
 
     def close_comic_book_reader(self, fullscreen_button: Union[ActionButton, None]):
+        if self.closed:
+            return
+
         self.comic_book_loader.stop_now()
 
         if fullscreen_button:
@@ -221,6 +227,7 @@ class ComicBookReader(BoxLayout):
         self.on_close_reader()
 
         self.last_page_index = -1
+        self.closed = True
 
     def init_first_and_last_page_index(self):
         first_page_index = next(iter(self.page_map.values())).page_index
@@ -260,9 +267,10 @@ class ComicBookReader(BoxLayout):
         self.all_loaded = True
         logging.debug(f"All images loaded: current page index = {self.current_page_index}.")
 
-    def load_error(self):
+    def load_error(self, load_warning_only: bool):
         self.all_loaded = False
-        logging.debug(f"There was a comic book load error.")
+        if not load_warning_only:
+            logging.debug(f"There was a comic book load error.")
         self.close_comic_book_reader(None)
 
     def show_page(self, _instance, _value):
