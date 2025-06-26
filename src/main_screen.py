@@ -1,5 +1,6 @@
 import logging
-from typing import Union, Dict, List
+from dataclasses import dataclass
+from typing import Union, Dict, List, Any
 
 # noinspection PyProtectedMember
 from kivy._clock import ClockEvent
@@ -15,12 +16,14 @@ from kivy.uix.treeview import TreeViewNode
 
 from background_views import BackgroundViews, ViewStates
 from barks_fantagraphics.barks_tags import (
-    BARKS_TAG_CATEGORIES_DICT,
     Tags,
     is_tag_enum,
+    TagGroups,
+    BARKS_TAG_CATEGORIES_DICT,
+    BARKS_TAGGED_PAGES,
 )
 from barks_fantagraphics.barks_titles import ComicBookInfo, Titles, get_title_dict, BARKS_TITLES
-from barks_fantagraphics.comics_consts import PageType
+from barks_fantagraphics.comics_consts import PageType, ROMAN_NUMERALS, BACK_MATTER_PAGES
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import (
     FantaComicBookInfo,
@@ -34,7 +37,6 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_DDS,
     SERIES_USA,
 )
-from barks_fantagraphics.pages import FRONT_MATTER_PAGES
 from barks_fantagraphics.title_search import BarksTitleSearch
 from build_comic_images import ComicBookImageBuilder
 from comic_book_page_info import ComicBookPageInfo, get_comic_page_info
@@ -82,6 +84,8 @@ from reader_ui_classes import (
     StoryGroupTreeViewNode,
     TitleSearchBoxTreeViewNode,
     TagSearchBoxTreeViewNode,
+    TagStoryGroupTreeViewNode,
+    TagGroupStoryGroupTreeViewNode,
 )
 
 NODE_TYPE_TO_VIEW_STATE_MAP = {
@@ -107,6 +111,37 @@ NODE_TEXT_TO_VIEW_STATE_MAP = {
     SERIES_GG: ViewStates.ON_GG_NODE,
     SERIES_MISC: ViewStates.ON_MISC_NODE,
 }
+
+COMIC_PAGE_ONE = ROMAN_NUMERALS[1]
+
+
+@dataclass
+class SavedPageInfo:
+    page_index: int
+    display_page_num: str
+    page_type: PageType
+    last_body_page: str
+
+
+JsonSavedPageInfo = Dict[str, Any]
+
+
+def get_json_from_page_info(page_info: SavedPageInfo) -> JsonSavedPageInfo:
+    return {
+        "page_index": page_info.page_index,
+        "display_page_num": page_info.display_page_num,
+        "page_type": page_info.page_type.name,
+        "last_body_page": page_info.last_body_page,
+    }
+
+
+def get_page_info_from_json(json_page_info: JsonSavedPageInfo) -> SavedPageInfo:
+    return SavedPageInfo(
+        json_page_info["page_index"],
+        json_page_info["display_page_num"],
+        PageType[json_page_info["page_type"]],
+        json_page_info["last_body_page"],
+    )
 
 
 class MainScreen(BoxLayout, Screen):
@@ -145,6 +180,7 @@ class MainScreen(BoxLayout, Screen):
     bottom_view_title_image_source = StringProperty()
     bottom_view_title_image_fit_mode = StringProperty(FIT_MODE_COVER)
     bottom_view_title_image_color = ColorProperty()
+    bottom_view_title_goto_page_num = StringProperty("23")
     bottom_view_fun_image_opacity = NumericProperty(0.0)
     bottom_view_fun_image_source = StringProperty()
     bottom_view_fun_image_fit_mode = StringProperty(FIT_MODE_CONTAIN)
@@ -183,6 +219,7 @@ class MainScreen(BoxLayout, Screen):
         self.reader_tree_events.bind(on_finished_building_event=self.on_tree_build_finished)
 
         self.comic_book_reader: Union[ComicBookReader, None] = None
+        self.comic_page_info: Union[ComicBookPageInfo, None] = None
 
         self.top_view_image_info: ImageInfo = ImageInfo()
         self.bottom_view_fun_image_info: ImageInfo = ImageInfo()
@@ -410,19 +447,17 @@ class MainScreen(BoxLayout, Screen):
     def on_tag_search_box_pressed(self, instance: TagSearchBoxTreeViewNode):
         logging.debug(f"Tag search box pressed: {instance}.")
 
-        if not instance.get_current_tag():
+        if not instance.get_current_tag_str():
             logging.debug("Have not got tag search box text yet.")
             self.update_background_views(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
         elif self.background_views.get_view_state() != ViewStates.ON_TAG_SEARCH_BOX_NODE:
             logging.debug(
                 f"Forcing tag search box change:"
                 f" view state = {self.background_views.get_view_state()},"
-                f' tag search box text = "{instance.get_current_tag()}",'
+                f' tag search box text = "{instance.get_current_tag_str()}",'
                 f' tag title spinner text = "{instance.ids.tag_title_spinner.text}"'
             )
-            self.on_tag_search_box_title_changed(
-                instance.ids.tag_title_spinner, instance.ids.tag_title_spinner.text
-            )
+            self.on_tag_search_box_title_changed(instance, instance.ids.tag_title_spinner.text)
 
     def on_tag_search_box_text_changed(self, instance: TagSearchBoxTreeViewNode, text: str):
         logging.debug(f'Tag search box text changed: text: "{text}".')
@@ -439,13 +474,17 @@ class MainScreen(BoxLayout, Screen):
         if not instance.get_current_title():
             self.update_background_views(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
 
-    def on_tag_search_box_title_changed(self, _instance, title_str: str):
-        logging.debug(f'Tag search box title changed: "{title_str}".')
+    def on_tag_search_box_title_changed(self, instance: TagSearchBoxTreeViewNode, title_str: str):
+        logging.debug(
+            f'Tag search box title changed: "{title_str}".'
+            f' Tag: "{instance.get_current_tag().value}".'
+        )
 
         if not title_str:
             self.update_background_views(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
         elif self.update_title(title_str):
             self.update_background_views(ViewStates.ON_TAG_SEARCH_BOX_NODE)
+            self.set_tag_goto_page_checkbox(instance.get_current_tag(), title_str)
         else:
             self.update_background_views(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
 
@@ -461,6 +500,7 @@ class MainScreen(BoxLayout, Screen):
 
         self.fanta_info = self.all_fanta_titles[title_str]
         self.set_title()
+
         return True
 
     def on_appendix_pressed(self, _button: Button):
@@ -516,6 +556,13 @@ class MainScreen(BoxLayout, Screen):
         self.set_title()
 
         self.update_background_views(ViewStates.ON_TITLE_NODE)
+
+        if isinstance(button.parent.parent_node, TagStoryGroupTreeViewNode) or isinstance(
+            button.parent.parent_node, TagGroupStoryGroupTreeViewNode
+        ):
+            self.set_tag_goto_page_checkbox(
+                button.parent.parent_node.tag, self.fanta_info.comic_book_info.get_title_str()
+            )
 
     def change_background_views(self) -> None:
         self.update_background_views(
@@ -588,6 +635,8 @@ class MainScreen(BoxLayout, Screen):
             self.fanta_info.comic_book_info.title, use_edited_only=True
         )
 
+        self.set_goto_page_checkbox()
+
     def get_main_title_str(self):
         if self.fanta_info.comic_book_info.is_barks_title:
             if self.fanta_info.comic_book_info.title in LONG_TITLE_SPLITS:
@@ -602,44 +651,103 @@ class MainScreen(BoxLayout, Screen):
             return
 
         title_str = self.fanta_info.comic_book_info.get_title_str()
-        logging.debug(
-            f'Image "{self.title_page_image_source}" pressed. Want to load "{title_str}".'
-        )
-
         comic = self.comics_database.get_comic_book(title_str)
-        comic_page_info = get_comic_page_info(comic)
-        page_to_first_goto = self.get_page_to_first_goto(comic_page_info, title_str)
+        self.comic_page_info = get_comic_page_info(comic)
         comic_book_image_builder = ComicBookImageBuilder(comic, get_empty_page_file())
-        comic_book_image_builder.set_required_dim(comic_page_info.required_dim)
+        comic_book_image_builder.set_required_dim(self.comic_page_info.required_dim)
+        page_to_first_goto = self.get_page_to_first_goto()
+
+        logging.debug(f'Image "{self.title_page_image_source}" pressed.')
+        logging.debug(f' Load "{title_str}" and goto page "{page_to_first_goto}".')
 
         self.comic_book_reader.read_comic(
-            self.fanta_info, comic_book_image_builder, page_to_first_goto, comic_page_info.page_map
+            self.fanta_info,
+            comic_book_image_builder,
+            page_to_first_goto,
+            self.comic_page_info.page_map,
         )
 
-    def get_page_to_first_goto(self, comic_page_info: ComicBookPageInfo, title_str: str) -> str:
-        if not self.store.exists(title_str):
-            return "i"
+    def get_page_to_first_goto(self) -> str:
+        if not self.ids.goto_page_checkbox.active:
+            return COMIC_PAGE_ONE
 
-        last_read_page = self.store.get(title_str)["last_read_page"]
-        last_read_page_info = comic_page_info.page_map[last_read_page]
+        return self.bottom_view_title_goto_page_num
 
-        if (last_read_page_info.page_type in FRONT_MATTER_PAGES) or (
-            (last_read_page_info.page_type == PageType.BODY)
-            and (last_read_page != comic_page_info.last_body_page)
-        ):
-            page_to_first_goto = last_read_page
+    def set_tag_goto_page_checkbox(self, tag: Union[Tags, TagGroups], title_str: str) -> None:
+        logging.debug(f'Setting tag goto page for ({tag.value}, "{title_str}").')
+
+        if type(tag) == Tags:
+            title = self.title_dict[ComicBookInfo.get_title_str_from_display_title(title_str)]
+            if (tag, title) not in BARKS_TAGGED_PAGES:
+                logging.debug(f'No pages for ({tag.value}, "{title_str}").')
+            else:
+                page_to_goto = BARKS_TAGGED_PAGES[(tag, title)][0]
+                logging.debug(f"Setting page to goto: {page_to_goto}.")
+                self.ids.goto_page_layout.opacity = 1
+                self.ids.goto_page_checkbox.active = True
+                self.bottom_view_title_goto_page_num = page_to_goto
+
+    def set_goto_page_checkbox(self, last_read_page: SavedPageInfo = None):
+        if not last_read_page:
+            title_str = self.fanta_info.comic_book_info.get_title_str()
+            last_read_page = self.get_last_read_page(title_str)
+
+        if not last_read_page or (last_read_page.display_page_num == COMIC_PAGE_ONE):
+            self.ids.goto_page_layout.opacity = 0
+            self.ids.goto_page_checkbox.active = False
         else:
-            page_to_first_goto = "i"
+            self.ids.goto_page_layout.opacity = 1
+            self.ids.goto_page_checkbox.active = True
+            self.bottom_view_title_goto_page_num = last_read_page.display_page_num
 
-        logging.debug(f'"{title_str}": There was a usable last read page "{page_to_first_goto}".')
+    def get_last_read_page(self, title_str: str) -> Union[SavedPageInfo, None]:
+        if not self.store.exists(title_str):
+            return None
 
-        return page_to_first_goto
+        last_read_page_info = get_page_info_from_json(self.store.get(title_str)["last_read_page"])
+
+        if self.is_on_or_past_last_body_page(last_read_page_info):
+            # The comic has been read. Go back to the first page.
+            last_read_page_info.display_page_num = COMIC_PAGE_ONE
+
+        logging.debug(f'"{title_str}": Last read page "{last_read_page_info}".')
+
+        return last_read_page_info
+
+    @staticmethod
+    def is_on_or_past_last_body_page(page_info: SavedPageInfo) -> bool:
+        return (page_info.page_type in BACK_MATTER_PAGES) or (
+            (page_info.page_type == PageType.BODY)
+            and (page_info.display_page_num == page_info.last_body_page)
+        )
+
+    def get_last_read_page_from_comic(self) -> Union[SavedPageInfo, None]:
+        last_read_page_str = self.comic_book_reader.get_last_read_page()
+        if not last_read_page_str:
+            return None
+
+        last_read_page = self.comic_page_info.page_map[last_read_page_str]
+
+        return SavedPageInfo(
+            last_read_page.page_index,
+            last_read_page.display_page_num,
+            last_read_page.page_type,
+            self.comic_page_info.last_body_page,
+        )
 
     def comic_closed(self):
         title_str = self.fanta_info.comic_book_info.get_title_str()
-        last_read_page = self.comic_book_reader.get_last_read_page()
+        last_read_page = self.get_last_read_page_from_comic()
+
         if not last_read_page:
             logging.warning(f'"{title_str}": There was no valid last read page.')
         else:
-            self.store.put(title_str, last_read_page=last_read_page)
-            logging.debug(f'"{title_str}": Saved last read page "{last_read_page}".')
+            self.store.put(title_str, last_read_page=get_json_from_page_info(last_read_page))
+            logging.debug(
+                f'"{title_str}": Saved last read page "{last_read_page.display_page_num}".'
+            )
+
+            if self.is_on_or_past_last_body_page(last_read_page):
+                last_read_page.display_page_num = COMIC_PAGE_ONE
+
+            self.set_goto_page_checkbox(last_read_page)

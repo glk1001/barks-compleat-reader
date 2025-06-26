@@ -351,18 +351,48 @@
                                         text: "left of title image filler"
                                         background_color: (1.0, 1.0, 0.0, 0.5)
                                         opacity: root.DEBUG_BACKGROUND_OPACITY
-                                        size_hint: (0.05, 0.9)
+                                        size_hint: (0.04, 0.9)
                                         text_size: (self.width, self.height)
 
+                                    # Comic reader button for title
                                     BoxLayout
                                         orientation: "vertical"
-                                        size_hint: (1, 0.9)
+                                        size_hint: (0.98, 0.90)
+
+                                        BoxLayout:
+                                            id: goto_page_layout
+                                            opacity: 1
+                                            orientation: "horizontal"
+                                            size_hint: (1, 0.09)
+
+                                            Label:
+                                                text: "empty"
+                                                opacity: 0
+                                                size_hint_x: .60
+                                                halign: "left"
+                                                valign: "bottom"
+
+                                            Label:
+                                                text: "Goto page " + root.bottom_view_title_goto_page_num + ":"
+                                                color: (0, 1, 1, 1)
+                                                size_hint_x: .37
+                                                font_size: 15
+                                                text_size: (self.width, self.height)
+                                                halign: "right"
+                                                valign: "center"
+
+                                            CheckBox:
+                                                id: goto_page_checkbox
+                                                color: (1, 1, 1, 1)
+                                                size_hint_x: .11
+                                                halign: "right"
+                                                valign: "bottom"
 
                                         BgColorLabel:
                                             text: "top of button filler"
                                             background_color: (1.0, 1.0, 0.0, 0.5)
                                             opacity: root.DEBUG_BACKGROUND_OPACITY
-                                            size_hint: (1, 0.1)
+                                            size_hint: (1, 0.035)
                                             text_size: (self.width, self.height)
 
                                         Button:
@@ -374,13 +404,13 @@
                                                     pos: self.pos
                                                     size: self.size
                                                     offset: 0, 0
-                                                    spread_radius: 1.5, 1.5
+                                                    spread_radius: 2.5, 2.5
                                                     border_radius: 0, 0, 0, 0
                                                     blur_radius: 20 if self.state == "normal" else 10
 
                                             disabled: root.bottom_view_title_opacity < 0.01
                                             background_color: (0.3, 0.3, 1.0, 0.5)
-                                            size_hint: (1, 1)
+                                            size_hint: (0.99, 0.99)
                                             halign: "left"
                                             valign: "top"
                                             text_size: (self.width, self.height)
@@ -398,7 +428,7 @@
                                         text: "right of title image filler"
                                         background_color: (1.0, 1.0, 0.0, 0.5)
                                         opacity: root.DEBUG_BACKGROUND_OPACITY
-                                        size_hint: (0.09, 0.8)
+                                        size_hint: (0.08, 0.8)
                                         text_size: (self.width, self.height)
 
                         BgColorLabel:

@@ -30,6 +30,7 @@ class ReaderTreeView(TreeView):
 
 class ReaderTreeBuilderEventDispatcher(EventDispatcher):
     def __init__(self, **kwargs):
+        # noinspection PyUnresolvedReferences
         self.register_event_type(self.on_finished_building_event.__name__)
         super(ReaderTreeBuilderEventDispatcher, self).__init__(**kwargs)
 
@@ -38,6 +39,7 @@ class ReaderTreeBuilderEventDispatcher(EventDispatcher):
 
     def finished_building(self):
         logging.debug(f"Dispatching '{self.on_finished_building_event.__name__}'.")
+        # noinspection PyUnresolvedReferences
         self.dispatch(self.on_finished_building_event.__name__)
 
 
@@ -48,8 +50,8 @@ class LoadingDataPopup(Popup):
 
 
 class TitlePageImage(ButtonBehavior, Image):
-    TITLE_IMAGE_X_FRAC_OF_PARENT = 0.98
-    TITLE_IMAGE_Y_FRAC_OF_PARENT = 0.98 * 0.97
+    TITLE_IMAGE_X_FRAC_OF_PARENT = 0.95
+    TITLE_IMAGE_Y_FRAC_OF_PARENT = 0.95
 
 
 class TitleSearchBoxTreeViewNode(FloatLayout, TreeViewNode):
@@ -171,12 +173,16 @@ class TagSearchBoxTreeViewNode(FloatLayout, TreeViewNode):
         self.bind(text=self._on_internal_tag_search_box_text_changed)
         self.ids.tag_spinner.bind(text=self._on_internal_tag_search_box_tag_changed)
         self.ids.tag_title_spinner.bind(text=self._on_internal_tag_search_box_title_changed)
+        self.__current_tag = None
 
     def on_touch_down(self, touch):
         self.dispatch(self.on_tag_search_box_pressed.__name__)
         return super().on_touch_down(touch)
 
-    def get_current_tag(self) -> str:
+    def get_current_tag(self) -> Union[Tags, TagGroups]:
+        return self.__current_tag
+
+    def get_current_tag_str(self) -> str:
         return self.ids.tag_spinner.text
 
     def get_current_title(self) -> str:
@@ -208,7 +214,7 @@ class TagSearchBoxTreeViewNode(FloatLayout, TreeViewNode):
         if not tag_str:
             return
 
-        titles = self.__title_search.get_titles_from_alias_tag(tag_str.lower())
+        self.__current_tag, titles = self.__title_search.get_titles_from_alias_tag(tag_str.lower())
 
         self.ids.tag_spinner.text = get_markup_text_with_num_titles(tag_str, len(titles))
 
@@ -285,6 +291,18 @@ class StoryGroupTreeViewNode(ButtonTreeViewNode):
     BACKGROUND_COLOR = TREE_VIEW_NODE_BACKGROUND_COLOR
     NODE_WIDTH = dp(250)
     NODE_HEIGHT = dp(30)
+
+
+class TagStoryGroupTreeViewNode(StoryGroupTreeViewNode):
+    def __init__(self, tag: Tags, **kwargs):
+        super().__init__(**kwargs)
+        self.tag = tag
+
+
+class TagGroupStoryGroupTreeViewNode(StoryGroupTreeViewNode):
+    def __init__(self, tag_group: TagGroups, **kwargs):
+        super().__init__(**kwargs)
+        self.tag = tag_group
 
 
 class YearRangeTreeViewNode(ButtonTreeViewNode):

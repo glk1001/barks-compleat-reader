@@ -66,6 +66,8 @@ from reader_ui_classes import (
     TagSearchBoxTreeViewNode,
     TitleTreeViewNode,
     ButtonTreeViewNode,
+    TagStoryGroupTreeViewNode,
+    TagGroupStoryGroupTreeViewNode,
 )
 
 BUTTON_ON_PRESS_CALLABLE = Callable[[Button], None]
@@ -322,8 +324,8 @@ class ReaderTreeBuilder:
 
     def __add_tag_node(self, tree: ReaderTreeView, tag: Tags, parent_node: ButtonTreeViewNode):
         titles = get_tagged_titles(tag)
-        new_node = StoryGroupTreeViewNode(
-            text=get_markup_text_with_num_titles(tag.value, len(titles))
+        new_node = TagStoryGroupTreeViewNode(
+            tag, text=get_markup_text_with_num_titles(tag.value, len(titles))
         )
         self.__add_tagged_story_nodes(tree, titles, new_node)
         tree.add_node(new_node, parent=parent_node)
@@ -335,8 +337,8 @@ class ReaderTreeBuilder:
         titles: List[Titles],
         parent_node: ButtonTreeViewNode,
     ):
-        node = StoryGroupTreeViewNode(
-            text=get_markup_text_with_num_titles(tag_group.value, len(titles))
+        node = TagGroupStoryGroupTreeViewNode(
+            tag_group, text=get_markup_text_with_num_titles(tag_group.value, len(titles))
         )
         return tree.add_node(node, parent=parent_node)
 

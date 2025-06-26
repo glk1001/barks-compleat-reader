@@ -149,8 +149,6 @@ class ComicBookLoader:
 
         self.__images.clear()
         self.__image_loaded_events.clear()
-        self.__image_load_order.clear()
-        self.__page_map.clear()
         self.__current_comic_path = ""
 
     def stop_now(self):
