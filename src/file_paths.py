@@ -2,7 +2,12 @@ import os
 from pathlib import Path
 from typing import List, Tuple
 
-from barks_fantagraphics.barks_titles import Titles, BARKS_TITLE_INFO, BARKS_TITLES
+from barks_fantagraphics.barks_titles import (
+    Titles,
+    BARKS_TITLE_INFO,
+    BARKS_TITLES,
+    BARKS_TITLE_DICT,
+)
 from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PNG_FILE_EXT
 
 EDITED_SUBDIR = "edited"
@@ -229,6 +234,20 @@ def get_comic_inset_file(title: Titles, use_edited_only: bool = False) -> str:
         return main_file
 
     return EMERGENCY_INSET_FILE_PATH
+
+
+def get_comic_inset_files(title_str: str, use_edited_only: bool = False) -> List[str]:
+    title = BARKS_TITLE_DICT[title_str]
+
+    inset_list = [get_comic_inset_file(title, use_edited_only)]
+    if use_edited_only:
+        return inset_list
+
+    main_inset_file = get_comic_inset_file(title, False)
+    if main_inset_file not in inset_list:
+        inset_list.append(main_inset_file)
+
+    return inset_list
 
 
 def get_comic_cover_file(title: str, use_edited_only: bool = False) -> str:

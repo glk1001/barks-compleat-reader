@@ -22,7 +22,7 @@ from barks_fantagraphics.barks_tags import (
     BARKS_TAG_CATEGORIES_DICT,
     BARKS_TAGGED_PAGES,
 )
-from barks_fantagraphics.barks_titles import ComicBookInfo, Titles, get_title_dict, BARKS_TITLES
+from barks_fantagraphics.barks_titles import ComicBookInfo, Titles, BARKS_TITLES, BARKS_TITLE_DICT
 from barks_fantagraphics.comics_consts import PageType, ROMAN_NUMERALS, BACK_MATTER_PAGES
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import (
@@ -56,9 +56,9 @@ from filtered_title_lists import FilteredTitleLists
 from random_title_images import (
     ImageInfo,
     RandomTitleImages,
+    FileTypes,
     FIT_MODE_COVER,
     FIT_MODE_CONTAIN,
-    ALL_BUT_ORIGINAL_ART,
 )
 from reader_consts_and_types import (
     THE_STORIES_NODE_TEXT,
@@ -113,6 +113,10 @@ NODE_TEXT_TO_VIEW_STATE_MAP = {
 }
 
 COMIC_PAGE_ONE = ROMAN_NUMERALS[1]
+
+TITLE_VIEW_IMAGE_TYPES = {
+    t for t in FileTypes if t not in [FileTypes.INSET, FileTypes.ORIGINAL_ART]
+}
 
 
 @dataclass
@@ -200,7 +204,7 @@ class MainScreen(BoxLayout, Screen):
         self.title_lists: Dict[str, List[FantaComicBookInfo]] = (
             filtered_title_lists.get_title_lists()
         )
-        self.title_dict: Dict[str, Titles] = get_title_dict()
+        self.title_dict: Dict[str, Titles] = BARKS_TITLE_DICT
         self.title_search = BarksTitleSearch()
         self.all_fanta_titles = ALL_FANTA_COMIC_BOOK_INFO
         self.random_title_images = RandomTitleImages()
@@ -620,12 +624,14 @@ class MainScreen(BoxLayout, Screen):
 
         if title_image_file:
             title_image_file = get_edited_version_if_possible(title_image_file)[0]
+            logging.debug(f'Using provided title image file "{title_image_file}".')
         else:
             title_image_file = self.random_title_images.get_random_image_for_title(
                 self.fanta_info.comic_book_info.get_title_str(),
-                ALL_BUT_ORIGINAL_ART,
+                TITLE_VIEW_IMAGE_TYPES,
                 use_edited_only=True,
             )
+            logging.debug(f'Using random title image file "{title_image_file}".')
         self.background_views.set_bottom_view_title_image_file(title_image_file)
 
         self.main_title_text = self.get_main_title_str()

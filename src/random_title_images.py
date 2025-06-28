@@ -17,6 +17,7 @@ from file_paths import (
     get_comic_favourite_files,
     get_comic_original_art_files,
     get_comic_search_files,
+    get_comic_inset_files,
 )
 from file_paths import get_edited_version_if_possible
 from reader_utils import prob_rand_less_equal
@@ -38,16 +39,16 @@ FIT_MODE_COVER = "cover"
 
 
 class FileTypes(Enum):
+    CENSORSHIP = auto()
     COVER = auto()
+    FAVOURITE = auto()
+    INSET = auto()
+    ORIGINAL_ART = auto()
     SILHOUETTE = auto()
     SPLASH = auto()
-    CENSORSHIP = auto()
-    FAVOURITE = auto()
-    ORIGINAL_ART = auto()
 
 
 ALL_TYPES = {t for t in FileTypes}
-ALL_BUT_ORIGINAL_ART = {t for t in FileTypes if t != FileTypes.ORIGINAL_ART}
 
 
 @dataclass
@@ -60,11 +61,12 @@ class ImageInfo:
 class RandomTitleImages:
     __FILE_TYPE_GETTERS = {
         FileTypes.COVER: get_comic_cover_file,  # Special case: returns single string or None
-        FileTypes.SILHOUETTE: get_comic_silhouette_files,
-        FileTypes.SPLASH: get_comic_splash_files,
         FileTypes.CENSORSHIP: get_comic_censorship_files,
         FileTypes.FAVOURITE: get_comic_favourite_files,
+        FileTypes.INSET: get_comic_inset_files,
         FileTypes.ORIGINAL_ART: get_comic_original_art_files,
+        FileTypes.SILHOUETTE: get_comic_silhouette_files,
+        FileTypes.SPLASH: get_comic_splash_files,
     }
 
     def __init__(self):
@@ -91,7 +93,13 @@ class RandomTitleImages:
     def get_loading_screen_random_image(self, title_list: List[FantaComicBookInfo]) -> str:
         return self.get_random_image_file(
             title_list,
-            {FileTypes.CENSORSHIP, FileTypes.FAVOURITE, FileTypes.SILHOUETTE, FileTypes.SPLASH},
+            {
+                FileTypes.CENSORSHIP,
+                FileTypes.FAVOURITE,
+                FileTypes.INSET,
+                FileTypes.SILHOUETTE,
+                FileTypes.SPLASH,
+            },
         )
 
     def get_random_image_file(
@@ -245,7 +253,7 @@ class RandomTitleImages:
         for file_type, getter_func in self.__FILE_TYPE_GETTERS.items():
             for use_edited in [False, True]:
                 if file_type == FileTypes.COVER:
-                    # get_comic_cover_file returns a single string or None
+                    # getter for COMIC returns a single string or None
                     image_file = getter_func(title_str, use_edited)
                     if image_file:
                         self.__add_image_files({image_file}, title_str, file_type, use_edited)
