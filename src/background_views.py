@@ -21,10 +21,14 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from file_paths import get_comic_inset_file
 from filtered_title_lists import FilteredTitleLists
-from random_title_images import RandomTitleImages, ImageInfo, FIT_MODE_COVER
+from random_title_images import RandomTitleImages, ImageInfo, FileTypes, FIT_MODE_COVER
 from reader_colors import RandomColorTint
 from reader_consts_and_types import Color
 from reader_utils import get_formatted_color
+
+TOP_VIEW_IMAGE_TYPES = {
+    t for t in FileTypes if t not in [FileTypes.NONTITLE, FileTypes.ORIGINAL_ART]
+}
 
 
 class ViewStates(Enum):
@@ -283,44 +287,28 @@ class BackgroundViews:
         self.__top_view_image_info = ImageInfo(get_comic_inset_file(title), title, FIT_MODE_COVER)
 
     def __set_top_view_image_for_stories(self):
-        self.__top_view_image_info = self.random_title_images.get_random_image(
-            self.title_lists[ALL_LISTS], use_edited_only=True
-        )
+        self.__top_view_image_info = self.__get_top_view_random_image(self.title_lists[ALL_LISTS])
 
     def __set_top_view_image_for_cs(self):
-        self.__top_view_image_info = self.random_title_images.get_random_image(
-            self.title_lists[SERIES_CS], use_edited_only=True
-        )
+        self.__top_view_image_info = self.__get_top_view_random_image(self.title_lists[SERIES_CS])
 
     def __set_top_view_image_for_dd(self):
-        self.__top_view_image_info = self.random_title_images.get_random_image(
-            self.title_lists[SERIES_DDA], use_edited_only=True
-        )
+        self.__top_view_image_info = self.__get_top_view_random_image(self.title_lists[SERIES_DDA])
 
     def __set_top_view_image_for_us(self):
-        self.__top_view_image_info = self.random_title_images.get_random_image(
-            self.title_lists[SERIES_USA], use_edited_only=True
-        )
+        self.__top_view_image_info = self.__get_top_view_random_image(self.title_lists[SERIES_USA])
 
     def __set_top_view_image_for_dds(self):
-        self.__top_view_image_info = self.random_title_images.get_random_image(
-            self.title_lists[SERIES_DDS], use_edited_only=True
-        )
+        self.__top_view_image_info = self.__get_top_view_random_image(self.title_lists[SERIES_DDS])
 
     def __set_top_view_image_for_uss(self):
-        self.__top_view_image_info = self.random_title_images.get_random_image(
-            self.title_lists[SERIES_USS], use_edited_only=True
-        )
+        self.__top_view_image_info = self.__get_top_view_random_image(self.title_lists[SERIES_USS])
 
     def __set_top_view_image_for_gg(self):
-        self.__top_view_image_info = self.random_title_images.get_random_image(
-            self.title_lists[SERIES_GG], use_edited_only=True
-        )
+        self.__top_view_image_info = self.__get_top_view_random_image(self.title_lists[SERIES_GG])
 
     def __set_top_view_image_for_misc(self):
-        self.__top_view_image_info = self.random_title_images.get_random_image(
-            self.title_lists[SERIES_MISC], use_edited_only=True
-        )
+        self.__top_view_image_info = self.__get_top_view_random_image(self.title_lists[SERIES_MISC])
 
     def __set_top_view_image_for_category(self):
         logging.debug(f"Current category: '{self.__current_category}'.")
@@ -330,8 +318,8 @@ class BackgroundViews:
                 get_comic_inset_file(title), title, FIT_MODE_COVER
             )
         else:
-            self.__top_view_image_info = self.random_title_images.get_random_image(
-                self.title_lists[self.__current_category], use_edited_only=True
+            self.__top_view_image_info = self.__get_top_view_random_image(
+                self.title_lists[self.__current_category]
             )
 
     def __set_top_view_image_for_tag(self):
@@ -343,9 +331,7 @@ class BackgroundViews:
             )
         else:
             fanta_title_list = self.__get_fanta_title_list(BARKS_TAGGED_TITLES[self.__current_tag])
-            self.__top_view_image_info = self.random_title_images.get_random_image(
-                fanta_title_list, use_edited_only=True
-            )
+            self.__top_view_image_info = self.__get_top_view_random_image(fanta_title_list)
 
     def __set_top_view_image_for_year_range(self):
         logging.debug(f"Year range: '{self.__current_year_range}'.")
@@ -355,8 +341,8 @@ class BackgroundViews:
                 get_comic_inset_file(title), title, FIT_MODE_COVER
             )
         else:
-            self.__top_view_image_info = self.random_title_images.get_random_image(
-                self.title_lists[self.__current_year_range], use_edited_only=True
+            self.__top_view_image_info = self.__get_top_view_random_image(
+                self.title_lists[self.__current_year_range]
             )
 
     def __set_top_view_image_for_cs_year_range(self):
@@ -369,8 +355,8 @@ class BackgroundViews:
         else:
             cs_range = FilteredTitleLists.get_cs_range_str_from_str(self.__current_cs_year_range)
             logging.debug(f"CS Year range key: '{cs_range}'.")
-            self.__top_view_image_info = self.random_title_images.get_random_image(
-                self.title_lists[cs_range], use_edited_only=True
+            self.__top_view_image_info = self.__get_top_view_random_image(
+                self.title_lists[cs_range]
             )
 
     def __set_top_view_image_for_us_year_range(self):
@@ -383,9 +369,14 @@ class BackgroundViews:
         else:
             us_range = FilteredTitleLists.get_us_range_str_from_str(self.__current_us_year_range)
             logging.debug(f"US Year range key: '{us_range}'.")
-            self.__top_view_image_info = self.random_title_images.get_random_image(
-                self.title_lists[us_range], use_edited_only=True
+            self.__top_view_image_info = self.__get_top_view_random_image(
+                self.title_lists[us_range]
             )
+
+    def __get_top_view_random_image(self, title_list: List[FantaComicBookInfo]):
+        return self.random_title_images.get_random_image(
+            title_list, file_types=TOP_VIEW_IMAGE_TYPES, use_edited_only=True
+        )
 
     def __set_top_view_image_for_search(self):
         self.__top_view_image_info = self.random_title_images.get_random_search_image()

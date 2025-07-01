@@ -31,6 +31,7 @@ CENSORSHIP_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Censorship")
 FAVOURITE_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Favourites")
 ORIGINAL_ART_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Original Art")
 SEARCH_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Search")
+NONTITLE_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Nontitles")
 
 READER_ICON_FILES_DIR = os.path.join(BARKS_READER_FILES_DIR, "Reader Icons")
 APP_ICON_PATH = os.path.join(READER_ICON_FILES_DIR, "Barks Reader Icon 1.png")
@@ -76,6 +77,7 @@ def check_dirs_and_files() -> None:
         FAVOURITE_FILES_DIR,
         ORIGINAL_ART_FILES_DIR,
         SEARCH_FILES_DIR,
+        NONTITLE_FILES_DIR,
         READER_ICON_FILES_DIR,
         ACTION_BAR_ICONS_DIR,
         VARIOUS_FILES_DIR,
@@ -161,6 +163,10 @@ def get_comic_original_art_files_dir() -> str:
 
 def get_comic_search_files_dir() -> str:
     return SEARCH_FILES_DIR
+
+
+def get_nontitle_files_dir() -> str:
+    return NONTITLE_FILES_DIR
 
 
 def get_barks_reader_app_icon_file() -> str:
@@ -285,6 +291,10 @@ def get_comic_original_art_files(title: str, use_edited_only: bool = False) -> L
 
 def get_comic_search_files(title: str, use_edited_only: bool = False) -> List[str]:
     return get_files(get_comic_search_files_dir(), title, use_edited_only)
+
+
+def get_nontitle_files() -> List[str]:
+    return get_all_files(get_nontitle_files_dir())
 
 
 def get_files(parent_image_dir: str, title: str, use_edited_only: bool) -> List[str]:

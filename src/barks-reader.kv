@@ -125,7 +125,7 @@
                 ActionButton:
                     text: 'Lower Title'
                     on_release: root.on_goto_fun_view_title(self)
-                    disabled: root.bottom_view_title_opacity > 0.99
+                    disabled: (root.bottom_view_title_opacity > 0.99) or not root.bottom_view_fun_image_from_title
 
     BoxLayout:
         orientation: 'vertical' if self.width < self.height else 'horizontal'
@@ -454,6 +454,7 @@
 
                     Button:
                         text: ""
+                        opacity: 1 if root.bottom_view_fun_image_from_title else 0
                         on_press: root.on_goto_fun_view_title(self)
                         background_color: (1, 1, 1, 0)
                         background_normal: ""

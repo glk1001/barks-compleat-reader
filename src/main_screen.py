@@ -6,7 +6,7 @@ from typing import Union, Dict, List, Any
 from kivy._clock import ClockEvent
 from kivy.clock import Clock
 from kivy.metrics import dp, sp
-from kivy.properties import StringProperty, ColorProperty, NumericProperty
+from kivy.properties import StringProperty, ColorProperty, NumericProperty, BooleanProperty
 from kivy.storage.jsonstore import JsonStore
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -184,11 +184,12 @@ class MainScreen(BoxLayout, Screen):
     bottom_view_title_image_source = StringProperty()
     bottom_view_title_image_fit_mode = StringProperty(FIT_MODE_COVER)
     bottom_view_title_image_color = ColorProperty()
-    bottom_view_title_goto_page_num = StringProperty("23")
+    bottom_view_title_goto_page_num = StringProperty()
     bottom_view_fun_image_opacity = NumericProperty(0.0)
     bottom_view_fun_image_source = StringProperty()
     bottom_view_fun_image_fit_mode = StringProperty(FIT_MODE_CONTAIN)
     bottom_view_fun_image_color = ColorProperty()
+    bottom_view_fun_image_from_title = BooleanProperty(True)
 
     def __init__(
         self,
@@ -610,6 +611,9 @@ class MainScreen(BoxLayout, Screen):
         self.bottom_view_fun_image_source = self.bottom_view_fun_image_info.filename
         self.bottom_view_fun_image_fit_mode = self.bottom_view_fun_image_info.fit_mode
         self.bottom_view_fun_image_color = self.background_views.get_bottom_view_fun_image_color()
+        self.bottom_view_fun_image_from_title = (
+            self.bottom_view_fun_image_info.from_title is not None
+        )
 
         self.bottom_view_title_opacity = self.background_views.get_bottom_view_title_opacity()
         self.bottom_view_title_image_info = self.background_views.get_bottom_view_title_image_info()

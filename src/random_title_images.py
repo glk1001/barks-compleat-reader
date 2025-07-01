@@ -18,6 +18,7 @@ from file_paths import (
     get_comic_original_art_files,
     get_comic_search_files,
     get_comic_inset_files,
+    get_nontitle_files,
 )
 from file_paths import get_edited_version_if_possible
 from reader_utils import prob_rand_less_equal
@@ -46,15 +47,17 @@ class FileTypes(Enum):
     ORIGINAL_ART = auto()
     SILHOUETTE = auto()
     SPLASH = auto()
-
+    NONTITLE = auto()
 
 ALL_TYPES = {t for t in FileTypes}
+
+NON_TITLE_BIAS = 0.1
 
 
 @dataclass
 class ImageInfo:
     filename: str = ""
-    from_title: Titles = Titles.GOOD_NEIGHBORS
+    from_title: Union[Titles, None] = None
     fit_mode: str = FIT_MODE_COVER
 
 
@@ -97,6 +100,8 @@ class RandomTitleImages:
                 FileTypes.CENSORSHIP,
                 FileTypes.FAVOURITE,
                 FileTypes.INSET,
+                FileTypes.NONTITLE,
+                FileTypes.ORIGINAL_ART,
                 FileTypes.SILHOUETTE,
                 FileTypes.SPLASH,
             },
@@ -153,18 +158,30 @@ class RandomTitleImages:
 
         actual_file_types = ALL_TYPES if file_types is None else file_types
 
+        num_titles = len(title_list)
+        if FileTypes.NONTITLE in actual_file_types:
+            num_titles = int((1 + NON_TITLE_BIAS) * num_titles)  # include bias for nontitles
+
         for _ in range(NUM_RAND_ATTEMPTS):
-            title_info = title_list[randrange(0, len(title_list))]
-            comic_book_info = title_info.comic_book_info
-            title_enum = comic_book_info.title
-            title_str = comic_book_info.get_title_str()
+            title_index = randrange(0, num_titles)
+            # if title_index >= 0:
+            if title_index >= len(title_list):  # handle nontitle bias
+                title_str = ""
+                title_enum = None
+                actual_file_types = {FileTypes.NONTITLE}
+                possible_files_for_title = self.__get_nontitle_files()
+            else:
+                title_info = title_list[randrange(0, len(title_list))]
+                comic_book_info = title_info.comic_book_info
+                title_enum = comic_book_info.title
+                title_str = comic_book_info.get_title_str()
 
-            # Ensure files are loaded for title.
-            self.__update_comic_files(title_str)
+                # Ensure files are loaded for title.
+                self.__update_comic_files(title_str)
 
-            possible_files_for_title = self.__get_possible_files_for_title(
-                title_str, actual_file_types, use_edited_only
-            )
+                possible_files_for_title = self.__get_possible_files_for_title(
+                    title_str, actual_file_types, use_edited_only
+                )
 
             if not possible_files_for_title:
                 continue
@@ -234,7 +251,7 @@ class RandomTitleImages:
 
     def __get_possible_files_for_title(
         self, title_str: str, file_types: Set[FileTypes], use_edited_only: bool
-    ):
+    ) -> List[Tuple[str, FileTypes]]:
         possible_files: List[Tuple[str, FileTypes]] = []
         for file_type in file_types:
             if file_type in self.title_image_files.get(title_str, {}):
@@ -243,6 +260,10 @@ class RandomTitleImages:
                         possible_files.append((filename, file_type))
 
         return possible_files
+
+    @staticmethod
+    def __get_nontitle_files() -> List[Tuple[str, FileTypes]]:
+        return [(file, FileTypes.NONTITLE) for file in get_nontitle_files()]
 
     # Inside RandomTitleImages class
     def __update_comic_files(self, title_str: str) -> None:
