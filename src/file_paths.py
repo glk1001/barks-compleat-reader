@@ -58,7 +58,7 @@ USER_DATA_PATH = os.path.join(VARIOUS_FILES_DIR, "barks-reader.json")
 EMERGENCY_INSET_FILE = Titles.BICEPS_BLUES
 EMERGENCY_INSET_FILE_PATH = os.path.join(
     INSET_FILES_DIR,
-    BARKS_TITLE_INFO[EMERGENCY_INSET_FILE].get_title_str() + JPG_FILE_EXT,
+    BARKS_TITLE_INFO[EMERGENCY_INSET_FILE].get_title_str() + PNG_FILE_EXT,
 )
 
 
@@ -234,7 +234,7 @@ def get_comic_inset_file(title: Titles, use_edited_only: bool = False) -> str:
         if os.path.isfile(edited_file):
             return edited_file
 
-    main_file = os.path.join(get_comic_inset_files_dir(), title_str + JPG_FILE_EXT)
+    main_file = os.path.join(get_comic_inset_files_dir(), title_str + PNG_FILE_EXT)
     # TODO: Fix this when all titles are configured.
     # assert os.path.isfile(edited_file)
     if os.path.isfile(main_file):
