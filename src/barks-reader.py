@@ -31,7 +31,7 @@ from main_screen import MainScreen
 from reader_tree_builder import ReaderTreeBuilder
 from reader_ui_classes import ReaderTreeBuilderEventDispatcher
 
-APP_TITLE = "The Compleat Barks Reader"
+APP_TITLE = "The Compleat Barks Disney Reader"
 MAIN_READER_SCREEN = "main_screen"
 COMIC_BOOK_READER = "comic_book_reader"
 
@@ -62,6 +62,7 @@ class BarksReaderApp(App):
     def __init__(self, comics_db: ComicsDatabase, **kwargs):
         super().__init__(**kwargs)
 
+        self.title = APP_TITLE
         self.screen_manager = ScreenManager()
         self.comics_database = comics_db
 
@@ -92,7 +93,6 @@ class BarksReaderApp(App):
         logging.debug("Building app...")
 
         self.set_custom_title_bar()
-        self.title = APP_TITLE
 
         self.build_tree_view()
 
