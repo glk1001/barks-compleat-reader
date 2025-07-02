@@ -14,12 +14,13 @@ EDITED_SUBDIR = "edited"
 
 HOME_DIR = os.environ.get("HOME")
 
-THE_COMICS_DIR = os.path.join(HOME_DIR, "Books/Carl Barks/The Comics")
+BARKS_DIR = os.path.join(HOME_DIR, "Books/Carl Barks")
+THE_COMICS_DIR = os.path.join(BARKS_DIR, "The Comics")
 THE_COMIC_ZIPS_DIR = os.path.join(THE_COMICS_DIR, "Chronological")
 THE_COMIC_FILES_DIR = os.path.join(THE_COMICS_DIR, "aaa-Chronological-dirs")
 FANTA_VOLUME_ARCHIVES_ROOT_DIR = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes"
 
-BARKS_READER_FILES_DIR = os.path.join(THE_COMICS_DIR, "Reader Files")
+BARKS_READER_FILES_DIR = os.path.join(BARKS_DIR, "Compleat Barks Disney Reader")
 
 BARKS_PANELS_DIR = os.path.join(BARKS_READER_FILES_DIR, "Barks Panels")
 INSET_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Insets")
