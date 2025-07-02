@@ -155,7 +155,9 @@ class MainScreen(BoxLayout, Screen):
     MAIN_TITLE_FONT_SIZE = sp(30)
     main_title_text = StringProperty()
 
+    TITLE_INFO_FONT_SIZE = sp(20)
     TITLE_INFO_LABEL_COLOR = (1.0, 0.99, 0.9, 1.0)
+    TITLE_EXTRA_INFO_FONT_SIZE = sp(16)
     TITLE_EXTRA_INFO_LABEL_COLOR = (1.0, 1.0, 1.0, 1.0)
     title_info_text = StringProperty()
     extra_title_info_text = StringProperty()
