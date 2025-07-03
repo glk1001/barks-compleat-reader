@@ -1,4 +1,6 @@
+import logging
 import os
+from enum import Enum, auto
 from pathlib import Path
 from typing import List, Tuple
 
@@ -8,7 +10,7 @@ from barks_fantagraphics.barks_titles import (
     BARKS_TITLES,
     BARKS_TITLE_DICT,
 )
-from barks_fantagraphics.comics_consts import JPG_FILE_EXT
+from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PNG_FILE_EXT
 
 EDITED_SUBDIR = "edited"
 
@@ -21,20 +23,6 @@ THE_COMIC_FILES_DIR = os.path.join(THE_COMICS_DIR, "aaa-Chronological-dirs")
 FANTA_VOLUME_ARCHIVES_ROOT_DIR = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes"
 
 BARKS_READER_FILES_DIR = os.path.join(BARKS_DIR, "Compleat Barks Disney Reader")
-
-BARKS_PANELS_DIR = os.path.join(BARKS_READER_FILES_DIR, "Barks Panels")
-COVER_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Covers")
-SILHOUETTE_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Silhouettes")
-SPLASH_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Splash")
-CENSORSHIP_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Censorship")
-FAVOURITE_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Favourites")
-ORIGINAL_ART_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Original Art")
-SEARCH_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Search")
-NONTITLE_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Nontitles")
-
-INSET_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Insets")
-INSET_EDITED_FILES_DIR = os.path.join(INSET_FILES_DIR, EDITED_SUBDIR)
-JPG_INSET_EXT = JPG_FILE_EXT
 
 READER_ICON_FILES_DIR = os.path.join(BARKS_READER_FILES_DIR, "Reader Icons")
 APP_ICON_PATH = os.path.join(READER_ICON_FILES_DIR, "Barks Reader Icon 1.png")
@@ -58,35 +46,24 @@ EMPTY_PAGE_PATH = os.path.join(VARIOUS_FILES_DIR, "empty-page.jpg")
 USER_DATA_PATH = os.path.join(VARIOUS_FILES_DIR, "barks-reader.json")
 
 EMERGENCY_INSET_FILE = Titles.BICEPS_BLUES
-EMERGENCY_INSET_FILE_PATH = os.path.join(
-    INSET_FILES_DIR,
-    BARKS_TITLE_INFO[EMERGENCY_INSET_FILE].get_title_str() + JPG_FILE_EXT,
-)
+
+JPG_BARKS_PANELS_DIR = os.path.join(BARKS_READER_FILES_DIR, "Barks Panels")
+PNG_BARKS_PANELS_DIR = os.path.join(BARKS_DIR, "Barks Panels Pngs")
+JPG_INSET_FILES_DIR = os.path.join(JPG_BARKS_PANELS_DIR, "Insets")
+PNG_INSET_FILES_DIR = os.path.join(PNG_BARKS_PANELS_DIR, "Insets")
 
 
-def check_dirs_and_files() -> None:
+def _check_dirs_and_files() -> None:
     dirs_to_check = [
         THE_COMICS_DIR,
         THE_COMIC_ZIPS_DIR,
         THE_COMIC_FILES_DIR,
         FANTA_VOLUME_ARCHIVES_ROOT_DIR,
-        BARKS_PANELS_DIR,
-        INSET_FILES_DIR,
-        INSET_EDITED_FILES_DIR,
-        COVER_FILES_DIR,
-        SILHOUETTE_FILES_DIR,
-        SPLASH_FILES_DIR,
-        CENSORSHIP_FILES_DIR,
-        FAVOURITE_FILES_DIR,
-        ORIGINAL_ART_FILES_DIR,
-        SEARCH_FILES_DIR,
-        NONTITLE_FILES_DIR,
         READER_ICON_FILES_DIR,
         ACTION_BAR_ICONS_DIR,
         VARIOUS_FILES_DIR,
     ]
     files_to_check = [
-        EMERGENCY_INSET_FILE_PATH,
         APP_ICON_PATH,
         UP_ARROW_PATH,
         CLOSE_ICON_PATH,
@@ -117,7 +94,88 @@ def check_dirs_and_files() -> None:
             raise FileNotFoundError(f'Required file not found: "{file_path}".')
 
 
-check_dirs_and_files()
+_check_dirs_and_files()
+
+
+class BarksPanelsExtType(Enum):
+    JPG = auto()
+    MOSTLY_PNG = auto()
+
+
+_barks_panels_dir = ""
+_cover_files_dir = ""
+_silhouette_files_dir = ""
+_splash_files_dir = ""
+_censorship_files_dir = ""
+_favourite_files_dir = ""
+_original_art_files_dir = ""
+_search_files_dir = ""
+_nontitle_files_dir = ""
+_inset_files_dir = ""
+_inset_edited_files_dir = ""
+
+_inset_files_ext = ""
+_edited_files_ext = ""
+
+_panels_ext_type: BarksPanelsExtType
+
+
+def set_barks_panels_dir(panels_dir: str, ext_type: BarksPanelsExtType) -> None:
+    global _barks_panels_dir
+    global _cover_files_dir
+    global _silhouette_files_dir
+    global _splash_files_dir
+    global _censorship_files_dir
+    global _favourite_files_dir
+    global _original_art_files_dir
+    global _search_files_dir
+    global _nontitle_files_dir
+    global _inset_files_dir
+    global _inset_edited_files_dir
+    global _panels_ext_type
+
+    _barks_panels_dir = panels_dir
+    _panels_ext_type = ext_type
+
+    _cover_files_dir = os.path.join(_barks_panels_dir, "Covers")
+    _silhouette_files_dir = os.path.join(_barks_panels_dir, "Silhouettes")
+    _splash_files_dir = os.path.join(_barks_panels_dir, "Splash")
+    _censorship_files_dir = os.path.join(_barks_panels_dir, "Censorship")
+    _favourite_files_dir = os.path.join(_barks_panels_dir, "Favourites")
+    _original_art_files_dir = os.path.join(_barks_panels_dir, "Original Art")
+    _search_files_dir = os.path.join(_barks_panels_dir, "Search")
+    _nontitle_files_dir = os.path.join(_barks_panels_dir, "Nontitles")
+    _inset_files_dir = os.path.join(_barks_panels_dir, "Insets")
+    _inset_edited_files_dir = os.path.join(_inset_files_dir, EDITED_SUBDIR)
+
+    assert os.path.isdir(_barks_panels_dir)
+    assert os.path.isdir(_cover_files_dir)
+    assert os.path.isdir(_silhouette_files_dir)
+    assert os.path.isdir(_splash_files_dir)
+    assert os.path.isdir(_censorship_files_dir)
+    assert os.path.isdir(_favourite_files_dir)
+    assert os.path.isdir(_original_art_files_dir)
+    assert os.path.isdir(_search_files_dir)
+    assert os.path.isdir(_nontitle_files_dir)
+    assert os.path.isdir(_inset_files_dir)
+    assert os.path.isdir(_inset_edited_files_dir)
+
+    global _inset_files_ext
+    _inset_files_ext = JPG_FILE_EXT if _panels_ext_type == BarksPanelsExtType.JPG else PNG_FILE_EXT
+
+    global _edited_files_ext
+    _edited_files_ext = JPG_FILE_EXT if _panels_ext_type == BarksPanelsExtType.JPG else PNG_FILE_EXT
+
+
+def get_inset_file_ext() -> str:
+    return _inset_files_ext
+
+
+def get_emergency_inset_file() -> str:
+    return os.path.join(
+        _inset_files_dir,
+        BARKS_TITLE_INFO[EMERGENCY_INSET_FILE].get_title_str() + _inset_files_ext,
+    )
 
 
 def get_the_comic_zips_dir() -> str:
@@ -133,7 +191,7 @@ def get_fanta_volume_archives_root_dir() -> str:
 
 
 def get_comic_inset_files_dir() -> str:
-    return INSET_FILES_DIR
+    return _inset_files_dir
 
 
 def get_barks_reader_user_data_file() -> str:
@@ -141,35 +199,35 @@ def get_barks_reader_user_data_file() -> str:
 
 
 def get_comic_cover_files_dir() -> str:
-    return COVER_FILES_DIR
+    return _cover_files_dir
 
 
 def get_comic_silhouette_files_dir() -> str:
-    return SILHOUETTE_FILES_DIR
+    return _silhouette_files_dir
 
 
 def get_comic_splash_files_dir() -> str:
-    return SPLASH_FILES_DIR
+    return _splash_files_dir
 
 
 def get_comic_censorship_files_dir() -> str:
-    return CENSORSHIP_FILES_DIR
+    return _censorship_files_dir
 
 
 def get_comic_favourite_files_dir() -> str:
-    return FAVOURITE_FILES_DIR
+    return _favourite_files_dir
 
 
 def get_comic_original_art_files_dir() -> str:
-    return ORIGINAL_ART_FILES_DIR
+    return _original_art_files_dir
 
 
 def get_comic_search_files_dir() -> str:
-    return SEARCH_FILES_DIR
+    return _search_files_dir
 
 
 def get_nontitle_files_dir() -> str:
-    return NONTITLE_FILES_DIR
+    return _nontitle_files_dir
 
 
 def get_barks_reader_app_icon_file() -> str:
@@ -232,17 +290,18 @@ def get_comic_inset_file(title: Titles, use_edited_only: bool = False) -> str:
     title_str = BARKS_TITLES[title]
 
     if use_edited_only:
-        edited_file = os.path.join(INSET_EDITED_FILES_DIR, title_str + JPG_FILE_EXT)
+        edited_file = os.path.join(_inset_edited_files_dir, title_str + _inset_files_ext)
         if os.path.isfile(edited_file):
             return edited_file
+        logging.debug(f'No edited inset file "{edited_file}".')
 
-    main_file = os.path.join(get_comic_inset_files_dir(), title_str + JPG_FILE_EXT)
+    main_file = os.path.join(_inset_files_dir, title_str + _inset_files_ext)
     # TODO: Fix this when all titles are configured.
     # assert os.path.isfile(edited_file)
     if os.path.isfile(main_file):
         return main_file
 
-    return EMERGENCY_INSET_FILE_PATH
+    return get_emergency_inset_file()
 
 
 def get_comic_inset_files(title_str: str, use_edited_only: bool = False) -> List[str]:
@@ -261,7 +320,9 @@ def get_comic_inset_files(title_str: str, use_edited_only: bool = False) -> List
 
 def get_comic_cover_file(title: str, use_edited_only: bool = False) -> str:
     if use_edited_only:
-        edited_file = os.path.join(get_comic_cover_files_dir(), EDITED_SUBDIR, title + JPG_FILE_EXT)
+        edited_file = os.path.join(
+            get_comic_cover_files_dir(), EDITED_SUBDIR, title + _edited_files_ext
+        )
         if os.path.isfile(edited_file):
             return edited_file
 
@@ -331,7 +392,9 @@ def get_all_files(image_dir: str) -> List[str]:
 
 def get_edited_version_if_possible(image_file: str) -> Tuple[str, bool]:
     dir_path = os.path.dirname(image_file)
-    edited_image_file = os.path.join(dir_path, EDITED_SUBDIR, Path(image_file).stem + JPG_FILE_EXT)
+    edited_image_file = os.path.join(
+        dir_path, EDITED_SUBDIR, Path(image_file).stem + _edited_files_ext
+    )
     if os.path.isfile(edited_image_file):
         return edited_image_file, True
 

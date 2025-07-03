@@ -26,7 +26,13 @@ from barks_fantagraphics.comics_cmd_args import CmdArgs
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.comics_utils import setup_logging
 from comic_book_reader import get_barks_comic_reader
-from file_paths import get_comic_inset_files_dir, JPG_INSET_EXT
+from file_paths import (
+    BarksPanelsExtType,
+    set_barks_panels_dir,
+    get_comic_inset_files_dir,
+    get_inset_file_ext,
+    PNG_BARKS_PANELS_DIR,
+)
 from filtered_title_lists import FilteredTitleLists
 from main_screen import MainScreen
 from reader_tree_builder import ReaderTreeBuilder
@@ -169,8 +175,11 @@ if __name__ == "__main__":
     logging.debug("Loading kv files...")
     Builder.load_file(KV_FILE)
 
+    set_barks_panels_dir(PNG_BARKS_PANELS_DIR, BarksPanelsExtType.MOSTLY_PNG)
+    # set_barks_panels_dir(JPG_BARKS_PANELS_DIR, BarksPanelsExtType.JPG)
+
     comics_database = cmd_args.get_comics_database()
-    comics_database.set_inset_info(get_comic_inset_files_dir(), JPG_INSET_EXT)
+    comics_database.set_inset_info(get_comic_inset_files_dir(), get_inset_file_ext())
 
     logging.debug("Running kivy app...")
     BarksReaderApp(comics_database).run()

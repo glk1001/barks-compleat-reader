@@ -646,6 +646,7 @@ class MainScreen(BoxLayout, Screen):
         self.title_page_image_source = get_comic_inset_file(
             self.fanta_info.comic_book_info.title, use_edited_only=True
         )
+        logging.debug(f'Using title image source "{self.title_page_image_source}".')
 
         self.set_goto_page_checkbox()
 
