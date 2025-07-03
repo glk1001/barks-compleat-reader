@@ -665,9 +665,10 @@ class MainScreen(BoxLayout, Screen):
         title_str = self.fanta_info.comic_book_info.get_title_str()
         comic = self.comics_database.get_comic_book(title_str)
         self.comic_page_info = get_comic_page_info(comic)
+        page_to_first_goto = self.get_page_to_first_goto()
+
         comic_book_image_builder = ComicBookImageBuilder(comic, get_empty_page_file())
         comic_book_image_builder.set_required_dim(self.comic_page_info.required_dim)
-        page_to_first_goto = self.get_page_to_first_goto()
 
         logging.debug(f'Image "{self.title_page_image_source}" pressed.')
         logging.debug(f' Load "{title_str}" and goto page "{page_to_first_goto}".')

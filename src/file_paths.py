@@ -23,8 +23,6 @@ FANTA_VOLUME_ARCHIVES_ROOT_DIR = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics 
 BARKS_READER_FILES_DIR = os.path.join(BARKS_DIR, "Compleat Barks Disney Reader")
 
 BARKS_PANELS_DIR = os.path.join(BARKS_READER_FILES_DIR, "Barks Panels")
-INSET_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Insets")
-INSET_EDITED_FILES_DIR = os.path.join(INSET_FILES_DIR, EDITED_SUBDIR)
 COVER_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Covers")
 SILHOUETTE_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Silhouettes")
 SPLASH_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Splash")
@@ -33,6 +31,10 @@ FAVOURITE_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Favourites")
 ORIGINAL_ART_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Original Art")
 SEARCH_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Search")
 NONTITLE_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Nontitles")
+
+INSET_FILES_DIR = os.path.join(BARKS_PANELS_DIR, "Insets")
+INSET_EDITED_FILES_DIR = os.path.join(INSET_FILES_DIR, EDITED_SUBDIR)
+JPG_INSET_EXT = JPG_FILE_EXT
 
 READER_ICON_FILES_DIR = os.path.join(BARKS_READER_FILES_DIR, "Reader Icons")
 APP_ICON_PATH = os.path.join(READER_ICON_FILES_DIR, "Barks Reader Icon 1.png")
