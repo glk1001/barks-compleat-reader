@@ -49,6 +49,7 @@ class FileTypes(Enum):
     SPLASH = auto()
     NONTITLE = auto()
 
+
 ALL_TYPES = {t for t in FileTypes}
 
 NON_TITLE_BIAS = 0.1
@@ -79,6 +80,7 @@ class RandomTitleImages:
 
         self.most_recently_used_images: deque[str] = deque(maxlen=MAX_IMAGE_FILENAMES_TO_KEEP)
         self.last_title_image: Dict[str, str] = {}
+        self.__nontitle_files = self.__get_nontitle_files()
 
     def add_last_image(self, image_filename: str) -> None:
         self.most_recently_used_images.append(image_filename)
@@ -169,7 +171,7 @@ class RandomTitleImages:
                 title_str = ""
                 title_enum = None
                 actual_file_types = {FileTypes.NONTITLE}
-                possible_files_for_title = self.__get_nontitle_files()
+                possible_files_for_title = self.__nontitle_files
             else:
                 title_info = title_list[randrange(0, len(title_list))]
                 comic_book_info = title_info.comic_book_info
