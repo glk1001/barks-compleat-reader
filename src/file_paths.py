@@ -8,7 +8,7 @@ from barks_fantagraphics.barks_titles import (
     BARKS_TITLES,
     BARKS_TITLE_DICT,
 )
-from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PNG_FILE_EXT
+from barks_fantagraphics.comics_consts import JPG_FILE_EXT
 
 EDITED_SUBDIR = "edited"
 
@@ -58,7 +58,7 @@ USER_DATA_PATH = os.path.join(VARIOUS_FILES_DIR, "barks-reader.json")
 EMERGENCY_INSET_FILE = Titles.BICEPS_BLUES
 EMERGENCY_INSET_FILE_PATH = os.path.join(
     INSET_FILES_DIR,
-    BARKS_TITLE_INFO[EMERGENCY_INSET_FILE].get_title_str() + PNG_FILE_EXT,
+    BARKS_TITLE_INFO[EMERGENCY_INSET_FILE].get_title_str() + JPG_FILE_EXT,
 )
 
 
@@ -230,11 +230,11 @@ def get_comic_inset_file(title: Titles, use_edited_only: bool = False) -> str:
     title_str = BARKS_TITLES[title]
 
     if use_edited_only:
-        edited_file = os.path.join(INSET_EDITED_FILES_DIR, title_str + PNG_FILE_EXT)
+        edited_file = os.path.join(INSET_EDITED_FILES_DIR, title_str + JPG_FILE_EXT)
         if os.path.isfile(edited_file):
             return edited_file
 
-    main_file = os.path.join(get_comic_inset_files_dir(), title_str + PNG_FILE_EXT)
+    main_file = os.path.join(get_comic_inset_files_dir(), title_str + JPG_FILE_EXT)
     # TODO: Fix this when all titles are configured.
     # assert os.path.isfile(edited_file)
     if os.path.isfile(main_file):
@@ -259,7 +259,7 @@ def get_comic_inset_files(title_str: str, use_edited_only: bool = False) -> List
 
 def get_comic_cover_file(title: str, use_edited_only: bool = False) -> str:
     if use_edited_only:
-        edited_file = os.path.join(get_comic_cover_files_dir(), EDITED_SUBDIR, title + PNG_FILE_EXT)
+        edited_file = os.path.join(get_comic_cover_files_dir(), EDITED_SUBDIR, title + JPG_FILE_EXT)
         if os.path.isfile(edited_file):
             return edited_file
 
@@ -329,7 +329,7 @@ def get_all_files(image_dir: str) -> List[str]:
 
 def get_edited_version_if_possible(image_file: str) -> Tuple[str, bool]:
     dir_path = os.path.dirname(image_file)
-    edited_image_file = os.path.join(dir_path, EDITED_SUBDIR, Path(image_file).stem + PNG_FILE_EXT)
+    edited_image_file = os.path.join(dir_path, EDITED_SUBDIR, Path(image_file).stem + JPG_FILE_EXT)
     if os.path.isfile(edited_image_file):
         return edited_image_file, True
 
