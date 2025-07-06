@@ -34,6 +34,19 @@ FANTA_VOLUME_OVERRIDES_ROOT = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Vol
 ALL_FANTA_VOLUMES = [i for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)]
 # ALL_FANTA_VOLUMES = [i for i in range(5, 7 + 1)]
 
+JPEG_PIL_FORMAT = "JPEG"
+PNG_PIL_FORMAT = "PNG"
+PNG_EXT_FOR_KIVY = PNG_PIL_FORMAT.lower()
+
+
+def _get_pil_format_from_ext(ext: str) -> str:
+    ext_lower = ext.lower()
+    if ext_lower == JPG_FILE_EXT:  # e.g., ".jpg"
+        return JPEG_PIL_FORMAT
+    elif ext_lower == PNG_FILE_EXT:  # e.g., ".png"
+        return PNG_PIL_FORMAT
+    raise ValueError(f"Unsupported image extension for PIL: {ext}")
+
 
 class ComicBookLoader:
     def __init__(
@@ -297,7 +310,9 @@ class ComicBookLoader:
     def __get_image_data(
         self, file_data: bytes, ext: str, page_info: PageInfo
     ) -> Tuple[io.BytesIO, str]:
-        pil_image = open_pil_image_for_reading(io.BytesIO(file_data))
+        pil_image = open_pil_image_for_reading(
+            io.BytesIO(file_data), [_get_pil_format_from_ext(ext)]
+        )
 
         if not self.__use_prebuilt_archives:
             pil_image = self.__comic_book_image_builder.get_dest_page_image(
@@ -311,16 +326,6 @@ class ComicBookLoader:
         )
 
         data = io.BytesIO()
-        pil_format = self.__get_pil_format_from_ext(ext)
-        pil_image_resized.save(data, format=pil_format)
+        pil_image_resized.save(data, format=PNG_PIL_FORMAT)
 
-        return data, ext[1:]
-
-    @staticmethod
-    def __get_pil_format_from_ext(ext: str) -> str:
-        ext_lower = ext.lower()
-        if ext_lower == JPG_FILE_EXT:  # e.g., ".jpg"
-            return "JPEG"
-        elif ext_lower == PNG_FILE_EXT:  # e.g., ".png"
-            return "PNG"
-        raise ValueError(f"Unsupported image extension for PIL: {ext}")
+        return data, PNG_EXT_FOR_KIVY
