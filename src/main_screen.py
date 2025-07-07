@@ -155,9 +155,9 @@ class MainScreen(BoxLayout, Screen):
     MAIN_TITLE_FONT_SIZE = sp(30)
     main_title_text = StringProperty()
 
-    TITLE_INFO_FONT_SIZE = sp(20)
+    TITLE_INFO_FONT_SIZE = sp(16)
     TITLE_INFO_LABEL_COLOR = (1.0, 0.99, 0.9, 1.0)
-    TITLE_EXTRA_INFO_FONT_SIZE = sp(16)
+    TITLE_EXTRA_INFO_FONT_SIZE = sp(14)
     TITLE_EXTRA_INFO_LABEL_COLOR = (1.0, 1.0, 1.0, 1.0)
     title_info_text = StringProperty()
     extra_title_info_text = StringProperty()
@@ -672,7 +672,7 @@ class MainScreen(BoxLayout, Screen):
         comic_book_image_builder.set_required_dim(self.comic_page_info.required_dim)
 
         logging.debug(f'Image "{self.title_page_image_source}" pressed.')
-        logging.debug(f' Load "{title_str}" and goto page "{page_to_first_goto}".')
+        logging.debug(f'Load "{title_str}" and goto page "{page_to_first_goto}".')
 
         self.comic_book_reader.read_comic(
             self.fanta_info,
