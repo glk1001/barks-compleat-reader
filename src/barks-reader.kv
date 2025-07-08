@@ -257,7 +257,7 @@
 
                             BoxLayout:
                                 orientation: "vertical"
-                                size_hint_x: 1.1
+                                size_hint_x: 1
                                 size_hint_y: 1
 
                                 BgColorLabel:
@@ -275,9 +275,11 @@
 
                                     BgColorLabel:
                                         text: "left1 filler"
-                                        background_color: (1.0, 1.0, 0.0, 0.5)
+                                        background_color: (1.0, 1.0, 0.0, 0.25)
                                         opacity: root.DEBUG_BACKGROUND_OPACITY
-                                        size_hint: (0.06, 1)
+                                        size_hint_y: 1
+                                        size_hint_x: None
+                                        width: root.ids.left2_filler.width
                                         halign: "left"
                                         valign: "top"
                                         text_size: (self.width, self.height)
@@ -286,13 +288,18 @@
                                         text: root.title_info_text
                                         color: root.TITLE_INFO_LABEL_COLOR
                                         font_size: root.TITLE_INFO_FONT_SIZE
-                                        background_color: 0, 1, 0, root.DEBUG_BACKGROUND_OPACITY
+                                        background_color:
+                                            (0, 1, 0, root.DEBUG_BACKGROUND_OPACITY) if root.DEBUG_BACKGROUND_OPACITY > 0 \
+                                            else (0.01, 0.01, 0.01, 0.25)
                                         markup: True
                                         multiline: True
-                                        size_hint: (0.94, 1)
+                                        size_hint_y: 1
+                                        size_hint_x: None
+                                        width: self.texture_size[0]
                                         halign: "left"
                                         valign: "middle"
-                                        text_size: (self.width, self.height)
+                                        text_size: (None, self.height)
+                                        pos_hint: {"x": 0.0}
 
                                 BoxLayout:
                                     orientation: "horizontal"
@@ -320,25 +327,37 @@
                                     size_hint: (0.97, 0.6)
 
                                     BgColorLabel:
+                                        id: left2_filler
                                         text: "left2 filler"
                                         background_color: (0.5, 1.0, 0.0, 0.5)
                                         opacity: root.DEBUG_BACKGROUND_OPACITY
-                                        size_hint: (0.06, 1)
+                                        size_hint_x: 0.06
+                                        size_hint_y: None
+                                        height: root.ids.extra_info.height
                                         halign: "left"
                                         valign: "top"
                                         text_size: (self.width, self.height)
 
                                     BgColorLabel:
+                                        id: extra_info
                                         text: root.extra_title_info_text
                                         font_size: root.TITLE_EXTRA_INFO_FONT_SIZE
                                         color: root.TITLE_EXTRA_INFO_LABEL_COLOR
-                                        background_color: 0, 1, 1, root.DEBUG_BACKGROUND_OPACITY
+                                        background_color:
+                                            (0, 1, 1, root.DEBUG_BACKGROUND_OPACITY) if root.DEBUG_BACKGROUND_OPACITY > 0 \
+                                            else (0.01, 0.01, 0.01, 0.25)
                                         multiline: True
                                         markup: True
-                                        size_hint: (0.94, 1)
                                         halign: "justify"
-                                        valign: "top"
-                                        text_size: (self.width, self.height)
+                                        valign: "bottom"
+                                        # Disable vertical size hint so height can be set by content
+                                        size_hint_x: 0.94
+                                        size_hint_y: None
+                                        # Wrap text within the label's width
+                                        text_size: self.width, None
+                                        # Bind height to the texture's height
+                                        height: self.texture_size[1]
+                                        pos_hint: {"top": 1.0}
 
                             AnchorLayout:
                                 anchor_x: "center"
