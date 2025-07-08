@@ -149,19 +149,23 @@ def get_page_info_from_json(json_page_info: JsonSavedPageInfo) -> SavedPageInfo:
 
 
 class MainScreen(BoxLayout, Screen):
+    # All the font sizes
+    MAIN_TITLE_FONT_SIZE = sp(30)
+    TITLE_INFO_FONT_SIZE = sp(16)
+    TITLE_EXTRA_INFO_FONT_SIZE = sp(14)
+    GOTO_PAGE_FONT_SIZE = sp(15)
+
     MAIN_TITLE_BACKGROUND_COLOR = (1, 1, 1, 0.05)
     MAIN_TITLE_COLOR = (1, 1, 0, 1)
     MAIN_TITLE_FONT_NAME = "Carl Barks Script"
-    MAIN_TITLE_FONT_SIZE = sp(30)
     main_title_text = StringProperty()
 
-    TITLE_INFO_FONT_SIZE = sp(16)
     TITLE_INFO_LABEL_COLOR = (1.0, 0.99, 0.9, 1.0)
-    TITLE_EXTRA_INFO_FONT_SIZE = sp(14)
     TITLE_EXTRA_INFO_LABEL_COLOR = (1.0, 1.0, 1.0, 1.0)
     title_info_text = StringProperty()
     extra_title_info_text = StringProperty()
     title_page_image_source = StringProperty()
+
     APP_ICON_FILE = get_barks_reader_app_icon_file()
     UP_ARROW_FILE = get_up_arrow_file()
     UP_ARROW_WIDTH = dp(20)
