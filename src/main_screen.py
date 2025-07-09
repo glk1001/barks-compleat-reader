@@ -5,7 +5,7 @@ from typing import Union, Dict, List, Any
 # noinspection PyProtectedMember
 from kivy._clock import ClockEvent
 from kivy.clock import Clock
-from kivy.metrics import dp, sp
+from kivy.metrics import dp
 from kivy.properties import StringProperty, ColorProperty, NumericProperty, BooleanProperty
 from kivy.storage.jsonstore import JsonStore
 from kivy.uix.boxlayout import BoxLayout
@@ -149,12 +149,6 @@ def get_page_info_from_json(json_page_info: JsonSavedPageInfo) -> SavedPageInfo:
 
 
 class MainScreen(BoxLayout, Screen):
-    # All the font sizes
-    MAIN_TITLE_FONT_SIZE = sp(30)
-    TITLE_INFO_FONT_SIZE = sp(16)
-    TITLE_EXTRA_INFO_FONT_SIZE = sp(14)
-    GOTO_PAGE_FONT_SIZE = sp(15)
-
     MAIN_TITLE_BACKGROUND_COLOR = (1, 1, 1, 0.05)
     MAIN_TITLE_COLOR = (1, 1, 0, 1)
     MAIN_TITLE_FONT_NAME = "Carl Barks Script"

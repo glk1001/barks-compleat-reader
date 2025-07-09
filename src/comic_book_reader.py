@@ -112,16 +112,20 @@ class ComicBookReader(BoxLayout):
         self.y_top_margin = round(height - self.y - (0.09 * height))
 
         logging.debug(
-            f"Resize event: x,y = {self.x},{self.y},"
+            f"Comic reader window resize event: x,y = {self.x},{self.y},"
             f" width = {width}, height = {height},"
             f" self.width = {self.width}, self.height = {self.height}."
         )
-        logging.debug(f"Resize event: x_mid = {self.x_mid}, y_top_margin = {self.y_top_margin}.")
+        logging.debug(
+            f"Comic reader window resize event:"
+            f" x_mid = {self.x_mid}, y_top_margin = {self.y_top_margin}."
+        )
 
         self.fullscreen_left_margin = round(self.MAX_WINDOW_WIDTH / 4.0)
         self.fullscreen_right_margin = self.MAX_WINDOW_WIDTH - self.fullscreen_left_margin
         logging.debug(
-            f"Resize event: fullscreen_left_margin = {self.fullscreen_left_margin},"
+            f"Comic reader window resize event:"
+            f" fullscreen_left_margin = {self.fullscreen_left_margin},"
             f" fullscreen_right_margin = {self.fullscreen_right_margin}."
         )
 

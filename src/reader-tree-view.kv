@@ -5,6 +5,7 @@
     minimum_height: self.height
 
 <MainTreeViewNode>:
+    font_size: app.TREE_VIEW_MAIN_NODE_FONT_SIZE
     color: root.TEXT_COLOR
     color_selected: root.SELECTED_COLOR
     background_color: root.BACKGROUND_COLOR
@@ -15,6 +16,9 @@
     valign: "middle"
     text_size: (self.width, self.height)
 
+<TitleSpinnerOption@SpinnerOption>:
+    font_size: app.TREE_VIEW_TITLE_SPINNER_FONT_SIZE
+
 <TitleSearchBoxTreeViewNode>:
     size: root.NODE_SIZE
     color_selected: root.SELECTED_COLOR
@@ -22,6 +26,7 @@
     Label:
         id: title_search_box_label
         text: "Titles: "
+        font_size: app.TREE_VIEW_TITLE_SEARCH_LABEL_FONT_SIZE
         color: root.TEXT_COLOR
         background_color: root.TEXT_BACKGROUND_COLOR
         size_hint: (0.08, 1)
@@ -35,7 +40,7 @@
         id: title_search_box
         text: root.text  # Allow the root widget to deal with text
         on_text: root.text = self.text  # Allow 'text' bind on root widget
-        font_size: sp(16)
+        font_size: app.TREE_VIEW_TITLE_SEARCH_BOX_FONT_SIZE
         multiline: False
         foreground_color: root.TEXT_COLOR
         disabled_foreground_color: (1,1,1,0.5)
@@ -49,9 +54,11 @@
 
     Spinner:
         id: title_spinner
+        option_cls: "TitleSpinnerOption"
         text: ""
         values: []
         bold: True
+        font_size: app.TREE_VIEW_TITLE_SPINNER_FONT_SIZE
         color: root.SPINNER_TEXT_COLOR
         background_color: root.SPINNER_BACKGROUND_COLOR
         text_autoupdate: False
@@ -63,6 +70,12 @@
         valign: "middle"
         text_size: (self.width, self.height)
 
+<TagSpinnerOption@SpinnerOption>:
+    font_size: app.TREE_VIEW_TAG_SPINNER_FONT_SIZE
+
+<TagTitleSpinnerOption@SpinnerOption>:
+    font_size: app.TREE_VIEW_TAG_TITLE_SPINNER_FONT_SIZE
+
 <TagSearchBoxTreeViewNode>:
     size: root.NODE_SIZE
     color_selected: root.SELECTED_COLOR
@@ -70,6 +83,7 @@
     Label:
         id: tag_search_label
         text: "Tags: "
+        font_size: app.TREE_VIEW_TAG_SEARCH_LABEL_FONT_SIZE
         color: root.TAG_LABEL_COLOR
         background_color: root.TAG_LABEL_BACKGROUND_COLOR
         size_hint: (0.08, 0.5)
@@ -83,7 +97,7 @@
         id: tag_search_box
         text: root.text
         on_text: root.text = self.text
-        font_size: sp(16)
+        font_size: app.TREE_VIEW_TAG_SEARCH_BOX_FONT_SIZE
         multiline: False
         foreground_color: root.TAG_TEXT_COLOR
         disabled_foreground_color: (1,1,1,0.5)
@@ -97,9 +111,11 @@
 
     Spinner:
         id: tag_spinner
+        option_cls: "TagSpinnerOption"
         text: ""
         values: []
         markup: True
+        font_size: app.TREE_VIEW_TAG_SPINNER_FONT_SIZE
         color: root.TAG_SPINNER_TEXT_COLOR
         background_color: root.TAG_SPINNER_BACKGROUND_COLOR
         text_autoupdate: False
@@ -113,9 +129,11 @@
 
     Spinner:
         id: tag_title_spinner
+        option_cls: "TagTitleSpinnerOption"
         text: ""
         values: ["one", "two", "three"]
         bold: True
+        font_size: app.TREE_VIEW_TAG_TITLE_SPINNER_FONT_SIZE
         color: root.TAG_TITLE_SPINNER_TEXT_COLOR
         background_color: root.TAG_TITLE_SPINNER_BACKGROUND_COLOR
         text_autoupdate: False
@@ -128,6 +146,7 @@
         text_size: (self.width, self.height)
 
 <StoryGroupTreeViewNode>:
+    font_size: app.TREE_VIEW_STORY_NODE_FONT_SIZE
     color: root.TEXT_COLOR
     color_selected: root.SELECTED_COLOR
     background_color: root.BACKGROUND_COLOR
@@ -140,6 +159,7 @@
     text_size: (self.width, self.height)
 
 <YearRangeTreeViewNode>:
+    font_size: app.TREE_VIEW_YEAR_RANGE_NODE_FONT_SIZE
     color: root.TEXT_COLOR
     color_selected: root.SELECTED_COLOR
     background_color: root.BACKGROUND_COLOR
@@ -172,6 +192,7 @@
         TreeViewButton:
             id: num_label
             parent: root
+            font_size: app.TREE_VIEW_NUM_LABEL_FONT_SIZE
             color: root.NUM_LABEL_COLOR
             background_color: root.ROW_BACKGROUND_COLOR
             color_selected: (1,0,1,1)
@@ -187,6 +208,7 @@
         TitleTreeViewLabel:
             text: ""
             parent: root
+            font_size: app.TREE_VIEW_NUM_LABEL_FONT_SIZE
             color: root.NUM_LABEL_COLOR
             background_color: root.ROW_BACKGROUND_COLOR
             size_hint: (None, None)
@@ -199,6 +221,7 @@
         TitleTreeViewLabel:
             id: title_label
             parent: root
+            font_size: app.TREE_VIEW_TITLE_LABEL_FONT_SIZE
             color: root.TITLE_LABEL_COLOR
             background_color: root.ROW_BACKGROUND_COLOR
             bold: True
@@ -237,6 +260,7 @@
         TitleTreeViewLabel:
             id: issue_label
             parent: root
+            font_size: app.TREE_VIEW_ISSUE_LABEL_FONT_SIZE
             color: root.ISSUE_LABEL_COLOR
             background_color: root.ROW_BACKGROUND_COLOR
             markup: True
