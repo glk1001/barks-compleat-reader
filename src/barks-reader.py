@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from pathlib import Path
 from random import randrange
@@ -22,6 +23,7 @@ from kivy.uix.screenmanager import (
     CardTransition,
     TransitionBase,
 )
+from kivy.uix.settings import SettingsWithSpinner
 from screeninfo import get_monitors
 
 from barks_fantagraphics.comics_cmd_args import CmdArgs
@@ -34,6 +36,7 @@ from file_paths import (
     get_comic_inset_files_dir,
     get_inset_file_ext,
     PNG_BARKS_PANELS_DIR,
+    get_the_comic_zips_dir,
 )
 from filtered_title_lists import FilteredTitleLists
 from main_screen import MainScreen
@@ -62,6 +65,36 @@ SCREEN_TRANSITIONS = [
     SwapTransition(),
     WipeTransition(),
 ]
+
+HOME_DIR = os.environ.get("HOME")
+
+reader_settings_json = """
+[
+   {  "type": "title", "title": "Folders" },
+   {
+      "title": "Fantagraphics Folder",
+      "desc": "Folder containing the Fantagraphics comic zips",
+      "type": "path",
+      "section": "Barks Reader",
+      "key": "fanta_folder"
+   },
+   {
+      "title": "Prebuilt Comics",
+      "desc": "Folder containing specially prebuilt comics",
+      "type": "path",
+      "section": "Barks Reader",
+      "key": "prebuilt_folder"
+   },
+   {  "type": "title", "title": "Options" },
+   {
+      "title": "Use Prebuilt Comics",
+      "desc": "Read comics from the prebuilt comics folder",
+      "type": "bool",
+      "section": "Barks Reader",
+      "key": "use_prebuilt_comics"
+   }
+]
+"""
 
 
 # def get_str_pixel_width(text: str, **kwargs) -> int:
@@ -153,6 +186,7 @@ class BarksReaderApp(App):
         ]
 
         Window.bind(on_resize=self.on_window_resize)
+        self.settings_cls = SettingsWithSpinner
 
     def on_window_resize(self, _window, width, height):
         logging.debug(f"App window resize event: width = {width}, height = {height}.")
@@ -161,6 +195,35 @@ class BarksReaderApp(App):
         )
 
         self.set_font_sizes()
+
+    def show_settings(self, _instance):
+        self.open_settings()
+
+    def build_config(self, config):
+        config.setdefaults(
+            "Barks Reader",
+            {
+                "fanta_folder": os.path.join(HOME_DIR, "Books", "Carl Barks", "Fantagraphics"),
+                "prebuilt_folder": get_the_comic_zips_dir(),
+                "use_prebuilt_comics": False,
+            },
+        )
+        self.main_screen.use_prebuilt_archives = config.getboolean(
+            "Barks Reader", "use_prebuilt_comics"
+        )
+
+    def build_settings(self, settings):
+        settings.add_json_panel("Barks Reader", self.config, data=reader_settings_json)
+
+    def on_config_change(self, config, section, key, value):
+        if section == "Barks Reader":
+            logging.info(f"Config change: section = '{section}', key = '{key}', value = '{value}'.")
+            if key == "use_prebuilt_comics":
+                self.main_screen.use_prebuilt_archives = value
+
+    def close_settings(self, settings=None):
+        logging.info(f"App.close_settings: {settings}")
+        super().close_settings(settings)
 
     def build(self):
         logging.debug("Building app...")

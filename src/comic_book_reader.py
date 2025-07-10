@@ -187,6 +187,7 @@ class ComicBookReader(BoxLayout):
     def read_comic(
         self,
         fanta_info: FantaComicBookInfo,
+        use_prebuilt_archives: bool,
         comic_book_image_builder: ComicBookImageBuilder,
         page_to_first_goto: str,
         page_map: OrderedDict[str, PageInfo],
@@ -207,7 +208,11 @@ class ComicBookReader(BoxLayout):
         self.init_image_load_order()
 
         self.comic_book_loader.set_comic(
-            fanta_info, comic_book_image_builder, self.image_load_order, self.page_map
+            fanta_info,
+            use_prebuilt_archives,
+            comic_book_image_builder,
+            self.image_load_order,
+            self.page_map,
         )
 
         self.closed = False

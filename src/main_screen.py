@@ -214,6 +214,8 @@ class MainScreen(BoxLayout, Screen):
         self.all_fanta_titles = ALL_FANTA_COMIC_BOOK_INFO
         self.random_title_images = RandomTitleImages()
 
+        self.use_prebuilt_archives = False
+
         self.store = JsonStore(get_barks_reader_user_data_file())
 
         self.formatter = ReaderFormatter()
@@ -678,6 +680,7 @@ class MainScreen(BoxLayout, Screen):
 
         self.comic_book_reader.read_comic(
             self.fanta_info,
+            self.use_prebuilt_archives,
             comic_book_image_builder,
             page_to_first_goto,
             self.comic_page_info.page_map,

@@ -13,7 +13,7 @@ from PIL import Image as PilImage, ImageOps
 from kivy.clock import Clock
 
 from barks_fantagraphics.comics_consts import PageType, PNG_FILE_EXT, JPG_FILE_EXT
-from barks_fantagraphics.comics_utils import get_dest_comic_zip_file_stem
+from barks_fantagraphics.comics_utils import get_dest_comic_zip_file_stem, get_abbrev_path
 from barks_fantagraphics.fanta_comics_info import (
     FantaComicBookInfo,
     FIRST_VOLUME_NUMBER,
@@ -117,11 +117,14 @@ class ComicBookLoader:
     def set_comic(
         self,
         fanta_info: FantaComicBookInfo,
+        use_prebuilt_archives: bool,
         comic_book_image_builder: ComicBookImageBuilder,
         image_load_order: List[str],
         page_map: OrderedDict[str, PageInfo],
     ) -> None:
         assert len(image_load_order) == len(page_map)
+
+        self.__use_prebuilt_archives = use_prebuilt_archives
 
         if not self.__use_prebuilt_archives:
             self.__fanta_volume_archive = self.__fanta_volume_archives.get_fantagraphics_archive(
@@ -134,7 +137,13 @@ class ComicBookLoader:
         self.__page_map = page_map
         self.__stop = False
 
+        logging.info(f"Archive source: {self.__get_archive_source()}.")
+
         self.init_load_events()
+
+    def __get_archive_source(self) -> str:
+        archive_type = "Prebuilt" if self.__use_prebuilt_archives else "Fantagraphics volumes"
+        return f'{archive_type} - "{get_abbrev_path(self.__current_comic_path)}"'
 
     def __get_comic_path(self, fanta_info: FantaComicBookInfo) -> str:
         if not self.__use_prebuilt_archives:

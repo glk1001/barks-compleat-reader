@@ -92,10 +92,19 @@
 
             ActionButton:
                 text: 'Change Pics'
+                icon: "/home/greg/Books/Carl Barks/Compleat Barks Disney Reader/Reader Icons/ActionBar Icons/icon-refresh-arrow.png"
                 draggable: False
                 background_normal: root.ACTION_BAR_BACKGROUND_PATH
                 background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
                 on_release: root.on_action_bar_change_view_images()
+
+            ActionButton:
+                text: 'Settings'
+                icon: "/home/greg/Books/Carl Barks/Compleat Barks Disney Reader/Reader Icons/ActionBar Icons/icon-settings.png"
+                draggable: False
+                background_normal: root.ACTION_BAR_BACKGROUND_PATH
+                background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
+                on_release: app.show_settings(self)
 
             ActionGroup:
                 canvas.before:
