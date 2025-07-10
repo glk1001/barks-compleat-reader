@@ -33,6 +33,7 @@ from file_paths import (
     get_barks_reader_goto_icon_file,
 )
 from reader_consts_and_types import ACTION_BAR_SIZE_Y
+from reader_settings import ReaderSettings
 
 GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT = 0.97
 GOTO_PAGE_BUTTON_HEIGHT = dp(25)
@@ -54,6 +55,7 @@ class ComicBookReader(BoxLayout):
 
     def __init__(
         self,
+        reader_settings: ReaderSettings,
         on_comic_is_ready_to_read: Callable[[], None],
         on_close_reader: Callable[[], None],
         goto_page_widget: Widget,
@@ -61,6 +63,7 @@ class ComicBookReader(BoxLayout):
     ):
         super().__init__(**kwargs)
 
+        self.__reader_settings = reader_settings
         self.on_comic_is_ready_to_read = on_comic_is_ready_to_read
         self.on_close_reader = on_close_reader
         self.goto_page_widget = goto_page_widget
@@ -78,6 +81,7 @@ class ComicBookReader(BoxLayout):
         self.add_widget(self.comic_image)
 
         self.comic_book_loader = ComicBookLoader(
+            self.__reader_settings,
             self.first_image_loaded,
             self.all_images_loaded,
             self.load_error,
@@ -183,7 +187,6 @@ class ComicBookReader(BoxLayout):
     def read_comic(
         self,
         fanta_info: FantaComicBookInfo,
-        use_prebuilt_archives: bool,
         comic_book_image_builder: ComicBookImageBuilder,
         page_to_first_goto: str,
         page_map: OrderedDict[str, PageInfo],
@@ -205,7 +208,6 @@ class ComicBookReader(BoxLayout):
 
         self.comic_book_loader.set_comic(
             fanta_info,
-            use_prebuilt_archives,
             comic_book_image_builder,
             self.image_load_order,
             self.page_map,
@@ -462,6 +464,7 @@ KV_FILE = Path(__file__).stem + ".kv"
 
 def get_barks_comic_reader(
     screen_name: str,
+    reader_settings: ReaderSettings,
     on_comic_is_ready_to_read: Callable[[], None],
     on_close_reader: Callable[[], None],
 ):
@@ -470,7 +473,7 @@ def get_barks_comic_reader(
     root = ComicBookReaderScreen(name=screen_name)
 
     comic_book_reader_widget = ComicBookReader(
-        on_comic_is_ready_to_read, on_close_reader, root.ids.goto_page_button
+        reader_settings, on_comic_is_ready_to_read, on_close_reader, root.ids.goto_page_button
     )
     comic_book_reader_widget.set_action_bar(root.ids.comic_action_bar)
 
