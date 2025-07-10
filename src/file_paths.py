@@ -29,15 +29,14 @@ APP_ICON_PATH = os.path.join(READER_ICON_FILES_DIR, "Barks Reader Icon 1.png")
 
 ACTION_BAR_ICONS_DIR = os.path.join(READER_ICON_FILES_DIR, "ActionBar Icons")
 CLOSE_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-close.png")
+COLLAPSE_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-collapse.png")
+REFRESH_ARROW_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-refresh-arrow.png")
+SETTINGS_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-settings.png")
 FULLSCREEN_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-fullscreen.png")
 FULLSCREEN_EXIT_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-fullscreen-exit.png")
-NEXT_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-next.png")
-PREV_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-previous.png")
 GOTO_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-goto.png")
 GOTO_START_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-goto-start.png")
 GOTO_END_ICON_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "icon-goto-end.png")
-ACTION_BAR_BACKGROUND_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "action-bar-background.png")
-ACTION_BAR_GROUP_BACKGROUND_PATH = os.path.join(ACTION_BAR_ICONS_DIR, "action-group-background.png")
 
 VARIOUS_FILES_DIR = os.path.join(BARKS_READER_FILES_DIR, "Various")
 UP_ARROW_PATH = os.path.join(VARIOUS_FILES_DIR, "up-arrow.png")
@@ -67,15 +66,14 @@ def _check_dirs_and_files() -> None:
         APP_ICON_PATH,
         UP_ARROW_PATH,
         CLOSE_ICON_PATH,
+        COLLAPSE_ICON_PATH,
+        REFRESH_ARROW_ICON_PATH,
+        SETTINGS_ICON_PATH,
         FULLSCREEN_ICON_PATH,
         FULLSCREEN_EXIT_ICON_PATH,
-        NEXT_ICON_PATH,
-        PREV_ICON_PATH,
         GOTO_ICON_PATH,
         GOTO_START_ICON_PATH,
         GOTO_END_ICON_PATH,
-        ACTION_BAR_BACKGROUND_PATH,
-        ACTION_BAR_GROUP_BACKGROUND_PATH,
         TRANSPARENT_BLANK_PATH,
         EMPTY_PAGE_PATH,
     ]
@@ -242,20 +240,24 @@ def get_barks_reader_close_icon_file() -> str:
     return CLOSE_ICON_PATH
 
 
+def get_barks_reader_collapse_icon_file() -> str:
+    return COLLAPSE_ICON_PATH
+
+
+def get_barks_reader_refresh_arrow_icon_file() -> str:
+    return REFRESH_ARROW_ICON_PATH
+
+
+def get_barks_reader_settings_icon_file() -> str:
+    return SETTINGS_ICON_PATH
+
+
 def get_barks_reader_fullscreen_icon_file() -> str:
     return FULLSCREEN_ICON_PATH
 
 
 def get_barks_reader_fullscreen_exit_icon_file() -> str:
     return FULLSCREEN_EXIT_ICON_PATH
-
-
-def get_barks_reader_next_icon_file() -> str:
-    return NEXT_ICON_PATH
-
-
-def get_barks_reader_previous_icon_file() -> str:
-    return PREV_ICON_PATH
 
 
 def get_barks_reader_goto_icon_file() -> str:
@@ -268,14 +270,6 @@ def get_barks_reader_goto_start_icon_file() -> str:
 
 def get_barks_reader_goto_end_icon_file() -> str:
     return GOTO_END_ICON_PATH
-
-
-def get_barks_reader_action_bar_background_file() -> str:
-    return ACTION_BAR_BACKGROUND_PATH
-
-
-def get_barks_reader_action_bar_group_background_file() -> str:
-    return ACTION_BAR_GROUP_BACKGROUND_PATH
 
 
 def get_transparent_blank_file() -> str:

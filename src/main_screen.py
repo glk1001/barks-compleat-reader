@@ -46,9 +46,9 @@ from file_paths import (
     get_edited_version_if_possible,
     get_barks_reader_app_icon_file,
     get_up_arrow_file,
-    get_barks_reader_action_bar_background_file,
-    get_barks_reader_action_bar_group_background_file,
-    get_transparent_blank_file,
+    get_barks_reader_collapse_icon_file,
+    get_barks_reader_refresh_arrow_icon_file,
+    get_barks_reader_settings_icon_file,
     get_barks_reader_user_data_file,
     get_empty_page_file,
     get_barks_reader_close_icon_file,
@@ -166,12 +166,11 @@ class MainScreen(BoxLayout, Screen):
     UP_ARROW_FILE = get_up_arrow_file()
     UP_ARROW_WIDTH = dp(20)
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
-    ACTION_BAR_BACKGROUND_PATH = get_barks_reader_action_bar_background_file()
-    ACTION_BAR_GROUP_BACKGROUND_PATH = get_barks_reader_action_bar_group_background_file()
-    ACTION_BAR_TRANSPARENT_BLANK_PATH = get_transparent_blank_file()
-    ACTION_BAR_BACKGROUND_COLOR = (0.6, 0.7, 0.2, 1)
-    ACTION_BUTTON_BACKGROUND_COLOR = (0.6, 1.0, 0.2, 1)
+    ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
     ACTION_BAR_CLOSE_ICON = get_barks_reader_close_icon_file()
+    ACTION_BAR_COLLAPSE_ICON = get_barks_reader_collapse_icon_file()
+    ACTION_BAR_CHANGE_PICS_ICON = get_barks_reader_refresh_arrow_icon_file()
+    ACTION_BAR_SETTINGS_ICON = get_barks_reader_settings_icon_file()
     ACTION_BAR_GOTO_ICON = get_barks_reader_goto_icon_file()
 
     DEBUG_BACKGROUND_OPACITY = 0

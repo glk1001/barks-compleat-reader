@@ -24,16 +24,12 @@ from build_comic_images import ComicBookImageBuilder
 from comic_book_loader import ComicBookLoader
 from comic_book_page_info import PageInfo
 from file_paths import (
-    get_barks_reader_action_bar_background_file,
     get_barks_reader_close_icon_file,
     get_barks_reader_fullscreen_icon_file,
     get_barks_reader_app_icon_file,
-    get_barks_reader_next_icon_file,
-    get_barks_reader_previous_icon_file,
     get_barks_reader_goto_start_icon_file,
     get_barks_reader_goto_end_icon_file,
     get_barks_reader_fullscreen_exit_icon_file,
-    get_barks_reader_action_bar_group_background_file,
     get_barks_reader_goto_icon_file,
 )
 from reader_consts_and_types import ACTION_BAR_SIZE_Y
@@ -445,15 +441,9 @@ class ComicBookReader(BoxLayout):
 class ComicBookReaderScreen(BoxLayout, Screen):
     APP_ICON_FILE = get_barks_reader_app_icon_file()
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
-    ACTION_BAR_BACKGROUND_PATH = get_barks_reader_action_bar_background_file()
-    ACTION_BAR_GROUP_BACKGROUND_PATH = get_barks_reader_action_bar_group_background_file()
-    ACTION_BAR_BACKGROUND_COLOR = (0.6, 0.7, 0.2, 1)
-    ACTION_BUTTON_BACKGROUND_COLOR = (0.6, 1.0, 0.2, 1)
     ACTION_BAR_CLOSE_ICON = get_barks_reader_close_icon_file()
     ACTION_BAR_FULLSCREEN_ICON = APP_ACTION_BAR_FULLSCREEN_ICON
     ACTION_BAR_FULLSCREEN_EXIT_ICON = APP_ACTION_BAR_FULLSCREEN_EXIT_ICON
-    ACTION_BAR_NEXT_ICON = get_barks_reader_next_icon_file()
-    ACTION_BAR_PREV_ICON = get_barks_reader_previous_icon_file()
     ACTION_BAR_GOTO_ICON = get_barks_reader_goto_icon_file()
     ACTION_BAR_GOTO_START_ICON = get_barks_reader_goto_start_icon_file()
     ACTION_BAR_GOTO_END_ICON = get_barks_reader_goto_end_icon_file()

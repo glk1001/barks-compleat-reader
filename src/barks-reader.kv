@@ -56,70 +56,54 @@
 
     ActionBar:
         id: action_bar
-        x: 0
-        y: 0
         size: root.width, root.ACTION_BAR_HEIGHT
-        background_image: root.ACTION_BAR_BACKGROUND_PATH
-        background_color: root.ACTION_BAR_BACKGROUND_COLOR
 
         ActionView:
             use_separator: False
 
             ActionPrevious:
                 title: app.title
-                with_previous: False  # can use to change screens
+                color: root.ACTION_BAR_TITLE_COLOR
                 app_icon: root.APP_ICON_FILE
+                with_previous: False
 
             ActionOverflow:
-
-            ActionButton:
-                text: 'Quit'
-                icon: root.ACTION_BAR_CLOSE_ICON
-                draggable: False
-                background_normal: root.ACTION_BAR_BACKGROUND_PATH
-                background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
-                on_release: app.on_action_bar_quit()
 
             ActionSeparator:
 
             ActionButton:
-                text: 'Collapse'
-                icon: "/home/greg/Books/Carl Barks/Compleat Barks Disney Reader/Reader Icons/ActionBar Icons/icon-collapse.png"
+                text: 'Quit'
+                icon: root.ACTION_BAR_CLOSE_ICON
+                mipmap: True
                 draggable: False
-                background_normal: root.ACTION_BAR_BACKGROUND_PATH
-                background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
+                on_release: app.on_action_bar_quit()
+
+            ActionButton:
+                text: 'Collapse'
+                icon: root.ACTION_BAR_COLLAPSE_ICON
+                mipmap: True
+                draggable: False
                 on_release: root.on_action_bar_collapse()
 
             ActionButton:
                 text: 'Change Pics'
-                icon: "/home/greg/Books/Carl Barks/Compleat Barks Disney Reader/Reader Icons/ActionBar Icons/icon-refresh-arrow.png"
+                icon: root.ACTION_BAR_CHANGE_PICS_ICON
+                mipmap: True
                 draggable: False
-                background_normal: root.ACTION_BAR_BACKGROUND_PATH
-                background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
                 on_release: root.on_action_bar_change_view_images()
 
             ActionButton:
                 text: 'Settings'
-                icon: "/home/greg/Books/Carl Barks/Compleat Barks Disney Reader/Reader Icons/ActionBar Icons/icon-settings.png"
+                icon: root.ACTION_BAR_SETTINGS_ICON
+                mipmap: True
                 draggable: False
-                background_normal: root.ACTION_BAR_BACKGROUND_PATH
-                background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
                 on_release: app.show_settings(self)
 
             ActionGroup:
-                canvas.before:
-                    Color:
-                        rgba: root.ACTION_BUTTON_BACKGROUND_COLOR
-                    Rectangle:
-                        pos: self.pos
-                        size: self.size
-                        source: root.ACTION_BAR_GROUP_BACKGROUND_PATH
                 text: "Goto"
-                # icon not working. Canvas before issue??
-                # icon: root.ACTION_BAR_GOTO_ICON
+                # icon not working. Why??
+                icon: root.ACTION_BAR_GOTO_ICON
                 draggable: False
-                background_normal: root.ACTION_BAR_TRANSPARENT_BLANK_PATH
-                background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
                 mode: "spinner"
                 mipmap: True
 

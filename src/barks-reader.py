@@ -124,7 +124,7 @@ class BarksReaderApp(App):
     def set_font_sizes(self) -> None:
         logging.debug(f"Resetting all font sizes to match window height {Window.height}.")
 
-        if Window.height <= 1000:
+        if Window.height <= 1050:
             main_title_font_size = sp(30)
             title_info_font_size = sp(16)
             title_extra_info_font_size = sp(14)
