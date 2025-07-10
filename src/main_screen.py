@@ -51,6 +51,8 @@ from file_paths import (
     get_transparent_blank_file,
     get_barks_reader_user_data_file,
     get_empty_page_file,
+    get_barks_reader_close_icon_file,
+    get_barks_reader_goto_icon_file,
 )
 from filtered_title_lists import FilteredTitleLists
 from random_title_images import (
@@ -169,6 +171,8 @@ class MainScreen(BoxLayout, Screen):
     ACTION_BAR_TRANSPARENT_BLANK_PATH = get_transparent_blank_file()
     ACTION_BAR_BACKGROUND_COLOR = (0.6, 0.7, 0.2, 1)
     ACTION_BUTTON_BACKGROUND_COLOR = (0.6, 1.0, 0.2, 1)
+    ACTION_BAR_CLOSE_ICON = get_barks_reader_close_icon_file()
+    ACTION_BAR_GOTO_ICON = get_barks_reader_goto_icon_file()
 
     DEBUG_BACKGROUND_OPACITY = 0
 

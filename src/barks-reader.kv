@@ -74,6 +74,7 @@
 
             ActionButton:
                 text: 'Quit'
+                icon: root.ACTION_BAR_CLOSE_ICON
                 draggable: False
                 background_normal: root.ACTION_BAR_BACKGROUND_PATH
                 background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
@@ -83,6 +84,7 @@
 
             ActionButton:
                 text: 'Collapse'
+                icon: "/home/greg/Books/Carl Barks/Compleat Barks Disney Reader/Reader Icons/ActionBar Icons/icon-collapse.png"
                 draggable: False
                 background_normal: root.ACTION_BAR_BACKGROUND_PATH
                 background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
@@ -104,6 +106,8 @@
                         size: self.size
                         source: root.ACTION_BAR_GROUP_BACKGROUND_PATH
                 text: "Goto"
+                # icon not working. Canvas before issue??
+                # icon: root.ACTION_BAR_GOTO_ICON
                 draggable: False
                 background_normal: root.ACTION_BAR_TRANSPARENT_BLANK_PATH
                 background_color: root.ACTION_BUTTON_BACKGROUND_COLOR
