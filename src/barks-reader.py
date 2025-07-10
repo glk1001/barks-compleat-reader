@@ -1,12 +1,13 @@
 import logging
-import os
 import sys
 from pathlib import Path
 from random import randrange
+from typing import Any
 
 from kivy import Config
 from kivy.app import App
 from kivy.clock import Clock
+from kivy.config import ConfigParser
 from kivy.core.window import Window
 from kivy.lang import Builder
 from kivy.metrics import sp
@@ -36,10 +37,11 @@ from file_paths import (
     get_comic_inset_files_dir,
     get_inset_file_ext,
     PNG_BARKS_PANELS_DIR,
-    get_the_comic_zips_dir,
 )
 from filtered_title_lists import FilteredTitleLists
 from main_screen import MainScreen
+from reader_consts_and_types import ACTION_BAR_SIZE_Y
+from reader_settings import ReaderSettings
 from reader_tree_builder import ReaderTreeBuilder
 from reader_ui_classes import ReaderTreeBuilderEventDispatcher
 from screen_metrics import get_screen_info, log_screen_metrics
@@ -65,37 +67,6 @@ SCREEN_TRANSITIONS = [
     SwapTransition(),
     WipeTransition(),
 ]
-
-HOME_DIR = os.environ.get("HOME")
-
-reader_settings_json = """
-[
-   {  "type": "title", "title": "Folders" },
-   {
-      "title": "Fantagraphics Folder",
-      "desc": "Folder containing the Fantagraphics comic zips",
-      "type": "path",
-      "section": "Barks Reader",
-      "key": "fanta_folder"
-   },
-   {
-      "title": "Prebuilt Comics",
-      "desc": "Folder containing specially prebuilt comics",
-      "type": "path",
-      "section": "Barks Reader",
-      "key": "prebuilt_folder"
-   },
-   {  "type": "title", "title": "Options" },
-   {
-      "title": "Use Prebuilt Comics",
-      "desc": "Read comics from the prebuilt comics folder",
-      "type": "bool",
-      "section": "Barks Reader",
-      "key": "use_prebuilt_comics"
-   }
-]
-"""
-
 
 # def get_str_pixel_width(text: str, **kwargs) -> int:
 #     return kivy.core.text.Label(**kwargs).get_extents(text)[0]
@@ -161,12 +132,14 @@ class BarksReaderApp(App):
         self.title = APP_TITLE
         self.screen_manager = ScreenManager()
         self.comics_database = comics_db
+        self.__reader_settings = ReaderSettings()
 
         logging.debug("Instantiating main screen...")
         filtered_title_lists = FilteredTitleLists()
         reader_tree_events = ReaderTreeBuilderEventDispatcher()
         self.main_screen = MainScreen(
             self.comics_database,
+            self.__reader_settings,
             reader_tree_events,
             filtered_title_lists,
             name=MAIN_READER_SCREEN,
@@ -191,7 +164,8 @@ class BarksReaderApp(App):
     def on_window_resize(self, _window, width, height):
         logging.debug(f"App window resize event: width = {width}, height = {height}.")
         logging.debug(
-            f"App window resize event: Window.width = {Window.width}, Window.height = {Window.height}."
+            f"App window resize event:"
+            f" Window.width = {Window.width}, Window.height = {Window.height}."
         )
 
         self.set_font_sizes()
@@ -200,34 +174,20 @@ class BarksReaderApp(App):
         self.open_settings()
 
     def build_config(self, config):
-        config.setdefaults(
-            "Barks Reader",
-            {
-                "fanta_folder": os.path.join(HOME_DIR, "Books", "Carl Barks", "Fantagraphics"),
-                "prebuilt_folder": get_the_comic_zips_dir(),
-                "use_prebuilt_comics": False,
-            },
-        )
-        self.main_screen.use_prebuilt_archives = config.getboolean(
-            "Barks Reader", "use_prebuilt_comics"
-        )
+        self.__reader_settings.build_config(config)
 
     def build_settings(self, settings):
-        settings.add_json_panel("Barks Reader", self.config, data=reader_settings_json)
+        self.__reader_settings.build_settings(settings)
+        settings.interface.menu.height = ACTION_BAR_SIZE_Y
 
-    def on_config_change(self, config, section, key, value):
-        if section == "Barks Reader":
-            logging.info(f"Config change: section = '{section}', key = '{key}', value = '{value}'.")
-            if key == "use_prebuilt_comics":
-                self.main_screen.use_prebuilt_archives = value
-
-    def close_settings(self, settings=None):
-        logging.info(f"App.close_settings: {settings}")
-        super().close_settings(settings)
+    def on_config_change(self, config: ConfigParser, section: str, key: str, value: Any):
+        logging.info(f"Config change: section = '{section}', key = '{key}', value = '{value}'.")
+        self.__reader_settings.validate_changed_setting(section, key, value)
 
     def build(self):
         logging.debug("Building app...")
 
+        self.__reader_settings.set_config(self.config)
         self.set_custom_title_bar()
 
         self.build_tree_view()
@@ -237,7 +197,10 @@ class BarksReaderApp(App):
         root.current = MAIN_READER_SCREEN
 
         comic_reader = get_barks_comic_reader(
-            COMIC_BOOK_READER, self.switch_to_comic_book_reader, self.close_comic_book_reader
+            COMIC_BOOK_READER,
+            self.__reader_settings,
+            self.switch_to_comic_book_reader,
+            self.close_comic_book_reader,
         )
         root.add_widget(comic_reader)
 

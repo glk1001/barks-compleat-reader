@@ -74,6 +74,7 @@ from reader_consts_and_types import (
     ACTION_BAR_SIZE_Y,
 )
 from reader_formatter import ReaderFormatter, get_clean_text_without_extra, LONG_TITLE_SPLITS
+from reader_settings import ReaderSettings
 from reader_ui_classes import (
     ReaderTreeView,
     ReaderTreeBuilderEventDispatcher,
@@ -197,6 +198,7 @@ class MainScreen(BoxLayout, Screen):
     def __init__(
         self,
         comics_database: ComicsDatabase,
+        reader_settings: ReaderSettings,
         reader_tree_events: ReaderTreeBuilderEventDispatcher,
         filtered_title_lists: FilteredTitleLists,
         **kwargs,
@@ -204,6 +206,7 @@ class MainScreen(BoxLayout, Screen):
         super().__init__(**kwargs)
 
         self.comics_database = comics_database
+        self.reader_settings = reader_settings
         self.filtered_title_lists: FilteredTitleLists = filtered_title_lists
         self.title_lists: Dict[str, List[FantaComicBookInfo]] = (
             filtered_title_lists.get_title_lists()
@@ -212,8 +215,6 @@ class MainScreen(BoxLayout, Screen):
         self.title_search = BarksTitleSearch()
         self.all_fanta_titles = ALL_FANTA_COMIC_BOOK_INFO
         self.random_title_images = RandomTitleImages()
-
-        self.use_prebuilt_archives = False
 
         self.store = JsonStore(get_barks_reader_user_data_file())
 
@@ -679,7 +680,6 @@ class MainScreen(BoxLayout, Screen):
 
         self.comic_book_reader.read_comic(
             self.fanta_info,
-            self.use_prebuilt_archives,
             comic_book_image_builder,
             page_to_first_goto,
             self.comic_page_info.page_map,

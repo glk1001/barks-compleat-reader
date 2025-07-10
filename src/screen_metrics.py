@@ -72,10 +72,10 @@ def get_screen_info() -> List[ScreenInfo]:
     return screens
 
 
-def log_screen_metrics(screen_info: List[ScreenInfo]) -> None:
+def log_screen_metrics(scrn_info: List[ScreenInfo]) -> None:
     logging.info("--- Detailed Monitor Metrics ---")
 
-    for info in screen_info:
+    for info in scrn_info:
         logging.info(
             f"Display {info.display}: {info.width_pixels} x {info.height_pixels} pixels"
             f" at ({info.monitor_x}, {info.monitor_y})."
@@ -87,10 +87,10 @@ def log_screen_metrics(screen_info: List[ScreenInfo]) -> None:
         logging.info(f"  -> Calculated DPI: {info.dpi:.2f}.")
         logging.info(f"  -> Primary: {info.is_primary}.")
 
-    logging.info(f'1 cm = {cm(1):.1f} pixels.')
-    logging.info(f'1 in = {inch(1):.1f} pixels.')
-    logging.info(f'100 dp = {dp(100):.1f} pixels.')
-    logging.info(f'100 sp = {sp(100):.1f} pixels.')
+    logging.info(f"1 cm = {cm(1):.1f} pixels.")
+    logging.info(f"1 in = {inch(1):.1f} pixels.")
+    logging.info(f"100 dp = {dp(100):.1f} pixels.")
+    logging.info(f"100 sp = {sp(100):.1f} pixels.")
 
     logging.info("--------------------------------")
 

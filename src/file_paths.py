@@ -18,9 +18,8 @@ HOME_DIR = os.environ.get("HOME")
 
 BARKS_DIR = os.path.join(HOME_DIR, "Books/Carl Barks")
 THE_COMICS_DIR = os.path.join(BARKS_DIR, "The Comics")
-THE_COMIC_ZIPS_DIR = os.path.join(THE_COMICS_DIR, "Chronological")
-THE_COMIC_FILES_DIR = os.path.join(THE_COMICS_DIR, "aaa-Chronological-dirs")
-FANTA_VOLUME_ARCHIVES_ROOT_DIR = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes"
+DEFAULT_THE_COMIC_ZIPS_DIR = os.path.join(THE_COMICS_DIR, "Chronological")
+DEFAULT_FANTA_VOLUME_ARCHIVES_ROOT_DIR = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes"
 
 BARKS_READER_FILES_DIR = os.path.join(BARKS_DIR, "Compleat Barks Disney Reader")
 
@@ -55,16 +54,12 @@ PNG_INSET_FILES_DIR = os.path.join(PNG_BARKS_PANELS_DIR, "Insets")
 def _check_dirs_and_files() -> None:
     dirs_to_check = [
         THE_COMICS_DIR,
-        THE_COMIC_ZIPS_DIR,
-        THE_COMIC_FILES_DIR,
-        FANTA_VOLUME_ARCHIVES_ROOT_DIR,
         READER_ICON_FILES_DIR,
         ACTION_BAR_ICONS_DIR,
         VARIOUS_FILES_DIR,
     ]
     files_to_check = [
         APP_ICON_PATH,
-        UP_ARROW_PATH,
         CLOSE_ICON_PATH,
         COLLAPSE_ICON_PATH,
         REFRESH_ARROW_ICON_PATH,
@@ -74,6 +69,7 @@ def _check_dirs_and_files() -> None:
         GOTO_ICON_PATH,
         GOTO_START_ICON_PATH,
         GOTO_END_ICON_PATH,
+        UP_ARROW_PATH,
         TRANSPARENT_BLANK_PATH,
         EMPTY_PAGE_PATH,
     ]
@@ -176,16 +172,12 @@ def get_emergency_inset_file() -> str:
     )
 
 
-def get_the_comic_zips_dir() -> str:
-    return THE_COMIC_ZIPS_DIR
+def get_default_prebuilt_comic_zips_dir() -> str:
+    return DEFAULT_THE_COMIC_ZIPS_DIR
 
 
-def get_the_comic_files_dir() -> str:
-    return THE_COMIC_FILES_DIR
-
-
-def get_fanta_volume_archives_root_dir() -> str:
-    return FANTA_VOLUME_ARCHIVES_ROOT_DIR
+def get_default_fanta_volume_archives_root_dir() -> str:
+    return DEFAULT_FANTA_VOLUME_ARCHIVES_ROOT_DIR
 
 
 def get_comic_inset_files_dir() -> str:
