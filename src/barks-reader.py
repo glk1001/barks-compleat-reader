@@ -31,7 +31,6 @@ from barks_fantagraphics.comics_cmd_args import CmdArgs
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.comics_utils import setup_logging
 from comic_book_reader import get_barks_comic_reader
-from file_paths import get_comic_inset_files_dir, get_inset_file_ext
 from filtered_title_lists import FilteredTitleLists
 from main_screen import MainScreen
 from reader_consts_and_types import ACTION_BAR_SIZE_Y
@@ -175,7 +174,16 @@ class BarksReaderApp(App):
         self.__reader_settings.set_config(self.config)
         self.__reader_settings.validate_settings()
         self.__reader_settings.set_barks_panels_dir()
-        self.comics_database.set_inset_info(get_comic_inset_files_dir(), get_inset_file_ext())
+        self.comics_database.set_inset_info(
+            self.__reader_settings.file_paths.get_comic_inset_files_dir(),
+            self.__reader_settings.file_paths.get_inset_file_ext(),
+        )
+        self.__reader_settings.sys_file_paths.set_barks_reader_files_dir(
+            self.__reader_settings.reader_files_dir
+        )
+
+        logging.debug("Loading kv files...")
+        Builder.load_file(KV_FILE)
 
         logging.debug("Instantiating main screen...")
         filtered_title_lists = FilteredTitleLists()
@@ -298,9 +306,6 @@ if __name__ == "__main__":
 
     Config.set("kivy", "exit_on_escape", "0")
     Config.write()
-
-    logging.debug("Loading kv files...")
-    Builder.load_file(KV_FILE)
 
     comics_database = cmd_args.get_comics_database()
 

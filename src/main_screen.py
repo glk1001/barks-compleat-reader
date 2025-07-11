@@ -41,19 +41,6 @@ from barks_fantagraphics.title_search import BarksTitleSearch
 from build_comic_images import ComicBookImageBuilder
 from comic_book_page_info import ComicBookPageInfo, get_comic_page_info
 from comic_book_reader import ComicBookReader
-from file_paths import (
-    get_comic_inset_file,
-    get_edited_version_if_possible,
-    get_barks_reader_app_icon_file,
-    get_up_arrow_file,
-    get_barks_reader_collapse_icon_file,
-    get_barks_reader_refresh_arrow_icon_file,
-    get_barks_reader_settings_icon_file,
-    get_barks_reader_user_data_file,
-    get_empty_page_file,
-    get_barks_reader_close_icon_file,
-    get_barks_reader_goto_icon_file,
-)
 from filtered_title_lists import FilteredTitleLists
 from random_title_images import (
     ImageInfo,
@@ -90,6 +77,7 @@ from reader_ui_classes import (
     TagStoryGroupTreeViewNode,
     TagGroupStoryGroupTreeViewNode,
 )
+from system_file_paths import SystemFilePaths
 
 NODE_TYPE_TO_VIEW_STATE_MAP = {
     YearRangeTreeViewNode: ViewStates.ON_YEAR_RANGE_NODE,
@@ -152,6 +140,17 @@ def get_page_info_from_json(json_page_info: JsonSavedPageInfo) -> SavedPageInfo:
 
 
 class MainScreen(BoxLayout, Screen):
+    UP_ARROW_WIDTH = dp(20)
+    ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
+    ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
+    app_icon_filepath = StringProperty()
+    up_arrow_filepath = StringProperty()
+    action_bar_close_icon_filepath = StringProperty()
+    action_bar_collapse_icon_filepath = StringProperty()
+    action_bar_change_pics_icon_filepath = StringProperty()
+    action_bar_settings_icon_filepath = StringProperty()
+    action_bar_goto_icon_filepath = StringProperty()
+
     MAIN_TITLE_BACKGROUND_COLOR = (1, 1, 1, 0.05)
     MAIN_TITLE_COLOR = (1, 1, 0, 1)
     MAIN_TITLE_FONT_NAME = "Carl Barks Script"
@@ -162,17 +161,6 @@ class MainScreen(BoxLayout, Screen):
     title_info_text = StringProperty()
     extra_title_info_text = StringProperty()
     title_page_image_source = StringProperty()
-
-    APP_ICON_FILE = get_barks_reader_app_icon_file()
-    UP_ARROW_FILE = get_up_arrow_file()
-    UP_ARROW_WIDTH = dp(20)
-    ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
-    ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
-    ACTION_BAR_CLOSE_ICON = get_barks_reader_close_icon_file()
-    ACTION_BAR_COLLAPSE_ICON = get_barks_reader_collapse_icon_file()
-    ACTION_BAR_CHANGE_PICS_ICON = get_barks_reader_refresh_arrow_icon_file()
-    ACTION_BAR_SETTINGS_ICON = get_barks_reader_settings_icon_file()
-    ACTION_BAR_GOTO_ICON = get_barks_reader_goto_icon_file()
 
     DEBUG_BACKGROUND_OPACITY = 0
 
@@ -214,9 +202,11 @@ class MainScreen(BoxLayout, Screen):
         self.title_dict: Dict[str, Titles] = BARKS_TITLE_DICT
         self.title_search = BarksTitleSearch()
         self.all_fanta_titles = ALL_FANTA_COMIC_BOOK_INFO
-        self.random_title_images = RandomTitleImages()
+        self.random_title_images = RandomTitleImages(self.reader_settings)
 
-        self.store = JsonStore(get_barks_reader_user_data_file())
+        self.store = JsonStore(
+            self.reader_settings.sys_file_paths.get_barks_reader_user_data_file()
+        )
 
         self.formatter = ReaderFormatter()
         self.fanta_info: Union[FantaComicBookInfo, None] = None
@@ -237,9 +227,22 @@ class MainScreen(BoxLayout, Screen):
         self.bottom_view_title_image_info: ImageInfo = ImageInfo()
 
         self.background_views = BackgroundViews(
-            self.all_fanta_titles, self.title_lists, self.random_title_images
+            self.reader_settings, self.all_fanta_titles, self.title_lists, self.random_title_images
         )
         self.update_background_views(ViewStates.PRE_INIT)
+
+        self.set_action_bar_icons(self.reader_settings.sys_file_paths)
+
+    def set_action_bar_icons(self, sys_paths: SystemFilePaths):
+        self.app_icon_filepath = sys_paths.get_barks_reader_app_icon_file()
+        self.up_arrow_filepath = sys_paths.get_up_arrow_file()
+        self.action_bar_close_icon_filepath = sys_paths.get_barks_reader_close_icon_file()
+        self.action_bar_collapse_icon_filepath = sys_paths.get_barks_reader_collapse_icon_file()
+        self.action_bar_change_pics_icon_filepath = (
+            sys_paths.get_barks_reader_refresh_arrow_icon_file()
+        )
+        self.action_bar_settings_icon_filepath = sys_paths.get_barks_reader_settings_icon_file()
+        self.action_bar_goto_icon_filepath = sys_paths.get_barks_reader_goto_icon_file()
 
     def on_loading_data_popup_open(self) -> None:
         self.set_new_loading_data_popup_image()
@@ -633,7 +636,9 @@ class MainScreen(BoxLayout, Screen):
         logging.debug(f'Setting title to "{self.fanta_info.comic_book_info.get_title_str()}".')
 
         if title_image_file:
-            title_image_file = get_edited_version_if_possible(title_image_file)[0]
+            title_image_file = self.reader_settings.file_paths.get_edited_version_if_possible(
+                title_image_file
+            )[0]
             logging.debug(f'Using provided title image file "{title_image_file}".')
         else:
             title_image_file = self.random_title_images.get_random_image_for_title(
@@ -647,7 +652,7 @@ class MainScreen(BoxLayout, Screen):
         self.main_title_text = self.get_main_title_str()
         self.title_info_text = self.formatter.get_title_info(self.fanta_info)
         self.extra_title_info_text = self.formatter.get_extra_title_info(self.fanta_info)
-        self.title_page_image_source = get_comic_inset_file(
+        self.title_page_image_source = self.reader_settings.file_paths.get_comic_inset_file(
             self.fanta_info.comic_book_info.title, use_edited_only=True
         )
         logging.debug(f'Using title image source "{self.title_page_image_source}".')
@@ -672,7 +677,9 @@ class MainScreen(BoxLayout, Screen):
         self.comic_page_info = get_comic_page_info(comic)
         page_to_first_goto = self.get_page_to_first_goto()
 
-        comic_book_image_builder = ComicBookImageBuilder(comic, get_empty_page_file())
+        comic_book_image_builder = ComicBookImageBuilder(
+            comic, self.reader_settings.sys_file_paths.get_empty_page_file()
+        )
         comic_book_image_builder.set_required_dim(self.comic_page_info.required_dim)
 
         logging.debug(f'Image "{self.title_page_image_source}" pressed.')

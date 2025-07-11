@@ -19,11 +19,11 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_GG,
     SERIES_MISC,
 )
-from file_paths import get_comic_inset_file
 from filtered_title_lists import FilteredTitleLists
 from random_title_images import RandomTitleImages, ImageInfo, FileTypes, FIT_MODE_COVER
 from reader_colors import RandomColorTint
 from reader_consts_and_types import Color
+from reader_settings import ReaderSettings
 from reader_utils import get_formatted_color
 
 TOP_VIEW_IMAGE_TYPES = {
@@ -68,10 +68,12 @@ class BackgroundViews:
 
     def __init__(
         self,
+        reader_settings: ReaderSettings,
         all_fanta_titles: FantaComicBookInfoDict,
         title_lists: Dict[str, List[FantaComicBookInfo]],
         random_title_images: RandomTitleImages,
     ):
+        self.reader_settings = reader_settings
         self.all_fanta_titles = all_fanta_titles
         self.title_lists = title_lists
         self.random_title_images = random_title_images
@@ -280,11 +282,15 @@ class BackgroundViews:
 
     def __set_initial_top_view_image(self):
         title = Titles.COLD_BARGAIN_A
-        self.__top_view_image_info = ImageInfo(get_comic_inset_file(title), title, FIT_MODE_COVER)
+        self.__top_view_image_info = ImageInfo(
+            self.reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
+        )
 
     def __set_top_view_image_for_intro(self):
         title = Titles.ADVENTURE_DOWN_UNDER
-        self.__top_view_image_info = ImageInfo(get_comic_inset_file(title), title, FIT_MODE_COVER)
+        self.__top_view_image_info = ImageInfo(
+            self.reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
+        )
 
     def __set_top_view_image_for_stories(self):
         self.__top_view_image_info = self.__get_top_view_random_image(self.title_lists[ALL_LISTS])
@@ -315,7 +321,7 @@ class BackgroundViews:
         if not self.__current_category:
             title = Titles.GOOD_NEIGHBORS
             self.__top_view_image_info = ImageInfo(
-                get_comic_inset_file(title), title, FIT_MODE_COVER
+                self.reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
             )
         else:
             self.__top_view_image_info = self.__get_top_view_random_image(
@@ -327,7 +333,7 @@ class BackgroundViews:
         if not self.__current_tag:
             title = Titles.GOOD_NEIGHBORS
             self.__top_view_image_info = ImageInfo(
-                get_comic_inset_file(title), title, FIT_MODE_COVER
+                self.reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
             )
         else:
             fanta_title_list = self.__get_fanta_title_list(BARKS_TAGGED_TITLES[self.__current_tag])
@@ -338,7 +344,7 @@ class BackgroundViews:
         if not self.__current_year_range:
             title = Titles.GOOD_NEIGHBORS
             self.__top_view_image_info = ImageInfo(
-                get_comic_inset_file(title), title, FIT_MODE_COVER
+                self.reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
             )
         else:
             self.__top_view_image_info = self.__get_top_view_random_image(
@@ -350,7 +356,7 @@ class BackgroundViews:
         if not self.__current_cs_year_range:
             title = Titles.GOOD_NEIGHBORS
             self.__top_view_image_info = ImageInfo(
-                get_comic_inset_file(title), title, FIT_MODE_COVER
+                self.reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
             )
         else:
             cs_range = FilteredTitleLists.get_cs_range_str_from_str(self.__current_cs_year_range)
@@ -364,7 +370,7 @@ class BackgroundViews:
         if not self.__current_us_year_range:
             title = Titles.BACK_TO_THE_KLONDIKE
             self.__top_view_image_info = ImageInfo(
-                get_comic_inset_file(title), title, FIT_MODE_COVER
+                self.reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
             )
         else:
             us_range = FilteredTitleLists.get_us_range_str_from_str(self.__current_us_year_range)
@@ -383,11 +389,15 @@ class BackgroundViews:
 
     def __set_top_view_image_for_appendix(self):
         title = Titles.FABULOUS_PHILOSOPHERS_STONE_THE
-        self.__top_view_image_info = ImageInfo(get_comic_inset_file(title), title, FIT_MODE_COVER)
+        self.__top_view_image_info = ImageInfo(
+            self.reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
+        )
 
     def __set_top_view_image_for_index(self):
         title = Titles.TRUANT_OFFICER_DONALD
-        self.__top_view_image_info = ImageInfo(get_comic_inset_file(title), title, FIT_MODE_COVER)
+        self.__top_view_image_info = ImageInfo(
+            self.reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
+        )
 
     def __set_top_view_image_color(self):
         self.__top_view_image_color = self.__top_view_image_random_color_tint.get_random_color()

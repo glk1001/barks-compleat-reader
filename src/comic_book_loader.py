@@ -23,7 +23,6 @@ from barks_fantagraphics.pil_image_utils import open_pil_image_for_reading
 from build_comic_images import ComicBookImageBuilder
 from comic_book_page_info import PageInfo
 from fantagraphics_volumes import FantagraphicsVolumeArchives, FantagraphicsArchive
-from file_paths import get_empty_page_file
 from reader_settings import ReaderSettings
 from reader_utils import is_blank_page, is_title_page
 
@@ -76,7 +75,7 @@ class ComicBookLoader:
         self.__on_all_images_loaded: Callable[[], None] = on_all_images_loaded
         self.__on_load_error = on_load_error
 
-        with open(get_empty_page_file(), "rb") as file:
+        with open(self.__reader_settings.sys_file_paths.get_empty_page_file(), "rb") as file:
             self.__empty_page_image = file.read()
 
     def load_data(self) -> None:
@@ -290,7 +289,7 @@ class ComicBookLoader:
         if is_title_page(page_info.srce_page) or is_blank_page(
             page_info.srce_page.page_filename, page_info.page_type
         ):
-            return Path(get_empty_page_file()), False
+            return Path(self.__reader_settings.sys_file_paths.get_empty_page_file()), False
 
         page_str = Path(page_info.srce_page.page_filename).stem
 

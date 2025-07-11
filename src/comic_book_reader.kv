@@ -12,14 +12,14 @@
                 id: action_title
                 title: "test title" # Will be set dynamically
                 with_previous: False
-                app_icon: root.APP_ICON_FILE
+                app_icon: root.app_icon_filepath
 
             ActionOverflow:
 
             ActionButton:
                 id: close_button
                 text: "Close"
-                icon: root.ACTION_BAR_CLOSE_ICON
+                icon: root.action_bar_close_icon_filepath
                 mipmap: True
                 important: True
                 draggable: False
@@ -28,7 +28,7 @@
             ActionButton:
                 id: fullscreen_button
                 text: "Fullscreen"
-                icon: root.ACTION_BAR_FULLSCREEN_ICON
+                icon: root.action_bar_fullscreen_filepath
                 mipmap: True
                 important: True
                 draggable: False
@@ -39,7 +39,7 @@
             ActionButton:
                 id: goto_start_page_button
                 text: "Goto Start"
-                icon: root.ACTION_BAR_GOTO_START_ICON
+                icon: root.action_bar_goto_start_filepath
                 mipmap: True
                 draggable: False
                 on_press: root.comic_book_reader_widget.goto_start_page(self)
@@ -47,7 +47,7 @@
             ActionButton:
                 id: goto_last_page_button
                 text: "Goto End"
-                icon: root.ACTION_BAR_GOTO_END_ICON
+                icon: root.action_bar_goto_end_filepath
                 mipmap: True
                 draggable: False
                 on_press: root.comic_book_reader_widget.goto_last_page(self)
@@ -55,7 +55,7 @@
             ActionButton:
                 id: goto_page_button
                 text: "Goto Page"
-                icon: root.ACTION_BAR_GOTO_ICON
+                icon: root.action_bar_goto_icon_filepath
                 mipmap: True
                 draggable: False
                 on_press: root.comic_book_reader_widget.goto_page(self)

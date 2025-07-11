@@ -5,19 +5,14 @@ from typing import Any, Dict, Callable
 from kivy.config import ConfigParser
 from kivy.uix.settings import Settings
 
-import file_paths
-from file_paths import (
-    BarksPanelsExtType,
-    get_default_fanta_volume_archives_root_dir,
-    get_default_prebuilt_comic_zips_dir,
-    get_default_png_barks_panels_dir,
-    get_default_jpg_barks_panels_dir,
-)
+from reader_file_paths import ReaderFilePaths, BarksPanelsExtType, DEFAULT_BARKS_READER_FILES_DIR
+from system_file_paths import SystemFilePaths
 
 HOME_DIR = os.environ.get("HOME")
 
 BARKS_READER_SECTION = "Barks Reader"
 
+READER_FILES_DIR = "reader_files_dir"
 FANTA_DIR = "fanta_dir"
 PREBUILT_COMICS_DIR = "prebuilt_dir"
 PNG_BARKS_PANELS_DIR = "png_barks_panels_dir"
@@ -28,6 +23,13 @@ USE_PREBUILT_COMICS = "use_prebuilt_comics"
 _READER_SETTINGS_JSON = f"""
 [
    {{  "type": "title", "title": "Folders" }},
+   {{
+      "title": "Reader Files Directory",
+      "desc": "Directory containing all the required Barks Reader files",
+      "type": "path",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{READER_FILES_DIR}"
+   }},
    {{
       "title": "Fantagraphics Directory",
       "desc": "Directory containing the Fantagraphics comic zips",
@@ -78,8 +80,11 @@ _READER_SETTINGS_JSON = f"""
 class ReaderSettings:
     def __init__(self):
         self.__config = None
+        self.__reader_file_paths: ReaderFilePaths = ReaderFilePaths()
+        self.__reader_sys_file_paths: SystemFilePaths = SystemFilePaths()
 
         self.VALIDATION_METHODS: Dict[str, Callable[[str], bool]] = {
+            READER_FILES_DIR: self.is_valid_reader_files_dir,
             FANTA_DIR: self.is_valid_fantagraphics_volumes_dir,
             PNG_BARKS_PANELS_DIR: self.is_valid_png_barks_panels_dir,
             JPG_BARKS_PANELS_DIR: self.is_valid_jpg_barks_panels_dir,
@@ -88,6 +93,7 @@ class ReaderSettings:
             USE_PREBUILT_COMICS: self.is_valid_use_prebuilt_archives,
         }
         self.GETTER_METHODS = {
+            READER_FILES_DIR: self.__get_reader_files_dir,
             FANTA_DIR: self.__get_fantagraphics_volumes_dir,
             PNG_BARKS_PANELS_DIR: self.__get_png_barks_panels_dir,
             JPG_BARKS_PANELS_DIR: self.__get_jpg_barks_panels_dir,
@@ -107,11 +113,12 @@ class ReaderSettings:
         config.setdefaults(
             BARKS_READER_SECTION,
             {
-                FANTA_DIR: get_default_fanta_volume_archives_root_dir(),
-                PNG_BARKS_PANELS_DIR: get_default_png_barks_panels_dir(),
-                JPG_BARKS_PANELS_DIR: get_default_jpg_barks_panels_dir(),
+                READER_FILES_DIR: DEFAULT_BARKS_READER_FILES_DIR,
+                FANTA_DIR: ReaderFilePaths.get_default_fanta_volume_archives_root_dir(),
+                PNG_BARKS_PANELS_DIR: ReaderFilePaths.get_default_png_barks_panels_dir(),
+                JPG_BARKS_PANELS_DIR: ReaderFilePaths.get_default_jpg_barks_panels_dir(),
                 USE_PNG_IMAGES: True,
-                PREBUILT_COMICS_DIR: get_default_prebuilt_comic_zips_dir(),
+                PREBUILT_COMICS_DIR: ReaderFilePaths.get_default_prebuilt_comic_zips_dir(),
                 USE_PREBUILT_COMICS: False,
             },
         )
@@ -132,52 +139,45 @@ class ReaderSettings:
             return False
 
         if key in [PNG_BARKS_PANELS_DIR, JPG_BARKS_PANELS_DIR]:
-            file_paths.set_barks_panels_dir(
-                value,
-                self.barks_panels_ext_type,
-            )
+            self.__reader_file_paths.set_barks_panels_dir(value, self.__get_barks_panels_ext_type())
         elif key == USE_PNG_IMAGES:
             if value:
-                file_paths.set_barks_panels_dir(
-                    self.png_barks_panels_dir, BarksPanelsExtType.MOSTLY_PNG
+                self.__reader_file_paths.set_barks_panels_dir(
+                    self.__get_png_barks_panels_dir(), BarksPanelsExtType.MOSTLY_PNG
                 )
             else:
-                file_paths.set_barks_panels_dir(self.jpg_barks_panels_dir, BarksPanelsExtType.JPG)
+                self.__reader_file_paths.set_barks_panels_dir(
+                    self.__get_jpg_barks_panels_dir(), BarksPanelsExtType.JPG
+                )
 
         return True
 
     @property
-    def fantagraphics_volumes_dir(self) -> str:
-        return self.__get_fantagraphics_volumes_dir()
+    def file_paths(self) -> ReaderFilePaths:
+        return self.__reader_file_paths
 
-    def __get_fantagraphics_volumes_dir(self) -> str:
-        return self.__config.get(BARKS_READER_SECTION, FANTA_DIR)
+    @property
+    def sys_file_paths(self) -> SystemFilePaths:
+        return self.__reader_sys_file_paths
+
+    def set_barks_reader_files_dir(self, reader_files_dir: str) -> None:
+        self.__reader_sys_file_paths.set_barks_reader_files_dir(reader_files_dir)
 
     def set_barks_panels_dir(self) -> None:
         if self.__get_use_png_images():
-            file_paths.set_barks_panels_dir(
-                self.png_barks_panels_dir, BarksPanelsExtType.MOSTLY_PNG
+            self.__reader_file_paths.set_barks_panels_dir(
+                self.__get_png_barks_panels_dir(), BarksPanelsExtType.MOSTLY_PNG
             )
         else:
-            file_paths.set_barks_panels_dir(self.jpg_barks_panels_dir, BarksPanelsExtType.JPG)
-
-    @property
-    def png_barks_panels_dir(self) -> str:
-        return self.__get_png_barks_panels_dir()
+            self.__reader_file_paths.set_barks_panels_dir(
+                self.__get_jpg_barks_panels_dir(), BarksPanelsExtType.JPG
+            )
 
     def __get_png_barks_panels_dir(self) -> str:
         return self.__config.get(BARKS_READER_SECTION, PNG_BARKS_PANELS_DIR)
 
-    @property
-    def jpg_barks_panels_dir(self) -> str:
-        return self.__get_jpg_barks_panels_dir()
-
     def __get_jpg_barks_panels_dir(self) -> str:
         return self.__config.get(BARKS_READER_SECTION, JPG_BARKS_PANELS_DIR)
-
-    @property
-    def barks_panels_ext_type(self) -> BarksPanelsExtType:
-        return self.__get_barks_panels_ext_type()
 
     def __get_barks_panels_ext_type(self) -> BarksPanelsExtType:
         return self.__get_barks_panels_ext_type_from_bool(self.__get_use_png_images())
@@ -188,6 +188,20 @@ class ReaderSettings:
 
     def __get_use_png_images(self) -> bool:
         return self.__config.getboolean(BARKS_READER_SECTION, USE_PNG_IMAGES)
+
+    @property
+    def reader_files_dir(self) -> str:
+        return self.__get_reader_files_dir()
+
+    def __get_reader_files_dir(self) -> str:
+        return self.__config.get(BARKS_READER_SECTION, READER_FILES_DIR)
+
+    @property
+    def fantagraphics_volumes_dir(self) -> str:
+        return self.__get_fantagraphics_volumes_dir()
+
+    def __get_fantagraphics_volumes_dir(self) -> str:
+        return self.__config.get(BARKS_READER_SECTION, FANTA_DIR)
 
     @property
     def prebuilt_comics_dir(self) -> str:
@@ -203,26 +217,11 @@ class ReaderSettings:
     def __get_use_prebuilt_archives(self) -> bool:
         return self.__config.getboolean(BARKS_READER_SECTION, USE_PREBUILT_COMICS)
 
+    def is_valid_reader_files_dir(self, dir_path: str) -> bool:
+        return self.__is_valid_dir(dir_path)
+
     def is_valid_fantagraphics_volumes_dir(self, dir_path: str) -> bool:
         return self.__is_valid_dir(dir_path)
-
-    def is_valid_png_barks_panels_dir(self, dir_path: str) -> bool:
-        return self.__is_valid_dir(dir_path)
-
-    def is_valid_jpg_barks_panels_dir(self, dir_path: str) -> bool:
-        return self.__is_valid_dir(dir_path)
-
-    def is_valid_png_story_insets_dir(self, dir_path: str) -> bool:
-        return self.__is_valid_dir(dir_path)
-
-    def is_valid_jpg_story_insets_dir(self, dir_path: str) -> bool:
-        return self.__is_valid_dir(dir_path)
-
-    def is_valid_use_png_images(self, use_png_images: bool) -> bool:
-        if use_png_images:
-            return self.is_valid_png_barks_panels_dir(self.png_barks_panels_dir)
-
-        return self.is_valid_jpg_barks_panels_dir(self.jpg_barks_panels_dir)
 
     def is_valid_prebuilt_comics_dir(self, dir_path: str) -> bool:
         return self.__is_valid_dir(dir_path)
@@ -232,6 +231,18 @@ class ReaderSettings:
             return True
 
         return self.is_valid_prebuilt_comics_dir(self.prebuilt_comics_dir)
+
+    def is_valid_png_barks_panels_dir(self, dir_path: str) -> bool:
+        return self.__is_valid_dir(dir_path)
+
+    def is_valid_jpg_barks_panels_dir(self, dir_path: str) -> bool:
+        return self.__is_valid_dir(dir_path)
+
+    def is_valid_use_png_images(self, use_png_images: bool) -> bool:
+        if use_png_images:
+            return self.is_valid_png_barks_panels_dir(self.__get_png_barks_panels_dir())
+
+        return self.is_valid_jpg_barks_panels_dir(self.__get_jpg_barks_panels_dir())
 
     @staticmethod
     def __is_valid_dir(dir_path: str) -> bool:

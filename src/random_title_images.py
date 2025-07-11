@@ -7,20 +7,8 @@ from typing import List, Callable, Union, Set, Tuple, Dict
 
 from barks_fantagraphics.barks_titles import Titles, BARKS_TITLES
 from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
-from file_paths import (
-    EMERGENCY_INSET_FILE,
-    get_comic_inset_file,
-    get_comic_cover_file,
-    get_comic_splash_files,
-    get_comic_silhouette_files,
-    get_comic_censorship_files,
-    get_comic_favourite_files,
-    get_comic_original_art_files,
-    get_comic_search_files,
-    get_comic_inset_files,
-    get_nontitle_files,
-)
-from file_paths import get_edited_version_if_possible
+from reader_file_paths import EMERGENCY_INSET_FILE
+from reader_settings import ReaderSettings
 from reader_utils import prob_rand_less_equal
 
 NUM_RAND_ATTEMPTS = 10
@@ -63,17 +51,8 @@ class ImageInfo:
 
 
 class RandomTitleImages:
-    __FILE_TYPE_GETTERS = {
-        FileTypes.COVER: get_comic_cover_file,  # Special case: returns single string or None
-        FileTypes.CENSORSHIP: get_comic_censorship_files,
-        FileTypes.FAVOURITE: get_comic_favourite_files,
-        FileTypes.INSET: get_comic_inset_files,
-        FileTypes.ORIGINAL_ART: get_comic_original_art_files,
-        FileTypes.SILHOUETTE: get_comic_silhouette_files,
-        FileTypes.SPLASH: get_comic_splash_files,
-    }
-
-    def __init__(self):
+    def __init__(self, reader_settings: ReaderSettings):
+        self.__reader_settings = reader_settings
         self.title_image_files: Dict[str, Dict[FileTypes, Set[Tuple[str, bool]]]] = defaultdict(
             lambda: defaultdict(set)
         )
@@ -81,6 +60,17 @@ class RandomTitleImages:
         self.most_recently_used_images: deque[str] = deque(maxlen=MAX_IMAGE_FILENAMES_TO_KEEP)
         self.last_title_image: Dict[str, str] = {}
         self.__nontitle_files = self.__get_nontitle_files()
+
+        self.__FILE_TYPE_GETTERS: Dict[FileTypes, Callable[[str, bool], str]] = {
+            # COVER special case: returns single string or None
+            FileTypes.COVER: self.__reader_settings.file_paths.get_comic_cover_file,
+            FileTypes.CENSORSHIP: self.__reader_settings.file_paths.get_comic_censorship_files,
+            FileTypes.FAVOURITE: self.__reader_settings.file_paths.get_comic_favourite_files,
+            FileTypes.INSET: self.__reader_settings.file_paths.get_comic_inset_files,
+            FileTypes.ORIGINAL_ART: self.__reader_settings.file_paths.get_comic_original_art_files,
+            FileTypes.SILHOUETTE: self.__reader_settings.file_paths.get_comic_silhouette_files,
+            FileTypes.SPLASH: self.__reader_settings.file_paths.get_comic_splash_files,
+        }
 
     def add_last_image(self, image_filename: str) -> None:
         self.most_recently_used_images.append(image_filename)
@@ -90,7 +80,9 @@ class RandomTitleImages:
         title = SEARCH_TITLES[title_index]
 
         return ImageInfo(
-            self.__get_random_comic_file(BARKS_TITLES[title], get_comic_search_files, False),
+            self.__get_random_comic_file(
+                BARKS_TITLES[title], self.__reader_settings.file_paths.get_comic_search_files, False
+            ),
             title,
             FIT_MODE_COVER,
         )
@@ -124,7 +116,7 @@ class RandomTitleImages:
             title_str, file_types, use_edited_only
         )
         if not possible_images:
-            return get_comic_inset_file(EMERGENCY_INSET_FILE)
+            return self.__reader_settings.file_paths.get_comic_inset_file(EMERGENCY_INSET_FILE)
 
         # Try to find an image not recently used for this title.
         preferred_images = [
@@ -155,7 +147,9 @@ class RandomTitleImages:
         if not title_list:
             # Handle empty title list gracefully
             return ImageInfo(
-                get_comic_inset_file(EMERGENCY_INSET_FILE), Titles.GOOD_NEIGHBORS, FIT_MODE_COVER
+                self.__reader_settings.file_paths.get_comic_inset_file(EMERGENCY_INSET_FILE),
+                Titles.GOOD_NEIGHBORS,
+                FIT_MODE_COVER,
             )
 
         actual_file_types = ALL_TYPES if file_types is None else file_types
@@ -225,7 +219,9 @@ class RandomTitleImages:
         # Fallback if all attempts fail,
         logging.warning("Failed to find a suitable random image after multiple attempts.")
         return ImageInfo(
-            get_comic_inset_file(EMERGENCY_INSET_FILE), Titles.GOOD_NEIGHBORS, FIT_MODE_COVER
+            self.__reader_settings.file_paths.get_comic_inset_file(EMERGENCY_INSET_FILE),
+            Titles.GOOD_NEIGHBORS,
+            FIT_MODE_COVER,
         )
 
     def __get_fit_mode(self, use_random_fit_mode: bool) -> str:
@@ -238,13 +234,14 @@ class RandomTitleImages:
     def __get_random_fit_mode() -> str:
         return FIT_MODE_COVER if prob_rand_less_equal(50) else FIT_MODE_CONTAIN
 
-    @staticmethod
     def __get_better_fitting_image_if_possible(
-        image_filename: str, fit_mode: str, file_type_enum: FileTypes
+        self, image_filename: str, fit_mode: str, file_type_enum: FileTypes
     ) -> Tuple[str, str]:
         # If it's a cover image, and kivy fit_mode is 'cover', then try to use an edited image.
         if (file_type_enum == FileTypes.COVER) and (fit_mode == FIT_MODE_COVER):
-            image_filename, is_edited = get_edited_version_if_possible(image_filename)
+            image_filename, is_edited = (
+                self.__reader_settings.file_paths.get_edited_version_if_possible(image_filename)
+            )
             if is_edited:
                 return image_filename, fit_mode
             return image_filename, FIT_MODE_CONTAIN
@@ -263,9 +260,11 @@ class RandomTitleImages:
 
         return possible_files
 
-    @staticmethod
-    def __get_nontitle_files() -> List[Tuple[str, FileTypes]]:
-        return [(file, FileTypes.NONTITLE) for file in get_nontitle_files()]
+    def __get_nontitle_files(self) -> List[Tuple[str, FileTypes]]:
+        return [
+            (file, FileTypes.NONTITLE)
+            for file in self.__reader_settings.file_paths.get_nontitle_files()
+        ]
 
     # Inside RandomTitleImages class
     def __update_comic_files(self, title_str: str) -> None:

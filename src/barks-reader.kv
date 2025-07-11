@@ -64,7 +64,7 @@
             ActionPrevious:
                 title: app.title
                 color: root.ACTION_BAR_TITLE_COLOR
-                app_icon: root.APP_ICON_FILE
+                app_icon: root.app_icon_filepath
                 with_previous: False
 
             ActionOverflow:
@@ -73,28 +73,28 @@
 
             ActionButton:
                 text: 'Quit'
-                icon: root.ACTION_BAR_CLOSE_ICON
+                icon: root.action_bar_close_icon_filepath
                 mipmap: True
                 draggable: False
                 on_release: app.on_action_bar_quit()
 
             ActionButton:
                 text: 'Collapse'
-                icon: root.ACTION_BAR_COLLAPSE_ICON
+                icon: root.action_bar_collapse_icon_filepath
                 mipmap: True
                 draggable: False
                 on_release: root.on_action_bar_collapse()
 
             ActionButton:
                 text: 'Change Pics'
-                icon: root.ACTION_BAR_CHANGE_PICS_ICON
+                icon: root.action_bar_change_pics_icon_filepath
                 mipmap: True
                 draggable: False
                 on_release: root.on_action_bar_change_view_images()
 
             ActionButton:
                 text: 'Settings'
-                icon: root.ACTION_BAR_SETTINGS_ICON
+                icon: root.action_bar_settings_icon_filepath
                 mipmap: True
                 draggable: False
                 on_release: app.show_settings(self)
@@ -102,7 +102,7 @@
             ActionGroup:
                 text: "Goto"
                 # icon not working. Why??
-                icon: root.ACTION_BAR_GOTO_ICON
+                icon: root.action_bar_goto_icon_filepath
                 draggable: False
                 mode: "spinner"
                 mipmap: True
@@ -484,7 +484,7 @@
                         text_size: (self.width, self.height)
 
                         Image:
-                            source: root.UP_ARROW_FILE
+                            source: root.up_arrow_filepath
                             color: (1, 1, 1, 1)
                             y: self.parent.y
                             x: self.parent.x

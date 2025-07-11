@@ -8,7 +8,7 @@ from kivy.core.image import Image as CoreImage
 from kivy.core.window import Window
 from kivy.lang import Builder
 from kivy.metrics import dp
-from kivy.properties import NumericProperty
+from kivy.properties import NumericProperty, StringProperty
 from kivy.uix.actionbar import ActionBar, ActionButton
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -23,26 +23,15 @@ from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 from build_comic_images import ComicBookImageBuilder
 from comic_book_loader import ComicBookLoader
 from comic_book_page_info import PageInfo
-from file_paths import (
-    get_barks_reader_close_icon_file,
-    get_barks_reader_fullscreen_icon_file,
-    get_barks_reader_app_icon_file,
-    get_barks_reader_goto_start_icon_file,
-    get_barks_reader_goto_end_icon_file,
-    get_barks_reader_fullscreen_exit_icon_file,
-    get_barks_reader_goto_icon_file,
-)
 from reader_consts_and_types import ACTION_BAR_SIZE_Y
 from reader_settings import ReaderSettings
+from system_file_paths import SystemFilePaths
 
 GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT = 0.97
 GOTO_PAGE_BUTTON_HEIGHT = dp(25)
 GOTO_PAGE_BUTTON_BODY_COLOR = (0, 1, 1, 1)
 GOTO_PAGE_BUTTON_NONBODY_COLOR = (0, 0.5, 0.5, 1)
 GOTO_PAGE_BUTTON_CURRENT_PAGE_COLOR = (1, 1, 0, 1)
-
-APP_ACTION_BAR_FULLSCREEN_ICON = get_barks_reader_fullscreen_icon_file()
-APP_ACTION_BAR_FULLSCREEN_EXIT_ICON = get_barks_reader_fullscreen_exit_icon_file()
 
 
 class ComicBookReader(BoxLayout):
@@ -69,8 +58,12 @@ class ComicBookReader(BoxLayout):
         self.goto_page_widget = goto_page_widget
 
         self.action_bar = None
-        self.__action_bar_fullscreen_icon = APP_ACTION_BAR_FULLSCREEN_ICON
-        self.__action_bar_fullscreen_exit_icon = APP_ACTION_BAR_FULLSCREEN_EXIT_ICON
+        self.__action_bar_fullscreen_icon = (
+            self.__reader_settings.sys_file_paths.get_barks_reader_fullscreen_icon_file()
+        )
+        self.__action_bar_fullscreen_exit_icon = (
+            self.__reader_settings.sys_file_paths.get_barks_reader_fullscreen_exit_icon_file()
+        )
         self.current_comic_path = ""
 
         self.orientation = "vertical"
@@ -441,18 +434,31 @@ class ComicBookReader(BoxLayout):
 
 
 class ComicBookReaderScreen(BoxLayout, Screen):
-    APP_ICON_FILE = get_barks_reader_app_icon_file()
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
-    ACTION_BAR_CLOSE_ICON = get_barks_reader_close_icon_file()
-    ACTION_BAR_FULLSCREEN_ICON = APP_ACTION_BAR_FULLSCREEN_ICON
-    ACTION_BAR_FULLSCREEN_EXIT_ICON = APP_ACTION_BAR_FULLSCREEN_EXIT_ICON
-    ACTION_BAR_GOTO_ICON = get_barks_reader_goto_icon_file()
-    ACTION_BAR_GOTO_START_ICON = get_barks_reader_goto_start_icon_file()
-    ACTION_BAR_GOTO_END_ICON = get_barks_reader_goto_end_icon_file()
+    app_icon_filepath = StringProperty()
+    action_bar_close_icon_filepath = StringProperty()
+    action_bar_fullscreen_filepath = StringProperty()
+    action_bar_fullscreen_exit_filepath = StringProperty()
+    action_bar_goto_icon_filepath = StringProperty()
+    action_bar_goto_start_filepath = StringProperty()
+    action_bar_goto_end_filepath = StringProperty()
 
-    def __init__(self, **kwargs):
+    def __init__(self, reader_settings: ReaderSettings, **kwargs):
         super().__init__(**kwargs)
         self.comic_book_reader_widget = None
+
+        self.set_action_bar_icons(reader_settings.sys_file_paths)
+
+    def set_action_bar_icons(self, sys_paths: SystemFilePaths):
+        self.app_icon_filepath = sys_paths.get_barks_reader_app_icon_file()
+        self.action_bar_close_icon_filepath = sys_paths.get_barks_reader_close_icon_file()
+        self.action_bar_fullscreen_filepath = sys_paths.get_barks_reader_fullscreen_icon_file()
+        self.action_bar_fullscreen_exit_filepath = (
+            sys_paths.get_barks_reader_fullscreen_exit_icon_file()
+        )
+        self.action_bar_goto_icon_filepath = sys_paths.get_barks_reader_goto_icon_file()
+        self.action_bar_goto_start_filepath = sys_paths.get_barks_reader_goto_start_icon_file()
+        self.action_bar_goto_end_filepath = sys_paths.get_barks_reader_goto_end_icon_file()
 
     def add_reader_widget(self, comic_book_reader_widget: ComicBookReader):
         self.comic_book_reader_widget = comic_book_reader_widget
@@ -470,7 +476,7 @@ def get_barks_comic_reader(
 ):
     Builder.load_file(KV_FILE)
 
-    root = ComicBookReaderScreen(name=screen_name)
+    root = ComicBookReaderScreen(reader_settings, name=screen_name)
 
     comic_book_reader_widget = ComicBookReader(
         reader_settings, on_comic_is_ready_to_read, on_close_reader, root.ids.goto_page_button
