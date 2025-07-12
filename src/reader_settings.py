@@ -12,8 +12,8 @@ HOME_DIR = os.environ.get("HOME")
 
 BARKS_READER_SECTION = "Barks Reader"
 
-READER_FILES_DIR = "reader_files_dir"
 FANTA_DIR = "fanta_dir"
+READER_FILES_DIR = "reader_files_dir"
 PREBUILT_COMICS_DIR = "prebuilt_dir"
 PNG_BARKS_PANELS_DIR = "png_barks_panels_dir"
 JPG_BARKS_PANELS_DIR = "jpg_barks_panels_dir"
@@ -24,18 +24,18 @@ _READER_SETTINGS_JSON = f"""
 [
    {{  "type": "title", "title": "Folders" }},
    {{
-      "title": "Reader Files Directory",
-      "desc": "Directory containing all the required Barks Reader files",
-      "type": "path",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{READER_FILES_DIR}"
-   }},
-   {{
       "title": "Fantagraphics Directory",
       "desc": "Directory containing the Fantagraphics comic zips",
       "type": "path",
       "section": "{BARKS_READER_SECTION}",
       "key": "{FANTA_DIR}"
+   }},
+   {{
+      "title": "Reader Files Directory",
+      "desc": "Directory containing all the required Barks Reader files",
+      "type": "path",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{READER_FILES_DIR}"
    }},
    {{
       "title": "Prebuilt Comics Directory",
@@ -84,8 +84,8 @@ class ReaderSettings:
         self.__reader_sys_file_paths: SystemFilePaths = SystemFilePaths()
 
         self.VALIDATION_METHODS: Dict[str, Callable[[str], bool]] = {
-            READER_FILES_DIR: self.is_valid_reader_files_dir,
             FANTA_DIR: self.is_valid_fantagraphics_volumes_dir,
+            READER_FILES_DIR: self.is_valid_reader_files_dir,
             PNG_BARKS_PANELS_DIR: self.is_valid_png_barks_panels_dir,
             JPG_BARKS_PANELS_DIR: self.is_valid_jpg_barks_panels_dir,
             USE_PNG_IMAGES: self.is_valid_use_png_images,
@@ -93,8 +93,8 @@ class ReaderSettings:
             USE_PREBUILT_COMICS: self.is_valid_use_prebuilt_archives,
         }
         self.GETTER_METHODS = {
-            READER_FILES_DIR: self.__get_reader_files_dir,
             FANTA_DIR: self.__get_fantagraphics_volumes_dir,
+            READER_FILES_DIR: self.__get_reader_files_dir,
             PNG_BARKS_PANELS_DIR: self.__get_png_barks_panels_dir,
             JPG_BARKS_PANELS_DIR: self.__get_jpg_barks_panels_dir,
             USE_PNG_IMAGES: self.__get_use_png_images,
@@ -113,8 +113,8 @@ class ReaderSettings:
         config.setdefaults(
             BARKS_READER_SECTION,
             {
-                READER_FILES_DIR: DEFAULT_BARKS_READER_FILES_DIR,
                 FANTA_DIR: ReaderFilePaths.get_default_fanta_volume_archives_root_dir(),
+                READER_FILES_DIR: DEFAULT_BARKS_READER_FILES_DIR,
                 PNG_BARKS_PANELS_DIR: ReaderFilePaths.get_default_png_barks_panels_dir(),
                 JPG_BARKS_PANELS_DIR: ReaderFilePaths.get_default_jpg_barks_panels_dir(),
                 USE_PNG_IMAGES: True,
@@ -190,18 +190,18 @@ class ReaderSettings:
         return self.__config.getboolean(BARKS_READER_SECTION, USE_PNG_IMAGES)
 
     @property
-    def reader_files_dir(self) -> str:
-        return self.__get_reader_files_dir()
-
-    def __get_reader_files_dir(self) -> str:
-        return self.__config.get(BARKS_READER_SECTION, READER_FILES_DIR)
-
-    @property
     def fantagraphics_volumes_dir(self) -> str:
         return self.__get_fantagraphics_volumes_dir()
 
     def __get_fantagraphics_volumes_dir(self) -> str:
         return self.__config.get(BARKS_READER_SECTION, FANTA_DIR)
+
+    @property
+    def reader_files_dir(self) -> str:
+        return self.__get_reader_files_dir()
+
+    def __get_reader_files_dir(self) -> str:
+        return self.__config.get(BARKS_READER_SECTION, READER_FILES_DIR)
 
     @property
     def prebuilt_comics_dir(self) -> str:
@@ -217,10 +217,10 @@ class ReaderSettings:
     def __get_use_prebuilt_archives(self) -> bool:
         return self.__config.getboolean(BARKS_READER_SECTION, USE_PREBUILT_COMICS)
 
-    def is_valid_reader_files_dir(self, dir_path: str) -> bool:
+    def is_valid_fantagraphics_volumes_dir(self, dir_path: str) -> bool:
         return self.__is_valid_dir(dir_path)
 
-    def is_valid_fantagraphics_volumes_dir(self, dir_path: str) -> bool:
+    def is_valid_reader_files_dir(self, dir_path: str) -> bool:
         return self.__is_valid_dir(dir_path)
 
     def is_valid_prebuilt_comics_dir(self, dir_path: str) -> bool:
