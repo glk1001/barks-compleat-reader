@@ -151,13 +151,14 @@ class MainScreen(BoxLayout, Screen):
     action_bar_settings_icon_filepath = StringProperty()
     action_bar_goto_icon_filepath = StringProperty()
 
-    MAIN_TITLE_BACKGROUND_COLOR = (1, 1, 1, 0.05)
+    MAIN_TITLE_BACKGROUND_COLOR = (0.01, 0.01, 0.01, 0.05)
     MAIN_TITLE_COLOR = (1, 1, 0, 1)
     MAIN_TITLE_FONT_NAME = "Carl Barks Script"
     main_title_text = StringProperty()
 
     TITLE_INFO_LABEL_COLOR = (1.0, 0.99, 0.9, 1.0)
     TITLE_EXTRA_INFO_LABEL_COLOR = (1.0, 1.0, 1.0, 1.0)
+    MAX_TITLE_INFO_LEN_BEFORE_SHORTEN = 36
     title_info_text = StringProperty()
     extra_title_info_text = StringProperty()
     title_page_image_source = StringProperty()
@@ -650,7 +651,9 @@ class MainScreen(BoxLayout, Screen):
         self.background_views.set_bottom_view_title_image_file(title_image_file)
 
         self.main_title_text = self.get_main_title_str()
-        self.title_info_text = self.formatter.get_title_info(self.fanta_info)
+        self.title_info_text = self.formatter.get_title_info(
+            self.fanta_info, self.MAX_TITLE_INFO_LEN_BEFORE_SHORTEN
+        )
         self.extra_title_info_text = self.formatter.get_extra_title_info(self.fanta_info)
         self.title_page_image_source = self.reader_settings.file_paths.get_comic_inset_file(
             self.fanta_info.comic_book_info.title, use_edited_only=True

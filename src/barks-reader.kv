@@ -1,13 +1,17 @@
 #: include reader-tree-view.kv
 
+<BarButton@ActionButton>:
+    mipmap: True
+    draggable: False
+
 <BackgroundColor@Widget>
     background_color: (1, 1, 1, 1)
     canvas.before:
         Color:
-            rgba: root.background_color
+            rgba: self.background_color
         Rectangle:
-            size: self.size
-            pos: self.pos
+            size: 1.1 * self.size[0], 1.1 * self.size[1]
+            pos: self.pos[0] - 0.05 * self.size[0], self.pos[1] - 0.05 * self.size[1]
 
 <BgColorLabel@Label+BackgroundColor>
     background_color: (0, 0, 0, 0)
@@ -71,32 +75,24 @@
 
             ActionSeparator:
 
-            ActionButton:
+            BarButton:
                 text: 'Quit'
                 icon: root.action_bar_close_icon_filepath
-                mipmap: True
-                draggable: False
                 on_release: app.on_action_bar_quit()
 
-            ActionButton:
+            BarButton:
                 text: 'Collapse'
                 icon: root.action_bar_collapse_icon_filepath
-                mipmap: True
-                draggable: False
                 on_release: root.on_action_bar_collapse()
 
-            ActionButton:
+            BarButton:
                 text: 'Change Pics'
                 icon: root.action_bar_change_pics_icon_filepath
-                mipmap: True
-                draggable: False
                 on_release: root.on_action_bar_change_view_images()
 
-            ActionButton:
+            BarButton:
                 text: 'Settings'
                 icon: root.action_bar_settings_icon_filepath
-                mipmap: True
-                draggable: False
                 on_release: app.show_settings(self)
 
             ActionGroup:
@@ -132,53 +128,49 @@
             anchor_x: "left"
             anchor_y: "bottom"
 
-            AnchorLayout:
-                anchor_x: "left"
-                anchor_y: "bottom"
+            Image:
+                color: root.top_view_image_color
+                opacity: root.top_view_image_opacity
+                source: root.top_view_image_source
+                width: root.view_width
+                height: root.view_height
+                fit_mode: root.top_view_image_fit_mode
+                mipmap: True
 
-                Image:
-                    color: root.top_view_image_color
-                    opacity: root.top_view_image_opacity
-                    source: root.top_view_image_source
+            BoxLayout:
+                orientation: "vertical"
+
+                # Vertical filler before scroll view.
+                Widget:
+                    size_hint_y: 0.02
+
+                ScrollView:
+                    id: scroll_view
                     width: root.view_width
                     height: root.view_height
-                    fit_mode: root.top_view_image_fit_mode
-                    mipmap: True
 
-                BoxLayout:
-                    orientation: "vertical"
+                    do_scroll_x: False
+                    do_scroll_y: True
+                    always_overscroll: False
+                    effect_cls: "ScrollEffect"
+                    scroll_type: ["bars", "content"]
 
-                    # Vertical filler before scroll view.
-                    Widget:
-                        size_hint_y: 0.02
+                    bar_color: (0.8, 0.8, 0.8, 1)
+                    bar_inactive_color: (0.8, 0.8, 0.8, 0.8)
+                    bar_width: dp(12)
 
-                    ScrollView:
-                        id: scroll_view
-                        width: root.view_width
-                        height: root.view_height
-
-                        do_scroll_x: False
-                        do_scroll_y: True
-                        always_overscroll: False
-                        effect_cls: "ScrollEffect"
-                        scroll_type: ["bars", "content"]
-
-                        bar_color: (0.8, 0.8, 0.8, 1)
-                        bar_inactive_color: (0.8, 0.8, 0.8, 0.8)
-                        bar_width: dp(12)
-
-                        ReaderTreeView:
-                            id: reader_tree_view
-                            padding: dp(50)
-                            indent_start: dp(50)
-                            background_color: (0,1,0,1)
-                            size_hint_y: None
-                            height: self.minimum_height
+                    ReaderTreeView:
+                        id: reader_tree_view
+                        padding: dp(50)
+                        indent_start: dp(50)
+                        background_color: (0,1,0,1)
+                        size_hint_y: None
+                        height: self.minimum_height
 
         # Bottom view
         AnchorLayout:
             anchor_x: "right"
-            anchor_y: "center"
+            anchor_y: "top"
 
             TextInput:
                 text: root.intro_text
@@ -189,273 +181,161 @@
                 width: root.view_width
                 height: root.view_height
 
+            # This is the main container for the title view.
             AnchorLayout:
+                id: bottom_title_view
+                # The anchor_y is now 'top' to prevent the content from being centered vertically.
+                # This is the primary fix for the layout being pushed down.
                 anchor_x: "center"
-                anchor_y: "center"
+                anchor_y: "top"
+                # The opacity controls this entire container.
+                opacity: root.bottom_view_title_opacity
+                padding_x: dp(0.03 * root.view_width)
+                spacing_y: dp(0.07 * root.view_height)
 
-                AnchorLayout:
-                    anchor_x: "center"
-                    anchor_y: "center"
-                    opacity: root.bottom_view_title_opacity
+                # The background image is now a direct child, simplifying the structure.
+                Image:
+                    color: root.bottom_view_title_image_color
+                    source: root.bottom_view_title_image_source
+                    x: self.parent.x
+                    y: self.parent.y
+                    width: root.view_width
+                    height: root.view_height
+                    fit_mode: root.bottom_view_title_image_fit_mode
+                    mipmap: True
 
-                    Image:
-                        color: root.bottom_view_title_image_color
-                        source: root.bottom_view_title_image_source
-                        x: self.parent.x
-                        y: self.parent.y
-                        width: root.view_width
-                        height: root.view_height
-                        fit_mode: root.bottom_view_title_image_fit_mode
-                        mipmap: True
+                # --- Two column layout with single column main title on top ---
+                BoxLayout:
+                    # This is the top-level container for all content.
+                    id: bottom_view_box
+                    orientation: 'vertical'
+                    padding: [bottom_title_view.padding_x, 0, 0, 0]
+                    spacing: bottom_title_view.spacing_y
 
-                    BoxLayout:
-                        orientation: "vertical"
-                        opacity: 1
-                        width: root.view_width
-                        height: root.view_height
+                    # --- Main Title (Full Width) ---
+                    # This takes only the height it needs.
+                    BgColorLabel:
+                        id: main_title_label
+                        text: root.main_title_text
+                        font_name: root.MAIN_TITLE_FONT_NAME
+                        font_size: app.MAIN_TITLE_FONT_SIZE
+                        color: root.MAIN_TITLE_COLOR
+                        background_color: root.MAIN_TITLE_BACKGROUND_COLOR
+                        bold: True
+                        size_hint: 1, 0.18
+                        text_size: self.width, None
+                        halign: 'center'
 
-                        BgColorLabel:
-                            text: "before title filler"
-                            background_color: (1, 0, 1, 1)
-                            opacity: root.DEBUG_BACKGROUND_OPACITY
-                            size_hint: (1, 0.0)
-                            text_size: (self.width, self.height)
+                    # --- Single RelativeLayout for all two column content below the title ---
+                    # This layout will fill the remaining vertical space.
+                    RelativeLayout:
+                        id: content_area
+                        size_hint: 1, 0.82
 
-                        BgColorLabel:
-                            text: root.main_title_text
-                            font_name: root.MAIN_TITLE_FONT_NAME
-                            font_size: app.MAIN_TITLE_FONT_SIZE
-                            color: root.MAIN_TITLE_COLOR
-                            background_color: root.MAIN_TITLE_BACKGROUND_COLOR
-                            bold: True
-                            multiline: True
-                            size_hint: (1, 0.23)
-                            pos_hint: {"y": 0.23}
-                            halign: "center"
-                            valign: "middle"
-                            text_size: (self.width, self.height)
-                            canvas.before:
-                                Color:
-                                    rgba: (0,0,1,0.1)
-                                Line:
-                                    width: 1.1
-                                    rectangle: self.x, self.y, self.width, self.height
-
-                        BgColorLabel:
-                            text: "after title filler"
-                            background_color: (1, 0, 1, 1)
-                            opacity: root.DEBUG_BACKGROUND_OPACITY
-                            size_hint: (1, 0.01)
-                            text_size: (self.width, self.height)
-
+                        # --- Left Column (as a positioned BoxLayout) ---
+                        # This layout holds the text and is forced to the top-left.
                         BoxLayout:
-                            orientation: "horizontal"
-                            background_color: (0, 1, 0, 0)
+                            id: title_info_box
+                            orientation: 'vertical'
+                            spacing: bottom_title_view.spacing_y
+                            size_hint: 0.56, 1.0
+                            pos_hint: {'x': 0, 'top': 1.0}
 
+                            BgColorLabel:
+                                id: title_info_label
+                                text: root.title_info_text
+                                font_size: app.TITLE_INFO_FONT_SIZE
+                                color: root.TITLE_INFO_LABEL_COLOR
+                                background_color:
+                                    (0, 1, 0, root.DEBUG_BACKGROUND_OPACITY) if root.DEBUG_BACKGROUND_OPACITY > 0 \
+                                    else (0.01, 0.01, 0.01, 0.1)
+                                markup: True
+                                size_hint_y: None
+                                height: self.texture_size[1]
+                                text_size: self.width, None
+                                padding: [0, 0, 0, 0]
+
+                            BgColorLabel:
+                                id: extra_title_info_label
+                                text: root.extra_title_info_text
+                                font_size: app.TITLE_EXTRA_INFO_FONT_SIZE
+                                color: root.TITLE_EXTRA_INFO_LABEL_COLOR
+                                background_color:
+                                    (0, 1, 1, root.DEBUG_BACKGROUND_OPACITY) if root.DEBUG_BACKGROUND_OPACITY > 0 \
+                                    else (0.01, 0.01, 0.01, 0.2)
+                                multiline: True
+                                bold: True
+                                markup: True
+                                size_hint_y: None
+                                height: self.texture_size[1]
+                                text_size: self.width, None
+                                halign: 'justify'
+                                padding: [0, 0, dp(5), 0]
+
+                            # IMPORTANT: This filler widget pushes the labels above it to the top.
+                            Widget:
+
+                        # --- Right Column (as a relative container) ---
+                        RelativeLayout:
+                            size_hint: 0.44, 1.0
+                            pos_hint: {'right': 1.0, 'top': 1.0}
+
+                            # --- The Image Button ---
+                            Button:
+                                id: image_button
+                                background_color: (0, 0, 0, 0)
+                                background_normal: ''
+                                size_hint: None, None
+                                # Size the button relative to its container (the right column)
+                                width: self.parent.width * 0.8
+                                height: self.width / 1.036
+                                # Center the button within the right column
+                                pos_hint: {'center_x': 0.5}
+                                # Bind the button's top to the top of the extra_info label
+                                top: extra_title_info_label.top - (0.05 * bottom_title_view.spacing_y)
+
+                                canvas.before:
+                                    Color:
+                                        rgba: 0, 0, 1, 0.85
+                                    BoxShadow:
+                                        inset: False
+                                        pos: self.pos
+                                        size: self.size
+                                        offset: 0, 0
+                                        spread_radius: 5, 5
+                                        border_radius: 0, 0, 0, 0
+                                        blur_radius: 30 if self.state == "normal" else 15
+                                TitlePageImage:
+                                    source: root.title_page_image_source
+                                    pos: self.parent.pos
+                                    size: self.parent.size
+                                    fit_mode: "cover"
+                                    mipmap: True
+                                    # NOTE: This should be on the button above but it doesn't work.
+                                    on_press: root.on_image_pressed()
+
+                            # --- The Checkbox Layout ---
                             BoxLayout:
-                                orientation: "vertical"
-                                size_hint_x: 1
-                                size_hint_y: 1
-
-                                BgColorLabel:
-                                    text: "before title info filler"
-                                    background_color: (0, 0, 1, 1)
-                                    opacity: root.DEBUG_BACKGROUND_OPACITY
-                                    size_hint: (1, 0.02)
-                                    halign: "left"
-                                    valign: "top"
+                                id: goto_page_layout
+                                size_hint: None, None
+                                width: image_button.width
+                                height: dp(35)
+                                # Position relative to the button
+                                pos: image_button.x, image_button.top + dp(5)
+                                opacity: 1
+                                Label:
+                                    text: "Goto page " + root.bottom_view_title_goto_page_num + ":"
+                                    color: (0, 1, 1, 1)
+                                    size_hint_x: 0.8
+                                    font_size: app.GOTO_PAGE_FONT_SIZE
                                     text_size: (self.width, self.height)
-
-                                BoxLayout:
-                                    orientation: "horizontal"
-                                    size_hint: (1, 0.2)
-
-                                    BgColorLabel:
-                                        text: "left1 filler"
-                                        background_color: (1.0, 1.0, 0.0, 0.25)
-                                        opacity: root.DEBUG_BACKGROUND_OPACITY
-                                        size_hint_y: 1
-                                        size_hint_x: None
-                                        width: root.ids.left2_filler.width
-                                        halign: "left"
-                                        valign: "top"
-                                        text_size: (self.width, self.height)
-
-                                    BgColorLabel:
-                                        text: root.title_info_text
-                                        color: root.TITLE_INFO_LABEL_COLOR
-                                        font_size: app.TITLE_INFO_FONT_SIZE
-                                        background_color:
-                                            (0, 1, 0, root.DEBUG_BACKGROUND_OPACITY) if root.DEBUG_BACKGROUND_OPACITY > 0 \
-                                            else (0.01, 0.01, 0.01, 0.25)
-                                        markup: True
-                                        multiline: True
-                                        size_hint_y: 1
-                                        size_hint_x: None
-                                        width: self.texture_size[0]
-                                        halign: "left"
-                                        valign: "middle"
-                                        text_size: (None, self.height)
-                                        pos_hint: {"x": 0.0}
-
-                                BoxLayout:
-                                    orientation: "horizontal"
-                                    size_hint: (1, 0.09)
-
-                                    BgColorLabel:
-                                        text: "left2 filler"
-                                        background_color: (0.01, 1.0, 1.0, 0.5)
-                                        opacity: root.DEBUG_BACKGROUND_OPACITY
-                                        size_hint: (0.06, 1)
-                                        halign: "left"
-                                        valign: "top"
-                                        text_size: (self.width, self.height)
-
-                                    BgColorLabel:
-                                        text: "after title info filler"
-                                        color: root.TITLE_INFO_LABEL_COLOR
-                                        background_color: 1, 1, 0, root.DEBUG_BACKGROUND_OPACITY
-                                        opacity: root.DEBUG_BACKGROUND_OPACITY
-                                        size_hint: (0.94, 1)
-                                        text_size: (self.width, self.height)
-
-                                BoxLayout:
-                                    orientation: "horizontal"
-                                    size_hint: (0.97, 0.6)
-
-                                    BgColorLabel:
-                                        id: left2_filler
-                                        text: "left2 filler"
-                                        background_color: (0.5, 1.0, 0.0, 0.5)
-                                        opacity: root.DEBUG_BACKGROUND_OPACITY
-                                        size_hint_x: 0.06
-                                        size_hint_y: None
-                                        height: root.ids.extra_info.height
-                                        halign: "left"
-                                        valign: "top"
-                                        text_size: (self.width, self.height)
-
-                                    BgColorLabel:
-                                        id: extra_info
-                                        text: root.extra_title_info_text
-                                        font_size: app.TITLE_EXTRA_INFO_FONT_SIZE
-                                        color: root.TITLE_EXTRA_INFO_LABEL_COLOR
-                                        background_color:
-                                            (0, 1, 1, root.DEBUG_BACKGROUND_OPACITY) if root.DEBUG_BACKGROUND_OPACITY > 0 \
-                                            else (0.01, 0.01, 0.01, 0.25)
-                                        multiline: True
-                                        markup: True
-                                        halign: "justify"
-                                        valign: "bottom"
-                                        # Disable vertical size hint so height can be set by content
-                                        size_hint_x: 0.94
-                                        size_hint_y: None
-                                        # Wrap text within the label's width
-                                        text_size: self.width, None
-                                        # Bind height to the texture's height
-                                        height: self.texture_size[1]
-                                        pos_hint: {"top": 1.0}
-
-                            AnchorLayout:
-                                anchor_x: "center"
-                                anchor_y: "center"
-                                size_hint_x: 0.90
-                                size_hint_y: 0.85
-
-                                BoxLayout
-                                    orientation: "horizontal"
-
-                                    BgColorLabel:
-                                        text: "left of title image filler"
-                                        background_color: (1.0, 1.0, 0.0, 0.5)
-                                        opacity: root.DEBUG_BACKGROUND_OPACITY
-                                        size_hint: (0.04, 0.9)
-                                        text_size: (self.width, self.height)
-
-                                    # Comic reader button for title
-                                    BoxLayout
-                                        orientation: "vertical"
-                                        size_hint: (0.98, 0.90)
-
-                                        BoxLayout:
-                                            id: goto_page_layout
-                                            opacity: 1
-                                            orientation: "horizontal"
-                                            size_hint: (1, 0.09)
-
-                                            Label:
-                                                text: "empty"
-                                                opacity: 0
-                                                size_hint_x: .60
-                                                halign: "left"
-                                                valign: "bottom"
-
-                                            Label:
-                                                text: "Goto page " + root.bottom_view_title_goto_page_num + ":"
-                                                color: (0, 1, 1, 1)
-                                                size_hint_x: .37
-                                                font_size: app.GOTO_PAGE_FONT_SIZE
-                                                text_size: (self.width, self.height)
-                                                halign: "right"
-                                                valign: "center"
-
-                                            CheckBox:
-                                                id: goto_page_checkbox
-                                                color: (1, 1, 1, 1)
-                                                size_hint_x: .11
-                                                halign: "right"
-                                                valign: "bottom"
-
-                                        BgColorLabel:
-                                            text: "top of button filler"
-                                            background_color: (1.0, 1.0, 0.0, 0.5)
-                                            opacity: root.DEBUG_BACKGROUND_OPACITY
-                                            size_hint: (1, 0.035)
-                                            text_size: (self.width, self.height)
-
-                                        Button:
-                                            canvas.before:
-                                                Color:
-                                                    rgba: 0, 0, 1, 0.85
-                                                BoxShadow:
-                                                    inset: False
-                                                    pos: self.pos
-                                                    size: self.size
-                                                    offset: 0, 0
-                                                    spread_radius: 2.5, 2.5
-                                                    border_radius: 0, 0, 0, 0
-                                                    blur_radius: 20 if self.state == "normal" else 10
-
-                                            disabled: root.bottom_view_title_opacity < 0.01
-                                            background_color: (0.3, 0.3, 1.0, 0.5)
-                                            size_hint: (0.99, 0.99)
-                                            halign: "left"
-                                            valign: "top"
-                                            text_size: (self.width, self.height)
-
-                                            TitlePageImage:
-                                                source: root.title_page_image_source
-                                                x: self.parent.x + 0.5 * (1.0 - self.TITLE_IMAGE_X_FRAC_OF_PARENT) * self.parent.size[0]
-                                                y: self.parent.y + 0.5 * (1.0 - self.TITLE_IMAGE_Y_FRAC_OF_PARENT) * self.parent.size[1]
-                                                size: (self.TITLE_IMAGE_X_FRAC_OF_PARENT * self.parent.size[0], self.TITLE_IMAGE_Y_FRAC_OF_PARENT * self.parent.size[1])
-                                                fit_mode: "cover"
-                                                mipmap: True
-                                                on_press: root.on_image_pressed()
-
-                                    BgColorLabel:
-                                        text: "right of title image filler"
-                                        background_color: (1.0, 1.0, 0.0, 0.5)
-                                        opacity: root.DEBUG_BACKGROUND_OPACITY
-                                        size_hint: (0.08, 0.8)
-                                        text_size: (self.width, self.height)
-
-                        BgColorLabel:
-                            text: "bottom of title view filler"
-                            background_color: (0.0, 1.0, 1.0, 0.5)
-                            opacity: root.DEBUG_BACKGROUND_OPACITY
-                            #height: root.TITLE_INFO_BORDER_WIDTH
-                            size_hint: (1, 0.06)
-                            text_size: (self.width, self.height)
+                                    halign: "right"
+                                    valign: "center"
+                                CheckBox:
+                                    id: goto_page_checkbox
+                                    color: (1, 1, 1, 1)
+                                    size_hint_x: 0.1
+                # --- END: bottom view title container ---
 
             AnchorLayout:
                 anchor_x: "center"
