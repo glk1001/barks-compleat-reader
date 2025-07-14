@@ -1,5 +1,5 @@
 import logging
-from typing import List, Union
+from typing import List, Union, Callable
 
 from kivy.event import EventDispatcher
 from kivy.metrics import dp
@@ -12,9 +12,14 @@ from kivy.uix.image import Image
 from kivy.uix.popup import Popup
 from kivy.uix.spinner import Spinner
 from kivy.uix.treeview import TreeView, TreeViewNode
+from kivy.utils import escape_markup
 
 from barks_fantagraphics.barks_tags import Tags, TagGroups
-from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.barks_titles import Titles, ComicBookInfo
+from barks_fantagraphics.comics_utils import (
+    get_short_submitted_day_and_month,
+    get_short_formatted_first_published_str,
+)
 from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 from barks_fantagraphics.title_search import unique_extend, BarksTitleSearch
 from reader_formatter import get_markup_text_with_num_titles, text_includes_num_titles
@@ -353,6 +358,43 @@ class TitleTreeViewNode(BoxLayout, TreeViewNode):
 
     def get_title(self) -> Titles:
         return self.fanta_info.comic_book_info.title
+
+    @classmethod
+    def get_formatted_submitted_str(cls, comic_book_info: ComicBookInfo) -> str:
+        left_sq_bracket = escape_markup("[")
+        right_sq_bracket = escape_markup("]")
+
+        return (
+            f" {left_sq_bracket}"
+            f"{get_short_submitted_day_and_month(comic_book_info)}"
+            f" [b][color={TitleTreeViewNode.ISSUE_LABEL_SUBMITTED_YEAR_COLOR}]"
+            f" [b]"
+            f"{comic_book_info.submitted_year}"
+            f"[/color][/b]"
+            f"[/b]"
+            f"{right_sq_bracket}"
+        )
+
+    @classmethod
+    def create_from_fanta_info(
+        cls, fanta_info: FantaComicBookInfo, on_press_callback: Callable
+    ) -> "TitleTreeViewNode":
+        """Factory method to create and configure a new TitleTreeViewNode."""
+        node = cls(fanta_info)
+
+        node.ids.num_label.text = str(fanta_info.fanta_chronological_number)
+        node.ids.num_label.bind(on_press=on_press_callback)
+
+        node.ids.title_label.text = fanta_info.comic_book_info.get_display_title()
+        node.ids.title_label.bind(on_press=on_press_callback)
+
+        first_published = get_short_formatted_first_published_str(fanta_info.comic_book_info)
+        submitted_date = cls.get_formatted_submitted_str(fanta_info.comic_book_info)
+        issue_info = f"[i]{first_published}{submitted_date}[/i]"
+        node.ids.issue_label.text = issue_info
+        node.ids.issue_label.bind(on_press=on_press_callback)
+
+        return node
 
 
 class TreeViewButton(Button):
