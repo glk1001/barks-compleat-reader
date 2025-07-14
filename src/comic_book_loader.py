@@ -80,10 +80,10 @@ class ComicBookLoader:
 
     def load_data(self) -> None:
         if self.__reader_settings.use_prebuilt_archives:
-            logging.debug("Using prebuilt archives. No extra data to load.")
+            logging.info("Using prebuilt archives. No extra data to load.")
             self.__fanta_volume_archives = None
         else:
-            logging.debug("Using Fantagraphics volume archives. Now loading volume info...")
+            logging.info("Using Fantagraphics volume archives. Now loading volume info...")
             self.__fanta_volume_archives = FantagraphicsVolumeArchives(
                 self.__reader_settings.fantagraphics_volumes_dir,
                 FANTA_VOLUME_OVERRIDES_ROOT,

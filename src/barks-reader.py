@@ -1,8 +1,11 @@
 import logging
+import os
 import sys
 from pathlib import Path
 from random import randrange
 from typing import Any, Union
+
+os.environ["KIVY_LOG_MODE"] = "MIXED"
 
 from kivy import Config
 from kivy.app import App
@@ -29,7 +32,7 @@ from screeninfo import get_monitors
 
 from barks_fantagraphics.comics_cmd_args import CmdArgs
 from barks_fantagraphics.comics_database import ComicsDatabase
-from barks_fantagraphics.comics_utils import setup_logging
+from barks_fantagraphics.comics_logging import setup_logging
 from comic_book_reader import get_barks_comic_reader
 from filtered_title_lists import FilteredTitleLists
 from main_screen import MainScreen

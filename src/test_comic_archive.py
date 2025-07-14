@@ -6,7 +6,7 @@ from typing import Dict
 from intspan import intspan
 
 from barks_fantagraphics.comic_book import get_page_str
-from barks_fantagraphics.comics_utils import setup_logging
+from barks_fantagraphics.comics_logging import setup_logging
 from fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
 
 FANTA_VOLUME_ARCHIVES_ROOT = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes"

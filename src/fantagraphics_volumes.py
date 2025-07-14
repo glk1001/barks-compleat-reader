@@ -56,7 +56,7 @@ class FantagraphicsVolumeArchives:
 
         self.__fantagraphics_archive_dict: Dict[int, FantagraphicsArchive] = {}
         for archive in archive_filenames:
-            logging.info(f'Processing Fantagraphics archive "{archive}"...')
+            logging.debug(f'Processing Fantagraphics archive "{archive}"...')
 
             # self.__check_archive(archive)
 

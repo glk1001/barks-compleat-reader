@@ -258,7 +258,7 @@ class MainScreen(BoxLayout, Screen):
         logging.debug(f'New loading popup image: "{self.loading_data_popup.splash_image_path}".')
 
     def on_tree_build_finished(self, _instance):
-        logging.debug(f"'on_finished_building_event' received: dismiss the popup.")
+        logging.debug(f"'on_finished_building_event' received - dismiss the popup.")
         if self.loading_data_popup_image_event:
             self.loading_data_popup_image_event.cancel()
 
@@ -266,7 +266,7 @@ class MainScreen(BoxLayout, Screen):
 
         # Linger on the last image...
         self.loading_data_popup.title = "All titles loaded!"
-        Clock.schedule_once(lambda dt: self.loading_data_popup.dismiss(), 2)
+        Clock.schedule_once(lambda dt: self.loading_data_popup.dismiss(), 1)
 
         self.update_background_views(ViewStates.INITIAL)
 
