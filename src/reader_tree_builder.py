@@ -67,11 +67,34 @@ from reader_ui_classes import (
 BUTTON_ON_PRESS_CALLABLE = Callable[[Button], None]
 
 
+class _CompletionCounter:
+    """
+    A simple counter to track the completion of multiple asynchronous tasks.
+    It triggers a callback when all tasks are finished.
+    """
+
+    def __init__(self, on_all_finished: Callable = None):
+        self._count = 0
+        self._on_all_finished = on_all_finished
+
+    def start_task(self):
+        """Register a new task."""
+        self._count += 1
+
+    def finish_task(self):
+        """Mark a task as complete and trigger the final callback if it's the last one."""
+        self._count -= 1
+        if self._count == 0:
+            if self._on_all_finished:
+                self._on_all_finished()
+
+
 class ReaderTreeBuilder:
-    def __init__(
-        self,
-        main_screen: MainScreen,
-    ):
+    # Process nodes in batches to reduce scheduling overhead and improve performance.
+    # A larger batch size is faster but makes the UI less responsive during the build.
+    BUILD_BATCH_SIZE = 5
+
+    def __init__(self, main_screen: MainScreen):
         self.__main_screen = main_screen
         self.__events = self.__main_screen.reader_tree_events
         self.chrono_year_range_nodes: Dict[Tuple[int, int], ButtonTreeViewNode] = {}
@@ -99,6 +122,10 @@ class ReaderTreeBuilder:
             + len(self.__main_screen.title_lists[ALL_LISTS])  # series titles
             + get_num_tagged_titles()  # category titles
         )
+        logging.debug(
+            f"Progress bar max"
+            f" = {self.__main_screen.loading_data_popup.ids.loading_data_progress_bar.max}."
+        )
         self.__main_screen.loading_data_popup.progress_bar_value = 0
 
         tree.bind(on_node_expand=self.__main_screen.on_node_expanded)
@@ -110,27 +137,26 @@ class ReaderTreeBuilder:
         self.__add_appendix_node(tree)
         self.__add_index_node(tree)
 
-        logging.debug("Starting asynchronous build of story nodes...")
+        logging.debug("Starting asynchronous build of all story nodes...")
         # This is the single entry point for the entire asynchronous build.
-        master_generator = self.__add_story_nodes_gen(tree, the_stories_node)
-        self.__run_generator(master_generator, on_finish=self.__finished_all_nodes)
+        self.__build_story_nodes_concurrently(tree, the_stories_node)
 
         tree.bind(minimum_height=tree.setter("height"))
 
     def __inc_progress_bar(self):
         self.__main_screen.loading_data_popup.progress_bar_value += 1
 
-    # --- Master Generator ---
-
-    def __add_story_nodes_gen(
+    def __build_story_nodes_concurrently(
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
-    ) -> Generator:
+    ):
         """
-        A master generator that orchestrates the entire story node build process.
-        It yields control to sub-generators for each major section.
+        Dispatches all heavy build tasks to run concurrently on the Kivy
+        scheduler and uses a counter to detect when all tasks are complete.
         """
-        # 1. Build Chronological nodes section
-        logging.debug("Start building chronological nodes...")
+        # Create ONE counter for all concurrent tasks, passing the final callback.
+        concurrent_task_counter = _CompletionCounter(on_all_finished=self.__finished_all_nodes)
+
+        # 1. Create main parent nodes synchronously
         chrono_node = self.__create_and_add_simple_node(
             tree,
             CHRONOLOGICAL_NODE_TEXT,
@@ -139,11 +165,6 @@ class ReaderTreeBuilder:
             StoryGroupTreeViewNode,
             parent_node,
         )
-        yield from self.__add_chrono_year_range_nodes_gen(tree, chrono_node)
-        yield  # Yield once after the whole section is done for good measure.
-
-        # 2. Build Series nodes section
-        logging.debug("Start building series nodes...")
         series_node = self.__create_and_add_simple_node(
             tree,
             SERIES_NODE_TEXT,
@@ -152,12 +173,7 @@ class ReaderTreeBuilder:
             StoryGroupTreeViewNode,
             parent_node,
         )
-        yield from self.__add_series_nodes_gen(tree, series_node)
-        yield
-
-        # 3. Build Categories nodes section
-        logging.debug("Start building category nodes...")
-        category_node = self.__create_and_add_simple_node(
+        categories_node = self.__create_and_add_simple_node(
             tree,
             CATEGORIES_NODE_TEXT,
             self.__main_screen.on_categories_pressed,
@@ -165,63 +181,119 @@ class ReaderTreeBuilder:
             StoryGroupTreeViewNode,
             parent_node,
         )
-        yield from self.__add_categories_nodes_gen(tree, category_node)
-        yield
 
-    # --- Generator Chain Implementation ---
+        # 2. Dispatch the Chronological build task
+        logging.debug("Dispatching the Chronological node build tasks...")
+        concurrent_task_counter.start_task()
+        chrono_gen = self.__add_chrono_year_range_nodes_gen(tree, chrono_node)
+        self.__run_generator(chrono_gen, on_finish=concurrent_task_counter.finish_task)
+
+        # 3. Handle Series nodes: create parents synchronously, populate children concurrently
+        logging.debug(
+            "Creating Series parent nodes to preserve order and dispatching population tasks..."
+        )
+        for series_name, on_pressed in self.__all_series_pressed_funcs.items():
+            # To guarantee correct series order, synchronously create the parent node
+            # for the series' child titles.
+            title_list = self.__main_screen.title_lists[series_name]
+            series_text = get_markup_text_with_num_titles(series_name, len(title_list))
+            new_series_node = StoryGroupTreeViewNode(text=series_text)
+            new_series_node.bind(on_press=on_pressed)
+            tree.add_node(new_series_node, parent=series_node)
+
+            # Dispatch a concurrent task to populate this new node's children.
+            concurrent_task_counter.start_task()
+            gen = self.__populate_series_node_gen(tree, series_name, new_series_node)
+            self.__run_generator(gen, on_finish=concurrent_task_counter.finish_task)
+
+        # 4. Dispatch all the Category build tasks to run concurrently
+        logging.debug("Dispatching all the Category nodes build tasks...")
+        for category in TagCategories:
+            concurrent_task_counter.start_task()
+
+            # We need a small wrapper generator to create the sub-parent node.
+            def category_gen_wrapper(cat_to_build):
+                new_node = self.__create_and_add_simple_node(
+                    tree,
+                    cat_to_build.value,
+                    self.__main_screen.on_category_pressed,
+                    True,
+                    StoryGroupTreeViewNode,
+                    categories_node,
+                )
+                yield from self.__add_category_node_gen(tree, cat_to_build, new_node)
+
+            gen = category_gen_wrapper(category)
+            self.__run_generator(gen, on_finish=concurrent_task_counter.finish_task)
+
+    # --- Population Generators ---
+
+    def __populate_series_node_gen(
+        self, tree: ReaderTreeView, series_name: str, parent_node: ButtonTreeViewNode
+    ) -> Generator[None, None, None]:
+        """Populates the children of a pre-existing series node."""
+        if series_name == SERIES_CS:
+            yield from self.__populate_cs_node_gen(tree, parent_node)
+        elif series_name == SERIES_USA:
+            yield from self.__populate_us_node_gen(tree, parent_node)
+        else:
+            yield from self.__populate_simple_series_node_gen(series_name, tree, parent_node)
+
+    def __populate_simple_series_node_gen(
+        self, series_name: str, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
+    ) -> Generator[None, None, None]:
+        """Populates a simple series node with its title list."""
+        title_list = self.__main_screen.title_lists[series_name]
+        yield from self.__add_fanta_info_story_nodes_gen(tree, title_list, parent_node)
+
+    def __populate_cs_node_gen(
+        self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
+    ) -> Generator[None, None, None]:
+        """Populates a CS series node with its year-range children."""
+        yield from self.__populate_splittable_series_node_gen(
+            tree,
+            parent_node,
+            self.__main_screen.filtered_title_lists.cs_year_ranges,
+            self.__add_cs_year_range_node_gen,
+        )
+
+    def __populate_us_node_gen(
+        self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
+    ) -> Generator[None, None, None]:
+        """Populates a US series node with its year-range children."""
+        yield from self.__populate_splittable_series_node_gen(
+            tree,
+            parent_node,
+            self.__main_screen.filtered_title_lists.us_year_ranges,
+            self.__add_us_year_range_node_gen,
+        )
+
+    @staticmethod
+    def __populate_splittable_series_node_gen(
+        tree: ReaderTreeView,
+        parent_node: ButtonTreeViewNode,
+        year_ranges: List[Tuple[int, int]],
+        add_year_range_node_gen_func: Callable[..., Generator[None, None, None]],
+    ) -> Generator[None, None, None]:
+        """Populates a series node that is split by year ranges."""
+        for year_range in year_ranges:
+            yield from add_year_range_node_gen_func(tree, year_range, parent_node)
+
+    # --- Child Node Creation Generators ---
 
     def __add_chrono_year_range_nodes_gen(
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
-    ) -> Generator:
+    ) -> Generator[None, None, None]:
         """Generator to add all chronological year range nodes."""
         year_ranges = self.__main_screen.filtered_title_lists.chrono_year_ranges
-        yield from self.__add_year_range_nodes_gen(
-            year_ranges, self.__add_chrono_year_range_node_and_child_nodes_gen, tree, parent_node
-        )
-
-    def __add_series_nodes_gen(
-        self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
-    ) -> Generator:
-        """Generator to add all series nodes."""
-        for series_name, on_pressed in self.__all_series_pressed_funcs.items():
-            logging.debug(f'Adding series node "{series_name}".')
-            yield from self.__add_series_node_gen(tree, series_name, on_pressed, parent_node)
-            yield
-
-    def __add_categories_nodes_gen(
-        self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
-    ) -> Generator:
-        """Generator to add all category and tag nodes."""
-        for category in TagCategories:
-            logging.debug(f'Adding category "{category}".')
-            new_node = self.__create_and_add_simple_node(
-                tree,
-                category.value,
-                self.__main_screen.on_category_pressed,
-                True,
-                StoryGroupTreeViewNode,
-                parent_node,
-            )
-            yield from self.__add_category_node_gen(tree, category, new_node)
-            yield
-
-    @staticmethod
-    def __add_year_range_nodes_gen(
-        year_ranges: List[Tuple[int, int]],
-        add_nodes_func_gen: Callable[
-            [ReaderTreeView, Tuple[int, int], ButtonTreeViewNode], Generator
-        ],
-        tree: ReaderTreeView,
-        parent_node: ButtonTreeViewNode,
-    ) -> Generator:
-        """A generic generator to add nodes for a list of year ranges."""
         for year_range in year_ranges:
-            yield from add_nodes_func_gen(tree, year_range, parent_node)
-            yield
+            yield from self.__add_chrono_year_range_node_and_child_nodes_gen(
+                tree, year_range, parent_node
+            )
 
     def __add_chrono_year_range_node_and_child_nodes_gen(
         self, tree: ReaderTreeView, year_range: Tuple[int, int], parent_node: ButtonTreeViewNode
-    ) -> Generator:
+    ) -> Generator[None, None, None]:
         new_node, year_range_titles = self.__add_chrono_year_range_node(
             tree, year_range, parent_node
         )
@@ -230,7 +302,7 @@ class ReaderTreeBuilder:
 
     def __add_category_node_gen(
         self, tree: ReaderTreeView, category: TagCategories, parent_node: ButtonTreeViewNode
-    ) -> Generator:
+    ) -> Generator[None, None, None]:
         for tag_or_group in BARKS_TAG_CATEGORIES[category]:
             if isinstance(tag_or_group, Tags):
                 yield from self.__add_tag_node_gen(tree, tag_or_group, parent_node)
@@ -241,7 +313,7 @@ class ReaderTreeBuilder:
 
     def __add_tag_node_gen(
         self, tree: ReaderTreeView, tag: Tags, parent_node: ButtonTreeViewNode
-    ) -> Generator:
+    ) -> Generator[None, None, None]:
         titles = get_tagged_titles(tag)
         new_node = TagStoryGroupTreeViewNode(
             tag, text=get_markup_text_with_num_titles(tag.value, len(titles))
@@ -251,8 +323,8 @@ class ReaderTreeBuilder:
 
     def __add_title_nodes_gen(
         self, tree: ReaderTreeView, titles: List[Titles], parent_node: ButtonTreeViewNode
-    ) -> Generator:
-        for title in titles:
+    ) -> Generator[None, None, None]:
+        for i, title in enumerate(titles):
             # TODO: Very roundabout way to get fanta info
             title_str = BARKS_TITLES[title]
             if title_str in self.__main_screen.all_fanta_titles:
@@ -261,55 +333,15 @@ class ReaderTreeBuilder:
                     title_info, self.__main_screen.on_title_row_button_pressed
                 )
                 tree.add_node(node, parent=parent_node)
+
             self.__inc_progress_bar()
-            yield
 
-    def __add_series_node_gen(
-        self,
-        tree: ReaderTreeView,
-        series_name: str,
-        on_pressed: BUTTON_ON_PRESS_CALLABLE,
-        parent_node: ButtonTreeViewNode,
-    ) -> Generator:
-        if series_name == SERIES_CS:
-            yield from self.__add_cs_node_gen(tree, on_pressed, parent_node)
-        elif series_name == SERIES_USA:
-            yield from self.__add_us_node_gen(tree, on_pressed, parent_node)
-        else:
-            yield from self.__add_simple_series_node_gen(tree, series_name, on_pressed, parent_node)
-
-    def __add_simple_series_node_gen(
-        self,
-        tree: ReaderTreeView,
-        series_name: str,
-        on_pressed: BUTTON_ON_PRESS_CALLABLE,
-        parent_node: ButtonTreeViewNode,
-    ) -> Generator:
-        title_list = self.__main_screen.title_lists[series_name]
-        series_text = get_markup_text_with_num_titles(series_name, len(title_list))
-        new_node = StoryGroupTreeViewNode(text=series_text)
-        new_node.bind(on_press=on_pressed)
-        tree.add_node(new_node, parent=parent_node)
-        yield from self.__add_fanta_info_story_nodes_gen(tree, title_list, new_node)
-
-    def __add_cs_node_gen(
-        self,
-        tree: ReaderTreeView,
-        on_pressed: BUTTON_ON_PRESS_CALLABLE,
-        parent_node: ButtonTreeViewNode,
-    ) -> Generator:
-        yield from self.__add_splittable_series_node_gen(
-            SERIES_CS,
-            self.__main_screen.filtered_title_lists.cs_year_ranges,
-            self.__add_cs_year_range_node_gen,
-            tree,
-            on_pressed,
-            parent_node,
-        )
+            if (i + 1) % self.BUILD_BATCH_SIZE == 0:
+                yield
 
     def __add_cs_year_range_node_gen(
         self, tree: ReaderTreeView, year_range: Tuple[int, int], parent_node: ButtonTreeViewNode
-    ) -> Generator:
+    ) -> Generator[None, None, None]:
         new_node, year_range_titles = self.__create_and_add_year_range_node(
             tree,
             year_range,
@@ -321,24 +353,9 @@ class ReaderTreeBuilder:
         )
         yield from self.__add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node)
 
-    def __add_us_node_gen(
-        self,
-        tree: ReaderTreeView,
-        on_pressed: BUTTON_ON_PRESS_CALLABLE,
-        parent_node: ButtonTreeViewNode,
-    ) -> Generator:
-        yield from self.__add_splittable_series_node_gen(
-            SERIES_USA,
-            self.__main_screen.filtered_title_lists.us_year_ranges,
-            self.__add_us_year_range_node_gen,
-            tree,
-            on_pressed,
-            parent_node,
-        )
-
     def __add_us_year_range_node_gen(
         self, tree: ReaderTreeView, year_range: Tuple[int, int], parent_node: ButtonTreeViewNode
-    ) -> Generator:
+    ) -> Generator[None, None, None]:
         new_node, year_range_titles = self.__create_and_add_year_range_node(
             tree,
             year_range,
@@ -350,43 +367,22 @@ class ReaderTreeBuilder:
         )
         yield from self.__add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node)
 
-    def __add_splittable_series_node_gen(
-        self,
-        series_name: str,
-        series_year_ranges: List[Tuple[int, int]],
-        add_node_func_gen: Callable[
-            [ReaderTreeView, Tuple[int, int], StoryGroupTreeViewNode], Generator
-        ],
-        tree: ReaderTreeView,
-        on_pressed: BUTTON_ON_PRESS_CALLABLE,
-        parent_node: ButtonTreeViewNode,
-    ) -> Generator:
-        title_list = self.__main_screen.title_lists[series_name]
-        series_text = get_markup_text_with_num_titles(series_name, len(title_list))
-        series_node = StoryGroupTreeViewNode(text=series_text)
-        series_node.bind(on_press=on_pressed)
-
-        yield from self.__add_year_range_nodes_gen(
-            series_year_ranges,
-            add_node_func_gen,
-            tree,
-            series_node,
-        )
-        tree.add_node(series_node, parent=parent_node)
-
     def __add_fanta_info_story_nodes_gen(
         self,
         tree: ReaderTreeView,
         title_info_list: List[FantaComicBookInfo],
         parent_node: ButtonTreeViewNode,
-    ) -> Generator:
-        for title_info in title_info_list:
+    ) -> Generator[None, None, None]:
+        for i, title_info in enumerate(title_info_list):
             node = TitleTreeViewNode.create_from_fanta_info(
                 title_info, self.__main_screen.on_title_row_button_pressed
             )
             tree.add_node(node, parent=parent_node)
+
             self.__inc_progress_bar()
-            yield
+
+            if (i + 1) % self.BUILD_BATCH_SIZE == 0:
+                yield
 
     # --- Synchronous Helper Methods ---
 
@@ -404,6 +400,7 @@ class ReaderTreeBuilder:
         search_node = self.__create_and_add_simple_node(
             tree, SEARCH_NODE_TEXT, self.__main_screen.on_search_pressed
         )
+
         self.__create_and_add_title_search_box_node(tree, search_node)
         self.__create_and_add_tag_search_box_node(tree, search_node)
 
@@ -450,6 +447,7 @@ class ReaderTreeBuilder:
         last_issue = max(
             title_list, key=lambda x: x.comic_book_info.issue_number
         ).comic_book_info.issue_number
+
         return f"WDCS {first_issue}-{last_issue}"
 
     @staticmethod
@@ -466,6 +464,7 @@ class ReaderTreeBuilder:
 
         first_issue = get_us_issue_number(min(title_list, key=lambda x: get_us_issue_number(x)))
         last_issue = get_us_issue_number(max(title_list, key=lambda x: get_us_issue_number(x)))
+
         return f"US {first_issue}-{last_issue}"
 
     @staticmethod
@@ -478,24 +477,29 @@ class ReaderTreeBuilder:
         parent_node: ButtonTreeViewNode = None,
     ) -> Union[MainTreeViewNode, StoryGroupTreeViewNode]:
         node_text = get_bold_markup_text(text) if is_bold else text
+
         new_node = node_class(text=node_text)
         new_node.bind(on_press=on_press_handler)
+
         return tree.add_node(new_node, parent=parent_node)
 
     def __create_and_add_title_search_box_node(
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
     ):
         new_node = TitleSearchBoxTreeViewNode(self.__main_screen.title_search)
+
         new_node.bind(on_title_search_box_pressed=self.__main_screen.on_title_search_box_pressed)
         new_node.bind(
             on_title_search_box_title_changed=self.__main_screen.on_title_search_box_title_changed
         )
+
         return tree.add_node(new_node, parent=parent_node)
 
     def __create_and_add_tag_search_box_node(
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
     ):
         new_node = TagSearchBoxTreeViewNode(self.__main_screen.title_search)
+
         new_node.bind(on_tag_search_box_pressed=self.__main_screen.on_tag_search_box_pressed)
         new_node.bind(
             on_tag_search_box_text_changed=self.__main_screen.on_tag_search_box_text_changed
@@ -506,6 +510,7 @@ class ReaderTreeBuilder:
         new_node.bind(
             on_tag_search_box_title_changed=self.__main_screen.on_tag_search_box_title_changed
         )
+
         return tree.add_node(new_node, parent=parent_node)
 
     def __create_and_add_year_range_node(
@@ -521,15 +526,19 @@ class ReaderTreeBuilder:
         year_range_str = FilteredTitleLists.get_range_str(year_range)
         year_range_key = get_title_key_func(year_range_str)
         year_range_titles = self.__main_screen.title_lists[year_range_key]
+
         year_range_extra_text = get_year_range_extra_text_func(year_range_titles)
         year_range_text = get_markup_text_with_extra(year_range_str, year_range_extra_text)
+
         new_node = node_class(text=year_range_text)
         new_node.bind(on_press=on_press_handler)
+
         new_node = tree.add_node(new_node, parent=parent_node)
+
         return new_node, year_range_titles
 
     @staticmethod
-    def __run_generator(gen: Generator, on_finish: Callable = None):
+    def __run_generator(gen: Generator[None, None, None], on_finish: Callable[[], None] = None):
         """
         Schedules a generator to run one step at a time on the Kivy clock.
         An optional on_finish callback can be provided.
@@ -549,6 +558,8 @@ class ReaderTreeBuilder:
         logging.debug(
             f"Finished loading all nodes:"
             f" {self.__main_screen.loading_data_popup.progress_bar_value}"
-            f" titles processed."
+            f" nodes processed. Progress bar max"
+            f" = {self.__main_screen.loading_data_popup.ids.loading_data_progress_bar.max}."
         )
+
         self.__main_screen.reader_tree_events.finished_building()

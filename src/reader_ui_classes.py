@@ -43,7 +43,9 @@ class ReaderTreeBuilderEventDispatcher(EventDispatcher):
         pass
 
     def finished_building(self):
-        logging.debug(f"Dispatching '{self.on_finished_building_event.__name__}'.")
+        logging.debug(
+            f"Finished treeview build: dispatching '{self.on_finished_building_event.__name__}'."
+        )
         # noinspection PyUnresolvedReferences
         self.dispatch(self.on_finished_building_event.__name__)
 
@@ -368,10 +370,8 @@ class TitleTreeViewNode(BoxLayout, TreeViewNode):
             f" {left_sq_bracket}"
             f"{get_short_submitted_day_and_month(comic_book_info)}"
             f" [b][color={TitleTreeViewNode.ISSUE_LABEL_SUBMITTED_YEAR_COLOR}]"
-            f" [b]"
             f"{comic_book_info.submitted_year}"
             f"[/color][/b]"
-            f"[/b]"
             f"{right_sq_bracket}"
         )
 

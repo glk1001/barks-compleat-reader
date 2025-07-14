@@ -258,7 +258,7 @@ class MainScreen(BoxLayout, Screen):
         logging.debug(f'New loading popup image: "{self.loading_data_popup.splash_image_path}".')
 
     def on_tree_build_finished(self, _instance):
-        logging.debug(f"'on_finished_building_event' received - dismiss the popup.")
+        logging.debug(f"Received the 'on_finished_building_event' - dismiss the loading popup.")
         if self.loading_data_popup_image_event:
             self.loading_data_popup_image_event.cancel()
 

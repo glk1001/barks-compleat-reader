@@ -92,7 +92,7 @@ class FantagraphicsVolumeArchives:
 
             self.__fantagraphics_archive_dict[fanta_volume] = archive_page_map
 
-            logging.info(
+            logging.debug(
                 f'Finished processing archive "{archive}"' f" ({last_page - first_page + 1} pages)."
             )
 
