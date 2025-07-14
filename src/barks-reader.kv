@@ -29,6 +29,7 @@
     x: 0
     y: 0
     auto_dismiss: False
+    mipmap: True
 
     BoxLayout:
         orientation: "vertical"
@@ -221,6 +222,7 @@
                         color: root.MAIN_TITLE_COLOR
                         background_color: root.MAIN_TITLE_BACKGROUND_COLOR
                         bold: True
+                        mipmap: True
                         size_hint: 1, 0.18
                         text_size: self.size
                         halign: 'center'
@@ -251,6 +253,7 @@
                                     (0, 1, 0, root.DEBUG_BACKGROUND_OPACITY) if root.DEBUG_BACKGROUND_OPACITY > 0 \
                                     else (0.01, 0.01, 0.01, 0.1)
                                 markup: True
+                                mipmap: True
                                 size_hint_y: None
                                 height: self.texture_size[1]
                                 text_size: self.width, None
@@ -267,6 +270,7 @@
                                 multiline: True
                                 bold: True
                                 markup: True
+                                mipmap: True
                                 size_hint_y: None
                                 height: self.texture_size[1]
                                 text_size: self.width, None
