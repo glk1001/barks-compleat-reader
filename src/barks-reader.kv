@@ -190,8 +190,8 @@
                 anchor_y: "top"
                 # The opacity controls this entire container.
                 opacity: root.bottom_view_title_opacity
-                padding_x: dp(0.03 * root.view_width)
-                spacing_y: dp(0.07 * root.view_height)
+                title_box_padding: dp(0.03 * root.view_width)
+                title_box_spacing: dp(0.06 * root.view_height)
 
                 # The background image is now a direct child, simplifying the structure.
                 Image:
@@ -209,11 +209,10 @@
                     # This is the top-level container for all content.
                     id: bottom_view_box
                     orientation: 'vertical'
-                    padding: [bottom_title_view.padding_x, 0, 0, 0]
-                    spacing: bottom_title_view.spacing_y
+                    padding: 0
+                    spacing: 0
 
                     # --- Main Title (Full Width) ---
-                    # This takes only the height it needs.
                     BgColorLabel:
                         id: main_title_label
                         text: root.main_title_text
@@ -223,8 +222,9 @@
                         background_color: root.MAIN_TITLE_BACKGROUND_COLOR
                         bold: True
                         size_hint: 1, 0.18
-                        text_size: self.width, None
+                        text_size: self.size
                         halign: 'center'
+                        valign: 'middle'
 
                     # --- Single RelativeLayout for all two column content below the title ---
                     # This layout will fill the remaining vertical space.
@@ -237,9 +237,10 @@
                         BoxLayout:
                             id: title_info_box
                             orientation: 'vertical'
-                            spacing: bottom_title_view.spacing_y
                             size_hint: 0.56, 1.0
-                            pos_hint: {'x': 0, 'top': 1.0}
+                            pos_hint: {'x': 0, 'top': 0.92}
+                            padding: [bottom_title_view.title_box_padding, 0, 0, 0]
+                            spacing: bottom_title_view.title_box_spacing
 
                             BgColorLabel:
                                 id: title_info_label
@@ -292,7 +293,7 @@
                                 # Center the button within the right column
                                 pos_hint: {'center_x': 0.5}
                                 # Bind the button's top to the top of the extra_info label
-                                top: extra_title_info_label.top - (0.05 * bottom_title_view.spacing_y)
+                                top: extra_title_info_label.top - (0.05 * bottom_title_view.title_box_spacing)
 
                                 canvas.before:
                                     Color:

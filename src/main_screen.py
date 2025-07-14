@@ -151,7 +151,7 @@ class MainScreen(BoxLayout, Screen):
     action_bar_settings_icon_filepath = StringProperty()
     action_bar_goto_icon_filepath = StringProperty()
 
-    MAIN_TITLE_BACKGROUND_COLOR = (0.01, 0.01, 0.01, 0.05)
+    MAIN_TITLE_BACKGROUND_COLOR = (0.01, 0.01, 0.01, 0.075)
     MAIN_TITLE_COLOR = (1, 1, 0, 1)
     MAIN_TITLE_FONT_NAME = "Carl Barks Script"
     main_title_text = StringProperty()
