@@ -12,7 +12,7 @@ from barks_fantagraphics.barks_tags import (
     get_tagged_titles,
     get_num_tagged_titles,
     BARKS_TAG_CATEGORIES,
-    BARKS_TAG_GROUPS_TITLES,
+    BARKS_TAG_GROUPS,
 )
 from barks_fantagraphics.barks_titles import (
     Titles,
@@ -307,9 +307,26 @@ class ReaderTreeBuilder:
             if isinstance(tag_or_group, Tags):
                 yield from self.__add_tag_node_gen(tree, tag_or_group, parent_node)
             elif isinstance(tag_or_group, TagGroups):
-                titles = BARKS_TAG_GROUPS_TITLES[tag_or_group]
-                tag_group_node = self.__add_tag_group_node(tree, tag_or_group, titles, parent_node)
-                yield from self.__add_title_nodes_gen(tree, titles, tag_group_node)
+                logging.debug(
+                    f'Got tag group: "{tag_or_group.name}".'
+                    f' Adding tag group node under parent "{parent_node.text}".'
+                )
+                yield from self.__add_tag_group_node_gen(tree, tag_or_group, parent_node)
+
+    def __add_tag_group_node_gen(
+        self,
+        tree: ReaderTreeView,
+        tag_group: TagGroups,
+        parent_node: ButtonTreeViewNode,
+    ) -> Generator[None, None, None]:
+        new_node = TagGroupStoryGroupTreeViewNode(
+            tag_group, text=get_bold_markup_text(tag_group.value)
+        )
+
+        for tag in BARKS_TAG_GROUPS[tag_group]:
+            yield from self.__add_tag_node_gen(tree, tag, new_node)
+
+        tree.add_node(new_node, parent=parent_node)
 
     def __add_tag_node_gen(
         self, tree: ReaderTreeView, tag: Tags, parent_node: ButtonTreeViewNode
@@ -426,18 +443,6 @@ class ReaderTreeBuilder:
             YearRangeTreeViewNode,
             parent_node,
         )
-
-    @staticmethod
-    def __add_tag_group_node(
-        tree: ReaderTreeView,
-        tag_group: TagGroups,
-        titles: List[Titles],
-        parent_node: ButtonTreeViewNode,
-    ):
-        node = TagGroupStoryGroupTreeViewNode(
-            tag_group, text=get_markup_text_with_num_titles(tag_group.value, len(titles))
-        )
-        return tree.add_node(node, parent=parent_node)
 
     @staticmethod
     def __get_cs_year_range_extra_text(title_list: List[FantaComicBookInfo]) -> str:
