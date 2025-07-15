@@ -1,13 +1,11 @@
 import logging
-from dataclasses import dataclass
-from typing import Union, Dict, List, Any
+from typing import Union, Dict, List
 
 # noinspection PyProtectedMember
 from kivy._clock import ClockEvent
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.properties import StringProperty, ColorProperty, NumericProperty, BooleanProperty
-from kivy.storage.jsonstore import JsonStore
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.screenmanager import Screen
@@ -42,6 +40,7 @@ from build_comic_images import ComicBookImageBuilder
 from comic_book_page_info import ComicBookPageInfo, get_comic_page_info
 from comic_book_reader import ComicBookReader
 from filtered_title_lists import FilteredTitleLists
+from json_settings_manager import SettingsManager, SavedPageInfo
 from random_title_images import (
     ImageInfo,
     RandomTitleImages,
@@ -62,6 +61,13 @@ from reader_consts_and_types import (
 )
 from reader_formatter import ReaderFormatter, get_clean_text_without_extra, LONG_TITLE_SPLITS
 from reader_settings import ReaderSettings
+from reader_tree_view_utils import (
+    get_tree_view_node_path,
+    find_node_by_path,
+    get_tree_view_node_id_text,
+    find_tree_view_node,
+    find_tree_view_title_node,
+)
 from reader_ui_classes import (
     ReaderTreeView,
     ReaderTreeBuilderEventDispatcher,
@@ -76,6 +82,7 @@ from reader_ui_classes import (
     TagSearchBoxTreeViewNode,
     TagStoryGroupTreeViewNode,
     TagGroupStoryGroupTreeViewNode,
+    TitleTreeViewNode,
 )
 from system_file_paths import SystemFilePaths
 
@@ -108,35 +115,6 @@ COMIC_PAGE_ONE = ROMAN_NUMERALS[1]
 TITLE_VIEW_IMAGE_TYPES = {
     t for t in FileTypes if t not in [FileTypes.INSET, FileTypes.ORIGINAL_ART]
 }
-
-
-@dataclass
-class SavedPageInfo:
-    page_index: int
-    display_page_num: str
-    page_type: PageType
-    last_body_page: str
-
-
-JsonSavedPageInfo = Dict[str, Any]
-
-
-def get_json_from_page_info(page_info: SavedPageInfo) -> JsonSavedPageInfo:
-    return {
-        "page_index": page_info.page_index,
-        "display_page_num": page_info.display_page_num,
-        "page_type": page_info.page_type.name,
-        "last_body_page": page_info.last_body_page,
-    }
-
-
-def get_page_info_from_json(json_page_info: JsonSavedPageInfo) -> SavedPageInfo:
-    return SavedPageInfo(
-        json_page_info["page_index"],
-        json_page_info["display_page_num"],
-        PageType[json_page_info["page_type"]],
-        json_page_info["last_body_page"],
-    )
 
 
 class MainScreen(BoxLayout, Screen):
@@ -205,7 +183,7 @@ class MainScreen(BoxLayout, Screen):
         self.all_fanta_titles = ALL_FANTA_COMIC_BOOK_INFO
         self.random_title_images = RandomTitleImages(self.reader_settings)
 
-        self.store = JsonStore(
+        self.json_settings_manager = SettingsManager(
             self.reader_settings.sys_file_paths.get_barks_reader_user_data_file()
         )
 
@@ -230,7 +208,7 @@ class MainScreen(BoxLayout, Screen):
         self.background_views = BackgroundViews(
             self.reader_settings, self.all_fanta_titles, self.title_lists, self.random_title_images
         )
-        self.update_background_views(ViewStates.PRE_INIT)
+        self.__update_view_for_node(ViewStates.PRE_INIT)
 
         self.set_action_bar_icons(self.reader_settings.sys_file_paths)
 
@@ -268,7 +246,11 @@ class MainScreen(BoxLayout, Screen):
         self.loading_data_popup.title = "All titles loaded!"
         Clock.schedule_once(lambda dt: self.loading_data_popup.dismiss(), 1)
 
-        self.update_background_views(ViewStates.INITIAL)
+        self.__update_view_for_node(ViewStates.INITIAL)
+
+        saved_node_path = self.json_settings_manager.get_last_selected_node_path()
+        if saved_node_path:
+            self.goto_saved_node(saved_node_path)
 
     def on_action_bar_collapse(self):
         something_was_open = False
@@ -279,7 +261,7 @@ class MainScreen(BoxLayout, Screen):
                 something_was_open = True
 
         if something_was_open:
-            self.update_background_views(ViewStates.INITIAL)
+            self.__update_view_for_node(ViewStates.INITIAL)
 
     def close_open_nodes(self, start_node: TreeViewNode) -> None:
         for node in start_node.nodes:
@@ -291,26 +273,11 @@ class MainScreen(BoxLayout, Screen):
         self.change_background_views()
 
     def on_action_bar_goto(self, button: Button):
-        node = self.find_node(self.ids.reader_tree_view.root, button.text)
+        node = find_tree_view_node(self.ids.reader_tree_view.root, button.text)
         if node:
             self.close_open_nodes(self.ids.reader_tree_view.root)
             self.open_all_parent_nodes(node)
             self.goto_node(node)
-
-    @staticmethod
-    def find_node(start_node: TreeViewNode, node_text: str):
-        nodes_to_visit = start_node.nodes.copy()
-
-        while nodes_to_visit:
-            current_node = nodes_to_visit.pop()
-            if not hasattr(current_node, "text"):
-                continue
-            current_node_text = get_clean_text_without_extra(current_node.text)
-            if current_node_text == node_text:
-                return current_node
-            nodes_to_visit.extend(current_node.nodes)
-
-        return None
 
     def on_action_bar_pressed(self, button: Button):
         pass
@@ -329,7 +296,7 @@ class MainScreen(BoxLayout, Screen):
         ]
         self.open_all_parent_nodes(year_nodes)
 
-        title_node = self.find_title_node(year_nodes, image_info.from_title)
+        title_node = find_tree_view_title_node(year_nodes, image_info.from_title)
         self.goto_node(title_node, scroll_to=True)
 
         self.title_row_selected(title_fanta_info, image_info.filename)
@@ -350,24 +317,11 @@ class MainScreen(BoxLayout, Screen):
         title_str = BARKS_TITLES[title]
         return self.all_fanta_titles[title_str]
 
-    @staticmethod
-    def find_title_node(start_node: TreeViewNode, target_title: Titles):
-        nodes_to_visit = start_node.nodes.copy()
-
-        while nodes_to_visit:
-            current_node = nodes_to_visit.pop()
-            node_title = current_node.get_title()
-            if node_title == target_title:
-                return current_node
-            nodes_to_visit.extend(current_node.nodes)
-
-        return None
-
     def title_row_selected(self, new_fanta_info: FantaComicBookInfo, title_image_file: str):
         self.fanta_info = new_fanta_info
         self.set_title(title_image_file)
 
-        self.update_background_views(ViewStates.ON_TITLE_NODE)
+        self.__update_view_for_node(ViewStates.ON_TITLE_NODE)
 
     def open_all_parent_nodes(self, node: TreeViewNode) -> None:
         # Get all the parent nodes first, then open from top parent down to last child.
@@ -382,12 +336,14 @@ class MainScreen(BoxLayout, Screen):
                 self.ids.reader_tree_view.toggle_node(parent_node)
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode):
-        logging.debug(f'Node expanded: "{node.text}" ({type(node)}).')
+        node_type = type(node)
+        if node_type == TitleTreeViewNode:
+            return
+
+        logging.debug(f'Node expanded: "{node.text}" ({node_type}).')
 
         view_state_params = {}
         new_view_state = None
-
-        node_type = type(node)
         clean_node_text = get_clean_text_without_extra(node.text)
 
         if node_type in NODE_TYPE_TO_VIEW_STATE_MAP:
@@ -422,22 +378,21 @@ class MainScreen(BoxLayout, Screen):
             self.scroll_to_node(node)
 
     def on_intro_pressed(self, _button: Button):
-        self.update_background_views(ViewStates.ON_INTRO_NODE)
-
+        self.__update_view_for_node(ViewStates.ON_INTRO_NODE)
         self.intro_text = "hello line 1\nhello line 2\nhello line 3\n"
 
     def on_the_stories_pressed(self, _button: Button):
-        self.update_background_views(ViewStates.ON_THE_STORIES_NODE)
+        self.__update_view_for_node(ViewStates.ON_THE_STORIES_NODE)
 
     def on_search_pressed(self, _button: Button):
-        self.update_background_views(ViewStates.ON_SEARCH_NODE)
+        self.__update_view_for_node(ViewStates.ON_SEARCH_NODE)
 
     def on_title_search_box_pressed(self, instance: TitleSearchBoxTreeViewNode):
         logging.debug(f"Title search box pressed: {instance}.")
 
         if not instance.get_current_title():
             logging.debug("Have not got title search box text yet.")
-            self.update_background_views(ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET)
+            self.__update_view_for_node(ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET)
         elif self.background_views.get_view_state() != ViewStates.ON_TITLE_SEARCH_BOX_NODE:
             logging.debug(
                 f"Forcing title search box change:"
@@ -453,18 +408,18 @@ class MainScreen(BoxLayout, Screen):
         logging.debug(f'Title search box title changed: "{title_str}".')
 
         if not title_str:
-            self.update_background_views(ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET)
+            self.__update_view_for_node(ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET)
         elif self.update_title(title_str):
-            self.update_background_views(ViewStates.ON_TITLE_SEARCH_BOX_NODE)
+            self.__update_view_for_node(ViewStates.ON_TITLE_SEARCH_BOX_NODE)
         else:
-            self.update_background_views(ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET)
+            self.__update_view_for_node(ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET)
 
     def on_tag_search_box_pressed(self, instance: TagSearchBoxTreeViewNode):
         logging.debug(f"Tag search box pressed: {instance}.")
 
         if not instance.get_current_tag_str():
             logging.debug("Have not got tag search box text yet.")
-            self.update_background_views(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
+            self.__update_view_for_node(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
         elif self.background_views.get_view_state() != ViewStates.ON_TAG_SEARCH_BOX_NODE:
             logging.debug(
                 f"Forcing tag search box change:"
@@ -478,7 +433,7 @@ class MainScreen(BoxLayout, Screen):
         logging.debug(f'Tag search box text changed: text: "{text}".')
 
         if not instance.get_current_title():
-            self.update_background_views(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
+            self.__update_view_for_node(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
 
     def on_tag_search_box_tag_changed(self, instance: TagSearchBoxTreeViewNode, tag_str: str):
         logging.debug(f'Tag search box tag changed: "{tag_str}".')
@@ -487,7 +442,7 @@ class MainScreen(BoxLayout, Screen):
             return
 
         if not instance.get_current_title():
-            self.update_background_views(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
+            self.__update_view_for_node(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
 
     def on_tag_search_box_title_changed(self, instance: TagSearchBoxTreeViewNode, title_str: str):
         logging.debug(
@@ -496,12 +451,12 @@ class MainScreen(BoxLayout, Screen):
         )
 
         if not title_str:
-            self.update_background_views(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
+            self.__update_view_for_node(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
         elif self.update_title(title_str):
-            self.update_background_views(ViewStates.ON_TAG_SEARCH_BOX_NODE)
+            self.__update_view_for_node(ViewStates.ON_TAG_SEARCH_BOX_NODE)
             self.set_tag_goto_page_checkbox(instance.get_current_tag(), title_str)
         else:
-            self.update_background_views(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
+            self.__update_view_for_node(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
 
     def update_title(self, title_str: str) -> bool:
         logging.debug(f'Update title: "{title_str}".')
@@ -519,58 +474,58 @@ class MainScreen(BoxLayout, Screen):
         return True
 
     def on_appendix_pressed(self, _button: Button):
-        self.update_background_views(ViewStates.ON_APPENDIX_NODE)
+        self.__update_view_for_node(ViewStates.ON_APPENDIX_NODE)
 
     def on_index_pressed(self, _button: Button):
-        self.update_background_views(ViewStates.ON_INDEX_NODE)
+        self.__update_view_for_node(ViewStates.ON_INDEX_NODE)
 
     def on_chrono_pressed(self, _button: Button):
-        self.update_background_views(ViewStates.ON_CHRONO_BY_YEAR_NODE)
+        self.__update_view_for_node(ViewStates.ON_CHRONO_BY_YEAR_NODE)
 
     def on_year_range_pressed(self, button: Button):
-        self.update_background_views(ViewStates.ON_YEAR_RANGE_NODE, year_range=button.text)
+        self.__update_view_for_node(ViewStates.ON_YEAR_RANGE_NODE, year_range=button.text)
 
     def on_cs_year_range_pressed(self, button: Button):
-        self.update_background_views(ViewStates.ON_CS_YEAR_RANGE_NODE, cs_year_range=button.text)
+        self.__update_view_for_node(ViewStates.ON_CS_YEAR_RANGE_NODE, cs_year_range=button.text)
 
     def on_us_year_range_pressed(self, button: Button):
-        self.update_background_views(ViewStates.ON_US_YEAR_RANGE_NODE, us_year_range=button.text)
+        self.__update_view_for_node(ViewStates.ON_US_YEAR_RANGE_NODE, us_year_range=button.text)
 
     def on_series_pressed(self, _button: Button):
-        self.update_background_views(ViewStates.ON_SERIES_NODE)
+        self.__update_view_for_node(ViewStates.ON_SERIES_NODE)
 
     def cs_pressed(self, _button: Button):
-        self.update_background_views(ViewStates.ON_CS_NODE)
+        self.__update_view_for_node(ViewStates.ON_CS_NODE)
 
     def dd_pressed(self, _button: Button):
-        self.update_background_views(ViewStates.ON_DD_NODE)
+        self.__update_view_for_node(ViewStates.ON_DD_NODE)
 
     def us_pressed(self, _button: Button):
-        self.update_background_views(ViewStates.ON_US_NODE)
+        self.__update_view_for_node(ViewStates.ON_US_NODE)
 
     def dds_pressed(self, _button: Button):
-        self.update_background_views(ViewStates.ON_DDS_NODE)
+        self.__update_view_for_node(ViewStates.ON_DDS_NODE)
 
     def uss_pressed(self, _button: Button):
-        self.update_background_views(ViewStates.ON_USS_NODE)
+        self.__update_view_for_node(ViewStates.ON_USS_NODE)
 
     def gg_pressed(self, _button: Button):
-        self.update_background_views(ViewStates.ON_GG_NODE)
+        self.__update_view_for_node(ViewStates.ON_GG_NODE)
 
     def misc_pressed(self, _button: Button):
-        self.update_background_views(ViewStates.ON_MISC_NODE)
+        self.__update_view_for_node(ViewStates.ON_MISC_NODE)
 
     def on_categories_pressed(self, _button: Button):
-        self.update_background_views(ViewStates.ON_CATEGORIES_NODE)
+        self.__update_view_for_node(ViewStates.ON_CATEGORIES_NODE)
 
     def on_category_pressed(self, button: Button):
-        self.update_background_views(ViewStates.ON_CATEGORY_NODE, category=button.text)
+        self.__update_view_for_node(ViewStates.ON_CATEGORY_NODE, category=button.text)
 
     def on_title_row_button_pressed(self, button: Button):
         self.fanta_info = button.parent.fanta_info
         self.set_title()
 
-        self.update_background_views(ViewStates.ON_TITLE_NODE)
+        self.__update_view_for_node(ViewStates.ON_TITLE_NODE)
 
         if isinstance(button.parent.parent_node, TagStoryGroupTreeViewNode) or isinstance(
             button.parent.parent_node, TagGroupStoryGroupTreeViewNode
@@ -588,6 +543,9 @@ class MainScreen(BoxLayout, Screen):
             self.background_views.get_current_us_year_range(),
             self.background_views.get_current_tag(),
         )
+
+    def __update_view_for_node(self, view_state: ViewStates, **args) -> None:
+        self.update_background_views(view_state, **args)
 
     def update_background_views(
         self,
@@ -729,10 +687,9 @@ class MainScreen(BoxLayout, Screen):
             self.bottom_view_title_goto_page_num = last_read_page.display_page_num
 
     def get_last_read_page(self, title_str: str) -> Union[SavedPageInfo, None]:
-        if not self.store.exists(title_str):
+        last_read_page_info = self.json_settings_manager.get_last_read_page(title_str)
+        if not last_read_page_info:
             return None
-
-        last_read_page_info = get_page_info_from_json(self.store.get(title_str)["last_read_page"])
 
         if self.is_on_or_past_last_body_page(last_read_page_info):
             # The comic has been read. Go back to the first page.
@@ -763,6 +720,17 @@ class MainScreen(BoxLayout, Screen):
             self.comic_page_info.last_body_page,
         )
 
+    def app_closing(self) -> None:
+        logging.debug("Closing app...")
+
+        if not self.ids.reader_tree_view.selected_node:
+            self.json_settings_manager.save_last_selected_node_path([])
+            logging.debug("Settings: No selected node to save.")
+        else:
+            selected_node_path = get_tree_view_node_path(self.ids.reader_tree_view.selected_node)
+            self.json_settings_manager.save_last_selected_node_path(selected_node_path)
+            logging.debug(f'Settings: Saved last selected node "{selected_node_path}".')
+
     def comic_closed(self):
         title_str = self.fanta_info.comic_book_info.get_title_str()
         last_read_page = self.get_last_read_page_from_comic()
@@ -770,7 +738,7 @@ class MainScreen(BoxLayout, Screen):
         if not last_read_page:
             logging.warning(f'"{title_str}": There was no valid last read page.')
         else:
-            self.store.put(title_str, last_read_page=get_json_from_page_info(last_read_page))
+            self.json_settings_manager.save_last_read_page(title_str, last_read_page)
             logging.debug(
                 f'"{title_str}": Saved last read page "{last_read_page.display_page_num}".'
             )
@@ -779,3 +747,20 @@ class MainScreen(BoxLayout, Screen):
                 last_read_page.display_page_num = COMIC_PAGE_ONE
 
             self.set_goto_page_checkbox(last_read_page)
+
+    def goto_saved_node(self, saved_node_path: List[str]) -> None:
+        logging.debug(f'Looking for saved node "{saved_node_path}"...')
+        saved_node = find_node_by_path(self.ids.reader_tree_view, list(reversed(saved_node_path)))
+        if saved_node:
+            self.setup_and_selected_saved_node(saved_node)
+
+    def setup_and_selected_saved_node(self, saved_node: TreeViewNode) -> None:
+        logging.debug(
+            f'Selecting and setting up start node "{get_tree_view_node_id_text(saved_node)}".'
+        )
+
+        self.ids.reader_tree_view.select_node(saved_node)
+
+        if isinstance(saved_node, TitleTreeViewNode):
+            self.on_title_row_button_pressed(saved_node.ids.num_label)
+            self.scroll_to_node(saved_node)

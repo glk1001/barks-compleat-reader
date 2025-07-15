@@ -169,8 +169,8 @@ class BarksReaderApp(App):
 
         return root
 
-    @staticmethod
-    def on_action_bar_quit():
+    def close_app(self):
+        self.main_screen.app_closing()
         App.get_running_app().stop()
         Window.close()
 
