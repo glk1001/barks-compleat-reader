@@ -254,7 +254,10 @@ class MainScreen(BoxLayout, Screen):
 
     def on_action_bar_collapse(self):
         something_was_open = False
+
         for node in self.ids.reader_tree_view.iterate_open_nodes():
+            self.ids.reader_tree_view.deselect_node(node)
+
             if node.is_open:
                 self.ids.reader_tree_view.toggle_node(node)
                 self.close_open_nodes(node)
