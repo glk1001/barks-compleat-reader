@@ -61,7 +61,26 @@ class TitlePageImage(ButtonBehavior, Image):
     TITLE_IMAGE_Y_FRAC_OF_PARENT = 0.95
 
 
-class TitleSearchBoxTreeViewNode(FloatLayout, TreeViewNode):
+class BaseSearchBoxTreeViewNode(FloatLayout, TreeViewNode):
+    """Base class for search boxes in the TreeView."""
+
+    @staticmethod
+    def _set_spinner_values(spinner: Spinner, values: List[str]):
+        """A generic helper to set values and state for a spinner."""
+        if not values:
+            spinner.values = []
+            spinner.text = ""
+            spinner.is_open = False
+        elif len(values) == 1:
+            spinner.values = values
+            spinner.text = values[0]
+            spinner.is_open = False
+        else:
+            spinner.values = values
+            spinner.is_open = True
+
+
+class TitleSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
     def on_title_search_box_pressed(self):
         pass
 
@@ -102,10 +121,11 @@ class TitleSearchBoxTreeViewNode(FloatLayout, TreeViewNode):
         logging.debug(f'**Title search box text changed: {instance}, text: "{value}".')
 
         if len(value) <= 1:
-            instance.__set_empty_title_spinner_text()
+            titles = []
         else:
             titles = self.__get_titles_matching_search_title_str(str(value))
-            instance.__set_title_spinner_values(titles)
+
+        self._set_spinner_values(self.ids.title_spinner, titles)
 
     def _on_internal_title_search_box_title_changed(self, spinner: Spinner, title_str: str) -> None:
         logging.debug(
@@ -120,28 +140,8 @@ class TitleSearchBoxTreeViewNode(FloatLayout, TreeViewNode):
 
         return self.title_search.get_titles_as_strings(title_list)
 
-    def __set_empty_title_spinner_text(self):
-        self.ids.title_spinner.text = ""
-        self.ids.title_spinner.is_open = False
 
-    def __set_empty_title_spinner_values(self):
-        self.ids.title_spinner.values = []
-        self.ids.title_spinner.text = ""
-        self.ids.title_spinner.is_open = False
-
-    def __set_title_spinner_values(self, titles: List[str]):
-        if not titles:
-            self.__set_empty_title_spinner_values()
-        elif len(titles) == 1:
-            self.ids.title_spinner.values = titles
-            self.ids.title_spinner.text = titles[0]
-            self.ids.title_spinner.is_open = False
-        else:
-            self.ids.title_spinner.values = titles
-            self.ids.title_spinner.is_open = True
-
-
-class TagSearchBoxTreeViewNode(FloatLayout, TreeViewNode):
+class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
     def on_tag_search_box_pressed(self):
         pass
 
@@ -201,15 +201,15 @@ class TagSearchBoxTreeViewNode(FloatLayout, TreeViewNode):
         self.dispatch(self.on_tag_search_box_text_changed.__name__, value)
 
         if len(value) <= 1:
-            instance.__set_empty_tag_spinner_values()
-            instance.__set_empty_title_spinner_values()
+            tags = []
+            titles = []
         else:
-            tags = self.__get_tags_matching_search_tag_str(str(value))
-            if tags:
-                instance.__set_tag_spinner_values(sorted([str(t.value) for t in tags]))
-            else:
-                instance.__set_empty_tag_spinner_values()
-                instance.__set_empty_title_spinner_values()
+            found_tags = self.__get_tags_matching_search_tag_str(str(value))
+            tags = sorted([str(t.value) for t in found_tags]) if found_tags else []
+            titles = []
+
+        self._set_spinner_values(self.ids.tag_spinner, tags)
+        self._set_spinner_values(self.ids.tag_title_spinner, titles)
 
     def _on_internal_tag_search_box_tag_changed(self, spinner: Spinner, tag_str: str):
         logging.debug(f'**Tag search box tag spinner text changed: {spinner}, text: "{tag_str}".')
@@ -222,14 +222,10 @@ class TagSearchBoxTreeViewNode(FloatLayout, TreeViewNode):
             return
 
         self.__current_tag, titles = self.__title_search.get_titles_from_alias_tag(tag_str.lower())
-
         self.ids.tag_spinner.text = get_markup_text_with_num_titles(tag_str, len(titles))
 
-        if not titles:
-            self.__set_empty_title_spinner_values()
-            return
-
-        self.__set_title_spinner_values(self.__title_search.get_titles_as_strings(titles))
+        str_titles = None if not titles else self.__title_search.get_titles_as_strings(titles)
+        self._set_spinner_values(self.ids.tag_title_spinner, str_titles)
 
     def _on_internal_tag_search_box_title_changed(self, spinner: Spinner, title_str: str) -> None:
         logging.debug(
@@ -243,42 +239,6 @@ class TagSearchBoxTreeViewNode(FloatLayout, TreeViewNode):
         #     unique_extend(title_list, self.title_search.get_titles_containing(value))
 
         return tag_list
-
-    def __set_empty_tag_spinner_values(self):
-        self.ids.tag_spinner.values = []
-        self.ids.tag_spinner.text = ""
-        self.ids.tag_spinner.is_open = False
-
-    def __set_tag_spinner_values(self, tags: List[str]):
-        if not tags:
-            self.__set_empty_tag_spinner_values()
-        elif len(tags) == 1:
-            self.ids.tag_spinner.values = tags
-            self.ids.tag_spinner.text = tags[0]
-            self.ids.tag_spinner.is_open = False
-        else:
-            self.ids.tag_spinner.values = tags
-            self.ids.tag_spinner.is_open = True
-
-    def __set_empty_title_spinner_text(self):
-        self.ids.tag_title_spinner.text = ""
-        self.ids.tag_title_spinner.is_open = False
-
-    def __set_empty_title_spinner_values(self):
-        self.ids.tag_title_spinner.values = []
-        self.ids.tag_title_spinner.text = ""
-        self.ids.tag_title_spinner.is_open = False
-
-    def __set_title_spinner_values(self, titles: List[str]):
-        if not titles:
-            self.__set_empty_title_spinner_values()
-        elif len(titles) == 1:
-            self.ids.tag_title_spinner.values = titles
-            self.ids.tag_title_spinner.text = titles[0]
-            self.ids.tag_title_spinner.is_open = False
-        else:
-            self.ids.tag_title_spinner.values = titles
-            self.ids.tag_title_spinner.is_open = True
 
 
 class ButtonTreeViewNode(Button, TreeViewNode):
