@@ -13,8 +13,6 @@ from kivy.clock import Clock
 from kivy.config import ConfigParser
 from kivy.core.window import Window
 from kivy.lang import Builder
-from kivy.metrics import sp
-from kivy.properties import NumericProperty
 from kivy.uix.screenmanager import (
     ScreenManager,
     RiseInTransition,
@@ -35,6 +33,7 @@ from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.comics_logging import setup_logging
 from comic_book_reader import get_barks_comic_reader
 from filtered_title_lists import FilteredTitleLists
+from font_manager import FontManager
 from main_screen import MainScreen
 from reader_consts_and_types import ACTION_BAR_SIZE_Y
 from reader_settings import ReaderSettings
@@ -69,59 +68,6 @@ SCREEN_TRANSITIONS = [
 
 
 class BarksReaderApp(App):
-    # All the font sizes together
-    MAIN_TITLE_FONT_SIZE = NumericProperty()
-    TITLE_INFO_FONT_SIZE = NumericProperty()
-    TITLE_EXTRA_INFO_FONT_SIZE = NumericProperty()
-    GOTO_PAGE_FONT_SIZE = NumericProperty()
-    TREE_VIEW_MAIN_NODE_FONT_SIZE = NumericProperty()
-    TREE_VIEW_STORY_NODE_FONT_SIZE = NumericProperty()
-    TREE_VIEW_YEAR_RANGE_NODE_FONT_SIZE = NumericProperty()
-    TREE_VIEW_NUM_LABEL_FONT_SIZE = NumericProperty()
-    TREE_VIEW_TITLE_LABEL_FONT_SIZE = NumericProperty()
-    TREE_VIEW_ISSUE_LABEL_FONT_SIZE = NumericProperty()
-    TREE_VIEW_TITLE_SEARCH_LABEL_FONT_SIZE = NumericProperty()
-    TREE_VIEW_TITLE_SEARCH_BOX_FONT_SIZE = NumericProperty()
-    TREE_VIEW_TITLE_SPINNER_FONT_SIZE = NumericProperty()
-    TREE_VIEW_TAG_SEARCH_LABEL_FONT_SIZE = NumericProperty()
-    TREE_VIEW_TAG_SEARCH_BOX_FONT_SIZE = NumericProperty()
-    TREE_VIEW_TAG_SPINNER_FONT_SIZE = NumericProperty()
-    TREE_VIEW_TAG_TITLE_SPINNER_FONT_SIZE = NumericProperty()
-
-    def set_font_sizes(self) -> None:
-        logging.debug(f"Resetting all font sizes to match window height {Window.height}.")
-
-        if Window.height <= 1050:
-            main_title_font_size = sp(30)
-            title_info_font_size = sp(16)
-            title_extra_info_font_size = sp(14)
-            year_range_font_size = sp(14)
-            default_font_size = sp(15)
-        else:
-            main_title_font_size = sp(40)
-            title_info_font_size = sp(20)
-            title_extra_info_font_size = sp(18)
-            year_range_font_size = sp(18)
-            default_font_size = sp(19)
-
-        self.MAIN_TITLE_FONT_SIZE = main_title_font_size
-        self.TITLE_INFO_FONT_SIZE = title_info_font_size
-        self.TITLE_EXTRA_INFO_FONT_SIZE = title_extra_info_font_size
-        self.GOTO_PAGE_FONT_SIZE = default_font_size
-        self.TREE_VIEW_MAIN_NODE_FONT_SIZE = default_font_size
-        self.TREE_VIEW_STORY_NODE_FONT_SIZE = default_font_size
-        self.TREE_VIEW_YEAR_RANGE_NODE_FONT_SIZE = year_range_font_size
-        self.TREE_VIEW_NUM_LABEL_FONT_SIZE = default_font_size
-        self.TREE_VIEW_TITLE_LABEL_FONT_SIZE = default_font_size
-        self.TREE_VIEW_ISSUE_LABEL_FONT_SIZE = default_font_size
-        self.TREE_VIEW_TITLE_SEARCH_LABEL_FONT_SIZE = default_font_size
-        self.TREE_VIEW_TITLE_SEARCH_BOX_FONT_SIZE = default_font_size
-        self.TREE_VIEW_TITLE_SPINNER_FONT_SIZE = default_font_size
-        self.TREE_VIEW_TAG_SEARCH_LABEL_FONT_SIZE = default_font_size
-        self.TREE_VIEW_TAG_SEARCH_BOX_FONT_SIZE = default_font_size
-        self.TREE_VIEW_TAG_SPINNER_FONT_SIZE = default_font_size
-        self.TREE_VIEW_TAG_TITLE_SPINNER_FONT_SIZE = default_font_size
-
     def __init__(self, comics_db: ComicsDatabase, **kwargs):
         super().__init__(**kwargs)
 
@@ -129,6 +75,7 @@ class BarksReaderApp(App):
         self.screen_manager = ScreenManager()
         self.comics_database = comics_db
         self.__reader_settings = ReaderSettings()
+        self.font_manager = FontManager()
 
         self.main_screen: Union[MainScreen, None] = None
 
@@ -155,7 +102,7 @@ class BarksReaderApp(App):
             f" Window.width = {Window.width}, Window.height = {Window.height}."
         )
 
-        self.set_font_sizes()
+        self.font_manager.update_font_sizes(height)
 
     def show_settings(self, _instance):
         self.open_settings()
@@ -186,6 +133,7 @@ class BarksReaderApp(App):
         )
 
         logging.debug("Loading kv files...")
+        Builder.load_string(f"#:set fm app.font_manager")
         Builder.load_file(KV_FILE)
 
         logging.debug("Instantiating main screen...")
