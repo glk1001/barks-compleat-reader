@@ -30,20 +30,20 @@ FANTA_VOLUME_OVERRIDES_ROOT = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Vol
 ALL_FANTA_VOLUMES = [i for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)]
 # ALL_FANTA_VOLUMES = [i for i in range(5, 7 + 1)]
 
-JPEG_PIL_FORMAT = "JPEG"
-PNG_PIL_FORMAT = "PNG"
-PNG_EXT_FOR_KIVY = PNG_PIL_FORMAT.lower()
+_JPEG_PIL_FORMAT = "JPEG"
+_PNG_PIL_FORMAT = "PNG"
+_PNG_EXT_FOR_KIVY = _PNG_PIL_FORMAT.lower()
+_EXTENSION_TO_PIL_FORMAT = {
+    JPG_FILE_EXT: _JPEG_PIL_FORMAT,
+    PNG_FILE_EXT: _PNG_PIL_FORMAT,
+}
 
 
 def _get_pil_format_from_ext(ext: str) -> str:
-    ext_lower = ext.lower()
-
-    if ext_lower == JPG_FILE_EXT:  # e.g., ".jpg"
-        return JPEG_PIL_FORMAT
-    elif ext_lower == PNG_FILE_EXT:  # e.g., ".png"
-        return PNG_PIL_FORMAT
-
-    raise ValueError(f"Unsupported image extension for PIL: {ext}")
+    try:
+        return _EXTENSION_TO_PIL_FORMAT[ext.lower()]
+    except KeyError:
+        raise ValueError(f"Unsupported image extension for PIL: '{ext}'.")
 
 
 class ComicBookLoader:
@@ -77,6 +77,8 @@ class ComicBookLoader:
 
         with open(self.__reader_settings.sys_file_paths.get_empty_page_file(), "rb") as file:
             self.__empty_page_image = file.read()
+
+        self.__thread: Union[threading.Thread, None] = None
 
     def load_data(self) -> None:
         if self.__reader_settings.use_prebuilt_archives:
@@ -121,6 +123,10 @@ class ComicBookLoader:
     ) -> None:
         assert len(image_load_order) == len(page_map)
 
+        # Stop any previous loading process before starting a new one.
+        if self.__thread and self.__thread.is_alive():
+            self.stop_now()
+
         if self.__reader_settings.use_prebuilt_archives:
             self.__fanta_volume_archive = None
         else:
@@ -138,7 +144,48 @@ class ComicBookLoader:
 
         logging.info(f"Archive source: {self.__get_archive_source()}.")
 
-        self.init_load_events()
+        self.__init_load_events()
+        self.__start_loading_thread()  # Start the thread automatically
+
+    def close_comic(self) -> None:
+        if not self.__current_comic_path:
+            return
+
+        logging.debug(f'Close the comic: "{self.__current_comic_path}".')
+
+        # Signal the thread to stop and wait for it to finish before clearing resources
+        self.stop_now()
+
+        self.__images.clear()
+        self.__image_loaded_events.clear()
+        self.__current_comic_path = ""
+
+    def stop_now(self):
+        """Signals the background thread to stop and waits for it to terminate."""
+        if self.__stop:  # Already stopping
+            return
+
+        self.__stop = True
+
+        if self.__thread and self.__thread.is_alive():
+            logging.debug("Waiting for image loading thread to terminate...")
+            self.__thread.join(timeout=2.0)  # Wait for 2 seconds
+            if self.__thread.is_alive():
+                logging.error("Image loading thread did not terminate in time.")
+
+        self.__thread = None
+
+    def __start_loading_thread(self):
+        """Creates and starts the background thread for loading comic images."""
+        if self.__thread is not None and self.__thread.is_alive():
+            logging.warning("Load is already in progress.")
+            return
+
+        logging.debug(
+            f'Starting comic load in background thread for: "{self.__current_comic_path}"'
+        )
+        self.__thread = threading.Thread(target=self.__load_comic_in_thread, daemon=True)
+        self.__thread.start()
 
     def __get_archive_source(self) -> str:
         archive_type = "Prebuilt" if not self.__fanta_volume_archive else "Fantagraphics volumes"
@@ -167,25 +214,12 @@ class ComicBookLoader:
 
         return comic_path
 
-    def close_comic(self) -> None:
-        if not self.__current_comic_path:
-            return
-
-        logging.debug(f'Close the comic: "{self.__current_comic_path}".')
-
-        self.__images.clear()
-        self.__image_loaded_events.clear()
-        self.__current_comic_path = ""
-
-    def stop_now(self):
-        self.__stop = True
-
-    def init_load_events(self):
+    def __init_load_events(self):
         self.__image_loaded_events.clear()
         for _ in range(len(self.__page_map)):
             self.__image_loaded_events.append(threading.Event())
 
-    def load_comic(self):
+    def __load_comic_in_thread(self):
         logging.debug(f'Load comic: comic_path = "{self.__current_comic_path}"')
 
         self.__images = [None for _i in range(0, len(self.__page_map))]
@@ -342,6 +376,6 @@ class ComicBookLoader:
         )
 
         data = io.BytesIO()
-        pil_image_resized.save(data, format=PNG_PIL_FORMAT)
+        pil_image_resized.save(data, format=_PNG_PIL_FORMAT)
 
-        return data, PNG_EXT_FOR_KIVY
+        return data, _PNG_EXT_FOR_KIVY

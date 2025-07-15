@@ -1,7 +1,6 @@
 import logging
 from collections import OrderedDict
 from pathlib import Path
-from threading import Thread
 from typing import Callable, List, Dict, Union
 
 from kivy.core.image import Image as CoreImage
@@ -207,13 +206,6 @@ class ComicBookReader(BoxLayout):
         )
 
         self.closed = False
-
-        self.load_current_comic()
-
-    def load_current_comic(self):
-        t = Thread(target=self.comic_book_loader.load_comic, args=[])
-        t.daemon = True
-        t.start()
 
     def close_comic_book_reader(self, fullscreen_button: Union[ActionButton, None]):
         if self.closed:
