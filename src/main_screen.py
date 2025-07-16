@@ -247,9 +247,10 @@ class MainScreen(BoxLayout, Screen):
 
         self.__update_view_for_node(ViewStates.INITIAL)
 
-        saved_node_path = self.json_settings_manager.get_last_selected_node_path()
-        if saved_node_path:
-            self.goto_saved_node(saved_node_path)
+        if self.reader_settings.goto_saved_node_on_start:
+            saved_node_path = self.json_settings_manager.get_last_selected_node_path()
+            if saved_node_path:
+                self.goto_saved_node(saved_node_path)
 
     def on_action_bar_collapse(self):
         something_was_open = False

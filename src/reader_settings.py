@@ -19,6 +19,7 @@ PNG_BARKS_PANELS_DIR = "png_barks_panels_dir"
 JPG_BARKS_PANELS_DIR = "jpg_barks_panels_dir"
 USE_PNG_IMAGES = "use_png_images"
 USE_PREBUILT_COMICS = "use_prebuilt_comics"
+GOTO_SAVED_NODE_ON_START = "goto_saved_node_on_start"
 
 _READER_SETTINGS_JSON = f"""
 [
@@ -72,6 +73,13 @@ _READER_SETTINGS_JSON = f"""
       "type": "bool",
       "section": "{BARKS_READER_SECTION}",
       "key": "{USE_PREBUILT_COMICS}"
+   }},
+   {{
+      "title": "Goto Last Selection on Start",
+      "desc": "When the app starts, goto the last selection in the tree view",
+      "type": "bool",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{GOTO_SAVED_NODE_ON_START}"
    }}
 ]
 """
@@ -91,6 +99,7 @@ class ReaderSettings:
             USE_PNG_IMAGES: self.is_valid_use_png_images,
             PREBUILT_COMICS_DIR: self.is_valid_prebuilt_comics_dir,
             USE_PREBUILT_COMICS: self.is_valid_use_prebuilt_archives,
+            GOTO_SAVED_NODE_ON_START: self.is_valid_goto_saved_node_on_start,
         }
         self.GETTER_METHODS = {
             FANTA_DIR: self.__get_fantagraphics_volumes_dir,
@@ -100,6 +109,7 @@ class ReaderSettings:
             USE_PNG_IMAGES: self.__get_use_png_images,
             PREBUILT_COMICS_DIR: self.__get_prebuilt_comics_dir,
             USE_PREBUILT_COMICS: self.__get_use_prebuilt_archives,
+            GOTO_SAVED_NODE_ON_START: self.__get_goto_saved_node_on_start,
         }
 
     def get_config(self) -> ConfigParser:
@@ -120,6 +130,7 @@ class ReaderSettings:
                 USE_PNG_IMAGES: True,
                 PREBUILT_COMICS_DIR: ReaderFilePaths.get_default_prebuilt_comic_zips_dir(),
                 USE_PREBUILT_COMICS: False,
+                GOTO_SAVED_NODE_ON_START: True,
             },
         )
 
@@ -217,6 +228,13 @@ class ReaderSettings:
     def __get_use_prebuilt_archives(self) -> bool:
         return self.__config.getboolean(BARKS_READER_SECTION, USE_PREBUILT_COMICS)
 
+    @property
+    def goto_saved_node_on_start(self) -> bool:
+        return self.__get_goto_saved_node_on_start()
+
+    def __get_goto_saved_node_on_start(self):
+        return self.__config.getboolean(BARKS_READER_SECTION, GOTO_SAVED_NODE_ON_START)
+
     def is_valid_fantagraphics_volumes_dir(self, dir_path: str) -> bool:
         return self.__is_valid_dir(dir_path)
 
@@ -231,6 +249,10 @@ class ReaderSettings:
             return True
 
         return self.is_valid_prebuilt_comics_dir(self.prebuilt_comics_dir)
+
+    @staticmethod
+    def is_valid_goto_saved_node_on_start(_goto_saved_node_on_start: bool):
+        return True
 
     def is_valid_png_barks_panels_dir(self, dir_path: str) -> bool:
         return self.__is_valid_dir(dir_path)
