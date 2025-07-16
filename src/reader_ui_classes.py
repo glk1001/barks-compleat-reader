@@ -242,20 +242,16 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
 
 
 class ButtonTreeViewNode(Button, TreeViewNode):
-    pass
-
-
-class MainTreeViewNode(ButtonTreeViewNode):
     TEXT_COLOR = TREE_VIEW_NODE_TEXT_COLOR
     SELECTED_COLOR = TREE_VIEW_NODE_SELECTED_COLOR
     BACKGROUND_COLOR = TREE_VIEW_NODE_BACKGROUND_COLOR
+
+
+class MainTreeViewNode(ButtonTreeViewNode):
     NODE_SIZE = (dp(200), dp(30))
 
 
 class StoryGroupTreeViewNode(ButtonTreeViewNode):
-    TEXT_COLOR = TREE_VIEW_NODE_TEXT_COLOR
-    SELECTED_COLOR = TREE_VIEW_NODE_SELECTED_COLOR
-    BACKGROUND_COLOR = TREE_VIEW_NODE_BACKGROUND_COLOR
     NODE_WIDTH = dp(350)
     NODE_HEIGHT = dp(30)
 
@@ -273,25 +269,16 @@ class TagGroupStoryGroupTreeViewNode(StoryGroupTreeViewNode):
 
 
 class YearRangeTreeViewNode(ButtonTreeViewNode):
-    TEXT_COLOR = TREE_VIEW_NODE_TEXT_COLOR
-    SELECTED_COLOR = TREE_VIEW_NODE_SELECTED_COLOR
-    BACKGROUND_COLOR = TREE_VIEW_NODE_BACKGROUND_COLOR
     NODE_WIDTH = dp(150)
     NODE_HEIGHT = dp(30)
 
 
 class CsYearRangeTreeViewNode(YearRangeTreeViewNode):
-    TEXT_COLOR = TREE_VIEW_NODE_TEXT_COLOR
-    SELECTED_COLOR = TREE_VIEW_NODE_SELECTED_COLOR
-    BACKGROUND_COLOR = TREE_VIEW_NODE_BACKGROUND_COLOR
     NODE_WIDTH = dp(250)
     NODE_HEIGHT = dp(30)
 
 
 class UsYearRangeTreeViewNode(YearRangeTreeViewNode):
-    TEXT_COLOR = TREE_VIEW_NODE_TEXT_COLOR
-    SELECTED_COLOR = TREE_VIEW_NODE_SELECTED_COLOR
-    BACKGROUND_COLOR = TREE_VIEW_NODE_BACKGROUND_COLOR
     NODE_WIDTH = dp(250)
     NODE_HEIGHT = dp(30)
 

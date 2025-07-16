@@ -4,17 +4,19 @@
     size_hint: (1, None)
     minimum_height: self.height
 
-<MainTreeViewNode>:
-    font_size: fm.tree_view_main_node_font_size
+<ButtonTreeViewNode>:
     color: root.TEXT_COLOR
     color_selected: root.SELECTED_COLOR
     background_color: root.BACKGROUND_COLOR
-    bold: True
     size_hint: (None, None)
-    size: root.NODE_SIZE
     halign: "left"
     valign: "middle"
     text_size: (self.width, self.height)
+
+<MainTreeViewNode>:
+    font_size: fm.tree_view_main_node_font_size
+    bold: True
+    size: root.NODE_SIZE
 
 <TitleSpinnerOption@SpinnerOption>:
     font_size: fm.tree_view_title_spinner_font_size
@@ -147,29 +149,15 @@
 
 <StoryGroupTreeViewNode>:
     font_size: fm.tree_view_story_node_font_size
-    color: root.TEXT_COLOR
-    color_selected: root.SELECTED_COLOR
-    background_color: root.BACKGROUND_COLOR
     markup: True
-    size_hint: (None, None)
     height: root.NODE_HEIGHT
     width: root.NODE_WIDTH
-    halign: "left"
-    valign: "middle"
-    text_size: (self.width, self.height)
 
 <YearRangeTreeViewNode>:
     font_size: fm.tree_view_year_range_node_font_size
-    color: root.TEXT_COLOR
-    color_selected: root.SELECTED_COLOR
-    background_color: root.BACKGROUND_COLOR
     markup: True
-    size_hint: (None, None)
     height: root.NODE_HEIGHT
     width: root.NODE_WIDTH
-    halign: "left"
-    valign: "middle"
-    text_size: (self.width, self.height)
 
 <TreeViewRowNode@BoxLayout>:
     orientation: "horizontal"
