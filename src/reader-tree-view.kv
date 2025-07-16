@@ -5,7 +5,7 @@
     minimum_height: self.height
 
 <MainTreeViewNode>:
-    font_size: fm.TREE_VIEW_MAIN_NODE_FONT_SIZE
+    font_size: fm.tree_view_main_node_font_size
     color: root.TEXT_COLOR
     color_selected: root.SELECTED_COLOR
     background_color: root.BACKGROUND_COLOR
@@ -17,7 +17,7 @@
     text_size: (self.width, self.height)
 
 <TitleSpinnerOption@SpinnerOption>:
-    font_size: fm.TREE_VIEW_TITLE_SPINNER_FONT_SIZE
+    font_size: fm.tree_view_title_spinner_font_size
 
 <TitleSearchBoxTreeViewNode>:
     size: root.NODE_SIZE
@@ -26,7 +26,7 @@
     Label:
         id: title_search_box_label
         text: "Titles: "
-        font_size: fm.TREE_VIEW_TITLE_SEARCH_LABEL_FONT_SIZE
+        font_size: fm.tree_view_title_search_label_font_size
         color: root.TEXT_COLOR
         background_color: root.TEXT_BACKGROUND_COLOR
         size_hint: (0.08, 1)
@@ -40,7 +40,7 @@
         id: title_search_box
         text: root.text  # Allow the root widget to deal with text
         on_text: root.text = self.text  # Allow 'text' bind on root widget
-        font_size: fm.TREE_VIEW_TITLE_SEARCH_BOX_FONT_SIZE
+        font_size: fm.tree_view_title_search_box_font_size
         multiline: False
         foreground_color: root.TEXT_COLOR
         disabled_foreground_color: (1,1,1,0.5)
@@ -58,7 +58,7 @@
         text: ""
         values: []
         bold: True
-        font_size: fm.TREE_VIEW_TITLE_SPINNER_FONT_SIZE
+        font_size: fm.tree_view_title_spinner_font_size
         color: root.SPINNER_TEXT_COLOR
         background_color: root.SPINNER_BACKGROUND_COLOR
         text_autoupdate: False
@@ -71,10 +71,10 @@
         text_size: (self.width, self.height)
 
 <TagSpinnerOption@SpinnerOption>:
-    font_size: fm.TREE_VIEW_TAG_SPINNER_FONT_SIZE
+    font_size: fm.tree_view_tag_spinner_font_size
 
 <TagTitleSpinnerOption@SpinnerOption>:
-    font_size: fm.TREE_VIEW_TAG_TITLE_SPINNER_FONT_SIZE
+    font_size: fm.tree_view_tag_title_spinner_font_size
 
 <TagSearchBoxTreeViewNode>:
     size: root.NODE_SIZE
@@ -83,7 +83,7 @@
     Label:
         id: tag_search_label
         text: "Tags: "
-        font_size: fm.TREE_VIEW_TAG_SEARCH_LABEL_FONT_SIZE
+        font_size: fm.tree_view_tag_search_label_font_size
         color: root.TAG_LABEL_COLOR
         background_color: root.TAG_LABEL_BACKGROUND_COLOR
         size_hint: (0.08, 0.5)
@@ -97,7 +97,7 @@
         id: tag_search_box
         text: root.text
         on_text: root.text = self.text
-        font_size: fm.TREE_VIEW_TAG_SEARCH_BOX_FONT_SIZE
+        font_size: fm.tree_view_tag_search_box_font_size
         multiline: False
         foreground_color: root.TAG_TEXT_COLOR
         disabled_foreground_color: (1,1,1,0.5)
@@ -115,7 +115,7 @@
         text: ""
         values: []
         markup: True
-        font_size: fm.TREE_VIEW_TAG_SPINNER_FONT_SIZE
+        font_size: fm.tree_view_tag_spinner_font_size
         color: root.TAG_SPINNER_TEXT_COLOR
         background_color: root.TAG_SPINNER_BACKGROUND_COLOR
         text_autoupdate: False
@@ -133,7 +133,7 @@
         text: ""
         values: ["one", "two", "three"]
         bold: True
-        font_size: fm.TREE_VIEW_TAG_TITLE_SPINNER_FONT_SIZE
+        font_size: fm.tree_view_tag_title_spinner_font_size
         color: root.TAG_TITLE_SPINNER_TEXT_COLOR
         background_color: root.TAG_TITLE_SPINNER_BACKGROUND_COLOR
         text_autoupdate: False
@@ -146,7 +146,7 @@
         text_size: (self.width, self.height)
 
 <StoryGroupTreeViewNode>:
-    font_size: fm.TREE_VIEW_STORY_NODE_FONT_SIZE
+    font_size: fm.tree_view_story_node_font_size
     color: root.TEXT_COLOR
     color_selected: root.SELECTED_COLOR
     background_color: root.BACKGROUND_COLOR
@@ -159,7 +159,7 @@
     text_size: (self.width, self.height)
 
 <YearRangeTreeViewNode>:
-    font_size: fm.TREE_VIEW_YEAR_RANGE_NODE_FONT_SIZE
+    font_size: fm.tree_view_year_range_node_font_size
     color: root.TEXT_COLOR
     color_selected: root.SELECTED_COLOR
     background_color: root.BACKGROUND_COLOR
@@ -192,7 +192,7 @@
         TreeViewButton:
             id: num_label
             parent: root
-            font_size: fm.TREE_VIEW_NUM_LABEL_FONT_SIZE
+            font_size: fm.tree_view_num_label_font_size
             color: root.NUM_LABEL_COLOR
             background_color: root.ROW_BACKGROUND_COLOR
             color_selected: (1,0,1,1)
@@ -208,7 +208,7 @@
         TitleTreeViewLabel:
             text: ""
             parent: root
-            font_size: fm.TREE_VIEW_NUM_LABEL_FONT_SIZE
+            font_size: fm.tree_view_num_label_font_size
             color: root.NUM_LABEL_COLOR
             background_color: root.ROW_BACKGROUND_COLOR
             size_hint: (None, None)
@@ -221,7 +221,7 @@
         TitleTreeViewLabel:
             id: title_label
             parent: root
-            font_size: fm.TREE_VIEW_TITLE_LABEL_FONT_SIZE
+            font_size: fm.tree_view_title_label_font_size
             color: root.TITLE_LABEL_COLOR
             background_color: root.ROW_BACKGROUND_COLOR
             bold: True
@@ -261,7 +261,7 @@
         TitleTreeViewLabel:
             id: issue_label
             parent: root
-            font_size: fm.TREE_VIEW_ISSUE_LABEL_FONT_SIZE
+            font_size: fm.tree_view_issue_label_font_size
             color: root.ISSUE_LABEL_COLOR
             background_color: root.ROW_BACKGROUND_COLOR
             markup: True

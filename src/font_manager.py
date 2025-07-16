@@ -6,23 +6,23 @@ from kivy.properties import NumericProperty
 
 
 class FontManager(EventDispatcher):
-    MAIN_TITLE_FONT_SIZE = NumericProperty()
-    TITLE_INFO_FONT_SIZE = NumericProperty()
-    TITLE_EXTRA_INFO_FONT_SIZE = NumericProperty()
-    GOTO_PAGE_FONT_SIZE = NumericProperty()
-    TREE_VIEW_MAIN_NODE_FONT_SIZE = NumericProperty()
-    TREE_VIEW_STORY_NODE_FONT_SIZE = NumericProperty()
-    TREE_VIEW_YEAR_RANGE_NODE_FONT_SIZE = NumericProperty()
-    TREE_VIEW_NUM_LABEL_FONT_SIZE = NumericProperty()
-    TREE_VIEW_TITLE_LABEL_FONT_SIZE = NumericProperty()
-    TREE_VIEW_ISSUE_LABEL_FONT_SIZE = NumericProperty()
-    TREE_VIEW_TITLE_SEARCH_LABEL_FONT_SIZE = NumericProperty()
-    TREE_VIEW_TITLE_SEARCH_BOX_FONT_SIZE = NumericProperty()
-    TREE_VIEW_TITLE_SPINNER_FONT_SIZE = NumericProperty()
-    TREE_VIEW_TAG_SEARCH_LABEL_FONT_SIZE = NumericProperty()
-    TREE_VIEW_TAG_SEARCH_BOX_FONT_SIZE = NumericProperty()
-    TREE_VIEW_TAG_SPINNER_FONT_SIZE = NumericProperty()
-    TREE_VIEW_TAG_TITLE_SPINNER_FONT_SIZE = NumericProperty()
+    main_title_font_size = NumericProperty()
+    title_info_font_size = NumericProperty()
+    title_extra_info_font_size = NumericProperty()
+    goto_page_font_size = NumericProperty()
+    tree_view_main_node_font_size = NumericProperty()
+    tree_view_story_node_font_size = NumericProperty()
+    tree_view_year_range_node_font_size = NumericProperty()
+    tree_view_num_label_font_size = NumericProperty()
+    tree_view_title_label_font_size = NumericProperty()
+    tree_view_issue_label_font_size = NumericProperty()
+    tree_view_title_search_label_font_size = NumericProperty()
+    tree_view_title_search_box_font_size = NumericProperty()
+    tree_view_title_spinner_font_size = NumericProperty()
+    tree_view_tag_search_label_font_size = NumericProperty()
+    tree_view_tag_search_box_font_size = NumericProperty()
+    tree_view_tag_spinner_font_size = NumericProperty()
+    tree_view_tag_title_spinner_font_size = NumericProperty()
 
     def update_font_sizes(self, window_height: int):
         """Calculates and sets all font sizes based on window height."""
@@ -41,20 +41,20 @@ class FontManager(EventDispatcher):
             year_range_font_size = sp(18)
             default_font_size = sp(19)
 
-        self.MAIN_TITLE_FONT_SIZE = main_title_font_size
-        self.TITLE_INFO_FONT_SIZE = title_info_font_size
-        self.TITLE_EXTRA_INFO_FONT_SIZE = title_extra_info_font_size
-        self.GOTO_PAGE_FONT_SIZE = default_font_size
-        self.TREE_VIEW_MAIN_NODE_FONT_SIZE = default_font_size
-        self.TREE_VIEW_STORY_NODE_FONT_SIZE = default_font_size
-        self.TREE_VIEW_YEAR_RANGE_NODE_FONT_SIZE = year_range_font_size
-        self.TREE_VIEW_NUM_LABEL_FONT_SIZE = default_font_size
-        self.TREE_VIEW_TITLE_LABEL_FONT_SIZE = default_font_size
-        self.TREE_VIEW_ISSUE_LABEL_FONT_SIZE = default_font_size
-        self.TREE_VIEW_TITLE_SEARCH_LABEL_FONT_SIZE = default_font_size
-        self.TREE_VIEW_TITLE_SEARCH_BOX_FONT_SIZE = default_font_size
-        self.TREE_VIEW_TITLE_SPINNER_FONT_SIZE = default_font_size
-        self.TREE_VIEW_TAG_SEARCH_LABEL_FONT_SIZE = default_font_size
-        self.TREE_VIEW_TAG_SEARCH_BOX_FONT_SIZE = default_font_size
-        self.TREE_VIEW_TAG_SPINNER_FONT_SIZE = default_font_size
-        self.TREE_VIEW_TAG_TITLE_SPINNER_FONT_SIZE = default_font_size
+        self.main_title_font_size = main_title_font_size
+        self.title_info_font_size = title_info_font_size
+        self.title_extra_info_font_size = title_extra_info_font_size
+        self.goto_page_font_size = default_font_size
+        self.tree_view_main_node_font_size = default_font_size
+        self.tree_view_story_node_font_size = default_font_size
+        self.tree_view_year_range_node_font_size = year_range_font_size
+        self.tree_view_num_label_node_font_size = default_font_size
+        self.tree_view_title_label_font_size = default_font_size
+        self.tree_view_issue_label_font_size = default_font_size
+        self.tree_view_title_search_label_font_size = default_font_size
+        self.tree_view_title_search_box_font_size = default_font_size
+        self.tree_view_title_spinner_font_size = default_font_size
+        self.tree_view_tag_search_label_font_size = default_font_size
+        self.tree_view_tag_search_box_font_size = default_font_size
+        self.tree_view_tag_spinner_font_size = default_font_size
+        self.tree_view_tag_title_spinner_font_size = default_font_size

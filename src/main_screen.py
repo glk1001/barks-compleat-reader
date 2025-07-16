@@ -138,7 +138,7 @@ class MainScreen(BoxLayout, Screen):
     TITLE_EXTRA_INFO_LABEL_COLOR = (1.0, 1.0, 1.0, 1.0)
     MAX_TITLE_INFO_LEN_BEFORE_SHORTEN = 36
     title_info_text = StringProperty()
-    extra_title_info_text = StringProperty()
+    title_extra_info_text = StringProperty()
     title_page_image_source = StringProperty()
 
     DEBUG_BACKGROUND_OPACITY = 0
@@ -615,7 +615,7 @@ class MainScreen(BoxLayout, Screen):
         self.title_info_text = self.formatter.get_title_info(
             self.fanta_info, self.MAX_TITLE_INFO_LEN_BEFORE_SHORTEN
         )
-        self.extra_title_info_text = self.formatter.get_extra_title_info(self.fanta_info)
+        self.title_extra_info_text = self.formatter.get_title_extra_info(self.fanta_info)
         self.title_page_image_source = self.reader_settings.file_paths.get_comic_inset_file(
             self.fanta_info.comic_book_info.title, use_edited_only=True
         )

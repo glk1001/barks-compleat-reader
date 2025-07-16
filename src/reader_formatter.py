@@ -66,7 +66,7 @@ class ReaderFormatter:
         )
 
     @staticmethod
-    def get_extra_title_info(fanta_info: FantaComicBookInfo) -> str:
+    def get_title_extra_info(fanta_info: FantaComicBookInfo) -> str:
         title = fanta_info.comic_book_info.title
         if title not in BARKS_EXTRA_INFO:
             return ""

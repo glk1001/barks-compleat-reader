@@ -218,7 +218,7 @@
                         id: main_title_label
                         text: root.main_title_text
                         font_name: root.MAIN_TITLE_FONT_NAME
-                        font_size: fm.MAIN_TITLE_FONT_SIZE
+                        font_size: fm.main_title_font_size
                         color: root.MAIN_TITLE_COLOR
                         background_color: root.MAIN_TITLE_BACKGROUND_COLOR
                         bold: True
@@ -247,7 +247,7 @@
                             BgColorLabel:
                                 id: title_info_label
                                 text: root.title_info_text
-                                font_size: fm.TITLE_INFO_FONT_SIZE
+                                font_size: fm.title_info_font_size
                                 color: root.TITLE_INFO_LABEL_COLOR
                                 background_color:
                                     (0, 1, 0, root.DEBUG_BACKGROUND_OPACITY) if root.DEBUG_BACKGROUND_OPACITY > 0 \
@@ -260,9 +260,9 @@
                                 padding: [0, 0, 0, 0]
 
                             BgColorLabel:
-                                id: extra_title_info_label
-                                text: root.extra_title_info_text
-                                font_size: fm.TITLE_EXTRA_INFO_FONT_SIZE
+                                id: title_extra_info_label
+                                text: root.title_extra_info_text
+                                font_size: fm.title_extra_info_font_size
                                 color: root.TITLE_EXTRA_INFO_LABEL_COLOR
                                 background_color:
                                     (0, 1, 1, root.DEBUG_BACKGROUND_OPACITY) if root.DEBUG_BACKGROUND_OPACITY > 0 \
@@ -297,7 +297,7 @@
                                 # Center the button within the right column
                                 pos_hint: {'center_x': 0.5}
                                 # Bind the button's top to the top of the extra_info label
-                                top: extra_title_info_label.top - (0.05 * bottom_title_view.title_box_spacing)
+                                top: title_extra_info_label.top - (0.05 * bottom_title_view.title_box_spacing)
 
                                 canvas.before:
                                     Color:
@@ -332,7 +332,7 @@
                                     text: "Goto page " + root.bottom_view_title_goto_page_num + ":"
                                     color: (0, 1, 1, 1)
                                     size_hint_x: 0.8
-                                    font_size: fm.GOTO_PAGE_FONT_SIZE
+                                    font_size: fm.goto_page_font_size
                                     text_size: (self.width, self.height)
                                     halign: "right"
                                     valign: "center"
