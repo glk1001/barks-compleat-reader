@@ -1,5 +1,6 @@
 import logging
 from collections import OrderedDict
+from datetime import datetime
 from typing import List, Callable, Tuple, Dict, Union, Generator
 
 from kivy.clock import Clock
@@ -63,6 +64,7 @@ from reader_ui_classes import (
     TagStoryGroupTreeViewNode,
     TagGroupStoryGroupTreeViewNode,
 )
+from timing import Timing
 
 BUTTON_ON_PRESS_CALLABLE = Callable[[Button], None]
 
@@ -98,6 +100,7 @@ class ReaderTreeBuilder:
         self.__main_screen = main_screen
         self.__events = self.__main_screen.reader_tree_events
         self.chrono_year_range_nodes: Dict[Tuple[int, int], ButtonTreeViewNode] = {}
+        self.__tree_build_timing = None
 
         self.__all_series_pressed_funcs: OrderedDict[str, BUTTON_ON_PRESS_CALLABLE] = OrderedDict(
             [
@@ -153,6 +156,8 @@ class ReaderTreeBuilder:
         Dispatches all heavy build tasks to run concurrently on the Kivy
         scheduler and uses a counter to detect when all tasks are complete.
         """
+        self.__tree_build_timing = Timing(datetime.now())
+
         # Create ONE counter for all concurrent tasks, passing the final callback.
         concurrent_task_counter = _CompletionCounter(on_all_finished=self.__finished_all_nodes)
 
@@ -560,10 +565,13 @@ class ReaderTreeBuilder:
         Clock.schedule_once(_next_step, 0)
 
     def __finished_all_nodes(self) -> None:
+        self.__tree_build_timing.end_time = datetime.now()
+        time_in_secs = self.__tree_build_timing.get_elapsed_time_in_seconds()
+
         logging.debug(
-            f"Finished loading all nodes:"
+            f"Finished loading all nodes in {time_in_secs}s:"
             f" {self.__main_screen.loading_data_popup.progress_bar_value}"
-            f" nodes processed. Progress bar max"
+            f" nodes processed, progress bar max"
             f" = {self.__main_screen.loading_data_popup.ids.loading_data_progress_bar.max}."
         )
 
