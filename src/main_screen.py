@@ -131,7 +131,6 @@ class MainScreen(BoxLayout, Screen):
 
     MAIN_TITLE_BACKGROUND_COLOR = (0.01, 0.01, 0.01, 0.075)
     MAIN_TITLE_COLOR = (1, 1, 0, 1)
-    MAIN_TITLE_FONT_NAME = "Carl Barks Script"
     main_title_text = StringProperty()
 
     TITLE_INFO_LABEL_COLOR = (1.0, 0.99, 0.9, 1.0)
