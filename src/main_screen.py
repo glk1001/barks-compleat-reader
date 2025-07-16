@@ -240,7 +240,7 @@ class MainScreen(BoxLayout, Screen):
         if self.loading_data_popup_image_event:
             self.loading_data_popup_image_event.cancel()
 
-        self.comic_book_reader.load_data()
+        self.comic_book_reader.init_data()
 
         # Linger on the last image...
         self.loading_data_popup.title = "All titles loaded!"

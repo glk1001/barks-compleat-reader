@@ -80,9 +80,9 @@ class ComicBookLoader:
 
         self.__thread: Union[threading.Thread, None] = None
 
-    def load_data(self) -> None:
+    def init_data(self) -> None:
         if self.__reader_settings.use_prebuilt_archives:
-            logging.info("Using prebuilt archives. No extra data to load.")
+            logging.info("Using prebuilt archives. No extra data to initialize.")
             self.__fanta_volume_archives = None
         else:
             logging.info("Using Fantagraphics volume archives. Now loading volume info...")
@@ -131,7 +131,7 @@ class ComicBookLoader:
             self.__fanta_volume_archive = None
         else:
             if not self.__fanta_volume_archives:
-                self.load_data()
+                self.init_data()
             self.__fanta_volume_archive = self.__fanta_volume_archives.get_fantagraphics_archive(
                 int(fanta_info.fantagraphics_volume[-2:])
             )
