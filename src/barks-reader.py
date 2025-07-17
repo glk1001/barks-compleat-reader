@@ -69,30 +69,30 @@ class BarksReaderApp(App):
         super().__init__(**kwargs)
 
         self.title = APP_TITLE
-        self.__screen_manager = ScreenManager()
-        self.__comics_database = comics_db
-        self.__reader_settings = ReaderSettings()
+        self._screen_manager = ScreenManager()
+        self._comics_database = comics_db
+        self._reader_settings = ReaderSettings()
         self.font_manager = FontManager()
 
-        self.__main_screen: Union[MainScreen, None] = None
+        self._main_screen: Union[MainScreen, None] = None
 
         # Window.size = (DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
         # Window.left = DEFAULT_LEFT_POS
         # Window.top = DEFAULT_TOP_POS
 
-        self.__main_screen_transitions = SCREEN_TRANSITIONS + [
+        self._main_screen_transitions = SCREEN_TRANSITIONS + [
             SlideTransition(direction="left"),
             CardTransition(direction="left", mode="push"),
         ]
-        self.__comic_book_reader_screen_transitions = SCREEN_TRANSITIONS + [
+        self._comic_book_reader_screen_transitions = SCREEN_TRANSITIONS + [
             SlideTransition(direction="right"),
             CardTransition(direction="right", mode="pop"),
         ]
 
-        Window.bind(on_resize=self.on_window_resize)
+        Window.bind(on_resize=self._on_window_resize)
         self.settings_cls = SettingsWithSpinner
 
-    def on_window_resize(self, _window, width, height):
+    def _on_window_resize(self, _window, width, height):
         logging.debug(f"App window resize event: width = {width}, height = {height}.")
         logging.debug(
             f"App window resize event:"
@@ -102,7 +102,7 @@ class BarksReaderApp(App):
         self.font_manager.update_font_sizes(height)
 
     def close_app(self):
-        self.__main_screen.app_closing()
+        self._main_screen.app_closing()
         App.get_running_app().stop()
         Window.close()
 
@@ -110,112 +110,112 @@ class BarksReaderApp(App):
         self.open_settings()
 
     def build_config(self, config):
-        self.__reader_settings.build_config(config)
+        self._reader_settings.build_config(config)
 
     def build_settings(self, settings):
-        self.__reader_settings.build_settings(settings)
+        self._reader_settings.build_settings(settings)
         settings.interface.menu.height = ACTION_BAR_SIZE_Y
 
     def on_config_change(self, config: ConfigParser, section: str, key: str, value: Any):
         logging.info(f"Config change: section = '{section}', key = '{key}', value = '{value}'.")
-        self.__reader_settings.on_changed_setting(section, key, value)
+        self._reader_settings.on_changed_setting(section, key, value)
 
     def build(self):
         logging.debug("Building app...")
 
-        self.__initialize_settings_and_db()
+        self._initialize_settings_and_db()
 
         logging.debug("Loading kv files...")
         # Pass the font manager to kv lang so it can be accessed
         Builder.load_string(f"#:set fm app.font_manager")
         Builder.load_file(KV_FILE)
 
-        root = self.__build_ui_components()
+        root = self._build_ui_components()
 
         logging.debug("Building the main tree view...")
-        self.__build_tree_view()
+        self._build_tree_view()
 
         _set_main_window()
 
         return root
 
-    def __initialize_settings_and_db(self):
+    def _initialize_settings_and_db(self):
         """Handles the initial setup of settings and the database."""
-        self.__reader_settings.set_config(self.config)
-        self.__reader_settings.validate_settings()
-        self.__reader_settings.set_barks_panels_dir()
+        self._reader_settings.set_config(self.config)
+        self._reader_settings.validate_settings()
+        self._reader_settings.set_barks_panels_dir()
 
-        self.__comics_database.set_inset_info(
-            self.__reader_settings.file_paths.get_comic_inset_files_dir(),
-            self.__reader_settings.file_paths.get_inset_file_ext(),
+        self._comics_database.set_inset_info(
+            self._reader_settings.file_paths.get_comic_inset_files_dir(),
+            self._reader_settings.file_paths.get_inset_file_ext(),
         )
 
-        self.__reader_settings.sys_file_paths.set_barks_reader_files_dir(
-            self.__reader_settings.reader_files_dir
+        self._reader_settings.sys_file_paths.set_barks_reader_files_dir(
+            self._reader_settings.reader_files_dir
         )
 
-    def __build_ui_components(self) -> ScreenManager:
+    def _build_ui_components(self) -> ScreenManager:
         """Constructs and wires up the main UI screens and components."""
         logging.debug("Instantiating main screen...")
         filtered_title_lists = FilteredTitleLists()
         reader_tree_events = ReaderTreeBuilderEventDispatcher()
-        self.__main_screen = MainScreen(
-            self.__comics_database,
-            self.__reader_settings,
+        self._main_screen = MainScreen(
+            self._comics_database,
+            self._reader_settings,
             reader_tree_events,
             filtered_title_lists,
             name=MAIN_READER_SCREEN,
         )
-        self.__set_custom_title_bar()
+        self._set_custom_title_bar()
 
-        root = self.__screen_manager
-        root.add_widget(self.__main_screen)
+        root = self._screen_manager
+        root.add_widget(self._main_screen)
         root.current = MAIN_READER_SCREEN
 
         comic_reader = get_barks_comic_reader(
             COMIC_BOOK_READER,
-            self.__reader_settings,
-            self.__switch_to_comic_book_reader,
-            self.__close_comic_book_reader,
+            self._reader_settings,
+            self._switch_to_comic_book_reader,
+            self._close_comic_book_reader,
         )
         root.add_widget(comic_reader)
-        self.__main_screen.comic_book_reader = comic_reader.children[0]
+        self._main_screen.comic_book_reader = comic_reader.children[0]
 
         return root
 
-    def __set_custom_title_bar(self):
+    def _set_custom_title_bar(self):
         Window.custom_titlebar = True
-        title_bar = self.__main_screen.ids.action_bar
+        title_bar = self._main_screen.ids.action_bar
         if Window.set_custom_titlebar(title_bar):
             logging.info("Window: setting custom titlebar successful")
         else:
             logging.info("Window: setting custom titlebar " "Not allowed on this system ")
 
-    def __build_tree_view(self):
-        self.__main_screen.set_new_loading_data_popup_image()
-        Clock.schedule_once(lambda dt: self.__main_screen.loading_data_popup.open(), 0)
+    def _build_tree_view(self):
+        self._main_screen.set_new_loading_data_popup_image()
+        Clock.schedule_once(lambda dt: self._main_screen.loading_data_popup.open(), 0)
 
-        tree_builder = ReaderTreeBuilder(self.__main_screen)
-        self.__main_screen.year_range_nodes = tree_builder.chrono_year_range_nodes
+        tree_builder = ReaderTreeBuilder(self._main_screen)
+        self._main_screen.year_range_nodes = tree_builder.chrono_year_range_nodes
         Clock.schedule_once(lambda dt: tree_builder.build_main_screen_tree(), 0)
 
-    def __get_next_main_screen_transition(self) -> TransitionBase:
-        transition_index = randrange(0, len(self.__main_screen_transitions))
-        return self.__main_screen_transitions[transition_index]
+    def _get_next_main_screen_transition(self) -> TransitionBase:
+        transition_index = randrange(0, len(self._main_screen_transitions))
+        return self._main_screen_transitions[transition_index]
 
-    def __get_next_reader_screen_transition(self) -> TransitionBase:
-        transition_index = randrange(0, len(self.__comic_book_reader_screen_transitions))
-        return self.__comic_book_reader_screen_transitions[transition_index]
+    def _get_next_reader_screen_transition(self) -> TransitionBase:
+        transition_index = randrange(0, len(self._comic_book_reader_screen_transitions))
+        return self._comic_book_reader_screen_transitions[transition_index]
 
-    def __switch_to_comic_book_reader(self):
-        self.__screen_manager.transition = self.__get_next_reader_screen_transition()
-        self.__screen_manager.current = COMIC_BOOK_READER
+    def _switch_to_comic_book_reader(self):
+        self._screen_manager.transition = self._get_next_reader_screen_transition()
+        self._screen_manager.current = COMIC_BOOK_READER
 
-    def __close_comic_book_reader(self):
-        self.__main_screen.comic_closed()
+    def _close_comic_book_reader(self):
+        self._main_screen.comic_closed()
 
-        self.__screen_manager.transition = self.__get_next_main_screen_transition()
-        self.__screen_manager.current = MAIN_READER_SCREEN
+        self._screen_manager.transition = self._get_next_main_screen_transition()
+        self._screen_manager.current = MAIN_READER_SCREEN
 
 
 def _set_main_window() -> None:
