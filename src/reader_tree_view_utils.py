@@ -40,10 +40,8 @@ def find_node_by_path(tree: ReaderTreeView, path_from_root: List[str]) -> Union[
     for i, node_text in enumerate(node_path):
         node_in_path = None
         for node in current_nodes:
-            logging.debug(f'Checking node: "{get_tree_view_node_id_text(node)}" == "{node_text}"')
             if get_tree_view_node_id_text(node) == node_text:
                 node_in_path = node
-                logging.debug(f"Got it")
                 break
 
         if not node_in_path:
@@ -55,12 +53,10 @@ def find_node_by_path(tree: ReaderTreeView, path_from_root: List[str]) -> Union[
         # If this is the last node in the path, we've found our target.
         if i == (len(node_path) - 1):
             found_node = node_in_path
-            logging.debug(f"Got it END")
             break
 
         # Otherwise, expand the current node to make its children accessible and visible.
         if not node_in_path.is_open:
-            logging.debug(f"Keep looking")
             tree.toggle_node(node_in_path)
 
         current_nodes = node_in_path.nodes
