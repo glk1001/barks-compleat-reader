@@ -87,11 +87,11 @@ _READER_SETTINGS_JSON = f"""
 
 class ReaderSettings:
     def __init__(self):
-        self.__config = None
-        self.__reader_file_paths: ReaderFilePaths = ReaderFilePaths()
-        self.__reader_sys_file_paths: SystemFilePaths = SystemFilePaths()
+        self._config = None
+        self._reader_file_paths: ReaderFilePaths = ReaderFilePaths()
+        self._reader_sys_file_paths: SystemFilePaths = SystemFilePaths()
 
-        self.VALIDATION_METHODS: Dict[str, Callable[[str], bool]] = {
+        self._VALIDATION_METHODS: Dict[str, Callable[[str], bool]] = {
             FANTA_DIR: self.is_valid_fantagraphics_volumes_dir,
             READER_FILES_DIR: self.is_valid_reader_files_dir,
             PNG_BARKS_PANELS_DIR: self.is_valid_png_barks_panels_dir,
@@ -101,22 +101,19 @@ class ReaderSettings:
             USE_PREBUILT_COMICS: self.is_valid_use_prebuilt_archives,
             GOTO_SAVED_NODE_ON_START: self.is_valid_goto_saved_node_on_start,
         }
-        self.GETTER_METHODS = {
-            FANTA_DIR: self.__get_fantagraphics_volumes_dir,
-            READER_FILES_DIR: self.__get_reader_files_dir,
-            PNG_BARKS_PANELS_DIR: self.__get_png_barks_panels_dir,
-            JPG_BARKS_PANELS_DIR: self.__get_jpg_barks_panels_dir,
-            USE_PNG_IMAGES: self.__get_use_png_images,
-            PREBUILT_COMICS_DIR: self.__get_prebuilt_comics_dir,
-            USE_PREBUILT_COMICS: self.__get_use_prebuilt_archives,
-            GOTO_SAVED_NODE_ON_START: self.__get_goto_saved_node_on_start,
+        self._GETTER_METHODS = {
+            FANTA_DIR: self._get_fantagraphics_volumes_dir,
+            READER_FILES_DIR: self._get_reader_files_dir,
+            PNG_BARKS_PANELS_DIR: self._get_png_barks_panels_dir,
+            JPG_BARKS_PANELS_DIR: self._get_jpg_barks_panels_dir,
+            USE_PNG_IMAGES: self._get_use_png_images,
+            PREBUILT_COMICS_DIR: self._get_prebuilt_comics_dir,
+            USE_PREBUILT_COMICS: self._get_use_prebuilt_archives,
+            GOTO_SAVED_NODE_ON_START: self._get_goto_saved_node_on_start,
         }
 
-    def get_config(self) -> ConfigParser:
-        return self.__config
-
     def set_config(self, config: ConfigParser) -> None:
-        self.__config = config
+        self._config = config
 
     @staticmethod
     def build_config(config: ConfigParser):
@@ -135,114 +132,114 @@ class ReaderSettings:
         )
 
     def build_settings(self, settings: Settings):
-        settings.add_json_panel(BARKS_READER_SECTION, self.__config, data=_READER_SETTINGS_JSON)
+        settings.add_json_panel(BARKS_READER_SECTION, self._config, data=_READER_SETTINGS_JSON)
 
     def validate_settings(self) -> None:
-        for key in self.VALIDATION_METHODS:
-            self.VALIDATION_METHODS[key](self.GETTER_METHODS[key]())
+        for key in self._VALIDATION_METHODS:
+            self._VALIDATION_METHODS[key](self._GETTER_METHODS[key]())
 
     def on_changed_setting(self, section: str, key: str, value: Any) -> bool:
         if section != BARKS_READER_SECTION:
             return True
 
-        assert key in self.VALIDATION_METHODS
-        if not self.VALIDATION_METHODS[key](value):
+        assert key in self._VALIDATION_METHODS
+        if not self._VALIDATION_METHODS[key](value):
             return False
 
         if key in [PNG_BARKS_PANELS_DIR, JPG_BARKS_PANELS_DIR]:
-            self.__reader_file_paths.set_barks_panels_dir(value, self.__get_barks_panels_ext_type())
+            self._reader_file_paths.set_barks_panels_dir(value, self._get_barks_panels_ext_type())
         elif key == USE_PNG_IMAGES:
             if value:
-                self.__reader_file_paths.set_barks_panels_dir(
-                    self.__get_png_barks_panels_dir(), BarksPanelsExtType.MOSTLY_PNG
+                self._reader_file_paths.set_barks_panels_dir(
+                    self._get_png_barks_panels_dir(), BarksPanelsExtType.MOSTLY_PNG
                 )
             else:
-                self.__reader_file_paths.set_barks_panels_dir(
-                    self.__get_jpg_barks_panels_dir(), BarksPanelsExtType.JPG
+                self._reader_file_paths.set_barks_panels_dir(
+                    self._get_jpg_barks_panels_dir(), BarksPanelsExtType.JPG
                 )
 
         return True
 
     @property
     def file_paths(self) -> ReaderFilePaths:
-        return self.__reader_file_paths
+        return self._reader_file_paths
 
     @property
     def sys_file_paths(self) -> SystemFilePaths:
-        return self.__reader_sys_file_paths
+        return self._reader_sys_file_paths
 
     def set_barks_reader_files_dir(self, reader_files_dir: str) -> None:
-        self.__reader_sys_file_paths.set_barks_reader_files_dir(reader_files_dir)
+        self._reader_sys_file_paths.set_barks_reader_files_dir(reader_files_dir)
 
     def set_barks_panels_dir(self) -> None:
-        if self.__get_use_png_images():
-            self.__reader_file_paths.set_barks_panels_dir(
-                self.__get_png_barks_panels_dir(), BarksPanelsExtType.MOSTLY_PNG
+        if self._get_use_png_images():
+            self._reader_file_paths.set_barks_panels_dir(
+                self._get_png_barks_panels_dir(), BarksPanelsExtType.MOSTLY_PNG
             )
         else:
-            self.__reader_file_paths.set_barks_panels_dir(
-                self.__get_jpg_barks_panels_dir(), BarksPanelsExtType.JPG
+            self._reader_file_paths.set_barks_panels_dir(
+                self._get_jpg_barks_panels_dir(), BarksPanelsExtType.JPG
             )
 
-    def __get_png_barks_panels_dir(self) -> str:
-        return self.__config.get(BARKS_READER_SECTION, PNG_BARKS_PANELS_DIR)
+    def _get_png_barks_panels_dir(self) -> str:
+        return self._config.get(BARKS_READER_SECTION, PNG_BARKS_PANELS_DIR)
 
-    def __get_jpg_barks_panels_dir(self) -> str:
-        return self.__config.get(BARKS_READER_SECTION, JPG_BARKS_PANELS_DIR)
+    def _get_jpg_barks_panels_dir(self) -> str:
+        return self._config.get(BARKS_READER_SECTION, JPG_BARKS_PANELS_DIR)
 
-    def __get_barks_panels_ext_type(self) -> BarksPanelsExtType:
-        return self.__get_barks_panels_ext_type_from_bool(self.__get_use_png_images())
+    def _get_barks_panels_ext_type(self) -> BarksPanelsExtType:
+        return self._get_barks_panels_ext_type_from_bool(self._get_use_png_images())
 
     @staticmethod
-    def __get_barks_panels_ext_type_from_bool(use_png_images: bool) -> BarksPanelsExtType:
+    def _get_barks_panels_ext_type_from_bool(use_png_images: bool) -> BarksPanelsExtType:
         return BarksPanelsExtType.MOSTLY_PNG if use_png_images else BarksPanelsExtType.JPG
 
-    def __get_use_png_images(self) -> bool:
-        return self.__config.getboolean(BARKS_READER_SECTION, USE_PNG_IMAGES)
+    def _get_use_png_images(self) -> bool:
+        return self._config.getboolean(BARKS_READER_SECTION, USE_PNG_IMAGES)
 
     @property
     def fantagraphics_volumes_dir(self) -> str:
-        return self.__get_fantagraphics_volumes_dir()
+        return self._get_fantagraphics_volumes_dir()
 
-    def __get_fantagraphics_volumes_dir(self) -> str:
-        return self.__config.get(BARKS_READER_SECTION, FANTA_DIR)
+    def _get_fantagraphics_volumes_dir(self) -> str:
+        return self._config.get(BARKS_READER_SECTION, FANTA_DIR)
 
     @property
     def reader_files_dir(self) -> str:
-        return self.__get_reader_files_dir()
+        return self._get_reader_files_dir()
 
-    def __get_reader_files_dir(self) -> str:
-        return self.__config.get(BARKS_READER_SECTION, READER_FILES_DIR)
+    def _get_reader_files_dir(self) -> str:
+        return self._config.get(BARKS_READER_SECTION, READER_FILES_DIR)
 
     @property
     def prebuilt_comics_dir(self) -> str:
-        return self.__get_prebuilt_comics_dir()
+        return self._get_prebuilt_comics_dir()
 
-    def __get_prebuilt_comics_dir(self) -> str:
-        return self.__config.get(BARKS_READER_SECTION, PREBUILT_COMICS_DIR)
+    def _get_prebuilt_comics_dir(self) -> str:
+        return self._config.get(BARKS_READER_SECTION, PREBUILT_COMICS_DIR)
 
     @property
     def use_prebuilt_archives(self) -> bool:
-        return self.__get_use_prebuilt_archives()
+        return self._get_use_prebuilt_archives()
 
-    def __get_use_prebuilt_archives(self) -> bool:
-        return self.__config.getboolean(BARKS_READER_SECTION, USE_PREBUILT_COMICS)
+    def _get_use_prebuilt_archives(self) -> bool:
+        return self._config.getboolean(BARKS_READER_SECTION, USE_PREBUILT_COMICS)
 
     @property
     def goto_saved_node_on_start(self) -> bool:
-        return self.__get_goto_saved_node_on_start()
+        return self._get_goto_saved_node_on_start()
 
-    def __get_goto_saved_node_on_start(self):
-        return self.__config.getboolean(BARKS_READER_SECTION, GOTO_SAVED_NODE_ON_START)
+    def _get_goto_saved_node_on_start(self):
+        return self._config.getboolean(BARKS_READER_SECTION, GOTO_SAVED_NODE_ON_START)
 
     def is_valid_fantagraphics_volumes_dir(self, dir_path: str) -> bool:
-        return self.__is_valid_dir(dir_path)
+        return self._is_valid_dir(dir_path)
 
     def is_valid_reader_files_dir(self, dir_path: str) -> bool:
-        return self.__is_valid_dir(dir_path)
+        return self._is_valid_dir(dir_path)
 
     def is_valid_prebuilt_comics_dir(self, dir_path: str) -> bool:
-        return self.__is_valid_dir(dir_path)
+        return self._is_valid_dir(dir_path)
 
     def is_valid_use_prebuilt_archives(self, use_prebuilt_archives: bool) -> bool:
         if not use_prebuilt_archives:
@@ -255,19 +252,19 @@ class ReaderSettings:
         return True
 
     def is_valid_png_barks_panels_dir(self, dir_path: str) -> bool:
-        return self.__is_valid_dir(dir_path)
+        return self._is_valid_dir(dir_path)
 
     def is_valid_jpg_barks_panels_dir(self, dir_path: str) -> bool:
-        return self.__is_valid_dir(dir_path)
+        return self._is_valid_dir(dir_path)
 
     def is_valid_use_png_images(self, use_png_images: bool) -> bool:
         if use_png_images:
-            return self.is_valid_png_barks_panels_dir(self.__get_png_barks_panels_dir())
+            return self.is_valid_png_barks_panels_dir(self._get_png_barks_panels_dir())
 
-        return self.is_valid_jpg_barks_panels_dir(self.__get_jpg_barks_panels_dir())
+        return self.is_valid_jpg_barks_panels_dir(self._get_jpg_barks_panels_dir())
 
     @staticmethod
-    def __is_valid_dir(dir_path: str) -> bool:
+    def _is_valid_dir(dir_path: str) -> bool:
         if os.path.isdir(dir_path):
             return True
 
