@@ -43,15 +43,15 @@ def text_includes_num_titles(text: str) -> bool:
 class ReaderFormatter:
     def __init__(self):
         # Use a custom issue_name here to display slightly shorter names.
-        self.title_info_issue_name = ISSUE_NAME.copy()
-        self.title_info_issue_name[Issues.CS] = "Comics & Stories"
-        self.title_info_issue_name[Issues.MC] = "March of Comics"
-        self.title_info_issue_name[Issues.USGTD] = "US Goes to Disneyland"
+        self._title_info_issue_name = ISSUE_NAME.copy()
+        self._title_info_issue_name[Issues.CS] = "Comics & Stories"
+        self._title_info_issue_name[Issues.MC] = "March of Comics"
+        self._title_info_issue_name[Issues.USGTD] = "US Goes to Disneyland"
 
     def get_title_info(self, fanta_info: FantaComicBookInfo, max_len_before_shorten: int) -> str:
         # TODO: Clean this up.
         issue_info = get_formatted_first_published_str(
-            fanta_info.comic_book_info, self.title_info_issue_name, max_len_before_shorten
+            fanta_info.comic_book_info, self._title_info_issue_name, max_len_before_shorten
         )
         payment_info = get_formatted_payment_info(BARKS_PAYMENTS[fanta_info.comic_book_info.title])
         submitted_info = get_long_formatted_submitted_date(fanta_info.comic_book_info)
