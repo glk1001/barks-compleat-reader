@@ -26,7 +26,6 @@ from fantagraphics_volumes import FantagraphicsVolumeArchives, FantagraphicsArch
 from reader_settings import ReaderSettings
 from reader_utils import is_blank_page, is_title_page, set_kivy_busy_cursor, set_kivy_normal_cursor
 
-FANTA_VOLUME_OVERRIDES_ROOT = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes Overrides"
 ALL_FANTA_VOLUMES = [i for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)]
 # ALL_FANTA_VOLUMES = [i for i in range(5, 7 + 1)]
 
@@ -57,6 +56,7 @@ class ComicBookLoader:
         max_window_height: int,
     ):
         self._reader_settings = reader_settings
+        self._sys_file_paths = self._reader_settings.sys_file_paths
         self._fanta_volume_archives: Union[FantagraphicsVolumeArchives, None] = None
         self._fanta_volume_archive: Union[FantagraphicsArchive, None] = None
 
@@ -75,7 +75,7 @@ class ComicBookLoader:
         self._on_all_images_loaded: Callable[[], None] = on_all_images_loaded
         self._on_load_error = on_load_error
 
-        with open(self._reader_settings.sys_file_paths.get_empty_page_file(), "rb") as file:
+        with open(self._sys_file_paths.get_empty_page_file(), "rb") as file:
             self.__empty_page_image = file.read()
 
         self._thread: Union[threading.Thread, None] = None
@@ -88,7 +88,7 @@ class ComicBookLoader:
             logging.info("Using Fantagraphics volume archives. Now loading volume info...")
             self._fanta_volume_archives = FantagraphicsVolumeArchives(
                 self._reader_settings.fantagraphics_volumes_dir,
-                FANTA_VOLUME_OVERRIDES_ROOT,
+                self._sys_file_paths.get_barks_reader_fantagraphics_overrides_root_dir(),
                 ALL_FANTA_VOLUMES,
             )
             self._fanta_volume_archives.load()
@@ -331,7 +331,7 @@ class ComicBookLoader:
         if is_title_page(page_info.srce_page) or is_blank_page(
             page_info.srce_page.page_filename, page_info.page_type
         ):
-            return Path(self._reader_settings.sys_file_paths.get_empty_page_file()), False
+            return Path(self._sys_file_paths.get_empty_page_file()), False
 
         page_str = Path(page_info.srce_page.page_filename).stem
 

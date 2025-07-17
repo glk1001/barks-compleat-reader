@@ -27,6 +27,8 @@ class SystemFilePaths:
         self._empty_page_path = ""
         self._user_data_path = ""
 
+        self._fantagraphics_overrides_root_dir = ""
+
     def set_barks_reader_files_dir(self, reader_files_dir: str) -> None:
         logging.info(f'SystemFilePaths: Setting reader_files_dir = "{reader_files_dir}".')
 
@@ -58,6 +60,10 @@ class SystemFilePaths:
         self._empty_page_path = os.path.join(self._various_files_dir, "empty-page.jpg")
         self._user_data_path = os.path.join(self._various_files_dir, "barks-reader.json")
 
+        self._fantagraphics_overrides_root_dir = os.path.join(
+            self._barks_reader_files_dir, "Fantagraphics Volumes Overrides"
+        )
+
         self._check_reader_files_dirs()
 
     def _check_reader_files_dirs(self) -> None:
@@ -66,6 +72,7 @@ class SystemFilePaths:
             self._reader_icon_files_dir,
             self._action_bar_icons_dir,
             self._various_files_dir,
+            self._fantagraphics_overrides_root_dir,
         ]
         self._check_dirs(dirs_to_check)
 
@@ -98,6 +105,9 @@ class SystemFilePaths:
         for file_path in files_to_check:
             if not os.path.isfile(file_path):
                 raise FileNotFoundError(f'Required file not found: "{file_path}".')
+
+    def get_barks_reader_fantagraphics_overrides_root_dir(self) -> str:
+        return self._fantagraphics_overrides_root_dir
 
     def get_barks_reader_user_data_file(self) -> str:
         return self._user_data_path
