@@ -24,7 +24,7 @@ from build_comic_images import ComicBookImageBuilder
 from comic_book_page_info import PageInfo
 from fantagraphics_volumes import FantagraphicsVolumeArchives, FantagraphicsArchive
 from reader_settings import ReaderSettings
-from reader_utils import is_blank_page, is_title_page
+from reader_utils import is_blank_page, is_title_page, set_kivy_busy_cursor, set_kivy_normal_cursor
 
 FANTA_VOLUME_OVERRIDES_ROOT = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes Overrides"
 ALL_FANTA_VOLUMES = [i for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)]
@@ -175,6 +175,8 @@ class ComicBookLoader:
 
         self._thread = None
 
+        set_kivy_normal_cursor()
+
     def _start_loading_thread(self):
         """Creates and starts the background thread for loading comic images."""
         if self._thread is not None and self._thread.is_alive():
@@ -220,91 +222,99 @@ class ComicBookLoader:
     def _load_comic_in_thread(self):
         logging.debug(f'Load comic: comic_path = "{self._current_comic_path}"')
 
-        self._images = [None for _i in range(0, len(self._page_map))]
-
         load_error = False
         load_warning_only = False
+        set_kivy_busy_cursor()
+
         try:
-            num_loaded = 0
-            with zipfile.ZipFile(self._current_comic_path, "r") as archive:
-                first_loaded = False
+            self._images = [None for _i in range(0, len(self._page_map))]
 
-                for i in range(0, len(self._image_load_order)):
-                    if self._stop:
-                        logging.warning(f"For i = {i}, image loading stopped.")
-                        return
+            try:
+                num_loaded = 0
+                with zipfile.ZipFile(self._current_comic_path, "r") as archive:
+                    first_loaded = False
 
-                    load_index = self._image_load_order[i]
-                    logging.debug(f'For i = {i}, load_index = "{load_index}".')
+                    for i in range(0, len(self._image_load_order)):
+                        if self._stop:
+                            logging.warning(f"For i = {i}, image loading stopped.")
+                            return
 
-                    page_info = self._page_map[load_index]
-                    logging.debug(f"For i = {i}, page_info = {str(page_info)}.")
+                        load_index = self._image_load_order[i]
+                        logging.debug(f'For i = {i}, load_index = "{load_index}".')
 
-                    # Double check stop flag before any more heavy processing.
-                    if self._stop:
-                        logging.warning(f"For i = {i}, image loading stopped before getting image.")
-                        return
+                        page_info = self._page_map[load_index]
+                        logging.debug(f"For i = {i}, page_info = {str(page_info)}.")
 
-                    page_index = page_info.page_index
-                    # noinspection PyTypeChecker
-                    self._images[page_index] = self._load_image_content(archive, page_info)
-                    num_loaded += 1
+                        # Double check stop flag before any more heavy processing.
+                        if self._stop:
+                            logging.warning(
+                                f"For i = {i}, image loading stopped before getting image."
+                            )
+                            return
 
-                    self._image_loaded_events[page_index].set()
+                        page_index = page_info.page_index
+                        # noinspection PyTypeChecker
+                        self._images[page_index] = self._load_image_content(archive, page_info)
+                        num_loaded += 1
 
-                    if not first_loaded and not self._stop:
-                        first_loaded = True
-                        logging.info(
-                            f"Loaded first image,"
-                            f" page index = {page_index},"
-                            f" page = {page_info.display_page_num}."
-                        )
-                        Clock.schedule_once(lambda dt: self._on_first_image_loaded(), 0)
+                        self._image_loaded_events[page_index].set()
 
-            if self._stop:
-                logging.warning(
-                    "Image loading stopped before all images loaded."
-                    f" Loaded {num_loaded} out of {len(self._page_map)} images."
-                )
-                return
+                        if not first_loaded and not self._stop:
+                            first_loaded = True
+                            logging.info(
+                                f"Loaded first image,"
+                                f" page index = {page_index},"
+                                f" page = {page_info.display_page_num}."
+                            )
+                            Clock.schedule_once(lambda dt: self._on_first_image_loaded(), 0)
 
-            assert num_loaded == len(self._page_map)
-            assert all(ev.is_set() for ev in self._image_loaded_events)
-            logging.info(f'Loaded {num_loaded} images from "{self._current_comic_path}".')
+                if self._stop:
+                    logging.warning(
+                        "Image loading stopped before all images loaded."
+                        f" Loaded {num_loaded} out of {len(self._page_map)} images."
+                    )
+                    return
 
-            Clock.schedule_once(lambda dt: self._on_all_images_loaded(), 0)
+                assert num_loaded == len(self._page_map)
+                assert all(ev.is_set() for ev in self._image_loaded_events)
+                logging.info(f'Loaded {num_loaded} images from "{self._current_comic_path}".')
 
-        except FileNotFoundError:
-            logging.error(f'Comic file not found: "{self._current_comic_path}".')
-            load_error = True
-        except zipfile.BadZipFile:
-            logging.error(f'Bad zip file: "{self._current_comic_path}".')
-        except KeyError as ke:
-            logging.error(
-                "Key error accessing page_map or image_load_order,"
-                f' possibly due to stop/reset: "{ke}"'
-            )
-            load_error = True
-        except IndexError:
-            if not self._stop:
-                logging.error(f'Unexpected index error reading comic: stop = "{self._stop}".')
-            else:
-                logging.warning(
-                    f'Index error reading comic: probably because stop = "{self._stop}".'
-                )
-                load_warning_only = True
+                Clock.schedule_once(lambda dt: self._on_all_images_loaded(), 0)
+
+            except FileNotFoundError:
+                logging.error(f'Comic file not found: "{self._current_comic_path}".')
                 load_error = True
-        except Exception as _e:
-            _, _, tb = sys.exc_info()
-            tb_info = traceback.extract_tb(tb)
-            filename, line, func, text = tb_info[-1]
-            logging.error(
-                f'Error loading comic: "{_e}" at "{filename}:{line}" in "{func}" ({text}).'
-            )
-            load_error = True
+            except zipfile.BadZipFile:
+                logging.error(f'Bad zip file: "{self._current_comic_path}".')
+                load_error = True
+            except KeyError as ke:
+                logging.error(
+                    "Key error accessing page_map or image_load_order,"
+                    f' possibly due to stop/reset: "{ke}"'
+                )
+                load_error = True
+            except IndexError:
+                if not self._stop:
+                    logging.error(f'Unexpected index error reading comic: stop = "{self._stop}".')
+                else:
+                    logging.warning(
+                        f'Index error reading comic: probably because stop = "{self._stop}".'
+                    )
+                    load_warning_only = True
+                    load_error = True
+            except Exception as _e:
+                _, _, tb = sys.exc_info()
+                tb_info = traceback.extract_tb(tb)
+                filename, line, func, text = tb_info[-1]
+                logging.error(
+                    f'Error loading comic: "{_e}" at "{filename}:{line}" in "{func}" ({text}).'
+                )
+                load_error = True
 
-        if load_error:
-            self._close_and_report_load_error(load_warning_only)
+        finally:
+            set_kivy_normal_cursor()
+            if load_error:
+                self._close_and_report_load_error(load_warning_only)
 
     def _close_and_report_load_error(self, load_warning_only: bool) -> None:
         self._stop = True

@@ -4,6 +4,8 @@ from random import randrange
 from typing import Tuple
 
 from cpi import inflate
+from kivy.clock import Clock
+from kivy.core.window import Window
 
 from barks_fantagraphics.barks_payments import PaymentInfo
 from barks_fantagraphics.comics_consts import PageType
@@ -11,6 +13,14 @@ from barks_fantagraphics.pages import CleanPage
 from reader_consts_and_types import Color
 
 EMPTY_PAGE_KEY = "empty_page"
+
+
+def set_kivy_busy_cursor() -> None:
+    Clock.schedule_once(lambda dt: Window.set_system_cursor("wait"), 0)
+
+
+def set_kivy_normal_cursor() -> None:
+    Clock.schedule_once(lambda dt: Window.set_system_cursor("arrow"), 0)
 
 
 def prob_rand_less_equal(percent: int) -> bool:

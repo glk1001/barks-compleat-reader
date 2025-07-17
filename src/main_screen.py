@@ -84,6 +84,7 @@ from reader_ui_classes import (
     TagGroupStoryGroupTreeViewNode,
     TitleTreeViewNode,
 )
+from reader_utils import set_kivy_normal_cursor, set_kivy_busy_cursor
 from system_file_paths import SystemFilePaths
 
 NODE_TYPE_TO_VIEW_STATE_MAP = {
@@ -226,6 +227,7 @@ class MainScreen(BoxLayout, Screen):
         self.action_bar_goto_icon_filepath = sys_paths.get_barks_reader_goto_icon_file()
 
     def _on_loading_data_popup_open(self) -> None:
+        set_kivy_busy_cursor()
         self.set_new_loading_data_popup_image()
         self._loading_data_popup_image_event = Clock.schedule_interval(
             lambda dt: self.set_new_loading_data_popup_image(), 0.5
@@ -246,6 +248,7 @@ class MainScreen(BoxLayout, Screen):
 
         # Linger on the last image...
         self.loading_data_popup.title = "All titles loaded!"
+        set_kivy_normal_cursor()
         Clock.schedule_once(lambda dt: self.loading_data_popup.dismiss(), 1)
 
         self._update_view_for_node(ViewStates.INITIAL)
