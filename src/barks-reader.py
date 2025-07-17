@@ -112,6 +112,7 @@ class BarksReaderApp(App):
 
     def build_settings(self, settings):
         self._reader_settings.build_settings(settings)
+        self.config.write()
         settings.interface.menu.height = ACTION_BAR_SIZE_Y
 
     def on_config_change(self, config: ConfigParser, section: str, key: str, value: Any):

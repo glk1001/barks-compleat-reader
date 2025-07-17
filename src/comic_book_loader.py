@@ -56,6 +56,7 @@ class ComicBookLoader:
         max_window_height: int,
     ):
         self._reader_settings = reader_settings
+        self._use_fantagraphics_overrides = True
         self._sys_file_paths = self._reader_settings.sys_file_paths
         self._fanta_volume_archives: Union[FantagraphicsVolumeArchives, None] = None
         self._fanta_volume_archive: Union[FantagraphicsArchive, None] = None
@@ -117,6 +118,7 @@ class ComicBookLoader:
     def set_comic(
         self,
         fanta_info: FantaComicBookInfo,
+        use_fantagraphics_overrides: bool,
         comic_book_image_builder: ComicBookImageBuilder,
         image_load_order: List[str],
         page_map: OrderedDict[str, PageInfo],
@@ -136,6 +138,7 @@ class ComicBookLoader:
                 int(fanta_info.fantagraphics_volume[-2:])
             )
 
+        self._use_fantagraphics_overrides = use_fantagraphics_overrides
         self._current_comic_path = self._get_comic_path(fanta_info)
         self._comic_book_image_builder = comic_book_image_builder
         self._image_load_order = image_load_order
@@ -322,9 +325,26 @@ class ComicBookLoader:
         Clock.schedule_once(lambda dt: self._on_load_error(load_warning_only), 0)
 
     def _get_image_path(self, page_info: PageInfo) -> Tuple[Path, bool]:
+        """
+        Determines the path to an image file for a given page.
+
+        This method acts as a dispatcher, deciding whether to get the path
+        from a prebuilt archive or from a Fantagraphics source volume.
+
+        Args:
+            page_info: The PageInfo object for the desired page.
+
+        Returns:
+            A tuple containing:
+                - Path: The path to the image file.
+                - bool (is_from_archive): True if the path is relative to a zip archive,
+                        False if it's a direct path to a file on disk (like an override file).
+        """
         if not self._fanta_volume_archive:
+            # Return path to prebuilt archive image.
             return Path("images") / page_info.dest_page.page_filename, True
 
+        # Return path to Fantagraphics archive or override file.
         return self._get_fanta_volume_image_path(page_info)
 
     def _get_fanta_volume_image_path(self, page_info: PageInfo) -> Tuple[Path, bool]:
@@ -338,21 +358,23 @@ class ComicBookLoader:
         if page_str in self._fanta_volume_archive.extra_images_page_map:
             return Path(self._fanta_volume_archive.extra_images_page_map[page_str]), False
 
-        if page_str in self._fanta_volume_archive.override_images_page_map:
+        if self._use_fantagraphics_overrides and (
+            page_str in self._fanta_volume_archive.override_images_page_map
+        ):
             return Path(self._fanta_volume_archive.override_images_page_map[page_str]), False
 
         return Path(self._fanta_volume_archive.archive_images_page_map[page_str]), True
 
     def _load_image_content(self, archive: ZipFile, page_info: PageInfo) -> Tuple[io.BytesIO, str]:
-        image_path, is_from_fanta_archive = self._get_image_path(page_info)
+        image_path, is_from_archive = self._get_image_path(page_info)
         ext = image_path.suffix
 
-        if is_from_fanta_archive:
+        if is_from_archive:
             with archive.open(str(image_path), "r") as file:
                 file_data = file.read()
         elif page_info.srce_page.page_type in [PageType.BLANK_PAGE, PageType.TITLE]:
             file_data = self.__empty_page_image
-        else:
+        else:  # it's a file
             with open(image_path, "rb") as file:
                 file_data = file.read()
 
@@ -360,7 +382,7 @@ class ComicBookLoader:
 
         logging.debug(
             f'Getting image (page = "{page_info.display_page_num}"): '
-            f'image_path = "{image_path}", is_from_fanta_archive = {is_from_fanta_archive}.'
+            f'image_path = "{image_path}", is_from_archive = {is_from_archive}.'
         )
 
         return image_data
