@@ -189,7 +189,7 @@ class MainScreen(BoxLayout, Screen):
 
         self._formatter = ReaderFormatter()
         self._fanta_info: Union[FantaComicBookInfo, None] = None
-        self.year_range_nodes = None
+        self.year_range_nodes: Union[Dict, None] = None
 
         self.loading_data_popup = LoadingDataPopup()
         self.loading_data_popup.on_open = self._on_loading_data_popup_open
@@ -228,16 +228,28 @@ class MainScreen(BoxLayout, Screen):
 
     def _on_loading_data_popup_open(self) -> None:
         set_kivy_busy_cursor()
-        self.set_new_loading_data_popup_image()
+        self._set_new_loading_data_popup_image()
         self._loading_data_popup_image_event = Clock.schedule_interval(
-            lambda dt: self.set_new_loading_data_popup_image(), 0.5
+            lambda dt: self._set_new_loading_data_popup_image(), 0.5
         )
 
-    def set_new_loading_data_popup_image(self) -> None:
+    def _set_new_loading_data_popup_image(self) -> None:
         self.loading_data_popup.splash_image_path = (
             self._random_title_images.get_loading_screen_random_image(self.title_lists[ALL_LISTS])
         )
         logging.debug(f'New loading popup image: "{self.loading_data_popup.splash_image_path}".')
+
+    def start_tree_build(self):
+        """Kicks off the asynchronous build of the TreeView."""
+
+        self._set_new_loading_data_popup_image()
+        Clock.schedule_once(lambda dt: self.loading_data_popup.open(), 0)
+
+        from reader_tree_builder import ReaderTreeBuilder
+
+        tree_builder = ReaderTreeBuilder(self)
+        self.year_range_nodes = tree_builder.chrono_year_range_nodes
+        Clock.schedule_once(lambda dt: tree_builder.build_main_screen_tree(), 0)
 
     def _on_tree_build_finished(self, _instance):
         logging.debug(f"Received the 'on_finished_building_event' - dismiss the loading popup.")

@@ -9,7 +9,6 @@ os.environ["KIVY_LOG_MODE"] = "MIXED"
 
 from kivy import Config
 from kivy.app import App
-from kivy.clock import Clock
 from kivy.config import ConfigParser
 from kivy.core.window import Window
 from kivy.lang import Builder
@@ -37,7 +36,6 @@ from font_manager import FontManager
 from main_screen import MainScreen
 from reader_consts_and_types import ACTION_BAR_SIZE_Y
 from reader_settings import ReaderSettings
-from reader_tree_builder import ReaderTreeBuilder
 from reader_ui_classes import ReaderTreeBuilderEventDispatcher
 from screen_metrics import get_screen_info, log_screen_metrics
 
@@ -133,7 +131,7 @@ class BarksReaderApp(App):
         root = self._build_ui_components()
 
         logging.debug("Building the main tree view...")
-        self._build_tree_view()
+        self._main_screen.start_tree_build()
 
         _set_main_window()
 
@@ -190,14 +188,6 @@ class BarksReaderApp(App):
             logging.info("Window: setting custom titlebar successful")
         else:
             logging.info("Window: setting custom titlebar " "Not allowed on this system ")
-
-    def _build_tree_view(self):
-        self._main_screen.set_new_loading_data_popup_image()
-        Clock.schedule_once(lambda dt: self._main_screen.loading_data_popup.open(), 0)
-
-        tree_builder = ReaderTreeBuilder(self._main_screen)
-        self._main_screen.year_range_nodes = tree_builder.chrono_year_range_nodes
-        Clock.schedule_once(lambda dt: tree_builder.build_main_screen_tree(), 0)
 
     def _get_next_main_screen_transition(self) -> TransitionBase:
         transition_index = randrange(0, len(self._main_screen_transitions))
