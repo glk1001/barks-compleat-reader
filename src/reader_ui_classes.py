@@ -123,7 +123,7 @@ class TitleSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         if len(value) <= 1:
             titles = []
         else:
-            titles = self.__get_titles_matching_search_title_str(str(value))
+            titles = self._get_titles_matching_search_title_str(str(value))
 
         self._set_spinner_values(self.ids.title_spinner, titles)
 
@@ -133,7 +133,7 @@ class TitleSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         )
         self.dispatch(self.on_title_search_box_title_changed.__name__, title_str)
 
-    def __get_titles_matching_search_title_str(self, value: str) -> List[str]:
+    def _get_titles_matching_search_title_str(self, value: str) -> List[str]:
         title_list = self.title_search.get_titles_matching_prefix(value)
         if len(value) > 2:
             unique_extend(title_list, self.title_search.get_titles_containing(value))
@@ -176,18 +176,18 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
 
     def __init__(self, title_search: BarksTitleSearch):
         super().__init__()
-        self.__title_search = title_search
+        self._title_search = title_search
         self.bind(text=self._on_internal_tag_search_box_text_changed)
         self.ids.tag_spinner.bind(text=self._on_internal_tag_search_box_tag_changed)
         self.ids.tag_title_spinner.bind(text=self._on_internal_tag_search_box_title_changed)
-        self.__current_tag = None
+        self._current_tag = None
 
     def on_touch_down(self, touch):
         self.dispatch(self.on_tag_search_box_pressed.__name__)
         return super().on_touch_down(touch)
 
     def get_current_tag(self) -> Union[Tags, TagGroups]:
-        return self.__current_tag
+        return self._current_tag
 
     def get_current_tag_str(self) -> str:
         return self.ids.tag_spinner.text
@@ -204,7 +204,7 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
             tags = []
             titles = []
         else:
-            found_tags = self.__get_tags_matching_search_tag_str(str(value))
+            found_tags = self._get_tags_matching_search_tag_str(str(value))
             tags = sorted([str(t.value) for t in found_tags]) if found_tags else []
             titles = []
 
@@ -221,10 +221,10 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         if not tag_str:
             return
 
-        self.__current_tag, titles = self.__title_search.get_titles_from_alias_tag(tag_str.lower())
+        self._current_tag, titles = self._title_search.get_titles_from_alias_tag(tag_str.lower())
         self.ids.tag_spinner.text = get_markup_text_with_num_titles(tag_str, len(titles))
 
-        str_titles = None if not titles else self.__title_search.get_titles_as_strings(titles)
+        str_titles = None if not titles else self._title_search.get_titles_as_strings(titles)
         self._set_spinner_values(self.ids.tag_title_spinner, str_titles)
 
     def _on_internal_tag_search_box_title_changed(self, spinner: Spinner, title_str: str) -> None:
@@ -233,8 +233,8 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         )
         self.dispatch(self.on_tag_search_box_title_changed.__name__, title_str)
 
-    def __get_tags_matching_search_tag_str(self, value: str) -> List[Union[Tags, TagGroups]]:
-        tag_list = self.__title_search.get_tags_matching_prefix(value)
+    def _get_tags_matching_search_tag_str(self, value: str) -> List[Union[Tags, TagGroups]]:
+        tag_list = self._title_search.get_tags_matching_prefix(value)
         # if len(value) > 2:
         #     unique_extend(title_list, self.title_search.get_titles_containing(value))
 
