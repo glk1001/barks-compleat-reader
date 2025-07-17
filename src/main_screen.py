@@ -21,6 +21,7 @@ from barks_fantagraphics.barks_tags import (
     BARKS_TAGGED_PAGES,
 )
 from barks_fantagraphics.barks_titles import ComicBookInfo, Titles, BARKS_TITLES, BARKS_TITLE_DICT
+from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comics_consts import PageType, ROMAN_NUMERALS, BACK_MATTER_PAGES
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import (
@@ -85,6 +86,7 @@ from reader_ui_classes import (
     TitleTreeViewNode,
 )
 from reader_utils import set_kivy_normal_cursor, set_kivy_busy_cursor
+from special_overrides_handler import SpecialFantaOverrides
 from system_file_paths import SystemFilePaths
 
 NODE_TYPE_TO_VIEW_STATE_MAP = {
@@ -214,6 +216,9 @@ class MainScreen(BoxLayout, Screen):
         self._update_view_for_node(ViewStates.PRE_INIT)
 
         self._set_action_bar_icons(self._reader_settings.sys_file_paths)
+
+        self._special_fanta_overrides = SpecialFantaOverrides(self._reader_settings)
+        self.ids.use_overrides_checkbox.bind(active=self.on_use_overrides_checkbox_changed)
 
     def _set_action_bar_icons(self, sys_paths: SystemFilePaths):
         self.app_icon_filepath = sys_paths.get_barks_reader_app_icon_file()
@@ -646,6 +651,34 @@ class MainScreen(BoxLayout, Screen):
         logging.debug(f'Using title image source "{self.title_page_image_source}".')
 
         self._set_goto_page_checkbox()
+        self._set_use_overrides_checkbox()
+
+    def _set_use_overrides_checkbox(self) -> None:
+        title = self._fanta_info.comic_book_info.title
+        if (
+            self._reader_settings.use_prebuilt_archives
+            or not self._special_fanta_overrides.is_title_where_overrides_are_optional(title)
+        ):
+            self.ids.use_overrides_layout.opacity = 0
+            self.ids.use_overrides_checkbox.active = True
+            return
+
+        self.ids.use_overrides_layout.opacity = 1
+        self.ids.use_overrides_label.text = self._special_fanta_overrides.get_description(title)
+        self.ids.use_overrides_checkbox.active = (
+            self._special_fanta_overrides.get_overrides_setting(title)
+        )
+
+    def on_use_overrides_checkbox_changed(self, _instance, use_overrides: bool) -> None:
+        logging.debug(f"Use overrides checkbox changed: use_overrides = {use_overrides}.")
+
+        self.title_page_image_source = self._special_fanta_overrides.get_title_page_inset_file(
+            self._fanta_info.comic_book_info.title, use_overrides
+        )
+
+        logging.debug(
+            f'Use overrides changed: title_page_image_source = "{self.title_page_image_source}".'
+        )
 
     def _get_main_title_str(self):
         if self._fanta_info.comic_book_info.is_barks_title:
@@ -660,8 +693,7 @@ class MainScreen(BoxLayout, Screen):
             logging.debug(f'Image "{self.title_page_image_source}" pressed. But no title selected.')
             return
 
-        title_str = self._fanta_info.comic_book_info.get_title_str()
-        comic = self._comics_database.get_comic_book(title_str)
+        comic = self._get_comic_book()
         self._comic_page_info = get_comic_page_info(comic)
         page_to_first_goto = self._get_page_to_first_goto()
 
@@ -671,14 +703,29 @@ class MainScreen(BoxLayout, Screen):
         comic_book_image_builder.set_required_dim(self._comic_page_info.required_dim)
 
         logging.debug(f'Image "{self.title_page_image_source}" pressed.')
-        logging.debug(f'Load "{title_str}" and goto page "{page_to_first_goto}".')
+        logging.debug(
+            f'Load "{self._fanta_info.comic_book_info.get_title_str()}"'
+            f' and goto page "{page_to_first_goto}".'
+        )
 
         self.comic_book_reader.read_comic(
             self._fanta_info,
+            self.ids.use_overrides_checkbox.active,
             comic_book_image_builder,
             page_to_first_goto,
             self._comic_page_info.page_map,
         )
+
+    def _get_comic_book(self) -> ComicBook:
+        title_str = self._fanta_info.comic_book_info.get_title_str()
+
+        comic = self._comics_database.get_comic_book(title_str)
+
+        comic.intro_inset_file = self._special_fanta_overrides.get_inset_file(
+            self._fanta_info.comic_book_info.title, self.ids.use_overrides_checkbox.active
+        )
+
+        return comic
 
     def _get_page_to_first_goto(self) -> str:
         if not self.ids.goto_page_checkbox.active:

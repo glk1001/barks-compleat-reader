@@ -280,6 +280,7 @@ class ComicBookReader(BoxLayout):
     def read_comic(
         self,
         fanta_info: FantaComicBookInfo,
+        use_fantagraphics_overrides: bool,
         comic_book_image_builder: ComicBookImageBuilder,
         page_to_first_goto: str,
         page_map: OrderedDict[str, PageInfo],
@@ -298,6 +299,7 @@ class ComicBookReader(BoxLayout):
 
         self._comic_book_loader.set_comic(
             fanta_info,
+            use_fantagraphics_overrides,
             comic_book_image_builder,
             self._page_manager.get_image_load_order(),
             page_map,

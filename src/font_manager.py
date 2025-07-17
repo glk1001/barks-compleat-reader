@@ -11,7 +11,7 @@ class FontManager(EventDispatcher):
     main_title_font_size = NumericProperty()
     title_info_font_size = NumericProperty()
     title_extra_info_font_size = NumericProperty()
-    goto_page_font_size = NumericProperty()
+    check_box_font_size = NumericProperty()
 
     tree_view_main_node_font_size = NumericProperty()
     tree_view_story_node_font_size = NumericProperty()
@@ -54,7 +54,7 @@ class FontManager(EventDispatcher):
         self.main_title_font_size = main_title_font_size
         self.title_info_font_size = title_info_font_size
         self.title_extra_info_font_size = title_extra_info_font_size
-        self.goto_page_font_size = default_font_size
+        self.check_box_font_size = default_font_size
 
         self.tree_view_main_node_font_size = default_font_size
         self.tree_view_story_node_font_size = default_font_size

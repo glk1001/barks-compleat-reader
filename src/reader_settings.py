@@ -20,6 +20,10 @@ JPG_BARKS_PANELS_DIR = "jpg_barks_panels_dir"
 USE_PNG_IMAGES = "use_png_images"
 USE_PREBUILT_COMICS = "use_prebuilt_comics"
 GOTO_SAVED_NODE_ON_START = "goto_saved_node_on_start"
+USE_HARPIES_INSTEAD_OF_LARKIES = "use_harpies"
+USE_DERE_INSTEAD_OF_THEAH = "use_dere"
+USE_BLANK_EYEBALLS_FOR_BOMBIE = "use_blank_eyeballs"
+USE_GLK_FIREBUG_ENDING = "use_glk_firebug_ending"
 
 _READER_SETTINGS_JSON = f"""
 [
@@ -80,6 +84,34 @@ _READER_SETTINGS_JSON = f"""
       "type": "bool",
       "section": "{BARKS_READER_SECTION}",
       "key": "{GOTO_SAVED_NODE_ON_START}"
+   }},
+   {{
+      "title": "Use 'Harpies' Instead of 'Larkies'",
+      "desc": "When reading 'The Golden Fleecing', use 'Harpies' instead of 'Larkies'",
+      "type": "bool",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{USE_HARPIES_INSTEAD_OF_LARKIES}"
+   }},
+   {{
+      "title": "Use 'Dere' Instead of 'Theah'",
+      "desc": "When reading 'Lost in the Andes!', use 'Dere' instead of 'Theah'",
+      "type": "bool",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{USE_DERE_INSTEAD_OF_THEAH}"
+   }},
+   {{
+      "title": "Use Blank Eyeballs for Bombie",
+      "desc": "When reading 'Voodoo Hoodoo', use blank eyeballs for Bombie the Zombie",
+      "type": "bool",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{USE_BLANK_EYEBALLS_FOR_BOMBIE}"
+   }},
+   {{
+      "title": "Don't Use Fantagraphics Ending for 'The Firebug'",
+      "desc": "When reading 'The Firebug', don't use the Fantagraphics ending",
+      "type": "bool",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{USE_GLK_FIREBUG_ENDING}"
    }}
 ]
 """
@@ -92,14 +124,18 @@ class ReaderSettings:
         self._reader_sys_file_paths: SystemFilePaths = SystemFilePaths()
 
         self._VALIDATION_METHODS: Dict[str, Callable[[str], bool]] = {
-            FANTA_DIR: self.is_valid_fantagraphics_volumes_dir,
-            READER_FILES_DIR: self.is_valid_reader_files_dir,
-            PNG_BARKS_PANELS_DIR: self.is_valid_png_barks_panels_dir,
-            JPG_BARKS_PANELS_DIR: self.is_valid_jpg_barks_panels_dir,
-            USE_PNG_IMAGES: self.is_valid_use_png_images,
-            PREBUILT_COMICS_DIR: self.is_valid_prebuilt_comics_dir,
-            USE_PREBUILT_COMICS: self.is_valid_use_prebuilt_archives,
-            GOTO_SAVED_NODE_ON_START: self.is_valid_goto_saved_node_on_start,
+            FANTA_DIR: self._is_valid_fantagraphics_volumes_dir,
+            READER_FILES_DIR: self._is_valid_reader_files_dir,
+            PNG_BARKS_PANELS_DIR: self._is_valid_png_barks_panels_dir,
+            JPG_BARKS_PANELS_DIR: self._is_valid_jpg_barks_panels_dir,
+            USE_PNG_IMAGES: self._is_valid_use_png_images,
+            PREBUILT_COMICS_DIR: self._is_valid_prebuilt_comics_dir,
+            USE_PREBUILT_COMICS: self._is_valid_use_prebuilt_archives,
+            GOTO_SAVED_NODE_ON_START: self._is_valid_goto_saved_node_on_start,
+            USE_HARPIES_INSTEAD_OF_LARKIES: self._is_valid_use_harpies_instead_of_larkies,
+            USE_DERE_INSTEAD_OF_THEAH: self._is_valid_use_dere_instead_of_theah,
+            USE_BLANK_EYEBALLS_FOR_BOMBIE: self._is_valid_use_blank_eyeballs_for_bombie,
+            USE_GLK_FIREBUG_ENDING: self._is_valid_use_glk_firebug_ending,
         }
         self._GETTER_METHODS = {
             FANTA_DIR: self._get_fantagraphics_volumes_dir,
@@ -110,6 +146,10 @@ class ReaderSettings:
             PREBUILT_COMICS_DIR: self._get_prebuilt_comics_dir,
             USE_PREBUILT_COMICS: self._get_use_prebuilt_archives,
             GOTO_SAVED_NODE_ON_START: self._get_goto_saved_node_on_start,
+            USE_HARPIES_INSTEAD_OF_LARKIES: self.get_use_harpies_instead_of_larkies,
+            USE_DERE_INSTEAD_OF_THEAH: self.get_use_dere_instead_of_theah,
+            USE_BLANK_EYEBALLS_FOR_BOMBIE: self.get_use_blank_eyeballs_for_bombie,
+            USE_GLK_FIREBUG_ENDING: self.get_use_glk_firebug_ending,
         }
 
     def set_config(self, config: ConfigParser) -> None:
@@ -117,6 +157,8 @@ class ReaderSettings:
 
     @staticmethod
     def build_config(config: ConfigParser):
+        # NOTE: For some reason we need to use 0/1 instead of False/True.
+        #       Not sure why.
         config.setdefaults(
             BARKS_READER_SECTION,
             {
@@ -124,10 +166,14 @@ class ReaderSettings:
                 READER_FILES_DIR: DEFAULT_BARKS_READER_FILES_DIR,
                 PNG_BARKS_PANELS_DIR: ReaderFilePaths.get_default_png_barks_panels_dir(),
                 JPG_BARKS_PANELS_DIR: ReaderFilePaths.get_default_jpg_barks_panels_dir(),
-                USE_PNG_IMAGES: True,
+                USE_PNG_IMAGES: 1,
                 PREBUILT_COMICS_DIR: ReaderFilePaths.get_default_prebuilt_comic_zips_dir(),
-                USE_PREBUILT_COMICS: False,
-                GOTO_SAVED_NODE_ON_START: True,
+                USE_PREBUILT_COMICS: 0,
+                GOTO_SAVED_NODE_ON_START: 1,
+                USE_HARPIES_INSTEAD_OF_LARKIES: 1,
+                USE_DERE_INSTEAD_OF_THEAH: 1,
+                USE_BLANK_EYEBALLS_FOR_BOMBIE: 1,
+                USE_GLK_FIREBUG_ENDING: 1,
             },
         )
 
@@ -232,36 +278,64 @@ class ReaderSettings:
     def _get_goto_saved_node_on_start(self):
         return self._config.getboolean(BARKS_READER_SECTION, GOTO_SAVED_NODE_ON_START)
 
-    def is_valid_fantagraphics_volumes_dir(self, dir_path: str) -> bool:
+    def get_use_harpies_instead_of_larkies(self):
+        return self._config.getboolean(BARKS_READER_SECTION, USE_HARPIES_INSTEAD_OF_LARKIES)
+
+    def get_use_dere_instead_of_theah(self):
+        return self._config.getboolean(BARKS_READER_SECTION, USE_DERE_INSTEAD_OF_THEAH)
+
+    def get_use_blank_eyeballs_for_bombie(self):
+        return self._config.getboolean(BARKS_READER_SECTION, USE_BLANK_EYEBALLS_FOR_BOMBIE)
+
+    def get_use_glk_firebug_ending(self):
+        return self._config.getboolean(BARKS_READER_SECTION, USE_GLK_FIREBUG_ENDING)
+
+    def _is_valid_fantagraphics_volumes_dir(self, dir_path: str) -> bool:
         return self._is_valid_dir(dir_path)
 
-    def is_valid_reader_files_dir(self, dir_path: str) -> bool:
+    def _is_valid_reader_files_dir(self, dir_path: str) -> bool:
         return self._is_valid_dir(dir_path)
 
-    def is_valid_prebuilt_comics_dir(self, dir_path: str) -> bool:
+    def _is_valid_prebuilt_comics_dir(self, dir_path: str) -> bool:
         return self._is_valid_dir(dir_path)
 
-    def is_valid_use_prebuilt_archives(self, use_prebuilt_archives: bool) -> bool:
+    def _is_valid_use_prebuilt_archives(self, use_prebuilt_archives: bool) -> bool:
         if not use_prebuilt_archives:
             return True
 
-        return self.is_valid_prebuilt_comics_dir(self.prebuilt_comics_dir)
+        return self._is_valid_prebuilt_comics_dir(self.prebuilt_comics_dir)
 
     @staticmethod
-    def is_valid_goto_saved_node_on_start(_goto_saved_node_on_start: bool):
+    def _is_valid_goto_saved_node_on_start(_goto_saved_node_on_start: bool):
         return True
 
-    def is_valid_png_barks_panels_dir(self, dir_path: str) -> bool:
+    @staticmethod
+    def _is_valid_use_harpies_instead_of_larkies(_use_harpies_instead_of_larkies: bool):
+        return True
+
+    @staticmethod
+    def _is_valid_use_dere_instead_of_theah(_use_dere_instead_of_theah: bool):
+        return True
+
+    @staticmethod
+    def _is_valid_use_blank_eyeballs_for_bombie(_use_blank_eyeballs_for_bombie: bool):
+        return True
+
+    @staticmethod
+    def _is_valid_use_glk_firebug_ending(_use_glk_firebug_ending: bool):
+        return True
+
+    def _is_valid_png_barks_panels_dir(self, dir_path: str) -> bool:
         return self._is_valid_dir(dir_path)
 
-    def is_valid_jpg_barks_panels_dir(self, dir_path: str) -> bool:
+    def _is_valid_jpg_barks_panels_dir(self, dir_path: str) -> bool:
         return self._is_valid_dir(dir_path)
 
-    def is_valid_use_png_images(self, use_png_images: bool) -> bool:
+    def _is_valid_use_png_images(self, use_png_images: bool) -> bool:
         if use_png_images:
-            return self.is_valid_png_barks_panels_dir(self._get_png_barks_panels_dir())
+            return self._is_valid_png_barks_panels_dir(self._get_png_barks_panels_dir())
 
-        return self.is_valid_jpg_barks_panels_dir(self._get_jpg_barks_panels_dir())
+        return self._is_valid_jpg_barks_panels_dir(self._get_jpg_barks_panels_dir())
 
     @staticmethod
     def _is_valid_dir(dir_path: str) -> bool:
