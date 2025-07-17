@@ -2,149 +2,141 @@ import logging
 import os
 from typing import List
 
-from file_paths import BARKS_DIR
-
-DEFAULT_BARKS_READER_FILES_DIR = os.path.join(BARKS_DIR, "Compleat Barks Disney Reader")
-
 
 class SystemFilePaths:
     def __init__(self):
-        self.__barks_reader_files_dir = ""
+        self._barks_reader_files_dir = ""
 
-        self.__reader_icon_files_dir = ""
-        self.__app_icon_path = ""
+        self._reader_icon_files_dir = ""
+        self._app_icon_path = ""
 
-        self.__action_bar_icons_dir = ""
-        self.__close_icon_path = ""
-        self.__collapse_icon_path = ""
-        self.__refresh_arrow_icon_path = ""
-        self.__settings_icon_path = ""
-        self.__fullscreen_icon_path = ""
-        self.__fullscreen_exit_icon_path = ""
-        self.__goto_icon_path = ""
-        self.__goto_start_icon_path = ""
-        self.__goto_end_icon_path = ""
+        self._action_bar_icons_dir = ""
+        self._close_icon_path = ""
+        self._collapse_icon_path = ""
+        self._refresh_arrow_icon_path = ""
+        self._settings_icon_path = ""
+        self._fullscreen_icon_path = ""
+        self._fullscreen_exit_icon_path = ""
+        self._goto_icon_path = ""
+        self._goto_start_icon_path = ""
+        self._goto_end_icon_path = ""
 
-        self.__various_files_dir = ""
-        self.__up_arrow_path = ""
-        self.__transparent_blank_path = ""
-        self.__empty_page_path = ""
-        self.__user_data_path = ""
+        self._various_files_dir = ""
+        self._up_arrow_path = ""
+        self._transparent_blank_path = ""
+        self._empty_page_path = ""
+        self._user_data_path = ""
 
     def set_barks_reader_files_dir(self, reader_files_dir: str) -> None:
         logging.info(f'SystemFilePaths: Setting reader_files_dir = "{reader_files_dir}".')
 
-        self.__barks_reader_files_dir = reader_files_dir
+        self._barks_reader_files_dir = reader_files_dir
 
-        self.__reader_icon_files_dir = os.path.join(self.__barks_reader_files_dir, "Reader Icons")
-        self.__app_icon_path = os.path.join(self.__reader_icon_files_dir, "Barks Reader Icon 1.png")
+        self._reader_icon_files_dir = os.path.join(self._barks_reader_files_dir, "Reader Icons")
+        self._app_icon_path = os.path.join(self._reader_icon_files_dir, "Barks Reader Icon 1.png")
 
-        self.__action_bar_icons_dir = os.path.join(self.__reader_icon_files_dir, "ActionBar Icons")
-        self.__close_icon_path = os.path.join(self.__action_bar_icons_dir, "icon-close.png")
-        self.__collapse_icon_path = os.path.join(self.__action_bar_icons_dir, "icon-collapse.png")
-        self.__refresh_arrow_icon_path = os.path.join(
-            self.__action_bar_icons_dir, "icon-refresh-arrow.png"
+        self._action_bar_icons_dir = os.path.join(self._reader_icon_files_dir, "ActionBar Icons")
+        self._close_icon_path = os.path.join(self._action_bar_icons_dir, "icon-close.png")
+        self._collapse_icon_path = os.path.join(self._action_bar_icons_dir, "icon-collapse.png")
+        self._refresh_arrow_icon_path = os.path.join(
+            self._action_bar_icons_dir, "icon-refresh-arrow.png"
         )
-        self.__settings_icon_path = os.path.join(self.__action_bar_icons_dir, "icon-settings.png")
-        self.__fullscreen_icon_path = os.path.join(
-            self.__action_bar_icons_dir, "icon-fullscreen.png"
+        self._settings_icon_path = os.path.join(self._action_bar_icons_dir, "icon-settings.png")
+        self._fullscreen_icon_path = os.path.join(self._action_bar_icons_dir, "icon-fullscreen.png")
+        self._fullscreen_exit_icon_path = os.path.join(
+            self._action_bar_icons_dir, "icon-fullscreen-exit.png"
         )
-        self.__fullscreen_exit_icon_path = os.path.join(
-            self.__action_bar_icons_dir, "icon-fullscreen-exit.png"
-        )
-        self.__goto_icon_path = os.path.join(self.__action_bar_icons_dir, "icon-goto.png")
-        self.__goto_start_icon_path = os.path.join(
-            self.__action_bar_icons_dir, "icon-goto-start.png"
-        )
-        self.__goto_end_icon_path = os.path.join(self.__action_bar_icons_dir, "icon-goto-end.png")
+        self._goto_icon_path = os.path.join(self._action_bar_icons_dir, "icon-goto.png")
+        self._goto_start_icon_path = os.path.join(self._action_bar_icons_dir, "icon-goto-start.png")
+        self._goto_end_icon_path = os.path.join(self._action_bar_icons_dir, "icon-goto-end.png")
 
-        self.__various_files_dir = os.path.join(self.__barks_reader_files_dir, "Various")
-        self.__up_arrow_path = os.path.join(self.__various_files_dir, "up-arrow.png")
-        self.__transparent_blank_path = os.path.join(
-            self.__various_files_dir, "transparent-blank.png"
+        self._various_files_dir = os.path.join(self._barks_reader_files_dir, "Various")
+        self._up_arrow_path = os.path.join(self._various_files_dir, "up-arrow.png")
+        self._transparent_blank_path = os.path.join(
+            self._various_files_dir, "transparent-blank.png"
         )
-        self.__empty_page_path = os.path.join(self.__various_files_dir, "empty-page.jpg")
-        self.__user_data_path = os.path.join(self.__various_files_dir, "barks-reader.json")
+        self._empty_page_path = os.path.join(self._various_files_dir, "empty-page.jpg")
+        self._user_data_path = os.path.join(self._various_files_dir, "barks-reader.json")
 
-        self.__check_reader_files_dirs()
+        self._check_reader_files_dirs()
 
-    def __check_reader_files_dirs(self) -> None:
+    def _check_reader_files_dirs(self) -> None:
         dirs_to_check = [
-            self.__barks_reader_files_dir,
-            self.__reader_icon_files_dir,
-            self.__action_bar_icons_dir,
-            self.__various_files_dir,
+            self._barks_reader_files_dir,
+            self._reader_icon_files_dir,
+            self._action_bar_icons_dir,
+            self._various_files_dir,
         ]
-        self.__check_dirs(dirs_to_check)
+        self._check_dirs(dirs_to_check)
 
         files_to_check = [
-            self.__app_icon_path,
-            self.__close_icon_path,
-            self.__collapse_icon_path,
-            self.__refresh_arrow_icon_path,
-            self.__settings_icon_path,
-            self.__fullscreen_icon_path,
-            self.__fullscreen_exit_icon_path,
-            self.__goto_icon_path,
-            self.__goto_start_icon_path,
-            self.__goto_end_icon_path,
-            self.__up_arrow_path,
-            self.__transparent_blank_path,
-            self.__empty_page_path,
-            self.__user_data_path,
+            self._app_icon_path,
+            self._close_icon_path,
+            self._collapse_icon_path,
+            self._refresh_arrow_icon_path,
+            self._settings_icon_path,
+            self._fullscreen_icon_path,
+            self._fullscreen_exit_icon_path,
+            self._goto_icon_path,
+            self._goto_start_icon_path,
+            self._goto_end_icon_path,
+            self._up_arrow_path,
+            self._transparent_blank_path,
+            self._empty_page_path,
+            self._user_data_path,
         ]
-        self.__check_files(files_to_check)
+        self._check_files(files_to_check)
 
     @staticmethod
-    def __check_dirs(dirs_to_check: List[str]) -> None:
+    def _check_dirs(dirs_to_check: List[str]) -> None:
         for dir_path in dirs_to_check:
             if not os.path.isdir(dir_path):
                 raise FileNotFoundError(f'Required directory not found: "{dir_path}".')
 
     @staticmethod
-    def __check_files(files_to_check: List[str]) -> None:
+    def _check_files(files_to_check: List[str]) -> None:
         for file_path in files_to_check:
             if not os.path.isfile(file_path):
                 raise FileNotFoundError(f'Required file not found: "{file_path}".')
 
     def get_barks_reader_user_data_file(self) -> str:
-        return self.__user_data_path
+        return self._user_data_path
 
     def get_barks_reader_app_icon_file(self) -> str:
-        return self.__app_icon_path
+        return self._app_icon_path
 
     def get_up_arrow_file(self) -> str:
-        return self.__up_arrow_path
+        return self._up_arrow_path
 
     def get_barks_reader_close_icon_file(self) -> str:
-        return self.__close_icon_path
+        return self._close_icon_path
 
     def get_barks_reader_collapse_icon_file(self) -> str:
-        return self.__collapse_icon_path
+        return self._collapse_icon_path
 
     def get_barks_reader_refresh_arrow_icon_file(self) -> str:
-        return self.__refresh_arrow_icon_path
+        return self._refresh_arrow_icon_path
 
     def get_barks_reader_settings_icon_file(self) -> str:
-        return self.__settings_icon_path
+        return self._settings_icon_path
 
     def get_barks_reader_fullscreen_icon_file(self) -> str:
-        return self.__fullscreen_icon_path
+        return self._fullscreen_icon_path
 
     def get_barks_reader_fullscreen_exit_icon_file(self) -> str:
-        return self.__fullscreen_exit_icon_path
+        return self._fullscreen_exit_icon_path
 
     def get_barks_reader_goto_icon_file(self) -> str:
-        return self.__goto_icon_path
+        return self._goto_icon_path
 
     def get_barks_reader_goto_start_icon_file(self) -> str:
-        return self.__goto_start_icon_path
+        return self._goto_start_icon_path
 
     def get_barks_reader_goto_end_icon_file(self) -> str:
-        return self.__goto_end_icon_path
+        return self._goto_end_icon_path
 
     def get_transparent_blank_file(self) -> str:
-        return self.__transparent_blank_path
+        return self._transparent_blank_path
 
     def get_empty_page_file(self) -> str:
-        return self.__empty_page_path
+        return self._empty_page_path
