@@ -255,6 +255,10 @@ class ReaderSettings:
         return self._get_reader_files_dir()
 
     def _get_reader_files_dir(self) -> str:
+        if not self._config:
+            # TODO: Not viable?? - Bootstrap problem. Return default.
+            return DEFAULT_BARKS_READER_FILES_DIR
+
         return self._config.get(BARKS_READER_SECTION, READER_FILES_DIR)
 
     @property
