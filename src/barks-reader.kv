@@ -324,9 +324,9 @@
                                 id: goto_page_layout
                                 size_hint: None, None
                                 width: image_button.width
-                                height: fm.check_box_font_size + dp(5) if self.opacity > 0.99 else 0
+                                height: (1.25 * fm.check_box_font_size) if self.opacity > 0.99 else 0
                                 # Position relative to the image button
-                                pos: image_button.x, image_button.top + dp(10)
+                                pos: image_button.x, image_button.top + (0.85 * fm.check_box_font_size)
                                 opacity: 1
                                 Label:
                                     text: "Goto page " + root.bottom_view_title_goto_page_num + ":"
@@ -345,9 +345,9 @@
                                 id: use_overrides_layout
                                 size_hint: None, None
                                 width: image_button.width
-                                height: fm.check_box_font_size + dp(5) if self.opacity > 0.99 else 0
+                                height: (1.33 * fm.check_box_font_size) if self.opacity > 0.99 else 0
                                 # Position relative to 'goto_page_layout'
-                                pos: goto_page_layout.x, goto_page_layout.top + dp(2)
+                                pos: goto_page_layout.x, goto_page_layout.top + (0.1 * fm.check_box_font_size)
                                 opacity: 1
                                 Label:
                                     id: use_overrides_label
