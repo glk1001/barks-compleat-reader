@@ -386,13 +386,24 @@
                         disabled: (root.bottom_view_title_opacity > 0.99) or not root.bottom_view_fun_image_from_title
                         background_color: (1, 1, 1, 0)
                         background_normal: ""
-                        x: self.parent.x + self.parent.width - (root.UP_ARROW_WIDTH + dp(5))
-                        y: self.parent.y + dp(5)
+                        x: self.parent.x + self.parent.width - (1.4 * root.UP_ARROW_WIDTH)
+                        y: self.parent.y + (0.4 * root.UP_ARROW_WIDTH)
                         size: (root.UP_ARROW_WIDTH, root.UP_ARROW_WIDTH)
                         halign: "left"
                         valign: "top"
                         text_size: (self.width, self.height)
 
+                        canvas.before:
+                            Color:
+                                rgba: .1, .1, .1, 1
+                            BoxShadow:
+                                inset: False
+                                pos: self.pos
+                                size: self.size
+                                offset: 0, 0
+                                spread_radius: 3.5, 3.5
+                                border_radius: 50, 50, 50, 50
+                                blur_radius: 2
                         Image:
                             source: root.up_arrow_filepath
                             color: (1, 1, 1, 1)
