@@ -12,6 +12,7 @@ from kivy.app import App
 from kivy.config import ConfigParser
 from kivy.core.window import Window
 from kivy.lang import Builder
+from kivy.utils import platform
 from kivy.uix.screenmanager import (
     ScreenManager,
     RiseInTransition,
@@ -44,6 +45,7 @@ MAIN_READER_SCREEN = "main_screen"
 COMIC_BOOK_READER = "comic_book_reader"
 
 KV_FILE = Path(__file__).stem + ".kv"
+APP_INI_FILENAME = Path(__file__).stem + ".ini"
 
 # TODO: how to nicely handle main window
 DEFAULT_ASPECT_RATIO = 3200.0 / 2120.0
@@ -107,7 +109,25 @@ class BarksReaderApp(App):
     def show_settings(self, _instance):
         self.open_settings()
 
-    def build_config(self, config):
+    def get_application_config(self, default_path=""):
+        logging.debug(f'self.user_data_dir = "{self.user_data_dir}".')
+
+        if platform == "android":
+            return os.path.join(self.user_data_dir, APP_INI_FILENAME)
+
+        if platform == "ios":
+            config_path = f"~/Documents/{APP_INI_FILENAME}"
+        elif platform == "win":
+            config_path = os.path.join(self.directory, APP_INI_FILENAME)
+        else:
+            config_path = os.path.join(self._reader_settings.reader_files_dir, APP_INI_FILENAME)
+
+        config_path = os.path.expanduser(config_path)
+        logging.info(f'Using app config file "{config_path}".')
+
+        return config_path
+
+    def build_config(self, config: ConfigParser):
         self._reader_settings.build_config(config)
 
     def build_settings(self, settings):
