@@ -28,14 +28,15 @@ FIT_MODE_COVER = "cover"
 
 
 class FileTypes(Enum):
+    BLACK_AND_WHITE = auto()
     CENSORSHIP = auto()
     COVER = auto()
     FAVOURITE = auto()
     INSET = auto()
+    NONTITLE = auto()
     ORIGINAL_ART = auto()
     SILHOUETTE = auto()
     SPLASH = auto()
-    NONTITLE = auto()
 
 
 ALL_TYPES = {t for t in FileTypes}
@@ -64,6 +65,7 @@ class RandomTitleImages:
         self._FILE_TYPE_GETTERS: Dict[FileTypes, Callable[[str, bool], str]] = {
             # COVER special case: returns single string or None
             FileTypes.COVER: self._reader_settings.file_paths.get_comic_cover_file,
+            FileTypes.BLACK_AND_WHITE: self._reader_settings.file_paths.get_comic_bw_files,
             FileTypes.CENSORSHIP: self._reader_settings.file_paths.get_comic_censorship_files,
             FileTypes.FAVOURITE: self._reader_settings.file_paths.get_comic_favourite_files,
             FileTypes.INSET: self._reader_settings.file_paths.get_comic_inset_files,
@@ -91,6 +93,7 @@ class RandomTitleImages:
         return self._get_random_image_file(
             title_list,
             {
+                FileTypes.BLACK_AND_WHITE,
                 FileTypes.CENSORSHIP,
                 FileTypes.FAVOURITE,
                 FileTypes.INSET,

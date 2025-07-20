@@ -38,16 +38,17 @@ class ReaderFilePaths:
         self._app_icon_path = ""
 
         self._barks_panels_dir = ""
-        self._cover_files_dir = ""
-        self._silhouette_files_dir = ""
-        self._splash_files_dir = ""
+        self._bw_files_dir = ""
         self._censorship_files_dir = ""
+        self._cover_files_dir = ""
         self._favourite_files_dir = ""
-        self._original_art_files_dir = ""
-        self._search_files_dir = ""
-        self._nontitle_files_dir = ""
         self._inset_files_dir = ""
         self._inset_edited_files_dir = ""
+        self._nontitle_files_dir = ""
+        self._original_art_files_dir = ""
+        self._search_files_dir = ""
+        self._silhouette_files_dir = ""
+        self._splash_files_dir = ""
 
         self._inset_files_ext = ""
         self._edited_files_ext = ""
@@ -58,16 +59,17 @@ class ReaderFilePaths:
         self._barks_panels_dir = panels_dir
         self._panels_ext_type = ext_type
 
-        self._cover_files_dir = os.path.join(self._barks_panels_dir, "Covers")
-        self._silhouette_files_dir = os.path.join(self._barks_panels_dir, "Silhouettes")
-        self._splash_files_dir = os.path.join(self._barks_panels_dir, "Splash")
+        self._bw_files_dir = os.path.join(self._barks_panels_dir, "BW")
         self._censorship_files_dir = os.path.join(self._barks_panels_dir, "Censorship")
+        self._cover_files_dir = os.path.join(self._barks_panels_dir, "Covers")
         self._favourite_files_dir = os.path.join(self._barks_panels_dir, "Favourites")
-        self._original_art_files_dir = os.path.join(self._barks_panels_dir, "Original Art")
-        self._search_files_dir = os.path.join(self._barks_panels_dir, "Search")
-        self._nontitle_files_dir = os.path.join(self._barks_panels_dir, "Nontitles")
         self._inset_files_dir = os.path.join(self._barks_panels_dir, "Insets")
         self._inset_edited_files_dir = os.path.join(self._inset_files_dir, _EDITED_SUBDIR)
+        self._nontitle_files_dir = os.path.join(self._barks_panels_dir, "Nontitles")
+        self._original_art_files_dir = os.path.join(self._barks_panels_dir, "Original Art")
+        self._search_files_dir = os.path.join(self._barks_panels_dir, "Search")
+        self._silhouette_files_dir = os.path.join(self._barks_panels_dir, "Silhouettes")
+        self._splash_files_dir = os.path.join(self._barks_panels_dir, "Splash")
 
         self._check_panels_dirs()
 
@@ -81,16 +83,17 @@ class ReaderFilePaths:
     def _check_panels_dirs(self) -> None:
         dirs_to_check = [
             self._barks_panels_dir,
+            self._bw_files_dir,
             self._cover_files_dir,
-            self._silhouette_files_dir,
-            self._splash_files_dir,
             self._censorship_files_dir,
             self._favourite_files_dir,
-            self._original_art_files_dir,
-            self._search_files_dir,
-            self._nontitle_files_dir,
             self._inset_files_dir,
             self._inset_edited_files_dir,
+            self._nontitle_files_dir,
+            self._original_art_files_dir,
+            self._search_files_dir,
+            self._silhouette_files_dir,
+            self._splash_files_dir,
         ]
 
         self._check_dirs(dirs_to_check)
@@ -132,17 +135,11 @@ class ReaderFilePaths:
     def get_default_fanta_volume_archives_root_dir() -> str:
         return _DEFAULT_FANTA_VOLUME_ARCHIVES_ROOT_DIR
 
-    def get_comic_inset_files_dir(self) -> str:
-        return self._inset_files_dir
+    def get_comic_bw_files_dir(self) -> str:
+        return self._bw_files_dir
 
     def get_comic_cover_files_dir(self) -> str:
         return self._cover_files_dir
-
-    def get_comic_silhouette_files_dir(self) -> str:
-        return self._silhouette_files_dir
-
-    def get_comic_splash_files_dir(self) -> str:
-        return self._splash_files_dir
 
     def get_comic_censorship_files_dir(self) -> str:
         return self._censorship_files_dir
@@ -150,14 +147,23 @@ class ReaderFilePaths:
     def get_comic_favourite_files_dir(self) -> str:
         return self._favourite_files_dir
 
+    def get_comic_inset_files_dir(self) -> str:
+        return self._inset_files_dir
+
+    def get_nontitle_files_dir(self) -> str:
+        return self._nontitle_files_dir
+
     def get_comic_original_art_files_dir(self) -> str:
         return self._original_art_files_dir
 
     def get_comic_search_files_dir(self) -> str:
         return self._search_files_dir
 
-    def get_nontitle_files_dir(self) -> str:
-        return self._nontitle_files_dir
+    def get_comic_silhouette_files_dir(self) -> str:
+        return self._silhouette_files_dir
+
+    def get_comic_splash_files_dir(self) -> str:
+        return self._splash_files_dir
 
     def get_barks_reader_app_icon_file(self) -> str:
         return self._app_icon_path
@@ -208,11 +214,8 @@ class ReaderFilePaths:
 
         return cover_file
 
-    def get_comic_silhouette_files(self, title: str, use_edited_only: bool = False) -> List[str]:
-        return self._get_files(self.get_comic_silhouette_files_dir(), title, use_edited_only)
-
-    def get_comic_splash_files(self, title: str, use_edited_only: bool = False) -> List[str]:
-        return self._get_files(self.get_comic_splash_files_dir(), title, use_edited_only)
+    def get_comic_bw_files(self, title: str, use_edited_only: bool = False) -> List[str]:
+        return self._get_files(self.get_comic_bw_files_dir(), title, use_edited_only)
 
     def get_comic_censorship_files(self, title: str, use_edited_only: bool = False) -> List[str]:
         return self._get_files(self.get_comic_censorship_files_dir(), title, use_edited_only)
@@ -220,14 +223,20 @@ class ReaderFilePaths:
     def get_comic_favourite_files(self, title: str, use_edited_only: bool = False) -> List[str]:
         return self._get_files(self.get_comic_favourite_files_dir(), title, use_edited_only)
 
+    def get_nontitle_files(self) -> List[str]:
+        return self._get_all_files(self.get_nontitle_files_dir())
+
     def get_comic_original_art_files(self, title: str, use_edited_only: bool = False) -> List[str]:
         return self._get_files(self.get_comic_original_art_files_dir(), title, use_edited_only)
 
     def get_comic_search_files(self, title: str, use_edited_only: bool = False) -> List[str]:
         return self._get_files(self.get_comic_search_files_dir(), title, use_edited_only)
 
-    def get_nontitle_files(self) -> List[str]:
-        return self._get_all_files(self.get_nontitle_files_dir())
+    def get_comic_silhouette_files(self, title: str, use_edited_only: bool = False) -> List[str]:
+        return self._get_files(self.get_comic_silhouette_files_dir(), title, use_edited_only)
+
+    def get_comic_splash_files(self, title: str, use_edited_only: bool = False) -> List[str]:
+        return self._get_files(self.get_comic_splash_files_dir(), title, use_edited_only)
 
     def _get_files(self, parent_image_dir: str, title: str, use_edited_only: bool) -> List[str]:
         image_dir = os.path.join(parent_image_dir, title)
