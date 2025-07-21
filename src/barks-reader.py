@@ -194,6 +194,7 @@ class BarksReaderApp(App):
         comic_reader = get_barks_comic_reader(
             COMIC_BOOK_READER,
             self._reader_settings,
+            self._main_screen.app_icon_filepath,
             self._switch_to_comic_book_reader,
             self._close_comic_book_reader,
         )

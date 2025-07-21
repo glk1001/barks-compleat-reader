@@ -12,6 +12,7 @@ from barks_fantagraphics.barks_titles import (
 )
 from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PNG_FILE_EXT
 from file_paths import BARKS_DIR
+from reader_utils import get_all_files_in_dir
 
 DEFAULT_BARKS_READER_FILES_DIR = os.path.join(BARKS_DIR, "Compleat Barks Disney Reader")
 EMERGENCY_INSET_FILE = Titles.BICEPS_BLUES
@@ -258,13 +259,7 @@ class ReaderFilePaths:
 
     @staticmethod
     def _get_all_files(image_dir: str) -> List[str]:
-        image_files = []
-        for file in os.listdir(image_dir):
-            image_file = os.path.join(image_dir, file)
-            if os.path.isfile(image_file):
-                image_files.append(image_file)
-
-        return image_files
+        return get_all_files_in_dir(image_dir)
 
     def get_edited_version_if_possible(self, image_file: str) -> Tuple[str, bool]:
         dir_path = os.path.dirname(image_file)

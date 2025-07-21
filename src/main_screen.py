@@ -1,4 +1,5 @@
 import logging
+from random import randrange
 from typing import Union, Dict, List
 
 # noinspection PyProtectedMember
@@ -85,7 +86,7 @@ from reader_ui_classes import (
     TagGroupStoryGroupTreeViewNode,
     TitleTreeViewNode,
 )
-from reader_utils import set_kivy_normal_cursor, set_kivy_busy_cursor
+from reader_utils import set_kivy_normal_cursor, set_kivy_busy_cursor, get_all_files_in_dir
 from special_overrides_handler import SpecialFantaOverrides
 from system_file_paths import SystemFilePaths
 
@@ -221,7 +222,7 @@ class MainScreen(BoxLayout, Screen):
         self.ids.use_overrides_checkbox.bind(active=self.on_use_overrides_checkbox_changed)
 
     def _set_action_bar_icons(self, sys_paths: SystemFilePaths):
-        self.app_icon_filepath = sys_paths.get_barks_reader_app_icon_file()
+        self.app_icon_filepath = self._get_reader_app_icon_file()
         self.up_arrow_filepath = sys_paths.get_up_arrow_file()
         self.action_bar_close_icon_filepath = sys_paths.get_barks_reader_close_icon_file()
         self.action_bar_collapse_icon_filepath = sys_paths.get_barks_reader_collapse_icon_file()
@@ -230,6 +231,13 @@ class MainScreen(BoxLayout, Screen):
         )
         self.action_bar_settings_icon_filepath = sys_paths.get_barks_reader_settings_icon_file()
         self.action_bar_goto_icon_filepath = sys_paths.get_barks_reader_goto_icon_file()
+
+    def _get_reader_app_icon_file(self) -> str:
+        icon_files = get_all_files_in_dir(
+            self._reader_settings.sys_file_paths.get_reader_icon_files_dir()
+        )
+        file_index = randrange(0, len(icon_files))
+        return icon_files[file_index]
 
     def _on_loading_data_popup_open(self) -> None:
         set_kivy_busy_cursor()

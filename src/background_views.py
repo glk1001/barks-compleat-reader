@@ -30,6 +30,9 @@ TOP_VIEW_IMAGE_TYPES = {
     t for t in FileTypes if t not in [FileTypes.NONTITLE, FileTypes.ORIGINAL_ART]
 }
 
+DEBUG_FUN_IMAGE_TITLES = None
+# DEBUG_FUN_IMAGE_TITLES = [Titles.LOST_IN_THE_ANDES]
+
 
 class ViewStates(Enum):
     PRE_INIT = auto()
@@ -409,7 +412,7 @@ class BackgroundViews:
             return
 
         self._bottom_view_fun_image_info = self._random_title_images.get_random_image(
-            self._title_lists[ALL_LISTS], use_random_fit_mode=True
+            self._get_fun_image_titles(), use_random_fit_mode=True
         )
         self._set_bottom_view_fun_image_color()
         self._schedule_bottom_view_fun_image_event()
@@ -422,6 +425,16 @@ class BackgroundViews:
             f" Color: {get_formatted_color(self._bottom_view_fun_image_color)},"
             f" Opacity: {self._bottom_view_fun_image_opacity}."
         )
+
+    def _get_fun_image_titles(self) -> List[FantaComicBookInfo]:
+        if not DEBUG_FUN_IMAGE_TITLES:
+            return self._title_lists[ALL_LISTS]
+
+        return [
+            t
+            for t in self._title_lists[ALL_LISTS]
+            if t.comic_book_info.title in DEBUG_FUN_IMAGE_TITLES
+        ]
 
     # TODO: Rationalize image color setters - make more responsive to individual images
     #       have fun images weighted to larger opacity and full color

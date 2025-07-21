@@ -8,7 +8,6 @@ class SystemFilePaths:
         self._barks_reader_files_dir = ""
 
         self._reader_icon_files_dir = ""
-        self._app_icon_path = ""
 
         self._action_bar_icons_dir = ""
         self._close_icon_path = ""
@@ -35,7 +34,6 @@ class SystemFilePaths:
         self._barks_reader_files_dir = reader_files_dir
 
         self._reader_icon_files_dir = os.path.join(self._barks_reader_files_dir, "Reader Icons")
-        self._app_icon_path = os.path.join(self._reader_icon_files_dir, "Barks Reader Icon 1.png")
 
         self._action_bar_icons_dir = os.path.join(self._reader_icon_files_dir, "ActionBar Icons")
         self._close_icon_path = os.path.join(self._action_bar_icons_dir, "icon-close.png")
@@ -77,7 +75,6 @@ class SystemFilePaths:
         self._check_dirs(dirs_to_check)
 
         files_to_check = [
-            self._app_icon_path,
             self._close_icon_path,
             self._collapse_icon_path,
             self._refresh_arrow_icon_path,
@@ -109,11 +106,11 @@ class SystemFilePaths:
     def get_barks_reader_fantagraphics_overrides_root_dir(self) -> str:
         return self._fantagraphics_overrides_root_dir
 
+    def get_reader_icon_files_dir(self) -> str:
+        return self._reader_icon_files_dir
+
     def get_barks_reader_user_data_file(self) -> str:
         return self._user_data_path
-
-    def get_barks_reader_app_icon_file(self) -> str:
-        return self._app_icon_path
 
     def get_up_arrow_file(self) -> str:
         return self._up_arrow_path

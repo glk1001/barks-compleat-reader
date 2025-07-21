@@ -11,6 +11,6 @@ SEARCH_NODE_TEXT = "Search"
 APPENDIX_NODE_TEXT = "Appendix"
 INDEX_NODE_TEXT = "Index"
 
-ACTION_BAR_SIZE_Y = dp(40)
+ACTION_BAR_SIZE_Y = dp(45)
 
 Color = Tuple[float, float, float, float]

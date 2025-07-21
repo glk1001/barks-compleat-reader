@@ -1,7 +1,8 @@
+import os
 from datetime import datetime
 from pathlib import Path
 from random import randrange
-from typing import Tuple
+from typing import Tuple, List
 
 from cpi import inflate
 from kivy.clock import Clock
@@ -54,3 +55,13 @@ def get_formatted_payment_info(payment_info: PaymentInfo) -> str:
         #        f" {MONTH_AS_SHORT_STR[payment_info.accepted_month]}"
         #        f" {payment_info.accepted_year})"
     )
+
+
+def get_all_files_in_dir(dir_path: str) -> List[str]:
+    files = []
+    for filename in os.listdir(dir_path):
+        filepath = os.path.join(dir_path, filename)
+        if os.path.isfile(filepath):
+            files.append(filepath)
+
+    return files

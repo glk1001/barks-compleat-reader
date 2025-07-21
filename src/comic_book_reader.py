@@ -495,14 +495,14 @@ class ComicBookReaderScreen(BoxLayout, Screen):
     action_bar_goto_start_filepath = StringProperty()
     action_bar_goto_end_filepath = StringProperty()
 
-    def __init__(self, reader_settings: ReaderSettings, **kwargs):
+    def __init__(self, reader_settings: ReaderSettings, reader_app_icon_file: str, **kwargs):
         super().__init__(**kwargs)
         self.comic_book_reader_widget = None
 
-        self._set_action_bar_icons(reader_settings.sys_file_paths)
+        self._set_action_bar_icons(reader_settings.sys_file_paths, reader_app_icon_file)
 
-    def _set_action_bar_icons(self, sys_paths: SystemFilePaths):
-        self.app_icon_filepath = sys_paths.get_barks_reader_app_icon_file()
+    def _set_action_bar_icons(self, sys_paths: SystemFilePaths, reader_app_icon_file: str):
+        self.app_icon_filepath = reader_app_icon_file
         self.action_bar_close_icon_filepath = sys_paths.get_barks_reader_close_icon_file()
         self.action_bar_fullscreen_filepath = sys_paths.get_barks_reader_fullscreen_icon_file()
         self.action_bar_fullscreen_exit_filepath = (
@@ -523,12 +523,13 @@ KV_FILE = Path(__file__).stem + ".kv"
 def get_barks_comic_reader(
     screen_name: str,
     reader_settings: ReaderSettings,
+    reader_app_icon_file: str,
     on_comic_is_ready_to_read: Callable[[], None],
     on_close_reader: Callable[[], None],
 ):
     Builder.load_file(KV_FILE)
 
-    root = ComicBookReaderScreen(reader_settings, name=screen_name)
+    root = ComicBookReaderScreen(reader_settings, reader_app_icon_file, name=screen_name)
 
     comic_book_reader_widget = ComicBookReader(
         reader_settings, on_comic_is_ready_to_read, on_close_reader, root.ids.goto_page_button
