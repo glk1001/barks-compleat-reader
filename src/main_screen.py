@@ -135,6 +135,8 @@ class MainScreen(BoxLayout, Screen):
     action_bar_settings_icon_filepath = StringProperty()
     action_bar_goto_icon_filepath = StringProperty()
 
+    not_all_titles_loaded = BooleanProperty(False)
+
     MAIN_TITLE_BACKGROUND_COLOR = (0.01, 0.01, 0.01, 0.075)
     MAIN_TITLE_COLOR = (1, 1, 0, 1)
     main_title_text = StringProperty()
@@ -296,7 +298,7 @@ class MainScreen(BoxLayout, Screen):
             return True
 
         text = f"""
-Currently, in the app settings, the Fantagraphics volume directory is\n
+Currently, in the app settings, the Fantagraphics comic zips directory is\n
      [b]"{fanta_volumes_dir}"[/b]\n
 But this directory could not be found. You need to go to settings and enter
 the correct directory, then restart the app.
@@ -304,17 +306,19 @@ the correct directory, then restart the app.
 
         def _goto_settings() -> None:
             msg_box.dismiss()
+            self.not_all_titles_loaded = True
             self._app.open_settings()
 
         def _cancel() -> None:
             msg_box.dismiss()
+            self.not_all_titles_loaded = True
 
         msg_box = MessagePopup(
             text,
             _goto_settings,
             "Goto settings",
             _cancel,
-            title="Fantagraphics Volume Directory Not Found",
+            title="Fantagraphics Directory Not Found",
         )
         Clock.schedule_once(lambda dt: msg_box.open(), 0)
 

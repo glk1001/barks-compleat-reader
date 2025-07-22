@@ -16,6 +16,69 @@
 <BgColorLabel@Label+BackgroundColor>
     background_color: (0, 0, 0, 0)
 
+<SettingLongPath>:
+    Label:
+        text: root.value or ''
+        font_size: '13sp'
+        halign: 'left'
+        valign: 'middle'
+        shorten: True
+        shorten_from: 'center'
+        text_size: self.width, None
+
+<SettingLongPathPopup>:
+    title: "Select Directory"
+    title_align: "center"
+    auto_dismiss: False
+    size_hint: 0.8, 0.8
+
+    BoxLayout:
+        orientation: 'vertical'
+        spacing: dp(5)
+        padding: dp(10)
+
+        # Top row for displaying the current path
+        BoxLayout:
+            size_hint_y: None
+            height: self.minimum_height
+            padding: [dp(10), dp(10), dp(10), dp(10)]
+            spacing: dp(5)
+            Label:
+                text: 'Current selection:'
+                size_hint_x: None
+                width: self.texture_size[0]
+            Label:
+                # This label displays the selection from the FileChooser below
+                id: current_selection
+                text: file_chooser.selection[0] if file_chooser.selection else ""
+                bold: True
+                halign: 'left'
+                valign: 'middle'
+                text_size: self.width, None
+                shorten: True
+                shorten_from: 'left'  # Shows the end of the path, which is usually more important
+
+        # The FileChooser takes up the main space
+        FileChooserListView:
+            id: file_chooser
+            dirselect: True
+
+        # The bottom row for action buttons
+        BoxLayout:
+            size_hint_y: None
+            height: dp(44)
+            spacing: dp(10)
+
+            Button:
+                text: 'Select Current Directory'
+                bold: True
+                # The root here is the SettingLongPathPopup instance
+                on_release: root.select_path(current_selection.text)
+
+            Button:
+                text: 'Cancel'
+                on_release: root.dismiss()
+
 <LoadingDataPopup>:
     background_color: (1,1,0,1)
     title: "Please wait.   Loading all the titles ..."
@@ -87,6 +150,7 @@
 
             Button:
                 text: root.ok_text
+                bold: True
                 on_press: root.ok()
 
             Button:
@@ -170,9 +234,21 @@
             anchor_x: "left"
             anchor_y: "bottom"
 
+            Label:
+                opacity: 1 if root.not_all_titles_loaded else 0
+                text: "ERROR: TITLES NOT LOADED\n\nYou need to check and fix the\napp settings, then restart the app!"
+                multiline: True
+                color: 1,0,0,1
+                font_size: dp(50)
+                bold: True
+                size_hint: 1, 1
+                text_size: self.size
+                halign: "center"
+                valign: "middle"
+
             Image:
                 color: root.top_view_image_color
-                opacity: root.top_view_image_opacity
+                opacity: 0.3 if root.not_all_titles_loaded else root.top_view_image_opacity
                 source: root.top_view_image_source
                 width: root.view_width
                 height: root.view_height

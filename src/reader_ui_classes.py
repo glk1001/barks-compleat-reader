@@ -1,15 +1,18 @@
 import logging
+import os
 from typing import List, Union, Callable
 
+from kivy.clock import Clock
 from kivy.event import EventDispatcher
 from kivy.metrics import dp
-from kivy.properties import StringProperty, NumericProperty
+from kivy.properties import StringProperty, NumericProperty, ObjectProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
 from kivy.uix.popup import Popup
+from kivy.uix.settings import SettingItem
 from kivy.uix.spinner import Spinner
 from kivy.uix.treeview import TreeView, TreeViewNode
 from kivy.utils import escape_markup
@@ -53,6 +56,52 @@ class ReaderTreeBuilderEventDispatcher(EventDispatcher):
 class LoadingDataPopup(Popup):
     progress_bar_value = NumericProperty(0)
     splash_image_path = StringProperty()
+
+
+class SettingLongPathPopup(Popup):
+    """A custom popup for directory selection, with its layout defined in barks-reader.kv."""
+
+    # This property will hold a reference to the SettingLongPath widget
+    # that created this popup, so we can set its value.
+    setting_widget = ObjectProperty(None)
+
+    def select_path(self, path: str):
+        """Called when the 'Select' button is pressed."""
+        if self.setting_widget and path:
+            # Use Clock.schedule_once to avoid recursion errors when the value changes
+            Clock.schedule_once(lambda dt: self.setting_widget._update_setting_value(path))
+        self.dismiss()
+
+
+class SettingLongPath(SettingItem):
+    """
+    Custom setting widget for displaying long paths that are
+    shortened in the middle to prevent truncation.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.bind(on_release=self._create_popup)
+
+    def _update_setting_value(self, new_path: str):
+        self.value = new_path
+
+    def _create_popup(self, instance):
+        """Creates and opens the directory selection popup."""
+
+        setting_parent_dir = (
+            os.path.dirname(self.value)
+            if self.value and os.path.isdir(os.path.dirname(self.value))
+            else os.path.expanduser("~")
+        )
+        setting_dir = self.value
+
+        popup = SettingLongPathPopup(title=self.title, setting_widget=self)
+        popup.ids.file_chooser.path = setting_parent_dir
+        popup.ids.file_chooser.selection = setting_dir
+        popup.ids.current_selection.text = setting_dir
+
+        popup.open()
 
 
 class MessagePopup(Popup):

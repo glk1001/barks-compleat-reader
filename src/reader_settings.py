@@ -31,35 +31,35 @@ _READER_SETTINGS_JSON = f"""
    {{
       "title": "Fantagraphics Directory",
       "desc": "Directory containing the Fantagraphics comic zips",
-      "type": "path",
+      "type": "longpath",
       "section": "{BARKS_READER_SECTION}",
       "key": "{FANTA_DIR}"
    }},
    {{
       "title": "Reader Files Directory",
       "desc": "Directory containing all the required Barks Reader files",
-      "type": "path",
+      "type": "longpath",
       "section": "{BARKS_READER_SECTION}",
       "key": "{READER_FILES_DIR}"
    }},
    {{
       "title": "Prebuilt Comics Directory",
       "desc": "Directory containing specially prebuilt comics",
-      "type": "path",
+      "type": "longpath",
       "section": "{BARKS_READER_SECTION}",
       "key": "{PREBUILT_COMICS_DIR}"
    }},
    {{
       "title": "Png Barks Panels Directory",
       "desc": "Directory containing Barks panels png images",
-      "type": "path",
+      "type": "longpath",
       "section": "{BARKS_READER_SECTION}",
       "key": "{PNG_BARKS_PANELS_DIR}"
    }},
    {{
       "title": "Jpg Barks Panels Directory",
       "desc": "Directory containing Barks panels jpg images",
-      "type": "path",
+      "type": "longpath",
       "section": "{BARKS_READER_SECTION}",
       "key": "{JPG_BARKS_PANELS_DIR}"
    }},

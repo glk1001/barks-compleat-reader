@@ -1,11 +1,12 @@
-import logging
 import os
+
+os.environ["KIVY_LOG_MODE"] = "MIXED"
+
+import logging
 import sys
 from pathlib import Path
 from random import randrange
 from typing import Any, Union
-
-os.environ["KIVY_LOG_MODE"] = "MIXED"
 
 from kivy import Config
 from kivy.app import App
@@ -37,7 +38,7 @@ from font_manager import FontManager
 from main_screen import MainScreen
 from reader_consts_and_types import ACTION_BAR_SIZE_Y
 from reader_settings import ReaderSettings
-from reader_ui_classes import ReaderTreeBuilderEventDispatcher
+from reader_ui_classes import ReaderTreeBuilderEventDispatcher, SettingLongPath
 from screen_metrics import get_screen_info, log_screen_metrics
 
 APP_TITLE = "The Compleat Barks Disney Reader"
@@ -131,6 +132,9 @@ class BarksReaderApp(App):
         self._reader_settings.build_config(config)
 
     def build_settings(self, settings):
+        # Register our custom widget type with the name 'longpath'
+        settings.register_type("longpath", SettingLongPath)
+
         self._reader_settings.build_settings(settings)
         self.config.write()
         settings.interface.menu.height = ACTION_BAR_SIZE_Y
