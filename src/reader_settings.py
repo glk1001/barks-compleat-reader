@@ -124,7 +124,7 @@ class ReaderSettings:
         self._reader_sys_file_paths: SystemFilePaths = SystemFilePaths()
 
         self._VALIDATION_METHODS: Dict[str, Callable[[str], bool]] = {
-            FANTA_DIR: self._is_valid_fantagraphics_volumes_dir,
+            FANTA_DIR: self.is_valid_fantagraphics_volumes_dir,
             READER_FILES_DIR: self._is_valid_reader_files_dir,
             PNG_BARKS_PANELS_DIR: self._is_valid_png_barks_panels_dir,
             JPG_BARKS_PANELS_DIR: self._is_valid_jpg_barks_panels_dir,
@@ -294,7 +294,9 @@ class ReaderSettings:
     def get_use_glk_firebug_ending(self):
         return self._config.getboolean(BARKS_READER_SECTION, USE_GLK_FIREBUG_ENDING)
 
-    def _is_valid_fantagraphics_volumes_dir(self, dir_path: str) -> bool:
+    def is_valid_fantagraphics_volumes_dir(self, dir_path: str) -> bool:
+        if self.use_prebuilt_archives:
+            return True
         return self._is_valid_dir(dir_path)
 
     def _is_valid_reader_files_dir(self, dir_path: str) -> bool:
@@ -346,5 +348,5 @@ class ReaderSettings:
         if os.path.isdir(dir_path):
             return True
 
-        logging.error(f'Required directory not found: "{dir_path}".')
+        logging.error(f'Reader Settings: Required directory not found: "{dir_path}".')
         return False

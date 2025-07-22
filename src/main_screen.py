@@ -4,6 +4,7 @@ from typing import Union, Dict, List
 
 # noinspection PyProtectedMember
 from kivy._clock import ClockEvent
+from kivy.app import App
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.properties import StringProperty, ColorProperty, NumericProperty, BooleanProperty
@@ -88,6 +89,7 @@ from reader_ui_classes import (
 )
 from reader_utils import set_kivy_normal_cursor, set_kivy_busy_cursor, get_all_files_in_dir
 from special_overrides_handler import SpecialFantaOverrides
+from src.reader_ui_classes import MessagePopup
 from system_file_paths import SystemFilePaths
 
 NODE_TYPE_TO_VIEW_STATE_MAP = {
@@ -167,6 +169,7 @@ class MainScreen(BoxLayout, Screen):
 
     def __init__(
         self,
+        app: App,
         comics_database: ComicsDatabase,
         reader_settings: ReaderSettings,
         reader_tree_events: ReaderTreeBuilderEventDispatcher,
@@ -175,6 +178,7 @@ class MainScreen(BoxLayout, Screen):
     ):
         super().__init__(**kwargs)
 
+        self._app = app
         self._comics_database = comics_database
         self._reader_settings = reader_settings
         self.filtered_title_lists: FilteredTitleLists = filtered_title_lists
@@ -255,6 +259,9 @@ class MainScreen(BoxLayout, Screen):
     def start_tree_build(self):
         """Kicks off the asynchronous build of the TreeView."""
 
+        if not self.main_files_exist():
+            return
+
         self._set_new_loading_data_popup_image()
         Clock.schedule_once(lambda dt: self.loading_data_popup.open(), 0)
 
@@ -282,6 +289,36 @@ class MainScreen(BoxLayout, Screen):
             saved_node_path = self._json_settings_manager.get_last_selected_node_path()
             if saved_node_path:
                 self._goto_saved_node(saved_node_path)
+
+    def main_files_exist(self) -> bool:
+        fanta_volumes_dir = self._reader_settings.fantagraphics_volumes_dir
+        if self._reader_settings.is_valid_fantagraphics_volumes_dir(fanta_volumes_dir):
+            return True
+
+        text = f"""
+Currently, in the app settings, the Fantagraphics volume directory is\n
+     [b]"{fanta_volumes_dir}"[/b]\n
+But this directory could not be found. You need to go to settings and enter
+the correct directory, then restart the app.
+"""
+
+        def _goto_settings() -> None:
+            msg_box.dismiss()
+            self._app.open_settings()
+
+        def _cancel() -> None:
+            msg_box.dismiss()
+
+        msg_box = MessagePopup(
+            text,
+            _goto_settings,
+            "Goto settings",
+            _cancel,
+            title="Fantagraphics Volume Directory Not Found",
+        )
+        Clock.schedule_once(lambda dt: msg_box.open(), 0)
+
+        return False
 
     def on_action_bar_collapse(self):
         something_was_open = False

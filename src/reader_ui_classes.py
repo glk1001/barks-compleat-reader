@@ -53,7 +53,27 @@ class ReaderTreeBuilderEventDispatcher(EventDispatcher):
 class LoadingDataPopup(Popup):
     progress_bar_value = NumericProperty(0)
     splash_image_path = StringProperty()
-    pass
+
+
+class MessagePopup(Popup):
+    msg_text = StringProperty()
+    ok_text = StringProperty()
+
+    def __init__(
+        self,
+        text: str,
+        ok_func: Callable[[], None],
+        ok_text: str,
+        cancel_func: Callable[[], None],
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+
+        self.msg_text = text
+        self.ok_text = ok_text
+
+        self.ok = ok_func
+        self.cancel = cancel_func
 
 
 class TitlePageImage(ButtonBehavior, Image):
