@@ -37,11 +37,14 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_USS,
     SERIES_DDS,
     SERIES_USA,
+    LAST_VOLUME_NUMBER,
+    FIRST_VOLUME_NUMBER,
 )
 from barks_fantagraphics.title_search import BarksTitleSearch
 from build_comic_images import ComicBookImageBuilder
 from comic_book_page_info import ComicBookPageInfo, get_comic_page_info
 from comic_book_reader import ComicBookReader
+from fantagraphics_volumes import WrongFantagraphicsVolumeError, TooManyArchiveFilesError
 from filtered_title_lists import FilteredTitleLists
 from json_settings_manager import SettingsManager, SavedPageInfo
 from random_title_images import (
@@ -136,6 +139,7 @@ class MainScreen(BoxLayout, Screen):
     action_bar_goto_icon_filepath = StringProperty()
 
     not_all_titles_loaded = BooleanProperty(False)
+    not_all_titles_loaded_msg = StringProperty()
 
     MAIN_TITLE_BACKGROUND_COLOR = (0.01, 0.01, 0.01, 0.075)
     MAIN_TITLE_COLOR = (1, 1, 0, 1)
@@ -278,8 +282,6 @@ class MainScreen(BoxLayout, Screen):
         if self._loading_data_popup_image_event:
             self._loading_data_popup_image_event.cancel()
 
-        self.comic_book_reader.init_data()
-
         # Linger on the last image...
         self.loading_data_popup.title = "All titles loaded!"
         set_kivy_normal_cursor()
@@ -287,10 +289,70 @@ class MainScreen(BoxLayout, Screen):
 
         self._update_view_for_node(ViewStates.INITIAL)
 
+        if not self.init_comic_book_data():
+            return
+
         if self._reader_settings.goto_saved_node_on_start:
             saved_node_path = self._json_settings_manager.get_last_selected_node_path()
             if saved_node_path:
                 self._goto_saved_node(saved_node_path)
+
+    def init_comic_book_data(self) -> bool:
+        try:
+
+            self.comic_book_reader.init_data()
+            return True
+
+        except (WrongFantagraphicsVolumeError, TooManyArchiveFilesError) as e:
+            self.not_all_titles_loaded_msg = self._get_not_all_titles_loaded_wrong_volume_msg()
+
+            def _close() -> None:
+                msg_box.dismiss()
+                self.not_all_titles_loaded = True
+
+            msg_box = MessagePopup(
+                self.get_wrong_fanta_volume_msg(e),
+                None,
+                "",
+                _close,
+                "Close",
+                title="Wrong Fantagraphics Archive File",
+            )
+            Clock.schedule_once(lambda dt: msg_box.open(), 0)
+            return False
+        except Exception as e:
+            raise e
+
+    @staticmethod
+    def get_wrong_fanta_volume_msg(
+        e: Union[WrongFantagraphicsVolumeError, TooManyArchiveFilesError]
+    ) -> str:
+        if type(e) == TooManyArchiveFilesError:
+            return (
+                f"There were too many Fantagraphics archive files. The expected number\n"
+                f"of files is {e.num_volumes} not {e.num_archive_files}."
+                f" You need to make sure the archives are prefixed\n"
+                f"with the numbers {FIRST_VOLUME_NUMBER:02d} to {LAST_VOLUME_NUMBER:02d} inclusive,"
+                f" then restart the app."
+            )
+
+        return (
+            f"There was a unexpected Fantagraphics archive file:\n\n"
+            f'  [b]"{e.file}".[/b]\n\n'
+            f"The expected volume number was {e.expected_volume} not {e.file_vol}."
+            f" You need to make sure the archives are prefixed with the\n"
+            f" numbers {FIRST_VOLUME_NUMBER:02d} to {LAST_VOLUME_NUMBER:02d} inclusive,"
+            f" then restart the app."
+        )
+
+    @staticmethod
+    def _get_not_all_titles_loaded_wrong_volume_msg() -> str:
+        return (
+            "ERROR: TITLES NOT LOADED\n\n"
+            "You need to check the Fantagraphics\n"
+            "volume directory, rename or remove any\n"
+            "wrong archives, then restart the app!"
+        )
 
     def main_files_exist(self) -> bool:
         fanta_volumes_dir = self._reader_settings.fantagraphics_volumes_dir
@@ -298,11 +360,16 @@ class MainScreen(BoxLayout, Screen):
             return True
 
         text = f"""
-Currently, in the app settings, the Fantagraphics comic zips directory is\n
-     [b]"{fanta_volumes_dir}"[/b]\n
+Currently, in the app settings, the Fantagraphics comic zips directory is\n\n
+     [b]"{fanta_volumes_dir}"[/b]\n\n
 But this directory could not be found. You need to go to settings and enter
 the correct directory, then restart the app.
 """
+        self.not_all_titles_loaded_msg = (
+            "ERROR: TITLES NOT LOADED\n\n"
+            "You need to check and fix the\n"
+            "app settings, then restart the app!"
+        )
 
         def _goto_settings() -> None:
             msg_box.dismiss()
@@ -318,6 +385,7 @@ the correct directory, then restart the app.
             _goto_settings,
             "Goto settings",
             _cancel,
+            "Cancel",
             title="Fantagraphics Directory Not Found",
         )
         Clock.schedule_once(lambda dt: msg_box.open(), 0)

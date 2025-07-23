@@ -287,9 +287,13 @@ if __name__ == "__main__":
 
     comics_database = cmd_args.get_comics_database()
 
-    logging.debug("Running kivy app...")
-    kivy_app = BarksReaderApp(comics_database)
-    kivy_app.run()
+    try:
+        logging.debug("Running kivy app...")
+        kivy_app = BarksReaderApp(comics_database)
+        kivy_app.run()
+    except Exception as e:
+        logging.fatal(f"There's been an error - app is terminating: {e}")
+        sys.exit(1)
 
     logging.debug("Terminating...")
     logging.info(

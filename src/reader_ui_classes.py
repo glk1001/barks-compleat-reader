@@ -58,19 +58,22 @@ class LoadingDataPopup(Popup):
 class MessagePopup(Popup):
     msg_text = StringProperty()
     ok_text = StringProperty()
+    cancel_text = StringProperty()
 
     def __init__(
         self,
         text: str,
-        ok_func: Callable[[], None],
+        ok_func: Union[None, Callable[[], None]],
         ok_text: str,
         cancel_func: Callable[[], None],
+        cancel_text: str,
         **kwargs,
     ):
         super().__init__(**kwargs)
 
         self.msg_text = text
         self.ok_text = ok_text
+        self.cancel_text = cancel_text
 
         self.ok = ok_func
         self.cancel = cancel_func
