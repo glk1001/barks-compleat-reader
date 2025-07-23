@@ -38,8 +38,9 @@ from font_manager import FontManager
 from main_screen import MainScreen
 from reader_consts_and_types import ACTION_BAR_SIZE_Y
 from reader_settings import ReaderSettings
-from reader_ui_classes import ReaderTreeBuilderEventDispatcher, SettingLongPath
+from reader_ui_classes import ReaderTreeBuilderEventDispatcher
 from screen_metrics import get_screen_info, log_screen_metrics
+from settings_fix import SettingLongPath, LONG_PATH
 
 APP_TITLE = "The Compleat Barks Disney Reader"
 MAIN_READER_SCREEN = "main_screen"
@@ -133,7 +134,7 @@ class BarksReaderApp(App):
 
     def build_settings(self, settings):
         # Register our custom widget type with the name 'longpath'
-        settings.register_type("longpath", SettingLongPath)
+        settings.register_type(LONG_PATH, SettingLongPath)
 
         self._reader_settings.build_settings(settings)
         self.config.write()

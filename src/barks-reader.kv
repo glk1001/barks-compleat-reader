@@ -1,43 +1,5 @@
 #: include reader-tree-view.kv
 
-<-SettingItem>:
-    size_hint: .25, None
-    height: labellayout.texture_size[1] + dp(10)
-    content: content
-    canvas:
-        Color:
-            rgba: 47 / 255., 167 / 255., 212 / 255., self.selected_alpha
-        Rectangle:
-            pos: self.x, self.y + 1
-            size: self.size
-        Color:
-            rgb: .2, .2, .2
-        Rectangle:
-            pos: self.x, self.y - 2
-            size: self.width, 1
-
-    BoxLayout:
-        pos: root.pos
-
-        Label:
-            size_hint_x: .55
-            id: labellayout
-            markup: True
-            text: u'{0}\n[size=13sp][color=999999]{1}[/color][/size]'.format(root.title or '', root.desc or '')
-            font_size: '15sp'
-            text_size: self.width - 32, None
-
-        BoxLayout:
-            id: content
-            size_hint_x: .45
-
-<SettingBoolean>:
-    Switch:
-        text: 'Boolean'
-        pos: root.pos
-        active: bool(root.values.index(root.value)) if root.value in root.values else False
-        on_active: root.value = root.values[int(args[1])]
-
 <BarButton@ActionButton>:
     mipmap: True
     draggable: False
@@ -53,69 +15,6 @@
 
 <BgColorLabel@Label+BackgroundColor>
     background_color: (0, 0, 0, 0)
-
-<SettingLongPath>:
-    Label:
-        text: root.value or ''
-        font_size: '13sp'
-        halign: 'left'
-        valign: 'middle'
-        shorten: True
-        shorten_from: 'center'
-        text_size: self.width, None
-
-<SettingLongPathPopup>:
-    title: "Select Directory"
-    title_align: "center"
-    auto_dismiss: False
-    size_hint: 0.8, 0.8
-
-    BoxLayout:
-        orientation: 'vertical'
-        spacing: dp(5)
-        padding: dp(10)
-
-        # Top row for displaying the current path
-        BoxLayout:
-            size_hint_y: None
-            height: self.minimum_height
-            padding: [dp(10), dp(10), dp(10), dp(10)]
-            spacing: dp(5)
-            Label:
-                text: 'Current selection:'
-                size_hint_x: None
-                width: self.texture_size[0]
-            Label:
-                # This label displays the selection from the FileChooser below
-                id: current_selection
-                text: file_chooser.selection[0] if file_chooser.selection else ""
-                bold: True
-                halign: 'left'
-                valign: 'middle'
-                text_size: self.width, None
-                shorten: True
-                shorten_from: 'left'  # Shows the end of the path, which is usually more important
-
-        # The FileChooser takes up the main space
-        FileChooserListView:
-            id: file_chooser
-            dirselect: True
-
-        # The bottom row for action buttons
-        BoxLayout:
-            size_hint_y: None
-            height: dp(44)
-            spacing: dp(10)
-
-            Button:
-                text: 'Select Current Directory'
-                bold: True
-                # The root here is the SettingLongPathPopup instance
-                on_release: root.select_path(current_selection.text)
-
-            Button:
-                text: 'Cancel'
-                on_release: root.dismiss()
 
 <LoadingDataPopup>:
     background_color: (1,1,0,1)

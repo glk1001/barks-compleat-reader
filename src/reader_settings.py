@@ -6,6 +6,7 @@ from kivy.config import ConfigParser
 from kivy.uix.settings import Settings
 
 from reader_file_paths import ReaderFilePaths, BarksPanelsExtType, DEFAULT_BARKS_READER_FILES_DIR
+from settings_fix import LONG_PATH
 from system_file_paths import SystemFilePaths
 
 HOME_DIR = os.environ.get("HOME")
@@ -31,35 +32,35 @@ _READER_SETTINGS_JSON = f"""
    {{
       "title": "Fantagraphics Directory",
       "desc": "Directory containing the Fantagraphics comic zips",
-      "type": "longpath",
+      "type": "{LONG_PATH}",
       "section": "{BARKS_READER_SECTION}",
       "key": "{FANTA_DIR}"
    }},
    {{
       "title": "Reader Files Directory",
       "desc": "Directory containing all the required Barks Reader files",
-      "type": "longpath",
+      "type": "{LONG_PATH}",
       "section": "{BARKS_READER_SECTION}",
       "key": "{READER_FILES_DIR}"
    }},
    {{
       "title": "Prebuilt Comics Directory",
       "desc": "Directory containing specially prebuilt comics",
-      "type": "longpath",
+      "type": "{LONG_PATH}",
       "section": "{BARKS_READER_SECTION}",
       "key": "{PREBUILT_COMICS_DIR}"
    }},
    {{
       "title": "Png Barks Panels Directory",
       "desc": "Directory containing Barks panels png images",
-      "type": "longpath",
+      "type": "{LONG_PATH}",
       "section": "{BARKS_READER_SECTION}",
       "key": "{PNG_BARKS_PANELS_DIR}"
    }},
    {{
       "title": "Jpg Barks Panels Directory",
       "desc": "Directory containing Barks panels jpg images",
-      "type": "longpath",
+      "type": "{LONG_PATH}",
       "section": "{BARKS_READER_SECTION}",
       "key": "{JPG_BARKS_PANELS_DIR}"
    }},
