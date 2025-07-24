@@ -250,7 +250,13 @@ class MainScreen(BoxLayout, Screen):
 
     def _on_loading_data_popup_open(self) -> None:
         set_kivy_busy_cursor()
-        self._set_new_loading_data_popup_image()
+
+        def _show_popop() -> None:
+            self._set_new_loading_data_popup_image()
+            self.loading_data_popup.opacity = 1
+
+        Clock.schedule_once(lambda dt: _show_popop(), 0)
+
         self._loading_data_popup_image_event = Clock.schedule_interval(
             lambda dt: self._set_new_loading_data_popup_image(), 0.5
         )
@@ -267,7 +273,6 @@ class MainScreen(BoxLayout, Screen):
         if not self.main_files_exist():
             return
 
-        self._set_new_loading_data_popup_image()
         Clock.schedule_once(lambda dt: self.loading_data_popup.open(), 0)
 
         from reader_tree_builder import ReaderTreeBuilder
