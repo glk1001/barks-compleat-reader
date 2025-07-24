@@ -4,6 +4,7 @@ os.environ["KIVY_LOG_MODE"] = "MIXED"
 
 import logging
 import sys
+import traceback
 from pathlib import Path
 from random import randrange
 from typing import Any, Union
@@ -278,21 +279,27 @@ if __name__ == "__main__":
     setup_logging(log_level=logging.DEBUG)
     #    setup_logging(cmd_args.get_log_level())
 
-    screen_info = get_screen_info()
-    assert screen_info
-    log_screen_metrics(screen_info)
-
-    Config.set("kivy", "exit_on_escape", "0")
-    Config.write()
-
-    comics_database = cmd_args.get_comics_database()
-
     try:
+        screen_info = get_screen_info()
+        assert screen_info
+        log_screen_metrics(screen_info)
+
+        Config.set("kivy", "exit_on_escape", "0")
+        Config.write()
+
+        comics_database = cmd_args.get_comics_database()
+
         logging.debug("Running kivy app...")
         kivy_app = BarksReaderApp(comics_database)
         kivy_app.run()
     except Exception as e:
-        logging.fatal(f"There's been an error - app is terminating: {e}")
+        _, _, tb = sys.exc_info()
+        tb_info = traceback.extract_tb(tb)
+        filename, line, func, text = tb_info[-1]
+        logging.fatal(
+            f"There's been a program error - the Barks reader app is terminating:"
+            f' Exception "{e}" at "{filename}:{line}" in "{func}" ({text}).'
+        )
         sys.exit(1)
 
     logging.debug("Terminating...")

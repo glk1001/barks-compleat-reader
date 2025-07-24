@@ -335,7 +335,7 @@ class ComicBookReader(BoxLayout):
     def _load_error(self, load_warning_only: bool):
         self._all_loaded = False
         if not load_warning_only:
-            logging.debug(f"There was a comic book load error.")
+            raise Exception("There was a comic book load error.")
         self.close_comic_book_reader(None)
 
     def _show_page(self, _instance, _value):
