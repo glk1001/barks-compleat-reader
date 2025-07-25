@@ -2,10 +2,20 @@ import os
 
 os.environ["KIVY_LOG_MODE"] = "MIXED"
 
+# --- We need to set up config stuff here before any kivy imports.  ---
+# --- This is because we change the KIVY_HOME directory to be under ---
+# --- this app's settings directory.                                 ---
+from pathlib import Path
+from config_info import ConfigInfo
+
+APP_NAME = Path(__file__).stem
+config_info = ConfigInfo(APP_NAME)
+config_info.setup_app_config_dir()
+# ---------------------------------------------------------------------
+
 import logging
 import sys
 import traceback
-from pathlib import Path
 from random import randrange
 from typing import Any, Union
 
@@ -14,7 +24,6 @@ from kivy.app import App
 from kivy.config import ConfigParser
 from kivy.core.window import Window
 from kivy.lang import Builder
-from kivy.utils import platform
 from kivy.uix.screenmanager import (
     ScreenManager,
     RiseInTransition,
@@ -45,10 +54,9 @@ from settings_fix import SettingLongPath, LONG_PATH
 
 APP_TITLE = "The Compleat Barks Disney Reader"
 MAIN_READER_SCREEN = "main_screen"
-COMIC_BOOK_READER = "comic_book_reader"
+COMIC_BOOK_READER_SCREEN = "comic_book_reader"
 
 KV_FILE = Path(__file__).stem + ".kv"
-APP_INI_FILENAME = Path(__file__).stem + ".ini"
 
 # TODO: how to nicely handle main window
 DEFAULT_ASPECT_RATIO = 3200.0 / 2120.0
@@ -109,26 +117,8 @@ class BarksReaderApp(App):
         App.get_running_app().stop()
         Window.close()
 
-    def show_settings(self, _instance):
-        self.open_settings()
-
-    def get_application_config(self, default_path=""):
-        logging.debug(f'self.user_data_dir = "{self.user_data_dir}".')
-
-        if platform == "android":
-            return os.path.join(self.user_data_dir, APP_INI_FILENAME)
-
-        if platform == "ios":
-            config_path = f"~/Documents/{APP_INI_FILENAME}"
-        elif platform == "win":
-            config_path = os.path.join(self.directory, APP_INI_FILENAME)
-        else:
-            config_path = os.path.join(self._reader_settings.reader_files_dir, APP_INI_FILENAME)
-
-        config_path = os.path.expanduser(config_path)
-        logging.info(f'Using app config file "{config_path}".')
-
-        return config_path
+    def get_application_config(self, _default_path=""):
+        return config_info.app_config_path
 
     def build_config(self, config: ConfigParser):
         self._reader_settings.build_config(config)
@@ -166,7 +156,7 @@ class BarksReaderApp(App):
 
     def _initialize_settings_and_db(self):
         """Handles the initial setup of settings and the database."""
-        self._reader_settings.set_config(self.config)
+        self._reader_settings.set_config(self.config, self.get_application_config())
         self._reader_settings.validate_settings()
         self._reader_settings.set_barks_panels_dir()
 
@@ -199,7 +189,7 @@ class BarksReaderApp(App):
         root.current = MAIN_READER_SCREEN
 
         comic_reader = get_barks_comic_reader(
-            COMIC_BOOK_READER,
+            COMIC_BOOK_READER_SCREEN,
             self._reader_settings,
             self._main_screen.app_icon_filepath,
             self._switch_to_comic_book_reader,
@@ -228,7 +218,7 @@ class BarksReaderApp(App):
 
     def _switch_to_comic_book_reader(self):
         self._screen_manager.transition = self._get_next_reader_screen_transition()
-        self._screen_manager.current = COMIC_BOOK_READER
+        self._screen_manager.current = COMIC_BOOK_READER_SCREEN
 
     def _close_comic_book_reader(self):
         self._main_screen.comic_closed()
@@ -267,6 +257,16 @@ def _log_screen_settings() -> None:
     logging.info(f"Window pos = {Window.left},{Window.top}.")
 
 
+def start_logging(args: CmdArgs) -> None:
+    log_level = logging.DEBUG
+    # log_level = cmd_args.get_log_level()
+    setup_logging(log_level, config_info.app_log_path)
+    Config.set("kivy", "log_level", logging.getLevelName(log_level).lower())
+
+    logging.info(f'app config path = "{config_info.app_config_path}".')
+    logging.info(f'kivy config dir = "{config_info.kivy_config_dir}".')
+
+
 if __name__ == "__main__":
     # TODO(glk): Some issue with type checking inspection?
     # noinspection PyTypeChecker
@@ -276,20 +276,17 @@ if __name__ == "__main__":
         logging.error(error_msg)
         sys.exit(1)
 
-    setup_logging(log_level=logging.DEBUG)
-    #    setup_logging(cmd_args.get_log_level())
+    start_logging(cmd_args)
 
     try:
         screen_info = get_screen_info()
         assert screen_info
         log_screen_metrics(screen_info)
 
-        Config.set("kivy", "exit_on_escape", "0")
-        Config.write()
-
         comics_database = cmd_args.get_comics_database()
 
         logging.debug("Running kivy app...")
+        assert Config.getint("kivy", "exit_on_escape") == 0
         kivy_app = BarksReaderApp(comics_database)
         kivy_app.run()
     except Exception as e:

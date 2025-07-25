@@ -27,7 +27,7 @@ if __name__ == "__main__":
             ActionOverflow:
             ActionButton:
                 text: 'Btn0'
-                #icon: 'atlas://data/images/defaulttheme/audio-volume-high'
+                icon: 'atlas://data/images/defaulttheme/audio-volume-high'
                 background_normal: ""
                 background_color: 0.6, 4.0, 0.2, 1
                 draggable: False

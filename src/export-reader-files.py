@@ -10,7 +10,10 @@ from barks_fantagraphics.comics_consts import PageType, JPG_FILE_EXT
 from barks_fantagraphics.comics_logging import setup_logging
 from barks_fantagraphics.comics_utils import get_abbrev_path
 from barks_fantagraphics.pil_image_utils import open_pil_image_for_reading, SAVE_JPG_COMPRESS_LEVEL
-from file_paths import get_comic_inset_files_dir, get_comic_cover_files_dir
+from reader_file_paths import _DEFAULT_PNG_BARKS_PANELS_DIR
+
+inset_files_dir = os.path.join(_DEFAULT_PNG_BARKS_PANELS_DIR, "Insets")
+comic_cover_files_dir = os.path.join(_DEFAULT_PNG_BARKS_PANELS_DIR, "Covers")
 
 
 def export_reader_files_for_title(ttl: str) -> None:
@@ -20,11 +23,11 @@ def export_reader_files_for_title(ttl: str) -> None:
     # export_inset_file(ttl, comic.intro_inset_file)
 
     # export_page_files_to_title_dirs(ttl, comic, get_comic_splash_files_dir(), [PageType.SPLASH])
-    export_page_files_as_title_files(ttl, comic, get_comic_cover_files_dir(), [PageType.COVER])
+    export_page_files_as_title_files(ttl, comic, comic_cover_files_dir, [PageType.COVER])
 
 
 def export_inset_file(ttl: str, inset_file: str) -> None:
-    dest_file = os.path.join(get_comic_inset_files_dir(), ttl + JPG_FILE_EXT)
+    dest_file = os.path.join(inset_files_dir, ttl + JPG_FILE_EXT)
 
     logging.info(f'Exporting "{get_abbrev_path(inset_file)}" to "{get_abbrev_path(dest_file)}".')
 

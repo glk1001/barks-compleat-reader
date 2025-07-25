@@ -121,6 +121,8 @@ _READER_SETTINGS_JSON = f"""
 class ReaderSettings:
     def __init__(self):
         self._config = None
+        self._app_settings_path = ""
+        self._user_data_path = ""
         self._reader_file_paths: ReaderFilePaths = ReaderFilePaths()
         self._reader_sys_file_paths: SystemFilePaths = SystemFilePaths()
 
@@ -153,8 +155,18 @@ class ReaderSettings:
             USE_GLK_FIREBUG_ENDING: self.get_use_glk_firebug_ending,
         }
 
-    def set_config(self, config: ConfigParser) -> None:
+    def set_config(self, config: ConfigParser, app_settings_path: str) -> None:
         self._config = config
+        self._app_settings_path = app_settings_path
+        self._user_data_path = os.path.join(
+            os.path.dirname(self._app_settings_path), "barks-reader.json"
+        )
+
+    def get_app_settings_path(self) -> str:
+        return self._app_settings_path
+
+    def get_user_data_path(self) -> str:
+        return self._user_data_path
 
     @staticmethod
     def build_config(config: ConfigParser):
