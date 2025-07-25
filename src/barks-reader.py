@@ -1,5 +1,8 @@
 import os
 
+# This app will hook into kivy logging.
+# So no kivy console logging required.
+os.environ["KIVY_NO_CONSOLELOG"] = "1"
 os.environ["KIVY_LOG_MODE"] = "MIXED"
 
 # --- We need to set up config stuff here before any kivy imports.  ---
@@ -19,6 +22,7 @@ import traceback
 from random import randrange
 from typing import Any, Union
 
+import kivy
 from kivy import Config
 from kivy.app import App
 from kivy.config import ConfigParser
@@ -260,9 +264,17 @@ def _log_screen_settings() -> None:
 def start_logging(args: CmdArgs) -> None:
     log_level = logging.DEBUG
     # log_level = cmd_args.get_log_level()
-    setup_logging(log_level, config_info.app_log_path)
+    setup_logging(log_level, "app", config_info.app_log_path)
     Config.set("kivy", "log_level", logging.getLevelName(log_level).lower())
 
+    class KivyCustomHandler(logging.Handler):
+        def emit(self, record):
+            logging.root.handle(record)
+
+    custom_handler = KivyCustomHandler()
+    kivy.Logger.addHandler(custom_handler)
+
+    logging.info(f"*** Starting barks reader ***")
     logging.info(f'app config path = "{config_info.app_config_path}".')
     logging.info(f'kivy config dir = "{config_info.kivy_config_dir}".')
 
