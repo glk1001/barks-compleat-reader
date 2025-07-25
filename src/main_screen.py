@@ -195,9 +195,7 @@ class MainScreen(BoxLayout, Screen):
         self.all_fanta_titles = ALL_FANTA_COMIC_BOOK_INFO
         self._random_title_images = RandomTitleImages(self._reader_settings)
 
-        self._json_settings_manager = SettingsManager(
-            self._reader_settings.sys_file_paths.get_barks_reader_user_data_file()
-        )
+        self._json_settings_manager = SettingsManager(self._reader_settings.get_user_data_path())
 
         self._formatter = ReaderFormatter()
         self._fanta_info: Union[FantaComicBookInfo, None] = None
