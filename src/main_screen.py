@@ -40,7 +40,7 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from barks_fantagraphics.title_search import BarksTitleSearch
 from build_comic_images import ComicBookImageBuilder
-from comic_book_page_info import ComicBookPageInfo, get_comic_page_info
+from comic_book_page_info import ComicBookPageInfo, ComicBookPageInfoManager
 from comic_book_reader import ComicBookReader
 from fantagraphics_volumes import WrongFantagraphicsVolumeError, TooManyArchiveFilesError
 from filtered_title_lists import FilteredTitleLists
@@ -209,6 +209,9 @@ class MainScreen(BoxLayout, Screen):
         self.reader_tree_events.bind(on_finished_building_event=self._on_tree_build_finished)
 
         self.comic_book_reader: Union[ComicBookReader, None] = None
+        self._comic_page_info_mgr = ComicBookPageInfoManager(
+            self._comics_database, self._reader_settings
+        )
         self._comic_page_info: Union[ComicBookPageInfo, None] = None
 
         self._top_view_image_info: ImageInfo = ImageInfo()
@@ -757,7 +760,7 @@ class MainScreen(BoxLayout, Screen):
             return
 
         comic = self._get_comic_book()
-        self._comic_page_info = get_comic_page_info(comic)
+        self._comic_page_info = self._comic_page_info_mgr.get_comic_page_info(comic)
         page_to_first_goto = self._get_page_to_first_goto()
 
         comic_book_image_builder = ComicBookImageBuilder(
