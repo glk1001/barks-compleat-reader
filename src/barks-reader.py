@@ -295,7 +295,7 @@ if __name__ == "__main__":
         assert screen_info
         log_screen_metrics(screen_info)
 
-        comics_database = cmd_args.get_comics_database()
+        comics_database = cmd_args.get_comics_database(for_building_comics=False)
 
         logging.debug("Running kivy app...")
         assert Config.getint("kivy", "exit_on_escape") == 0

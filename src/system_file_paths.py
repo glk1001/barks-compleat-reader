@@ -26,6 +26,7 @@ class SystemFilePaths:
         self._empty_page_path = ""
 
         self._fantagraphics_overrides_root_dir = ""
+        self._fantagraphics_panel_segments_root_dir = ""
 
     def set_barks_reader_files_dir(self, reader_files_dir: str) -> None:
         logging.info(f'SystemFilePaths: Setting reader_files_dir = "{reader_files_dir}".')
@@ -58,6 +59,9 @@ class SystemFilePaths:
 
         self._fantagraphics_overrides_root_dir = os.path.join(
             self._barks_reader_files_dir, "Fantagraphics Volumes Overrides"
+        )
+        self._fantagraphics_panel_segments_root_dir = os.path.join(
+            self._barks_reader_files_dir, "Fantagraphics-panel-segments"
         )
 
         self._check_reader_files_dirs()
@@ -102,6 +106,9 @@ class SystemFilePaths:
 
     def get_barks_reader_fantagraphics_overrides_root_dir(self) -> str:
         return self._fantagraphics_overrides_root_dir
+
+    def get_barks_reader_fantagraphics_panel_segments_root_dir(self) -> str:
+        return self._fantagraphics_panel_segments_root_dir
 
     def get_reader_icon_files_dir(self) -> str:
         return self._reader_icon_files_dir
