@@ -91,13 +91,13 @@ class FantagraphicsVolumeArchives:
         self._override_root = override_root
         self._volume_list = volume_list
 
-        self.__fantagraphics_archive_dict: Dict[int, FantagraphicsArchive] = {}
+        self._fantagraphics_archive_dict: Dict[int, FantagraphicsArchive] = {}
 
     def get_volume_list(self) -> List[int]:
         return self._volume_list
 
     def get_fantagraphics_archive(self, volume: int) -> FantagraphicsArchive:
-        return self.__fantagraphics_archive_dict[volume]
+        return self._fantagraphics_archive_dict[volume]
 
     def check_archives_and_overrides(
         self, archive_filenames: List[str], override_dirs: Dict[int, str]
@@ -136,7 +136,7 @@ class FantagraphicsVolumeArchives:
         override_dirs = self.get_all_volume_overrides()
         self.check_archives_and_overrides(archive_filenames, override_dirs)
 
-        self.__fantagraphics_archive_dict: Dict[int, FantagraphicsArchive] = {}
+        self._fantagraphics_archive_dict: Dict[int, FantagraphicsArchive] = {}
         for archive in archive_filenames:
             logging.debug(f'Processing Fantagraphics archive "{archive}"...')
 
@@ -176,7 +176,7 @@ class FantagraphicsVolumeArchives:
                 extra_images_page_map,
             )
 
-            self.__fantagraphics_archive_dict[fanta_volume] = archive_page_map
+            self._fantagraphics_archive_dict[fanta_volume] = archive_page_map
 
             logging.debug(
                 f'Finished processing archive "{archive}"' f" ({last_page - first_page + 1} pages)."

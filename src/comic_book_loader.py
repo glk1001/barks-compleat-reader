@@ -77,7 +77,7 @@ class ComicBookLoader:
         self._on_load_error = on_load_error
 
         with open(self._sys_file_paths.get_empty_page_file(), "rb") as file:
-            self.__empty_page_image = file.read()
+            self._empty_page_image = file.read()
 
         self._thread: Union[threading.Thread, None] = None
 
@@ -373,7 +373,7 @@ class ComicBookLoader:
             with archive.open(str(image_path), "r") as file:
                 file_data = file.read()
         elif page_info.srce_page.page_type in [PageType.BLANK_PAGE, PageType.TITLE]:
-            file_data = self.__empty_page_image
+            file_data = self._empty_page_image
         else:  # it's a file
             with open(image_path, "rb") as file:
                 file_data = file.read()
