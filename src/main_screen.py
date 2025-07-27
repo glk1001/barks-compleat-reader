@@ -471,7 +471,23 @@ class MainScreen(BoxLayout, Screen):
 
     def on_intro_pressed(self, _button: Button):
         self._update_view_for_node(ViewStates.ON_INTRO_NODE)
-        self.intro_text = "hello line 1\nhello line 2\nhello line 3\n"
+        self.intro_text_opacity = 1
+        self.intro_text = self.get_intro_text()
+
+    def get_intro_text(self) -> str:
+        with open(self._reader_settings.sys_file_paths.get_intro_text_file(), "r") as f:
+            lines = f.readlines()
+
+        text = ""
+        for line in lines:
+            print('"' + line + '"')
+            line = line.strip(" ").replace("\n", " ")
+            if len(line.strip()) == 0:
+                line = "\n\n"
+            print('"' + line + '"')
+            text += line
+
+        return text
 
     def on_the_stories_pressed(self, _button: Button):
         self._update_view_for_node(ViewStates.ON_THE_STORIES_NODE)

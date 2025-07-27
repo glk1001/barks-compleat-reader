@@ -24,6 +24,7 @@ class SystemFilePaths:
         self._up_arrow_path = ""
         self._transparent_blank_path = ""
         self._empty_page_path = ""
+        self._intro_text_path = ""
 
         self._fantagraphics_overrides_root_dir = ""
         self._fantagraphics_panel_segments_root_dir = ""
@@ -56,6 +57,7 @@ class SystemFilePaths:
             self._various_files_dir, "transparent-blank.png"
         )
         self._empty_page_path = os.path.join(self._various_files_dir, "empty-page.jpg")
+        self._intro_text_path = os.path.join(self._various_files_dir, "intro-to-barks-reader.txt")
 
         self._fantagraphics_overrides_root_dir = os.path.join(
             self._barks_reader_files_dir, "Fantagraphics Volumes Overrides"
@@ -89,6 +91,7 @@ class SystemFilePaths:
             self._up_arrow_path,
             self._transparent_blank_path,
             self._empty_page_path,
+            self._intro_text_path,
         ]
         self._check_files(files_to_check)
 
@@ -148,3 +151,6 @@ class SystemFilePaths:
 
     def get_empty_page_file(self) -> str:
         return self._empty_page_path
+
+    def get_intro_text_file(self) -> str:
+        return self._intro_text_path

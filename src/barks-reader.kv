@@ -231,14 +231,19 @@
             anchor_x: "right"
             anchor_y: "top"
 
-            TextInput:
+            Label:
                 text: root.intro_text
                 opacity: root.intro_text_opacity
                 background_color: (1, 1, 1, 1)
                 multiline: True
+                markup: True
                 readonly: True
                 width: root.view_width
                 height: root.view_height
+                text_size: self.size
+                halign: 'justify'
+                valign: 'top'
+                padding: dp(50)
 
             # This is the main container for the title view.
             AnchorLayout:
