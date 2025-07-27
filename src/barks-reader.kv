@@ -167,7 +167,7 @@
                     on_release: root.on_goto_fun_view_title(self)
                     disabled:
                         (root.bottom_view_title_opacity > 0.99) or not root.bottom_view_fun_image_from_title \
-                        or (root.intro_text_opacity > 0)
+                        or (root.intro_text_opacity > 0) or (root.appendix_censorship_fixes_text_opacity > 0)
 
     BoxLayout:
         orientation: 'vertical' if self.width < self.height else 'horizontal'
@@ -233,24 +233,38 @@
             anchor_x: "right"
             anchor_y: "top"
 
-            Label:
-                text: root.intro_text
-                opacity: root.intro_text_opacity
-                background_color: (1, 1, 1, 1)
-                multiline: True
-                markup: True
-                width: root.view_width
-                height: root.view_height
-                text_size: self.size
-                halign: 'justify'
-                valign: 'top'
-                padding: dp(50)
 
             BoxLayout:
                 orientation: "vertical"
+                opacity: root.intro_text_opacity
 
                 Label:
-                    opacity: root.appendix_censorship_fixes_text_opacity
+                    text: "Introduction to The Compleat Barks Disney Reader"
+                    font_size: fm.text_block_heading_font_size
+                    background_color: (1, 1, 1, 1)
+                    bold: True
+                    size_hint: 1, 0.1
+                    text_size: self.size
+                    halign: 'center'
+                    valign: 'middle'
+
+                Label:
+                    text: root.intro_text
+                    background_color: (1, 1, 1, 1)
+                    multiline: True
+                    markup: True
+                    size_hint: 1, 0.9
+                    text_size: self.size
+                    halign: 'justify'
+                    valign: 'top'
+                    padding: dp(50)
+                    padding: [dp(50),dp(10),dp(50),0]
+
+            BoxLayout:
+                orientation: "vertical"
+                opacity: root.appendix_censorship_fixes_text_opacity
+
+                Label:
                     text: "Censorship Fixes and Other Changes"
                     font_size: fm.text_block_heading_font_size
                     background_color: (1, 1, 1, 1)
@@ -261,14 +275,13 @@
                     valign: 'middle'
 
                 Label:
-                    opacity: root.appendix_censorship_fixes_text_opacity
                     text: "This is a list of changes from the Fantagraphics library:"
                     background_color: (1, 1, 1, 1)
                     size_hint: 1, 0.09
                     text_size: self.size
                     halign: 'left'
-                    valign: 'middle'
-                    padding: [dp(50),0,0,0]
+                    valign: 'top'
+                    padding: [dp(50),dp(10),0,0]
 
                 ScrollView:
                     width: root.view_width
@@ -286,12 +299,10 @@
 
                     Label:
                         text: root.appendix_censorship_fixes_text
-                        opacity: root.appendix_censorship_fixes_text_opacity
                         background_color: (1, 1, 1, 1)
                         multiline: True
                         markup: True
-                        size_hint: None, None
-                        width: root.view_width
+                        size_hint: 1, None
                         height: self.texture_size[1]
                         text_size: self.width, None
                         halign: 'auto'

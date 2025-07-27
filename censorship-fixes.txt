@@ -3,7 +3,7 @@
     Page y: "blah" changed to "eskimo"
 
 [b][i]The Terror of the River!![/i][/b] \
-    Page 1: Trimmed panels expanded (artwork by GLK)
+    Page 1: In all previous editions, page 1 panels were trimmed to make room for idicia. Now 'fixed' with art by GLK
 
 [b][i]WDCS #56[/i][/b] \
     Page 7 dialogue restored (based off original WDCS #56)
