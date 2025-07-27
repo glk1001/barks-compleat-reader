@@ -62,6 +62,7 @@ from reader_consts_and_types import (
     APPENDIX_NODE_TEXT,
     INDEX_NODE_TEXT,
     ACTION_BAR_SIZE_Y,
+    APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
 )
 from reader_formatter import ReaderFormatter, get_clean_text_without_extra, LONG_TITLE_SPLITS
 from reader_settings import ReaderSettings
@@ -88,7 +89,12 @@ from reader_ui_classes import (
     TagGroupStoryGroupTreeViewNode,
     TitleTreeViewNode,
 )
-from reader_utils import set_kivy_normal_cursor, set_kivy_busy_cursor, get_all_files_in_dir
+from reader_utils import (
+    set_kivy_normal_cursor,
+    set_kivy_busy_cursor,
+    get_all_files_in_dir,
+    read_text_paragraphs,
+)
 from special_overrides_handler import SpecialFantaOverrides
 from system_file_paths import SystemFilePaths
 from user_error_handler import UserErrorHandler, ErrorTypes
@@ -104,6 +110,7 @@ NODE_TEXT_TO_VIEW_STATE_MAP = {
     THE_STORIES_NODE_TEXT: ViewStates.ON_THE_STORIES_NODE,
     SEARCH_NODE_TEXT: ViewStates.ON_SEARCH_NODE,
     APPENDIX_NODE_TEXT: ViewStates.ON_APPENDIX_NODE,
+    APPENDIX_CENSORSHIP_FIXES_NODE_TEXT: ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
     INDEX_NODE_TEXT: ViewStates.ON_INDEX_NODE,
     CHRONOLOGICAL_NODE_TEXT: ViewStates.ON_CHRONO_BY_YEAR_NODE,
     SERIES_NODE_TEXT: ViewStates.ON_SERIES_NODE,
@@ -154,6 +161,9 @@ class MainScreen(BoxLayout, Screen):
 
     intro_text = StringProperty()
     intro_text_opacity = NumericProperty(0.0)
+
+    appendix_censorship_fixes_text = StringProperty()
+    appendix_censorship_fixes_text_opacity = NumericProperty(0.0)
 
     top_view_image_source = StringProperty()
     top_view_image_fit_mode = StringProperty(FIT_MODE_COVER)
@@ -342,18 +352,14 @@ class MainScreen(BoxLayout, Screen):
             raise e
 
     def on_action_bar_collapse(self):
-        something_was_open = False
-
         for node in self.ids.reader_tree_view.iterate_open_nodes():
             self.ids.reader_tree_view.deselect_node(node)
 
             if node.is_open:
                 self.ids.reader_tree_view.toggle_node(node)
                 self._close_open_nodes(node)
-                something_was_open = True
 
-        if something_was_open:
-            self._update_view_for_node(ViewStates.INITIAL)
+        self._update_view_for_node(ViewStates.INITIAL)
 
     def _close_open_nodes(self, start_node: TreeViewNode) -> None:
         for node in start_node.nodes:
@@ -472,22 +478,9 @@ class MainScreen(BoxLayout, Screen):
     def on_intro_pressed(self, _button: Button):
         self._update_view_for_node(ViewStates.ON_INTRO_NODE)
         self.intro_text_opacity = 1
-        self.intro_text = self.get_intro_text()
-
-    def get_intro_text(self) -> str:
-        with open(self._reader_settings.sys_file_paths.get_intro_text_file(), "r") as f:
-            lines = f.readlines()
-
-        text = ""
-        for line in lines:
-            print('"' + line + '"')
-            line = line.strip(" ").replace("\n", " ")
-            if len(line.strip()) == 0:
-                line = "\n\n"
-            print('"' + line + '"')
-            text += line
-
-        return text
+        self.intro_text = read_text_paragraphs(
+            self._reader_settings.sys_file_paths.get_intro_text_file()
+        )
 
     def on_the_stories_pressed(self, _button: Button):
         self._update_view_for_node(ViewStates.ON_THE_STORIES_NODE)
@@ -584,6 +577,13 @@ class MainScreen(BoxLayout, Screen):
     def on_appendix_pressed(self, _button: Button):
         self._update_view_for_node(ViewStates.ON_APPENDIX_NODE)
 
+    def on_appendix_censorship_fixes_pressed(self, _button: Button):
+        self._update_view_for_node(ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE)
+        self.appendix_censorship_fixes_text_opacity = 1
+        self.appendix_censorship_fixes_text = read_text_paragraphs(
+            self._reader_settings.sys_file_paths.get_censorship_fixes_text_file()
+        )
+
     def on_index_pressed(self, _button: Button):
         self._update_view_for_node(ViewStates.ON_INDEX_NODE)
 
@@ -677,6 +677,7 @@ class MainScreen(BoxLayout, Screen):
         self._background_views.set_view_state(tree_node)
 
         self.intro_text_opacity = 0.0
+        self.appendix_censorship_fixes_text_opacity = 0.0
 
         self._top_view_image_info = self._background_views.get_top_view_image_info()
         self.top_view_image_opacity = self._background_views.get_top_view_image_opacity()
@@ -917,6 +918,8 @@ class MainScreen(BoxLayout, Screen):
 
         self.ids.reader_tree_view.select_node(saved_node)
 
-        if isinstance(saved_node, TitleTreeViewNode):
+        if isinstance(saved_node, ButtonTreeViewNode):
+            saved_node.trigger_action()
+        elif isinstance(saved_node, TitleTreeViewNode):
             self.on_title_row_button_pressed(saved_node.ids.num_label)
             self._scroll_to_node(saved_node)

@@ -41,6 +41,7 @@ class ViewStates(Enum):
     ON_THE_STORIES_NODE = auto()
     ON_SEARCH_NODE = auto()
     ON_APPENDIX_NODE = auto()
+    ON_APPENDIX_CENSORSHIP_FIXES_NODE = auto()
     ON_INDEX_NODE = auto()
     ON_CHRONO_BY_YEAR_NODE = auto()
     ON_YEAR_RANGE_NODE = auto()
@@ -201,6 +202,12 @@ class BackgroundViews:
             self._bottom_view_title_opacity = 0.0
             return
 
+        if self._view_state == ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE:
+            self._set_top_view_image()
+            self._bottom_view_fun_image_opacity = 0.0
+            self._bottom_view_title_opacity = 0.0
+            return
+
         if self._view_state in [
             ViewStates.ON_TITLE_SEARCH_BOX_NODE,
             ViewStates.ON_TITLE_NODE,
@@ -265,6 +272,9 @@ class BackgroundViews:
             ):
                 self._set_top_view_image_for_search()
             case ViewStates.ON_APPENDIX_NODE:
+                self._set_top_view_image_for_appendix()
+            case ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE:
+                # TODO: Fix this
                 self._set_top_view_image_for_appendix()
             case ViewStates.ON_INDEX_NODE:
                 self._set_top_view_image_for_index()

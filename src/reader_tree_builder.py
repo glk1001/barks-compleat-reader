@@ -44,6 +44,7 @@ from reader_consts_and_types import (
     SEARCH_NODE_TEXT,
     APPENDIX_NODE_TEXT,
     INDEX_NODE_TEXT,
+    APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
 )
 from reader_formatter import (
     get_bold_markup_text,
@@ -425,8 +426,15 @@ class ReaderTreeBuilder:
         self._create_and_add_tag_search_box_node(tree, search_node)
 
     def _add_appendix_node(self, tree: ReaderTreeView):
-        self._create_and_add_simple_node(
+        appendix_node = self._create_and_add_simple_node(
             tree, APPENDIX_NODE_TEXT, self._main_screen.on_appendix_pressed
+        )
+
+        self._create_and_add_simple_node(
+            tree,
+            APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
+            self._main_screen.on_appendix_censorship_fixes_pressed,
+            parent_node=appendix_node,
         )
 
     def _add_index_node(self, tree: ReaderTreeView):

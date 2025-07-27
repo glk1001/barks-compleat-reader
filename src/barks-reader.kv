@@ -165,7 +165,9 @@
                 ActionButton:
                     text: 'Lower Title'
                     on_release: root.on_goto_fun_view_title(self)
-                    disabled: (root.bottom_view_title_opacity > 0.99) or not root.bottom_view_fun_image_from_title
+                    disabled:
+                        (root.bottom_view_title_opacity > 0.99) or not root.bottom_view_fun_image_from_title \
+                        or (root.intro_text_opacity > 0)
 
     BoxLayout:
         orientation: 'vertical' if self.width < self.height else 'horizontal'
@@ -237,13 +239,64 @@
                 background_color: (1, 1, 1, 1)
                 multiline: True
                 markup: True
-                readonly: True
                 width: root.view_width
                 height: root.view_height
                 text_size: self.size
                 halign: 'justify'
                 valign: 'top'
                 padding: dp(50)
+
+            BoxLayout:
+                orientation: "vertical"
+
+                Label:
+                    opacity: root.appendix_censorship_fixes_text_opacity
+                    text: "Censorship Fixes and Other Changes"
+                    font_size: fm.text_block_heading_font_size
+                    background_color: (1, 1, 1, 1)
+                    bold: True
+                    size_hint: 1, 0.1
+                    text_size: self.size
+                    halign: 'center'
+                    valign: 'middle'
+
+                Label:
+                    opacity: root.appendix_censorship_fixes_text_opacity
+                    text: "This is a list of changes from the Fantagraphics library:"
+                    background_color: (1, 1, 1, 1)
+                    size_hint: 1, 0.09
+                    text_size: self.size
+                    halign: 'left'
+                    valign: 'middle'
+                    padding: [dp(50),0,0,0]
+
+                ScrollView:
+                    width: root.view_width
+                    height: root.view_height
+
+                    do_scroll_x: False
+                    do_scroll_y: True
+                    always_overscroll: False
+                    effect_cls: "ScrollEffect"
+                    scroll_type: ["bars", "content"]
+
+                    bar_color: (0.8, 0.8, 0.8, 1)
+                    bar_inactive_color: (0.8, 0.8, 0.8, 0.8)
+                    bar_width: dp(12)
+
+                    Label:
+                        text: root.appendix_censorship_fixes_text
+                        opacity: root.appendix_censorship_fixes_text_opacity
+                        background_color: (1, 1, 1, 1)
+                        multiline: True
+                        markup: True
+                        size_hint: None, None
+                        width: root.view_width
+                        height: self.texture_size[1]
+                        text_size: self.width, None
+                        halign: 'auto'
+                        valign: 'top'
+                        padding: [dp(50),0,0,0]
 
             # This is the main container for the title view.
             AnchorLayout:
