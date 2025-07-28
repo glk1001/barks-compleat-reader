@@ -46,6 +46,7 @@ from screeninfo import get_monitors
 from barks_fantagraphics.comics_cmd_args import CmdArgs
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.comics_logging import setup_logging
+from censorship_fixes import get_censorship_fixes_screen
 from comic_book_reader import get_barks_comic_reader
 from filtered_title_lists import FilteredTitleLists
 from font_manager import FontManager
@@ -59,6 +60,7 @@ from settings_fix import SettingLongPath, LONG_PATH
 APP_TITLE = "The Compleat Barks Disney Reader"
 MAIN_READER_SCREEN = "main_screen"
 COMIC_BOOK_READER_SCREEN = "comic_book_reader"
+CENSORSHIP_FIXES_SCREEN = "censorship_fixes"
 
 KV_FILE = Path(__file__).stem + ".kv"
 
@@ -149,7 +151,7 @@ class BarksReaderApp(App):
         Builder.load_string(f"#:set fm app.font_manager")
         Builder.load_file(KV_FILE)
 
-        root = self._build_ui_components()
+        root = self._build_screens()
 
         logging.debug("Building the main tree view...")
         self._main_screen.start_tree_build()
@@ -173,8 +175,9 @@ class BarksReaderApp(App):
             self._reader_settings.reader_files_dir
         )
 
-    def _build_ui_components(self) -> ScreenManager:
-        """Constructs and wires up the main UI screens and components."""
+    def _build_screens(self) -> ScreenManager:
+        root = self._screen_manager
+
         logging.debug("Instantiating main screen...")
         filtered_title_lists = FilteredTitleLists()
         reader_tree_events = ReaderTreeBuilderEventDispatcher()
@@ -187,20 +190,30 @@ class BarksReaderApp(App):
             name=MAIN_READER_SCREEN,
         )
         self._set_custom_title_bar()
-
-        root = self._screen_manager
         root.add_widget(self._main_screen)
-        root.current = MAIN_READER_SCREEN
 
-        comic_reader = get_barks_comic_reader(
+        logging.debug("Instantiating comic reader screen...")
+        comic_reader_screen = get_barks_comic_reader(
             COMIC_BOOK_READER_SCREEN,
             self._reader_settings,
             self._main_screen.app_icon_filepath,
             self._switch_to_comic_book_reader,
             self._close_comic_book_reader,
         )
-        root.add_widget(comic_reader)
-        self._main_screen.comic_book_reader = comic_reader.children[0]
+        root.add_widget(comic_reader_screen)
+        self._main_screen.comic_book_reader = comic_reader_screen.children[0]
+
+        logging.debug("Instantiating censorship fixes screen...")
+        censorship_fixes_screen = get_censorship_fixes_screen(
+            CENSORSHIP_FIXES_SCREEN,
+            self._reader_settings,
+            self._main_screen.app_icon_filepath,
+            self._close_comic_book_reader,
+        )
+        root.add_widget(censorship_fixes_screen)
+        self._main_screen.censorship_fixes = censorship_fixes_screen.children[0]
+
+        root.current = MAIN_READER_SCREEN
 
         return root
 
@@ -229,6 +242,10 @@ class BarksReaderApp(App):
 
         self._screen_manager.transition = self._get_next_main_screen_transition()
         self._screen_manager.current = MAIN_READER_SCREEN
+
+    def _switch_to_censorship_fixes(self):
+        # self._screen_manager.transition = self._get_next_reader_screen_transition()
+        self._screen_manager.current = CENSORSHIP_FIXES_SCREEN
 
 
 def _set_main_window() -> None:

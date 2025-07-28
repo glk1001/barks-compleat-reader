@@ -1,0 +1,47 @@
+<CensorshipFixesScreen>:
+    orientation: "vertical"
+
+    Label:
+        text: "Censorship Fixes and Other Changes"
+        font_size: fm.text_block_heading_font_size
+        background_color: (1, 1, 1, 1)
+        bold: True
+        size_hint: 1, 0.1
+        text_size: self.size
+        halign: 'center'
+        valign: 'middle'
+
+    Label:
+        text: "This is a list of changes from the Fantagraphics library:"
+        background_color: (1, 1, 1, 1)
+        size_hint: 1, 0.09
+        text_size: self.size
+        halign: 'left'
+        valign: 'top'
+        padding: [dp(50),dp(10),0,0]
+
+    ScrollView:
+#        width: root.view_width
+#        height: root.view_height
+
+        do_scroll_x: False
+        do_scroll_y: True
+        always_overscroll: False
+        effect_cls: "ScrollEffect"
+        scroll_type: ["bars", "content"]
+
+        bar_color: (0.8, 0.8, 0.8, 1)
+        bar_inactive_color: (0.8, 0.8, 0.8, 0.8)
+        bar_width: dp(12)
+
+        Label:
+            text: root.censorship_fixes_text
+            background_color: (1, 1, 1, 1)
+            multiline: True
+            markup: True
+            size_hint: 1, None
+            height: self.texture_size[1]
+            text_size: self.width, None
+            halign: 'auto'
+            valign: 'top'
+            padding: [dp(50),0,0,0]
