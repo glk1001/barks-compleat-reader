@@ -6,35 +6,35 @@ read all of Carl Barks' Disney stories.
 
 The idea for this reader started when I learnt the Fantagraphics library was available
 in a digital version. Here was an uncensored (early on at least) library that I could
-pull apart and reassemble in chronological order and read on a 16 inch laptop. That 
+pull apart and reassemble in chronological order and read on a 16 inch laptop. That
 was the answer to one of my teenage-hood dreams - a proper uncut version of the complete
 Barks canon presented chronologically in a quality way. To cut a long story short, I developed software
 that knew all about Barks and the Fantagraphics library and could create standalone
-(and digitally enhanced) versions of all his stories. But generic comic book readers didn't
-know anything abut Barks so the final step was to create a Barks Reader app that would help the user 
-explore and enjoy the stories in the best possible way.  
+versions of all his stories. But generic comic book readers didn't
+know anything abut Barks so the final step was to create a Barks Reader app that would help the user
+explore and enjoy the stories in the best possible way.
 
-One of the most important features of this reader is a dedication to presenting
+One of the most important features of this reader is to present
 Barks' work as authentically as possible. Censorship omissions and alterations that
 appeared in the Fantagraphics volumes have all been fixed. (Importantly, a
 restored version of [i]"Silent Night"[/i] colored in the flat Fantagraphics style is included.
-And a restored version of the missing page from WDCS #74.) All dialogue changes have been
+As well as a restored version of the missing page from WDCS #74.) All dialogue changes have been
 restored following the original US editions.
-I've also restored (possibly controversially) the intent of three of his stories to what
-Barks originally wanted: [i]Harpies[/i] not [i]Larkies[/i] in [i]The Golden Fleecing[/i], 
-[i]Dere[/i] not [i]Theah[/i] in [i]Lost in the Andes![/i], and blank eyeballs for
-Bombie in [i]Voodoo Hoodoo[/i]. If you disagree with any of my changes, there are options to turn them off.
+I've also restored (possibly controversially) the intent of three stories to what
+Barks originally wanted: [i]Harpies[/i] not [i]Larkies[/i] in [i]"The Golden Fleecing"[/i],
+[i]Dere[/i] not [i]Theah[/i] in [i]"Lost in the Andes!"[/i], and blank eyeballs for
+Bombie in [i]"Voodoo Hoodoo"[/i]. If you disagree with any of my changes, there are options to turn them off.
 And finally, you can navigate through the collection in chronological order based on Barks'
 story submission dates.
 
 Navigating the library easily was an important consideration and hopefully you will see that
-in the table of contents. You can explore the entire collection in chronological order, 
-following how Barks' artistry developed over his 25 year long career. Or you can navigate by series or
-by tagged categories (characters, places, etc.) 
+in the table of contents. You can explore the entire collection in chronological order,
+following how Barks' developed the Ducks over his 25 year career. Or you can navigate by series or
+by tagged categories (characters, places, etc.)
 Alternatively, there are search functions to find stories by title or
-by descriptive tags. 
+by descriptive tags.
 
-The app includes a built-in comic book reader that works 
+The app includes a built-in comic book reader that works
 directly with your own collection of Fantagraphics .zip or .cbz files. When you open
 a story, the reader intelligently centers the pages and renumbers them according
 to their original publication numbering, and in full page mode, allows for a
