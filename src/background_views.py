@@ -202,12 +202,6 @@ class BackgroundViews:
             self._bottom_view_title_opacity = 0.0
             return
 
-        if self._view_state == ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE:
-            self._set_top_view_image()
-            self._bottom_view_fun_image_opacity = 0.0
-            self._bottom_view_title_opacity = 0.0
-            return
-
         if self._view_state in [
             ViewStates.ON_TITLE_SEARCH_BOX_NODE,
             ViewStates.ON_TITLE_NODE,

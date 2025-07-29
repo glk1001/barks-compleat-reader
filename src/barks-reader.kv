@@ -171,7 +171,7 @@
                     on_release: root.on_goto_fun_view_title(self)
                     disabled:
                         (root.bottom_view_title_opacity > 0.99) or not root.bottom_view_fun_image_from_title \
-                        or (root.intro_text_opacity > 0) or (root.appendix_censorship_fixes_text_opacity > 0)
+                        or (root.intro_text_opacity > 0)
 
     BoxLayout:
         orientation: 'vertical' if self.width < self.height else 'horizontal'

@@ -213,7 +213,8 @@ class BarksReaderApp(App):
             CENSORSHIP_FIXES_SCREEN,
             self._reader_settings,
             self._main_screen.app_icon_filepath,
-            self._close_comic_book_reader,
+            self._switch_to_censorship_fixes,
+            self._close_censorship_fixes,
         )
         root.add_widget(censorship_fixes_screen)
         self._main_screen.censorship_fixes = censorship_fixes_screen.children[0]
@@ -251,6 +252,10 @@ class BarksReaderApp(App):
     def _switch_to_censorship_fixes(self):
         # self._screen_manager.transition = self._get_next_reader_screen_transition()
         self._screen_manager.current = CENSORSHIP_FIXES_SCREEN
+
+    def _close_censorship_fixes(self):
+        self._screen_manager.transition = self._get_next_main_screen_transition()
+        self._screen_manager.current = MAIN_READER_SCREEN
 
 
 def _set_main_window() -> None:

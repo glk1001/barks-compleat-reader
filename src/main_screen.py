@@ -45,6 +45,7 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from barks_fantagraphics.title_search import BarksTitleSearch
 from build_comic_images import ComicBookImageBuilder
+from censorship_fixes import CensorshipFixes
 from comic_book_page_info import ComicBookPageInfo, ComicBookPageInfoManager
 from comic_book_reader import ComicBookReader
 from fantagraphics_volumes import WrongFantagraphicsVolumeError, TooManyArchiveFilesError
@@ -169,9 +170,6 @@ class MainScreen(BoxLayout, Screen):
     intro_text = StringProperty()
     intro_text_opacity = NumericProperty(0.0)
 
-    appendix_censorship_fixes_text = StringProperty()
-    appendix_censorship_fixes_text_opacity = NumericProperty(0.0)
-
     top_view_image_source = StringProperty()
     top_view_image_fit_mode = StringProperty(FIT_MODE_COVER)
     top_view_image_color = ColorProperty()
@@ -230,6 +228,8 @@ class MainScreen(BoxLayout, Screen):
             self._comics_database, self._reader_settings
         )
         self._comic_page_info: Union[ComicBookPageInfo, None] = None
+
+        self.censorship_fixes: Union[CensorshipFixes, None] = None
 
         self._top_view_image_info: ImageInfo = ImageInfo()
         self._bottom_view_fun_image_info: ImageInfo = ImageInfo()
@@ -593,10 +593,7 @@ class MainScreen(BoxLayout, Screen):
 
     def on_appendix_censorship_fixes_pressed(self, _button: Button):
         self._update_view_for_node(ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE)
-        self.appendix_censorship_fixes_text_opacity = 1
-        self.appendix_censorship_fixes_text = read_text_paragraphs(
-            self._reader_settings.sys_file_paths.get_censorship_fixes_text_file()
-        )
+        self.censorship_fixes.show()
 
     def on_index_pressed(self, _button: Button):
         self._update_view_for_node(ViewStates.ON_INDEX_NODE)
@@ -691,7 +688,6 @@ class MainScreen(BoxLayout, Screen):
         self._background_views.set_view_state(tree_node)
 
         self.intro_text_opacity = 0.0
-        self.appendix_censorship_fixes_text_opacity = 0.0
 
         self._top_view_image_info = self._background_views.get_top_view_image_info()
         self.top_view_image_opacity = self._background_views.get_top_view_image_opacity()
