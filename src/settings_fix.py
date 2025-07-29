@@ -32,8 +32,9 @@ KV_SETTINGS_OVERRIDE = """
             size_hint_x: .55
             id: labellayout
             markup: True
-            text: u'{0}\\n[size=13sp][color=999999]{1}[/color][/size]'\
-.format(root.title or '', root.desc or '')
+            text: 
+                u'{0}\\n[size=13sp][color=999999]{1}[/color][/size]'\
+                .format(root.title or '', root.desc or '')
             font_size: '15sp'
             text_size: self.width - 32, None
 
@@ -82,6 +83,7 @@ KV_SETTINGS_OVERRIDE = """
             Label:
                 # This label displays the selection from the FileChooser below
                 id: current_selection
+                # Don't forget to strip the double quotes before calling 'root.select_path' below.
                 text: f'"{file_chooser.selection[0] if file_chooser.selection else ""}"'
                 color: (1, 1, 0, 1)
                 bold: True
@@ -95,6 +97,7 @@ KV_SETTINGS_OVERRIDE = """
         FileChooserListView:
             id: file_chooser
             dirselect: True
+            multiselect: False
 
         # The bottom row for action buttons
         BoxLayout:
@@ -106,7 +109,8 @@ KV_SETTINGS_OVERRIDE = """
                 text: 'Select Current Directory'
                 bold: True
                 # The root here is the SettingLongPathPopup instance
-                on_release: root.select_path(current_selection.text)
+                # Don't forget to strip the double quotes here!
+                on_release: root.select_path(current_selection.text.strip('"'))
 
             Button:
                 text: 'Cancel'
@@ -139,7 +143,7 @@ class SettingLongPath(SettingItem):
         self.bind(on_release=self._create_popup)
 
     def update_setting_value(self, new_path: str):
-        self.value = new_path.strip('"')
+        self.value = new_path
 
     def _create_popup(self, _instance):
         """Creates and opens the directory selection popup."""
