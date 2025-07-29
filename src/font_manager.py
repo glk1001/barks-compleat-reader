@@ -35,6 +35,9 @@ class FontManager(EventDispatcher):
     main_title_font_name = CARL_BARKS_FONT_NAME
     loading_title_font_name = CARL_BARKS_FONT_NAME
 
+    def __init__(self):
+        self.app_title_font_size = 0
+
     def update_font_sizes(self, window_height: int):
         """Calculates and sets all font sizes based on window height."""
         logging.debug(f"Updating all font sizes based on window height {window_height}.")
@@ -50,6 +53,7 @@ class FontManager(EventDispatcher):
             error_popup_font_size = sp(20)
             text_block_heading_font_size = sp(20)
             intro_text_font_size = sp(11)
+            self.app_title_font_size = sp(12)
         else:
             main_title_font_size = sp(40)
             title_info_font_size = sp(20)
@@ -61,6 +65,7 @@ class FontManager(EventDispatcher):
             error_popup_font_size = sp(25)
             text_block_heading_font_size = sp(25)
             intro_text_font_size = sp(16)
+            self.app_title_font_size = sp(17)
 
         self.main_title_font_size = main_title_font_size
         self.title_info_font_size = title_info_font_size

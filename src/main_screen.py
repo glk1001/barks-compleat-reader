@@ -24,7 +24,12 @@ from barks_fantagraphics.barks_tags import (
 )
 from barks_fantagraphics.barks_titles import ComicBookInfo, Titles, BARKS_TITLES, BARKS_TITLE_DICT
 from barks_fantagraphics.comic_book import ComicBook
-from barks_fantagraphics.comics_consts import PageType, ROMAN_NUMERALS, BACK_MATTER_PAGES
+from barks_fantagraphics.comics_consts import (
+    PageType,
+    ROMAN_NUMERALS,
+    BACK_MATTER_PAGES,
+    CARL_BARKS_FONT_NAME,
+)
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import (
     FantaComicBookInfo,
@@ -44,6 +49,7 @@ from comic_book_page_info import ComicBookPageInfo, ComicBookPageInfoManager
 from comic_book_reader import ComicBookReader
 from fantagraphics_volumes import WrongFantagraphicsVolumeError, TooManyArchiveFilesError
 from filtered_title_lists import FilteredTitleLists
+from font_manager import FontManager
 from json_settings_manager import SettingsManager, SavedPageInfo
 from random_title_images import (
     ImageInfo,
@@ -142,6 +148,7 @@ class MainScreen(BoxLayout, Screen):
     action_bar_change_pics_icon_filepath = StringProperty()
     action_bar_settings_icon_filepath = StringProperty()
     action_bar_goto_icon_filepath = StringProperty()
+    app_title = StringProperty()
 
     not_all_titles_loaded = BooleanProperty(False)
     not_all_titles_loaded_msg = StringProperty()
@@ -240,6 +247,13 @@ class MainScreen(BoxLayout, Screen):
 
         self._special_fanta_overrides = SpecialFantaOverrides(self._reader_settings)
         self.ids.use_overrides_checkbox.bind(active=self.on_use_overrides_checkbox_changed)
+
+    def fonts_updated(self, font_manager: FontManager) -> None:
+        self.app_title = (
+            f"[font={CARL_BARKS_FONT_NAME}]"
+            f"[size={int(font_manager.app_title_font_size)}]"
+            f"{self._app.title}"
+        )
 
     def _set_action_bar_icons(self, sys_paths: SystemFilePaths):
         self.app_icon_filepath = self._get_reader_app_icon_file()

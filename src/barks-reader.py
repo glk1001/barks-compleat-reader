@@ -116,7 +116,11 @@ class BarksReaderApp(App):
             f" Window.width = {Window.width}, Window.height = {Window.height}."
         )
 
+        self.update_fonts(height)
+
+    def update_fonts(self, height):
         self.font_manager.update_font_sizes(height)
+        self._main_screen.fonts_updated(self.font_manager)
 
     def close_app(self):
         self._main_screen.app_closing()
@@ -190,6 +194,7 @@ class BarksReaderApp(App):
             name=MAIN_READER_SCREEN,
         )
         self._set_custom_title_bar()
+        self.update_fonts(Config.getint("graphics", "height"))
         root.add_widget(self._main_screen)
 
         logging.debug("Instantiating comic reader screen...")
