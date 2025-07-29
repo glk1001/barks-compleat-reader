@@ -237,10 +237,9 @@
             anchor_x: "right"
             anchor_y: "top"
 
-            RelativeLayout:
+            BoxLayout:
                 orientation: "vertical"
                 opacity: root.intro_text_opacity
-                spacing: 0
 
                 BgColorLabel:
                     text: "Introduction to The Compleat Barks Disney Reader"
@@ -250,7 +249,6 @@
 #                    background_color: (0, 1, 1, 1)
                     bold: True
                     size_hint: 1, 0.08
-                    pos_hint: {'x': 0, 'top': 1}
                     text_size: self.size
                     halign: 'center'
                     valign: 'middle'
@@ -265,7 +263,6 @@
                     multiline: True
                     markup: True
                     size_hint: 1, 0.92
-                    pos_hint: {'x': 0, 'top': 0.92}
                     text_size: self.size
                     halign: 'justify'
                     valign: 'top'
