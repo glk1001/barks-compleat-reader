@@ -3,36 +3,25 @@
 
     ActionBar:
         id: censorship_action_bar
-        #height: root.ACTION_BAR_HEIGHT
-        height: dp(40)
+        height: root.ACTION_BAR_HEIGHT
 
         ActionView:
             use_separator: False
 
             ActionPrevious:
-                id: action_title
-                title: "Censorship Fixes and Other Changes"
+                title: root.action_bar_title
+                color: root.ACTION_BAR_TITLE_COLOR
+                markup: True
                 with_previous: False
-                #app_icon: root.app_icon_filepath
+                app_icon: root.app_icon_filepath
 
             ActionOverflow:
 
             BarButton:
-                id: close_button
                 text: "Close"
-                #icon: root.action_bar_close_icon_filepath
+                icon: root.action_bar_close_icon_filepath
                 important: True
                 on_press: root.close()
-
-#    Label:
-#        text: "Censorship Fixes and Other Changes"
-#        font_size: fm.text_block_heading_font_size
-#        background_color: (1, 1, 1, 1)
-#        bold: True
-#        size_hint: 1, 0.1
-#        text_size: self.size
-#        halign: 'center'
-#        valign: 'middle'
 
     Label:
         text: "This is a list of changes from the Fantagraphics library:"

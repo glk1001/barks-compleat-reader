@@ -4,11 +4,13 @@ from barks_fantagraphics.barks_extra_info import BARKS_EXTRA_INFO
 from barks_fantagraphics.barks_payments import BARKS_PAYMENTS
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
+from barks_fantagraphics.comics_consts import CARL_BARKS_FONT_NAME
 from barks_fantagraphics.comics_utils import (
     get_formatted_first_published_str,
     get_long_formatted_submitted_date,
 )
 from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo, FANTA_SOURCE_COMICS, FAN
+from font_manager import FontManager
 from reader_utils import get_formatted_payment_info
 
 LONG_TITLE_SPLITS = {
@@ -38,6 +40,14 @@ def get_clean_text_without_extra(markup_text: str) -> str:
 
 def text_includes_num_titles(text: str) -> bool:
     return text.endswith(")[/i]")
+
+
+def get_action_bar_title(font_manager: FontManager, title: str) -> str:
+    return (
+        f"[font={CARL_BARKS_FONT_NAME}]"
+        f"[size={int(font_manager.app_title_font_size)}]"
+        f"{title}"
+    )
 
 
 class ReaderFormatter:

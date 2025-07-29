@@ -23,7 +23,9 @@ from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 from build_comic_images import ComicBookImageBuilder
 from comic_book_loader import ComicBookLoader
 from comic_book_page_info import PageInfo
+from font_manager import FontManager
 from reader_consts_and_types import ACTION_BAR_SIZE_Y
+from reader_formatter import get_action_bar_title
 from reader_settings import ReaderSettings
 from system_file_paths import SystemFilePaths
 
@@ -139,7 +141,9 @@ class ComicBookReader(BoxLayout):
 
     def __init__(
         self,
+        root: "ComicBookReaderScreen",
         reader_settings: ReaderSettings,
+        font_manager: FontManager,
         on_comic_is_ready_to_read: Callable[[], None],
         on_close_reader: Callable[[], None],
         goto_page_widget: Widget,
@@ -147,7 +151,9 @@ class ComicBookReader(BoxLayout):
     ):
         super().__init__(**kwargs)
 
+        self._root = root
         self._reader_settings = reader_settings
+        self._font_manager = font_manager
         self._on_comic_is_ready_to_read = on_comic_is_ready_to_read
         self._on_close_reader = on_close_reader
         self._goto_page_widget = goto_page_widget
@@ -291,8 +297,8 @@ class ComicBookReader(BoxLayout):
         self._goto_page_dropdown = None
         self._page_manager.reset_current_page_index()
 
-        self._action_bar.action_view.action_previous.title = (
-            fanta_info.comic_book_info.get_title_str()
+        self._root.action_bar_title = get_action_bar_title(
+            self._font_manager, fanta_info.comic_book_info.get_title_str()
         )
 
         self._page_manager.set_page_map(page_map, page_to_first_goto)
@@ -486,6 +492,8 @@ class ComicBookReader(BoxLayout):
 
 
 class ComicBookReaderScreen(BoxLayout, Screen):
+    action_bar_title = StringProperty()
+    ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     app_icon_filepath = StringProperty()
     action_bar_close_icon_filepath = StringProperty()
@@ -497,7 +505,7 @@ class ComicBookReaderScreen(BoxLayout, Screen):
 
     def __init__(self, reader_settings: ReaderSettings, reader_app_icon_file: str, **kwargs):
         super().__init__(**kwargs)
-        self.comic_book_reader_widget = None
+        self.comic_book_reader = None
 
         self._set_action_bar_icons(reader_settings.sys_file_paths, reader_app_icon_file)
 
@@ -512,9 +520,9 @@ class ComicBookReaderScreen(BoxLayout, Screen):
         self.action_bar_goto_start_filepath = sys_paths.get_barks_reader_goto_start_icon_file()
         self.action_bar_goto_end_filepath = sys_paths.get_barks_reader_goto_end_icon_file()
 
-    def add_reader_widget(self, comic_book_reader_widget: ComicBookReader):
-        self.comic_book_reader_widget = comic_book_reader_widget
-        self.add_widget(self.comic_book_reader_widget)
+    def add_reader_widget(self, comic_book_reader: ComicBookReader):
+        self.comic_book_reader = comic_book_reader
+        self.add_widget(self.comic_book_reader)
 
 
 KV_FILE = Path(__file__).stem + ".kv"
@@ -524,6 +532,7 @@ def get_barks_comic_reader(
     screen_name: str,
     reader_settings: ReaderSettings,
     reader_app_icon_file: str,
+    font_manager: FontManager,
     on_comic_is_ready_to_read: Callable[[], None],
     on_close_reader: Callable[[], None],
 ):
@@ -531,11 +540,16 @@ def get_barks_comic_reader(
 
     root = ComicBookReaderScreen(reader_settings, reader_app_icon_file, name=screen_name)
 
-    comic_book_reader_widget = ComicBookReader(
-        reader_settings, on_comic_is_ready_to_read, on_close_reader, root.ids.goto_page_button
+    comic_book_reader = ComicBookReader(
+        root,
+        reader_settings,
+        font_manager,
+        on_comic_is_ready_to_read,
+        on_close_reader,
+        root.ids.goto_page_button,
     )
-    comic_book_reader_widget.set_action_bar(root.ids.comic_action_bar)
+    comic_book_reader.set_action_bar(root.ids.comic_action_bar)
 
-    root.add_reader_widget(comic_book_reader_widget)
+    root.add_reader_widget(comic_book_reader)
 
     return root

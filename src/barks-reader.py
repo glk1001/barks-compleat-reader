@@ -210,6 +210,7 @@ class BarksReaderApp(App):
             COMIC_BOOK_READER_SCREEN,
             self._reader_settings,
             self._main_screen.app_icon_filepath,
+            self.font_manager,
             self._switch_to_comic_book_reader,
             self._close_comic_book_reader,
         )
@@ -221,6 +222,7 @@ class BarksReaderApp(App):
             CENSORSHIP_FIXES_SCREEN,
             self._reader_settings,
             self._main_screen.app_icon_filepath,
+            self.font_manager,
             self._switch_to_censorship_fixes,
             self._close_censorship_fixes,
         )

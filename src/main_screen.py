@@ -28,7 +28,6 @@ from barks_fantagraphics.comics_consts import (
     PageType,
     ROMAN_NUMERALS,
     BACK_MATTER_PAGES,
-    CARL_BARKS_FONT_NAME,
 )
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import (
@@ -71,7 +70,12 @@ from reader_consts_and_types import (
     ACTION_BAR_SIZE_Y,
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
 )
-from reader_formatter import ReaderFormatter, get_clean_text_without_extra, LONG_TITLE_SPLITS
+from reader_formatter import (
+    ReaderFormatter,
+    get_clean_text_without_extra,
+    LONG_TITLE_SPLITS,
+    get_action_bar_title,
+)
 from reader_settings import ReaderSettings
 from reader_tree_view_utils import (
     get_tree_view_node_path,
@@ -249,11 +253,7 @@ class MainScreen(BoxLayout, Screen):
         self.ids.use_overrides_checkbox.bind(active=self.on_use_overrides_checkbox_changed)
 
     def fonts_updated(self, font_manager: FontManager) -> None:
-        self.app_title = (
-            f"[font={CARL_BARKS_FONT_NAME}]"
-            f"[size={int(font_manager.app_title_font_size)}]"
-            f"{self._app.title}"
-        )
+        self.app_title = get_action_bar_title(font_manager, self._app.title)
 
     def _set_action_bar_icons(self, sys_paths: SystemFilePaths):
         self.app_icon_filepath = self._get_reader_app_icon_file()
