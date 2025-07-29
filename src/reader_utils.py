@@ -73,7 +73,7 @@ def read_text_paragraphs(filepath: str) -> str:
 
     text = ""
     for line in lines:
-        #print(line)
+        # print(line)
         line = line.rstrip(" ")
         if len(line) > 1 and line[-2] != "\\":
             line = line.replace("\n", " ")
@@ -82,7 +82,7 @@ def read_text_paragraphs(filepath: str) -> str:
 
         if len(line.strip()) == 0:
             line = "\n\n"
-        #print(line)
+        # print(line)
 
         text += line
 

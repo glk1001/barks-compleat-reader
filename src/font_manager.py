@@ -35,7 +35,8 @@ class FontManager(EventDispatcher):
     main_title_font_name = CARL_BARKS_FONT_NAME
     loading_title_font_name = CARL_BARKS_FONT_NAME
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.app_title_font_size = 0
 
     def update_font_sizes(self, window_height: int):

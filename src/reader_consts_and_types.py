@@ -2,6 +2,8 @@ from typing import Tuple
 
 from kivy.metrics import dp
 
+APP_TITLE = "The Compleat Barks Disney Reader"
+
 INTRO_NODE_TEXT = "Introduction"
 THE_STORIES_NODE_TEXT = "The Stories"
 CHRONOLOGICAL_NODE_TEXT = "Chronological"

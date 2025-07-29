@@ -2,7 +2,6 @@ from enum import Enum, auto
 from textwrap import dedent
 from typing import Union, Callable, Optional, Dict
 
-from kivy.app import App
 from kivy.clock import Clock
 
 from barks_fantagraphics.fanta_comics_info import FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER
@@ -38,9 +37,9 @@ NOT_ALL_TITLES_LOADED_FANTA_VOLUME_MSG = dedent(
 
 
 class UserErrorHandler:
-    def __init__(self, app: App, reader_settings: ReaderSettings):
-        self._app = app
+    def __init__(self, reader_settings: ReaderSettings, open_settings_func: Callable):
         self._reader_settings = reader_settings
+        self._open_settings = open_settings_func
 
         self._error_handlers: Dict[
             ErrorTypes,
@@ -78,7 +77,7 @@ class UserErrorHandler:
 
         def _on_goto_settings() -> None:
             popup.dismiss()
-            self._app.open_settings()
+            self._open_settings()
             on_popup_closed(NOT_ALL_TITLES_LOADED_SETTINGS_MSG)
 
         def _on_cancel() -> None:

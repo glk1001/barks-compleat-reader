@@ -505,8 +505,8 @@ class ComicBookReaderScreen(BoxLayout, Screen):
 
     def __init__(self, reader_settings: ReaderSettings, reader_app_icon_file: str, **kwargs):
         super().__init__(**kwargs)
-        self.comic_book_reader = None
 
+        self.comic_book_reader = None
         self._set_action_bar_icons(reader_settings.sys_file_paths, reader_app_icon_file)
 
     def _set_action_bar_icons(self, sys_paths: SystemFilePaths, reader_app_icon_file: str):

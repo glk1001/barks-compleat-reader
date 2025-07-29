@@ -1,10 +1,9 @@
 import logging
 from random import randrange
-from typing import Union, Dict, List
+from typing import Union, Dict, List, Callable
 
 # noinspection PyProtectedMember
 from kivy._clock import ClockEvent
-from kivy.app import App
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.properties import StringProperty, ColorProperty, NumericProperty, BooleanProperty
@@ -44,7 +43,6 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from barks_fantagraphics.title_search import BarksTitleSearch
 from build_comic_images import ComicBookImageBuilder
-from censorship_fixes import CensorshipFixes
 from comic_book_page_info import ComicBookPageInfo, ComicBookPageInfoManager
 from comic_book_reader import ComicBookReader
 from fantagraphics_volumes import WrongFantagraphicsVolumeError, TooManyArchiveFilesError
@@ -69,6 +67,7 @@ from reader_consts_and_types import (
     INDEX_NODE_TEXT,
     ACTION_BAR_SIZE_Y,
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
+    APP_TITLE,
 )
 from reader_formatter import (
     ReaderFormatter,
@@ -192,20 +191,21 @@ class MainScreen(BoxLayout, Screen):
 
     def __init__(
         self,
-        app: App,
         comics_database: ComicsDatabase,
         reader_settings: ReaderSettings,
+        open_settings_func: Callable,
         reader_tree_events: ReaderTreeBuilderEventDispatcher,
         filtered_title_lists: FilteredTitleLists,
+        on_show_censorship_fixes: Callable[[], None],
         **kwargs,
     ):
         super().__init__(**kwargs)
 
-        self._app = app
         self._comics_database = comics_database
         self._reader_settings = reader_settings
-        self._user_error_handler = UserErrorHandler(app, reader_settings)
+        self._user_error_handler = UserErrorHandler(reader_settings, open_settings_func)
         self.filtered_title_lists: FilteredTitleLists = filtered_title_lists
+        self._on_show_censorship_fixes = on_show_censorship_fixes
         self.title_lists: Dict[str, List[FantaComicBookInfo]] = (
             filtered_title_lists.get_title_lists()
         )
@@ -233,8 +233,6 @@ class MainScreen(BoxLayout, Screen):
         )
         self._comic_page_info: Union[ComicBookPageInfo, None] = None
 
-        self.censorship_fixes: Union[CensorshipFixes, None] = None
-
         self._top_view_image_info: ImageInfo = ImageInfo()
         self._bottom_view_fun_image_info: ImageInfo = ImageInfo()
         self._bottom_view_title_image_info: ImageInfo = ImageInfo()
@@ -253,7 +251,7 @@ class MainScreen(BoxLayout, Screen):
         self.ids.use_overrides_checkbox.bind(active=self.on_use_overrides_checkbox_changed)
 
     def fonts_updated(self, font_manager: FontManager) -> None:
-        self.app_title = get_action_bar_title(font_manager, self._app.title)
+        self.app_title = get_action_bar_title(font_manager, APP_TITLE)
 
     def _set_action_bar_icons(self, sys_paths: SystemFilePaths):
         self.app_icon_filepath = self._get_reader_app_icon_file()
@@ -593,7 +591,7 @@ class MainScreen(BoxLayout, Screen):
 
     def on_appendix_censorship_fixes_pressed(self, _button: Button):
         self._update_view_for_node(ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE)
-        self.censorship_fixes.show()
+        self._on_show_censorship_fixes()
 
     def on_index_pressed(self, _button: Button):
         self._update_view_for_node(ViewStates.ON_INDEX_NODE)

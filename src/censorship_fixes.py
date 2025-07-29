@@ -15,22 +15,6 @@ from reader_utils import read_text_paragraphs
 KV_FILE = Path(__file__).stem + ".kv"
 
 
-class CensorshipFixes(BoxLayout):
-    def __init__(
-        self,
-        reader_settings: ReaderSettings,
-        on_goto_censorship_fixes: Callable[[], None],
-        **kwargs
-    ):
-        super().__init__(**kwargs)
-
-        self._reader_settings = reader_settings
-        self._on_goto_censorship_fixes = on_goto_censorship_fixes
-
-    def show(self) -> None:
-        self._on_goto_censorship_fixes()
-
-
 class CensorshipFixesScreen(BoxLayout, Screen):
     action_bar_title = StringProperty()
     ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
@@ -61,9 +45,6 @@ class CensorshipFixesScreen(BoxLayout, Screen):
             reader_settings.sys_file_paths.get_censorship_fixes_text_file()
         )
 
-    def add_censorship_fixes_widget(self, censorship_fixes_widget: CensorshipFixes):
-        self.add_widget(censorship_fixes_widget)
-
     def close(self) -> None:
         self._on_close_screen()
 
@@ -73,21 +54,14 @@ def get_censorship_fixes_screen(
     reader_settings: ReaderSettings,
     app_icon_file: str,
     font_manager: FontManager,
-    on_goto_censorship_fixes: Callable[[], None],
     on_close_screen: Callable[[], None],
 ):
     Builder.load_file(KV_FILE)
 
-    root = CensorshipFixesScreen(
+    return CensorshipFixesScreen(
         reader_settings,
         app_icon_file,
         font_manager,
         on_close_screen,
         name=screen_name,
     )
-
-    censorship_fixes_widget = CensorshipFixes(reader_settings, on_goto_censorship_fixes)
-
-    root.add_censorship_fixes_widget(censorship_fixes_widget)
-
-    return root

@@ -51,14 +51,13 @@ from comic_book_reader import get_barks_comic_reader
 from filtered_title_lists import FilteredTitleLists
 from font_manager import FontManager
 from main_screen import MainScreen
-from reader_consts_and_types import ACTION_BAR_SIZE_Y
+from reader_consts_and_types import ACTION_BAR_SIZE_Y, APP_TITLE
 from reader_settings import ReaderSettings
 from reader_ui_classes import ReaderTreeBuilderEventDispatcher
 from screen_metrics import get_screen_info, log_screen_metrics
 from settings_fix import SettingLongPath, LONG_PATH
 
 # --- Constants ---
-APP_TITLE = "The Compleat Barks Disney Reader"
 MAIN_READER_SCREEN = "main_screen"
 COMIC_BOOK_READER_SCREEN = "comic_book_reader"
 CENSORSHIP_FIXES_SCREEN = "censorship_fixes"
@@ -194,11 +193,12 @@ class BarksReaderApp(App):
         filtered_title_lists = FilteredTitleLists()
         reader_tree_events = ReaderTreeBuilderEventDispatcher()
         self._main_screen = MainScreen(
-            self,
             self._comics_database,
             self._reader_settings,
+            self.open_settings,
             reader_tree_events,
             filtered_title_lists,
+            self._switch_to_censorship_fixes,
             name=MAIN_READER_SCREEN,
         )
         self._set_custom_title_bar()
@@ -215,7 +215,7 @@ class BarksReaderApp(App):
             self._close_comic_book_reader,
         )
         root.add_widget(comic_reader_screen)
-        self._main_screen.comic_book_reader = comic_reader_screen.children[0]
+        self._main_screen.comic_book_reader = comic_reader_screen.comic_book_reader
 
         logging.debug("Instantiating censorship fixes screen...")
         censorship_fixes_screen = get_censorship_fixes_screen(
@@ -223,11 +223,9 @@ class BarksReaderApp(App):
             self._reader_settings,
             self._main_screen.app_icon_filepath,
             self.font_manager,
-            self._switch_to_censorship_fixes,
             self._close_censorship_fixes,
         )
         root.add_widget(censorship_fixes_screen)
-        self._main_screen.censorship_fixes = censorship_fixes_screen.children[0]
 
         root.current = MAIN_READER_SCREEN
 
