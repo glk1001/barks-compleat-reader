@@ -20,7 +20,7 @@ import logging
 import sys
 import traceback
 from random import randrange
-from typing import Any, Union
+from typing import Any, Union, List
 
 import kivy
 from kivy import Config
@@ -57,35 +57,45 @@ from reader_ui_classes import ReaderTreeBuilderEventDispatcher
 from screen_metrics import get_screen_info, log_screen_metrics
 from settings_fix import SettingLongPath, LONG_PATH
 
+# --- Constants ---
 APP_TITLE = "The Compleat Barks Disney Reader"
 MAIN_READER_SCREEN = "main_screen"
 COMIC_BOOK_READER_SCREEN = "comic_book_reader"
 CENSORSHIP_FIXES_SCREEN = "censorship_fixes"
-
 KV_FILE = Path(__file__).stem + ".kv"
-
-# TODO: how to nicely handle main window
-DEFAULT_ASPECT_RATIO = 3200.0 / 2120.0
-DEFAULT_WINDOW_HEIGHT = round(0.97 * get_monitors()[0].height)
-DEFAULT_WINDOW_WIDTH = round(DEFAULT_WINDOW_HEIGHT / DEFAULT_ASPECT_RATIO)
-DEFAULT_LEFT_POS = 2400
-DEFAULT_TOP_POS = 50
-
-SCREEN_TRANSITIONS = [
-    NoTransition(duration=0),
-    FadeTransition(),
-    FallOutTransition(),
-    RiseInTransition(),
-    SwapTransition(),
-    WipeTransition(),
-]
 
 
 class BarksReaderApp(App):
+    """The main Kivy application class for the Barks Reader."""
+
+    # Encapsulate screen transitions as class attributes
+    _MAIN_SCREEN_TRANSITIONS: List[TransitionBase] = [
+        NoTransition(duration=0),
+        FadeTransition(),
+        FallOutTransition(),
+        RiseInTransition(),
+        SwapTransition(),
+        WipeTransition(),
+        SlideTransition(direction="left"),
+        CardTransition(direction="left", mode="push"),
+    ]
+    _READER_SCREEN_TRANSITIONS: List[TransitionBase] = [
+        NoTransition(duration=0),
+        FadeTransition(),
+        FallOutTransition(),
+        RiseInTransition(),
+        SwapTransition(),
+        WipeTransition(),
+        SlideTransition(direction="right"),
+        CardTransition(direction="right", mode="pop"),
+    ]
+
     def __init__(self, comics_db: ComicsDatabase, **kwargs):
         super().__init__(**kwargs)
 
         self.title = APP_TITLE
+        self.settings_cls = SettingsWithSpinner
+
         self._screen_manager = ScreenManager()
         self._comics_database = comics_db
         self._reader_settings = ReaderSettings()
@@ -93,29 +103,8 @@ class BarksReaderApp(App):
 
         self._main_screen: Union[MainScreen, None] = None
 
-        # Window.size = (DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
-        # Window.left = DEFAULT_LEFT_POS
-        # Window.top = DEFAULT_TOP_POS
-
-        self._main_screen_transitions = SCREEN_TRANSITIONS + [
-            SlideTransition(direction="left"),
-            CardTransition(direction="left", mode="push"),
-        ]
-        self._comic_book_reader_screen_transitions = SCREEN_TRANSITIONS + [
-            SlideTransition(direction="right"),
-            CardTransition(direction="right", mode="pop"),
-        ]
-
-        Window.bind(on_resize=self._on_window_resize)
-        self.settings_cls = SettingsWithSpinner
-
     def _on_window_resize(self, _window, width, height):
         logging.debug(f"App window resize event: width = {width}, height = {height}.")
-        logging.debug(
-            f"App window resize event:"
-            f" Window.width = {Window.width}, Window.height = {Window.height}."
-        )
-
         self.update_fonts(height)
 
     def update_fonts(self, height):
@@ -123,7 +112,8 @@ class BarksReaderApp(App):
         self._main_screen.fonts_updated(self.font_manager)
 
     def close_app(self):
-        self._main_screen.app_closing()
+        if self._main_screen:
+            self._main_screen.app_closing()
         App.get_running_app().stop()
         Window.close()
 
@@ -131,6 +121,23 @@ class BarksReaderApp(App):
         return config_info.app_config_path
 
     def build_config(self, config: ConfigParser):
+        """Set default values for the application configuration."""
+        # Set default window geometry if not already present in the config file
+        primary_monitor = get_monitors()[0]
+        default_height = round(0.97 * primary_monitor.height)
+        default_width = round(default_height / (3200.0 / 2120.0))
+
+        config.setdefaults(
+            "graphics",
+            {
+                "width": default_width,
+                "height": default_height,
+                "left": 2400,
+                "top": 50,
+            },
+        )
+
+        # Delegate to the settings class to set its own defaults
         self._reader_settings.build_config(config)
 
     def build_settings(self, settings):
@@ -147,6 +154,7 @@ class BarksReaderApp(App):
 
     def build(self):
         logging.debug("Building app...")
+        Window.bind(on_resize=self._on_window_resize)
 
         self._initialize_settings_and_db()
 
@@ -160,7 +168,7 @@ class BarksReaderApp(App):
         logging.debug("Building the main tree view...")
         self._main_screen.start_tree_build()
 
-        _set_main_window()
+        _finalize_window_setup()
 
         return root
 
@@ -229,15 +237,13 @@ class BarksReaderApp(App):
         if Window.set_custom_titlebar(title_bar):
             logging.info("Window: setting custom titlebar successful")
         else:
-            logging.info("Window: setting custom titlebar " "Not allowed on this system ")
+            logging.warning("Window: setting custom titlebar not allowed on this system.")
 
     def _get_next_main_screen_transition(self) -> TransitionBase:
-        transition_index = randrange(0, len(self._main_screen_transitions))
-        return self._main_screen_transitions[transition_index]
+        return self._MAIN_SCREEN_TRANSITIONS[randrange(0, len(self._MAIN_SCREEN_TRANSITIONS))]
 
     def _get_next_reader_screen_transition(self) -> TransitionBase:
-        transition_index = randrange(0, len(self._comic_book_reader_screen_transitions))
-        return self._comic_book_reader_screen_transitions[transition_index]
+        return self._READER_SCREEN_TRANSITIONS[randrange(0, len(self._READER_SCREEN_TRANSITIONS))]
 
     def _switch_to_comic_book_reader(self):
         self._screen_manager.transition = self._get_next_reader_screen_transition()
@@ -250,7 +256,6 @@ class BarksReaderApp(App):
         self._screen_manager.current = MAIN_READER_SCREEN
 
     def _switch_to_censorship_fixes(self):
-        # self._screen_manager.transition = self._get_next_reader_screen_transition()
         self._screen_manager.current = CENSORSHIP_FIXES_SCREEN
 
     def _close_censorship_fixes(self):
@@ -258,19 +263,17 @@ class BarksReaderApp(App):
         self._screen_manager.current = MAIN_READER_SCREEN
 
 
-def _set_main_window() -> None:
-    # Window.size = (694, 900)
-    # Window.left = 2400
-    # Window.top = 50
-    # Config.set("graphics", "width", DEFAULT_WINDOW_WIDTH)
-    # Config.set("graphics", "height", DEFAULT_WINDOW_HEIGHT)
-    # Config.set("graphics", "left", DEFAULT_LEFT_POS)
-    # Config.set("graphics", "top", DEFAULT_TOP_POS)
-    # Config.write()
-
-    # Force resize event
+def _finalize_window_setup() -> None:
+    """
+    Finalizes window state after the main build process.
+    This includes forcing an initial resize event to ensure all widgets
+    are correctly sized based on the loaded configuration.
+    """
+    # This is a known Kivy workaround. By briefly changing the window position,
+    # we force an `on_resize` event to fire, which ensures that all UI elements
+    # that depend on window size are correctly initialized.
     config_left = Config.getint("graphics", "left")
-    Window.left = config_left + 10
+    Window.left = config_left + 1
     Window.left = config_left
 
     # All the behind the scenes sizing and moving is done.
@@ -281,9 +284,6 @@ def _set_main_window() -> None:
 
 
 def _log_screen_settings() -> None:
-    logging.info(f"Default aspect ratio = {DEFAULT_ASPECT_RATIO}")
-    logging.info(f"Default window size = {DEFAULT_WINDOW_WIDTH},{DEFAULT_WINDOW_HEIGHT}")
-    logging.info(f"Default window pos = {DEFAULT_LEFT_POS},{DEFAULT_TOP_POS}")
     logging.info(f"Window size = {Window.size}, dpi = {Window.dpi}.")
     logging.info(f"Window pos = {Window.left},{Window.top}.")
 
@@ -294,12 +294,12 @@ def start_logging(args: CmdArgs) -> None:
     setup_logging(log_level, "app", config_info.app_log_path)
     Config.set("kivy", "log_level", logging.getLevelName(log_level).lower())
 
+    # Redirect Kivy's log messages to our main logging setup
     class KivyCustomHandler(logging.Handler):
         def emit(self, record):
             logging.root.handle(record)
 
-    custom_handler = KivyCustomHandler()
-    kivy.Logger.addHandler(custom_handler)
+    kivy.Logger.addHandler(KivyCustomHandler())
 
     logging.info(f"*** Starting barks reader ***")
     logging.info(f'app config path = "{config_info.app_config_path}".')
@@ -307,12 +307,11 @@ def start_logging(args: CmdArgs) -> None:
 
 
 if __name__ == "__main__":
-    # TODO(glk): Some issue with type checking inspection?
-    # noinspection PyTypeChecker
     cmd_args = CmdArgs("Fantagraphics source files")
     args_ok, error_msg = cmd_args.args_are_valid()
     if not args_ok:
-        logging.error(error_msg)
+        # Logging may not be set up, so print to stderr as a fallback
+        print(f"Argument Error: {error_msg}", file=sys.stderr)
         sys.exit(1)
 
     start_logging(cmd_args)
