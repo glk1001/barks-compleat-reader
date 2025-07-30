@@ -53,7 +53,7 @@ from font_manager import FontManager
 from main_screen import MainScreen
 from reader_consts_and_types import ACTION_BAR_SIZE_Y, APP_TITLE
 from reader_settings import ReaderSettings
-from reader_ui_classes import ReaderTreeBuilderEventDispatcher
+from reader_ui_classes import ReaderTreeBuilderEventDispatcher, ScreenSwitchers
 from screen_metrics import get_screen_info, log_screen_metrics
 from settings_fix import SettingLongPath, LONG_PATH
 
@@ -100,6 +100,7 @@ class BarksReaderApp(App):
         self._reader_settings = ReaderSettings()
         self.font_manager = FontManager()
 
+        self._screen_switchers: Union[ScreenSwitchers, None] = None
         self._main_screen: Union[MainScreen, None] = None
 
     def _on_window_resize(self, _window, width, height):
@@ -186,6 +187,10 @@ class BarksReaderApp(App):
             self._reader_settings.reader_files_dir
         )
 
+        self._screen_switchers = ScreenSwitchers(
+            self.open_settings, self._switch_to_comic_book_reader, self._switch_to_censorship_fixes
+        )
+
     def _build_screens(self) -> ScreenManager:
         root = self._screen_manager
 
@@ -195,10 +200,9 @@ class BarksReaderApp(App):
         self._main_screen = MainScreen(
             self._comics_database,
             self._reader_settings,
-            self.open_settings,
             reader_tree_events,
             filtered_title_lists,
-            self._switch_to_censorship_fixes,
+            self._screen_switchers,
             name=MAIN_READER_SCREEN,
         )
         self._set_custom_title_bar()

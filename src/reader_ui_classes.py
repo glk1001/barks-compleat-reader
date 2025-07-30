@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from typing import List, Union, Callable
 
 from kivy.event import EventDispatcher
@@ -27,6 +28,13 @@ from reader_formatter import get_markup_text_with_num_titles, text_includes_num_
 TREE_VIEW_NODE_TEXT_COLOR = (1, 1, 1, 1)
 TREE_VIEW_NODE_SELECTED_COLOR = (1, 0, 1, 0.8)
 TREE_VIEW_NODE_BACKGROUND_COLOR = (0.0, 0.0, 0.0, 0.0)
+
+
+@dataclass
+class ScreenSwitchers:
+    switch_to_settings: Callable
+    switch_to_comic_reader: Callable[[], None]
+    switch_to_censorship_fixes: Callable[[], None]
 
 
 class ReaderTreeView(TreeView):

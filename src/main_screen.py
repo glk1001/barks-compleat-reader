@@ -1,6 +1,6 @@
 import logging
 from random import randrange
-from typing import Union, Dict, List, Callable
+from typing import Union, Dict, List
 
 # noinspection PyProtectedMember
 from kivy._clock import ClockEvent
@@ -98,6 +98,7 @@ from reader_ui_classes import (
     TagStoryGroupTreeViewNode,
     TagGroupStoryGroupTreeViewNode,
     TitleTreeViewNode,
+    ScreenSwitchers,
 )
 from reader_utils import (
     set_kivy_normal_cursor,
@@ -193,19 +194,20 @@ class MainScreen(BoxLayout, Screen):
         self,
         comics_database: ComicsDatabase,
         reader_settings: ReaderSettings,
-        open_settings_func: Callable,
         reader_tree_events: ReaderTreeBuilderEventDispatcher,
         filtered_title_lists: FilteredTitleLists,
-        on_show_censorship_fixes: Callable[[], None],
+        screen_switchers: ScreenSwitchers,
         **kwargs,
     ):
         super().__init__(**kwargs)
 
         self._comics_database = comics_database
         self._reader_settings = reader_settings
-        self._user_error_handler = UserErrorHandler(reader_settings, open_settings_func)
+        self._user_error_handler = UserErrorHandler(
+            reader_settings, screen_switchers.switch_to_settings
+        )
         self.filtered_title_lists: FilteredTitleLists = filtered_title_lists
-        self._on_show_censorship_fixes = on_show_censorship_fixes
+        self._screen_switchers = screen_switchers
         self.title_lists: Dict[str, List[FantaComicBookInfo]] = (
             filtered_title_lists.get_title_lists()
         )
@@ -591,7 +593,7 @@ class MainScreen(BoxLayout, Screen):
 
     def on_appendix_censorship_fixes_pressed(self, _button: Button):
         self._update_view_for_node(ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE)
-        self._on_show_censorship_fixes()
+        self._screen_switchers.switch_to_censorship_fixes()
 
     def on_index_pressed(self, _button: Button):
         self._update_view_for_node(ViewStates.ON_INDEX_NODE)
