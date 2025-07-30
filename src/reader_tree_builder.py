@@ -115,6 +115,12 @@ class ReaderTreeBuilder:
             ]
         )
 
+    def _get_tagged_titles(self, tag: Tags) -> List[Titles]:
+        if tag != Tags.PERSONAL_FAVOURITES:
+            return get_tagged_titles(tag)
+
+        return self._main_screen.get_favourite_titles()
+
     def build_main_screen_tree(self):
         """Sets up and kicks off the entire asynchronous tree build process."""
         tree: ReaderTreeView = self._main_screen.ids.reader_tree_view
@@ -337,7 +343,7 @@ class ReaderTreeBuilder:
     def _add_tag_node_gen(
         self, tree: ReaderTreeView, tag: Tags, parent_node: ButtonTreeViewNode
     ) -> Generator[None, None, None]:
-        titles = get_tagged_titles(tag)
+        titles = self._get_tagged_titles(tag)
         new_node = TagStoryGroupTreeViewNode(
             tag, text=get_markup_text_with_num_titles(tag.value, len(titles))
         )

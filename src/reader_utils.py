@@ -9,6 +9,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 
 from barks_fantagraphics.barks_payments import PaymentInfo
+from barks_fantagraphics.barks_titles import Titles, BARKS_TITLE_DICT
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.pages import CleanPage
 from reader_consts_and_types import Color
@@ -87,3 +88,22 @@ def read_text_paragraphs(filepath: str) -> str:
         text += line
 
     return text
+
+
+def read_title_list(filepath: str) -> List[Titles]:
+    # Return the list of titles in 'filepath', in submission date order.
+
+    with open(filepath, "r") as f:
+        lines = f.readlines()
+
+    titles = []
+    for line in lines:
+        title_str = line.strip()
+        if title_str not in BARKS_TITLE_DICT:
+            raise Exception(f'Unknown title "{title_str}" in favourites file "{filepath}".')
+        titles.append(BARKS_TITLE_DICT[title_str])
+
+    # Now sort these in enum order (which is guaranteed to be submission date order).
+    titles = sorted(titles)
+
+    return titles

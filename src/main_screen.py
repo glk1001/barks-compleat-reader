@@ -20,6 +20,7 @@ from barks_fantagraphics.barks_tags import (
     TagGroups,
     BARKS_TAG_CATEGORIES_DICT,
     BARKS_TAGGED_PAGES,
+    special_case_personal_favourites_tag_update,
 )
 from barks_fantagraphics.barks_titles import ComicBookInfo, Titles, BARKS_TITLES, BARKS_TITLE_DICT
 from barks_fantagraphics.comic_book import ComicBook
@@ -105,6 +106,7 @@ from reader_utils import (
     set_kivy_busy_cursor,
     get_all_files_in_dir,
     read_text_paragraphs,
+    read_title_list,
 )
 from special_overrides_handler import SpecialFantaOverrides
 from system_file_paths import SystemFilePaths
@@ -364,6 +366,13 @@ class MainScreen(BoxLayout, Screen):
 
         except Exception as e:
             raise e
+
+    def get_favourite_titles(self) -> List[Titles]:
+        titles = read_title_list(self._reader_settings.sys_file_paths.get_favourite_titles_path())
+
+        special_case_personal_favourites_tag_update(titles)
+
+        return titles
 
     def on_action_bar_collapse(self):
         for node in self.ids.reader_tree_view.iterate_open_nodes():
