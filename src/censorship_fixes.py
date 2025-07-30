@@ -55,7 +55,7 @@ def get_censorship_fixes_screen(
     app_icon_file: str,
     font_manager: FontManager,
     on_close_screen: Callable[[], None],
-):
+) -> Screen:
     Builder.load_file(KV_FILE)
 
     return CensorshipFixesScreen(

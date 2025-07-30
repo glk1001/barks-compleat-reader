@@ -76,6 +76,7 @@ from reader_formatter import (
     LONG_TITLE_SPLITS,
     get_action_bar_title,
 )
+from reader_screens import ScreenSwitchers
 from reader_settings import ReaderSettings
 from reader_tree_view_utils import (
     get_tree_view_node_path,
@@ -99,7 +100,6 @@ from reader_ui_classes import (
     TagStoryGroupTreeViewNode,
     TagGroupStoryGroupTreeViewNode,
     TitleTreeViewNode,
-    ScreenSwitchers,
 )
 from reader_utils import (
     set_kivy_normal_cursor,

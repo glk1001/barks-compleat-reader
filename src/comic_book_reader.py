@@ -528,14 +528,14 @@ class ComicBookReaderScreen(BoxLayout, Screen):
 KV_FILE = Path(__file__).stem + ".kv"
 
 
-def get_barks_comic_reader(
+def get_barks_comic_reader_screen(
     screen_name: str,
     reader_settings: ReaderSettings,
     reader_app_icon_file: str,
     font_manager: FontManager,
     on_comic_is_ready_to_read: Callable[[], None],
     on_close_reader: Callable[[], None],
-):
+) -> Screen:
     Builder.load_file(KV_FILE)
 
     root = ComicBookReaderScreen(reader_settings, reader_app_icon_file, name=screen_name)

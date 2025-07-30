@@ -1,26 +1,25 @@
 import os
 
-# This app will hook into kivy logging.
-# So no kivy console logging required.
+# This app will hook into kivy logging, so there is
+# no kivy console logging required.
 os.environ["KIVY_NO_CONSOLELOG"] = "1"
 os.environ["KIVY_LOG_MODE"] = "MIXED"
 
-# --- We need to set up config stuff here before any kivy imports.  ---
-# --- This is because we change the KIVY_HOME directory to be under ---
-# --- this app's settings directory.                                 ---
+# --- We need to change the KIVY_HOME directory to be under this --- #
+# --- app's settings directory. And for this to work, we need to --- #
+# --- do it  before any kivy imports.                            --- #
 from pathlib import Path
 from config_info import ConfigInfo
 
 APP_NAME = Path(__file__).stem
 config_info = ConfigInfo(APP_NAME)
 config_info.setup_app_config_dir()
-# ---------------------------------------------------------------------
+# ------------------------------------------------------------------ #
 
 import logging
 import sys
 import traceback
-from random import randrange
-from typing import Any, Union, List
+from typing import Any, Union
 
 import kivy
 from kivy import Config
@@ -28,18 +27,7 @@ from kivy.app import App
 from kivy.config import ConfigParser
 from kivy.core.window import Window
 from kivy.lang import Builder
-from kivy.uix.screenmanager import (
-    ScreenManager,
-    RiseInTransition,
-    FallOutTransition,
-    FadeTransition,
-    WipeTransition,
-    SlideTransition,
-    NoTransition,
-    SwapTransition,
-    CardTransition,
-    TransitionBase,
-)
+from kivy.uix.screenmanager import ScreenManager
 from kivy.uix.settings import SettingsWithSpinner
 from screeninfo import get_monitors
 
@@ -47,47 +35,28 @@ from barks_fantagraphics.comics_cmd_args import CmdArgs
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.comics_logging import setup_logging
 from censorship_fixes import get_censorship_fixes_screen
-from comic_book_reader import get_barks_comic_reader
+from comic_book_reader import get_barks_comic_reader_screen
 from filtered_title_lists import FilteredTitleLists
 from font_manager import FontManager
 from main_screen import MainScreen
 from reader_consts_and_types import ACTION_BAR_SIZE_Y, APP_TITLE
+from reader_screens import (
+    ReaderScreens,
+    ReaderScreenManager,
+    MAIN_READER_SCREEN,
+    COMIC_BOOK_READER_SCREEN,
+    CENSORSHIP_FIXES_SCREEN,
+)
 from reader_settings import ReaderSettings
-from reader_ui_classes import ReaderTreeBuilderEventDispatcher, ScreenSwitchers
+from reader_ui_classes import ReaderTreeBuilderEventDispatcher
 from screen_metrics import get_screen_info, log_screen_metrics
 from settings_fix import SettingLongPath, LONG_PATH
 
-# --- Constants ---
-MAIN_READER_SCREEN = "main_screen"
-COMIC_BOOK_READER_SCREEN = "comic_book_reader"
-CENSORSHIP_FIXES_SCREEN = "censorship_fixes"
 KV_FILE = Path(__file__).stem + ".kv"
 
 
 class BarksReaderApp(App):
     """The main Kivy application class for the Barks Reader."""
-
-    # Encapsulate screen transitions as class attributes
-    _MAIN_SCREEN_TRANSITIONS: List[TransitionBase] = [
-        NoTransition(duration=0),
-        FadeTransition(),
-        FallOutTransition(),
-        RiseInTransition(),
-        SwapTransition(),
-        WipeTransition(),
-        SlideTransition(direction="left"),
-        CardTransition(direction="left", mode="push"),
-    ]
-    _READER_SCREEN_TRANSITIONS: List[TransitionBase] = [
-        NoTransition(duration=0),
-        FadeTransition(),
-        FallOutTransition(),
-        RiseInTransition(),
-        SwapTransition(),
-        WipeTransition(),
-        SlideTransition(direction="right"),
-        CardTransition(direction="right", mode="pop"),
-    ]
 
     def __init__(self, comics_db: ComicsDatabase, **kwargs):
         super().__init__(**kwargs)
@@ -95,12 +64,13 @@ class BarksReaderApp(App):
         self.title = APP_TITLE
         self.settings_cls = SettingsWithSpinner
 
-        self._screen_manager = ScreenManager()
         self._comics_database = comics_db
         self._reader_settings = ReaderSettings()
         self.font_manager = FontManager()
 
-        self._screen_switchers: Union[ScreenSwitchers, None] = None
+        self._reader_screen_manager = ReaderScreenManager(self.open_settings)
+        self._screen_switchers = self._reader_screen_manager.screen_switchers
+
         self._main_screen: Union[MainScreen, None] = None
 
     def _on_window_resize(self, _window, width, height):
@@ -187,13 +157,7 @@ class BarksReaderApp(App):
             self._reader_settings.reader_files_dir
         )
 
-        self._screen_switchers = ScreenSwitchers(
-            self.open_settings, self._switch_to_comic_book_reader, self._switch_to_censorship_fixes
-        )
-
     def _build_screens(self) -> ScreenManager:
-        root = self._screen_manager
-
         logging.debug("Instantiating main screen...")
         filtered_title_lists = FilteredTitleLists()
         reader_tree_events = ReaderTreeBuilderEventDispatcher()
@@ -202,23 +166,21 @@ class BarksReaderApp(App):
             self._reader_settings,
             reader_tree_events,
             filtered_title_lists,
-            self._screen_switchers,
+            self._reader_screen_manager.screen_switchers,
             name=MAIN_READER_SCREEN,
         )
         self._set_custom_title_bar()
         self.update_fonts(Config.getint("graphics", "height"))
-        root.add_widget(self._main_screen)
 
         logging.debug("Instantiating comic reader screen...")
-        comic_reader_screen = get_barks_comic_reader(
+        comic_reader_screen = get_barks_comic_reader_screen(
             COMIC_BOOK_READER_SCREEN,
             self._reader_settings,
             self._main_screen.app_icon_filepath,
             self.font_manager,
-            self._switch_to_comic_book_reader,
-            self._close_comic_book_reader,
+            self._screen_switchers.switch_to_comic_book_reader,
+            self._screen_switchers.close_comic_book_reader,
         )
-        root.add_widget(comic_reader_screen)
         self._main_screen.comic_book_reader = comic_reader_screen.comic_book_reader
 
         logging.debug("Instantiating censorship fixes screen...")
@@ -227,13 +189,14 @@ class BarksReaderApp(App):
             self._reader_settings,
             self._main_screen.app_icon_filepath,
             self.font_manager,
-            self._close_censorship_fixes,
+            self._screen_switchers.close_censorship_fixes,
         )
-        root.add_widget(censorship_fixes_screen)
 
-        root.current = MAIN_READER_SCREEN
+        reader_screens = ReaderScreens(
+            self._main_screen, comic_reader_screen, censorship_fixes_screen
+        )
 
-        return root
+        return self._reader_screen_manager.add_screens(reader_screens)
 
     def _set_custom_title_bar(self):
         Window.custom_titlebar = True
@@ -242,29 +205,6 @@ class BarksReaderApp(App):
             logging.info("Window: setting custom titlebar successful")
         else:
             logging.warning("Window: setting custom titlebar not allowed on this system.")
-
-    def _get_next_main_screen_transition(self) -> TransitionBase:
-        return self._MAIN_SCREEN_TRANSITIONS[randrange(0, len(self._MAIN_SCREEN_TRANSITIONS))]
-
-    def _get_next_reader_screen_transition(self) -> TransitionBase:
-        return self._READER_SCREEN_TRANSITIONS[randrange(0, len(self._READER_SCREEN_TRANSITIONS))]
-
-    def _switch_to_comic_book_reader(self):
-        self._screen_manager.transition = self._get_next_reader_screen_transition()
-        self._screen_manager.current = COMIC_BOOK_READER_SCREEN
-
-    def _close_comic_book_reader(self):
-        self._main_screen.comic_closed()
-
-        self._screen_manager.transition = self._get_next_main_screen_transition()
-        self._screen_manager.current = MAIN_READER_SCREEN
-
-    def _switch_to_censorship_fixes(self):
-        self._screen_manager.current = CENSORSHIP_FIXES_SCREEN
-
-    def _close_censorship_fixes(self):
-        self._screen_manager.transition = self._get_next_main_screen_transition()
-        self._screen_manager.current = MAIN_READER_SCREEN
 
 
 def _finalize_window_setup() -> None:
@@ -292,7 +232,7 @@ def _log_screen_settings() -> None:
     logging.info(f"Window pos = {Window.left},{Window.top}.")
 
 
-def start_logging(args: CmdArgs) -> None:
+def start_logging(_args: CmdArgs) -> None:
     log_level = logging.DEBUG
     # log_level = cmd_args.get_log_level()
     setup_logging(log_level, "app", config_info.app_log_path)
