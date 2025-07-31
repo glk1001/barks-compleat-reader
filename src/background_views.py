@@ -4,7 +4,12 @@ from typing import Dict, List, Union
 
 from kivy.clock import Clock
 
-from barks_fantagraphics.barks_tags import Tags, BARKS_TAGGED_TITLES
+from barks_fantagraphics.barks_tags import (
+    Tags,
+    TagGroups,
+    BARKS_TAGGED_TITLES,
+    BARKS_TAG_GROUPS_TITLES,
+)
 from barks_fantagraphics.barks_titles import Titles, BARKS_TITLES
 from barks_fantagraphics.comics_utils import get_abbrev_path
 from barks_fantagraphics.fanta_comics_info import (
@@ -57,6 +62,7 @@ class ViewStates(Enum):
     ON_MISC_NODE = auto()
     ON_CATEGORIES_NODE = auto()
     ON_CATEGORY_NODE = auto()
+    ON_TAG_GROUP_NODE = auto()
     ON_TAG_NODE = auto()
     ON_TITLE_NODE = auto()
     ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET = auto()
@@ -107,6 +113,7 @@ class BackgroundViews:
         self._current_cs_year_range = ""
         self._current_us_year_range = ""
         self._current_category = ""
+        self._current_tag_group = None
         self._current_tag = None
 
         self._view_state = ViewStates.PRE_INIT
@@ -158,6 +165,12 @@ class BackgroundViews:
 
     def set_current_category(self, cat: str) -> None:
         self._current_category = cat
+
+    def get_current_tag_group(self) -> Union[None, TagGroups]:
+        return self._current_tag_group
+
+    def set_current_tag_group(self, tag_group: Union[None, TagGroups]) -> None:
+        self._current_tag_group = tag_group
 
     def get_current_tag(self) -> Union[None, Tags]:
         return self._current_tag
@@ -255,6 +268,8 @@ class BackgroundViews:
                 self._set_top_view_image_for_year_range()
             case ViewStates.ON_CATEGORY_NODE:
                 self._set_top_view_image_for_category()
+            case ViewStates.ON_TAG_GROUP_NODE:
+                self._set_top_view_image_for_tag_group()
             case ViewStates.ON_TAG_NODE:
                 self._set_top_view_image_for_tag()
             case (
@@ -334,6 +349,19 @@ class BackgroundViews:
             self._top_view_image_info = self._get_top_view_random_image(
                 self._title_lists[self._current_category]
             )
+
+    def _set_top_view_image_for_tag_group(self):
+        logging.debug(f"Current tag_group: '{self._current_tag_group}'.")
+        if not self._current_tag_group:
+            title = Titles.GOOD_NEIGHBORS
+            self._top_view_image_info = ImageInfo(
+                self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
+            )
+        else:
+            fanta_title_list = self._get_fanta_title_list(
+                BARKS_TAG_GROUPS_TITLES[self._current_tag_group]
+            )
+            self._top_view_image_info = self._get_top_view_random_image(fanta_title_list)
 
     def _set_top_view_image_for_tag(self):
         logging.debug(f"Current tag: '{self._current_tag}'.")

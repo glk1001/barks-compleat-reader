@@ -313,40 +313,54 @@ class ReaderTreeBuilder:
         self.chrono_year_range_nodes[year_range] = new_node
 
     def _add_category_node_gen(
-        self, tree: ReaderTreeView, category: TagCategories, parent_node: ButtonTreeViewNode
+        self,
+        tree: ReaderTreeView,
+        category: TagCategories,
+        parent_node: ButtonTreeViewNode,
     ) -> Generator[None, None, None]:
         for tag_or_group in BARKS_TAG_CATEGORIES[category]:
             if isinstance(tag_or_group, Tags):
-                yield from self._add_tag_node_gen(tree, tag_or_group, parent_node)
+                yield from self._add_tag_node_gen(
+                    tree, tag_or_group, self._main_screen.on_tag_pressed, parent_node
+                )
             elif isinstance(tag_or_group, TagGroups):
                 logging.debug(
                     f'Got tag group: "{tag_or_group.name}".'
                     f' Adding tag group node under parent "{parent_node.text}".'
                 )
-                yield from self._add_tag_group_node_gen(tree, tag_or_group, parent_node)
+                yield from self._add_tag_group_node_gen(
+                    tree, tag_or_group, self._main_screen.on_tag_group_pressed, parent_node
+                )
 
     def _add_tag_group_node_gen(
         self,
         tree: ReaderTreeView,
         tag_group: TagGroups,
+        on_press_handler: BUTTON_ON_PRESS_CALLABLE,
         parent_node: ButtonTreeViewNode,
     ) -> Generator[None, None, None]:
         new_node = TagGroupStoryGroupTreeViewNode(
             tag_group, text=get_bold_markup_text(tag_group.value)
         )
+        new_node.bind(on_press=on_press_handler)
 
         for tag in BARKS_TAG_GROUPS[tag_group]:
-            yield from self._add_tag_node_gen(tree, tag, new_node)
+            yield from self._add_tag_node_gen(tree, tag, self._main_screen.on_tag_pressed, new_node)
 
         tree.add_node(new_node, parent=parent_node)
 
     def _add_tag_node_gen(
-        self, tree: ReaderTreeView, tag: Tags, parent_node: ButtonTreeViewNode
+        self,
+        tree: ReaderTreeView,
+        tag: Tags,
+        on_press_handler: BUTTON_ON_PRESS_CALLABLE,
+        parent_node: ButtonTreeViewNode,
     ) -> Generator[None, None, None]:
         titles = self._get_tagged_titles(tag)
         new_node = TagStoryGroupTreeViewNode(
             tag, text=get_markup_text_with_num_titles(tag.value, len(titles))
         )
+        new_node.bind(on_press=on_press_handler)
         yield from self._add_title_nodes_gen(tree, titles, new_node)
         tree.add_node(new_node, parent=parent_node)
 

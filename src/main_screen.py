@@ -21,6 +21,9 @@ from barks_fantagraphics.barks_tags import (
     BARKS_TAG_CATEGORIES_DICT,
     BARKS_TAGGED_PAGES,
     special_case_personal_favourites_tag_update,
+    is_tag_group_enum,
+    get_tag_group_enum,
+    get_tag_enum,
 )
 from barks_fantagraphics.barks_titles import ComicBookInfo, Titles, BARKS_TITLES, BARKS_TITLE_DICT
 from barks_fantagraphics.comic_book import ComicBook
@@ -483,6 +486,10 @@ class MainScreen(BoxLayout, Screen):
             elif clean_node_text in BARKS_TAG_CATEGORIES_DICT:
                 new_view_state = ViewStates.ON_CATEGORY_NODE
                 view_state_params["category"] = clean_node_text
+            elif is_tag_group_enum(clean_node_text):
+                logging.debug(f'Tag group node expanded: "{clean_node_text}".')
+                new_view_state = ViewStates.ON_TAG_GROUP_NODE
+                view_state_params["tag_group"] = TagGroups(clean_node_text)
             elif is_tag_enum(clean_node_text):
                 logging.debug(f'Tag node expanded: "{clean_node_text}".')
                 new_view_state = ViewStates.ON_TAG_NODE
@@ -647,7 +654,16 @@ class MainScreen(BoxLayout, Screen):
         self._update_view_for_node(ViewStates.ON_CATEGORIES_NODE)
 
     def on_category_pressed(self, button: Button):
-        self._update_view_for_node(ViewStates.ON_CATEGORY_NODE, category=button.text)
+        category_str = get_clean_text_without_extra(button.text)
+        self._update_view_for_node(ViewStates.ON_CATEGORY_NODE, category=category_str)
+
+    def on_tag_group_pressed(self, button: Button):
+        tag_group = get_tag_group_enum(get_clean_text_without_extra(button.text))
+        self._update_view_for_node(ViewStates.ON_TAG_GROUP_NODE, tag_group=tag_group)
+
+    def on_tag_pressed(self, button: Button):
+        tag = get_tag_enum(get_clean_text_without_extra(button.text))
+        self._update_view_for_node(ViewStates.ON_TAG_NODE, tag=tag)
 
     def on_title_row_button_pressed(self, button: Button):
         self._fanta_info = button.parent.fanta_info
@@ -669,10 +685,12 @@ class MainScreen(BoxLayout, Screen):
             self._background_views.get_current_year_range(),
             self._background_views.get_current_cs_year_range(),
             self._background_views.get_current_us_year_range(),
+            self._background_views.get_current_tag_group(),
             self._background_views.get_current_tag(),
         )
 
     def _update_view_for_node(self, view_state: ViewStates, **args) -> None:
+        logging.debug(f'Updating background views for node "{view_state}".')
         self._update_background_views(view_state, **args)
 
     def _update_background_views(
@@ -682,6 +700,7 @@ class MainScreen(BoxLayout, Screen):
         year_range: str = "",
         cs_year_range: str = "",
         us_year_range: str = "",
+        tag_group: Union[None, TagGroups] = None,
         tag: Union[None, Tags] = None,
     ) -> None:
         self._background_views.set_current_category(category)
@@ -692,6 +711,7 @@ class MainScreen(BoxLayout, Screen):
         self._background_views.set_current_us_year_range(
             get_clean_text_without_extra(us_year_range)
         )
+        self._background_views.set_current_tag_group(tag_group)
         self._background_views.set_current_tag(tag)
 
         self._background_views.set_view_state(tree_node)
