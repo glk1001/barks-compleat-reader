@@ -44,8 +44,9 @@ from reader_consts_and_types import (
     SEARCH_NODE_TEXT,
     APPENDIX_NODE_TEXT,
     INDEX_NODE_TEXT,
+    APPENDIX_DON_AULT_FANTA_INTRO_TEXT,
+    APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
-    APPENDIX_DON_AULT_ON_BARKS_TEXT,
 )
 from reader_formatter import (
     get_bold_markup_text,
@@ -453,14 +454,20 @@ class ReaderTreeBuilder:
 
         self._create_and_add_simple_node(
             tree,
-            APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
-            self._main_screen.on_appendix_censorship_fixes_pressed,
+            APPENDIX_DON_AULT_FANTA_INTRO_TEXT,
+            self._main_screen.on_appendix_don_ault_fanta_intro,
             parent_node=appendix_node,
         )
         self._create_and_add_simple_node(
             tree,
-            APPENDIX_DON_AULT_ON_BARKS_TEXT,
-            self._main_screen.on_appendix_don_ault_on_barks_pressed,
+            APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
+            self._main_screen.on_appendix_don_ault_life_among_ducks_pressed,
+            parent_node=appendix_node,
+        )
+        self._create_and_add_simple_node(
+            tree,
+            APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
+            self._main_screen.on_appendix_censorship_fixes_pressed,
             parent_node=appendix_node,
         )
 

@@ -70,8 +70,9 @@ from reader_consts_and_types import (
     APPENDIX_NODE_TEXT,
     INDEX_NODE_TEXT,
     ACTION_BAR_SIZE_Y,
+    APPENDIX_DON_AULT_FANTA_INTRO_TEXT,
+    APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
-    APPENDIX_DON_AULT_ON_BARKS_TEXT,
     APP_TITLE,
 )
 from reader_formatter import (
@@ -127,8 +128,9 @@ NODE_TEXT_TO_VIEW_STATE_MAP = {
     THE_STORIES_NODE_TEXT: ViewStates.ON_THE_STORIES_NODE,
     SEARCH_NODE_TEXT: ViewStates.ON_SEARCH_NODE,
     APPENDIX_NODE_TEXT: ViewStates.ON_APPENDIX_NODE,
+    APPENDIX_DON_AULT_FANTA_INTRO_TEXT: ViewStates.ON_APPENDIX_DON_AULT_FANTA_INTRO_NODE,
+    APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT: ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE,
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT: ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
-    APPENDIX_DON_AULT_ON_BARKS_TEXT: ViewStates.ON_APPENDIX_DON_AULT_ON_BARKS_NODE,
     INDEX_NODE_TEXT: ViewStates.ON_INDEX_NODE,
     CHRONOLOGICAL_NODE_TEXT: ViewStates.ON_CHRONO_BY_YEAR_NODE,
     SERIES_NODE_TEXT: ViewStates.ON_SERIES_NODE,
@@ -241,6 +243,7 @@ class MainScreen(BoxLayout, Screen):
             self._comics_database, self._reader_settings
         )
         self._comic_page_info: Union[ComicBookPageInfo, None] = None
+        self._read_comic_view_state: Union[ViewStates, None] = None
 
         self._top_view_image_info: ImageInfo = ImageInfo()
         self._bottom_view_fun_image_info: ImageInfo = ImageInfo()
@@ -609,19 +612,22 @@ class MainScreen(BoxLayout, Screen):
     def on_appendix_pressed(self, _button: Button):
         self._update_view_for_node(ViewStates.ON_APPENDIX_NODE)
 
+    def on_appendix_don_ault_fanta_intro(self, _button: Button):
+        self.read_article_as_comic_book(
+            Titles.DON_AULT_FANTA_INTRO, ViewStates.ON_APPENDIX_DON_AULT_FANTA_INTRO_NODE
+        )
+
+    def on_appendix_don_ault_life_among_ducks_pressed(self, _button: Button):
+        self.read_article_as_comic_book(
+            Titles.DON_AULT_LIFE_AMONG_THE_DUCKS,
+            ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE,
+        )
+
     def on_appendix_censorship_fixes_pressed(self, _button: Button):
-        self._update_view_for_node(ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE)
         self._screen_switchers.switch_to_censorship_fixes()
 
-    def on_appendix_don_ault_on_barks_pressed(self, _button: Button):
-        self._update_view_for_node(ViewStates.ON_APPENDIX_DON_AULT_ON_BARKS_NODE)
-
-        don_title_str = BARKS_TITLES[Titles.DON_AULT_LIFE_AMONG_THE_DUCKS]
-        don_fanta_info = self.all_fanta_titles[don_title_str]
-        comic = self._comics_database.get_comic_book(don_title_str)
-        page_to_first_goto = "1"
-
-        self._read_comic_book(don_fanta_info, comic, page_to_first_goto)
+    def appendix_censorship_fixes_closed(self):
+        self._update_view_for_node(ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE)
 
     def on_index_pressed(self, _button: Button):
         self._update_view_for_node(ViewStates.ON_INDEX_NODE)
@@ -920,9 +926,21 @@ class MainScreen(BoxLayout, Screen):
             self._json_settings_manager.save_last_selected_node_path(selected_node_path)
             logging.debug(f'Settings: Saved last selected node "{selected_node_path}".')
 
+    def read_article_as_comic_book(self, article_title: Titles, view_state: ViewStates) -> None:
+        article_title_str = BARKS_TITLES[article_title]
+        article_fanta_info = self.all_fanta_titles[article_title_str]
+        comic = self._comics_database.get_comic_book(article_title_str)
+        page_to_first_goto = "1"
+        self._read_comic_book(article_fanta_info, comic, view_state, page_to_first_goto)
+
     def _read_comic_book(
-        self, comic_fanta_info: FantaComicBookInfo, comic: ComicBook, page_to_first_goto: str = ""
+        self,
+        comic_fanta_info: FantaComicBookInfo,
+        comic: ComicBook,
+        view_state: ViewStates = None,
+        page_to_first_goto: str = "",
     ):
+        self._read_comic_view_state = view_state
         self._comic_page_info = self._comic_page_info_mgr.get_comic_page_info(comic)
         if not page_to_first_goto:
             page_to_first_goto = self._get_page_to_first_goto()
@@ -943,6 +961,10 @@ class MainScreen(BoxLayout, Screen):
         )
 
     def comic_closed(self):
+        if self._read_comic_view_state is not None:
+            self._update_view_for_node(self._read_comic_view_state)
+            self._read_comic_view_state = None
+
         if not self._fanta_info:
             return
 

@@ -108,5 +108,7 @@ class ReaderScreenManager:
         self._screen_manager.current = CENSORSHIP_FIXES_SCREEN
 
     def _close_censorship_fixes(self):
+        self._reader_screens.main_screen.appendix_censorship_fixes_closed()
+
         self._screen_manager.transition = self._get_next_main_screen_transition()
         self._screen_manager.current = MAIN_READER_SCREEN
