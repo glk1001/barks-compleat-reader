@@ -47,6 +47,7 @@ class ViewStates(Enum):
     ON_SEARCH_NODE = auto()
     ON_APPENDIX_NODE = auto()
     ON_APPENDIX_CENSORSHIP_FIXES_NODE = auto()
+    ON_APPENDIX_DON_AULT_ON_BARKS_NODE = auto()
     ON_INDEX_NODE = auto()
     ON_CHRONO_BY_YEAR_NODE = auto()
     ON_YEAR_RANGE_NODE = auto()
@@ -283,6 +284,9 @@ class BackgroundViews:
             case ViewStates.ON_APPENDIX_NODE:
                 self._set_top_view_image_for_appendix()
             case ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE:
+                # TODO: Fix this
+                self._set_top_view_image_for_appendix()
+            case ViewStates.ON_APPENDIX_DON_AULT_ON_BARKS_NODE:
                 # TODO: Fix this
                 self._set_top_view_image_for_appendix()
             case ViewStates.ON_INDEX_NODE:

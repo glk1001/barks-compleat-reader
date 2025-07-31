@@ -71,6 +71,7 @@ from reader_consts_and_types import (
     INDEX_NODE_TEXT,
     ACTION_BAR_SIZE_Y,
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
+    APPENDIX_DON_AULT_ON_BARKS_TEXT,
     APP_TITLE,
 )
 from reader_formatter import (
@@ -127,6 +128,7 @@ NODE_TEXT_TO_VIEW_STATE_MAP = {
     SEARCH_NODE_TEXT: ViewStates.ON_SEARCH_NODE,
     APPENDIX_NODE_TEXT: ViewStates.ON_APPENDIX_NODE,
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT: ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
+    APPENDIX_DON_AULT_ON_BARKS_TEXT: ViewStates.ON_APPENDIX_DON_AULT_ON_BARKS_NODE,
     INDEX_NODE_TEXT: ViewStates.ON_INDEX_NODE,
     CHRONOLOGICAL_NODE_TEXT: ViewStates.ON_CHRONO_BY_YEAR_NODE,
     SERIES_NODE_TEXT: ViewStates.ON_SERIES_NODE,
@@ -611,6 +613,16 @@ class MainScreen(BoxLayout, Screen):
         self._update_view_for_node(ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE)
         self._screen_switchers.switch_to_censorship_fixes()
 
+    def on_appendix_don_ault_on_barks_pressed(self, _button: Button):
+        self._update_view_for_node(ViewStates.ON_APPENDIX_DON_AULT_ON_BARKS_NODE)
+
+        don_title_str = BARKS_TITLES[Titles.DON_AULT_LIFE_AMONG_THE_DUCKS]
+        don_fanta_info = self.all_fanta_titles[don_title_str]
+        comic = self._comics_database.get_comic_book(don_title_str)
+        page_to_first_goto = "1"
+
+        self._read_comic_book(don_fanta_info, comic, page_to_first_goto)
+
     def on_index_pressed(self, _button: Button):
         self._update_view_for_node(ViewStates.ON_INDEX_NODE)
 
@@ -815,28 +827,9 @@ class MainScreen(BoxLayout, Screen):
             logging.debug(f'Image "{self.title_page_image_source}" pressed. But no title selected.')
             return
 
-        comic = self._get_comic_book()
-        self._comic_page_info = self._comic_page_info_mgr.get_comic_page_info(comic)
-        page_to_first_goto = self._get_page_to_first_goto()
-
-        comic_book_image_builder = ComicBookImageBuilder(
-            comic, self._reader_settings.sys_file_paths.get_empty_page_file()
-        )
-        comic_book_image_builder.set_required_dim(self._comic_page_info.required_dim)
-
         logging.debug(f'Image "{self.title_page_image_source}" pressed.')
-        logging.debug(
-            f'Load "{self._fanta_info.comic_book_info.get_title_str()}"'
-            f' and goto page "{page_to_first_goto}".'
-        )
-
-        self.comic_book_reader.read_comic(
-            self._fanta_info,
-            self.ids.use_overrides_checkbox.active,
-            comic_book_image_builder,
-            page_to_first_goto,
-            self._comic_page_info.page_map,
-        )
+        comic = self._get_comic_book()
+        self._read_comic_book(self._fanta_info, comic)
 
     def _get_comic_book(self) -> ComicBook:
         title_str = self._fanta_info.comic_book_info.get_title_str()
@@ -927,7 +920,32 @@ class MainScreen(BoxLayout, Screen):
             self._json_settings_manager.save_last_selected_node_path(selected_node_path)
             logging.debug(f'Settings: Saved last selected node "{selected_node_path}".')
 
+    def _read_comic_book(
+        self, comic_fanta_info: FantaComicBookInfo, comic: ComicBook, page_to_first_goto: str = ""
+    ):
+        self._comic_page_info = self._comic_page_info_mgr.get_comic_page_info(comic)
+        if not page_to_first_goto:
+            page_to_first_goto = self._get_page_to_first_goto()
+        comic_book_image_builder = ComicBookImageBuilder(
+            comic, self._reader_settings.sys_file_paths.get_empty_page_file()
+        )
+        comic_book_image_builder.set_required_dim(self._comic_page_info.required_dim)
+        logging.debug(
+            f'Load "{comic_fanta_info.comic_book_info.get_title_str()}"'
+            f' and goto page "{page_to_first_goto}".'
+        )
+        self.comic_book_reader.read_comic(
+            comic_fanta_info,
+            self.ids.use_overrides_checkbox.active,
+            comic_book_image_builder,
+            page_to_first_goto,
+            self._comic_page_info.page_map,
+        )
+
     def comic_closed(self):
+        if not self._fanta_info:
+            return
+
         title_str = self._fanta_info.comic_book_info.get_title_str()
         last_read_page = self._get_last_read_page_from_comic()
 
