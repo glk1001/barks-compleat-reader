@@ -46,6 +46,7 @@ from reader_consts_and_types import (
     INDEX_NODE_TEXT,
     APPENDIX_DON_AULT_FANTA_INTRO_TEXT,
     APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
+    APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT,
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
 )
 from reader_formatter import (
@@ -462,6 +463,12 @@ class ReaderTreeBuilder:
             tree,
             APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
             self._main_screen.on_appendix_don_ault_life_among_ducks_pressed,
+            parent_node=appendix_node,
+        )
+        self._create_and_add_simple_node(
+            tree,
+            APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT,
+            self._main_screen.on_appendix_rich_tomasso_on_coloring_barks_pressed,
             parent_node=appendix_node,
         )
         self._create_and_add_simple_node(
