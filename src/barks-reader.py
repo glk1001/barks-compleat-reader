@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 
 # This app will hook into kivy logging, so there is
@@ -9,6 +11,7 @@ os.environ["KIVY_LOG_MODE"] = "MIXED"
 # --- app's settings directory. And for this to work, we need to --- #
 # --- do it  before any kivy imports.                            --- #
 from pathlib import Path
+
 from config_info import ConfigInfo
 
 APP_NAME = Path(__file__).stem
@@ -19,21 +22,18 @@ config_info.setup_app_config_dir()
 import logging
 import sys
 import traceback
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any
 
 import kivy
+from barks_fantagraphics.comics_cmd_args import CmdArgs
+from barks_fantagraphics.comics_logging import setup_logging
 from kivy import Config
 from kivy.app import App
-from kivy.config import ConfigParser
 from kivy.core.window import Window
 from kivy.lang import Builder
-from kivy.uix.screenmanager import ScreenManager
-from kivy.uix.settings import SettingsWithSpinner
+from kivy.uix.settings import Settings, SettingsWithSpinner
 from screeninfo import get_monitors
 
-from barks_fantagraphics.comics_cmd_args import CmdArgs
-from barks_fantagraphics.comics_database import ComicsDatabase
-from barks_fantagraphics.comics_logging import setup_logging
 from censorship_fixes import get_censorship_fixes_screen
 from comic_book_reader import get_barks_comic_reader_screen
 from filtered_title_lists import FilteredTitleLists
@@ -41,16 +41,22 @@ from font_manager import FontManager
 from main_screen import MainScreen
 from reader_consts_and_types import ACTION_BAR_SIZE_Y, APP_TITLE
 from reader_screens import (
-    ReaderScreens,
-    ReaderScreenManager,
-    MAIN_READER_SCREEN,
-    COMIC_BOOK_READER_SCREEN,
     CENSORSHIP_FIXES_SCREEN,
+    COMIC_BOOK_READER_SCREEN,
+    MAIN_READER_SCREEN,
+    ReaderScreenManager,
+    ReaderScreens,
 )
 from reader_settings import ReaderSettings
 from reader_ui_classes import ReaderTreeBuilderEventDispatcher
 from screen_metrics import get_screen_info, log_screen_metrics
-from settings_fix import SettingLongPath, LONG_PATH
+from settings_fix import LONG_PATH, SettingLongPath
+
+if TYPE_CHECKING:
+    from barks_fantagraphics.comics_database import ComicsDatabase
+    from kivy.config import ConfigParser
+    from kivy.uix.screenmanager import ScreenManager
+    from kivy.uix.widget import Widget
 
 KV_FILE = Path(__file__).stem + ".kv"
 
@@ -58,7 +64,7 @@ KV_FILE = Path(__file__).stem + ".kv"
 class BarksReaderApp(App):
     """The main Kivy application class for the Barks Reader."""
 
-    def __init__(self, comics_db: ComicsDatabase, **kwargs):
+    def __init__(self, comics_db: ComicsDatabase, **kwargs: str) -> None:
         super().__init__(**kwargs)
 
         self.title = APP_TITLE
@@ -71,26 +77,26 @@ class BarksReaderApp(App):
         self._reader_screen_manager = ReaderScreenManager(self.open_settings)
         self._screen_switchers = self._reader_screen_manager.screen_switchers
 
-        self._main_screen: Union[MainScreen, None] = None
+        self._main_screen: MainScreen | None = None
 
-    def _on_window_resize(self, _window, width, height):
+    def _on_window_resize(self, _window: Window, width: int, height: int) -> None:
         logging.debug(f"App window resize event: width = {width}, height = {height}.")
         self.update_fonts(height)
 
-    def update_fonts(self, height):
+    def update_fonts(self, height: int) -> None:
         self.font_manager.update_font_sizes(height)
         self._main_screen.fonts_updated(self.font_manager)
 
-    def close_app(self):
+    def close_app(self) -> None:
         if self._main_screen:
             self._main_screen.app_closing()
         App.get_running_app().stop()
         Window.close()
 
-    def get_application_config(self, _default_path=""):
+    def get_application_config(self, _default_path: str = "") -> str:
         return config_info.app_config_path
 
-    def build_config(self, config: ConfigParser):
+    def build_config(self, config: ConfigParser) -> None:
         """Set default values for the application configuration."""
         # Set default window geometry if not already present in the config file
         primary_monitor = get_monitors()[0]
@@ -110,7 +116,7 @@ class BarksReaderApp(App):
         # Delegate to the settings class to set its own defaults
         self._reader_settings.build_config(config)
 
-    def build_settings(self, settings):
+    def build_settings(self, settings: Settings) -> None:
         # Register our custom widget type with the name 'longpath'
         settings.register_type(LONG_PATH, SettingLongPath)
 
@@ -118,11 +124,13 @@ class BarksReaderApp(App):
         self.config.write()
         settings.interface.menu.height = ACTION_BAR_SIZE_Y
 
-    def on_config_change(self, config: ConfigParser, section: str, key: str, value: Any):
+    def on_config_change(
+        self, _config: ConfigParser, section: str, key: str, value: Any  # noqa: ANN401
+    ) -> None:
         logging.info(f"Config change: section = '{section}', key = '{key}', value = '{value}'.")
         self._reader_settings.on_changed_setting(section, key, value)
 
-    def build(self):
+    def build(self) -> Widget:
         logging.debug("Building app...")
         Window.bind(on_resize=self._on_window_resize)
 
@@ -130,7 +138,7 @@ class BarksReaderApp(App):
 
         logging.debug("Loading kv files...")
         # Pass the font manager to kv lang so it can be accessed
-        Builder.load_string(f"#:set fm app.font_manager")
+        Builder.load_string("#:set fm app.font_manager")
         Builder.load_file(KV_FILE)
 
         root = self._build_screens()
@@ -142,8 +150,8 @@ class BarksReaderApp(App):
 
         return root
 
-    def _initialize_settings_and_db(self):
-        """Handles the initial setup of settings and the database."""
+    def _initialize_settings_and_db(self) -> None:
+        """Handle the initial setup of settings and the database."""
         self._reader_settings.set_config(self.config, self.get_application_config())
         self._reader_settings.validate_settings()
         self._reader_settings.set_barks_panels_dir()
@@ -198,7 +206,7 @@ class BarksReaderApp(App):
 
         return self._reader_screen_manager.add_screens(reader_screens)
 
-    def _set_custom_title_bar(self):
+    def _set_custom_title_bar(self) -> None:
         Window.custom_titlebar = True
         title_bar = self._main_screen.ids.action_bar
         if Window.set_custom_titlebar(title_bar):
@@ -208,8 +216,8 @@ class BarksReaderApp(App):
 
 
 def _finalize_window_setup() -> None:
-    """
-    Finalizes window state after the main build process.
+    """Finalize window state after the main build process.
+
     This includes forcing an initial resize event to ensure all widgets
     are correctly sized based on the loaded configuration.
     """
@@ -240,12 +248,12 @@ def start_logging(_args: CmdArgs) -> None:
 
     # Redirect Kivy's log messages to our main logging setup
     class KivyCustomHandler(logging.Handler):
-        def emit(self, record):
+        def emit(self, record: logging.LogRecord) -> None:
             logging.root.handle(record)
 
     kivy.Logger.addHandler(KivyCustomHandler())
 
-    logging.info(f"*** Starting barks reader ***")
+    logging.info("*** Starting barks reader ***")
     logging.info(f'app config path = "{config_info.app_config_path}".')
     logging.info(f'kivy config dir = "{config_info.kivy_config_dir}".')
 
@@ -255,7 +263,6 @@ if __name__ == "__main__":
     args_ok, error_msg = cmd_args.args_are_valid()
     if not args_ok:
         # Logging may not be set up, so print to stderr as a fallback
-        print(f"Argument Error: {error_msg}", file=sys.stderr)
         sys.exit(1)
 
     start_logging(cmd_args)
@@ -271,7 +278,7 @@ if __name__ == "__main__":
         assert Config.getint("kivy", "exit_on_escape") == 0
         kivy_app = BarksReaderApp(comics_database)
         kivy_app.run()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         _, _, tb = sys.exc_info()
         tb_info = traceback.extract_tb(tb)
         filename, line, func, text = tb_info[-1]
@@ -279,6 +286,7 @@ if __name__ == "__main__":
             f"There's been a program error - the Barks reader app is terminating:"
             f' Exception "{e}" at "{filename}:{line}" in "{func}" ({text}).'
         )
+        traceback.print_exc()
         sys.exit(1)
 
     logging.debug("Terminating...")
