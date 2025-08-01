@@ -17,3 +17,4 @@ lint.ignore = ["D100", "D101", "D102", "D103", "D107", "D203", "D213",
 "background_views.py" = ["ERA001"]
 "barks-reader.py" = ["E402", "ERA001"]
 "comic_book_loader.py" = ["ERA001"]
+"fantagraphics_volumes.py" = ["ERA001"]
