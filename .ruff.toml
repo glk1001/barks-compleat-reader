@@ -15,3 +15,4 @@ lint.ignore = ["D100", "D101", "D102", "D103", "D107", "D203", "D213",
 
 [lint.per-file-ignores]
 "barks-reader.py" = ["E402", "ERA001"]
+"background_views.py" = ["ERA001"]
