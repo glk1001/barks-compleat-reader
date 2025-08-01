@@ -1,9 +1,9 @@
-import os.path
 from collections import OrderedDict
 from dataclasses import dataclass
+from pathlib import Path
 
 from barks_fantagraphics.comic_book import ComicBook
-from barks_fantagraphics.comics_consts import PageType, JSON_FILE_EXT
+from barks_fantagraphics.comics_consts import JSON_FILE_EXT, PageType
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.page_classes import CleanPage, RequiredDimensions
 from barks_fantagraphics.pages import (
@@ -11,6 +11,7 @@ from barks_fantagraphics.pages import (
     ROMAN_NUMERALS,
     get_sorted_srce_and_dest_pages_with_dimensions,
 )
+
 from reader_settings import ReaderSettings
 
 
@@ -40,7 +41,7 @@ class ComicBookPageInfo:
 
 
 class ComicBookPageInfoManager:
-    def __init__(self, comics_database: ComicsDatabase, reader_settings: ReaderSettings):
+    def __init__(self, comics_database: ComicsDatabase, reader_settings: ReaderSettings) -> None:
         self._comics_database = comics_database
         self._sys_file_paths = reader_settings.sys_file_paths
 
@@ -49,10 +50,10 @@ class ComicBookPageInfoManager:
             self._sys_file_paths.get_barks_reader_fantagraphics_panel_segments_root_dir()
         )
         vol_title = self._comics_database.get_fantagraphics_volume_title(comic.get_fanta_volume())
-        panel_segments_dir = os.path.join(panel_segments_root_dir, vol_title)
+        panel_segments_dir = Path(panel_segments_root_dir) / vol_title
 
         def get_srce_panel_segments_file(page_num: str) -> str:
-            return os.path.join(panel_segments_dir, page_num + JSON_FILE_EXT)
+            return str(panel_segments_dir / (page_num + JSON_FILE_EXT))
 
         # TODO: Don't need dimensions if using prebuilt comics.
         srce_and_dest_pages, _srce_dim, required_dim = (
@@ -68,15 +69,11 @@ class ComicBookPageInfoManager:
         last_body_page = ""
         last_page = ""
         body_start_page_num = -1
-        orig_page_num = 0
 
-        for srce_page, dest_page in zip(
-            srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages
+        for index, (srce_page, dest_page) in enumerate(
+            zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages)
         ):
-            orig_page_num += 1
-
-            # if is_title_page(srce_page):
-            #     srce_page.page_filename = title_str + JPG_FILE_EXT
+            orig_page_num = index + 1
 
             if dest_page.page_type not in FRONT_MATTER_PAGES and body_start_page_num == -1:
                 body_start_page_num = orig_page_num
