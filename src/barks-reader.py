@@ -94,7 +94,7 @@ class BarksReaderApp(App):
         Window.close()
 
     def get_application_config(self, _default_path: str = "") -> str:
-        return config_info.app_config_path
+        return str(config_info.app_config_path)
 
     def build_config(self, config: ConfigParser) -> None:
         """Set default values for the application configuration."""
@@ -243,7 +243,7 @@ def _log_screen_settings() -> None:
 def start_logging(_args: CmdArgs) -> None:
     log_level = logging.DEBUG
     # log_level = cmd_args.get_log_level()
-    setup_logging(log_level, "app", config_info.app_log_path)
+    setup_logging(log_level, "app", str(config_info.app_log_path))
     Config.set("kivy", "log_level", logging.getLevelName(log_level).lower())
 
     # Redirect Kivy's log messages to our main logging setup
