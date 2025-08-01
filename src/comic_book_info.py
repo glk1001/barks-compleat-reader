@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List, Tuple
 
 from barks_fantagraphics.comics_database import ComicsDatabase
 
@@ -13,8 +12,8 @@ class ComicTitleInfo:
 
 
 def get_all_comic_titles(
-    comics_database: ComicsDatabase, titles: List[str]
-) -> Tuple[List[ComicTitleInfo], str]:
+    comics_database: ComicsDatabase, titles: list[str]
+) -> tuple[list[ComicTitleInfo], str]:
     titles_with_issue_nums = []
     longest_title = ""
 
