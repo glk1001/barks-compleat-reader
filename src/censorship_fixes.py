@@ -29,8 +29,8 @@ class CensorshipFixesScreen(BoxLayout, Screen):
         app_icon_file: str,
         font_manager: FontManager,
         on_close_screen: Callable[[], None],
-        **kwargs
-    ):
+        **kwargs: str
+    ) -> None:
         super().__init__(**kwargs)
 
         self.action_bar_title = get_action_bar_title(
