@@ -1,98 +1,105 @@
+from __future__ import annotations
+
 import logging
 from collections import OrderedDict
-from datetime import datetime
-from typing import List, Callable, Tuple, Dict, Union, Generator
-
-from kivy.clock import Clock
-from kivy.uix.button import Button
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Callable
 
 from barks_fantagraphics.barks_tags import (
-    TagCategories,
-    Tags,
-    TagGroups,
-    get_tagged_titles,
-    get_num_tagged_titles,
     BARKS_TAG_CATEGORIES,
     BARKS_TAG_GROUPS,
+    TagCategories,
+    TagGroups,
+    Tags,
+    get_num_tagged_titles,
+    get_tagged_titles,
 )
 from barks_fantagraphics.barks_titles import (
-    Titles,
     BARKS_TITLES,
     US_1_FC_ISSUE_NUM,
     US_2_FC_ISSUE_NUM,
     US_3_FC_ISSUE_NUM,
+    Titles,
 )
 from barks_fantagraphics.fanta_comics_info import (
-    FantaComicBookInfo,
+    ALL_LISTS,
     SERIES_CS,
     SERIES_DDA,
-    SERIES_USA,
     SERIES_DDS,
-    SERIES_USS,
     SERIES_GG,
     SERIES_MISC,
-    ALL_LISTS,
+    SERIES_USA,
+    SERIES_USS,
+    FantaComicBookInfo,
 )
+from kivy.clock import Clock
+from kivy.uix.button import Button
+from timing import Timing
+
 from filtered_title_lists import FilteredTitleLists
-from main_screen import MainScreen
 from reader_consts_and_types import (
-    INTRO_NODE_TEXT,
-    THE_STORIES_NODE_TEXT,
-    CHRONOLOGICAL_NODE_TEXT,
-    SERIES_NODE_TEXT,
-    CATEGORIES_NODE_TEXT,
-    SEARCH_NODE_TEXT,
-    APPENDIX_NODE_TEXT,
-    INDEX_NODE_TEXT,
+    APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
     APPENDIX_DON_AULT_FANTA_INTRO_TEXT,
     APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
+    APPENDIX_NODE_TEXT,
     APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT,
-    APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
+    CATEGORIES_NODE_TEXT,
+    CHRONOLOGICAL_NODE_TEXT,
+    INDEX_NODE_TEXT,
+    INTRO_NODE_TEXT,
+    SEARCH_NODE_TEXT,
+    SERIES_NODE_TEXT,
+    THE_STORIES_NODE_TEXT,
 )
 from reader_formatter import (
     get_bold_markup_text,
-    get_markup_text_with_num_titles,
     get_markup_text_with_extra,
+    get_markup_text_with_num_titles,
 )
 from reader_ui_classes import (
-    ReaderTreeView,
-    MainTreeViewNode,
-    StoryGroupTreeViewNode,
-    YearRangeTreeViewNode,
-    CsYearRangeTreeViewNode,
-    UsYearRangeTreeViewNode,
-    TitleSearchBoxTreeViewNode,
-    TagSearchBoxTreeViewNode,
-    TitleTreeViewNode,
     ButtonTreeViewNode,
-    TagStoryGroupTreeViewNode,
+    CsYearRangeTreeViewNode,
+    MainTreeViewNode,
+    ReaderTreeView,
+    StoryGroupTreeViewNode,
     TagGroupStoryGroupTreeViewNode,
+    TagSearchBoxTreeViewNode,
+    TagStoryGroupTreeViewNode,
+    TitleSearchBoxTreeViewNode,
+    TitleTreeViewNode,
+    UsYearRangeTreeViewNode,
+    YearRangeTreeViewNode,
 )
-from timing import Timing
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    from kivy.uix.treeview import TreeViewNode
+
+    from main_screen import MainScreen
 
 BUTTON_ON_PRESS_CALLABLE = Callable[[Button], None]
 
 
 class _CompletionCounter:
-    """
-    A simple counter to track the completion of multiple asynchronous tasks.
+    """A simple counter to track the completion of multiple asynchronous tasks.
+
     It triggers a callback when all tasks are finished.
     """
 
-    def __init__(self, on_all_finished: Callable = None):
+    def __init__(self, on_all_finished: Callable | None = None) -> None:
         self._count = 0
         self._on_all_finished = on_all_finished
 
-    def start_task(self):
+    def start_task(self) -> None:
         """Register a new task."""
         self._count += 1
 
-    def finish_task(self):
+    def finish_task(self) -> None:
         """Mark a task as complete and trigger the final callback if it's the last one."""
         self._count -= 1
-        if self._count == 0:
-            if self._on_all_finished:
-                self._on_all_finished()
+        if self._count == 0 and self._on_all_finished:
+            self._on_all_finished()
 
 
 class ReaderTreeBuilder:
@@ -100,11 +107,11 @@ class ReaderTreeBuilder:
     # A larger batch size is faster but makes the UI less responsive during the build.
     BUILD_BATCH_SIZE = 5
 
-    def __init__(self, main_screen: MainScreen):
+    def __init__(self, main_screen: MainScreen) -> None:
         self._main_screen = main_screen
         self._events = self._main_screen.reader_tree_events
         self._tree_build_timing = None
-        self.chrono_year_range_nodes: Dict[Tuple[int, int], ButtonTreeViewNode] = {}
+        self.chrono_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
 
         self._all_series_pressed_funcs: OrderedDict[str, BUTTON_ON_PRESS_CALLABLE] = OrderedDict(
             [
@@ -118,14 +125,14 @@ class ReaderTreeBuilder:
             ]
         )
 
-    def _get_tagged_titles(self, tag: Tags) -> List[Titles]:
+    def _get_tagged_titles(self, tag: Tags) -> list[Titles]:
         if tag != Tags.PERSONAL_FAVOURITES:
             return get_tagged_titles(tag)
 
         return self._main_screen.get_favourite_titles()
 
-    def build_main_screen_tree(self):
-        """Sets up and kicks off the entire asynchronous tree build process."""
+    def build_main_screen_tree(self) -> None:
+        """Set up and kick off the entire asynchronous tree build process."""
         tree: ReaderTreeView = self._main_screen.ids.reader_tree_view
 
         self._main_screen.loading_data_popup.ids.loading_data_progress_bar.min = 0
@@ -156,17 +163,17 @@ class ReaderTreeBuilder:
 
         tree.bind(minimum_height=tree.setter("height"))
 
-    def _inc_progress_bar(self):
+    def _inc_progress_bar(self) -> None:
         self._main_screen.loading_data_popup.progress_bar_value += 1
 
     def _build_story_nodes_concurrently(
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
-    ):
-        """
-        Dispatches all heavy build tasks to run concurrently on the Kivy
+    ) -> None:
+        """Dispatches all heavy build tasks to run concurrently on the Kivy.
+
         scheduler and uses a counter to detect when all tasks are complete.
         """
-        self._tree_build_timing = Timing(datetime.now())
+        self._tree_build_timing = Timing(datetime.now(UTC))
 
         # Create ONE counter for all concurrent tasks, passing the final callback.
         concurrent_task_counter = _CompletionCounter(on_all_finished=self._finished_all_nodes)
@@ -176,25 +183,25 @@ class ReaderTreeBuilder:
             tree,
             CHRONOLOGICAL_NODE_TEXT,
             self._main_screen.on_chrono_pressed,
-            True,
             StoryGroupTreeViewNode,
-            parent_node,
+            is_bold=True,
+            parent_node=parent_node,
         )
         series_node = self._create_and_add_simple_node(
             tree,
             SERIES_NODE_TEXT,
             self._main_screen.on_series_pressed,
-            True,
             StoryGroupTreeViewNode,
-            parent_node,
+            is_bold=True,
+            parent_node=parent_node,
         )
         categories_node = self._create_and_add_simple_node(
             tree,
             CATEGORIES_NODE_TEXT,
             self._main_screen.on_categories_pressed,
-            True,
             StoryGroupTreeViewNode,
-            parent_node,
+            is_bold=True,
+            parent_node=parent_node,
         )
 
         # 2. Dispatch the Chronological build task
@@ -227,14 +234,14 @@ class ReaderTreeBuilder:
             concurrent_task_counter.start_task()
 
             # We need a small wrapper generator to create the sub-parent node.
-            def category_gen_wrapper(cat_to_build):
+            def category_gen_wrapper(cat_to_build: TagCategories) -> Generator[None, None, None]:
                 new_node = self._create_and_add_simple_node(
                     tree,
                     cat_to_build.value,
                     self._main_screen.on_category_pressed,
-                    True,
                     StoryGroupTreeViewNode,
-                    categories_node,
+                    is_bold=True,
+                    parent_node=categories_node,
                 )
                 yield from self._add_category_node_gen(tree, cat_to_build, new_node)
 
@@ -246,7 +253,7 @@ class ReaderTreeBuilder:
     def _populate_series_node_gen(
         self, tree: ReaderTreeView, series_name: str, parent_node: ButtonTreeViewNode
     ) -> Generator[None, None, None]:
-        """Populates the children of a pre-existing series node."""
+        """Populate the children of a pre-existing series node."""
         if series_name == SERIES_CS:
             yield from self._populate_cs_node_gen(tree, parent_node)
         elif series_name == SERIES_USA:
@@ -257,14 +264,14 @@ class ReaderTreeBuilder:
     def _populate_simple_series_node_gen(
         self, series_name: str, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
     ) -> Generator[None, None, None]:
-        """Populates a simple series node with its title list."""
+        """Populate a simple series node with its title list."""
         title_list = self._main_screen.title_lists[series_name]
         yield from self._add_fanta_info_story_nodes_gen(tree, title_list, parent_node)
 
     def _populate_cs_node_gen(
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
     ) -> Generator[None, None, None]:
-        """Populates a CS series node with its year-range children."""
+        """Populate a CS series node with its year-range children."""
         yield from self._populate_splittable_series_node_gen(
             tree,
             parent_node,
@@ -275,7 +282,7 @@ class ReaderTreeBuilder:
     def _populate_us_node_gen(
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
     ) -> Generator[None, None, None]:
-        """Populates a US series node with its year-range children."""
+        """Populate a US series node with its year-range children."""
         yield from self._populate_splittable_series_node_gen(
             tree,
             parent_node,
@@ -287,10 +294,10 @@ class ReaderTreeBuilder:
     def _populate_splittable_series_node_gen(
         tree: ReaderTreeView,
         parent_node: ButtonTreeViewNode,
-        year_ranges: List[Tuple[int, int]],
+        year_ranges: list[tuple[int, int]],
         add_year_range_node_gen_func: Callable[..., Generator[None, None, None]],
     ) -> Generator[None, None, None]:
-        """Populates a series node that is split by year ranges."""
+        """Populate a series node that is split by year ranges."""
         for year_range in year_ranges:
             yield from add_year_range_node_gen_func(tree, year_range, parent_node)
 
@@ -299,7 +306,7 @@ class ReaderTreeBuilder:
     def _add_chrono_year_range_nodes_gen(
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
     ) -> Generator[None, None, None]:
-        """Generator to add all chronological year range nodes."""
+        """Add all chronological year range nodes."""
         year_ranges = self._main_screen.filtered_title_lists.chrono_year_ranges
         for year_range in year_ranges:
             yield from self._add_chrono_year_range_node_and_child_nodes_gen(
@@ -307,7 +314,7 @@ class ReaderTreeBuilder:
             )
 
     def _add_chrono_year_range_node_and_child_nodes_gen(
-        self, tree: ReaderTreeView, year_range: Tuple[int, int], parent_node: ButtonTreeViewNode
+        self, tree: ReaderTreeView, year_range: tuple[int, int], parent_node: ButtonTreeViewNode
     ) -> Generator[None, None, None]:
         new_node, year_range_titles = self._add_chrono_year_range_node(
             tree, year_range, parent_node
@@ -368,7 +375,7 @@ class ReaderTreeBuilder:
         tree.add_node(new_node, parent=parent_node)
 
     def _add_title_nodes_gen(
-        self, tree: ReaderTreeView, titles: List[Titles], parent_node: ButtonTreeViewNode
+        self, tree: ReaderTreeView, titles: list[Titles], parent_node: ButtonTreeViewNode
     ) -> Generator[None, None, None]:
         for i, title in enumerate(titles):
             # TODO: Very roundabout way to get fanta info
@@ -386,7 +393,7 @@ class ReaderTreeBuilder:
                 yield
 
     def _add_cs_year_range_node_gen(
-        self, tree: ReaderTreeView, year_range: Tuple[int, int], parent_node: ButtonTreeViewNode
+        self, tree: ReaderTreeView, year_range: tuple[int, int], parent_node: ButtonTreeViewNode
     ) -> Generator[None, None, None]:
         new_node, year_range_titles = self._create_and_add_year_range_node(
             tree,
@@ -400,7 +407,7 @@ class ReaderTreeBuilder:
         yield from self._add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node)
 
     def _add_us_year_range_node_gen(
-        self, tree: ReaderTreeView, year_range: Tuple[int, int], parent_node: ButtonTreeViewNode
+        self, tree: ReaderTreeView, year_range: tuple[int, int], parent_node: ButtonTreeViewNode
     ) -> Generator[None, None, None]:
         new_node, year_range_titles = self._create_and_add_year_range_node(
             tree,
@@ -416,7 +423,7 @@ class ReaderTreeBuilder:
     def _add_fanta_info_story_nodes_gen(
         self,
         tree: ReaderTreeView,
-        title_info_list: List[FantaComicBookInfo],
+        title_info_list: list[FantaComicBookInfo],
         parent_node: ButtonTreeViewNode,
     ) -> Generator[None, None, None]:
         for i, title_info in enumerate(title_info_list):
@@ -432,7 +439,7 @@ class ReaderTreeBuilder:
 
     # --- Synchronous Helper Methods ---
 
-    def _add_intro_node(self, tree: ReaderTreeView):
+    def _add_intro_node(self, tree: ReaderTreeView) -> None:
         self._create_and_add_simple_node(tree, INTRO_NODE_TEXT, self._main_screen.on_intro_pressed)
 
     def _add_the_stories_node(self, tree: ReaderTreeView) -> MainTreeViewNode:
@@ -440,7 +447,7 @@ class ReaderTreeBuilder:
             tree, THE_STORIES_NODE_TEXT, self._main_screen.on_the_stories_pressed
         )
 
-    def _add_search_node(self, tree: ReaderTreeView):
+    def _add_search_node(self, tree: ReaderTreeView) -> None:
         search_node = self._create_and_add_simple_node(
             tree, SEARCH_NODE_TEXT, self._main_screen.on_search_pressed
         )
@@ -448,7 +455,7 @@ class ReaderTreeBuilder:
         self._create_and_add_title_search_box_node(tree, search_node)
         self._create_and_add_tag_search_box_node(tree, search_node)
 
-    def _add_appendix_node(self, tree: ReaderTreeView):
+    def _add_appendix_node(self, tree: ReaderTreeView) -> None:
         appendix_node = self._create_and_add_simple_node(
             tree, APPENDIX_NODE_TEXT, self._main_screen.on_appendix_pressed
         )
@@ -478,12 +485,12 @@ class ReaderTreeBuilder:
             parent_node=appendix_node,
         )
 
-    def _add_index_node(self, tree: ReaderTreeView):
+    def _add_index_node(self, tree: ReaderTreeView) -> None:
         self._create_and_add_simple_node(tree, INDEX_NODE_TEXT, self._main_screen.on_index_pressed)
 
     def _add_chrono_year_range_node(
-        self, tree: ReaderTreeView, year_range: Tuple[int, int], parent_node: ButtonTreeViewNode
-    ) -> Tuple[ButtonTreeViewNode, List[FantaComicBookInfo]]:
+        self, tree: ReaderTreeView, year_range: tuple[int, int], parent_node: ButtonTreeViewNode
+    ) -> tuple[ButtonTreeViewNode, list[FantaComicBookInfo]]:
         return self._create_and_add_year_range_node(
             tree,
             year_range,
@@ -495,7 +502,7 @@ class ReaderTreeBuilder:
         )
 
     @staticmethod
-    def _get_cs_year_range_extra_text(title_list: List[FantaComicBookInfo]) -> str:
+    def _get_cs_year_range_extra_text(title_list: list[FantaComicBookInfo]) -> str:
         first_issue = min(
             title_list, key=lambda x: x.comic_book_info.issue_number
         ).comic_book_info.issue_number
@@ -506,7 +513,7 @@ class ReaderTreeBuilder:
         return f"WDCS {first_issue}-{last_issue}"
 
     @staticmethod
-    def _get_us_year_range_extra_text(title_list: List[FantaComicBookInfo]) -> str:
+    def _get_us_year_range_extra_text(title_list: list[FantaComicBookInfo]) -> str:
         def get_us_issue_number(fanta_info: FantaComicBookInfo) -> int:
             num = fanta_info.comic_book_info.issue_number
             if num == US_1_FC_ISSUE_NUM:
@@ -527,10 +534,10 @@ class ReaderTreeBuilder:
         tree: ReaderTreeView,
         text: str,
         on_press_handler: BUTTON_ON_PRESS_CALLABLE,
-        is_bold: bool = False,
         node_class: type = MainTreeViewNode,
+        is_bold: bool = False,
         parent_node: ButtonTreeViewNode = None,
-    ) -> Union[MainTreeViewNode, StoryGroupTreeViewNode]:
+    ) -> MainTreeViewNode | StoryGroupTreeViewNode:
         node_text = get_bold_markup_text(text) if is_bold else text
 
         new_node = node_class(text=node_text)
@@ -540,7 +547,7 @@ class ReaderTreeBuilder:
 
     def _create_and_add_title_search_box_node(
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
-    ):
+    ) -> TreeViewNode:
         new_node = TitleSearchBoxTreeViewNode(self._main_screen.title_search)
 
         new_node.bind(on_title_search_box_pressed=self._main_screen.on_title_search_box_pressed)
@@ -552,7 +559,7 @@ class ReaderTreeBuilder:
 
     def _create_and_add_tag_search_box_node(
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
-    ):
+    ) -> TreeViewNode:
         new_node = TagSearchBoxTreeViewNode(self._main_screen.title_search)
 
         new_node.bind(on_tag_search_box_pressed=self._main_screen.on_tag_search_box_pressed)
@@ -569,13 +576,13 @@ class ReaderTreeBuilder:
     def _create_and_add_year_range_node(
         self,
         tree: ReaderTreeView,
-        year_range: Tuple[int, int],
+        year_range: tuple[int, int],
         on_press_handler: BUTTON_ON_PRESS_CALLABLE,
         get_title_key_func: Callable[[str], str],
-        get_year_range_extra_text_func: Callable[[List[FantaComicBookInfo]], str],
+        get_year_range_extra_text_func: Callable[[list[FantaComicBookInfo]], str],
         node_class: type,
         parent_node: ButtonTreeViewNode,
-    ) -> Tuple[ButtonTreeViewNode, List[FantaComicBookInfo]]:
+    ) -> tuple[ButtonTreeViewNode, list[FantaComicBookInfo]]:
         year_range_str = FilteredTitleLists.get_range_str(year_range)
         year_range_key = get_title_key_func(year_range_str)
         year_range_titles = self._main_screen.title_lists[year_range_key]
@@ -591,13 +598,15 @@ class ReaderTreeBuilder:
         return new_node, year_range_titles
 
     @staticmethod
-    def _run_generator(gen: Generator[None, None, None], on_finish: Callable[[], None] = None):
-        """
-        Schedules a generator to run one step at a time on the Kivy clock.
+    def _run_generator(
+        gen: Generator[None, None, None], on_finish: Callable[[], None] | None = None
+    ) -> None:
+        """Schedules a generator to run one step at a time on the Kivy clock.
+
         An optional on_finish callback can be provided.
         """
 
-        def _next_step(*_):
+        def _next_step(*_) -> None:  # noqa: ANN002
             try:
                 next(gen)
                 Clock.schedule_once(_next_step, 0)
@@ -608,7 +617,7 @@ class ReaderTreeBuilder:
         Clock.schedule_once(_next_step, 0)
 
     def _finished_all_nodes(self) -> None:
-        self._tree_build_timing.end_time = datetime.now()
+        self._tree_build_timing.end_time = datetime.now(UTC)
         time_in_secs = self._tree_build_timing.get_elapsed_time_in_seconds()
 
         logging.debug(
