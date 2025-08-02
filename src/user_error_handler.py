@@ -1,13 +1,17 @@
+from __future__ import annotations
+
 from enum import Enum, auto
 from textwrap import dedent
-from typing import Union, Callable, Optional, Dict
-
-from kivy.clock import Clock
+from typing import TYPE_CHECKING, Callable
 
 from barks_fantagraphics.fanta_comics_info import FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER
-from fantagraphics_volumes import WrongFantagraphicsVolumeError, TooManyArchiveFilesError
-from reader_settings import ReaderSettings
+from kivy.clock import Clock
+
 from reader_ui_classes import MessagePopup
+
+if TYPE_CHECKING:
+    from fantagraphics_volumes import TooManyArchiveFilesError, WrongFantagraphicsVolumeError
+    from reader_settings import ReaderSettings
 
 
 class ErrorTypes(Enum):
@@ -37,15 +41,15 @@ NOT_ALL_TITLES_LOADED_FANTA_VOLUME_MSG = dedent(
 
 
 class UserErrorHandler:
-    def __init__(self, reader_settings: ReaderSettings, open_settings_func: Callable):
+    def __init__(self, reader_settings: ReaderSettings, open_settings_func: Callable) -> None:
         self._reader_settings = reader_settings
         self._open_settings = open_settings_func
 
-        self._error_handlers: Dict[
+        self._error_handlers: dict[
             ErrorTypes,
             Callable[
                 [
-                    Optional[Union[WrongFantagraphicsVolumeError, TooManyArchiveFilesError]],
+                    WrongFantagraphicsVolumeError | TooManyArchiveFilesError | None,
                     Callable[[str], None],
                 ],
                 None,
@@ -59,21 +63,22 @@ class UserErrorHandler:
     def handle_error(
         self,
         error_type: ErrorTypes,
-        exception: Optional[Union[WrongFantagraphicsVolumeError, TooManyArchiveFilesError]],
-        on_popup_closed: Callable[[Optional[str]], None],
+        exception: WrongFantagraphicsVolumeError | TooManyArchiveFilesError | None,
+        on_popup_closed: Callable[[str | None], None],
     ) -> None:
         handler = self._error_handlers.get(error_type)
         if handler:
             handler(exception, on_popup_closed)
         else:
-            raise ValueError(f"No handler configured for error type: {error_type}")
+            msg = f"No handler configured for error type: {error_type}"
+            raise ValueError(msg)
 
     def _handle_fanta_root_not_found(
         self,
-        _exception: Optional[Exception],
-        on_popup_closed: Callable[[Optional[str]], None],
+        _exception: Exception | None,
+        on_popup_closed: Callable[[str | None], None],
     ) -> None:
-        """Handles the case where the Fantagraphics directory is not found."""
+        """Handle the case where the Fantagraphics directory is not found."""
 
         def _on_goto_settings() -> None:
             popup.dismiss()
@@ -103,9 +108,9 @@ class UserErrorHandler:
     def _handle_wrong_fanta_volume(
         self,
         exception: WrongFantagraphicsVolumeError,
-        on_popup_closed: Callable[[Optional[str]], None],
+        on_popup_closed: Callable[[str | None], None],
     ) -> None:
-        """Handles an unexpected Fantagraphics archive file."""
+        """Handle an unexpected Fantagraphics archive file."""
         msg = (
             f"There was a unexpected Fantagraphics archive file:\n\n"
             f'[size=16sp][b]"{exception.file}".[/b][/size]\n\n'
@@ -125,9 +130,9 @@ class UserErrorHandler:
     def _handle_too_many_archive_files(
         self,
         exception: TooManyArchiveFilesError,
-        on_popup_closed: Callable[[Optional[str]], None],
+        on_popup_closed: Callable[[str | None], None],
     ) -> None:
-        """Handles finding too many Fantagraphics archive files."""
+        """Handle finding too many Fantagraphics archive files."""
         msg = (
             f"There were too many Fantagraphics archive files. The expected number\n"
             f"of files is {exception.num_volumes} not {exception.num_archive_files}."
@@ -143,11 +148,11 @@ class UserErrorHandler:
         )
 
     def _show_fatal_config_error(
-        self, title: str, error_msg: str, on_popup_closed: Callable[[Optional[str]], None]
+        self, title: str, error_msg: str, on_popup_closed: Callable[[str | None], None]
     ) -> None:
-        """
-        Shows a non-recoverable error popup that only has a 'Close' button
-        and informs the user they must restart the app after fixing the issue.
+        """Show a non-recoverable error popup that only has a 'Close' button.
+
+        and inform the user they must restart the app after fixing the issue.
         """
 
         def _on_close() -> None:
@@ -168,11 +173,11 @@ class UserErrorHandler:
         title: str,
         text: str,
         ok_text: str,
-        ok_func: Optional[Callable[[], None]],
+        ok_func: Callable[[], None] | None,
         cancel_text: str,
         cancel_func: Callable[[], None],
     ) -> MessagePopup:
-        """A centralized helper to create and display the MessagePopup."""
+        """Create and display the MessagePopup."""
         popup = MessagePopup(
             text=text,
             ok_func=ok_func,
@@ -182,6 +187,6 @@ class UserErrorHandler:
             title=title,
         )
         # Schedule the opening for the next frame to avoid potential graphics issues
-        Clock.schedule_once(lambda dt: popup.open(), 0)
+        Clock.schedule_once(lambda _dt: popup.open(), 0)
 
         return popup
