@@ -1,9 +1,9 @@
-from typing import Tuple, List, Dict, Union
+from __future__ import annotations
 
-from barks_fantagraphics.barks_tags import TagCategories, BARKS_TAG_CATEGORIES_TITLES
+from typing import TYPE_CHECKING
+
+from barks_fantagraphics.barks_tags import BARKS_TAG_CATEGORIES_TITLES, TagCategories
 from barks_fantagraphics.fanta_comics_info import (
-    get_filtered_title_lists,
-    FantaComicBookInfo,
     SERIES_CS,
     SERIES_DDA,
     SERIES_DDS,
@@ -11,11 +11,18 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_MISC,
     SERIES_USA,
     SERIES_USS,
+    FantaComicBookInfo,
+    get_filtered_title_lists,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from barks_fantagraphics.barks_titles import ComicBookInfo
 
 
 class FilteredTitleLists:
-    def __init__(self):
+    def __init__(self) -> None:
         self.chrono_year_ranges = [
             (1942, 1946),
             (1947, 1950),
@@ -47,26 +54,24 @@ class FilteredTitleLists:
         self.categories = list(TagCategories)
 
     @staticmethod
-    def get_range_str(year_range: Tuple[int, int]) -> str:
+    def get_range_str(year_range: tuple[int, int]) -> str:
         return f"{year_range[0]}-{year_range[1]}"
 
-    def get_cs_range_str(self, year_range: Tuple[int, int]) -> str:
+    def get_cs_range_str(self, year_range: tuple[int, int]) -> str:
         return self.get_cs_range_str_from_str(self.get_range_str(year_range))
 
     @staticmethod
     def get_cs_range_str_from_str(year_range_str: str) -> str:
         return f"CS-{year_range_str}"
 
-    def get_us_range_str(self, year_range: Tuple[int, int]) -> str:
+    def get_us_range_str(self, year_range: tuple[int, int]) -> str:
         return self.get_us_range_str_from_str(self.get_range_str(year_range))
 
     @staticmethod
     def get_us_range_str_from_str(year_range_str: str) -> str:
         return f"US-{year_range_str}"
 
-    def get_year_range_from_info(
-        self, fanta_info: FantaComicBookInfo
-    ) -> Union[None, Tuple[int, int]]:
+    def get_year_range_from_info(self, fanta_info: FantaComicBookInfo) -> None | tuple[int, int]:
         sub_year = fanta_info.comic_book_info.submitted_year
 
         for year_range in self.chrono_year_ranges:
@@ -75,27 +80,27 @@ class FilteredTitleLists:
 
         return None
 
-    def get_title_lists(self) -> Dict[str, List[FantaComicBookInfo]]:
+    def get_title_lists(self) -> dict[str, list[FantaComicBookInfo]]:
 
-        def create_range_lamba(yr_range: Tuple[int, int]):
+        def create_range_lamba(yr_range: tuple[int, int]) -> Callable[[ComicBookInfo], bool]:
             return lambda info: yr_range[0] <= info.comic_book_info.submitted_year <= yr_range[1]
 
-        def create_series_lamba(series_name: str):
+        def create_series_lamba(series_name: str) -> Callable[[ComicBookInfo], bool]:
             return lambda info: info.series_name == series_name
 
-        def create_cs_range_lamba(yr_range: Tuple[int, int]):
+        def create_cs_range_lamba(yr_range: tuple[int, int]) -> Callable[[ComicBookInfo], bool]:
             return (
                 lambda info: info.series_name == SERIES_CS
                 and yr_range[0] <= info.comic_book_info.submitted_year <= yr_range[1]
             )
 
-        def create_us_range_lamba(yr_range: Tuple[int, int]):
+        def create_us_range_lamba(yr_range: tuple[int, int]) -> Callable[[ComicBookInfo], bool]:
             return (
                 lambda info: info.series_name == SERIES_USA
                 and yr_range[0] <= info.comic_book_info.submitted_year <= yr_range[1]
             )
 
-        def create_category_lamba(cat: TagCategories):
+        def create_category_lamba(cat: TagCategories) -> Callable[[ComicBookInfo], bool]:
             return lambda info: info.comic_book_info.title in BARKS_TAG_CATEGORIES_TITLES[cat]
 
         filters = {}
