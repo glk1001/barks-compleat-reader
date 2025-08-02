@@ -9,7 +9,8 @@ from barks_fantagraphics.comics_utils import (
     get_formatted_first_published_str,
     get_long_formatted_submitted_date,
 )
-from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo, FANTA_SOURCE_COMICS, FAN
+from barks_fantagraphics.fanta_comics_info import FAN, FANTA_SOURCE_COMICS, FantaComicBookInfo
+
 from font_manager import FontManager
 from reader_utils import get_formatted_payment_info
 
@@ -51,7 +52,7 @@ def get_action_bar_title(font_manager: FontManager, title: str) -> str:
 
 
 class ReaderFormatter:
-    def __init__(self):
+    def __init__(self) -> None:
         # Use a custom issue_name here to display slightly shorter names.
         self._title_info_issue_name = ISSUE_NAME.copy()
         self._title_info_issue_name[Issues.CS] = "Comics & Stories"
