@@ -1,4 +1,3 @@
-from typing import Tuple
 
 from kivy.metrics import dp
 
@@ -19,4 +18,4 @@ INDEX_NODE_TEXT = "Index"
 
 ACTION_BAR_SIZE_Y = dp(45)
 
-Color = Tuple[float, float, float, float]
+Color = tuple[float, float, float, float]
