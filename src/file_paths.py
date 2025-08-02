@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
-HOME_DIR = os.environ.get("HOME")
-BARKS_DIR = os.path.join(HOME_DIR, "Books/Carl Barks")
+HOME_DIR = Path(os.environ.get("HOME"))
+BARKS_DIR = HOME_DIR / "Books" / "Carl Barks"
