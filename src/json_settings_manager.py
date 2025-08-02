@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
 
 from barks_fantagraphics.comics_consts import PageType
 from kivy.storage.jsonstore import JsonStore
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _READER_SETTINGS = "AAA_Settings"
 _READER_SETTING_LAST_SELECTED_NODE = "last_selected_node"
@@ -43,8 +46,8 @@ class SavedPageInfo:
 class SettingsManager:
     """Handles saving and loading of user settings and progress to a JSON store."""
 
-    def __init__(self, store_path: str) -> None:
-        self._store = JsonStore(store_path)
+    def __init__(self, store_path: Path) -> None:
+        self._store = JsonStore(str(store_path))
 
     def get_last_selected_node_path(self) -> list[str] | None:
         """Retrieve the path of the last selected node."""

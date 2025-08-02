@@ -1,11 +1,12 @@
 import logging
 import os
-from typing import Any, Dict, Callable
+from pathlib import Path
+from typing import Any, Callable
 
 from kivy.config import ConfigParser
 from kivy.uix.settings import Settings
 
-from reader_file_paths import ReaderFilePaths, BarksPanelsExtType, DEFAULT_BARKS_READER_FILES_DIR
+from reader_file_paths import DEFAULT_BARKS_READER_FILES_DIR, BarksPanelsExtType, ReaderFilePaths
 from settings_fix import LONG_PATH
 from system_file_paths import SystemFilePaths
 
@@ -119,14 +120,14 @@ _READER_SETTINGS_JSON = f"""
 
 
 class ReaderSettings:
-    def __init__(self):
+    def __init__(self) -> None:
         self._config = None
-        self._app_settings_path = ""
-        self._user_data_path = ""
+        self._app_settings_path: Path | None = None
+        self._user_data_path: Path | None = None
         self._reader_file_paths: ReaderFilePaths = ReaderFilePaths()
         self._reader_sys_file_paths: SystemFilePaths = SystemFilePaths()
 
-        self._VALIDATION_METHODS: Dict[str, Callable[[str], bool]] = {
+        self._VALIDATION_METHODS: dict[str, Callable[[Path], bool]] = {
             FANTA_DIR: self.is_valid_fantagraphics_volumes_dir,
             READER_FILES_DIR: self._is_valid_reader_files_dir,
             PNG_BARKS_PANELS_DIR: self._is_valid_png_barks_panels_dir,
@@ -155,21 +156,19 @@ class ReaderSettings:
             USE_GLK_FIREBUG_ENDING: self.get_use_glk_firebug_ending,
         }
 
-    def set_config(self, config: ConfigParser, app_settings_path: str) -> None:
+    def set_config(self, config: ConfigParser, app_settings_path: Path) -> None:
         self._config = config
         self._app_settings_path = app_settings_path
-        self._user_data_path = os.path.join(
-            os.path.dirname(self._app_settings_path), "barks-reader.json"
-        )
+        self._user_data_path = self._app_settings_path.parent / "barks-reader.json"
 
-    def get_app_settings_path(self) -> str:
+    def get_app_settings_path(self) -> Path:
         return self._app_settings_path
 
-    def get_user_data_path(self) -> str:
+    def get_user_data_path(self) -> Path:
         return self._user_data_path
 
     @staticmethod
-    def build_config(config: ConfigParser):
+    def build_config(config: ConfigParser) -> None:
         # NOTE: For some reason we need to use 0/1 instead of False/True.
         #       Not sure why.
         config.setdefaults(
@@ -190,14 +189,14 @@ class ReaderSettings:
             },
         )
 
-    def build_settings(self, settings: Settings):
+    def build_settings(self, settings: Settings) -> None:
         settings.add_json_panel(BARKS_READER_SECTION, self._config, data=_READER_SETTINGS_JSON)
 
     def validate_settings(self) -> None:
         for key in self._VALIDATION_METHODS:
             self._VALIDATION_METHODS[key](self._GETTER_METHODS[key]())
 
-    def on_changed_setting(self, section: str, key: str, value: Any) -> bool:
+    def on_changed_setting(self, section: str, key: str, value: Any) -> bool:  # noqa: ANN401
         if section != BARKS_READER_SECTION:
             return True
 
@@ -227,9 +226,6 @@ class ReaderSettings:
     def sys_file_paths(self) -> SystemFilePaths:
         return self._reader_sys_file_paths
 
-    def set_barks_reader_files_dir(self, reader_files_dir: str) -> None:
-        self._reader_sys_file_paths.set_barks_reader_files_dir(reader_files_dir)
-
     def set_barks_panels_dir(self) -> None:
         if self._get_use_png_images():
             self._reader_file_paths.set_barks_panels_dir(
@@ -240,11 +236,11 @@ class ReaderSettings:
                 self._get_jpg_barks_panels_dir(), BarksPanelsExtType.JPG
             )
 
-    def _get_png_barks_panels_dir(self) -> str:
-        return self._config.get(BARKS_READER_SECTION, PNG_BARKS_PANELS_DIR)
+    def _get_png_barks_panels_dir(self) -> Path:
+        return Path(self._config.get(BARKS_READER_SECTION, PNG_BARKS_PANELS_DIR))
 
-    def _get_jpg_barks_panels_dir(self) -> str:
-        return self._config.get(BARKS_READER_SECTION, JPG_BARKS_PANELS_DIR)
+    def _get_jpg_barks_panels_dir(self) -> Path:
+        return Path(self._config.get(BARKS_READER_SECTION, JPG_BARKS_PANELS_DIR))
 
     def _get_barks_panels_ext_type(self) -> BarksPanelsExtType:
         return self._get_barks_panels_ext_type_from_bool(self._get_use_png_images())
@@ -257,29 +253,29 @@ class ReaderSettings:
         return self._config.getboolean(BARKS_READER_SECTION, USE_PNG_IMAGES)
 
     @property
-    def fantagraphics_volumes_dir(self) -> str:
+    def fantagraphics_volumes_dir(self) -> Path:
         return self._get_fantagraphics_volumes_dir()
 
-    def _get_fantagraphics_volumes_dir(self) -> str:
-        return self._config.get(BARKS_READER_SECTION, FANTA_DIR)
+    def _get_fantagraphics_volumes_dir(self) -> Path:
+        return Path(self._config.get(BARKS_READER_SECTION, FANTA_DIR))
 
     @property
-    def reader_files_dir(self) -> str:
+    def reader_files_dir(self) -> Path:
         return self._get_reader_files_dir()
 
-    def _get_reader_files_dir(self) -> str:
+    def _get_reader_files_dir(self) -> Path:
         if not self._config:
             # TODO: Not viable?? - Bootstrap problem. Return default.
             return DEFAULT_BARKS_READER_FILES_DIR
 
-        return self._config.get(BARKS_READER_SECTION, READER_FILES_DIR)
+        return Path(self._config.get(BARKS_READER_SECTION, READER_FILES_DIR))
 
     @property
-    def prebuilt_comics_dir(self) -> str:
+    def prebuilt_comics_dir(self) -> Path:
         return self._get_prebuilt_comics_dir()
 
-    def _get_prebuilt_comics_dir(self) -> str:
-        return self._config.get(BARKS_READER_SECTION, PREBUILT_COMICS_DIR)
+    def _get_prebuilt_comics_dir(self) -> Path:
+        return Path(self._config.get(BARKS_READER_SECTION, PREBUILT_COMICS_DIR))
 
     @property
     def use_prebuilt_archives(self) -> bool:
@@ -292,30 +288,30 @@ class ReaderSettings:
     def goto_saved_node_on_start(self) -> bool:
         return self._get_goto_saved_node_on_start()
 
-    def _get_goto_saved_node_on_start(self):
+    def _get_goto_saved_node_on_start(self) -> bool:
         return self._config.getboolean(BARKS_READER_SECTION, GOTO_SAVED_NODE_ON_START)
 
-    def get_use_harpies_instead_of_larkies(self):
+    def get_use_harpies_instead_of_larkies(self) -> bool:
         return self._config.getboolean(BARKS_READER_SECTION, USE_HARPIES_INSTEAD_OF_LARKIES)
 
-    def get_use_dere_instead_of_theah(self):
+    def get_use_dere_instead_of_theah(self) -> bool:
         return self._config.getboolean(BARKS_READER_SECTION, USE_DERE_INSTEAD_OF_THEAH)
 
-    def get_use_blank_eyeballs_for_bombie(self):
+    def get_use_blank_eyeballs_for_bombie(self) -> bool:
         return self._config.getboolean(BARKS_READER_SECTION, USE_BLANK_EYEBALLS_FOR_BOMBIE)
 
-    def get_use_glk_firebug_ending(self):
+    def get_use_glk_firebug_ending(self) -> bool:
         return self._config.getboolean(BARKS_READER_SECTION, USE_GLK_FIREBUG_ENDING)
 
-    def is_valid_fantagraphics_volumes_dir(self, dir_path: str) -> bool:
+    def is_valid_fantagraphics_volumes_dir(self, dir_path: Path) -> bool:
         if self.use_prebuilt_archives:
             return True
         return self._is_valid_dir(dir_path)
 
-    def _is_valid_reader_files_dir(self, dir_path: str) -> bool:
+    def _is_valid_reader_files_dir(self, dir_path: Path) -> bool:
         return self._is_valid_dir(dir_path)
 
-    def _is_valid_prebuilt_comics_dir(self, dir_path: str) -> bool:
+    def _is_valid_prebuilt_comics_dir(self, dir_path: Path) -> bool:
         return self._is_valid_dir(dir_path)
 
     def _is_valid_use_prebuilt_archives(self, use_prebuilt_archives: bool) -> bool:
@@ -325,29 +321,29 @@ class ReaderSettings:
         return self._is_valid_prebuilt_comics_dir(self.prebuilt_comics_dir)
 
     @staticmethod
-    def _is_valid_goto_saved_node_on_start(_goto_saved_node_on_start: bool):
+    def _is_valid_goto_saved_node_on_start(_goto_saved_node_on_start: bool) -> bool:
         return True
 
     @staticmethod
-    def _is_valid_use_harpies_instead_of_larkies(_use_harpies_instead_of_larkies: bool):
+    def _is_valid_use_harpies_instead_of_larkies(_use_harpies_instead_of_larkies: bool) -> bool:
         return True
 
     @staticmethod
-    def _is_valid_use_dere_instead_of_theah(_use_dere_instead_of_theah: bool):
+    def _is_valid_use_dere_instead_of_theah(_use_dere_instead_of_theah: bool) -> bool:
         return True
 
     @staticmethod
-    def _is_valid_use_blank_eyeballs_for_bombie(_use_blank_eyeballs_for_bombie: bool):
+    def _is_valid_use_blank_eyeballs_for_bombie(_use_blank_eyeballs_for_bombie: bool) -> bool:
         return True
 
     @staticmethod
-    def _is_valid_use_glk_firebug_ending(_use_glk_firebug_ending: bool):
+    def _is_valid_use_glk_firebug_ending(_use_glk_firebug_ending: bool) -> bool:
         return True
 
-    def _is_valid_png_barks_panels_dir(self, dir_path: str) -> bool:
+    def _is_valid_png_barks_panels_dir(self, dir_path: Path) -> bool:
         return self._is_valid_dir(dir_path)
 
-    def _is_valid_jpg_barks_panels_dir(self, dir_path: str) -> bool:
+    def _is_valid_jpg_barks_panels_dir(self, dir_path: Path) -> bool:
         return self._is_valid_dir(dir_path)
 
     def _is_valid_use_png_images(self, use_png_images: bool) -> bool:
@@ -357,8 +353,8 @@ class ReaderSettings:
         return self._is_valid_jpg_barks_panels_dir(self._get_jpg_barks_panels_dir())
 
     @staticmethod
-    def _is_valid_dir(dir_path: str) -> bool:
-        if os.path.isdir(dir_path):
+    def _is_valid_dir(dir_path: Path) -> bool:
+        if dir_path.is_dir():
             return True
 
         logging.error(f'Reader Settings: Required directory not found: "{dir_path}".')

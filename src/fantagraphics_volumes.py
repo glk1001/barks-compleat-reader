@@ -84,9 +84,9 @@ class FantagraphicsArchive:
 
 
 class FantagraphicsVolumeArchives:
-    def __init__(self, archive_root: str, override_root: str, volume_list: list[int]) -> None:
-        self._archive_root = Path(archive_root)
-        self._override_root = Path(override_root)
+    def __init__(self, archive_root: Path, override_root: Path, volume_list: list[int]) -> None:
+        self._archive_root = archive_root
+        self._override_root = override_root
         self._volume_list = volume_list
 
         self._fantagraphics_archive_dict: dict[int, FantagraphicsArchive] = {}
@@ -322,9 +322,7 @@ class FantagraphicsVolumeArchives:
             msg = f'Image name does not have an integer suffix: "{image_name}".'
             raise ValueError(msg) from e
 
-    def _check_image_names(
-        self, img_files: list[str], first: int, last: int, img_ext: str
-    ) -> None:
+    def _check_image_names(self, img_files: list[str], first: int, last: int, img_ext: str) -> None:
         if first < 0:
             msg = f"First page should be >= 0 not {first}"
             raise ValueError(msg)

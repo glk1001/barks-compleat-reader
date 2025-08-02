@@ -1,4 +1,3 @@
-
 from kivy.metrics import dp
 
 APP_TITLE = "The Compleat Barks Disney Reader"

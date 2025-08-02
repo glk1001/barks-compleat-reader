@@ -32,6 +32,8 @@ from reader_colors import RandomColorTint
 from reader_utils import get_formatted_color
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from reader_consts_and_types import Color
     from reader_settings import ReaderSettings
 
@@ -491,7 +493,7 @@ class BackgroundViews:
             self._bottom_view_fun_image_random_color_tint.get_random_color()
         )
 
-    def set_bottom_view_title_image_file(self, image_file: str) -> None:
+    def set_bottom_view_title_image_file(self, image_file: Path) -> None:
         self._bottom_view_title_image_info.filename = image_file
         self._log_bottom_view_title_state()
 

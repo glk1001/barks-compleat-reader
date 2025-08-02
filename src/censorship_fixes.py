@@ -37,7 +37,7 @@ class CensorshipFixesScreen(BoxLayout, Screen):
             font_manager, "Censorship Fixes and Other Changes"
         )
         self.app_icon_filepath = app_icon_file
-        self.action_bar_close_icon_filepath = (
+        self.action_bar_close_icon_filepath = str(
             reader_settings.sys_file_paths.get_barks_reader_close_icon_file()
         )
         self._on_close_screen = on_close_screen

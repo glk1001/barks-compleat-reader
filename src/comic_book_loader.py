@@ -201,13 +201,13 @@ class ComicBookLoader:
         archive_type = "Prebuilt" if not self._fanta_volume_archive else "Fantagraphics volumes"
         return f'{archive_type} - "{get_abbrev_path(self._current_comic_path)}"'
 
-    def _get_comic_path(self, fanta_info: FantaComicBookInfo) -> str:
+    def _get_comic_path(self, fanta_info: FantaComicBookInfo) -> Path:
         if self._fanta_volume_archive:
             return self._fanta_volume_archive.archive_filename
 
         return self._get_prebuilt_comic_path(fanta_info)
 
-    def _get_prebuilt_comic_path(self, fanta_info: FantaComicBookInfo) -> str:
+    def _get_prebuilt_comic_path(self, fanta_info: FantaComicBookInfo) -> Path:
         comic_file_stem = get_dest_comic_zip_file_stem(
             fanta_info.comic_book_info.get_title_str(),
             fanta_info.fanta_chronological_number,
@@ -222,7 +222,7 @@ class ComicBookLoader:
             msg = f'Could not find comic file "{comic_path}".'
             raise FileNotFoundError(msg)
 
-        return str(comic_path)
+        return comic_path
 
     def _init_load_events(self) -> None:
         self._image_loaded_events.clear()

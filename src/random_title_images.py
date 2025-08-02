@@ -13,6 +13,8 @@ from reader_file_paths import EMERGENCY_INSET_FILE
 from reader_utils import prob_rand_less_equal
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 
     from reader_settings import ReaderSettings
@@ -52,7 +54,7 @@ NON_TITLE_BIAS = 0.1
 
 @dataclass
 class ImageInfo:
-    filename: str = ""
+    filename: Path | None = None
     from_title: Titles | None = None
     fit_mode: str = FIT_MODE_COVER
 
@@ -60,15 +62,17 @@ class ImageInfo:
 class RandomTitleImages:
     def __init__(self, reader_settings: ReaderSettings) -> None:
         self._reader_settings = reader_settings
-        self._title_image_files: dict[str, dict[FileTypes, set[tuple[str, bool]]]] = defaultdict(
+        self._title_image_files: dict[str, dict[FileTypes, set[tuple[Path, bool]]]] = defaultdict(
             lambda: defaultdict(set)
         )
 
-        self._most_recently_used_images: deque[str] = deque(maxlen=MAX_IMAGE_FILENAMES_TO_KEEP)
-        self._last_title_image: dict[str, str] = {}
+        self._most_recently_used_images: deque[Path] = deque(maxlen=MAX_IMAGE_FILENAMES_TO_KEEP)
+        self._last_title_image: dict[str, Path] = {}
         self._nontitle_files = self._get_nontitle_files()
 
-        self._FILE_TYPE_GETTERS: dict[FileTypes, Callable[[str, bool], str]] = {
+        self._FILE_TYPE_GETTERS: dict[
+            FileTypes, Callable[[str, bool], None | Path | list[Path]]
+        ] = {
             # COVER special case: returns single string or None
             FileTypes.COVER: self._reader_settings.file_paths.get_comic_cover_file,
             FileTypes.BLACK_AND_WHITE: self._reader_settings.file_paths.get_comic_bw_files,
@@ -80,7 +84,7 @@ class RandomTitleImages:
             FileTypes.SPLASH: self._reader_settings.file_paths.get_comic_splash_files,
         }
 
-    def _add_last_image(self, image_filename: str) -> None:
+    def _add_last_image(self, image_filename: Path) -> None:
         self._most_recently_used_images.append(image_filename)
 
     def get_random_search_image(self) -> ImageInfo:
@@ -97,7 +101,7 @@ class RandomTitleImages:
             FIT_MODE_COVER,
         )
 
-    def get_loading_screen_random_image(self, title_list: list[FantaComicBookInfo]) -> str:
+    def get_loading_screen_random_image(self, title_list: list[FantaComicBookInfo]) -> Path:
         return self._get_random_image_file(
             title_list,
             {
@@ -114,12 +118,12 @@ class RandomTitleImages:
 
     def _get_random_image_file(
         self, title_list: list[FantaComicBookInfo], file_types: set[FileTypes] | None = None
-    ) -> str:
+    ) -> Path:
         return self.get_random_image(title_list, file_types=file_types).filename
 
     def get_random_image_for_title(
         self, title_str: str, file_types: set[FileTypes], use_edited_only: bool = False
-    ) -> str:
+    ) -> Path:
         # Ensure files are loaded for this title.
         self._update_comic_files(title_str)
 
@@ -244,8 +248,8 @@ class RandomTitleImages:
         return FIT_MODE_COVER if prob_rand_less_equal(50) else FIT_MODE_CONTAIN
 
     def _get_better_fitting_image_if_possible(
-        self, image_filename: str, fit_mode: str, file_type_enum: FileTypes
-    ) -> tuple[str, str]:
+        self, image_filename: Path, fit_mode: str, file_type_enum: FileTypes
+    ) -> tuple[Path, str]:
         # If it's a cover image, and kivy fit_mode is 'cover', then try to use an edited image.
         if (file_type_enum == FileTypes.COVER) and (fit_mode == FIT_MODE_COVER):
             image_filename, is_edited = (
@@ -259,8 +263,8 @@ class RandomTitleImages:
 
     def _get_possible_files_for_title(
         self, title_str: str, file_types: set[FileTypes], use_edited_only: bool
-    ) -> list[tuple[str, FileTypes]]:
-        possible_files: list[tuple[str, FileTypes]] = []
+    ) -> list[tuple[Path, FileTypes]]:
+        possible_files: list[tuple[Path, FileTypes]] = []
         for file_type in file_types:
             if file_type in self._title_image_files.get(title_str, {}):
                 for filename, is_edited in self._title_image_files[title_str][file_type]:
@@ -269,7 +273,7 @@ class RandomTitleImages:
 
         return possible_files
 
-    def _get_nontitle_files(self) -> list[tuple[str, FileTypes]]:
+    def _get_nontitle_files(self) -> list[tuple[Path, FileTypes]]:
         return [
             (file, FileTypes.NONTITLE)
             for file in self._reader_settings.file_paths.get_nontitle_files()
@@ -294,18 +298,18 @@ class RandomTitleImages:
                         self._add_image_files(set(image_files), title_str, file_type, use_edited)
 
     def _add_image_files(
-        self, image_files: set[str], title_str: str, file_type: FileTypes, use_edited_only: bool
+        self, image_files: set[Path], title_str: str, file_type: FileTypes, use_edited_only: bool
     ) -> None:
         new_files = {(f, use_edited_only) for f in image_files}
         self._title_image_files[title_str][file_type].update(new_files)
 
     @staticmethod
     def _get_random_comic_file(
-        title_str: str, get_files_func: Callable[[str, bool], list[str]], use_edited_only: bool
-    ) -> str:
+        title_str: str, get_files_func: Callable[[str, bool], list[Path]], use_edited_only: bool
+    ) -> Path:
         title_files = get_files_func(title_str, use_edited_only)
         if title_files:
             index = randrange(0, len(title_files))
             return title_files[index]
 
-        return ""
+        raise AssertionError

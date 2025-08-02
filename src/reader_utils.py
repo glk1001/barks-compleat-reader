@@ -1,35 +1,33 @@
-import os
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from random import randrange
-from typing import Tuple, List
 
+from barks_fantagraphics.barks_payments import PaymentInfo
+from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, Titles
+from barks_fantagraphics.comics_consts import PageType
+from barks_fantagraphics.pages import CleanPage
 from cpi import inflate
 from kivy.clock import Clock
 from kivy.core.window import Window
 
-from barks_fantagraphics.barks_payments import PaymentInfo
-from barks_fantagraphics.barks_titles import Titles, BARKS_TITLE_DICT
-from barks_fantagraphics.comics_consts import PageType
-from barks_fantagraphics.pages import CleanPage
 from reader_consts_and_types import Color
 
 EMPTY_PAGE_KEY = "empty_page"
 
 
 def set_kivy_busy_cursor() -> None:
-    Clock.schedule_once(lambda dt: Window.set_system_cursor("wait"), 0)
+    Clock.schedule_once(lambda _dt: Window.set_system_cursor("wait"), 0)
 
 
 def set_kivy_normal_cursor() -> None:
-    Clock.schedule_once(lambda dt: Window.set_system_cursor("arrow"), 0)
+    Clock.schedule_once(lambda _dt: Window.set_system_cursor("arrow"), 0)
 
 
 def prob_rand_less_equal(percent: int) -> bool:
     return randrange(1, 101) < percent
 
 
-def get_rand_int(min_max: Tuple[int, int]) -> int:
+def get_rand_int(min_max: tuple[int, int]) -> int:
     return randrange(min_max[0], min_max[1] + 1)
 
 
@@ -47,7 +45,7 @@ def get_formatted_color(color: Color) -> str:
 
 
 def get_formatted_payment_info(payment_info: PaymentInfo) -> str:
-    current_year = datetime.now().year
+    current_year = datetime.now(UTC).year
     cpi_adjusted_payment = inflate(payment_info.payment, payment_info.accepted_year)
 
     return (
@@ -58,24 +56,23 @@ def get_formatted_payment_info(payment_info: PaymentInfo) -> str:
     )
 
 
-def get_all_files_in_dir(dir_path: str) -> List[str]:
+def get_all_files_in_dir(dir_path: Path) -> list[Path]:
     files = []
-    for filename in os.listdir(dir_path):
-        filepath = os.path.join(dir_path, filename)
-        if os.path.isfile(filepath):
+    for filename in dir_path.iterdir():
+        filepath = dir_path / filename
+        if filepath.is_file():
             files.append(filepath)
 
     return files
 
 
-def read_text_paragraphs(filepath: str) -> str:
-    with open(filepath, "r") as f:
+def read_text_paragraphs(filepath: Path) -> str:
+    with filepath.open("r") as f:
         lines = f.readlines()
 
     text = ""
-    for line in lines:
-        # print(line)
-        line = line.rstrip(" ")
+    for ln in lines:
+        line = ln.rstrip(" ")
         if len(line) > 1 and line[-2] != "\\":
             line = line.replace("\n", " ")
         else:
@@ -83,27 +80,25 @@ def read_text_paragraphs(filepath: str) -> str:
 
         if len(line.strip()) == 0:
             line = "\n\n"
-        # print(line)
 
         text += line
 
     return text
 
 
-def read_title_list(filepath: str) -> List[Titles]:
+def read_title_list(filepath: Path) -> list[Titles]:
     # Return the list of titles in 'filepath', in submission date order.
 
-    with open(filepath, "r") as f:
+    with filepath.open("r") as f:
         lines = f.readlines()
 
     titles = []
     for line in lines:
         title_str = line.strip()
         if title_str not in BARKS_TITLE_DICT:
-            raise Exception(f'Unknown title "{title_str}" in favourites file "{filepath}".')
+            msg = f'Unknown title "{title_str}" in favourites file "{filepath}".'
+            raise RuntimeError(msg)
         titles.append(BARKS_TITLE_DICT[title_str])
 
     # Now sort these in enum order (which is guaranteed to be submission date order).
-    titles = sorted(titles)
-
-    return titles
+    return sorted(titles)

@@ -152,12 +152,12 @@ class BarksReaderApp(App):
 
     def _initialize_settings_and_db(self) -> None:
         """Handle the initial setup of settings and the database."""
-        self._reader_settings.set_config(self.config, self.get_application_config())
+        self._reader_settings.set_config(self.config, Path(self.get_application_config()))
         self._reader_settings.validate_settings()
         self._reader_settings.set_barks_panels_dir()
 
         self._comics_database.set_inset_info(
-            self._reader_settings.file_paths.get_comic_inset_files_dir(),
+            str(self._reader_settings.file_paths.get_comic_inset_files_dir()),
             self._reader_settings.file_paths.get_inset_file_ext(),
         )
 

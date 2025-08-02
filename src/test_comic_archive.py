@@ -1,16 +1,17 @@
 import logging
-import os
 import sys
-from typing import Dict
-
-from intspan import intspan
+from pathlib import Path
 
 from barks_fantagraphics.comic_book import get_page_str
 from barks_fantagraphics.comics_logging import setup_logging
+from intspan import intspan
+
 from fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
 
-FANTA_VOLUME_ARCHIVES_ROOT = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes"
-FANTA_VOLUME_OVERRIDES_ROOT = "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes Overrides"
+FANTA_VOLUME_ARCHIVES_ROOT = Path("/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes")
+FANTA_VOLUME_OVERRIDES_ROOT = Path(
+    "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes Overrides"
+)
 
 
 def print_archive_image_pages_map(archive: FantagraphicsArchive) -> None:
@@ -23,7 +24,7 @@ def print_archive_image_pages_map(archive: FantagraphicsArchive) -> None:
     print(f"  '{last_page}': '{archive.archive_images_page_map[last_page]}'")
 
 
-def print_page_map(page_map: Dict[str, str]) -> None:
+def print_page_map(page_map: dict[str, Path]) -> None:
     for page in sorted(page_map.keys()):
         print(f"  '{page}': '{page_map[page]}'")
 

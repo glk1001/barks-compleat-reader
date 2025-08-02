@@ -6,10 +6,10 @@ from sys import platform as _sys_platform
 class ConfigInfo:
     def __init__(self, app_name: str) -> None:
         self._app_name = app_name
-        self._app_config_dir: Path = Path()
-        self.app_config_path: Path = Path()
-        self.kivy_config_dir: Path = Path()
-        self.app_log_path: Path = Path()
+        self._app_config_dir: Path | None = None
+        self.app_config_path: Path | None = None
+        self.kivy_config_dir: Path | None = None
+        self.app_log_path: Path | None = None
 
         self.platform = _get_platform()
 

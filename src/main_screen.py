@@ -110,8 +110,12 @@ from special_overrides_handler import SpecialFantaOverrides
 from user_error_handler import ErrorTypes, UserErrorHandler
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from barks_fantagraphics.comic_book import ComicBook
     from barks_fantagraphics.comics_database import ComicsDatabase
+
+    # noinspection PyProtectedMember
     from kivy._clock import ClockEvent
     from kivy.uix.button import Button
     from kivy.uix.spinner import Spinner
@@ -275,17 +279,21 @@ class MainScreen(BoxLayout, Screen):
         self.app_title = get_action_bar_title(font_manager, APP_TITLE)
 
     def _set_action_bar_icons(self, sys_paths: SystemFilePaths) -> None:
-        self.app_icon_filepath = self._get_reader_app_icon_file()
-        self.up_arrow_filepath = sys_paths.get_up_arrow_file()
-        self.action_bar_close_icon_filepath = sys_paths.get_barks_reader_close_icon_file()
-        self.action_bar_collapse_icon_filepath = sys_paths.get_barks_reader_collapse_icon_file()
-        self.action_bar_change_pics_icon_filepath = (
+        self.app_icon_filepath = str(self._get_reader_app_icon_file())
+        self.up_arrow_filepath = str(sys_paths.get_up_arrow_file())
+        self.action_bar_close_icon_filepath = str(sys_paths.get_barks_reader_close_icon_file())
+        self.action_bar_collapse_icon_filepath = str(
+            sys_paths.get_barks_reader_collapse_icon_file()
+        )
+        self.action_bar_change_pics_icon_filepath = str(
             sys_paths.get_barks_reader_refresh_arrow_icon_file()
         )
-        self.action_bar_settings_icon_filepath = sys_paths.get_barks_reader_settings_icon_file()
-        self.action_bar_goto_icon_filepath = sys_paths.get_barks_reader_goto_icon_file()
+        self.action_bar_settings_icon_filepath = str(
+            sys_paths.get_barks_reader_settings_icon_file()
+        )
+        self.action_bar_goto_icon_filepath = str(sys_paths.get_barks_reader_goto_icon_file())
 
-    def _get_reader_app_icon_file(self) -> str:
+    def _get_reader_app_icon_file(self) -> Path:
         icon_files = get_all_files_in_dir(
             self._reader_settings.sys_file_paths.get_reader_icon_files_dir(),
         )
@@ -307,7 +315,7 @@ class MainScreen(BoxLayout, Screen):
         )
 
     def _set_new_loading_data_popup_image(self) -> None:
-        self.loading_data_popup.splash_image_path = (
+        self.loading_data_popup.splash_image_path = str(
             self._random_title_images.get_loading_screen_random_image(self.title_lists[ALL_LISTS])
         )
         logging.debug(f'New loading popup image: "{self.loading_data_popup.splash_image_path}".')
@@ -461,7 +469,7 @@ class MainScreen(BoxLayout, Screen):
     def _title_row_selected(
         self,
         new_fanta_info: FantaComicBookInfo,
-        title_image_file: str,
+        title_image_file: Path,
     ) -> None:
         self._fanta_info = new_fanta_info
         self._set_title(title_image_file)
@@ -776,7 +784,7 @@ class MainScreen(BoxLayout, Screen):
 
         self._top_view_image_info = self._background_views.get_top_view_image_info()
         self.top_view_image_opacity = self._background_views.get_top_view_image_opacity()
-        self.top_view_image_source = self._top_view_image_info.filename
+        self.top_view_image_source = str(self._top_view_image_info.filename)
         self.top_view_image_fit_mode = self._top_view_image_info.fit_mode
         self.top_view_image_color = self._background_views.get_top_view_image_color()
 
@@ -784,7 +792,7 @@ class MainScreen(BoxLayout, Screen):
             self._background_views.get_bottom_view_fun_image_opacity()
         )
         self._bottom_view_fun_image_info = self._background_views.get_bottom_view_fun_image_info()
-        self.bottom_view_fun_image_source = self._bottom_view_fun_image_info.filename
+        self.bottom_view_fun_image_source = str(self._bottom_view_fun_image_info.filename)
         self.bottom_view_fun_image_fit_mode = self._bottom_view_fun_image_info.fit_mode
         self.bottom_view_fun_image_color = self._background_views.get_bottom_view_fun_image_color()
         self.bottom_view_fun_image_from_title = (
@@ -795,13 +803,13 @@ class MainScreen(BoxLayout, Screen):
         self._bottom_view_title_image_info = (
             self._background_views.get_bottom_view_title_image_info()
         )
-        self.bottom_view_title_image_source = self._bottom_view_title_image_info.filename
+        self.bottom_view_title_image_source = str(self._bottom_view_title_image_info.filename)
         self.bottom_view_title_image_fit_mode = self._bottom_view_title_image_info.fit_mode
         self.bottom_view_title_image_color = (
             self._background_views.get_bottom_view_title_image_color()
         )
 
-    def _set_title(self, title_image_file: str = "") -> None:
+    def _set_title(self, title_image_file: Path | None = None) -> None:
         logging.debug(f'Setting title to "{self._fanta_info.comic_book_info.get_title_str()}".')
 
         if title_image_file:
@@ -824,9 +832,11 @@ class MainScreen(BoxLayout, Screen):
             self.MAX_TITLE_INFO_LEN_BEFORE_SHORTEN,
         )
         self.title_extra_info_text = self._formatter.get_title_extra_info(self._fanta_info)
-        self.title_page_image_source = self._reader_settings.file_paths.get_comic_inset_file(
-            self._fanta_info.comic_book_info.title,
-            use_edited_only=True,
+        self.title_page_image_source = str(
+            self._reader_settings.file_paths.get_comic_inset_file(
+                self._fanta_info.comic_book_info.title,
+                use_edited_only=True,
+            )
         )
         logging.debug(f'Using title image source "{self.title_page_image_source}".')
 
@@ -852,9 +862,11 @@ class MainScreen(BoxLayout, Screen):
     def on_use_overrides_checkbox_changed(self, _instance: Widget, use_overrides: bool) -> None:
         logging.debug(f"Use overrides checkbox changed: use_overrides = {use_overrides}.")
 
-        self.title_page_image_source = self._special_fanta_overrides.get_title_page_inset_file(
-            self._fanta_info.comic_book_info.title,
-            use_overrides,
+        self.title_page_image_source = str(
+            self._special_fanta_overrides.get_title_page_inset_file(
+                self._fanta_info.comic_book_info.title,
+                use_overrides,
+            )
         )
 
         logging.debug(
@@ -883,9 +895,11 @@ class MainScreen(BoxLayout, Screen):
 
         comic = self._comics_database.get_comic_book(title_str)
 
-        comic.intro_inset_file = self._special_fanta_overrides.get_inset_file(
-            self._fanta_info.comic_book_info.title,
-            self.ids.use_overrides_checkbox.active,
+        comic.intro_inset_file = str(
+            self._special_fanta_overrides.get_inset_file(
+                self._fanta_info.comic_book_info.title,
+                self.ids.use_overrides_checkbox.active,
+            )
         )
 
         return comic
@@ -988,7 +1002,7 @@ class MainScreen(BoxLayout, Screen):
             page_to_first_goto = self._get_page_to_first_goto()
         comic_book_image_builder = ComicBookImageBuilder(
             comic,
-            self._reader_settings.sys_file_paths.get_empty_page_file(),
+            str(self._reader_settings.sys_file_paths.get_empty_page_file()),
         )
         comic_book_image_builder.set_required_dim(self._comic_page_info.required_dim)
         logging.debug(
