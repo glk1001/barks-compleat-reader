@@ -1,8 +1,7 @@
 from random import randrange, sample
-from typing import Tuple, List
 
 from reader_consts_and_types import Color
-from reader_utils import prob_rand_less_equal, get_rand_int
+from reader_utils import get_rand_int, prob_rand_less_equal
 
 
 class RandomColorTint:
@@ -11,7 +10,7 @@ class RandomColorTint:
     _B_INDEX = 2
     _A_INDEX = 3
 
-    def __init__(self, full_color_probability: int, tinted_probability: int):
+    def __init__(self, full_color_probability: int, tinted_probability: int) -> None:
         self._affected_indexes = [self._R_INDEX, self._G_INDEX, self._B_INDEX]
 
         self._red_range = (200, 255)
@@ -27,7 +26,7 @@ class RandomColorTint:
         self._full_color_probability = full_color_probability
         self._tinted_probability = tinted_probability
 
-    def set_affected_indexes(self, indexes: List[int]) -> None:
+    def set_affected_indexes(self, indexes: list[int]) -> None:
         self._affected_indexes = indexes
 
     def set_red_range(self, r_min: int, r_max: int) -> None:
@@ -51,14 +50,14 @@ class RandomColorTint:
     def _get_non_random_color(self, alpha: float) -> Color:
         return self._non_random_red, self._non_random_green, self._non_random_blue, alpha
 
-    def _get_color_range(self, index: int) -> Tuple[int, int]:
+    def _get_color_range(self, index: int) -> tuple[int, int]:
         if index == self._R_INDEX:
             return self._red_range
         if index == self._G_INDEX:
             return self._green_range
         if index == self._B_INDEX:
             return self._blue_range
-        assert False
+        raise AssertionError
 
     def get_random_color(self) -> Color:
         if prob_rand_less_equal(self._full_color_probability):
