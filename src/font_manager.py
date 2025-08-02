@@ -1,10 +1,11 @@
 import logging
 
+from barks_fantagraphics.comics_consts import CARL_BARKS_FONT_NAME
 from kivy.event import EventDispatcher
 from kivy.metrics import sp
 from kivy.properties import NumericProperty
 
-from barks_fantagraphics.comics_consts import CARL_BARKS_FONT_NAME
+HI_RES_WINDOW_HEIGHT_CUTOFF = 1050
 
 
 class FontManager(EventDispatcher):
@@ -35,15 +36,15 @@ class FontManager(EventDispatcher):
     main_title_font_name = CARL_BARKS_FONT_NAME
     loading_title_font_name = CARL_BARKS_FONT_NAME
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         super().__init__(*args, **kwargs)
         self.app_title_font_size = 0
 
-    def update_font_sizes(self, window_height: int):
-        """Calculates and sets all font sizes based on window height."""
+    def update_font_sizes(self, window_height: int) -> None:
+        """Calculate and set all font sizes based on window height."""
         logging.debug(f"Updating all font sizes based on window height {window_height}.")
 
-        if window_height <= 1050:
+        if window_height <= HI_RES_WINDOW_HEIGHT_CUTOFF:
             main_title_font_size = sp(30)
             title_info_font_size = sp(16)
             title_extra_info_font_size = sp(14)
