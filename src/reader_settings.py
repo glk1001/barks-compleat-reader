@@ -1,14 +1,17 @@
+from __future__ import annotations
+
 import logging
 import os
 from pathlib import Path
-from typing import Any, Callable
-
-from kivy.config import ConfigParser
-from kivy.uix.settings import Settings
+from typing import TYPE_CHECKING, Any, Callable
 
 from reader_file_paths import DEFAULT_BARKS_READER_FILES_DIR, BarksPanelsExtType, ReaderFilePaths
 from settings_fix import LONG_PATH
 from system_file_paths import SystemFilePaths
+
+if TYPE_CHECKING:
+    from kivy.config import ConfigParser
+    from kivy.uix.settings import Settings
 
 HOME_DIR = os.environ.get("HOME")
 
@@ -353,7 +356,10 @@ class ReaderSettings:
         return self._is_valid_jpg_barks_panels_dir(self._get_jpg_barks_panels_dir())
 
     @staticmethod
-    def _is_valid_dir(dir_path: Path) -> bool:
+    def _is_valid_dir(dir_path: str | Path) -> bool:
+        if type(dir_path) is str:
+            dir_path = Path(dir_path)
+
         if dir_path.is_dir():
             return True
 

@@ -1,4 +1,5 @@
-import os
+from pathlib import Path
+from tkinter import Widget
 
 from kivy.clock import Clock
 from kivy.lang import Builder
@@ -32,7 +33,7 @@ KV_SETTINGS_OVERRIDE = """
             size_hint_x: .55
             id: labellayout
             markup: True
-            text: 
+            text:
                 u'{0}\\n[size=13sp][color=999999]{1}[/color][/size]'\
                 .format(root.title or '', root.desc or '')
             font_size: '15sp'
@@ -125,39 +126,39 @@ class SettingLongPathPopup(Popup):
 
     setting_widget = ObjectProperty(None)
 
-    def select_path(self, path: str):
-        """Called when the 'Select' button is pressed."""
+    def select_path(self, path: str) -> None:
+        """Call the 'Select' button when pressed."""
         if self.setting_widget and path:
-            Clock.schedule_once(lambda dt: self.setting_widget.update_setting_value(path))
+            Clock.schedule_once(lambda _dt: self.setting_widget.update_setting_value(path))
         self.dismiss()
 
 
 class SettingLongPath(SettingItem):
-    """
-    Custom setting widget for displaying long paths that are
+    """Custom setting widget for displaying long paths that are.
+
     shortened in the middle to prevent truncation.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
         self.bind(on_release=self._create_popup)
 
-    def update_setting_value(self, new_path: str):
+    def update_setting_value(self, new_path: str) -> None:
         self.value = new_path
 
-    def _create_popup(self, _instance):
-        """Creates and opens the directory selection popup."""
-
+    def _create_popup(self, _instance: Widget) -> None:
+        """Create and open the directory selection popup."""
+        selected_dir = Path(self.value)
         setting_parent_dir = (
-            os.path.dirname(self.value)
-            if self.value and os.path.isdir(os.path.dirname(self.value))
-            else os.path.expanduser("~")
+            selected_dir.parent
+            if self.value and selected_dir.parent.is_dir()
+            else Path("~").expanduser()
         )
-        setting_dir = self.value
+        setting_dir = str(selected_dir)
 
         popup = SettingLongPathPopup(title=self.title, setting_widget=self)
 
-        popup.ids.file_chooser.path = setting_parent_dir
+        popup.ids.file_chooser.path = str(setting_parent_dir)
         popup.ids.file_chooser.selection = [setting_dir]
         popup.ids.current_selection.text = f'"{setting_dir}"'
 
