@@ -1,20 +1,23 @@
+from __future__ import annotations
+
 import logging
-from typing import List, Union, cast
+from typing import TYPE_CHECKING, cast
 
-from kivy.uix.treeview import TreeViewNode
-
-from barks_fantagraphics.barks_titles import Titles
 from reader_formatter import get_clean_text_without_extra
 from reader_ui_classes import (
-    ReaderTreeView,
-    TitleTreeViewNode,
-    TitleSearchBoxTreeViewNode,
-    TagSearchBoxTreeViewNode,
     ButtonTreeViewNode,
+    ReaderTreeView,
+    TagSearchBoxTreeViewNode,
+    TitleSearchBoxTreeViewNode,
+    TitleTreeViewNode,
 )
 
+if TYPE_CHECKING:
+    from barks_fantagraphics.barks_titles import Titles
+    from kivy.uix.treeview import TreeViewNode
 
-def get_tree_view_node_path(node: TreeViewNode) -> List[str]:
+
+def get_tree_view_node_path(node: TreeViewNode) -> list[str]:
     node_path = [get_tree_view_node_id_text(node)]
     node = node.parent_node
     while node:
@@ -24,9 +27,9 @@ def get_tree_view_node_path(node: TreeViewNode) -> List[str]:
     return node_path
 
 
-def find_node_by_path(tree: ReaderTreeView, path_from_root: List[str]) -> Union[TreeViewNode, None]:
-    """
-    Finds a node in a TreeView by its path from the root.
+def find_node_by_path(tree: ReaderTreeView, path_from_root: list[str]) -> TreeViewNode | None:
+    """Find a node in a TreeView by its path from the root.
+
     Expands parent nodes along the way to make the target node visible.
     """
     if not path_from_root:
@@ -65,17 +68,17 @@ def find_node_by_path(tree: ReaderTreeView, path_from_root: List[str]) -> Union[
 
 
 def get_tree_view_node_id_text(node: TreeViewNode) -> str:
-    if type(node) == TitleTreeViewNode:
-        return cast(TitleTreeViewNode, node).get_title().name
-    if type(node) == TitleSearchBoxTreeViewNode:
-        return cast(TitleSearchBoxTreeViewNode, node).name
-    if type(node) == TagSearchBoxTreeViewNode:
-        return cast(TagSearchBoxTreeViewNode, node).name
+    if type(node) is TitleTreeViewNode:
+        return cast("TitleTreeViewNode", node).get_title().name
+    if type(node) is TitleSearchBoxTreeViewNode:
+        return cast("TitleSearchBoxTreeViewNode", node).name
+    if type(node) is TagSearchBoxTreeViewNode:
+        return cast("TagSearchBoxTreeViewNode", node).name
 
-    return get_clean_text_without_extra(cast(ButtonTreeViewNode, node).text)
+    return get_clean_text_without_extra(cast("ButtonTreeViewNode", node).text)
 
 
-def find_tree_view_node(start_node: TreeViewNode, node_text: str):
+def find_tree_view_node(start_node: TreeViewNode, node_text: str) -> TreeViewNode | None:
     nodes_to_visit = start_node.nodes.copy()
 
     while nodes_to_visit:
@@ -90,7 +93,9 @@ def find_tree_view_node(start_node: TreeViewNode, node_text: str):
     return None
 
 
-def find_tree_view_title_node(start_node: TreeViewNode, target_title: Titles):
+def find_tree_view_title_node(
+    start_node: TreeViewNode, target_title: Titles
+) -> TreeViewNode | None:
     nodes_to_visit = start_node.nodes.copy()
 
     while nodes_to_visit:
