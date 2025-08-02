@@ -1,19 +1,21 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from random import randrange
-from typing import List, Callable, Union
+from typing import Callable, ClassVar
 
 from kivy.uix.screenmanager import (
+    CardTransition,
+    FadeTransition,
+    FallOutTransition,
+    NoTransition,
+    RiseInTransition,
     Screen,
     ScreenManager,
-    RiseInTransition,
-    FallOutTransition,
-    FadeTransition,
-    WipeTransition,
     SlideTransition,
-    NoTransition,
     SwapTransition,
-    CardTransition,
     TransitionBase,
+    WipeTransition,
 )
 
 MAIN_READER_SCREEN = "main_screen"
@@ -40,7 +42,7 @@ class ScreenSwitchers:
 
 
 class ReaderScreenManager:
-    _MAIN_SCREEN_TRANSITIONS: List[TransitionBase] = [
+    _MAIN_SCREEN_TRANSITIONS: ClassVar[list[TransitionBase]] = [
         NoTransition(duration=0),
         FadeTransition(),
         FallOutTransition(),
@@ -50,7 +52,7 @@ class ReaderScreenManager:
         SlideTransition(direction="left"),
         CardTransition(direction="left", mode="push"),
     ]
-    _READER_SCREEN_TRANSITIONS: List[TransitionBase] = [
+    _READER_SCREEN_TRANSITIONS: ClassVar[list[TransitionBase]] = [
         NoTransition(duration=0),
         FadeTransition(),
         FallOutTransition(),
@@ -61,11 +63,11 @@ class ReaderScreenManager:
         CardTransition(direction="right", mode="pop"),
     ]
 
-    def __init__(self, open_settings: Callable):
+    def __init__(self, open_settings: Callable) -> None:
         self._screen_manager = ScreenManager()
 
         self._screen_manager = ScreenManager()
-        self._reader_screens: Union[ReaderScreens, None] = None
+        self._reader_screens: ReaderScreens | None = None
 
         self.screen_switchers = ScreenSwitchers(
             open_settings,
@@ -94,20 +96,20 @@ class ReaderScreenManager:
     def _get_next_reader_screen_transition(self) -> TransitionBase:
         return self._READER_SCREEN_TRANSITIONS[randrange(0, len(self._READER_SCREEN_TRANSITIONS))]
 
-    def _switch_to_comic_book_reader(self):
+    def _switch_to_comic_book_reader(self) -> None:
         self._screen_manager.transition = self._get_next_reader_screen_transition()
         self._screen_manager.current = COMIC_BOOK_READER_SCREEN
 
-    def _close_comic_book_reader(self):
+    def _close_comic_book_reader(self) -> None:
         self._reader_screens.main_screen.comic_closed()
 
         self._screen_manager.transition = self._get_next_main_screen_transition()
         self._screen_manager.current = MAIN_READER_SCREEN
 
-    def _switch_to_censorship_fixes(self):
+    def _switch_to_censorship_fixes(self) -> None:
         self._screen_manager.current = CENSORSHIP_FIXES_SCREEN
 
-    def _close_censorship_fixes(self):
+    def _close_censorship_fixes(self) -> None:
         self._reader_screens.main_screen.appendix_censorship_fixes_closed()
 
         self._screen_manager.transition = self._get_next_main_screen_transition()
