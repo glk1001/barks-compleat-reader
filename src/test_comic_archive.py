@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
         assert fanta_vol == fanta_archive.fanta_volume
         print(f"Fanta Vol: {fanta_archive.fanta_volume}")
-        print(f'Archive: "{os.path.basename(fanta_archive.archive_filename)}"')
+        print(f'Archive: "{fanta_archive.archive_filename.name}"')
         print(f'Override: "{fanta_archive.override_dir}"')
         print(f'Image dir: "{fanta_archive.archive_image_subdir}"')
         print(f'Image ext: "{fanta_archive.image_ext}"')
@@ -57,10 +57,10 @@ if __name__ == "__main__":
         print("Archive page map: ")
         print_archive_image_pages_map(fanta_archive)
 
-        print(f"Override pages map: ")
+        print("Override pages map: ")
         print_page_map(fanta_archive.override_images_page_map)
 
-        print(f"Extra pages map: ")
+        print("Extra pages map: ")
         print_page_map(fanta_archive.extra_images_page_map)
 
         print()
