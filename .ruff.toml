@@ -23,4 +23,5 @@ line-length = 100
     "fantagraphics_volumes.py" = ["ERA001"]
     "reader_file_paths.py" = ["ERA001"]
     "reader_utils.py" = ["ERA001"]
+    "reader_ui_classes.py" = ["ERA001"]
     "test_comic_archive.py" = ["T201"]
