@@ -1,15 +1,21 @@
+from __future__ import annotations
+
 import logging
-from collections import deque, defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from enum import Enum, auto
 from random import randrange
-from typing import List, Callable, Union, Set, Tuple, Dict
+from typing import TYPE_CHECKING, Callable
 
-from barks_fantagraphics.barks_titles import Titles, BARKS_TITLES
-from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+
 from reader_file_paths import EMERGENCY_INSET_FILE
-from reader_settings import ReaderSettings
 from reader_utils import prob_rand_less_equal
+
+if TYPE_CHECKING:
+    from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+
+    from reader_settings import ReaderSettings
 
 NUM_RAND_ATTEMPTS = 10
 MAX_IMAGE_FILENAMES_TO_KEEP = 100
@@ -39,7 +45,7 @@ class FileTypes(Enum):
     SPLASH = auto()
 
 
-ALL_TYPES = {t for t in FileTypes}
+ALL_TYPES = set(FileTypes)
 
 NON_TITLE_BIAS = 0.1
 
@@ -47,22 +53,22 @@ NON_TITLE_BIAS = 0.1
 @dataclass
 class ImageInfo:
     filename: str = ""
-    from_title: Union[Titles, None] = None
+    from_title: Titles | None = None
     fit_mode: str = FIT_MODE_COVER
 
 
 class RandomTitleImages:
-    def __init__(self, reader_settings: ReaderSettings):
+    def __init__(self, reader_settings: ReaderSettings) -> None:
         self._reader_settings = reader_settings
-        self._title_image_files: Dict[str, Dict[FileTypes, Set[Tuple[str, bool]]]] = defaultdict(
+        self._title_image_files: dict[str, dict[FileTypes, set[tuple[str, bool]]]] = defaultdict(
             lambda: defaultdict(set)
         )
 
         self._most_recently_used_images: deque[str] = deque(maxlen=MAX_IMAGE_FILENAMES_TO_KEEP)
-        self._last_title_image: Dict[str, str] = {}
+        self._last_title_image: dict[str, str] = {}
         self._nontitle_files = self._get_nontitle_files()
 
-        self._FILE_TYPE_GETTERS: Dict[FileTypes, Callable[[str, bool], str]] = {
+        self._FILE_TYPE_GETTERS: dict[FileTypes, Callable[[str, bool], str]] = {
             # COVER special case: returns single string or None
             FileTypes.COVER: self._reader_settings.file_paths.get_comic_cover_file,
             FileTypes.BLACK_AND_WHITE: self._reader_settings.file_paths.get_comic_bw_files,
@@ -83,13 +89,15 @@ class RandomTitleImages:
 
         return ImageInfo(
             self._get_random_comic_file(
-                BARKS_TITLES[title], self._reader_settings.file_paths.get_comic_search_files, False
+                BARKS_TITLES[title],
+                self._reader_settings.file_paths.get_comic_search_files,
+                use_edited_only=False,
             ),
             title,
             FIT_MODE_COVER,
         )
 
-    def get_loading_screen_random_image(self, title_list: List[FantaComicBookInfo]) -> str:
+    def get_loading_screen_random_image(self, title_list: list[FantaComicBookInfo]) -> str:
         return self._get_random_image_file(
             title_list,
             {
@@ -105,12 +113,12 @@ class RandomTitleImages:
         )
 
     def _get_random_image_file(
-        self, title_list: List[FantaComicBookInfo], file_types: Union[Set[FileTypes], None] = None
+        self, title_list: list[FantaComicBookInfo], file_types: set[FileTypes] | None = None
     ) -> str:
         return self.get_random_image(title_list, file_types=file_types).filename
 
     def get_random_image_for_title(
-        self, title_str: str, file_types: Set[FileTypes], use_edited_only: bool = False
+        self, title_str: str, file_types: set[FileTypes], use_edited_only: bool = False
     ) -> str:
         # Ensure files are loaded for this title.
         self._update_comic_files(title_str)
@@ -140,9 +148,9 @@ class RandomTitleImages:
 
     def get_random_image(
         self,
-        title_list: List[FantaComicBookInfo],
-        use_random_fit_mode=False,
-        file_types: Union[Set[FileTypes], None] = None,
+        title_list: list[FantaComicBookInfo],
+        use_random_fit_mode: bool = False,
+        file_types: set[FileTypes] | None = None,
         use_edited_only: bool = False,
     ) -> ImageInfo:
         if not title_list:
@@ -237,7 +245,7 @@ class RandomTitleImages:
 
     def _get_better_fitting_image_if_possible(
         self, image_filename: str, fit_mode: str, file_type_enum: FileTypes
-    ) -> Tuple[str, str]:
+    ) -> tuple[str, str]:
         # If it's a cover image, and kivy fit_mode is 'cover', then try to use an edited image.
         if (file_type_enum == FileTypes.COVER) and (fit_mode == FIT_MODE_COVER):
             image_filename, is_edited = (
@@ -250,9 +258,9 @@ class RandomTitleImages:
         return image_filename, fit_mode
 
     def _get_possible_files_for_title(
-        self, title_str: str, file_types: Set[FileTypes], use_edited_only: bool
-    ) -> List[Tuple[str, FileTypes]]:
-        possible_files: List[Tuple[str, FileTypes]] = []
+        self, title_str: str, file_types: set[FileTypes], use_edited_only: bool
+    ) -> list[tuple[str, FileTypes]]:
+        possible_files: list[tuple[str, FileTypes]] = []
         for file_type in file_types:
             if file_type in self._title_image_files.get(title_str, {}):
                 for filename, is_edited in self._title_image_files[title_str][file_type]:
@@ -261,7 +269,7 @@ class RandomTitleImages:
 
         return possible_files
 
-    def _get_nontitle_files(self) -> List[Tuple[str, FileTypes]]:
+    def _get_nontitle_files(self) -> list[tuple[str, FileTypes]]:
         return [
             (file, FileTypes.NONTITLE)
             for file in self._reader_settings.file_paths.get_nontitle_files()
@@ -286,14 +294,14 @@ class RandomTitleImages:
                         self._add_image_files(set(image_files), title_str, file_type, use_edited)
 
     def _add_image_files(
-        self, image_files: Set[str], title_str: str, file_type: FileTypes, use_edited_only: bool
+        self, image_files: set[str], title_str: str, file_type: FileTypes, use_edited_only: bool
     ) -> None:
         new_files = {(f, use_edited_only) for f in image_files}
         self._title_image_files[title_str][file_type].update(new_files)
 
     @staticmethod
     def _get_random_comic_file(
-        title_str: str, get_files_func: Callable[[str, bool], List[str]], use_edited_only: bool
+        title_str: str, get_files_func: Callable[[str, bool], list[str]], use_edited_only: bool
     ) -> str:
         title_files = get_files_func(title_str, use_edited_only)
         if title_files:
