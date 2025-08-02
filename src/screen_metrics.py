@@ -1,8 +1,7 @@
 import logging
 from dataclasses import dataclass
-from typing import List
 
-from kivy.metrics import dp, sp, cm, inch
+from kivy.metrics import cm, dp, inch, sp
 from screeninfo import get_monitors
 
 
@@ -21,7 +20,7 @@ class ScreenInfo:
     is_primary: bool
 
 
-def get_screen_info() -> List[ScreenInfo]:
+def get_screen_info() -> list[ScreenInfo]:
     monitors = get_monitors()
     if not monitors:
         logging.warning("No monitors found by screeninfo.")
@@ -72,7 +71,7 @@ def get_screen_info() -> List[ScreenInfo]:
     return screens
 
 
-def log_screen_metrics(scrn_info: List[ScreenInfo]) -> None:
+def log_screen_metrics(scrn_info: list[ScreenInfo]) -> None:
     logging.info("--- Detailed Monitor Metrics ---")
 
     for info in scrn_info:
