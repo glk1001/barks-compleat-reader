@@ -1,18 +1,18 @@
 from __future__ import annotations
 
+# ------------------------------------------------------------------ #
+# --- We need to change the KIVY_HOME directory to be under this --- #
+# --- app's settings directory. The 'config_info' module handles --- #
+# --- this, and for this to work, we need to import it before    --- #
+# --- any kivy imports.                                          --- #
 import os
+from pathlib import Path
+from config_info import ConfigInfo
 
-# This app will hook into kivy logging, so there is
-# no kivy console logging required.
+# This app will hook into kivy logging, so there is no kivy console
+# logging required.
 os.environ["KIVY_NO_CONSOLELOG"] = "1"
 os.environ["KIVY_LOG_MODE"] = "MIXED"
-
-# --- We need to change the KIVY_HOME directory to be under this --- #
-# --- app's settings directory. And for this to work, we need to --- #
-# --- do it  before any kivy imports.                            --- #
-from pathlib import Path
-
-from config_info import ConfigInfo
 
 APP_NAME = Path(__file__).stem
 config_info = ConfigInfo(APP_NAME)

@@ -18,7 +18,7 @@ line-length = 100
 
 [lint.per-file-ignores]
     "background_views.py" = ["ERA001"]
-    "barks-reader.py" = ["E402", "ERA001"]
+    "barks-reader.py" = ["I001", "E402", "ERA001"]
     "comic_book_loader.py" = ["ERA001"]
     "fantagraphics_volumes.py" = ["ERA001"]
     "reader_file_paths.py" = ["ERA001"]
