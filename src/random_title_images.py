@@ -5,7 +5,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 from enum import Enum, auto
 from random import randrange
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 
@@ -13,6 +13,7 @@ from reader_file_paths import EMERGENCY_INSET_FILE
 from reader_utils import prob_rand_less_equal
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo

@@ -3,13 +3,15 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from reader_file_paths import DEFAULT_BARKS_READER_FILES_DIR, BarksPanelsExtType, ReaderFilePaths
 from settings_fix import LONG_PATH
 from system_file_paths import SystemFilePaths
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from kivy.config import ConfigParser
     from kivy.uix.settings import Settings
 

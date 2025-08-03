@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Callable, ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from barks_fantagraphics.comics_utils import (
     get_short_formatted_first_published_str,
@@ -23,6 +23,7 @@ from kivy.utils import escape_markup
 from reader_formatter import get_markup_text_with_num_titles, text_includes_num_titles
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from tkinter import Widget
 
     from barks_fantagraphics.barks_tags import TagGroups, Tags

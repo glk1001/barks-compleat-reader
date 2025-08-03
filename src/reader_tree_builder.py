@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import logging
 from collections import OrderedDict
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_tags import (
     BARKS_TAG_CATEGORIES,

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from barks_fantagraphics.comics_consts import PageType
 from kivy.core.image import Image as CoreImage
@@ -24,6 +24,7 @@ from reader_formatter import get_action_bar_title
 
 if TYPE_CHECKING:
     from collections import OrderedDict
+    from collections.abc import Callable
 
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from build_comic_images import ComicBookImageBuilder

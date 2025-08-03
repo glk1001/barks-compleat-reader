@@ -8,7 +8,7 @@ import traceback
 import zipfile
 from collections import OrderedDict
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 from zipfile import ZipFile
 
 from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PNG_FILE_EXT, PageType
@@ -27,6 +27,8 @@ from fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchi
 from reader_utils import is_blank_page, is_title_page, set_kivy_busy_cursor, set_kivy_normal_cursor
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from build_comic_images import ComicBookImageBuilder
 
     from comic_book_page_info import PageInfo

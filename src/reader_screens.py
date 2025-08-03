@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from random import randrange
-from typing import Callable, ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from kivy.uix.screenmanager import (
     CardTransition,
@@ -17,6 +17,9 @@ from kivy.uix.screenmanager import (
     TransitionBase,
     WipeTransition,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 MAIN_READER_SCREEN = "main_screen"
 COMIC_BOOK_READER_SCREEN = "comic_book_reader"

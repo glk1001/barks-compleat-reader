@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum, auto
 from textwrap import dedent
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from barks_fantagraphics.fanta_comics_info import FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER
 from kivy.clock import Clock
@@ -10,6 +10,8 @@ from kivy.clock import Clock
 from reader_ui_classes import MessagePopup
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from fantagraphics_volumes import TooManyArchiveFilesError, WrongFantagraphicsVolumeError
     from reader_settings import ReaderSettings
 

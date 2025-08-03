@@ -1,5 +1,5 @@
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from kivy.lang import Builder
 from kivy.properties import StringProperty

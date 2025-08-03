@@ -1,7 +1,7 @@
 import logging
 import shutil
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PNG_FILE_EXT
 from barks_fantagraphics.pil_image_utils import SAVE_JPG_COMPRESS_LEVEL, open_pil_image_for_reading

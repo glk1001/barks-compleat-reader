@@ -71,7 +71,7 @@ class ComicBookPageInfoManager:
         body_start_page_num = -1
 
         for index, (srce_page, dest_page) in enumerate(
-            zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages)
+            zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, strict=False)
         ):
             orig_page_num = index + 1
 
