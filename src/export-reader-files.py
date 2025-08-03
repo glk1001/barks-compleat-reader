@@ -1,3 +1,5 @@
+# ruff: noqa: ERA001
+
 import logging
 import sys
 from pathlib import Path

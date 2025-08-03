@@ -1,3 +1,5 @@
+# ruff: noqa: ERA001
+
 from __future__ import annotations
 
 import logging
@@ -68,6 +70,7 @@ class MessagePopup(Popup):
     ok_text = StringProperty()
     cancel_text = StringProperty()
 
+    # noinspection PyUnresolvedReferences
     def __init__(
         self,
         text: str,

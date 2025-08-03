@@ -50,7 +50,10 @@ class _ComicPageManager(EventDispatcher):
     _current_page_index = NumericProperty(-1)
 
     def __init__(
-        self, current_page_index_bound_func: Callable, *args, **kwargs  # noqa: ANN002, ANN003
+        self,
+        current_page_index_bound_func: Callable,
+        *args,  # noqa: ANN002
+        **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(*args, **kwargs)
 
@@ -169,10 +172,10 @@ class ComicBookReader(BoxLayout):
         self._goto_page_widget = goto_page_widget
 
         self._action_bar = None
-        self._action_bar_fullscreen_icon = (
+        self._action_bar_fullscreen_icon = str(
             self._reader_settings.sys_file_paths.get_barks_reader_fullscreen_icon_file()
         )
-        self._action_bar_fullscreen_exit_icon = (
+        self._action_bar_fullscreen_exit_icon = str(
             self._reader_settings.sys_file_paths.get_barks_reader_fullscreen_exit_icon_file()
         )
         self._current_comic_path = ""
@@ -340,7 +343,7 @@ class ComicBookReader(BoxLayout):
 
     def _first_image_loaded(self) -> None:
         self._page_manager.set_to_first_page_to_read()
-        logging.debug(f"First image loaded: current page index = { self._current_page_index}.")
+        logging.debug(f"First image loaded: current page index = {self._current_page_index}.")
 
         self._on_comic_is_ready_to_read()
 
@@ -516,7 +519,10 @@ class ComicBookReaderScreen(BoxLayout, Screen):
     action_bar_goto_end_filepath = StringProperty()
 
     def __init__(
-        self, reader_settings: ReaderSettings, reader_app_icon_file: str, **kwargs  # noqa: ANN003
+        self,
+        reader_settings: ReaderSettings,
+        reader_app_icon_file: str,
+        **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
 

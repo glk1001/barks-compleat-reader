@@ -29,7 +29,7 @@ class CensorshipFixesScreen(BoxLayout, Screen):
         app_icon_file: str,
         font_manager: FontManager,
         on_close_screen: Callable[[], None],
-        **kwargs: str
+        **kwargs: str,
     ) -> None:
         super().__init__(**kwargs)
 

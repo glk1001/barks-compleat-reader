@@ -1,7 +1,6 @@
 line-length = 100
 
 [lint]
-    #select = ["E", "F", "I", "B", "ANN"]
     select = ["ALL"]
 
     ignore = [
@@ -15,14 +14,3 @@ line-length = 100
         "S101", "S311",
         "TD002", "TD003"
     ]
-
-[lint.per-file-ignores]
-    "background_views.py" = ["ERA001"]
-    "barks-reader.py" = ["I001", "E402", "ERA001"]
-    "comic_book_loader.py" = ["ERA001"]
-    "export-reader-files.py" = ["ERA001"]
-    "fantagraphics_volumes.py" = ["ERA001"]
-    "reader_file_paths.py" = ["ERA001"]
-    "reader_utils.py" = ["ERA001"]
-    "reader_ui_classes.py" = ["ERA001"]
-    "test_comic_archive.py" = ["T201"]

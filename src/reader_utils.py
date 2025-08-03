@@ -1,3 +1,5 @@
+# ruff: noqa: ERA001
+
 from datetime import UTC, datetime
 from pathlib import Path
 from random import randrange
@@ -41,7 +43,7 @@ def is_blank_page(page_filename: str, page_type: PageType) -> bool:
 
 def get_formatted_color(color: Color) -> str:
     color_strings = [f"{c:04.2f}" for c in color]
-    return f'({", ".join(color_strings)})'
+    return f"({', '.join(color_strings)})"
 
 
 def get_formatted_payment_info(payment_info: PaymentInfo) -> str:

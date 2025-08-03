@@ -44,11 +44,7 @@ def text_includes_num_titles(text: str) -> bool:
 
 
 def get_action_bar_title(font_manager: FontManager, title: str) -> str:
-    return (
-        f"[font={CARL_BARKS_FONT_NAME}]"
-        f"[size={int(font_manager.app_title_font_size)}]"
-        f"{title}"
-    )
+    return f"[font={CARL_BARKS_FONT_NAME}][size={int(font_manager.app_title_font_size)}]{title}"
 
 
 class ReaderFormatter:

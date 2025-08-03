@@ -1,3 +1,5 @@
+# ruff: noqa: ERA001
+
 import logging
 import zipfile
 from dataclasses import dataclass

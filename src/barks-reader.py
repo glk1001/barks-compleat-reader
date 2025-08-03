@@ -1,3 +1,5 @@
+# ruff: noqa: I001, E402, ERA001
+
 from __future__ import annotations
 
 # ------------------------------------------------------------------ #
@@ -125,7 +127,11 @@ class BarksReaderApp(App):
         settings.interface.menu.height = ACTION_BAR_SIZE_Y
 
     def on_config_change(
-        self, _config: ConfigParser, section: str, key: str, value: Any  # noqa: ANN401
+        self,
+        _config: ConfigParser,
+        section: str,
+        key: str,
+        value: Any,  # noqa: ANN401
     ) -> None:
         logging.info(f"Config change: section = '{section}', key = '{key}', value = '{value}'.")
         self._reader_settings.on_changed_setting(section, key, value)
@@ -291,6 +297,5 @@ if __name__ == "__main__":
 
     logging.debug("Terminating...")
     logging.info(
-        f"Final window size = {Window.size},"
-        f" dpi = {Window.dpi}, pos = {Window.left},{Window.top}."
+        f"Final window size = {Window.size}, dpi = {Window.dpi}, pos = {Window.left},{Window.top}."
     )

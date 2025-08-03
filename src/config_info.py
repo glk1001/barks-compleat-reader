@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from sys import platform as _sys_platform
+from typing import cast
 
 
 class ConfigInfo:
@@ -42,12 +43,14 @@ class ConfigInfo:
         if self.platform == "ios":
             data_dir = Path("~/Documents").expanduser() / self._app_name
         elif self.platform == "android":
-            from jnius import autoclass, cast  # noqa: PLC0415
+            from jnius import autoclass  # noqa: PLC0415
 
             # noinspection PyPep8Naming
             PythonActivity = autoclass("org.kivy.android.PythonActivity")  # noqa: N806
-            context = cast("android.content.Context", PythonActivity.mActivity)
-            file_p = cast("java.io.File", context.getFilesDir())
+            # noinspection PyTypeHints
+            context = cast("android.content.Context", PythonActivity.mActivity)  # noqa: F821
+            # noinspection PyTypeHints
+            file_p = cast("java.io.File", context.getFilesDir())  # noqa: F821
             data_dir = Path(file_p.getAbsolutePath())
         elif self.platform == "win":
             data_dir = Path(os.environ["APPDATA"]) / self._app_name

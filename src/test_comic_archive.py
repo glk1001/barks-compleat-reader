@@ -1,3 +1,5 @@
+# ruff: noqa: T201
+
 import logging
 import sys
 from pathlib import Path

@@ -1,3 +1,5 @@
+# ruff: noqa: TC006
+
 from __future__ import annotations
 
 import logging
@@ -69,13 +71,13 @@ def find_node_by_path(tree: ReaderTreeView, path_from_root: list[str]) -> TreeVi
 
 def get_tree_view_node_id_text(node: TreeViewNode) -> str:
     if type(node) is TitleTreeViewNode:
-        return cast("TitleTreeViewNode", node).get_title().name
+        return cast(TitleTreeViewNode, node).get_title().name
     if type(node) is TitleSearchBoxTreeViewNode:
-        return cast("TitleSearchBoxTreeViewNode", node).name
+        return cast(TitleSearchBoxTreeViewNode, node).name
     if type(node) is TagSearchBoxTreeViewNode:
-        return cast("TagSearchBoxTreeViewNode", node).name
+        return cast(TagSearchBoxTreeViewNode, node).name
 
-    return get_clean_text_without_extra(cast("ButtonTreeViewNode", node).text)
+    return get_clean_text_without_extra(cast(ButtonTreeViewNode, node).text)
 
 
 def find_tree_view_node(start_node: TreeViewNode, node_text: str) -> TreeViewNode | None:

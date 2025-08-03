@@ -1,3 +1,5 @@
+# ruff: noqa: ERA001
+
 from __future__ import annotations
 
 import io
@@ -267,8 +269,7 @@ class ComicBookLoader:
                 load_error = True
             except KeyError:
                 logging.exception(
-                    "Key error accessing page_map or image_load_order,"
-                    " possibly due to stop/reset:"
+                    "Key error accessing page_map or image_load_order, possibly due to stop/reset:"
                 )
                 load_error = True
             except IndexError:
