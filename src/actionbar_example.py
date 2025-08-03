@@ -1,15 +1,14 @@
 import logging
 
+from kivy.base import runTouchApp
 from kivy.core.window import Window
+from kivy.factory import Factory
 from kivy.lang import Builder
+from kivy.uix.floatlayout import FloatLayout
 
 if __name__ == "__main__":
-    from kivy.base import runTouchApp
-    from kivy.uix.floatlayout import FloatLayout
-    from kivy.factory import Factory
-
-    # XXX clean the first registration done from '__main__' here.
-    # otherwise kivy.uix.actionbar.ActionPrevious != __main__.ActionPrevious
+    # Clean the first registration done from '__main__' here.
+    # Otherwise kivy.uix.actionbar.ActionPrevious != __main__.ActionPrevious
     Factory.unregister("ActionPrevious")
 
     Builder.load_string(
@@ -78,6 +77,6 @@ if __name__ == "__main__":
     if Window.set_custom_titlebar(title_bar):
         logging.info("Window: setting custom titlebar successful")
     else:
-        logging.info("Window: setting custom titlebar " "Not allowed on this system ")
+        logging.info("Window: setting custom titlebar not allowed on this system ")
 
     runTouchApp(float_layout)
