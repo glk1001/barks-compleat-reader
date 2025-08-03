@@ -1,0 +1,118 @@
+# The Compleat Barks Disney Reader
+
+The Compleat Barks Disney Reader is a desktop application designed for browsing, searching, and reading the complete
+collection of Carl Barks' Disney comics, specifically tailored for the Fantagraphics book series.
+
+Built with the Kivy framework in Python, it provides a rich, cross-platform user experience with a focus on intuitive
+navigation and a visually engaging interface.
+
+## Features
+
+- **Comprehensive Browsing**: Navigate the entire collection in multiple ways:
+    - **Chronological**: View stories based on their original submission date.
+    - **Series**: Browse by comic book series (e.g., *Walt Disney's Comics and Stories*, *Uncle Scrooge*).
+    - **Categories**: Explore stories grouped by tags, such as characters, themes, or story types.
+- **Powerful Search**: Quickly find titles by name or stories by specific tags using the integrated search boxes.
+- **Rich User Interface**: A dynamic `TreeView` provides easy navigation, while the main view displays context-aware
+  background art and information related to the selected comic or category.
+- **Integrated Comic Reader**: A fullscreen, touch/click-friendly reader with intuitive page navigation (click
+  left/right side of the screen) and a "go to page" dropdown for jumping directly to a specific page.
+- **Smart Loading**: Asynchronously loads comic images in the background for a smooth, non-blocking user experience.
+- **Customizable Viewing**: Supports optional override images for restored or fixed pages, which can be toggled via a
+  checkbox for specific titles.
+- **Persistent State**: Remembers the last-read page for each comic and the last selected node on startup, allowing you
+  to pick up right where you left off.
+
+## Screenshots
+
+*(Add screenshots of the main screen, the reader, and the settings panel here to showcase the application.)*
+
+---
+
+## Requirements
+
+- **Python**: 3.12 or newer.
+- **Fantagraphics Comic Archives**: You must have access to the digital versions of the Fantagraphics Carl Barks
+  Library, typically as `.zip` or `.cbz` files.
+- **Python Dependencies**: The required Python packages can be installed via `uv`.
+
+## Installation and Setup
+
+Follow these steps to get the application running on your local machine.
+
+**1. Clone the Repository**
+
+```bash
+git clone https://github.com/your-username/barks-compleat-digital.git
+git clone https://github.com/your-username/barks-compleat-reader.git
+cd barks-compleat-reader
+```
+
+**2. Install Dependencies**
+
+You need to use *uv* for package management and a Python virtual environment.
+
+```uv
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install the required packages
+uv sync
+
+# Create the alias:
+alias uvenv='UV_ENV_FILE=.uvenv uv'
+```
+
+**3. Initial Run and Configuration**
+
+The first time you run the application, it will create a configuration file. You will then need to configure the path to
+your comic archives.
+
+```bash
+uvenv run src/barks-reader.py
+```
+
+1. When the application opens, click the **Settings** icon in the action bar.
+2. In the settings panel, locate the setting for the **"Fantagraphics Volumes Directory"**.
+3. Set this to the absolute path of the folder containing your Fantagraphics comic book archive files (the `.zip` or
+   `.cbz` files).
+4. Close the settings panel and **restart the application**.
+
+The application will now load the titles from your specified directory.
+
+## Usage
+
+- **Run the application**:
+  ```bash
+  uvenv run src/barks-reader.py
+  ```
+- **Navigation**: Use the `TreeView` on the left to browse the collection.
+- **View Info**: Click on a title in the tree to see its cover art, publication details, and other information in the
+  main panel on the right.
+- **Read a Comic**: Click the large cover image in the main panel to open the comic book reader.
+
+---
+
+## Project Structure
+
+For those interested in the codebase, here is a brief overview of the key files:
+
+- `src/barks-reader.py`: The main application entry point. It initializes the Kivy app, sets up configuration, and
+  builds the main screens.
+- `src/main_screen.py`: Manages the primary UI, including the `TreeView`, the main information panel, and all user
+  interaction events on that screen. It orchestrates the background views and the logic for what to display.
+- `src/comic_book_reader.py`: Contains the `ComicBookReader` screen and the logic for displaying comic pages, handling
+  navigation, and managing the reader's state.
+- `src/comic_book_loader.py`: A crucial component that handles the background loading of comic book images from archives
+  in a separate thread to keep the UI responsive.
+- `src/reader_tree_builder.py`: Asynchronously builds the complex `TreeView` structure, populating it with all titles,
+  series, and categories.
+- `src/reader_ui_classes.py`: Defines custom Kivy widgets used throughout the application, such as specialized
+  `TreeView` nodes and popups.
+- `src/user_error_handler.py`: Provides user-friendly error popups for common configuration issues, like incorrect file
+  paths.
+- `src/*.kv`: Kivy language files that define the layout and appearance of the various UI components.
+
+## License
+
+This project is licensed under the GPL License.
