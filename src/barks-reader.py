@@ -23,7 +23,6 @@ config_info.setup_app_config_dir()
 
 import logging
 import sys
-import traceback
 from typing import TYPE_CHECKING, Any
 
 import kivy
@@ -284,15 +283,8 @@ if __name__ == "__main__":
         assert Config.getint("kivy", "exit_on_escape") == 0
         kivy_app = BarksReaderApp(comics_database)
         kivy_app.run()
-    except Exception as e:  # noqa: BLE001
-        _, _, tb = sys.exc_info()
-        tb_info = traceback.extract_tb(tb)
-        filename, line, func, text = tb_info[-1]
-        logging.fatal(
-            f"There's been a program error - the Barks reader app is terminating:"
-            f' Exception "{e}" at "{filename}:{line}" in "{func}" ({text}).'
-        )
-        traceback.print_exc()
+    except Exception:
+        logging.exception("There's been a program error - the Barks reader app is terminating: ")
         sys.exit(1)
 
     logging.debug("Terminating...")
