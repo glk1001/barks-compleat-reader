@@ -647,19 +647,19 @@ class MainScreen(BoxLayout, Screen):
 
     def on_appendix_don_ault_fanta_intro(self, _button: Button) -> None:
         self.read_article_as_comic_book(
-            Titles.DON_AULT_FANTA_INTRO,
+            Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
             ViewStates.ON_APPENDIX_DON_AULT_FANTA_INTRO_NODE,
         )
 
     def on_appendix_don_ault_life_among_ducks_pressed(self, _button: Button) -> None:
         self.read_article_as_comic_book(
-            Titles.DON_AULT_LIFE_AMONG_THE_DUCKS,
+            Titles.DON_AULT___LIFE_AMONG_THE_DUCKS,
             ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE,
         )
 
     def on_appendix_rich_tomasso_on_coloring_barks_pressed(self, _button: Button) -> None:
         self.read_article_as_comic_book(
-            Titles.RICH_TOMASSO_ON_COLORING_BARKS,
+            Titles.RICH_TOMASSO___ON_COLORING_BARKS,
             ViewStates.ON_APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_NODE,
         )
 
