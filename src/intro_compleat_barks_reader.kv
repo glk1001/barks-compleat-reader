@@ -1,0 +1,31 @@
+<IntroCompleatBarksReaderScreen>:
+    orientation: "vertical"
+
+    ActionBar:
+        id: intro_action_bar
+        height: root.ACTION_BAR_HEIGHT
+
+        ActionView:
+            use_separator: False
+
+            ActionPrevious:
+                title: root.action_bar_title
+                color: root.ACTION_BAR_TITLE_COLOR
+                markup: True
+                with_previous: False
+                app_icon: root.app_icon_filepath
+
+            ActionOverflow:
+
+            BarButton:
+                text: "Close"
+                icon: root.action_bar_close_icon_filepath
+                important: True
+                on_press: root.close()
+
+    Image:
+        color: 1,1,1,1
+        opacity: 1
+        source: root.intro_source
+        fit_mode: "cover"
+        mipmap: True

@@ -169,9 +169,7 @@
                 ActionButton:
                     text: 'Lower Title'
                     on_release: root.on_goto_fun_view_title(self)
-                    disabled:
-                        (root.bottom_view_title_opacity > 0.99) or not root.bottom_view_fun_image_from_title \
-                        or (root.intro_text_opacity > 0)
+                    disabled: (root.bottom_view_title_opacity > 0.99) or not root.bottom_view_fun_image_from_title
 
     BoxLayout:
         orientation: 'vertical' if self.width < self.height else 'horizontal'
@@ -236,37 +234,6 @@
         AnchorLayout:
             anchor_x: "right"
             anchor_y: "top"
-
-            BoxLayout:
-                orientation: "vertical"
-                opacity: root.intro_text_opacity
-
-                BgColorLabel:
-                    text: "Introduction to The Compleat Barks Disney Reader"
-                    font_size: fm.text_block_heading_font_size
-                    color: (0, 0, 0, 1)
-                    background_color: (1, 1, 1, 1)
-#                    background_color: (0, 1, 1, 1)
-                    bold: True
-                    size_hint: 1, 0.08
-                    text_size: self.size
-                    halign: 'center'
-                    valign: 'middle'
-
-                BgColorLabel:
-                    text: root.intro_text
-                    opacity: 1
-                    font_size: fm.intro_text_font_size
-                    color: (0, 0, 0, 1)
-                    background_color: (1, 1, 1, 1)
-#                    background_color: (1, 0, 1, 1)
-                    multiline: True
-                    markup: True
-                    size_hint: 1, 0.92
-                    text_size: self.size
-                    halign: 'justify'
-                    valign: 'top'
-                    padding: [dp(20), dp(5), dp(20), 0]
 
             # This is the main container for the title view.
             AnchorLayout:

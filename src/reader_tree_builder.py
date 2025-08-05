@@ -40,13 +40,14 @@ from timing import Timing
 from filtered_title_lists import FilteredTitleLists
 from reader_consts_and_types import (
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
-    APPENDIX_DON_AULT_FANTA_INTRO_TEXT,
     APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
     APPENDIX_NODE_TEXT,
     APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT,
     CATEGORIES_NODE_TEXT,
     CHRONOLOGICAL_NODE_TEXT,
     INDEX_NODE_TEXT,
+    INTRO_COMPLEAT_BARKS_READER_TEXT,
+    INTRO_DON_AULT_FANTA_INTRO_TEXT,
     INTRO_NODE_TEXT,
     SEARCH_NODE_TEXT,
     SERIES_NODE_TEXT,
@@ -441,7 +442,22 @@ class ReaderTreeBuilder:
     # --- Synchronous Helper Methods ---
 
     def _add_intro_node(self, tree: ReaderTreeView) -> None:
-        self._create_and_add_simple_node(tree, INTRO_NODE_TEXT, self._main_screen.on_intro_pressed)
+        intro_node = self._create_and_add_simple_node(
+            tree, INTRO_NODE_TEXT, self._main_screen.on_intro_pressed
+        )
+
+        self._create_and_add_simple_node(
+            tree,
+            INTRO_COMPLEAT_BARKS_READER_TEXT,
+            self._main_screen.on_intro_compleat_barks_reader_pressed,
+            parent_node=intro_node,
+        )
+        self._create_and_add_simple_node(
+            tree,
+            INTRO_DON_AULT_FANTA_INTRO_TEXT,
+            self._main_screen.on_intro_don_ault_fanta_intro,
+            parent_node=intro_node,
+        )
 
     def _add_the_stories_node(self, tree: ReaderTreeView) -> MainTreeViewNode:
         return self._create_and_add_simple_node(
@@ -463,20 +479,14 @@ class ReaderTreeBuilder:
 
         self._create_and_add_simple_node(
             tree,
-            APPENDIX_DON_AULT_FANTA_INTRO_TEXT,
-            self._main_screen.on_appendix_don_ault_fanta_intro,
+            APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT,
+            self._main_screen.on_appendix_rich_tomasso_on_coloring_barks_pressed,
             parent_node=appendix_node,
         )
         self._create_and_add_simple_node(
             tree,
             APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
             self._main_screen.on_appendix_don_ault_life_among_ducks_pressed,
-            parent_node=appendix_node,
-        )
-        self._create_and_add_simple_node(
-            tree,
-            APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT,
-            self._main_screen.on_appendix_rich_tomasso_on_coloring_barks_pressed,
             parent_node=appendix_node,
         )
         self._create_and_add_simple_node(

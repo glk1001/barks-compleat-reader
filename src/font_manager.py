@@ -15,7 +15,6 @@ class FontManager(EventDispatcher):
     check_box_font_size = NumericProperty()
     error_popup_font_size = NumericProperty()
     text_block_heading_font_size = NumericProperty()
-    intro_text_font_size = NumericProperty()
 
     tree_view_main_node_font_size = NumericProperty()
     tree_view_story_node_font_size = NumericProperty()
@@ -54,7 +53,6 @@ class FontManager(EventDispatcher):
             default_font_size = sp(15)
             error_popup_font_size = sp(20)
             text_block_heading_font_size = sp(20)
-            intro_text_font_size = sp(11)
             self.app_title_font_size = sp(12)
         else:
             main_title_font_size = sp(40)
@@ -66,7 +64,6 @@ class FontManager(EventDispatcher):
             default_font_size = sp(19)
             error_popup_font_size = sp(25)
             text_block_heading_font_size = sp(25)
-            intro_text_font_size = sp(16)
             self.app_title_font_size = sp(17)
 
         self.main_title_font_size = main_title_font_size
@@ -75,7 +72,6 @@ class FontManager(EventDispatcher):
         self.check_box_font_size = checkbox_font_size
         self.error_popup_font_size = error_popup_font_size
         self.text_block_heading_font_size = text_block_heading_font_size
-        self.intro_text_font_size = intro_text_font_size
 
         self.tree_view_main_node_font_size = default_font_size
         self.tree_view_story_node_font_size = default_font_size

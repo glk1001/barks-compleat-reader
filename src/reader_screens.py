@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 MAIN_READER_SCREEN = "main_screen"
 COMIC_BOOK_READER_SCREEN = "comic_book_reader"
 CENSORSHIP_FIXES_SCREEN = "censorship_fixes"
+INTRO_COMPLEAT_BARKS_READER_SCREEN = "intro_compleat_barks_reader"
 
 
 @dataclass
@@ -31,6 +32,7 @@ class ReaderScreens:
     main_screen: Screen
     comic_reader: Screen
     censorship_fixes: Screen
+    intro_compleat_barks_reader: Screen
 
 
 @dataclass
@@ -42,6 +44,9 @@ class ScreenSwitchers:
 
     switch_to_censorship_fixes: Callable[[], None]
     close_censorship_fixes: Callable[[], None]
+
+    switch_to_intro_compleat_barks_reader: Callable[[], None]
+    close_intro_compleat_barks_reader: Callable[[], None]
 
 
 class ReaderScreenManager:
@@ -78,6 +83,8 @@ class ReaderScreenManager:
             self._close_comic_book_reader,
             self._switch_to_censorship_fixes,
             self._close_censorship_fixes,
+            self._switch_to_intro_compleat_barks_reader,
+            self._close_intro_compleat_barks_reader,
         )
 
     def add_screens(self, reader_screens: ReaderScreens) -> ScreenManager:
@@ -88,6 +95,7 @@ class ReaderScreenManager:
         root.add_widget(self._reader_screens.main_screen)
         root.add_widget(self._reader_screens.comic_reader)
         root.add_widget(self._reader_screens.censorship_fixes)
+        root.add_widget(self._reader_screens.intro_compleat_barks_reader)
 
         root.current = MAIN_READER_SCREEN
 
@@ -114,6 +122,15 @@ class ReaderScreenManager:
 
     def _close_censorship_fixes(self) -> None:
         self._reader_screens.main_screen.appendix_censorship_fixes_closed()
+
+        self._screen_manager.transition = self._get_next_main_screen_transition()
+        self._screen_manager.current = MAIN_READER_SCREEN
+
+    def _switch_to_intro_compleat_barks_reader(self) -> None:
+        self._screen_manager.current = INTRO_COMPLEAT_BARKS_READER_SCREEN
+
+    def _close_intro_compleat_barks_reader(self) -> None:
+        self._reader_screens.main_screen.intro_compleat_barks_reader_closed()
 
         self._screen_manager.transition = self._get_next_main_screen_transition()
         self._screen_manager.current = MAIN_READER_SCREEN

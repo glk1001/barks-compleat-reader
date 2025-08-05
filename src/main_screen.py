@@ -59,12 +59,12 @@ from reader_consts_and_types import (
     ACTION_BAR_SIZE_Y,
     APP_TITLE,
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
-    APPENDIX_DON_AULT_FANTA_INTRO_TEXT,
     APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
     APPENDIX_NODE_TEXT,
     CATEGORIES_NODE_TEXT,
     CHRONOLOGICAL_NODE_TEXT,
     INDEX_NODE_TEXT,
+    INTRO_DON_AULT_FANTA_INTRO_TEXT,
     INTRO_NODE_TEXT,
     SEARCH_NODE_TEXT,
     SERIES_NODE_TEXT,
@@ -101,12 +101,12 @@ from reader_ui_classes import (
 )
 from reader_utils import (
     get_all_files_in_dir,
-    read_text_paragraphs,
     read_title_list,
     set_kivy_busy_cursor,
     set_kivy_normal_cursor,
 )
 from special_overrides_handler import SpecialFantaOverrides
+from src.reader_consts_and_types import INTRO_COMPLEAT_BARKS_READER_TEXT
 from user_error_handler import ErrorTypes, UserErrorHandler
 
 if TYPE_CHECKING:
@@ -136,10 +136,11 @@ NODE_TYPE_TO_VIEW_STATE_MAP = {
 
 NODE_TEXT_TO_VIEW_STATE_MAP = {
     INTRO_NODE_TEXT: ViewStates.ON_INTRO_NODE,
+    INTRO_COMPLEAT_BARKS_READER_TEXT: ViewStates.ON_INTRO_COMPLEAT_BARKS_READER_NODE,
+    INTRO_DON_AULT_FANTA_INTRO_TEXT: ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,
     THE_STORIES_NODE_TEXT: ViewStates.ON_THE_STORIES_NODE,
     SEARCH_NODE_TEXT: ViewStates.ON_SEARCH_NODE,
     APPENDIX_NODE_TEXT: ViewStates.ON_APPENDIX_NODE,
-    APPENDIX_DON_AULT_FANTA_INTRO_TEXT: ViewStates.ON_APPENDIX_DON_AULT_FANTA_INTRO_NODE,
     APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT: ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE,
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT: ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
     INDEX_NODE_TEXT: ViewStates.ON_INDEX_NODE,
@@ -190,9 +191,6 @@ class MainScreen(BoxLayout, Screen):
     title_page_image_source = StringProperty()
 
     DEBUG_BACKGROUND_OPACITY = 0
-
-    intro_text = StringProperty()
-    intro_text_opacity = NumericProperty(0.0)
 
     top_view_image_source = StringProperty()
     top_view_image_fit_mode = StringProperty(FIT_MODE_COVER)
@@ -534,13 +532,6 @@ class MainScreen(BoxLayout, Screen):
         else:
             self._scroll_to_node(node)
 
-    def on_intro_pressed(self, _button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_INTRO_NODE)
-        self.intro_text_opacity = 1
-        self.intro_text = read_text_paragraphs(
-            self._reader_settings.sys_file_paths.get_intro_text_file(),
-        )
-
     def on_the_stories_pressed(self, _button: Button) -> None:
         self._update_view_for_node(ViewStates.ON_THE_STORIES_NODE)
 
@@ -642,14 +633,23 @@ class MainScreen(BoxLayout, Screen):
 
         return True
 
-    def on_appendix_pressed(self, _button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_APPENDIX_NODE)
+    def on_intro_pressed(self, _button: Button) -> None:
+        self._update_view_for_node(ViewStates.ON_INTRO_NODE)
 
-    def on_appendix_don_ault_fanta_intro(self, _button: Button) -> None:
+    def on_intro_compleat_barks_reader_pressed(self, _button: Button) -> None:
+        self._screen_switchers.switch_to_intro_compleat_barks_reader()
+
+    def intro_compleat_barks_reader_closed(self) -> None:
+        self._update_view_for_node(ViewStates.ON_INTRO_NODE)
+
+    def on_intro_don_ault_fanta_intro(self, _button: Button) -> None:
         self.read_article_as_comic_book(
             Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
-            ViewStates.ON_APPENDIX_DON_AULT_FANTA_INTRO_NODE,
+            ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,
         )
+
+    def on_appendix_pressed(self, _button: Button) -> None:
+        self._update_view_for_node(ViewStates.ON_APPENDIX_NODE)
 
     def on_appendix_don_ault_life_among_ducks_pressed(self, _button: Button) -> None:
         self.read_article_as_comic_book(
@@ -779,8 +779,6 @@ class MainScreen(BoxLayout, Screen):
         self._background_views.set_current_tag(tag)
 
         self._background_views.set_view_state(tree_node)
-
-        self.intro_text_opacity = 0.0
 
         self._top_view_image_info = self._background_views.get_top_view_image_info()
         self.top_view_image_opacity = self._background_views.get_top_view_image_opacity()

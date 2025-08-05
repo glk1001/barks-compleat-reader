@@ -51,10 +51,11 @@ class ViewStates(Enum):
     PRE_INIT = auto()
     INITIAL = auto()
     ON_INTRO_NODE = auto()
+    ON_INTRO_COMPLEAT_BARKS_READER_NODE = auto()
+    ON_INTRO_DON_AULT_FANTA_INTRO_NODE = auto()
     ON_THE_STORIES_NODE = auto()
     ON_SEARCH_NODE = auto()
     ON_APPENDIX_NODE = auto()
-    ON_APPENDIX_DON_AULT_FANTA_INTRO_NODE = auto()
     ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE = auto()
     ON_APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_NODE = auto()
     ON_APPENDIX_CENSORSHIP_FIXES_NODE = auto()
@@ -220,12 +221,6 @@ class BackgroundViews:
             self._bottom_view_title_opacity = 0.0
             return
 
-        if self._view_state == ViewStates.ON_INTRO_NODE:
-            self._set_top_view_image()
-            self._bottom_view_fun_image_opacity = 0.0
-            self._bottom_view_title_opacity = 0.0
-            return
-
         if self._view_state in [
             ViewStates.ON_TITLE_SEARCH_BOX_NODE,
             ViewStates.ON_TITLE_NODE,
@@ -247,6 +242,12 @@ class BackgroundViews:
             case ViewStates.PRE_INIT | ViewStates.INITIAL:
                 self._set_initial_top_view_image()
             case ViewStates.ON_INTRO_NODE:
+                self._set_top_view_image_for_intro()
+            case ViewStates.ON_INTRO_COMPLEAT_BARKS_READER_NODE:
+                # TODO: Fix this
+                self._set_top_view_image_for_intro()
+            case ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE:
+                # TODO: Fix this
                 self._set_top_view_image_for_intro()
             case (
                 ViewStates.ON_THE_STORIES_NODE
@@ -292,9 +293,6 @@ class BackgroundViews:
             ):
                 self._set_top_view_image_for_search()
             case ViewStates.ON_APPENDIX_NODE:
-                self._set_top_view_image_for_appendix()
-            case ViewStates.ON_APPENDIX_DON_AULT_FANTA_INTRO_NODE:
-                # TODO: Fix this
                 self._set_top_view_image_for_appendix()
             case ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE:
                 # TODO: Fix this
