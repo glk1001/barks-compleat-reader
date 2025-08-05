@@ -278,7 +278,7 @@
                 # The opacity controls this entire container.
                 opacity: root.bottom_view_title_opacity
                 title_box_padding: dp(0.03 * root.view_width)
-                title_box_spacing: dp(0.06 * root.view_height)
+                title_box_spacing: dp(0.055 * root.view_height)
 
                 # The background image is now a direct child, simplifying the structure.
                 Image:
@@ -326,7 +326,7 @@
                             id: title_info_box
                             orientation: 'vertical'
                             size_hint: 0.56, 1.0
-                            pos_hint: {'x': 0, 'top': 0.92}
+                            pos_hint: {'x': 0, 'top': 0.95}
                             padding: [bottom_title_view.title_box_padding, 0, 0, 0]
                             spacing: bottom_title_view.title_box_spacing
 
@@ -387,7 +387,7 @@
                                 # Center the button within the right column
                                 pos_hint: {'center_x': 0.5}
                                 # Bind the button's top to the top of the extra_info label
-                                top: title_extra_info_label.top - (0.05 * bottom_title_view.title_box_spacing)
+                                top: title_extra_info_label.top - (0.4 * bottom_title_view.title_box_spacing)
 
                                 canvas.before:
                                     Color:
