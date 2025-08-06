@@ -24,7 +24,6 @@ class SystemFilePaths:
         self._transparent_blank_path: Path | None = None
         self._empty_page_path: Path | None = None
         self._intro_image_path: Path | None = None
-        self._censorship_fixes_text_path: Path | None = None
         self._favourite_titles_path: Path | None = None
 
         self._fantagraphics_overrides_root_dir: Path | None = None
@@ -53,7 +52,6 @@ class SystemFilePaths:
         self._transparent_blank_path = self._various_files_dir / "transparent-blank.png"
         self._empty_page_path = self._various_files_dir / "empty-page.jpg"
         self._intro_image_path = self._various_files_dir / "intro-to-barks-reader.jpg"
-        self._censorship_fixes_text_path = self._various_files_dir / "censorship-fixes.txt"
         self._favourite_titles_path = self._various_files_dir / "favourite-titles.txt"
 
         self._fantagraphics_overrides_root_dir = (
@@ -89,7 +87,6 @@ class SystemFilePaths:
             self._transparent_blank_path,
             self._empty_page_path,
             self._intro_image_path,
-            self._censorship_fixes_text_path,
             self._favourite_titles_path,
         ]
         self._check_files(files_to_check)
@@ -155,9 +152,6 @@ class SystemFilePaths:
 
     def get_intro_image_file(self) -> Path:
         return self._intro_image_path
-
-    def get_censorship_fixes_text_file(self) -> Path:
-        return self._censorship_fixes_text_path
 
     def get_favourite_titles_path(self) -> Path:
         return self._favourite_titles_path

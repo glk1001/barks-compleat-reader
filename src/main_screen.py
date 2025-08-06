@@ -664,10 +664,10 @@ class MainScreen(BoxLayout, Screen):
         )
 
     def on_appendix_censorship_fixes_pressed(self, _button: Button) -> None:
-        self._screen_switchers.switch_to_censorship_fixes()
-
-    def appendix_censorship_fixes_closed(self) -> None:
-        self._update_view_for_node(ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE)
+        self.read_article_as_comic_book(
+            Titles.CENSORSHIP_FIXES_AND_OTHER_CHANGES,
+            ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
+        )
 
     def on_index_pressed(self, _button: Button) -> None:
         self._update_view_for_node(ViewStates.ON_INDEX_NODE)

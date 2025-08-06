@@ -35,7 +35,6 @@ from kivy.lang import Builder
 from kivy.uix.settings import Settings, SettingsWithSpinner
 from screeninfo import get_monitors
 
-from censorship_fixes import get_censorship_fixes_screen
 from comic_book_reader import get_barks_comic_reader_screen
 from filtered_title_lists import FilteredTitleLists
 from font_manager import FontManager
@@ -43,7 +42,6 @@ from intro_compleat_barks_reader import get_intro_compleat_barks_reader_screen
 from main_screen import MainScreen
 from reader_consts_and_types import ACTION_BAR_SIZE_Y, APP_TITLE
 from reader_screens import (
-    CENSORSHIP_FIXES_SCREEN,
     COMIC_BOOK_READER_SCREEN,
     INTRO_COMPLEAT_BARKS_READER_SCREEN,
     MAIN_READER_SCREEN,
@@ -198,15 +196,6 @@ class BarksReaderApp(App):
         )
         self._main_screen.comic_book_reader = comic_reader_screen.comic_book_reader
 
-        logging.debug("Instantiating censorship fixes screen...")
-        censorship_fixes_screen = get_censorship_fixes_screen(
-            CENSORSHIP_FIXES_SCREEN,
-            self._reader_settings,
-            self._main_screen.app_icon_filepath,
-            self.font_manager,
-            self._screen_switchers.close_censorship_fixes,
-        )
-
         logging.debug("Instantiating introduction screen...")
         intro_screen = get_intro_compleat_barks_reader_screen(
             INTRO_COMPLEAT_BARKS_READER_SCREEN,
@@ -219,7 +208,6 @@ class BarksReaderApp(App):
         reader_screens = ReaderScreens(
             self._main_screen,
             comic_reader_screen,
-            censorship_fixes_screen,
             intro_screen,
         )
 

@@ -12,7 +12,7 @@ from barks_fantagraphics.barks_tags import (
     TagGroups,
     Tags,
 )
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.barks_titles import BARKS_TITLES, VACATION_TIME, Titles
 from barks_fantagraphics.comics_utils import get_abbrev_path
 from barks_fantagraphics.fanta_comics_info import (
     ALL_LISTS,
@@ -302,7 +302,7 @@ class BackgroundViews:
                 self._set_top_view_image_for_appendix()
             case ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE:
                 # TODO: Fix this
-                self._set_top_view_image_for_appendix()
+                self._set_top_view_image_for_appendix_censorship_fixes()
             case ViewStates.ON_INDEX_NODE:
                 self._set_top_view_image_for_index()
             case _:
@@ -442,6 +442,15 @@ class BackgroundViews:
             self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
         )
 
+    def _set_top_view_image_for_appendix_censorship_fixes(self) -> None:
+        title = Titles.VACATION_TIME
+        file1 = (
+            self._reader_settings.file_paths.get_comic_favourite_files_dir()
+            / VACATION_TIME
+            / "076-8-flipped.png"
+        )
+        self._top_view_image_info = ImageInfo(file1, title, FIT_MODE_COVER)
+
     def _set_top_view_image_for_index(self) -> None:
         title = Titles.TRUANT_OFFICER_DONALD
         self._top_view_image_info = ImageInfo(
@@ -461,9 +470,17 @@ class BackgroundViews:
         ]:
             return
 
-        self._bottom_view_fun_image_info = self._random_title_images.get_random_image(
-            self._get_fun_image_titles(), use_random_fit_mode=True
-        )
+        if self._view_state == ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE:
+            fanta_title_list = self._get_fanta_title_list(
+                BARKS_TAGGED_TITLES[Tags.CENSORED_STORIES_BUT_FIXED]
+            )
+            self._bottom_view_fun_image_info = self._random_title_images.get_random_image(
+                fanta_title_list, use_random_fit_mode=True
+            )
+        else:
+            self._bottom_view_fun_image_info = self._random_title_images.get_random_image(
+                self._get_fun_image_titles(), use_random_fit_mode=True
+            )
         self._set_bottom_view_fun_image_color()
         self._schedule_bottom_view_fun_image_event()
 

@@ -58,12 +58,14 @@ def get_formatted_payment_info(payment_info: PaymentInfo) -> str:
     )
 
 
-def get_all_files_in_dir(dir_path: Path) -> list[Path]:
+def get_all_files_in_dir(dir_path: Path, recurse: bool = False) -> list[Path]:
     files = []
     for filename in dir_path.iterdir():
         filepath = dir_path / filename
         if filepath.is_file():
             files.append(filepath)
+        elif recurse:
+            files.extend(get_all_files_in_dir(filepath))
 
     return files
 
