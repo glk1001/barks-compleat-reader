@@ -1,29 +1,39 @@
 import logging  # noqa: INP001
 import shutil
+import sys
 from collections.abc import Callable
+from configparser import ConfigParser
 from pathlib import Path
 
+from barks_fantagraphics.comics_cmd_args import CmdArgNames, CmdArgs
 from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PNG_FILE_EXT
+from barks_fantagraphics.comics_logging import setup_logging
+from barks_fantagraphics.comics_utils import get_abbrev_path
 from barks_fantagraphics.pil_image_utils import SAVE_JPG_COMPRESS_LEVEL, open_pil_image_for_reading
 
-# Setup basic logging to see the output and any potential errors
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+from src.config_info import ConfigInfo  # make sure this is before any kivy imports
+from src.reader_settings import ReaderSettings
 
 
 def copy_or_convert_file(file_path: Path, dest_dir: Path) -> None:
+    if not file_path.is_file():
+        msg = f'Could not find source file "{file_path}".'
+        raise FileNotFoundError(msg)
+
     # noinspection PyBroadException
     try:
         if file_path.suffix == PNG_FILE_EXT:
             dest_file = dest_dir / (file_path.stem + JPG_FILE_EXT)
-            logging.info(f'Converting png file "{file_path}" to "{dest_file}"...')
+            logging.info(
+                f'Converting png file "{get_abbrev_path(file_path)}"'
+                f' to "{get_abbrev_path(dest_file)}"...'
+            )
             copy_file_to_jpg(file_path, dest_file)
         else:
             dest_file = dest_dir / file_path.name
-            logging.info(f'Copying file "{file_path}" to "{dest_file}"...')
+            logging.info(
+                f'Copying file "{get_abbrev_path(file_path)}" to "{get_abbrev_path(dest_file)}"...'
+            )
             shutil.copy(file_path, dest_file)
 
     except FileNotFoundError:
@@ -43,7 +53,7 @@ def copy_file_to_jpg(srce_file: Path, dest_file: Path) -> None:
     )
 
 
-def traverse_and_process(
+def traverse_and_process_dirs(
     root_directory: Path, dest_dir: Path, file_processor_func: Callable[[Path, Path], None]
 ) -> None:
     """Traverses a directory tree and runs a processor function on each file.
@@ -78,7 +88,29 @@ def traverse_and_process(
 
 
 if __name__ == "__main__":
-    png_dir = Path("~/Books/Carl Barks/Barks Panels Pngs").expanduser()
-    jpg_dir = Path("~/Books/Carl Barks/Compleat Barks Disney Reader/Barks Panels").expanduser()
+    # TODO(glk): Some issue with type checking inspection?
+    # noinspection PyTypeChecker
+    cmd_args = CmdArgs("Fantagraphics source files", CmdArgNames.TITLE | CmdArgNames.VOLUME)
+    args_ok, error_msg = cmd_args.args_are_valid()
+    if not args_ok:
+        logging.error(error_msg)
+        sys.exit(1)
 
-    traverse_and_process(png_dir, jpg_dir, file_processor_func=copy_or_convert_file)
+    # noinspection PyBroadException
+    try:
+        config_info = ConfigInfo()
+        config = ConfigParser()
+        config.read(config_info.app_config_path)
+        reader_settings = ReaderSettings()
+        reader_settings.set_config(config, config_info.app_config_path)
+        reader_settings.set_barks_panels_dir()
+
+        setup_logging(cmd_args.get_log_level())
+
+        png_dir = reader_settings.file_paths.get_default_png_barks_panels_dir()
+        jpg_dir = reader_settings.file_paths.get_default_jpg_barks_panels_dir()
+
+        traverse_and_process_dirs(png_dir, jpg_dir, file_processor_func=copy_or_convert_file)
+
+    except Exception:
+        logging.exception("Program error: ")
