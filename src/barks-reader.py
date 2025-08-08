@@ -1,4 +1,4 @@
-# ruff: noqa: I001, E402, ERA001
+# ruff: noqa: E402, ERA001
 
 from __future__ import annotations
 
@@ -7,22 +7,15 @@ from __future__ import annotations
 # --- app's settings directory. The 'config_info' module handles --- #
 # --- this, and for this to work, we need to import it before    --- #
 # --- any kivy imports.                                          --- #
-import os
-from pathlib import Path
 from config_info import ConfigInfo
 
-# This app will hook into kivy logging, so there is no kivy console
-# logging required.
-os.environ["KIVY_NO_CONSOLELOG"] = "1"
-os.environ["KIVY_LOG_MODE"] = "MIXED"
-
-APP_NAME = Path(__file__).stem
-config_info = ConfigInfo(APP_NAME)
+config_info = ConfigInfo()
 config_info.setup_app_config_dir()
 # ------------------------------------------------------------------ #
 
 import logging
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import kivy

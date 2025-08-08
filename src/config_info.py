@@ -3,10 +3,18 @@ from pathlib import Path
 from sys import platform as _sys_platform
 from typing import cast
 
+APP_NAME = "barks-reader"
+
+# This app will hook into kivy logging, so there is no kivy console
+# logging required.
+os.environ["KIVY_NO_ARGS"] = "1"
+os.environ["KIVY_NO_CONSOLELOG"] = "1"
+os.environ["KIVY_LOG_MODE"] = "MIXED"
+
 
 class ConfigInfo:
-    def __init__(self, app_name: str) -> None:
-        self._app_name = app_name
+    def __init__(self) -> None:
+        self._app_name = APP_NAME
         self._app_config_dir: Path | None = None
         self.app_config_path: Path | None = None
         self.kivy_config_dir: Path | None = None
