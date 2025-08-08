@@ -6,10 +6,10 @@ from kivy.properties import StringProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import Screen
 
-from font_manager import FontManager
-from reader_consts_and_types import ACTION_BAR_SIZE_Y
-from reader_formatter import get_action_bar_title
-from reader_settings import ReaderSettings
+from src.font_manager import FontManager
+from src.reader_formatter import get_action_bar_title
+from src.reader_settings import ReaderSettings
+from src.reader_ui_classes import ACTION_BAR_SIZE_Y
 
 KV_FILE = Path(__file__).stem + ".kv"
 

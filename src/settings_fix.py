@@ -7,8 +7,6 @@ from kivy.properties import ObjectProperty
 from kivy.uix.popup import Popup
 from kivy.uix.settings import SettingItem
 
-LONG_PATH = "longpath"
-
 KV_SETTINGS_OVERRIDE = """
 <-SettingItem>:
     size_hint: .25, None

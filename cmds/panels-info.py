@@ -1,4 +1,4 @@
-# ruff: noqa: T201  # noqa: INP001
+# ruff: noqa: T201, INP001
 
 import logging
 import sys
@@ -24,6 +24,7 @@ SHORT_FILE_TYPE_NAMES = {
     FileTypes.SPLASH: "sp",
 }
 RELEVANT_FILE_TYPES = [ft for ft in FileTypes if ft != FileTypes.NONTITLE]
+
 
 # TODO(glk): Some issue with type checking inspection?
 # noinspection PyTypeChecker

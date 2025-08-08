@@ -1,7 +1,10 @@
+# ruff: noqa: ERA001
+
 import re
+from datetime import UTC, datetime
 
 from barks_fantagraphics.barks_extra_info import BARKS_EXTRA_INFO
-from barks_fantagraphics.barks_payments import BARKS_PAYMENTS
+from barks_fantagraphics.barks_payments import BARKS_PAYMENTS, PaymentInfo
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
 from barks_fantagraphics.comics_consts import CARL_BARKS_FONT_NAME
@@ -10,9 +13,10 @@ from barks_fantagraphics.comics_utils import (
     get_long_formatted_submitted_date,
 )
 from barks_fantagraphics.fanta_comics_info import FAN, FANTA_SOURCE_COMICS, FantaComicBookInfo
+from cpi import inflate
 
-from font_manager import FontManager
-from reader_utils import get_formatted_payment_info
+from src.font_manager import FontManager
+from src.reader_colors import Color
 
 LONG_TITLE_SPLITS = {
     Titles.LOST_CROWN_OF_GENGHIS_KHAN_THE: "The Lost Crown\nof Genghis Khan!",
@@ -45,6 +49,23 @@ def text_includes_num_titles(text: str) -> bool:
 
 def get_action_bar_title(font_manager: FontManager, title: str) -> str:
     return f"[font={CARL_BARKS_FONT_NAME}][size={int(font_manager.app_title_font_size)}]{title}"
+
+
+def get_formatted_color(color: Color) -> str:
+    color_strings = [f"{c:04.2f}" for c in color]
+    return f"({', '.join(color_strings)})"
+
+
+def get_formatted_payment_info(payment_info: PaymentInfo) -> str:
+    current_year = datetime.now(UTC).year
+    cpi_adjusted_payment = inflate(payment_info.payment, payment_info.accepted_year)
+
+    return (
+        f"${payment_info.payment:.0f} (${cpi_adjusted_payment:.0f} in {current_year})"
+        #        f" ({get_formatted_day(payment_info.accepted_day)}"
+        #        f" {MONTH_AS_SHORT_STR[payment_info.accepted_month]}"
+        #        f" {payment_info.accepted_year})"
+    )
 
 
 class ReaderFormatter:

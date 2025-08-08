@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, cast
 
-from reader_formatter import get_clean_text_without_extra
-from reader_ui_classes import (
+from src.reader_formatter import get_clean_text_without_extra
+from src.reader_ui_classes import (
     ButtonTreeViewNode,
     ReaderTreeView,
     TagSearchBoxTreeViewNode,

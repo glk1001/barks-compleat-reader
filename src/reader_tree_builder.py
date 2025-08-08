@@ -37,8 +37,8 @@ from kivy.clock import Clock
 from kivy.uix.button import Button
 from timing import Timing
 
-from filtered_title_lists import FilteredTitleLists
-from reader_consts_and_types import (
+from src.filtered_title_lists import FilteredTitleLists
+from src.reader_consts_and_types import (
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
     APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
     APPENDIX_NODE_TEXT,
@@ -53,12 +53,12 @@ from reader_consts_and_types import (
     SERIES_NODE_TEXT,
     THE_STORIES_NODE_TEXT,
 )
-from reader_formatter import (
+from src.reader_formatter import (
     get_bold_markup_text,
     get_markup_text_with_extra,
     get_markup_text_with_num_titles,
 )
-from reader_ui_classes import (
+from src.reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
     MainTreeViewNode,
@@ -78,7 +78,7 @@ if TYPE_CHECKING:
 
     from kivy.uix.treeview import TreeViewNode
 
-    from main_screen import MainScreen
+    from src.main_screen import MainScreen
 
 BUTTON_ON_PRESS_CALLABLE = Callable[[Button], None]
 

@@ -27,23 +27,23 @@ from kivy.lang import Builder
 from kivy.uix.settings import Settings, SettingsWithSpinner
 from screeninfo import get_monitors
 
-from comic_book_reader import get_barks_comic_reader_screen
-from filtered_title_lists import FilteredTitleLists
-from font_manager import FontManager
-from intro_compleat_barks_reader import get_intro_compleat_barks_reader_screen
-from main_screen import MainScreen
-from reader_consts_and_types import ACTION_BAR_SIZE_Y, APP_TITLE
-from reader_screens import (
+from src.comic_book_reader import get_barks_comic_reader_screen
+from src.filtered_title_lists import FilteredTitleLists
+from src.font_manager import FontManager
+from src.intro_compleat_barks_reader import get_intro_compleat_barks_reader_screen
+from src.main_screen import MainScreen
+from src.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING
+from src.reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     INTRO_COMPLEAT_BARKS_READER_SCREEN,
     MAIN_READER_SCREEN,
     ReaderScreenManager,
     ReaderScreens,
 )
-from reader_settings import ReaderSettings
-from reader_ui_classes import ReaderTreeBuilderEventDispatcher
-from screen_metrics import get_screen_info, log_screen_metrics
-from settings_fix import LONG_PATH, SettingLongPath
+from src.reader_settings import BuildableReaderSettings
+from src.reader_ui_classes import ACTION_BAR_SIZE_Y, ReaderTreeBuilderEventDispatcher
+from src.screen_metrics import get_screen_info, log_screen_metrics
+from src.settings_fix import SettingLongPath
 
 if TYPE_CHECKING:
     from barks_fantagraphics.comics_database import ComicsDatabase
@@ -64,7 +64,7 @@ class BarksReaderApp(App):
         self.settings_cls = SettingsWithSpinner
 
         self._comics_database = comics_db
-        self._reader_settings = ReaderSettings()
+        self._reader_settings = BuildableReaderSettings()
         self.font_manager = FontManager()
 
         self._reader_screen_manager = ReaderScreenManager(self.open_settings)
@@ -111,7 +111,7 @@ class BarksReaderApp(App):
 
     def build_settings(self, settings: Settings) -> None:
         # Register our custom widget type with the name 'longpath'
-        settings.register_type(LONG_PATH, SettingLongPath)
+        settings.register_type(LONG_PATH_SETTING, SettingLongPath)
 
         self._reader_settings.build_settings(settings)
         self.config.write()

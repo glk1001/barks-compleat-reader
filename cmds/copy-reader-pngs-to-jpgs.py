@@ -1,4 +1,6 @@
-import logging  # noqa: INP001
+# ruff: noqa: INP001
+
+import logging
 import shutil
 import sys
 from collections.abc import Callable

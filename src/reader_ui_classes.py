@@ -10,6 +10,8 @@ from barks_fantagraphics.comics_utils import (
     get_short_submitted_day_and_month,
 )
 from barks_fantagraphics.title_search import BarksTitleSearch, unique_extend
+from kivy.clock import Clock
+from kivy.core.window import Window
 from kivy.event import EventDispatcher
 from kivy.metrics import dp
 from kivy.properties import NumericProperty, StringProperty
@@ -22,7 +24,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.treeview import TreeView, TreeViewNode
 from kivy.utils import escape_markup
 
-from reader_formatter import get_markup_text_with_num_titles, text_includes_num_titles
+from src.reader_formatter import get_markup_text_with_num_titles, text_includes_num_titles
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -37,6 +39,16 @@ if TYPE_CHECKING:
 TREE_VIEW_NODE_TEXT_COLOR = (1, 1, 1, 1)
 TREE_VIEW_NODE_SELECTED_COLOR = (1, 0, 1, 0.8)
 TREE_VIEW_NODE_BACKGROUND_COLOR = (0.0, 0.0, 0.0, 0.0)
+
+ACTION_BAR_SIZE_Y = dp(45)
+
+
+def set_kivy_busy_cursor() -> None:
+    Clock.schedule_once(lambda _dt: Window.set_system_cursor("wait"), 0)
+
+
+def set_kivy_normal_cursor() -> None:
+    Clock.schedule_once(lambda _dt: Window.set_system_cursor("arrow"), 0)
 
 
 class ReaderTreeView(TreeView):
