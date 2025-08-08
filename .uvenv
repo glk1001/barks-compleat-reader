@@ -1,2 +1,2 @@
-PYTHONPATH=/mnt/fast_data/github/barks-compleat-digital/barks-fantagraphics/src:/mnt/fast_data/github/barks-compleat-digital/build-comics
+PYTHONPATH=.:src:../barks-compleat-digital/barks-fantagraphics/src:../barks-compleat-digital/build-comics
 
