@@ -1,7 +1,8 @@
 from random import randrange, sample
 
-from reader_consts_and_types import Color
-from reader_utils import get_rand_int, prob_rand_less_equal
+from src.reader_utils import get_rand_int, prob_rand_less_equal
+
+Color = tuple[float, float, float, float]
 
 
 class RandomColorTint:

@@ -1,2 +1,2 @@
-PYTHONPATH=.:src:../barks-compleat-digital/barks-fantagraphics/src:../barks-compleat-digital/build-comics
+PYTHONPATH=.:../barks-compleat-digital/barks-fantagraphics/src:../barks-compleat-digital/build-comics
 

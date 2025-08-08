@@ -2,21 +2,18 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
-from reader_file_paths import (
+from src.reader_consts_and_types import LONG_PATH_SETTING
+from src.reader_file_paths import (
     DEFAULT_BARKS_READER_FILES_DIR,
     BarksPanelsExtType,
     ReaderFilePaths,
 )
-from settings_fix import LONG_PATH
-from system_file_paths import SystemFilePaths
+from src.system_file_paths import SystemFilePaths
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-    from kivy.config import ConfigParser
-    from kivy.uix.settings import Settings
 
 BARKS_READER_SECTION = "Barks Reader"
 
@@ -39,35 +36,35 @@ _READER_SETTINGS_JSON = f"""
    {{
       "title": "Fantagraphics Directory",
       "desc": "Directory containing the Fantagraphics comic zips",
-      "type": "{LONG_PATH}",
+      "type": "{LONG_PATH_SETTING}",
       "section": "{BARKS_READER_SECTION}",
       "key": "{FANTA_DIR}"
    }},
    {{
       "title": "Reader Files Directory",
       "desc": "Directory containing all the required Barks Reader files",
-      "type": "{LONG_PATH}",
+      "type": "{LONG_PATH_SETTING}",
       "section": "{BARKS_READER_SECTION}",
       "key": "{READER_FILES_DIR}"
    }},
    {{
       "title": "Prebuilt Comics Directory",
       "desc": "Directory containing specially prebuilt comics",
-      "type": "{LONG_PATH}",
+      "type": "{LONG_PATH_SETTING}",
       "section": "{BARKS_READER_SECTION}",
       "key": "{PREBUILT_COMICS_DIR}"
    }},
    {{
       "title": "Png Barks Panels Directory",
       "desc": "Directory containing Barks panels png images",
-      "type": "{LONG_PATH}",
+      "type": "{LONG_PATH_SETTING}",
       "section": "{BARKS_READER_SECTION}",
       "key": "{PNG_BARKS_PANELS_DIR}"
    }},
    {{
       "title": "Jpg Barks Panels Directory",
       "desc": "Directory containing Barks panels jpg images",
-      "type": "{LONG_PATH}",
+      "type": "{LONG_PATH_SETTING}",
       "section": "{BARKS_READER_SECTION}",
       "key": "{JPG_BARKS_PANELS_DIR}"
    }},
@@ -123,6 +120,17 @@ _READER_SETTINGS_JSON = f"""
    }}
 ]
 """
+
+
+class ConfigParser(Protocol):
+    def get(self, section: str, key: str) -> Any: ...
+    def setdefaults(self, data, defaults: dict[str, Any]) -> None: ...
+
+
+class Settings(Protocol):
+    def add_json_panel(
+        self, section: str, config: ConfigParser, data=_READER_SETTINGS_JSON
+    ) -> None: ...
 
 
 class ReaderSettings:

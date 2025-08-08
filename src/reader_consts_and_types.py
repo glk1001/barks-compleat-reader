@@ -1,6 +1,6 @@
-from kivy.metrics import dp
-
 APP_TITLE = "The Compleat Barks Disney Reader"
+
+LONG_PATH_SETTING = "longpath"
 
 INTRO_NODE_TEXT = "Introduction"
 INTRO_COMPLEAT_BARKS_READER_TEXT = "Introduction to the Compleat Barks Reader"
@@ -15,7 +15,3 @@ APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT = "Don Ault: Life Among the Ducks"
 APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT = "Rich Tomasso: On Coloring Barks"
 APPENDIX_CENSORSHIP_FIXES_NODE_TEXT = "Censorship Fixes and Other Changes"
 INDEX_NODE_TEXT = "Index"
-
-ACTION_BAR_SIZE_Y = dp(45)
-
-Color = tuple[float, float, float, float]

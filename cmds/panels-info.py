@@ -1,9 +1,10 @@
-# ruff: noqa: T201  # noqa: INP001
+# ruff: noqa: T201
 
 import logging
 import sys
 from configparser import ConfigParser
 from pathlib import Path
+from typing import Any
 
 from barks_fantagraphics.comics_cmd_args import CmdArgNames, CmdArgs
 from barks_fantagraphics.comics_logging import setup_logging
@@ -25,6 +26,14 @@ SHORT_FILE_TYPE_NAMES = {
 }
 RELEVANT_FILE_TYPES = [ft for ft in FileTypes if ft != FileTypes.NONTITLE]
 
+
+# Need this to satisfy type checking. 'setdefaults' is not important
+# for already existing settings.
+class PanelsConfigParser(ConfigParser):
+    def setdefaults(self, data, defaults: dict[str, Any]):
+        pass
+
+
 # TODO(glk): Some issue with type checking inspection?
 # noinspection PyTypeChecker
 cmd_args = CmdArgs("Fantagraphics source files", CmdArgNames.TITLE | CmdArgNames.VOLUME)
@@ -37,7 +46,7 @@ if not args_ok:
 try:
     config_info = ConfigInfo()
     print(f'Getting config from "{config_info.app_config_path}".')
-    config = ConfigParser()
+    config = PanelsConfigParser()
     config.read(config_info.app_config_path)
     reader_settings = ReaderSettings()
     reader_settings.set_config(config, config_info.app_config_path)

@@ -18,9 +18,9 @@ from kivy.uix.image import Image
 from kivy.uix.screenmanager import Screen
 from screeninfo import get_monitors
 
-from comic_book_loader import ComicBookLoader
-from reader_consts_and_types import ACTION_BAR_SIZE_Y
-from reader_formatter import get_action_bar_title
+from src.comic_book_loader import ComicBookLoader
+from src.reader_formatter import get_action_bar_title
+from src.reader_ui_classes import ACTION_BAR_SIZE_Y
 
 if TYPE_CHECKING:
     from collections import OrderedDict
@@ -32,10 +32,10 @@ if TYPE_CHECKING:
     from kivy.uix.actionbar import ActionBar, ActionButton
     from kivy.uix.widget import Widget
 
-    from comic_book_page_info import PageInfo
-    from font_manager import FontManager
-    from reader_settings import ReaderSettings
-    from system_file_paths import SystemFilePaths
+    from src.comic_book_page_info import PageInfo
+    from src.font_manager import FontManager
+    from src.reader_settings import ReaderSettings
+    from src.system_file_paths import SystemFilePaths
 
 GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT = 0.97
 GOTO_PAGE_BUTTON_HEIGHT = dp(25)

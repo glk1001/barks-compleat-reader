@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 
-from image_file_getter import ALL_TYPES, FileTypes, TitleImageFileGetter
-from reader_file_paths import EMERGENCY_INSET_FILE
-from reader_utils import prob_rand_less_equal
+from src.image_file_getter import ALL_TYPES, FileTypes, TitleImageFileGetter
+from src.reader_file_paths import EMERGENCY_INSET_FILE
+from src.reader_utils import prob_rand_less_equal
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 
-    from reader_settings import ReaderSettings
+    from src.reader_settings import ReaderSettings
 
 NUM_RAND_ATTEMPTS = 10
 MAX_IMAGE_FILENAMES_TO_KEEP = 100
