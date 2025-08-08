@@ -1,4 +1,4 @@
-import logging
+import logging  # noqa: INP001
 import shutil
 from collections.abc import Callable
 from pathlib import Path
@@ -14,7 +14,7 @@ logging.basicConfig(
 )
 
 
-def process_file(file_path: Path, dest_dir: Path) -> None:
+def copy_or_convert_file(file_path: Path, dest_dir: Path) -> None:
     # noinspection PyBroadException
     try:
         if file_path.suffix == PNG_FILE_EXT:
@@ -81,4 +81,4 @@ if __name__ == "__main__":
     png_dir = Path("~/Books/Carl Barks/Barks Panels Pngs").expanduser()
     jpg_dir = Path("~/Books/Carl Barks/Compleat Barks Disney Reader/Barks Panels").expanduser()
 
-    traverse_and_process(png_dir, jpg_dir, file_processor_func=process_file)
+    traverse_and_process(png_dir, jpg_dir, file_processor_func=copy_or_convert_file)
