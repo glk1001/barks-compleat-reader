@@ -1,15 +1,4 @@
-# ruff: noqa: E402, T201
-
-# ------------------------------------------------------------------ #
-# --- We need to change the KIVY_HOME directory to be under this --- #
-# --- app's settings directory. The 'config_info' module handles --- #
-# --- this, and for this to work, we need to import it before    --- #
-# --- any kivy imports.                                          --- #
-from src.config_info import ConfigInfo
-
-config_info = ConfigInfo()
-config_info.setup_app_config_dir()
-# ------------------------------------------------------------------ #
+# ruff: noqa: T201  # noqa: INP001
 
 import logging
 import sys
@@ -19,6 +8,7 @@ from pathlib import Path
 from barks_fantagraphics.comics_cmd_args import CmdArgNames, CmdArgs
 from barks_fantagraphics.comics_logging import setup_logging
 
+from src.config_info import ConfigInfo  # make sure this is before any kivy imports
 from src.image_file_getter import FileTypes, TitleImageFileGetter
 from src.reader_settings import ReaderSettings
 
@@ -43,13 +33,14 @@ if not args_ok:
     logging.error(error_msg)
     sys.exit(1)
 
+# noinspection PyBroadException
 try:
-    app_config_path = config_info.app_config_path
-    print(f'Getting config from "{app_config_path}".')
+    config_info = ConfigInfo()
+    print(f'Getting config from "{config_info.app_config_path}".')
     config = ConfigParser()
-    config.read(app_config_path)
+    config.read(config_info.app_config_path)
     reader_settings = ReaderSettings()
-    reader_settings.set_config(config, app_config_path)
+    reader_settings.set_config(config, config_info.app_config_path)
     reader_settings.set_barks_panels_dir()
 
     setup_logging(cmd_args.get_log_level())

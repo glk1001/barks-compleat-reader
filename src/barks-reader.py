@@ -10,7 +10,6 @@ from __future__ import annotations
 from config_info import ConfigInfo
 
 config_info = ConfigInfo()
-config_info.setup_app_config_dir()
 # ------------------------------------------------------------------ #
 
 import logging
@@ -73,6 +72,7 @@ class BarksReaderApp(App):
 
         self._main_screen: MainScreen | None = None
 
+    # noinspection PyTypeHints
     def _on_window_resize(self, _window: Window, width: int, height: int) -> None:
         logging.debug(f"App window resize event: width = {width}, height = {height}.")
         self.update_fonts(height)
@@ -82,8 +82,7 @@ class BarksReaderApp(App):
         self._main_screen.fonts_updated(self.font_manager)
 
     def close_app(self) -> None:
-        if self._main_screen:
-            self._main_screen.app_closing()
+        self._main_screen.app_closing()
         App.get_running_app().stop()
         Window.close()
 

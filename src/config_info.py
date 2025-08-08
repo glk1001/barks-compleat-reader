@@ -22,7 +22,9 @@ class ConfigInfo:
 
         self.platform = _get_platform()
 
-    def setup_app_config_dir(self) -> None:
+        self._setup_app_config_dir()
+
+    def _setup_app_config_dir(self) -> None:
         self._app_config_dir = self._get_app_config_dir()
 
         self._app_config_dir.mkdir(parents=True, exist_ok=True)
