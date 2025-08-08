@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from reader_file_paths import DEFAULT_BARKS_READER_FILES_DIR, BarksPanelsExtType, ReaderFilePaths
+from reader_file_paths import (
+    DEFAULT_BARKS_READER_FILES_DIR,
+    BarksPanelsExtType,
+    ReaderFilePaths,
+)
 from settings_fix import LONG_PATH
 from system_file_paths import SystemFilePaths
 
@@ -14,8 +17,6 @@ if TYPE_CHECKING:
 
     from kivy.config import ConfigParser
     from kivy.uix.settings import Settings
-
-HOME_DIR = os.environ.get("HOME")
 
 BARKS_READER_SECTION = "Barks Reader"
 

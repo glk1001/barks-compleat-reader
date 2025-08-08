@@ -3,12 +3,12 @@ from __future__ import annotations
 import logging
 from collections import defaultdict, deque
 from dataclasses import dataclass
-from enum import Enum, auto
 from random import randrange
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 
+from image_file_getter import ALL_TYPES, FileTypes, TitleImageFileGetter
 from reader_file_paths import EMERGENCY_INSET_FILE
 from reader_utils import prob_rand_less_equal
 
@@ -35,21 +35,6 @@ APP_SPLASH_IMAGES = [
 FIT_MODE_CONTAIN = "contain"
 FIT_MODE_COVER = "cover"
 
-
-class FileTypes(Enum):
-    BLACK_AND_WHITE = auto()
-    CENSORSHIP = auto()
-    COVER = auto()
-    FAVOURITE = auto()
-    INSET = auto()
-    NONTITLE = auto()
-    ORIGINAL_ART = auto()
-    SILHOUETTE = auto()
-    SPLASH = auto()
-
-
-ALL_TYPES = set(FileTypes)
-
 NON_TITLE_BIAS = 0.1
 
 
@@ -63,27 +48,15 @@ class ImageInfo:
 class RandomTitleImages:
     def __init__(self, reader_settings: ReaderSettings) -> None:
         self._reader_settings = reader_settings
+
         self._title_image_files: dict[str, dict[FileTypes, set[tuple[Path, bool]]]] = defaultdict(
             lambda: defaultdict(set)
         )
+        self._title_image_file_getter = TitleImageFileGetter(self._reader_settings)
 
         self._most_recently_used_images: deque[Path] = deque(maxlen=MAX_IMAGE_FILENAMES_TO_KEEP)
         self._last_title_image: dict[str, Path] = {}
         self._nontitle_files = self._get_nontitle_files()
-
-        self._FILE_TYPE_GETTERS: dict[
-            FileTypes, Callable[[str, bool], None | Path | list[Path]]
-        ] = {
-            # COVER special case: returns single string or None
-            FileTypes.COVER: self._reader_settings.file_paths.get_comic_cover_file,
-            FileTypes.BLACK_AND_WHITE: self._reader_settings.file_paths.get_comic_bw_files,
-            FileTypes.CENSORSHIP: self._reader_settings.file_paths.get_comic_censorship_files,
-            FileTypes.FAVOURITE: self._reader_settings.file_paths.get_comic_favourite_files,
-            FileTypes.INSET: self._reader_settings.file_paths.get_comic_inset_files,
-            FileTypes.ORIGINAL_ART: self._reader_settings.file_paths.get_comic_original_art_files,
-            FileTypes.SILHOUETTE: self._reader_settings.file_paths.get_comic_silhouette_files,
-            FileTypes.SPLASH: self._reader_settings.file_paths.get_comic_splash_files,
-        }
 
     def _add_last_image(self, image_filename: Path) -> None:
         self._most_recently_used_images.append(image_filename)
@@ -285,24 +258,9 @@ class RandomTitleImages:
         if title_str in self._title_image_files:
             return
 
-        for file_type, getter_func in self._FILE_TYPE_GETTERS.items():
-            for use_edited in [False, True]:
-                if file_type == FileTypes.COVER:
-                    # getter for COMIC returns a single string or None
-                    image_file = getter_func(title_str, use_edited)
-                    if image_file:
-                        self._add_image_files({image_file}, title_str, file_type, use_edited)
-                else:
-                    # Other getters return a List[str]
-                    image_files = getter_func(title_str, use_edited)
-                    if image_files:
-                        self._add_image_files(set(image_files), title_str, file_type, use_edited)
-
-    def _add_image_files(
-        self, image_files: set[Path], title_str: str, file_type: FileTypes, use_edited_only: bool
-    ) -> None:
-        new_files = {(f, use_edited_only) for f in image_files}
-        self._title_image_files[title_str][file_type].update(new_files)
+        self._title_image_files[title_str].update(
+            self._title_image_file_getter.get_all_title_image_files(title_str)
+        )
 
     @staticmethod
     def _get_random_comic_file(

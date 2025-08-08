@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from enum import Enum, auto
 from pathlib import Path
 
@@ -14,9 +15,10 @@ from barks_fantagraphics.barks_titles import (
 )
 from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PNG_FILE_EXT
 
-from file_paths import BARKS_DIR
 from reader_utils import get_all_files_in_dir
 
+HOME_DIR = Path(os.environ.get("HOME"))
+BARKS_DIR = HOME_DIR / "Books" / "Carl Barks"
 DEFAULT_BARKS_READER_FILES_DIR = BARKS_DIR / "Compleat Barks Disney Reader"
 EMERGENCY_INSET_FILE = Titles.BICEPS_BLUES
 
