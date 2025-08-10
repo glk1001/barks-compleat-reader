@@ -357,7 +357,12 @@ class ReaderTreeBuilder:
         new_node.bind(on_press=on_press_handler)
 
         for tag in BARKS_TAG_GROUPS[tag_group]:
-            yield from self._add_tag_node_gen(tree, tag, self._main_screen.on_tag_pressed, new_node)
+            if type(tag) is TagGroups:
+                yield from self._add_tag_group_node_gen(
+                    tree, tag, self._main_screen.on_tag_group_pressed, new_node
+                )
+            else:
+                yield from self._add_tag_node_gen(tree, tag, self._main_screen.on_tag_pressed, new_node)
 
         tree.add_node(new_node, parent=parent_node)
 
