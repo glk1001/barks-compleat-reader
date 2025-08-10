@@ -3,7 +3,7 @@ from collections.abc import Callable
 from enum import Enum, auto
 from pathlib import Path
 
-from src.reader_settings import ReaderSettings
+from barks_reader.reader_settings import ReaderSettings
 
 
 class FileTypes(Enum):

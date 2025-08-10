@@ -8,7 +8,7 @@ from barks_fantagraphics.comic_book import get_page_str
 from barks_fantagraphics.comics_logging import setup_logging
 from intspan import intspan
 
-from src.fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
+from barks_reader.fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
 
 FANTA_VOLUME_ARCHIVES_ROOT = Path("/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes")
 FANTA_VOLUME_OVERRIDES_ROOT = Path(

@@ -24,7 +24,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.treeview import TreeView, TreeViewNode
 from kivy.utils import escape_markup
 
-from src.reader_formatter import get_markup_text_with_num_titles, text_includes_num_titles
+from barks_reader.reader_formatter import get_markup_text_with_num_titles, text_includes_num_titles
 
 if TYPE_CHECKING:
     from collections.abc import Callable

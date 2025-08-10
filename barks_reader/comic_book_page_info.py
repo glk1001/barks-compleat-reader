@@ -12,7 +12,7 @@ from barks_fantagraphics.pages import (
     get_sorted_srce_and_dest_pages_with_dimensions,
 )
 
-from src.reader_settings import ReaderSettings
+from barks_reader.reader_settings import ReaderSettings
 
 
 @dataclass

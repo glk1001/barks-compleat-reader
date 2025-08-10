@@ -21,21 +21,21 @@ from barks_fantagraphics.fanta_comics_info import (
     FantaComicBookInfo,
 )
 from barks_fantagraphics.pil_image_utils import open_pil_image_for_reading
+from fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
 from kivy.clock import Clock
 from PIL import Image as PilImage
 from PIL import ImageOps
 
-from fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
-from src.reader_ui_classes import set_kivy_busy_cursor, set_kivy_normal_cursor
-from src.reader_utils import is_blank_page, is_title_page
+from barks_reader.reader_ui_classes import set_kivy_busy_cursor, set_kivy_normal_cursor
+from barks_reader.reader_utils import is_blank_page, is_title_page
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from build_comic_images import ComicBookImageBuilder
 
-    from src.comic_book_page_info import PageInfo
-    from src.reader_settings import ReaderSettings
+    from barks_reader.comic_book_page_info import PageInfo
+    from barks_reader.reader_settings import ReaderSettings
 
 ALL_FANTA_VOLUMES = list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1))
 # ALL_FANTA_VOLUMES = [i for i in range(5, 7 + 1)]

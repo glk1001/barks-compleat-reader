@@ -28,16 +28,17 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from kivy.clock import Clock
 
-from src.filtered_title_lists import FilteredTitleLists
-from src.random_title_images import FIT_MODE_COVER, FileTypes, ImageInfo, RandomTitleImages
-from src.reader_colors import RandomColorTint
-from src.reader_formatter import get_formatted_color
+from barks_reader.filtered_title_lists import FilteredTitleLists
+from barks_reader.image_file_getter import FileTypes
+from barks_reader.random_title_images import FIT_MODE_COVER, ImageInfo, RandomTitleImages
+from barks_reader.reader_colors import RandomColorTint
+from barks_reader.reader_formatter import get_formatted_color
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from src.reader_colors import Color
-    from src.reader_settings import ReaderSettings
+    from barks_reader.reader_colors import Color
+    from barks_reader.reader_settings import ReaderSettings
 
 TOP_VIEW_IMAGE_TYPES = {
     t for t in FileTypes if t not in [FileTypes.NONTITLE, FileTypes.ORIGINAL_ART]

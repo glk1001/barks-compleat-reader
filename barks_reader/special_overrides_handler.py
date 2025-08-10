@@ -3,7 +3,7 @@ from pathlib import Path
 
 from barks_fantagraphics.barks_titles import Titles
 
-from src.reader_settings import ReaderSettings
+from barks_reader.reader_settings import ReaderSettings
 
 
 class SpecialFantaOverrides:

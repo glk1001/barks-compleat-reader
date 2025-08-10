@@ -7,13 +7,16 @@ from typing import TYPE_CHECKING
 from barks_fantagraphics.fanta_comics_info import FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER
 from kivy.clock import Clock
 
-from src.reader_ui_classes import MessagePopup
+from barks_reader.reader_ui_classes import MessagePopup
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from fantagraphics_volumes import TooManyArchiveFilesError, WrongFantagraphicsVolumeError
-    from src.reader_settings import ReaderSettings
+    from barks_reader.fantagraphics_volumes import (
+        TooManyArchiveFilesError,
+        WrongFantagraphicsVolumeError,
+    )
+    from barks_reader.reader_settings import ReaderSettings
 
 
 class ErrorTypes(Enum):

@@ -44,18 +44,20 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import Screen
 from kivy.uix.treeview import TreeViewNode
 
-from src.background_views import BackgroundViews, ViewStates
-from src.comic_book_page_info import ComicBookPageInfo, ComicBookPageInfoManager
-from src.fantagraphics_volumes import TooManyArchiveFilesError, WrongFantagraphicsVolumeError
-from src.json_settings_manager import SavedPageInfo, SettingsManager
-from src.random_title_images import (
+from barks_reader.background_views import BackgroundViews, FileTypes, ViewStates
+from barks_reader.comic_book_page_info import ComicBookPageInfo, ComicBookPageInfoManager
+from barks_reader.fantagraphics_volumes import (
+    TooManyArchiveFilesError,
+    WrongFantagraphicsVolumeError,
+)
+from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
+from barks_reader.random_title_images import (
     FIT_MODE_CONTAIN,
     FIT_MODE_COVER,
-    FileTypes,
     ImageInfo,
     RandomTitleImages,
 )
-from src.reader_consts_and_types import (
+from barks_reader.reader_consts_and_types import (
     APP_TITLE,
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
     APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
@@ -70,20 +72,20 @@ from src.reader_consts_and_types import (
     SERIES_NODE_TEXT,
     THE_STORIES_NODE_TEXT,
 )
-from src.reader_formatter import (
+from barks_reader.reader_formatter import (
     LONG_TITLE_SPLITS,
     ReaderFormatter,
     get_action_bar_title,
     get_clean_text_without_extra,
 )
-from src.reader_tree_view_utils import (
+from barks_reader.reader_tree_view_utils import (
     find_node_by_path,
     find_tree_view_node,
     find_tree_view_title_node,
     get_tree_view_node_id_text,
     get_tree_view_node_path,
 )
-from src.reader_ui_classes import (
+from barks_reader.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
@@ -102,12 +104,12 @@ from src.reader_ui_classes import (
     set_kivy_busy_cursor,
     set_kivy_normal_cursor,
 )
-from src.reader_utils import (
+from barks_reader.reader_utils import (
     get_all_files_in_dir,
     read_title_list,
 )
-from src.special_overrides_handler import SpecialFantaOverrides
-from src.user_error_handler import ErrorTypes, UserErrorHandler
+from barks_reader.special_overrides_handler import SpecialFantaOverrides
+from barks_reader.user_error_handler import ErrorTypes, UserErrorHandler
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -121,12 +123,12 @@ if TYPE_CHECKING:
     from kivy.uix.spinner import Spinner
     from kivy.uix.widget import Widget
 
-    from src.comic_book_reader import ComicBookReader
-    from src.filtered_title_lists import FilteredTitleLists
-    from src.font_manager import FontManager
-    from src.reader_screens import ScreenSwitchers
-    from src.reader_settings import ReaderSettings
-    from src.system_file_paths import SystemFilePaths
+    from barks_reader.comic_book_reader import ComicBookReader
+    from barks_reader.filtered_title_lists import FilteredTitleLists
+    from barks_reader.font_manager import FontManager
+    from barks_reader.reader_screens import ScreenSwitchers
+    from barks_reader.reader_settings import ReaderSettings
+    from barks_reader.system_file_paths import SystemFilePaths
 
 NODE_TYPE_TO_VIEW_STATE_MAP = {
     YearRangeTreeViewNode: ViewStates.ON_YEAR_RANGE_NODE,

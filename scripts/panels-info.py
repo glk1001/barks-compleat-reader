@@ -8,9 +8,9 @@ from pathlib import Path
 from barks_fantagraphics.comics_cmd_args import CmdArgNames, CmdArgs
 from barks_fantagraphics.comics_logging import setup_logging
 
-from src.config_info import ConfigInfo  # make sure this is before any kivy imports
-from src.image_file_getter import FileTypes, TitleImageFileGetter
-from src.reader_settings import ReaderSettings
+from barks_reader.config_info import ConfigInfo  # make sure this is before any kivy imports
+from barks_reader.image_file_getter import FileTypes, TitleImageFileGetter
+from barks_reader.reader_settings import ReaderSettings
 
 SHORT_FILE_TYPE_NAMES = {
     FileTypes.BLACK_AND_WHITE: "bw",

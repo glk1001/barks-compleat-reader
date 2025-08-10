@@ -15,7 +15,7 @@ from barks_fantagraphics.barks_titles import (
 )
 from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PNG_FILE_EXT
 
-from src.reader_utils import get_all_files_in_dir
+from barks_reader.reader_utils import get_all_files_in_dir
 
 HOME_DIR = Path(os.environ.get("HOME"))
 BARKS_DIR = HOME_DIR / "Books" / "Carl Barks"

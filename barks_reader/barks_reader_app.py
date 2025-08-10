@@ -27,23 +27,23 @@ from kivy.lang import Builder
 from kivy.uix.settings import Settings, SettingsWithSpinner
 from screeninfo import get_monitors
 
-from src.comic_book_reader import get_barks_comic_reader_screen
-from src.filtered_title_lists import FilteredTitleLists
-from src.font_manager import FontManager
-from src.intro_compleat_barks_reader import get_intro_compleat_barks_reader_screen
-from src.main_screen import MainScreen
-from src.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING
-from src.reader_screens import (
+from barks_reader.comic_book_reader import get_barks_comic_reader_screen
+from barks_reader.filtered_title_lists import FilteredTitleLists
+from barks_reader.font_manager import FontManager
+from barks_reader.intro_compleat_barks_reader import get_intro_compleat_barks_reader_screen
+from barks_reader.main_screen import MainScreen
+from barks_reader.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING
+from barks_reader.reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     INTRO_COMPLEAT_BARKS_READER_SCREEN,
     MAIN_READER_SCREEN,
     ReaderScreenManager,
     ReaderScreens,
 )
-from src.reader_settings import BuildableReaderSettings
-from src.reader_ui_classes import ACTION_BAR_SIZE_Y, ReaderTreeBuilderEventDispatcher
-from src.screen_metrics import get_screen_info, log_screen_metrics
-from src.settings_fix import SettingLongPath
+from barks_reader.reader_settings import BuildableReaderSettings
+from barks_reader.reader_ui_classes import ACTION_BAR_SIZE_Y, ReaderTreeBuilderEventDispatcher
+from barks_reader.screen_metrics import get_screen_info, log_screen_metrics
+from barks_reader.settings_fix import SettingLongPath
 
 if TYPE_CHECKING:
     from barks_fantagraphics.comics_database import ComicsDatabase
@@ -257,7 +257,7 @@ def start_logging(_args: CmdArgs) -> None:
     logging.info(f'kivy config dir = "{config_info.kivy_config_dir}".')
 
 
-if __name__ == "__main__":
+def main() -> None:
     cmd_args = CmdArgs("Fantagraphics source files")
     args_ok, error_msg = cmd_args.args_are_valid()
     if not args_ok:

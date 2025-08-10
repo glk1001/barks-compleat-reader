@@ -13,8 +13,8 @@ from barks_fantagraphics.comics_logging import setup_logging
 from barks_fantagraphics.comics_utils import get_abbrev_path
 from barks_fantagraphics.pil_image_utils import SAVE_JPG_COMPRESS_LEVEL, open_pil_image_for_reading
 
-from src.config_info import ConfigInfo  # make sure this is before any kivy imports
-from src.reader_settings import ReaderSettings
+from barks_reader.config_info import ConfigInfo  # make sure this is before any kivy imports
+from barks_reader.reader_settings import ReaderSettings
 
 
 def copy_or_convert_file(file_path: Path, dest_dir: Path) -> None:

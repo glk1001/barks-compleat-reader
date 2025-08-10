@@ -15,8 +15,8 @@ from barks_fantagraphics.comics_utils import (
 from barks_fantagraphics.fanta_comics_info import FAN, FANTA_SOURCE_COMICS, FantaComicBookInfo
 from cpi import inflate
 
-from src.font_manager import FontManager
-from src.reader_colors import Color
+from barks_reader.font_manager import FontManager
+from barks_reader.reader_colors import Color
 
 LONG_TITLE_SPLITS = {
     Titles.LOST_CROWN_OF_GENGHIS_KHAN_THE: "The Lost Crown\nof Genghis Khan!",

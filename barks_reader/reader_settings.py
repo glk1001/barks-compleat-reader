@@ -4,13 +4,13 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
-from src.reader_consts_and_types import LONG_PATH_SETTING
-from src.reader_file_paths import (
+from barks_reader.reader_consts_and_types import LONG_PATH_SETTING
+from barks_reader.reader_file_paths import (
     DEFAULT_BARKS_READER_FILES_DIR,
     BarksPanelsExtType,
     ReaderFilePaths,
 )
-from src.system_file_paths import SystemFilePaths
+from barks_reader.system_file_paths import SystemFilePaths
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -137,7 +137,7 @@ class ReaderSettings:
     def set_config(self, config: ConfigParser, app_settings_path: Path) -> None:
         self._config = config
         self._app_settings_path = app_settings_path
-        self._user_data_path = self._app_settings_path.parent / "barks-reader.json"
+        self._user_data_path = self._app_settings_path.parent / "barks_reader.json"
 
     def get_app_settings_path(self) -> Path:
         return self._app_settings_path

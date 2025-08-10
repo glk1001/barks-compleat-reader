@@ -69,7 +69,7 @@ The first time you run the application, it will create a configuration file. You
 your comic archives.
 
 ```bash
-uvenv run src/barks-reader.py
+uvenv run src/barks_reader_app.py
 ```
 
 1. When the application opens, click the **Settings** icon in the action bar.
@@ -84,7 +84,7 @@ The application will now load the titles from your specified directory.
 
 - **Run the application**:
   ```bash
-  uvenv run src/barks-reader.py
+  uvenv run src/barks_reader_app.py
   ```
 - **Navigation**: Use the `TreeView` on the left to browse the collection.
 - **View Info**: Click on a title in the tree to see its cover art, publication details, and other information in the
