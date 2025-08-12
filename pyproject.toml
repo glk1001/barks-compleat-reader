@@ -1,5 +1,5 @@
 [project]
-name = "barks-reader"
+name = "barks-compleat-reader"
 version = "0.1.0"
 description = "Kivy app to navigate and read the Fantagraphics Barks library."
 readme = "README.md"
