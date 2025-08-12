@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Black">
-    <option name="pathToExecutable" value="/usr/bin/black" />
-    <option name="sdkName" value="uv (barks-compleat-reader)" />
+    <option name="sdkName" value="uv (barks-compleat-reader) (2)" />
   </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="uv (barks-compleat-reader)" project-jdk-type="Python SDK" />
 </project>
