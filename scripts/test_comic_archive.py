@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from barks_fantagraphics.comic_book import get_page_str
-from barks_fantagraphics.comics_logging import setup_logging
+from comic_utils.comics_logging import setup_logging
 from intspan import intspan
 
 from barks_reader.fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives

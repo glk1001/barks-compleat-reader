@@ -362,7 +362,9 @@ class ReaderTreeBuilder:
                     tree, tag, self._main_screen.on_tag_group_pressed, new_node
                 )
             else:
-                yield from self._add_tag_node_gen(tree, tag, self._main_screen.on_tag_pressed, new_node)
+                yield from self._add_tag_node_gen(
+                    tree, tag, self._main_screen.on_tag_pressed, new_node
+                )
 
         tree.add_node(new_node, parent=parent_node)
 

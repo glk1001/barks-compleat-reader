@@ -20,7 +20,7 @@ from barks_fantagraphics.fanta_comics_info import (
     LAST_VOLUME_NUMBER,
     FantaComicBookInfo,
 )
-from barks_fantagraphics.pil_image_utils import open_pil_image_for_reading
+from comic_utils.pil_image_utils import open_pil_image_for_reading
 from fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
 from kivy.clock import Clock
 from PIL import Image as PilImage

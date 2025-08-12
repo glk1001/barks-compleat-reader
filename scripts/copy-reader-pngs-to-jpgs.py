@@ -9,9 +9,9 @@ from pathlib import Path
 
 from barks_fantagraphics.comics_cmd_args import CmdArgNames, CmdArgs
 from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PNG_FILE_EXT
-from barks_fantagraphics.comics_logging import setup_logging
 from barks_fantagraphics.comics_utils import get_abbrev_path
-from barks_fantagraphics.pil_image_utils import SAVE_JPG_COMPRESS_LEVEL, open_pil_image_for_reading
+from comic_utils.comics_logging import setup_logging
+from comic_utils.pil_image_utils import SAVE_JPG_COMPRESS_LEVEL, open_pil_image_for_reading
 
 from barks_reader.config_info import ConfigInfo  # make sure this is before any kivy imports
 from barks_reader.reader_settings import ReaderSettings

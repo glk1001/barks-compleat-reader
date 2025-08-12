@@ -3,7 +3,7 @@ import os
 
 os.environ["KIVY_LOG_MODE"] = "MIXED"
 
-from barks_fantagraphics.comics_logging import setup_logging
+from comic_utils.comics_logging import setup_logging
 
 setup_logging(log_level=logging.DEBUG)
 

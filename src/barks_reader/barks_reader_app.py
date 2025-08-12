@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any
 
 import kivy
 from barks_fantagraphics.comics_cmd_args import CmdArgs
-from barks_fantagraphics.comics_logging import setup_logging
+from comic_utils.comics_logging import setup_logging
 from kivy import Config
 from kivy.app import App
 from kivy.core.window import Window
