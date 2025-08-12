@@ -5,6 +5,7 @@ description = "Kivy app to navigate and read the Fantagraphics Barks library."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "barks-fantagraphics",
     "cpi>=2.0.7",
     "intspan>=1.6.1",
     "kivy==2.3.1",
@@ -18,3 +19,6 @@ dependencies = [
 dev = [
     "ruff>=0.12.7",
 ]
+
+[tool.uv.sources]
+barks-fantagraphics = { path = "../barks-fantagraphics", editable = true }
