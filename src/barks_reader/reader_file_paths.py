@@ -197,12 +197,18 @@ class ReaderFilePaths:
     def get_comic_inset_files(self, title_str: str, use_edited_only: bool = False) -> list[Path]:
         title = BARKS_TITLE_DICT[title_str]
 
-        inset_list = [self.get_comic_inset_file(title, use_edited_only)]
+        inset_list = []
+
+        edited_inset_file = self.get_comic_inset_file(title, use_edited_only)
+        if edited_inset_file != self.get_emergency_inset_file():
+            inset_list.append(edited_inset_file)
         if use_edited_only:
             return inset_list
 
         main_inset_file = self.get_comic_inset_file(title, use_edited_only=False)
-        if main_inset_file not in inset_list:
+        if (main_inset_file != self.get_emergency_inset_file()) and (
+            main_inset_file not in inset_list
+        ):
             inset_list.append(main_inset_file)
 
         return inset_list
