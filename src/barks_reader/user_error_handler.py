@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum, auto
+from textwrap import dedent
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.fanta_comics_info import FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER
@@ -25,29 +26,36 @@ class ErrorTypes(Enum):
     TooManyArchiveFiles = auto()
 
 
-FANTA_VOLUMES_NOT_SET_FIX_SETTINGS_MSG = (
-    "ERROR: FANTAGRAPHICS VOLUMES DIRECTORY NOT SET\n\n"
-    "You need to add the Fantagraphics\n\n"
-    "volumes directory to the app\n\n"
-    "settings, then restart the app!"
-)
+FANTA_VOLUMES_NOT_SET_FIX_SETTINGS_MSG = dedent("""\
+    ERROR: FANTAGRAPHICS VOLUMES DIRECTORY NOT SET
 
-FANTA_VOLUMES_NOT_FOUND_FIX_SETTINGS_MSG = (
-    "ERROR: FANTAGRAPHICS VOLUMES NOT FOUND\n\n"
-    "You need to check and fix the app\n\n"
-    "settings, then restart the app!"
-)
+    You need to add the Fantagraphics
 
-WRONG_FANTA_VOLUMES_FIX_AND_RESTART_MSG = (
-    "ERROR: WRONG FANTAGRAPHICS VOLUMES\n\n"
-    "You need to check the Fantagraphics\n\n"
-    "volume directory, rename or remove any\n\n"
-    "wrong archives, then restart the app!"
-)
+    volumes directory to the app
+
+    settings, then restart the app!""")
+
+FANTA_VOLUMES_NOT_FOUND_FIX_SETTINGS_MSG = dedent("""\
+    ERROR: FANTAGRAPHICS VOLUMES NOT FOUND
+
+    You need to check and fix the app
+
+    settings, then restart the app!""")
+
+WRONG_FANTA_VOLUMES_FIX_AND_RESTART_MSG = dedent("""\
+    ERROR: WRONG FANTAGRAPHICS VOLUMES
+
+    You need to check the Fantagraphics
+
+    volume directory, rename or remove any
+
+    wrong archives, then restart the app!""")
 
 
 class UserErrorHandler:
-    def __init__(self, reader_settings: ReaderSettings, open_settings_func: Callable) -> None:
+    def __init__(
+        self, reader_settings: ReaderSettings, open_settings_func: Callable[[], None]
+    ) -> None:
         self._reader_settings = reader_settings
         self._open_settings = open_settings_func
 
@@ -89,31 +97,16 @@ class UserErrorHandler:
         popup_title: str,
     ) -> None:
         """Handle the case where the Fantagraphics directory has not been set."""
-
-        def _on_goto_settings() -> None:
-            popup.dismiss()
-            self._open_settings()
-            on_popup_closed(FANTA_VOLUMES_NOT_SET_FIX_SETTINGS_MSG)
-
-        def _on_cancel() -> None:
-            popup.dismiss()
-            on_popup_closed(FANTA_VOLUMES_NOT_SET_FIX_SETTINGS_MSG)
-
-        msg = (
-            "Currently, in the app settings, the Fantagraphics comic zips directory has\n"
-            "not been set. You need to go to settings and enter the zips directory, then\n"
-            "restart the app."
-        )
-
+        msg = dedent("""\
+            Currently, in the app settings, the Fantagraphics comic zips directory has
+            not been set. You need to go to settings and enter the zips directory, then
+            restart the app.""")
         title = popup_title if popup_title else "Fantagraphics Directory Not Set"
-
-        popup = self._show_popup(
+        self._show_settings_error_popup(
             title=title,
             text=msg,
-            ok_text="Goto settings",
-            ok_func=_on_goto_settings,
-            cancel_text="Cancel",
-            cancel_func=_on_cancel,
+            on_popup_closed=on_popup_closed,
+            close_message=FANTA_VOLUMES_NOT_SET_FIX_SETTINGS_MSG,
         )
 
     def _handle_fanta_root_not_found(
@@ -123,32 +116,19 @@ class UserErrorHandler:
         popup_title: str,
     ) -> None:
         """Handle the case where the Fantagraphics directory is not found."""
+        msg = dedent(f"""\
+            Currently, in the app settings, the Fantagraphics comic zips directory is
 
-        def _on_goto_settings() -> None:
-            popup.dismiss()
-            self._open_settings()
-            on_popup_closed(FANTA_VOLUMES_NOT_FOUND_FIX_SETTINGS_MSG)
+                [b]"{self._reader_settings.fantagraphics_volumes_dir}"[/b]
 
-        def _on_cancel() -> None:
-            popup.dismiss()
-            on_popup_closed(FANTA_VOLUMES_NOT_FOUND_FIX_SETTINGS_MSG)
-
-        msg = (
-            f"Currently, in the app settings, the Fantagraphics comic zips directory is\n\n"
-            f'    [b]"{self._reader_settings.fantagraphics_volumes_dir}"[/b]\n\n'
-            "But this directory could not be found. You need to go to settings and enter\n"
-            "the correct directory, then restart the app."
-        )
-
+            But this directory could not be found. You need to go to settings and enter
+            the correct directory, then restart the app.""")
         title = popup_title if popup_title else "Fantagraphics Directory Not Found"
-
-        popup = self._show_popup(
+        self._show_settings_error_popup(
             title=title,
             text=msg,
-            ok_text="Goto settings",
-            ok_func=_on_goto_settings,
-            cancel_text="Cancel",
-            cancel_func=_on_cancel,
+            on_popup_closed=on_popup_closed,
+            close_message=FANTA_VOLUMES_NOT_FOUND_FIX_SETTINGS_MSG,
         )
 
     def _handle_wrong_fanta_volume(
@@ -158,15 +138,14 @@ class UserErrorHandler:
         _popup_title: str,
     ) -> None:
         """Handle an unexpected Fantagraphics archive file."""
-        msg = (
-            f"There was a unexpected Fantagraphics archive file:\n\n"
-            f'[size=16sp][b]"{exception.file}".[/b][/size]\n\n'
-            f"The expected volume number was {exception.expected_volume} not {exception.file_vol}."
-            f" You need to make sure the\n"
-            f"archives are prefixed with the numbers {FIRST_VOLUME_NUMBER:02d} to"
-            f" {LAST_VOLUME_NUMBER:02d} inclusive, then restart\n"
-            f"the app."
-        )
+        msg = dedent(f"""\
+            There was a unexpected Fantagraphics archive file:
+
+            [size=16sp][b]"{exception.file}".[/b][/size]
+
+            The expected volume number was {exception.expected_volume} not {exception.file_vol}. You need to make sure the
+            archives are prefixed with the numbers {FIRST_VOLUME_NUMBER:02d} to {LAST_VOLUME_NUMBER:02d} inclusive, then restart
+            the app.""")
 
         self._show_fatal_config_error(
             title="Wrong Fantagraphics Archive File",
@@ -181,18 +160,42 @@ class UserErrorHandler:
         _popup_title: str,
     ) -> None:
         """Handle finding too many Fantagraphics archive files."""
-        msg = (
-            f"There were too many Fantagraphics archive files. The expected number\n"
-            f"of files is {exception.num_volumes} not {exception.num_archive_files}."
-            f" You need to make sure the archives are prefixed\n"
-            f"with the numbers {FIRST_VOLUME_NUMBER:02d} to {LAST_VOLUME_NUMBER:02d} inclusive,"
-            f" then restart the app."
-        )
+        msg = dedent(f"""\
+            There were too many Fantagraphics archive files. The expected number
+            of files is {exception.num_volumes} not {exception.num_archive_files}. You need to make sure the archives are prefixed
+            with the numbers {FIRST_VOLUME_NUMBER:02d} to {LAST_VOLUME_NUMBER:02d} inclusive, then restart the app.""")
 
         self._show_fatal_config_error(
             title="Too Many Fantagraphics Archives",
             error_msg=msg,
             on_popup_closed=on_popup_closed,
+        )
+
+    def _show_settings_error_popup(
+        self,
+        title: str,
+        text: str,
+        on_popup_closed: Callable[[str | None], None],
+        close_message: str,
+    ) -> None:
+        """Show a popup for a settings-related error, offering to open settings."""
+
+        def _on_goto_settings() -> None:
+            popup.dismiss()
+            self._open_settings()
+            on_popup_closed(close_message)
+
+        def _on_cancel() -> None:
+            popup.dismiss()
+            on_popup_closed(close_message)
+
+        popup = self._show_popup(
+            title=title,
+            text=text,
+            ok_text="Goto settings",
+            ok_func=_on_goto_settings,
+            cancel_text="Cancel",
+            cancel_func=_on_cancel,
         )
 
     def _show_fatal_config_error(
