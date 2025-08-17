@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
@@ -15,9 +16,18 @@ from barks_reader.system_file_paths import SystemFilePaths
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+
+class FantaVolumesState(Enum):
+    VOLUMES_EXIST = auto()
+    VOLUMES_MISSING = auto()
+    VOLUMES_NOT_SET = auto()
+    VOLUMES_NOT_NEEDED = auto()
+
+
 BARKS_READER_SECTION = "Barks Reader"
 
 FANTA_DIR = "fanta_dir"
+UNSET_FANTA_DIR_MARKER = "<Fantagraphics Volumes Not Set>"
 READER_FILES_DIR = "reader_files_dir"
 PREBUILT_COMICS_DIR = "prebuilt_dir"
 PNG_BARKS_PANELS_DIR = "png_barks_panels_dir"
@@ -235,6 +245,15 @@ class ReaderSettings:
             return True
         return self._is_valid_dir(dir_path)
 
+    def get_fantagraphics_volumes_state(self) -> FantaVolumesState:
+        if self.use_prebuilt_archives:
+            return FantaVolumesState.VOLUMES_NOT_NEEDED
+        if str(self.fantagraphics_volumes_dir) == UNSET_FANTA_DIR_MARKER:
+            return FantaVolumesState.VOLUMES_NOT_SET
+        if not self.fantagraphics_volumes_dir.is_dir():
+            return FantaVolumesState.VOLUMES_MISSING
+        return FantaVolumesState.VOLUMES_EXIST
+
     def _is_valid_reader_files_dir(self, dir_path: Path) -> bool:
         return self._is_valid_dir(dir_path)
 
@@ -340,7 +359,7 @@ class BuildableReaderSettings(ReaderSettings):
         config.setdefaults(
             BARKS_READER_SECTION,
             {
-                FANTA_DIR: ReaderFilePaths.get_default_fanta_volume_archives_root_dir(),
+                FANTA_DIR: UNSET_FANTA_DIR_MARKER,
                 READER_FILES_DIR: DEFAULT_BARKS_READER_FILES_DIR,
                 PNG_BARKS_PANELS_DIR: ReaderFilePaths.get_default_png_barks_panels_dir(),
                 JPG_BARKS_PANELS_DIR: ReaderFilePaths.get_default_jpg_barks_panels_dir(),

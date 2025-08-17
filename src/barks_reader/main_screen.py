@@ -78,6 +78,7 @@ from barks_reader.reader_formatter import (
     get_action_bar_title,
     get_clean_text_without_extra,
 )
+from barks_reader.reader_settings import FantaVolumesState
 from barks_reader.reader_tree_view_utils import (
     find_node_by_path,
     find_tree_view_node,
@@ -178,8 +179,8 @@ class MainScreen(BoxLayout, Screen):
     action_bar_goto_icon_filepath = StringProperty()
     app_title = StringProperty()
 
-    not_all_titles_loaded = BooleanProperty(defaultvalue=False)
-    not_all_titles_loaded_msg = StringProperty()
+    main_files_not_loaded = BooleanProperty(defaultvalue=False)
+    main_files_not_loaded_msg = StringProperty()
 
     MAIN_TITLE_BACKGROUND_COLOR = (0.01, 0.01, 0.01, 0.075)
     MAIN_TITLE_COLOR = (1, 1, 0, 1)
@@ -227,6 +228,7 @@ class MainScreen(BoxLayout, Screen):
             reader_settings,
             screen_switchers.switch_to_settings,
         )
+        self._fanta_volumes_state: FantaVolumesState = FantaVolumesState.VOLUMES_NOT_SET
         self.filtered_title_lists: FilteredTitleLists = filtered_title_lists
         self._screen_switchers = screen_switchers
         self.title_lists: dict[str, list[FantaComicBookInfo]] = (
@@ -322,9 +324,6 @@ class MainScreen(BoxLayout, Screen):
 
     def start_tree_build(self) -> None:
         """Kicks off the asynchronous build of the TreeView."""
-        if not self.main_files_exist():
-            return
-
         Clock.schedule_once(lambda _dt: self.loading_data_popup.open(), 0)
 
         # Put import here to avoid circular dependency.
@@ -344,9 +343,19 @@ class MainScreen(BoxLayout, Screen):
         set_kivy_normal_cursor()
         Clock.schedule_once(lambda _dt: self.loading_data_popup.dismiss(), 1)
 
+        self._finished_building()
+
+    def _finished_building(self) -> None:
+        self._fanta_volumes_state = self.get_fanta_volumes_state()
+        logging.debug(f"_fanta_volumes_state = {self._fanta_volumes_state}.")
+
         self._update_view_for_node(ViewStates.INITIAL)
 
-        if not self.init_comic_book_data():
+        if (
+            self._fanta_volumes_state
+            in [FantaVolumesState.VOLUMES_EXIST, FantaVolumesState.VOLUMES_NOT_NEEDED]
+            and not self.init_comic_book_data()
+        ):
             return
 
         if self._reader_settings.goto_saved_node_on_start:
@@ -354,32 +363,37 @@ class MainScreen(BoxLayout, Screen):
             if saved_node_path:
                 self._goto_saved_node(saved_node_path)
 
-    def main_files_exist(self) -> bool:
-        if self._reader_settings.is_valid_fantagraphics_volumes_dir(
-            self._reader_settings.fantagraphics_volumes_dir,
-        ):
-            return True
+    def get_fanta_volumes_state(self) -> FantaVolumesState:
+        volumes_state = self._reader_settings.get_fantagraphics_volumes_state()
+        if volumes_state in [FantaVolumesState.VOLUMES_EXIST, FantaVolumesState.VOLUMES_NOT_NEEDED]:
+            return volumes_state
 
-        def _on_error_popup_closed(not_all_titles_loaded_msg: str) -> None:
-            self.not_all_titles_loaded_msg = not_all_titles_loaded_msg
-            self.not_all_titles_loaded = True
+        error_type = (
+            ErrorTypes.FantagraphicsVolumeRootNotSet
+            if volumes_state == FantaVolumesState.VOLUMES_NOT_SET
+            else ErrorTypes.FantagraphicsVolumeRootNotFound
+        )
+
+        def _on_error_popup_closed(fanta_volumes_missing_msg: str) -> None:
+            self.main_files_not_loaded_msg = fanta_volumes_missing_msg
+            self.main_files_not_loaded = True
 
         self._user_error_handler.handle_error(
-            ErrorTypes.FantagraphicsVolumeRootNotFound,
+            error_type,
             None,
             _on_error_popup_closed,
         )
 
-        return False
+        return volumes_state
 
     def init_comic_book_data(self) -> bool:
         try:
             self.comic_book_reader.init_data()
         except (WrongFantagraphicsVolumeError, TooManyArchiveFilesError) as e:
 
-            def _on_error_popup_closed(not_all_titles_loaded_msg: str) -> None:
-                self.not_all_titles_loaded_msg = not_all_titles_loaded_msg
-                self.not_all_titles_loaded = True
+            def _on_error_popup_closed(wrong_fanta_volumes_msg: str) -> None:
+                self.main_files_not_loaded_msg = wrong_fanta_volumes_msg
+                self.main_files_not_loaded = True
 
             error_type = (
                 ErrorTypes.WrongFantagraphicsVolume
@@ -648,6 +662,7 @@ class MainScreen(BoxLayout, Screen):
         self.read_article_as_comic_book(
             Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
             ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,
+            page_to_first_goto="1",
         )
 
     def on_appendix_pressed(self, _button: Button) -> None:
@@ -657,18 +672,21 @@ class MainScreen(BoxLayout, Screen):
         self.read_article_as_comic_book(
             Titles.DON_AULT___LIFE_AMONG_THE_DUCKS,
             ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE,
+            page_to_first_goto="1",
         )
 
     def on_appendix_rich_tomasso_on_coloring_barks_pressed(self, _button: Button) -> None:
         self.read_article_as_comic_book(
             Titles.RICH_TOMASSO___ON_COLORING_BARKS,
             ViewStates.ON_APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_NODE,
+            page_to_first_goto="i",
         )
 
     def on_appendix_censorship_fixes_pressed(self, _button: Button) -> None:
         self.read_article_as_comic_book(
             Titles.CENSORSHIP_FIXES_AND_OTHER_CHANGES,
             ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
+            page_to_first_goto="1",
         )
 
     def on_index_pressed(self, _button: Button) -> None:
@@ -885,6 +903,33 @@ class MainScreen(BoxLayout, Screen):
         if self._fanta_info is None:
             logging.debug(f'Image "{self.title_page_image_source}" pressed. But no title selected.')
             return
+        if self._fanta_volumes_state in [
+            FantaVolumesState.VOLUMES_MISSING,
+            FantaVolumesState.VOLUMES_NOT_SET,
+        ]:
+            reason = (
+                "Fantagraphics Directory Not Set"
+                if self._fanta_volumes_state == FantaVolumesState.VOLUMES_NOT_SET
+                else "Fantagraphics Directory Not Found"
+            )
+            error_type = (
+                ErrorTypes.FantagraphicsVolumeRootNotSet
+                if self._fanta_volumes_state == FantaVolumesState.VOLUMES_NOT_SET
+                else ErrorTypes.FantagraphicsVolumeRootNotFound
+            )
+            logging.warning(f'Image "{self.title_page_image_source}" pressed. But {reason}.')
+
+            def _on_error_popup_closed(fanta_volumes_missing_msg: str) -> None:
+                self.main_files_not_loaded_msg = fanta_volumes_missing_msg
+                self.main_files_not_loaded = True
+
+            self._user_error_handler.handle_error(
+                error_type,
+                None,
+                _on_error_popup_closed,
+                f"Cannot Load Comic: {reason}",
+            )
+            return
 
         logging.debug(f'Image "{self.title_page_image_source}" pressed.')
         comic = self._get_comic_book()
@@ -982,11 +1027,12 @@ class MainScreen(BoxLayout, Screen):
             self._json_settings_manager.save_last_selected_node_path(selected_node_path)
             logging.debug(f'Settings: Saved last selected node "{selected_node_path}".')
 
-    def read_article_as_comic_book(self, article_title: Titles, view_state: ViewStates) -> None:
+    def read_article_as_comic_book(
+        self, article_title: Titles, view_state: ViewStates, page_to_first_goto: str
+    ) -> None:
         article_title_str = BARKS_TITLES[article_title]
         article_fanta_info = self.all_fanta_titles[article_title_str]
         comic = self._comics_database.get_comic_book(article_title_str)
-        page_to_first_goto = "1"
         self._read_comic_book(article_fanta_info, comic, view_state, page_to_first_goto)
 
     def _read_comic_book(

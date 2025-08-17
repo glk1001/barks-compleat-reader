@@ -213,6 +213,8 @@ class BackgroundViews:
         self._view_state = view_state
         self._update_views()
 
+    # noinspection PyUnreachableCode
+    # Reason: inspection seems broken here.
     def _update_views(self) -> None:
         if self._view_state == ViewStates.PRE_INIT:
             self._top_view_image_opacity = 0.5
@@ -307,6 +309,8 @@ class BackgroundViews:
             case ViewStates.ON_INDEX_NODE:
                 self._set_top_view_image_for_index()
             case _:
+                # noinspection PyUnreachableCode
+                # Reason: inspection seems broken here.
                 raise AssertionError
 
         self._set_top_view_image_color()
@@ -498,6 +502,8 @@ class BackgroundViews:
         if not DEBUG_FUN_IMAGE_TITLES:
             return self._title_lists[ALL_LISTS]
 
+        # noinspection PyUnreachableCode
+        # Reason: inspection seems broken here.
         return [
             t
             for t in self._title_lists[ALL_LISTS]

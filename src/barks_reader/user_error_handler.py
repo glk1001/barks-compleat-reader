@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from enum import Enum, auto
-from textwrap import dedent
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.fanta_comics_info import FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER
@@ -20,29 +19,31 @@ if TYPE_CHECKING:
 
 
 class ErrorTypes(Enum):
+    FantagraphicsVolumeRootNotSet = auto()
     FantagraphicsVolumeRootNotFound = auto()
     WrongFantagraphicsVolume = auto()
     TooManyArchiveFiles = auto()
 
 
-NOT_ALL_TITLES_LOADED_SETTINGS_MSG = dedent(
-    """
-    ERROR: TITLES NOT LOADED
+FANTA_VOLUMES_NOT_SET_FIX_SETTINGS_MSG = (
+    "ERROR: FANTAGRAPHICS VOLUMES DIRECTORY NOT SET\n\n"
+    "You need to add the Fantagraphics\n\n"
+    "volumes directory to the app\n\n"
+    "settings, then restart the app!"
+)
 
-    You need to check and fix the
-    app settings, then restart the app!
-    """
-).strip()
+FANTA_VOLUMES_NOT_FOUND_FIX_SETTINGS_MSG = (
+    "ERROR: FANTAGRAPHICS VOLUMES NOT FOUND\n\n"
+    "You need to check and fix the app\n\n"
+    "settings, then restart the app!"
+)
 
-NOT_ALL_TITLES_LOADED_FANTA_VOLUME_MSG = dedent(
-    """
-    ERROR: TITLES NOT LOADED
-
-    You need to check the Fantagraphics
-    volume directory, rename or remove any
-    wrong archives, then restart the app!
-    """
-).strip()
+WRONG_FANTA_VOLUMES_FIX_AND_RESTART_MSG = (
+    "ERROR: WRONG FANTAGRAPHICS VOLUMES\n\n"
+    "You need to check the Fantagraphics\n\n"
+    "volume directory, rename or remove any\n\n"
+    "wrong archives, then restart the app!"
+)
 
 
 class UserErrorHandler:
@@ -55,11 +56,13 @@ class UserErrorHandler:
             Callable[
                 [
                     WrongFantagraphicsVolumeError | TooManyArchiveFilesError | None,
-                    Callable[[str], None],
+                    Callable[[str | None], None],
+                    str,
                 ],
                 None,
             ],
         ] = {
+            ErrorTypes.FantagraphicsVolumeRootNotSet: self._handle_fanta_root_not_set,
             ErrorTypes.FantagraphicsVolumeRootNotFound: self._handle_fanta_root_not_found,
             ErrorTypes.WrongFantagraphicsVolume: self._handle_wrong_fanta_volume,
             ErrorTypes.TooManyArchiveFiles: self._handle_too_many_archive_files,
@@ -70,29 +73,65 @@ class UserErrorHandler:
         error_type: ErrorTypes,
         exception: WrongFantagraphicsVolumeError | TooManyArchiveFilesError | None,
         on_popup_closed: Callable[[str | None], None],
+        popup_title: str = "",
     ) -> None:
         handler = self._error_handlers.get(error_type)
         if handler:
-            handler(exception, on_popup_closed)
+            handler(exception, on_popup_closed, popup_title)
         else:
             msg = f"No handler configured for error type: {error_type}"
             raise ValueError(msg)
+
+    def _handle_fanta_root_not_set(
+        self,
+        _exception: Exception | None,
+        on_popup_closed: Callable[[str | None], None],
+        popup_title: str,
+    ) -> None:
+        """Handle the case where the Fantagraphics directory has not been set."""
+
+        def _on_goto_settings() -> None:
+            popup.dismiss()
+            self._open_settings()
+            on_popup_closed(FANTA_VOLUMES_NOT_SET_FIX_SETTINGS_MSG)
+
+        def _on_cancel() -> None:
+            popup.dismiss()
+            on_popup_closed(FANTA_VOLUMES_NOT_SET_FIX_SETTINGS_MSG)
+
+        msg = (
+            "Currently, in the app settings, the Fantagraphics comic zips directory has\n"
+            "not been set. You need to go to settings and enter the zips directory, then\n"
+            "restart the app."
+        )
+
+        title = popup_title if popup_title else "Fantagraphics Directory Not Set"
+
+        popup = self._show_popup(
+            title=title,
+            text=msg,
+            ok_text="Goto settings",
+            ok_func=_on_goto_settings,
+            cancel_text="Cancel",
+            cancel_func=_on_cancel,
+        )
 
     def _handle_fanta_root_not_found(
         self,
         _exception: Exception | None,
         on_popup_closed: Callable[[str | None], None],
+        popup_title: str,
     ) -> None:
         """Handle the case where the Fantagraphics directory is not found."""
 
         def _on_goto_settings() -> None:
             popup.dismiss()
             self._open_settings()
-            on_popup_closed(NOT_ALL_TITLES_LOADED_SETTINGS_MSG)
+            on_popup_closed(FANTA_VOLUMES_NOT_FOUND_FIX_SETTINGS_MSG)
 
         def _on_cancel() -> None:
             popup.dismiss()
-            on_popup_closed(NOT_ALL_TITLES_LOADED_SETTINGS_MSG)
+            on_popup_closed(FANTA_VOLUMES_NOT_FOUND_FIX_SETTINGS_MSG)
 
         msg = (
             f"Currently, in the app settings, the Fantagraphics comic zips directory is\n\n"
@@ -101,8 +140,10 @@ class UserErrorHandler:
             "the correct directory, then restart the app."
         )
 
+        title = popup_title if popup_title else "Fantagraphics Directory Not Found"
+
         popup = self._show_popup(
-            title="Fantagraphics Directory Not Found",
+            title=title,
             text=msg,
             ok_text="Goto settings",
             ok_func=_on_goto_settings,
@@ -114,6 +155,7 @@ class UserErrorHandler:
         self,
         exception: WrongFantagraphicsVolumeError,
         on_popup_closed: Callable[[str | None], None],
+        _popup_title: str,
     ) -> None:
         """Handle an unexpected Fantagraphics archive file."""
         msg = (
@@ -136,6 +178,7 @@ class UserErrorHandler:
         self,
         exception: TooManyArchiveFilesError,
         on_popup_closed: Callable[[str | None], None],
+        _popup_title: str,
     ) -> None:
         """Handle finding too many Fantagraphics archive files."""
         msg = (
@@ -162,7 +205,7 @@ class UserErrorHandler:
 
         def _on_close() -> None:
             popup.dismiss()
-            on_popup_closed(NOT_ALL_TITLES_LOADED_FANTA_VOLUME_MSG)
+            on_popup_closed(WRONG_FANTA_VOLUMES_FIX_AND_RESTART_MSG)
 
         popup = self._show_popup(
             title=title,

@@ -59,6 +59,8 @@ class _ComicPageManager(EventDispatcher):
 
         self.bind(_current_page_index=current_page_index_bound_func)
 
+        # noinspection PyTypeHints
+        # Reason: inspection seems broken here.
         self.page_map: OrderedDict[str, PageInfo] | None = None
         self._index_to_page_map: dict[int, str] = {}
         self._first_page_to_read_index = -1
@@ -209,6 +211,8 @@ class ComicBookReader(BoxLayout):
 
         Window.bind(on_resize=self._on_window_resize)
 
+    # noinspection PyTypeHints
+    # Reason: inspection seems broken here.
     def _on_window_resize(self, _window: Window, width: int, height: int) -> None:
         self._x_mid = round(width / 2 - self.x)
         self._y_top_margin = round(height - self.y - (0.09 * height))
@@ -332,6 +336,8 @@ class ComicBookReader(BoxLayout):
 
         self._comic_book_loader.stop_now()
 
+        # noinspection PyUnreachableCode
+        # Reason: inspection seems broken here.
         if fullscreen_button:
             self._exit_fullscreen(fullscreen_button)
         self._comic_book_loader.close_comic()
@@ -466,6 +472,8 @@ class ComicBookReader(BoxLayout):
 
         selected_button = None
         # Update button colors to highlight the current page before opening
+        # noinspection PyUnresolvedReferences
+        # Reason: inspection seems broken here.
         for button in self._goto_page_dropdown.children[0].children:
             page_info = self._page_map[button.text]
             if page_info.page_index == self._current_page_index:
@@ -478,8 +486,12 @@ class ComicBookReader(BoxLayout):
                     else GOTO_PAGE_BUTTON_NONBODY_COLOR
                 )
 
+        # noinspection PyUnresolvedReferences
+        # Reason: inspection seems broken here.
         self._goto_page_dropdown.open(self._goto_page_widget)
         if selected_button:
+            # noinspection PyUnresolvedReferences
+            # Reason: inspection seems broken here.
             self._goto_page_dropdown.scroll_to(selected_button)
 
     def on_page_selected(self, _instance: Widget, page: str) -> None:
