@@ -16,5 +16,5 @@ panels-info volume:
 inset-width height:
     @bash "{{source_dir()}}/scripts/inset_width.sh" {{height}}
 
-inset-view height:
-    @bash "{{source_dir()}}/scripts/inset_view.sh" {{height}}
+view-width height:
+    @bash "{{source_dir()}}/scripts/view_width.sh" {{height}}
