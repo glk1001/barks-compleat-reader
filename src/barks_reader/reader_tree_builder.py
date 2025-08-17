@@ -33,9 +33,9 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_USS,
     FantaComicBookInfo,
 )
+from comic_utils.timing import Timing
 from kivy.clock import Clock
 from kivy.uix.button import Button
-from timing import Timing
 
 from barks_reader.filtered_title_lists import FilteredTitleLists
 from barks_reader.reader_consts_and_types import (

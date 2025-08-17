@@ -32,7 +32,7 @@ from barks_reader.reader_utils import is_blank_page, is_title_page
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from build_comic_images import ComicBookImageBuilder
+    from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
 
     from barks_reader.comic_book_page_info import PageInfo
     from barks_reader.reader_settings import ReaderSettings

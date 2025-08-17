@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="VcsDirectoryMappings">
-    <mapping directory="$PROJECT_DIR$/../barks-comic-building" vcs="Git" />
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../barks-build-comic-images" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../barks-comic-building" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../barks-fantagraphics" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../comic-utils" vcs="Git" />
   </component>

@@ -5,6 +5,7 @@ description = "Kivy app to navigate and read the Fantagraphics Barks library."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "barks-build-comic-images",
     "barks-fantagraphics",
     "comic-utils",
     "cpi>=2.0.7",
@@ -22,5 +23,6 @@ dev = [
 ]
 
 [tool.uv.sources]
+barks-build-comic-images = { path = "../barks-build-comic-images", editable = true }
 barks-fantagraphics = { path = "../barks-fantagraphics", editable = true }
 comic-utils = { path = "../comic-utils", editable = true }

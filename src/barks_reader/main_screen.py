@@ -4,6 +4,7 @@ import logging
 from random import randrange
 from typing import TYPE_CHECKING
 
+from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
 from barks_fantagraphics.barks_tags import (
     BARKS_TAG_CATEGORIES_DICT,
     BARKS_TAGGED_PAGES,
@@ -34,7 +35,6 @@ from barks_fantagraphics.fanta_comics_info import (
     FantaComicBookInfo,
 )
 from barks_fantagraphics.title_search import BarksTitleSearch
-from build_comic_images import ComicBookImageBuilder
 
 # noinspection PyProtectedMember
 from kivy.clock import Clock

@@ -26,8 +26,8 @@ if TYPE_CHECKING:
     from collections import OrderedDict
     from collections.abc import Callable
 
+    from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
-    from build_comic_images import ComicBookImageBuilder
     from kivy.input import MotionEvent
     from kivy.uix.actionbar import ActionBar, ActionButton
     from kivy.uix.widget import Widget
