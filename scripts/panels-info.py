@@ -4,7 +4,9 @@ import logging
 import sys
 from configparser import ConfigParser
 from pathlib import Path
+from typing import Tuple
 
+from barks_fantagraphics.comic_book import get_abbrev_jpg_page_list
 from barks_fantagraphics.comics_cmd_args import CmdArgNames, CmdArgs
 from comic_utils.comics_logging import setup_logging
 
@@ -46,18 +48,23 @@ try:
 
     setup_logging(cmd_args.get_log_level())
 
+    comic_database = cmd_args.get_comics_database(for_building_comics=False)
     titles = cmd_args.get_titles()
 
     image_getter = TitleImageFileGetter(reader_settings)
-    image_dict: dict[str, dict[FileTypes, set[tuple[Path, bool]]]] = {}
+    image_dict: dict[str, tuple[dict[FileTypes, set[tuple[Path, bool]]], str]] = {}
     max_title_len = 0
     for title in titles:
         max_title_len = max(max_title_len, len(title))
-        image_dict[title] = image_getter.get_all_title_image_files(title)
+
+        comic_book = comic_database.get_comic_book(title)
+        page_lst = ", ".join(get_abbrev_jpg_page_list(comic_book)).replace(" - ", "-")
+
+        image_dict[title] = (image_getter.get_all_title_image_files(title), page_lst)
 
     print()
 
-    for title, file_dict in image_dict.items():
+    for title, (file_dict, page_lst) in image_dict.items():
         title_str = title + ":"
 
         nums = [
@@ -65,7 +72,7 @@ try:
             for ft in RELEVANT_FILE_TYPES
         ]
 
-        print(f"{title_str:<{max_title_len + 1}} {', '.join(nums)}")
+        print(f"{title_str:<{max_title_len + 1}} {', '.join(nums)}, {page_lst}")
 
 except Exception:
     logging.exception("Program error: ")
