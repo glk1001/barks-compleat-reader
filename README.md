@@ -40,11 +40,13 @@ navigation and a visually engaging interface.
 
 Follow these steps to get the application running on your local machine.
 
-**1. Clone the Repository**
+**1. Clone the required repositories**
 
 ```bash
-git clone https://github.com/your-username/barks-compleat-digital.git
-git clone https://github.com/your-username/barks-compleat-reader.git
+git clone https://github.com/glk1001/comic-utils.git
+git clone https://github.com/glk1001/barks-fantagraphics.git
+git clone https://github.com/glk1001/barks-build-comic-images.git
+git clone https://github.com/glk1001/barks-compleat-reader.git
 cd barks-compleat-reader
 ```
 
@@ -58,9 +60,13 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Install the required packages
 uv sync
+```
 
-# Create the alias:
-alias uvenv='UV_ENV_FILE=.uvenv uv'
+And install *just* to conveniently run commands.
+
+```just
+# Install just
+curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin
 ```
 
 **3. Initial Run and Configuration**
@@ -68,8 +74,8 @@ alias uvenv='UV_ENV_FILE=.uvenv uv'
 The first time you run the application, it will create a configuration file. You will then need to configure the path to
 your comic archives.
 
-```bash
-uvenv run src/barks_reader_app.py
+```
+just reader
 ```
 
 1. When the application opens, click the **Settings** icon in the action bar.
@@ -83,9 +89,9 @@ The application will now load the titles from your specified directory.
 ## Usage
 
 - **Run the application**:
-  ```bash
-  uvenv run src/barks_reader_app.py
-  ```
+```
+just reader
+```
 - **Navigation**: Use the `TreeView` on the left to browse the collection.
 - **View Info**: Click on a title in the tree to see its cover art, publication details, and other information in the
   main panel on the right.
@@ -97,7 +103,8 @@ The application will now load the titles from your specified directory.
 
 For those interested in the codebase, here is a brief overview of the key files:
 
-- `src/barks-reader.py`: The main application entry point. It initializes the Kivy app, sets up configuration, and
+- `src/main.py`: The main application entry point to 'barks-reader.py'.
+- `src/barks-reader.py`: The kivy application entry point. It initializes the Kivy app, sets up configuration, and
   builds the main screens.
 - `src/main_screen.py`: Manages the primary UI, including the `TreeView`, the main information panel, and all user
   interaction events on that screen. It orchestrates the background views and the logic for what to display.
