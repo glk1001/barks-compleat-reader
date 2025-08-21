@@ -81,6 +81,7 @@ class RandomTitleImages:
             {
                 FileTypes.BLACK_AND_WHITE,
                 FileTypes.CENSORSHIP,
+                FileTypes.CLOSEUP,
                 FileTypes.FAVOURITE,
                 FileTypes.INSET,
                 FileTypes.NONTITLE,

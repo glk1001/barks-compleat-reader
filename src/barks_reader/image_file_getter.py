@@ -1,14 +1,20 @@
-from collections import defaultdict
-from collections.abc import Callable
-from enum import Enum, auto
-from pathlib import Path
+from __future__ import annotations
 
-from barks_reader.reader_settings import ReaderSettings
+from collections import defaultdict
+from enum import Enum, auto
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from barks_reader.reader_settings import ReaderSettings
 
 
 class FileTypes(Enum):
     BLACK_AND_WHITE = auto()
     CENSORSHIP = auto()
+    CLOSEUP = auto()
     COVER = auto()
     FAVOURITE = auto()
     INSET = auto()
@@ -32,6 +38,7 @@ class TitleImageFileGetter:
             FileTypes.COVER: self._reader_settings.file_paths.get_comic_cover_file,
             FileTypes.BLACK_AND_WHITE: self._reader_settings.file_paths.get_comic_bw_files,
             FileTypes.CENSORSHIP: self._reader_settings.file_paths.get_comic_censorship_files,
+            FileTypes.CLOSEUP: self._reader_settings.file_paths.get_comic_closeup_files,
             FileTypes.FAVOURITE: self._reader_settings.file_paths.get_comic_favourite_files,
             FileTypes.INSET: self._reader_settings.file_paths.get_comic_inset_files,
             FileTypes.ORIGINAL_ART: self._reader_settings.file_paths.get_comic_original_art_files,

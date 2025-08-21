@@ -4,7 +4,6 @@ import logging
 import sys
 from configparser import ConfigParser
 from pathlib import Path
-from typing import Tuple
 
 from barks_fantagraphics.comic_book import get_abbrev_jpg_page_list
 from barks_fantagraphics.comics_cmd_args import CmdArgNames, CmdArgs
@@ -17,9 +16,10 @@ from barks_reader.reader_settings import ReaderSettings
 SHORT_FILE_TYPE_NAMES = {
     FileTypes.BLACK_AND_WHITE: "bw",
     FileTypes.CENSORSHIP: "ce",
+    FileTypes.CLOSEUP: "cl",
     FileTypes.COVER: "co",
-    FileTypes.FAVOURITE: "fa",
-    FileTypes.INSET: "in",
+    FileTypes.FAVOURITE: "f",
+    FileTypes.INSET: "i",
     FileTypes.NONTITLE: "nt",
     FileTypes.ORIGINAL_ART: "oa",
     FileTypes.SILHOUETTE: "si",
@@ -68,11 +68,12 @@ try:
         title_str = title + ":"
 
         nums = [
-            f"{SHORT_FILE_TYPE_NAMES[ft]}: {len(file_dict.get(ft, [])):2d}"
+            f"{SHORT_FILE_TYPE_NAMES[ft]}: {len(file_dict.get(ft, [])):1d}"
             for ft in RELEVANT_FILE_TYPES
         ]
+        total = sum(len(file_dict.get(ft, [])) for ft in RELEVANT_FILE_TYPES)
 
-        print(f"{title_str:<{max_title_len + 1}} {', '.join(nums)}, {page_lst}")
+        print(f"{title_str:<{max_title_len + 1}} {total:2d}= {', '.join(nums)}; {page_lst}")
 
 except Exception:
     logging.exception("Program error: ")
