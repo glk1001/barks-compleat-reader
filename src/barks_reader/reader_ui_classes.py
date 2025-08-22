@@ -290,7 +290,7 @@ class ButtonTreeViewNode(Button, TreeViewNode):
 
 
 class MainTreeViewNode(ButtonTreeViewNode):
-    NODE_SIZE = (dp(300), dp(30))
+    NODE_SIZE = (dp(400), dp(30))
 
 
 class StoryGroupTreeViewNode(ButtonTreeViewNode):
