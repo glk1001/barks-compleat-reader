@@ -1,21 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$/../barks-build-comic-images">
+      <sourceFolder url="file://$MODULE_DIR$/../barks-build-comic-images/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/../barks-build-comic-images/.venv" />
+    </content>
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
       <excludeFolder url="file://$MODULE_DIR$/scraps" />
     </content>
-    <content url="file://$MODULE_DIR$/../barks-build-comic-images">
-      <sourceFolder url="file://$MODULE_DIR$/../barks-build-comic-images/src" isTestSource="false" />
-    </content>
     <content url="file://$MODULE_DIR$/../barks-fantagraphics">
       <sourceFolder url="file://$MODULE_DIR$/../barks-fantagraphics/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/../barks-fantagraphics/.venv" />
     </content>
     <content url="file://$MODULE_DIR$/../comic-utils">
       <sourceFolder url="file://$MODULE_DIR$/../comic-utils/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/../comic-utils/.venv" />
     </content>
-    <orderEntry type="jdk" jdkName="uv (barks-compleat-reader)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.12 virtualenv at ~/Prj/github/barks-compleat-digital/barks-compleat-reader/.venv" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PyDocumentationSettings">
