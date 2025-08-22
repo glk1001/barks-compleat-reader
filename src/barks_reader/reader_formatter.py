@@ -75,6 +75,7 @@ class ReaderFormatter:
         self._title_info_issue_name[Issues.CS] = "Comics & Stories"
         self._title_info_issue_name[Issues.MC] = "March of Comics"
         self._title_info_issue_name[Issues.USGTD] = "US Goes to Disneyland"
+        self._title_info_issue_name[Issues.HDL] = "HDL Junior Woodchucks"
 
     def get_title_info(self, fanta_info: FantaComicBookInfo, max_len_before_shorten: int) -> str:
         # TODO: Clean this up.
@@ -85,6 +86,13 @@ class ReaderFormatter:
         submitted_info = get_long_formatted_submitted_date(fanta_info.comic_book_info)
         fanta_book = FANTA_SOURCE_COMICS[fanta_info.fantagraphics_volume]
         source = f"{FAN} CBDL, Vol {fanta_book.volume}, {fanta_book.year}"
+
+        if BARKS_PAYMENTS[fanta_info.comic_book_info.title].payment < 0.001:
+            return (
+                f"[i]1st Issue:[/i]   [b]{issue_info}[/b]\n"
+                f"[i]Submitted:[/i] [b]{submitted_info}[/b]\n"
+                f"[i]Source:[/i]       [b]{source}[/b]"
+            )
 
         return (
             f"[i]1st Issue:[/i]   [b]{issue_info}[/b]\n"
