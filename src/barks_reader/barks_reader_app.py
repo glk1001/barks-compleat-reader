@@ -92,9 +92,11 @@ class BarksReaderApp(App):
     def build_config(self, config: ConfigParser) -> None:
         """Set default values for the application configuration."""
         # Set default window geometry if not already present in the config file
+        comic_page_aspect_ratio = 3200.0 / 2120.0
         primary_monitor = get_monitors()[0]
-        default_height = round(0.97 * primary_monitor.height)
-        default_width = round(default_height / (3200.0 / 2120.0))
+        default_height = round(0.96 * primary_monitor.height)
+        default_width = round(default_height / comic_page_aspect_ratio)
+        default_height_incl_action_bar = default_height + ACTION_BAR_SIZE_Y
 
         config.setdefaults(
             "graphics",
