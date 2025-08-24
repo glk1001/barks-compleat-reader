@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import os
 from enum import Enum, auto
 from pathlib import Path
@@ -14,6 +13,7 @@ from barks_fantagraphics.barks_titles import (
     Titles,
 )
 from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PNG_FILE_EXT
+from loguru import logger
 
 from barks_reader.reader_utils import get_all_files_in_dir
 
@@ -190,7 +190,7 @@ class ReaderFilePaths:
             edited_file = self._inset_edited_files_dir / (title_str + self._inset_files_ext)
             if edited_file.is_file():
                 return edited_file
-            logging.debug(f'No edited inset file "{edited_file}".')
+            logger.debug(f'No edited inset file "{edited_file}".')
 
         main_file = self._inset_files_dir / (title_str + self._inset_files_ext)
         # TODO: Fix this when all titles are configured.

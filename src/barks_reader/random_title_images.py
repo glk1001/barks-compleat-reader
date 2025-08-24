@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import logging
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from random import randrange
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from loguru import logger
 
 from barks_reader.image_file_getter import ALL_TYPES, FileTypes, TitleImageFileGetter
 from barks_reader.reader_file_paths import EMERGENCY_INSET_FILE
@@ -205,7 +205,7 @@ class RandomTitleImages:
             return ImageInfo(image_filename, title_enum, fit_mode)
 
         # Fallback if all attempts fail,
-        logging.warning("Failed to find a suitable random image after multiple attempts.")
+        logger.warning("Failed to find a suitable random image after multiple attempts.")
         return ImageInfo(
             self._reader_settings.file_paths.get_comic_inset_file(EMERGENCY_INSET_FILE),
             Titles.GOOD_NEIGHBORS,

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
@@ -27,6 +26,7 @@ from barks_fantagraphics.fanta_comics_info import (
     FantaComicBookInfoDict,
 )
 from kivy.clock import Clock
+from loguru import logger
 
 from barks_reader.filtered_title_lists import FilteredTitleLists
 from barks_reader.image_file_getter import FileTypes
@@ -316,7 +316,7 @@ class BackgroundViews:
         self._set_top_view_image_color()
         self._schedule_top_view_event()
 
-        logging.debug(
+        logger.debug(
             f"Top view image:"
             f" State: {self._view_state},"
             f" Image: '{get_abbrev_path(self._top_view_image_info.filename)}',"
@@ -362,7 +362,7 @@ class BackgroundViews:
         self._top_view_image_info = self._get_top_view_random_image(self._title_lists[SERIES_MISC])
 
     def _set_top_view_image_for_category(self) -> None:
-        logging.debug(f"Current category: '{self._current_category}'.")
+        logger.debug(f"Current category: '{self._current_category}'.")
         if not self._current_category:
             title = Titles.GOOD_NEIGHBORS
             self._top_view_image_info = ImageInfo(
@@ -374,7 +374,7 @@ class BackgroundViews:
             )
 
     def _set_top_view_image_for_tag_group(self) -> None:
-        logging.debug(f"Current tag_group: '{self._current_tag_group}'.")
+        logger.debug(f"Current tag_group: '{self._current_tag_group}'.")
         if not self._current_tag_group:
             title = Titles.GOOD_NEIGHBORS
             self._top_view_image_info = ImageInfo(
@@ -387,7 +387,7 @@ class BackgroundViews:
             self._top_view_image_info = self._get_top_view_random_image(fanta_title_list)
 
     def _set_top_view_image_for_tag(self) -> None:
-        logging.debug(f"Current tag: '{self._current_tag}'.")
+        logger.debug(f"Current tag: '{self._current_tag}'.")
         if not self._current_tag:
             title = Titles.GOOD_NEIGHBORS
             self._top_view_image_info = ImageInfo(
@@ -398,7 +398,7 @@ class BackgroundViews:
             self._top_view_image_info = self._get_top_view_random_image(fanta_title_list)
 
     def _set_top_view_image_for_year_range(self) -> None:
-        logging.debug(f"Year range: '{self._current_year_range}'.")
+        logger.debug(f"Year range: '{self._current_year_range}'.")
         if not self._current_year_range:
             title = Titles.GOOD_NEIGHBORS
             self._top_view_image_info = ImageInfo(
@@ -410,7 +410,7 @@ class BackgroundViews:
             )
 
     def _set_top_view_image_for_cs_year_range(self) -> None:
-        logging.debug(f"CS Year range: '{self._current_cs_year_range}'.")
+        logger.debug(f"CS Year range: '{self._current_cs_year_range}'.")
         if not self._current_cs_year_range:
             title = Titles.GOOD_NEIGHBORS
             self._top_view_image_info = ImageInfo(
@@ -418,11 +418,11 @@ class BackgroundViews:
             )
         else:
             cs_range = FilteredTitleLists.get_cs_range_str_from_str(self._current_cs_year_range)
-            logging.debug(f"CS Year range key: '{cs_range}'.")
+            logger.debug(f"CS Year range key: '{cs_range}'.")
             self._top_view_image_info = self._get_top_view_random_image(self._title_lists[cs_range])
 
     def _set_top_view_image_for_us_year_range(self) -> None:
-        logging.debug(f"US Year range: '{self._current_us_year_range}'.")
+        logger.debug(f"US Year range: '{self._current_us_year_range}'.")
         if not self._current_us_year_range:
             title = Titles.BACK_TO_THE_KLONDIKE
             self._top_view_image_info = ImageInfo(
@@ -430,7 +430,7 @@ class BackgroundViews:
             )
         else:
             us_range = FilteredTitleLists.get_us_range_str_from_str(self._current_us_year_range)
-            logging.debug(f"US Year range key: '{us_range}'.")
+            logger.debug(f"US Year range key: '{us_range}'.")
             self._top_view_image_info = self._get_top_view_random_image(self._title_lists[us_range])
 
     def _get_top_view_random_image(self, title_list: list[FantaComicBookInfo]) -> ImageInfo:
@@ -489,7 +489,7 @@ class BackgroundViews:
         self._set_bottom_view_fun_image_color()
         self._schedule_bottom_view_fun_image_event()
 
-        logging.debug(
+        logger.debug(
             f"Bottom view fun image:"
             f" State: {self._view_state},"
             f" Image: '{get_abbrev_path(self._bottom_view_fun_image_info.filename)}',"
@@ -529,7 +529,7 @@ class BackgroundViews:
         self._log_bottom_view_title_state()
 
     def _log_bottom_view_title_state(self) -> None:
-        logging.debug(
+        logger.debug(
             f"Bottom view title image:"
             f" State: {self._view_state},"
             f" Image: '{self._bottom_view_title_image_info.filename}',"

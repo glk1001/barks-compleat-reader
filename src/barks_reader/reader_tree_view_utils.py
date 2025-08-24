@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, cast
+
+from loguru import logger
 
 from barks_reader.reader_formatter import get_clean_text_without_extra
 from barks_reader.reader_ui_classes import (
@@ -50,7 +51,7 @@ def find_node_by_path(tree: ReaderTreeView, path_from_root: list[str]) -> TreeVi
                 break
 
         if not node_in_path:
-            logging.warning(
+            logger.warning(
                 f"Could not find node '{node_text}' in path. The tree structure may have changed."
             )
             return None

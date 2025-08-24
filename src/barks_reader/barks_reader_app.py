@@ -19,12 +19,12 @@ from typing import TYPE_CHECKING, Any
 
 import kivy
 from barks_fantagraphics.comics_cmd_args import CmdArgs
-from comic_utils.comics_logging import setup_logging
 from kivy import Config
 from kivy.app import App
 from kivy.core.window import Window
 from kivy.lang import Builder
 from kivy.uix.settings import Settings, SettingsWithSpinner
+from loguru import logger
 from screeninfo import get_monitors
 
 from barks_reader.comic_book_reader import get_barks_comic_reader_screen
@@ -50,8 +50,14 @@ if TYPE_CHECKING:
     from kivy.config import ConfigParser
     from kivy.uix.screenmanager import ScreenManager
     from kivy.uix.widget import Widget
+    from loguru import Record
 
 KV_FILE = Path(__file__).stem + ".kv"
+
+
+LOGGER_SYS_NAME_KEY = "sys_name"
+APP_LOGGING_NAME = "app"
+KIVY_LOGGING_NAME = "kivy"
 
 
 class BarksReaderApp(App):
@@ -74,7 +80,7 @@ class BarksReaderApp(App):
 
     # noinspection PyTypeHints
     def _on_window_resize(self, _window: Window, width: int, height: int) -> None:
-        logging.debug(f"App window resize event: width = {width}, height = {height}.")
+        logger.debug(f"App window resize event: width = {width}, height = {height}.")
         self.update_fonts(height)
 
     def update_fonts(self, height: int) -> None:
@@ -126,23 +132,23 @@ class BarksReaderApp(App):
         key: str,
         value: Any,  # noqa: ANN401
     ) -> None:
-        logging.info(f"Config change: section = '{section}', key = '{key}', value = '{value}'.")
+        logger.info(f"Config change: section = '{section}', key = '{key}', value = '{value}'.")
         self._reader_settings.on_changed_setting(section, key, value)
 
     def build(self) -> Widget:
-        logging.debug("Building app...")
+        logger.debug("Building app...")
         Window.bind(on_resize=self._on_window_resize)
 
         self._initialize_settings_and_db()
 
-        logging.debug("Loading kv files...")
+        logger.debug("Loading kv files...")
         # Pass the font manager to kv lang so it can be accessed
         Builder.load_string("#:set fm app.font_manager")
         Builder.load_file(KV_FILE)
 
         root = self._build_screens()
 
-        logging.debug("Building the main tree view...")
+        logger.debug("Building the main tree view...")
         self._main_screen.start_tree_build()
 
         _finalize_window_setup()
@@ -165,7 +171,7 @@ class BarksReaderApp(App):
         )
 
     def _build_screens(self) -> ScreenManager:
-        logging.debug("Instantiating main screen...")
+        logger.debug("Instantiating main screen...")
         filtered_title_lists = FilteredTitleLists()
         reader_tree_events = ReaderTreeBuilderEventDispatcher()
         self._main_screen = MainScreen(
@@ -179,7 +185,7 @@ class BarksReaderApp(App):
         self._set_custom_title_bar()
         self.update_fonts(Config.getint("graphics", "height"))
 
-        logging.debug("Instantiating comic reader screen...")
+        logger.debug("Instantiating comic reader screen...")
         comic_reader_screen = get_barks_comic_reader_screen(
             COMIC_BOOK_READER_SCREEN,
             self._reader_settings,
@@ -190,7 +196,7 @@ class BarksReaderApp(App):
         )
         self._main_screen.comic_book_reader = comic_reader_screen.comic_book_reader
 
-        logging.debug("Instantiating introduction screen...")
+        logger.debug("Instantiating introduction screen...")
         intro_screen = get_intro_compleat_barks_reader_screen(
             INTRO_COMPLEAT_BARKS_READER_SCREEN,
             self._reader_settings,
@@ -211,9 +217,9 @@ class BarksReaderApp(App):
         Window.custom_titlebar = True
         title_bar = self._main_screen.ids.action_bar
         if Window.set_custom_titlebar(title_bar):
-            logging.info("Window: setting custom titlebar successful")
+            logger.info("Window: setting custom titlebar successful")
         else:
-            logging.warning("Window: setting custom titlebar not allowed on this system.")
+            logger.warning("Window: setting custom titlebar not allowed on this system.")
 
 
 def _finalize_window_setup() -> None:
@@ -237,26 +243,75 @@ def _finalize_window_setup() -> None:
 
 
 def _log_screen_settings() -> None:
-    logging.info(f"Window size = {Window.size}, dpi = {Window.dpi}.")
-    logging.info(f"Window pos = {Window.left},{Window.top}.")
+    logger.info(f"Window size = {Window.size}, dpi = {Window.dpi}.")
+    logger.info(f"Window pos = {Window.left},{Window.top}.")
 
 
 def start_logging(_args: CmdArgs) -> None:
     log_level = logging.DEBUG
     # log_level = cmd_args.get_log_level()
-    setup_logging(log_level, "app", str(config_info.app_log_path))
+
+    def color_formatter(_record: Record) -> str:
+        sys_name_fmt = f"<yellow>{{extra[{LOGGER_SYS_NAME_KEY}]: <4}}</yellow>"
+
+        return (
+            "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+            "<level>{level: <8}</level> | "
+            f"{sys_name_fmt}: "
+            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan>"
+            " - <level>{message}</level>"
+            "\n"
+            "{exception}"
+        )
+
+    config = {
+        "handlers": [
+            {
+                "sink": sys.stdout,
+                "format": color_formatter,
+                "backtrace": True,
+                "diagnose": True,
+            },
+            {
+                "sink": str(config_info.app_log_path),
+                "format": color_formatter,
+                "rotation": "5 MB",
+                "enqueue": True,
+                "backtrace": True,
+                "diagnose": True,
+            },
+        ],
+        "extra": {"sys_name": APP_LOGGING_NAME},
+    }
+    logger.configure(**config)
+
     Config.set("kivy", "log_level", logging.getLevelName(log_level).lower())
 
     # Redirect Kivy's log messages to our main logging setup
-    class KivyCustomHandler(logging.Handler):
+    class LoguruKivyHandler(logging.Handler):
         def emit(self, record: logging.LogRecord) -> None:
-            logging.root.handle(record)
+            level = record.levelname.lower()
+            message = self.format(record)  # Format the message using the handler's formatter
 
-    kivy.Logger.addHandler(KivyCustomHandler())
+            # Map standard logging levels to Loguru's levels
+            if level == "debug":
+                logger.debug(message, sys_name=KIVY_LOGGING_NAME)
+            elif level == "info":
+                logger.info(message, sys_name=KIVY_LOGGING_NAME)
+            elif level == "warning":
+                logger.warning(message, sys_name=KIVY_LOGGING_NAME)
+            elif level == "error":
+                logger.error(message, sys_name=KIVY_LOGGING_NAME)
+            elif level == "critical":
+                logger.critical(message, sys_name=KIVY_LOGGING_NAME)
+            else:
+                logger.log(level.upper(), message, sys_name=KIVY_LOGGING_NAME)  # For custom levels
 
-    logging.info("*** Starting barks reader ***")
-    logging.info(f'app config path = "{config_info.app_config_path}".')
-    logging.info(f'kivy config dir = "{config_info.kivy_config_dir}".')
+    kivy.Logger.addHandler(LoguruKivyHandler())
+
+    logger.info("*** Starting barks reader ***")
+    logger.info(f'app config path = "{config_info.app_config_path}".')
+    logger.info(f'kivy config dir = "{config_info.kivy_config_dir}".')
 
 
 def main() -> None:
@@ -276,15 +331,15 @@ def main() -> None:
 
         comics_database = cmd_args.get_comics_database(for_building_comics=False)
 
-        logging.debug("Running kivy app...")
+        logger.debug("Running kivy app...")
         assert Config.getint("kivy", "exit_on_escape") == 0
         kivy_app = BarksReaderApp(comics_database)
         kivy_app.run()
     except Exception:
-        logging.exception("There's been a program error - the Barks reader app is terminating: ")
+        logger.exception("There's been a program error - the Barks reader app is terminating: ")
         sys.exit(1)
 
-    logging.debug("Terminating...")
-    logging.info(
+    logger.debug("Terminating...")
+    logger.info(
         f"Final window size = {Window.size}, dpi = {Window.dpi}, pos = {Window.left},{Window.top}."
     )

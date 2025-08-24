@@ -1,5 +1,6 @@
-import logging
 from pathlib import Path
+
+from loguru import logger
 
 
 class SystemFilePaths:
@@ -30,7 +31,7 @@ class SystemFilePaths:
         self._fantagraphics_panel_segments_root_dir: Path | None = None
 
     def set_barks_reader_files_dir(self, reader_files_dir: Path) -> None:
-        logging.info(f'SystemFilePaths: Setting reader_files_dir = "{reader_files_dir}".')
+        logger.info(f'SystemFilePaths: Setting reader_files_dir = "{reader_files_dir}".')
 
         self._barks_reader_files_dir = reader_files_dir
 

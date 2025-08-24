@@ -1,13 +1,12 @@
 # ruff: noqa: T201, INP001
 
-import logging
 import sys
 from configparser import ConfigParser
 from pathlib import Path
 
 from barks_fantagraphics.comic_book import get_abbrev_jpg_page_list
 from barks_fantagraphics.comics_cmd_args import CmdArgNames, CmdArgs
-from comic_utils.comics_logging import setup_logging
+from loguru import logger
 
 from barks_reader.config_info import ConfigInfo  # make sure this is before any kivy imports
 from barks_reader.image_file_getter import FileTypes, TitleImageFileGetter
@@ -33,7 +32,7 @@ RELEVANT_FILE_TYPES = [ft for ft in FileTypes if ft != FileTypes.NONTITLE]
 cmd_args = CmdArgs("Fantagraphics source files", CmdArgNames.TITLE | CmdArgNames.VOLUME)
 args_ok, error_msg = cmd_args.args_are_valid()
 if not args_ok:
-    logging.error(error_msg)
+    logger.error(error_msg)
     sys.exit(1)
 
 # noinspection PyBroadException
@@ -45,8 +44,6 @@ try:
     reader_settings = ReaderSettings()
     reader_settings.set_config(config, config_info.app_config_path)
     reader_settings.set_barks_panels_dir()
-
-    setup_logging(cmd_args.get_log_level())
 
     comic_database = cmd_args.get_comics_database(for_building_comics=False)
     titles = cmd_args.get_titles()
@@ -76,4 +73,4 @@ try:
         print(f"{title_str:<{max_title_len + 1}} {total:2d}= {', '.join(nums)}; {page_lst}")
 
 except Exception:
-    logging.exception("Program error: ")
+    logger.exception("Program error: ")

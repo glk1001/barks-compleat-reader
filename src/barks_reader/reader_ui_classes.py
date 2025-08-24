@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, ClassVar
 
 from barks_fantagraphics.comics_utils import (
@@ -23,6 +22,7 @@ from kivy.uix.image import Image
 from kivy.uix.popup import Popup
 from kivy.uix.treeview import TreeView, TreeViewNode
 from kivy.utils import escape_markup
+from loguru import logger
 
 from barks_reader.reader_formatter import get_markup_text_with_num_titles, text_includes_num_titles
 
@@ -65,7 +65,7 @@ class ReaderTreeBuilderEventDispatcher(EventDispatcher):
         pass
 
     def finished_building(self) -> None:
-        logging.debug(
+        logger.debug(
             f"Finished treeview build: dispatching '{self.on_finished_building_event.__name__}'."
         )
         # noinspection PyUnresolvedReferences
@@ -164,14 +164,14 @@ class TitleSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         return self.ids.title_search_box.text
 
     def _on_internal_search_box_text_changed(self, instance: Widget, value: str) -> None:
-        logging.debug(f'**Title search box text changed: {instance}, text: "{value}".')
+        logger.debug(f'**Title search box text changed: {instance}, text: "{value}".')
 
         titles = [] if len(value) <= 1 else self._get_titles_matching_search_title_str(str(value))
 
         self._set_spinner_values(self.ids.title_spinner, titles)
 
     def _on_internal_title_search_box_title_changed(self, spinner: Spinner, title_str: str) -> None:
-        logging.debug(
+        logger.debug(
             f'**Title search box title spinner text changed: {spinner}, text: "{title_str}".'
         )
         self.dispatch(self.on_title_search_box_title_changed.__name__, title_str)
@@ -240,7 +240,7 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         return self.ids.tag_title_spinner.text
 
     def _on_internal_tag_search_box_text_changed(self, instance: Widget, value: str) -> None:
-        logging.debug(f'**Tag search box text changed: {instance}, text: "{value}".')
+        logger.debug(f'**Tag search box text changed: {instance}, text: "{value}".')
 
         self.dispatch(self.on_tag_search_box_text_changed.__name__, value)
 
@@ -256,7 +256,7 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         self._set_spinner_values(self.ids.tag_title_spinner, titles)
 
     def _on_internal_tag_search_box_tag_changed(self, spinner: Spinner, tag_str: str) -> None:
-        logging.debug(f'**Tag search box tag spinner text changed: {spinner}, text: "{tag_str}".')
+        logger.debug(f'**Tag search box tag spinner text changed: {spinner}, text: "{tag_str}".')
         if text_includes_num_titles(tag_str):
             return
 
@@ -272,7 +272,7 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         self._set_spinner_values(self.ids.tag_title_spinner, str_titles)
 
     def _on_internal_tag_search_box_title_changed(self, spinner: Spinner, title_str: str) -> None:
-        logging.debug(
+        logger.debug(
             f'**Tag search box tag title spinner text changed: {spinner}, text: "{title_str}".'
         )
         self.dispatch(self.on_tag_search_box_title_changed.__name__, title_str)

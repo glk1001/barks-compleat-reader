@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from collections import OrderedDict
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -36,6 +35,7 @@ from barks_fantagraphics.fanta_comics_info import (
 from comic_utils.timing import Timing
 from kivy.clock import Clock
 from kivy.uix.button import Button
+from loguru import logger
 
 from barks_reader.filtered_title_lists import FilteredTitleLists
 from barks_reader.reader_consts_and_types import (
@@ -144,7 +144,7 @@ class ReaderTreeBuilder:
             + len(self._main_screen.title_lists[ALL_LISTS])  # series titles
             + get_num_tagged_titles()  # category titles
         )
-        logging.debug(
+        logger.debug(
             f"Progress bar max"
             f" = {self._main_screen.loading_data_popup.ids.loading_data_progress_bar.max}."
         )
@@ -152,14 +152,14 @@ class ReaderTreeBuilder:
 
         tree.bind(on_node_expand=self._main_screen.on_node_expanded)
 
-        logging.debug("Building simple nodes...")
+        logger.debug("Building simple nodes...")
         self._add_intro_node(tree)
         the_stories_node = self._add_the_stories_node(tree)
         self._add_search_node(tree)
         self._add_appendix_node(tree)
         self._add_index_node(tree)
 
-        logging.debug("Starting asynchronous build of all story nodes...")
+        logger.debug("Starting asynchronous build of all story nodes...")
         # This is the single entry point for the entire asynchronous build.
         self._build_story_nodes_concurrently(tree, the_stories_node)
 
@@ -207,13 +207,13 @@ class ReaderTreeBuilder:
         )
 
         # 2. Dispatch the Chronological build task
-        logging.debug("Dispatching the Chronological node build tasks...")
+        logger.debug("Dispatching the Chronological node build tasks...")
         concurrent_task_counter.start_task()
         chrono_gen = self._add_chrono_year_range_nodes_gen(tree, chrono_node)
         self._run_generator(chrono_gen, on_finish=concurrent_task_counter.finish_task)
 
         # 3. Handle Series nodes: create parents synchronously, populate children concurrently
-        logging.debug(
+        logger.debug(
             "Creating Series parent nodes to preserve order and dispatching population tasks..."
         )
         for series_name, on_pressed in self._all_series_pressed_funcs.items():
@@ -231,7 +231,7 @@ class ReaderTreeBuilder:
             self._run_generator(gen, on_finish=concurrent_task_counter.finish_task)
 
         # 4. Dispatch all the Category build tasks to run concurrently
-        logging.debug("Dispatching all the Category nodes build tasks...")
+        logger.debug("Dispatching all the Category nodes build tasks...")
         for category in TagCategories:
             concurrent_task_counter.start_task()
 
@@ -336,7 +336,7 @@ class ReaderTreeBuilder:
                     tree, tag_or_group, self._main_screen.on_tag_pressed, parent_node
                 )
             elif isinstance(tag_or_group, TagGroups):
-                logging.debug(
+                logger.debug(
                     f'Got tag group: "{tag_or_group.name}".'
                     f' Adding tag group node under parent "{parent_node.text}".'
                 )
@@ -638,7 +638,7 @@ class ReaderTreeBuilder:
         self._tree_build_timing.end_time = datetime.now(UTC)
         time_in_secs = self._tree_build_timing.get_elapsed_time_in_seconds()
 
-        logging.debug(
+        logger.debug(
             f"Finished loading all nodes in {time_in_secs}s:"
             f" {self._main_screen.loading_data_popup.progress_bar_value}"
             f" nodes processed, progress bar max"

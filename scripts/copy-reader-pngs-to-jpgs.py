@@ -1,6 +1,5 @@
 # ruff: noqa: INP001
 
-import logging
 import shutil
 import sys
 from collections.abc import Callable
@@ -12,6 +11,7 @@ from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PNG_FILE_EXT
 from barks_fantagraphics.comics_utils import get_abbrev_path
 from comic_utils.comics_logging import setup_logging
 from comic_utils.pil_image_utils import SAVE_JPG_COMPRESS_LEVEL, open_pil_image_for_reading
+from loguru import logger
 
 from barks_reader.config_info import ConfigInfo  # make sure this is before any kivy imports
 from barks_reader.reader_settings import ReaderSettings
@@ -26,22 +26,22 @@ def copy_or_convert_file(file_path: Path, dest_dir: Path) -> None:
     try:
         if file_path.suffix == PNG_FILE_EXT:
             dest_file = dest_dir / (file_path.stem + JPG_FILE_EXT)
-            logging.info(
+            logger.info(
                 f'Converting png file "{get_abbrev_path(file_path)}"'
                 f' to "{get_abbrev_path(dest_file)}"...'
             )
             copy_file_to_jpg(file_path, dest_file)
         else:
             dest_file = dest_dir / file_path.name
-            logging.info(
+            logger.info(
                 f'Copying file "{get_abbrev_path(file_path)}" to "{get_abbrev_path(dest_file)}"...'
             )
             shutil.copy(file_path, dest_file)
 
     except FileNotFoundError:
-        logging.exception(f'File not found during processing: "{file_path}": ')
+        logger.exception(f'File not found during processing: "{file_path}": ')
     except Exception:
-        logging.exception(f'An error occurred while processing "{file_path}": ')
+        logger.exception(f'An error occurred while processing "{file_path}": ')
 
 
 def copy_file_to_jpg(srce_file: Path, dest_file: Path) -> None:
@@ -68,15 +68,15 @@ def traverse_and_process_dirs(
 
     """
     if not root_directory.is_dir():
-        logging.error(f"The specified root directory does not exist: {root_directory}")
+        logger.error(f"The specified root directory does not exist: {root_directory}")
         return
 
-    logging.info(f'Starting traversal of directory: "{root_directory}".')
+    logger.info(f'Starting traversal of directory: "{root_directory}".')
     file_count = 0
     for dirpath, _, filenames in root_directory.walk():
-        logging.info(f'Processing directory "{dirpath}"...')
+        logger.info(f'Processing directory "{dirpath}"...')
         dest_subdir = Path(str(dirpath).replace(str(root_directory), str(dest_dir)))
-        logging.info(f'Creating dest subdir "{dest_subdir}"...')
+        logger.info(f'Creating dest subdir "{dest_subdir}"...')
         dest_subdir.mkdir(parents=True, exist_ok=True)
 
         for filename in filenames:
@@ -86,7 +86,7 @@ def traverse_and_process_dirs(
             file_processor_func(full_path, dest_subdir)
             file_count += 1
 
-    logging.info(f"Traversal complete. Processed {file_count} files.")
+    logger.info(f"Traversal complete. Processed {file_count} files.")
 
 
 if __name__ == "__main__":
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     cmd_args = CmdArgs("Fantagraphics source files", CmdArgNames.TITLE | CmdArgNames.VOLUME)
     args_ok, error_msg = cmd_args.args_are_valid()
     if not args_ok:
-        logging.error(error_msg)
+        logger.error(error_msg)
         sys.exit(1)
 
     # noinspection PyBroadException
@@ -115,4 +115,4 @@ if __name__ == "__main__":
         traverse_and_process_dirs(png_dir, jpg_dir, file_processor_func=copy_or_convert_file)
 
     except Exception:
-        logging.exception("Program error: ")
+        logger.exception("Program error: ")

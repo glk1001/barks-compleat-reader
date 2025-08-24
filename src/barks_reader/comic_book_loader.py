@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import io
-import logging
 import sys
 import threading
 import traceback
@@ -23,6 +22,7 @@ from barks_fantagraphics.fanta_comics_info import (
 from comic_utils.pil_image_utils import open_pil_image_for_reading
 from fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
 from kivy.clock import Clock
+from loguru import logger
 from PIL import Image as PilImage
 from PIL import ImageOps
 
@@ -95,10 +95,10 @@ class ComicBookLoader:
 
     def init_data(self) -> None:
         if self._reader_settings.use_prebuilt_archives:
-            logging.info("Using prebuilt archives. No extra data to initialize.")
+            logger.info("Using prebuilt archives. No extra data to initialize.")
             self._fanta_volume_archives = None
         else:
-            logging.info("Using Fantagraphics volume archives. Now loading volume info...")
+            logger.info("Using Fantagraphics volume archives. Now loading volume info...")
             self._fanta_volume_archives = FantagraphicsVolumeArchives(
                 self._reader_settings.fantagraphics_volumes_dir,
                 self._sys_file_paths.get_barks_reader_fantagraphics_overrides_root_dir(),
@@ -157,7 +157,7 @@ class ComicBookLoader:
         self._page_map = page_map
         self._stop = False
 
-        logging.info(f"Archive source: {self._get_archive_source()}.")
+        logger.info(f"Archive source: {self._get_archive_source()}.")
 
         self._init_load_events()
         self._start_loading_thread()  # Start the thread automatically
@@ -166,7 +166,7 @@ class ComicBookLoader:
         if not self._current_comic_path:
             return
 
-        logging.debug(f'Close the comic: "{self._current_comic_path}".')
+        logger.debug(f'Close the comic: "{self._current_comic_path}".')
 
         # Signal the thread to stop and wait for it to finish before clearing resources
         self.stop_now()
@@ -183,10 +183,10 @@ class ComicBookLoader:
         self._stop = True
 
         if self._thread and self._thread.is_alive():
-            logging.debug("Waiting for image loading thread to terminate...")
+            logger.debug("Waiting for image loading thread to terminate...")
             self._thread.join(timeout=2.0)  # Wait for 2 seconds
             if self._thread.is_alive():
-                logging.error("Image loading thread did not terminate in time.")
+                logger.error("Image loading thread did not terminate in time.")
 
         self._thread = None
 
@@ -195,10 +195,10 @@ class ComicBookLoader:
     def _start_loading_thread(self) -> None:
         """Create and start the background thread for loading comic images."""
         if self._thread is not None and self._thread.is_alive():
-            logging.warning("Load is already in progress.")
+            logger.warning("Load is already in progress.")
             return
 
-        logging.debug(f'Starting comic load in background thread for: "{self._current_comic_path}"')
+        logger.debug(f'Starting comic load in background thread for: "{self._current_comic_path}"')
         self._thread = threading.Thread(target=self._load_comic_in_thread, daemon=True)
         self._thread.start()
 
@@ -235,7 +235,7 @@ class ComicBookLoader:
             self._image_loaded_events.append(threading.Event())
 
     def _load_comic_in_thread(self) -> None:
-        logging.debug(f'Load comic: comic_path = "{self._current_comic_path}"')
+        logger.debug(f'Load comic: comic_path = "{self._current_comic_path}"')
 
         load_error = False
         load_warning_only = False
@@ -250,7 +250,7 @@ class ComicBookLoader:
                     num_loaded = self._load_pages(archive)
 
                 if self._stop:
-                    logging.warning(
+                    logger.warning(
                         "Image loading stopped before all images loaded."
                         f" Loaded {num_loaded} out of {len(self._page_map)} images."
                     )
@@ -258,28 +258,28 @@ class ComicBookLoader:
 
                 assert num_loaded == len(self._page_map)
                 assert all(ev.is_set() for ev in self._image_loaded_events)
-                logging.info(f'Loaded {num_loaded} images from "{self._current_comic_path}".')
+                logger.info(f'Loaded {num_loaded} images from "{self._current_comic_path}".')
 
                 Clock.schedule_once(lambda _dt: self._on_all_images_loaded(), 0)
 
             except FileNotFoundError:
-                logging.exception(f'Comic file not found: "{self._current_comic_path}".')
+                logger.exception(f'Comic file not found: "{self._current_comic_path}".')
                 load_error = True
             except zipfile.BadZipFile:
-                logging.exception(f'Bad zip file: "{self._current_comic_path}".')
+                logger.exception(f'Bad zip file: "{self._current_comic_path}".')
                 load_error = True
             except KeyError:
-                logging.exception(
+                logger.exception(
                     "Key error accessing page_map or image_load_order, possibly due to stop/reset:"
                 )
                 load_error = True
             except IndexError:
                 if not self._stop:
-                    logging.exception(
+                    logger.exception(
                         f'Unexpected index error reading comic: stop = "{self._stop}".'
                     )
                 else:
-                    logging.warning(
+                    logger.warning(
                         f'Index error reading comic: probably because stop = "{self._stop}".'
                     )
                     load_warning_only = True
@@ -288,7 +288,7 @@ class ComicBookLoader:
                 _, _, tb = sys.exc_info()
                 tb_info = traceback.extract_tb(tb)
                 filename, line, func, text = tb_info[-1]
-                logging.exception(
+                logger.exception(
                     f'Error loading comic at "{filename}:{line}" in "{func}" ({text}): '
                 )
                 load_error = True
@@ -304,18 +304,18 @@ class ComicBookLoader:
 
         for i in range(len(self._image_load_order)):
             if self._stop:
-                logging.warning(f"For i = {i}, image loading stopped.")
+                logger.warning(f"For i = {i}, image loading stopped.")
                 return num_loaded
 
             load_index = self._image_load_order[i]
-            logging.debug(f'For i = {i}, load_index = "{load_index}".')
+            logger.debug(f'For i = {i}, load_index = "{load_index}".')
 
             page_info = self._page_map[load_index]
-            logging.debug(f"For i = {i}, page_info = {page_info!s}.")
+            logger.debug(f"For i = {i}, page_info = {page_info!s}.")
 
             # Double check stop flag before any more heavy processing.
             if self._stop:
-                logging.warning(f"For i = {i}, image loading stopped before getting image.")
+                logger.warning(f"For i = {i}, image loading stopped before getting image.")
                 return num_loaded
 
             page_index = page_info.page_index
@@ -327,7 +327,7 @@ class ComicBookLoader:
 
             if not first_loaded and not self._stop:
                 first_loaded = True
-                logging.info(
+                logger.info(
                     f"Loaded first image,"
                     f" page index = {page_index},"
                     f" page = {page_info.display_page_num}."
@@ -397,7 +397,7 @@ class ComicBookLoader:
 
         image_data = self._get_image_data(file_data, ext, page_info)
 
-        logging.debug(
+        logger.debug(
             f'Getting image (page = "{page_info.display_page_num}"): '
             f'image_path = "{image_path}", is_from_archive = {is_from_archive}.'
         )

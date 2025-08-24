@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import logging
 from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
+
+from loguru import logger
 
 from barks_reader.reader_consts_and_types import LONG_PATH_SETTING
 from barks_reader.reader_file_paths import (
@@ -306,7 +307,7 @@ class ReaderSettings:
         if dir_path.is_dir():
             return True
 
-        logging.error(f'Reader Settings: Required directory not found: "{dir_path}".')
+        logger.error(f'Reader Settings: Required directory not found: "{dir_path}".')
         return False
 
 

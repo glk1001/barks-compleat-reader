@@ -1,6 +1,5 @@
 # ruff: noqa: ERA001
 
-import logging
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,6 +11,7 @@ from barks_fantagraphics.fanta_comics_info import (
     LAST_VOLUME_NUMBER,
     NUM_VOLUMES,
 )
+from loguru import logger
 
 VALID_IMAGE_EXTENSION = [PNG_FILE_EXT, JPG_FILE_EXT]
 
@@ -138,7 +138,7 @@ class FantagraphicsVolumeArchives:
 
         self._fantagraphics_archive_dict: dict[int, FantagraphicsArchive] = {}
         for archive in archive_filenames:
-            logging.debug(f'Processing Fantagraphics archive "{archive}"...')
+            logger.debug(f'Processing Fantagraphics archive "{archive}"...')
 
             # self.__check_archive(archive)
 
@@ -179,7 +179,7 @@ class FantagraphicsVolumeArchives:
 
             self._fantagraphics_archive_dict[fanta_volume] = archive_page_map
 
-            logging.debug(
+            logger.debug(
                 f'Finished processing archive "{archive}" ({last_page - first_page + 1} pages).'
             )
 

@@ -1,7 +1,7 @@
-import logging
 from dataclasses import dataclass
 
 from kivy.metrics import cm, dp, inch, sp
+from loguru import logger
 from screeninfo import get_monitors
 
 
@@ -23,7 +23,7 @@ class ScreenInfo:
 def get_screen_info() -> list[ScreenInfo]:
     monitors = get_monitors()
     if not monitors:
-        logging.warning("No monitors found by screeninfo.")
+        logger.warning("No monitors found by screeninfo.")
         return []
 
     inch_in_mm = 25.4
@@ -72,26 +72,26 @@ def get_screen_info() -> list[ScreenInfo]:
 
 
 def log_screen_metrics(scrn_info: list[ScreenInfo]) -> None:
-    logging.info("--- Detailed Monitor Metrics ---")
+    logger.info("--- Detailed Monitor Metrics ---")
 
     for info in scrn_info:
-        logging.info(
+        logger.info(
             f"Display {info.display}: {info.width_pixels} x {info.height_pixels} pixels"
             f" at ({info.monitor_x}, {info.monitor_y})."
         )
-        logging.info(
+        logger.info(
             f"  -> Physical Size: {info.width_mm}mm x {info.height_mm}mm"
             f" ({info.width_in:.2f}in x {info.height_in:.2f}in)."
         )
-        logging.info(f"  -> Calculated DPI: {info.dpi:.2f}.")
-        logging.info(f"  -> Primary: {info.is_primary}.")
+        logger.info(f"  -> Calculated DPI: {info.dpi:.2f}.")
+        logger.info(f"  -> Primary: {info.is_primary}.")
 
-    logging.info(f"1 cm = {cm(1):.1f} pixels.")
-    logging.info(f"1 in = {inch(1):.1f} pixels.")
-    logging.info(f"100 dp = {dp(100):.1f} pixels.")
-    logging.info(f"100 sp = {sp(100):.1f} pixels.")
+    logger.info(f"1 cm = {cm(1):.1f} pixels.")
+    logger.info(f"1 in = {inch(1):.1f} pixels.")
+    logger.info(f"100 dp = {dp(100):.1f} pixels.")
+    logger.info(f"100 sp = {sp(100):.1f} pixels.")
 
-    logging.info("--------------------------------")
+    logger.info("--------------------------------")
 
 
 if __name__ == "__main__":

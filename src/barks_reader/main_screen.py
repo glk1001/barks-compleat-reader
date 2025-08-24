@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from random import randrange
 from typing import TYPE_CHECKING
 
@@ -43,6 +42,7 @@ from kivy.properties import BooleanProperty, ColorProperty, NumericProperty, Str
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import Screen
 from kivy.uix.treeview import TreeViewNode
+from loguru import logger
 
 from barks_reader.background_views import BackgroundViews, FileTypes, ViewStates
 from barks_reader.comic_book_page_info import ComicBookPageInfo, ComicBookPageInfoManager
@@ -320,7 +320,7 @@ class MainScreen(BoxLayout, Screen):
         self.loading_data_popup.splash_image_path = str(
             self._random_title_images.get_loading_screen_random_image(self.title_lists[ALL_LISTS])
         )
-        logging.debug(f'New loading popup image: "{self.loading_data_popup.splash_image_path}".')
+        logger.debug(f'New loading popup image: "{self.loading_data_popup.splash_image_path}".')
 
     def start_tree_build(self) -> None:
         """Kicks off the asynchronous build of the TreeView."""
@@ -334,7 +334,7 @@ class MainScreen(BoxLayout, Screen):
         Clock.schedule_once(lambda _dt: tree_builder.build_main_screen_tree(), 0)
 
     def _on_tree_build_finished(self, _instance: Widget) -> None:
-        logging.debug("Received the 'on_finished_building_event' - dismiss the loading popup.")
+        logger.debug("Received the 'on_finished_building_event' - dismiss the loading popup.")
         if self._loading_data_popup_image_event:
             self._loading_data_popup_image_event.cancel()
 
@@ -347,7 +347,7 @@ class MainScreen(BoxLayout, Screen):
 
     def _finished_building(self) -> None:
         self._fanta_volumes_state = self.get_fanta_volumes_state()
-        logging.debug(f"_fanta_volumes_state = {self._fanta_volumes_state}.")
+        logger.debug(f"_fanta_volumes_state = {self._fanta_volumes_state}.")
 
         self._update_view_for_node(ViewStates.INITIAL)
 
@@ -507,7 +507,7 @@ class MainScreen(BoxLayout, Screen):
         if node_type == TitleTreeViewNode:
             return
 
-        logging.debug(f'Node expanded: "{node.text}" ({node_type}).')
+        logger.debug(f'Node expanded: "{node.text}" ({node_type}).')
 
         view_state_params = {}
         new_view_state = None
@@ -530,18 +530,18 @@ class MainScreen(BoxLayout, Screen):
                 new_view_state = ViewStates.ON_CATEGORY_NODE
                 view_state_params["category"] = clean_node_text
             elif is_tag_group_enum(clean_node_text):
-                logging.debug(f'Tag group node expanded: "{clean_node_text}".')
+                logger.debug(f'Tag group node expanded: "{clean_node_text}".')
                 new_view_state = ViewStates.ON_TAG_GROUP_NODE
                 view_state_params["tag_group"] = TagGroups(clean_node_text)
             elif is_tag_enum(clean_node_text):
-                logging.debug(f'Tag node expanded: "{clean_node_text}".')
+                logger.debug(f'Tag node expanded: "{clean_node_text}".')
                 new_view_state = ViewStates.ON_TAG_NODE
                 view_state_params["tag"] = Tags(clean_node_text)
 
         if new_view_state:
             self._update_background_views(new_view_state, **view_state_params)
         else:
-            logging.warning(f"No view state mapping found for node: {node.text} ({node_type})")
+            logger.warning(f"No view state mapping found for node: {node.text} ({node_type})")
 
         if node.nodes:
             self._scroll_to_node(node.nodes[0])
@@ -555,13 +555,13 @@ class MainScreen(BoxLayout, Screen):
         self._update_view_for_node(ViewStates.ON_SEARCH_NODE)
 
     def on_title_search_box_pressed(self, instance: TitleSearchBoxTreeViewNode) -> None:
-        logging.debug(f"Title search box pressed: {instance}.")
+        logger.debug(f"Title search box pressed: {instance}.")
 
         if not instance.get_current_title():
-            logging.debug("Have not got title search box text yet.")
+            logger.debug("Have not got title search box text yet.")
             self._update_view_for_node(ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET)
         elif self._background_views.get_view_state() != ViewStates.ON_TITLE_SEARCH_BOX_NODE:
-            logging.debug(
+            logger.debug(
                 f"Forcing title search box change:"
                 f" view state = {self._background_views.get_view_state()},"
                 f' title search box text = "{instance.get_current_title()}",'
@@ -573,7 +573,7 @@ class MainScreen(BoxLayout, Screen):
             )
 
     def on_title_search_box_title_changed(self, _spinner: Spinner, title_str: str) -> None:
-        logging.debug(f'Title search box title changed: "{title_str}".')
+        logger.debug(f'Title search box title changed: "{title_str}".')
 
         if not title_str:
             self._update_view_for_node(ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET)
@@ -583,13 +583,13 @@ class MainScreen(BoxLayout, Screen):
             self._update_view_for_node(ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET)
 
     def on_tag_search_box_pressed(self, instance: TagSearchBoxTreeViewNode) -> None:
-        logging.debug(f"Tag search box pressed: {instance}.")
+        logger.debug(f"Tag search box pressed: {instance}.")
 
         if not instance.get_current_tag_str():
-            logging.debug("Have not got tag search box text yet.")
+            logger.debug("Have not got tag search box text yet.")
             self._update_view_for_node(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
         elif self._background_views.get_view_state() != ViewStates.ON_TAG_SEARCH_BOX_NODE:
-            logging.debug(
+            logger.debug(
                 f"Forcing tag search box change:"
                 f" view state = {self._background_views.get_view_state()},"
                 f' tag search box text = "{instance.get_current_tag_str()}",'
@@ -598,7 +598,7 @@ class MainScreen(BoxLayout, Screen):
             self.on_tag_search_box_title_changed(instance, instance.ids.tag_title_spinner.text)
 
     def on_tag_search_box_text_changed(self, instance: TagSearchBoxTreeViewNode, text: str) -> None:
-        logging.debug(f'Tag search box text changed: text: "{text}".')
+        logger.debug(f'Tag search box text changed: text: "{text}".')
 
         if not instance.get_current_title():
             self._update_view_for_node(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
@@ -608,7 +608,7 @@ class MainScreen(BoxLayout, Screen):
         instance: TagSearchBoxTreeViewNode,
         tag_str: str,
     ) -> None:
-        logging.debug(f'Tag search box tag changed: "{tag_str}".')
+        logger.debug(f'Tag search box tag changed: "{tag_str}".')
 
         if not tag_str:
             return
@@ -621,7 +621,7 @@ class MainScreen(BoxLayout, Screen):
         instance: TagSearchBoxTreeViewNode,
         title_str: str,
     ) -> None:
-        logging.debug(
+        logger.debug(
             f'Tag search box title changed: "{title_str}".'
             f' Tag: "{instance.get_current_tag().value}".',
         )
@@ -635,13 +635,13 @@ class MainScreen(BoxLayout, Screen):
             self._update_view_for_node(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
 
     def _update_title(self, title_str: str) -> bool:
-        logging.debug(f'Update title: "{title_str}".')
+        logger.debug(f'Update title: "{title_str}".')
         assert title_str != ""
 
         title_str = ComicBookInfo.get_title_str_from_display_title(title_str)
 
         if title_str not in self.all_fanta_titles:
-            logging.debug(f'Update title: Not configured yet: "{title_str}".')
+            logger.debug(f'Update title: Not configured yet: "{title_str}".')
             return False
 
         self._fanta_info = self.all_fanta_titles[title_str]
@@ -774,7 +774,7 @@ class MainScreen(BoxLayout, Screen):
         view_state: ViewStates,
         **args: str | TagGroups | Tags | None,
     ) -> None:
-        logging.debug(f'Updating background views for node "{view_state}".')
+        logger.debug(f'Updating background views for node "{view_state}".')
         self._update_background_views(view_state, **args)
 
     def _update_background_views(
@@ -828,20 +828,20 @@ class MainScreen(BoxLayout, Screen):
         )
 
     def _set_title(self, title_image_file: Path | None = None) -> None:
-        logging.debug(f'Setting title to "{self._fanta_info.comic_book_info.get_title_str()}".')
+        logger.debug(f'Setting title to "{self._fanta_info.comic_book_info.get_title_str()}".')
 
         if title_image_file:
             title_image_file = self._reader_settings.file_paths.get_edited_version_if_possible(
                 title_image_file,
             )[0]
-            logging.debug(f'Using provided title image file "{title_image_file}".')
+            logger.debug(f'Using provided title image file "{title_image_file}".')
         else:
             title_image_file = self._random_title_images.get_random_image_for_title(
                 self._fanta_info.comic_book_info.get_title_str(),
                 TITLE_VIEW_IMAGE_TYPES,
                 use_edited_only=True,
             )
-            logging.debug(f'Using random title image file "{title_image_file}".')
+            logger.debug(f'Using random title image file "{title_image_file}".')
         self._background_views.set_bottom_view_title_image_file(title_image_file)
 
         self.main_title_text = self._get_main_title_str()
@@ -856,7 +856,7 @@ class MainScreen(BoxLayout, Screen):
                 use_edited_only=True,
             )
         )
-        logging.debug(f'Using title image source "{self.title_page_image_source}".')
+        logger.debug(f'Using title image source "{self.title_page_image_source}".')
 
         self._set_goto_page_checkbox()
         self._set_use_overrides_checkbox()
@@ -878,7 +878,7 @@ class MainScreen(BoxLayout, Screen):
         )
 
     def on_use_overrides_checkbox_changed(self, _instance: Widget, use_overrides: bool) -> None:
-        logging.debug(f"Use overrides checkbox changed: use_overrides = {use_overrides}.")
+        logger.debug(f"Use overrides checkbox changed: use_overrides = {use_overrides}.")
 
         self.title_page_image_source = str(
             self._special_fanta_overrides.get_title_page_inset_file(
@@ -887,7 +887,7 @@ class MainScreen(BoxLayout, Screen):
             )
         )
 
-        logging.debug(
+        logger.debug(
             f'Use overrides changed: title_page_image_source = "{self.title_page_image_source}".',
         )
 
@@ -901,7 +901,7 @@ class MainScreen(BoxLayout, Screen):
 
     def on_image_pressed(self) -> None:
         if self._fanta_info is None:
-            logging.debug(f'Image "{self.title_page_image_source}" pressed. But no title selected.')
+            logger.debug(f'Image "{self.title_page_image_source}" pressed. But no title selected.')
             return
         if self._fanta_volumes_state in [
             FantaVolumesState.VOLUMES_MISSING,
@@ -917,7 +917,7 @@ class MainScreen(BoxLayout, Screen):
                 if self._fanta_volumes_state == FantaVolumesState.VOLUMES_NOT_SET
                 else ErrorTypes.FantagraphicsVolumeRootNotFound
             )
-            logging.warning(f'Image "{self.title_page_image_source}" pressed. But {reason}.')
+            logger.warning(f'Image "{self.title_page_image_source}" pressed. But {reason}.')
 
             def _on_error_popup_closed(fanta_volumes_missing_msg: str) -> None:
                 self.main_files_not_loaded_msg = fanta_volumes_missing_msg
@@ -931,7 +931,7 @@ class MainScreen(BoxLayout, Screen):
             )
             return
 
-        logging.debug(f'Image "{self.title_page_image_source}" pressed.')
+        logger.debug(f'Image "{self.title_page_image_source}" pressed.')
         comic = self._get_comic_book()
         self._read_comic_book(self._fanta_info, comic)
 
@@ -956,15 +956,15 @@ class MainScreen(BoxLayout, Screen):
         return self.bottom_view_title_goto_page_num
 
     def _set_tag_goto_page_checkbox(self, tag: Tags | TagGroups, title_str: str) -> None:
-        logging.debug(f'Setting tag goto page for ({tag.value}, "{title_str}").')
+        logger.debug(f'Setting tag goto page for ({tag.value}, "{title_str}").')
 
         if type(tag) is Tags:
             title = self._title_dict[ComicBookInfo.get_title_str_from_display_title(title_str)]
             if (tag, title) not in BARKS_TAGGED_PAGES:
-                logging.debug(f'No pages for ({tag.value}, "{title_str}").')
+                logger.debug(f'No pages for ({tag.value}, "{title_str}").')
             else:
                 page_to_goto = BARKS_TAGGED_PAGES[(tag, title)][0]
-                logging.debug(f"Setting page to goto: {page_to_goto}.")
+                logger.debug(f"Setting page to goto: {page_to_goto}.")
                 self.ids.goto_page_layout.opacity = 1
                 self.ids.goto_page_checkbox.active = True
                 self.bottom_view_title_goto_page_num = page_to_goto
@@ -991,7 +991,7 @@ class MainScreen(BoxLayout, Screen):
             # The comic has been read. Go back to the first page.
             last_read_page_info.display_page_num = COMIC_PAGE_ONE
 
-        logging.debug(f'"{title_str}": Last read page "{last_read_page_info}".')
+        logger.debug(f'"{title_str}": Last read page "{last_read_page_info}".')
 
         return last_read_page_info
 
@@ -1017,15 +1017,15 @@ class MainScreen(BoxLayout, Screen):
         )
 
     def app_closing(self) -> None:
-        logging.debug("Closing app...")
+        logger.debug("Closing app...")
 
         if not self.ids.reader_tree_view.selected_node:
             self._json_settings_manager.save_last_selected_node_path([])
-            logging.debug("Settings: No selected node to save.")
+            logger.debug("Settings: No selected node to save.")
         else:
             selected_node_path = get_tree_view_node_path(self.ids.reader_tree_view.selected_node)
             self._json_settings_manager.save_last_selected_node_path(selected_node_path)
-            logging.debug(f'Settings: Saved last selected node "{selected_node_path}".')
+            logger.debug(f'Settings: Saved last selected node "{selected_node_path}".')
 
     def read_article_as_comic_book(
         self, article_title: Titles, view_state: ViewStates, page_to_first_goto: str
@@ -1051,7 +1051,7 @@ class MainScreen(BoxLayout, Screen):
             str(self._reader_settings.sys_file_paths.get_empty_page_file()),
         )
         comic_book_image_builder.set_required_dim(self._comic_page_info.required_dim)
-        logging.debug(
+        logger.debug(
             f'Load "{comic_fanta_info.comic_book_info.get_title_str()}"'
             f' and goto page "{page_to_first_goto}".',
         )
@@ -1075,10 +1075,10 @@ class MainScreen(BoxLayout, Screen):
         last_read_page = self._get_last_read_page_from_comic()
 
         if not last_read_page:
-            logging.warning(f'"{title_str}": There was no valid last read page.')
+            logger.warning(f'"{title_str}": There was no valid last read page.')
         else:
             self._json_settings_manager.save_last_read_page(title_str, last_read_page)
-            logging.debug(
+            logger.debug(
                 f'"{title_str}": Saved last read page "{last_read_page.display_page_num}".',
             )
 
@@ -1088,13 +1088,13 @@ class MainScreen(BoxLayout, Screen):
             self._set_goto_page_checkbox(last_read_page)
 
     def _goto_saved_node(self, saved_node_path: list[str]) -> None:
-        logging.debug(f'Looking for saved node "{saved_node_path}"...')
+        logger.debug(f'Looking for saved node "{saved_node_path}"...')
         saved_node = find_node_by_path(self.ids.reader_tree_view, list(reversed(saved_node_path)))
         if saved_node:
             self._setup_and_selected_saved_node(saved_node)
 
     def _setup_and_selected_saved_node(self, saved_node: TreeViewNode) -> None:
-        logging.debug(
+        logger.debug(
             f'Selecting and setting up start node "{get_tree_view_node_id_text(saved_node)}".',
         )
 
