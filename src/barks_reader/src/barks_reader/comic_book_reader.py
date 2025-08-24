@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.comics_consts import PageType
-from barks_fantagraphics.pages import THIS_SCRIPT_DIR
 from kivy.core.image import Image as CoreImage
 from kivy.core.window import Window
 from kivy.event import EventDispatcher
@@ -392,7 +391,7 @@ class ComicBookReader(BoxLayout):
                 self._current_page_index
             )
             self._comic_image.texture = CoreImage(image_stream, ext=image_ext).texture
-        except Exception:
+        except Exception:  # noqa: BLE001
             logger.exception(f"Error displaying image with index {self._current_page_index}: ")
             # Optionally display a placeholder image or error message
 

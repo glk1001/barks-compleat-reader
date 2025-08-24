@@ -1,0 +1,16 @@
+Metadata-Version: 2.4
+Name: barks-reader
+Version: 0.1.0
+Summary: Kivy modules navigate and read the Fantagraphics Barks library.
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: barks-build-comic-images
+Requires-Dist: barks-fantagraphics
+Requires-Dist: comic-utils
+Requires-Dist: cpi>=2.0.7
+Requires-Dist: kivy==2.3.1
+Requires-Dist: kivy-garden==0.1.5
+Requires-Dist: loguru>=0.7.3
+Requires-Dist: pillow>=11.2.1
+Requires-Dist: pyjnius>=1.6.1
+Requires-Dist: screeninfo>=0.8.1

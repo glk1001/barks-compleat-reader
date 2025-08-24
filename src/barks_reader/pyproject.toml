@@ -1,0 +1,31 @@
+[project]
+name = "barks-reader"
+version = "0.1.0"
+description = "Kivy modules navigate and read the Fantagraphics Barks library."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "barks-build-comic-images",
+    "barks-fantagraphics",
+    "comic-utils",
+    "cpi>=2.0.7",
+    "kivy==2.3.1",
+    "kivy-garden==0.1.5",
+    "loguru>=0.7.3",
+    "pillow>=11.2.1",
+    "pyjnius>=1.6.1",
+    "screeninfo>=0.8.1",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12.7",
+]
+
+[tool.uv]
+    package = true
+
+[tool.uv.sources]
+barks-build-comic-images = { path = "../../../barks-build-comic-images", editable = true }
+barks-fantagraphics = { path = "../../../barks-fantagraphics", editable = true }
+comic-utils = { path = "../../../comic-utils", editable = true }

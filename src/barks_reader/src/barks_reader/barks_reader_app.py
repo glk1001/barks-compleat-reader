@@ -337,7 +337,7 @@ def main() -> None:
         assert Config.getint("kivy", "exit_on_escape") == 0
         kivy_app = BarksReaderApp(comics_database)
         kivy_app.run()
-    except Exception:
+    except Exception:  # noqa: BLE001
         logger.exception("There's been a program error - the Barks reader app is terminating: ")
         sys.exit(1)
 

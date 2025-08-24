@@ -284,7 +284,7 @@ class ComicBookLoader:
                     )
                     load_warning_only = True
                     load_error = True
-            except Exception:
+            except Exception:  # noqa: BLE001
                 _, _, tb = sys.exc_info()
                 tb_info = traceback.extract_tb(tb)
                 filename, line, func, text = tb_info[-1]

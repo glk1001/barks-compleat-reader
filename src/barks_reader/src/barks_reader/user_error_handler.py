@@ -145,7 +145,7 @@ class UserErrorHandler:
 
             The expected volume number was {exception.expected_volume} not {exception.file_vol}. You need to make sure the
             archives are prefixed with the numbers {FIRST_VOLUME_NUMBER:02d} to {LAST_VOLUME_NUMBER:02d} inclusive, then restart
-            the app.""")
+            the app.""")  # noqa: E501
 
         self._show_fatal_config_error(
             title="Wrong Fantagraphics Archive File",
@@ -163,7 +163,7 @@ class UserErrorHandler:
         msg = dedent(f"""\
             There were too many Fantagraphics archive files. The expected number
             of files is {exception.num_volumes} not {exception.num_archive_files}. You need to make sure the archives are prefixed
-            with the numbers {FIRST_VOLUME_NUMBER:02d} to {LAST_VOLUME_NUMBER:02d} inclusive, then restart the app.""")
+            with the numbers {FIRST_VOLUME_NUMBER:02d} to {LAST_VOLUME_NUMBER:02d} inclusive, then restart the app.""")  # noqa: E501
 
         self._show_fatal_config_error(
             title="Too Many Fantagraphics Archives",

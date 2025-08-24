@@ -2,6 +2,12 @@ version = 1
 revision = 3
 requires-python = ">=3.12"
 
+[manifest]
+members = [
+    "barks-compleat-reader",
+    "barks-reader",
+]
+
 [[package]]
 name = "barks-build-comic-images"
 version = "0.1.0"
@@ -20,6 +26,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "barks-build-comic-images" },
     { name = "barks-fantagraphics" },
+    { name = "barks-reader" },
     { name = "better-exceptions" },
     { name = "comic-utils" },
     { name = "cpi" },
@@ -41,6 +48,7 @@ dev = [
 requires-dist = [
     { name = "barks-build-comic-images", editable = "../barks-build-comic-images" },
     { name = "barks-fantagraphics", editable = "../barks-fantagraphics" },
+    { name = "barks-reader", editable = "src/barks_reader" },
     { name = "better-exceptions", specifier = ">=0.3.3" },
     { name = "comic-utils", editable = "../comic-utils" },
     { name = "cpi", specifier = ">=2.0.7" },
@@ -72,6 +80,45 @@ dev = [
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "ruff", specifier = ">=0.12.8" },
 ]
+
+[[package]]
+name = "barks-reader"
+version = "0.1.0"
+source = { editable = "src/barks_reader" }
+dependencies = [
+    { name = "barks-build-comic-images" },
+    { name = "barks-fantagraphics" },
+    { name = "comic-utils" },
+    { name = "cpi" },
+    { name = "kivy" },
+    { name = "kivy-garden" },
+    { name = "loguru" },
+    { name = "pillow" },
+    { name = "pyjnius" },
+    { name = "screeninfo" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "barks-build-comic-images", editable = "../barks-build-comic-images" },
+    { name = "barks-fantagraphics", editable = "../barks-fantagraphics" },
+    { name = "comic-utils", editable = "../comic-utils" },
+    { name = "cpi", specifier = ">=2.0.7" },
+    { name = "kivy", specifier = "==2.3.1" },
+    { name = "kivy-garden", specifier = "==0.1.5" },
+    { name = "loguru", specifier = ">=0.7.3" },
+    { name = "pillow", specifier = ">=11.2.1" },
+    { name = "pyjnius", specifier = ">=1.6.1" },
+    { name = "screeninfo", specifier = ">=0.8.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "ruff", specifier = ">=0.12.7" }]
 
 [[package]]
 name = "better-exceptions"

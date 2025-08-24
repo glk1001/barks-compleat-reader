@@ -1,5 +1,3 @@
-set dotenv-load
-
 import '../barks-comic-building/.justfile'
 
 _default2:
@@ -7,7 +5,7 @@ _default2:
 
 # Fire up the Compleat Barks Reader
 reader:
-    uv run "{{source_dir()}}/src/barks_reader/main.py"
+    uv run "{{source_dir()}}/main.py"
 
 # Get panels info for a volume or volumes
 panels-info volume:
