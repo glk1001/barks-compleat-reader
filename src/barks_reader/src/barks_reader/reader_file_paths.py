@@ -12,7 +12,7 @@ from barks_fantagraphics.barks_titles import (
     BARKS_TITLES,
     Titles,
 )
-from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PNG_FILE_EXT
+from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
 from loguru import logger
 
 from barks_reader.reader_utils import get_all_files_in_dir

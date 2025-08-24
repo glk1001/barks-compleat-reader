@@ -18,7 +18,6 @@ from barks_fantagraphics.barks_tags import (
 from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, BARKS_TITLES, ComicBookInfo, Titles
 from barks_fantagraphics.comics_consts import (
     BACK_MATTER_PAGES,
-    ROMAN_NUMERALS,
     PageType,
 )
 from barks_fantagraphics.fanta_comics_info import (
@@ -34,6 +33,7 @@ from barks_fantagraphics.fanta_comics_info import (
     FantaComicBookInfo,
 )
 from barks_fantagraphics.title_search import BarksTitleSearch
+from comic_utils.comic_consts import ROMAN_NUMERALS
 
 # noinspection PyProtectedMember
 from kivy.clock import Clock

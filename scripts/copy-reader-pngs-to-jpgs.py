@@ -7,8 +7,9 @@ from configparser import ConfigParser
 from pathlib import Path
 
 from barks_fantagraphics.comics_cmd_args import CmdArgNames, CmdArgs
-from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PNG_FILE_EXT
+from barks_fantagraphics.comics_consts import PNG_FILE_EXT
 from barks_fantagraphics.comics_utils import get_abbrev_path
+from comic_utils.comic_consts import JPG_FILE_EXT
 from comic_utils.comics_logging import setup_logging
 from comic_utils.pil_image_utils import SAVE_JPG_COMPRESS_LEVEL, open_pil_image_for_reading
 from loguru import logger

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from barks_fantagraphics.comic_book import ComicBook
-from barks_fantagraphics.comics_consts import JSON_FILE_EXT, PageType
+from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.page_classes import CleanPage, RequiredDimensions
 from barks_fantagraphics.pages import (
@@ -11,6 +11,7 @@ from barks_fantagraphics.pages import (
     ROMAN_NUMERALS,
     get_sorted_srce_and_dest_pages_with_dimensions,
 )
+from comic_utils.comic_consts import JSON_FILE_EXT
 
 from barks_reader.reader_settings import ReaderSettings
 

@@ -5,12 +5,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from barks_fantagraphics.comic_book import get_page_str
-from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PNG_FILE_EXT
 from barks_fantagraphics.fanta_comics_info import (
     FIRST_VOLUME_NUMBER,
     LAST_VOLUME_NUMBER,
     NUM_VOLUMES,
 )
+from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
 from loguru import logger
 
 VALID_IMAGE_EXTENSION = [PNG_FILE_EXT, JPG_FILE_EXT]

@@ -12,13 +12,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from zipfile import ZipFile
 
-from barks_fantagraphics.comics_consts import JPG_FILE_EXT, PNG_FILE_EXT, PageType
+from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.comics_utils import get_abbrev_path, get_dest_comic_zip_file_stem
 from barks_fantagraphics.fanta_comics_info import (
     FIRST_VOLUME_NUMBER,
     LAST_VOLUME_NUMBER,
     FantaComicBookInfo,
 )
+from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
 from comic_utils.pil_image_utils import open_pil_image_for_reading
 from kivy.clock import Clock
 from loguru import logger
