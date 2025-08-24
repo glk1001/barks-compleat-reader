@@ -1,0 +1,4 @@
+from barks_reader.barks_reader_app import main
+
+if __name__ == "__main__":
+    main()

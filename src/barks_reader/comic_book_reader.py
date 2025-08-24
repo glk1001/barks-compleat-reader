@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.comics_consts import PageType
+from barks_fantagraphics.pages import THIS_SCRIPT_DIR
 from kivy.core.image import Image as CoreImage
 from kivy.core.window import Window
 from kivy.event import EventDispatcher
@@ -42,6 +43,8 @@ GOTO_PAGE_BUTTON_HEIGHT = dp(25)
 GOTO_PAGE_BUTTON_BODY_COLOR = (0, 1, 1, 1)
 GOTO_PAGE_BUTTON_NONBODY_COLOR = (0, 0.5, 0.5, 1)
 GOTO_PAGE_BUTTON_CURRENT_PAGE_COLOR = (1, 1, 0, 1)
+
+COMIC_BOOK_READER_KV_FILE = str(Path(__file__).with_suffix(".kv"))
 
 
 class _ComicPageManager(EventDispatcher):
@@ -557,9 +560,6 @@ class ComicBookReaderScreen(BoxLayout, Screen):
         self.add_widget(self.comic_book_reader)
 
 
-KV_FILE = Path(__file__).stem + ".kv"
-
-
 def get_barks_comic_reader_screen(
     screen_name: str,
     reader_settings: ReaderSettings,
@@ -568,7 +568,7 @@ def get_barks_comic_reader_screen(
     on_comic_is_ready_to_read: Callable[[], None],
     on_close_reader: Callable[[], None],
 ) -> Screen:
-    Builder.load_file(KV_FILE)
+    Builder.load_file(COMIC_BOOK_READER_KV_FILE)
 
     root = ComicBookReaderScreen(reader_settings, reader_app_icon_file, name=screen_name)
 

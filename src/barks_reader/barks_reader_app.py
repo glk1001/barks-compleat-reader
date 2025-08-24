@@ -7,7 +7,7 @@ from __future__ import annotations
 # --- app's settings directory. The 'config_info' module handles --- #
 # --- this, and for this to work, we need to import it before    --- #
 # --- any kivy imports.                                          --- #
-from config_info import ConfigInfo
+from barks_reader.config_info import ConfigInfo
 
 config_info = ConfigInfo()
 # ------------------------------------------------------------------ #
@@ -52,7 +52,8 @@ if TYPE_CHECKING:
     from kivy.uix.widget import Widget
     from loguru import Record
 
-KV_FILE = Path(__file__).stem + ".kv"
+READER_TREE_VIEW_KV_FILE = str(Path(__file__).parent / "reader-tree-view.kv")
+BARKS_READER_APP_KV_FILE = str(Path(__file__).with_suffix(".kv"))
 
 
 LOGGER_SYS_NAME_KEY = "sys_name"
@@ -108,7 +109,7 @@ class BarksReaderApp(App):
             "graphics",
             {
                 "width": default_width,
-                "height": default_height,
+                "height": default_height_incl_action_bar,
                 "left": 2400,
                 "top": 50,
             },
@@ -144,7 +145,8 @@ class BarksReaderApp(App):
         logger.debug("Loading kv files...")
         # Pass the font manager to kv lang so it can be accessed
         Builder.load_string("#:set fm app.font_manager")
-        Builder.load_file(KV_FILE)
+        Builder.load_file(READER_TREE_VIEW_KV_FILE)
+        Builder.load_file(BARKS_READER_APP_KV_FILE)
 
         root = self._build_screens()
 

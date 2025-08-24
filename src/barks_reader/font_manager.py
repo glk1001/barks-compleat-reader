@@ -1,4 +1,4 @@
-from barks_fantagraphics.comics_consts import CARL_BARKS_FONT_NAME
+from barks_fantagraphics.comics_consts import CARL_BARKS_FONT
 from kivy.event import EventDispatcher
 from kivy.metrics import sp
 from kivy.properties import NumericProperty
@@ -33,8 +33,8 @@ class FontManager(EventDispatcher):
 
     loading_title_size = NumericProperty()
 
-    main_title_font_name = CARL_BARKS_FONT_NAME
-    loading_title_font_name = CARL_BARKS_FONT_NAME
+    main_title_font_name = CARL_BARKS_FONT
+    loading_title_font_name = main_title_font_name
 
     def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         super().__init__(*args, **kwargs)

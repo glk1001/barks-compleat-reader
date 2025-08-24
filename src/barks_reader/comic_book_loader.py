@@ -20,12 +20,12 @@ from barks_fantagraphics.fanta_comics_info import (
     FantaComicBookInfo,
 )
 from comic_utils.pil_image_utils import open_pil_image_for_reading
-from fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
 from kivy.clock import Clock
 from loguru import logger
 from PIL import Image as PilImage
 from PIL import ImageOps
 
+from barks_reader.fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
 from barks_reader.reader_ui_classes import set_kivy_busy_cursor, set_kivy_normal_cursor
 from barks_reader.reader_utils import is_blank_page, is_title_page
 

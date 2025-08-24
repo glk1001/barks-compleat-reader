@@ -327,7 +327,7 @@ class MainScreen(BoxLayout, Screen):
         Clock.schedule_once(lambda _dt: self.loading_data_popup.open(), 0)
 
         # Put import here to avoid circular dependency.
-        from reader_tree_builder import ReaderTreeBuilder  # noqa: PLC0415
+        from barks_reader.reader_tree_builder import ReaderTreeBuilder  # noqa: PLC0415
 
         tree_builder = ReaderTreeBuilder(self)
         self.year_range_nodes = tree_builder.chrono_year_range_nodes
