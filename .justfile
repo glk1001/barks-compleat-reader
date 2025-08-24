@@ -9,7 +9,7 @@ reader:
 
 # Get panels info for a volume or volumes
 panels-info volume:
-    uv run "{{source_dir()}}/scripts/panels-info.py" --volume {{volume}}
+    uv run "{{source_dir()}}/scripts/panels-info.py" --log-level WARNING --volume {{volume}}
 
 inset-width height:
     @bash "{{source_dir()}}/scripts/inset_width.sh" {{height}}

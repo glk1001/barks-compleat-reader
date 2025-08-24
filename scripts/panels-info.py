@@ -35,6 +35,9 @@ if not args_ok:
     logger.error(error_msg)
     sys.exit(1)
 
+logger.remove(0)
+logger.add(sys.stderr, level=cmd_args.get_log_level())
+
 # noinspection PyBroadException
 try:
     config_info = ConfigInfo()
