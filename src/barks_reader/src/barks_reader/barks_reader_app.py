@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import kivy
+import loguru
 from barks_fantagraphics.comics_cmd_args import CmdArgs, ExtraArg
 from kivy import Config
 from kivy.app import App
@@ -50,7 +51,6 @@ if TYPE_CHECKING:
     from kivy.config import ConfigParser
     from kivy.uix.screenmanager import ScreenManager
     from kivy.uix.widget import Widget
-    from loguru import Record
 
 READER_TREE_VIEW_KV_FILE = str(Path(__file__).parent / "reader-tree-view.kv")
 BARKS_READER_APP_KV_FILE = str(Path(__file__).with_suffix(".kv"))
@@ -262,7 +262,7 @@ def start_logging(_args: CmdArgs) -> None:
     log_level = logging.DEBUG
     # log_level = cmd_args.get_log_level()
 
-    def color_formatter(_record: Record) -> str:
+    def color_formatter(_record: loguru.Record) -> str:
         sys_name_fmt = f"<yellow>{{extra[{LOGGER_SYS_NAME_KEY}]: <4}}</yellow>"
 
         return (
@@ -298,27 +298,33 @@ def start_logging(_args: CmdArgs) -> None:
 
     Config.set("kivy", "log_level", logging.getLevelName(log_level).lower())
 
-    # Redirect Kivy's log messages to our main logging setup
+    # Redirect Kivy's log messages to our main loguru setup.
     class LoguruKivyHandler(logging.Handler):
-        def emit(self, record: logging.LogRecord) -> None:
-            level = record.levelname.lower()
-            message = self.format(record)  # Format the message using the handler's formatter
+        def __init__(self, logr: loguru.Logger) -> None:
+            self.logr = logr
+            super().__init__()
 
-            # Map standard logging levels to Loguru's levels
-            if level == "debug":
-                logger.debug(message, sys_name=KIVY_LOGGING_NAME)
-            elif level == "info":
-                logger.info(message, sys_name=KIVY_LOGGING_NAME)
-            elif level == "warning":
-                logger.warning(message, sys_name=KIVY_LOGGING_NAME)
-            elif level == "error":
-                logger.error(message, sys_name=KIVY_LOGGING_NAME)
-            elif level == "critical":
-                logger.critical(message, sys_name=KIVY_LOGGING_NAME)
-            else:
-                logger.log(level.upper(), message, sys_name=KIVY_LOGGING_NAME)  # For custom levels
+        def emit(self, log_record: logging.LogRecord) -> None:
+            def patch_loguru_rec(record: loguru.Record) -> None:
+                record.update(exception=log_record.exc_info)
+                record.update(file=log_record.filename)
+                record.update(function=log_record.funcName)
+                record.update(line=log_record.lineno)
+                record.update(module=log_record.module)
+                record.update(name=log_record.name)
+                record.update(process=log_record.process)
+                record.update(thread=log_record.thread)
 
-    kivy.Logger.addHandler(LoguruKivyHandler())
+            patched_logger = self.logr.patch(patch_loguru_rec)
+            level = logging.getLevelName(log_record.levelno).lower()
+            message = log_record.getMessage()
+
+            # Now log the kivy information using Loguru.
+            # Use getattr to call the appropriate logging method based on level.
+            log_method = getattr(patched_logger, level, patched_logger.info)  # Fallback to 'info'
+            log_method(message, sys_name = KIVY_LOGGING_NAME)
+
+    kivy.Logger.addHandler(LoguruKivyHandler(logger))
 
     logger.info("*** Starting barks reader ***")
     logger.info(f'app config path = "{config_info.app_config_path}".')

@@ -9,7 +9,6 @@ APP_NAME = "barks-reader"
 # logging required.
 os.environ["KIVY_NO_ARGS"] = "1"
 os.environ["KIVY_NO_CONSOLELOG"] = "1"
-os.environ["KIVY_LOG_MODE"] = "MIXED"
 
 
 class ConfigInfo:
