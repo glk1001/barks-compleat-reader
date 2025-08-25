@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from loguru_config import LoguruConfig
+
 # ------------------------------------------------------------------ #
 # --- We need to change the KIVY_HOME directory to be under this --- #
 # --- app's settings directory. The 'config_info' module handles --- #
 # --- this, and for this to work, we need to import it before    --- #
 # --- any kivy imports.                                          --- #
 from barks_reader.config_info import ConfigInfo
+from barks_reader.reader_file_paths import HOME_DIR
 
 config_info = ConfigInfo()
 # ------------------------------------------------------------------ #
@@ -258,46 +261,19 @@ def _log_screen_settings() -> None:
     logger.info(f"Window pos = {Window.left},{Window.top}.")
 
 
-def start_logging(_args: CmdArgs) -> None:
-    log_level = logging.DEBUG
-    # log_level = cmd_args.get_log_level()
-
-    def color_formatter(_record: loguru.Record) -> str:
-        sys_name_fmt = f"<yellow>{{extra[{LOGGER_SYS_NAME_KEY}]: <4}}</yellow>"
-
-        return (
-            "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
-            "<level>{level: <8}</level> | "
-            f"{sys_name_fmt}: "
-            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan>"
-            " - <level>{message}</level>"
-            "\n"
-            "{exception}"
-        )
-
-    config = {
-        "handlers": [
-            {
-                "sink": sys.stdout,
-                "format": color_formatter,
-                "backtrace": True,
-                "diagnose": True,
-            },
-            {
-                "sink": str(config_info.app_log_path),
-                "format": color_formatter,
-                "rotation": "5 MB",
-                "enqueue": True,
-                "backtrace": True,
-                "diagnose": True,
-            },
-        ],
-        "extra": {"sys_name": APP_LOGGING_NAME},
-    }
-    logger.configure(**config)
+def start_logging(args: CmdArgs) -> None:
+    setup_loguru(args)
 
     Config.set("kivy", "log_level", logging.getLevelName(log_level).lower())
+    redirect_kivy_logs()
 
+    logger.info("*** Starting barks reader ***")
+    logger.info(f'app config path = "{config_info.app_config_path}".')
+    logger.info(f'app log path = "{log_path}".')
+    logger.info(f'kivy config dir = "{config_info.kivy_config_dir}".')
+
+
+def redirect_kivy_logs() -> None:
     # Redirect Kivy's log messages to our main loguru setup.
     class LoguruKivyHandler(logging.Handler):
         def __init__(self, logr: loguru.Logger) -> None:
@@ -322,13 +298,40 @@ def start_logging(_args: CmdArgs) -> None:
             # Now log the kivy information using Loguru.
             # Use getattr to call the appropriate logging method based on level.
             log_method = getattr(patched_logger, level, patched_logger.info)  # Fallback to 'info'
-            log_method(message, sys_name = KIVY_LOGGING_NAME)
+            log_method(message, sys_name=KIVY_LOGGING_NAME)
 
     kivy.Logger.addHandler(LoguruKivyHandler(logger))
 
-    logger.info("*** Starting barks reader ***")
-    logger.info(f'app config path = "{config_info.app_config_path}".')
-    logger.info(f'kivy config dir = "{config_info.kivy_config_dir}".')
+
+# Make these log variables global so loguru-config can access them.
+log_level = logging.DEBUG
+# log_level = cmd_args.get_log_level()
+log_path = None
+
+
+def setup_loguru(_args: CmdArgs) -> None:
+    global log_level  # noqa: PLW0603
+    log_level = logging.DEBUG
+    # log_level = cmd_args.get_log_level()
+
+    global log_path  # noqa: PLW0603
+    log_path = HOME_DIR / config_info.app_config_dir / "kivy" / "logs" / "barks-reader.log"
+
+    LoguruConfig.load(config_info.app_config_dir / "log-config.yaml")
+
+
+def color_formatter(_record: loguru.Record) -> str:
+    sys_name_fmt = f"<yellow>{{extra[{LOGGER_SYS_NAME_KEY}]: <4}}</yellow>"
+
+    return (
+        "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+        "<level>{level: <8}</level> | "
+        f"{sys_name_fmt}: "
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan>"
+        " - <level>{message}</level>"
+        "\n"
+        "{exception}"
+    )
 
 
 EXTRA_ARGS: list[ExtraArg] = [
@@ -338,10 +341,9 @@ EXTRA_ARGS: list[ExtraArg] = [
 
 
 def main() -> None:
-    cmd_args = CmdArgs("Fantagraphics source files", extra_args=EXTRA_ARGS)
+    cmd_args = CmdArgs("Compleat Barks Reader", extra_args=EXTRA_ARGS)
     args_ok, error_msg = cmd_args.args_are_valid()
     if not args_ok:
-        # Logging may not be set up, so print to stderr as a fallback
         sys.exit(1)
 
     start_logging(cmd_args)

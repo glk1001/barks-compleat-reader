@@ -14,7 +14,7 @@ os.environ["KIVY_NO_CONSOLELOG"] = "1"
 class ConfigInfo:
     def __init__(self) -> None:
         self._app_name = APP_NAME
-        self._app_config_dir: Path | None = None
+        self.app_config_dir: Path | None = None
         self.app_config_path: Path | None = None
         self.kivy_config_dir: Path | None = None
         self.app_log_path: Path | None = None
@@ -24,16 +24,16 @@ class ConfigInfo:
         self._setup_app_config_dir()
 
     def _setup_app_config_dir(self) -> None:
-        self._app_config_dir = self._get_app_config_dir()
+        self.app_config_dir = self._get_app_config_dir()
 
-        self._app_config_dir.mkdir(parents=True, exist_ok=True)
-        if not self._app_config_dir.is_dir():
-            msg = f'Could not create app config directory "{self._app_config_dir}".'
+        self.app_config_dir.mkdir(parents=True, exist_ok=True)
+        if not self.app_config_dir.is_dir():
+            msg = f'Could not create app config directory "{self.app_config_dir}".'
             raise RuntimeError(msg)
 
-        self.app_config_path = self._app_config_dir / (self._app_name + ".ini")
+        self.app_config_path = self.app_config_dir / (self._app_name + ".ini")
 
-        self.kivy_config_dir = self._app_config_dir / "kivy"
+        self.kivy_config_dir = self.app_config_dir / "kivy"
         os.environ["KIVY_HOME"] = str(self.kivy_config_dir)
 
         log_dir = self.kivy_config_dir / "logs"
