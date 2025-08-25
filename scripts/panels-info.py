@@ -27,53 +27,54 @@ SHORT_FILE_TYPE_NAMES = {
 RELEVANT_FILE_TYPES = [ft for ft in FileTypes if ft != FileTypes.NONTITLE]
 
 
-# TODO(glk): Some issue with type checking inspection?
-# noinspection PyTypeChecker
-cmd_args = CmdArgs("Fantagraphics source files", CmdArgNames.TITLE | CmdArgNames.VOLUME)
-args_ok, error_msg = cmd_args.args_are_valid()
-if not args_ok:
-    logger.error(error_msg)
-    sys.exit(1)
+if __name__ == "__main__":
+    # TODO(glk): Some issue with type checking inspection?
+    # noinspection PyTypeChecker
+    cmd_args = CmdArgs("Reader Panels Info", CmdArgNames.TITLE | CmdArgNames.VOLUME)
+    args_ok, error_msg = cmd_args.args_are_valid()
+    if not args_ok:
+        logger.error(error_msg)
+        sys.exit(1)
 
-logger.remove(0)
-logger.add(sys.stderr, level=cmd_args.get_log_level())
+    logger.remove(0)
+    logger.add(sys.stderr, level=cmd_args.get_log_level(), backtrace=True, diagnose=True)
 
-# noinspection PyBroadException
-try:
-    config_info = ConfigInfo()
-    print(f'Getting config from "{config_info.app_config_path}".')
-    config = ConfigParser()
-    config.read(config_info.app_config_path)
-    reader_settings = ReaderSettings()
-    reader_settings.set_config(config, config_info.app_config_path)
-    reader_settings.set_barks_panels_dir()
+    # noinspection PyBroadException
+    try:
+        config_info = ConfigInfo()
+        print(f'Getting config from "{config_info.app_config_path}".')
+        config = ConfigParser()
+        config.read(config_info.app_config_path)
+        reader_settings = ReaderSettings()
+        reader_settings.set_config(config, config_info.app_config_path)
+        reader_settings.set_barks_panels_dir()
 
-    comic_database = cmd_args.get_comics_database(for_building_comics=False)
-    titles = cmd_args.get_titles()
+        comic_database = cmd_args.get_comics_database(for_building_comics=False)
+        titles = cmd_args.get_titles()
 
-    image_getter = TitleImageFileGetter(reader_settings)
-    image_dict: dict[str, tuple[dict[FileTypes, set[tuple[Path, bool]]], str]] = {}
-    max_title_len = 0
-    for title in titles:
-        max_title_len = max(max_title_len, len(title))
+        image_getter = TitleImageFileGetter(reader_settings)
+        image_dict: dict[str, tuple[dict[FileTypes, set[tuple[Path, bool]]], str]] = {}
+        max_title_len = 0
+        for title in titles:
+            max_title_len = max(max_title_len, len(title))
 
-        comic_book = comic_database.get_comic_book(title)
-        page_lst = ", ".join(get_abbrev_jpg_page_list(comic_book)).replace(" - ", "-")
+            comic_book = comic_database.get_comic_book(title)
+            page_lst = ", ".join(get_abbrev_jpg_page_list(comic_book)).replace(" - ", "-")
 
-        image_dict[title] = (image_getter.get_all_title_image_files(title), page_lst)
+            image_dict[title] = (image_getter.get_all_title_image_files(title), page_lst)
 
-    print()
+        print()
 
-    for title, (file_dict, page_lst) in image_dict.items():
-        title_str = title + ":"
+        for title, (file_dict, page_lst) in image_dict.items():
+            title_str = title + ":"
 
-        nums = [
-            f"{SHORT_FILE_TYPE_NAMES[ft]}: {len(file_dict.get(ft, [])):1d}"
-            for ft in RELEVANT_FILE_TYPES
-        ]
-        total = sum(len(file_dict.get(ft, [])) for ft in RELEVANT_FILE_TYPES)
+            nums = [
+                f"{SHORT_FILE_TYPE_NAMES[ft]}: {len(file_dict.get(ft, [])):1d}"
+                for ft in RELEVANT_FILE_TYPES
+            ]
+            total = sum(len(file_dict.get(ft, [])) for ft in RELEVANT_FILE_TYPES)
 
-        print(f"{title_str:<{max_title_len + 1}} {total:2d}= {', '.join(nums)}; {page_lst}")
+            print(f"{title_str:<{max_title_len + 1}} {total:2d}= {', '.join(nums)}; {page_lst}")
 
-except Exception:
-    logger.exception("Program error: ")
+    except Exception:  # noqa: BLE001
+        logger.exception("Program error: ")

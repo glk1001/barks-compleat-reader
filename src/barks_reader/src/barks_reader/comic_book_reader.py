@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from barks_fantagraphics.comics_consts import PageType
 from kivy.core.image import Image as CoreImage
@@ -255,6 +255,7 @@ class ComicBookReader(BoxLayout):
     def set_action_bar(self, action_bar: ActionBar) -> None:
         self._action_bar = action_bar
 
+    @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
         logger.debug(
             f"Touch down event: self.x,self.y = {self.x},{self.y},"

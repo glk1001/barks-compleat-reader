@@ -1,28 +1,9 @@
-# ruff: noqa: E402, ERA001
-
 from __future__ import annotations
 
-from loguru_config import LoguruConfig
-
-# ------------------------------------------------------------------ #
-# --- We need to change the KIVY_HOME directory to be under this --- #
-# --- app's settings directory. The 'config_info' module handles --- #
-# --- this, and for this to work, we need to import it before    --- #
-# --- any kivy imports.                                          --- #
-from barks_reader.config_info import ConfigInfo
-from barks_reader.reader_file_paths import HOME_DIR
-
-config_info = ConfigInfo()
-# ------------------------------------------------------------------ #
-
-import logging
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, override
 
-import kivy
-import loguru
-from barks_fantagraphics.comics_cmd_args import CmdArgs, ExtraArg
 from kivy import Config
 from kivy.app import App
 from kivy.core.window import Window
@@ -50,10 +31,13 @@ from barks_reader.screen_metrics import get_screen_info, log_screen_metrics
 from barks_reader.settings_fix import SettingLongPath
 
 if TYPE_CHECKING:
+    from barks_fantagraphics.comics_cmd_args import CmdArgs
     from barks_fantagraphics.comics_database import ComicsDatabase
     from kivy.config import ConfigParser
     from kivy.uix.screenmanager import ScreenManager
     from kivy.uix.widget import Widget
+
+    from barks_reader.config_info import ConfigInfo
 
 READER_TREE_VIEW_KV_FILE = str(Path(__file__).parent / "reader-tree-view.kv")
 BARKS_READER_APP_KV_FILE = str(Path(__file__).with_suffix(".kv"))
@@ -67,17 +51,14 @@ KIVY_LOGGING_NAME = "kivy"
 class BarksReaderApp(App):
     """The main Kivy application class for the Barks Reader."""
 
-    def __init__(
-        self, comics_db: ComicsDatabase, window_left: int, window_height: int, **kwargs: str
-    ) -> None:
+    def __init__(self, config_info: ConfigInfo, comics_db: ComicsDatabase, **kwargs: str) -> None:
         super().__init__(**kwargs)
 
         self.title = APP_TITLE
         self.settings_cls = SettingsWithSpinner
 
+        self._config_info = config_info
         self._comics_database = comics_db
-        self.window_left = window_left
-        self.window_height = window_height
         self._reader_settings = BuildableReaderSettings()
         self.font_manager = FontManager()
 
@@ -100,9 +81,11 @@ class BarksReaderApp(App):
         App.get_running_app().stop()
         Window.close()
 
+    @override
     def get_application_config(self, _default_path: str = "") -> str:
-        return str(config_info.app_config_path)
+        return str(self._config_info.app_config_path)
 
+    @override
     def build_config(self, config: ConfigParser) -> None:
         """Set default values for the application configuration."""
         # Set default window geometry if not already present in the config file
@@ -125,6 +108,7 @@ class BarksReaderApp(App):
         # Delegate to the settings class to set its own defaults
         self._reader_settings.build_config(config)
 
+    @override
     def build_settings(self, settings: Settings) -> None:
         # Register our custom widget type with the name 'longpath'
         settings.register_type(LONG_PATH_SETTING, SettingLongPath)
@@ -133,16 +117,18 @@ class BarksReaderApp(App):
         self.config.write()
         settings.interface.menu.height = ACTION_BAR_SIZE_Y
 
+    @override
     def on_config_change(
         self,
         _config: ConfigParser,
         section: str,
         key: str,
-        value: Any,  # noqa: ANN401
+        value: Any,
     ) -> None:
         logger.info(f"Config change: section = '{section}', key = '{key}', value = '{value}'.")
         self._reader_settings.on_changed_setting(section, key, value)
 
+    @override
     def build(self) -> Widget:
         logger.debug("Building app...")
         Window.bind(on_resize=self._on_window_resize)
@@ -230,24 +216,19 @@ class BarksReaderApp(App):
         else:
             logger.warning("Window: setting custom titlebar not allowed on this system.")
 
-    def _finalize_window_setup(self) -> None:
+    @staticmethod
+    def _finalize_window_setup() -> None:
         """Finalize window state after the main build process.
 
         This includes forcing an initial resize event to ensure all widgets
         are correctly sized based on the loaded configuration.
         """
-        if self.window_height == 0:
-            # This is a known Kivy workaround. By briefly changing the window position,
-            # we force an `on_resize` event to fire, which ensures that all UI elements
-            # that depend on window size are correctly initialized.
-            config_left = Config.getint("graphics", "left")
-            Window.left = config_left + 1
-            Window.left = config_left
-        else:
-            Window.left = self.window_left
-            comic_page_aspect_ratio = 3200.0 / 2120.0
-            width = round(self.window_height / comic_page_aspect_ratio)
-            Window.size = (width, self.window_height + ACTION_BAR_SIZE_Y)
+        # This is a known Kivy workaround. By briefly changing the window position,
+        # we force an `on_resize` event to fire, which ensures that all UI elements
+        # that depend on window size are correctly initialized.
+        config_left = Config.getint("graphics", "left")
+        Window.left = config_left + 1
+        Window.left = config_left
 
         # All the behind the scenes sizing and moving is done.
         # Now make the main window visible.
@@ -261,93 +242,7 @@ def _log_screen_settings() -> None:
     logger.info(f"Window pos = {Window.left},{Window.top}.")
 
 
-def start_logging(args: CmdArgs) -> None:
-    setup_loguru(args)
-
-    Config.set("kivy", "log_level", logging.getLevelName(log_level).lower())
-    redirect_kivy_logs()
-
-    logger.info("*** Starting barks reader ***")
-    logger.info(f'app config path = "{config_info.app_config_path}".')
-    logger.info(f'app log path = "{log_path}".')
-    logger.info(f'kivy config dir = "{config_info.kivy_config_dir}".')
-
-
-def redirect_kivy_logs() -> None:
-    # Redirect Kivy's log messages to our main loguru setup.
-    class LoguruKivyHandler(logging.Handler):
-        def __init__(self, logr: loguru.Logger) -> None:
-            self.logr = logr
-            super().__init__()
-
-        def emit(self, log_record: logging.LogRecord) -> None:
-            def patch_loguru_rec(record: loguru.Record) -> None:
-                record.update(exception=log_record.exc_info)
-                record.update(file=log_record.filename)
-                record.update(function=log_record.funcName)
-                record.update(line=log_record.lineno)
-                record.update(module=log_record.module)
-                record.update(name=log_record.name)
-                record.update(process=log_record.process)
-                record.update(thread=log_record.thread)
-
-            patched_logger = self.logr.patch(patch_loguru_rec)
-            level = logging.getLevelName(log_record.levelno).lower()
-            message = log_record.getMessage()
-
-            # Now log the kivy information using Loguru.
-            # Use getattr to call the appropriate logging method based on level.
-            log_method = getattr(patched_logger, level, patched_logger.info)  # Fallback to 'info'
-            log_method(message, sys_name=KIVY_LOGGING_NAME)
-
-    kivy.Logger.addHandler(LoguruKivyHandler(logger))
-
-
-# Make these log variables global so loguru-config can access them.
-log_level = logging.DEBUG
-# log_level = cmd_args.get_log_level()
-log_path = None
-
-
-def setup_loguru(_args: CmdArgs) -> None:
-    global log_level  # noqa: PLW0603
-    log_level = logging.DEBUG
-    # log_level = cmd_args.get_log_level()
-
-    global log_path  # noqa: PLW0603
-    log_path = HOME_DIR / config_info.app_config_dir / "kivy" / "logs" / "barks-reader.log"
-
-    LoguruConfig.load(config_info.app_config_dir / "log-config.yaml")
-
-
-def color_formatter(_record: loguru.Record) -> str:
-    sys_name_fmt = f"<yellow>{{extra[{LOGGER_SYS_NAME_KEY}]: <4}}</yellow>"
-
-    return (
-        "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
-        "<level>{level: <8}</level> | "
-        f"{sys_name_fmt}: "
-        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan>"
-        " - <level>{message}</level>"
-        "\n"
-        "{exception}"
-    )
-
-
-EXTRA_ARGS: list[ExtraArg] = [
-    ExtraArg("--win-left", action="store", type=int, default=0),
-    ExtraArg("--win-height", action="store", type=int, default=0),
-]
-
-
-def main() -> None:
-    cmd_args = CmdArgs("Compleat Barks Reader", extra_args=EXTRA_ARGS)
-    args_ok, error_msg = cmd_args.args_are_valid()
-    if not args_ok:
-        sys.exit(1)
-
-    start_logging(cmd_args)
-
+def main(config_info: ConfigInfo, cmd_args: CmdArgs) -> None:
     # noinspection PyBroadException
     try:
         screen_info = get_screen_info()
@@ -355,12 +250,10 @@ def main() -> None:
         log_screen_metrics(screen_info)
 
         comics_database = cmd_args.get_comics_database(for_building_comics=False)
-        win_left = cmd_args.get_extra_arg("--win_left")
-        win_height = cmd_args.get_extra_arg("--win_height")
 
         logger.debug("Running kivy app...")
         assert Config.getint("kivy", "exit_on_escape") == 0
-        kivy_app = BarksReaderApp(comics_database, win_left, win_height)
+        kivy_app = BarksReaderApp(config_info, comics_database)
         kivy_app.run()
     except Exception:  # noqa: BLE001
         logger.exception("There's been a program error - the Barks reader app is terminating: ")

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, override
 
 from barks_fantagraphics.comics_utils import (
     get_short_formatted_first_published_str,
@@ -156,6 +156,7 @@ class TitleSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         self.bind(text=self._on_internal_search_box_text_changed)
         self.ids.title_spinner.bind(text=self._on_internal_title_search_box_title_changed)
 
+    @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
         self.dispatch(self.on_title_search_box_pressed.__name__)
         return super().on_touch_down(touch)
@@ -226,6 +227,7 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         self.ids.tag_title_spinner.bind(text=self._on_internal_tag_search_box_title_changed)
         self._current_tag = None
 
+    @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
         self.dispatch(self.on_tag_search_box_pressed.__name__)
         return super().on_touch_down(touch)
