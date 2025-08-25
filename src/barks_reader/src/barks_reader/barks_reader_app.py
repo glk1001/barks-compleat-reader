@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import kivy
-from barks_fantagraphics.comics_cmd_args import CmdArgs
+from barks_fantagraphics.comics_cmd_args import CmdArgs, ExtraArg
 from kivy import Config
 from kivy.app import App
 from kivy.core.window import Window
@@ -64,13 +64,17 @@ KIVY_LOGGING_NAME = "kivy"
 class BarksReaderApp(App):
     """The main Kivy application class for the Barks Reader."""
 
-    def __init__(self, comics_db: ComicsDatabase, **kwargs: str) -> None:
+    def __init__(
+        self, comics_db: ComicsDatabase, window_left: int, window_height: int, **kwargs: str
+    ) -> None:
         super().__init__(**kwargs)
 
         self.title = APP_TITLE
         self.settings_cls = SettingsWithSpinner
 
         self._comics_database = comics_db
+        self.window_left = window_left
+        self.window_height = window_height
         self._reader_settings = BuildableReaderSettings()
         self.font_manager = FontManager()
 
@@ -153,7 +157,7 @@ class BarksReaderApp(App):
         logger.debug("Building the main tree view...")
         self._main_screen.start_tree_build()
 
-        _finalize_window_setup()
+        self._finalize_window_setup()
 
         return root
 
@@ -223,25 +227,30 @@ class BarksReaderApp(App):
         else:
             logger.warning("Window: setting custom titlebar not allowed on this system.")
 
+    def _finalize_window_setup(self) -> None:
+        """Finalize window state after the main build process.
 
-def _finalize_window_setup() -> None:
-    """Finalize window state after the main build process.
+        This includes forcing an initial resize event to ensure all widgets
+        are correctly sized based on the loaded configuration.
+        """
+        if self.window_height == 0:
+            # This is a known Kivy workaround. By briefly changing the window position,
+            # we force an `on_resize` event to fire, which ensures that all UI elements
+            # that depend on window size are correctly initialized.
+            config_left = Config.getint("graphics", "left")
+            Window.left = config_left + 1
+            Window.left = config_left
+        else:
+            Window.left = self.window_left
+            comic_page_aspect_ratio = 3200.0 / 2120.0
+            width = round(self.window_height / comic_page_aspect_ratio)
+            Window.size = (width, self.window_height + ACTION_BAR_SIZE_Y)
 
-    This includes forcing an initial resize event to ensure all widgets
-    are correctly sized based on the loaded configuration.
-    """
-    # This is a known Kivy workaround. By briefly changing the window position,
-    # we force an `on_resize` event to fire, which ensures that all UI elements
-    # that depend on window size are correctly initialized.
-    config_left = Config.getint("graphics", "left")
-    Window.left = config_left + 1
-    Window.left = config_left
+        # All the behind the scenes sizing and moving is done.
+        # Now make the main window visible.
+        Window.show()
 
-    # All the behind the scenes sizing and moving is done.
-    # Now make the main window visible.
-    Window.show()
-
-    _log_screen_settings()
+        _log_screen_settings()
 
 
 def _log_screen_settings() -> None:
@@ -316,8 +325,14 @@ def start_logging(_args: CmdArgs) -> None:
     logger.info(f'kivy config dir = "{config_info.kivy_config_dir}".')
 
 
+EXTRA_ARGS: list[ExtraArg] = [
+    ExtraArg("--win-left", action="store", type=int, default=0),
+    ExtraArg("--win-height", action="store", type=int, default=0),
+]
+
+
 def main() -> None:
-    cmd_args = CmdArgs("Fantagraphics source files")
+    cmd_args = CmdArgs("Fantagraphics source files", extra_args=EXTRA_ARGS)
     args_ok, error_msg = cmd_args.args_are_valid()
     if not args_ok:
         # Logging may not be set up, so print to stderr as a fallback
@@ -332,10 +347,12 @@ def main() -> None:
         log_screen_metrics(screen_info)
 
         comics_database = cmd_args.get_comics_database(for_building_comics=False)
+        win_left = cmd_args.get_extra_arg("--win_left")
+        win_height = cmd_args.get_extra_arg("--win_height")
 
         logger.debug("Running kivy app...")
         assert Config.getint("kivy", "exit_on_escape") == 0
-        kivy_app = BarksReaderApp(comics_database)
+        kivy_app = BarksReaderApp(comics_database, win_left, win_height)
         kivy_app.run()
     except Exception:  # noqa: BLE001
         logger.exception("There's been a program error - the Barks reader app is terminating: ")
