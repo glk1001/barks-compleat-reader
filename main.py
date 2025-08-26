@@ -15,6 +15,9 @@ from barks_reader.config_info import ConfigInfo
 
 # ------------------------------------------------------------------ #
 
+APP_LOGGING_NAME = "app"  # For use by 'loguru-config'
+KIVY_LOGGING_NAME = "kivy"
+
 
 def start_logging(cfg_info: ConfigInfo, args: CmdArgs) -> None:
     from kivy import Config  # noqa: PLC0415
@@ -32,8 +35,6 @@ def start_logging(cfg_info: ConfigInfo, args: CmdArgs) -> None:
 
 def redirect_kivy_logs() -> None:
     from kivy import Logger as KivyLogger  # noqa: PLC0415
-
-    from barks_reader.barks_reader_app import KIVY_LOGGING_NAME  # noqa: PLC0415
 
     # Redirect Kivy's log messages to our main loguru setup.
     class LoguruKivyHandler(logging.Handler):
@@ -54,14 +55,22 @@ def redirect_kivy_logs() -> None:
                 record.update(process=log_record.process)
                 record.update(thread=log_record.thread)
 
-            patched_logger = self.logr.patch(patch_loguru_rec)
-            level = logging.getLevelName(log_record.levelno).lower()
-            message = log_record.getMessage()
+            # noinspection PyBroadException
+            try:
+                patched_logger = self.logr.patch(patch_loguru_rec)
+                level = logging.getLevelName(log_record.levelno).lower()
 
-            # Now log the kivy information using Loguru.
-            # Use getattr to call the appropriate logging method based on level.
-            log_method = getattr(patched_logger, level, patched_logger.info)  # Fallback to 'info'
-            log_method(message, sys_name=KIVY_LOGGING_NAME)
+                # Kivy emits this message: "kivy: Modules: Start <inspector> with config {}"
+                # which we need to be careful with.
+                message = log_record.getMessage().replace("{}", "{{}}")
+
+                # Now log the kivy information using Loguru.
+                # Use getattr to call the appropriate logging method based on level.
+                # And fallback to 'info'.
+                log_method = getattr(patched_logger, level, patched_logger.info)
+                log_method(message, sys_name=KIVY_LOGGING_NAME)
+            except Exception:
+                self.logr.exception("Error in LoguruKivyHandler.emit: ")
 
     KivyLogger.addHandler(LoguruKivyHandler(logger))
 
@@ -85,7 +94,6 @@ def setup_loguru(cfg_info: ConfigInfo, _args: CmdArgs) -> None:
 
 
 def run_loguru_config(cfg_info: ConfigInfo) -> None:
-
     # noinspection PyBroadException
     try:
         LoguruConfig.load(cfg_info.app_config_dir / "log-config.yaml")
@@ -103,23 +111,6 @@ def run_loguru_config(cfg_info: ConfigInfo) -> None:
     except:  # noqa: E722
         logger.exception("LoguruConfig failed: ")
         sys.exit(1)
-
-
-# noinspection Annotator
-def color_formatter(_record) -> str:  # noqa: ANN001
-    from barks_reader.barks_reader_app import LOGGER_SYS_NAME_KEY  # noqa: PLC0415
-
-    sys_name_fmt = f"<yellow>{{extra[{LOGGER_SYS_NAME_KEY}]: <4}}</yellow>"
-
-    return (
-        "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
-        "<level>{level: <8}</level> | "
-        f"{sys_name_fmt}: "
-        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan>"
-        " - <level>{message}</level>"
-        "\n"
-        "{exception}"
-    )
 
 
 def update_window_size(args: CmdArgs) -> None:

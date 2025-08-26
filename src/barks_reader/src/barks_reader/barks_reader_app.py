@@ -43,11 +43,6 @@ READER_TREE_VIEW_KV_FILE = str(Path(__file__).parent / "reader-tree-view.kv")
 BARKS_READER_APP_KV_FILE = str(Path(__file__).with_suffix(".kv"))
 
 
-LOGGER_SYS_NAME_KEY = "sys_name"
-APP_LOGGING_NAME = "app"
-KIVY_LOGGING_NAME = "kivy"
-
-
 class BarksReaderApp(App):
     """The main Kivy application class for the Barks Reader."""
 
@@ -131,7 +126,7 @@ class BarksReaderApp(App):
     @override
     def build(self) -> Widget:
         logger.debug("Building app...")
-        Window.bind(on_resize=self._on_window_resize)
+        assert Window is not None
 
         self._initialize_settings_and_db()
 
@@ -167,6 +162,7 @@ class BarksReaderApp(App):
 
     def _build_screens(self) -> ScreenManager:
         logger.debug("Instantiating main screen...")
+        assert Window is not None
         filtered_title_lists = FilteredTitleLists()
         reader_tree_events = ReaderTreeBuilderEventDispatcher()
         self._main_screen = MainScreen(
@@ -216,13 +212,14 @@ class BarksReaderApp(App):
         else:
             logger.warning("Window: setting custom titlebar not allowed on this system.")
 
-    @staticmethod
-    def _finalize_window_setup() -> None:
+    def _finalize_window_setup(self) -> None:
         """Finalize window state after the main build process.
 
         This includes forcing an initial resize event to ensure all widgets
         are correctly sized based on the loaded configuration.
         """
+        Window.bind(on_resize=self._on_window_resize)
+
         # This is a known Kivy workaround. By briefly changing the window position,
         # we force an `on_resize` event to fire, which ensures that all UI elements
         # that depend on window size are correctly initialized.
