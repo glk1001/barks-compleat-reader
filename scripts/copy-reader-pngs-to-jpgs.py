@@ -10,12 +10,14 @@ from barks_fantagraphics.comics_cmd_args import CmdArgNames, CmdArgs
 from barks_fantagraphics.comics_consts import PNG_FILE_EXT
 from barks_fantagraphics.comics_utils import get_abbrev_path
 from comic_utils.comic_consts import JPG_FILE_EXT
-from comic_utils.comics_logging import setup_logging
 from comic_utils.pil_image_utils import SAVE_JPG_COMPRESS_LEVEL, open_pil_image_for_reading
 from loguru import logger
+from loguru_config import LoguruConfig
 
 from barks_reader.config_info import ConfigInfo  # make sure this is before any kivy imports
 from barks_reader.reader_settings import ReaderSettings
+
+APP_LOGGING_NAME = "copy"
 
 
 def copy_or_convert_file(file_path: Path, dest_dir: Path) -> None:
@@ -41,7 +43,7 @@ def copy_or_convert_file(file_path: Path, dest_dir: Path) -> None:
 
     except FileNotFoundError:
         logger.exception(f'File not found during processing: "{file_path}": ')
-    except Exception:
+    except Exception:  # noqa: BLE001
         logger.exception(f'An error occurred while processing "{file_path}": ')
 
 
@@ -99,6 +101,10 @@ if __name__ == "__main__":
         logger.error(error_msg)
         sys.exit(1)
 
+    # Global variable accessed by loguru-config.
+    log_level = cmd_args.get_log_level()
+    LoguruConfig.load(Path(__file__).parent / "log-config.yaml")
+
     # noinspection PyBroadException
     try:
         config_info = ConfigInfo()
@@ -108,12 +114,10 @@ if __name__ == "__main__":
         reader_settings.set_config(config, config_info.app_config_path)
         reader_settings.set_barks_panels_dir()
 
-        setup_logging(cmd_args.get_log_level())
-
         png_dir = reader_settings.file_paths.get_default_png_barks_panels_dir()
         jpg_dir = reader_settings.file_paths.get_default_jpg_barks_panels_dir()
 
         traverse_and_process_dirs(png_dir, jpg_dir, file_processor_func=copy_or_convert_file)
 
-    except Exception:
+    except Exception:  # noqa: BLE001
         logger.exception("Program error: ")

@@ -7,10 +7,13 @@ from pathlib import Path
 from barks_fantagraphics.comic_book import get_abbrev_jpg_page_list
 from barks_fantagraphics.comics_cmd_args import CmdArgNames, CmdArgs
 from loguru import logger
+from loguru_config import LoguruConfig
 
 from barks_reader.config_info import ConfigInfo  # make sure this is before any kivy imports
 from barks_reader.image_file_getter import FileTypes, TitleImageFileGetter
 from barks_reader.reader_settings import ReaderSettings
+
+APP_LOGGING_NAME = "ipan"
 
 SHORT_FILE_TYPE_NAMES = {
     FileTypes.BLACK_AND_WHITE: "bw",
@@ -36,8 +39,9 @@ if __name__ == "__main__":
         logger.error(error_msg)
         sys.exit(1)
 
-    logger.remove(0)
-    logger.add(sys.stderr, level=cmd_args.get_log_level(), backtrace=True, diagnose=True)
+    # Global variable accessed by loguru-config.
+    log_level = cmd_args.get_log_level()
+    LoguruConfig.load(Path(__file__).parent / "log-config.yaml")
 
     # noinspection PyBroadException
     try:
