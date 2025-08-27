@@ -374,14 +374,27 @@
                                         border_radius: 0, 0, 0, 0
                                         blur_radius: 30 if self.state == "normal" else 15
                                 TitlePageImage:
+                                    id: title_button_image
                                     source: root.title_page_image_source
+                                    opacity: 0.5 if root.is_first_use_of_reader else 1
                                     pos: self.parent.pos
                                     size: self.parent.size
                                     fit_mode: "cover"
                                     mipmap: True
                                     # NOTE: This should be on the button above but it doesn't work.
                                     on_press: root.on_image_pressed()
-
+                                Label:
+                                    text: "CLICK ME!"
+                                    opacity: 1 if root.is_first_use_of_reader else 0
+                                    color: 1, 165/255.0, 0, 1
+                                    bold: True
+                                    font_size: sp(40)
+                                    # Position the label over the image
+                                    pos: title_button_image.pos
+                                    size: title_button_image.size
+                                    text_size: self.size
+                                    halign: "center"
+                                    valign: "middle"
                             # --- The Checkbox Layout ---
                             BoxLayout:
                                 id: goto_page_layout

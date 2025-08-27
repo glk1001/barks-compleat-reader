@@ -126,6 +126,7 @@ class BarksReaderApp(App):
     @override
     def build(self) -> Widget:
         logger.debug("Building app...")
+
         assert Window is not None
 
         self._initialize_settings_and_db()
@@ -162,7 +163,6 @@ class BarksReaderApp(App):
 
     def _build_screens(self) -> ScreenManager:
         logger.debug("Instantiating main screen...")
-        assert Window is not None
         filtered_title_lists = FilteredTitleLists()
         reader_tree_events = ReaderTreeBuilderEventDispatcher()
         self._main_screen = MainScreen(

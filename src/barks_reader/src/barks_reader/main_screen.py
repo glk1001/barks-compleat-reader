@@ -179,6 +179,8 @@ class MainScreen(BoxLayout, Screen):
     action_bar_goto_icon_filepath = StringProperty()
     app_title = StringProperty()
 
+    is_first_use_of_reader = BooleanProperty(defaultvalue=False)
+
     main_files_not_loaded = BooleanProperty(defaultvalue=False)
     main_files_not_loaded_msg = StringProperty()
 
@@ -238,6 +240,7 @@ class MainScreen(BoxLayout, Screen):
         self.title_search = BarksTitleSearch()
         self.all_fanta_titles = ALL_FANTA_COMIC_BOOK_INFO
         self._random_title_images = RandomTitleImages(self._reader_settings)
+        self.is_first_use_of_reader = self._reader_settings.is_first_use_of_reader
 
         self._json_settings_manager = SettingsManager(self._reader_settings.get_user_data_path())
 
@@ -934,6 +937,14 @@ class MainScreen(BoxLayout, Screen):
         logger.debug(f'Image "{self.title_page_image_source}" pressed.')
         comic = self._get_comic_book()
         self._read_comic_book(self._fanta_info, comic)
+
+        self._set_no_longer_first_use()
+
+    def _set_no_longer_first_use(self) -> None:
+        if self.is_first_use_of_reader:
+            assert self._reader_settings.is_first_use_of_reader
+            self.is_first_use_of_reader = False
+            self._reader_settings.is_first_use_of_reader = False
 
     def _get_comic_book(self) -> ComicBook:
         title_str = self._fanta_info.comic_book_info.get_title_str()

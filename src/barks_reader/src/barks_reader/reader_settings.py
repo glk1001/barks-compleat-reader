@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from enum import Enum, auto
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, override
 
+from kivy.uix.settings import SettingItem
 from loguru import logger
 
 from barks_reader.reader_consts_and_types import LONG_PATH_SETTING
@@ -40,41 +41,42 @@ USE_HARPIES_INSTEAD_OF_LARKIES = "use_harpies"
 USE_DERE_INSTEAD_OF_THEAH = "use_dere"
 USE_BLANK_EYEBALLS_FOR_BOMBIE = "use_blank_eyeballs"
 USE_GLK_FIREBUG_ENDING = "use_glk_firebug_ending"
+IS_FIRST_USE_OF_READER = "is_first_use_of_reader"
 
 _READER_SETTINGS_JSON = f"""
 [
    {{  "type": "title", "title": "Folders" }},
    {{
       "title": "Fantagraphics Directory",
-      "desc": "Directory containing the Fantagraphics comic zips",
+      "desc": "Directory containing the Fantagraphics comic zips.",
       "type": "{LONG_PATH_SETTING}",
       "section": "{BARKS_READER_SECTION}",
       "key": "{FANTA_DIR}"
    }},
    {{
       "title": "Reader Files Directory",
-      "desc": "Directory containing all the required Barks Reader files",
+      "desc": "Directory containing all the required Barks Reader files.",
       "type": "{LONG_PATH_SETTING}",
       "section": "{BARKS_READER_SECTION}",
       "key": "{READER_FILES_DIR}"
    }},
    {{
       "title": "Prebuilt Comics Directory",
-      "desc": "Directory containing specially prebuilt comics",
+      "desc": "Directory containing specially prebuilt comics.",
       "type": "{LONG_PATH_SETTING}",
       "section": "{BARKS_READER_SECTION}",
       "key": "{PREBUILT_COMICS_DIR}"
    }},
    {{
       "title": "Png Barks Panels Directory",
-      "desc": "Directory containing Barks panels png images",
+      "desc": "Directory containing Barks panels png images.",
       "type": "{LONG_PATH_SETTING}",
       "section": "{BARKS_READER_SECTION}",
       "key": "{PNG_BARKS_PANELS_DIR}"
    }},
    {{
       "title": "Jpg Barks Panels Directory",
-      "desc": "Directory containing Barks panels jpg images",
+      "desc": "Directory containing Barks panels jpg images.",
       "type": "{LONG_PATH_SETTING}",
       "section": "{BARKS_READER_SECTION}",
       "key": "{JPG_BARKS_PANELS_DIR}"
@@ -82,55 +84,62 @@ _READER_SETTINGS_JSON = f"""
    {{  "type": "title", "title": "Options" }},
    {{
       "title": "Use Png Images",
-      "desc": "Use png images where possible (needs app RESTART if changed)",
+      "desc": "Use png images where possible (needs app RESTART if changed).",
       "type": "bool",
       "section": "{BARKS_READER_SECTION}",
       "key": "{USE_PNG_IMAGES}"
    }},
    {{
       "title": "Use Prebuilt Comics",
-      "desc": "Read comics from the prebuilt comics folder",
+      "desc": "Read comics from the prebuilt comics folder.",
       "type": "bool",
       "section": "{BARKS_READER_SECTION}",
       "key": "{USE_PREBUILT_COMICS}"
    }},
    {{
       "title": "Goto Last Selection on Start",
-      "desc": "When the app starts, goto the last selection in the tree view",
+      "desc": "When the app starts, goto the last selection in the tree view.",
       "type": "bool",
       "section": "{BARKS_READER_SECTION}",
       "key": "{GOTO_SAVED_NODE_ON_START}"
    }},
    {{
       "title": "Use 'Harpies' Instead of 'Larkies'",
-      "desc": "When reading 'The Golden Fleecing', use 'Harpies' instead of 'Larkies'",
+      "desc": "When reading 'The Golden Fleecing', use 'Harpies' instead of 'Larkies'.",
       "type": "bool",
       "section": "{BARKS_READER_SECTION}",
       "key": "{USE_HARPIES_INSTEAD_OF_LARKIES}"
    }},
    {{
       "title": "Use 'Dere' Instead of 'Theah'",
-      "desc": "When reading 'Lost in the Andes!', use 'Dere' instead of 'Theah'",
+      "desc": "When reading 'Lost in the Andes!', use 'Dere' instead of 'Theah'.",
       "type": "bool",
       "section": "{BARKS_READER_SECTION}",
       "key": "{USE_DERE_INSTEAD_OF_THEAH}"
    }},
    {{
       "title": "Use Blank Eyeballs for Bombie",
-      "desc": "When reading 'Voodoo Hoodoo', use blank eyeballs for Bombie the Zombie",
+      "desc": "When reading 'Voodoo Hoodoo', use blank eyeballs for Bombie the Zombie.",
       "type": "bool",
       "section": "{BARKS_READER_SECTION}",
       "key": "{USE_BLANK_EYEBALLS_FOR_BOMBIE}"
    }},
    {{
       "title": "Don't Use Fantagraphics Ending for 'The Firebug'",
-      "desc": "When reading 'The Firebug', don't use the Fantagraphics ending",
+      "desc": "When reading 'The Firebug', don't use the Fantagraphics ending.",
       "type": "bool",
       "section": "{BARKS_READER_SECTION}",
       "key": "{USE_GLK_FIREBUG_ENDING}"
+   }},
+   {{
+      "title": "First Use of Reader",
+      "desc": "Set this to true if this is the first use of the Barks reader. You need to restart the app after changing this.",
+      "type": "bool",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{IS_FIRST_USE_OF_READER}"
    }}
 ]
-"""
+"""  # noqa: E501
 
 
 class ConfigParser(Protocol):
@@ -145,8 +154,11 @@ class ReaderSettings:
         self._reader_file_paths: ReaderFilePaths = ReaderFilePaths()
         self._reader_sys_file_paths: SystemFilePaths = SystemFilePaths()
 
+    def _save_settings(self) -> None:
+        pass
+
     def set_config(self, config: ConfigParser, app_settings_path: Path) -> None:
-        self._config = config
+        self._config: ConfigParser = config
         self._app_settings_path = app_settings_path
         self._user_data_path = self._app_settings_path.parent / "barks_reader.json"
 
@@ -241,6 +253,19 @@ class ReaderSettings:
     def get_use_glk_firebug_ending(self) -> bool:
         return self._config.getboolean(BARKS_READER_SECTION, USE_GLK_FIREBUG_ENDING)
 
+    @property
+    def is_first_use_of_reader(self) -> bool:
+        return self._get_is_first_use_of_reader()
+
+    def _get_is_first_use_of_reader(self) -> bool:
+        return self._config.getboolean(BARKS_READER_SECTION, IS_FIRST_USE_OF_READER)
+
+    @is_first_use_of_reader.setter
+    def is_first_use_of_reader(self, value: bool) -> None:
+        logger.info(f"Setting is_first_use_of_reader = {value}.")
+        self._config.set(BARKS_READER_SECTION, IS_FIRST_USE_OF_READER, 1 if value else 0)
+        self._save_settings()
+
     def is_valid_fantagraphics_volumes_dir(self, dir_path: Path) -> bool:
         if self.use_prebuilt_archives:
             return True
@@ -287,6 +312,10 @@ class ReaderSettings:
     def _is_valid_use_glk_firebug_ending(_use_glk_firebug_ending: bool) -> bool:
         return True
 
+    @staticmethod
+    def _is_valid_is_first_use_of_reader(_is_first_use_of_reader: bool) -> bool:
+        return True
+
     def _is_valid_png_barks_panels_dir(self, dir_path: Path) -> bool:
         return self._is_valid_dir(dir_path)
 
@@ -323,6 +352,8 @@ class BuildableReaderSettings(ReaderSettings):
     def __init__(self) -> None:
         super().__init__()
 
+        self._settings: Settings | None = None
+
         self._GETTER_METHODS = {
             FANTA_DIR: self._get_fantagraphics_volumes_dir,
             READER_FILES_DIR: self._get_reader_files_dir,
@@ -331,6 +362,7 @@ class BuildableReaderSettings(ReaderSettings):
             USE_PNG_IMAGES: self._get_use_png_images,
             PREBUILT_COMICS_DIR: self._get_prebuilt_comics_dir,
             USE_PREBUILT_COMICS: self._get_use_prebuilt_archives,
+            IS_FIRST_USE_OF_READER: self._get_is_first_use_of_reader,
             GOTO_SAVED_NODE_ON_START: self._get_goto_saved_node_on_start,
             USE_HARPIES_INSTEAD_OF_LARKIES: self.get_use_harpies_instead_of_larkies,
             USE_DERE_INSTEAD_OF_THEAH: self.get_use_dere_instead_of_theah,
@@ -347,6 +379,7 @@ class BuildableReaderSettings(ReaderSettings):
             PREBUILT_COMICS_DIR: self._is_valid_prebuilt_comics_dir,
             USE_PREBUILT_COMICS: self._is_valid_use_prebuilt_archives,
             GOTO_SAVED_NODE_ON_START: self._is_valid_goto_saved_node_on_start,
+            IS_FIRST_USE_OF_READER: self._is_valid_is_first_use_of_reader,
             USE_HARPIES_INSTEAD_OF_LARKIES: self._is_valid_use_harpies_instead_of_larkies,
             USE_DERE_INSTEAD_OF_THEAH: self._is_valid_use_dere_instead_of_theah,
             USE_BLANK_EYEBALLS_FOR_BOMBIE: self._is_valid_use_blank_eyeballs_for_bombie,
@@ -372,11 +405,13 @@ class BuildableReaderSettings(ReaderSettings):
                 USE_DERE_INSTEAD_OF_THEAH: 1,
                 USE_BLANK_EYEBALLS_FOR_BOMBIE: 1,
                 USE_GLK_FIREBUG_ENDING: 1,
+                IS_FIRST_USE_OF_READER: 1,
             },
         )
 
     def build_settings(self, settings: Settings) -> None:
         settings.add_json_panel(BARKS_READER_SECTION, self._config, data=_READER_SETTINGS_JSON)
+        self._settings = settings
 
     def validate_settings(self) -> None:
         for key in self._VALIDATION_METHODS:
@@ -403,3 +438,24 @@ class BuildableReaderSettings(ReaderSettings):
                 )
 
         return True
+
+    @override
+    def _save_settings(self) -> None:
+        self._config.write()
+        self._update_settings_panel()
+
+    def _update_settings_panel(self) -> None:
+        if not self._settings:
+            logger.debug("Panel settings not set. Skipping update.")
+            return
+
+        logger.info("Updating panel reader settings.")
+
+        panels = self._settings.interface.content.panels
+
+        for panel in panels.values():
+            children = panel.children
+
+            for child in children:
+                if isinstance(child, SettingItem):
+                    child.value = panel.get_value(child.section, child.key)
