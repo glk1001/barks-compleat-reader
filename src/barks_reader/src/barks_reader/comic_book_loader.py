@@ -312,7 +312,8 @@ class ComicBookLoader:
             logger.debug(f'For i = {i}, load_index = "{load_index}".')
 
             page_info = self._page_map[load_index]
-            logger.debug(f"For i = {i}, page_info = {page_info!s}.")
+            logger.debug(f"For i = {i}, page_info ="
+                         f" {page_info.display_page_num}, {page_info.srce_page.page_filename}.")
 
             # Double check stop flag before any more heavy processing.
             if self._stop:

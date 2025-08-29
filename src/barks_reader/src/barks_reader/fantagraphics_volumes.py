@@ -180,7 +180,8 @@ class FantagraphicsVolumeArchives:
             self._fantagraphics_archive_dict[fanta_volume] = archive_page_map
 
             logger.debug(
-                f'Finished processing archive "{archive}" ({last_page - first_page + 1} pages).'
+                f'Finished processing archive "{archive}"'
+                f" ({first_page}-{last_page}, {last_page - first_page + 1} pages)."
             )
 
     def get_all_volume_filenames(self) -> list[Path]:
