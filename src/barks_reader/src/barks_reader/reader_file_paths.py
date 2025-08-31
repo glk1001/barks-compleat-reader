@@ -47,6 +47,7 @@ class ReaderFilePaths:
 
         self._barks_panels_dir: Path | None = None
         self._bw_files_dir: Path | None = None
+        self._ai_files_dir: Path | None = None
         self._censorship_files_dir: Path | None = None
         self._closeup_files_dir: Path | None = None
         self._cover_files_dir: Path | None = None
@@ -69,6 +70,7 @@ class ReaderFilePaths:
         self._panels_ext_type = ext_type
 
         self._bw_files_dir = self._barks_panels_dir / "BW"
+        self._ai_files_dir = self._barks_panels_dir / "AI"
         self._censorship_files_dir = self._barks_panels_dir / "Censorship"
         self._closeup_files_dir = self._barks_panels_dir / "Closeups"
         self._cover_files_dir = self._barks_panels_dir / "Covers"
@@ -94,6 +96,7 @@ class ReaderFilePaths:
         dirs_to_check = [
             self._barks_panels_dir,
             self._bw_files_dir,
+            self._ai_files_dir,
             self._censorship_files_dir,
             self._closeup_files_dir,
             self._cover_files_dir,
@@ -149,6 +152,9 @@ class ReaderFilePaths:
 
     def get_comic_bw_files_dir(self) -> Path:
         return self._bw_files_dir
+
+    def get_comic_ai_files_dir(self) -> Path:
+        return self._ai_files_dir
 
     def get_comic_censorship_files_dir(self) -> Path:
         return self._censorship_files_dir
@@ -235,6 +241,9 @@ class ReaderFilePaths:
 
     def get_comic_bw_files(self, title: str, use_edited_only: bool = False) -> list[Path]:
         return self._get_files(self.get_comic_bw_files_dir(), title, use_edited_only)
+
+    def get_comic_ai_files(self, title: str, use_edited_only: bool = False) -> list[Path]:
+        return self._get_files(self.get_comic_ai_files_dir(), title, use_edited_only)
 
     def get_comic_censorship_files(self, title: str, use_edited_only: bool = False) -> list[Path]:
         return self._get_files(self.get_comic_censorship_files_dir(), title, use_edited_only)

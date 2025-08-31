@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 class FileTypes(Enum):
     BLACK_AND_WHITE = auto()
+    AI = auto()
     CENSORSHIP = auto()
     CLOSEUP = auto()
     COVER = auto()
@@ -37,6 +38,7 @@ class TitleImageFileGetter:
             # COVER special case: returns single string or None
             FileTypes.COVER: self._reader_settings.file_paths.get_comic_cover_file,
             FileTypes.BLACK_AND_WHITE: self._reader_settings.file_paths.get_comic_bw_files,
+            FileTypes.AI: self._reader_settings.file_paths.get_comic_ai_files,
             FileTypes.CENSORSHIP: self._reader_settings.file_paths.get_comic_censorship_files,
             FileTypes.CLOSEUP: self._reader_settings.file_paths.get_comic_closeup_files,
             FileTypes.FAVOURITE: self._reader_settings.file_paths.get_comic_favourite_files,

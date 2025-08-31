@@ -80,6 +80,7 @@ class RandomTitleImages:
             title_list,
             {
                 FileTypes.BLACK_AND_WHITE,
+                FileTypes.AI,
                 FileTypes.CENSORSHIP,
                 FileTypes.CLOSEUP,
                 FileTypes.FAVOURITE,

@@ -17,6 +17,7 @@ APP_LOGGING_NAME = "ipan"
 
 SHORT_FILE_TYPE_NAMES = {
     FileTypes.BLACK_AND_WHITE: "bw",
+    FileTypes.AI: "ai",
     FileTypes.CENSORSHIP: "ce",
     FileTypes.CLOSEUP: "cl",
     FileTypes.COVER: "co",
