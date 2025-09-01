@@ -43,6 +43,9 @@ if TYPE_CHECKING:
 TOP_VIEW_IMAGE_TYPES = {
     t for t in FileTypes if t not in [FileTypes.NONTITLE, FileTypes.ORIGINAL_ART]
 }
+TITLE_VIEW_IMAGE_TYPES = {
+    t for t in FileTypes if t not in [FileTypes.INSET, FileTypes.ORIGINAL_ART]
+}
 
 DEBUG_FUN_IMAGE_TITLES = None
 # DEBUG_FUN_IMAGE_TITLES = [Titles.LOST_IN_THE_ANDES]
@@ -128,6 +131,7 @@ class BackgroundViews:
         self._current_category = ""
         self._current_tag_group = None
         self._current_tag = None
+        self._current_bottom_view_title = ""
 
         self._view_state = ViewStates.PRE_INIT
 
@@ -209,6 +213,12 @@ class BackgroundViews:
     def set_current_us_year_range(self, year_range: str) -> None:
         self._current_us_year_range = year_range
 
+    def get_current_bottom_view_title(self) -> str:
+        return self._current_bottom_view_title
+
+    def set_current_bottom_view_title(self, title: str) -> None:
+        self._current_bottom_view_title = title
+
     def set_view_state(self, view_state: ViewStates) -> None:
         self._view_state = view_state
         self._update_views()
@@ -237,6 +247,7 @@ class BackgroundViews:
 
         self._set_top_view_image()
         self._set_bottom_view_fun_image()
+        self.set_bottom_view_title_image()
         self._set_bottom_view_title_image_color()
 
     def _set_top_view_image(self) -> None:  # noqa: PLR0915
@@ -517,7 +528,24 @@ class BackgroundViews:
             self._bottom_view_fun_image_random_color_tint.get_random_color()
         )
 
-    def set_bottom_view_title_image_file(self, image_file: Path) -> None:
+    def set_bottom_view_title_image(self, image_file: Path | None = None) -> None:
+        if image_file:
+            logger.debug(f'Using provided title image file "{image_file}".')
+        else:
+            if not self._current_bottom_view_title:
+                logger.debug("No bottom view title set. Nothing to do.")
+                return
+
+            image_file = self._random_title_images.get_random_image_for_title(
+                self._current_bottom_view_title,
+                TITLE_VIEW_IMAGE_TYPES,
+                use_edited_only=True,
+            )
+            logger.debug(f'Using random title image file "{image_file}".')
+
+        self._set_bottom_view_title_image_file(image_file)
+
+    def _set_bottom_view_title_image_file(self, image_file: Path) -> None:
         self._bottom_view_title_image_info.filename = image_file
         self._log_bottom_view_title_state()
 

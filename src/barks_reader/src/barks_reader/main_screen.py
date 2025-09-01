@@ -44,7 +44,7 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.treeview import TreeViewNode
 from loguru import logger
 
-from barks_reader.background_views import BackgroundViews, FileTypes, ViewStates
+from barks_reader.background_views import BackgroundViews, ViewStates
 from barks_reader.comic_book_page_info import ComicBookPageInfo, ComicBookPageInfoManager
 from barks_reader.fantagraphics_volumes import (
     TooManyArchiveFilesError,
@@ -160,10 +160,6 @@ NODE_TEXT_TO_VIEW_STATE_MAP = {
 }
 
 COMIC_PAGE_ONE = ROMAN_NUMERALS[1]
-
-TITLE_VIEW_IMAGE_TYPES = {
-    t for t in FileTypes if t not in [FileTypes.INSET, FileTypes.ORIGINAL_ART]
-}
 
 
 class MainScreen(BoxLayout, Screen):
@@ -490,8 +486,7 @@ class MainScreen(BoxLayout, Screen):
     ) -> None:
         self._fanta_info = new_fanta_info
         self._set_title(title_image_file)
-
-        self._update_view_for_node(ViewStates.ON_TITLE_NODE)
+        self._update_view_for_node_with_title(ViewStates.ON_TITLE_NODE)
 
     def _open_all_parent_nodes(self, node: TreeViewNode) -> None:
         # Get all the parent nodes first, then open from top parent down to last child.
@@ -581,7 +576,7 @@ class MainScreen(BoxLayout, Screen):
         if not title_str:
             self._update_view_for_node(ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET)
         elif self._update_title(title_str):
-            self._update_view_for_node(ViewStates.ON_TITLE_SEARCH_BOX_NODE)
+            self._update_view_for_node_with_title(ViewStates.ON_TITLE_SEARCH_BOX_NODE)
         else:
             self._update_view_for_node(ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET)
 
@@ -632,7 +627,7 @@ class MainScreen(BoxLayout, Screen):
         if not title_str:
             self._update_view_for_node(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
         elif self._update_title(title_str):
-            self._update_view_for_node(ViewStates.ON_TAG_SEARCH_BOX_NODE)
+            self._update_view_for_node_with_title(ViewStates.ON_TAG_SEARCH_BOX_NODE)
             self._set_tag_goto_page_checkbox(instance.get_current_tag(), title_str)
         else:
             self._update_view_for_node(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
@@ -651,6 +646,12 @@ class MainScreen(BoxLayout, Screen):
         self._set_title()
 
         return True
+
+    def _update_view_for_node_with_title(self, view_state: ViewStates) -> None:
+        self._update_view_for_node(
+            view_state,
+            title_str=self._background_views.get_current_bottom_view_title(),
+        )
 
     def on_intro_pressed(self, _button: Button) -> None:
         self._update_view_for_node(ViewStates.ON_INTRO_NODE)
@@ -749,8 +750,7 @@ class MainScreen(BoxLayout, Screen):
     def on_title_row_button_pressed(self, button: Button) -> None:
         self._fanta_info = button.parent.fanta_info
         self._set_title()
-
-        self._update_view_for_node(ViewStates.ON_TITLE_NODE)
+        self._update_view_for_node_with_title(ViewStates.ON_TITLE_NODE)
 
         if isinstance(
             button.parent.parent_node,
@@ -762,6 +762,9 @@ class MainScreen(BoxLayout, Screen):
             )
 
     def _change_background_views(self) -> None:
+        logger.debug("Changing background views.")
+        logger.debug(f'Current title: "{self._background_views.get_current_bottom_view_title()}".')
+
         self._update_background_views(
             self._background_views.get_view_state(),
             self._background_views.get_current_category(),
@@ -770,6 +773,7 @@ class MainScreen(BoxLayout, Screen):
             self._background_views.get_current_us_year_range(),
             self._background_views.get_current_tag_group(),
             self._background_views.get_current_tag(),
+            self._background_views.get_current_bottom_view_title(),
         )
 
     def _update_view_for_node(
@@ -789,6 +793,7 @@ class MainScreen(BoxLayout, Screen):
         us_year_range: str = "",
         tag_group: None | TagGroups = None,
         tag: None | Tags = None,
+        title_str: str = "",
     ) -> None:
         self._background_views.set_current_category(category)
         self._background_views.set_current_year_range(get_clean_text_without_extra(year_range))
@@ -800,6 +805,7 @@ class MainScreen(BoxLayout, Screen):
         )
         self._background_views.set_current_tag_group(tag_group)
         self._background_views.set_current_tag(tag)
+        self._background_views.set_current_bottom_view_title(title_str)
 
         self._background_views.set_view_state(tree_node)
 
@@ -833,19 +839,17 @@ class MainScreen(BoxLayout, Screen):
     def _set_title(self, title_image_file: Path | None = None) -> None:
         logger.debug(f'Setting title to "{self._fanta_info.comic_book_info.get_title_str()}".')
 
+        title_str = self._fanta_info.comic_book_info.get_title_str()
+        self._background_views.set_current_bottom_view_title(title_str)
+
         if title_image_file:
+            assert self._background_views.get_current_bottom_view_title() != ""
             title_image_file = self._reader_settings.file_paths.get_edited_version_if_possible(
-                title_image_file,
+                title_image_file
             )[0]
             logger.debug(f'Using provided title image file "{title_image_file}".')
-        else:
-            title_image_file = self._random_title_images.get_random_image_for_title(
-                self._fanta_info.comic_book_info.get_title_str(),
-                TITLE_VIEW_IMAGE_TYPES,
-                use_edited_only=True,
-            )
-            logger.debug(f'Using random title image file "{title_image_file}".')
-        self._background_views.set_bottom_view_title_image_file(title_image_file)
+
+        self._background_views.set_bottom_view_title_image(title_image_file)
 
         self.main_title_text = self._get_main_title_str()
         self.title_info_text = self._formatter.get_title_info(
