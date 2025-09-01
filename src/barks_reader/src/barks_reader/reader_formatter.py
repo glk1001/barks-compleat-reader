@@ -19,6 +19,8 @@ from barks_reader.font_manager import FontManager
 from barks_reader.reader_colors import Color
 
 LONG_TITLE_SPLITS = {
+    Titles.DONALD_DUCK_FINDS_PIRATE_GOLD: "Donald Duck\nFinds Pirate Gold",
+    Titles.DONALD_DUCK_AND_THE_MUMMYS_RING: "The Mummy's Ring",
     Titles.LOST_CROWN_OF_GENGHIS_KHAN_THE: "The Lost Crown\nof Genghis Khan!",
 }
 
