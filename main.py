@@ -1,3 +1,5 @@
+#!/usr/bin/env -S uv run --script
+
 # ------------------------------------------------------------------ #
 # --- We need to change the KIVY_HOME directory to be under this --- #
 # --- app's settings directory. The 'config_info' module handles --- #
