@@ -1,0 +1,16 @@
+[[overrides]]
+exclude = [
+    "reader_ui_classes.py",
+    "settings_fix.py"
+]
+
+[overrides.rules]
+unresolved-import = "ignore"
+
+[[overrides]]
+exclude = [
+    "reader_ui_classes.py"
+]
+
+[overrides.rules]
+possibly-unbound-import = "ignore"
