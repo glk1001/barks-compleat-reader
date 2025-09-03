@@ -6,7 +6,7 @@ from collections.abc import Callable
 from configparser import ConfigParser
 from pathlib import Path
 
-from barks_fantagraphics.comics_cmd_args import CmdArgNames, CmdArgs
+from barks_fantagraphics.comics_cmd_args import CmdArgs
 from barks_fantagraphics.comics_consts import PNG_FILE_EXT
 from barks_fantagraphics.comics_utils import get_abbrev_path
 from comic_utils.comic_consts import JPG_FILE_EXT
@@ -42,9 +42,11 @@ def copy_or_convert_file(file_path: Path, dest_dir: Path) -> None:
             shutil.copy(file_path, dest_file)
 
     except FileNotFoundError:
-        logger.exception(f'File not found during processing: "{file_path}": ')
-    except Exception:  # noqa: BLE001
-        logger.exception(f'An error occurred while processing "{file_path}": ')
+        msg = f'File not found during processing: "{file_path}"'
+        raise FileNotFoundError(msg) from None
+    except Exception as e:
+        msg = f'An error occurred while processing "{file_path}": '
+        raise Exception(msg) from e  # noqa: TRY002
 
 
 def copy_file_to_jpg(srce_file: Path, dest_file: Path) -> None:
@@ -71,10 +73,9 @@ def traverse_and_process_dirs(
 
     """
     if not root_directory.is_dir():
-        logger.error(f"The specified root directory does not exist: {root_directory}")
-        return
+        raise FileNotFoundError(root_directory)
 
-    logger.info(f'Starting traversal of directory: "{root_directory}".')
+    logger.info(f'Starting traversal of directory: "{root_directory}"...')
     file_count = 0
     for dirpath, _, filenames in root_directory.walk():
         logger.info(f'Processing directory "{dirpath}"...')
@@ -83,9 +84,7 @@ def traverse_and_process_dirs(
         dest_subdir.mkdir(parents=True, exist_ok=True)
 
         for filename in filenames:
-            # Construct the full file path
             full_path = dirpath / filename
-            # Run the provided function on the file
             file_processor_func(full_path, dest_subdir)
             file_count += 1
 
@@ -95,7 +94,7 @@ def traverse_and_process_dirs(
 if __name__ == "__main__":
     # TODO(glk): Some issue with type checking inspection?
     # noinspection PyTypeChecker
-    cmd_args = CmdArgs("Fantagraphics source files", CmdArgNames.TITLE | CmdArgNames.VOLUME)
+    cmd_args = CmdArgs("Copy Barks png panels to jpg directory")
     args_ok, error_msg = cmd_args.args_are_valid()
     if not args_ok:
         logger.error(error_msg)
