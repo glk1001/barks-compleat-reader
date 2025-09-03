@@ -4,7 +4,6 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, override
 
-from kivy.uix.settings import SettingItem
 from loguru import logger
 
 from barks_reader.reader_consts_and_types import LONG_PATH_SETTING
@@ -452,6 +451,9 @@ class BuildableReaderSettings(ReaderSettings):
         logger.info("Updating panel reader settings.")
 
         panels = self._settings.interface.content.panels
+
+        # This module is used by non-GUI scripts but this import pops up a window.
+        from kivy.uix.settings import SettingItem  # noqa: PLC0415
 
         for panel in panels.values():
             children = panel.children
