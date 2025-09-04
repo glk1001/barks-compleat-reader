@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from enum import Enum, auto
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import (
     BARKS_TITLE_DICT,
@@ -15,7 +16,11 @@ from barks_fantagraphics.barks_titles import (
 from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
 from loguru import logger
 
+from barks_reader.reader_consts_and_types import NO_OVERRIDES_SUFFIX
 from barks_reader.reader_utils import get_all_files_in_dir
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 HOME_DIR = Path(os.environ.get("HOME"))
 BARKS_DIR = HOME_DIR / "Books" / "Carl Barks"
@@ -32,6 +37,23 @@ _DEFAULT_JPG_BARKS_PANELS_DIR = DEFAULT_BARKS_READER_FILES_DIR / "Barks Panels"
 _DEFAULT_PNG_BARKS_PANELS_DIR = BARKS_DIR / "Barks Panels Pngs"
 
 _EDITED_SUBDIR = "edited"
+
+
+class FileTypes(Enum):
+    AI = auto()
+    BLACK_AND_WHITE = auto()
+    CENSORSHIP = auto()
+    CLOSEUP = auto()
+    COVER = auto()
+    FAVOURITE = auto()
+    INSET = auto()
+    NONTITLE = auto()
+    ORIGINAL_ART = auto()
+    SILHOUETTE = auto()
+    SPLASH = auto()
+
+
+ALL_TYPES = set(FileTypes)
 
 
 class BarksPanelsExtType(Enum):
@@ -64,6 +86,37 @@ class ReaderFilePaths:
         self._edited_files_ext = ""
 
         self._panels_ext_type = None
+
+        self._titles_cache: dict[FileTypes, list[str]] = {}
+
+        self.FILE_TYPE_FILE_GETTERS: dict[
+            FileTypes, Callable[[str, bool], None | Path | list[Path]]
+        ] = {
+            # COVER special case: returns single string or None
+            FileTypes.COVER: self.get_comic_cover_file,
+            FileTypes.AI: self.get_comic_ai_files,
+            FileTypes.BLACK_AND_WHITE: self.get_comic_bw_files,
+            FileTypes.CENSORSHIP: self.get_comic_censorship_files,
+            FileTypes.CLOSEUP: self.get_comic_closeup_files,
+            FileTypes.FAVOURITE: self.get_comic_favourite_files,
+            FileTypes.INSET: self.get_comic_inset_files,
+            FileTypes.ORIGINAL_ART: self.get_comic_original_art_files,
+            FileTypes.SILHOUETTE: self.get_comic_silhouette_files,
+            FileTypes.SPLASH: self.get_comic_splash_files,
+        }
+
+        self._FILE_TYPE_DIR_GETTERS: dict[FileTypes, Callable[[], Path]] = {
+            FileTypes.COVER: self.get_comic_cover_files_dir,
+            FileTypes.AI: self.get_comic_ai_files_dir,
+            FileTypes.BLACK_AND_WHITE: self.get_comic_bw_files_dir,
+            FileTypes.CENSORSHIP: self.get_comic_censorship_files_dir,
+            FileTypes.CLOSEUP: self.get_comic_closeup_files_dir,
+            FileTypes.FAVOURITE: self.get_comic_favourite_files_dir,
+            FileTypes.INSET: self.get_comic_inset_files_dir,
+            FileTypes.ORIGINAL_ART: self.get_comic_original_art_files_dir,
+            FileTypes.SILHOUETTE: self.get_comic_silhouette_files_dir,
+            FileTypes.SPLASH: self.get_comic_splash_files_dir,
+        }
 
     def set_barks_panels_dir(self, panels_dir: Path, ext_type: BarksPanelsExtType) -> None:
         self._barks_panels_dir = panels_dir
@@ -279,13 +332,35 @@ class ReaderFilePaths:
         edited_image_dir = image_dir / _EDITED_SUBDIR
         if edited_image_dir.is_dir():
             image_files = self._get_all_files(edited_image_dir)
-            if use_edited_only and image_files:
+            if use_edited_only:
                 # Don't want any unedited images.
                 return image_files
 
         image_files.extend(self._get_all_files(image_dir))
 
         return image_files
+
+    def get_file_type_titles(self, file_type: FileTypes) -> list[str]:
+        if file_type in self._titles_cache:
+            return self._titles_cache[file_type]
+
+        parent_image_dir = self._FILE_TYPE_DIR_GETTERS[file_type]()
+
+        # Can't use 'stem' on directories because a title may contain a '.'
+        titles = []
+        for file in parent_image_dir.iterdir():
+            if file.is_dir():
+                title = file.name
+                if title != _EDITED_SUBDIR:
+                    titles.append(file.name)
+            else:
+                title = file.stem
+                if not title.endswith(NO_OVERRIDES_SUFFIX):
+                    titles.append(title)
+
+        self._titles_cache[file_type] = titles
+
+        return titles
 
     @staticmethod
     def _get_all_files(image_dir: Path) -> list[Path]:

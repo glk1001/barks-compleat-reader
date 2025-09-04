@@ -3,6 +3,7 @@ from pathlib import Path
 
 from barks_fantagraphics.barks_titles import Titles
 
+from barks_reader.reader_consts_and_types import NO_OVERRIDES_SUFFIX
 from barks_reader.reader_settings import ReaderSettings
 
 
@@ -67,7 +68,7 @@ class SpecialFantaOverrides:
 
         # It's a special title and at this point we don't want
         # to use Fantagraphics overrides.
-        no_overrides_stem = std_inset_file.stem + "-no-overrides"
+        no_overrides_stem = std_inset_file.stem + NO_OVERRIDES_SUFFIX
         no_overrides_inset_file = std_inset_file.with_stem(no_overrides_stem)
 
         return no_overrides_inset_file if no_overrides_inset_file.is_file() else std_inset_file

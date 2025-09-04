@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from enum import Enum, auto
 from typing import TYPE_CHECKING
+
+from barks_reader.reader_file_paths import FileTypes
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -11,47 +12,17 @@ if TYPE_CHECKING:
     from barks_reader.reader_settings import ReaderSettings
 
 
-class FileTypes(Enum):
-    BLACK_AND_WHITE = auto()
-    AI = auto()
-    CENSORSHIP = auto()
-    CLOSEUP = auto()
-    COVER = auto()
-    FAVOURITE = auto()
-    INSET = auto()
-    NONTITLE = auto()
-    ORIGINAL_ART = auto()
-    SILHOUETTE = auto()
-    SPLASH = auto()
-
-
-ALL_TYPES = set(FileTypes)
-
-
 class TitleImageFileGetter:
     def __init__(self, reader_settings: ReaderSettings) -> None:
         self._reader_settings = reader_settings
 
-        self._FILE_TYPE_GETTERS: dict[
-            FileTypes, Callable[[str, bool], None | Path | list[Path]]
-        ] = {
-            # COVER special case: returns single string or None
-            FileTypes.COVER: self._reader_settings.file_paths.get_comic_cover_file,
-            FileTypes.BLACK_AND_WHITE: self._reader_settings.file_paths.get_comic_bw_files,
-            FileTypes.AI: self._reader_settings.file_paths.get_comic_ai_files,
-            FileTypes.CENSORSHIP: self._reader_settings.file_paths.get_comic_censorship_files,
-            FileTypes.CLOSEUP: self._reader_settings.file_paths.get_comic_closeup_files,
-            FileTypes.FAVOURITE: self._reader_settings.file_paths.get_comic_favourite_files,
-            FileTypes.INSET: self._reader_settings.file_paths.get_comic_inset_files,
-            FileTypes.ORIGINAL_ART: self._reader_settings.file_paths.get_comic_original_art_files,
-            FileTypes.SILHOUETTE: self._reader_settings.file_paths.get_comic_silhouette_files,
-            FileTypes.SPLASH: self._reader_settings.file_paths.get_comic_splash_files,
-        }
-
     def get_all_title_image_files(self, title_str: str) -> dict[FileTypes, set[tuple[Path, bool]]]:
         image_dict: dict[FileTypes, set[tuple[Path, bool]]] = defaultdict(set)
 
-        for file_type, getter_func in self._FILE_TYPE_GETTERS.items():
+        for (
+            file_type,
+            getter_func,
+        ) in self._reader_settings.file_paths.FILE_TYPE_FILE_GETTERS.items():
             edited_image_files = self._get_files(
                 title_str, file_type, getter_func, must_be_edited=True
             )

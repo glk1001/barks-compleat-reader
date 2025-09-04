@@ -10,7 +10,8 @@ from loguru import logger
 from loguru_config import LoguruConfig
 
 from barks_reader.config_info import ConfigInfo  # make sure this is before any kivy imports
-from barks_reader.image_file_getter import FileTypes, TitleImageFileGetter
+from barks_reader.image_file_getter import TitleImageFileGetter
+from barks_reader.reader_file_paths import FileTypes
 from barks_reader.reader_settings import ReaderSettings
 
 APP_LOGGING_NAME = "ipan"

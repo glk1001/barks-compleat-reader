@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from loguru import logger
 
-from barks_reader.image_file_getter import ALL_TYPES, FileTypes, TitleImageFileGetter
-from barks_reader.reader_file_paths import EMERGENCY_INSET_FILE
+from barks_reader.image_file_getter import TitleImageFileGetter
+from barks_reader.reader_file_paths import ALL_TYPES, EMERGENCY_INSET_FILE, FileTypes
 from barks_reader.reader_utils import prob_rand_less_equal
 
 if TYPE_CHECKING:
@@ -142,10 +142,12 @@ class RandomTitleImages:
             )
 
         actual_file_types = ALL_TYPES if file_types is None else file_types
+        logger.debug(f"File types to choose random image from: {actual_file_types}.")
 
         num_titles = len(title_list)
         if FileTypes.NONTITLE in actual_file_types:
             num_titles = int((1 + NON_TITLE_BIAS) * num_titles)  # include bias for nontitles
+        logger.debug(f"Num titles to choose random image from: {num_titles}.")
 
         for _ in range(NUM_RAND_ATTEMPTS):
             title_index = randrange(0, num_titles)
@@ -160,6 +162,7 @@ class RandomTitleImages:
                 comic_book_info = title_info.comic_book_info
                 title_enum = comic_book_info.title
                 title_str = comic_book_info.get_title_str()
+                logger.debug(f"Chose title '{title_str}'.")
 
                 # Ensure files are loaded for title.
                 self._update_comic_files(title_str)
@@ -170,6 +173,8 @@ class RandomTitleImages:
 
             if not possible_files_for_title:
                 continue
+
+            logger.debug(f"Possible files to choose random image from: {possible_files_for_title}.")
 
             # Candidate selection preference:
             # 1. Not in global MRU AND not last image for this specific title.

@@ -1,6 +1,7 @@
 APP_TITLE = "The Compleat Barks Disney Reader"
 
 LONG_PATH_SETTING = "longpath"
+NO_OVERRIDES_SUFFIX = "-no-overrides"
 
 INTRO_NODE_TEXT = "Introduction"
 INTRO_COMPLEAT_BARKS_READER_TEXT = "Introduction to the Compleat Barks Reader"
