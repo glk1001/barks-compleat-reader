@@ -514,128 +514,140 @@
                             fit_mode: "contain"
                             mipmap: True
 
-                # --- Main container for the fun view image options ---
-                BoxLayout:
-                    id: image_type_option_box
-                    orientation: 'vertical'
+                # Use a RelativeLayout to allow placing a button over the options box
+                RelativeLayout:
                     size_hint: 0.45, None
-                    height: self.minimum_height
-                    # Indent this box
-                    padding: [dp(2 + fun_options_border_margin_x), dp(30), dp(2), dp(30)]
-                    spacing: dp(8)
-                    check_box_height: dp(25)
+                    height: image_type_option_box.height
 
-                    canvas.before:
-                        # Add a rounded rectangle background box
-                        Color:
-                            rgba: 0.05, 0.05, 0.05, 0.8
-                        RoundedRectangle:
-                            pos: (self.x + fun_options_border_margin_x, self.y - fun_options_border_margin_y)
-                            size: (self.width - fun_options_border_margin_x, self.height - fun_options_border_margin_y)
-                            radius: [dp(10)]
-                        # Add a rounded rectangle border line
-                        Color:
-                            rgba: 0.5, 0.5, 0.5, 1
-                        Line:
-                            width: 1.5
-                            rounded_rectangle:
-                                (self.x + fun_options_border_margin_x, self.y - fun_options_border_margin_y, \
-                                self.width - fun_options_border_margin_x, self.height - fun_options_border_margin_y, \
-                                dp(10))
- 
-                    # --- The options heading ---
-                    BgColorLabel:
-                        id: heading_label
-                        text: 'Choose Image Types'
-                        color: (1.0, 1.0, 0.0, 1)
-                        background_color: (0.1, 0.1, 0.1, 1)
-                        bold: True
-                        size_hint_y: None
-                        height: self.texture_size[1] + dp(12) # Add vertical padding to height
-                        text_size: self.width, None
-                        halign: 'center'
-                        valign: 'middle'
-
-                    # --- 'All' Radio Button ---
+                    # --- Main container for the fun view image options ---
                     BoxLayout:
-                        orientation: 'horizontal'
-                        size_hint_y: None
-                        height: image_type_option_box.check_box_height
-                        # Indent this box
-                        padding: [dp(30), 0, dp(30), 0]
-                        spacing: dp(10)
-
-                        CheckBox:
-                            id: checkbox_all_image_types
-                            group: "image_type_group"
-                            size_hint_x: None
-                            width: image_type_option_box.check_box_height
-                            active: True
-                        Label:
-                            text: 'All'
-                            bold: True
-                            text_size: self.size
-                            halign: 'left'
-                            valign: 'middle'
-
-                    # --- 'Custom' Radio Button ---
-                    BoxLayout:
-                        orientation: 'horizontal'
-                        size_hint_y: None
-                        height: image_type_option_box.check_box_height
-                        # Indent this box
-                        padding: [dp(30), 0, dp(30), 0]
-                        spacing: dp(10)
-
-                        CheckBox:
-                            id: checkbox_custom_image_types
-                            group: "image_type_group"
-                            size_hint_x: None
-                            width: image_type_option_box.check_box_height
-                        Label:
-                            text: 'Custom'
-                            bold: True
-                            text_size: self.size
-                            halign: 'left'
-                            valign: 'middle'
-
-                    # --- Indented Custom Options Box ---
-                    BoxLayout:
+                        id: image_type_option_box
                         orientation: 'vertical'
-                        size_hint_y: None
+                        size_hint: 1, None # Fill the parent RelativeLayout
                         height: self.minimum_height
                         # Indent this box
-                        padding: [dp(30) + dp(40), 0, dp(30), 0]
-                        spacing: dp(10)
-                        disabled: not checkbox_custom_image_types.active
+                        padding: [dp(2 + fun_options_border_margin_x), dp(30), dp(2), dp(30)]
+                        spacing: dp(8)
+                        check_box_height: dp(25)
 
-                        CheckBoxRow:
-                            label_text: 'AI'
-                            active: True
-                        CheckBoxRow:
-                            label_text: "Black and White"
-                            active: True
-                        CheckBoxRow:
-                            label_text: "Classics"
-                            active: True
-                        CheckBoxRow:
-                            label_text: 'Faves'
-                            active: True
-                        CheckBoxRow:
-                            label_text: "Insets"
-                            active: True
-                        CheckBoxRow:
-                            label_text: "Silhouettes"
-                            active: True
-                        CheckBoxRow:
-                            label_text: 'Splash'
-                            active: True
-                        CheckBoxRow:
-                            label_text: "40's"
-                            active: True
-                        CheckBoxRow:
-                            label_text: "50's"
-                            active: True
-                        CheckBoxRow:
-                            label_text: "60's"
-                            active: True
+                        canvas.before:
+                            # Add a rounded rectangle background box
+                            Color:
+                                rgba: 0.05, 0.05, 0.05, 0.8
+                            RoundedRectangle:
+                                pos: (self.x + fun_options_border_margin_x, self.y - fun_options_border_margin_y)
+                                size: (self.width - fun_options_border_margin_x, self.height - fun_options_border_margin_y)
+                                radius: [dp(10)]
+                            # Add a rounded rectangle border line
+                            Color:
+                                rgba: 0.5, 0.5, 0.5, 1
+                            Line:
+                                width: 1.5
+                                rounded_rectangle:
+                                    (self.x + fun_options_border_margin_x, self.y - fun_options_border_margin_y, \
+                                    self.width - fun_options_border_margin_x, self.height - fun_options_border_margin_y, \
+                                    dp(10))
+     
+                        # --- The options heading ---
+                        BgColorLabel:
+                            id: heading_label
+                            text: 'Choose Image Types'
+                            color: (1.0, 1.0, 0.0, 1)
+                            background_color: (0.1, 0.1, 0.1, 1)
+                            bold: True
+                            size_hint_y: None
+                            height: self.texture_size[1] + dp(12) # Add vertical padding to height
+                            text_size: self.width, None
+                            halign: 'center'
+                            valign: 'middle'
+
+                        # --- 'All' Radio Button ---
+                        BoxLayout:
+                            orientation: 'horizontal'
+                            size_hint_y: None
+                            height: image_type_option_box.check_box_height
+                            # Indent this box
+                            padding: [dp(30), 0, dp(30), 0]
+                            spacing: dp(10)
+
+                            CheckBox:
+                                id: checkbox_all_image_types
+                                group: "image_type_group"
+                                size_hint_x: None
+                                width: image_type_option_box.check_box_height
+                                active: True
+                            Label:
+                                text: 'All'
+                                bold: True
+                                text_size: self.size
+                                halign: 'left'
+                                valign: 'middle'
+
+                        # --- 'Custom' Radio Button ---
+                        BoxLayout:
+                            orientation: 'horizontal'
+                            size_hint_y: None
+                            height: image_type_option_box.check_box_height
+                            # Indent this box
+                            padding: [dp(30), 0, dp(30), 0]
+                            spacing: dp(10)
+
+                            CheckBox:
+                                id: checkbox_custom_image_types
+                                group: "image_type_group"
+                                size_hint_x: None
+                                width: image_type_option_box.check_box_height
+                            Label:
+                                text: 'Custom'
+                                bold: True
+                                text_size: self.size
+                                halign: 'left'
+                                valign: 'middle'
+
+                        # --- Indented Custom Options Box ---
+                        BoxLayout:
+                            orientation: 'vertical'
+                            size_hint_y: None
+                            height: self.minimum_height
+                            # Indent this box
+                            padding: [dp(30) + dp(40), 0, dp(30), 0]
+                            spacing: dp(10)
+                            disabled: not checkbox_custom_image_types.active
+
+                            CheckBoxRow:
+                                label_text: 'AI'
+                                active: True
+                            CheckBoxRow:
+                                label_text: "Black and White"
+                                active: True
+                            CheckBoxRow:
+                                label_text: "Classics"
+                                active: True
+                            CheckBoxRow:
+                                label_text: 'Faves'
+                                active: True
+                            CheckBoxRow:
+                                label_text: "Insets"
+                                active: True
+                            CheckBoxRow:
+                                label_text: "Silhouettes"
+                                active: True
+                            CheckBoxRow:
+                                label_text: 'Splash'
+                                active: True
+                            CheckBoxRow:
+                                label_text: "40's"
+                                active: True
+                            CheckBoxRow:
+                                label_text: "50's"
+                                active: True
+                            CheckBoxRow:
+                                label_text: "60's"
+                                active: True
+
+                    Button:
+                        text: 'X'
+                        size_hint: None, None
+                        size: dp(20), dp(20)
+                        pos_hint: {'x': 0.04, 'top': 0.98}
+                        # on_press: root.close_options_box() # Example action
