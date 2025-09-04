@@ -14,6 +14,7 @@ from barks_fantagraphics.barks_tags import (
 from barks_fantagraphics.barks_titles import BARKS_TITLES, VACATION_TIME, Titles
 from barks_fantagraphics.comics_utils import get_abbrev_path
 from barks_fantagraphics.fanta_comics_info import (
+    ALL_FANTA_COMIC_BOOK_INFO,
     ALL_LISTS,
     SERIES_CS,
     SERIES_DDA,
@@ -29,9 +30,9 @@ from kivy.clock import Clock
 from loguru import logger
 
 from barks_reader.filtered_title_lists import FilteredTitleLists
-from barks_reader.image_file_getter import FileTypes
 from barks_reader.random_title_images import FIT_MODE_COVER, ImageInfo, RandomTitleImages
 from barks_reader.reader_colors import RandomColorTint
+from barks_reader.reader_file_paths import ALL_TYPES, FileTypes
 from barks_reader.reader_formatter import get_formatted_color
 
 if TYPE_CHECKING:
@@ -49,6 +50,29 @@ TITLE_VIEW_IMAGE_TYPES = {
 
 DEBUG_FUN_IMAGE_TITLES = None
 # DEBUG_FUN_IMAGE_TITLES = [Titles.LOST_IN_THE_ANDES]
+
+
+class ImageThemes(Enum):
+    AI = auto()
+    BLACK_AND_WHITE = auto()
+    CLASSICS = auto()
+    FAVOURITES = auto()
+    INSETS = auto()
+    SILHOUETTES = auto()
+    SPLASHES = auto()
+    FORTIES = auto()
+    FIFTIES = auto()
+    SIXTIES = auto()
+
+
+IMAGE_THEME_TO_FILE_TYPE_MAP = {
+    ImageThemes.AI: FileTypes.AI,
+    ImageThemes.BLACK_AND_WHITE: FileTypes.BLACK_AND_WHITE,
+    ImageThemes.FAVOURITES: FileTypes.FAVOURITE,
+    ImageThemes.INSETS: FileTypes.INSET,
+    ImageThemes.SILHOUETTES: FileTypes.SILHOUETTE,
+    ImageThemes.SPLASHES: FileTypes.SPLASH,
+}
 
 
 class ViewStates(Enum):
@@ -133,7 +157,15 @@ class BackgroundViews:
         self._current_tag = None
         self._current_bottom_view_title = ""
 
+        self._fun_image_themes: set[ImageThemes] | None = None
+        self._cached_fun_titles: tuple[list[FantaComicBookInfo], set[FileTypes]] | None = None
+
         self._view_state = ViewStates.PRE_INIT
+
+    def set_fun_image_themes(self, image_themes: set[ImageThemes] | None) -> None:
+        logger.debug(f"Set self._fun_image_themes = {image_themes}.")
+        self._fun_image_themes = image_themes
+        self._cached_fun_titles = self._get_fun_image_titles()
 
     def _get_fanta_info(self, title: Titles) -> None | FantaComicBookInfo:
         # TODO: Very roundabout way to get fanta info
@@ -486,17 +518,7 @@ class BackgroundViews:
         ]:
             return
 
-        if self._view_state == ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE:
-            fanta_title_list = self._get_fanta_title_list(
-                BARKS_TAGGED_TITLES[Tags.CENSORED_STORIES_BUT_FIXED]
-            )
-            self._bottom_view_fun_image_info = self._random_title_images.get_random_image(
-                fanta_title_list, use_random_fit_mode=True
-            )
-        else:
-            self._bottom_view_fun_image_info = self._random_title_images.get_random_image(
-                self._get_fun_image_titles(), use_random_fit_mode=True
-            )
+        self._bottom_view_fun_image_info = self._get_next_fun_view_image_info()
         self._set_bottom_view_fun_image_color()
         self._schedule_bottom_view_fun_image_event()
 
@@ -509,17 +531,79 @@ class BackgroundViews:
             f" Opacity: {self._bottom_view_fun_image_opacity}."
         )
 
-    def _get_fun_image_titles(self) -> list[FantaComicBookInfo]:
-        if not DEBUG_FUN_IMAGE_TITLES:
-            return self._title_lists[ALL_LISTS]
+    def _get_next_fun_view_image_info(self) -> ImageInfo:
+        if self._view_state == ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE:
+            fanta_title_list = self._get_fanta_title_list(
+                BARKS_TAGGED_TITLES[Tags.CENSORED_STORIES_BUT_FIXED]
+            )
+            return self._random_title_images.get_random_image(
+                fanta_title_list, use_random_fit_mode=True
+            )
 
-        # noinspection PyUnreachableCode
-        # Reason: inspection seems broken here.
-        return [
-            t
-            for t in self._title_lists[ALL_LISTS]
-            if t.comic_book_info.title in DEBUG_FUN_IMAGE_TITLES
-        ]
+        titles, file_types = self._cached_fun_titles
+
+        return self._random_title_images.get_random_image(
+            titles,
+            file_types=file_types,
+            use_random_fit_mode=True,
+        )
+
+    def _get_fun_image_titles(self) -> tuple[list[FantaComicBookInfo], set[FileTypes]]:
+        file_types = self._get_file_types_to_use()
+
+        if DEBUG_FUN_IMAGE_TITLES:
+            return [
+                t
+                for t in self._title_lists[ALL_LISTS]
+                if t.comic_book_info.title in DEBUG_FUN_IMAGE_TITLES
+            ], file_types
+
+        if not self._fun_image_themes:
+            return self._title_lists[ALL_LISTS], file_types
+
+        if ImageThemes.FORTIES in self._fun_image_themes:
+            return (
+                self._title_lists[FilteredTitleLists.get_range_str((1942, 1946))]
+                + self._title_lists[FilteredTitleLists.get_range_str((1947, 1950))]
+            ), file_types
+        if ImageThemes.FIFTIES in self._fun_image_themes:
+            return (
+                self._title_lists[FilteredTitleLists.get_range_str((1951, 1954))]
+                + self._title_lists[FilteredTitleLists.get_range_str((1955, 1957))]
+                + self._title_lists[FilteredTitleLists.get_range_str((1958, 1961))]
+            ), file_types
+        if ImageThemes.SIXTIES in self._fun_image_themes:
+            return self._title_lists[FilteredTitleLists.get_range_str((1958, 1961))], file_types
+        # TODO: Fix this
+        # if ImageThemes.CLASSICS in self._fun_image_themes:
+        #     return ???
+
+        theme_titles = set()
+        for file_type in file_types:
+            theme_titles.update(self._reader_settings.file_paths.get_file_type_titles(file_type))
+
+        return [ALL_FANTA_COMIC_BOOK_INFO[title_str] for title_str in theme_titles], file_types
+
+    def _get_file_types_to_use(self) -> set[FileTypes]:
+        if self._fun_image_themes is None:
+            return ALL_TYPES
+
+        if self._fun_image_themes in [
+            ImageThemes.FORTIES,
+            ImageThemes.FIFTIES,
+            ImageThemes.SIXTIES,
+            ImageThemes.CLASSICS,
+        ]:
+            return ALL_TYPES
+
+        file_types_to_use = set()
+        for theme in self._fun_image_themes:
+            if theme not in IMAGE_THEME_TO_FILE_TYPE_MAP:
+                continue
+            file_types_to_use.add(IMAGE_THEME_TO_FILE_TYPE_MAP[theme])
+
+        logger.debug(f"file_types_to_use = {file_types_to_use}")
+        return file_types_to_use
 
     # TODO: Rationalize image color setters - make more responsive to individual images
     #       have fun images weighted to larger opacity and full color

@@ -44,7 +44,7 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.treeview import TreeViewNode
 from loguru import logger
 
-from barks_reader.background_views import BackgroundViews, ViewStates
+from barks_reader.background_views import BackgroundViews, ImageThemes, ViewStates
 from barks_reader.comic_book_page_info import ComicBookPageInfo, ComicBookPageInfoManager
 from barks_reader.fantagraphics_volumes import (
     TooManyArchiveFilesError,
@@ -208,6 +208,7 @@ class MainScreen(BoxLayout, Screen):
     bottom_view_fun_image_fit_mode = StringProperty(FIT_MODE_CONTAIN)
     bottom_view_fun_image_color = ColorProperty()
     bottom_view_fun_image_from_title = BooleanProperty(defaultvalue=True)
+    bottom_view_fun_view_options_enabled = BooleanProperty(defaultvalue=False)
 
     def __init__(
         self,
@@ -262,6 +263,8 @@ class MainScreen(BoxLayout, Screen):
         self._top_view_image_info: ImageInfo = ImageInfo()
         self._bottom_view_fun_image_info: ImageInfo = ImageInfo()
         self._bottom_view_title_image_info: ImageInfo = ImageInfo()
+        self._bottom_view_fun_image_themes: set[ImageThemes] | None = None
+        self._bottom_view_fun_custom_image_themes: set[ImageThemes] = set(ImageThemes)
 
         self._background_views = BackgroundViews(
             self._reader_settings,
@@ -275,6 +278,10 @@ class MainScreen(BoxLayout, Screen):
 
         self._special_fanta_overrides = SpecialFantaOverrides(self._reader_settings)
         self.ids.use_overrides_checkbox.bind(active=self.on_use_overrides_checkbox_changed)
+        self.ids.checkbox_all_image_types.bind(active=self.on_checkbox_all_image_types_changed)
+        self.ids.checkbox_custom_image_types.bind(
+            active=self.on_checkbox_custom_image_types_changed
+        )
 
     def fonts_updated(self, font_manager: FontManager) -> None:
         self.app_title = get_action_bar_title(font_manager, APP_TITLE)
@@ -451,6 +458,7 @@ class MainScreen(BoxLayout, Screen):
         self._goto_chrono_title(self._bottom_view_fun_image_info)
 
     def _goto_chrono_title(self, image_info: ImageInfo) -> None:
+        logger.debug(f'Goto title: "{image_info.from_title}", "{image_info.filename}".')
         title_fanta_info = self._get_fanta_info(image_info.from_title)
 
         year_nodes = self.year_range_nodes[
@@ -807,6 +815,8 @@ class MainScreen(BoxLayout, Screen):
         self._background_views.set_current_tag(tag)
         self._background_views.set_current_bottom_view_title(title_str)
 
+        self._background_views.set_fun_image_themes(self._bottom_view_fun_image_themes)
+
         self._background_views.set_view_state(tree_node)
 
         self._top_view_image_info = self._background_views.get_top_view_image_info()
@@ -896,6 +906,51 @@ class MainScreen(BoxLayout, Screen):
 
         logger.debug(
             f'Use overrides changed: title_page_image_source = "{self.title_page_image_source}".',
+        )
+
+    def on_checkbox_all_image_types_changed(self, _instance: Widget, use_all_images: bool) -> None:
+        self._bottom_view_fun_image_themes = (
+            None if use_all_images else self._bottom_view_fun_custom_image_themes
+        )
+
+    def on_checkbox_custom_image_types_changed(
+        self, _instance: Widget, use_custom_images: bool
+    ) -> None:
+        self._bottom_view_fun_image_themes = (
+            None if not use_custom_images else self._bottom_view_fun_custom_image_themes
+        )
+
+    def on_checkbox_changed(self, label_text: str, active: bool) -> None:
+        label_to_type_dict = {
+            "AI": ImageThemes.AI,
+            "Black and White": ImageThemes.BLACK_AND_WHITE,
+            "Classics": ImageThemes.CLASSICS,
+            "Faves": ImageThemes.FAVOURITES,
+            "Insets": ImageThemes.INSETS,
+            "Silhouettes": ImageThemes.SILHOUETTES,
+            "Splash": ImageThemes.SPLASHES,
+            "40's": ImageThemes.FORTIES,
+            "50's": ImageThemes.FIFTIES,
+            "60's": ImageThemes.SIXTIES,
+        }
+        if label_text not in label_to_type_dict:
+            logger.debug(f'check box changed: "{label_text}" not found.')
+        else:
+            logger.debug(
+                f"check box changed:"
+                f' "{label_text}" = {label_to_type_dict[label_text]}, value = {active}.'
+            )
+
+        if active:
+            self._bottom_view_fun_custom_image_themes.add(label_to_type_dict[label_text])
+        else:
+            self._bottom_view_fun_custom_image_themes.remove(label_to_type_dict[label_text])
+
+    def fun_view_options_button_pressed(self) -> None:
+        self.bottom_view_fun_view_options_enabled = not self.bottom_view_fun_view_options_enabled
+        logger.debug(
+            "Fun view options button pressed."
+            " New state is '{self.bottom_view_fun_view_options_enabled}'."
         )
 
     def _get_main_title_str(self) -> str:
