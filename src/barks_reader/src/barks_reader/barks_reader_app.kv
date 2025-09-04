@@ -14,6 +14,8 @@
         size_hint_x: None
         width: dp(40)
 #        width: image_type_option_box.cbox_height
+        active: True
+        on_active: app._main_screen.on_checkbox_changed(self.parent.label_text, self.active)
     Label:
         text: self.parent.label_text
         bold: True
@@ -515,10 +517,10 @@
                     orientation: 'vertical'
                     size_hint: 0.4, None
                     # Use padding to create the left margin instead of pos_hint
-                    padding: [dp(30), dp(30), dp(30), dp(30)]
+                    padding: [dp(2), dp(30), dp(2), dp(30)] # Remove horizontal padding
                     height: self.minimum_height
                     spacing: dp(8)
-                    cbox_height: dp(30)
+                    cbox_height: dp(25)
 
                     canvas.before:
                         # Add a background color to the box
@@ -534,18 +536,19 @@
                         Line:
                             width: 1.5
                             rounded_rectangle: (self.x, self.y, self.width, self.height, dp(10))
-
+ 
+                    # The heading now naturally spans the full width because the parent has no horizontal padding
                     BgColorLabel:
+                        id: heading_label
                         text: 'Choose Image Types'
                         color: (1.0, 1.0, 0.0, 1)
                         background_color: (0.1, 0.1, 0.1, 1)
                         bold: True
                         size_hint_y: None
-                        height: self.texture_size[1]
+                        height: self.texture_size[1] + dp(12) # Add vertical padding to height
                         text_size: self.width, None
                         halign: 'center'
                         valign: 'middle'
-                        padding: [dp(4), dp(4)]
 
                     # --- 'All' Radio Button ---
                     BoxLayout:
@@ -553,9 +556,10 @@
                         size_hint_y: None
                         height: image_type_option_box.cbox_height
                         spacing: dp(10)
+                        padding: [dp(30), 0, dp(30), 0] # Add padding here instead
 
                         CheckBox:
-                            id: checkbox_all
+                            id: checkbox_all_image_types
                             group: "image_type_group"
                             size_hint_x: None
                             width: image_type_option_box.cbox_height
@@ -573,9 +577,10 @@
                         size_hint_y: None
                         height: image_type_option_box.cbox_height
                         spacing: dp(10)
+                        padding: [dp(30), 0, dp(30), 0] # Add padding here instead
 
                         CheckBox:
-                            id: checkbox_custom
+                            id: checkbox_custom_image_types
                             group: "image_type_group"
                             size_hint_x: None
                             width: image_type_option_box.cbox_height
@@ -592,37 +597,37 @@
                         size_hint_y: None
                         height: self.minimum_height
                         # Indent this box
-                        padding: [dp(40), 0, 0, 0]
+                        padding: [dp(30) + dp(40), 0, dp(30), 0] # Add padding here, including indent
                         spacing: dp(10)
-                        disabled: not checkbox_custom.active
+                        disabled: not checkbox_custom_image_types.active
 
                         CheckBoxRow:
-                            id: checkbox_ai
                             label_text: 'AI'
+                            active: True
                         CheckBoxRow:
-                            id: checkbox_bw
                             label_text: "Black and White"
+                            active: True
                         CheckBoxRow:
-                            id: checkbox_classics
                             label_text: "Classics"
+                            active: True
                         CheckBoxRow:
-                            id: checkbox_faves
                             label_text: 'Faves'
+                            active: True
                         CheckBoxRow:
-                            id: checkbox_insets
                             label_text: "Insets"
+                            active: True
                         CheckBoxRow:
-                            id: checkbox_silhouettes
                             label_text: "Silhouettes"
+                            active: True
                         CheckBoxRow:
-                            id: checkbox_splash
                             label_text: 'Splash'
+                            active: True
                         CheckBoxRow:
-                            id: checkbox_40s
                             label_text: "40's"
+                            active: True
                         CheckBoxRow:
-                            id: checkbox_50s
                             label_text: "50's"
+                            active: True
                         CheckBoxRow:
-                            id: checkbox_60s
                             label_text: "60's"
+                            active: True
