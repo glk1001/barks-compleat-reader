@@ -574,9 +574,11 @@ class BackgroundViews:
             ), file_types
         if ImageThemes.SIXTIES in self._fun_image_themes:
             return self._title_lists[FilteredTitleLists.get_range_str((1958, 1961))], file_types
-        # TODO: Fix this
-        # if ImageThemes.CLASSICS in self._fun_image_themes:
-        #     return ???
+        if ImageThemes.CLASSICS in self._fun_image_themes:
+            return [
+                ALL_FANTA_COMIC_BOOK_INFO[BARKS_TITLES[title]]
+                for title in BARKS_TAGGED_TITLES[Tags.CLASSICS]
+            ], file_types
 
         theme_titles = set()
         for file_type in file_types:
@@ -588,21 +590,18 @@ class BackgroundViews:
         if self._fun_image_themes is None:
             return ALL_TYPES
 
-        if self._fun_image_themes in [
-            ImageThemes.FORTIES,
-            ImageThemes.FIFTIES,
-            ImageThemes.SIXTIES,
-            ImageThemes.CLASSICS,
-        ]:
-            return ALL_TYPES
-
         file_types_to_use = set()
+
         for theme in self._fun_image_themes:
             if theme not in IMAGE_THEME_TO_FILE_TYPE_MAP:
                 continue
             file_types_to_use.add(IMAGE_THEME_TO_FILE_TYPE_MAP[theme])
 
+        if len(file_types_to_use) == 0:
+            file_types_to_use = ALL_TYPES
+
         logger.debug(f"file_types_to_use = {file_types_to_use}")
+
         return file_types_to_use
 
     # TODO: Rationalize image color setters - make more responsive to individual images
