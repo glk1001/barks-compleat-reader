@@ -845,9 +845,15 @@ class MainScreen(BoxLayout, Screen):
         self.bottom_view_title_image_color = (
             self._background_views.get_bottom_view_title_image_color()
         )
+        # Reset the time image file now that we've used it. This makes sure we can get
+        # a random image next time around.
+        self._background_views.set_bottom_view_title_image_file(None)
 
     def _set_title(self, title_image_file: Path | None = None) -> None:
-        logger.debug(f'Setting title to "{self._fanta_info.comic_book_info.get_title_str()}".')
+        logger.debug(
+            f'Setting title to "{self._fanta_info.comic_book_info.get_title_str()}".'
+            f' Title image file is "{title_image_file}".'
+        )
 
         title_str = self._fanta_info.comic_book_info.get_title_str()
         self._background_views.set_current_bottom_view_title(title_str)
@@ -857,9 +863,9 @@ class MainScreen(BoxLayout, Screen):
             title_image_file = self._reader_settings.file_paths.get_edited_version_if_possible(
                 title_image_file
             )[0]
-            logger.debug(f'Using provided title image file "{title_image_file}".')
 
-        self._background_views.set_bottom_view_title_image(title_image_file)
+        self._background_views.set_bottom_view_title_image_file(title_image_file)
+        self._background_views.set_bottom_view_title_image()
 
         self.main_title_text = self._get_main_title_str()
         self.title_info_text = self._formatter.get_title_info(

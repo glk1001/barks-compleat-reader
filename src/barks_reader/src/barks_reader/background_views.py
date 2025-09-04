@@ -612,9 +612,11 @@ class BackgroundViews:
             self._bottom_view_fun_image_random_color_tint.get_random_color()
         )
 
-    def set_bottom_view_title_image(self, image_file: Path | None = None) -> None:
-        if image_file:
-            logger.debug(f'Using provided title image file "{image_file}".')
+    def set_bottom_view_title_image(self) -> None:
+        if self._bottom_view_title_image_info.filename:
+            logger.debug(
+                f'Using provided title image file "{self._bottom_view_title_image_info.filename}".'
+            )
         else:
             if not self._current_bottom_view_title:
                 logger.debug("No bottom view title set. Nothing to do.")
@@ -626,10 +628,9 @@ class BackgroundViews:
                 use_edited_only=True,
             )
             logger.debug(f'Using random title image file "{image_file}".')
+            self.set_bottom_view_title_image_file(image_file)
 
-        self._set_bottom_view_title_image_file(image_file)
-
-    def _set_bottom_view_title_image_file(self, image_file: Path) -> None:
+    def set_bottom_view_title_image_file(self, image_file: Path | None) -> None:
         self._bottom_view_title_image_info.filename = image_file
         self._log_bottom_view_title_state()
 
