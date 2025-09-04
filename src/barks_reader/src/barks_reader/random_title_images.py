@@ -246,11 +246,13 @@ class RandomTitleImages:
         self, title_str: str, file_types: set[FileTypes], use_edited_only: bool
     ) -> list[tuple[Path, FileTypes]]:
         possible_files: list[tuple[Path, FileTypes]] = []
+
         for file_type in file_types:
             if file_type in self._title_image_files.get(title_str, {}):
                 for filename, is_edited in self._title_image_files[title_str][file_type]:
-                    if is_edited == use_edited_only:
-                        possible_files.append((filename, file_type))
+                    if use_edited_only and not is_edited:
+                        continue
+                    possible_files.append((filename, file_type))
 
         return possible_files
 
