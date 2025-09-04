@@ -9,16 +9,17 @@
 <CheckBoxRow@BoxLayout>:
     orientation: 'horizontal'
     size_hint_y: None
-#    height: image_type_option_box.check_box_height
     height: dp(20)
     spacing: dp(10)
     label_text: ""
+    active: True
     CheckBox:
         size_hint_x: None
         width: dp(40)
-#        width: image_type_option_box.check_box_height
-        active: True
-        on_active: app._main_screen.on_checkbox_changed(self.parent.label_text, self.active)
+        active: self.parent.active
+        on_active:
+            self.parent.active = self.active
+            app._main_screen.on_checkbox_changed(self.parent.label_text, self.active)
     Label:
         text: self.parent.label_text
         bold: True
@@ -523,7 +524,7 @@
                     BoxLayout:
                         id: image_type_option_box
                         orientation: 'vertical'
-                        size_hint: 1, None # Fill the parent RelativeLayout
+                        size_hint: 1, None  # Fill the parent RelativeLayout
                         height: self.minimum_height
                         # Indent this box
                         padding: [dp(2 + fun_options_border_margin_x), dp(30), dp(2), dp(30)]
@@ -553,7 +554,7 @@
                         # --- The options heading ---
                         BgColorLabel:
                             id: heading_label
-                            text: 'Choose Bottom View Image Types'
+                            text: 'Select Bottom View Image Types'
                             color: (1.0, 1.0, 0.0, 1)
                             background_color: (0.1, 0.1, 0.1, 1)
                             bold: True
@@ -608,6 +609,7 @@
 
                         # --- Indented Custom Options Box ---
                         BoxLayout:
+                            id: custom_options_box
                             orientation: 'vertical'
                             size_hint_y: None
                             height: self.minimum_height
@@ -617,46 +619,46 @@
                             disabled: not checkbox_custom_image_types.active
 
                             CheckBoxRow:
+                                id: check_box_ai_image_type
                                 label_text: 'AI'
-                                active: True
                             CheckBoxRow:
+                                id: check_box_bw_image_type
                                 label_text: "Black and White"
-                                active: True
                             CheckBoxRow:
+                                id: check_box_classics_image_type
                                 label_text: "Classics"
-                                active: True
                             CheckBoxRow:
+                                id: check_box_faves_image_type
                                 label_text: 'Faves'
-                                active: True
                             CheckBoxRow:
+                                id: check_box_insets_image_type
                                 label_text: "Insets"
-                                active: True
                             CheckBoxRow:
+                                id: check_box_silhouettes_image_type
                                 label_text: "Silhouettes"
-                                active: True
                             CheckBoxRow:
+                                id: check_box_splash_image_type
                                 label_text: 'Splash'
-                                active: True
                             CheckBoxRow:
+                                id: check_box_40s_image_type
                                 label_text: "40's"
-                                active: True
                             CheckBoxRow:
+                                id: check_box_50s_image_type
                                 label_text: "50's"
-                                active: True
                             CheckBoxRow:
+                                id: check_box_60s_image_type
                                 label_text: "60's"
-                                active: True
 
                     Button:
                         id: fun_view_options_button
                         text: 'X' if root.bottom_view_fun_view_options_enabled else ' '
+                        pos_hint: {'x': 0.03, 'top': 0.98}
                         size_hint: None, None
                         size: dp(15), dp(15)
-                        pos_hint: {'x': 0.03, 'top': 0.98}
+                        font_size: sp(15)
+                        bold: True
                         background_color: (0, 0, 0, 0) # Make default background transparent
                         background_normal: ''
-                        bold: True
-                        font_size: sp(15)
                         canvas.before:
                             Color:
                                 rgba: (0.8, 0.1, 0.1, 1) if self.state == 'normal' else (0.6, 0.1, 0.1, 1)
@@ -667,3 +669,28 @@
 
                         on_press: root.fun_view_options_button_pressed()
                         opacity: 1 if root.bottom_view_fun_view_options_enabled else 0.5
+
+                    Button:
+                        text: 'clear\nall'
+#                        pos_hint: {'x': 0.10, 'top': 0.70}
+                        pos: checkbox_custom_image_types.x, custom_options_box.y + custom_options_box.height - self.height - dp(1)
+                        size_hint: None, None
+                        size: dp(35), dp(30)
+                        font_size: sp(10)
+                        bold: True
+                        text_size: self.size
+                        halign: 'center'
+                        valign: 'middle'
+                        background_color: (0, 0, 0, 0) # Make default background transparent
+                        background_normal: ''
+                        canvas.before:
+                            Color:
+                                rgba: (0.0, 0.5, 0.5, 0.5) if self.state == 'normal' else (0.0, 0.1, 0.1, 1)
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(5)]
+
+                        on_press: root.fun_view_options_clear_all_pressed()
+                        opacity: 1 if root.bottom_view_fun_view_options_enabled else 0
+                        disabled: not checkbox_custom_image_types.active

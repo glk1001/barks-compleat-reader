@@ -940,17 +940,17 @@ class MainScreen(BoxLayout, Screen):
             "60's": ImageThemes.SIXTIES,
         }
         if label_text not in label_to_type_dict:
-            logger.debug(f'check box changed: "{label_text}" not found.')
+            logger.debug(f'Check box changed: "{label_text}" not found.')
         else:
             logger.debug(
-                f"check box changed:"
-                f' "{label_text}" = {label_to_type_dict[label_text]}, value = {active}.'
+                f"Check box changed:"
+                f' "{label_text}" = {label_to_type_dict[label_text]}, active = {active}.'
             )
 
         if active:
             self._bottom_view_fun_custom_image_themes.add(label_to_type_dict[label_text])
         else:
-            self._bottom_view_fun_custom_image_themes.remove(label_to_type_dict[label_text])
+            self._bottom_view_fun_custom_image_themes.discard(label_to_type_dict[label_text])
 
     def fun_view_options_button_pressed(self) -> None:
         self.bottom_view_fun_view_options_enabled = not self.bottom_view_fun_view_options_enabled
@@ -958,6 +958,15 @@ class MainScreen(BoxLayout, Screen):
             "Fun view options button pressed."
             " New state is '{self.bottom_view_fun_view_options_enabled}'."
         )
+
+    def fun_view_options_clear_all_pressed(self) -> None:
+        logger.debug("Fun view options clear all pressed. Setting all checkboxes to inactive.")
+
+        for child in self.ids.custom_options_box.children:
+            logger.debug(f'"{child.label_text}" old state: {child.active}.')
+            child.active = False
+            logger.debug(f'"{child.label_text}" new state: {child.active}.')
+            logger.debug(f'child type is "{type(child)}".')
 
     def _get_main_title_str(self) -> str:
         if self._fanta_info.comic_book_info.is_barks_title:
