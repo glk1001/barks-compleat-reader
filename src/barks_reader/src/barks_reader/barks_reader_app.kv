@@ -276,6 +276,7 @@
                 anchor_y: "top"
                 # The opacity controls this entire container.
                 opacity: root.bottom_view_title_opacity
+                disabled: root.bottom_view_title_opacity < 0.01
                 title_box_padding: dp(0.03 * root.view_width)
                 title_box_spacing: dp(0.055 * root.view_height)
 
@@ -421,7 +422,7 @@
                                     text_size: self.size
                                     halign: "center"
                                     valign: "middle"
-                            # --- The Checkbox Layout ---
+                            # --- The Checkbox Layouts ---
                             BoxLayout:
                                 id: goto_page_layout
                                 size_hint: None, None
