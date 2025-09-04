@@ -529,6 +529,8 @@
                         padding: [dp(2 + fun_options_border_margin_x), dp(30), dp(2), dp(30)]
                         spacing: dp(8)
                         check_box_height: dp(25)
+                        opacity: 1 if root.bottom_view_fun_view_options_active else 0
+                        disabled: not root.bottom_view_fun_view_options_active
 
                         canvas.before:
                             # Add a rounded rectangle background box
@@ -551,7 +553,7 @@
                         # --- The options heading ---
                         BgColorLabel:
                             id: heading_label
-                            text: 'Choose Image Types'
+                            text: 'Choose Bottom View Image Types'
                             color: (1.0, 1.0, 0.0, 1)
                             background_color: (0.1, 0.1, 0.1, 1)
                             bold: True
@@ -646,8 +648,22 @@
                                 active: True
 
                     Button:
-                        text: 'X'
+                        id: fun_view_options_button
+                        text: 'X' if root.bottom_view_fun_view_options_active else ' '
                         size_hint: None, None
-                        size: dp(20), dp(20)
-                        pos_hint: {'x': 0.04, 'top': 0.98}
-                        # on_press: root.close_options_box() # Example action
+                        size: dp(15), dp(15)
+                        pos_hint: {'x': 0.03, 'top': 0.98}
+                        background_color: (0, 0, 0, 0) # Make default background transparent
+                        background_normal: ''
+                        bold: True
+                        font_size: sp(15)
+                        canvas.before:
+                            Color:
+                                rgba: (0.8, 0.1, 0.1, 1) if self.state == 'normal' else (0.6, 0.1, 0.1, 1)
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [self.height / 2] # Make it a perfect circle
+
+                        on_press: root.fun_view_options_button_pressed()
+                        opacity: 1 if root.bottom_view_fun_view_options_active else 0.5
