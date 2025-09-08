@@ -662,18 +662,27 @@
                         background_normal: ''
                         canvas.before:
                             Color:
-                                rgba: (0.8, 0.1, 0.1, 1) if self.state == 'normal' else (0.6, 0.1, 0.1, 1)
+                                rgba: (0.8, 0.1, 0.1, 1) if root.bottom_view_fun_view_options_enabled else (1, 1, 1, 1)
                             RoundedRectangle:
                                 pos: self.pos
                                 size: self.size
                                 radius: [self.height / 2] # Make it a perfect circle
 
                         on_press: root.fun_view_options_button_pressed()
-                        opacity: 1 if root.bottom_view_fun_view_options_enabled else 0.5
+                        opacity: 1 if root.bottom_view_fun_view_options_enabled else 0.3
+
+                        Image:
+                            source: "/home/greg/Books/Carl Barks/Compleat Barks Disney Reader/Reader Icons/ActionBar Icons/menu-icon.png"
+                            background_color: (0, 0, 0, 0) # Make default background transparent
+                            opacity: 0 if root.bottom_view_fun_view_options_enabled else 0.5
+                            y: self.parent.y
+                            x: self.parent.x
+                            size: self.parent.size
+                            fit_mode: "scale-down"
+                            mipmap: True
 
                     Button:
                         text: 'clear\nall'
-#                        pos_hint: {'x': 0.10, 'top': 0.70}
                         pos: checkbox_custom_image_types.x, custom_options_box.y + custom_options_box.height - self.height - dp(1)
                         size_hint: None, None
                         size: dp(35), dp(30)
