@@ -8,12 +8,20 @@
 
 import logging
 import sys
+from configparser import ConfigParser
 
 from barks_fantagraphics.comics_cmd_args import CmdArgs, ExtraArg
 from loguru import logger
 from loguru_config import LoguruConfig
 
 from barks_reader.config_info import ConfigInfo
+from barks_reader.reader_settings import (
+    BARKS_READER_SECTION,
+    MAIN_WINDOW_HEIGHT,
+    MAIN_WINDOW_LEFT,
+    MAIN_WINDOW_TOP,
+)
+from barks_reader.screen_metrics import get_approximate_taskbar_height, get_primary_screen_info
 
 # ------------------------------------------------------------------ #
 
@@ -90,7 +98,7 @@ def setup_loguru(cfg_info: ConfigInfo, _args: CmdArgs) -> None:
 
     global log_level  # noqa: PLW0603
     log_level = logging.DEBUG
-    # log_level = cmd_args.get_log_level()
+    # log_level = cmd_args.get_log_level()  # noqa: ERA001
 
     run_loguru_config(cfg_info)
 
@@ -115,22 +123,83 @@ def run_loguru_config(cfg_info: ConfigInfo) -> None:
         sys.exit(1)
 
 
-def update_window_size(args: CmdArgs) -> None:
-    win_height = args.get_extra_arg("--win_height")
+def update_window_size(args: CmdArgs, cfg_info: ConfigInfo) -> None:
+    cmd_arg_win_height, cmd_arg_win_left, cmd_arg_win_top = get_main_win_info_from_cmd_args(args)
+    ini_win_height, ini_win_left, ini_win_top = get_main_win_info_from_ini_file(cfg_info)
+    best_win_height, best_win_left, best_win_top = get_best_main_window_fit()
+
+    win_height = cmd_arg_win_height
+    win_left = cmd_arg_win_left
+    win_top = cmd_arg_win_top
+
     if win_height == 0:
-        return
+        win_height = ini_win_height if ini_win_height > 0 else best_win_height
+    if win_left == -1:
+        win_left = ini_win_left if ini_win_left != -1 else best_win_left
+    if win_top == -1:
+        win_top = ini_win_top if ini_win_top != -1 else best_win_top
 
+    logger.debug(f"Main win dimensions: {win_height}, ({win_left}, {win_top}).")
+
+    set_window_size(win_height, win_left, win_top)
+
+
+def get_main_win_info_from_cmd_args(args: CmdArgs) -> tuple[int, int, int]:
+    win_height = args.get_extra_arg("--win_height")
     win_left = args.get_extra_arg("--win_left")
+    win_top = args.get_extra_arg("--win_top")
 
-    set_window_size(win_left, win_height)
+    logger.debug(f"Cmd arg main win dimensions: {win_height}, ({win_left}, {win_top}).")
+
+    return win_height, win_left, win_top
 
 
-def set_window_size(win_left: int, win_height: int) -> None:
+def get_main_win_info_from_ini_file(cfg_info: ConfigInfo) -> tuple[int, int, int]:
+    barks_config = ConfigParser()
+    barks_config.read(cfg_info.app_config_path)
+
+    try:
+        win_height = int(barks_config.get(BARKS_READER_SECTION, MAIN_WINDOW_HEIGHT))
+        win_left = int(barks_config.get(BARKS_READER_SECTION, MAIN_WINDOW_LEFT))
+        win_top = int(barks_config.get(BARKS_READER_SECTION, MAIN_WINDOW_TOP))
+
+        logger.debug(f"Ini main win dimensions: {win_height}, ({win_left}, {win_top}).")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Ini error: {e}.")
+        logger.debug("Ini main win dimensions: 0, (-1, -1).")
+        return 0, 0, 0
+    else:
+        return win_height, win_left, win_top
+
+
+def get_best_main_window_fit() -> tuple[int, int, int]:
+    primary_screen_info = get_primary_screen_info()
+
+    win_centre = primary_screen_info.monitor_x + round(primary_screen_info.width_pixels / 2)
+
+    win_height = primary_screen_info.height_pixels - get_approximate_taskbar_height()
+    win_left = win_centre - round(get_win_width_from_height(win_height) / 2)
+    win_top = 0
+
+    logger.debug(f"Best fit main win dimensions: {win_height}, ({win_left}, {win_top}).")
+
+    return win_height, win_left, win_top
+
+
+def get_win_width_from_height(win_height: int) -> int:
+    comic_page_aspect_ratio = 3200.0 / 2120.0
+    return round(win_height / comic_page_aspect_ratio)
+
+
+def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
     from kivy import Config  # noqa: PLC0415
 
+    win_width = get_win_width_from_height(win_height)
+    logger.debug(f"Main win width: {win_width}.")
+
     Config.set("graphics", "left", win_left)
-    comic_page_aspect_ratio = 3200.0 / 2120.0
-    Config.set("graphics", "width", round(win_height / comic_page_aspect_ratio))
+    Config.set("graphics", "top", win_top)
+    Config.set("graphics", "width", win_width)
     Config.set("graphics", "height", round(win_height + 45.0))
 
 
@@ -144,16 +213,17 @@ if __name__ == "__main__":
     config_info = ConfigInfo()
 
     EXTRA_ARGS: list[ExtraArg] = [
-        ExtraArg("--win-left", action="store", type=int, default=0),
         ExtraArg("--win-height", action="store", type=int, default=0),
+        ExtraArg("--win-left", action="store", type=int, default=-1),
+        ExtraArg("--win-top", action="store", type=int, default=-1),
     ]
     cmd_args = CmdArgs("Compleat Barks Reader", extra_args=EXTRA_ARGS)
     args_ok, error_msg = cmd_args.args_are_valid()
     if not args_ok:
         sys.exit(1)
 
-    update_window_size(cmd_args)
-
     start_logging(config_info, cmd_args)
+
+    update_window_size(cmd_args, config_info)
 
     call_reader_main(config_info, cmd_args)

@@ -41,6 +41,9 @@ USE_DERE_INSTEAD_OF_THEAH = "use_dere"
 USE_BLANK_EYEBALLS_FOR_BOMBIE = "use_blank_eyeballs"
 USE_GLK_FIREBUG_ENDING = "use_glk_firebug_ending"
 IS_FIRST_USE_OF_READER = "is_first_use_of_reader"
+MAIN_WINDOW_HEIGHT = "main_window_height"
+MAIN_WINDOW_LEFT = "main_window_left"
+MAIN_WINDOW_TOP = "main_window_top"
 
 _READER_SETTINGS_JSON = f"""
 [
@@ -136,6 +139,27 @@ _READER_SETTINGS_JSON = f"""
       "type": "bool",
       "section": "{BARKS_READER_SECTION}",
       "key": "{IS_FIRST_USE_OF_READER}"
+   }},
+   {{
+      "title": "Main Window Height",
+      "desc": "Set this to height you want for the main window. The width will be automatically calculated from this value. Setting to 0 will give the best fit. You need to restart the app after changing this.",
+      "type": "numeric",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{MAIN_WINDOW_HEIGHT}"
+   }},   
+   {{
+      "title": "Main Window Left",
+      "desc": "Set this to the left position of the main window. Setting to -1 will give the best fit. You need to restart the app after changing this.",
+      "type": "numeric",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{MAIN_WINDOW_LEFT}"
+   }},
+   {{
+      "title": "Main Window Top",
+      "desc": "Set this to the top position of the main window. Setting to -1 will give the best fit. You need to restart the app after changing this.",
+      "type": "numeric",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{MAIN_WINDOW_TOP}"
    }}
 ]
 """  # noqa: E501
@@ -240,6 +264,15 @@ class ReaderSettings:
     def _get_goto_saved_node_on_start(self) -> bool:
         return self._config.getboolean(BARKS_READER_SECTION, GOTO_SAVED_NODE_ON_START)
 
+    def _get_main_window_height(self) -> int:
+        return self._config.get(BARKS_READER_SECTION, MAIN_WINDOW_HEIGHT)
+
+    def _get_main_window_left(self) -> int:
+        return self._config.get(BARKS_READER_SECTION, MAIN_WINDOW_LEFT)
+
+    def _get_main_window_top(self) -> int:
+        return self._config.get(BARKS_READER_SECTION, MAIN_WINDOW_TOP)
+
     def get_use_harpies_instead_of_larkies(self) -> bool:
         return self._config.getboolean(BARKS_READER_SECTION, USE_HARPIES_INSTEAD_OF_LARKIES)
 
@@ -315,6 +348,18 @@ class ReaderSettings:
     def _is_valid_is_first_use_of_reader(_is_first_use_of_reader: bool) -> bool:
         return True
 
+    @staticmethod
+    def _is_valid_main_window_height(_main_window_height: int) -> bool:
+        return True
+
+    @staticmethod
+    def _is_valid_main_window_left(_main_window_left: int) -> bool:
+        return True
+
+    @staticmethod
+    def _is_valid_main_window_top(_main_window_top: int) -> bool:
+        return True
+
     def _is_valid_png_barks_panels_dir(self, dir_path: Path) -> bool:
         return self._is_valid_dir(dir_path)
 
@@ -362,6 +407,9 @@ class BuildableReaderSettings(ReaderSettings):
             PREBUILT_COMICS_DIR: self._get_prebuilt_comics_dir,
             USE_PREBUILT_COMICS: self._get_use_prebuilt_archives,
             IS_FIRST_USE_OF_READER: self._get_is_first_use_of_reader,
+            MAIN_WINDOW_HEIGHT: self._get_main_window_height,
+            MAIN_WINDOW_LEFT: self._get_main_window_left,
+            MAIN_WINDOW_TOP: self._get_main_window_top,
             GOTO_SAVED_NODE_ON_START: self._get_goto_saved_node_on_start,
             USE_HARPIES_INSTEAD_OF_LARKIES: self.get_use_harpies_instead_of_larkies,
             USE_DERE_INSTEAD_OF_THEAH: self.get_use_dere_instead_of_theah,
@@ -379,6 +427,9 @@ class BuildableReaderSettings(ReaderSettings):
             USE_PREBUILT_COMICS: self._is_valid_use_prebuilt_archives,
             GOTO_SAVED_NODE_ON_START: self._is_valid_goto_saved_node_on_start,
             IS_FIRST_USE_OF_READER: self._is_valid_is_first_use_of_reader,
+            MAIN_WINDOW_HEIGHT: self._is_valid_main_window_height,
+            MAIN_WINDOW_LEFT: self._is_valid_main_window_left,
+            MAIN_WINDOW_TOP: self._is_valid_main_window_top,
             USE_HARPIES_INSTEAD_OF_LARKIES: self._is_valid_use_harpies_instead_of_larkies,
             USE_DERE_INSTEAD_OF_THEAH: self._is_valid_use_dere_instead_of_theah,
             USE_BLANK_EYEBALLS_FOR_BOMBIE: self._is_valid_use_blank_eyeballs_for_bombie,
@@ -405,6 +456,9 @@ class BuildableReaderSettings(ReaderSettings):
                 USE_BLANK_EYEBALLS_FOR_BOMBIE: 1,
                 USE_GLK_FIREBUG_ENDING: 1,
                 IS_FIRST_USE_OF_READER: 1,
+                MAIN_WINDOW_HEIGHT: 0,
+                MAIN_WINDOW_LEFT: -1,
+                MAIN_WINDOW_TOP: -1,
             },
         )
 

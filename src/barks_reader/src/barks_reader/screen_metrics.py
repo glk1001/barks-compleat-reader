@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 
-from kivy.metrics import cm, dp, inch, sp
 from loguru import logger
 from screeninfo import get_monitors
 
@@ -71,7 +70,23 @@ def get_screen_info() -> list[ScreenInfo]:
     return screens
 
 
+def get_primary_screen_info() -> ScreenInfo:
+    screen_info_list = get_screen_info()
+
+    for info in screen_info_list:
+        if info.is_primary:
+            return info
+
+    return screen_info_list[0]
+
+
+def get_approximate_taskbar_height() -> int:
+    return 100
+
+
 def log_screen_metrics(scrn_info: list[ScreenInfo]) -> None:
+    from kivy.metrics import cm, dp, inch, sp  # noqa: PLC0415
+
     logger.info("--- Detailed Monitor Metrics ---")
 
     for info in scrn_info:

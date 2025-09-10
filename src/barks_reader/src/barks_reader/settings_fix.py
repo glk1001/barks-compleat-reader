@@ -41,6 +41,12 @@ KV_SETTINGS_OVERRIDE = """
             id: content
             size_hint_x: .45
 
+<SettingString>:
+    Label:
+        text: root.value or ''
+        pos: root.pos
+        font_size: '15sp'
+
 <SettingBoolean>:
     Switch:
         text: 'Boolean'

@@ -4,7 +4,7 @@ _default2:
     just --list --unsorted
 
 # Fire up the Compleat Barks Reader
-reader win_left="0" win_height="0":
+reader win_left="-1" win_height="0":
     uv run "{{source_dir()}}/main.py" --win-left {{win_left}} --win-height {{win_height}}
 
 # Get panels info for a volume or volumes
