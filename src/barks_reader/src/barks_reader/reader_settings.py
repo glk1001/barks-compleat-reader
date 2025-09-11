@@ -146,7 +146,7 @@ _READER_SETTINGS_JSON = f"""
       "type": "numeric",
       "section": "{BARKS_READER_SECTION}",
       "key": "{MAIN_WINDOW_HEIGHT}"
-   }},   
+   }},
    {{
       "title": "Main Window Left",
       "desc": "Set this to the left position of the main window. Setting to -1 will give the best fit. You need to restart the app after changing this.",

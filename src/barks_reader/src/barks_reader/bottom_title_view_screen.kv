@@ -1,0 +1,224 @@
+<BottomTitleViewScreen>:
+    size_hint: 1, 1
+
+    Button:
+        id: title_show_button
+        text: ""
+        opacity: 0 if root.view_title_opacity < 0.01 else 1
+        background_color: 0,0,0,0
+        size_hint: 0.025, 0.033
+        pos_hint: {'right': 1, 'y': 1 - 0.033}
+        on_press:
+            bottom_view_box.opacity = 0 if bottom_view_box.opacity > 0.9 else 1
+            self.opacity = 0 if bottom_view_box.opacity < 0.1 else 1
+
+        canvas.before:
+            # Add a rounded rectangle background box
+            Color:
+                rgba: 0.25, 0.25, 0.25, 0.9
+            RoundedRectangle:
+                pos: self.pos
+                size: (0.9 * self.width, 0.9 * self.height)
+                radius: [dp(4)]
+
+    # This is the main container for the title view.
+    AnchorLayout:
+        id: bottom_title_view
+        # The anchor_y is now 'top' to prevent the content from being centered vertically.
+        # This is the primary fix for the layout being pushed down.
+        anchor_x: "center"
+        anchor_y: "bottom"
+        # The opacity controls this entire container.
+        opacity: root.view_title_opacity
+        disabled: root.view_title_opacity < 0.01
+        title_box_padding: dp(0.03 * self.parent.width)
+        title_box_spacing: dp(0.055 * self.parent.height)
+
+        # The background image is now a direct child, simplifying the structure.
+        Image:
+            color: root.view_title_image_color if title_show_button.opacity > 0.9 else (1,1,1,1)
+            source: root.view_title_image_source
+            x: self.parent.x
+            y: self.parent.y
+            fit_mode: root.view_title_image_fit_mode
+            mipmap: True
+
+        # --- Two column layout with single column main title on top ---
+        BoxLayout:
+            # This is the top-level container for all content.
+            id: bottom_view_box
+            orientation: 'vertical'
+            padding: 0
+            spacing: 0
+
+            # --- Main Title (Full Width) ---
+            BgColorLabel:
+                id: main_title_label
+                text: root.main_title_text
+                font_name: fm.main_title_font_name
+                font_size: fm.main_title_font_size
+                color: root.MAIN_TITLE_COLOR
+                background_color: root.MAIN_TITLE_BACKGROUND_COLOR
+                bold: True
+                mipmap: True
+                size_hint: 1, 0.18
+                text_size: self.size
+                halign: 'center'
+                valign: 'middle'
+
+            # --- Single RelativeLayout for all two column content below the title ---
+            # This layout will fill the remaining vertical space.
+            RelativeLayout:
+                size_hint: 1, 0.82
+
+                # --- Left Column (as a positioned BoxLayout) ---
+                # This layout holds the text and is forced to the top-left.
+                BoxLayout:
+                    id: title_info_box
+                    orientation: 'vertical'
+                    size_hint: 0.56, 1.0
+                    pos_hint: {'x': 0, 'top': 0.95}
+                    padding: [bottom_title_view.title_box_padding, 0, 0, 0]
+                    spacing: bottom_title_view.title_box_spacing
+
+                    BgColorLabel:
+                        id: title_info_label
+                        text: root.title_info_text
+                        font_size: fm.title_info_font_size
+                        color: root.TITLE_INFO_LABEL_COLOR
+                        background_color:
+                            (0, 1, 0, root.DEBUG_BACKGROUND_OPACITY) if root.DEBUG_BACKGROUND_OPACITY > 0 \
+                            else (0.01, 0.01, 0.01, 0.1)
+                        sizing_factor_x: 1.05  # make background leak out a bit
+                        sizing_factor_y: 1.08
+                        markup: True
+                        mipmap: True
+                        size_hint_y: None
+                        height: self.texture_size[1]
+                        text_size: self.width, None
+                        padding: [0, 0, 0, 0]
+
+                    BgColorLabel:
+                        id: title_extra_info_label
+                        text: root.title_extra_info_text
+                        font_size: fm.title_extra_info_font_size
+                        color: root.TITLE_EXTRA_INFO_LABEL_COLOR
+                        background_color:
+                            (0, 1, 1, root.DEBUG_BACKGROUND_OPACITY) if root.DEBUG_BACKGROUND_OPACITY > 0 \
+                            else (0.01, 0.01, 0.01, 0.2)
+                        sizing_factor_x: 1.05  # make background leak out a bit
+                        sizing_factor_y: 1.08
+                        multiline: True
+                        bold: True
+                        markup: True
+                        mipmap: True
+                        size_hint_y: None
+                        height: self.texture_size[1]
+                        text_size: self.width, None
+                        halign: 'justify'
+                        padding: [0, 0, dp(5), 0]
+
+                    # IMPORTANT: This filler widget pushes the labels above it to the top.
+                    Widget:
+
+                # --- Right Column (as a relative container) ---
+                RelativeLayout:
+                    size_hint: 0.44, 1.0
+                    pos_hint: {'right': 1.0, 'top': 1.0}
+
+                    # --- The Image Button ---
+                    Button:
+                        id: image_button
+                        background_color: (0, 0, 0, 0)
+                        background_normal: ''
+                        size_hint: None, None
+                        # Size the button relative to its container (the right column)
+                        width: self.parent.width * 0.8
+                        height: self.width / 1.036
+                        # Center the button within the right column
+                        pos_hint: {'center_x': 0.5}
+                        # Bind the button's top to the top of the extra_info label
+                        top: title_extra_info_label.top - (0.4 * bottom_title_view.title_box_spacing)
+
+                        canvas.before:
+                            Color:
+                                rgba: 0, 0, 1, 0.85
+                            BoxShadow:
+                                inset: False
+                                pos: self.pos
+                                size: self.size
+                                offset: 0, 0
+                                spread_radius: 5, 5
+                                border_radius: 0, 0, 0, 0
+                                blur_radius: 30 if self.state == "normal" else 15
+                        TitlePageImage:
+                            id: title_button_image
+                            source: root.title_inset_image_source
+                            opacity: 0.5 if root.is_first_use_of_reader else 1
+                            pos: self.parent.pos
+                            size: self.parent.size
+                            fit_mode: "cover"
+                            mipmap: True
+                            # NOTE: This should be on the button above but it doesn't work.
+                            on_press: root.on_image_pressed()
+                        Label:
+                            text: "CLICK ME!"
+                            opacity: 1 if root.is_first_use_of_reader else 0
+                            color: 1, 165/255.0, 0, 1
+                            bold: True
+                            font_size: sp(40)
+                            # Position the label over the image
+                            pos: title_button_image.pos
+                            size: title_button_image.size
+                            text_size: self.size
+                            halign: "center"
+                            valign: "middle"
+                    # --- The Checkbox Layouts ---
+                    BoxLayout:
+                        id: goto_page_layout
+                        size_hint: None, None
+                        width: image_button.width
+                        height: (1.25 * fm.check_box_font_size) if self.opacity > 0.99 else 0
+                        # Position relative to the image button
+                        pos: image_button.x, image_button.top + (0.85 * fm.check_box_font_size)
+                        opacity: 1 if root.goto_page_num else 0
+                        Label:
+                            text: "Goto page " + root.goto_page_num + ":"
+                            color: (0, 1, 1, 1)
+                            size_hint_x: 0.8
+                            font_size: fm.check_box_font_size
+                            text_size: (self.width, self.height)
+                            halign: "right"
+                            valign: "center"
+                        CheckBox:
+                            id: goto_page_checkbox
+                            color: (1, 1, 1, 1)
+                            background_color: (0.01, 0.01, 0.01, 0.6)
+                            size_hint_x: 0.1
+                            active: root.goto_page_active
+                            on_active: root.goto_page_active = self.active
+                    BoxLayout:
+                        id: use_overrides_layout
+                        size_hint: None, None
+                        width: image_button.width
+                        height: (1.33 * fm.check_box_font_size) if self.opacity > 0.99 else 0
+                        # Position relative to 'goto_page_layout'
+                        pos: goto_page_layout.x, goto_page_layout.top + (0.1 * fm.check_box_font_size)
+                        opacity: 1 if root.use_overrides_description else 0
+                        Label:
+                            id: use_overrides_label
+                            text: root.use_overrides_description
+                            color: (0, 1, 1, 1)
+                            size_hint_x: 0.8
+                            font_size: fm.check_box_font_size
+                            text_size: (self.width, self.height)
+                            halign: "right"
+                            valign: "center"
+                        CheckBox:
+                            id: use_overrides_checkbox
+                            color: (1, 1, 1, 1)
+                            background_color: (0.01, 0.01, 0.01, 0.6)
+                            size_hint_x: 0.1
+                            active: root.use_overrides_active
+                            on_active: root.use_overrides_active = self.active
+        # --- END: bottom view title container ---

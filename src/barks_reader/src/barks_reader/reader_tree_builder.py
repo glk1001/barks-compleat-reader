@@ -135,7 +135,7 @@ class ReaderTreeBuilder:
 
     def build_main_screen_tree(self) -> None:
         """Set up and kick off the entire asynchronous tree build process."""
-        tree: ReaderTreeView = self._main_screen.ids.reader_tree_view
+        tree: ReaderTreeView = self._main_screen.tree_view_screen.ids.reader_tree_view
 
         self._main_screen.loading_data_popup.ids.loading_data_progress_bar.min = 0
         # Approximate total number of nodes to load:

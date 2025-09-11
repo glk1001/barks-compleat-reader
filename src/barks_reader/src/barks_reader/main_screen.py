@@ -34,15 +34,15 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from barks_fantagraphics.title_search import BarksTitleSearch
 from comic_utils.comic_consts import ROMAN_NUMERALS
-from kivy.animation import Animation
 
 # noinspection PyProtectedMember
 from kivy.clock import Clock
-from kivy.metrics import dp
-from kivy.properties import BooleanProperty, ColorProperty, NumericProperty, StringProperty
+from kivy.properties import (
+    BooleanProperty,
+    StringProperty,
+)
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import Screen
-from kivy.uix.treeview import TreeViewNode
 from loguru import logger
 
 from barks_reader.background_views import BackgroundViews, ImageThemes, ViewStates
@@ -53,8 +53,6 @@ from barks_reader.fantagraphics_volumes import (
 )
 from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
 from barks_reader.random_title_images import (
-    FIT_MODE_CONTAIN,
-    FIT_MODE_COVER,
     ImageInfo,
     RandomTitleImages,
 )
@@ -74,15 +72,11 @@ from barks_reader.reader_consts_and_types import (
     THE_STORIES_NODE_TEXT,
 )
 from barks_reader.reader_formatter import (
-    LONG_TITLE_SPLITS,
-    ReaderFormatter,
     get_action_bar_title,
     get_clean_text_without_extra,
 )
 from barks_reader.reader_settings import FantaVolumesState
 from barks_reader.reader_tree_view_utils import (
-    find_node_by_path,
-    find_tree_view_node,
     find_tree_view_title_node,
     get_tree_view_node_id_text,
     get_tree_view_node_path,
@@ -123,14 +117,18 @@ if TYPE_CHECKING:
     from kivy._clock import ClockEvent
     from kivy.uix.button import Button
     from kivy.uix.spinner import Spinner
+    from kivy.uix.treeview import TreeViewNode
     from kivy.uix.widget import Widget
 
+    from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
     from barks_reader.comic_book_reader import ComicBookReader
     from barks_reader.filtered_title_lists import FilteredTitleLists
     from barks_reader.font_manager import FontManager
+    from barks_reader.fun_image_view_screen import FunImageViewScreen
     from barks_reader.reader_screens import ScreenSwitchers
     from barks_reader.reader_settings import ReaderSettings
     from barks_reader.system_file_paths import SystemFilePaths
+    from barks_reader.tree_view_screen import TreeViewScreen
 
 NODE_TYPE_TO_VIEW_STATE_MAP = {
     YearRangeTreeViewNode: ViewStates.ON_YEAR_RANGE_NODE,
@@ -161,56 +159,21 @@ NODE_TEXT_TO_VIEW_STATE_MAP = {
 }
 
 COMIC_PAGE_ONE = ROMAN_NUMERALS[1]
-OPENING_TITLE_ANIMATION_DURATION = 4
 
 
 class MainScreen(BoxLayout, Screen):
-    UP_ARROW_WIDTH = dp(20)
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
     app_icon_filepath = StringProperty()
-    up_arrow_filepath = StringProperty()
     action_bar_close_icon_filepath = StringProperty()
     action_bar_collapse_icon_filepath = StringProperty()
     action_bar_change_pics_icon_filepath = StringProperty()
     action_bar_settings_icon_filepath = StringProperty()
     action_bar_goto_icon_filepath = StringProperty()
+    lower_title_available = BooleanProperty(defaultvalue=False)
     app_title = StringProperty()
 
     is_first_use_of_reader = BooleanProperty(defaultvalue=False)
-
-    main_files_not_loaded = BooleanProperty(defaultvalue=False)
-    main_files_not_loaded_msg = StringProperty()
-
-    MAIN_TITLE_BACKGROUND_COLOR = (0.01, 0.01, 0.01, 0.075)
-    MAIN_TITLE_COLOR = (1, 1, 0, 1)
-    main_title_text = StringProperty()
-
-    TITLE_INFO_LABEL_COLOR = (1.0, 0.99, 0.9, 1.0)
-    TITLE_EXTRA_INFO_LABEL_COLOR = (1.0, 1.0, 1.0, 1.0)
-    MAX_TITLE_INFO_LEN_BEFORE_SHORTEN = 36
-    title_info_text = StringProperty()
-    title_extra_info_text = StringProperty()
-    title_page_image_source = StringProperty()
-
-    DEBUG_BACKGROUND_OPACITY = 0
-
-    top_view_image_source = StringProperty()
-    top_view_image_fit_mode = StringProperty(FIT_MODE_COVER)
-    top_view_image_color = ColorProperty()
-    top_view_image_opacity = NumericProperty(0.0)
-
-    bottom_view_title_opacity = NumericProperty(0.0)
-    bottom_view_title_image_source = StringProperty()
-    bottom_view_title_image_fit_mode = StringProperty(FIT_MODE_COVER)
-    bottom_view_title_image_color = ColorProperty()
-    bottom_view_title_goto_page_num = StringProperty()
-    bottom_view_fun_image_opacity = NumericProperty(0.0)
-    bottom_view_fun_image_source = StringProperty()
-    bottom_view_fun_image_fit_mode = StringProperty(FIT_MODE_CONTAIN)
-    bottom_view_fun_image_color = ColorProperty()
-    bottom_view_fun_image_from_title = BooleanProperty(defaultvalue=True)
-    bottom_view_fun_view_options_enabled = BooleanProperty(defaultvalue=False)
 
     def __init__(
         self,
@@ -219,9 +182,20 @@ class MainScreen(BoxLayout, Screen):
         reader_tree_events: ReaderTreeBuilderEventDispatcher,
         filtered_title_lists: FilteredTitleLists,
         screen_switchers: ScreenSwitchers,
+        tree_view_screen: TreeViewScreen,
+        bottom_title_view_screen: BottomTitleViewScreen,
+        fun_image_view_screen: FunImageViewScreen,
         **kwargs: str,
     ) -> None:
         super().__init__(**kwargs)
+
+        self.tree_view_screen = tree_view_screen
+        self.bottom_title_view_screen = bottom_title_view_screen
+        self.fun_image_view_screen = fun_image_view_screen
+
+        self.add_widget(self.tree_view_screen)
+        self.bottom_title_view_screen.add_widget(self.fun_image_view_screen)
+        self.add_widget(self.bottom_title_view_screen)
 
         self._comics_database = comics_database
         self._reader_settings = reader_settings
@@ -243,7 +217,6 @@ class MainScreen(BoxLayout, Screen):
 
         self._json_settings_manager = SettingsManager(self._reader_settings.get_user_data_path())
 
-        self._formatter = ReaderFormatter()
         self._fanta_info: FantaComicBookInfo | None = None
         self.year_range_nodes: dict | None = None
 
@@ -279,18 +252,24 @@ class MainScreen(BoxLayout, Screen):
         self._set_action_bar_icons(self._reader_settings.sys_file_paths)
 
         self._special_fanta_overrides = SpecialFantaOverrides(self._reader_settings)
-        self.ids.use_overrides_checkbox.bind(active=self.on_use_overrides_checkbox_changed)
-        self.ids.checkbox_all_image_types.bind(active=self.on_checkbox_all_image_types_changed)
-        self.ids.checkbox_custom_image_types.bind(
+        self.bottom_title_view_screen.on_image_pressed_func = self.on_image_pressed
+        # TODO: push bind down
+        self.bottom_title_view_screen.ids.use_overrides_checkbox.bind(
+            active=self.on_use_overrides_checkbox_changed
+        )
+        self.fun_image_view_screen.ids.checkbox_all_image_types.bind(
+            active=self.on_checkbox_all_image_types_changed
+        )
+        self.fun_image_view_screen.ids.checkbox_custom_image_types.bind(
             active=self.on_checkbox_custom_image_types_changed
         )
+        self.fun_image_view_screen.on_goto_title_func = self.on_goto_fun_view_title
 
     def fonts_updated(self, font_manager: FontManager) -> None:
         self.app_title = get_action_bar_title(font_manager, APP_TITLE)
 
     def _set_action_bar_icons(self, sys_paths: SystemFilePaths) -> None:
         self.app_icon_filepath = str(self._get_reader_app_icon_file())
-        self.up_arrow_filepath = str(sys_paths.get_up_arrow_file())
         self.action_bar_close_icon_filepath = str(sys_paths.get_barks_reader_close_icon_file())
         self.action_bar_collapse_icon_filepath = str(
             sys_paths.get_barks_reader_collapse_icon_file()
@@ -383,8 +362,8 @@ class MainScreen(BoxLayout, Screen):
         )
 
         def _on_error_popup_closed(fanta_volumes_missing_msg: str) -> None:
-            self.main_files_not_loaded_msg = fanta_volumes_missing_msg
-            self.main_files_not_loaded = True
+            self.tree_view_screen.main_files_not_loaded_msg = fanta_volumes_missing_msg
+            self.tree_view_screen.main_files_not_loaded = True
 
         self._user_error_handler.handle_error(
             error_type,
@@ -400,8 +379,8 @@ class MainScreen(BoxLayout, Screen):
         except (WrongFantagraphicsVolumeError, TooManyArchiveFilesError) as e:
 
             def _on_error_popup_closed(wrong_fanta_volumes_msg: str) -> None:
-                self.main_files_not_loaded_msg = wrong_fanta_volumes_msg
-                self.main_files_not_loaded = True
+                self.tree_view_screen.main_files_not_loaded_msg = wrong_fanta_volumes_msg
+                self.tree_view_screen.main_files_not_loaded = True
 
             error_type = (
                 ErrorTypes.WrongFantagraphicsVolume
@@ -425,30 +404,14 @@ class MainScreen(BoxLayout, Screen):
         return titles
 
     def on_action_bar_collapse(self) -> None:
-        for node in self.ids.reader_tree_view.iterate_open_nodes():
-            self.ids.reader_tree_view.deselect_node(node)
-
-            if node.is_open:
-                self.ids.reader_tree_view.toggle_node(node)
-                self._close_open_nodes(node)
-
+        self.tree_view_screen.deselect_and_close_open_nodes()
         self._update_view_for_node(ViewStates.INITIAL)
-
-    def _close_open_nodes(self, start_node: TreeViewNode) -> None:
-        for node in start_node.nodes:
-            if node.is_open:
-                self.ids.reader_tree_view.toggle_node(node)
-                self._close_open_nodes(node)
 
     def on_action_bar_change_view_images(self) -> None:
         self._change_background_views()
 
     def on_action_bar_goto(self, button: Button) -> None:
-        node = find_tree_view_node(self.ids.reader_tree_view.root, button.text)
-        if node:
-            self._close_open_nodes(self.ids.reader_tree_view.root)
-            self._open_all_parent_nodes(node)
-            self._goto_node(node)
+        self.tree_view_screen.goto_node(button.text)
 
     def on_action_bar_pressed(self, button: Button) -> None:
         pass
@@ -456,7 +419,7 @@ class MainScreen(BoxLayout, Screen):
     def on_goto_top_view_title(self) -> None:
         self._goto_chrono_title(self._top_view_image_info)
 
-    def on_goto_fun_view_title(self, _button: Button) -> None:
+    def on_goto_fun_view_title(self) -> None:
         self._goto_chrono_title(self._bottom_view_fun_image_info)
 
     def _goto_chrono_title(self, image_info: ImageInfo) -> None:
@@ -466,7 +429,7 @@ class MainScreen(BoxLayout, Screen):
         year_nodes = self.year_range_nodes[
             self.filtered_title_lists.get_year_range_from_info(title_fanta_info)
         ]
-        self._open_all_parent_nodes(year_nodes)
+        self.tree_view_screen.open_all_parent_nodes(year_nodes)
 
         title_node = find_tree_view_title_node(year_nodes, image_info.from_title)
         self._goto_node(title_node, scroll_to=True)
@@ -475,14 +438,14 @@ class MainScreen(BoxLayout, Screen):
 
     def _goto_node(self, node: TreeViewNode, scroll_to: bool = False) -> None:
         def show_node(n: TreeViewNode) -> None:
-            self.ids.reader_tree_view.select_node(n)
+            self.tree_view_screen.select_node(n)
             if scroll_to:
                 self._scroll_to_node(n)
 
         Clock.schedule_once(lambda _dt, item=node: show_node(item), 0)
 
     def _scroll_to_node(self, node: TreeViewNode) -> None:
-        Clock.schedule_once(lambda _dt: self.ids.scroll_view.scroll_to(node, padding=50), 0)
+        Clock.schedule_once(lambda _dt: self.tree_view_screen.scroll_to_node(node), 0)
 
     def _get_fanta_info(self, title: Titles) -> FantaComicBookInfo:
         # TODO: Very roundabout way to get fanta info
@@ -497,18 +460,6 @@ class MainScreen(BoxLayout, Screen):
         self._fanta_info = new_fanta_info
         self._set_title(title_image_file)
         self._update_view_for_node_with_title(ViewStates.ON_TITLE_NODE)
-
-    def _open_all_parent_nodes(self, node: TreeViewNode) -> None:
-        # Get all the parent nodes first, then open from top parent down to last child.
-        parent_nodes = []
-        parent_node = node
-        while parent_node and isinstance(parent_node, TreeViewNode):
-            parent_nodes.append(parent_node)
-            parent_node = parent_node.parent_node
-
-        for parent_node in reversed(parent_nodes):
-            if not parent_node.is_open:
-                self.ids.reader_tree_view.toggle_node(parent_node)
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
         node_type = type(node)
@@ -821,38 +772,77 @@ class MainScreen(BoxLayout, Screen):
 
         self._background_views.set_view_state(tree_node)
 
-        self._top_view_image_info = self._background_views.get_top_view_image_info()
-        self.top_view_image_opacity = self._background_views.get_top_view_image_opacity()
-        self.top_view_image_source = str(self._top_view_image_info.filename)
-        self.top_view_image_fit_mode = self._top_view_image_info.fit_mode
-        self.top_view_image_color = self._background_views.get_top_view_image_color()
+        self._set_views()
 
-        self.bottom_view_fun_image_opacity = (
-            self._background_views.get_bottom_view_fun_image_opacity()
-        )
-        self._bottom_view_fun_image_info = self._background_views.get_bottom_view_fun_image_info()
-        self.bottom_view_fun_image_source = str(self._bottom_view_fun_image_info.filename)
-        self.bottom_view_fun_image_fit_mode = self._bottom_view_fun_image_info.fit_mode
-        self.bottom_view_fun_image_color = self._background_views.get_bottom_view_fun_image_color()
-        self.bottom_view_fun_image_from_title = (
-            self._bottom_view_fun_image_info.from_title is not None
-        )
+    def _set_views(self) -> None:
+        self._set_top_view_image()
+        self._set_fun_view()
+        self._set_bottom_view()
 
-        self.bottom_view_title_opacity = self._background_views.get_bottom_view_title_opacity()
-        self._bottom_view_title_image_info = (
-            self._background_views.get_bottom_view_title_image_info()
+        self.fun_image_view_screen.goto_title_button_active = (
+            self.fun_image_view_screen.fun_view_from_title
+            and (self.bottom_title_view_screen.view_title_opacity < 0.01)
         )
-        self.bottom_view_title_image_source = str(self._bottom_view_title_image_info.filename)
-        self.bottom_view_title_image_fit_mode = self._bottom_view_title_image_info.fit_mode
-        self.bottom_view_title_image_color = (
-            self._background_views.get_bottom_view_title_image_color()
-        )
-        # Reset the time image file now that we've used it. This makes sure we can get
+        self.lower_title_available = self.fun_image_view_screen.goto_title_button_active
+
+        # Reset the title image file now that we've used it. This makes sure we can get
         # a random image next time around.
         self._background_views.set_bottom_view_title_image_file(None)
 
+    def _set_top_view_image(self) -> None:
+        logger.debug("Setting new top view.")
+
+        self._top_view_image_info = self._background_views.get_top_view_image_info()
+        self.tree_view_screen.top_view_image_opacity = (
+            self._background_views.get_top_view_image_opacity()
+        )
+        self.tree_view_screen.top_view_image_source = str(self._top_view_image_info.filename)
+        self.tree_view_screen.top_view_image_fit_mode = self._top_view_image_info.fit_mode
+        self.tree_view_screen.top_view_image_color = (
+            self._background_views.get_top_view_image_color()
+        )
+
+    def _set_fun_view(self) -> None:
+        logger.debug("Setting new fun view.")
+
+        self.fun_image_view_screen.fun_view_opacity = (
+            self._background_views.get_bottom_view_fun_image_opacity()
+        )
+        self._bottom_view_fun_image_info = self._background_views.get_bottom_view_fun_image_info()
+        self.fun_image_view_screen.fun_view_image_source = str(
+            self._bottom_view_fun_image_info.filename
+        )
+        self.fun_image_view_screen.fun_view_image_fit_mode = (
+            self._bottom_view_fun_image_info.fit_mode
+        )
+        self.fun_image_view_screen.fun_view_image_color = (
+            self._background_views.get_bottom_view_fun_image_color()
+        )
+        self.fun_image_view_screen.fun_view_from_title = (
+            self._bottom_view_fun_image_info.from_title is not None
+        )
+
+    def _set_bottom_view(self) -> None:
+        logger.debug("Setting new bottom view.")
+
+        self.bottom_title_view_screen.view_title_opacity = (
+            self._background_views.get_bottom_view_title_opacity()
+        )
+        self._bottom_view_title_image_info = (
+            self._background_views.get_bottom_view_title_image_info()
+        )
+        self.bottom_title_view_screen.view_title_image_source = str(
+            self._bottom_view_title_image_info.filename
+        )
+        self.bottom_title_view_screen.view_title_image_fit_mode = (
+            self._bottom_view_title_image_info.fit_mode
+        )
+        self.bottom_title_view_screen.view_title_image_color = (
+            self._background_views.get_bottom_view_title_image_color()
+        )
+
     def _set_title(self, title_image_file: Path | None = None) -> None:
-        self.fade_in_bottom_view_title()
+        self.bottom_title_view_screen.fade_in_bottom_view_title()
 
         logger.debug(
             f'Setting title to "{self._fanta_info.comic_book_info.get_title_str()}".'
@@ -871,28 +861,10 @@ class MainScreen(BoxLayout, Screen):
         self._background_views.set_bottom_view_title_image_file(title_image_file)
         self._background_views.set_bottom_view_title_image()
 
-        self.main_title_text = self._get_main_title_str()
-        self.title_info_text = self._formatter.get_title_info(
-            self._fanta_info,
-            self.MAX_TITLE_INFO_LEN_BEFORE_SHORTEN,
-        )
-        self.title_extra_info_text = self._formatter.get_title_extra_info(self._fanta_info)
-        self.title_page_image_source = str(
-            self._reader_settings.file_paths.get_comic_inset_file(
-                self._fanta_info.comic_book_info.title,
-                use_edited_only=True,
-            )
-        )
-        logger.debug(f'Using title image source "{self.title_page_image_source}".')
+        self.bottom_title_view_screen.set_title_view(self._fanta_info)
 
         self._set_goto_page_checkbox()
         self._set_use_overrides_checkbox()
-
-    def fade_in_bottom_view_title(self) -> None:
-        self.ids.bottom_view_box.opacity = 0
-        anim = Animation(opacity=1, duration=OPENING_TITLE_ANIMATION_DURATION)
-        anim.start(self.ids.bottom_view_box)
-        self.ids.title_show_button.opacity = 1
 
     def _set_use_overrides_checkbox(self) -> None:
         title = self._fanta_info.comic_book_info.title
@@ -900,20 +872,18 @@ class MainScreen(BoxLayout, Screen):
             self._reader_settings.use_prebuilt_archives
             or not self._special_fanta_overrides.is_title_where_overrides_are_optional(title)
         ):
-            self.ids.use_overrides_layout.opacity = 0
-            self.ids.use_overrides_checkbox.active = True
+            self.bottom_title_view_screen.set_overrides_state(active=False)
             return
 
-        self.ids.use_overrides_layout.opacity = 1
-        self.ids.use_overrides_label.text = self._special_fanta_overrides.get_description(title)
-        self.ids.use_overrides_checkbox.active = (
-            self._special_fanta_overrides.get_overrides_setting(title)
+        self.bottom_title_view_screen.set_overrides_state(
+            description=self._special_fanta_overrides.get_description(title),
+            active=self._special_fanta_overrides.get_overrides_setting(title),
         )
 
     def on_use_overrides_checkbox_changed(self, _instance: Widget, use_overrides: bool) -> None:
         logger.debug(f"Use overrides checkbox changed: use_overrides = {use_overrides}.")
 
-        self.title_page_image_source = str(
+        self.bottom_title_view_screen.title_inset_image_source = str(
             self._special_fanta_overrides.get_title_page_inset_file(
                 self._fanta_info.comic_book_info.title,
                 use_overrides,
@@ -921,7 +891,8 @@ class MainScreen(BoxLayout, Screen):
         )
 
         logger.debug(
-            f'Use overrides changed: title_page_image_source = "{self.title_page_image_source}".',
+            f"Use overrides changed: title_page_image_source ="
+            f' "{self.bottom_title_view_screen.title_inset_image_source}".'
         )
 
     def on_checkbox_all_image_types_changed(self, _instance: Widget, use_all_images: bool) -> None:
@@ -963,32 +934,20 @@ class MainScreen(BoxLayout, Screen):
             self._bottom_view_fun_custom_image_themes.discard(label_to_type_dict[label_text])
 
     def fun_view_options_button_pressed(self) -> None:
-        self.bottom_view_fun_view_options_enabled = not self.bottom_view_fun_view_options_enabled
+        self.fun_image_view_screen.fun_view_options_enabled = (
+            not self.fun_image_view_screen.fun_view_options_enabled
+        )
         logger.debug(
             "Fun view options button pressed."
-            " New state is '{self.bottom_view_fun_view_options_enabled}'."
+            f" New state is '{self.fun_image_view_screen.fun_view_options_enabled}'."
         )
-
-    def fun_view_options_clear_all_pressed(self) -> None:
-        logger.debug("Fun view options clear all pressed. Setting all checkboxes to inactive.")
-
-        for child in self.ids.custom_options_box.children:
-            logger.debug(f'"{child.label_text}" old state: {child.active}.')
-            child.active = False
-            logger.debug(f'"{child.label_text}" new state: {child.active}.')
-            logger.debug(f'child type is "{type(child)}".')
-
-    def _get_main_title_str(self) -> str:
-        if self._fanta_info.comic_book_info.is_barks_title:
-            if self._fanta_info.comic_book_info.title in LONG_TITLE_SPLITS:
-                return LONG_TITLE_SPLITS[self._fanta_info.comic_book_info.title]
-            return self._fanta_info.comic_book_info.get_title_str()
-
-        return self._fanta_info.comic_book_info.get_title_from_issue_name()
 
     def on_image_pressed(self) -> None:
         if self._fanta_info is None:
-            logger.debug(f'Image "{self.title_page_image_source}" pressed. But no title selected.')
+            logger.debug(
+                f'Image "{self.bottom_title_view_screen.title_inset_image_source}"'
+                f" pressed. But no title selected."
+            )
             return
         if self._fanta_volumes_state in [
             FantaVolumesState.VOLUMES_MISSING,
@@ -1004,11 +963,14 @@ class MainScreen(BoxLayout, Screen):
                 if self._fanta_volumes_state == FantaVolumesState.VOLUMES_NOT_SET
                 else ErrorTypes.FantagraphicsVolumeRootNotFound
             )
-            logger.warning(f'Image "{self.title_page_image_source}" pressed. But {reason}.')
+            logger.warning(
+                f'Image "{self.bottom_title_view_screen.title_inset_image_source}"'
+                f" pressed. But {reason}."
+            )
 
             def _on_error_popup_closed(fanta_volumes_missing_msg: str) -> None:
-                self.main_files_not_loaded_msg = fanta_volumes_missing_msg
-                self.main_files_not_loaded = True
+                self.tree_view_screen.main_files_not_loaded_msg = fanta_volumes_missing_msg
+                self.tree_view_screen.main_files_not_loaded = True
 
             self._user_error_handler.handle_error(
                 error_type,
@@ -1018,7 +980,7 @@ class MainScreen(BoxLayout, Screen):
             )
             return
 
-        logger.debug(f'Image "{self.title_page_image_source}" pressed.')
+        logger.debug(f'Image "{self.bottom_title_view_screen.title_inset_image_source}" pressed.')
         comic = self._get_comic_book()
         self._read_comic_book(self._fanta_info, comic)
 
@@ -1027,8 +989,9 @@ class MainScreen(BoxLayout, Screen):
     def _set_no_longer_first_use(self) -> None:
         if self.is_first_use_of_reader:
             assert self._reader_settings.is_first_use_of_reader
-            self.is_first_use_of_reader = False
             self._reader_settings.is_first_use_of_reader = False
+            self.is_first_use_of_reader = False
+            self.bottom_title_view_screen.is_first_use_of_reader = False
 
     def _get_comic_book(self) -> ComicBook:
         title_str = self._fanta_info.comic_book_info.get_title_str()
@@ -1038,17 +1001,17 @@ class MainScreen(BoxLayout, Screen):
         comic.intro_inset_file = str(
             self._special_fanta_overrides.get_inset_file(
                 self._fanta_info.comic_book_info.title,
-                self.ids.use_overrides_checkbox.active,
+                self.bottom_title_view_screen.use_overrides_active,
             )
         )
 
         return comic
 
     def _get_page_to_first_goto(self) -> str:
-        if not self.ids.goto_page_checkbox.active:
+        if not self.bottom_title_view_screen.goto_page_active:
             return COMIC_PAGE_ONE
 
-        return self.bottom_view_title_goto_page_num
+        return self.bottom_title_view_screen.goto_page_num
 
     def _set_tag_goto_page_checkbox(self, tag: Tags | TagGroups, title_str: str) -> None:
         logger.debug(f'Setting tag goto page for ({tag.value}, "{title_str}").')
@@ -1060,9 +1023,7 @@ class MainScreen(BoxLayout, Screen):
             else:
                 page_to_goto = BARKS_TAGGED_PAGES[(tag, title)][0]
                 logger.debug(f"Setting page to goto: {page_to_goto}.")
-                self.ids.goto_page_layout.opacity = 1
-                self.ids.goto_page_checkbox.active = True
-                self.bottom_view_title_goto_page_num = page_to_goto
+                self.bottom_title_view_screen.set_goto_page_state(page_to_goto, active=True)
 
     def _set_goto_page_checkbox(self, last_read_page: SavedPageInfo = None) -> None:
         if not last_read_page:
@@ -1070,12 +1031,11 @@ class MainScreen(BoxLayout, Screen):
             last_read_page = self._get_last_read_page(title_str)
 
         if not last_read_page or (last_read_page.display_page_num == COMIC_PAGE_ONE):
-            self.ids.goto_page_layout.opacity = 0
-            self.ids.goto_page_checkbox.active = False
+            self.bottom_title_view_screen.set_goto_page_state(active=False)
         else:
-            self.ids.goto_page_layout.opacity = 1
-            self.ids.goto_page_checkbox.active = True
-            self.bottom_view_title_goto_page_num = last_read_page.display_page_num
+            self.bottom_title_view_screen.set_goto_page_state(
+                last_read_page.display_page_num, active=True
+            )
 
     def _get_last_read_page(self, title_str: str) -> SavedPageInfo | None:
         last_read_page_info = self._json_settings_manager.get_last_read_page(title_str)
@@ -1114,11 +1074,11 @@ class MainScreen(BoxLayout, Screen):
     def app_closing(self) -> None:
         logger.debug("Closing app...")
 
-        if not self.ids.reader_tree_view.selected_node:
+        if not self.tree_view_screen.get_selected_node():
             self._json_settings_manager.save_last_selected_node_path([])
             logger.debug("Settings: No selected node to save.")
         else:
-            selected_node_path = get_tree_view_node_path(self.ids.reader_tree_view.selected_node)
+            selected_node_path = get_tree_view_node_path(self.tree_view_screen.get_selected_node())
             self._json_settings_manager.save_last_selected_node_path(selected_node_path)
             logger.debug(f'Settings: Saved last selected node "{selected_node_path}".')
 
@@ -1152,7 +1112,7 @@ class MainScreen(BoxLayout, Screen):
         )
         self.comic_book_reader.read_comic(
             comic_fanta_info,
-            self.ids.use_overrides_checkbox.active,
+            self.bottom_title_view_screen.use_overrides_active,
             comic_book_image_builder,
             page_to_first_goto,
             self._comic_page_info.page_map,
@@ -1184,7 +1144,7 @@ class MainScreen(BoxLayout, Screen):
 
     def _goto_saved_node(self, saved_node_path: list[str]) -> None:
         logger.debug(f'Looking for saved node "{saved_node_path}"...')
-        saved_node = find_node_by_path(self.ids.reader_tree_view, list(reversed(saved_node_path)))
+        saved_node = self.tree_view_screen.find_node_by_path(saved_node_path)
         if saved_node:
             self._setup_and_selected_saved_node(saved_node)
 
@@ -1193,7 +1153,7 @@ class MainScreen(BoxLayout, Screen):
             f'Selecting and setting up start node "{get_tree_view_node_id_text(saved_node)}".',
         )
 
-        self.ids.reader_tree_view.select_node(saved_node)
+        self.tree_view_screen.select_node(saved_node)
 
         if isinstance(saved_node, ButtonTreeViewNode):
             saved_node.trigger_action()
