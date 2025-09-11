@@ -7,11 +7,13 @@ requires-python = ">=3.12"
 dependencies = [
     "barks-reader",
     "better-exceptions>=0.3.3",
+    "docutils-stubs==0.0.22",
     "intspan>=1.6.1",
     "loguru>=0.7.3",
     "loguru-config>=0.1.0",
     "pillow>=11.2.1",
     "pyyaml>=6.0.2",
+    "types-docutils==0.22.0.20250822",
 ]
 
 [project.scripts]
