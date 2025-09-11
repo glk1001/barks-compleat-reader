@@ -46,7 +46,7 @@ READER_TREE_VIEW_KV_FILE = str(Path(__file__).parent / "reader-tree-view.kv")
 TREE_VIEW_SCREEN_KV_FILE = str(Path(__file__).parent / "tree_view_screen.kv")
 BOTTOM_TITLE_VIEW_SCREEN_KV_FILE = str(Path(__file__).parent / "bottom_title_view_screen.kv")
 FUN_IMAGE_VIEW_SCREEN_KV_FILE = str(Path(__file__).parent / "fun_image_view_screen.kv")
-MAIN_SCREEN_KV_FILE = str(Path(__file__).with_suffix(".kv"))
+MAIN_SCREEN_KV_FILE = str(Path(__file__).parent / "main_screen.kv")
 
 
 class BarksReaderApp(App):
