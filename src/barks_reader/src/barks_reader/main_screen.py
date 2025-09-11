@@ -34,6 +34,7 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from barks_fantagraphics.title_search import BarksTitleSearch
 from comic_utils.comic_consts import ROMAN_NUMERALS
+from kivy.animation import Animation
 
 # noinspection PyProtectedMember
 from kivy.clock import Clock
@@ -160,6 +161,7 @@ NODE_TEXT_TO_VIEW_STATE_MAP = {
 }
 
 COMIC_PAGE_ONE = ROMAN_NUMERALS[1]
+OPENING_TITLE_ANIMATION_DURATION = 4
 
 
 class MainScreen(BoxLayout, Screen):
@@ -850,6 +852,8 @@ class MainScreen(BoxLayout, Screen):
         self._background_views.set_bottom_view_title_image_file(None)
 
     def _set_title(self, title_image_file: Path | None = None) -> None:
+        self.fade_in_bottom_view_title()
+
         logger.debug(
             f'Setting title to "{self._fanta_info.comic_book_info.get_title_str()}".'
             f' Title image file is "{title_image_file}".'
@@ -883,6 +887,12 @@ class MainScreen(BoxLayout, Screen):
 
         self._set_goto_page_checkbox()
         self._set_use_overrides_checkbox()
+
+    def fade_in_bottom_view_title(self) -> None:
+        self.ids.bottom_view_box.opacity = 0
+        anim = Animation(opacity=1, duration=OPENING_TITLE_ANIMATION_DURATION)
+        anim.start(self.ids.bottom_view_box)
+        self.ids.title_show_button.opacity = 1
 
     def _set_use_overrides_checkbox(self) -> None:
         title = self._fanta_info.comic_book_info.title

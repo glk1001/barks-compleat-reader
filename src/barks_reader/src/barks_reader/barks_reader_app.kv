@@ -267,6 +267,25 @@
             anchor_x: "right"
             anchor_y: "top"
 
+            Button:
+                id: title_show_button
+                text: ""
+                opacity: 0 if root.bottom_view_title_opacity < 0.01 else 1
+                background_color: 0,0,0,0
+                size_hint: 0.025, 0.033
+                on_press:
+                    bottom_view_box.opacity = 0 if bottom_view_box.opacity > 0.9 else 1
+                    self.opacity = 0 if bottom_view_box.opacity < 0.1 else 1
+
+                canvas.before:
+                    # Add a rounded rectangle background box
+                    Color:
+                        rgba: 0.25, 0.25, 0.25, 0.9
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: (0.9 * self.width, 0.9 * self.height)
+                        radius: [dp(4)]
+
             # This is the main container for the title view.
             AnchorLayout:
                 id: bottom_title_view
@@ -282,7 +301,7 @@
 
                 # The background image is now a direct child, simplifying the structure.
                 Image:
-                    color: root.bottom_view_title_image_color
+                    color: root.bottom_view_title_image_color if title_show_button.opacity > 0.9 else (1,1,1,1)
                     source: root.bottom_view_title_image_source
                     x: self.parent.x
                     y: self.parent.y
@@ -317,7 +336,6 @@
                     # --- Single RelativeLayout for all two column content below the title ---
                     # This layout will fill the remaining vertical space.
                     RelativeLayout:
-                        id: content_area
                         size_hint: 1, 0.82
 
                         # --- Left Column (as a positioned BoxLayout) ---
