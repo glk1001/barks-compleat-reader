@@ -65,7 +65,7 @@ class FontManager(EventDispatcher):
             loading_title_size = sp(20)
             checkbox_font_size = sp(19)
             default_font_size = sp(19)
-            error_main_view_font_size = sp(50)
+            error_main_view_font_size = sp(40)
             error_popup_font_size = sp(25)
             error_popup_button_font_size = sp(18)
             text_block_heading_font_size = sp(25)

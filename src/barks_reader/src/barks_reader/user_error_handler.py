@@ -117,12 +117,12 @@ class UserErrorHandler:
     ) -> None:
         """Handle the case where the Fantagraphics directory is not found."""
         msg = dedent(f"""\
-            Currently, in the app settings, the Fantagraphics comic zips directory is
+            In the app settings, the Fantagraphics comic zips directory is
 
                 [b]"{self._reader_settings.fantagraphics_volumes_dir}"[/b]
 
-            But this directory could not be found. You need to go to settings and enter
-            the correct directory, then restart the app.""")
+            But this directory could not be found. You need to go to settings
+            and enter the correct directory, then restart the app.""")
         title = popup_title if popup_title else "Fantagraphics Directory Not Found"
         self._show_settings_error_popup(
             title=title,
@@ -139,13 +139,13 @@ class UserErrorHandler:
     ) -> None:
         """Handle an unexpected Fantagraphics archive file."""
         msg = dedent(f"""\
-            There was a unexpected Fantagraphics archive file:
+            There was an unexpected Fantagraphics archive file:
 
             [size=16sp][b]"{exception.file}".[/b][/size]
 
-            The expected volume number was {exception.expected_volume} not {exception.file_vol}. You need to make sure the
-            archives are prefixed with the numbers {FIRST_VOLUME_NUMBER:02d} to {LAST_VOLUME_NUMBER:02d} inclusive, then restart
-            the app.""")  # noqa: E501
+            The expected volume number was {exception.expected_volume} not {exception.file_vol}. You need to
+            make sure the archives are prefixed with the numbers
+            {FIRST_VOLUME_NUMBER:02d} to {LAST_VOLUME_NUMBER:02d} inclusive, then restart the app.""")  # noqa: E501
 
         self._show_fatal_config_error(
             title="Wrong Fantagraphics Archive File",
@@ -161,9 +161,10 @@ class UserErrorHandler:
     ) -> None:
         """Handle finding too many Fantagraphics archive files."""
         msg = dedent(f"""\
-            There were too many Fantagraphics archive files. The expected number
-            of files is {exception.num_volumes} not {exception.num_archive_files}. You need to make sure the archives are prefixed
-            with the numbers {FIRST_VOLUME_NUMBER:02d} to {LAST_VOLUME_NUMBER:02d} inclusive, then restart the app.""")  # noqa: E501
+            There were too many Fantagraphics archive files. The
+            expected number of files is {exception.num_volumes} not {exception.num_archive_files}. You need to
+            make sure the archives are prefixed with the numbers
+            {FIRST_VOLUME_NUMBER:02d} to {LAST_VOLUME_NUMBER:02d} inclusive, then restart the app.""")  # noqa: E501
 
         self._show_fatal_config_error(
             title="Too Many Fantagraphics Archives",
