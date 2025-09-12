@@ -130,10 +130,10 @@ if TYPE_CHECKING:
     from barks_reader.system_file_paths import SystemFilePaths
     from barks_reader.tree_view_screen import TreeViewScreen
 
-NODE_TYPE_TO_VIEW_STATE_MAP = {
-    YearRangeTreeViewNode: ViewStates.ON_YEAR_RANGE_NODE,
-    CsYearRangeTreeViewNode: ViewStates.ON_CS_YEAR_RANGE_NODE,
-    UsYearRangeTreeViewNode: ViewStates.ON_US_YEAR_RANGE_NODE,
+NODE_TYPE_TO_VIEW_STATE_MAP: dict[type, tuple[ViewStates, str]] = {
+    YearRangeTreeViewNode: (ViewStates.ON_YEAR_RANGE_NODE, "year_range"),
+    CsYearRangeTreeViewNode: (ViewStates.ON_CS_YEAR_RANGE_NODE, "cs_year_range"),
+    UsYearRangeTreeViewNode: (ViewStates.ON_US_YEAR_RANGE_NODE, "us_year_range"),
 }
 
 NODE_TEXT_TO_VIEW_STATE_MAP = {
@@ -462,24 +462,34 @@ class MainScreen(BoxLayout, Screen):
         self._update_view_for_node_with_title(ViewStates.ON_TITLE_NODE)
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
-        node_type = type(node)
-        if node_type == TitleTreeViewNode:
+        if isinstance(node, TitleTreeViewNode):
             return
 
-        logger.debug(f'Node expanded: "{node.text}" ({node_type}).')
+        logger.debug(f'Node expanded: "{node.text}" ({type(node)}).')
 
-        view_state_params = {}
-        new_view_state = None
+        new_view_state, view_state_params = self._get_view_state_from_node(node)
+
+        if new_view_state is None:
+            msg = f"No view state mapping found for node: {node.text} ({type(node)})"
+            raise RuntimeError(msg)
+
+        self._update_background_views(new_view_state, **view_state_params)
+
+        self._scroll_to_node(node.nodes[0] if node.nodes else node)
+
+    @staticmethod
+    def _get_view_state_from_node(
+        node: ButtonTreeViewNode,
+    ) -> tuple[ViewStates | None, dict[str, str | TagGroups | Tags]]:
+        """Determine the view state and parameters from a tree view node."""
+        node_type = type(node)
+        view_state_params: dict[str, str | TagGroups | Tags] = {}
+        new_view_state: ViewStates | None = None
         clean_node_text = get_clean_text_without_extra(node.text)
 
         if node_type in NODE_TYPE_TO_VIEW_STATE_MAP:
-            new_view_state = NODE_TYPE_TO_VIEW_STATE_MAP[node_type]
-            if new_view_state == ViewStates.ON_YEAR_RANGE_NODE:
-                view_state_params["year_range"] = node.text
-            elif new_view_state == ViewStates.ON_CS_YEAR_RANGE_NODE:
-                view_state_params["cs_year_range"] = node.text
-            elif new_view_state == ViewStates.ON_US_YEAR_RANGE_NODE:
-                view_state_params["us_year_range"] = node.text
+            new_view_state, param_name = NODE_TYPE_TO_VIEW_STATE_MAP[node_type]
+            view_state_params[param_name] = node.text
         elif isinstance(node, MainTreeViewNode) and node.text in NODE_TEXT_TO_VIEW_STATE_MAP:
             new_view_state = NODE_TEXT_TO_VIEW_STATE_MAP[node.text]
         elif isinstance(node, StoryGroupTreeViewNode):
@@ -497,15 +507,7 @@ class MainScreen(BoxLayout, Screen):
                 new_view_state = ViewStates.ON_TAG_NODE
                 view_state_params["tag"] = Tags(clean_node_text)
 
-        if new_view_state:
-            self._update_background_views(new_view_state, **view_state_params)
-        else:
-            logger.warning(f"No view state mapping found for node: {node.text} ({node_type})")
-
-        if node.nodes:
-            self._scroll_to_node(node.nodes[0])
-        else:
-            self._scroll_to_node(node)
+        return new_view_state, view_state_params
 
     def on_the_stories_pressed(self, _button: Button) -> None:
         self._update_view_for_node(ViewStates.ON_THE_STORIES_NODE)
