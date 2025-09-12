@@ -55,6 +55,7 @@ DEBUG_FUN_IMAGE_TITLES = None
 class ImageThemes(Enum):
     AI = auto()
     BLACK_AND_WHITE = auto()
+    CENSORSHIP = auto()
     CLASSICS = auto()
     FAVOURITES = auto()
     INSETS = auto()
@@ -68,6 +69,7 @@ class ImageThemes(Enum):
 IMAGE_THEME_TO_FILE_TYPE_MAP = {
     ImageThemes.AI: FileTypes.AI,
     ImageThemes.BLACK_AND_WHITE: FileTypes.BLACK_AND_WHITE,
+    ImageThemes.CENSORSHIP: FileTypes.CENSORSHIP,
     ImageThemes.FAVOURITES: FileTypes.FAVOURITE,
     ImageThemes.INSETS: FileTypes.INSET,
     ImageThemes.SILHOUETTES: FileTypes.SILHOUETTE,

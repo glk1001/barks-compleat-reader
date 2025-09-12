@@ -913,6 +913,7 @@ class MainScreen(BoxLayout, Screen):
         label_to_type_dict = {
             "AI": ImageThemes.AI,
             "Black and White": ImageThemes.BLACK_AND_WHITE,
+            "Censorship": ImageThemes.CENSORSHIP,
             "Classics": ImageThemes.CLASSICS,
             "Faves": ImageThemes.FAVOURITES,
             "Insets": ImageThemes.INSETS,
