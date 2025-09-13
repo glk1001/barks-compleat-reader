@@ -16,3 +16,5 @@ APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT = "Don Ault: Life Among the Ducks"
 APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT = "Rich Tomasso: On Coloring Barks"
 APPENDIX_CENSORSHIP_FIXES_NODE_TEXT = "Censorship Fixes and Other Changes"
 INDEX_NODE_TEXT = "Index"
+
+CLOSE_TO_ZERO = 0.001

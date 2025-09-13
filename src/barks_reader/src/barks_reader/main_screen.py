@@ -26,6 +26,7 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_CS,
     SERIES_DDA,
     SERIES_DDS,
+    SERIES_EXTRAS,
     SERIES_GG,
     SERIES_MISC,
     SERIES_USA,
@@ -63,6 +64,7 @@ from barks_reader.reader_consts_and_types import (
     APPENDIX_NODE_TEXT,
     CATEGORIES_NODE_TEXT,
     CHRONOLOGICAL_NODE_TEXT,
+    CLOSE_TO_ZERO,
     INDEX_NODE_TEXT,
     INTRO_COMPLEAT_BARKS_READER_TEXT,
     INTRO_DON_AULT_FANTA_INTRO_TEXT,
@@ -605,7 +607,12 @@ class MainScreen(BoxLayout, Screen):
             logger.debug(f'Update title: Not configured yet: "{title_str}".')
             return False
 
-        self._fanta_info = self.all_fanta_titles[title_str]
+        next_fanta_info = self.all_fanta_titles[title_str]
+        if next_fanta_info.series_name == SERIES_EXTRAS:
+            logger.debug(f'Title is in EXTRA series: "{title_str}".')
+            return False
+
+        self._fanta_info = next_fanta_info
         self._set_title()
 
         return True
@@ -783,7 +790,7 @@ class MainScreen(BoxLayout, Screen):
 
         self.fun_image_view_screen.goto_title_button_active = (
             self.fun_image_view_screen.fun_view_from_title
-            and (self.bottom_title_view_screen.view_title_opacity < 0.01)
+            and (self.bottom_title_view_screen.view_title_opacity < CLOSE_TO_ZERO)
         )
         self.lower_title_available = self.fun_image_view_screen.goto_title_button_active
 
