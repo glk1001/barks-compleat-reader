@@ -8,7 +8,6 @@ from barks_fantagraphics.comics_utils import (
     get_short_formatted_first_published_str,
     get_short_submitted_day_and_month,
 )
-from barks_fantagraphics.title_search import BarksTitleSearch, unique_extend
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.event import EventDispatcher
@@ -25,6 +24,7 @@ from kivy.utils import escape_markup
 from loguru import logger
 
 from barks_reader.reader_formatter import get_markup_text_with_num_titles, text_includes_num_titles
+from barks_reader.reader_utils import unique_extend
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from barks_fantagraphics.barks_tags import TagGroups, Tags
     from barks_fantagraphics.barks_titles import ComicBookInfo, Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+    from barks_fantagraphics.title_search import BarksTitleSearch
     from kivy.input import MotionEvent
     from kivy.uix.spinner import Spinner
 
@@ -123,6 +124,7 @@ class BaseSearchBoxTreeViewNode(FloatLayout, TreeViewNode):
             spinner.is_open = False
         else:
             spinner.values = values
+            spinner.text = ""
             spinner.is_open = True
 
 
@@ -181,7 +183,10 @@ class TitleSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         title_list = self.title_search.get_titles_matching_prefix(value)
         min_title_chars_len = 2
         if len(value) > min_title_chars_len:
-            unique_extend(title_list, self.title_search.get_titles_containing(value))
+            if not title_list:
+                title_list = self.title_search.get_titles_from_issue_num(value)
+            if not title_list:
+                unique_extend(title_list, self.title_search.get_titles_containing(value))
 
         return self.title_search.get_titles_as_strings(title_list)
 
