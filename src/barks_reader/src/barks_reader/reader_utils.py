@@ -72,3 +72,10 @@ def read_title_list(filepath: Path) -> list[Titles]:
 
     # Now sort these in enum order (which is guaranteed to be submission date order).
     return sorted(titles)
+
+
+# Assumes 'original_list' and 'extra_list' have no duplicates.
+def unique_extend(original_list: list[Titles], extras_list: list[Titles]) -> None:
+    seen = set(original_list)
+
+    original_list.extend([item for item in extras_list if item not in seen])
