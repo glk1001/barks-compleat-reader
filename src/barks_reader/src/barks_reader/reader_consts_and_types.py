@@ -1,3 +1,7 @@
+from comic_utils.comic_consts import ROMAN_NUMERALS
+
+COMIC_PAGE_ONE = ROMAN_NUMERALS[1]
+
 APP_TITLE = "The Compleat Barks Disney Reader"
 
 LONG_PATH_SETTING = "longpath"

@@ -3,7 +3,6 @@ from __future__ import annotations
 from random import randrange
 from typing import TYPE_CHECKING
 
-from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
 from barks_fantagraphics.barks_tags import (
     BARKS_TAG_CATEGORIES_DICT,
     BARKS_TAGGED_PAGES,
@@ -14,10 +13,6 @@ from barks_fantagraphics.barks_tags import (
     special_case_personal_favourites_tag_update,
 )
 from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, BARKS_TITLES, ComicBookInfo, Titles
-from barks_fantagraphics.comics_consts import (
-    BACK_MATTER_PAGES,
-    PageType,
-)
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
     ALL_LISTS,
@@ -32,7 +27,6 @@ from barks_fantagraphics.fanta_comics_info import (
     FantaComicBookInfo,
 )
 from barks_fantagraphics.title_search import BarksTitleSearch
-from comic_utils.comic_consts import ROMAN_NUMERALS
 
 # noinspection PyProtectedMember
 from kivy.clock import Clock
@@ -45,7 +39,7 @@ from kivy.uix.screenmanager import Screen
 from loguru import logger
 
 from barks_reader.background_views import BackgroundViews, ImageThemes, ViewStates
-from barks_reader.comic_book_page_info import ComicBookPageInfo, ComicBookPageInfoManager
+from barks_reader.comic_reader_manager import ComicReaderManager
 from barks_reader.fantagraphics_volumes import (
     TooManyArchiveFilesError,
     WrongFantagraphicsVolumeError,
@@ -63,6 +57,7 @@ from barks_reader.reader_consts_and_types import (
     CATEGORIES_NODE_TEXT,
     CHRONOLOGICAL_NODE_TEXT,
     CLOSE_TO_ZERO,
+    COMIC_PAGE_ONE,
     INDEX_NODE_TEXT,
     INTRO_COMPLEAT_BARKS_READER_TEXT,
     INTRO_DON_AULT_FANTA_INTRO_TEXT,
@@ -158,8 +153,6 @@ NODE_TEXT_TO_VIEW_STATE_MAP = {
     SERIES_MISC: ViewStates.ON_MISC_NODE,
 }
 
-COMIC_PAGE_ONE = ROMAN_NUMERALS[1]
-
 
 class MainScreen(BoxLayout, Screen):
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
@@ -227,12 +220,13 @@ class MainScreen(BoxLayout, Screen):
         self.reader_tree_events = reader_tree_events
         self.reader_tree_events.bind(on_finished_building_event=self._on_tree_build_finished)
 
-        self.comic_book_reader: ComicBookReader | None = None
-        self._comic_page_info_mgr = ComicBookPageInfoManager(
+        self._comic_reader_manager = ComicReaderManager(
             self._comics_database,
             self._reader_settings,
+            self._json_settings_manager,
+            self.tree_view_screen,
+            self._user_error_handler,
         )
-        self._comic_page_info: ComicBookPageInfo | None = None
         self._read_comic_view_state: ViewStates | None = None
 
         self._top_view_image_info: ImageInfo = ImageInfo()
@@ -269,6 +263,9 @@ class MainScreen(BoxLayout, Screen):
 
     def fonts_updated(self, font_manager: FontManager) -> None:
         self.app_title = get_action_bar_title(font_manager, APP_TITLE)
+
+    def set_comic_book_reader(self, comic_book_reader: ComicBookReader) -> None:
+        self._comic_reader_manager.comic_book_reader = comic_book_reader
 
     def _set_action_bar_icons(self, sys_paths: SystemFilePaths) -> None:
         self.app_icon_filepath = str(self._get_reader_app_icon_file())
@@ -343,7 +340,7 @@ class MainScreen(BoxLayout, Screen):
         if (
             self._fanta_volumes_state
             in [FantaVolumesState.VOLUMES_EXIST, FantaVolumesState.VOLUMES_NOT_NEEDED]
-            and not self.init_comic_book_data()
+            and not self._init_comic_book_data()
         ):
             return
 
@@ -375,9 +372,9 @@ class MainScreen(BoxLayout, Screen):
 
         return volumes_state
 
-    def init_comic_book_data(self) -> bool:
+    def _init_comic_book_data(self) -> bool:
         try:
-            self.comic_book_reader.init_data()
+            self._comic_reader_manager.init_comic_book_data()
         except (WrongFantagraphicsVolumeError, TooManyArchiveFilesError) as e:
 
             def _on_error_popup_closed(wrong_fanta_volumes_msg: str) -> None:
@@ -625,31 +622,27 @@ class MainScreen(BoxLayout, Screen):
         self._update_view_for_node(ViewStates.ON_INTRO_NODE)
 
     def on_don_ault_fanta_intro_pressed(self, _button: Button) -> None:
-        self.read_article_as_comic_book(
+        self._read_article_as_comic_book(
             Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
             ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,
-            page_to_first_goto="1",
         )
 
     def on_appendix_don_ault_life_among_ducks_pressed(self, _button: Button) -> None:
-        self.read_article_as_comic_book(
+        self._read_article_as_comic_book(
             Titles.DON_AULT___LIFE_AMONG_THE_DUCKS,
             ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE,
-            page_to_first_goto="1",
         )
 
     def on_appendix_rich_tomasso_on_coloring_barks_pressed(self, _button: Button) -> None:
-        self.read_article_as_comic_book(
+        self._read_article_as_comic_book(
             Titles.RICH_TOMASSO___ON_COLORING_BARKS,
             ViewStates.ON_APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_NODE,
-            page_to_first_goto="i",
         )
 
     def on_appendix_censorship_fixes_pressed(self, _button: Button) -> None:
-        self.read_article_as_comic_book(
+        self._read_article_as_comic_book(
             Titles.CENSORSHIP_FIXES_AND_OTHER_CHANGES,
             ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
-            page_to_first_goto="1",
         )
 
     def on_title_row_button_pressed(self, button: Button) -> None:
@@ -926,8 +919,8 @@ class MainScreen(BoxLayout, Screen):
             return
 
         logger.debug(f'Image "{self.bottom_title_view_screen.title_inset_image_source}" pressed.')
-        comic = self._get_comic_book()
-        self._read_comic_book(self._fanta_info, comic)
+
+        self._read_barks_comic_book()
 
         self._set_no_longer_first_use()
 
@@ -973,7 +966,7 @@ class MainScreen(BoxLayout, Screen):
     def _set_goto_page_checkbox(self, last_read_page: SavedPageInfo = None) -> None:
         if not last_read_page:
             title_str = self._fanta_info.comic_book_info.get_title_str()
-            last_read_page = self._get_last_read_page(title_str)
+            last_read_page = self._comic_reader_manager.get_last_read_page(title_str)
 
         if not last_read_page or (last_read_page.display_page_num == COMIC_PAGE_ONE):
             self.bottom_title_view_screen.set_goto_page_state(active=False)
@@ -981,40 +974,6 @@ class MainScreen(BoxLayout, Screen):
             self.bottom_title_view_screen.set_goto_page_state(
                 last_read_page.display_page_num, active=True
             )
-
-    def _get_last_read_page(self, title_str: str) -> SavedPageInfo | None:
-        last_read_page_info = self._json_settings_manager.get_last_read_page(title_str)
-        if not last_read_page_info:
-            return None
-
-        if self._is_on_or_past_last_body_page(last_read_page_info):
-            # The comic has been read. Go back to the first page.
-            last_read_page_info.display_page_num = COMIC_PAGE_ONE
-
-        logger.debug(f'"{title_str}": Last read page "{last_read_page_info}".')
-
-        return last_read_page_info
-
-    @staticmethod
-    def _is_on_or_past_last_body_page(page_info: SavedPageInfo) -> bool:
-        return (page_info.page_type in BACK_MATTER_PAGES) or (
-            (page_info.page_type == PageType.BODY)
-            and (page_info.display_page_num == page_info.last_body_page)
-        )
-
-    def _get_last_read_page_from_comic(self) -> SavedPageInfo | None:
-        last_read_page_str = self.comic_book_reader.get_last_read_page()
-        if not last_read_page_str:
-            return None
-
-        last_read_page = self._comic_page_info.page_map[last_read_page_str]
-
-        return SavedPageInfo(
-            last_read_page.page_index,
-            last_read_page.display_page_num,
-            last_read_page.page_type,
-            self._comic_page_info.last_body_page,
-        )
 
     def app_closing(self) -> None:
         logger.debug("Closing app...")
@@ -1027,40 +986,20 @@ class MainScreen(BoxLayout, Screen):
             self._json_settings_manager.save_last_selected_node_path(selected_node_path)
             logger.debug(f'Settings: Saved last selected node "{selected_node_path}".')
 
-    def read_article_as_comic_book(
-        self, article_title: Titles, view_state: ViewStates, page_to_first_goto: str
-    ) -> None:
-        article_title_str = BARKS_TITLES[article_title]
-        article_fanta_info = self.all_fanta_titles[article_title_str]
-        comic = self._comics_database.get_comic_book(article_title_str)
-        self._read_comic_book(article_fanta_info, comic, view_state, page_to_first_goto)
-
-    def _read_comic_book(
-        self,
-        comic_fanta_info: FantaComicBookInfo,
-        comic: ComicBook,
-        view_state: ViewStates = None,
-        page_to_first_goto: str = "",
-    ) -> None:
+    def _read_article_as_comic_book(self, article_title: Titles, view_state: ViewStates) -> None:
         self._read_comic_view_state = view_state
-        self._comic_page_info = self._comic_page_info_mgr.get_comic_page_info(comic)
-        if not page_to_first_goto:
-            page_to_first_goto = self._get_page_to_first_goto()
-        comic_book_image_builder = ComicBookImageBuilder(
-            comic,
-            str(self._reader_settings.sys_file_paths.get_empty_page_file()),
-        )
-        comic_book_image_builder.set_required_dim(self._comic_page_info.required_dim)
-        logger.debug(
-            f'Load "{comic_fanta_info.comic_book_info.get_title_str()}"'
-            f' and goto page "{page_to_first_goto}".',
-        )
-        self.comic_book_reader.read_comic(
-            comic_fanta_info,
+
+        page_to_first_goto = "1"
+        self._comic_reader_manager.read_article_as_comic_book(article_title, page_to_first_goto)
+
+    def _read_barks_comic_book(self) -> None:
+        self._read_comic_view_state = None
+
+        self._comic_reader_manager.read_barks_comic_book(
+            self._fanta_info,
+            self._get_comic_book(),
+            self._get_page_to_first_goto(),
             self.bottom_title_view_screen.use_overrides_active,
-            comic_book_image_builder,
-            page_to_first_goto,
-            self._comic_page_info.page_map,
         )
 
     def comic_closed(self) -> None:
@@ -1071,21 +1010,9 @@ class MainScreen(BoxLayout, Screen):
         if not self._fanta_info:
             return
 
-        title_str = self._fanta_info.comic_book_info.get_title_str()
-        last_read_page = self._get_last_read_page_from_comic()
+        last_read_page = self._comic_reader_manager.comic_closed()
 
-        if not last_read_page:
-            logger.warning(f'"{title_str}": There was no valid last read page.')
-        else:
-            self._json_settings_manager.save_last_read_page(title_str, last_read_page)
-            logger.debug(
-                f'"{title_str}": Saved last read page "{last_read_page.display_page_num}".',
-            )
-
-            if self._is_on_or_past_last_body_page(last_read_page):
-                last_read_page.display_page_num = COMIC_PAGE_ONE
-
-            self._set_goto_page_checkbox(last_read_page)
+        self._set_goto_page_checkbox(last_read_page)
 
     def _goto_saved_node(self, saved_node_path: list[str]) -> None:
         logger.debug(f'Looking for saved node "{saved_node_path}"...')
