@@ -295,6 +295,25 @@ class ButtonTreeViewNode(Button, TreeViewNode):
     SELECTED_COLOR = TREE_VIEW_NODE_SELECTED_COLOR
     BACKGROUND_COLOR = TREE_VIEW_NODE_BACKGROUND_COLOR
 
+    def on_touch_down(self, touch: MotionEvent) -> bool:
+        # Node press will also toggle expand/collapse.
+        nodes_treeview = self._get_nodes_treeview(self)
+        assert nodes_treeview is not None
+        nodes_treeview.toggle_node(self)
+
+        return super().on_touch_down(touch)
+
+    @staticmethod
+    def _get_nodes_treeview(node: TreeViewNode) -> TreeView | None:
+        # noinspection PyUnresolvedReferences
+        parent = node.parent
+        while parent:
+            if isinstance(parent, TreeView):
+                return parent
+            parent = parent.parent
+
+        return None
+
 
 class MainTreeViewNode(ButtonTreeViewNode):
     NODE_SIZE = (dp(400), dp(30))

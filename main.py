@@ -86,7 +86,7 @@ def redirect_kivy_logs() -> None:
 
 
 # Make these log variables global so loguru-config can access them.
-log_level = logging.DEBUG
+log_level = None
 log_path = None
 
 

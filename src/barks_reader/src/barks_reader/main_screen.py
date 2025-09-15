@@ -9,8 +9,6 @@ from barks_fantagraphics.barks_tags import (
     BARKS_TAGGED_PAGES,
     TagGroups,
     Tags,
-    get_tag_enum,
-    get_tag_group_enum,
     is_tag_enum,
     is_tag_group_enum,
     special_case_personal_favourites_tag_update,
@@ -475,6 +473,7 @@ class MainScreen(BoxLayout, Screen):
             msg = f"No view state mapping found for node: {node.text} ({type(node)})"
             raise RuntimeError(msg)
 
+        logger.info(f'Updating backgrounds views for expanded node: "{new_view_state}".')
         self._update_background_views(new_view_state, **view_state_params)
 
         self._scroll_to_node(node.nodes[0] if node.nodes else node)
@@ -510,12 +509,6 @@ class MainScreen(BoxLayout, Screen):
                 view_state_params["tag"] = Tags(clean_node_text)
 
         return new_view_state, view_state_params
-
-    def on_the_stories_pressed(self, _button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_THE_STORIES_NODE)
-
-    def on_search_pressed(self, _button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_SEARCH_NODE)
 
     def on_title_search_box_pressed(self, instance: TitleSearchBoxTreeViewNode) -> None:
         logger.debug(f"Title search box pressed: {instance}.")
@@ -623,24 +616,18 @@ class MainScreen(BoxLayout, Screen):
             title_str=self._background_views.get_current_bottom_view_title(),
         )
 
-    def on_intro_pressed(self, _button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_INTRO_NODE)
-
     def on_intro_compleat_barks_reader_pressed(self, _button: Button) -> None:
         self._screen_switchers.switch_to_intro_compleat_barks_reader()
 
     def intro_compleat_barks_reader_closed(self) -> None:
         self._update_view_for_node(ViewStates.ON_INTRO_NODE)
 
-    def on_intro_don_ault_fanta_intro(self, _button: Button) -> None:
+    def on_don_ault_fanta_intro_pressed(self, _button: Button) -> None:
         self.read_article_as_comic_book(
             Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
             ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,
             page_to_first_goto="1",
         )
-
-    def on_appendix_pressed(self, _button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_APPENDIX_NODE)
 
     def on_appendix_don_ault_life_among_ducks_pressed(self, _button: Button) -> None:
         self.read_article_as_comic_book(
@@ -662,60 +649,6 @@ class MainScreen(BoxLayout, Screen):
             ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
             page_to_first_goto="1",
         )
-
-    def on_index_pressed(self, _button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_INDEX_NODE)
-
-    def on_chrono_pressed(self, _button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_CHRONO_BY_YEAR_NODE)
-
-    def on_year_range_pressed(self, button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_YEAR_RANGE_NODE, year_range=button.text)
-
-    def on_cs_year_range_pressed(self, button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_CS_YEAR_RANGE_NODE, cs_year_range=button.text)
-
-    def on_us_year_range_pressed(self, button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_US_YEAR_RANGE_NODE, us_year_range=button.text)
-
-    def on_series_pressed(self, _button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_SERIES_NODE)
-
-    def cs_pressed(self, _button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_CS_NODE)
-
-    def dd_pressed(self, _button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_DD_NODE)
-
-    def us_pressed(self, _button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_US_NODE)
-
-    def dds_pressed(self, _button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_DDS_NODE)
-
-    def uss_pressed(self, _button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_USS_NODE)
-
-    def gg_pressed(self, _button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_GG_NODE)
-
-    def misc_pressed(self, _button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_MISC_NODE)
-
-    def on_categories_pressed(self, _button: Button) -> None:
-        self._update_view_for_node(ViewStates.ON_CATEGORIES_NODE)
-
-    def on_category_pressed(self, button: Button) -> None:
-        category_str = get_clean_text_without_extra(button.text)
-        self._update_view_for_node(ViewStates.ON_CATEGORY_NODE, category=category_str)
-
-    def on_tag_group_pressed(self, button: Button) -> None:
-        tag_group = get_tag_group_enum(get_clean_text_without_extra(button.text))
-        self._update_view_for_node(ViewStates.ON_TAG_GROUP_NODE, tag_group=tag_group)
-
-    def on_tag_pressed(self, button: Button) -> None:
-        tag = get_tag_enum(get_clean_text_without_extra(button.text))
-        self._update_view_for_node(ViewStates.ON_TAG_NODE, tag=tag)
 
     def on_title_row_button_pressed(self, button: Button) -> None:
         self._fanta_info = button.parent.fanta_info
