@@ -252,7 +252,9 @@ class MainScreen(BoxLayout, Screen):
         self._set_action_bar_icons(self._reader_settings.sys_file_paths)
 
         self._special_fanta_overrides = SpecialFantaOverrides(self._reader_settings)
-        self.bottom_title_view_screen.on_image_pressed_func = self.on_image_pressed
+        self.bottom_title_view_screen.on_title_portal_image_pressed_func = (
+            self.on_title_portal_image_pressed
+        )
         # TODO: push bind down
         self.bottom_title_view_screen.ids.use_overrides_checkbox.bind(
             active=self.on_use_overrides_checkbox_changed
@@ -885,7 +887,7 @@ class MainScreen(BoxLayout, Screen):
             f" New state is '{self.fun_image_view_screen.fun_view_options_enabled}'."
         )
 
-    def on_image_pressed(self) -> None:
+    def on_title_portal_image_pressed(self) -> None:
         if self._fanta_info is None:
             logger.debug(
                 f'Image "{self.bottom_title_view_screen.title_inset_image_source}"'

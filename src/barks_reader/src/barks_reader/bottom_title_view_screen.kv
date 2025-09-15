@@ -128,7 +128,7 @@
 
                     # --- The Image Button ---
                     Button:
-                        id: image_button
+                        id: title_portal_image_button
                         background_color: (0, 0, 0, 0)
                         background_normal: ''
                         size_hint: None, None
@@ -152,7 +152,7 @@
                                 border_radius: 0, 0, 0, 0
                                 blur_radius: 30 if self.state == "normal" else 15
                         TitlePageImage:
-                            id: title_button_image
+                            id: title_portal_image
                             source: root.title_inset_image_source
                             opacity: 0.5 if root.is_first_use_of_reader else 1
                             pos: self.parent.pos
@@ -160,7 +160,7 @@
                             fit_mode: "cover"
                             mipmap: True
                             # NOTE: This should be on the button above but it doesn't work.
-                            on_press: root.on_image_pressed()
+                            on_press: root.on_title_portal_image_pressed()
                         Label:
                             text: "CLICK ME!"
                             opacity: 1 if root.is_first_use_of_reader else 0
@@ -168,8 +168,8 @@
                             bold: True
                             font_size: sp(40)
                             # Position the label over the image
-                            pos: title_button_image.pos
-                            size: title_button_image.size
+                            pos: title_portal_image.pos
+                            size: title_portal_image.size
                             text_size: self.size
                             halign: "center"
                             valign: "middle"
@@ -177,10 +177,10 @@
                     BoxLayout:
                         id: goto_page_layout
                         size_hint: None, None
-                        width: image_button.width
+                        width: title_portal_image_button.width
                         height: (1.25 * fm.check_box_font_size) if self.opacity > 0.99 else 0
                         # Position relative to the image button
-                        pos: image_button.x, image_button.top + (0.85 * fm.check_box_font_size)
+                        pos: title_portal_image_button.x, title_portal_image_button.top + (0.85 * fm.check_box_font_size)
                         opacity: 1 if root.goto_page_num else 0
                         Label:
                             text: "Goto page " + root.goto_page_num + ":"
@@ -200,7 +200,7 @@
                     BoxLayout:
                         id: use_overrides_layout
                         size_hint: None, None
-                        width: image_button.width
+                        width: title_portal_image_button.width
                         height: (1.33 * fm.check_box_font_size) if self.opacity > 0.99 else 0
                         # Position relative to 'goto_page_layout'
                         pos: goto_page_layout.x, goto_page_layout.top + (0.1 * fm.check_box_font_size)

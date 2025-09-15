@@ -60,7 +60,7 @@ class BottomTitleViewScreen(FloatLayout):
         self._reader_settings = reader_settings
         self._formatter = ReaderFormatter()
         self.is_first_use_of_reader = self._reader_settings.is_first_use_of_reader
-        self.on_image_pressed_func = None
+        self.on_title_portal_image_pressed_func = None
 
     def set_title_view(self, fanta_info: FantaComicBookInfo) -> None:
         self.main_title_text = self._get_main_title_str(fanta_info)
@@ -91,9 +91,9 @@ class BottomTitleViewScreen(FloatLayout):
         self.use_overrides_active = active
         self.use_overrides_description = description
 
-    def on_image_pressed(self) -> None:
-        assert self.on_image_pressed_func is not None
-        self.on_image_pressed_func()
+    def on_title_portal_image_pressed(self) -> None:
+        assert self.on_title_portal_image_pressed_func is not None
+        self.on_title_portal_image_pressed_func()
 
     @staticmethod
     def _get_main_title_str(fanta_info: FantaComicBookInfo) -> str:
