@@ -439,7 +439,7 @@ class ReaderTreeBuilder:
             tree,
             INTRO_DON_AULT_FANTA_INTRO_TEXT,
             parent_node=intro_node,
-            on_press_handler=self._main_screen.on_don_ault_fanta_intro_pressed,
+            on_press_handler=self._main_screen.on_intro_don_ault_fanta_intro_pressed,
         )
 
     def _add_the_stories_node(self, tree: ReaderTreeView) -> MainTreeViewNode:

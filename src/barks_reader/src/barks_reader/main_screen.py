@@ -54,6 +54,7 @@ from barks_reader.reader_consts_and_types import (
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
     APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
     APPENDIX_NODE_TEXT,
+    APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT,
     CATEGORIES_NODE_TEXT,
     CHRONOLOGICAL_NODE_TEXT,
     CLOSE_TO_ZERO,
@@ -81,10 +82,8 @@ from barks_reader.reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
     LoadingDataPopup,
-    MainTreeViewNode,
     ReaderTreeBuilderEventDispatcher,
     ReaderTreeView,
-    StoryGroupTreeViewNode,
     TagGroupStoryGroupTreeViewNode,
     TagSearchBoxTreeViewNode,
     TagStoryGroupTreeViewNode,
@@ -131,27 +130,44 @@ NODE_TYPE_TO_VIEW_STATE_MAP: dict[type, tuple[ViewStates, str]] = {
     UsYearRangeTreeViewNode: (ViewStates.ON_US_YEAR_RANGE_NODE, "us_year_range"),
 }
 
-NODE_TEXT_TO_VIEW_STATE_MAP = {
+# fmt: off
+NODE_TEXT_TO_VIEW_STATE_MAP: dict[str, ViewStates] = {
+    "N/A" + ViewStates.PRE_INIT.name: ViewStates.PRE_INIT,
+    "N/A" + ViewStates.INITIAL.name: ViewStates.INITIAL,
     INTRO_NODE_TEXT: ViewStates.ON_INTRO_NODE,
     INTRO_COMPLEAT_BARKS_READER_TEXT: ViewStates.ON_INTRO_COMPLEAT_BARKS_READER_NODE,
     INTRO_DON_AULT_FANTA_INTRO_TEXT: ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,
     THE_STORIES_NODE_TEXT: ViewStates.ON_THE_STORIES_NODE,
     SEARCH_NODE_TEXT: ViewStates.ON_SEARCH_NODE,
     APPENDIX_NODE_TEXT: ViewStates.ON_APPENDIX_NODE,
+    APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT: ViewStates.ON_APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_NODE,  # noqa: E501
     APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT: ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE,
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT: ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
     INDEX_NODE_TEXT: ViewStates.ON_INDEX_NODE,
     CHRONOLOGICAL_NODE_TEXT: ViewStates.ON_CHRONO_BY_YEAR_NODE,
+    "N/A" + ViewStates.ON_YEAR_RANGE_NODE.name: ViewStates.ON_YEAR_RANGE_NODE,
     SERIES_NODE_TEXT: ViewStates.ON_SERIES_NODE,
-    CATEGORIES_NODE_TEXT: ViewStates.ON_CATEGORIES_NODE,
     SERIES_CS: ViewStates.ON_CS_NODE,
+    "N/A" + ViewStates.ON_CS_YEAR_RANGE_NODE.name: ViewStates.ON_CS_YEAR_RANGE_NODE,
     SERIES_DDA: ViewStates.ON_DD_NODE,
     SERIES_USA: ViewStates.ON_US_NODE,
+    "N/A" + ViewStates.ON_US_YEAR_RANGE_NODE.name: ViewStates.ON_US_YEAR_RANGE_NODE,
     SERIES_DDS: ViewStates.ON_DDS_NODE,
     SERIES_USS: ViewStates.ON_USS_NODE,
     SERIES_GG: ViewStates.ON_GG_NODE,
     SERIES_MISC: ViewStates.ON_MISC_NODE,
+    CATEGORIES_NODE_TEXT: ViewStates.ON_CATEGORIES_NODE,
+    "N/A" + ViewStates.ON_CATEGORY_NODE.name: ViewStates.ON_CATEGORY_NODE,
+    "N/A" + ViewStates.ON_TAG_GROUP_NODE.name: ViewStates.ON_TAG_GROUP_NODE,
+    "N/A" + ViewStates.ON_TAG_NODE.name: ViewStates.ON_TAG_NODE,
+    "N/A" + ViewStates.ON_TITLE_NODE.name: ViewStates.ON_TITLE_NODE,
+    "N/A" + ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET.name: ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET,  # noqa: E501
+    "N/A" + ViewStates.ON_TITLE_SEARCH_BOX_NODE.name: ViewStates.ON_TITLE_SEARCH_BOX_NODE,
+    "N/A" + ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET.name: ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET,  # noqa: E501
+    "N/A" + ViewStates.ON_TAG_SEARCH_BOX_NODE.name: ViewStates.ON_TAG_SEARCH_BOX_NODE,
 }
+# fmt: on
+assert sorted(NODE_TEXT_TO_VIEW_STATE_MAP.values()) == sorted(ViewStates)
 
 
 class MainScreen(BoxLayout, Screen):
@@ -464,7 +480,7 @@ class MainScreen(BoxLayout, Screen):
         if isinstance(node, TitleTreeViewNode):
             return
 
-        logger.debug(f'Node expanded: "{node.text}" ({type(node)}).')
+        logger.info(f'Node expanded: "{node.text}" ({type(node)}).')
 
         new_view_state, view_state_params = self._get_view_state_from_node(node)
 
@@ -472,7 +488,7 @@ class MainScreen(BoxLayout, Screen):
             msg = f"No view state mapping found for node: {node.text} ({type(node)})"
             raise RuntimeError(msg)
 
-        logger.info(f'Updating backgrounds views for expanded node: "{new_view_state}".')
+        logger.info(f'Updating backgrounds views for expanded node: "{new_view_state.name}".')
         self._update_background_views(new_view_state, **view_state_params)
 
         self._scroll_to_node(node.nodes[0] if node.nodes else node)
@@ -488,24 +504,24 @@ class MainScreen(BoxLayout, Screen):
         clean_node_text = get_clean_text_without_extra(node.text)
 
         if node_type in NODE_TYPE_TO_VIEW_STATE_MAP:
+            logger.debug(f'Node type group node expanded: {node_type}, "{clean_node_text}".')
             new_view_state, param_name = NODE_TYPE_TO_VIEW_STATE_MAP[node_type]
             view_state_params[param_name] = node.text
-        elif isinstance(node, MainTreeViewNode) and node.text in NODE_TEXT_TO_VIEW_STATE_MAP:
-            new_view_state = NODE_TEXT_TO_VIEW_STATE_MAP[node.text]
-        elif isinstance(node, StoryGroupTreeViewNode):
-            if clean_node_text in NODE_TEXT_TO_VIEW_STATE_MAP:
-                new_view_state = NODE_TEXT_TO_VIEW_STATE_MAP[clean_node_text]
-            elif clean_node_text in BARKS_TAG_CATEGORIES_DICT:
-                new_view_state = ViewStates.ON_CATEGORY_NODE
-                view_state_params["category"] = clean_node_text
-            elif is_tag_group_enum(clean_node_text):
-                logger.debug(f'Tag group node expanded: "{clean_node_text}".')
-                new_view_state = ViewStates.ON_TAG_GROUP_NODE
-                view_state_params["tag_group"] = TagGroups(clean_node_text)
-            elif is_tag_enum(clean_node_text):
-                logger.debug(f'Tag node expanded: "{clean_node_text}".')
-                new_view_state = ViewStates.ON_TAG_NODE
-                view_state_params["tag"] = Tags(clean_node_text)
+        elif clean_node_text in NODE_TEXT_TO_VIEW_STATE_MAP:
+            logger.debug(f'Node text group node expanded: {node_type}, "{clean_node_text}".')
+            new_view_state = NODE_TEXT_TO_VIEW_STATE_MAP[clean_node_text]
+        elif clean_node_text in BARKS_TAG_CATEGORIES_DICT:
+            logger.debug(f'Category group node expanded: {node_type}, "{clean_node_text}".')
+            new_view_state = ViewStates.ON_CATEGORY_NODE
+            view_state_params["category"] = clean_node_text
+        elif is_tag_group_enum(clean_node_text):
+            logger.debug(f'Tag group node expanded: {node_type}, "{clean_node_text}".')
+            new_view_state = ViewStates.ON_TAG_GROUP_NODE
+            view_state_params["tag_group"] = TagGroups(clean_node_text)
+        elif is_tag_enum(clean_node_text):
+            logger.debug(f'Tag node expanded: {node_type}, "{clean_node_text}".')
+            new_view_state = ViewStates.ON_TAG_NODE
+            view_state_params["tag"] = Tags(clean_node_text)
 
         return new_view_state, view_state_params
 
@@ -621,7 +637,7 @@ class MainScreen(BoxLayout, Screen):
     def intro_compleat_barks_reader_closed(self) -> None:
         self._update_view_for_node(ViewStates.ON_INTRO_NODE)
 
-    def on_don_ault_fanta_intro_pressed(self, _button: Button) -> None:
+    def on_intro_don_ault_fanta_intro_pressed(self, _button: Button) -> None:
         self._read_article_as_comic_book(
             Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
             ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,

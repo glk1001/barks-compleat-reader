@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from enum import Enum, auto
+from enum import Enum, IntEnum, auto
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_tags import (
@@ -75,9 +75,16 @@ IMAGE_THEME_TO_FILE_TYPE_MAP = {
     ImageThemes.SILHOUETTES: FileTypes.SILHOUETTE,
     ImageThemes.SPLASHES: FileTypes.SPLASH,
 }
+IMAGE_THEMES_WITH_NO_FILES = {
+    ImageThemes.CLASSICS,
+    ImageThemes.FORTIES,
+    ImageThemes.FIFTIES,
+    ImageThemes.SIXTIES,
+}
+assert len(ImageThemes) == (len(IMAGE_THEME_TO_FILE_TYPE_MAP) + len(IMAGE_THEMES_WITH_NO_FILES))
 
 
-class ViewStates(Enum):
+class ViewStates(IntEnum):
     PRE_INIT = auto()
     INITIAL = auto()
     ON_INTRO_NODE = auto()
