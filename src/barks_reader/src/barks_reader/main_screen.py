@@ -277,6 +277,26 @@ class MainScreen(BoxLayout, Screen):
         )
         self.fun_image_view_screen.on_goto_title_func = self.on_goto_fun_view_title
 
+        self.chrono_year_ranges = [
+            (1942, 1946),
+            (1947, 1950),
+            (1951, 1954),
+            (1955, 1957),
+            (1958, 1961),
+        ]
+        self.cs_year_ranges = [
+            (1942, 1946),
+            (1947, 1950),
+            (1951, 1954),
+            (1955, 1957),
+            (1958, 1961),
+        ]
+        self.us_year_ranges = [
+            (1951, 1954),
+            (1955, 1957),
+            (1958, 1961),
+        ]
+
     def fonts_updated(self, font_manager: FontManager) -> None:
         self.app_title = get_action_bar_title(font_manager, APP_TITLE)
 
@@ -441,15 +461,22 @@ class MainScreen(BoxLayout, Screen):
         logger.debug(f'Goto title: "{image_info.from_title}", "{image_info.filename}".')
         title_fanta_info = self._get_fanta_info(image_info.from_title)
 
-        year_nodes = self.year_range_nodes[
-            self.filtered_title_lists.get_year_range_from_info(title_fanta_info)
-        ]
+        year_nodes = self.year_range_nodes[self.get_year_range_from_info(title_fanta_info)]
         self.tree_view_screen.open_all_parent_nodes(year_nodes)
 
         title_node = find_tree_view_title_node(year_nodes, image_info.from_title)
         self._goto_node(title_node, scroll_to=True)
 
         self._title_row_selected(title_fanta_info, image_info.filename)
+
+    def get_year_range_from_info(self, fanta_info: FantaComicBookInfo) -> None | tuple[int, int]:
+        sub_year = fanta_info.comic_book_info.submitted_year
+
+        for year_range in self.chrono_year_ranges:
+            if year_range[0] <= sub_year <= year_range[1]:
+                return year_range
+
+        return None
 
     def _goto_node(self, node: TreeViewNode, scroll_to: bool = False) -> None:
         def show_node(n: TreeViewNode) -> None:

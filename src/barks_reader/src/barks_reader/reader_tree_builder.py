@@ -36,7 +36,6 @@ from kivy.clock import Clock
 from kivy.uix.button import Button
 from loguru import logger
 
-from barks_reader.filtered_title_lists import FilteredTitleLists
 from barks_reader.reader_consts_and_types import (
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
     APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
@@ -70,6 +69,11 @@ from barks_reader.reader_ui_classes import (
     TitleTreeViewNode,
     UsYearRangeTreeViewNode,
     YearRangeTreeViewNode,
+)
+from barks_reader.reader_utils import (
+    get_cs_range_str_from_str,
+    get_range_str,
+    get_us_range_str_from_str,
 )
 
 if TYPE_CHECKING:
@@ -269,7 +273,7 @@ class ReaderTreeBuilder:
         yield from self._populate_splittable_series_node_gen(
             tree,
             parent_node,
-            self._main_screen.filtered_title_lists.cs_year_ranges,
+            self._main_screen.cs_year_ranges,
             self._add_cs_year_range_node_gen,
         )
 
@@ -280,7 +284,7 @@ class ReaderTreeBuilder:
         yield from self._populate_splittable_series_node_gen(
             tree,
             parent_node,
-            self._main_screen.filtered_title_lists.us_year_ranges,
+            self._main_screen.us_year_ranges,
             self._add_us_year_range_node_gen,
         )
 
@@ -301,7 +305,7 @@ class ReaderTreeBuilder:
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
     ) -> Generator[None, None, None]:
         """Add all chronological year range nodes."""
-        year_ranges = self._main_screen.filtered_title_lists.chrono_year_ranges
+        year_ranges = self._main_screen.chrono_year_ranges
         for year_range in year_ranges:
             yield from self._add_chrono_year_range_node_and_child_nodes_gen(
                 tree, year_range, parent_node
@@ -387,7 +391,7 @@ class ReaderTreeBuilder:
         new_node, year_range_titles = self._create_and_add_year_range_node(
             tree,
             year_range,
-            FilteredTitleLists.get_cs_range_str_from_str,
+            get_cs_range_str_from_str,
             self._get_cs_year_range_extra_text,
             CsYearRangeTreeViewNode,
             parent_node,
@@ -400,7 +404,7 @@ class ReaderTreeBuilder:
         new_node, year_range_titles = self._create_and_add_year_range_node(
             tree,
             year_range,
-            FilteredTitleLists.get_us_range_str_from_str,
+            get_us_range_str_from_str,
             self._get_us_year_range_extra_text,
             UsYearRangeTreeViewNode,
             parent_node,
@@ -571,10 +575,12 @@ class ReaderTreeBuilder:
         node_class: type,
         parent_node: ButtonTreeViewNode,
     ) -> tuple[ButtonTreeViewNode, list[FantaComicBookInfo]]:
-        year_range_str = FilteredTitleLists.get_range_str(year_range)
-        year_range_key = get_title_key_func(year_range_str)
-        year_range_titles = self._main_screen.title_lists[year_range_key]
+        year_range_titles = []
+        for year in range(year_range[0], year_range[1] + 1):
+            year_key = get_title_key_func(str(year))
+            year_range_titles.extend(self._main_screen.title_lists[year_key])
 
+        year_range_str = get_range_str(year_range)
         year_range_extra_text = get_year_range_extra_text_func(year_range_titles)
         year_range_text = get_markup_text_with_extra(year_range_str, year_range_extra_text)
 

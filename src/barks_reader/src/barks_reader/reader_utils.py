@@ -74,6 +74,18 @@ def read_title_list(filepath: Path) -> list[Titles]:
     return sorted(titles)
 
 
+def get_range_str(year_range: tuple[int, int]) -> str:
+    return f"{year_range[0]}-{year_range[1]}"
+
+
+def get_cs_range_str_from_str(year_range_str: str) -> str:
+    return f"CS-{year_range_str}"
+
+
+def get_us_range_str_from_str(year_range_str: str) -> str:
+    return f"US-{year_range_str}"
+
+
 # Assumes 'original_list' and 'extra_list' have no duplicates.
 def unique_extend(original_list: list[Titles], extras_list: list[Titles]) -> None:
     seen = set(original_list)

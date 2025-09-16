@@ -340,27 +340,35 @@ class ReaderFilePaths:
 
         return image_files
 
-    def get_file_type_titles(self, file_type: FileTypes) -> list[str]:
+    def get_file_type_titles(
+        self, file_type: FileTypes, allowed_titles: set[str] | None = None
+    ) -> list[str]:
+        if allowed_titles is None:
+            allowed_titles = set()
+
         if file_type in self._titles_cache:
-            return self._titles_cache[file_type]
+            all_titles = self._titles_cache[file_type]
+        else:
+            parent_image_dir = self._FILE_TYPE_DIR_GETTERS[file_type]()
 
-        parent_image_dir = self._FILE_TYPE_DIR_GETTERS[file_type]()
+            # Can't use 'stem' on directories because a title may contain a '.'
+            all_titles = []
+            for file in parent_image_dir.iterdir():
+                if file.is_dir():
+                    title = file.name
+                    if title != _EDITED_SUBDIR:
+                        all_titles.append(file.name)
+                else:
+                    title = file.stem
+                    if not title.endswith(NO_OVERRIDES_SUFFIX):
+                        all_titles.append(title)
 
-        # Can't use 'stem' on directories because a title may contain a '.'
-        titles = []
-        for file in parent_image_dir.iterdir():
-            if file.is_dir():
-                title = file.name
-                if title != _EDITED_SUBDIR:
-                    titles.append(file.name)
-            else:
-                title = file.stem
-                if not title.endswith(NO_OVERRIDES_SUFFIX):
-                    titles.append(title)
+            self._titles_cache[file_type] = all_titles
 
-        self._titles_cache[file_type] = titles
+        if len(allowed_titles) == 0:
+            return all_titles
 
-        return titles
+        return [title for title in all_titles if title in allowed_titles]
 
     @staticmethod
     def _get_all_files(image_dir: Path) -> list[Path]:

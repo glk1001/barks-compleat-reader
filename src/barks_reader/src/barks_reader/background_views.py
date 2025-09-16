@@ -29,11 +29,11 @@ from barks_fantagraphics.fanta_comics_info import (
 from kivy.clock import Clock
 from loguru import logger
 
-from barks_reader.filtered_title_lists import FilteredTitleLists
 from barks_reader.random_title_images import FIT_MODE_COVER, ImageInfo, RandomTitleImages
 from barks_reader.reader_colors import RandomColorTint
 from barks_reader.reader_file_paths import ALL_TYPES, FileTypes
 from barks_reader.reader_formatter import get_formatted_color
+from barks_reader.reader_utils import get_cs_range_str_from_str, get_us_range_str_from_str
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -469,7 +469,7 @@ class BackgroundViews:
                 self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
             )
         else:
-            cs_range = FilteredTitleLists.get_cs_range_str_from_str(self._current_cs_year_range)
+            cs_range = get_cs_range_str_from_str(self._current_cs_year_range)
             logger.debug(f"CS Year range key: '{cs_range}'.")
             self._top_view_image_info = self._get_top_view_random_image(self._title_lists[cs_range])
 
@@ -481,7 +481,7 @@ class BackgroundViews:
                 self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
             )
         else:
-            us_range = FilteredTitleLists.get_us_range_str_from_str(self._current_us_year_range)
+            us_range = get_us_range_str_from_str(self._current_us_year_range)
             logger.debug(f"US Year range key: '{us_range}'.")
             self._top_view_image_info = self._get_top_view_random_image(self._title_lists[us_range])
 
@@ -558,42 +558,46 @@ class BackgroundViews:
         )
 
     def _get_fun_image_titles(self) -> tuple[list[FantaComicBookInfo], set[FileTypes]]:
-        file_types = self._get_file_types_to_use()
-
         if DEBUG_FUN_IMAGE_TITLES:
             return [
                 t
                 for t in self._title_lists[ALL_LISTS]
                 if t.comic_book_info.title in DEBUG_FUN_IMAGE_TITLES
-            ], file_types
+            ], self._get_file_types_to_use()
 
         if not self._fun_image_themes:
-            return self._title_lists[ALL_LISTS], file_types
+            return self._title_lists[ALL_LISTS], self._get_file_types_to_use()
+
+        return self._get_themed_fun_image_titles()
+
+    def _get_themed_fun_image_titles(self) -> tuple[list[FantaComicBookInfo], set[FileTypes]]:
+        file_types = self._get_file_types_to_use()
+
+        theme_titles: set[str] = set()
 
         if ImageThemes.FORTIES in self._fun_image_themes:
-            return (
-                self._title_lists[FilteredTitleLists.get_range_str((1942, 1946))]
-                + self._title_lists[FilteredTitleLists.get_range_str((1947, 1950))]
-            ), file_types
+            self._update_titles(theme_titles, (1942, 1949))
         if ImageThemes.FIFTIES in self._fun_image_themes:
-            return (
-                self._title_lists[FilteredTitleLists.get_range_str((1951, 1954))]
-                + self._title_lists[FilteredTitleLists.get_range_str((1955, 1957))]
-                + self._title_lists[FilteredTitleLists.get_range_str((1958, 1961))]
-            ), file_types
+            self._update_titles(theme_titles, (1950, 1959))
         if ImageThemes.SIXTIES in self._fun_image_themes:
-            return self._title_lists[FilteredTitleLists.get_range_str((1958, 1961))], file_types
+            self._update_titles(theme_titles, (1960, 1961))
         if ImageThemes.CLASSICS in self._fun_image_themes:
-            return [
-                ALL_FANTA_COMIC_BOOK_INFO[BARKS_TITLES[title]]
-                for title in BARKS_TAGGED_TITLES[Tags.CLASSICS]
-            ], file_types
+            theme_titles.update(
+                [BARKS_TITLES[title] for title in BARKS_TAGGED_TITLES[Tags.CLASSICS]]
+            )
 
-        theme_titles = set()
         for file_type in file_types:
-            theme_titles.update(self._reader_settings.file_paths.get_file_type_titles(file_type))
+            theme_titles.update(
+                self._reader_settings.file_paths.get_file_type_titles(file_type, theme_titles)
+            )
 
         return [ALL_FANTA_COMIC_BOOK_INFO[title_str] for title_str in theme_titles], file_types
+
+    def _update_titles(self, title_set: set[str], year_range: tuple[int, int]) -> None:
+        for year in range(year_range[0], year_range[1] + 1):
+            title_set.update(
+                BARKS_TITLES[info.comic_book_info.title] for info in self._title_lists[str(year)]
+            )
 
     def _get_file_types_to_use(self) -> set[FileTypes]:
         if self._fun_image_themes is None:
@@ -607,7 +611,8 @@ class BackgroundViews:
             file_types_to_use.add(IMAGE_THEME_TO_FILE_TYPE_MAP[theme])
 
         if len(file_types_to_use) == 0:
-            file_types_to_use = ALL_TYPES
+            file_types_to_use = ALL_TYPES.copy()
+            file_types_to_use.discard(FileTypes.NONTITLE)
 
         logger.debug(f"file_types_to_use = {file_types_to_use}")
 
