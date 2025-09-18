@@ -75,7 +75,10 @@ if __name__ == "__main__":
             title_str = title + ":"
 
             nums = [
-                f"{SHORT_FILE_TYPE_NAMES[ft]}: {len(file_dict.get(ft, [])):1d}"
+                (
+                    f"{SHORT_FILE_TYPE_NAMES[ft]}:"
+                    f" {len(file_dict.get(ft, [])):{2 if ft == FileTypes.AI else 1}d}"
+                )
                 for ft in RELEVANT_FILE_TYPES
             ]
             total = sum(len(file_dict.get(ft, [])) for ft in RELEVANT_FILE_TYPES)
