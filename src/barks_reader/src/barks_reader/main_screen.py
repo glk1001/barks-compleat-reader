@@ -56,6 +56,7 @@ from barks_reader.reader_consts_and_types import (
     APPENDIX_NODE_TEXT,
     APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT,
     CATEGORIES_NODE_TEXT,
+    CHRONO_YEAR_RANGES,
     CHRONOLOGICAL_NODE_TEXT,
     CLOSE_TO_ZERO,
     COMIC_PAGE_ONE,
@@ -277,26 +278,6 @@ class MainScreen(BoxLayout, Screen):
         )
         self.fun_image_view_screen.on_goto_title_func = self.on_goto_fun_view_title
 
-        self.chrono_year_ranges = [
-            (1942, 1946),
-            (1947, 1950),
-            (1951, 1954),
-            (1955, 1957),
-            (1958, 1961),
-        ]
-        self.cs_year_ranges = [
-            (1942, 1946),
-            (1947, 1950),
-            (1951, 1954),
-            (1955, 1957),
-            (1958, 1961),
-        ]
-        self.us_year_ranges = [
-            (1951, 1954),
-            (1955, 1957),
-            (1958, 1961),
-        ]
-
     def fonts_updated(self, font_manager: FontManager) -> None:
         self.app_title = get_action_bar_title(font_manager, APP_TITLE)
 
@@ -368,7 +349,7 @@ class MainScreen(BoxLayout, Screen):
         self._finished_building()
 
     def _finished_building(self) -> None:
-        self._fanta_volumes_state = self.get_fanta_volumes_state()
+        self._fanta_volumes_state = self._get_fanta_volumes_state()
         logger.debug(f"_fanta_volumes_state = {self._fanta_volumes_state}.")
 
         self._update_view_for_node(ViewStates.INITIAL)
@@ -385,7 +366,7 @@ class MainScreen(BoxLayout, Screen):
             if saved_node_path:
                 self._goto_saved_node(saved_node_path)
 
-    def get_fanta_volumes_state(self) -> FantaVolumesState:
+    def _get_fanta_volumes_state(self) -> FantaVolumesState:
         volumes_state = self._reader_settings.get_fantagraphics_volumes_state()
         if volumes_state in [FantaVolumesState.VOLUMES_EXIST, FantaVolumesState.VOLUMES_NOT_NEEDED]:
             return volumes_state
@@ -469,10 +450,11 @@ class MainScreen(BoxLayout, Screen):
 
         self._title_row_selected(title_fanta_info, image_info.filename)
 
-    def get_year_range_from_info(self, fanta_info: FantaComicBookInfo) -> None | tuple[int, int]:
+    @staticmethod
+    def get_year_range_from_info(fanta_info: FantaComicBookInfo) -> None | tuple[int, int]:
         sub_year = fanta_info.comic_book_info.submitted_year
 
-        for year_range in self.chrono_year_ranges:
+        for year_range in CHRONO_YEAR_RANGES:
             if year_range[0] <= sub_year <= year_range[1]:
                 return year_range
 

@@ -42,7 +42,9 @@ from barks_reader.reader_consts_and_types import (
     APPENDIX_NODE_TEXT,
     APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT,
     CATEGORIES_NODE_TEXT,
+    CHRONO_YEAR_RANGES,
     CHRONOLOGICAL_NODE_TEXT,
+    CS_YEAR_RANGES,
     INDEX_NODE_TEXT,
     INTRO_COMPLEAT_BARKS_READER_TEXT,
     INTRO_DON_AULT_FANTA_INTRO_TEXT,
@@ -50,6 +52,7 @@ from barks_reader.reader_consts_and_types import (
     SEARCH_NODE_TEXT,
     SERIES_NODE_TEXT,
     THE_STORIES_NODE_TEXT,
+    US_YEAR_RANGES,
 )
 from barks_reader.reader_formatter import (
     get_bold_markup_text,
@@ -273,7 +276,7 @@ class ReaderTreeBuilder:
         yield from self._populate_splittable_series_node_gen(
             tree,
             parent_node,
-            self._main_screen.cs_year_ranges,
+            CS_YEAR_RANGES,
             self._add_cs_year_range_node_gen,
         )
 
@@ -284,7 +287,7 @@ class ReaderTreeBuilder:
         yield from self._populate_splittable_series_node_gen(
             tree,
             parent_node,
-            self._main_screen.us_year_ranges,
+            US_YEAR_RANGES,
             self._add_us_year_range_node_gen,
         )
 
@@ -305,7 +308,7 @@ class ReaderTreeBuilder:
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
     ) -> Generator[None, None, None]:
         """Add all chronological year range nodes."""
-        year_ranges = self._main_screen.chrono_year_ranges
+        year_ranges = CHRONO_YEAR_RANGES
         for year_range in year_ranges:
             yield from self._add_chrono_year_range_node_and_child_nodes_gen(
                 tree, year_range, parent_node
