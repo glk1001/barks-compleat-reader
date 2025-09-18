@@ -258,6 +258,17 @@ class MainScreen(BoxLayout, Screen):
         )
         logger.debug(f'New loading popup image: "{self.loading_data_popup.splash_image_path}".')
 
+    def app_closing(self) -> None:
+        logger.debug("Closing app...")
+
+        if not self.tree_view_screen.get_selected_node():
+            self._json_settings_manager.save_last_selected_node_path([])
+            logger.debug("Settings: No selected node to save.")
+        else:
+            selected_node_path = get_tree_view_node_path(self.tree_view_screen.get_selected_node())
+            self._json_settings_manager.save_last_selected_node_path(selected_node_path)
+            logger.debug(f'Settings: Saved last selected node "{selected_node_path}".')
+
     def start_tree_build(self) -> None:
         """Kicks off the asynchronous build of the TreeView."""
         Clock.schedule_once(lambda _dt: self.loading_data_popup.open(), 0)
@@ -298,6 +309,25 @@ class MainScreen(BoxLayout, Screen):
             saved_node_path = self._json_settings_manager.get_last_selected_node_path()
             if saved_node_path:
                 self._goto_saved_node(saved_node_path)
+
+    def _goto_saved_node(self, saved_node_path: list[str]) -> None:
+        logger.debug(f'Looking for saved node "{saved_node_path}"...')
+        saved_node = self.tree_view_screen.find_node_by_path(saved_node_path)
+        if saved_node:
+            self._setup_and_selected_saved_node(saved_node)
+
+    def _setup_and_selected_saved_node(self, saved_node: TreeViewNode) -> None:
+        logger.debug(
+            f'Selecting and setting up start node "{get_tree_view_node_id_text(saved_node)}".',
+        )
+
+        self.tree_view_screen.select_node(saved_node)
+
+        if isinstance(saved_node, ButtonTreeViewNode):
+            saved_node.trigger_action()
+        elif isinstance(saved_node, TitleTreeViewNode):
+            self.on_title_row_button_pressed(saved_node.ids.num_label)
+            self.tree_view_manager.scroll_to_node(saved_node)
 
     def _get_fanta_volumes_state(self) -> FantaVolumesState:
         volumes_state = self._reader_settings.get_fantagraphics_volumes_state()
@@ -382,6 +412,12 @@ class MainScreen(BoxLayout, Screen):
         self.tree_view_manager.goto_node(title_node, scroll_to=True)
 
         self._title_row_selected(title_fanta_info, image_info.filename)
+
+    def on_intro_compleat_barks_reader_pressed(self, _button: Button) -> None:
+        self._screen_switchers.switch_to_intro_compleat_barks_reader()
+
+    def intro_compleat_barks_reader_closed(self) -> None:
+        self.view_state_manager.update_view_for_node(ViewStates.ON_INTRO_NODE)
 
     def on_title_row_button_pressed(self, button: Button) -> None:
         fanta_info: FantaComicBookInfo = button.parent.fanta_info
@@ -515,6 +551,7 @@ class MainScreen(BoxLayout, Screen):
                 f" pressed. But no title selected."
             )
             return
+
         if self._fanta_volumes_state in [
             FantaVolumesState.VOLUMES_MISSING,
             FantaVolumesState.VOLUMES_NOT_SET,
@@ -549,29 +586,7 @@ class MainScreen(BoxLayout, Screen):
         logger.debug(f'Image "{self.bottom_title_view_screen.title_inset_image_source}" pressed.')
 
         self._read_barks_comic_book()
-
         self._set_no_longer_first_use()
-
-    def _set_no_longer_first_use(self) -> None:
-        if self.is_first_use_of_reader:
-            assert self._reader_settings.is_first_use_of_reader
-            self._reader_settings.is_first_use_of_reader = False
-            self.is_first_use_of_reader = False
-            self.bottom_title_view_screen.is_first_use_of_reader = False
-
-    def _get_comic_book(self) -> ComicBook:
-        title_str = self.fanta_info.comic_book_info.get_title_str()
-
-        comic = self._comics_database.get_comic_book(title_str)
-
-        comic.intro_inset_file = str(
-            self._special_fanta_overrides.get_inset_file(
-                self.fanta_info.comic_book_info.title,
-                self.bottom_title_view_screen.use_overrides_active,
-            )
-        )
-
-        return comic
 
     def _get_page_to_first_goto(self) -> str:
         if not self.bottom_title_view_screen.goto_page_active:
@@ -603,17 +618,6 @@ class MainScreen(BoxLayout, Screen):
                 last_read_page.display_page_num, active=True
             )
 
-    def app_closing(self) -> None:
-        logger.debug("Closing app...")
-
-        if not self.tree_view_screen.get_selected_node():
-            self._json_settings_manager.save_last_selected_node_path([])
-            logger.debug("Settings: No selected node to save.")
-        else:
-            selected_node_path = get_tree_view_node_path(self.tree_view_screen.get_selected_node())
-            self._json_settings_manager.save_last_selected_node_path(selected_node_path)
-            logger.debug(f'Settings: Saved last selected node "{selected_node_path}".')
-
     def _read_article_as_comic_book(self, article_title: Titles, view_state: ViewStates) -> None:
         self._read_comic_view_state = view_state
 
@@ -642,27 +646,23 @@ class MainScreen(BoxLayout, Screen):
 
         self._set_goto_page_checkbox(last_read_page)
 
-    def _goto_saved_node(self, saved_node_path: list[str]) -> None:
-        logger.debug(f'Looking for saved node "{saved_node_path}"...')
-        saved_node = self.tree_view_screen.find_node_by_path(saved_node_path)
-        if saved_node:
-            self._setup_and_selected_saved_node(saved_node)
+    def _set_no_longer_first_use(self) -> None:
+        if self.is_first_use_of_reader:
+            assert self._reader_settings.is_first_use_of_reader
+            self._reader_settings.is_first_use_of_reader = False
+            self.is_first_use_of_reader = False
+            self.bottom_title_view_screen.is_first_use_of_reader = False
 
-    def _setup_and_selected_saved_node(self, saved_node: TreeViewNode) -> None:
-        logger.debug(
-            f'Selecting and setting up start node "{get_tree_view_node_id_text(saved_node)}".',
+    def _get_comic_book(self) -> ComicBook:
+        title_str = self.fanta_info.comic_book_info.get_title_str()
+
+        comic = self._comics_database.get_comic_book(title_str)
+
+        comic.intro_inset_file = str(
+            self._special_fanta_overrides.get_inset_file(
+                self.fanta_info.comic_book_info.title,
+                self.bottom_title_view_screen.use_overrides_active,
+            )
         )
 
-        self.tree_view_screen.select_node(saved_node)
-
-        if isinstance(saved_node, ButtonTreeViewNode):
-            saved_node.trigger_action()
-        elif isinstance(saved_node, TitleTreeViewNode):
-            self.on_title_row_button_pressed(saved_node.ids.num_label)
-            self.tree_view_manager.scroll_to_node(saved_node)
-
-    def on_intro_compleat_barks_reader_pressed(self, _button: Button) -> None:
-        self._screen_switchers.switch_to_intro_compleat_barks_reader()
-
-    def intro_compleat_barks_reader_closed(self) -> None:
-        self.view_state_manager.update_view_for_node(ViewStates.ON_INTRO_NODE)
+        return comic
