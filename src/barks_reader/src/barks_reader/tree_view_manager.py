@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_tags import (
@@ -9,18 +10,18 @@ from barks_fantagraphics.barks_tags import (
     is_tag_enum,
     is_tag_group_enum,
 )
-from barks_fantagraphics.barks_titles import NON_COMIC_TITLES, ComicBookInfo, Titles
+from barks_fantagraphics.barks_titles import NON_COMIC_TITLES, Titles
 from barks_fantagraphics.fanta_comics_info import (
-    ALL_FANTA_COMIC_BOOK_INFO,
     SERIES_CS,
     SERIES_DDA,
     SERIES_DDS,
-    SERIES_EXTRAS,
     SERIES_GG,
     SERIES_MISC,
     SERIES_USA,
     SERIES_USS,
 )
+from kivy.clock import Clock
+from kivy.uix.treeview import TreeViewNode
 from loguru import logger
 
 from barks_reader.background_views import BackgroundViews, ViewStates
@@ -43,9 +44,7 @@ from barks_reader.reader_formatter import get_clean_text_without_extra
 from barks_reader.reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
-    TagGroupStoryGroupTreeViewNode,
     TagSearchBoxTreeViewNode,
-    TagStoryGroupTreeViewNode,
     TitleSearchBoxTreeViewNode,
     TitleTreeViewNode,
     UsYearRangeTreeViewNode,
@@ -53,12 +52,17 @@ from barks_reader.reader_ui_classes import (
 )
 
 if TYPE_CHECKING:
-    from kivy.uix.button import Button
     from kivy.uix.spinner import Spinner
 
-    from barks_reader.main_screen import MainScreen
     from barks_reader.reader_ui_classes import ReaderTreeView
+    from barks_reader.tree_view_screen import TreeViewScreen
     from barks_reader.view_state_manager import ViewStateManager
+
+
+UpdateTitleCallable = Callable[[str], bool]
+ReadArticleCallable = Callable[[Titles, ViewStates], None]
+ScrollToNodeCallable = Callable[[TreeViewNode], None]
+SetTagGotoPageCheckboxCallable = Callable[[Tags | TagGroups, str], None]
 
 
 NODE_TYPE_TO_VIEW_STATE_MAP: dict[type, tuple[ViewStates, str]] = {
@@ -116,21 +120,43 @@ assert sorted(ARTICLE_VIEW_STATE_TO_TITLE_MAP.values()) == sorted(NON_COMIC_TITL
 
 
 class TreeViewManager:
-    """Manages all interactions and events related to the TreeView."""
+    """Manage all interactions and events related to the TreeView."""
 
+    # Seems wrong result for 'SetTagGotoPageCheckboxCallable' inspection.
+    # noinspection PyTypeHints
     def __init__(
         self,
-        main_screen: MainScreen,
         background_views: BackgroundViews,
         view_state_manager: ViewStateManager,
+        tree_view_screen: TreeViewScreen,
+        update_title_func: UpdateTitleCallable,
+        read_article_func: ReadArticleCallable,
+        set_tag_goto_page_checkbox_func: SetTagGotoPageCheckboxCallable,
     ) -> None:
-        self._main_screen = main_screen
         self._background_views = background_views
         self._view_state_manager = view_state_manager
-        self._tree_view = main_screen.tree_view_screen.ids.reader_tree_view
+        self._tree_view_screen = tree_view_screen
 
-        # Bind the tree view events to the manager's methods
-        self._tree_view.bind(on_node_expand=self.on_node_expanded)
+        self._tree_view_screen.ids.reader_tree_view.bind(on_node_expand=self.on_node_expanded)
+
+        self._update_title_func = update_title_func
+        self._read_article_func = read_article_func
+        self._set_tag_goto_page_checkbox_func = set_tag_goto_page_checkbox_func
+
+        assert self._update_title_func
+        assert self._read_article_func
+        assert self._set_tag_goto_page_checkbox_func
+
+    def goto_node(self, node: TreeViewNode, scroll_to: bool = False) -> None:
+        def show_node(n: TreeViewNode) -> None:
+            self._tree_view_screen.select_node(n)
+            if scroll_to:
+                self.scroll_to_node(n)
+
+        Clock.schedule_once(lambda _dt, item=node: show_node(item), 0)
+
+    def scroll_to_node(self, node: TreeViewNode) -> None:
+        Clock.schedule_once(lambda _dt: self._tree_view_screen.scroll_to_node(node), 0)
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
         if isinstance(node, TitleTreeViewNode):
@@ -147,7 +173,7 @@ class TreeViewManager:
         logger.info(f'Updating backgrounds views for expanded node: "{new_view_state.name}".')
         self._view_state_manager.update_background_views(new_view_state, **view_state_params)
 
-        self._main_screen.scroll_to_node(node.nodes[0] if node.nodes else node)
+        self.scroll_to_node(node.nodes[0] if node.nodes else node)
 
     def on_article_node_pressed(self, node: ButtonTreeViewNode) -> None:
         """Consolidate handling of all simple article nodes."""
@@ -159,27 +185,12 @@ class TreeViewManager:
 
         article_title = ARTICLE_VIEW_STATE_TO_TITLE_MAP[view_state]
         logger.info(f"Article node pressed: Reading '{article_title.name}'.")
-        self._main_screen.read_article_as_comic_book(article_title, view_state)
+        self._read_article_func(article_title, view_state)
 
     @staticmethod
     def _get_view_state_for_node_text(node_text: str) -> ViewStates | None:
         clean_text = get_clean_text_without_extra(node_text)
         return NODE_TEXT_TO_VIEW_STATE_MAP.get(clean_text)
-
-    def on_title_row_button_pressed(self, button: Button) -> None:
-        fanta_info = button.parent.fanta_info
-        self._main_screen.fanta_info = fanta_info
-        self._main_screen.set_title()
-        self._view_state_manager.update_view_for_node_with_title(ViewStates.ON_TITLE_NODE)
-
-        if isinstance(
-            button.parent.parent_node,
-            (TagStoryGroupTreeViewNode, TagGroupStoryGroupTreeViewNode),
-        ):
-            self._main_screen.set_tag_goto_page_checkbox(
-                button.parent.parent_node.tag,
-                fanta_info.comic_book_info.get_title_str(),
-            )
 
     def on_title_search_box_pressed(self, instance: TitleSearchBoxTreeViewNode) -> None:
         logger.debug(f"Title search box pressed: {instance}.")
@@ -208,7 +219,7 @@ class TreeViewManager:
             self._view_state_manager.update_view_for_node(
                 ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET
             )
-        elif self._update_title(title_str):
+        elif self._update_title_func(title_str):
             self._view_state_manager.update_view_for_node_with_title(
                 ViewStates.ON_TITLE_SEARCH_BOX_NODE
             )
@@ -271,35 +282,15 @@ class TreeViewManager:
             self._view_state_manager.update_view_for_node(
                 ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
             )
-        elif self._update_title(title_str):
+        elif self._update_title_func(title_str):
             self._view_state_manager.update_view_for_node_with_title(
                 ViewStates.ON_TAG_SEARCH_BOX_NODE
             )
-            self._main_screen.set_tag_goto_page_checkbox(instance.get_current_tag(), title_str)
+            self._set_tag_goto_page_checkbox_func(instance.get_current_tag(), title_str)
         else:
             self._view_state_manager.update_view_for_node(
                 ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
             )
-
-    def _update_title(self, title_str: str) -> bool:
-        logger.debug(f'Update title: "{title_str}".')
-        assert title_str != ""
-
-        title_str = ComicBookInfo.get_title_str_from_display_title(title_str)
-
-        if title_str not in ALL_FANTA_COMIC_BOOK_INFO:
-            logger.debug(f'Update title: Not configured yet: "{title_str}".')
-            return False
-
-        next_fanta_info = ALL_FANTA_COMIC_BOOK_INFO[title_str]
-        if next_fanta_info.series_name == SERIES_EXTRAS:
-            logger.debug(f'Title is in EXTRA series: "{title_str}".')
-            return False
-
-        self._main_screen.fanta_info = next_fanta_info
-        self._main_screen.set_title()
-
-        return True
 
     @staticmethod
     def _get_view_state_from_node(

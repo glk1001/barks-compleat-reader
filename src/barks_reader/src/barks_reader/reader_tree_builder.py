@@ -380,7 +380,7 @@ class ReaderTreeBuilder:
             if title_str in ALL_FANTA_COMIC_BOOK_INFO:
                 title_info = ALL_FANTA_COMIC_BOOK_INFO[title_str]
                 node = TitleTreeViewNode.create_from_fanta_info(
-                    title_info, self._main_screen.tree_view_manager.on_title_row_button_pressed
+                    title_info, self._main_screen.on_title_row_button_pressed
                 )
                 tree.add_node(node, parent=parent_node)
 
@@ -423,7 +423,7 @@ class ReaderTreeBuilder:
     ) -> Generator[None, None, None]:
         for i, title_info in enumerate(title_info_list):
             node = TitleTreeViewNode.create_from_fanta_info(
-                title_info, self._main_screen.tree_view_manager.on_title_row_button_pressed
+                title_info, self._main_screen.on_title_row_button_pressed
             )
             tree.add_node(node, parent=parent_node)
 

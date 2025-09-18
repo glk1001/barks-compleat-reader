@@ -18,6 +18,7 @@ from barks_fantagraphics.barks_titles import (
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
     ALL_LISTS,
+    SERIES_EXTRAS,
     FantaComicBookInfo,
 )
 from barks_fantagraphics.title_search import BarksTitleSearch
@@ -57,6 +58,8 @@ from barks_reader.reader_ui_classes import (
     ButtonTreeViewNode,
     LoadingDataPopup,
     ReaderTreeBuilderEventDispatcher,
+    TagGroupStoryGroupTreeViewNode,
+    TagStoryGroupTreeViewNode,
     TitleTreeViewNode,
     set_kivy_busy_cursor,
     set_kivy_normal_cursor,
@@ -181,7 +184,14 @@ class MainScreen(BoxLayout, Screen):
         )
         self.view_state_manager.update_background_views(ViewStates.PRE_INIT)
 
-        self.tree_view_manager = TreeViewManager(self, background_views, self.view_state_manager)
+        self.tree_view_manager = TreeViewManager(
+            background_views,
+            self.view_state_manager,
+            self.tree_view_screen,
+            self._update_title_from_tree_view,
+            self._read_article_as_comic_book,
+            self._set_tag_goto_page_checkbox,
+        )
 
         self._set_action_bar_icons(self._reader_settings.sys_file_paths)
 
@@ -369,9 +379,25 @@ class MainScreen(BoxLayout, Screen):
         self.tree_view_screen.open_all_parent_nodes(year_nodes)
 
         title_node = find_tree_view_title_node(year_nodes, image_info.from_title)
-        self._goto_node(title_node, scroll_to=True)
+        self.tree_view_manager.goto_node(title_node, scroll_to=True)
 
         self._title_row_selected(title_fanta_info, image_info.filename)
+
+    def on_title_row_button_pressed(self, button: Button) -> None:
+        fanta_info: FantaComicBookInfo = button.parent.fanta_info
+
+        self.fanta_info = fanta_info
+        self.set_title()
+        self.view_state_manager.update_view_for_node_with_title(ViewStates.ON_TITLE_NODE)
+
+        if isinstance(
+            button.parent.parent_node,
+            (TagStoryGroupTreeViewNode, TagGroupStoryGroupTreeViewNode),
+        ):
+            self._set_tag_goto_page_checkbox(
+                button.parent.parent_node.tag,
+                fanta_info.comic_book_info.get_title_str(),
+            )
 
     @staticmethod
     def _get_year_range_from_info(fanta_info: FantaComicBookInfo) -> None | tuple[int, int]:
@@ -382,17 +408,6 @@ class MainScreen(BoxLayout, Screen):
                 return year_range
 
         return None
-
-    def _goto_node(self, node: TreeViewNode, scroll_to: bool = False) -> None:
-        def show_node(n: TreeViewNode) -> None:
-            self.tree_view_screen.select_node(n)
-            if scroll_to:
-                self.scroll_to_node(n)
-
-        Clock.schedule_once(lambda _dt, item=node: show_node(item), 0)
-
-    def scroll_to_node(self, node: TreeViewNode) -> None:
-        Clock.schedule_once(lambda _dt: self.tree_view_screen.scroll_to_node(node), 0)
 
     @staticmethod
     def _get_fanta_info(title: Titles) -> FantaComicBookInfo:
@@ -411,21 +426,31 @@ class MainScreen(BoxLayout, Screen):
             ViewStates.ON_TITLE_NODE, title_str=self.fanta_info.comic_book_info.get_title_str()
         )
 
-    def update_view_for_node_with_title(self, view_state: ViewStates) -> None:
-        self.view_state_manager.update_view_for_node(view_state)
-
-    def update_view_for_node(
-        self,
-        view_state: ViewStates,
-        **args: str | TagGroups | Tags | None,
-    ) -> None:
-        self.view_state_manager.update_view_for_node(view_state, **args)
-
     def set_title(self, title_image_file: Path | None = None) -> None:
         self.view_state_manager.set_title(self.fanta_info, title_image_file)
 
         self._set_goto_page_checkbox()
         self._set_use_overrides_checkbox()
+
+    def _update_title_from_tree_view(self, title_str: str) -> bool:
+        logger.debug(f'Update title: "{title_str}".')
+        assert title_str != ""
+
+        title_str = ComicBookInfo.get_title_str_from_display_title(title_str)
+
+        if title_str not in ALL_FANTA_COMIC_BOOK_INFO:
+            logger.debug(f'Update title: Not configured yet: "{title_str}".')
+            return False
+
+        next_fanta_info = ALL_FANTA_COMIC_BOOK_INFO[title_str]
+        if next_fanta_info.series_name == SERIES_EXTRAS:
+            logger.debug(f'Title is in EXTRA series: "{title_str}".')
+            return False
+
+        self.fanta_info = next_fanta_info
+        self.set_title()
+
+        return True
 
     def _set_use_overrides_checkbox(self) -> None:
         title = self.fanta_info.comic_book_info.title
@@ -554,7 +579,7 @@ class MainScreen(BoxLayout, Screen):
 
         return self.bottom_title_view_screen.goto_page_num
 
-    def set_tag_goto_page_checkbox(self, tag: Tags | TagGroups, title_str: str) -> None:
+    def _set_tag_goto_page_checkbox(self, tag: Tags | TagGroups, title_str: str) -> None:
         logger.debug(f'Setting tag goto page for ({tag.value}, "{title_str}").')
 
         if type(tag) is Tags:
@@ -589,7 +614,7 @@ class MainScreen(BoxLayout, Screen):
             self._json_settings_manager.save_last_selected_node_path(selected_node_path)
             logger.debug(f'Settings: Saved last selected node "{selected_node_path}".')
 
-    def read_article_as_comic_book(self, article_title: Titles, view_state: ViewStates) -> None:
+    def _read_article_as_comic_book(self, article_title: Titles, view_state: ViewStates) -> None:
         self._read_comic_view_state = view_state
 
         page_to_first_goto = "1"
@@ -633,8 +658,8 @@ class MainScreen(BoxLayout, Screen):
         if isinstance(saved_node, ButtonTreeViewNode):
             saved_node.trigger_action()
         elif isinstance(saved_node, TitleTreeViewNode):
-            self.tree_view_manager.on_title_row_button_pressed(saved_node.ids.num_label)
-            self.scroll_to_node(saved_node)
+            self.on_title_row_button_pressed(saved_node.ids.num_label)
+            self.tree_view_manager.scroll_to_node(saved_node)
 
     def on_intro_compleat_barks_reader_pressed(self, _button: Button) -> None:
         self._screen_switchers.switch_to_intro_compleat_barks_reader()
