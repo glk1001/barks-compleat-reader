@@ -104,7 +104,7 @@ class ReaderScreenManager:
         self._screen_manager.current = COMIC_BOOK_READER_SCREEN
 
     def _close_comic_book_reader(self) -> None:
-        self._reader_screens.main_screen.comic_closed()
+        self._reader_screens.main_screen.on_comic_closed()
 
         self._screen_manager.transition = self._get_next_main_screen_transition()
         self._screen_manager.current = MAIN_READER_SCREEN
@@ -113,7 +113,7 @@ class ReaderScreenManager:
         self._screen_manager.current = INTRO_COMPLEAT_BARKS_READER_SCREEN
 
     def _close_intro_compleat_barks_reader(self) -> None:
-        self._reader_screens.main_screen.intro_compleat_barks_reader_closed()
+        self._reader_screens.main_screen.on_intro_compleat_barks_reader_closed()
 
         self._screen_manager.transition = self._get_next_main_screen_transition()
         self._screen_manager.current = MAIN_READER_SCREEN

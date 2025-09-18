@@ -149,7 +149,7 @@ class BarksReaderApp(App):
         root = self._build_screens()
 
         logger.debug("Building the main tree view...")
-        self._main_screen.start_tree_build()
+        self._main_screen.build_tree_view()
 
         self._finalize_window_setup()
 

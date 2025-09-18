@@ -33,12 +33,9 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import Screen
 from loguru import logger
 
+from barks_reader.app_initializer import AppInitializer
 from barks_reader.background_views import BackgroundViews, ViewStates
 from barks_reader.comic_reader_manager import ComicReaderManager
-from barks_reader.fantagraphics_volumes import (
-    TooManyArchiveFilesError,
-    WrongFantagraphicsVolumeError,
-)
 from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
 from barks_reader.random_title_images import ImageInfo, RandomTitleImages
 from barks_reader.reader_consts_and_types import (
@@ -47,20 +44,13 @@ from barks_reader.reader_consts_and_types import (
     COMIC_PAGE_ONE,
 )
 from barks_reader.reader_formatter import get_action_bar_title
-from barks_reader.reader_settings import FantaVolumesState
-from barks_reader.reader_tree_view_utils import (
-    find_tree_view_title_node,
-    get_tree_view_node_id_text,
-    get_tree_view_node_path,
-)
+from barks_reader.reader_tree_view_utils import find_tree_view_title_node, get_tree_view_node_path
 from barks_reader.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
-    ButtonTreeViewNode,
     LoadingDataPopup,
     ReaderTreeBuilderEventDispatcher,
     TagGroupStoryGroupTreeViewNode,
     TagStoryGroupTreeViewNode,
-    TitleTreeViewNode,
     set_kivy_busy_cursor,
     set_kivy_normal_cursor,
 )
@@ -70,7 +60,7 @@ from barks_reader.reader_utils import (
 )
 from barks_reader.special_overrides_handler import SpecialFantaOverrides
 from barks_reader.tree_view_manager import TreeViewManager
-from barks_reader.user_error_handler import ErrorTypes, UserErrorHandler
+from barks_reader.user_error_handler import UserErrorHandler
 from barks_reader.view_state_manager import ImageThemesChange, ImageThemesToUse, ViewStateManager
 
 if TYPE_CHECKING:
@@ -83,7 +73,6 @@ if TYPE_CHECKING:
     from kivy._clock import ClockEvent
     from kivy.factory import Factory
     from kivy.uix.button import Button
-    from kivy.uix.treeview import TreeViewNode
     from kivy.uix.widget import Widget
 
     from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
@@ -135,11 +124,6 @@ class MainScreen(BoxLayout, Screen):
 
         self._comics_database = comics_database
         self._reader_settings = reader_settings
-        self._user_error_handler = UserErrorHandler(
-            reader_settings,
-            screen_switchers.switch_to_settings,
-        )
-        self._fanta_volumes_state: FantaVolumesState = FantaVolumesState.VOLUMES_NOT_SET
         self._screen_switchers = screen_switchers
         self.title_lists: dict[str, list[FantaComicBookInfo]] = (
             filtered_title_lists.get_title_lists()
@@ -158,14 +142,15 @@ class MainScreen(BoxLayout, Screen):
         self._loading_data_popup_image_event: ClockEvent | None = None
 
         self.reader_tree_events = reader_tree_events
-        self.reader_tree_events.bind(on_finished_building_event=self._on_tree_build_finished)
+
+        user_error_handler = UserErrorHandler(reader_settings, screen_switchers.switch_to_settings)
 
         self._comic_reader_manager = ComicReaderManager(
             self._comics_database,
             self._reader_settings,
             self._json_settings_manager,
             self.tree_view_screen,
-            self._user_error_handler,
+            user_error_handler,
         )
         self._read_comic_view_state: ViewStates | None = None
 
@@ -181,6 +166,7 @@ class MainScreen(BoxLayout, Screen):
             self.tree_view_screen,
             self.bottom_title_view_screen,
             self.fun_image_view_screen,
+            self._on_views_updated,
         )
         self.view_state_manager.update_background_views(ViewStates.PRE_INIT)
 
@@ -209,6 +195,21 @@ class MainScreen(BoxLayout, Screen):
             active=self.on_checkbox_custom_image_types_changed
         )
         self.fun_image_view_screen.on_goto_title_func = self.on_goto_fun_view_title
+
+        self._app_initializer = AppInitializer(
+            self._reader_settings,
+            user_error_handler,
+            self._comic_reader_manager,
+            self._json_settings_manager,
+            self.view_state_manager,
+            self.tree_view_manager,
+            self.tree_view_screen,
+            self.loading_data_popup,
+            self.on_title_row_button_pressed,
+        )
+        self.reader_tree_events.bind(
+            on_finished_building_event=self._app_initializer.on_tree_build_finished
+        )
 
     def fonts_updated(self, font_manager: FontManager) -> None:
         self.app_title = get_action_bar_title(font_manager, APP_TITLE)
@@ -268,111 +269,19 @@ class MainScreen(BoxLayout, Screen):
             self._json_settings_manager.save_last_selected_node_path(selected_node_path)
             logger.debug(f'Settings: Saved last selected node "{selected_node_path}".')
 
-    def start_tree_build(self) -> None:
-        """Kicks off the asynchronous build of the TreeView."""
-        Clock.schedule_once(lambda _dt: self.loading_data_popup.open(), 0)
-
+    def build_tree_view(self) -> None:
         # Put import here to avoid circular dependency.
-        from barks_reader.reader_tree_builder import ReaderTreeBuilder  # noqa: PLC0415
+        from barks_reader.reader_tree_builder import (  # noqa: PLC0415
+            ReaderTreeBuilder,
+        )
 
         tree_builder = ReaderTreeBuilder(self)
         self.year_range_nodes = tree_builder.chrono_year_range_nodes
-        Clock.schedule_once(lambda _dt: tree_builder.build_main_screen_tree(), 0)
+        self._app_initializer.start(tree_builder, self._on_tree_build_finished)
 
-    def _on_tree_build_finished(self, _instance: Widget) -> None:
-        logger.debug("Received the 'on_finished_building_event' - dismiss the loading popup.")
-        if self._loading_data_popup_image_event:
-            self._loading_data_popup_image_event.cancel()
-
-        # Linger on the last image...
-        self.loading_data_popup.title = "All titles loaded!"
+    def _on_tree_build_finished(self) -> None:
+        self._loading_data_popup_image_event.cancel()
         set_kivy_normal_cursor()
-        Clock.schedule_once(lambda _dt: self.loading_data_popup.dismiss(), 1)
-
-        self._finished_building()
-
-    def _finished_building(self) -> None:
-        self._fanta_volumes_state = self._get_fanta_volumes_state()
-        logger.debug(f"_fanta_volumes_state = {self._fanta_volumes_state}.")
-
-        self.view_state_manager.update_background_views(ViewStates.INITIAL)
-
-        if (
-            self._fanta_volumes_state
-            in [FantaVolumesState.VOLUMES_EXIST, FantaVolumesState.VOLUMES_NOT_NEEDED]
-            and not self._init_comic_book_data()
-        ):
-            return
-
-        if self._reader_settings.goto_saved_node_on_start:
-            saved_node_path = self._json_settings_manager.get_last_selected_node_path()
-            if saved_node_path:
-                self._goto_saved_node(saved_node_path)
-
-    def _goto_saved_node(self, saved_node_path: list[str]) -> None:
-        logger.debug(f'Looking for saved node "{saved_node_path}"...')
-        saved_node = self.tree_view_screen.find_node_by_path(saved_node_path)
-        if saved_node:
-            self._setup_and_selected_saved_node(saved_node)
-
-    def _setup_and_selected_saved_node(self, saved_node: TreeViewNode) -> None:
-        logger.debug(
-            f'Selecting and setting up start node "{get_tree_view_node_id_text(saved_node)}".',
-        )
-
-        self.tree_view_screen.select_node(saved_node)
-
-        if isinstance(saved_node, ButtonTreeViewNode):
-            saved_node.trigger_action()
-        elif isinstance(saved_node, TitleTreeViewNode):
-            self.on_title_row_button_pressed(saved_node.ids.num_label)
-            self.tree_view_manager.scroll_to_node(saved_node)
-
-    def _get_fanta_volumes_state(self) -> FantaVolumesState:
-        volumes_state = self._reader_settings.get_fantagraphics_volumes_state()
-        if volumes_state in [FantaVolumesState.VOLUMES_EXIST, FantaVolumesState.VOLUMES_NOT_NEEDED]:
-            return volumes_state
-
-        error_type = (
-            ErrorTypes.FantagraphicsVolumeRootNotSet
-            if volumes_state == FantaVolumesState.VOLUMES_NOT_SET
-            else ErrorTypes.FantagraphicsVolumeRootNotFound
-        )
-
-        def _on_error_popup_closed(fanta_volumes_missing_msg: str) -> None:
-            self.tree_view_screen.main_files_not_loaded_msg = fanta_volumes_missing_msg
-            self.tree_view_screen.main_files_not_loaded = True
-
-        self._user_error_handler.handle_error(
-            error_type,
-            None,
-            _on_error_popup_closed,
-        )
-
-        return volumes_state
-
-    def _init_comic_book_data(self) -> bool:
-        try:
-            self._comic_reader_manager.init_comic_book_data()
-        except (WrongFantagraphicsVolumeError, TooManyArchiveFilesError) as e:
-
-            def _on_error_popup_closed(wrong_fanta_volumes_msg: str) -> None:
-                self.tree_view_screen.main_files_not_loaded_msg = wrong_fanta_volumes_msg
-                self.tree_view_screen.main_files_not_loaded = True
-
-            error_type = (
-                ErrorTypes.WrongFantagraphicsVolume
-                if type(e) is WrongFantagraphicsVolumeError
-                else ErrorTypes.TooManyArchiveFiles
-            )
-            self._user_error_handler.handle_error(error_type, e, _on_error_popup_closed)
-
-            return False
-
-        except Exception:
-            raise
-        else:
-            return True
 
     def get_favourite_titles(self) -> list[Titles]:
         titles = read_title_list(self._reader_settings.sys_file_paths.get_favourite_titles_path())
@@ -393,6 +302,9 @@ class MainScreen(BoxLayout, Screen):
 
     def on_action_bar_pressed(self, button: Button) -> None:
         pass
+
+    def _on_views_updated(self) -> None:
+        self.lower_title_available = self.view_state_manager.lower_title_available
 
     def on_goto_top_view_title(self) -> None:
         self._goto_chrono_title(self.view_state_manager.get_top_view_image_info())
@@ -415,14 +327,14 @@ class MainScreen(BoxLayout, Screen):
     def on_intro_compleat_barks_reader_pressed(self, _button: Button) -> None:
         self._screen_switchers.switch_to_intro_compleat_barks_reader()
 
-    def intro_compleat_barks_reader_closed(self) -> None:
+    def on_intro_compleat_barks_reader_closed(self) -> None:
         self.view_state_manager.update_view_for_node(ViewStates.ON_INTRO_NODE)
 
     def on_title_row_button_pressed(self, button: Button) -> None:
         fanta_info: FantaComicBookInfo = button.parent.fanta_info
 
         self.fanta_info = fanta_info
-        self.set_title()
+        self._set_title()
         self.view_state_manager.update_view_for_node_with_title(ViewStates.ON_TITLE_NODE)
 
         if isinstance(
@@ -456,12 +368,12 @@ class MainScreen(BoxLayout, Screen):
         title_image_file: Path,
     ) -> None:
         self.fanta_info = new_fanta_info
-        self.set_title(title_image_file)
+        self._set_title(title_image_file)
         self.view_state_manager.update_background_views(
             ViewStates.ON_TITLE_NODE, title_str=self.fanta_info.comic_book_info.get_title_str()
         )
 
-    def set_title(self, title_image_file: Path | None = None) -> None:
+    def _set_title(self, title_image_file: Path | None = None) -> None:
         self.view_state_manager.set_title(self.fanta_info, title_image_file)
 
         self._set_goto_page_checkbox()
@@ -483,7 +395,7 @@ class MainScreen(BoxLayout, Screen):
             return False
 
         self.fanta_info = next_fanta_info
-        self.set_title()
+        self._set_title()
 
         return True
 
@@ -536,34 +448,11 @@ class MainScreen(BoxLayout, Screen):
             )
             return
 
-        if self._fanta_volumes_state in [
-            FantaVolumesState.VOLUMES_MISSING,
-            FantaVolumesState.VOLUMES_NOT_SET,
-        ]:
-            reason = (
-                "Fantagraphics Directory Not Set"
-                if self._fanta_volumes_state == FantaVolumesState.VOLUMES_NOT_SET
-                else "Fantagraphics Directory Not Found"
-            )
-            error_type = (
-                ErrorTypes.FantagraphicsVolumeRootNotSet
-                if self._fanta_volumes_state == FantaVolumesState.VOLUMES_NOT_SET
-                else ErrorTypes.FantagraphicsVolumeRootNotFound
-            )
+        volumes_state_ok, err_msg = self._app_initializer.is_fanta_volumes_state_ok()
+        if not volumes_state_ok:
             logger.warning(
                 f'Image "{self.bottom_title_view_screen.title_inset_image_source}"'
-                f" pressed. But {reason}."
-            )
-
-            def _on_error_popup_closed(fanta_volumes_missing_msg: str) -> None:
-                self.tree_view_screen.main_files_not_loaded_msg = fanta_volumes_missing_msg
-                self.tree_view_screen.main_files_not_loaded = True
-
-            self._user_error_handler.handle_error(
-                error_type,
-                None,
-                _on_error_popup_closed,
-                f"Cannot Load Comic: {reason}",
+                f" pressed. But {err_msg}."
             )
             return
 
@@ -618,7 +507,7 @@ class MainScreen(BoxLayout, Screen):
             self.bottom_title_view_screen.use_overrides_active,
         )
 
-    def comic_closed(self) -> None:
+    def on_comic_closed(self) -> None:
         if self._read_comic_view_state is not None:
             self.view_state_manager.update_view_for_node(self._read_comic_view_state)
             self._read_comic_view_state = None

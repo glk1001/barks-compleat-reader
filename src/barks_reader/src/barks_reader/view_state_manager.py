@@ -11,6 +11,7 @@ from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO
 from barks_reader.reader_formatter import get_clean_text_without_extra
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
     from barks_fantagraphics.barks_tags import TagGroups, Tags
@@ -43,12 +44,14 @@ class ViewStateManager:
         tree_view_screen: TreeViewScreen,
         bottom_title_view_screen: BottomTitleViewScreen,
         fun_image_view_screen: FunImageViewScreen,
+        on_views_updated_func: Callable[[], None],
     ) -> None:
         self._reader_settings = reader_settings
         self._background_views = background_views
         self._tree_view_screen = tree_view_screen
         self._bottom_title_view_screen = bottom_title_view_screen
         self._fun_image_view_screen = fun_image_view_screen
+        self._on_views_updated_func = on_views_updated_func
 
         # Take ownership of the view-specific state
         self._top_view_image_info: ImageInfo = ImageInfo()
@@ -155,6 +158,9 @@ class ViewStateManager:
         # Reset the title image file now that we've used it. This makes sure we can get
         # a random image next time around.
         self._background_views.set_bottom_view_title_image_file(None)
+
+        assert self._on_views_updated_func
+        self._on_views_updated_func()
 
     def set_title(
         self, fanta_info: FantaComicBookInfo, title_image_file: Path | None = None
