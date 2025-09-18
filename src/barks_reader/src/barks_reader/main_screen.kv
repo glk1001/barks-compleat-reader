@@ -9,6 +9,7 @@
     height: dp(20)
     spacing: dp(10)
     label_text: ""
+    theme_enum: None  # property to hold the ImageThemes enum
     active: True
     CheckBox:
         size_hint_x: None
@@ -16,7 +17,7 @@
         active: self.parent.active
         on_active:
             self.parent.active = self.active
-            app._main_screen.on_checkbox_changed(self.parent.label_text, self.active)
+            app._main_screen.on_checkbox_changed(self.parent)
     Label:
         text: self.parent.label_text
         bold: True

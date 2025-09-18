@@ -1,3 +1,5 @@
+#: import ImageThemes barks_reader.background_views.ImageThemes
+
 #:set fun_options_border_margin_x dp(2)
 #:set fun_options_border_margin_y dp(1)
 
@@ -152,36 +154,47 @@
                 CheckBoxRow:
                     id: check_box_ai_image_type
                     label_text: 'AI'
+                    theme_enum: ImageThemes.AI
                 CheckBoxRow:
                     id: check_box_bw_image_type
                     label_text: "Black and White"
+                    theme_enum: ImageThemes.BLACK_AND_WHITE
                 CheckBoxRow:
                     id: check_box_censorship_image_type
                     label_text: "Censorship"
+                    theme_enum: ImageThemes.CENSORSHIP
                 CheckBoxRow:
                     id: check_box_classics_image_type
                     label_text: "Classics"
+                    theme_enum: ImageThemes.CLASSICS
                 CheckBoxRow:
                     id: check_box_faves_image_type
                     label_text: 'Faves'
+                    theme_enum: ImageThemes.FAVOURITES
                 CheckBoxRow:
                     id: check_box_insets_image_type
                     label_text: "Insets"
+                    theme_enum: ImageThemes.INSETS
                 CheckBoxRow:
                     id: check_box_silhouettes_image_type
                     label_text: "Silhouettes"
+                    theme_enum: ImageThemes.SILHOUETTES
                 CheckBoxRow:
                     id: check_box_splash_image_type
                     label_text: 'Splash'
+                    theme_enum: ImageThemes.SPLASHES
                 CheckBoxRow:
                     id: check_box_40s_image_type
                     label_text: "40's"
+                    theme_enum: ImageThemes.FORTIES
                 CheckBoxRow:
                     id: check_box_50s_image_type
                     label_text: "50's"
+                    theme_enum: ImageThemes.FIFTIES
                 CheckBoxRow:
                     id: check_box_60s_image_type
                     label_text: "60's"
+                    theme_enum: ImageThemes.SIXTIES
 
             # Spacer to stop BoxLayout centering the above widgets.
             Widget:

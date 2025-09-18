@@ -83,6 +83,7 @@ if TYPE_CHECKING:
 
     # noinspection PyProtectedMember
     from kivy._clock import ClockEvent
+    from kivy.factory import Factory
     from kivy.uix.button import Button
     from kivy.uix.treeview import TreeViewNode
     from kivy.uix.widget import Widget
@@ -603,32 +604,11 @@ class MainScreen(BoxLayout, Screen):
             None if not use_custom_images else self._bottom_view_fun_custom_image_themes
         )
 
-    def on_checkbox_changed(self, label_text: str, active: bool) -> None:
-        label_to_type_dict = {
-            "AI": ImageThemes.AI,
-            "Black and White": ImageThemes.BLACK_AND_WHITE,
-            "Censorship": ImageThemes.CENSORSHIP,
-            "Classics": ImageThemes.CLASSICS,
-            "Faves": ImageThemes.FAVOURITES,
-            "Insets": ImageThemes.INSETS,
-            "Silhouettes": ImageThemes.SILHOUETTES,
-            "Splash": ImageThemes.SPLASHES,
-            "40's": ImageThemes.FORTIES,
-            "50's": ImageThemes.FIFTIES,
-            "60's": ImageThemes.SIXTIES,
-        }
-        if label_text not in label_to_type_dict:
-            logger.debug(f'Check box changed: "{label_text}" not found.')
+    def on_checkbox_changed(self, checkbox_row: Factory.CheckBoxRow) -> None:
+        if checkbox_row.active:
+            self._bottom_view_fun_custom_image_themes.add(checkbox_row.theme_enum)
         else:
-            logger.debug(
-                f"Check box changed:"
-                f' "{label_text}" = {label_to_type_dict[label_text]}, active = {active}.'
-            )
-
-        if active:
-            self._bottom_view_fun_custom_image_themes.add(label_to_type_dict[label_text])
-        else:
-            self._bottom_view_fun_custom_image_themes.discard(label_to_type_dict[label_text])
+            self._bottom_view_fun_custom_image_themes.discard(checkbox_row.theme_enum)
 
     def fun_view_options_button_pressed(self) -> None:
         self.fun_image_view_screen.fun_view_options_enabled = (
