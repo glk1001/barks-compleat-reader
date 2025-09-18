@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 
     from barks_reader.reader_settings import ReaderSettings
+    from barks_reader.special_overrides_handler import SpecialFantaOverrides
 
 OPENING_TITLE_ANIMATION_DURATION = 4
 
@@ -59,10 +60,18 @@ class BottomTitleViewScreen(FloatLayout):
         super().__init__(**kwargs)
         self._reader_settings = reader_settings
         self._formatter = ReaderFormatter()
+        self._special_fanta_overrides: SpecialFantaOverrides | None = None
+        self._fanta_info: FantaComicBookInfo | None = None
         self.is_first_use_of_reader = self._reader_settings.is_first_use_of_reader
         self.on_title_portal_image_pressed_func = None
 
+        self.ids.use_overrides_checkbox.bind(active=self._on_use_overrides_checkbox_changed)
+
+    def set_special_fanta_overrides(self, special_fanta_overrides: SpecialFantaOverrides) -> None:
+        self._special_fanta_overrides = special_fanta_overrides
+
     def set_title_view(self, fanta_info: FantaComicBookInfo) -> None:
+        self._fanta_info = fanta_info
         self.main_title_text = self._get_main_title_str(fanta_info)
         self.title_info_text = self._formatter.get_title_info(
             fanta_info,
@@ -94,6 +103,21 @@ class BottomTitleViewScreen(FloatLayout):
     def on_title_portal_image_pressed(self) -> None:
         assert self.on_title_portal_image_pressed_func is not None
         self.on_title_portal_image_pressed_func()
+
+    def _on_use_overrides_checkbox_changed(self, _instance: object, use_overrides: bool) -> None:
+        logger.debug(f"Use overrides checkbox changed: use_overrides = {use_overrides}.")
+
+        if not self._fanta_info:
+            return
+
+        self.title_inset_image_source = str(
+            self._special_fanta_overrides.get_title_page_inset_file(
+                self._fanta_info.comic_book_info.title,
+                use_overrides,
+            )
+        )
+
+        logger.debug(f"Use overrides changed: inset source = '{self.title_inset_image_source}'.")
 
     @staticmethod
     def _get_main_title_str(fanta_info: FantaComicBookInfo) -> str:

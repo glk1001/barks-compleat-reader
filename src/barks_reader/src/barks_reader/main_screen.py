@@ -196,13 +196,12 @@ class MainScreen(BoxLayout, Screen):
         self._set_action_bar_icons(self._reader_settings.sys_file_paths)
 
         self._special_fanta_overrides = SpecialFantaOverrides(self._reader_settings)
+
+        self.bottom_title_view_screen.set_special_fanta_overrides(self._special_fanta_overrides)
         self.bottom_title_view_screen.on_title_portal_image_pressed_func = (
             self.on_title_portal_image_pressed
         )
-        # TODO: push bind down
-        self.bottom_title_view_screen.ids.use_overrides_checkbox.bind(
-            active=self.on_use_overrides_checkbox_changed
-        )
+
         self.fun_image_view_screen.ids.checkbox_all_image_types.bind(
             active=self.on_checkbox_all_image_types_changed
         )
@@ -500,21 +499,6 @@ class MainScreen(BoxLayout, Screen):
         self.bottom_title_view_screen.set_overrides_state(
             description=self._special_fanta_overrides.get_description(title),
             active=self._special_fanta_overrides.get_overrides_setting(title),
-        )
-
-    def on_use_overrides_checkbox_changed(self, _instance: Widget, use_overrides: bool) -> None:
-        logger.debug(f"Use overrides checkbox changed: use_overrides = {use_overrides}.")
-
-        self.bottom_title_view_screen.title_inset_image_source = str(
-            self._special_fanta_overrides.get_title_page_inset_file(
-                self.fanta_info.comic_book_info.title,
-                use_overrides,
-            )
-        )
-
-        logger.debug(
-            f"Use overrides changed: title_page_image_source ="
-            f' "{self.bottom_title_view_screen.title_inset_image_source}".'
         )
 
     def on_checkbox_all_image_types_changed(self, _instance: Widget, use_all_images: bool) -> None:
