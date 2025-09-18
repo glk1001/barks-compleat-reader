@@ -21,6 +21,7 @@ from barks_fantagraphics.barks_titles import (
     Titles,
 )
 from barks_fantagraphics.fanta_comics_info import (
+    ALL_FANTA_COMIC_BOOK_INFO,
     ALL_LISTS,
     SERIES_CS,
     SERIES_DDA,
@@ -154,7 +155,7 @@ class ReaderTreeBuilder:
         )
         self._main_screen.loading_data_popup.progress_bar_value = 0
 
-        tree.bind(on_node_expand=self._main_screen.on_node_expanded)
+        tree.bind(on_node_expand=self._main_screen.tree_view_manager.on_node_expanded)
 
         logger.debug("Building simple nodes...")
         self._add_intro_node(tree)
@@ -376,10 +377,10 @@ class ReaderTreeBuilder:
         for i, title in enumerate(titles):
             # TODO: Very roundabout way to get fanta info
             title_str = BARKS_TITLES[title]
-            if title_str in self._main_screen.all_fanta_titles:
-                title_info = self._main_screen.all_fanta_titles[title_str]
+            if title_str in ALL_FANTA_COMIC_BOOK_INFO:
+                title_info = ALL_FANTA_COMIC_BOOK_INFO[title_str]
                 node = TitleTreeViewNode.create_from_fanta_info(
-                    title_info, self._main_screen.on_title_row_button_pressed
+                    title_info, self._main_screen.tree_view_manager.on_title_row_button_pressed
                 )
                 tree.add_node(node, parent=parent_node)
 
@@ -422,7 +423,7 @@ class ReaderTreeBuilder:
     ) -> Generator[None, None, None]:
         for i, title_info in enumerate(title_info_list):
             node = TitleTreeViewNode.create_from_fanta_info(
-                title_info, self._main_screen.on_title_row_button_pressed
+                title_info, self._main_screen.tree_view_manager.on_title_row_button_pressed
             )
             tree.add_node(node, parent=parent_node)
 
@@ -446,7 +447,7 @@ class ReaderTreeBuilder:
             tree,
             INTRO_DON_AULT_FANTA_INTRO_TEXT,
             parent_node=intro_node,
-            on_press_handler=self._main_screen.on_article_node_pressed,
+            on_press_handler=self._main_screen.tree_view_manager.on_article_node_pressed,
         )
 
     def _add_the_stories_node(self, tree: ReaderTreeView) -> MainTreeViewNode:
@@ -465,19 +466,19 @@ class ReaderTreeBuilder:
             tree,
             APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT,
             parent_node=appendix_node,
-            on_press_handler=self._main_screen.on_article_node_pressed,
+            on_press_handler=self._main_screen.tree_view_manager.on_article_node_pressed,
         )
         self._create_and_add_simple_node(
             tree,
             APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
             parent_node=appendix_node,
-            on_press_handler=self._main_screen.on_article_node_pressed,
+            on_press_handler=self._main_screen.tree_view_manager.on_article_node_pressed,
         )
         self._create_and_add_simple_node(
             tree,
             APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
             parent_node=appendix_node,
-            on_press_handler=self._main_screen.on_article_node_pressed,
+            on_press_handler=self._main_screen.tree_view_manager.on_article_node_pressed,
         )
 
     def _add_index_node(self, tree: ReaderTreeView) -> None:
@@ -546,9 +547,11 @@ class ReaderTreeBuilder:
     ) -> TreeViewNode:
         new_node = TitleSearchBoxTreeViewNode(self._main_screen.title_search)
 
-        new_node.bind(on_title_search_box_pressed=self._main_screen.on_title_search_box_pressed)
         new_node.bind(
-            on_title_search_box_title_changed=self._main_screen.on_title_search_box_title_changed
+            on_title_search_box_pressed=self._main_screen.tree_view_manager.on_title_search_box_pressed
+        )
+        new_node.bind(
+            on_title_search_box_title_changed=self._main_screen.tree_view_manager.on_title_search_box_title_changed
         )
 
         return tree.add_node(new_node, parent=parent_node)
@@ -558,13 +561,17 @@ class ReaderTreeBuilder:
     ) -> TreeViewNode:
         new_node = TagSearchBoxTreeViewNode(self._main_screen.title_search)
 
-        new_node.bind(on_tag_search_box_pressed=self._main_screen.on_tag_search_box_pressed)
         new_node.bind(
-            on_tag_search_box_text_changed=self._main_screen.on_tag_search_box_text_changed
+            on_tag_search_box_pressed=self._main_screen.tree_view_manager.on_tag_search_box_pressed
         )
-        new_node.bind(on_tag_search_box_tag_changed=self._main_screen.on_tag_search_box_tag_changed)
         new_node.bind(
-            on_tag_search_box_title_changed=self._main_screen.on_tag_search_box_title_changed
+            on_tag_search_box_text_changed=self._main_screen.tree_view_manager.on_tag_search_box_text_changed
+        )
+        new_node.bind(
+            on_tag_search_box_tag_changed=self._main_screen.tree_view_manager.on_tag_search_box_tag_changed
+        )
+        new_node.bind(
+            on_tag_search_box_title_changed=self._main_screen.tree_view_manager.on_tag_search_box_title_changed
         )
 
         return tree.add_node(new_node, parent=parent_node)
