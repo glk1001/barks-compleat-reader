@@ -16,6 +16,7 @@ from barks_fantagraphics.barks_titles import (
     Titles,
 )
 from barks_fantagraphics.fanta_comics_info import (
+    ALL_FANTA_COMIC_BOOK_INFO,
     ALL_LISTS,
     FantaComicBookInfo,
 )
@@ -136,12 +137,10 @@ class MainScreen(BoxLayout, Screen):
             screen_switchers.switch_to_settings,
         )
         self._fanta_volumes_state: FantaVolumesState = FantaVolumesState.VOLUMES_NOT_SET
-        self.filtered_title_lists: FilteredTitleLists = filtered_title_lists
         self._screen_switchers = screen_switchers
         self.title_lists: dict[str, list[FantaComicBookInfo]] = (
             filtered_title_lists.get_title_lists()
         )
-        self._title_dict: dict[str, Titles] = BARKS_TITLE_DICT
         self.title_search = BarksTitleSearch()
         self._random_title_images = RandomTitleImages(self._reader_settings)
         self.is_first_use_of_reader = self._reader_settings.is_first_use_of_reader
@@ -167,14 +166,22 @@ class MainScreen(BoxLayout, Screen):
         )
         self._read_comic_view_state: ViewStates | None = None
 
-        self.background_views = BackgroundViews(
+        background_views = BackgroundViews(
             self._reader_settings,
             self.title_lists,
             self._random_title_images,
         )
 
-        self.view_state_manager = ViewStateManager(self, self._reader_settings)
+        self.view_state_manager = ViewStateManager(
+            self._reader_settings,
+            background_views,
+            self.tree_view_screen,
+            self.bottom_title_view_screen,
+            self.fun_image_view_screen,
+        )
         self.view_state_manager.update_background_views(ViewStates.PRE_INIT)
+
+        self.tree_view_manager = TreeViewManager(self, background_views, self.view_state_manager)
 
         self._set_action_bar_icons(self._reader_settings.sys_file_paths)
 
@@ -193,8 +200,6 @@ class MainScreen(BoxLayout, Screen):
             active=self.on_checkbox_custom_image_types_changed
         )
         self.fun_image_view_screen.on_goto_title_func = self.on_goto_fun_view_title
-
-        self.tree_view_manager = TreeViewManager(self)
 
     def fonts_updated(self, font_manager: FontManager) -> None:
         self.app_title = get_action_bar_title(font_manager, APP_TITLE)
@@ -342,7 +347,7 @@ class MainScreen(BoxLayout, Screen):
         self.view_state_manager.update_background_views(ViewStates.INITIAL)
 
     def on_action_bar_change_view_images(self) -> None:
-        self._change_background_views()
+        self.view_state_manager.change_background_views()
 
     def on_action_bar_goto(self, button: Button) -> None:
         self.tree_view_screen.goto_node(button.text)
@@ -351,10 +356,10 @@ class MainScreen(BoxLayout, Screen):
         pass
 
     def on_goto_top_view_title(self) -> None:
-        self._goto_chrono_title(self._top_view_image_info)
+        self._goto_chrono_title(self.view_state_manager.get_top_view_image_info())
 
     def on_goto_fun_view_title(self) -> None:
-        self._goto_chrono_title(self._bottom_view_fun_image_info)
+        self._goto_chrono_title(self.view_state_manager.get_bottom_view_fun_image_info())
 
     def _goto_chrono_title(self, image_info: ImageInfo) -> None:
         logger.debug(f'Goto title: "{image_info.from_title}", "{image_info.filename}".')
@@ -389,10 +394,11 @@ class MainScreen(BoxLayout, Screen):
     def scroll_to_node(self, node: TreeViewNode) -> None:
         Clock.schedule_once(lambda _dt: self.tree_view_screen.scroll_to_node(node), 0)
 
-    def _get_fanta_info(self, title: Titles) -> FantaComicBookInfo:
+    @staticmethod
+    def _get_fanta_info(title: Titles) -> FantaComicBookInfo:
         # TODO: Very roundabout way to get fanta info
         title_str = BARKS_TITLES[title]
-        return self.ALL_FANTA_COMIC_BOOK_INFO[title_str]
+        return ALL_FANTA_COMIC_BOOK_INFO[title_str]
 
     def _title_row_selected(
         self,
@@ -406,33 +412,14 @@ class MainScreen(BoxLayout, Screen):
         )
 
     def update_view_for_node_with_title(self, view_state: ViewStates) -> None:
-        self.update_view_for_node(
-            view_state,
-            title_str=self.background_views.get_current_bottom_view_title(),
-        )
-
-    def _change_background_views(self) -> None:
-        logger.debug("Changing background views.")
-        logger.debug(f'Current title: "{self.background_views.get_current_bottom_view_title()}".')
-
-        self.view_state_manager.update_background_views(
-            self.background_views.get_view_state(),
-            self.background_views.get_current_category(),
-            self.background_views.get_current_year_range(),
-            self.background_views.get_current_cs_year_range(),
-            self.background_views.get_current_us_year_range(),
-            self.background_views.get_current_tag_group(),
-            self.background_views.get_current_tag(),
-            self.background_views.get_current_bottom_view_title(),
-        )
+        self.view_state_manager.update_view_for_node(view_state)
 
     def update_view_for_node(
         self,
         view_state: ViewStates,
         **args: str | TagGroups | Tags | None,
     ) -> None:
-        logger.debug(f'Updating background views for node "{view_state}".')
-        self.view_state_manager.update_background_views(view_state, **args)
+        self.view_state_manager.update_view_for_node(view_state, **args)
 
     def set_title(self, title_image_file: Path | None = None) -> None:
         self.view_state_manager.set_title(self.fanta_info, title_image_file)
@@ -571,7 +558,7 @@ class MainScreen(BoxLayout, Screen):
         logger.debug(f'Setting tag goto page for ({tag.value}, "{title_str}").')
 
         if type(tag) is Tags:
-            title = self._title_dict[ComicBookInfo.get_title_str_from_display_title(title_str)]
+            title = BARKS_TITLE_DICT[ComicBookInfo.get_title_str_from_display_title(title_str)]
             if (tag, title) not in BARKS_TAGGED_PAGES:
                 logger.debug(f'No pages for ({tag.value}, "{title_str}").')
             else:
@@ -620,7 +607,7 @@ class MainScreen(BoxLayout, Screen):
 
     def comic_closed(self) -> None:
         if self._read_comic_view_state is not None:
-            self.update_view_for_node(self._read_comic_view_state)
+            self.view_state_manager.update_view_for_node(self._read_comic_view_state)
             self._read_comic_view_state = None
 
         if not self.fanta_info:
@@ -653,4 +640,4 @@ class MainScreen(BoxLayout, Screen):
         self._screen_switchers.switch_to_intro_compleat_barks_reader()
 
     def intro_compleat_barks_reader_closed(self) -> None:
-        self.update_view_for_node(ViewStates.ON_INTRO_NODE)
+        self.view_state_manager.update_view_for_node(ViewStates.ON_INTRO_NODE)

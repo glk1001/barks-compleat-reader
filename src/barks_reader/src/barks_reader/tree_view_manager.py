@@ -23,7 +23,7 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from loguru import logger
 
-from barks_reader.background_views import ViewStates
+from barks_reader.background_views import BackgroundViews, ViewStates
 from barks_reader.reader_consts_and_types import (
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
     APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
@@ -56,10 +56,9 @@ if TYPE_CHECKING:
     from kivy.uix.button import Button
     from kivy.uix.spinner import Spinner
 
-    from barks_reader.main_screen import (
-        MainScreen,
-    )
+    from barks_reader.main_screen import MainScreen
     from barks_reader.reader_ui_classes import ReaderTreeView
+    from barks_reader.view_state_manager import ViewStateManager
 
 
 NODE_TYPE_TO_VIEW_STATE_MAP: dict[type, tuple[ViewStates, str]] = {
@@ -119,32 +118,19 @@ assert sorted(ARTICLE_VIEW_STATE_TO_TITLE_MAP.values()) == sorted(NON_COMIC_TITL
 class TreeViewManager:
     """Manages all interactions and events related to the TreeView."""
 
-    def __init__(self, main_screen: MainScreen) -> None:
+    def __init__(
+        self,
+        main_screen: MainScreen,
+        background_views: BackgroundViews,
+        view_state_manager: ViewStateManager,
+    ) -> None:
         self._main_screen = main_screen
+        self._background_views = background_views
+        self._view_state_manager = view_state_manager
         self._tree_view = main_screen.tree_view_screen.ids.reader_tree_view
 
         # Bind the tree view events to the manager's methods
         self._tree_view.bind(on_node_expand=self.on_node_expanded)
-
-    def _update_title(self, title_str: str) -> bool:
-        logger.debug(f'Update title: "{title_str}".')
-        assert title_str != ""
-
-        title_str = ComicBookInfo.get_title_str_from_display_title(title_str)
-
-        if title_str not in ALL_FANTA_COMIC_BOOK_INFO:
-            logger.debug(f'Update title: Not configured yet: "{title_str}".')
-            return False
-
-        next_fanta_info = ALL_FANTA_COMIC_BOOK_INFO[title_str]
-        if next_fanta_info.series_name == SERIES_EXTRAS:
-            logger.debug(f'Title is in EXTRA series: "{title_str}".')
-            return False
-
-        self.fanta_info = next_fanta_info
-        self._main_screen.set_title()
-
-        return True
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
         if isinstance(node, TitleTreeViewNode):
@@ -159,9 +145,7 @@ class TreeViewManager:
             raise RuntimeError(msg)
 
         logger.info(f'Updating backgrounds views for expanded node: "{new_view_state.name}".')
-        self._main_screen.view_state_manager.update_background_views(
-            new_view_state, **view_state_params
-        )
+        self._view_state_manager.update_background_views(new_view_state, **view_state_params)
 
         self._main_screen.scroll_to_node(node.nodes[0] if node.nodes else node)
 
@@ -186,7 +170,7 @@ class TreeViewManager:
         fanta_info = button.parent.fanta_info
         self._main_screen.fanta_info = fanta_info
         self._main_screen.set_title()
-        self._main_screen.update_view_for_node_with_title(ViewStates.ON_TITLE_NODE)
+        self._view_state_manager.update_view_for_node_with_title(ViewStates.ON_TITLE_NODE)
 
         if isinstance(
             button.parent.parent_node,
@@ -202,14 +186,13 @@ class TreeViewManager:
 
         if not instance.get_current_title():
             logger.debug("Have not got title search box text yet.")
-            self._main_screen.update_view_for_node(ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET)
-        elif (
-            self._main_screen.background_views.get_view_state()
-            != ViewStates.ON_TITLE_SEARCH_BOX_NODE
-        ):
+            self._view_state_manager.update_view_for_node(
+                ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET
+            )
+        elif self._background_views.get_view_state() != ViewStates.ON_TITLE_SEARCH_BOX_NODE:
             logger.debug(
                 f"Forcing title search box change:"
-                f" view state = {self._main_screen.background_views.get_view_state()},"
+                f" view state = {self._background_views.get_view_state()},"
                 f' title search box text = "{instance.get_current_title()}",'
                 f' title spinner text = "{instance.ids.title_spinner.text}"',
             )
@@ -222,24 +205,30 @@ class TreeViewManager:
         logger.debug(f'Title search box title changed: "{title_str}".')
 
         if not title_str:
-            self._main_screen.update_view_for_node(ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET)
+            self._view_state_manager.update_view_for_node(
+                ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET
+            )
         elif self._update_title(title_str):
-            self._main_screen.update_view_for_node_with_title(ViewStates.ON_TITLE_SEARCH_BOX_NODE)
+            self._view_state_manager.update_view_for_node_with_title(
+                ViewStates.ON_TITLE_SEARCH_BOX_NODE
+            )
         else:
-            self._main_screen.update_view_for_node(ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET)
+            self._view_state_manager.update_view_for_node(
+                ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET
+            )
 
     def on_tag_search_box_pressed(self, instance: TagSearchBoxTreeViewNode) -> None:
         logger.debug(f"Tag search box pressed: {instance}.")
 
         if not instance.get_current_tag_str():
             logger.debug("Have not got tag search box text yet.")
-            self._main_screen.update_view_for_node(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
-        elif (
-            self._main_screen.background_views.get_view_state() != ViewStates.ON_TAG_SEARCH_BOX_NODE
-        ):
+            self._view_state_manager.update_view_for_node(
+                ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
+            )
+        elif self._background_views.get_view_state() != ViewStates.ON_TAG_SEARCH_BOX_NODE:
             logger.debug(
                 f"Forcing tag search box change:"
-                f" view state = {self._main_screen.background_views.get_view_state()},"
+                f" view state = {self._background_views.get_view_state()},"
                 f' tag search box text = "{instance.get_current_tag_str()}",'
                 f' tag title spinner text = "{instance.ids.tag_title_spinner.text}"',
             )
@@ -249,7 +238,9 @@ class TreeViewManager:
         logger.debug(f'Tag search box text changed: text: "{text}".')
 
         if not instance.get_current_title():
-            self._main_screen.update_view_for_node(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
+            self._view_state_manager.update_view_for_node(
+                ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
+            )
 
     def on_tag_search_box_tag_changed(
         self,
@@ -262,7 +253,9 @@ class TreeViewManager:
             return
 
         if not instance.get_current_title():
-            self._main_screen.update_view_for_node(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
+            self._view_state_manager.update_view_for_node(
+                ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
+            )
 
     def on_tag_search_box_title_changed(
         self,
@@ -275,12 +268,38 @@ class TreeViewManager:
         )
 
         if not title_str:
-            self._main_screen.update_view_for_node(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
+            self._view_state_manager.update_view_for_node(
+                ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
+            )
         elif self._update_title(title_str):
-            self._main_screen.update_view_for_node_with_title(ViewStates.ON_TAG_SEARCH_BOX_NODE)
+            self._view_state_manager.update_view_for_node_with_title(
+                ViewStates.ON_TAG_SEARCH_BOX_NODE
+            )
             self._main_screen.set_tag_goto_page_checkbox(instance.get_current_tag(), title_str)
         else:
-            self._main_screen.update_view_for_node(ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET)
+            self._view_state_manager.update_view_for_node(
+                ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
+            )
+
+    def _update_title(self, title_str: str) -> bool:
+        logger.debug(f'Update title: "{title_str}".')
+        assert title_str != ""
+
+        title_str = ComicBookInfo.get_title_str_from_display_title(title_str)
+
+        if title_str not in ALL_FANTA_COMIC_BOOK_INFO:
+            logger.debug(f'Update title: Not configured yet: "{title_str}".')
+            return False
+
+        next_fanta_info = ALL_FANTA_COMIC_BOOK_INFO[title_str]
+        if next_fanta_info.series_name == SERIES_EXTRAS:
+            logger.debug(f'Title is in EXTRA series: "{title_str}".')
+            return False
+
+        self._main_screen.fanta_info = next_fanta_info
+        self._main_screen.set_title()
+
+        return True
 
     @staticmethod
     def _get_view_state_from_node(
