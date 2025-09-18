@@ -159,7 +159,9 @@ class TreeViewManager:
             raise RuntimeError(msg)
 
         logger.info(f'Updating backgrounds views for expanded node: "{new_view_state.name}".')
-        self._main_screen.update_background_views(new_view_state, **view_state_params)
+        self._main_screen.view_state_manager.update_background_views(
+            new_view_state, **view_state_params
+        )
 
         self._main_screen.scroll_to_node(node.nodes[0] if node.nodes else node)
 

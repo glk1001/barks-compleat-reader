@@ -1,0 +1,196 @@
+from __future__ import annotations
+
+from enum import Enum, auto
+from typing import TYPE_CHECKING
+
+from loguru import logger
+
+from barks_reader.background_views import ImageThemes
+from barks_reader.random_title_images import ImageInfo
+from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO
+from barks_reader.reader_formatter import get_clean_text_without_extra
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from barks_fantagraphics.barks_tags import TagGroups, Tags
+    from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+
+    from barks_reader.background_views import BackgroundViews, ViewStates
+    from barks_reader.main_screen import MainScreen
+    from barks_reader.reader_settings import ReaderSettings
+
+
+class ImageThemesToUse(Enum):
+    ALL = auto()
+    CUSTOM = auto()
+
+
+class ImageThemesChange(Enum):
+    ADD = auto()
+    DISCARD = auto()
+
+
+class ViewStateManager:
+    """Manage the visual state of the main screen's views."""
+
+    def __init__(self, main_screen: MainScreen, reader_settings: ReaderSettings) -> None:
+        self._main_screen = main_screen
+        self._reader_settings = reader_settings
+        self._background_views: BackgroundViews = self._main_screen.background_views
+
+        # Take ownership of the view-specific state
+        self._top_view_image_info: ImageInfo = ImageInfo()
+        self._bottom_view_title_image_info: ImageInfo = ImageInfo()
+        self._bottom_view_fun_image_info: ImageInfo = ImageInfo()
+        self._bottom_view_fun_image_themes: set[ImageThemes] | None = None
+        self._bottom_view_fun_custom_image_themes: set[ImageThemes] = set(ImageThemes)
+
+    def bottom_view_fun_image_themes_changed(self, themes_to_use: ImageThemesToUse) -> None:
+        if themes_to_use == ImageThemesToUse.ALL:
+            self._bottom_view_fun_image_themes = None
+        elif themes_to_use == ImageThemesToUse.CUSTOM:
+            self._bottom_view_fun_image_themes = self._bottom_view_fun_custom_image_themes
+        else:
+            msg = f'"Unimplemented ImageThemesToUse: "{themes_to_use}"'
+            raise ValueError(msg)
+
+    def bottom_view_alter_fun_image_themes(
+        self, image_theme: ImageThemes, alteration: ImageThemesChange
+    ) -> None:
+        if alteration == ImageThemesChange.ADD:
+            self._bottom_view_fun_custom_image_themes.add(image_theme)
+        else:
+            self._bottom_view_fun_custom_image_themes.discard(image_theme)
+
+    def update_background_views(
+        self,
+        tree_node: ViewStates,
+        category: str = "",
+        year_range: str = "",
+        cs_year_range: str = "",
+        us_year_range: str = "",
+        tag_group: None | TagGroups = None,
+        tag: None | Tags = None,
+        title_str: str = "",
+    ) -> None:
+        """Set the current context and update all views accordingly."""
+        self._background_views.set_current_category(category)
+        self._background_views.set_current_year_range(get_clean_text_without_extra(year_range))
+        self._background_views.set_current_cs_year_range(
+            get_clean_text_without_extra(cs_year_range),
+        )
+        self._background_views.set_current_us_year_range(
+            get_clean_text_without_extra(us_year_range),
+        )
+        self._background_views.set_current_tag_group(tag_group)
+        self._background_views.set_current_tag(tag)
+        self._background_views.set_current_bottom_view_title(title_str)
+
+        self._background_views.set_fun_image_themes(self._bottom_view_fun_image_themes)
+
+        self._background_views.set_view_state(tree_node)
+
+        self._set_views()
+
+    def _set_views(self) -> None:
+        """Update all the visual components of the main screen."""
+        self._set_top_view_image()
+        self._set_fun_view()
+        self._set_bottom_view()
+
+        self._main_screen.fun_image_view_screen.goto_title_button_active = (
+            self._main_screen.fun_image_view_screen.fun_view_from_title
+            and (self._main_screen.bottom_title_view_screen.view_title_opacity < CLOSE_TO_ZERO)
+        )
+        self._main_screen.lower_title_available = (
+            self._main_screen.fun_image_view_screen.goto_title_button_active
+        )
+
+        # Reset the title image file now that we've used it. This makes sure we can get
+        # a random image next time around.
+        self._background_views.set_bottom_view_title_image_file(None)
+
+    def set_title(
+        self, fanta_info: FantaComicBookInfo, title_image_file: Path | None = None
+    ) -> None:
+        """Public method to set the title view with new information."""
+        self._main_screen.bottom_title_view_screen.fade_in_bottom_view_title()
+
+        logger.debug(
+            f'Setting title to "{fanta_info.comic_book_info.get_title_str()}".'
+            f' Title image file is "{title_image_file}".'
+        )
+
+        title_str = fanta_info.comic_book_info.get_title_str()
+        self._background_views.set_current_bottom_view_title(title_str)
+
+        if title_image_file:
+            assert self._background_views.get_current_bottom_view_title() != ""
+            title_image_file = self._reader_settings.file_paths.get_edited_version_if_possible(
+                title_image_file
+            )[0]
+
+        self._background_views.set_bottom_view_title_image_file(title_image_file)
+        self._background_views.set_bottom_view_title_image()
+
+        self._main_screen.bottom_title_view_screen.set_title_view(fanta_info)
+
+    def _set_top_view_image(self) -> None:
+        """Set the image and properties for the top view (behind the TreeView)."""
+        logger.debug("Setting new top view.")
+
+        self._top_view_image_info = self._background_views.get_top_view_image_info()
+        self._main_screen.tree_view_screen.top_view_image_opacity = (
+            self._background_views.get_top_view_image_opacity()
+        )
+        self._main_screen.tree_view_screen.top_view_image_source = str(
+            self._top_view_image_info.filename
+        )
+        self._main_screen.tree_view_screen.top_view_image_fit_mode = (
+            self._top_view_image_info.fit_mode
+        )
+        self._main_screen.tree_view_screen.top_view_image_color = (
+            self._background_views.get_top_view_image_color()
+        )
+
+    def _set_fun_view(self) -> None:
+        """Set the image and properties for the 'fun' bottom view."""
+        logger.debug("Setting new fun view.")
+
+        self._main_screen.fun_image_view_screen.fun_view_opacity = (
+            self._background_views.get_bottom_view_fun_image_opacity()
+        )
+        self._bottom_view_fun_image_info = self._background_views.get_bottom_view_fun_image_info()
+        self._main_screen.fun_image_view_screen.fun_view_image_source = str(
+            self._bottom_view_fun_image_info.filename
+        )
+        self._main_screen.fun_image_view_screen.fun_view_image_fit_mode = (
+            self._bottom_view_fun_image_info.fit_mode
+        )
+        self._main_screen.fun_image_view_screen.fun_view_image_color = (
+            self._background_views.get_bottom_view_fun_image_color()
+        )
+        self._main_screen.fun_image_view_screen.fun_view_from_title = (
+            self._bottom_view_fun_image_info.from_title is not None
+        )
+
+    def _set_bottom_view(self) -> None:
+        """Set the image and properties for the title information bottom view."""
+        logger.debug("Setting new bottom view.")
+
+        self._main_screen.bottom_title_view_screen.view_title_opacity = (
+            self._background_views.get_bottom_view_title_opacity()
+        )
+        self._bottom_view_title_image_info = (
+            self._background_views.get_bottom_view_title_image_info()
+        )
+        self._main_screen.bottom_title_view_screen.view_title_image_source = str(
+            self._bottom_view_title_image_info.filename
+        )
+        self._main_screen.bottom_title_view_screen.view_title_image_fit_mode = (
+            self._bottom_view_title_image_info.fit_mode
+        )
+        self._main_screen.bottom_title_view_screen.view_title_image_color = (
+            self._background_views.get_bottom_view_title_image_color()
+        )

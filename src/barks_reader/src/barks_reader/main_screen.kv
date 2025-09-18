@@ -17,7 +17,7 @@
         active: self.parent.active
         on_active:
             self.parent.active = self.active
-            app._main_screen.on_checkbox_changed(self.parent)
+            app._main_screen.on_checkbox_row_changed(self.parent)
     Label:
         text: self.parent.label_text
         bold: True

@@ -31,27 +31,20 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import Screen
 from loguru import logger
 
-from barks_reader.background_views import BackgroundViews, ImageThemes, ViewStates
+from barks_reader.background_views import BackgroundViews, ViewStates
 from barks_reader.comic_reader_manager import ComicReaderManager
 from barks_reader.fantagraphics_volumes import (
     TooManyArchiveFilesError,
     WrongFantagraphicsVolumeError,
 )
 from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
-from barks_reader.random_title_images import (
-    ImageInfo,
-    RandomTitleImages,
-)
+from barks_reader.random_title_images import ImageInfo, RandomTitleImages
 from barks_reader.reader_consts_and_types import (
     APP_TITLE,
     CHRONO_YEAR_RANGES,
-    CLOSE_TO_ZERO,
     COMIC_PAGE_ONE,
 )
-from barks_reader.reader_formatter import (
-    get_action_bar_title,
-    get_clean_text_without_extra,
-)
+from barks_reader.reader_formatter import get_action_bar_title
 from barks_reader.reader_settings import FantaVolumesState
 from barks_reader.reader_tree_view_utils import (
     find_tree_view_title_node,
@@ -74,6 +67,7 @@ from barks_reader.reader_utils import (
 from barks_reader.special_overrides_handler import SpecialFantaOverrides
 from barks_reader.tree_view_manager import TreeViewManager
 from barks_reader.user_error_handler import ErrorTypes, UserErrorHandler
+from barks_reader.view_state_manager import ImageThemesChange, ImageThemesToUse, ViewStateManager
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -173,18 +167,14 @@ class MainScreen(BoxLayout, Screen):
         )
         self._read_comic_view_state: ViewStates | None = None
 
-        self._top_view_image_info: ImageInfo = ImageInfo()
-        self._bottom_view_fun_image_info: ImageInfo = ImageInfo()
-        self._bottom_view_title_image_info: ImageInfo = ImageInfo()
-        self._bottom_view_fun_image_themes: set[ImageThemes] | None = None
-        self._bottom_view_fun_custom_image_themes: set[ImageThemes] = set(ImageThemes)
-
         self.background_views = BackgroundViews(
             self._reader_settings,
             self.title_lists,
             self._random_title_images,
         )
-        self.update_view_for_node(ViewStates.PRE_INIT)
+
+        self.view_state_manager = ViewStateManager(self, self._reader_settings)
+        self.view_state_manager.update_background_views(ViewStates.PRE_INIT)
 
         self._set_action_bar_icons(self._reader_settings.sys_file_paths)
 
@@ -280,7 +270,7 @@ class MainScreen(BoxLayout, Screen):
         self._fanta_volumes_state = self._get_fanta_volumes_state()
         logger.debug(f"_fanta_volumes_state = {self._fanta_volumes_state}.")
 
-        self.update_view_for_node(ViewStates.INITIAL)
+        self.view_state_manager.update_background_views(ViewStates.INITIAL)
 
         if (
             self._fanta_volumes_state
@@ -349,7 +339,7 @@ class MainScreen(BoxLayout, Screen):
 
     def on_action_bar_collapse(self) -> None:
         self.tree_view_screen.deselect_and_close_open_nodes()
-        self.update_view_for_node(ViewStates.INITIAL)
+        self.view_state_manager.update_background_views(ViewStates.INITIAL)
 
     def on_action_bar_change_view_images(self) -> None:
         self._change_background_views()
@@ -411,7 +401,9 @@ class MainScreen(BoxLayout, Screen):
     ) -> None:
         self.fanta_info = new_fanta_info
         self.set_title(title_image_file)
-        self.update_view_for_node_with_title(ViewStates.ON_TITLE_NODE)
+        self.view_state_manager.update_background_views(
+            ViewStates.ON_TITLE_NODE, title_str=self.fanta_info.comic_book_info.get_title_str()
+        )
 
     def update_view_for_node_with_title(self, view_state: ViewStates) -> None:
         self.update_view_for_node(
@@ -423,7 +415,7 @@ class MainScreen(BoxLayout, Screen):
         logger.debug("Changing background views.")
         logger.debug(f'Current title: "{self.background_views.get_current_bottom_view_title()}".')
 
-        self.update_background_views(
+        self.view_state_manager.update_background_views(
             self.background_views.get_view_state(),
             self.background_views.get_current_category(),
             self.background_views.get_current_year_range(),
@@ -440,125 +432,10 @@ class MainScreen(BoxLayout, Screen):
         **args: str | TagGroups | Tags | None,
     ) -> None:
         logger.debug(f'Updating background views for node "{view_state}".')
-        self.update_background_views(view_state, **args)
-
-    def update_background_views(
-        self,
-        tree_node: ViewStates,
-        category: str = "",
-        year_range: str = "",
-        cs_year_range: str = "",
-        us_year_range: str = "",
-        tag_group: None | TagGroups = None,
-        tag: None | Tags = None,
-        title_str: str = "",
-    ) -> None:
-        self.background_views.set_current_category(category)
-        self.background_views.set_current_year_range(get_clean_text_without_extra(year_range))
-        self.background_views.set_current_cs_year_range(
-            get_clean_text_without_extra(cs_year_range),
-        )
-        self.background_views.set_current_us_year_range(
-            get_clean_text_without_extra(us_year_range),
-        )
-        self.background_views.set_current_tag_group(tag_group)
-        self.background_views.set_current_tag(tag)
-        self.background_views.set_current_bottom_view_title(title_str)
-
-        self.background_views.set_fun_image_themes(self._bottom_view_fun_image_themes)
-
-        self.background_views.set_view_state(tree_node)
-
-        self._set_views()
-
-    def _set_views(self) -> None:
-        self._set_top_view_image()
-        self._set_fun_view()
-        self._set_bottom_view()
-
-        self.fun_image_view_screen.goto_title_button_active = (
-            self.fun_image_view_screen.fun_view_from_title
-            and (self.bottom_title_view_screen.view_title_opacity < CLOSE_TO_ZERO)
-        )
-        self.lower_title_available = self.fun_image_view_screen.goto_title_button_active
-
-        # Reset the title image file now that we've used it. This makes sure we can get
-        # a random image next time around.
-        self.background_views.set_bottom_view_title_image_file(None)
-
-    def _set_top_view_image(self) -> None:
-        logger.debug("Setting new top view.")
-
-        self._top_view_image_info = self.background_views.get_top_view_image_info()
-        self.tree_view_screen.top_view_image_opacity = (
-            self.background_views.get_top_view_image_opacity()
-        )
-        self.tree_view_screen.top_view_image_source = str(self._top_view_image_info.filename)
-        self.tree_view_screen.top_view_image_fit_mode = self._top_view_image_info.fit_mode
-        self.tree_view_screen.top_view_image_color = (
-            self.background_views.get_top_view_image_color()
-        )
-
-    def _set_fun_view(self) -> None:
-        logger.debug("Setting new fun view.")
-
-        self.fun_image_view_screen.fun_view_opacity = (
-            self.background_views.get_bottom_view_fun_image_opacity()
-        )
-        self._bottom_view_fun_image_info = self.background_views.get_bottom_view_fun_image_info()
-        self.fun_image_view_screen.fun_view_image_source = str(
-            self._bottom_view_fun_image_info.filename
-        )
-        self.fun_image_view_screen.fun_view_image_fit_mode = (
-            self._bottom_view_fun_image_info.fit_mode
-        )
-        self.fun_image_view_screen.fun_view_image_color = (
-            self.background_views.get_bottom_view_fun_image_color()
-        )
-        self.fun_image_view_screen.fun_view_from_title = (
-            self._bottom_view_fun_image_info.from_title is not None
-        )
-
-    def _set_bottom_view(self) -> None:
-        logger.debug("Setting new bottom view.")
-
-        self.bottom_title_view_screen.view_title_opacity = (
-            self.background_views.get_bottom_view_title_opacity()
-        )
-        self._bottom_view_title_image_info = (
-            self.background_views.get_bottom_view_title_image_info()
-        )
-        self.bottom_title_view_screen.view_title_image_source = str(
-            self._bottom_view_title_image_info.filename
-        )
-        self.bottom_title_view_screen.view_title_image_fit_mode = (
-            self._bottom_view_title_image_info.fit_mode
-        )
-        self.bottom_title_view_screen.view_title_image_color = (
-            self.background_views.get_bottom_view_title_image_color()
-        )
+        self.view_state_manager.update_background_views(view_state, **args)
 
     def set_title(self, title_image_file: Path | None = None) -> None:
-        self.bottom_title_view_screen.fade_in_bottom_view_title()
-
-        logger.debug(
-            f'Setting title to "{self.fanta_info.comic_book_info.get_title_str()}".'
-            f' Title image file is "{title_image_file}".'
-        )
-
-        title_str = self.fanta_info.comic_book_info.get_title_str()
-        self.background_views.set_current_bottom_view_title(title_str)
-
-        if title_image_file:
-            assert self.background_views.get_current_bottom_view_title() != ""
-            title_image_file = self._reader_settings.file_paths.get_edited_version_if_possible(
-                title_image_file
-            )[0]
-
-        self.background_views.set_bottom_view_title_image_file(title_image_file)
-        self.background_views.set_bottom_view_title_image()
-
-        self.bottom_title_view_screen.set_title_view(self.fanta_info)
+        self.view_state_manager.set_title(self.fanta_info, title_image_file)
 
         self._set_goto_page_checkbox()
         self._set_use_overrides_checkbox()
@@ -593,22 +470,22 @@ class MainScreen(BoxLayout, Screen):
         )
 
     def on_checkbox_all_image_types_changed(self, _instance: Widget, use_all_images: bool) -> None:
-        self._bottom_view_fun_image_themes = (
-            None if use_all_images else self._bottom_view_fun_custom_image_themes
+        self.view_state_manager.bottom_view_fun_image_themes_changed(
+            ImageThemesToUse.ALL if use_all_images else ImageThemesToUse.CUSTOM,
         )
 
     def on_checkbox_custom_image_types_changed(
         self, _instance: Widget, use_custom_images: bool
     ) -> None:
-        self._bottom_view_fun_image_themes = (
-            None if not use_custom_images else self._bottom_view_fun_custom_image_themes
+        self.view_state_manager.bottom_view_fun_image_themes_changed(
+            ImageThemesToUse.ALL if not use_custom_images else ImageThemesToUse.CUSTOM,
         )
 
-    def on_checkbox_changed(self, checkbox_row: Factory.CheckBoxRow) -> None:
-        if checkbox_row.active:
-            self._bottom_view_fun_custom_image_themes.add(checkbox_row.theme_enum)
-        else:
-            self._bottom_view_fun_custom_image_themes.discard(checkbox_row.theme_enum)
+    def on_checkbox_row_changed(self, checkbox_row: Factory.CheckBoxRow) -> None:
+        self.view_state_manager.bottom_view_alter_fun_image_themes(
+            checkbox_row.theme_enum,
+            ImageThemesChange.ADD if checkbox_row.active else ImageThemesChange.DISCARD,
+        )
 
     def fun_view_options_button_pressed(self) -> None:
         self.fun_image_view_screen.fun_view_options_enabled = (
