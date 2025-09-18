@@ -446,7 +446,7 @@ class ReaderTreeBuilder:
             tree,
             INTRO_DON_AULT_FANTA_INTRO_TEXT,
             parent_node=intro_node,
-            on_press_handler=self._main_screen.on_intro_don_ault_fanta_intro_pressed,
+            on_press_handler=self._main_screen.on_article_node_pressed,
         )
 
     def _add_the_stories_node(self, tree: ReaderTreeView) -> MainTreeViewNode:
@@ -465,19 +465,19 @@ class ReaderTreeBuilder:
             tree,
             APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT,
             parent_node=appendix_node,
-            on_press_handler=self._main_screen.on_appendix_rich_tomasso_on_coloring_barks_pressed,
+            on_press_handler=self._main_screen.on_article_node_pressed,
         )
         self._create_and_add_simple_node(
             tree,
             APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
             parent_node=appendix_node,
-            on_press_handler=self._main_screen.on_appendix_don_ault_life_among_ducks_pressed,
+            on_press_handler=self._main_screen.on_article_node_pressed,
         )
         self._create_and_add_simple_node(
             tree,
             APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
             parent_node=appendix_node,
-            on_press_handler=self._main_screen.on_appendix_censorship_fixes_pressed,
+            on_press_handler=self._main_screen.on_article_node_pressed,
         )
 
     def _add_index_node(self, tree: ReaderTreeView) -> None:

@@ -12,7 +12,13 @@ from barks_fantagraphics.barks_tags import (
     is_tag_group_enum,
     special_case_personal_favourites_tag_update,
 )
-from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, BARKS_TITLES, ComicBookInfo, Titles
+from barks_fantagraphics.barks_titles import (
+    BARKS_TITLE_DICT,
+    BARKS_TITLES,
+    NON_COMIC_TITLES,
+    ComicBookInfo,
+    Titles,
+)
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
     ALL_LISTS,
@@ -167,8 +173,16 @@ NODE_TEXT_TO_VIEW_STATE_MAP: dict[str, ViewStates] = {
     "N/A" + ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET.name: ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET,  # noqa: E501
     "N/A" + ViewStates.ON_TAG_SEARCH_BOX_NODE.name: ViewStates.ON_TAG_SEARCH_BOX_NODE,
 }
-# fmt: on
 assert sorted(NODE_TEXT_TO_VIEW_STATE_MAP.values()) == sorted(ViewStates)
+
+ARTICLE_VIEW_STATE_TO_TITLE_MAP = {
+    ViewStates.ON_APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_NODE: Titles.RICH_TOMASSO___ON_COLORING_BARKS,  # noqa: E501
+    ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE: Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
+    ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE: Titles.DON_AULT___LIFE_AMONG_THE_DUCKS,
+    ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE: Titles.CENSORSHIP_FIXES_AND_OTHER_CHANGES,
+}
+# fmt: on
+assert sorted(ARTICLE_VIEW_STATE_TO_TITLE_MAP.values()) == sorted(NON_COMIC_TITLES)
 
 
 class MainScreen(BoxLayout, Screen):
@@ -646,29 +660,22 @@ class MainScreen(BoxLayout, Screen):
     def intro_compleat_barks_reader_closed(self) -> None:
         self._update_view_for_node(ViewStates.ON_INTRO_NODE)
 
-    def on_intro_don_ault_fanta_intro_pressed(self, _button: Button) -> None:
-        self._read_article_as_comic_book(
-            Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
-            ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,
-        )
+    def on_article_node_pressed(self, node: ButtonTreeViewNode) -> None:
+        """Consolidate handling of all simple article nodes."""
+        view_state = self._get_view_state_for_node_text(node.text)
 
-    def on_appendix_don_ault_life_among_ducks_pressed(self, _button: Button) -> None:
-        self._read_article_as_comic_book(
-            Titles.DON_AULT___LIFE_AMONG_THE_DUCKS,
-            ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE,
-        )
+        if view_state not in ARTICLE_VIEW_STATE_TO_TITLE_MAP:
+            msg = f"No article mapping found for node: {node.text}"
+            raise RuntimeError(msg)
 
-    def on_appendix_rich_tomasso_on_coloring_barks_pressed(self, _button: Button) -> None:
-        self._read_article_as_comic_book(
-            Titles.RICH_TOMASSO___ON_COLORING_BARKS,
-            ViewStates.ON_APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_NODE,
-        )
+        article_title = ARTICLE_VIEW_STATE_TO_TITLE_MAP[view_state]
+        logger.info(f"Article node pressed: Reading '{article_title.name}'.")
+        self._read_article_as_comic_book(article_title, view_state)
 
-    def on_appendix_censorship_fixes_pressed(self, _button: Button) -> None:
-        self._read_article_as_comic_book(
-            Titles.CENSORSHIP_FIXES_AND_OTHER_CHANGES,
-            ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
-        )
+    @staticmethod
+    def _get_view_state_for_node_text(node_text: str) -> ViewStates | None:
+        clean_text = get_clean_text_without_extra(node_text)
+        return NODE_TEXT_TO_VIEW_STATE_MAP.get(clean_text)
 
     def on_title_row_button_pressed(self, button: Button) -> None:
         self._fanta_info = button.parent.fanta_info
