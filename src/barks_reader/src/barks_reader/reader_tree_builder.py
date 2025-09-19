@@ -32,6 +32,7 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_USA,
     SERIES_USS,
     FantaComicBookInfo,
+    get_num_comic_book_titles,
 )
 from barks_fantagraphics.title_search import BarksTitleSearch
 from comic_utils.timing import Timing
@@ -344,6 +345,7 @@ class ReaderTreeBuilder:
         new_node, year_range_titles = self._add_chrono_year_range_node(
             tree, year_range, parent_node
         )
+        assert len(year_range_titles) == get_num_comic_book_titles(year_range)
         yield from self._add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node)
         self.chrono_year_range_nodes[year_range] = new_node
 
