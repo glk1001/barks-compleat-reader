@@ -17,6 +17,8 @@ from barks_reader.system_file_paths import SystemFilePaths
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from kivy.uix.boxlayout import BoxLayout
+
 
 class FantaVolumesState(Enum):
     VOLUMES_EXIST = auto()
@@ -390,6 +392,8 @@ class BuildableConfigParser(ConfigParser):
 
 class Settings(Protocol):
     def add_json_panel(self, section: str, config: ConfigParser, data: str) -> None: ...
+
+    interface: BoxLayout
 
 
 class BuildableReaderSettings(ReaderSettings):

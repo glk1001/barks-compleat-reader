@@ -52,6 +52,7 @@ from barks_reader.reader_ui_classes import (
 )
 
 if TYPE_CHECKING:
+    from kivy.uix.button import Button
     from kivy.uix.spinner import Spinner
 
     from barks_reader.reader_ui_classes import ReaderTreeView
@@ -61,6 +62,7 @@ if TYPE_CHECKING:
 
 UpdateTitleCallable = Callable[[str], bool]
 ReadArticleCallable = Callable[[Titles, ViewStates], None]
+ReadIntroCompleatBarksReaderCallable = Callable[[], None]
 ScrollToNodeCallable = Callable[[TreeViewNode], None]
 SetTagGotoPageCheckboxCallable = Callable[[Tags | TagGroups, str], None]
 
@@ -131,6 +133,7 @@ class TreeViewManager:
         tree_view_screen: TreeViewScreen,
         update_title_func: UpdateTitleCallable,
         read_article_func: ReadArticleCallable,
+        read_intro_compleat_barks_reader_func: ReadIntroCompleatBarksReaderCallable,
         set_tag_goto_page_checkbox_func: SetTagGotoPageCheckboxCallable,
     ) -> None:
         self._background_views = background_views
@@ -141,6 +144,7 @@ class TreeViewManager:
 
         self._update_title_func = update_title_func
         self._read_article_func = read_article_func
+        self._read_intro_compleat_barks_reader_func = read_intro_compleat_barks_reader_func
         self._set_tag_goto_page_checkbox_func = set_tag_goto_page_checkbox_func
 
         assert self._update_title_func
@@ -174,6 +178,9 @@ class TreeViewManager:
         self._view_state_manager.update_background_views(new_view_state, **view_state_params)
 
         self.scroll_to_node(node.nodes[0] if node.nodes else node)
+
+    def on_intro_compleat_barks_reader_pressed(self, _button: Button) -> None:
+        self._read_intro_compleat_barks_reader_func()
 
     def on_article_node_pressed(self, node: ButtonTreeViewNode) -> None:
         """Consolidate handling of all simple article nodes."""

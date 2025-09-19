@@ -12,6 +12,7 @@ from barks_fantagraphics.barks_tags import (
     Tags,
     get_num_tagged_titles,
     get_tagged_titles,
+    special_case_personal_favourites_tag_update,
 )
 from barks_fantagraphics.barks_titles import (
     BARKS_TITLES,
@@ -32,6 +33,7 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_USS,
     FantaComicBookInfo,
 )
+from barks_fantagraphics.title_search import BarksTitleSearch
 from comic_utils.timing import Timing
 from kivy.clock import Clock
 from kivy.uix.button import Button
@@ -63,7 +65,9 @@ from barks_reader.reader_formatter import (
 from barks_reader.reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
+    LoadingDataPopup,
     MainTreeViewNode,
+    ReaderTreeBuilderEventDispatcher,
     ReaderTreeView,
     StoryGroupTreeViewNode,
     TagGroupStoryGroupTreeViewNode,
@@ -78,6 +82,7 @@ from barks_reader.reader_utils import (
     get_cs_range_str_from_str,
     get_range_str,
     get_us_range_str_from_str,
+    read_title_list,
 )
 
 if TYPE_CHECKING:
@@ -85,7 +90,8 @@ if TYPE_CHECKING:
 
     from kivy.uix.treeview import TreeViewNode
 
-    from barks_reader.main_screen import MainScreen
+    from barks_reader.reader_settings import ReaderSettings
+    from barks_reader.tree_view_manager import TreeViewManager
 
 BUTTON_ON_PRESS_CALLABLE = Callable[[Button], None]
 
@@ -116,9 +122,24 @@ class ReaderTreeBuilder:
     # A larger batch size is faster but makes the UI less responsive during the build.
     BUILD_BATCH_SIZE = 5
 
-    def __init__(self, main_screen: MainScreen) -> None:
-        self._main_screen = main_screen
-        self._events = self._main_screen.reader_tree_events
+    def __init__(
+        self,
+        reader_settings: ReaderSettings,
+        reader_tree_view: ReaderTreeView,
+        reader_tree_events: ReaderTreeBuilderEventDispatcher,
+        tree_view_manager: TreeViewManager,
+        title_lists: dict[str, list[FantaComicBookInfo]],
+        loading_data_popup: LoadingDataPopup,
+        on_title_row_button_pressed_func: Callable[[Button], None],
+    ) -> None:
+        self._reader_settings = reader_settings
+        self._reader_tree_view = reader_tree_view
+        self._reader_tree_events = reader_tree_events
+        self._tree_view_manager = tree_view_manager
+        self._title_lists = title_lists
+        self._loading_data_popup = loading_data_popup
+        self._on_title_row_button_pressed_func = on_title_row_button_pressed_func
+        self._title_search = BarksTitleSearch()
         self._tree_build_timing = None
         self.chrono_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
 
@@ -136,42 +157,46 @@ class ReaderTreeBuilder:
         if tag != Tags.PERSONAL_FAVOURITES:
             return get_tagged_titles(tag)
 
-        return self._main_screen.get_favourite_titles()
+        return self._get_favourite_titles()
+
+    def _get_favourite_titles(self) -> list[Titles]:
+        titles = read_title_list(self._reader_settings.sys_file_paths.get_favourite_titles_path())
+
+        special_case_personal_favourites_tag_update(titles)
+
+        return titles
 
     def build_main_screen_tree(self) -> None:
         """Set up and kick off the entire asynchronous tree build process."""
-        tree: ReaderTreeView = self._main_screen.tree_view_screen.ids.reader_tree_view
-
-        self._main_screen.loading_data_popup.ids.loading_data_progress_bar.min = 0
+        self._loading_data_popup.ids.loading_data_progress_bar.min = 0
         # Approximate total number of nodes to load:
-        self._main_screen.loading_data_popup.ids.loading_data_progress_bar.max = (
-            len(self._main_screen.title_lists[ALL_LISTS])  # chronological titles
-            + len(self._main_screen.title_lists[ALL_LISTS])  # series titles
+        self._loading_data_popup.ids.loading_data_progress_bar.max = (
+            len(self._title_lists[ALL_LISTS])  # chronological titles
+            + len(self._title_lists[ALL_LISTS])  # series titles
             + get_num_tagged_titles()  # category titles
         )
         logger.debug(
-            f"Progress bar max"
-            f" = {self._main_screen.loading_data_popup.ids.loading_data_progress_bar.max}."
+            f"Progress bar max = {self._loading_data_popup.ids.loading_data_progress_bar.max}."
         )
-        self._main_screen.loading_data_popup.progress_bar_value = 0
+        self._loading_data_popup.progress_bar_value = 0
 
-        tree.bind(on_node_expand=self._main_screen.tree_view_manager.on_node_expanded)
+        self._reader_tree_view.bind(on_node_expand=self._tree_view_manager.on_node_expanded)
 
         logger.debug("Building simple nodes...")
-        self._add_intro_node(tree)
-        the_stories_node = self._add_the_stories_node(tree)
-        self._add_search_node(tree)
-        self._add_appendix_node(tree)
-        self._add_index_node(tree)
+        self._add_intro_node(self._reader_tree_view)
+        the_stories_node = self._add_the_stories_node(self._reader_tree_view)
+        self._add_search_node(self._reader_tree_view)
+        self._add_appendix_node(self._reader_tree_view)
+        self._add_index_node(self._reader_tree_view)
 
         logger.debug("Starting asynchronous build of all story nodes...")
         # This is the single entry point for the entire asynchronous build.
-        self._build_story_nodes_concurrently(tree, the_stories_node)
+        self._build_story_nodes_concurrently(self._reader_tree_view, the_stories_node)
 
-        tree.bind(minimum_height=tree.setter("height"))
+        self._reader_tree_view.bind(minimum_height=self._reader_tree_view.setter("height"))
 
     def _inc_progress_bar(self) -> None:
-        self._main_screen.loading_data_popup.progress_bar_value += 1
+        self._loading_data_popup.progress_bar_value += 1
 
     def _build_story_nodes_concurrently(
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
@@ -221,7 +246,7 @@ class ReaderTreeBuilder:
         for series_name in self._series_names:
             # To guarantee correct series order, synchronously create the parent node
             # for the series' child titles.
-            title_list = self._main_screen.title_lists[series_name]
+            title_list = self._title_lists[series_name]
             series_text = get_markup_text_with_num_titles(series_name, len(title_list))
             new_series_node = StoryGroupTreeViewNode(text=series_text)
             tree.add_node(new_series_node, parent=series_node)
@@ -267,7 +292,7 @@ class ReaderTreeBuilder:
         self, series_name: str, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
     ) -> Generator[None, None, None]:
         """Populate a simple series node with its title list."""
-        title_list = self._main_screen.title_lists[series_name]
+        title_list = self._title_lists[series_name]
         yield from self._add_fanta_info_story_nodes_gen(tree, title_list, parent_node)
 
     def _populate_cs_node_gen(
@@ -380,7 +405,7 @@ class ReaderTreeBuilder:
             if title_str in ALL_FANTA_COMIC_BOOK_INFO:
                 title_info = ALL_FANTA_COMIC_BOOK_INFO[title_str]
                 node = TitleTreeViewNode.create_from_fanta_info(
-                    title_info, self._main_screen.on_title_row_button_pressed
+                    title_info, self._on_title_row_button_pressed_func
                 )
                 tree.add_node(node, parent=parent_node)
 
@@ -423,7 +448,7 @@ class ReaderTreeBuilder:
     ) -> Generator[None, None, None]:
         for i, title_info in enumerate(title_info_list):
             node = TitleTreeViewNode.create_from_fanta_info(
-                title_info, self._main_screen.on_title_row_button_pressed
+                title_info, self._on_title_row_button_pressed_func
             )
             tree.add_node(node, parent=parent_node)
 
@@ -441,13 +466,13 @@ class ReaderTreeBuilder:
             tree,
             INTRO_COMPLEAT_BARKS_READER_TEXT,
             parent_node=intro_node,
-            on_press_handler=self._main_screen.on_intro_compleat_barks_reader_pressed,
+            on_press_handler=self._tree_view_manager.on_intro_compleat_barks_reader_pressed,
         )
         self._create_and_add_simple_node(
             tree,
             INTRO_DON_AULT_FANTA_INTRO_TEXT,
             parent_node=intro_node,
-            on_press_handler=self._main_screen.tree_view_manager.on_article_node_pressed,
+            on_press_handler=self._tree_view_manager.on_article_node_pressed,
         )
 
     def _add_the_stories_node(self, tree: ReaderTreeView) -> MainTreeViewNode:
@@ -466,19 +491,19 @@ class ReaderTreeBuilder:
             tree,
             APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT,
             parent_node=appendix_node,
-            on_press_handler=self._main_screen.tree_view_manager.on_article_node_pressed,
+            on_press_handler=self._tree_view_manager.on_article_node_pressed,
         )
         self._create_and_add_simple_node(
             tree,
             APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
             parent_node=appendix_node,
-            on_press_handler=self._main_screen.tree_view_manager.on_article_node_pressed,
+            on_press_handler=self._tree_view_manager.on_article_node_pressed,
         )
         self._create_and_add_simple_node(
             tree,
             APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
             parent_node=appendix_node,
-            on_press_handler=self._main_screen.tree_view_manager.on_article_node_pressed,
+            on_press_handler=self._tree_view_manager.on_article_node_pressed,
         )
 
     def _add_index_node(self, tree: ReaderTreeView) -> None:
@@ -545,13 +570,13 @@ class ReaderTreeBuilder:
     def _create_and_add_title_search_box_node(
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
     ) -> TreeViewNode:
-        new_node = TitleSearchBoxTreeViewNode(self._main_screen.title_search)
+        new_node = TitleSearchBoxTreeViewNode(self._title_search)
 
         new_node.bind(
-            on_title_search_box_pressed=self._main_screen.tree_view_manager.on_title_search_box_pressed
+            on_title_search_box_pressed=self._tree_view_manager.on_title_search_box_pressed
         )
         new_node.bind(
-            on_title_search_box_title_changed=self._main_screen.tree_view_manager.on_title_search_box_title_changed
+            on_title_search_box_title_changed=self._tree_view_manager.on_title_search_box_title_changed
         )
 
         return tree.add_node(new_node, parent=parent_node)
@@ -559,19 +584,17 @@ class ReaderTreeBuilder:
     def _create_and_add_tag_search_box_node(
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
     ) -> TreeViewNode:
-        new_node = TagSearchBoxTreeViewNode(self._main_screen.title_search)
+        new_node = TagSearchBoxTreeViewNode(self._title_search)
 
+        new_node.bind(on_tag_search_box_pressed=self._tree_view_manager.on_tag_search_box_pressed)
         new_node.bind(
-            on_tag_search_box_pressed=self._main_screen.tree_view_manager.on_tag_search_box_pressed
+            on_tag_search_box_text_changed=self._tree_view_manager.on_tag_search_box_text_changed
         )
         new_node.bind(
-            on_tag_search_box_text_changed=self._main_screen.tree_view_manager.on_tag_search_box_text_changed
+            on_tag_search_box_tag_changed=self._tree_view_manager.on_tag_search_box_tag_changed
         )
         new_node.bind(
-            on_tag_search_box_tag_changed=self._main_screen.tree_view_manager.on_tag_search_box_tag_changed
-        )
-        new_node.bind(
-            on_tag_search_box_title_changed=self._main_screen.tree_view_manager.on_tag_search_box_title_changed
+            on_tag_search_box_title_changed=self._tree_view_manager.on_tag_search_box_title_changed
         )
 
         return tree.add_node(new_node, parent=parent_node)
@@ -588,7 +611,7 @@ class ReaderTreeBuilder:
         year_range_titles = []
         for year in range(year_range[0], year_range[1] + 1):
             year_key = get_title_key_func(str(year))
-            year_range_titles.extend(self._main_screen.title_lists[year_key])
+            year_range_titles.extend(self._title_lists[year_key])
 
         year_range_str = get_range_str(year_range)
         year_range_extra_text = get_year_range_extra_text_func(year_range_titles)
@@ -625,9 +648,9 @@ class ReaderTreeBuilder:
 
         logger.debug(
             f"Finished loading all nodes in {time_in_secs}s:"
-            f" {self._main_screen.loading_data_popup.progress_bar_value}"
+            f" {self._loading_data_popup.progress_bar_value}"
             f" nodes processed, progress bar max"
-            f" = {self._main_screen.loading_data_popup.ids.loading_data_progress_bar.max}."
+            f" = {self._loading_data_popup.ids.loading_data_progress_bar.max}."
         )
 
-        self._main_screen.reader_tree_events.finished_building()
+        self._reader_tree_events.finished_building()
