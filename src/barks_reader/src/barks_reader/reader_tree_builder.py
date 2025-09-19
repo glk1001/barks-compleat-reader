@@ -130,7 +130,6 @@ class ReaderTreeBuilder:
         tree_view_manager: TreeViewManager,
         title_lists: dict[str, list[FantaComicBookInfo]],
         loading_data_popup: LoadingDataPopup,
-        on_title_row_button_pressed_func: Callable[[Button], None],
     ) -> None:
         self._reader_settings = reader_settings
         self._reader_tree_view = reader_tree_view
@@ -138,7 +137,6 @@ class ReaderTreeBuilder:
         self._tree_view_manager = tree_view_manager
         self._title_lists = title_lists
         self._loading_data_popup = loading_data_popup
-        self._on_title_row_button_pressed_func = on_title_row_button_pressed_func
         self._title_search = BarksTitleSearch()
         self._tree_build_timing = None
         self.chrono_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
@@ -405,7 +403,7 @@ class ReaderTreeBuilder:
             if title_str in ALL_FANTA_COMIC_BOOK_INFO:
                 title_info = ALL_FANTA_COMIC_BOOK_INFO[title_str]
                 node = TitleTreeViewNode.create_from_fanta_info(
-                    title_info, self._on_title_row_button_pressed_func
+                    title_info, self._tree_view_manager.on_title_row_button_pressed
                 )
                 tree.add_node(node, parent=parent_node)
 
@@ -448,7 +446,7 @@ class ReaderTreeBuilder:
     ) -> Generator[None, None, None]:
         for i, title_info in enumerate(title_info_list):
             node = TitleTreeViewNode.create_from_fanta_info(
-                title_info, self._on_title_row_button_pressed_func
+                title_info, self._tree_view_manager.on_title_row_button_pressed
             )
             tree.add_node(node, parent=parent_node)
 

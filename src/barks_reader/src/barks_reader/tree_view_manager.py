@@ -19,6 +19,7 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_MISC,
     SERIES_USA,
     SERIES_USS,
+    FantaComicBookInfo,
 )
 from kivy.clock import Clock
 from kivy.uix.treeview import TreeViewNode
@@ -44,7 +45,9 @@ from barks_reader.reader_formatter import get_clean_text_without_extra
 from barks_reader.reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
+    TagGroupStoryGroupTreeViewNode,
     TagSearchBoxTreeViewNode,
+    TagStoryGroupTreeViewNode,
     TitleSearchBoxTreeViewNode,
     TitleTreeViewNode,
     UsYearRangeTreeViewNode,
@@ -74,6 +77,7 @@ NODE_TYPE_TO_VIEW_STATE_MAP: dict[type, tuple[ViewStates, str]] = {
 }
 
 # fmt: off
+# noinspection LongLine
 NODE_TEXT_TO_VIEW_STATE_MAP: dict[str, ViewStates] = {
     "N/A" + ViewStates.PRE_INIT.name: ViewStates.PRE_INIT,
     "N/A" + ViewStates.INITIAL.name: ViewStates.INITIAL,
@@ -111,6 +115,7 @@ NODE_TEXT_TO_VIEW_STATE_MAP: dict[str, ViewStates] = {
 }
 assert sorted(NODE_TEXT_TO_VIEW_STATE_MAP.values()) == sorted(ViewStates)
 
+# noinspection LongLine
 ARTICLE_VIEW_STATE_TO_TITLE_MAP = {
     ViewStates.ON_APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_NODE: Titles.RICH_TOMASSO___ON_COLORING_BARKS,  # noqa: E501
     ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE: Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
@@ -135,6 +140,7 @@ class TreeViewManager:
         read_article_func: ReadArticleCallable,
         read_intro_compleat_barks_reader_func: ReadIntroCompleatBarksReaderCallable,
         set_tag_goto_page_checkbox_func: SetTagGotoPageCheckboxCallable,
+        set_next_title_func: Callable[[FantaComicBookInfo, Tags | TagGroups | None], None],
     ) -> None:
         self._background_views = background_views
         self._view_state_manager = view_state_manager
@@ -146,10 +152,13 @@ class TreeViewManager:
         self._read_article_func = read_article_func
         self._read_intro_compleat_barks_reader_func = read_intro_compleat_barks_reader_func
         self._set_tag_goto_page_checkbox_func = set_tag_goto_page_checkbox_func
+        self._set_next_title_func = set_next_title_func
 
         assert self._update_title_func
         assert self._read_article_func
+        assert self._read_intro_compleat_barks_reader_func
         assert self._set_tag_goto_page_checkbox_func
+        assert self._set_next_title_func
 
     def goto_node(self, node: TreeViewNode, scroll_to: bool = False) -> None:
         def show_node(n: TreeViewNode) -> None:
@@ -178,6 +187,20 @@ class TreeViewManager:
         self._view_state_manager.update_background_views(new_view_state, **view_state_params)
 
         self.scroll_to_node(node.nodes[0] if node.nodes else node)
+
+    def on_title_row_button_pressed(self, button: Button) -> None:
+        fanta_info = button.parent.fanta_info
+
+        tag = (
+            None
+            if not isinstance(
+                button.parent.parent_node,
+                (TagStoryGroupTreeViewNode, TagGroupStoryGroupTreeViewNode),
+            )
+            else button.parent.parent_node.tag
+        )
+
+        self._set_next_title_func(fanta_info, tag)
 
     def on_intro_compleat_barks_reader_pressed(self, _button: Button) -> None:
         self._read_intro_compleat_barks_reader_func()

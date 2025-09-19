@@ -36,19 +36,13 @@ from barks_reader.background_views import BackgroundViews, ViewStates
 from barks_reader.comic_reader_manager import ComicReaderManager
 from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
 from barks_reader.random_title_images import ImageInfo, RandomTitleImages
-from barks_reader.reader_consts_and_types import (
-    APP_TITLE,
-    CHRONO_YEAR_RANGES,
-    COMIC_PAGE_ONE,
-)
+from barks_reader.reader_consts_and_types import APP_TITLE, CHRONO_YEAR_RANGES, COMIC_PAGE_ONE
 from barks_reader.reader_formatter import get_action_bar_title
 from barks_reader.reader_tree_view_utils import find_tree_view_title_node, get_tree_view_node_path
 from barks_reader.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
     LoadingDataPopup,
     ReaderTreeBuilderEventDispatcher,
-    TagGroupStoryGroupTreeViewNode,
-    TagStoryGroupTreeViewNode,
     set_kivy_busy_cursor,
     set_kivy_normal_cursor,
 )
@@ -172,6 +166,7 @@ class MainScreen(BoxLayout, Screen):
             self._read_article_as_comic_book,
             self._read_intro_compleat_barks_reader,
             self._set_tag_goto_page_checkbox,
+            self._set_next_title,
         )
 
         self._set_action_bar_icons(self._reader_settings.sys_file_paths)
@@ -200,7 +195,7 @@ class MainScreen(BoxLayout, Screen):
             self._tree_view_manager,
             self._tree_view_screen,
             self._loading_data_popup,
-            self._on_title_row_button_pressed,
+            self._set_next_title,
         )
         self._reader_tree_events.bind(
             on_finished_building_event=self._app_initializer.on_tree_build_finished
@@ -277,7 +272,6 @@ class MainScreen(BoxLayout, Screen):
             self._tree_view_manager,
             self._title_lists,
             self._loading_data_popup,
-            self._on_title_row_button_pressed,
         )
         self._year_range_nodes = tree_builder.chrono_year_range_nodes
         self._app_initializer.start(tree_builder, self._on_tree_build_finished)
@@ -326,20 +320,15 @@ class MainScreen(BoxLayout, Screen):
     def on_intro_compleat_barks_reader_closed(self) -> None:
         self._view_state_manager.update_view_for_node(ViewStates.ON_INTRO_NODE)
 
-    def _on_title_row_button_pressed(self, button: Button) -> None:
-        fanta_info: FantaComicBookInfo = button.parent.fanta_info
-
+    def _set_next_title(self, fanta_info: FantaComicBookInfo, tag: Tags | TagGroups | None) -> None:
         self.fanta_info = fanta_info
         self._set_title()
         self._view_state_manager.update_view_for_node_with_title(ViewStates.ON_TITLE_NODE)
 
-        if isinstance(
-            button.parent.parent_node,
-            (TagStoryGroupTreeViewNode, TagGroupStoryGroupTreeViewNode),
-        ):
+        if tag is not None:
             self._set_tag_goto_page_checkbox(
-                button.parent.parent_node.tag,
-                fanta_info.comic_book_info.get_title_str(),
+                tag,
+                self.fanta_info.comic_book_info.get_title_str(),
             )
 
     @staticmethod

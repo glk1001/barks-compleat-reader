@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from kivy.clock import Clock
 from loguru import logger
@@ -21,6 +21,8 @@ from barks_reader.user_error_handler import ErrorTypes
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from barks_fantagraphics.barks_tags import TagGroups, Tags
+    from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from kivy.uix.treeview import TreeViewNode
     from kivy.uix.widget import Widget
 
@@ -51,7 +53,7 @@ class AppInitializer:
         tree_view_manager: TreeViewManager,
         tree_view_screen: TreeViewScreen,
         loading_data_popup: LoadingDataPopup,
-        on_title_row_button_pressed_func: Callable[[Any], None],
+        set_next_title_func: Callable[[FantaComicBookInfo, Tags | TagGroups | None], None],
     ) -> None:
         self._reader_settings = reader_settings
         self._user_error_handler = user_error_handler
@@ -61,7 +63,7 @@ class AppInitializer:
         self._tree_view_manager = tree_view_manager
         self._view_state_manager = view_state_manager
         self._loading_data_popup = loading_data_popup
-        self._on_title_row_button_pressed = on_title_row_button_pressed_func
+        self._set_next_title_func = set_next_title_func
 
         self._fanta_volumes_state: FantaVolumesState = FantaVolumesState.VOLUMES_NOT_SET
         self._on_tree_build_finished: Callable[[], None] | None = None
@@ -119,7 +121,8 @@ class AppInitializer:
         if isinstance(saved_node, ButtonTreeViewNode):
             saved_node.trigger_action()
         elif isinstance(saved_node, TitleTreeViewNode):
-            self._on_title_row_button_pressed(saved_node.ids.num_label)
+            fanta_info = saved_node.ids.num_label.parent.fanta_info
+            self._set_next_title_func(fanta_info, None)
             self._tree_view_manager.scroll_to_node(saved_node)
 
     def is_fanta_volumes_state_ok(self) -> tuple[bool, str]:

@@ -138,6 +138,7 @@ class UserErrorHandler:
         _popup_title: str,
     ) -> None:
         """Handle an unexpected Fantagraphics archive file."""
+        # noinspection LongLine
         msg = dedent(f"""\
             There was an unexpected Fantagraphics archive file:
 
@@ -160,6 +161,7 @@ class UserErrorHandler:
         _popup_title: str,
     ) -> None:
         """Handle finding too many Fantagraphics archive files."""
+        # noinspection LongLine
         msg = dedent(f"""\
             There were too many Fantagraphics archive files. The
             expected number of files is {exception.num_volumes} not {exception.num_archive_files}. You need to

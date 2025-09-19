@@ -47,6 +47,7 @@ MAIN_WINDOW_HEIGHT = "main_window_height"
 MAIN_WINDOW_LEFT = "main_window_left"
 MAIN_WINDOW_TOP = "main_window_top"
 
+# noinspection LongLine
 _READER_SETTINGS_JSON = f"""
 [
    {{  "type": "title", "title": "Folders" }},
