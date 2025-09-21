@@ -390,7 +390,7 @@ class MainScreen(BoxLayout, Screen):
             self._reader_settings.use_prebuilt_archives
             or not self._special_fanta_overrides.is_title_where_overrides_are_optional(title)
         ):
-            self._bottom_title_view_screen.set_overrides_state(active=False)
+            self._bottom_title_view_screen.set_overrides_state(active=True)
             return
 
         self._bottom_title_view_screen.set_overrides_state(
