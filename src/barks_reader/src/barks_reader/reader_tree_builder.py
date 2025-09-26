@@ -141,6 +141,7 @@ class ReaderTreeBuilder:
         self._title_search = BarksTitleSearch()
         self._tree_build_timing = None
         self.chrono_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
+        self.num_titles_not_configured = 0
 
         self._series_names = [
             SERIES_CS,
@@ -333,6 +334,7 @@ class ReaderTreeBuilder:
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
     ) -> Generator[None, None, None]:
         """Add all chronological year range nodes."""
+        self.num_titles_not_configured = 0
         year_ranges = CHRONO_YEAR_RANGES
         for year_range in year_ranges:
             yield from self._add_chrono_year_range_node_and_child_nodes_gen(
@@ -402,7 +404,10 @@ class ReaderTreeBuilder:
         for i, title in enumerate(titles):
             # TODO: Very roundabout way to get fanta info
             title_str = BARKS_TITLES[title]
-            if title_str in ALL_FANTA_COMIC_BOOK_INFO:
+
+            if title_str not in ALL_FANTA_COMIC_BOOK_INFO:
+                self.num_titles_not_configured += 1
+            else:
                 title_info = ALL_FANTA_COMIC_BOOK_INFO[title_str]
                 node = TitleTreeViewNode.create_from_fanta_info(
                     title_info, self._tree_view_manager.on_title_row_button_pressed

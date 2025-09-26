@@ -38,6 +38,7 @@ from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
 from barks_reader.random_title_images import ImageInfo, RandomTitleImages
 from barks_reader.reader_consts_and_types import APP_TITLE, CHRONO_YEAR_RANGES, COMIC_PAGE_ONE
 from barks_reader.reader_formatter import get_action_bar_title
+from barks_reader.reader_tree_builder import ReaderTreeBuilder
 from barks_reader.reader_tree_view_utils import find_tree_view_title_node, get_tree_view_node_path
 from barks_reader.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
@@ -129,6 +130,7 @@ class MainScreen(BoxLayout, Screen):
         self._loading_data_popup.on_open = self._on_loading_data_popup_open
         self._loading_data_popup_image_event: ClockEvent | None = None
 
+        self._tree_builder: ReaderTreeBuilder | None = None
         self._reader_tree_events = reader_tree_events
 
         user_error_handler = UserErrorHandler(reader_settings, screen_switchers.switch_to_settings)
@@ -265,7 +267,7 @@ class MainScreen(BoxLayout, Screen):
             ReaderTreeBuilder,
         )
 
-        tree_builder = ReaderTreeBuilder(
+        self._tree_builder = ReaderTreeBuilder(
             self._reader_settings,
             self._tree_view_screen.ids.reader_tree_view,
             self._reader_tree_events,
@@ -273,12 +275,18 @@ class MainScreen(BoxLayout, Screen):
             self._title_lists,
             self._loading_data_popup,
         )
-        self._year_range_nodes = tree_builder.chrono_year_range_nodes
-        self._app_initializer.start(tree_builder, self._on_tree_build_finished)
+        self._year_range_nodes = self._tree_builder.chrono_year_range_nodes
+        self._app_initializer.start(self._tree_builder, self._on_tree_build_finished)
 
     def _on_tree_build_finished(self) -> None:
         self._loading_data_popup_image_event.cancel()
         set_kivy_normal_cursor()
+
+        if self._tree_builder.num_titles_not_configured > 0:
+            logger.warning(
+                f"There are {self._tree_builder.num_titles_not_configured} titles"
+                f" not yet configured."
+            )
 
     def on_action_bar_collapse(self) -> None:
         self._tree_view_screen.deselect_and_close_open_nodes()
