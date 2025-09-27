@@ -13,7 +13,6 @@ dependencies = [
     "kivy-garden==0.1.5",
     "loguru>=0.7.3",
     "pillow>=11.2.1",
-    "pyjnius>=1.6.1",
     "screeninfo>=0.8.1",
 ]
 

@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 from sys import platform as _sys_platform
-from typing import cast
 
 APP_NAME = "barks-reader"
 
@@ -52,15 +51,16 @@ class ConfigInfo:
         if self.platform == "ios":
             data_dir = Path("~/Documents").expanduser() / self._app_name
         elif self.platform == "android":
-            from jnius import autoclass  # noqa: PLC0415
-
-            # noinspection PyPep8Naming
-            PythonActivity = autoclass("org.kivy.android.PythonActivity")  # noqa: N806
-            # noinspection PyTypeHints
-            context = cast("android.content.Context", PythonActivity.mActivity)  # noqa: F821
-            # noinspection PyTypeHints
-            file_p = cast("java.io.File", context.getFilesDir())  # noqa: F821
-            data_dir = Path(file_p.getAbsolutePath())
+            pass
+            # from jnius import autoclass
+            #
+            # # noinspection PyPep8Naming
+            # PythonActivity = autoclass("org.kivy.android.PythonActivity")
+            # # noinspection PyTypeHints
+            # context = cast("android.content.Context", PythonActivity.mActivity)
+            # # noinspection PyTypeHints
+            # file_p = cast("java.io.File", context.getFilesDir())
+            # data_dir = Path(file_p.getAbsolutePath())
         elif self.platform == "win":
             data_dir = Path(os.environ["APPDATA"]) / self._app_name
         elif self.platform == "macosx":

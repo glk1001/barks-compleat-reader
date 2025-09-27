@@ -97,7 +97,6 @@ dependencies = [
     { name = "kivy-garden" },
     { name = "loguru" },
     { name = "pillow" },
-    { name = "pyjnius" },
     { name = "screeninfo" },
 ]
 
@@ -116,7 +115,6 @@ requires-dist = [
     { name = "kivy-garden", specifier = "==0.1.5" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "pillow", specifier = ">=11.2.1" },
-    { name = "pyjnius", specifier = ">=1.6.1" },
     { name = "screeninfo", specifier = ">=0.8.1" },
 ]
 
@@ -547,20 +545,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/b0/77/a5b8c569bf593b0140bde72ea885a803b82086995367bf2037de0159d924/pygments-2.19.2.tar.gz", hash = "sha256:636cb2477cec7f8952536970bc533bc43743542f70392ae026374600add5b887", size = 4968631, upload-time = "2025-06-21T13:39:12.283Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c7/21/705964c7812476f378728bdf590ca4b771ec72385c533964653c68e86bdc/pygments-2.19.2-py3-none-any.whl", hash = "sha256:86540386c03d588bb81d44bc3928634ff26449851e99741617ecb9037ee5ec0b", size = 1225217, upload-time = "2025-06-21T13:39:07.939Z" },
-]
-
-[[package]]
-name = "pyjnius"
-version = "1.6.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/19/e2/16d924821ccc31320f1f2bde7c2c59245a1a5033f69525dd5d2a1a7c953b/pyjnius-1.6.1.tar.gz", hash = "sha256:d2a7ece6ed79bf1d7f97a4f6d61302d9f1d7652182a3e4c8a69dbaef31396e60", size = 63420, upload-time = "2023-11-06T12:50:34.528Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/bc/67/f39d53248fcc3a01d9958788185519042094c48e9392aa7746024b5eef6a/pyjnius-1.6.1-cp312-cp312-macosx_10_9_universal2.whl", hash = "sha256:8e77043544febb3a37e5498477755195d7538b47b63b1d62a9ee7060ff0d8697", size = 517420, upload-time = "2023-11-06T12:49:31.546Z" },
-    { url = "https://files.pythonhosted.org/packages/49/5c/a2c61dfa54779ca16b2879f23a981fb68088f93e2c16ba245e41ff04c5d7/pyjnius-1.6.1-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:9f3775bda5275773b3e27a682220ddb8a9c649ab097c85798a366e7d4b8b709b", size = 277858, upload-time = "2023-11-06T12:49:33.17Z" },
-    { url = "https://files.pythonhosted.org/packages/4e/3d/345b4a475d28f6cfea3d6058ad8a2682b4eb39cfe52611193d300d3d4766/pyjnius-1.6.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e5cb3fb92898d6f2a1eeff348b71e80c001ef8594682273d45ca7b629877efda", size = 1582639, upload-time = "2023-11-06T12:49:34.753Z" },
-    { url = "https://files.pythonhosted.org/packages/72/67/33113063363569f69a79a302111470c7a00c62700987a5c723d125b867b7/pyjnius-1.6.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a90b68fb53c4f9a0d1919903deed3bf5def72c355e38c5c07f545e72001d1c4c", size = 1629302, upload-time = "2023-11-06T12:49:36.328Z" },
-    { url = "https://files.pythonhosted.org/packages/f9/3d/80f050f99e978fe1db917fb94e4b9a3f929cf9628416d7d7f5e62527fc60/pyjnius-1.6.1-cp312-cp312-win32.whl", hash = "sha256:7199809fd3114db4942e560ac000ed8ecc4cdf2e115ef551012cd3d0b1af3a0a", size = 194920, upload-time = "2023-11-06T12:49:38.039Z" },
-    { url = "https://files.pythonhosted.org/packages/c8/c7/a8911d31ae655d54ed80bac987349d4580a78c915caf098cd76ea2b67632/pyjnius-1.6.1-cp312-cp312-win_amd64.whl", hash = "sha256:0e0da04b08c61c2b59cd1670d743c7867f31d6c6a45c8ca5f90657da88d48fd9", size = 223781, upload-time = "2023-11-06T12:49:39.76Z" },
 ]
 
 [[package]]
