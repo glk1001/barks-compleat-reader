@@ -23,9 +23,9 @@ if TYPE_CHECKING:
 
 class FilteredTitleLists:
     def __init__(self) -> None:
-        self.chrono_years = range(1942, 1962)
-        self.cs_years = range(1942, 1962)
-        self.us_years = range(1951, 1962)
+        self.chrono_years = range(1942, 1972)
+        self.cs_years = range(1942, 1972)
+        self.us_years = range(1951, 1972)
         self.series_names = [
             SERIES_CS,
             SERIES_DDA,
