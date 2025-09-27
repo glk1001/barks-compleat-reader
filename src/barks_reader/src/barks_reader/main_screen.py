@@ -130,7 +130,6 @@ class MainScreen(BoxLayout, Screen):
         self._loading_data_popup.on_open = self._on_loading_data_popup_open
         self._loading_data_popup_image_event: ClockEvent | None = None
 
-        self._tree_builder: ReaderTreeBuilder | None = None
         self._reader_tree_events = reader_tree_events
 
         user_error_handler = UserErrorHandler(reader_settings, screen_switchers.switch_to_settings)
@@ -263,11 +262,8 @@ class MainScreen(BoxLayout, Screen):
 
     def build_tree_view(self) -> None:
         # Put import here to avoid circular dependency.
-        from barks_reader.reader_tree_builder import (  # noqa: PLC0415
-            ReaderTreeBuilder,
-        )
 
-        self._tree_builder = ReaderTreeBuilder(
+        tree_builder = ReaderTreeBuilder(
             self._reader_settings,
             self._tree_view_screen.ids.reader_tree_view,
             self._reader_tree_events,
@@ -275,18 +271,12 @@ class MainScreen(BoxLayout, Screen):
             self._title_lists,
             self._loading_data_popup,
         )
-        self._year_range_nodes = self._tree_builder.chrono_year_range_nodes
-        self._app_initializer.start(self._tree_builder, self._on_tree_build_finished)
+        self._year_range_nodes = tree_builder.chrono_year_range_nodes
+        self._app_initializer.start(tree_builder, self._on_tree_build_finished)
 
     def _on_tree_build_finished(self) -> None:
         self._loading_data_popup_image_event.cancel()
         set_kivy_normal_cursor()
-
-        if self._tree_builder.num_titles_not_configured > 0:
-            logger.warning(
-                f"There are {self._tree_builder.num_titles_not_configured} titles"
-                f" not yet configured."
-            )
 
     def on_action_bar_collapse(self) -> None:
         self._tree_view_screen.deselect_and_close_open_nodes()
