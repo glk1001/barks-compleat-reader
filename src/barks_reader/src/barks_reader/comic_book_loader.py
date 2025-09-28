@@ -136,6 +136,10 @@ class ComicBookLoader:
             self._fanta_volume_archive = self._fanta_volume_archives.get_fantagraphics_archive(
                 int(fanta_info.fantagraphics_volume[-2:])
             )
+            if self._fanta_volume_archive.has_overrides():
+                self._fanta_volume_archive.override_archive = zipfile.ZipFile(
+                    self._fanta_volume_archive.override_archive_filename
+                )
 
         self._use_fantagraphics_overrides = use_fantagraphics_overrides
         self._current_comic_path = self._get_comic_path(fanta_info)
@@ -158,6 +162,8 @@ class ComicBookLoader:
         # Signal the thread to stop and wait for it to finish before clearing resources
         self.stop_now()
 
+        if self._fanta_volume_archive:
+            self._fanta_volume_archive.override_archive = None
         self._images.clear()
         self._image_loaded_events.clear()
         self._current_comic_path = ""
@@ -376,25 +382,21 @@ class ComicBookLoader:
         image_path, is_from_archive = self._get_image_path(page_info)
         ext = image_path.suffix
 
-        if is_from_archive:
-            zip_path = zipfile.Path(archive, at=str(image_path))
-            file_data = zip_path.read_bytes()
-        elif page_info.srce_page.page_type in [PageType.BLANK_PAGE, PageType.TITLE]:
-            file_data = self._empty_page_image
-        else:  # it's a file
-            with Path(image_path).open("rb") as file:
-                file_data = file.read()
-
-        # Inspection seems wrong!?
-        # noinspection PyUnboundLocalVariable
-        image_data = self._get_image_data(file_data, ext, page_info)
-
         logger.debug(
             f'Getting image (page = "{page_info.display_page_num}"): '
             f'image_path = "{image_path}", is_from_archive = {is_from_archive}.'
         )
 
-        return image_data
+        if is_from_archive:
+            zip_path = zipfile.Path(archive, at=str(image_path))
+            file_data = zip_path.read_bytes()
+        elif page_info.srce_page.page_type in [PageType.BLANK_PAGE, PageType.TITLE]:
+            file_data = self._empty_page_image
+        else:  # it's an override
+            zip_path = zipfile.Path(self._fanta_volume_archive.override_archive, at=str(image_path))
+            file_data = zip_path.read_bytes()
+
+        return self._get_image_data(file_data, ext, page_info)
 
     def _get_image_data(
         self, file_data: bytes, ext: str, page_info: PageInfo

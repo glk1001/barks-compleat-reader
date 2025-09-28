@@ -72,7 +72,6 @@ class PageExtError(Exception):
 class FantagraphicsArchive:
     fanta_volume: int
     archive_filename: Path
-    override_dir: Path
     archive_image_subdir: Path
     image_ext: str
     first_page: int
@@ -80,9 +79,14 @@ class FantagraphicsArchive:
     archive_images_page_map: dict[str, Path]
     override_images_page_map: dict[str, Path]
     extra_images_page_map: dict[str, Path]
+    override_archive_filename: Path
+    override_archive: zipfile.ZipFile | None = None
 
     def get_num_pages(self) -> int:
         return self.last_page - self.first_page + 1
+
+    def has_overrides(self) -> bool:
+        return (len(self.extra_images_page_map) > 0) or (len(self.override_images_page_map) > 0)
 
 
 class FantagraphicsVolumeArchives:
@@ -100,7 +104,7 @@ class FantagraphicsVolumeArchives:
         return self._fantagraphics_archive_dict[volume]
 
     def check_archives_and_overrides(
-        self, archive_filenames: list[Path], override_dirs: dict[int, Path]
+        self, archive_filenames: list[Path], override_archive_filenames: dict[int, Path]
     ) -> None:
         self.check_correct_volume_numbers(archive_filenames)
 
@@ -110,10 +114,10 @@ class FantagraphicsVolumeArchives:
             )
         if len(archive_filenames) > NUM_VOLUMES:
             raise TooManyArchiveFilesError(len(archive_filenames), NUM_VOLUMES, self._archive_root)
-        if len(override_dirs) < NUM_VOLUMES:
-            raise NotEnoughOverrideDirsError(len(override_dirs), NUM_VOLUMES, self._override_root)
-        if len(override_dirs) > NUM_VOLUMES:
-            raise TooManyOverrideDirsError(len(override_dirs), NUM_VOLUMES, self._archive_root)
+        if len(override_archive_filenames) > NUM_VOLUMES:
+            raise TooManyOverrideDirsError(
+                len(override_archive_filenames), NUM_VOLUMES, self._archive_root
+            )
 
     def check_correct_volume_numbers(self, archive_filenames: list[Path]) -> None:
         volume = FIRST_VOLUME_NUMBER
@@ -133,8 +137,8 @@ class FantagraphicsVolumeArchives:
 
     def load(self) -> None:
         archive_filenames = sorted(self.get_all_volume_filenames())
-        override_dirs = self.get_all_volume_overrides()
-        self.check_archives_and_overrides(archive_filenames, override_dirs)
+        override_archive_filenames = self.get_all_volume_override_archives()
+        self.check_archives_and_overrides(archive_filenames, override_archive_filenames)
 
         self._fantagraphics_archive_dict: dict[int, FantagraphicsArchive] = {}
         for archive in archive_filenames:
@@ -155,19 +159,20 @@ class FantagraphicsVolumeArchives:
             self._check_image_names(image_filenames, first_page, last_page, image_ext)
 
             fanta_volume = self._get_fanta_volume(archive)
-            override_dir = override_dirs.get(fanta_volume, "")
+            override_archive_filename = override_archive_filenames.get(fanta_volume, "")
 
             archive_image_page_map = self._get_archive_image_page_map(
                 image_dir, image_filenames, first_page, last_page
             )
             override_image_page_map, extra_images_page_map = (
-                self._get_override_and_extra_images_page_maps(override_dir, archive_image_page_map)
+                self._get_override_and_extra_images_page_maps(
+                    override_archive_filename, archive_image_page_map
+                )
             )
 
             archive_page_map = FantagraphicsArchive(
                 fanta_volume,
                 archive,
-                override_dir,
                 image_dir,
                 image_ext,
                 first_page,
@@ -175,6 +180,7 @@ class FantagraphicsVolumeArchives:
                 archive_image_page_map,
                 override_image_page_map,
                 extra_images_page_map,
+                override_archive_filename,
             )
 
             self._fantagraphics_archive_dict[fanta_volume] = archive_page_map
@@ -201,22 +207,23 @@ class FantagraphicsVolumeArchives:
 
         return archive_files
 
-    def get_all_volume_overrides(self) -> dict[int, Path]:
-        override_dirs = {}
+    def get_all_volume_override_archives(self) -> dict[int, Path]:
+        override_archives = {}
         for file in self._override_root.iterdir():
-            override_dir = self._override_root / file
-            if not override_dir.is_dir():
-                continue
+            override_archive_file = self._override_root / file
+            if not override_archive_file.is_file():
+                msg = f'Unexpected override archive directory "{file}".'
+                raise FileExistsError(msg)
 
             try:
                 vol = self._get_fanta_volume(file)
                 assert FIRST_VOLUME_NUMBER <= vol <= LAST_VOLUME_NUMBER
                 if vol in self._volume_list:
-                    override_dirs[vol] = override_dir
+                    override_archives[vol] = override_archive_file
             except ValueError:
                 continue
 
-        return override_dirs
+        return override_archives
 
     @staticmethod
     def _check_archive(archive_filename: str) -> None:
@@ -277,41 +284,42 @@ class FantagraphicsVolumeArchives:
 
     @staticmethod
     def _get_override_and_extra_images_page_maps(
-        override_dir: Path, archive_page_map: dict[str, Path]
+        override_archive_filename: Path, archive_page_map: dict[str, Path]
     ) -> tuple[dict[str, Path], dict[str, Path]]:
-        override_pages_map = {}
-        extra_pages_map = {}
-        if not override_dir:
+        override_pages_map: dict[str, Path] = {}
+        extra_pages_map: dict[str, Path] = {}
+        if not override_archive_filename:
             return override_pages_map, extra_pages_map
 
-        for file in override_dir.iterdir():
-            image_file = override_dir / file
-            page = file.stem
-            ext = file.suffix
-            assert ext in [JPG_FILE_EXT, PNG_FILE_EXT]
-            if ext not in VALID_IMAGE_EXTENSION:
-                msg = (
-                    f'For image "{image_file}",'
-                    f' expecting extension to be in "{VALID_IMAGE_EXTENSION}".'
-                )
-                raise PageExtError(msg)
+        with zipfile.ZipFile(override_archive_filename, "r") as archive:
+            for filename in archive.namelist():
+                file = Path(filename)
+                page = file.stem
+                ext = file.suffix
+                assert ext in [JPG_FILE_EXT, PNG_FILE_EXT]
+                if ext not in VALID_IMAGE_EXTENSION:
+                    msg = (
+                        f'For image "{file}" in "{override_archive_filename}",'
+                        f' expecting extension to be in "{VALID_IMAGE_EXTENSION}".'
+                    )
+                    raise PageExtError(msg)
 
-            if page in archive_page_map:
-                if page in override_pages_map:
-                    msg = (
-                        f"Cannot have jpg and png override:"
-                        f' "{image_file}" and "{override_pages_map[page]}".'
-                    )
-                    raise RuntimeError(msg)
-                override_pages_map[page] = image_file
-            else:
-                if page in extra_pages_map:
-                    msg = (
-                        f"Cannot have jpg and png override:"
-                        f' "{image_file}" and "{override_pages_map[page]}".'
-                    )
-                    raise RuntimeError(msg)
-                extra_pages_map[page] = image_file
+                if page in archive_page_map:
+                    if page in override_pages_map:
+                        msg = (
+                            f'Cannot have jpg and png override in "{override_archive_filename}":'
+                            f' "{file}" and "{override_pages_map[page]}".'
+                        )
+                        raise RuntimeError(msg)
+                    override_pages_map[page] = file
+                else:
+                    if page in extra_pages_map:
+                        msg = (
+                            f'Cannot have jpg and png override in "{override_archive_filename}":'
+                            f' "{file}" and "{override_pages_map[page]}".'
+                        )
+                        raise RuntimeError(msg)
+                    extra_pages_map[page] = file
 
         return override_pages_map, extra_pages_map
 

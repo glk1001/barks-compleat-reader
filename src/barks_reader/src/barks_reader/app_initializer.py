@@ -30,7 +30,6 @@ if TYPE_CHECKING:
     from barks_reader.json_settings_manager import SettingsManager
     from barks_reader.reader_settings import ReaderSettings
     from barks_reader.reader_tree_builder import ReaderTreeBuilder
-    from barks_reader.reader_ui_classes import LoadingDataPopup
     from barks_reader.tree_view_manager import TreeViewManager
     from barks_reader.tree_view_screen import TreeViewScreen
     from barks_reader.user_error_handler import UserErrorHandler
