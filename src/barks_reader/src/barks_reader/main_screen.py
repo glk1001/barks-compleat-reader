@@ -425,21 +425,15 @@ class MainScreen(BoxLayout, Screen):
 
     def on_title_portal_image_pressed(self) -> None:
         if self.fanta_info is None:
-            logger.debug(
-                f'Image "{self._bottom_title_view_screen.title_inset_image_source}"'
-                f" pressed. But no title selected."
-            )
+            logger.error("Title portal image pressed pressed. But no title selected.")
             return
 
         volumes_state_ok, err_msg = self._app_initializer.is_fanta_volumes_state_ok()
         if not volumes_state_ok:
-            logger.warning(
-                f'Image "{self._bottom_title_view_screen.title_inset_image_source}"'
-                f" pressed. But {err_msg}."
-            )
+            logger.error("Title portal image pressed pressed. But {err_msg}.")
             return
 
-        logger.debug(f'Image "{self._bottom_title_view_screen.title_inset_image_source}" pressed.')
+        logger.debug("Title portal image pressed pressed.")
 
         self._read_barks_comic_book()
         self._set_no_longer_first_use()

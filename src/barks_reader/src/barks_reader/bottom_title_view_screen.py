@@ -7,6 +7,7 @@ from kivy.properties import (
     BooleanProperty,
     ColorProperty,
     NumericProperty,
+    ObjectProperty,
     StringProperty,
 )
 from kivy.uix.floatlayout import FloatLayout
@@ -14,6 +15,7 @@ from loguru import logger
 
 from barks_reader.random_title_images import FIT_MODE_COVER
 from barks_reader.reader_formatter import LONG_TITLE_SPLITS, ReaderFormatter
+from barks_reader.reader_utils import get_image_stream
 
 if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
@@ -44,10 +46,10 @@ class BottomTitleViewScreen(FloatLayout):
     MAX_TITLE_INFO_LEN_BEFORE_SHORTEN = 36
     title_info_text = StringProperty()
     title_extra_info_text = StringProperty()
-    title_inset_image_source = StringProperty()
+    title_inset_image_texture = ObjectProperty()
 
     view_title_opacity = NumericProperty(0.0)
-    view_title_image_source = StringProperty()
+    view_title_image_texture = ObjectProperty()
     view_title_image_fit_mode = StringProperty(FIT_MODE_COVER)
     view_title_image_color = ColorProperty()
 
@@ -78,13 +80,12 @@ class BottomTitleViewScreen(FloatLayout):
             self.MAX_TITLE_INFO_LEN_BEFORE_SHORTEN,
         )
         self.title_extra_info_text = self._formatter.get_title_extra_info(fanta_info)
-        self.title_inset_image_source = str(
-            self._reader_settings.file_paths.get_comic_inset_file(
-                fanta_info.comic_book_info.title,
-                use_edited_only=True,
-            )
+        inset_image_source = self._reader_settings.file_paths.get_comic_inset_file(
+            fanta_info.comic_book_info.title,
+            use_edited_only=True,
         )
-        logger.debug(f'Using title image source "{self.title_inset_image_source}".')
+        self.title_inset_image_texture = get_image_stream(inset_image_source)
+        logger.debug(f'Using title image source "{inset_image_source}".')
 
     def fade_in_bottom_view_title(self) -> None:
         self.ids.bottom_view_box.opacity = 0
@@ -110,14 +111,13 @@ class BottomTitleViewScreen(FloatLayout):
         if not self._fanta_info:
             return
 
-        self.title_inset_image_source = str(
-            self._special_fanta_overrides.get_title_page_inset_file(
-                self._fanta_info.comic_book_info.title,
-                use_overrides,
-            )
+        inset_image_source = self._special_fanta_overrides.get_title_page_inset_file(
+            self._fanta_info.comic_book_info.title,
+            use_overrides,
         )
+        self.title_inset_image_texture = get_image_stream(inset_image_source)
 
-        logger.debug(f"Use overrides changed: inset source = '{self.title_inset_image_source}'.")
+        logger.debug(f"Use overrides changed: inset source = '{inset_image_source}'.")
 
     @staticmethod
     def _get_main_title_str(fanta_info: FantaComicBookInfo) -> str:

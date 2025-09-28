@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import io
 import sys
 import threading
 import traceback
@@ -20,7 +19,7 @@ from barks_fantagraphics.fanta_comics_info import (
     FantaComicBookInfo,
 )
 from comic_utils.pil_image_utils import (
-    PNG_PIL_FORMAT,
+    get_pil_image_as_png_bytes,
     open_pil_image_from_bytes,
 )
 from kivy.clock import Clock
@@ -30,9 +29,10 @@ from PIL import ImageOps
 
 from barks_reader.fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
 from barks_reader.reader_ui_classes import set_kivy_busy_cursor, set_kivy_normal_cursor
-from barks_reader.reader_utils import is_blank_page, is_title_page
+from barks_reader.reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
 
 if TYPE_CHECKING:
+    import io
     from collections.abc import Callable
 
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
@@ -42,8 +42,6 @@ if TYPE_CHECKING:
 
 ALL_FANTA_VOLUMES = list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1))
 # ALL_FANTA_VOLUMES = [i for i in range(5, 7 + 1)]
-
-_PNG_EXT_FOR_KIVY = PNG_PIL_FORMAT.lower()
 
 
 class ComicBookLoader:
@@ -414,7 +412,4 @@ class ComicBookLoader:
             PilImage.Resampling.LANCZOS,
         )
 
-        data = io.BytesIO()
-        pil_image_resized.save(data, format=PNG_PIL_FORMAT)
-
-        return data, _PNG_EXT_FOR_KIVY
+        return get_pil_image_as_png_bytes(pil_image_resized), PNG_EXT_FOR_KIVY

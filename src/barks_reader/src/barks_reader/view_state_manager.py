@@ -9,6 +9,7 @@ from barks_reader.background_views import ImageThemes
 from barks_reader.random_title_images import ImageInfo
 from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO
 from barks_reader.reader_formatter import get_clean_text_without_extra
+from barks_reader.reader_utils import get_image_stream
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -232,8 +233,10 @@ class ViewStateManager:
         self._bottom_view_title_image_info = (
             self._background_views.get_bottom_view_title_image_info()
         )
-        self._bottom_title_view_screen.view_title_image_source = str(
-            self._bottom_view_title_image_info.filename
+        self._bottom_title_view_screen.view_title_image_texture = (
+            None
+            if not self._bottom_view_title_image_info.filename
+            else get_image_stream(self._bottom_view_title_image_info.filename)
         )
         self._bottom_title_view_screen.view_title_image_fit_mode = (
             self._bottom_view_title_image_info.fit_mode

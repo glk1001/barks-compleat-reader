@@ -37,7 +37,7 @@
         # The background image is now a direct child, simplifying the structure.
         Image:
             color: root.view_title_image_color if title_show_button.opacity > 0.9 else (1,1,1,1)
-            source: root.view_title_image_source
+            texture: root.view_title_image_texture
             x: self.parent.x
             y: self.parent.y
             fit_mode: root.view_title_image_fit_mode
@@ -153,7 +153,7 @@
                                 blur_radius: 30 if self.state == "normal" else 15
                         TitlePageImage:
                             id: title_portal_image
-                            source: root.title_inset_image_source
+                            texture: root.title_inset_image_texture
                             opacity: 0.5 if root.is_first_use_of_reader else 1
                             pos: self.parent.pos
                             size: self.parent.size

@@ -1,11 +1,28 @@
+from __future__ import annotations
+
 from pathlib import Path
 from random import randrange
+from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, Titles
 from barks_fantagraphics.comics_consts import PageType
-from barks_fantagraphics.pages import CleanPage
+from comic_utils.pil_image_utils import PNG_PIL_FORMAT, get_image_as_png_bytes
+from kivy.core.image import Image as CoreImage
+
+if TYPE_CHECKING:
+    import io
+
+    from barks_fantagraphics.pages import CleanPage
 
 EMPTY_PAGE_KEY = "empty_page"
+PNG_EXT_FOR_KIVY = PNG_PIL_FORMAT.lower()
+
+
+def get_image_stream(file: Path) -> io.BytesIO:
+    # self.title_inset_image_source = CoreImage(inset_image_source).texture
+    image_stream = get_image_as_png_bytes(str(file))
+    image_stream.seek(0)
+    return CoreImage(image_stream, ext=PNG_EXT_FOR_KIVY).texture
 
 
 def prob_rand_less_equal(percent: int) -> bool:
