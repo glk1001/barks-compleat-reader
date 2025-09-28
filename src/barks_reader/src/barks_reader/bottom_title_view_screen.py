@@ -49,7 +49,7 @@ class BottomTitleViewScreen(FloatLayout):
     title_inset_image_texture = ObjectProperty()
 
     view_title_opacity = NumericProperty(0.0)
-    view_title_image_texture = ObjectProperty()
+    view_title_image_texture = ObjectProperty(allownone=True)
     view_title_image_fit_mode = StringProperty(FIT_MODE_COVER)
     view_title_image_color = ColorProperty()
 

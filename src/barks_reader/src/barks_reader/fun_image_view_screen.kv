@@ -14,7 +14,7 @@
 
         Image:
             color: root.fun_view_image_color
-            source: root.fun_view_image_source
+            texture: root.fun_view_image_texture
             fit_mode: root.fun_view_image_fit_mode
             mipmap: True
 
@@ -221,6 +221,7 @@
             opacity: 1 if root.fun_view_options_enabled else 0.3
 
             Image:
+                # TODO: Fix this hard coding.
                 source: "/home/greg/Books/Carl Barks/Compleat Barks Disney Reader/Reader Icons/ActionBar Icons/menu-icon.png"
                 background_color: (0, 0, 0, 0) # Make default background transparent
                 opacity: 0 if root.fun_view_options_enabled else 0.5

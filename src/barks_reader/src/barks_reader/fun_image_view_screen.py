@@ -7,6 +7,7 @@ from kivy.properties import (
     BooleanProperty,
     ColorProperty,
     NumericProperty,
+    ObjectProperty,
     StringProperty,
 )
 from kivy.uix.boxlayout import BoxLayout
@@ -33,7 +34,7 @@ class FunImageViewScreen(BoxLayout):
     goto_title_button_active = BooleanProperty(defaultvalue=True)
 
     fun_view_opacity = NumericProperty(0.0)
-    fun_view_image_source = StringProperty()
+    fun_view_image_texture = ObjectProperty(allownone=True)
     fun_view_image_fit_mode = StringProperty(FIT_MODE_CONTAIN)
     fun_view_image_color = ColorProperty()
     fun_view_options_enabled = BooleanProperty(defaultvalue=False)

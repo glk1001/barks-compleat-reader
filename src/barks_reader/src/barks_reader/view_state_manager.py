@@ -210,8 +210,10 @@ class ViewStateManager:
             self._background_views.get_bottom_view_fun_image_opacity()
         )
         self._bottom_view_fun_image_info = self._background_views.get_bottom_view_fun_image_info()
-        self._fun_image_view_screen.fun_view_image_source = str(
-            self._bottom_view_fun_image_info.filename
+        self._fun_image_view_screen.fun_view_image_texture = (
+            None
+            if not self._bottom_view_fun_image_info.filename
+            else get_image_stream(self._bottom_view_fun_image_info.filename)
         )
         self._fun_image_view_screen.fun_view_image_fit_mode = (
             self._bottom_view_fun_image_info.fit_mode
