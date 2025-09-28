@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from random import randrange
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.barks_titles import BARKS_TITLES, VACATION_TIME, Titles
 from loguru import logger
 
 from barks_reader.image_file_getter import TitleImageFileGetter
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 
+    from barks_reader.reader_consts_and_types import PanelPath
     from barks_reader.reader_settings import ReaderSettings
 
 NUM_RAND_ATTEMPTS = 10
@@ -40,7 +41,7 @@ NON_TITLE_BIAS = 0.1
 
 @dataclass
 class ImageInfo:
-    filename: Path | None = None
+    filename: PanelPath | None = None
     from_title: Titles | None = None
     fit_mode: str = FIT_MODE_COVER
 
@@ -75,6 +76,15 @@ class RandomTitleImages:
             FIT_MODE_COVER,
         )
 
+    def get_random_censorship_fix_image(self) -> ImageInfo:
+        title = Titles.VACATION_TIME
+        file1 = (
+            self._reader_settings.file_paths.get_comic_favourite_files_dir()
+            / VACATION_TIME
+            / ("076-8-flipped" + self._reader_settings.file_paths.get_file_ext())
+        )
+        return ImageInfo(file1, title, FIT_MODE_COVER)
+
     def get_loading_screen_random_image(self, title_list: list[FantaComicBookInfo]) -> Path:
         return self._get_random_image_file(
             title_list,
@@ -105,6 +115,7 @@ class RandomTitleImages:
 
         possible_images = self._get_possible_files_for_title(title_str, file_types, use_edited_only)
         if not possible_images:
+            logger.warning(f'No possible images for title "{title_str}". Using emergency image.')
             return self._reader_settings.file_paths.get_comic_inset_file(EMERGENCY_INSET_FILE)
 
         # Try to find an image not recently used for this title.
@@ -267,6 +278,7 @@ class RandomTitleImages:
         if title_str in self._title_image_files:
             return
 
+        logger.debug(f'Updating comic image files for title "{title_str}".')
         self._title_image_files[title_str].update(
             self._title_image_file_getter.get_all_title_image_files(title_str)
         )

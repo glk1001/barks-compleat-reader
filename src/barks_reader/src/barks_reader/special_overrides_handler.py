@@ -1,9 +1,8 @@
 from collections.abc import Callable
-from pathlib import Path
 
 from barks_fantagraphics.barks_titles import Titles
 
-from barks_reader.reader_consts_and_types import NO_OVERRIDES_SUFFIX
+from barks_reader.reader_consts_and_types import NO_OVERRIDES_SUFFIX, PanelPath
 from barks_reader.reader_settings import ReaderSettings
 
 
@@ -47,14 +46,14 @@ class SpecialFantaOverrides:
     def get_overrides_setting(self, title: Titles) -> bool:
         return self._FANTA_OVERRIDES_SETTINGS[title][1]()
 
-    def get_inset_file(self, title: Titles, use_overrides: bool) -> Path:
+    def get_inset_file(self, title: Titles, use_overrides: bool) -> PanelPath:
         std_inset_file = self._reader_settings.file_paths.get_comic_inset_file(
             title, use_edited_only=False
         )
 
         return self._get_special_inset_file(std_inset_file, use_overrides)
 
-    def get_title_page_inset_file(self, title: Titles, use_overrides: bool) -> Path:
+    def get_title_page_inset_file(self, title: Titles, use_overrides: bool) -> PanelPath:
         std_inset_file = self._reader_settings.file_paths.get_comic_inset_file(
             title, use_edited_only=True
         )
@@ -62,13 +61,17 @@ class SpecialFantaOverrides:
         return self._get_special_inset_file(std_inset_file, use_overrides)
 
     @staticmethod
-    def _get_special_inset_file(std_inset_file: Path, use_overrides: bool) -> Path:
+    def _get_special_inset_file(std_inset_file: PanelPath, use_overrides: bool) -> PanelPath:
         if use_overrides:
             return std_inset_file
 
-        # It's a special title and at this point we don't want
-        # to use Fantagraphics overrides.
+        # It's a special title and at this point the user has said don't
+        # use Fantagraphics overrides.
         no_overrides_stem = std_inset_file.stem + NO_OVERRIDES_SUFFIX
-        no_overrides_inset_file = std_inset_file.with_stem(no_overrides_stem)
+        # zipfile.Path does not have `with_stem`, so we reconstruct the path manually.
+        # This works for both pathlib.Path and zipfile.Path.
+        no_overrides_inset_file = std_inset_file.parent / (
+            no_overrides_stem + std_inset_file.suffix
+        )
 
         return no_overrides_inset_file if no_overrides_inset_file.is_file() else std_inset_file

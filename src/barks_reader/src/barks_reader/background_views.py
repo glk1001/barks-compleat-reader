@@ -11,7 +11,7 @@ from barks_fantagraphics.barks_tags import (
     TagGroups,
     Tags,
 )
-from barks_fantagraphics.barks_titles import BARKS_TITLES, VACATION_TIME, Titles
+from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from barks_fantagraphics.comics_utils import get_abbrev_path
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
@@ -369,7 +369,7 @@ class BackgroundViews:
         logger.debug(
             f"Top view image:"
             f" State: {self._view_state},"
-            f" Image: '{get_abbrev_path(self._top_view_image_info.filename)}',"
+            f" Image: '{get_abbrev_path(str(self._top_view_image_info.filename))}',"
             f" FitMode: '{self._top_view_image_info.fit_mode}',"
             f" Color: {get_formatted_color(self._top_view_image_color)},"
             f" Opacity: {self._top_view_image_opacity}."
@@ -498,13 +498,7 @@ class BackgroundViews:
         )
 
     def _set_top_view_image_for_appendix_censorship_fixes(self) -> None:
-        title = Titles.VACATION_TIME
-        file1 = (
-            self._reader_settings.file_paths.get_comic_favourite_files_dir()
-            / VACATION_TIME
-            / "076-8-flipped.png"
-        )
-        self._top_view_image_info = ImageInfo(file1, title, FIT_MODE_COVER)
+        self._top_view_image_info = self._random_title_images.get_random_censorship_fix_image()
 
     def _set_top_view_image_for_index(self) -> None:
         title = Titles.TRUANT_OFFICER_DONALD
@@ -532,7 +526,7 @@ class BackgroundViews:
         logger.debug(
             f"Bottom view fun image:"
             f" State: {self._view_state},"
-            f" Image: '{get_abbrev_path(self._bottom_view_fun_image_info.filename)}',"
+            f" Image: '{get_abbrev_path(str(self._bottom_view_fun_image_info.filename))}',"
             f" FitMode: '{self._bottom_view_fun_image_info.fit_mode}',"
             f" Color: {get_formatted_color(self._bottom_view_fun_image_color)},"
             f" Opacity: {self._bottom_view_fun_image_opacity}."

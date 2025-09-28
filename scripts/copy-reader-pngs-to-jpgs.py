@@ -113,8 +113,8 @@ if __name__ == "__main__":
         reader_settings.set_config(config, config_info.app_config_path)
         reader_settings.set_barks_panels_dir()
 
-        png_dir = reader_settings.file_paths.get_default_png_barks_panels_dir()
-        jpg_dir = reader_settings.file_paths.get_default_jpg_barks_panels_dir()
+        png_dir = reader_settings.file_paths.get_default_png_barks_panels_source()
+        jpg_dir = reader_settings.file_paths.get_default_jpg_barks_panels_source()
 
         traverse_and_process_dirs(png_dir, jpg_dir, file_processor_func=copy_or_convert_file)
 

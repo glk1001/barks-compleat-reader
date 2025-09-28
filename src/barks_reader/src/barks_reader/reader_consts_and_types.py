@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import zipfile
+from pathlib import Path
+
 from comic_utils.comic_consts import ROMAN_NUMERALS
 
 APP_TITLE = "The Compleat Barks Disney Reader"
@@ -8,6 +11,7 @@ LONG_PATH_SETTING = "longpath"
 NO_OVERRIDES_SUFFIX = "-no-overrides"
 COMIC_PAGE_ONE = ROMAN_NUMERALS[1]
 CLOSE_TO_ZERO = 0.001
+PanelPath = Path | zipfile.Path
 
 INTRO_NODE_TEXT = "Introduction"
 INTRO_COMPLEAT_BARKS_READER_TEXT = "Introduction to the Compleat Barks Reader"

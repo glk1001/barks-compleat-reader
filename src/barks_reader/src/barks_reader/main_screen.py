@@ -515,11 +515,9 @@ class MainScreen(BoxLayout, Screen):
 
         comic = self._comics_database.get_comic_book(title_str)
 
-        comic.intro_inset_file = str(
-            self._special_fanta_overrides.get_inset_file(
-                self.fanta_info.comic_book_info.title,
-                self._bottom_title_view_screen.use_overrides_active,
-            )
+        comic.intro_inset_file = self._special_fanta_overrides.get_inset_file(
+            self.fanta_info.comic_book_info.title,
+            self._bottom_title_view_screen.use_overrides_active,
         )
 
         return comic
