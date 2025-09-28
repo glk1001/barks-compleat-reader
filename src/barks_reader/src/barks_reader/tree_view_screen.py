@@ -4,6 +4,7 @@ from kivy.properties import (
     BooleanProperty,
     ColorProperty,
     NumericProperty,
+    ObjectProperty,
     StringProperty,
 )
 from kivy.uix.boxlayout import BoxLayout
@@ -16,7 +17,7 @@ from barks_reader.reader_tree_view_utils import find_node_by_path, find_tree_vie
 class TreeViewScreen(BoxLayout):
     """Screen for displaying the main tree view."""
 
-    top_view_image_source = StringProperty()
+    top_view_image_texture = ObjectProperty()
     top_view_image_fit_mode = StringProperty(FIT_MODE_COVER)
     top_view_image_color = ColorProperty()
     top_view_image_opacity = NumericProperty(0.0)

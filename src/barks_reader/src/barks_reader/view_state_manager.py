@@ -196,7 +196,9 @@ class ViewStateManager:
         self._tree_view_screen.top_view_image_opacity = (
             self._background_views.get_top_view_image_opacity()
         )
-        self._tree_view_screen.top_view_image_source = str(self._top_view_image_info.filename)
+        self._tree_view_screen.top_view_image_texture = get_image_stream(
+            self._top_view_image_info.filename
+        )
         self._tree_view_screen.top_view_image_fit_mode = self._top_view_image_info.fit_mode
         self._tree_view_screen.top_view_image_color = (
             self._background_views.get_top_view_image_color()
