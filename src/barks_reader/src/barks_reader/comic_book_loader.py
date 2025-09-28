@@ -19,8 +19,10 @@ from barks_fantagraphics.fanta_comics_info import (
     LAST_VOLUME_NUMBER,
     FantaComicBookInfo,
 )
-from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
-from comic_utils.pil_image_utils import open_pil_image_for_reading
+from comic_utils.pil_image_utils import (
+    PNG_PIL_FORMAT,
+    open_pil_image_from_bytes,
+)
 from kivy.clock import Clock
 from loguru import logger
 from PIL import Image as PilImage
@@ -41,21 +43,7 @@ if TYPE_CHECKING:
 ALL_FANTA_VOLUMES = list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1))
 # ALL_FANTA_VOLUMES = [i for i in range(5, 7 + 1)]
 
-_JPEG_PIL_FORMAT = "JPEG"
-_PNG_PIL_FORMAT = "PNG"
-_PNG_EXT_FOR_KIVY = _PNG_PIL_FORMAT.lower()
-_EXTENSION_TO_PIL_FORMAT = {
-    JPG_FILE_EXT: _JPEG_PIL_FORMAT,
-    PNG_FILE_EXT: _PNG_PIL_FORMAT,
-}
-
-
-def _get_pil_format_from_ext(ext: str) -> str:
-    try:
-        return _EXTENSION_TO_PIL_FORMAT[ext.lower()]
-    except KeyError as e:
-        msg = f"Unsupported image extension for PIL: '{ext}'."
-        raise ValueError(msg) from e
+_PNG_EXT_FOR_KIVY = PNG_PIL_FORMAT.lower()
 
 
 class ComicBookLoader:
@@ -391,14 +379,16 @@ class ComicBookLoader:
         ext = image_path.suffix
 
         if is_from_archive:
-            with archive.open(str(image_path), "r") as file:
-                file_data = file.read()
+            zip_path = zipfile.Path(archive, at=str(image_path))
+            file_data = zip_path.read_bytes()
         elif page_info.srce_page.page_type in [PageType.BLANK_PAGE, PageType.TITLE]:
             file_data = self._empty_page_image
         else:  # it's a file
             with Path(image_path).open("rb") as file:
                 file_data = file.read()
 
+        # Inspection seems wrong!?
+        # noinspection PyUnboundLocalVariable
         image_data = self._get_image_data(file_data, ext, page_info)
 
         logger.debug(
@@ -411,9 +401,7 @@ class ComicBookLoader:
     def _get_image_data(
         self, file_data: bytes, ext: str, page_info: PageInfo
     ) -> tuple[io.BytesIO, str]:
-        pil_image = open_pil_image_for_reading(
-            io.BytesIO(file_data), [_get_pil_format_from_ext(ext)]
-        )
+        pil_image = open_pil_image_from_bytes(file_data, ext)
 
         if self._fanta_volume_archive:
             pil_image = self._comic_book_image_builder.get_dest_page_image(
@@ -427,6 +415,6 @@ class ComicBookLoader:
         )
 
         data = io.BytesIO()
-        pil_image_resized.save(data, format=_PNG_PIL_FORMAT)
+        pil_image_resized.save(data, format=PNG_PIL_FORMAT)
 
         return data, _PNG_EXT_FOR_KIVY
