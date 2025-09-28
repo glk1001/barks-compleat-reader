@@ -47,7 +47,7 @@ from barks_reader.reader_ui_classes import (
     set_kivy_busy_cursor,
     set_kivy_normal_cursor,
 )
-from barks_reader.reader_utils import get_all_files_in_dir
+from barks_reader.reader_utils import get_all_files_in_dir, get_image_stream
 from barks_reader.special_overrides_handler import SpecialFantaOverrides
 from barks_reader.tree_view_manager import TreeViewManager
 from barks_reader.user_error_handler import UserErrorHandler
@@ -129,6 +129,7 @@ class MainScreen(BoxLayout, Screen):
         self._loading_data_popup = LoadingDataPopup()
         self._loading_data_popup.on_open = self._on_loading_data_popup_open
         self._loading_data_popup_image_event: ClockEvent | None = None
+        Clock.schedule_once(lambda _dt: self._loading_data_popup.open(), 0)
 
         self._reader_tree_events = reader_tree_events
 
@@ -195,7 +196,6 @@ class MainScreen(BoxLayout, Screen):
             self._view_state_manager,
             self._tree_view_manager,
             self._tree_view_screen,
-            self._loading_data_popup,
             self._set_next_title,
         )
         self._reader_tree_events.bind(
@@ -230,11 +230,13 @@ class MainScreen(BoxLayout, Screen):
         return icon_files[file_index]
 
     def _on_loading_data_popup_open(self) -> None:
+        logger.debug("Starting the loading data popup...")
+
         set_kivy_busy_cursor()
 
         def _show_popop() -> None:
-            self._set_new_loading_data_popup_image()
             self._loading_data_popup.opacity = 1
+            self._set_new_loading_data_popup_image()
 
         Clock.schedule_once(lambda _dt: _show_popop(), 0)
 
@@ -244,10 +246,11 @@ class MainScreen(BoxLayout, Screen):
         )
 
     def _set_new_loading_data_popup_image(self) -> None:
-        self._loading_data_popup.splash_image_path = str(
-            self._random_title_images.get_loading_screen_random_image(self._title_lists[ALL_LISTS])
+        splash_image_file = self._random_title_images.get_loading_screen_random_image(
+            self._title_lists[ALL_LISTS]
         )
-        logger.debug(f'New loading popup image: "{self._loading_data_popup.splash_image_path}".')
+        self._loading_data_popup.splash_image_texture = get_image_stream(splash_image_file)
+        logger.debug(f'New loading popup image: "{splash_image_file}".')
 
     def app_closing(self) -> None:
         logger.debug("Closing app...")
@@ -261,8 +264,6 @@ class MainScreen(BoxLayout, Screen):
             logger.debug(f'Settings: Saved last selected node "{selected_node_path}".')
 
     def build_tree_view(self) -> None:
-        # Put import here to avoid circular dependency.
-
         tree_builder = ReaderTreeBuilder(
             self._reader_settings,
             self._tree_view_screen.ids.reader_tree_view,
@@ -275,7 +276,11 @@ class MainScreen(BoxLayout, Screen):
         self._app_initializer.start(tree_builder, self._on_tree_build_finished)
 
     def _on_tree_build_finished(self) -> None:
+        # Linger on the last image...
+        self._loading_data_popup.title = "All titles loaded!"
+        Clock.schedule_once(lambda _dt: self._loading_data_popup.dismiss(), 1)
         self._loading_data_popup_image_event.cancel()
+
         set_kivy_normal_cursor()
 
     def on_action_bar_collapse(self) -> None:

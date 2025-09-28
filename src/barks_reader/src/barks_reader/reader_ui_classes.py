@@ -12,7 +12,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.event import EventDispatcher
 from kivy.metrics import dp
-from kivy.properties import NumericProperty, StringProperty
+from kivy.properties import NumericProperty, ObjectProperty, StringProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -75,7 +75,7 @@ class ReaderTreeBuilderEventDispatcher(EventDispatcher):
 
 class LoadingDataPopup(Popup):
     progress_bar_value = NumericProperty(0)
-    splash_image_path = StringProperty()
+    splash_image_texture = ObjectProperty()
 
 
 class MessagePopup(Popup):

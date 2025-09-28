@@ -52,7 +52,6 @@ class AppInitializer:
         view_state_manager: ViewStateManager,
         tree_view_manager: TreeViewManager,
         tree_view_screen: TreeViewScreen,
-        loading_data_popup: LoadingDataPopup,
         set_next_title_func: Callable[[FantaComicBookInfo, Tags | TagGroups | None], None],
     ) -> None:
         self._reader_settings = reader_settings
@@ -62,7 +61,6 @@ class AppInitializer:
         self._tree_view_screen = tree_view_screen
         self._tree_view_manager = tree_view_manager
         self._view_state_manager = view_state_manager
-        self._loading_data_popup = loading_data_popup
         self._set_next_title_func = set_next_title_func
 
         self._fanta_volumes_state: FantaVolumesState = FantaVolumesState.VOLUMES_NOT_SET
@@ -73,7 +71,6 @@ class AppInitializer:
     ) -> None:
         """Kick off the entire application initialization and tree build process."""
         self._on_tree_build_finished = on_tree_build_finished
-        Clock.schedule_once(lambda _dt: self._loading_data_popup.open(), 0)
         Clock.schedule_once(lambda _dt: tree_builder.build_main_screen_tree(), 0)
 
     def on_tree_build_finished(self, _instance: Widget) -> None:
@@ -81,10 +78,6 @@ class AppInitializer:
 
         assert self._on_tree_build_finished is not None
         self._on_tree_build_finished()
-
-        # Linger on the last image...
-        self._loading_data_popup.title = "All titles loaded!"
-        Clock.schedule_once(lambda _dt: self._loading_data_popup.dismiss(), 1)
 
         self._post_build_setup()
 
