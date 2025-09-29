@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from kivy.properties import (
     BooleanProperty,
     ColorProperty,
@@ -12,6 +14,8 @@ from kivy.uix.treeview import TreeViewNode
 
 from barks_reader.random_title_images import FIT_MODE_COVER
 from barks_reader.reader_tree_view_utils import find_node_by_path, find_tree_view_node
+
+TREE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 
 class TreeViewScreen(BoxLayout):

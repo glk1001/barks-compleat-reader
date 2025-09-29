@@ -11,7 +11,7 @@ from barks_reader.reader_formatter import get_action_bar_title
 from barks_reader.reader_settings import ReaderSettings
 from barks_reader.reader_ui_classes import ACTION_BAR_SIZE_Y
 
-KV_FILE = str(Path(__file__).with_suffix(".kv"))
+INTRO_COMPLEAT_BARKS_READER_KV_FILE = Path(__file__).with_suffix(".kv")
 
 
 class IntroCompleatBarksReaderScreen(BoxLayout, Screen):
@@ -53,7 +53,7 @@ def get_intro_compleat_barks_reader_screen(
     font_manager: FontManager,
     on_close_screen: Callable[[], None],
 ) -> Screen:
-    Builder.load_file(KV_FILE)
+    Builder.load_file(str(INTRO_COMPLEAT_BARKS_READER_KV_FILE))
 
     return IntroCompleatBarksReaderScreen(
         reader_settings,

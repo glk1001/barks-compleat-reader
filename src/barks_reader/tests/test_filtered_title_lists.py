@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, patch
 
 from barks_fantagraphics.barks_tags import TagCategories
 from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
-
 from barks_reader.filtered_title_lists import FilteredTitleLists
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kivy.metrics import dp
@@ -19,6 +20,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from barks_reader.reader_settings import ReaderSettings
+
+FUN_IMAGE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 
 class FunImageViewScreen(BoxLayout):

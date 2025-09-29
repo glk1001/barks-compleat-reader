@@ -1,20 +1,17 @@
-#!/usr/bin/env -S uv run --script
+# ruff: noqa: PLC0415, EXE002
 
-# ------------------------------------------------------------------ #
-# --- We need to change the KIVY_HOME directory to be under this --- #
-# --- app's settings directory. The 'config_info' module handles --- #
-# --- this, and for this to work, we need to import it before    --- #
-# --- any kivy imports.                                          --- #
+# -------------------------------------------------------------------- #
+# --- We need to change the KIVY_HOME directory to be under this   --- #
+# --- app's settings directory. The 'barks_reader.config_info'     --- #
+# --- module handles this, and for this to work, we need to import --- #
+# --- it before any kivy imports                                   --- #
 
 import logging
 import sys
 from configparser import ConfigParser
 
 from barks_fantagraphics.comics_cmd_args import CmdArgs, ExtraArg
-from loguru import logger
-from loguru_config import LoguruConfig
-
-from barks_reader.config_info import ConfigInfo
+from barks_reader.config_info import ConfigInfo  # IMPORT THIS BEFORE Kivy!!
 from barks_reader.reader_settings import (
     BARKS_READER_SECTION,
     MAIN_WINDOW_HEIGHT,
@@ -22,6 +19,9 @@ from barks_reader.reader_settings import (
     MAIN_WINDOW_TOP,
 )
 from barks_reader.screen_metrics import get_approximate_taskbar_height, get_primary_screen_info
+from comic_utils.comic_consts import get_pyinstaller_bundled_main_dir
+from loguru import logger
+from loguru_config import LoguruConfig
 
 # ------------------------------------------------------------------ #
 
@@ -29,8 +29,51 @@ APP_LOGGING_NAME = "app"  # For use by 'loguru-config'
 KIVY_LOGGING_NAME = "kivy"
 
 
+# noinspection PyPep8Naming
+def set_project_paths() -> None:
+    bundled_main_dir = get_pyinstaller_bundled_main_dir()
+    if not bundled_main_dir:
+        return
+
+    from barks_reader.bottom_title_view_screen import BOTTOM_TITLE_VIEW_SCREEN_KV_FILE
+    from barks_reader.comic_book_reader import COMIC_BOOK_READER_KV_FILE
+    from barks_reader.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE
+    from barks_reader.intro_compleat_barks_reader import INTRO_COMPLEAT_BARKS_READER_KV_FILE
+    from barks_reader.main_screen import MAIN_SCREEN_KV_FILE
+    from barks_reader.reader_ui_classes import READER_TREE_VIEW_KV_FILE
+    from barks_reader.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE
+
+    barks_reader_srce_dir = bundled_main_dir / "barks_reader"
+
+    COMIC_BOOK_READER_KV_FILE = barks_reader_srce_dir / COMIC_BOOK_READER_KV_FILE.name  # noqa: N806
+    READER_TREE_VIEW_KV_FILE = barks_reader_srce_dir / READER_TREE_VIEW_KV_FILE.name  # noqa: N806
+    BOTTOM_TITLE_VIEW_SCREEN_KV_FILE = barks_reader_srce_dir / BOTTOM_TITLE_VIEW_SCREEN_KV_FILE.name  # noqa: N806
+    FUN_IMAGE_VIEW_SCREEN_KV_FILE = barks_reader_srce_dir / FUN_IMAGE_VIEW_SCREEN_KV_FILE.name  # noqa: N806
+    TREE_VIEW_SCREEN_KV_FILE = barks_reader_srce_dir / TREE_VIEW_SCREEN_KV_FILE.name  # noqa: N806
+    INTRO_COMPLEAT_BARKS_READER_KV_FILE = (  # noqa: N806
+        barks_reader_srce_dir / INTRO_COMPLEAT_BARKS_READER_KV_FILE.name
+    )
+    MAIN_SCREEN_KV_FILE = barks_reader_srce_dir / MAIN_SCREEN_KV_FILE.name  # noqa: N806
+
+    logger.debug(f'Pyinstaller reset: COMIC_BOOK_READER_KV_FILE = "{COMIC_BOOK_READER_KV_FILE}".')
+    logger.debug(f'Pyinstaller reset: READER_TREE_VIEW_KV_FILE = "{READER_TREE_VIEW_KV_FILE}".')
+    logger.debug(
+        f"Pyinstaller reset: BOTTOM_TITLE_VIEW_SCREEN_KV_FILE"
+        f' = "{BOTTOM_TITLE_VIEW_SCREEN_KV_FILE}".'
+    )
+    logger.debug(
+        f'Pyinstaller reset: FUN_IMAGE_VIEW_SCREEN_KV_FILE = "{FUN_IMAGE_VIEW_SCREEN_KV_FILE}".'
+    )
+    logger.debug(f'Pyinstaller reset: TREE_VIEW_SCREEN_KV_FILE = "{TREE_VIEW_SCREEN_KV_FILE}".')
+    logger.debug(
+        f"Pyinstaller reset: INTRO_COMPLEAT_BARKS_READER_KV_FILE"
+        f' = "{INTRO_COMPLEAT_BARKS_READER_KV_FILE}".'
+    )
+    logger.debug(f'Pyinstaller reset: MAIN_SCREEN_KV_FILE = "{MAIN_SCREEN_KV_FILE}".')
+
+
 def start_logging(cfg_info: ConfigInfo, args: CmdArgs) -> None:
-    from kivy import Config  # noqa: PLC0415
+    from kivy import Config
 
     setup_loguru(cfg_info, args)
 
@@ -44,7 +87,7 @@ def start_logging(cfg_info: ConfigInfo, args: CmdArgs) -> None:
 
 
 def redirect_kivy_logs() -> None:
-    from kivy import Logger as KivyLogger  # noqa: PLC0415
+    from kivy import Logger as KivyLogger
 
     # Redirect Kivy's log messages to our main loguru setup.
     class LoguruKivyHandler(logging.Handler):
@@ -86,12 +129,12 @@ def redirect_kivy_logs() -> None:
 
 
 # Make these log variables global so loguru-config can access them.
-log_level = None
+log_level = logging.DEBUG
 log_path = None
 
 
 def setup_loguru(cfg_info: ConfigInfo, _args: CmdArgs) -> None:
-    from barks_reader.reader_file_paths import HOME_DIR  # noqa: PLC0415
+    from barks_reader.reader_file_paths import HOME_DIR
 
     global log_path  # noqa: PLW0603
     log_path = HOME_DIR / cfg_info.app_config_dir / "kivy" / "logs" / "barks-reader.log"
@@ -192,7 +235,10 @@ def get_win_width_from_height(win_height: int) -> int:
 
 
 def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
-    from kivy import Config  # noqa: PLC0415
+    from kivy import Config
+
+    # Don't show anything until the app decides to.
+    Config.set("graphics", "window_state", "hidden")
 
     win_width = get_win_width_from_height(win_height)
     logger.debug(f"Main win width: {win_width}.")
@@ -204,7 +250,7 @@ def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
 
 
 def call_reader_main(cfg_info: ConfigInfo, args: CmdArgs) -> None:
-    from barks_reader.barks_reader_app import main  # noqa: PLC0415
+    from barks_reader.barks_reader_app import main
 
     main(cfg_info, args)
 
@@ -225,5 +271,9 @@ if __name__ == "__main__":
     start_logging(config_info, cmd_args)
 
     update_window_size(cmd_args, config_info)
+
+    # Careful! Because of kivy import issues, we need to do this
+    # just before calling app main.
+    set_project_paths()
 
     call_reader_main(config_info, cmd_args)

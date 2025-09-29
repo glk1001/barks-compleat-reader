@@ -5,29 +5,43 @@ description = "Kivy app to navigate and read the Fantagraphics Barks library."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "barks-reader",
-    "better-exceptions>=0.3.3",
+    "better-exceptions==0.3.3",
+    "certifi==2025.8.3",
+    "colorama==0.4.6 ; sys_platform == 'win32'",
+    "cpi==2.0.8",
+    "cython==3.1.4 ; sys_platform == 'darwin'",
+    "docutils==0.22",
     "docutils-stubs==0.0.22",
-    "intspan>=1.6.1",
-    "loguru>=0.7.3",
-    "loguru-config>=0.1.0",
-    "pillow>=11.2.1",
-    "pyyaml>=6.0.2",
+    "filetype==1.2.0",
+    "idna==3.10",
+    "intspan==1.6.1",
+    "kivy==2.3.1",
+    "kivy-deps-angle==0.4.0 ; sys_platform == 'win32'",
+    "kivy-deps-glew==0.3.1 ; sys_platform == 'win32'",
+    "kivy-deps-sdl2==0.8.0 ; sys_platform == 'win32'",
+    "kivy-garden==0.1.5",
+    "loguru==0.7.3",
+    "loguru-config==0.1.0",
+    "numpy==2.2.6",
+    "pillow==11.3.0",
+    "pygments==2.19.2",
+    "pyobjc-core==11.1 ; sys_platform == 'darwin'",
+    "pyobjc-framework-cocoa==11.1 ; sys_platform == 'darwin'",
+    "pypiwin32==223 ; sys_platform == 'win32'",
+    "python-dateutil==2.9.0.post0",
+    "pytz==2025.2",
+    "pywin32==311 ; sys_platform == 'win32'",
+    "pyyaml==6.0.2",
+    "screeninfo==0.8.1",
+    "six==1.17.0",
     "types-docutils==0.22.0.20250822",
+    "tzdata==2025.2",
+    "urllib3==2.5.0",
+    "win32-setctime==1.2.0 ; sys_platform == 'win32'",
 ]
-
-[project.scripts]
-reader = "__main__:main"
 
 [dependency-groups]
 dev = [
+    "pyinstaller>=6.16.0",
     "ruff>=0.12.7",
-]
-
-[tool.uv.sources]
-barks-reader = { workspace = true }
-
-[tool.uv.workspace]
-members = [
-    "src/barks_reader",
 ]

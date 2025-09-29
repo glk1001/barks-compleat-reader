@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from random import randrange
 from typing import TYPE_CHECKING
 
@@ -54,8 +55,6 @@ from barks_reader.user_error_handler import UserErrorHandler
 from barks_reader.view_state_manager import ImageThemesChange, ImageThemesToUse, ViewStateManager
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from barks_fantagraphics.comic_book import ComicBook
     from barks_fantagraphics.comics_database import ComicsDatabase
 
@@ -74,6 +73,8 @@ if TYPE_CHECKING:
     from barks_reader.reader_settings import ReaderSettings
     from barks_reader.system_file_paths import SystemFilePaths
     from barks_reader.tree_view_screen import TreeViewScreen
+
+MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 
 class MainScreen(BoxLayout, Screen):
@@ -435,7 +436,7 @@ class MainScreen(BoxLayout, Screen):
 
         volumes_state_ok, err_msg = self._app_initializer.is_fanta_volumes_state_ok()
         if not volumes_state_ok:
-            logger.error("Title portal image pressed pressed. But {err_msg}.")
+            logger.error(f"Title portal image pressed pressed. But {err_msg}.")
             return
 
         logger.debug("Title portal image pressed pressed.")

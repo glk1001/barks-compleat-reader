@@ -13,7 +13,7 @@ from barks_fantagraphics.comics_utils import (
     get_long_formatted_submitted_date,
 )
 from barks_fantagraphics.fanta_comics_info import FAN, FANTA_SOURCE_COMICS, FantaComicBookInfo
-from cpi import inflate
+# from cpi import inflate
 
 from barks_reader.font_manager import FontManager
 from barks_reader.reader_colors import Color
@@ -61,7 +61,8 @@ def get_formatted_color(color: Color) -> str:
 
 def get_formatted_payment_info(payment_info: PaymentInfo) -> str:
     current_year = datetime.now(UTC).year
-    cpi_adjusted_payment = inflate(payment_info.payment, payment_info.accepted_year)
+    #    cpi_adjusted_payment = inflate(payment_info.payment, payment_info.accepted_year)
+    cpi_adjusted_payment = payment_info.payment
 
     return (
         f"${payment_info.payment:.0f} (${cpi_adjusted_payment:.0f} in {current_year})"

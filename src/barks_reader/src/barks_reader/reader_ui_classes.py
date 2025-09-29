@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from barks_fantagraphics.comics_utils import (
@@ -36,6 +37,8 @@ if TYPE_CHECKING:
     from barks_fantagraphics.title_search import BarksTitleSearch
     from kivy.input import MotionEvent
     from kivy.uix.spinner import Spinner
+
+READER_TREE_VIEW_KV_FILE = Path(__file__).parent / "reader-tree-view.kv"
 
 TREE_VIEW_NODE_TEXT_COLOR = (1, 1, 1, 1)
 TREE_VIEW_NODE_SELECTED_COLOR = (1, 0, 1, 0.8)

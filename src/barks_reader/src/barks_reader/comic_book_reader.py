@@ -43,7 +43,7 @@ GOTO_PAGE_BUTTON_BODY_COLOR = (0, 1, 1, 1)
 GOTO_PAGE_BUTTON_NONBODY_COLOR = (0, 0.5, 0.5, 1)
 GOTO_PAGE_BUTTON_CURRENT_PAGE_COLOR = (1, 1, 0, 1)
 
-COMIC_BOOK_READER_KV_FILE = str(Path(__file__).with_suffix(".kv"))
+COMIC_BOOK_READER_KV_FILE = Path(__file__).with_suffix(".kv")
 
 
 class _ComicPageManager(EventDispatcher):
@@ -568,7 +568,7 @@ def get_barks_comic_reader_screen(
     on_comic_is_ready_to_read: Callable[[], None],
     on_close_reader: Callable[[], None],
 ) -> Screen:
-    Builder.load_file(COMIC_BOOK_READER_KV_FILE)
+    Builder.load_file(str(COMIC_BOOK_READER_KV_FILE))
 
     root = ComicBookReaderScreen(reader_settings, reader_app_icon_file, name=screen_name)
 

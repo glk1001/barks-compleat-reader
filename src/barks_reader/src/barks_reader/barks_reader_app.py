@@ -12,13 +12,16 @@ from kivy.uix.settings import Settings, SettingsWithSpinner
 from loguru import logger
 from screeninfo import get_monitors
 
-from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
+from barks_reader.bottom_title_view_screen import (
+    BOTTOM_TITLE_VIEW_SCREEN_KV_FILE,
+    BottomTitleViewScreen,
+)
 from barks_reader.comic_book_reader import get_barks_comic_reader_screen
 from barks_reader.filtered_title_lists import FilteredTitleLists
 from barks_reader.font_manager import FontManager
-from barks_reader.fun_image_view_screen import FunImageViewScreen
+from barks_reader.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, FunImageViewScreen
 from barks_reader.intro_compleat_barks_reader import get_intro_compleat_barks_reader_screen
-from barks_reader.main_screen import MainScreen
+from barks_reader.main_screen import MAIN_SCREEN_KV_FILE, MainScreen
 from barks_reader.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING
 from barks_reader.reader_screens import (
     COMIC_BOOK_READER_SCREEN,
@@ -28,10 +31,14 @@ from barks_reader.reader_screens import (
     ReaderScreens,
 )
 from barks_reader.reader_settings import BuildableReaderSettings
-from barks_reader.reader_ui_classes import ACTION_BAR_SIZE_Y, ReaderTreeBuilderEventDispatcher
+from barks_reader.reader_ui_classes import (
+    ACTION_BAR_SIZE_Y,
+    READER_TREE_VIEW_KV_FILE,
+    ReaderTreeBuilderEventDispatcher,
+)
 from barks_reader.screen_metrics import get_screen_info, log_screen_metrics
 from barks_reader.settings_fix import SettingLongPath
-from barks_reader.tree_view_screen import TreeViewScreen
+from barks_reader.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
 
 if TYPE_CHECKING:
     from barks_fantagraphics.comics_cmd_args import CmdArgs
@@ -41,12 +48,6 @@ if TYPE_CHECKING:
     from kivy.uix.widget import Widget
 
     from barks_reader.config_info import ConfigInfo
-
-READER_TREE_VIEW_KV_FILE = str(Path(__file__).parent / "reader-tree-view.kv")
-TREE_VIEW_SCREEN_KV_FILE = str(Path(__file__).parent / "tree_view_screen.kv")
-BOTTOM_TITLE_VIEW_SCREEN_KV_FILE = str(Path(__file__).parent / "bottom_title_view_screen.kv")
-FUN_IMAGE_VIEW_SCREEN_KV_FILE = str(Path(__file__).parent / "fun_image_view_screen.kv")
-MAIN_SCREEN_KV_FILE = str(Path(__file__).parent / "main_screen.kv")
 
 
 class BarksReaderApp(App):
@@ -140,11 +141,11 @@ class BarksReaderApp(App):
         logger.debug("Loading kv files...")
         # Pass the font manager to kv lang so it can be accessed
         Builder.load_string("#:set fm app.font_manager")
-        Builder.load_file(READER_TREE_VIEW_KV_FILE)
-        Builder.load_file(TREE_VIEW_SCREEN_KV_FILE)
-        Builder.load_file(BOTTOM_TITLE_VIEW_SCREEN_KV_FILE)
-        Builder.load_file(FUN_IMAGE_VIEW_SCREEN_KV_FILE)
-        Builder.load_file(MAIN_SCREEN_KV_FILE)
+        Builder.load_file(str(READER_TREE_VIEW_KV_FILE))
+        Builder.load_file(str(TREE_VIEW_SCREEN_KV_FILE))
+        Builder.load_file(str(BOTTOM_TITLE_VIEW_SCREEN_KV_FILE))
+        Builder.load_file(str(FUN_IMAGE_VIEW_SCREEN_KV_FILE))
+        Builder.load_file(str(MAIN_SCREEN_KV_FILE))
 
         root = self._build_screens()
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kivy.animation import Animation
@@ -22,6 +23,8 @@ if TYPE_CHECKING:
 
     from barks_reader.reader_settings import ReaderSettings
     from barks_reader.special_overrides_handler import SpecialFantaOverrides
+
+BOTTOM_TITLE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 OPENING_TITLE_ANIMATION_DURATION = 4
 
