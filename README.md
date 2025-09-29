@@ -90,6 +90,8 @@ The application will now load the titles from your specified directory.
 1. Activate the python virtual environment:
     ```
    source .venv/bin/activate
+   
+   (source .venv/Scripts/activate on Windows)
     ```
 1. Run the pyinstaller build command:
     ```
