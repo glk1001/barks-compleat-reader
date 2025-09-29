@@ -66,9 +66,13 @@ ROMAN_NUMERALS = {
 }
 
 
-def get_pyinstaller_bundled_main_dir() -> Path | None:
+def _get_pyinstaller_bundled_main_dir() -> Path | None:
     try:
         # noinspection PyProtectedMember
         return Path(sys._MEIPASS)  # noqa: SLF001
     except AttributeError:
         return None
+
+
+PYINSTALLER_BUNDLED_MAIN_DIR = _get_pyinstaller_bundled_main_dir()
+IS_PYINSTALLER_BUNDLE = PYINSTALLER_BUNDLED_MAIN_DIR is not None

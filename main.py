@@ -19,7 +19,7 @@ from barks_reader.reader_settings import (
     MAIN_WINDOW_TOP,
 )
 from barks_reader.screen_metrics import get_approximate_taskbar_height, get_primary_screen_info
-from comic_utils.comic_consts import get_pyinstaller_bundled_main_dir
+from comic_utils.comic_consts import IS_PYINSTALLER_BUNDLE, PYINSTALLER_BUNDLED_MAIN_DIR
 from loguru import logger
 from loguru_config import LoguruConfig
 
@@ -31,8 +31,7 @@ KIVY_LOGGING_NAME = "kivy"
 
 # noinspection PyPep8Naming
 def set_project_paths() -> None:
-    bundled_main_dir = get_pyinstaller_bundled_main_dir()
-    if not bundled_main_dir:
+    if not IS_PYINSTALLER_BUNDLE:
         return
 
     from barks_reader.bottom_title_view_screen import BOTTOM_TITLE_VIEW_SCREEN_KV_FILE
@@ -43,7 +42,7 @@ def set_project_paths() -> None:
     from barks_reader.reader_ui_classes import READER_TREE_VIEW_KV_FILE
     from barks_reader.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE
 
-    barks_reader_srce_dir = bundled_main_dir / "barks_reader"
+    barks_reader_srce_dir = PYINSTALLER_BUNDLED_MAIN_DIR / "barks_reader"
 
     COMIC_BOOK_READER_KV_FILE = barks_reader_srce_dir / COMIC_BOOK_READER_KV_FILE.name  # noqa: N806
     READER_TREE_VIEW_KV_FILE = barks_reader_srce_dir / READER_TREE_VIEW_KV_FILE.name  # noqa: N806

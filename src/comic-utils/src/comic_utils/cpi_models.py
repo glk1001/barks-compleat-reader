@@ -1,3 +1,7 @@
+# ruff: noqa: ERA001, EM101, EM102, TRY003, B904, ANN001, ANN201, ANN204, ANN206, D105, D205
+# ruff: noqa: D400, D401, D413, D415, D212, D200, RUF012, A002, E501, ARG002, RET505
+# ruff: noqa: PLW1641, S608, B905, UP032, RET506, SIM108
+
 """Python objects for modeling Consumer Price Index (CPI) data structures."""
 
 from __future__ import annotations
@@ -9,7 +13,7 @@ from datetime import date
 # from pathlib import Path
 from pandas import json_normalize
 
-from .cpi_defaults import CUSTOM_CPI_DB_PATH, DEFAULTS_SERIES_ATTRS
+from .cpi_defaults import CPI_DB_PATH, DEFAULTS_SERIES_ATTRS
 
 # CPI tools
 from .cpi_errors import CPIObjectDoesNotExist
@@ -17,7 +21,7 @@ from .cpi_errors import CPIObjectDoesNotExist
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-assert CUSTOM_CPI_DB_PATH.is_file()
+assert CPI_DB_PATH.is_file()
 
 
 def query(sql: str, params: list | tuple | None = None) -> list[dict]:
@@ -37,7 +41,7 @@ def query(sql: str, params: list | tuple | None = None) -> list[dict]:
     # Connect
     # this_dir = Path(__file__).parent.absolute()
     # conn = sqlite3.connect(this_dir / "cpi.db")
-    conn = sqlite3.connect(CUSTOM_CPI_DB_PATH)
+    conn = sqlite3.connect(CPI_DB_PATH)
     cursor = conn.cursor()
 
     # Query the sql

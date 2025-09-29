@@ -9,17 +9,19 @@ navigation and a visually engaging interface.
 ## Features
 
 - **Comprehensive Browsing**: Navigate the entire collection in multiple ways:
-    - **Chronological**: View stories based on their original submission date.
-    - **Series**: Browse by comic book series (e.g., *Walt Disney's Comics and Stories*, *Uncle Scrooge*).
+    - **Chronological**: View stories in order based on their original submission date.
+    - **Series**: Browse by comic book series (e.g., *Walt Disney's Comics and Stories*, *Donald Duck*, *Uncle Scrooge*).
     - **Categories**: Explore stories grouped by tags, such as characters, themes, or story types.
 - **Powerful Search**: Quickly find titles by name or stories by specific tags using the integrated search boxes.
-- **Rich User Interface**: A dynamic `TreeView` provides easy navigation, while the main view displays context-aware
+- **Rich User Interface**: A dynamic 'TreeView' provides easy navigation, while the main view displays context-aware
   background art and information related to the selected comic or category.
 - **Integrated Comic Reader**: A fullscreen, touch/click-friendly reader with intuitive page navigation (click
   left/right side of the screen) and a "go to page" dropdown for jumping directly to a specific page.
+- **No Censorship**: Every attempt has been made to remove Disney and Fantagraphics censorship. This has been done
+  using an override mechanism where censored pages in the original are overridden by fixed pages in the reader.
 - **Smart Loading**: Asynchronously loads comic images in the background for a smooth, non-blocking user experience.
-- **Customizable Viewing**: Supports optional override images for restored or fixed pages, which can be toggled via a
-  checkbox for specific titles.
+- **Customizable Viewing**: Supports optional override images for controversially restored or fixed pages, which can
+  be toggled via a checkbox for specific titles.
 - **Persistent State**: Remembers the last-read page for each comic and the last selected node on startup, allowing you
   to pick up right where you left off.
 
@@ -34,7 +36,7 @@ navigation and a visually engaging interface.
 - **Python**: 3.12 or newer.
 - **Fantagraphics Comic Archives**: You must have access to the digital versions of the Fantagraphics Carl Barks
   Library, typically as `.zip` or `.cbz` files.
-- **Python Dependencies**: The required Python packages can be installed via `uv`.
+- **Python Dependencies**: The required Python packages can be installed via `uv.`
 
 ## Installation and Setup
 
@@ -81,8 +83,21 @@ just reader
 
 The application will now load the titles from your specified directory.
 
+## Usage
 
-**4. Building a Standalone Executable Using Pyinstaller**
+- **Run the application**:
+```
+just reader
+```
+- **Navigation**: Use the `TreeView` on the left to browse the collection.
+- **View Info**: Click on a title in the tree to see its related comic art, publication details, and other information
+  in the main panel at the bottom.
+- **Read a Comic**: In the bottom right corner of the main panel, click the highlighted comic inset image to open
+  the comic book reader.
+
+---
+
+## Building a Standalone Executable Using Pyinstaller
 1. Install pyinstaller:
     ```
     uv add --dev pyinstaller
@@ -95,25 +110,13 @@ The application will now load the titles from your specified directory.
     ```
 1. Run the pyinstaller build command:
     ```
-    pyinstaller -y --clean --distpath /tmp/barks-reader-dist main-onefile.spec
+    pyinstaller -y --clean --workpath /tmp/barks-reader-build --distpath /tmp/barks-reader-dist main-onefile.spec
     ```
 1. The standalone one-file executable will be at '/tmp/barks-reader-dist/main'.
    Rename the executable:
     ```
     mv /tmp/barks-reader-dist/main ~/.local/bin/barks-reader
     ```
-## Usage
-
-- **Run the application**:
-```
-just reader
-```
-- **Navigation**: Use the `TreeView` on the left to browse the collection.
-- **View Info**: Click on a title in the tree to see its cover art, publication details, and other information in the
-  main panel on the right.
-- **Read a Comic**: Click the large cover image in the main panel to open the comic book reader.
-
----
 
 ## License
 

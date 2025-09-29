@@ -2,7 +2,11 @@ import os
 from enum import Enum, auto
 from pathlib import Path
 
-from comic_utils.comic_consts import PNG_FILE_EXT, get_pyinstaller_bundled_main_dir
+from comic_utils.comic_consts import (
+    IS_PYINSTALLER_BUNDLE,
+    PNG_FILE_EXT,
+    PYINSTALLER_BUNDLED_MAIN_DIR,
+)
 
 # TODO: Should this dest stuff be here?
 DEST_TARGET_WIDTH = 2120
@@ -35,10 +39,12 @@ PNG_INSET_DIR = os.path.join(BARKS_ROOT_DIR, "Barks Panels Pngs", "Insets")
 PNG_INSET_EXT = PNG_FILE_EXT
 
 DATA_DIR = (
-    get_pyinstaller_bundled_main_dir() / __package__.replace("_", "-") / "data"
-    if get_pyinstaller_bundled_main_dir()
+    PYINSTALLER_BUNDLED_MAIN_DIR / __package__.replace("_", "-") / "data"
+    if IS_PYINSTALLER_BUNDLE
     else Path(__file__).parent.parent.parent / "data"
 )
+assert DATA_DIR.is_dir(), f'DATA_DIR "{DATA_DIR}" does not exist.'
+
 FONT_DIR = DATA_DIR / "fonts"
 CARL_BARKS_FONT = str(FONT_DIR / "Carl Barks Script.ttf")
 INTRO_TITLE_DEFAULT_FONT_FILE = CARL_BARKS_FONT
