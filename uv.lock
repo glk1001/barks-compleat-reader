@@ -19,7 +19,6 @@ dependencies = [
     { name = "better-exceptions" },
     { name = "certifi" },
     { name = "colorama", marker = "sys_platform == 'win32'" },
-    { name = "cpi" },
     { name = "cython", marker = "sys_platform == 'darwin'" },
     { name = "docutils" },
     { name = "docutils-stubs" },
@@ -34,6 +33,7 @@ dependencies = [
     { name = "loguru" },
     { name = "loguru-config" },
     { name = "numpy" },
+    { name = "pandas" },
     { name = "pillow" },
     { name = "pygments" },
     { name = "pyobjc-core", marker = "sys_platform == 'darwin'" },
@@ -62,7 +62,6 @@ requires-dist = [
     { name = "better-exceptions", specifier = "==0.3.3" },
     { name = "certifi", specifier = "==2025.8.3" },
     { name = "colorama", marker = "sys_platform == 'win32'", specifier = "==0.4.6" },
-    { name = "cpi", specifier = "==2.0.8" },
     { name = "cython", marker = "sys_platform == 'darwin'", specifier = "==3.1.4" },
     { name = "docutils", specifier = "==0.22" },
     { name = "docutils-stubs", specifier = "==0.0.22" },
@@ -77,6 +76,7 @@ requires-dist = [
     { name = "loguru", specifier = "==0.7.3" },
     { name = "loguru-config", specifier = "==0.1.0" },
     { name = "numpy", specifier = "==2.2.6" },
+    { name = "pandas", specifier = ">=2.3.2" },
     { name = "pillow", specifier = "==11.3.0" },
     { name = "pygments", specifier = "==2.19.2" },
     { name = "pyobjc-core", marker = "sys_platform == 'darwin'", specifier = "==11.1" },
@@ -164,39 +164,12 @@ wheels = [
 ]
 
 [[package]]
-name = "click"
-version = "8.3.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/46/61/de6cd827efad202d7057d93e0fed9294b96952e188f7384832791c7b2254/click-8.3.0.tar.gz", hash = "sha256:e7b8232224eba16f4ebe410c25ced9f7875cb5f3263ffc93cc3e8da705e229c4", size = 276943, upload-time = "2025-09-18T17:32:23.696Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/db/d3/9dcc0f5797f070ec8edf30fbadfb200e71d9db6b84d211e3b2085a7589a0/click-8.3.0-py3-none-any.whl", hash = "sha256:9b9f285302c6e3064f4330c05f05b81945b2a39544279343e6e7c5f27a9baddc", size = 107295, upload-time = "2025-09-18T17:32:22.42Z" },
-]
-
-[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d8/53/6f443c9a4a8358a93a6792e2acffb9d9d5cb0a5cfd8802644b7b1c9a02e4/colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44", size = 27697, upload-time = "2022-10-25T02:36:22.414Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6", size = 25335, upload-time = "2022-10-25T02:36:20.889Z" },
-]
-
-[[package]]
-name = "cpi"
-version = "2.0.8"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "click" },
-    { name = "pandas" },
-    { name = "python-dateutil" },
-    { name = "requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/19/52/12f74a4dae2d8edd378794e646b63dbf22bea74694769652ceafecfad2c8/cpi-2.0.8.tar.gz", hash = "sha256:61809e5cd0d7d6b6f1f2ca18aa2d2c77b5f5b076c71b65e248f7eebdff35cb26", size = 17337314, upload-time = "2025-09-19T13:01:40.131Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/cf/dd/7670ddfb3dfb47c5f58b4735bdec523d0eeb288e68009f32bab7de946a12/cpi-2.0.8-py2.py3-none-any.whl", hash = "sha256:7fbea1b9404f88f38336f499b7c29528f6d5ae29d9ad9028e155ad992d52c793", size = 18758937, upload-time = "2025-09-19T13:01:37.881Z" },
 ]
 
 [[package]]

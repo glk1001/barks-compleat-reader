@@ -1,7 +1,7 @@
-from comic_utils import cpi_wrapper
+from comic_utils import cpi_defaults
 
 from barks_fantagraphics.comics_consts import DATA_DIR
 
-cpi_wrapper.CUSTOM_CPI_DB_PATH = DATA_DIR / "cpi.db"
+cpi_defaults.CUSTOM_CPI_DB_PATH = DATA_DIR / "cpi.db"
 
-assert cpi_wrapper.CUSTOM_CPI_DB_PATH.is_file()
+assert cpi_defaults.CUSTOM_CPI_DB_PATH.is_file()

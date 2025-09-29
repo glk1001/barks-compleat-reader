@@ -1,0 +1,12 @@
+from pathlib import Path
+
+CUSTOM_CPI_DB_PATH = Path()
+
+DEFAULT_SERIES_ID = "CUUR0000SA0"
+DEFAULTS_SERIES_ATTRS = {
+    "survey": "All urban consumers",
+    "seasonally_adjusted": False,
+    "periodicity": "Monthly",
+    "area": "U.S. city average",
+    "items": "All items",
+}
