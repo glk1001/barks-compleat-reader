@@ -63,7 +63,25 @@ def get_image_as_png_bytes(file: str) -> io.BytesIO:
 
 def get_pil_image_as_png_bytes(pil_image: PilImage) -> io.BytesIO:
     data = io.BytesIO()
-    pil_image.save(data, format=PNG_PIL_FORMAT)
+    pil_image.save(
+        data,
+        format=PNG_PIL_FORMAT,
+        optimize=True,
+        compress_level=SAVE_PNG_COMPRESSION,
+        quality=SAVE_PNG_COMPRESSION,
+    )
+    return data
+
+
+def get_pil_image_as_jpg_bytes(pil_image: PilImage) -> io.BytesIO:
+    data = io.BytesIO()
+    pil_image.save(
+        data,
+        format=JPEG_PIL_FORMAT,
+        optimize=True,
+        compress_level=SAVE_JPG_COMPRESS_LEVEL,
+        quality=SAVE_JPG_QUALITY,
+    )
     return data
 
 
@@ -73,7 +91,8 @@ def copy_file_to_jpg(srce_file: str, dest_file: str) -> None:
     image.save(
         dest_file,
         optimize=True,
-        compress_level=SAVE_PNG_COMPRESSION,
+        compress_level=SAVE_JPG_COMPRESS_LEVEL,
+        quality=SAVE_JPG_QUALITY,
     )
 
 

@@ -1,26 +1,28 @@
 # ruff: noqa: INP001
-
-import shutil
 import sys
+import zipfile
 from collections.abc import Callable
 from configparser import ConfigParser
 from pathlib import Path
 
 from barks_fantagraphics.comics_cmd_args import CmdArgs
 from barks_fantagraphics.comics_consts import PNG_FILE_EXT
-from barks_fantagraphics.comics_utils import get_abbrev_path
+from barks_fantagraphics.comics_utils import get_abbrev_path, get_timestamp_str
+from barks_reader.config_info import ConfigInfo  # make sure this is before any kivy imports
+from barks_reader.reader_settings import ReaderSettings
 from comic_utils.comic_consts import JPG_FILE_EXT
-from comic_utils.pil_image_utils import SAVE_JPG_COMPRESS_LEVEL, open_pil_image_for_reading
+from comic_utils.pil_image_utils import get_pil_image_as_jpg_bytes, open_pil_image_for_reading
 from loguru import logger
 from loguru_config import LoguruConfig
 
-from barks_reader.config_info import ConfigInfo  # make sure this is before any kivy imports
-from barks_reader.reader_settings import ReaderSettings
-
-APP_LOGGING_NAME = "copy"
+APP_LOGGING_NAME = "zip"
 
 
-def copy_or_convert_file(file_path: Path, dest_dir: Path) -> None:
+def get_backup_filename(file: Path) -> Path:
+    return Path(str(file) + "_" + get_timestamp_str(str(file)))
+
+
+def convert_and_zip_file(file_path: Path, archive: zipfile.ZipFile, dest_subdir: Path) -> None:
     if not file_path.is_file():
         msg = f'Could not find source file "{file_path}".'
         raise FileNotFoundError(msg)
@@ -28,18 +30,19 @@ def copy_or_convert_file(file_path: Path, dest_dir: Path) -> None:
     # noinspection PyBroadException
     try:
         if file_path.suffix == PNG_FILE_EXT:
-            dest_file = dest_dir / (file_path.stem + JPG_FILE_EXT)
-            logger.info(
+            dest_file = dest_subdir / (file_path.stem + JPG_FILE_EXT)
+            logger.debug(
                 f'Converting png file "{get_abbrev_path(file_path)}"'
                 f' to "{get_abbrev_path(dest_file)}"...'
             )
-            copy_file_to_jpg(file_path, dest_file)
+            zip_file_as_jpg(file_path, archive, dest_file)
         else:
-            dest_file = dest_dir / file_path.name
-            logger.info(
-                f'Copying file "{get_abbrev_path(file_path)}" to "{get_abbrev_path(dest_file)}"...'
+            dest_file = dest_subdir / file_path.name
+            logger.debug(
+                f'Writing file "{get_abbrev_path(file_path)}"'
+                f' to zip: "{get_abbrev_path(dest_file)}"...'
             )
-            shutil.copy(file_path, dest_file)
+            archive.write(file_path, str(dest_file))
 
     except FileNotFoundError:
         msg = f'File not found during processing: "{file_path}"'
@@ -49,25 +52,25 @@ def copy_or_convert_file(file_path: Path, dest_dir: Path) -> None:
         raise Exception(msg) from e  # noqa: TRY002
 
 
-def copy_file_to_jpg(srce_file: Path, dest_file: Path) -> None:
+def zip_file_as_jpg(srce_file: Path, archive: zipfile.ZipFile, dest_file: Path) -> None:
     image = open_pil_image_for_reading(str(srce_file)).convert("RGB")
 
-    image.save(
-        dest_file,
-        optimize=True,
-        compress_level=SAVE_JPG_COMPRESS_LEVEL,
-        quality=92,
-    )
+    buffer = get_pil_image_as_jpg_bytes(image)
+    buffer.seek(0)
+
+    archive.writestr(str(dest_file), buffer.read())
 
 
 def traverse_and_process_dirs(
-    root_directory: Path, dest_dir: Path, file_processor_func: Callable[[Path, Path], None]
+    root_directory: Path,
+    dest_zip: Path,
+    file_processor_func: Callable[[Path, zipfile.ZipFile, zipfile.Path], None],
 ) -> None:
     """Traverses a directory tree and runs a processor function on each file.
 
     Args:
         root_directory (Path): The path to the top-level directory to start from.
-        dest_dir (Path): The path to the destination directory.
+        dest_zip (Path): The path to the destination zip.
         file_processor_func (callable): The function to call for each file.
                                         It should accept one argument: the full file path.
 
@@ -76,17 +79,18 @@ def traverse_and_process_dirs(
         raise FileNotFoundError(root_directory)
 
     logger.info(f'Starting traversal of directory: "{root_directory}"...')
-    file_count = 0
-    for dirpath, _, filenames in root_directory.walk():
-        logger.info(f'Processing directory "{dirpath}"...')
-        dest_subdir = Path(str(dirpath).replace(str(root_directory), str(dest_dir)))
-        logger.info(f'Creating dest subdir "{dest_subdir}"...')
-        dest_subdir.mkdir(parents=True, exist_ok=True)
 
-        for filename in filenames:
-            full_path = dirpath / filename
-            file_processor_func(full_path, dest_subdir)
-            file_count += 1
+    with zipfile.ZipFile(dest_zip, "w") as dest_zip_archive:
+        file_count = 0
+        for dirpath, _, filenames in root_directory.walk():
+            logger.info(f'Processing directory "{dirpath}"...')
+            dest_subdir = Path(str(dirpath)[len(str(root_directory)) + 1 :])
+            logger.info(f'Adding files to dest zip under subdir "{dest_subdir}"...')
+
+            for filename in filenames:
+                full_path = dirpath / filename
+                file_processor_func(full_path, dest_zip_archive, dest_subdir)
+                file_count += 1
 
     logger.info(f"Traversal complete. Processed {file_count} files.")
 
@@ -111,12 +115,15 @@ if __name__ == "__main__":
         config.read(config_info.app_config_path)
         reader_settings = ReaderSettings()
         reader_settings.set_config(config, config_info.app_config_path)
-        reader_settings.set_barks_panels_dir()
+        reader_settings.force_barks_panels_dir(use_png_images=True)
 
         png_dir = reader_settings.file_paths.get_default_png_barks_panels_source()
-        jpg_dir = reader_settings.file_paths.get_default_jpg_barks_panels_source()
+        zip_file = reader_settings.file_paths.get_default_jpg_barks_panels_source()
 
-        traverse_and_process_dirs(png_dir, jpg_dir, file_processor_func=copy_or_convert_file)
+        if zip_file.is_file():
+            zip_file.rename(get_backup_filename(zip_file))
+
+        traverse_and_process_dirs(png_dir, zip_file, file_processor_func=convert_and_zip_file)
 
     except Exception:  # noqa: BLE001
         logger.exception("Program error: ")

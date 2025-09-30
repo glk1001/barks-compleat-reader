@@ -203,7 +203,10 @@ class ReaderSettings:
         return self._reader_sys_file_paths
 
     def set_barks_panels_dir(self) -> None:
-        if self._get_use_png_images():
+        self.force_barks_panels_dir(self._get_use_png_images())
+
+    def force_barks_panels_dir(self, use_png_images: bool) -> None:
+        if use_png_images:
             self._reader_file_paths.set_barks_panels_source(
                 self._get_png_barks_panels_dir(), BarksPanelsExtType.MOSTLY_PNG
             )
