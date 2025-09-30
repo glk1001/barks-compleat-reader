@@ -73,7 +73,7 @@ def set_project_paths() -> None:
 
 
 def start_logging(cfg_info: ConfigInfo, args: CmdArgs) -> None:
-    from kivy import Config
+    from kivy import Config, kivy_home_dir
 
     setup_loguru(cfg_info, args)
 
@@ -85,6 +85,14 @@ def start_logging(cfg_info: ConfigInfo, args: CmdArgs) -> None:
     logger.info(f'app log path = "{log_path}".')
     logger.info(f'kivy config dir = "{cfg_info.kivy_config_dir}".')
     logger.info(f'KIVY_HOME = "{os.environ["KIVY_HOME"]}".')
+    logger.info(f'kivy_home_dir = "{kivy_home_dir}".')
+
+    if kivy_home_dir != str(cfg_info.kivy_config_dir):
+        msg = (
+            f'Config problem: Kivy home directory: "{kivy_home_dir}"'
+            f' != app config directory: "{cfg_info.kivy_config_dir}".'
+        )
+        raise RuntimeError(msg)
 
 
 def redirect_kivy_logs() -> None:

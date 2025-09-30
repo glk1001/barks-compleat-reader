@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, Titles
 from barks_fantagraphics.comics_consts import PageType
 from comic_utils.pil_image_utils import PNG_PIL_FORMAT
-from kivy.core.image import Image as CoreImage
 
 if TYPE_CHECKING:
     import zipfile
@@ -22,6 +21,8 @@ PNG_EXT_FOR_KIVY = PNG_PIL_FORMAT.lower()
 
 
 def get_image_stream(file: PanelPath) -> io.BytesIO:
+    from kivy.core.image import Image as CoreImage  # noqa: PLC0415
+
     if isinstance(file, Path):
         return CoreImage(str(file)).texture
 
