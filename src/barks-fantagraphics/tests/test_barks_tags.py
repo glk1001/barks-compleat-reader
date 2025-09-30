@@ -244,4 +244,4 @@ class TestBarksTags(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    pytest.main()
+    pytest.process_volumes()

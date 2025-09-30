@@ -32,7 +32,7 @@ from .comics_utils import (
 )
 from .fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
-    FANTA_OVERRIDE_DIRECTORIES,
+    FANTA_OVERRIDE_ZIPS,
     FANTA_SOURCE_COMICS,
     FANTA_VOLUME_OVERRIDES_ROOT,
     FANTAGRAPHICS_DIRNAME,
@@ -352,6 +352,8 @@ class ComicsDatabase:
         )
 
     def make_all_fantagraphics_directories(self) -> None:
+        FANTA_VOLUME_OVERRIDES_ROOT.mkdir(self, exist_ok=True)
+
         for volume in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1):
             # Create these directories if they're already not there.
             self._make_vol_dirs(self.get_fantagraphics_upscayled_volume_image_dir(volume))
@@ -367,10 +369,6 @@ class ComicsDatabase:
             self._make_vol_dirs(os.path.join(scraps_image_dir, "standard"))
             self._make_vol_dirs(os.path.join(scraps_image_dir, "upscayled"))
             self._make_vol_dirs(os.path.join(scraps_image_dir, "restored"))
-
-            self._make_vol_dirs(
-                str(FANTA_VOLUME_OVERRIDES_ROOT / FANTA_OVERRIDE_DIRECTORIES[volume]),
-            )
 
         # Symlinks - just make sure these exist.
         self._check_symlink_exists(self.get_fantagraphics_upscayled_root_dir())
