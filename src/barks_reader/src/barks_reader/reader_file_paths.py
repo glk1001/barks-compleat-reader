@@ -11,8 +11,9 @@ from typing import TYPE_CHECKING
 from barks_fantagraphics.barks_titles import (
     BARKS_TITLE_DICT,
     BARKS_TITLE_INFO,
-    BARKS_TITLES,
     Titles,
+    get_filename_from_title,
+    get_title_str_from_filename,
 )
 from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT, ZIP_FILE_EXT
 from loguru import logger
@@ -257,15 +258,17 @@ class ReaderFilePaths:
         return self._app_icon_path
 
     def get_comic_inset_file(self, title: Titles, use_edited_only: bool = False) -> PanelPath:
-        title_str = BARKS_TITLES[title]
-
         if use_edited_only:
-            edited_file = self._inset_edited_files_dir / (title_str + self._inset_files_ext)
+            edited_file = self._inset_edited_files_dir / get_filename_from_title(
+                title, self._inset_files_ext
+            )
             if edited_file.is_file():
                 return edited_file
             logger.debug(f'No edited inset file "{edited_file}".')
 
-        main_file = self._panel_dirs[PanelDirNames.INSETS] / (title_str + self._inset_files_ext)
+        main_file = self._panel_dirs[PanelDirNames.INSETS] / get_filename_from_title(
+            title, self._inset_files_ext
+        )
         # TODO: Fix this when all titles are configured.
         # assert os.path.isfile(edited_file)
         if main_file.is_file():
@@ -377,17 +380,14 @@ class ReaderFilePaths:
         else:
             parent_image_dir = self._FILE_TYPE_DIR_GETTERS[file_type]()
 
-            # Can't use 'stem' on directories because a title may contain a '.'
             all_titles = []
             for file in parent_image_dir.iterdir():
+                title = get_title_str_from_filename(file)
                 if file.is_dir():
-                    title = file.name
                     if title != _EDITED_SUBDIR:
-                        all_titles.append(file.name)
-                else:
-                    title = file.stem
-                    if not title.endswith(NO_OVERRIDES_SUFFIX):
                         all_titles.append(title)
+                elif not title.endswith(NO_OVERRIDES_SUFFIX):
+                    all_titles.append(title)
 
             self._titles_cache[file_type] = all_titles
 
@@ -414,6 +414,6 @@ if __name__ == "__main__":
     barks_panels_zip = zipfile.ZipFile(barks_panels_source)
     non_titles_dir = zipfile.Path(barks_panels_zip, "Nontitles")
     # assert non_titles_dir.is_dir()
-    print(non_titles_dir.name)
+    print(non_titles_dir.name)  # noqa: T201
     for f in non_titles_dir.iterdir():
-        print(f)
+        print(f)  # noqa: T201

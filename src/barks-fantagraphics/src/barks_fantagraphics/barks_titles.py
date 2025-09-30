@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from datetime import date
 from enum import CONTINUOUS, UNIQUE, IntEnum, auto, verify
+from pathlib import Path
 
 from comic_utils.comic_consts import DEC, JAN
 
@@ -2933,3 +2934,31 @@ def get_safe_title(title: str) -> str:
 
 def is_non_comic_title(title_str: str) -> bool:
     return BARKS_TITLE_DICT[title_str] in NON_COMIC_TITLES
+
+
+_TITLE_TO_FILENAME_SPECIAL_CASE_MAP: dict[str, str] = {
+    FUN_WHATS_THAT: "Fun What's That",
+    WANT_TO_BUY_AN_ISLAND: "Want to Buy an Island",
+}
+_FILENAME_TO_TITLE_SPECIAL_CASE_MAP: dict[str, str] = {
+    "Fun What's That": FUN_WHATS_THAT,
+    "Want to Buy an Island": WANT_TO_BUY_AN_ISLAND,
+}
+
+
+def get_filename_from_title(title: Titles, ext: str) -> str:
+    return get_filename_from_title_str(BARKS_TITLES[title], ext)
+
+
+def get_filename_from_title_str(title_str: str, ext: str) -> str:
+    return _TITLE_TO_FILENAME_SPECIAL_CASE_MAP.get(title_str, title_str) + ext
+
+
+def get_title_str_from_filename(filename: str | Path) -> str:
+    if isinstance(filename, str):
+        filename = Path(filename)
+
+    # Can't use 'stem' on directories because a title may contain a '.'
+    name = filename.name if filename.is_dir() else filename.stem
+
+    return _FILENAME_TO_TITLE_SPECIAL_CASE_MAP.get(name, name)

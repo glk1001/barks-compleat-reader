@@ -15,6 +15,7 @@ from barks_fantagraphics.fanta_comics_info import (
     FANTA_VOLUME_OVERRIDES_ROOT,
 )
 from barks_fantagraphics.pages import get_page_mod_type, get_sorted_srce_and_dest_pages
+from comic_utils.comic_consts import JPG_FILE_EXT
 from comic_utils.pil_image_utils import get_downscaled_jpg, get_pil_image_as_jpg_bytes
 from loguru import logger
 from loguru_config import LoguruConfig
@@ -63,6 +64,8 @@ def get_mod_file(comic: ComicBook, srce: CleanPage) -> tuple[str, FileType]:
 
 
 def downscale_and_zip(srce_file: str, override_archive: zipfile.ZipFile, dest_file: str) -> None:
+    dest_file = str(Path(dest_file).with_suffix(JPG_FILE_EXT))
+
     logger.info(f'Downscale "{srce_file}" to "{dest_file}" in zip...')
 
     resized_image = get_downscaled_jpg(SRCE_STANDARD_WIDTH, SRCE_STANDARD_HEIGHT, srce_file)

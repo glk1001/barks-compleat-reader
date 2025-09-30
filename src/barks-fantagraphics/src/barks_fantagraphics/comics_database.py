@@ -9,6 +9,7 @@ from pathlib import Path
 from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
 from loguru import logger
 
+from .barks_titles import get_filename_from_title_str, get_title_str_from_filename
 from .comic_book import (
     INTRO_AUTHOR_DEFAULT_FONT_SIZE,
     INTRO_TITLE_DEFAULT_FONT_SIZE,
@@ -32,7 +33,6 @@ from .comics_utils import (
 )
 from .fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
-    FANTA_OVERRIDE_ZIPS,
     FANTA_SOURCE_COMICS,
     FANTA_VOLUME_OVERRIDES_ROOT,
     FANTAGRAPHICS_DIRNAME,
@@ -65,7 +65,7 @@ class ComicsDatabase:
         self._story_titles_dir = str(_get_story_titles_dir(self._database_dir))
         self._all_comic_book_info = ALL_FANTA_COMIC_BOOK_INFO
         self._ini_files = [f for f in os.listdir(self._story_titles_dir) if f.endswith(".ini")]
-        self._story_titles = {Path(f).stem for f in self._ini_files}
+        self._story_titles = {get_title_str_from_filename(f) for f in self._ini_files}
         self._issue_titles = self._get_all_issue_titles()
         self._inset_dir = ""
         self._inset_ext = ""
@@ -95,7 +95,9 @@ class ComicsDatabase:
         return self._story_titles_dir
 
     def get_ini_file(self, story_title: str) -> str:
-        return os.path.join(self._story_titles_dir, story_title + ".ini")
+        return os.path.join(
+            self._story_titles_dir, get_filename_from_title_str(story_title, ".ini")
+        )
 
     def get_fanta_volume(self, story_title: str) -> str:
         return self._all_comic_book_info[story_title].fantagraphics_volume
@@ -156,7 +158,7 @@ class ComicsDatabase:
             ini_file = os.path.join(self._story_titles_dir, file)
             config.read(ini_file)
             if config["info"]["source_comic"] == fanta_key:
-                story_title = Path(ini_file).stem
+                story_title = get_title_str_from_filename(file)
                 comic_info = self._all_comic_book_info[story_title]
                 story_titles.append((story_title, comic_info))
 
