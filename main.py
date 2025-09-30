@@ -7,6 +7,7 @@
 # --- it before any kivy imports                                   --- #
 
 import logging
+import os
 import sys
 from configparser import ConfigParser
 
@@ -83,6 +84,7 @@ def start_logging(cfg_info: ConfigInfo, args: CmdArgs) -> None:
     logger.info(f'app config path = "{cfg_info.app_config_path}".')
     logger.info(f'app log path = "{log_path}".')
     logger.info(f'kivy config dir = "{cfg_info.kivy_config_dir}".')
+    logger.info(f'KIVY_HOME = "{os.environ["KIVY_HOME"]}".')
 
 
 def redirect_kivy_logs() -> None:
