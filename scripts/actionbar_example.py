@@ -14,7 +14,7 @@ def main():
     Factory.unregister("ActionPrevious")
 
     Builder.load_string(
-            """
+        """
 <MainScreen>:
     ActionBar:
         id: action_bar
