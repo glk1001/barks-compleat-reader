@@ -18,26 +18,21 @@ from barks_fantagraphics.fanta_comics_info import (
     LAST_VOLUME_NUMBER,
     FantaComicBookInfo,
 )
+from barks_reader.fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
+from barks_reader.reader_ui_classes import set_kivy_busy_cursor, set_kivy_normal_cursor
+from barks_reader.reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
 from comic_utils.comic_consts import CBZ_FILE_EXT, ZIP_FILE_EXT
-from comic_utils.pil_image_utils import (
-    get_pil_image_as_png_bytes,
-    open_pil_image_from_bytes,
-)
+from comic_utils.pil_image_utils import get_pil_image_as_png_bytes, open_pil_image_from_bytes
 from kivy.clock import Clock
 from loguru import logger
 from PIL import Image as PilImage
 from PIL import ImageOps
-
-from barks_reader.fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
-from barks_reader.reader_ui_classes import set_kivy_busy_cursor, set_kivy_normal_cursor
-from barks_reader.reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
 
 if TYPE_CHECKING:
     import io
     from collections.abc import Callable
 
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
-
     from barks_reader.comic_book_page_info import PageInfo
     from barks_reader.reader_settings import ReaderSettings
 
@@ -340,7 +335,7 @@ class ComicBookLoader:
         self.close_comic()
         Clock.schedule_once(lambda _dt: self._on_load_error(load_warning_only), 0)
 
-    def _get_image_path(self, page_info: PageInfo) -> tuple[Path, bool]:
+    def _get_image_path(self, page_info: PageInfo) -> tuple[str, bool]:
         """Determine the path to an image file for a given page.
 
         This method acts as a dispatcher, deciding whether to get the path
@@ -351,17 +346,21 @@ class ComicBookLoader:
 
         Returns:
             A tuple containing:
-                - Path: The path to the image file.
-                - bool (is_from_archive): True if the path is relative to a zip archive,
-                        False if it's a direct path to a file on disk (like an override file).
+                - str (image_path): The path to the image file inside the zip archive.
+                - bool (is_from_archive):
+                          True if the path is relative to a zip archive,
+                          False if it's a direct path to a file or from an override zip.
 
         """
         if not self._fanta_volume_archive:
-            # Return path to prebuilt archive image.
-            return Path("images") / page_info.dest_page.page_filename, True
+            # Get path to prebuilt archive image.
+            image_path = Path("images") / page_info.dest_page.page_filename, True
+        else:
+            # Get path to Fantagraphics archive or override file.
+            image_path = self._get_fanta_volume_image_path(page_info)
 
-        # Return path to Fantagraphics archive or override file.
-        return self._get_fanta_volume_image_path(page_info)
+        # Zip files always use '/' as a separator (even on Windows).
+        return str(image_path[0]).replace("\\", "/"), image_path[1]
 
     def _get_fanta_volume_image_path(self, page_info: PageInfo) -> tuple[Path, bool]:
         if is_title_page(page_info.srce_page) or is_blank_page(
@@ -383,7 +382,7 @@ class ComicBookLoader:
 
     def _load_image_content(self, archive: ZipFile, page_info: PageInfo) -> tuple[io.BytesIO, str]:
         image_path, is_from_archive = self._get_image_path(page_info)
-        ext = image_path.suffix
+        ext = Path(image_path).suffix
 
         logger.debug(
             f'Getting image (page = "{page_info.display_page_num}"): '
