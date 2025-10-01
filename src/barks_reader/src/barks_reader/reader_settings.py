@@ -38,6 +38,7 @@ JPG_BARKS_PANELS_SOURCE = "jpg_barks_panels_source"
 USE_PNG_IMAGES = "use_png_images"
 USE_PREBUILT_COMICS = "use_prebuilt_comics"
 GOTO_SAVED_NODE_ON_START = "goto_saved_node_on_start"
+GOTO_FULLSCREEN_ON_COMIC_READ = "goto_fullscreen_on_comic_read"
 USE_HARPIES_INSTEAD_OF_LARKIES = "use_harpies"
 USE_DERE_INSTEAD_OF_THEAH = "use_dere"
 USE_BLANK_EYEBALLS_FOR_BOMBIE = "use_blank_eyeballs"
@@ -107,6 +108,13 @@ _READER_SETTINGS_JSON = f"""
       "type": "bool",
       "section": "{BARKS_READER_SECTION}",
       "key": "{GOTO_SAVED_NODE_ON_START}"
+   }},
+   {{
+      "title": "Goto Straight to Fullscreen for Comic Reading",
+      "desc": "When you press the comic read button, the app will go straight to fullscreen to read the comic.",
+      "type": "bool",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{GOTO_FULLSCREEN_ON_COMIC_READ}"
    }},
    {{
       "title": "Use 'Harpies' Instead of 'Larkies'",
@@ -270,6 +278,13 @@ class ReaderSettings:
     def _get_goto_saved_node_on_start(self) -> bool:
         return self._config.getboolean(BARKS_READER_SECTION, GOTO_SAVED_NODE_ON_START)
 
+    @property
+    def goto_fullscreen_on_comic_read(self) -> bool:
+        return self._get_goto_fullscreen_on_comic_read()
+
+    def _get_goto_fullscreen_on_comic_read(self) -> bool:
+        return self._config.getboolean(BARKS_READER_SECTION, GOTO_FULLSCREEN_ON_COMIC_READ)
+
     def _get_main_window_height(self) -> int:
         return self._config.get(BARKS_READER_SECTION, MAIN_WINDOW_HEIGHT)
 
@@ -332,6 +347,10 @@ class ReaderSettings:
 
     @staticmethod
     def _is_valid_goto_saved_node_on_start(_goto_saved_node_on_start: bool) -> bool:
+        return True
+
+    @staticmethod
+    def _is_valid_goto_fullscreen_on_comic_read(_goto_fullscreen_on_comic_read: bool) -> bool:
         return True
 
     @staticmethod
@@ -420,6 +439,7 @@ class BuildableReaderSettings(ReaderSettings):
             MAIN_WINDOW_LEFT: self._get_main_window_left,
             MAIN_WINDOW_TOP: self._get_main_window_top,
             GOTO_SAVED_NODE_ON_START: self._get_goto_saved_node_on_start,
+            GOTO_FULLSCREEN_ON_COMIC_READ: self._get_goto_fullscreen_on_comic_read,
             USE_HARPIES_INSTEAD_OF_LARKIES: self.get_use_harpies_instead_of_larkies,
             USE_DERE_INSTEAD_OF_THEAH: self.get_use_dere_instead_of_theah,
             USE_BLANK_EYEBALLS_FOR_BOMBIE: self.get_use_blank_eyeballs_for_bombie,
@@ -435,6 +455,7 @@ class BuildableReaderSettings(ReaderSettings):
             PREBUILT_COMICS_DIR: self._is_valid_prebuilt_comics_dir,
             USE_PREBUILT_COMICS: self._is_valid_use_prebuilt_archives,
             GOTO_SAVED_NODE_ON_START: self._is_valid_goto_saved_node_on_start,
+            GOTO_FULLSCREEN_ON_COMIC_READ: self._is_valid_goto_fullscreen_on_comic_read,
             IS_FIRST_USE_OF_READER: self._is_valid_is_first_use_of_reader,
             MAIN_WINDOW_HEIGHT: self._is_valid_main_window_height,
             MAIN_WINDOW_LEFT: self._is_valid_main_window_left,
@@ -460,6 +481,7 @@ class BuildableReaderSettings(ReaderSettings):
                 PREBUILT_COMICS_DIR: ReaderFilePaths.get_default_prebuilt_comic_zips_dir(),
                 USE_PREBUILT_COMICS: 0,
                 GOTO_SAVED_NODE_ON_START: 1,
+                GOTO_FULLSCREEN_ON_COMIC_READ: 1,
                 USE_HARPIES_INSTEAD_OF_LARKIES: 1,
                 USE_DERE_INSTEAD_OF_THEAH: 1,
                 USE_BLANK_EYEBALLS_FOR_BOMBIE: 1,

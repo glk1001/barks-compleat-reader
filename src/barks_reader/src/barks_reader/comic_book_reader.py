@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from barks_fantagraphics.comics_consts import PageType
+from kivy.clock import Clock
 from kivy.core.image import Image as CoreImage
 from kivy.core.window import Window
 from kivy.event import EventDispatcher
@@ -356,6 +357,11 @@ class ComicBookReader(BoxLayout):
 
         self._on_comic_is_ready_to_read()
 
+        if self._reader_settings.goto_fullscreen_on_comic_read:
+            Clock.schedule_once(
+                lambda _dt: self.goto_fullscreen_mode(self._root.ids.fullscreen_button), 1.5
+            )
+
     def _all_images_loaded(self) -> None:
         self._all_loaded = True
         logger.debug(f"All images loaded: current page index = {self._current_page_index}.")
@@ -420,19 +426,24 @@ class ComicBookReader(BoxLayout):
         logger.info(f"Finished waiting for image with index {self._current_page_index} to load.")
 
     def toggle_fullscreen(self, button: ActionButton) -> None:
-        """Toggles fullscreen mode."""
         if Window.fullscreen:
-            Window.fullscreen = False
-            self._show_action_bar()
-            button.text = "Fullscreen"
-            button.icon = self._action_bar_fullscreen_icon
-            logger.info("Exiting fullscreen.")
+            self.goto_windowed_mode(button)
         else:
-            self._hide_action_bar()
-            button.text = "Windowed"
-            button.icon = self._action_bar_fullscreen_exit_icon
-            Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
-            logger.info("Entering fullscreen.")
+            self.goto_fullscreen_mode(button)
+
+    def goto_windowed_mode(self, button: ActionButton) -> None:
+        Window.fullscreen = False
+        self._show_action_bar()
+        button.text = "Fullscreen"
+        button.icon = self._action_bar_fullscreen_icon
+        logger.info("Exiting fullscreen.")
+
+    def goto_fullscreen_mode(self, button: ActionButton) -> None:
+        self._hide_action_bar()
+        button.text = "Windowed"
+        button.icon = self._action_bar_fullscreen_exit_icon
+        Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
+        logger.info("Entering fullscreen.")
 
     def _hide_action_bar(self) -> None:
         self._action_bar.height = 0
