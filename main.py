@@ -8,6 +8,7 @@
 
 import logging
 import os
+import platform
 import sys
 from configparser import ConfigParser
 
@@ -246,8 +247,19 @@ def get_win_width_from_height(win_height: int) -> int:
 def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
     from kivy import Config
 
-    # Don't show anything until the app decides to.
-    Config.set("graphics", "window_state", "hidden")
+    if platform.system() != "Windows":
+        # For some reason, kivy on Windows does not like window_state = 'hidden'.
+        # It trashes fonts, and crashes with
+        #      File "C:\Users\User\source\repos\barks-compleat-reader\.venv\Lib\site-packages\kivy\input\providers\mouse.py", line 312, in create_hover  # noqa: E501
+        #      nx /= win._density  # noqa: ERA001
+        #      |     |   -> <NumericProperty name=_density>
+        #      |     -> <kivy.core.window.window_sdl2.WindowSDL object at 0x000001E400937380>
+        #      -> 0.0
+        #
+        # ZeroDivisionError: float division by zero
+
+        # Don't show anything until the app decides to.
+        Config.set("graphics", "window_state", "hidden")
 
     win_width = get_win_width_from_height(win_height)
     logger.debug(f"Main win width: {win_width}.")
