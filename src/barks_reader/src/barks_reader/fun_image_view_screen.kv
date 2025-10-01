@@ -221,8 +221,7 @@
             opacity: 1 if root.fun_view_options_enabled else 0.3
 
             Image:
-                # TODO: Fix this hard coding.
-                source: "/home/greg/Books/Carl Barks/Compleat Barks Disney Reader/Reader Icons/ActionBar Icons/menu-icon.png"
+                source: root.fun_view_options_button_image_path
                 background_color: (0, 0, 0, 0) # Make default background transparent
                 opacity: 0 if root.fun_view_options_enabled else 0.5
                 y: self.parent.y

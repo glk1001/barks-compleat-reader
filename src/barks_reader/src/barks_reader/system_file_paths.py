@@ -19,6 +19,7 @@ class SystemFilePaths:
         self._goto_icon_path: Path | None = None
         self._goto_start_icon_path: Path | None = None
         self._goto_end_icon_path: Path | None = None
+        self._hamburger_menu_icon_path: Path | None = None
 
         self._various_files_dir: Path | None = None
         self._up_arrow_path: Path | None = None
@@ -47,6 +48,7 @@ class SystemFilePaths:
         self._goto_icon_path = self._action_bar_icons_dir / "icon-goto.png"
         self._goto_start_icon_path = self._action_bar_icons_dir / "icon-goto-start.png"
         self._goto_end_icon_path = self._action_bar_icons_dir / "icon-goto-end.png"
+        self._hamburger_menu_icon_path = self._action_bar_icons_dir / "menu-hamburger-icon.png"
 
         self._various_files_dir = self._barks_reader_files_dir / "Various"
         self._up_arrow_path = self._various_files_dir / "up-arrow.png"
@@ -84,6 +86,7 @@ class SystemFilePaths:
             self._goto_icon_path,
             self._goto_start_icon_path,
             self._goto_end_icon_path,
+            self._hamburger_menu_icon_path,
             self._up_arrow_path,
             self._transparent_blank_path,
             self._empty_page_path,
@@ -144,6 +147,9 @@ class SystemFilePaths:
 
     def get_barks_reader_goto_end_icon_file(self) -> Path:
         return self._goto_end_icon_path
+
+    def get_hamburger_menu_icon_path(self) -> Path:
+        return self._hamburger_menu_icon_path
 
     def get_transparent_blank_file(self) -> Path:
         return self._transparent_blank_path
