@@ -322,7 +322,7 @@ class ReaderSettings:
         return self._is_valid_dir(dir_path)
 
     def _is_valid_prebuilt_comics_dir(self, dir_path: Path) -> bool:
-        return self._is_valid_dir(dir_path)
+        return (not self.use_prebuilt_archives) or self._is_valid_dir(dir_path)
 
     def _is_valid_use_prebuilt_archives(self, use_prebuilt_archives: bool) -> bool:
         if not use_prebuilt_archives:

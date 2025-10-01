@@ -257,6 +257,10 @@ def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
     Config.set("graphics", "width", win_width)
     Config.set("graphics", "height", round(win_height + 45.0))
 
+    logger.info(
+        f'Set window position and size: ({win_left}, {win_top}), ({win_width}, {win_height})".'
+    )
+
 
 def call_reader_main(cfg_info: ConfigInfo, args: CmdArgs) -> None:
     from barks_reader.barks_reader_app import main
