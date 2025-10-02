@@ -175,7 +175,7 @@ class BarksReaderApp(App):
         logger.debug("Instantiating main screen...")
         filtered_title_lists = FilteredTitleLists()
         reader_tree_events = ReaderTreeBuilderEventDispatcher()
-        tree_view_screen = TreeViewScreen()
+        tree_view_screen = TreeViewScreen(self._reader_settings)
         bottom_title_view_screen = BottomTitleViewScreen(self._reader_settings)
         fun_image_view_screen = FunImageViewScreen(self._reader_settings)
         self._main_screen = MainScreen(

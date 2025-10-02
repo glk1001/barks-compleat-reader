@@ -60,7 +60,6 @@ class ViewStateManager:
         self._bottom_view_fun_image_info: ImageInfo = ImageInfo()
         self._bottom_view_fun_image_themes: set[ImageThemes] | None = None
         self._bottom_view_fun_custom_image_themes: set[ImageThemes] = set(ImageThemes)
-        self.lower_title_available = False
 
     def get_top_view_image_info(self) -> ImageInfo:
         return self._top_view_image_info
@@ -154,7 +153,6 @@ class ViewStateManager:
             self._fun_image_view_screen.fun_view_from_title
             and (self._bottom_title_view_screen.view_title_opacity < CLOSE_TO_ZERO)
         )
-        self.lower_title_available = self._fun_image_view_screen.goto_title_button_active
 
         # Reset the title image file now that we've used it. This makes sure we can get
         # a random image next time around.

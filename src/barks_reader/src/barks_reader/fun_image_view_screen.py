@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from kivy.metrics import dp
 from kivy.properties import (
     BooleanProperty,
     ColorProperty,
@@ -15,6 +14,7 @@ from kivy.uix.boxlayout import BoxLayout
 from loguru import logger
 
 from barks_reader.random_title_images import FIT_MODE_CONTAIN
+from barks_reader.reader_ui_classes import ARROW_WIDTH
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -31,8 +31,8 @@ class FunImageViewScreen(BoxLayout):
           a parent FloatLayout.
     """
 
-    UP_ARROW_WIDTH = dp(20)
     up_arrow_filepath = StringProperty()
+    UP_ARROW_WIDTH = ARROW_WIDTH
 
     goto_title_button_active = BooleanProperty(defaultvalue=True)
 

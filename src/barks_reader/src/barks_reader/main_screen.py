@@ -57,13 +57,6 @@ from barks_reader.view_state_manager import ImageThemesChange, ImageThemesToUse,
 if TYPE_CHECKING:
     from barks_fantagraphics.comic_book import ComicBook
     from barks_fantagraphics.comics_database import ComicsDatabase
-
-    # noinspection PyProtectedMember
-    from kivy._clock import ClockEvent
-    from kivy.factory import Factory
-    from kivy.uix.button import Button
-    from kivy.uix.widget import Widget
-
     from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
     from barks_reader.comic_book_reader import ComicBookReader
     from barks_reader.filtered_title_lists import FilteredTitleLists
@@ -73,6 +66,12 @@ if TYPE_CHECKING:
     from barks_reader.reader_settings import ReaderSettings
     from barks_reader.system_file_paths import SystemFilePaths
     from barks_reader.tree_view_screen import TreeViewScreen
+
+    # noinspection PyProtectedMember
+    from kivy._clock import ClockEvent
+    from kivy.factory import Factory
+    from kivy.uix.button import Button
+    from kivy.uix.widget import Widget
 
 MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
@@ -86,7 +85,6 @@ class MainScreen(BoxLayout, Screen):
     action_bar_change_pics_icon_filepath = StringProperty()
     action_bar_settings_icon_filepath = StringProperty()
     action_bar_goto_icon_filepath = StringProperty()
-    lower_title_available = BooleanProperty(defaultvalue=False)
     app_title = StringProperty()
 
     is_first_use_of_reader = BooleanProperty(defaultvalue=False)
@@ -108,6 +106,8 @@ class MainScreen(BoxLayout, Screen):
         self._tree_view_screen = tree_view_screen
         self._bottom_title_view_screen = bottom_title_view_screen
         self._fun_image_view_screen = fun_image_view_screen
+
+        self._tree_view_screen.on_goto_title = self._on_goto_top_view_title
 
         self.add_widget(self._tree_view_screen)
         self._bottom_title_view_screen.add_widget(self._fun_image_view_screen)
@@ -187,7 +187,7 @@ class MainScreen(BoxLayout, Screen):
         self._fun_image_view_screen.ids.checkbox_custom_image_types.bind(
             active=self.on_checkbox_custom_image_types_changed
         )
-        self._fun_image_view_screen.on_goto_title_func = self.on_goto_fun_view_title
+        self._fun_image_view_screen.on_goto_title_func = self._on_goto_fun_view_title
 
         self._app_initializer = AppInitializer(
             self._reader_settings,
@@ -291,19 +291,16 @@ class MainScreen(BoxLayout, Screen):
     def on_action_bar_change_view_images(self) -> None:
         self._view_state_manager.change_background_views()
 
-    def on_action_bar_goto(self, button: Button) -> None:
-        self._tree_view_screen.goto_node(button.text)
-
     def on_action_bar_pressed(self, button: Button) -> None:
         pass
 
     def _on_views_updated(self) -> None:
-        self.lower_title_available = self._view_state_manager.lower_title_available
+        pass
 
-    def on_goto_top_view_title(self) -> None:
+    def _on_goto_top_view_title(self) -> None:
         self._goto_chrono_title(self._view_state_manager.get_top_view_image_info())
 
-    def on_goto_fun_view_title(self) -> None:
+    def _on_goto_fun_view_title(self) -> None:
         self._goto_chrono_title(self._view_state_manager.get_bottom_view_fun_image_info())
 
     def _goto_chrono_title(self, image_info: ImageInfo) -> None:

@@ -52,3 +52,41 @@
                     background_color: (0,1,0,1)
                     size_hint_y: None
                     height: self.minimum_height
+
+        # Use a separate AnchorLayout to pin the button to the top-right corner
+        # This is a sibling to the main content, so it's not affected by other layouts.
+        AnchorLayout:
+            anchor_x: 'right'
+            anchor_y: 'top'
+            padding: [0, dp(7), dp(10), 0]  # Add padding: [left, top, right, bottom]
+
+            # Goto title button
+            Button:
+                text: ""
+                opacity: 0.8
+                background_color: (0, 0, 0, 0)
+                background_normal: ""
+                size_hint: None, None
+                size: (root.DOWN_ARROW_WIDTH, root.DOWN_ARROW_WIDTH)
+                on_press: root.on_goto_title()
+
+                canvas.before:
+                    Color:
+                        rgba: .1, .1, .1, 1
+                    BoxShadow:
+                        inset: False
+                        pos: self.pos
+                        size: self.size
+                        offset: 0, 0
+                        spread_radius: 3.5, 3.5
+                        border_radius: [self.height / 2, self.height / 2, self.height / 2, self.height / 2]
+                        blur_radius: 2
+                Image:
+                    source: root.down_arrow_filepath
+                    color: (1, 1, 1, 1)
+                    # Center the image on the button
+                    center_x: self.parent.center_x
+                    center_y: self.parent.center_y
+                    size: self.parent.size
+                    fit_mode: "contain"
+                    mipmap: True

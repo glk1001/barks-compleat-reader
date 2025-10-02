@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from kivy.properties import (
     BooleanProperty,
@@ -14,6 +15,12 @@ from kivy.uix.treeview import TreeViewNode
 
 from barks_reader.random_title_images import FIT_MODE_COVER
 from barks_reader.reader_tree_view_utils import find_node_by_path, find_tree_view_node
+from barks_reader.reader_ui_classes import ARROW_WIDTH
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from barks_reader.reader_settings import ReaderSettings
 
 TREE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
@@ -26,8 +33,16 @@ class TreeViewScreen(BoxLayout):
     top_view_image_color = ColorProperty()
     top_view_image_opacity = NumericProperty(0.0)
 
+    down_arrow_filepath = StringProperty()
+    DOWN_ARROW_WIDTH = ARROW_WIDTH
+
     main_files_not_loaded = BooleanProperty(defaultvalue=False)
     main_files_not_loaded_msg = StringProperty()
+
+    def __init__(self, reader_settings: ReaderSettings, **kwargs) -> None:  # noqa: ANN003
+        super().__init__(**kwargs)
+        self.down_arrow_filepath = str(reader_settings.sys_file_paths.get_down_arrow_file())
+        self.on_goto_title: Callable[[], None] | None = None
 
     def get_selected_node(self) -> TreeViewNode:
         return self.ids.reader_tree_view.selected_node

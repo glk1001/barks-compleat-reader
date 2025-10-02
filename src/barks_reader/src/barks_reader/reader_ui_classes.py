@@ -45,6 +45,7 @@ TREE_VIEW_NODE_SELECTED_COLOR = (1, 0, 1, 0.8)
 TREE_VIEW_NODE_BACKGROUND_COLOR = (0.0, 0.0, 0.0, 0.0)
 
 ACTION_BAR_SIZE_Y = dp(45)
+ARROW_WIDTH = dp(20)
 
 
 def set_kivy_busy_cursor() -> None:

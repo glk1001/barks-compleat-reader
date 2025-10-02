@@ -173,29 +173,3 @@
                 text: 'Settings'
                 icon: root.action_bar_settings_icon_filepath
                 on_release: app.open_settings(self)
-
-            ActionGroup:
-                text: "Goto"
-                # icon not working. Why??
-                icon: root.action_bar_goto_icon_filepath
-                draggable: False
-                mode: "spinner"
-                mipmap: True
-
-                ActionButton:
-                    text: 'Chronological'
-                    on_release: root.on_action_bar_goto(self)
-                ActionButton:
-                    text: 'Series'
-                    on_release: root.on_action_bar_goto(self)
-                ActionButton:
-                    text: 'Categories'
-                    on_release: root.on_action_bar_goto(self)
-                ActionButton:
-                    text: 'Upper Title'
-                    on_release: root.on_goto_top_view_title()
-                ActionButton:
-                    text: 'Lower Title'
-                    on_release: root.on_goto_fun_view_title()
-                    disabled: not root.lower_title_available
-
