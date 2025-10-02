@@ -24,6 +24,7 @@ from kivy.uix.treeview import TreeView, TreeViewNode
 from kivy.utils import escape_markup
 from loguru import logger
 
+from barks_reader.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
 from barks_reader.reader_formatter import get_markup_text_with_num_titles, text_includes_num_titles
 from barks_reader.reader_utils import unique_extend
 
@@ -44,8 +45,8 @@ TREE_VIEW_NODE_TEXT_COLOR = (1, 1, 1, 1)
 TREE_VIEW_NODE_SELECTED_COLOR = (1, 0, 1, 0.8)
 TREE_VIEW_NODE_BACKGROUND_COLOR = (0.0, 0.0, 0.0, 0.0)
 
-ACTION_BAR_SIZE_Y = dp(45)
-ARROW_WIDTH = dp(20)
+ACTION_BAR_SIZE_Y = round(dp(RAW_ACTION_BAR_SIZE_Y))
+ARROW_WIDTH = round(dp(20))
 
 
 def set_kivy_busy_cursor() -> None:

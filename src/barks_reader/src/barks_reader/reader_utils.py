@@ -9,6 +9,8 @@ from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, Titles
 from barks_fantagraphics.comics_consts import PageType
 from comic_utils.pil_image_utils import PNG_PIL_FORMAT
 
+from barks_reader.screen_metrics import get_approximate_taskbar_height
+
 if TYPE_CHECKING:
     import zipfile
 
@@ -18,6 +20,16 @@ if TYPE_CHECKING:
 
 EMPTY_PAGE_KEY = "empty_page"
 PNG_EXT_FOR_KIVY = PNG_PIL_FORMAT.lower()
+
+
+def get_best_window_height_fit(screen_height: int) -> int:
+    return screen_height - get_approximate_taskbar_height()
+
+
+def get_win_width_from_height(win_height: int) -> int:
+    # TODO: Make aspect ratio a const
+    comic_page_aspect_ratio = 3200.0 / 2120.0
+    return round(win_height / comic_page_aspect_ratio)
 
 
 def get_image_stream(file: PanelPath) -> io.BytesIO:

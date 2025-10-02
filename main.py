@@ -14,13 +14,15 @@ from configparser import ConfigParser
 
 from barks_fantagraphics.comics_cmd_args import CmdArgs, ExtraArg
 from barks_reader.config_info import ConfigInfo  # IMPORT THIS BEFORE Kivy!!
+from barks_reader.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
 from barks_reader.reader_settings import (
     BARKS_READER_SECTION,
     MAIN_WINDOW_HEIGHT,
     MAIN_WINDOW_LEFT,
     MAIN_WINDOW_TOP,
 )
-from barks_reader.screen_metrics import get_approximate_taskbar_height, get_primary_screen_info
+from barks_reader.reader_utils import get_best_window_height_fit, get_win_width_from_height
+from barks_reader.screen_metrics import SCREEN_METRICS
 from comic_utils.comic_consts import IS_PYINSTALLER_BUNDLE, PYINSTALLER_BUNDLED_MAIN_DIR
 from loguru import logger
 from loguru_config import LoguruConfig
@@ -48,8 +50,12 @@ def set_project_paths() -> None:
 
     COMIC_BOOK_READER_KV_FILE = barks_reader_srce_dir / COMIC_BOOK_READER_KV_FILE.name  # noqa: N806
     READER_TREE_VIEW_KV_FILE = barks_reader_srce_dir / READER_TREE_VIEW_KV_FILE.name  # noqa: N806
-    BOTTOM_TITLE_VIEW_SCREEN_KV_FILE = barks_reader_srce_dir / BOTTOM_TITLE_VIEW_SCREEN_KV_FILE.name  # noqa: N806
-    FUN_IMAGE_VIEW_SCREEN_KV_FILE = barks_reader_srce_dir / FUN_IMAGE_VIEW_SCREEN_KV_FILE.name  # noqa: N806
+    BOTTOM_TITLE_VIEW_SCREEN_KV_FILE = (  # noqa: N806
+        barks_reader_srce_dir / BOTTOM_TITLE_VIEW_SCREEN_KV_FILE.name
+    )
+    FUN_IMAGE_VIEW_SCREEN_KV_FILE = (  # noqa: N806
+        barks_reader_srce_dir / FUN_IMAGE_VIEW_SCREEN_KV_FILE.name
+    )
     TREE_VIEW_SCREEN_KV_FILE = barks_reader_srce_dir / TREE_VIEW_SCREEN_KV_FILE.name  # noqa: N806
     INTRO_COMPLEAT_BARKS_READER_KV_FILE = (  # noqa: N806
         barks_reader_srce_dir / INTRO_COMPLEAT_BARKS_READER_KV_FILE.name
@@ -179,7 +185,7 @@ def run_loguru_config(cfg_info: ConfigInfo) -> None:
 def update_window_size(args: CmdArgs, cfg_info: ConfigInfo) -> None:
     cmd_arg_win_height, cmd_arg_win_left, cmd_arg_win_top = get_main_win_info_from_cmd_args(args)
     ini_win_height, ini_win_left, ini_win_top = get_main_win_info_from_ini_file(cfg_info)
-    best_win_height, best_win_left, best_win_top = get_best_main_window_fit()
+    best_win_height, best_win_left, best_win_top = get_main_win_from_screen_metrics()
 
     win_height = cmd_arg_win_height
     win_left = cmd_arg_win_left
@@ -225,12 +231,12 @@ def get_main_win_info_from_ini_file(cfg_info: ConfigInfo) -> tuple[int, int, int
         return win_height, win_left, win_top
 
 
-def get_best_main_window_fit() -> tuple[int, int, int]:
-    primary_screen_info = get_primary_screen_info()
+def get_main_win_from_screen_metrics() -> tuple[int, int, int]:
+    primary_screen_info = SCREEN_METRICS.get_primary_screen_info()
 
     win_centre = primary_screen_info.monitor_x + round(primary_screen_info.width_pixels / 2)
 
-    win_height = primary_screen_info.height_pixels - get_approximate_taskbar_height()
+    win_height = get_best_window_height_fit(primary_screen_info.height_pixels)
     win_left = win_centre - round(get_win_width_from_height(win_height) / 2)
     win_top = 0
 
@@ -239,14 +245,10 @@ def get_best_main_window_fit() -> tuple[int, int, int]:
     return win_height, win_left, win_top
 
 
-def get_win_width_from_height(win_height: int) -> int:
-    comic_page_aspect_ratio = 3200.0 / 2120.0
-    return round(win_height / comic_page_aspect_ratio)
-
-
 def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
     from kivy import Config
 
+    # noinspection LongLine
     if platform.system() != "Windows":
         # For some reason, kivy on Windows does not like window_state = 'hidden'.
         # It trashes fonts, and crashes with
@@ -261,13 +263,15 @@ def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
         # Don't show anything until the app decides to.
         Config.set("graphics", "window_state", "hidden")
 
-    win_width = get_win_width_from_height(win_height)
+    # Note: Can't use dp(RAW_ACTION_BAR_SIZE_Y) here because importing 'dp'
+    #       initializes the Window with wrong dimensions.
+    win_width = get_win_width_from_height(win_height - RAW_ACTION_BAR_SIZE_Y)
     logger.debug(f"Main win width: {win_width}.")
 
     Config.set("graphics", "left", win_left)
     Config.set("graphics", "top", win_top)
     Config.set("graphics", "width", win_width)
-    Config.set("graphics", "height", round(win_height + 45.0))
+    Config.set("graphics", "height", win_height)
 
     logger.info(
         f'Set window position and size: ({win_left}, {win_top}), ({win_width}, {win_height})".'

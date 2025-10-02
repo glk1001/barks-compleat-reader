@@ -4,6 +4,10 @@ from loguru import logger
 from screeninfo import get_monitors
 
 
+def get_approximate_taskbar_height() -> int:
+    return 100
+
+
 @dataclass
 class ScreenInfo:
     display: int
@@ -19,77 +23,89 @@ class ScreenInfo:
     is_primary: bool
 
 
-def get_screen_info() -> list[ScreenInfo]:
-    monitors = get_monitors()
-    if not monitors:
-        logger.warning("No monitors found by screeninfo.")
-        return []
+class ScreenMetrics:
+    def __init__(self) -> None:
+        self.SCREEN_INFO = self._get_screen_info()
+        self.NUM_MONITORS = len(self.SCREEN_INFO)
 
-    inch_in_mm = 25.4
-    screens = []
-    for i, monitor in enumerate(monitors):
-        if not (
-            monitor.width_mm
-            and monitor.height_mm
-            and monitor.width_mm > 0
-            and monitor.height_mm > 0
-        ):
-            width_mm = 0
-            height_mm = 0
-            width_in = 0
-            height_in = 0
-            avg_dpi = 0
-        else:
-            width_mm = monitor.width_mm
-            height_mm = monitor.height_mm
+    @staticmethod
+    def _get_screen_info() -> list[ScreenInfo]:
+        monitors = get_monitors()
+        if not monitors:
+            logger.warning("No monitors found by screeninfo.")
+            return []
 
-            width_in = round(width_mm / inch_in_mm)
-            height_in = round(height_mm / inch_in_mm)
+        inch_in_mm = 25.4
+        screens = []
+        for i, monitor in enumerate(monitors):
+            if not (
+                monitor.width_mm
+                and monitor.height_mm
+                and monitor.width_mm > 0
+                and monitor.height_mm > 0
+            ):
+                width_mm = 0
+                height_mm = 0
+                width_in = 0
+                height_in = 0
+                avg_dpi = 0
+            else:
+                width_mm = monitor.width_mm
+                height_mm = monitor.height_mm
 
-            dpi_x = (monitor.width / width_mm) * inch_in_mm
-            dpi_y = (monitor.height / height_mm) * inch_in_mm
+                width_in = round(width_mm / inch_in_mm)
+                height_in = round(height_mm / inch_in_mm)
 
-            avg_dpi = (dpi_x + dpi_y) / 2
+                dpi_x = (monitor.width / width_mm) * inch_in_mm
+                dpi_y = (monitor.height / height_mm) * inch_in_mm
 
-        screens.append(
-            ScreenInfo(
-                i,
-                monitor.x,
-                monitor.y,
-                monitor.width,
-                monitor.height,
-                width_mm,
-                height_mm,
-                width_in,
-                height_in,
-                avg_dpi,
-                monitor.is_primary,
+                avg_dpi = (dpi_x + dpi_y) / 2
+
+            screens.append(
+                ScreenInfo(
+                    i,
+                    monitor.x,
+                    monitor.y,
+                    monitor.width,
+                    monitor.height,
+                    width_mm,
+                    height_mm,
+                    width_in,
+                    height_in,
+                    avg_dpi,
+                    monitor.is_primary,
+                )
             )
-        )
 
-    return screens
+        return screens
+
+    def get_primary_screen_info(self) -> ScreenInfo:
+        for info in self.SCREEN_INFO:
+            if info.is_primary:
+                return info
+
+        return self.SCREEN_INFO[0]
+
+    def get_monitor_for_pos(self, x: int, y: int) -> ScreenInfo | None:
+        for info in self.SCREEN_INFO:
+            if (
+                info.monitor_x <= x < info.monitor_x + info.width_pixels
+                and info.monitor_y <= y < info.monitor_y + info.height_pixels
+            ):
+                return info
+
+        return None
 
 
-def get_primary_screen_info() -> ScreenInfo:
-    screen_info_list = get_screen_info()
-
-    for info in screen_info_list:
-        if info.is_primary:
-            return info
-
-    return screen_info_list[0]
+SCREEN_METRICS = ScreenMetrics()
 
 
-def get_approximate_taskbar_height() -> int:
-    return 100
-
-
-def log_screen_metrics(scrn_info: list[ScreenInfo]) -> None:
+def log_screen_metrics() -> None:
     from kivy.metrics import cm, dp, inch, sp  # noqa: PLC0415
 
     logger.info("--- Detailed Monitor Metrics ---")
 
-    for info in scrn_info:
+    for info in SCREEN_METRICS.SCREEN_INFO:
         logger.info(
             f"Display {info.display}: {info.width_pixels} x {info.height_pixels} pixels"
             f" at ({info.monitor_x}, {info.monitor_y})."
@@ -110,6 +126,4 @@ def log_screen_metrics(scrn_info: list[ScreenInfo]) -> None:
 
 
 if __name__ == "__main__":
-    screen_info = get_screen_info()
-    assert screen_info
-    log_screen_metrics(screen_info)
+    log_screen_metrics()

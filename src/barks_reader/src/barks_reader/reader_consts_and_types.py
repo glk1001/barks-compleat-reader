@@ -5,6 +5,8 @@ from pathlib import Path
 
 from comic_utils.comic_consts import ROMAN_NUMERALS
 
+RAW_ACTION_BAR_SIZE_Y = 45
+
 APP_TITLE = "The Compleat Barks Disney Reader"
 
 LONG_PATH_SETTING = "longpath"

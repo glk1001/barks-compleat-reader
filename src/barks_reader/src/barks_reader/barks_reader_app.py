@@ -36,7 +36,8 @@ from barks_reader.reader_ui_classes import (
     READER_TREE_VIEW_KV_FILE,
     ReaderTreeBuilderEventDispatcher,
 )
-from barks_reader.screen_metrics import get_screen_info, log_screen_metrics
+from barks_reader.reader_utils import get_best_window_height_fit, get_win_width_from_height
+from barks_reader.screen_metrics import SCREEN_METRICS, log_screen_metrics
 from barks_reader.settings_fix import SettingLongPath
 from barks_reader.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
 
@@ -69,10 +70,47 @@ class BarksReaderApp(App):
 
         self._main_screen: MainScreen | None = None
 
+        self._current_monitor_display = SCREEN_METRICS.get_monitor_for_pos(
+            Window.left, Window.top
+        ).display
+
     # noinspection PyTypeHints
     def _on_window_resize(self, _window: Window, width: int, height: int) -> None:
         logger.debug(f"App window resize event: width = {width}, height = {height}.")
         self.update_fonts(height)
+
+    # noinspection PyTypeHints
+    def _on_window_pos_change(self, _window: Window) -> None:
+        # Check if we've changed monitors. Adjust height if required.
+
+        if Window.fullscreen:
+            # Leave fullscreen alone.
+            return
+
+        monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
+        assert monitor is not None
+        if monitor.display == self._current_monitor_display:
+            return
+
+        self._current_monitor_display = monitor
+
+        max_height = get_best_window_height_fit(monitor.height_pixels)
+        scale_factor = max_height / Window.height
+
+        new_height = round(scale_factor * max_height)
+        old_height = Window.height
+
+        if new_height != old_height:
+            new_width = get_win_width_from_height(new_height - ACTION_BAR_SIZE_Y)
+            old_width = Window.width
+
+            Window.size = (new_width, new_height)
+
+            logger.debug(
+                f"Changed to monitor {monitor.display}:"
+                f" old width = {old_width}, old height = {old_height}."
+                f" new width = {new_width}, new height = {new_height}."
+            )
 
     def update_fonts(self, height: int) -> None:
         self.font_manager.update_font_sizes(height)
@@ -235,6 +273,8 @@ class BarksReaderApp(App):
         are correctly sized based on the loaded configuration.
         """
         Window.bind(on_resize=self._on_window_resize)
+        if SCREEN_METRICS.NUM_MONITORS > 1:
+            Window.bind(on_move=self._on_window_pos_change)
 
         # This is a known Kivy workaround. By briefly changing the window position,
         # we force an `on_resize` event to fire, which ensures that all UI elements
@@ -258,9 +298,7 @@ def _log_screen_settings() -> None:
 def main(config_info: ConfigInfo, cmd_args: CmdArgs) -> None:
     # noinspection PyBroadException
     try:
-        screen_info = get_screen_info()
-        assert screen_info
-        log_screen_metrics(screen_info)
+        log_screen_metrics()
 
         comics_database = cmd_args.get_comics_database(for_building_comics=False)
 
