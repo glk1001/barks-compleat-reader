@@ -1,5 +1,4 @@
 import json
-import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -56,19 +55,14 @@ def get_min_max_panel_values(segment_info: dict[str, Any]) -> tuple[int, int, in
 
 
 class KumikoPanelSegmentation:
-    def __init__(self, work_dir: str, no_panel_expansion: bool = False) -> None:
+    def __init__(self, work_dir: Path, no_panel_expansion: bool = False) -> None:
         self._work_dir = work_dir
         self._no_panel_expansion = no_panel_expansion
 
-    def get_panels_segment_info(self, srce_image: PilImage, srce_filename: str) -> dict[str, Any]:
+    def get_panels_segment_info(self, srce_image: PilImage, srce_filename: Path) -> dict[str, Any]:
         logger.debug(f'Getting panel bounding box for "{srce_filename}" using kumiko.')
 
-        work_filename = str(
-            os.path.join(
-                self._work_dir,
-                os.path.splitext(os.path.basename(srce_filename))[0] + "_orig.jpg",
-            ),
-        )
+        work_filename = str(self._work_dir / (srce_filename.stem + "_orig.jpg"))
         srce_image.save(work_filename, optimize=True, compress_level=9)
         logger.debug(f'Saved srce image to work file "{work_filename}".')
 
@@ -76,9 +70,9 @@ class KumikoPanelSegmentation:
         return self._run_kumiko(work_filename)
 
     def _run_kumiko(self, page_filename: str) -> dict[str, Any]:
-        kumiko_home_dir = os.path.join(str(Path.home()), "Prj/github/kumiko")
-        kumiko_python_path = os.path.join(kumiko_home_dir, ".venv/bin/python3")
-        kumiko_script_path = os.path.join(kumiko_home_dir, "kumiko")
+        kumiko_home_dir = Path.home() / "Prj/github/kumiko"
+        kumiko_python_path = str(kumiko_home_dir / ".venv/bin/python3")
+        kumiko_script_path = kumiko_home_dir / "kumiko"
         run_args = [kumiko_python_path, kumiko_script_path, "-i", page_filename]
         if self._no_panel_expansion:
             run_args.append("--no-panel-expansion")

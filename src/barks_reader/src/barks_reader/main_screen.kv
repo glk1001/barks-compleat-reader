@@ -157,7 +157,15 @@
             BarButton:
                 text: 'Quit'
                 icon: root.action_bar_close_icon_filepath
+                important: True
                 on_release: app.close_app()
+
+ #           BarButton:
+ #               id: fullscreen_button
+ #               text: "Fullscreen"
+#                icon: root.action_bar_fullscreen_filepath
+ #               important: True
+#                on_press: root.comic_book_reader.toggle_fullscreen(self)
 
             BarButton:
                 text: 'Collapse'

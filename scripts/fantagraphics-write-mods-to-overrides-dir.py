@@ -40,7 +40,7 @@ class FileType(Enum):
     TITLE = auto()
 
 
-def get_srce_mod_files(comic: ComicBook) -> list[tuple[str, FileType]]:
+def get_srce_mod_files(comic: ComicBook) -> list[tuple[Path, FileType]]:
     """Find all modified source files for a given comic book."""
     srce_and_dest_pages = get_sorted_srce_and_dest_pages(comic, get_full_paths=True)
 
@@ -51,33 +51,33 @@ def get_srce_mod_files(comic: ComicBook) -> list[tuple[str, FileType]]:
     ]
 
 
-def get_mod_file(comic: ComicBook, srce: CleanPage) -> tuple[str, FileType]:
+def get_mod_file(comic: ComicBook, srce: CleanPage) -> tuple[Path, FileType]:
     page_num = get_page_str(srce.page_num)
 
-    if Path(comic.get_srce_original_fixes_story_file(page_num)).is_file():
+    if comic.get_srce_original_fixes_story_file(page_num).is_file():
         return comic.get_srce_original_fixes_story_file(page_num), FileType.ORIGINAL
-    if Path(comic.get_srce_upscayled_fixes_story_file(page_num)).is_file():
+    if comic.get_srce_upscayled_fixes_story_file(page_num).is_file():
         return comic.get_srce_upscayled_fixes_story_file(page_num), FileType.UPSCAYLED
 
     msg = f'Expected to find a fixes file for "{srce.page_filename}".'
     raise FileNotFoundError(msg)
 
 
-def downscale_and_zip(srce_file: str, override_archive: zipfile.ZipFile, dest_file: str) -> None:
-    dest_file = str(Path(dest_file).with_suffix(JPG_FILE_EXT))
+def downscale_and_zip(srce_file: Path, override_archive: zipfile.ZipFile, arcname: Path) -> None:
+    arcname = arcname.with_suffix(JPG_FILE_EXT)
 
-    logger.info(f'Downscale "{srce_file}" to "{dest_file}" in zip...')
+    logger.info(f'Downscale "{srce_file}" to "{arcname}" in zip...')
 
     resized_image = get_downscaled_jpg(SRCE_STANDARD_WIDTH, SRCE_STANDARD_HEIGHT, srce_file)
     buffer = get_pil_image_as_jpg_bytes(resized_image)
     buffer.seek(0)
 
-    override_archive.writestr(str(dest_file), buffer.read())
+    override_archive.writestr(str(arcname), buffer.read())
 
 
-def just_zip(srce_file: str, override_archive: zipfile.ZipFile, dest_file: str) -> None:
-    logger.debug(f'Zip "{srce_file}" to jpg "{dest_file}" in zip...')
-    override_archive.write(srce_file, dest_file)
+def just_zip(srce_file: Path, override_archive: zipfile.ZipFile, arcname: Path) -> None:
+    logger.debug(f'Zip "{srce_file}" to jpg "{arcname}" in zip...')
+    override_archive.write(srce_file, arcname)
 
 
 def process_comic_book(comic_book: ComicBook, override_archive: zipfile.ZipFile) -> int:
@@ -87,12 +87,12 @@ def process_comic_book(comic_book: ComicBook, override_archive: zipfile.ZipFile)
         return 0
 
     for mod_file, file_type in srce_mod_files:
-        mod_filename = Path(mod_file).name
+        mod_arcname = Path(mod_file.name)
 
         if file_type == FileType.UPSCAYLED:
-            downscale_and_zip(mod_file, override_archive, mod_filename)
+            downscale_and_zip(mod_file, override_archive, mod_arcname)
         elif file_type == FileType.ORIGINAL:
-            just_zip(mod_file, override_archive, mod_filename)
+            just_zip(mod_file, override_archive, mod_arcname)
         else:
             err_msg = f'Wrong file type, {file_type}, for file "{mod_file}".'
             raise ValueError(err_msg)

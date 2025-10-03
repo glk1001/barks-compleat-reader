@@ -12,6 +12,8 @@ from PIL.PngImagePlugin import PngInfo
 from .comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from PIL.Image import Image as PilImage
 
 Image.MAX_IMAGE_PIXELS = None
@@ -30,11 +32,11 @@ _EXTENSION_TO_PIL_FORMAT = {
 }
 
 
-def open_pil_image_for_reading(file: str) -> PilImage:
+def open_pil_image_for_reading(file: Path) -> PilImage:
     current_log_level = logging.getLogger().level
     try:
         logging.getLogger().setLevel(logging.INFO)
-        return Image.open(file, "r")
+        return Image.open(str(file), "r")
     finally:
         logging.getLogger().setLevel(current_log_level)
 
@@ -56,7 +58,7 @@ def _get_pil_format_from_ext(ext: str) -> str:
         raise ValueError(msg) from e
 
 
-def get_image_as_png_bytes(file: str) -> io.BytesIO:
+def get_image_as_png_bytes(file: Path) -> io.BytesIO:
     pil_image = open_pil_image_for_reading(file)
     return get_pil_image_as_png_bytes(pil_image)
 
@@ -85,40 +87,40 @@ def get_pil_image_as_jpg_bytes(pil_image: PilImage) -> io.BytesIO:
     return data
 
 
-def copy_file_to_jpg(srce_file: str, dest_file: str) -> None:
+def copy_file_to_jpg(srce_file: Path, dest_file: Path) -> None:
     image = open_pil_image_for_reading(srce_file).convert("RGB")
 
     image.save(
-        dest_file,
+        str(dest_file),
         optimize=True,
         compress_level=SAVE_JPG_COMPRESS_LEVEL,
         quality=SAVE_JPG_QUALITY,
     )
 
 
-def copy_file_to_png(srce_file: str, dest_file: str) -> None:
+def copy_file_to_png(srce_file: Path, dest_file: Path) -> None:
     image = open_pil_image_for_reading(srce_file)
 
     image.save(
-        dest_file,
+        str(dest_file),
         optimize=True,
         compress_level=SAVE_PNG_COMPRESSION,
         quality=SAVE_PNG_COMPRESSION,
     )
 
 
-def downscale_jpg(width: int, height: int, srce_file: str, dest_file: str) -> None:
+def downscale_jpg(width: int, height: int, srce_file: Path, dest_file: Path) -> None:
     image_resized = get_downscaled_jpg(width, height, srce_file)
 
     image_resized.save(
-        dest_file,
+        str(dest_file),
         optimize=True,
         compress_level=SAVE_JPG_COMPRESS_LEVEL,
         quality=SAVE_JPG_QUALITY,
     )
 
 
-def get_downscaled_jpg(width: int, height: int, srce_file: str) -> PilImage:
+def get_downscaled_jpg(width: int, height: int, srce_file: Path) -> PilImage:
     image = open_pil_image_for_reading(srce_file).convert("RGB")
 
     return ImageOps.contain(
@@ -128,15 +130,15 @@ def get_downscaled_jpg(width: int, height: int, srce_file: str) -> PilImage:
     )
 
 
-def add_jpg_metadata(jpg_file: str, metadata: dict[str, str]) -> None:
-    pil_image = Image.open(jpg_file, "r")
+def add_jpg_metadata(jpg_file: Path, metadata: dict[str, str]) -> None:
+    pil_image = Image.open(str(jpg_file), "r")
 
     jpg_metadata = PngInfo()
     for key in metadata:
         jpg_metadata.add_text(f"{METADATA_PROPERTY_GROUP}:{key}", metadata[key])
 
     pil_image.save(
-        jpg_file,
+        str(jpg_file),
         jpginfo=jpg_metadata,
         optimize=True,
         compress_level=SAVE_JPG_COMPRESS_LEVEL,
@@ -144,15 +146,15 @@ def add_jpg_metadata(jpg_file: str, metadata: dict[str, str]) -> None:
     )
 
 
-def add_png_metadata(png_file: str, metadata: dict[str, str]) -> None:
-    pil_image = Image.open(png_file, "r")
+def add_png_metadata(png_file: Path, metadata: dict[str, str]) -> None:
+    pil_image = Image.open(str(png_file), "r")
 
     png_metadata = PngInfo()
     for key in metadata:
         png_metadata.add_text(f"{METADATA_PROPERTY_GROUP}:{key}", metadata[key])
 
     pil_image.save(
-        png_file,
+        str(png_file),
         pnginfo=png_metadata,
         optimize=True,
         compress_level=SAVE_PNG_COMPRESSION,

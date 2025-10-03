@@ -3,11 +3,11 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 from enum import Flag, auto
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from intspan import intspan
 
-from .comics_consts import PNG_INSET_DIR, PNG_INSET_EXT
 from .comics_database import ComicsDatabase
 from .comics_utils import get_titles_sorted_by_submission_date
 
@@ -105,11 +105,11 @@ class CmdArgs:
 
         return self.get_comics_database().get_all_titles_in_fantagraphics_volumes(vol_list)
 
-    def get_work_dir(self) -> str:
+    def get_work_dir(self) -> Path:
         if CmdArgNames.WORK_DIR not in self._required_args:
             msg = f"'{WORK_DIR_ARG}' was not specified as an argument."
             raise ValueError(msg)
-        return self._cmd_args.work_dir
+        return Path(self._cmd_args.work_dir)
 
     def one_or_more_volumes(self) -> bool:
         return self._cmd_args.volume is not None
@@ -138,10 +138,10 @@ class CmdArgs:
         assert self._cmd_args.page is not None
         return list(intspan(self._cmd_args.page))
 
-    def get_extra_arg(self, name: str) -> Any:
+    def get_extra_arg(self, name: str) -> Any:  # noqa: ANN401
         return getattr(self._cmd_args, name[2:])
 
-    def _get_args(self):
+    def _get_args(self) -> argparse.Namespace:
         parser = argparse.ArgumentParser(description=self._description)
 
         parser.add_argument(
@@ -200,7 +200,7 @@ class CmdArgs:
 
         return args
 
-    def _validate(self, args) -> None:
+    def _validate(self, args: argparse.Namespace) -> None:
         if args.volume and args.title:
             self._error_msg = f"You must specify only one of '{VOLUME_ARG}' or '{TITLE_ARG}."
             return

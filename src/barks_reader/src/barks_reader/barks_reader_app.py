@@ -201,7 +201,7 @@ class BarksReaderApp(App):
         self._reader_settings.set_barks_panels_dir()
 
         self._comics_database.set_inset_info(
-            str(self._reader_settings.file_paths.get_comic_inset_files_dir()),
+            self._reader_settings.file_paths.get_comic_inset_files_dir(),
             self._reader_settings.file_paths.get_inset_file_ext(),
         )
 

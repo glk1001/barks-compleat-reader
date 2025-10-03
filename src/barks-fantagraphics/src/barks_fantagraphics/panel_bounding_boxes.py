@@ -2,6 +2,7 @@
 
 import json
 from dataclasses import dataclass
+from pathlib import Path
 
 PANEL_BOUNDS_WORK_FILE_SUFFIX = "_panel_bounds.txt"
 
@@ -23,8 +24,8 @@ class BoundingBox:
         return (self.y_max - self.y_min) + 1
 
 
-def get_panels_bounding_box_from_file(panels_segments_file: str) -> BoundingBox:
-    with open(panels_segments_file) as f:
+def get_panels_bounding_box_from_file(panels_segments_file: Path) -> BoundingBox:
+    with panels_segments_file.open() as f:
         segment_info = json.load(f)
 
     x_min, y_min, x_max, y_max = segment_info["overall_bounds"]

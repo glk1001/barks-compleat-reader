@@ -1,8 +1,8 @@
 # ruff: noqa: PLR0911
 
-import os
 import zipfile
 from enum import Enum, auto
+from pathlib import Path
 
 from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
@@ -225,7 +225,7 @@ class ComicBookImageBuilder:
         srce_aspect_ratio = float(srce_page_image.height) / float(srce_page_image.width)
         if abs(srce_aspect_ratio - DEST_TARGET_ASPECT_RATIO) > small_float:
             logger.debug(
-                f"Wrong aspect ratio for page '{get_relpath(srce_page.page_filename)}':"
+                f"Wrong aspect ratio for page '{get_relpath(Path(srce_page.page_filename))}':"
                 f" {srce_aspect_ratio:.2f} != {DEST_TARGET_ASPECT_RATIO:.2f}."
                 f" Using black bars.",
             )
@@ -379,15 +379,13 @@ class ComicBookImageBuilder:
         return dest_page_image
 
     def _write_introduction(self, dest_page_image: PilImage) -> None:
-        if isinstance(self._comic.intro_inset_file, str) and not os.path.isfile(
-            self._comic.intro_inset_file
-        ):
+        if not self._comic.intro_inset_file.is_file():
             msg = f'Could not find inset file "{self._comic.intro_inset_file}".'
             raise FileNotFoundError(msg)
 
         logger.info(
             f"Writing introduction - using inset file"
-            f' "{get_relpath(str(self._comic.intro_inset_file))}".',
+            f' "{get_relpath(self._comic.intro_inset_file)}".',
         )
 
         draw = ImageDraw.Draw(dest_page_image)
@@ -457,7 +455,7 @@ class ComicBookImageBuilder:
                 self._comic.intro_inset_file.read_bytes(), ext=self._comic.intro_inset_file.suffix
             )
             if isinstance(self._comic.intro_inset_file, zipfile.Path)
-            else open_image_for_reading(self._comic.intro_inset_file)
+            else open_image_for_reading(str(self._comic.intro_inset_file))
         )
 
         inset_width, inset_height = inset.size
@@ -524,7 +522,7 @@ class ComicBookImageBuilder:
         self,
         draw: PilImageDraw,
         title: str,
-        font_file: str,
+        font_file: Path,
         font_size: int,
         add_footnote: bool,
     ) -> tuple[list[str], list[ImageFont.FreeTypeFont], int]:
@@ -536,9 +534,9 @@ class ComicBookImageBuilder:
 
         title_split = ["Comics", "and Stories", comic_num]
         title_fonts = [
-            ImageFont.truetype(font_file, font_size),
-            ImageFont.truetype(font_file, int(0.5 * font_size)),
-            ImageFont.truetype(font_file, font_size),
+            ImageFont.truetype(str(font_file), font_size),
+            ImageFont.truetype(str(font_file), int(0.5 * font_size)),
+            ImageFont.truetype(str(font_file), font_size),
         ]
 
         text_height = self._get_intro_text_height(draw, title, title_fonts[0])

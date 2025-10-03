@@ -192,14 +192,13 @@ class FantagraphicsVolumeArchives:
 
     def get_all_volume_filenames(self) -> list[Path]:
         archive_files = []
-        for file in self._archive_root.iterdir():
-            archive_file = self._archive_root / file
+        for archive_file in self._archive_root.iterdir():
             if archive_file.suffix.lower() != ".cbz":
                 continue
 
             if archive_file.is_file():
                 try:
-                    vol = self._get_fanta_volume(file)
+                    vol = self._get_fanta_volume(archive_file)
                     if vol in self._volume_list:
                         archive_files.append(archive_file)
                 except ValueError:
@@ -209,14 +208,13 @@ class FantagraphicsVolumeArchives:
 
     def get_all_volume_override_archives(self) -> dict[int, Path]:
         override_archives = {}
-        for file in self._override_root.iterdir():
-            override_archive_file = self._override_root / file
+        for override_archive_file in self._override_root.iterdir():
             if not override_archive_file.is_file():
-                msg = f'Unexpected override archive directory "{file}".'
+                msg = f'Unexpected override archive directory "{override_archive_file}".'
                 raise FileExistsError(msg)
 
             try:
-                vol = self._get_fanta_volume(file)
+                vol = self._get_fanta_volume(override_archive_file)
                 assert FIRST_VOLUME_NUMBER <= vol <= LAST_VOLUME_NUMBER
                 if vol in self._volume_list:
                     override_archives[vol] = override_archive_file

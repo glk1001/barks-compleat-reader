@@ -31,9 +31,11 @@ class TestFilteredTitleLists(unittest.TestCase):
         self.filtered_lists.get_title_lists()
 
         # Check that the external function was called exactly once
+        # noinspection PyUnresolvedReferences
         assert mock_get_filtered_title_lists.call_count == 1
 
         # Get the arguments passed to the mocked function
+        # noinspection PyUnresolvedReferences
         args, _kwargs = mock_get_filtered_title_lists.call_args
         filters = args[0]
 

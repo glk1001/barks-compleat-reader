@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 from loguru import logger
 
@@ -128,7 +128,7 @@ def _get_min_max_panels_bbox_width_height(
 
 def set_srce_panel_bounding_boxes(
     srce_pages: list[CleanPage],
-    srce_panels_segment_info_files: list[str],
+    srce_panels_segment_info_files: list[Path],
     check_srce_page_timestamps: bool,
 ) -> None:
     logger.debug("Setting srce panel bounding boxes.")
@@ -138,11 +138,11 @@ def set_srce_panel_bounding_boxes(
     ):
         if srce_page.page_type in PAGES_WITHOUT_PANELS:
             continue
-        if not os.path.isfile(srce_panels_segment_info_file):
+        if not srce_panels_segment_info_file.is_file():
             msg = f'Could not find panels segments info file "{srce_panels_segment_info_file}".'
             raise FileNotFoundError(msg)
         if check_srce_page_timestamps and dest_file_is_older_than_srce(
-            srce_page.page_filename,
+            Path(srce_page.page_filename),
             srce_panels_segment_info_file,
         ):
             msg = (

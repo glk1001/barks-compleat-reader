@@ -53,8 +53,8 @@ class ComicBookPageInfoManager:
         vol_title = self._comics_database.get_fantagraphics_volume_title(comic.get_fanta_volume())
         panel_segments_dir = Path(panel_segments_root_dir) / vol_title
 
-        def get_srce_panel_segments_file(page_num: str) -> str:
-            return str(panel_segments_dir / (page_num + JSON_FILE_EXT))
+        def get_srce_panel_segments_file(page_num: str) -> Path:
+            return panel_segments_dir / (page_num + JSON_FILE_EXT)
 
         # TODO: Don't need dimensions if using prebuilt comics.
         srce_and_dest_pages, _srce_dim, required_dim = (

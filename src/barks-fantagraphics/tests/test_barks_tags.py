@@ -241,7 +241,3 @@ class TestBarksTags(unittest.TestCase):
         assert BARKS_TAG_CATEGORIES_DICT["Things"] == TagCategories.THINGS
         with pytest.raises(KeyError):
             _ = BARKS_TAG_CATEGORIES_DICT["NON_EXISTENT"]
-
-
-if __name__ == "__main__":
-    pytest.process_volumes()

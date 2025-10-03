@@ -369,7 +369,7 @@ class BackgroundViews:
         logger.debug(
             f"Top view image:"
             f" State: {self._view_state},"
-            f" Image: '{get_abbrev_path(str(self._top_view_image_info.filename))}',"
+            f" Image: '{get_abbrev_path(self._top_view_image_info.filename)}',"
             f" FitMode: '{self._top_view_image_info.fit_mode}',"
             f" Color: {get_formatted_color(self._top_view_image_color)},"
             f" Opacity: {self._top_view_image_opacity}."
@@ -526,7 +526,7 @@ class BackgroundViews:
         logger.debug(
             f"Bottom view fun image:"
             f" State: {self._view_state},"
-            f" Image: '{get_abbrev_path(str(self._bottom_view_fun_image_info.filename))}',"
+            f" Image: '{get_abbrev_path(self._bottom_view_fun_image_info.filename)}',"
             f" FitMode: '{self._bottom_view_fun_image_info.fit_mode}',"
             f" Color: {get_formatted_color(self._bottom_view_fun_image_color)},"
             f" Opacity: {self._bottom_view_fun_image_opacity}."

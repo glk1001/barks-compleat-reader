@@ -88,6 +88,7 @@ def queryone(sql: str, params: list | tuple | None = None) -> dict:
     return dict_list[0]
 
 
+# noinspection PyArgumentList
 class BaseObject:
     """An abstract base class for all the models."""
 
@@ -248,6 +249,7 @@ class Index(BaseObject):
         return date(self.year, self.period.month, 1)
 
 
+# noinspection PyTypeChecker
 class Series(BaseObject):
     """
     A set of CPI data observed over an extended period of time over consistent time intervals ranging from
