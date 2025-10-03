@@ -57,6 +57,13 @@ from barks_reader.view_state_manager import ImageThemesChange, ImageThemesToUse,
 if TYPE_CHECKING:
     from barks_fantagraphics.comic_book import ComicBook
     from barks_fantagraphics.comics_database import ComicsDatabase
+
+    # noinspection PyProtectedMember
+    from kivy._clock import ClockEvent
+    from kivy.factory import Factory
+    from kivy.uix.button import Button
+    from kivy.uix.widget import Widget
+
     from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
     from barks_reader.comic_book_reader import ComicBookReader
     from barks_reader.filtered_title_lists import FilteredTitleLists
@@ -66,12 +73,6 @@ if TYPE_CHECKING:
     from barks_reader.reader_settings import ReaderSettings
     from barks_reader.system_file_paths import SystemFilePaths
     from barks_reader.tree_view_screen import TreeViewScreen
-
-    # noinspection PyProtectedMember
-    from kivy._clock import ClockEvent
-    from kivy.factory import Factory
-    from kivy.uix.button import Button
-    from kivy.uix.widget import Widget
 
 MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 

@@ -8,16 +8,13 @@ from typing import TYPE_CHECKING, Any
 from intspan import intspan
 
 from .comics_consts import PNG_INSET_DIR, PNG_INSET_EXT
-from .comics_database import ComicsDatabase, get_default_comics_database_dir
+from .comics_database import ComicsDatabase
 from .comics_utils import get_titles_sorted_by_submission_date
 
 if TYPE_CHECKING:
     from .fanta_comics_info import FantaComicBookInfo
 
 LOG_LEVEL_ARG = "--log-level"
-COMICS_DATABASE_DIR_ARG = "--comics-database-dir"
-COMICS_DATABASE_INSET_DIR_ARG = "--inset-dir"
-COMICS_DATABASE_INSET_EXT_ARG = "--inset-ext"
 VOLUME_ARG = "--volume"
 TITLE_ARG = "--title"
 WORK_DIR_ARG = "--work-dir"
@@ -25,7 +22,6 @@ PAGE_ARG = "--page"
 
 
 class CmdArgNames(Flag):
-    COMICS_DATABASE_DIR = auto()
     VOLUME = auto()
     TITLE = auto()
     WORK_DIR = auto()
@@ -44,11 +40,11 @@ class CmdArgs:
     def __init__(
         self,
         description: str,
-        required_args: CmdArgNames = CmdArgNames.COMICS_DATABASE_DIR,
+        required_args: CmdArgNames = None,
         extra_args: list[ExtraArg] | None = None,
     ) -> None:
         self._description = description
-        self._required_args = required_args
+        self._required_args = required_args if required_args else []
         self._extra_args = extra_args if extra_args else []
         self._error_msg = ""
         self._cmd_args = self._get_args()
@@ -64,11 +60,7 @@ class CmdArgs:
 
     def get_comics_database(self, for_building_comics: bool = True) -> ComicsDatabase:
         if not self._comics_database:
-            self._comics_database = ComicsDatabase(
-                self._cmd_args.comics_database_dir,
-                for_building_comics,
-            )
-            self._comics_database.set_inset_info(self._cmd_args.inset_dir, self._cmd_args.inset_ext)
+            self._comics_database = ComicsDatabase(for_building_comics)
 
         return self._comics_database
 
@@ -157,24 +149,6 @@ class CmdArgs:
             action="store",
             type=str,
             default="INFO",
-        )
-        parser.add_argument(
-            COMICS_DATABASE_DIR_ARG,
-            action="store",
-            type=str,
-            default=str(get_default_comics_database_dir()),
-        )
-        parser.add_argument(
-            COMICS_DATABASE_INSET_DIR_ARG,
-            action="store",
-            type=str,
-            default=PNG_INSET_DIR,
-        )
-        parser.add_argument(
-            COMICS_DATABASE_INSET_EXT_ARG,
-            action="store",
-            type=str,
-            default=PNG_INSET_EXT,
         )
         parser.add_argument(
             VOLUME_ARG,

@@ -20,9 +20,10 @@ from .comic_book import (
 )
 from .comics_consts import (
     BARKS_ROOT_DIR,
-    DATA_DIR,
     IMAGES_SUBDIR,
+    INTERNAL_DATA_DIR,
     INTRO_TITLE_DEFAULT_FONT_FILE,
+    PNG_INSET_DIR,
     STORY_TITLES_DIR,
     PageType,
 )
@@ -54,21 +55,17 @@ from .fanta_comics_info import (
 from .page_classes import OriginalPage
 
 
-def get_default_comics_database_dir() -> Path:
-    return DATA_DIR
-
-
 class ComicsDatabase:
-    def __init__(self, database_dir: str, for_building_comics: bool = True) -> None:
-        self._database_dir = _get_comics_database_dir(database_dir)
+    def __init__(self, for_building_comics: bool = True) -> None:
+        self._database_dir = INTERNAL_DATA_DIR
         self._for_building_comics = for_building_comics
         self._story_titles_dir = str(_get_story_titles_dir(self._database_dir))
         self._all_comic_book_info = ALL_FANTA_COMIC_BOOK_INFO
         self._ini_files = [f for f in os.listdir(self._story_titles_dir) if f.endswith(".ini")]
         self._story_titles = {get_title_str_from_filename(f) for f in self._ini_files}
         self._issue_titles = self._get_all_issue_titles()
-        self._inset_dir = ""
-        self._inset_ext = ""
+        self._inset_dir = PNG_INSET_DIR
+        self._inset_ext = PNG_FILE_EXT
 
     def set_inset_info(self, inset_dir: str, inset_ext: str) -> None:
         self._inset_dir = inset_dir
@@ -534,16 +531,6 @@ class ComicsDatabase:
         inset_filename = title + self._inset_ext
 
         return os.path.join(self._inset_dir, inset_filename)
-
-
-def _get_comics_database_dir(db_dir: str) -> str:
-    real_db_dir = os.path.realpath(db_dir)
-
-    if not os.path.isdir(real_db_dir):
-        msg = f'Could not find comics database directory "{real_db_dir}".'
-        raise FileNotFoundError(msg)
-
-    return real_db_dir
 
 
 def _get_story_titles_dir(db_dir: str) -> Path:
