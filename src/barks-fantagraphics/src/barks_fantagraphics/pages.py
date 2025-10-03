@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import inspect
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -38,13 +37,13 @@ from .panel_bounding import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-THIS_SCRIPT_DIR = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+THIS_SCRIPT_DIR = Path(inspect.getfile(inspect.currentframe())).resolve().parent
 
 TITLE_EMPTY_FILENAME = "title_empty"
 EMPTY_FILENAME = "empty"
 DEST_FILE_EXT = ".jpg"
 
-EMPTY_IMAGE_FILEPATH = os.path.join(THIS_SCRIPT_DIR, "empty_page.png")
+EMPTY_IMAGE_FILEPATH = THIS_SCRIPT_DIR / "empty_page.png"
 TITLE_EMPTY_IMAGE_FILEPATH = EMPTY_IMAGE_FILEPATH
 EMPTY_IMAGE_FILES = {
     EMPTY_IMAGE_FILEPATH,
@@ -53,7 +52,7 @@ EMPTY_IMAGE_FILES = {
 
 
 def get_max_timestamp(pages: list[CleanPage]) -> float:
-    return max(get_timestamp(p.page_filename) for p in pages)
+    return max(get_timestamp(Path(p.page_filename)) for p in pages)
 
 
 def get_page_num_str(page: CleanPage) -> str:
@@ -76,7 +75,7 @@ def get_page_number_str(page: CleanPage, page_number: int) -> str:
 def get_sorted_srce_and_dest_pages(
     comic: ComicBook,
     get_full_paths: bool,
-    get_srce_panel_segments_file: Callable[[str], str] | None = None,
+    get_srce_panel_segments_file: Callable[[str], Path] | None = None,
     check_srce_page_timestamps: bool = True,
 ) -> SrceAndDestPages:
     return get_sorted_srce_and_dest_pages_with_dimensions(
@@ -90,7 +89,7 @@ def get_sorted_srce_and_dest_pages(
 def get_sorted_srce_and_dest_pages_with_dimensions(
     comic: ComicBook,
     get_full_paths: bool,
-    get_srce_panel_segments_file: Callable[[str], str] | None = None,
+    get_srce_panel_segments_file: Callable[[str], Path] | None = None,
     check_srce_page_timestamps: bool = True,
 ) -> tuple[SrceAndDestPages, ComicDimensions, RequiredDimensions]:
     if get_srce_panel_segments_file is None:
@@ -163,7 +162,7 @@ def _get_srce_and_dest_pages_in_order(comic: ComicBook, get_full_paths: bool) ->
         file_num_str = f"{file_section_num}-{file_page_num:02d}"
         if get_full_paths:
             srce_file = get_full_srce_filepath(comic, page)
-            dest_file = os.path.join(comic.get_dest_image_dir(), file_num_str + DEST_FILE_EXT)
+            dest_file = comic.get_dest_image_dir() / (file_num_str + DEST_FILE_EXT)
         else:
             srce_file = get_relative_srce_filepath(page)
             dest_file = file_num_str + DEST_FILE_EXT
@@ -199,22 +198,22 @@ def get_required_pages_in_order(page_images_in_book: list[OriginalPage]) -> list
     return req_pages
 
 
-def get_full_srce_filepath(comic: ComicBook, page: CleanPage) -> str:
+def get_full_srce_filepath(comic: ComicBook, page: CleanPage) -> Path:
     if page.page_filename == TITLE_EMPTY_FILENAME:
         return TITLE_EMPTY_IMAGE_FILEPATH
     if page.page_filename == EMPTY_FILENAME:
         return EMPTY_IMAGE_FILEPATH
 
-    return comic.get_final_srce_story_file(page.page_filename, page.page_type)[0]
+    return Path(comic.get_final_srce_story_file(page.page_filename, page.page_type)[0])
 
 
 def get_relative_srce_filepath(page: CleanPage) -> str:
     if page.page_filename == TITLE_EMPTY_FILENAME:
-        rel_srce_file = os.path.basename(TITLE_EMPTY_IMAGE_FILEPATH)
+        rel_srce_file = Path(TITLE_EMPTY_IMAGE_FILEPATH).name
     elif page.page_filename == EMPTY_FILENAME:
-        rel_srce_file = os.path.basename(EMPTY_IMAGE_FILEPATH)
+        rel_srce_file = Path(EMPTY_IMAGE_FILEPATH).name
     else:
-        rel_srce_file = page.page_filename + JPG_FILE_EXT
+        rel_srce_file = str(page.page_filename) + JPG_FILE_EXT
 
     return rel_srce_file
 
@@ -239,8 +238,8 @@ def get_srce_dest_map(
     required_dim: RequiredDimensions,
     pages: SrceAndDestPages,
 ) -> dict[str, str | int | dict[str, str]]:
-    srce_dest_map = {
-        "srce_dirname": os.path.basename(comic.dirs.srce_dir),
+    srce_dest_map: dict[str, str | int | dict[str, str | dict[str, str]]] = {
+        "srce_dirname": Path(comic.dirs.srce_dir).name,
         "dest_dirname": comic.get_dest_rel_dirname(),
         "srce_min_panels_bbox_width": srce_dim.min_panels_bbox_width,
         "srce_max_panels_bbox_width": srce_dim.max_panels_bbox_width,
@@ -253,10 +252,10 @@ def get_srce_dest_map(
     dest_page_map = {}
     for srce_page, dest_page in zip(pages.srce_pages, pages.dest_pages, strict=True):
         short_srce_page = {
-            "file": os.path.basename(srce_page.page_filename),
+            "file": Path(srce_page.page_filename).name,
             "type": dest_page.page_type.name,
         }
-        dest_page_map[os.path.basename(dest_page.page_filename)] = short_srce_page
+        dest_page_map[Path(dest_page.page_filename).name] = short_srce_page
 
     srce_dest_map["pages"] = dest_page_map
 
@@ -265,7 +264,7 @@ def get_srce_dest_map(
 
 @dataclass
 class SrceDependency:
-    file: str
+    file: Path
     timestamp: float
     independent: bool
     mod_type: ModifiedType = ModifiedType.ORIGINAL
@@ -288,36 +287,36 @@ def get_restored_srce_dependencies(comic: ComicBook, srce_page: CleanPage) -> li
 
     srce_panel_segments_file = comic.get_srce_panel_segments_file(page_num_str)
     srce_panel_segments_timestamp = (
-        get_timestamp(srce_panel_segments_file) if os.path.isfile(srce_panel_segments_file) else -1
+        get_timestamp(srce_panel_segments_file) if Path(srce_panel_segments_file).is_file() else -1
     )
     srce_restored_file, restored_modded = comic.get_final_srce_story_file(
         page_num_str,
         srce_page.page_type,
     )
-    srce_restored_timestamp = get_timestamp(srce_restored_file)
-    srce_restored_upscayled_file = comic.get_srce_restored_upscayled_story_file(page_num_str)
+    srce_restored_timestamp = get_timestamp(Path(srce_restored_file))
+    srce_restored_upscayled_file = Path(comic.get_srce_restored_upscayled_story_file(page_num_str))
     srce_restored_upscayled_timestamp = (
         get_timestamp(srce_restored_upscayled_file)
-        if os.path.isfile(srce_restored_upscayled_file)
+        if Path(srce_restored_upscayled_file).is_file()
         else -1
     )
-    srce_restored_svg_file = comic.get_srce_restored_svg_story_file(page_num_str)
+    srce_restored_svg_file = Path(comic.get_srce_restored_svg_story_file(page_num_str))
     srce_restored_svg_timestamp = (
-        get_timestamp(srce_restored_svg_file) if os.path.isfile(srce_restored_svg_file) else -1
+        get_timestamp(srce_restored_svg_file) if Path(srce_restored_svg_file).is_file() else -1
     )
     srce_upscayl_file, upscayl_modded = comic.get_final_srce_upscayled_story_file(
         page_num_str,
         srce_page.page_type,
     )
     srce_upscayl_timestamp = (
-        get_timestamp(srce_upscayl_file) if os.path.isfile(srce_upscayl_file) else -1
+        get_timestamp(Path(srce_upscayl_file)) if Path(srce_upscayl_file).is_file() else -1
     )
     srce_original_file, original_modded = comic.get_final_srce_original_story_file(
         page_num_str,
         srce_page.page_type,
     )
     srce_original_timestamp = (
-        get_timestamp(srce_original_file) if os.path.isfile(srce_original_file) else -1
+        get_timestamp(Path(srce_original_file)) if Path(srce_original_file).is_file() else -1
     )
 
     underlying_files = []
@@ -341,7 +340,7 @@ def get_restored_srce_dependencies(comic: ComicBook, srce_page: CleanPage) -> li
 
     underlying_files.append(
         SrceDependency(
-            srce_restored_file,
+            Path(srce_restored_file),
             srce_restored_timestamp,
             independent=False,
             mod_type=restored_modded,
@@ -370,7 +369,7 @@ def get_restored_srce_dependencies(comic: ComicBook, srce_page: CleanPage) -> li
             )
             underlying_files.append(
                 SrceDependency(
-                    srce_upscayl_file,
+                    Path(srce_upscayl_file),
                     srce_upscayl_timestamp,
                     independent=False,
                     mod_type=upscayl_modded,
@@ -378,7 +377,7 @@ def get_restored_srce_dependencies(comic: ComicBook, srce_page: CleanPage) -> li
             )
             underlying_files.append(
                 SrceDependency(
-                    srce_original_file,
+                    Path(srce_original_file),
                     srce_original_timestamp,
                     independent=False,
                     mod_type=original_modded,

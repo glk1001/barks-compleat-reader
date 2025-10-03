@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import re
 from datetime import date, datetime
 from pathlib import Path
@@ -66,15 +65,16 @@ def get_submitted_date(title_and_info: tuple[str, FantaComicBookInfo]) -> date:
 
 
 def get_work_dir(work_dir_root: str) -> str:
-    os.makedirs(work_dir_root, exist_ok=True)
-    if not os.path.isdir(work_dir_root):
+    work_dir_root_path = Path(work_dir_root)
+    work_dir_root_path.mkdir(parents=True, exist_ok=True)
+    if not work_dir_root_path.is_dir():
         msg = f'Could not find work root directory "{work_dir_root}".'
         raise FileNotFoundError(msg)
 
-    work_dir = os.path.join(work_dir_root, datetime.now().strftime("%Y_%m_%d-%H_%M_%S.%f"))
-    os.makedirs(work_dir)
+    work_dir = work_dir_root_path / datetime.now().strftime("%Y_%m_%d-%H_%M_%S.%f")
+    work_dir.mkdir()
 
-    return work_dir
+    return str(work_dir)
 
 
 def get_abbrev_path(file: str | Path) -> str:
@@ -89,30 +89,30 @@ def get_abbrev_path(file: str | Path) -> str:
 
 def get_relpath(file: str | Path) -> str:
     if str(file).startswith(BARKS_ROOT_DIR):
-        return os.path.relpath(file, BARKS_ROOT_DIR)
+        return str(Path(file).relative_to(BARKS_ROOT_DIR))
 
     file_parts = Path(file).parts[-2:]
     return str(Path().joinpath(*file_parts))
 
 
 def get_abspath_from_relpath(relpath: str, root_dir: str = BARKS_ROOT_DIR) -> str:
-    if os.path.isabs(relpath):
+    if Path(relpath).is_absolute():
         return relpath
-    return os.path.join(root_dir, relpath)
+    return str(Path(root_dir) / relpath)
 
 
 def get_clean_path(file: str | Path) -> str:
     return str(file).replace(str(Path.home()), "$HOME")
 
 
-def get_timestamp(file: str) -> float:
-    if os.path.islink(file):
-        return os.lstat(file).st_mtime
+def get_timestamp(file: Path) -> float:
+    if file.is_symlink():
+        return file.lstat().st_mtime
 
-    return os.path.getmtime(file)
+    return file.stat().st_mtime
 
 
-def get_max_timestamp(files: list[str]) -> float:
+def get_max_timestamp(files: list[Path]) -> float:
     max_timestamp = -1.0
     for file in files:
         timestamp = get_timestamp(file)
@@ -122,7 +122,7 @@ def get_max_timestamp(files: list[str]) -> float:
 
 
 def get_timestamp_str(
-    file: str,
+    file: Path,
     date_sep: str = "_",
     date_time_sep: str = "-",
     hr_sep: str = "_",
@@ -144,11 +144,11 @@ def get_timestamp_as_str(
 
 
 def dest_file_is_older_than_srce(
-    srce_file: str,
-    dest_file: str,
+    srce_file: Path,
+    dest_file: Path,
     include_missing_dest: bool = True,
 ) -> bool:
-    if include_missing_dest and not os.path.exists(dest_file):
+    if include_missing_dest and not Path(dest_file).exists():
         return True
 
     srce_timestamp = get_timestamp(srce_file)
@@ -157,7 +157,7 @@ def dest_file_is_older_than_srce(
     return srce_timestamp > dest_timestamp
 
 
-def file_is_older_than_timestamp(file: str, timestamp: float) -> bool:
+def file_is_older_than_timestamp(file: Path, timestamp: float) -> bool:
     file_timestamp = get_timestamp(file)
 
     return file_timestamp < timestamp

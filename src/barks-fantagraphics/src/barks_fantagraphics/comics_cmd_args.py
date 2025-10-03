@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any
 
 from intspan import intspan
 
-from .comics_consts import PNG_INSET_DIR, PNG_INSET_EXT
 from .comics_database import ComicsDatabase
 from .comics_utils import get_titles_sorted_by_submission_date
 

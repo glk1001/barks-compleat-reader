@@ -379,8 +379,9 @@ class ComicBookImageBuilder:
         return dest_page_image
 
     def _write_introduction(self, dest_page_image: PilImage) -> None:
-        if isinstance(self._comic.intro_inset_file, str) and not os.path.isfile(
-            self._comic.intro_inset_file
+        if (
+            isinstance(self._comic.intro_inset_file, str)
+            and not self._comic.intro_inset_file.isfile()
         ):
             msg = f'Could not find inset file "{self._comic.intro_inset_file}".'
             raise FileNotFoundError(msg)
@@ -457,7 +458,7 @@ class ComicBookImageBuilder:
                 self._comic.intro_inset_file.read_bytes(), ext=self._comic.intro_inset_file.suffix
             )
             if isinstance(self._comic.intro_inset_file, zipfile.Path)
-            else open_image_for_reading(self._comic.intro_inset_file)
+            else open_image_for_reading(str(self._comic.intro_inset_file))
         )
 
         inset_width, inset_height = inset.size

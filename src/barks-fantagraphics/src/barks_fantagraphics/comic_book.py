@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-import zipfile
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
@@ -46,6 +44,7 @@ from .fanta_comics_info import (
 from .page_classes import OriginalPage
 
 if TYPE_CHECKING:
+    import zipfile
     from collections.abc import Callable
 
 INTRO_TITLE_DEFAULT_FONT_SIZE = 155
@@ -78,7 +77,7 @@ class ModifiedType(Enum):
 
 @dataclass
 class ComicBook:
-    ini_file: str
+    ini_file: Path
     title: str
     title_font_file: str
     title_font_size: int
@@ -90,7 +89,7 @@ class ComicBook:
     srce_dir_num_page_files: int
     dirs: ComicBookDirs
 
-    intro_inset_file: str | zipfile.Path
+    intro_inset_file: Path | zipfile.Path
     config_page_images: list[OriginalPage]
     page_images_in_order: list[OriginalPage]
 
@@ -131,7 +130,7 @@ class ComicBook:
 
     @staticmethod
     def _get_image_subdir(dirpath: str) -> str:
-        return os.path.join(dirpath, IMAGES_SUBDIR)
+        return str(Path(dirpath) / IMAGES_SUBDIR)
 
     def get_srce_image_dir(self) -> str:
         return self._get_image_subdir(self.dirs.srce_dir)
@@ -158,7 +157,7 @@ class ComicBook:
         return self._get_image_subdir(self.dirs.srce_upscayled_fixes_dir)
 
     def get_srce_original_fixes_bounded_dir(self) -> str:
-        return os.path.join(self.get_srce_original_fixes_image_dir(), BOUNDED_SUBDIR)
+        return str(Path(self.get_srce_original_fixes_image_dir()) / BOUNDED_SUBDIR)
 
     def get_srce_original_story_files(self, page_types: list[PageType]) -> list[str]:
         return self._get_story_files(page_types, self._get_srce_original_story_file)
@@ -210,7 +209,7 @@ class ComicBook:
     def _get_story_files(
         self,
         page_types: list[PageType],
-        get_story_file: Callable[[str], str],
+        get_story_file: Callable[[str], Path],
     ) -> list[str]:
         all_files = []
         for page in self.page_images_in_order:
@@ -232,55 +231,47 @@ class ComicBook:
         return all_files
 
     def _get_srce_original_story_file(self, page_num: str) -> str:
-        return os.path.join(self.get_srce_image_dir(), page_num + JPG_FILE_EXT)
+        return str(Path(self.get_srce_image_dir()) / (page_num + JPG_FILE_EXT))
 
     def get_srce_upscayled_story_file(self, page_num: str) -> str:
-        return os.path.join(self.get_srce_upscayled_image_dir(), page_num + PNG_FILE_EXT)
+        return str(Path(self.get_srce_upscayled_image_dir()) / (page_num + PNG_FILE_EXT))
 
     def _get_srce_restored_story_file(self, page_num: str) -> str:
-        return os.path.join(self.get_srce_restored_image_dir(), page_num + PNG_FILE_EXT)
+        return str(Path(self.get_srce_restored_image_dir()) / (page_num + PNG_FILE_EXT))
 
     def get_srce_restored_upscayled_story_file(self, page_num: str) -> str:
-        return os.path.join(self.get_srce_restored_upscayled_image_dir(), page_num + PNG_FILE_EXT)
+        return str(Path(self.get_srce_restored_upscayled_image_dir()) / (page_num + PNG_FILE_EXT))
 
     def get_srce_restored_svg_story_file(self, page_num: str) -> str:
-        return os.path.join(self.get_srce_restored_svg_image_dir(), page_num + SVG_FILE_EXT)
+        return str(Path(self.get_srce_restored_svg_image_dir()) / (page_num + SVG_FILE_EXT))
 
     def _get_srce_restored_ocr_story_file(self, page_num: str) -> tuple[str, str]:
         return (
-            os.path.join(
-                self.dirs.srce_restored_ocr_dir,
-                page_num + ".easyocr" + JSON_FILE_EXT,
+            str(
+                Path(self.dirs.srce_restored_ocr_dir) / (page_num + ".easyocr" + JSON_FILE_EXT),
             ),
-            os.path.join(
-                self.dirs.srce_restored_ocr_dir,
-                page_num + ".paddleocr" + JSON_FILE_EXT,
+            str(
+                Path(self.dirs.srce_restored_ocr_dir) / (page_num + ".paddleocr" + JSON_FILE_EXT),
             ),
         )
 
-    def get_srce_panel_segments_file(self, page_num: str) -> str:
-        return os.path.join(self.dirs.panel_segments_dir, page_num + JSON_FILE_EXT)
+    def get_srce_panel_segments_file(self, page_num: str) -> Path:
+        return Path(self.dirs.panel_segments_dir) / (page_num + JSON_FILE_EXT)
 
     def get_srce_original_fixes_story_file(self, page_num: str) -> str:
-        jpg_fixes_file = os.path.join(
-            self.get_srce_original_fixes_image_dir(),
-            page_num + JPG_FILE_EXT,
-        )
-        png_fixes_file = os.path.join(
-            self.get_srce_original_fixes_image_dir(),
-            page_num + PNG_FILE_EXT,
-        )
-        if os.path.isfile(jpg_fixes_file) and os.path.isfile(png_fixes_file):
+        jpg_fixes_file = Path(self.get_srce_original_fixes_image_dir()) / (page_num + JPG_FILE_EXT)
+        png_fixes_file = Path(self.get_srce_original_fixes_image_dir()) / (page_num + PNG_FILE_EXT)
+        if jpg_fixes_file.is_file() and png_fixes_file.is_file():
             msg = f'Cannot have both .jpg and .png fixes file "{jpg_fixes_file}"'
             raise RuntimeError(msg)
 
-        if os.path.isfile(jpg_fixes_file):
-            return jpg_fixes_file
+        if jpg_fixes_file.is_file():
+            return str(jpg_fixes_file)
 
-        return png_fixes_file
+        return str(png_fixes_file)
 
     def get_srce_upscayled_fixes_story_file(self, page_num: str) -> str:
-        return os.path.join(self.get_srce_upscayled_fixes_image_dir(), page_num + PNG_FILE_EXT)
+        return str(Path(self.get_srce_upscayled_fixes_image_dir()) / (page_num + PNG_FILE_EXT))
 
     def get_final_srce_original_story_file(
         self,
@@ -304,12 +295,11 @@ class ComicBook:
         page_type: PageType,
     ) -> tuple[str, ModifiedType]:
         srce_file = self._get_srce_original_story_file(page_num)
-        srce_upscayled_fixes_file = os.path.join(
-            self.get_srce_upscayled_fixes_image_dir(),
-            page_num + JPG_FILE_EXT,
+        srce_upscayled_fixes_file_jpg = Path(self.get_srce_upscayled_fixes_image_dir()) / (
+            page_num + JPG_FILE_EXT
         )
-        if os.path.isfile(srce_upscayled_fixes_file):
-            msg = f'Upscayled fixes file must be .png not .jpg: "{srce_upscayled_fixes_file}".'
+        if srce_upscayled_fixes_file_jpg.is_file():
+            msg = f'Upscayled fixes file must be .png not .jpg: "{srce_upscayled_fixes_file_jpg}".'
             raise RuntimeError(msg)
         srce_upscayled_fixes_file = self.get_srce_upscayled_fixes_story_file(page_num)
         srce_upscayled_file = self.get_srce_upscayled_story_file(page_num)
@@ -324,7 +314,7 @@ class ComicBook:
 
         if mod_type == ModifiedType.ORIGINAL:
             final_file = srce_upscayled_file
-        elif os.path.isfile(srce_upscayled_file):
+        elif Path(srce_upscayled_file).is_file():
             msg = (
                 f"Cannot have an upscayled file and a fixes file:"
                 f' "{srce_upscayled_file}" and "{srce_upscayled_fixes_file}".'
@@ -344,16 +334,15 @@ class ComicBook:
             return "EMPTY PAGE", ModifiedType.ORIGINAL
 
         if self.get_ini_title() not in HAND_RESTORED_TITLES and page_type in RESTORABLE_PAGE_TYPES:
-            srce_restored_file = os.path.join(
-                self.get_srce_restored_image_dir(),
-                page_num + JPG_FILE_EXT,
+            srce_restored_file_jpg = Path(self.get_srce_restored_image_dir()) / (
+                page_num + JPG_FILE_EXT
             )
-            if os.path.isfile(srce_restored_file):
-                msg = f'Restored files should be png not jpg: "{srce_restored_file}".'
+            if srce_restored_file_jpg.is_file():
+                msg = f'Restored files should be png not jpg: "{srce_restored_file_jpg}".'
                 raise RuntimeError(msg)
 
             srce_restored_file = self._get_srce_restored_story_file(page_num)
-            if os.path.isfile(srce_restored_file):
+            if Path(srce_restored_file).is_file():
                 return srce_restored_file, ModifiedType.ORIGINAL
 
             msg = (
@@ -363,7 +352,7 @@ class ComicBook:
             raise FileNotFoundError(msg)
 
         srce_file, mod_type = self.get_final_srce_original_story_file(page_num, page_type)
-        if os.path.isfile(srce_file):
+        if Path(srce_file).is_file():
             return srce_file, mod_type
 
         msg = f'Could not find source file "{srce_file}" of type "{page_type.name}"'
@@ -377,11 +366,11 @@ class ComicBook:
         primary_file: str,
         fixes_file: str,
     ) -> tuple[str, ModifiedType]:
-        if not os.path.isfile(fixes_file):
+        if not Path(fixes_file).is_file():
             return primary_file, ModifiedType.ORIGINAL
 
         # Fixes file exists - use it unless a special case.
-        if os.path.isfile(primary_file):
+        if Path(primary_file).is_file():
             # Fixes file is an EDITED file.
             if self._is_edited_fixes_special_case(page_num):
                 logger.info(
@@ -485,42 +474,38 @@ class ComicBook:
 
         sources = []
 
-        if os.path.isfile(srce_restored_file):
+        if Path(srce_restored_file).is_file():
             sources.append(srce_restored_file)
 
-        if os.path.isfile(srce_upscayled_fixes_file):
+        if Path(srce_upscayled_fixes_file).is_file():
             sources.append(srce_upscayled_fixes_file)
-        elif os.path.isfile(srce_upscayled_file):
+        elif Path(srce_upscayled_file).is_file():
             sources.append(srce_upscayled_file)
 
-        if os.path.isfile(srce_original_fixes_file):
+        if Path(srce_original_fixes_file).is_file():
             sources.append(srce_original_fixes_file)
-        elif os.path.isfile(srce_original_file):
+        elif Path(srce_original_file).is_file():
             sources.append(srce_original_file)
 
         return sources
 
-    def get_final_fixes_panel_bounds_file(self, page_num: int) -> str:
-        panels_bounds_file = os.path.join(
-            self.get_srce_original_fixes_bounded_dir(),
-            get_page_str(page_num) + JPG_FILE_EXT,
+    def get_final_fixes_panel_bounds_file(self, page_num: int) -> Path | None:
+        panels_bounds_file = Path(self.get_srce_original_fixes_bounded_dir()) / (
+            get_page_str(page_num) + JPG_FILE_EXT
         )
 
-        if os.path.isfile(panels_bounds_file):
+        if panels_bounds_file.is_file():
             return panels_bounds_file
 
-        return ""
+        return None
 
     # TODO: Should dest stuff be elsewhere??
     @staticmethod
-    def get_dest_root_dir() -> str:
+    def get_dest_root_dir() -> Path:
         return THE_CHRONOLOGICAL_DIRS_DIR
 
-    def get_dest_dir(self) -> str:
-        return os.path.join(
-            self.get_dest_root_dir(),
-            self.get_dest_rel_dirname(),
-        )
+    def get_dest_dir(self) -> Path:
+        return self.get_dest_root_dir() / self.get_dest_rel_dirname()
 
     def get_dest_rel_dirname(self) -> str:
         return get_dest_comic_dirname(
@@ -531,30 +516,28 @@ class ComicBook:
     def get_series_comic_title(self) -> str:
         return f"{self.series_name} {self.number_in_series}"
 
-    def get_dest_image_dir(self) -> str:
-        return os.path.join(self.get_dest_dir(), IMAGES_SUBDIR)
+    def get_dest_image_dir(self) -> Path:
+        return self.get_dest_dir() / IMAGES_SUBDIR
 
     @staticmethod
     def get_dest_zip_root_dir() -> str:
         return THE_CHRONOLOGICAL_DIR
 
     def get_dest_series_zip_symlink_dir(self) -> str:
-        return os.path.join(
-            THE_COMICS_DIR,
-            self.series_name,
+        return str(
+            Path(THE_COMICS_DIR) / self.series_name,
         )
 
     def get_dest_year_zip_symlink_dir(self) -> str:
-        return os.path.join(
-            THE_YEARS_COMICS_DIR,
-            str(self.submitted_year),
+        return str(
+            Path(THE_YEARS_COMICS_DIR) / str(self.submitted_year),
         )
 
     def get_dest_comic_zip_filename(self) -> str:
         return f"{self.get_title_with_issue_num()}.cbz"
 
     def get_dest_comic_zip(self) -> str:
-        return os.path.join(self.get_dest_zip_root_dir(), self.get_dest_comic_zip_filename())
+        return str(Path(self.get_dest_zip_root_dir()) / self.get_dest_comic_zip_filename())
 
     def get_dest_series_comic_zip_symlink_filename(self) -> str:
         file_title = _get_lookup_title(self.title, self.get_ini_title())
@@ -562,15 +545,14 @@ class ComicBook:
         return f"{self.number_in_series:03d} {full_title}.cbz"
 
     def get_dest_series_comic_zip_symlink(self) -> str:
-        return os.path.join(
-            f"{self.get_dest_series_zip_symlink_dir()}",
-            f"{self.get_dest_series_comic_zip_symlink_filename()}",
+        return str(
+            Path(self.get_dest_series_zip_symlink_dir())
+            / self.get_dest_series_comic_zip_symlink_filename(),
         )
 
     def get_dest_year_comic_zip_symlink(self) -> str:
-        return os.path.join(
-            f"{self.get_dest_year_zip_symlink_dir()}",
-            f"{self.get_dest_comic_zip_filename()}",
+        return str(
+            Path(self.get_dest_year_zip_symlink_dir()) / self.get_dest_comic_zip_filename(),
         )
 
     def get_ini_title(self) -> str:
@@ -686,7 +668,7 @@ def get_story_files_of_page_type(
     all_files = []
     for page in srce_pages:
         if page.page_type in page_types:
-            all_files.append(os.path.join(image_dir, page.page_filenames + file_ext))
+            all_files.append(str(Path(image_dir) / (page.page_filenames + file_ext)))
 
     return all_files
 
