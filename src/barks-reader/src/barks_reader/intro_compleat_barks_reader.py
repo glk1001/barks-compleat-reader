@@ -19,7 +19,6 @@ class IntroCompleatBarksReaderScreen(BoxLayout, Screen):
     ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     app_icon_filepath = StringProperty()
-    action_bar_close_icon_filepath = StringProperty()
     intro_source = StringProperty()
 
     def __init__(
@@ -36,9 +35,6 @@ class IntroCompleatBarksReaderScreen(BoxLayout, Screen):
             font_manager, "Introduction to the Compleat Barks Reader"
         )
         self.app_icon_filepath = app_icon_file
-        self.action_bar_close_icon_filepath = str(
-            reader_settings.sys_file_paths.get_barks_reader_close_icon_file()
-        )
         self._on_close_screen = on_close_screen
         self.intro_source = str(reader_settings.sys_file_paths.get_intro_image_file())
 

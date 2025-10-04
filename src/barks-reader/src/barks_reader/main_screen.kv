@@ -156,28 +156,28 @@
 
             BarButton:
                 text: 'Quit'
-                icon: root.action_bar_close_icon_filepath
+                icon: str(sys_paths.get_barks_reader_close_icon_file())
                 important: True
                 on_release: app.close_app()
 
- #           BarButton:
- #               id: fullscreen_button
- #               text: "Fullscreen"
-#                icon: root.action_bar_fullscreen_filepath
- #               important: True
-#                on_press: root.comic_book_reader.toggle_fullscreen(self)
+            BarButton:
+                id: fullscreen_button
+                text: "Fullscreen"
+                icon: str(sys_paths.get_barks_reader_fullscreen_icon_file())
+                important: True
+                on_press: root.toggle_fullscreen(self)
 
             BarButton:
                 text: 'Collapse'
-                icon: root.action_bar_collapse_icon_filepath
+                icon: str(sys_paths.get_barks_reader_collapse_icon_file())
                 on_release: root.on_action_bar_collapse()
 
             BarButton:
                 text: 'Change Pics'
-                icon: root.action_bar_change_pics_icon_filepath
+                icon: str(sys_paths.get_barks_reader_refresh_arrow_icon_file())
                 on_release: root.on_action_bar_change_view_images()
 
             BarButton:
                 text: 'Settings'
-                icon: root.action_bar_settings_icon_filepath
+                icon: str(sys_paths.get_barks_reader_settings_icon_file())
                 on_release: app.open_settings(self)

@@ -19,14 +19,14 @@
 
             BarButton:
                 text: "Close"
-                icon: root.action_bar_close_icon_filepath
+                icon: str(sys_paths.get_barks_reader_close_icon_file())
                 important: True
                 on_release: root.comic_book_reader.close_comic_book_reader(root.ids.fullscreen_button)
 
             BarButton:
                 id: fullscreen_button
                 text: "Fullscreen"
-                icon: root.action_bar_fullscreen_filepath
+                icon: str(sys_paths.get_barks_reader_fullscreen_icon_file())
                 important: True
                 on_press: root.comic_book_reader.toggle_fullscreen(self)
 
@@ -34,16 +34,16 @@
 
             BarButton:
                 text: "Goto Start"
-                icon: root.action_bar_goto_start_filepath
+                icon: str(sys_paths.get_barks_reader_goto_start_icon_file())
                 on_release: root.comic_book_reader.goto_start_page(self)
 
             BarButton:
                 text: "Goto End"
-                icon: root.action_bar_goto_end_filepath
+                icon: str(sys_paths.get_barks_reader_goto_end_icon_file())
                 on_release: root.comic_book_reader.goto_last_page(self)
 
             BarButton:
                 id: goto_page_button
                 text: "Goto Page"
-                icon: root.action_bar_goto_icon_filepath
+                icon: str(sys_paths.get_barks_reader_goto_icon_file())
                 on_release: root.comic_book_reader.goto_page(self)

@@ -24,6 +24,7 @@ from barks_fantagraphics.fanta_comics_info import (
 
 # noinspection PyProtectedMember
 from kivy.clock import Clock
+from kivy.core.window import Window
 from kivy.properties import (
     BooleanProperty,
     StringProperty,
@@ -63,6 +64,7 @@ if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from kivy._clock import ClockEvent
     from kivy.factory import Factory
+    from kivy.uix.actionbar import ActionButton
     from kivy.uix.button import Button
     from kivy.uix.widget import Widget
 
@@ -73,7 +75,6 @@ if TYPE_CHECKING:
     from barks_reader.fun_image_view_screen import FunImageViewScreen
     from barks_reader.reader_screens import ScreenSwitchers
     from barks_reader.reader_settings import ReaderSettings
-    from barks_reader.system_file_paths import SystemFilePaths
     from barks_reader.tree_view_screen import TreeViewScreen
 
 MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
@@ -83,11 +84,6 @@ class MainScreen(BoxLayout, ReaderScreen):
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
     app_icon_filepath = StringProperty()
-    action_bar_close_icon_filepath = StringProperty()
-    action_bar_collapse_icon_filepath = StringProperty()
-    action_bar_change_pics_icon_filepath = StringProperty()
-    action_bar_settings_icon_filepath = StringProperty()
-    action_bar_goto_icon_filepath = StringProperty()
     app_title = StringProperty()
 
     is_first_use_of_reader = BooleanProperty(defaultvalue=False)
@@ -102,6 +98,7 @@ class MainScreen(BoxLayout, ReaderScreen):
         tree_view_screen: TreeViewScreen,
         bottom_title_view_screen: BottomTitleViewScreen,
         fun_image_view_screen: FunImageViewScreen,
+        font_manager: FontManager,
         **kwargs: str,
     ) -> None:
         super().__init__(**kwargs)
@@ -119,11 +116,20 @@ class MainScreen(BoxLayout, ReaderScreen):
         self._comics_database = comics_database
         self._reader_settings = reader_settings
         self._screen_switchers = screen_switchers
+        self._font_manager = font_manager
         self._title_lists: dict[str, list[FantaComicBookInfo]] = (
             filtered_title_lists.get_title_lists()
         )
         self._random_title_images = RandomTitleImages(self._reader_settings)
         self.is_first_use_of_reader = self._reader_settings.is_first_use_of_reader
+
+        self._action_bar = self.ids.action_bar
+        self._action_bar_fullscreen_icon = str(
+            self._reader_settings.sys_file_paths.get_barks_reader_fullscreen_icon_file()
+        )
+        self._action_bar_fullscreen_exit_icon = str(
+            self._reader_settings.sys_file_paths.get_barks_reader_fullscreen_exit_icon_file()
+        )
 
         self._json_settings_manager = SettingsManager(self._reader_settings.get_user_data_path())
 
@@ -175,7 +181,7 @@ class MainScreen(BoxLayout, ReaderScreen):
             self._set_next_title,
         )
 
-        self._set_action_bar_icons(self._reader_settings.sys_file_paths)
+        self.app_icon_filepath = str(self._get_reader_app_icon_file())
 
         self._special_fanta_overrides = SpecialFantaOverrides(self._reader_settings)
 
@@ -208,29 +214,12 @@ class MainScreen(BoxLayout, ReaderScreen):
 
     def is_active(self, active: bool) -> None:
         if active:
-            show_action_bar(self.ids.action_bar)
+            show_action_bar(self._action_bar)
         else:
-            hide_action_bar(self.ids.action_bar)
-
-    def fonts_updated(self, font_manager: FontManager) -> None:
-        self.app_title = get_action_bar_title(font_manager, APP_TITLE)
+            hide_action_bar(self._action_bar)
 
     def set_comic_book_reader(self, comic_book_reader: ComicBookReader) -> None:
         self._comic_reader_manager.comic_book_reader = comic_book_reader
-
-    def _set_action_bar_icons(self, sys_paths: SystemFilePaths) -> None:
-        self.app_icon_filepath = str(self._get_reader_app_icon_file())
-        self.action_bar_close_icon_filepath = str(sys_paths.get_barks_reader_close_icon_file())
-        self.action_bar_collapse_icon_filepath = str(
-            sys_paths.get_barks_reader_collapse_icon_file()
-        )
-        self.action_bar_change_pics_icon_filepath = str(
-            sys_paths.get_barks_reader_refresh_arrow_icon_file()
-        )
-        self.action_bar_settings_icon_filepath = str(
-            sys_paths.get_barks_reader_settings_icon_file()
-        )
-        self.action_bar_goto_icon_filepath = str(sys_paths.get_barks_reader_goto_icon_file())
 
     def _get_reader_app_icon_file(self) -> Path:
         icon_files = get_all_files_in_dir(
@@ -282,8 +271,11 @@ class MainScreen(BoxLayout, ReaderScreen):
             self._title_lists,
             self._loading_data_popup,
         )
+
         self._year_range_nodes = tree_builder.chrono_year_range_nodes
         self._app_initializer.start(tree_builder, self._on_tree_build_finished)
+
+        Window.bind(on_resize=self._on_window_resize)
 
     def _on_tree_build_finished(self) -> None:
         # Linger on the last image...
@@ -299,6 +291,64 @@ class MainScreen(BoxLayout, ReaderScreen):
 
     def on_action_bar_change_view_images(self) -> None:
         self._view_state_manager.change_background_views()
+
+    # noinspection PyTypeHints
+    def _on_window_resize(self, _window: Window, width: int, height: int) -> None:
+        logger.debug(f"Main screen window resize event: width = {width}, height = {height}.")
+        self.update_fonts(height)
+
+    def update_fonts(self, height: int) -> None:
+        self._font_manager.update_font_sizes(height)
+        self.app_title = get_action_bar_title(self._font_manager, APP_TITLE)
+
+    def toggle_fullscreen(self, button: ActionButton) -> None:
+        if Window.fullscreen:
+            Clock.schedule_once(lambda _dt: self.goto_windowed_mode(button), 0)
+        else:
+            Clock.schedule_once(lambda _dt: self.goto_fullscreen_mode(button), 0)
+
+    def goto_windowed_mode(self, button: ActionButton) -> None:
+        Window.fullscreen = False
+        button.text = "Fullscreen"
+        button.icon = self._action_bar_fullscreen_icon
+        logger.info("Exiting fullscreen.")
+
+    def goto_fullscreen_mode(self, button: ActionButton) -> None:
+        button.text = "Windowed"
+        button.icon = self._action_bar_fullscreen_exit_icon
+        Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
+        logger.info("Entering fullscreen.")
+
+    def _hide_action_bar(self) -> None:
+        logger.info(f"Hide enter: self.action_bar.height = {self._action_bar.height}")
+        hide_action_bar(self._action_bar)
+        logger.info(f"Hide exit: self._action_bar.height = {self._action_bar.height}")
+
+    def _show_action_bar(self) -> None:
+        logger.info(f"Show enter: self.action_bar.height = {self._action_bar.height}")
+        show_action_bar(self._action_bar)
+        logger.info(f"Show exit: self.action_bar.height = {self._action_bar.height}")
+
+    def _exit_fullscreen(self, button: ActionButton) -> None:
+        if not Window.fullscreen:
+            return
+
+        self.goto_windowed_mode(button)
+
+    def _toggle_action_bar_visibility(self) -> None:
+        logger.debug(
+            f"On toggle action bar entry: self.action_bar.height = {self._action_bar.height}"
+        )
+
+        close_enough_to_zero = 0.1
+        if self._action_bar.height <= close_enough_to_zero:
+            self._show_action_bar()
+        else:
+            self._hide_action_bar()
+
+        logger.debug(
+            f"On toggle action bar exit: self.action_bar.height = {self._action_bar.height}"
+        )
 
     def on_action_bar_pressed(self, button: Button) -> None:
         pass

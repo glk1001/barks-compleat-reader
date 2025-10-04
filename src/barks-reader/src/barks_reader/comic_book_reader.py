@@ -36,7 +36,6 @@ if TYPE_CHECKING:
     from barks_reader.comic_book_page_info import PageInfo
     from barks_reader.font_manager import FontManager
     from barks_reader.reader_settings import ReaderSettings
-    from barks_reader.system_file_paths import SystemFilePaths
 
 GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT = 0.97
 GOTO_PAGE_BUTTON_HEIGHT = dp(25)
@@ -567,37 +566,21 @@ class ComicBookReaderScreen(BoxLayout, ReaderScreen):
     ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     app_icon_filepath = StringProperty()
-    action_bar_close_icon_filepath = StringProperty()
-    action_bar_fullscreen_filepath = StringProperty()
     action_bar_fullscreen_exit_filepath = StringProperty()
-    action_bar_goto_icon_filepath = StringProperty()
-    action_bar_goto_start_filepath = StringProperty()
-    action_bar_goto_end_filepath = StringProperty()
 
     def __init__(
         self,
-        reader_settings: ReaderSettings,
+        _reader_settings: ReaderSettings,
         reader_app_icon_file: str,
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
 
         self.comic_book_reader = None
-        self._set_action_bar_icons(reader_settings.sys_file_paths, reader_app_icon_file)
+        self.app_icon_filepath = reader_app_icon_file
 
     def is_active(self, active: bool) -> None:
         self.comic_book_reader.is_active(active)
-
-    def _set_action_bar_icons(self, sys_paths: SystemFilePaths, reader_app_icon_file: str) -> None:
-        self.app_icon_filepath = reader_app_icon_file
-        self.action_bar_close_icon_filepath = str(sys_paths.get_barks_reader_close_icon_file())
-        self.action_bar_fullscreen_filepath = str(sys_paths.get_barks_reader_fullscreen_icon_file())
-        self.action_bar_fullscreen_exit_filepath = str(
-            sys_paths.get_barks_reader_fullscreen_exit_icon_file()
-        )
-        self.action_bar_goto_icon_filepath = str(sys_paths.get_barks_reader_goto_icon_file())
-        self.action_bar_goto_start_filepath = str(sys_paths.get_barks_reader_goto_start_icon_file())
-        self.action_bar_goto_end_filepath = str(sys_paths.get_barks_reader_goto_end_icon_file())
 
     def add_reader_widget(self, comic_book_reader: ComicBookReader) -> None:
         self.comic_book_reader = comic_book_reader

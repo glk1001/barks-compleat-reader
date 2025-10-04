@@ -4,14 +4,6 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, override
 
-from kivy import Config
-from kivy.app import App
-from kivy.core.window import Window
-from kivy.lang import Builder
-from kivy.uix.settings import Settings, SettingsWithSpinner
-from loguru import logger
-from screeninfo import get_monitors
-
 from barks_reader.bottom_title_view_screen import (
     BOTTOM_TITLE_VIEW_SCREEN_KV_FILE,
     BottomTitleViewScreen,
@@ -40,15 +32,21 @@ from barks_reader.reader_utils import get_best_window_height_fit, get_win_width_
 from barks_reader.screen_metrics import SCREEN_METRICS, log_screen_metrics
 from barks_reader.settings_fix import SettingLongPath
 from barks_reader.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
+from kivy import Config
+from kivy.app import App
+from kivy.core.window import Window
+from kivy.lang import Builder
+from kivy.uix.settings import Settings, SettingsWithSpinner
+from loguru import logger
+from screeninfo import get_monitors
 
 if TYPE_CHECKING:
     from barks_fantagraphics.comics_cmd_args import CmdArgs
     from barks_fantagraphics.comics_database import ComicsDatabase
+    from barks_reader.config_info import ConfigInfo
     from kivy.config import ConfigParser
     from kivy.uix.screenmanager import ScreenManager
     from kivy.uix.widget import Widget
-
-    from barks_reader.config_info import ConfigInfo
 
 
 class BarksReaderApp(App):
@@ -62,7 +60,7 @@ class BarksReaderApp(App):
 
         self._config_info = config_info
         self._comics_database = comics_db
-        self._reader_settings = BuildableReaderSettings()
+        self.reader_settings = BuildableReaderSettings()
         self.font_manager = FontManager()
 
         self._reader_screen_manager = ReaderScreenManager(self.open_settings)
@@ -73,11 +71,6 @@ class BarksReaderApp(App):
         self._current_monitor_display = SCREEN_METRICS.get_monitor_for_pos(
             Window.left, Window.top
         ).display
-
-    # noinspection PyTypeHints
-    def _on_window_resize(self, _window: Window, width: int, height: int) -> None:
-        logger.debug(f"App window resize event: width = {width}, height = {height}.")
-        self.update_fonts(height)
 
     # noinspection PyTypeHints
     def _on_window_pos_change(self, _window: Window) -> None:
@@ -112,10 +105,6 @@ class BarksReaderApp(App):
                 f" new width = {new_width}, new height = {new_height}."
             )
 
-    def update_fonts(self, height: int) -> None:
-        self.font_manager.update_font_sizes(height)
-        self._main_screen.fonts_updated(self.font_manager)
-
     def close_app(self) -> None:
         self._main_screen.app_closing()
         App.get_running_app().stop()
@@ -146,14 +135,14 @@ class BarksReaderApp(App):
         )
 
         # Delegate to the settings class to set its own defaults
-        self._reader_settings.build_config(config)
+        self.reader_settings.build_config(config)
 
     @override
     def build_settings(self, settings: Settings) -> None:
         # Register our custom widget type with the name 'longpath'
         settings.register_type(LONG_PATH_SETTING, SettingLongPath)
 
-        self._reader_settings.build_settings(settings)
+        self.reader_settings.build_settings(settings)
         self.config.write()
         settings.interface.menu.height = ACTION_BAR_SIZE_Y
 
@@ -166,7 +155,7 @@ class BarksReaderApp(App):
         value: Any,
     ) -> None:
         logger.info(f"Config change: section = '{section}', key = '{key}', value = '{value}'.")
-        self._reader_settings.on_changed_setting(section, key, value)
+        self.reader_settings.on_changed_setting(section, key, value)
 
     @override
     def build(self) -> Widget:
@@ -179,6 +168,7 @@ class BarksReaderApp(App):
         logger.debug("Loading kv files...")
         # Pass the font manager to kv lang so it can be accessed
         Builder.load_string("#:set fm app.font_manager")
+        Builder.load_string("#:set sys_paths app.reader_settings.sys_file_paths")
         Builder.load_file(str(READER_TREE_VIEW_KV_FILE))
         Builder.load_file(str(TREE_VIEW_SCREEN_KV_FILE))
         Builder.load_file(str(BOTTOM_TITLE_VIEW_SCREEN_KV_FILE))
@@ -196,44 +186,45 @@ class BarksReaderApp(App):
 
     def _initialize_settings_and_db(self) -> None:
         """Handle the initial setup of settings and the database."""
-        self._reader_settings.set_config(self.config, Path(self.get_application_config()))
-        self._reader_settings.validate_settings()
-        self._reader_settings.set_barks_panels_dir()
+        self.reader_settings.set_config(self.config, Path(self.get_application_config()))
+        self.reader_settings.validate_settings()
+        self.reader_settings.set_barks_panels_dir()
 
         self._comics_database.set_inset_info(
-            self._reader_settings.file_paths.get_comic_inset_files_dir(),
-            self._reader_settings.file_paths.get_inset_file_ext(),
+            self.reader_settings.file_paths.get_comic_inset_files_dir(),
+            self.reader_settings.file_paths.get_inset_file_ext(),
         )
 
-        self._reader_settings.sys_file_paths.set_barks_reader_files_dir(
-            self._reader_settings.reader_files_dir
+        self.reader_settings.sys_file_paths.set_barks_reader_files_dir(
+            self.reader_settings.reader_files_dir
         )
 
     def _build_screens(self) -> ScreenManager:
         logger.debug("Instantiating main screen...")
         filtered_title_lists = FilteredTitleLists()
         reader_tree_events = ReaderTreeBuilderEventDispatcher()
-        tree_view_screen = TreeViewScreen(self._reader_settings)
-        bottom_title_view_screen = BottomTitleViewScreen(self._reader_settings)
-        fun_image_view_screen = FunImageViewScreen(self._reader_settings)
+        tree_view_screen = TreeViewScreen(self.reader_settings)
+        bottom_title_view_screen = BottomTitleViewScreen(self.reader_settings)
+        fun_image_view_screen = FunImageViewScreen(self.reader_settings)
         self._main_screen = MainScreen(
             self._comics_database,
-            self._reader_settings,
+            self.reader_settings,
             reader_tree_events,
             filtered_title_lists,
             self._reader_screen_manager.screen_switchers,
             tree_view_screen,
             bottom_title_view_screen,
             fun_image_view_screen,
+            self.font_manager,
             name=MAIN_READER_SCREEN,
         )
         self._set_custom_title_bar()
-        self.update_fonts(Config.getint("graphics", "height"))
+        self._main_screen.update_fonts(Config.getint("graphics", "height"))
 
         logger.debug("Instantiating comic reader screen...")
         comic_reader_screen = get_barks_comic_reader_screen(
             COMIC_BOOK_READER_SCREEN,
-            self._reader_settings,
+            self.reader_settings,
             self._main_screen.app_icon_filepath,
             self.font_manager,
             self._screen_switchers.switch_to_comic_book_reader,
@@ -244,7 +235,7 @@ class BarksReaderApp(App):
         logger.debug("Instantiating introduction screen...")
         intro_screen = get_intro_compleat_barks_reader_screen(
             INTRO_COMPLEAT_BARKS_READER_SCREEN,
-            self._reader_settings,
+            self.reader_settings,
             self._main_screen.app_icon_filepath,
             self.font_manager,
             self._screen_switchers.close_intro_compleat_barks_reader,
@@ -272,7 +263,6 @@ class BarksReaderApp(App):
         This includes forcing an initial resize event to ensure all widgets
         are correctly sized based on the loaded configuration.
         """
-        Window.bind(on_resize=self._on_window_resize)
         if SCREEN_METRICS.NUM_MONITORS > 1:
             Window.bind(on_move=self._on_window_pos_change)
 
