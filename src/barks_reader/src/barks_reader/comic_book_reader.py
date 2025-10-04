@@ -15,13 +15,13 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.dropdown import DropDown
 from kivy.uix.image import Image
-from kivy.uix.screenmanager import Screen
 from loguru import logger
 from screeninfo import get_monitors
 
 from barks_reader.comic_book_loader import ComicBookLoader
 from barks_reader.reader_formatter import get_action_bar_title
-from barks_reader.reader_ui_classes import ACTION_BAR_SIZE_Y
+from barks_reader.reader_screens import ReaderScreen
+from barks_reader.reader_ui_classes import ACTION_BAR_SIZE_Y, hide_action_bar, show_action_bar
 
 if TYPE_CHECKING:
     from collections import OrderedDict
@@ -207,6 +207,7 @@ class ComicBookReader(BoxLayout):
         # Bind property changes to update the display
         self._page_manager = _ComicPageManager(self._show_page)
 
+        self._active = False
         self._x_mid = -1
         self._y_top_margin = -1
         self._fullscreen_left_margin = -1
@@ -214,28 +215,109 @@ class ComicBookReader(BoxLayout):
 
         Window.bind(on_resize=self._on_window_resize)
 
+    def is_active(self, active: bool) -> None:
+        self._active = active
+
+        if self._active:
+            show_action_bar(self._action_bar)
+        else:
+            hide_action_bar(self._action_bar)
+
     # noinspection PyTypeHints
     # Reason: inspection seems broken here.
     def _on_window_resize(self, _window: Window, width: int, height: int) -> None:
-        self._x_mid = round(width / 2 - self.x)
-        self._y_top_margin = round(height - self.y - (0.09 * height))
-
-        logger.debug(
-            f"Comic reader window resize event: x,y = {self.x},{self.y},"
-            f" width = {width}, height = {height},"
-            f" self.width = {self.width}, self.height = {self.height}."
-        )
         logger.debug(
             f"Comic reader window resize event:"
-            f" x_mid = {self._x_mid}, y_top_margin = {self._y_top_margin}."
+            f" x,y = {self.x},{self.y},"
+            f" width = {width}, height = {height},"
+            f" self.width = {self.width}, self.height = {self.height}."
+            f" Window.fullscreen = {Window.fullscreen},"
+            f" self._actionbar height = {self._action_bar.height}."
+        )
+
+        self._set_reader_navigation_regions(height, width)
+
+        Clock.schedule_once(lambda _dt: self._set_page_height(height), 0)
+
+    def _set_reader_navigation_regions(self, height: int, width: int) -> None:
+        self._x_mid = round(width / 2 - self.x)
+        self._y_top_margin = round(height - self.y - (0.09 * height))
+        logger.debug(
+            f"Reader navigation: x_mid = {self._x_mid}, y_top_margin = {self._y_top_margin}."
         )
 
         self._fullscreen_left_margin = round(self.MAX_WINDOW_WIDTH / 4.0)
         self._fullscreen_right_margin = self.MAX_WINDOW_WIDTH - self._fullscreen_left_margin
         logger.debug(
-            f"Comic reader window resize event:"
+            f"Reader navigation:"
             f" fullscreen_left_margin = {self._fullscreen_left_margin},"
             f" fullscreen_right_margin = {self._fullscreen_right_margin}."
+        )
+
+    def _set_page_height(self, height: int) -> None:
+        self.height = height
+
+        if Window.fullscreen:
+            self._hide_action_bar()
+        elif self._active:
+            self._show_action_bar()
+
+        self._comic_image.height = self.height - self._action_bar.height
+
+        logger.info(
+            f"New page sizes:"
+            f" self.height = {self.height},"
+            f" self._comic_image.height = {self._comic_image.height}"
+            f" self._action_bar.height = {self._action_bar.height}"
+        )
+
+    def toggle_fullscreen(self, button: ActionButton) -> None:
+        if Window.fullscreen:
+            Clock.schedule_once(lambda _dt: self.goto_windowed_mode(button), 0)
+        else:
+            Clock.schedule_once(lambda _dt: self.goto_fullscreen_mode(button), 0)
+
+    def goto_windowed_mode(self, button: ActionButton) -> None:
+        Window.fullscreen = False
+        button.text = "Fullscreen"
+        button.icon = self._action_bar_fullscreen_icon
+        logger.info("Exiting fullscreen.")
+
+    def goto_fullscreen_mode(self, button: ActionButton) -> None:
+        button.text = "Windowed"
+        button.icon = self._action_bar_fullscreen_exit_icon
+        Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
+        logger.info("Entering fullscreen.")
+
+    def _hide_action_bar(self) -> None:
+        logger.info(f"Hide enter: self.action_bar.height = {self._action_bar.height}")
+        hide_action_bar(self._action_bar)
+        logger.info(f"Hide exit: self._action_bar.height = {self._action_bar.height}")
+
+    def _show_action_bar(self) -> None:
+        logger.info(f"Show enter: self.action_bar.height = {self._action_bar.height}")
+        show_action_bar(self._action_bar)
+        logger.info(f"Show exit: self.action_bar.height = {self._action_bar.height}")
+
+    def _exit_fullscreen(self, button: ActionButton) -> None:
+        if not Window.fullscreen:
+            return
+
+        self.goto_windowed_mode(button)
+
+    def _toggle_action_bar_visibility(self) -> None:
+        logger.debug(
+            f"On toggle action bar entry: self.action_bar.height = {self._action_bar.height}"
+        )
+
+        close_enough_to_zero = 0.1
+        if self._action_bar.height <= close_enough_to_zero:
+            self._show_action_bar()
+        else:
+            self._hide_action_bar()
+
+        logger.debug(
+            f"On toggle action bar exit: self.action_bar.height = {self._action_bar.height}"
         )
 
     @property
@@ -263,6 +345,7 @@ class ComicBookReader(BoxLayout):
             f" touch.x,touch.y = {round(touch.x)},{round(touch.y)},"
             f" width = {round(self.width)}, height = {round(self.height)}."
             f" x_mid = {self._x_mid}, y_top_margin = {self._y_top_margin}."
+            f" self._action_bar.height = {self._action_bar.height}."
         )
 
         x_rel = round(touch.x - self.x)
@@ -271,7 +354,7 @@ class ComicBookReader(BoxLayout):
         if self._is_in_top_margin(x_rel, y_rel):
             logger.debug(f"Top margin pressed: x_rel,y_rel = {x_rel},{y_rel}.")
             if Window.fullscreen:
-                self._toggle_action_bar()
+                self._toggle_action_bar_visibility()
         elif self._is_in_left_margin(x_rel, y_rel):
             logger.debug(f"Left margin pressed: x_rel,y_rel = {x_rel},{y_rel}.")
             self._prev_page(None)
@@ -425,59 +508,6 @@ class ComicBookReader(BoxLayout):
             )
         logger.info(f"Finished waiting for image with index {self._current_page_index} to load.")
 
-    def toggle_fullscreen(self, button: ActionButton) -> None:
-        if Window.fullscreen:
-            self.goto_windowed_mode(button)
-        else:
-            self.goto_fullscreen_mode(button)
-
-    def goto_windowed_mode(self, button: ActionButton) -> None:
-        Window.fullscreen = False
-        self._show_action_bar()
-        button.text = "Fullscreen"
-        button.icon = self._action_bar_fullscreen_icon
-        logger.info("Exiting fullscreen.")
-
-    def goto_fullscreen_mode(self, button: ActionButton) -> None:
-        self._hide_action_bar()
-        button.text = "Windowed"
-        button.icon = self._action_bar_fullscreen_exit_icon
-        Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
-        logger.info("Entering fullscreen.")
-
-    def _hide_action_bar(self) -> None:
-        self._action_bar.height = 0
-        self._action_bar.opacity = 0
-
-    def _show_action_bar(self) -> None:
-        self._action_bar.height = ACTION_BAR_SIZE_Y
-        self._action_bar.opacity = 1
-
-    def _exit_fullscreen(self, button: ActionButton) -> None:
-        if not Window.fullscreen:
-            return
-
-        Window.fullscreen = False
-        self._show_action_bar()
-        button.text = "Fullscreen"
-        logger.info("Exiting fullscreen.")
-
-    def _toggle_action_bar(self) -> None:
-        """Toggles the visibility of the action bar."""
-        logger.debug(
-            f"On toggle action bar entry: self.action_bar.height = {self._action_bar.height}"
-        )
-
-        close_enough_to_zero = 0.1
-        if self._action_bar.height <= close_enough_to_zero:
-            self._show_action_bar()
-        else:
-            self._hide_action_bar()
-
-        logger.debug(
-            f"On toggle action bar exit: self.action_bar.height = {self._action_bar.height}"
-        )
-
     def goto_page(self, _instance: Widget) -> None:
         """Go to user requested page."""
         if not self._goto_page_dropdown:
@@ -532,7 +562,7 @@ class ComicBookReader(BoxLayout):
             self._goto_page_dropdown.add_widget(button)
 
 
-class ComicBookReaderScreen(BoxLayout, Screen):
+class ComicBookReaderScreen(BoxLayout, ReaderScreen):
     action_bar_title = StringProperty()
     ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
@@ -554,6 +584,9 @@ class ComicBookReaderScreen(BoxLayout, Screen):
 
         self.comic_book_reader = None
         self._set_action_bar_icons(reader_settings.sys_file_paths, reader_app_icon_file)
+
+    def is_active(self, active: bool) -> None:
+        self.comic_book_reader.is_active(active)
 
     def _set_action_bar_icons(self, sys_paths: SystemFilePaths, reader_app_icon_file: str) -> None:
         self.app_icon_filepath = reader_app_icon_file
@@ -578,7 +611,7 @@ def get_barks_comic_reader_screen(
     font_manager: FontManager,
     on_comic_is_ready_to_read: Callable[[], None],
     on_close_reader: Callable[[], None],
-) -> Screen:
+) -> ReaderScreen:
     Builder.load_file(str(COMIC_BOOK_READER_KV_FILE))
 
     root = ComicBookReaderScreen(reader_settings, reader_app_icon_file, name=screen_name)

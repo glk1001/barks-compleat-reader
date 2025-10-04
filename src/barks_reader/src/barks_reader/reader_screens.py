@@ -26,11 +26,19 @@ COMIC_BOOK_READER_SCREEN = "comic_book_reader"
 INTRO_COMPLEAT_BARKS_READER_SCREEN = "intro_compleat_barks_reader"
 
 
+class ReaderScreen(Screen):
+    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+        super().__init__(**kwargs)
+
+    def is_active(self, active: bool) -> None:
+        pass
+
+
 @dataclass
 class ReaderScreens:
-    main_screen: Screen
-    comic_reader: Screen
-    intro_compleat_barks_reader: Screen
+    main_screen: ReaderScreen
+    comic_reader: ReaderScreen
+    intro_compleat_barks_reader: ReaderScreen
 
 
 @dataclass
@@ -100,14 +108,19 @@ class ReaderScreenManager:
         return self._READER_SCREEN_TRANSITIONS[randrange(0, len(self._READER_SCREEN_TRANSITIONS))]
 
     def _switch_to_comic_book_reader(self) -> None:
+        self._reader_screens.main_screen.is_active(active=False)
         self._screen_manager.transition = self._get_next_reader_screen_transition()
+
         self._screen_manager.current = COMIC_BOOK_READER_SCREEN
+        self._reader_screens.comic_reader.is_active(active=True)
 
     def _close_comic_book_reader(self) -> None:
+        self._reader_screens.comic_reader.is_active(active=False)
         self._reader_screens.main_screen.on_comic_closed()
 
         self._screen_manager.transition = self._get_next_main_screen_transition()
         self._screen_manager.current = MAIN_READER_SCREEN
+        self._reader_screens.main_screen.is_active(active=True)
 
     def _switch_to_intro_compleat_barks_reader(self) -> None:
         self._screen_manager.current = INTRO_COMPLEAT_BARKS_READER_SCREEN

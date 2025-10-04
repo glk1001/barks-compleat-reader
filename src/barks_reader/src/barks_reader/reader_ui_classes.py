@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from barks_fantagraphics.title_search import BarksTitleSearch
     from kivy.input import MotionEvent
+    from kivy.uix.actionbar import ActionBar
     from kivy.uix.spinner import Spinner
 
 READER_TREE_VIEW_KV_FILE = Path(__file__).parent / "reader-tree-view.kv"
@@ -55,6 +56,18 @@ def set_kivy_busy_cursor() -> None:
 
 def set_kivy_normal_cursor() -> None:
     Clock.schedule_once(lambda _dt: Window.set_system_cursor("arrow"), 0)
+
+
+def show_action_bar(action_bar: ActionBar) -> None:
+    action_bar.height = ACTION_BAR_SIZE_Y
+    action_bar.opacity = 1
+    action_bar.disabled = False
+
+
+def hide_action_bar(action_bar: ActionBar) -> None:
+    action_bar.height = 0
+    action_bar.opacity = 0
+    action_bar.disabled = True
 
 
 class ReaderTreeView(TreeView):

@@ -29,7 +29,6 @@ from kivy.properties import (
     StringProperty,
 )
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.screenmanager import Screen
 from loguru import logger
 
 from barks_reader.app_initializer import AppInitializer
@@ -39,14 +38,17 @@ from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
 from barks_reader.random_title_images import ImageInfo, RandomTitleImages
 from barks_reader.reader_consts_and_types import APP_TITLE, CHRONO_YEAR_RANGES, COMIC_PAGE_ONE
 from barks_reader.reader_formatter import get_action_bar_title
+from barks_reader.reader_screens import ReaderScreen
 from barks_reader.reader_tree_builder import ReaderTreeBuilder
 from barks_reader.reader_tree_view_utils import find_tree_view_title_node, get_tree_view_node_path
 from barks_reader.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
     LoadingDataPopup,
     ReaderTreeBuilderEventDispatcher,
+    hide_action_bar,
     set_kivy_busy_cursor,
     set_kivy_normal_cursor,
+    show_action_bar,
 )
 from barks_reader.reader_utils import get_all_files_in_dir, get_image_stream
 from barks_reader.special_overrides_handler import SpecialFantaOverrides
@@ -77,7 +79,7 @@ if TYPE_CHECKING:
 MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 
-class MainScreen(BoxLayout, Screen):
+class MainScreen(BoxLayout, ReaderScreen):
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
     app_icon_filepath = StringProperty()
@@ -203,6 +205,12 @@ class MainScreen(BoxLayout, Screen):
         self._reader_tree_events.bind(
             on_finished_building_event=self._app_initializer.on_tree_build_finished
         )
+
+    def is_active(self, active: bool) -> None:
+        if active:
+            show_action_bar(self.ids.action_bar)
+        else:
+            hide_action_bar(self.ids.action_bar)
 
     def fonts_updated(self, font_manager: FontManager) -> None:
         self.app_title = get_action_bar_title(font_manager, APP_TITLE)

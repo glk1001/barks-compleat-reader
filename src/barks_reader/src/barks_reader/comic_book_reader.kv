@@ -3,7 +3,7 @@
 
     ActionBar:
         id: comic_action_bar
-        height: root.ACTION_BAR_HEIGHT
+        size: root.width, root.ACTION_BAR_HEIGHT
 
         ActionView:
             use_separator: False
@@ -18,11 +18,10 @@
             ActionOverflow:
 
             BarButton:
-                id: close_button
                 text: "Close"
                 icon: root.action_bar_close_icon_filepath
                 important: True
-                on_press: root.comic_book_reader.close_comic_book_reader(root.ids.fullscreen_button)
+                on_release: root.comic_book_reader.close_comic_book_reader(root.ids.fullscreen_button)
 
             BarButton:
                 id: fullscreen_button
@@ -34,19 +33,17 @@
             ActionSeparator:
 
             BarButton:
-                id: goto_start_page_button
                 text: "Goto Start"
                 icon: root.action_bar_goto_start_filepath
-                on_press: root.comic_book_reader.goto_start_page(self)
+                on_release: root.comic_book_reader.goto_start_page(self)
 
             BarButton:
-                id: goto_last_page_button
                 text: "Goto End"
                 icon: root.action_bar_goto_end_filepath
-                on_press: root.comic_book_reader.goto_last_page(self)
+                on_release: root.comic_book_reader.goto_last_page(self)
 
             BarButton:
                 id: goto_page_button
                 text: "Goto Page"
                 icon: root.action_bar_goto_icon_filepath
-                on_press: root.comic_book_reader.goto_page(self)
+                on_release: root.comic_book_reader.goto_page(self)
