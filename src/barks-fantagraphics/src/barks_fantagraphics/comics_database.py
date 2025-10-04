@@ -464,41 +464,45 @@ class ComicsDatabase:
         )
 
         if self._for_building_comics:
-            if not comic.dirs.srce_dir.is_dir():
-                msg = f'Could not find srce directory "{comic.dirs.srce_dir}".'
-                raise FileNotFoundError(msg)
-            if not comic.get_srce_image_dir().is_dir():
-                msg = f'Could not find srce image directory "{comic.get_srce_image_dir()}".'
-                raise FileNotFoundError(msg)
-            if not comic.dirs.srce_upscayled_dir.is_dir():
-                msg = f'Could not find srce upscayled directory "{comic.dirs.srce_upscayled_dir}".'
-                raise FileNotFoundError(msg)
-            if not comic.get_srce_upscayled_image_dir().is_dir():
-                msg = (
-                    f"Could not find srce upscayled image directory"
-                    f' "{comic.get_srce_upscayled_image_dir()}".'
-                )
-                raise FileNotFoundError(msg)
-            if not comic.dirs.srce_restored_dir.is_dir():
-                msg = f'Could not find srce restored directory "{comic.dirs.srce_restored_dir}".'
-                raise FileNotFoundError(msg)
-            if not comic.get_srce_restored_image_dir().is_dir():
-                msg = (
-                    f"Could not find srce restored image directory"
-                    f' "{comic.get_srce_restored_image_dir()}".'
-                )
-                raise FileNotFoundError(msg)
-            if not comic.dirs.srce_fixes_dir.is_dir():
-                msg = f'Could not find srce fixes directory "{comic.dirs.srce_fixes_dir}".'
-                raise FileNotFoundError(msg)
-            if not comic.get_srce_original_fixes_image_dir().is_dir():
-                msg = (
-                    f"Could not find srce fixes image directory "
-                    f'"{comic.get_srce_original_fixes_image_dir()}".'
-                )
-                raise FileNotFoundError(msg)
+            self.check_comic_ok_for_building(comic)
 
         return comic
+
+    @staticmethod
+    def check_comic_ok_for_building(comic: ComicBook) -> None:
+        if not comic.dirs.srce_dir.is_dir():
+            msg = f'Could not find srce directory "{comic.dirs.srce_dir}".'
+            raise FileNotFoundError(msg)
+        if not comic.get_srce_image_dir().is_dir():
+            msg = f'Could not find srce image directory "{comic.get_srce_image_dir()}".'
+            raise FileNotFoundError(msg)
+        if not comic.dirs.srce_upscayled_dir.is_dir():
+            msg = f'Could not find srce upscayled directory "{comic.dirs.srce_upscayled_dir}".'
+            raise FileNotFoundError(msg)
+        if not comic.get_srce_upscayled_image_dir().is_dir():
+            msg = (
+                f"Could not find srce upscayled image directory"
+                f' "{comic.get_srce_upscayled_image_dir()}".'
+            )
+            raise FileNotFoundError(msg)
+        if not comic.dirs.srce_restored_dir.is_dir():
+            msg = f'Could not find srce restored directory "{comic.dirs.srce_restored_dir}".'
+            raise FileNotFoundError(msg)
+        if not comic.get_srce_restored_image_dir().is_dir():
+            msg = (
+                f"Could not find srce restored image directory"
+                f' "{comic.get_srce_restored_image_dir()}".'
+            )
+            raise FileNotFoundError(msg)
+        if not comic.dirs.srce_fixes_dir.is_dir():
+            msg = f'Could not find srce fixes directory "{comic.dirs.srce_fixes_dir}".'
+            raise FileNotFoundError(msg)
+        if not comic.get_srce_original_fixes_image_dir().is_dir():
+            msg = (
+                f"Could not find srce fixes image directory "
+                f'"{comic.get_srce_original_fixes_image_dir()}".'
+            )
+            raise FileNotFoundError(msg)
 
     # TODO: Make type PanelPath
     def _get_inset_file(self, ini_file: Path) -> Path:

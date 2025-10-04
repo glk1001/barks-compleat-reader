@@ -200,7 +200,7 @@ class CmdArgs:
 
         return args
 
-    def _validate(self, args: argparse.Namespace) -> None:
+    def _validate(self, args: argparse.Namespace) -> None:  # noqa: PLR0911
         if args.volume and args.title:
             self._error_msg = f"You must specify only one of '{VOLUME_ARG}' or '{TITLE_ARG}."
             return

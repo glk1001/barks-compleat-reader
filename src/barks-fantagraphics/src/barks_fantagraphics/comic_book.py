@@ -177,13 +177,12 @@ class ComicBook:
     def get_srce_restored_ocr_story_files(
         self,
         page_types: list[PageType],
-    ) -> list[tuple[str, Path]]:
-        all_files = []
-        for page in self.page_images_in_order:
-            if page.page_type in page_types:
-                all_files.append(self._get_srce_restored_ocr_story_file(page.page_filenames))
-
-        return all_files
+    ) -> list[tuple[Path, Path]]:
+        return [
+            self._get_srce_restored_ocr_story_file(page.page_filenames)
+            for page in self.page_images_in_order
+            if page.page_type in page_types
+        ]
 
     def get_srce_panel_segments_files(self, page_types: list[PageType]) -> list[Path]:
         return self._get_story_files(page_types, self.get_srce_panel_segments_file)
@@ -211,24 +210,22 @@ class ComicBook:
         page_types: list[PageType],
         get_story_file: Callable[[str], Path],
     ) -> list[Path]:
-        all_files: list[Path] = []
-        for page in self.page_images_in_order:
-            if page.page_type in page_types:
-                all_files.append(get_story_file(page.page_filenames))
-
-        return all_files
+        return [
+            get_story_file(page.page_filenames)
+            for page in self.page_images_in_order
+            if page.page_type in page_types
+        ]
 
     def _get_story_files_with_mods(
         self,
         page_types: list[PageType],
         get_story_file: Callable[[str, PageType], tuple[Path, ModifiedType]],
     ) -> list[tuple[Path, ModifiedType]]:
-        all_files = []
-        for page in self.page_images_in_order:
-            if page.page_type in page_types:
-                all_files.append(get_story_file(page.page_filenames, page.page_type))
-
-        return all_files
+        return [
+            get_story_file(page.page_filenames, page.page_type)
+            for page in self.page_images_in_order
+            if page.page_type in page_types
+        ]
 
     def _get_srce_original_story_file(self, page_num: str) -> Path:
         return self.get_srce_image_dir() / (page_num + JPG_FILE_EXT)
@@ -408,33 +405,43 @@ class ComicBook:
 
     @staticmethod
     def is_fixes_special_case(volume: int, page_num: str) -> bool:
-        if volume == 16 and page_num == "209":
+        # Happy New Year page.
+        if volume == 16 and page_num == "209":  # noqa: PLR2004
             return True
-        if volume == 4 and page_num == "227":  # Bill collectors
+        # Restored "The Bill Collectors"
+        if volume == 4 and page_num == "227":  # noqa: PLR2004, SIM103
             return True
 
         return False
 
     @staticmethod
-    def is_fixes_special_case_added(volume: int, page_num: str) -> bool:
-        if volume == 4 and page_num == "227":  # Restored Bill Collectors
+    def is_fixes_special_case_added(volume: int, page_num: str) -> bool:  # noqa: PLR0911
+        # Restored "The Bill Collectors"
+        if volume == 4 and page_num == "227":  # noqa: PLR2004
             return True
-        if volume == 7 and page_num == "240":  # Copied from volume 8, jpeg 31
+        # Copied from volume 8, jpeg 31.
+        if volume == 7 and page_num == "240":  # noqa: PLR2004
             return True
-        if volume == 7 and page_num == "241":  # Copied from volume 8, jpeg 32
+        # Copied from volume 8, jpeg 32.
+        if volume == 7 and page_num == "241":  # noqa: PLR2004
             return True
-        if volume == 16 and page_num == "235":  # Copied from volume 14, jpeg 145
+        # Copied from volume 14, jpeg 145.
+        if volume == 16 and page_num == "235":  # noqa: PLR2004
             return True
-        if volume == 2 and page_num in [
+
+        # Non-comic title.
+        if volume == 2 and page_num in [  # noqa: PLR2004
             "252",
             "253",
             "254",
             "255",
             "256",
             "257",
-        ]:  # Non-comic title
+        ]:
             return True
-        if volume == 7 and page_num in [
+
+        # Non-comic title.
+        if volume == 7 and page_num in [  # noqa: PLR2004, SIM103
             "260",
             "261",
             "262",
@@ -442,13 +449,13 @@ class ComicBook:
             "264",
             "265",
             "266",
-        ]:  # Non-comic title
+        ]:
             return True
 
         return False
 
     def _is_edited_fixes_special_case(self, page_num: str) -> bool:
-        return bool(self.fanta_book.volume == 16 and page_num == "209")
+        return bool(self.fanta_book.volume == 16 and page_num == "209")  # noqa: PLR2004
 
     def _is_added_fixes_special_case(self, page_num: str, page_type: PageType) -> bool:
         if self.is_fixes_special_case_added(self.fanta_book.volume, page_num):
@@ -651,13 +658,11 @@ def get_story_files_of_page_type(
     file_ext: str,
     page_types: list[PageType],
 ) -> list[Path]:
-    srce_pages = comic.page_images_in_order
-    all_files = []
-    for page in srce_pages:
-        if page.page_type in page_types:
-            all_files.append(image_dir / (page.page_filenames + file_ext))
-
-    return all_files
+    return [
+        image_dir / (page.page_filenames + file_ext)
+        for page in comic.page_images_in_order
+        if page.page_type in page_types
+    ]
 
 
 def get_abbrev_jpg_page_list(comic: ComicBook) -> list[str]:
@@ -665,12 +670,9 @@ def get_abbrev_jpg_page_list(comic: ComicBook) -> list[str]:
 
 
 def get_abbrev_jpg_page_of_type_list(comic: ComicBook, page_types: list[PageType]) -> list[str]:
-    all_pages = []
-    for page in comic.config_page_images:
-        if page.page_type in page_types:
-            all_pages.append(page.page_filenames)
-
-    return all_pages
+    return [
+        page.page_filenames for page in comic.config_page_images if page.page_type in page_types
+    ]
 
 
 def get_jpg_page_list(comic: ComicBook) -> list[str]:
@@ -678,12 +680,9 @@ def get_jpg_page_list(comic: ComicBook) -> list[str]:
 
 
 def get_jpg_page_of_type_list(comic: ComicBook, page_types: list[PageType]) -> list[str]:
-    all_pages = []
-    for page in comic.page_images_in_order:
-        if page.page_type in page_types:
-            all_pages.append(page.page_filenames)
-
-    return all_pages
+    return [
+        page.page_filenames for page in comic.page_images_in_order if page.page_type in page_types
+    ]
 
 
 def get_has_front(comic: ComicBook) -> bool:

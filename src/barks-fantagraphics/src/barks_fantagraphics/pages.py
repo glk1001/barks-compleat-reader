@@ -347,41 +347,40 @@ def get_restored_srce_dependencies(comic: ComicBook, srce_page: CleanPage) -> li
         ),
     )
 
-    if srce_page.page_type in RESTORABLE_PAGE_TYPES:
+    if srce_page.page_type in RESTORABLE_PAGE_TYPES and not comic._is_added_fixes_special_case(  # noqa: SLF001
+        get_page_str(srce_page.page_num),
+        srce_page.page_type,
+    ):
         # noinspection PyProtectedMember
-        if not comic._is_added_fixes_special_case(
-            get_page_str(srce_page.page_num),
-            srce_page.page_type,
-        ):
-            underlying_files.append(
-                SrceDependency(
-                    srce_restored_upscayled_file,
-                    srce_restored_upscayled_timestamp,
-                    independent=False,
-                ),
-            )
-            underlying_files.append(
-                SrceDependency(
-                    srce_restored_svg_file,
-                    srce_restored_svg_timestamp,
-                    independent=False,
-                ),
-            )
-            underlying_files.append(
-                SrceDependency(
-                    Path(srce_upscayl_file),
-                    srce_upscayl_timestamp,
-                    independent=False,
-                    mod_type=upscayl_modded,
-                ),
-            )
-            underlying_files.append(
-                SrceDependency(
-                    Path(srce_original_file),
-                    srce_original_timestamp,
-                    independent=False,
-                    mod_type=original_modded,
-                ),
-            )
+        underlying_files.append(
+            SrceDependency(
+                srce_restored_upscayled_file,
+                srce_restored_upscayled_timestamp,
+                independent=False,
+            ),
+        )
+        underlying_files.append(
+            SrceDependency(
+                srce_restored_svg_file,
+                srce_restored_svg_timestamp,
+                independent=False,
+            ),
+        )
+        underlying_files.append(
+            SrceDependency(
+                Path(srce_upscayl_file),
+                srce_upscayl_timestamp,
+                independent=False,
+                mod_type=upscayl_modded,
+            ),
+        )
+        underlying_files.append(
+            SrceDependency(
+                Path(srce_original_file),
+                srce_original_timestamp,
+                independent=False,
+                mod_type=original_modded,
+            ),
+        )
 
     return underlying_files
