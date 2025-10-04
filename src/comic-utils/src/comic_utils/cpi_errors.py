@@ -1,3 +1,5 @@
+# ruff: noqa: ANN204, E501, EXE001, EXE005, D105, D200, D212, N818, PIE790
+
 #! /usr/bin/env python
 """
 Custom errors.

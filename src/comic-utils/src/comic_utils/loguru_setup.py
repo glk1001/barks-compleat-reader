@@ -42,7 +42,7 @@ if __name__ == "__main__":
         print("About to raise ex")  # noqa: T201
         y = 1
         # noinspection PyUnusedLocal,Annotator
-        x = y / 0
+        x = y / 0  # noqa: F841
 
     logger.configure(extra={"sys_name": "app"})
 

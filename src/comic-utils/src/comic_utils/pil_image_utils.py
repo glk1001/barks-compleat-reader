@@ -134,8 +134,8 @@ def add_jpg_metadata(jpg_file: Path, metadata: dict[str, str]) -> None:
     pil_image = Image.open(str(jpg_file), "r")
 
     jpg_metadata = PngInfo()
-    for key in metadata:
-        jpg_metadata.add_text(f"{METADATA_PROPERTY_GROUP}:{key}", metadata[key])
+    for key, value in metadata.items():
+        jpg_metadata.add_text(f"{METADATA_PROPERTY_GROUP}:{key}", value)
 
     pil_image.save(
         str(jpg_file),
@@ -150,8 +150,8 @@ def add_png_metadata(png_file: Path, metadata: dict[str, str]) -> None:
     pil_image = Image.open(str(png_file), "r")
 
     png_metadata = PngInfo()
-    for key in metadata:
-        png_metadata.add_text(f"{METADATA_PROPERTY_GROUP}:{key}", metadata[key])
+    for key, value in metadata.items():
+        png_metadata.add_text(f"{METADATA_PROPERTY_GROUP}:{key}", value)
 
     pil_image.save(
         str(png_file),

@@ -77,7 +77,7 @@ class KumikoPanelSegmentation:
         if self._no_panel_expansion:
             run_args.append("--no-panel-expansion")
         logger.debug(f"Running kumiko: {' '.join(run_args)}.")
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             run_args,
             capture_output=True,
             text=True,
