@@ -1,9 +1,11 @@
+from pathlib import Path
+
 import cv2 as cv
 import numpy as np
 
 
-def get_bw_image_from_alpha(rgba_file: str) -> cv.typing.MatLike:
-    black_mask = cv.imread(rgba_file, -1)
+def get_bw_image_from_alpha(rgba_file: Path) -> cv.typing.MatLike:
+    black_mask = cv.imread(str(rgba_file), -1)
 
     scale = 4
     black_mask = cv.resize(

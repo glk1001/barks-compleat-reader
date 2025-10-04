@@ -266,7 +266,7 @@ class ComicBookReader(BoxLayout):
         logger.info(
             f"New page sizes:"
             f" self.height = {self.height},"
-            f" self._comic_image.height = {self._comic_image.height}"
+            f" self._comic_image.height = {self._comic_image.height},"
             f" self._action_bar.height = {self._action_bar.height}"
         )
 

@@ -5,6 +5,7 @@ from _pydatetime import UTC
 from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo
 
 from comic_utils.comic_consts import MONTH_AS_LONG_STR, MONTH_AS_SHORT_STR
 from loguru import logger
@@ -139,7 +140,7 @@ def get_timestamp_as_str(
     date_time_sep: str = "-",
     hr_sep: str = "_",
 ) -> str:
-    timestamp_as_date = datetime.fromtimestamp(timestamp, tz=UTC)
+    timestamp_as_date = datetime.fromtimestamp(timestamp, tz=ZoneInfo("UTC"))
     timestamp_as_date_as_str = timestamp_as_date.strftime(
         f"%Y{date_sep}%m{date_sep}%d{date_time_sep}%H{hr_sep}%M{hr_sep}%S.%f",
     )

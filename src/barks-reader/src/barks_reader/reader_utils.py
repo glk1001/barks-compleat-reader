@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 
     from barks_reader.reader_consts_and_types import PanelPath
 
+COMIC_PAGE_ASPECT_RATIO = 3200.0 / 2120.0
+
 EMPTY_PAGE_KEY = "empty_page"
 PNG_EXT_FOR_KIVY = PNG_PIL_FORMAT.lower()
 
@@ -27,9 +29,7 @@ def get_best_window_height_fit(screen_height: int) -> int:
 
 
 def get_win_width_from_height(win_height: int) -> int:
-    # TODO: Make aspect ratio a const
-    comic_page_aspect_ratio = 3200.0 / 2120.0
-    return round(win_height / comic_page_aspect_ratio)
+    return round(win_height / COMIC_PAGE_ASPECT_RATIO)
 
 
 def get_image_stream(file: PanelPath) -> io.BytesIO:

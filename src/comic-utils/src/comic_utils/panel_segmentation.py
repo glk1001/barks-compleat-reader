@@ -72,7 +72,7 @@ class KumikoPanelSegmentation:
     def _run_kumiko(self, page_filename: str) -> dict[str, Any]:
         kumiko_home_dir = Path.home() / "Prj/github/kumiko"
         kumiko_python_path = str(kumiko_home_dir / ".venv/bin/python3")
-        kumiko_script_path = kumiko_home_dir / "kumiko"
+        kumiko_script_path = str(kumiko_home_dir / "kumiko")
         run_args = [kumiko_python_path, kumiko_script_path, "-i", page_filename]
         if self._no_panel_expansion:
             run_args.append("--no-panel-expansion")
