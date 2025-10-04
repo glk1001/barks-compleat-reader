@@ -24,6 +24,7 @@ logger.addHandler(logging.NullHandler())
 assert CPI_DB_PATH.is_file()
 
 
+# noinspection PyShadowingNames
 def query(sql: str, params: list | tuple | None = None) -> list[dict]:
     """Query the cpi.db database and return the result.
 
@@ -59,6 +60,7 @@ def query(sql: str, params: list | tuple | None = None) -> list[dict]:
     return result_list
 
 
+# noinspection SpellCheckingInspection
 def queryone(sql: str, params: list | tuple | None = None) -> dict:
     """Query the cpi.db database and return a single result.
 
@@ -88,6 +90,7 @@ def queryone(sql: str, params: list | tuple | None = None) -> dict:
     return dict_list[0]
 
 
+# noinspection PyUnresolvedReferences
 # noinspection PyArgumentList
 class BaseObject:
     """An abstract base class for all the models."""
@@ -127,6 +130,7 @@ class Area(BaseObject):
 
     table_name = "areas"
 
+    # noinspection PyShadowingBuiltins
     def __init__(self, id, code, name):
         self.id = id
         self.code = code
@@ -141,6 +145,7 @@ class Item(BaseObject):
 
     table_name = "items"
 
+    # noinspection PyShadowingBuiltins
     def __init__(self, id, code, name):
         self.id = id
         self.code = code
@@ -155,6 +160,7 @@ class Period(BaseObject):
 
     table_name = "periods"
 
+    # noinspection PyShadowingBuiltins
     def __init__(self, id, code, abbreviation, name):
         self.id = id
         self.code = code
@@ -199,8 +205,10 @@ class Period(BaseObject):
 class Periodicity(BaseObject):
     """A time interval tracked by the CPI."""
 
+    # noinspection SpellCheckingInspection
     table_name = "periodicities"
 
+    # noinspection PyUnusedLocal,PyShadowingBuiltins
     def __init__(self, id, code, name):
         self.id = code
         self.code = code
@@ -251,6 +259,7 @@ class Index(BaseObject):
 
 # noinspection PyTypeChecker
 class Series(BaseObject):
+    # noinspection SpellCheckingInspection
     """
     A set of CPI data observed over an extended period of time over consistent time intervals ranging from
     a specific consumer item in a specific geographical area whose price is gathered monthly to a category
@@ -259,6 +268,7 @@ class Series(BaseObject):
     Yes, that's the offical government definition. I'm not kidding.
     """
 
+    # noinspection PyShadowingBuiltins
     def __init__(
         self,
         id: str,
@@ -308,6 +318,7 @@ class Series(BaseObject):
     def latest_year(self) -> int:
         return max([i.year for i in self.indexes if i.period.type == "annual"])
 
+    # noinspection PyShadowingNames
     def get_index_by_date(self, date: date, period_type="annual"):
         period_list = [i for i in self.indexes if i.period.type == period_type]
         try:
@@ -321,6 +332,7 @@ class Series(BaseObject):
         d = queryone("SELECT * FROM 'series' WHERE id=?", (value,))
 
         # Get the other bits
+        # noinspection SpellCheckingInspection
         seasonalities = {1: True, 0: False}
         d["seasonally_adjusted"] = seasonalities[d["seasonally_adjusted"]]
         d["periodicity"] = Periodicity.get_by_id(d["periodicity"])
@@ -331,6 +343,7 @@ class Series(BaseObject):
         dict_list = query("SELECT * FROM 'indexes' WHERE series=?", (value,))
 
         # Cache the periods to reduce queries
+        # noinspection PyUnresolvedReferences
         period_cache = {p.id: p for p in Period.all()}
 
         # Load the indexes one by one
@@ -353,6 +366,7 @@ class SeriesList(list):
     A custom list of indexes in a series.
     """
 
+    # noinspection SpellCheckingInspection
     SEASONALITIES = {True: "S", False: "U"}
     SURVEYS = {
         "All urban consumers": "CU",
@@ -398,6 +412,7 @@ class SeriesList(list):
         # Return it
         return obj
 
+    # noinspection GrazieInspection
     def all(self) -> list[Series]:
         """Get all of the series from our database."""
         # Query all of the series ids from the database

@@ -24,7 +24,7 @@ from .cpi_defaults import CPI_DB_PATH, DEFAULT_SERIES_ID, DEFAULTS_SERIES_ATTRS
 # if not db_path.exists():
 #     warnings.warn(
 #         "CPI database not found. Downloading... This may take a few minutes.",
-#         stacklevel=2,
+#         stack level = 2,
 #     )
 #     logger.info("CPI database not found. Downloading...")
 #     Downloader().update()
@@ -64,6 +64,7 @@ def check_for_stale_data() -> None:
 # Create aliases for accessing the other data tables
 areas = models.Area
 periods = models.Period
+# noinspection SpellCheckingInspection
 periodicities = models.Periodicity
 items = models.Item
 
@@ -103,7 +104,7 @@ def get(
     return series_obj.get_index_by_date(year_or_month, period_type=period_type).value
 
 
-# noinspection GrazieInspection
+# noinspection GrazieInspection,PyShadowingNames,SpellCheckingInspection
 def inflate(
     value,
     year_or_month,

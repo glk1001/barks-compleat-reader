@@ -73,6 +73,8 @@ class ConfigInfo:
             data_dir = Path(os.environ.get("XDG_CONFIG_HOME", "~/.config")).expanduser()
             data_dir /= self._app_name
 
+        # Need to sort out Android and pyinstaller requirements.
+        # noinspection PyUnboundLocalVariable
         if not data_dir.is_dir():
             data_dir.mkdir(parents=True, exist_ok=True)
 
