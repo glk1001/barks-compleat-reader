@@ -18,9 +18,6 @@ from barks_fantagraphics.fanta_comics_info import (
     LAST_VOLUME_NUMBER,
     FantaComicBookInfo,
 )
-from barks_reader.fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
-from barks_reader.reader_ui_classes import set_kivy_busy_cursor, set_kivy_normal_cursor
-from barks_reader.reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
 from comic_utils.comic_consts import CBZ_FILE_EXT, ZIP_FILE_EXT
 from comic_utils.pil_image_utils import get_pil_image_as_png_bytes, open_pil_image_from_bytes
 from kivy.clock import Clock
@@ -28,11 +25,16 @@ from loguru import logger
 from PIL import Image as PilImage
 from PIL import ImageOps
 
+from barks_reader.fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
+from barks_reader.reader_ui_classes import set_kivy_busy_cursor, set_kivy_normal_cursor
+from barks_reader.reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
+
 if TYPE_CHECKING:
     import io
     from collections.abc import Callable
 
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
+
     from barks_reader.comic_book_page_info import PageInfo
     from barks_reader.reader_settings import ReaderSettings
 

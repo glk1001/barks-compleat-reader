@@ -1,3 +1,6 @@
+# Need to sort out Android packages and how to handle pyinstaller.
+# ruff: noqa: ERA001
+
 import os
 from pathlib import Path
 from sys import platform as _sys_platform
