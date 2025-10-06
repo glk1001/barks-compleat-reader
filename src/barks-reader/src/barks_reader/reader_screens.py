@@ -17,6 +17,7 @@ from kivy.uix.screenmanager import (
     TransitionBase,
     WipeTransition,
 )
+from loguru import logger
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -37,8 +38,8 @@ class ReaderScreen(Screen):
 @dataclass
 class ReaderScreens:
     main_screen: ReaderScreen
-    comic_reader: ReaderScreen
-    intro_compleat_barks_reader: ReaderScreen
+    comic_reader_screen: ReaderScreen
+    intro_compleat_barks_reader_screen: ReaderScreen
 
 
 @dataclass
@@ -94,8 +95,8 @@ class ReaderScreenManager:
         root = self._screen_manager
 
         root.add_widget(self._reader_screens.main_screen)
-        root.add_widget(self._reader_screens.comic_reader)
-        root.add_widget(self._reader_screens.intro_compleat_barks_reader)
+        root.add_widget(self._reader_screens.comic_reader_screen)
+        root.add_widget(self._reader_screens.intro_compleat_barks_reader_screen)
 
         root.current = MAIN_READER_SCREEN
 
@@ -108,25 +109,35 @@ class ReaderScreenManager:
         return self._READER_SCREEN_TRANSITIONS[randrange(0, len(self._READER_SCREEN_TRANSITIONS))]
 
     def _switch_to_comic_book_reader(self) -> None:
-        self._reader_screens.main_screen.is_active(active=False)
-        self._screen_manager.transition = self._get_next_reader_screen_transition()
+        logger.debug("Switching to comic book reader...")
 
+        self._screen_manager.transition = self._get_next_reader_screen_transition()
         self._screen_manager.current = COMIC_BOOK_READER_SCREEN
-        self._reader_screens.comic_reader.is_active(active=True)
+
+        self._reader_screens.comic_reader_screen.is_active(active=True)
+
+        logger.debug("Comic book reader screen is active.")
 
     def _close_comic_book_reader(self) -> None:
-        self._reader_screens.comic_reader.is_active(active=False)
+        logger.debug("Closing comic and switching back to main screen...")
+
         self._reader_screens.main_screen.on_comic_closed()
 
         self._screen_manager.transition = self._get_next_main_screen_transition()
         self._screen_manager.current = MAIN_READER_SCREEN
-        self._reader_screens.main_screen.is_active(active=True)
+
+        self._reader_screens.comic_reader_screen.is_active(active=False)
+
+        logger.debug("Main screen is active.")
 
     def _switch_to_intro_compleat_barks_reader(self) -> None:
+        logger.debug("Switching to comic book reader intro...")
         self._screen_manager.current = INTRO_COMPLEAT_BARKS_READER_SCREEN
 
     def _close_intro_compleat_barks_reader(self) -> None:
+        logger.debug("Closing comic book reader intro and switching back to main screen...")
         self._reader_screens.main_screen.on_intro_compleat_barks_reader_closed()
 
         self._screen_manager.transition = self._get_next_main_screen_transition()
         self._screen_manager.current = MAIN_READER_SCREEN
+        logger.debug("Main screen is active.")

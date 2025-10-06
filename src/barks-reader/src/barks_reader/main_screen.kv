@@ -133,51 +133,58 @@
                 on_press: root.cancel()
 
 <MainScreen>:
-    orientation: "vertical"
+    pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
-    ActionBar:
-        id: action_bar
-        size: root.width, root.ACTION_BAR_HEIGHT
+    BoxLayout:
+        id: main_layout
+        orientation: "vertical"
 
-        ActionView:
-            use_separator: False
+        ActionBar:
+            id: action_bar
+            size: root.width, root.ACTION_BAR_HEIGHT
 
-            ActionPrevious:
-                title: root.app_title
-                color: root.ACTION_BAR_TITLE_COLOR
-                markup: True
-                app_icon: root.app_icon_filepath
-                mipmap: True
-                with_previous: False
+            ActionView:
+                use_separator: False
 
-            ActionOverflow:
+                ActionPrevious:
+                    title: root.app_title
+                    color: root.ACTION_BAR_TITLE_COLOR
+                    markup: True
+                    app_icon: root.app_icon_filepath
+                    mipmap: True
+                    with_previous: False
 
-            ActionSeparator:
+                ActionOverflow:
 
-            BarButton:
-                text: 'Quit'
-                icon: str(sys_paths.get_barks_reader_close_icon_file())
-                important: True
-                on_release: app.close_app()
+                ActionSeparator:
 
-            BarButton:
-                id: fullscreen_button
-                text: "Fullscreen"
-                icon: str(sys_paths.get_barks_reader_fullscreen_icon_file())
-                important: True
-                on_press: root.toggle_fullscreen(self)
+                BarButton:
+                    text: 'Quit'
+                    icon: str(sys_paths.get_barks_reader_close_icon_file())
+                    important: True
+                    on_release: app.close_app()
 
-            BarButton:
-                text: 'Collapse'
-                icon: str(sys_paths.get_barks_reader_collapse_icon_file())
-                on_release: root.on_action_bar_collapse()
+                BarButton:
+                    id: fullscreen_button
+                    text: "Fullscreen"
+                    icon: str(sys_paths.get_barks_reader_fullscreen_icon_file())
+                    important: True
+                    on_press: root.toggle_fullscreen(self)
 
-            BarButton:
-                text: 'Change Pics'
-                icon: str(sys_paths.get_barks_reader_refresh_arrow_icon_file())
-                on_release: root.on_action_bar_change_view_images()
+                BarButton:
+                    text: 'Collapse'
+                    icon: str(sys_paths.get_barks_reader_collapse_icon_file())
+                    important: True
+                    on_release: root.on_action_bar_collapse()
 
-            BarButton:
-                text: 'Settings'
-                icon: str(sys_paths.get_barks_reader_settings_icon_file())
-                on_release: app.open_settings(self)
+                BarButton:
+                    text: 'Change Pics'
+                    icon: str(sys_paths.get_barks_reader_refresh_arrow_icon_file())
+                    important: True
+                    on_release: root.on_action_bar_change_view_images()
+
+                BarButton:
+                    text: 'Settings'
+                    icon: str(sys_paths.get_barks_reader_settings_icon_file())
+                    important: True
+                    on_release: app.open_settings(self)

@@ -1,49 +1,65 @@
 <ComicBookReaderScreen>:
-    orientation: "vertical"
+    pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
-    ActionBar:
-        id: comic_action_bar
-        size: root.width, root.ACTION_BAR_HEIGHT
+    # Use a FloatLayout as the root to allow stacking the ActionBar on top of the content.
+    FloatLayout:
+        ActionBar:
+            id: comic_action_bar
+            pos_hint: {"center_x": 0.5, 'top': 1}
+            size_hint: None, None
+            width: root.action_bar_width
+            height: root.ACTION_BAR_HEIGHT
+            # In fullscreen, the bar is invisible but still occupies space.
+            opacity: 0 if root.is_fullscreen else 1
 
-        ActionView:
-            use_separator: False
+            ActionView:
+                use_separator: False
 
-            ActionPrevious:
-                title: root.action_bar_title
-                color: root.ACTION_BAR_TITLE_COLOR
-                markup: True
-                with_previous: False
-                app_icon: root.app_icon_filepath
+                ActionPrevious:
+                    title: root.action_bar_title
+                    color: root.ACTION_BAR_TITLE_COLOR
+                    markup: True
+                    with_previous: False
+                    app_icon: root.app_icon_filepath
 
-            ActionOverflow:
+                BarButton:
+                    text: "Close"
+                    icon: str(sys_paths.get_barks_reader_close_icon_file())
+                    important: True
+                    on_release: root.close_comic_book_reader()
 
-            BarButton:
-                text: "Close"
-                icon: str(sys_paths.get_barks_reader_close_icon_file())
-                important: True
-                on_release: root.comic_book_reader.close_comic_book_reader(root.ids.fullscreen_button)
+                BarButton:
+                    id: fullscreen_button
+                    text: "Fullscreen"
+                    icon: str(sys_paths.get_barks_reader_fullscreen_icon_file())
+                    important: True
+                    on_press: root.toggle_fullscreen()
 
-            BarButton:
-                id: fullscreen_button
-                text: "Fullscreen"
-                icon: str(sys_paths.get_barks_reader_fullscreen_icon_file())
-                important: True
-                on_press: root.comic_book_reader.toggle_fullscreen(self)
+                BarButton:
+                    text: "Goto Start"
+                    icon: str(sys_paths.get_barks_reader_goto_start_icon_file())
+                    important: True
+                    on_release: root.comic_book_reader.goto_start_page()
 
-            ActionSeparator:
+                BarButton:
+                    text: "Goto End"
+                    icon: str(sys_paths.get_barks_reader_goto_end_icon_file())
+                    important: True
+                    on_release: root.comic_book_reader.goto_last_page()
 
-            BarButton:
-                text: "Goto Start"
-                icon: str(sys_paths.get_barks_reader_goto_start_icon_file())
-                on_release: root.comic_book_reader.goto_start_page(self)
+                BarButton:
+                    id: goto_page_button
+                    text: "Goto Page"
+                    icon: str(sys_paths.get_barks_reader_goto_icon_file())
+                    important: True
+                    on_release: root.comic_book_reader.goto_page()
 
-            BarButton:
-                text: "Goto End"
-                icon: str(sys_paths.get_barks_reader_goto_end_icon_file())
-                on_release: root.comic_book_reader.goto_last_page(self)
-
-            BarButton:
-                id: goto_page_button
-                text: "Goto Page"
-                icon: str(sys_paths.get_barks_reader_goto_icon_file())
-                on_release: root.comic_book_reader.goto_page(self)
+        # This is the container where the ComicBookReader widget will be added from Python.
+        # It always fills the parent FloatLayout if padding is zero.
+        BoxLayout:
+            id: main_comic_layout
+            orientation: "vertical"
+            size_hint: 1, 1
+            pos_hint: {'x': 0, 'y': 0}
+            # Add padding to the top to make space for the ActionBar when it's visible.
+            padding: [0, 0 if comic_action_bar.opacity < 0.5 else comic_action_bar.height, 0, 0]
