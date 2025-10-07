@@ -1,9 +1,12 @@
 <IntroCompleatBarksReaderScreen>:
-    orientation: "vertical"
+    pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
     ActionBar:
         id: intro_action_bar
+        pos_hint: {"center_x": 0.5, 'top': 1}
+        size_hint: None, None
         height: root.ACTION_BAR_HEIGHT
+        width: intro_page.width
 
         ActionView:
             use_separator: False
@@ -23,9 +26,19 @@
                 important: True
                 on_press: root.close()
 
-    Image:
-        color: 1,1,1,1
-        opacity: 1
-        source: root.intro_source
-        fit_mode: "cover"
-        mipmap: True
+    BoxLayout:
+        id: intro_page
+        orientation: "vertical"
+        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+        size_hint: None,None
+        height: root.height
+        width: (self.height - intro_action_bar.height) / root.ASPECT_RATIO
+        # Add padding to the top to make space for the ActionBar.
+        padding: [dp(10), intro_action_bar.height, dp(10), dp(0)]
+
+        Image:
+            color: 1,1,1,1
+            opacity: 1
+            source: root.intro_source
+            fit_mode: "cover"
+            mipmap: True

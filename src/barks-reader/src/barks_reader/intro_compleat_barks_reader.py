@@ -3,21 +3,23 @@ from pathlib import Path
 
 from kivy.lang import Builder
 from kivy.properties import StringProperty
-from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import Screen
 
 from barks_reader.font_manager import FontManager
 from barks_reader.reader_formatter import get_action_bar_title
+from barks_reader.reader_screens import ReaderScreen
 from barks_reader.reader_settings import ReaderSettings
 from barks_reader.reader_ui_classes import ACTION_BAR_SIZE_Y
+from barks_reader.reader_utils import COMIC_PAGE_ASPECT_RATIO
 
 INTRO_COMPLEAT_BARKS_READER_KV_FILE = Path(__file__).with_suffix(".kv")
 
 
-class IntroCompleatBarksReaderScreen(BoxLayout, Screen):
-    action_bar_title = StringProperty()
+class IntroCompleatBarksReaderScreen(ReaderScreen):
     ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
+    ASPECT_RATIO = COMIC_PAGE_ASPECT_RATIO
+    action_bar_title = StringProperty()
     app_icon_filepath = StringProperty()
     intro_source = StringProperty()
 
