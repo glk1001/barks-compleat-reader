@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from random import randrange
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES, TagGroups, Tags
 from barks_fantagraphics.barks_titles import (
@@ -311,6 +311,20 @@ class MainScreen(ReaderScreen):
         self._loading_data_popup_image_event.cancel()
 
         set_kivy_normal_cursor()
+
+    def display_settings(self, app_window: Any, settings: Widget) -> bool:  # noqa: ANN401
+        logger.debug("Display settings object.")
+
+        if settings in app_window.children:
+            return False
+
+        app_window.add_widget(settings)
+
+        settings.size_hint = (None, None)
+        settings.size = self.size
+        settings.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+
+        return True
 
     def on_action_bar_collapse(self) -> None:
         self._tree_view_screen.deselect_and_close_open_nodes()

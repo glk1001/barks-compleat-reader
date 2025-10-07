@@ -4,6 +4,14 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, override
 
+from kivy import Config
+from kivy.app import App
+from kivy.core.window import Window
+from kivy.lang import Builder
+from kivy.uix.settings import Settings, SettingsWithSpinner
+from loguru import logger
+from screeninfo import get_monitors
+
 from barks_reader.bottom_title_view_screen import (
     BOTTOM_TITLE_VIEW_SCREEN_KV_FILE,
     BottomTitleViewScreen,
@@ -32,21 +40,15 @@ from barks_reader.reader_utils import get_best_window_height_fit, get_win_width_
 from barks_reader.screen_metrics import SCREEN_METRICS, log_screen_metrics
 from barks_reader.settings_fix import SettingLongPath
 from barks_reader.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
-from kivy import Config
-from kivy.app import App
-from kivy.core.window import Window
-from kivy.lang import Builder
-from kivy.uix.settings import Settings, SettingsWithSpinner
-from loguru import logger
-from screeninfo import get_monitors
 
 if TYPE_CHECKING:
     from barks_fantagraphics.comics_cmd_args import CmdArgs
     from barks_fantagraphics.comics_database import ComicsDatabase
-    from barks_reader.config_info import ConfigInfo
     from kivy.config import ConfigParser
     from kivy.uix.screenmanager import ScreenManager
     from kivy.uix.widget import Widget
+
+    from barks_reader.config_info import ConfigInfo
 
 
 class BarksReaderApp(App):
@@ -109,6 +111,15 @@ class BarksReaderApp(App):
         self._main_screen.app_closing()
         App.get_running_app().stop()
         Window.close()
+
+    @override
+    def display_settings(self, settings: Widget) -> bool:
+        win = self._app_window
+        if not win:
+            msg = "No windows are set on the application, you cannot open settings yet."
+            raise RuntimeError(msg)
+
+        return self._main_screen.display_settings(win, settings)
 
     @override
     def get_application_config(self, _default_path: str = "") -> str:
