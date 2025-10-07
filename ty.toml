@@ -1,16 +1,15 @@
-[[overrides]]
-exclude = [
-    "reader_ui_classes.py",
-    "settings_fix.py"
+[environment]
+python = "./.venv"
+root = [
+    ".",
+    "./src/barks-reader/src",
+    "./src/barks-build-comic-images/src",
+    "./src/barks-fantagraphics/src",
+    "./src/comic-utils/src",
 ]
-
-[overrides.rules]
-unresolved-import = "ignore"
-
-[[overrides]]
-exclude = [
-    "reader_ui_classes.py"
+extra-paths = [
+    "./src/barks-reader/src",
+    "./src/barks-build-comic-images/src",
+    "./src/barks-fantagraphics/src",
+    "./src/comic-utils/src",
 ]
-
-[overrides.rules]
-possibly-unbound-import = "ignore"

@@ -572,7 +572,7 @@ class MainScreen(ReaderScreen):
                 logger.debug(f"Setting page to goto: {page_to_goto}.")
                 self._bottom_title_view_screen.set_goto_page_state(page_to_goto, active=True)
 
-    def _set_goto_page_checkbox(self, last_read_page: SavedPageInfo = None) -> None:
+    def _set_goto_page_checkbox(self, last_read_page: SavedPageInfo | None = None) -> None:
         if not last_read_page:
             title_str = self.fanta_info.comic_book_info.get_title_str()
             last_read_page = self._comic_reader_manager.get_last_read_page(title_str)
