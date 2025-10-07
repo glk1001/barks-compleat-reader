@@ -13,6 +13,7 @@ from barks_fantagraphics.comics_cmd_args import CmdArgNames, CmdArgs
 from barks_fantagraphics.fanta_comics_info import (
     FANTA_OVERRIDE_ZIPS,
     FANTA_VOLUME_OVERRIDES_ROOT,
+    get_volume_page_resolution,
 )
 from barks_fantagraphics.pages import get_page_mod_type, get_sorted_srce_and_dest_pages
 from comic_utils.comic_consts import JPG_FILE_EXT
@@ -28,10 +29,6 @@ if TYPE_CHECKING:
 Image.MAX_IMAGE_PIXELS = None
 
 APP_LOGGING_NAME = "wmod"
-
-# TODO: Put these somewhere else
-SRCE_STANDARD_WIDTH = 2175
-SRCE_STANDARD_HEIGHT = 3000
 
 
 class FileType(Enum):
@@ -63,12 +60,18 @@ def get_mod_file(comic: ComicBook, srce: CleanPage) -> tuple[Path, FileType]:
     raise FileNotFoundError(msg)
 
 
-def downscale_and_zip(srce_file: Path, override_archive: zipfile.ZipFile, arcname: Path) -> None:
+def downscale_and_zip(
+    srce_file: Path,
+    override_archive: zipfile.ZipFile,
+    arcname: Path,
+    res_width: int,
+    res_height: int,
+) -> None:
     arcname = arcname.with_suffix(JPG_FILE_EXT)
 
     logger.info(f'Downscale "{srce_file}" to "{arcname}" in zip...')
 
-    resized_image = get_downscaled_jpg(SRCE_STANDARD_WIDTH, SRCE_STANDARD_HEIGHT, srce_file)
+    resized_image = get_downscaled_jpg(res_width, res_height, srce_file)
     buffer = get_pil_image_as_jpg_bytes(resized_image)
     buffer.seek(0)
 
@@ -80,7 +83,9 @@ def just_zip(srce_file: Path, override_archive: zipfile.ZipFile, arcname: Path) 
     override_archive.write(srce_file, arcname)
 
 
-def process_comic_book(comic_book: ComicBook, override_archive: zipfile.ZipFile) -> int:
+def process_comic_book(
+    comic_book: ComicBook, override_archive: zipfile.ZipFile, res_width: int, res_height: int
+) -> int:
     """Process a single comic book, copying or downscaling its modified files."""
     srce_mod_files = get_srce_mod_files(comic_book)
     if not srce_mod_files:
@@ -90,7 +95,7 @@ def process_comic_book(comic_book: ComicBook, override_archive: zipfile.ZipFile)
         mod_arcname = Path(mod_file.name)
 
         if file_type == FileType.UPSCAYLED:
-            downscale_and_zip(mod_file, override_archive, mod_arcname)
+            downscale_and_zip(mod_file, override_archive, mod_arcname, res_width, res_height)
         elif file_type == FileType.ORIGINAL:
             just_zip(mod_file, override_archive, mod_arcname)
         else:
@@ -108,13 +113,17 @@ def process_volume(volume: int, comics_db: ComicsDatabase) -> None:
     logger.info("Deleting all existing zip...")
     override_zip.unlink(missing_ok=True)
 
+    res_width, res_height = get_volume_page_resolution(volume)
+
     titles = [t[0] for t in comics_database.get_configured_titles_in_fantagraphics_volume(volume)]
 
     with zipfile.ZipFile(override_zip, "w") as override_archive:
         total_files_zipped = 0
         for title in titles:
             comic_book = comics_db.get_comic_book(title)
-            total_files_zipped += process_comic_book(comic_book, override_archive)
+            total_files_zipped += process_comic_book(
+                comic_book, override_archive, res_width, res_height
+            )
 
     logger.success(f"Volume {volume}: Zipped a total of {total_files_zipped} modified files.")
 

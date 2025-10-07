@@ -698,6 +698,12 @@ def get_num_comic_book_titles(year_range: tuple[int, int]) -> int:
     )
 
 
+def get_volume_page_resolution(volume: int) -> tuple[int, int]:
+    if 5 <= volume <= 17:  # noqa: PLR2004
+        return 2216, 3056
+    return 2175, 3000
+
+
 # def get_non_one_pager_titles(from_year: int, to_year: int) -> list[Titles]:
 #     return sorted(
 #             info.title
