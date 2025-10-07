@@ -33,15 +33,13 @@ class TreeViewScreen(BoxLayout):
     top_view_image_color = ColorProperty()
     top_view_image_opacity = NumericProperty(0.0)
 
-    down_arrow_filepath = StringProperty()
     DOWN_ARROW_WIDTH = ARROW_WIDTH
 
     main_files_not_loaded = BooleanProperty(defaultvalue=False)
     main_files_not_loaded_msg = StringProperty()
 
-    def __init__(self, reader_settings: ReaderSettings, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, _reader_settings: ReaderSettings, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
-        self.down_arrow_filepath = str(reader_settings.sys_file_paths.get_down_arrow_file())
         self.on_goto_title: Callable[[], None] | None = None
 
     def get_selected_node(self) -> TreeViewNode:

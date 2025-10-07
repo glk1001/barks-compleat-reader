@@ -21,11 +21,10 @@ class IntroCompleatBarksReaderScreen(ReaderScreen):
     ASPECT_RATIO = COMIC_PAGE_ASPECT_RATIO
     action_bar_title = StringProperty()
     app_icon_filepath = StringProperty()
-    intro_source = StringProperty()
 
     def __init__(
         self,
-        reader_settings: ReaderSettings,
+        _reader_settings: ReaderSettings,
         app_icon_file: str,
         font_manager: FontManager,
         on_close_screen: Callable[[], None],
@@ -38,7 +37,6 @@ class IntroCompleatBarksReaderScreen(ReaderScreen):
         )
         self.app_icon_filepath = app_icon_file
         self._on_close_screen = on_close_screen
-        self.intro_source = str(reader_settings.sys_file_paths.get_intro_image_file())
 
     def close(self) -> None:
         self._on_close_screen()

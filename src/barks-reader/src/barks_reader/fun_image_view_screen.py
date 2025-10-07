@@ -31,7 +31,6 @@ class FunImageViewScreen(BoxLayout):
           a parent FloatLayout.
     """
 
-    up_arrow_filepath = StringProperty()
     UP_ARROW_WIDTH = ARROW_WIDTH
 
     goto_title_button_active = BooleanProperty(defaultvalue=True)
@@ -41,14 +40,10 @@ class FunImageViewScreen(BoxLayout):
     fun_view_image_fit_mode = StringProperty(FIT_MODE_CONTAIN)
     fun_view_image_color = ColorProperty()
     fun_view_options_enabled = BooleanProperty(defaultvalue=False)
-    fun_view_options_button_image_path = StringProperty()
 
-    def __init__(self, reader_settings: ReaderSettings, **kwargs: str) -> None:
+    def __init__(self, _reader_settings: ReaderSettings, **kwargs: str) -> None:
         super().__init__(**kwargs)
-        self.fun_view_options_button_image_path = str(
-            reader_settings.sys_file_paths.get_hamburger_menu_icon_path()
-        )
-        self.up_arrow_filepath = str(reader_settings.sys_file_paths.get_up_arrow_file())
+
         self.on_goto_title_func: Callable[[], None] | None = None
         self.fun_view_from_title = True
 

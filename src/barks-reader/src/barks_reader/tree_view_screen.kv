@@ -82,7 +82,7 @@
                         border_radius: [self.height / 2, self.height / 2, self.height / 2, self.height / 2]
                         blur_radius: 2
                 Image:
-                    source: root.down_arrow_filepath
+                    source: str(sys_paths.get_down_arrow_file())
                     color: (1, 1, 1, 1)
                     # Center the image on the button
                     center_x: self.parent.center_x

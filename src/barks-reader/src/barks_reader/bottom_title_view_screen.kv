@@ -7,7 +7,7 @@
         opacity: 0 if root.view_title_opacity < 0.01 else 1
         background_color: 0,0,0,0
         size_hint: 0.025, 0.033
-        pos_hint: {'right': 1, 'y': 1 - 0.033}
+        pos_hint: {'right': 1 - 0.007, 'y': 1 - (0.033 + 0.01)}
         on_press:
             bottom_view_box.opacity = 0 if bottom_view_box.opacity > 0.9 else 1
             self.opacity = 0 if bottom_view_box.opacity < 0.1 else 1
@@ -18,7 +18,7 @@
                 rgba: 0.25, 0.25, 0.25, 0.9
             RoundedRectangle:
                 pos: self.pos
-                size: (0.9 * self.width, 0.9 * self.height)
+                size: self.size
                 radius: [dp(4)]
 
     # This is the main container for the title view.
