@@ -6,13 +6,12 @@ from pathlib import Path
 
 from barks_fantagraphics.comic_book import get_abbrev_jpg_page_list
 from barks_fantagraphics.comics_cmd_args import CmdArgNames, CmdArgs
-from loguru import logger
-from loguru_config import LoguruConfig
-
 from barks_reader.config_info import ConfigInfo  # make sure this is before any kivy imports
 from barks_reader.image_file_getter import TitleImageFileGetter
 from barks_reader.reader_file_paths import FileTypes
 from barks_reader.reader_settings import ReaderSettings
+from loguru import logger
+from loguru_config import LoguruConfig
 
 APP_LOGGING_NAME = "ipan"
 
@@ -53,7 +52,7 @@ if __name__ == "__main__":
         config.read(config_info.app_config_path)
         reader_settings = ReaderSettings()
         reader_settings.set_config(config, config_info.app_config_path)
-        reader_settings.set_barks_panels_dir()
+        reader_settings.force_barks_panels_dir(use_png_images=True)
 
         comic_database = cmd_args.get_comics_database(for_building_comics=False)
         titles = cmd_args.get_titles()
