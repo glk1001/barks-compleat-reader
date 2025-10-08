@@ -206,7 +206,7 @@ class ComicBookReader(BoxLayout):
     def set_goto_page_widget(self, goto_page_widget: Widget) -> None:
         self._goto_page_widget = goto_page_widget
 
-    def set_reader_navigation_regions(self, height: int, width: int) -> None:
+    def set_reader_navigation_regions(self, width: int, height: int) -> None:
         self._x_mid = round(width / 2 - self.x)
         self._y_top_margin = round(height - self.y - (0.09 * height))
         logger.debug(
@@ -509,6 +509,7 @@ class ComicBookReaderScreen(ReaderScreen):
             self._was_fullscreen_on_entry or self._reader_settings.goto_fullscreen_on_comic_read
         )
 
+        self._update_window_state()
         self._update_widget_states()
 
         logger.debug(
@@ -533,18 +534,24 @@ class ComicBookReaderScreen(ReaderScreen):
     # noinspection PyTypeHints
     # Reason: inspection seems broken here.
     def _on_window_resize(self, _window: Window, width: int, height: int) -> None:
+        if not self._active:
+            return
+
         logger.debug(
-            f"Comic reader window resize event:"
-            f" self.x,self.y = {self.x},{self.y},"
+            f"Active comic book reader window resize event:"
+            f" self.x, self.y = {self.x},{self.y},"
             f" self.width, self.height = {self.width},{self.height}."
+            f" Window.size = {Window.size},"
             f" width, height = {width},{height},"
             f" Window.fullscreen = {Window.fullscreen},"
             f" self._actionbar height = {self._action_bar.height}."
         )
 
-        self._reset_action_bar_width()
+        self._update_window_state()
 
-        self.comic_book_reader.set_reader_navigation_regions(height, width)
+    def _update_window_state(self) -> None:
+        self._reset_action_bar_width()
+        self.comic_book_reader.set_reader_navigation_regions(Window.width, Window.height)
 
     def _reset_action_bar_width(self) -> None:
         self.action_bar_width = max(0, get_win_width_from_height(Window.height - ACTION_BAR_SIZE_Y))
