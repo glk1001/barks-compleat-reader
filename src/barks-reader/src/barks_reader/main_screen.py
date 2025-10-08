@@ -258,6 +258,13 @@ class MainScreen(ReaderScreen):
     def _on_loading_data_popup_open(self) -> None:
         logger.debug("Starting the loading data popup...")
 
+        # Bind the popup's size and position to the MainScreen's geometry.
+        # This ensures it's always aligned, even in fullscreen mode.
+        self.bind(size=self._update_popup_geometry, pos=self._update_popup_geometry)
+
+        # Trigger an initial update.
+        self._update_popup_geometry()
+
         set_kivy_busy_cursor()
 
         def _show_popop() -> None:
@@ -270,6 +277,13 @@ class MainScreen(ReaderScreen):
             lambda _dt: self._set_new_loading_data_popup_image(),
             0.5,
         )
+
+    def _update_popup_geometry(self, *_args: Any) -> None:  # noqa: ANN401
+        """Update the popup's size and position to match the MainScreen."""
+        if self._loading_data_popup:
+            self._loading_data_popup.size_hint = (None, None)
+            self._loading_data_popup.size = (self.width, self.height * 0.55)
+            self._loading_data_popup.pos = self.pos
 
     def _set_new_loading_data_popup_image(self) -> None:
         splash_image_file = self._random_title_images.get_loading_screen_random_image(
@@ -337,6 +351,8 @@ class MainScreen(ReaderScreen):
         if self._active:
             self._show_action_bar()
         else:
+            # Delay the hide a bit so we can't see it move. After a second it should be
+            # covered by another screen.
             Clock.schedule_once(lambda _dt: self._hide_action_bar(), 1)
 
     def update_fonts(self, height: int) -> None:
@@ -352,6 +368,7 @@ class MainScreen(ReaderScreen):
             f"New window sizes:"
             f" Window.width = {Window.width}, Window.height = {Window.height},"
             f" self.width = {self.width}, self.height = {self.height},"
+            f" Window.pos = {Window.left}, {Window.top}, "
             f" Window.fullscreen = {Window.fullscreen},"
             f" self._action_bar.height = {self._action_bar.height}"
         )
@@ -361,6 +378,9 @@ class MainScreen(ReaderScreen):
             Clock.schedule_once(lambda _dt: self._goto_windowed_mode(button), 0)
         else:
             Clock.schedule_once(lambda _dt: self._goto_fullscreen_mode(button), 0)
+
+    def force_fullscreen(self) -> None:
+        Clock.schedule_once(lambda _dt: self._goto_fullscreen_mode(self.ids.fullscreen_button), 0)
 
     def _exit_fullscreen(self) -> None:
         if not Window.fullscreen:
@@ -409,14 +429,14 @@ class MainScreen(ReaderScreen):
         logger.info("Entering fullscreen on MainScreen.")
 
     def _hide_action_bar(self) -> None:
-        logger.info(f"Hide enter: self.action_bar.height = {self._action_bar.height}")
+        logger.debug(f"Hide enter: self.action_bar.height = {self._action_bar.height}")
         hide_action_bar(self._action_bar)
-        logger.info(f"Hide exit: self._action_bar.height = {self._action_bar.height}")
+        logger.debug(f"Hide exit: self._action_bar.height = {self._action_bar.height}")
 
     def _show_action_bar(self) -> None:
-        logger.info(f"Show enter: self.action_bar.height = {self._action_bar.height}")
+        logger.debug(f"Show enter: self.action_bar.height = {self._action_bar.height}")
         show_action_bar(self._action_bar)
-        logger.info(f"Show exit: self.action_bar.height = {self._action_bar.height}")
+        logger.debug(f"Show exit: self.action_bar.height = {self._action_bar.height}")
 
     def on_action_bar_pressed(self, button: Button) -> None:
         pass

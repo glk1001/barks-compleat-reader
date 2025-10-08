@@ -38,6 +38,7 @@ JPG_BARKS_PANELS_SOURCE = "jpg_barks_panels_source"
 USE_PNG_IMAGES = "use_png_images"
 USE_PREBUILT_COMICS = "use_prebuilt_comics"
 GOTO_SAVED_NODE_ON_START = "goto_saved_node_on_start"
+GOTO_FULLSCREEN_ON_APP_START = "goto_fullscreen_on_app_start"
 GOTO_FULLSCREEN_ON_COMIC_READ = "goto_fullscreen_on_comic_read"
 USE_HARPIES_INSTEAD_OF_LARKIES = "use_harpies"
 USE_DERE_INSTEAD_OF_THEAH = "use_dere"
@@ -67,11 +68,11 @@ _READER_SETTINGS_JSON = f"""
       "key": "{READER_FILES_DIR}"
    }},
    {{
-      "title": "Prebuilt Comics Directory",
-      "desc": "Directory containing specially prebuilt comics.",
+      "title": "Jpg Barks Panels Zip File",
+      "desc": "Zip file containing Barks panels in jpeg format.",
       "type": "{LONG_PATH_SETTING}",
       "section": "{BARKS_READER_SECTION}",
-      "key": "{PREBUILT_COMICS_DIR}"
+      "key": "{JPG_BARKS_PANELS_SOURCE}"
    }},
    {{
       "title": "Png Barks Panels Directory",
@@ -81,27 +82,13 @@ _READER_SETTINGS_JSON = f"""
       "key": "{PNG_BARKS_PANELS_DIR}"
    }},
    {{
-      "title": "Jpg Barks Panels Directory",
-      "desc": "Directory containing Barks panels jpg images.",
+      "title": "Prebuilt Comics Directory",
+      "desc": "Directory containing specially prebuilt comics.",
       "type": "{LONG_PATH_SETTING}",
       "section": "{BARKS_READER_SECTION}",
-      "key": "{JPG_BARKS_PANELS_SOURCE}"
+      "key": "{PREBUILT_COMICS_DIR}"
    }},
    {{  "type": "title", "title": "Options" }},
-   {{
-      "title": "Use Png Images",
-      "desc": "Use png images where possible (needs app RESTART if changed).",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{USE_PNG_IMAGES}"
-   }},
-   {{
-      "title": "Use Prebuilt Comics",
-      "desc": "Read comics from the prebuilt comics folder.",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{USE_PREBUILT_COMICS}"
-   }},
    {{
       "title": "Goto Last Selection on Start",
       "desc": "When the app starts, goto the last selection in the tree view.",
@@ -110,39 +97,18 @@ _READER_SETTINGS_JSON = f"""
       "key": "{GOTO_SAVED_NODE_ON_START}"
    }},
    {{
+      "title": "Goto Straight to Fullscreen on App Start",
+      "desc": "When the app starts it will go straight to fullscreen mode.",
+      "type": "bool",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{GOTO_FULLSCREEN_ON_APP_START}"
+   }},
+   {{
       "title": "Goto Straight to Fullscreen for Comic Reading",
       "desc": "When you press the comic read button, the app will go straight to fullscreen to read the comic.",
       "type": "bool",
       "section": "{BARKS_READER_SECTION}",
       "key": "{GOTO_FULLSCREEN_ON_COMIC_READ}"
-   }},
-   {{
-      "title": "Use 'Harpies' Instead of 'Larkies'",
-      "desc": "When reading 'The Golden Fleecing', use 'Harpies' instead of 'Larkies'.",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{USE_HARPIES_INSTEAD_OF_LARKIES}"
-   }},
-   {{
-      "title": "Use 'Dere' Instead of 'Theah'",
-      "desc": "When reading 'Lost in the Andes!', use 'Dere' instead of 'Theah'.",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{USE_DERE_INSTEAD_OF_THEAH}"
-   }},
-   {{
-      "title": "Use Blank Eyeballs for Bombie",
-      "desc": "When reading 'Voodoo Hoodoo', use blank eyeballs for Bombie the Zombie.",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{USE_BLANK_EYEBALLS_FOR_BOMBIE}"
-   }},
-   {{
-      "title": "Don't Use Fantagraphics Ending for 'The Firebug'",
-      "desc": "When reading 'The Firebug', don't use the Fantagraphics ending.",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{USE_GLK_FIREBUG_ENDING}"
    }},
    {{
       "title": "First Use of Reader",
@@ -171,6 +137,49 @@ _READER_SETTINGS_JSON = f"""
       "type": "numeric",
       "section": "{BARKS_READER_SECTION}",
       "key": "{MAIN_WINDOW_TOP}"
+   }},
+   {{
+      "title": "Use Png Images",
+      "desc": "Use png images where possible (needs app RESTART if changed).",
+      "type": "bool",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{USE_PNG_IMAGES}"
+   }},
+   {{
+      "title": "Use Prebuilt Comics",
+      "desc": "Read comics from the prebuilt comics folder.",
+      "type": "bool",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{USE_PREBUILT_COMICS}"
+   }},
+   {{  "type": "title", "title": "Controversial Censorship Fixes" }},
+   {{
+      "title": "Use 'Harpies' Instead of 'Larkies'",
+      "desc": "When reading 'The Golden Fleecing', use 'Harpies' instead of 'Larkies'.",
+      "type": "bool",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{USE_HARPIES_INSTEAD_OF_LARKIES}"
+   }},
+   {{
+      "title": "Use 'Dere' Instead of 'Theah'",
+      "desc": "When reading 'Lost in the Andes!', use 'Dere' instead of 'Theah'.",
+      "type": "bool",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{USE_DERE_INSTEAD_OF_THEAH}"
+   }},
+   {{
+      "title": "Use Blank Eyeballs for Bombie",
+      "desc": "When reading 'Voodoo Hoodoo', use blank eyeballs for Bombie the Zombie.",
+      "type": "bool",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{USE_BLANK_EYEBALLS_FOR_BOMBIE}"
+   }},
+   {{
+      "title": "Don't Use Fantagraphics Ending for 'The Firebug'",
+      "desc": "When reading 'The Firebug', don't use the Fantagraphics ending.",
+      "type": "bool",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{USE_GLK_FIREBUG_ENDING}"
    }}
 ]
 """  # noqa: E501
@@ -279,6 +288,13 @@ class ReaderSettings:
         return self._config.getboolean(BARKS_READER_SECTION, GOTO_SAVED_NODE_ON_START)
 
     @property
+    def goto_fullscreen_on_app_start(self) -> bool:
+        return self._get_goto_fullscreen_on_app_start()
+
+    def _get_goto_fullscreen_on_app_start(self) -> bool:
+        return self._config.getboolean(BARKS_READER_SECTION, GOTO_FULLSCREEN_ON_APP_START)
+
+    @property
     def goto_fullscreen_on_comic_read(self) -> bool:
         return self._get_goto_fullscreen_on_comic_read()
 
@@ -347,6 +363,10 @@ class ReaderSettings:
 
     @staticmethod
     def _is_valid_goto_saved_node_on_start(_goto_saved_node_on_start: bool) -> bool:
+        return True
+
+    @staticmethod
+    def _is_valid_goto_fullscreen_on_app_start(_goto_fullscreen_on_app_start: bool) -> bool:
         return True
 
     @staticmethod
@@ -439,6 +459,7 @@ class BuildableReaderSettings(ReaderSettings):
             MAIN_WINDOW_LEFT: self._get_main_window_left,
             MAIN_WINDOW_TOP: self._get_main_window_top,
             GOTO_SAVED_NODE_ON_START: self._get_goto_saved_node_on_start,
+            GOTO_FULLSCREEN_ON_APP_START: self._get_goto_fullscreen_on_app_start,
             GOTO_FULLSCREEN_ON_COMIC_READ: self._get_goto_fullscreen_on_comic_read,
             USE_HARPIES_INSTEAD_OF_LARKIES: self.get_use_harpies_instead_of_larkies,
             USE_DERE_INSTEAD_OF_THEAH: self.get_use_dere_instead_of_theah,
@@ -455,6 +476,7 @@ class BuildableReaderSettings(ReaderSettings):
             PREBUILT_COMICS_DIR: self._is_valid_prebuilt_comics_dir,
             USE_PREBUILT_COMICS: self._is_valid_use_prebuilt_archives,
             GOTO_SAVED_NODE_ON_START: self._is_valid_goto_saved_node_on_start,
+            GOTO_FULLSCREEN_ON_APP_START: self._is_valid_goto_fullscreen_on_app_start,
             GOTO_FULLSCREEN_ON_COMIC_READ: self._is_valid_goto_fullscreen_on_comic_read,
             IS_FIRST_USE_OF_READER: self._is_valid_is_first_use_of_reader,
             MAIN_WINDOW_HEIGHT: self._is_valid_main_window_height,
@@ -481,7 +503,8 @@ class BuildableReaderSettings(ReaderSettings):
                 PREBUILT_COMICS_DIR: ReaderFilePaths.get_default_prebuilt_comic_zips_dir(),
                 USE_PREBUILT_COMICS: 0,
                 GOTO_SAVED_NODE_ON_START: 1,
-                GOTO_FULLSCREEN_ON_COMIC_READ: 1,
+                GOTO_FULLSCREEN_ON_APP_START: 0,
+                GOTO_FULLSCREEN_ON_COMIC_READ: 0,
                 USE_HARPIES_INSTEAD_OF_LARKIES: 1,
                 USE_DERE_INSTEAD_OF_THEAH: 1,
                 USE_BLANK_EYEBALLS_FOR_BOMBIE: 1,

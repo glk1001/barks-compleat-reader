@@ -330,16 +330,28 @@ class BarksReaderApp(App):
         Window.left = config_left + 1
         Window.left = config_left
 
+        if self.reader_settings.goto_fullscreen_on_app_start:
+            self._main_screen.force_fullscreen()
+
         # All the behind the scenes sizing and moving is done.
         # Now make the main window visible.
-        Window.show()
+        def show_the_window(*_args: Any) -> None:  # noqa: ANN401
+            Window.show()
+            _log_screen_settings()
 
-        _log_screen_settings()
+        Clock.schedule_once(show_the_window, 2)
 
 
 def _log_screen_settings() -> None:
-    logger.info(f"Window size = {Window.size}, dpi = {Window.dpi}.")
     logger.info(f"Window pos = {Window.left},{Window.top}.")
+    logger.info(
+        f"Config win pos = {Config.getint('graphics', 'left')},{Config.getint('graphics', 'top')}."
+    )
+    logger.info(f"Window size = {Window.size}, dpi = {Window.dpi}.")
+    logger.info(
+        f"Config win size"
+        f" = {Config.getint('graphics', 'width')},{Config.getint('graphics', 'height')}."
+    )
 
 
 def main(config_info: ConfigInfo, cmd_args: CmdArgs) -> None:

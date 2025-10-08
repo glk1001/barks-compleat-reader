@@ -645,7 +645,7 @@ class ReaderTreeBuilder:
         self._tree_build_timing.end_time = datetime.now(UTC)
         time_in_secs = self._tree_build_timing.get_elapsed_time_in_seconds()
 
-        logger.debug(
+        logger.info(
             f"Finished loading all nodes in {time_in_secs}s:"
             f" {self._loading_data_popup.progress_bar_value}"
             f" nodes processed, progress bar max"
