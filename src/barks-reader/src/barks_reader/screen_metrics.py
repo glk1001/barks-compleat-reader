@@ -5,7 +5,7 @@ from screeninfo import get_monitors
 
 
 def get_approximate_taskbar_height() -> int:
-    return 100
+    return 50
 
 
 @dataclass

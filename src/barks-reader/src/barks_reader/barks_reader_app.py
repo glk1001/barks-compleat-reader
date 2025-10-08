@@ -1,3 +1,5 @@
+# ruff: noqa: ERA001
+
 from __future__ import annotations
 
 import sys
@@ -6,6 +8,7 @@ from typing import TYPE_CHECKING, Any, override
 
 from kivy import Config
 from kivy.app import App
+from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.lang import Builder
 from kivy.uix.settings import Settings, SettingsWithSpinner
@@ -70,10 +73,11 @@ class BarksReaderApp(App):
 
         self._main_screen: MainScreen | None = None
 
-        self._current_monitor_display = SCREEN_METRICS.get_monitor_for_pos(
-            Window.left, Window.top
-        ).display
+        self._current_monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
+        self._resize_event = None
+        self._resize_requested_size = 0, 0
 
+    # TODO: Move this Window stuff to MainScreen.
     # noinspection PyTypeHints
     def _on_window_pos_change(self, _window: Window) -> None:
         # Check if we've changed monitors. Adjust height if required.
@@ -84,28 +88,69 @@ class BarksReaderApp(App):
 
         monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
         assert monitor is not None
-        if monitor.display == self._current_monitor_display:
+        if monitor.display == self._current_monitor.display:
             return
 
-        self._current_monitor_display = monitor
-
-        max_height = get_best_window_height_fit(monitor.height_pixels)
-        scale_factor = max_height / Window.height
-
-        new_height = round(scale_factor * max_height)
         old_height = Window.height
+        old_max_height = get_best_window_height_fit(self._current_monitor.height_pixels)
+        scale_factor = old_height / old_max_height
+        logger.debug(
+            f"Changed to monitor {monitor.display} from monitor {self._current_monitor.display}:"
+            f" old size = {Window.size}, old_max_height = {old_max_height},"
+            f" scale_factor = {scale_factor:.2f}."
+        )
+
+        self._current_monitor = monitor
+
+        new_max_height = get_best_window_height_fit(monitor.height_pixels)
+        new_height = round(scale_factor * new_max_height)
 
         if new_height != old_height:
-            new_width = get_win_width_from_height(new_height - ACTION_BAR_SIZE_Y)
-            old_width = Window.width
+            self._change_win_height_after_move(new_height)
 
+    def _change_win_height_after_move(self, new_height: int) -> None:
+        # Changing window size after a move is tricky. What I think happens is the OS
+        # window manager calls window resize at end of the drag operation and this size
+        # is the old monitor size which overrides the new size. To work around this a
+        # guard is set up and used in the resize event handler '_on_window_resize'.
+
+        new_width = get_win_width_from_height(new_height - ACTION_BAR_SIZE_Y)
+
+        def do_resize(*_args: Any) -> None:  # noqa: ANN401
+            logger.debug(f"Executing resize to new monitor size ({new_width}, {new_height}).")
             Window.size = (new_width, new_height)
 
-            logger.debug(
-                f"Changed to monitor {monitor.display}:"
-                f" old width = {old_width}, old height = {old_height}."
-                f" new width = {new_width}, new height = {new_height}."
-            )
+        def do_reset_resize(*_args: Any) -> None:  # noqa: ANN401
+            logger.debug("Clearing resize event.")
+            self._resize_event = None
+            self._resize_requested_size = 0, 0
+
+        time_for_move_to_settle = 4
+        self._resize_requested_size = new_width, new_height
+
+        Clock.schedule_once(do_resize, 0)
+        self._resize_event = Clock.schedule_once(do_reset_resize, time_for_move_to_settle)
+
+    # noinspection PyTypeHints
+    def _on_window_resize(self, _window: Window, width: int, height: int) -> None:
+        # logger.debug(
+        #     f"Main window resize event:"
+        #     f" width, height = {width},{height},"
+        #     f" Window.fullscreen = {Window.fullscreen},"
+        #     f" self._resize_event = {self._resize_event},"
+        #     f" self._resize_requested_size = {self._resize_requested_size},"
+        # )
+
+        if Window.fullscreen:
+            # Leave fullscreen alone.
+            return
+
+        if not self._resize_event or ((width, height) == self._resize_requested_size):
+            return
+
+        assert self._resize_requested_size != (0, 0)
+        Window.size = self._resize_requested_size
+        logger.debug(f"Forced reset main window size after resize event: {Window.size}.")
 
     def close_app(self) -> None:
         self._main_screen.app_closing()
@@ -276,6 +321,7 @@ class BarksReaderApp(App):
         """
         if SCREEN_METRICS.NUM_MONITORS > 1:
             Window.bind(on_move=self._on_window_pos_change)
+            Window.bind(on_resize=self._on_window_resize)
 
         # This is a known Kivy workaround. By briefly changing the window position,
         # we force an `on_resize` event to fire, which ensures that all UI elements
