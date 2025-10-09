@@ -17,8 +17,6 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_EXTRAS,
     FantaComicBookInfo,
 )
-
-# noinspection PyProtectedMember
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.properties import BooleanProperty, StringProperty
@@ -61,7 +59,6 @@ if TYPE_CHECKING:
     from kivy._clock import ClockEvent
     from kivy.factory import Factory
     from kivy.uix.actionbar import ActionButton
-    from kivy.uix.button import Button
     from kivy.uix.widget import Widget
 
     from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
@@ -437,9 +434,6 @@ class MainScreen(ReaderScreen):
         logger.debug(f"Show enter: self.action_bar.height = {self._action_bar.height}")
         show_action_bar(self._action_bar)
         logger.debug(f"Show exit: self.action_bar.height = {self._action_bar.height}")
-
-    def on_action_bar_pressed(self, button: Button) -> None:
-        pass
 
     def _on_views_updated(self) -> None:
         pass

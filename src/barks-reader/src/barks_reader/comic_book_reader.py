@@ -448,7 +448,7 @@ class ComicBookReaderScreen(ReaderScreen):
     ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     action_bar_title = StringProperty()
-    action_bar_width = NumericProperty()
+    action_bar_width = NumericProperty(1)  # must be non-zero for initial build
     app_icon_filepath = StringProperty()
     is_fullscreen = BooleanProperty(defaultvalue=False)
 
@@ -469,7 +469,7 @@ class ComicBookReaderScreen(ReaderScreen):
         self._on_close_reader = on_close_reader_func
         self._active = False
 
-        self._action_bar = self.ids.comic_action_bar
+        self._action_bar = self.ids.action_bar
         self._action_bar_fullscreen_icon = str(
             self._reader_settings.sys_file_paths.get_barks_reader_fullscreen_icon_file()
         )

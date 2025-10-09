@@ -307,7 +307,7 @@ class BarksReaderApp(App):
 
     def _set_custom_title_bar(self) -> None:
         Window.custom_titlebar = True
-        title_bar = self._main_screen.ids.action_bar
+        title_bar = self._main_screen.ids.draggable_title_bar
         if Window.set_custom_titlebar(title_bar):
             logger.info("Window: setting custom titlebar successful")
         else:

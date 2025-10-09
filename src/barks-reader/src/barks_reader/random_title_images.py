@@ -12,7 +12,7 @@ from loguru import logger
 
 from barks_reader.image_file_getter import TitleImageFileGetter
 from barks_reader.reader_file_paths import ALL_TYPES, EMERGENCY_INSET_FILE, FileTypes
-from barks_reader.reader_utils import prob_rand_less_equal
+from barks_reader.reader_utils import get_all_files_in_dir, prob_rand_less_equal
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -79,6 +79,13 @@ class RandomTitleImages:
             title,
             FIT_MODE_COVER,
         )
+
+    def get_reader_app_icon_file(self) -> Path:
+        icon_files = get_all_files_in_dir(
+            self._reader_settings.sys_file_paths.get_reader_icon_files_dir(),
+        )
+        file_index = randrange(0, len(icon_files))
+        return icon_files[file_index]
 
     def get_random_censorship_fix_image(self) -> ImageInfo:
         title = Titles.VACATION_TIME

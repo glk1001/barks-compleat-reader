@@ -114,6 +114,9 @@ class ReaderScreenManager:
         self._screen_manager.transition = self._get_next_reader_screen_transition()
         self._screen_manager.current = COMIC_BOOK_READER_SCREEN
 
+        self._reader_screens.comic_reader_screen.app_icon_filepath = (
+            self._reader_screens.main_screen.app_icon_filepath
+        )
         self._reader_screens.comic_reader_screen.is_active(active=True)
 
         logger.debug("Comic book reader screen is active.")

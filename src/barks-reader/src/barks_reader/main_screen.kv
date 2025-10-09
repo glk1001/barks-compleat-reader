@@ -139,52 +139,118 @@
         id: main_layout
         orientation: "vertical"
 
-        ActionBar:
-            id: action_bar
-            size: root.width, root.ACTION_BAR_HEIGHT
+        # Use a FloatLayout to layer the interactive ActionBar on top of a draggable region.
+        FloatLayout:
+            size_hint_y: None
+            height: root.ACTION_BAR_HEIGHT
 
-            ActionView:
-                use_separator: False
+            # A custom title bar using a FloatLayout to separate clickable and draggable regions.
+            FloatLayout:
+                id: action_bar
+                pos_hint: {'x': 0, 'y': 0}
+                size_hint: 1, 1
+                canvas.before:
+                    Color:
+                        rgba: 0.12, 0.12, 0.12, 1  # Standard ActionBar background color
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
 
-                ActionPrevious:
-                    title: root.app_title
-                    color: root.ACTION_BAR_TITLE_COLOR
-                    markup: True
-                    app_icon: root.app_icon_filepath
-                    mipmap: True
-                    with_previous: False
+                # --- 1. Clickable Title/Icon Area (Not Draggable) ---
+                # Use a RelativeLayout to correctly position the child Image.
+                RelativeLayout:
+                    id: icon_container
+                    # Position the icon button from the left edge.
+                    pos_hint: {'x': dp(2) / root.width, 'center_y': 0.5}
+                    size_hint: None, None
+                    height: action_bar.height
+                    width: dp(70)
 
-                ActionOverflow:
+                    Image:
+                        source: root.app_icon_filepath
+                        size_hint: None, None
+                        # Make the image slightly smaller than its parent to create padding.
+                        size: (self.parent.width - dp(8), self.parent.height - dp(8))
+                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                        fit_mode: "contain"
+                        mipmap: True
+                        # Link the image's opacity to the button's state for press feedback.
+                        opacity: 0.5 if icon_hitbox.state == 'down' else 1.0
 
-                ActionSeparator:
+                    # Add a transparent button on top to capture clicks.
+                    Button:
+                        id: icon_hitbox
+                        size_hint: 1, 1
+                        pos_hint: {'x': 0, 'y': 0}
+                        background_color: (0, 0, 0, 0) # Transparent
+                        #on_release: root.goto_reader_icon_title()
 
-                BarButton:
-                    text: 'Quit'
-                    icon: str(sys_paths.get_barks_reader_close_icon_file())
-                    important: True
-                    on_release: app.close_app()
+                # --- 2. Draggable Title Area ---
+                RelativeLayout:
+                    id: draggable_title_bar
+                    # Position this layout between the icon and the right-hand buttons.
+                    pos_hint: {'x': (icon_container.width + dp(5)) / action_bar.width, 'center_y': 0.5}
+                    size_hint: None, 1
+                    width: right_buttons.x - icon_container.right
+                    Label:
+                        text: root.app_title
+                        color: root.ACTION_BAR_TITLE_COLOR
+                        markup: True
+                        text_size: self.size
+                        halign: 'left'
+                        valign: 'middle'
 
-                BarButton:
-                    id: fullscreen_button
-                    text: "Fullscreen"
-                    icon: str(sys_paths.get_barks_reader_fullscreen_icon_file())
-                    important: True
-                    on_press: root.toggle_fullscreen(self)
+                # --- 3. Clickable Buttons Area (Not Draggable) ---
+                BoxLayout:
+                    id: right_buttons
+                    pos_hint: {'right': 1, 'y': 0}
+                    size_hint_x: None
+                    width: self.minimum_width
+                    padding: [dp(5), 0]
 
-                BarButton:
-                    text: 'Collapse'
-                    icon: str(sys_paths.get_barks_reader_collapse_icon_file())
-                    important: True
-                    on_release: root.on_action_bar_collapse()
+                    # A separator widget
+                    Widget:
+                        size_hint_x: None
+                        width: dp(1)
+                        canvas:
+                            Color:
+                                rgba: 0.3, 0.3, 0.3, 1
+                            Rectangle:
+                                pos: self.center_x, self.y
+                                size: self.width, self.height
 
-                BarButton:
-                    text: 'Change Pics'
-                    icon: str(sys_paths.get_barks_reader_refresh_arrow_icon_file())
-                    important: True
-                    on_release: root.on_action_bar_change_view_images()
+                    BoxLayout:
+                        size_hint_x: None
+                        width: self.minimum_width
+                        spacing: dp(2)
 
-                BarButton:
-                    text: 'Settings'
-                    icon: str(sys_paths.get_barks_reader_settings_icon_file())
-                    important: True
-                    on_release: app.open_settings(self)
+                        BarButton:
+                            text: 'Quit'
+                            icon: str(sys_paths.get_barks_reader_close_icon_file())
+                            important: True
+                            on_release: app.close_app()
+
+                        BarButton:
+                            id: fullscreen_button
+                            text: "Fullscreen"
+                            icon: str(sys_paths.get_barks_reader_fullscreen_icon_file())
+                            important: True
+                            on_press: root.toggle_fullscreen(self)
+
+                        BarButton:
+                            text: 'Collapse'
+                            icon: str(sys_paths.get_barks_reader_collapse_icon_file())
+                            important: True
+                            on_release: root.on_action_bar_collapse()
+
+                        BarButton:
+                            text: 'Change Pics'
+                            icon: str(sys_paths.get_barks_reader_refresh_arrow_icon_file())
+                            important: True
+                            on_release: root.on_action_bar_change_view_images()
+
+                        BarButton:
+                            text: 'Settings'
+                            icon: str(sys_paths.get_barks_reader_settings_icon_file())
+                            important: True
+                            on_release: app.open_settings(self)
