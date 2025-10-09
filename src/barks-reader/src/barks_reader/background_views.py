@@ -485,7 +485,7 @@ class BackgroundViews:
 
     def _get_top_view_random_image(self, title_list: list[FantaComicBookInfo]) -> ImageInfo:
         return self._random_title_images.get_random_image(
-            title_list, file_types=TOP_VIEW_IMAGE_TYPES, use_edited_only=True
+            title_list, file_types=TOP_VIEW_IMAGE_TYPES, use_only_edited_if_possible=True
         )
 
     def _set_top_view_image_for_search(self) -> None:
@@ -630,7 +630,7 @@ class BackgroundViews:
             image_file = self._random_title_images.get_random_image_for_title(
                 self._current_bottom_view_title,
                 TITLE_VIEW_IMAGE_TYPES,
-                use_edited_only=True,
+                use_only_edited_if_possible=True,
             )
             logger.debug(f'Using random title image file "{image_file}".')
             self.set_bottom_view_title_image_file(image_file)

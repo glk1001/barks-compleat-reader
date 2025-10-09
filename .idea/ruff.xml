@@ -7,7 +7,6 @@
     <option name="useIntellijLspClient" value="false" />
     <option name="useLsp4ij" value="true" />
     <option name="useRuffFormat" value="true" />
-    <option name="useRuffImportOptimizer" value="true" />
     <option name="useRuffServer" value="true" />
   </component>
 </project>

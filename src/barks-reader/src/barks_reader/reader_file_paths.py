@@ -257,8 +257,10 @@ class ReaderFilePaths:
     def get_barks_reader_app_icon_file(self) -> PanelPath:
         return self._app_icon_path
 
-    def get_comic_inset_file(self, title: Titles, use_edited_only: bool = False) -> PanelPath:
-        if use_edited_only:
+    def get_comic_inset_file(
+        self, title: Titles, use_only_edited_if_possible: bool = False
+    ) -> PanelPath:
+        if use_only_edited_if_possible:
             edited_file = self._inset_edited_files_dir / get_filename_from_title(
                 title, self._inset_files_ext
             )
@@ -277,19 +279,19 @@ class ReaderFilePaths:
         return self.get_emergency_inset_file()
 
     def get_comic_inset_files(
-        self, title_str: str, use_edited_only: bool = False
+        self, title_str: str, use_only_edited_if_possible: bool = False
     ) -> list[PanelPath]:
         title = BARKS_TITLE_DICT[title_str]
 
         inset_list = []
 
-        edited_inset_file = self.get_comic_inset_file(title, use_edited_only)
+        edited_inset_file = self.get_comic_inset_file(title, use_only_edited_if_possible)
         if edited_inset_file != self.get_emergency_inset_file():
             inset_list.append(edited_inset_file)
-        if use_edited_only:
+        if use_only_edited_if_possible:
             return inset_list
 
-        main_inset_file = self.get_comic_inset_file(title, use_edited_only=False)
+        main_inset_file = self.get_comic_inset_file(title, use_only_edited_if_possible=False)
         if (main_inset_file != self.get_emergency_inset_file()) and (
             main_inset_file not in inset_list
         ):
@@ -297,8 +299,10 @@ class ReaderFilePaths:
 
         return inset_list
 
-    def get_comic_cover_file(self, title: str, use_edited_only: bool = False) -> PanelPath | None:
-        if use_edited_only:
+    def get_comic_cover_file(
+        self, title: str, use_only_edited_if_possible: bool = False
+    ) -> PanelPath | None:
+        if use_only_edited_if_possible:
             edited_file = (
                 self.get_comic_cover_files_dir() / _EDITED_SUBDIR / (title + self._edited_files_ext)
             )
@@ -311,46 +315,70 @@ class ReaderFilePaths:
 
         return cover_file
 
-    def get_comic_bw_files(self, title: str, use_edited_only: bool = False) -> list[PanelPath]:
-        return self._get_files(self.get_comic_bw_files_dir(), title, use_edited_only)
+    def get_comic_bw_files(
+        self, title: str, use_only_edited_if_possible: bool = False
+    ) -> list[PanelPath]:
+        return self._get_files(self.get_comic_bw_files_dir(), title, use_only_edited_if_possible)
 
-    def get_comic_ai_files(self, title: str, use_edited_only: bool = False) -> list[PanelPath]:
-        return self._get_files(self.get_comic_ai_files_dir(), title, use_edited_only)
+    def get_comic_ai_files(
+        self, title: str, use_only_edited_if_possible: bool = False
+    ) -> list[PanelPath]:
+        return self._get_files(self.get_comic_ai_files_dir(), title, use_only_edited_if_possible)
 
     def get_comic_censorship_files(
-        self, title: str, use_edited_only: bool = False
+        self, title: str, use_only_edited_if_possible: bool = False
     ) -> list[PanelPath]:
-        return self._get_files(self.get_comic_censorship_files_dir(), title, use_edited_only)
+        return self._get_files(
+            self.get_comic_censorship_files_dir(), title, use_only_edited_if_possible
+        )
 
-    def get_comic_closeup_files(self, title: str, use_edited_only: bool = False) -> list[PanelPath]:
-        return self._get_files(self.get_comic_closeup_files_dir(), title, use_edited_only)
+    def get_comic_closeup_files(
+        self, title: str, use_only_edited_if_possible: bool = False
+    ) -> list[PanelPath]:
+        return self._get_files(
+            self.get_comic_closeup_files_dir(), title, use_only_edited_if_possible
+        )
 
     def get_comic_favourite_files(
-        self, title: str, use_edited_only: bool = False
+        self, title: str, use_only_edited_if_possible: bool = False
     ) -> list[PanelPath]:
-        return self._get_files(self.get_comic_favourite_files_dir(), title, use_edited_only)
+        return self._get_files(
+            self.get_comic_favourite_files_dir(), title, use_only_edited_if_possible
+        )
 
     def get_nontitle_files(self) -> list[PanelPath]:
         return self._get_all_files(self.get_nontitle_files_dir())
 
     def get_comic_original_art_files(
-        self, title: str, use_edited_only: bool = False
+        self, title: str, use_only_edited_if_possible: bool = False
     ) -> list[PanelPath]:
-        return self._get_files(self.get_comic_original_art_files_dir(), title, use_edited_only)
+        return self._get_files(
+            self.get_comic_original_art_files_dir(), title, use_only_edited_if_possible
+        )
 
-    def get_comic_search_files(self, title: str, use_edited_only: bool = False) -> list[PanelPath]:
-        return self._get_files(self.get_comic_search_files_dir(), title, use_edited_only)
+    def get_comic_search_files(
+        self, title: str, use_only_edited_if_possible: bool = False
+    ) -> list[PanelPath]:
+        return self._get_files(
+            self.get_comic_search_files_dir(), title, use_only_edited_if_possible
+        )
 
     def get_comic_silhouette_files(
-        self, title: str, use_edited_only: bool = False
+        self, title: str, use_only_edited_if_possible: bool = False
     ) -> list[PanelPath]:
-        return self._get_files(self.get_comic_silhouette_files_dir(), title, use_edited_only)
+        return self._get_files(
+            self.get_comic_silhouette_files_dir(), title, use_only_edited_if_possible
+        )
 
-    def get_comic_splash_files(self, title: str, use_edited_only: bool = False) -> list[PanelPath]:
-        return self._get_files(self.get_comic_splash_files_dir(), title, use_edited_only)
+    def get_comic_splash_files(
+        self, title: str, use_only_edited_if_possible: bool = False
+    ) -> list[PanelPath]:
+        return self._get_files(
+            self.get_comic_splash_files_dir(), title, use_only_edited_if_possible
+        )
 
     def _get_files(
-        self, parent_image_dir: PanelPath, title: str, use_edited_only: bool
+        self, parent_image_dir: PanelPath, title: str, use_only_edited_if_possible: bool
     ) -> list[PanelPath]:
         image_dir = parent_image_dir / title
         if not image_dir.is_dir():
@@ -361,8 +389,8 @@ class ReaderFilePaths:
         edited_image_dir = image_dir / _EDITED_SUBDIR
         if edited_image_dir.is_dir():
             image_files = self._get_all_files(edited_image_dir)
-            if use_edited_only:
-                # Don't want any unedited images.
+            if use_only_edited_if_possible:
+                # Don't want any unedited images so return now.
                 return image_files
 
         image_files.extend(self._get_all_files(image_dir))

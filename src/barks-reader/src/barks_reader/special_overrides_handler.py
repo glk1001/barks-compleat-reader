@@ -48,14 +48,14 @@ class SpecialFantaOverrides:
 
     def get_inset_file(self, title: Titles, use_overrides: bool) -> PanelPath:
         std_inset_file = self._reader_settings.file_paths.get_comic_inset_file(
-            title, use_edited_only=False
+            title, use_only_edited_if_possible=False
         )
 
         return self._get_special_inset_file(std_inset_file, use_overrides)
 
     def get_title_page_inset_file(self, title: Titles, use_overrides: bool) -> PanelPath:
         std_inset_file = self._reader_settings.file_paths.get_comic_inset_file(
-            title, use_edited_only=True
+            title, use_only_edited_if_possible=True
         )
 
         return self._get_special_inset_file(std_inset_file, use_overrides)

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import random
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from random import randrange
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_titles import BARKS_TITLES, VACATION_TIME, Titles
+from barks_fantagraphics.comics_utils import get_abbrev_path
 from loguru import logger
 
 from barks_reader.image_file_getter import TitleImageFileGetter
@@ -35,6 +37,8 @@ APP_SPLASH_IMAGES = [
 
 FIT_MODE_CONTAIN = "contain"
 FIT_MODE_COVER = "cover"
+
+type PossibleFiles = list[tuple[Path, FileTypes]]
 
 NON_TITLE_BIAS = 0.1
 
@@ -70,7 +74,7 @@ class RandomTitleImages:
             self._get_random_comic_file(
                 BARKS_TITLES[title],
                 self._reader_settings.file_paths.get_comic_search_files,
-                use_edited_only=False,
+                use_only_edited_if_possible=False,
             ),
             title,
             FIT_MODE_COVER,
@@ -108,12 +112,14 @@ class RandomTitleImages:
         return self.get_random_image(title_list, file_types=file_types).filename
 
     def get_random_image_for_title(
-        self, title_str: str, file_types: set[FileTypes], use_edited_only: bool = False
+        self, title_str: str, file_types: set[FileTypes], use_only_edited_if_possible: bool = False
     ) -> Path:
         # Ensure files are loaded for this title.
         self._update_comic_files(title_str)
 
-        possible_images = self._get_possible_files_for_title(title_str, file_types, use_edited_only)
+        possible_images = self._get_possible_files_for_title(
+            title_str, file_types, use_only_edited_if_possible
+        )
         if not possible_images:
             logger.warning(f'No possible images for title "{title_str}". Using emergency image.')
             return self._reader_settings.file_paths.get_comic_inset_file(EMERGENCY_INSET_FILE)
@@ -142,7 +148,7 @@ class RandomTitleImages:
         title_list: list[FantaComicBookInfo],
         use_random_fit_mode: bool = False,
         file_types: set[FileTypes] | None = None,
-        use_edited_only: bool = False,
+        use_only_edited_if_possible: bool = False,
     ) -> ImageInfo:
         if not title_list:
             # Handle empty title list gracefully
@@ -152,73 +158,29 @@ class RandomTitleImages:
                 FIT_MODE_COVER,
             )
 
-        actual_file_types = ALL_TYPES if file_types is None else file_types
-        logger.debug(f"File types to choose random image from: {actual_file_types}.")
-
-        num_titles = len(title_list)
-        if FileTypes.NONTITLE in actual_file_types:
-            num_titles = int((1 + NON_TITLE_BIAS) * num_titles)  # include bias for nontitles
-        logger.debug(f"Num titles to choose random image from: {num_titles}.")
+        current_file_types = ALL_TYPES if file_types is None else file_types
+        logger.debug(f"File types to choose random image from: {current_file_types}.")
 
         for _ in range(NUM_RAND_ATTEMPTS):
-            title_index = randrange(0, num_titles)
-            # if title_index >= 0:
-            if title_index >= len(title_list):  # handle nontitle bias
-                title_str = ""
-                title_enum = None
-                actual_file_types = {FileTypes.NONTITLE}
-                possible_files_for_title = self._nontitle_files
-            else:
-                title_info = title_list[randrange(0, len(title_list))]
-                comic_book_info = title_info.comic_book_info
-                title_enum = comic_book_info.title
-                title_str = comic_book_info.get_title_str()
-                logger.debug(f"Chose title '{title_str}'.")
+            title_str, title_enum, possible_files = self._select_random_title_or_nontitle(
+                title_list, current_file_types, use_only_edited_if_possible
+            )
 
-                # Ensure files are loaded for title.
-                self._update_comic_files(title_str)
-
-                possible_files_for_title = self._get_possible_files_for_title(
-                    title_str, actual_file_types, use_edited_only
-                )
-
-            if not possible_files_for_title:
+            selected_image = self._select_best_candidate_image(possible_files, title_str)
+            if selected_image is None:
                 continue
 
-            logger.debug(f"Possible files to choose random image from: {possible_files_for_title}.")
-
-            # Candidate selection preference:
-            # 1. Not in global MRU AND not last image for this specific title.
-            candidates = [
-                (filename, file_type)
-                for filename, file_type in possible_files_for_title
-                if filename not in self._most_recently_used_images
-                and filename != self._last_title_image.get(title_str, "")
-            ]
-
-            if not candidates:
-                # 2. Fallback: Not in global MRU.
-                candidates = [
-                    (filename, file_type)
-                    for filename, file_type in possible_files_for_title
-                    if filename not in self._most_recently_used_images
-                ]
-
-            if not candidates:
-                # 3. Fallback: Any image for this title (already filtered
-                #              by __get_possible_files_for_title).
-                candidates = possible_files_for_title
-
-            assert candidates
-            image_filename, file_type_enum = candidates[randrange(0, len(candidates))]
-
+            image_filename, file_type_enum = selected_image
             fit_mode = self._get_fit_mode(use_random_fit_mode)
+
             image_filename, fit_mode = self._get_better_fitting_image_if_possible(
                 image_filename, fit_mode, file_type_enum
             )
 
             self._add_last_image(image_filename)
-            self._last_title_image[title_str] = image_filename
+            if title_str:
+                self._last_title_image[title_str] = image_filename
+
             return ImageInfo(image_filename, title_enum, fit_mode)
 
         # Fallback if all attempts fail,
@@ -228,6 +190,56 @@ class RandomTitleImages:
             Titles.GOOD_NEIGHBORS,
             FIT_MODE_COVER,
         )
+
+    def _select_random_title_or_nontitle(
+        self,
+        title_list: list[FantaComicBookInfo],
+        file_types: set[FileTypes],
+        use_only_edited_if_possible: bool,
+    ) -> tuple[str | None, Titles | None, PossibleFiles]:
+        """Randomly select either a title from the list or a "nontitle" image."""
+        if FileTypes.NONTITLE in file_types:
+            # With a certain probability (defined by NON_TITLE_BIAS), choose a "nontitle" image.
+            num_titles = len(title_list)
+            biased_upper_bound = int((1 + NON_TITLE_BIAS) * num_titles)
+            if randrange(0, biased_upper_bound) >= num_titles:
+                logger.debug("Chose a nontitle image based on bias.")
+                return None, None, self._nontitle_files
+
+        title_info = title_list[randrange(0, len(title_list))]
+        comic_book_info = title_info.comic_book_info
+        title_enum = comic_book_info.title
+        title_str = comic_book_info.get_title_str()
+        logger.debug(f"Chose title '{title_str}'.")
+
+        # Ensure files are loaded for title.
+        self._update_comic_files(title_str)
+        possible_files = self._get_possible_files_for_title(
+            title_str, file_types, use_only_edited_if_possible
+        )
+        return title_str, title_enum, possible_files
+
+    def _select_best_candidate_image(
+        self, possible_files: PossibleFiles, title_str: str | None
+    ) -> tuple[Path, FileTypes] | None:
+        """Select the best candidate image, preferring ones not recently used."""
+        if not possible_files:
+            return None
+
+        # First, try to find candidates that are not in the global MRU list and
+        # not the last image used for this specific title.
+        candidates = [
+            (filename, file_type)
+            for filename, file_type in possible_files
+            if filename not in self._most_recently_used_images
+            and (title_str is None or filename != self._last_title_image.get(title_str, ""))
+        ]
+
+        # If the preferred filter yields no results, fall back to using all possible files.
+        if not candidates:
+            candidates = possible_files
+
+        return candidates[randrange(0, len(candidates))]
 
     def _get_fit_mode(self, use_random_fit_mode: bool) -> str:
         if use_random_fit_mode:
@@ -254,20 +266,20 @@ class RandomTitleImages:
         return image_filename, fit_mode
 
     def _get_possible_files_for_title(
-        self, title_str: str, file_types: set[FileTypes], use_edited_only: bool
-    ) -> list[tuple[Path, FileTypes]]:
+        self, title_str: str, file_types: set[FileTypes], use_only_edited_if_possible: bool
+    ) -> PossibleFiles:
         possible_files: list[tuple[Path, FileTypes]] = []
 
         for file_type in file_types:
             if file_type in self._title_image_files.get(title_str, {}):
                 for filename, is_edited in self._title_image_files[title_str][file_type]:
-                    if use_edited_only and not is_edited:
+                    if use_only_edited_if_possible and not is_edited:
                         continue
                     possible_files.append((filename, file_type))
 
         return possible_files
 
-    def _get_nontitle_files(self) -> list[tuple[Path, FileTypes]]:
+    def _get_nontitle_files(self) -> PossibleFiles:
         return [
             (file, FileTypes.NONTITLE)
             for file in self._reader_settings.file_paths.get_nontitle_files()
@@ -285,11 +297,164 @@ class RandomTitleImages:
 
     @staticmethod
     def _get_random_comic_file(
-        title_str: str, get_files_func: Callable[[str, bool], list[Path]], use_edited_only: bool
+        title_str: str,
+        get_files_func: Callable[[str, bool], list[Path]],
+        use_only_edited_if_possible: bool,
     ) -> Path:
-        title_files = get_files_func(title_str, use_edited_only)
+        title_files = get_files_func(title_str, use_only_edited_if_possible)
         if title_files:
             index = randrange(0, len(title_files))
             return title_files[index]
 
         raise AssertionError
+
+
+# ruff: noqa: T201
+if __name__ == "__main__":
+    """A simple main function to test the RandomTitleImages class."""
+    import sys
+    from configparser import ConfigParser
+
+    from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
+
+    from barks_reader.config_info import ConfigInfo
+    from barks_reader.reader_settings import BuildableReaderSettings
+
+    def get_results(
+        num_results: int,
+        title_list: list[FantaComicBookInfo],
+        use_random_fit_mode: bool = False,
+        file_types: set[FileTypes] | None = None,
+        use_only_edited_if_possible: bool = False,
+    ) -> tuple[list[tuple[str, str, str]], int]:
+        rand_results: list[tuple[str, str, str]] = []
+        max_ttl_len = 0
+        for _i in range(num_results):
+            random_image_info = random_image_selector.get_random_image(
+                title_list,
+                use_random_fit_mode=use_random_fit_mode,
+                file_types=file_types,
+                use_only_edited_if_possible=use_only_edited_if_possible,
+            )
+            ttl = BARKS_TITLES[random_image_info.from_title] if random_image_info.from_title else ""
+            img_file = get_abbrev_path(random_image_info.filename)
+            fit = random_image_info.fit_mode
+            rand_results.append((ttl, img_file, fit))
+            max_ttl_len = max(max_ttl_len, len(ttl))
+
+        return rand_results, max_ttl_len
+
+    def show_results(rand_results: list[tuple[str, str, str]], max_ttl_len: int) -> None:
+        for i, result in enumerate(rand_results):
+            title = result[0]
+            image_file = result[1]
+            fit_mode = result[2]
+            print(f'  {i + 1}: "{title:<{max_ttl_len}}", "{fit_mode:<7}", "{image_file}"')
+
+    # --- Basic Setup ---
+    # Configure logging to see the output
+    logger.remove()
+    logger.add(sys.stdout, level="INFO")
+
+    # Create a minimal but functional ReaderSettings instance
+    config_info = ConfigInfo()
+    barks_config = ConfigParser()
+    barks_config.read(config_info.app_config_path)
+    settings = BuildableReaderSettings()
+    settings.set_config(barks_config, config_info.app_config_path)
+    settings.set_barks_panels_dir()
+
+    # --- Test the Class ---
+    print("\n--- Testing RandomTitleImages ---")
+    random.seed(1)
+    random_image_selector = RandomTitleImages(settings)
+
+    # Get a list of all comic book info objects to choose from
+    all_titles = list(ALL_FANTA_COMIC_BOOK_INFO.values())
+
+    num_images = 5
+
+    test_title_list = all_titles
+    test_file_types = None
+    test_use_random_fit_mode = True
+    test_edited_only = False
+    print(
+        f"\nGenerating {num_images} random images:"
+        f" num titles={len(test_title_list)},"
+        f" file_types={test_file_types},"
+        f" random_fit_mode={test_use_random_fit_mode},"
+        f" edited_only={test_edited_only}"
+    )
+    print()
+    results, max_title_len = get_results(
+        num_images,
+        test_title_list,
+        use_random_fit_mode=test_use_random_fit_mode,
+        file_types=test_file_types,
+        use_only_edited_if_possible=test_edited_only,
+    )
+    show_results(results, max_title_len)
+
+    test_title_list = all_titles
+    test_file_types = {FileTypes.AI}
+    test_use_random_fit_mode = False
+    test_edited_only = True
+    print(
+        f"\nGenerating {num_images} random images:"
+        f" num titles={len(test_title_list)},"
+        f" file_types={test_file_types},"
+        f" random_fit_mode={test_use_random_fit_mode},"
+        f" edited_only={test_edited_only}"
+    )
+    print()
+    results, max_title_len = get_results(
+        num_images,
+        test_title_list,
+        use_random_fit_mode=test_use_random_fit_mode,
+        file_types=test_file_types,
+        use_only_edited_if_possible=test_edited_only,
+    )
+    show_results(results, max_title_len)
+
+    test_title_list = all_titles
+    test_file_types = {FileTypes.INSET}
+    test_use_random_fit_mode = True
+    test_edited_only = True
+    print(
+        f"\nGenerating {num_images} random images:"
+        f" num titles={len(test_title_list)},"
+        f" file_types={test_file_types},"
+        f" random_fit_mode={test_use_random_fit_mode},"
+        f" edited_only={test_edited_only}"
+    )
+    print()
+    results, max_title_len = get_results(
+        num_images,
+        test_title_list,
+        use_random_fit_mode=test_use_random_fit_mode,
+        file_types=test_file_types,
+        use_only_edited_if_possible=test_edited_only,
+    )
+    show_results(results, max_title_len)
+
+    test_titles = [Titles.MAHARAJAH_DONALD, Titles.DONALD_DUCK_AND_THE_MUMMYS_RING]
+    test_title_list = [ALL_FANTA_COMIC_BOOK_INFO[BARKS_TITLES[title]] for title in test_titles]
+    test_file_types = {FileTypes.AI}
+    test_use_random_fit_mode = False
+    test_edited_only = True
+    print(
+        f"\nGenerating {num_images} random images:"
+        f" num titles={len(test_title_list)},"
+        f" file_types={test_file_types},"
+        f" random_fit_mode={test_use_random_fit_mode},"
+        f" edited_only={test_edited_only}"
+    )
+    print()
+    results, max_title_len = get_results(
+        num_images,
+        test_title_list,
+        use_random_fit_mode=test_use_random_fit_mode,
+        file_types=test_file_types,
+        use_only_edited_if_possible=test_edited_only,
+    )
+    show_results(results, max_title_len)

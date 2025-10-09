@@ -85,7 +85,7 @@ class BottomTitleViewScreen(FloatLayout):
         self.title_extra_info_text = self._formatter.get_title_extra_info(fanta_info)
         inset_image_source = self._reader_settings.file_paths.get_comic_inset_file(
             fanta_info.comic_book_info.title,
-            use_edited_only=True,
+            use_only_edited_if_possible=True,
         )
         self.title_inset_image_texture = get_image_stream(inset_image_source)
         logger.debug(f'Using title image source "{inset_image_source}".')
