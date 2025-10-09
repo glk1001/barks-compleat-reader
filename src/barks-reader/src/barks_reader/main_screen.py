@@ -44,6 +44,7 @@ from barks_reader.reader_ui_classes import (
 from barks_reader.reader_utils import (
     get_all_files_in_dir,
     get_image_stream,
+    get_title_str_from_reader_icon_file,
     get_win_width_from_height,
 )
 from barks_reader.special_overrides_handler import SpecialFantaOverrides
@@ -177,7 +178,7 @@ class MainScreen(ReaderScreen):
             self._set_next_title,
         )
 
-        self.app_icon_filepath = str(self._get_reader_app_icon_file())
+        self.app_icon_filepath = str(self._random_title_images.get_random_reader_app_icon_file())
 
         self._special_fanta_overrides = SpecialFantaOverrides(self._reader_settings)
 
@@ -342,6 +343,7 @@ class MainScreen(ReaderScreen):
         self._view_state_manager.update_background_views(ViewStates.INITIAL)
 
     def on_action_bar_change_view_images(self) -> None:
+        self.app_icon_filepath = str(self._random_title_images.get_random_reader_app_icon_file())
         self._view_state_manager.change_background_views()
 
     def _update_action_bar_visibility(self) -> None:
@@ -455,6 +457,19 @@ class MainScreen(ReaderScreen):
         self._tree_view_manager.goto_node(title_node, scroll_to=True)
 
         self._title_row_selected(title_fanta_info, image_info.filename)
+
+    def goto_reader_icon_title(self) -> None:
+        logger.debug(f'App reader icon "{self.app_icon_filepath}" pressed.')
+
+        icon_path = Path(self.app_icon_filepath)
+        title_str = get_title_str_from_reader_icon_file(icon_path)
+        if title_str not in BARKS_TITLE_DICT:
+            msg = f'Invalid title string: "{title_str}"'
+            raise ValueError(msg)
+
+        title = BARKS_TITLE_DICT[title_str]
+        image_info = ImageInfo(icon_path, title)
+        self._goto_chrono_title(image_info)
 
     def _read_intro_compleat_barks_reader(self) -> None:
         self._screen_switchers.switch_to_intro_compleat_barks_reader()

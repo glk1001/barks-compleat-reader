@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import re
 from pathlib import Path
 from random import randrange
 from typing import TYPE_CHECKING
@@ -30,6 +31,15 @@ def get_best_window_height_fit(screen_height: int) -> int:
 
 def get_win_width_from_height(win_height: int) -> int:
     return round(win_height / COMIC_PAGE_ASPECT_RATIO)
+
+
+def get_title_str_from_reader_icon_file(icon_path: Path) -> str:
+    # Use a regular expression to split the stem at the beginning of the
+    # trailing numeric suffix (e.g., "-1-1"). This correctly handles
+    # titles that contain hyphens or other special characters.
+    parts = re.split(r"(-\d+)+$", icon_path.stem)
+
+    return parts[0]
 
 
 def get_image_stream(file: PanelPath) -> io.BytesIO:

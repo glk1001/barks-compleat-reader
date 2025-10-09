@@ -63,6 +63,12 @@ class RandomTitleImages:
         self._last_title_image: dict[str, Path] = {}
         self._nontitle_files = self._get_nontitle_files()
 
+        self._all_reader_icon_files = get_all_files_in_dir(
+            self._reader_settings.sys_file_paths.get_reader_icon_files_dir()
+        )
+        random.shuffle(self._all_reader_icon_files)
+        self._next_reader_icon_file = 0
+
     def _add_last_image(self, image_filename: Path) -> None:
         self._most_recently_used_images.append(image_filename)
 
@@ -80,12 +86,14 @@ class RandomTitleImages:
             FIT_MODE_COVER,
         )
 
-    def get_reader_app_icon_file(self) -> Path:
-        icon_files = get_all_files_in_dir(
-            self._reader_settings.sys_file_paths.get_reader_icon_files_dir(),
-        )
-        file_index = randrange(0, len(icon_files))
-        return icon_files[file_index]
+    def get_random_reader_app_icon_file(self) -> Path:
+        icon_path = self._all_reader_icon_files[self._next_reader_icon_file]
+
+        self._next_reader_icon_file += 1
+        if self._next_reader_icon_file >= len(self._all_reader_icon_files):
+            self._next_reader_icon_file = 0
+
+        return icon_path
 
     def get_random_censorship_fix_image(self) -> ImageInfo:
         title = Titles.VACATION_TIME
