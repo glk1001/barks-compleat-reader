@@ -5,6 +5,7 @@ import unittest
 
 import pytest
 from barks_fantagraphics.barks_titles import (
+    BARKS_ISSUE_DICT,
     BARKS_TITLE_INFO,
     BARKS_TITLES,
     NUM_TITLES,
@@ -14,7 +15,6 @@ from barks_fantagraphics.barks_titles import (
     Issues,
     Titles,
     check_story_submitted_order,
-    BARKS_ISSUE_DICT,
 )
 
 

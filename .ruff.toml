@@ -1,5 +1,9 @@
 line-length = 100
 
+exclude = [
+        "scraps",
+    ]
+
 [lint]
     select = ["ALL"]
 
@@ -12,5 +16,5 @@ line-length = 100
         "LOG015", "G004",
         "PLR0913",
         "S101", "S311",
-        "TD002", "TD003"
+        "TD002", "TD003",
     ]

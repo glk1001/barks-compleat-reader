@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
 
 LONG_MONTHS = {
     "<none>",
@@ -26,13 +25,14 @@ class SubmittedInfo:
     submitted_day: str
 
 
-SubmittedInfoDict = Dict[Tuple[str, str], List[SubmittedInfo]]
+SubmittedInfoDict = dict[tuple[str, str], list[SubmittedInfo]]
 
 
-def get_month_day(month_and_day: str) -> Tuple[str, str]:
+def get_month_day(month_and_day: str) -> tuple[str, str]:
     month_day = month_and_day.split(" ")
     if len(month_day) < 1 or len(month_day) > 2:
-        raise Exception(f"Bad month_day '{month_day}'.")
+        msg = f"Bad month_day '{month_day}'."
+        raise Exception(msg)
 
     issue_month = month_day[0]
     if len(month_day) == 1:
@@ -45,7 +45,7 @@ def get_month_day(month_and_day: str) -> Tuple[str, str]:
 
 def get_all_submitted_info(issue_filename: str, issue_name: str) -> SubmittedInfoDict:
     all_lines = []
-    with open(issue_filename, "r") as f:
+    with open(issue_filename) as f:
         while True:
             line1 = f.readline().strip()
             if not line1:
@@ -54,15 +54,17 @@ def get_all_submitted_info(issue_filename: str, issue_name: str) -> SubmittedInf
             if not line2:
                 break
             if not line1.startswith(issue_name):
-                raise Exception(f"Wrong '{issue_name}' start: {line1}")
+                msg = f"Wrong '{issue_name}' start: {line1}"
+                raise Exception(msg)
             if not line2.startswith("Submission:"):
-                raise Exception(f"Wrong submission start: {line1}")
+                msg = f"Wrong submission start: {line1}"
+                raise Exception(msg)
 
             all_lines.append((line1, line2))
 
     all_submitted_info: SubmittedInfoDict = {}
 
-    def add_info(key: Tuple[str, str], info: SubmittedInfo):
+    def add_info(key: tuple[str, str], info: SubmittedInfo) -> None:
         if key not in all_submitted_info:
             all_submitted_info[key] = [info]
         else:
@@ -84,7 +86,8 @@ def get_all_submitted_info(issue_filename: str, issue_name: str) -> SubmittedInf
             sub_month, sub_day = get_month_day(sub_month_day)
 
         if sub_month not in LONG_MONTHS:
-            raise Exception(f"Bad month: '{line[1]}'.")
+            msg = f"Bad month: '{line[1]}'."
+            raise Exception(msg)
 
         add_info((issue_name, issue_number), SubmittedInfo(title, sub_year, sub_month, sub_day))
 

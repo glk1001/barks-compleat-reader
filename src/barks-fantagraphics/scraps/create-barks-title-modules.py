@@ -44,7 +44,7 @@ class _ComicBookInfo:
     submitted_year: int
     chronological_number: int
 
-    def get_issue_title(self):
+    def get_issue_title(self) -> str:
         short_issue_name = SHORT_ISSUE_NAME[self.issue_name]
         return f"{short_issue_name} {self.issue_number}"
 
@@ -62,7 +62,7 @@ def get_all_comic_book_info() -> _ComicBookInfoDict:
     all_info: _ComicBookInfoDict = collections.OrderedDict()
 
     chronological_number = 1
-    with open(stories_filename, "r") as csv_file:
+    with open(stories_filename) as csv_file:
         reader = csv.reader(csv_file, delimiter=",", quotechar='"')
         for row in reader:
             ttl = row[0]
@@ -88,13 +88,14 @@ def get_all_comic_book_info() -> _ComicBookInfoDict:
     return all_info
 
 
-def check_story_submitted_order(all_ttls: _ComicBookInfoDict):
+def check_story_submitted_order(all_ttls: _ComicBookInfoDict) -> None:
     prev_chronological_number = -1
     prev_title = ""
     prev_submitted_date = date(1940, 1, 1)
     for ttl in all_ttls:
         if not 1 <= all_ttls[ttl].submitted_month <= 12:
-            raise Exception(f'"{ttl}": Invalid submission month: {all_ttls[ttl].submitted_month}.')
+            msg = f'"{ttl}": Invalid submission month: {all_ttls[ttl].submitted_month}.'
+            raise Exception(msg)
         submitted_day = 1 if all_ttls[ttl].submitted_day == -1 else all_ttls[ttl].submitted_day
         submitted_date = date(
             all_ttls[ttl].submitted_year,
@@ -102,16 +103,18 @@ def check_story_submitted_order(all_ttls: _ComicBookInfoDict):
             submitted_day,
         )
         if prev_submitted_date > submitted_date:
-            raise Exception(
+            msg = (
                 f'"{ttl}": Out of order submitted date {submitted_date}.'
                 f' Previous entry: "{prev_title}" - {prev_submitted_date}.'
             )
+            raise Exception(msg)
         chronological_number = all_ttls[ttl].chronological_number
         if prev_chronological_number > chronological_number:
-            raise Exception(
+            msg = (
                 f'"{ttl}": Out of order chronological number {chronological_number}.'
                 f' Previous entry: "{prev_title}" - {prev_chronological_number}.'
             )
+            raise Exception(msg)
         prev_title = ttl
         prev_submitted_date = submitted_date
 
@@ -209,15 +212,15 @@ ComicBookInfoDict = OrderedDict[str, ComicBookInfo]
 """
         )
 
-        f.write(f"\n")
-        f.write(f"\n")
+        f.write("\n")
+        f.write("\n")
 
         for title_var in all_titles:
             f.write(f'{title_var} = "{all_titles[title_var]}"\n')
 
-        f.write(f"\n")
-        f.write(f"# fmt: off\n")
-        f.write(f"BARKS_TITLE_INFO: ComicBookInfoDict = OrderedDict([\n")
+        f.write("\n")
+        f.write("# fmt: off\n")
+        f.write("BARKS_TITLE_INFO: ComicBookInfoDict = OrderedDict([\n")
 
         for title_var in all_titles:
             title = all_titles[title_var]
@@ -236,10 +239,10 @@ ComicBookInfoDict = OrderedDict[str, ComicBookInfo]
                 f" {info.chronological_number})),\n"
             )
 
-        f.write(f"])\n")
-        f.write(f"# fmt: on\n")
+        f.write("])\n")
+        f.write("# fmt: on\n")
 
-        f.write(f"\n")
+        f.write("\n")
         f.write(
             """
 def get_all_comic_book_info() -> ComicBookInfoDict:

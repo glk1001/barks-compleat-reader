@@ -2,11 +2,10 @@ import csv
 import functools
 import os.path
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
 
-from src import comics_info
+from read_stories import StoryInfo, get_all_stories
+from read_sub_dates import SubmittedInfo, SubmittedInfoDict, get_all_submitted_info
 from src.comics_info import (
-    ComicBookInfo,
     CH,
     CP,
     CS,
@@ -15,16 +14,17 @@ from src.comics_info import (
     FG,
     KI,
     MC,
+    MONTH_AS_LONG_STR,
     US,
     VP,
+    ComicBookInfo,
+    get_formatted_day,
 )
-from src.comics_info import MONTH_AS_LONG_STR, get_formatted_day
-from src.consts import THIS_DIR, SUBMISSION_DATES_SUBDIR
+from src.consts import SUBMISSION_DATES_SUBDIR, THIS_DIR
 
-from read_stories import get_all_stories, StoryInfo
-from read_sub_dates import get_all_submitted_info, SubmittedInfo, SubmittedInfoDict
+from src import comics_info
 
-MONTH_AS_SHORT_STR: Dict[int, str] = {
+MONTH_AS_SHORT_STR: dict[int, str] = {
     -1: "   ",
     JAN: "Jan",
     FEB: "Feb",
@@ -40,7 +40,7 @@ MONTH_AS_SHORT_STR: Dict[int, str] = {
     DEC: "Dec",
 }
 
-MONTH_AS_INT: Dict[str, int] = {
+MONTH_AS_INT: dict[str, int] = {
     "<none>": -1,
     "January": comics_info.JAN,
     "February": comics_info.FEB,
@@ -91,7 +91,7 @@ class ComicBookInfo:
     submitted_day: int
 
 
-all_stories: List[StoryInfo] = get_all_stories()
+all_stories: list[StoryInfo] = get_all_stories()
 
 all_cs_sub_dates: SubmittedInfoDict = get_all_submitted_info(
     os.path.join(SUBMISSION_DATES_DIR, COMICS_AND_STORIES_FILENAME),
@@ -318,8 +318,8 @@ TITLE_FIXUPS: dict[str, str] = {
 TITLE_FIXUPS = {key.lower(): TITLE_FIXUPS[key] for key in TITLE_FIXUPS}
 
 
-def get_submitted_date(title: str, sub_info_list: List[SubmittedInfo]) -> Tuple[int, int, int]:
-    def get_date(info: SubmittedInfo) -> Tuple[int, int, int]:
+def get_submitted_date(title: str, sub_info_list: list[SubmittedInfo]) -> tuple[int, int, int]:
+    def get_date(info: SubmittedInfo) -> tuple[int, int, int]:
         year = -1 if info.submitted_year == "<none>" else int(info.submitted_year)
         month = MONTH_AS_INT[info.submitted_month]
         day = -1 if info.submitted_day in ["<none>", "?"] else int(info.submitted_day)
@@ -340,22 +340,20 @@ def get_submitted_date(title: str, sub_info_list: List[SubmittedInfo]) -> Tuple[
                 return get_date(info)
 
     for info in sub_info_list:
-        print(f'    "": "{info.title.lower()}",')
+        pass
 
-    raise Exception(f"Key Error: Could not find '{orig_title}' in {sub_info_list}.")
+    msg = f"Key Error: Could not find '{orig_title}' in {sub_info_list}."
+    raise Exception(msg)
 
 
 def get_comic_book_info(story: StoryInfo) -> ComicBookInfo:
     if story.issue_name == "Walt Disney's Comics and Stories":
         sub_info = all_cs_sub_dates[(COMICS_AND_STORIES_ISSUE_NAME, story.issue_num)]
         issue_name = CS
-    elif story.issue_name == "Donald Duck Four Color":
-        issue_name = FC
-        sub_info = all_fc_sub_dates[(FOUR_COLOR_ISSUE_NAME, story.issue_num)]
-    elif story.issue_name == "Mickey Mouse Four Color":
-        issue_name = FC
-        sub_info = all_fc_sub_dates[(FOUR_COLOR_ISSUE_NAME, story.issue_num)]
-    elif story.issue_name == "Uncle Scrooge Four Color":
+    elif (
+        story.issue_name in {"Donald Duck Four Color", "Mickey Mouse Four Color"}
+        or story.issue_name == "Uncle Scrooge Four Color"
+    ):
         issue_name = FC
         sub_info = all_fc_sub_dates[(FOUR_COLOR_ISSUE_NAME, story.issue_num)]
     elif story.issue_name == "Donald Duck":
@@ -385,7 +383,6 @@ def get_comic_book_info(story: StoryInfo) -> ComicBookInfo:
     else:
         issue_name = ""
         sub_info = None
-        print(f"Unknown story: {story.title}, {story.issue_name}")
 
     if not sub_info:
         return None
@@ -403,14 +400,14 @@ def get_comic_book_info(story: StoryInfo) -> ComicBookInfo:
     )
 
 
-all_comic_book_info: List[Tuple[str, ComicBookInfo]] = []
+all_comic_book_info: list[tuple[str, ComicBookInfo]] = []
 for story in all_stories:
     comic_book_info = get_comic_book_info(story)
     if comic_book_info:
         all_comic_book_info.append((story.title, comic_book_info))
 
 
-def compare(info1: Tuple[str, ComicBookInfo], info2: Tuple[str, ComicBookInfo]) -> int:
+def compare(info1: tuple[str, ComicBookInfo], info2: tuple[str, ComicBookInfo]) -> int:
     cb_info1 = info1[1]
     cb_info2 = info2[1]
     if cb_info1.submitted_year < cb_info2.submitted_year:
@@ -446,7 +443,7 @@ with open(output_file, "w") as f:
 
 # Now retrieve and print the formatted csv as a check.
 with open(output_file) as csv_file:
-    all_comic_book_info: List[Tuple[str, ComicBookInfo]] = []
+    all_comic_book_info: list[tuple[str, ComicBookInfo]] = []
     reader = csv.reader(csv_file, delimiter=",", quotechar='"')
 
     max_title_len = 0
@@ -469,18 +466,9 @@ with open(output_file) as csv_file:
             )
         )
 
-        if len(comic_title) > max_title_len:
-            max_title_len = len(comic_title)
-        if len(issue_name) > max_issue_name:
-            max_issue_name = len(issue_name)
+        max_title_len = max(max_title_len, len(comic_title))
+        max_issue_name = max(max_issue_name, len(issue_name))
 
     for comic_info in all_comic_book_info:
         comic_title = comic_info[0]
         comic_book_info = comic_info[1]
-        print(
-            f'"{comic_title:<{max_title_len}}", "{comic_book_info.issue_name:<{max_issue_name}}",'
-            f" {comic_book_info.issue_number:>4},"
-            f" {MONTH_AS_SHORT_STR[comic_book_info.issue_month]:>3}"
-            f" {comic_book_info.issue_year:>4},"
-            f" {get_formatted_submitted_date(comic_book_info):<19}"
-        )

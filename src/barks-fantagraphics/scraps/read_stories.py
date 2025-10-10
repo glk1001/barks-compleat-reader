@@ -1,9 +1,8 @@
 import os.path
 import re
 from dataclasses import dataclass
-from typing import List, Tuple
 
-from src.consts import THIS_DIR, PUBLICATION_INFO_SUBDIR
+from src.consts import PUBLICATION_INFO_SUBDIR, THIS_DIR
 
 STORY_INDEX_FILE = os.path.join(THIS_DIR, PUBLICATION_INFO_SUBDIR, "wiki-story-index.txt")
 
@@ -25,7 +24,7 @@ LONG_MONTHS = {
 }
 
 
-def get_issue_month_year(issue_date: str) -> Tuple[str, int]:
+def get_issue_month_year(issue_date: str) -> tuple[str, int]:
     issue_month_year = issue_date.split(" ")
     assert 1 <= len(issue_month_year) <= 2
 
@@ -54,9 +53,9 @@ class StoryInfo:
     issue_year: int
 
 
-def get_all_stories() -> List[StoryInfo]:
-    all_lines: List[str] = []
-    with open(STORY_INDEX_FILE, "r") as f:
+def get_all_stories() -> list[StoryInfo]:
+    all_lines: list[str] = []
+    with open(STORY_INDEX_FILE) as f:
         while True:
             line = f.readline().strip()
             if not line:
@@ -92,13 +91,14 @@ def get_all_stories() -> List[StoryInfo]:
             all_lines.append(line[: index + 1])
 
     titles = set()
-    all_stories: List[StoryInfo] = []
+    all_stories: list[StoryInfo] = []
     for line in all_lines:
         fields = re.findall('"([^"]*)"', line)
 
         title = fields[0]
         if title in titles:
-            raise Exception(f'ERROR: Duplicate title in file "{STORY_INDEX_FILE}": "{title}".')
+            msg = f'ERROR: Duplicate title in file "{STORY_INDEX_FILE}": "{title}".'
+            raise Exception(msg)
         titles.add(title)
         issue_name = fields[1]
         issue_number = fields[2]
