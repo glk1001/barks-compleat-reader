@@ -38,7 +38,7 @@ _DEFAULT_FANTA_VOLUME_ARCHIVES_ROOT_DIR = Path(
 _DEFAULT_JPG_BARKS_PANELS_SOURCE = DEFAULT_BARKS_READER_FILES_DIR / "Barks Panels.zip"
 _DEFAULT_PNG_BARKS_PANELS_SOURCE = BARKS_DIR / "Barks Panels Pngs"
 
-_EDITED_SUBDIR = "edited"
+EDITED_SUBDIR = "edited"
 
 
 class PanelDirNames(Enum):
@@ -143,7 +143,7 @@ class ReaderFilePaths:
             self._panel_dirs[dir_enum] = panels_root / dir_name
 
         # Special handling for the nested 'edited' directory
-        self._inset_edited_files_dir = self._panel_dirs[PanelDirNames.INSETS] / _EDITED_SUBDIR
+        self._inset_edited_files_dir = self._panel_dirs[PanelDirNames.INSETS] / EDITED_SUBDIR
 
         self._check_panels_dirs()
 
@@ -304,7 +304,7 @@ class ReaderFilePaths:
     ) -> PanelPath | None:
         if use_only_edited_if_possible:
             edited_file = (
-                self.get_comic_cover_files_dir() / _EDITED_SUBDIR / (title + self._edited_files_ext)
+                self.get_comic_cover_files_dir() / EDITED_SUBDIR / (title + self._edited_files_ext)
             )
             if edited_file.is_file():
                 return edited_file
@@ -386,7 +386,7 @@ class ReaderFilePaths:
 
         image_files = []
 
-        edited_image_dir = image_dir / _EDITED_SUBDIR
+        edited_image_dir = image_dir / EDITED_SUBDIR
         if edited_image_dir.is_dir():
             image_files = self._get_all_files(edited_image_dir)
             if use_only_edited_if_possible:
@@ -412,7 +412,7 @@ class ReaderFilePaths:
             for file in parent_image_dir.iterdir():
                 title = get_title_str_from_filename(file)
                 if file.is_dir():
-                    if title != _EDITED_SUBDIR:
+                    if title != EDITED_SUBDIR:
                         all_titles.append(title)
                 elif not title.endswith(NO_OVERRIDES_SUFFIX):
                     all_titles.append(title)
@@ -430,7 +430,7 @@ class ReaderFilePaths:
 
     def get_edited_version_if_possible(self, image_file: PanelPath) -> tuple[PanelPath, bool]:
         dir_path = image_file.parent
-        edited_image_file = dir_path / _EDITED_SUBDIR / (image_file.stem + self._edited_files_ext)
+        edited_image_file = dir_path / EDITED_SUBDIR / (image_file.stem + self._edited_files_ext)
         if edited_image_file.is_file():
             return edited_image_file, True
 

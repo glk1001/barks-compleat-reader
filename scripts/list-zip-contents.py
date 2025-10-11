@@ -1,7 +1,6 @@
-#!/usr/bin/env python
-"""
-A utility script to list all files and directories within a zip archive.
-"""
+# ruff: noqa: T201
+
+"""A utility script to list all files and directories within a zip archive."""
 
 import argparse
 import sys
@@ -10,12 +9,7 @@ from pathlib import Path
 
 
 def list_zip_contents(zip_filepath: Path) -> None:
-    """
-    Opens a zip file and prints the name of each member in the archive.
-
-    Args:
-        zip_filepath: The path to the zip file.
-    """
+    """Open a zip file and print the name of each member in the archive."""
     if not zip_filepath.exists():
         print(f"Error: File not found at '{zip_filepath}'", file=sys.stderr)
         sys.exit(1)
@@ -51,7 +45,7 @@ def list_zip_contents(zip_filepath: Path) -> None:
 
 
 def main() -> None:
-    """Parses command-line arguments and initiates the zip listing."""
+    """Parse command-line arguments and initiate the zip listing."""
     parser = argparse.ArgumentParser(description="List the contents of a zip file.")
     parser.add_argument("zip_filepath", type=Path, help="The path to the zip file to inspect.")
     args = parser.parse_args()

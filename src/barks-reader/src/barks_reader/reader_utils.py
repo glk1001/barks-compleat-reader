@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import re
+import zipfile
 from pathlib import Path
 from random import randrange
 from typing import TYPE_CHECKING
@@ -13,8 +14,6 @@ from comic_utils.pil_image_utils import PNG_PIL_FORMAT
 from barks_reader.screen_metrics import get_approximate_taskbar_height
 
 if TYPE_CHECKING:
-    import zipfile
-
     from barks_fantagraphics.pages import CleanPage
 
     from barks_reader.reader_consts_and_types import PanelPath
@@ -138,3 +137,37 @@ def unique_extend(original_list: list[Titles], extras_list: list[Titles]) -> Non
     seen = set(original_list)
 
     original_list.extend([item for item in extras_list if item not in seen])
+
+
+def get_paths_from_directory(root_path: Path) -> set[str]:
+    """Recursively get all file paths relative to the root, without extensions.
+
+    This function ignores empty directories.
+    """
+    paths = set()
+    if not root_path.is_dir():
+        return paths
+
+    for path in root_path.rglob("*"):
+        if path.is_file():
+            # Normalize path separators and remove extension
+            relative_path = path.relative_to(root_path)
+            paths.add(str(relative_path.with_suffix("")).replace("\\", "/"))
+
+    return paths
+
+
+def get_paths_from_zip(zip_path: Path) -> set[str]:
+    """Get all file paths from a zip archive, without extensions."""
+    paths = set()
+    if not zip_path.is_file():
+        return paths
+
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        for name in zf.namelist():
+            # Ignore directory entries
+            if not name.endswith("/"):
+                path = Path(name)
+                paths.add(str(path.with_suffix("")))
+
+    return paths

@@ -2936,11 +2936,11 @@ def is_non_comic_title(title_str: str) -> bool:
     return BARKS_TITLE_DICT[title_str] in NON_COMIC_TITLES
 
 
-_TITLE_TO_FILENAME_SPECIAL_CASE_MAP: dict[str, str] = {
+TITLE_TO_FILENAME_SPECIAL_CASE_MAP: dict[str, str] = {
     FUN_WHATS_THAT: "Fun What's That",
     WANT_TO_BUY_AN_ISLAND: "Want to Buy an Island",
 }
-_FILENAME_TO_TITLE_SPECIAL_CASE_MAP: dict[str, str] = {
+FILENAME_TO_TITLE_SPECIAL_CASE_MAP: dict[str, str] = {
     "Fun What's That": FUN_WHATS_THAT,
     "Want to Buy an Island": WANT_TO_BUY_AN_ISLAND,
 }
@@ -2951,7 +2951,7 @@ def get_filename_from_title(title: Titles, ext: str) -> str:
 
 
 def get_filename_from_title_str(title_str: str, ext: str) -> str:
-    return _TITLE_TO_FILENAME_SPECIAL_CASE_MAP.get(title_str, title_str) + ext
+    return TITLE_TO_FILENAME_SPECIAL_CASE_MAP.get(title_str, title_str) + ext
 
 
 def get_title_str_from_filename(filename: str | Path) -> str:
@@ -2961,4 +2961,4 @@ def get_title_str_from_filename(filename: str | Path) -> str:
     # Can't use 'stem' on directories because a title may contain a '.'
     name = filename.name if filename.is_dir() else filename.stem
 
-    return _FILENAME_TO_TITLE_SPECIAL_CASE_MAP.get(name, name)
+    return FILENAME_TO_TITLE_SPECIAL_CASE_MAP.get(name, name)
