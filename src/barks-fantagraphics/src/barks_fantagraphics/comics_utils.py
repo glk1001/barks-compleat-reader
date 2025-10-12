@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import zipfile
 from _pydatetime import UTC
 from datetime import date, datetime
 from pathlib import Path
@@ -79,7 +80,7 @@ def get_work_dir(work_dir_root: str) -> str:
     return str(work_dir)
 
 
-def get_abbrev_path(file: str | Path) -> str:
+def get_abbrev_path(file: str | Path | zipfile.Path) -> str:
     if isinstance(file, str):
         file = Path(file)
     abbrev = get_relpath(file)
@@ -91,12 +92,17 @@ def get_abbrev_path(file: str | Path) -> str:
     return abbrev  # noqa: RET504
 
 
-def get_relpath(file: Path) -> str:
-    if str(file).startswith(str(BARKS_ROOT_DIR)):
+def get_relpath(file: Path | zipfile.Path) -> str:
+    """Get a relative path string from either a filesystem Path or a zipfile.Path."""
+    if isinstance(file, zipfile.Path):
+        # For zipfile.Path, the .at attribute gives the path inside the zip.
+        # noinspection PyUnresolvedReferences
+        return file.at.replace("\\", "/")
+
+    if file.is_relative_to(BARKS_ROOT_DIR):
         return str(file.relative_to(BARKS_ROOT_DIR))
 
-    file_parts = file.parts[-2:]
-    return str(Path().joinpath(*file_parts))
+    return str(Path(*file.parts[-2:]))
 
 
 def get_abspath_from_relpath(relpath: Path, root_dir: Path = BARKS_ROOT_DIR) -> Path:
