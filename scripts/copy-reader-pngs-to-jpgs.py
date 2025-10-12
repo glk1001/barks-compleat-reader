@@ -19,7 +19,7 @@ APP_LOGGING_NAME = "zip"
 
 
 def get_backup_filename(file: Path) -> Path:
-    return Path(str(file) + "_" + get_timestamp_str(str(file)))
+    return Path(str(file) + "_" + get_timestamp_str(file))
 
 
 def convert_and_zip_file(file_path: Path, archive: zipfile.ZipFile, dest_subdir: Path) -> None:
@@ -53,7 +53,7 @@ def convert_and_zip_file(file_path: Path, archive: zipfile.ZipFile, dest_subdir:
 
 
 def zip_file_as_jpg(srce_file: Path, archive: zipfile.ZipFile, dest_file: Path) -> None:
-    image = open_pil_image_for_reading(str(srce_file)).convert("RGB")
+    image = open_pil_image_for_reading(srce_file).convert("RGB")
 
     buffer = get_pil_image_as_jpg_bytes(image)
     buffer.seek(0)
@@ -78,6 +78,7 @@ def traverse_and_process_dirs(
     if not root_directory.is_dir():
         raise FileNotFoundError(root_directory)
 
+    logger.info(f'Copying all barks panel pngs to zip: "{dest_zip}"...')
     logger.info(f'Starting traversal of directory: "{root_directory}"...')
 
     with zipfile.ZipFile(dest_zip, "w") as dest_zip_archive:
@@ -92,7 +93,7 @@ def traverse_and_process_dirs(
                 file_processor_func(full_path, dest_zip_archive, dest_subdir)
                 file_count += 1
 
-    logger.info(f"Traversal complete. Processed {file_count} files.")
+    logger.success(f'Traversal complete. Added {file_count} files to "{dest_zip}".')
 
 
 if __name__ == "__main__":
@@ -120,10 +121,16 @@ if __name__ == "__main__":
         png_dir = reader_settings.file_paths.get_default_png_barks_panels_source()
         zip_file = reader_settings.file_paths.get_default_jpg_barks_panels_source()
 
-        if zip_file.is_file():
-            zip_file.rename(get_backup_filename(zip_file))
+        if not zip_file.is_file():
+            zip_backup = ""
+        else:
+            zip_backup = get_backup_filename(zip_file)
+            zip_file.rename(zip_backup)
 
         traverse_and_process_dirs(png_dir, zip_file, file_processor_func=convert_and_zip_file)
+
+        if zip_backup:
+            logger.success(f'NOTE: Backed up old zip to "{zip_backup}".')
 
     except Exception:  # noqa: BLE001
         logger.exception("Program error: ")

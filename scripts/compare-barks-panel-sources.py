@@ -46,7 +46,7 @@ def main() -> None:
     print("=" * 50)
 
     if not only_in_png and not only_in_jpg:
-        logger.success("\nSources are in sync! No discrepancies found.")
+        print("\nSources are in sync! No discrepancies found.")
     else:
         if not only_in_png:
             print("\n>>> No items found only in the PNG Directory Source.")
