@@ -1,0 +1,36 @@
+entrypoint = "main.py"
+
+[options]
+debug = false
+extract_to_temp = true
+delete_after_run = true
+
+[patterns]
+include = [
+    "**/*.py",
+    "**/*.kv",
+    "**/*.ini",
+    "**/*.ttf",
+    "**/*.db",
+]
+exclude = [
+    "data/**/*",
+    "**/scraps/**/*",
+    "**/scripts/**/*",
+    "**/tests/**/*",
+    ".venv/**/*",
+    "**/__pycache__/**",
+    ".git/**/*",
+    "**/*.pyc",
+    "**/*.pyo",
+    "**/*.pyd",
+]
+
+[env]
+UV_LINK_MODE="copy"
+PYTHONPATH="src/barks-reader/src:src/barks-build-comic-images/src:src/barks-fantagraphics/src:src/comic-utils/src"
+
+[hooks]
+pre_run = ""
+post_run = ""
+
