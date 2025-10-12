@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 from kivy.properties import (
     BooleanProperty,
     ColorProperty,
-    NumericProperty,
     ObjectProperty,
     StringProperty,
 )
@@ -35,7 +34,7 @@ class FunImageViewScreen(BoxLayout):
 
     goto_title_button_active = BooleanProperty(defaultvalue=True)
 
-    fun_view_opacity = NumericProperty(0.0)
+    is_visible = BooleanProperty(defaultvalue=False)
     fun_view_image_texture = ObjectProperty(allownone=True)
     fun_view_image_fit_mode = StringProperty(FIT_MODE_CONTAIN)
     fun_view_image_color = ColorProperty()

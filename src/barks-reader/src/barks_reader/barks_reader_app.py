@@ -23,6 +23,7 @@ from barks_reader.comic_book_reader import get_barks_comic_reader_screen
 from barks_reader.filtered_title_lists import FilteredTitleLists
 from barks_reader.font_manager import FontManager
 from barks_reader.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, FunImageViewScreen
+from barks_reader.index_screen import IndexScreen
 from barks_reader.intro_compleat_barks_reader import get_intro_compleat_barks_reader_screen
 from barks_reader.main_screen import MAIN_SCREEN_KV_FILE, MainScreen
 from barks_reader.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING
@@ -257,11 +258,13 @@ class BarksReaderApp(App):
 
     def _build_screens(self) -> ScreenManager:
         logger.debug("Instantiating main screen...")
+        # TODO: Can probably move some of these into main_screen
         filtered_title_lists = FilteredTitleLists()
         reader_tree_events = ReaderTreeBuilderEventDispatcher()
         tree_view_screen = TreeViewScreen(self.reader_settings)
         bottom_title_view_screen = BottomTitleViewScreen(self.reader_settings)
         fun_image_view_screen = FunImageViewScreen(self.reader_settings)
+        index_screen = IndexScreen()
         self._main_screen = MainScreen(
             self._comics_database,
             self.reader_settings,
@@ -271,6 +274,7 @@ class BarksReaderApp(App):
             tree_view_screen,
             bottom_title_view_screen,
             fun_image_view_screen,
+            index_screen,
             self.font_manager,
             name=MAIN_READER_SCREEN,
         )

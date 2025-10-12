@@ -119,6 +119,19 @@ class ViewStates(IntEnum):
     ON_TAG_SEARCH_BOX_NODE = auto()
 
 
+BOTTOM_VIEW_INDEX_OPACITY_1_STATES = {
+    ViewStates.ON_INDEX_NODE,
+}
+BOTTOM_VIEW_TITLE_OPACITY_1_STATES = {
+    ViewStates.ON_TITLE_NODE,
+    ViewStates.ON_TITLE_SEARCH_BOX_NODE,
+    ViewStates.ON_TAG_SEARCH_BOX_NODE,
+}
+BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES = (
+    set(ViewStates) - BOTTOM_VIEW_TITLE_OPACITY_1_STATES
+) - BOTTOM_VIEW_INDEX_OPACITY_1_STATES
+
+
 # TODO: Consolidate views and currents into classes.
 class BackgroundViews:
     TOP_VIEW_EVENT_TIMEOUT_SECS = 1000.0
@@ -216,6 +229,9 @@ class BackgroundViews:
     def get_bottom_view_title_image_info(self) -> ImageInfo:
         return self._bottom_view_title_image_info
 
+    def get_index_view_opacity(self) -> float:
+        return 1.0 if (self._view_state in BOTTOM_VIEW_INDEX_OPACITY_1_STATES) else 0.0
+
     def get_current_category(self) -> str:
         return self._current_category
 
@@ -273,16 +289,12 @@ class BackgroundViews:
             self._bottom_view_title_opacity = 0.0
             return
 
-        if self._view_state in [
-            ViewStates.ON_TITLE_SEARCH_BOX_NODE,
-            ViewStates.ON_TITLE_NODE,
-            ViewStates.ON_TAG_SEARCH_BOX_NODE,
-        ]:
-            self._bottom_view_fun_image_opacity = 0.0
-            self._bottom_view_title_opacity = 1.0
-        else:
-            self._bottom_view_fun_image_opacity = 1.0
-            self._bottom_view_title_opacity = 0.0
+        self._bottom_view_fun_image_opacity = (
+            1.0 if self._view_state in BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES else 0.0
+        )
+        self._bottom_view_title_opacity = (
+            1.0 if self._view_state in BOTTOM_VIEW_TITLE_OPACITY_1_STATES else 0.0
+        )
 
         self._set_top_view_image()
         self._set_bottom_view_fun_image()
@@ -516,6 +528,7 @@ class BackgroundViews:
             ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET,
             ViewStates.ON_TAG_SEARCH_BOX_NODE,
             ViewStates.ON_TITLE_NODE,
+            ViewStates.ON_INDEX_NODE,
         ]:
             return
 

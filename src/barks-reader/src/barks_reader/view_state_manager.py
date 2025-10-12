@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from barks_reader.background_views import BackgroundViews, ViewStates
     from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
     from barks_reader.fun_image_view_screen import FunImageViewScreen
+    from barks_reader.index_screen import IndexScreen
     from barks_reader.reader_settings import ReaderSettings
     from barks_reader.tree_view_screen import TreeViewScreen
 
@@ -45,6 +46,7 @@ class ViewStateManager:
         tree_view_screen: TreeViewScreen,
         bottom_title_view_screen: BottomTitleViewScreen,
         fun_image_view_screen: FunImageViewScreen,
+        index_screen: IndexScreen,
         on_views_updated_func: Callable[[], None],
     ) -> None:
         self._reader_settings = reader_settings
@@ -52,6 +54,7 @@ class ViewStateManager:
         self._tree_view_screen = tree_view_screen
         self._bottom_title_view_screen = bottom_title_view_screen
         self._fun_image_view_screen = fun_image_view_screen
+        self._index_screen = index_screen
         self._on_views_updated_func = on_views_updated_func
 
         # Take ownership of the view-specific state
@@ -60,6 +63,11 @@ class ViewStateManager:
         self._bottom_view_fun_image_info: ImageInfo = ImageInfo()
         self._bottom_view_fun_image_themes: set[ImageThemes] | None = None
         self._bottom_view_fun_custom_image_themes: set[ImageThemes] = set(ImageThemes)
+
+        # Set initial visibilities
+        self._bottom_title_view_screen.view_title_is_visible = False
+        self._fun_image_view_screen.is_visible = False
+        self._index_screen.is_visible = False
 
     def get_top_view_image_info(self) -> ImageInfo:
         return self._top_view_image_info
@@ -148,10 +156,11 @@ class ViewStateManager:
         self._set_top_view_image()
         self._set_fun_view()
         self._set_bottom_view()
+        self._set_index_view()
 
         self._fun_image_view_screen.goto_title_button_active = (
             self._fun_image_view_screen.fun_view_from_title
-            and (self._bottom_title_view_screen.view_title_opacity < CLOSE_TO_ZERO)
+            and (not self._bottom_title_view_screen.view_title_is_visible)
         )
 
         # Reset the title image file now that we've used it. This makes sure we can get
@@ -204,11 +213,12 @@ class ViewStateManager:
 
     def _set_fun_view(self) -> None:
         """Set the image and properties for the 'fun' bottom view."""
-        logger.debug("Setting new fun view.")
+        opacity = self._background_views.get_bottom_view_fun_image_opacity()
 
-        self._fun_image_view_screen.fun_view_opacity = (
-            self._background_views.get_bottom_view_fun_image_opacity()
-        )
+        logger.debug(f"Setting new fun view opacity to {opacity}.")
+
+        self._fun_image_view_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
+
         self._bottom_view_fun_image_info = self._background_views.get_bottom_view_fun_image_info()
         self._fun_image_view_screen.fun_view_image_texture = (
             None
@@ -227,11 +237,12 @@ class ViewStateManager:
 
     def _set_bottom_view(self) -> None:
         """Set the image and properties for the title information bottom view."""
-        logger.debug("Setting new bottom view.")
+        opacity = self._background_views.get_bottom_view_title_opacity()
 
-        self._bottom_title_view_screen.view_title_opacity = (
-            self._background_views.get_bottom_view_title_opacity()
-        )
+        logger.debug(f"Setting new bottom view opacity to {opacity}.")
+
+        self._bottom_title_view_screen.view_title_is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
+
         self._bottom_view_title_image_info = (
             self._background_views.get_bottom_view_title_image_info()
         )
@@ -246,3 +257,9 @@ class ViewStateManager:
         self._bottom_title_view_screen.view_title_image_color = (
             self._background_views.get_bottom_view_title_image_color()
         )
+
+    def _set_index_view(self) -> None:
+        opacity = self._background_views.get_index_view_opacity()
+        self._index_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
+
+        logger.debug(f"Setting new index view. Visibility: {self._index_screen.is_visible}.")

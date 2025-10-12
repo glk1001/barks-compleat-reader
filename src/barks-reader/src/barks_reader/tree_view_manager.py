@@ -217,6 +217,10 @@ class TreeViewManager:
         logger.info(f"Article node pressed: Reading '{article_title.name}'.")
         self._read_article_func(article_title, view_state)
 
+    def on_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
+        logger.info("Index node pressed.")
+        self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_NODE)
+
     @staticmethod
     def _get_view_state_for_node_text(node_text: str) -> ViewStates | None:
         clean_text = get_clean_text_without_extra(node_text)

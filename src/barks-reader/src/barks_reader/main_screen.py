@@ -20,6 +20,7 @@ from barks_fantagraphics.fanta_comics_info import (
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.properties import BooleanProperty, StringProperty
+from kivy.uix.screenmanager import Screen
 from loguru import logger
 
 from barks_reader.app_initializer import AppInitializer
@@ -67,6 +68,7 @@ if TYPE_CHECKING:
     from barks_reader.filtered_title_lists import FilteredTitleLists
     from barks_reader.font_manager import FontManager
     from barks_reader.fun_image_view_screen import FunImageViewScreen
+    from barks_reader.index_screen import IndexScreen
     from barks_reader.reader_screens import ScreenSwitchers
     from barks_reader.reader_settings import ReaderSettings
     from barks_reader.tree_view_screen import TreeViewScreen
@@ -92,23 +94,34 @@ class MainScreen(ReaderScreen):
         tree_view_screen: TreeViewScreen,
         bottom_title_view_screen: BottomTitleViewScreen,
         fun_image_view_screen: FunImageViewScreen,
+        index_screen: IndexScreen,
         font_manager: FontManager,
         **kwargs: str,
     ) -> None:
         super().__init__(**kwargs)
 
-        self._tree_view_screen = tree_view_screen
-        self._bottom_title_view_screen = bottom_title_view_screen
-        self._fun_image_view_screen = fun_image_view_screen
-
-        self._tree_view_screen.on_goto_title = self._on_goto_top_view_title
-
-        self.ids.main_layout.add_widget(self._tree_view_screen)
-        self._bottom_title_view_screen.add_widget(self._fun_image_view_screen)
-        self.ids.main_layout.add_widget(self._bottom_title_view_screen)
+        self._pre_fullscreen_size = (0, 0)
+        self._pre_fullscreen_pos = (0, 0)
+        self._is_restoring_window = False
 
         self._comics_database = comics_database
         self._reader_settings = reader_settings
+
+        self._tree_view_screen = tree_view_screen
+        self._tree_view_screen.on_goto_title = self._on_goto_top_view_title
+
+        self._bottom_title_view_screen = bottom_title_view_screen
+        self._fun_image_view_screen = fun_image_view_screen
+        self._index_screen = index_screen
+        self._index_screen.on_goto_title = self._goto_chrono_title_with_page_num
+
+        self.ids.main_layout.add_widget(self._tree_view_screen)
+        self._bottom_base_view_screen = Screen(size_hint=(1, 1))
+        self._bottom_base_view_screen.add_widget(self._bottom_title_view_screen)
+        self._bottom_base_view_screen.add_widget(self._fun_image_view_screen)
+        self._bottom_base_view_screen.add_widget(self._index_screen)
+        self.ids.main_layout.add_widget(self._bottom_base_view_screen)
+
         self._screen_switchers = screen_switchers
         self._font_manager = font_manager
         self._title_lists: dict[str, list[FantaComicBookInfo]] = (
@@ -124,11 +137,9 @@ class MainScreen(ReaderScreen):
         self._action_bar_fullscreen_exit_icon = str(
             self._reader_settings.sys_file_paths.get_barks_reader_fullscreen_exit_icon_file()
         )
-        self._pre_fullscreen_size = (0, 0)
-        self._pre_fullscreen_pos = (0, 0)
-        self._is_restoring_window = False
 
         self._json_settings_manager = SettingsManager(self._reader_settings.get_user_data_path())
+        self._special_fanta_overrides = SpecialFantaOverrides(self._reader_settings)
 
         self.fanta_info: FantaComicBookInfo | None = None
         self._year_range_nodes: dict | None = None
@@ -136,7 +147,6 @@ class MainScreen(ReaderScreen):
         self._loading_data_popup = LoadingDataPopup()
         self._loading_data_popup.on_open = self._on_loading_data_popup_open
         self._loading_data_popup_image_event: ClockEvent | None = None
-        Clock.schedule_once(lambda _dt: self._loading_data_popup.open(), 0)
 
         self._reader_tree_events = reader_tree_events
 
@@ -163,9 +173,9 @@ class MainScreen(ReaderScreen):
             self._tree_view_screen,
             self._bottom_title_view_screen,
             self._fun_image_view_screen,
+            self._index_screen,
             self._on_views_updated,
         )
-        self._view_state_manager.update_background_views(ViewStates.PRE_INIT)
 
         self._tree_view_manager = TreeViewManager(
             background_views,
@@ -180,7 +190,25 @@ class MainScreen(ReaderScreen):
 
         self.app_icon_filepath = str(self._random_title_images.get_random_reader_app_icon_file())
 
-        self._special_fanta_overrides = SpecialFantaOverrides(self._reader_settings)
+        self._app_initializer = AppInitializer(
+            self._reader_settings,
+            user_error_handler,
+            self._comic_reader_manager,
+            self._json_settings_manager,
+            self._view_state_manager,
+            self._tree_view_manager,
+            self._tree_view_screen,
+            self._set_next_title,
+        )
+
+        self._active = True
+
+        self._set_initial_state()
+
+    def _set_initial_state(self) -> None:
+        Clock.schedule_once(lambda _dt: self._loading_data_popup.open(), 0)
+
+        self._view_state_manager.update_background_views(ViewStates.PRE_INIT)
 
         self._bottom_title_view_screen.set_special_fanta_overrides(self._special_fanta_overrides)
         self._bottom_title_view_screen.on_title_portal_image_pressed_func = (
@@ -195,23 +223,12 @@ class MainScreen(ReaderScreen):
         )
         self._fun_image_view_screen.on_goto_title_func = self._on_goto_fun_view_title
 
-        self._app_initializer = AppInitializer(
-            self._reader_settings,
-            user_error_handler,
-            self._comic_reader_manager,
-            self._json_settings_manager,
-            self._view_state_manager,
-            self._tree_view_manager,
-            self._tree_view_screen,
-            self._set_next_title,
-        )
         self._reader_tree_events.bind(
             on_finished_building_event=self._app_initializer.on_tree_build_finished
         )
 
         self.ids.main_layout.bind(size=self._on_main_layout_size_changed)
 
-        self._active = True
         self._update_action_bar_visibility()
 
     def _is_active(self, active: bool) -> None:
@@ -453,10 +470,18 @@ class MainScreen(ReaderScreen):
         year_nodes = self._year_range_nodes[self._get_year_range_from_info(title_fanta_info)]
         self._tree_view_screen.open_all_parent_nodes(year_nodes)
 
+        assert image_info.from_title is not None
         title_node = find_tree_view_title_node(year_nodes, image_info.from_title)
         self._tree_view_manager.goto_node(title_node, scroll_to=True)
 
         self._title_row_selected(title_fanta_info, image_info.filename)
+
+    def _goto_chrono_title_with_page_num(self, image_info: ImageInfo, page_to_goto: str) -> None:
+        if page_to_goto:
+            logger.debug(f"Setting page to goto: {page_to_goto}.")
+            self._bottom_title_view_screen.set_goto_page_state(page_to_goto, active=True)
+
+        self._goto_chrono_title(image_info)
 
     def goto_reader_icon_title(self) -> None:
         logger.debug(f'App reader icon "{self.app_icon_filepath}" pressed.')

@@ -506,7 +506,11 @@ class ReaderTreeBuilder:
         )
 
     def _add_index_node(self, tree: ReaderTreeView) -> None:
-        self._create_and_add_simple_node(tree, INDEX_NODE_TEXT)
+        self._create_and_add_simple_node(
+            tree,
+            INDEX_NODE_TEXT,
+            on_press_handler=self._tree_view_manager.on_index_node_pressed,
+        )
 
     def _add_chrono_year_range_node(
         self, tree: ReaderTreeView, year_range: tuple[int, int], parent_node: ButtonTreeViewNode
