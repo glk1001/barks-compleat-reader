@@ -27,10 +27,10 @@ exclude = [
 ]
 
 [env]
-UV_LINK_MODE="copy"
 PYTHONPATH="src/barks-reader/src:src/barks-build-comic-images/src:src/barks-fantagraphics/src:src/comic-utils/src"
+UV_VENV_CLEAR="1"
+UV_LINK_MODE="copy"
 
 [hooks]
 pre_run = ""
 post_run = ""
-
