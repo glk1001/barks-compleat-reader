@@ -1125,6 +1125,7 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.CENSORED_STORIES_BUT_FIXED, Titles.LOVELORN_FIREMAN_THE): ["8"],
     (Tags.CENSORED_STORIES_BUT_FIXED, Titles.FROZEN_GOLD): ["5", "9", "16", "17", "24"],
     (Tags.CENSORED_STORIES_BUT_FIXED, Titles.FIREBUG_THE): ["13"],
+    (Tags.CENSORED_STORIES_BUT_FIXED, Titles.TERROR_OF_THE_RIVER_THE): ["1"],
     (Tags.CENSORED_STORIES_BUT_FIXED, Titles.LOST_IN_THE_ANDES): [
         "20",
         "21",

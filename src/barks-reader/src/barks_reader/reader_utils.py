@@ -171,3 +171,35 @@ def get_paths_from_zip(zip_path: Path) -> set[str]:
                 paths.add(str(path.with_suffix("")))
 
     return paths
+
+
+def get_concat_page_nums_str(page_nums: list[str]) -> str:
+    seq = []
+    final = []
+    last = 0
+
+    for index, val_str in enumerate(page_nums):
+        try:
+            val = int(val_str)
+        except ValueError:
+            continue
+
+        if last + 1 == val or index == 0:
+            seq.append(val)
+            last = val
+        else:
+            if len(seq) > 1:
+                final.append(str(seq[0]) + "-" + str(seq[len(seq) - 1]))
+            else:
+                final.append(str(seq[0]))
+            seq = []
+            seq.append(val)
+            last = val
+
+        if index == len(page_nums) - 1:
+            if len(seq) > 1:
+                final.append(str(seq[0]) + "-" + str(seq[len(seq) - 1]))
+            else:
+                final.append(str(seq[0]))
+
+    return ", ".join(map(str, final))

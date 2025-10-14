@@ -7,8 +7,15 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_tags import BARKS_TAG_GROUPS, BARKS_TAGGED_TITLES, TagGroups, Tags
+from barks_fantagraphics.barks_tags import (
+    BARKS_TAG_GROUPS,
+    BARKS_TAGGED_PAGES,
+    BARKS_TAGGED_TITLES,
+    TagGroups,
+    Tags,
+)
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from kivy.animation import Animation
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.lang import Builder
@@ -20,6 +27,7 @@ from loguru import logger
 
 from barks_reader.random_title_images import ImageInfo
 from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO
+from barks_reader.reader_utils import get_concat_page_nums_str
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -46,17 +54,17 @@ class Theme:
     """A central place for theme constants."""
 
     ROW_HEIGHT = dp(25)
-    INDEX_ITEM_LEFT_PAD = dp(40)
-    TAG_SUB_ITEM_LEFT_PAD = dp(40)
-    TITLE_SUB_ITEM_LEFT_PAD = dp(60)
+    INDEX_ITEM_LEFT_PAD = dp(50)
+    TAG_SUB_ITEM_LEFT_PAD = dp(50)
+    TITLE_SUB_ITEM_LEFT_PAD = dp(80)
 
     MENU_TEXT = (0, 0, 0, 1)
     MENU_BG = (0, 0, 0, 0)
-    MENU_BG_SELECTED = (0.8, 0.8, 0.8, 1)
+    MENU_BG_SELECTED = (0.0, 0.8, 0.0, 0.5)
 
     ITEM_TEXT = (0, 0, 0, 1)
     ITEM_BG = (0, 0, 0, 0)
-    ITEM_BG_SELECTED = (0.8, 0.8, 0.8, 1)
+    ITEM_BG_SELECTED = (0.8, 0.8, 0.0, 0.5)
 
     TITLE_TEXT = (0, 0, 0, 1)
     TITLE_BG = (0.95, 0.95, 0.95, 1)
@@ -73,7 +81,8 @@ class IndexItemType(Enum):
 class IndexItem:
     id: Titles | Tags | TagGroups
     item_type: IndexItemType
-    data: str
+    display_text: str
+    page_to_goto: str = ""
 
 
 class IndexScreen(BoxLayout):
@@ -114,34 +123,32 @@ class IndexScreen(BoxLayout):
 
         # Add all comic titles
         for title in Titles:
-            title_str = self.get_indexable_title(title)
+            title_str = self._get_indexable_title(title)
             first_letter = title_str[0].upper()
             if "A" <= first_letter <= "Z":
                 self._item_index[first_letter].append(
-                    IndexItem(id=title, item_type=IndexItemType.TITLE, data=title_str)
+                    IndexItem(title, IndexItemType.TITLE, title_str)
                 )
 
         # Add all tags
         for tag in Tags:
-            tag_name = tag.name.replace("_", " ").title()
+            tag_name = self._get_sortable_string(tag.value)
             first_letter = tag_name[0].upper()
             if "A" <= first_letter <= "Z":
-                self._item_index[first_letter].append(
-                    IndexItem(id=tag, item_type=IndexItemType.TAG, data=tag_name)
-                )
+                self._item_index[first_letter].append(IndexItem(tag, IndexItemType.TAG, tag_name))
 
         # Add all tag groups
         for tag_group in TagGroups:
-            tag_group_name = tag_group.name.replace("_", " ").title()
+            tag_group_name = tag_group.value
             first_letter = tag_group_name[0].upper()
             if "A" <= first_letter <= "Z":
                 self._item_index[first_letter].append(
-                    IndexItem(id=tag_group, item_type=IndexItemType.TAG_GROUP, data=tag_group_name)
+                    IndexItem(tag_group, IndexItemType.TAG_GROUP, tag_group_name)
                 )
 
         # Sort items within each letter group
         for letter in self._item_index:
-            self._item_index[letter].sort(key=lambda item: item.data)
+            self._item_index[letter].sort(key=lambda item: item.display_text)
 
         logger.success("Index build complete.")
 
@@ -192,24 +199,18 @@ class IndexScreen(BoxLayout):
             item_button = self._create_index_button(item)
             right_index_column.add_widget(item_button)
 
-    def _get_no_items_button(self, letter: str) -> IndexItemButton:
+    @staticmethod
+    def _get_no_items_button(letter: str) -> IndexItemButton:
         return IndexItemButton(
             text=f"*** No index items for '{letter}' ***",
             color=(1, 0, 0, 1),
-            padding=[self.index_theme.INDEX_ITEM_LEFT_PAD, 0],
-            size_hint_y=None,
-            height=self.index_theme.ROW_HEIGHT,
-            disabled=False,
         )
 
     def _create_index_button(self, item: IndexItem) -> IndexItemButton:
         """Create a configured IndexItemButton."""
         button = IndexItemButton(
-            text=item.data,
+            text=item.display_text,
             bold=item.item_type != IndexItemType.TITLE,
-            padding=[self.index_theme.INDEX_ITEM_LEFT_PAD, 0],
-            size_hint_y=None,
-            height=self.index_theme.ROW_HEIGHT,
         )
         button.bind(
             on_release=lambda btn, bound_item=item: self.on_index_item_press(btn, bound_item)
@@ -229,35 +230,33 @@ class IndexScreen(BoxLayout):
         if self._open_tag_item.item_type == IndexItemType.TAG:
             assert isinstance(item_id, Tags)
             sub_items_to_display = [
-                (title, self.get_indexable_title(title)) for title in BARKS_TAGGED_TITLES[item_id]
+                (title, *self._get_indexable_title_with_page_nums(title, item_id))
+                for title in BARKS_TAGGED_TITLES[item_id]
             ]
-            sub_items_to_display.sort(key=lambda t: t[1])
+            sub_items_to_display.sort(key=lambda t: t[2])
             sub_item_padding = self.index_theme.TITLE_SUB_ITEM_LEFT_PAD
             sub_item_type = IndexItemType.TITLE
         else:  # It's a TagGroup
             assert isinstance(item_id, TagGroups)
-            sub_items_to_display = [
-                (tag, tag.name.replace("_", " ").title()) for tag in BARKS_TAG_GROUPS[item_id]
-            ]
+            sub_items_to_display = [(tag, "", tag.value) for tag in BARKS_TAG_GROUPS[item_id]]
             sub_item_padding = self.index_theme.TAG_SUB_ITEM_LEFT_PAD
             sub_item_type = IndexItemType.TAG
 
         # Now create the layout.
         sub_items_layout = BoxLayout(orientation="vertical", size_hint_y=None)
         sub_items_layout.bind(minimum_height=sub_items_layout.setter("height"))
-
-        for sub_item_id, sub_item_text in sub_items_to_display:
+        for sub_item_id, sub_item_page_to_goto, sub_item_text in sub_items_to_display:
+            logger.info(f'For "{sub_item_text}", page to goto = {sub_item_page_to_goto}.')
             title_button = TitleItemButton(
                 text=sub_item_text,
-                size_hint_y=None,
-                height=self.index_theme.ROW_HEIGHT,
-                halign="left",
-                padding=[sub_item_padding, 0],
+                padding=[sub_item_padding, 0, 0, 0],
             )
-            title_button.bind(
-                size=lambda instance, _size: setattr(instance, "text_size", (instance.width, None))
+            sub_item = IndexItem(
+                id=sub_item_id,
+                item_type=sub_item_type,
+                display_text=sub_item_text,
+                page_to_goto=sub_item_page_to_goto,
             )
-            sub_item = IndexItem(id=sub_item_id, item_type=sub_item_type, data=sub_item_text)
             title_button.bind(
                 on_release=lambda btn, bound_item=sub_item: self.on_index_item_press(
                     btn, bound_item
@@ -282,7 +281,7 @@ class IndexScreen(BoxLayout):
 
         # If a title is clicked, it's a terminal action. Handle it and do not change the UI.
         if item.item_type == IndexItemType.TITLE:
-            self._handle_title(item)
+            self._handle_title(button, item)
             return
 
         # --- State Machine for Cleanup and Expansion ---
@@ -375,15 +374,25 @@ class IndexScreen(BoxLayout):
         elif item.item_type == IndexItemType.TAG_GROUP:
             self._handle_tag_group(button, item)
 
-    def _handle_title(self, item: IndexItem) -> None:
+    def _handle_title(self, button: Button, item: IndexItem) -> None:
         logger.info(f'Handling title: "{item.id.name}".')
 
-        page_to_goto = ""
+        time_delay_to_title = 0.1  # seconds
+        anim = Animation(
+            background_color=self.index_theme.ITEM_BG_SELECTED, duration=time_delay_to_title
+        )
+        anim.start(button)
+
         assert type(item.id) is Titles
         image_info = ImageInfo(from_title=item.id, filename=None)
 
-        assert self.on_goto_title is not None
-        self.on_goto_title(image_info, page_to_goto)
+        def goto_title() -> None:
+            anim.cancel(button)
+            button.background_color = self.index_theme.ITEM_BG
+            assert self.on_goto_title is not None
+            self.on_goto_title(image_info, item.page_to_goto)
+
+        Clock.schedule_once(lambda _dt: goto_title(), time_delay_to_title)
 
     def _handle_tag(self, button: Button, item: IndexItem) -> None:
         assert type(item.id) is Tags
@@ -413,15 +422,29 @@ class IndexScreen(BoxLayout):
         self._open_tag_item = item
         Clock.schedule_once(self._add_sub_items, 0)
 
+    def _get_indexable_title_with_page_nums(self, title: Titles, tag: Tags) -> tuple[str, str]:
+        """Return the first page to goto, and the sortable title with page numbers."""
+        if (tag, title) not in BARKS_TAGGED_PAGES:
+            return "", self._get_indexable_title(title)
+
+        page_nums = BARKS_TAGGED_PAGES[(tag, title)]
+
+        title_str = self._get_indexable_title(title)
+        page_nums_str = get_concat_page_nums_str(page_nums)
+
+        return page_nums[0], title_str + ", " + page_nums_str
+
+    def _get_indexable_title(self, title: Titles) -> str:
+        return self._get_sortable_string(BARKS_TITLES[title])
+
     @staticmethod
-    def get_indexable_title(title: Titles) -> str:
-        title_str = BARKS_TITLES[title]
-        title_str_upper = title_str.upper()
-        if title_str_upper.startswith("THE "):
-            return title_str[4:] + ", The"
-        if title_str_upper.startswith("A "):
-            return title_str[2:] + ", A"
-        return title_str
+    def _get_sortable_string(text: str) -> str:
+        text_upper = text.upper()
+        if text_upper.startswith("THE "):
+            return text[4:] + ", The"
+        if text_upper.startswith("A "):
+            return text[2:] + ", A"
+        return text
 
 
 # Load the associated .kv file when the module is imported.

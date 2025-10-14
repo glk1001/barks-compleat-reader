@@ -8,6 +8,7 @@ from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES, TagGroups, Tags
 from barks_fantagraphics.barks_titles import (
     BARKS_TITLE_DICT,
     BARKS_TITLES,
+    NON_COMIC_TITLES,
     ComicBookInfo,
     Titles,
 )
@@ -113,7 +114,7 @@ class MainScreen(ReaderScreen):
         self._bottom_title_view_screen = bottom_title_view_screen
         self._fun_image_view_screen = fun_image_view_screen
         self._index_screen = index_screen
-        self._index_screen.on_goto_title = self._goto_chrono_title_with_page_num
+        self._index_screen.on_goto_title = self._goto_title_with_page_num
 
         self.ids.main_layout.add_widget(self._tree_view_screen)
         self._bottom_base_view_screen = Screen(size_hint=(1, 1))
@@ -464,24 +465,29 @@ class MainScreen(ReaderScreen):
         self._goto_chrono_title(self._view_state_manager.get_bottom_view_fun_image_info())
 
     def _goto_chrono_title(self, image_info: ImageInfo) -> None:
-        logger.debug(f'Goto title: "{image_info.from_title}", "{image_info.filename}".')
+        assert image_info.from_title is not None
+
+        logger.debug(f'Goto title: "{image_info.from_title.name}", "{image_info.filename}".')
         title_fanta_info = self._get_fanta_info(image_info.from_title)
 
         year_nodes = self._year_range_nodes[self._get_year_range_from_info(title_fanta_info)]
         self._tree_view_screen.open_all_parent_nodes(year_nodes)
 
-        assert image_info.from_title is not None
         title_node = find_tree_view_title_node(year_nodes, image_info.from_title)
         self._tree_view_manager.goto_node(title_node, scroll_to=True)
 
         self._title_row_selected(title_fanta_info, image_info.filename)
 
-    def _goto_chrono_title_with_page_num(self, image_info: ImageInfo, page_to_goto: str) -> None:
+    def _goto_title_with_page_num(self, image_info: ImageInfo, page_to_goto: str) -> None:
+        if image_info.from_title in NON_COMIC_TITLES:
+            self._read_article_as_comic_book(image_info.from_title, ViewStates.ON_INDEX_NODE)
+            return
+
+        self._goto_chrono_title(image_info)
+
         if page_to_goto:
             logger.debug(f"Setting page to goto: {page_to_goto}.")
             self._bottom_title_view_screen.set_goto_page_state(page_to_goto, active=True)
-
-        self._goto_chrono_title(image_info)
 
     def goto_reader_icon_title(self) -> None:
         logger.debug(f'App reader icon "{self.app_icon_filepath}" pressed.')

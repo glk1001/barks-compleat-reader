@@ -18,8 +18,11 @@
     background_normal: ''
     background_down: ''
     border: (0, 0, 0, 0)
-    background_color: app.index_theme.ITEM_BG_SELECTED if self.state == 'down' else app.index_theme.ITEM_BG
+    background_color: app.index_theme.ITEM_BG
     color: app.index_theme.ITEM_TEXT
+    size_hint: 1, None
+    height: app.index_theme.ROW_HEIGHT
+    padding: app.index_theme.INDEX_ITEM_LEFT_PAD, 0, 0, 0
     text_size: self.size
     halign: 'left'
     valign: 'middle'
@@ -31,6 +34,8 @@
     border: (0, 0, 0, 0)
     background_color: app.index_theme.TITLE_BG_SELECTED if self.state == 'down' else app.index_theme.TITLE_BG
     color: app.index_theme.TITLE_TEXT
+    size_hint: 1, None
+    height: app.index_theme.ROW_HEIGHT
     text_size: self.size
     halign: 'left'
     valign: 'middle'
