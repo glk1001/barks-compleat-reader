@@ -65,7 +65,7 @@ class ViewStateManager:
         self._bottom_view_fun_custom_image_themes: set[ImageThemes] = set(ImageThemes)
 
         # Set initial visibilities
-        self._bottom_title_view_screen.view_title_is_visible = False
+        self._bottom_title_view_screen.is_visible = False
         self._fun_image_view_screen.is_visible = False
         self._index_screen.is_visible = False
 
@@ -160,7 +160,7 @@ class ViewStateManager:
 
         self._fun_image_view_screen.goto_title_button_active = (
             self._fun_image_view_screen.fun_view_from_title
-            and (not self._bottom_title_view_screen.view_title_is_visible)
+            and (not self._bottom_title_view_screen.is_visible)
         )
 
         # Reset the title image file now that we've used it. This makes sure we can get
@@ -220,15 +220,13 @@ class ViewStateManager:
         self._fun_image_view_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
 
         self._bottom_view_fun_image_info = self._background_views.get_bottom_view_fun_image_info()
-        self._fun_image_view_screen.fun_view_image_texture = (
+        self._fun_image_view_screen.image_texture = (
             None
             if not self._bottom_view_fun_image_info.filename
             else get_image_stream(self._bottom_view_fun_image_info.filename)
         )
-        self._fun_image_view_screen.fun_view_image_fit_mode = (
-            self._bottom_view_fun_image_info.fit_mode
-        )
-        self._fun_image_view_screen.fun_view_image_color = (
+        self._fun_image_view_screen.image_fit_mode = self._bottom_view_fun_image_info.fit_mode
+        self._fun_image_view_screen.image_color = (
             self._background_views.get_bottom_view_fun_image_color()
         )
         self._fun_image_view_screen.fun_view_from_title = (
@@ -241,20 +239,20 @@ class ViewStateManager:
 
         logger.debug(f"Setting new bottom view opacity to {opacity}.")
 
-        self._bottom_title_view_screen.view_title_is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
+        self._bottom_title_view_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
 
         self._bottom_view_title_image_info = (
             self._background_views.get_bottom_view_title_image_info()
         )
-        self._bottom_title_view_screen.view_title_image_texture = (
+        self._bottom_title_view_screen.title_image_texture = (
             None
             if not self._bottom_view_title_image_info.filename
             else get_image_stream(self._bottom_view_title_image_info.filename)
         )
-        self._bottom_title_view_screen.view_title_image_fit_mode = (
+        self._bottom_title_view_screen.title_image_fit_mode = (
             self._bottom_view_title_image_info.fit_mode
         )
-        self._bottom_title_view_screen.view_title_image_color = (
+        self._bottom_title_view_screen.title_image_color = (
             self._background_views.get_bottom_view_title_image_color()
         )
 

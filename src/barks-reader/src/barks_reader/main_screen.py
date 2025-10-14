@@ -598,15 +598,6 @@ class MainScreen(ReaderScreen):
             ImageThemesChange.ADD if checkbox_row.active else ImageThemesChange.DISCARD,
         )
 
-    def fun_view_options_button_pressed(self) -> None:
-        self._fun_image_view_screen.fun_view_options_enabled = (
-            not self._fun_image_view_screen.fun_view_options_enabled
-        )
-        logger.debug(
-            "Fun view options button pressed."
-            f" New state is '{self._fun_image_view_screen.fun_view_options_enabled}'."
-        )
-
     def on_title_portal_image_pressed(self) -> None:
         if self.fanta_info is None:
             logger.error("Title portal image pressed pressed. But no title selected.")

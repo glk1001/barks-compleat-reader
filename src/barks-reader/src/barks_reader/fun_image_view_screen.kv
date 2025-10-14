@@ -13,9 +13,9 @@
         size_hint: 1, 1
 
         Image:
-            color: root.fun_view_image_color
-            texture: root.fun_view_image_texture
-            fit_mode: root.fun_view_image_fit_mode
+            color: root.image_color
+            texture: root.image_texture
+            fit_mode: root.image_fit_mode
             mipmap: True
 
             # Goto title button
@@ -63,8 +63,8 @@
             padding: [dp(2 + fun_options_border_margin_x), dp(30), dp(2), dp(30)]
             spacing: dp(8)
             check_box_height: dp(25)
-            opacity: 1 if root.fun_view_options_enabled else 0
-            disabled: not root.fun_view_options_enabled
+            opacity: 1 if root.fun_options_enabled else 0
+            disabled: not root.fun_options_enabled
 
             canvas.before:
                 # Add a rounded rectangle background box
@@ -200,11 +200,10 @@
             Widget:
 
         Button:
-            id: fun_view_options_button
             text: ''
             pos_hint:
-                {'x': (0.5 - 0.025) if root.fun_view_options_enabled else 0.007, \
-                'top': 0.986 if root.fun_view_options_enabled else 0.990}
+                {'x': (0.5 - 0.025) if root.fun_options_enabled else 0.007, \
+                'top': 0.986 if root.fun_options_enabled else 0.990}
             size_hint: None, None
             size: dp(15), dp(15)
             bold: True
@@ -212,22 +211,22 @@
             background_normal: ''
             canvas.before:
                 Color:
-                    rgba: (0.9, 0.1, 0.1, 1) if root.fun_view_options_enabled else (1, 1, 1, 1)
+                    rgba: (0.9, 0.1, 0.1, 1) if root.fun_options_enabled else (1, 1, 1, 1)
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
                     radius: [self.height / 2] # Make it a perfect circle
 
-            on_press: root.view_options_button_pressed()
-            opacity: 1 if root.fun_view_options_enabled else 0.5
+            on_press: root.fun_options_button_pressed()
+            opacity: 1 if root.fun_options_enabled else 0.5
 
             Image:
                 source:
                     str(sys_paths.get_barks_reader_close_icon_file()) \
-                    if root.fun_view_options_enabled else \
+                    if root.fun_options_enabled else \
                     str(sys_paths.get_hamburger_menu_icon_path())
                 background_color: (0, 0, 0, 0) # Make default background transparent
-                opacity: 1 if root.fun_view_options_enabled else 0.5
+                opacity: 1 if root.fun_options_enabled else 0.5
                 x: self.parent.x + (0.05 * self.parent.width)
                 y: self.parent.y + (0.05 * self.parent.height)
                 size: (0.9 * self.parent.width, 0.9 * self.parent.height)
@@ -255,5 +254,5 @@
                     radius: [dp(5)]
 
             on_press: root.view_options_clear_all_button_pressed()
-            opacity: 1 if root.fun_view_options_enabled else 0
+            opacity: 1 if root.fun_options_enabled else 0
             disabled: not checkbox_custom_image_types.active

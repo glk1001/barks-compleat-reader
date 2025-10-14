@@ -1,6 +1,6 @@
 <BottomTitleViewScreen>:
     size_hint: 1, 1
-    opacity: 1 if root.view_title_is_visible else 0
+    opacity: 1 if root.is_visible else 0
 
     Button:
         id: title_show_button
@@ -31,17 +31,17 @@
         anchor_y: "bottom"
         # The opacity controls this entire container.
         opacity: 1
-        disabled: not root.view_title_is_visible
+        disabled: not root.is_visible
         title_box_padding: dp(0.03 * self.parent.width)
         title_box_spacing: dp(0.055 * self.parent.height)
 
         # The background image is now a direct child, simplifying the structure.
         Image:
-            color: root.view_title_image_color if title_show_button.opacity > 0.9 else (1,1,1,1)
-            texture: root.view_title_image_texture
+            color: root.title_image_color if title_show_button.opacity > 0.9 else (1,1,1,1)
+            texture: root.title_image_texture
             x: self.parent.x
             y: self.parent.y
-            fit_mode: root.view_title_image_fit_mode
+            fit_mode: root.title_image_fit_mode
             mipmap: True
 
         # --- Two column layout with single column main title on top ---

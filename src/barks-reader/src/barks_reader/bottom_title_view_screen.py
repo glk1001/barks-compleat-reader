@@ -50,10 +50,10 @@ class BottomTitleViewScreen(FloatLayout):
     title_extra_info_text = StringProperty()
     title_inset_image_texture = ObjectProperty()
 
-    view_title_is_visible = BooleanProperty(defaultvalue=False)
-    view_title_image_texture = ObjectProperty(allownone=True)
-    view_title_image_fit_mode = StringProperty(FIT_MODE_COVER)
-    view_title_image_color = ColorProperty()
+    is_visible = BooleanProperty(defaultvalue=False)
+    title_image_texture = ObjectProperty(allownone=True)
+    title_image_fit_mode = StringProperty(FIT_MODE_COVER)
+    title_image_color = ColorProperty()
 
     goto_page_num = StringProperty()
     goto_page_active = BooleanProperty(default=False)

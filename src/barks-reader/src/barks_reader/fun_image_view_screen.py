@@ -35,10 +35,10 @@ class FunImageViewScreen(BoxLayout):
     goto_title_button_active = BooleanProperty(defaultvalue=True)
 
     is_visible = BooleanProperty(defaultvalue=False)
-    fun_view_image_texture = ObjectProperty(allownone=True)
-    fun_view_image_fit_mode = StringProperty(FIT_MODE_CONTAIN)
-    fun_view_image_color = ColorProperty()
-    fun_view_options_enabled = BooleanProperty(defaultvalue=False)
+    image_texture = ObjectProperty(allownone=True)
+    image_fit_mode = StringProperty(FIT_MODE_CONTAIN)
+    image_color = ColorProperty()
+    fun_options_enabled = BooleanProperty(defaultvalue=False)
 
     def __init__(self, _reader_settings: ReaderSettings, **kwargs: str) -> None:
         super().__init__(**kwargs)
@@ -46,11 +46,9 @@ class FunImageViewScreen(BoxLayout):
         self.on_goto_title_func: Callable[[], None] | None = None
         self.fun_view_from_title = True
 
-    def view_options_button_pressed(self) -> None:
-        self.fun_view_options_enabled = not self.fun_view_options_enabled
-        logger.debug(
-            f"Fun view options button pressed. New state is '{self.fun_view_options_enabled}'."
-        )
+    def fun_options_button_pressed(self) -> None:
+        self.fun_options_enabled = not self.fun_options_enabled
+        logger.debug(f"Fun view options button pressed. New state is '{self.fun_options_enabled}'.")
 
     def view_options_clear_all_button_pressed(self) -> None:
         logger.debug("Fun view options clear all pressed. Setting all checkboxes to inactive.")
