@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from .barks_titles import Titles
+from .barks_titles import NON_COMIC_TITLES, Titles
 
 
 class Tags(Enum):
@@ -16,6 +16,8 @@ class Tags(Enum):
     CLASSICS = "The Classics"
 
     CENSORED_STORIES_BUT_FIXED = "censored but fixed stories"
+
+    ARTICLES = "articles"
 
     ALGERIA = "Algeria"
     ANDES = "Andes"
@@ -361,6 +363,8 @@ BARKS_TAG_GROUPS = {
 }
 
 BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
+    # Articles
+    Tags.ARTICLES: NON_COMIC_TITLES,
     # Favourites
     Tags.CLASSICS: [
         # As chosen by GLK

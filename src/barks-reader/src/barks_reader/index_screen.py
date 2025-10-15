@@ -55,8 +55,8 @@ class Theme:
 
     ROW_HEIGHT = dp(25)
     INDEX_ITEM_LEFT_PAD = dp(50)
-    TAG_SUB_ITEM_LEFT_PAD = dp(50)
-    TITLE_SUB_ITEM_LEFT_PAD = dp(80)
+    TAG_SUB_ITEM_LEFT_PAD = dp(80)
+    TITLE_SUB_ITEM_LEFT_PAD = TAG_SUB_ITEM_LEFT_PAD
 
     MENU_TEXT = (0, 0, 0, 1)
     MENU_BG = (0, 0, 0, 0)
@@ -148,7 +148,7 @@ class IndexScreen(BoxLayout):
 
         # Sort items within each letter group
         for letter in self._item_index:
-            self._item_index[letter].sort(key=lambda item: item.display_text)
+            self._item_index[letter].sort(key=lambda item: item.display_text.lower())
 
         logger.success("Index build complete.")
 
