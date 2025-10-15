@@ -64,19 +64,27 @@
         id: alphabet_layout
         cols: 1
         size_hint_x: None
-        width: dp(55)
+        width: dp(40)
         pos_hint: {'x': 0, 'y': 0}
-        padding: [dp(10), dp(10)]
+        padding: dp(0)
         spacing: dp(2)
 
     ScrollView:
         id: index_scroll_view
+
+        do_scroll_x: False
+        do_scroll_y: True
+        always_overscroll: False
+        effect_cls: "ScrollEffect"
+        scroll_type: ["bars", "content"]
+
+        bar_color: (0.8, 0.8, 0.8, 1)
+        bar_inactive_color: (0.8, 0.8, 0.8, 0.8)
+        bar_width: dp(12)
+
         size_hint: None, None
         size: root.width - alphabet_layout.width - dp(15), root.height - dp(20)
         pos_hint: {'right': 1, 'top': 1}
-        padding: [dp(10), dp(10)]
-        bar_width: dp(10)
-        scroll_type: ['bars', 'content']
 
         FloatLayout:
             size_hint_y: None
@@ -87,11 +95,25 @@
                 orientation: 'vertical'
                 size_hint: 0.5, None
                 height: self.minimum_height
-                pos_hint: {'x': 0, 'top': 1}
+                pos_hint: {'x': 0, 'top': 0.95}
+                padding: 0, 0, 0, dp(20)
 
             BoxLayout:
                 id: right_column_layout
                 orientation: 'vertical'
                 size_hint: 0.5, None
                 height: self.minimum_height
-                pos_hint: {'x': 0.5, 'top': 1}
+                pos_hint: {'x': 0.5, 'top': 0.95}
+                padding: 0, 0, 0, dp(20)
+
+    Label:
+        pos_hint: {'right': 1, 'y': 0}
+        padding: [0, 0, dp(15), dp(8)]
+        text: "[i]" + root.current_title_str + "[/i]"
+        markup: True
+        color: (0, 0, 0, 1)
+        opacity: 0.5
+        font_size: sp(15)
+        # Make the widget size itself to fit the text
+        size_hint: None, None
+        size: self.texture_size

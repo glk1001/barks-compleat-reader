@@ -13,7 +13,6 @@ from barks_fantagraphics.barks_tags import (
     BARKS_TAGGED_TITLES,
     TagGroups,
     Tags,
-    get_tag_group_titles,
     get_tag_titles,
 )
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
@@ -23,7 +22,7 @@ from kivy.app import App
 from kivy.clock import Clock
 from kivy.lang import Builder
 from kivy.metrics import dp
-from kivy.properties import BooleanProperty, ObjectProperty
+from kivy.properties import BooleanProperty, ObjectProperty, StringProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
@@ -77,6 +76,28 @@ class Theme:
     TITLE_BG_SELECTED = (0.85, 0.85, 0.85, 1)
 
 
+@dataclass()
+class TitleHierarchy:
+    tag_group: TagGroups | None
+    tag: Tags | None
+    title: Titles | None
+
+    def get_title_with_hierarchy(self) -> str:
+        title_str = BARKS_TITLES[self.title]
+
+        if not self.tag_group and not self.tag:
+            return title_str
+
+        title_str += " ("
+        if self.tag_group:
+            title_str += self.tag_group.value + "/"
+        if self.tag:
+            title_str += self.tag.value
+        title_str += ") "
+
+        return title_str
+
+
 class IndexItemType(Enum):
     TITLE = auto()
     TAG = auto()
@@ -98,6 +119,7 @@ class IndexScreen(FloatLayout):
     index_theme = ObjectProperty()
     _selected_letter_button = ObjectProperty(None, allownone=True)
     image_texture = ObjectProperty()
+    current_title_str = StringProperty()
 
     def __init__(self, reader_settings: ReaderSettings, **kwargs) -> None:  # noqa: ANN003
         # Call the parent constructor FIRST to ensure self.ids is populated.
@@ -106,6 +128,7 @@ class IndexScreen(FloatLayout):
         self._random_title_images = RandomTitleImages(reader_settings)
         self._index_image_change_event = None
         self._cached_all_titles_for_letter: list[FantaComicBookInfo] = []
+        self._cached_hierarchies: dict[Titles, TitleHierarchy] = {}
 
         self.index_theme = Theme()
         App.get_running_app().index_theme = self.index_theme  # Make theme accessible globally in kv
@@ -166,10 +189,16 @@ class IndexScreen(FloatLayout):
 
     def on_is_visible(self, _instance: IndexScreen, value: bool) -> None:
         """When the widget becomes visible, automatically press the 'A' button."""
-        if not value or self._selected_letter_button:
+        if not value and self._index_image_change_event:
+            self._index_image_change_event.cancel()
+            self._index_image_change_event = None
             return
+
         # The index is being shown for the first time so default to 'A'.
-        self.on_letter_press(self._alphabet_buttons["A"])
+        if self._selected_letter_button:
+            self._new_index_image()
+        else:
+            self.on_letter_press(self._alphabet_buttons["A"])
 
     def on_letter_press(self, button: Button) -> None:
         """Handle a letter button press and display the corresponding index items."""
@@ -213,9 +242,11 @@ class IndexScreen(FloatLayout):
 
     def _new_index_image(self) -> None:
         self._cached_all_titles_for_letter = []
+        self._cached_hierarchies = {}
 
         if self._index_image_change_event:
             self._index_image_change_event.cancel()
+            self._index_image_change_event = None
 
         self._next_background_image()
 
@@ -226,12 +257,48 @@ class IndexScreen(FloatLayout):
     def _next_background_image(self) -> None:
         if not self._cached_all_titles_for_letter:
             letter = self._selected_letter_button.text
-            self._cached_all_titles_for_letter = self._get_all_titles_for_letter(letter)
+            self._cached_all_titles_for_letter, self._cached_hierarchies = (
+                self._get_all_titles_for_letter(letter)
+            )
 
-        image_file = self._random_title_images.get_index_screen_random_image(
-            self._cached_all_titles_for_letter
-        )
-        self.image_texture = get_image_stream(image_file)
+        image_info = self._random_title_images.get_random_image(self._cached_all_titles_for_letter)
+        # TODO: Get rid of this hack!!
+        if image_info.from_title is None or image_info.from_title == Titles.GOOD_NEIGHBORS:
+            self.current_title_str = ""
+        else:
+            hierarchy = self._cached_hierarchies[image_info.from_title]
+            self.current_title_str = hierarchy.get_title_with_hierarchy()
+
+        self.image_texture = get_image_stream(image_info.filename)
+
+    def _get_all_titles_for_letter(
+        self, letter: str
+    ) -> tuple[list[FantaComicBookInfo], dict[Titles, TitleHierarchy]]:
+        """Get all unique titles for a given letter, from direct titles and from tags."""
+        hierarchies: dict[Titles, TitleHierarchy] = {}
+        all_titles: set[Titles] = set()
+
+        for index_item in self._item_index[letter]:
+            if index_item.item_type == IndexItemType.TITLE:
+                all_titles.add(index_item.id)
+                hierarchies[index_item.id] = TitleHierarchy(None, None, index_item.id)
+            elif index_item.item_type == IndexItemType.TAG:
+                tag_titles = get_tag_titles(index_item.id)
+                for title in tag_titles:
+                    hierarchies[title] = TitleHierarchy(None, index_item.id, title)
+                all_titles.update(tag_titles)
+            elif index_item.item_type == IndexItemType.TAG_GROUP:
+                for tag in BARKS_TAG_GROUPS[index_item.id]:
+                    tag_titles = get_tag_titles(tag)
+                    for title in tag_titles:
+                        hierarchies[title] = TitleHierarchy(index_item.id, tag, title)
+                    all_titles.update(tag_titles)
+
+        return [
+            ALL_FANTA_COMIC_BOOK_INFO[BARKS_TITLES[title_id]]
+            for title_id in all_titles
+            if BARKS_TITLES[title_id] in ALL_FANTA_COMIC_BOOK_INFO
+        ], hierarchies
 
     def _create_index_button(self, item: IndexItem) -> IndexItemButton:
         """Create a configured IndexItemButton."""
@@ -243,24 +310,6 @@ class IndexScreen(FloatLayout):
             on_release=lambda btn, bound_item=item: self.on_index_item_press(btn, bound_item)
         )
         return button
-
-    def _get_all_titles_for_letter(self, letter: str) -> list[FantaComicBookInfo]:
-        """Get all unique titles for a given letter, from direct titles and from tags."""
-        all_titles: set[Titles] = set()
-
-        for index_item in self._item_index[letter]:
-            if index_item.item_type == IndexItemType.TITLE:
-                all_titles.add(index_item.id)
-            elif index_item.item_type == IndexItemType.TAG:
-                all_titles.update(get_tag_titles(index_item.id))
-            elif index_item.item_type == IndexItemType.TAG_GROUP:
-                all_titles.update(get_tag_group_titles(index_item.id))
-
-        return [
-            ALL_FANTA_COMIC_BOOK_INFO[BARKS_TITLES[title_id]]
-            for title_id in all_titles
-            if BARKS_TITLES[title_id] in ALL_FANTA_COMIC_BOOK_INFO
-        ]
 
     def _get_no_items_button(self, letter: str) -> IndexItemButton:
         return IndexItemButton(
