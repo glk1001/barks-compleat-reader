@@ -13,8 +13,11 @@ from barks_fantagraphics.barks_tags import (
     BARKS_TAGGED_TITLES,
     TagGroups,
     Tags,
+    get_tag_group_titles,
+    get_tag_titles,
 )
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
 from kivy.animation import Animation
 from kivy.app import App
 from kivy.clock import Clock
@@ -23,17 +26,19 @@ from kivy.metrics import dp
 from kivy.properties import BooleanProperty, ObjectProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.uix.floatlayout import FloatLayout
 from loguru import logger
 
-from barks_reader.random_title_images import ImageInfo
-from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO
-from barks_reader.reader_utils import get_concat_page_nums_str
+from barks_reader.random_title_images import ImageInfo, RandomTitleImages
+from barks_reader.reader_utils import get_concat_page_nums_str, get_image_stream
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from kivy.uix.gridlayout import GridLayout
     from kivy.uix.widget import Widget
+
+    from barks_reader.reader_settings import ReaderSettings
 
 
 class IndexMenuButton(Button):
@@ -53,10 +58,11 @@ class TitleItemButton(Button):
 class Theme:
     """A central place for theme constants."""
 
+    INDEX_IMAGE_CHANGE_SECONDS = 5
+
     ROW_HEIGHT = dp(25)
     INDEX_ITEM_LEFT_PAD = dp(50)
-    TAG_SUB_ITEM_LEFT_PAD = dp(80)
-    TITLE_SUB_ITEM_LEFT_PAD = TAG_SUB_ITEM_LEFT_PAD
+    SUB_ITEM_INDENT_STEP = dp(30)
 
     MENU_TEXT = (0, 0, 0, 1)
     MENU_BG = (0, 0, 0, 0)
@@ -85,16 +91,21 @@ class IndexItem:
     page_to_goto: str = ""
 
 
-class IndexScreen(BoxLayout):
+class IndexScreen(FloatLayout):
     """A widget that displays an A-Z index of comic titles and tags."""
 
     is_visible = BooleanProperty(defaultvalue=False)
     index_theme = ObjectProperty()
     _selected_letter_button = ObjectProperty(None, allownone=True)
+    image_texture = ObjectProperty()
 
-    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, reader_settings: ReaderSettings, **kwargs) -> None:  # noqa: ANN003
         # Call the parent constructor FIRST to ensure self.ids is populated.
         super().__init__(**kwargs)
+
+        self._random_title_images = RandomTitleImages(reader_settings)
+        self._index_image_change_event = None
+        self._cached_all_titles_for_letter: list[FantaComicBookInfo] = []
 
         self.index_theme = Theme()
         App.get_running_app().index_theme = self.index_theme  # Make theme accessible globally in kv
@@ -108,14 +119,6 @@ class IndexScreen(BoxLayout):
 
         self._build_index()
         self._populate_alphabet_menu()
-
-    def on_opacity(self, _instance: IndexScreen, value: float) -> None:
-        """When the widget becomes visible, automatically press the 'A' button."""
-        if (value < CLOSE_TO_ZERO) or self._selected_letter_button:
-            return
-
-        # The index is being shown for the first time so default to 'A'.
-        self.on_letter_press(self._alphabet_buttons["A"])
 
     def _build_index(self) -> None:
         """Build the index from Barks titles and tags."""
@@ -161,6 +164,13 @@ class IndexScreen(BoxLayout):
             self._alphabet_buttons[letter] = button
             alphabet_layout.add_widget(button)
 
+    def on_is_visible(self, _instance: IndexScreen, value: bool) -> None:
+        """When the widget becomes visible, automatically press the 'A' button."""
+        if not value or self._selected_letter_button:
+            return
+        # The index is being shown for the first time so default to 'A'.
+        self.on_letter_press(self._alphabet_buttons["A"])
+
     def on_letter_press(self, button: Button) -> None:
         """Handle a letter button press and display the corresponding index items."""
         letter = button.text
@@ -171,6 +181,8 @@ class IndexScreen(BoxLayout):
             self._selected_letter_button.is_selected = False
         button.is_selected = True
         self._selected_letter_button = button
+
+        self._new_index_image()
 
         left_index_column: BoxLayout = self.ids.left_column_layout
         right_index_column: BoxLayout = self.ids.right_column_layout
@@ -199,12 +211,27 @@ class IndexScreen(BoxLayout):
             item_button = self._create_index_button(item)
             right_index_column.add_widget(item_button)
 
-    @staticmethod
-    def _get_no_items_button(letter: str) -> IndexItemButton:
-        return IndexItemButton(
-            text=f"*** No index items for '{letter}' ***",
-            color=(1, 0, 0, 1),
+    def _new_index_image(self) -> None:
+        self._cached_all_titles_for_letter = []
+
+        if self._index_image_change_event:
+            self._index_image_change_event.cancel()
+
+        self._next_background_image()
+
+        self._index_image_change_event = Clock.schedule_interval(
+            lambda _dt: self._next_background_image(), self.index_theme.INDEX_IMAGE_CHANGE_SECONDS
         )
+
+    def _next_background_image(self) -> None:
+        if not self._cached_all_titles_for_letter:
+            letter = self._selected_letter_button.text
+            self._cached_all_titles_for_letter = self._get_all_titles_for_letter(letter)
+
+        image_file = self._random_title_images.get_index_screen_random_image(
+            self._cached_all_titles_for_letter
+        )
+        self.image_texture = get_image_stream(image_file)
 
     def _create_index_button(self, item: IndexItem) -> IndexItemButton:
         """Create a configured IndexItemButton."""
@@ -217,6 +244,29 @@ class IndexScreen(BoxLayout):
         )
         return button
 
+    def _get_all_titles_for_letter(self, letter: str) -> list[FantaComicBookInfo]:
+        """Get all unique titles for a given letter, from direct titles and from tags."""
+        all_titles: set[Titles] = set()
+
+        for index_item in self._item_index[letter]:
+            if index_item.item_type == IndexItemType.TITLE:
+                all_titles.add(index_item.id)
+            elif index_item.item_type == IndexItemType.TAG:
+                all_titles.update(get_tag_titles(index_item.id))
+            elif index_item.item_type == IndexItemType.TAG_GROUP:
+                all_titles.update(get_tag_group_titles(index_item.id))
+
+        return [
+            ALL_FANTA_COMIC_BOOK_INFO[BARKS_TITLES[title_id]]
+            for title_id in all_titles
+            if BARKS_TITLES[title_id] in ALL_FANTA_COMIC_BOOK_INFO
+        ]
+
+    def _get_no_items_button(self, letter: str) -> IndexItemButton:
+        return IndexItemButton(
+            text=f"*** No index items for '{letter}' ***", color=self.index_theme.MENU_TEXT
+        )
+
     def _add_sub_items(self, _dt: float) -> None:
         """Create and add the sub-item widgets to the layout."""
         item_id: Tags | TagGroups = self._open_tag_item.id
@@ -226,6 +276,10 @@ class IndexScreen(BoxLayout):
         self._insert_sub_items_layout(sub_items_layout)
 
     def _get_sub_item_layout(self, item_id: Tags | TagGroups) -> BoxLayout:
+        # The new padding is the parent button's padding plus an indent step.
+        parent_padding = self._open_tag_button.padding[0]
+        sub_item_padding = parent_padding + self.index_theme.SUB_ITEM_INDENT_STEP
+
         # --- Determine what items to display in the new sub-list ---
         if self._open_tag_item.item_type == IndexItemType.TAG:
             assert isinstance(item_id, Tags)
@@ -234,12 +288,10 @@ class IndexScreen(BoxLayout):
                 for title in BARKS_TAGGED_TITLES[item_id]
             ]
             sub_items_to_display.sort(key=lambda t: t[2])
-            sub_item_padding = self.index_theme.TITLE_SUB_ITEM_LEFT_PAD
             sub_item_type = IndexItemType.TITLE
         else:  # It's a TagGroup
             assert isinstance(item_id, TagGroups)
             sub_items_to_display = [(tag, "", tag.value) for tag in BARKS_TAG_GROUPS[item_id]]
-            sub_item_padding = self.index_theme.TAG_SUB_ITEM_LEFT_PAD
             sub_item_type = IndexItemType.TAG
 
         # Now create the layout.

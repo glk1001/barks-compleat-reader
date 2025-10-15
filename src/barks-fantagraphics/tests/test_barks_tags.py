@@ -20,7 +20,7 @@ from barks_fantagraphics.barks_tags import (
     TagGroups,
     Tags,
     Titles,
-    get_tagged_titles,
+    get_sorted_tagged_titles,
 )
 
 
@@ -173,13 +173,13 @@ class TestBarksTags(unittest.TestCase):
 
     # --- Tests for getter functions ---
     def test_get_tagged_titles(self) -> None:
-        titles_fire = get_tagged_titles(Tags.FIRE)
+        titles_fire = get_sorted_tagged_titles(Tags.FIRE)
         assert isinstance(titles_fire, list)
         assert Titles.FIREBUG_THE in titles_fire
         assert Titles.FIREMAN_DONALD in titles_fire
         assert titles_fire == sorted(set(titles_fire)), "Titles should be sorted and unique"
 
-        titles_square_eggs = get_tagged_titles(Tags.SQUARE_EGGS)
+        titles_square_eggs = get_sorted_tagged_titles(Tags.SQUARE_EGGS)
         assert titles_square_eggs == [Titles.LOST_IN_THE_ANDES]
 
         # Test with a tag not in BARKS_TAGGED_TITLES
@@ -188,7 +188,7 @@ class TestBarksTags(unittest.TestCase):
 
         # Test invalid Tag enum is caught.
         # noinspection PyTypeChecker
-        assert get_tagged_titles(MockNonExistentTag.NON_EXISTENT) == []
+        assert get_sorted_tagged_titles(MockNonExistentTag.NON_EXISTENT) == []
 
     def test_barks_tag_categories_titles_computation(self) -> None:
         # BARKS_TAG_CATEGORIES_TITLES is computed at module import.

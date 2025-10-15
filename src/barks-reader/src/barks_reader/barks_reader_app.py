@@ -264,7 +264,7 @@ class BarksReaderApp(App):
         tree_view_screen = TreeViewScreen(self.reader_settings)
         bottom_title_view_screen = BottomTitleViewScreen(self.reader_settings)
         fun_image_view_screen = FunImageViewScreen(self.reader_settings)
-        index_screen = IndexScreen()
+        index_screen = IndexScreen(self.reader_settings)
         self._main_screen = MainScreen(
             self._comics_database,
             self.reader_settings,

@@ -121,6 +121,23 @@ class RandomTitleImages:
             },
         )
 
+    def get_index_screen_random_image(self, title_list: list[FantaComicBookInfo]) -> Path:
+        return self._get_random_image_file(
+            title_list,
+            {
+                FileTypes.BLACK_AND_WHITE,
+                FileTypes.AI,
+                FileTypes.CENSORSHIP,
+                FileTypes.CLOSEUP,
+                FileTypes.FAVOURITE,
+                FileTypes.INSET,
+                FileTypes.NONTITLE,
+                FileTypes.ORIGINAL_ART,
+                FileTypes.SILHOUETTE,
+                FileTypes.SPLASH,
+            },
+        )
+
     def _get_random_image_file(
         self, title_list: list[FantaComicBookInfo], file_types: set[FileTypes] | None = None
     ) -> Path:

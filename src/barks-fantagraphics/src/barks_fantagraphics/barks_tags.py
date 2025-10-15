@@ -1343,7 +1343,7 @@ def validate_tag_data() -> None:
             )
 
 
-def get_tagged_titles(tag: Tags) -> list[Titles]:
+def get_sorted_tagged_titles(tag: Tags) -> list[Titles]:
     """Retrieve a sorted list of unique titles associated with a specific tag.
 
     Return an empty list if the tag is not found or has no titles.
@@ -1351,6 +1351,18 @@ def get_tagged_titles(tag: Tags) -> list[Titles]:
     if tag not in BARKS_TAGGED_TITLES:
         return []
     return sorted(set(BARKS_TAGGED_TITLES[tag]))  # Ensure uniqueness and sort
+
+
+def get_tag_titles(tag: Tags) -> set[Titles]:
+    """Retrieve a set of titles associated with a specific tag."""
+    if tag not in BARKS_TAGGED_TITLES:
+        return set()
+    return set(BARKS_TAGGED_TITLES[tag])
+
+
+def get_tag_group_titles(tag_group: TagGroups) -> set[Titles]:
+    """Retrieve a set titles associated with a specific tag group."""
+    return _get_titles_for_tags_or_groups([tag_group])
 
 
 def _get_tag_categories_titles() -> dict[TagCategories, list[Titles]]:

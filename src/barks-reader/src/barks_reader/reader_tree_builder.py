@@ -11,7 +11,7 @@ from barks_fantagraphics.barks_tags import (
     TagGroups,
     Tags,
     get_num_tagged_titles,
-    get_tagged_titles,
+    get_sorted_tagged_titles,
     special_case_personal_favourites_tag_update,
 )
 from barks_fantagraphics.barks_titles import (
@@ -154,7 +154,7 @@ class ReaderTreeBuilder:
 
     def _get_tagged_titles(self, tag: Tags) -> list[Titles]:
         if tag != Tags.PERSONAL_FAVOURITES:
-            return get_tagged_titles(tag)
+            return get_sorted_tagged_titles(tag)
 
         return self._get_favourite_titles()
 
