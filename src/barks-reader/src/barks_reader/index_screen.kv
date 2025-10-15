@@ -83,8 +83,8 @@
         bar_width: dp(12)
 
         size_hint: None, None
-        size: root.width - alphabet_layout.width - dp(15), root.height - dp(20)
-        pos_hint: {'right': 1, 'top': 1}
+        size: root.width - alphabet_layout.width - dp(15), 0.9 * root.height
+        pos_hint: {'right': 1, 'top': 0.95}
 
         FloatLayout:
             size_hint_y: None
@@ -95,7 +95,7 @@
                 orientation: 'vertical'
                 size_hint: 0.5, None
                 height: self.minimum_height
-                pos_hint: {'x': 0, 'top': 0.95}
+                pos_hint: {'x': 0, 'top': 1}
                 padding: 0, 0, 0, dp(20)
 
             BoxLayout:
@@ -103,7 +103,7 @@
                 orientation: 'vertical'
                 size_hint: 0.5, None
                 height: self.minimum_height
-                pos_hint: {'x': 0.5, 'top': 0.95}
+                pos_hint: {'x': 0.5, 'top': 1}
                 padding: 0, 0, 0, dp(20)
 
     Label:

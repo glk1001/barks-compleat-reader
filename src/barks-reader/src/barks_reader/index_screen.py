@@ -240,6 +240,8 @@ class IndexScreen(FloatLayout):
             item_button = self._create_index_button(item)
             right_index_column.add_widget(item_button)
 
+        self.ids.index_scroll_view.scroll_y = 1
+
     def _new_index_image(self) -> None:
         self._cached_all_titles_for_letter = []
         self._cached_hierarchies = {}
