@@ -38,6 +38,7 @@ class SystemFilePaths:
         self._barks_reader_files_dir = reader_files_dir
 
         self._reader_icon_files_dir = self._barks_reader_files_dir / "Reader Icons"
+        self._app_window_icon_path = self._reader_icon_files_dir / "app-icon.png"
 
         self._action_bar_icons_dir = self._reader_icon_files_dir / "ActionBar Icons"
         self._close_icon_path = self._action_bar_icons_dir / "icon-close.png"
@@ -79,6 +80,7 @@ class SystemFilePaths:
         self._check_dirs(dirs_to_check)
 
         files_to_check = [
+            self._app_window_icon_path,
             self._close_icon_path,
             self._collapse_icon_path,
             self._refresh_arrow_icon_path,
@@ -126,6 +128,9 @@ class SystemFilePaths:
 
     def get_down_arrow_file(self) -> Path:
         return self._down_arrow_path
+
+    def get_barks_reader_app_window_icon_path(self) -> Path:
+        return self._app_window_icon_path
 
     def get_barks_reader_close_icon_file(self) -> Path:
         return self._close_icon_path

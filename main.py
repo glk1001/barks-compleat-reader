@@ -11,6 +11,8 @@ import os
 import platform
 import sys
 from configparser import ConfigParser
+from dataclasses import dataclass
+from pathlib import Path
 
 from barks_fantagraphics.comics_cmd_args import CmdArgs, ExtraArg
 from barks_reader.config_info import ConfigInfo  # IMPORT THIS BEFORE Kivy!!
@@ -20,9 +22,11 @@ from barks_reader.reader_settings import (
     MAIN_WINDOW_HEIGHT,
     MAIN_WINDOW_LEFT,
     MAIN_WINDOW_TOP,
+    READER_FILES_DIR,
 )
 from barks_reader.reader_utils import get_best_window_height_fit, get_win_width_from_height
 from barks_reader.screen_metrics import SCREEN_METRICS
+from barks_reader.system_file_paths import SystemFilePaths
 from comic_utils.comic_consts import IS_PYINSTALLER_BUNDLE, PYINSTALLER_BUNDLED_MAIN_DIR
 from loguru import logger
 from loguru_config import LoguruConfig
@@ -182,9 +186,58 @@ def run_loguru_config(cfg_info: ConfigInfo) -> None:
         sys.exit(1)
 
 
+@dataclass
+class MinimalConfigOptions:
+    reader_app_icon_file: str = ""
+    win_height: int = 0
+    win_left: int = -1
+    win_top: int = -1
+
+
+def get_minimal_config_options(cfg_info: ConfigInfo) -> MinimalConfigOptions:
+    barks_config = ConfigParser()
+    barks_config.read(cfg_info.app_config_path)
+
+    try:
+        reader_files_dir = Path(barks_config.get(BARKS_READER_SECTION, READER_FILES_DIR))
+        win_height = int(barks_config.get(BARKS_READER_SECTION, MAIN_WINDOW_HEIGHT))
+        win_left = int(barks_config.get(BARKS_READER_SECTION, MAIN_WINDOW_LEFT))
+        win_top = int(barks_config.get(BARKS_READER_SECTION, MAIN_WINDOW_TOP))
+
+        sys_paths = SystemFilePaths()
+        sys_paths.set_barks_reader_files_dir(reader_files_dir)
+        reader_app_icon_file = str(sys_paths.get_barks_reader_app_window_icon_path())
+
+        minimal_options = MinimalConfigOptions(reader_app_icon_file, win_height, win_left, win_top)
+
+        logger.debug(
+            f'Minimal config options: "{minimal_options.reader_app_icon_file}",'
+            f" {minimal_options.win_height},"
+            f" ({minimal_options.win_left}, {minimal_options.win_top})."
+        )
+
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Ini error: {e}.")
+        minimal_options = MinimalConfigOptions()
+        logger.debug(
+            f'Minimal config options: "{minimal_options.reader_app_icon_file}",'
+            f" {minimal_options.win_height},"
+            f" ({minimal_options.win_left}, {minimal_options.win_top})."
+        )
+        return minimal_options
+    else:
+        return minimal_options
+
+
 def update_window_size(args: CmdArgs, cfg_info: ConfigInfo) -> None:
+    minimal_options = get_minimal_config_options(cfg_info)
+
+    ini_win_height, ini_win_left, ini_win_top = (
+        minimal_options.win_height,
+        minimal_options.win_left,
+        minimal_options.win_top,
+    )
     cmd_arg_win_height, cmd_arg_win_left, cmd_arg_win_top = get_main_win_info_from_cmd_args(args)
-    ini_win_height, ini_win_left, ini_win_top = get_main_win_info_from_ini_file(cfg_info)
     best_win_height, best_win_left, best_win_top = get_main_win_from_screen_metrics()
 
     win_height = cmd_arg_win_height
@@ -201,6 +254,12 @@ def update_window_size(args: CmdArgs, cfg_info: ConfigInfo) -> None:
     logger.debug(f"Main win dimensions: {win_height}, ({win_left}, {win_top}).")
 
     set_window_size(win_height, win_left, win_top)
+
+    if minimal_options.reader_app_icon_file:
+        from kivy import Config
+
+        logger.debug(f'App icon file: "{minimal_options.reader_app_icon_file}".')
+        Config.set("kivy", "window_icon", minimal_options.reader_app_icon_file)
 
 
 def get_main_win_info_from_cmd_args(args: CmdArgs) -> tuple[int, int, int]:
