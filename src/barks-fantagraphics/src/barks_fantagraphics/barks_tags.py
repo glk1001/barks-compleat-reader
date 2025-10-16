@@ -62,10 +62,12 @@ class Tags(Enum):
     SYRIA = "Syria"
     TANGANYIKA = "Tanganyika"
 
-    AIRPLANE = "airplane"
-    CAMERA = "camera"
+    AIRPLANES = "airplanes"
+    CAMERAS = "cameras"
+    CAR_313 = "car 313"
     CIGARETTES = "cigarettes"
     FIRE = "fire"
+    HDL_DRIVING_CAR = "HDL driving car"
     SQUARE_EGGS = "square eggs"
     WEEMITE = "weemite"
 
@@ -138,6 +140,7 @@ BARKS_TAG_EXTRA_ALIASES = {
     "gladstone": Tags.GLADSTONE_GANDER,
     "gyro": Tags.GYRO_GEARLOOSE,
     "gearloose": Tags.GYRO_GEARLOOSE,
+    "driving car": Tags.HDL_DRIVING_CAR,
     "woodchucks": Tags.JUNIOR_WOODCHUCKS,
     "magica": Tags.MAGICA_DE_SPELL,
     "spell": Tags.MAGICA_DE_SPELL,
@@ -167,11 +170,12 @@ class TagCategories(Enum):
 class TagGroups(Enum):
     AFRICA = "Africa"
     ASIA = "Asia"
-    AUSTRALIA = "Australia"
+    AUSTRALASIA = "Australasia"
     EUROPE = "Europe"
     NORTH_AMERICA = "North America"
     OTHER = "Other"
     SOUTH_AMERICA = "South America"
+    CARS = "cars"
     DRUGS = "drugs"
     PRIMARY_CHARACTERS = "Primary Characters"
     SECONDARY_CHARACTERS = "Secondary Characters"
@@ -194,8 +198,8 @@ BARKS_TAG_CATEGORIES = {
         Tags.CLASSICS,
     ],
     TagCategories.THINGS: [
-        Tags.AIRPLANE,
-        Tags.CAMERA,
+        Tags.AIRPLANES,
+        Tags.CAMERAS,
         Tags.CIGARETTES,
         Tags.FIRE,
         Tags.SQUARE_EGGS,
@@ -225,7 +229,7 @@ BARKS_TAG_CATEGORIES = {
         Tags.ATLANTIS,
         TagGroups.ASIA,
         # Tags.AUSTRALIA,
-        TagGroups.AUSTRALIA,
+        TagGroups.AUSTRALASIA,
         Tags.BARNACLE_BAY,
         Tags.CENTRAL_AFRICA,
         Tags.CHINA,
@@ -291,7 +295,7 @@ BARKS_TAG_GROUPS = {
         Tags.PAKISTAN,
         Tags.PERSIA,
     ],
-    TagGroups.AUSTRALIA: [
+    TagGroups.AUSTRALASIA: [
         Tags.AUSTRALIA,
         Tags.SYDNEY,
     ],
@@ -319,6 +323,10 @@ BARKS_TAG_GROUPS = {
     TagGroups.SOUTH_AMERICA: [
         Tags.ANDES,
         Tags.PLAIN_AWFUL,
+    ],
+    TagGroups.CARS: [
+        Tags.CAR_313,
+        Tags.HDL_DRIVING_CAR,
     ],
     TagGroups.DRUGS: [
         Tags.CIGARETTES,
@@ -654,7 +662,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.YOICKS_THE_FOX,
     ],
     # Things
-    Tags.AIRPLANE: [
+    Tags.AIRPLANES: [
         Titles.TRUANT_NEPHEWS_THE,
         Titles.MASTER_RAINMAKER_THE,
         Titles.CROWN_OF_THE_MAYAS,
@@ -678,7 +686,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.SMOKE_WRITER_IN_THE_SKY,
         Titles.QUEEN_OF_THE_WILD_DOG_PACK_THE,
     ],
-    Tags.CAMERA: [
+    Tags.CAMERAS: [
         Titles.CAMERA_CRAZY,
         Titles.PECKING_ORDER,
         Titles.VACATION_TIME,
@@ -686,6 +694,13 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.MYSTERY_OF_THE_LOCH,
         Titles.MEDALING_AROUND,
         Titles.DUCKS_EYE_VIEW_OF_EUROPE_A,
+    ],
+    Tags.CAR_313: [
+        Titles.MAD_CHEMIST_THE,
+        Titles.SHERIFF_OF_BULLET_VALLEY,
+    ],
+    Tags.HDL_DRIVING_CAR: [
+        Titles.SHERIFF_OF_BULLET_VALLEY,
     ],
     Tags.CIGARETTES: [
         Titles.LIMBER_W_GUEST_RANCH_THE,
@@ -1120,8 +1135,11 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
 
 BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.BARNACLE_BAY, Titles.NO_SUCH_VARMINT): ["11"],
-    (Tags.CAMERA, Titles.SECRET_RESOLUTIONS): ["8"],
-    (Tags.CAMERA, Titles.VACATION_TIME): ["10"],  # plus more pages
+    (Tags.CAMERAS, Titles.SECRET_RESOLUTIONS): ["8"],
+    (Tags.CAMERAS, Titles.VACATION_TIME): ["10"],  # plus more pages
+    (Tags.CAR_313, Titles.MAD_CHEMIST_THE): ["2", "3", "5", "6"],
+    (Tags.CAR_313, Titles.SHERIFF_OF_BULLET_VALLEY): ["1", "3", "11", "12", "14"],
+    (Tags.HDL_DRIVING_CAR, Titles.SHERIFF_OF_BULLET_VALLEY): ["11", "12", "14"],
     (Tags.CARVER_BEAKOFF, Titles.FIREBUG_THE): ["13"],
     (Tags.CENSORED_STORIES_BUT_FIXED, Titles.ICEBOX_ROBBER_THE): ["7"],
     (Tags.CENSORED_STORIES_BUT_FIXED, Titles.SWIMMING_SWINDLERS): ["1", "2", "7"],
@@ -1230,6 +1248,7 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     ],
     (Tags.GYRO_NOT_IN_GG, Titles.KNIGHTS_OF_THE_FLYING_SLEDS): ["3"],
     (Tags.GYRO_NOT_IN_GG, Titles.UNDER_THE_POLAR_ICE): ["3"],
+    (Tags.MALI, Titles.DAY_DUCKBURG_GOT_DYED_THE): ["10"],
     (Tags.NEIGHBOR_JONES, Titles.GOOD_DEEDS): ["1"],
     (Tags.P_J_MC_BRINE, Titles.FORBIDDEN_VALLEY): ["3"],
     (Tags.WEEMITE, Titles.ROCKET_ROASTED_CHRISTMAS_TURKEY): ["3", "4", "6", "7", "8"],
@@ -1250,7 +1269,7 @@ def set_tag_alias(main_tag: Tags, alias_tag: Tags) -> None:
         BARKS_TAGGED_PAGES[(alias_tag, title)] = pages
 
 
-set_tag_alias(Tags.CAMERA, Tags.PHOTOGRAPHY)
+set_tag_alias(Tags.CAMERAS, Tags.PHOTOGRAPHY)
 
 
 def is_tag_group_enum(value: str) -> bool:
