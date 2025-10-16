@@ -135,7 +135,7 @@ def redirect_kivy_logs() -> None:
 
                 # Kivy emits this message: "kivy: Modules: Start <inspector> with config {}"
                 # which we need to be careful with.
-                message = log_record.getMessage().replace("{}", "{{}}")
+                message = log_record.getMessage().replace("{", "{{").replace("}", "}}")
 
                 # Now log the kivy information using Loguru.
                 # Use getattr to call the appropriate logging method based on level.
