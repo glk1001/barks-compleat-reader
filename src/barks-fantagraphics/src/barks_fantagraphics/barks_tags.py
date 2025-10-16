@@ -1408,15 +1408,31 @@ def _get_titles_for_tags_or_groups(items_list: list[Tags | TagGroups]) -> set[Ti
     """Recursively collect all unique titles for a list that may contain individual
     Tags or TagGroups.
     """
+    all_tags = set()
+    for tag_or_group in items_list:
+        if isinstance(tag_or_group, Tags):
+            all_tags.add(tag_or_group)
+        else:
+            all_tags.update(get_all_tags_in_tag_group(tag_or_group))
+
     collected_titles: set[Titles] = set()
-    for item in items_list:
-        if isinstance(item, TagGroups):
-            # Recursively get titles for tags within this group
-            if item in BARKS_TAG_GROUPS:
-                collected_titles.update(_get_titles_for_tags_or_groups(BARKS_TAG_GROUPS[item]))
-        elif isinstance(item, Tags) and (item in BARKS_TAGGED_TITLES):
-            collected_titles.update(BARKS_TAGGED_TITLES[item])
+    for tag in all_tags:
+        if tag in BARKS_TAGGED_TITLES:
+            collected_titles.update(BARKS_TAGGED_TITLES[tag])
+
     return collected_titles
+
+
+def get_all_tags_in_tag_group(tag_group: TagGroups) -> set[Tags]:
+    """Recursively collect all unique tags for a tag group."""
+    tags = set()
+    for tag_or_group in BARKS_TAG_GROUPS[tag_group]:
+        if isinstance(tag_or_group, Tags):
+            tags.add(tag_or_group)
+        else:
+            tags.update(get_all_tags_in_tag_group(tag_or_group))
+
+    return tags
 
 
 BARKS_TAG_CATEGORIES_TITLES: dict[TagCategories, list[Titles]] = _get_tag_categories_titles()

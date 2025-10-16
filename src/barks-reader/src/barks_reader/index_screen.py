@@ -3,7 +3,6 @@ from __future__ import annotations
 import string
 from collections import defaultdict
 from dataclasses import dataclass
-from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,6 +12,7 @@ from barks_fantagraphics.barks_tags import (
     BARKS_TAGGED_TITLES,
     TagGroups,
     Tags,
+    get_all_tags_in_tag_group,
     get_tag_titles,
 )
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
@@ -98,16 +98,9 @@ class TitleHierarchy:
         return title_str
 
 
-class IndexItemType(Enum):
-    TITLE = auto()
-    TAG = auto()
-    TAG_GROUP = auto()
-
-
 @dataclass
 class IndexItem:
     id: Titles | Tags | TagGroups
-    item_type: IndexItemType
     display_text: str
     page_to_goto: str = ""
 
@@ -151,26 +144,22 @@ class IndexScreen(FloatLayout):
         for title in Titles:
             title_str = self._get_indexable_title(title)
             first_letter = title_str[0].upper()
-            if "A" <= first_letter <= "Z":
-                self._item_index[first_letter].append(
-                    IndexItem(title, IndexItemType.TITLE, title_str)
-                )
+            assert "A" <= first_letter <= "Z"
+            self._item_index[first_letter].append(IndexItem(title, title_str))
 
         # Add all tags
         for tag in Tags:
             tag_name = self._get_sortable_string(tag.value)
             first_letter = tag_name[0].upper()
-            if "A" <= first_letter <= "Z":
-                self._item_index[first_letter].append(IndexItem(tag, IndexItemType.TAG, tag_name))
+            assert "A" <= first_letter <= "Z"
+            self._item_index[first_letter].append(IndexItem(tag, tag_name))
 
         # Add all tag groups
         for tag_group in TagGroups:
             tag_group_name = tag_group.value
             first_letter = tag_group_name[0].upper()
-            if "A" <= first_letter <= "Z":
-                self._item_index[first_letter].append(
-                    IndexItem(tag_group, IndexItemType.TAG_GROUP, tag_group_name)
-                )
+            assert "A" <= first_letter <= "Z"
+            self._item_index[first_letter].append(IndexItem(tag_group, tag_group_name))
 
         # Sort items within each letter group
         for letter in self._item_index:
@@ -189,15 +178,15 @@ class IndexScreen(FloatLayout):
 
     def on_is_visible(self, _instance: IndexScreen, value: bool) -> None:
         """When the widget becomes visible, automatically press the 'A' button."""
-        if not value and self._index_image_change_event:
-            self._index_image_change_event.cancel()
-            self._index_image_change_event = None
+        if not value:
+            self._cancel_index_image_change_events()
             return
 
-        # The index is being shown for the first time so default to 'A'.
         if self._selected_letter_button:
+            # The index has already been shown, just change the index image.
             self._new_index_image()
         else:
+            # The index is being shown for the first time so default to 'A'.
             self.on_letter_press(self._alphabet_buttons["A"])
 
     def on_letter_press(self, button: Button) -> None:
@@ -246,15 +235,18 @@ class IndexScreen(FloatLayout):
         self._cached_all_titles_for_letter = []
         self._cached_hierarchies = {}
 
-        if self._index_image_change_event:
-            self._index_image_change_event.cancel()
-            self._index_image_change_event = None
+        self._cancel_index_image_change_events()
 
         self._next_background_image()
 
         self._index_image_change_event = Clock.schedule_interval(
             lambda _dt: self._next_background_image(), self.index_theme.INDEX_IMAGE_CHANGE_SECONDS
         )
+
+    def _cancel_index_image_change_events(self) -> None:
+        if self._index_image_change_event:
+            self._index_image_change_event.cancel()
+            self._index_image_change_event = None
 
     def _next_background_image(self) -> None:
         if not self._cached_all_titles_for_letter:
@@ -281,20 +273,7 @@ class IndexScreen(FloatLayout):
         all_titles: set[Titles] = set()
 
         for index_item in self._item_index[letter]:
-            if index_item.item_type == IndexItemType.TITLE:
-                all_titles.add(index_item.id)
-                hierarchies[index_item.id] = TitleHierarchy(None, None, index_item.id)
-            elif index_item.item_type == IndexItemType.TAG:
-                tag_titles = get_tag_titles(index_item.id)
-                for title in tag_titles:
-                    hierarchies[title] = TitleHierarchy(None, index_item.id, title)
-                all_titles.update(tag_titles)
-            elif index_item.item_type == IndexItemType.TAG_GROUP:
-                for tag in BARKS_TAG_GROUPS[index_item.id]:
-                    tag_titles = get_tag_titles(tag)
-                    for title in tag_titles:
-                        hierarchies[title] = TitleHierarchy(index_item.id, tag, title)
-                    all_titles.update(tag_titles)
+            self.update_all_titles_and_hierarchies(index_item.id, all_titles, hierarchies)
 
         return [
             ALL_FANTA_COMIC_BOOK_INFO[BARKS_TITLES[title_id]]
@@ -302,14 +281,36 @@ class IndexScreen(FloatLayout):
             if BARKS_TITLES[title_id] in ALL_FANTA_COMIC_BOOK_INFO
         ], hierarchies
 
+    def update_all_titles_and_hierarchies(
+        self,
+        item_id: Titles | Tags | TagGroups,
+        all_titles: set[Titles],
+        hierarchies: dict[Titles, TitleHierarchy],
+        parent_tag_group: TagGroups | None = None,
+    ) -> None:
+        if type(item_id) is Titles:
+            all_titles.add(item_id)
+            hierarchies[item_id] = TitleHierarchy(None, None, item_id)
+        elif type(item_id) is Tags:
+            tag_titles = get_tag_titles(item_id)
+            for title in tag_titles:
+                hierarchies[title] = TitleHierarchy(parent_tag_group, item_id, title)
+            all_titles.update(tag_titles)
+        elif type(item_id) is TagGroups:
+            for tag in BARKS_TAG_GROUPS[item_id]:
+                if type(tag) is TagGroups:
+                    self.update_all_titles_and_hierarchies(tag, all_titles, hierarchies)
+                else:
+                    self.update_all_titles_and_hierarchies(tag, all_titles, hierarchies, item_id)
+
     def _create_index_button(self, item: IndexItem) -> IndexItemButton:
         """Create a configured IndexItemButton."""
         button = IndexItemButton(
             text=item.display_text,
-            bold=item.item_type != IndexItemType.TITLE,
+            bold=type(item.id) is not Titles,
         )
         button.bind(
-            on_release=lambda btn, bound_item=item: self.on_index_item_press(btn, bound_item)
+            on_release=lambda btn, bound_item=item: self._on_index_item_press(btn, bound_item)
         )
         return button
 
@@ -332,18 +333,19 @@ class IndexScreen(FloatLayout):
         sub_item_padding = parent_padding + self.index_theme.SUB_ITEM_INDENT_STEP
 
         # --- Determine what items to display in the new sub-list ---
-        if self._open_tag_item.item_type == IndexItemType.TAG:
+        if type(self._open_tag_item.id) is Tags:
             assert isinstance(item_id, Tags)
             sub_items_to_display = [
                 (title, *self._get_indexable_title_with_page_nums(title, item_id))
                 for title in BARKS_TAGGED_TITLES[item_id]
             ]
-            sub_items_to_display.sort(key=lambda t: t[2])
-            sub_item_type = IndexItemType.TITLE
         else:  # It's a TagGroup
             assert isinstance(item_id, TagGroups)
-            sub_items_to_display = [(tag, "", tag.value) for tag in BARKS_TAG_GROUPS[item_id]]
-            sub_item_type = IndexItemType.TAG
+            sub_items_to_display = [
+                (tag, "", tag.value) for tag in get_all_tags_in_tag_group(item_id)
+            ]
+
+        sub_items_to_display.sort(key=lambda t: t[2])
 
         # Now create the layout.
         sub_items_layout = BoxLayout(orientation="vertical", size_hint_y=None)
@@ -356,12 +358,11 @@ class IndexScreen(FloatLayout):
             )
             sub_item = IndexItem(
                 id=sub_item_id,
-                item_type=sub_item_type,
                 display_text=sub_item_text,
                 page_to_goto=sub_item_page_to_goto,
             )
             title_button.bind(
-                on_release=lambda btn, bound_item=sub_item: self.on_index_item_press(
+                on_release=lambda btn, bound_item=sub_item: self._on_index_item_press(
                     btn, bound_item
                 ),
             )
@@ -378,12 +379,12 @@ class IndexScreen(FloatLayout):
         sub_items_layout.owner_button = self._open_tag_button  # Tag the layout with its owner
         self._open_tag_widgets.append(sub_items_layout)
 
-    def on_index_item_press(self, button: Button, item: IndexItem) -> None:
+    def _on_index_item_press(self, button: Button, item: IndexItem) -> None:
         """Handle a press on an individual index item."""
         logger.info(f"Index item pressed: {item}")
 
         # If a title is clicked, it's a terminal action. Handle it and do not change the UI.
-        if item.item_type == IndexItemType.TITLE:
+        if type(item.id) is Titles:
             self._handle_title(button, item)
             return
 
@@ -472,9 +473,9 @@ class IndexScreen(FloatLayout):
         return level_of_click
 
     def _handle_press(self, button: Button, item: IndexItem) -> None:
-        if item.item_type == IndexItemType.TAG:
+        if type(item.id) is Tags:
             self._handle_tag(button, item)
-        elif item.item_type == IndexItemType.TAG_GROUP:
+        elif type(item.id) is TagGroups:
             self._handle_tag_group(button, item)
 
     def _handle_title(self, button: Button, item: IndexItem) -> None:
