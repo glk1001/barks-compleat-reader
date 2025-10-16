@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, Titles
 from barks_fantagraphics.comics_consts import PageType
 from comic_utils.pil_image_utils import PNG_PIL_FORMAT
+from intspan import intspan
 
 from barks_reader.screen_metrics import get_approximate_taskbar_height
 
@@ -173,33 +174,11 @@ def get_paths_from_zip(zip_path: Path) -> set[str]:
     return paths
 
 
-def get_concat_page_nums_str(page_nums: list[str]) -> str:
-    seq = []
-    final = []
-    last = 0
-
-    for index, val_str in enumerate(page_nums):
-        try:
-            val = int(val_str)
-        except ValueError:
-            continue
-
-        if last + 1 == val or index == 0:
-            seq.append(val)
-            last = val
-        else:
-            if len(seq) > 1:
-                final.append(str(seq[0]) + "-" + str(seq[len(seq) - 1]))
-            else:
-                final.append(str(seq[0]))
-            seq = []
-            seq.append(val)
-            last = val
-
-        if index == len(page_nums) - 1:
-            if len(seq) > 1:
-                final.append(str(seq[0]) + "-" + str(seq[len(seq) - 1]))
-            else:
-                final.append(str(seq[0]))
-
-    return ", ".join(map(str, final))
+def get_concat_page_nums_str(page_nums_str: list[str]) -> str:
+    try:
+        page_nums = [int(p) for p in page_nums_str]
+    except ValueError as e:
+        msg = f"Could not convert page nums list to list of ints: {page_nums_str}."
+        raise ValueError(msg) from e
+    else:
+        return str(intspan(page_nums))
