@@ -18,6 +18,7 @@ class ConfigInfo:
         self._app_name = APP_NAME
         self.app_config_dir: Path | None = None
         self.app_config_path: Path | None = None
+        self.app_data_dir: Path | None = None
         self.kivy_config_dir: Path | None = None
         self.app_log_path: Path | None = None
 
@@ -27,6 +28,7 @@ class ConfigInfo:
 
     def _setup_app_config_dir(self) -> None:
         self.app_config_dir = self._get_app_config_dir()
+        assert self.app_config_dir
 
         self.app_config_dir.mkdir(parents=True, exist_ok=True)
         if not self.app_config_dir.is_dir():
@@ -34,6 +36,9 @@ class ConfigInfo:
             raise RuntimeError(msg)
 
         self.app_config_path = self.app_config_dir / (self._app_name + ".ini")
+
+        self.app_data_dir = self._get_app_data_dir()
+        assert self.app_data_dir
 
         self.kivy_config_dir = self.app_config_dir / "kivy"
         os.environ["KIVY_HOME"] = str(self.kivy_config_dir)
@@ -43,13 +48,13 @@ class ConfigInfo:
         self.app_log_path = log_dir / (self._app_name + ".log")
 
     def _get_app_config_dir(self) -> Path:
-        app_env_var = f"{self._app_name.upper()}_HOME"
+        app_env_var = f"{self._app_name.upper()}_CONFIG_DIR"
         if app_env_var in os.environ:
             return Path(os.environ[app_env_var])
 
-        return self._get_user_data_dir()
+        return self._get_user_app_config_dir()
 
-    def _get_user_data_dir(self) -> Path:
+    def _get_user_app_config_dir(self) -> Path:
         # Determine and return the user_data_dir.
         if self.platform == "ios":
             data_dir = Path("~/Documents").expanduser() / self._app_name
@@ -79,6 +84,16 @@ class ConfigInfo:
             data_dir.mkdir(parents=True, exist_ok=True)
 
         return data_dir
+
+    def _get_app_data_dir(self) -> Path:
+        app_env_var = f"{self._app_name.upper()}_DATA_DIR"
+        if app_env_var in os.environ:
+            return Path(os.environ[app_env_var])
+
+        if self.platform in ["ios", "android", "win", "macosx"]:
+            return self._get_user_app_config_dir()
+
+        return Path("~/.local/share").expanduser() / self._app_name
 
 
 def _get_platform() -> str:

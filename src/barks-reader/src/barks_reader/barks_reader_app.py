@@ -244,7 +244,9 @@ class BarksReaderApp(App):
 
     def _initialize_settings_and_db(self) -> None:
         """Handle the initial setup of settings and the database."""
-        self.reader_settings.set_config(self.config, Path(self.get_application_config()))
+        self.reader_settings.set_config(
+            self.config, Path(self.get_application_config()), self._config_info.app_data_dir
+        )
         self.reader_settings.validate_settings()
         self.reader_settings.set_barks_panels_dir()
 

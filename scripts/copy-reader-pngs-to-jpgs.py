@@ -115,7 +115,7 @@ if __name__ == "__main__":
         config = ConfigParser()
         config.read(config_info.app_config_path)
         reader_settings = ReaderSettings()
-        reader_settings.set_config(config, config_info.app_config_path)
+        reader_settings.set_config(config, config_info.app_config_path, config_info.app_data_dir)
         reader_settings.force_barks_panels_dir(use_png_images=True)
 
         png_dir = reader_settings.file_paths.get_default_png_barks_panels_source()

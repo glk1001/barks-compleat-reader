@@ -393,7 +393,7 @@ if __name__ == "__main__":
     barks_config = ConfigParser()
     barks_config.read(config_info.app_config_path)
     settings = BuildableReaderSettings()
-    settings.set_config(barks_config, config_info.app_config_path)
+    settings.set_config(barks_config, config_info.app_config_path, config_info.app_data_dir)
     settings.set_barks_panels_dir()
 
     # --- Test the Class ---

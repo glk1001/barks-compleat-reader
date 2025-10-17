@@ -12,7 +12,6 @@ import platform
 import sys
 from configparser import ConfigParser
 from dataclasses import dataclass
-from pathlib import Path
 
 from barks_fantagraphics.comics_cmd_args import CmdArgs, ExtraArg
 from barks_reader.config_info import ConfigInfo  # IMPORT THIS BEFORE Kivy!!
@@ -22,7 +21,7 @@ from barks_reader.reader_settings import (
     MAIN_WINDOW_HEIGHT,
     MAIN_WINDOW_LEFT,
     MAIN_WINDOW_TOP,
-    READER_FILES_DIR,
+    ReaderSettings,
 )
 from barks_reader.reader_utils import get_best_window_height_fit, get_win_width_from_height
 from barks_reader.screen_metrics import SCREEN_METRICS
@@ -93,6 +92,7 @@ def start_logging(cfg_info: ConfigInfo, args: CmdArgs) -> None:
 
     logger.info("*** Starting barks reader ***")
     logger.info(f'app config path = "{cfg_info.app_config_path}".')
+    logger.info(f'app_data_dir = "{cfg_info.app_data_dir}".')
     logger.info(f'app log path = "{log_path}".')
     logger.info(f'kivy config dir = "{cfg_info.kivy_config_dir}".')
     logger.info(f'KIVY_HOME = "{os.environ["KIVY_HOME"]}".')
@@ -199,7 +199,7 @@ def get_minimal_config_options(cfg_info: ConfigInfo) -> MinimalConfigOptions:
     barks_config.read(cfg_info.app_config_path)
 
     try:
-        reader_files_dir = Path(barks_config.get(BARKS_READER_SECTION, READER_FILES_DIR))
+        reader_files_dir = ReaderSettings.get_reader_files_dir(cfg_info.app_data_dir)
         win_height = int(barks_config.get(BARKS_READER_SECTION, MAIN_WINDOW_HEIGHT))
         win_left = int(barks_config.get(BARKS_READER_SECTION, MAIN_WINDOW_LEFT))
         win_top = int(barks_config.get(BARKS_READER_SECTION, MAIN_WINDOW_TOP))
