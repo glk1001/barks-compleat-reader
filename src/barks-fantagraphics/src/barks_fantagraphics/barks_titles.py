@@ -14,12 +14,14 @@ from .comic_issues import (
     Issues,
 )
 
-NUM_TITLES = 643 + 5  # +5 for articles
+NUM_TITLES = 644 + 5  # +5 for articles
 
 US_1_FC_ISSUE_NUM = 386
 US_2_FC_ISSUE_NUM = 456
 US_3_FC_ISSUE_NUM = 495
 
+# fmt: off
+# noinspection LongLine
 ADVENTURE_DOWN_UNDER = "Adventure Down Under"
 ALL_AT_SEA = "All at Sea"
 ALL_CHOKED_UP = "All Choked Up"
@@ -667,10 +669,10 @@ ZERO_HERO = "Zero Hero"
 RICH_TOMASSO___ON_COLORING_BARKS = "Rich Tomasso - On Coloring Barks"
 DON_AULT___FANTAGRAPHICS_INTRODUCTION = "Don Ault - Fantagraphics Introduction"
 DON_AULT___LIFE_AMONG_THE_DUCKS = "Don Ault - Life Among the Ducks"
-MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD = (
-    "Maggie Thompson - Comics Readers Find Comic Book Gold"  # noqa: E501
-)
+MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD = "Maggie Thompson - Comics Readers Find Comic Book Gold"
+GEORGE_LUCAS___AN_APPRECIATION = "George Lucas - An Appreciation"
 CENSORSHIP_FIXES_AND_OTHER_CHANGES = "Censorship Fixes and Other Changes"
+# fmt: on
 
 
 @verify(CONTINUOUS, UNIQUE)
@@ -1323,6 +1325,7 @@ class Titles(IntEnum):
     DON_AULT___FANTAGRAPHICS_INTRODUCTION = auto()
     DON_AULT___LIFE_AMONG_THE_DUCKS = auto()
     MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD = auto()
+    GEORGE_LUCAS___AN_APPRECIATION = auto()
     CENSORSHIP_FIXES_AND_OTHER_CHANGES = auto()
 
 
@@ -1977,6 +1980,7 @@ BARKS_TITLES = [
     DON_AULT___FANTAGRAPHICS_INTRODUCTION,
     DON_AULT___LIFE_AMONG_THE_DUCKS,
     MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD,
+    GEORGE_LUCAS___AN_APPRECIATION,
     CENSORSHIP_FIXES_AND_OTHER_CHANGES,
 ]
 
@@ -2684,6 +2688,7 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, False, Issues.EXTRAS, 1, 1, 2011, 1, 1, 2011),
     ComicBookInfo(Titles.DON_AULT___LIFE_AMONG_THE_DUCKS, False, Issues.EXTRAS, 1, 1, 2014, 1, 1, 2014),
     ComicBookInfo(Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD, False, Issues.EXTRAS, 1, 1, 2025, 1, 1, 2025),
+    ComicBookInfo(Titles.GEORGE_LUCAS___AN_APPRECIATION, False, Issues.EXTRAS, 1, 1, 1983, 1, 1, 1983),
     ComicBookInfo(Titles.CENSORSHIP_FIXES_AND_OTHER_CHANGES, False, Issues.EXTRAS, 6, 8, 2025, 6, 8, 2025),
 ]
 # fmt: on
@@ -2717,6 +2722,7 @@ NON_COMIC_TITLES = [
     Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
     Titles.DON_AULT___LIFE_AMONG_THE_DUCKS,
     Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD,
+    Titles.GEORGE_LUCAS___AN_APPRECIATION,
     Titles.CENSORSHIP_FIXES_AND_OTHER_CHANGES,
 ]
 

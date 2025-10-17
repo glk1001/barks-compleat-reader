@@ -8,6 +8,7 @@ class SystemFilePaths:
         self._barks_reader_files_dir: Path | None = None
 
         self._reader_icon_files_dir: Path | None = None
+        self._app_window_icon_path: Path | None = None
 
         self._action_bar_icons_dir: Path | None = None
         self._close_icon_path: Path | None = None

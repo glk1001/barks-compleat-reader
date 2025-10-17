@@ -429,7 +429,12 @@ class ComicBook:
         if volume == 16 and page_num == "235":  # noqa: PLR2004
             return True
 
-        # Non-comic title.
+        # Non-comic titles.
+        if volume == 1 and page_num in [
+            "268",
+        ]:
+            return True
+
         if volume == 2 and page_num in [  # noqa: PLR2004
             "252",
             "253",
@@ -440,7 +445,6 @@ class ComicBook:
         ]:
             return True
 
-        # Non-comic title.
         if volume == 7 and page_num in [  # noqa: PLR2004, SIM103
             "260",
             "261",
