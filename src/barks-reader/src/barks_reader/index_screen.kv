@@ -4,6 +4,7 @@
     background_down: ''
     border: (0, 0, 0, 0)
     background_color: app.index_theme.MENU_BG_SELECTED if self.is_selected else app.index_theme.MENU_BG
+    font_size: fm.index_menu_font_size
     color: app.index_theme.MENU_TEXT
     bold: True
     canvas.after:
@@ -19,6 +20,7 @@
     background_down: ''
     border: (0, 0, 0, 0)
     background_color: app.index_theme.ITEM_BG
+    font_size: fm.index_item_font_size
     color: app.index_theme.ITEM_TEXT
     size_hint: 1, None
     height: app.index_theme.ROW_HEIGHT
@@ -34,6 +36,7 @@
     border: (0, 0, 0, 0)
     # Make the button's own background transparent, as we will draw our own.
     background_color: (0, 0, 0, 0)
+    font_size: fm.index_title_font_size
     color: app.index_theme.TITLE_TEXT
     size_hint: 1, None
     height: app.index_theme.ROW_HEIGHT

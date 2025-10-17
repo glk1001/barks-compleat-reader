@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import string
+import textwrap
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,7 +21,6 @@ from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, Fan
 from kivy.animation import Animation
 from kivy.app import App
 from kivy.clock import Clock
-from kivy.lang import Builder
 from kivy.metrics import dp
 from kivy.properties import BooleanProperty, ObjectProperty, StringProperty
 from kivy.uix.boxlayout import BoxLayout
@@ -38,6 +38,9 @@ if TYPE_CHECKING:
     from kivy.uix.widget import Widget
 
     from barks_reader.reader_settings import ReaderSettings
+
+MAX_TITLE_LEN = 45
+INDEX_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 
 class IndexMenuButton(Button):
@@ -539,7 +542,8 @@ class IndexScreen(FloatLayout):
         return page_nums[0], title_str + ", " + page_nums_str
 
     def _get_indexable_title(self, title: Titles) -> str:
-        return self._get_sortable_string(BARKS_TITLES[title])
+        title_str = textwrap.shorten(BARKS_TITLES[title], width=MAX_TITLE_LEN, placeholder="...")
+        return self._get_sortable_string(title_str)
 
     @staticmethod
     def _get_sortable_string(text: str) -> str:
@@ -549,7 +553,3 @@ class IndexScreen(FloatLayout):
         if text_upper.startswith("A "):
             return text[2:] + ", A"
         return text
-
-
-# Load the associated .kv file when the module is imported.
-Builder.load_file(str(Path(__file__).with_suffix(".kv")))
