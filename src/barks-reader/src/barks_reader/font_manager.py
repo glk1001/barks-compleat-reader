@@ -11,6 +11,9 @@ class FontManager(EventDispatcher):
     main_title_font_size = NumericProperty()
     title_info_font_size = NumericProperty()
     title_extra_info_font_size = NumericProperty()
+    index_menu_font_size = NumericProperty()
+    index_item_font_size = NumericProperty()
+    index_title_font_size = NumericProperty()
     check_box_font_size = NumericProperty()
     error_main_view_font_size = NumericProperty()
     error_popup_font_size = NumericProperty()
@@ -48,6 +51,9 @@ class FontManager(EventDispatcher):
             main_title_font_size = sp(30)
             title_info_font_size = sp(16)
             title_extra_info_font_size = sp(14)
+            index_menu_font_size = sp(13)
+            index_item_font_size = sp(12)
+            index_title_font_size = sp(12)
             year_range_font_size = sp(14)
             loading_title_size = sp(16)
             checkbox_font_size = sp(14)
@@ -61,6 +67,9 @@ class FontManager(EventDispatcher):
             main_title_font_size = sp(40)
             title_info_font_size = sp(20)
             title_extra_info_font_size = sp(18)
+            index_menu_font_size = sp(17)
+            index_item_font_size = sp(16)
+            index_title_font_size = sp(16)
             year_range_font_size = sp(18)
             loading_title_size = sp(20)
             checkbox_font_size = sp(19)
@@ -74,6 +83,9 @@ class FontManager(EventDispatcher):
         self.main_title_font_size = main_title_font_size
         self.title_info_font_size = title_info_font_size
         self.title_extra_info_font_size = title_extra_info_font_size
+        self.index_menu_font_size = index_menu_font_size
+        self.index_item_font_size = index_item_font_size
+        self.index_title_font_size = index_title_font_size
         self.check_box_font_size = checkbox_font_size
         self.error_main_view_font_size = error_main_view_font_size
         self.error_popup_font_size = error_popup_font_size

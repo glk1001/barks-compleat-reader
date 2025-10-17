@@ -24,8 +24,11 @@ SERIES_NODE_TEXT = "Series"
 CATEGORIES_NODE_TEXT = "Categories"
 SEARCH_NODE_TEXT = "Search"
 APPENDIX_NODE_TEXT = "Appendix"
-APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT = "Don Ault: Life Among the Ducks"
 APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT = "Rich Tomasso: On Coloring Barks"
+APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT = "Don Ault: Life Among the Ducks"
+APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_TEXT = (
+    "Maggie Thompson: Comics Readers Find..."  # noqa: E501
+)
 APPENDIX_CENSORSHIP_FIXES_NODE_TEXT = "Censorship Fixes and Other Changes"
 INDEX_NODE_TEXT = "Index"
 
