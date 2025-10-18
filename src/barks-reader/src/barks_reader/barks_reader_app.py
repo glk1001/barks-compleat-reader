@@ -336,6 +336,9 @@ class BarksReaderApp(App):
         config_left = Config.getint("graphics", "left")
         Window.left = config_left + 1
         Window.left = config_left
+        config_top = Config.getint("graphics", "top")
+        Window.top = config_top + 1
+        Window.top = config_top
 
         if self.reader_settings.goto_fullscreen_on_app_start:
             self._main_screen.force_fullscreen()
