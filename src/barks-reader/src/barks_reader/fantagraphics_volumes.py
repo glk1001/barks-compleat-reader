@@ -55,7 +55,7 @@ class TooManyOverrideDirsError(Exception):
 class WrongFantagraphicsVolumeError(Exception):
     def __init__(self, file: Path, file_vol: int, expected_volume: int, archive_root: Path) -> None:
         self.file = file
-        self.file_vol = file_vol
+        self.file_volume = file_vol
         self.expected_volume = expected_volume
         self.archive_root = archive_root
 

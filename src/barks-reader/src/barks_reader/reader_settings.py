@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, override
 
@@ -14,14 +13,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from kivy.uix.boxlayout import BoxLayout
-
-
-class FantaVolumesState(Enum):
-    VOLUMES_EXIST = auto()
-    VOLUMES_MISSING = auto()
-    VOLUMES_NOT_SET = auto()
-    VOLUMES_NOT_NEEDED = auto()
-
 
 READER_FILES_DIR = "Reader Files"  # relative to app data directory
 JPG_BARKS_PANELS_ZIP = "Barks Panels.zip"
@@ -52,8 +43,8 @@ _READER_SETTINGS_JSON = f"""
    {{  "type": "title", "title": "Folders" }},
    {{
       "title": "Fantagraphics Directory",
-      "desc": "Directory containing the Fantagraphics comic zips.",
-      "type": "{LONG_PATH_SETTING}",
+      "desc": "Fantagraphics comic zips directory.",
+      "type": "string",
       "section": "{BARKS_READER_SECTION}",
       "key": "{FANTA_DIR}"
    }},
@@ -325,15 +316,6 @@ class ReaderSettings:
         if self.use_prebuilt_archives:
             return True
         return self._is_valid_dir(dir_path)
-
-    def get_fantagraphics_volumes_state(self) -> FantaVolumesState:
-        if self.use_prebuilt_archives:
-            return FantaVolumesState.VOLUMES_NOT_NEEDED
-        if str(self.fantagraphics_volumes_dir) == UNSET_FANTA_DIR_MARKER:
-            return FantaVolumesState.VOLUMES_NOT_SET
-        if not self.fantagraphics_volumes_dir.is_dir():
-            return FantaVolumesState.VOLUMES_MISSING
-        return FantaVolumesState.VOLUMES_EXIST
 
     def _is_valid_reader_files_dir(self, dir_path: Path) -> bool:
         return self._is_valid_dir(dir_path)

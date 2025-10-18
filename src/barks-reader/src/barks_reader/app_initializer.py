@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from kivy.clock import Clock
@@ -10,13 +11,13 @@ from barks_reader.fantagraphics_volumes import (
     TooManyArchiveFilesError,
     WrongFantagraphicsVolumeError,
 )
-from barks_reader.reader_settings import FantaVolumesState
+from barks_reader.reader_settings import UNSET_FANTA_DIR_MARKER
 from barks_reader.reader_tree_view_utils import get_tree_view_node_id_text
 from barks_reader.reader_ui_classes import (
     ButtonTreeViewNode,
     TitleTreeViewNode,
 )
-from barks_reader.user_error_handler import ErrorTypes
+from barks_reader.user_error_handler import ErrorInfo, ErrorTypes
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -35,8 +36,21 @@ if TYPE_CHECKING:
     from barks_reader.user_error_handler import UserErrorHandler
     from barks_reader.view_state_manager import ViewStateManager
 
-BAD_FANTA_VOLUMES_STATE = [FantaVolumesState.VOLUMES_MISSING, FantaVolumesState.VOLUMES_NOT_SET]
-READY_FANTA_VOLUMES_STATE = [FantaVolumesState.VOLUMES_EXIST, FantaVolumesState.VOLUMES_NOT_NEEDED]
+
+class _FantaVolumesState(Enum):
+    VOLUMES_EXIST = auto()
+    VOLUMES_MISSING = auto()
+    VOLUMES_NOT_SET = auto()
+    VOLUMES_WRONG_ORDER = auto()
+    VOLUMES_TOO_MANY = auto()
+    VOLUMES_NOT_NEEDED = auto()
+
+
+_READY_FANTA_VOLUMES_STATE = {
+    _FantaVolumesState.VOLUMES_EXIST,
+    _FantaVolumesState.VOLUMES_NOT_NEEDED,
+}
+_BAD_FANTA_VOLUMES_STATE = set(_FantaVolumesState) - _READY_FANTA_VOLUMES_STATE
 
 
 class AppInitializer:
@@ -62,7 +76,8 @@ class AppInitializer:
         self._view_state_manager = view_state_manager
         self._set_next_title_func = set_next_title_func
 
-        self._fanta_volumes_state: FantaVolumesState = FantaVolumesState.VOLUMES_NOT_SET
+        self._fanta_volumes_state: _FantaVolumesState = _FantaVolumesState.VOLUMES_NOT_SET
+        self._fanta_volumes_error_info: ErrorInfo | None = None
         self._on_tree_build_finished: Callable[[], None] | None = None
 
     def start(
@@ -82,12 +97,12 @@ class AppInitializer:
 
     def _post_build_setup(self) -> None:
         """Handle all setup tasks that must occur after the tree is built."""
-        self._fanta_volumes_state = self._get_fanta_volumes_state()
+        self._set_post_build_fanta_volumes_state()
         logger.debug(f"_fanta_volumes_state = {self._fanta_volumes_state}.")
 
         self._view_state_manager.update_background_views(ViewStates.INITIAL)
 
-        if (self._fanta_volumes_state in READY_FANTA_VOLUMES_STATE) and (
+        if (self._fanta_volumes_state in _READY_FANTA_VOLUMES_STATE) and (
             not self._init_comic_book_data()
         ):
             return
@@ -118,19 +133,10 @@ class AppInitializer:
             self._tree_view_manager.scroll_to_node(saved_node)
 
     def is_fanta_volumes_state_ok(self) -> tuple[bool, str]:
-        if self._fanta_volumes_state not in BAD_FANTA_VOLUMES_STATE:
+        if self._fanta_volumes_state not in _BAD_FANTA_VOLUMES_STATE:
             return True, ""
 
-        reason = (
-            "Fantagraphics Directory Not Set"
-            if self._fanta_volumes_state == FantaVolumesState.VOLUMES_NOT_SET
-            else "Fantagraphics Directory Not Found"
-        )
-        error_type = (
-            ErrorTypes.FantagraphicsVolumeRootNotSet
-            if self._fanta_volumes_state == FantaVolumesState.VOLUMES_NOT_SET
-            else ErrorTypes.FantagraphicsVolumeRootNotFound
-        )
+        reason, error_type = self.get_bad_fanta_volumes_reason()
 
         def _on_error_popup_closed(fanta_volumes_missing_msg: str) -> None:
             self._tree_view_screen.main_files_not_loaded_msg = fanta_volumes_missing_msg
@@ -138,21 +144,34 @@ class AppInitializer:
 
         self._user_error_handler.handle_error(
             error_type,
-            None,
+            self._fanta_volumes_error_info,
             _on_error_popup_closed,
             f"Cannot Load Comic: {reason}",
         )
 
         return False, reason
 
-    def _get_fanta_volumes_state(self) -> FantaVolumesState:
-        volumes_state = self._reader_settings.get_fantagraphics_volumes_state()
-        if volumes_state in [FantaVolumesState.VOLUMES_EXIST, FantaVolumesState.VOLUMES_NOT_NEEDED]:
-            return volumes_state
+    def get_bad_fanta_volumes_reason(self) -> tuple[str, ErrorTypes]:
+        if self._fanta_volumes_state == _FantaVolumesState.VOLUMES_NOT_SET:
+            return "Fantagraphics Directory Not Set", ErrorTypes.FantagraphicsVolumeRootNotSet
+        if self._fanta_volumes_state == _FantaVolumesState.VOLUMES_MISSING:
+            return "Fantagraphics Directory Not Found", ErrorTypes.FantagraphicsVolumeRootNotFound
+        if self._fanta_volumes_state == _FantaVolumesState.VOLUMES_WRONG_ORDER:
+            return "Wrong Content in Fantagraphics Directory", ErrorTypes.WrongFantagraphicsVolume
+        if self._fanta_volumes_state == _FantaVolumesState.VOLUMES_TOO_MANY:
+            return "Wrong Content in Fantagraphics Directory", ErrorTypes.WrongFantagraphicsVolume
+
+        msg = f'Unexpected fanta volumes state: "{self._fanta_volumes_state}".'
+        raise RuntimeError(msg)
+
+    def _set_post_build_fanta_volumes_state(self) -> None:
+        self._fanta_volumes_state = self._get_post_build_fanta_volumes_state()
+        if self._fanta_volumes_state in _READY_FANTA_VOLUMES_STATE:
+            return
 
         error_type = (
             ErrorTypes.FantagraphicsVolumeRootNotSet
-            if volumes_state == FantaVolumesState.VOLUMES_NOT_SET
+            if self._fanta_volumes_state == _FantaVolumesState.VOLUMES_NOT_SET
             else ErrorTypes.FantagraphicsVolumeRootNotFound
         )
 
@@ -166,7 +185,14 @@ class AppInitializer:
             _on_error_popup_closed,
         )
 
-        return volumes_state
+    def _get_post_build_fanta_volumes_state(self) -> _FantaVolumesState:
+        if self._reader_settings.use_prebuilt_archives:
+            return _FantaVolumesState.VOLUMES_NOT_NEEDED
+        if str(self._reader_settings.fantagraphics_volumes_dir) == UNSET_FANTA_DIR_MARKER:
+            return _FantaVolumesState.VOLUMES_NOT_SET
+        if not self._reader_settings.fantagraphics_volumes_dir.is_dir():
+            return _FantaVolumesState.VOLUMES_MISSING
+        return _FantaVolumesState.VOLUMES_EXIST
 
     def _init_comic_book_data(self) -> bool:
         try:
@@ -177,12 +203,23 @@ class AppInitializer:
                 self._tree_view_screen.main_files_not_loaded_msg = wrong_fanta_volumes_msg
                 self._tree_view_screen.main_files_not_loaded = True
 
-            error_type = (
-                ErrorTypes.WrongFantagraphicsVolume
-                if type(e) is WrongFantagraphicsVolumeError
-                else ErrorTypes.TooManyArchiveFiles
+            if type(e) is WrongFantagraphicsVolumeError:
+                error_type = ErrorTypes.WrongFantagraphicsVolume
+                self._fanta_volumes_error_info = ErrorInfo(
+                    file=str(e.file), file_volume=e.file_volume, expected_volume=e.expected_volume
+                )
+                self._fanta_volumes_state = _FantaVolumesState.VOLUMES_WRONG_ORDER
+            else:
+                assert type(e) is TooManyArchiveFilesError  # noqa: PT017
+                error_type = ErrorTypes.TooManyArchiveFiles
+                self._fanta_volumes_error_info = ErrorInfo(
+                    num_volumes=e.num_volumes, num_archive_files=e.num_archive_files
+                )
+                self._fanta_volumes_state = _FantaVolumesState.VOLUMES_TOO_MANY
+
+            self._user_error_handler.handle_error(
+                error_type, self._fanta_volumes_error_info, _on_error_popup_closed
             )
-            self._user_error_handler.handle_error(error_type, e, _on_error_popup_closed)
 
             return False
 
