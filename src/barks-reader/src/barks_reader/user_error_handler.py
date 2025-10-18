@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import textwrap
 from enum import Enum, auto
 from textwrap import dedent
 from typing import TYPE_CHECKING
@@ -116,13 +117,16 @@ class UserErrorHandler:
         popup_title: str,
     ) -> None:
         """Handle the case where the Fantagraphics directory is not found."""
+        fanta_volume_dir = textwrap.fill(str(self._reader_settings.fantagraphics_volumes_dir), 50)
+
         msg = dedent(f"""\
-            In the app settings, the Fantagraphics comic zips directory is
+            In app settings, the Fantagraphics comic zips directory is
 
-                [b]"{self._reader_settings.fantagraphics_volumes_dir}"[/b]
+                [b]"{fanta_volume_dir}"[/b]
 
-            But this directory could not be found. You need to go to settings
-            and enter the correct directory, then restart the app.""")
+            But this directory could not be found. You need to go to
+            settings and enter the correct directory, then restart the
+            app.""")
         title = popup_title if popup_title else "Fantagraphics Directory Not Found"
         self._show_settings_error_popup(
             title=title,
@@ -138,11 +142,12 @@ class UserErrorHandler:
         _popup_title: str,
     ) -> None:
         """Handle an unexpected Fantagraphics archive file."""
+        archive_file = textwrap.fill(str(exception.file), 50)
         # noinspection LongLine
         msg = dedent(f"""\
             There was an unexpected Fantagraphics archive file:
 
-            [size=16sp][b]"{exception.file}".[/b][/size]
+                [b]"{archive_file}"[/b]
 
             The expected volume number was {exception.expected_volume} not {exception.file_vol}. You need to
             make sure the archives are prefixed with the numbers
@@ -195,7 +200,7 @@ class UserErrorHandler:
         popup = self._show_popup(
             title=title,
             text=text,
-            ok_text="Goto settings",
+            ok_text="Settings",
             ok_func=_on_goto_settings,
             cancel_text="Cancel",
             cancel_func=_on_cancel,
