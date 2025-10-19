@@ -1,11 +1,11 @@
 from pathlib import Path
-from tkinter import Widget
 
 from kivy.clock import Clock
 from kivy.lang import Builder
 from kivy.properties import ObjectProperty
 from kivy.uix.popup import Popup
 from kivy.uix.settings import SettingItem
+from kivy.uix.widget import Widget
 
 KV_SETTINGS_OVERRIDE = """
 <-SettingItem>:
