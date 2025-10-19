@@ -3,9 +3,17 @@
 
 import os
 from pathlib import Path
-from sys import platform as _sys_platform
+
+from barks_reader.platform_info import PLATFORM, Platform
 
 APP_NAME = "barks-reader"
+
+BARKS_READER_INSTALLER_FAILED_FLAG_FILE = "barks-reader-installer-failed.flag"
+IOS_CONFIG_DIR = "~/Documents"
+LINUX_CONFIG_DIR = os.environ.get("XDG_CONFIG_HOME", "~/.config")
+LINUX_APP_DIR = "~/.local/share"
+MACOS_CONFIG_DIR = "~/Library/Application Support"
+WINDOWS_CONFIG_DIR = os.environ.get("APPDATA", "")
 
 # This app will hook into kivy logging, so there is no kivy console
 # logging required.
@@ -14,17 +22,28 @@ os.environ["KIVY_NO_CONSOLELOG"] = "1"
 
 
 class ConfigInfo:
+    """Configure the apps config directory and force Kivy to use it.
+
+    To do this, we make the KIVY_HOME directory to be under the apps config dir.
+    For this to work, this module must be imported before any kivy imports.
+    """
+
+    # noinspection PyTypeChecker
     def __init__(self) -> None:
         self._app_name = APP_NAME
-        self.app_config_dir: Path | None = None
-        self.app_config_path: Path | None = None
-        self.app_data_dir: Path | None = None
-        self.kivy_config_dir: Path | None = None
-        self.app_log_path: Path | None = None
-
-        self.platform = _get_platform()
+        self.app_config_dir: Path = None
+        self.app_config_path: Path = None
+        self.app_data_dir: Path = None
+        self.kivy_config_dir: Path = None
+        self.app_log_path: Path = None
 
         self._setup_app_config_dir()
+
+        assert self.app_config_dir
+        assert self.app_config_path
+        assert self.app_data_dir
+        assert self.kivy_config_dir
+        assert self.app_log_path
 
     def _setup_app_config_dir(self) -> None:
         self.app_config_dir = self._get_app_config_dir()
@@ -47,6 +66,12 @@ class ConfigInfo:
         log_dir.mkdir(parents=True, exist_ok=True)
         self.app_log_path = log_dir / (self._app_name + ".log")
 
+    def get_executable_name(self) -> str:
+        if PLATFORM == Platform.WIN:
+            return self._app_name + ".exe"
+
+        return self._app_name
+
     def _get_app_config_dir(self) -> Path:
         app_env_var = f"{self._app_name.upper()}_CONFIG_DIR"
         if app_env_var in os.environ:
@@ -56,9 +81,9 @@ class ConfigInfo:
 
     def _get_user_app_config_dir(self) -> Path:
         # Determine and return the user_data_dir.
-        if self.platform == "ios":
-            data_dir = Path("~/Documents").expanduser() / self._app_name
-        elif self.platform == "android":
+        if PLATFORM == Platform.IOS:
+            data_dir = Path(IOS_CONFIG_DIR).expanduser() / self._app_name
+        elif PLATFORM == Platform.ANDROID:
             pass
             # from jnius import autoclass
             #
@@ -69,13 +94,13 @@ class ConfigInfo:
             # # noinspection PyTypeHints
             # file_p = cast("java.io.File", context.getFilesDir())
             # data_dir = Path(file_p.getAbsolutePath())
-        elif self.platform == "win":
-            data_dir = Path(os.environ["APPDATA"]) / self._app_name
-        elif self.platform == "macosx":
-            data_dir = Path("~/Library/Application Support").expanduser()
+        elif PLATFORM == Platform.WIN:
+            data_dir = Path(WINDOWS_CONFIG_DIR) / self._app_name
+        elif PLATFORM == Platform.MACOSX:
+            data_dir = Path(MACOS_CONFIG_DIR).expanduser()
             data_dir /= self._app_name
         else:  # _platform == 'linux' or anything else...:
-            data_dir = Path(os.environ.get("XDG_CONFIG_HOME", "~/.config")).expanduser()
+            data_dir = Path(LINUX_CONFIG_DIR).expanduser()
             data_dir /= self._app_name
 
         # Need to sort out Android and pyinstaller requirements.
@@ -90,33 +115,25 @@ class ConfigInfo:
         if app_env_var in os.environ:
             return Path(os.environ[app_env_var])
 
-        if self.platform in ["ios", "android", "win", "macosx"]:
+        if PLATFORM in [Platform.IOS, Platform.ANDROID, Platform.WIN, Platform.MACOSX]:
             return self._get_user_app_config_dir()
 
-        return Path("~/.local/share").expanduser() / self._app_name
+        return Path(LINUX_APP_DIR).expanduser() / self._app_name
 
 
-def _get_platform() -> str:
-    # On Android sys.platform returns 'linux2', so prefer to check the
-    # existence of environ variables set during Python initialization
-    kivy_build = os.environ.get("KIVY_BUILD", "")
+def barks_reader_installer_failed() -> bool:
+    return get_barks_reader_installer_failed_flag_file().is_file()
 
-    if kivy_build in {"android", "ios"}:
-        platform = kivy_build
-    elif "P4A_BOOTSTRAP" in os.environ:
-        platform = "android"
-    elif "ANDROID_ARGUMENT" in os.environ:
-        # We used to use this method to detect android platform,
-        # leaving it here to be backwards compatible with `pydroid3`
-        # and similar tools outside kivy's ecosystem
-        platform = "android"
-    elif _sys_platform in ("win32", "cygwin"):
-        platform = "win"
-    elif _sys_platform == "darwin":
-        platform = "macosx"
-    elif _sys_platform.startswith(("linux", "freebsd")):
-        platform = "linux"
-    else:
-        platform = "unknown"
 
-    return platform
+def set_barks_reader_installer_failed_flag() -> None:
+    with get_barks_reader_installer_failed_flag_file().open("w"):
+        pass
+
+
+def remove_barks_reader_installer_failed_flag() -> None:
+    get_barks_reader_installer_failed_flag_file().unlink(missing_ok=True)
+
+
+def get_barks_reader_installer_failed_flag_file() -> Path:
+    # Put the flag file on the same level as the pycrucible executable.
+    return Path.cwd().parent / BARKS_READER_INSTALLER_FAILED_FLAG_FILE

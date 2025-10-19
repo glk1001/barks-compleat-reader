@@ -24,7 +24,7 @@ from barks_reader.reader_utils import get_all_files_in_dir
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-HOME_DIR = Path(os.environ.get("HOME"))
+HOME_DIR = Path(os.environ.get("HOME", ""))
 BARKS_DIR = HOME_DIR / "Books" / "Carl Barks"
 DEFAULT_BARKS_READER_FILES_DIR = BARKS_DIR / "Compleat Barks Disney Reader"
 EMERGENCY_INSET_FILE = Titles.BICEPS_BLUES

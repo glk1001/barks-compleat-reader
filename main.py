@@ -4,17 +4,21 @@
 # --- We need to change the KIVY_HOME directory to be under this   --- #
 # --- app's settings directory. The 'barks_reader.config_info'     --- #
 # --- module handles this, and for this to work, we need to import --- #
-# --- it before any kivy imports                                   --- #
+# --- it before any kivy imports.                                  --- #
 
 import logging
 import os
-import platform
 import sys
 from configparser import ConfigParser
 from dataclasses import dataclass
 
 from barks_fantagraphics.comics_cmd_args import CmdArgs, ExtraArg
-from barks_reader.config_info import ConfigInfo  # IMPORT THIS BEFORE Kivy!!
+from barks_reader.config_info import (  # IMPORT THIS BEFORE Kivy!!
+    ConfigInfo,
+    barks_reader_installer_failed,
+    get_barks_reader_installer_failed_flag_file,
+)
+from barks_reader.platform_info import PLATFORM, Platform
 from barks_reader.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
 from barks_reader.reader_settings import (
     BARKS_READER_SECTION,
@@ -308,7 +312,7 @@ def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
     from kivy import Config
 
     # noinspection LongLine
-    if platform.system() != "Windows":
+    if PLATFORM != Platform.WIN:
         # For some reason, kivy on Windows does not like window_state = 'hidden'.
         # It trashes fonts, and crashes with
         #      File "C:\Users\User\source\repos\barks-compleat-reader\.venv\Lib\site-packages\kivy\input\providers\mouse.py", line 312, in create_hover  # noqa: E501
@@ -343,7 +347,22 @@ def call_reader_main(cfg_info: ConfigInfo, args: CmdArgs) -> None:
     main(cfg_info, args)
 
 
+def ok_to_run() -> bool:
+    if not barks_reader_installer_failed():
+        return True
+
+    logger.critical("Cannot run the Barks Reader. It looks like the Barks Reader installer failed.")
+    logger.info(
+        f"This is based on finding the Barks Reader FAILED flag"
+        f' file at "{get_barks_reader_installer_failed_flag_file()}".'
+    )
+    return False
+
+
 if __name__ == "__main__":
+    if not ok_to_run():
+        sys.exit(1)
+
     config_info = ConfigInfo()
 
     EXTRA_ARGS: list[ExtraArg] = [

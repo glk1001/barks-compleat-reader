@@ -2,7 +2,7 @@ entrypoint = "main.py"
 
 [options]
 debug = false
-extract_to_temp = true
+extract_to_temp = false  # Important - the pycrucible_pre_run_installer.py script depends on this
 delete_after_run = true
 
 [patterns]
@@ -32,5 +32,5 @@ UV_VENV_CLEAR="1"
 UV_LINK_MODE="copy"
 
 [hooks]
-pre_run = ""
+pre_run = "src/barks-reader/src/barks_reader/pycrucible_pre_run_installer.py"
 post_run = ""

@@ -179,7 +179,7 @@ class ReaderSettings:
         self._config: ConfigParser = config
         self._app_settings_path = app_settings_path
         self._app_data_dir = app_data_dir
-        self._user_data_path = self._app_settings_path.parent / "barks_reader.json"
+        self._user_data_path = self._app_settings_path.parent / "barks-reader.json"
 
     def get_app_settings_path(self) -> Path:
         return self._app_settings_path
