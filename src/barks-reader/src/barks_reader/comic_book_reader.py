@@ -571,6 +571,8 @@ class ComicBookReaderScreen(ReaderScreen):
         Window.fullscreen = False
         self.is_fullscreen = False
         self._update_fullscreen_button()
+        Window.left += 24
+        Window.top += 31
         logger.info("Exiting fullscreen.")
 
     def _goto_fullscreen_mode(self) -> None:
