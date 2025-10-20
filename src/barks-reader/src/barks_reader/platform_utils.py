@@ -5,7 +5,9 @@ from kivy.core.window import Window
 from loguru import logger
 
 from barks_reader.platform_info import PLATFORM, Platform
-from barks_reader.screen_metrics import WIN_11_X_ADJ_AFTER_FULLSCREEN, WIN_11_Y_ADJ_AFTER_FULLSCREEN
+
+MS_WIN_X_ADJ_AFTER_WINDOW_RESTORE = 16
+MS_WIN_Y_ADJ_AFTER_WINDOW_RESTORE = 31
 
 
 class WindowRestorer:
@@ -94,8 +96,8 @@ class WindowRestorer:
         # So we need to set BOTH position and size together, repeatedly.
         def fix_position_and_size(*_args) -> None:  # noqa: ANN002
             # Set them together atomically.
-            Window.left = self._pre_event_pos[0] + WIN_11_X_ADJ_AFTER_FULLSCREEN
-            Window.top = self._pre_event_pos[1] + WIN_11_Y_ADJ_AFTER_FULLSCREEN
+            Window.left = self._pre_event_pos[0] + MS_WIN_X_ADJ_AFTER_WINDOW_RESTORE
+            Window.top = self._pre_event_pos[1] + MS_WIN_Y_ADJ_AFTER_WINDOW_RESTORE
             # Immediately fix size after position change.
             Window.size = self._pre_event_size
             logger.info(
@@ -138,4 +140,4 @@ class WindowRestorer:
                 f" pos = {self._pre_event_pos}."
             )
 
-        Clock.schedule_once(summary, 2)
+        Clock.schedule_once(summary, 2.5)

@@ -19,6 +19,7 @@ from loguru import logger
 from screeninfo import get_monitors
 
 from barks_reader.comic_book_loader import ComicBookLoader
+from barks_reader.platform_utils import WindowRestorer
 from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO
 from barks_reader.reader_formatter import get_action_bar_title
 from barks_reader.reader_screens import ReaderScreen
@@ -469,6 +470,10 @@ class ComicBookReaderScreen(ReaderScreen):
         self._on_close_reader = on_close_reader_func
         self._active = False
 
+        self._window_restorer = WindowRestorer(
+            self._resize_unbinding, self._resize_binding, self._set_hints_for_windowed_mode
+        )
+
         self._action_bar = self.ids.action_bar
         self._action_bar_fullscreen_icon = str(
             self._reader_settings.sys_file_paths.get_barks_reader_fullscreen_icon_file()
@@ -481,7 +486,7 @@ class ComicBookReaderScreen(ReaderScreen):
         self._was_fullscreen_on_entry = False
         self._fullscreen_button = self.ids.fullscreen_button
 
-        Window.bind(on_resize=self._on_window_resize)
+        self._resize_binding()
 
         self.comic_book_reader = ComicBookReader(
             self._reader_settings,
@@ -491,6 +496,12 @@ class ComicBookReaderScreen(ReaderScreen):
         )
         self.comic_book_reader.set_goto_page_widget(self.ids.goto_page_button)
         self.ids.main_comic_layout.add_widget(self.comic_book_reader)
+
+    def _resize_binding(self) -> None:
+        Window.bind(on_resize=self._on_window_resize)
+
+    def _resize_unbinding(self) -> None:
+        Window.unbind(on_resize=self._on_window_resize)
 
     def is_active(self, active: bool) -> None:
         logger.debug(f"ComicBookReaderScreen active changed from {self._active} to {active}.")
@@ -564,18 +575,23 @@ class ComicBookReaderScreen(ReaderScreen):
             Clock.schedule_once(lambda _dt: self._goto_fullscreen_mode(), 0)
 
     def _goto_windowed_mode(self) -> None:
-        # Restore the layout properties so the MainScreen fills the window again.
+        Window.borderless = False  # safest thing to do for MS Windows
+        Window.fullscreen = False
+        self.is_fullscreen = False
+
+        self._window_restorer.post_event_restore()
+
+        self._update_fullscreen_button()
+
+        logger.info("Exiting fullscreen.")
+
+    def _set_hints_for_windowed_mode(self) -> None:
+        # Restore the layout properties so the screen fills the window again.
         self.size_hint = (1, 1)
         self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
 
-        Window.fullscreen = False
-        self.is_fullscreen = False
-        self._update_fullscreen_button()
-        Window.left += 24
-        Window.top += 31
-        logger.info("Exiting fullscreen.")
-
     def _goto_fullscreen_mode(self) -> None:
+        self._window_restorer.set_pre_event_dimensions(Window.size, (Window.left, Window.top))
         Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
         self.is_fullscreen = True
         self._update_fullscreen_button()
