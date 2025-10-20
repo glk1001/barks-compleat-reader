@@ -28,6 +28,7 @@ from barks_reader.app_initializer import AppInitializer
 from barks_reader.background_views import BackgroundViews, ViewStates
 from barks_reader.comic_reader_manager import ComicReaderManager
 from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
+from barks_reader.platform_info import PLATFORM, Platform
 from barks_reader.random_title_images import ImageInfo, RandomTitleImages
 from barks_reader.reader_consts_and_types import APP_TITLE, CHRONO_YEAR_RANGES, COMIC_PAGE_ONE
 from barks_reader.reader_formatter import get_action_bar_title
@@ -49,6 +50,7 @@ from barks_reader.reader_utils import (
     get_title_str_from_reader_icon_file,
     get_win_width_from_height,
 )
+from barks_reader.screen_metrics import WIN_11_X_ADJ_AFTER_FULLSCREEN, WIN_11_Y_ADJ_AFTER_FULLSCREEN
 from barks_reader.special_overrides_handler import SpecialFantaOverrides
 from barks_reader.tree_view_manager import TreeViewManager
 from barks_reader.user_error_handler import UserErrorHandler
@@ -242,8 +244,8 @@ class MainScreen(ReaderScreen):
         logger.debug(
             f"Main screen self._active = {self._active}:"
             f" x,y = {self.x},{self.y},"
-            f" Window.width = {Window.width}, Window.height = {Window.height},"
-            f" self.width = {self.width}, self.height = {self.height}."
+            f" Window.size = {Window.size},"
+            f" self.size = {self.size}."
             f" Window.fullscreen = {Window.fullscreen},"
             f" self._actionbar height = {self._action_bar.height}."
         )
@@ -251,11 +253,20 @@ class MainScreen(ReaderScreen):
         self._update_action_bar_visibility()
 
     def _on_main_layout_size_changed(self, _instance: Widget, size: tuple[int, int]) -> None:
+        if self._is_restoring_window:
+            # During a restore, the restore_geometry function is in control. Do not interfere.
+            logger.debug(f"Size change: {size}. Ignoring because window is restoring.")
+            return
+
         if Window.fullscreen:
             # In fullscreen, apply the aspect ratio logic using the layout's new height.
             self._change_win_size(size[1])
         else:
             # In windowed mode, ensure the widget fills the parent.
+            logger.debug(f"Size change: {size}. Adjust windowed mode size and pos hints.")
+            logger.debug(
+                f"Current window.size = {Window.size}, window.pos = ({Window.left}, {Window.top})."
+            )
             self.size_hint = (1, 1)
             self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
 
@@ -377,15 +388,21 @@ class MainScreen(ReaderScreen):
         self.app_title = get_action_bar_title(self._font_manager, APP_TITLE)
 
     def _change_win_size(self, height: int) -> None:
+        if self._is_restoring_window:
+            logger.info(
+                f"In window restore mode. Ignoring this change size request: height = {height}."
+            )
+            return
+
         self.size_hint = None, None
         self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
         self.size = get_win_width_from_height(height - ACTION_BAR_SIZE_Y), height
 
         logger.info(
-            f"New window sizes:"
-            f" Window.width = {Window.width}, Window.height = {Window.height},"
-            f" self.width = {self.width}, self.height = {self.height},"
-            f" Window.pos = {Window.left}, {Window.top}, "
+            f"New window settings:"
+            f" Window.pos = ({Window.left}, {Window.top}),"
+            f" Window.size = {Window.size},"
+            f" self.size = {self.size},"
             f" Window.fullscreen = {Window.fullscreen},"
             f" self._action_bar.height = {self._action_bar.height}"
         )
@@ -410,29 +427,95 @@ class MainScreen(ReaderScreen):
         self._is_restoring_window = True
 
         # First, tell the window to exit fullscreen.
+        Window.borderless = False
         Window.fullscreen = False
 
-        # Then, schedule the restoration of size and position for the next frame.
+        # Then, schedule the restoration of size and position after a delay.
         # This gives the OS window manager time to complete the transition.
         def restore_geometry(*_args) -> None:  # noqa: ANN002
+            logger.info(
+                f"At the start of restore geometry,"
+                f" Window.size = {Window.size}, pos = ({Window.left}, {Window.top})."
+            )
+
+            # Unbind size events until everything settles
+            logger.info("Unbinding '_on_main_layout_size_changed'.")
+            Window.unbind(size=self._on_main_layout_size_changed)
+            self.unbind(size=self._on_main_layout_size_changed)
+            self.ids.main_layout.unbind(size=self._on_main_layout_size_changed)
+
+            # Set size first.
+            logger.info("First resize here.")
             Window.size = self._pre_fullscreen_size
-            Window.left, Window.top = self._pre_fullscreen_pos
 
-        Clock.schedule_once(restore_geometry, 0)
+            if PLATFORM == Platform.WIN:
+                # Force ONLY the size multiple times.
+                def do_resize(*_args) -> None:  # noqa: ANN002
+                    Window.size = self._pre_fullscreen_size
+                    logger.info(f"After forced resize, Window.size = {Window.size}.")
 
-        # Restore the layout properties so the MainScreen fills the window again.
-        self.size_hint = (1, 1)
-        self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+                for resize_delay in [0.05, 0.1, 0.15]:
+                    Clock.schedule_once(do_resize, resize_delay)
+
+            self.size_hint = (1, 1)
+            self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+
+            # Re-bind size events after everything settles
+            def rebind_events(*_args) -> None:  # noqa: ANN002
+                logger.info("Rebinding '_on_main_layout_size_changed'.")
+
+                # On Windows, setting position triggers resize due to DPI scaling!?
+                # So we need to set BOTH position and size together, repeatedly.
+                if PLATFORM != Platform.WIN:
+                    Window.left, Window.top = self._pre_fullscreen_pos
+                else:
+
+                    def fix_position_and_size(*_args) -> None:  # noqa: ANN002
+                        # Set them together atomically.
+                        Window.left = self._pre_fullscreen_pos[0] + WIN_11_X_ADJ_AFTER_FULLSCREEN
+                        Window.top = self._pre_fullscreen_pos[1] + WIN_11_Y_ADJ_AFTER_FULLSCREEN
+                        # Immediately fix size after position change.
+                        Window.size = self._pre_fullscreen_size
+                        logger.info(
+                            f"After forced pos and resize, Window.size = {Window.size},"
+                            f" pos = ({Window.left}, {Window.top})."
+                        )
+
+                    # Do it multiple times to override Windows' attempts to resize.
+                    for fix_pos_delay in [0.0, 0.05, 0.1, 0.15]:
+                        Clock.schedule_once(fix_position_and_size, fix_pos_delay)
+
+                Window.bind(size=self._on_main_layout_size_changed)
+                self.bind(size=self._on_main_layout_size_changed)
+                self.ids.main_layout.bind(size=self._on_main_layout_size_changed)
+
+                logger.info(
+                    f"After rebinding, Window size = {Window.size},"
+                    f" pos = ({Window.left}, {Window.top})."
+                )
+
+                # Keep the flag True a bit longer to block the resize events from position changes.
+                Clock.schedule_once(lambda _dt: setattr(self, "_is_restoring_window", False), 0.2)
+
+            Clock.schedule_once(rebind_events, 0.3)
+
+            def summary(*_args) -> None:  # noqa: ANN002
+                logger.info(
+                    f"Final setting:"
+                    f" Window.size = {Window.size}, pos = ({Window.left}, {Window.top});"
+                    f" Pre-fullscreen size = {self._pre_fullscreen_size},"
+                    f" pos = {self._pre_fullscreen_pos}."
+                )
+
+            Clock.schedule_once(summary, 2)
+
+        Clock.schedule_once(restore_geometry, 0.2)
 
         if button:
             button.text = "Fullscreen"
             button.icon = self._action_bar_fullscreen_icon
 
         self._show_action_bar()
-
-        # Unset the restoring flag on the next frame, after the layout has settled.
-        Clock.schedule_once(lambda _dt: setattr(self, "_is_restoring_window", False), 0.1)
-
         logger.info("Exiting fullscreen on MainScreen.")
 
     def _goto_fullscreen_mode(self, button: ActionButton) -> None:
@@ -443,6 +526,10 @@ class MainScreen(ReaderScreen):
         button.text = "Windowed"
         button.icon = self._action_bar_fullscreen_exit_icon
         Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
+        logger.info(
+            f"Saving window info before going to fullscreen:"
+            f" Window size = {self._pre_fullscreen_size}, pos = {self._pre_fullscreen_pos}."
+        )
         logger.info("Entering fullscreen on MainScreen.")
 
     def _hide_action_bar(self) -> None:

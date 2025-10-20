@@ -3,9 +3,16 @@ from dataclasses import dataclass
 from loguru import logger
 from screeninfo import get_monitors
 
+from barks_reader.platform_info import PLATFORM, Platform
+
+WIN_11_X_ADJ_AFTER_FULLSCREEN = 24
+WIN_11_Y_ADJ_AFTER_FULLSCREEN = 31
+
 
 def get_approximate_taskbar_height() -> int:
-    return 50
+    if PLATFORM != Platform.WIN:
+        return 55
+    return 60
 
 
 @dataclass

@@ -1,3 +1,5 @@
+from enum import Enum, auto
+
 from barks_fantagraphics.comics_consts import CARL_BARKS_FONT
 from kivy.event import EventDispatcher
 from kivy.metrics import sp
@@ -5,6 +7,12 @@ from kivy.properties import NumericProperty
 from loguru import logger
 
 HI_RES_WINDOW_HEIGHT_CUTOFF = 1050
+
+
+class _FontGroup(Enum):
+    NOT_SET = auto()
+    LOW_RES = auto()
+    HI_RES = auto()
 
 
 class FontManager(EventDispatcher):
@@ -42,12 +50,30 @@ class FontManager(EventDispatcher):
     def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         super().__init__(*args, **kwargs)
         self.app_title_font_size = 0
+        self._previous_font_group: _FontGroup = _FontGroup.NOT_SET
 
     def update_font_sizes(self, window_height: int) -> None:
         """Calculate and set all font sizes based on window height."""
-        logger.debug(f"Updating all font sizes based on window height {window_height}.")
+        required_font_group = (
+            _FontGroup.LOW_RES
+            if window_height <= HI_RES_WINDOW_HEIGHT_CUTOFF
+            else _FontGroup.HI_RES
+        )
 
-        if window_height <= HI_RES_WINDOW_HEIGHT_CUTOFF:
+        if required_font_group == self._previous_font_group:
+            logger.debug(
+                f"Updating font sizes requested but the required font group"
+                f" {required_font_group.name}, is the same as the previously"
+                f" requested font group. So nothing to do!"
+            )
+            return
+
+        logger.debug(
+            f"Updating font sizes based on window height {window_height}."
+            f" Required font group is {required_font_group.name}."
+        )
+
+        if required_font_group == _FontGroup.LOW_RES:
             main_title_font_size = sp(30)
             title_info_font_size = sp(16)
             title_extra_info_font_size = sp(14)
@@ -107,3 +133,5 @@ class FontManager(EventDispatcher):
         self.tree_view_tag_title_spinner_font_size = default_font_size
 
         self.loading_title_size = loading_title_size
+
+        self._previous_font_group = required_font_group

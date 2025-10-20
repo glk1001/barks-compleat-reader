@@ -253,7 +253,12 @@ def update_window_size(args: CmdArgs, cfg_info: ConfigInfo) -> None:
     if win_left == -1:
         win_left = ini_win_left if ini_win_left != -1 else best_win_left
     if win_top == -1:
-        win_top = ini_win_top if ini_win_top != -1 else best_win_top
+        if win_height == best_win_height:
+            win_top = best_win_top
+        else:
+            win_top = (
+                ini_win_top if ini_win_top != -1 else max(0, ((best_win_height - win_height) // 2))
+            )
 
     logger.debug(f"Main win dimensions: {win_height}, ({win_left}, {win_top}).")
 
@@ -299,9 +304,10 @@ def get_main_win_from_screen_metrics() -> tuple[int, int, int]:
 
     win_centre = primary_screen_info.monitor_x + round(primary_screen_info.width_pixels / 2)
 
-    win_height = get_best_window_height_fit(primary_screen_info.height_pixels)
+    win_height_margin = 20
+    win_height = get_best_window_height_fit(primary_screen_info.height_pixels) - win_height_margin
     win_left = win_centre - round(get_win_width_from_height(win_height) / 2)
-    win_top = 0
+    win_top = win_height_margin // 2
 
     logger.debug(f"Best fit main win dimensions: {win_height}, ({win_left}, {win_top}).")
 
@@ -337,7 +343,7 @@ def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
     Config.set("graphics", "height", win_height)
 
     logger.info(
-        f'Set window position and size: ({win_left}, {win_top}), ({win_width}, {win_height})".'
+        f"Set window position and size: ({win_left}, {win_top}), ({win_width}, {win_height})."
     )
 
 
