@@ -67,10 +67,12 @@ class ConfigInfo:
         self.app_log_path = log_dir / (self._app_name + ".log")
 
     def get_executable_name(self) -> str:
-        if PLATFORM == Platform.WIN:
-            return self._app_name + ".exe"
+        executable_name = self._app_name + "-" + PLATFORM.value
 
-        return self._app_name
+        if PLATFORM == Platform.WIN:
+            executable_name += ".exe"
+
+        return executable_name
 
     def _get_app_config_dir(self) -> Path:
         app_env_var = f"{self._app_name.upper()}_CONFIG_DIR"
