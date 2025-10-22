@@ -23,7 +23,7 @@ from loguru import logger
 from screeninfo import get_monitors
 
 from barks_reader.comic_book_loader import ComicBookLoader
-from barks_reader.platform_utils import WindowRestorer
+from barks_reader.platform_utils import WindowManager
 from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO
 from barks_reader.reader_formatter import get_action_bar_title
 from barks_reader.reader_screens import ReaderScreen
@@ -255,7 +255,7 @@ class ComicBookReader(BoxLayout):
 
         if self._is_in_top_margin(x_rel, y_rel):
             logger.debug(f"Top margin pressed: x_rel,y_rel = {x_rel},{y_rel}.")
-            if Window.fullscreen:
+            if WindowManager.is_fullscreen_now():
                 self._on_toggle_action_bar_visibility()
         elif self._is_in_left_margin(x_rel, y_rel):
             logger.debug(f"Left margin pressed: x_rel,y_rel = {x_rel},{y_rel}.")
@@ -266,7 +266,7 @@ class ComicBookReader(BoxLayout):
         else:
             logger.debug(
                 f"Dead zone: x_rel,y_rel = {x_rel},{y_rel},"
-                f" Windows.fullscreen = {Window.fullscreen}."
+                f" Screen mode = {WindowManager.get_screen_mode_now()}."
             )
 
         return super().on_touch_down(touch)
@@ -275,7 +275,7 @@ class ComicBookReader(BoxLayout):
         if y <= self._y_top_margin:
             return False
 
-        if not Window.fullscreen:
+        if not WindowManager.is_fullscreen_now():
             return True
 
         return self._fullscreen_left_margin < x <= self._fullscreen_right_margin
@@ -477,7 +477,7 @@ class ComicBookReaderScreen(ReaderScreen):
         self._on_close_reader = on_close_reader_func
         self._active = False
 
-        self._window_restorer = WindowRestorer(
+        self._window_manager = WindowManager(
             self._resize_unbinding,
             self._resize_binding,
             self._set_hints_for_windowed_mode,
@@ -524,21 +524,12 @@ class ComicBookReaderScreen(ReaderScreen):
             self.is_fullscreen = False
             return
 
-        self._was_fullscreen_on_entry = Window.fullscreen == "auto"
-        if (
-            not self._was_fullscreen_on_entry
-            and self._reader_settings.goto_fullscreen_on_comic_read
-        ):
-            self._goto_fullscreen_mode()
-        self.is_fullscreen = (
-            self._was_fullscreen_on_entry or self._reader_settings.goto_fullscreen_on_comic_read
-        )
-
+        self.update_window_mode()
         self._update_window_state()
         self._update_widget_states()
 
         logger.debug(
-            f"Window.fullscreen = {Window.fullscreen},"
+            f"Screen mode = {WindowManager.get_screen_mode_now()},"
             f" self._was_fullscreen_on_entry = {self._was_fullscreen_on_entry}."
             f" self.goto_fullscreen_on_comic_read"
             f" = {self._reader_settings.goto_fullscreen_on_comic_read}."
@@ -568,7 +559,7 @@ class ComicBookReaderScreen(ReaderScreen):
             f" self.width, self.height = {self.width},{self.height}."
             f" Window.size = {Window.size},"
             f" width, height = {width},{height},"
-            f" Window.fullscreen = {Window.fullscreen},"
+            f" Screen mode = {WindowManager.get_screen_mode_now()},"
             f" self._actionbar height = {self._action_bar.height}."
         )
 
@@ -588,12 +579,23 @@ class ComicBookReaderScreen(ReaderScreen):
         else:
             Clock.schedule_once(lambda _dt: self._goto_fullscreen_mode(), 0)
 
+    def update_window_mode(self) -> None:
+        self._was_fullscreen_on_entry = WindowManager.is_fullscreen_now()
+        if (
+            not self._was_fullscreen_on_entry
+            and self._reader_settings.goto_fullscreen_on_comic_read
+        ):
+            self._goto_fullscreen_mode()
+        self.is_fullscreen = (
+            self._was_fullscreen_on_entry or self._reader_settings.goto_fullscreen_on_comic_read
+        )
+
     def _goto_windowed_mode(self) -> None:
         Window.borderless = False  # safest thing to do for MS Windows
         Window.fullscreen = False
         self.is_fullscreen = False
 
-        self._window_restorer.post_event_restore()
+        self._window_manager.restore_saved_state()
 
         self._update_fullscreen_button()
 
@@ -605,7 +607,7 @@ class ComicBookReaderScreen(ReaderScreen):
         self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
 
     def _goto_fullscreen_mode(self) -> None:
-        self._window_restorer.set_pre_event_dimensions(Window.size, (Window.left, Window.top))
+        self._window_manager.save_state_now()
         Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
         self.is_fullscreen = True
         self._update_fullscreen_button()

@@ -28,7 +28,7 @@ from barks_reader.app_initializer import AppInitializer
 from barks_reader.background_views import BackgroundViews, ViewStates
 from barks_reader.comic_reader_manager import ComicReaderManager
 from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
-from barks_reader.platform_utils import WindowRestorer
+from barks_reader.platform_utils import WindowManager
 from barks_reader.random_title_images import ImageInfo, RandomTitleImages
 from barks_reader.reader_consts_and_types import APP_TITLE, CHRONO_YEAR_RANGES, COMIC_PAGE_ONE
 from barks_reader.reader_formatter import get_action_bar_title
@@ -102,7 +102,7 @@ class MainScreen(ReaderScreen):
     ) -> None:
         super().__init__(**kwargs)
 
-        self._window_restorer = WindowRestorer(
+        self._window_manager = WindowManager(
             self._resize_unbinding, self._resize_binding, self._set_hints_for_windowed_mode
         )
 
@@ -253,20 +253,20 @@ class MainScreen(ReaderScreen):
             f" x,y = {self.x},{self.y},"
             f" Window.size = {Window.size},"
             f" self.size = {self.size}."
-            f" Window.fullscreen = {Window.fullscreen},"
+            f" Screen mode = {WindowManager.get_screen_mode_now()},"
             f" self._actionbar height = {self._action_bar.height}."
         )
 
         self._update_action_bar_visibility()
 
     def _on_main_layout_size_changed(self, _instance: Widget, size: tuple[int, int]) -> None:
-        if self._window_restorer.is_restoring_window:
+        if self._window_manager.is_restoring_window:
             # During a restore, the restore_geometry function is in control. Do not interfere.
             logger.debug(f"Size change: {size}. Ignoring because window is restoring.")
             return
 
-        if Window.fullscreen:
-            # In fullscreen, apply the aspect ratio logic using the layout's new height.
+        if WindowManager.is_fullscreen_now():
+            # In fullscreen mode, apply the aspect ratio logic using the layout's new height.
             self._change_win_size(size[1])
         else:
             # In windowed mode, ensure the widget fills the parent.
@@ -398,7 +398,7 @@ class MainScreen(ReaderScreen):
         self.app_title = get_action_bar_title(self._font_manager, APP_TITLE)
 
     def _change_win_size(self, height: int) -> None:
-        if self._window_restorer.is_restoring_window:
+        if self._window_manager.is_restoring_window:
             logger.info(
                 f"In window restore mode. Ignoring this change size request: height = {height}."
             )
@@ -413,12 +413,12 @@ class MainScreen(ReaderScreen):
             f" Window.pos = ({Window.left}, {Window.top}),"
             f" Window.size = {Window.size},"
             f" self.size = {self.size},"
-            f" Window.fullscreen = {Window.fullscreen},"
+            f" Screen mode = {WindowManager.get_screen_mode_now()},"
             f" self._action_bar.height = {self._action_bar.height}"
         )
 
     def toggle_fullscreen(self, button: ActionButton) -> None:
-        if Window.fullscreen:
+        if WindowManager.is_fullscreen_now():
             Clock.schedule_once(lambda _dt: self._goto_windowed_mode(button), 0)
         else:
             Clock.schedule_once(lambda _dt: self._goto_fullscreen_mode(button), 0)
@@ -427,7 +427,7 @@ class MainScreen(ReaderScreen):
         Clock.schedule_once(lambda _dt: self._goto_fullscreen_mode(self.ids.fullscreen_button), 0)
 
     def _exit_fullscreen(self) -> None:
-        if not Window.fullscreen:
+        if not WindowManager.is_fullscreen_now():
             return
 
         self._goto_windowed_mode(None)
@@ -437,7 +437,7 @@ class MainScreen(ReaderScreen):
         Window.borderless = False  # safest thing to do for MS Windows
         Window.fullscreen = False
 
-        self._window_restorer.post_event_restore()
+        self._window_manager.restore_saved_state()
 
         if button:
             button.text = "Fullscreen"
@@ -448,7 +448,7 @@ class MainScreen(ReaderScreen):
 
     def _goto_fullscreen_mode(self, button: ActionButton) -> None:
         # Save the current size and position before entering fullscreen.
-        self._window_restorer.set_pre_event_dimensions(Window.size, (Window.left, Window.top))
+        self._window_manager.save_state_now()
 
         button.text = "Windowed"
         button.icon = self._action_bar_fullscreen_exit_icon
