@@ -514,8 +514,11 @@ class ComicBookReaderScreen(ReaderScreen):
             return
 
         self._was_fullscreen_on_entry = Window.fullscreen == "auto"
-        if self._reader_settings.goto_fullscreen_on_comic_read:
-            Window.fullscreen = "auto"
+        if (
+            not self._was_fullscreen_on_entry
+            and self._reader_settings.goto_fullscreen_on_comic_read
+        ):
+            self._goto_fullscreen_mode()
         self.is_fullscreen = (
             self._was_fullscreen_on_entry or self._reader_settings.goto_fullscreen_on_comic_read
         )
