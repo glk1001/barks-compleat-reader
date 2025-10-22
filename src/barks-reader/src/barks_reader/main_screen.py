@@ -246,6 +246,8 @@ class MainScreen(ReaderScreen):
         logger.debug(f"MainScreen active changed from {self._active} to {active}.")
         self._active = active
 
+        self.size = Window.size
+
         logger.debug(
             f"Main screen self._active = {self._active}:"
             f" x,y = {self.x},{self.y},"

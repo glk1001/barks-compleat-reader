@@ -10,7 +10,11 @@ from kivy.core.window import Window
 from kivy.event import EventDispatcher
 from kivy.lang import Builder
 from kivy.metrics import dp
-from kivy.properties import BooleanProperty, NumericProperty, StringProperty
+from kivy.properties import (  # ty: ignore[unresolved-import]
+    BooleanProperty,
+    NumericProperty,
+    StringProperty,
+)
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.dropdown import DropDown
@@ -471,7 +475,10 @@ class ComicBookReaderScreen(ReaderScreen):
         self._active = False
 
         self._window_restorer = WindowRestorer(
-            self._resize_unbinding, self._resize_binding, self._set_hints_for_windowed_mode
+            self._resize_unbinding,
+            self._resize_binding,
+            self._set_hints_for_windowed_mode,
+            self._on_ok_to_close,
         )
 
         self._action_bar = self.ids.action_bar
@@ -485,6 +492,7 @@ class ComicBookReaderScreen(ReaderScreen):
 
         self._was_fullscreen_on_entry = False
         self._fullscreen_button = self.ids.fullscreen_button
+        self._is_closing = False
 
         self._resize_binding()
 
@@ -541,8 +549,8 @@ class ComicBookReaderScreen(ReaderScreen):
         self.action_bar_title = self.comic_book_reader.action_bar_title
 
     def close_comic_book_reader(self) -> None:
+        self._is_closing = True
         self.comic_book_reader.close_comic_book_reader()
-        self._on_close_reader()
         self._exit_fullscreen()
 
     # noinspection PyTypeHints
@@ -603,14 +611,24 @@ class ComicBookReaderScreen(ReaderScreen):
     def _exit_fullscreen(self) -> None:
         if not Window.fullscreen and not self._was_fullscreen_on_entry:
             logger.debug("Fullscreen not on and not required.")
+            self._on_ok_to_close()
             return
 
         if self._was_fullscreen_on_entry:
             logger.debug("Fullscreen is required.")
             self._goto_fullscreen_mode()
+            self._on_ok_to_close()
         else:
             logger.debug("Fullscreen not required.")
-            self._goto_windowed_mode()
+            self._goto_windowed_mode()  # will implicitly call 'self._on_ok_to_close()'
+
+    def _on_ok_to_close(self) -> None:
+        if not self._is_closing:
+            return
+
+        logger.debug("Fullscreen exit finished, now closing reader.")
+        self._on_close_reader()
+        self._is_closing = False
 
     def _toggle_action_bar_visibility(self) -> None:
         logger.debug(f"Toggling action bar visibility. Current opacity: {self._action_bar.opacity}")

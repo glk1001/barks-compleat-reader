@@ -16,9 +16,11 @@ class WindowRestorer:
         resize_unbind_func: Callable[[], None],
         resize_rebind_func: Callable[[], None],
         after_first_resize_func: Callable[[], None],
+        notify_finished_restore: Callable[[], None] | None = None,
     ) -> None:
         self._resize_unbind_func = resize_unbind_func
         self._resize_rebind_func = resize_rebind_func
+        self._notify_finished_restore = notify_finished_restore
         self._after_first_resize_func = after_first_resize_func
 
         assert not self._resize_unbind_func or self._resize_rebind_func
@@ -139,5 +141,8 @@ class WindowRestorer:
                 f" Pre-event size = {self._pre_event_size},"
                 f" pos = {self._pre_event_pos}."
             )
+
+            if self._notify_finished_restore:
+                self._notify_finished_restore()
 
         Clock.schedule_once(summary, 2.5)
