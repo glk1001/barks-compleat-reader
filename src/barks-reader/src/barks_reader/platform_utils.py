@@ -9,6 +9,11 @@ from barks_reader.platform_info import PLATFORM, Platform
 MS_WIN_X_ADJ_AFTER_WINDOW_RESTORE = 16
 MS_WIN_Y_ADJ_AFTER_WINDOW_RESTORE = 31
 
+_RESTORE_GEOMETRY_TIMEOUT = 0.2 if PLATFORM == Platform.WIN else 0.05
+_REBIND_TIMEOUT = 0.3 if PLATFORM == Platform.WIN else 0.05
+_SUMMARY_TIMEOUT = 2.5 if PLATFORM == Platform.WIN else 0.05
+_RESET_RESTORING_FLAG_TIMEOUT = 1 if PLATFORM == Platform.WIN else 0.05
+
 
 class WindowRestorer:
     def __init__(
@@ -72,7 +77,7 @@ class WindowRestorer:
             # Do the rebind events after everything settles.
             self._do_rebind_events()
 
-        Clock.schedule_once(restore_geometry, 0.2)
+        Clock.schedule_once(restore_geometry, _RESTORE_GEOMETRY_TIMEOUT)
 
     def _do_first_resize(self) -> None:
         logger.info("Starting first resize...")
@@ -91,9 +96,9 @@ class WindowRestorer:
         if PLATFORM != Platform.WIN:
             Window.left, Window.top = self._pre_event_pos
         else:
-            self._set_win11_size_and_position()
+            self._set_ms_win_size_and_position()
 
-    def _set_win11_size_and_position(self) -> None:
+    def _set_ms_win_size_and_position(self) -> None:
         # On MS Windows, setting position triggers resize due to DPI scaling!?
         # So we need to set BOTH position and size together, repeatedly.
         def fix_position_and_size(*_args) -> None:  # noqa: ANN002
@@ -127,11 +132,16 @@ class WindowRestorer:
                 f" pos = ({Window.left}, {Window.top})."
             )
 
-        Clock.schedule_once(rebind_events, 0.3)
+        Clock.schedule_once(rebind_events, _REBIND_TIMEOUT)
 
     def _do_schedule_restoring_flag_reset(self) -> None:
+        def reset_flag(*_args) -> None:  # noqa: ANN002
+            self.is_restoring_window = False
+
+            self._schedule_summary()
+
         # Keep the flag True a bit longer to block the resize events from position changes.
-        Clock.schedule_once(lambda _dt: setattr(self, "is_restoring_window", False), 1)
+        Clock.schedule_once(reset_flag, _RESET_RESTORING_FLAG_TIMEOUT)
 
     def _schedule_summary(self) -> None:
         def summary(*_args) -> None:  # noqa: ANN002
@@ -145,4 +155,4 @@ class WindowRestorer:
             if self._notify_finished_restore:
                 self._notify_finished_restore()
 
-        Clock.schedule_once(summary, 2.5)
+        Clock.schedule_once(summary, _SUMMARY_TIMEOUT)
