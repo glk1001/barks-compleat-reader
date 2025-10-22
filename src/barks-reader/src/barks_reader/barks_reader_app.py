@@ -55,8 +55,6 @@ if TYPE_CHECKING:
 
     from barks_reader.config_info import ConfigInfo
 
-assert Config is not None
-
 
 class BarksReaderApp(App):
     """The main Kivy application class for the Barks Reader."""
@@ -288,7 +286,8 @@ class BarksReaderApp(App):
             name=MAIN_READER_SCREEN,
         )
         self._set_custom_title_bar()
-        self._main_screen.update_fonts(Config.getint("graphics", "height"))
+        # noinspection LongLine
+        self._main_screen.update_fonts(Config.getint("graphics", "height"))  # ty: ignore[possibly-missing-attribute]
 
         logger.debug("Instantiating comic reader screen...")
         comic_reader_screen = get_barks_comic_reader_screen(
@@ -339,10 +338,10 @@ class BarksReaderApp(App):
         # This is a known Kivy workaround. By briefly changing the window position,
         # we force an `on_resize` event to fire, which ensures that all UI elements
         # that depend on window size are correctly initialized.
-        config_left = Config.getint("graphics", "left")
+        config_left = Config.getint("graphics", "left")  # ty: ignore[possibly-missing-attribute]
         Window.left = config_left + 1
         Window.left = config_left
-        config_top = Config.getint("graphics", "top")
+        config_top = Config.getint("graphics", "top")  # ty: ignore[possibly-missing-attribute]
         Window.top = config_top + 1
         Window.top = config_top
 
@@ -360,14 +359,16 @@ class BarksReaderApp(App):
 
 def _log_screen_settings() -> None:
     logger.info(f"Window pos = {Window.left},{Window.top}.")
+
+    assert Config is not None  # ty: ignore[possibly-missing-attribute]
     logger.info(
         f"Config win pos = {Config.getint('graphics', 'left')},{Config.getint('graphics', 'top')}."
-    )
+    )  # ty: ignore[possibly-missing-attribute]
     logger.info(f"Window size = {Window.size}, dpi = {Window.dpi}.")
     logger.info(
         f"Config win size"
         f" = {Config.getint('graphics', 'width')},{Config.getint('graphics', 'height')}."
-    )
+    )  # ty: ignore[possibly-missing-attribute]
 
 
 def main(config_info: ConfigInfo, cmd_args: CmdArgs) -> None:
@@ -378,6 +379,7 @@ def main(config_info: ConfigInfo, cmd_args: CmdArgs) -> None:
         comics_database = cmd_args.get_comics_database(for_building_comics=False)
 
         logger.debug("Running kivy app...")
+        assert Config is not None
         assert Config.getint("kivy", "exit_on_escape") == 0
         kivy_app = BarksReaderApp(config_info, comics_database)
         kivy_app.run()
