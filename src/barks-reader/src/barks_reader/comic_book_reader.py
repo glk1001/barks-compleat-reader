@@ -430,6 +430,7 @@ class ComicBookReader(BoxLayout):
 
     def _create_goto_page_dropdown(self) -> None:
         max_dropdown_height = round(GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT * self.height)
+        logger.debug(f"Creating goto page dropdown. max_dropdown_height = {max_dropdown_height}.")
 
         self._goto_page_dropdown = DropDown(
             auto_dismiss=True,
@@ -438,6 +439,7 @@ class ComicBookReader(BoxLayout):
             max_height=max_dropdown_height,
         )
 
+        logger.debug(f"Adding {len(self._page_map)} page buttons to dropdown.")
         for page, page_info in self._page_map.items():
             button = Button(
                 text=str(page),
