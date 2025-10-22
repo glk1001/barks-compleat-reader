@@ -59,34 +59,54 @@
             anchor_x: 'right'
             anchor_y: 'top'
             padding: [0, dp(7), dp(10), 0]  # Add padding: [left, top, right, bottom]
-
-            # Goto title button
-            Button:
-                text: ""
-                opacity: 0.8
-                background_color: (0, 0, 0, 0)
-                background_normal: ""
+ 
+            # Use a BoxLayout to group the label and button together.
+            # The AnchorLayout will position this box, and the box will position its children.
+            BoxLayout:
+                orientation: 'horizontal'
                 size_hint: None, None
-                size: (root.DOWN_ARROW_WIDTH, root.DOWN_ARROW_WIDTH)
-                on_press: root.on_goto_title()
-
-                canvas.before:
-                    Color:
-                        rgba: .1, .1, .1, 1
-                    BoxShadow:
-                        inset: False
-                        pos: self.pos
-                        size: self.size
-                        offset: 0, 0
-                        spread_radius: 3.5, 3.5
-                        border_radius: [self.height / 2, self.height / 2, self.height / 2, self.height / 2]
-                        blur_radius: 2
-                Image:
-                    source: str(sys_paths.get_down_arrow_file())
-                    color: (1, 1, 1, 1)
-                    # Center the image on the button
-                    center_x: self.parent.center_x
-                    center_y: self.parent.center_y
-                    size: self.parent.size
-                    fit_mode: "contain"
-                    mipmap: True
+                width: self.minimum_width  # Shrink-wrap the content
+                height: goto_title_button.height
+                spacing: dp(10)
+ 
+                # Title info label
+                Label:
+                    text: "[i]" + root.current_title_str + "[/i]"
+                    markup: True
+                    color: (1, 1, 0, 1)
+                    opacity: 0.3 if root.show_current_title else 0
+                    font_size: sp(15)
+                    size_hint: None, None
+                    size: self.texture_size
+ 
+                # Goto title button
+                Button:
+                    id: goto_title_button
+                    text: ""
+                    opacity: 0.8
+                    background_color: (0, 0, 0, 0)
+                    background_normal: ""
+                    size_hint: None, None
+                    size: (root.DOWN_ARROW_WIDTH, root.DOWN_ARROW_WIDTH)
+                    on_press: root.on_goto_title()
+ 
+                    canvas.before:
+                        Color:
+                            rgba: .1, .1, .1, 1
+                        BoxShadow:
+                            inset: False
+                            pos: self.pos
+                            size: self.size
+                            offset: 0, 0
+                            spread_radius: 3.5, 3.5
+                            border_radius: [self.height / 2, self.height / 2, self.height / 2, self.height / 2]
+                            blur_radius: 2
+                    Image:
+                        source: str(sys_paths.get_down_arrow_file())
+                        color: (1, 1, 1, 1)
+                        # Center the image on the button
+                        center_x: self.parent.center_x
+                        center_y: self.parent.center_y
+                        size: self.parent.size
+                        fit_mode: "contain"
+                        mipmap: True

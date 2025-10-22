@@ -6,9 +6,9 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, override
 
-from kivy import Config
 from kivy.app import App
 from kivy.clock import Clock
+from kivy.config import Config
 from kivy.core.window import Window
 from kivy.lang import Builder
 from kivy.uix.settings import Settings, SettingsWithSpinner
@@ -34,7 +34,7 @@ from barks_reader.reader_screens import (
     ReaderScreenManager,
     ReaderScreens,
 )
-from barks_reader.reader_settings import BuildableReaderSettings
+from barks_reader.reader_settings import BARKS_READER_SECTION, BuildableReaderSettings
 from barks_reader.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
     READER_TREE_VIEW_KV_FILE,
@@ -43,6 +43,7 @@ from barks_reader.reader_ui_classes import (
 from barks_reader.reader_utils import get_best_window_height_fit, get_win_width_from_height
 from barks_reader.screen_metrics import SCREEN_METRICS, log_screen_metrics
 from barks_reader.settings_fix import SettingLongPath
+from barks_reader.settings_notifier import settings_notifier
 from barks_reader.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
 
 if TYPE_CHECKING:
@@ -53,6 +54,8 @@ if TYPE_CHECKING:
     from kivy.uix.widget import Widget
 
     from barks_reader.config_info import ConfigInfo
+
+assert Config is not None
 
 
 class BarksReaderApp(App):
@@ -212,7 +215,10 @@ class BarksReaderApp(App):
         value: Any,
     ) -> None:
         logger.info(f"Config change: section = '{section}', key = '{key}', value = '{value}'.")
-        self.reader_settings.on_changed_setting(section, key, value)
+        if self.reader_settings.on_changed_setting(section, key, value) and (
+            section == BARKS_READER_SECTION
+        ):
+            settings_notifier.notify(section, key)
 
     @override
     def build(self) -> Widget:

@@ -33,6 +33,8 @@ USE_DERE_INSTEAD_OF_THEAH = "use_dere"
 USE_BLANK_EYEBALLS_FOR_BOMBIE = "use_blank_eyeballs"
 USE_GLK_FIREBUG_ENDING = "use_glk_firebug_ending"
 IS_FIRST_USE_OF_READER = "is_first_use_of_reader"
+SHOW_TOP_VIEW_TITLE_INFO = "show_tree_view_title_info"
+SHOW_FUN_VIEW_TITLE_INFO = "show_fun_view_title_info"
 MAIN_WINDOW_HEIGHT = "main_window_height"
 MAIN_WINDOW_LEFT = "main_window_left"
 MAIN_WINDOW_TOP = "main_window_top"
@@ -83,6 +85,20 @@ _READER_SETTINGS_JSON = f"""
       "type": "bool",
       "section": "{BARKS_READER_SECTION}",
       "key": "{GOTO_FULLSCREEN_ON_COMIC_READ}"
+   }},
+   {{
+      "title": "Show Title Info in Top Screen",
+      "desc": "Set this to true if you want to see the title associated with the top image.",
+      "type": "bool",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{SHOW_TOP_VIEW_TITLE_INFO}"
+   }},
+   {{
+      "title": "Show Title Info in Bottom Screen",
+      "desc": "Set this to true if you want to see the title associated with the bottom image.",
+      "type": "bool",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{SHOW_FUN_VIEW_TITLE_INFO}"
    }},
    {{
       "title": "First Use of Reader",
@@ -300,6 +316,20 @@ class ReaderSettings:
         return self._config.getboolean(BARKS_READER_SECTION, USE_GLK_FIREBUG_ENDING)
 
     @property
+    def show_top_view_title_info(self) -> bool:
+        return self._get_show_top_view_title_info()
+
+    def _get_show_top_view_title_info(self) -> bool:
+        return self._config.getboolean(BARKS_READER_SECTION, SHOW_TOP_VIEW_TITLE_INFO)
+
+    @property
+    def show_fun_view_title_info(self) -> bool:
+        return self._get_show_fun_view_title_info()
+
+    def _get_show_fun_view_title_info(self) -> bool:
+        return self._config.getboolean(BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO)
+
+    @property
     def is_first_use_of_reader(self) -> bool:
         return self._get_is_first_use_of_reader()
 
@@ -355,6 +385,14 @@ class ReaderSettings:
 
     @staticmethod
     def _is_valid_use_glk_firebug_ending(_use_glk_firebug_ending: bool) -> bool:
+        return True
+
+    @staticmethod
+    def _is_valid_show_top_view_title_info(_show_top_view_title_info: bool) -> bool:
+        return True
+
+    @staticmethod
+    def _is_valid_show_fun_view_title_info(_show_fun_view_title_info: bool) -> bool:
         return True
 
     @staticmethod
@@ -420,6 +458,8 @@ class BuildableReaderSettings(ReaderSettings):
             USE_PNG_IMAGES: self._get_use_png_images,
             PREBUILT_COMICS_DIR: self._get_prebuilt_comics_dir,
             USE_PREBUILT_COMICS: self._get_use_prebuilt_archives,
+            SHOW_TOP_VIEW_TITLE_INFO: self._get_show_top_view_title_info,
+            SHOW_FUN_VIEW_TITLE_INFO: self._get_show_fun_view_title_info,
             IS_FIRST_USE_OF_READER: self._get_is_first_use_of_reader,
             MAIN_WINDOW_HEIGHT: self._get_main_window_height,
             MAIN_WINDOW_LEFT: self._get_main_window_left,
@@ -442,6 +482,8 @@ class BuildableReaderSettings(ReaderSettings):
             GOTO_SAVED_NODE_ON_START: self._is_valid_goto_saved_node_on_start,
             GOTO_FULLSCREEN_ON_APP_START: self._is_valid_goto_fullscreen_on_app_start,
             GOTO_FULLSCREEN_ON_COMIC_READ: self._is_valid_goto_fullscreen_on_comic_read,
+            SHOW_TOP_VIEW_TITLE_INFO: self._is_valid_show_top_view_title_info,
+            SHOW_FUN_VIEW_TITLE_INFO: self._is_valid_show_fun_view_title_info,
             IS_FIRST_USE_OF_READER: self._is_valid_is_first_use_of_reader,
             MAIN_WINDOW_HEIGHT: self._is_valid_main_window_height,
             MAIN_WINDOW_LEFT: self._is_valid_main_window_left,
@@ -471,6 +513,8 @@ class BuildableReaderSettings(ReaderSettings):
                 USE_DERE_INSTEAD_OF_THEAH: 1,
                 USE_BLANK_EYEBALLS_FOR_BOMBIE: 1,
                 USE_GLK_FIREBUG_ENDING: 1,
+                SHOW_TOP_VIEW_TITLE_INFO: 1,
+                SHOW_FUN_VIEW_TITLE_INFO: 1,
                 IS_FIRST_USE_OF_READER: 1,
                 MAIN_WINDOW_HEIGHT: 0,
                 MAIN_WINDOW_LEFT: -1,

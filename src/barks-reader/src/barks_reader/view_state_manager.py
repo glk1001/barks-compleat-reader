@@ -210,6 +210,7 @@ class ViewStateManager:
         self._tree_view_screen.top_view_image_color = (
             self._background_views.get_top_view_image_color()
         )
+        self._tree_view_screen.set_title(self._top_view_image_info.from_title)
 
     def _set_fun_view(self) -> None:
         """Set the image and properties for the 'fun' bottom view."""
@@ -229,9 +230,7 @@ class ViewStateManager:
         self._fun_image_view_screen.image_color = (
             self._background_views.get_bottom_view_fun_image_color()
         )
-        self._fun_image_view_screen.fun_view_from_title = (
-            self._bottom_view_fun_image_info.from_title is not None
-        )
+        self._fun_image_view_screen.set_title(self._bottom_view_fun_image_info.from_title)
 
     def _set_bottom_view(self) -> None:
         """Set the image and properties for the title information bottom view."""

@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from kivy.properties import (
+from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     ColorProperty,
     NumericProperty,
@@ -14,8 +15,13 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.treeview import TreeViewNode
 
 from barks_reader.random_title_images import FIT_MODE_COVER
+from barks_reader.reader_settings import (
+    BARKS_READER_SECTION,
+    SHOW_TOP_VIEW_TITLE_INFO,
+)
 from barks_reader.reader_tree_view_utils import find_node_by_path, find_tree_view_node
 from barks_reader.reader_ui_classes import ARROW_WIDTH
+from barks_reader.settings_notifier import settings_notifier
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -32,15 +38,26 @@ class TreeViewScreen(BoxLayout):
     top_view_image_fit_mode = StringProperty(FIT_MODE_COVER)
     top_view_image_color = ColorProperty()
     top_view_image_opacity = NumericProperty(0.0)
+    current_title_str = StringProperty()
+    show_current_title = BooleanProperty(defaultvalue=False)
 
     DOWN_ARROW_WIDTH = ARROW_WIDTH
 
     main_files_not_loaded = BooleanProperty(defaultvalue=False)
     main_files_not_loaded_msg = StringProperty()
 
-    def __init__(self, _reader_settings: ReaderSettings, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, reader_settings: ReaderSettings, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
         self.on_goto_title: Callable[[], None] | None = None
+        self._reader_settings = reader_settings
+        self.show_current_title = self._reader_settings.show_top_view_title_info
+
+        settings_notifier.register_callback(
+            BARKS_READER_SECTION, SHOW_TOP_VIEW_TITLE_INFO, self.on_change_show_current_title
+        )
+
+    def set_title(self, title: Titles) -> None:
+        self.current_title_str = "" if not title else BARKS_TITLES[title]
 
     def get_selected_node(self) -> TreeViewNode:
         return self.ids.reader_tree_view.selected_node
@@ -86,3 +103,6 @@ class TreeViewScreen(BoxLayout):
             if node.is_open:
                 self.ids.reader_tree_view.toggle_node(node)
                 self._close_open_nodes(node)
+
+    def on_change_show_current_title(self) -> None:
+        self.show_current_title = self._reader_settings.show_top_view_title_info

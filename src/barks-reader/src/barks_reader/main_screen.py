@@ -20,7 +20,7 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from kivy.clock import Clock
 from kivy.core.window import Window
-from kivy.properties import BooleanProperty, StringProperty
+from kivy.properties import BooleanProperty, StringProperty  # ty: ignore[unresolved-import]
 from kivy.uix.screenmanager import Screen
 from loguru import logger
 
@@ -60,7 +60,7 @@ if TYPE_CHECKING:
     from barks_fantagraphics.comics_database import ComicsDatabase
 
     # noinspection PyProtectedMember
-    from kivy._clock import ClockEvent
+    from kivy._clock import ClockEvent  # ty: ignore[unresolved-import]
     from kivy.factory import Factory
     from kivy.uix.actionbar import ActionButton
     from kivy.uix.widget import Widget
