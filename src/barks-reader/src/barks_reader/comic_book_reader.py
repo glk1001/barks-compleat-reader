@@ -319,7 +319,7 @@ class ComicBookReader(BoxLayout):
             return
 
         self._comic_book_loader.stop_now()
-
+        self._wait_for_image_to_load()
         self._comic_book_loader.close_comic()
 
         self._page_manager.reset_current_page_index()
@@ -385,7 +385,7 @@ class ComicBookReader(BoxLayout):
             return
 
         logger.info(f"Waiting for image with index {self._current_page_index} to finish loading.")
-        while not self._comic_book_loader.get_load_event(self._current_page_index).wait(timeout=1):
+        while not self._comic_book_loader.get_load_event(self._current_page_index).wait(timeout=2):
             logger.info(
                 f"Still waiting for image with index {self._current_page_index} to finish loading."
             )
@@ -541,9 +541,9 @@ class ComicBookReaderScreen(ReaderScreen):
         self.action_bar_title = self.comic_book_reader.action_bar_title
 
     def close_comic_book_reader(self) -> None:
-        self._exit_fullscreen()
-        self._on_close_reader()
         self.comic_book_reader.close_comic_book_reader()
+        self._on_close_reader()
+        self._exit_fullscreen()
 
     # noinspection PyTypeHints
     # Reason: inspection seems broken here.

@@ -131,7 +131,7 @@ class ReaderScreenManager:
 
         self._reader_screens.comic_reader_screen.is_active(active=False)
 
-        logger.debug("Main screen is active.")
+        logger.info("Main screen is active.")
 
     def _switch_to_intro_compleat_barks_reader(self) -> None:
         logger.debug("Switching to comic book reader intro...")
@@ -143,4 +143,4 @@ class ReaderScreenManager:
 
         self._screen_manager.transition = self._get_next_main_screen_transition()
         self._screen_manager.current = MAIN_READER_SCREEN
-        logger.debug("Main screen is active.")
+        logger.info("Main screen is active.")
