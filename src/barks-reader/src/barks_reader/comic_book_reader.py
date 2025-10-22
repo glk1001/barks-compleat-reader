@@ -326,6 +326,7 @@ class ComicBookReader(BoxLayout):
         self._wait_for_image_to_load()
         self._comic_book_loader.close_comic()
 
+    def reset_comic_book_reader(self) -> None:
         self._page_manager.reset_current_page_index()
         self._goto_page_dropdown = None
         self._closed = True
@@ -631,6 +632,8 @@ class ComicBookReaderScreen(ReaderScreen):
         logger.debug("Fullscreen exit finished, now closing reader.")
         self._on_close_reader()
         self._is_closing = False
+
+        self.comic_book_reader.reset_comic_book_reader()
 
     def _toggle_action_bar_visibility(self) -> None:
         logger.debug(f"Toggling action bar visibility. Current opacity: {self._action_bar.opacity}")
