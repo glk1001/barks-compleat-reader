@@ -70,6 +70,7 @@ class Tags(Enum):
     HDL_DRIVING_CAR = "HDL driving car"
     SQUARE_EGGS = "square eggs"
     WEEMITE = "weemite"
+    WORRY_ROOM = "worry room"
 
     CHRISTMAS_STORIES = "christmas stories"
     HYPNOSIS = "hypnosis"
@@ -204,6 +205,7 @@ BARKS_TAG_CATEGORIES = {
         Tags.FIRE,
         Tags.SQUARE_EGGS,
         Tags.WEEMITE,
+        Tags.WORRY_ROOM,
     ],
     TagCategories.THEMES: [
         Tags.CENSORED_STORIES_BUT_FIXED,
@@ -717,6 +719,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     Tags.FIRE: [Titles.FIREBUG_THE, Titles.FIREMAN_DONALD, Titles.LOVELORN_FIREMAN_THE],
     Tags.SQUARE_EGGS: [Titles.LOST_IN_THE_ANDES],
     Tags.WEEMITE: [Titles.ROCKET_ROASTED_CHRISTMAS_TURKEY],
+    Tags.WORRY_ROOM: [Titles.SECRET_OF_ATLANTIS_THE],
     # Characters
     Tags.ARGUS_MCFIENDY: [Titles.DARKEST_AFRICA],
     Tags.AZURE_BLUE: [Titles.GOLDEN_HELMET_THE],
@@ -1252,6 +1255,7 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.NEIGHBOR_JONES, Titles.GOOD_DEEDS): ["1"],
     (Tags.P_J_MC_BRINE, Titles.FORBIDDEN_VALLEY): ["3"],
     (Tags.WEEMITE, Titles.ROCKET_ROASTED_CHRISTMAS_TURKEY): ["3", "4", "6", "7", "8"],
+    (Tags.WORRY_ROOM, Titles.SECRET_OF_ATLANTIS_THE): ["1"],
 }
 
 
