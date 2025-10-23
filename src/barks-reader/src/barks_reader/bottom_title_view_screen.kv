@@ -181,7 +181,9 @@
                         width: title_portal_image_button.width
                         height: (1.25 * fm.check_box_font_size) if self.opacity > 0.99 else 0
                         # Position relative to the image button
-                        pos: title_portal_image_button.x, title_portal_image_button.top + (0.85 * fm.check_box_font_size)
+                        pos:
+                            title_portal_image_button.x, \
+                            title_portal_image_button.top + (0.85 * fm.check_box_font_size)
                         opacity: 1 if root.goto_page_num else 0
                         Label:
                             text: "Goto page " + root.goto_page_num + ":"

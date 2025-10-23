@@ -592,6 +592,8 @@ class ReaderTreeBuilder:
         new_node.bind(
             on_title_search_box_pressed=self._tree_view_manager.on_title_search_box_pressed
         )
+        # TODO: Not sure why ruff does not break this as line too long.
+        # noinspection LongLine
         new_node.bind(
             on_title_search_box_title_changed=self._tree_view_manager.on_title_search_box_title_changed
         )

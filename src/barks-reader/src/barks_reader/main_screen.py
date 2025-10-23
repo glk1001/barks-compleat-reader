@@ -62,11 +62,10 @@ if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from kivy._clock import ClockEvent  # ty: ignore[unresolved-import]
     from kivy.factory import Factory
-    from kivy.uix.actionbar import ActionButton
     from kivy.uix.widget import Widget
 
     from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
-    from barks_reader.comic_book_reader import ComicBookReader
+    from barks_reader.comic_book_reader import ComicBookReaderScreen
     from barks_reader.filtered_title_lists import FilteredTitleLists
     from barks_reader.font_manager import FontManager
     from barks_reader.fun_image_view_screen import FunImageViewScreen
@@ -103,7 +102,11 @@ class MainScreen(ReaderScreen):
         super().__init__(**kwargs)
 
         self._window_manager = WindowManager(
-            self._resize_unbinding, self._resize_binding, self._set_hints_for_windowed_mode
+            self._set_hints_for_windowed_mode,
+            self._on_finished_goto_windowed_mode,
+            self._on_finished_goto_fullscreen_mode,
+            self._resize_unbinding,
+            self._resize_binding,
         )
 
         self._comics_database = comics_database
@@ -139,6 +142,7 @@ class MainScreen(ReaderScreen):
         self._action_bar_fullscreen_exit_icon = str(
             self._reader_settings.sys_file_paths.get_barks_reader_fullscreen_exit_icon_file()
         )
+        self._fullscreen_button = self.ids.fullscreen_button
 
         self._json_settings_manager = SettingsManager(self._reader_settings.get_user_data_path())
         self._special_fanta_overrides = SpecialFantaOverrides(self._reader_settings)
@@ -233,12 +237,6 @@ class MainScreen(ReaderScreen):
 
         self._update_action_bar_visibility()
 
-    def _resize_binding(self) -> None:
-        self.ids.main_layout.bind(size=self._on_main_layout_size_changed)
-
-    def _resize_unbinding(self) -> None:
-        self.ids.main_layout.unbind(size=self._on_main_layout_size_changed)
-
     def _is_active(self, active: bool) -> None:
         if self._active == active:
             return
@@ -259,31 +257,8 @@ class MainScreen(ReaderScreen):
 
         self._update_action_bar_visibility()
 
-    def _on_main_layout_size_changed(self, _instance: Widget, size: tuple[int, int]) -> None:
-        if self._window_manager.is_restoring_window:
-            # During a restore, the restore_geometry function is in control. Do not interfere.
-            logger.debug(f"Size change: {size}. Ignoring because window is restoring.")
-            return
-
-        if WindowManager.is_fullscreen_now():
-            # In fullscreen mode, apply the aspect ratio logic using the layout's new height.
-            self._change_win_size(size[1])
-        else:
-            # In windowed mode, ensure the widget fills the parent.
-            logger.debug(f"Size change: {size}. Adjust windowed mode size and pos hints.")
-            logger.debug(
-                f"Current window.size = {Window.size}, window.pos = ({Window.left}, {Window.top})."
-            )
-            self._set_hints_for_windowed_mode()
-
-        self.update_fonts(size[1])
-
-    def _set_hints_for_windowed_mode(self) -> None:
-        self.size_hint = (1, 1)
-        self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
-
-    def set_comic_book_reader(self, comic_book_reader: ComicBookReader) -> None:
-        self._comic_reader_manager.comic_book_reader = comic_book_reader
+    def set_comic_book_reader_screen(self, comic_book_reader_screen: ComicBookReaderScreen) -> None:
+        self._comic_reader_manager.set_comic_book_reader_screen(comic_book_reader_screen)
 
     def _get_reader_app_icon_file(self) -> Path:
         icon_files = get_all_files_in_dir(
@@ -393,23 +368,72 @@ class MainScreen(ReaderScreen):
             # covered by another screen.
             Clock.schedule_once(lambda _dt: self._hide_action_bar(), 1)
 
-    def update_fonts(self, height: int) -> None:
-        self._font_manager.update_font_sizes(height)
-        self.app_title = get_action_bar_title(self._font_manager, APP_TITLE)
+    def toggle_screen_mode(self) -> None:
+        if WindowManager.is_fullscreen_now():
+            logger.info("Toggle screen mode to windowed mode.")
+            Clock.schedule_once(lambda _dt: self._goto_windowed_mode(), 0)
+        else:
+            logger.info("Toggle screen mode to fullscreen mode.")
+            Clock.schedule_once(lambda _dt: self._goto_fullscreen_mode(), 0)
 
-    def _change_win_size(self, height: int) -> None:
-        if self._window_manager.is_restoring_window:
-            logger.info(
-                f"In window restore mode. Ignoring this change size request: height = {height}."
-            )
+    def force_fullscreen(self) -> None:
+        Clock.schedule_once(lambda _dt: self._goto_fullscreen_mode(), 0)
+
+    def _exit_fullscreen(self) -> None:
+        if not WindowManager.is_fullscreen_now():
             return
+
+        self._goto_windowed_mode()
+
+    def _goto_windowed_mode(self) -> None:
+        logger.info("Exiting fullscreen mode on MainScreen.")
+        self._comic_reader_manager.clear_window_state()
+        self._window_manager.goto_windowed_mode()
+
+    def _set_hints_for_windowed_mode(self) -> None:
+        self.size_hint = (1, 1)
+        self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+
+    def _on_finished_goto_windowed_mode(self) -> None:
+        self._fullscreen_button.text = "Fullscreen"
+        self._fullscreen_button.icon = self._action_bar_fullscreen_icon
+
+        self.update_fonts(Window.height)
+        self._show_action_bar()
+        logger.info("Entered windowed mode on MainScreen.")
+
+    def _goto_fullscreen_mode(self) -> None:
+        logger.info("Entering fullscreen mode on MainScreen.")
+        self._comic_reader_manager.save_window_state_now()
+        self._window_manager.goto_fullscreen_mode()
+
+    def _on_finished_goto_fullscreen_mode(self) -> None:
+        self.update_fonts(Window.height)
+
+        self._fullscreen_button.text = "Windowed"
+        self._fullscreen_button.icon = self._action_bar_fullscreen_exit_icon
+        logger.info("Entered fullscreen mode on MainScreen.")
+
+    def _on_main_layout_size_changed(self, _instance: Widget, size: tuple[int, int]) -> None:
+        if not WindowManager.is_fullscreen_now():
+            return
+
+        # In fullscreen mode, apply the aspect ratio logic using the layout's new height.
+        self._change_fullscreen_win_size(size[1])
+
+    def _change_fullscreen_win_size(self, height: int) -> None:
+        logger.info(f"New fullscreen height = {height}.")
+        if height < Window.height:
+            height = Window.height
+            logger.info(f"New height too low: adjusted new fullscreen height = {height}.")
 
         self.size_hint = None, None
         self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
         self.size = get_win_width_from_height(height - ACTION_BAR_SIZE_Y), height
+        assert WindowManager.is_fullscreen_now()
 
         logger.info(
-            f"New window settings:"
+            f"New fullscreen window settings:"
             f" Window.pos = ({Window.left}, {Window.top}),"
             f" Window.size = {Window.size},"
             f" self.size = {self.size},"
@@ -417,53 +441,27 @@ class MainScreen(ReaderScreen):
             f" self._action_bar.height = {self._action_bar.height}"
         )
 
-    def toggle_fullscreen(self, button: ActionButton) -> None:
-        if WindowManager.is_fullscreen_now():
-            Clock.schedule_once(lambda _dt: self._goto_windowed_mode(button), 0)
-        else:
-            Clock.schedule_once(lambda _dt: self._goto_fullscreen_mode(button), 0)
+    def _resize_binding(self) -> None:
+        self.ids.main_layout.bind(size=self._on_main_layout_size_changed)
 
-    def force_fullscreen(self) -> None:
-        Clock.schedule_once(lambda _dt: self._goto_fullscreen_mode(self.ids.fullscreen_button), 0)
+    def _resize_unbinding(self) -> None:
+        self.ids.main_layout.unbind(size=self._on_main_layout_size_changed)
 
-    def _exit_fullscreen(self) -> None:
-        if not WindowManager.is_fullscreen_now():
-            return
-
-        self._goto_windowed_mode(None)
-
-    def _goto_windowed_mode(self, button: ActionButton | None) -> None:
-        # First, tell the window to exit fullscreen.
-        Window.borderless = False  # safest thing to do for MS Windows
-        Window.fullscreen = False
-
-        self._window_manager.restore_saved_state()
-
-        if button:
-            button.text = "Fullscreen"
-            button.icon = self._action_bar_fullscreen_icon
-
-        self._show_action_bar()
-        logger.info("Exiting fullscreen on MainScreen.")
-
-    def _goto_fullscreen_mode(self, button: ActionButton) -> None:
-        # Save the current size and position before entering fullscreen.
-        self._window_manager.save_state_now()
-
-        button.text = "Windowed"
-        button.icon = self._action_bar_fullscreen_exit_icon
-        Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
-        logger.info("Entering fullscreen on MainScreen.")
+    def update_fonts(self, height: int) -> None:
+        self._font_manager.update_font_sizes(height)
+        self.app_title = get_action_bar_title(self._font_manager, APP_TITLE)
 
     def _hide_action_bar(self) -> None:
-        logger.debug(f"Hide enter: self.action_bar.height = {self._action_bar.height}")
         hide_action_bar(self._action_bar)
-        logger.debug(f"Hide exit: self._action_bar.height = {self._action_bar.height}")
+        logger.debug(
+            f"MainScreen actionbar is hidden: self._action_bar.height = {self._action_bar.height}"
+        )
 
     def _show_action_bar(self) -> None:
-        logger.debug(f"Show enter: self.action_bar.height = {self._action_bar.height}")
         show_action_bar(self._action_bar)
-        logger.debug(f"Show exit: self.action_bar.height = {self._action_bar.height}")
+        logger.debug(
+            f"MainScreen actionbar is visible: self.action_bar.height = {self._action_bar.height}"
+        )
 
     def _on_views_updated(self) -> None:
         pass

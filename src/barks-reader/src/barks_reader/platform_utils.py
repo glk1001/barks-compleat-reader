@@ -12,9 +12,8 @@ MS_WIN_X_ADJ_AFTER_WINDOW_RESTORE = 16
 MS_WIN_Y_ADJ_AFTER_WINDOW_RESTORE = 31
 
 _RESTORE_GEOMETRY_TIMEOUT = 0.2 if PLATFORM == Platform.WIN else 0.05
-_REBIND_TIMEOUT = 0.3 if PLATFORM == Platform.WIN else 0.05
-_SUMMARY_TIMEOUT = 2.5 if PLATFORM == Platform.WIN else 0.05
-_RESET_RESTORING_FLAG_TIMEOUT = 1 if PLATFORM == Platform.WIN else 0.05
+_SUMMARY_TIMEOUT = 2.5 if PLATFORM == Platform.WIN else 0
+_REBIND_TIMEOUT = 0.3 if PLATFORM == Platform.WIN else 0
 
 
 class FullscreenEnum(Enum):
@@ -44,20 +43,24 @@ class WindowState:
 class WindowManager:
     def __init__(
         self,
-        resize_unbind_func: Callable[[], None],
-        resize_rebind_func: Callable[[], None],
-        after_first_resize_func: Callable[[], None],
-        notify_finished_restore: Callable[[], None] | None = None,
+        on_goto_windowed_mode_first_resize_func: Callable[[], None],
+        on_finished_goto_windowed_mode: Callable[[], None],
+        on_finished_goto_fullscreen_mode: Callable[[], None],
+        resize_unbind_func: Callable[[], None] | None = None,
+        resize_rebind_func: Callable[[], None] | None = None,
     ) -> None:
-        self._resize_unbind_func = resize_unbind_func
-        self._resize_rebind_func = resize_rebind_func
-        self._notify_finished_restore = notify_finished_restore
-        self._after_first_resize_func = after_first_resize_func
+        self._on_goto_windowed_mode_first_resize = on_goto_windowed_mode_first_resize_func
+        self._on_finished_goto_windowed_mode = on_finished_goto_windowed_mode
+        self._on_finished_goto_fullscreen_mode = on_finished_goto_fullscreen_mode
+        self._resize_unbind = resize_unbind_func
+        self._resize_rebind = resize_rebind_func
 
-        assert not self._resize_unbind_func or self._resize_rebind_func
+        assert self._on_goto_windowed_mode_first_resize is not None
+        assert self._on_finished_goto_windowed_mode is not None
+        assert self._on_finished_goto_fullscreen_mode is not None
+        assert not self._resize_unbind or self._resize_rebind
 
         self._saved_window_state = WindowState()
-        self.is_restoring_window = False
 
     @staticmethod
     def is_fullscreen_now() -> bool:
@@ -74,47 +77,98 @@ class WindowManager:
         self._saved_window_state.save_state_now()
 
         logger.info(
-            f"Saved window info before event:"
+            f"Saved window info now:"
             f" Window size = {self._saved_window_state.size}, pos = {self._saved_window_state.pos}."
         )
 
-    def restore_saved_state(self) -> None:
+    def goto_fullscreen_mode(self) -> None:
+        if self.is_fullscreen_now():
+            return
+
+        self.save_state_now()
+
+        Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
+
+        Clock.schedule_once(lambda _dt: self._on_finished_goto_fullscreen_mode(), 0)
+
+    def goto_windowed_mode(self) -> None:
+        if not self.is_fullscreen_now():
+            return
+
+        Window.borderless = False  # safest thing to do for MS Windows
+        Window.fullscreen = False
+
+        self.restore_saved_size_and_position()
+
+    def restore_saved_size_and_position(self) -> None:
         assert self._saved_window_state.size != (0, 0)
         assert self._saved_window_state.pos != (-1, -1)
 
         logger.info(
-            f"At the start of post event Window restore,"
+            f"At the start of restoring window state,"
             f" Window.size = {Window.size}, pos = ({Window.left}, {Window.top})."
         )
 
-        self._restore_saved_window()
+        if PLATFORM == Platform.WIN:
+            self._ms_win_restore_saved_window()
+        else:
+            self._simple_restore_saved_window()
 
-        self._schedule_summary()
+    def _do_finish_up(self) -> None:
+        def summarize_and_finish(*_args) -> None:  # noqa: ANN002
+            log_func = (
+                logger.info
+                if self._saved_window_state.is_saved_state_same_as_current()
+                else logger.warning
+            )
 
-    def _restore_saved_window(self) -> None:
-        self.is_restoring_window = True
+            log_func(
+                f"Final setting:"
+                f" Window.size = {Window.size}, pos = ({Window.left}, {Window.top});"
+                f" Pre-event size = {self._saved_window_state.size},"
+                f" pos = {self._saved_window_state.pos}."
+            )
 
-        # Then, schedule the restoration of size and position after a delay.
-        # This gives the OS window manager time to complete the transition.
+            Clock.schedule_once(lambda _dt: self._on_finished_goto_windowed_mode(), 0)
+
+        Clock.schedule_once(summarize_and_finish, _SUMMARY_TIMEOUT)
+
+    def _simple_restore_saved_window(self) -> None:
         def restore_geometry(*_args) -> None:  # noqa: ANN002
-            if self._resize_unbind_func:
-                # Unbind resize events until everything settles.
-                logger.info("Unbinding before starting window restore...")
-                self._resize_unbind_func()
-
-            # Set size first.
-            self._do_first_resize()
+            # Set size and position first.
+            Window.size = self._saved_window_state.size
+            Window.left, Window.top = self._saved_window_state.pos
 
             # Do the in between stuff.
-            if self._after_first_resize_func:
-                self._after_first_resize_func()
+            if self._on_goto_windowed_mode_first_resize:
+                self._on_goto_windowed_mode_first_resize()
 
-            # Do the rebind events after everything settles.
-            self._do_rebind_events()
+            self._do_finish_up()
 
         Clock.schedule_once(restore_geometry, _RESTORE_GEOMETRY_TIMEOUT)
 
-    def _do_first_resize(self) -> None:
+    def _ms_win_restore_saved_window(self) -> None:
+        # Then, schedule the restoration of size and position after a delay.
+        # This gives the OS window manager time to complete the transition.
+        def restore_geometry(*_args) -> None:  # noqa: ANN002
+            if self._resize_unbind:
+                # Unbind resize events until everything settles.
+                logger.info("Unbinding before starting window restore...")
+                self._resize_unbind()
+
+            # Set size first.
+            self._ms_win_do_first_resize()
+
+            # Do the in between stuff.
+            if self._on_goto_windowed_mode_first_resize:
+                self._on_goto_windowed_mode_first_resize()
+
+            # Do the rebind events after everything settles.
+            self._ms_win_do_rebind_events()
+
+        Clock.schedule_once(restore_geometry, _RESTORE_GEOMETRY_TIMEOUT)
+
+    def _ms_win_do_first_resize(self) -> None:
         logger.info("Starting first resize...")
         Window.size = self._saved_window_state.size
 
@@ -127,13 +181,7 @@ class WindowManager:
             for resize_delay in [0.05, 0.1, 0.15]:
                 Clock.schedule_once(do_resize, resize_delay)
 
-    def _do_set_size_and_position(self) -> None:
-        if PLATFORM != Platform.WIN:
-            Window.left, Window.top = self._saved_window_state.pos
-        else:
-            self._set_ms_win_size_and_position()
-
-    def _set_ms_win_size_and_position(self) -> None:
+    def _ms_win_do_size_and_position(self) -> None:
         # On MS Windows, setting position triggers resize due to DPI scaling!?
         # So we need to set BOTH position and size together, repeatedly.
         def fix_position_and_size(*_args) -> None:  # noqa: ANN002
@@ -151,16 +199,16 @@ class WindowManager:
         for fix_pos_delay in [0.0, 0.05, 0.1, 0.15]:
             Clock.schedule_once(fix_position_and_size, fix_pos_delay)
 
-    def _do_rebind_events(self) -> None:
+    def _ms_win_do_rebind_events(self) -> None:
         def rebind_events(*_args) -> None:  # noqa: ANN002
             logger.info("Rebinding after post event window restore...")
 
-            self._do_set_size_and_position()
+            self._ms_win_do_size_and_position()
 
-            if self._resize_rebind_func:
-                self._resize_rebind_func()
+            if self._resize_rebind:
+                self._resize_rebind()
 
-            self._do_schedule_restoring_flag_reset()
+            self._do_finish_up()
 
             logger.info(
                 f"After rebinding, Window size = {Window.size},"
@@ -168,32 +216,3 @@ class WindowManager:
             )
 
         Clock.schedule_once(rebind_events, _REBIND_TIMEOUT)
-
-    def _do_schedule_restoring_flag_reset(self) -> None:
-        def reset_flag(*_args) -> None:  # noqa: ANN002
-            self.is_restoring_window = False
-
-            self._schedule_summary()
-
-        # Keep the flag True a bit longer to block the resize events from position changes.
-        Clock.schedule_once(reset_flag, _RESET_RESTORING_FLAG_TIMEOUT)
-
-    def _schedule_summary(self) -> None:
-        def summary(*_args) -> None:  # noqa: ANN002
-            log_func = (
-                logger.info
-                if self._saved_window_state.is_saved_state_same_as_current()
-                else logger.warning
-            )
-
-            log_func(
-                f"Final setting:"
-                f" Window.size = {Window.size}, pos = ({Window.left}, {Window.top});"
-                f" Pre-event size = {self._saved_window_state.size},"
-                f" pos = {self._saved_window_state.pos}."
-            )
-
-            if self._notify_finished_restore:
-                self._notify_finished_restore()
-
-        Clock.schedule_once(summary, _SUMMARY_TIMEOUT)

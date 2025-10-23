@@ -9,6 +9,7 @@ from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, Fan
 from loguru import logger
 
 from barks_reader.comic_book_page_info import ComicBookPageInfo, ComicBookPageInfoManager
+from barks_reader.comic_book_reader import ComicBookReaderScreen
 from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
 from barks_reader.reader_consts_and_types import COMIC_PAGE_ONE
 from barks_reader.reader_settings import ReaderSettings
@@ -41,12 +42,23 @@ class ComicReaderManager:
         )
         self._comic_page_info: ComicBookPageInfo | None = None
 
-        self.comic_book_reader: ComicBookReader | None = None
+        self._comic_book_reader_screen: ComicBookReaderScreen | None = None
+        self._comic_book_reader: ComicBookReader | None = None
         self._fanta_info: FantaComicBookInfo | None = None
         self._save_last_page = True
 
+    def set_comic_book_reader_screen(self, comic_book_reader_screen: ComicBookReaderScreen) -> None:
+        self._comic_book_reader_screen = comic_book_reader_screen
+        self._comic_book_reader = self._comic_book_reader_screen.comic_book_reader
+
     def init_comic_book_data(self) -> None:
-        self.comic_book_reader.init_data()
+        self._comic_book_reader.init_data()
+
+    def clear_window_state(self) -> None:
+        self._comic_book_reader_screen.clear_window_state()
+
+    def save_window_state_now(self) -> None:
+        self._comic_book_reader_screen.save_window_state_now()
 
     def read_article_as_comic_book(self, article_title: Titles, page_to_first_goto: str) -> None:
         self._save_last_page = False
@@ -88,7 +100,7 @@ class ComicReaderManager:
             f'Load "{self._fanta_info.comic_book_info.get_title_str()}"'
             f' and goto page "{page_to_first_goto}".',
         )
-        self.comic_book_reader.read_comic(
+        self._comic_book_reader.read_comic(
             self._fanta_info,
             use_overrides_active,
             comic_book_image_builder,
@@ -137,7 +149,7 @@ class ComicReaderManager:
         )
 
     def _get_last_read_page_from_comic(self) -> SavedPageInfo | None:
-        last_read_page_str = self.comic_book_reader.get_last_read_page()
+        last_read_page_str = self._comic_book_reader.get_last_read_page()
         if not last_read_page_str:
             return None
 

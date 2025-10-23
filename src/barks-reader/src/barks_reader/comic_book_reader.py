@@ -390,7 +390,7 @@ class ComicBookReader(BoxLayout):
             return
 
         logger.info(f"Waiting for image with index {self._current_page_index} to finish loading.")
-        while not self._comic_book_loader.get_load_event(self._current_page_index).wait(timeout=2):
+        while not self._comic_book_loader.wait_load_event(self._current_page_index, 2):
             logger.info(
                 f"Still waiting for image with index {self._current_page_index} to finish loading."
             )
@@ -478,10 +478,11 @@ class ComicBookReaderScreen(ReaderScreen):
         self._active = False
 
         self._window_manager = WindowManager(
+            self._set_hints_for_windowed_mode,
+            self._on_finished_goto_windowed_mode,
+            self._on_finished_goto_fullscreen_mode,
             self._resize_unbinding,
             self._resize_binding,
-            self._set_hints_for_windowed_mode,
-            self._on_ok_to_close,
         )
 
         self._action_bar = self.ids.action_bar
@@ -508,14 +509,8 @@ class ComicBookReaderScreen(ReaderScreen):
         self.comic_book_reader.set_goto_page_widget(self.ids.goto_page_button)
         self.ids.main_comic_layout.add_widget(self.comic_book_reader)
 
-    def _resize_binding(self) -> None:
-        Window.bind(on_resize=self._on_window_resize)
-
-    def _resize_unbinding(self) -> None:
-        Window.unbind(on_resize=self._on_window_resize)
-
     def is_active(self, active: bool) -> None:
-        logger.debug(f"ComicBookReaderScreen active changed from {self._active} to {active}.")
+        logger.info(f"ComicBookReaderScreen active changed from {self._active} to {active}.")
 
         self._active = active
 
@@ -547,6 +542,75 @@ class ComicBookReaderScreen(ReaderScreen):
         self.comic_book_reader.close_comic_book_reader()
         self._exit_fullscreen()
 
+    def clear_window_state(self) -> None:
+        self._window_manager.clear_state()
+
+    def save_window_state_now(self) -> None:
+        self._window_manager.save_state_now()
+
+    def update_window_mode(self) -> None:
+        self._was_fullscreen_on_entry = WindowManager.is_fullscreen_now()
+        if (
+            not self._was_fullscreen_on_entry
+            and self._reader_settings.goto_fullscreen_on_comic_read
+        ):
+            self._goto_fullscreen_mode()
+        self.is_fullscreen = (
+            self._was_fullscreen_on_entry or self._reader_settings.goto_fullscreen_on_comic_read
+        )
+
+    def toggle_screen_mode(self) -> None:
+        if WindowManager.is_fullscreen_now():
+            logger.info("Toggle screen mode to windowed mode.")
+            Clock.schedule_once(lambda _dt: self._goto_windowed_mode(), 0)
+        else:
+            logger.info("Toggle screen mode to fullscreen mode.")
+            Clock.schedule_once(lambda _dt: self._goto_fullscreen_mode(), 0)
+
+    def _goto_windowed_mode(self) -> None:
+        logger.info("Exiting fullscreen mode on ComicBookReaderScreen.")
+
+        self._window_manager.goto_windowed_mode()
+
+    def _set_hints_for_windowed_mode(self) -> None:
+        # Restore the layout properties so the screen fills the window again.
+        self.size_hint = (1, 1)
+        self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+
+    def _on_finished_goto_windowed_mode(self) -> None:
+        if self._is_closing:
+            logger.debug("Entering windowed mode finished, now closing reader.")
+            self._on_close_reader()
+            self._is_closing = False
+            self.comic_book_reader.reset_comic_book_reader()
+
+        self.is_fullscreen = False
+        self._update_fullscreen_button()
+        logger.info("Entered windowed mode on ComicBookReaderScreen.")
+
+    def _goto_fullscreen_mode(self) -> None:
+        logger.info("Entering fullscreen mode on ComicBookReaderScreen.")
+        self._window_manager.goto_fullscreen_mode()
+
+    def _exit_fullscreen(self) -> None:
+        if not WindowManager.is_fullscreen_now() and not self._was_fullscreen_on_entry:
+            logger.debug("Fullscreen not on and not required.")
+            self._on_finished_goto_windowed_mode()
+            return
+
+        if self._was_fullscreen_on_entry:
+            logger.debug("Fullscreen is required.")
+            self._goto_fullscreen_mode()
+            self._on_finished_goto_windowed_mode()
+        else:
+            logger.debug("Fullscreen not required.")
+            self._goto_windowed_mode()  # will implicitly call 'self._on_ok_to_close()'
+
+    def _on_finished_goto_fullscreen_mode(self) -> None:
+        self.is_fullscreen = True
+        self._update_fullscreen_button()
+        logger.info("Entered fullscreen mode on ComicBookReaderScreen.")
+
     # noinspection PyTypeHints
     # Reason: inspection seems broken here.
     def _on_window_resize(self, _window: Window, width: int, height: int) -> None:
@@ -565,6 +629,12 @@ class ComicBookReaderScreen(ReaderScreen):
 
         self._update_window_state()
 
+    def _resize_binding(self) -> None:
+        Window.bind(on_resize=self._on_window_resize)
+
+    def _resize_unbinding(self) -> None:
+        Window.unbind(on_resize=self._on_window_resize)
+
     def _update_window_state(self) -> None:
         self._reset_action_bar_width()
         self.comic_book_reader.set_reader_navigation_regions(Window.width, Window.height)
@@ -572,70 +642,6 @@ class ComicBookReaderScreen(ReaderScreen):
     def _reset_action_bar_width(self) -> None:
         self.action_bar_width = max(0, get_win_width_from_height(Window.height - ACTION_BAR_SIZE_Y))
         logger.debug(f"self.action_bar_width = {self.action_bar_width}")
-
-    def toggle_fullscreen(self) -> None:
-        if Window.fullscreen:
-            Clock.schedule_once(lambda _dt: self._goto_windowed_mode(), 0)
-        else:
-            Clock.schedule_once(lambda _dt: self._goto_fullscreen_mode(), 0)
-
-    def update_window_mode(self) -> None:
-        self._was_fullscreen_on_entry = WindowManager.is_fullscreen_now()
-        if (
-            not self._was_fullscreen_on_entry
-            and self._reader_settings.goto_fullscreen_on_comic_read
-        ):
-            self._goto_fullscreen_mode()
-        self.is_fullscreen = (
-            self._was_fullscreen_on_entry or self._reader_settings.goto_fullscreen_on_comic_read
-        )
-
-    def _goto_windowed_mode(self) -> None:
-        Window.borderless = False  # safest thing to do for MS Windows
-        Window.fullscreen = False
-        self.is_fullscreen = False
-
-        self._window_manager.restore_saved_state()
-
-        self._update_fullscreen_button()
-
-        logger.info("Exiting fullscreen.")
-
-    def _set_hints_for_windowed_mode(self) -> None:
-        # Restore the layout properties so the screen fills the window again.
-        self.size_hint = (1, 1)
-        self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
-
-    def _goto_fullscreen_mode(self) -> None:
-        self._window_manager.save_state_now()
-        Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
-        self.is_fullscreen = True
-        self._update_fullscreen_button()
-        logger.info("Entering fullscreen.")
-
-    def _exit_fullscreen(self) -> None:
-        if not Window.fullscreen and not self._was_fullscreen_on_entry:
-            logger.debug("Fullscreen not on and not required.")
-            self._on_ok_to_close()
-            return
-
-        if self._was_fullscreen_on_entry:
-            logger.debug("Fullscreen is required.")
-            self._goto_fullscreen_mode()
-            self._on_ok_to_close()
-        else:
-            logger.debug("Fullscreen not required.")
-            self._goto_windowed_mode()  # will implicitly call 'self._on_ok_to_close()'
-
-    def _on_ok_to_close(self) -> None:
-        if not self._is_closing:
-            return
-
-        logger.debug("Fullscreen exit finished, now closing reader.")
-        self._on_close_reader()
-        self._is_closing = False
-
-        self.comic_book_reader.reset_comic_book_reader()
 
     def _toggle_action_bar_visibility(self) -> None:
         logger.debug(f"Toggling action bar visibility. Current opacity: {self._action_bar.opacity}")

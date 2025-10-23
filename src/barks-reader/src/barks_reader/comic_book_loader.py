@@ -108,9 +108,11 @@ class ComicBookLoader:
 
         return f'"{image_path!s}" ({file_source})'
 
-    def get_load_event(self, page_index: int) -> threading.Event:
+    def wait_load_event(self, page_index: int, timeout: float) -> bool:
+        if not self._images:
+            return True
         assert 0 <= page_index < len(self._images)
-        return self._image_loaded_events[page_index]
+        return self._image_loaded_events[page_index].wait(timeout)
 
     def set_comic(
         self,

@@ -298,7 +298,7 @@ class BarksReaderApp(App):
             self._screen_switchers.switch_to_comic_book_reader,
             self._screen_switchers.close_comic_book_reader,
         )
-        self._main_screen.set_comic_book_reader(comic_reader_screen.comic_book_reader)
+        self._main_screen.set_comic_book_reader_screen(comic_reader_screen)
 
         logger.debug("Instantiating introduction screen...")
         intro_screen = get_intro_compleat_barks_reader_screen(
