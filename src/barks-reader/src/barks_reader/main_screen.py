@@ -105,8 +105,6 @@ class MainScreen(ReaderScreen):
             self._set_hints_for_windowed_mode,
             self._on_finished_goto_windowed_mode,
             self._on_finished_goto_fullscreen_mode,
-            self._resize_unbinding,
-            self._resize_binding,
         )
 
         self._comics_database = comics_database
@@ -443,9 +441,6 @@ class MainScreen(ReaderScreen):
 
     def _resize_binding(self) -> None:
         self.ids.main_layout.bind(size=self._on_main_layout_size_changed)
-
-    def _resize_unbinding(self) -> None:
-        self.ids.main_layout.unbind(size=self._on_main_layout_size_changed)
 
     def update_fonts(self, height: int) -> None:
         self._font_manager.update_font_sizes(height)

@@ -46,19 +46,14 @@ class WindowManager:
         on_goto_windowed_mode_first_resize_func: Callable[[], None],
         on_finished_goto_windowed_mode: Callable[[], None],
         on_finished_goto_fullscreen_mode: Callable[[], None],
-        resize_unbind_func: Callable[[], None] | None = None,
-        resize_rebind_func: Callable[[], None] | None = None,
     ) -> None:
         self._on_goto_windowed_mode_first_resize = on_goto_windowed_mode_first_resize_func
         self._on_finished_goto_windowed_mode = on_finished_goto_windowed_mode
         self._on_finished_goto_fullscreen_mode = on_finished_goto_fullscreen_mode
-        self._resize_unbind = resize_unbind_func
-        self._resize_rebind = resize_rebind_func
 
         assert self._on_goto_windowed_mode_first_resize is not None
         assert self._on_finished_goto_windowed_mode is not None
         assert self._on_finished_goto_fullscreen_mode is not None
-        assert not self._resize_unbind or self._resize_rebind
 
         self._saved_window_state = WindowState()
         self._win32_hwnd = None
@@ -283,11 +278,7 @@ class WindowManager:
         """Restore window using direct Win32 calls - atomic and reliable."""
 
         def restore(*_args) -> None:  # noqa: ANN002
-            # Unbind resize events during restoration to avoid interference
-            if self._resize_unbind:
-                self._resize_unbind()
-
-            # Single atomic Win32 call to set position and size
+            # Single atomic Win32 call to set position and size.
             self._win32_set_window_rect(
                 self._saved_window_state.pos[0],
                 self._saved_window_state.pos[1],
@@ -303,12 +294,9 @@ class WindowManager:
                 if self._on_goto_windowed_mode_first_resize:
                     self._on_goto_windowed_mode_first_resize()
 
-                if self._resize_rebind:
-                    self._resize_rebind()
-
                 self._finish_restore()
 
-            Clock.schedule_once(sync_and_finish, 0.1)
+            Clock.schedule_once(sync_and_finish, 0)
 
         Clock.schedule_once(restore, _RESTORE_GEOMETRY_TIMEOUT)
 
@@ -324,12 +312,18 @@ class WindowManager:
             actual_rect = self.RECT()
             self._GetWindowRect(self._win32_hwnd, actual_rect)
 
-            logger.debug(
-                f"Win32: Requested pos=({x}, {y}), size={width}x{height}; "
-                f"Actual pos=({actual_rect.left}, {actual_rect.top}), "
-                f"size={(actual_rect.right - actual_rect.left)}"
-                f" x {(actual_rect.bottom - actual_rect.top)}; "
-                f"Result={result}"
+            log_func = (
+                logger.info
+                if self._saved_window_state.is_saved_state_same_as_current()
+                else logger.warning
+            )
+
+            log_func(
+                f"Win32: Requested pos = ({x}, {y}), size = ({width}, {height}); "
+                f"Actual pos = ({actual_rect.left}, {actual_rect.top}), "
+                f"size = ({(actual_rect.right - actual_rect.left)},"
+                f" {(actual_rect.bottom - actual_rect.top)}); "
+                f"Result = {result}"
             )
         except Exception as e:  # noqa: BLE001
             logger.error(f"Win32 MoveWindow failed: {e}")

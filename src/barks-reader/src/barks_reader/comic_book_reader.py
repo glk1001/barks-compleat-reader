@@ -481,8 +481,6 @@ class ComicBookReaderScreen(ReaderScreen):
             self._set_hints_for_windowed_mode,
             self._on_finished_goto_windowed_mode,
             self._on_finished_goto_fullscreen_mode,
-            self._resize_unbinding,
-            self._resize_binding,
         )
 
         self._action_bar = self.ids.action_bar
@@ -631,9 +629,6 @@ class ComicBookReaderScreen(ReaderScreen):
 
     def _resize_binding(self) -> None:
         Window.bind(on_resize=self._on_window_resize)
-
-    def _resize_unbinding(self) -> None:
-        Window.unbind(on_resize=self._on_window_resize)
 
     def _update_window_state(self) -> None:
         self._reset_action_bar_width()
