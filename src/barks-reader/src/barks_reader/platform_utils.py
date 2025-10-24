@@ -1,6 +1,10 @@
+import ctypes
+import os
 from collections.abc import Callable
+from ctypes import c_long, wintypes
 from dataclasses import dataclass
 from enum import Enum
+from typing import ClassVar
 
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -8,12 +12,8 @@ from loguru import logger
 
 from barks_reader.platform_info import PLATFORM, Platform
 
-MS_WIN_X_ADJ_AFTER_WINDOW_RESTORE = 16
-MS_WIN_Y_ADJ_AFTER_WINDOW_RESTORE = 31
-
-_RESTORE_GEOMETRY_TIMEOUT = 0.2 if PLATFORM == Platform.WIN else 0.05
-_SUMMARY_TIMEOUT = 2.5 if PLATFORM == Platform.WIN else 0
-_REBIND_TIMEOUT = 0.3 if PLATFORM == Platform.WIN else 0
+# Small timeout for non-Windows platforms to let the window system settle.
+_RESTORE_GEOMETRY_TIMEOUT = 0.05
 
 
 class FullscreenEnum(Enum):
@@ -61,6 +61,10 @@ class WindowManager:
         assert not self._resize_unbind or self._resize_rebind
 
         self._saved_window_state = WindowState()
+        self._win32_hwnd = None
+
+        if PLATFORM == Platform.WIN:
+            self._init_win32()
 
     @staticmethod
     def is_fullscreen_now() -> bool:
@@ -74,11 +78,16 @@ class WindowManager:
         self._saved_window_state = WindowState()
 
     def save_state_now(self) -> None:
-        self._saved_window_state.save_state_now()
+        # On Windows with Win32, save the actual window rectangle (including decorations).
+        # On other platforms, use Kivy's reported values.
+        if PLATFORM == Platform.WIN and self._win32_hwnd:
+            self._save_state_win32()
+        else:
+            self._saved_window_state.save_state_now()
 
         logger.info(
-            f"Saved window info now:"
-            f" Window size = {self._saved_window_state.size}, pos = {self._saved_window_state.pos}."
+            f"Saved window state: size = {self._saved_window_state.size}, "
+            f"pos = {self._saved_window_state.pos}"
         )
 
     def goto_fullscreen_mode(self) -> None:
@@ -105,114 +114,222 @@ class WindowManager:
         assert self._saved_window_state.pos != (-1, -1)
 
         logger.info(
+            f"Restoring window: target size = {self._saved_window_state.size}, "
+            f"pos = {self._saved_window_state.pos}"
+        )
+        logger.info(
             f"At the start of restoring window state,"
             f" Window.size = {Window.size}, pos = ({Window.left}, {Window.top})."
         )
 
-        if PLATFORM == Platform.WIN:
-            self._ms_win_restore_saved_window()
+        if PLATFORM == Platform.WIN and self._win32_hwnd:
+            self._restore_window_win32()
         else:
-            self._simple_restore_saved_window()
+            self._restore_window_kivy()
 
-    def _do_finish_up(self) -> None:
-        def summarize_and_finish(*_args) -> None:  # noqa: ANN002
-            log_func = (
-                logger.info
-                if self._saved_window_state.is_saved_state_same_as_current()
-                else logger.warning
-            )
+    def _restore_window_kivy(self) -> None:
+        """Restore window using Kivy API - simple for non-Windows platforms."""
 
-            log_func(
-                f"Final setting:"
-                f" Window.size = {Window.size}, pos = ({Window.left}, {Window.top});"
-                f" Pre-event size = {self._saved_window_state.size},"
-                f" pos = {self._saved_window_state.pos}."
-            )
-
-            Clock.schedule_once(lambda _dt: self._on_finished_goto_windowed_mode(), 0)
-
-        Clock.schedule_once(summarize_and_finish, _SUMMARY_TIMEOUT)
-
-    def _simple_restore_saved_window(self) -> None:
-        def restore_geometry(*_args) -> None:  # noqa: ANN002
-            # Set size and position first.
+        def restore(*_args) -> None:  # noqa: ANN002
             Window.size = self._saved_window_state.size
             Window.left, Window.top = self._saved_window_state.pos
 
-            # Do the in between stuff.
             if self._on_goto_windowed_mode_first_resize:
                 self._on_goto_windowed_mode_first_resize()
 
-            self._do_finish_up()
+            self._finish_restore()
 
-        Clock.schedule_once(restore_geometry, _RESTORE_GEOMETRY_TIMEOUT)
+        Clock.schedule_once(restore, _RESTORE_GEOMETRY_TIMEOUT)
 
-    def _ms_win_restore_saved_window(self) -> None:
-        # Then, schedule the restoration of size and position after a delay.
-        # This gives the OS window manager time to complete the transition.
-        def restore_geometry(*_args) -> None:  # noqa: ANN002
+    def _finish_restore(self) -> None:
+        """Log final state and call completion callback."""
+        log_func = (
+            logger.info
+            if self._saved_window_state.is_saved_state_same_as_current()
+            else logger.warning
+        )
+
+        log_func(
+            f"Window restore complete: size = {Window.size}, pos = ({Window.left}, {Window.top}); "
+            f"Target was size = {self._saved_window_state.size},"
+            f" pos = {self._saved_window_state.pos}"
+        )
+
+        Clock.schedule_once(lambda _dt: self._on_finished_goto_windowed_mode(), 0)
+
+    # noinspection PyPep8Naming,PyUnresolvedReferences
+    def _init_win32(self) -> None:
+        """Initialize Win32 handles for direct window manipulation."""
+        try:
+            # Define RECT structure
+            class RECT(ctypes.Structure):
+                _fields_: ClassVar[list[tuple[str, type[c_long]]]] = [
+                    ("left", wintypes.LONG),
+                    ("top", wintypes.LONG),
+                    ("right", wintypes.LONG),
+                    ("bottom", wintypes.LONG),
+                ]
+
+            self.RECT = RECT
+
+            # Find our window by enumerating all windows and matching process ID.
+            GetWindowThreadProcessId = ctypes.windll.user32.GetWindowThreadProcessId  # noqa: N806
+            EnumWindows = ctypes.windll.user32.EnumWindows  # noqa: N806
+            IsWindowVisible = ctypes.windll.user32.IsWindowVisible  # noqa: N806
+            GetClassNameW = ctypes.windll.user32.GetClassNameW  # noqa: N806
+
+            current_pid = os.getpid()
+            found_hwnd = None
+
+            def enum_callback(hwnd_candidate, _lparam) -> bool:  # noqa: ANN001
+                nonlocal found_hwnd
+                if IsWindowVisible(hwnd_candidate):
+                    pid = wintypes.DWORD()
+                    GetWindowThreadProcessId(hwnd_candidate, ctypes.byref(pid))
+
+                    if pid.value == current_pid:
+                        # Check if it's an SDL window (Kivy uses SDL2)
+                        class_name = ctypes.create_unicode_buffer(256)
+                        GetClassNameW(hwnd_candidate, class_name, 256)
+
+                        if class_name.value.startswith("SDL"):
+                            found_hwnd = hwnd_candidate
+                            logger.info(
+                                f"Found SDL window:"
+                                f" HWND = {hex(hwnd_candidate)}, class = {class_name.value}."
+                            )
+                            return False  # Stop enumeration
+                return True  # Continue enumeration
+
+            # Create callback and enumerate windows,
+            # noinspection LongLine
+            ENUM_WINDOWS_PROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)  # noqa: N806
+            callback_ptr = ENUM_WINDOWS_PROC(enum_callback)
+            EnumWindows(callback_ptr, 0)
+
+            if not found_hwnd:
+                # Fallback: try FindWindow by title.
+                FindWindowW = ctypes.windll.user32.FindWindowW  # noqa: N806
+                if hasattr(Window, "title") and Window.title:
+                    found_hwnd = FindWindowW(None, Window.title)
+                    if found_hwnd:
+                        logger.info(
+                            f"Found window via FindWindow with title '{Window.title}':"
+                            f" {hex(found_hwnd)}."
+                        )
+
+            if not found_hwnd:
+                msg = "Could not obtain window handle."
+                raise RuntimeError(msg)  # noqa: TRY301
+
+            self._win32_hwnd = found_hwnd
+
+            # Load a fresh instance of user32.dll to avoid conflicts with Kivy's Win32 calls,
+            user32 = ctypes.WinDLL("user32", use_last_error=True)
+
+            # Set up Win32 functions with proper type signatures
+            self._MoveWindow = user32.MoveWindow
+            self._MoveWindow.argtypes = [
+                wintypes.HWND,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                wintypes.BOOL,
+            ]
+            self._MoveWindow.restype = wintypes.BOOL
+
+            self._GetWindowRect = user32.GetWindowRect
+            self._GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(RECT)]
+            self._GetWindowRect.restype = wintypes.BOOL
+
+            self._GetClientRect = user32.GetClientRect
+            self._GetClientRect.argtypes = [wintypes.HWND, ctypes.POINTER(RECT)]
+            self._GetClientRect.restype = wintypes.BOOL
+
+            logger.info(f"Win32 window handle initialized: {hex(self._win32_hwnd)}.")
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Could not initialize Win32 handles: {e}")
+            self._win32_hwnd = None
+
+    def _save_state_win32(self) -> None:
+        """Save window state using Win32 to get accurate window rectangle."""
+        try:
+            window_rect = self.RECT()
+            client_rect = self.RECT()
+            self._GetWindowRect(self._win32_hwnd, window_rect)
+            self._GetClientRect(self._win32_hwnd, client_rect)
+
+            self._saved_window_state.screen = (
+                FullscreenEnum.FULLSCREEN if Window.fullscreen else FullscreenEnum.WINDOWED
+            )
+            self._saved_window_state.pos = (window_rect.left, window_rect.top)
+            self._saved_window_state.size = (
+                window_rect.right - window_rect.left,
+                window_rect.bottom - window_rect.top,
+            )
+
+            logger.debug(
+                f"Win32: Saved window rect pos = ({window_rect.left}, {window_rect.top}),"
+                f" size = ({window_rect.right - window_rect.left},"
+                f" {window_rect.bottom - window_rect.top}),"
+                f" client size = ({client_rect.right}, {client_rect.bottom})."
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Win32 save state failed, falling back to Kivy: {e}")
+            self._saved_window_state.save_state_now()
+
+    def _restore_window_win32(self) -> None:
+        """Restore window using direct Win32 calls - atomic and reliable."""
+
+        def restore(*_args) -> None:  # noqa: ANN002
+            # Unbind resize events during restoration to avoid interference
             if self._resize_unbind:
-                # Unbind resize events until everything settles.
-                logger.info("Unbinding before starting window restore...")
                 self._resize_unbind()
 
-            # Set size first.
-            self._ms_win_do_first_resize()
-
-            # Do the in between stuff.
-            if self._on_goto_windowed_mode_first_resize:
-                self._on_goto_windowed_mode_first_resize()
-
-            # Do the rebind events after everything settles.
-            self._ms_win_do_rebind_events()
-
-        Clock.schedule_once(restore_geometry, _RESTORE_GEOMETRY_TIMEOUT)
-
-    def _ms_win_do_first_resize(self) -> None:
-        logger.info("Starting first resize...")
-        Window.size = self._saved_window_state.size
-
-        if PLATFORM == Platform.WIN:
-            # Force ONLY the size multiple times.
-            def do_resize(*_args) -> None:  # noqa: ANN002
-                Window.size = self._saved_window_state.size
-                logger.info(f"MS Windows: after forced resize, Window.size = {Window.size}.")
-
-            for resize_delay in [0.05, 0.1, 0.15]:
-                Clock.schedule_once(do_resize, resize_delay)
-
-    def _ms_win_do_size_and_position(self) -> None:
-        # On MS Windows, setting position triggers resize due to DPI scaling!?
-        # So we need to set BOTH position and size together, repeatedly.
-        def fix_position_and_size(*_args) -> None:  # noqa: ANN002
-            # Set them together atomically.
-            Window.left = self._saved_window_state.pos[0] + MS_WIN_X_ADJ_AFTER_WINDOW_RESTORE
-            Window.top = self._saved_window_state.pos[1] + MS_WIN_Y_ADJ_AFTER_WINDOW_RESTORE
-            # Immediately fix size after position change.
-            Window.size = self._saved_window_state.size
-            logger.info(
-                f"MS Windows: after forced pos and resize, Window.size = {Window.size},"
-                f" pos = ({Window.left}, {Window.top})."
+            # Single atomic Win32 call to set position and size
+            self._win32_set_window_rect(
+                self._saved_window_state.pos[0],
+                self._saved_window_state.pos[1],
+                self._saved_window_state.size[0],
+                self._saved_window_state.size[1],
             )
 
-        # Do it multiple times to override Windows' attempts to resize.
-        for fix_pos_delay in [0.0, 0.05, 0.1, 0.15]:
-            Clock.schedule_once(fix_position_and_size, fix_pos_delay)
+            # Let Kivy sync its internal state
+            def sync_and_finish(*_args) -> None:  # noqa: ANN002
+                # Trigger Kivy to update its internal values from the actual window
+                _ = Window.size  # Read to sync
 
-    def _ms_win_do_rebind_events(self) -> None:
-        def rebind_events(*_args) -> None:  # noqa: ANN002
-            logger.info("Rebinding after post event window restore...")
+                if self._on_goto_windowed_mode_first_resize:
+                    self._on_goto_windowed_mode_first_resize()
 
-            self._ms_win_do_size_and_position()
+                if self._resize_rebind:
+                    self._resize_rebind()
 
-            if self._resize_rebind:
-                self._resize_rebind()
+                self._finish_restore()
 
-            self._do_finish_up()
+            Clock.schedule_once(sync_and_finish, 0.1)
 
-            logger.info(
-                f"After rebinding, Window size = {Window.size},"
-                f" pos = ({Window.left}, {Window.top})."
+        Clock.schedule_once(restore, _RESTORE_GEOMETRY_TIMEOUT)
+
+    def _win32_set_window_rect(self, x: int, y: int, width: int, height: int) -> None:
+        """Set window position and size using Win32 MoveWindow API."""
+        if not self._win32_hwnd:
+            return
+
+        try:
+            result = self._MoveWindow(self._win32_hwnd, x, y, width, height, True)  # noqa: FBT003
+
+            # Verify the operation succeeded
+            actual_rect = self.RECT()
+            self._GetWindowRect(self._win32_hwnd, actual_rect)
+
+            logger.debug(
+                f"Win32: Requested pos=({x}, {y}), size={width}x{height}; "
+                f"Actual pos=({actual_rect.left}, {actual_rect.top}), "
+                f"size={(actual_rect.right - actual_rect.left)}"
+                f" x {(actual_rect.bottom - actual_rect.top)}; "
+                f"Result={result}"
             )
-
-        Clock.schedule_once(rebind_events, _REBIND_TIMEOUT)
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Win32 MoveWindow failed: {e}")
