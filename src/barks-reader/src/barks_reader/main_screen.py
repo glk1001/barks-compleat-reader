@@ -406,6 +406,10 @@ class MainScreen(ReaderScreen):
         self._window_manager.goto_fullscreen_mode()
 
     def _on_finished_goto_fullscreen_mode(self) -> None:
+        self.size_hint = None, None
+        self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+        self.size = get_win_width_from_height(Window.height - ACTION_BAR_SIZE_Y), Window.height
+
         if not WindowManager.is_fullscreen_now():
             logger.error(
                 f"Finishing goto fullscreen on MainScreen but Window fullscreen"
@@ -441,12 +445,7 @@ class MainScreen(ReaderScreen):
         logger.info(f"New fullscreen height = {height}.")
         if height < Window.height:
             height = Window.height
-            logger.info(f"New height too low: adjusted new fullscreen height = {height}.")
-
-        self.size_hint = None, None
-        self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
-        self.size = get_win_width_from_height(height - ACTION_BAR_SIZE_Y), height
-        assert WindowManager.is_fullscreen_now()
+            logger.warning(f"New height too low: adjusted new fullscreen height = {height}.")
 
         logger.info(
             f"New fullscreen window settings:"
