@@ -43,10 +43,12 @@ class WindowState:
 class WindowManager:
     def __init__(
         self,
+        client: str,
         on_goto_windowed_mode_first_resize_func: Callable[[], None],
         on_finished_goto_windowed_mode: Callable[[], None],
         on_finished_goto_fullscreen_mode: Callable[[], None],
     ) -> None:
+        self._client = client
         self._on_goto_windowed_mode_first_resize = on_goto_windowed_mode_first_resize_func
         self._on_finished_goto_windowed_mode = on_finished_goto_windowed_mode
         self._on_finished_goto_fullscreen_mode = on_finished_goto_fullscreen_mode
@@ -81,7 +83,7 @@ class WindowManager:
             self._saved_window_state.save_state_now()
 
         logger.info(
-            f"Saved window state: size = {self._saved_window_state.size}, "
+            f"{self._client}: Saved window state: size = {self._saved_window_state.size}, "
             f"pos = {self._saved_window_state.pos}"
         )
 
@@ -115,11 +117,11 @@ class WindowManager:
         assert self._saved_window_state.pos != (-1, -1)
 
         logger.info(
-            f"Restoring window: target size = {self._saved_window_state.size}, "
+            f"{self._client}: Restoring window: target size = {self._saved_window_state.size}, "
             f"pos = {self._saved_window_state.pos}"
         )
         logger.info(
-            f"At the start of restoring window state,"
+            f"{self._client}: At the start of restoring window state,"
             f" Window.size = {Window.size}, pos = ({Window.left}, {Window.top})."
         )
 
@@ -151,7 +153,8 @@ class WindowManager:
         )
 
         log_func(
-            f"Window restore complete: size = {Window.size}, pos = ({Window.left}, {Window.top}); "
+            f"{self._client}: Window restore complete: size = {Window.size},"
+            f" pos = ({Window.left}, {Window.top}); "
             f"Target was size = {self._saved_window_state.size},"
             f" pos = {self._saved_window_state.pos}"
         )

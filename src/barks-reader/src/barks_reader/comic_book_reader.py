@@ -478,6 +478,7 @@ class ComicBookReaderScreen(ReaderScreen):
         self._active = False
 
         self._window_manager = WindowManager(
+            ComicBookReaderScreen.__name__,
             self._set_hints_for_windowed_mode,
             self._on_finished_goto_windowed_mode,
             self._on_finished_goto_fullscreen_mode,
@@ -602,22 +603,18 @@ class ComicBookReaderScreen(ReaderScreen):
             self._goto_windowed_mode()
 
     def _on_finished_goto_fullscreen_mode(self) -> None:
-        if self._is_closing:
-            logger.debug("Entering fullscreen mode finished, now closing reader.")
-            self._finish_closing_comic()
-
         if not WindowManager.is_fullscreen_now():
             logger.error(
                 f"Finishing goto fullscreen on ComicBookReaderScreen but Window fullscreen"
                 f" = '{WindowManager.get_screen_mode_now()}'. "
             )
         if self.height < Window.height:
-            logger.warning(
+            logger.info(
                 f"Finishing goto fullscreen on ComicBookReaderScreen but self.height"
                 f" = {self.height} < Window.height = {Window.height} = Window.height."
             )
             self.height = Window.height
-            logger.warning(f"New height too low: adjusted new fullscreen height = {self.height}.")
+            logger.info(f"New height too low: adjusted new fullscreen height = {self.height}.")
 
         self.is_fullscreen = True
         self._update_fullscreen_button()
@@ -625,6 +622,10 @@ class ComicBookReaderScreen(ReaderScreen):
         self.height = max(self.height, Window.height)
 
         logger.info("Entered fullscreen mode on ComicBookReaderScreen.")
+
+        if self._is_closing:
+            logger.debug("Entering fullscreen mode finished, now closing reader.")
+            self._finish_closing_comic()
 
     def _finish_closing_comic(self) -> None:
         self._on_close_reader()
@@ -636,6 +637,9 @@ class ComicBookReaderScreen(ReaderScreen):
     def _on_window_resize(self, _window: Window, width: int, height: int) -> None:
         if not self._active:
             return
+
+        if WindowManager.is_fullscreen_now():
+            self.size = get_win_width_from_height(height - ACTION_BAR_SIZE_Y), height
 
         logger.debug(
             f"Active comic book reader window resize event:"

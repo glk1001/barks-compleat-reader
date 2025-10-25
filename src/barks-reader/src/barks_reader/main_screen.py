@@ -102,6 +102,7 @@ class MainScreen(ReaderScreen):
         super().__init__(**kwargs)
 
         self._window_manager = WindowManager(
+            MainScreen.__name__,
             self._set_hints_for_windowed_mode,
             self._on_finished_goto_windowed_mode,
             self._on_finished_goto_fullscreen_mode,
@@ -242,7 +243,7 @@ class MainScreen(ReaderScreen):
         logger.debug(f"MainScreen active changed from {self._active} to {active}.")
         self._active = active
 
-        self.size = Window.size
+        self.size = get_win_width_from_height(Window.height - ACTION_BAR_SIZE_Y), Window.height
 
         logger.debug(
             f"Main screen self._active = {self._active}:"
@@ -389,8 +390,8 @@ class MainScreen(ReaderScreen):
         self._window_manager.goto_windowed_mode()
 
     def _set_hints_for_windowed_mode(self) -> None:
+        # Make the MainScreen fill Window.size.
         self.size_hint = (1, 1)
-        self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
 
     def _on_finished_goto_windowed_mode(self) -> None:
         self._fullscreen_button.text = "Fullscreen"
@@ -412,12 +413,12 @@ class MainScreen(ReaderScreen):
                 f" = '{WindowManager.get_screen_mode_now()}'. "
             )
         if self.height < Window.height:
-            logger.warning(
+            logger.info(
                 f"Finishing goto fullscreen on MainScreen but self.height"
                 f" = {self.height} < Window.height = {Window.height} = Window.height."
             )
             self.height = Window.height
-            logger.warning(f"New height too low: adjusted new fullscreen height = {self.height}.")
+            logger.info(f"New height too low: adjusted new fullscreen height = {self.height}.")
 
         self.update_fonts(Window.height)
 
@@ -443,8 +444,9 @@ class MainScreen(ReaderScreen):
             height = Window.height
             logger.info(f"New height too low: adjusted new fullscreen height = {height}.")
 
+        # Make the fullscreen MainScreen not take up the full Window width;
+        # But keep the windowed mode aspect ratio.
         self.size_hint = None, None
-        self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
         self.size = get_win_width_from_height(height - ACTION_BAR_SIZE_Y), height
         assert WindowManager.is_fullscreen_now()
 
