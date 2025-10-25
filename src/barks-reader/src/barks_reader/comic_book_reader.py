@@ -578,9 +578,7 @@ class ComicBookReaderScreen(ReaderScreen):
     def _on_finished_goto_windowed_mode(self) -> None:
         if self._is_closing:
             logger.debug("Entering windowed mode finished, now closing reader.")
-            self._on_close_reader()
-            self._is_closing = False
-            self.comic_book_reader.reset_comic_book_reader()
+            self._finish_closing_comic()
 
         self.is_fullscreen = False
         self._update_fullscreen_button()
@@ -599,15 +597,39 @@ class ComicBookReaderScreen(ReaderScreen):
         if self._was_fullscreen_on_entry:
             logger.debug("Fullscreen is required.")
             self._goto_fullscreen_mode()
-            self._on_finished_goto_fullscreen_mode()
         else:
             logger.debug("Fullscreen not required.")
-            self._goto_windowed_mode()  # will implicitly call 'self._on_ok_to_close()'
+            self._goto_windowed_mode()
 
     def _on_finished_goto_fullscreen_mode(self) -> None:
+        if self._is_closing:
+            logger.debug("Entering fullscreen mode finished, now closing reader.")
+            self._finish_closing_comic()
+
+        if not WindowManager.is_fullscreen_now():
+            logger.error(
+                f"Finishing goto fullscreen on ComicBookReaderScreen but Window fullscreen"
+                f" = '{WindowManager.get_screen_mode_now()}'. "
+            )
+        if self.height < Window.height:
+            logger.warning(
+                f"Finishing goto fullscreen on ComicBookReaderScreen but self.height"
+                f" = {self.height} < Window.height = {Window.height} = Window.height."
+            )
+            self.height = Window.height
+            logger.warning(f"New height too low: adjusted new fullscreen height = {self.height}.")
+
         self.is_fullscreen = True
         self._update_fullscreen_button()
+
+        self.height = max(self.height, Window.height)
+
         logger.info("Entered fullscreen mode on ComicBookReaderScreen.")
+
+    def _finish_closing_comic(self) -> None:
+        self._on_close_reader()
+        self._is_closing = False
+        self.comic_book_reader.reset_comic_book_reader()
 
     # noinspection PyTypeHints
     # Reason: inspection seems broken here.

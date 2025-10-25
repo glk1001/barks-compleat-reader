@@ -406,8 +406,18 @@ class MainScreen(ReaderScreen):
         self._window_manager.goto_fullscreen_mode()
 
     def _on_finished_goto_fullscreen_mode(self) -> None:
-        assert WindowManager.is_fullscreen_now()
-        assert Window.height == self.height
+        if not WindowManager.is_fullscreen_now():
+            logger.error(
+                f"Finishing goto fullscreen on MainScreen but Window fullscreen"
+                f" = '{WindowManager.get_screen_mode_now()}'. "
+            )
+        if self.height < Window.height:
+            logger.warning(
+                f"Finishing goto fullscreen on MainScreen but self.height"
+                f" = {self.height} < Window.height = {Window.height} = Window.height."
+            )
+            self.height = Window.height
+            logger.warning(f"New height too low: adjusted new fullscreen height = {self.height}.")
 
         self.update_fonts(Window.height)
 
@@ -416,6 +426,11 @@ class MainScreen(ReaderScreen):
         logger.info("Entered fullscreen mode on MainScreen.")
 
     def _on_main_layout_size_changed(self, _instance: Widget, size: tuple[int, int]) -> None:
+        logger.info(
+            f"Main layout size changed: size = {size},"
+            f" fullscreen = '{WindowManager.get_screen_mode_now()}'."
+        )
+
         if not WindowManager.is_fullscreen_now():
             return
 

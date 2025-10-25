@@ -87,6 +87,7 @@ class WindowManager:
 
     def goto_fullscreen_mode(self) -> None:
         if self.is_fullscreen_now():
+            self._on_finished_goto_fullscreen_mode()
             return
 
         self.save_state_now()
@@ -99,6 +100,7 @@ class WindowManager:
 
     def goto_windowed_mode(self) -> None:
         if not self.is_fullscreen_now():
+            self._on_finished_goto_windowed_mode()
             return
 
         def do_windowed() -> None:
@@ -271,9 +273,9 @@ class WindowManager:
             )
 
             logger.debug(
-                f"Win32: Saved window rect pos = ({window_rect.left}, {window_rect.top}),"
-                f" size = ({window_rect.right - window_rect.left},"
+                f"Win32: Saved window rect size = ({window_rect.right - window_rect.left},"
                 f" {window_rect.bottom - window_rect.top}),"
+                f" pos = ({window_rect.left}, {window_rect.top}),"
                 f" client size = ({client_rect.right}, {client_rect.bottom})."
             )
         except Exception as e:  # noqa: BLE001
@@ -325,11 +327,12 @@ class WindowManager:
             )
 
             log_func(
-                f"Win32: Requested pos = ({x}, {y}), size = ({width}, {height}); "
-                f"Actual pos = ({actual_rect.left}, {actual_rect.top}), "
-                f"size = ({(actual_rect.right - actual_rect.left)},"
+                f"Win32: Requested size = ({width}, {height}); "
+                f" Actual size = ({(actual_rect.right - actual_rect.left)},"
                 f" {(actual_rect.bottom - actual_rect.top)}); "
-                f"Result = {result}"
+                f" Requested pos = ({x}, {y});"
+                f" Actual pos = ({actual_rect.left}, {actual_rect.top}), "
+                f"Result = {result}."
             )
         except Exception as e:  # noqa: BLE001
             logger.error(f"Win32 MoveWindow failed: {e}")
