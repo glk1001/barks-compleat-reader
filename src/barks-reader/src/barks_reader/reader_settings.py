@@ -412,11 +412,10 @@ class ReaderSettings:
         return True
 
     def _is_valid_png_barks_panels_dir(self, dir_path: Path) -> bool:
-        return self._is_valid_dir(dir_path)
+        return (not self._get_use_png_images()) or self._is_valid_dir(dir_path)
 
-    @staticmethod
-    def _is_valid_jpg_barks_panels_source(source_path: Path) -> bool:
-        return source_path.is_file()
+    def _is_valid_jpg_barks_panels_source(self, source_path: Path) -> bool:
+        return self._get_use_png_images() or source_path.is_file()
 
     def _is_valid_use_png_images(self, use_png_images: bool) -> bool:
         if use_png_images:

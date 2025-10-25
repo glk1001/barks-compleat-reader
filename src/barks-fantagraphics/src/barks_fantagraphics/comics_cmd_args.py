@@ -148,7 +148,7 @@ class CmdArgs:
             LOG_LEVEL_ARG,
             action="store",
             type=str,
-            default="INFO",
+            default="DEBUG",
         )
         parser.add_argument(
             VOLUME_ARG,

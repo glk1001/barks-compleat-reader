@@ -91,7 +91,7 @@ def start_logging(cfg_info: ConfigInfo, args: CmdArgs) -> None:
 
     setup_loguru(cfg_info, args)
 
-    Config.set("kivy", "log_level", logging.getLevelName(log_level).lower())
+    Config.set("kivy", "log_level", log_level.lower())
     redirect_kivy_logs()
 
     logger.info("*** Starting barks reader ***")
@@ -153,7 +153,7 @@ def redirect_kivy_logs() -> None:
 
 
 # Make these log variables global so loguru-config can access them.
-log_level = logging.DEBUG
+log_level = "DEBUG"
 log_path = None
 
 
@@ -164,8 +164,7 @@ def setup_loguru(cfg_info: ConfigInfo, _args: CmdArgs) -> None:
     log_path = HOME_DIR / cfg_info.app_config_dir / "kivy" / "logs" / "barks-reader.log"
 
     global log_level  # noqa: PLW0603
-    log_level = logging.DEBUG
-    # log_level = cmd_args.get_log_level()  # noqa: ERA001
+    log_level = cmd_args.get_log_level()
 
     run_loguru_config(cfg_info)
 
