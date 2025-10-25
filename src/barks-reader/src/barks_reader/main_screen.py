@@ -406,6 +406,9 @@ class MainScreen(ReaderScreen):
         self._window_manager.goto_fullscreen_mode()
 
     def _on_finished_goto_fullscreen_mode(self) -> None:
+        assert WindowManager.is_fullscreen_now()
+        assert Window.height == self.height
+
         self.update_fonts(Window.height)
 
         self._fullscreen_button.text = "Windowed"

@@ -91,18 +91,22 @@ class WindowManager:
 
         self.save_state_now()
 
-        Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
+        def do_fullscreen() -> None:
+            Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
+            Clock.schedule_once(lambda _dt: self._on_finished_goto_fullscreen_mode(), 0)
 
-        Clock.schedule_once(lambda _dt: self._on_finished_goto_fullscreen_mode(), 0)
+        Clock.schedule_once(lambda _dt: do_fullscreen(), 0)
 
     def goto_windowed_mode(self) -> None:
         if not self.is_fullscreen_now():
             return
 
-        Window.borderless = False  # safest thing to do for MS Windows
-        Window.fullscreen = False
+        def do_windowed() -> None:
+            Window.borderless = False  # safest thing to do for MS Windows
+            Window.fullscreen = False
+            Clock.schedule_once(lambda _dt: self.restore_saved_size_and_position(), 0)
 
-        self.restore_saved_size_and_position()
+        Clock.schedule_once(lambda _dt: do_windowed(), 0)
 
     def restore_saved_size_and_position(self) -> None:
         assert self._saved_window_state.size != (0, 0)

@@ -599,7 +599,7 @@ class ComicBookReaderScreen(ReaderScreen):
         if self._was_fullscreen_on_entry:
             logger.debug("Fullscreen is required.")
             self._goto_fullscreen_mode()
-            self._on_finished_goto_windowed_mode()
+            self._on_finished_goto_fullscreen_mode()
         else:
             logger.debug("Fullscreen not required.")
             self._goto_windowed_mode()  # will implicitly call 'self._on_ok_to_close()'
