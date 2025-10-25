@@ -4,7 +4,7 @@ from collections.abc import Callable
 from ctypes import c_long, wintypes
 from dataclasses import dataclass
 from enum import Enum
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -167,60 +167,20 @@ class WindowManager:
 
             self.RECT = RECT
 
-            # Find our window by enumerating all windows and matching process ID.
-            GetWindowThreadProcessId = ctypes.windll.user32.GetWindowThreadProcessId  # noqa: N806
-            EnumWindows = ctypes.windll.user32.EnumWindows  # noqa: N806
-            IsWindowVisible = ctypes.windll.user32.IsWindowVisible  # noqa: N806
-            GetClassNameW = ctypes.windll.user32.GetClassNameW  # noqa: N806
-
-            current_pid = os.getpid()
-            found_hwnd = None
-
-            def enum_callback(hwnd_candidate, _lparam) -> bool:  # noqa: ANN001
-                nonlocal found_hwnd
-                if IsWindowVisible(hwnd_candidate):
-                    pid = wintypes.DWORD()
-                    GetWindowThreadProcessId(hwnd_candidate, ctypes.byref(pid))
-
-                    if pid.value == current_pid:
-                        # Check if it's an SDL window (Kivy uses SDL2)
-                        class_name = ctypes.create_unicode_buffer(256)
-                        GetClassNameW(hwnd_candidate, class_name, 256)
-
-                        if class_name.value.startswith("SDL"):
-                            found_hwnd = hwnd_candidate
-                            logger.info(
-                                f"Found SDL window:"
-                                f" HWND = {hex(hwnd_candidate)}, class = {class_name.value}."
-                            )
-                            return False  # Stop enumeration
-                return True  # Continue enumeration
-
-            # Create callback and enumerate windows,
-            # noinspection LongLine
-            ENUM_WINDOWS_PROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)  # noqa: N806
-            callback_ptr = ENUM_WINDOWS_PROC(enum_callback)
-            EnumWindows(callback_ptr, 0)
+            found_hwnd = ctypes.windll.user32.GetActiveWindow()  # ty: ignore[unresolved-attribute]
+            if found_hwnd:
+                logger.info(f"Found hwnd using GetActiveWindow: {hex(found_hwnd)}")
+            else:
+                found_hwnd = self._find_win32_hwnd_by_enum_windows()
 
             if not found_hwnd:
-                # Fallback: try FindWindow by title.
-                FindWindowW = ctypes.windll.user32.FindWindowW  # noqa: N806
-                if hasattr(Window, "title") and Window.title:
-                    found_hwnd = FindWindowW(None, Window.title)
-                    if found_hwnd:
-                        logger.info(
-                            f"Found window via FindWindow with title '{Window.title}':"
-                            f" {hex(found_hwnd)}."
-                        )
-
-            if not found_hwnd:
-                msg = "Could not obtain window handle."
-                raise RuntimeError(msg)  # noqa: TRY301
+                logger.warning("Could not get Win32 handle for Kivy window.")
+                return
 
             self._win32_hwnd = found_hwnd
 
             # Load a fresh instance of user32.dll to avoid conflicts with Kivy's Win32 calls,
-            user32 = ctypes.WinDLL("user32", use_last_error=True)
+            user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[unresolved-attribute]
 
             # Set up Win32 functions with proper type signatures
             self._MoveWindow = user32.MoveWindow
@@ -246,6 +206,48 @@ class WindowManager:
         except Exception as e:  # noqa: BLE001
             logger.warning(f"Could not initialize Win32 handles: {e}")
             self._win32_hwnd = None
+
+    # noinspection PyPep8Naming,PyUnresolvedReferences
+    @staticmethod
+    def _find_win32_hwnd_by_enum_windows() -> Any:  # noqa: ANN401
+        # Find our window by enumerating all windows and matching process ID.
+        GetWindowThreadProcessId = ctypes.windll.user32.GetWindowThreadProcessId  # noqa: N806  # ty: ignore[unresolved-attribute]
+        EnumWindows = ctypes.windll.user32.EnumWindows  # noqa: N806  # ty: ignore[unresolved-attribute]
+        IsWindowVisible = ctypes.windll.user32.IsWindowVisible  # noqa: N806  # ty: ignore[unresolved-attribute]
+        GetClassNameW = ctypes.windll.user32.GetClassNameW  # noqa: N806  # ty: ignore[unresolved-attribute]
+
+        current_pid = os.getpid()
+        found_hwnd = 0
+
+        def enum_callback(hwnd_candidate, _lparam) -> bool:  # noqa: ANN001
+            nonlocal found_hwnd
+            if IsWindowVisible(hwnd_candidate):
+                pid = wintypes.DWORD()
+                GetWindowThreadProcessId(hwnd_candidate, ctypes.byref(pid))
+
+                if pid.value == current_pid:
+                    # Check if it's an SDL window (Kivy uses SDL2)
+                    class_name = ctypes.create_unicode_buffer(256)
+                    GetClassNameW(hwnd_candidate, class_name, 256)
+
+                    if class_name.value.startswith("SDL"):
+                        found_hwnd = hwnd_candidate
+                        logger.info(
+                            f"Found SDL window:"
+                            f" HWND = {hex(hwnd_candidate)}, class = {class_name.value}."
+                        )
+                        return False  # Stop enumeration
+            return True  # Continue enumeration
+
+        # Create callback and enumerate windows.
+        ENUM_WINDOWS_PROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)  # noqa: N806  # ty: ignore[unresolved-attribute]
+        callback_ptr = ENUM_WINDOWS_PROC(enum_callback)
+        EnumWindows(callback_ptr, 0)
+
+        if found_hwnd:
+            logger.info(f"Found window via EnumWindows: {hex(found_hwnd)}.")
+
+        return found_hwnd
 
     def _save_state_win32(self) -> None:
         """Save window state using Win32 to get accurate window rectangle."""
@@ -308,7 +310,7 @@ class WindowManager:
         try:
             result = self._MoveWindow(self._win32_hwnd, x, y, width, height, True)  # noqa: FBT003
 
-            # Verify the operation succeeded
+            # Verify the operation succeeded.
             actual_rect = self.RECT()
             self._GetWindowRect(self._win32_hwnd, actual_rect)
 
