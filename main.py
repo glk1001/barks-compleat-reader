@@ -14,9 +14,14 @@ from dataclasses import dataclass
 
 from barks_fantagraphics.comics_cmd_args import CmdArgs, ExtraArg
 from barks_reader.config_info import (  # IMPORT THIS BEFORE Kivy!!
+    KIVY_LOGGING_NAME,
     ConfigInfo,
     barks_reader_installer_failed,
     get_barks_reader_installer_failed_flag_file,
+    get_log_level,
+    get_log_path,
+    log_level,
+    setup_loguru,
 )
 from barks_reader.platform_info import PLATFORM, Platform
 from barks_reader.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
@@ -32,12 +37,8 @@ from barks_reader.screen_metrics import SCREEN_METRICS
 from barks_reader.system_file_paths import SystemFilePaths
 from comic_utils.comic_consts import IS_PYINSTALLER_BUNDLE, PYINSTALLER_BUNDLED_MAIN_DIR
 from loguru import logger
-from loguru_config import LoguruConfig
 
 # ------------------------------------------------------------------ #
-
-APP_LOGGING_NAME = "app"  # For use by 'loguru-config'
-KIVY_LOGGING_NAME = "kivy"
 
 
 # noinspection PyPep8Naming
@@ -89,7 +90,7 @@ def set_project_paths() -> None:
 def start_logging(cfg_info: ConfigInfo, args: CmdArgs) -> None:
     from kivy import Config, kivy_home_dir
 
-    setup_loguru(cfg_info, args)
+    setup_loguru(cfg_info, args.get_log_level())
 
     Config.set("kivy", "log_level", log_level.lower())
     redirect_kivy_logs()
@@ -97,7 +98,8 @@ def start_logging(cfg_info: ConfigInfo, args: CmdArgs) -> None:
     logger.info("*** Starting barks reader ***")
     logger.info(f'app config path = "{cfg_info.app_config_path}".')
     logger.info(f'app_data_dir = "{cfg_info.app_data_dir}".')
-    logger.info(f'app log path = "{log_path}".')
+    logger.info(f'app log path = "{get_log_path()}".')
+    logger.info(f'app log level = "{get_log_level()}".')
     logger.info(f'kivy config dir = "{cfg_info.kivy_config_dir}".')
     logger.info(f'KIVY_HOME = "{os.environ["KIVY_HOME"]}".')
     logger.info(f'kivy_home_dir = "{kivy_home_dir}".')
@@ -150,43 +152,6 @@ def redirect_kivy_logs() -> None:
                 self.logr.exception("Error in LoguruKivyHandler.emit: ")
 
     KivyLogger.addHandler(LoguruKivyHandler(logger))
-
-
-# Make these log variables global so loguru-config can access them.
-log_level = "DEBUG"
-log_path = None
-
-
-def setup_loguru(cfg_info: ConfigInfo, _args: CmdArgs) -> None:
-    from barks_reader.reader_file_paths import HOME_DIR
-
-    global log_path  # noqa: PLW0603
-    log_path = HOME_DIR / cfg_info.app_config_dir / "kivy" / "logs" / "barks-reader.log"
-
-    global log_level  # noqa: PLW0603
-    log_level = cmd_args.get_log_level()
-
-    run_loguru_config(cfg_info)
-
-
-def run_loguru_config(cfg_info: ConfigInfo) -> None:
-    # noinspection PyBroadException
-    try:
-        LoguruConfig.load(cfg_info.app_config_dir / "log-config.yaml")
-    except Exception:  # noqa: BLE001
-        logger.add(sys.stderr, level=log_level, backtrace=True, diagnose=True)
-        logger.add(str(config_info.app_log_path), level=log_level, backtrace=True, diagnose=True)
-    else:
-        return  # all is well!
-
-    # Failed but try again. Should fail again but at least the exception will be properly
-    # logged with the above emergency config.
-    # noinspection PyBroadException
-    try:
-        LoguruConfig.load(cfg_info.app_config_dir / "log-config.yaml")
-    except:  # noqa: E722
-        logger.exception("LoguruConfig failed: ")
-        sys.exit(1)
 
 
 @dataclass

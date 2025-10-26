@@ -47,4 +47,5 @@ dev = [
     "pyinstrument>=5.1.1",
     "pytest>=8.4.2",
     "pytest-mock>=3.15.1",
+    "snakeviz>=2.2.2",
 ]

@@ -2,7 +2,11 @@
 # ruff: noqa: ERA001
 
 import os
+import sys
 from pathlib import Path
+
+from loguru import logger
+from loguru_config import LoguruConfig
 
 from barks_reader.platform_info import PLATFORM, Platform
 
@@ -139,3 +143,48 @@ def remove_barks_reader_installer_failed_flag() -> None:
 def get_barks_reader_installer_failed_flag_file() -> Path:
     # Put the flag file on the same level as the pycrucible executable.
     return Path.cwd().parent / BARKS_READER_INSTALLER_FAILED_FLAG_FILE
+
+
+# Make these log variables global so loguru-config can access them.
+APP_LOGGING_NAME = "app"  # For use by 'loguru-config'
+KIVY_LOGGING_NAME = "kivy"
+log_level = "DEBUG"
+log_path = None
+
+
+def get_log_level() -> str:
+    return log_level
+
+
+def get_log_path() -> Path | None:
+    return log_path
+
+
+def setup_loguru(cfg_info: ConfigInfo, log_lvl: str) -> None:
+    global log_path  # noqa: PLW0603
+    log_path = cfg_info.app_config_dir / "kivy" / "logs" / "barks-reader.log"
+
+    global log_level  # noqa: PLW0603
+    log_level = log_lvl
+
+    _run_loguru_config(cfg_info)
+
+
+def _run_loguru_config(cfg_info: ConfigInfo) -> None:
+    # noinspection PyBroadException
+    try:
+        LoguruConfig.load(cfg_info.app_config_dir / "log-config.yaml")
+    except Exception:  # noqa: BLE001
+        logger.add(sys.stderr, level=log_level, backtrace=True, diagnose=True)
+        logger.add(str(cfg_info.app_log_path), level=log_level, backtrace=True, diagnose=True)
+    else:
+        return  # all is well!
+
+    # Failed but try again. Should fail again but at least the exception will be properly
+    # logged with the above emergency config.
+    # noinspection PyBroadException
+    try:
+        LoguruConfig.load(cfg_info.app_config_dir / "log-config.yaml")
+    except:  # noqa: E722
+        logger.exception("LoguruConfig failed: ")
+        sys.exit(1)
