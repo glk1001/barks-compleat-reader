@@ -8,7 +8,6 @@ def main():
     from kivy.lang import Builder
     from kivy.uix.floatlayout import FloatLayout
 
-    global Window
     # Clean the first registration done from '__main__' here.
     # Otherwise kivy.uix.actionbar.ActionPrevious != __main__.ActionPrevious
     Factory.unregister("ActionPrevious")

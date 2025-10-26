@@ -19,6 +19,7 @@ from .comic_book import (
 )
 from .comics_consts import (
     BARKS_ROOT_DIR,
+    FANTA_VOLUME_OVERRIDES_ROOT,
     IMAGES_SUBDIR,
     INTERNAL_DATA_DIR,
     INTRO_TITLE_DEFAULT_FONT_FILE,
@@ -34,7 +35,6 @@ from .comics_utils import (
 from .fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
     FANTA_SOURCE_COMICS,
-    FANTA_VOLUME_OVERRIDES_ROOT,
     FANTAGRAPHICS_DIRNAME,
     FANTAGRAPHICS_FIXES_DIRNAME,
     FANTAGRAPHICS_FIXES_SCRAPS_DIRNAME,

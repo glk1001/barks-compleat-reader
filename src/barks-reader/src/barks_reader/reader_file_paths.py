@@ -24,19 +24,11 @@ from barks_reader.reader_utils import get_all_files_in_dir
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-HOME_DIR = Path(os.environ.get("HOME", ""))
-BARKS_DIR = HOME_DIR / "Books" / "Carl Barks"
-DEFAULT_BARKS_READER_FILES_DIR = BARKS_DIR / "Compleat Barks Disney Reader"
 EMERGENCY_INSET_FILE = Titles.BICEPS_BLUES
 
-_THE_COMICS_DIR = BARKS_DIR / "The Comics"
-
-_DEFAULT_THE_COMIC_ZIPS_DIR = _THE_COMICS_DIR / "Chronological"
-_DEFAULT_FANTA_VOLUME_ARCHIVES_ROOT_DIR = Path(
-    "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes"
-)
-_DEFAULT_JPG_BARKS_PANELS_SOURCE = DEFAULT_BARKS_READER_FILES_DIR / "Barks Panels.zip"
-_DEFAULT_PNG_BARKS_PANELS_SOURCE = BARKS_DIR / "Barks Panels Pngs"
+_DEFAULT_THE_COMIC_ZIPS_DIR = "${HOME}/Books/Carl Barks/The Comics/Chronological"
+_DEFAULT_JPG_BARKS_PANELS_SOURCE = "${HOME}/.local/share/barks-reader/Reader Files/Barks Panels.zip"
+_DEFAULT_PNG_BARKS_PANELS_SOURCE = "${HOME}/Books/Carl Barks/Barks Panels Pngs"
 
 EDITED_SUBDIR = "edited"
 
@@ -126,7 +118,7 @@ class ReaderFilePaths:
         }
 
     def set_barks_panels_source(self, panels_source: Path, ext_type: BarksPanelsExtType) -> None:
-        self._barks_panels_source = panels_source
+        self._barks_panels_source = Path(os.path.expandvars(panels_source))
         self._panels_ext_type = ext_type
 
         is_zip = self._barks_panels_source.suffix == ZIP_FILE_EXT
@@ -204,19 +196,15 @@ class ReaderFilePaths:
 
     @staticmethod
     def get_default_png_barks_panels_source() -> Path:
-        return _DEFAULT_PNG_BARKS_PANELS_SOURCE
+        return Path(os.path.expandvars(_DEFAULT_PNG_BARKS_PANELS_SOURCE))
 
     @staticmethod
     def get_default_jpg_barks_panels_source() -> Path:
-        return _DEFAULT_JPG_BARKS_PANELS_SOURCE
+        return Path(os.path.expandvars(_DEFAULT_JPG_BARKS_PANELS_SOURCE))
 
     @staticmethod
     def get_default_prebuilt_comic_zips_dir() -> Path:
-        return _DEFAULT_THE_COMIC_ZIPS_DIR
-
-    @staticmethod
-    def get_default_fanta_volume_archives_root_dir() -> Path:
-        return _DEFAULT_FANTA_VOLUME_ARCHIVES_ROOT_DIR
+        return Path(os.path.expandvars(_DEFAULT_THE_COMIC_ZIPS_DIR))
 
     def get_comic_bw_files_dir(self) -> PanelPath:
         return self._panel_dirs[PanelDirNames.BW]

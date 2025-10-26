@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, override
 
@@ -264,7 +265,7 @@ class ReaderSettings:
         return self._get_prebuilt_comics_dir()
 
     def _get_prebuilt_comics_dir(self) -> Path:
-        return Path(self._config.get(BARKS_READER_SECTION, PREBUILT_COMICS_DIR))
+        return Path(os.path.expandvars(self._config.get(BARKS_READER_SECTION, PREBUILT_COMICS_DIR)))
 
     @property
     def use_prebuilt_archives(self) -> bool:

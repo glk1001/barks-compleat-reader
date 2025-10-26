@@ -34,6 +34,13 @@ STORY_TITLES_DIR = "story-titles"
 IMAGES_SUBDIR = "images"
 BOUNDED_SUBDIR = "bounded"
 
+FANTA_VOLUME_OVERRIDES_ROOT = (
+    BARKS_ROOT_DIR
+    / "Compleat Barks Disney Reader"
+    / "Reader Files"
+    / "Fantagraphics Volumes Overrides"
+)
+
 PNG_INSET_DIR = BARKS_ROOT_DIR / "Barks Panels Pngs" / "Insets"
 PNG_INSET_EXT = PNG_FILE_EXT
 
@@ -45,7 +52,7 @@ INTERNAL_DATA_DIR = (
 assert INTERNAL_DATA_DIR.is_dir(), f'INTERNAL_DATA_DIR "{INTERNAL_DATA_DIR}" does not exist.'
 
 FONT_DIR = INTERNAL_DATA_DIR / "fonts"
-CARL_BARKS_FONT = str(FONT_DIR / "Carl Barks Script.ttf")
+CARL_BARKS_FONT = FONT_DIR / "Carl Barks Script.ttf"
 INTRO_TITLE_DEFAULT_FONT_FILE = CARL_BARKS_FONT
 INTRO_TEXT_FONT_FILE = str(FONT_DIR / "Verdana Italic.ttf")
 PAGE_NUM_FONT_FILE = str(FONT_DIR / "verdana.ttf")

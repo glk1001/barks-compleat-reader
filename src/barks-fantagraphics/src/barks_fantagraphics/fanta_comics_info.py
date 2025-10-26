@@ -4,7 +4,6 @@ import collections
 from collections import OrderedDict, defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
 
 from . import barks_titles as bt
 from .barks_titles import BARKS_TITLE_INFO, ComicBookInfo, Titles
@@ -184,10 +183,6 @@ FANTA_SOURCE_COMICS = {
     f"{get_fanta_volume_str(27)}": FantaBook(VOLUME_27, FAN, 27, 2022, 209),
     f"{get_fanta_volume_str(28)}": FantaBook(VOLUME_28, FAN, 28, 2023, 206),
 }
-
-FANTA_VOLUME_OVERRIDES_ROOT = Path(
-    "/mnt/2tb_drive/Books/Carl Barks/Fantagraphics Volumes Overrides"
-)
 
 FANTA_OVERRIDE_ZIPS = {
     1: "01 - Donald Duck - Pirate Gold.cbz",

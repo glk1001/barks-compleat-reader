@@ -23,6 +23,7 @@ def formatter(_record: Record) -> str:
 def func_with_exception() -> None:
     print("About to raise ex")
     y = 1
+    # noinspection PyUnusedLocal
     x = y / 0
 
 
@@ -43,6 +44,7 @@ logger.critical("Critical message.")
 logger = logger.patch(lambda record: record["extra"].update(sys_name="app2"))
 logger.warning("Warning message patched.")
 
+# noinspection PyBroadException
 try:
     func_with_exception()
 except Exception:

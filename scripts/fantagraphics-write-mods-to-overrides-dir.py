@@ -10,9 +10,9 @@ from typing import TYPE_CHECKING
 
 from barks_fantagraphics.comic_book import ComicBook, ModifiedType, get_page_str
 from barks_fantagraphics.comics_cmd_args import CmdArgNames, CmdArgs
+from barks_fantagraphics.comics_consts import FANTA_VOLUME_OVERRIDES_ROOT
 from barks_fantagraphics.fanta_comics_info import (
     FANTA_OVERRIDE_ZIPS,
-    FANTA_VOLUME_OVERRIDES_ROOT,
     get_volume_page_resolution,
 )
 from barks_fantagraphics.pages import get_page_mod_type, get_sorted_srce_and_dest_pages
@@ -128,7 +128,7 @@ def process_volume(volume: int, comics_db: ComicsDatabase) -> None:
     logger.success(f"Volume {volume}: Zipped a total of {total_files_zipped} modified files.")
 
 
-def process_volumes(volumes_to_process: list[int] | None = None) -> None:
+def process_volumes(volumes_to_process: list[int]) -> None:
     for volume in volumes_to_process:
         process_volume(volume, comics_database)
 

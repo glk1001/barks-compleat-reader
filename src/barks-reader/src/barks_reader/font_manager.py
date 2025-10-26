@@ -3,7 +3,7 @@ from enum import Enum, auto
 from barks_fantagraphics.comics_consts import CARL_BARKS_FONT
 from kivy.event import EventDispatcher
 from kivy.metrics import sp
-from kivy.properties import NumericProperty
+from kivy.properties import NumericProperty  # ty: ignore[unresolved-import]
 from loguru import logger
 
 HI_RES_WINDOW_HEIGHT_CUTOFF = 1050
@@ -44,7 +44,7 @@ class FontManager(EventDispatcher):
 
     loading_title_size = NumericProperty()
 
-    main_title_font_name = CARL_BARKS_FONT
+    main_title_font_name = str(CARL_BARKS_FONT)
     loading_title_font_name = main_title_font_name
 
     def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
