@@ -55,6 +55,7 @@ class PageType(Enum):
     TITLE = auto()
     COVER = auto()
     SPLASH = auto()
+    FRONT_NO_PANELS = auto()
     PAINTING = auto()
     PAINTING_NO_BORDER = auto()
     FRONT_MATTER = auto()
@@ -86,6 +87,7 @@ FRONT_PAGES = [
     PageType.TITLE,
     PageType.COVER,
     PageType.SPLASH,
+    PageType.FRONT_NO_PANELS,
     PageType.PAINTING,
     PageType.PAINTING_NO_BORDER,
 ]

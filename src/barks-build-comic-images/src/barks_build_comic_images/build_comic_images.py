@@ -117,8 +117,8 @@ class ComicBookImageBuilder:
             return self._get_painting_page_dest_image(srce_page_image, srce_page)
         if dest_page.page_type == PageType.SPLASH:
             return self._get_splash_page_dest_image(srce_page_image, srce_page)
-        if dest_page.page_type in BACK_NO_PANELS_PAGES:
-            return self._get_no_panels_back_page_dest_image(srce_page_image, srce_page, dest_page)
+        if dest_page.page_type in ([*BACK_NO_PANELS_PAGES, PageType.FRONT_NO_PANELS]):
+            return self._get_no_panels_page_dest_image(srce_page_image, srce_page, dest_page)
         if dest_page.page_type == PageType.BLANK_PAGE:
             return self._get_blank_page_dest_image(srce_page_image)
         if dest_page.page_type == PageType.TITLE:
@@ -187,7 +187,7 @@ class ComicBookImageBuilder:
         draw = ImageDraw.Draw(image)
         draw.line(border, fill=SPLASH_BORDER_COLOR, width=SPLASH_BORDER_WIDTH)
 
-    def _get_no_panels_back_page_dest_image(
+    def _get_no_panels_page_dest_image(
         self,
         no_panels_image: PilImage,
         srce_page: CleanPage,
