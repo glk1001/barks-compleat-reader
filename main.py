@@ -35,56 +35,9 @@ from barks_reader.reader_settings import (
 from barks_reader.reader_utils import get_best_window_height_fit, get_win_width_from_height
 from barks_reader.screen_metrics import SCREEN_METRICS
 from barks_reader.system_file_paths import SystemFilePaths
-from comic_utils.comic_consts import IS_PYINSTALLER_BUNDLE, PYINSTALLER_BUNDLED_MAIN_DIR
 from loguru import logger
 
 # ------------------------------------------------------------------ #
-
-
-# noinspection PyPep8Naming
-def set_project_paths() -> None:
-    if not IS_PYINSTALLER_BUNDLE:
-        return
-
-    from barks_reader.bottom_title_view_screen import BOTTOM_TITLE_VIEW_SCREEN_KV_FILE
-    from barks_reader.comic_book_reader import COMIC_BOOK_READER_KV_FILE
-    from barks_reader.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE
-    from barks_reader.intro_compleat_barks_reader import INTRO_COMPLEAT_BARKS_READER_KV_FILE
-    from barks_reader.main_screen import MAIN_SCREEN_KV_FILE
-    from barks_reader.reader_ui_classes import READER_TREE_VIEW_KV_FILE
-    from barks_reader.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE
-
-    barks_reader_srce_dir = PYINSTALLER_BUNDLED_MAIN_DIR / "barks_reader"
-
-    COMIC_BOOK_READER_KV_FILE = barks_reader_srce_dir / COMIC_BOOK_READER_KV_FILE.name  # noqa: N806
-    READER_TREE_VIEW_KV_FILE = barks_reader_srce_dir / READER_TREE_VIEW_KV_FILE.name  # noqa: N806
-    BOTTOM_TITLE_VIEW_SCREEN_KV_FILE = (  # noqa: N806
-        barks_reader_srce_dir / BOTTOM_TITLE_VIEW_SCREEN_KV_FILE.name
-    )
-    FUN_IMAGE_VIEW_SCREEN_KV_FILE = (  # noqa: N806
-        barks_reader_srce_dir / FUN_IMAGE_VIEW_SCREEN_KV_FILE.name
-    )
-    TREE_VIEW_SCREEN_KV_FILE = barks_reader_srce_dir / TREE_VIEW_SCREEN_KV_FILE.name  # noqa: N806
-    INTRO_COMPLEAT_BARKS_READER_KV_FILE = (  # noqa: N806
-        barks_reader_srce_dir / INTRO_COMPLEAT_BARKS_READER_KV_FILE.name
-    )
-    MAIN_SCREEN_KV_FILE = barks_reader_srce_dir / MAIN_SCREEN_KV_FILE.name  # noqa: N806
-
-    logger.debug(f'Pyinstaller reset: COMIC_BOOK_READER_KV_FILE = "{COMIC_BOOK_READER_KV_FILE}".')
-    logger.debug(f'Pyinstaller reset: READER_TREE_VIEW_KV_FILE = "{READER_TREE_VIEW_KV_FILE}".')
-    logger.debug(
-        f"Pyinstaller reset: BOTTOM_TITLE_VIEW_SCREEN_KV_FILE"
-        f' = "{BOTTOM_TITLE_VIEW_SCREEN_KV_FILE}".'
-    )
-    logger.debug(
-        f'Pyinstaller reset: FUN_IMAGE_VIEW_SCREEN_KV_FILE = "{FUN_IMAGE_VIEW_SCREEN_KV_FILE}".'
-    )
-    logger.debug(f'Pyinstaller reset: TREE_VIEW_SCREEN_KV_FILE = "{TREE_VIEW_SCREEN_KV_FILE}".')
-    logger.debug(
-        f"Pyinstaller reset: INTRO_COMPLEAT_BARKS_READER_KV_FILE"
-        f' = "{INTRO_COMPLEAT_BARKS_READER_KV_FILE}".'
-    )
-    logger.debug(f'Pyinstaller reset: MAIN_SCREEN_KV_FILE = "{MAIN_SCREEN_KV_FILE}".')
 
 
 def start_logging(cfg_info: ConfigInfo, args: CmdArgs) -> None:
@@ -348,9 +301,5 @@ if __name__ == "__main__":
     start_logging(config_info, cmd_args)
 
     update_window_size(cmd_args, config_info)
-
-    # Careful! Because of kivy import issues, we need to do this
-    # just before calling app main.
-    set_project_paths()
 
     call_reader_main(config_info, cmd_args)

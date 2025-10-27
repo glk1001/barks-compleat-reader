@@ -1,6 +1,3 @@
-import sys
-from pathlib import Path
-
 ZIP_FILE_EXT = ".zip"
 CBZ_FILE_EXT = ".cbz"
 JPG_FILE_EXT = ".jpg"
@@ -64,15 +61,3 @@ ROMAN_NUMERALS = {
     9: "ix",
     10: "x",
 }
-
-
-def _get_pyinstaller_bundled_main_dir() -> Path | None:
-    try:
-        # noinspection PyProtectedMember
-        return Path(sys._MEIPASS)  # noqa: SLF001
-    except AttributeError:
-        return None
-
-
-PYINSTALLER_BUNDLED_MAIN_DIR = _get_pyinstaller_bundled_main_dir()
-IS_PYINSTALLER_BUNDLE = PYINSTALLER_BUNDLED_MAIN_DIR is not None

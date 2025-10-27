@@ -1,11 +1,7 @@
 from enum import Enum, auto
 from pathlib import Path
 
-from comic_utils.comic_consts import (
-    IS_PYINSTALLER_BUNDLE,
-    PNG_FILE_EXT,
-    PYINSTALLER_BUNDLED_MAIN_DIR,
-)
+from comic_utils.comic_consts import PNG_FILE_EXT
 
 # TODO: Should this dest stuff be here?
 DEST_TARGET_WIDTH = 2120
@@ -44,11 +40,7 @@ FANTA_VOLUME_OVERRIDES_ROOT = (
 PNG_INSET_DIR = BARKS_ROOT_DIR / "Barks Panels Pngs" / "Insets"
 PNG_INSET_EXT = PNG_FILE_EXT
 
-INTERNAL_DATA_DIR = (
-    PYINSTALLER_BUNDLED_MAIN_DIR / __package__.replace("_", "-") / "data"
-    if IS_PYINSTALLER_BUNDLE
-    else Path(__file__).parent.parent.parent / "data"
-)
+INTERNAL_DATA_DIR = Path(__file__).parent.parent.parent / "data"
 assert INTERNAL_DATA_DIR.is_dir(), f'INTERNAL_DATA_DIR "{INTERNAL_DATA_DIR}" does not exist.'
 
 FONT_DIR = INTERNAL_DATA_DIR / "fonts"

@@ -1,4 +1,4 @@
-# Need to sort out Android packages and how to handle pyinstaller.
+# Need to sort out Android packages and how to handle installer.
 # ruff: noqa: ERA001
 
 import os
@@ -109,7 +109,7 @@ class ConfigInfo:
             data_dir = Path(LINUX_CONFIG_DIR).expanduser()
             data_dir /= self._app_name
 
-        # Need to sort out Android and pyinstaller requirements.
+        # Need to sort out Android and installer requirements.
         # noinspection PyUnboundLocalVariable
         if not data_dir.is_dir():
             data_dir.mkdir(parents=True, exist_ok=True)
