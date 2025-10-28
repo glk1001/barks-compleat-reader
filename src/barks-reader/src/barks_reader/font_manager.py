@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import Enum, auto
 
 from barks_fantagraphics.comics_consts import CARL_BARKS_FONT
@@ -13,6 +14,63 @@ class _FontGroup(Enum):
     NOT_SET = auto()
     LOW_RES = auto()
     HI_RES = auto()
+
+
+@dataclass
+class FontTheme:
+    """A data class to hold all font sizes for a given theme."""
+
+    main_title: float
+    title_info: float
+    title_extra_info: float
+    index_menu: float
+    index_item: float
+    index_title: float
+    year_range: float
+    loading_title: float
+    checkbox: float
+    default: float
+    error_main_view: float
+    error_popup: float
+    error_popup_button: float
+    text_block_heading: float
+    app_title: float
+
+
+LOW_RES_FONTS = FontTheme(
+    main_title=sp(30),
+    title_info=sp(16),
+    title_extra_info=sp(14),
+    index_menu=sp(13),
+    index_item=sp(12),
+    index_title=sp(12),
+    year_range=sp(14),
+    loading_title=sp(16),
+    checkbox=sp(14),
+    default=sp(15),
+    error_main_view=sp(40),
+    error_popup=sp(16),
+    error_popup_button=sp(13),
+    text_block_heading=sp(20),
+    app_title=sp(12),
+)
+HI_RES_FONTS = FontTheme(
+    main_title=sp(40),
+    title_info=sp(20),
+    title_extra_info=sp(18),
+    index_menu=sp(17),
+    index_item=sp(16),
+    index_title=sp(16),
+    year_range=sp(18),
+    loading_title=sp(20),
+    checkbox=sp(19),
+    default=sp(19),
+    error_main_view=sp(40),
+    error_popup=sp(23),
+    error_popup_button=sp(18),
+    text_block_heading=sp(25),
+    app_title=sp(17),
+)
 
 
 class FontManager(EventDispatcher):
@@ -73,65 +131,38 @@ class FontManager(EventDispatcher):
             f" Required font group is {required_font_group.name}."
         )
 
-        if required_font_group == _FontGroup.LOW_RES:
-            main_title_font_size = sp(30)
-            title_info_font_size = sp(16)
-            title_extra_info_font_size = sp(14)
-            index_menu_font_size = sp(13)
-            index_item_font_size = sp(12)
-            index_title_font_size = sp(12)
-            year_range_font_size = sp(14)
-            loading_title_size = sp(16)
-            checkbox_font_size = sp(14)
-            default_font_size = sp(15)
-            error_main_view_font_size = sp(40)
-            error_popup_font_size = sp(16)
-            error_popup_button_font_size = sp(13)
-            text_block_heading_font_size = sp(20)
-            self.app_title_font_size = sp(12)
-        else:
-            main_title_font_size = sp(40)
-            title_info_font_size = sp(20)
-            title_extra_info_font_size = sp(18)
-            index_menu_font_size = sp(17)
-            index_item_font_size = sp(16)
-            index_title_font_size = sp(16)
-            year_range_font_size = sp(18)
-            loading_title_size = sp(20)
-            checkbox_font_size = sp(19)
-            default_font_size = sp(19)
-            error_main_view_font_size = sp(40)
-            error_popup_font_size = sp(23)
-            error_popup_button_font_size = sp(18)
-            text_block_heading_font_size = sp(25)
-            self.app_title_font_size = sp(17)
-
-        self.main_title_font_size = main_title_font_size
-        self.title_info_font_size = title_info_font_size
-        self.title_extra_info_font_size = title_extra_info_font_size
-        self.index_menu_font_size = index_menu_font_size
-        self.index_item_font_size = index_item_font_size
-        self.index_title_font_size = index_title_font_size
-        self.check_box_font_size = checkbox_font_size
-        self.error_main_view_font_size = error_main_view_font_size
-        self.error_popup_font_size = error_popup_font_size
-        self.error_popup_button_font_size = error_popup_button_font_size
-        self.text_block_heading_font_size = text_block_heading_font_size
-
-        self.tree_view_main_node_font_size = default_font_size
-        self.tree_view_story_node_font_size = default_font_size
-        self.tree_view_year_range_node_font_size = year_range_font_size
-        self.tree_view_num_label_font_size = default_font_size
-        self.tree_view_title_label_font_size = default_font_size
-        self.tree_view_issue_label_font_size = default_font_size
-        self.tree_view_title_search_label_font_size = default_font_size
-        self.tree_view_title_search_box_font_size = default_font_size
-        self.tree_view_title_spinner_font_size = default_font_size
-        self.tree_view_tag_search_label_font_size = default_font_size
-        self.tree_view_tag_search_box_font_size = default_font_size
-        self.tree_view_tag_spinner_font_size = default_font_size
-        self.tree_view_tag_title_spinner_font_size = default_font_size
-
-        self.loading_title_size = loading_title_size
+        theme = LOW_RES_FONTS if required_font_group == _FontGroup.LOW_RES else HI_RES_FONTS
+        self._apply_font_theme(theme)
 
         self._previous_font_group = required_font_group
+
+    def _apply_font_theme(self, theme: FontTheme) -> None:
+        """Assign all font sizes from a theme object."""
+        self.main_title_font_size = theme.main_title
+        self.title_info_font_size = theme.title_info
+        self.title_extra_info_font_size = theme.title_extra_info
+        self.index_menu_font_size = theme.index_menu
+        self.index_item_font_size = theme.index_item
+        self.index_title_font_size = theme.index_title
+        self.check_box_font_size = theme.checkbox
+        self.error_main_view_font_size = theme.error_main_view
+        self.error_popup_font_size = theme.error_popup
+        self.error_popup_button_font_size = theme.error_popup_button
+        self.text_block_heading_font_size = theme.text_block_heading
+        self.app_title_font_size = theme.app_title
+        self.loading_title_size = theme.loading_title
+
+        # Apply default and specific sizes for tree view
+        self.tree_view_main_node_font_size = theme.default
+        self.tree_view_story_node_font_size = theme.default
+        self.tree_view_year_range_node_font_size = theme.year_range
+        self.tree_view_num_label_font_size = theme.default
+        self.tree_view_title_label_font_size = theme.default
+        self.tree_view_issue_label_font_size = theme.default
+        self.tree_view_title_search_label_font_size = theme.default
+        self.tree_view_title_search_box_font_size = theme.default
+        self.tree_view_title_spinner_font_size = theme.default
+        self.tree_view_tag_search_label_font_size = theme.default
+        self.tree_view_tag_search_box_font_size = theme.default
+        self.tree_view_tag_spinner_font_size = theme.default
+        self.tree_view_tag_title_spinner_font_size = theme.default

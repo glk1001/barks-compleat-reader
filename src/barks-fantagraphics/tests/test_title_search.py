@@ -100,7 +100,7 @@ class TestBarksTitleSearch(unittest.TestCase):
         """Test the static method for converting enums to strings."""
         titles_enum = [Titles.GOLDEN_HELMET_THE, Titles.VACATION_TIME]
         titles_str = BarksTitleSearch.get_titles_as_strings(titles_enum)
-        assert len(titles_str) == 2
+        assert len(titles_str) == 2  # noqa: PLR2004
         assert "The Golden Helmet" in titles_str
         assert "Vacation Time" in titles_str
 

@@ -52,12 +52,15 @@ class ComicReaderManager:
         self._comic_book_reader = self._comic_book_reader_screen.comic_book_reader
 
     def init_comic_book_data(self) -> None:
+        assert self._comic_book_reader
         self._comic_book_reader.init_data()
 
     def clear_window_state(self) -> None:
+        assert self._comic_book_reader_screen
         self._comic_book_reader_screen.clear_window_state()
 
     def save_window_state_now(self) -> None:
+        assert self._comic_book_reader_screen
         self._comic_book_reader_screen.save_window_state_now()
 
     def read_article_as_comic_book(self, article_title: Titles, page_to_first_goto: str) -> None:
@@ -88,18 +91,24 @@ class ComicReaderManager:
         use_overrides_active: bool = True,
     ) -> None:
         assert page_to_first_goto
+        assert self._comic_book_reader
+        assert self._fanta_info
+        assert self._fanta_info.comic_book_info
 
         self._comic_page_info = self._comic_page_info_mgr.get_comic_page_info(comic)
+        assert self._comic_page_info
 
         comic_book_image_builder = ComicBookImageBuilder(
             comic,
             str(self._reader_settings.sys_file_paths.get_empty_page_file()),
         )
         comic_book_image_builder.set_required_dim(self._comic_page_info.required_dim)
+
         logger.debug(
             f'Load "{self._fanta_info.comic_book_info.get_title_str()}"'
             f' and goto page "{page_to_first_goto}".',
         )
+
         self._comic_book_reader.read_comic(
             self._fanta_info,
             use_overrides_active,
@@ -111,6 +120,9 @@ class ComicReaderManager:
     def comic_closed(self) -> SavedPageInfo | None:
         if not self._save_last_page:
             return None
+
+        assert self._fanta_info
+        assert self._fanta_info.comic_book_info
 
         title_str = self._fanta_info.comic_book_info.get_title_str()
         last_read_page = self._get_last_read_page_from_comic()
@@ -149,6 +161,9 @@ class ComicReaderManager:
         )
 
     def _get_last_read_page_from_comic(self) -> SavedPageInfo | None:
+        assert self._comic_book_reader
+        assert self._comic_page_info
+
         last_read_page_str = self._comic_book_reader.get_last_read_page()
         if not last_read_page_str:
             return None

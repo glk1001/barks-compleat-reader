@@ -141,7 +141,9 @@ class RandomTitleImages:
     def _get_random_image_file(
         self, title_list: list[FantaComicBookInfo], file_types: set[FileTypes] | None = None
     ) -> Path:
-        return self.get_random_image(title_list, file_types=file_types).filename
+        file = self.get_random_image(title_list, file_types=file_types).filename
+        assert file
+        return file
 
     def get_random_image_for_title(
         self, title_str: str, file_types: set[FileTypes], use_only_edited_if_possible: bool = False
@@ -369,6 +371,7 @@ if __name__ == "__main__":
                 use_only_edited_if_possible=use_only_edited_if_possible,
             )
             ttl = BARKS_TITLES[random_image_info.from_title] if random_image_info.from_title else ""
+            assert random_image_info.filename
             img_file = get_abbrev_path(random_image_info.filename)
             fit = random_image_info.fit_mode
             rand_results.append((ttl, img_file, fit))
@@ -393,7 +396,9 @@ if __name__ == "__main__":
     barks_config = ConfigParser()
     barks_config.read(config_info.app_config_path)
     settings = BuildableReaderSettings()
-    settings.set_config(barks_config, config_info.app_config_path, config_info.app_data_dir)
+
+    # ConfigParser is Protocol - ty should be OK with this.
+    settings.set_config(barks_config, config_info.app_config_path, config_info.app_data_dir)  # ty: ignore[invalid-argument-type]
     settings.set_barks_panels_dir()
 
     # --- Test the Class ---

@@ -22,7 +22,11 @@ from kivy.animation import Animation
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.metrics import dp
-from kivy.properties import BooleanProperty, ObjectProperty, StringProperty
+from kivy.properties import (  # ty: ignore[unresolved-import]
+    BooleanProperty,
+    ObjectProperty,
+    StringProperty,
+)
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
@@ -86,6 +90,7 @@ class TitleHierarchy:
     title: Titles | None
 
     def get_title_with_hierarchy(self) -> str:
+        assert self.title
         title_str = BARKS_TITLES[self.title]
 
         if not self.tag_group and not self.tag:

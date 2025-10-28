@@ -53,7 +53,7 @@ class TestBarksTags(unittest.TestCase):
         invalid_data_content[Tags.FIRE].append("NOT_A_TITLE_ENUM_MEMBER")
 
         with patch.dict(barks_tags.BARKS_TAGGED_TITLES, invalid_data_content, clear=True):
-            with pytest.raises(AssertionError, match="Invalid title .* in BARKS_TAGGED_TITLES"):
+            with pytest.raises(AssertionError, match=r"Invalid title .* in BARKS_TAGGED_TITLES"):
                 barks_tags.validate_tag_data()
 
     def test_validate_invalid_tag_key_in_barks_tagged_pages(self) -> None:
@@ -129,7 +129,7 @@ class TestBarksTags(unittest.TestCase):
         invalid_data_content[key_to_test] = [123]  # Page as int, not str
 
         with patch.dict(barks_tags.BARKS_TAGGED_PAGES, invalid_data_content, clear=True):
-            with pytest.raises(AssertionError, match="Page .* must be a string"):
+            with pytest.raises(AssertionError, match=r"Page .* must be a string"):
                 barks_tags.validate_tag_data()
 
     def test_validate_invalid_category_key_in_barks_tag_categories(self) -> None:
@@ -149,7 +149,7 @@ class TestBarksTags(unittest.TestCase):
         with patch.dict(barks_tags.BARKS_TAG_CATEGORIES, invalid_data_content, clear=True):
             with pytest.raises(
                 AssertionError,
-                match="Invalid item .* in category .* Must be Tags or TagGroups",
+                match=r"Invalid item .* in category .* Must be Tags or TagGroups",
             ):
                 barks_tags.validate_tag_data()
 
@@ -168,7 +168,7 @@ class TestBarksTags(unittest.TestCase):
         invalid_data_content[TagGroups.AFRICA].append("NOT_A_TAG_ENUM")
 
         with patch.dict(barks_tags.BARKS_TAG_GROUPS, invalid_data_content, clear=True):
-            with pytest.raises(AssertionError, match="Invalid tag .* in group .* Must be Tags"):
+            with pytest.raises(AssertionError, match=r"Invalid tag .* in group .* Must be Tags"):
                 barks_tags.validate_tag_data()
 
     # --- Tests for getter functions ---

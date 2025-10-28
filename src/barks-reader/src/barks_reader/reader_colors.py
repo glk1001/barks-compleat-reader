@@ -76,7 +76,7 @@ class RandomColorTint:
 
         rand_color = self._get_random_tinted_color(rand_color)
 
-        return tuple(rand_color)
+        return tuple(rand_color)  # ty: ignore[invalid-return-type]
 
     def _get_random_tinted_color(self, color: Color) -> Color:
         num_indexes_to_change = randrange(1, 3)
@@ -90,7 +90,7 @@ class RandomColorTint:
 
         # Pycharm inspection bug?
         # noinspection PyTypeChecker
-        return tuple(rand_color)
+        return tuple(rand_color)  # ty: ignore[invalid-return-type]
 
     def _get_rgb_color(self) -> Color:
         alpha = get_rand_int(self._full_color_alpha_range) / 255.0
@@ -101,4 +101,4 @@ class RandomColorTint:
 
         # Pycharm inspection bug?
         # noinspection PyTypeChecker
-        return tuple(rand_color)
+        return tuple(rand_color)  # ty: ignore[invalid-return-type]

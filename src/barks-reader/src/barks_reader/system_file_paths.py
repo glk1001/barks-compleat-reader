@@ -102,75 +102,97 @@ class SystemFilePaths:
         self._check_files(files_to_check)
 
     @staticmethod
-    def _check_dirs(dirs_to_check: list[Path]) -> None:
+    def _check_dirs(dirs_to_check: list[Path | None]) -> None:
         for dir_path in dirs_to_check:
+            assert dir_path
             if not dir_path.is_dir():
                 msg = f'Required directory not found: "{dir_path}".'
                 raise FileNotFoundError(msg)
 
     @staticmethod
-    def _check_files(files_to_check: list[Path]) -> None:
+    def _check_files(files_to_check: list[Path | None]) -> None:
         for file_path in files_to_check:
+            assert file_path
             if not file_path.is_file():
                 msg = f'Required file not found: "{file_path}".'
                 raise FileNotFoundError(msg)
 
     def get_barks_reader_fantagraphics_overrides_root_dir(self) -> Path:
+        assert self._fantagraphics_overrides_root_dir
         return self._fantagraphics_overrides_root_dir
 
     def get_barks_reader_fantagraphics_panel_segments_root_dir(self) -> Path:
+        assert self._fantagraphics_panel_segments_root_dir
         return self._fantagraphics_panel_segments_root_dir
 
     def get_reader_icon_files_dir(self) -> Path:
+        assert self._reader_icon_files_dir
         return self._reader_icon_files_dir
 
     def get_up_arrow_file(self) -> Path:
+        assert self._up_arrow_path
         return self._up_arrow_path
 
     def get_down_arrow_file(self) -> Path:
+        assert self._down_arrow_path
         return self._down_arrow_path
 
     def get_barks_reader_app_window_icon_path(self) -> Path:
+        assert self._app_window_icon_path
         return self._app_window_icon_path
 
     def get_barks_reader_close_icon_file(self) -> Path:
+        assert self._close_icon_path
         return self._close_icon_path
 
     def get_barks_reader_collapse_icon_file(self) -> Path:
+        assert self._collapse_icon_path
         return self._collapse_icon_path
 
     def get_barks_reader_refresh_arrow_icon_file(self) -> Path:
+        assert self._refresh_arrow_icon_path
         return self._refresh_arrow_icon_path
 
     def get_barks_reader_settings_icon_file(self) -> Path:
+        assert self._settings_icon_path
         return self._settings_icon_path
 
     def get_barks_reader_fullscreen_icon_file(self) -> Path:
+        assert self._fullscreen_icon_path
         return self._fullscreen_icon_path
 
     def get_barks_reader_fullscreen_exit_icon_file(self) -> Path:
+        assert self._fullscreen_exit_icon_path
         return self._fullscreen_exit_icon_path
 
     def get_barks_reader_goto_icon_file(self) -> Path:
+        assert self._goto_icon_path
         return self._goto_icon_path
 
     def get_barks_reader_goto_start_icon_file(self) -> Path:
+        assert self._goto_start_icon_path
         return self._goto_start_icon_path
 
     def get_barks_reader_goto_end_icon_file(self) -> Path:
+        assert self._goto_end_icon_path
         return self._goto_end_icon_path
 
     def get_hamburger_menu_icon_path(self) -> Path:
+        assert self._hamburger_menu_icon_path
         return self._hamburger_menu_icon_path
 
     def get_transparent_blank_file(self) -> Path:
+        assert self._transparent_blank_path
         return self._transparent_blank_path
 
     def get_empty_page_file(self) -> Path:
+        assert self._empty_page_path
         return self._empty_page_path
 
     def get_intro_image_file(self) -> Path:
+        assert self._intro_image_path
         return self._intro_image_path
 
     def get_favourite_titles_path(self) -> Path:
+        assert self._favourite_titles_path
         return self._favourite_titles_path

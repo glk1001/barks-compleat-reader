@@ -141,7 +141,7 @@ class ReaderTreeBuilder:
         self._title_lists = title_lists
         self._loading_data_popup = loading_data_popup
         self._title_search = BarksTitleSearch()
-        self._tree_build_timing = None
+        self._tree_build_timing = Timing()
         self.chrono_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
 
         self._series_names = [
@@ -206,7 +206,7 @@ class ReaderTreeBuilder:
 
         scheduler and uses a counter to detect when all tasks are complete.
         """
-        self._tree_build_timing = Timing(datetime.now(UTC))
+        self._tree_build_timing.start_time = datetime.now(UTC)
 
         # Create ONE counter for all concurrent tasks, passing the final callback.
         concurrent_task_counter = _CompletionCounter(on_all_finished=self._finished_all_nodes)

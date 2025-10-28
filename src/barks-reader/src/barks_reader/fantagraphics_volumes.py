@@ -79,7 +79,7 @@ class FantagraphicsArchive:
     archive_images_page_map: dict[str, Path]
     override_images_page_map: dict[str, Path]
     extra_images_page_map: dict[str, Path]
-    override_archive_filename: Path
+    override_archive_filename: Path | None
     override_archive: zipfile.ZipFile | None = None
 
     def get_num_pages(self) -> int:
@@ -159,7 +159,7 @@ class FantagraphicsVolumeArchives:
             self._check_image_names(image_filenames, first_page, last_page, image_ext)
 
             fanta_volume = self._get_fanta_volume(archive)
-            override_archive_filename = override_archive_filenames.get(fanta_volume, "")
+            override_archive_filename = override_archive_filenames.get(fanta_volume, None)
 
             archive_image_page_map = self._get_archive_image_page_map(
                 image_dir, image_filenames, first_page, last_page
@@ -282,7 +282,7 @@ class FantagraphicsVolumeArchives:
 
     @staticmethod
     def _get_override_and_extra_images_page_maps(
-        override_archive_filename: Path, archive_page_map: dict[str, Path]
+        override_archive_filename: Path | None, archive_page_map: dict[str, Path]
     ) -> tuple[dict[str, Path], dict[str, Path]]:
         override_pages_map: dict[str, Path] = {}
         extra_pages_map: dict[str, Path] = {}

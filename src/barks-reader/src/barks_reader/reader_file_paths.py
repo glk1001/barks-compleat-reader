@@ -249,6 +249,7 @@ class ReaderFilePaths:
         self, title: Titles, use_only_edited_if_possible: bool = False
     ) -> PanelPath:
         if use_only_edited_if_possible:
+            assert self._inset_edited_files_dir
             edited_file = self._inset_edited_files_dir / get_filename_from_title(
                 title, self._inset_files_ext
             )

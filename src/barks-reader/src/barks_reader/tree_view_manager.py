@@ -190,7 +190,8 @@ class TreeViewManager:
             raise RuntimeError(msg)
 
         logger.info(f'Updating backgrounds views for expanded node: "{new_view_state.name}".')
-        self._view_state_manager.update_background_views(new_view_state, **view_state_params)
+        # TODO: Not sure how to deal with 'ty' and **args.
+        self._view_state_manager.update_background_views(new_view_state, **view_state_params)  # ty: ignore[invalid-argument-type]
 
         self.scroll_to_node(node.nodes[0] if node.nodes else node)
 

@@ -135,6 +135,7 @@ def test_nontitle_bias(
 
     # A nontitle image has no 'from_title'
     assert result.from_title is None
+    assert result.filename
     assert "nontitle" in result.filename.name
 
 
@@ -151,6 +152,7 @@ def test_use_edited_only_filters_files(
         )
         # The mock is set up so only title1 has an edited cover
         if result.from_title == Titles.STATUESQUE_SPENDTHRIFTS:
+            assert result.filename
             assert "edited" in result.filename.name
 
 
@@ -159,6 +161,7 @@ def test_empty_title_list_returns_emergency_image(
 ) -> None:
     """Test that an empty title list returns the emergency fallback image."""
     result = random_image_selector.get_random_image([])
+    assert result.filename
     assert "emergency" in result.filename.name
 
 
@@ -174,7 +177,9 @@ def test_candidate_selection_prefers_not_mru(random_image_selector: RandomTitleI
     random_image_selector._most_recently_used_images.append(Path("/fake/path/img2.jpg"))  # noqa: SLF001
 
     # The selection logic should now always pick img3.jpg
-    selected_file, _ = random_image_selector._select_best_candidate_image(  # noqa: SLF001
+    # TODO: ty issue does not make sense. 'random_image_selector._select_best_candidate_image' is
+    #       not an iterable.
+    selected_file, _ = random_image_selector._select_best_candidate_image(  # noqa: SLF001 # ty: ignore[not-iterable]
         possible_files, "any_title"
     )
 

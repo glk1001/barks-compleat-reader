@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 from comic_utils.comic_consts import MONTH_AS_LONG_STR, MONTH_AS_SHORT_STR
 from loguru import logger
 
-from .comic_issues import ISSUE_NAME, Issues
+from .comic_issues import ISSUE_NAME
 from .comics_consts import BARKS_ROOT_DIR
 
 if TYPE_CHECKING:
@@ -236,7 +236,7 @@ def get_long_formatted_submitted_date(comic_book_info: ComicBookInfo) -> str:
 
 def get_formatted_first_published_str(
     comic_book_info: ComicBookInfo,
-    issue_name_dict: dict[Issues, str] = ISSUE_NAME,
+    issue_name_dict: list[str] = ISSUE_NAME,
     max_len_before_shorten: int = 0,
 ) -> str:
     issue_name = issue_name_dict[comic_book_info.issue_name]

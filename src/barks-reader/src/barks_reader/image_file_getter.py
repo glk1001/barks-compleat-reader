@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
+    from barks_reader.reader_consts_and_types import PanelPath
     from barks_reader.reader_settings import ReaderSettings
 
 
@@ -42,13 +43,15 @@ class TitleImageFileGetter:
     def _get_files(
         title_str: str,
         file_type: FileTypes,
-        getter_func: Callable[[str, bool], None | Path | list[Path]],
+        getter_func: Callable[[str, bool], PanelPath | list[PanelPath] | None],
         use_only_edited_if_possible: bool,
-    ) -> list[Path]:
+    ) -> list[PanelPath]:
         if file_type == FileTypes.COVER:
             # getter for COVER returns a single Path or None
             cover_file = getter_func(title_str, use_only_edited_if_possible)
             return [cover_file] if cover_file else []
 
-        # Other getters return a List[Path]
-        return getter_func(title_str, use_only_edited_if_possible)
+        # Other getters return a List[PanelPath].
+        path_list = getter_func(title_str, use_only_edited_if_possible)
+        assert path_list is not None
+        return path_list

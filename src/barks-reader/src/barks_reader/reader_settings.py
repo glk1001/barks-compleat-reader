@@ -191,11 +191,14 @@ _READER_SETTINGS_JSON = f"""
 
 class ConfigParser(Protocol):
     def get(self, section: str, key: str) -> Any: ...  # noqa: ANN401
+    def getboolean(self, section: str, key: str) -> Any: ...  # noqa: ANN401
+    def set(self, section: str, key: str, value: Any) -> None: ...  # noqa: ANN401
+    def write(self) -> None: ...
 
 
 class ReaderSettings:
     def __init__(self) -> None:
-        self._config = None
+        self._config: ConfigParser | None = None
         self._app_settings_path: Path | None = None
         self._app_data_dir: Path | None = None
         self._user_data_path: Path | None = None
@@ -212,9 +215,11 @@ class ReaderSettings:
         self._user_data_path = self._app_settings_path.parent / "barks-reader.json"
 
     def get_app_settings_path(self) -> Path:
+        assert self._app_settings_path
         return self._app_settings_path
 
     def get_user_data_path(self) -> Path:
+        assert self._user_data_path
         return self._user_data_path
 
     @property
@@ -239,6 +244,7 @@ class ReaderSettings:
             )
 
     def _get_png_barks_panels_dir(self) -> Path:
+        assert self._config
         return Path(
             os.path.expandvars(self._config.get(BARKS_READER_SECTION, PNG_BARKS_PANELS_DIR))
         )
@@ -254,6 +260,7 @@ class ReaderSettings:
         return BarksPanelsExtType.MOSTLY_PNG if use_png_images else BarksPanelsExtType.JPG
 
     def _get_use_png_images(self) -> bool:
+        assert self._config
         return self._config.getboolean(BARKS_READER_SECTION, USE_PNG_IMAGES)
 
     @property
@@ -261,6 +268,7 @@ class ReaderSettings:
         return self._get_fantagraphics_volumes_dir()
 
     def _get_fantagraphics_volumes_dir(self) -> Path:
+        assert self._config
         return Path(self._config.get(BARKS_READER_SECTION, FANTA_DIR))
 
     @property
@@ -280,6 +288,7 @@ class ReaderSettings:
         return self._get_prebuilt_comics_dir()
 
     def _get_prebuilt_comics_dir(self) -> Path:
+        assert self._config
         return Path(os.path.expandvars(self._config.get(BARKS_READER_SECTION, PREBUILT_COMICS_DIR)))
 
     @property
@@ -287,6 +296,7 @@ class ReaderSettings:
         return self._get_use_prebuilt_archives()
 
     def _get_use_prebuilt_archives(self) -> bool:
+        assert self._config
         return self._config.getboolean(BARKS_READER_SECTION, USE_PREBUILT_COMICS)
 
     @property
@@ -294,6 +304,7 @@ class ReaderSettings:
         return self._get_goto_saved_node_on_start()
 
     def _get_goto_saved_node_on_start(self) -> bool:
+        assert self._config
         return self._config.getboolean(BARKS_READER_SECTION, GOTO_SAVED_NODE_ON_START)
 
     @property
@@ -301,6 +312,7 @@ class ReaderSettings:
         return self._get_goto_fullscreen_on_app_start()
 
     def _get_goto_fullscreen_on_app_start(self) -> bool:
+        assert self._config
         return self._config.getboolean(BARKS_READER_SECTION, GOTO_FULLSCREEN_ON_APP_START)
 
     @property
@@ -308,27 +320,35 @@ class ReaderSettings:
         return self._get_goto_fullscreen_on_comic_read()
 
     def _get_goto_fullscreen_on_comic_read(self) -> bool:
+        assert self._config
         return self._config.getboolean(BARKS_READER_SECTION, GOTO_FULLSCREEN_ON_COMIC_READ)
 
     def _get_main_window_height(self) -> int:
+        assert self._config
         return self._config.get(BARKS_READER_SECTION, MAIN_WINDOW_HEIGHT)
 
     def _get_main_window_left(self) -> int:
+        assert self._config
         return self._config.get(BARKS_READER_SECTION, MAIN_WINDOW_LEFT)
 
     def _get_main_window_top(self) -> int:
+        assert self._config
         return self._config.get(BARKS_READER_SECTION, MAIN_WINDOW_TOP)
 
     def get_use_harpies_instead_of_larkies(self) -> bool:
+        assert self._config
         return self._config.getboolean(BARKS_READER_SECTION, USE_HARPIES_INSTEAD_OF_LARKIES)
 
     def get_use_dere_instead_of_theah(self) -> bool:
+        assert self._config
         return self._config.getboolean(BARKS_READER_SECTION, USE_DERE_INSTEAD_OF_THEAH)
 
     def get_use_blank_eyeballs_for_bombie(self) -> bool:
+        assert self._config
         return self._config.getboolean(BARKS_READER_SECTION, USE_BLANK_EYEBALLS_FOR_BOMBIE)
 
     def get_use_glk_firebug_ending(self) -> bool:
+        assert self._config
         return self._config.getboolean(BARKS_READER_SECTION, USE_GLK_FIREBUG_ENDING)
 
     @property
@@ -336,6 +356,7 @@ class ReaderSettings:
         return self._get_show_top_view_title_info()
 
     def _get_show_top_view_title_info(self) -> bool:
+        assert self._config
         return self._config.getboolean(BARKS_READER_SECTION, SHOW_TOP_VIEW_TITLE_INFO)
 
     @property
@@ -343,6 +364,7 @@ class ReaderSettings:
         return self._get_show_fun_view_title_info()
 
     def _get_show_fun_view_title_info(self) -> bool:
+        assert self._config
         return self._config.getboolean(BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO)
 
     @property
@@ -350,6 +372,7 @@ class ReaderSettings:
         return self._get_is_first_use_of_reader()
 
     def _get_is_first_use_of_reader(self) -> bool:
+        assert self._config
         return self._config.getboolean(BARKS_READER_SECTION, IS_FIRST_USE_OF_READER)
 
     @property
@@ -357,11 +380,13 @@ class ReaderSettings:
         return self._get_log_level()
 
     def _get_log_level(self) -> str:
+        assert self._config
         return self._config.get(BARKS_READER_SECTION, LOG_LEVEL)
 
     @is_first_use_of_reader.setter
     def is_first_use_of_reader(self, value: bool) -> None:
         logger.info(f"Setting is_first_use_of_reader = {value}.")
+        assert self._config
         self._config.set(BARKS_READER_SECTION, IS_FIRST_USE_OF_READER, 1 if value else 0)
         self._save_settings()
 
@@ -452,7 +477,7 @@ class ReaderSettings:
 
     @staticmethod
     def _is_valid_dir(dir_path: str | Path) -> bool:
-        if type(dir_path) is str:
+        if isinstance(dir_path, str):
             dir_path = Path(dir_path)
 
         if dir_path.is_dir():
@@ -500,7 +525,7 @@ class BuildableReaderSettings(ReaderSettings):
             USE_GLK_FIREBUG_ENDING: self.get_use_glk_firebug_ending,
         }
 
-        self._VALIDATION_METHODS: dict[str, Callable[[Path], bool]] = {
+        self._VALIDATION_METHODS: dict[str, Callable[[Path | bool | int | str], bool]] = {
             FANTA_DIR: self.is_valid_fantagraphics_volumes_dir,
             PNG_BARKS_PANELS_DIR: self._is_valid_png_barks_panels_dir,
             USE_PNG_IMAGES: self._is_valid_use_png_images,
@@ -552,6 +577,7 @@ class BuildableReaderSettings(ReaderSettings):
         )
 
     def build_settings(self, settings: Settings) -> None:
+        assert self._config
         settings.add_json_panel(BARKS_READER_SECTION, self._config, data=_READER_SETTINGS_JSON)
         self._settings = settings
 
@@ -585,6 +611,7 @@ class BuildableReaderSettings(ReaderSettings):
 
     @override
     def _save_settings(self) -> None:
+        assert self._config
         self._config.write()
         self._update_settings_panel()
 

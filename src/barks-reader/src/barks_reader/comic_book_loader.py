@@ -92,6 +92,7 @@ class ComicBookLoader:
             self._fanta_volume_archives.load()
 
     def get_image_ready_for_reading(self, page_index: int) -> tuple[io.BytesIO, str]:
+        assert self._images
         assert 0 <= page_index < len(self._images)
 
         image_stream, image_ext = self._images[page_index]
@@ -133,10 +134,13 @@ class ComicBookLoader:
         else:
             if not self._fanta_volume_archives:
                 self.init_data()
+
+            assert self._fanta_volume_archives
             self._fanta_volume_archive = self._fanta_volume_archives.get_fantagraphics_archive(
                 int(fanta_info.fantagraphics_volume[-2:])
             )
             if self._fanta_volume_archive.has_overrides():
+                assert self._fanta_volume_archive.override_archive_filename
                 self._fanta_volume_archive.override_archive = zipfile.ZipFile(
                     self._fanta_volume_archive.override_archive_filename
                 )
@@ -373,9 +377,11 @@ class ComicBookLoader:
 
         page_str = Path(page_info.srce_page.page_filename).stem
 
+        assert self._fanta_volume_archive
         if page_str in self._fanta_volume_archive.extra_images_page_map:
             return Path(self._fanta_volume_archive.extra_images_page_map[page_str]), False
 
+        assert self._use_fantagraphics_overrides
         if self._use_fantagraphics_overrides and (
             page_str in self._fanta_volume_archive.override_images_page_map
         ):
@@ -398,6 +404,7 @@ class ComicBookLoader:
         elif page_info.srce_page.page_type in [PageType.BLANK_PAGE, PageType.TITLE]:
             file_data = self._empty_page_image
         else:  # it's an override
+            assert self._fanta_volume_archive
             zip_path = zipfile.Path(self._fanta_volume_archive.override_archive, at=str(image_path))
             file_data = zip_path.read_bytes()
 
@@ -409,6 +416,7 @@ class ComicBookLoader:
         pil_image = open_pil_image_from_bytes(file_data, ext)
 
         if self._fanta_volume_archive:
+            assert self._comic_book_image_builder
             pil_image = self._comic_book_image_builder.get_dest_page_image(
                 pil_image, page_info.srce_page, page_info.dest_page
             )

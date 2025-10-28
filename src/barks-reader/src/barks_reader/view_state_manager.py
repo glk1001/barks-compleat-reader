@@ -99,8 +99,8 @@ class ViewStateManager:
         year_range: str = "",
         cs_year_range: str = "",
         us_year_range: str = "",
-        tag_group: None | TagGroups = None,
-        tag: None | Tags = None,
+        tag_group: TagGroups | None = None,
+        tag: Tags | None = None,
         title_str: str = "",
     ) -> None:
         """Set the current context and update all views accordingly."""
@@ -149,7 +149,8 @@ class ViewStateManager:
         **args: str | TagGroups | Tags | None,
     ) -> None:
         logger.debug(f'Updating background views for node "{view_state}".')
-        self.update_background_views(view_state, **args)
+        # TODO: Not sure how to deal with 'ty' and **args.
+        self.update_background_views(view_state, **args)  # ty: ignore[invalid-argument-type]
 
     def _set_views(self) -> None:
         """Update all the visual components of the main screen."""
@@ -210,6 +211,7 @@ class ViewStateManager:
         self._tree_view_screen.top_view_image_color = (
             self._background_views.get_top_view_image_color()
         )
+        assert self._top_view_image_info.from_title is not None
         self._tree_view_screen.set_title(self._top_view_image_info.from_title)
 
     def _set_fun_view(self) -> None:

@@ -70,7 +70,7 @@ class FunImageViewScreen(BoxLayout):
         for child in self.ids.custom_options_box.children:
             child.active = False
 
-    def set_title(self, title: Titles) -> None:
+    def set_title(self, title: Titles | None) -> None:
         self.current_title_str = "" if not title else BARKS_TITLES[title]
         self.fun_view_from_title = self.current_title_str != ""
 

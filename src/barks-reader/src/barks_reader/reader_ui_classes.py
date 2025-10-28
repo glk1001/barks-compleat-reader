@@ -13,7 +13,11 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.event import EventDispatcher
 from kivy.metrics import dp
-from kivy.properties import NumericProperty, ObjectProperty, StringProperty
+from kivy.properties import (  # ty: ignore[unresolved-import]
+    NumericProperty,
+    ObjectProperty,
+    StringProperty,
+)
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -293,7 +297,7 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         self._current_tag, titles = self._title_search.get_titles_from_alias_tag(tag_str.lower())
         self.ids.tag_spinner.text = get_markup_text_with_num_titles(tag_str, len(titles))
 
-        str_titles = None if not titles else self._title_search.get_titles_as_strings(titles)
+        str_titles = [] if not titles else self._title_search.get_titles_as_strings(titles)
         self._set_spinner_values(self.ids.tag_title_spinner, str_titles)
 
     def _on_internal_tag_search_box_title_changed(self, spinner: Spinner, title_str: str) -> None:
@@ -322,7 +326,7 @@ class ButtonTreeViewNode(Button, TreeViewNode):
         return super().on_touch_down(touch)
 
     @staticmethod
-    def _get_nodes_treeview(node: TreeViewNode) -> TreeView | None:
+    def _get_nodes_treeview(node: ButtonTreeViewNode) -> TreeView | None:
         # noinspection PyUnresolvedReferences
         parent = node.parent
         while parent:

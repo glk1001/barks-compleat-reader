@@ -70,13 +70,14 @@ def find_node_by_path(tree: ReaderTreeView, path_from_root: list[str]) -> TreeVi
     return found_node
 
 
+# noinspection PyUnresolvedReferences
 def get_tree_view_node_id_text(node: TreeViewNode) -> str:
     if type(node) is TitleTreeViewNode:
-        return cast(TitleTreeViewNode, node).get_title().name
+        return node.get_title().name
     if type(node) is TitleSearchBoxTreeViewNode:
-        return cast(TitleSearchBoxTreeViewNode, node).name
+        return node.name
     if type(node) is TagSearchBoxTreeViewNode:
-        return cast(TagSearchBoxTreeViewNode, node).name
+        return node.name
 
     return get_clean_text_without_extra(cast(ButtonTreeViewNode, node).text)
 

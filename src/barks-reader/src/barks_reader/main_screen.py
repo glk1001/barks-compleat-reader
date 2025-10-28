@@ -30,7 +30,12 @@ from barks_reader.comic_reader_manager import ComicReaderManager
 from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
 from barks_reader.platform_utils import WindowManager
 from barks_reader.random_title_images import ImageInfo, RandomTitleImages
-from barks_reader.reader_consts_and_types import APP_TITLE, CHRONO_YEAR_RANGES, COMIC_PAGE_ONE
+from barks_reader.reader_consts_and_types import (
+    APP_TITLE,
+    CHRONO_YEAR_RANGES,
+    COMIC_PAGE_ONE,
+    PanelPath,
+)
 from barks_reader.reader_formatter import get_action_bar_title
 from barks_reader.reader_screens import ReaderScreen
 from barks_reader.reader_tree_builder import ReaderTreeBuilder
@@ -496,6 +501,7 @@ class MainScreen(ReaderScreen):
         year_nodes = self._year_range_nodes[self._get_year_range_from_info(title_fanta_info)]
         self._tree_view_screen.open_all_parent_nodes(year_nodes)
 
+        assert image_info.from_title
         title_node = find_tree_view_title_node(year_nodes, image_info.from_title)
         self._tree_view_manager.goto_node(title_node, scroll_to=True)
 
@@ -561,7 +567,7 @@ class MainScreen(ReaderScreen):
     def _title_row_selected(
         self,
         new_fanta_info: FantaComicBookInfo,
-        title_image_file: Path,
+        title_image_file: PanelPath,
     ) -> None:
         self.fanta_info = new_fanta_info
         self._set_title(title_image_file)

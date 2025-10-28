@@ -2,7 +2,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from kivy.lang import Builder
-from kivy.properties import StringProperty
+from kivy.properties import StringProperty  # ty: ignore[unresolved-import]
 from kivy.uix.screenmanager import Screen
 
 from barks_reader.font_manager import FontManager

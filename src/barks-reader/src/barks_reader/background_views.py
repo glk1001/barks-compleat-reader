@@ -386,6 +386,8 @@ class BackgroundViews:
         self._set_top_view_image_color()
         self._schedule_top_view_event()
 
+        assert self._top_view_image_info.filename
+
         logger.debug(
             f"Top view image:"
             f" State: {self._view_state},"
@@ -544,6 +546,8 @@ class BackgroundViews:
         self._set_bottom_view_fun_image_color()
         self._schedule_bottom_view_fun_image_event()
 
+        assert self._bottom_view_fun_image_info.filename
+
         logger.debug(
             f"Bottom view fun image:"
             f" State: {self._view_state},"
@@ -562,6 +566,7 @@ class BackgroundViews:
                 fanta_title_list, use_random_fit_mode=True
             )
 
+        assert self._cached_fun_titles
         titles, file_types = self._cached_fun_titles
 
         return self._random_title_images.get_random_image(
@@ -587,6 +592,8 @@ class BackgroundViews:
         file_types = self._get_file_types_to_use()
 
         theme_titles: set[str] = set()
+
+        assert self._fun_image_themes
 
         if ImageThemes.FORTIES in self._fun_image_themes:
             self._update_titles(theme_titles, (1942, 1949))

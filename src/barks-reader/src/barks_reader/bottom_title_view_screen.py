@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kivy.animation import Animation
-from kivy.properties import (
+from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     ColorProperty,
     ObjectProperty,

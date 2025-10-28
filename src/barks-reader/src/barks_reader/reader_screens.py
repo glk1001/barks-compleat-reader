@@ -114,6 +114,7 @@ class ReaderScreenManager:
         self._screen_manager.transition = self._get_next_reader_screen_transition()
         self._screen_manager.current = COMIC_BOOK_READER_SCREEN
 
+        assert self._reader_screens
         self._reader_screens.comic_reader_screen.app_icon_filepath = (
             self._reader_screens.main_screen.app_icon_filepath
         )
@@ -124,6 +125,7 @@ class ReaderScreenManager:
     def _close_comic_book_reader(self) -> None:
         logger.debug("Closing comic and switching back to main screen...")
 
+        assert self._reader_screens
         self._reader_screens.main_screen.on_comic_closed()
 
         self._screen_manager.transition = self._get_next_main_screen_transition()
@@ -139,6 +141,7 @@ class ReaderScreenManager:
 
     def _close_intro_compleat_barks_reader(self) -> None:
         logger.debug("Closing comic book reader intro and switching back to main screen...")
+        assert self._reader_screens
         self._reader_screens.main_screen.on_intro_compleat_barks_reader_closed()
 
         self._screen_manager.transition = self._get_next_main_screen_transition()
