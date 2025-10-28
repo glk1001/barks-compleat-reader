@@ -26,7 +26,7 @@ from barks_reader.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, Fu
 from barks_reader.index_screen import INDEX_SCREEN_KV_FILE, IndexScreen
 from barks_reader.intro_compleat_barks_reader import get_intro_compleat_barks_reader_screen
 from barks_reader.main_screen import MAIN_SCREEN_KV_FILE, MainScreen
-from barks_reader.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING
+from barks_reader.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING, OPTIONS_SETTING
 from barks_reader.reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     INTRO_COMPLEAT_BARKS_READER_SCREEN,
@@ -199,7 +199,7 @@ class BarksReaderApp(App):
     def build_settings(self, settings: Settings) -> None:
         # Register our custom widget type with the name 'longpath'
         settings.register_type(LONG_PATH_SETTING, SettingLongPath)
-        settings.register_type("options", SettingOptionsWithValue)
+        settings.register_type(OPTIONS_SETTING, SettingOptionsWithValue)
 
         self.reader_settings.build_settings(settings)
         self.config.write()
@@ -252,8 +252,8 @@ class BarksReaderApp(App):
         self.reader_settings.set_config(
             self.config, Path(self.get_application_config()), self._config_info.app_data_dir
         )
-        self.reader_settings.validate_settings()
         self.reader_settings.set_barks_panels_dir()
+        self.reader_settings.validate_settings()
 
         self._comics_database.set_inset_info(
             self.reader_settings.file_paths.get_comic_inset_files_dir(),

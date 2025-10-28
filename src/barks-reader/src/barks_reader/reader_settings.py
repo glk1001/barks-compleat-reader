@@ -114,7 +114,7 @@ _READER_SETTINGS_JSON = f"""
    }},
    {{
       "title": "Log Level",
-      "desc": "Level of logging information.",
+      "desc": "Level of logging information. You need to restart the app before this takes effect.",
       "type": "options",
       "section": "{BARKS_READER_SECTION}",
       "key": "{LOG_LEVEL}",
@@ -239,7 +239,9 @@ class ReaderSettings:
             )
 
     def _get_png_barks_panels_dir(self) -> Path:
-        return Path(self._config.get(BARKS_READER_SECTION, PNG_BARKS_PANELS_DIR))
+        return Path(
+            os.path.expandvars(self._config.get(BARKS_READER_SECTION, PNG_BARKS_PANELS_DIR))
+        )
 
     def _get_jpg_barks_panels_source(self) -> Path:
         return self.reader_files_dir / JPG_BARKS_PANELS_ZIP

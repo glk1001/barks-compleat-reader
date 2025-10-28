@@ -10,6 +10,7 @@ RAW_ACTION_BAR_SIZE_Y = 45
 APP_TITLE = "The Compleat Barks Disney Reader"
 
 LONG_PATH_SETTING = "longpath"
+OPTIONS_SETTING = "options"
 NO_OVERRIDES_SUFFIX = "-no-overrides"
 COMIC_PAGE_ONE = ROMAN_NUMERALS[1]
 CLOSE_TO_ZERO = 0.001
