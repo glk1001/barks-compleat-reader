@@ -51,7 +51,7 @@ _READER_SETTINGS_JSON = f"""
    {{
       "title": "Fantagraphics Directory",
       "desc": "Fantagraphics comic zips directory.",
-      "type": "string",
+      "type": "{LONG_PATH_SETTING}",
       "section": "{BARKS_READER_SECTION}",
       "key": "{FANTA_DIR}"
    }},
