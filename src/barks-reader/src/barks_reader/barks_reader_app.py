@@ -42,7 +42,7 @@ from barks_reader.reader_ui_classes import (
 )
 from barks_reader.reader_utils import get_best_window_height_fit, get_win_width_from_height
 from barks_reader.screen_metrics import SCREEN_METRICS, log_screen_metrics
-from barks_reader.settings_fix import SettingLongPath
+from barks_reader.settings_fix import SettingLongPath, SettingOptionsWithValue
 from barks_reader.settings_notifier import settings_notifier
 from barks_reader.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
 
@@ -199,6 +199,7 @@ class BarksReaderApp(App):
     def build_settings(self, settings: Settings) -> None:
         # Register our custom widget type with the name 'longpath'
         settings.register_type(LONG_PATH_SETTING, SettingLongPath)
+        settings.register_type("options", SettingOptionsWithValue)
 
         self.reader_settings.build_settings(settings)
         self.config.write()

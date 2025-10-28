@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, override
@@ -34,11 +35,14 @@ USE_DERE_INSTEAD_OF_THEAH = "use_dere"
 USE_BLANK_EYEBALLS_FOR_BOMBIE = "use_blank_eyeballs"
 USE_GLK_FIREBUG_ENDING = "use_glk_firebug_ending"
 IS_FIRST_USE_OF_READER = "is_first_use_of_reader"
+LOG_LEVEL = "log_level"
 SHOW_TOP_VIEW_TITLE_INFO = "show_tree_view_title_info"
 SHOW_FUN_VIEW_TITLE_INFO = "show_fun_view_title_info"
 MAIN_WINDOW_HEIGHT = "main_window_height"
 MAIN_WINDOW_LEFT = "main_window_left"
 MAIN_WINDOW_TOP = "main_window_top"
+
+LOG_LEVEL_OPTIONS = ["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
 # noinspection LongLine
 _READER_SETTINGS_JSON = f"""
@@ -107,6 +111,15 @@ _READER_SETTINGS_JSON = f"""
       "type": "bool",
       "section": "{BARKS_READER_SECTION}",
       "key": "{IS_FIRST_USE_OF_READER}"
+   }},
+   {{
+      "title": "Log Level",
+      "desc": "Level of logging information.",
+      "type": "options",
+      "section": "{BARKS_READER_SECTION}",
+      "key": "{LOG_LEVEL}",
+      "options": {json.dumps(LOG_LEVEL_OPTIONS)},
+      "value": "INFO"
    }},
    {{
       "title": "Main Window Height",
@@ -337,6 +350,13 @@ class ReaderSettings:
     def _get_is_first_use_of_reader(self) -> bool:
         return self._config.getboolean(BARKS_READER_SECTION, IS_FIRST_USE_OF_READER)
 
+    @property
+    def log_level(self) -> str:
+        return self._get_log_level()
+
+    def _get_log_level(self) -> str:
+        return self._config.get(BARKS_READER_SECTION, LOG_LEVEL)
+
     @is_first_use_of_reader.setter
     def is_first_use_of_reader(self, value: bool) -> None:
         logger.info(f"Setting is_first_use_of_reader = {value}.")
@@ -401,6 +421,10 @@ class ReaderSettings:
         return True
 
     @staticmethod
+    def _is_valid_log_level(_log_level: str) -> bool:
+        return True
+
+    @staticmethod
     def _is_valid_main_window_height(_main_window_height: int) -> bool:
         return True
 
@@ -461,6 +485,7 @@ class BuildableReaderSettings(ReaderSettings):
             SHOW_TOP_VIEW_TITLE_INFO: self._get_show_top_view_title_info,
             SHOW_FUN_VIEW_TITLE_INFO: self._get_show_fun_view_title_info,
             IS_FIRST_USE_OF_READER: self._get_is_first_use_of_reader,
+            LOG_LEVEL: self._get_log_level,
             MAIN_WINDOW_HEIGHT: self._get_main_window_height,
             MAIN_WINDOW_LEFT: self._get_main_window_left,
             MAIN_WINDOW_TOP: self._get_main_window_top,
@@ -485,6 +510,7 @@ class BuildableReaderSettings(ReaderSettings):
             SHOW_TOP_VIEW_TITLE_INFO: self._is_valid_show_top_view_title_info,
             SHOW_FUN_VIEW_TITLE_INFO: self._is_valid_show_fun_view_title_info,
             IS_FIRST_USE_OF_READER: self._is_valid_is_first_use_of_reader,
+            LOG_LEVEL: self._is_valid_log_level,
             MAIN_WINDOW_HEIGHT: self._is_valid_main_window_height,
             MAIN_WINDOW_LEFT: self._is_valid_main_window_left,
             MAIN_WINDOW_TOP: self._is_valid_main_window_top,
@@ -516,6 +542,7 @@ class BuildableReaderSettings(ReaderSettings):
                 SHOW_TOP_VIEW_TITLE_INFO: 1,
                 SHOW_FUN_VIEW_TITLE_INFO: 1,
                 IS_FIRST_USE_OF_READER: 1,
+                LOG_LEVEL: "INFO",
                 MAIN_WINDOW_HEIGHT: 0,
                 MAIN_WINDOW_LEFT: -1,
                 MAIN_WINDOW_TOP: -1,

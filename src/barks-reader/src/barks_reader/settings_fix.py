@@ -2,9 +2,11 @@ from pathlib import Path
 
 from kivy.clock import Clock
 from kivy.lang import Builder
-from kivy.properties import ObjectProperty
+from kivy.properties import ObjectProperty  # ty: ignore[unresolved-import]
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
 from kivy.uix.popup import Popup
-from kivy.uix.settings import SettingItem
+from kivy.uix.settings import SettingItem, SettingOptions
 from kivy.uix.widget import Widget
 
 KV_SETTINGS_OVERRIDE = """
@@ -138,10 +140,7 @@ class SettingLongPathPopup(Popup):
 
 
 class SettingLongPath(SettingItem):
-    """Custom setting widget for displaying long paths that are.
-
-    shortened in the middle to prevent truncation.
-    """
+    """Custom widget for long paths that are shortened in the middle to prevent truncation."""
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
@@ -167,3 +166,66 @@ class SettingLongPath(SettingItem):
         popup.ids.current_selection.text = f'"{setting_dir}"'
 
         popup.open()
+
+
+class SettingOptionsWithValue(SettingOptions):
+    """Override class to fix Kivy SettingOptions not displaying value in settings panel."""
+
+    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+        super().__init__(**kwargs)
+        Clock.schedule_once(self._delayed_update, 0.1)
+
+    def _delayed_update(self, _dt: float) -> None:
+        self._update_value_display()
+
+    def _update_value_display(self) -> None:
+        if not hasattr(self, "value") or not self.value:
+            return
+
+        value_text = str(self.value)
+
+        # Navigate the structure.
+        if hasattr(self, "children") and len(self.children) > 0:
+            main_box = self.children[0]
+
+            if hasattr(main_box, "children") and len(main_box.children) >= 2:  # noqa: PLR2004
+                # Get the FIRST BoxLayout (index 0 in the list, which is the rightmost one).
+                # This is the empty BoxLayout meant for the value display.
+                content_box = main_box.children[0]
+
+                # Make sure it's actually a BoxLayout.
+                if type(content_box).__name__ == BoxLayout.__name__:
+                    # Check for existing label.
+                    value_label = None
+                    for child in content_box.children:
+                        if isinstance(child, Label):
+                            value_label = child
+                            break
+
+                    if value_label is not None:
+                        value_label.text = value_text
+                    else:
+                        # Create new label with proper styling - use size_hint_x=1 for full width.
+                        value_label = Label(
+                            text=value_text, size_hint=(1, 1), halign="center", valign="middle"
+                        )
+                        value_label.bind(size=value_label.setter("text_size"))
+                        content_box.add_widget(value_label)
+
+    def _create_popup(self, instance) -> None:  # noqa: ANN001
+        super()._create_popup(instance)
+
+    def _set_option(self, instance: Label) -> None:
+        super()._set_option(instance)
+
+        # Manually ensure it's saved to config.
+        if hasattr(self, "panel") and self.panel:
+            config = self.panel.config
+            if config:
+                config.set(self.section, self.key, self.value)
+                config.write()
+
+        Clock.schedule_once(lambda _dt: self._update_value_display(), 0.1)
+
+    def on_value(self, _instance, _value) -> None:  # noqa: ANN001
+        self._update_value_display()
