@@ -40,7 +40,7 @@ class CmdArgs:
     def __init__(
         self,
         description: str,
-        required_args: CmdArgNames = None,
+        required_args: CmdArgNames | None = None,
         extra_args: list[ExtraArg] | None = None,
     ) -> None:
         self._description = description

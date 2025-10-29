@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import re
 import zipfile
-from _pydatetime import UTC
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
@@ -115,11 +114,14 @@ def get_clean_path(file: Path) -> Path:
     return Path(str(file).replace(str(Path.home()), "$HOME"))
 
 
-def get_timestamp(file: Path) -> float:
-    if file.is_symlink():
-        return file.lstat().st_mtime
+def get_timestamp(file: Path | zipfile.Path) -> float:
+    if isinstance(file, zipfile.Path):
+        logger.warning(f'Trying to get stat for zipfile.Path: "{file}".')
 
-    return file.stat().st_mtime
+    if file.is_symlink():
+        return file.lstat().st_mtime  # ty: ignore[possibly-missing-attribute]
+
+    return file.stat().st_mtime  # ty: ignore[possibly-missing-attribute]
 
 
 def get_max_timestamp(files: list[Path]) -> float:

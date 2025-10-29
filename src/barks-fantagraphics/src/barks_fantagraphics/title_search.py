@@ -87,7 +87,7 @@ class BarksTitleSearch:
             if info.issue_name != Issues.EXTRAS and word in info.get_title_str().lower()
         ]
 
-    def get_tags_matching_prefix(self, prefix: str) -> list[Tags | TagGroups]:
+    def get_tags_matching_prefix(self, prefix: str) -> list[Tags] | list[Tags | TagGroups]:
         prefix = prefix.lower()
         if not prefix:
             return []
@@ -115,12 +115,19 @@ class BarksTitleSearch:
             tag_group = BARKS_TAG_GROUPS_ALIASES[alias_tag_str]
             tags = BARKS_TAG_GROUPS[tag_group]
             for tag in tags:
-                title_set.update(BARKS_TAGGED_TITLES[tag])
+                if type(tag) is not TagGroups:
+                    title_set.update(BARKS_TAGGED_TITLES[tag])
+                else:
+                    assert isinstance(tag, TagGroups)
+                    # TODO: Aren't enums iterable??
+                    # noinspection PyTypeChecker
+                    for t in tag:  # ty: ignore[not-iterable]
+                        title_set.update(BARKS_TAGGED_TITLES[t])
             return tag_group, sorted(title_set)
 
         return None, []
 
-    def _get_titles_with_one_char_tag_search(self, prefix: str) -> list[Tags]:
+    def _get_titles_with_one_char_tag_search(self, prefix: str) -> list[Tags | TagGroups]:
         assert len(prefix) == 1
         all_aliases = list(BARKS_TAG_ALIASES.keys()) + list(BARKS_TAG_GROUPS_ALIASES.keys())
         return self._get_tags_from_aliases(prefix, all_aliases)

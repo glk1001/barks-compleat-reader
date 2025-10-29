@@ -35,6 +35,7 @@ from .panel_bounding import (
 )
 
 if TYPE_CHECKING:
+    import zipfile
     from collections.abc import Callable
 
 THIS_SCRIPT_DIR = Path(inspect.getfile(inspect.currentframe())).resolve().parent
@@ -161,8 +162,8 @@ def _get_srce_and_dest_pages_in_order(comic: ComicBook, get_full_paths: bool) ->
 
         file_num_str = f"{file_section_num}-{file_page_num:02d}"
         if get_full_paths:
-            srce_file = get_full_srce_filepath(comic, page)
-            dest_file = comic.get_dest_image_dir() / (file_num_str + DEST_FILE_EXT)
+            srce_file = str(get_full_srce_filepath(comic, page))
+            dest_file = str(comic.get_dest_image_dir() / (file_num_str + DEST_FILE_EXT))
         else:
             srce_file = get_relative_srce_filepath(page)
             dest_file = file_num_str + DEST_FILE_EXT
@@ -238,7 +239,7 @@ def get_srce_dest_map(
     required_dim: RequiredDimensions,
     pages: SrceAndDestPages,
 ) -> dict[str, str | int | dict[str, str]]:
-    srce_dest_map: dict[str, str | int | dict[str, str | dict[str, str]]] = {
+    srce_dest_map: dict[str, str | int | dict[str, str]] = {
         "srce_dirname": Path(comic.dirs.srce_dir).name,
         "dest_dirname": comic.get_dest_rel_dirname(),
         "srce_min_panels_bbox_width": srce_dim.min_panels_bbox_width,
@@ -264,7 +265,7 @@ def get_srce_dest_map(
 
 @dataclass
 class SrceDependency:
-    file: Path
+    file: Path | zipfile.Path
     timestamp: float
     independent: bool
     mod_type: ModifiedType = ModifiedType.ORIGINAL

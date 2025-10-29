@@ -201,7 +201,7 @@ class ComicBook:
 
     def get_final_srce_story_files(
         self,
-        page_types: None | list[PageType],
+        page_types: list[PageType],
     ) -> list[tuple[Path, ModifiedType]]:
         return self._get_story_files_with_mods(page_types, self.get_final_srce_story_file)
 
