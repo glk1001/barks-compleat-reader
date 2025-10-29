@@ -50,7 +50,7 @@ class TestBarksTags(unittest.TestCase):
 
         # Test that bad enum is caught.
         # noinspection PyTypeChecker
-        invalid_data_content[Tags.FIRE].append("NOT_A_TITLE_ENUM_MEMBER")
+        invalid_data_content[Tags.FIRE].append("NOT_A_TITLE_ENUM_MEMBER")  # ty: ignore[invalid-argument-type]
 
         with patch.dict(barks_tags.BARKS_TAGGED_TITLES, invalid_data_content, clear=True):
             with pytest.raises(AssertionError, match=r"Invalid title .* in BARKS_TAGGED_TITLES"):
@@ -125,8 +125,9 @@ class TestBarksTags(unittest.TestCase):
 
         invalid_data_content = deepcopy(barks_tags.BARKS_TAGGED_PAGES)
         # Test invalid int page is caught.
+        # Page as int, not str
         # noinspection PyTypeChecker
-        invalid_data_content[key_to_test] = [123]  # Page as int, not str
+        invalid_data_content[key_to_test] = [123]  # ty: ignore[invalid-assignment]
 
         with patch.dict(barks_tags.BARKS_TAGGED_PAGES, invalid_data_content, clear=True):
             with pytest.raises(AssertionError, match=r"Page .* must be a string"):
@@ -188,7 +189,7 @@ class TestBarksTags(unittest.TestCase):
 
         # Test invalid Tag enum is caught.
         # noinspection PyTypeChecker
-        assert get_sorted_tagged_titles(MockNonExistentTag.NON_EXISTENT) == []
+        assert get_sorted_tagged_titles(MockNonExistentTag.NON_EXISTENT) == []  # ty: ignore[invalid-argument-type]
 
     def test_barks_tag_categories_titles_computation(self) -> None:
         # BARKS_TAG_CATEGORIES_TITLES is computed at module import.

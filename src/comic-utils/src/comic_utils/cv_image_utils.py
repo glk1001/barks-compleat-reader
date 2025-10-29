@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import cv2 as cv
+import cv2 as cv  # type: ignore[unresolved-import]
 import numpy as np
 
 
