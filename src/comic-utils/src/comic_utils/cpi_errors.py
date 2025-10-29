@@ -20,4 +20,5 @@ class StaleDataWarning(Warning):
     """
 
     def __str__(self):
+        # noinspection LongLine
         return "CPI data is out of date. To accurately inflate to today's dollars, you must run `cpi.update()`."

@@ -257,7 +257,7 @@ class Index(BaseObject):
         return date(self.year, self.period.month, 1)
 
 
-# noinspection PyTypeChecker
+# noinspection PyTypeChecker,LongLine
 class Series(BaseObject):
     # noinspection SpellCheckingInspection
     """

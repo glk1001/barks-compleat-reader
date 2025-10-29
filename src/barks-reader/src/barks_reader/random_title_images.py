@@ -398,7 +398,7 @@ if __name__ == "__main__":
     settings = BuildableReaderSettings()
 
     # ConfigParser is Protocol - ty should be OK with this.
-    # noinspection PyTypeChecker
+    # noinspection PyTypeChecker,LongLine
     settings.set_config(barks_config, config_info.app_config_path, config_info.app_data_dir)  # ty: ignore[invalid-argument-type]
     settings.set_barks_panels_dir()
 

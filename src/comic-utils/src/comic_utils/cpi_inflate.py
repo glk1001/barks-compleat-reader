@@ -69,7 +69,7 @@ periodicities = models.Periodicity
 items = models.Item
 
 
-# noinspection PyShadowingNames
+# noinspection PyShadowingNames,LongLine
 def get(
     year_or_month,
     survey=DEFAULTS_SERIES_ATTRS["survey"],
@@ -104,7 +104,7 @@ def get(
     return series_obj.get_index_by_date(year_or_month, period_type=period_type).value
 
 
-# noinspection GrazieInspection,PyShadowingNames,SpellCheckingInspection
+# noinspection GrazieInspection,PyShadowingNames,SpellCheckingInspection,LongLine
 def inflate(
     value,
     year_or_month,

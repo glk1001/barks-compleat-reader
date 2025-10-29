@@ -348,7 +348,7 @@ def get_restored_srce_dependencies(comic: ComicBook, srce_page: CleanPage) -> li
         ),
     )
 
-    # noinspection PyProtectedMember
+    # noinspection PyProtectedMember,LongLine
     if srce_page.page_type in RESTORABLE_PAGE_TYPES and not comic._is_added_fixes_special_case(  # noqa: SLF001
         get_page_str(srce_page.page_num),
         srce_page.page_type,

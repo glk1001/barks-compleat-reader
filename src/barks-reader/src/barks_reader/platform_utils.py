@@ -189,6 +189,7 @@ class WindowManager:
             self._win32_hwnd = found_hwnd
 
             # Load a fresh instance of user32.dll to avoid conflicts with Kivy's Win32 calls,
+            # noinspection LongLine
             user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[unresolved-attribute]
 
             # Set up Win32 functions with proper type signatures
@@ -216,7 +217,7 @@ class WindowManager:
             logger.warning(f"Could not initialize Win32 handles: {e}")
             self._win32_hwnd = None
 
-    # noinspection PyPep8Naming,PyUnresolvedReferences
+    # noinspection PyPep8Naming,PyUnresolvedReferences,LongLine
     @staticmethod
     def _find_win32_hwnd_by_enum_windows() -> Any:  # noqa: ANN401
         # Find our window by enumerating all windows and matching process ID.

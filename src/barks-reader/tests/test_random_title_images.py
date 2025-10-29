@@ -165,6 +165,7 @@ def test_empty_title_list_returns_emergency_image(
     assert "emergency" in result.filename.name
 
 
+# noinspection LongLine
 def test_candidate_selection_prefers_not_mru(random_image_selector: RandomTitleImages) -> None:
     """Test that the candidate selection logic prefers images not in the MRU list."""
     possible_files = [

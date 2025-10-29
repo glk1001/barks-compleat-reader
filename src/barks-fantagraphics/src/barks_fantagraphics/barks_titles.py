@@ -669,6 +669,7 @@ ZERO_HERO = "Zero Hero"
 RICH_TOMASSO___ON_COLORING_BARKS = "Rich Tomasso - On Coloring Barks"
 DON_AULT___FANTAGRAPHICS_INTRODUCTION = "Don Ault - Fantagraphics Introduction"
 DON_AULT___LIFE_AMONG_THE_DUCKS = "Don Ault - Life Among the Ducks"
+# noinspection LongLine
 MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD = "Maggie Thompson - Comics Readers Find Comic Book Gold"
 GEORGE_LUCAS___AN_APPRECIATION = "George Lucas - An Appreciation"
 CENSORSHIP_FIXES_AND_OTHER_CHANGES = "Censorship Fixes and Other Changes"

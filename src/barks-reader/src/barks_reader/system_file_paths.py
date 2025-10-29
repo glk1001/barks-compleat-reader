@@ -9,6 +9,8 @@ class SystemFilePaths:
 
         self._reader_icon_files_dir: Path | None = None
         self._app_window_icon_path: Path | None = None
+        self._various_files_dir: Path | None = None
+        self._error_background_path: Path | None = None
 
         self._action_bar_icons_dir: Path | None = None
         self._close_icon_path: Path | None = None
@@ -22,7 +24,6 @@ class SystemFilePaths:
         self._goto_end_icon_path: Path | None = None
         self._hamburger_menu_icon_path: Path | None = None
 
-        self._various_files_dir: Path | None = None
         self._up_arrow_path: Path | None = None
         self._down_arrow_path: Path | None = None
         self._transparent_blank_path: Path | None = None
@@ -33,13 +34,15 @@ class SystemFilePaths:
         self._fantagraphics_overrides_root_dir: Path | None = None
         self._fantagraphics_panel_segments_root_dir: Path | None = None
 
-    def set_barks_reader_files_dir(self, reader_files_dir: Path) -> None:
+    def set_barks_reader_files_dir(self, reader_files_dir: Path, check_files: bool = True) -> None:
         logger.info(f'SystemFilePaths: Setting reader_files_dir = "{reader_files_dir}".')
 
         self._barks_reader_files_dir = reader_files_dir
 
         self._reader_icon_files_dir = self._barks_reader_files_dir / "Reader Icons"
         self._app_window_icon_path = self._reader_icon_files_dir / "app-icon.png"
+        self._various_files_dir = self._barks_reader_files_dir / "Various"
+        self._error_background_path = self._various_files_dir / "error-background.png"
 
         self._action_bar_icons_dir = self._reader_icon_files_dir / "ActionBar Icons"
         self._close_icon_path = self._action_bar_icons_dir / "icon-close.png"
@@ -53,7 +56,6 @@ class SystemFilePaths:
         self._goto_end_icon_path = self._action_bar_icons_dir / "icon-goto-end.png"
         self._hamburger_menu_icon_path = self._action_bar_icons_dir / "menu-hamburger-icon.png"
 
-        self._various_files_dir = self._barks_reader_files_dir / "Various"
         self._up_arrow_path = self._various_files_dir / "up-arrow.png"
         self._down_arrow_path = self._various_files_dir / "down-arrow.png"
         self._transparent_blank_path = self._various_files_dir / "transparent-blank.png"
@@ -68,7 +70,8 @@ class SystemFilePaths:
             self._barks_reader_files_dir / "Fantagraphics-panel-segments"
         )
 
-        self._check_reader_files_dirs()
+        if check_files:
+            self._check_reader_files_dirs()
 
     def _check_reader_files_dirs(self) -> None:
         dirs_to_check = [
@@ -82,6 +85,7 @@ class SystemFilePaths:
 
         files_to_check = [
             self._app_window_icon_path,
+            self._error_background_path,
             self._close_icon_path,
             self._collapse_icon_path,
             self._refresh_arrow_icon_path,
@@ -99,7 +103,7 @@ class SystemFilePaths:
             self._intro_image_path,
             self._favourite_titles_path,
         ]
-        self._check_files(files_to_check)
+        self.check_files(files_to_check)
 
     @staticmethod
     def _check_dirs(dirs_to_check: list[Path | None]) -> None:
@@ -110,7 +114,7 @@ class SystemFilePaths:
                 raise FileNotFoundError(msg)
 
     @staticmethod
-    def _check_files(files_to_check: list[Path | None]) -> None:
+    def check_files(files_to_check: list[Path | None]) -> None:
         for file_path in files_to_check:
             assert file_path
             if not file_path.is_file():
@@ -129,6 +133,14 @@ class SystemFilePaths:
         assert self._reader_icon_files_dir
         return self._reader_icon_files_dir
 
+    def get_barks_reader_app_window_icon_path(self) -> Path:
+        assert self._app_window_icon_path
+        return self._app_window_icon_path
+
+    def get_error_background_path(self) -> Path:
+        assert self._error_background_path
+        return self._error_background_path
+
     def get_up_arrow_file(self) -> Path:
         assert self._up_arrow_path
         return self._up_arrow_path
@@ -136,10 +148,6 @@ class SystemFilePaths:
     def get_down_arrow_file(self) -> Path:
         assert self._down_arrow_path
         return self._down_arrow_path
-
-    def get_barks_reader_app_window_icon_path(self) -> Path:
-        assert self._app_window_icon_path
-        return self._app_window_icon_path
 
     def get_barks_reader_close_icon_file(self) -> Path:
         assert self._close_icon_path

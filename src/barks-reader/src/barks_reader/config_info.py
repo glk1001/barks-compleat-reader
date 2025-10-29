@@ -40,6 +40,7 @@ class ConfigInfo:
         self.app_data_dir: Path = None
         self.kivy_config_dir: Path = None
         self.app_log_path: Path = None
+        self.error_background_path: Path = None
 
         self._setup_app_config_dir()
 
