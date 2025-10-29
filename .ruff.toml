@@ -18,3 +18,13 @@ exclude = [
         "S101", "S311",
         "TD002", "TD003",
     ]
+
+    exclude = [
+        "scripts/actionbar_example.py",
+        "scripts/scrolling_list.py",
+        "scripts/test-logging.py",
+        "scripts/test_comic_archive.py",
+    ]
+
+    [lint.per-file-ignores]
+        "scripts/*" = ["INP001"]

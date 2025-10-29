@@ -1,4 +1,4 @@
-# ruff: noqa: T201, INP001
+# ruff: noqa: T201
 
 import sys
 from configparser import ConfigParser
@@ -51,7 +51,8 @@ if __name__ == "__main__":
         config = ConfigParser()
         config.read(config_info.app_config_path)
         reader_settings = ReaderSettings()
-        reader_settings.set_config(config, config_info.app_config_path, config_info.app_data_dir)
+        # noinspection PyTypeChecker
+        reader_settings.set_config(config, config_info.app_config_path, config_info.app_data_dir)  # ty: ignore[invalid-argument-type]
         reader_settings.force_barks_panels_dir(use_png_images=True)
 
         comic_database = cmd_args.get_comics_database(for_building_comics=False)

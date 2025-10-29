@@ -51,11 +51,12 @@ class MinimalConfigOptions:
 
 
 def start_logging(cfg_info: ConfigInfo, _args: CmdArgs, min_options: MinimalConfigOptions) -> None:
-    from kivy import Config, kivy_home_dir
+    # 'kivy.Config' is defined under an 'if'.
+    from kivy import Config, kivy_home_dir  # ty: ignore[possibly-missing-import]
 
     setup_loguru(cfg_info, min_options.log_level)
 
-    Config.set("kivy", "log_level", log_level.lower())
+    Config.set("kivy", "log_level", log_level.lower())  # ty: ignore[possibly-missing-attribute]
     redirect_kivy_logs()
 
     logger.info("*** Starting barks reader ***")
@@ -187,10 +188,10 @@ def update_window_size(args: CmdArgs, min_options: MinimalConfigOptions) -> None
     set_window_size(win_height, win_left, win_top)
 
     if min_options.reader_app_icon_file:
-        from kivy import Config
+        from kivy import Config  # ty: ignore[possibly-missing-import]
 
         logger.debug(f'App icon file: "{min_options.reader_app_icon_file}".')
-        Config.set("kivy", "window_icon", min_options.reader_app_icon_file)
+        Config.set("kivy", "window_icon", min_options.reader_app_icon_file)  # ty: ignore[possibly-missing-attribute]
 
 
 def get_main_win_info_from_cmd_args(args: CmdArgs) -> tuple[int, int, int]:
@@ -237,7 +238,7 @@ def get_main_win_from_screen_metrics() -> tuple[int, int, int]:
 
 
 def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
-    from kivy import Config
+    from kivy import Config  # ty: ignore[possibly-missing-import]
 
     # noinspection LongLine
     if PLATFORM != Platform.WIN:
@@ -252,17 +253,17 @@ def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
         # ZeroDivisionError: float division by zero
 
         # Don't show anything until the app decides to.
-        Config.set("graphics", "window_state", "hidden")
+        Config.set("graphics", "window_state", "hidden")  # ty: ignore[possibly-missing-attribute]
 
     # Note: Can't use dp(RAW_ACTION_BAR_SIZE_Y) here because importing 'dp'
     #       initializes the Window with wrong dimensions.
     win_width = get_win_width_from_height(win_height - RAW_ACTION_BAR_SIZE_Y)
     logger.debug(f"Main win width: {win_width}.")
 
-    Config.set("graphics", "left", win_left)
-    Config.set("graphics", "top", win_top)
-    Config.set("graphics", "width", win_width)
-    Config.set("graphics", "height", win_height)
+    Config.set("graphics", "left", win_left)  # ty: ignore[possibly-missing-attribute]
+    Config.set("graphics", "top", win_top)  # ty: ignore[possibly-missing-attribute]
+    Config.set("graphics", "width", win_width)  # ty: ignore[possibly-missing-attribute]
+    Config.set("graphics", "height", win_height)  # ty: ignore[possibly-missing-attribute]
 
     logger.info(
         f"Set window position and size: ({win_left}, {win_top}), ({win_width}, {win_height})."

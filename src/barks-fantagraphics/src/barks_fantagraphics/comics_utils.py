@@ -110,7 +110,7 @@ def get_abspath_from_relpath(relpath: Path, root_dir: Path = BARKS_ROOT_DIR) -> 
     return root_dir / relpath
 
 
-def get_clean_path(file: Path) -> Path:
+def get_clean_path(file: Path | zipfile.Path) -> Path:
     return Path(str(file).replace(str(Path.home()), "$HOME"))
 
 

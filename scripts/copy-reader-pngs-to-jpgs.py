@@ -1,4 +1,3 @@
-# ruff: noqa: INP001
 import sys
 import zipfile
 from collections.abc import Callable
@@ -22,7 +21,9 @@ def get_backup_filename(file: Path) -> Path:
     return Path(str(file) + "_" + get_timestamp_str(file))
 
 
-def convert_and_zip_file(file_path: Path, archive: zipfile.ZipFile, dest_subdir: Path) -> None:
+def convert_and_zip_file(
+    file_path: Path, archive: zipfile.ZipFile, dest_subdir: zipfile.Path
+) -> None:
     if not file_path.is_file():
         msg = f'Could not find source file "{file_path}".'
         raise FileNotFoundError(msg)
@@ -52,7 +53,7 @@ def convert_and_zip_file(file_path: Path, archive: zipfile.ZipFile, dest_subdir:
         raise Exception(msg) from e  # noqa: TRY002
 
 
-def zip_file_as_jpg(srce_file: Path, archive: zipfile.ZipFile, dest_file: Path) -> None:
+def zip_file_as_jpg(srce_file: Path, archive: zipfile.ZipFile, dest_file: zipfile.Path) -> None:
     image = open_pil_image_for_reading(srce_file).convert("RGB")
 
     buffer = get_pil_image_as_jpg_bytes(image)
@@ -85,7 +86,7 @@ def traverse_and_process_dirs(
         file_count = 0
         for dirpath, _, filenames in root_directory.walk():
             logger.info(f'Processing directory "{dirpath}"...')
-            dest_subdir = Path(str(dirpath)[len(str(root_directory)) + 1 :])
+            dest_subdir = zipfile.Path(str(dirpath)[len(str(root_directory)) + 1 :])
             logger.info(f'Adding files to dest zip under subdir "{dest_subdir}"...')
 
             for filename in filenames:
@@ -115,7 +116,8 @@ if __name__ == "__main__":
         config = ConfigParser()
         config.read(config_info.app_config_path)
         reader_settings = ReaderSettings()
-        reader_settings.set_config(config, config_info.app_config_path, config_info.app_data_dir)
+        # noinspection PyTypeChecker
+        reader_settings.set_config(config, config_info.app_config_path, config_info.app_data_dir)  # ty: ignore[invalid-argument-type]
         reader_settings.force_barks_panels_dir(use_png_images=True)
 
         png_dir = reader_settings.file_paths.get_default_png_barks_panels_source()

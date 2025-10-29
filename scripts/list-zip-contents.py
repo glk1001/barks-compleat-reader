@@ -39,7 +39,7 @@ def list_zip_contents(zip_filepath: Path) -> None:
     except zipfile.BadZipFile:
         print(f"Error: '{zip_filepath}' is not a valid zip file.", file=sys.stderr)
         sys.exit(1)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"An unexpected error occurred: {e}", file=sys.stderr)
         sys.exit(1)
 

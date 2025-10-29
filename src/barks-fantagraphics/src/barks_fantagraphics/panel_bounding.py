@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 from loguru import logger
 
@@ -13,7 +14,7 @@ from .comics_utils import dest_file_is_older_than_srce, get_abbrev_path
 from .page_classes import CleanPage, ComicDimensions, RequiredDimensions, SrceAndDestPages
 from .panel_bounding_boxes import BoundingBox, get_panels_bounding_box_from_file
 
-warn_on_panels_bbox_height_less_than_av = True
+warn_on_panels_bbox_height_less_than_av: Literal[True, False] = True
 
 
 def get_required_panels_bbox_width_height(

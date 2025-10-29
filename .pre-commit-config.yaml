@@ -1,8 +1,15 @@
 repos:
       - repo: https://github.com/astral-sh/ruff-pre-commit
-        rev: v0.13.2 # Use the latest stable Ruff version
+        rev: v0.14.2 # Use the latest stable Ruff version
         hooks:
           - id: ruff-check # Runs the linter
 #            args: [--fix] # Automatically fixes fixable issues
           - id: ruff-format # Applies formatting
-
+      - repo: local
+        hooks:
+          - id: ty-check
+            name: ty check
+            entry: uv run ty check # or python -m ty check if you don't use uv
+            language: system
+            types: [python]
+            pass_filenames: false
