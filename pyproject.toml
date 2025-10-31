@@ -25,6 +25,7 @@ dependencies = [
     "pandas>=2.3.2",
     "pillow==11.3.0",
     "pygments==2.19.2",
+    "pyminizip>=0.2.6",
     "pyobjc-core==11.1 ; sys_platform == 'darwin'",
     "pyobjc-framework-cocoa==11.1 ; sys_platform == 'darwin'",
     "pypiwin32==223 ; sys_platform == 'win32'",

@@ -27,6 +27,7 @@ dependencies = [
     { name = "pandas" },
     { name = "pillow" },
     { name = "pygments" },
+    { name = "pyminizip" },
     { name = "pyobjc-core", marker = "sys_platform == 'darwin'" },
     { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
     { name = "pypiwin32", marker = "sys_platform == 'win32'" },
@@ -73,6 +74,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.3.2" },
     { name = "pillow", specifier = "==11.3.0" },
     { name = "pygments", specifier = "==2.19.2" },
+    { name = "pyminizip", specifier = ">=0.2.6" },
     { name = "pyobjc-core", marker = "sys_platform == 'darwin'", specifier = "==11.1" },
     { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'", specifier = "==11.1" },
     { name = "pypiwin32", marker = "sys_platform == 'win32'", specifier = "==223" },
@@ -435,6 +437,12 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/34/48/00322b48e7adb665d04303b487454eb0c13a76ec0af8da20f452098fcc12/pyinstrument-5.1.1-cp313-cp313-win32.whl", hash = "sha256:cf2d8933e2aeaa02d4cb6279d83ef11ee882fb243fff96e3378153a730aadd6e", size = 124288, upload-time = "2025-08-12T11:35:00.514Z" },
     { url = "https://files.pythonhosted.org/packages/f5/14/d56515a110f74799aefc7489c1578ce4d99a4d731309559a427f954e7abc/pyinstrument-5.1.1-cp313-cp313-win_amd64.whl", hash = "sha256:2402683a92617066b13a6d48f904396dcd15938016875b392534df027660eed4", size = 125041, upload-time = "2025-08-12T11:35:01.913Z" },
 ]
+
+[[package]]
+name = "pyminizip"
+version = "0.2.6"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1b/b4/b5584325a03acfbca05922700ab9195b5875a936dc23960224087088a409/pyminizip-0.2.6.tar.gz", hash = "sha256:0a954dd2a65fd72c8b827b83fb806fb4f301075a6ec43e207d3345ab15843a7a", size = 261210, upload-time = "2021-12-21T02:12:19.134Z" }
 
 [[package]]
 name = "pyobjc-core"
