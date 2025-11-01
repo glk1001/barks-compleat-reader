@@ -376,8 +376,8 @@ def _log_screen_settings() -> None:
 def _show_error_message(msg: str, config_info: ConfigInfo) -> None:
     show_error(
         f"The relevant error message is:"
-        f"\n\n\n{msg}\n\n\n"
-        f'Other potentially helpful info is logged in "{config_info.app_log_path}"'
+        f'\n\n\n"{msg}"\n\n\n'
+        f'Other potentially helpful info is logged in "{config_info.app_log_path}".'
         f"\n\n\nWhen you close this window, the Barks Reader app will terminate.",
         config_info.error_background_path,
     )

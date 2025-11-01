@@ -12,6 +12,7 @@ include = [
     "**/*.ini",
     "**/*.ttf",
     "**/*.db",
+    "**/pyarmor_runtime_000000/**/*",
 ]
 exclude = [
     "data/**/*",

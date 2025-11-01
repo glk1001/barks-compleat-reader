@@ -77,7 +77,7 @@ def do_filtered_collect(
         print(f'Created "{zf.output_zip}" with {len(zf.file_paths)} files.')
 
 
-def test_read_zipfile_path(archive_filename: str, password: str) -> None:
+def check_read_zipfile_paths(archive_filename: str, password: str) -> None:
     with zipfile.ZipFile(archive_filename, "r") as zf:
         zf.setpassword(password.encode("utf-8"))
         zipfile_path = zipfile.Path(zf)
@@ -133,4 +133,4 @@ if __name__ == "__main__":
     print("Reading with zipfile.Path...")
     print("=" * 60)
 
-    test_read_zipfile_path(zip_filename, ZIP_PASSWORD)
+    check_read_zipfile_paths(zip_filename, ZIP_PASSWORD)

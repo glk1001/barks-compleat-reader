@@ -9,6 +9,14 @@
 .idea/**/usage.statistics.xml
 .idea/**/shelf
 
+# Password files
+src/barks-reader/src/barks_reader/open_zip_archive.py.plaintext
+src/barks-reader/src/barks_reader/open_zip_archive.py.bak
+*.plaintext
+
+# Build artifacts
+dist_obfuscated/
+
 # AWS User-specific
 .idea/**/aws.xml
 

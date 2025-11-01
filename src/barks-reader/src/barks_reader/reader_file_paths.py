@@ -18,6 +18,8 @@ from barks_fantagraphics.barks_titles import (
 from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT, ZIP_FILE_EXT
 from loguru import logger
 
+# noinspection PyUnresolvedReferences
+from barks_reader.open_zip_archive import get_opened_zip_file  # ty: ignore[unresolved-import]
 from barks_reader.reader_consts_and_types import NO_OVERRIDES_SUFFIX, PanelPath
 from barks_reader.reader_utils import get_all_files_in_dir
 
@@ -125,7 +127,7 @@ class ReaderFilePaths:
         panels_root: Path | zipfile.Path
 
         if is_zip:
-            self._barks_panels_zip = zipfile.ZipFile(self._barks_panels_source)
+            self._barks_panels_zip = get_opened_zip_file(self._barks_panels_source)
             panels_root = zipfile.Path(self._barks_panels_zip)
         else:
             panels_root = self._barks_panels_source

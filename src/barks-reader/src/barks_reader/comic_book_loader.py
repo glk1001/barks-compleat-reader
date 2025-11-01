@@ -26,6 +26,9 @@ from PIL import Image as PilImage
 from PIL import ImageOps
 
 from barks_reader.fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
+
+# noinspection PyUnresolvedReferences
+from barks_reader.open_zip_archive import get_opened_zip_file  # ty: ignore[unresolved-import]
 from barks_reader.reader_ui_classes import set_kivy_busy_cursor, set_kivy_normal_cursor
 from barks_reader.reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
 
@@ -141,7 +144,7 @@ class ComicBookLoader:
             )
             if self._fanta_volume_archive.has_overrides():
                 assert self._fanta_volume_archive.override_archive_filename
-                self._fanta_volume_archive.override_archive = zipfile.ZipFile(
+                self._fanta_volume_archive.override_archive = get_opened_zip_file(
                     self._fanta_volume_archive.override_archive_filename
                 )
 

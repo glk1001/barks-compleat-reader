@@ -1,5 +1,5 @@
+import os
 import sys
-import zipfile
 from collections.abc import Callable
 from configparser import ConfigParser
 from pathlib import Path
@@ -11,19 +11,19 @@ from barks_reader.config_info import ConfigInfo  # make sure this is before any 
 from barks_reader.reader_settings import ReaderSettings
 from comic_utils.comic_consts import JPG_FILE_EXT
 from comic_utils.pil_image_utils import get_pil_image_as_jpg_bytes, open_pil_image_for_reading
+from comic_utils.pyminizip_file_collector import MiniZipFileCollector
 from loguru import logger
 from loguru_config import LoguruConfig
 
 APP_LOGGING_NAME = "zip"
+ZIP_PASSWORD = os.environ["BARKS_PANELS_PW"]
 
 
 def get_backup_filename(file: Path) -> Path:
     return Path(str(file) + "_" + get_timestamp_str(file))
 
 
-def convert_and_zip_file(
-    file_path: Path, archive: zipfile.ZipFile, dest_subdir: zipfile.Path
-) -> None:
+def convert_and_zip_file(file_path: Path, archive: MiniZipFileCollector, dest_subdir: Path) -> None:
     if not file_path.is_file():
         msg = f'Could not find source file "{file_path}".'
         raise FileNotFoundError(msg)
@@ -43,7 +43,7 @@ def convert_and_zip_file(
                 f'Writing file "{get_abbrev_path(file_path)}"'
                 f' to zip: "{get_abbrev_path(dest_file)}"...'
             )
-            archive.write(file_path, str(dest_file))
+            archive.add_file(file_path, str(dest_file))
 
     except FileNotFoundError:
         msg = f'File not found during processing: "{file_path}"'
@@ -53,19 +53,19 @@ def convert_and_zip_file(
         raise Exception(msg) from e  # noqa: TRY002
 
 
-def zip_file_as_jpg(srce_file: Path, archive: zipfile.ZipFile, dest_file: zipfile.Path) -> None:
+def zip_file_as_jpg(srce_file: Path, archive: MiniZipFileCollector, dest_file: Path) -> None:
     image = open_pil_image_for_reading(srce_file).convert("RGB")
 
     buffer = get_pil_image_as_jpg_bytes(image)
     buffer.seek(0)
 
-    archive.writestr(str(dest_file), buffer.read())
+    archive.add_str(str(dest_file), buffer.read())
 
 
 def traverse_and_process_dirs(
     root_directory: Path,
     dest_zip: Path,
-    file_processor_func: Callable[[Path, zipfile.ZipFile, zipfile.Path], None],
+    file_processor_func: Callable[[Path, MiniZipFileCollector, Path], None],
 ) -> None:
     """Traverses a directory tree and runs a processor function on each file.
 
@@ -82,12 +82,13 @@ def traverse_and_process_dirs(
     logger.info(f'Copying all barks panel pngs to zip: "{dest_zip}"...')
     logger.info(f'Starting traversal of directory: "{root_directory}"...')
 
-    with zipfile.ZipFile(dest_zip, "w") as dest_zip_archive:
+    with MiniZipFileCollector(dest_zip, ZIP_PASSWORD, base_dir=None) as dest_zip_archive:
         file_count = 0
         for dirpath, _, filenames in root_directory.walk():
             logger.info(f'Processing directory "{dirpath}"...')
-            dest_subdir = zipfile.Path(str(dirpath)[len(str(root_directory)) + 1 :])
+            dest_subdir = str(dirpath)[len(str(root_directory)) + 1 :]
             logger.info(f'Adding files to dest zip under subdir "{dest_subdir}"...')
+            dest_subdir = Path(dest_subdir)
 
             for filename in filenames:
                 full_path = dirpath / filename

@@ -16,8 +16,8 @@ extra-paths = [
 
 [src]
 exclude = [
-    "scraps",
+    "**/scraps",
+    "**/pyarmor_runtime_000000",
     "scripts/test_comic_archive.py",
-    "src/barks-fantagraphics/scraps",
     "src/comic-utils/src/comic_utils/cpi_models.py",
 ]

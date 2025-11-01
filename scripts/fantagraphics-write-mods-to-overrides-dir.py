@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import os
 import sys
-import zipfile
 from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -16,6 +16,7 @@ from barks_fantagraphics.fanta_comics_info import (
 from barks_fantagraphics.pages import get_page_mod_type, get_sorted_srce_and_dest_pages
 from comic_utils.comic_consts import JPG_FILE_EXT
 from comic_utils.pil_image_utils import get_downscaled_jpg, get_pil_image_as_jpg_bytes
+from comic_utils.pyminizip_file_collector import MiniZipFileCollector
 from loguru import logger
 from loguru_config import LoguruConfig
 from PIL import Image
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
 Image.MAX_IMAGE_PIXELS = None
 
 APP_LOGGING_NAME = "wmod"
+ZIP_PASSWORD = os.environ["BARKS_PANELS_PW"]
 
 
 class FileType(Enum):
@@ -60,7 +62,7 @@ def get_mod_file(comic: ComicBook, srce: CleanPage) -> tuple[Path, FileType]:
 
 def downscale_and_zip(
     srce_file: Path,
-    override_archive: zipfile.ZipFile,
+    override_archive: MiniZipFileCollector,
     arcname: Path,
     res_width: int,
     res_height: int,
@@ -73,16 +75,16 @@ def downscale_and_zip(
     buffer = get_pil_image_as_jpg_bytes(resized_image)
     buffer.seek(0)
 
-    override_archive.writestr(str(arcname), buffer.read())
+    override_archive.add_str(str(arcname), buffer.read())
 
 
-def just_zip(srce_file: Path, override_archive: zipfile.ZipFile, arcname: Path) -> None:
+def just_zip(srce_file: Path, override_archive: MiniZipFileCollector, arcname: Path) -> None:
     logger.debug(f'Zip "{srce_file}" to jpg "{arcname}" in zip...')
-    override_archive.write(srce_file, arcname)
+    override_archive.add_file(srce_file, str(arcname))
 
 
 def process_comic_book(
-    comic_book: ComicBook, override_archive: zipfile.ZipFile, res_width: int, res_height: int
+    comic_book: ComicBook, override_archive: MiniZipFileCollector, res_width: int, res_height: int
 ) -> int:
     """Process a single comic book, copying or downscaling its modified files."""
     srce_mod_files = get_srce_mod_files(comic_book)
@@ -105,17 +107,17 @@ def process_comic_book(
 
 def process_volume(volume: int, comics_db: ComicsDatabase) -> None:
     """Process all comics in a given volume, preparing the override zip."""
-    override_zip = FANTA_VOLUME_OVERRIDES_ROOT / FANTA_OVERRIDE_ZIPS[volume]
+    override_zip = FANTA_VOLUME_OVERRIDES_ROOT / Path(FANTA_OVERRIDE_ZIPS[volume])
     logger.info(f'Preparing overrides zip for volume {volume}: "{override_zip}"')
 
-    logger.info("Deleting all existing zip...")
+    logger.info("Deleting existing zip.")
     override_zip.unlink(missing_ok=True)
 
     res_width, res_height = get_volume_page_resolution(volume)
 
     titles = [t[0] for t in comics_database.get_configured_titles_in_fantagraphics_volume(volume)]
 
-    with zipfile.ZipFile(override_zip, "w") as override_archive:
+    with MiniZipFileCollector(override_zip, ZIP_PASSWORD, base_dir=None) as override_archive:
         total_files_zipped = 0
         for title in titles:
             comic_book = comics_db.get_comic_book(title)
@@ -140,7 +142,7 @@ if __name__ == "__main__":
         logger.error(error_msg)
         sys.exit(1)
 
-    # This global is used by the loguru-config.yaml file
+    # This global is used by the 'loguru-config.yaml' file.
     log_level = cmd_args.get_log_level()
     LoguruConfig.load(Path(__file__).parent / "log-config.yaml")
 
