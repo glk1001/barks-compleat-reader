@@ -16,6 +16,7 @@ from barks_reader.reader_settings import BARKS_READER_SECTION, FANTA_DIR
 
 ZIP_CONFIGS_SUBDIR = "Configs/"
 ZIP_READER_FILES_SUBDIR = "Reader Files/"
+ZIP_DATA_INSTALLER_FILE = "barks-reader-data.zip"
 
 
 def main() -> None:
@@ -47,7 +48,7 @@ def main() -> None:
             logger.info("Found app config path. Exiting - nothing to do.")
             return
 
-        installer_zip = barks_reader_exe.parent / "barks-reader-installer.zip"
+        installer_zip = barks_reader_exe.parent / ZIP_DATA_INSTALLER_FILE
         logger.info(f'Checking for installer zip: "{installer_zip}".')
         if not installer_zip.is_file():
             logger.critical(f'Could not find the Barks Reader installer zip: "{installer_zip}".')
