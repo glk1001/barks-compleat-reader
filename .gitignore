@@ -3,25 +3,20 @@
 # Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
 
 # User-specific stuff
+**/pyarmor_runtime_000000/
+src/barks-reader/src/barks_reader/open_zip_archive.py
 .venv/
 .idea/**/workspace.xml
 .idea/**/tasks.xml
 .idea/**/usage.statistics.xml
 .idea/**/shelf
 
-# Password files
-src/barks-reader/src/barks_reader/open_zip_archive.py.plaintext
-src/barks-reader/src/barks_reader/open_zip_archive.py.bak
-*.plaintext
-
-# Build artifacts
-dist_obfuscated/
-
 # AWS User-specific
 .idea/**/aws.xml
 
 # Generated files
 .idea/**/contentModel.xml
+__pycache__/
 
 # Sensitive or high-churn files
 .idea/**/dataSources/

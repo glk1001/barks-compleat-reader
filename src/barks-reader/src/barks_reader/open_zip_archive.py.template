@@ -1,0 +1,51 @@
+"""
+ZIP archive handler with password protection
+"""
+
+import sys
+import zipfile
+from pathlib import Path
+
+PASSWORD = "{{ZIP_PASSWORD}}"
+BARKS_ZIP_PW_ENV_VAR = "BARKS_ZIPS_PW"
+BARKS_READER_PACKAGE = "barks_reader."
+
+
+def get_opened_zip_file(zip_path: Path) -> zipfile.ZipFile | None:
+    """Open password-protected ZIP archive."""
+    if not _validate_caller():
+        return None
+
+    try:
+        archive = zipfile.ZipFile(zip_path, "r")
+        archive.setpassword(PASSWORD.encode())
+        return archive
+    except Exception as e:
+        raise RuntimeError(f"Failed to open archive: {e}")
+
+
+def _validate_caller() -> bool:
+    """Check if caller is from barks_reader package (light validation)."""
+    try:
+        # Frame 0: _validate_caller
+        # Frame 1: get_opened_zip_file
+        # Frame 2: actual caller
+        caller_frame = sys._getframe(2)  # noqa: SLF001
+        caller_module = caller_frame.f_globals.get("__name__", "")
+
+        # Check if caller is from barks_reader package.
+        if not caller_module.startswith(BARKS_READER_PACKAGE):
+            # Don't actually block, just make it obvious this is internal.
+            import warnings  # noqa: PLC0415
+
+            warnings.warn(f'Unexpected module access from caller "{caller_module}".', stacklevel=3)
+            return False
+
+    except (AttributeError, ValueError, KeyError):
+        import warnings  # noqa: PLC0415
+
+        warnings.warn(f"Can't validate {__name__} access - allow it through.", stacklevel=3)
+        return False
+    else:
+        return True
+

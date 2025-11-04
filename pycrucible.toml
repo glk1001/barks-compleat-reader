@@ -13,6 +13,7 @@ include = [
     "**/*.ttf",
     "**/*.db",
     "**/pyarmor_runtime_000000/**/*",
+    "**/pyarmor_runtime_000000/**/*.pyd",
 ]
 exclude = [
     "data/**/*",
@@ -24,7 +25,7 @@ exclude = [
     ".git/**/*",
     "**/*.pyc",
     "**/*.pyo",
-    "**/*.pyd",
+#    "**/*.pyd",
 ]
 
 [env]
