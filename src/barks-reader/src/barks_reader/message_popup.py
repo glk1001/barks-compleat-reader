@@ -7,39 +7,47 @@ from tkinter.font import Font
 from PIL import Image
 
 
-def show_error(message: str, bgnd_image_file: Path) -> None:
+def show_error(
+    message: str, bgnd_image_file: Path | None, window_title: str = "Barks Reader Error"
+) -> None:
+    show_message(message, "An Unexpected Error Has Occurred", bgnd_image_file, window_title)
+
+
+def show_message(
+    message: str, heading: str, bgnd_image_file: Path | None, window_title: str
+) -> None:
     root = tk.Tk()
     root.withdraw()
 
-    _show_custom_error(
+    _show_custom_message(
         root,
-        "Barks Reader Error",
-        "An Unexpected Error Has Occurred",
+        window_title,
+        heading,
         message,
         1000,
         800,
-        str(bgnd_image_file),
+        bgnd_image_file,
     )
     root.mainloop()
 
 
-def _show_custom_error(
+def _show_custom_message(
     root: tk.Tk,
     title: str,
     heading: str,
     message: str,
     width: int,
     height: int,
-    bgnd_image_file: str,
+    bgnd_image_file: Path | None,
 ) -> None:
-    error_window = tk.Toplevel(root)
-    error_window.title(title)
+    msg_window = tk.Toplevel(root)
+    msg_window.title(title)
 
     # Withdraw window before positioning
-    error_window.withdraw()
+    msg_window.withdraw()
 
-    error_window.geometry(f"{width}x{height}")
-    error_window.resizable(width=False, height=False)
+    msg_window.geometry(f"{width}x{height}")
+    msg_window.resizable(width=False, height=False)
 
     # Calculate canvas height (subtract space for button)
     canvas_height = height - 100  # Leave space for the button
@@ -52,22 +60,23 @@ def _show_custom_error(
     opacity = 0.2  # 0.0 = fully transparent, 1.0 = fully opaque
 
     # Create a canvas that fills the content area without padding
-    canvas = tk.Canvas(error_window, width=width - 20, height=canvas_height, highlightthickness=0)
+    canvas = tk.Canvas(msg_window, width=width - 20, height=canvas_height, highlightthickness=0)
     canvas.pack(padx=10, pady=(10, 0), fill="both", expand=False)
 
-    image_width, image_height, photo_image = _get_scaled_icon_image(
-        canvas_actual_width, canvas_height, bgnd_image_file, opacity
-    )
+    if bgnd_image_file:
+        image_width, image_height, photo_image = _get_scaled_icon_image(
+            canvas_actual_width, canvas_height, bgnd_image_file, opacity
+        )
 
-    # Store reference to prevent garbage collection.
-    error_window.photo_image = photo_image  # ty: ignore[unresolved-attribute]
+        # Store reference to prevent garbage collection.
+        msg_window.photo_image = photo_image  # ty: ignore[unresolved-attribute]
 
-    # Center the image on the canvas.
-    x_offset = (canvas_actual_width - image_width) // 2
-    y_offset = (canvas_height - image_height) // 2
+        # Center the image on the canvas.
+        x_offset = (canvas_actual_width - image_width) // 2
+        y_offset = (canvas_height - image_height) // 2
 
-    # Draw the resized icon on the canvas.
-    canvas.create_image(x_offset, y_offset, image=photo_image, anchor="nw")
+        # Draw the resized icon on the canvas.
+        canvas.create_image(x_offset, y_offset, image=photo_image, anchor="nw")
 
     # Use the actual canvas dimensions for centering text.
     canvas_center_x = canvas_actual_width // 2
@@ -102,7 +111,7 @@ def _show_custom_error(
 
     # Function to close both windows.
     def close_dialog() -> None:
-        error_window.destroy()
+        msg_window.destroy()
         root.quit()
 
     # Create a bigger OK button with custom styling.
@@ -110,33 +119,33 @@ def _show_custom_error(
     style.configure("Big.TButton", font=button_font, foreground="blue")
 
     ok_button = ttk.Button(
-        error_window, text="OK", command=close_dialog, style="Big.TButton", width=3
+        msg_window, text="OK", command=close_dialog, style="Big.TButton", width=3
     )
     ok_button.pack(
         side="bottom", padx=0, ipadx=5, pady=18, ipady=15
     )  # ipady adds internal padding vertically
 
     # Handle window close button (X).
-    error_window.protocol("WM_DELETE_WINDOW", close_dialog)
+    msg_window.protocol("WM_DELETE_WINDOW", close_dialog)
 
     # Update to get proper dimensions.
-    error_window.update_idletasks()
+    msg_window.update_idletasks()
 
     # Center the window on the screen.
-    screen_width = error_window.winfo_screenwidth()
-    screen_height = error_window.winfo_screenheight()
+    screen_width = msg_window.winfo_screenwidth()
+    screen_height = msg_window.winfo_screenheight()
     x = (screen_width // 2) - (width // 2)
     y = (screen_height // 2) - (height // 2)
-    error_window.geometry(f"{width}x{height}+{x}+{y}")
+    msg_window.geometry(f"{width}x{height}+{x}+{y}")
 
     # Now show the window.
-    error_window.deiconify()
+    msg_window.deiconify()
 
 
 def _get_scaled_icon_image(
-    canvas_actual_width: int, canvas_height: int, icon_file: str, opacity: float
+    canvas_actual_width: int, canvas_height: int, icon_file: Path, opacity: float
 ) -> tuple[int, int, tk.PhotoImage]:
-    pil_image = Image.open(icon_file)
+    pil_image = Image.open(str(icon_file))
 
     # Convert to RGBA if not already.
     if pil_image.mode != "RGBA":
@@ -183,4 +192,5 @@ if __name__ == "__main__":
         Path.home()
         / "Books/Carl Barks/Compleat Barks Disney Reader/Reader Files/Various/error-background.png"
     )
+    # background_image_file = None  # noqa: ERA001
     show_error(msg, background_image_file)

@@ -14,10 +14,14 @@ APP_NAME = "barks-reader"
 
 BARKS_READER_INSTALLER_FAILED_FLAG_FILE = "barks-reader-installer-failed.flag"
 IOS_CONFIG_DIR = "~/Documents"
-LINUX_CONFIG_DIR = os.environ.get("XDG_CONFIG_HOME", "~/.config")
-LINUX_APP_DIR = "~/.local/share"
-MACOS_CONFIG_DIR = "~/Library/Application Support"
-WINDOWS_CONFIG_DIR = os.environ.get("APPDATA", "")
+
+LINUX_FANTA_VOLUMES_SEARCH_PATH = ["~/opt/barks-reader", "~/Documents", "~/Books"]
+WINDOWS_FANTA_VOLUMES_SEARCH_PATH = ["~/BarksReader", "~/Documents", "~/Books"]
+MACOS_FANTA_VOLUMES_SEARCH_PATH = [
+    "~/Applications/BarksReader",
+    "~/Documents",
+    "~/Books",
+]
 
 # This app will hook into kivy logging, so there is no kivy console
 # logging required.
@@ -34,6 +38,12 @@ class ConfigInfo:
 
     # noinspection PyTypeChecker
     def __init__(self) -> None:
+        main_script_dir = Path(__file__).parent.parent.parent.parent.parent
+        assert (main_script_dir / "main.py").is_file()
+        self.is_running_under_pycrucible = main_script_dir.name == "pycrucible_payload"
+
+        self.app_dir = main_script_dir.parent
+
         self._app_name = APP_NAME
         self.app_config_dir: Path = None
         self.app_config_path: Path = None
@@ -80,8 +90,11 @@ class ConfigInfo:
         return executable_name
 
     def _get_app_config_dir(self) -> Path:
-        app_env_var = f"{self._app_name.upper()}_CONFIG_DIR"
-        if app_env_var in os.environ:
+        if not self.is_running_under_pycrucible:
+            app_env_var = f"{self._app_name.upper().replace('-', '_')}_CONFIG_DIR"
+            if app_env_var not in os.environ:
+                msg = f'Not running under pycrucible. Expected config env var "{app_env_var}".'
+                raise RuntimeError(msg)
             return Path(os.environ[app_env_var])
 
         return self._get_user_app_config_dir()
@@ -89,7 +102,7 @@ class ConfigInfo:
     def _get_user_app_config_dir(self) -> Path:
         # Determine and return the user_data_dir.
         if PLATFORM == Platform.IOS:
-            data_dir = Path(IOS_CONFIG_DIR).expanduser() / self._app_name
+            config_dir = Path(IOS_CONFIG_DIR).expanduser() / self._app_name
         elif PLATFORM == Platform.ANDROID:
             pass
             # from jnius import autoclass
@@ -100,32 +113,24 @@ class ConfigInfo:
             # context = cast("android.content.Context", PythonActivity.mActivity)
             # # noinspection PyTypeHints
             # file_p = cast("java.io.File", context.getFilesDir())
-            # data_dir = Path(file_p.getAbsolutePath())
-        elif PLATFORM == Platform.WIN:
-            data_dir = Path(WINDOWS_CONFIG_DIR) / self._app_name
-        elif PLATFORM == Platform.MACOSX:
-            data_dir = Path(MACOS_CONFIG_DIR).expanduser()
-            data_dir /= self._app_name
-        else:  # _platform == 'linux' or anything else...:
-            data_dir = Path(LINUX_CONFIG_DIR).expanduser()
-            data_dir /= self._app_name
+            # config_dir = Path(file_p.getAbsolutePath())
+        else:  # anything else...:
+            config_dir = self.app_dir
+            config_dir /= "config"
 
         # Need to sort out Android and installer requirements.
         # noinspection PyUnboundLocalVariable
-        if not data_dir.is_dir():
-            data_dir.mkdir(parents=True, exist_ok=True)
-
-        return data_dir
+        return config_dir
 
     def _get_app_data_dir(self) -> Path:
-        app_env_var = f"{self._app_name.upper()}_DATA_DIR"
-        if app_env_var in os.environ:
+        if not self.is_running_under_pycrucible:
+            app_env_var = f"{self._app_name.upper().replace('-', '_')}_DATA_DIR"
+            if app_env_var not in os.environ:
+                msg = f'Not running under pycrucible. Expected data env var "{app_env_var}".'
+                raise RuntimeError(msg)
             return Path(os.environ[app_env_var])
 
-        if PLATFORM in [Platform.IOS, Platform.ANDROID, Platform.WIN, Platform.MACOSX]:
-            return self._get_user_app_config_dir()
-
-        return Path(LINUX_APP_DIR).expanduser() / self._app_name
+        return self.app_dir
 
 
 def barks_reader_installer_failed() -> bool:
@@ -189,3 +194,40 @@ def _run_loguru_config(cfg_info: ConfigInfo) -> None:
     except:  # noqa: E722
         logger.exception("LoguruConfig failed: ")
         sys.exit(1)
+
+
+def find_fanta_volumes_dirpath(config_info: ConfigInfo, fanta_volumes_dirname: str) -> Path | None:
+    if PLATFORM == Platform.WIN:
+        return _find_fanta_volumes(
+            config_info, fanta_volumes_dirname, WINDOWS_FANTA_VOLUMES_SEARCH_PATH
+        )
+    if PLATFORM == Platform.MACOSX:
+        return _find_fanta_volumes(
+            config_info, fanta_volumes_dirname, MACOS_FANTA_VOLUMES_SEARCH_PATH
+        )
+
+    return _find_fanta_volumes(config_info, fanta_volumes_dirname, LINUX_FANTA_VOLUMES_SEARCH_PATH)
+
+
+def _find_fanta_volumes(
+    config_info: ConfigInfo, fanta_volumes_dirname: str, search_path: list[str]
+) -> Path | None:
+    search_path = [str(config_info.app_data_dir), *search_path]
+    return _find_dir_on_search_path(search_path, fanta_volumes_dirname)
+
+
+def _find_dir_on_search_path(search_path: list[str], target_dirname: str) -> Path | None:
+    for path in search_path:
+        dirpath = Path(path).expanduser()
+        if not dirpath.is_dir():
+            continue
+
+        candidates = _find_dir_under_directory(dirpath, target_dirname)
+        if candidates:
+            return candidates[0]
+
+    return None
+
+
+def _find_dir_under_directory(start_path: Path, target_dirname: str) -> list[Path]:
+    return [path for path in start_path.iterdir() if path.is_dir() and path.name == target_dirname]
