@@ -10,6 +10,7 @@ from barks_reader.config_info import ConfigInfo  # make sure this is before any 
 from barks_reader.image_file_getter import TitleImageFileGetter
 from barks_reader.reader_file_paths import FileTypes
 from barks_reader.reader_settings import ReaderSettings
+from dotenv import load_dotenv
 from loguru import logger
 from loguru_config import LoguruConfig
 
@@ -29,6 +30,8 @@ SHORT_FILE_TYPE_NAMES = {
     FileTypes.SPLASH: "sp",
 }
 RELEVANT_FILE_TYPES = [ft for ft in FileTypes if ft != FileTypes.NONTITLE]
+
+load_dotenv(".env.runtime")
 
 
 if __name__ == "__main__":

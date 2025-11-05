@@ -3,7 +3,7 @@
 
 set -e
 
-BUILD_ENV_FILE=".build-env"
+BUILD_ENV_FILE=".env.runtime"
 TARGET_DIR="src/barks-reader/src/barks_reader"
 TARGET="${TARGET_DIR}/open_zip_archive.py"
 TEMPLATE="${TARGET}.template"
