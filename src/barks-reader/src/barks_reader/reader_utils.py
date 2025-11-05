@@ -16,6 +16,7 @@ from barks_reader.screen_metrics import get_approximate_taskbar_height
 
 if TYPE_CHECKING:
     from barks_fantagraphics.pages import CleanPage
+    from kivy.core.image import Texture
 
     from barks_reader.reader_consts_and_types import PanelPath
 
@@ -42,7 +43,7 @@ def get_title_str_from_reader_icon_file(icon_path: Path) -> str:
     return parts[0]
 
 
-def get_image_stream(file: PanelPath) -> io.BytesIO:
+def get_image_stream(file: PanelPath) -> Texture:
     from kivy.core.image import Image as CoreImage  # noqa: PLC0415
 
     if isinstance(file, Path):
@@ -182,3 +183,23 @@ def get_concat_page_nums_str(page_nums_str: list[str]) -> str:
         raise ValueError(msg) from e
     else:
         return str(intspan(page_nums))
+
+
+def get_centred_position_on_primary_monitor(win_width: int, win_height: int) -> tuple[int, int]:
+    """Position window on primary monitor, centered."""
+    import screeninfo  # noqa: PLC0415
+
+    # noinspection PyBroadException
+    try:
+        monitors = screeninfo.get_monitors()
+        primary = next((m for m in monitors if m.is_primary), monitors[0] if monitors else None)
+        if primary:
+            return (
+                primary.x + (primary.width - win_width) // 2,
+                primary.y + (primary.height - win_height) // 2,
+            )
+
+    except Exception:  # noqa: BLE001, S110
+        pass
+
+    return 100, 100

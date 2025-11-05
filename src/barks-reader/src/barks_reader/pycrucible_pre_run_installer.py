@@ -12,9 +12,11 @@ from barks_reader.config_info import (
     remove_barks_reader_installer_failed_flag,
     set_barks_reader_installer_failed_flag,
 )
-from barks_reader.message_popup import show_message
 from barks_reader.minimal_config_info import get_minimal_config_options
 from barks_reader.platform_info import PLATFORM
+from barks_reader.pycrucible_pre_run_installer_show_message import (
+    show_installer_message,
+)
 from barks_reader.reader_settings import BARKS_READER_SECTION, FANTA_DIR
 
 ZIP_CONFIGS_SUBDIR = "Configs/"
@@ -74,31 +76,16 @@ def main() -> None:
 
 def show_success_message(config_info: ConfigInfo, fanta_volumes_dir: Path | None) -> None:
     minimal_config_options = get_minimal_config_options(config_info)
-    data_zips = ["barks-reader-data.zip"]
+    data_zips = [Path("barks-reader-data.zip")]
 
-    fanta_msg = (
-        f'The Fantagraphics Carl Barks Library was found at:\n\n"{fanta_volumes_dir}".'
-        if fanta_volumes_dir
-        else "The Fantagraphics Carl Barks Library was NOT found."
-    )
-
-    heading = "The Barks Reader installer successfully completed."
-    msg = f"""\n
-{fanta_msg}\n
-The main Barks Reader app will now start.\n
-Once you're happy with the app you can delete the data installer zips:\n
-        "{", ".join(data_zips)}".\n
-Default config files have been written to\n
-        "{config_info.app_config_dir}"\n
-and logging will go to\n
-        "{config_info.app_log_path}".
-"""
-
-    show_message(
-        msg,
-        heading,
-        bgnd_image_file=minimal_config_options.success_background_path,
-        window_title="Barks Reader Installer Success",
+    show_installer_message(
+        "Installation Complete",
+        fanta_volumes_dir,
+        data_zips,
+        config_info.app_config_dir,
+        config_info.app_log_path,
+        size=(800, 950),
+        background_image_file=minimal_config_options.success_background_path,
     )
 
 
