@@ -8,8 +8,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from barks_reader.kivy_standalone_show_message import show_standalone_popup
-from barks_reader.reader_utils import get_centred_position_on_primary_monitor
 from loguru import logger
 
 DEFAULT_ERROR_POPUP_SIZE = (800, 1000)
@@ -23,6 +21,7 @@ def show_error_popup(
     timeout: float = 0,
     severity: str = "error",
     details: str = "",
+    show_details: bool = False,
     size: tuple[int, int] = DEFAULT_ERROR_POPUP_SIZE,
 ) -> None:
     """Show an error popup with severity levels and action buttons.
@@ -35,9 +34,13 @@ def show_error_popup(
         timeout: Auto-close after this many seconds (0 = wait for user)
         severity: Error severity level: "critical", "error", "warning", "info"
         details: Additional detailed information (collapsible)
+        show_details: If True, drop down the details box
         size: Size of popup window
 
     """
+    from barks_reader.kivy_standalone_show_message import show_standalone_popup
+    from barks_reader.reader_utils import get_centred_position_on_primary_monitor
+
     x, y = get_centred_position_on_primary_monitor(*size)
 
     # Set the window pos and size now to avoid moving window flicker.
@@ -54,6 +57,7 @@ def show_error_popup(
         log_path=log_path,
         severity=severity,
         details=details,
+        show_details=show_details,
     )
 
     show_standalone_popup(
@@ -71,6 +75,7 @@ def _get_error_content(
     log_path: Path,
     severity: str = "error",
     details: str = "",
+    show_details: bool = False,
 ) -> Any:  # noqa: ANN401
     from kivy.clock import Clock
     from kivy.core.clipboard import Clipboard
@@ -82,6 +87,8 @@ def _get_error_content(
     from kivy.uix.scrollview import ScrollView
     from kivy.uix.widget import Widget
 
+    from barks_reader.reader_formatter import get_text_with_markup_stripped
+
     banner_header_font_size = sp(19)
     section_header_font_size = sp(16)
     info_text_font_size = sp(14)
@@ -91,16 +98,23 @@ def _get_error_content(
         """Content widget for error popups with severity levels and action buttons."""
 
         def __init__(  # noqa: PLR0915
-            self, title: str, message: str, severity: str = "error", details: str = ""
+            self,
+            error_title: str,
+            error_message: str,
+            error_severity: str = "error",
+            error_details: str = "",
+            show_error_details: bool = False,
         ) -> None:
             super().__init__(orientation="vertical", padding=0, spacing=10)
-            self.title = title
-            self.message = message
+            self.title = error_title
+            self.message = error_message
             self.log_path = log_path
-            self.details = details
-            self.full_message = f"{message}\n\n{details}" if details else message
+            self.details = error_details
+            self.full_message = get_text_with_markup_stripped(
+                f"{self.message}\n\n{self.details}" if self.details else self.message
+            )
             self.popup_ref = None
-            self.severity = severity.lower()
+            self.severity = error_severity.lower()
             self.details_visible = False
 
             # ========== BACKGROUND & SHADOW ==========
@@ -143,13 +157,13 @@ def _get_error_content(
             with severity_banner.canvas.before:  # ty: ignore[possibly-missing-attribute]
                 Color(*color_scheme["bg"])
                 # Rounded corners on *all* sides for capsule-like look
-                self.severity_bg = RoundedRectangle(
+                self.severity_bgnd = RoundedRectangle(
                     pos=severity_banner.pos,
                     size=severity_banner.size,
                     radius=[(12, 12), (12, 12), (12, 12), (12, 12)],
                 )
 
-            severity_banner.bind(pos=self._update_severity_bg, size=self._update_severity_bg)
+            severity_banner.bind(pos=self._update_severity_bgnd, size=self._update_severity_bgnd)
             self.add_widget(severity_banner)
 
             # Add a bit of spacing so the white card doesn't overlap banner corners
@@ -206,11 +220,12 @@ def _get_error_content(
             # --- Error Message section ---
             scroll_content.add_widget(tinted_heading("Error Message"))
             self.label_msg = Label(
-                text=message,
+                text=self.message,
+                font_size=info_text_font_size,
+                markup=True,
                 size_hint_y=None,
                 halign="left",
                 valign="top",
-                font_size=info_text_font_size,
                 color=[0, 0, 0, 1],
             )
             self.label_msg.bind(width=update_text_size)
@@ -219,7 +234,7 @@ def _get_error_content(
 
             # --- Log File section ---
             scroll_content.add_widget(tinted_heading("Log File"))
-            log_msg = f'Check the installer log for more info: [b]"{self.log_path}".[/b]'
+            log_msg = f'Check the installer log for more info:\n\n[b]"{self.log_path}".[/b]'
             self.label_log_path = Label(
                 text=log_msg,
                 font_size=info_text_font_size,
@@ -237,10 +252,11 @@ def _get_error_content(
             self.heading_details = tinted_heading("Error Details")
             self.label_details = Label(
                 text=self.details.strip(),
+                font_size=info_text_font_size,
+                markup=True,
                 size_hint_y=None,
                 halign="left",
                 valign="top",
-                font_size=info_text_font_size,
                 color=[0, 0, 0, 1],
             )
             self.label_details.bind(width=update_text_size)
@@ -262,6 +278,8 @@ def _get_error_content(
                 btn_toggle.bind(on_press=self.toggle_details)
                 self.add_widget(btn_toggle)
                 self.btn_toggle = btn_toggle
+                if show_error_details:
+                    self.toggle_details()
 
             # --- Action buttons ---
             button_layout = BoxLayout(size_hint_y=None, height=50, spacing=10)
@@ -288,10 +306,10 @@ def _get_error_content(
             self.shadow_rect.pos = (self.x + 5, self.y - 5)
             self.shadow_rect.size = self.size
 
-        def _update_severity_bg(self, instance: Widget, _) -> None:  # noqa: ANN001
+        def _update_severity_bgnd(self, instance: Widget, _) -> None:  # noqa: ANN001
             """Keep severity banner background aligned with label."""
-            self.severity_bg.pos = instance.pos
-            self.severity_bg.size = instance.size
+            self.severity_bgnd.pos = instance.pos
+            self.severity_bgnd.size = instance.size
 
         def _update_rect(self, instance: Widget, _value) -> None:  # noqa: ANN001
             """Update background rectangle for severity banner."""
@@ -321,6 +339,7 @@ def _get_error_content(
 
         def save_to_file(self, *_args) -> None:  # noqa: ANN002
             """Save error message to a file."""
+            # noinspection PyBroadException
             try:
                 # Create error logs directory
                 log_dir = self.log_path.parent
@@ -358,12 +377,13 @@ def _get_error_content(
 
         def copy_to_clipboard(self, *_args) -> None:  # noqa: ANN002
             """Copy error message to clipboard."""
+            # noinspection PyBroadException
             try:
                 Clipboard.copy(self.full_message)
                 logger.info("Error message copied to clipboard")
 
                 if self.popup_ref:
-                    self.popup_ref.title = "Error Information: Copied to Clipboard"
+                    self.popup_ref.title = "Error Information: Copied to clipboard"
                     Clock.schedule_once(
                         lambda _dt: setattr(self.popup_ref, "title", ""),
                         2.0,
@@ -376,7 +396,7 @@ def _get_error_content(
             if self.popup_ref:
                 self.popup_ref.dismiss()
 
-    return _ErrorContent(title, message, severity, details)
+    return _ErrorContent(title, message, severity, details, show_details)
 
 
 # Test usage
@@ -417,10 +437,11 @@ if __name__ == "__main__":
     show_error_popup(
         title_bar_text="Installer",
         title="Barks Reader Installation",
-        message="This is a test error",
+        message="This is a test error with [b]some markup[/b]",
         log_path=test_log_path,
         severity="error",
-        details="Stack trace line 1\nStack trace line 2\nStack trace line 3\n"
+        details="Stack trace [b]line 1[/b]\nStack trace [b]line 2[/b]\nStack trace line 3\n"
         "Stack trace line 4\nStack trace line 5\nStack trace line 6\n"
-        "Stack trace line 7\nStack trace line 8\nStack trace line 9...",
+        "Stack trace line 7\nStack trace line 8\nStack trace [b]line 9[/b]...",
+        show_details=False,
     )

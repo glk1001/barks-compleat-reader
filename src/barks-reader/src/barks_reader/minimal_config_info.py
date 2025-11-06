@@ -6,15 +6,6 @@ from pathlib import Path
 from loguru import logger
 
 from barks_reader.config_info import ConfigInfo
-from barks_reader.reader_settings import (
-    BARKS_READER_SECTION,
-    LOG_LEVEL,
-    MAIN_WINDOW_HEIGHT,
-    MAIN_WINDOW_LEFT,
-    MAIN_WINDOW_TOP,
-    ReaderSettings,
-)
-from barks_reader.system_file_paths import SystemFilePaths
 
 
 @dataclass
@@ -29,6 +20,16 @@ class MinimalConfigOptions:
 
 
 def get_minimal_config_options(cfg_info: ConfigInfo) -> MinimalConfigOptions:
+    from barks_reader.reader_settings import (  # noqa: PLC0415
+        BARKS_READER_SECTION,
+        LOG_LEVEL,
+        MAIN_WINDOW_HEIGHT,
+        MAIN_WINDOW_LEFT,
+        MAIN_WINDOW_TOP,
+        ReaderSettings,
+    )
+    from barks_reader.system_file_paths import SystemFilePaths  # noqa: PLC0415
+
     barks_config = ConfigParser()
     barks_config.read(cfg_info.app_config_path)
 

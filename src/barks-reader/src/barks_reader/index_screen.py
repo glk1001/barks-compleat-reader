@@ -256,6 +256,7 @@ class IndexScreen(FloatLayout):
             self._index_image_change_event.cancel()
             self._index_image_change_event = None
 
+    # noinspection PyNoneFunctionAssignment
     def _next_background_image(self) -> None:
         if not self._cached_all_titles_for_letter:
             letter = self._selected_letter_button.text

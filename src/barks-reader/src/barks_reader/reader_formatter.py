@@ -46,6 +46,10 @@ def get_clean_text_without_extra(markup_text: str) -> str:
     return markup_text
 
 
+def get_text_with_markup_stripped(text: str) -> str:
+    return text.replace("[b]", "").replace("[/b]", "").replace("[i]", "").replace("[/i]", "")
+
+
 def text_includes_num_titles(text: str) -> bool:
     return text.endswith(")[/i]")
 

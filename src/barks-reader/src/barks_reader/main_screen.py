@@ -301,6 +301,7 @@ class MainScreen(ReaderScreen):
             self._loading_data_popup.size = (self.width, self.height * 0.55)
             self._loading_data_popup.pos = self.pos
 
+    # noinspection PyNoneFunctionAssignment
     def _set_new_loading_data_popup_image(self) -> None:
         splash_image_file = self._random_title_images.get_loading_screen_random_image(
             self._title_lists[ALL_LISTS]

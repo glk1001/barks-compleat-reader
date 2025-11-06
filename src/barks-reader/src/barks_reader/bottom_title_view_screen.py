@@ -74,6 +74,7 @@ class BottomTitleViewScreen(FloatLayout):
     def set_special_fanta_overrides(self, special_fanta_overrides: SpecialFantaOverrides) -> None:
         self._special_fanta_overrides = special_fanta_overrides
 
+    # noinspection PyNoneFunctionAssignment
     def set_title_view(self, fanta_info: FantaComicBookInfo) -> None:
         self._fanta_info = fanta_info
         self.main_title_text = self._get_main_title_str(fanta_info)
@@ -107,6 +108,7 @@ class BottomTitleViewScreen(FloatLayout):
         assert self.on_title_portal_image_pressed_func is not None
         self.on_title_portal_image_pressed_func()
 
+    # noinspection PyNoneFunctionAssignment
     def _on_use_overrides_checkbox_changed(self, _instance: object, use_overrides: bool) -> None:
         logger.debug(f"Use overrides checkbox changed: use_overrides = {use_overrides}.")
 

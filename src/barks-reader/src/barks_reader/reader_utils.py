@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import io
+import json
 import re
+import subprocess
+import sys
+import textwrap
 import zipfile
 from pathlib import Path
 from random import randrange
@@ -203,3 +207,39 @@ def get_centred_position_on_primary_monitor(win_width: int, win_height: int) -> 
         pass
 
     return 100, 100
+
+
+def safe_import_check(module_name: str, timeout: float = 5.0) -> bool:
+    """Safely check if a Python module can be imported without crashing Python.
+
+    This spawns a sandbox subprocess to avoid segfaults from obfuscated modules.
+
+    Returns True if the import succeeded, False otherwise.
+    """
+    check_code = textwrap.dedent(f"""
+    import importlib, json, sys
+    try:
+        importlib.import_module("{module_name}")
+        print(json.dumps({{"ok": True}}))
+    except Exception as e:
+        print(json.dumps({{"ok": False, "err": str(e)}}))
+        sys.exit(2)
+    """)
+
+    proc = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", check_code],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+
+    ok = False
+    if proc.returncode == 0:
+        try:
+            result = json.loads(proc.stdout.strip().splitlines()[-1])
+            ok = result.get("ok", False)
+        except Exception:  # noqa: BLE001, S110
+            pass
+
+    return ok

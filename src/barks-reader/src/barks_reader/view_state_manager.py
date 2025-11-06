@@ -196,6 +196,7 @@ class ViewStateManager:
 
         self._bottom_title_view_screen.set_title_view(fanta_info)
 
+    # noinspection PyNoneFunctionAssignment
     def _set_top_view_image(self) -> None:
         """Set the image and properties for the top view (behind the TreeView)."""
         logger.debug("Setting new top view.")
