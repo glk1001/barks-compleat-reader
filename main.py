@@ -10,7 +10,6 @@ import logging
 import os
 import sys
 import threading
-import traceback
 from configparser import ConfigParser
 
 from barks_fantagraphics.comics_cmd_args import CmdArgs, ExtraArg
@@ -42,19 +41,19 @@ from loguru import logger
 
 load_dotenv(".env.runtime")
 
+
 # === GLOBAL EXCEPTION HANDLERS ==============================================
-
-
 def handle_uncaught_exception(exc_type, exc_value, exc_traceback) -> None:  # noqa: ANN001
     """Handle any uncaught exception in the main thread."""
     if issubclass(exc_type, KeyboardInterrupt):
-        # Allow Ctrl+C to stop app cleanly
+        # Allow Ctrl+C to stop app cleanly.
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
 
-    tb = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
-    logger.critical(f"Uncaught exception (main):\n{tb}")
-    # show_error_popup(f"Unexpected error:\n{exc_value}")
+    from barks_reader.reader_error_handling import handle_app_fail_with_traceback
+
+    logger.critical("Uncaught exception in main thread.")
+    handle_app_fail_with_traceback(exc_type, exc_value, exc_traceback, log_path="")
 
 
 sys.excepthook = handle_uncaught_exception
@@ -62,12 +61,14 @@ sys.excepthook = handle_uncaught_exception
 
 def handle_thread_exception(args) -> None:  # noqa: ANN001
     """Handle exceptions raised in background threads."""
-    tb = "".join(traceback.format_exception(args.exc_type, args.exc_value, args.exc_traceback))
-    logger.critical(f"Uncaught exception (thread):\n{tb}")
-    # show_error_popup(f"Background thread error:\n{args.exc_value}")
+    from barks_reader.reader_error_handling import handle_app_fail_with_traceback
+
+    logger.critical("Uncaught exception in non-main thread.")
+    handle_app_fail_with_traceback(args.exc_type, args.exc_value, args.exc_traceback, log_path="")
 
 
 threading.excepthook = handle_thread_exception
+# ============================================================================
 
 
 def start_logging(cfg_info: ConfigInfo, _args: CmdArgs, min_options: MinimalConfigOptions) -> None:

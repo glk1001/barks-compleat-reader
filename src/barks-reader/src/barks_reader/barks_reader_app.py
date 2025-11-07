@@ -26,8 +26,8 @@ from barks_reader.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, Fu
 from barks_reader.index_screen import INDEX_SCREEN_KV_FILE, IndexScreen
 from barks_reader.intro_compleat_barks_reader import get_intro_compleat_barks_reader_screen
 from barks_reader.main_screen import MAIN_SCREEN_KV_FILE, MainScreen
-from barks_reader.message_popup import show_error
 from barks_reader.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING, OPTIONS_SETTING
+from barks_reader.reader_error_handling import handle_app_fail_with_traceback
 from barks_reader.reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     INTRO_COMPLEAT_BARKS_READER_SCREEN,
@@ -373,13 +373,14 @@ def _log_screen_settings() -> None:
     )  # ty: ignore[possibly-missing-attribute]
 
 
-def _show_error_message(msg: str, config_info: ConfigInfo) -> None:
-    show_error(
-        f"The relevant error message is:"
-        f'\n\n\n"{msg}"\n\n\n'
-        f'Other potentially helpful info is logged in "{config_info.app_log_path}".'
-        f"\n\n\nWhen you close this window, the Barks Reader app will terminate.",
-        config_info.error_background_path,
+def _handle_app_exception(config_info: ConfigInfo, exc_type, exc_value, exc_traceback) -> None:  # noqa: ANN001
+    handle_app_fail_with_traceback(
+        exc_type,
+        exc_value,
+        exc_traceback,
+        log_path=str(config_info.app_log_path),
+        log_the_error=False,
+        background_image_file=config_info.error_background_path,
     )
 
 
@@ -399,10 +400,9 @@ def main(config_info: ConfigInfo, cmd_args: CmdArgs) -> None:
 
         kivy_app = BarksReaderApp(config_info, comics_database)
         kivy_app.run()
-    except Exception as e:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         logger.exception("There's been a program error - the Barks reader app is terminating: ")
-        _show_error_message(str(e), config_info)
-        sys.exit(1)
+        _handle_app_exception(config_info, *sys.exc_info())
 
     logger.debug("Terminating...")
     logger.info(

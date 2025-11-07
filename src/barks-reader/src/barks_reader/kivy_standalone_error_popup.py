@@ -17,12 +17,13 @@ def show_error_popup(
     title_bar_text: str,
     title: str,
     message: str,
-    log_path: Path,
+    log_path: str,
     timeout: float = 0,
     severity: str = "error",
     details: str = "",
     show_details: bool = False,
     size: tuple[int, int] = DEFAULT_ERROR_POPUP_SIZE,
+    background_image_file: Path | None = None,
 ) -> None:
     """Show an error popup with severity levels and action buttons.
 
@@ -36,6 +37,7 @@ def show_error_popup(
         details: Additional detailed information (collapsible)
         show_details: If True, drop down the details box
         size: Size of popup window
+        background_image_file: Image to put behind everything
 
     """
     from barks_reader.kivy_standalone_show_message import show_standalone_popup
@@ -66,13 +68,14 @@ def show_error_popup(
         size=size,
         timeout=timeout,
         auto_dismiss=False,
+        background_image_file=background_image_file,
     )
 
 
 def _get_error_content(
     title: str,
     message: str,
-    log_path: Path,
+    log_path: str,
     severity: str = "error",
     details: str = "",
     show_details: bool = False,
@@ -101,6 +104,7 @@ def _get_error_content(
             self,
             error_title: str,
             error_message: str,
+            the_log_path: str,
             error_severity: str = "error",
             error_details: str = "",
             show_error_details: bool = False,
@@ -108,7 +112,7 @@ def _get_error_content(
             super().__init__(orientation="vertical", padding=0, spacing=10)
             self.title = error_title
             self.message = error_message
-            self.log_path = log_path
+            self.log_path = the_log_path
             self.details = error_details
             self.full_message = get_text_with_markup_stripped(
                 f"{self.message}\n\n{self.details}" if self.details else self.message
@@ -127,7 +131,7 @@ def _get_error_content(
                     radius=[14],
                 )
                 # Main white card background
-                Color(1, 1, 1, 1)
+                Color(1, 1, 1, 0.5)
                 self.bg_rect = RoundedRectangle(
                     pos=(self.x, self.y),
                     size=self.size,
@@ -227,6 +231,7 @@ def _get_error_content(
                 halign="left",
                 valign="top",
                 color=[0, 0, 0, 1],
+                padding_y=10,
             )
             self.label_msg.bind(width=update_text_size)
             scroll_content.add_widget(self.label_msg)
@@ -234,7 +239,11 @@ def _get_error_content(
 
             # --- Log File section ---
             scroll_content.add_widget(tinted_heading("Log File"))
-            log_msg = f'Check the installer log for more info:\n\n[b]"{self.log_path}".[/b]'
+            log_msg = (
+                f'Check the log for more info:\n\n[b]"{self.log_path}".[/b]'
+                if self.log_path
+                else "No log file available."
+            )
             self.label_log_path = Label(
                 text=log_msg,
                 font_size=info_text_font_size,
@@ -341,12 +350,12 @@ def _get_error_content(
             """Save error message to a file."""
             # noinspection PyBroadException
             try:
-                # Create error logs directory
-                log_dir = self.log_path.parent
+                # Create error logs directory.
+                log_dir = Path(self.log_path).parent if self.log_path else Path.cwd()
 
                 # Generate filename with timestamp
                 timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-                error_msg_file = log_dir / f"installer-error-{timestamp}.txt"
+                error_msg_file = log_dir / f"barks-reader-error-details-{timestamp}.txt"
 
                 # Write error to file.
                 with error_msg_file.open("w", encoding="utf-8") as f:
@@ -396,12 +405,12 @@ def _get_error_content(
             if self.popup_ref:
                 self.popup_ref.dismiss()
 
-    return _ErrorContent(title, message, severity, details, show_details)
+    return _ErrorContent(title, message, log_path, severity, details, show_details)
 
 
 # Test usage
 if __name__ == "__main__":
-    test_log_path = Path("~/opt/barks-reader/installer.log").expanduser()
+    test_log_path = Path("~/opt/barks-reader/app.log").expanduser()
 
     def handle_uncaught_exception(exc_type, exc_value, exc_traceback) -> None:  # noqa: ANN001
         """Use excepthook as example of standalone popup fallback."""
@@ -424,10 +433,14 @@ if __name__ == "__main__":
             title_bar_text="Installer",
             title="Barks Reader Installation",
             message=message,
-            log_path=test_log_path,
+            log_path=str(test_log_path),
             severity="critical",
             details=details,
             timeout=0,
+            background_image_file=Path(
+                "~/Books/Carl Barks/Compleat Barks Disney Reader/Reader Files/"
+                "Various/error-background.png"
+            ).expanduser(),
         )
 
     sys.excepthook = handle_uncaught_exception
@@ -438,10 +451,14 @@ if __name__ == "__main__":
         title_bar_text="Installer",
         title="Barks Reader Installation",
         message="This is a test error with [b]some markup[/b]",
-        log_path=test_log_path,
+        log_path=str(test_log_path),
         severity="error",
         details="Stack trace [b]line 1[/b]\nStack trace [b]line 2[/b]\nStack trace line 3\n"
         "Stack trace line 4\nStack trace line 5\nStack trace line 6\n"
         "Stack trace line 7\nStack trace line 8\nStack trace [b]line 9[/b]...",
         show_details=False,
+        background_image_file=Path(
+            "~/Books/Carl Barks/Compleat Barks Disney Reader/Reader Files/"
+            "Various/error-background.png"
+        ).expanduser(),
     )
