@@ -8,6 +8,8 @@ from textwrap import dedent
 from comic_utils.os_utils import get_os_name, is_virtual_machine
 from loguru import logger
 
+from barks_reader._version import version as __version__
+
 
 def handle_app_fail_with_traceback(
     app_type: str,
@@ -29,6 +31,7 @@ def handle_app_fail_with_traceback(
 {stack}
 
 System Information:
+  - Version: {__version__}
   - OS: {get_os_name()}
   - System: {platform.system()}
   - System Release: {platform.release()}

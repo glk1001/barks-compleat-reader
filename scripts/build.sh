@@ -3,6 +3,24 @@
 
 set -e
 
+VERSION_FILE="src/barks-reader/src/barks_reader/_version.py"
+
+# --- Get version from git ---
+get_git_version() {
+    if git rev-parse --git-dir > /dev/null 2>&1; then
+        git describe --tags --dirty --always
+    else
+        echo "0.0.0-dev"
+    fi
+}
+
+VERSION=$(get_git_version)
+
+# --- Write version file ---
+echo "Writing version: $VERSION"
+echo "version = \"${VERSION}\"" > "$VERSION_FILE"
+
+
 echo "=================================================="
 echo "Building Barks Compleat Reader"
 echo "=================================================="
