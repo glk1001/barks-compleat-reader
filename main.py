@@ -1,11 +1,11 @@
 # ruff: noqa: PLC0415, EXE002
-
 # -------------------------------------------------------------------- #
 # --- We need to change the KIVY_HOME directory to be under this   --- #
 # --- app's settings directory. The 'barks_reader.config_info'     --- #
 # --- module handles this, and for this to work, we need to import --- #
 # --- it before any kivy imports.                                  --- #
 
+import gc
 import logging
 import os
 import sys
@@ -279,9 +279,21 @@ def ok_to_run() -> bool:
     return False
 
 
+# This gc tweak makes a big difference. (Or did until I changed to lazy loading of main Tree.)
+# https://mkennedy.codes/posts/python-gc-settings-change-this-and-make-your-app-go-20pc-faster/
+def reset_python_gc() -> None:
+    allocations, gen1, gen2 = gc.get_threshold()
+    allocations = 20_000  # Start the GC sequence every 50K not 700 allocations.
+    gen1 *= 2
+    gen2 *= 2
+    gc.set_threshold(allocations, gen1, gen2)
+
+
 if __name__ == "__main__":
     if not ok_to_run():
         sys.exit(1)
+
+    reset_python_gc()
 
     config_info = ConfigInfo()
 
