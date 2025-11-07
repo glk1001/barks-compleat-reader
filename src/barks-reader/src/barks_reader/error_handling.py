@@ -3,7 +3,9 @@ import sys
 import traceback
 from datetime import UTC, datetime
 from pathlib import Path
+from textwrap import dedent
 
+from comic_utils.os_utils import get_os_name, is_virtual_machine
 from loguru import logger
 
 
@@ -23,17 +25,20 @@ def handle_app_fail_with_traceback(
     message = f"{exc_type.__name__}: {exc_value}"
 
     # Detailed information (collapsible)
-    details = f"""Full Traceback:
-    {stack}
+    details = dedent(f"""Full Traceback:
+{stack}
 
-    System Information:
-    - Platform: {platform.system()}
-    - Platform Release: {platform.release()},
-    - Platform Version: {platform.version()},
-    - Python Version: {platform.python_version()},
-    - Cwd: {Path.cwd()},
-    - Time: {datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")}
-    """
+System Information:
+  - OS: {get_os_name()}
+  - System: {platform.system()}
+  - System Release: {platform.release()}
+  - System Version: {platform.version()}
+  - Processor: {platform.processor()}
+  - Python Version: {platform.python_version()}
+  - Virtual Machine: {is_virtual_machine()}
+  - Cwd: {Path.cwd()}
+  - Time: {datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")}
+""")
 
     handle_app_fail(
         app_type, msg_title, message, details, log_path, log_the_error, background_image_file

@@ -121,11 +121,13 @@ fixups
 forbidium
 getframe
 halign
+innotek
 ipady
 ipan
 jaild
 labellayout
 longpath
+machdep
 mactouch
 madball
 maxfiles
@@ -150,6 +152,8 @@ touchee
 upscayled
 upscayled
 usgtd
+virt
+virtio
 weemite
 wmod
 ypos
