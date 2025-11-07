@@ -43,6 +43,10 @@ load_dotenv(".env.runtime")
 
 
 # === GLOBAL EXCEPTION HANDLERS ==============================================
+_APP_TYPE = "app"
+_APP_NAME = "Barks Reader"
+
+
 def handle_uncaught_exception(exc_type, exc_value, exc_traceback) -> None:  # noqa: ANN001
     """Handle any uncaught exception in the main thread."""
     if issubclass(exc_type, KeyboardInterrupt):
@@ -50,10 +54,12 @@ def handle_uncaught_exception(exc_type, exc_value, exc_traceback) -> None:  # no
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
 
-    from barks_reader.reader_error_handling import handle_app_fail_with_traceback
+    from barks_reader.error_handling import handle_app_fail_with_traceback
 
     logger.critical("Uncaught exception in main thread.")
-    handle_app_fail_with_traceback(exc_type, exc_value, exc_traceback, log_path="")
+    handle_app_fail_with_traceback(
+        _APP_TYPE, _APP_NAME, exc_type, exc_value, exc_traceback, log_path=""
+    )
 
 
 sys.excepthook = handle_uncaught_exception
@@ -61,10 +67,12 @@ sys.excepthook = handle_uncaught_exception
 
 def handle_thread_exception(args) -> None:  # noqa: ANN001
     """Handle exceptions raised in background threads."""
-    from barks_reader.reader_error_handling import handle_app_fail_with_traceback
+    from barks_reader.error_handling import handle_app_fail_with_traceback
 
     logger.critical("Uncaught exception in non-main thread.")
-    handle_app_fail_with_traceback(args.exc_type, args.exc_value, args.exc_traceback, log_path="")
+    handle_app_fail_with_traceback(
+        _APP_TYPE, _APP_NAME, args.exc_type, args.exc_value, args.exc_traceback, log_path=""
+    )
 
 
 threading.excepthook = handle_thread_exception

@@ -1,6 +1,5 @@
 import os
 import sys
-import traceback
 from configparser import ConfigParser
 from datetime import UTC, datetime
 from pathlib import Path
@@ -10,6 +9,10 @@ import psutil
 from loguru import logger
 
 from barks_reader.config_info import ConfigInfo
+from barks_reader.error_handling import handle_app_fail, handle_app_fail_with_traceback
+
+_APP_TYPE = "Installer"
+_APP_NAME = "Barks Reader Installation"
 
 _ZIP_CONFIGS_SUBDIR = "Configs/"
 _ZIP_READER_FILES_SUBDIR = "Reader Files/"
@@ -26,7 +29,9 @@ _log_file = (
 
 
 def _handle_uncaught_exception(exc_type, exc_value, exc_traceback) -> None:  # noqa: ANN001
-    _handle_installer_fail_with_traceback(exc_type, exc_value, exc_traceback)
+    handle_app_fail_with_traceback(
+        _APP_TYPE, _APP_NAME, exc_type, exc_value, exc_traceback, str(_log_file)
+    )
 
 
 sys.excepthook = _handle_uncaught_exception
@@ -228,7 +233,16 @@ def _handle_pyarmor_sanity_check_failed() -> None:
         " unexpected error and you'll need to contact The Barks Reader developer for a fix."
     )
 
-    _handle_installer_fail(message, details, log_the_error=True, show_details=True)
+    handle_app_fail(
+        _APP_TYPE,
+        _APP_NAME,
+        message,
+        details,
+        str(_log_file),
+        log_the_error=True,
+        background_image_file=None,
+        show_details=True,
+    )
 
 
 def _handle_could_not_find_exe_error(barks_reader_exe: Path, parent_executable: str) -> None:
@@ -244,7 +258,16 @@ def _handle_could_not_find_exe_error(barks_reader_exe: Path, parent_executable: 
             f' instead of\n\n[b]"{barks_reader_exe}".[/b]'
         )
 
-    _handle_installer_fail(message, details, log_the_error=True, show_details=True)
+    handle_app_fail(
+        _APP_TYPE,
+        _APP_NAME,
+        message,
+        details,
+        str(_log_file),
+        log_the_error=True,
+        background_image_file=None,
+        show_details=True,
+    )
 
 
 def _handle_could_not_find_data_zip_error(installer_zip: Path) -> None:
@@ -253,62 +276,29 @@ def _handle_could_not_find_data_zip_error(installer_zip: Path) -> None:
         f"The Barks Reader installer zip should be in the same"
         f' directory as the Barks Reader executable:\n\n[b]"{_barks_reader_exe_dir}".[/b]'
     )
-    _handle_installer_fail(message, details, log_the_error=True, show_details=True)
+    handle_app_fail(
+        _APP_TYPE,
+        _APP_NAME,
+        message,
+        details,
+        str(_log_file),
+        log_the_error=True,
+        background_image_file=None,
+        show_details=True,
+    )
 
 
 def _handle_installer_exception(exc_type, exc_value, exc_traceback) -> None:  # noqa: ANN001
-    _handle_installer_fail_with_traceback(exc_type, exc_value, exc_traceback, log_the_error=False)
-
-
-def _handle_installer_fail_with_traceback(
-    exc_type,  # noqa: ANN001
-    exc_value,  # noqa: ANN001
-    exc_traceback,  # noqa: ANN001
-    log_the_error: bool = True,
-) -> None:
-    stack = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
-
-    # Main error message (brief)
-    message = f"{exc_type.__name__}: {exc_value}"
-
-    # Detailed information (collapsible)
-    details = f"""Full Traceback:
-    {stack}
-
-    System Information:
-    - Python: {sys.version}
-    - Platform: {sys.platform}
-    - Time: {datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")}
-    """
-
-    _handle_installer_fail(message, details, log_the_error)
-
-
-def _handle_installer_fail(
-    message: str, details: str, log_the_error: bool = True, show_details: bool = False
-) -> None:
-    from barks_reader.kivy_standalone_error_popup import show_error_popup  # noqa: PLC0415
-
-    _set_installer_failed_flag()
-
-    show_error_popup(
-        title_bar_text="Installer",
-        title="Barks Reader Installation",
-        message=message,
-        log_path=_log_file,
-        severity="error",
-        details=details,
-        show_details=show_details,
-        timeout=0,
+    handle_app_fail_with_traceback(
+        _APP_TYPE,
+        _APP_NAME,
+        exc_type,
+        exc_value,
+        exc_traceback,
+        str(_log_file),
+        log_the_error=False,
+        background_image_file=None,
     )
-
-    if log_the_error:
-        from barks_reader.reader_formatter import get_text_with_markup_stripped  # noqa: PLC0415
-
-        logger.critical(f"An installer error occurred: {get_text_with_markup_stripped(message)}.")
-        logger.critical(get_text_with_markup_stripped(details))
-
-    sys.exit(1)
 
 
 if __name__ == "__main__":

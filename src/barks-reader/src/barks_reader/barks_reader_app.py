@@ -20,6 +20,7 @@ from barks_reader.bottom_title_view_screen import (
     BottomTitleViewScreen,
 )
 from barks_reader.comic_book_reader import get_barks_comic_reader_screen
+from barks_reader.error_handling import handle_app_fail_with_traceback
 from barks_reader.filtered_title_lists import FilteredTitleLists
 from barks_reader.font_manager import FontManager
 from barks_reader.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, FunImageViewScreen
@@ -27,7 +28,6 @@ from barks_reader.index_screen import INDEX_SCREEN_KV_FILE, IndexScreen
 from barks_reader.intro_compleat_barks_reader import get_intro_compleat_barks_reader_screen
 from barks_reader.main_screen import MAIN_SCREEN_KV_FILE, MainScreen
 from barks_reader.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING, OPTIONS_SETTING
-from barks_reader.reader_error_handling import handle_app_fail_with_traceback
 from barks_reader.reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     INTRO_COMPLEAT_BARKS_READER_SCREEN,
@@ -375,6 +375,8 @@ def _log_screen_settings() -> None:
 
 def _handle_app_exception(config_info: ConfigInfo, exc_type, exc_value, exc_traceback) -> None:  # noqa: ANN001
     handle_app_fail_with_traceback(
+        "app",
+        "Barks Reader",
         exc_type,
         exc_value,
         exc_traceback,
