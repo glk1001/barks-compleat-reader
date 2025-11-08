@@ -47,6 +47,7 @@ from barks_reader.reader_formatter import get_clean_text_without_extra
 from barks_reader.reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
+    ReaderTreeView,
     TagGroupStoryGroupTreeViewNode,
     TagSearchBoxTreeViewNode,
     TagStoryGroupTreeViewNode,
@@ -60,7 +61,6 @@ if TYPE_CHECKING:
     from kivy.uix.button import Button
     from kivy.uix.spinner import Spinner
 
-    from barks_reader.reader_ui_classes import ReaderTreeView
     from barks_reader.tree_view_screen import TreeViewScreen
     from barks_reader.view_state_manager import ViewStateManager
 
@@ -160,6 +160,8 @@ class TreeViewManager:
         self._set_tag_goto_page_checkbox_func = set_tag_goto_page_checkbox_func
         self._set_next_title_func = set_next_title_func
 
+        self._last_open_node = None
+
         assert self._update_title_func
         assert self._read_article_func
         assert self._read_intro_compleat_barks_reader_func
@@ -178,23 +180,129 @@ class TreeViewManager:
         Clock.schedule_once(lambda _dt: self._tree_view_screen.scroll_to_node(node), 0)
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
+        # Ignore leaf/title rows.
         if isinstance(node, TitleTreeViewNode):
             return
 
-        logger.info(f'Node expanded: "{node.text}" ({type(node)}).')
+        # 1) Collapse any previously-open group (reduces height shocks).
+        self._collapse_previous_open_node(node)
 
+        # 2) Lazy populate ONCE, while pinning the parent's position to avoid a jump.
+        if node.populate_callback and not node.populated:
+            self._pin_parent_position_while_populating(node, run_populate=True)
+            node.populated = True
+        else:
+            # If already populated, we still pin during expand so second (and later) expansions
+            # keep the parent row stationary.
+            self._pin_parent_position_while_populating(node, run_populate=False)
+
+        # 3) View-state logic (unchanged)
         new_view_state, view_state_params = self._get_view_state_from_node(node)
-
         if new_view_state is None:
             msg = f"No view state mapping found for node: {node.text} ({type(node)})"
             raise RuntimeError(msg)
-
-        logger.info(f'Updating backgrounds views for expanded node: "{new_view_state.name}".')
-        # TODO: Not sure how to deal with 'ty' and **args.
-        # noinspection LongLine
         self._view_state_manager.update_background_views(new_view_state, **view_state_params)  # ty: ignore[invalid-argument-type]
 
-        self.scroll_to_node(node.nodes[0] if node.nodes else node)
+        # 4) NOTE: Do not call scroll_to_node() here — that causes the “snap-to-top/bottom” jump.
+
+    def _collapse_previous_open_node(self, new_parent: ButtonTreeViewNode) -> None:
+        if not new_parent.populate_callback:
+            return
+
+        prev = self._last_open_node
+        if prev and (prev is not new_parent) and prev.is_open:
+            # Toggle the previous open group closed.
+            self._tree_view_screen.ids.reader_tree_view.toggle_node(prev)
+        self._last_open_node = new_parent
+
+    def _pin_parent_position_while_populating(
+        self, parent_node: ButtonTreeViewNode, run_populate: bool
+    ) -> None:
+        """Keep the expanding parent row visually pinned while its children are created.
+
+        This should make it behave like a dropdown (no jump).
+        """
+        scroll_view = self._tree_view_screen.ids.scroll_view
+
+        # Container inside the ScrollView (the thing whose height changes).
+        if not scroll_view.children:
+            return
+
+        # Compute current offset of the parent row's *top* relative to the ScrollView's top (in px).
+        sv_top_win_y = scroll_view.to_window(0, scroll_view.top)[1]
+        parent_top_win_y = parent_node.to_window(0, parent_node.top)[1]
+        target_offset_px = parent_top_win_y - sv_top_win_y  # we want to keep this constant
+
+        # Optionally populate children now (lazy load for first expand).
+        if run_populate and parent_node.populate_callback:
+            parent_node.populate_callback()
+
+        # We'll wait for the layout to settle (content height + children heights stabilise),
+        # then compute the delta and adjust scroll_y by the exact normalised amount.
+        checks = {"count": 0, "last_h": -1, "stable": 0}
+        max_checks = 180  # ~3 seconds worst-case @ 60fps
+
+        def _after_layout(_dt: float):  # noqa: ANN202, PLR0911
+            # If user collapsed or navigated away, stop.
+            if not parent_node.is_open:
+                return None
+
+            if not scroll_view.children:
+                return _resched()
+
+            cont = scroll_view.children[0]
+            viewport_h = scroll_view.height
+            cont_h = cont.height
+
+            # Require non-trivial content to avoid div-by-zero and false positives.
+            if (cont_h <= 1) or (viewport_h <= 1) or (cont_h <= viewport_h):
+                return _resched()
+
+            # Check stabilisation of container height
+            if abs(cont_h - checks["last_h"]) < 0.5:  # noqa: PLR2004
+                checks["stable"] += 1
+            else:
+                checks["stable"] = 0
+            checks["last_h"] = cont_h
+
+            if checks["stable"] < 2:  # noqa: PLR2004
+                return _resched()
+
+            # Current offset (parent top relative to SV top) *after* expansion
+            sv_top = scroll_view.to_window(0, scroll_view.top)[1]
+            new_parent_top = parent_node.to_window(0, parent_node.top)[1]
+            current_offset_px = new_parent_top - sv_top
+
+            # How far did the parent drift? Positive means it moved DOWN on screen.
+            delta_px = current_offset_px - target_offset_px
+            if abs(delta_px) < 0.5:  # noqa: PLR2004
+                return None  # nothing to adjust
+
+            # Convert pixel delta to normalised scroll_y delta:
+            #  - Kivy uses scroll_y 0..1 where 1 = top, 0 = bottom.
+            #  - Moving content up by +delta_px means increase scroll_y.
+            denominator = cont_h - viewport_h
+            if denominator <= 0:
+                return None
+
+            delta_norm = delta_px / denominator
+            new_scroll_y = self._clamp01(scroll_view.scroll_y + delta_norm)
+
+            # Apply in one shot (no animation to avoid visible bounce)
+            scroll_view.scroll_y = new_scroll_y
+
+            return None
+
+        def _resched() -> None:
+            checks["count"] += 1
+            if checks["count"] < max_checks:
+                Clock.schedule_once(_after_layout, 0)
+
+        Clock.schedule_once(_after_layout, 0)
+
+    @staticmethod
+    def _clamp01(v: float) -> float:
+        return 0.0 if v < 0.0 else (min(v, 1.0))
 
     def on_title_row_button_pressed(self, button: Button) -> None:
         fanta_info = button.parent.fanta_info

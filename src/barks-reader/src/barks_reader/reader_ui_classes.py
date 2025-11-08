@@ -14,6 +14,7 @@ from kivy.core.window import Window
 from kivy.event import EventDispatcher
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
+    BooleanProperty,
     NumericProperty,
     ObjectProperty,
     StringProperty,
@@ -316,6 +317,11 @@ class ButtonTreeViewNode(Button, TreeViewNode):
     TEXT_COLOR = TREE_VIEW_NODE_TEXT_COLOR
     SELECTED_COLOR = TREE_VIEW_NODE_SELECTED_COLOR
     BACKGROUND_COLOR = TREE_VIEW_NODE_BACKGROUND_COLOR
+
+    # Has this node lazily created its children?
+    populated = BooleanProperty(defaultvalue=False)
+    # A zero-arg function to create children.
+    populate_callback = ObjectProperty(defaultvalue=None, allownone=True)
 
     def on_touch_down(self, touch: MotionEvent) -> bool:
         # Node press will also toggle expand/collapse.

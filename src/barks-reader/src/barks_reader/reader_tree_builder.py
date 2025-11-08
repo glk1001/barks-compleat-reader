@@ -289,13 +289,6 @@ class ReaderTreeBuilder:
         else:
             yield from self._populate_simple_series_node_gen(series_name, tree, parent_node)
 
-    def _populate_simple_series_node_gen(
-        self, series_name: str, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
-    ) -> Generator[None]:
-        """Populate a simple series node with its title list."""
-        title_list = self._title_lists[series_name]
-        yield from self._add_fanta_info_story_nodes_gen(tree, title_list, parent_node)
-
     def _populate_cs_node_gen(
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
     ) -> Generator[None]:
@@ -347,8 +340,19 @@ class ReaderTreeBuilder:
             tree, year_range, parent_node
         )
         assert len(year_range_titles) == get_num_comic_book_titles(year_range)
-        yield from self._add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node)
+
+        # 👇 instead of eagerly creating 100% of title children now, defer…
+        def _populate() -> None:
+            gen = self._add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node)
+            self._run_generator(gen)
+
+        new_node.populate_callback = _populate
+        new_node.populated = False
+
+        # keep your index for quick lookups
         self.chrono_year_range_nodes[year_range] = new_node
+        # yield here to keep responsiveness
+        yield
 
     def _add_category_node_gen(
         self,
@@ -394,8 +398,17 @@ class ReaderTreeBuilder:
         new_node = TagStoryGroupTreeViewNode(
             tag, text=get_markup_text_with_num_titles(tag.value, len(titles))
         )
-        yield from self._add_title_nodes_gen(tree, titles, new_node)
+
+        # Defer creation of the tag's title rows.
+        def _populate() -> None:
+            gen = self._add_title_nodes_gen(tree, titles, new_node)
+            self._run_generator(gen)
+
+        new_node.populate_callback = _populate
+        new_node.populated = False
+
         tree.add_node(new_node, parent=parent_node)
+        yield
 
     def _add_title_nodes_gen(
         self, tree: ReaderTreeView, titles: list[Titles], parent_node: ButtonTreeViewNode
@@ -426,11 +439,19 @@ class ReaderTreeBuilder:
             CsYearRangeTreeViewNode,
             parent_node,
         )
-        yield from self._add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node)
+
+        def _populate() -> None:
+            gen = self._add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node)
+            self._run_generator(gen)
+
+        new_node.populate_callback = _populate
+        new_node.populated = False
+
+        yield
 
     def _add_us_year_range_node_gen(
         self, tree: ReaderTreeView, year_range: tuple[int, int], parent_node: ButtonTreeViewNode
-    ) -> Generator:
+    ) -> Generator[None]:
         new_node, year_range_titles = self._create_and_add_year_range_node(
             tree,
             year_range,
@@ -439,7 +460,30 @@ class ReaderTreeBuilder:
             UsYearRangeTreeViewNode,
             parent_node,
         )
-        yield from self._add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node)
+
+        def _populate() -> None:
+            gen = self._add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node)
+            self._run_generator(gen)
+
+        new_node.populate_callback = _populate
+        new_node.populated = False
+
+        yield
+
+    def _populate_simple_series_node_gen(
+        self, series_name: str, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
+    ) -> Generator[None]:
+        """Populate a simple series node with its title list."""
+        title_list = self._title_lists[series_name]
+
+        def _populate() -> None:
+            gen = self._add_fanta_info_story_nodes_gen(tree, title_list, parent_node)
+            self._run_generator(gen)
+
+        parent_node.populate_callback = _populate
+        parent_node.populated = False
+
+        yield
 
     def _add_fanta_info_story_nodes_gen(
         self,
