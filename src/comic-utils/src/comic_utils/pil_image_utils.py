@@ -12,6 +12,7 @@ from PIL.PngImagePlugin import PngInfo
 from .comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
 
 if TYPE_CHECKING:
+    import zipfile
     from pathlib import Path
 
     from PIL.Image import Image as PilImage
@@ -32,20 +33,35 @@ _EXTENSION_TO_PIL_FORMAT = {
 }
 
 
-def open_pil_image_for_reading(file: Path) -> PilImage:
+def load_pil_image_for_reading(file: Path) -> PilImage:
     current_log_level = logging.getLogger().level
     try:
         logging.getLogger().setLevel(logging.INFO)
-        return Image.open(str(file), "r")
+        image = Image.open(str(file), "r")
+        image.load()
+        return image
     finally:
         logging.getLogger().setLevel(current_log_level)
 
 
-def open_pil_image_from_bytes(file_bytes: bytes, ext: str) -> PilImage:
+def load_pil_image_from_zip(zip_path: zipfile.Path) -> PilImage:
     current_log_level = logging.getLogger().level
     try:
         logging.getLogger().setLevel(logging.INFO)
-        return Image.open(io.BytesIO(file_bytes), "r", formats=[_get_pil_format_from_ext(ext)])
+        ext = zip_path.suffix
+        file_data = zip_path.read_bytes()
+        return load_pil_image_from_bytes(file_data, ext)
+    finally:
+        logging.getLogger().setLevel(current_log_level)
+
+
+def load_pil_image_from_bytes(file_bytes: bytes, ext: str) -> PilImage:
+    current_log_level = logging.getLogger().level
+    try:
+        logging.getLogger().setLevel(logging.INFO)
+        image = Image.open(io.BytesIO(file_bytes), "r", formats=[_get_pil_format_from_ext(ext)])
+        image.load()
+        return image
     finally:
         logging.getLogger().setLevel(current_log_level)
 
@@ -59,7 +75,7 @@ def _get_pil_format_from_ext(ext: str) -> str:
 
 
 def get_image_as_png_bytes(file: Path) -> io.BytesIO:
-    pil_image = open_pil_image_for_reading(file)
+    pil_image = load_pil_image_for_reading(file)
     return get_pil_image_as_png_bytes(pil_image)
 
 
@@ -88,7 +104,7 @@ def get_pil_image_as_jpg_bytes(pil_image: PilImage) -> io.BytesIO:
 
 
 def copy_file_to_jpg(srce_file: Path, dest_file: Path) -> None:
-    image = open_pil_image_for_reading(srce_file).convert("RGB")
+    image = load_pil_image_for_reading(srce_file).convert("RGB")
 
     image.save(
         str(dest_file),
@@ -99,7 +115,7 @@ def copy_file_to_jpg(srce_file: Path, dest_file: Path) -> None:
 
 
 def copy_file_to_png(srce_file: Path, dest_file: Path) -> None:
-    image = open_pil_image_for_reading(srce_file)
+    image = load_pil_image_for_reading(srce_file)
 
     image.save(
         str(dest_file),
@@ -121,7 +137,7 @@ def downscale_jpg(width: int, height: int, srce_file: Path, dest_file: Path) -> 
 
 
 def get_downscaled_jpg(width: int, height: int, srce_file: Path) -> PilImage:
-    image = open_pil_image_for_reading(srce_file).convert("RGB")
+    image = load_pil_image_for_reading(srce_file).convert("RGB")
 
     return ImageOps.contain(
         image,

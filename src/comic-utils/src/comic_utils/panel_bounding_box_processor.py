@@ -6,7 +6,7 @@ from loguru import logger
 
 from .comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
 from .panel_segmentation import KumikoPanelSegmentation, get_min_max_panel_values
-from .pil_image_utils import open_pil_image_for_reading
+from .pil_image_utils import load_pil_image_for_reading
 
 
 class BoundingBoxProcessor:
@@ -23,10 +23,10 @@ class BoundingBoxProcessor:
         override_file_with_bbox = self._get_override_filename(srce_bounded_override_dir, srce_file)
 
         if not override_file_with_bbox.is_file():
-            srce_bounded_image = open_pil_image_for_reading(srce_file)
+            srce_bounded_image = load_pil_image_for_reading(srce_file)
         else:
             logger.warning(f'Using panels bounds override file "{override_file_with_bbox}".')
-            srce_bounded_image = open_pil_image_for_reading(override_file_with_bbox)
+            srce_bounded_image = load_pil_image_for_reading(override_file_with_bbox)
 
         srce_bounded_image = srce_bounded_image.convert("RGB")
 

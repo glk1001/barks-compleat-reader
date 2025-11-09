@@ -13,6 +13,7 @@ def open_image_for_reading(filename: str) -> PilImage:
         logging.getLogger().setLevel(logging.INFO)
 
         image = Image.open(filename, "r")
+        image.load()
 
         if filename in EMPTY_IMAGE_FILES:
             image = image.resize(

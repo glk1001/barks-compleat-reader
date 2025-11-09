@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import threading
 import traceback
 import zipfile
 from collections import OrderedDict
+from concurrent.futures import CancelledError, ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import TYPE_CHECKING
 from zipfile import ZipFile
@@ -19,12 +21,16 @@ from barks_fantagraphics.fanta_comics_info import (
     FantaComicBookInfo,
 )
 from comic_utils.comic_consts import CBZ_FILE_EXT, ZIP_FILE_EXT
-from comic_utils.pil_image_utils import get_pil_image_as_png_bytes, open_pil_image_from_bytes
+from comic_utils.pil_image_utils import (
+    get_pil_image_as_png_bytes,
+    load_pil_image_from_bytes,
+    load_pil_image_from_zip,
+)
 from comic_utils.timing import Timing
 from kivy.clock import Clock
 from loguru import logger
+from PIL import Image, ImageOps
 from PIL import Image as PilImage
-from PIL import ImageOps
 
 from barks_reader.fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
 
@@ -305,45 +311,97 @@ class ComicBookLoader:
                 self._close_and_report_load_error(load_warning_only)
 
     def _load_pages(self, archive: ZipFile) -> int:
+        num_pages = len(self._image_load_order)
         num_loaded = 0
-        first_loaded = False
+        timing = Timing()
 
-        for i in range(len(self._image_load_order)):
+        logger.debug(f"Starting threaded load of {num_pages} pages...")
+
+        # Wrap load to support cooperative cancellation.
+        def load_wrapper(pg_info: PageInfo) -> tuple[io.BytesIO, str]:
             if self._stop:
-                logger.warning(f"For i = {i}, image loading stopped.")
-                return num_loaded
+                msg = "Load cancelled before starting work."
+                raise CancelledError(msg)
 
-            load_index = self._image_load_order[i]
-            logger.debug(f'For i = {i}, load_index = "{load_index}".')
+            # Call the real loader.
+            result = self._load_image_content(archive, pg_info)
 
-            page_info = self._page_map[load_index]
-            logger.debug(
-                f"For i = {i}, page_info ="
-                f" {page_info.display_page_num}, {page_info.srce_page.page_filename}."
-            )
-
-            # Double check stop flag before any more heavy processing.
             if self._stop:
-                logger.warning(f"For i = {i}, image loading stopped before getting image.")
-                return num_loaded
+                msg = "Load cancelled during work."
+                raise CancelledError(msg)
 
-            page_index = page_info.page_index
-            # noinspection PyTypeChecker
-            self._images[page_index] = self._load_image_content(archive, page_info)
-            num_loaded += 1
+            return result
 
-            self._image_loaded_events[page_index].set()
+        first_page_index_to_display = self._page_map[self._image_load_order[0]].page_index
+        logger.debug(f"First page index to display: index {first_page_index_to_display}.")
 
-            if not first_loaded and not self._stop:
-                first_loaded = True
-                logger.info(
-                    f"Loaded first image,"
-                    f" page index = {page_index},"
-                    f" page = {page_info.display_page_num}."
+        worker_count = self._auto_worker_count()
+        logger.debug(f"Using {worker_count} worker threads (auto-tuned).")
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            futures = {}
+            for load_index in self._image_load_order:
+                page_info = self._page_map[load_index]
+                future = executor.submit(load_wrapper, page_info)
+                futures[future] = page_info.page_index
+
+            for future in as_completed(futures):
+                page_index = futures[future]
+
+                # If stop was triggered, cancel remaining workers immediately
+                if self._stop:
+                    logger.warning("Stop flag set. Cancelling remaining page loads.")
+                    for f in futures:
+                        f.cancel()
+                    break
+
+                # noinspection PyBroadException
+                try:
+                    self._images[page_index] = future.result()
+                except CancelledError:
+                    logger.warning(f"Page {page_index} load cancelled.")
+                    break
+
+                except Exception as e:
+                    logger.exception(f"Failed to load page index {page_index}")
+                    raise CancelledError(e) from e
+
+                # Normal page load.
+                self._image_loaded_events[page_index].set()
+                num_loaded += 1
+
+                logger.debug(
+                    f"Loaded page index {page_index} ({num_loaded} out of {num_pages} pages,"
+                    f" elapsed {timing.get_elapsed_time_with_unit()})."
                 )
-                Clock.schedule_once(lambda _dt: self._on_first_image_loaded(), 0)
+
+                # Fire 'first page to display' event.
+                if (page_index == first_page_index_to_display) and not self._stop:
+                    logger.debug(f"Got first page index to display: index {page_index}.")
+                    Clock.schedule_once(lambda _dt: self._on_first_image_loaded(), 0)
+
+        logger.debug(
+            f"Load finished: {num_loaded}/{num_pages} pages "
+            f"processed in {timing.get_elapsed_time_with_unit()} (stop={self._stop})."
+        )
 
         return num_loaded
+
+    @staticmethod
+    def _auto_worker_count() -> int:
+        # noinspection PyBroadException
+        try:
+            cpu_count = os.cpu_count() or 1
+        except:  # noqa: E722
+            cpu_count = 1
+
+        # Conservative for safety and UI smoothness.
+        if cpu_count <= 2:  # noqa: PLR2004
+            return cpu_count
+        if cpu_count <= 4:  # noqa: PLR2004
+            return cpu_count - 1
+        if cpu_count <= 8:  # noqa: PLR2004
+            return 4
+        return 6
 
     def _close_and_report_load_error(self, load_warning_only: bool) -> None:
         self._stop = True
@@ -399,7 +457,6 @@ class ComicBookLoader:
 
     def _load_image_content(self, archive: ZipFile, page_info: PageInfo) -> tuple[io.BytesIO, str]:
         image_path, is_from_archive = self._get_image_path(page_info)
-        ext = Path(image_path).suffix
 
         logger.debug(
             f'Getting image (page = "{page_info.display_page_num}"): '
@@ -408,21 +465,21 @@ class ComicBookLoader:
 
         if is_from_archive:
             zip_path = zipfile.Path(archive, at=str(image_path))
-            file_data = zip_path.read_bytes()
+            pil_image = load_pil_image_from_zip(zip_path)
         elif page_info.srce_page.page_type in [PageType.BLANK_PAGE, PageType.TITLE]:
+            ext = Path(image_path).suffix
             file_data = self._empty_page_image
-        else:  # it's an override
-            assert self._fanta_volume_archive
+            pil_image = load_pil_image_from_bytes(file_data, ext)
+        else:
+            assert self._fanta_volume_archive is not None
             zip_path = zipfile.Path(self._fanta_volume_archive.override_archive, at=str(image_path))
-            file_data = zip_path.read_bytes()
+            pil_image = load_pil_image_from_zip(zip_path)
 
-        return self._get_image_data(file_data, ext, page_info)
+        return self._get_image_data(pil_image, page_info)
 
     def _get_image_data(
-        self, file_data: bytes, ext: str, page_info: PageInfo
+        self, pil_image: Image.Image, page_info: PageInfo
     ) -> tuple[io.BytesIO, str]:
-        pil_image = open_pil_image_from_bytes(file_data, ext)
-
         if self._fanta_volume_archive:
             assert self._comic_book_image_builder
             pil_image = self._comic_book_image_builder.get_dest_page_image(

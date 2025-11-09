@@ -10,7 +10,7 @@ from barks_fantagraphics.comics_utils import get_abbrev_path, get_timestamp_str
 from barks_reader.config_info import ConfigInfo  # make sure this is before any kivy imports
 from barks_reader.reader_settings import ReaderSettings
 from comic_utils.comic_consts import JPG_FILE_EXT
-from comic_utils.pil_image_utils import get_pil_image_as_jpg_bytes, open_pil_image_for_reading
+from comic_utils.pil_image_utils import get_pil_image_as_jpg_bytes, load_pil_image_for_reading
 from comic_utils.pyminizip_file_collector import MiniZipFileCollector
 from loguru import logger
 from loguru_config import LoguruConfig
@@ -54,7 +54,7 @@ def convert_and_zip_file(file_path: Path, archive: MiniZipFileCollector, dest_su
 
 
 def zip_file_as_jpg(srce_file: Path, archive: MiniZipFileCollector, dest_file: Path) -> None:
-    image = open_pil_image_for_reading(srce_file).convert("RGB")
+    image = load_pil_image_for_reading(srce_file).convert("RGB")
 
     buffer = get_pil_image_as_jpg_bytes(image)
     buffer.seek(0)

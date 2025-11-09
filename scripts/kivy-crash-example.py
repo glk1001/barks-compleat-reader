@@ -1,3 +1,5 @@
+# ruff: noqa: PGH004
+
 import sys
 import os
 import platform
@@ -77,7 +79,7 @@ def _get_system_info():
     }
 
 
-def save_crash_report(exc_type, exc_value, exc_traceback, thread_name="main") -> Path:
+def save_crash_report(thread_name, exc_type, exc_value, exc_traceback) -> Path:
     """Write a structured JSON crash report to file."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     report_path = CRASH_DIR / f"crash_{timestamp}_{thread_name}.json"
@@ -202,5 +204,5 @@ if __name__ == "__main__":
         main()
     except Exception:
         logger.critical("Fatal startup error", exc_info=True)
-        save_crash_report(*sys.exc_info(), "startup")
+        save_crash_report("startup", *sys.exc_info())
         sys.exit(1)
