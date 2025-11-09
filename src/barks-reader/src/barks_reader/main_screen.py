@@ -41,10 +41,8 @@ from barks_reader.reader_tree_builder import ReaderTreeBuilder
 from barks_reader.reader_tree_view_utils import find_tree_view_title_node, get_tree_view_node_path
 from barks_reader.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
-    LoadingDataPopup,
     ReaderTreeBuilderEventDispatcher,
     hide_action_bar,
-    set_kivy_normal_cursor,
     show_action_bar,
 )
 from barks_reader.reader_utils import (
@@ -62,12 +60,12 @@ if TYPE_CHECKING:
     from barks_fantagraphics.comics_database import ComicsDatabase
 
     # noinspection PyProtectedMember
-    from kivy._clock import ClockEvent  # ty: ignore[unresolved-import]
     from kivy.factory import Factory
     from kivy.uix.widget import Widget
 
     from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
     from barks_reader.comic_book_reader import ComicBookReaderScreen
+    from barks_reader.filtered_title_lists import FilteredTitleLists
     from barks_reader.font_manager import FontManager
     from barks_reader.fun_image_view_screen import FunImageViewScreen
     from barks_reader.index_screen import IndexScreen
@@ -91,10 +89,7 @@ class MainScreen(ReaderScreen):
         comics_database: ComicsDatabase,
         reader_settings: ReaderSettings,
         reader_tree_events: ReaderTreeBuilderEventDispatcher,
-        loading_data_popup: LoadingDataPopup,
-        loading_data_popup_image_event: ClockEvent,
-        random_title_images: RandomTitleImages,
-        title_lists: dict[str, list[FantaComicBookInfo]],
+        filtered_title_lists: FilteredTitleLists,
         screen_switchers: ScreenSwitchers,
         tree_view_screen: TreeViewScreen,
         bottom_title_view_screen: BottomTitleViewScreen,
@@ -132,8 +127,10 @@ class MainScreen(ReaderScreen):
 
         self._screen_switchers = screen_switchers
         self._font_manager = font_manager
-        self._title_lists = title_lists
-        self._random_title_images = random_title_images
+        self._title_lists: dict[str, list[FantaComicBookInfo]] = (
+            filtered_title_lists.get_title_lists()
+        )
+        self._random_title_images = RandomTitleImages(self._reader_settings)
         self.is_first_use_of_reader = self._reader_settings.is_first_use_of_reader
 
         self._action_bar = self.ids.action_bar
@@ -150,9 +147,6 @@ class MainScreen(ReaderScreen):
 
         self.fanta_info: FantaComicBookInfo | None = None
         self._year_range_nodes: dict | None = None
-
-        self._loading_data_popup = loading_data_popup
-        self._loading_data_popup_image_event = loading_data_popup_image_event
 
         self._reader_tree_events = reader_tree_events
 
@@ -226,7 +220,6 @@ class MainScreen(ReaderScreen):
             active=self.on_checkbox_custom_image_types_changed
         )
         self._fun_image_view_screen.on_goto_title_func = self._on_goto_fun_view_title
-        self._fun_image_view_screen.is_visible = False
 
         self._reader_tree_events.bind(
             on_finished_building_event=self._app_initializer.on_tree_build_finished
@@ -286,25 +279,13 @@ class MainScreen(ReaderScreen):
             self._reader_tree_events,
             self._tree_view_manager,
             self._title_lists,
-            self._loading_data_popup,
         )
 
         self._year_range_nodes = tree_builder.chrono_year_range_nodes
         self._app_initializer.start(tree_builder, self._on_tree_build_finished)
 
     def _on_tree_build_finished(self) -> None:
-        # Linger on the last image...
-        def finish_popup() -> None:
-            self._loading_data_popup.title = "All titles loaded!"
-            self._loading_data_popup.dismiss()
-            if self._loading_data_popup_image_event:
-                self._loading_data_popup_image_event.cancel()
-
-            set_kivy_normal_cursor()
-
-            self._fun_image_view_screen.is_visible = True
-
-        Clock.schedule_once(lambda _dt: finish_popup(), 2)
+        pass
 
     def display_settings(self, app_window: Any, settings: Widget) -> bool:  # noqa: ANN401
         logger.debug("Display settings object.")

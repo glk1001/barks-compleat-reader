@@ -10,7 +10,6 @@ from barks_fantagraphics.barks_tags import (
     TagCategories,
     TagGroups,
     Tags,
-    get_num_tagged_titles,
     get_sorted_tagged_titles,
     special_case_personal_favourites_tag_update,
 )
@@ -23,7 +22,6 @@ from barks_fantagraphics.barks_titles import (
 )
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
-    ALL_LISTS,
     SERIES_CS,
     SERIES_DDA,
     SERIES_DDS,
@@ -68,7 +66,6 @@ from barks_reader.reader_formatter import (
 from barks_reader.reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
-    LoadingDataPopup,
     MainTreeViewNode,
     ReaderTreeBuilderEventDispatcher,
     ReaderTreeView,
@@ -123,7 +120,7 @@ class _CompletionCounter:
 class ReaderTreeBuilder:
     # Process nodes in batches to reduce scheduling overhead and improve performance.
     # A larger batch size is faster but makes the UI less responsive during the build.
-    BUILD_BATCH_SIZE = 5
+    BUILD_BATCH_SIZE = 50
 
     def __init__(
         self,
@@ -132,14 +129,12 @@ class ReaderTreeBuilder:
         reader_tree_events: ReaderTreeBuilderEventDispatcher,
         tree_view_manager: TreeViewManager,
         title_lists: dict[str, list[FantaComicBookInfo]],
-        loading_data_popup: LoadingDataPopup,
     ) -> None:
         self._reader_settings = reader_settings
         self._reader_tree_view = reader_tree_view
         self._reader_tree_events = reader_tree_events
         self._tree_view_manager = tree_view_manager
         self._title_lists = title_lists
-        self._loading_data_popup = loading_data_popup
         self._title_search = BarksTitleSearch()
         self._tree_build_timing = Timing()
         self.chrono_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
@@ -169,18 +164,6 @@ class ReaderTreeBuilder:
 
     def build_main_screen_tree(self) -> None:
         """Set up and kick off the entire asynchronous tree build process."""
-        self._loading_data_popup.ids.loading_data_progress_bar.min = 0
-        # Approximate total number of nodes to load:
-        self._loading_data_popup.ids.loading_data_progress_bar.max = (
-            len(self._title_lists[ALL_LISTS])  # chronological titles
-            + len(self._title_lists[ALL_LISTS])  # series titles
-            + get_num_tagged_titles()  # category titles
-        )
-        logger.debug(
-            f"Progress bar max = {self._loading_data_popup.ids.loading_data_progress_bar.max}."
-        )
-        self._loading_data_popup.progress_bar_value = 0
-
         self._reader_tree_view.bind(on_node_expand=self._tree_view_manager.on_node_expanded)
 
         logger.debug("Building simple nodes...")
@@ -195,9 +178,6 @@ class ReaderTreeBuilder:
         self._build_story_nodes_concurrently(self._reader_tree_view, the_stories_node)
 
         self._reader_tree_view.bind(minimum_height=self._reader_tree_view.setter("height"))
-
-    def _inc_progress_bar(self) -> None:
-        self._loading_data_popup.progress_bar_value += 1
 
     def _build_story_nodes_concurrently(
         self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
@@ -423,8 +403,6 @@ class ReaderTreeBuilder:
                 )
                 tree.add_node(node, parent=parent_node)
 
-            self._inc_progress_bar()
-
             if (i + 1) % self.BUILD_BATCH_SIZE == 0:
                 yield
 
@@ -496,8 +474,6 @@ class ReaderTreeBuilder:
                 title_info, self._tree_view_manager.on_title_row_button_pressed
             )
             tree.add_node(node, parent=parent_node)
-
-            self._inc_progress_bar()
 
             if (i + 1) % self.BUILD_BATCH_SIZE == 0:
                 yield
@@ -707,11 +683,6 @@ class ReaderTreeBuilder:
         self._tree_build_timing.end_time = datetime.now(UTC)
         time_in_secs = self._tree_build_timing.get_elapsed_time_in_seconds()
 
-        logger.info(
-            f"Finished loading all nodes in {time_in_secs}s:"
-            f" {self._loading_data_popup.progress_bar_value}"
-            f" nodes processed, progress bar max"
-            f" = {self._loading_data_popup.ids.loading_data_progress_bar.max}."
-        )
+        logger.info(f"Finished loading all nodes in {time_in_secs}s.")
 
         self._reader_tree_events.finished_building()
