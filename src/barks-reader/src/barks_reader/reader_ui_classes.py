@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     from kivy.uix.spinner import Spinner
 
 READER_TREE_VIEW_KV_FILE = Path(__file__).parent / "reader-tree-view.kv"
+READER_POPUPS_KV_FILE = Path(__file__).parent / "reader_popups.kv"
 
 TREE_VIEW_NODE_TEXT_COLOR = (1, 1, 1, 1)
 TREE_VIEW_NODE_SELECTED_COLOR = (1, 0, 1, 0.8)

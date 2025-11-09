@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, override
 
+from barks_fantagraphics.fanta_comics_info import ALL_LISTS, FantaComicBookInfo
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.config import Config
@@ -27,6 +28,7 @@ from barks_reader.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, Fu
 from barks_reader.index_screen import INDEX_SCREEN_KV_FILE, IndexScreen
 from barks_reader.intro_compleat_barks_reader import get_intro_compleat_barks_reader_screen
 from barks_reader.main_screen import MAIN_SCREEN_KV_FILE, MainScreen
+from barks_reader.random_title_images import RandomTitleImages
 from barks_reader.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING, OPTIONS_SETTING
 from barks_reader.reader_screens import (
     COMIC_BOOK_READER_SCREEN,
@@ -38,10 +40,17 @@ from barks_reader.reader_screens import (
 from barks_reader.reader_settings import BARKS_READER_SECTION, BuildableReaderSettings
 from barks_reader.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
+    READER_POPUPS_KV_FILE,
     READER_TREE_VIEW_KV_FILE,
+    LoadingDataPopup,
     ReaderTreeBuilderEventDispatcher,
+    set_kivy_busy_cursor,
 )
-from barks_reader.reader_utils import get_best_window_height_fit, get_win_width_from_height
+from barks_reader.reader_utils import (
+    get_best_window_height_fit,
+    get_image_stream,
+    get_win_width_from_height,
+)
 from barks_reader.screen_metrics import SCREEN_METRICS, log_screen_metrics
 from barks_reader.settings_fix import SettingLongPath, SettingOptionsWithValue
 from barks_reader.settings_notifier import settings_notifier
@@ -50,6 +59,9 @@ from barks_reader.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScre
 if TYPE_CHECKING:
     from barks_fantagraphics.comics_cmd_args import CmdArgs
     from barks_fantagraphics.comics_database import ComicsDatabase
+
+    # noinspection PyProtectedMember
+    from kivy._clock import ClockEvent
     from kivy.config import ConfigParser
     from kivy.uix.screenmanager import ScreenManager
     from kivy.uix.widget import Widget
@@ -70,6 +82,13 @@ class BarksReaderApp(App):
         self._comics_database = comics_db
         self.reader_settings = BuildableReaderSettings()
         self.font_manager = FontManager()
+        self._random_title_images: RandomTitleImages | None = None
+        self._title_lists: dict[str, list[FantaComicBookInfo]] = (
+            FilteredTitleLists().get_title_lists()
+        )
+
+        self._loading_data_popup: LoadingDataPopup | None = None
+        self._loading_data_popup_image_event: ClockEvent | None = None
 
         self._reader_screen_manager = ReaderScreenManager(self.open_settings)
         self._screen_switchers = self._reader_screen_manager.screen_switchers
@@ -232,6 +251,13 @@ class BarksReaderApp(App):
         # Pass the font manager to kv lang so it can be accessed
         Builder.load_string("#:set fm app.font_manager")
         Builder.load_string("#:set sys_paths app.reader_settings.sys_file_paths")
+
+        Builder.load_file(str(READER_POPUPS_KV_FILE))
+        self._loading_data_popup = LoadingDataPopup()
+        self._loading_data_popup.on_open = self._on_loading_data_popup_open
+        self._loading_data_popup.open()
+        # Clock.schedule_once(lambda _dt: self._loading_data_popup.open(), 0)
+
         Builder.load_file(str(READER_TREE_VIEW_KV_FILE))
         Builder.load_file(str(TREE_VIEW_SCREEN_KV_FILE))
         Builder.load_file(str(BOTTOM_TITLE_VIEW_SCREEN_KV_FILE))
@@ -245,6 +271,8 @@ class BarksReaderApp(App):
         self._main_screen.build_tree_view()
 
         self._finalize_window_setup()
+
+        self._on_build_finished()
 
         return root
 
@@ -265,10 +293,49 @@ class BarksReaderApp(App):
             self.reader_settings.reader_files_dir
         )
 
+        self._random_title_images = RandomTitleImages(self.reader_settings)
+
+    def _on_loading_data_popup_open(self) -> None:
+        logger.debug("Starting the loading data popup...")
+
+        # Bind the popup's size and position to the MainScreen's geometry.
+        # This ensures it's always aligned, even in fullscreen mode.
+        #        self.bind(size=self._update_popup_geometry, pos=self._update_popup_geometry)
+
+        # Trigger an initial update.
+        #        self._update_popup_geometry()
+
+        set_kivy_busy_cursor()
+
+        def _show_popop() -> None:
+            self._loading_data_popup.opacity = 1
+            self._set_new_loading_data_popup_image()
+
+        Clock.schedule_once(lambda _dt: _show_popop(), 0)
+
+        self._loading_data_popup_image_event = Clock.schedule_interval(
+            lambda _dt: self._set_new_loading_data_popup_image(),
+            0.5,
+        )
+
+    def _update_popup_geometry(self, *_args: Any) -> None:  # noqa: ANN401
+        """Update the popup's size and position to match the MainScreen."""
+        if self._loading_data_popup:
+            self._loading_data_popup.size_hint = (None, None)
+            self._loading_data_popup.size = (Window.width, Window.height * 0.55)
+            self._loading_data_popup.pos = (Window.left, Window.top)
+
+    # noinspection PyNoneFunctionAssignment
+    def _set_new_loading_data_popup_image(self) -> None:
+        splash_image_file = self._random_title_images.get_loading_screen_random_image(
+            self._title_lists[ALL_LISTS]
+        )
+        self._loading_data_popup.splash_image_texture = get_image_stream(splash_image_file)
+        logger.debug(f'New loading popup image: "{splash_image_file}".')
+
     def _build_screens(self) -> ScreenManager:
         logger.debug("Instantiating main screen...")
         # TODO: Can probably move some of these into main_screen
-        filtered_title_lists = FilteredTitleLists()
         reader_tree_events = ReaderTreeBuilderEventDispatcher()
         tree_view_screen = TreeViewScreen(self.reader_settings)
         bottom_title_view_screen = BottomTitleViewScreen(self.reader_settings)
@@ -278,7 +345,10 @@ class BarksReaderApp(App):
             self._comics_database,
             self.reader_settings,
             reader_tree_events,
-            filtered_title_lists,
+            self._loading_data_popup,
+            self._loading_data_popup_image_event,
+            self._random_title_images,
+            self._title_lists,
             self._reader_screen_manager.screen_switchers,
             tree_view_screen,
             bottom_title_view_screen,
@@ -318,6 +388,9 @@ class BarksReaderApp(App):
         )
 
         return self._reader_screen_manager.add_screens(reader_screens)
+
+    def _on_build_finished(self) -> None:
+        pass
 
     def _set_custom_title_bar(self) -> None:
         Window.custom_titlebar = True

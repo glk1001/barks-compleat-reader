@@ -14,7 +14,6 @@ from barks_fantagraphics.barks_titles import (
 )
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
-    ALL_LISTS,
     SERIES_EXTRAS,
     FantaComicBookInfo,
 )
@@ -45,13 +44,11 @@ from barks_reader.reader_ui_classes import (
     LoadingDataPopup,
     ReaderTreeBuilderEventDispatcher,
     hide_action_bar,
-    set_kivy_busy_cursor,
     set_kivy_normal_cursor,
     show_action_bar,
 )
 from barks_reader.reader_utils import (
     get_all_files_in_dir,
-    get_image_stream,
     get_title_str_from_reader_icon_file,
     get_win_width_from_height,
 )
@@ -71,7 +68,6 @@ if TYPE_CHECKING:
 
     from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
     from barks_reader.comic_book_reader import ComicBookReaderScreen
-    from barks_reader.filtered_title_lists import FilteredTitleLists
     from barks_reader.font_manager import FontManager
     from barks_reader.fun_image_view_screen import FunImageViewScreen
     from barks_reader.index_screen import IndexScreen
@@ -95,7 +91,10 @@ class MainScreen(ReaderScreen):
         comics_database: ComicsDatabase,
         reader_settings: ReaderSettings,
         reader_tree_events: ReaderTreeBuilderEventDispatcher,
-        filtered_title_lists: FilteredTitleLists,
+        loading_data_popup: LoadingDataPopup,
+        loading_data_popup_image_event: ClockEvent,
+        random_title_images: RandomTitleImages,
+        title_lists: dict[str, list[FantaComicBookInfo]],
         screen_switchers: ScreenSwitchers,
         tree_view_screen: TreeViewScreen,
         bottom_title_view_screen: BottomTitleViewScreen,
@@ -133,10 +132,8 @@ class MainScreen(ReaderScreen):
 
         self._screen_switchers = screen_switchers
         self._font_manager = font_manager
-        self._title_lists: dict[str, list[FantaComicBookInfo]] = (
-            filtered_title_lists.get_title_lists()
-        )
-        self._random_title_images = RandomTitleImages(self._reader_settings)
+        self._title_lists = title_lists
+        self._random_title_images = random_title_images
         self.is_first_use_of_reader = self._reader_settings.is_first_use_of_reader
 
         self._action_bar = self.ids.action_bar
@@ -154,9 +151,8 @@ class MainScreen(ReaderScreen):
         self.fanta_info: FantaComicBookInfo | None = None
         self._year_range_nodes: dict | None = None
 
-        self._loading_data_popup = LoadingDataPopup()
-        self._loading_data_popup.on_open = self._on_loading_data_popup_open
-        self._loading_data_popup_image_event: ClockEvent | None = None
+        self._loading_data_popup = loading_data_popup
+        self._loading_data_popup_image_event = loading_data_popup_image_event
 
         self._reader_tree_events = reader_tree_events
 
@@ -216,8 +212,6 @@ class MainScreen(ReaderScreen):
         self._set_initial_state()
 
     def _set_initial_state(self) -> None:
-        Clock.schedule_once(lambda _dt: self._loading_data_popup.open(), 0)
-
         self._view_state_manager.update_background_views(ViewStates.PRE_INIT)
 
         self._bottom_title_view_screen.set_special_fanta_overrides(self._special_fanta_overrides)
@@ -232,6 +226,7 @@ class MainScreen(ReaderScreen):
             active=self.on_checkbox_custom_image_types_changed
         )
         self._fun_image_view_screen.on_goto_title_func = self._on_goto_fun_view_title
+        self._fun_image_view_screen.is_visible = False
 
         self._reader_tree_events.bind(
             on_finished_building_event=self._app_initializer.on_tree_build_finished
@@ -271,44 +266,6 @@ class MainScreen(ReaderScreen):
         file_index = randrange(0, len(icon_files))
         return icon_files[file_index]
 
-    def _on_loading_data_popup_open(self) -> None:
-        logger.debug("Starting the loading data popup...")
-
-        # Bind the popup's size and position to the MainScreen's geometry.
-        # This ensures it's always aligned, even in fullscreen mode.
-        self.bind(size=self._update_popup_geometry, pos=self._update_popup_geometry)
-
-        # Trigger an initial update.
-        self._update_popup_geometry()
-
-        set_kivy_busy_cursor()
-
-        def _show_popop() -> None:
-            self._loading_data_popup.opacity = 1
-            self._set_new_loading_data_popup_image()
-
-        Clock.schedule_once(lambda _dt: _show_popop(), 0)
-
-        self._loading_data_popup_image_event = Clock.schedule_interval(
-            lambda _dt: self._set_new_loading_data_popup_image(),
-            0.5,
-        )
-
-    def _update_popup_geometry(self, *_args: Any) -> None:  # noqa: ANN401
-        """Update the popup's size and position to match the MainScreen."""
-        if self._loading_data_popup:
-            self._loading_data_popup.size_hint = (None, None)
-            self._loading_data_popup.size = (self.width, self.height * 0.55)
-            self._loading_data_popup.pos = self.pos
-
-    # noinspection PyNoneFunctionAssignment
-    def _set_new_loading_data_popup_image(self) -> None:
-        splash_image_file = self._random_title_images.get_loading_screen_random_image(
-            self._title_lists[ALL_LISTS]
-        )
-        self._loading_data_popup.splash_image_texture = get_image_stream(splash_image_file)
-        logger.debug(f'New loading popup image: "{splash_image_file}".')
-
     def app_closing(self) -> None:
         logger.debug("Closing app...")
 
@@ -337,11 +294,17 @@ class MainScreen(ReaderScreen):
 
     def _on_tree_build_finished(self) -> None:
         # Linger on the last image...
-        self._loading_data_popup.title = "All titles loaded!"
-        Clock.schedule_once(lambda _dt: self._loading_data_popup.dismiss(), 1)
-        self._loading_data_popup_image_event.cancel()
+        def finish_popup() -> None:
+            self._loading_data_popup.title = "All titles loaded!"
+            self._loading_data_popup.dismiss()
+            if self._loading_data_popup_image_event:
+                self._loading_data_popup_image_event.cancel()
 
-        set_kivy_normal_cursor()
+            set_kivy_normal_cursor()
+
+            self._fun_image_view_screen.is_visible = True
+
+        Clock.schedule_once(lambda _dt: finish_popup(), 2)
 
     def display_settings(self, app_window: Any, settings: Widget) -> bool:  # noqa: ANN401
         logger.debug("Display settings object.")

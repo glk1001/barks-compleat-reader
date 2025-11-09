@@ -236,6 +236,7 @@ def safe_import_check(module_name: str, timeout: float = 5.0) -> bool:
 
     ok = False
     if proc.returncode == 0:
+        # noinspection PyBroadException
         try:
             result = json.loads(proc.stdout.strip().splitlines()[-1])
             ok = result.get("ok", False)

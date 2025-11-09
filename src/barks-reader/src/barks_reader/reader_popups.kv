@@ -1,0 +1,89 @@
+<LoadingDataPopup>:
+    opacity: 0
+    background_color: (1, 1, 0, 1)
+    title: "Please wait.   Loading all the titles ..."
+    title_size: fm.loading_title_size
+    title_font: fm.loading_title_font_name
+    title_align: "left"
+    title_color: (1,1,0.4,1)
+    separator_color: (1, 0, 0, 0.0)
+    separator_height: dp(4)
+    size_hint: (1, 0.55)
+    x: 0
+    y: 0
+    auto_dismiss: False
+    mipmap: True
+
+    BoxLayout:
+        orientation: "vertical"
+
+        Image:
+            color: (1,1,1,1)
+            opacity: 1.0
+            texture: root.splash_image_texture
+            size_hint: (1, 0.9)
+            fit_mode: "cover"
+            mipmap: True
+
+        Label:
+            text: "vertical filler"
+            color: (0,0,0,0)
+            size_hint: (1, 0.02)
+
+        ProgressBar:
+            id: loading_data_progress_bar
+            size_hint: (1, 0.05)
+            value: root.progress_bar_value
+            min: 0
+            max: 3
+
+<MessagePopup>:
+    background_color: (0,0,1,1)
+    title: "USER SUPPLIED"
+    title_size: fm.loading_title_size
+    title_font: fm.loading_title_font_name
+    title_align: "center"
+    title_color: (1, 0, 0, 1)
+    auto_dismiss: False
+    size_hint: 0.9, 0.5
+
+    BoxLayout:
+        orientation: "vertical"
+
+        Label:
+            text: root.msg_text
+            font_size: fm.error_popup_font_size
+            background_color: (1, 1, 1, 1)
+            multiline: True
+            markup: True
+            size: self.texture_size
+            halign: 'justify'
+            valign: 'middle'
+            size_hint: 0.7, 0.9
+            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint: 0.45, 0.20
+            pos_hint: {'right': 1, 'top': 1}
+            spacing: dp(10)
+            padding: [dp(20),dp(20),dp(20),dp(20)]
+
+            Button:
+                disabled: not root.ok_text
+                opacity: 0 if not root.ok_text else 1
+                text: root.ok_text
+                font_size: fm.error_popup_button_font_size
+                text_size: self.size
+                halign: 'center'
+                valign: 'middle'
+                bold: True
+                on_press: root.ok()
+
+            Button:
+                text: root.cancel_text
+                font_size: fm.error_popup_button_font_size
+                text_size: self.size
+                halign: 'center'
+                valign: 'middle'
+                on_press: root.cancel()
