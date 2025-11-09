@@ -41,6 +41,7 @@ from barks_reader.reader_tree_builder import ReaderTreeBuilder
 from barks_reader.reader_tree_view_utils import find_tree_view_title_node, get_tree_view_node_path
 from barks_reader.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
+    ButtonTreeViewNode,
     ReaderTreeBuilderEventDispatcher,
     hide_action_bar,
     show_action_bar,
@@ -146,7 +147,7 @@ class MainScreen(ReaderScreen):
         self._special_fanta_overrides = SpecialFantaOverrides(self._reader_settings)
 
         self.fanta_info: FantaComicBookInfo | None = None
-        self._year_range_nodes: dict | None = None
+        self._year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
 
         self._reader_tree_events = reader_tree_events
 
@@ -443,11 +444,17 @@ class MainScreen(ReaderScreen):
         logger.debug(f'Goto title: "{image_info.from_title.name}", "{image_info.filename}".')
         title_fanta_info = self._get_fanta_info(image_info.from_title)
 
-        year_nodes = self._year_range_nodes[self._get_year_range_from_info(title_fanta_info)]
-        self._tree_view_screen.open_all_parent_nodes(year_nodes)
+        # Get the year range node for this title.
+        title_year_range = self._get_year_range_from_info(title_fanta_info)
+        year_node = self._year_range_nodes[title_year_range]
+        assert year_node
+        year_node.ensure_populated()
+        logger.debug(f"For range {title_year_range}, year node has {len(year_node.nodes)} nodes.")
 
-        assert image_info.from_title
-        title_node = find_tree_view_title_node(year_nodes, image_info.from_title)
+        # Open all parent nodes to 'year_node', get the title node, then goto it in the tree view.
+        self._tree_view_screen.open_all_parent_nodes(year_node)
+        title_node = find_tree_view_title_node(year_node, image_info.from_title)
+        assert title_node
         self._tree_view_manager.goto_node(title_node, scroll_to=True)
 
         self._title_row_selected(title_fanta_info, image_info.filename)

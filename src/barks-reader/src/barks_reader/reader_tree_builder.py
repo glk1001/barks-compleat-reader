@@ -34,7 +34,6 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from barks_fantagraphics.title_search import BarksTitleSearch
 from comic_utils.timing import Timing
-from kivy.clock import Clock
 from kivy.uix.button import Button
 from loguru import logger
 
@@ -96,27 +95,6 @@ if TYPE_CHECKING:
 BUTTON_ON_PRESS_CALLABLE = Callable[[Button], None]
 
 
-class _CompletionCounter:
-    """A simple counter to track the completion of multiple asynchronous tasks.
-
-    It triggers a callback when all tasks are finished.
-    """
-
-    def __init__(self, on_all_finished: Callable | None = None) -> None:
-        self._count = 0
-        self._on_all_finished = on_all_finished
-
-    def start_task(self) -> None:
-        """Register a new task."""
-        self._count += 1
-
-    def finish_task(self) -> None:
-        """Mark a task as complete and trigger the final callback if it's the last one."""
-        self._count -= 1
-        if self._count == 0 and self._on_all_finished:
-            self._on_all_finished()
-
-
 class ReaderTreeBuilder:
     # Process nodes in batches to reduce scheduling overhead and improve performance.
     # A larger batch size is faster but makes the UI less responsive during the build.
@@ -175,23 +153,14 @@ class ReaderTreeBuilder:
 
         logger.debug("Starting asynchronous build of all story nodes...")
         # This is the single entry point for the entire asynchronous build.
-        self._build_story_nodes_concurrently(self._reader_tree_view, the_stories_node)
+        self._build_story_nodes(self._reader_tree_view, the_stories_node)
 
         self._reader_tree_view.bind(minimum_height=self._reader_tree_view.setter("height"))
 
-    def _build_story_nodes_concurrently(
-        self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
-    ) -> None:
-        """Dispatches all heavy build tasks to run concurrently on the Kivy.
-
-        scheduler and uses a counter to detect when all tasks are complete.
-        """
+    def _build_story_nodes(self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode) -> None:
         self._tree_build_timing.start_time = datetime.now(UTC)
 
-        # Create ONE counter for all concurrent tasks, passing the final callback.
-        concurrent_task_counter = _CompletionCounter(on_all_finished=self._finished_all_nodes)
-
-        # 1. Create main parent nodes synchronously
+        # 1. Create main parent nodes synchronously.
         chrono_node = self._create_and_add_simple_node(
             tree,
             CHRONOLOGICAL_NODE_TEXT,
@@ -214,34 +183,22 @@ class ReaderTreeBuilder:
             parent_node=parent_node,
         )
 
-        # 2. Dispatch the Chronological build task
-        logger.debug("Dispatching the Chronological node build tasks...")
-        concurrent_task_counter.start_task()
+        logger.debug("Creating Chronological parent nodes and dispatching population tasks...")
         chrono_gen = self._add_chrono_year_range_nodes_gen(tree, chrono_node)
-        self._run_generator(chrono_gen, on_finish=concurrent_task_counter.finish_task)
+        self._run_generator(chrono_gen)
 
-        # 3. Handle Series nodes: create parents synchronously, populate children concurrently
-        logger.debug(
-            "Creating Series parent nodes to preserve order and dispatching population tasks..."
-        )
+        logger.debug("Creating Series parent nodes and dispatching population tasks...")
         for series_name in self._series_names:
-            # To guarantee correct series order, synchronously create the parent node
-            # for the series' child titles.
             title_list = self._title_lists[series_name]
             series_text = get_markup_text_with_num_titles(series_name, len(title_list))
             new_series_node = StoryGroupTreeViewNode(text=series_text)
             tree.add_node(new_series_node, parent=series_node)
 
-            # Dispatch a concurrent task to populate this new node's children.
-            concurrent_task_counter.start_task()
             gen = self._populate_series_node_gen(tree, series_name, new_series_node)
-            self._run_generator(gen, on_finish=concurrent_task_counter.finish_task)
+            self._run_generator(gen)
 
-        # 4. Dispatch all the Category build tasks to run concurrently
-        logger.debug("Dispatching all the Category nodes build tasks...")
+        logger.debug("Creating Category parent nodes and dispatching population tasks...")
         for category in TagCategories:
-            concurrent_task_counter.start_task()
-
             # We need a small wrapper generator to create the sub-parent node.
             def category_gen_wrapper(cat_to_build: TagCategories) -> Generator[None]:
                 new_node = self._create_and_add_simple_node(
@@ -254,7 +211,9 @@ class ReaderTreeBuilder:
                 yield from self._add_category_node_gen(tree, cat_to_build, new_node)
 
             gen = category_gen_wrapper(category)
-            self._run_generator(gen, on_finish=concurrent_task_counter.finish_task)
+            self._run_generator(gen)
+
+        self._finished_all_nodes()
 
     # --- Population Generators ---
 
@@ -429,7 +388,7 @@ class ReaderTreeBuilder:
 
     def _add_us_year_range_node_gen(
         self, tree: ReaderTreeView, year_range: tuple[int, int], parent_node: ButtonTreeViewNode
-    ) -> Generator[None]:
+    ) -> Generator:
         new_node, year_range_titles = self._create_and_add_year_range_node(
             tree,
             year_range,
@@ -450,7 +409,7 @@ class ReaderTreeBuilder:
 
     def _populate_simple_series_node_gen(
         self, series_name: str, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
-    ) -> Generator[None]:
+    ) -> Generator:
         """Populate a simple series node with its title list."""
         title_list = self._title_lists[series_name]
 
@@ -663,26 +622,17 @@ class ReaderTreeBuilder:
         return new_node, year_range_titles
 
     @staticmethod
-    def _run_generator(gen: Generator, on_finish: Callable[[], None] | None = None) -> None:
-        """Schedules a generator to run one step at a time on the Kivy clock.
-
-        An optional on_finish callback can be provided.
-        """
-
-        def _next_step(*_) -> None:  # noqa: ANN002
-            try:
-                next(gen)
-                Clock.schedule_once(_next_step, 0)
-            except StopIteration:
-                if on_finish:
-                    on_finish()
-
-        Clock.schedule_once(_next_step, 0)
+    def _run_generator(gen: Generator) -> None:
+        """Run the generator to completion *synchronously* (no Clock scheduling)."""
+        for _ in gen:
+            # We intentionally ignore intermediate yields now.
+            # This drains the generator inline, making the whole build synchronous.
+            pass
 
     def _finished_all_nodes(self) -> None:
         self._tree_build_timing.end_time = datetime.now(UTC)
-        time_in_secs = self._tree_build_timing.get_elapsed_time_in_seconds()
+        elapsed_time = self._tree_build_timing.get_elapsed_time_with_unit()
 
-        logger.info(f"Finished loading all nodes in {time_in_secs}s.")
+        logger.info(f"Finished loading all nodes in {elapsed_time}.")
 
         self._reader_tree_events.finished_building()

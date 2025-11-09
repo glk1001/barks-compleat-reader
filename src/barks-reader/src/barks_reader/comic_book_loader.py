@@ -7,6 +7,7 @@ import threading
 import traceback
 import zipfile
 from collections import OrderedDict
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 from zipfile import ZipFile
@@ -20,6 +21,7 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from comic_utils.comic_consts import CBZ_FILE_EXT, ZIP_FILE_EXT
 from comic_utils.pil_image_utils import get_pil_image_as_png_bytes, open_pil_image_from_bytes
+from comic_utils.timing import Timing
 from kivy.clock import Clock
 from loguru import logger
 from PIL import Image as PilImage
@@ -87,12 +89,17 @@ class ComicBookLoader:
             self._fanta_volume_archives = None
         else:
             logger.info("Using Fantagraphics volume archives. Now loading volume info...")
+            timing = Timing(datetime.now(UTC))
             self._fanta_volume_archives = FantagraphicsVolumeArchives(
                 self._reader_settings.fantagraphics_volumes_dir,
                 self._sys_file_paths.get_barks_reader_fantagraphics_overrides_root_dir(),
                 ALL_FANTA_VOLUMES,
             )
             self._fanta_volume_archives.load()
+
+            timing.end_time = datetime.now(UTC)
+            elapsed_time = timing.get_elapsed_time_with_unit()
+            logger.info(f"Finished loading all volumes in {elapsed_time}.")
 
     def get_image_ready_for_reading(self, page_index: int) -> tuple[io.BytesIO, str]:
         assert self._images

@@ -343,6 +343,10 @@ class ButtonTreeViewNode(Button, TreeViewNode):
 
         return None
 
+    def ensure_populated(self) -> None:
+        if self.populate_callback and not self.populated:
+            self.populate_callback()
+
 
 class MainTreeViewNode(ButtonTreeViewNode):
     NODE_SIZE = (dp(400), dp(30))

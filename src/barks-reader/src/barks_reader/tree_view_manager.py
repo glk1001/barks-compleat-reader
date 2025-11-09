@@ -47,7 +47,6 @@ from barks_reader.reader_formatter import get_clean_text_without_extra
 from barks_reader.reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
-    ReaderTreeView,
     TagGroupStoryGroupTreeViewNode,
     TagSearchBoxTreeViewNode,
     TagStoryGroupTreeViewNode,
@@ -61,6 +60,7 @@ if TYPE_CHECKING:
     from kivy.uix.button import Button
     from kivy.uix.spinner import Spinner
 
+    from barks_reader.reader_ui_classes import ReaderTreeView
     from barks_reader.tree_view_screen import TreeViewScreen
     from barks_reader.view_state_manager import ViewStateManager
 
