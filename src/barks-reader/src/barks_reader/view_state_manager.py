@@ -7,10 +7,10 @@ from comic_utils.timing import Timing
 from loguru import logger
 
 from barks_reader.background_views import ImageThemes
+from barks_reader.panel_image_loader import PanelImageLoader
 from barks_reader.random_title_images import ImageInfo
 from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO
 from barks_reader.reader_formatter import get_clean_text_without_extra
-from barks_reader.reader_utils import get_image_stream
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.barks_tags import TagGroups, Tags
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+    from kivy.core.image import Texture
 
     from barks_reader.background_views import BackgroundViews, ViewStates
     from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
@@ -57,6 +58,7 @@ class ViewStateManager:
         self._fun_image_view_screen = fun_image_view_screen
         self._index_screen = index_screen
         self._on_views_updated_func = on_views_updated_func
+        self._image_loader = PanelImageLoader()
 
         # Take ownership of the view-specific state
         self._top_view_image_info: ImageInfo = ImageInfo()
@@ -203,18 +205,27 @@ class ViewStateManager:
         logger.debug("Setting new top view.")
 
         self._top_view_image_info = self._background_views.get_top_view_image_info()
-        self._tree_view_screen.top_view_image_opacity = (
-            self._background_views.get_top_view_image_opacity()
-        )
-        self._tree_view_screen.top_view_image_texture = get_image_stream(
-            self._top_view_image_info.filename
-        )
-        self._tree_view_screen.top_view_image_fit_mode = self._top_view_image_info.fit_mode
-        self._tree_view_screen.top_view_image_color = (
-            self._background_views.get_top_view_image_color()
-        )
-        assert self._top_view_image_info.from_title is not None
-        self._tree_view_screen.set_title(self._top_view_image_info.from_title)
+
+        timing = Timing()
+
+        def on_ready(tex: Texture, err: Exception) -> None:
+            if err:
+                raise RuntimeError(err)
+
+            self._tree_view_screen.top_view_image_opacity = (
+                self._background_views.get_top_view_image_opacity()
+            )
+            self._tree_view_screen.top_view_image_fit_mode = self._top_view_image_info.fit_mode
+            self._tree_view_screen.top_view_image_color = (
+                self._background_views.get_top_view_image_color()
+            )
+            self._tree_view_screen.top_view_image_texture = tex
+            assert self._top_view_image_info.from_title is not None
+            self._tree_view_screen.set_title(self._top_view_image_info.from_title)
+
+            logger.debug(f"Time taken to set top image: {timing.get_elapsed_time_with_unit()}.")
+
+        self._image_loader.load_texture(self._top_view_image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
 
     def _set_fun_view(self) -> None:
         """Set the image and properties for the 'fun' bottom view."""
@@ -225,20 +236,26 @@ class ViewStateManager:
         self._fun_image_view_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
 
         self._bottom_view_fun_image_info = self._background_views.get_bottom_view_fun_image_info()
-        timing = Timing()
 
-        self._fun_image_view_screen.image_texture = (
-            None
-            if not self._bottom_view_fun_image_info.filename
-            else get_image_stream(self._bottom_view_fun_image_info.filename)
-        )
-        self._fun_image_view_screen.image_fit_mode = self._bottom_view_fun_image_info.fit_mode
-        self._fun_image_view_screen.image_color = (
-            self._background_views.get_bottom_view_fun_image_color()
-        )
-        self._fun_image_view_screen.set_title(self._bottom_view_fun_image_info.from_title)
+        if not self._bottom_view_fun_image_info.filename:
+            self._fun_image_view_screen.image_texture = None
+        else:
+            timing = Timing()
 
-        logger.debug(f"Time taken to set fun image: {timing.get_elapsed_time_with_unit()}.")
+            def on_ready(tex: Texture, err: Exception) -> None:
+                if err:
+                    raise RuntimeError(err)
+                self._fun_image_view_screen.image_fit_mode = (
+                    self._bottom_view_fun_image_info.fit_mode
+                )
+                self._fun_image_view_screen.image_color = (
+                    self._background_views.get_bottom_view_fun_image_color()
+                )
+                self._fun_image_view_screen.image_texture = tex
+                self._fun_image_view_screen.set_title(self._bottom_view_fun_image_info.from_title)
+                logger.debug(f"Time taken to set fun image: {timing.get_elapsed_time_with_unit()}.")
+
+            self._image_loader.load_texture(self._bottom_view_fun_image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
 
     def _set_bottom_view(self) -> None:
         """Set the image and properties for the title information bottom view."""
@@ -251,17 +268,27 @@ class ViewStateManager:
         self._bottom_view_title_image_info = (
             self._background_views.get_bottom_view_title_image_info()
         )
-        self._bottom_title_view_screen.title_image_texture = (
-            None
-            if not self._bottom_view_title_image_info.filename
-            else get_image_stream(self._bottom_view_title_image_info.filename)
-        )
-        self._bottom_title_view_screen.title_image_fit_mode = (
-            self._bottom_view_title_image_info.fit_mode
-        )
-        self._bottom_title_view_screen.title_image_color = (
-            self._background_views.get_bottom_view_title_image_color()
-        )
+
+        if not self._bottom_view_title_image_info.filename:
+            self._bottom_title_view_screen.title_image_texture = None
+        else:
+            timing = Timing()
+
+            def on_ready(tex: Texture, err: Exception) -> None:
+                if err:
+                    raise RuntimeError(err)
+                self._bottom_title_view_screen.title_image_fit_mode = (
+                    self._bottom_view_title_image_info.fit_mode
+                )
+                self._bottom_title_view_screen.title_image_color = (
+                    self._background_views.get_bottom_view_title_image_color()
+                )
+                self._bottom_title_view_screen.title_image_texture = tex
+                logger.debug(
+                    f"Time taken to set title image: {timing.get_elapsed_time_with_unit()}."
+                )
+
+            self._image_loader.load_texture(self._bottom_view_title_image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
 
     def _set_index_view(self) -> None:
         opacity = self._background_views.get_index_view_opacity()

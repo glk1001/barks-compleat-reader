@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from comic_utils.timing import Timing
 from kivy.animation import Animation
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
@@ -13,13 +14,15 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 from kivy.uix.floatlayout import FloatLayout
 from loguru import logger
 
+from barks_reader.panel_image_loader import PanelImageLoader
 from barks_reader.random_title_images import FIT_MODE_COVER
 from barks_reader.reader_formatter import LONG_TITLE_SPLITS, ReaderFormatter
-from barks_reader.reader_utils import get_image_stream
 
 if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+    from kivy.core.image import Texture
 
+    from barks_reader.reader_consts_and_types import PanelPath
     from barks_reader.reader_settings import ReaderSettings
     from barks_reader.special_overrides_handler import SpecialFantaOverrides
 
@@ -74,21 +77,38 @@ class BottomTitleViewScreen(FloatLayout):
     def set_special_fanta_overrides(self, special_fanta_overrides: SpecialFantaOverrides) -> None:
         self._special_fanta_overrides = special_fanta_overrides
 
-    # noinspection PyNoneFunctionAssignment
     def set_title_view(self, fanta_info: FantaComicBookInfo) -> None:
         self._fanta_info = fanta_info
+
         self.main_title_text = self._get_main_title_str(fanta_info)
         self.title_info_text = self._formatter.get_title_info(
             fanta_info,
             self.MAX_TITLE_INFO_LEN_BEFORE_SHORTEN,
         )
         self.title_extra_info_text = self._formatter.get_title_extra_info(fanta_info)
+
         inset_image_source = self._reader_settings.file_paths.get_comic_inset_file(
             fanta_info.comic_book_info.title,
             use_only_edited_if_possible=True,
         )
-        self.title_inset_image_texture = get_image_stream(inset_image_source)
         logger.debug(f'Using title image source "{inset_image_source}".')
+
+        self._set_title_inset_image(inset_image_source)
+
+    # noinspection PyNoneFunctionAssignment
+    def _on_use_overrides_checkbox_changed(self, _instance: object, use_overrides: bool) -> None:
+        logger.debug(f"Use overrides checkbox changed: use_overrides = {use_overrides}.")
+
+        if not self._fanta_info:
+            return
+
+        inset_image_source = self._special_fanta_overrides.get_title_page_inset_file(
+            self._fanta_info.comic_book_info.title,
+            use_overrides,
+        )
+        logger.debug(f"Use overrides changed: inset source = '{inset_image_source}'.")
+
+        self._set_title_inset_image(inset_image_source)
 
     def fade_in_bottom_view_title(self) -> None:
         self.ids.bottom_view_box.opacity = 0
@@ -108,20 +128,20 @@ class BottomTitleViewScreen(FloatLayout):
         assert self.on_title_portal_image_pressed_func is not None
         self.on_title_portal_image_pressed_func()
 
-    # noinspection PyNoneFunctionAssignment
-    def _on_use_overrides_checkbox_changed(self, _instance: object, use_overrides: bool) -> None:
-        logger.debug(f"Use overrides checkbox changed: use_overrides = {use_overrides}.")
+    def _set_title_inset_image(self, inset_image_source: PanelPath) -> None:
+        timing = Timing()
 
-        if not self._fanta_info:
-            return
+        def on_ready(tex: Texture | None, err: Exception) -> None:
+            if err:
+                raise RuntimeError(err)
 
-        inset_image_source = self._special_fanta_overrides.get_title_page_inset_file(
-            self._fanta_info.comic_book_info.title,
-            use_overrides,
-        )
-        self.title_inset_image_texture = get_image_stream(inset_image_source)
+            self.title_inset_image_texture = tex
+            logger.debug(
+                f"Time taken to set title inset image: {timing.get_elapsed_time_with_unit()}."
+            )
 
-        logger.debug(f"Use overrides changed: inset source = '{inset_image_source}'.")
+        image_loader = PanelImageLoader()
+        image_loader.load_texture(inset_image_source, on_ready)  # ty: ignore[invalid-argument-type]
 
     @staticmethod
     def _get_main_title_str(fanta_info: FantaComicBookInfo) -> str:
