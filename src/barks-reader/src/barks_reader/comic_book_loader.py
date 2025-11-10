@@ -7,7 +7,6 @@ import threading
 import traceback
 import zipfile
 from collections import OrderedDict
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 from zipfile import ZipFile
@@ -88,8 +87,9 @@ class ComicBookLoader:
             logger.info("Using prebuilt archives. No extra data to initialize.")
             self._fanta_volume_archives = None
         else:
+            timing = Timing()
+
             logger.info("Using Fantagraphics volume archives. Now loading volume info...")
-            timing = Timing(datetime.now(UTC))
             self._fanta_volume_archives = FantagraphicsVolumeArchives(
                 self._reader_settings.fantagraphics_volumes_dir,
                 self._sys_file_paths.get_barks_reader_fantagraphics_overrides_root_dir(),
@@ -97,9 +97,7 @@ class ComicBookLoader:
             )
             self._fanta_volume_archives.load()
 
-            timing.end_time = datetime.now(UTC)
-            elapsed_time = timing.get_elapsed_time_with_unit()
-            logger.info(f"Finished loading all volumes in {elapsed_time}.")
+            logger.info(f"Finished loading all volumes in {timing.get_elapsed_time_with_unit()}.")
 
     def get_image_ready_for_reading(self, page_index: int) -> tuple[io.BytesIO, str]:
         assert self._images

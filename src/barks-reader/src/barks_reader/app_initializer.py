@@ -3,6 +3,7 @@ from __future__ import annotations
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
+from comic_utils.timing import Timing
 from kivy.clock import Clock
 from loguru import logger
 
@@ -97,20 +98,24 @@ class AppInitializer:
 
     def _post_build_setup(self) -> None:
         """Handle all setup tasks that must occur after the tree is built."""
-        self._set_post_build_fanta_volumes_state()
-        logger.debug(f"_fanta_volumes_state = {self._fanta_volumes_state}.")
+        timing = Timing()
+        try:
+            self._set_post_build_fanta_volumes_state()
+            logger.debug(f"_fanta_volumes_state = {self._fanta_volumes_state}.")
 
-        self._view_state_manager.update_background_views(ViewStates.INITIAL)
+            self._view_state_manager.update_background_views(ViewStates.INITIAL)
 
-        if (self._fanta_volumes_state in _READY_FANTA_VOLUMES_STATE) and (
-            not self._init_comic_book_data()
-        ):
-            return
+            if (self._fanta_volumes_state in _READY_FANTA_VOLUMES_STATE) and (
+                not self._init_comic_book_data()
+            ):
+                return
 
-        if self._reader_settings.goto_saved_node_on_start:
-            saved_node_path = self._json_settings_manager.get_last_selected_node_path()
-            if saved_node_path:
-                self._goto_saved_node(saved_node_path)
+            if self._reader_settings.goto_saved_node_on_start:
+                saved_node_path = self._json_settings_manager.get_last_selected_node_path()
+                if saved_node_path:
+                    self._goto_saved_node(saved_node_path)
+        finally:
+            logger.info(f"Time of post tree setup: {timing.get_elapsed_time_with_unit()}.")
 
     def _goto_saved_node(self, saved_node_path: list[str]) -> None:
         logger.debug(f'Looking for saved node "{saved_node_path}"...')

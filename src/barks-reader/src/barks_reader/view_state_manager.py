@@ -3,6 +3,7 @@ from __future__ import annotations
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
+from comic_utils.timing import Timing
 from loguru import logger
 
 from barks_reader.background_views import ImageThemes
@@ -224,6 +225,8 @@ class ViewStateManager:
         self._fun_image_view_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
 
         self._bottom_view_fun_image_info = self._background_views.get_bottom_view_fun_image_info()
+        timing = Timing()
+
         self._fun_image_view_screen.image_texture = (
             None
             if not self._bottom_view_fun_image_info.filename
@@ -234,6 +237,8 @@ class ViewStateManager:
             self._background_views.get_bottom_view_fun_image_color()
         )
         self._fun_image_view_screen.set_title(self._bottom_view_fun_image_info.from_title)
+
+        logger.debug(f"Time taken to set fun image: {timing.get_elapsed_time_with_unit()}.")
 
     def _set_bottom_view(self) -> None:
         """Set the image and properties for the title information bottom view."""

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from barks_fantagraphics.comics_consts import PageType
+from comic_utils.timing import Timing
 from kivy.clock import Clock
 from kivy.core.image import Image as CoreImage
 from kivy.core.window import Window
@@ -208,6 +209,8 @@ class ComicBookReader(BoxLayout):
         self._fullscreen_left_margin = -1
         self._fullscreen_right_margin = -1
 
+        self._time_to_load_comic = Timing()
+
     def set_goto_page_widget(self, goto_page_widget: Widget) -> None:
         self._goto_page_widget = goto_page_widget
 
@@ -308,6 +311,13 @@ class ComicBookReader(BoxLayout):
 
         self._page_manager.set_page_map(page_map, page_to_first_goto)
 
+        # import cProfile
+        #
+        # self.pr = cProfile.Profile()
+        # self.pr.enable()
+
+        self._time_to_load_comic.restart()
+
         self._comic_book_loader.set_comic(
             fanta_info,
             use_fantagraphics_overrides,
@@ -340,8 +350,14 @@ class ComicBookReader(BoxLayout):
         self._on_comic_is_ready_to_read()
 
     def _all_images_loaded(self) -> None:
+        # self.pr.disable()
+        # self.pr.dump_stats("comic_loader.pstats")
+
         self._all_loaded = True
-        logger.debug(f"All images loaded: current page index = {self._current_page_index}.")
+        logger.info(
+            f"All images loaded in {self._time_to_load_comic.get_elapsed_time_with_unit()}"
+            f": current page index = {self._current_page_index}."
+        )
 
     def _load_error(self, load_warning_only: bool) -> None:
         self._all_loaded = False

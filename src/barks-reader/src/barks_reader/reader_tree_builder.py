@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_tags import (
@@ -151,14 +150,14 @@ class ReaderTreeBuilder:
         self._add_appendix_node(self._reader_tree_view)
         self._add_index_node(self._reader_tree_view)
 
-        logger.debug("Starting asynchronous build of all story nodes...")
+        logger.debug("Building title nodes...")
         # This is the single entry point for the entire asynchronous build.
         self._build_story_nodes(self._reader_tree_view, the_stories_node)
 
         self._reader_tree_view.bind(minimum_height=self._reader_tree_view.setter("height"))
 
     def _build_story_nodes(self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode) -> None:
-        self._tree_build_timing.start_time = datetime.now(UTC)
+        self._tree_build_timing.restart()
 
         # 1. Create main parent nodes synchronously.
         chrono_node = self._create_and_add_simple_node(
@@ -630,7 +629,6 @@ class ReaderTreeBuilder:
             pass
 
     def _finished_all_nodes(self) -> None:
-        self._tree_build_timing.end_time = datetime.now(UTC)
         elapsed_time = self._tree_build_timing.get_elapsed_time_with_unit()
 
         logger.info(f"Finished loading all nodes in {elapsed_time}.")

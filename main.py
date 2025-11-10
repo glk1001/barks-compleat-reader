@@ -1,4 +1,4 @@
-# ruff: noqa: PLC0415, EXE002
+# ruff: noqa: PLC0415, EXE002, E402
 # -------------------------------------------------------------------- #
 # --- We need to change the KIVY_HOME directory to be under this   --- #
 # --- app's settings directory. The 'barks_reader.config_info'     --- #
@@ -11,6 +11,10 @@ import os
 import sys
 import threading
 from configparser import ConfigParser
+
+from comic_utils.timing import Timing
+
+_timing = Timing()
 
 from barks_fantagraphics.comics_cmd_args import CmdArgs, ExtraArg
 from barks_reader.config_info import (  # IMPORT THIS BEFORE Kivy!!
@@ -315,5 +319,7 @@ if __name__ == "__main__":
     start_logging(config_info, cmd_args, minimal_options)
 
     update_window_size(cmd_args, minimal_options)
+
+    logger.info(f"Time before Kivy app starts: {_timing.get_elapsed_time_with_unit()}.")
 
     call_reader_main(config_info, cmd_args)

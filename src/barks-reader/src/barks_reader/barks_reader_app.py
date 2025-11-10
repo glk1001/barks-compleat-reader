@@ -6,12 +6,13 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, override
 
-from kivy.app import App
+from comic_utils.timing import Timing
+from kivy.app import App  # can take ~2s in VM Windows
 from kivy.clock import Clock
 from kivy.config import Config
-from kivy.core.window import Window
+from kivy.core.window import Window  # can take ~1s in VM Windows
 from kivy.lang import Builder
-from kivy.uix.settings import Settings, SettingsWithSpinner
+from kivy.uix.settings import Settings, SettingsWithSpinner  # can take ~1s in VM Windows
 from loguru import logger
 from screeninfo import get_monitors
 
@@ -25,8 +26,10 @@ from barks_reader.filtered_title_lists import FilteredTitleLists
 from barks_reader.font_manager import FontManager
 from barks_reader.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, FunImageViewScreen
 from barks_reader.index_screen import INDEX_SCREEN_KV_FILE, IndexScreen
-from barks_reader.intro_compleat_barks_reader import get_intro_compleat_barks_reader_screen
-from barks_reader.main_screen import MAIN_SCREEN_KV_FILE, MainScreen
+from barks_reader.intro_compleat_barks_reader import (
+    get_intro_compleat_barks_reader_screen,  # can take ~3s on VM Windows
+)
+from barks_reader.main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
 from barks_reader.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING, OPTIONS_SETTING
 from barks_reader.reader_screens import (
     COMIC_BOOK_READER_SCREEN,
@@ -62,6 +65,8 @@ class BarksReaderApp(App):
 
     def __init__(self, config_info: ConfigInfo, comics_db: ComicsDatabase, **kwargs: str) -> None:
         super().__init__(**kwargs)
+
+        self.timing = Timing()
 
         self.title = APP_TITLE
         self.settings_cls = SettingsWithSpinner
@@ -206,6 +211,8 @@ class BarksReaderApp(App):
         self.config.write()
         settings.interface.menu.height = ACTION_BAR_SIZE_Y
 
+        logger.info(f"Time taken up to build settings: {self.timing.get_elapsed_time_with_unit()}.")
+
     @override
     def on_config_change(
         self,
@@ -246,6 +253,8 @@ class BarksReaderApp(App):
         self._main_screen.build_tree_view()
 
         self._finalize_window_setup()
+
+        logger.info(f"Time taken up to build kivy: {self.timing.get_elapsed_time_with_unit()}.")
 
         return root
 
@@ -402,6 +411,7 @@ def main(config_info: ConfigInfo, cmd_args: CmdArgs) -> None:
         assert config_info.error_background_path is not None
 
         kivy_app = BarksReaderApp(config_info, comics_database)
+
         kivy_app.run()
     except Exception:  # noqa: BLE001
         logger.exception("There's been a program error - the Barks reader app is terminating: ")
