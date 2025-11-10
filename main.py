@@ -12,6 +12,7 @@ import sys
 import threading
 from configparser import ConfigParser
 
+from comic_utils.cpi_loader import cpi_loader
 from comic_utils.timing import Timing
 
 _timing = Timing()
@@ -298,6 +299,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
     reset_python_gc()
+
+    cpi_loader.start_async()
 
     config_info = ConfigInfo()
 

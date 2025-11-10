@@ -66,6 +66,8 @@ def get_formatted_color(color: Color) -> str:
 def get_formatted_payment_info(payment_info: PaymentInfo) -> str:
     current_year = datetime.now(UTC).year
     cpi_adjusted_payment = inflate(payment_info.payment, payment_info.accepted_year)
+    if cpi_adjusted_payment < 0:
+        return "CPI calculator is not available"
 
     return (
         f"${payment_info.payment:.0f} (${cpi_adjusted_payment:.0f} in {current_year})"

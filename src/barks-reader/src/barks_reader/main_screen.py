@@ -17,6 +17,7 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_EXTRAS,
     FantaComicBookInfo,
 )
+from comic_utils import cpi_inflate
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.properties import BooleanProperty, StringProperty  # ty: ignore[unresolved-import]
@@ -272,6 +273,10 @@ class MainScreen(ReaderScreen):
             selected_node_path = get_tree_view_node_path(self._tree_view_screen.get_selected_node())
             self._json_settings_manager.save_last_selected_node_path(selected_node_path)
             logger.debug(f'Settings: Saved last selected node "{selected_node_path}".')
+
+        # This is not a bad place to give a warning if there is stale cpi data.
+        # It's not easy to do near the start of the app because of cpi module load times.
+        cpi_inflate.check_for_stale_data()
 
     def build_tree_view(self) -> None:
         tree_builder = ReaderTreeBuilder(
