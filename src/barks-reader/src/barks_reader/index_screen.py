@@ -18,6 +18,7 @@ from barks_fantagraphics.barks_tags import (
 )
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
+from comic_utils.timing import Timing
 from kivy.animation import Animation
 from kivy.app import App
 from kivy.clock import Clock
@@ -32,12 +33,14 @@ from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from loguru import logger
 
+from barks_reader.panel_image_loader import PanelImageLoader
 from barks_reader.random_title_images import ImageInfo, RandomTitleImages
-from barks_reader.reader_utils import get_concat_page_nums_str, get_image_stream
+from barks_reader.reader_utils import get_concat_page_nums_str
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from kivy.core.image import Texture
     from kivy.uix.gridlayout import GridLayout
     from kivy.uix.widget import Widget
 
@@ -146,6 +149,7 @@ class IndexScreen(FloatLayout):
 
     def _build_index(self) -> None:
         """Build the index from Barks titles and tags."""
+        timing = Timing()
         logger.info("Building index...")
 
         # Add all comic titles
@@ -173,16 +177,20 @@ class IndexScreen(FloatLayout):
         for letter in self._item_index:
             self._item_index[letter].sort(key=lambda item: item.display_text.lower())
 
-        logger.success("Index build complete.")
+        logger.debug(f"Index build complete (in {timing.get_elapsed_time_with_unit()}).")
 
     def _populate_alphabet_menu(self) -> None:
         """Create the A-Z buttons and add them to the GridLayout."""
+        timing = Timing()
+
         alphabet_layout: GridLayout = self.ids.alphabet_layout
         for letter in string.ascii_uppercase:
             button = IndexMenuButton(text=letter)
             button.bind(on_release=self.on_letter_press)
             self._alphabet_buttons[letter] = button
             alphabet_layout.add_widget(button)
+
+        logger.debug(f"Created A-Z index buttons in {timing.get_elapsed_time_with_unit()}.")
 
     def on_is_visible(self, _instance: IndexScreen, value: bool) -> None:
         """When the widget becomes visible, automatically press the 'A' button."""
@@ -199,6 +207,8 @@ class IndexScreen(FloatLayout):
 
     def on_letter_press(self, button: Button) -> None:
         """Handle a letter button press and display the corresponding index items."""
+        timing = Timing()
+
         letter = button.text
         logger.debug(f"Letter '{letter}' pressed.")
 
@@ -239,6 +249,10 @@ class IndexScreen(FloatLayout):
 
         self.ids.index_scroll_view.scroll_y = 1
 
+        logger.debug(
+            f"Populated index page for letter '{letter}' in {timing.get_elapsed_time_with_unit()}."
+        )
+
     def _new_index_image(self) -> None:
         self._cached_all_titles_for_letter = []
         self._cached_hierarchies = {}
@@ -272,7 +286,17 @@ class IndexScreen(FloatLayout):
             hierarchy = self._cached_hierarchies[image_info.from_title]
             self.current_title_str = hierarchy.get_title_with_hierarchy()
 
-        self.image_texture = get_image_stream(image_info.filename)
+        timing = Timing()
+
+        def on_ready(tex: Texture | None, err: Exception) -> None:
+            if err:
+                raise RuntimeError(err)
+
+            self.image_texture = tex
+            logger.debug(f"Time taken to set index image: {timing.get_elapsed_time_with_unit()}.")
+
+        image_loader = PanelImageLoader()
+        image_loader.load_texture(image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
 
     def _get_all_titles_for_letter(
         self, letter: str
@@ -282,7 +306,7 @@ class IndexScreen(FloatLayout):
         all_titles: set[Titles] = set()
 
         for index_item in self._item_index[letter]:
-            self.update_all_titles_and_hierarchies(index_item.id, all_titles, hierarchies)
+            self._update_all_titles_and_hierarchies(index_item.id, all_titles, hierarchies)
 
         return [
             ALL_FANTA_COMIC_BOOK_INFO[BARKS_TITLES[title_id]]
@@ -290,7 +314,7 @@ class IndexScreen(FloatLayout):
             if BARKS_TITLES[title_id] in ALL_FANTA_COMIC_BOOK_INFO
         ], hierarchies
 
-    def update_all_titles_and_hierarchies(
+    def _update_all_titles_and_hierarchies(
         self,
         item_id: Titles | Tags | TagGroups,
         all_titles: set[Titles],
@@ -308,9 +332,9 @@ class IndexScreen(FloatLayout):
         elif type(item_id) is TagGroups:
             for tag in BARKS_TAG_GROUPS[item_id]:
                 if type(tag) is TagGroups:
-                    self.update_all_titles_and_hierarchies(tag, all_titles, hierarchies)
+                    self._update_all_titles_and_hierarchies(tag, all_titles, hierarchies)
                 else:
-                    self.update_all_titles_and_hierarchies(tag, all_titles, hierarchies, item_id)
+                    self._update_all_titles_and_hierarchies(tag, all_titles, hierarchies, item_id)
 
     def _create_index_button(self, item: IndexItem) -> IndexItemButton:
         """Create a configured IndexItemButton."""
@@ -490,7 +514,7 @@ class IndexScreen(FloatLayout):
     def _handle_title(self, button: Button, item: IndexItem) -> None:
         logger.info(f'Handling title: "{item.id.name}".')
 
-        time_delay_to_title = 0.1  # seconds
+        time_delay_to_title = 0.05  # seconds
         anim = Animation(
             background_color=self.index_theme.ITEM_BG_SELECTED, duration=time_delay_to_title
         )
