@@ -9,7 +9,7 @@ import textwrap
 import zipfile
 from pathlib import Path
 from random import randrange
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, Titles
 from barks_fantagraphics.comics_consts import PageType
@@ -187,6 +187,27 @@ def get_concat_page_nums_str(page_nums_str: list[str]) -> str:
         raise ValueError(msg) from e
     else:
         return str(intspan(page_nums))
+
+
+def quote_and_join_with_and(items: list[Any]) -> str:
+    return join_with_and(get_quoted_items(items))
+
+
+def get_quoted_items(items: list[Any]) -> list[str]:
+    return [f'"{item}"' for item in items]
+
+
+def join_with_and(items: list[Any]) -> str:
+    if not items:
+        return ""
+    if len(items) == 1:
+        return str(items[0])
+    if len(items) == 2:  # noqa: PLR2004
+        return f"{items[0]} and {items[1]}"
+
+    # Join all but the last element with ', '.
+    beginning = ", ".join(map(str, items[:-1]))
+    return f"{beginning}, and {items[-1]}"
 
 
 def get_centred_position_on_primary_monitor(win_width: int, win_height: int) -> tuple[int, int]:

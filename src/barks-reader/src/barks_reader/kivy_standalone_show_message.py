@@ -3,8 +3,24 @@
 """Standalone popup utilities for displaying messages when Kivy may not be running."""
 
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
+
+
+# --- Light divider line widget ---
+def divider_line() -> Any:  # Widget  # noqa: ANN401
+    from kivy.graphics import Color, Rectangle
+    from kivy.uix.widget import Widget
+
+    w = Widget(size_hint_y=None, height=1)
+    with w.canvas.before:  # ty: ignore[possibly-missing-attribute]
+        Color(0.65, 0.65, 0.65, 1)
+        w.rect = Rectangle(size=w.size, pos=w.pos)
+    w.bind(size=lambda inst, val: setattr(inst.rect, "size", val))
+    w.bind(pos=lambda inst, val: setattr(inst.rect, "pos", val))
+
+    return w
 
 
 def show_standalone_popup(  # noqa: PLR0915

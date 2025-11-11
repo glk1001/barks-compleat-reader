@@ -10,13 +10,14 @@ from loguru import logger
 
 from barks_reader.config_info import ConfigInfo
 from barks_reader.error_handling import handle_app_fail, handle_app_fail_with_traceback
+from barks_reader.reader_utils import quote_and_join_with_and
 
 _APP_TYPE = "Installer"
 _APP_NAME = "Barks Reader Installation"
 
 _ZIP_CONFIGS_SUBDIR = "Configs/"
 _ZIP_READER_FILES_SUBDIR = "Reader Files/"
-_ZIP_DATA_INSTALLER_FILE = "barks-reader-data.zip"
+_ZIP_DATA_INSTALLER_FILES = ["barks-reader-data-1.zip", "barks-reader-data-2.zip"]
 
 _EXPECTED_FANTA_VOLUMES_DIR_NAME = "Fantagraphics Complete Carl Barks Disney Library"
 
@@ -78,9 +79,9 @@ def main() -> None:
             return
 
         logger.info("Checking that the installer zips are OK.")
-        installer_zip = _check_installer_zips()
+        installer_zip_paths = _check_installer_zips()
 
-        fanta_volumes_dir = _run_installer(config_info, installer_zip)
+        fanta_volumes_dir = _run_installer(config_info, installer_zip_paths)
         logger.info("Finished installing config and data files.")
 
     except Exception:  # noqa: BLE001
@@ -113,7 +114,7 @@ def _show_success_message(config_info: ConfigInfo, fanta_volumes_dir: Path | Non
     )
 
     minimal_config_options = get_minimal_config_options(config_info)
-    data_zips = [Path("barks-reader-data.zip")]
+    data_zips = [Path(p) for p in _ZIP_DATA_INSTALLER_FILES]
 
     logger.debug("Preparing to show installation success message.")
 
@@ -144,28 +145,38 @@ def _check_barks_reader_exe_location(config_info: ConfigInfo, parent_executable:
         sys.exit(1)
 
 
-def _check_installer_zips() -> Path:
-    installer_zip = _barks_reader_exe_dir / _ZIP_DATA_INSTALLER_FILE
+def _check_installer_zips() -> list[Path]:
+    installer_zip_paths = []
+    for zip_file in _ZIP_DATA_INSTALLER_FILES:
+        installer_zip = _barks_reader_exe_dir / zip_file
 
-    logger.info(f'Checking for installer zip: "{installer_zip}".')
+        logger.info(f'Checking existence of installer zip: "{installer_zip}".')
 
-    if not installer_zip.is_file():
-        _handle_could_not_find_data_zip_error(installer_zip)
+        if not installer_zip.is_file():
+            _handle_could_not_find_data_zip_error(installer_zip)
 
-    return installer_zip
+        installer_zip_paths.append(installer_zip)
+
+    return installer_zip_paths
 
 
-def _run_installer(config_info: ConfigInfo, installer_zip: Path) -> Path | None:
-    logger.info(f'Found installer zip "{installer_zip}". Continuing with installer script.')
+def _run_installer(config_info: ConfigInfo, installer_zip_paths: list[Path]) -> Path | None:
+    assert len(installer_zip_paths) == 2  # noqa: PLR2004
+
+    logger.info(
+        f'Found installer zips "{quote_and_join_with_and(installer_zip_paths)}".'
+        f" Continuing with installer script."
+    )
 
     logger.info(
         f'Installing Barks Reader and Kivy configs to directory "{config_info.app_config_dir}".'
     )
-    _extract_subdir(installer_zip, _ZIP_CONFIGS_SUBDIR, config_info.app_config_dir)
+    _extract_subdir(installer_zip_paths[0], _ZIP_CONFIGS_SUBDIR, config_info.app_config_dir)
 
     reader_files_dir = config_info.app_data_dir / _ZIP_READER_FILES_SUBDIR
     logger.info(f'Installing Barks Reader support files to directory "{reader_files_dir}".')
-    _extract_subdir(installer_zip, _ZIP_READER_FILES_SUBDIR, reader_files_dir)
+    _extract_subdir(installer_zip_paths[0], _ZIP_READER_FILES_SUBDIR, reader_files_dir)
+    _extract_subdir(installer_zip_paths[1], _ZIP_READER_FILES_SUBDIR, reader_files_dir)
 
     return _configure_fanta_volumes_for_platform(config_info)
 

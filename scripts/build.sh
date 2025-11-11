@@ -1,9 +1,20 @@
 #!/bin/bash
-# build.sh - Regular build (uses already-obfuscated modulea)
+# build.sh - Regular build (uses already-obfuscated modules)
 
 set -e
 
+if [[ "$1" == "--include-zips" ]]; then
+  declare -r DO_ZIPS=1
+else
+  declare -r DO_ZIPS=0
+fi
+
 VERSION_FILE="src/barks-reader/src/barks_reader/_version.py"
+DATA_FILES_PARENT_DIR="${HOME}/Books/Carl Barks/Compleat Barks Disney Reader"
+CONFIG_FILES_SUBDIR="Configs"
+DATA_FILES_SUBDIR="Reader Files"
+DATA1_ZIP="barks-reader-data-1.zip"
+DATA2_ZIP="barks-reader-data-2.zip"
 
 # --- Get version from git ---
 get_git_version() {
@@ -16,10 +27,6 @@ get_git_version() {
 
 VERSION=$(get_git_version)
 
-# --- Write version file ---
-echo "Writing version: $VERSION"
-echo "version = \"${VERSION}\"" > "$VERSION_FILE"
-
 
 echo "=================================================="
 echo "Building Barks Compleat Reader"
@@ -27,10 +34,18 @@ echo "=================================================="
 
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
 NC='\033[0m'
 
+# --- Write version file ---
+echo -e "${YELLOW}Writing version: $VERSION ...${NC}"
+echo "version = \"${VERSION}\"" > "$VERSION_FILE"
+echo -e "Successfully wrote version to \"${VERSION_FILE}\"."
+echo
+
 if [[ ! -f pycrucible.toml ]]; then
-    echo "ERROR: Could not find \"pycrucible.toml\"."
+    echo "${RED}ERROR: Could not find \"pycrucible.toml\".${NC}"
     exit 1
 fi
 
@@ -48,12 +63,12 @@ case "$(uname -s)" in
         EXE="barks-reader-win.exe"
         ;;
     *)
-        echo "ERROR: OS unknown."
+        echo "${RED}ERROR: OS unknown.${NC}"
         exit 1
         ;;
 esac
 
-echo -e "${BLUE}Building with pycrucible for platform \"${OS}\"...${NC}"
+echo -e "${YELLOW}Building with pycrucible for platform \"${OS}\"...${NC}"
 rm -rf ./pycrucible_payload
 
 if [[ "${OS}" == "windows" ]]; then
@@ -65,6 +80,18 @@ uv run pycrucible --embed . -o "${EXE}"
 
 if [[ "${OS}" == "windows" ]]; then
     mv pycrucible.toml.orig pycrucible.toml
+fi
+
+if [[ $DO_ZIPS == 1 ]]; then
+  echo
+  echo -e "${YELLOW}Creating data zips \"${DATA1_ZIP}\" and \"${DATA2_ZIP}\"...${NC}"
+  rm -f "${DATA1_ZIP}" "${DATA2_ZIP}"
+  THIS_DIR=${PWD}
+  pushd "${DATA_FILES_PARENT_DIR}" >/dev/null
+  zip -rq "${THIS_DIR}/${DATA1_ZIP}" "${DATA_FILES_SUBDIR}" "${CONFIG_FILES_SUBDIR}" -x "${DATA_FILES_SUBDIR}/Barks Panels.zip"
+  zip -rq "${THIS_DIR}/${DATA2_ZIP}" "${DATA_FILES_SUBDIR}/Barks Panels.zip"
+  popd >/dev/null
+  echo
 fi
 
 echo -e "${GREEN}=================================================="

@@ -10,6 +10,8 @@ from typing import Any
 
 from loguru import logger
 
+from barks_reader.kivy_standalone_show_message import divider_line
+
 DEFAULT_ERROR_POPUP_SIZE = (800, 1000)
 
 
@@ -190,16 +192,6 @@ def _get_error_content(
                 instance.texture_update()
                 instance.height = instance.texture_size[1]
 
-            # --- Light divider line widget ---
-            def divider_line() -> Widget:
-                w = Widget(size_hint_y=None, height=1)
-                with w.canvas.before:  # ty: ignore[possibly-missing-attribute]
-                    Color(0.85, 0.85, 0.85, 1)
-                    w.rect = Rectangle(size=w.size, pos=w.pos)
-                w.bind(size=lambda inst, val: setattr(inst.rect, "size", val))
-                w.bind(pos=lambda inst, val: setattr(inst.rect, "pos", val))
-                return w
-
             # --- Heading label with tinted background ---
             def tinted_heading(text: str) -> Label:
                 heading = Label(
@@ -258,6 +250,7 @@ def _get_error_content(
             scroll_content.add_widget(divider_line())
 
             # --- Error Details (added dynamically) ---
+            self._error_details_divider_line = divider_line()
             self.heading_details = tinted_heading("Error Details")
             self.label_details = Label(
                 text=self.details.strip(),
@@ -331,6 +324,8 @@ def _get_error_content(
             if self.details_visible:
                 if self.label_details.parent is None:
                     idx = self.scroll_content.children.index(self.label_log_path)
+                    self._error_details_divider_line = divider_line()
+                    self.scroll_content.add_widget(self._error_details_divider_line)
                     self.scroll_content.add_widget(self.heading_details, index=idx)
                     self.scroll_content.add_widget(self.label_details, index=idx)
                 self.btn_toggle.text = "▲ Hide Details"
@@ -339,6 +334,8 @@ def _get_error_content(
                     self.scroll_content.remove_widget(self.label_details)
                 if self.heading_details.parent is not None:
                     self.scroll_content.remove_widget(self.heading_details)
+                if self._error_details_divider_line:
+                    self.scroll_content.remove_widget(self._error_details_divider_line)
                 self.btn_toggle.text = "▼ Show Details"
 
             # Scroll back to top

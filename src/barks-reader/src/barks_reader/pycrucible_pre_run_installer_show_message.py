@@ -3,8 +3,11 @@
 from pathlib import Path
 from typing import Any
 
-from barks_reader.kivy_standalone_show_message import show_standalone_popup
-from barks_reader.reader_utils import get_centred_position_on_primary_monitor
+from barks_reader.kivy_standalone_show_message import divider_line, show_standalone_popup
+from barks_reader.reader_utils import (
+    get_centred_position_on_primary_monitor,
+    quote_and_join_with_and,
+)
 
 DEFAULT_INSTALLER_POPUP_SIZE = (800, 1000)
 
@@ -44,7 +47,7 @@ def _get_installer_success_content(
     log_path: Path,
 ) -> Any:  # noqa: ANN401
     # Delay Kivy imports until instantiation
-    from kivy.graphics import Color, Rectangle, RoundedRectangle
+    from kivy.graphics import Color, RoundedRectangle
     from kivy.graphics.texture import Texture  # ty: ignore[unresolved-import]
     from kivy.metrics import dp, sp
     from kivy.uix.anchorlayout import AnchorLayout
@@ -214,15 +217,7 @@ def _get_installer_success_content(
         @staticmethod
         def _add_divider(parent: Widget) -> None:
             """Add a subtle divider line between sections."""
-            divider = Widget(size_hint_y=None, height=1)
-            with divider.canvas:  # ty: ignore[invalid-context-manager]
-                Color(0.82, 0.85, 0.92, 1)  # same as error popup
-                divider.line = Rectangle(size=(0, 1), pos=(0, 0))
-            divider.bind(
-                size=lambda i, v: setattr(i.line, "size", (v[0], 1)),
-                pos=lambda i, v: setattr(i.line, "pos", v),
-            )
-            parent.add_widget(divider)
+            parent.add_widget(divider_line())
 
         @staticmethod
         def _add_section_header(parent: Widget, text: str) -> None:
@@ -287,7 +282,7 @@ def _get_installer_success_content(
             card.bind(size=lambda _i, v: setattr(card.bg, "size", v))
             card.bind(pos=lambda _i, v: setattr(card.bg, "pos", v))
 
-            path_str = ", ".join(['"' + str(path) + '"' for path in paths])
+            path_str = quote_and_join_with_and(paths)
 
             lbl = Label(
                 text=path_str,
