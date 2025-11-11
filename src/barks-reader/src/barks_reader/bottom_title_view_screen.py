@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -28,7 +29,7 @@ if TYPE_CHECKING:
 
 BOTTOM_TITLE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
-OPENING_TITLE_ANIMATION_DURATION = 4
+TITLE_PORTAL_OPENING_ANIMATION_MAX_DURATION_SECS = 4
 
 
 class BottomTitleViewScreen(FloatLayout):
@@ -112,9 +113,15 @@ class BottomTitleViewScreen(FloatLayout):
 
     def fade_in_bottom_view_title(self) -> None:
         self.ids.bottom_view_box.opacity = 0
-        anim = Animation(opacity=1, duration=OPENING_TITLE_ANIMATION_DURATION)
+        anim = Animation(
+            opacity=1, duration=self._get_title_portal_opening_animation_duration_secs()
+        )
         anim.start(self.ids.bottom_view_box)
         self.ids.title_show_button.opacity = 1
+
+    @staticmethod
+    def _get_title_portal_opening_animation_duration_secs() -> int:
+        return random.randrange(0, TITLE_PORTAL_OPENING_ANIMATION_MAX_DURATION_SECS + 1)
 
     def set_goto_page_state(self, page_to_goto: str = "", active: bool = False) -> None:
         self.goto_page_num = page_to_goto
