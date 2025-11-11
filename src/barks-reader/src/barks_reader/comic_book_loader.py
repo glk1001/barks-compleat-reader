@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import io
 import os
 import sys
 import threading
+import time
 import traceback
 import zipfile
 from collections import OrderedDict
@@ -40,7 +42,6 @@ from barks_reader.reader_ui_classes import set_kivy_busy_cursor, set_kivy_normal
 from barks_reader.reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
 
 if TYPE_CHECKING:
-    import io
     from collections.abc import Callable
 
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
@@ -87,6 +88,8 @@ class ComicBookLoader:
             self._empty_page_image = file.read()
 
         self._thread: threading.Thread | None = None
+        self._max_worker_count = autotune_worker_count()
+        logger.debug(f"Using {self._max_worker_count} as max worker threads (auto-tuned).")
 
     def init_data(self) -> None:
         if self._reader_settings.use_prebuilt_archives:
@@ -335,8 +338,8 @@ class ComicBookLoader:
         first_page_index_to_display = self._page_map[self._image_load_order[0]].page_index
         logger.debug(f"First page index to display: index {first_page_index_to_display}.")
 
-        worker_count = self._auto_worker_count()
-        logger.debug(f"Using {worker_count} worker threads (auto-tuned).")
+        worker_count = self.get_worker_count_for_pages(num_pages)
+        logger.debug(f"Using {worker_count} worker threads for {num_pages} page comic.")
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
             futures = {}
             for load_index in self._image_load_order:
@@ -386,22 +389,8 @@ class ComicBookLoader:
 
         return num_loaded
 
-    @staticmethod
-    def _auto_worker_count() -> int:
-        # noinspection PyBroadException
-        try:
-            cpu_count = os.cpu_count() or 1
-        except:  # noqa: E722
-            cpu_count = 1
-
-        # Conservative for safety and UI smoothness.
-        if cpu_count <= 2:  # noqa: PLR2004
-            return cpu_count
-        if cpu_count <= 4:  # noqa: PLR2004
-            return cpu_count - 1
-        if cpu_count <= 8:  # noqa: PLR2004
-            return 4
-        return 6
+    def get_worker_count_for_pages(self, num_pages: int) -> int:
+        return min(self._max_worker_count, num_pages)
 
     def _close_and_report_load_error(self, load_warning_only: bool) -> None:
         self._stop = True
@@ -493,3 +482,97 @@ class ComicBookLoader:
         )
 
         return get_pil_image_as_png_bytes(pil_image_resized), PNG_EXT_FOR_KIVY
+
+
+# We store the result so the autotuner only runs once per process.
+_AUTO_TUNED_THREAD_COUNT = None
+_AUTOTUNE_LOCK = threading.Lock()
+
+
+def autotune_worker_count(sample_images: list[str] | None = None) -> int:
+    """Automatically determine the optimal number of worker threads for ZIP + JPEG decode workloads.
+
+    sample_images: optional list of paths (inside ZIP or filesystem)
+                   to use as test samples.
+                   If None, it generates synthetic JPEG bytes.
+
+    Returns: integer worker count.
+    """
+    global _AUTO_TUNED_THREAD_COUNT  # noqa: PLW0603
+
+    with _AUTOTUNE_LOCK:
+        if _AUTO_TUNED_THREAD_COUNT is not None:
+            return _AUTO_TUNED_THREAD_COUNT
+
+        cpu_count = os.cpu_count() or 1
+
+        # If 1-2 CPUs → don't bother benchmarking.
+        if cpu_count <= 2:  # noqa: PLR2004
+            _AUTO_TUNED_THREAD_COUNT = 1
+            return 1
+
+        logger.debug("[autotune] Starting thread count autotune...")
+
+        # ----------------------------------------------------------
+        # Step 1: obtain samples to decode
+        # ----------------------------------------------------------
+
+        if sample_images:
+            samples = []
+            for path in sample_images:
+                p = Path(path)
+                samples.append(p.read_bytes())
+        else:
+            # Create synthetic JPEGs in memory (fast + reliable)
+            samples = []
+
+            for _ in range(4):
+                image = Image.new("RGB", (1800, 2600), (128, 64, 32))
+                buf = io.BytesIO()
+                image.save(buf, format="JPEG", quality=90)
+                samples.append(buf.getvalue())
+
+        # ----------------------------------------------------------
+        # Step 2: test performance for various worker counts
+        # ----------------------------------------------------------
+
+        # Try these worker counts (cap at CPU count).
+        test_counts = [wc for wc in [1, 2, 3, 4, 6, 8, 10, 12, 16] if wc <= cpu_count]
+
+        times = {}
+
+        for wc in test_counts:
+            t0 = time.perf_counter()
+
+            def task(data) -> None:  # noqa: ANN001
+                img = Image.open(io.BytesIO(data))
+                img.load()
+                # noinspection PyUnusedLocal
+                img = img.resize((900, 1300), Image.Resampling.LANCZOS)
+
+            with ThreadPoolExecutor(max_workers=wc) as tp:
+                futures = [tp.submit(task, s) for s in samples]
+                for f in futures:
+                    f.result()  # ensure completion
+
+            dt = time.perf_counter() - t0
+            times[wc] = dt
+            logger.debug(f"[autotune] {wc} threads took {dt:.4f} sec.")
+
+        # ----------------------------------------------------------
+        # Step 3: pick the best-performing worker count.
+        # ----------------------------------------------------------
+
+        best_wc = min(times, key=lambda wc: times[wc])
+        best_time = times[best_wc]
+
+        # Some safety: don't return something silly like 1,
+        # if the difference is tiny. Allow slight smoothing.
+        for wc in sorted(times):
+            if times[wc] <= best_time * 1.08:  # within 8 percent of fastest
+                best_wc = wc
+
+        logger.debug(f"[autotune] Best worker count selected: {best_wc}.")
+
+        _AUTO_TUNED_THREAD_COUNT = best_wc
+        return best_wc
