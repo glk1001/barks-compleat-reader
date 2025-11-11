@@ -18,11 +18,13 @@ from loguru import logger
 from barks_reader.panel_image_loader import PanelImageLoader
 from barks_reader.random_title_images import FIT_MODE_COVER
 from barks_reader.reader_formatter import LONG_TITLE_SPLITS, ReaderFormatter
+from barks_reader.reader_utils import title_needs_footnote
 
 if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from kivy.core.image import Texture
 
+    from barks_reader.font_manager import FontManager
     from barks_reader.reader_consts_and_types import PanelPath
     from barks_reader.reader_settings import ReaderSettings
     from barks_reader.special_overrides_handler import SpecialFantaOverrides
@@ -45,7 +47,9 @@ class BottomTitleViewScreen(FloatLayout):
 
     MAIN_TITLE_BACKGROUND_COLOR = (0.01, 0.01, 0.01, 0.075)
     MAIN_TITLE_COLOR = (1, 1, 0, 1)
+    MAIN_TITLE_FOOTNOTE_COLOR = (1, 1, 0, 1)
     main_title_text = StringProperty()
+    main_title_footnote = StringProperty()
 
     TITLE_INFO_LABEL_COLOR = (1.0, 0.99, 0.9, 1.0)
     TITLE_EXTRA_INFO_LABEL_COLOR = (1.0, 1.0, 1.0, 1.0)
@@ -64,10 +68,12 @@ class BottomTitleViewScreen(FloatLayout):
     use_overrides_active = BooleanProperty(default=True)
     use_overrides_description = StringProperty()
 
-    def __init__(self, reader_settings: ReaderSettings, **kwargs: str) -> None:
+    def __init__(
+        self, reader_settings: ReaderSettings, font_manager: FontManager, **kwargs: str
+    ) -> None:
         super().__init__(**kwargs)
         self._reader_settings = reader_settings
-        self._formatter = ReaderFormatter()
+        self._formatter = ReaderFormatter(font_manager)
         self._special_fanta_overrides: SpecialFantaOverrides | None = None
         self._fanta_info: FantaComicBookInfo | None = None
         self.is_first_use_of_reader = self._reader_settings.is_first_use_of_reader
@@ -81,11 +87,13 @@ class BottomTitleViewScreen(FloatLayout):
     def set_title_view(self, fanta_info: FantaComicBookInfo) -> None:
         self._fanta_info = fanta_info
 
-        self.main_title_text = self._get_main_title_str(fanta_info)
+        title_text = self._get_main_title_str(fanta_info)
+        add_footnote = title_needs_footnote(self._fanta_info)
+        self.main_title_text = self._formatter.get_main_title(title_text, add_footnote)
         self.title_info_text = self._formatter.get_title_info(
-            fanta_info,
-            self.MAX_TITLE_INFO_LEN_BEFORE_SHORTEN,
+            fanta_info, self.MAX_TITLE_INFO_LEN_BEFORE_SHORTEN, add_footnote
         )
+        self.main_title_footnote = "" if not add_footnote else self._get_footnote_text()
         self.title_extra_info_text = self._formatter.get_title_extra_info(fanta_info)
 
         inset_image_source = self._reader_settings.file_paths.get_comic_inset_file(
@@ -95,6 +103,11 @@ class BottomTitleViewScreen(FloatLayout):
         logger.debug(f'Using title image source "{inset_image_source}".')
 
         self._set_title_inset_image(inset_image_source)
+
+    def _get_footnote_text(self) -> str:
+        return (
+            f"[*] Rejected by Western but intended for {self._fanta_info.get_short_issue_title()}"
+        )
 
     # noinspection PyNoneFunctionAssignment
     def _on_use_overrides_checkbox_changed(self, _instance: object, use_overrides: bool) -> None:

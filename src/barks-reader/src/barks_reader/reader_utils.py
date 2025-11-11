@@ -12,7 +12,9 @@ from random import randrange
 from typing import TYPE_CHECKING, Any
 
 from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, Titles
+from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.comics_consts import PageType
+from barks_fantagraphics.fanta_comics_info import US_CENSORED_TITLE_ENUMS, FantaComicBookInfo
 from comic_utils.pil_image_utils import PNG_PIL_FORMAT
 from intspan import intspan
 
@@ -45,6 +47,14 @@ def get_title_str_from_reader_icon_file(icon_path: Path) -> str:
     parts = re.split(r"(-\d+)+$", icon_path.stem)
 
     return parts[0]
+
+
+def title_needs_footnote(fanta_info: FantaComicBookInfo) -> bool:
+    return (
+        (not fanta_info.comic_book_info.is_barks_title)
+        and (fanta_info.comic_book_info.issue_name == Issues.CS)
+        and (fanta_info.comic_book_info.title in US_CENSORED_TITLE_ENUMS)
+    )
 
 
 def get_image_stream(file: PanelPath) -> Texture:

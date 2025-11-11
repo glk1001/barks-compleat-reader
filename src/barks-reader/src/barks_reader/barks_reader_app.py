@@ -281,7 +281,7 @@ class BarksReaderApp(App):
         filtered_title_lists = FilteredTitleLists()
         reader_tree_events = ReaderTreeBuilderEventDispatcher()
         tree_view_screen = TreeViewScreen(self.reader_settings)
-        bottom_title_view_screen = BottomTitleViewScreen(self.reader_settings)
+        bottom_title_view_screen = BottomTitleViewScreen(self.reader_settings, self.font_manager)
         fun_image_view_screen = FunImageViewScreen(self.reader_settings)
         index_screen = IndexScreen(self.reader_settings)
         self._main_screen = MainScreen(

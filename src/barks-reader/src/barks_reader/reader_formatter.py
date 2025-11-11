@@ -5,15 +5,18 @@ from datetime import UTC, datetime
 
 from barks_fantagraphics.barks_extra_info import BARKS_EXTRA_INFO
 from barks_fantagraphics.barks_payments import BARKS_PAYMENTS, PaymentInfo
-from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.barks_titles import ComicBookInfo, Titles
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
 from barks_fantagraphics.comics_consts import CARL_BARKS_FONT
 from barks_fantagraphics.comics_utils import (
     get_formatted_first_published_str,
     get_long_formatted_submitted_date,
+    get_short_formatted_first_published_str,
+    get_short_submitted_day_and_month,
 )
 from barks_fantagraphics.fanta_comics_info import FAN, FANTA_SOURCE_COMICS, FantaComicBookInfo
 from comic_utils.cpi_wrapper import inflate
+from kivy.utils import escape_markup
 
 from barks_reader.font_manager import FontManager
 from barks_reader.reader_colors import Color
@@ -78,7 +81,9 @@ def get_formatted_payment_info(payment_info: PaymentInfo) -> str:
 
 
 class ReaderFormatter:
-    def __init__(self) -> None:
+    def __init__(self, font_manager: FontManager) -> None:
+        self._font_manager = font_manager
+
         # Use a custom issue_name here to display slightly shorter names.
         self._title_info_issue_name = ISSUE_NAME.copy()
         self._title_info_issue_name[Issues.CS] = "Comics & Stories"
@@ -86,11 +91,52 @@ class ReaderFormatter:
         self._title_info_issue_name[Issues.USGTD] = "US Goes to Disneyland"
         self._title_info_issue_name[Issues.HDL] = "HDL Junior Woodchucks"
 
-    def get_title_info(self, fanta_info: FantaComicBookInfo, max_len_before_shorten: int) -> str:
+    @staticmethod
+    def get_main_title(title_str: str, add_footnote: bool) -> str:
+        if not add_footnote:
+            return title_str
+
+        return title_str + "[sup]*[/sup]"
+
+    @staticmethod
+    def get_issue_info(
+        fanta_info: FantaComicBookInfo, add_footnote: bool, sup_font_size: int, color: str
+    ) -> str:
+        first_published = get_short_formatted_first_published_str(fanta_info.comic_book_info)
+        submitted_date = __class__.get_formatted_submitted_str(fanta_info.comic_book_info, color)  # ty: ignore[unresolved-reference]
+
+        issue_info = first_published + submitted_date
+
+        if not add_footnote:
+            return f"[i]{issue_info}[/i]"
+
+        return f"[i]{issue_info}[size={sup_font_size}][sup]*[/sup][/i]"
+
+    @staticmethod
+    def get_formatted_submitted_str(comic_book_info: ComicBookInfo, color: str) -> str:
+        left_sq_bracket = escape_markup("[")
+        right_sq_bracket = escape_markup("]")
+
+        return (
+            f" {left_sq_bracket}"
+            f"{get_short_submitted_day_and_month(comic_book_info)}"
+            f" [b][color={color}]"
+            f"{comic_book_info.submitted_year}"
+            f"[/color][/b]"
+            f"{right_sq_bracket}"
+        )
+
+    def get_title_info(
+        self, fanta_info: FantaComicBookInfo, max_len_before_shorten: int, add_footnote: bool
+    ) -> str:
         # TODO: Clean this up.
         issue_info = get_formatted_first_published_str(
             fanta_info.comic_book_info, self._title_info_issue_name, max_len_before_shorten
         )
+        if add_footnote:
+            sup_font_size = round(1.5 * self._font_manager.title_info_font_size)
+            issue_info += f"[size={sup_font_size}][sup]*[/sup][/size]"
+
         submitted_info = get_long_formatted_submitted_date(fanta_info.comic_book_info)
         fanta_book = FANTA_SOURCE_COMICS[fanta_info.fantagraphics_volume]
         source = f"{FAN} CBDL, Vol {fanta_book.volume}, {fanta_book.year}"

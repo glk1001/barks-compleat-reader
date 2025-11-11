@@ -6,7 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from . import barks_titles as bt
-from .barks_titles import BARKS_TITLE_INFO, ComicBookInfo, Titles
+from .barks_titles import BARKS_TITLE_INFO, BARKS_TITLES, ComicBookInfo, Titles
 from .barks_titles import Titles as Bt
 from .comic_issues import ISSUE_NAME, Issues
 
@@ -263,7 +263,8 @@ SERIES_INFO_START_NUMBERS: dict[str, int] = {
     SERIES_EXTRAS: 1,
 }
 
-US_CENSORED_TITLES = [bt.SILENT_NIGHT, bt.MILKMAN_THE]
+US_CENSORED_TITLE_ENUMS = [Titles.SILENT_NIGHT, Titles.MILKMAN_THE]
+US_CENSORED_TITLES = [BARKS_TITLES[t] for t in US_CENSORED_TITLE_ENUMS]
 CENSORED_TITLES = [bt.GOOD_DEEDS, bt.SILENT_NIGHT, bt.MILKMAN_THE]
 HAND_RESTORED_TITLES = [bt.GOOD_DEEDS, bt.SILENT_NIGHT]
 SILENT_NIGHT_PUBLICATION_ISSUE = "Gemstone's Christmas Parade, No.3, 2005"

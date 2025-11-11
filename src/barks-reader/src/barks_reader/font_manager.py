@@ -21,13 +21,14 @@ class FontTheme:
     """A data class to hold all font sizes for a given theme."""
 
     main_title: float
+    main_title_footnote: float
     title_info: float
     title_extra_info: float
     index_menu: float
     index_item: float
     index_title: float
     year_range: float
-    loading_title: float
+    message_title: float
     checkbox: float
     default: float
     error_main_view: float
@@ -39,13 +40,14 @@ class FontTheme:
 
 LOW_RES_FONTS = FontTheme(
     main_title=sp(30),
+    main_title_footnote=sp(9),
     title_info=sp(16),
     title_extra_info=sp(14),
     index_menu=sp(13),
     index_item=sp(12),
     index_title=sp(12),
     year_range=sp(14),
-    loading_title=sp(16),
+    message_title=sp(16),
     checkbox=sp(14),
     default=sp(15),
     error_main_view=sp(40),
@@ -56,13 +58,14 @@ LOW_RES_FONTS = FontTheme(
 )
 HI_RES_FONTS = FontTheme(
     main_title=sp(40),
+    main_title_footnote=sp(10),
     title_info=sp(20),
     title_extra_info=sp(18),
     index_menu=sp(17),
     index_item=sp(16),
     index_title=sp(16),
     year_range=sp(18),
-    loading_title=sp(20),
+    message_title=sp(20),
     checkbox=sp(19),
     default=sp(19),
     error_main_view=sp(40),
@@ -75,6 +78,7 @@ HI_RES_FONTS = FontTheme(
 
 class FontManager(EventDispatcher):
     main_title_font_size = NumericProperty()
+    main_title_footnote_font_size = NumericProperty()
     title_info_font_size = NumericProperty()
     title_extra_info_font_size = NumericProperty()
     index_menu_font_size = NumericProperty()
@@ -100,10 +104,10 @@ class FontManager(EventDispatcher):
     tree_view_tag_spinner_font_size = NumericProperty()
     tree_view_tag_title_spinner_font_size = NumericProperty()
 
-    loading_title_size = NumericProperty()
+    message_title_size = NumericProperty()
 
     main_title_font_name = str(CARL_BARKS_FONT)
-    loading_title_font_name = main_title_font_name
+    message_title_font_name = main_title_font_name
 
     def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         super().__init__(*args, **kwargs)
@@ -139,6 +143,7 @@ class FontManager(EventDispatcher):
     def _apply_font_theme(self, theme: FontTheme) -> None:
         """Assign all font sizes from a theme object."""
         self.main_title_font_size = theme.main_title
+        self.main_title_footnote_font_size = theme.main_title_footnote
         self.title_info_font_size = theme.title_info
         self.title_extra_info_font_size = theme.title_extra_info
         self.index_menu_font_size = theme.index_menu
@@ -150,7 +155,7 @@ class FontManager(EventDispatcher):
         self.error_popup_button_font_size = theme.error_popup_button
         self.text_block_heading_font_size = theme.text_block_heading
         self.app_title_font_size = theme.app_title
-        self.loading_title_size = theme.loading_title
+        self.message_title_size = theme.message_title
 
         # Apply default and specific sizes for tree view
         self.tree_view_main_node_font_size = theme.default

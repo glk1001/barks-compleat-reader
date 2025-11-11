@@ -5,10 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from barks_fantagraphics.comics_utils import (
-    get_short_formatted_first_published_str,
-    get_short_submitted_day_and_month,
-)
+from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.event import EventDispatcher
@@ -26,24 +23,29 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
 from kivy.uix.popup import Popup
 from kivy.uix.treeview import TreeView, TreeViewNode
-from kivy.utils import escape_markup
 from loguru import logger
 
 from barks_reader.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
-from barks_reader.reader_formatter import get_markup_text_with_num_titles, text_includes_num_titles
-from barks_reader.reader_utils import unique_extend
+from barks_reader.reader_formatter import (
+    ReaderFormatter,
+    get_markup_text_with_num_titles,
+    text_includes_num_titles,
+)
+from barks_reader.reader_utils import title_needs_footnote, unique_extend
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from tkinter import Widget
 
     from barks_fantagraphics.barks_tags import TagGroups, Tags
-    from barks_fantagraphics.barks_titles import ComicBookInfo, Titles
+    from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from barks_fantagraphics.title_search import BarksTitleSearch
     from kivy.input import MotionEvent
     from kivy.uix.actionbar import ActionBar
     from kivy.uix.spinner import Spinner
+
+    from barks_reader.font_manager import FontManager
 
 READER_TREE_VIEW_KV_FILE = Path(__file__).parent / "reader-tree-view.kv"
 READER_POPUPS_KV_FILE = Path(__file__).parent / "reader_popups.kv"
@@ -410,20 +412,6 @@ class TitleTreeViewNode(BoxLayout, TreeViewNode):
         return self.fanta_info.comic_book_info.title
 
     @classmethod
-    def get_formatted_submitted_str(cls, comic_book_info: ComicBookInfo) -> str:
-        left_sq_bracket = escape_markup("[")
-        right_sq_bracket = escape_markup("]")
-
-        return (
-            f" {left_sq_bracket}"
-            f"{get_short_submitted_day_and_month(comic_book_info)}"
-            f" [b][color={TitleTreeViewNode.ISSUE_LABEL_SUBMITTED_YEAR_COLOR}]"
-            f"{comic_book_info.submitted_year}"
-            f"[/color][/b]"
-            f"{right_sq_bracket}"
-        )
-
-    @classmethod
     def create_from_fanta_info(
         cls, fanta_info: FantaComicBookInfo, on_press_callback: Callable
     ) -> TitleTreeViewNode:
@@ -436,10 +424,19 @@ class TitleTreeViewNode(BoxLayout, TreeViewNode):
         node.ids.title_label.text = fanta_info.comic_book_info.get_display_title()
         node.ids.title_label.bind(on_press=on_press_callback)
 
-        first_published = get_short_formatted_first_published_str(fanta_info.comic_book_info)
-        submitted_date = cls.get_formatted_submitted_str(fanta_info.comic_book_info)
-        issue_info = f"[i]{first_published}{submitted_date}[/i]"
-        node.ids.issue_label.text = issue_info
+        add_footnote = title_needs_footnote(fanta_info)
+        if not add_footnote:
+            sup_font_size = 0
+        else:
+            font_manager: FontManager = App.get_running_app().font_manager
+            sup_font_size = round(2.0 * font_manager.tree_view_issue_label_font_size)
+
+        node.ids.issue_label.text = ReaderFormatter.get_issue_info(
+            fanta_info,
+            add_footnote,
+            sup_font_size,
+            TitleTreeViewNode.ISSUE_LABEL_SUBMITTED_YEAR_COLOR,
+        )
         node.ids.issue_label.bind(on_press=on_press_callback)
 
         return node
