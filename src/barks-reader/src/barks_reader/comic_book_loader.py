@@ -314,80 +314,86 @@ class ComicBookLoader:
                 self._close_and_report_load_error(load_warning_only)
 
     def _load_pages(self, archive: ZipFile) -> int:
-        num_pages = len(self._image_load_order)
-        num_loaded = 0
-        timing = Timing()
+        """Load pages concurrently and display them sequentially starting from current page."""
 
-        logger.debug(f"Starting threaded load of {num_pages} pages...")
-
-        # Wrap load to support cooperative cancellation.
-        def load_wrapper(pg_info: PageInfo) -> tuple[io.BytesIO, str]:
+        def load_wrapper(pg_info: PageInfo) -> tuple[int, tuple[io.BytesIO, str]]:
+            """Return (page_index, result) for easier coordination."""
             if self._stop:
-                msg = "Load cancelled before starting work."
-                raise CancelledError(msg)
-
-            # Call the real loader.
+                raise CancelledError("Cancelled before load.")
             result = self._load_image_content(archive, pg_info)
-
             if self._stop:
-                msg = "Load cancelled during work."
-                raise CancelledError(msg)
+                raise CancelledError("Cancelled during load.")
+            return pg_info.page_index, result
 
-            return result
+        num_pages = len(self._image_load_order)
+        logger.debug(f"Starting progressive threaded load of {num_pages} pages...")
 
-        first_page_index_to_display = self._page_map[self._image_load_order[0]].page_index
-        logger.debug(f"First page index to display: index {first_page_index_to_display}.")
+        start_index = self._page_map[self._image_load_order[0]].page_index
+        logger.debug(f"First page index to display: {start_index}.")
 
         worker_count = self.get_worker_count_for_pages(num_pages)
-        logger.debug(f"Using {worker_count} worker threads for {num_pages} page comic.")
+        logger.debug(f"Using {worker_count} worker threads for {num_pages} pages.")
+
+        timing = Timing()
+        next_to_display = 0
+        loaded_results: dict[int, tuple[io.BytesIO, str]] = {}
+
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
-            futures = {}
-            for load_index in self._image_load_order:
-                page_info = self._page_map[load_index]
-                future = executor.submit(load_wrapper, page_info)
-                futures[future] = page_info.page_index
+            future_map = {
+                executor.submit(load_wrapper, self._page_map[idx]): idx
+                for idx in self._image_load_order
+            }
 
-            for future in as_completed(futures):
-                page_index = futures[future]
+            try:
+                for future in as_completed(future_map):
+                    if self._stop:
+                        logger.warning("Stop flag set. Cancelling remaining page loads.")
+                        for f in future_map:
+                            f.cancel()
+                        break
 
-                # If stop was triggered, cancel remaining workers immediately
-                if self._stop:
-                    logger.warning("Stop flag set. Cancelling remaining page loads.")
-                    for f in futures:
-                        f.cancel()
-                    break
+                    try:
+                        page_index, result = future.result()
+                    except CancelledError:
+                        logger.warning("Page load cancelled.")
+                        break
+                    except Exception as e:
+                        logger.exception("Page load error.")
+                        raise CancelledError(e) from e
 
-                # noinspection PyBroadException
-                try:
-                    self._images[page_index] = future.result()
-                except CancelledError:
-                    logger.warning(f"Page {page_index} load cancelled.")
-                    break
+                    loaded_results[page_index] = result
+                    logger.debug(
+                        f"Loaded page index {page_index}"
+                        f" (elapsed {timing.get_elapsed_time_with_unit()})."
+                    )
 
-                except Exception as e:
-                    logger.exception(f"Failed to load page index {page_index}")
-                    raise CancelledError(e) from e
+                    # Deliver sequentially: only emit contiguous ready pages.
+                    while next_to_display < len(self._image_load_order):
+                        page_index = self._page_map[
+                            self._image_load_order[next_to_display]
+                        ].page_index
+                        if page_index not in loaded_results:
+                            break
+                        self._images[page_index] = loaded_results.pop(page_index)
+                        self._image_loaded_events[page_index].set()
 
-                # Normal page load.
-                self._image_loaded_events[page_index].set()
-                num_loaded += 1
+                        if page_index == start_index:
+                            logger.debug(f"Got first displayable page index: {start_index}.")
+                            Clock.schedule_once(lambda _dt: self._on_first_image_loaded(), 0)
 
-                logger.debug(
-                    f"Loaded page index {page_index} ({num_loaded} out of {num_pages} pages,"
-                    f" elapsed {timing.get_elapsed_time_with_unit()})."
-                )
+                        logger.debug(f"Page index {page_index} is ready to display.")
+                        next_to_display += 1
 
-                # Fire 'first page to display' event.
-                if (page_index == first_page_index_to_display) and not self._stop:
-                    logger.debug(f"Got first page index to display: index {page_index}.")
-                    Clock.schedule_once(lambda _dt: self._on_first_image_loaded(), 0)
+            finally:
+                executor.shutdown(cancel_futures=True)
+                logger.debug("Executor shut down (cancel_futures=True).")
 
         logger.debug(
-            f"Load finished: {num_loaded}/{num_pages} pages "
-            f"processed in {timing.get_elapsed_time_with_unit()} (stop={self._stop})."
+            f"Progressive load of {next_to_display} pages"
+            f" complete in {timing.get_elapsed_time_with_unit()}."
         )
 
-        return num_loaded
+        return next_to_display
 
     def get_worker_count_for_pages(self, num_pages: int) -> int:
         return min(self._max_worker_count, num_pages)
