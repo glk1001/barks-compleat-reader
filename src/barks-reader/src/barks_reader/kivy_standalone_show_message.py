@@ -47,6 +47,8 @@ def show_standalone_popup(  # noqa: PLR0915
 
     from barks_reader.reader_utils import get_image_stream
 
+    app_already_running = (App.get_running_app() is not None) and (EventLoop.status == "started")
+
     def _show(*_) -> None:  # noqa: ANN002, PLR0915
         popup_width = min(Window.width * 0.9, size[0])
         popup_height = min(Window.height * 0.85, size[1])
@@ -184,12 +186,14 @@ def show_standalone_popup(  # noqa: PLR0915
         if timeout > 0:
             Clock.schedule_once(lambda _dt: popup.dismiss(), timeout)
 
-        popup.bind(on_dismiss=lambda *_: stopTouchApp())
+        if not app_already_running:
+            popup.bind(on_dismiss=lambda *_: stopTouchApp())
+
         popup.open()
 
     try:
         app = App.get_running_app()
-        if app and (EventLoop.status == "started"):
+        if app_already_running:
             Clock.schedule_once(_show, 0)
         else:
             logger.warning("No Kivy app running, starting temporary UI loop for popup.")

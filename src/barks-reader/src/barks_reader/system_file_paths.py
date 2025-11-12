@@ -18,6 +18,7 @@ class SystemFilePaths:
         self._collapse_icon_path: Path | None = None
         self._refresh_arrow_icon_path: Path | None = None
         self._settings_icon_path: Path | None = None
+        self._menu_dots_icon_path: Path | None = None
         self._fullscreen_icon_path: Path | None = None
         self._fullscreen_exit_icon_path: Path | None = None
         self._goto_icon_path: Path | None = None
@@ -51,6 +52,7 @@ class SystemFilePaths:
         self._collapse_icon_path = self._action_bar_icons_dir / "icon-collapse.png"
         self._refresh_arrow_icon_path = self._action_bar_icons_dir / "icon-refresh-arrow.png"
         self._settings_icon_path = self._action_bar_icons_dir / "icon-settings.png"
+        self._menu_dots_icon_path = self._action_bar_icons_dir / "icon-menu-dots.png"
         self._fullscreen_icon_path = self._action_bar_icons_dir / "icon-fullscreen.png"
         self._fullscreen_exit_icon_path = self._action_bar_icons_dir / "icon-fullscreen-exit.png"
         self._goto_icon_path = self._action_bar_icons_dir / "icon-goto.png"
@@ -93,6 +95,7 @@ class SystemFilePaths:
             self._collapse_icon_path,
             self._refresh_arrow_icon_path,
             self._settings_icon_path,
+            self._menu_dots_icon_path,
             self._fullscreen_icon_path,
             self._fullscreen_exit_icon_path,
             self._goto_icon_path,
@@ -171,6 +174,10 @@ class SystemFilePaths:
     def get_barks_reader_settings_icon_file(self) -> Path:
         assert self._settings_icon_path
         return self._settings_icon_path
+
+    def get_barks_reader_menu_dots_icon_file(self) -> Path:
+        assert self._menu_dots_icon_path
+        return self._menu_dots_icon_path
 
     def get_barks_reader_fullscreen_icon_file(self) -> Path:
         assert self._fullscreen_icon_path

@@ -4,6 +4,8 @@ from pathlib import Path
 from random import randrange
 from typing import TYPE_CHECKING, Any
 
+from kivy.app import App
+
 from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES, TagGroups, Tags
 from barks_fantagraphics.barks_titles import (
     BARKS_TITLE_DICT,
@@ -17,9 +19,11 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_EXTRAS,
     FantaComicBookInfo,
 )
+from barks_reader.kivy_standalone_show_message import show_standalone_popup
 from comic_utils import cpi_inflate
 from kivy.clock import Clock
 from kivy.core.window import Window
+from kivy.factory import Factory
 from kivy.properties import BooleanProperty, StringProperty  # ty: ignore[unresolved-import]
 from kivy.uix.screenmanager import Screen
 from loguru import logger
@@ -61,8 +65,6 @@ if TYPE_CHECKING:
     from barks_fantagraphics.comic_book import ComicBook
     from barks_fantagraphics.comics_database import ComicsDatabase
 
-    # noinspection PyProtectedMember
-    from kivy.factory import Factory
     from kivy.uix.widget import Widget
 
     from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
@@ -203,9 +205,14 @@ class MainScreen(ReaderScreen):
             self._set_next_title,
         )
 
+        self.menu_dots_dropdown = Factory.MenuDropDown()
+        self.menu_dots_dropdown.bind(on_select=self.on_action_bar_menu_dots_selected)
         self._active = True
 
         self._set_initial_state()
+
+    def open_menu_dots(self, button):
+        self.menu_dots_dropdown.open(button)
 
     def _set_initial_state(self) -> None:
         self._view_state_manager.update_background_views(ViewStates.PRE_INIT)
@@ -314,6 +321,115 @@ class MainScreen(ReaderScreen):
     def on_action_bar_change_view_images(self) -> None:
         self.app_icon_filepath = str(self._random_title_images.get_random_reader_app_icon_file())
         self._view_state_manager.change_background_views()
+
+    def on_action_bar_menu_dots_selected(self, _instance: Widget, value: str) -> None:
+        if value == "settings":
+            App.get_running_app().open_settings()
+        elif value == "how-to":
+            self.open_how_to()
+        elif value == "about":
+            self.open_about()
+        else:
+            raise ValueError("Invalid menu option: '{value}'.")
+
+    def open_how_to(self) -> None:
+        print("HOW-TO")
+
+    def open_about(self) -> None:
+        print("ABOUT")
+        self.show_about_box()
+
+    def show_about_box(self):
+        from kivy.uix.boxlayout import BoxLayout
+        from kivy.uix.label import Label
+        from kivy.uix.image import Image
+
+        # --- Main container for the About dialog ---
+        content = BoxLayout(
+            orientation="vertical",
+            spacing="12dp",
+            padding=("20dp", "20dp"),
+        )
+
+        # --- Optional logo (delete if you don't want one) ---
+        # logo_file = sys_paths.get_barks_reader_logo_file()
+        # if logo_file and Path(logo_file).exists():
+        #     content.add_widget(
+        #         Image(
+        #             source=str(logo_file),
+        #             size_hint=(1, 0.6),
+        #             allow_stretch=True,
+        #             keep_ratio=True,
+        #         )
+        #     )
+
+        # --- App name ---
+        content.add_widget(
+            Label(
+                text="[b]The Compleat Barks Disney Reader[/b]",
+                markup=True,
+                color=(0, 0, 0, 1),
+                font_size="25sp",
+                halign="center",
+                valign="middle",
+                size_hint=(1, 0.2),
+            )
+        )
+
+        # --- Version line ---
+        self.app_version = "0.1.0.alpha"
+        content.add_widget(
+            Label(
+                text=f"Version {self.app_version}",
+                color=(0, 0, 0, 1),
+                bold=True,
+                font_size="18sp",
+                halign="center",
+                valign="middle",
+                size_hint=(1, 0.15),
+            )
+        )
+
+        # --- Copyright / Credits ---
+        content.add_widget(
+            Label(
+                text="""
+This software is licensed under the Apache License, Version 2.0.
+
+© 2025 Greg Kay. All rights reserved.
+
+
+[size=13sp]
+Source code is open and available under the Apache 2.0 License.
+Some artwork, images, and media assets included with this application
+are proprietary and are not covered by the open-source license.
+[/size]
+
+[size=12sp][i]
+This project is a fan-made reader for the Fantagraphics Carl Barks Library.
+It is not affiliated with Disney or Fantagraphics.
+[/i][/size]
+                """,
+                color=(0, 0, 0, 1),
+                markup=True,
+                halign="center",
+                valign="middle",
+                size_hint=(1, 0.25),
+            )
+        )
+
+        # --- Call your popup ---
+        show_standalone_popup(
+            title="About Barks Reader",
+            content=content,
+            size=(700, 700),
+            timeout=0,
+            auto_dismiss=True,
+            add_close_button=True,
+            background_image_file=Path(
+                "/home/greg/Books/Carl Barks/Compleat Barks Disney Reader/Reader Files/Various/success-background.png"
+            ),
+        )
 
     def _update_action_bar_visibility(self) -> None:
         if self._active:
