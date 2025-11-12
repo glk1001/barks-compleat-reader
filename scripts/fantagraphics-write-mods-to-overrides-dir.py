@@ -17,6 +17,7 @@ from barks_fantagraphics.pages import get_page_mod_type, get_sorted_srce_and_des
 from comic_utils.comic_consts import JPG_FILE_EXT
 from comic_utils.pil_image_utils import get_downscaled_jpg, get_pil_image_as_jpg_bytes
 from comic_utils.pyminizip_file_collector import MiniZipFileCollector
+from dotenv import load_dotenv
 from loguru import logger
 from loguru_config import LoguruConfig
 from PIL import Image
@@ -25,10 +26,12 @@ if TYPE_CHECKING:
     from barks_fantagraphics.comics_database import ComicsDatabase
     from barks_fantagraphics.page_classes import CleanPage
 
-Image.MAX_IMAGE_PIXELS = None
+load_dotenv(Path(__file__).parent.parent / ".env.runtime")
 
+ZIP_PASSWORD = os.environ["BARKS_ZIPS_PW"]
 APP_LOGGING_NAME = "wmod"
-ZIP_PASSWORD = os.environ["BARKS_PANELS_PW"]
+
+Image.MAX_IMAGE_PIXELS = None
 
 
 class FileType(Enum):

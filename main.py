@@ -11,6 +11,7 @@ import os
 import sys
 import threading
 from configparser import ConfigParser
+from pathlib import Path
 
 from comic_utils.cpi_loader import cpi_loader
 from comic_utils.timing import Timing
@@ -44,7 +45,7 @@ from loguru import logger
 
 # ------------------------------------------------------------------ #
 
-load_dotenv(".env.runtime")
+load_dotenv(Path(__file__).parent / ".env.runtime")
 
 
 # === GLOBAL EXCEPTION HANDLERS ==============================================

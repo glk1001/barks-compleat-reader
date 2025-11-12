@@ -12,11 +12,14 @@ from barks_reader.reader_settings import ReaderSettings
 from comic_utils.comic_consts import JPG_FILE_EXT
 from comic_utils.pil_image_utils import get_pil_image_as_jpg_bytes, load_pil_image_for_reading
 from comic_utils.pyminizip_file_collector import MiniZipFileCollector
+from dotenv import load_dotenv
 from loguru import logger
 from loguru_config import LoguruConfig
 
+load_dotenv(Path(__file__).parent.parent / ".env.runtime")
+
+ZIP_PASSWORD = os.environ["BARKS_ZIPS_PW"]
 APP_LOGGING_NAME = "zip"
-ZIP_PASSWORD = os.environ["BARKS_PANELS_PW"]
 
 
 def get_backup_filename(file: Path) -> Path:
@@ -115,6 +118,7 @@ if __name__ == "__main__":
     try:
         config_info = ConfigInfo()
         config = ConfigParser()
+        logger.info(f'Using config file "{config_info.app_config_path}".')
         config.read(config_info.app_config_path)
         reader_settings = ReaderSettings()
         # noinspection PyTypeChecker
