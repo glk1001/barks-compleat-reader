@@ -67,7 +67,6 @@ def show_error_popup(
     show_standalone_popup(
         title=f"{title_bar_text} {severity.title()}",
         content=content,
-        size=size,
         timeout=timeout,
         auto_dismiss=False,
         background_image_file=background_image_file,

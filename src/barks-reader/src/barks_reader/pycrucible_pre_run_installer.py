@@ -10,6 +10,7 @@ from loguru import logger
 
 from barks_reader.config_info import ConfigInfo
 from barks_reader.error_handling import handle_app_fail, handle_app_fail_with_traceback
+from barks_reader.reader_consts_and_types import FANTAGRAPHICS_BARKS_LIBRARY
 from barks_reader.reader_utils import quote_and_join_with_and
 
 _APP_TYPE = "Installer"
@@ -19,7 +20,7 @@ _ZIP_CONFIGS_SUBDIR = "Configs/"
 _ZIP_READER_FILES_SUBDIR = "Reader Files/"
 _ZIP_DATA_INSTALLER_FILES = ["barks-reader-data-1.zip", "barks-reader-data-2.zip"]
 
-_EXPECTED_FANTA_VOLUMES_DIR_NAME = "Fantagraphics Complete Carl Barks Disney Library"
+_EXPECTED_FANTA_VOLUMES_DIR_NAME = FANTAGRAPHICS_BARKS_LIBRARY
 
 _this_script_dir = Path(__file__).parent
 _barks_reader_exe_dir = _this_script_dir.parent.parent.parent.parent.parent

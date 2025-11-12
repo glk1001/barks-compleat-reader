@@ -225,6 +225,7 @@ class ViewStateManager:
 
             logger.debug(f"Time taken to set top image: {timing.get_elapsed_time_with_unit()}.")
 
+        # noinspection LongLine
         self._image_loader.load_texture(self._top_view_image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
 
     def _set_fun_view(self) -> None:
@@ -255,6 +256,7 @@ class ViewStateManager:
                 self._fun_image_view_screen.set_title(self._bottom_view_fun_image_info.from_title)
                 logger.debug(f"Time taken to set fun image: {timing.get_elapsed_time_with_unit()}.")
 
+            # noinspection LongLine
             self._image_loader.load_texture(self._bottom_view_fun_image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
 
     def _set_bottom_view(self) -> None:
@@ -288,6 +290,7 @@ class ViewStateManager:
                     f"Time taken to set title image: {timing.get_elapsed_time_with_unit()}."
                 )
 
+            # noinspection LongLine
             self._image_loader.load_texture(self._bottom_view_title_image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
 
     def _set_index_view(self) -> None:

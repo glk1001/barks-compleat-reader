@@ -383,6 +383,7 @@ def _log_screen_settings() -> None:
     )  # ty: ignore[possibly-missing-attribute]
 
 
+# noinspection LongLine
 def _handle_app_exception(config_info: ConfigInfo, exc_type, exc_value, exc_traceback) -> None:  # noqa: ANN001
     handle_app_fail_with_traceback(
         "app",

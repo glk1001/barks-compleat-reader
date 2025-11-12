@@ -8,6 +8,7 @@ from comic_utils.comic_consts import ROMAN_NUMERALS
 RAW_ACTION_BAR_SIZE_Y = 45
 
 APP_TITLE = "The Compleat Barks Disney Reader"
+FANTAGRAPHICS_BARKS_LIBRARY = "Fantagraphics Complete Carl Barks Disney Library"
 
 LONG_PATH_SETTING = "longpath"
 OPTIONS_SETTING = "options"

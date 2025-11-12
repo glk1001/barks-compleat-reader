@@ -103,6 +103,7 @@ class ReaderFormatter:
         fanta_info: FantaComicBookInfo, add_footnote: bool, sup_font_size: int, color: str
     ) -> str:
         first_published = get_short_formatted_first_published_str(fanta_info.comic_book_info)
+        # noinspection LongLine
         submitted_date = __class__.get_formatted_submitted_str(fanta_info.comic_book_info, color)  # ty: ignore[unresolved-reference]
 
         issue_info = first_published + submitted_date

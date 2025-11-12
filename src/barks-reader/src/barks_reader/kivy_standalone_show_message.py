@@ -1,11 +1,13 @@
 # ruff: noqa: PLC0415
 
-"""Standalone popup utilities for displaying messages when Kivy may not be running."""
+"""Standalone popup utilities for displaying messages when Kivy may or may not be running."""
 
 from pathlib import Path
 from typing import Any
 
 from loguru import logger
+
+_SAME_SIZE_CUTOFF_PX = 10
 
 
 # --- Light divider line widget ---
@@ -15,7 +17,7 @@ def divider_line() -> Any:  # Widget  # noqa: ANN401
 
     w = Widget(size_hint_y=None, height=1)
     with w.canvas.before:  # ty: ignore[possibly-missing-attribute]
-        Color(0.65, 0.65, 0.65, 1)
+        Color(0.5, 0.5, 0.5, 1)
         w.rect = Rectangle(size=w.size, pos=w.pos)
     w.bind(size=lambda inst, val: setattr(inst.rect, "size", val))
     w.bind(pos=lambda inst, val: setattr(inst.rect, "pos", val))
@@ -26,7 +28,7 @@ def divider_line() -> Any:  # Widget  # noqa: ANN401
 def show_standalone_popup(  # noqa: PLR0915
     title: str,
     content,  # noqa: ANN001
-    size: tuple[int, int],
+    size_hint: tuple[float, float] = (0.9, 0.9),
     timeout: float = 0,
     auto_dismiss: bool = False,
     add_close_button: bool = True,
@@ -36,9 +38,7 @@ def show_standalone_popup(  # noqa: PLR0915
     from kivy.app import App
     from kivy.base import EventLoop, runTouchApp, stopTouchApp
     from kivy.clock import Clock
-    from kivy.core.window import Window
     from kivy.graphics import Color, Rectangle, RoundedRectangle
-    from kivy.graphics import Rectangle as CanvasRectangle
     from kivy.uix.boxlayout import BoxLayout
     from kivy.uix.button import Button
     from kivy.uix.label import Label
@@ -50,9 +50,6 @@ def show_standalone_popup(  # noqa: PLR0915
     app_already_running = (App.get_running_app() is not None) and (EventLoop.status == "started")
 
     def _show(*_) -> None:  # noqa: ANN002, PLR0915
-        popup_width = min(Window.width * 0.9, size[0])
-        popup_height = min(Window.height * 0.85, size[1])
-
         # --- Root layout ---
         root_box = BoxLayout(orientation="vertical", spacing=0)
 
@@ -129,14 +126,16 @@ def show_standalone_popup(  # noqa: PLR0915
                     (bgnd_texture.width, bgnd_texture.height) if bgnd_texture else (1, 1)
                 )
 
-                Color(1, 1, 1, 1)
-
-                bgnd_rect = CanvasRectangle(
-                    pos=content_wrapper.pos, size=content_wrapper.size, texture=bgnd_texture
+                Color(1, 1, 1, 0.4)
+                bgnd_rect = RoundedRectangle(
+                    pos=content_wrapper.pos,
+                    size=content_wrapper.size,
+                    texture=bgnd_texture,
+                    radius=[12],
                 )
 
             # White rounded background (semi-transparent) OVER the image
-            Color(1, 1, 1, 0.75)
+            Color(1, 1, 1, 0.4)
             wrapper_bg = RoundedRectangle(
                 pos=content_wrapper.pos, size=content_wrapper.size, radius=[12]
             )
@@ -154,11 +153,9 @@ def show_standalone_popup(  # noqa: PLR0915
 
                 bgnd_rect.pos, bgnd_rect.size = _get_background_image_pos_and_size(
                     (inst.x, inst.y),
-                    (content_wrapper.width, content_wrapper.height),
+                    inst.size,
                     texture_ratio,
                 )
-
-        content_wrapper.bind(pos=update_wrapper_bgnd, size=update_wrapper_bgnd)
 
         # Place user content directly inside the wrapper.
         content_wrapper.add_widget(content)
@@ -171,8 +168,7 @@ def show_standalone_popup(  # noqa: PLR0915
         popup = Popup(
             title="",  # hide native title
             content=root_box,
-            size_hint=(None, None),
-            size=(popup_width, popup_height),
+            size_hint=size_hint,
             auto_dismiss=auto_dismiss,
         )
         content.popup_ref = popup
@@ -189,10 +185,15 @@ def show_standalone_popup(  # noqa: PLR0915
         if not app_already_running:
             popup.bind(on_dismiss=lambda *_: stopTouchApp())
 
+        def popup_is_open() -> None:
+            if background_image_file and bgnd_rect and bgnd_texture_size:
+                update_wrapper_bgnd(content, 1)
+
+        popup.bind(on_open=lambda *_: popup_is_open())
+
         popup.open()
 
     try:
-        app = App.get_running_app()
         if app_already_running:
             Clock.schedule_once(_show, 0)
         else:
@@ -210,11 +211,11 @@ def _get_background_image_pos_and_size(
     texture_ratio: float,
 ) -> tuple[tuple[int, int], tuple[int, int]]:
     container_ratio = (container_size[0] / container_size[1]) if container_size[1] > 0 else 1
-    max_width = 0.89 * container_size[0]
-    max_height = 0.89 * container_size[1]
+    max_width = container_size[0]
+    max_height = container_size[1]
 
     # COVER mode
-    if container_ratio > texture_ratio:
+    if container_ratio < texture_ratio:
         bgnd_width = max_width
         bgnd_height = max_width / texture_ratio
     else:
@@ -227,6 +228,11 @@ def _get_background_image_pos_and_size(
     elif bgnd_height > max_height:
         bgnd_height = max_width
         bgnd_width = bgnd_height * texture_ratio
+
+    if (max_width - bgnd_width) < _SAME_SIZE_CUTOFF_PX:
+        bgnd_width = max_width
+    if (max_height - bgnd_height) < _SAME_SIZE_CUTOFF_PX:
+        bgnd_height = max_height
 
     bgnd_x = container_pos[0] + ((container_size[0] - bgnd_width) / 2)
     bgnd_y = container_pos[1] + ((container_size[1] - bgnd_height) / 2)

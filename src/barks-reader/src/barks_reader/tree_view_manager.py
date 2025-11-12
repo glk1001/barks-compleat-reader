@@ -202,6 +202,7 @@ class TreeViewManager:
         if new_view_state is None:
             msg = f"No view state mapping found for node: {node.text} ({type(node)})"
             raise RuntimeError(msg)
+        # noinspection LongLine
         self._view_state_manager.update_background_views(new_view_state, **view_state_params)  # ty: ignore[invalid-argument-type]
 
         # 4) NOTE: Do not call scroll_to_node() here — that causes the “snap-to-top/bottom” jump.

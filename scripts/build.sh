@@ -26,6 +26,7 @@ get_git_version() {
 }
 
 VERSION=$(get_git_version)
+COPYRIGHT_YEARS="2025"
 
 
 echo "=================================================="
@@ -40,7 +41,12 @@ NC='\033[0m'
 
 # --- Write version file ---
 echo -e "${YELLOW}Writing version: $VERSION ...${NC}"
-echo "version = \"${VERSION}\"" > "$VERSION_FILE"
+
+echo "COPYRIGHT_YEARS = \"${COPYRIGHT_YEARS}\"" > "$VERSION_FILE"
+echo "" >> "$VERSION_FILE"
+echo "VERSION = \"${VERSION}\"" >> "$VERSION_FILE"
+echo "" >> "$VERSION_FILE"
+
 echo -e "Successfully wrote version to \"${VERSION_FILE}\"."
 echo
 

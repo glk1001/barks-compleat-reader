@@ -36,6 +36,9 @@ class FontTheme:
     error_popup_button: float
     text_block_heading: float
     app_title: float
+    about_box_title: float
+    about_box_version: float
+    about_box_fine_print: float
 
 
 LOW_RES_FONTS = FontTheme(
@@ -55,6 +58,9 @@ LOW_RES_FONTS = FontTheme(
     error_popup_button=sp(13),
     text_block_heading=sp(20),
     app_title=sp(12),
+    about_box_title=sp(20),
+    about_box_version=sp(15),
+    about_box_fine_print=sp(12),
 )
 HI_RES_FONTS = FontTheme(
     main_title=sp(40),
@@ -73,6 +79,9 @@ HI_RES_FONTS = FontTheme(
     error_popup_button=sp(18),
     text_block_heading=sp(25),
     app_title=sp(17),
+    about_box_title=sp(25),
+    about_box_version=sp(20),
+    about_box_fine_print=sp(14),
 )
 
 
@@ -112,6 +121,12 @@ class FontManager(EventDispatcher):
     def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         super().__init__(*args, **kwargs)
         self.app_title_font_size = 0
+
+        self.about_box_title_font_name = str(CARL_BARKS_FONT)
+        self.about_box_title_font_size = 0
+        self.about_box_version_font_size = 0
+        self.about_box_fine_print_font_size = 0
+
         self._previous_font_group: _FontGroup = _FontGroup.NOT_SET
 
     def update_font_sizes(self, window_height: int) -> None:
@@ -155,6 +170,9 @@ class FontManager(EventDispatcher):
         self.error_popup_button_font_size = theme.error_popup_button
         self.text_block_heading_font_size = theme.text_block_heading
         self.app_title_font_size = theme.app_title
+        self.about_box_title_font_size = theme.about_box_title
+        self.about_box_version_font_size = theme.about_box_version
+        self.about_box_fine_print_font_size = theme.about_box_fine_print
         self.message_title_size = theme.message_title
 
         # Apply default and specific sizes for tree view

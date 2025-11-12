@@ -34,7 +34,7 @@ def show_installer_message(
     show_standalone_popup(
         title,
         _get_installer_success_content(fanta_volumes_dir, data_zips, app_config_dir, app_log_path),
-        size,
+        size_hint=(0.90, 0.85),
         add_close_button=False,
         background_image_file=background_image_file,
     )
@@ -127,7 +127,7 @@ def _get_installer_success_content(
             content_box.add_widget(banner)
 
             # === DIVIDER =========================================================
-            self._add_divider(content_box)
+            # self._add_divider(content_box)
 
             # === Fantagraphics Library ==========================================
             self._add_section_header(content_box, "Fantagraphics Library Location")
@@ -146,7 +146,7 @@ def _get_installer_success_content(
                 )
 
             # === DIVIDER =========================================================
-            self._add_divider(content_box)
+            # self._add_divider(content_box)
 
             # === Config & Logs ===================================================
             self._add_section_header(content_box, "Configuration & Logs")
@@ -159,7 +159,7 @@ def _get_installer_success_content(
                 self._add_paths_box(content_box, [app_log_path])
 
             # === DIVIDER =========================================================
-            self._add_divider(content_box)
+            # self._add_divider(content_box)
 
             # === Next Steps ======================================================
             self._add_section_header(content_box, "Next Steps")
@@ -178,7 +178,7 @@ def _get_installer_success_content(
             self.add_widget(scroll_view)
 
             # === DIVIDER ABOVE BUTTONS (ensure one exists) ===
-            self._add_divider(self)
+            # self._add_divider(self)
 
             # === OK BUTTON (centered vertically inside bottom area) ===
             # Fixed height bottom area so centering works predictably.

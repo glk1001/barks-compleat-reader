@@ -296,6 +296,7 @@ class IndexScreen(FloatLayout):
             logger.debug(f"Time taken to set index image: {timing.get_elapsed_time_with_unit()}.")
 
         image_loader = PanelImageLoader()
+        # noinspection LongLine
         image_loader.load_texture(image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
 
     def _get_all_titles_for_letter(
