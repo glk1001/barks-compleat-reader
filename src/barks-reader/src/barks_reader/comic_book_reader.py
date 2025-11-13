@@ -7,6 +7,7 @@ from barks_fantagraphics.comics_consts import PageType
 from comic_utils.timing import Timing
 from kivy.clock import Clock
 from kivy.core.image import Image as CoreImage
+from kivy.core.image import Texture
 from kivy.core.window import Window
 from kivy.event import EventDispatcher
 from kivy.lang import Builder
@@ -16,10 +17,11 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
     NumericProperty,
     StringProperty,
 )
-from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.dropdown import DropDown
+from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
+from kivy.uix.label import Label
 from loguru import logger
 from screeninfo import get_monitors
 
@@ -29,7 +31,7 @@ from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO
 from barks_reader.reader_formatter import get_action_bar_title
 from barks_reader.reader_screens import ReaderScreen
 from barks_reader.reader_ui_classes import ACTION_BAR_SIZE_Y
-from barks_reader.reader_utils import get_win_width_from_height
+from barks_reader.reader_utils import get_image_stream, get_win_width_from_height
 
 if TYPE_CHECKING:
     from collections import OrderedDict
@@ -157,7 +159,7 @@ class _ComicPageManager(EventDispatcher):
         return image_load_order
 
 
-class ComicBookReader(BoxLayout):
+class ComicBookReader(FloatLayout):
     """Main layout for the comic reader."""
 
     MAX_WINDOW_WIDTH = get_monitors()[0].width
@@ -180,13 +182,10 @@ class ComicBookReader(BoxLayout):
         self._goto_page_widget: Widget | None = None
 
         self._current_comic_path = ""
+        self._current_title_str = ""
         self.action_bar_title = ""
 
-        self.orientation = "vertical"
-        self._comic_image = Image()
-        self._comic_image.fit_mode = "contain"
-        self._comic_image.mipmap = False
-        self.add_widget(self._comic_image)
+        self._add_reader_widgets()
 
         self._comic_book_loader = ComicBookLoader(
             self._reader_settings,
@@ -210,6 +209,31 @@ class ComicBookReader(BoxLayout):
         self._fullscreen_right_margin = -1
 
         self._time_to_load_comic = Timing()
+
+    def _add_reader_widgets(self) -> None:
+        self._loading_page_image = self._get_loading_page_image()
+
+        self._comic_image = Image()
+        self._comic_image.fit_mode = "contain"
+        self._comic_image.mipmap = False
+        self.add_widget(self._comic_image)
+
+        self._loading_page_label = Label(
+            opacity=1,
+            text="Loading the title...",
+            font_size=30,
+            font_name=self._font_manager.main_title_font_name,
+            color=(0, 1, 0.1, 1),
+            size_hint=(0.5, 0.1),
+            pos_hint={"x": 0.2, "y": 0.8},
+        )
+        self.add_widget(self._loading_page_label)
+
+    @staticmethod
+    def _get_loading_page_image() -> Texture:
+        return get_image_stream(
+            Path("/home/greg/opt/barks-reader/Reader Files/Various/loading-page.jpg")
+        )
 
     def set_goto_page_widget(self, goto_page_widget: Widget) -> None:
         self._goto_page_widget = goto_page_widget
@@ -302,12 +326,12 @@ class ComicBookReader(BoxLayout):
     ) -> None:
         assert page_to_first_goto in page_map
 
+        self._current_title_str = fanta_info.comic_book_info.get_title_str()
+
         self._all_loaded = False
         self._goto_page_dropdown = None
         self._page_manager.reset_current_page_index()
-        self.action_bar_title = get_action_bar_title(
-            self._font_manager, fanta_info.comic_book_info.get_title_str()
-        )
+        self.action_bar_title = get_action_bar_title(self._font_manager, self._current_title_str)
 
         self._page_manager.set_page_map(page_map, page_to_first_goto)
 
@@ -328,6 +352,9 @@ class ComicBookReader(BoxLayout):
 
         self._closed = False
 
+        self._on_comic_is_ready_to_read()
+        Clock.schedule_once(lambda _dt: self._show_loading_page(), 0)
+
     def close_comic_book_reader(self) -> None:
         if self._closed:
             return
@@ -345,9 +372,7 @@ class ComicBookReader(BoxLayout):
         self._page_manager.set_to_first_page_to_read()
         logger.debug(f"First image loaded: current page index = {self._current_page_index}.")
 
-        # Signal that the comic is ready, which will trigger the screen transition.
-        # The fullscreen logic will be handled in the on_enter event of the screen.
-        self._on_comic_is_ready_to_read()
+        self._loading_page_label.opacity = 0
 
     def _all_images_loaded(self) -> None:
         # self.pr.disable()
@@ -366,6 +391,18 @@ class ComicBookReader(BoxLayout):
             raise RuntimeError(msg)
         self.close_comic_book_reader()
 
+    def _show_loading_page(self) -> None:
+        self._comic_image.texture = None  # Clear previous texture
+        self._comic_image.source = ""  # Clear previous source
+        self._comic_image.reload()  # Ensure reload if source was same BytesIO object
+        self._comic_image.texture = self._loading_page_image
+
+        def set_label() -> None:
+            self._loading_page_label.text = f'Loading "{self._current_title_str}" ...'
+            self._loading_page_label.opacity = 1
+
+        Clock.schedule_once(lambda _dt: set_label(), 0)
+
     def _show_page(self, _instance: Widget, _value: str) -> None:
         """Display the image for the current_page_index."""
         if self._current_page_index == -1:
@@ -374,7 +411,7 @@ class ComicBookReader(BoxLayout):
 
         page_str = self._current_page_str
         logger.debug(
-            f"Display image {self._current_page_index}:"
+            f"Displaying image {self._current_page_index}:"
             f" {self._comic_book_loader.get_image_info_str(page_str)}."
         )
 
@@ -522,7 +559,7 @@ class ComicBookReaderScreen(ReaderScreen):
             self._toggle_action_bar_visibility,
         )
         self.comic_book_reader.set_goto_page_widget(self.ids.goto_page_button)
-        self.ids.main_comic_layout.add_widget(self.comic_book_reader)
+        self.ids.image_layout.add_widget(self.comic_book_reader)
 
     def is_active(self, active: bool) -> None:
         logger.info(f"ComicBookReaderScreen active changed from {self._active} to {active}.")

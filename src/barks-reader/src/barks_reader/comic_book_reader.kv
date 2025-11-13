@@ -113,9 +113,11 @@
         # This is the container where the ComicBookReader widget will be added from Python.
         # It always fills the parent FloatLayout, and its padding makes space for the action bar.
         BoxLayout:
-            id: main_comic_layout
             orientation: "vertical"
             size_hint: 1, 1
             pos_hint: {'x': 0, 'y': 0}
             # Add padding to the top to make space for the ActionBar when it's visible.
             padding: [0, 0 if action_bar.opacity < 0.5 else action_bar.height, 0, 0]
+
+            FloatLayout:
+                id: image_layout
