@@ -120,6 +120,7 @@ FANTA_25 = "FANTA_25"
 FANTA_26 = "FANTA_26"
 FANTA_27 = "FANTA_27"
 FANTA_28 = "FANTA_28"
+FANTA_29 = "FANTA_29"
 
 DD = "Donald Duck"
 US = "Uncle Scrooge"
@@ -152,6 +153,7 @@ VOLUME_25 = f"{CB} Vol. 25 - {DD} - Balloonatics {SRC_SALEM}"
 VOLUME_26 = f"{CB} Vol. 26 - {US} - The Golden Nugget Boat {SRC_SALEM}"
 VOLUME_27 = f"{CB} Vol. 27 - {DD} - Duck Luck {SRC_SALEM}"
 VOLUME_28 = f"{CB} Vol. 28 - {US} - Cave of Ali Baba {SRC_SALEM}"
+VOLUME_29 = f"{CB} Vol. 29 - {DD} - The Lonely Lighthouse on Cape Quack {SRC_SALEM}"
 
 FANTA_SOURCE_COMICS = {
     f"{get_fanta_volume_str(1)}": FantaBook(VOLUME_01, FAN, 1, 2025, 250),
@@ -182,6 +184,7 @@ FANTA_SOURCE_COMICS = {
     f"{get_fanta_volume_str(26)}": FantaBook(VOLUME_26, FAN, 26, 2022, 217),
     f"{get_fanta_volume_str(27)}": FantaBook(VOLUME_27, FAN, 27, 2022, 209),
     f"{get_fanta_volume_str(28)}": FantaBook(VOLUME_28, FAN, 28, 2023, 206),
+    f"{get_fanta_volume_str(29)}": FantaBook(VOLUME_29, FAN, 29, 2025, 218),
 }
 
 FANTA_OVERRIDE_ZIPS = {
@@ -213,6 +216,7 @@ FANTA_OVERRIDE_ZIPS = {
     26: "26 - Uncle Scrooge - The Golden Nugget Boat.cbz",
     27: "27 - Donald Duck - 'Duck Luck'.cbz",
     28: "28 - Uncle Scrooge - 'Cave of Ali Baba'.cbz",
+    29: "29 - Donald Duck - The Lonely Lighthouse on Cape.cbz",
 }
 
 FIRST_VOLUME_NUMBER = 1
@@ -360,6 +364,12 @@ SERIES_INFO: list[FantaSeriesInfo] = [
     FantaSeriesInfo(Bt.ISLAND_IN_THE_SKY, GLEA, SERIES_USA, FANTA_24),
     FantaSeriesInfo(Bt.PIPELINE_TO_DANGER, GLEA, SERIES_USA, FANTA_24),
     FantaSeriesInfo(Bt.ALL_AT_SEA, SLEA, SERIES_USA, FANTA_24),
+    FantaSeriesInfo(Bt.GOLDEN_NUGGET_BOAT_THE, SLEA, SERIES_USA, FANTA_26),
+    FantaSeriesInfo(Bt.THATS_NO_FABLE, GLEA, SERIES_USA, FANTA_26),
+    FantaSeriesInfo(Bt.BILLIONS_IN_THE_HOLE, DIGI, SERIES_USA, FANTA_26),
+    FantaSeriesInfo(Bt.BONGO_ON_THE_CONGO, SLEA, SERIES_USA, FANTA_26),
+    FantaSeriesInfo(Bt.MYTHTIC_MYSTERY, GLEA, SERIES_USA, FANTA_26),
+    FantaSeriesInfo(Bt.MIDAS_TOUCH_THE, DIGI, SERIES_USA, FANTA_26),
     # US SHORTS
     FantaSeriesInfo(Bt.SOMETHIN_FISHY_HERE, RTOM, SERIES_USS, FANTA_12),
     FantaSeriesInfo(Bt.ROUND_MONEY_BIN_THE, RTOM, SERIES_USS, FANTA_12),
@@ -381,6 +391,10 @@ SERIES_INFO: list[FantaSeriesInfo] = [
     FantaSeriesInfo(Bt.HOUND_OF_THE_WHISKERVILLES, SLEA, SERIES_USS, FANTA_24),
     FantaSeriesInfo(Bt.YOICKS_THE_FOX, DIGI, SERIES_USS, FANTA_24),
     FantaSeriesInfo(Bt.TWO_WAY_LUCK, DIGI, SERIES_USS, FANTA_24),
+    FantaSeriesInfo(Bt.CLOTHES_MAKE_THE_DUCK, EROS, SERIES_USA, FANTA_26),
+    FantaSeriesInfo(Bt.CHUGWAGON_DERBY, GLEA, SERIES_USA, FANTA_26),
+    FantaSeriesInfo(Bt.GIFT_LION, DIGI, SERIES_USA, FANTA_26),
+    FantaSeriesInfo(Bt.MONEY_BAG_GOAT, DIGI, SERIES_USA, FANTA_26),
     # GG
     FantaSeriesInfo(Bt.TRAPPED_LIGHTNING, TOZ, SERIES_GG, FANTA_20),
     FantaSeriesInfo(Bt.INVENTOR_OF_ANYTHING, RTOM, SERIES_GG, FANTA_20),
@@ -409,6 +423,16 @@ SERIES_INFO: list[FantaSeriesInfo] = [
     FantaSeriesInfo(Bt.OODLES_OF_OOMPH, DIGI, SERIES_GG, FANTA_24),
     FantaSeriesInfo(Bt.WAR_PAINT, DIGI, SERIES_GG, FANTA_24),
     FantaSeriesInfo(Bt.FISHY_WARDEN, DIGI, SERIES_GG, FANTA_24),
+    FantaSeriesInfo(Bt.CAVE_OF_THE_WINDS, GLEA, SERIES_GG, FANTA_26),
+    FantaSeriesInfo(Bt.MADBALL_PITCHER_THE, DIGI, SERIES_GG, FANTA_26),
+    FantaSeriesInfo(Bt.MIXED_UP_MIXER, DIGI, SERIES_GG, FANTA_26),
+    FantaSeriesInfo(Bt.CALL_OF_THE_WILD_THE, DIGI, SERIES_GG, FANTA_26),
+    FantaSeriesInfo(Bt.BEAR_TAMER_THE, DIGI, SERIES_GG, FANTA_26),
+    FantaSeriesInfo(Bt.THAT_SMALL_FEELING, DIGI, SERIES_GG, FANTA_26),
+    FantaSeriesInfo(Bt.YOU_CANT_WIN, DIGI, SERIES_GG, FANTA_26),
+    FantaSeriesInfo(Bt.WILY_RIVAL, DIGI, SERIES_GG, FANTA_26),
+    FantaSeriesInfo(Bt.FAST_AWAY_CASTAWAY, DIGI, SERIES_GG, FANTA_26),
+    FantaSeriesInfo(Bt.DUCKBURGS_DAY_OF_PERIL, DIGI, SERIES_GG, FANTA_26),
     # WDCS
     FantaSeriesInfo(Bt.VICTORY_GARDEN_THE, GLEA, SERIES_CS, FANTA_01),
     FantaSeriesInfo(Bt.RABBITS_FOOT_THE, SLEA, SERIES_CS, FANTA_01),
@@ -654,6 +678,7 @@ SERIES_INFO: list[FantaSeriesInfo] = [
     FantaSeriesInfo(Bt.WHALE_OF_A_GOOD_DEED, GER, SERIES_MISC, FANTA_25),
     FantaSeriesInfo(Bt.BAD_DAY_FOR_TROOP_A, COL, SERIES_MISC, FANTA_25),
     FantaSeriesInfo(Bt.LET_SLEEPING_BONES_LIE, BAR, SERIES_MISC, FANTA_25),
+    FantaSeriesInfo(Bt.THRIFT_GIFT_A, DIGI, SERIES_MISC, FANTA_26),
     # Articles
     FantaSeriesInfo(Bt.RICH_TOMASSO___ON_COLORING_BARKS, "", SERIES_EXTRAS, FANTA_07),
     FantaSeriesInfo(Bt.DON_AULT___FANTAGRAPHICS_INTRODUCTION, "", SERIES_EXTRAS, FANTA_07),
