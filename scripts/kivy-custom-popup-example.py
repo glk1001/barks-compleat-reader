@@ -216,5 +216,4 @@ if __name__ == "__main__":
             app_config_dir="/home/greg/.config/barks-reader/",
             app_log_path="/home/greg/.local/share/barks-reader/logs/",
         ),
-        size=(800, 950),
     )

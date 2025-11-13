@@ -224,8 +224,8 @@ class ComicBookReader(FloatLayout):
             font_size=30,
             font_name=self._font_manager.main_title_font_name,
             color=(0, 1, 0.1, 1),
-            size_hint=(0.5, 0.1),
-            pos_hint={"x": 0.2, "y": 0.8},
+            size_hint=(0.75, 0.2),
+            pos_hint={"x": 0.125, "y": 0.8},
         )
         self.add_widget(self._loading_page_label)
 
@@ -399,6 +399,8 @@ class ComicBookReader(FloatLayout):
 
         def set_label() -> None:
             self._loading_page_label.text = f'Loading "{self._current_title_str}" ...'
+            self._loading_page_label.texture_update()
+            self._loading_page_label.text_size = (0.85 * self._comic_image.width, None)
             self._loading_page_label.opacity = 1
 
         Clock.schedule_once(lambda _dt: set_label(), 0)
