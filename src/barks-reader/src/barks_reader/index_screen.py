@@ -19,7 +19,6 @@ from barks_fantagraphics.barks_tags import (
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
 from comic_utils.timing import Timing
-from kivy.animation import Animation
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -515,22 +514,22 @@ class IndexScreen(FloatLayout):
     def _handle_title(self, button: Button, item: IndexItem) -> None:
         logger.info(f'Handling title: "{item.id.name}".')
 
-        time_delay_to_title = 0.05  # seconds
-        anim = Animation(
-            background_color=self.index_theme.ITEM_BG_SELECTED, duration=time_delay_to_title
-        )
-        anim.start(button)
-
         assert type(item.id) is Titles
         image_info = ImageInfo(from_title=item.id, filename=None)
 
+        def set_background_color_to_selected() -> None:
+            button.background_color = self.index_theme.ITEM_BG_SELECTED
+
         def goto_title() -> None:
-            anim.cancel(button)
-            button.background_color = self.index_theme.ITEM_BG
             assert self.on_goto_title is not None
             self.on_goto_title(image_info, item.page_to_goto)
 
-        Clock.schedule_once(lambda _dt: goto_title(), time_delay_to_title)
+        def reset_background_color() -> None:
+            button.background_color = self.index_theme.ITEM_BG
+
+        Clock.schedule_once(lambda _dt: set_background_color_to_selected(), 0)
+        Clock.schedule_once(lambda _dt: goto_title(), 0.01)
+        Clock.schedule_once(lambda _dt: reset_background_color(), 0.1)
 
     def _handle_tag(self, button: Button, item: IndexItem) -> None:
         assert type(item.id) is Tags
