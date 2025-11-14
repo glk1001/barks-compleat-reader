@@ -92,7 +92,7 @@ class TitleHierarchy:
     title: Titles | None
 
     def get_title_with_hierarchy(self) -> str:
-        assert self.title
+        assert self.title is not None
         title_str = BARKS_TITLES[self.title]
 
         if not self.tag_group and not self.tag:

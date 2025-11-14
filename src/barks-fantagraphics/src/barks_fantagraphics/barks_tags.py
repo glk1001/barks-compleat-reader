@@ -719,7 +719,14 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     Tags.FIRE: [Titles.FIREBUG_THE, Titles.FIREMAN_DONALD, Titles.LOVELORN_FIREMAN_THE],
     Tags.SQUARE_EGGS: [Titles.LOST_IN_THE_ANDES],
     Tags.WEEMITE: [Titles.ROCKET_ROASTED_CHRISTMAS_TURKEY],
-    Tags.WORRY_ROOM: [Titles.SECRET_OF_ATLANTIS_THE, Titles.COLOSSALEST_SURPRISE_QUIZ_SHOW_THE],
+    Tags.WORRY_ROOM: [
+        Titles.SECRET_OF_ATLANTIS_THE,
+        Titles.LAND_BENEATH_THE_GROUND,
+        Titles.MONEY_WELL_THE,
+        Titles.COLOSSALEST_SURPRISE_QUIZ_SHOW_THE,
+        Titles.PAUL_BUNYAN_MACHINE_THE,
+        Titles.HOUSE_OF_HAUNTS,
+    ],
     # Characters
     Tags.ARGUS_MCFIENDY: [Titles.DARKEST_AFRICA],
     Tags.AZURE_BLUE: [Titles.GOLDEN_HELMET_THE],
@@ -1256,7 +1263,11 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.P_J_MC_BRINE, Titles.FORBIDDEN_VALLEY): ["3"],
     (Tags.WEEMITE, Titles.ROCKET_ROASTED_CHRISTMAS_TURKEY): ["3", "4", "6", "7", "8"],
     (Tags.WORRY_ROOM, Titles.SECRET_OF_ATLANTIS_THE): ["1"],
+    (Tags.WORRY_ROOM, Titles.LAND_BENEATH_THE_GROUND): ["1"],
+    (Tags.WORRY_ROOM, Titles.MONEY_WELL_THE): ["4"],
     (Tags.WORRY_ROOM, Titles.COLOSSALEST_SURPRISE_QUIZ_SHOW_THE): ["3"],
+    (Tags.WORRY_ROOM, Titles.PAUL_BUNYAN_MACHINE_THE): ["6", "8"],
+    (Tags.WORRY_ROOM, Titles.HOUSE_OF_HAUNTS): ["3"],
 }
 
 
