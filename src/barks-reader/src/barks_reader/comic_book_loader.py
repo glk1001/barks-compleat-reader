@@ -10,7 +10,7 @@ import time
 import traceback
 import zipfile
 from collections import OrderedDict
-from concurrent.futures import CancelledError, ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, CancelledError, ThreadPoolExecutor, wait
 from pathlib import Path
 from typing import TYPE_CHECKING
 from zipfile import ZipFile
@@ -51,6 +51,10 @@ if TYPE_CHECKING:
 
 ALL_FANTA_VOLUMES = list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1))
 # ALL_FANTA_VOLUMES = [i for i in range(5, 7 + 1)]
+
+# How many pages may be in-flight (being decoded) at once.
+# This is a *concurrency / memory* control, not a limit on total pages loaded.
+PREFETCH_WINDOW_PAGES = 16  # adjust to taste
 
 
 class ComicBookLoader:
@@ -314,13 +318,21 @@ class ComicBookLoader:
                 self._close_and_report_load_error(load_warning_only)
 
     def _load_pages(self, archive: ZipFile) -> int:
+        """Load all pages with a bounded prefetch window.
+
+        - Uses a worker pool to run _load_image_content in threads.
+        - Limits the number of in-flight page loads to PREFETCH_WINDOW_PAGES.
+        - Fills self._images[page_index] with (BytesIO, ext) tuples.
+        - Sets self._image_loaded_events[page_index] as pages complete.
+        - Fires _on_first_image_loaded() when the first displayable page is ready.
+        """
+
         # Wrap load to support cooperative cancellation.
         def load_wrapper(pg_info: PageInfo) -> tuple[io.BytesIO, str]:
             if self._stop:
                 msg = "Load cancelled before starting work."
                 raise CancelledError(msg)
 
-            # Call the real loader.
             result = self._load_image_content(archive, pg_info)
 
             if self._stop:
@@ -337,54 +349,100 @@ class ComicBookLoader:
         first_page_index_to_display = self._page_map[self._image_load_order[0]].page_index
         logger.debug(f"First page index to display: {first_page_index_to_display}.")
 
+        # Worker concurrency is auto-tuned; prefetch window caps in-flight work.
         worker_count = self.get_worker_count_for_pages(num_pages)
-        logger.debug(f"Using {worker_count} worker threads for {num_pages} page comic.")
+        prefetch_window = max(1, min(PREFETCH_WINDOW_PAGES, num_pages))
+        logger.debug(
+            f"Using {worker_count} worker threads with prefetch window "
+            f"of {prefetch_window} pages for {num_pages}-page comic."
+        )
 
         num_loaded = 0
+
+        # We'll keep a sliding window of futures up to prefetch_window in size.
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
-            futures = {}
-            for load_index in self._image_load_order:
-                page_info = self._page_map[load_index]
+            futures: dict = {}
+
+            # Helper: submit the next page load if any left.
+            load_iter = iter(self._image_load_order)
+
+            def submit_next_page() -> bool:
+                """Submit the next page in _image_load_order if available.
+
+                Returns True if a task was submitted, False if we're out of pages.
+                """
+                try:
+                    load_key = next(load_iter)
+                except StopIteration:
+                    return False
+
+                page_info = self._page_map[load_key]
                 future = executor.submit(load_wrapper, page_info)
                 futures[future] = page_info.page_index
+                return True
+
+            # Prime the pipeline with up to prefetch_window tasks.
+            for _ in range(prefetch_window):
+                if not submit_next_page():
+                    break
 
             try:
-                for future in as_completed(futures):
-                    page_index = futures[future]
-
-                    # If stop was triggered, cancel remaining workers immediately
+                # Process futures as they complete, maintaining the prefetch window.
+                while futures:
                     if self._stop:
                         logger.warning("Stop flag set. Cancelling remaining page loads.")
                         for f in futures:
                             f.cancel()
                         break
 
-                    # noinspection PyBroadException
-                    try:
-                        self._images[page_index] = future.result()
-                    except CancelledError:
-                        logger.warning(f"Page {page_index} load cancelled.")
-                        break
-                    except Exception as e:
-                        logger.exception(f"Failed to load page index {page_index}:")
-                        raise CancelledError(e) from e
-
-                    # Normal page load.
-                    self._image_loaded_events[page_index].set()
-                    num_loaded += 1
-
-                    logger.debug(
-                        f"Loaded page index {page_index} ({num_loaded} out of {num_pages} pages,"
-                        f" elapsed {timing.get_elapsed_time_with_unit()})."
+                    # Wait for at least one page to finish.
+                    done, _pending = wait(
+                        futures.keys(),
+                        return_when=FIRST_COMPLETED,
                     )
 
-                    # Fire 'first page to display' event.
-                    if (page_index == first_page_index_to_display) and not self._stop:
-                        logger.info(
-                            f"First page index to display, {page_index}, was loaded"
-                            f" after {timing.get_elapsed_time_with_unit()}."
+                    for future in done:
+                        page_index = futures.pop(future)
+
+                        if self._stop:
+                            logger.warning(f"Stop flag set while handling page index {page_index}.")
+                            break
+
+                        try:
+                            image_stream, image_ext = future.result()
+                        except CancelledError:
+                            logger.warning(f"Page {page_index} load cancelled.")
+                            break
+                        except Exception as e:
+                            logger.exception(f"Failed to load page index {page_index}:")
+                            raise CancelledError(e) from e
+
+                        # Normal page load.
+                        self._images[page_index] = (image_stream, image_ext)
+                        self._image_loaded_events[page_index].set()
+                        num_loaded += 1
+
+                        logger.debug(
+                            f"Loaded page index {page_index} "
+                            f"({num_loaded} out of {num_pages} pages, "
+                            f"elapsed {timing.get_elapsed_time_with_unit()})."
                         )
-                        Clock.schedule_once(lambda _dt: self._on_first_image_loaded(), 0)
+
+                        # Fire 'first page to display' event.
+                        if page_index == first_page_index_to_display and not self._stop:
+                            logger.info(
+                                f"First page index to display, {page_index}, was loaded "
+                                f"after {timing.get_elapsed_time_with_unit()}."
+                            )
+                            Clock.schedule_once(lambda _dt: self._on_first_image_loaded(), 0)
+
+                        # Try to keep the number of in-flight tasks up to prefetch_window.
+                        if not self._stop:
+                            submit_next_page()
+
+                    if self._stop:
+                        # We've already requested cancellation above; break out of the loop.
+                        break
 
             finally:
                 executor.shutdown(cancel_futures=True)
