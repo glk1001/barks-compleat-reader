@@ -12,6 +12,7 @@ import zipfile
 from collections import OrderedDict
 from concurrent.futures import FIRST_COMPLETED, CancelledError, ThreadPoolExecutor, wait
 from pathlib import Path
+import tracemalloc
 from typing import TYPE_CHECKING
 from zipfile import ZipFile
 
@@ -54,7 +55,13 @@ ALL_FANTA_VOLUMES = list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1))
 
 # How many pages may be in-flight (being decoded) at once.
 # This is a *concurrency / memory* control, not a limit on total pages loaded.
-PREFETCH_WINDOW_PAGES = 16  # adjust to taste
+# Dynamic window constraints
+PREFETCH_MIN = 2                # never go below 2
+PREFETCH_MAX_FACTOR = 1.0       # max window = worker_count * factor
+
+# Memory thresholds (MiB)
+MEMORY_LOW_WATER = 250          # below = safe to grow
+MEMORY_HIGH_WATER = 450         # above = shrink aggressively
 
 
 class ComicBookLoader:
@@ -318,13 +325,13 @@ class ComicBookLoader:
                 self._close_and_report_load_error(load_warning_only)
 
     def _load_pages(self, archive: ZipFile) -> int:
-        """Load all pages with a bounded prefetch window.
+        """
+        Dynamic prefetch window implementation.
 
-        - Uses a worker pool to run _load_image_content in threads.
-        - Limits the number of in-flight page loads to PREFETCH_WINDOW_PAGES.
-        - Fills self._images[page_index] with (BytesIO, ext) tuples.
-        - Sets self._image_loaded_events[page_index] as pages complete.
-        - Fires _on_first_image_loaded() when the first displayable page is ready.
+        - Worker threads perform ZIP read + PIL decode + Fantagraphics processing + resize + PNG encode.
+        - Keeps a sliding window of in-flight tasks, dynamically adjusted based on memory pressure.
+        - In-flight window grows when memory is low, shrinks when memory rises.
+        - Ensures ordered delivery and early-first-image callback.
         """
 
         # Wrap load to support cooperative cancellation.
@@ -344,46 +351,47 @@ class ComicBookLoader:
         timing = Timing()
         num_pages = len(self._image_load_order)
 
-        logger.debug(f"Starting threaded load of {num_pages} pages...")
+        logger.debug(f"Dynamic window load: {num_pages} pages total.")
 
         first_page_index_to_display = self._page_map[self._image_load_order[0]].page_index
         logger.debug(f"First page index to display: {first_page_index_to_display}.")
 
-        # Worker concurrency is auto-tuned; prefetch window caps in-flight work.
         worker_count = self.get_worker_count_for_pages(num_pages)
-        prefetch_window = max(1, min(PREFETCH_WINDOW_PAGES, num_pages))
+        base_max_window = max(PREFETCH_MIN, int(worker_count * PREFETCH_MAX_FACTOR))
+        dynamic_window = base_max_window
+
         logger.debug(
-            f"Using {worker_count} worker threads with prefetch window "
-            f"of {prefetch_window} pages for {num_pages}-page comic."
+            f"Workers={worker_count}, dynamic window starts at {dynamic_window} "
+            f"(min={PREFETCH_MIN}, max={base_max_window})"
         )
 
+        tracemalloc.start()
+
         num_loaded = 0
+        load_iter = iter(self._image_load_order)
+        futures: dict = {}
 
         # We'll keep a sliding window of futures up to prefetch_window in size.
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
-            futures: dict = {}
 
-            # Helper: submit the next page load if any left.
-            load_iter = iter(self._image_load_order)
-
-            def submit_next_page() -> bool:
-                """Submit the next page in _image_load_order if available.
-
-                Returns True if a task was submitted, False if we're out of pages.
-                """
+            def submit_next():
+                """Attempt to schedule next page if window not full."""
+                nonlocal dynamic_window
+                if len(futures) >= dynamic_window:
+                    return False
                 try:
                     load_key = next(load_iter)
                 except StopIteration:
                     return False
 
                 page_info = self._page_map[load_key]
-                future = executor.submit(load_wrapper, page_info)
-                futures[future] = page_info.page_index
+                fut = executor.submit(load_wrapper, page_info)
+                futures[fut] = page_info.page_index
                 return True
 
-            # Prime the pipeline with up to prefetch_window tasks.
-            for _ in range(prefetch_window):
-                if not submit_next_page():
+            # Prime initial window.
+            for _ in range(dynamic_window):
+                if not submit_next():
                     break
 
             try:
@@ -395,40 +403,54 @@ class ComicBookLoader:
                             f.cancel()
                         break
 
-                    # Wait for at least one page to finish.
-                    done, _pending = wait(
-                        futures.keys(),
-                        return_when=FIRST_COMPLETED,
+                    done, _ = wait(futures.keys(), return_when=FIRST_COMPLETED)
+
+                    # Read memory usage.
+                    current_mem, peak_mem = tracemalloc.get_traced_memory()
+                    current_mib = current_mem / (1024 * 1024)
+
+                    # Adjust dynamic window based on memory.
+                    if current_mib > MEMORY_HIGH_WATER:
+                        dynamic_window = max(
+                            PREFETCH_MIN, dynamic_window - 1
+                        )
+                    elif current_mib < MEMORY_LOW_WATER:
+                        dynamic_window = min(
+                            base_max_window, dynamic_window + 1
+                        )
+
+                    logger.debug(
+                        f"[dyn] mem={current_mib:.1f} MiB, window={dynamic_window}, "
+                        f"inflight={len(futures)}"
                     )
 
-                    for future in done:
-                        page_index = futures.pop(future)
+                    for fut in done:
+                        page_index = futures.pop(fut)
 
                         if self._stop:
                             logger.warning(f"Stop flag set while handling page index {page_index}.")
                             break
 
                         try:
-                            image_stream, image_ext = future.result()
+                            image_stream, image_ext = fut.result()
                         except CancelledError:
-                            logger.warning(f"Page {page_index} load cancelled.")
+                            logger.warning(f"Page {page_index} cancelled.")
                             break
                         except Exception as e:
-                            logger.exception(f"Failed to load page index {page_index}:")
+                            logger.exception(f"Error loading page {page_index}")
                             raise CancelledError(e) from e
 
-                        # Normal page load.
+                        # Normal delivery.
                         self._images[page_index] = (image_stream, image_ext)
                         self._image_loaded_events[page_index].set()
                         num_loaded += 1
 
                         logger.debug(
-                            f"Loaded page index {page_index} "
-                            f"({num_loaded} out of {num_pages} pages, "
-                            f"elapsed {timing.get_elapsed_time_with_unit()})."
+                            f"Delivered page {page_index} "
+                            f"({num_loaded}/{num_pages}, elapsed={timing.get_elapsed_time_with_unit()})"
                         )
 
-                        # Fire 'first page to display' event.
+                        # First page event
                         if page_index == first_page_index_to_display and not self._stop:
                             logger.info(
                                 f"First page index to display, {page_index}, was loaded "
@@ -438,7 +460,7 @@ class ComicBookLoader:
 
                         # Try to keep the number of in-flight tasks up to prefetch_window.
                         if not self._stop:
-                            submit_next_page()
+                            submit_next()
 
                     if self._stop:
                         # We've already requested cancellation above; break out of the loop.
@@ -446,10 +468,11 @@ class ComicBookLoader:
 
             finally:
                 executor.shutdown(cancel_futures=True)
-                logger.debug("Comic loading executor shut down (cancel_futures=True).")
+                tracemalloc.stop()
+                logger.debug("Dynamic loader executor shutdown.")
 
         logger.debug(
-            f"Load finished: {num_loaded}/{num_pages} pages "
+            f"Dynamic load finished: {num_loaded}/{num_pages} pages "
             f"processed in {timing.get_elapsed_time_with_unit()} (stop={self._stop})."
         )
 
