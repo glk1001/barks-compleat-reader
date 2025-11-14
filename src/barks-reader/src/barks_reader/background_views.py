@@ -35,9 +35,8 @@ from barks_reader.reader_formatter import get_formatted_color
 from barks_reader.reader_utils import get_cs_range_str_from_str, get_us_range_str_from_str
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from barks_reader.reader_colors import Color
+    from barks_reader.reader_consts_and_types import PanelPath
     from barks_reader.reader_settings import ReaderSettings
 
 TOP_VIEW_IMAGE_TYPES = {
@@ -663,7 +662,7 @@ class BackgroundViews:
             logger.debug(f'Using random title image file "{image_file}".')
             self.set_bottom_view_title_image_file(image_file)
 
-    def set_bottom_view_title_image_file(self, image_file: Path | None) -> None:
+    def set_bottom_view_title_image_file(self, image_file: PanelPath | None) -> None:
         self._bottom_view_title_image_info.filename = image_file
         self._log_bottom_view_title_state()
 

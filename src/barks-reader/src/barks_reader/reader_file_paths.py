@@ -154,7 +154,8 @@ class ReaderFilePaths:
         if self._barks_panels_zip:
             self._check_dirs_in_archive(dirs_to_check)
         else:
-            dirs_to_check.insert(0, self._barks_panels_source)
+            dirs_to_check.insert(0, self._barks_panels_source)  # ty: ignore[invalid-argument-type]
+            assert self._inset_edited_files_dir
             dirs_to_check.append(self._inset_edited_files_dir)
             self._check_dirs(dirs_to_check)
 
@@ -244,7 +245,8 @@ class ReaderFilePaths:
     def get_comic_splash_files_dir(self) -> PanelPath:
         return self._panel_dirs[PanelDirNames.SPLASH]
 
-    def get_barks_reader_app_icon_file(self) -> PanelPath:
+    def get_barks_reader_app_icon_file(self) -> Path:
+        assert self._app_icon_path
         return self._app_icon_path
 
     def get_comic_inset_file(
@@ -421,7 +423,7 @@ class ReaderFilePaths:
 
     def get_edited_version_if_possible(self, image_file: PanelPath) -> tuple[PanelPath, bool]:
         dir_path = image_file.parent
-        edited_image_file = dir_path / EDITED_SUBDIR / (image_file.stem + self._edited_files_ext)
+        edited_image_file = dir_path / EDITED_SUBDIR / (image_file.stem + self._edited_files_ext)  # ty: ignore[unsupported-operator]
         if edited_image_file.is_file():
             return edited_image_file, True
 

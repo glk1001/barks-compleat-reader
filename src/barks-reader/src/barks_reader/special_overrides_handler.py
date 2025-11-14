@@ -70,7 +70,7 @@ class SpecialFantaOverrides:
         no_overrides_stem = std_inset_file.stem + NO_OVERRIDES_SUFFIX
         # zipfile.Path does not have `with_stem`, so we reconstruct the path manually.
         # This works for both pathlib.Path and zipfile.Path.
-        no_overrides_inset_file = std_inset_file.parent / (
+        no_overrides_inset_file = std_inset_file.parent / (  # ty: ignore[unsupported-operator]
             no_overrides_stem + std_inset_file.suffix
         )
 

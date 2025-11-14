@@ -5,6 +5,7 @@ from datetime import date
 from enum import CONTINUOUS, UNIQUE, IntEnum, auto, verify
 from pathlib import Path
 
+from barks_reader.reader_consts_and_types import PanelPath
 from comic_utils.comic_consts import DEC, JAN
 
 from .comic_issues import (
@@ -2968,7 +2969,7 @@ def get_filename_from_title_str(title_str: str, ext: str) -> str:
     return TITLE_TO_FILENAME_SPECIAL_CASE_MAP.get(title_str, title_str) + ext
 
 
-def get_title_str_from_filename(filename: str | Path) -> str:
+def get_title_str_from_filename(filename: str | PanelPath) -> str:
     if isinstance(filename, str):
         filename = Path(filename)
 

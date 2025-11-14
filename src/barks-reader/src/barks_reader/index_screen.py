@@ -369,7 +369,10 @@ class IndexScreen(FloatLayout):
         if type(self._open_tag_item.id) is Tags:
             assert isinstance(item_id, Tags)
             sub_items_to_display = [
-                (title, *self._get_indexable_title_with_page_nums(title, item_id))
+                (
+                    title,
+                    *self._get_indexable_title_with_page_nums(title, item_id),
+                )  # ty: ignore[invalid-assignment]
                 for title in BARKS_TAGGED_TITLES[item_id]
             ]
         else:  # It's a TagGroup
@@ -383,7 +386,11 @@ class IndexScreen(FloatLayout):
         # Now create the layout.
         sub_items_layout = BoxLayout(orientation="vertical", size_hint_y=None)
         sub_items_layout.bind(minimum_height=sub_items_layout.setter("height"))
-        for sub_item_id, sub_item_page_to_goto, sub_item_text in sub_items_to_display:
+        for (
+            sub_item_id,
+            sub_item_page_to_goto,
+            sub_item_text,
+        ) in sub_items_to_display:  # ty: ignore[invalid-assignment]
             logger.info(f'For "{sub_item_text}", page to goto = {sub_item_page_to_goto}.')
             title_button = TitleItemButton(
                 text=sub_item_text,

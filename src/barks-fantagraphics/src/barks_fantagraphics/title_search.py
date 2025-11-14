@@ -103,7 +103,9 @@ class BarksTitleSearch:
         return list(set(tag_list))
 
     @staticmethod
-    def get_titles_from_alias_tag(alias_tag_str: str) -> tuple[Tags | None, list[Titles]]:
+    def get_titles_from_alias_tag(
+        alias_tag_str: str,
+    ) -> tuple[Tags | TagGroups | None, list[Titles]]:
         title_set: set[Titles] = set()
 
         if alias_tag_str in BARKS_TAG_ALIASES:

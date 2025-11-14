@@ -85,7 +85,7 @@ def is_blank_page(page_filename: str, page_type: PageType) -> bool:
     return (Path(page_filename).stem == EMPTY_PAGE_KEY) and (page_type != PageType.TITLE)
 
 
-def get_all_files_in_dir(dir_path: Path | zipfile.Path, recurse: bool = False) -> list[Path]:
+def get_all_files_in_dir(dir_path: PanelPath, recurse: bool = False) -> list[PanelPath]:
     assert dir_path.is_dir()
 
     files = []

@@ -265,7 +265,8 @@ class MainScreen(ReaderScreen):
             self._reader_settings.sys_file_paths.get_reader_icon_files_dir(),
         )
         file_index = randrange(0, len(icon_files))
-        return icon_files[file_index]
+        assert isinstance(icon_files[file_index], Path)
+        return icon_files[file_index]  # ty: ignore[invalid-return-type]
 
     def app_closing(self) -> None:
         logger.debug("Closing app...")
@@ -550,7 +551,7 @@ class MainScreen(ReaderScreen):
     def _title_row_selected(
         self,
         new_fanta_info: FantaComicBookInfo,
-        title_image_file: PanelPath,
+        title_image_file: PanelPath | None,
     ) -> None:
         self.fanta_info = new_fanta_info
         self._set_title(title_image_file)
@@ -558,7 +559,7 @@ class MainScreen(ReaderScreen):
             ViewStates.ON_TITLE_NODE, title_str=self.fanta_info.comic_book_info.get_title_str()
         )
 
-    def _set_title(self, title_image_file: Path | None = None) -> None:
+    def _set_title(self, title_image_file: PanelPath | None = None) -> None:
         self._view_state_manager.set_title(self.fanta_info, title_image_file)
 
         self._set_goto_page_checkbox()

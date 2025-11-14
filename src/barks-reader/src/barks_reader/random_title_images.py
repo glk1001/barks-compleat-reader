@@ -3,6 +3,7 @@ from __future__ import annotations
 import random
 from collections import defaultdict, deque
 from dataclasses import dataclass
+from pathlib import Path
 from random import randrange
 from typing import TYPE_CHECKING
 
@@ -16,7 +17,6 @@ from barks_reader.reader_utils import get_all_files_in_dir, prob_rand_less_equal
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 
@@ -38,7 +38,7 @@ APP_SPLASH_IMAGES = [
 FIT_MODE_CONTAIN = "contain"
 FIT_MODE_COVER = "cover"
 
-type PossibleFiles = list[tuple[Path, FileTypes]]
+type PossibleFiles = list[tuple[PanelPath, FileTypes]]
 
 NON_TITLE_BIAS = 0.1
 
@@ -59,8 +59,10 @@ class RandomTitleImages:
         )
         self._title_image_file_getter = TitleImageFileGetter(self._reader_settings)
 
-        self._most_recently_used_images: deque[Path] = deque(maxlen=MAX_IMAGE_FILENAMES_TO_KEEP)
-        self._last_title_image: dict[str, Path] = {}
+        self._most_recently_used_images: deque[PanelPath] = deque(
+            maxlen=MAX_IMAGE_FILENAMES_TO_KEEP
+        )
+        self._last_title_image: dict[str, PanelPath] = {}
         self._nontitle_files = self._get_nontitle_files()
 
         self._all_reader_icon_files = get_all_files_in_dir(
@@ -69,7 +71,7 @@ class RandomTitleImages:
         random.shuffle(self._all_reader_icon_files)
         self._next_reader_icon_file = 0
 
-    def _add_last_image(self, image_filename: Path) -> None:
+    def _add_last_image(self, image_filename: PanelPath) -> None:
         self._most_recently_used_images.append(image_filename)
 
     def get_random_search_image(self) -> ImageInfo:
@@ -93,6 +95,7 @@ class RandomTitleImages:
         if self._next_reader_icon_file >= len(self._all_reader_icon_files):
             self._next_reader_icon_file = 0
 
+        assert isinstance(icon_path, Path)
         return icon_path
 
     def get_random_censorship_fix_image(self) -> ImageInfo:
@@ -104,7 +107,7 @@ class RandomTitleImages:
         )
         return ImageInfo(file1, title, FIT_MODE_COVER)
 
-    def get_loading_screen_random_image(self, title_list: list[FantaComicBookInfo]) -> Path:
+    def get_loading_screen_random_image(self, title_list: list[FantaComicBookInfo]) -> PanelPath:
         return self._get_random_image_file(
             title_list,
             {
@@ -121,7 +124,7 @@ class RandomTitleImages:
             },
         )
 
-    def get_index_screen_random_image(self, title_list: list[FantaComicBookInfo]) -> Path:
+    def get_index_screen_random_image(self, title_list: list[FantaComicBookInfo]) -> PanelPath:
         return self._get_random_image_file(
             title_list,
             {
@@ -140,14 +143,14 @@ class RandomTitleImages:
 
     def _get_random_image_file(
         self, title_list: list[FantaComicBookInfo], file_types: set[FileTypes] | None = None
-    ) -> Path:
+    ) -> PanelPath:
         file = self.get_random_image(title_list, file_types=file_types).filename
         assert file
         return file
 
     def get_random_image_for_title(
         self, title_str: str, file_types: set[FileTypes], use_only_edited_if_possible: bool = False
-    ) -> Path:
+    ) -> PanelPath:
         # Ensure files are loaded for this title.
         self._update_comic_files(title_str)
 
@@ -255,7 +258,7 @@ class RandomTitleImages:
 
     def _select_best_candidate_image(
         self, possible_files: PossibleFiles, title_str: str | None
-    ) -> tuple[Path, FileTypes] | None:
+    ) -> tuple[PanelPath, FileTypes] | None:
         """Select the best candidate image, preferring ones not recently used."""
         if not possible_files:
             return None
@@ -286,8 +289,8 @@ class RandomTitleImages:
         return FIT_MODE_COVER if prob_rand_less_equal(50) else FIT_MODE_CONTAIN
 
     def _get_better_fitting_image_if_possible(
-        self, image_filename: Path, fit_mode: str, file_type_enum: FileTypes
-    ) -> tuple[Path, str]:
+        self, image_filename: PanelPath, fit_mode: str, file_type_enum: FileTypes
+    ) -> tuple[PanelPath, str]:
         # If it's a cover image, and kivy fit_mode is 'cover', then try to use an edited image.
         if (file_type_enum == FileTypes.COVER) and (fit_mode == FIT_MODE_COVER):
             image_filename, is_edited = (
@@ -302,7 +305,7 @@ class RandomTitleImages:
     def _get_possible_files_for_title(
         self, title_str: str, file_types: set[FileTypes], use_only_edited_if_possible: bool
     ) -> PossibleFiles:
-        possible_files: list[tuple[Path, FileTypes]] = []
+        possible_files: list[tuple[PanelPath, FileTypes]] = []
 
         for file_type in file_types:
             if file_type in self._title_image_files.get(title_str, {}):
@@ -332,7 +335,7 @@ class RandomTitleImages:
     @staticmethod
     def _get_random_comic_file(
         title_str: str,
-        get_files_func: Callable[[str, bool], list[Path]],
+        get_files_func: Callable[[str, bool], list[PanelPath]],
         use_only_edited_if_possible: bool,
     ) -> Path:
         title_files = get_files_func(title_str, use_only_edited_if_possible)

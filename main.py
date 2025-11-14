@@ -123,26 +123,26 @@ def redirect_kivy_logs() -> None:
             self.logr = logr
             super().__init__()
 
-        def emit(self, log_record: logging.LogRecord) -> None:
+        def emit(self, record: logging.LogRecord) -> None:
             # noinspection Annotator
-            def patch_loguru_rec(record) -> None:  # noqa: ANN001
-                record.update(exception=log_record.exc_info)
-                record.update(file=log_record.filename)
-                record.update(function=log_record.funcName)
-                record.update(line=log_record.lineno)
-                record.update(module=log_record.module)
-                record.update(name=log_record.name)
-                record.update(process=log_record.process)
-                record.update(thread=log_record.thread)
+            def patch_loguru_rec(rec) -> None:  # noqa: ANN001
+                rec.update(exception=record.exc_info)
+                rec.update(file=record.filename)
+                rec.update(function=record.funcName)
+                rec.update(line=record.lineno)
+                rec.update(module=record.module)
+                rec.update(name=record.name)
+                rec.update(process=record.process)
+                rec.update(thread=record.thread)
 
             # noinspection PyBroadException
             try:
                 patched_logger = self.logr.patch(patch_loguru_rec)
-                level = logging.getLevelName(log_record.levelno).lower()
+                level = logging.getLevelName(record.levelno).lower()
 
                 # Kivy emits this message: "kivy: Modules: Start <inspector> with config {}"
                 # which we need to be careful with.
-                message = log_record.getMessage().replace("{", "{{").replace("}", "}}")
+                message = record.getMessage().replace("{", "{{").replace("}", "}}")
 
                 # Now log the kivy information using Loguru.
                 # Use getattr to call the appropriate logging method based on level.

@@ -3,13 +3,13 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
+from barks_reader.reader_consts_and_types import PanelPath
 from barks_reader.reader_file_paths import FileTypes
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-    from barks_reader.reader_consts_and_types import PanelPath
     from barks_reader.reader_settings import ReaderSettings
 
 
@@ -49,9 +49,12 @@ class TitleImageFileGetter:
         if file_type == FileTypes.COVER:
             # getter for COVER returns a single Path or None
             cover_file = getter_func(title_str, use_only_edited_if_possible)
-            return [cover_file] if cover_file else []
+            if not cover_file:
+                return []
+            assert isinstance(cover_file, PanelPath)
+            return [cover_file]
 
-        # Other getters return a List[PanelPath].
+        # Other getters return a list[PanelPath].
         path_list = getter_func(title_str, use_only_edited_if_possible)
         assert path_list is not None
-        return path_list
+        return path_list  # ty: ignore[invalid-return-type]

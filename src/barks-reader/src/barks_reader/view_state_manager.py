@@ -9,12 +9,11 @@ from loguru import logger
 from barks_reader.background_views import ImageThemes
 from barks_reader.panel_image_loader import PanelImageLoader
 from barks_reader.random_title_images import ImageInfo
-from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO
+from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO, PanelPath
 from barks_reader.reader_formatter import get_clean_text_without_extra
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
     from barks_fantagraphics.barks_tags import TagGroups, Tags
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
@@ -175,7 +174,7 @@ class ViewStateManager:
         self._on_views_updated_func()
 
     def set_title(
-        self, fanta_info: FantaComicBookInfo, title_image_file: Path | None = None
+        self, fanta_info: FantaComicBookInfo, title_image_file: PanelPath | None = None
     ) -> None:
         """Public method to set the title view with new information."""
         self._bottom_title_view_screen.fade_in_bottom_view_title()
