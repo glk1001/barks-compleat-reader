@@ -93,6 +93,7 @@ class Tags(Enum):
     FOOLA_ZOOLA = "Foola Zoola"
     GENERAL_SNOZZIE = "General Snozzie"
     GLADSTONE_GANDER = "Gladstone Gander"
+    GNEEZLES = "Gneezles"
     GYRO_GEARLOOSE = "Gyro Gearloose"
     GYRO_NOT_IN_GG = "Gyro not in GG series"
     HASSAN_BEN_JAILD = "Hassan Ben Jaild"
@@ -361,6 +362,7 @@ BARKS_TAG_GROUPS = {
         Tags.EL_DORADO,
         Tags.FERMIES,
         Tags.FOOLA_ZOOLA,
+        Tags.GNEEZLES,
         Tags.TERRIES,
     ],
     TagGroups.PIG_VILLAINS: [
@@ -899,6 +901,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.DUCK_OUT_OF_LUCK,
         Titles.NOT_SO_ANCIENT_MARINER_THE,
     ],
+    Tags.GNEEZLES: [Titles.MYSTERY_OF_THE_SWAMP],
     Tags.GYRO_GEARLOOSE: [
         Titles.GRANDMAS_PRESENT,
         Titles.HOBBLIN_GOBLINS,
