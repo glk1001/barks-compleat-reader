@@ -373,7 +373,11 @@ if __name__ == "__main__":
                 file_types=file_types,
                 use_only_edited_if_possible=use_only_edited_if_possible,
             )
-            ttl = BARKS_TITLES[random_image_info.from_title] if random_image_info.from_title else ""
+            ttl = (
+                BARKS_TITLES[random_image_info.from_title]
+                if random_image_info.from_title is not None
+                else ""
+            )
             assert random_image_info.filename
             img_file = get_abbrev_path(random_image_info.filename)
             fit = random_image_info.fit_mode

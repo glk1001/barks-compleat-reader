@@ -71,7 +71,7 @@ class FunImageViewScreen(BoxLayout):
             child.active = False
 
     def set_title(self, title: Titles | None) -> None:
-        self.current_title_str = "" if not title else BARKS_TITLES[title]
+        self.current_title_str = "" if title is None else BARKS_TITLES[title]
         self.fun_view_from_title = self.current_title_str != ""
 
     def on_goto_title(self) -> None:
