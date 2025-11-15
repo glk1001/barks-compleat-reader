@@ -7,7 +7,6 @@ from barks_fantagraphics.comics_consts import PageType
 from comic_utils.timing import Timing
 from kivy.clock import Clock
 from kivy.core.image import Image as CoreImage
-from kivy.core.image import Texture
 from kivy.core.window import Window
 from kivy.event import EventDispatcher
 from kivy.lang import Builder
@@ -21,7 +20,6 @@ from kivy.uix.button import Button
 from kivy.uix.dropdown import DropDown
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
-from kivy.uix.label import Label
 from loguru import logger
 from screeninfo import get_monitors
 
@@ -210,30 +208,16 @@ class ComicBookReader(FloatLayout):
 
         self._time_to_load_comic = Timing()
 
+    # noinspection PyNoneFunctionAssignment
     def _add_reader_widgets(self) -> None:
-        self._loading_page_image = self._get_loading_page_image()
+        self._loading_page_image = get_image_stream(
+            self._reader_settings.sys_file_paths.get_empty_page_file()
+        )
 
         self._comic_image = Image()
         self._comic_image.fit_mode = "contain"
         self._comic_image.mipmap = False
         self.add_widget(self._comic_image)
-
-        self._loading_page_label = Label(
-            opacity=1,
-            text="Loading the title...",
-            font_size=30,
-            font_name=self._font_manager.main_title_font_name,
-            color=(0, 1, 0.1, 1),
-            size_hint=(0.75, 0.2),
-            pos_hint={"x": 0.125, "y": 0.8},
-        )
-        self.add_widget(self._loading_page_label)
-
-    @staticmethod
-    def _get_loading_page_image() -> Texture:
-        return get_image_stream(
-            Path("/home/greg/opt/barks-reader/Reader Files/Various/loading-page.jpg")
-        )
 
     def set_goto_page_widget(self, goto_page_widget: Widget) -> None:
         self._goto_page_widget = goto_page_widget
@@ -335,11 +319,6 @@ class ComicBookReader(FloatLayout):
 
         self._page_manager.set_page_map(page_map, page_to_first_goto)
 
-        # import cProfile
-        #
-        # self.pr = cProfile.Profile()
-        # self.pr.enable()
-
         self._time_to_load_comic.restart()
 
         self._comic_book_loader.set_comic(
@@ -372,12 +351,7 @@ class ComicBookReader(FloatLayout):
         self._page_manager.set_to_first_page_to_read()
         logger.debug(f"First image loaded: current page index = {self._current_page_index}.")
 
-        self._loading_page_label.opacity = 0
-
     def _all_images_loaded(self) -> None:
-        # self.pr.disable()
-        # self.pr.dump_stats("comic_loader.pstats")
-
         self._all_loaded = True
         logger.info(
             f"All images loaded in {self._time_to_load_comic.get_elapsed_time_with_unit()}"
@@ -396,14 +370,6 @@ class ComicBookReader(FloatLayout):
         self._comic_image.source = ""  # Clear previous source
         self._comic_image.reload()  # Ensure reload if source was same BytesIO object
         self._comic_image.texture = self._loading_page_image
-
-        def set_label() -> None:
-            self._loading_page_label.text = f'Loading "{self._current_title_str}" ...'
-            self._loading_page_label.texture_update()
-            self._loading_page_label.text_size = (0.85 * self._comic_image.width, None)
-            self._loading_page_label.opacity = 0
-
-        Clock.schedule_once(lambda _dt: set_label(), 0)
 
     def _show_page(self, _instance: Widget, _value: str) -> None:
         """Display the image for the current_page_index."""
