@@ -401,7 +401,7 @@ class ComicBookReader(FloatLayout):
             self._loading_page_label.text = f'Loading "{self._current_title_str}" ...'
             self._loading_page_label.texture_update()
             self._loading_page_label.text_size = (0.85 * self._comic_image.width, None)
-            self._loading_page_label.opacity = 1
+            self._loading_page_label.opacity = 0
 
         Clock.schedule_once(lambda _dt: set_label(), 0)
 

@@ -2,17 +2,13 @@
 
 from __future__ import annotations
 
-import io
-import os
 import sys
 import threading
-import time
 import traceback
 import zipfile
 from collections import OrderedDict
 from concurrent.futures import FIRST_COMPLETED, CancelledError, ThreadPoolExecutor, wait
 from pathlib import Path
-import tracemalloc
 from typing import TYPE_CHECKING
 from zipfile import ZipFile
 
@@ -35,6 +31,10 @@ from loguru import logger
 from PIL import Image, ImageOps
 from PIL import Image as PilImage
 
+from barks_reader.comic_book_loader_platform_settings import (
+    autotune_worker_count,
+    get_prefetch_tuning,
+)
 from barks_reader.fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
 
 # noinspection PyUnresolvedReferences
@@ -43,6 +43,7 @@ from barks_reader.reader_ui_classes import set_kivy_busy_cursor, set_kivy_normal
 from barks_reader.reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
 
 if TYPE_CHECKING:
+    import io
     from collections.abc import Callable
 
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
@@ -52,16 +53,6 @@ if TYPE_CHECKING:
 
 ALL_FANTA_VOLUMES = list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1))
 # ALL_FANTA_VOLUMES = [i for i in range(5, 7 + 1)]
-
-# How many pages may be in-flight (being decoded) at once.
-# This is a *concurrency / memory* control, not a limit on total pages loaded.
-# Dynamic window constraints
-PREFETCH_MIN = 2                # never go below 2
-PREFETCH_MAX_FACTOR = 1.0       # max window = worker_count * factor
-
-# Memory thresholds (MiB)
-MEMORY_LOW_WATER = 250          # below = safe to grow
-MEMORY_HIGH_WATER = 450         # above = shrink aggressively
 
 
 class ComicBookLoader:
@@ -324,14 +315,13 @@ class ComicBookLoader:
             if load_error:
                 self._close_and_report_load_error(load_warning_only)
 
-    def _load_pages(self, archive: ZipFile) -> int:
-        """
-        Dynamic prefetch window implementation.
+    def _load_pages(self, archive: ZipFile) -> int:  # noqa: PLR0915
+        """Platform-aware dynamic prefetch window implementation.
 
-        - Worker threads perform ZIP read + PIL decode + Fantagraphics processing + resize + PNG encode.
-        - Keeps a sliding window of in-flight tasks, dynamically adjusted based on memory pressure.
-        - In-flight window grows when memory is low, shrinks when memory rises.
-        - Ensures ordered delivery and early-first-image callback.
+        - Uses system profile (CPU, RAM) to pick prefetch and memory thresholds.
+        - Worker threads run _load_image_content (ZIP + PIL + resize + PNG encode).
+        - Maintains a sliding window of in-flight tasks, adjusting size based on memory.
+        - Ensures ordered delivery and early first-page callback.
         """
 
         # Wrap load to support cooperative cancellation.
@@ -351,21 +341,22 @@ class ComicBookLoader:
         timing = Timing()
         num_pages = len(self._image_load_order)
 
-        logger.debug(f"Dynamic window load: {num_pages} pages total.")
+        logger.debug(f"Platform-aware load: {num_pages} pages total.")
 
         first_page_index_to_display = self._page_map[self._image_load_order[0]].page_index
         logger.debug(f"First page index to display: {first_page_index_to_display}.")
 
         worker_count = self.get_worker_count_for_pages(num_pages)
-        base_max_window = max(PREFETCH_MIN, int(worker_count * PREFETCH_MAX_FACTOR))
-        dynamic_window = base_max_window
+        tuning = get_prefetch_tuning(worker_count, num_pages)
+        tuning.start_mem_trace()
+        dynamic_window = tuning.get_initial_dynamic_window()
 
         logger.debug(
-            f"Workers={worker_count}, dynamic window starts at {dynamic_window} "
-            f"(min={PREFETCH_MIN}, max={base_max_window})"
+            f"Loader config: workers={worker_count}, window_start={dynamic_window},"
+            f" window_min={tuning.prefetch_min}, window_max={tuning.base_max_window},"
+            f" mem_low={tuning.memory_low_water_mib} MiB,"
+            f" mem_high={tuning.memory_high_water_mib} MiB."
         )
-
-        tracemalloc.start()
 
         num_loaded = 0
         load_iter = iter(self._image_load_order)
@@ -374,8 +365,8 @@ class ComicBookLoader:
         # We'll keep a sliding window of futures up to prefetch_window in size.
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
 
-            def submit_next():
-                """Attempt to schedule next page if window not full."""
+            def submit_next() -> bool:
+                """Submit the next page if window not full."""
                 nonlocal dynamic_window
                 if len(futures) >= dynamic_window:
                     return False
@@ -387,6 +378,7 @@ class ComicBookLoader:
                 page_info = self._page_map[load_key]
                 fut = executor.submit(load_wrapper, page_info)
                 futures[fut] = page_info.page_index
+
                 return True
 
             # Prime initial window.
@@ -405,34 +397,21 @@ class ComicBookLoader:
 
                     done, _ = wait(futures.keys(), return_when=FIRST_COMPLETED)
 
-                    # Read memory usage.
-                    current_mem, peak_mem = tracemalloc.get_traced_memory()
-                    current_mib = current_mem / (1024 * 1024)
-
-                    # Adjust dynamic window based on memory.
-                    if current_mib > MEMORY_HIGH_WATER:
-                        dynamic_window = max(
-                            PREFETCH_MIN, dynamic_window - 1
-                        )
-                    elif current_mib < MEMORY_LOW_WATER:
-                        dynamic_window = min(
-                            base_max_window, dynamic_window + 1
-                        )
-
+                    current_mib, dynamic_window = tuning.get_new_dynamic_window(dynamic_window)
                     logger.debug(
-                        f"[dyn] mem={current_mib:.1f} MiB, window={dynamic_window}, "
+                        f"[prefetch] mem={current_mib:.1f} MiB, window={dynamic_window}, "
                         f"inflight={len(futures)}"
                     )
 
-                    for fut in done:
-                        page_index = futures.pop(fut)
+                    for future in done:
+                        page_index = futures.pop(future)
 
                         if self._stop:
                             logger.warning(f"Stop flag set while handling page index {page_index}.")
                             break
 
                         try:
-                            image_stream, image_ext = fut.result()
+                            image_stream, image_ext = future.result()
                         except CancelledError:
                             logger.warning(f"Page {page_index} cancelled.")
                             break
@@ -440,14 +419,14 @@ class ComicBookLoader:
                             logger.exception(f"Error loading page {page_index}")
                             raise CancelledError(e) from e
 
-                        # Normal delivery.
+                        # Normal page delivery.
                         self._images[page_index] = (image_stream, image_ext)
                         self._image_loaded_events[page_index].set()
                         num_loaded += 1
 
                         logger.debug(
-                            f"Delivered page {page_index} "
-                            f"({num_loaded}/{num_pages}, elapsed={timing.get_elapsed_time_with_unit()})"
+                            f"Loaded page index {page_index} ({num_loaded}/{num_pages},"
+                            f" elapsed={timing.get_elapsed_time_with_unit()})"
                         )
 
                         # First page event
@@ -458,7 +437,7 @@ class ComicBookLoader:
                             )
                             Clock.schedule_once(lambda _dt: self._on_first_image_loaded(), 0)
 
-                        # Try to keep the number of in-flight tasks up to prefetch_window.
+                        # Refill window if possible.
                         if not self._stop:
                             submit_next()
 
@@ -468,11 +447,11 @@ class ComicBookLoader:
 
             finally:
                 executor.shutdown(cancel_futures=True)
-                tracemalloc.stop()
-                logger.debug("Dynamic loader executor shutdown.")
+                tuning.stop_mem_trace()
+                logger.debug("Platform-aware comic loading executor shut down.")
 
         logger.debug(
-            f"Dynamic load finished: {num_loaded}/{num_pages} pages "
+            f"Load finished: {num_loaded}/{num_pages} pages "
             f"processed in {timing.get_elapsed_time_with_unit()} (stop={self._stop})."
         )
 
@@ -571,97 +550,3 @@ class ComicBookLoader:
         )
 
         return get_pil_image_as_png_bytes(pil_image_resized), PNG_EXT_FOR_KIVY
-
-
-# We store the result so the autotuner only runs once per process.
-_AUTO_TUNED_THREAD_COUNT = None
-_AUTOTUNE_LOCK = threading.Lock()
-
-
-def autotune_worker_count(sample_images: list[str] | None = None) -> int:
-    """Automatically determine the optimal number of worker threads for ZIP + JPEG decode workloads.
-
-    sample_images: optional list of paths (inside ZIP or filesystem)
-                   to use as test samples.
-                   If None, it generates synthetic JPEG bytes.
-
-    Returns: integer worker count.
-    """
-    global _AUTO_TUNED_THREAD_COUNT  # noqa: PLW0603
-
-    with _AUTOTUNE_LOCK:
-        if _AUTO_TUNED_THREAD_COUNT is not None:
-            return _AUTO_TUNED_THREAD_COUNT
-
-        cpu_count = os.cpu_count() or 1
-
-        # If 1-2 CPUs → don't bother benchmarking.
-        if cpu_count <= 2:  # noqa: PLR2004
-            _AUTO_TUNED_THREAD_COUNT = 1
-            return 1
-
-        logger.debug("[autotune] Starting thread count autotune...")
-
-        # ----------------------------------------------------------
-        # Step 1: obtain samples to decode
-        # ----------------------------------------------------------
-
-        if sample_images:
-            samples = []
-            for path in sample_images:
-                p = Path(path)
-                samples.append(p.read_bytes())
-        else:
-            # Create synthetic JPEGs in memory (fast + reliable)
-            samples = []
-
-            for _ in range(4):
-                image = Image.new("RGB", (1800, 2600), (128, 64, 32))
-                buf = io.BytesIO()
-                image.save(buf, format="JPEG", quality=90)
-                samples.append(buf.getvalue())
-
-        # ----------------------------------------------------------
-        # Step 2: test performance for various worker counts
-        # ----------------------------------------------------------
-
-        # Try these worker counts (cap at CPU count).
-        test_counts = [wc for wc in [1, 2, 3, 4, 6, 8, 10, 12, 16] if wc <= cpu_count]
-
-        times = {}
-
-        for wc in test_counts:
-            t0 = time.perf_counter()
-
-            def task(data) -> None:  # noqa: ANN001
-                img = Image.open(io.BytesIO(data))
-                img.load()
-                # noinspection PyUnusedLocal
-                img = img.resize((900, 1300), Image.Resampling.LANCZOS)
-
-            with ThreadPoolExecutor(max_workers=wc) as tp:
-                futures = [tp.submit(task, s) for s in samples]
-                for f in futures:
-                    f.result()  # ensure completion
-
-            dt = time.perf_counter() - t0
-            times[wc] = dt
-            logger.debug(f"[autotune] {wc} threads took {dt:.4f} sec.")
-
-        # ----------------------------------------------------------
-        # Step 3: pick the best-performing worker count.
-        # ----------------------------------------------------------
-
-        best_wc = min(times, key=lambda wc: times[wc])
-        best_time = times[best_wc]
-
-        # Some safety: don't return something silly like 1,
-        # if the difference is tiny. Allow slight smoothing.
-        for wc in sorted(times):
-            if times[wc] <= best_time * 1.08:  # within 8 percent of fastest
-                best_wc = wc
-
-        logger.debug(f"[autotune] Best worker count selected: {best_wc}.")
-
-        _AUTO_TUNED_THREAD_COUNT = best_wc
-        return best_wc
