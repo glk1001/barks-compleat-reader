@@ -37,7 +37,6 @@ from barks_reader.reader_consts_and_types import (
     APP_TITLE,
     CHRONO_YEAR_RANGES,
     COMIC_PAGE_ONE,
-    PanelPath,
 )
 from barks_reader.reader_formatter import get_action_bar_title
 from barks_reader.reader_screens import ReaderScreen
@@ -63,6 +62,7 @@ from barks_reader.view_state_manager import ImageThemesChange, ImageThemesToUse,
 if TYPE_CHECKING:
     from barks_fantagraphics.comic_book import ComicBook
     from barks_fantagraphics.comics_database import ComicsDatabase
+    from comic_utils.comic_consts import PanelPath
     from kivy.uix.button import Button
     from kivy.uix.widget import Widget
 

@@ -1,8 +1,9 @@
 from collections.abc import Callable
 
 from barks_fantagraphics.barks_titles import Titles
+from comic_utils.comic_consts import PanelPath
 
-from barks_reader.reader_consts_and_types import NO_OVERRIDES_SUFFIX, PanelPath
+from barks_reader.reader_consts_and_types import NO_OVERRIDES_SUFFIX
 from barks_reader.reader_settings import ReaderSettings
 
 

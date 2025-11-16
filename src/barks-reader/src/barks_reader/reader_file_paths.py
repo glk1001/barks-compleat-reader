@@ -15,12 +15,12 @@ from barks_fantagraphics.barks_titles import (
     get_filename_from_title,
     get_title_str_from_filename,
 )
-from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT, ZIP_FILE_EXT
+from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT, ZIP_FILE_EXT, PanelPath
 from loguru import logger
 
 # noinspection PyUnresolvedReferences
 from barks_reader.open_zip_archive import get_opened_zip_file  # ty: ignore[unresolved-import]
-from barks_reader.reader_consts_and_types import NO_OVERRIDES_SUFFIX, PanelPath
+from barks_reader.reader_consts_and_types import NO_OVERRIDES_SUFFIX
 from barks_reader.reader_utils import get_all_files_in_dir
 
 if TYPE_CHECKING:

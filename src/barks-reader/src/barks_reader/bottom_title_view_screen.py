@@ -22,10 +22,10 @@ from barks_reader.reader_utils import title_needs_footnote
 
 if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+    from comic_utils.comic_consts import PanelPath
     from kivy.core.image import Texture
 
     from barks_reader.font_manager import FontManager
-    from barks_reader.reader_consts_and_types import PanelPath
     from barks_reader.reader_settings import ReaderSettings
     from barks_reader.special_overrides_handler import SpecialFantaOverrides
 

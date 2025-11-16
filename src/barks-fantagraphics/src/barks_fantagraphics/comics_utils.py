@@ -175,11 +175,11 @@ def file_is_older_than_timestamp(file: Path, timestamp: float) -> bool:
     return file_timestamp < timestamp
 
 
-def get_ocr_no_json_suffix(ocr_json_file: str) -> str:
-    return Path(Path(ocr_json_file).stem).suffix
+def get_ocr_no_json_suffix(ocr_json_file: Path) -> str:
+    return Path(ocr_json_file.stem).suffix
 
 
-def get_ocr_json_suffix(ocr_json_file: str) -> str:
+def get_ocr_json_suffix(ocr_json_file: Path) -> str:
     return get_ocr_no_json_suffix(ocr_json_file) + ".json"
 
 

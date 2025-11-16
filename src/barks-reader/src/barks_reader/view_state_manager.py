@@ -9,7 +9,7 @@ from loguru import logger
 from barks_reader.background_views import ImageThemes
 from barks_reader.panel_image_loader import PanelImageLoader
 from barks_reader.random_title_images import ImageInfo
-from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO, PanelPath
+from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO
 from barks_reader.reader_formatter import get_clean_text_without_extra
 
 if TYPE_CHECKING:
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.barks_tags import TagGroups, Tags
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+    from comic_utils.comic_consts import PanelPath
     from kivy.core.image import Texture
 
     from barks_reader.background_views import BackgroundViews, ViewStates

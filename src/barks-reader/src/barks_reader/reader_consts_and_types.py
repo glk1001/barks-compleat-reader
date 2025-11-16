@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import zipfile
-from pathlib import Path
-
 from comic_utils.comic_consts import ROMAN_NUMERALS
 
 RAW_ACTION_BAR_SIZE_Y = 45
@@ -15,7 +12,6 @@ OPTIONS_SETTING = "options"
 NO_OVERRIDES_SUFFIX = "-no-overrides"
 COMIC_PAGE_ONE = ROMAN_NUMERALS[1]
 CLOSE_TO_ZERO = 0.001
-PanelPath = Path | zipfile.Path
 
 # fmt: off
 INTRO_NODE_TEXT = "Introduction"

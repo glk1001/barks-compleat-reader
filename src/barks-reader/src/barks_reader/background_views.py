@@ -35,8 +35,9 @@ from barks_reader.reader_formatter import get_formatted_color
 from barks_reader.reader_utils import get_cs_range_str_from_str, get_us_range_str_from_str
 
 if TYPE_CHECKING:
+    from comic_utils.comic_consts import PanelPath
+
     from barks_reader.reader_colors import Color
-    from barks_reader.reader_consts_and_types import PanelPath
     from barks_reader.reader_settings import ReaderSettings
 
 TOP_VIEW_IMAGE_TYPES = {

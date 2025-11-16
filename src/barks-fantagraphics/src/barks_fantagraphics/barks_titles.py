@@ -5,8 +5,7 @@ from datetime import date
 from enum import CONTINUOUS, UNIQUE, IntEnum, auto, verify
 from pathlib import Path
 
-from barks_reader.reader_consts_and_types import PanelPath
-from comic_utils.comic_consts import DEC, JAN
+from comic_utils.comic_consts import DEC, JAN, PanelPath
 
 from .comic_issues import (
     ISSUE_NAME,

@@ -19,8 +19,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+    from comic_utils.comic_consts import PanelPath
 
-    from barks_reader.reader_consts_and_types import PanelPath
     from barks_reader.reader_settings import ReaderSettings
 
 NUM_RAND_ATTEMPTS = 10

@@ -1,3 +1,10 @@
+from __future__ import annotations
+
+import zipfile
+from pathlib import Path
+
+PanelPath = Path | zipfile.Path
+
 ZIP_FILE_EXT = ".zip"
 CBZ_FILE_EXT = ".cbz"
 JPG_FILE_EXT = ".jpg"

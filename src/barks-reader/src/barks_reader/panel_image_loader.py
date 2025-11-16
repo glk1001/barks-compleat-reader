@@ -4,12 +4,11 @@ from collections.abc import Callable
 from pathlib import Path
 from threading import Thread
 
+from comic_utils.comic_consts import PanelPath
 from kivy.clock import Clock
 from kivy.core.image import Texture
 from loguru import logger
 from PIL import Image
-
-from barks_reader.reader_consts_and_types import PanelPath
 
 type LoaderCallback = Callable[[Texture | Image.Image | None, Exception | None], None]
 
