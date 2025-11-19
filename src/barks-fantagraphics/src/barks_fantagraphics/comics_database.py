@@ -49,6 +49,7 @@ from .fanta_comics_info import (
     LAST_VOLUME_NUMBER,
     FantaBook,
     FantaComicBookInfo,
+    get_fanta_volume_from_str,
     get_fanta_volume_str,
 )
 from .page_classes import OriginalPage
@@ -94,6 +95,9 @@ class ComicsDatabase:
 
     def get_fanta_volume(self, story_title: str) -> str:
         return self._all_comic_book_info[story_title].fantagraphics_volume
+
+    def get_fanta_volume_int(self, story_title: str) -> int:
+        return get_fanta_volume_from_str(self.get_fanta_volume(story_title))
 
     def is_story_title(self, title: str) -> tuple[bool, str]:
         if title in self._story_titles:

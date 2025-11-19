@@ -64,6 +64,11 @@ def get_fanta_volume_str(volume: int) -> str:
     return f"FANTA_{volume:02}"
 
 
+def get_fanta_volume_from_str(volume_str: str) -> int:
+    assert volume_str.startswith("FANTA_")
+    return int(volume_str[-2:])
+
+
 @dataclass
 class FantaBook:
     title: str

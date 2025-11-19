@@ -114,6 +114,9 @@ class CmdArgs:
     def one_or_more_volumes(self) -> bool:
         return self._cmd_args.volume is not None
 
+    def get_num_volumes(self) -> int:
+        return 0 if not self._cmd_args.volume else len(self._cmd_args.volume)
+
     def get_volume(self) -> str:
         volumes = self.get_volumes()
         if len(volumes) > 1:
