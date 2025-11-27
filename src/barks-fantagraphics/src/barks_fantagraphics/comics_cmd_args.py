@@ -34,6 +34,7 @@ class ExtraArg:
     action: str
     type: Any
     default: Any
+    nargs: str | None = None
 
 
 class CmdArgs:
@@ -195,6 +196,7 @@ class CmdArgs:
                     type=extra.type,
                     default=extra.default,
                     required=False,
+                    nargs=extra.nargs,
                 )
 
         args = parser.parse_args()
