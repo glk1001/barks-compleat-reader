@@ -4,10 +4,13 @@ from datetime import UTC, datetime
 
 @dataclass
 class Timing:
-    _start_time: datetime = field(default_factory=lambda:datetime.now(UTC))
+    _start_time: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def restart(self) -> None:
         self._start_time = datetime.now(UTC)
+
+    def get_start_time(self) -> datetime:
+        return self._start_time
 
     def get_elapsed_time_in_seconds(self) -> int:
         assert self._start_time is not None
