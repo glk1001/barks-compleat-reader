@@ -58,7 +58,9 @@ class ViewStateManager:
         self._fun_image_view_screen = fun_image_view_screen
         self._index_screen = index_screen
         self._on_views_updated_func = on_views_updated_func
-        self._image_loader = PanelImageLoader()
+        self._image_loader = PanelImageLoader(
+            self._reader_settings.file_paths.barks_panels_are_encrypted
+        )
 
         # Take ownership of the view-specific state
         self._top_view_image_info: ImageInfo = ImageInfo()
@@ -220,13 +222,13 @@ class ViewStateManager:
                 self._background_views.get_top_view_image_color()
             )
             self._tree_view_screen.top_view_image_texture = tex
-            assert self._top_view_image_info.from_title is not None
-            self._tree_view_screen.set_title(self._top_view_image_info.from_title)
 
             logger.debug(f"Time taken to set top image: {timing.get_elapsed_time_with_unit()}.")
 
         # noinspection LongLine
         self._image_loader.load_texture(self._top_view_image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
+        assert self._top_view_image_info.from_title is not None
+        self._tree_view_screen.set_title(self._top_view_image_info.from_title)
 
     def _set_fun_view(self) -> None:
         """Set the image and properties for the 'fun' bottom view."""
@@ -253,11 +255,11 @@ class ViewStateManager:
                     self._background_views.get_bottom_view_fun_image_color()
                 )
                 self._fun_image_view_screen.image_texture = tex
-                self._fun_image_view_screen.set_title(self._bottom_view_fun_image_info.from_title)
                 logger.debug(f"Time taken to set fun image: {timing.get_elapsed_time_with_unit()}.")
 
             # noinspection LongLine
             self._image_loader.load_texture(self._bottom_view_fun_image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
+            self._fun_image_view_screen.set_title(self._bottom_view_fun_image_info.from_title)
 
     def _set_bottom_view(self) -> None:
         """Set the image and properties for the title information bottom view."""

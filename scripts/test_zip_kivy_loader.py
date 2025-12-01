@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Test loading images from a ZIP into Kivy textures using:
+"""Test loading images from a ZIP into Kivy textures using:
   - Sequential decode
   - Threaded decode
 
@@ -18,28 +17,24 @@ from __future__ import annotations
 
 import io
 import os
+import statistics
 import sys
 import time
-import zipfile
-import statistics
 import tracemalloc
+import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Iterable, List
-
-from PIL import Image as PILImage
 
 # ---- Kivy setup (window hidden) ---------------------------------------------
-
 from kivy.config import Config
+from PIL import Image as PILImage
 
-Config.set("kivy", "log_level", "info")
+Config.set("kivy", "log_level", "info")  # ty: ignore[possibly-missing-attribute]
 
 from kivy.core.window import Window
 
 Window.hide()
 
-from kivy.graphics.texture import Texture
-
+from kivy.graphics.texture import Texture  # ty: ignore[unresolved-import]
 
 # ---- CONFIG: edit these if desired -----------------------------------------
 
@@ -65,10 +60,8 @@ FILES_TO_TEST: list[str] = [
 
 
 def normalize_zip_path(name: str) -> str:
-    if name.startswith("/"):
-        name = name[1:]
-    if name.startswith("./"):
-        name = name[2:]
+    name = name.removeprefix("/")
+    name = name.removeprefix("./")
     return name
 
 
@@ -78,8 +71,7 @@ def normalize_zip_path(name: str) -> str:
 def decode_image(
     zip_file: zipfile.ZipFile, filename: str
 ) -> tuple[str, float, tuple[int, int, bytes]]:
-    """
-    Worker-thread function:
+    """Worker-thread function:
       - Reads from ZIP
       - Decodes via PIL
     Returns:
@@ -102,8 +94,7 @@ def decode_image(
 
 
 def upload_texture(decoded: tuple[int, int, bytes]) -> float:
-    """
-    Runs in the main thread:
+    """Runs in the main thread:
       - Create Texture
       - Upload pixel buffer
 

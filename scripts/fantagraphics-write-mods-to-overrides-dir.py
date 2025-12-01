@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import io
 import os
 import sys
+import zipfile
 from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -16,7 +18,7 @@ from barks_fantagraphics.fanta_comics_info import (
 from barks_fantagraphics.pages import get_page_mod_type, get_sorted_srce_and_dest_pages
 from comic_utils.comic_consts import JPG_FILE_EXT
 from comic_utils.pil_image_utils import get_downscaled_jpg, get_pil_image_as_jpg_bytes
-from comic_utils.pyminizip_file_collector import MiniZipFileCollector
+from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 from loguru import logger
 from loguru_config import LoguruConfig
@@ -28,10 +30,11 @@ if TYPE_CHECKING:
 
 load_dotenv(Path(__file__).parent.parent / ".env.runtime")
 
-ZIP_PASSWORD = os.environ["BARKS_ZIPS_PW"]
 APP_LOGGING_NAME = "wmod"
 
 Image.MAX_IMAGE_PIXELS = None
+PANEL_KEY = os.environ["BARKS_ZIPS_KEY"]
+FERNET = Fernet(PANEL_KEY)
 
 
 class FileType(Enum):
@@ -65,7 +68,7 @@ def get_mod_file(comic: ComicBook, srce: CleanPage) -> tuple[Path, FileType]:
 
 def downscale_and_zip(
     srce_file: Path,
-    override_archive: MiniZipFileCollector,
+    override_archive: zipfile.ZipFile,
     arcname: Path,
     res_width: int,
     res_height: int,
@@ -76,18 +79,25 @@ def downscale_and_zip(
 
     resized_image = get_downscaled_jpg(res_width, res_height, srce_file)
     buffer = get_pil_image_as_jpg_bytes(resized_image)
+    buffer = io.BytesIO(FERNET.encrypt(buffer.getvalue()))
     buffer.seek(0)
 
-    override_archive.add_str(str(arcname), buffer.read())
+    override_archive.writestr(str(arcname), buffer.read())
 
 
-def just_zip(srce_file: Path, override_archive: MiniZipFileCollector, arcname: Path) -> None:
+def just_zip(srce_file: Path, override_archive: zipfile.ZipFile, arcname: Path) -> None:
     logger.debug(f'Zip "{srce_file}" to jpg "{arcname}" in zip...')
-    override_archive.add_file(srce_file, str(arcname))
+    with srce_file.open("rb") as f:
+        original = f.read()
+
+    buffer = io.BytesIO(FERNET.encrypt(original))
+    buffer.seek(0)
+
+    override_archive.writestr(str(arcname), buffer.read())
 
 
 def process_comic_book(
-    comic_book: ComicBook, override_archive: MiniZipFileCollector, res_width: int, res_height: int
+    comic_book: ComicBook, override_archive: zipfile.ZipFile, res_width: int, res_height: int
 ) -> int:
     """Process a single comic book, copying or downscaling its modified files."""
     srce_mod_files = get_srce_mod_files(comic_book)
@@ -120,7 +130,7 @@ def process_volume(volume: int, comics_db: ComicsDatabase) -> None:
 
     titles = [t[0] for t in comics_database.get_configured_titles_in_fantagraphics_volume(volume)]
 
-    with MiniZipFileCollector(override_zip, ZIP_PASSWORD, base_dir=None) as override_archive:
+    with zipfile.ZipFile(override_zip, "w", compression=zipfile.ZIP_STORED) as override_archive:
         total_files_zipped = 0
         for title in titles:
             comic_book = comics_db.get_comic_book(title)

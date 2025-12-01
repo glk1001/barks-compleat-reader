@@ -1,6 +1,6 @@
 # ruff: noqa: PLR0911
 
-import zipfile
+from collections.abc import Callable
 from enum import Enum, auto
 from pathlib import Path
 
@@ -64,10 +64,16 @@ class BasePageType(Enum):
 
 
 class ComicBookImageBuilder:
-    def __init__(self, comic: ComicBook, empty_page_file: str) -> None:
+    def __init__(
+        self,
+        comic: ComicBook,
+        empty_page_file: str,
+        get_inset_decrypted_bytes: Callable[[bytes], bytes] | None = None,
+    ) -> None:
         self._comic = comic
-        self._required_dim: RequiredDimensions = RequiredDimensions()
         self._empty_page_image = open_image_for_reading(empty_page_file)
+        self._get_inset_decrypted_bytes = get_inset_decrypted_bytes
+        self._required_dim: RequiredDimensions = RequiredDimensions()
 
     def set_required_dim(self, required_dim: RequiredDimensions) -> None:
         self._required_dim = required_dim
@@ -450,13 +456,13 @@ class ComicBookImageBuilder:
         bottom: int,
         page_width: int,
     ) -> tuple[tuple[int, int], PilImage]:
-        inset = (
-            load_pil_image_from_bytes(
-                self._comic.intro_inset_file.read_bytes(), ext=self._comic.intro_inset_file.suffix
-            )
-            if isinstance(self._comic.intro_inset_file, zipfile.Path)
-            else open_image_for_reading(str(self._comic.intro_inset_file))
-        )
+        if isinstance(self._comic.intro_inset_file, Path):
+            inset = open_image_for_reading(str(self._comic.intro_inset_file))
+        else:
+            buffer = self._comic.intro_inset_file.read_bytes()
+            if self._get_inset_decrypted_bytes:
+                buffer = self._get_inset_decrypted_bytes(buffer)
+            inset = load_pil_image_from_bytes(buffer, ext=self._comic.intro_inset_file.suffix)
 
         inset_width, inset_height = inset.size
 

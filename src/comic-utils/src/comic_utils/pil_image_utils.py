@@ -6,6 +6,9 @@ import io
 import logging
 from typing import TYPE_CHECKING
 
+# noinspection PyUnresolvedReferences
+# TODO: Fix this inverted module dependency
+from barks_reader.get_panel_bytes import get_decrypted_bytes  # ty: ignore[unresolved-import]
 from PIL import Image, ImageOps
 from PIL.PngImagePlugin import PngInfo
 
@@ -44,12 +47,14 @@ def load_pil_image_for_reading(file: Path) -> PilImage:
         logging.getLogger().setLevel(current_log_level)
 
 
-def load_pil_image_from_zip(zip_path: zipfile.Path) -> PilImage:
+def load_pil_image_from_zip(zip_path: zipfile.Path, encrypted: bool) -> PilImage:
     current_log_level = logging.getLogger().level
     try:
         logging.getLogger().setLevel(logging.INFO)
         ext = zip_path.suffix
         file_data = zip_path.read_bytes()
+        if encrypted:
+            file_data = get_decrypted_bytes(file_data)
         return load_pil_image_from_bytes(file_data, ext)
     finally:
         logging.getLogger().setLevel(current_log_level)

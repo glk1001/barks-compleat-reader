@@ -129,6 +129,7 @@ class IndexScreen(FloatLayout):
         super().__init__(**kwargs)
 
         self._random_title_images = RandomTitleImages(reader_settings)
+        self._image_loader = PanelImageLoader(reader_settings.file_paths.barks_panels_are_encrypted)
         self._index_image_change_event = None
         self._cached_all_titles_for_letter: list[FantaComicBookInfo] = []
         self._cached_hierarchies: dict[Titles, TitleHierarchy] = {}
@@ -294,9 +295,8 @@ class IndexScreen(FloatLayout):
             self.image_texture = tex
             logger.debug(f"Time taken to set index image: {timing.get_elapsed_time_with_unit()}.")
 
-        image_loader = PanelImageLoader()
         # noinspection LongLine
-        image_loader.load_texture(image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
+        self._image_loader.load_texture(image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
 
     def _get_all_titles_for_letter(
         self, letter: str

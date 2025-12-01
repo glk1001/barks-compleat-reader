@@ -1,5 +1,7 @@
+import io
 import os
 import sys
+import zipfile
 from collections.abc import Callable
 from configparser import ConfigParser
 from pathlib import Path
@@ -11,22 +13,24 @@ from barks_reader.config_info import ConfigInfo  # make sure this is before any 
 from barks_reader.reader_settings import ReaderSettings
 from comic_utils.comic_consts import JPG_FILE_EXT
 from comic_utils.pil_image_utils import get_pil_image_as_jpg_bytes, load_pil_image_for_reading
-from comic_utils.pyminizip_file_collector import MiniZipFileCollector
+from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 from loguru import logger
 from loguru_config import LoguruConfig
 
 load_dotenv(Path(__file__).parent.parent / ".env.runtime")
 
-ZIP_PASSWORD = os.environ["BARKS_ZIPS_PW"]
 APP_LOGGING_NAME = "zip"
+
+PANEL_KEY = os.environ["BARKS_ZIPS_KEY"]
+FERNET = Fernet(PANEL_KEY)
 
 
 def get_backup_filename(file: Path) -> Path:
     return Path(str(file) + "_" + get_timestamp_str(file))
 
 
-def convert_and_zip_file(file_path: Path, archive: MiniZipFileCollector, dest_subdir: Path) -> None:
+def convert_and_zip_file(file_path: Path, archive: zipfile.ZipFile, dest_subdir: Path) -> None:
     if not file_path.is_file():
         msg = f'Could not find source file "{file_path}".'
         raise FileNotFoundError(msg)
@@ -46,7 +50,11 @@ def convert_and_zip_file(file_path: Path, archive: MiniZipFileCollector, dest_su
                 f'Writing file "{get_abbrev_path(file_path)}"'
                 f' to zip: "{get_abbrev_path(dest_file)}"...'
             )
-            archive.add_file(file_path, str(dest_file))
+            with file_path.open("rb") as f:
+                original = f.read()
+            buffer = io.BytesIO(FERNET.encrypt(original))
+            buffer.seek(0)
+            archive.writestr(str(dest_file), buffer.read())
 
     except FileNotFoundError:
         msg = f'File not found during processing: "{file_path}"'
@@ -56,36 +64,30 @@ def convert_and_zip_file(file_path: Path, archive: MiniZipFileCollector, dest_su
         raise Exception(msg) from e  # noqa: TRY002
 
 
-def zip_file_as_jpg(srce_file: Path, archive: MiniZipFileCollector, dest_file: Path) -> None:
+def zip_file_as_jpg(srce_file: Path, archive: zipfile.ZipFile, dest_file: Path) -> None:
     image = load_pil_image_for_reading(srce_file).convert("RGB")
 
     buffer = get_pil_image_as_jpg_bytes(image)
+    buffer = io.BytesIO(FERNET.encrypt(buffer.getvalue()))
     buffer.seek(0)
 
-    archive.add_str(str(dest_file), buffer.read())
+    archive.writestr(str(dest_file), buffer.read())
 
 
 def traverse_and_process_dirs(
     root_directory: Path,
     dest_zip: Path,
-    file_processor_func: Callable[[Path, MiniZipFileCollector, Path], None],
+    file_processor_func: Callable[[Path, zipfile.ZipFile, Path], None],
 ) -> None:
-    """Traverses a directory tree and runs a processor function on each file.
-
-    Args:
-        root_directory (Path): The path to the top-level directory to start from.
-        dest_zip (Path): The path to the destination zip.
-        file_processor_func (callable): The function to call for each file.
-                                        It should accept one argument: the full file path.
-
-    """
     if not root_directory.is_dir():
         raise FileNotFoundError(root_directory)
 
     logger.info(f'Copying all barks panel pngs to zip: "{dest_zip}"...')
     logger.info(f'Starting traversal of directory: "{root_directory}"...')
 
-    with MiniZipFileCollector(dest_zip, ZIP_PASSWORD, base_dir=None) as dest_zip_archive:
+    with zipfile.ZipFile(
+        dest_zip, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=2
+    ) as dest_zip_archive:
         file_count = 0
         for dirpath, _, filenames in root_directory.walk():
             logger.info(f'Processing directory "{dirpath}"...')

@@ -36,9 +36,6 @@ from barks_reader.comic_book_loader_platform_settings import (
     get_prefetch_tuning,
 )
 from barks_reader.fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
-
-# noinspection PyUnresolvedReferences
-from barks_reader.open_zip_archive import get_opened_zip_file  # ty: ignore[unresolved-import]
 from barks_reader.reader_ui_classes import set_kivy_busy_cursor, set_kivy_normal_cursor
 from barks_reader.reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
 
@@ -160,8 +157,8 @@ class ComicBookLoader:
             )
             if self._fanta_volume_archive.has_overrides():
                 assert self._fanta_volume_archive.override_archive_filename
-                self._fanta_volume_archive.override_archive = get_opened_zip_file(
-                    self._fanta_volume_archive.override_archive_filename
+                self._fanta_volume_archive.override_archive = zipfile.ZipFile(
+                    self._fanta_volume_archive.override_archive_filename, "r"
                 )
 
         self._use_fantagraphics_overrides = use_fantagraphics_overrides
@@ -522,7 +519,7 @@ class ComicBookLoader:
 
         if is_from_archive:
             zip_path = zipfile.Path(archive, at=str(image_path))
-            pil_image = load_pil_image_from_zip(zip_path)
+            pil_image = load_pil_image_from_zip(zip_path, encrypted=False)
         elif page_info.srce_page.page_type in [PageType.BLANK_PAGE, PageType.TITLE]:
             ext = Path(image_path).suffix
             file_data = self._empty_page_image
@@ -530,7 +527,7 @@ class ComicBookLoader:
         else:
             assert self._fanta_volume_archive is not None
             zip_path = zipfile.Path(self._fanta_volume_archive.override_archive, at=str(image_path))
-            pil_image = load_pil_image_from_zip(zip_path)
+            pil_image = load_pil_image_from_zip(zip_path, encrypted=True)
 
         return self._get_image_data(pil_image, page_info)
 

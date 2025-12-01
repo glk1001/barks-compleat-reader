@@ -10,6 +10,9 @@ from loguru import logger
 
 from barks_reader.comic_book_page_info import ComicBookPageInfo, ComicBookPageInfoManager
 from barks_reader.comic_book_reader import ComicBookReaderScreen
+
+# noinspection PyUnresolvedReferences
+from barks_reader.get_panel_bytes import get_decrypted_bytes  # ty: ignore[unresolved-import]
 from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
 from barks_reader.reader_consts_and_types import COMIC_PAGE_ONE
 from barks_reader.reader_settings import ReaderSettings
@@ -101,6 +104,9 @@ class ComicReaderManager:
         comic_book_image_builder = ComicBookImageBuilder(
             comic,
             str(self._reader_settings.sys_file_paths.get_empty_page_file()),
+            get_inset_decrypted_bytes=get_decrypted_bytes
+            if self._reader_settings.file_paths.barks_panels_are_encrypted
+            else None,
         )
         comic_book_image_builder.set_required_dim(self._comic_page_info.required_dim)
 

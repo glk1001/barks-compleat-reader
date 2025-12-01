@@ -18,8 +18,6 @@ from barks_fantagraphics.barks_titles import (
 from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT, ZIP_FILE_EXT, PanelPath
 from loguru import logger
 
-# noinspection PyUnresolvedReferences
-from barks_reader.open_zip_archive import get_opened_zip_file  # ty: ignore[unresolved-import]
 from barks_reader.reader_consts_and_types import NO_OVERRIDES_SUFFIX
 from barks_reader.reader_utils import get_all_files_in_dir
 
@@ -28,9 +26,12 @@ if TYPE_CHECKING:
 
 EMERGENCY_INSET_FILE = Titles.BICEPS_BLUES
 
-_DEFAULT_THE_COMIC_ZIPS_DIR = "${HOME}/Books/Carl Barks/The Comics/Chronological"
-_DEFAULT_JPG_BARKS_PANELS_SOURCE = "${HOME}/.local/share/barks-reader/Reader Files/Barks Panels.zip"
-_DEFAULT_PNG_BARKS_PANELS_SOURCE = "${HOME}/Books/Carl Barks/Barks Panels Pngs"
+_DEFAULT_BARKS_DIR = "${HOME}/Books/Carl Barks"
+_DEFAULT_THE_COMIC_ZIPS_DIR = _DEFAULT_BARKS_DIR + "/The Comics/Chronological"
+_DEFAULT_JPG_BARKS_PANELS_SOURCE = (
+    _DEFAULT_BARKS_DIR + "/Compleat Barks Disney Reader/Reader Files/Barks Panels.zip"
+)
+_DEFAULT_PNG_BARKS_PANELS_SOURCE = _DEFAULT_BARKS_DIR + "/Barks Panels Pngs"
 
 EDITED_SUBDIR = "edited"
 
@@ -80,6 +81,7 @@ class ReaderFilePaths:
 
         self._barks_panels_source: Path | None = None
         self._barks_panels_zip: zipfile.ZipFile | None = None
+        self.barks_panels_are_encrypted: bool = False
         self._panels_ext_type: BarksPanelsExtType | None = None
 
         self._panel_dirs: dict[PanelDirNames, PanelPath] = {}
@@ -127,9 +129,11 @@ class ReaderFilePaths:
         panels_root: Path | zipfile.Path
 
         if is_zip:
-            self._barks_panels_zip = get_opened_zip_file(self._barks_panels_source)
+            self.barks_panels_are_encrypted = True
+            self._barks_panels_zip = zipfile.ZipFile(self._barks_panels_source, "r")
             panels_root = zipfile.Path(self._barks_panels_zip)
         else:
+            self.barks_panels_are_encrypted = False
             panels_root = self._barks_panels_source
 
         for dir_enum in PanelDirNames:

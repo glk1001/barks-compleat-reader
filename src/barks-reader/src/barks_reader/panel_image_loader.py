@@ -10,6 +10,9 @@ from kivy.core.image import Texture
 from loguru import logger
 from PIL import Image
 
+# noinspection PyUnresolvedReferences
+from barks_reader.get_panel_bytes import get_decrypted_bytes  # ty: ignore[unresolved-import]
+
 type LoaderCallback = Callable[[Texture | Image.Image | None, Exception | None], None]
 
 
@@ -25,7 +28,8 @@ class PanelImageLoader:
     Texture upload always happens on the UI thread (required by Kivy).
     """
 
-    def __init__(self) -> None:
+    def __init__(self, barks_panels_are_encrypted: bool) -> None:
+        self._barks_panels_are_encrypted = barks_panels_are_encrypted
         self._cancel = False
 
     def cancel(self) -> None:
@@ -51,7 +55,11 @@ class PanelImageLoader:
         try:
             # PanelPath may be Path or zipfile.Path.
             if isinstance(panel_path, (Path, zipfile.Path)):
-                raw = panel_path.read_bytes()
+                raw = (
+                    get_decrypted_bytes(panel_path.read_bytes())
+                    if self._barks_panels_are_encrypted
+                    else panel_path.read_bytes()
+                )
             else:
                 msg = f"Unsupported PanelPath type: {type(panel_path)}"
                 raise TypeError(msg)  # noqa: TRY301
