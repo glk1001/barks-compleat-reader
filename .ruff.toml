@@ -2,6 +2,14 @@ line-length = 100
 
 exclude = [
         "scraps",
+        "**/scripts/actionbar_example.py",
+        "**/scripts/scrolling_list.py",
+        "**/scripts/test-logging.py",
+        "**/scripts/test_comic_archive.py",
+        "**/scripts/test_zip_kivy_loader.py",
+        "**/src/comic-utils/src/comic_utils/pyarmor_runtime_000000/*",
+        "**/src/comic-utils/src/comic_utils/get_panel_bytes.py",
+        "**/src/comic-utils/src/comic_utils/cpi*",
     ]
 
 [lint]
@@ -19,15 +27,6 @@ exclude = [
         "TD002", "TD003",
     ]
 
-    exclude = [
-        "scripts/actionbar_example.py",
-        "scripts/scrolling_list.py",
-        "scripts/test-logging.py",
-        "scripts/test_comic_archive.py",
-        "scripts/test_zip_kivy_loader.py",
-        "src/barks-reader/src/barks_reader/open_zip_archive.py",
-        "src/barks-reader/src/barks_reader/pyarmor_runtime_000000/*"
-    ]
-
     [lint.per-file-ignores]
         "scripts/*" = ["INP001"]
+
