@@ -1,3 +1,3 @@
 <component name="DependencyValidationManager">
-  <scope name="pyarmor_gen_files" pattern="file:src/barks-reader/src/barks_reader/get_panel_bytes.py" />
+  <scope name="pyarmor_gen_files" pattern="file:src/comic-utils/src/comic_utils/get_panel_bytes.py" />
 </component>

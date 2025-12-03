@@ -6,13 +6,13 @@ from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comics_consts import BACK_MATTER_PAGES, PageType
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
+
+# noinspection PyUnresolvedReferences
+from comic_utils.get_panel_bytes import get_decrypted_bytes  # ty: ignore[unresolved-import]
 from loguru import logger
 
 from barks_reader.comic_book_page_info import ComicBookPageInfo, ComicBookPageInfoManager
 from barks_reader.comic_book_reader import ComicBookReaderScreen
-
-# noinspection PyUnresolvedReferences
-from barks_reader.get_panel_bytes import get_decrypted_bytes  # ty: ignore[unresolved-import]
 from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
 from barks_reader.reader_consts_and_types import COMIC_PAGE_ONE
 from barks_reader.reader_settings import ReaderSettings
