@@ -5,7 +5,7 @@
 # User-specific stuff
 **/pyarmor_runtime_000000/
 src/barks-reader/src/barks_reader/_version.py
-src/barks-reader/src/barks_reader/get_panel_bytes.py
+src/comic-utils/src/comic_utils/get_panel_bytes.py
 .venv/
 .idea/**/workspace.xml
 .idea/**/tasks.xml

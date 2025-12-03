@@ -6,13 +6,13 @@ import io
 import logging
 from typing import TYPE_CHECKING
 
-# noinspection PyUnresolvedReferences
-# TODO: Fix this inverted module dependency
-from barks_reader.get_panel_bytes import get_decrypted_bytes  # ty: ignore[unresolved-import]
 from PIL import Image, ImageOps
 from PIL.PngImagePlugin import PngInfo
 
 from .comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
+
+# noinspection PyUnresolvedReferences
+from .get_panel_bytes import get_decrypted_bytes  # ty: ignore[unresolved-import]
 
 if TYPE_CHECKING:
     import zipfile

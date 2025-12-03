@@ -133,7 +133,7 @@ def _show_success_message(config_info: ConfigInfo, fanta_volumes_dir: Path | Non
 def _check_for_correct_pyarmor() -> None:
     from barks_reader.reader_utils import safe_import_check  # noqa: PLC0415
 
-    if not safe_import_check("barks_reader.open_zip_archive"):
+    if not safe_import_check("comic_utils.get_panel_bytes"):
         _handle_pyarmor_sanity_check_failed()
 
 
