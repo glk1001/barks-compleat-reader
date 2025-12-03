@@ -335,7 +335,7 @@ class ComicsDatabase:
         return self.get_fantagraphics_fixes_scraps_volume_dir(volume_num) / IMAGES_SUBDIR
 
     def make_all_fantagraphics_directories(self) -> None:
-        FANTA_VOLUME_OVERRIDES_ROOT.mkdir(self, exist_ok=True)
+        FANTA_VOLUME_OVERRIDES_ROOT.mkdir(parents=True, exist_ok=True)
 
         for volume in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1):
             # Create these directories if they're already not there.

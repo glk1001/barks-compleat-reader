@@ -10,6 +10,7 @@ from loguru import logger
 
 from .barks_titles import (
     BARKS_TITLE_DICT,
+    FILENAME_TO_TITLE_SPECIAL_CASE_MAP,
     GOOD_DEEDS,
     MILKMAN_THE,
     SILENT_NIGHT,
@@ -557,7 +558,8 @@ class ComicBook:
         return Path(self.ini_file).stem
 
     def get_title_enum(self) -> Titles:
-        return BARKS_TITLE_DICT[self.get_ini_title()]
+        ini_title = self.get_ini_title()
+        return BARKS_TITLE_DICT[FILENAME_TO_TITLE_SPECIAL_CASE_MAP.get(ini_title, ini_title)]
 
     def get_comic_title(self) -> str:
         if self.title != "":
