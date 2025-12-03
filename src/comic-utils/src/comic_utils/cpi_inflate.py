@@ -46,17 +46,20 @@ LATEST_YEAR = DEFAULT_SERIES.latest_year
 DAYS_SINCE_LATEST_MONTH = (date.today() - LATEST_MONTH).days
 DAYS_SINCE_LATEST_YEAR = (date.today() - date(LATEST_YEAR, 1, 1)).days
 OUT_OF_DATE_YEAR_CUTOFF = 365 * 2.25
-OUT_OF_DATE_MONTH_CUTOFF = 90
+OUT_OF_DATE_MONTH_CUTOFF = 100
 
 
 def check_for_stale_data() -> None:
-    if (DAYS_SINCE_LATEST_YEAR > OUT_OF_DATE_YEAR_CUTOFF) or (
-        DAYS_SINCE_LATEST_MONTH > OUT_OF_DATE_MONTH_CUTOFF
-    ):
+    if DAYS_SINCE_LATEST_MONTH > OUT_OF_DATE_MONTH_CUTOFF:
         logger.warning(f'CPI data is out of date in the database "{CPI_DB_PATH}".')
         logger.warning(
-            f"DAYS_SINCE_LATEST_YEAR = {DAYS_SINCE_LATEST_YEAR},"
-            f" DAYS_SINCE_LATEST_MONTH = {DAYS_SINCE_LATEST_MONTH}."
+            f"DAYS_SINCE_LATEST_MONTH = {DAYS_SINCE_LATEST_MONTH} > {OUT_OF_DATE_MONTH_CUTOFF}."
+            f" You should use 'cpi.update()' from the official package to update the database."
+        )
+    if DAYS_SINCE_LATEST_YEAR > OUT_OF_DATE_YEAR_CUTOFF:
+        logger.warning(f'CPI data is out of date in the database "{CPI_DB_PATH}".')
+        logger.warning(
+            f"DAYS_SINCE_LATEST_YEAR = {DAYS_SINCE_LATEST_YEAR} > {OUT_OF_DATE_YEAR_CUTOFF}.,"
             f" You should use 'cpi.update()' from the official package to update the database."
         )
 
