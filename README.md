@@ -12,7 +12,7 @@ navigation and a visually engaging interface.
     - **Chronological**: View stories in order based on their original submission date.
     - **Series**: Browse by comic book series (e.g., *Walt Disney's Comics and Stories*, *Donald Duck*, *Uncle Scrooge*).
     - **Categories**: Explore stories grouped by tags, such as characters, themes, or story types.
-- **Powerful Search**: Quickly find titles by name or stories by specific tags using the integrated search boxes.
+- **Search**: Quickly find titles by name or stories by specific tags using the integrated search boxes.
 - **Rich User Interface**: A dynamic 'TreeView' provides easy navigation, while the main view displays context-aware
   background art and information related to the selected comic or category.
 - **Integrated Comic Reader**: A fullscreen, touch/click-friendly reader with intuitive page navigation (click
@@ -33,7 +33,7 @@ navigation and a visually engaging interface.
 
 ## Requirements
 
-- **Python**: 3.12 or newer.
+- **Python**: 3.13 or newer.
 - **Fantagraphics Comic Archives**: You must have access to the digital versions of the Fantagraphics Carl Barks
   Library, typically as `.zip` or `.cbz` files.
 - **Python Dependencies**: The required Python packages can be installed via `uv.`
@@ -98,26 +98,27 @@ just reader
 ---
 
 ## Building a Standalone Executable Using Pyinstaller
-1. Install pyinstaller:
+1. Install pycrucible:
     ```
-    uv add --dev pyinstaller
+    uv add --dev pycrucible
     ```
-1. Activate the python virtual environment:
+1. Run the build command:
     ```
-   source .venv/bin/activate
-   
-   (source .venv/Scripts/activate on Windows)
+    bash script/build.sh
     ```
-1. Run the pyinstaller build command:
+1. This will create standalone one-file executable 'barks-reader-dist' where 'dist' depends on the platform the
+   build script is run from.
+
+
+## Deployment
+1. Goto 'Releases' on github (https://github.com/glk1001/barks-compleat-reader/releases/tag/v1.0.0) and edit the release:
     ```
-    pyinstaller -y --clean --workpath /tmp/barks-reader-build --distpath /tmp/barks-reader-dist main-onefile.spec
+    The Compleat Barks Disney Reader
     ```
-1. The standalone one-file executable will be at '/tmp/barks-reader-dist/main'.
-   Rename the executable:
-    ```
-    mv /tmp/barks-reader-dist/main ~/.local/bin/barks-reader
-    ```
+1. Add the just built executable.
+1. Update release
+1. The updated release should be visible at https://glk1001.github.io/barks-compleat-reader/website/app.html
 
 ## License
 
-This project is licensed under the GPL License.
+This project is licensed under the Apache License.
