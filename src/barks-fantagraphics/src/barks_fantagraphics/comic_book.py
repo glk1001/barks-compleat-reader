@@ -443,6 +443,7 @@ class ComicBook:
             "255",
             "256",
             "257",
+            "258",
         ]:
             return True
 
