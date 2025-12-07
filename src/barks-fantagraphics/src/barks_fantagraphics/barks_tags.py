@@ -19,6 +19,7 @@ class Tags(Enum):
 
     ARTICLES = "articles"
 
+    AEOLIAN_ISLANDS = "Aeolian Islands"
     ALGERIA = "Algeria"
     ANDES = "Andes"
     ANTARCTICA = "Antarctica"
@@ -110,6 +111,7 @@ class Tags(Enum):
 
 
 BARKS_TAG_EXTRA_ALIASES = {
+    "aeolian": Tags.AEOLIAN_ISLANDS,
     "south pole": Tags.ANTARCTICA,
     "arabia": Tags.ARABIAN_PENINSULA,
     "arctic": Tags.ARCTIC_OCEAN,
@@ -223,6 +225,7 @@ BARKS_TAG_CATEGORIES = {
         TagGroups.ONE_OFF_CHARACTERS,
     ],
     TagCategories.PLACES: [
+        Tags.AEOLIAN_ISLANDS,
         TagGroups.AFRICA,
         Tags.ALGERIA,
         Tags.ANDES,
@@ -303,16 +306,17 @@ BARKS_TAG_GROUPS = {
         Tags.SYDNEY,
     ],
     TagGroups.EUROPE: [
-        Tags.SWITZERLAND,
-        Tags.SWEDEN,
-        Tags.ITALY,
+        Tags.AEOLIAN_ISLANDS,
         Tags.FRANCE,
         Tags.GERMANY,
+        Tags.GREECE,
+        Tags.ITALY,
+        Tags.NORWAY,
+        Tags.RUSSIA,
         Tags.SCOTLAND,
         Tags.SPAIN,
-        Tags.RUSSIA,
-        Tags.GREECE,
-        Tags.NORWAY,
+        Tags.SWEDEN,
+        Tags.SWITZERLAND,
     ],
     TagGroups.NORTH_AMERICA: [],
     TagGroups.OTHER: [
@@ -469,23 +473,25 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     # Censorship
     Tags.CENSORED_STORIES_BUT_FIXED: [
         Titles.BACK_TO_THE_KLONDIKE,
-        Titles.FROZEN_GOLD,
-        Titles.LAND_BENEATH_THE_GROUND,
-        Titles.LOST_IN_THE_ANDES,
-        Titles.GOOD_DEEDS,
-        Titles.SILENT_NIGHT,
-        Titles.SWIMMING_SWINDLERS,
         Titles.BILL_COLLECTORS_THE,
+        Titles.BONGO_ON_THE_CONGO,
         Titles.FIREBUG_THE,
+        Titles.FROZEN_GOLD,
         Titles.GOLDEN_CHRISTMAS_TREE_THE,
         Titles.GOLDEN_FLEECING_THE,
+        Titles.GOOD_DEEDS,
         Titles.ICEBOX_ROBBER_THE,
+        Titles.LAND_BENEATH_THE_GROUND,
+        Titles.LOST_IN_THE_ANDES,
         Titles.LOVELORN_FIREMAN_THE,
+        Titles.SILENT_NIGHT,
+        Titles.SWIMMING_SWINDLERS,
         Titles.TERROR_OF_THE_RIVER_THE,
         Titles.TRICK_OR_TREAT,
         Titles.VOODOO_HOODOO,
     ],
     # Real places
+    Tags.AEOLIAN_ISLANDS: [Titles.CAVE_OF_THE_WINDS],
     Tags.ALGERIA: [Titles.ROCKET_RACE_AROUND_THE_WORLD],
     Tags.ANDES: [Titles.LOST_IN_THE_ANDES],
     Tags.ANTARCTICA: [Titles.COLD_BARGAIN_A],
@@ -1158,6 +1164,7 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.CENSORED_STORIES_BUT_FIXED, Titles.SWIMMING_SWINDLERS): ["1", "2", "7"],
     (Tags.CENSORED_STORIES_BUT_FIXED, Titles.BILL_COLLECTORS_THE): ["3"],
     (Tags.CENSORED_STORIES_BUT_FIXED, Titles.LOVELORN_FIREMAN_THE): ["8"],
+    (Tags.CENSORED_STORIES_BUT_FIXED, Titles.BONGO_ON_THE_CONGO): ["2", "4", "5", "6", "7", "8"],
     (Tags.CENSORED_STORIES_BUT_FIXED, Titles.FROZEN_GOLD): ["5", "9", "16", "17", "24"],
     (Tags.CENSORED_STORIES_BUT_FIXED, Titles.FIREBUG_THE): ["13"],
     (Tags.CENSORED_STORIES_BUT_FIXED, Titles.TERROR_OF_THE_RIVER_THE): ["1"],
