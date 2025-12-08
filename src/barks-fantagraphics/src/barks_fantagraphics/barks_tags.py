@@ -20,6 +20,7 @@ class Tags(Enum):
     ARTICLES = "articles"
 
     AEOLIAN_ISLANDS = "Aeolian Islands"
+    ALASKA = "Alaska"
     ALGERIA = "Algeria"
     ANDES = "Andes"
     ANTARCTICA = "Antarctica"
@@ -227,6 +228,7 @@ BARKS_TAG_CATEGORIES = {
     TagCategories.PLACES: [
         Tags.AEOLIAN_ISLANDS,
         TagGroups.AFRICA,
+        Tags.ALASKA,
         Tags.ALGERIA,
         Tags.ANDES,
         Tags.ANTARCTICA,
@@ -318,7 +320,7 @@ BARKS_TAG_GROUPS = {
         Tags.SWEDEN,
         Tags.SWITZERLAND,
     ],
-    TagGroups.NORTH_AMERICA: [],
+    TagGroups.NORTH_AMERICA: [Tags.ALASKA],
     TagGroups.OTHER: [
         Tags.ANTARCTICA,
         Tags.ARCTIC_OCEAN,
@@ -492,6 +494,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     ],
     # Real places
     Tags.AEOLIAN_ISLANDS: [Titles.CAVE_OF_THE_WINDS],
+    Tags.ALASKA: [Titles.GOLDEN_NUGGET_BOAT_THE],
     Tags.ALGERIA: [Titles.ROCKET_RACE_AROUND_THE_WORLD],
     Tags.ANDES: [Titles.LOST_IN_THE_ANDES],
     Tags.ANTARCTICA: [Titles.COLD_BARGAIN_A],
