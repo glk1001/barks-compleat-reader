@@ -73,7 +73,7 @@ class IndexScreen(FloatLayout):
         timing = Timing()
 
         alphabet_layout: GridLayout = self.ids.alphabet_layout
-        for letter in string.ascii_uppercase:
+        for letter in "0" + string.ascii_uppercase:
             button = IndexMenuButton(text=letter)
             button.bind(on_release=self.on_letter_press)
             self._alphabet_buttons[letter] = button

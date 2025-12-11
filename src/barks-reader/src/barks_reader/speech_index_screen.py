@@ -84,7 +84,11 @@ class SpeechIndexScreen(IndexScreen):
         # Add all comic titles
         for terms in self._whoosh_indexer.unstemmed_terms:
             first_letter = terms[0].upper()
-            assert ("A" <= first_letter <= "Z") or ("0" <= first_letter <= "9")
+            if "0" <= first_letter <= "9":
+                first_letter = "0"
+            else:
+                assert "A" <= first_letter <= "Z"
+
             self._item_index[first_letter].append(IndexItem(terms, terms))
 
         # Sort items within each letter group
