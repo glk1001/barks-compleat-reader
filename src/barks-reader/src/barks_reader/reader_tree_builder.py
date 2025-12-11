@@ -47,7 +47,9 @@ from barks_reader.reader_consts_and_types import (
     CHRONO_YEAR_RANGES,
     CHRONOLOGICAL_NODE_TEXT,
     CS_YEAR_RANGES,
+    INDEX_MAIN_TEXT,
     INDEX_NODE_TEXT,
+    INDEX_SPEECH_TEXT,
     INTRO_COMPLEAT_BARKS_READER_TEXT,
     INTRO_DON_AULT_FANTA_INTRO_TEXT,
     INTRO_NODE_TEXT,
@@ -141,8 +143,6 @@ class ReaderTreeBuilder:
 
     def build_main_screen_tree(self) -> None:
         """Set up and kick off the entire asynchronous tree build process."""
-        self._reader_tree_view.bind(on_node_expand=self._tree_view_manager.on_node_expanded)
-
         logger.debug("Building simple nodes...")
         self._add_intro_node(self._reader_tree_view)
         the_stories_node = self._add_the_stories_node(self._reader_tree_view)
@@ -498,10 +498,19 @@ class ReaderTreeBuilder:
         )
 
     def _add_index_node(self, tree: ReaderTreeView) -> None:
+        index_node = self._create_and_add_simple_node(tree, INDEX_NODE_TEXT)
+
         self._create_and_add_simple_node(
             tree,
-            INDEX_NODE_TEXT,
-            on_press_handler=self._tree_view_manager.on_index_node_pressed,
+            INDEX_MAIN_TEXT,
+            parent_node=index_node,
+            on_press_handler=self._tree_view_manager.on_main_index_node_pressed,
+        )
+        self._create_and_add_simple_node(
+            tree,
+            INDEX_SPEECH_TEXT,
+            parent_node=index_node,
+            on_press_handler=self._tree_view_manager.on_speech_index_node_pressed,
         )
 
     def _add_chrono_year_range_node(

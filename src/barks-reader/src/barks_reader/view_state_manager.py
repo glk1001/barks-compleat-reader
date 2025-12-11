@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from barks_reader.background_views import BackgroundViews, ViewStates
     from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
     from barks_reader.fun_image_view_screen import FunImageViewScreen
-    from barks_reader.index_screen import IndexScreen
+    from barks_reader.main_index_screen import MainIndexScreen
     from barks_reader.reader_settings import ReaderSettings
     from barks_reader.tree_view_screen import TreeViewScreen
 
@@ -48,7 +48,7 @@ class ViewStateManager:
         tree_view_screen: TreeViewScreen,
         bottom_title_view_screen: BottomTitleViewScreen,
         fun_image_view_screen: FunImageViewScreen,
-        index_screen: IndexScreen,
+        main_index_screen: MainIndexScreen,
         on_views_updated_func: Callable[[], None],
     ) -> None:
         self._reader_settings = reader_settings
@@ -56,7 +56,7 @@ class ViewStateManager:
         self._tree_view_screen = tree_view_screen
         self._bottom_title_view_screen = bottom_title_view_screen
         self._fun_image_view_screen = fun_image_view_screen
-        self._index_screen = index_screen
+        self._main_index_screen = main_index_screen
         self._on_views_updated_func = on_views_updated_func
         self._image_loader = PanelImageLoader(
             self._reader_settings.file_paths.barks_panels_are_encrypted
@@ -72,7 +72,7 @@ class ViewStateManager:
         # Set initial visibilities
         self._bottom_title_view_screen.is_visible = False
         self._fun_image_view_screen.is_visible = False
-        self._index_screen.is_visible = False
+        self._main_index_screen.is_visible = False
 
     def get_top_view_image_info(self) -> ImageInfo:
         return self._top_view_image_info
@@ -297,6 +297,6 @@ class ViewStateManager:
 
     def _set_index_view(self) -> None:
         opacity = self._background_views.get_index_view_opacity()
-        self._index_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
+        self._main_index_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
 
-        logger.debug(f"Setting new index view. Visibility: {self._index_screen.is_visible}.")
+        logger.debug(f"Setting new index view. Visibility: {self._main_index_screen.is_visible}.")

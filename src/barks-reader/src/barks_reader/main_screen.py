@@ -71,7 +71,7 @@ if TYPE_CHECKING:
     from barks_reader.filtered_title_lists import FilteredTitleLists
     from barks_reader.font_manager import FontManager
     from barks_reader.fun_image_view_screen import FunImageViewScreen
-    from barks_reader.index_screen import IndexScreen
+    from barks_reader.main_index_screen import MainIndexScreen
     from barks_reader.reader_screens import ScreenSwitchers
     from barks_reader.reader_settings import ReaderSettings
     from barks_reader.tree_view_screen import TreeViewScreen
@@ -97,7 +97,7 @@ class MainScreen(ReaderScreen):
         tree_view_screen: TreeViewScreen,
         bottom_title_view_screen: BottomTitleViewScreen,
         fun_image_view_screen: FunImageViewScreen,
-        index_screen: IndexScreen,
+        main_index_screen: MainIndexScreen,
         font_manager: FontManager,
         **kwargs: str,
     ) -> None:
@@ -118,14 +118,14 @@ class MainScreen(ReaderScreen):
 
         self._bottom_title_view_screen = bottom_title_view_screen
         self._fun_image_view_screen = fun_image_view_screen
-        self._index_screen = index_screen
-        self._index_screen.on_goto_title = self._goto_title_with_page_num
+        self._main_index_screen = main_index_screen
+        self._main_index_screen.on_goto_title = self._goto_title_with_page_num
 
         self.ids.main_layout.add_widget(self._tree_view_screen)
         self._bottom_base_view_screen = Screen(size_hint=(1, 1))
         self._bottom_base_view_screen.add_widget(self._bottom_title_view_screen)
         self._bottom_base_view_screen.add_widget(self._fun_image_view_screen)
-        self._bottom_base_view_screen.add_widget(self._index_screen)
+        self._bottom_base_view_screen.add_widget(self._main_index_screen)
         self.ids.main_layout.add_widget(self._bottom_base_view_screen)
 
         self._screen_switchers = screen_switchers
@@ -176,7 +176,7 @@ class MainScreen(ReaderScreen):
             self._tree_view_screen,
             self._bottom_title_view_screen,
             self._fun_image_view_screen,
-            self._index_screen,
+            self._main_index_screen,
             self._on_views_updated,
         )
 

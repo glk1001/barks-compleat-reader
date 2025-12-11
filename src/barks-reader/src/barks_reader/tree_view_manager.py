@@ -36,7 +36,9 @@ from barks_reader.reader_consts_and_types import (
     APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT,
     CATEGORIES_NODE_TEXT,
     CHRONOLOGICAL_NODE_TEXT,
+    INDEX_MAIN_TEXT,
     INDEX_NODE_TEXT,
+    INDEX_SPEECH_TEXT,
     INTRO_COMPLEAT_BARKS_READER_TEXT,
     INTRO_DON_AULT_FANTA_INTRO_TEXT,
     INTRO_NODE_TEXT,
@@ -96,6 +98,8 @@ NODE_TEXT_TO_VIEW_STATE_MAP: dict[str, ViewStates] = {
     APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_TEXT: ViewStates.ON_APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_NODE,  # noqa: E501
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT: ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
     INDEX_NODE_TEXT: ViewStates.ON_INDEX_NODE,
+    INDEX_MAIN_TEXT: ViewStates.ON_INDEX_MAIN_NODE,
+    INDEX_SPEECH_TEXT: ViewStates.ON_INDEX_SPEECH_NODE,
     CHRONOLOGICAL_NODE_TEXT: ViewStates.ON_CHRONO_BY_YEAR_NODE,
     "N/A" + ViewStates.ON_YEAR_RANGE_NODE.name: ViewStates.ON_YEAR_RANGE_NODE,
     SERIES_NODE_TEXT: ViewStates.ON_SERIES_NODE,
@@ -154,6 +158,7 @@ class TreeViewManager:
         self._tree_view_screen = tree_view_screen
 
         self._tree_view_screen.ids.reader_tree_view.bind(on_node_expand=self.on_node_expanded)
+        self._tree_view_screen.ids.reader_tree_view.bind(on_node_collapse=self.on_node_collapsed)
 
         self._update_title_func = update_title_func
         self._read_article_func = read_article_func
@@ -180,6 +185,21 @@ class TreeViewManager:
     def scroll_to_node(self, node: TreeViewNode) -> None:
         Clock.schedule_once(lambda _dt: self._tree_view_screen.scroll_to_node(node), 0)
 
+    def on_node_collapsed(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
+        # Ignore leaf/title rows.
+        if isinstance(node, TitleTreeViewNode):
+            return
+
+        self.set_view_state_for_node(node)
+
+    def set_view_state_for_node(self, node: ButtonTreeViewNode) -> None:
+        new_view_state, view_state_params = self._get_view_state_from_node(node)
+        if new_view_state is None:
+            msg = f"No view state mapping found for node: {node.text} ({type(node)})"
+            raise RuntimeError(msg)
+        # noinspection LongLine
+        self._view_state_manager.update_background_views(new_view_state, **view_state_params)  # ty: ignore[invalid-argument-type]
+
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
         # Ignore leaf/title rows.
         if isinstance(node, TitleTreeViewNode):
@@ -197,13 +217,8 @@ class TreeViewManager:
             # keep the parent row stationary.
             self._pin_parent_position_while_populating(node, run_populate=False)
 
-        # 3) View-state logic (unchanged)
-        new_view_state, view_state_params = self._get_view_state_from_node(node)
-        if new_view_state is None:
-            msg = f"No view state mapping found for node: {node.text} ({type(node)})"
-            raise RuntimeError(msg)
-        # noinspection LongLine
-        self._view_state_manager.update_background_views(new_view_state, **view_state_params)  # ty: ignore[invalid-argument-type]
+        # 3) View-state logic
+        self.set_view_state_for_node(node)
 
         # 4) NOTE: Do not call scroll_to_node() here — that causes the “snap-to-top/bottom” jump.
 
@@ -342,9 +357,13 @@ class TreeViewManager:
         logger.info(f"Article node pressed: Reading '{article_title.name}'.")
         self._read_article_func(article_title, view_state)
 
-    def on_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
-        logger.info("Index node pressed.")
-        self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_NODE)
+    def on_main_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
+        logger.info("Main index node pressed.")
+        self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_MAIN_NODE)
+
+    def on_speech_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
+        logger.info("Speech index node pressed.")
+        self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_SPEECH_NODE)
 
     @staticmethod
     def _get_view_state_for_node_text(node_text: str) -> ViewStates | None:

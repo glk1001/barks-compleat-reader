@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from barks_reader.reader_settings import ReaderSettings
 
 MAX_TITLE_LEN = 45
-INDEX_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
+MAIN_INDEX_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 
 class IndexMenuButton(Button):
@@ -115,7 +115,7 @@ class IndexItem:
     page_to_goto: str = ""
 
 
-class IndexScreen(FloatLayout):
+class MainIndexScreen(FloatLayout):
     """A widget that displays an A-Z index of comic titles and tags."""
 
     is_visible = BooleanProperty(defaultvalue=False)
@@ -192,7 +192,7 @@ class IndexScreen(FloatLayout):
 
         logger.debug(f"Created A-Z index buttons in {timing.get_elapsed_time_with_unit()}.")
 
-    def on_is_visible(self, _instance: IndexScreen, value: bool) -> None:
+    def on_is_visible(self, _instance: MainIndexScreen, value: bool) -> None:
         """When the widget becomes visible, automatically press the 'A' button."""
         if not value:
             self._cancel_index_image_change_events()

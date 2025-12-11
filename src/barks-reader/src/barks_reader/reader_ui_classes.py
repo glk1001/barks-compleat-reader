@@ -326,6 +326,8 @@ class ButtonTreeViewNode(Button, TreeViewNode):
     # A zero-arg function to create children.
     populate_callback = ObjectProperty(defaultvalue=None, allownone=True)
 
+    # Override 'touch' so we can toggle the node open or closed.
+    @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
         # Node press will also toggle expand/collapse.
         nodes_treeview = self._get_nodes_treeview(self)

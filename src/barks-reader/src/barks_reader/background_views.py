@@ -98,6 +98,8 @@ class ViewStates(IntEnum):
     ON_APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_NODE = auto()
     ON_APPENDIX_CENSORSHIP_FIXES_NODE = auto()
     ON_INDEX_NODE = auto()
+    ON_INDEX_MAIN_NODE = auto()
+    ON_INDEX_SPEECH_NODE = auto()
     ON_CHRONO_BY_YEAR_NODE = auto()
     ON_YEAR_RANGE_NODE = auto()
     ON_SERIES_NODE = auto()
@@ -122,7 +124,8 @@ class ViewStates(IntEnum):
 
 
 BOTTOM_VIEW_INDEX_OPACITY_1_STATES = {
-    ViewStates.ON_INDEX_NODE,
+    ViewStates.ON_INDEX_MAIN_NODE,
+    ViewStates.ON_INDEX_SPEECH_NODE,
 }
 BOTTOM_VIEW_TITLE_OPACITY_1_STATES = {
     ViewStates.ON_TITLE_NODE,
@@ -378,6 +381,10 @@ class BackgroundViews:
                 self._set_top_view_image_for_appendix_censorship_fixes()
             case ViewStates.ON_INDEX_NODE:
                 self._set_top_view_image_for_index()
+            case ViewStates.ON_INDEX_MAIN_NODE:
+                self._set_top_view_image_for_index()
+            case ViewStates.ON_INDEX_SPEECH_NODE:
+                self._set_top_view_image_for_index()
             case _:
                 # noinspection PyUnreachableCode
                 # Reason: inspection seems broken here.
@@ -538,7 +545,8 @@ class BackgroundViews:
             ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET,
             ViewStates.ON_TAG_SEARCH_BOX_NODE,
             ViewStates.ON_TITLE_NODE,
-            ViewStates.ON_INDEX_NODE,
+            ViewStates.ON_INDEX_MAIN_NODE,
+            ViewStates.ON_INDEX_SPEECH_NODE,
         ]:
             return
 

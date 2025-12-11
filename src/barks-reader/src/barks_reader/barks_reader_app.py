@@ -25,10 +25,10 @@ from barks_reader.error_handling import handle_app_fail_with_traceback
 from barks_reader.filtered_title_lists import FilteredTitleLists
 from barks_reader.font_manager import FontManager
 from barks_reader.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, FunImageViewScreen
-from barks_reader.index_screen import INDEX_SCREEN_KV_FILE, IndexScreen
 from barks_reader.intro_compleat_barks_reader import (
     get_intro_compleat_barks_reader_screen,  # can take ~3s on VM Windows
 )
+from barks_reader.main_index_screen import MAIN_INDEX_SCREEN_KV_FILE, MainIndexScreen
 from barks_reader.main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
 from barks_reader.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING, OPTIONS_SETTING
 from barks_reader.reader_screens import (
@@ -244,7 +244,7 @@ class BarksReaderApp(App):
         Builder.load_file(str(TREE_VIEW_SCREEN_KV_FILE))
         Builder.load_file(str(BOTTOM_TITLE_VIEW_SCREEN_KV_FILE))
         Builder.load_file(str(FUN_IMAGE_VIEW_SCREEN_KV_FILE))
-        Builder.load_file(str(INDEX_SCREEN_KV_FILE))
+        Builder.load_file(str(MAIN_INDEX_SCREEN_KV_FILE))
         Builder.load_file(str(MAIN_SCREEN_KV_FILE))
 
         root = self._build_screens()
@@ -283,7 +283,7 @@ class BarksReaderApp(App):
         tree_view_screen = TreeViewScreen(self.reader_settings)
         bottom_title_view_screen = BottomTitleViewScreen(self.reader_settings, self.font_manager)
         fun_image_view_screen = FunImageViewScreen(self.reader_settings)
-        index_screen = IndexScreen(self.reader_settings)
+        main_index_screen = MainIndexScreen(self.reader_settings)
         self._main_screen = MainScreen(
             self._comics_database,
             self.reader_settings,
@@ -293,7 +293,7 @@ class BarksReaderApp(App):
             tree_view_screen,
             bottom_title_view_screen,
             fun_image_view_screen,
-            index_screen,
+            main_index_screen,
             self.font_manager,
             name=MAIN_READER_SCREEN,
         )
