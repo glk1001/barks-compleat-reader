@@ -280,6 +280,7 @@ class BackgroundViews:
         self._current_bottom_view_title = title
 
     def set_view_state(self, view_state: ViewStates) -> None:
+        logger.info(f"Updating background view state to {view_state.name}.")
         self._view_state = view_state
         self._update_views()
 
@@ -397,7 +398,7 @@ class BackgroundViews:
 
         logger.debug(
             f"Top view image:"
-            f" State: {self._view_state},"
+            f" State: {self._view_state.name},"
             f" Image: '{get_abbrev_path(self._top_view_image_info.filename)}',"
             f" FitMode: '{self._top_view_image_info.fit_mode}',"
             f" Color: {get_formatted_color(self._top_view_image_color)},"
@@ -558,7 +559,7 @@ class BackgroundViews:
 
         logger.debug(
             f"Bottom view fun image:"
-            f" State: {self._view_state},"
+            f" State: {self._view_state.name},"
             f" Image: '{get_abbrev_path(self._bottom_view_fun_image_info.filename)}',"
             f" FitMode: '{self._bottom_view_fun_image_info.fit_mode}',"
             f" Color: {get_formatted_color(self._bottom_view_fun_image_color)},"
@@ -685,7 +686,7 @@ class BackgroundViews:
     def _log_bottom_view_title_state(self) -> None:
         logger.debug(
             f"Bottom view title image:"
-            f" State: {self._view_state},"
+            f" State: {self._view_state.name},"
             f" Image: '{self._bottom_view_title_image_info.filename}',"
             f" FitMode: '{self._bottom_view_title_image_info.fit_mode}',"
             f" Color: {get_formatted_color(self._bottom_view_title_image_color)},"

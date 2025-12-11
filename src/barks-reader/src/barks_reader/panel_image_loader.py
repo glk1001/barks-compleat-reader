@@ -31,6 +31,7 @@ class PanelImageLoader:
     def __init__(self, barks_panels_are_encrypted: bool) -> None:
         self._barks_panels_are_encrypted = barks_panels_are_encrypted
         self._cancel = False
+        self._current_thread: Thread | None = None
 
     def cancel(self) -> None:
         self._cancel = True
@@ -44,11 +45,18 @@ class PanelImageLoader:
     def _start_worker(
         self, panel_path: PanelPath, make_texture: bool, callback: LoaderCallback
     ) -> None:
-        Thread(
+        # Kill the current thread.
+        if self._current_thread:
+            self._cancel = True
+            self._current_thread.join()
+
+        self._cancel = False
+        self._current_thread = Thread(
             target=self._worker,
             args=(panel_path, make_texture, callback),
             daemon=True,
-        ).start()
+        )
+        self._current_thread.start()
 
     def _worker(self, panel_path: PanelPath, make_texture: bool, callback: LoaderCallback) -> None:
         # noinspection PyBroadException

@@ -167,6 +167,7 @@ class TreeViewManager:
         self._set_next_title_func = set_next_title_func
 
         self._last_open_node = None
+        self._allow_view_state_change_on_collapse = True
 
         assert self._update_title_func
         assert self._read_article_func
@@ -185,22 +186,33 @@ class TreeViewManager:
     def scroll_to_node(self, node: TreeViewNode) -> None:
         Clock.schedule_once(lambda _dt: self._tree_view_screen.scroll_to_node(node), 0)
 
+    def allow_view_state_change_on_collapse(self) -> None:
+        self._allow_view_state_change_on_collapse = True
+
+    def disallow_view_state_change_on_collapse(self) -> None:
+        self._allow_view_state_change_on_collapse = False
+
     def on_node_collapsed(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
-        # Ignore leaf/title rows.
-        if isinstance(node, TitleTreeViewNode):
+        # Check allow state change flag or is leaf/title row.
+        if not self._allow_view_state_change_on_collapse or isinstance(node, TitleTreeViewNode):
+            logger.info(f"Node collapsed but not allowing state change: '{node.text}'.")
             return
+
+        logger.info(f"Node collapsed: '{node.text}'.")
 
         self.set_view_state_for_node(node)
 
     def set_view_state_for_node(self, node: ButtonTreeViewNode) -> None:
         new_view_state, view_state_params = self._get_view_state_from_node(node)
         if new_view_state is None:
-            msg = f"No view state mapping found for node: {node.text} ({type(node)})"
+            msg = f"No view state mapping found for node: '{node.text}' ({type(node)})"
             raise RuntimeError(msg)
         # noinspection LongLine
         self._view_state_manager.update_background_views(new_view_state, **view_state_params)  # ty: ignore[invalid-argument-type]
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
+        logger.info(f"Node expanded: '{node.text}'.")
+
         # Ignore leaf/title rows.
         if isinstance(node, TitleTreeViewNode):
             return

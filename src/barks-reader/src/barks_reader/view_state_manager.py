@@ -53,12 +53,20 @@ class ViewStateManager:
     ) -> None:
         self._reader_settings = reader_settings
         self._background_views = background_views
+
         self._tree_view_screen = tree_view_screen
         self._bottom_title_view_screen = bottom_title_view_screen
         self._fun_image_view_screen = fun_image_view_screen
         self._main_index_screen = main_index_screen
         self._on_views_updated_func = on_views_updated_func
-        self._image_loader = PanelImageLoader(
+
+        self._top_view_image_loader = PanelImageLoader(
+            self._reader_settings.file_paths.barks_panels_are_encrypted
+        )
+        self._fun_view_image_loader = PanelImageLoader(
+            self._reader_settings.file_paths.barks_panels_are_encrypted
+        )
+        self._bottom_title_view_image_loader = PanelImageLoader(
             self._reader_settings.file_paths.barks_panels_are_encrypted
         )
 
@@ -204,15 +212,16 @@ class ViewStateManager:
     # noinspection PyNoneFunctionAssignment
     def _set_top_view_image(self) -> None:
         """Set the image and properties for the top view (behind the TreeView)."""
-        logger.debug("Setting new top view.")
-
         self._top_view_image_info = self._background_views.get_top_view_image_info()
+
+        logger.debug(f"Setting new top view: {self._top_view_image_info.filename}.")
 
         timing = Timing()
 
         def on_ready(tex: Texture, err: Exception) -> None:
             if err:
                 raise RuntimeError(err)
+            assert tex is not None
 
             self._tree_view_screen.top_view_image_opacity = (
                 self._background_views.get_top_view_image_opacity()
@@ -223,10 +232,15 @@ class ViewStateManager:
             )
             self._tree_view_screen.top_view_image_texture = tex
 
-            logger.debug(f"Time taken to set top image: {timing.get_elapsed_time_with_unit()}.")
+            logger.debug(
+                f"Time taken to set top image:"
+                f' "{self._top_view_image_info.filename.name}",'
+                f" {timing.get_elapsed_time_with_unit()}."
+            )
 
         # noinspection LongLine
-        self._image_loader.load_texture(self._top_view_image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
+        self._top_view_image_loader.load_texture(self._top_view_image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
+
         assert self._top_view_image_info.from_title is not None
         self._tree_view_screen.set_title(self._top_view_image_info.from_title)
 
@@ -248,6 +262,8 @@ class ViewStateManager:
             def on_ready(tex: Texture, err: Exception) -> None:
                 if err:
                     raise RuntimeError(err)
+                assert tex is not None
+
                 self._fun_image_view_screen.image_fit_mode = (
                     self._bottom_view_fun_image_info.fit_mode
                 )
@@ -258,7 +274,10 @@ class ViewStateManager:
                 logger.debug(f"Time taken to set fun image: {timing.get_elapsed_time_with_unit()}.")
 
             # noinspection LongLine
-            self._image_loader.load_texture(self._bottom_view_fun_image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
+            self._fun_view_image_loader.load_texture(
+                self._bottom_view_fun_image_info.filename, on_ready
+            )  # ty: ignore[invalid-argument-type]
+
             self._fun_image_view_screen.set_title(self._bottom_view_fun_image_info.from_title)
 
     def _set_bottom_view(self) -> None:
@@ -281,6 +300,8 @@ class ViewStateManager:
             def on_ready(tex: Texture, err: Exception) -> None:
                 if err:
                     raise RuntimeError(err)
+                assert tex is not None
+
                 self._bottom_title_view_screen.title_image_fit_mode = (
                     self._bottom_view_title_image_info.fit_mode
                 )
@@ -293,7 +314,9 @@ class ViewStateManager:
                 )
 
             # noinspection LongLine
-            self._image_loader.load_texture(self._bottom_view_title_image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
+            self._bottom_title_view_image_loader.load_texture(
+                self._bottom_view_title_image_info.filename, on_ready
+            )  # ty: ignore[invalid-argument-type]
 
     def _set_index_view(self) -> None:
         opacity = self._background_views.get_index_view_opacity()

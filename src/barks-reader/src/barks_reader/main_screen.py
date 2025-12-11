@@ -315,7 +315,12 @@ class MainScreen(ReaderScreen):
         return True
 
     def on_action_bar_collapse(self) -> None:
-        self._tree_view_screen.deselect_and_close_open_nodes()
+        self._tree_view_manager.disallow_view_state_change_on_collapse()
+        try:
+            self._tree_view_screen.deselect_and_close_open_nodes()
+        finally:
+            self._tree_view_manager.allow_view_state_change_on_collapse()
+
         self._view_state_manager.update_background_views(ViewStates.INITIAL)
 
     def on_action_bar_change_view_images(self) -> None:
