@@ -1,8 +1,10 @@
 import string
+import textwrap
 from abc import abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Self
 
+from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from comic_utils.timing import Timing
 from kivy.metrics import dp
 from kivy.properties import BooleanProperty, ObjectProperty
@@ -151,3 +153,16 @@ class IndexScreen(FloatLayout):
         else:
             # The index is being shown for the first time so default to 'A'.
             self.on_letter_press(self._alphabet_buttons["A"])
+
+    def _get_indexable_title(self, title: Titles) -> str:
+        title_str = textwrap.shorten(BARKS_TITLES[title], width=MAX_TITLE_LEN, placeholder="...")
+        return self._get_sortable_string(title_str)
+
+    @staticmethod
+    def _get_sortable_string(text: str) -> str:
+        text_upper = text.upper()
+        if text_upper.startswith("THE "):
+            return text[4:] + ", The"
+        if text_upper.startswith("A "):
+            return text[2:] + ", A"
+        return text

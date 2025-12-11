@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-import textwrap
+import random
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, override
 
-from barks_fantagraphics.barks_tags import (
-    BARKS_TAGGED_PAGES,
-    BARKS_TAGGED_TITLES,
-    Tags,
-)
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, BARKS_TITLES, Titles
+from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from comic_utils.timing import Timing
 from kivy.app import App
 from kivy.clock import Clock
@@ -23,7 +19,6 @@ from kivy.uix.boxlayout import BoxLayout
 from loguru import logger
 
 from barks_reader.index_screen import (
-    MAX_TITLE_LEN,
     IndexItemButton,
     IndexScreen,
     Theme,
@@ -32,10 +27,13 @@ from barks_reader.index_screen import (
 from barks_reader.panel_image_loader import PanelImageLoader
 from barks_reader.random_title_images import ImageInfo, RandomTitleImages
 from barks_reader.reader_utils import get_concat_page_nums_str
+from barks_reader.whoosh_indexer import WhooshIndexer
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from barks_fantagraphics.whoosh_search_engine import TitleDict
+    from kivy.core.image import Texture
     from kivy.uix.button import Button
 
     from barks_reader.reader_settings import ReaderSettings
@@ -43,7 +41,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class IndexItem:
-    id: Titles | Tags
+    id: str | Titles
     display_text: str
     page_to_goto: str = ""
 
@@ -60,9 +58,13 @@ class SpeechIndexScreen(IndexScreen):
         # Call the parent constructor FIRST to ensure self.ids is populated.
         super().__init__(**kwargs)
 
+        self._whoosh_indexer = WhooshIndexer(
+            reader_settings.sys_file_paths.get_barks_reader_indexes_dir()
+        )
         self._random_title_images = RandomTitleImages(reader_settings)
         self._image_loader = PanelImageLoader(reader_settings.file_paths.barks_panels_are_encrypted)
         self._index_image_change_event = None
+        self._found_words_cache: dict[str, TitleDict] = {}
 
         self.index_theme = Theme()
         App.get_running_app().index_theme = self.index_theme  # Make theme accessible globally in kv
@@ -80,11 +82,10 @@ class SpeechIndexScreen(IndexScreen):
         logger.info("Building index...")
 
         # Add all comic titles
-        for title in Titles:
-            title_str = self._get_indexable_title(title)
-            first_letter = title_str[0].upper()
-            assert "A" <= first_letter <= "Z"
-            self._item_index[first_letter].append(IndexItem(title, title_str))
+        for terms in self._whoosh_indexer.unstemmed_terms:
+            first_letter = terms[0].upper()
+            assert ("A" <= first_letter <= "Z") or ("0" <= first_letter <= "9")
+            self._item_index[first_letter].append(IndexItem(terms, terms))
 
         # Sort items within each letter group
         for letter in self._item_index:
@@ -109,7 +110,36 @@ class SpeechIndexScreen(IndexScreen):
 
     # noinspection PyNoneFunctionAssignment
     def _next_background_image(self) -> None:
-        pass
+        first_letter = self._selected_letter_button.text
+        index_terms = self._item_index[first_letter]
+        rand_term = random.choice(index_terms).id
+
+        if rand_term in self._found_words_cache:
+            found = self._found_words_cache[rand_term]
+        else:
+            found = self._whoosh_indexer.find_unstemmed_words(rand_term)
+            self._found_words_cache[rand_term] = found
+
+        found_titles = [ALL_FANTA_COMIC_BOOK_INFO[title_str] for title_str in found]
+        image_info = self._random_title_images.get_random_image(found_titles)
+
+        # TODO: Get rid of this hack!!
+        if image_info.from_title is None or image_info.from_title == Titles.GOOD_NEIGHBORS:
+            self.current_title_str = ""
+        else:
+            self.current_title_str = BARKS_TITLES[image_info.from_title]
+
+        timing = Timing()
+
+        def on_ready(tex: Texture | None, err: Exception) -> None:
+            if err:
+                raise RuntimeError(err)
+
+            self.image_texture = tex
+            logger.debug(f"Time taken to set index image: {timing.get_elapsed_time_with_unit()}.")
+
+        # noinspection LongLine
+        self._image_loader.load_texture(image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
 
     @override
     def _create_index_button(self, item: IndexItem) -> IndexItemButton:
@@ -130,26 +160,31 @@ class SpeechIndexScreen(IndexScreen):
 
     def _add_sub_items(self, _dt: float) -> None:
         """Create and add the sub-item widgets to the layout."""
-        item_id: Tags = self._open_tag_item.id
-        logger.debug(f"Adding sub-items for {item_id.name}")
+        assert type(self._open_tag_item.id) is str
+        item_id: str = self._open_tag_item.id
+        logger.debug(f"Adding sub-items for {item_id}")
 
         sub_items_layout = self._get_sub_item_layout(item_id)
         self._insert_sub_items_layout(sub_items_layout)
 
-    def _get_sub_item_layout(self, item_id: Tags) -> BoxLayout:
+    def _get_sub_item_layout(self, item_id: str) -> BoxLayout:
         # The new padding is the parent button's padding plus an indent step.
         parent_padding = self._open_tag_button.padding[0]
         sub_item_padding = parent_padding + self.index_theme.SUB_ITEM_INDENT_STEP
 
         # --- Determine what items to display in the new sub-list ---
-        assert isinstance(item_id, Tags)
-        sub_items_to_display = [
-            (
-                title,
-                *self._get_indexable_title_with_page_nums(title, item_id),
-            )  # ty: ignore[invalid-assignment]
-            for title in BARKS_TAGGED_TITLES[item_id]
-        ]
+        found = (
+            self._found_words_cache[item_id]
+            if item_id in self._found_words_cache
+            else self._whoosh_indexer.find_unstemmed_words(item_id)
+        )
+        sub_items_to_display = []
+        for comic_title, title_info in found.items():
+            title = BARKS_TITLE_DICT[comic_title]
+            page_nums = [page[1] for page in title_info.pages]
+            sub_items_to_display.append(
+                (title, *self._get_indexable_title_with_page_nums(title, page_nums))
+            )
 
         sub_items_to_display.sort(key=lambda t: t[2])
 
@@ -172,9 +207,7 @@ class SpeechIndexScreen(IndexScreen):
                 page_to_goto=sub_item_page_to_goto,
             )
             title_button.bind(
-                on_release=lambda btn, bound_item=sub_item: self._on_index_item_press(
-                    btn, bound_item
-                ),
+                on_release=lambda btn, bound_item=sub_item: self._handle_title(btn, bound_item),
             )
             sub_items_layout.add_widget(title_button)
             logger.debug(f'Added sub-item "{sub_item_text}".')
@@ -191,12 +224,9 @@ class SpeechIndexScreen(IndexScreen):
 
     def _on_index_item_press(self, button: Button, item: IndexItem) -> None:
         """Handle a press on an individual index item."""
-        logger.info(f"Index item pressed: {item}")
+        logger.info(f"Index item pressed: '{item}'.")
 
-        # If a title is clicked, it's a terminal action. Handle it and do not change the UI.
-        if type(item.id) is Titles:
-            self._handle_title(button, item)
-            return
+        assert type(item.id) is not Titles
 
         # --- State Machine for Cleanup and Expansion ---
         is_collapse, level_of_click = self._get_level_of_click_for_collapse(button)
@@ -283,8 +313,11 @@ class SpeechIndexScreen(IndexScreen):
         return level_of_click
 
     def _handle_press(self, button: Button, item: IndexItem) -> None:
-        if type(item.id) is Tags:
-            self._handle_tag(button, item)
+        logger.info(f'Handling term: "{item.id}".')
+
+        self._open_tag_button = button
+        self._open_tag_item = item
+        Clock.schedule_once(self._add_sub_items, 0)
 
     def _handle_title(self, button: Button, item: IndexItem) -> None:
         logger.info(f'Handling title: "{item.id.name}".')
@@ -306,41 +339,10 @@ class SpeechIndexScreen(IndexScreen):
         Clock.schedule_once(lambda _dt: goto_title(), 0.01)
         Clock.schedule_once(lambda _dt: reset_background_color(), 0.1)
 
-    def _handle_tag(self, button: Button, item: IndexItem) -> None:
-        assert type(item.id) is Tags
-        tag: Tags = item.id
-        logger.info(f'Handling tag: "{tag.name}".')
-
-        if tag not in BARKS_TAGGED_TITLES:
-            logger.warning(f"No titles found for tag: {tag.name}")
-            self._open_tag_button = None
-            return
-
-        self._open_tag_button = button
-        self._open_tag_item = item
-        Clock.schedule_once(self._add_sub_items, 0)
-
-    def _get_indexable_title_with_page_nums(self, title: Titles, tag: Tags) -> tuple[str, str]:
-        """Return the first page to goto, and the sortable title with page numbers."""
-        if (tag, title) not in BARKS_TAGGED_PAGES:
-            return "", self._get_indexable_title(title)
-
-        page_nums = BARKS_TAGGED_PAGES[(tag, title)]
-
+    def _get_indexable_title_with_page_nums(
+        self, title: Titles, page_nums: list[str]
+    ) -> tuple[str, str]:
         title_str = self._get_indexable_title(title)
         page_nums_str = get_concat_page_nums_str(page_nums)
 
         return page_nums[0], title_str + ", " + page_nums_str
-
-    def _get_indexable_title(self, title: Titles) -> str:
-        title_str = textwrap.shorten(BARKS_TITLES[title], width=MAX_TITLE_LEN, placeholder="...")
-        return self._get_sortable_string(title_str)
-
-    @staticmethod
-    def _get_sortable_string(text: str) -> str:
-        text_upper = text.upper()
-        if text_upper.startswith("THE "):
-            return text[4:] + ", The"
-        if text_upper.startswith("A "):
-            return text[2:] + ", A"
-        return text

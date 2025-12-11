@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import textwrap
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, override
@@ -28,7 +27,6 @@ from kivy.uix.boxlayout import BoxLayout
 from loguru import logger
 
 from barks_reader.index_screen import (
-    MAX_TITLE_LEN,
     IndexItemButton,
     IndexScreen,
     Theme,
@@ -463,16 +461,3 @@ class MainIndexScreen(IndexScreen):
         page_nums_str = get_concat_page_nums_str(page_nums)
 
         return page_nums[0], title_str + ", " + page_nums_str
-
-    def _get_indexable_title(self, title: Titles) -> str:
-        title_str = textwrap.shorten(BARKS_TITLES[title], width=MAX_TITLE_LEN, placeholder="...")
-        return self._get_sortable_string(title_str)
-
-    @staticmethod
-    def _get_sortable_string(text: str) -> str:
-        text_upper = text.upper()
-        if text_upper.startswith("THE "):
-            return text[4:] + ", The"
-        if text_upper.startswith("A "):
-            return text[2:] + ", A"
-        return text

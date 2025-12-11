@@ -15,6 +15,7 @@ from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, Titles
 from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.fanta_comics_info import US_CENSORED_TITLE_ENUMS, FantaComicBookInfo
+from comic_utils.comic_consts import ROMAN_NUMERALS
 from comic_utils.pil_image_utils import PNG_PIL_FORMAT
 from intspan import intspan
 
@@ -29,6 +30,7 @@ COMIC_PAGE_ASPECT_RATIO = 3200.0 / 2120.0
 
 EMPTY_PAGE_KEY = "empty_page"
 PNG_EXT_FOR_KIVY = PNG_PIL_FORMAT.lower()
+ROMAN_NUMERALS_SET = set(ROMAN_NUMERALS.values())
 
 
 def get_best_window_height_fit(screen_height: int) -> int:
@@ -189,13 +191,24 @@ def get_paths_from_zip(zip_path: Path) -> set[str]:
 
 
 def get_concat_page_nums_str(page_nums_str: list[str]) -> str:
-    try:
-        page_nums = [int(p) for p in page_nums_str]
-    except ValueError as e:
-        msg = f"Could not convert page nums list to list of ints: {page_nums_str}."
-        raise ValueError(msg) from e
-    else:
-        return str(intspan(page_nums))
+    def get_abbrev_page_list(pg_list: list[str]) -> str:
+        try:
+            page_nums = [int(p) for p in pg_list]
+        except ValueError as e:
+            msg = f"Could not convert page nums list to list of ints: {pg_list}."
+            raise ValueError(msg) from e
+        else:
+            return str(intspan(page_nums))
+
+    page_set = set(page_nums_str)
+    if page_set & ROMAN_NUMERALS_SET:
+        roman_pages = sorted([p for p in page_nums_str if p in ROMAN_NUMERALS_SET])
+        int_pages = get_abbrev_page_list([p for p in page_nums_str if p not in ROMAN_NUMERALS_SET])
+        if int_pages:
+            return ",".join(roman_pages) + "," + int_pages
+        return ",".join(roman_pages)
+
+    return get_abbrev_page_list(page_nums_str)
 
 
 def quote_and_join_with_and(items: list[Any]) -> str:

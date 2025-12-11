@@ -24,17 +24,19 @@ class TitleInfo:
     pages: list[tuple[str, str, str]] = field(default_factory=list)
 
 
+type TitleDict = dict[str, TitleInfo]
+
+
 class SearchEngine:
     def __init__(self, index_dir: Path) -> None:
         self._index = open_dir(index_dir)
 
-    def find_words(self, search_words: str, unstemmed_terms: bool) -> dict[str, TitleInfo]:
+    def find_words(self, search_words: str, use_unstemmed_terms: bool) -> TitleDict:
         prelim_results = defaultdict(TitleInfo)
         with self._index.searcher() as searcher:
-            if unstemmed_terms:
-                query = QueryParser("unstemmed", self._index.schema).parse(search_words)
-            else:
-                query = QueryParser("content", self._index.schema).parse(search_words)
+            field_name = "unstemmed" if use_unstemmed_terms else "content"
+            query = QueryParser(field_name, self._index.schema).parse(search_words)
+
             results = searcher.search(query, limit=100)
             for hit in results:
                 prelim_results[hit["title"]].fanta_vol = int(hit["fanta_vol"])
@@ -42,6 +44,7 @@ class SearchEngine:
                     (hit["fanta_page"], hit["comic_page"], hit["content"])
                 )
 
+        # Sort the results by title and page.
         title_results = defaultdict(TitleInfo)
         for title in sorted(prelim_results.keys()):
             title_results[title].fanta_vol = prelim_results[title].fanta_vol

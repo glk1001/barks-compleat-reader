@@ -10,6 +10,7 @@ class SystemFilePaths:
         self._reader_icon_files_dir: Path | None = None
         self._app_window_icon_path: Path | None = None
         self._various_files_dir: Path | None = None
+        self._indexes_dir: Path | None = None
         self._error_background_path: Path | None = None
         self._success_background_path: Path | None = None
         self._about_background_path: Path | None = None
@@ -45,6 +46,7 @@ class SystemFilePaths:
         self._reader_icon_files_dir = self._barks_reader_files_dir / "Reader Icons"
         self._app_window_icon_path = self._reader_icon_files_dir / "app-icon.png"
         self._various_files_dir = self._barks_reader_files_dir / "Various"
+        self._indexes_dir = self._barks_reader_files_dir / "Indexes"
         self._error_background_path = self._various_files_dir / "error-background.png"
         self._success_background_path = self._various_files_dir / "success-background.png"
         self._about_background_path = self._various_files_dir / "about-background.png"
@@ -85,6 +87,7 @@ class SystemFilePaths:
             self._reader_icon_files_dir,
             self._action_bar_icons_dir,
             self._various_files_dir,
+            self._indexes_dir,
             self._fantagraphics_overrides_root_dir,
         ]
         self._check_dirs(dirs_to_check)
@@ -137,6 +140,10 @@ class SystemFilePaths:
     def get_barks_reader_fantagraphics_panel_segments_root_dir(self) -> Path:
         assert self._fantagraphics_panel_segments_root_dir
         return self._fantagraphics_panel_segments_root_dir
+
+    def get_barks_reader_indexes_dir(self) -> Path:
+        assert self._indexes_dir
+        return self._indexes_dir
 
     def get_reader_icon_files_dir(self) -> Path:
         assert self._reader_icon_files_dir
