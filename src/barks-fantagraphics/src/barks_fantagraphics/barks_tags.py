@@ -29,11 +29,13 @@ class Tags(Enum):
     ATLANTIS = "Atlantis"
     AUSTRALIA = "Australia"
     BARNACLE_BAY = "Barnacle Bay"
+    CANADA = "Canada"
     CENTRAL_AFRICA = "Central Africa"
     CHINA = "China"
     CONGO = "Congo"
     DUCKBURG = "Duckburg"
     EGYPT = "Egypt"
+    FLORIDA = "Florida"
     FRANCE = "France"
     GERMANY = "Germany"
     GREECE = "Greece"
@@ -45,10 +47,12 @@ class Tags(Enum):
     ITALY = "Italy"
     LIBYA = "Libya"
     MALI = "Mali"
+    MISSISSIPPI = "Mississippi"
     MONGOLIA = "Mongolia"
     MOROCCO = "Morocco"
     NIAGARA_FALLS = "Niagara Falls"
     NORWAY = "Norway"
+    OHIO = "Ohio"
     OLD_DEMON_TOOTH = "Old Demon Tooth"
     PAKISTAN = "Pakistan"
     PERSIA = "Persia"
@@ -190,7 +194,6 @@ class TagGroups(Enum):
 
 BARKS_TAG_GROUPS_ALIASES = {str(t.value).lower(): t for t in TagGroups}
 
-
 BARKS_TAG_CATEGORIES_DICT = {cat.value: cat for cat in TagCategories}
 
 BARKS_TAG_CATEGORIES = {
@@ -205,6 +208,7 @@ BARKS_TAG_CATEGORIES = {
     TagCategories.THINGS: [
         Tags.AIRPLANES,
         Tags.CAMERAS,
+        TagGroups.CARS,
         Tags.CIGARETTES,
         Tags.FIRE,
         Tags.SQUARE_EGGS,
@@ -239,12 +243,14 @@ BARKS_TAG_CATEGORIES = {
         # Tags.AUSTRALIA,
         TagGroups.AUSTRALASIA,
         Tags.BARNACLE_BAY,
+        Tags.CANADA,
         Tags.CENTRAL_AFRICA,
         Tags.CHINA,
         Tags.CONGO,
         Tags.DUCKBURG,
         Tags.EGYPT,
         TagGroups.EUROPE,
+        Tags.FLORIDA,
         Tags.FRANCE,
         Tags.GERMANY,
         Tags.GREECE,
@@ -256,11 +262,13 @@ BARKS_TAG_CATEGORIES = {
         Tags.ITALY,
         Tags.LIBYA,
         Tags.MALI,
+        Tags.MISSISSIPPI,
         Tags.MONGOLIA,
         Tags.MOROCCO,
         Tags.NIAGARA_FALLS,
         TagGroups.NORTH_AMERICA,
         Tags.NORWAY,
+        Tags.OHIO,
         Tags.OLD_DEMON_TOOTH,
         Tags.PAKISTAN,
         Tags.PERSIA,
@@ -320,7 +328,7 @@ BARKS_TAG_GROUPS = {
         Tags.SWEDEN,
         Tags.SWITZERLAND,
     ],
-    TagGroups.NORTH_AMERICA: [Tags.ALASKA],
+    TagGroups.NORTH_AMERICA: [Tags.ALASKA, Tags.CANADA, Tags.FLORIDA, Tags.MISSISSIPPI, Tags.OHIO],
     TagGroups.OTHER: [
         Tags.ANTARCTICA,
         Tags.ARCTIC_OCEAN,
@@ -494,7 +502,12 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     ],
     # Real places
     Tags.AEOLIAN_ISLANDS: [Titles.CAVE_OF_THE_WINDS],
-    Tags.ALASKA: [Titles.GOLDEN_NUGGET_BOAT_THE],
+    Tags.ALASKA: [
+        Titles.FROZEN_GOLD,
+        Titles.LUCK_OF_THE_NORTH,
+        Titles.BACK_TO_THE_KLONDIKE,
+        Titles.GOLDEN_NUGGET_BOAT_THE,
+    ],
     Tags.ALGERIA: [Titles.ROCKET_RACE_AROUND_THE_WORLD],
     Tags.ANDES: [Titles.LOST_IN_THE_ANDES],
     Tags.ANTARCTICA: [Titles.COLD_BARGAIN_A],
@@ -512,6 +525,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.RICHES_RICHES_EVERYWHERE,
         Titles.QUEEN_OF_THE_WILD_DOG_PACK_THE,
     ],
+    Tags.CANADA: [Titles.FROZEN_GOLD, Titles.BACK_TO_THE_KLONDIKE],
     Tags.CENTRAL_AFRICA: [
         Titles.DARKEST_AFRICA,
         Titles.VOODOO_HOODOO,
@@ -523,6 +537,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     Tags.CHINA: [Titles.MONEY_CHAMP_THE],
     Tags.CONGO: [Titles.BONGO_ON_THE_CONGO],
     Tags.EGYPT: [Titles.DONALD_DUCK_AND_THE_MUMMYS_RING],
+    Tags.FLORIDA: [Titles.CHARITABLE_CHORE_A],
     Tags.FRANCE: [Titles.DANGEROUS_DISGUISE],
     Tags.GERMANY: [Titles.FABULOUS_PHILOSOPHERS_STONE_THE],
     Tags.GREECE: [
@@ -571,10 +586,12 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.DAY_DUCKBURG_GOT_DYED_THE,
         Titles.CANDY_KID_THE,
     ],
+    Tags.MISSISSIPPI: [Titles.TERROR_OF_THE_RIVER_THE],
     Tags.MONGOLIA: [Titles.MONEY_CHAMP_THE],
     Tags.MOROCCO: [Titles.MAGIC_HOURGLASS_THE],
     Tags.NIAGARA_FALLS: [Titles.HIGH_WIRE_DAREDEVILS],
     Tags.NORWAY: [Titles.LEMMING_WITH_THE_LOCKET_THE],
+    Tags.OHIO: [Titles.TERROR_OF_THE_RIVER_THE],
     Tags.PAKISTAN: [Titles.LOST_CROWN_OF_GENGHIS_KHAN_THE],
     Tags.PERSIA: [Titles.IN_ANCIENT_PERSIA],
     Tags.PLAIN_AWFUL: [Titles.LOST_IN_THE_ANDES],
@@ -709,8 +726,12 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.DUCKS_EYE_VIEW_OF_EUROPE_A,
     ],
     Tags.CAR_313: [
+        Titles.DONALDS_MONSTER_KITE,
         Titles.MAD_CHEMIST_THE,
+        Titles.RIP_VAN_DONALD,
+        Titles.VOLCANO_VALLEY,
         Titles.SHERIFF_OF_BULLET_VALLEY,
+        Titles.VACATION_TIME,
     ],
     Tags.HDL_DRIVING_CAR: [
         Titles.SHERIFF_OF_BULLET_VALLEY,
@@ -1156,10 +1177,18 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
 }
 
 BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
+    (Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE): ["7"],
     (Tags.BARNACLE_BAY, Titles.NO_SUCH_VARMINT): ["11"],
     (Tags.CAMERAS, Titles.SECRET_RESOLUTIONS): ["8"],
     (Tags.CAMERAS, Titles.VACATION_TIME): ["10"],  # plus more pages
+    (Tags.CANADA, Titles.FROZEN_GOLD): ["4"],
+    (Tags.FLORIDA, Titles.CHARITABLE_CHORE_A): ["6"],
+    (Tags.MISSISSIPPI, Titles.TERROR_OF_THE_RIVER_THE): ["16"],
+    (Tags.OHIO, Titles.TERROR_OF_THE_RIVER_THE): ["4"],
     (Tags.CAR_313, Titles.MAD_CHEMIST_THE): ["2", "3", "5", "6"],
+    (Tags.CAR_313, Titles.DONALDS_MONSTER_KITE): ["7", "8", "9", "10"],
+    (Tags.CAR_313, Titles.RIP_VAN_DONALD): ["6", "7", "8", "9", "10"],
+    (Tags.CAR_313, Titles.VOLCANO_VALLEY): ["2"],
     (Tags.CAR_313, Titles.SHERIFF_OF_BULLET_VALLEY): ["1", "3", "11", "12", "14"],
     (Tags.HDL_DRIVING_CAR, Titles.SHERIFF_OF_BULLET_VALLEY): ["11", "12", "14"],
     (Tags.CARVER_BEAKOFF, Titles.FIREBUG_THE): ["13"],
