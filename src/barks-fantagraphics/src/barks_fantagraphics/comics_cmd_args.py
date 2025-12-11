@@ -118,7 +118,7 @@ class CmdArgs:
     def get_num_volumes(self) -> int:
         return 0 if not self._cmd_args.volume else len(self.get_volumes())
 
-    def get_volume(self) -> str:
+    def get_volume(self) -> int:
         volumes = self.get_volumes()
         if len(volumes) > 1:
             msg = f"'{VOLUME_ARG}' specified more than one volume."
@@ -126,7 +126,7 @@ class CmdArgs:
 
         return volumes[0]
 
-    def get_volumes(self) -> list[str]:
+    def get_volumes(self) -> list[int]:
         if CmdArgNames.VOLUME not in self._required_args:
             msg = f"'{VOLUME_ARG}' was not specified as an argument."
             raise ValueError(msg)
