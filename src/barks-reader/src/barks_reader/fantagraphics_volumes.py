@@ -10,7 +10,7 @@ from barks_fantagraphics.fanta_comics_info import (
     LAST_VOLUME_NUMBER,
     NUM_VOLUMES,
 )
-from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
+from comic_utils.comic_consts import CBZ_FILE_EXT, JPG_FILE_EXT, PNG_FILE_EXT, ZIP_FILE_EXT
 from loguru import logger
 
 VALID_IMAGE_EXTENSION = [PNG_FILE_EXT, JPG_FILE_EXT]
@@ -193,7 +193,7 @@ class FantagraphicsVolumeArchives:
     def get_all_volume_filenames(self) -> list[Path]:
         archive_files = []
         for archive_file in self._archive_root.iterdir():
-            if archive_file.suffix.lower() != ".cbz":
+            if archive_file.suffix.lower() not in [CBZ_FILE_EXT, ZIP_FILE_EXT]:
                 continue
 
             if archive_file.is_file():

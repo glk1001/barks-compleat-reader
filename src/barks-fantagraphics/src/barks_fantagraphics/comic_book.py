@@ -5,7 +5,13 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from comic_utils.comic_consts import JPG_FILE_EXT, JSON_FILE_EXT, PNG_FILE_EXT, SVG_FILE_EXT
+from comic_utils.comic_consts import (
+    CBZ_FILE_EXT,
+    JPG_FILE_EXT,
+    JSON_FILE_EXT,
+    PNG_FILE_EXT,
+    SVG_FILE_EXT,
+)
 from loguru import logger
 
 from .barks_titles import (
@@ -536,7 +542,7 @@ class ComicBook:
         return THE_YEARS_COMICS_DIR / str(self.submitted_year)
 
     def get_dest_comic_zip_filename(self) -> str:
-        return f"{self.get_title_with_issue_num()}.cbz"
+        return f"{self.get_title_with_issue_num()}{CBZ_FILE_EXT}"
 
     def get_dest_comic_zip(self) -> Path:
         return self.get_dest_zip_root_dir() / self.get_dest_comic_zip_filename()
@@ -544,7 +550,7 @@ class ComicBook:
     def get_dest_series_comic_zip_symlink_filename(self) -> str:
         file_title = _get_lookup_title(self.title, self.get_ini_title())
         full_title = f"{file_title} [{self.get_comic_issue_title()}]"
-        return f"{self.number_in_series:03d} {full_title}.cbz"
+        return f"{self.number_in_series:03d} {full_title}{CBZ_FILE_EXT}"
 
     def get_dest_series_comic_zip_symlink(self) -> Path:
         return (
