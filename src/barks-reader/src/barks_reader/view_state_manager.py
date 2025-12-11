@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from barks_reader.fun_image_view_screen import FunImageViewScreen
     from barks_reader.main_index_screen import MainIndexScreen
     from barks_reader.reader_settings import ReaderSettings
+    from barks_reader.speech_index_screen import SpeechIndexScreen
     from barks_reader.tree_view_screen import TreeViewScreen
 
 
@@ -49,6 +50,7 @@ class ViewStateManager:
         bottom_title_view_screen: BottomTitleViewScreen,
         fun_image_view_screen: FunImageViewScreen,
         main_index_screen: MainIndexScreen,
+        speech_index_screen: SpeechIndexScreen,
         on_views_updated_func: Callable[[], None],
     ) -> None:
         self._reader_settings = reader_settings
@@ -58,6 +60,7 @@ class ViewStateManager:
         self._bottom_title_view_screen = bottom_title_view_screen
         self._fun_image_view_screen = fun_image_view_screen
         self._main_index_screen = main_index_screen
+        self._speech_index_screen = speech_index_screen
         self._on_views_updated_func = on_views_updated_func
 
         self._top_view_image_loader = PanelImageLoader(
@@ -81,6 +84,7 @@ class ViewStateManager:
         self._bottom_title_view_screen.is_visible = False
         self._fun_image_view_screen.is_visible = False
         self._main_index_screen.is_visible = False
+        self._speech_index_screen.is_visible = False
 
     def get_top_view_image_info(self) -> ImageInfo:
         return self._top_view_image_info
@@ -319,7 +323,14 @@ class ViewStateManager:
             )  # ty: ignore[invalid-argument-type]
 
     def _set_index_view(self) -> None:
-        opacity = self._background_views.get_index_view_opacity()
+        opacity = self._background_views.get_main_index_view_opacity()
         self._main_index_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
 
-        logger.debug(f"Setting new index view. Visibility: {self._main_index_screen.is_visible}.")
+        opacity = self._background_views.get_speech_index_view_opacity()
+        self._speech_index_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
+
+        logger.debug(
+            f"Setting new index view."
+            f" Main index visibility: {self._main_index_screen.is_visible}."
+            f" Speech index visibility: {self._speech_index_screen.is_visible}."
+        )

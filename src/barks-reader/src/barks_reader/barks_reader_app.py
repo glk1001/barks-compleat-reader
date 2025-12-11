@@ -48,6 +48,7 @@ from barks_reader.reader_utils import get_best_window_height_fit, get_win_width_
 from barks_reader.screen_metrics import SCREEN_METRICS, log_screen_metrics
 from barks_reader.settings_fix import SettingLongPath, SettingOptionsWithValue
 from barks_reader.settings_notifier import settings_notifier
+from barks_reader.speech_index_screen import SPEECH_INDEX_SCREEN_KV_FILE, SpeechIndexScreen
 from barks_reader.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
 
 if TYPE_CHECKING:
@@ -245,6 +246,7 @@ class BarksReaderApp(App):
         Builder.load_file(str(BOTTOM_TITLE_VIEW_SCREEN_KV_FILE))
         Builder.load_file(str(FUN_IMAGE_VIEW_SCREEN_KV_FILE))
         Builder.load_file(str(MAIN_INDEX_SCREEN_KV_FILE))
+        Builder.load_file(str(SPEECH_INDEX_SCREEN_KV_FILE))
         Builder.load_file(str(MAIN_SCREEN_KV_FILE))
 
         root = self._build_screens()
@@ -284,6 +286,7 @@ class BarksReaderApp(App):
         bottom_title_view_screen = BottomTitleViewScreen(self.reader_settings, self.font_manager)
         fun_image_view_screen = FunImageViewScreen(self.reader_settings)
         main_index_screen = MainIndexScreen(self.reader_settings)
+        speech_index_screen = SpeechIndexScreen(self.reader_settings)
         self._main_screen = MainScreen(
             self._comics_database,
             self.reader_settings,
@@ -294,6 +297,7 @@ class BarksReaderApp(App):
             bottom_title_view_screen,
             fun_image_view_screen,
             main_index_screen,
+            speech_index_screen,
             self.font_manager,
             name=MAIN_READER_SCREEN,
         )

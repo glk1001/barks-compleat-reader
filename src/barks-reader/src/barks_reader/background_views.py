@@ -123,8 +123,10 @@ class ViewStates(IntEnum):
     ON_TAG_SEARCH_BOX_NODE = auto()
 
 
-BOTTOM_VIEW_INDEX_OPACITY_1_STATES = {
+BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES = {
     ViewStates.ON_INDEX_MAIN_NODE,
+}
+BOTTOM_VIEW_SPEECH_INDEX_OPACITY_1_STATES = {
     ViewStates.ON_INDEX_SPEECH_NODE,
 }
 BOTTOM_VIEW_TITLE_OPACITY_1_STATES = {
@@ -134,7 +136,7 @@ BOTTOM_VIEW_TITLE_OPACITY_1_STATES = {
 }
 BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES = (
     set(ViewStates) - BOTTOM_VIEW_TITLE_OPACITY_1_STATES
-) - BOTTOM_VIEW_INDEX_OPACITY_1_STATES
+) - BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES
 
 
 # TODO: Consolidate views and currents into classes.
@@ -234,8 +236,11 @@ class BackgroundViews:
     def get_bottom_view_title_image_info(self) -> ImageInfo:
         return self._bottom_view_title_image_info
 
-    def get_index_view_opacity(self) -> float:
-        return 1.0 if (self._view_state in BOTTOM_VIEW_INDEX_OPACITY_1_STATES) else 0.0
+    def get_main_index_view_opacity(self) -> float:
+        return 1.0 if (self._view_state in BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES) else 0.0
+
+    def get_speech_index_view_opacity(self) -> float:
+        return 1.0 if (self._view_state in BOTTOM_VIEW_SPEECH_INDEX_OPACITY_1_STATES) else 0.0
 
     def get_current_category(self) -> str:
         return self._current_category

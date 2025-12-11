@@ -42,6 +42,7 @@ dependencies = [
     "types-docutils==0.22.0.20250822",
     "tzdata==2025.2",
     "urllib3==2.5.0",
+    "whoosh-reloaded>=2.7.5",
     "win32-setctime==1.2.0 ; sys_platform == 'win32'",
 ]
 

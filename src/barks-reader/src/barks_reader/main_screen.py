@@ -74,6 +74,7 @@ if TYPE_CHECKING:
     from barks_reader.main_index_screen import MainIndexScreen
     from barks_reader.reader_screens import ScreenSwitchers
     from barks_reader.reader_settings import ReaderSettings
+    from barks_reader.speech_index_screen import SpeechIndexScreen
     from barks_reader.tree_view_screen import TreeViewScreen
 
 MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
@@ -98,6 +99,7 @@ class MainScreen(ReaderScreen):
         bottom_title_view_screen: BottomTitleViewScreen,
         fun_image_view_screen: FunImageViewScreen,
         main_index_screen: MainIndexScreen,
+        speech_index_screen: SpeechIndexScreen,
         font_manager: FontManager,
         **kwargs: str,
     ) -> None:
@@ -120,12 +122,15 @@ class MainScreen(ReaderScreen):
         self._fun_image_view_screen = fun_image_view_screen
         self._main_index_screen = main_index_screen
         self._main_index_screen.on_goto_title = self._goto_title_with_page_num
+        self._speech_index_screen = speech_index_screen
+        self._speech_index_screen.on_goto_title = self._goto_title_with_page_num
 
         self.ids.main_layout.add_widget(self._tree_view_screen)
         self._bottom_base_view_screen = Screen(size_hint=(1, 1))
         self._bottom_base_view_screen.add_widget(self._bottom_title_view_screen)
         self._bottom_base_view_screen.add_widget(self._fun_image_view_screen)
         self._bottom_base_view_screen.add_widget(self._main_index_screen)
+        self._bottom_base_view_screen.add_widget(self._speech_index_screen)
         self.ids.main_layout.add_widget(self._bottom_base_view_screen)
 
         self._screen_switchers = screen_switchers
@@ -177,6 +182,7 @@ class MainScreen(ReaderScreen):
             self._bottom_title_view_screen,
             self._fun_image_view_screen,
             self._main_index_screen,
+            self._speech_index_screen,
             self._on_views_updated,
         )
 
@@ -339,7 +345,7 @@ class MainScreen(ReaderScreen):
             raise ValueError(msg)
 
     def open_how_to(self) -> None:
-        print("HOW-TO")
+        pass
 
     def open_about(self) -> None:
         show_about_box(
