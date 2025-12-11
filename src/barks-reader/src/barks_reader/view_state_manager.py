@@ -236,6 +236,7 @@ class ViewStateManager:
             )
             self._tree_view_screen.top_view_image_texture = tex
 
+            assert self._top_view_image_info.filename is not None
             logger.debug(
                 f"Time taken to set top image:"
                 f' "{self._top_view_image_info.filename.name}",'
@@ -279,8 +280,9 @@ class ViewStateManager:
 
             # noinspection LongLine
             self._fun_view_image_loader.load_texture(
-                self._bottom_view_fun_image_info.filename, on_ready
-            )  # ty: ignore[invalid-argument-type]
+                self._bottom_view_fun_image_info.filename,
+                on_ready,  # ty: ignore[invalid-argument-type]
+            )
 
             self._fun_image_view_screen.set_title(self._bottom_view_fun_image_info.from_title)
 
@@ -319,8 +321,9 @@ class ViewStateManager:
 
             # noinspection LongLine
             self._bottom_title_view_image_loader.load_texture(
-                self._bottom_view_title_image_info.filename, on_ready
-            )  # ty: ignore[invalid-argument-type]
+                self._bottom_view_title_image_info.filename,
+                on_ready,  # ty: ignore[invalid-argument-type]
+            )
 
     def _set_index_view(self) -> None:
         opacity = self._background_views.get_main_index_view_opacity()

@@ -526,7 +526,7 @@ class ComicBookLoader:
             pil_image = load_pil_image_from_bytes(file_data, ext)
         else:
             assert self._fanta_volume_archive is not None
-            zip_path = zipfile.Path(self._fanta_volume_archive.override_archive, at=str(image_path))
+            zip_path = zipfile.Path(self._fanta_volume_archive.override_archive, at=str(image_path))  # ty: ignore[invalid-argument-type]
             pil_image = load_pil_image_from_zip(zip_path, encrypted=True)
 
         return self._get_image_data(pil_image, page_info)

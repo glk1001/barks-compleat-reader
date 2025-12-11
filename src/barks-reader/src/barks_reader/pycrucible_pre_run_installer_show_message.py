@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Any
 
-from barks_reader.kivy_standalone_show_message import divider_line, show_standalone_popup
+from barks_reader.kivy_standalone_show_message import show_standalone_popup
 from barks_reader.reader_utils import (
     get_centred_position_on_primary_monitor,
     quote_and_join_with_and,
@@ -126,9 +126,6 @@ def _get_installer_success_content(
             )
             content_box.add_widget(banner)
 
-            # === DIVIDER =========================================================
-            # self._add_divider(content_box)
-
             # === Fantagraphics Library ==========================================
             self._add_section_header(content_box, "Fantagraphics Library Location")
             if fanta_volumes_dir:
@@ -145,9 +142,6 @@ def _get_installer_success_content(
                     "You'll need to configure the library location when the app starts.",
                 )
 
-            # === DIVIDER =========================================================
-            # self._add_divider(content_box)
-
             # === Config & Logs ===================================================
             self._add_section_header(content_box, "Configuration & Logs")
             if app_config_dir:
@@ -157,9 +151,6 @@ def _get_installer_success_content(
             if app_log_path:
                 self._add_info_text(content_box, "App logging will go to:")
                 self._add_paths_box(content_box, [app_log_path])
-
-            # === DIVIDER =========================================================
-            # self._add_divider(content_box)
 
             # === Next Steps ======================================================
             self._add_section_header(content_box, "Next Steps")
@@ -176,9 +167,6 @@ def _get_installer_success_content(
 
             scroll_view.add_widget(content_box)
             self.add_widget(scroll_view)
-
-            # === DIVIDER ABOVE BUTTONS (ensure one exists) ===
-            # self._add_divider(self)
 
             # === OK BUTTON (centered vertically inside bottom area) ===
             # Fixed height bottom area so centering works predictably.
@@ -213,11 +201,6 @@ def _get_installer_success_content(
             self._bg.size = self.size
             self._shadow.pos = (self.x + dp(5), self.y - dp(5))
             self._shadow.size = self.size
-
-        @staticmethod
-        def _add_divider(parent: Widget) -> None:
-            """Add a subtle divider line between sections."""
-            parent.add_widget(divider_line())
 
         @staticmethod
         def _add_section_header(parent: Widget, text: str) -> None:

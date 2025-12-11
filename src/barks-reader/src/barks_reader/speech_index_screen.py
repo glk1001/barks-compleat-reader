@@ -324,9 +324,8 @@ class SpeechIndexScreen(IndexScreen):
         Clock.schedule_once(self._add_sub_items, 0)
 
     def _handle_title(self, button: Button, item: IndexItem) -> None:
-        logger.info(f'Handling title: "{item.id.name}".')
-
         assert type(item.id) is Titles
+        logger.info(f'Handling title: "{item.id.name}".')
         image_info = ImageInfo(from_title=item.id, filename=None)
 
         def set_background_color_to_selected() -> None:

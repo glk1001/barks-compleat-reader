@@ -560,7 +560,7 @@ class ReaderTreeBuilder:
         node_class: type = MainTreeViewNode,
         is_bold: bool = False,
         parent_node: ButtonTreeViewNode | None = None,
-        on_press_handler: BUTTON_ON_PRESS_CALLABLE = None,
+        on_press_handler: BUTTON_ON_PRESS_CALLABLE | None = None,
     ) -> MainTreeViewNode | StoryGroupTreeViewNode:
         node_text = get_bold_markup_text(text) if is_bold else text
 

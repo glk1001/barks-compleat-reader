@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Self
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from comic_utils.timing import Timing
 from kivy.metrics import dp
-from kivy.properties import BooleanProperty, ObjectProperty
+from kivy.properties import BooleanProperty, ObjectProperty  # ty: ignore[unresolved-import]
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from loguru import logger

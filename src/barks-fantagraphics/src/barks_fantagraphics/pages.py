@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     import zipfile
     from collections.abc import Callable
 
-THIS_SCRIPT_DIR = Path(inspect.getfile(inspect.currentframe())).resolve().parent
+THIS_SCRIPT_DIR = Path(inspect.getfile(inspect.currentframe())).resolve().parent  # ty: ignore[invalid-argument-type]
 
 TITLE_EMPTY_FILENAME = "title_empty"
 EMPTY_FILENAME = "empty"
