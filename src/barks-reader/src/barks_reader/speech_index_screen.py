@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING, override
 
 from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, BARKS_TITLES, Titles
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
+from barks_fantagraphics.whoosh_search_engine import SearchEngine
 from comic_utils.timing import Timing
-from kivy.app import App
 from kivy.clock import Clock
+from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     ObjectProperty,
@@ -20,23 +21,28 @@ from loguru import logger
 
 from barks_reader.index_screen import (
     IndexItemButton,
+    IndexMenuButton,
     IndexScreen,
-    Theme,
     TitleItemButton,
 )
 from barks_reader.panel_image_loader import PanelImageLoader
 from barks_reader.random_title_images import ImageInfo, RandomTitleImages
 from barks_reader.reader_utils import get_concat_page_nums_str
-from barks_reader.whoosh_indexer import WhooshIndexer
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from barks_fantagraphics.whoosh_search_engine import TitleDict
+
+    # noinspection PyProtectedMember
     from kivy.core.image import Texture
     from kivy.uix.button import Button
+    from kivy.uix.gridlayout import GridLayout
 
     from barks_reader.reader_settings import ReaderSettings
+
+INDEX_ITEM_ROW_HEIGHT = dp(21)
+INDEX_IMAGE_CHANGE_SECONDS = 15
 
 
 @dataclass
@@ -47,10 +53,10 @@ class IndexItem:
 
 
 class SpeechIndexScreen(IndexScreen):
-    """A widget that displays an A-Z index of comic titles and tags."""
+    """A widget that displays an A-Z index of speech bubble texts."""
 
+    _selected_prefix_button = ObjectProperty(None, allownone=True)
     is_visible = BooleanProperty(defaultvalue=False)
-    index_theme = ObjectProperty()
     image_texture = ObjectProperty()
     current_title_str = StringProperty()
 
@@ -58,7 +64,7 @@ class SpeechIndexScreen(IndexScreen):
         # Call the parent constructor FIRST to ensure self.ids is populated.
         super().__init__(**kwargs)
 
-        self._whoosh_indexer = WhooshIndexer(
+        self._whoosh_indexer = SearchEngine(
             reader_settings.sys_file_paths.get_barks_reader_indexes_dir()
         )
         self._random_title_images = RandomTitleImages(reader_settings)
@@ -66,36 +72,55 @@ class SpeechIndexScreen(IndexScreen):
         self._index_image_change_event = None
         self._found_words_cache: dict[str, TitleDict] = {}
 
-        self.index_theme = Theme()
-        App.get_running_app().index_theme = self.index_theme  # Make theme accessible globally in kv
-
         self._open_tag_item: IndexItem | None = None
         self._item_index: dict[str, list[IndexItem]] = defaultdict(list)
         self.on_goto_title: Callable[[ImageInfo, str], None] | None = None
 
-        self._build_index()
+        self._cleaned_alpha_split_unstemmed_terms = (
+            self._whoosh_indexer.get_cleaned_alpha_split_unstemmed_terms()
+        )
+        self._prefix_buttons: dict[str, Button] = {}
+
         self._populate_alphabet_menu()
 
-    def _build_index(self) -> None:
-        """Build the index from Barks titles and tags."""
-        timing = Timing()
-        logger.info("Building index...")
+    def _populate_index_for_letter(self, first_letter: str) -> None:
+        self._populate_top_alphabet_split_menu(first_letter)
+        self._populate_index_grid(first_letter)
 
-        # Add all comic titles
-        for terms in self._whoosh_indexer.unstemmed_terms:
-            first_letter = terms[0].upper()
-            if "0" <= first_letter <= "9":
-                first_letter = "0"
-            else:
-                assert "A" <= first_letter <= "Z"
+    def _populate_top_alphabet_split_menu(self, first_letter: str) -> None:
+        """Create the top sub alphabet split buttons across the top."""
+        first_letter_split_terms = self._cleaned_alpha_split_unstemmed_terms[first_letter.lower()]
 
-            self._item_index[first_letter].append(IndexItem(terms, terms))
+        alphabet_top_split_layout: GridLayout = self.ids.alphabet_top_split_layout
+        alphabet_top_split_layout.clear_widgets()
 
-        # Sort items within each letter group
-        for letter in self._item_index:
-            self._item_index[letter].sort(key=lambda item: item.display_text.lower())
+        for prefix in first_letter_split_terms:
+            button = IndexMenuButton(text=prefix)
+            button.bind(on_release=self.on_letter_prefix_press)
+            self._prefix_buttons[prefix] = button
+            alphabet_top_split_layout.add_widget(button)
 
-        logger.debug(f"Index build complete (in {timing.get_elapsed_time_with_unit()}).")
+        first_prefix = next(iter(first_letter_split_terms))
+        self.on_letter_prefix_press(self._prefix_buttons[first_prefix])
+
+    def on_letter_prefix_press(self, button: Button) -> None:
+        prefix = button.text
+        logger.debug(f"Pressed prefix button: '{prefix}.")
+
+        if self._selected_prefix_button and self._selected_prefix_button != button:
+            self._selected_prefix_button.is_selected = False
+        button.is_selected = True
+        self._selected_prefix_button = button
+
+        first_letter = prefix[0].upper()
+        terms = self._cleaned_alpha_split_unstemmed_terms[prefix[0]][prefix]
+        self._item_index[first_letter] = [IndexItem(t, t) for t in terms]
+
+        self._populate_index_grid(first_letter)
+
+    @override
+    def _get_items_for_letter(self, first_letter: str) -> list:
+        return self._item_index.get(first_letter, [])
 
     @override
     def _new_index_image(self) -> None:
@@ -104,7 +129,7 @@ class SpeechIndexScreen(IndexScreen):
         self._next_background_image()
 
         self._index_image_change_event = Clock.schedule_interval(
-            lambda _dt: self._next_background_image(), self.index_theme.INDEX_IMAGE_CHANGE_SECONDS
+            lambda _dt: self._next_background_image(), INDEX_IMAGE_CHANGE_SECONDS
         )
 
     def _cancel_index_image_change_events(self) -> None:
@@ -116,6 +141,8 @@ class SpeechIndexScreen(IndexScreen):
     def _next_background_image(self) -> None:
         first_letter = self._selected_letter_button.text
         index_terms = self._item_index[first_letter]
+        if not index_terms:
+            return
         rand_term = random.choice(index_terms).id
 
         if rand_term in self._found_words_cache:
@@ -151,6 +178,7 @@ class SpeechIndexScreen(IndexScreen):
         button = IndexItemButton(
             text=item.display_text,
             bold=type(item.id) is not Titles,
+            height=INDEX_ITEM_ROW_HEIGHT,
         )
         button.bind(
             on_release=lambda btn, bound_item=item: self._on_index_item_press(btn, bound_item)

@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     from barks_fantagraphics.barks_tags import TagGroups, Tags
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
+
+    # noinspection PyProtectedMember
     from kivy.core.image import Texture
 
     from barks_reader.background_views import BackgroundViews, ViewStates

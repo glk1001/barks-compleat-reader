@@ -24,6 +24,7 @@ def show_installer_message(
     x, y = get_centred_position_on_primary_monitor(*size)
 
     # Set the window pos and size now to avoid moving window flicker.
+    # noinspection PyProtectedMember
     from kivy import Config  # ty: ignore[possibly-missing-import]
 
     Config.set("graphics", "left", x)  # ty: ignore[possibly-missing-attribute]

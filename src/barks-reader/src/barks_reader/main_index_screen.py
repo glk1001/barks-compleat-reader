@@ -16,8 +16,8 @@ from barks_fantagraphics.barks_tags import (
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
 from comic_utils.timing import Timing
-from kivy.app import App
 from kivy.clock import Clock
+from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     ObjectProperty,
@@ -29,7 +29,6 @@ from loguru import logger
 from barks_reader.index_screen import (
     IndexItemButton,
     IndexScreen,
-    Theme,
     TitleItemButton,
 )
 from barks_reader.panel_image_loader import PanelImageLoader
@@ -39,10 +38,14 @@ from barks_reader.reader_utils import get_concat_page_nums_str
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    # noinspection PyProtectedMember
     from kivy.core.image import Texture
     from kivy.uix.button import Button
 
     from barks_reader.reader_settings import ReaderSettings
+
+INDEX_ITEM_ROW_HEIGHT = dp(25)
+INDEX_IMAGE_CHANGE_SECONDS = 5
 
 
 @dataclass()
@@ -79,7 +82,6 @@ class MainIndexScreen(IndexScreen):
     """A widget that displays an A-Z index of comic titles and tags."""
 
     is_visible = BooleanProperty(defaultvalue=False)
-    index_theme = ObjectProperty()
     image_texture = ObjectProperty()
     current_title_str = StringProperty()
 
@@ -93,15 +95,19 @@ class MainIndexScreen(IndexScreen):
         self._cached_all_titles_for_letter: list[FantaComicBookInfo] = []
         self._cached_hierarchies: dict[Titles, TitleHierarchy] = {}
 
-        self.index_theme = Theme()
-        App.get_running_app().index_theme = self.index_theme  # Make theme accessible globally in kv
-
         self._open_tag_item: IndexItem | None = None
         self._item_index: dict[str, list[IndexItem]] = defaultdict(list)
         self.on_goto_title: Callable[[ImageInfo, str], None] | None = None
 
         self._build_index()
         self._populate_alphabet_menu()
+
+    @override
+    def _get_items_for_letter(self, first_letter: str) -> list:
+        return self._item_index.get(first_letter, [])
+
+    def _populate_index_for_letter(self, first_letter: str) -> None:
+        self._populate_index_grid(first_letter)
 
     def _build_index(self) -> None:
         """Build the index from Barks titles and tags."""
@@ -145,7 +151,7 @@ class MainIndexScreen(IndexScreen):
         self._next_background_image()
 
         self._index_image_change_event = Clock.schedule_interval(
-            lambda _dt: self._next_background_image(), self.index_theme.INDEX_IMAGE_CHANGE_SECONDS
+            lambda _dt: self._next_background_image(), INDEX_IMAGE_CHANGE_SECONDS
         )
 
     def _cancel_index_image_change_events(self) -> None:
@@ -225,6 +231,7 @@ class MainIndexScreen(IndexScreen):
         button = IndexItemButton(
             text=item.display_text,
             bold=type(item.id) is not Titles,
+            height=INDEX_ITEM_ROW_HEIGHT,
         )
         button.bind(
             on_release=lambda btn, bound_item=item: self._on_index_item_press(btn, bound_item)

@@ -24,6 +24,8 @@ from barks_reader.screen_metrics import get_approximate_taskbar_height
 if TYPE_CHECKING:
     from barks_fantagraphics.pages import CleanPage
     from comic_utils.comic_consts import PanelPath
+
+    # noinspection PyProtectedMember
     from kivy.core.image import Texture
 
 COMIC_PAGE_ASPECT_RATIO = 3200.0 / 2120.0

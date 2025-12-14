@@ -23,6 +23,8 @@ from barks_reader.reader_utils import title_needs_footnote
 if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
+
+    # noinspection PyProtectedMember
     from kivy.core.image import Texture
 
     from barks_reader.font_manager import FontManager

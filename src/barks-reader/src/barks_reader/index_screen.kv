@@ -80,6 +80,18 @@
         padding: dp(0)
         spacing: dp(2)
 
+    GridLayout:
+        id: alphabet_top_split_layout
+        cols: 20
+        rows: 1
+        col_default_width: dp(40)
+        col_force_default: True
+        row_default_height: dp(24)
+        row_force_default: True
+        pos_hint: {'x': 0.05, 'y': 0}
+        padding: dp(0)
+        spacing: dp(2)
+
     ScrollView:
         id: index_scroll_view
 
@@ -95,7 +107,7 @@
 
         size_hint: None, None
         size: root.width - alphabet_layout.width - dp(15), 0.91 * root.height
-        pos_hint: {'right': 1, 'top': 0.97}
+        pos_hint: {'right': 1, 'top': 0.94}
 
         FloatLayout:
             size_hint_y: None

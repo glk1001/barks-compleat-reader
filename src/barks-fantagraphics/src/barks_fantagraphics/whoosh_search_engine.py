@@ -17,6 +17,501 @@ from .comics_database import ComicsDatabase
 from .ocr_json_files import JsonFiles
 from .pages import get_page_num_str, get_sorted_srce_and_dest_pages
 
+EXTRA_TERMS = {
+    "Ancient Cathay",
+    "Belgian Prince Leopold",
+    "Blue Danube",
+    "Blue Danube Waltz",
+    "Brahms Concerto",
+    "Bungling Bros Circus",
+    "Carnage on the Cimarron",
+    "Chisel McSue",
+    "Casa del Hoosier Motel",
+    "Columbia River",
+    "Cotton Queen",
+    "Darkest Africa",
+    "Dayton Street",
+    "Diamond Dick",
+    "Hag's Fang Cliff",
+    "Heston Froster",
+    "Lobster Newberg",
+    "North America",
+    "Olaf the Blue",
+    "Rodney McHowl",
+    "San Antone",
+    "Unca' Donald",
+    "Uncle Donald",
+    "Unca' Scrooge",
+    "Uncle Scrooge",
+    "Wonderhead Son of Ticka",
+}
+
+NAMES = {
+    "adam",
+    "aeetes",
+    "agavik",
+    "agnes",
+    "alexander",
+    "ali",
+    "arabic",
+    "ares",
+    "argus",
+    "ariadne",
+    "astorbilt",
+    "atlas",
+    "autry",
+    "aztec",
+    "azure",
+    "banzoony",
+    "barks",
+    "barnaby",
+    "barrymore",
+    "bassofoglio",
+    "batavia",
+    "beakoff",
+    "benzine",
+    "bernard",
+    "bernards",
+    "bess",
+    "bessie",
+    "betlah",
+    "betsy",
+    "biceppa",
+    "blacksnake",
+    "blowsoutski",
+    "bobbie",
+    "bolivar",
+    "booneheads",
+    "bornworthy",
+    "brahms",
+    "brigidita",
+    "bumblehead",
+    "bumrisk",
+    "caesar",
+    "caledonian",
+    "cantaloupa",
+    "capitol",
+    "carson",
+    "casaba",
+    "casey",
+    "castoria",
+    "charlemagne",
+    "charlie",
+    "chatterbeak",
+    "christmas",
+    "christmastime",
+    "clabberhead",
+    "clarabelle",
+    "claus",
+    "clipski",
+    "colchis",
+    "columbus",
+    "comanche",
+    "constanza",
+    "cortez",
+    "crabifolius",
+    "craig",
+    "creole",
+    "crustaceous",
+    "cuthbert",
+    "cyril",
+    "daisy",
+    "daltons",
+    "daniel",
+    "dante",
+    "davey",
+    "dawson",
+    "dean",
+    "delilah",
+    "dewey",
+    "diana",
+    "dick",
+    "dickens",
+    "diego",
+    "donald",
+    "donny",
+    "duck",
+    "edgerton",
+    "froster",
+    "gaston",
+    "gladstone",
+    "gyro",
+    "hamilton",
+    "heston",
+    "huey",
+    "louie",
+    "orb",
+    "pulpheart",
+    "remington",
+    "rimfire",
+    "rodney",
+    "santa",
+    "scrooge",
+    "swelldorf",
+    "tagalong",
+    "theodore",
+    "throckmorton",
+    "tombsbury",
+    "vaudeville",
+}
+
+NAME_MAP = {
+    "antone": "San Antone",
+    "casaba": "Casaba Cantaloupa",
+    "codfeesh": "Codfeesh Cove",
+    "codfish": "Codfish Cove",
+    "coney": "Coney Island",
+    "cornelius": "Cornelius McCobb",
+    "costa": "Costa Rica",
+    "creole": "Creole Belle",
+    "debbies": "Junior Sub-teen-age Debbies Club",
+    "donna": "Donna Duck",
+    "mchowl": "McHowl",
+    "mcsue": "Chisel McSue",
+    "conippus": "Pippus Conippus",
+    "pippus": "Pippus Conippus",
+    "orville": "Orville Orb",
+    "pulpheart": "Pulpheart Clabberhead",
+    "swelldorf": "Swelldorf-Castoria",
+}
+
+PLACE_RELATED_WORDS = {
+    "abilene",
+    "africa",
+    "african",
+    "alaskan",
+    "america",
+    "american",
+    "americano",
+    "americans",
+    "andes",
+    "andean",
+    "antarctica",
+    "arctic",
+    "asia",
+    "assyrian",
+    "atlantic",
+    "atlantis",
+    "awfultonians",
+    "babylon",
+    "barcelona",
+    "belgian",
+    "bermuda",
+    "borneo",
+    "boston",
+    "brazilian",
+    "british",
+    "brooklyn",
+    "bumpanian",
+    "bumpanians",
+    "burbank",
+    "burgeria",
+    "calcutta",
+    "calisota",
+    "capetown",
+    "carthage",
+    "casablanca",
+    "catalina",
+    "cathay",
+    "chaldee",
+    "chicago",
+    "chilcoot",
+    "chiliburgeria",
+    "chillspine buoy",
+    "chinese",
+    "cibola",
+    "cibolans",
+    "crete",
+    "cretan",
+    "cuzco",
+    "damascus",
+    "danube",
+    "dixie",
+    "dixieland",
+    "duckburg",
+    "england",
+    "europe",
+    "greenland",
+    "howduyustan",
+    "klondike",
+    "newfoundland",
+    "pacific",
+    "persia",
+    "pickleburg",
+    "pumpkinburg",
+    "quackville",
+    "scotland",
+    "scroogeville",
+    "seville",
+    "tokyo",
+    "tropicania",
+}
+
+US_STATES = {
+    "alabama",
+    "alaska",
+    "arizona",
+    "arkansas",
+    "california",
+    "colorado",
+    "connecticut",
+    "delaware",
+    "district of columbia",
+    "florida",
+    "georgia",
+    "hawaii",
+    "idaho",
+    "illinois",
+    "indiana",
+    "iowa",
+    "kansas",
+    "kentucky",
+    "louisiana",
+    "maine",
+    "montana",
+    "nebraska",
+    "nevada",
+    "new hampshire",
+    "new jersey",
+    "new mexico",
+    "new york",
+    "north carolina",
+    "north dakota",
+    "ohio",
+    "oklahoma",
+    "oregon",
+    "maryland",
+    "massachusetts",
+    "michigan",
+    "minnesota",
+    "mississippi",
+    "missouri",
+    "pennsylvania",
+    "rhode island",
+    "south carolina",
+    "south dakota",
+    "tennessee",
+    "texas",
+    "utah",
+    "vermont",
+    "virginia",
+    "washington",
+    "west virginia",
+    "wisconsin",
+    "wyoming",
+}
+
+COUNTRIES = {
+    "afghanistan",
+    "albania",
+    "algeria",
+    "andorra",
+    "angola",
+    "antigua & deps",
+    "argentina",
+    "armenia",
+    "australia",
+    "austria",
+    "azerbaijan",
+    "bahamas",
+    "bahrain",
+    "bangladesh",
+    "barbados",
+    "belarus",
+    "belgium",
+    "belize",
+    "benin",
+    "bhutan",
+    "bolivia",
+    "bosnia herzegovina",
+    "botswana",
+    "brazil",
+    "brunei",
+    "bulgaria",
+    "burkina",
+    "burma",
+    "burundi",
+    "cambodia",
+    "cameroon",
+    "canada",
+    "cape verde",
+    "central african rep",
+    "chad",
+    "chile",
+    "china",
+    "colombia",
+    "comoros",
+    "congo",
+    "congo {democratic rep}",
+    "costa rica",
+    "croatia",
+    "cuba",
+    "cyprus",
+    "czech republic",
+    "denmark",
+    "djibouti",
+    "dominica",
+    "dominican republic",
+    "east timor",
+    "ecuador",
+    "egypt",
+    "el salvador",
+    "equatorial guinea",
+    "eritrea",
+    "estonia",
+    "ethiopia",
+    "fiji",
+    "finland",
+    "france",
+    "gabon",
+    "gambia",
+    "georgia",
+    "germany",
+    "ghana",
+    "greece",
+    "grenada",
+    "guatemala",
+    "guinea",
+    "guinea-bissau",
+    "guyana",
+    "haiti",
+    "honduras",
+    "hungary",
+    "iceland",
+    "india",
+    "indonesia",
+    "iran",
+    "iraq",
+    "ireland",
+    "israel",
+    "italy",
+    "ivory coast",
+    "jamaica",
+    "japan",
+    "jordan",
+    "kazakhstan",
+    "kenya",
+    "kiribati",
+    "korea north",
+    "korea south",
+    "kosovo",
+    "kuwait",
+    "kyrgyzstan",
+    "laos",
+    "latvia",
+    "lebanon",
+    "lesotho",
+    "liberia",
+    "libya",
+    "liechtenstein",
+    "lithuania",
+    "luxembourg",
+    "macedonia",
+    "madagascar",
+    "malawi",
+    "malaysia",
+    "maldives",
+    "mali",
+    "malta",
+    "marshall islands",
+    "mauritania",
+    "mauritius",
+    "mexico",
+    "micronesia",
+    "moldova",
+    "monaco",
+    "mongolia",
+    "montenegro",
+    "morocco",
+    "mozambique",
+    "myanmar",
+    "namibia",
+    "nauru",
+    "nepal",
+    "netherlands",
+    "new zealand",
+    "nicaragua",
+    "niger",
+    "nigeria",
+    "norway",
+    "oman",
+    "pakistan",
+    "palau",
+    "panama",
+    "papua new guinea",
+    "paraguay",
+    "peru",
+    "philippines",
+    "poland",
+    "portugal",
+    "qatar",
+    "romania",
+    "russian federation",
+    "rwanda",
+    "st kitts & nevis",
+    "st lucia",
+    "saint vincent & the grenadines",
+    "samoa",
+    "san marino",
+    "sao tome & principe",
+    "saudi arabia",
+    "senegal",
+    "serbia",
+    "seychelles",
+    "sierra leone",
+    "singapore",
+    "slovakia",
+    "slovenia",
+    "solomon islands",
+    "somalia",
+    "south africa",
+    "south sudan",
+    "spain",
+    "sri lanka",
+    "sudan",
+    "suriname",
+    "swaziland",
+    "sweden",
+    "switzerland",
+    "syria",
+    "taiwan",
+    "tajikistan",
+    "tanzania",
+    "thailand",
+    "togo",
+    "tonga",
+    "trinidad & tobago",
+    "tunisia",
+    "turkey",
+    "turkmenistan",
+    "tuvalu",
+    "uganda",
+    "ukraine",
+    "united arab emirates",
+    "united kingdom",
+    "united states",
+    "uruguay",
+    "uzbekistan",
+    "vanuatu",
+    "vatican city",
+    "venezuela",
+    "vietnam",
+    "yemen",
+    "zambia",
+    "zimbabwe",
+}
+
+SPECIAL_WORDS = NAMES.union(PLACE_RELATED_WORDS).union(US_STATES).union(COUNTRIES)
+
+REMOVE_WORDS = {
+    "**",
+    "***",
+    "*shine*",
+    "unchain**s**",
+}
+
+SUB_ALPHA_SPLIT_SIZE = 56
+
 
 @dataclass
 class TitleInfo:
@@ -30,6 +525,14 @@ type TitleDict = dict[str, TitleInfo]
 class SearchEngine:
     def __init__(self, index_dir: Path) -> None:
         self._index = open_dir(index_dir)
+
+        self._unstemmed_terms_path = self._index.storage.folder / "unstemmed-terms.json"
+        self._cleaned_unstemmed_terms_path = (
+            self._index.storage.folder / "cleaned-unstemmed-terms.json"
+        )
+        self._cleaned_alpha_split_unstemmed_terms_path = (
+            self._index.storage.folder / "cleaned-alpha-split-unstemmed-terms.json"
+        )
 
     def find_words(self, search_words: str, use_unstemmed_terms: bool) -> TitleDict:
         prelim_results = defaultdict(TitleInfo)
@@ -52,11 +555,18 @@ class SearchEngine:
 
         return title_results
 
+    def get_cleaned_unstemmed_terms(self) -> list[str]:
+        return json.loads(self._cleaned_unstemmed_terms_path.read_text())
+
+    def get_cleaned_alpha_split_unstemmed_terms(self) -> dict[str, dict[str, list[str]]]:
+        return json.loads(self._cleaned_alpha_split_unstemmed_terms_path.read_text())
+
+    def find_unstemmed_words(self, search_words: str) -> TitleDict:
+        return self.find_words(search_words, use_unstemmed_terms=True)
+
 
 class SearchEngineCreator(SearchEngine):
     def __init__(self, comics_database: ComicsDatabase, index_dir: Path) -> None:
-        super().__init__(index_dir)
-
         self._comics_database = comics_database
 
         schema = Schema(
@@ -70,7 +580,7 @@ class SearchEngineCreator(SearchEngine):
         index_dir.mkdir(parents=True, exist_ok=True)
         self._index = create_in(index_dir, schema)
 
-        self._index = open_dir(index_dir)
+        super().__init__(index_dir)
 
     def index_volumes(self, volumes: list[int]) -> None:
         json_volumes_path = self._index.storage.folder / "volumes.json"
@@ -88,6 +598,38 @@ class SearchEngineCreator(SearchEngine):
             self._add_page_content(writer, title)
 
         writer.commit()
+
+        with self._index.reader() as reader:
+            all_unstemmed_terms = [t[1].decode("utf-8") for t in reader.terms_from("unstemmed", "")]
+        with self._unstemmed_terms_path.open("w") as f:
+            json.dump(all_unstemmed_terms, f, indent=4)
+        with self._cleaned_unstemmed_terms_path.open("w") as f:
+            cleaned_unstemmed_terms = sorted(
+                self._get_cleaned_unstemmed_terms(all_unstemmed_terms), key=str.lower
+            )
+            json.dump(cleaned_unstemmed_terms, f, indent=4)
+        with self._cleaned_alpha_split_unstemmed_terms_path.open("w") as f:
+            json.dump(self._get_alpha_split_unstemmed_terms(cleaned_unstemmed_terms), f, indent=4)
+
+    @staticmethod
+    def _get_cleaned_unstemmed_terms(unstemmed_terms: list[str]) -> set[str]:
+        cleaned_unstemmed_terms = set()
+        for term in unstemmed_terms:
+            if term in REMOVE_WORDS:
+                continue
+
+            if term in NAME_MAP:
+                cleaned_term = NAME_MAP[term]
+            elif term in SPECIAL_WORDS:
+                cleaned_term = term.capitalize()
+            else:
+                cleaned_term = term
+
+            cleaned_unstemmed_terms.add(cleaned_term)
+
+        cleaned_unstemmed_terms.union(EXTRA_TERMS)
+
+        return cleaned_unstemmed_terms
 
     def _add_page_content(self, writer: SegmentWriter, title: str) -> None:
         json_files = JsonFiles(self._comics_database, title)
@@ -125,3 +667,84 @@ class SearchEngineCreator(SearchEngine):
             srce_dest_map[Path(srce.page_filename).stem] = get_page_num_str(dest)
 
         return srce_dest_map
+
+    def _get_alpha_split_unstemmed_terms(
+        self, cleaned_unstemmed_terms: list[str]
+    ) -> dict[str, dict[str, list[str]]]:
+        alpha_dict = {}
+        first_letter_list = []
+        current_first_letter_group = "0"
+        for term in cleaned_unstemmed_terms:
+            first_letter = term[0].lower()
+            assert ("a" <= first_letter <= "z") or ("0" <= first_letter <= "9")
+            if "0" <= first_letter <= "9":
+                first_letter = "0"
+
+            if current_first_letter_group != first_letter:
+                alpha_dict[current_first_letter_group] = self._get_sub_alpha_split_unstemmed_terms(
+                    first_letter_list
+                )
+                first_letter_list = []
+                current_first_letter_group = first_letter
+
+            first_letter_list.append(term)
+
+        if first_letter_list:
+            alpha_dict[current_first_letter_group] = self._get_sub_alpha_split_unstemmed_terms(
+                first_letter_list
+            )
+
+        return self._get_similar_size_alpha_groups(alpha_dict)
+
+    @staticmethod
+    def _get_sub_alpha_split_unstemmed_terms(
+        alpha_unstemmed_terms: list[str],
+    ) -> dict[str, list[str]]:
+        if not alpha_unstemmed_terms:
+            return {}
+
+        current_prefix = alpha_unstemmed_terms[0][:2].lower()
+        sub_alpha_unstemmed_dict = {current_prefix: []}
+        for term in alpha_unstemmed_terms:
+            if current_prefix != term[:2].lower():
+                current_prefix = term[:2].lower()
+                sub_alpha_unstemmed_dict[current_prefix] = []
+            sub_alpha_unstemmed_dict[current_prefix].append(term)
+
+        return sub_alpha_unstemmed_dict
+
+    def _get_similar_size_alpha_groups(
+        self, alpha_unstemmed_terms: dict[str, dict[str, list[str]]]
+    ) -> dict[str, dict[str, list[str]]]:
+        assert alpha_unstemmed_terms
+
+        similar_size_alpha_terms = {}
+        for first_letter, sub_alpha_lists in alpha_unstemmed_terms.items():
+            similar_size_alpha_terms[first_letter] = self._get_similar_size_sub_alpha_groups(
+                sub_alpha_lists
+            )
+
+        return similar_size_alpha_terms
+
+    @staticmethod
+    def _get_similar_size_sub_alpha_groups(
+        sub_alpha_lists: dict[str, list[str]],
+    ) -> dict[str, list[str]]:
+        assert sub_alpha_lists
+
+        similar_size_sub_alpha_terms = defaultdict(list)
+        current_size = 0
+        current_prefix = ""
+        for prefix, sub_alpha_list in sub_alpha_lists.items():
+            if not current_prefix:
+                current_prefix = prefix
+
+            current_size += len(sub_alpha_list)
+
+            if current_size > SUB_ALPHA_SPLIT_SIZE:
+                current_prefix = prefix
+                current_size = len(sub_alpha_list)
+
+            similar_size_sub_alpha_terms[current_prefix].extend(sub_alpha_list)
+
+        return similar_size_sub_alpha_terms

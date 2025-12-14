@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Self
 
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from comic_utils.timing import Timing
+from kivy.app import App
 from kivy.metrics import dp
 from kivy.properties import BooleanProperty, ObjectProperty  # ty: ignore[unresolved-import]
 from kivy.uix.button import Button
@@ -38,8 +39,6 @@ class IndexItemButton(Button):
 class Theme:
     """A central place for theme constants."""
 
-    INDEX_IMAGE_CHANGE_SECONDS = 5
-
     ROW_HEIGHT = dp(25)
     INDEX_ITEM_LEFT_PAD = dp(50)
     SUB_ITEM_INDENT_STEP = dp(30)
@@ -59,10 +58,14 @@ class Theme:
 
 # noinspection PyAbstractClass
 class IndexScreen(FloatLayout):
+    index_theme = ObjectProperty()
     _selected_letter_button = ObjectProperty(None, allownone=True)
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
+
+        self.index_theme = Theme()
+        App.get_running_app().index_theme = self.index_theme  # Make theme accessible globally in kv
 
         self._alphabet_buttons: dict[str, Button] = {}
         self._open_tag_button: Button | None = None
@@ -93,21 +96,33 @@ class IndexScreen(FloatLayout):
     def _cancel_index_image_change_events(self) -> None:
         pass
 
+    @abstractmethod
+    def _get_items_for_letter(self, first_letter: str) -> list:
+        pass
+
+    @abstractmethod
+    def _populate_index_for_letter(self, first_letter: str) -> None:
+        pass
+
     def on_letter_press(self, button: Button) -> None:
         """Handle a letter button press and display the corresponding index items."""
-        timing = Timing()
-
         self._open_tag_widgets.clear()
         self._open_tag_button = None
 
-        letter = button.text
-        logger.debug(f"Letter '{letter}' pressed.")
+        first_letter = button.text
+        logger.debug(f"Letter '{first_letter}' pressed.")
 
         # Let the .kv file handle the color changes by setting the property.
         if self._selected_letter_button and self._selected_letter_button != button:
             self._selected_letter_button.is_selected = False
         button.is_selected = True
         self._selected_letter_button = button
+
+        self._populate_index_for_letter(first_letter)
+
+    def _populate_index_grid(self, letter: str) -> None:
+        """Handle a letter button press and display the corresponding index items."""
+        timing = Timing()
 
         self._new_index_image()
 
@@ -116,7 +131,7 @@ class IndexScreen(FloatLayout):
         left_index_column.clear_widgets()
         right_index_column.clear_widgets()
 
-        items_for_letter = self._item_index.get(letter, [])
+        items_for_letter = self._get_items_for_letter(letter)
         if not items_for_letter:
             left_index_column.add_widget(self._get_no_items_button(letter))
             return

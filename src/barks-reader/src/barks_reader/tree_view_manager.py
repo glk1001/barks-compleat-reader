@@ -268,8 +268,8 @@ class TreeViewManager:
             if run_populate and parent_node.populate_callback:
                 parent_node.populate_callback()
 
-            # We'll wait for the layout to settle (content height + children heights stabilise),
-            # then compute the delta and adjust scroll_y by the exact normalised amount.
+            # We'll wait for the layout to settle (content height + children heights stabilize),
+            # then compute the delta and adjust scroll_y by the exact normalized amount.
             checks = {"count": 0, "last_h": -1, "stable": 0}
             max_checks = 180  # ~3 seconds worst-case @ 60fps
 
@@ -289,7 +289,7 @@ class TreeViewManager:
                 if (cont_h <= 1) or (viewport_h <= 1) or (cont_h <= viewport_h):
                     return _resched()
 
-                # Check stabilisation of container height
+                # Check stabilization of container height
                 if abs(cont_h - checks["last_h"]) < 0.5:  # noqa: PLR2004
                     checks["stable"] += 1
                 else:
@@ -309,7 +309,7 @@ class TreeViewManager:
                 if abs(delta_px) < 0.5:  # noqa: PLR2004
                     return None  # nothing to adjust
 
-                # Convert pixel delta to normalised scroll_y delta:
+                # Convert pixel delta to normalized scroll_y delta:
                 #  - Kivy uses scroll_y 0..1 where 1 = top, 0 = bottom.
                 #  - Moving content up by +delta_px means increase scroll_y.
                 denominator = cont_h - viewport_h
