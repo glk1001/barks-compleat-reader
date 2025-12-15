@@ -112,8 +112,8 @@ class SpeechIndexScreen(IndexScreen):
         button.is_selected = True
         self._selected_prefix_button = button
 
-        first_letter = prefix[0].upper()
-        terms = self._cleaned_alpha_split_unstemmed_terms[prefix[0]][prefix]
+        first_letter = "0" if "0" <= prefix <= "9" else prefix[0].upper()
+        terms = self._cleaned_alpha_split_unstemmed_terms[first_letter.lower()][prefix]
         self._item_index[first_letter] = [IndexItem(t, t) for t in terms]
 
         self._populate_index_grid(first_letter)

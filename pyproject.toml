@@ -35,6 +35,7 @@ dependencies = [
     "pypiwin32==223 ; sys_platform == 'win32'",
     "python-dateutil==2.9.0.post0",
     "pytz==2025.2",
+    "pyuca>=1.2",
     "pywin32==311 ; sys_platform == 'win32'",
     "pyyaml==6.0.2",
     "screeninfo==0.8.1",

@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from loguru import logger
+from pyuca import Collator
 from whoosh.analysis import StandardAnalyzer
 from whoosh.fields import ID, TEXT, Schema
 from whoosh.index import create_in, open_dir
@@ -17,12 +18,16 @@ from .comics_database import ComicsDatabase
 from .ocr_json_files import JsonFiles
 from .pages import get_page_num_str, get_sorted_srce_and_dest_pages
 
+COLLATOR = Collator()
+
 EXTRA_TERMS = {
     "Ancient Cathay",
     "Belgian Prince Leopold",
     "Blue Danube",
     "Blue Danube Waltz",
     "Brahms Concerto",
+    "Brown Derby",
+    "Bullet Pizen At Rustlers' Gallows",
     "Bungling Bros Circus",
     "Carnage on the Cimarron",
     "Chisel McSue",
@@ -53,6 +58,7 @@ NAMES = {
     "agnes",
     "alexander",
     "ali",
+    "aquapodicus",
     "arabic",
     "ares",
     "argus",
@@ -132,20 +138,36 @@ NAMES = {
     "donny",
     "duck",
     "edgerton",
+    "eiprah",
+    "eisseb",
+    "edison",
+    "eski",
+    "eskimo",
+    "eskimos",
+    "esmeralda",
     "froster",
     "gaston",
     "gladstone",
+    "gnossy",
+    "gnostradamus",
     "gyro",
     "hamilton",
     "heston",
     "huey",
     "louie",
+    "mack",
+    "marconi",
     "orb",
+    "paganini",
+    "panchita",
     "pulpheart",
+    "quagmire",
     "remington",
     "rimfire",
     "rodney",
+    "rolando",
     "santa",
+    "scarpuss",
     "scrooge",
     "swelldorf",
     "tagalong",
@@ -156,7 +178,11 @@ NAMES = {
 }
 
 NAME_MAP = {
+    "almostus": "Almostus Extinctus",
+    "extinctus": "Almostus Extinctus",
+    "extinctuses": "Almostus Extinctuses",
     "antone": "San Antone",
+    "bio": "bio-physical",
     "casaba": "Casaba Cantaloupa",
     "codfeesh": "Codfeesh Cove",
     "codfish": "Codfish Cove",
@@ -166,12 +192,45 @@ NAME_MAP = {
     "creole": "Creole Belle",
     "debbies": "Junior Sub-teen-age Debbies Club",
     "donna": "Donna Duck",
+    "extroverten": "extroverten-tualities",
+    "tualities": "extroverten-tualities",
+    "gnatbugg": "Gnatbugg-Mothley",
+    "mc": "Mc-Who",
+    "mothley": "Gnatbugg-Mothley",
+    "mammalarius": "Mammalarius Aquapodicus",
+    "mcarchives": "McArchives",
+    "mcchicken": "McChicken",
+    "mccobb": "McCobb",
+    "mccornburger": "McCornburger",
+    "mccoy": "McCoy",
+    "mccrow": "McCrow",
+    "mcdome": "McDome",
+    "mcduck": "McDuck",
+    "mcducks": "McDucks",
+    "mceagle": "McEagle",
+    "mceye": "McEye",
+    "mcfiendy": "McFiendy",
+    "mcgillicuddy": "McGillicuddy",
+    "mchawk": "McHawk",
     "mchowl": "McHowl",
+    "mcknucks": "McKnucks",
+    "mcmooch": "McMooch",
+    "mcowl": "McOwl",
+    "mcquirt": "McQuirt",
+    "mcsixgun": "McSixgun",
+    "mcterrier": "McTerrier",
+    "mcviper": "McViper",
+    "mcyard": "McYard",
     "mcsue": "Chisel McSue",
+    "phoebus": "Phoebus Philea",
+    "philea": "Phoebus Philea",
     "conippus": "Pippus Conippus",
     "pippus": "Pippus Conippus",
+    "marco": "Marco Polo",
+    "polo": "Marco Polo",
     "orville": "Orville Orb",
     "pulpheart": "Pulpheart Clabberhead",
+    "rogers": "Autry Mack Brown Rogers",
     "swelldorf": "Swelldorf-Castoria",
 }
 
@@ -230,6 +289,7 @@ PLACE_RELATED_WORDS = {
     "dixieland",
     "duckburg",
     "england",
+    "english",
     "europe",
     "greenland",
     "howduyustan",
@@ -245,6 +305,7 @@ PLACE_RELATED_WORDS = {
     "seville",
     "tokyo",
     "tropicania",
+    "tropics",
 }
 
 US_STATES = {
@@ -605,7 +666,7 @@ class SearchEngineCreator(SearchEngine):
             json.dump(all_unstemmed_terms, f, indent=4)
         with self._cleaned_unstemmed_terms_path.open("w") as f:
             cleaned_unstemmed_terms = sorted(
-                self._get_cleaned_unstemmed_terms(all_unstemmed_terms), key=str.lower
+                self._get_cleaned_unstemmed_terms(all_unstemmed_terms), key=COLLATOR.sort_key
             )
             json.dump(cleaned_unstemmed_terms, f, indent=4)
         with self._cleaned_alpha_split_unstemmed_terms_path.open("w") as f:
@@ -627,9 +688,7 @@ class SearchEngineCreator(SearchEngine):
 
             cleaned_unstemmed_terms.add(cleaned_term)
 
-        cleaned_unstemmed_terms.union(EXTRA_TERMS)
-
-        return cleaned_unstemmed_terms
+        return cleaned_unstemmed_terms.union(EXTRA_TERMS)
 
     def _add_page_content(self, writer: SegmentWriter, title: str) -> None:
         json_files = JsonFiles(self._comics_database, title)
@@ -703,11 +762,13 @@ class SearchEngineCreator(SearchEngine):
         if not alpha_unstemmed_terms:
             return {}
 
-        current_prefix = alpha_unstemmed_terms[0][:2].lower()
+        prefix_len = 1 if "0" <= alpha_unstemmed_terms[0][0] <= "9" else 2
+        current_prefix = alpha_unstemmed_terms[0][:prefix_len].lower()
+
         sub_alpha_unstemmed_dict = {current_prefix: []}
         for term in alpha_unstemmed_terms:
-            if current_prefix != term[:2].lower():
-                current_prefix = term[:2].lower()
+            if current_prefix != term[:prefix_len].lower():
+                current_prefix = term[:prefix_len].lower()
                 sub_alpha_unstemmed_dict[current_prefix] = []
             sub_alpha_unstemmed_dict[current_prefix].append(term)
 

@@ -204,7 +204,7 @@ def get_concat_page_nums_str(page_nums_str: list[str]) -> str:
 
     page_set = set(page_nums_str)
     if page_set & ROMAN_NUMERALS_SET:
-        roman_pages = sorted([p for p in page_nums_str if p in ROMAN_NUMERALS_SET])
+        roman_pages = sorted({p for p in page_nums_str if p in ROMAN_NUMERALS_SET})
         int_pages = get_abbrev_page_list([p for p in page_nums_str if p not in ROMAN_NUMERALS_SET])
         if int_pages:
             return ",".join(roman_pages) + "," + int_pages
