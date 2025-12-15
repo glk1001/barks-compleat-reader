@@ -501,7 +501,6 @@ class ComicBookLoader:
         if page_str in self._fanta_volume_archive.extra_images_page_map:
             return Path(self._fanta_volume_archive.extra_images_page_map[page_str]), False
 
-        assert self._use_fantagraphics_overrides
         if self._use_fantagraphics_overrides and (
             page_str in self._fanta_volume_archive.override_images_page_map
         ):
