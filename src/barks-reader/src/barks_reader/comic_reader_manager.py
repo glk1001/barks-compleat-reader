@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from barks_fantagraphics.comic_book import ComicBook
-from barks_fantagraphics.comics_consts import BACK_MATTER_PAGES, PageType
+from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
 
@@ -14,7 +14,7 @@ from loguru import logger
 from barks_reader.comic_book_page_info import ComicBookPageInfo, ComicBookPageInfoManager
 from barks_reader.comic_book_reader import ComicBookReaderScreen
 from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
-from barks_reader.reader_consts_and_types import COMIC_PAGE_ONE
+from barks_reader.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.reader_settings import ReaderSettings
 from barks_reader.tree_view_screen import TreeViewScreen
 from barks_reader.user_error_handler import UserErrorHandler
@@ -141,8 +141,8 @@ class ComicReaderManager:
                 f'"{title_str}": Saved last read page "{last_read_page.display_page_num}".',
             )
 
-            if self._is_on_or_past_last_body_page(last_read_page):
-                last_read_page.display_page_num = COMIC_PAGE_ONE
+            if not self._is_inside_body_pages(last_read_page):
+                last_read_page.display_page_num = COMIC_BEGIN_PAGE
 
         return last_read_page
 
@@ -151,19 +151,18 @@ class ComicReaderManager:
         if not last_read_page_info:
             return None
 
-        if self._is_on_or_past_last_body_page(last_read_page_info):
+        if not self._is_inside_body_pages(last_read_page_info):
             # The comic has been read. Go back to the first page.
-            last_read_page_info.display_page_num = COMIC_PAGE_ONE
+            last_read_page_info.display_page_num = COMIC_BEGIN_PAGE
 
         logger.debug(f'"{title_str}": Last read page "{last_read_page_info}".')
 
         return last_read_page_info
 
     @staticmethod
-    def _is_on_or_past_last_body_page(page_info: SavedPageInfo) -> bool:
-        return (page_info.page_type in BACK_MATTER_PAGES) or (
-            (page_info.page_type == PageType.BODY)
-            and (page_info.display_page_num == page_info.last_body_page)
+    def _is_inside_body_pages(page_info: SavedPageInfo) -> bool:
+        return (page_info.page_type == PageType.BODY) and (
+            page_info.display_page_num != page_info.last_body_page
         )
 
     def _get_last_read_page_from_comic(self) -> SavedPageInfo | None:

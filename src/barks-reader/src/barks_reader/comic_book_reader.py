@@ -25,7 +25,7 @@ from screeninfo import get_monitors
 
 from barks_reader.comic_book_loader import ComicBookLoader
 from barks_reader.platform_utils import WindowManager
-from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO
+from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO, COMIC_BEGIN_PAGE
 from barks_reader.reader_formatter import get_action_bar_title
 from barks_reader.reader_screens import ReaderScreen
 from barks_reader.reader_ui_classes import ACTION_BAR_SIZE_Y
@@ -125,7 +125,12 @@ class _ComicPageManager(EventDispatcher):
         self._index_to_page_map: dict[int, str] = {
             page_info.page_index: page_str for page_str, page_info in page_map.items()
         }
-        self._first_page_to_read_index = self.page_map[page_to_first_goto].page_index
+
+        self._first_page_to_read_index = (
+            0
+            if page_to_first_goto == COMIC_BEGIN_PAGE
+            else self.page_map[page_to_first_goto].page_index
+        )
 
         self._first_page_index = next(iter(self.page_map.values())).page_index
         self._last_page_index = next(reversed(self.page_map.values())).page_index
@@ -308,7 +313,7 @@ class ComicBookReader(FloatLayout):
         page_to_first_goto: str,
         page_map: OrderedDict[str, PageInfo],
     ) -> None:
-        assert page_to_first_goto in page_map
+        assert (page_to_first_goto == COMIC_BEGIN_PAGE) or (page_to_first_goto in page_map)
 
         self._current_title_str = fanta_info.comic_book_info.get_title_str()
 

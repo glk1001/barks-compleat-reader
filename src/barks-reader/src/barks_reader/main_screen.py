@@ -36,7 +36,7 @@ from barks_reader.random_title_images import ImageInfo, RandomTitleImages
 from barks_reader.reader_consts_and_types import (
     APP_TITLE,
     CHRONO_YEAR_RANGES,
-    COMIC_PAGE_ONE,
+    COMIC_BEGIN_PAGE,
 )
 from barks_reader.reader_formatter import get_action_bar_title
 from barks_reader.reader_screens import ReaderScreen
@@ -645,7 +645,7 @@ class MainScreen(ReaderScreen):
 
     def _get_page_to_first_goto(self) -> str:
         if not self._bottom_title_view_screen.goto_page_active:
-            return COMIC_PAGE_ONE
+            return COMIC_BEGIN_PAGE
 
         return self._bottom_title_view_screen.goto_page_num
 
@@ -666,7 +666,7 @@ class MainScreen(ReaderScreen):
             title_str = self.fanta_info.comic_book_info.get_title_str()
             last_read_page = self._comic_reader_manager.get_last_read_page(title_str)
 
-        if not last_read_page or (last_read_page.display_page_num == COMIC_PAGE_ONE):
+        if not last_read_page or (last_read_page.display_page_num == COMIC_BEGIN_PAGE):
             self._bottom_title_view_screen.set_goto_page_state(active=False)
         else:
             self._bottom_title_view_screen.set_goto_page_state(

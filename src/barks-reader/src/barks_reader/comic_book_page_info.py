@@ -70,28 +70,29 @@ class ComicBookPageInfoManager:
         last_body_page = ""
         last_page = ""
         body_start_page_num = -1
+        orig_page_num = 0 if srce_and_dest_pages.srce_pages[0].page_type == PageType.FRONT else 1
 
         for index, (srce_page, dest_page) in enumerate(
             zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, strict=False)
         ):
-            orig_page_num = index + 1
-
             if dest_page.page_type not in FRONT_MATTER_PAGES and body_start_page_num == -1:
                 body_start_page_num = orig_page_num
 
             if body_start_page_num == -1:
-                display_page_num = ROMAN_NUMERALS[orig_page_num]
+                display_page_num = "0" if orig_page_num == 0 else ROMAN_NUMERALS[orig_page_num]
             else:
                 display_page_num = str(orig_page_num - body_start_page_num + 1)
                 if dest_page.page_type == PageType.BODY:
                     last_body_page = display_page_num
 
             page_map[display_page_num] = PageInfo(
-                orig_page_num - 1,
+                index,
                 display_page_num,
                 dest_page.page_type,
                 srce_page,
                 dest_page,
             )
+
+            orig_page_num += 1
 
         return ComicBookPageInfo(page_map, last_body_page, last_page, required_dim)

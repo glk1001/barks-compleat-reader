@@ -17,6 +17,7 @@ from loguru import logger
 
 from barks_reader.panel_image_loader import PanelImageLoader
 from barks_reader.random_title_images import FIT_MODE_COVER
+from barks_reader.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.reader_formatter import LONG_TITLE_SPLITS, ReaderFormatter
 from barks_reader.reader_utils import title_needs_footnote
 
@@ -142,7 +143,7 @@ class BottomTitleViewScreen(FloatLayout):
         return random.randrange(0, TITLE_PORTAL_OPENING_ANIMATION_MAX_DURATION_SECS + 1)
 
     def set_goto_page_state(self, page_to_goto: str = "", active: bool = False) -> None:
-        self.goto_page_num = page_to_goto
+        self.goto_page_num = "" if page_to_goto == COMIC_BEGIN_PAGE else page_to_goto
         self.goto_page_active = active
 
     def set_overrides_state(self, description: str = "", active: bool = True) -> None:
