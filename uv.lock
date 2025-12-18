@@ -52,6 +52,7 @@ dev = [
     { name = "pyarmor" },
     { name = "pycrucible" },
     { name = "pyinstrument" },
+    { name = "pyspellchecker" },
     { name = "pytest" },
     { name = "pytest-mock" },
     { name = "snakeviz" },
@@ -105,6 +106,7 @@ dev = [
     { name = "pyarmor", specifier = ">=9.2.0" },
     { name = "pycrucible", specifier = ">=0.3.0" },
     { name = "pyinstrument", specifier = ">=5.1.1" },
+    { name = "pyspellchecker", specifier = ">=0.8.4" },
     { name = "pytest", specifier = ">=8.4.2" },
     { name = "pytest-mock", specifier = ">=3.15.1" },
     { name = "snakeviz", specifier = ">=2.2.2" },
@@ -545,6 +547,8 @@ version = "8.1.0"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e1/eb/7127e8bb109dc33bad7a9482fb75ff4c64e91574279e4b4a2eda05bbc8dd/pyarmor_cli_core-8.1.0.tar.gz", hash = "sha256:0a1abb280947b0c67897a1a459f23b2d674ca7b9e3dc2078bd76b53a10bc6955", size = 4496, upload-time = "2025-10-31T10:33:06.097Z" }
 wheels = [
+    { url = "https://files.pythonhosted.org/packages/4b/a0/d398a9472eba1e2360dcd2dddecfdfc367e0a2442ead2ee01357caf44710/pyarmor_cli_core-8.1.0-cp313-cp313-win32.whl", hash = "sha256:b6b0f70ced3ff077cb7232c2bf47b83d6f140bd658a2fd58ad7361d07e9f5912", size = 460518, upload-time = "2025-12-16T09:41:25.646Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/6c/224668639ee3cc0756d58d470feb653d2107c504f8e96e27a1a7958beb26/pyarmor_cli_core-8.1.0-cp313-cp313-win_amd64.whl", hash = "sha256:2ba30e1da2758eedba89e8116dd8c6f1a6e17dd11748874ecb25b7827a4bf709", size = 421141, upload-time = "2025-12-16T09:41:30.938Z" },
     { url = "https://files.pythonhosted.org/packages/53/09/173d69791f300e816cb1e2094a42bbf8c1fbe19ea704e859a5ecbe2826ba/pyarmor_cli_core-8.1.0-cp313-none-macosx_10_14_x86_64.whl", hash = "sha256:b7659a53be26da68bd6e553263113713ccf7523c7bf374e29c269aacfe64ff33", size = 517216, upload-time = "2025-10-31T10:35:55.086Z" },
     { url = "https://files.pythonhosted.org/packages/62/5f/b7d5347cf71dee7643e748ff79df78b8ad517684097b3e58ea72afbafa18/pyarmor_cli_core-8.1.0-cp313-none-macosx_11_0_arm64.whl", hash = "sha256:e89201cc59c256518df1141fe24143f8537b3005dcedeefb5b0fb7f163a7c3fb", size = 409526, upload-time = "2025-10-31T10:35:59.593Z" },
     { url = "https://files.pythonhosted.org/packages/52/80/834b40453eb93194f309b07083407e445a23fb041bf88e56f876e36b0afb/pyarmor_cli_core-8.1.0-cp313-none-manylinux1_i686.whl", hash = "sha256:ec7b666f653e02ca479f502d9c5d8ebe79d481fb692d97ce507fcea3b4cff587", size = 489382, upload-time = "2025-10-31T10:36:04.335Z" },
@@ -636,6 +640,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/13/e8/4f38eb30c4dae36634a53c5b2cd73b517ea3607e10d00f61f2494449cec0/pypiwin32-223.tar.gz", hash = "sha256:71be40c1fbd28594214ecaecb58e7aa8b708eabfa0125c8a109ebd51edbd776a", size = 622, upload-time = "2018-02-26T00:43:23.994Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d0/1b/2f292bbd742e369a100c91faa0483172cd91a1a422a6692055ac920946c5/pypiwin32-223-py3-none-any.whl", hash = "sha256:67adf399debc1d5d14dffc1ab5acacb800da569754fafdc576b2a039485aa775", size = 1674, upload-time = "2018-02-26T00:43:23.108Z" },
+]
+
+[[package]]
+name = "pyspellchecker"
+version = "0.8.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a8/f4/870865239781117f75f788594c98fc3c65836ad9b93779550f369700187a/pyspellchecker-0.8.4.tar.gz", hash = "sha256:48cafa76d65c30ce4d81d0831938f25e8f34ede243c1cc6840014b0eb51ad629", size = 7238678, upload-time = "2025-11-30T00:18:39.415Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8e/79/2a6993dd02c537ae1344a693f20f9b556206a5385c398022fb66cb004b3a/pyspellchecker-0.8.4-py3-none-any.whl", hash = "sha256:20c53d119568011bbaef68608aceb956b888bcd9d563798f7770721a112b8255", size = 7236997, upload-time = "2025-11-30T00:18:37.411Z" },
 ]
 
 [[package]]
