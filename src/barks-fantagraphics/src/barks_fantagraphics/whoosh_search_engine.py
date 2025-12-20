@@ -5,7 +5,7 @@ from pathlib import Path
 
 from loguru import logger
 from pyuca import Collator
-from whoosh.analysis import StandardAnalyzer
+from whoosh.analysis import LowercaseFilter, RegexTokenizer, StopFilter
 from whoosh.fields import ID, TEXT, Schema
 from whoosh.index import create_in, open_dir
 from whoosh.qparser import QueryParser
@@ -20,13 +20,17 @@ from .pages import get_page_num_str, get_sorted_srce_and_dest_pages
 
 COLLATOR = Collator()
 
-EXTRA_TERMS = {
+# noinspection SpellCheckingInspection
+EXTRA_TERMS: set[str] = {
     "Ancient Cathay",
     "Ancient Egyptian",
+    "Barnacle Bay",
     "Belgian Prince Leopold",
+    "Benzine Banzoony",
     "Blistering Bullets",
     "Blue Danube",
     "Blue Danube Waltz",
+    "B.P.F.B",
     "Brahms Concerto",
     "Brown Derby",
     "Bullet Pizen At Rustlers' Gallows",
@@ -50,6 +54,7 @@ EXTRA_TERMS = {
     "Francisco de Ulloa",
     "Gore in the Gully",
     "Gory Gap",
+    "Gneezle Gnob",
     "Gunsmoke Gulch",
     "Hag's Fang Cliff",
     "Heston Froster",
@@ -57,11 +62,14 @@ EXTRA_TERMS = {
     "Jim Dandy",
     "John the Junkman",
     "Jughead Jones",
+    "Law of the Roaring Winchesters",
     "Lobster Newberg",
     "Lower California",
     "Manana N. de Patio",
     "North America",
     "Olaf the Blue",
+    "Powerburns on the Powderhorn",
+    "Prof. Batty",
     "Quackly Hall",
     "Queen of the Kangaroos",
     "Queen of Seiprah",
@@ -69,6 +77,7 @@ EXTRA_TERMS = {
     "Queen Mary",
     "Queen Veronica",
     "Queen Victoria",
+    "Ramona Pageant Bowl",
     "River Belle",
     "Rodney McHowl",
     "Sagebrush Savage",
@@ -89,9 +98,12 @@ EXTRA_TERMS = {
     "Worry Room",
 }
 
-NAMES = {
+# noinspection SpellCheckingInspection
+NAMES: set[str] = {
     "adam",
+    "adam's",
     "abie",
+    "abie's",
     "aeetes",
     "agavik",
     "agnes",
@@ -108,15 +120,18 @@ NAMES = {
     "autry",
     "aztec",
     "azure",
+    "b",
+    "b-36",
+    "backdore",
     "balonio",
     "banzoony",
     "barks",
     "barnaby",
+    "barnowl",
     "barrymore",
     "bassofoglio",
     "batavia",
     "beakoff",
-    "benzine",
     "bernard",
     "bernards",
     "bess",
@@ -125,6 +140,7 @@ NAMES = {
     "betsy",
     "biceppa",
     "blacksnake",
+    "blacksnake's",
     "blitzen",
     "blowsoutski",
     "bobbie",
@@ -210,9 +226,11 @@ NAMES = {
     "gyro",
     "hamilton",
     "harry",
+    "heezoutski",
     "heston",
     "hogg",
     "huey",
+    "i'm",
     "ignacio",
     "ila",
     "jackie",
@@ -243,22 +261,33 @@ NAMES = {
     "mallard",
     "mattressface",
     "mike",
+    "nacy's",
     "orb",
     "pablo",
     "paganini",
     "panchita",
+    "panchita's",
     "pattie",
+    "pattie's",
     "petrolio",
     "petruccio",
+    "poochley",
+    "poochley's",
     "pulpheart",
+    "putzoutski",
     "quacko",
     "quagmire",
     "queen",
     "qwik",
+    "ramjckwckwizc",
     "remington",
+    "ramona",
+    "raleigh",
+    "raleigh's",
     "rimfire",
     "rodney",
     "rolando",
+    "rolando's",
     "sairy",
     "santa",
     "scarpuss",
@@ -266,6 +295,7 @@ NAMES = {
     "senga",
     "sepulveda",
     "si",
+    "socrapossi",
     "swelldorf",
     "tagalong",
     "theodore",
@@ -278,14 +308,20 @@ NAMES = {
     "vaselino",
     "verdugo",
     "veronica",
+    "walter",
 }
 
-NAME_MAP = {
+# noinspection SpellCheckingInspection
+NAME_MAP: dict[str, str] = {
     "almostus": "Almostus Extinctus",
     "absent-": "absent-minded",
     "extinctus": "Almostus Extinctus",
     "extinctuses": "Almostus Extinctuses",
     "antone": "San Antone",
+    "b-197": "B-197 X-NG",
+    "b.b": "B.B",
+    "x-ng": "B-197 X-NG",
+    "b-boys": "B-Boys",
     "bio": "bio-physical",
     "casaba": "Casaba Cantaloupa",
     "chillspine": "Chillspine Buoy",
@@ -341,19 +377,23 @@ NAME_MAP = {
     "orville": "Orville Orb",
     "pulpheart": "Pulpheart Clabberhead",
     "rogers": "Autry Mack Brown Rogers",
+    "t.n.t": "T.N.T",
     "triple-x": "Triple-X",
     "vaquero": "Rolando the Vaquero",
     "swelldorf": "Swelldorf-Castoria",
 }
 
-PLACE_RELATED_WORDS = {
+# noinspection SpellCheckingInspection
+PLACE_RELATED_WORDS: set[str] = {
     "abilene",
     "africa",
     "african",
     "alaskan",
     "america",
+    "america's",
     "american",
     "americano",
+    "americanos",
     "americans",
     "andes",
     "andean",
@@ -436,7 +476,7 @@ PLACE_RELATED_WORDS = {
     "whambesi",
 }
 
-US_STATES = {
+US_STATES: set[str] = {
     "alabama",
     "alaska",
     "arizona",
@@ -490,7 +530,7 @@ US_STATES = {
     "wyoming",
 }
 
-COUNTRIES = {
+COUNTRIES: set[str] = {
     "afghanistan",
     "albania",
     "algeria",
@@ -690,23 +730,11 @@ COUNTRIES = {
     "zimbabwe",
 }
 
-SPECIAL_WORDS = NAMES.union(PLACE_RELATED_WORDS).union(US_STATES).union(COUNTRIES)
+SPECIAL_WORDS: set[str] = NAMES.union(PLACE_RELATED_WORDS).union(US_STATES).union(COUNTRIES)
 
-REMOVE_WORDS = {
-    "--",
-    "---",
-    "-------------------------",
-    "----uh",
-    "---now",
-    "---oh",
-    "---please",
-    "**",
-    "***",
-    "*shine*",
-    "cou",
-    "do",
-    "s",
-    "unchain**s**",
+REMOVE_WORDS: set[str] = {
+    "_",
+    # "s",
 }
 
 SUB_ALPHA_SPLIT_SIZE = 56
@@ -768,7 +796,8 @@ class SearchEngineCreator(SearchEngine):
     def __init__(self, comics_database: ComicsDatabase, index_dir: Path) -> None:
         self._comics_database = comics_database
 
-        hyphen_analyzer = StandardAnalyzer(expression=r"[\w-]+(\.?\w+)*")
+        # For keeping apostrophes and hyphens within words
+        analyzer = RegexTokenizer(r"\w+(?:[-'\.]\w+)*") | LowercaseFilter() | StopFilter()
 
         schema = Schema(
             title=TEXT(stored=True),
@@ -776,7 +805,7 @@ class SearchEngineCreator(SearchEngine):
             fanta_page=ID(stored=True),
             comic_page=ID(stored=True),
             content=TEXT(stored=True, lang="en"),
-            unstemmed=TEXT(stored=False, analyzer=hyphen_analyzer),
+            unstemmed=TEXT(stored=False, analyzer=analyzer),
         )
         index_dir.mkdir(parents=True, exist_ok=True)
         self._index = create_in(index_dir, schema)
@@ -850,7 +879,12 @@ class SearchEngineCreator(SearchEngine):
             ocr_prelim_group2 = json.loads(json_files.ocr_prelim_groups_json_file[1].read_text())
 
             for group in ocr_prelim_group2["groups"].values():
-                ai_text = group["ai_text"].replace("-\n", "-").replace("\u00ad\n", "")
+                ai_text = (
+                    group["ai_text"]
+                    .replace("-\n", "-")
+                    .replace("\u00ad\n", "")
+                    .replace("\u200b\n", "")
+                )
                 writer.add_document(
                     title=title,
                     fanta_vol=str(comic.fanta_book.volume),
@@ -880,7 +914,9 @@ class SearchEngineCreator(SearchEngine):
         current_first_letter_group = "0"
         for term in cleaned_unstemmed_terms:
             first_letter = term[0].lower()
-            assert ("a" <= first_letter <= "z") or ("0" <= first_letter <= "9")
+            if not (("a" <= first_letter <= "z") or ("0" <= first_letter <= "9")):
+                msg = f'Invalid first letter: "{first_letter}". Term: "{term}".'
+                raise ValueError(msg)
             if "0" <= first_letter <= "9":
                 first_letter = "0"
 

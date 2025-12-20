@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 
-from barks_fantagraphics.comics_consts import CARL_BARKS_FONT
+from barks_fantagraphics.comics_consts import CARL_BARKS_FONT, FREE_SANS_FONT
 from kivy.event import EventDispatcher
 from kivy.metrics import sp
 from kivy.properties import NumericProperty  # ty: ignore[unresolved-import]
@@ -126,6 +126,8 @@ class FontManager(EventDispatcher):
         self.about_box_title_font_size = 0
         self.about_box_version_font_size = 0
         self.about_box_fine_print_font_size = 0
+
+        self.speech_index_items_font_name = str(FREE_SANS_FONT)
 
         self._previous_font_group: _FontGroup = _FontGroup.NOT_SET
 

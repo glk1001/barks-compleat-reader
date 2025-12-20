@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from kivy.uix.button import Button
     from kivy.uix.gridlayout import GridLayout
 
+    from barks_reader.font_manager import FontManager
     from barks_reader.reader_settings import ReaderSettings
 
 INDEX_ITEM_ROW_HEIGHT = dp(21)
@@ -60,10 +61,16 @@ class SpeechIndexScreen(IndexScreen):
     image_texture = ObjectProperty()
     current_title_str = StringProperty()
 
-    def __init__(self, reader_settings: ReaderSettings, **kwargs) -> None:  # noqa: ANN003
+    def __init__(
+        self,
+        reader_settings: ReaderSettings,
+        font_manager: FontManager,
+        **kwargs,  # noqa: ANN003
+    ) -> None:
         # Call the parent constructor FIRST to ensure self.ids is populated.
         super().__init__(**kwargs)
 
+        self._font_manager = font_manager
         self._whoosh_indexer = SearchEngine(
             reader_settings.sys_file_paths.get_barks_reader_indexes_dir()
         )
@@ -179,6 +186,7 @@ class SpeechIndexScreen(IndexScreen):
             text=item.display_text,
             bold=type(item.id) is not Titles,
             height=INDEX_ITEM_ROW_HEIGHT,
+            font_name=self._font_manager.speech_index_items_font_name,
         )
         button.bind(
             on_release=lambda btn, bound_item=item: self._on_index_item_press(btn, bound_item)
