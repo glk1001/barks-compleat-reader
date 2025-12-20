@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from barks_fantagraphics.comics_consts import FREE_SANS_FONT
 from loguru import logger
 
 from barks_reader.kivy_standalone_show_message import divider_line
@@ -152,12 +153,13 @@ def _get_error_content(
             color_scheme = self.colors.get(self.severity, self.colors["error"])
 
             severity_banner = Label(
-                text=f"⚠ {self.title} {self.severity.capitalize()}",
+                text=f"ꕕ {self.title} {self.severity.capitalize()}",
                 size_hint_y=None,
                 height=60,
                 font_size=banner_header_font_size,
                 bold=True,
                 color=color_scheme["text"],
+                font_name=str(FREE_SANS_FONT),
             )
 
             with severity_banner.canvas.before:  # ty: ignore[possibly-missing-attribute]
@@ -276,6 +278,7 @@ def _get_error_content(
                     size_hint_y=None,
                     height=40,
                     background_color=[0.3, 0.3, 0.3, 1],
+                    font_name=str(FREE_SANS_FONT),
                 )
                 btn_toggle.bind(on_press=self.toggle_details)
                 self.add_widget(btn_toggle)

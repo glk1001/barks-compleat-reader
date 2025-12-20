@@ -92,11 +92,11 @@ def show_standalone_popup(  # noqa: PLR0915
         # --- Close button ---
         if add_close_button:
             close_button = Button(
-                text="✕",
+                text="X",
                 size_hint=(None, 1),
                 width=44,
                 background_normal="",
-                background_color=[0.86, 0.2, 0.2, 1],
+                background_color=[0.86, 0.2, 0.2, 0.5],
                 color=[1, 1, 1, 1],
                 font_size="16sp",
             )
