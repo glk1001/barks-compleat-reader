@@ -5,7 +5,7 @@ from pathlib import Path
 
 from loguru import logger
 from pyuca import Collator
-from whoosh.analysis import LowercaseFilter, RegexTokenizer, StopFilter
+from whoosh.analysis import LowercaseFilter, StopFilter
 from whoosh.fields import ID, TEXT, Schema
 from whoosh.index import create_in, open_dir
 from whoosh.qparser import QueryParser
@@ -17,6 +17,7 @@ from .comics_consts import RESTORABLE_PAGE_TYPES
 from .comics_database import ComicsDatabase
 from .ocr_json_files import JsonFiles
 from .pages import get_page_num_str, get_sorted_srce_and_dest_pages
+from .whoosh_punct_tokenizer import WordWithPunctTokenizer
 
 COLLATOR = Collator()
 
@@ -52,10 +53,13 @@ EXTRA_TERMS: set[str] = {
     "Porko de Lardo",
     "El Dorado",
     "Francisco de Ulloa",
+    "Ghost of the Gunnison",
+    "Fagin's Fangs",
     "Gore in the Gully",
     "Gory Gap",
     "Gneezle Gnob",
     "Gunsmoke Gulch",
+    "Gunfire on the Rio",
     "Hag's Fang Cliff",
     "Heston Froster",
     "Horseshoe Hogg",
@@ -78,6 +82,7 @@ EXTRA_TERMS: set[str] = {
     "Queen Veronica",
     "Queen Victoria",
     "Ramona Pageant Bowl",
+    "Ramrod Ransom",
     "River Belle",
     "Rodney McHowl",
     "Sagebrush Savage",
@@ -229,6 +234,8 @@ NAMES: set[str] = {
     "heezoutski",
     "heston",
     "hogg",
+    "hoppity",
+    "horace",
     "huey",
     "i'm",
     "ignacio",
@@ -261,6 +268,8 @@ NAMES: set[str] = {
     "mallard",
     "mattressface",
     "mike",
+    "mustang",
+    "mustapha",
     "nacy's",
     "orb",
     "pablo",
@@ -296,6 +305,7 @@ NAMES: set[str] = {
     "sepulveda",
     "si",
     "socrapossi",
+    "stumpalong",
     "swelldorf",
     "tagalong",
     "theodore",
@@ -339,6 +349,7 @@ NAME_MAP: dict[str, str] = {
     "extroverten": "extroverten-tualities",
     "tualities": "extroverten-tualities",
     "gnatbugg": "Gnatbugg-Mothley",
+    "l.t.a.b": "L.T.A.B",
     "lemon-": "lemon-ade",
     "master-": "master- piece",
     "mc": "Mc-Who",
@@ -352,6 +363,7 @@ NAME_MAP: dict[str, str] = {
     "mccrow": "McCrow",
     "mcdome": "McDome",
     "mcduck": "McDuck",
+    "mcduck's": "McDuck's",
     "mcducks": "McDucks",
     "mceagle": "McEagle",
     "mceye": "McEye",
@@ -797,8 +809,7 @@ class SearchEngineCreator(SearchEngine):
         self._comics_database = comics_database
 
         # For keeping apostrophes and hyphens within words
-        analyzer = RegexTokenizer(r"\w+(?:[-'\.]\w+)*") | LowercaseFilter() | StopFilter()
-
+        analyzer = WordWithPunctTokenizer() | LowercaseFilter() | StopFilter()
         schema = Schema(
             title=TEXT(stored=True),
             fanta_vol=ID(stored=True),
