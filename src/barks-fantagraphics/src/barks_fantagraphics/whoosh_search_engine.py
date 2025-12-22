@@ -925,11 +925,18 @@ class SearchEngineCreator(SearchEngine):
         current_first_letter_group = "0"
         for term in cleaned_unstemmed_terms:
             first_letter = term[0].lower()
-            if not (("a" <= first_letter <= "z") or ("0" <= first_letter <= "9")):
+            if not (
+                ("a" <= first_letter <= "z")
+                or ("0" <= first_letter <= "9")
+                or (first_letter == "'")
+            ):
                 msg = f'Invalid first letter: "{first_letter}". Term: "{term}".'
                 raise ValueError(msg)
             if "0" <= first_letter <= "9":
                 first_letter = "0"
+            elif first_letter <= "'":
+                assert len(term) > 1
+                first_letter = term[1].lower()
 
             if current_first_letter_group != first_letter:
                 alpha_dict[current_first_letter_group] = self._get_sub_alpha_split_unstemmed_terms(
