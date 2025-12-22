@@ -161,6 +161,7 @@ class BarksReaderApp(App):
         assert self._resize_requested_size != (0, 0)
         Window.size = self._resize_requested_size
         logger.debug(f"Forced reset main window size after resize event: {Window.size}.")
+        self._main_screen.update_fonts(Window.height)
 
     def close_app(self) -> None:
         self._main_screen.app_closing()

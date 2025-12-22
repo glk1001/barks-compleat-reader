@@ -7,7 +7,7 @@ from kivy.metrics import sp
 from kivy.properties import NumericProperty  # ty: ignore[unresolved-import]
 from loguru import logger
 
-HI_RES_WINDOW_HEIGHT_CUTOFF = 1050
+HI_RES_WINDOW_HEIGHT_CUTOFF = 1090
 
 
 class _FontGroup(Enum):
