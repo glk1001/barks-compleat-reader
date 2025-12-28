@@ -13,10 +13,16 @@ from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from loguru import logger
 
+from barks_reader.reader_ui_classes import ARROW_WIDTH
+
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from kivy.uix.boxlayout import BoxLayout
     from kivy.uix.gridlayout import GridLayout
     from kivy.uix.widget import Widget
+
+    from barks_reader.random_title_images import ImageInfo
 
 MAX_TITLE_LEN = 45
 INDEX_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
@@ -58,6 +64,8 @@ class Theme:
 
 # noinspection PyAbstractClass
 class IndexScreen(FloatLayout):
+    UP_ARROW_WIDTH = ARROW_WIDTH
+
     index_theme = ObjectProperty()
     _selected_letter_button = ObjectProperty(None, allownone=True)
 
@@ -67,9 +75,18 @@ class IndexScreen(FloatLayout):
         self.index_theme = Theme()
         App.get_running_app().index_theme = self.index_theme  # Make theme accessible globally in kv
 
+        self._current_image_info: ImageInfo | None = None
+        self.on_goto_background_title_func: Callable[[ImageInfo], None] | None = None
+
         self._alphabet_buttons: dict[str, Button] = {}
         self._open_tag_button: Button | None = None
         self._open_tag_widgets: list[Widget] = []
+
+    def on_goto_background_title(self) -> None:
+        assert self.on_goto_background_title_func is not None
+        if not self._current_image_info:
+            return
+        self.on_goto_background_title_func(self._current_image_info)
 
     def _populate_alphabet_menu(self) -> None:
         """Create the A-Z buttons and add them to the GridLayout."""

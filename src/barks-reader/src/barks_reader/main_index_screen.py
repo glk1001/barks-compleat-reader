@@ -171,7 +171,9 @@ class MainIndexScreen(IndexScreen):
         # TODO: Get rid of this hack!!
         if image_info.from_title is None or image_info.from_title == Titles.GOOD_NEIGHBORS:
             self.current_title_str = ""
+            self._current_image_info = None
         else:
+            self._current_image_info = image_info
             hierarchy = self._cached_hierarchies[image_info.from_title]
             self.current_title_str = hierarchy.get_title_with_hierarchy()
 

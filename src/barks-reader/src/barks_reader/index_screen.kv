@@ -1,3 +1,5 @@
+#:import Window kivy.core.window.Window
+
 <IndexMenuButton>:
     # This rule defines the style for the '0', "'", and 'A'-'Z' menu buttons
     background_normal: ''
@@ -130,7 +132,7 @@
                 padding: 0, 0, 0, dp(20)
 
     Label:
-        pos_hint: {'right': 1, 'y': 0}
+        pos_hint: {'right': 1 - 1.5*(root.UP_ARROW_WIDTH/Window.width), 'y': 0}
         padding: [0, 0, dp(8), dp(8)]
         text: "[i]" + root.current_title_str + "[/i]"
         markup: True
@@ -140,3 +142,40 @@
         # Make the widget size itself to fit the text
         size_hint: None, None
         size: self.texture_size
+
+    # Goto title button
+    Button:
+        id: goto_title_button
+        text: ""
+        opacity: 1 if root.current_title_str else 0
+        disabled: not root.current_title_str
+        background_color: (1, 1, 1, 0)
+        background_normal: ""
+        x: self.parent.x + self.parent.width - (1.4 * root.UP_ARROW_WIDTH)
+        y: self.parent.y + (0.4 * root.UP_ARROW_WIDTH)
+        size_hint: None, None
+        size: (root.UP_ARROW_WIDTH, root.UP_ARROW_WIDTH)
+        halign: "left"
+        valign: "top"
+        text_size: (self.width, self.height)
+        on_press: root.on_goto_background_title()
+
+        canvas.before:
+            Color:
+                rgba: .1, .1, .1, 1
+            BoxShadow:
+                inset: False
+                pos: self.pos
+                size: self.size
+                offset: 0, 0
+                spread_radius: 3.5, 3.5
+                border_radius: 50, 50, 50, 50
+                blur_radius: 2
+        Image:
+            source: str(sys_paths.get_up_arrow_file())
+            color: (1, 1, 1, 1)
+            y: self.parent.y
+            x: self.parent.x
+            size: self.parent.size
+            fit_mode: "contain"
+            mipmap: True

@@ -163,8 +163,10 @@ class SpeechIndexScreen(IndexScreen):
 
         # TODO: Get rid of this hack!!
         if image_info.from_title is None or image_info.from_title == Titles.GOOD_NEIGHBORS:
+            self._current_image_info = None
             self.current_title_str = ""
         else:
+            self._current_image_info = image_info
             self.current_title_str = BARKS_TITLES[image_info.from_title]
 
         timing = Timing()
