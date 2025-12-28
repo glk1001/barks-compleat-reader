@@ -42,6 +42,7 @@ from barks_reader.reader_screens import (
 from barks_reader.reader_settings import BARKS_READER_SECTION, BuildableReaderSettings
 from barks_reader.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
+    READER_POPUPS_KV_FILE,
     READER_TREE_VIEW_KV_FILE,
     ReaderTreeBuilderEventDispatcher,
 )
@@ -243,6 +244,7 @@ class BarksReaderApp(App):
         Builder.load_string("#:set fm app.font_manager")
         Builder.load_string("#:set sys_paths app.reader_settings.sys_file_paths")
 
+        Builder.load_file(str(READER_POPUPS_KV_FILE))
         Builder.load_file(str(READER_TREE_VIEW_KV_FILE))
         Builder.load_file(str(TREE_VIEW_SCREEN_KV_FILE))
         Builder.load_file(str(BOTTOM_TITLE_VIEW_SCREEN_KV_FILE))
