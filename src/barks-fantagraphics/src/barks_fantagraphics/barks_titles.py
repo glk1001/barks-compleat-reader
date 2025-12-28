@@ -16,6 +16,8 @@ from .comic_issues import (
 
 NUM_TITLES = 644 + 5  # +5 for articles
 
+GYRO_GEARLOOSE = "Gyro Gearloose"
+
 US_1_FC_ISSUE_NUM = 386
 US_2_FC_ISSUE_NUM = 456
 US_3_FC_ISSUE_NUM = 495
@@ -2699,19 +2701,19 @@ assert len(BARKS_TITLE_INFO) == NUM_TITLES, f"{len(BARKS_TITLE_INFO)} != {NUM_TI
 USEFUL_TITLES = {
     Titles.HORSERADISH_STORY_THE: "Uncle Scrooge #3",
     Titles.ROUND_MONEY_BIN_THE: "Uncle Scrooge #3",
-    Titles.ROSCOE_THE_ROBOT: "Gyro Gearloose",
-    Titles.TRAPPED_LIGHTNING: "Gyro Gearloose",
-    Titles.CAT_BOX_THE: "Gyro Gearloose",
-    Titles.FISHING_MYSTERY: "Gyro Gearloose",
-    Titles.FORECASTING_FOLLIES: "Gyro Gearloose",
-    Titles.GETTING_THOR: "Gyro Gearloose",
-    Titles.GYRO_BUILDS_A_BETTER_HOUSE: "Gyro Gearloose",
-    Titles.GYRO_GOES_FOR_A_DIP: "Gyro Gearloose",
-    Titles.HOUSE_ON_CYCLONE_HILL_THE: "Gyro Gearloose",
+    Titles.ROSCOE_THE_ROBOT: GYRO_GEARLOOSE,
+    Titles.TRAPPED_LIGHTNING: GYRO_GEARLOOSE,
+    Titles.CAT_BOX_THE: GYRO_GEARLOOSE,
+    Titles.FISHING_MYSTERY: GYRO_GEARLOOSE,
+    Titles.FORECASTING_FOLLIES: GYRO_GEARLOOSE,
+    Titles.GETTING_THOR: GYRO_GEARLOOSE,
+    Titles.GYRO_BUILDS_A_BETTER_HOUSE: GYRO_GEARLOOSE,
+    Titles.GYRO_GOES_FOR_A_DIP: GYRO_GEARLOOSE,
+    Titles.HOUSE_ON_CYCLONE_HILL_THE: GYRO_GEARLOOSE,
     Titles.FORBIDIUM_MONEY_BIN_THE: "Uncle Scrooge and Gyro",
-    Titles.WISHING_WELL_THE: "Gyro Gearloose",
-    Titles.KNOW_IT_ALL_MACHINE_THE: "Gyro Gearloose",
-    Titles.SURE_FIRE_GOLD_FINDER_THE: "Gyro Gearloose",
+    Titles.WISHING_WELL_THE: GYRO_GEARLOOSE,
+    Titles.KNOW_IT_ALL_MACHINE_THE: GYRO_GEARLOOSE,
+    Titles.SURE_FIRE_GOLD_FINDER_THE: GYRO_GEARLOOSE,
 }
 
 BARKS_TITLE_DICT: dict[str, Titles] = {
@@ -2908,7 +2910,7 @@ BARKS_ISSUE_DICT[f"{SHORT_ISSUE_NAME[Issues.US]} 3"] = BARKS_ISSUE_DICT[
 
 def check_story_submitted_order(title_list: list[ComicBookInfo]) -> None:
     prev_chronological_number = 0
-    prev_title = ""
+    prev_title: ComicBookInfo | None = None
     prev_submitted_date = date(1940, 1, 1)
     for title in title_list:
         if not JAN <= title.submitted_month <= DEC:
@@ -2921,16 +2923,18 @@ def check_story_submitted_order(title_list: list[ComicBookInfo]) -> None:
             submitted_day,
         )
         if prev_submitted_date > submitted_date:
+            assert prev_title is not None
             msg = (
                 f'"{title}": Out of order submitted date {submitted_date}.'
-                f' Previous entry: "{prev_title}" - {prev_submitted_date}.'
+                f' Previous entry: "{prev_title.get_title_str()}" - {prev_submitted_date}.'
             )
             raise RuntimeError(msg)
         chronological_number = title.chronological_number
         if prev_chronological_number >= chronological_number:
+            assert prev_title is not None
             msg = (
                 f'"{title}": Out of order chronological number {chronological_number}.'
-                f' Previous title: "{prev_title}"'
+                f' Previous title: "{prev_title.get_title_str()}"'
                 f" with chronological number {prev_chronological_number}."
             )
             raise RuntimeError(msg)

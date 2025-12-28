@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from enum import Enum
 
+from . import barks_titles
 from .barks_titles import NON_COMIC_TITLES, Titles
 
 
@@ -100,7 +101,7 @@ class Tags(Enum):
     GENERAL_SNOZZIE = "General Snozzie"
     GLADSTONE_GANDER = "Gladstone Gander"
     GNEEZLES = "Gneezles"
-    GYRO_GEARLOOSE = "Gyro Gearloose"
+    GYRO_GEARLOOSE = barks_titles.GYRO_GEARLOOSE
     GYRO_NOT_IN_GG = "Gyro not in GG series"
     HASSAN_BEN_JAILD = "Hassan Ben Jaild"
     HERBERT = "Herbert"
