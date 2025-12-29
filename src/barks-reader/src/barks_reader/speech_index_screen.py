@@ -83,8 +83,8 @@ class SpeechIndexScreen(IndexScreen):
         self._item_index: dict[str, list[IndexItem]] = defaultdict(list)
         self.on_goto_title: Callable[[ImageInfo, str], None] | None = None
 
-        self._cleaned_alpha_split_unstemmed_terms = (
-            self._whoosh_indexer.get_cleaned_alpha_split_unstemmed_terms()
+        self._cleaned_alpha_split_terms = (
+            self._whoosh_indexer.get_cleaned_alpha_split_lemmatized_terms()
         )
         self._prefix_buttons: dict[str, Button] = {}
 
@@ -96,7 +96,7 @@ class SpeechIndexScreen(IndexScreen):
 
     def _populate_top_alphabet_split_menu(self, first_letter: str) -> None:
         """Create the top sub alphabet split buttons across the top."""
-        first_letter_split_terms = self._cleaned_alpha_split_unstemmed_terms[first_letter.lower()]
+        first_letter_split_terms = self._cleaned_alpha_split_terms[first_letter.lower()]
 
         alphabet_top_split_layout: GridLayout = self.ids.alphabet_top_split_layout
         alphabet_top_split_layout.clear_widgets()
@@ -120,7 +120,7 @@ class SpeechIndexScreen(IndexScreen):
         self._selected_prefix_button = button
 
         first_letter = "0" if "0" <= prefix <= "9" else prefix[0].upper()
-        terms = self._cleaned_alpha_split_unstemmed_terms[first_letter.lower()][prefix]
+        terms = self._cleaned_alpha_split_terms[first_letter.lower()][prefix]
         self._item_index[first_letter] = [IndexItem(t, t) for t in terms]
 
         self._populate_index_grid(first_letter)
@@ -155,7 +155,7 @@ class SpeechIndexScreen(IndexScreen):
         if rand_term in self._found_words_cache:
             found = self._found_words_cache[rand_term]
         else:
-            found = self._whoosh_indexer.find_unstemmed_words(rand_term)
+            found = self._whoosh_indexer.find_all_words(rand_term)
             self._found_words_cache[rand_term] = found
 
         found_titles = [ALL_FANTA_COMIC_BOOK_INFO[title_str] for title_str in found]
@@ -218,7 +218,7 @@ class SpeechIndexScreen(IndexScreen):
         found = (
             self._found_words_cache[item_id]
             if item_id in self._found_words_cache
-            else self._whoosh_indexer.find_unstemmed_words(item_id)
+            else self._whoosh_indexer.find_all_words(item_id)
         )
         sub_items_to_display = []
         for comic_title, title_info in found.items():

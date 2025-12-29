@@ -39,6 +39,7 @@ dependencies = [
     { name = "pywin32", marker = "sys_platform == 'win32'" },
     { name = "pyyaml" },
     { name = "screeninfo" },
+    { name = "simplemma" },
     { name = "six" },
     { name = "types-docutils" },
     { name = "tzdata" },
@@ -93,6 +94,7 @@ requires-dist = [
     { name = "pywin32", marker = "sys_platform == 'win32'", specifier = "==311" },
     { name = "pyyaml", specifier = "==6.0.2" },
     { name = "screeninfo", specifier = "==0.8.1" },
+    { name = "simplemma", specifier = ">=1.1.2" },
     { name = "six", specifier = "==1.17.0" },
     { name = "types-docutils", specifier = "==0.22.0.20250822" },
     { name = "tzdata", specifier = "==2025.2" },
@@ -771,6 +773,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ec/bb/e69e5e628d43f118e0af4fc063c20058faa8635c95a1296764acc8167e27/screeninfo-0.8.1.tar.gz", hash = "sha256:9983076bcc7e34402a1a9e4d7dabf3729411fd2abb3f3b4be7eba73519cd2ed1", size = 10666, upload-time = "2022-09-09T11:35:23.419Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6e/bf/c5205d480307bef660e56544b9e3d7ff687da776abb30c9cb3f330887570/screeninfo-0.8.1-py3-none-any.whl", hash = "sha256:e97d6b173856edcfa3bd282f81deb528188aff14b11ec3e195584e7641be733c", size = 12907, upload-time = "2022-09-09T11:35:21.351Z" },
+]
+
+[[package]]
+name = "simplemma"
+version = "1.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/16/58/81fc31ae8a83a2c422ca51784825b8b2d1ebdf068e351d364fedd9707307/simplemma-1.1.2.tar.gz", hash = "sha256:8549eefc288b25262c38027ef09f2db28ee0355b2a0cc62c1a8abbe948ef72bd", size = 67189658, upload-time = "2024-11-19T16:47:09.231Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/17/fe/cea4c2d96505425954ef281d08fc71019a42a459bfc1a9e4bc91245c9c00/simplemma-1.1.2-py3-none-any.whl", hash = "sha256:90a3060b0c59679c8a954a201c2dc8b589f3f55872b125eede5f2447fda02e8b", size = 67154845, upload-time = "2024-11-19T16:45:36.423Z" },
 ]
 
 [[package]]

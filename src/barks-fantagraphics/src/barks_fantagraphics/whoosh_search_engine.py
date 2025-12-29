@@ -5,6 +5,7 @@ from pathlib import Path
 
 from loguru import logger
 from pyuca import Collator
+from simplemma import lemmatize
 from whoosh.analysis import LowercaseFilter, StopFilter
 from whoosh.fields import ID, TEXT, Schema
 from whoosh.index import create_in, open_dir
@@ -42,8 +43,14 @@ class SearchEngine:
         self._cleaned_unstemmed_terms_path = (
             self._index.storage.folder / "cleaned-unstemmed-terms.json"
         )
+        self._cleaned_lemmatized_terms_path = (
+            self._index.storage.folder / "cleaned-lemmatized-terms.json"
+        )
         self._cleaned_alpha_split_unstemmed_terms_path = (
             self._index.storage.folder / "cleaned-alpha-split-unstemmed-terms.json"
+        )
+        self._cleaned_alpha_split_lemmatized_terms_path = (
+            self._index.storage.folder / "cleaned-alpha-split-lemmatized-terms.json"
         )
 
     def find_words(self, search_words: str, use_unstemmed_terms: bool) -> TitleDict:
@@ -70,8 +77,17 @@ class SearchEngine:
     def get_cleaned_unstemmed_terms(self) -> list[str]:
         return json.loads(self._cleaned_unstemmed_terms_path.read_text())
 
+    def get_cleaned_lemmatized_terms(self) -> list[str]:
+        return json.loads(self._cleaned_lemmatized_terms_path.read_text())
+
     def get_cleaned_alpha_split_unstemmed_terms(self) -> dict[str, dict[str, list[str]]]:
         return json.loads(self._cleaned_alpha_split_unstemmed_terms_path.read_text())
+
+    def get_cleaned_alpha_split_lemmatized_terms(self) -> dict[str, dict[str, list[str]]]:
+        return json.loads(self._cleaned_alpha_split_lemmatized_terms_path.read_text())
+
+    def find_all_words(self, search_words: str) -> TitleDict:
+        return self.find_words(search_words, use_unstemmed_terms=False)
 
     def find_unstemmed_words(self, search_words: str) -> TitleDict:
         return self.find_words(search_words, use_unstemmed_terms=True)
@@ -122,8 +138,15 @@ class SearchEngineCreator(SearchEngine):
                 self._get_cleaned_unstemmed_terms(all_unstemmed_terms), key=COLLATOR.sort_key
             )
             json.dump(cleaned_unstemmed_terms, f, indent=4)
+        with self._cleaned_lemmatized_terms_path.open("w") as f:
+            cleaned_lemmatized_terms = sorted(
+                self._get_cleaned_lemmatized_terms(cleaned_unstemmed_terms), key=COLLATOR.sort_key
+            )
+            json.dump(cleaned_lemmatized_terms, f, indent=4)
         with self._cleaned_alpha_split_unstemmed_terms_path.open("w") as f:
-            json.dump(self._get_alpha_split_unstemmed_terms(cleaned_unstemmed_terms), f, indent=4)
+            json.dump(self._get_alpha_split_terms(cleaned_unstemmed_terms), f, indent=4)
+        with self._cleaned_alpha_split_lemmatized_terms_path.open("w") as f:
+            json.dump(self._get_alpha_split_terms(cleaned_lemmatized_terms), f, indent=4)
 
     @staticmethod
     def _get_cleaned_unstemmed_terms(unstemmed_terms: list[str]) -> set[str]:
@@ -143,6 +166,16 @@ class SearchEngineCreator(SearchEngine):
                 cleaned_unstemmed_terms.add(cleaned_term)
 
         return cleaned_unstemmed_terms.union(BARKSIAN_EXTRA_TERMS)
+
+    @staticmethod
+    def _get_cleaned_lemmatized_terms(terms: list[str]) -> set[str]:
+        lemmatized_terms = set()
+        for term in terms:
+            lemmatized_term = lemmatize(term, lang="en")
+            if lemmatized_term == term or lemmatized_term not in lemmatized_terms:
+                lemmatized_terms.add(term)
+
+        return lemmatized_terms
 
     def _add_page_content(self, writer: SegmentWriter, title: str) -> None:
         json_files = JsonFiles(self._comics_database, title)
@@ -195,13 +228,11 @@ class SearchEngineCreator(SearchEngine):
 
         return srce_dest_map
 
-    def _get_alpha_split_unstemmed_terms(
-        self, cleaned_unstemmed_terms: list[str]
-    ) -> dict[str, dict[str, list[str]]]:
+    def _get_alpha_split_terms(self, terms: list[str]) -> dict[str, dict[str, list[str]]]:
         alpha_dict = {}
         first_letter_list = []
         current_first_letter_group = "0"
-        for term in cleaned_unstemmed_terms:
+        for term in terms:
             first_letter = term[0].lower()
             if not (
                 ("a" <= first_letter <= "z")
@@ -214,7 +245,7 @@ class SearchEngineCreator(SearchEngine):
                 first_letter = "0"
 
             if current_first_letter_group != first_letter:
-                alpha_dict[current_first_letter_group] = self._get_sub_alpha_split_unstemmed_terms(
+                alpha_dict[current_first_letter_group] = self._get_sub_alpha_split_terms(
                     first_letter_list
                 )
                 first_letter_list = []
@@ -223,30 +254,30 @@ class SearchEngineCreator(SearchEngine):
             first_letter_list.append(term)
 
         if first_letter_list:
-            alpha_dict[current_first_letter_group] = self._get_sub_alpha_split_unstemmed_terms(
+            alpha_dict[current_first_letter_group] = self._get_sub_alpha_split_terms(
                 first_letter_list
             )
 
         return self._get_similar_size_alpha_groups(alpha_dict)
 
     @staticmethod
-    def _get_sub_alpha_split_unstemmed_terms(
-        alpha_unstemmed_terms: list[str],
+    def _get_sub_alpha_split_terms(
+        alpha_terms: list[str],
     ) -> dict[str, list[str]]:
-        if not alpha_unstemmed_terms:
+        if not alpha_terms:
             return {}
 
-        prefix_len = 1 if "0" <= alpha_unstemmed_terms[0][0] <= "9" else 2
-        current_prefix = alpha_unstemmed_terms[0][:prefix_len].lower()
+        prefix_len = 1 if "0" <= alpha_terms[0][0] <= "9" else 2
+        current_prefix = alpha_terms[0][:prefix_len].lower()
 
-        sub_alpha_unstemmed_dict = {current_prefix: []}
-        for term in alpha_unstemmed_terms:
+        sub_alpha_dict = {current_prefix: []}
+        for term in alpha_terms:
             if current_prefix != term[:prefix_len].lower():
                 current_prefix = term[:prefix_len].lower()
-                sub_alpha_unstemmed_dict[current_prefix] = []
-            sub_alpha_unstemmed_dict[current_prefix].append(term)
+                sub_alpha_dict[current_prefix] = []
+            sub_alpha_dict[current_prefix].append(term)
 
-        return sub_alpha_unstemmed_dict
+        return sub_alpha_dict
 
     def _get_similar_size_alpha_groups(
         self, alpha_unstemmed_terms: dict[str, dict[str, list[str]]]

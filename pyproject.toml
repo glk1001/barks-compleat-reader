@@ -39,6 +39,7 @@ dependencies = [
     "pywin32==311 ; sys_platform == 'win32'",
     "pyyaml==6.0.2",
     "screeninfo==0.8.1",
+    "simplemma>=1.1.2",
     "six==1.17.0",
     "types-docutils==0.22.0.20250822",
     "tzdata==2025.2",
