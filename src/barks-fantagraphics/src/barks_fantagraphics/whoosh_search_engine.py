@@ -7,6 +7,7 @@ from loguru import logger
 from pyuca import Collator
 from simplemma import lemmatize
 from whoosh.analysis import LowercaseFilter, StopFilter
+from whoosh.analysis.analyzers import StandardAnalyzer
 from whoosh.fields import ID, TEXT, Schema
 from whoosh.index import create_in, open_dir
 from whoosh.qparser import QueryParser
@@ -57,7 +58,7 @@ class SearchEngine:
         prelim_results = defaultdict(TitleInfo)
         with self._index.searcher() as searcher:
             field_name = "unstemmed" if use_unstemmed_terms else "content"
-            query = QueryParser(field_name, self._index.schema).parse(search_words)
+            query = QueryParser(field_name, self._index.schema).parse(search_words, debug=False)
 
             results = searcher.search(query, limit=100)
             for hit in results:
@@ -104,7 +105,7 @@ class SearchEngineCreator(SearchEngine):
             fanta_vol=ID(stored=True),
             fanta_page=ID(stored=True),
             comic_page=ID(stored=True),
-            content=TEXT(stored=True, lang="en"),
+            content=TEXT(stored=True, lang="en", analyzer=StandardAnalyzer()),
             unstemmed=TEXT(stored=False, analyzer=analyzer),
         )
         index_dir.mkdir(parents=True, exist_ok=True)
