@@ -34,12 +34,16 @@ class IndexMenuButton(Button):
     is_selected = BooleanProperty(defaultvalue=False)
 
 
-class TitleItemButton(Button):
-    """A custom button for title items, styled in the .kv file for press feedback."""
-
-
 class IndexItemButton(Button):
     """A custom button for the index items, styled in the .kv file."""
+
+
+class TitleItemButton(Button):
+    """A custom button for title items, styled in the .kv file."""
+
+
+class TitleShowSpeechButton(Button):
+    """A custom button for showing speech bubbles for titles, styled in the .kv file."""
 
 
 class Theme:

@@ -53,6 +53,22 @@
             pos: (self.x + (0.8 * self.padding[0]), self.y)
             size: (self.width - (0.8 * self.padding[0]), self.height)
 
+<TitleShowSpeechButton>:
+    background_normal: ''
+    background_down: ''
+    border: (0, 0, 0, 0)
+    background_color: app.index_theme.ITEM_BG
+    font_size: fm.index_item_font_size
+    color: app.index_theme.ITEM_TEXT
+    size_hint: None, None
+    height: dp(20)
+    height: app.index_theme.ROW_HEIGHT
+    padding: 0, 0, 0, 0
+    text: 'S'
+    text_size: self.size
+    halign: 'left'
+    valign: 'middle'
+
 <IndexScreen>:
     opacity: 1 if root.is_visible else 0
     size_hint: (1, 1) if root.is_visible else (0, 0)
