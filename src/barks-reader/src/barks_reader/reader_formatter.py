@@ -1,7 +1,9 @@
 # ruff: noqa: ERA001
+from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_extra_info import BARKS_EXTRA_INFO
 from barks_fantagraphics.barks_payments import BARKS_PAYMENTS, PaymentInfo
@@ -18,9 +20,11 @@ from barks_fantagraphics.fanta_comics_info import FAN, FANTA_SOURCE_COMICS, Fant
 from comic_utils.cpi_wrapper import inflate
 from kivy.utils import escape_markup
 
-from barks_reader.font_manager import FontManager
-from barks_reader.reader_colors import Color
 from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO
+
+if TYPE_CHECKING:
+    from barks_reader.font_manager import FontManager
+    from barks_reader.reader_colors import Color
 
 LONG_TITLE_SPLITS = {
     Titles.DONALD_DUCK_FINDS_PIRATE_GOLD: "Donald Duck\nFinds Pirate Gold",
@@ -164,3 +168,35 @@ class ReaderFormatter:
             return ""
 
         return f"{BARKS_EXTRA_INFO[title]}"
+
+
+def mark_phrase_in_text(phrase: str, target_text: str, start_tag: str, end_tag: str) -> str:
+    r"""Find and tag a phrase in a target string.
+
+    Spaces in the phrase might be replaced by newlines (\n) or soft hyphens + newlines
+    (\u00ad\n) and this function will wrap the found phrase in start...end tags.
+    """
+    # 1. Split the original phrase into a list of words
+    #    (split() handles multiple spaces automatically)
+    words = phrase.split()
+
+    # 2. Escape words to ensure characters like '?', '.', or '(' don't break the regex
+    escaped_words = [re.escape(w) for w in words]
+
+    # 3. Create a regex pattern for the separator.
+    #    It matches: A literal space OR a newline OR a soft hyphen followed by newline.
+    #    (?: ...) is a non-capturing group.
+    #    \xad is the hexadecimal representation of \u00AD.
+    separator_pattern = r"(?: |\n|\xad\n)"
+
+    # 4. Join the words with the flexible separator
+    full_pattern = separator_pattern.join(escaped_words)
+
+    # 5. Perform the substitution.
+    #    We wrap full_pattern in parentheses (...) to create a capturing group.
+    #    We replace it with 'start_tag\1end_tag', where \1 puts back exactly what was found.
+    result = re.sub(
+        f"({full_pattern})", rf"{start_tag}\1{end_tag}", target_text, flags=re.IGNORECASE
+    )
+
+    return result  # noqa: RET504

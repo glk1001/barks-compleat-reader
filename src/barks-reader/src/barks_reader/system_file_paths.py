@@ -28,6 +28,7 @@ class SystemFilePaths:
         self._goto_end_icon_path: Path | None = None
         self._hamburger_menu_icon_path: Path | None = None
 
+        self._speech_bubble_icon_path: Path | None = None
         self._up_arrow_path: Path | None = None
         self._down_arrow_path: Path | None = None
         self._transparent_blank_path: Path | None = None
@@ -64,6 +65,7 @@ class SystemFilePaths:
         self._goto_end_icon_path = self._action_bar_icons_dir / "icon-goto-end.png"
         self._hamburger_menu_icon_path = self._action_bar_icons_dir / "menu-hamburger-icon.png"
 
+        self._speech_bubble_icon_path = self._various_files_dir / "speech-bubble-icon.png"
         self._up_arrow_path = self._various_files_dir / "up-arrow.png"
         self._down_arrow_path = self._various_files_dir / "down-arrow.png"
         self._transparent_blank_path = self._various_files_dir / "transparent-blank.png"
@@ -108,6 +110,7 @@ class SystemFilePaths:
             self._goto_start_icon_path,
             self._goto_end_icon_path,
             self._hamburger_menu_icon_path,
+            self._speech_bubble_icon_path,
             self._up_arrow_path,
             self._down_arrow_path,
             self._transparent_blank_path,
@@ -164,6 +167,10 @@ class SystemFilePaths:
     def get_success_background_path(self) -> Path:
         assert self._success_background_path
         return self._success_background_path
+
+    def get_speech_bubble_icon_file(self) -> Path:
+        assert self._speech_bubble_icon_path
+        return self._speech_bubble_icon_path
 
     def get_up_arrow_file(self) -> Path:
         assert self._up_arrow_path

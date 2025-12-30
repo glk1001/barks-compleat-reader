@@ -9,8 +9,10 @@ from comic_utils.timing import Timing
 from kivy.app import App
 from kivy.metrics import dp
 from kivy.properties import BooleanProperty, ObjectProperty  # ty: ignore[unresolved-import]
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.popup import Popup
 from loguru import logger
 
 from barks_reader.reader_ui_classes import ARROW_WIDTH
@@ -18,7 +20,6 @@ from barks_reader.reader_ui_classes import ARROW_WIDTH
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from kivy.uix.boxlayout import BoxLayout
     from kivy.uix.gridlayout import GridLayout
     from kivy.uix.widget import Widget
 
@@ -44,6 +45,19 @@ class TitleItemButton(Button):
 
 class TitleShowSpeechButton(Button):
     """A custom button for showing speech bubbles for titles, styled in the .kv file."""
+
+
+class SpeechBubblesPopup(Popup):
+    """A custom popup for showing speech bubbles, styled in the .kv file."""
+
+
+class TitledTextInput(BoxLayout):
+    """Text input box with title and rectangle border."""
+
+    def __init__(self, title: str, content: str, **kwargs) -> None:  # noqa: ANN003
+        super().__init__(**kwargs)
+        self.title = title
+        self.content = content
 
 
 class Theme:

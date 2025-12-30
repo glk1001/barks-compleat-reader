@@ -27,6 +27,7 @@ class FontTheme:
     index_menu: float
     index_item: float
     index_title: float
+    speech_bubble_text: float
     year_range: float
     message_title: float
     checkbox: float
@@ -49,6 +50,7 @@ LOW_RES_FONTS = FontTheme(
     index_menu=sp(13),
     index_item=sp(12),
     index_title=sp(12),
+    speech_bubble_text=sp(12),
     year_range=sp(14),
     message_title=sp(16),
     checkbox=sp(14),
@@ -70,6 +72,7 @@ HI_RES_FONTS = FontTheme(
     index_menu=sp(17),
     index_item=sp(16),
     index_title=sp(16),
+    speech_bubble_text=sp(14),
     year_range=sp(18),
     message_title=sp(20),
     checkbox=sp(19),
@@ -93,6 +96,7 @@ class FontManager(EventDispatcher):
     index_menu_font_size = NumericProperty()
     index_item_font_size = NumericProperty()
     index_title_font_size = NumericProperty()
+    speech_bubble_text_font_size = NumericProperty()
     check_box_font_size = NumericProperty()
     error_main_view_font_size = NumericProperty()
     error_popup_font_size = NumericProperty()
@@ -117,6 +121,7 @@ class FontManager(EventDispatcher):
 
     main_title_font_name = str(CARL_BARKS_FONT)
     message_title_font_name = main_title_font_name
+    speech_bubble_text_font_name = main_title_font_name
 
     def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         super().__init__(*args, **kwargs)
@@ -166,6 +171,7 @@ class FontManager(EventDispatcher):
         self.index_menu_font_size = theme.index_menu
         self.index_item_font_size = theme.index_item
         self.index_title_font_size = theme.index_title
+        self.speech_bubble_text_font_size = theme.speech_bubble_text
         self.check_box_font_size = theme.checkbox
         self.error_main_view_font_size = theme.error_main_view
         self.error_popup_font_size = theme.error_popup

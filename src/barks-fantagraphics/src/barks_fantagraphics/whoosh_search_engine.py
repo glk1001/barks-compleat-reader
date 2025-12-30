@@ -30,7 +30,7 @@ SUB_ALPHA_SPLIT_SIZE = 56
 @dataclass
 class PageInfo:
     comic_page: str = ""
-    speech_bubbles: list[str] = field(default_factory=list)
+    speech_bubbles: list[tuple[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -73,13 +73,14 @@ class SearchEngine:
 
                 fanta_page = hit["fanta_page"]
                 comic_page = hit["comic_page"]
+                speech_bubble_id = hit["content_id"]
                 speech_bubble = hit["content"]
 
                 if fanta_page not in prelim_results[comic_title].fanta_pages:
                     prelim_results[comic_title].fanta_pages[fanta_page] = PageInfo()
                 prelim_results[comic_title].fanta_pages[fanta_page].comic_page = comic_page
                 prelim_results[comic_title].fanta_pages[fanta_page].speech_bubbles.append(
-                    speech_bubble
+                    (speech_bubble_id, speech_bubble)
                 )
 
         # Sort the results by title and page.
@@ -87,9 +88,9 @@ class SearchEngine:
         for title in sorted(prelim_results.keys()):
             title_results[title].fanta_vol = prelim_results[title].fanta_vol
             for fanta_page in sorted(prelim_results[title].fanta_pages.keys()):
-                title_results[title].fanta_pages[fanta_page] = prelim_results[title].fanta_pages[
-                    fanta_page
-                ]
+                page_info = prelim_results[title].fanta_pages[fanta_page]
+                page_info.speech_bubbles = sorted(page_info.speech_bubbles, key=lambda x: int(x[0]))
+                title_results[title].fanta_pages[fanta_page] = page_info
 
         return title_results
 
@@ -123,6 +124,7 @@ class SearchEngineCreator(SearchEngine):
             fanta_vol=ID(stored=True),
             fanta_page=ID(stored=True),
             comic_page=ID(stored=True),
+            content_id=ID(stored=True),
             content=TEXT(stored=True, lang="en", analyzer=StandardAnalyzer()),
             unstemmed=TEXT(stored=False, analyzer=analyzer),
         )
@@ -219,7 +221,7 @@ class SearchEngineCreator(SearchEngine):
                 )
                 raise ValueError(msg) from e
 
-            for group in ocr_prelim_group2["groups"].values():
+            for group_id, group in ocr_prelim_group2["groups"].items():
                 ai_text = (
                     group["ai_text"]
                     .replace("-\n", "-")
@@ -231,6 +233,7 @@ class SearchEngineCreator(SearchEngine):
                     fanta_vol=str(comic.fanta_book.volume),
                     fanta_page=fanta_page,
                     comic_page=dest_page,
+                    content_id=group_id,
                     content=ai_text,
                     unstemmed=ai_text,
                 )

@@ -10,15 +10,13 @@ from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_fantagraphics.whoosh_search_engine import SearchEngine, TitleInfo
 from comic_utils.timing import Timing
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     ObjectProperty,
     StringProperty,
 )
 from kivy.uix.gridlayout import GridLayout
-from kivy.uix.label import Label
-from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from loguru import logger
 
@@ -26,11 +24,14 @@ from barks_reader.index_screen import (
     IndexItemButton,
     IndexMenuButton,
     IndexScreen,
+    SpeechBubblesPopup,
+    TitledTextInput,
     TitleItemButton,
     TitleShowSpeechButton,
 )
 from barks_reader.panel_image_loader import PanelImageLoader
 from barks_reader.random_title_images import ImageInfo, RandomTitleImages
+from barks_reader.reader_formatter import mark_phrase_in_text
 from barks_reader.reader_utils import get_concat_page_nums_str
 
 if TYPE_CHECKING:
@@ -48,6 +49,10 @@ if TYPE_CHECKING:
 
 INDEX_ITEM_ROW_HEIGHT = dp(21)
 INDEX_IMAGE_CHANGE_SECONDS = 15
+
+INDEX_TERMS_HIGHLIGHT_COLOR = "#1A6ACB"
+INDEX_TERMS_HIGHLIGHT_START_TAG = f"[b][color={INDEX_TERMS_HIGHLIGHT_COLOR}]"
+INDEX_TERMS_HIGHLIGHT_END_TAG = "[/color][/b]"
 
 
 @dataclass
@@ -93,6 +98,15 @@ class SpeechIndexScreen(IndexScreen):
         self._prefix_buttons: dict[str, Button] = {}
 
         self._populate_alphabet_menu()
+
+        self._speech_bubble_browser_popup = SpeechBubblesPopup(
+            title_size=sp(18),
+            title_align="left",
+            title_color=[0, 1, 1, 1],
+            size_hint=(0.7, 0.4),
+            pos_hint={"x": 0.06, "y": 0.06},
+        )
+        self._speech_bubble_browser_popup.children[0].children[-1].markup = True
 
     def _populate_index_for_letter(self, first_letter: str) -> None:
         self._populate_top_alphabet_split_menu(first_letter)
@@ -213,15 +227,15 @@ class SpeechIndexScreen(IndexScreen):
         sub_items_layout = self._get_sub_item_layout(item_id)
         self._insert_sub_items_layout(sub_items_layout)
 
-    def _get_sub_item_layout(self, item_id: str) -> BoxLayout:
+    def _get_sub_item_layout(self, index_terms: str) -> BoxLayout:
         parent_padding = self._open_tag_button.padding[0]
         sub_item_padding = parent_padding + self.index_theme.SUB_ITEM_INDENT_STEP
 
         # --- Determine what items to display in the new sub-list ---
         found = (
-            self._found_words_cache[item_id]
-            if item_id in self._found_words_cache
-            else self._whoosh_indexer.find_all_words(item_id)
+            self._found_words_cache[index_terms]
+            if index_terms in self._found_words_cache
+            else self._whoosh_indexer.find_all_words(index_terms)
         )
         sub_items_to_display = []
         for comic_title, title_speech_info in found.items():
@@ -238,7 +252,7 @@ class SpeechIndexScreen(IndexScreen):
         sub_items_to_display.sort(key=lambda t: t[2])
 
         # Now create the layout.
-        sub_items_layout = GridLayout(cols=2, size_hint_y=None)
+        sub_items_layout = GridLayout(cols=2, size_hint_y=None, padding=[0, 0, dp(20), 0])
         sub_items_layout.bind(minimum_height=sub_items_layout.setter("height"))
         for (
             title_str,
@@ -265,8 +279,9 @@ class SpeechIndexScreen(IndexScreen):
             show_speech_bubbles_button.bind(
                 on_release=lambda _btn,
                 bound_title_str=title_str,
+                bound_index_terms=index_terms,
                 bound_title_speech_info=title_speech_info: self._handle_title_speech(
-                    bound_title_str, bound_title_speech_info
+                    bound_title_str, bound_index_terms, bound_title_speech_info
                 )
             )
             sub_items_layout.add_widget(show_speech_bubbles_button)
@@ -399,31 +414,57 @@ class SpeechIndexScreen(IndexScreen):
         Clock.schedule_once(lambda _dt: goto_title(), 0.01)
         Clock.schedule_once(lambda _dt: reset_background_color(), 0.1)
 
-    def _handle_title_speech(self, title_str: str, title_speech_info: TitleInfo) -> None:
-        logger.info(f'Handling title speech for: "{title_str}".')
+    def _handle_title_speech(
+        self, title_str: str, index_terms: str, title_speech_info: TitleInfo
+    ) -> None:
+        logger.info(f'Handling title speech for: "{title_str}" and index terms "{index_terms}".')
 
-        text = ""
+        text_boxes = GridLayout(cols=1, size_hint_y=None, spacing=dp(30), padding=dp(30))
+        text_boxes.bind(minimum_height=text_boxes.setter("height"))
+
         for page_info in title_speech_info.fanta_pages.values():
-            text += f"[b]Page {page_info.comic_page}[/b]\n"
-            for speech in page_info.speech_bubbles:
-                text += f"    {speech}\n\n"
+            page_text = f"Page {page_info.comic_page}"
+            text = "\n\n".join([s[1] for s in page_info.speech_bubbles])
+            text = mark_phrase_in_text(
+                index_terms, text, INDEX_TERMS_HIGHLIGHT_START_TAG, INDEX_TERMS_HIGHLIGHT_END_TAG
+            )
+            text_box = TitledTextInput(title=page_text, content=text.strip())
+            text_box.ids.speech_bubbles_id.bind(
+                on_release=lambda _btn,
+                bound_title=title_str,
+                bound_page=page_info.comic_page: self._handle_title_from_bubble_press(
+                    bound_title, bound_page
+                ),
+            )
+            text_boxes.add_widget(text_box)
 
-        label = Label(text=text, markup=True, size_hint_y=None, padding=(dp(10), dp(10)))
-        label.bind(texture_size=label.setter("size"))
-        label.bind(
-            width=lambda instance, value: setattr(instance, "text_size", (value - dp(20), None))
+        scroll_view = ScrollView(
+            always_overscroll=False,
+            effect_cls="ScrollEffect",
+            scroll_type=["bars", "content"],
+            bar_color=(0.8, 0.8, 0.8, 1),
+            bar_inactive_color=(0.8, 0.8, 0.8, 0.8),
+            bar_width=dp(8),
         )
+        scroll_view.add_widget(text_boxes)
 
-        scroll_view = ScrollView()
-        scroll_view.add_widget(label)
-
-        popup = Popup(
-            title=title_str,
-            content=scroll_view,
-            size_hint=(0.8, 0.3),
-            pos_hint={"x": 0.07, "y": 0.15},
+        self._speech_bubble_browser_popup.title = (
+            f"[b][i]{title_str}  \u2014  [/i]'{index_terms}'[/b]"
         )
-        popup.open()
+        self._speech_bubble_browser_popup.content = scroll_view
+        self._speech_bubble_browser_popup.open()
+
+    def _handle_title_from_bubble_press(self, title_str: str, page_to_goto: str) -> None:
+        logger.info(f'Handling title from speech bubble browser: "{title_str}" - {page_to_goto}.')
+        self._speech_bubble_browser_popup.dismiss()
+
+        image_info = ImageInfo(from_title=BARKS_TITLE_DICT[title_str], filename=None)
+
+        def goto_title() -> None:
+            assert self.on_goto_title is not None
+            self.on_goto_title(image_info, page_to_goto)
+
+        Clock.schedule_once(lambda _dt: goto_title(), 0.01)
 
     def _get_indexable_title_with_page_nums(
         self, title_str: str, page_nums: list[str]
