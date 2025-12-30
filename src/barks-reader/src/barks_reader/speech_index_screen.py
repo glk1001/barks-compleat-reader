@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, override
+from typing import TYPE_CHECKING, override
 
 from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, BARKS_TITLES, Titles
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
@@ -37,6 +37,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from barks_fantagraphics.whoosh_search_engine import TitleDict
+
+    # noinspection PyProtectedMember
     from kivy.core.image import Texture
     from kivy.uix.boxlayout import BoxLayout
     from kivy.uix.button import Button
@@ -212,7 +214,6 @@ class SpeechIndexScreen(IndexScreen):
         self._insert_sub_items_layout(sub_items_layout)
 
     def _get_sub_item_layout(self, item_id: str) -> BoxLayout:
-        # The new padding is the parent button's padding plus an indent step.
         parent_padding = self._open_tag_button.padding[0]
         sub_item_padding = parent_padding + self.index_theme.SUB_ITEM_INDENT_STEP
 
@@ -223,16 +224,14 @@ class SpeechIndexScreen(IndexScreen):
             else self._whoosh_indexer.find_all_words(item_id)
         )
         sub_items_to_display = []
-        for comic_title, title_info in found.items():
-            title = BARKS_TITLE_DICT[comic_title]
-            page_num_list = [page[1] for page in title_info.pages]
-            speech_bubble_list = self._get_speech_bubbles(title_info)
+        for comic_title, title_speech_info in found.items():
+            page_num_list = [page.comic_page for page in title_speech_info.fanta_pages.values()]
 
             sub_items_to_display.append(
                 (
-                    title,
-                    *self._get_indexable_title_with_page_nums(title, page_num_list),
-                    speech_bubble_list,
+                    comic_title,
+                    *self._get_indexable_title_with_page_nums(comic_title, page_num_list),
+                    title_speech_info,
                 )
             )
 
@@ -242,20 +241,20 @@ class SpeechIndexScreen(IndexScreen):
         sub_items_layout = GridLayout(cols=2, size_hint_y=None)
         sub_items_layout.bind(minimum_height=sub_items_layout.setter("height"))
         for (
-            sub_item_id,
-            page_to_goto,
             title_str,
-            speech_bubble_list,
+            first_page_to_goto,
+            title_str_with_pages,
+            title_speech_info,
         ) in sub_items_to_display:  # ty: ignore[invalid-assignment]
-            logger.info(f'For "{title_str}", page to goto = {page_to_goto}.')
+            logger.info(f'For "{title_str}", first page to goto = {first_page_to_goto}.')
             title_button = TitleItemButton(
-                text=title_str,
+                text=title_str_with_pages,
                 padding=[sub_item_padding, 0, 0, 0],
             )
             sub_item = IndexItem(
-                id=sub_item_id,
-                display_text=title_str,
-                page_to_goto=page_to_goto,
+                id=BARKS_TITLE_DICT[title_str],
+                display_text=title_str_with_pages,
+                page_to_goto=first_page_to_goto,
             )
             title_button.bind(
                 on_release=lambda btn, bound_item=sub_item: self._handle_title(btn, bound_item),
@@ -264,23 +263,17 @@ class SpeechIndexScreen(IndexScreen):
 
             show_speech_bubbles_button = TitleShowSpeechButton()
             show_speech_bubbles_button.bind(
-                on_release=lambda _btn, bound_item=speech_bubble_list: self._handle_title_speech(
-                    bound_item
+                on_release=lambda _btn,
+                bound_title_str=title_str,
+                bound_title_speech_info=title_speech_info: self._handle_title_speech(
+                    bound_title_str, bound_title_speech_info
                 )
             )
             sub_items_layout.add_widget(show_speech_bubbles_button)
 
-            logger.debug(f'Added sub-item "{title_str}".')
+            logger.debug(f'Added sub-item "{title_str_with_pages}".')
 
         return sub_items_layout
-
-    def _get_speech_bubbles(self, title_info: TitleInfo) -> list[Any]:
-        speech_bubbles = []
-        for page in title_info.pages:
-            page_num = page[1]
-            speech = page[2]
-            speech_bubbles.append((page_num, speech))
-        return speech_bubbles
 
     def _insert_sub_items_layout(self, sub_items_layout: BoxLayout) -> None:
         button = self._open_tag_button
@@ -406,13 +399,14 @@ class SpeechIndexScreen(IndexScreen):
         Clock.schedule_once(lambda _dt: goto_title(), 0.01)
         Clock.schedule_once(lambda _dt: reset_background_color(), 0.1)
 
-    def _handle_title_speech(self, speech_bubble_list: list[tuple[str, str]]) -> None:
-        logger.info(f'Handling title speech for: "{speech_bubble_list}".')
+    def _handle_title_speech(self, title_str: str, title_speech_info: TitleInfo) -> None:
+        logger.info(f'Handling title speech for: "{title_str}".')
 
         text = ""
-        for page, speech in speech_bubble_list:
-            text += f"[b]Page {page}[/b]\n"
-            text += f"{speech}\n\n"
+        for page_info in title_speech_info.fanta_pages.values():
+            text += f"[b]Page {page_info.comic_page}[/b]\n"
+            for speech in page_info.speech_bubbles:
+                text += f"    {speech}\n\n"
 
         label = Label(text=text, markup=True, size_hint_y=None, padding=(dp(10), dp(10)))
         label.bind(texture_size=label.setter("size"))
@@ -424,17 +418,17 @@ class SpeechIndexScreen(IndexScreen):
         scroll_view.add_widget(label)
 
         popup = Popup(
-            title="Speech Bubbles",
+            title=title_str,
             content=scroll_view,
             size_hint=(0.8, 0.3),
-            pos_hint={"x": 0.1, "y": 0.1},
+            pos_hint={"x": 0.07, "y": 0.15},
         )
         popup.open()
 
     def _get_indexable_title_with_page_nums(
-        self, title: Titles, page_nums: list[str]
+        self, title_str: str, page_nums: list[str]
     ) -> tuple[str, str]:
-        title_str = self._get_indexable_title(title)
+        title_str = self._get_indexable_title_from_str(title_str)
         page_nums_str = get_concat_page_nums_str(page_nums)
 
         return page_nums[0], title_str + ", " + page_nums_str

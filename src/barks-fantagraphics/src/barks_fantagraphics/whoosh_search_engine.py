@@ -28,9 +28,15 @@ SUB_ALPHA_SPLIT_SIZE = 56
 
 
 @dataclass
+class PageInfo:
+    comic_page: str = ""
+    speech_bubbles: list[str] = field(default_factory=list)
+
+
+@dataclass
 class TitleInfo:
     fanta_vol: int = 0
-    pages: list[tuple[str, str, str]] = field(default_factory=list)
+    fanta_pages: dict[str, PageInfo] = field(default_factory=dict)
 
 
 type TitleDict = dict[str, TitleInfo]
@@ -62,16 +68,28 @@ class SearchEngine:
 
             results = searcher.search(query, limit=100)
             for hit in results:
-                prelim_results[hit["title"]].fanta_vol = int(hit["fanta_vol"])
-                prelim_results[hit["title"]].pages.append(
-                    (hit["fanta_page"], hit["comic_page"], hit["content"])
+                comic_title = hit["title"]
+                prelim_results[comic_title].fanta_vol = int(hit["fanta_vol"])
+
+                fanta_page = hit["fanta_page"]
+                comic_page = hit["comic_page"]
+                speech_bubble = hit["content"]
+
+                if fanta_page not in prelim_results[comic_title].fanta_pages:
+                    prelim_results[comic_title].fanta_pages[fanta_page] = PageInfo()
+                prelim_results[comic_title].fanta_pages[fanta_page].comic_page = comic_page
+                prelim_results[comic_title].fanta_pages[fanta_page].speech_bubbles.append(
+                    speech_bubble
                 )
 
         # Sort the results by title and page.
         title_results = defaultdict(TitleInfo)
         for title in sorted(prelim_results.keys()):
             title_results[title].fanta_vol = prelim_results[title].fanta_vol
-            title_results[title].pages = sorted(prelim_results[title].pages)
+            for fanta_page in sorted(prelim_results[title].fanta_pages.keys()):
+                title_results[title].fanta_pages[fanta_page] = prelim_results[title].fanta_pages[
+                    fanta_page
+                ]
 
         return title_results
 

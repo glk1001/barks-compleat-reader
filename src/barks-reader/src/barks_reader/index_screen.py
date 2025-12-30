@@ -191,7 +191,10 @@ class IndexScreen(FloatLayout):
             self.on_letter_press(self._alphabet_buttons["A"])
 
     def _get_indexable_title(self, title: Titles) -> str:
-        title_str = textwrap.shorten(BARKS_TITLES[title], width=MAX_TITLE_LEN, placeholder="...")
+        return self._get_indexable_title_from_str(BARKS_TITLES[title])
+
+    def _get_indexable_title_from_str(self, title_str: str) -> str:
+        title_str = textwrap.shorten(title_str, width=MAX_TITLE_LEN, placeholder="...")
         return self._get_sortable_string(title_str)
 
     @staticmethod
