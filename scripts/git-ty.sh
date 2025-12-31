@@ -1,4 +1,4 @@
-echo Ruff checking uncommited python files:
+echo Ty checking uncommited python files:
 
 echo
 git diff --name-only --diff-filter=ACMRTUXB HEAD | grep '\.py$'
