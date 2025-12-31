@@ -288,6 +288,7 @@ class MainIndexScreen(IndexScreen):
             title_button = TitleItemButton(
                 text=sub_item_text,
                 padding=[sub_item_padding, 0, 0, 0],
+                size_hint=(0.90, None),
             )
             sub_item = IndexItem(
                 id=sub_item_id,

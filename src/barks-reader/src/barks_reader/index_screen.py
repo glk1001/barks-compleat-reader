@@ -64,8 +64,8 @@ class Theme:
     """A central place for theme constants."""
 
     ROW_HEIGHT = dp(25)
-    INDEX_ITEM_LEFT_PAD = dp(50)
-    SUB_ITEM_INDENT_STEP = dp(30)
+    INDEX_ITEM_LEFT_PAD = dp(20)
+    SUB_ITEM_INDENT_STEP = dp(20)
 
     MENU_TEXT = (0, 0, 0, 1)
     MENU_BG = (0, 0, 0, 0)
@@ -76,7 +76,7 @@ class Theme:
     ITEM_BG_SELECTED = (0.8, 0.8, 0.0, 0.5)
 
     TITLE_TEXT = (0, 0, 0, 1)
-    TITLE_BG = (0.95, 0.95, 0.95, 1)
+    TITLE_BG = (0.0, 0.0, 0.95, 0.1)
     TITLE_BG_SELECTED = (0.85, 0.85, 0.85, 1)
 
 
