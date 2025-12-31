@@ -106,11 +106,18 @@ class SearchEngine:
     def get_cleaned_alpha_split_lemmatized_terms(self) -> dict[str, dict[str, list[str]]]:
         return json.loads(self._cleaned_alpha_split_lemmatized_terms_path.read_text())
 
-    def find_all_words(self, search_words: str) -> TitleDict:
+    def find_stemmed_words(self, search_words: str) -> TitleDict:
         return self.find_words(search_words, use_unstemmed_terms=False)
 
     def find_unstemmed_words(self, search_words: str) -> TitleDict:
         return self.find_words(search_words, use_unstemmed_terms=True)
+
+    def find_all_words(self, search_words: str) -> TitleDict:
+        found = self.find_stemmed_words(search_words)
+        if found:
+            return found
+
+        return self.find_unstemmed_words(search_words)
 
 
 class SearchEngineCreator(SearchEngine):
