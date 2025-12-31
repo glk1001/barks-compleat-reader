@@ -50,6 +50,7 @@ from barks_reader.reader_formatter import get_clean_text_without_extra
 from barks_reader.reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
+    MainTreeViewNode,
     TagGroupStoryGroupTreeViewNode,
     TagSearchBoxTreeViewNode,
     TagStoryGroupTreeViewNode,
@@ -63,7 +64,9 @@ if TYPE_CHECKING:
     from kivy.uix.button import Button
     from kivy.uix.spinner import Spinner
 
+    from barks_reader.main_index_screen import MainIndexScreen
     from barks_reader.reader_ui_classes import ReaderTreeView
+    from barks_reader.speech_index_screen import SpeechIndexScreen
     from barks_reader.tree_view_screen import TreeViewScreen
     from barks_reader.view_state_manager import ViewStateManager
 
@@ -147,6 +150,8 @@ class TreeViewManager:
         background_views: BackgroundViews,
         view_state_manager: ViewStateManager,
         tree_view_screen: TreeViewScreen,
+        main_index_screen: MainIndexScreen,
+        speech_index_screen: SpeechIndexScreen,
         update_title_func: UpdateTitleCallable,
         read_article_func: ReadArticleCallable,
         read_intro_compleat_barks_reader_func: ReadIntroCompleatBarksReaderCallable,
@@ -156,6 +161,8 @@ class TreeViewManager:
         self._background_views = background_views
         self._view_state_manager = view_state_manager
         self._tree_view_screen = tree_view_screen
+        self._main_index_screen = main_index_screen
+        self._speech_index_screen = speech_index_screen
 
         self._tree_view_screen.ids.reader_tree_view.bind(on_node_expand=self.on_node_expanded)
         self._tree_view_screen.ids.reader_tree_view.bind(on_node_collapse=self.on_node_collapsed)
@@ -203,7 +210,7 @@ class TreeViewManager:
         self.set_view_state_for_node(node)
 
     def set_view_state_for_node(self, node: ButtonTreeViewNode) -> None:
-        new_view_state, view_state_params = self._get_view_state_from_node(node)
+        new_view_state, view_state_params = self.get_view_state_from_node(node)
         if new_view_state is None:
             msg = f"No view state mapping found for node: '{node.text}' ({type(node)})"
             raise RuntimeError(msg)
@@ -369,9 +376,15 @@ class TreeViewManager:
         logger.info(f"Article node pressed: Reading '{article_title.name}'.")
         self._read_article_func(article_title, view_state)
 
+    def on_main_index_node_created(self, main_index_node: MainTreeViewNode) -> None:
+        self._main_index_screen.treeview_index_node = main_index_node
+
     def on_main_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
         logger.info("Main index node pressed.")
         self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_MAIN_NODE)
+
+    def on_speech_index_node_created(self, speech_index_node: MainTreeViewNode) -> None:
+        self._speech_index_screen.treeview_index_node = speech_index_node
 
     def on_speech_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
         logger.info("Speech index node pressed.")
@@ -483,7 +496,7 @@ class TreeViewManager:
             )
 
     @staticmethod
-    def _get_view_state_from_node(
+    def get_view_state_from_node(
         node: ButtonTreeViewNode,
     ) -> tuple[ViewStates | None, dict[str, str | TagGroups | Tags]]:
         """Determine the view state and parameters from a tree view node."""

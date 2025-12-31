@@ -20,7 +20,7 @@ from barks_reader.reader_settings import (
     SHOW_TOP_VIEW_TITLE_INFO,
 )
 from barks_reader.reader_tree_view_utils import find_node_by_path, find_tree_view_node
-from barks_reader.reader_ui_classes import ARROW_WIDTH
+from barks_reader.reader_ui_classes import ARROW_WIDTH, BaseTreeViewNode
 from barks_reader.settings_notifier import settings_notifier
 
 if TYPE_CHECKING:
@@ -59,7 +59,7 @@ class TreeViewScreen(BoxLayout):
     def set_title(self, title: Titles) -> None:
         self.current_title_str = "" if not title else BARKS_TITLES[title]
 
-    def get_selected_node(self) -> TreeViewNode:
+    def get_selected_node(self) -> BaseTreeViewNode:
         return self.ids.reader_tree_view.selected_node
 
     def find_node_by_path(self, path_from_root: list[str]) -> TreeViewNode | None:

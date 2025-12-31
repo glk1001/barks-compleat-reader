@@ -383,7 +383,6 @@ class BackgroundViews:
                 # TODO: Fix this
                 self._set_top_view_image_for_appendix()
             case ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE:
-                # TODO: Fix this
                 self._set_top_view_image_for_appendix_censorship_fixes()
             case ViewStates.ON_INDEX_NODE:
                 self._set_top_view_image_for_index()

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import TYPE_CHECKING, Any, ClassVar, override
 
 from kivy.app import App
 from kivy.clock import Clock
@@ -134,7 +134,13 @@ class TitlePageImage(ButtonBehavior, Image):
     TITLE_IMAGE_Y_FRAC_OF_PARENT = 0.95
 
 
-class BaseSearchBoxTreeViewNode(FloatLayout, TreeViewNode):
+class BaseTreeViewNode(TreeViewNode):
+    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+        super().__init__(**kwargs)
+        self.saved_state: dict[str, Any] = {}
+
+
+class BaseSearchBoxTreeViewNode(FloatLayout, BaseTreeViewNode):
     """Base class for search boxes in the TreeView."""
 
     @staticmethod
@@ -316,7 +322,7 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         #     unique_extend(title_list, self.title_search.get_titles_containing(value))
 
 
-class ButtonTreeViewNode(Button, TreeViewNode):
+class ButtonTreeViewNode(Button, BaseTreeViewNode):
     TEXT_COLOR = TREE_VIEW_NODE_TEXT_COLOR
     SELECTED_COLOR = TREE_VIEW_NODE_SELECTED_COLOR
     BACKGROUND_COLOR = TREE_VIEW_NODE_BACKGROUND_COLOR
@@ -388,7 +394,7 @@ class UsYearRangeTreeViewNode(YearRangeTreeViewNode):
     NODE_HEIGHT = dp(30)
 
 
-class TitleTreeViewNode(BoxLayout, TreeViewNode):
+class TitleTreeViewNode(BoxLayout, BaseTreeViewNode):
     TEXT_COLOR = TREE_VIEW_NODE_TEXT_COLOR
     SELECTED_COLOR = TREE_VIEW_NODE_SELECTED_COLOR
     BACKGROUND_COLOR = TREE_VIEW_NODE_BACKGROUND_COLOR

@@ -441,18 +441,21 @@ class ReaderTreeBuilder:
     def _add_intro_node(self, tree: ReaderTreeView) -> None:
         intro_node = self._create_and_add_simple_node(tree, INTRO_NODE_TEXT)
 
-        self._create_and_add_simple_node(
+        child_node = self._create_and_add_simple_node(
             tree,
             INTRO_COMPLEAT_BARKS_READER_TEXT,
             parent_node=intro_node,
             on_press_handler=self._tree_view_manager.on_intro_compleat_barks_reader_pressed,
         )
-        self._create_and_add_simple_node(
+        child_node.saved_state["open"] = False
+
+        child_node = self._create_and_add_simple_node(
             tree,
             INTRO_DON_AULT_FANTA_INTRO_TEXT,
             parent_node=intro_node,
             on_press_handler=self._tree_view_manager.on_article_node_pressed,
         )
+        child_node.saved_state["open"] = False
 
     def _add_the_stories_node(self, tree: ReaderTreeView) -> MainTreeViewNode:
         return self._create_and_add_simple_node(tree, THE_STORIES_NODE_TEXT)
@@ -466,52 +469,64 @@ class ReaderTreeBuilder:
     def _add_appendix_node(self, tree: ReaderTreeView) -> None:
         appendix_node = self._create_and_add_simple_node(tree, APPENDIX_NODE_TEXT)
 
-        self._create_and_add_simple_node(
+        child_node = self._create_and_add_simple_node(
             tree,
             APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT,
             parent_node=appendix_node,
             on_press_handler=self._tree_view_manager.on_article_node_pressed,
         )
-        self._create_and_add_simple_node(
+        child_node.saved_state["open"] = False
+
+        child_node = self._create_and_add_simple_node(
             tree,
             APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
             parent_node=appendix_node,
             on_press_handler=self._tree_view_manager.on_article_node_pressed,
         )
-        self._create_and_add_simple_node(
+        child_node.saved_state["open"] = False
+
+        child_node = self._create_and_add_simple_node(
             tree,
             APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_TEXT,
             parent_node=appendix_node,
             on_press_handler=self._tree_view_manager.on_article_node_pressed,
         )
-        self._create_and_add_simple_node(
+        child_node.saved_state["open"] = False
+
+        child_node = self._create_and_add_simple_node(
             tree,
             APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_TEXT,
             parent_node=appendix_node,
             on_press_handler=self._tree_view_manager.on_article_node_pressed,
         )
-        self._create_and_add_simple_node(
+        child_node.saved_state["open"] = False
+
+        child_node = self._create_and_add_simple_node(
             tree,
             APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
             parent_node=appendix_node,
             on_press_handler=self._tree_view_manager.on_article_node_pressed,
         )
+        child_node.saved_state["open"] = False
 
     def _add_index_node(self, tree: ReaderTreeView) -> None:
         index_node = self._create_and_add_simple_node(tree, INDEX_NODE_TEXT)
 
-        self._create_and_add_simple_node(
+        child_node = self._create_and_add_simple_node(
             tree,
             INDEX_MAIN_TEXT,
             parent_node=index_node,
             on_press_handler=self._tree_view_manager.on_main_index_node_pressed,
         )
-        self._create_and_add_simple_node(
+        self._tree_view_manager.on_main_index_node_created(child_node)
+
+        child_node = self._create_and_add_simple_node(
             tree,
             INDEX_SPEECH_TEXT,
             parent_node=index_node,
             on_press_handler=self._tree_view_manager.on_speech_index_node_pressed,
         )
+        self._tree_view_manager.on_speech_index_node_created(child_node)
 
     def _add_chrono_year_range_node(
         self, tree: ReaderTreeView, year_range: tuple[int, int], parent_node: ButtonTreeViewNode

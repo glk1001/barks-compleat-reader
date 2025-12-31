@@ -54,6 +54,8 @@ INDEX_TERMS_HIGHLIGHT_COLOR = "#1A6ACB"
 INDEX_TERMS_HIGHLIGHT_START_TAG = f"[b][color={INDEX_TERMS_HIGHLIGHT_COLOR}]"
 INDEX_TERMS_HIGHLIGHT_END_TAG = "[/color][/b]"
 
+SAVED_NODE_STATE_PREFIX_KEY = "prefix"
+
 
 @dataclass
 class IndexItem:
@@ -125,12 +127,21 @@ class SpeechIndexScreen(IndexScreen):
             self._prefix_buttons[prefix] = button
             alphabet_top_split_layout.add_widget(button)
 
-        first_prefix = next(iter(first_letter_split_terms))
+        # Which 'prefix' to show first.
+        if SAVED_NODE_STATE_PREFIX_KEY not in self.treeview_index_node.saved_state:
+            first_prefix = next(iter(first_letter_split_terms))
+        else:
+            first_prefix = self.treeview_index_node.saved_state[SAVED_NODE_STATE_PREFIX_KEY]
+            if first_prefix not in first_letter_split_terms:
+                logger.error(f'Invalid restored prefix: "{first_prefix}".')
+                first_prefix = next(iter(first_letter_split_terms))
+
         self.on_letter_prefix_press(self._prefix_buttons[first_prefix])
 
     def on_letter_prefix_press(self, button: Button) -> None:
         prefix = button.text
         logger.debug(f"Pressed prefix button: '{prefix}.")
+        self.treeview_index_node.saved_state[SAVED_NODE_STATE_PREFIX_KEY] = prefix
 
         if self._selected_prefix_button and self._selected_prefix_button != button:
             self._selected_prefix_button.is_selected = False

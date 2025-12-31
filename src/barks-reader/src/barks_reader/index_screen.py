@@ -15,7 +15,7 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.popup import Popup
 from loguru import logger
 
-from barks_reader.reader_ui_classes import ARROW_WIDTH
+from barks_reader.reader_ui_classes import ARROW_WIDTH, MainTreeViewNode
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -27,6 +27,8 @@ if TYPE_CHECKING:
 
 MAX_TITLE_LEN = 45
 INDEX_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
+
+SAVED_NODE_STATE_FIRST_LETTER_KEY = "first_letter"
 
 
 class IndexMenuButton(Button):
@@ -96,6 +98,8 @@ class IndexScreen(FloatLayout):
         self._current_image_info: ImageInfo | None = None
         self.on_goto_background_title_func: Callable[[ImageInfo], None] | None = None
 
+        self.treeview_index_node: MainTreeViewNode | None = None
+
         self._alphabet_buttons: dict[str, Button] = {}
         self._open_tag_button: Button | None = None
         self._open_tag_widgets: list[Widget] = []
@@ -146,6 +150,7 @@ class IndexScreen(FloatLayout):
 
         first_letter = button.text
         logger.debug(f"Letter '{first_letter}' pressed.")
+        self.treeview_index_node.saved_state[SAVED_NODE_STATE_FIRST_LETTER_KEY] = first_letter
 
         # Let the .kv file handle the color changes by setting the property.
         if self._selected_letter_button and self._selected_letter_button != button:
@@ -201,8 +206,15 @@ class IndexScreen(FloatLayout):
             # The index has already been shown, just change the index image.
             self._new_index_image()
         else:
-            # The index is being shown for the first time so default to 'A'.
-            self.on_letter_press(self._alphabet_buttons["A"])
+            # Which 'first_letter' to show first.
+            if SAVED_NODE_STATE_FIRST_LETTER_KEY not in self.treeview_index_node.saved_state:
+                first_letter = "A"
+            else:
+                first_letter = self.treeview_index_node.saved_state[
+                    SAVED_NODE_STATE_FIRST_LETTER_KEY
+                ]
+
+            self.on_letter_press(self._alphabet_buttons[first_letter])
 
     def _get_indexable_title(self, title: Titles) -> str:
         return self._get_indexable_title_from_str(BARKS_TITLES[title])

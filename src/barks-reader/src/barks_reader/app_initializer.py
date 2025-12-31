@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from comic_utils.timing import Timing
 from kivy.clock import Clock
@@ -15,6 +15,7 @@ from barks_reader.fantagraphics_volumes import (
 from barks_reader.reader_settings import UNSET_FANTA_DIR_MARKER
 from barks_reader.reader_tree_view_utils import get_tree_view_node_id_text
 from barks_reader.reader_ui_classes import (
+    BaseTreeViewNode,
     ButtonTreeViewNode,
     TitleTreeViewNode,
 )
@@ -25,7 +26,6 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.barks_tags import TagGroups, Tags
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
-    from kivy.uix.treeview import TreeViewNode
     from kivy.uix.widget import Widget
 
     from barks_reader.comic_reader_manager import ComicReaderManager
@@ -111,31 +111,42 @@ class AppInitializer:
                 return
 
             if self._reader_settings.goto_saved_node_on_start:
-                saved_node_path = self._json_settings_manager.get_last_selected_node_path()
+                saved_node_path, saved_node_state = (
+                    self._json_settings_manager.get_last_selected_node_path()
+                )
                 if saved_node_path:
-                    self._goto_saved_node(saved_node_path)
+                    self._goto_saved_node(saved_node_path, saved_node_state)
         finally:
             logger.info(f"Time of post tree setup: {timing.get_elapsed_time_with_unit()}.")
 
-    def _goto_saved_node(self, saved_node_path: list[str]) -> None:
+    def _goto_saved_node(
+        self, saved_node_path: list[str], saved_node_state: dict[str, Any]
+    ) -> None:
         logger.debug(f'Looking for saved node "{saved_node_path}"...')
         saved_node = self._tree_view_screen.find_node_by_path(saved_node_path)
         if saved_node:
+            assert isinstance(saved_node, BaseTreeViewNode)
+            saved_node.saved_state = saved_node_state
             self._setup_and_select_saved_node(saved_node)
 
-    def _setup_and_select_saved_node(self, saved_node: TreeViewNode) -> None:
+    def _setup_and_select_saved_node(self, saved_node: BaseTreeViewNode) -> None:
         logger.debug(
             f'Selecting and setting up start node "{get_tree_view_node_id_text(saved_node)}".',
         )
 
         self._tree_view_screen.select_node(saved_node)
 
-        if isinstance(saved_node, ButtonTreeViewNode):
-            saved_node.trigger_action()
-        elif isinstance(saved_node, TitleTreeViewNode):
+        if isinstance(saved_node, TitleTreeViewNode):
             fanta_info = saved_node.ids.num_label.parent.fanta_info
             self._set_next_title_func(fanta_info, None)
             self._tree_view_manager.scroll_to_node(saved_node)
+        elif isinstance(saved_node, ButtonTreeViewNode):
+            if saved_node.saved_state.get("open", True):
+                saved_node.trigger_action()
+            else:
+                saved_view_state, _ = self._tree_view_manager.get_view_state_from_node(saved_node)
+                if saved_view_state is not None:
+                    self._view_state_manager.update_background_views(saved_view_state)
 
     def is_fanta_volumes_state_ok(self) -> tuple[bool, str]:
         if self._fanta_volumes_state not in _BAD_FANTA_VOLUMES_STATE:

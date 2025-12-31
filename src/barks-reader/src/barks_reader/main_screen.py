@@ -41,7 +41,7 @@ from barks_reader.reader_consts_and_types import (
 from barks_reader.reader_formatter import get_action_bar_title
 from barks_reader.reader_screens import ReaderScreen
 from barks_reader.reader_tree_builder import ReaderTreeBuilder
-from barks_reader.reader_tree_view_utils import find_tree_view_title_node, get_tree_view_node_path
+from barks_reader.reader_tree_view_utils import find_tree_view_title_node
 from barks_reader.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
     ButtonTreeViewNode,
@@ -190,6 +190,8 @@ class MainScreen(ReaderScreen):
             background_views,
             self._view_state_manager,
             self._tree_view_screen,
+            self._main_index_screen,
+            self._speech_index_screen,
             self._update_title_from_tree_view,
             self._read_article_as_comic_book,
             self._read_intro_compleat_barks_reader,
@@ -283,12 +285,12 @@ class MainScreen(ReaderScreen):
         self._exit_fullscreen()
 
         if not self._tree_view_screen.get_selected_node():
-            self._json_settings_manager.save_last_selected_node_path([])
+            self._json_settings_manager.save_last_selected_node_path(None)
             logger.debug("Settings: No selected node to save.")
         else:
-            selected_node_path = get_tree_view_node_path(self._tree_view_screen.get_selected_node())
-            self._json_settings_manager.save_last_selected_node_path(selected_node_path)
-            logger.debug(f'Settings: Saved last selected node "{selected_node_path}".')
+            self._json_settings_manager.save_last_selected_node_path(
+                self._tree_view_screen.get_selected_node()
+            )
 
         # This is not a bad place to give a warning if there is stale cpi data.
         # It's not easy to do near the start of the app because of cpi module load times.
