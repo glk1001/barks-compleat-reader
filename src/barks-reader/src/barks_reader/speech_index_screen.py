@@ -10,7 +10,7 @@ from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_fantagraphics.whoosh_search_engine import SearchEngine, TitleInfo
 from comic_utils.timing import Timing
 from kivy.clock import Clock
-from kivy.metrics import dp, sp
+from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     ObjectProperty,
@@ -25,7 +25,7 @@ from barks_reader.index_screen import (
     IndexMenuButton,
     IndexScreen,
     SpeechBubblesPopup,
-    TitledTextInput,
+    TextBoxWithTitleAndBorder,
     TitleItemButton,
     TitleShowSpeechButton,
 )
@@ -50,7 +50,7 @@ if TYPE_CHECKING:
 INDEX_ITEM_ROW_HEIGHT = dp(21)
 INDEX_IMAGE_CHANGE_SECONDS = 15
 
-INDEX_TERMS_HIGHLIGHT_COLOR = "#1A6ACB"
+INDEX_TERMS_HIGHLIGHT_COLOR = "#1A6ABB"
 INDEX_TERMS_HIGHLIGHT_START_TAG = f"[b][color={INDEX_TERMS_HIGHLIGHT_COLOR}]"
 INDEX_TERMS_HIGHLIGHT_END_TAG = "[/color][/b]"
 
@@ -102,13 +102,20 @@ class SpeechIndexScreen(IndexScreen):
         self._populate_alphabet_menu()
 
         self._speech_bubble_browser_popup = SpeechBubblesPopup(
-            title_size=sp(18),
+            title_size=self._font_manager.speech_bubble_popup_title_font_size,
+            title_font=self._font_manager.speech_bubble_popup_title_font_name,
             title_align="left",
             title_color=[0, 1, 1, 1],
             size_hint=(0.7, 0.4),
             pos_hint={"x": 0.06, "y": 0.06},
         )
         self._speech_bubble_browser_popup.children[0].children[-1].markup = True
+
+    def _find_words(self, index_terms: str) -> TitleDict:
+        if "0" <= index_terms[0] <= "9":
+            return self._whoosh_indexer.find_unstemmed_words(index_terms)
+
+        return self._whoosh_indexer.find_all_words(index_terms)
 
     def _populate_index_for_letter(self, first_letter: str) -> None:
         self._populate_top_alphabet_split_menu(first_letter)
@@ -184,7 +191,7 @@ class SpeechIndexScreen(IndexScreen):
         if rand_term in self._found_words_cache:
             found = self._found_words_cache[rand_term]
         else:
-            found = self._whoosh_indexer.find_all_words(rand_term)
+            found = self._find_words(rand_term)
             self._found_words_cache[rand_term] = found
 
         found_titles = [ALL_FANTA_COMIC_BOOK_INFO[title_str] for title_str in found]
@@ -215,9 +222,9 @@ class SpeechIndexScreen(IndexScreen):
         """Create a configured IndexItemButton."""
         button = IndexItemButton(
             text=item.display_text,
-            bold=type(item.id) is not Titles,
+            font_name=self._font_manager.speech_index_item_font_name,
+            bold=False,
             height=INDEX_ITEM_ROW_HEIGHT,
-            font_name=self._font_manager.speech_index_items_font_name,
         )
         button.bind(
             on_release=lambda btn, bound_item=item: self._on_index_item_press(btn, bound_item)
@@ -226,7 +233,9 @@ class SpeechIndexScreen(IndexScreen):
 
     def _get_no_items_button(self, letter: str) -> IndexItemButton:
         return IndexItemButton(
-            text=f"*** No index items for '{letter}' ***", color=self.index_theme.MENU_TEXT
+            text=f"*** No index items for '{letter}' ***",
+            color=self.index_theme.MENU_TEXT,
+            font_name=self._font_manager.speech_index_item_font_name,
         )
 
     def _add_sub_items(self, _dt: float) -> None:
@@ -246,7 +255,7 @@ class SpeechIndexScreen(IndexScreen):
         found = (
             self._found_words_cache[index_terms]
             if index_terms in self._found_words_cache
-            else self._whoosh_indexer.find_all_words(index_terms)
+            else self._find_words(index_terms)
         )
         sub_items_to_display = []
         for comic_title, title_speech_info in found.items():
@@ -439,8 +448,8 @@ class SpeechIndexScreen(IndexScreen):
             text = mark_phrase_in_text(
                 index_terms, text, INDEX_TERMS_HIGHLIGHT_START_TAG, INDEX_TERMS_HIGHLIGHT_END_TAG
             )
-            text_box = TitledTextInput(title=page_text, content=text.strip())
-            text_box.ids.speech_bubbles_id.bind(
+            text_box = TextBoxWithTitleAndBorder(title=page_text, content=text.strip())
+            text_box.ids.the_text_id.bind(
                 on_release=lambda _btn,
                 bound_title=title_str,
                 bound_page=page_info.comic_page: self._handle_title_from_bubble_press(

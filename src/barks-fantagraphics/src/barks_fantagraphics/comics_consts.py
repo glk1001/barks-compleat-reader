@@ -44,11 +44,12 @@ INTERNAL_DATA_DIR = Path(__file__).parent.parent.parent / "data"
 assert INTERNAL_DATA_DIR.is_dir(), f'INTERNAL_DATA_DIR "{INTERNAL_DATA_DIR}" does not exist.'
 
 FONT_DIR = INTERNAL_DATA_DIR / "fonts"
-CARL_BARKS_FONT = FONT_DIR / "Carl Barks Script.ttf"
-FREE_SANS_FONT = FONT_DIR / "FreeSans.ttf"
-INTRO_TITLE_DEFAULT_FONT_FILE = CARL_BARKS_FONT
+CARL_BARKS_FONT_FILE = FONT_DIR / "Carl Barks Script.ttf"
+INTRO_TITLE_DEFAULT_FONT_FILE = CARL_BARKS_FONT_FILE
 INTRO_TEXT_FONT_FILE = str(FONT_DIR / "Verdana Italic.ttf")
 PAGE_NUM_FONT_FILE = str(FONT_DIR / "verdana.ttf")
+
+ROBOTO_FONT = "Roboto"  # Kivy's default font
 
 
 class PageType(Enum):

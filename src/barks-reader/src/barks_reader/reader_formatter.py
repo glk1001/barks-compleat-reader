@@ -9,7 +9,7 @@ from barks_fantagraphics.barks_extra_info import BARKS_EXTRA_INFO
 from barks_fantagraphics.barks_payments import BARKS_PAYMENTS, PaymentInfo
 from barks_fantagraphics.barks_titles import ComicBookInfo, Titles
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
-from barks_fantagraphics.comics_consts import CARL_BARKS_FONT
+from barks_fantagraphics.comics_consts import CARL_BARKS_FONT_FILE
 from barks_fantagraphics.comics_utils import (
     get_formatted_first_published_str,
     get_long_formatted_submitted_date,
@@ -62,7 +62,7 @@ def text_includes_num_titles(text: str) -> bool:
 
 
 def get_action_bar_title(font_manager: FontManager, title: str) -> str:
-    return f"[font={CARL_BARKS_FONT}][size={int(font_manager.app_title_font_size)}]{title}"
+    return f"[font={CARL_BARKS_FONT_FILE}][size={int(font_manager.app_title_font_size)}]{title}"
 
 
 def get_formatted_color(color: Color) -> str:

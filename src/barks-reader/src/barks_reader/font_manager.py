@@ -1,13 +1,26 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 
-from barks_fantagraphics.comics_consts import CARL_BARKS_FONT, FREE_SANS_FONT
+from barks_fantagraphics.comics_consts import CARL_BARKS_FONT_FILE, ROBOTO_FONT
 from kivy.event import EventDispatcher
 from kivy.metrics import sp
 from kivy.properties import NumericProperty  # ty: ignore[unresolved-import]
 from loguru import logger
 
 HI_RES_WINDOW_HEIGHT_CUTOFF = 1090
+
+""" How to setup a custom font.
+from kivy.core.text import LabelBase
+OPEN_SANS = "OpenSans"
+
+LabelBase.register(
+    name=OPEN_SANS,
+    fn_regular=str(FONT_DIR / "OpenSans-Medium.ttf"),
+    fn_bold=str(FONT_DIR / "OpenSans-Bold.ttf"),
+    fn_italic=str(FONT_DIR / "OpenSans-MediumItalic.ttf"),
+    fn_bolditalic=str(FONT_DIR / "OpenSans-BoldItalic.ttf"),
+)
+"""
 
 
 class _FontGroup(Enum):
@@ -26,7 +39,8 @@ class FontTheme:
     title_extra_info: float
     index_menu: float
     index_item: float
-    index_title: float
+    index_title_item: float
+    speech_bubble_popup_title: float
     speech_bubble_text: float
     year_range: float
     message_title: float
@@ -49,8 +63,9 @@ LOW_RES_FONTS = FontTheme(
     title_extra_info=sp(14),
     index_menu=sp(13),
     index_item=sp(12),
-    index_title=sp(12),
-    speech_bubble_text=sp(12),
+    index_title_item=sp(12),
+    speech_bubble_popup_title=sp(17),
+    speech_bubble_text=sp(14),
     year_range=sp(14),
     message_title=sp(16),
     checkbox=sp(14),
@@ -71,8 +86,9 @@ HI_RES_FONTS = FontTheme(
     title_extra_info=sp(18),
     index_menu=sp(17),
     index_item=sp(16),
-    index_title=sp(16),
-    speech_bubble_text=sp(14),
+    index_title_item=sp(16),
+    speech_bubble_popup_title=sp(20),
+    speech_bubble_text=sp(16),
     year_range=sp(18),
     message_title=sp(20),
     checkbox=sp(19),
@@ -95,7 +111,8 @@ class FontManager(EventDispatcher):
     title_extra_info_font_size = NumericProperty()
     index_menu_font_size = NumericProperty()
     index_item_font_size = NumericProperty()
-    index_title_font_size = NumericProperty()
+    index_title_item_font_size = NumericProperty()
+    speech_bubble_popup_title_font_size = NumericProperty()
     speech_bubble_text_font_size = NumericProperty()
     check_box_font_size = NumericProperty()
     error_main_view_font_size = NumericProperty()
@@ -119,20 +136,22 @@ class FontManager(EventDispatcher):
 
     message_title_size = NumericProperty()
 
-    main_title_font_name = str(CARL_BARKS_FONT)
+    main_title_font_name = str(CARL_BARKS_FONT_FILE)
     message_title_font_name = main_title_font_name
-    speech_bubble_text_font_name = main_title_font_name
+    main_index_item_font_name = ROBOTO_FONT
+    speech_index_item_font_name = ROBOTO_FONT
+    speech_bubble_text_font_name = ROBOTO_FONT
+    speech_bubble_popup_title_font_name = ROBOTO_FONT
+    index_title_item_font_name = ROBOTO_FONT
 
     def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         super().__init__(*args, **kwargs)
         self.app_title_font_size = 0
 
-        self.about_box_title_font_name = str(CARL_BARKS_FONT)
+        self.about_box_title_font_name = str(CARL_BARKS_FONT_FILE)
         self.about_box_title_font_size = 0
         self.about_box_version_font_size = 0
         self.about_box_fine_print_font_size = 0
-
-        self.speech_index_items_font_name = str(FREE_SANS_FONT)
 
         self._previous_font_group: _FontGroup = _FontGroup.NOT_SET
 
@@ -170,7 +189,8 @@ class FontManager(EventDispatcher):
         self.title_extra_info_font_size = theme.title_extra_info
         self.index_menu_font_size = theme.index_menu
         self.index_item_font_size = theme.index_item
-        self.index_title_font_size = theme.index_title
+        self.index_title_item_font_size = theme.index_title_item
+        self.speech_bubble_popup_title_font_size = theme.speech_bubble_popup_title
         self.speech_bubble_text_font_size = theme.speech_bubble_text
         self.check_box_font_size = theme.checkbox
         self.error_main_view_font_size = theme.error_main_view

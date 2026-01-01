@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from kivy.core.image import Texture
     from kivy.uix.button import Button
 
+    from barks_reader.font_manager import FontManager
     from barks_reader.reader_settings import ReaderSettings
 
 INDEX_ITEM_ROW_HEIGHT = dp(25)
@@ -85,10 +86,16 @@ class MainIndexScreen(IndexScreen):
     image_texture = ObjectProperty()
     current_title_str = StringProperty()
 
-    def __init__(self, reader_settings: ReaderSettings, **kwargs) -> None:  # noqa: ANN003
+    def __init__(
+        self,
+        reader_settings: ReaderSettings,
+        font_manager: FontManager,
+        **kwargs,  # noqa: ANN003
+    ) -> None:
         # Call the parent constructor FIRST to ensure self.ids is populated.
         super().__init__(**kwargs)
 
+        self._font_manager = font_manager
         self._random_title_images = RandomTitleImages(reader_settings)
         self._image_loader = PanelImageLoader(reader_settings.file_paths.barks_panels_are_encrypted)
         self._index_image_change_event = None
@@ -232,6 +239,7 @@ class MainIndexScreen(IndexScreen):
         """Create a configured IndexItemButton."""
         button = IndexItemButton(
             text=item.display_text,
+            font_name=self._font_manager.main_index_item_font_name,
             bold=type(item.id) is not Titles,
             height=INDEX_ITEM_ROW_HEIGHT,
         )
@@ -242,7 +250,9 @@ class MainIndexScreen(IndexScreen):
 
     def _get_no_items_button(self, letter: str) -> IndexItemButton:
         return IndexItemButton(
-            text=f"*** No index items for '{letter}' ***", color=self.index_theme.MENU_TEXT
+            text=f"*** No index items for '{letter}' ***",
+            color=self.index_theme.MENU_TEXT,
+            font_name=self._font_manager.main_index_item_font_name,
         )
 
     def _add_sub_items(self, _dt: float) -> None:

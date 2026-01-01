@@ -38,7 +38,8 @@
     border: (0, 0, 0, 0)
     # Make the button's own background transparent, as we will draw our own.
     background_color: (0, 0, 0, 0)
-    font_size: fm.index_title_font_size
+    font_name: str(fm.index_title_item_font_name)
+    font_size: fm.index_title_item_font_size
     color: app.index_theme.TITLE_TEXT
     size_hint: 1, None
     height: app.index_theme.ROW_HEIGHT
@@ -82,15 +83,15 @@
             pos: self.pos
             size: self.size
 
-<TitledTextInput@BoxLayout>:
+<TextBoxWithTitleAndBorder@BoxLayout>:
     orientation: "vertical"
     padding: dp(10)
     spacing: dp(0)
     title: "Title Here"
     content: "Content Here"
     size_hint: None, None
-    width: speech_bubbles_id.width + speech_bubbles_id.padding[0]
-    height: title_id.height + speech_bubbles_id.height
+    width: the_text_id.width + the_text_id.padding[0]
+    height: title_id.height + the_text_id.height
 
     canvas.before:
         Color:
@@ -117,7 +118,7 @@
                 size: self.size
 
     Button:
-        id: speech_bubbles_id
+        id: the_text_id
         text: root.content
         font_name: fm.speech_bubble_text_font_name
         font_size: fm.speech_bubble_text_font_size

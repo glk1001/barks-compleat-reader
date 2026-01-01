@@ -53,8 +53,8 @@ class SpeechBubblesPopup(Popup):
     """A custom popup for showing speech bubbles, styled in the .kv file."""
 
 
-class TitledTextInput(BoxLayout):
-    """Text input box with title and rectangle border."""
+class TextBoxWithTitleAndBorder(BoxLayout):
+    """Text box with title and rectangle border."""
 
     def __init__(self, title: str, content: str, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
