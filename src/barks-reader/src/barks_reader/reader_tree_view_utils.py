@@ -1,36 +1,34 @@
-# ruff: noqa: TC006
-
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
-from barks_reader.reader_formatter import get_clean_text_without_extra
-from barks_reader.reader_ui_classes import (
-    ButtonTreeViewNode,
-    ReaderTreeView,
-    TagSearchBoxTreeViewNode,
-    TitleSearchBoxTreeViewNode,
-    TitleTreeViewNode,
-)
-
 if TYPE_CHECKING:
     from barks_fantagraphics.barks_titles import Titles
-    from kivy.uix.treeview import TreeViewNode
+
+    from barks_reader.reader_ui_classes import (
+        BaseTreeViewNode,
+        ReaderTreeView,
+    )
 
 
-def get_tree_view_node_path(node: TreeViewNode) -> list[str]:
-    node_path = [get_tree_view_node_id_text(node)]
+def get_tree_view_node_path(node: BaseTreeViewNode) -> list[str]:
+    def get_node_name(n: BaseTreeViewNode) -> str:
+        if n.level == 0:
+            return "root"
+        return n.get_name()
+
+    node_path = [node.get_name()]
     node = node.parent_node
     while node:
-        node_path.append(get_tree_view_node_id_text(node))
+        node_path.append(get_node_name(node))
         node = node.parent_node
 
     return node_path
 
 
-def find_node_by_path(tree: ReaderTreeView, path_from_root: list[str]) -> TreeViewNode | None:
+def find_node_by_path(tree: ReaderTreeView, path_from_root: list[str]) -> BaseTreeViewNode | None:
     """Find a node in a TreeView by its path from the root.
 
     Expands parent nodes along the way to make the target node visible.
@@ -46,7 +44,7 @@ def find_node_by_path(tree: ReaderTreeView, path_from_root: list[str]) -> TreeVi
     for i, node_text in enumerate(node_path):
         node_in_path = None
         for node in current_nodes:
-            if get_tree_view_node_id_text(node) == node_text:
+            if node.get_name() == node_text:
                 node_in_path = node
                 break
 
@@ -70,26 +68,12 @@ def find_node_by_path(tree: ReaderTreeView, path_from_root: list[str]) -> TreeVi
     return found_node
 
 
-# noinspection PyUnresolvedReferences
-def get_tree_view_node_id_text(node: TreeViewNode) -> str:
-    if type(node) is TitleTreeViewNode:
-        return node.get_title().name
-    if type(node) is TitleSearchBoxTreeViewNode:
-        return node.name
-    if type(node) is TagSearchBoxTreeViewNode:
-        return node.name
-
-    return get_clean_text_without_extra(cast(ButtonTreeViewNode, node).text)
-
-
-def find_tree_view_node(start_node: TreeViewNode, node_text: str) -> TreeViewNode | None:
+def find_tree_view_node(start_node: BaseTreeViewNode, node_text: str) -> BaseTreeViewNode | None:
     nodes_to_visit = start_node.nodes.copy()
 
     while nodes_to_visit:
         current_node = nodes_to_visit.pop()
-        if not hasattr(current_node, "text"):
-            continue
-        current_node_text = get_clean_text_without_extra(current_node.text)
+        current_node_text = current_node.get_name()
         if current_node_text == node_text:
             return current_node
         nodes_to_visit.extend(current_node.nodes)
@@ -98,8 +82,8 @@ def find_tree_view_node(start_node: TreeViewNode, node_text: str) -> TreeViewNod
 
 
 def find_tree_view_title_node(
-    start_node: TreeViewNode, target_title: Titles
-) -> TreeViewNode | None:
+    start_node: BaseTreeViewNode, target_title: Titles
+) -> BaseTreeViewNode | None:
     nodes_to_visit = start_node.nodes.copy()
 
     while nodes_to_visit:

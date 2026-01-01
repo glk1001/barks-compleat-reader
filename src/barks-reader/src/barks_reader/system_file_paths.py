@@ -17,6 +17,7 @@ class SystemFilePaths:
 
         self._action_bar_icons_dir: Path | None = None
         self._close_icon_path: Path | None = None
+        self._go_back_icon_path: Path | None = None
         self._collapse_icon_path: Path | None = None
         self._refresh_arrow_icon_path: Path | None = None
         self._settings_icon_path: Path | None = None
@@ -54,6 +55,7 @@ class SystemFilePaths:
 
         self._action_bar_icons_dir = self._reader_icon_files_dir / "ActionBar Icons"
         self._close_icon_path = self._action_bar_icons_dir / "icon-close.png"
+        self._go_back_icon_path = self._action_bar_icons_dir / "icon-back-arrow.png"
         self._collapse_icon_path = self._action_bar_icons_dir / "icon-collapse.png"
         self._refresh_arrow_icon_path = self._action_bar_icons_dir / "icon-refresh-arrow.png"
         self._settings_icon_path = self._action_bar_icons_dir / "icon-settings.png"
@@ -110,6 +112,7 @@ class SystemFilePaths:
             self._goto_start_icon_path,
             self._goto_end_icon_path,
             self._hamburger_menu_icon_path,
+            self._go_back_icon_path,
             self._speech_bubble_icon_path,
             self._up_arrow_path,
             self._down_arrow_path,
@@ -183,6 +186,10 @@ class SystemFilePaths:
     def get_barks_reader_close_icon_file(self) -> Path:
         assert self._close_icon_path
         return self._close_icon_path
+
+    def get_barks_reader_go_back_icon_file(self) -> Path:
+        assert self._go_back_icon_path
+        return self._go_back_icon_path
 
     def get_barks_reader_collapse_icon_file(self) -> Path:
         assert self._collapse_icon_path

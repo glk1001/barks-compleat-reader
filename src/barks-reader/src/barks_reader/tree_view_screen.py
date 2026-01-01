@@ -12,7 +12,6 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
     StringProperty,
 )
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.treeview import TreeViewNode
 
 from barks_reader.random_title_images import FIT_MODE_COVER
 from barks_reader.reader_settings import (
@@ -62,7 +61,7 @@ class TreeViewScreen(BoxLayout):
     def get_selected_node(self) -> BaseTreeViewNode:
         return self.ids.reader_tree_view.selected_node
 
-    def find_node_by_path(self, path_from_root: list[str]) -> TreeViewNode | None:
+    def find_node_by_path(self, path_from_root: list[str]) -> BaseTreeViewNode | None:
         return find_node_by_path(self.ids.reader_tree_view, list(reversed(path_from_root)))
 
     def goto_node(self, node_text: str) -> None:
@@ -72,17 +71,17 @@ class TreeViewScreen(BoxLayout):
             self._open_all_parent_nodes(node)
             self._goto_node(node)
 
-    def select_node(self, node: TreeViewNode) -> None:
+    def select_node(self, node: BaseTreeViewNode) -> None:
         self.ids.reader_tree_view.select_node(node)
 
-    def scroll_to_node(self, node: TreeViewNode) -> None:
+    def scroll_to_node(self, node: BaseTreeViewNode) -> None:
         self.ids.scroll_view.scroll_to(node, padding=50)
 
-    def open_all_parent_nodes(self, node: TreeViewNode) -> None:
+    def open_all_parent_nodes(self, node: BaseTreeViewNode) -> None:
         # Get all the parent nodes first, then open from top parent down to last child.
         parent_nodes = []
         parent_node = node
-        while parent_node and isinstance(parent_node, TreeViewNode):
+        while parent_node and isinstance(parent_node, BaseTreeViewNode):
             parent_nodes.append(parent_node)
             parent_node = parent_node.parent_node
 
@@ -98,7 +97,7 @@ class TreeViewScreen(BoxLayout):
                 self.ids.reader_tree_view.toggle_node(node)
                 self._close_open_nodes(node)
 
-    def _close_open_nodes(self, start_node: TreeViewNode) -> None:
+    def _close_open_nodes(self, start_node: BaseTreeViewNode) -> None:
         for node in start_node.nodes:
             if node.is_open:
                 self.ids.reader_tree_view.toggle_node(node)

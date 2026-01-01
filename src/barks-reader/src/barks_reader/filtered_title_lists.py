@@ -47,22 +47,27 @@ class FilteredTitleLists:
 
     def get_title_lists(self) -> dict[str, list[FantaComicBookInfo]]:
         def create_year_lamba(yr: int) -> Callable[[ComicBookInfo], bool]:
+            # noinspection PyUnresolvedReferences
             return lambda info: info.comic_book_info.submitted_year == yr
 
         def create_series_lamba(series_name: str) -> Callable[[ComicBookInfo], bool]:
+            # noinspection PyUnresolvedReferences
             return lambda info: info.series_name == series_name
 
         def create_cs_year_lamba(yr: int) -> Callable[[ComicBookInfo], bool]:
+            # noinspection PyUnresolvedReferences
             return lambda info: (info.series_name == SERIES_CS) and (
                 info.comic_book_info.submitted_year == yr
             )
 
         def create_us_year_lamba(yr: int) -> Callable[[ComicBookInfo], bool]:
+            # noinspection PyUnresolvedReferences
             return lambda info: (info.series_name == SERIES_USA) and (
                 info.comic_book_info.submitted_year == yr
             )
 
         def create_category_lamba(cat: TagCategories) -> Callable[[ComicBookInfo], bool]:
+            # noinspection PyUnresolvedReferences
             return lambda info: info.comic_book_info.title in BARKS_TAG_CATEGORIES_TITLES[cat]
 
         filters = {}

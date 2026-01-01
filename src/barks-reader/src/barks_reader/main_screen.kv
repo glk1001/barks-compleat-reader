@@ -170,6 +170,12 @@
                             on_press: root.toggle_screen_mode()
 
                         BarButton:
+                            text: 'Go Back'
+                            icon: str(sys_paths.get_barks_reader_go_back_icon_file())
+                            important: True
+                            on_release: root.on_action_bar_go_back()
+
+                        BarButton:
                             text: 'Collapse'
                             icon: str(sys_paths.get_barks_reader_collapse_icon_file())
                             important: True

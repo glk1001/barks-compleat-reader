@@ -325,6 +325,9 @@ class MainScreen(ReaderScreen):
 
         return True
 
+    def on_action_bar_go_back(self) -> None:
+        self._tree_view_manager.go_back_to_previous_node()
+
     def on_action_bar_collapse(self) -> None:
         self._tree_view_manager.disallow_view_state_change_on_collapse()
         try:

@@ -427,6 +427,7 @@ class ReaderFilePaths:
 
     def get_edited_version_if_possible(self, image_file: PanelPath) -> tuple[PanelPath, bool]:
         dir_path = image_file.parent
+        # noinspection LongLine
         edited_image_file = dir_path / EDITED_SUBDIR / (image_file.stem + self._edited_files_ext)  # ty: ignore[unsupported-operator]
         if edited_image_file.is_file():
             return edited_image_file, True

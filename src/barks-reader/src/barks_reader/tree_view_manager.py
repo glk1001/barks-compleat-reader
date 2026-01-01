@@ -48,6 +48,7 @@ from barks_reader.reader_consts_and_types import (
 )
 from barks_reader.reader_formatter import get_clean_text_without_extra
 from barks_reader.reader_ui_classes import (
+    BaseTreeViewNode,
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
     MainTreeViewNode,
@@ -173,7 +174,7 @@ class TreeViewManager:
         self._set_tag_goto_page_checkbox_func = set_tag_goto_page_checkbox_func
         self._set_next_title_func = set_next_title_func
 
-        self._last_open_node = None
+        self._last_open_node: BaseTreeViewNode | None = None
         self._allow_view_state_change_on_collapse = True
 
         assert self._update_title_func
@@ -182,15 +183,46 @@ class TreeViewManager:
         assert self._set_tag_goto_page_checkbox_func
         assert self._set_next_title_func
 
-    def goto_node(self, node: TreeViewNode, scroll_to: bool = False) -> None:
-        def show_node(n: TreeViewNode) -> None:
+    def setup_and_select_node(self, node: BaseTreeViewNode) -> None:
+        logger.debug(f'Selecting and setting up node "{node.get_name()}".')
+
+        self._tree_view_screen.deselect_and_close_open_nodes()
+        self._tree_view_screen.open_all_parent_nodes(node)
+        self._tree_view_screen.select_node(node)
+
+        if isinstance(node, TitleTreeViewNode):
+            fanta_info = node.ids.num_label.parent.fanta_info
+            self._set_next_title_func(fanta_info, None)
+            self.scroll_to_node(node)
+        elif isinstance(node, ButtonTreeViewNode):
+            if node.saved_state.get("open", True):
+                node.trigger_action()
+            else:
+                saved_view_state, _ = self.get_view_state_from_node(node)
+                if saved_view_state is not None:
+                    self._view_state_manager.update_background_views(saved_view_state)
+
+    def go_back_to_previous_node(self) -> None:
+        if not self._tree_view_screen.ids.reader_tree_view.previous_selected_node:
+            return
+
+        logger.info(
+            f"Going back to previous node"
+            f' "{self._tree_view_screen.ids.reader_tree_view.previous_selected_node.get_name()}".'
+        )
+        self.setup_and_select_node(
+            self._tree_view_screen.ids.reader_tree_view.previous_selected_node
+        )
+
+    def goto_node(self, node: BaseTreeViewNode, scroll_to: bool = False) -> None:
+        def show_node(n: BaseTreeViewNode) -> None:
             self._tree_view_screen.select_node(n)
             if scroll_to:
                 self.scroll_to_node(n)
 
         Clock.schedule_once(lambda _dt, item=node: show_node(item), 0)
 
-    def scroll_to_node(self, node: TreeViewNode) -> None:
+    def scroll_to_node(self, node: BaseTreeViewNode) -> None:
         Clock.schedule_once(lambda _dt: self._tree_view_screen.scroll_to_node(node), 0)
 
     def allow_view_state_change_on_collapse(self) -> None:
@@ -202,23 +234,23 @@ class TreeViewManager:
     def on_node_collapsed(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
         # Check allow state change flag or is leaf/title row.
         if not self._allow_view_state_change_on_collapse or isinstance(node, TitleTreeViewNode):
-            logger.info(f"Node collapsed but not allowing state change: '{node.text}'.")
+            logger.info(f"Node collapsed but not allowing state change: '{node.get_name()}'.")
             return
 
-        logger.info(f"Node collapsed: '{node.text}'.")
+        logger.info(f"Node collapsed: '{node.get_name()}'.")
 
         self.set_view_state_for_node(node)
 
     def set_view_state_for_node(self, node: ButtonTreeViewNode) -> None:
         new_view_state, view_state_params = self.get_view_state_from_node(node)
         if new_view_state is None:
-            msg = f"No view state mapping found for node: '{node.text}' ({type(node)})"
+            msg = f"No view state mapping found for node: '{node.get_name()}' ({type(node)})"
             raise RuntimeError(msg)
         # noinspection LongLine
         self._view_state_manager.update_background_views(new_view_state, **view_state_params)  # ty: ignore[invalid-argument-type]
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
-        logger.info(f"Node expanded: '{node.text}'.")
+        logger.info(f"Node expanded: '{node.get_name()}'.")
 
         # Ignore leaf/title rows.
         if isinstance(node, TitleTreeViewNode):

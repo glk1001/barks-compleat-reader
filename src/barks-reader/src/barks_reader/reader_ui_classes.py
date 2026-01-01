@@ -28,6 +28,7 @@ from loguru import logger
 from barks_reader.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
 from barks_reader.reader_formatter import (
     ReaderFormatter,
+    get_clean_text_without_extra,
     get_markup_text_with_num_titles,
     text_includes_num_titles,
 )
@@ -80,6 +81,25 @@ def hide_action_bar(action_bar: ActionBar) -> None:
 
 class ReaderTreeView(TreeView):
     TREE_VIEW_INDENT_LEVEL = dp(30)
+
+    previous_selected_node = ObjectProperty(None, allownone=True)
+    # Internal variable to track the state
+    _current_selection_tracker = None
+
+    def on_selected_node(self, _instance: ReaderTreeView, new_node: BaseTreeViewNode) -> None:
+        """Triggered automatically when 'selected_node' changes."""
+        # 1. Assign the OLD current node to previous_node
+        self.previous_selected_node = self._current_selection_tracker
+
+        # 2. Update the tracker to the NEW node for next time
+        self._current_selection_tracker = new_node
+
+        # --- Debug Print ---
+        prev_name = (
+            self.previous_selected_node.get_name() if self.previous_selected_node else "None"
+        )
+        curr_name = new_node.get_name() if new_node else "None"
+        logger.info(f'New selected node: "{curr_name}". Previous node: "{prev_name}".')
 
 
 class ReaderTreeBuilderEventDispatcher(EventDispatcher):
@@ -139,6 +159,9 @@ class BaseTreeViewNode(TreeViewNode):
         super().__init__(**kwargs)
         self.saved_state: dict[str, Any] = {}
 
+    def get_name(self) -> str:
+        return "<unknown>"
+
 
 class BaseSearchBoxTreeViewNode(FloatLayout, BaseTreeViewNode):
     """Base class for search boxes in the TreeView."""
@@ -189,6 +212,10 @@ class TitleSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         self.title_search = title_search
         self.bind(text=self._on_internal_search_box_text_changed)
         self.ids.title_spinner.bind(text=self._on_internal_title_search_box_title_changed)
+
+    @override
+    def get_name(self) -> str:
+        return self.name
 
     @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
@@ -265,6 +292,10 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         self._current_tag = None
 
     @override
+    def get_name(self) -> str:
+        return self.name
+
+    @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
         self.dispatch(self.on_tag_search_box_pressed.__name__)
         return super().on_touch_down(touch)
@@ -331,6 +362,10 @@ class ButtonTreeViewNode(Button, BaseTreeViewNode):
     populated = BooleanProperty(defaultvalue=False)
     # A zero-arg function to create children.
     populate_callback = ObjectProperty(defaultvalue=None, allownone=True)
+
+    @override
+    def get_name(self) -> str:
+        return get_clean_text_without_extra(self.text)
 
     # Override 'touch' so we can toggle the node open or closed.
     @override
@@ -415,6 +450,10 @@ class TitleTreeViewNode(BoxLayout, BaseTreeViewNode):
     def __init__(self, fanta_info: FantaComicBookInfo, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
         self.fanta_info = fanta_info
+
+    @override
+    def get_name(self) -> str:
+        return self.get_title().name
 
     def get_title(self) -> Titles:
         return self.fanta_info.comic_book_info.title

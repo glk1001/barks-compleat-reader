@@ -166,6 +166,7 @@ class BottomTitleViewScreen(FloatLayout):
                 f"Time taken to set title inset image: {timing.get_elapsed_time_with_unit()}."
             )
 
+        # noinspection LongLine
         self._image_loader.load_texture(inset_image_source, on_ready)  # ty: ignore[invalid-argument-type]
 
     @staticmethod
