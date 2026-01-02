@@ -14,7 +14,7 @@ from .comic_issues import (
     Issues,
 )
 
-NUM_TITLES = 644 + 5  # +5 for articles
+NUM_TITLES = 653 + 5  # +5 for articles
 
 GYRO_GEARLOOSE = "Gyro Gearloose"
 
@@ -70,6 +70,7 @@ BLANKET_INVESTMENT = "Blanket Investment"
 BOAT_BUSTER = "Boat Buster"
 BONGO_ON_THE_CONGO = "Bongo on the Congo"
 BORDERLINE_HERO = "Borderline Hero"
+BOTTLED_BATTLERS = "Bottled Battlers"
 BOXED_IN = "Boxed-In"
 BUBBLEWEIGHT_CHAMP = "Bubbleweight Champ"
 BUFFO_OR_BUST = "Buffo or Bust"
@@ -120,10 +121,11 @@ CUSTARD_GUN_THE = "The Custard Gun"
 DAFFY_TAFFY_PULL_THE = "The Daffy Taffy Pull"
 DAISYS_DAZED_DAYS = "Daisy's Dazed Days"
 DANGEROUS_DISGUISE = "Dangerous Disguise"
+DARINGLY_DIFFERENT = "Daringly Different"
 DARKEST_AFRICA = "Darkest Africa"
-DAY_THE_FARM_STOOD_STILL_THE = "The Day the Farm Stood Still"
 DAYS_AT_THE_LAZY_K = "Days at the Lazy K"
 DAY_DUCKBURG_GOT_DYED_THE = "The Day Duckburg Got Dyed"
+DAY_THE_FARM_STOOD_STILL_THE = "The Day the Farm Stood Still"
 DEEP_DECISION = "Deep Decision"
 DEEP_DOWN_DOINGS = "Deep Down Doings"
 DELIVERY_DILEMMA = "Delivery Dilemma"
@@ -138,6 +140,7 @@ DONALDS_BAY_LOT = "Donald's Bay Lot"
 DONALDS_GRANDMA_DUCK = "Donald's Grandma Duck"
 DONALDS_LOVE_LETTERS = "Donald's Love Letters"
 DONALDS_MONSTER_KITE = "Donald's Monster Kite"
+DONALDS_PARTY = "Donald's Party"
 DONALDS_PET_SERVICE = "Donald's Pet Service"
 DONALDS_POSY_PATCH = "Donald's Posy Patch"
 DONALDS_RAUCOUS_ROLE = "Donald's Raucous Role"
@@ -150,7 +153,6 @@ DONALD_DUCK_TELLS_ABOUT_KITES = "Donald Duck Tells About Kites"
 DONALD_MINES_HIS_OWN_BUSINESS = "Donald Mines His Own Business"
 DONALD_OF_THE_COAST_GUARD = "Donald of the Coast Guard"
 DONALD_TAMES_HIS_TEMPER = "Donald Tames His Temper"
-DONALDS_PARTY = "Donald's Party"
 DOOM_DIAMOND_THE = "The Doom Diamond"
 DOUBLE_DATE_THE = "The Double Date"
 DOUBLE_MASQUERADE = "Double Masquerade"
@@ -158,7 +160,6 @@ DOUGHNUT_DARE = "Doughnut Dare"
 DOWN_FOR_THE_COUNT = "Down for the Count"
 DOWSING_DUCKS = "Dowsing Ducks"
 DRAMATIC_DONALD = "Dramatic Donald"
-ON_THE_DREAM_PLANET = "On the Dream Planet"
 DUCKBURGS_DAY_OF_PERIL = "Duckburg's Day of Peril"
 DUCKBURG_PET_PARADE_THE = "The Duckburg Pet Parade"
 DUCKS_EYE_VIEW_OF_EUROPE_A = "A Duck's-eye View of Europe"
@@ -323,11 +324,11 @@ LAND_OF_THE_TOTEM_POLES = "Land of the Totem Poles"
 LAUNDRY_FOR_LESS = "Laundry for Less"
 LEMMING_WITH_THE_LOCKET_THE = "The Lemming with the Locket"
 LEMONADE_FLING_THE = "The Lemonade Fling"
-LET_SLEEPING_BONES_LIE = "Let Sleeping Bones Lie"
 LETTER_TO_SANTA = "Letter to Santa"
+LET_SLEEPING_BONES_LIE = "Let Sleeping Bones Lie"
 LIBRARIAN_THE = "The Librarian"
-LIFE_SAVERS = "Life Savers"
 LIFEGUARD_DAZE = "Lifeguard Daze"
+LIFE_SAVERS = "Life Savers"
 LIGHTS_OUT = "Lights Out"
 LIMBER_W_GUEST_RANCH_THE = "The Limber W. Guest Ranch"
 LINKS_HIJINKS = "Links Hijinks"
@@ -348,10 +349,10 @@ LOVELORN_FIREMAN_THE = "The Lovelorn Fireman"
 LUCK_OF_THE_NORTH = "Luck of the North"
 LUNCHEON_LAMENT = "Luncheon Lament"
 MACHINE_MIX_UP = "Machine Mix-Up"
+MADBALL_PITCHER_THE = "The Madball Pitcher"
 MADCAP_INVENTORS = "Madcap Inventors"
 MADCAP_MARINER_THE = "The Madcap Mariner"
 MAD_CHEMIST_THE = "The Mad Chemist"
-MADBALL_PITCHER_THE = "The Madball Pitcher"
 MAGICAL_MISERY = "Magical Misery"
 MAGIC_HOURGLASS_THE = "The Magic Hourglass"
 MAGIC_INK_THE = "The Magic Ink"
@@ -359,6 +360,7 @@ MAHARAJAH_DONALD = "Maharajah Donald"
 MANAGING_THE_ECHO_SYSTEM = "Managing the Echo System"
 MANY_FACES_OF_MAGICA_DE_SPELL_THE = "The Many Faces of Magica de Spell"
 MAN_VERSUS_MACHINE = "Man Versus Machine"
+MAPLE_SUGAR_TIME_HOW_SWEET_IT_IS = "Maple Sugar Time (How Sweet It Is!)"
 MASTERING_THE_MATTERHORN = "Mastering the Matterhorn"
 MASTERS_OF_MELODY_THE = "The Masters of Melody"
 MASTER_GLASSER_THE = "The Master Glasser"
@@ -422,8 +424,8 @@ NO_BARGAIN = "No Bargain"
 NO_NOISE_IS_GOOD_NOISE = "No Noise is Good Noise"
 NO_PLACE_TO_HIDE = "No Place to Hide"
 NO_SUCH_VARMINT = "No Such Varmint"
-ODD_ORDER_THE = "The Odd Order"
 ODDBALL_ODYSSEY = "Oddball Odyssey"
+ODD_ORDER_THE = "The Odd Order"
 OIL_THE_NEWS = "Oil the News"
 OLD_CASTLES_SECRET_THE = "The Old Castle's Secret"
 OLD_FROGGIE_CATAPULT = "Old Froggie Catapult"
@@ -432,6 +434,7 @@ OLYMPIC_HOPEFUL_THE = "The Olympic Hopeful"
 OMELET = "Omelet"
 ONCE_UPON_A_CARNIVAL = "Once Upon a Carnival"
 ONLY_A_POOR_OLD_MAN = "Only a Poor Old Man"
+ON_THE_DREAM_PLANET = "On the Dream Planet"
 OODLES_OF_OOMPH = "Oodles of Oomph"
 OPERATION_ST_BERNARD = "Operation St. Bernard"
 ORNAMENTS_ON_THE_WAY = "Ornaments on the Way"
@@ -482,6 +485,7 @@ RICHES_RICHES_EVERYWHERE = "Riches, Riches, Everywhere!"
 RIDDLE_OF_THE_RED_HAT_THE = "The Riddle of the Red Hat"
 RIDING_THE_PONY_EXPRESS = "Riding the Pony Express"
 RIGGED_UP_ROLLER = "Rigged-Up Roller"
+RING_LEADER_ROUNDUP = "Ring Leader Roundup"
 RIP_VAN_DONALD = "Rip Van Donald"
 RIVAL_BEACHCOMBERS = "Rival Beachcombers"
 RIVAL_BOATMEN = "Rival Boatmen"
@@ -494,12 +498,14 @@ ROSCOE_THE_ROBOT = "Roscoe the Robot"
 ROUNDABOUT_HANDOUT = "Roundabout Handout"
 ROUND_MONEY_BIN_THE = "The Round Money Bin"
 RUG_RIDERS_IN_THE_SKY = "Rug Riders in the Sky"
+RULING_THE_ROOST = "Ruling the Roost"
 RUNAWAY_TRAIN_THE = "The Runaway Train"
 SAGMORE_SPRINGS_HOTEL = "Sagmore Springs Hotel"
 SALESMAN_DONALD = "Salesman Donald"
 SALMON_DERBY = "Salmon Derby"
 SANTAS_STORMY_VISIT = "Santa's Stormy Visit"
 SAVED_BY_THE_BAG = "Saved by the Bag!"
+SAVIORS_OF_THE_LAKE = "Saviors of the Lake"
 SCREAMING_COWBOY_THE = "The Screaming Cowboy"
 SEALS_ARE_SO_SMART = "Seals Are So Smart!"
 SEARCHING_FOR_A_SUCCESSOR = "Searching for a Successor"
@@ -547,8 +553,9 @@ STALWART_RANGER = "Stalwart Ranger"
 STATUESQUE_SPENDTHRIFTS = "Statuesque Spendthrifts"
 STATUES_OF_LIMITATIONS = "Statues of Limitations"
 STATUS_SEEKER_THE = "The Status Seeker"
+STICKY_SITUATION_A = "A Sticky Situation"
 STONES_THROW_FROM_GHOST_TOWN_A = "A Stone's Throw from Ghost Town"
-STRANGER_THAN_FICTION = "Stranger than Fiction"
+STRANGER_THAN_FICTION = "Stranger Than Fiction"
 STRANGE_SHIPWRECKS_THE = "The Strange Shipwrecks"
 STUBBORN_STORK_THE = "The Stubborn Stork"
 SUNKEN_YACHT_THE = "The Sunken Yacht"
@@ -590,6 +597,7 @@ TITANIC_ANTS_THE = "The Titanic Ants!"
 TOASTY_TOYS = "Toasty Toys"
 TOO_FIT_TO_FIT = "Too Fit to Fit"
 TOO_MANY_PETS = "Too Many Pets"
+TOO_MUCH_HELP = "Too Much Help"
 TOO_SAFE_SAFE = "Too Safe Safe"
 TOP_WAGES = "Top Wages"
 TOUCHE_TOUPEE = "Touche Toupee"
@@ -598,6 +606,7 @@ TRACKING_SANDY = "Tracking Sandy"
 TRAIL_OF_THE_UNICORN = "Trail of the Unicorn"
 TRAIL_TYCOON = "Trail Tycoon"
 TRAINING_FARM_FUSS_THE = "The Training Farm Fuss"
+TRAITOR_IN_THE_RANKS = "Traitor in the Ranks"
 TRALLA_LA = "Tralla La"
 TRAMP_STEAMER_THE = "The Tramp Steamer"
 TRAPPED_LIGHTNING = "Trapped Lightning"
@@ -649,6 +658,7 @@ WEATHER_WATCHERS_THE = "The Weather Watchers"
 WEBFOOTED_WRANGLER = "Webfooted Wrangler"
 WHALE_OF_A_GOOD_DEED = "Whale of a Good Deed"
 WHALE_OF_A_STORY_A = "A Whale of a Story"
+WHOLE_HERD_OF_HELP_THE = "The Whole Herd of Help"
 WILD_ABOUT_FLOWERS = "Wild about Flowers"
 WILY_RIVAL = "Wily Rival"
 WINDFALL_OF_THE_MIND = "Windfall of the Mind"
@@ -660,7 +670,6 @@ WISHING_STONE_ISLAND = "Wishing Stone Island"
 WISHING_WELL_THE = "The Wishing Well"
 WISPY_WILLIE = "Wispy Willie"
 WITCHING_STICK_THE = "The Witching Stick"
-WHOLE_HERD_OF_HELP_THE = "The Whole Herd of Help"
 WORM_WEARY = "Worm Weary"
 WRONG_NUMBER = "Wrong Number"
 YOICKS_THE_FOX = "Yoicks! The Fox!"
@@ -668,12 +677,12 @@ YOU_CANT_GUESS = "You Can't Guess!"
 YOU_CANT_WIN = "You Can't Win"
 ZERO_HERO = "Zero Hero"
 # Not comics below!
+GEORGE_LUCAS___AN_APPRECIATION = "George Lucas - An Appreciation"
 RICH_TOMASSO___ON_COLORING_BARKS = "Rich Tomasso - On Coloring Barks"
 DON_AULT___FANTAGRAPHICS_INTRODUCTION = "Don Ault - Fantagraphics Introduction"
 DON_AULT___LIFE_AMONG_THE_DUCKS = "Don Ault - Life Among the Ducks"
 # noinspection LongLine
 MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD = "Maggie Thompson - Comics Readers Find Comic Book Gold"
-GEORGE_LUCAS___AN_APPRECIATION = "George Lucas - An Appreciation"
 CENSORSHIP_FIXES_AND_OTHER_CHANGES = "Censorship Fixes and Other Changes"
 # fmt: on
 
@@ -1177,6 +1186,11 @@ class Titles(IntEnum):
     SITTING_HIGH = auto()
     THATS_NO_FABLE = auto()
     CLOTHES_MAKE_THE_DUCK = auto()
+    STICKY_SITUATION_A = auto()
+    RING_LEADER_ROUNDUP = auto()
+    TOO_MUCH_HELP = auto()
+    RULING_THE_ROOST = auto()
+    DARINGLY_DIFFERENT = auto()
     THAT_SMALL_FEELING = auto()
     MADCAP_MARINER_THE = auto()
     TERRIBLE_TOURIST = auto()
@@ -1323,12 +1337,16 @@ class Titles(IntEnum):
     WHALE_OF_A_GOOD_DEED = auto()
     BAD_DAY_FOR_TROOP_A = auto()
     LET_SLEEPING_BONES_LIE = auto()
+    SAVIORS_OF_THE_LAKE = auto()
+    BOTTLED_BATTLERS = auto()
+    MAPLE_SUGAR_TIME_HOW_SWEET_IT_IS = auto()
+    TRAITOR_IN_THE_RANKS = auto()
     # Not comics below!
+    GEORGE_LUCAS___AN_APPRECIATION = auto()
     RICH_TOMASSO___ON_COLORING_BARKS = auto()
     DON_AULT___FANTAGRAPHICS_INTRODUCTION = auto()
     DON_AULT___LIFE_AMONG_THE_DUCKS = auto()
     MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD = auto()
-    GEORGE_LUCAS___AN_APPRECIATION = auto()
     CENSORSHIP_FIXES_AND_OTHER_CHANGES = auto()
 
 
@@ -1832,6 +1850,11 @@ BARKS_TITLES = [
     SITTING_HIGH,
     THATS_NO_FABLE,
     CLOTHES_MAKE_THE_DUCK,
+    STICKY_SITUATION_A,
+    RING_LEADER_ROUNDUP,
+    TOO_MUCH_HELP,
+    RULING_THE_ROOST,
+    DARINGLY_DIFFERENT,
     THAT_SMALL_FEELING,
     MADCAP_MARINER_THE,
     TERRIBLE_TOURIST,
@@ -1978,12 +2001,16 @@ BARKS_TITLES = [
     WHALE_OF_A_GOOD_DEED,
     BAD_DAY_FOR_TROOP_A,
     LET_SLEEPING_BONES_LIE,
+    SAVIORS_OF_THE_LAKE,
+    BOTTLED_BATTLERS,
+    MAPLE_SUGAR_TIME_HOW_SWEET_IT_IS,
+    TRAITOR_IN_THE_RANKS,
     # Not comics below!
+    GEORGE_LUCAS___AN_APPRECIATION,
     RICH_TOMASSO___ON_COLORING_BARKS,
     DON_AULT___FANTAGRAPHICS_INTRODUCTION,
     DON_AULT___LIFE_AMONG_THE_DUCKS,
     MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD,
-    GEORGE_LUCAS___AN_APPRECIATION,
     CENSORSHIP_FIXES_AND_OTHER_CHANGES,
 ]
 
@@ -2540,11 +2567,16 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.SITTING_HIGH, True, Issues.CS, 245, 2, 1961, 18, 4, 1960),
     ComicBookInfo(Titles.THATS_NO_FABLE, True, Issues.US, 32, 12, 1960, 12, 5, 1960),
     ComicBookInfo(Titles.CLOTHES_MAKE_THE_DUCK, True, Issues.US, 32, 12, 1960, 17, 5, 1960),
+    ComicBookInfo(Titles.STICKY_SITUATION_A,True, Issues.FC, 1150, 12, 1960, 6, 6, 1960),
+    ComicBookInfo(Titles.RING_LEADER_ROUNDUP, True,Issues.FC, 1150, 12, 1960, 6, 6, 1960),
+    ComicBookInfo(Titles.TOO_MUCH_HELP, True,Issues.FC, 1150, 12, 1960, 6, 6, 1960),
+    ComicBookInfo(Titles.RULING_THE_ROOST, True,Issues.FC, 1150, 12, 1960, 6, 6, 1960),
+    ComicBookInfo(Titles.DARINGLY_DIFFERENT, True,Issues.FC, 1150, 12, 1960, 6, 6, 1960),
     ComicBookInfo(Titles.THAT_SMALL_FEELING, True, Issues.US, 32, 12, 1960, 13, 6, 1960),
-    ComicBookInfo(Titles.MADCAP_MARINER_THE, False, Issues.CS, 247, 4, 1961, 11, 7, 1960),
-    ComicBookInfo(Titles.TERRIBLE_TOURIST, False, Issues.CS, 248, 5, 1961, 11, 7, 1960),
+    ComicBookInfo(Titles.MADCAP_MARINER_THE, True, Issues.CS, 247, 4, 1961, 11, 7, 1960),
+    ComicBookInfo(Titles.TERRIBLE_TOURIST, True, Issues.CS, 248, 5, 1961, 11, 7, 1960),
     ComicBookInfo(Titles.THRIFT_GIFT_A, True, Issues.US, 32, 12, 1960, 18, 7, 1960),
-    ComicBookInfo(Titles.LOST_FRONTIER, False, Issues.CS, 246, 3, 1961, 18, 7, 1960),
+    ComicBookInfo(Titles.LOST_FRONTIER, True, Issues.CS, 246, 3, 1961, 18, 7, 1960),
     ComicBookInfo(Titles.WHOLE_HERD_OF_HELP_THE, True, Issues.FC, 1161, 1, 1961, 8, 8, 1960),
     ComicBookInfo(Titles.DAY_THE_FARM_STOOD_STILL_THE, True, Issues.FC, 1161, 1, 1961, 8, 8, 1960),
     ComicBookInfo(Titles.TRAINING_FARM_FUSS_THE, True, Issues.FC, 1161, 1, 1961, 8, 8, 1960),
@@ -2552,13 +2584,13 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.YOU_CANT_WIN, True, Issues.US, 33, 3, 1961, 15, 8, 1960),
     ComicBookInfo(Titles.BILLIONS_IN_THE_HOLE, True, Issues.US, 33, 3, 1961, 3, 9, 1960),
     ComicBookInfo(Titles.BONGO_ON_THE_CONGO, True, Issues.US, 33, 3, 1961, 12, 9, 1960),
-    ComicBookInfo(Titles.STRANGER_THAN_FICTION, False, Issues.CS, 249, 6, 1961, 31, 10, 1960),
-    ComicBookInfo(Titles.BOXED_IN, False, Issues.CS, 250, 7, 1961, 12, 11, 1960),
+    ComicBookInfo(Titles.STRANGER_THAN_FICTION, True, Issues.CS, 249, 6, 1961, 31, 10, 1960),
+    ComicBookInfo(Titles.BOXED_IN, True, Issues.CS, 250, 7, 1961, 12, 11, 1960),
     ComicBookInfo(Titles.CHUGWAGON_DERBY, True, Issues.US, 34, 6, 1961, 16, 11, 1960),
     ComicBookInfo(Titles.MYTHTIC_MYSTERY, True, Issues.US, 34, 6, 1961, 10, 12, 1960),
     ComicBookInfo(Titles.WILY_RIVAL, True, Issues.US, 34, 6, 1961, 10, 12, 1960),
-    ComicBookInfo(Titles.DUCK_LUCK, False, Issues.CS, 251, 8, 1961, 28, 12, 1960),
-    ComicBookInfo(Titles.MR_PRIVATE_EYE, False, Issues.CS, 252, 9, 1961, 10, 1, 1961),
+    ComicBookInfo(Titles.DUCK_LUCK, True, Issues.CS, 251, 8, 1961, 28, 12, 1960),
+    ComicBookInfo(Titles.MR_PRIVATE_EYE, True, Issues.CS, 252, 9, 1961, 10, 1, 1961),
     ComicBookInfo(Titles.HOUND_HOUNDER, False, Issues.CS, 253, 10, 1961, 16, 1, 1961),
     ComicBookInfo(Titles.GOLDEN_NUGGET_BOAT_THE, True, Issues.US, 35, 9, 1961, 16, 2, 1961),
     ComicBookInfo(Titles.FAST_AWAY_CASTAWAY, True, Issues.US, 35, 9, 1961, 24, 2, 1961),
@@ -2686,12 +2718,16 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.WHALE_OF_A_GOOD_DEED, True, Issues.HDL, 7, 10, 1970, 1, 1, 1970),
     ComicBookInfo(Titles.BAD_DAY_FOR_TROOP_A, True, Issues.HDL, 8, 1, 1971, 1, 1, 1970),
     ComicBookInfo(Titles.LET_SLEEPING_BONES_LIE, True, Issues.HDL, 8, 1, 1971, 16, 3, 1970),
+    ComicBookInfo(Titles.SAVIORS_OF_THE_LAKE,True, Issues.HDL, 9, 4, 1971, 25, 6, 1970),
+    ComicBookInfo(Titles.BOTTLED_BATTLERS,True, Issues.HDL, 10, 7, 1971, 21, 8, 1970),
+    ComicBookInfo(Titles.MAPLE_SUGAR_TIME_HOW_SWEET_IT_IS, True, Issues.HDL, 10, 7, 1971, 11, 9, 1970),
+    ComicBookInfo(Titles.TRAITOR_IN_THE_RANKS,True, Issues.HDL, 11, 10, 1971, 26, 10, 1970),
     # Not comics below!
+    ComicBookInfo(Titles.GEORGE_LUCAS___AN_APPRECIATION, False, Issues.EXTRAS, 1, 1, 1983, 1, 1, 1983),
     ComicBookInfo(Titles.RICH_TOMASSO___ON_COLORING_BARKS, False, Issues.EXTRAS, 1, 1, 2011, 1, 1, 2011),
     ComicBookInfo(Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, False, Issues.EXTRAS, 1, 1, 2011, 1, 1, 2011),
     ComicBookInfo(Titles.DON_AULT___LIFE_AMONG_THE_DUCKS, False, Issues.EXTRAS, 1, 1, 2014, 1, 1, 2014),
     ComicBookInfo(Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD, False, Issues.EXTRAS, 1, 1, 2025, 1, 1, 2025),
-    ComicBookInfo(Titles.GEORGE_LUCAS___AN_APPRECIATION, False, Issues.EXTRAS, 1, 1, 1983, 1, 1, 1983),
     ComicBookInfo(Titles.CENSORSHIP_FIXES_AND_OTHER_CHANGES, False, Issues.EXTRAS, 6, 8, 2025, 6, 8, 2025),
 ]
 # fmt: on

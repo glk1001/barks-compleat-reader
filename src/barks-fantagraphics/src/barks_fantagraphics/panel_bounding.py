@@ -209,7 +209,7 @@ def _get_dest_panels_bounding_box(
             f" not {required_dim.panels_bbox_height}.",
         )
 
-    # Centre the dest panels image on an empty page.
+    # Center the dest panels image on an empty page.
     dest_panels_x_min = DEST_TARGET_X_MARGIN
     dest_panels_y_min = int(0.5 * (DEST_TARGET_HEIGHT - required_panels_height))
     dest_panels_x_max = dest_panels_x_min + (required_panels_width - 1)
