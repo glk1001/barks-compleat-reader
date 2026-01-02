@@ -157,7 +157,7 @@ class SpeechIndexScreen(IndexScreen):
 
         first_letter = "0" if "0" <= prefix <= "9" else prefix[0].upper()
         terms = self._cleaned_alpha_split_terms[first_letter.lower()][prefix]
-        self._item_index[first_letter] = [IndexItem(t, t) for t in terms]
+        self._item_index[first_letter] = [IndexItem(t, shorten_if_necessary(t)) for t in terms]
 
         self._populate_index_grid(first_letter)
 
@@ -493,3 +493,11 @@ class SpeechIndexScreen(IndexScreen):
         page_nums_str = get_concat_page_nums_str(page_nums)
 
         return page_nums[0], title_str + ", " + page_nums_str
+
+
+def shorten_if_necessary(text: str) -> str:
+    if not text.startswith("500,000"):
+        return text
+
+    assert text.count("0") == (69 + 8)
+    return "500,000,\u2014plus sixty-nine more zeroes\u2014,000.16"

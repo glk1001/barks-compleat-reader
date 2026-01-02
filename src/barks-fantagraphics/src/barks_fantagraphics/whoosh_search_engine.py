@@ -6,8 +6,7 @@ from pathlib import Path
 from loguru import logger
 from pyuca import Collator
 from simplemma import lemmatize
-from whoosh.analysis import LowercaseFilter, StopFilter
-from whoosh.analysis.analyzers import StandardAnalyzer
+from whoosh.analysis import LowercaseFilter, StemFilter, StopFilter
 from whoosh.fields import ID, TEXT, Schema
 from whoosh.index import create_in, open_dir
 from whoosh.qparser import QueryParser
@@ -74,7 +73,7 @@ class SearchEngine:
                 fanta_page = hit["fanta_page"]
                 comic_page = hit["comic_page"]
                 speech_bubble_id = hit["content_id"]
-                speech_bubble = hit["content"]
+                speech_bubble = hit["content_raw"]
 
                 if fanta_page not in prelim_results[comic_title].fanta_pages:
                     prelim_results[comic_title].fanta_pages[fanta_page] = PageInfo()
@@ -125,15 +124,16 @@ class SearchEngineCreator(SearchEngine):
         self._comics_database = comics_database
 
         # For keeping apostrophes and hyphens within words
-        analyzer = WordWithPunctTokenizer() | LowercaseFilter() | StopFilter()
+        punct_analyzer = WordWithPunctTokenizer() | LowercaseFilter() | StopFilter()
         schema = Schema(
             title=TEXT(stored=True),
             fanta_vol=ID(stored=True),
             fanta_page=ID(stored=True),
             comic_page=ID(stored=True),
             content_id=ID(stored=True),
-            content=TEXT(stored=True, lang="en", analyzer=StandardAnalyzer()),
-            unstemmed=TEXT(stored=False, analyzer=analyzer),
+            content=TEXT(stored=False, lang="en", analyzer=punct_analyzer | StemFilter(lang="en")),
+            unstemmed=TEXT(stored=False, lang="en", analyzer=punct_analyzer),
+            content_raw=TEXT(stored=True, lang="en"),
         )
         index_dir.mkdir(parents=True, exist_ok=True)
         self._index = create_in(index_dir, schema)
@@ -229,6 +229,7 @@ class SearchEngineCreator(SearchEngine):
                 raise ValueError(msg) from e
 
             for group_id, group in ocr_prelim_group2["groups"].items():
+                ai_text_raw = group["ai_text"]
                 ai_text = (
                     group["ai_text"]
                     .replace("-\n", "-")
@@ -243,6 +244,7 @@ class SearchEngineCreator(SearchEngine):
                     content_id=group_id,
                     content=ai_text,
                     unstemmed=ai_text,
+                    content_raw=ai_text_raw,
                 )
 
     @staticmethod
