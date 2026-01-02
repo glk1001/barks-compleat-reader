@@ -24,7 +24,7 @@ logger.addHandler(logging.NullHandler())
 assert CPI_DB_PATH.is_file()
 
 
-# noinspection PyShadowingNames
+# noinspection PyShadowingNames,GrazieInspection
 def query(sql: str, params: list | tuple | None = None) -> list[dict]:
     """Query the cpi.db database and return the result.
 
@@ -259,7 +259,7 @@ class Index(BaseObject):
 
 # noinspection PyTypeChecker,LongLine
 class Series(BaseObject):
-    # noinspection SpellCheckingInspection
+    # noinspection SpellCheckingInspection,GrazieInspection
     """
     A set of CPI data observed over an extended period of time over consistent time intervals ranging from
     a specific consumer item in a specific geographical area whose price is gathered monthly to a category
