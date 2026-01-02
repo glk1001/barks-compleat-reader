@@ -132,7 +132,9 @@ class MainIndexScreen(IndexScreen):
         for tag in Tags:
             tag_name = self._get_sortable_string(tag.value)
             first_letter = tag_name[0].upper()
-            assert "A" <= first_letter <= "Z"
+            assert ("0" <= first_letter <= "9") or ("A" <= first_letter <= "Z")
+            if "0" <= first_letter <= "9":
+                first_letter = "0"
             self._item_index[first_letter].append(IndexItem(tag, tag_name))
 
         # Add all tag groups

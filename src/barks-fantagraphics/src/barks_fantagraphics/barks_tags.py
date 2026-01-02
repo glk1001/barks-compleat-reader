@@ -71,7 +71,7 @@ class Tags(Enum):
 
     AIRPLANES = "airplanes"
     CAMERAS = "cameras"
-    CAR_313 = "car 313"
+    CAR_313 = "313"
     CIGARETTES = "cigarettes"
     FIRE = "fire"
     HDL_DRIVING_CAR = "HDL driving car"
@@ -132,6 +132,7 @@ BARKS_TAG_EXTRA_ALIASES = {
     "banzoony": Tags.BENZENE_BANZOONY,
     "bombie": Tags.BOMBIE_THE_ZOMBIE,
     "zombie": Tags.BOMBIE_THE_ZOMBIE,
+    "car 313": Tags.CAR_313,
     "carver beakoff": Tags.CARVER_BEAKOFF,
     "beakoff": Tags.CARVER_BEAKOFF,
     "carver": Tags.CARVER_BEAKOFF,
