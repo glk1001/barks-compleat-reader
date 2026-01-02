@@ -401,6 +401,11 @@ BARKS_PAYMENTS = {
     Titles.SITTING_HIGH: PaymentInfo(Titles.SITTING_HIGH, 10, 18, 4, 1961, 445.0),
     Titles.THATS_NO_FABLE: PaymentInfo(Titles.THATS_NO_FABLE, 18, 12, 5, 1960, 801.0),
     Titles.CLOTHES_MAKE_THE_DUCK: PaymentInfo(Titles.CLOTHES_MAKE_THE_DUCK, 7, 17, 5, 1960, 333.75),
+    Titles.STICKY_SITUATION_A: PaymentInfo(Titles.STICKY_SITUATION_A,8,  6, 6, 1960, 264.0),
+    Titles.RING_LEADER_ROUNDUP: PaymentInfo(Titles.RING_LEADER_ROUNDUP, 6,  6, 6, 1960, 198.0),
+    Titles.TOO_MUCH_HELP: PaymentInfo(Titles.TOO_MUCH_HELP, 4,  6, 6, 1960, 132.0),
+    Titles.RULING_THE_ROOST: PaymentInfo(Titles.RULING_THE_ROOST, 8,  6, 6, 1960, 264.0),
+    Titles.DARINGLY_DIFFERENT: PaymentInfo(Titles.DARINGLY_DIFFERENT, 5,  6, 6, 1960, 165.0),
     Titles.THAT_SMALL_FEELING: PaymentInfo(Titles.THAT_SMALL_FEELING, 4, 13, 6, 1960, 178.0),
     Titles.MADCAP_MARINER_THE: PaymentInfo(Titles.MADCAP_MARINER_THE, 9, 11, 7, 1961, 445.0),
     Titles.TERRIBLE_TOURIST: PaymentInfo(Titles.TERRIBLE_TOURIST, 10, 11, 7, 1961, 445.0),
@@ -518,6 +523,10 @@ BARKS_PAYMENTS = {
     Titles.WHALE_OF_A_GOOD_DEED: PaymentInfo(Titles.WHALE_OF_A_GOOD_DEED, 14, 1, 1, 1970, 161),
     Titles.BAD_DAY_FOR_TROOP_A: PaymentInfo(Titles.BAD_DAY_FOR_TROOP_A, 6, 1, 1, 1970, 69),
     Titles.LET_SLEEPING_BONES_LIE: PaymentInfo(Titles.LET_SLEEPING_BONES_LIE, 4, 16, 3, 1970, 46),
+    Titles.SAVIORS_OF_THE_LAKE: PaymentInfo(Titles.SAVIORS_OF_THE_LAKE, 13, 25, 6, 1970, 149.50),
+    Titles.BOTTLED_BATTLERS: PaymentInfo(Titles.BOTTLED_BATTLERS, 12, 21, 8, 1970, 138.0),
+    Titles.MAPLE_SUGAR_TIME_HOW_SWEET_IT_IS: PaymentInfo(Titles.MAPLE_SUGAR_TIME_HOW_SWEET_IT_IS, 13, 11, 9, 1970, 149.50),
+    Titles.TRAITOR_IN_THE_RANKS: PaymentInfo(Titles.TRAITOR_IN_THE_RANKS, 13, 26, 10, 1970, 149.50),
 }
 # fmt: on
 
