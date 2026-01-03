@@ -138,6 +138,7 @@ BARKSIAN_NAMES: set[str] = {
     "autry",
     "aztec",
     "azure",
+    "azure's",
     "b",
     "b-36",
     "backdore",
@@ -229,6 +230,8 @@ BARKSIAN_NAMES: set[str] = {
     "dick",
     "dickens",
     "diego",
+    "disney",
+    "disney's",
     "donald",
     "donaldo",
     "donner",
@@ -389,12 +392,14 @@ BARKSIAN_NAMES: set[str] = {
     "vaudeville",
     "verdugo",
     "veronica",
+    "walt",
     "walter",
     "wormsley",
 }
 
 # noinspection SpellCheckingInspection
 NAME_MAP: dict[str, str] = {
+    "6-a-77": "6-A-77",
     "almostus": "Almostus Extinctus",
     "extinctus": "Almostus Extinctus",
     "extinctuses": "Almostus Extinctuses",
@@ -494,6 +499,7 @@ BARKSIAN_PLACE_RELATED_WORDS: set[str] = {
     "awfultonians",
     "babylon",
     "bagdad",
+    "baloni",
     "balonia",
     "balonian",
     "barcelona",
