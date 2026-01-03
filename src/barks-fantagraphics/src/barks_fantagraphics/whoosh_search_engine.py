@@ -93,6 +93,10 @@ class SearchEngine:
 
         return title_results
 
+    def get_all_titles(self) -> set[str]:
+        with self._index.reader() as reader:
+            return {t.decode("utf-8") for t in reader.lexicon("title")}
+
     def get_cleaned_unstemmed_terms(self) -> list[str]:
         return json.loads(self._cleaned_unstemmed_terms_path.read_text())
 
@@ -126,7 +130,7 @@ class SearchEngineCreator(SearchEngine):
         # For keeping apostrophes and hyphens within words
         punct_analyzer = WordWithPunctTokenizer() | LowercaseFilter() | StopFilter()
         schema = Schema(
-            title=TEXT(stored=True),
+            title=ID(stored=True),
             fanta_vol=ID(stored=True),
             fanta_page=ID(stored=True),
             comic_page=ID(stored=True),
@@ -158,7 +162,7 @@ class SearchEngineCreator(SearchEngine):
         writer.commit()
 
         with self._index.reader() as reader:
-            all_unstemmed_terms = [t[1].decode("utf-8") for t in reader.terms_from("unstemmed", "")]
+            all_unstemmed_terms = [t.decode("utf-8") for t in reader.lexicon("unstemmed")]
         with self._unstemmed_terms_path.open("w") as f:
             json.dump(all_unstemmed_terms, f, indent=4)
         with self._cleaned_unstemmed_terms_path.open("w") as f:
