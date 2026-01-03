@@ -240,6 +240,13 @@ class SearchEngineCreator(SearchEngine):
                     .replace("\u00ad\n", "")
                     .replace("\u200b\n", "")
                 )
+
+                if self.is_page_number(group):
+                    print(int(group["panel_num"]))
+                    print(group["notes"].lower())
+                    print(ai_text)
+                    continue
+
                 writer.add_document(
                     title=title,
                     fanta_vol=str(comic.fanta_book.volume),
@@ -250,6 +257,10 @@ class SearchEngineCreator(SearchEngine):
                     unstemmed=ai_text,
                     content_raw=ai_text_raw,
                 )
+
+    @staticmethod
+    def is_page_number(group: dict) -> bool:
+        return int(group["panel_num"]) == -1 and "page number" in group["notes"].lower()
 
     @staticmethod
     def _get_srce_page_to_dest_page_map(comic: ComicBook) -> dict[str, str]:
