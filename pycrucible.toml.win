@@ -1,0 +1,37 @@
+entrypoint = "main.py"
+
+[options]
+debug = false
+extract_to_temp = false  # Important - the pycrucible_pre_run_installer.py script depends on this
+delete_after_run = true
+
+[patterns]
+include = [
+    "**/*.py",
+    "**/*.kv",
+    "**/*.ini",
+    "**/*.ttf",
+    "**/*.db",
+    "**/pyarmor_runtime_000000/**/*",
+    "**/pyarmor_runtime_000000/**/*.pyd",
+]
+exclude = [
+    "data/**/*",
+    "**/scraps/**/*",
+    "**/scripts/**/*",
+    "**/tests/**/*",
+    ".venv/**/*",
+    "**/__pycache__/**",
+    ".git/**/*",
+    "**/*.pyc",
+    "**/*.pyo",
+]
+
+[env]
+PYTHONPATH="src/barks-reader/src;src/barks-build-comic-images/src;src/barks-fantagraphics/src;src/comic-utils/src"
+UV_VENV_CLEAR="1"
+UV_LINK_MODE="copy"
+
+[hooks]
+pre_run = "src/barks-reader/src/barks_reader/pycrucible_pre_run_installer.py"
+post_run = ""
