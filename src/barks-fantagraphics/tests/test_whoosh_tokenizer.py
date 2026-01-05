@@ -1,11 +1,12 @@
 import pytest
 from barks_fantagraphics.whoosh_punct_tokenizer import WordWithPunctTokenizer
-from whoosh.analysis import LowercaseFilter, Tokenizer
+from barks_fantagraphics.whoosh_search_engine import MY_STOP_WORDS
+from whoosh.analysis import LowercaseFilter, StopFilter, Tokenizer
 
 
 @pytest.fixture
 def analyzer() -> Tokenizer:
-    return WordWithPunctTokenizer() | LowercaseFilter()
+    return WordWithPunctTokenizer() | LowercaseFilter() | StopFilter(stoplist=MY_STOP_WORDS)
 
 
 def tokens(analyzer: Tokenizer, text: str) -> list[str]:
@@ -15,6 +16,15 @@ def tokens(analyzer: Tokenizer, text: str) -> list[str]:
 
 def test_basic_words(analyzer: Tokenizer) -> None:
     assert tokens(analyzer, "hello world") == ["hello", "world"]
+
+
+def test_comma_words(analyzer: Tokenizer) -> None:
+    # 'OH' is a custom stop word. It won't be tokenized.
+    assert tokens(analyzer, "Oh, Yeah!") == ["yeah"]
+
+
+def test_comma_numbers(analyzer: Tokenizer) -> None:
+    assert tokens(analyzer, "500,000,000.16") == ["500,000,000.16"]
 
 
 def test_internal_apostrophe(analyzer: Tokenizer) -> None:
@@ -49,13 +59,16 @@ def test_quoted_dotted_possessive(analyzer: Tokenizer) -> None:
     assert tokens(analyzer, "'G.I.'s'") == ["g.i.'s"]
 
 
+def test_stop_words(analyzer: Tokenizer) -> None:
+    assert tokens(analyzer, "help with that") == ["help"]
+
+
 def test_mixed_sentence(analyzer: Tokenizer) -> None:
     text = "Don't use 'ain't' with G.I.'s knockin' 'lo"
     assert tokens(analyzer, text) == [
         "don't",
         "use",
         "ain't",
-        "with",
         "g.i.'s",
         "knockin'",
         "'lo",

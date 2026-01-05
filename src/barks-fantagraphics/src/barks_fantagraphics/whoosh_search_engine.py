@@ -6,7 +6,7 @@ from pathlib import Path
 from loguru import logger
 from pyuca import Collator
 from simplemma import lemmatize
-from whoosh.analysis import LowercaseFilter, StemFilter, StopFilter
+from whoosh.analysis import STOP_WORDS, LowercaseFilter, StemFilter, StopFilter
 from whoosh.fields import ID, TEXT, Schema
 from whoosh.index import create_in, open_dir
 from whoosh.qparser import QueryParser
@@ -24,6 +24,8 @@ from .whoosh_punct_tokenizer import WordWithPunctTokenizer
 COLLATOR = Collator()
 
 SUB_ALPHA_SPLIT_SIZE = 56
+
+MY_STOP_WORDS = STOP_WORDS.union(["oh"])
 
 
 @dataclass
@@ -65,7 +67,7 @@ class SearchEngine:
             field_name = "unstemmed" if use_unstemmed_terms else "content"
             query = QueryParser(field_name, self._index.schema).parse(search_words, debug=False)
 
-            results = searcher.search(query, limit=100)
+            results = searcher.search(query, limit=1000)
             for hit in results:
                 comic_title = hit["title"]
                 prelim_results[comic_title].fanta_vol = int(hit["fanta_vol"])
@@ -128,7 +130,9 @@ class SearchEngineCreator(SearchEngine):
         self._comics_database = comics_database
 
         # For keeping apostrophes and hyphens within words
-        punct_analyzer = WordWithPunctTokenizer() | LowercaseFilter() | StopFilter()
+        punct_analyzer = (
+            WordWithPunctTokenizer() | LowercaseFilter() | StopFilter(stoplist=MY_STOP_WORDS)
+        )
         schema = Schema(
             title=ID(stored=True),
             fanta_vol=ID(stored=True),
