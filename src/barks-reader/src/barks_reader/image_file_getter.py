@@ -9,7 +9,6 @@ from barks_reader.reader_file_paths import FileTypes
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
     from barks_reader.reader_settings import ReaderSettings
 
@@ -18,8 +17,10 @@ class TitleImageFileGetter:
     def __init__(self, reader_settings: ReaderSettings) -> None:
         self._reader_settings = reader_settings
 
-    def get_all_title_image_files(self, title_str: str) -> dict[FileTypes, set[tuple[Path, bool]]]:
-        image_dict: dict[FileTypes, set[tuple[Path, bool]]] = defaultdict(set)
+    def get_all_title_image_files(
+        self, title_str: str
+    ) -> dict[FileTypes, set[tuple[PanelPath, bool]]]:
+        image_dict: dict[FileTypes, set[tuple[PanelPath, bool]]] = defaultdict(set)
 
         for (
             file_type,

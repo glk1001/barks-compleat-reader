@@ -10,6 +10,7 @@ from barks_reader.config_info import ConfigInfo  # make sure this is before any 
 from barks_reader.image_file_getter import TitleImageFileGetter
 from barks_reader.reader_file_paths import FileTypes
 from barks_reader.reader_settings import ReaderSettings
+from comic_utils.comic_consts import PanelPath
 from dotenv import load_dotenv
 from loguru import logger
 from loguru_config import LoguruConfig
@@ -62,7 +63,7 @@ if __name__ == "__main__":
         titles = cmd_args.get_titles()
 
         image_getter = TitleImageFileGetter(reader_settings)
-        image_dict: dict[str, tuple[dict[FileTypes, set[tuple[Path, bool]]], str]] = {}
+        image_dict: dict[str, tuple[dict[FileTypes, set[tuple[PanelPath, bool]]], str]] = {}
         max_title_len = 0
         for title in titles:
             max_title_len = max(max_title_len, len(title))

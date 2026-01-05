@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import random
+import textwrap
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, override
 
-from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, BARKS_TITLES, Titles
+from barks_fantagraphics.barks_titles import (
+    BARKS_TITLE_DICT,
+    BARKS_TITLES,
+    Titles,
+)
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_fantagraphics.whoosh_search_engine import SearchEngine, TitleInfo
 from comic_utils.timing import Timing
@@ -21,6 +26,8 @@ from kivy.uix.scrollview import ScrollView
 from loguru import logger
 
 from barks_reader.index_screen import (
+    MAX_TITLE_AND_PAGES_LEN,
+    MAX_TITLE_LEN,
     IndexItemButton,
     IndexMenuButton,
     IndexScreen,
@@ -489,10 +496,31 @@ class SpeechIndexScreen(IndexScreen):
     def _get_indexable_title_with_page_nums(
         self, title_str: str, page_nums: list[str]
     ) -> tuple[str, str]:
-        title_str = self._get_indexable_title_from_str(title_str)
-        page_nums_str = get_concat_page_nums_str(page_nums)
+        excess_len = len(title_str) - MAX_TITLE_LEN
+        if excess_len < 0:
+            excess_len = -excess_len
+            if (excess_len <= 2) and title_str.startswith("A "):  # noqa: PLR2004
+                title_str = title_str[2:]
+            elif (excess_len <= 4) and title_str.startswith("The "):  # noqa: PLR2004
+                title_str = title_str[4:]
+            else:
+                title_str = textwrap.shorten(title_str, width=MAX_TITLE_LEN, placeholder="...")
 
-        return page_nums[0], title_str + ", " + page_nums_str
+        title_str = self._get_sortable_string(title_str)
+        len_title = len(title_str)
+
+        page_nums_str = get_concat_page_nums_str(page_nums)
+        len_page_nums = len(page_nums_str)
+
+        len_title_and_page_nums = len_title + len_page_nums + 2  # len(", ") == 2
+
+        title_with_page_nums = (
+            title_str + ", " + page_nums_str
+            if len_title_and_page_nums <= MAX_TITLE_AND_PAGES_LEN
+            else title_str + ", " + page_nums[0] + ",..."
+        )
+
+        return page_nums[0], title_with_page_nums
 
 
 def shorten_if_necessary(text: str) -> str:

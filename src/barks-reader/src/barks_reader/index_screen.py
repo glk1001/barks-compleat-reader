@@ -25,7 +25,9 @@ if TYPE_CHECKING:
 
     from barks_reader.random_title_images import ImageInfo
 
-MAX_TITLE_LEN = 45
+MAX_TITLE_LEN = 40
+MAX_TITLE_AND_PAGES_LEN = MAX_TITLE_LEN + 6  # len("11,...") == 6
+
 INDEX_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 SAVED_NODE_STATE_FIRST_LETTER_KEY = "first_letter"

@@ -54,8 +54,8 @@ class RandomTitleImages:
     def __init__(self, reader_settings: ReaderSettings) -> None:
         self._reader_settings = reader_settings
 
-        self._title_image_files: dict[str, dict[FileTypes, set[tuple[Path, bool]]]] = defaultdict(
-            lambda: defaultdict(set)
+        self._title_image_files: dict[str, dict[FileTypes, set[tuple[PanelPath, bool]]]] = (
+            defaultdict(lambda: defaultdict(set))
         )
         self._title_image_file_getter = TitleImageFileGetter(self._reader_settings)
 
