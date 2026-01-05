@@ -76,8 +76,8 @@ LOW_RES_FONTS = FontTheme(
     text_block_heading=sp(20),
     app_title=sp(12),
     about_box_title=sp(20),
-    about_box_version=sp(15),
-    about_box_fine_print=sp(12),
+    about_box_version=sp(17),
+    about_box_fine_print=sp(14),
 )
 HI_RES_FONTS = FontTheme(
     main_title=sp(40),
@@ -98,9 +98,9 @@ HI_RES_FONTS = FontTheme(
     error_popup_button=sp(18),
     text_block_heading=sp(25),
     app_title=sp(17),
-    about_box_title=sp(25),
-    about_box_version=sp(20),
-    about_box_fine_print=sp(14),
+    about_box_title=sp(26),
+    about_box_version=sp(23),
+    about_box_fine_print=sp(16),
 )
 
 
