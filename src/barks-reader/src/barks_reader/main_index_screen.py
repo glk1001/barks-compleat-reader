@@ -243,6 +243,7 @@ class MainIndexScreen(IndexScreen):
             text=item.display_text,
             font_name=self._font_manager.main_index_item_font_name,
             bold=type(item.id) is not Titles,
+            italic=type(item.id) is Titles,
             height=INDEX_ITEM_ROW_HEIGHT,
         )
         button.bind(
@@ -299,6 +300,7 @@ class MainIndexScreen(IndexScreen):
             logger.info(f'For "{sub_item_text}", page to goto = {sub_item_page_to_goto}.')
             title_button = TitleItemButton(
                 text=sub_item_text,
+                italic=True,
                 padding=[sub_item_padding, 0, 0, 0],
                 size_hint=(0.90, None),
             )
