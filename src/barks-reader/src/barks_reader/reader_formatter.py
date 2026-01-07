@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import textwrap
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -21,6 +22,7 @@ from comic_utils.cpi_wrapper import inflate
 from kivy.utils import escape_markup
 
 from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO
+from barks_reader.reader_utils import get_concat_page_nums_str
 
 if TYPE_CHECKING:
     from barks_reader.font_manager import FontManager
@@ -200,3 +202,45 @@ def mark_phrase_in_text(phrase: str, target_text: str, start_tag: str, end_tag: 
     )
 
     return result  # noqa: RET504
+
+
+TITLE_PAGE_NUM_SEPERATOR_STR = ", "
+LEN_PAGE_NUM_SEPERATOR_STR = len(TITLE_PAGE_NUM_SEPERATOR_STR)
+
+
+def get_fitted_title_with_page_nums(
+    title_str: str, page_nums: list[str], max_title_with_pages_len: int
+) -> tuple[str, str]:
+    len_title = len(title_str)
+
+    page_nums_str = get_concat_page_nums_str(page_nums)
+    len_page_nums = len(page_nums_str)
+
+    len_title_and_page_nums = len_title + len_page_nums + LEN_PAGE_NUM_SEPERATOR_STR
+
+    # Shorten the title plus page number list if it's too long.
+    # Start with easy title shortening.
+    excess_len = max_title_with_pages_len - len_title_and_page_nums
+    if excess_len < 0:
+        excess_len = -excess_len
+        if (excess_len <= 2) and title_str.startswith("A "):  # noqa: PLR2004
+            title_str = title_str[2:]
+        elif (excess_len <= 4) and title_str.startswith("The "):  # noqa: PLR2004
+            title_str = title_str[4:]
+
+    page_nums_str = get_concat_page_nums_str(page_nums)
+
+    len_title = len(title_str)
+    len_title_and_page_nums = len_title + len(page_nums_str) + LEN_PAGE_NUM_SEPERATOR_STR
+
+    # Try shortening page num string.
+    if (len_title_and_page_nums > max_title_with_pages_len) and (len(page_nums) > 3):  # noqa: PLR2004
+        page_nums_str = page_nums[0] + ",..."
+        len_title_and_page_nums = len_title + len(page_nums_str) + LEN_PAGE_NUM_SEPERATOR_STR
+
+    if len_title_and_page_nums > max_title_with_pages_len:
+        # Shorten the title.
+        max_title_len = max_title_with_pages_len - len(page_nums_str)
+        title_str = textwrap.shorten(title_str, width=max_title_len, placeholder="...")
+
+    return page_nums[0], title_str + TITLE_PAGE_NUM_SEPERATOR_STR + page_nums_str

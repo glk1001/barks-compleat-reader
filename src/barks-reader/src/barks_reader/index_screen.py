@@ -25,8 +25,7 @@ if TYPE_CHECKING:
 
     from barks_reader.random_title_images import ImageInfo
 
-MAX_TITLE_LEN = 40
-MAX_TITLE_AND_PAGES_LEN = MAX_TITLE_LEN + 6  # len("11,...") == 6
+MAX_TITLE_AND_PAGES_LEN = 34 + 8  # len(", 11,...") == 8
 
 INDEX_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
@@ -222,7 +221,7 @@ class IndexScreen(FloatLayout):
         return self._get_indexable_title_from_str(BARKS_TITLES[title])
 
     def _get_indexable_title_from_str(self, title_str: str) -> str:
-        title_str = textwrap.shorten(title_str, width=MAX_TITLE_LEN, placeholder="...")
+        title_str = textwrap.shorten(title_str, width=MAX_TITLE_AND_PAGES_LEN, placeholder="...")
         return self._get_sortable_string(title_str)
 
     @staticmethod
