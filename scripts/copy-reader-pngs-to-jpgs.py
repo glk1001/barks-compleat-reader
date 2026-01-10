@@ -1,17 +1,17 @@
 import io
 import os
-import sys
 import zipfile
 from collections.abc import Callable
 from configparser import ConfigParser
 from pathlib import Path
 
-from barks_fantagraphics.comics_cmd_args import CmdArgs
+import typer
 from barks_fantagraphics.comics_consts import PNG_FILE_EXT
 from barks_fantagraphics.comics_utils import get_abbrev_path, get_timestamp_str
 from barks_reader.config_info import ConfigInfo  # make sure this is before any kivy imports
 from barks_reader.reader_settings import ReaderSettings
 from comic_utils.comic_consts import JPG_FILE_EXT
+from comic_utils.common_typer_options import LogLevelArg
 from comic_utils.pil_image_utils import get_pil_image_as_jpg_bytes, load_pil_image_for_reading
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
@@ -24,6 +24,9 @@ APP_LOGGING_NAME = "zip"
 
 PANEL_KEY = os.environ["BARKS_ZIPS_KEY"]
 FERNET = Fernet(PANEL_KEY)
+
+app = typer.Typer()
+log_level = ""
 
 
 def get_backup_filename(file: Path) -> Path:
@@ -103,17 +106,11 @@ def traverse_and_process_dirs(
     logger.success(f'Traversal complete. Added {file_count} files to "{dest_zip}".')
 
 
-if __name__ == "__main__":
-    # TODO(glk): Some issue with type checking inspection?
-    # noinspection PyTypeChecker
-    cmd_args = CmdArgs("Copy Barks png panels to jpg directory")
-    args_ok, error_msg = cmd_args.args_are_valid()
-    if not args_ok:
-        logger.error(error_msg)
-        sys.exit(1)
-
+@app.command(help="Copy Barks png panels to jpg directory")
+def main(log_level_str: LogLevelArg = "DEBUG") -> None:
     # Global variable accessed by loguru-config.
-    log_level = cmd_args.get_log_level()
+    global log_level  # noqa: PLW0603
+    log_level = log_level_str
     LoguruConfig.load(Path(__file__).parent / "log-config.yaml")
 
     # noinspection PyBroadException
@@ -143,3 +140,7 @@ if __name__ == "__main__":
 
     except Exception:  # noqa: BLE001
         logger.exception("Program error: ")
+
+
+if __name__ == "__main__":
+    main()
