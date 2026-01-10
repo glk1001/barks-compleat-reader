@@ -14,7 +14,7 @@ from .comic_issues import (
     Issues,
 )
 
-NUM_TITLES = 653 + 5  # +5 for articles
+NUM_TITLES = 660 + 5  # +5 for articles
 
 GYRO_GEARLOOSE = "Gyro Gearloose"
 
@@ -72,7 +72,9 @@ BONGO_ON_THE_CONGO = "Bongo on the Congo"
 BORDERLINE_HERO = "Borderline Hero"
 BOTTLED_BATTLERS = "Bottled Battlers"
 BOXED_IN = "Boxed-In"
+BRAIN_STRAIN = "Brain Strain"
 BUBBLEWEIGHT_CHAMP = "Bubbleweight Champ"
+BUFFALOED_BY_BUFFALOES = "Buffaloed by Buffaloes"
 BUFFO_OR_BUST = "Buffo or Bust"
 BUM_STEER = "Bum Steer"
 CALL_OF_THE_WILD_THE = "The Call of the Wild"
@@ -117,6 +119,7 @@ CRAFTY_CORNER = "Crafty Corner"
 CRAWLS_FOR_CASH = "Crawls for Cash"
 CRAZY_QUIZ_SHOW_THE = "The Crazy Quiz Show"
 CROWN_OF_THE_MAYAS = "Crown of the Mayas"
+CUBE_THE = "The Cube"
 CUSTARD_GUN_THE = "The Custard Gun"
 DAFFY_TAFFY_PULL_THE = "The Daffy Taffy Pull"
 DAISYS_DAZED_DAYS = "Daisy's Dazed Days"
@@ -382,6 +385,7 @@ MIDAS_TOUCH_THE = "The Midas Touch"
 MIDGETS_MADNESS = "Midgets Madness"
 MIGHTY_TRAPPER_THE = "The Mighty Trapper"
 MIGRATING_MILLIONS = "Migrating Millions"
+MIGHTY_BUT_MISERABLE = "Mighty but Miserable"
 MILKMAN_THE = "The Milkman"
 MILKTIME_MELODIES = "Milktime Melodies"
 MILLION_DOLLAR_PIGEON = "Million Dollar Pigeon"
@@ -398,6 +402,7 @@ MONEY_STAIRS_THE = "The Money Stairs"
 MONEY_WELL_THE = "The Money Well"
 MONKEY_BUSINESS = "Monkey Business"
 MOOLA_ON_THE_MOVE = "Moola on the Move"
+MONSTERVILLE = "Monsterville"
 MOPPING_UP = "Mopping Up"
 MOVIE_MAD = "Movie Mad"
 MR_PRIVATE_EYE = "Mr. Private Eye"
@@ -424,6 +429,7 @@ NO_BARGAIN = "No Bargain"
 NO_NOISE_IS_GOOD_NOISE = "No Noise is Good Noise"
 NO_PLACE_TO_HIDE = "No Place to Hide"
 NO_SUCH_VARMINT = "No Such Varmint"
+NOSE_KNOWS_THE = "The Nose Knows"
 ODDBALL_ODYSSEY = "Oddball Odyssey"
 ODD_ORDER_THE = "The Odd Order"
 OIL_THE_NEWS = "Oil the News"
@@ -450,6 +456,7 @@ PHANTOM_OF_NOTRE_DUCK_THE = "The Phantom of Notre Duck"
 PICNIC = "Picnic"
 PICNIC_TRICKS = "Picnic Tricks"
 PIED_PIPER_OF_DUCKBURG_THE = "The Pied Piper of Duckburg"
+PIED_PIPER_OF_DUCKBURG_JIPPES_THE = "The Pied Piper of Duckburg (Jippes)"
 PIPELINE_TO_DANGER = "Pipeline to Danger"
 PIXILATED_PARROT_THE = "The Pixilated Parrot"
 PIZEN_SPRING_DUDE_RANCH = "Pizen Spring Dude Ranch"
@@ -1121,6 +1128,7 @@ class Titles(IntEnum):
     WAX_MUSEUM_THE = auto()
     PAUL_BUNYAN_MACHINE_THE = auto()
     PIED_PIPER_OF_DUCKBURG_THE = auto()
+    PIED_PIPER_OF_DUCKBURG_JIPPES_THE = auto()
     KNIGHTS_OF_THE_FLYING_SLEDS = auto()
     FUN_WHATS_THAT = auto()
     WITCHING_STICK_THE = auto()
@@ -1203,6 +1211,11 @@ class Titles(IntEnum):
     YOU_CANT_WIN = auto()
     BILLIONS_IN_THE_HOLE = auto()
     BONGO_ON_THE_CONGO = auto()
+    MONSTERVILLE = auto()
+    CUBE_THE = auto()
+    MIGHTY_BUT_MISERABLE = auto()
+    BRAIN_STRAIN = auto()
+    NOSE_KNOWS_THE = auto()
     STRANGER_THAN_FICTION = auto()
     BOXED_IN = auto()
     CHUGWAGON_DERBY = auto()
@@ -1222,6 +1235,7 @@ class Titles(IntEnum):
     NORTHEASTER_ON_CAPE_QUACK = auto()
     MOVIE_MAD = auto()
     TEN_CENT_VALENTINE = auto()
+    BUFFALOED_BY_BUFFALOES = auto()
     CAVE_OF_ALI_BABA = auto()
     DEEP_DOWN_DOINGS = auto()
     GREAT_POP_UP_THE = auto()
@@ -1785,6 +1799,7 @@ BARKS_TITLES = [
     WAX_MUSEUM_THE,
     PAUL_BUNYAN_MACHINE_THE,
     PIED_PIPER_OF_DUCKBURG_THE,
+    PIED_PIPER_OF_DUCKBURG_JIPPES_THE,
     KNIGHTS_OF_THE_FLYING_SLEDS,
     FUN_WHATS_THAT,
     WITCHING_STICK_THE,
@@ -1867,6 +1882,11 @@ BARKS_TITLES = [
     YOU_CANT_WIN,
     BILLIONS_IN_THE_HOLE,
     BONGO_ON_THE_CONGO,
+    MONSTERVILLE,
+    CUBE_THE,
+    MIGHTY_BUT_MISERABLE,
+    BRAIN_STRAIN,
+    NOSE_KNOWS_THE,
     STRANGER_THAN_FICTION,
     BOXED_IN,
     CHUGWAGON_DERBY,
@@ -1886,6 +1906,7 @@ BARKS_TITLES = [
     NORTHEASTER_ON_CAPE_QUACK,
     MOVIE_MAD,
     TEN_CENT_VALENTINE,
+    BUFFALOED_BY_BUFFALOES,
     CAVE_OF_ALI_BABA,
     DEEP_DOWN_DOINGS,
     GREAT_POP_UP_THE,
@@ -2502,6 +2523,7 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.WAX_MUSEUM_THE, True, Issues.CS, 231, 12, 1959, 17, 11, 1958),
     ComicBookInfo(Titles.PAUL_BUNYAN_MACHINE_THE, True, Issues.US, 28, 12, 1959, 15, 12, 1958),
     ComicBookInfo(Titles.PIED_PIPER_OF_DUCKBURG_THE, True, Issues.USA, 21, 5, 1990, 1, 1, 1959),  # Unfinished story no submission date
+    ComicBookInfo(Titles.PIED_PIPER_OF_DUCKBURG_JIPPES_THE, True, Issues.USA, 21, 5, 1990, 1, 1, 1959),  # Unfinished story no submission date
     ComicBookInfo(Titles.KNIGHTS_OF_THE_FLYING_SLEDS, True, Issues.CS, 233, 2, 1960, 2, 1, 1959),
     ComicBookInfo(Titles.FUN_WHATS_THAT, True, Issues.SF, 2, 8, 1959, 8, 1, 1959),
     ComicBookInfo(Titles.WITCHING_STICK_THE, True, Issues.US, 28, 12, 1959, 16, 1, 1959),
@@ -2584,6 +2606,11 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.YOU_CANT_WIN, True, Issues.US, 33, 3, 1961, 15, 8, 1960),
     ComicBookInfo(Titles.BILLIONS_IN_THE_HOLE, True, Issues.US, 33, 3, 1961, 3, 9, 1960),
     ComicBookInfo(Titles.BONGO_ON_THE_CONGO, True, Issues.US, 33, 3, 1961, 12, 9, 1960),
+    ComicBookInfo(Titles.MONSTERVILLE, True, Issues.FC, 1184, 6, 1961, 12, 10, 1960),
+    ComicBookInfo(Titles.CUBE_THE, True, Issues.FC, 1184, 6, 1961, 12, 10, 1960),
+    ComicBookInfo(Titles.MIGHTY_BUT_MISERABLE, True, Issues.FC, 1184, 6, 1961, 12, 10, 1960),
+    ComicBookInfo(Titles.BRAIN_STRAIN, True, Issues.FC, 1184, 6, 1961, 12, 10, 1960),
+    ComicBookInfo(Titles.NOSE_KNOWS_THE, True, Issues.FC, 1184, 6, 1961, 31, 10, 1960),
     ComicBookInfo(Titles.STRANGER_THAN_FICTION, True, Issues.CS, 249, 6, 1961, 31, 10, 1960),
     ComicBookInfo(Titles.BOXED_IN, True, Issues.CS, 250, 7, 1961, 12, 11, 1960),
     ComicBookInfo(Titles.CHUGWAGON_DERBY, True, Issues.US, 34, 6, 1961, 16, 11, 1960),
@@ -2603,6 +2630,7 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.NORTHEASTER_ON_CAPE_QUACK, False, Issues.CS, 256, 1, 1962, 17, 5, 1961),
     ComicBookInfo(Titles.MOVIE_MAD, False, Issues.CS, 257, 2, 1962, 5, 6, 1961),
     ComicBookInfo(Titles.TEN_CENT_VALENTINE, False, Issues.CS, 258, 3, 1962, 14, 6, 1961),
+    ComicBookInfo(Titles.BUFFALOED_BY_BUFFALOES, True, Issues.FC, 1267, 11, 1961, 19, 6, 1961),
     ComicBookInfo(Titles.CAVE_OF_ALI_BABA, False, Issues.US, 37, 3, 1962, 7, 7, 1961),
     ComicBookInfo(Titles.DEEP_DOWN_DOINGS, False, Issues.US, 37, 3, 1962, 13, 7, 1961),
     ComicBookInfo(Titles.GREAT_POP_UP_THE, False, Issues.US, 37, 3, 1962, 22, 8, 1961),
@@ -2729,6 +2757,7 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.DON_AULT___LIFE_AMONG_THE_DUCKS, False, Issues.EXTRAS, 1, 1, 2014, 1, 1, 2014),
     ComicBookInfo(Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD, False, Issues.EXTRAS, 1, 1, 2025, 1, 1, 2025),
     ComicBookInfo(Titles.CENSORSHIP_FIXES_AND_OTHER_CHANGES, False, Issues.EXTRAS, 6, 8, 2025, 6, 8, 2025),
+    # Sort these out
 ]
 # fmt: on
 
