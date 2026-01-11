@@ -17,6 +17,8 @@ from dotenv import load_dotenv
 from intspan import intspan
 from loguru import logger
 from loguru_config import LoguruConfig
+from rich.console import Console
+from rich.table import Table
 
 if TYPE_CHECKING:
     from comic_utils.comic_consts import PanelPath
@@ -75,30 +77,32 @@ def main(
 
         image_getter = TitleImageFileGetter(reader_settings)
         image_dict: dict[str, tuple[dict[FileTypes, set[tuple[PanelPath, bool]]], str]] = {}
-        max_title_len = 0
         for title in titles:
-            max_title_len = max(max_title_len, len(title))
-
             comic_book = comics_database.get_comic_book(title)
             page_lst = ", ".join(get_abbrev_jpg_page_list(comic_book)).replace(" - ", "-")
 
             image_dict[title] = (image_getter.get_all_title_image_files(title), page_lst)
 
-        print()
+        console = Console()
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Title", style="dim")
+        table.add_column("Total", justify="right")
+        for ft in RELEVANT_FILE_TYPES:
+            table.add_column(SHORT_FILE_TYPE_NAMES[ft], justify="right")
+        table.add_column("Pages")
 
         for title, (file_dict, page_lst) in image_dict.items():
-            title_str = title + ":"
+            counts = {ft: len(file_dict.get(ft, [])) for ft in RELEVANT_FILE_TYPES}
+            total = sum(counts.values())
+            row = [title, str(total), *[str(c) for c in counts.values()], page_lst]
+            style = (
+                "orange1"
+                if (counts[FileTypes.INSET] == 0 or counts[FileTypes.FAVOURITE] == 0)
+                else None
+            )
+            table.add_row(*row, style=style)
 
-            nums = [
-                (
-                    f"{SHORT_FILE_TYPE_NAMES[ft]}:"
-                    f" {len(file_dict.get(ft, [])):{2 if ft == FileTypes.AI else 1}d}"
-                )
-                for ft in RELEVANT_FILE_TYPES
-            ]
-            total = sum(len(file_dict.get(ft, [])) for ft in RELEVANT_FILE_TYPES)
-
-            print(f"{title_str:<{max_title_len + 1}} {total:2d}= {', '.join(nums)}; {page_lst}")
+        console.print(table)
 
     except Exception:  # noqa: BLE001
         logger.exception("Program error: ")
