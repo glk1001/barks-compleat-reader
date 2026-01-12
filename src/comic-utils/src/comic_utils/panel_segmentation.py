@@ -55,8 +55,11 @@ def get_min_max_panel_values(segment_info: dict[str, Any]) -> tuple[int, int, in
 
 
 class KumikoPanelSegmentation:
-    def __init__(self, work_dir: Path, no_panel_expansion: bool = False) -> None:
+    def __init__(
+        self, work_dir: Path, comic_building_dir: Path, no_panel_expansion: bool = False
+    ) -> None:
         self._work_dir = work_dir
+        self._comic_building_dir = comic_building_dir
         self._no_panel_expansion = no_panel_expansion
 
     def get_panels_segment_info(self, srce_image: PilImage, srce_filename: Path) -> dict[str, Any]:
@@ -70,19 +73,33 @@ class KumikoPanelSegmentation:
         return self._run_kumiko(work_filename)
 
     def _run_kumiko(self, page_filename: str) -> dict[str, Any]:
+        uv_cmd = "uv"
         kumiko_home_dir = Path.home() / "Prj/github/kumiko"
-        kumiko_python_path = str(kumiko_home_dir / ".venv/bin/python3")
         kumiko_script_path = str(kumiko_home_dir / "kumiko")
-        run_args = [kumiko_python_path, kumiko_script_path, "-i", page_filename]
+        run_args = [
+            uv_cmd,
+            "run",
+            "--directory",
+            str(self._comic_building_dir),
+            kumiko_script_path,
+            "-i",
+            page_filename,
+        ]
         if self._no_panel_expansion:
             run_args.append("--no-panel-expansion")
         logger.debug(f"Running kumiko: {' '.join(run_args)}.")
-        result = subprocess.run(  # noqa: S603
-            run_args,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
+        try:
+            result = subprocess.run(  # noqa: S603
+                run_args,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Kumiko failed with return code {e.returncode}")
+            logger.error(f"STDOUT: {e.stdout}")
+            logger.error(f"STDERR: {e.stderr}")
+            raise
 
         segment_info = json.loads(result.stdout)
         assert len(segment_info) == 1

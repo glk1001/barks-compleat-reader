@@ -10,8 +10,10 @@ from .pil_image_utils import load_pil_image_for_reading
 
 
 class BoundingBoxProcessor:
-    def __init__(self, work_dir: Path, no_panel_expansion: bool = False) -> None:
-        self._kumiko = KumikoPanelSegmentation(work_dir, no_panel_expansion)
+    def __init__(
+        self, work_dir: Path, comic_building_dir: Path, no_panel_expansion: bool = False
+    ) -> None:
+        self._kumiko = KumikoPanelSegmentation(work_dir, comic_building_dir, no_panel_expansion)
 
     def get_panels_segment_info_from_kumiko(
         self,
