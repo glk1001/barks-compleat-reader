@@ -19,10 +19,11 @@
             mipmap: True
 
             # Title info label
-            Label:
-                text: "[i]" + root.current_title_str + "[/i]"
+            BgColorLabel:
+                text: "[i] " + root.current_title_str + " [/i]"
                 markup: True
                 color: (1, 1, 0, 1)
+                background_color: (0.1, 0.1, 0.1, 0.5 if root.current_title_str else 0)
                 opacity: 0.8 if root.show_current_title else 0
                 font_size: sp(15)
                 size_hint: None, None
