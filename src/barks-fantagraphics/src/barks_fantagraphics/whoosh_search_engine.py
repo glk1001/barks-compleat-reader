@@ -246,9 +246,6 @@ class SearchEngineCreator(SearchEngine):
                 )
 
                 if self.is_page_number(group):
-                    print(int(group["panel_num"]))
-                    print(group["notes"].lower())
-                    print(ai_text)
                     continue
 
                 writer.add_document(

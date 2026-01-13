@@ -166,8 +166,7 @@ class BottomTitleViewScreen(FloatLayout):
                 f"Time taken to set title inset image: {timing.get_elapsed_time_with_unit()}."
             )
 
-        # noinspection LongLine
-        self._image_loader.load_texture(inset_image_source, on_ready)  # ty: ignore[invalid-argument-type]
+        self._image_loader.load_texture(inset_image_source, on_ready)
 
     @staticmethod
     def _get_main_title_str(fanta_info: FantaComicBookInfo) -> str:

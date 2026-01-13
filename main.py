@@ -13,12 +13,12 @@ import threading
 from configparser import ConfigParser
 from pathlib import Path
 
+import typer
 from comic_utils.cpi_loader import cpi_loader
 from comic_utils.timing import Timing
 
 _timing = Timing()
 
-from barks_fantagraphics.comics_cmd_args import CmdArgs, ExtraArg
 from barks_reader.config_info import (  # IMPORT THIS BEFORE Kivy!!
     KIVY_LOGGING_NAME,
     ConfigInfo,
@@ -85,9 +85,10 @@ threading.excepthook = handle_thread_exception
 # ============================================================================
 
 
-def start_logging(cfg_info: ConfigInfo, _args: CmdArgs, min_options: MinimalConfigOptions) -> None:
+def start_logging(cfg_info: ConfigInfo, min_options: MinimalConfigOptions) -> None:
     # 'kivy.Config' is defined under an 'if'.
-    from kivy import Config, kivy_home_dir  # ty: ignore[possibly-missing-import]
+    # noinspection PyProtectedMember
+    from kivy import Config, kivy_home_dir
 
     setup_loguru(cfg_info, min_options.log_level)
 
@@ -114,6 +115,7 @@ def start_logging(cfg_info: ConfigInfo, _args: CmdArgs, min_options: MinimalConf
 
 
 def redirect_kivy_logs() -> None:
+    # noinspection PyProtectedMember
     from kivy import Logger as KivyLogger
 
     # Redirect Kivy's log messages to our main loguru setup.
@@ -155,13 +157,23 @@ def redirect_kivy_logs() -> None:
     KivyLogger.addHandler(LoguruKivyHandler(logger))
 
 
-def update_window_size(args: CmdArgs, min_options: MinimalConfigOptions) -> None:
+def update_window_size(
+    cmd_arg_win_height: int,
+    cmd_arg_win_left: int,
+    cmd_arg_win_top: int,
+    min_options: MinimalConfigOptions,
+) -> None:
+    logger.debug(
+        f"Cmd arg main win dimensions:"
+        f" {cmd_arg_win_height}, ({cmd_arg_win_left}, {cmd_arg_win_top})."
+    )
+
     ini_win_height, ini_win_left, ini_win_top = (
         min_options.win_height,
         min_options.win_left,
         min_options.win_top,
     )
-    cmd_arg_win_height, cmd_arg_win_left, cmd_arg_win_top = get_main_win_info_from_cmd_args(args)
+
     best_win_height, best_win_left, best_win_top = get_main_win_from_screen_metrics()
 
     win_height = cmd_arg_win_height
@@ -185,20 +197,12 @@ def update_window_size(args: CmdArgs, min_options: MinimalConfigOptions) -> None
     set_window_size(win_height, win_left, win_top)
 
     if min_options.reader_app_icon_path:
-        from kivy import Config  # ty: ignore[possibly-missing-import]
+        # noinspection PyProtectedMember
+        from kivy import Config
 
         logger.debug(f'App icon file: "{min_options.reader_app_icon_path}".')
-        Config.set("kivy", "window_icon", str(min_options.reader_app_icon_path))  # ty: ignore[possibly-missing-attribute]
-
-
-def get_main_win_info_from_cmd_args(args: CmdArgs) -> tuple[int, int, int]:
-    win_height = args.get_extra_arg("--win_height")
-    win_left = args.get_extra_arg("--win_left")
-    win_top = args.get_extra_arg("--win_top")
-
-    logger.debug(f"Cmd arg main win dimensions: {win_height}, ({win_left}, {win_top}).")
-
-    return win_height, win_left, win_top
+        # noinspection LongLine
+        Config.set("kivy", "window_icon", str(min_options.reader_app_icon_path))  # ty:ignore[possibly-missing-attribute]
 
 
 def get_main_win_info_from_ini_file(cfg_info: ConfigInfo) -> tuple[int, int, int]:
@@ -235,7 +239,8 @@ def get_main_win_from_screen_metrics() -> tuple[int, int, int]:
 
 
 def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
-    from kivy import Config  # ty: ignore[possibly-missing-import]
+    # noinspection PyProtectedMember
+    from kivy import Config
 
     # noinspection LongLine
     if PLATFORM != Platform.WIN:
@@ -267,10 +272,10 @@ def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
     )
 
 
-def call_reader_main(cfg_info: ConfigInfo, args: CmdArgs) -> None:
-    from barks_reader.barks_reader_app import main
+def call_reader_main(cfg_info: ConfigInfo) -> None:
+    from barks_reader.barks_reader_app import reader_main
 
-    main(cfg_info, args)
+    reader_main(cfg_info)
 
 
 def ok_to_run() -> bool:
@@ -295,35 +300,37 @@ def reset_python_gc() -> None:
     gc.set_threshold(allocations, gen1, gen2)
 
 
-if __name__ == "__main__":
-    if not ok_to_run():
-        sys.exit(1)
+app = typer.Typer()
 
-    reset_python_gc()
 
+@app.command(help="Compleat Barks Reader")
+def main(
+    win_height: int = -1,
+    win_left: int = 0,
+    win_top: int = -1,
+) -> None:
     cpi_loader.start_async()
 
     config_info = ConfigInfo()
-
-    EXTRA_ARGS: list[ExtraArg] = [
-        ExtraArg("--win-height", action="store", type=int, default=0),
-        ExtraArg("--win-left", action="store", type=int, default=-1),
-        ExtraArg("--win-top", action="store", type=int, default=-1),
-    ]
-    cmd_args = CmdArgs("Compleat Barks Reader", extra_args=EXTRA_ARGS)
-    args_ok, error_msg = cmd_args.args_are_valid()
-    if not args_ok:
-        sys.exit(1)
 
     minimal_options = get_minimal_config_options(config_info)
 
     assert minimal_options.error_background_path
     config_info.error_background_path = minimal_options.error_background_path
 
-    start_logging(config_info, cmd_args, minimal_options)
+    start_logging(config_info, minimal_options)
 
-    update_window_size(cmd_args, minimal_options)
+    update_window_size(win_height, win_left, win_top, minimal_options)
 
     logger.info(f"Time before Kivy app starts: {_timing.get_elapsed_time_with_unit()}.")
 
-    call_reader_main(config_info, cmd_args)
+    call_reader_main(config_info)
+
+
+if __name__ == "__main__":
+    if not ok_to_run():
+        sys.exit(1)
+
+    reset_python_gc()
+
+    app()

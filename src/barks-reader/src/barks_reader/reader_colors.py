@@ -76,7 +76,7 @@ class RandomColorTint:
 
         rand_color = self._get_random_tinted_color(rand_color)
 
-        return tuple(rand_color)  # ty: ignore[invalid-return-type]
+        return tuple(rand_color)
 
     def _get_random_tinted_color(self, color: Color) -> Color:
         num_indexes_to_change = randrange(1, 3)

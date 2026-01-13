@@ -25,9 +25,6 @@ APP_LOGGING_NAME = "zip"
 PANEL_KEY = os.environ["BARKS_ZIPS_KEY"]
 FERNET = Fernet(PANEL_KEY)
 
-app = typer.Typer()
-log_level = ""
-
 
 def get_backup_filename(file: Path) -> Path:
     return Path(str(file) + "_" + get_timestamp_str(file))
@@ -106,6 +103,10 @@ def traverse_and_process_dirs(
     logger.success(f'Traversal complete. Added {file_count} files to "{dest_zip}".')
 
 
+app = typer.Typer()
+log_level = ""
+
+
 @app.command(help="Copy Barks png panels to jpg directory")
 def main(log_level_str: LogLevelArg = "DEBUG") -> None:
     # Global variable accessed by loguru-config.
@@ -120,7 +121,7 @@ def main(log_level_str: LogLevelArg = "DEBUG") -> None:
         logger.info(f'Using config file "{config_info.app_config_path}".')
         config.read(config_info.app_config_path)
         reader_settings = ReaderSettings()
-        # noinspection PyTypeChecker
+        # noinspection PyTypeChecker,LongLine
         reader_settings.set_config(config, config_info.app_config_path, config_info.app_data_dir)  # ty: ignore[invalid-argument-type]
         reader_settings.force_barks_panels_dir(use_png_images=True)
 

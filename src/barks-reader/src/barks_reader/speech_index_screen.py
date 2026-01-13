@@ -218,8 +218,7 @@ class SpeechIndexScreen(IndexScreen):
             self.image_texture = tex
             logger.debug(f"Time taken to set index image: {timing.get_elapsed_time_with_unit()}.")
 
-        # noinspection LongLine
-        self._image_loader.load_texture(image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
+        self._image_loader.load_texture(image_info.filename, on_ready)
 
     @override
     def _create_index_button(self, item: IndexItem) -> IndexItemButton:
@@ -283,7 +282,7 @@ class SpeechIndexScreen(IndexScreen):
             first_page_to_goto,
             title_str_with_pages,
             title_speech_info,
-        ) in sub_items_to_display:  # ty: ignore[invalid-assignment]
+        ) in sub_items_to_display:
             logger.info(f'For "{title_str}", first page to goto = {first_page_to_goto}.')
             title_button = TitleItemButton(
                 text=title_str_with_pages,

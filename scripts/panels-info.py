@@ -40,10 +40,11 @@ SHORT_FILE_TYPE_NAMES = {
 }
 RELEVANT_FILE_TYPES = [ft for ft in FileTypes if ft != FileTypes.NONTITLE]
 
+load_dotenv(".env.runtime")
+
+
 app = typer.Typer()
 log_level = ""
-
-load_dotenv(".env.runtime")
 
 
 @app.command(help="Fanta volumes panels info")
@@ -68,7 +69,7 @@ def main(
         config = ConfigParser()
         config.read(config_info.app_config_path)
         reader_settings = ReaderSettings()
-        # noinspection PyTypeChecker
+        # noinspection PyTypeChecker,LongLine
         reader_settings.set_config(config, config_info.app_config_path, config_info.app_data_dir)  # ty: ignore[invalid-argument-type]
         reader_settings.force_barks_panels_dir(use_png_images=True)
 

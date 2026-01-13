@@ -103,7 +103,7 @@ class ComicReaderManager:
 
         comic_book_image_builder = ComicBookImageBuilder(
             comic,
-            str(self._reader_settings.sys_file_paths.get_empty_page_file()),
+            self._reader_settings.sys_file_paths.get_empty_page_file(),
             get_inset_decrypted_bytes=get_decrypted_bytes
             if self._reader_settings.file_paths.barks_panels_are_encrypted
             else None,

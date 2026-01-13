@@ -67,7 +67,7 @@ class ComicBookImageBuilder:
     def __init__(
         self,
         comic: ComicBook,
-        empty_page_file: str,
+        empty_page_file: Path,
         get_inset_decrypted_bytes: Callable[[bytes], bytes] | None = None,
     ) -> None:
         self._comic = comic
@@ -457,7 +457,7 @@ class ComicBookImageBuilder:
         page_width: int,
     ) -> tuple[tuple[int, int], PilImage]:
         if isinstance(self._comic.intro_inset_file, Path):
-            inset = open_image_for_reading(str(self._comic.intro_inset_file))
+            inset = open_image_for_reading(self._comic.intro_inset_file)
         else:
             buffer = self._comic.intro_inset_file.read_bytes()
             if self._get_inset_decrypted_bytes:

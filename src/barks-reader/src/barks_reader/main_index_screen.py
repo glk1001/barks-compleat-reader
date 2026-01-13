@@ -195,8 +195,7 @@ class MainIndexScreen(IndexScreen):
             self.image_texture = tex
             logger.debug(f"Time taken to set index image: {timing.get_elapsed_time_with_unit()}.")
 
-        # noinspection LongLine
-        self._image_loader.load_texture(image_info.filename, on_ready)  # ty: ignore[invalid-argument-type]
+        self._image_loader.load_texture(image_info.filename, on_ready)
 
     def _get_all_titles_for_letter(
         self, letter: str
@@ -278,7 +277,7 @@ class MainIndexScreen(IndexScreen):
                 (
                     title,
                     *self._get_indexable_title_with_page_nums(title, item_id),
-                )  # ty: ignore[invalid-assignment]
+                )
                 for title in BARKS_TAGGED_TITLES[item_id]
             ]
         else:  # It's a TagGroup

@@ -25,7 +25,7 @@ def show_installer_message(
 
     # Set the window pos and size now to avoid moving window flicker.
     # noinspection PyProtectedMember
-    from kivy import Config  # ty: ignore[possibly-missing-import]
+    from kivy import Config
 
     Config.set("graphics", "left", x)  # ty: ignore[possibly-missing-attribute]
     Config.set("graphics", "top", y)  # ty: ignore[possibly-missing-attribute]

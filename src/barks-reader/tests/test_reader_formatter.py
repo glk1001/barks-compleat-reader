@@ -41,7 +41,7 @@ class TestReaderFormatterFunctions(unittest.TestCase):
     def test_get_formatted_color(self) -> None:
         # Assuming Color is a tuple/list of floats
         color = (0.1, 0.5, 0.9, 1.0)
-        result = reader_formatter.get_formatted_color(color)  # type: ignore[arg-type]
+        result = reader_formatter.get_formatted_color(color)
         assert result == "(0.10, 0.50, 0.90, 1.00)"
 
     @patch("barks_reader.reader_formatter.inflate")

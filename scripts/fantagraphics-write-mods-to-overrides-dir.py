@@ -37,9 +37,6 @@ Image.MAX_IMAGE_PIXELS = None
 PANEL_KEY = os.environ["BARKS_ZIPS_KEY"]
 FERNET = Fernet(PANEL_KEY)
 
-app = typer.Typer()
-log_level = ""
-
 
 class FileType(Enum):
     ORIGINAL = auto()
@@ -148,6 +145,10 @@ def process_volume(comics_database: ComicsDatabase, volume: int) -> None:
 def process_volumes(comics_database: ComicsDatabase, volumes_to_process: list[int]) -> None:
     for volume in volumes_to_process:
         process_volume(comics_database, volume)
+
+
+app = typer.Typer()
+log_level = ""
 
 
 @app.command(help="Write Fantagraphics edited files to overrides directory")

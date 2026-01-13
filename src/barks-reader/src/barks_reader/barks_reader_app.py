@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, override
 
+from barks_fantagraphics.comics_database import ComicsDatabase
 from comic_utils.timing import Timing
 from kivy.app import App  # can take ~2s in VM Windows
 from kivy.clock import Clock
@@ -54,8 +55,6 @@ from barks_reader.speech_index_screen import SpeechIndexScreen
 from barks_reader.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
 
 if TYPE_CHECKING:
-    from barks_fantagraphics.comics_cmd_args import CmdArgs
-    from barks_fantagraphics.comics_database import ComicsDatabase
     from kivy.config import ConfigParser
     from kivy.uix.screenmanager import ScreenManager
     from kivy.uix.widget import Widget
@@ -379,15 +378,15 @@ class BarksReaderApp(App):
 def _log_screen_settings() -> None:
     logger.info(f"Window pos = {Window.left},{Window.top}.")
 
-    assert Config is not None  # ty: ignore[possibly-missing-attribute]
+    assert Config is not None
     logger.info(
         f"Config win pos = {Config.getint('graphics', 'left')},{Config.getint('graphics', 'top')}."
-    )  # ty: ignore[possibly-missing-attribute]
+    )
     logger.info(f"Window size = {Window.size}, dpi = {Window.dpi}.")
     logger.info(
         f"Config win size"
         f" = {Config.getint('graphics', 'width')},{Config.getint('graphics', 'height')}."
-    )  # ty: ignore[possibly-missing-attribute]
+    )
 
 
 # noinspection LongLine
@@ -404,12 +403,12 @@ def _handle_app_exception(config_info: ConfigInfo, exc_type, exc_value, exc_trac
     )
 
 
-def main(config_info: ConfigInfo, cmd_args: CmdArgs) -> None:
+def reader_main(config_info: ConfigInfo) -> None:
     # noinspection PyBroadException
     try:
         log_screen_metrics()
 
-        comics_database = cmd_args.get_comics_database(for_building_comics=False)
+        comics_database = ComicsDatabase(for_building_comics=False)
 
         logger.debug("Running kivy app...")
 
