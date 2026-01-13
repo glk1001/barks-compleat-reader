@@ -270,8 +270,11 @@ class ComicsDatabase:
     def get_fantagraphics_restored_svg_volume_image_dir(self, volume_num: int) -> Path:
         return self.get_fantagraphics_restored_svg_volume_dir(volume_num) / IMAGES_SUBDIR
 
+    def get_fantagraphics_restored_ocr_root_dir(self) -> Path:
+        return self.get_root_dir(self.get_fantagraphics_restored_ocr_dirname())
+
     def get_fantagraphics_restored_raw_ocr_root_dir(self) -> Path:
-        return self.get_root_dir(self.get_fantagraphics_restored_ocr_dirname()) / "Raw"
+        return self.get_fantagraphics_restored_ocr_root_dir() / "Raw"
 
     @staticmethod
     def get_fantagraphics_restored_ocr_dirname() -> str:
