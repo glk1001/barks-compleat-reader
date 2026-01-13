@@ -20,7 +20,8 @@
 
             # Title info label
             BgColorLabel:
-                text: "[i] " + root.current_title_str + " [/i]"
+                text: "[i]" + root.current_title_str + "[/i]"
+                sizing_factor_x: 1.07  # make background slightly longer than the title
                 markup: True
                 color: (1, 1, 0, 1)
                 background_color: (0.1, 0.1, 0.1, 0.5 if root.current_title_str else 0)

@@ -30,14 +30,16 @@
     background_color: (1, 1, 1, 1)
     sizing_factor_x: 1
     sizing_factor_y: 1
+    corner_radius: 4
     canvas.before:
         Color:
             rgba: self.background_color
-        Rectangle:
+        RoundedRectangle:
             size: self.sizing_factor_x * self.size[0], self.sizing_factor_y * self.size[1]
             pos:
                 self.pos[0] - (0.5 * (self.sizing_factor_x - 1) * self.size[0]), \
                 self.pos[1] - (0.5 * (self.sizing_factor_y - 1) * self.size[1])
+            radius: [dp(self.corner_radius)]
 
 <BgColorLabel@Label+BackgroundColor>
     background_color: (0, 0, 0, 0)
