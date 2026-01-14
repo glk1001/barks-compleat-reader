@@ -166,6 +166,8 @@ class BaseTreeViewNode(TreeViewNode):
 class BaseSearchBoxTreeViewNode(FloatLayout, BaseTreeViewNode):
     """Base class for search boxes in the TreeView."""
 
+    populate_callback = None
+
     @staticmethod
     def _set_spinner_values(spinner: Spinner, values: list[str]) -> None:
         """Set value and state for a spinner."""
@@ -219,8 +221,11 @@ class TitleSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
 
     @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
-        self.dispatch(self.on_title_search_box_pressed.__name__)
+        self.press_search_box()
         return super().on_touch_down(touch)
+
+    def press_search_box(self) -> None:
+        self.dispatch(self.on_title_search_box_pressed.__name__)
 
     def get_current_title(self) -> str:
         return self.ids.title_search_box.text
@@ -229,8 +234,9 @@ class TitleSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         logger.debug(f'**Title search box text changed: {instance}, text: "{value}".')
 
         titles = [] if len(value) <= 1 else self._get_titles_matching_search_title_str(str(value))
-
         self._set_spinner_values(self.ids.title_spinner, titles)
+
+        self.saved_state["text"] = value
 
     def _on_internal_title_search_box_title_changed(self, spinner: Spinner, title_str: str) -> None:
         logger.debug(
@@ -297,8 +303,11 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
 
     @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
-        self.dispatch(self.on_tag_search_box_pressed.__name__)
+        self.press_search_box()
         return super().on_touch_down(touch)
+
+    def press_search_box(self) -> None:
+        self.dispatch(self.on_tag_search_box_pressed.__name__)
 
     def get_current_tag(self) -> Tags | TagGroups:
         return self._current_tag
@@ -324,6 +333,8 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
 
         self._set_spinner_values(self.ids.tag_spinner, tags)
         self._set_spinner_values(self.ids.tag_title_spinner, titles)
+
+        self.saved_state["text"] = value
 
     def _on_internal_tag_search_box_tag_changed(self, spinner: Spinner, tag_str: str) -> None:
         logger.debug(f'**Tag search box tag spinner text changed: {spinner}, text: "{tag_str}".')

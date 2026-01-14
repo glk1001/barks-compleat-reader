@@ -194,6 +194,13 @@ class TreeViewManager:
             fanta_info = node.ids.num_label.parent.fanta_info
             self._set_next_title_func(fanta_info, None)
             self.scroll_to_node(node)
+        elif isinstance(node, (TitleSearchBoxTreeViewNode, TagSearchBoxTreeViewNode)):
+
+            def set_text() -> None:
+                node.text = node.saved_state.get("text", "")
+
+            Clock.schedule_once(lambda _dt: set_text(), 1)
+            node.press_search_box()
         elif isinstance(node, ButtonTreeViewNode):
             if node.saved_state.get("open", True):
                 node.trigger_action()
@@ -540,6 +547,10 @@ class TreeViewManager:
         if node_type in NODE_TYPE_TO_VIEW_STATE_MAP:
             new_view_state, param_name = NODE_TYPE_TO_VIEW_STATE_MAP[node_type]
             view_state_params[param_name] = node.text
+        elif node_type is TitleSearchBoxTreeViewNode:
+            new_view_state = ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET
+        elif node_type is TagSearchBoxTreeViewNode:
+            new_view_state = ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
         elif clean_node_text in NODE_TEXT_TO_VIEW_STATE_MAP:
             new_view_state = NODE_TEXT_TO_VIEW_STATE_MAP[clean_node_text]
         elif clean_node_text in BARKS_TAG_CATEGORIES_DICT:
