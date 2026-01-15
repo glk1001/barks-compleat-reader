@@ -65,6 +65,8 @@ class ViewStateManager:
         self._speech_index_screen = speech_index_screen
         self._on_views_updated_func = on_views_updated_func
 
+        self._fun_image_view_screen.set_load_image_func(self._load_fun_view_image)
+
         self._top_view_image_loader = PanelImageLoader(
             self._reader_settings.file_paths.barks_panels_are_encrypted
         )
@@ -264,29 +266,30 @@ class ViewStateManager:
         if not self._bottom_view_fun_image_info.filename:
             self._fun_image_view_screen.image_texture = None
         else:
-            timing = Timing()
+            self._load_fun_view_image(self._bottom_view_fun_image_info)
+            self._fun_image_view_screen.set_last_loaded_image_info(self._bottom_view_fun_image_info)
 
-            def on_ready(tex: Texture, err: Exception) -> None:
-                if err:
-                    raise RuntimeError(err)
-                assert tex is not None
+    def _load_fun_view_image(self, image_info: ImageInfo) -> None:
+        timing = Timing()
 
-                self._fun_image_view_screen.image_fit_mode = (
-                    self._bottom_view_fun_image_info.fit_mode
-                )
-                self._fun_image_view_screen.image_color = (
-                    self._background_views.get_bottom_view_fun_image_color()
-                )
-                self._fun_image_view_screen.image_texture = tex
-                logger.debug(f"Time taken to set fun image: {timing.get_elapsed_time_with_unit()}.")
+        def on_ready(tex: Texture, err: Exception) -> None:
+            if err:
+                raise RuntimeError(err)
+            assert tex is not None
 
-            # noinspection LongLine
-            self._fun_view_image_loader.load_texture(
-                self._bottom_view_fun_image_info.filename,
-                on_ready,  # ty: ignore[invalid-argument-type]
+            self._fun_image_view_screen.image_fit_mode = self._bottom_view_fun_image_info.fit_mode
+            self._fun_image_view_screen.image_color = (
+                self._background_views.get_bottom_view_fun_image_color()
             )
+            self._fun_image_view_screen.image_texture = tex
+            logger.debug(f"Time taken to set fun image: {timing.get_elapsed_time_with_unit()}.")
 
-            self._fun_image_view_screen.set_title(self._bottom_view_fun_image_info.from_title)
+        assert image_info.filename is not None
+        # noinspection LongLine
+        self._fun_view_image_loader.load_texture(
+            image_info.filename,
+            on_ready,  # ty:ignore[invalid-argument-type]
+        )
 
     def _set_bottom_view(self) -> None:
         """Set the image and properties for the title information bottom view."""

@@ -166,6 +166,7 @@ class _ComicPageManager(EventDispatcher):
 class ComicBookReader(FloatLayout):
     """Main layout for the comic reader."""
 
+    # TODO: What happens if monitor changes??
     MAX_WINDOW_WIDTH = get_monitors()[0].width
     MAX_WINDOW_HEIGHT = get_monitors()[0].height
 
@@ -207,7 +208,7 @@ class ComicBookReader(FloatLayout):
         # Bind property changes to update the display
         self._page_manager = _ComicPageManager(self._show_page)
 
-        self._navigation = ReaderNavigation(self.MAX_WINDOW_WIDTH)
+        self._navigation = ReaderNavigation(self.MAX_WINDOW_WIDTH, 0.09)
 
         self._time_to_load_comic = Timing()
 

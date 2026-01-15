@@ -434,6 +434,8 @@ class MainScreen(ReaderScreen):
             f" fullscreen = '{WindowManager.get_screen_mode_now()}'."
         )
 
+        self._fun_image_view_screen.on_resized(size)
+
         if not WindowManager.is_fullscreen_now():
             return
 
