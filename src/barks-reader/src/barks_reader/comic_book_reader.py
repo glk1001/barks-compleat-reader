@@ -27,6 +27,7 @@ from barks_reader.comic_book_loader import ComicBookLoader
 from barks_reader.platform_utils import WindowManager
 from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO, COMIC_BEGIN_PAGE
 from barks_reader.reader_formatter import get_action_bar_title
+from barks_reader.reader_navigation import ReaderNavigation
 from barks_reader.reader_screens import ReaderScreen
 from barks_reader.reader_ui_classes import ACTION_BAR_SIZE_Y
 from barks_reader.reader_utils import get_image_stream, get_win_width_from_height
@@ -206,10 +207,7 @@ class ComicBookReader(FloatLayout):
         # Bind property changes to update the display
         self._page_manager = _ComicPageManager(self._show_page)
 
-        self._x_mid = -1
-        self._y_top_margin = -1
-        self._fullscreen_left_margin = -1
-        self._fullscreen_right_margin = -1
+        self._navigation = ReaderNavigation(self.MAX_WINDOW_WIDTH)
 
         self._time_to_load_comic = Timing()
 
@@ -228,19 +226,7 @@ class ComicBookReader(FloatLayout):
         self._goto_page_widget = goto_page_widget
 
     def set_reader_navigation_regions(self, width: int, height: int) -> None:
-        self._x_mid = round(width / 2 - self.x)
-        self._y_top_margin = round(height - self.y - (0.09 * height))
-        logger.debug(
-            f"Reader navigation: x_mid = {self._x_mid}, y_top_margin = {self._y_top_margin}."
-        )
-
-        self._fullscreen_left_margin = round(self.MAX_WINDOW_WIDTH / 4.0)
-        self._fullscreen_right_margin = self.MAX_WINDOW_WIDTH - self._fullscreen_left_margin
-        logger.debug(
-            f"Reader navigation:"
-            f" fullscreen_left_margin = {self._fullscreen_left_margin},"
-            f" fullscreen_right_margin = {self._fullscreen_right_margin}."
-        )
+        self._navigation.update_regions(width, height, self.x, self.y)
 
     @property
     def _current_page_index(self) -> int:
@@ -263,20 +249,20 @@ class ComicBookReader(FloatLayout):
             f"Touch down event: self.x,self.y = {self.x},{self.y},"
             f" touch.x,touch.y = {round(touch.x)},{round(touch.y)},"
             f" width = {round(self.width)}, height = {round(self.height)}."
-            f" x_mid = {self._x_mid}, y_top_margin = {self._y_top_margin}."
+            f" x_mid = {self._navigation.x_mid}, y_top_margin = {self._navigation.y_top_margin}."
         )
 
         x_rel = round(touch.x - self.x)
         y_rel = round(touch.y - self.y)
 
-        if self._is_in_top_margin(x_rel, y_rel):
+        if self._navigation.is_in_top_margin(x_rel, y_rel):
             logger.debug(f"Top margin pressed: x_rel,y_rel = {x_rel},{y_rel}.")
             if WindowManager.is_fullscreen_now():
                 self._on_toggle_action_bar_visibility()
-        elif self._is_in_left_margin(x_rel, y_rel):
+        elif self._navigation.is_in_left_margin(x_rel, y_rel):
             logger.debug(f"Left margin pressed: x_rel,y_rel = {x_rel},{y_rel}.")
             self._page_manager.prev_page()
-        elif self._is_in_right_margin(x_rel, y_rel):
+        elif self._navigation.is_in_right_margin(x_rel, y_rel):
             logger.debug(f"Right margin pressed: x_rel,y_rel = {x_rel},{y_rel}.")
             self._page_manager.next_page()
         else:
@@ -286,21 +272,6 @@ class ComicBookReader(FloatLayout):
             )
 
         return super().on_touch_down(touch)
-
-    def _is_in_top_margin(self, x: int, y: int) -> bool:
-        if y <= self._y_top_margin:
-            return False
-
-        if not WindowManager.is_fullscreen_now():
-            return True
-
-        return self._fullscreen_left_margin < x <= self._fullscreen_right_margin
-
-    def _is_in_left_margin(self, x: int, y: int) -> bool:
-        return (x < self._x_mid) and (y <= self._y_top_margin)
-
-    def _is_in_right_margin(self, x: int, y: int) -> bool:
-        return (x >= self._x_mid) and (y <= self._y_top_margin)
 
     def init_data(self) -> None:
         self._comic_book_loader.init_data()
