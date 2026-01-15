@@ -1,7 +1,10 @@
+from pathlib import Path
+
 from barks_fantagraphics.barks_titles import get_safe_title
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.comics_utils import get_titles_sorted_by_submission_date
 from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+from barks_fantagraphics.pages import get_sorted_srce_and_dest_pages
 
 
 def get_titles_and_info(
@@ -72,3 +75,25 @@ def get_issue_title(comics_database: ComicsDatabase, ttl: str) -> str:
         comic_issue_title = get_safe_title(comic.get_comic_issue_title())
 
     return comic_issue_title
+
+
+def get_title_from_volume_page(
+    comics_database: ComicsDatabase, volume: int, page: str
+) -> tuple[str, int]:
+    titles = comics_database.get_all_titles_in_fantagraphics_volumes([volume])
+
+    found_title = ""
+    found_page = -1
+    for title in titles:
+        comic_book = comics_database.get_comic_book(title[0])
+        srce_and_dest_pages = get_sorted_srce_and_dest_pages(
+            comic_book, get_full_paths=False, check_srce_page_timestamps=False
+        )
+        srce_pages = [Path(p.page_filename).stem for p in srce_and_dest_pages.srce_pages]
+        if page in srce_pages:
+            page_index = srce_pages.index(page)
+            found_title = title[0]
+            found_page = srce_and_dest_pages.dest_pages[page_index].page_num
+            break
+
+    return found_title, found_page
