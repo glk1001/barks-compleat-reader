@@ -73,7 +73,12 @@ class ComicReaderManager:
         self._fanta_info = self.all_fanta_titles[article_title_str]
         article_as_comic = self._comics_database.get_comic_book(article_title_str)
 
-        self._read_comic_book(article_as_comic, page_to_first_goto)
+        assert self._comic_book_reader_screen
+        self._comic_book_reader_screen.can_benefit_from_fullscreen = False
+        try:
+            self._read_comic_book(article_as_comic, page_to_first_goto)
+        finally:
+            self._comic_book_reader_screen.can_benefit_from_fullscreen = True
 
     def read_barks_comic_book(
         self,

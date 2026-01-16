@@ -473,6 +473,7 @@ class ComicBookReaderScreen(ReaderScreen):
         self.app_icon_filepath = reader_app_icon_file
         self._on_comic_is_ready_to_read_func = on_comic_is_ready_to_read_func
         self._on_close_reader = on_close_reader_func
+        self.can_benefit_from_fullscreen = True
         self._active = False
 
         self._window_manager = WindowManager(
@@ -516,15 +517,14 @@ class ComicBookReaderScreen(ReaderScreen):
             self.is_fullscreen = False
             return
 
-        self.update_window_mode()
+        self._update_window_mode()
         self._update_window_state()
         self._update_widget_states()
 
         logger.debug(
             f"Screen mode = {WindowManager.get_screen_mode_now()},"
             f" self._was_fullscreen_on_entry = {self._was_fullscreen_on_entry}."
-            f" self.goto_fullscreen_on_comic_read"
-            f" = {self._reader_settings.goto_fullscreen_on_comic_read}."
+            f" self._goto_fullscreen_on_comic_read = {self._goto_fullscreen_on_comic_read}."
             f" self.is_fullscreen = {self.is_fullscreen}."
             f" self._action_bar.width = {self._action_bar.width}."
             f" self._action_bar.opacity = {self._action_bar.opacity}."
@@ -545,16 +545,19 @@ class ComicBookReaderScreen(ReaderScreen):
     def save_window_state_now(self) -> None:
         self._window_manager.save_state_now()
 
-    def update_window_mode(self) -> None:
-        self._was_fullscreen_on_entry = WindowManager.is_fullscreen_now()
-        if (
-            not self._was_fullscreen_on_entry
-            and self._reader_settings.goto_fullscreen_on_comic_read
-        ):
-            self._goto_fullscreen_mode()
-        self.is_fullscreen = (
-            self._was_fullscreen_on_entry or self._reader_settings.goto_fullscreen_on_comic_read
+    @property
+    def _goto_fullscreen_on_comic_read(self) -> bool:
+        return (
+            self.can_benefit_from_fullscreen and self._reader_settings.goto_fullscreen_on_comic_read
         )
+
+    def _update_window_mode(self) -> None:
+        self._was_fullscreen_on_entry = WindowManager.is_fullscreen_now()
+
+        if not self._was_fullscreen_on_entry and self._goto_fullscreen_on_comic_read:
+            self._goto_fullscreen_mode()
+
+        self.is_fullscreen = self._was_fullscreen_on_entry or self._goto_fullscreen_on_comic_read
 
     def toggle_screen_mode(self) -> None:
         if WindowManager.is_fullscreen_now():
