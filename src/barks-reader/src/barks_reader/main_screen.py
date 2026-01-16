@@ -173,6 +173,7 @@ class MainScreen(ReaderScreen):
             self._reader_settings,
             self._title_lists,
             self._random_title_images,
+            self._on_view_state_change,
         )
 
         self._view_state_manager = ViewStateManager(
@@ -324,6 +325,9 @@ class MainScreen(ReaderScreen):
         settings.pos_hint = {"center_x": 0.5, "center_y": 0.5}
 
         return True
+
+    def _on_view_state_change(self, view_state: ViewStates) -> None:
+        self.ids.collapse_button.disabled = view_state == ViewStates.INITIAL
 
     def on_action_bar_go_back(self) -> None:
         self._tree_view_manager.go_back_to_previous_node()

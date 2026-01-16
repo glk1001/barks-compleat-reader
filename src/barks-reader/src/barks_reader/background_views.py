@@ -35,6 +35,8 @@ from barks_reader.reader_formatter import get_formatted_color
 from barks_reader.reader_utils import get_cs_range_str_from_str, get_us_range_str_from_str
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from comic_utils.comic_consts import PanelPath
 
     from barks_reader.reader_colors import Color
@@ -149,6 +151,7 @@ class BackgroundViews:
         reader_settings: ReaderSettings,
         title_lists: dict[str, list[FantaComicBookInfo]],
         random_title_images: RandomTitleImages,
+        on_view_state_change_func: Callable[[ViewStates], None],
     ) -> None:
         self._reader_settings = reader_settings
         self._title_lists = title_lists
@@ -187,6 +190,9 @@ class BackgroundViews:
         self._cached_fun_titles: tuple[list[FantaComicBookInfo], set[FileTypes]] | None = None
 
         self._view_state = ViewStates.PRE_INIT
+
+        self._on_view_state_change: Callable[[ViewStates], None] = on_view_state_change_func
+        self._on_view_state_change(self._view_state)
 
     def set_fun_image_themes(self, image_themes: set[ImageThemes] | None) -> None:
         logger.debug(f"Set self._fun_image_themes = {image_themes}.")
@@ -291,6 +297,7 @@ class BackgroundViews:
     def set_view_state(self, view_state: ViewStates) -> None:
         logger.info(f"Updating background view state to {view_state.name}.")
         self._view_state = view_state
+        self._on_view_state_change(view_state)
         self._update_views()
 
     def _update_views(self) -> None:
