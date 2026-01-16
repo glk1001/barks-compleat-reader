@@ -50,6 +50,10 @@ class ImageInfo:
     fit_mode: str = FIT_MODE_COVER
 
 
+def get_title_str(title: Titles | None) -> str:
+    return BARKS_TITLES[title] if title is not None else ""
+
+
 class RandomTitleImages:
     def __init__(self, reader_settings: ReaderSettings) -> None:
         self._reader_settings = reader_settings

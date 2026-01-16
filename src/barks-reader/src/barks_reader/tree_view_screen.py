@@ -89,15 +89,19 @@ class TreeViewScreen(BoxLayout):
             if not parent_node.is_open:
                 self.ids.reader_tree_view.toggle_node(parent_node)
 
-    def deselect_and_close_open_nodes(self) -> None:
+    def deselect_and_close_open_nodes(self) -> int:
+        num_opened_nodes = 0
         for node in self.ids.reader_tree_view.iterate_open_nodes():
             self.ids.reader_tree_view.deselect_node(node)
 
             if node.is_open:
                 self.ids.reader_tree_view.toggle_node(node)
                 self._close_open_nodes(node)
+                num_opened_nodes += 1
 
         self.ids.reader_tree_view.reset_selection_tracking()
+
+        return num_opened_nodes
 
     def _close_open_nodes(self, start_node: BaseTreeViewNode) -> None:
         for node in start_node.nodes:

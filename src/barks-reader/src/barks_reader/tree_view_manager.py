@@ -175,7 +175,7 @@ class TreeViewManager:
         self._set_next_title_func = set_next_title_func
 
         self._last_open_node: BaseTreeViewNode | None = None
-        self._allow_view_state_change_on_collapse = True
+        self._allow_view_state_change = True
 
         assert self._update_title_func
         assert self._read_article_func
@@ -210,13 +210,21 @@ class TreeViewManager:
                     self._view_state_manager.update_background_views(saved_view_state)
 
     def deselect_and_close_open_nodes(self) -> None:
-        self.disallow_view_state_change_on_collapse()
+        self.disallow_view_state_change()
         try:
-            self._tree_view_screen.deselect_and_close_open_nodes()
+            num_opened_nodes = self._tree_view_screen.deselect_and_close_open_nodes()
         finally:
-            self.allow_view_state_change_on_collapse()
+            self.allow_view_state_change()
 
-        self._view_state_manager.update_background_views(ViewStates.INITIAL)
+        if num_opened_nodes > 0:
+            self._view_state_manager.update_background_views(ViewStates.INITIAL)
+
+    def open_all_parent_nodes(self, node: ButtonTreeViewNode) -> None:
+        self.disallow_view_state_change()
+        try:
+            self._tree_view_screen.open_all_parent_nodes(node)
+        finally:
+            self.allow_view_state_change()
 
     def go_back_to_previous_node(self) -> None:
         if not self._tree_view_screen.ids.reader_tree_view.previous_selected_node:
@@ -242,15 +250,15 @@ class TreeViewManager:
     def scroll_to_node(self, node: BaseTreeViewNode) -> None:
         Clock.schedule_once(lambda _dt: self._tree_view_screen.scroll_to_node(node), 0)
 
-    def allow_view_state_change_on_collapse(self) -> None:
-        self._allow_view_state_change_on_collapse = True
+    def allow_view_state_change(self) -> None:
+        self._allow_view_state_change = True
 
-    def disallow_view_state_change_on_collapse(self) -> None:
-        self._allow_view_state_change_on_collapse = False
+    def disallow_view_state_change(self) -> None:
+        self._allow_view_state_change = False
 
     def on_node_collapsed(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
         # Check allow state change flag or is leaf/title row.
-        if not self._allow_view_state_change_on_collapse or isinstance(node, TitleTreeViewNode):
+        if not self._allow_view_state_change or isinstance(node, TitleTreeViewNode):
             logger.info(f"Node collapsed but not allowing state change: '{node.get_name()}'.")
             return
 
@@ -269,8 +277,8 @@ class TreeViewManager:
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
         logger.info(f"Node expanded: '{node.get_name()}'.")
 
-        # Ignore leaf/title rows.
-        if isinstance(node, TitleTreeViewNode):
+        if not self._allow_view_state_change or isinstance(node, TitleTreeViewNode):
+            logger.info(f"Node opened but not allowing state change: '{node.get_name()}'.")
             return
 
         # 1) Collapse any previously-open group (reduces height shocks).

@@ -8,7 +8,7 @@ from loguru import logger
 
 from barks_reader.background_views import ImageThemes
 from barks_reader.panel_image_loader import PanelImageLoader
-from barks_reader.random_title_images import ImageInfo
+from barks_reader.random_title_images import ImageInfo, get_title_str
 from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO
 from barks_reader.reader_formatter import get_clean_text_without_extra
 
@@ -65,7 +65,7 @@ class ViewStateManager:
         self._speech_index_screen = speech_index_screen
         self._on_views_updated_func = on_views_updated_func
 
-        self._fun_image_view_screen.set_load_image_func(self._load_fun_view_image)
+        self._fun_image_view_screen.set_load_image_func(self._load_new_fun_view_image)
 
         self._top_view_image_loader = PanelImageLoader(
             self._reader_settings.file_paths.barks_panels_are_encrypted
@@ -147,6 +147,9 @@ class ViewStateManager:
         logger.debug("Changing background views.")
         logger.debug(f'Current title: "{self._background_views.get_current_bottom_view_title()}".')
 
+        if self._fun_image_view_screen.is_visible:
+            self._background_views.reset_bottom_view_fun_image_info()
+
         self.update_background_views(
             self._background_views.get_view_state(),
             self._background_views.get_current_category(),
@@ -213,12 +216,12 @@ class ViewStateManager:
             )[0]
 
         self._background_views.set_bottom_view_title_image_file(title_image_file)
-        self._background_views.set_bottom_view_title_image()
+        self._background_views.set_next_bottom_view_title_image()
 
         self._bottom_title_view_screen.set_title_view(fanta_info)
 
+    @staticmethod
     def _load_texture(
-        self,
         image_loader: PanelImageLoader,
         image_info: ImageInfo,
         apply_texture: Callable[[Texture], None],
@@ -269,21 +272,33 @@ class ViewStateManager:
 
     def _set_fun_view(self) -> None:
         """Set the image and properties for the 'fun' bottom view."""
-        opacity = self._background_views.get_bottom_view_fun_image_opacity()
+        current_fun_view_info = self._bottom_view_fun_image_info
+        next_opacity = self._background_views.get_bottom_view_fun_image_opacity()
+        next_fun_view_info = self._background_views.get_bottom_view_fun_image_info()
 
-        logger.debug(f"Setting new fun view opacity to {opacity}.")
+        logger.debug(
+            f"Setting new fun view:"
+            f' current from title = "{get_title_str(current_fun_view_info.from_title)}",'
+            f' next from title = "{get_title_str(next_fun_view_info.from_title)}",'
+            f" next_opacity = {next_opacity}."
+        )
 
-        self._fun_image_view_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
+        self._fun_image_view_screen.is_visible = next_opacity > (1.0 - CLOSE_TO_ZERO)
+        if not self._fun_image_view_screen.is_visible:
+            return
 
-        self._bottom_view_fun_image_info = self._background_views.get_bottom_view_fun_image_info()
+        if current_fun_view_info.from_title == next_fun_view_info.from_title:
+            return
+
+        self._bottom_view_fun_image_info = next_fun_view_info
 
         if not self._bottom_view_fun_image_info.filename:
             self._fun_image_view_screen.image_texture = None
         else:
-            self._load_fun_view_image(self._bottom_view_fun_image_info)
+            self._load_fun_view_image()
             self._fun_image_view_screen.set_last_loaded_image_info(self._bottom_view_fun_image_info)
 
-    def _load_fun_view_image(self, image_info: ImageInfo) -> None:
+    def _load_fun_view_image(self) -> None:
         def apply(tex: Texture) -> None:
             self._fun_image_view_screen.image_fit_mode = self._bottom_view_fun_image_info.fit_mode
             self._fun_image_view_screen.image_color = (
@@ -291,7 +306,16 @@ class ViewStateManager:
             )
             self._fun_image_view_screen.image_texture = tex
 
+        self._load_texture(self._fun_view_image_loader, self._bottom_view_fun_image_info, apply)
+
+    def _load_new_fun_view_image(self, image_info: ImageInfo) -> None:
+        def apply(tex: Texture) -> None:
+            self._fun_image_view_screen.image_texture = tex
+
         self._load_texture(self._fun_view_image_loader, image_info, apply)
+
+        self._bottom_view_fun_image_info = image_info
+        self._background_views.set_bottom_view_fun_image(image_info)
 
     def _set_bottom_view(self) -> None:
         """Set the image and properties for the title information bottom view."""

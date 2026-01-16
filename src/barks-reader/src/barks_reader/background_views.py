@@ -168,7 +168,7 @@ class BackgroundViews:
         self._bottom_view_title_opacity = 0.0
 
         self._bottom_view_fun_image_opacity = 0.0
-        self._bottom_view_fun_image_info: ImageInfo = ImageInfo()
+        self._bottom_view_fun_image_info: ImageInfo | None = None
         self._bottom_view_fun_image_color: Color = (0, 0, 0, 0)
         self._bottom_view_change_fun_image_event = None
 
@@ -228,7 +228,11 @@ class BackgroundViews:
         return self._bottom_view_fun_image_color
 
     def get_bottom_view_fun_image_info(self) -> ImageInfo:
+        assert self._bottom_view_fun_image_info is not None
         return self._bottom_view_fun_image_info
+
+    def reset_bottom_view_fun_image_info(self) -> None:
+        self._bottom_view_fun_image_info = None
 
     def get_bottom_view_title_image_color(self) -> Color:
         return self._bottom_view_title_image_color
@@ -289,14 +293,12 @@ class BackgroundViews:
         self._view_state = view_state
         self._update_views()
 
-    # noinspection PyUnreachableCode
-    # Reason: inspection seems broken here.
     def _update_views(self) -> None:
         if self._view_state == ViewStates.PRE_INIT:
             self._top_view_image_opacity = 0.5
-            self._set_top_view_image()
+            self._set_next_top_view_image()
             self._bottom_view_fun_image_opacity = 0.5
-            self._set_bottom_view_fun_image()
+            self._set_next_bottom_view_fun_image()
             self._bottom_view_title_opacity = 0.0
             return
 
@@ -307,12 +309,12 @@ class BackgroundViews:
             1.0 if self._view_state in BOTTOM_VIEW_TITLE_OPACITY_1_STATES else 0.0
         )
 
-        self._set_top_view_image()
-        self._set_bottom_view_fun_image()
-        self.set_bottom_view_title_image()
+        self._set_next_top_view_image()
+        self._set_next_bottom_view_fun_image()
+        self.set_next_bottom_view_title_image()
         self._set_bottom_view_title_image_color()
 
-    def _set_top_view_image(self) -> None:  # noqa: PLR0915
+    def _set_next_top_view_image(self) -> None:  # noqa: PLR0915
         # noinspection PyUnreachableCode
         match self._view_state:
             case ViewStates.PRE_INIT | ViewStates.INITIAL:
@@ -543,7 +545,10 @@ class BackgroundViews:
     def _set_top_view_image_color(self) -> None:
         self._top_view_image_color = self._top_view_image_random_color_tint.get_random_color()
 
-    def _set_bottom_view_fun_image(self) -> None:
+    def set_bottom_view_fun_image(self, image_info: ImageInfo) -> None:
+        self._bottom_view_fun_image_info = image_info
+
+    def _set_next_bottom_view_fun_image(self) -> None:
         if self._view_state in [
             ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET,
             ViewStates.ON_TITLE_SEARCH_BOX_NODE,
@@ -553,6 +558,9 @@ class BackgroundViews:
             ViewStates.ON_INDEX_MAIN_NODE,
             ViewStates.ON_INDEX_SPEECH_NODE,
         ]:
+            return
+
+        if (self._view_state == ViewStates.INITIAL) and self._bottom_view_fun_image_info:
             return
 
         self._bottom_view_fun_image_info = self._get_next_fun_view_image_info()
@@ -658,7 +666,7 @@ class BackgroundViews:
             self._bottom_view_fun_image_random_color_tint.get_random_color()
         )
 
-    def set_bottom_view_title_image(self) -> None:
+    def set_next_bottom_view_title_image(self) -> None:
         if self._bottom_view_title_image_info.filename:
             logger.debug(
                 f'Using provided title image file "{self._bottom_view_title_image_info.filename}".'
@@ -702,7 +710,7 @@ class BackgroundViews:
             self._top_view_change_event.cancel()
 
         self._top_view_change_event = Clock.schedule_interval(
-            lambda _dt: self._set_top_view_image(), self.TOP_VIEW_EVENT_TIMEOUT_SECS
+            lambda _dt: self._set_next_top_view_image(), self.TOP_VIEW_EVENT_TIMEOUT_SECS
         )
 
     def _schedule_bottom_view_fun_image_event(self) -> None:
@@ -710,5 +718,5 @@ class BackgroundViews:
             self._bottom_view_change_fun_image_event.cancel()
 
         self._bottom_view_change_fun_image_event = Clock.schedule_interval(
-            lambda _dt: self._set_bottom_view_fun_image(), self.BOTTOM_VIEW_EVENT_TIMEOUT_SECS
+            lambda _dt: self._set_next_bottom_view_fun_image(), self.BOTTOM_VIEW_EVENT_TIMEOUT_SECS
         )

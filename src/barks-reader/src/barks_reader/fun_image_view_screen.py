@@ -143,13 +143,19 @@ class FunImageViewScreen(BoxLayout):
     def set_last_loaded_image_info(self, image_info: ImageInfo) -> None:
         self._set_title(image_info.from_title)
 
-        if self.fun_view_from_title:
-            self._image_history.append(image_info)
-            self._current_history_index = len(self._image_history) - 1
+        self._image_history.append(image_info)
+        self._current_history_index = len(self._image_history) - 1
+        assert image_info.filename
+        logger.debug(
+            f'Set last loaded fun image file "{image_info.filename.name}'
+            f' and title: "{self.current_title_str}".'
+        )
 
     def _set_title(self, title: Titles | None) -> None:
         self.current_title_str = "" if title is None else BARKS_TITLES[title]
         self.fun_view_from_title = self.current_title_str != ""
+        self.goto_title_button_active = self.fun_view_from_title
+        logger.debug(f'Set fun view title to "{self.current_title_str}".')
 
     def on_goto_title(self) -> None:
         assert self.on_goto_title_func is not None
