@@ -209,8 +209,18 @@ class TreeViewManager:
                 if saved_view_state is not None:
                     self._view_state_manager.update_background_views(saved_view_state)
 
+    def deselect_and_close_open_nodes(self) -> None:
+        self.disallow_view_state_change_on_collapse()
+        try:
+            self._tree_view_screen.deselect_and_close_open_nodes()
+        finally:
+            self.allow_view_state_change_on_collapse()
+
+        self._view_state_manager.update_background_views(ViewStates.INITIAL)
+
     def go_back_to_previous_node(self) -> None:
         if not self._tree_view_screen.ids.reader_tree_view.previous_selected_node:
+            self.deselect_and_close_open_nodes()
             return
 
         logger.info(

@@ -329,13 +329,7 @@ class MainScreen(ReaderScreen):
         self._tree_view_manager.go_back_to_previous_node()
 
     def on_action_bar_collapse(self) -> None:
-        self._tree_view_manager.disallow_view_state_change_on_collapse()
-        try:
-            self._tree_view_screen.deselect_and_close_open_nodes()
-        finally:
-            self._tree_view_manager.allow_view_state_change_on_collapse()
-
-        self._view_state_manager.update_background_views(ViewStates.INITIAL)
+        self._tree_view_manager.deselect_and_close_open_nodes()
 
     def on_action_bar_change_view_images(self) -> None:
         self.app_icon_filepath = str(self._random_title_images.get_random_reader_app_icon_file())

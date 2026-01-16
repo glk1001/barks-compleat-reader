@@ -86,6 +86,10 @@ class ReaderTreeView(TreeView):
     # Internal variable to track the state
     _current_selection_tracker = None
 
+    def reset_selection_tracking(self) -> None:
+        self._current_selection_tracker = None
+        self.previous_selected_node = None
+
     def on_selected_node(self, _instance: ReaderTreeView, new_node: BaseTreeViewNode) -> None:
         """Triggered automatically when 'selected_node' changes."""
         # 1. Assign the OLD current node to previous_node

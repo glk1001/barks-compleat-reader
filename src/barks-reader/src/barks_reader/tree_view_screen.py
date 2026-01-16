@@ -97,6 +97,8 @@ class TreeViewScreen(BoxLayout):
                 self.ids.reader_tree_view.toggle_node(node)
                 self._close_open_nodes(node)
 
+        self.ids.reader_tree_view.reset_selection_tracking()
+
     def _close_open_nodes(self, start_node: BaseTreeViewNode) -> None:
         for node in start_node.nodes:
             if node.is_open:
