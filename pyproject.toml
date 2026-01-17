@@ -32,6 +32,7 @@ dependencies = [
     "pygments==2.19.2",
     "pyobjc-core==11.1 ; sys_platform == 'darwin'",
     "pyobjc-framework-cocoa==11.1 ; sys_platform == 'darwin'",
+    "pyphen>=0.17.2",
     "pypiwin32==223 ; sys_platform == 'win32'",
     "python-dateutil==2.9.0.post0",
     "pytz==2025.2",

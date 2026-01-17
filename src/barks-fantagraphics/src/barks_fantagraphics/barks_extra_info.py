@@ -105,7 +105,10 @@ BARKS_EXTRA_INFO = {
     ' technically, is probably the square egg one."[/i]\n\n'
     "From 'www.seriesam.com:' [i]\"Western Publishing objected to the accent Barks had given the"
     " Plain Awful people and so they (for example) replaced incorrect use of 'd' with 'th'"
-    ' in their dialogue."[/i] Accordingly, in this digital edition, the Southern accents have been'
+    ' in their dialogue."[/i] (Based on research by David Gerstein where he noticed things like'
+    " inconsistent letter slanting and cramped balloon relettering—from an e-mail"
+    " by David Gerstein, sent to the Disney Comics Mailing List on 9th July 1997.)"
+    " Accordingly, in this digital edition, the Southern accents have been"
     " restored to what Barks originally intended, using [i]Dis, Dat, Dey, D', De,[/i] and"
     " [i]Dere.[/i] (Pages 20-24, 26-29, and 31, reconstructed by GLK, April 2025)",
     Titles.VOODOO_HOODOO: "From 'www.seriesam.com:' [i]\"Barks originally drew 'Bombie the"
@@ -125,9 +128,9 @@ BARKS_EXTRA_INFO = {
     "a long Donald Duck story.\n\n"
     'David Gerstein said this about the version of [i]"Race to the South Seas"[i] in this'
     " digital edition: [i]\"Fantagraphics'"
-    " plan for their Donald V1 [Fantagraphics CBDL 1] was to use a newly recovered all-Barks"
+    " plan for their Donald V1 &bl;Fantagraphics CBDL 1&br; was to use a newly recovered all-Barks"
     ' version of the "South Seas" story, because I had a lead on where original line art'
-    " photostats could be found... Alas, I [b]couldn't[b] acquire the original version by press"
+    " photostats could be found... Alas, I couldn't acquire the original version by press"
     " time—so my 2006 partial restoration (from Gemstone's WALT DISNEY TREASURES Vol 1) was used"
     " in Donald V1 instead. It's actually a mix of Barks and Jippes..."
     ' and I\'m still attempting to recover the all-Barks version of "South Seas." Presuming'

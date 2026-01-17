@@ -32,6 +32,7 @@ dependencies = [
     { name = "pygments" },
     { name = "pyobjc-core", marker = "sys_platform == 'darwin'" },
     { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
+    { name = "pyphen" },
     { name = "pypiwin32", marker = "sys_platform == 'win32'" },
     { name = "python-dateutil" },
     { name = "pytz" },
@@ -88,6 +89,7 @@ requires-dist = [
     { name = "pygments", specifier = "==2.19.2" },
     { name = "pyobjc-core", marker = "sys_platform == 'darwin'", specifier = "==11.1" },
     { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'", specifier = "==11.1" },
+    { name = "pyphen", specifier = ">=0.17.2" },
     { name = "pypiwin32", marker = "sys_platform == 'win32'", specifier = "==223" },
     { name = "python-dateutil", specifier = "==2.9.0.post0" },
     { name = "pytz", specifier = "==2025.2" },
@@ -665,6 +667,15 @@ sdist = { url = "https://files.pythonhosted.org/packages/4b/c5/7a866d24bc026f792
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4e/0b/a01477cde2a040f97e226f3e15e5ffd1268fcb6d1d664885a95ba592eca9/pyobjc_framework_cocoa-11.1-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:54e93e1d9b0fc41c032582a6f0834befe1d418d73893968f3f450281b11603da", size = 389049, upload-time = "2025-06-14T20:46:53.757Z" },
     { url = "https://files.pythonhosted.org/packages/bc/e6/64cf2661f6ab7c124d0486ec6d1d01a9bb2838a0d2a46006457d8c5e6845/pyobjc_framework_cocoa-11.1-cp313-cp313t-macosx_10_13_universal2.whl", hash = "sha256:fd5245ee1997d93e78b72703be1289d75d88ff6490af94462b564892e9266350", size = 393110, upload-time = "2025-06-14T20:46:54.894Z" },
+]
+
+[[package]]
+name = "pyphen"
+version = "0.17.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/69/56/e4d7e1bd70d997713649c5ce530b2d15a5fc2245a74ca820fc2d51d89d4d/pyphen-0.17.2.tar.gz", hash = "sha256:f60647a9c9b30ec6c59910097af82bc5dd2d36576b918e44148d8b07ef3b4aa3", size = 2079470, upload-time = "2025-01-20T13:18:36.296Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7b/1f/c2142d2edf833a90728e5cdeb10bdbdc094dde8dbac078cee0cf33f5e11b/pyphen-0.17.2-py3-none-any.whl", hash = "sha256:3a07fb017cb2341e1d9ff31b8634efb1ae4dc4b130468c7c39dd3d32e7c3affd", size = 2079358, upload-time = "2025-01-20T13:18:29.629Z" },
 ]
 
 [[package]]

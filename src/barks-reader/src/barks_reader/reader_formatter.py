@@ -6,6 +6,7 @@ import textwrap
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+import pyphen
 from barks_fantagraphics.barks_extra_info import BARKS_EXTRA_INFO
 from barks_fantagraphics.barks_payments import BARKS_PAYMENTS, PaymentInfo
 from barks_fantagraphics.barks_titles import ComicBookInfo, Titles
@@ -33,6 +34,31 @@ LONG_TITLE_SPLITS = {
     Titles.DONALD_DUCK_AND_THE_MUMMYS_RING: "The Mummy's Ring",
     Titles.LOST_CROWN_OF_GENGHIS_KHAN_THE: "The Lost Crown\nof Genghis Khan!",
 }
+
+PYPHEN_DICT = pyphen.Pyphen(lang="en_US")
+INVISIBLE_BREAK = "[size=0][color=00000000] [/color][/size]"
+
+
+def hyphenate_text(text: str) -> str:
+    """Hyphenate text that Kivy can handle.
+
+    By default, Kivy cannot reliably process soft hyphens so we need a markup trick.
+    """
+    words = text.split(" ")
+    processed_words = []
+
+    # The Magic Trick:
+    # 1. A space allows Kivy to wrap the line.
+    # 2. [size=0] makes the space invisible and 0 width.
+    # 3. [color=00000000] is a backup to ensure it's fully transparent.
+
+    for word in words:
+        # Pyphen finds the syllable breaks.
+        # We replace the potential break point with our invisible markup space.
+        split_word = PYPHEN_DICT.inserted(word, hyphen=INVISIBLE_BREAK)
+        processed_words.append(split_word)
+
+    return " ".join(processed_words)
 
 
 def get_bold_markup_text(text: str) -> str:
@@ -169,7 +195,7 @@ class ReaderFormatter:
         if title not in BARKS_EXTRA_INFO:
             return ""
 
-        return f"{BARKS_EXTRA_INFO[title]}"
+        return hyphenate_text(BARKS_EXTRA_INFO[title])
 
 
 def mark_phrase_in_text(phrase: str, target_text: str, start_tag: str, end_tag: str) -> str:
