@@ -7,7 +7,6 @@ from comic_utils.timing import Timing
 from kivy.clock import Clock
 from loguru import logger
 
-from barks_reader.background_views import ViewStates
 from barks_reader.fantagraphics_volumes import (
     TooManyArchiveFilesError,
     WrongFantagraphicsVolumeError,
@@ -15,6 +14,7 @@ from barks_reader.fantagraphics_volumes import (
 from barks_reader.reader_settings import UNSET_FANTA_DIR_MARKER
 from barks_reader.reader_ui_classes import BaseTreeViewNode
 from barks_reader.user_error_handler import ErrorInfo, ErrorTypes
+from barks_reader.view_states import ViewStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -98,7 +98,7 @@ class AppInitializer:
             self._set_post_build_fanta_volumes_state()
             logger.debug(f"_fanta_volumes_state = {self._fanta_volumes_state}.")
 
-            self._view_state_manager.update_background_views(ViewStates.INITIAL)
+            self._view_state_manager.set_view_state(ViewStates.INITIAL)
 
             if (self._fanta_volumes_state in _READY_FANTA_VOLUMES_STATE) and (
                 not self._init_comic_book_data()

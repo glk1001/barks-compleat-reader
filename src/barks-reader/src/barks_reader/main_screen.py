@@ -28,7 +28,7 @@ from loguru import logger
 
 from barks_reader.about_box import show_about_box
 from barks_reader.app_initializer import AppInitializer
-from barks_reader.background_views import BackgroundViews, ViewStates
+from barks_reader.background_views import BackgroundViews
 from barks_reader.comic_reader_manager import ComicReaderManager
 from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
 from barks_reader.platform_utils import WindowManager
@@ -58,6 +58,7 @@ from barks_reader.special_overrides_handler import SpecialFantaOverrides
 from barks_reader.tree_view_manager import TreeViewManager
 from barks_reader.user_error_handler import UserErrorHandler
 from barks_reader.view_state_manager import ImageThemesChange, ImageThemesToUse, ViewStateManager
+from barks_reader.view_states import ViewStates
 
 if TYPE_CHECKING:
     from barks_fantagraphics.comic_book import ComicBook
@@ -173,7 +174,6 @@ class MainScreen(ReaderScreen):
             self._reader_settings,
             self._title_lists,
             self._random_title_images,
-            self._on_view_state_change,
         )
 
         self._view_state_manager = ViewStateManager(
@@ -184,7 +184,7 @@ class MainScreen(ReaderScreen):
             self._fun_image_view_screen,
             self._main_index_screen,
             self._speech_index_screen,
-            self._on_views_updated,
+            self._on_view_state_changed,
         )
 
         self._tree_view_manager = TreeViewManager(
@@ -223,7 +223,7 @@ class MainScreen(ReaderScreen):
         self.menu_dots_dropdown.open(button)
 
     def _set_initial_state(self) -> None:
-        self._view_state_manager.update_background_views(ViewStates.PRE_INIT)
+        self._view_state_manager.set_view_state(ViewStates.PRE_INIT)
 
         self._main_index_screen.on_goto_background_title_func = self._goto_chrono_title
         self._speech_index_screen.on_goto_background_title_func = self._goto_chrono_title
@@ -326,7 +326,7 @@ class MainScreen(ReaderScreen):
 
         return True
 
-    def _on_view_state_change(self, view_state: ViewStates) -> None:
+    def _on_view_state_changed(self, view_state: ViewStates) -> None:
         self.ids.collapse_button.disabled = view_state == ViewStates.INITIAL
 
     def on_action_bar_go_back(self) -> None:
@@ -480,9 +480,6 @@ class MainScreen(ReaderScreen):
             f"MainScreen actionbar is visible: self.action_bar.height = {self._action_bar.height}"
         )
 
-    def _on_views_updated(self) -> None:
-        pass
-
     def _on_goto_top_view_title(self) -> None:
         self._goto_chrono_title(self._view_state_manager.get_top_view_image_info())
 
@@ -574,7 +571,7 @@ class MainScreen(ReaderScreen):
     ) -> None:
         self.fanta_info = new_fanta_info
         self._set_title(title_image_file)
-        self._view_state_manager.update_background_views(
+        self._view_state_manager.set_view_state(
             ViewStates.ON_TITLE_NODE, title_str=self.fanta_info.comic_book_info.get_title_str()
         )
 

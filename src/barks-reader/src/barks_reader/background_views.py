@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from enum import Enum, IntEnum, auto
+from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_tags import (
@@ -33,24 +33,23 @@ from barks_reader.reader_colors import RandomColorTint
 from barks_reader.reader_file_paths import ALL_TYPES, FileTypes
 from barks_reader.reader_formatter import get_formatted_color
 from barks_reader.reader_utils import get_cs_range_str_from_str, get_us_range_str_from_str
+from barks_reader.view_states import ViewStates
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from comic_utils.comic_consts import PanelPath
 
     from barks_reader.reader_colors import Color
     from barks_reader.reader_settings import ReaderSettings
 
-TOP_VIEW_IMAGE_TYPES = {
+_TOP_VIEW_IMAGE_TYPES = {
     t for t in FileTypes if t not in [FileTypes.NONTITLE, FileTypes.ORIGINAL_ART]
 }
-TITLE_VIEW_IMAGE_TYPES = {
+_TITLE_VIEW_IMAGE_TYPES = {
     t for t in FileTypes if t not in [FileTypes.INSET, FileTypes.ORIGINAL_ART]
 }
 
-DEBUG_FUN_IMAGE_TITLES = None
-# DEBUG_FUN_IMAGE_TITLES = [Titles.LOST_IN_THE_ANDES]
+_DEBUG_FUN_IMAGE_TITLES = None
+# _DEBUG_FUN_IMAGE_TITLES = [Titles.LOST_IN_THE_ANDES]
 
 
 class ImageThemes(Enum):
@@ -84,61 +83,20 @@ IMAGE_THEMES_WITH_NO_FILES = {
 }
 assert len(ImageThemes) == (len(IMAGE_THEME_TO_FILE_TYPE_MAP) + len(IMAGE_THEMES_WITH_NO_FILES))
 
-
-class ViewStates(IntEnum):
-    PRE_INIT = auto()
-    INITIAL = auto()
-    ON_INTRO_NODE = auto()
-    ON_INTRO_COMPLEAT_BARKS_READER_NODE = auto()
-    ON_INTRO_DON_AULT_FANTA_INTRO_NODE = auto()
-    ON_THE_STORIES_NODE = auto()
-    ON_SEARCH_NODE = auto()
-    ON_APPENDIX_NODE = auto()
-    ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE = auto()
-    ON_APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_NODE = auto()
-    ON_APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_NODE = auto()
-    ON_APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_NODE = auto()
-    ON_APPENDIX_CENSORSHIP_FIXES_NODE = auto()
-    ON_INDEX_NODE = auto()
-    ON_INDEX_MAIN_NODE = auto()
-    ON_INDEX_SPEECH_NODE = auto()
-    ON_CHRONO_BY_YEAR_NODE = auto()
-    ON_YEAR_RANGE_NODE = auto()
-    ON_SERIES_NODE = auto()
-    ON_CS_NODE = auto()
-    ON_CS_YEAR_RANGE_NODE = auto()
-    ON_DD_NODE = auto()
-    ON_US_NODE = auto()
-    ON_US_YEAR_RANGE_NODE = auto()
-    ON_DDS_NODE = auto()
-    ON_USS_NODE = auto()
-    ON_GG_NODE = auto()
-    ON_MISC_NODE = auto()
-    ON_CATEGORIES_NODE = auto()
-    ON_CATEGORY_NODE = auto()
-    ON_TAG_GROUP_NODE = auto()
-    ON_TAG_NODE = auto()
-    ON_TITLE_NODE = auto()
-    ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET = auto()
-    ON_TITLE_SEARCH_BOX_NODE = auto()
-    ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET = auto()
-    ON_TAG_SEARCH_BOX_NODE = auto()
-
-
-BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES = {
+_BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES = {
     ViewStates.ON_INDEX_MAIN_NODE,
 }
-BOTTOM_VIEW_SPEECH_INDEX_OPACITY_1_STATES = {
+_BOTTOM_VIEW_SPEECH_INDEX_OPACITY_1_STATES = {
     ViewStates.ON_INDEX_SPEECH_NODE,
 }
-BOTTOM_VIEW_TITLE_OPACITY_1_STATES = {
+_BOTTOM_VIEW_TITLE_OPACITY_1_STATES = {
     ViewStates.ON_TITLE_NODE,
     ViewStates.ON_TITLE_SEARCH_BOX_NODE,
     ViewStates.ON_TAG_SEARCH_BOX_NODE,
 }
-BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES = (
-    set(ViewStates) - BOTTOM_VIEW_TITLE_OPACITY_1_STATES
-) - BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES
+_BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES = (
+    set(ViewStates) - _BOTTOM_VIEW_TITLE_OPACITY_1_STATES
+) - _BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES
 
 
 # TODO: Consolidate views and currents into classes.
@@ -151,7 +109,6 @@ class BackgroundViews:
         reader_settings: ReaderSettings,
         title_lists: dict[str, list[FantaComicBookInfo]],
         random_title_images: RandomTitleImages,
-        on_view_state_change_func: Callable[[ViewStates], None],
     ) -> None:
         self._reader_settings = reader_settings
         self._title_lists = title_lists
@@ -190,9 +147,6 @@ class BackgroundViews:
         self._cached_fun_titles: tuple[list[FantaComicBookInfo], set[FileTypes]] | None = None
 
         self._view_state = ViewStates.PRE_INIT
-
-        self._on_view_state_change: Callable[[ViewStates], None] = on_view_state_change_func
-        self._on_view_state_change(self._view_state)
 
     def set_fun_image_themes(self, image_themes: set[ImageThemes] | None) -> None:
         logger.debug(f"Set self._fun_image_themes = {image_themes}.")
@@ -247,10 +201,10 @@ class BackgroundViews:
         return self._bottom_view_title_image_info
 
     def get_main_index_view_opacity(self) -> float:
-        return 1.0 if (self._view_state in BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES) else 0.0
+        return 1.0 if (self._view_state in _BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES) else 0.0
 
     def get_speech_index_view_opacity(self) -> float:
-        return 1.0 if (self._view_state in BOTTOM_VIEW_SPEECH_INDEX_OPACITY_1_STATES) else 0.0
+        return 1.0 if (self._view_state in _BOTTOM_VIEW_SPEECH_INDEX_OPACITY_1_STATES) else 0.0
 
     def get_current_category(self) -> str:
         return self._current_category
@@ -297,7 +251,6 @@ class BackgroundViews:
     def set_view_state(self, view_state: ViewStates) -> None:
         logger.info(f"Updating background view state to {view_state.name}.")
         self._view_state = view_state
-        self._on_view_state_change(view_state)
         self._update_views()
 
     def _update_views(self) -> None:
@@ -310,10 +263,10 @@ class BackgroundViews:
             return
 
         self._bottom_view_fun_image_opacity = (
-            1.0 if self._view_state in BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES else 0.0
+            1.0 if self._view_state in _BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES else 0.0
         )
         self._bottom_view_title_opacity = (
-            1.0 if self._view_state in BOTTOM_VIEW_TITLE_OPACITY_1_STATES else 0.0
+            1.0 if self._view_state in _BOTTOM_VIEW_TITLE_OPACITY_1_STATES else 0.0
         )
 
         self._set_next_top_view_image()
@@ -528,7 +481,7 @@ class BackgroundViews:
 
     def _get_top_view_random_image(self, title_list: list[FantaComicBookInfo]) -> ImageInfo:
         return self._random_title_images.get_random_image(
-            title_list, file_types=TOP_VIEW_IMAGE_TYPES, use_only_edited_if_possible=True
+            title_list, file_types=_TOP_VIEW_IMAGE_TYPES, use_only_edited_if_possible=True
         )
 
     def _set_top_view_image_for_search(self) -> None:
@@ -604,11 +557,11 @@ class BackgroundViews:
         )
 
     def _get_fun_image_titles(self) -> tuple[list[FantaComicBookInfo], set[FileTypes]]:
-        if DEBUG_FUN_IMAGE_TITLES:
+        if _DEBUG_FUN_IMAGE_TITLES:
             return [
                 t
                 for t in self._title_lists[ALL_LISTS]
-                if t.comic_book_info.title in DEBUG_FUN_IMAGE_TITLES
+                if t.comic_book_info.title in _DEBUG_FUN_IMAGE_TITLES
             ], self._get_file_types_to_use()
 
         if not self._fun_image_themes:
@@ -685,7 +638,7 @@ class BackgroundViews:
 
             image_file = self._random_title_images.get_random_image_for_title(
                 self._current_bottom_view_title,
-                TITLE_VIEW_IMAGE_TYPES,
+                _TITLE_VIEW_IMAGE_TYPES,
                 use_only_edited_if_possible=True,
             )
             logger.debug(f'Using random title image file "{image_file}".')

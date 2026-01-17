@@ -22,13 +22,14 @@ if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from kivy.core.image import Texture
 
-    from barks_reader.background_views import BackgroundViews, ViewStates
+    from barks_reader.background_views import BackgroundViews
     from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
     from barks_reader.fun_image_view_screen import FunImageViewScreen
     from barks_reader.main_index_screen import MainIndexScreen
     from barks_reader.reader_settings import ReaderSettings
     from barks_reader.speech_index_screen import SpeechIndexScreen
     from barks_reader.tree_view_screen import TreeViewScreen
+    from barks_reader.view_states import ViewStates
 
 
 class ImageThemesToUse(Enum):
@@ -53,7 +54,7 @@ class ViewStateManager:
         fun_image_view_screen: FunImageViewScreen,
         main_index_screen: MainIndexScreen,
         speech_index_screen: SpeechIndexScreen,
-        on_views_updated_func: Callable[[], None],
+        on_view_state_changed_func: Callable[[ViewStates], None],
     ) -> None:
         self._reader_settings = reader_settings
         self._background_views = background_views
@@ -63,7 +64,7 @@ class ViewStateManager:
         self._fun_image_view_screen = fun_image_view_screen
         self._main_index_screen = main_index_screen
         self._speech_index_screen = speech_index_screen
-        self._on_views_updated_func = on_views_updated_func
+        self._on_view_state_changed = on_view_state_changed_func
 
         self._fun_image_view_screen.set_load_image_func(self._load_new_fun_view_image)
 
@@ -113,9 +114,9 @@ class ViewStateManager:
         else:
             self._bottom_view_fun_custom_image_themes.discard(image_theme)
 
-    def update_background_views(
+    def set_view_state(
         self,
-        tree_node: ViewStates,
+        view_state: ViewStates,
         category: str = "",
         year_range: str = "",
         cs_year_range: str = "",
@@ -138,10 +139,10 @@ class ViewStateManager:
         self._background_views.set_current_bottom_view_title(title_str)
 
         self._background_views.set_fun_image_themes(self._bottom_view_fun_image_themes)
-
-        self._background_views.set_view_state(tree_node)
+        self._background_views.set_view_state(view_state)
 
         self._set_views()
+        self._on_view_state_changed(view_state)
 
     def change_background_views(self) -> None:
         logger.debug("Changing background views.")
@@ -150,7 +151,7 @@ class ViewStateManager:
         if self._fun_image_view_screen.is_visible:
             self._background_views.reset_bottom_view_fun_image_info()
 
-        self.update_background_views(
+        self.set_view_state(
             self._background_views.get_view_state(),
             self._background_views.get_current_category(),
             self._background_views.get_current_year_range(),
@@ -174,7 +175,7 @@ class ViewStateManager:
     ) -> None:
         logger.debug(f'Updating background views for node "{view_state}".')
         # TODO: Not sure how to deal with 'ty' and **args.
-        self.update_background_views(view_state, **args)  # ty: ignore[invalid-argument-type]
+        self.set_view_state(view_state, **args)  # ty: ignore[invalid-argument-type]
 
     def _set_views(self) -> None:
         """Update all the visual components of the main screen."""
@@ -191,9 +192,6 @@ class ViewStateManager:
         # Reset the title image file now that we've used it. This makes sure we can get
         # a random image next time around.
         self._background_views.set_bottom_view_title_image_file(None)
-
-        assert self._on_views_updated_func
-        self._on_views_updated_func()
 
     def set_title(
         self, fanta_info: FantaComicBookInfo, title_image_file: PanelPath | None = None
