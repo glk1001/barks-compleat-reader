@@ -77,7 +77,6 @@ class TreeViewManager:
         self._set_tag_goto_page_checkbox_func = set_tag_goto_page_checkbox_func
         self._set_next_title_func = set_next_title_func
 
-        self._last_open_node: BaseTreeViewNode | None = None
         self._allow_view_state_change = True
 
         assert self._update_title_func
@@ -185,7 +184,7 @@ class TreeViewManager:
             return
 
         # 1) Collapse any previously-open group (reduces height shocks).
-        self._collapse_previous_open_node(node)
+        self._close_siblings(node)
 
         # 2) Lazy populate ONCE, while pinning the parent's position to avoid a jump.
         if node.populate_callback and not node.populated:
@@ -201,15 +200,13 @@ class TreeViewManager:
 
         # 4) NOTE: Do not call scroll_to_node() here — that causes the “snap-to-top/bottom” jump.
 
-    def _collapse_previous_open_node(self, new_parent: ButtonTreeViewNode) -> None:
-        if not new_parent.populate_callback:
+    def _close_siblings(self, node: ButtonTreeViewNode) -> None:
+        parent = node.parent_node
+        if not parent:
             return
-
-        prev = self._last_open_node
-        if prev and (prev is not new_parent) and prev.is_open:
-            # Toggle the previous open group closed.
-            self._tree_view_screen.ids.reader_tree_view.toggle_node(prev)
-        self._last_open_node = new_parent
+        for sibling in parent.nodes:
+            if sibling != node and sibling.is_open:
+                self._tree_view_screen.ids.reader_tree_view.toggle_node(sibling)
 
     def _pin_parent_position_while_populating(
         self, parent_node: ButtonTreeViewNode, run_populate: bool
