@@ -7,7 +7,12 @@ from pathlib import Path
 from random import randrange
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_titles import BARKS_TITLES, VACATION_TIME, Titles
+from barks_fantagraphics.barks_titles import (
+    BARKS_TITLES,
+    PIXILATED_PARROT_THE,
+    VACATION_TIME,
+    Titles,
+)
 from barks_fantagraphics.comics_utils import get_abbrev_path
 from loguru import logger
 
@@ -75,8 +80,24 @@ class RandomTitleImages:
         random.shuffle(self._all_reader_icon_files)
         self._next_reader_icon_file = 0
 
+        self._CENSORED_IMAGES = self._get_censored_images()
+
     def _add_last_image(self, image_filename: PanelPath) -> None:
         self._most_recently_used_images.append(image_filename)
+
+    def _get_censored_images(self) -> list[tuple[Titles, str]]:
+        file_ext = self._reader_settings.file_paths.get_file_ext()
+
+        return [
+            (
+                Titles.VACATION_TIME,
+                str(Path(VACATION_TIME) / ("076-8-flipped" + file_ext)),
+            ),
+            (
+                Titles.PIXILATED_PARROT_THE,
+                str(Path(PIXILATED_PARROT_THE) / ("017-4" + file_ext)),
+            ),
+        ]
 
     def get_random_search_image(self) -> ImageInfo:
         title_index = randrange(0, len(SEARCH_TITLES))
@@ -103,13 +124,14 @@ class RandomTitleImages:
         return icon_path
 
     def get_random_censorship_fix_image(self) -> ImageInfo:
-        title = Titles.VACATION_TIME
-        file1 = (
-            self._reader_settings.file_paths.get_comic_favourite_files_dir()
-            / VACATION_TIME
-            / ("076-8-flipped" + self._reader_settings.file_paths.get_file_ext())
+        image_index = randrange(0, len(self._CENSORED_IMAGES))
+        title, file = self._CENSORED_IMAGES[image_index]
+
+        return ImageInfo(
+            self._reader_settings.file_paths.get_comic_favourite_files_dir() / file,
+            title,
+            FIT_MODE_COVER,
         )
-        return ImageInfo(file1, title, FIT_MODE_COVER)
 
     def get_loading_screen_random_image(self, title_list: list[FantaComicBookInfo]) -> PanelPath:
         return self._get_random_image_file(
