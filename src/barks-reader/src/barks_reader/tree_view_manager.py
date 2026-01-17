@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_tags import TagGroups, Tags
@@ -94,40 +95,47 @@ class TreeViewManager:
         self._tree_view_screen.select_node(node)
 
         if isinstance(node, TitleTreeViewNode):
-            fanta_info = node.ids.num_label.parent.fanta_info
-            self._set_next_title_func(fanta_info, None)
-            self.scroll_to_node(node)
+            self._handle_title_node_selection(node)
         elif isinstance(node, (TitleSearchBoxTreeViewNode, TagSearchBoxTreeViewNode)):
-
-            def set_text() -> None:
-                node.text = node.saved_state.get("text", "")
-
-            Clock.schedule_once(lambda _dt: set_text(), 1)
-            node.press_search_box()
+            self._handle_search_box_node_selection(node)
         elif isinstance(node, ButtonTreeViewNode):
-            if node.saved_state.get("open", True):
-                node.trigger_action()
-            else:
-                saved_view_state, _ = get_view_state_from_node(node)
-                if saved_view_state is not None:
-                    self._view_state_manager.set_view_state(saved_view_state)
+            self._handle_button_node_selection(node)
+
+    def _handle_title_node_selection(self, node: TitleTreeViewNode) -> None:
+        fanta_info = node.ids.num_label.parent.fanta_info
+        self._set_next_title_func(fanta_info, None)
+        self.scroll_to_node(node)
+
+    @staticmethod
+    def _handle_search_box_node_selection(
+        node: TitleSearchBoxTreeViewNode | TagSearchBoxTreeViewNode,
+    ) -> None:
+        def set_text() -> None:
+            node.text = node.saved_state.get("text", "")
+
+        Clock.schedule_once(lambda _dt: set_text(), 1)
+        node.press_search_box()
+
+    def _handle_button_node_selection(self, node: ButtonTreeViewNode) -> None:
+        if node.saved_state.get("open", True):
+            node.trigger_action()
+        else:
+            saved_view_state, _ = get_view_state_from_node(node)
+            if saved_view_state is not None:
+                self._view_state_manager.set_view_state(saved_view_state)
 
     def deselect_and_close_open_nodes(self) -> None:
-        self.disallow_view_state_change()
-        try:
+        # noinspection PyArgumentList
+        with self.suppress_view_state_changes():
             num_opened_nodes = self._tree_view_screen.deselect_and_close_open_nodes()
-        finally:
-            self.allow_view_state_change()
 
         if num_opened_nodes > 0:
             self._view_state_manager.set_view_state(ViewStates.INITIAL)
 
     def open_all_parent_nodes(self, node: ButtonTreeViewNode) -> None:
-        self.disallow_view_state_change()
-        try:
+        # noinspection PyArgumentList
+        with self.suppress_view_state_changes():
             self._tree_view_screen.open_all_parent_nodes(node)
-        finally:
-            self.allow_view_state_change()
 
     def go_back_to_previous_node(self) -> None:
         if not self._tree_view_screen.ids.reader_tree_view.previous_selected_node:
@@ -158,6 +166,14 @@ class TreeViewManager:
 
     def disallow_view_state_change(self) -> None:
         self._allow_view_state_change = False
+
+    @contextmanager
+    def suppress_view_state_changes(self) -> Iterator[None]:
+        self.disallow_view_state_change()
+        try:
+            yield
+        finally:
+            self.allow_view_state_change()
 
     def on_node_collapsed(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
         # Check allow state change flag or is leaf/title row.
