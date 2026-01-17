@@ -98,7 +98,7 @@
                     id: title_info_box
                     orientation: 'vertical'
                     size_hint: 0.56, 1.0
-                    pos_hint: {'x': 0, 'top': 0.95}
+                    pos_hint: {'x': 0, 'top': 0.92}
                     padding: [bottom_title_view.title_box_padding, 0, 0, 0]
                     spacing: bottom_title_view.title_box_spacing
 
@@ -118,7 +118,7 @@
                         size_hint_y: None
                         height: self.texture_size[1]
                         text_size: self.width, None
-                        padding: [0, 0, 0, 0]
+                        padding: [dp(1), dp(1), 0, dp(3)]
 
                     BgColorLabel:
                         id: title_extra_info_label
@@ -133,14 +133,14 @@
                         sizing_factor_y: 1.08
                         corner_radius: 20
                         multiline: True
-                        bold: True
+                        bold: False
                         markup: True
                         mipmap: True
                         size_hint_y: None
                         height: self.texture_size[1]
                         text_size: self.width, None
                         halign: 'justify'
-                        padding: [0, 0, dp(5), 0]
+                        padding: [dp(1), 0, 0, 0]
 
                     # IMPORTANT: This filler widget pushes the labels above it to the top.
                     Widget:
@@ -161,8 +161,8 @@
                         height: self.width / 1.036
                         # Center the button within the right column
                         pos_hint: {'center_x': 0.5}
-                        # Bind the button's top to the top of the extra_info label
-                        top: title_extra_info_label.top - (0.8 * bottom_title_view.title_box_spacing)
+                        # Make the space at the button's bottom roughly that of the space on the right.
+                        top: 1.01 * (self.height + (self.parent.width - (self.x + self.width)))
 
                         canvas.before:
                             Color:
