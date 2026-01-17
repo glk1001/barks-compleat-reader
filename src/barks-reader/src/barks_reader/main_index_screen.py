@@ -295,7 +295,7 @@ class MainIndexScreen(IndexScreen):
             sub_item_id,
             sub_item_page_to_goto,
             sub_item_text,
-        ) in sub_items_to_display:  # ty: ignore[invalid-assignment]
+        ) in sub_items_to_display:
             logger.info(f'For "{sub_item_text}", page to goto = {sub_item_page_to_goto}.')
             title_button = TitleItemButton(
                 text=sub_item_text,

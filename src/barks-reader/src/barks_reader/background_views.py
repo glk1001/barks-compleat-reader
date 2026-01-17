@@ -28,11 +28,11 @@ from barks_fantagraphics.fanta_comics_info import (
 from kivy.clock import Clock
 from loguru import logger
 
+from barks_reader.filtered_title_lists import FilteredTitleLists
 from barks_reader.random_title_images import FIT_MODE_COVER, ImageInfo, RandomTitleImages
 from barks_reader.reader_colors import RandomColorTint
 from barks_reader.reader_file_paths import ALL_TYPES, FileTypes
 from barks_reader.reader_formatter import get_formatted_color
-from barks_reader.reader_utils import get_cs_range_str_from_str, get_us_range_str_from_str
 from barks_reader.view_states import ViewStates
 
 if TYPE_CHECKING:
@@ -463,7 +463,9 @@ class BackgroundViews:
                 self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
             )
         else:
-            cs_range = get_cs_range_str_from_str(self._current_cs_year_range)
+            cs_range = FilteredTitleLists.get_cs_year_range_key_from_range(
+                self._current_cs_year_range
+            )
             logger.debug(f"CS Year range key: '{cs_range}'.")
             self._top_view_image_info = self._get_top_view_random_image(self._title_lists[cs_range])
 
@@ -475,7 +477,9 @@ class BackgroundViews:
                 self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
             )
         else:
-            us_range = get_us_range_str_from_str(self._current_us_year_range)
+            us_range = FilteredTitleLists.get_us_year_range_key_from_range(
+                self._current_us_year_range
+            )
             logger.debug(f"US Year range key: '{us_range}'.")
             self._top_view_image_info = self._get_top_view_random_image(self._title_lists[us_range])
 

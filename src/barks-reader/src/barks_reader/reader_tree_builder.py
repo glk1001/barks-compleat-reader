@@ -36,6 +36,7 @@ from comic_utils.timing import Timing
 from kivy.uix.button import Button
 from loguru import logger
 
+from barks_reader.filtered_title_lists import FilteredTitleLists
 from barks_reader.reader_consts_and_types import (
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
     APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
@@ -78,12 +79,7 @@ from barks_reader.reader_ui_classes import (
     UsYearRangeTreeViewNode,
     YearRangeTreeViewNode,
 )
-from barks_reader.reader_utils import (
-    get_cs_range_str_from_str,
-    get_range_str,
-    get_us_range_str_from_str,
-    read_title_list,
-)
+from barks_reader.reader_utils import read_title_list
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -370,7 +366,7 @@ class ReaderTreeBuilder:
         new_node, year_range_titles = self._create_and_add_year_range_node(
             tree,
             year_range,
-            get_cs_range_str_from_str,
+            FilteredTitleLists.get_cs_year_key_from_year,
             self._get_cs_year_range_extra_text,
             CsYearRangeTreeViewNode,
             parent_node,
@@ -391,7 +387,7 @@ class ReaderTreeBuilder:
         new_node, year_range_titles = self._create_and_add_year_range_node(
             tree,
             year_range,
-            get_us_range_str_from_str,
+            FilteredTitleLists.get_us_year_key_from_year,
             self._get_us_year_range_extra_text,
             UsYearRangeTreeViewNode,
             parent_node,
@@ -534,7 +530,7 @@ class ReaderTreeBuilder:
         return self._create_and_add_year_range_node(
             tree,
             year_range,
-            lambda x: x,
+            lambda x: str(x),
             lambda title_list: str(len(title_list)),
             YearRangeTreeViewNode,
             parent_node,
@@ -624,17 +620,17 @@ class ReaderTreeBuilder:
         self,
         tree: ReaderTreeView,
         year_range: tuple[int, int],
-        get_title_key_func: Callable[[str], str],
+        get_title_key_func: Callable[[int], str],
         get_year_range_extra_text_func: Callable[[list[FantaComicBookInfo]], str],
         node_class: type,
         parent_node: ButtonTreeViewNode,
     ) -> tuple[ButtonTreeViewNode, list[FantaComicBookInfo]]:
         year_range_titles = []
         for year in range(year_range[0], year_range[1] + 1):
-            year_key = get_title_key_func(str(year))
+            year_key = get_title_key_func(year)
             year_range_titles.extend(self._title_lists[year_key])
 
-        year_range_str = get_range_str(year_range)
+        year_range_str = FilteredTitleLists.get_range_str(year_range)
         year_range_extra_text = get_year_range_extra_text_func(year_range_titles)
         year_range_text = get_markup_text_with_extra(year_range_str, year_range_extra_text)
 

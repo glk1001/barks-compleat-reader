@@ -13,11 +13,11 @@ class TestFilteredTitleLists(unittest.TestCase):
 
     def test_get_cs_year_str(self) -> None:
         """Test creating a CS-prefixed year string from an int."""
-        assert self.filtered_lists.get_cs_year_str(1947) == "CS-1947"
+        assert self.filtered_lists.get_cs_year_key_from_year(1947) == "CS-1947"
 
     def test_get_us_range_str(self) -> None:
         """Test creating a US-prefixed year string from an int."""
-        assert self.filtered_lists.get_us_year_str(1955) == "US-1955"
+        assert self.filtered_lists.get_us_year_key_from_year(1955) == "US-1955"
 
     @patch("barks_reader.filtered_title_lists.get_filtered_title_lists")
     def test_get_title_lists_creates_correct_filters(
