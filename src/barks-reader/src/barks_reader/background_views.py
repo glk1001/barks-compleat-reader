@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from barks_fantagraphics.barks_tags import (
     BARKS_TAG_GROUPS_TITLES,
@@ -103,6 +103,52 @@ _BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES = (
 class BackgroundViews:
     TOP_VIEW_EVENT_TIMEOUT_SECS = 1000.0
     BOTTOM_VIEW_EVENT_TIMEOUT_SECS = 1000.0
+
+    _INTRO_VIEW_STATES: ClassVar[set[ViewStates]] = {
+        ViewStates.ON_INTRO_NODE,
+        ViewStates.ON_INTRO_COMPLEAT_BARKS_READER_NODE,
+        ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,
+    }
+
+    _STORIES_VIEW_STATES: ClassVar[set[ViewStates]] = {
+        ViewStates.ON_THE_STORIES_NODE,
+        ViewStates.ON_CHRONO_BY_YEAR_NODE,
+        ViewStates.ON_SERIES_NODE,
+        ViewStates.ON_CATEGORIES_NODE,
+        ViewStates.ON_TITLE_NODE,
+    }
+
+    _SERIES_VIEW_STATES: ClassVar[dict[ViewStates, str]] = {
+        ViewStates.ON_CS_NODE: SERIES_CS,
+        ViewStates.ON_DD_NODE: SERIES_DDA,
+        ViewStates.ON_US_NODE: SERIES_USA,
+        ViewStates.ON_DDS_NODE: SERIES_DDS,
+        ViewStates.ON_USS_NODE: SERIES_USS,
+        ViewStates.ON_GG_NODE: SERIES_GG,
+        ViewStates.ON_MISC_NODE: SERIES_MISC,
+    }
+
+    _SEARCH_VIEW_STATES: ClassVar[set[ViewStates]] = {
+        ViewStates.ON_SEARCH_NODE,
+        ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET,
+        ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET,
+        ViewStates.ON_TITLE_SEARCH_BOX_NODE,
+        ViewStates.ON_TAG_SEARCH_BOX_NODE,
+    }
+
+    _APPENDIX_VIEW_STATES: ClassVar[set[ViewStates]] = {
+        ViewStates.ON_APPENDIX_NODE,
+        ViewStates.ON_APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_NODE,
+        ViewStates.ON_APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_NODE,
+        ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE,
+        ViewStates.ON_APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_NODE,
+    }
+
+    _INDEX_VIEW_STATES: ClassVar[set[ViewStates]] = {
+        ViewStates.ON_INDEX_NODE,
+        ViewStates.ON_INDEX_MAIN_NODE,
+        ViewStates.ON_INDEX_SPEECH_NODE,
+    }
 
     def __init__(
         self,
@@ -274,88 +320,43 @@ class BackgroundViews:
         self.set_next_bottom_view_title_image()
         self._set_bottom_view_title_image_color()
 
-    def _set_next_top_view_image(self) -> None:  # noqa: PLR0915
-        # noinspection PyUnreachableCode
-        match self._view_state:
-            case ViewStates.PRE_INIT | ViewStates.INITIAL:
-                self._set_initial_top_view_image()
-            case ViewStates.ON_INTRO_NODE:
-                self._set_top_view_image_for_intro()
-            case ViewStates.ON_INTRO_COMPLEAT_BARKS_READER_NODE:
-                # TODO: Fix this
-                self._set_top_view_image_for_intro()
-            case ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE:
-                # TODO: Fix this
-                self._set_top_view_image_for_intro()
-            case (
-                ViewStates.ON_THE_STORIES_NODE
-                | ViewStates.ON_CHRONO_BY_YEAR_NODE
-                | ViewStates.ON_SERIES_NODE
-                | ViewStates.ON_CATEGORIES_NODE
-                # TODO: Save parent node as the state to use??
-                | ViewStates.ON_TITLE_NODE
-            ):
-                self._set_top_view_image_for_stories()
-            case ViewStates.ON_CS_NODE:
-                self._set_top_view_image_for_cs()
-            case ViewStates.ON_CS_YEAR_RANGE_NODE:
-                self._set_top_view_image_for_cs_year_range()
-            case ViewStates.ON_DD_NODE:
-                self._set_top_view_image_for_dd()
-            case ViewStates.ON_US_NODE:
-                self._set_top_view_image_for_us()
-            case ViewStates.ON_US_YEAR_RANGE_NODE:
-                self._set_top_view_image_for_us_year_range()
-            case ViewStates.ON_DDS_NODE:
-                self._set_top_view_image_for_dds()
-            case ViewStates.ON_USS_NODE:
-                self._set_top_view_image_for_uss()
-            case ViewStates.ON_GG_NODE:
-                self._set_top_view_image_for_gg()
-            case ViewStates.ON_MISC_NODE:
-                self._set_top_view_image_for_misc()
-            case ViewStates.ON_YEAR_RANGE_NODE:
-                self._set_top_view_image_for_year_range()
-            case ViewStates.ON_CATEGORY_NODE:
-                self._set_top_view_image_for_category()
-            case ViewStates.ON_TAG_GROUP_NODE:
-                self._set_top_view_image_for_tag_group()
-            case ViewStates.ON_TAG_NODE:
-                self._set_top_view_image_for_tag()
-            case (
-                ViewStates.ON_SEARCH_NODE
-                | ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET
-                | ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
-                | ViewStates.ON_TITLE_SEARCH_BOX_NODE
-                | ViewStates.ON_TAG_SEARCH_BOX_NODE
-            ):
-                self._set_top_view_image_for_search()
-            case ViewStates.ON_APPENDIX_NODE:
-                self._set_top_view_image_for_appendix()
-            case ViewStates.ON_APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_NODE:
-                # TODO: Fix this
-                self._set_top_view_image_for_appendix()
-            case ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE:
-                # TODO: Fix this
-                self._set_top_view_image_for_appendix()
-            case ViewStates.ON_APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_NODE:
-                # TODO: Fix this
-                self._set_top_view_image_for_appendix()
-            case ViewStates.ON_APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_NODE:
-                # TODO: Fix this
-                self._set_top_view_image_for_appendix()
-            case ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE:
-                self._set_top_view_image_for_appendix_censorship_fixes()
-            case ViewStates.ON_INDEX_NODE:
-                self._set_top_view_image_for_index()
-            case ViewStates.ON_INDEX_MAIN_NODE:
-                self._set_top_view_image_for_index()
-            case ViewStates.ON_INDEX_SPEECH_NODE:
-                self._set_top_view_image_for_index()
-            case _:
-                # noinspection PyUnreachableCode
-                # Reason: inspection seems broken here.
-                raise AssertionError
+    def _set_next_top_view_image(self) -> None:
+        if self._view_state in self._SERIES_VIEW_STATES:
+            series_key = self._SERIES_VIEW_STATES[self._view_state]
+            self._top_view_image_info = self._get_top_view_random_image(
+                self._title_lists[series_key]
+            )
+        elif self._view_state in {ViewStates.PRE_INIT, ViewStates.INITIAL}:
+            self._set_top_view_image_fixed(Titles.COLD_BARGAIN_A)
+        elif self._view_state in self._INTRO_VIEW_STATES:
+            self._set_top_view_image_fixed(Titles.ADVENTURE_DOWN_UNDER)
+        elif self._view_state in self._STORIES_VIEW_STATES:
+            self._top_view_image_info = self._get_top_view_random_image(
+                self._title_lists[ALL_LISTS]
+            )
+        elif self._view_state == ViewStates.ON_CS_YEAR_RANGE_NODE:
+            self._set_top_view_image_for_cs_year_range()
+        elif self._view_state == ViewStates.ON_US_YEAR_RANGE_NODE:
+            self._set_top_view_image_for_us_year_range()
+        elif self._view_state == ViewStates.ON_YEAR_RANGE_NODE:
+            self._set_top_view_image_for_year_range()
+        elif self._view_state == ViewStates.ON_CATEGORY_NODE:
+            self._set_top_view_image_for_category()
+        elif self._view_state == ViewStates.ON_TAG_GROUP_NODE:
+            self._set_top_view_image_for_tag_group()
+        elif self._view_state == ViewStates.ON_TAG_NODE:
+            self._set_top_view_image_for_tag()
+        elif self._view_state in self._SEARCH_VIEW_STATES:
+            self._set_top_view_image_for_search()
+        elif self._view_state in self._APPENDIX_VIEW_STATES:
+            self._set_top_view_image_fixed(Titles.FABULOUS_PHILOSOPHERS_STONE_THE)
+        elif self._view_state == ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE:
+            self._set_top_view_image_for_appendix_censorship_fixes()
+        elif self._view_state in self._INDEX_VIEW_STATES:
+            self._set_top_view_image_fixed(Titles.TRUANT_OFFICER_DONALD)
+        else:
+            msg = f"Unhandled view state: {self._view_state}"
+            raise AssertionError(msg)
 
         self._set_top_view_image_color()
         self._schedule_top_view_event()
@@ -371,41 +372,10 @@ class BackgroundViews:
             f" Opacity: {self._top_view_image_opacity}."
         )
 
-    def _set_initial_top_view_image(self) -> None:
-        title = Titles.COLD_BARGAIN_A
+    def _set_top_view_image_fixed(self, title: Titles) -> None:
         self._top_view_image_info = ImageInfo(
             self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
         )
-
-    def _set_top_view_image_for_intro(self) -> None:
-        title = Titles.ADVENTURE_DOWN_UNDER
-        self._top_view_image_info = ImageInfo(
-            self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
-        )
-
-    def _set_top_view_image_for_stories(self) -> None:
-        self._top_view_image_info = self._get_top_view_random_image(self._title_lists[ALL_LISTS])
-
-    def _set_top_view_image_for_cs(self) -> None:
-        self._top_view_image_info = self._get_top_view_random_image(self._title_lists[SERIES_CS])
-
-    def _set_top_view_image_for_dd(self) -> None:
-        self._top_view_image_info = self._get_top_view_random_image(self._title_lists[SERIES_DDA])
-
-    def _set_top_view_image_for_us(self) -> None:
-        self._top_view_image_info = self._get_top_view_random_image(self._title_lists[SERIES_USA])
-
-    def _set_top_view_image_for_dds(self) -> None:
-        self._top_view_image_info = self._get_top_view_random_image(self._title_lists[SERIES_DDS])
-
-    def _set_top_view_image_for_uss(self) -> None:
-        self._top_view_image_info = self._get_top_view_random_image(self._title_lists[SERIES_USS])
-
-    def _set_top_view_image_for_gg(self) -> None:
-        self._top_view_image_info = self._get_top_view_random_image(self._title_lists[SERIES_GG])
-
-    def _set_top_view_image_for_misc(self) -> None:
-        self._top_view_image_info = self._get_top_view_random_image(self._title_lists[SERIES_MISC])
 
     def _set_top_view_image_for_category(self) -> None:
         logger.debug(f"Current category: '{self._current_category}'.")
@@ -491,20 +461,8 @@ class BackgroundViews:
     def _set_top_view_image_for_search(self) -> None:
         self._top_view_image_info = self._random_title_images.get_random_search_image()
 
-    def _set_top_view_image_for_appendix(self) -> None:
-        title = Titles.FABULOUS_PHILOSOPHERS_STONE_THE
-        self._top_view_image_info = ImageInfo(
-            self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
-        )
-
     def _set_top_view_image_for_appendix_censorship_fixes(self) -> None:
         self._top_view_image_info = self._random_title_images.get_random_censorship_fix_image()
-
-    def _set_top_view_image_for_index(self) -> None:
-        title = Titles.TRUANT_OFFICER_DONALD
-        self._top_view_image_info = ImageInfo(
-            self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
-        )
 
     def _set_top_view_image_color(self) -> None:
         self._top_view_image_color = self._top_view_image_random_color_tint.get_random_color()
@@ -580,12 +538,14 @@ class BackgroundViews:
 
         assert self._fun_image_themes
 
-        if ImageThemes.FORTIES in self._fun_image_themes:
-            self._update_titles(theme_titles, (1942, 1949))
-        if ImageThemes.FIFTIES in self._fun_image_themes:
-            self._update_titles(theme_titles, (1950, 1959))
-        if ImageThemes.SIXTIES in self._fun_image_themes:
-            self._update_titles(theme_titles, (1960, 1961))
+        for theme, year_range in {
+            ImageThemes.FORTIES: (1942, 1949),
+            ImageThemes.FIFTIES: (1950, 1959),
+            ImageThemes.SIXTIES: (1960, 1961),
+        }.items():
+            if theme in self._fun_image_themes:
+                self._update_titles(theme_titles, year_range)
+
         if ImageThemes.CLASSICS in self._fun_image_themes:
             theme_titles.update(
                 [BARKS_TITLES[title] for title in BARKS_TAGGED_TITLES[Tags.CLASSICS]]

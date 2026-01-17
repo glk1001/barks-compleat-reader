@@ -244,7 +244,6 @@ class ViewStateManager:
         assert image_info.filename is not None
         image_loader.load_texture(image_filename, on_ready)  # ty:ignore[invalid-argument-type]
 
-    # noinspection PyNoneFunctionAssignment
     def _set_top_view_image(self) -> None:
         """Set the image and properties for the top view (behind the TreeView)."""
         self._top_view_image_info = self._background_views.get_top_view_image_info()
