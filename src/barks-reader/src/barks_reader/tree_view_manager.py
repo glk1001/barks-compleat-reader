@@ -30,6 +30,7 @@ from barks_reader.view_states import (
 if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from kivy.uix.button import Button
+    from kivy.uix.scrollview import ScrollView
     from kivy.uix.spinner import Spinner
 
     from barks_reader.background_views import BackgroundViews
@@ -232,73 +233,88 @@ class TreeViewManager:
             if run_populate and parent_node.populate_callback:
                 parent_node.populate_callback()
 
-            # We'll wait for the layout to settle (content height + children heights stabilize),
-            # then compute the delta and adjust scroll_y by the exact normalized amount.
-            checks = {"count": 0, "last_h": -1, "stable": 0}
-            max_checks = 180  # ~3 seconds worst-case @ 60fps
+            checks: dict[str, float] = {"count": 0, "last_h": -1, "stable": 0}
 
-            def _after_layout(_dt: float):  # noqa: ANN202, PLR0911
-                # If user collapsed or navigated away, stop.
-                if not parent_node.is_open:
-                    return None
-
-                if not scroll_view.children:
-                    return _resched()
-
-                cont = scroll_view.children[0]
-                viewport_h = scroll_view.height
-                cont_h = cont.height
-
-                # Require non-trivial content to avoid div-by-zero and false positives.
-                if (cont_h <= 1) or (viewport_h <= 1) or (cont_h <= viewport_h):
-                    return _resched()
-
-                # Check stabilization of container height
-                if abs(cont_h - checks["last_h"]) < 0.5:  # noqa: PLR2004
-                    checks["stable"] += 1
-                else:
-                    checks["stable"] = 0
-                checks["last_h"] = cont_h
-
-                if checks["stable"] < 2:  # noqa: PLR2004
-                    return _resched()
-
-                # Current offset (parent top relative to SV top) *after* expansion
-                sv_top = scroll_view.to_window(0, scroll_view.top)[1]
-                new_parent_top = parent_node.to_window(0, parent_node.top)[1]
-                current_offset_px = new_parent_top - sv_top
-
-                # How far did the parent drift? Positive means it moved DOWN on screen.
-                delta_px = current_offset_px - target_offset_px
-                if abs(delta_px) < 0.5:  # noqa: PLR2004
-                    return None  # nothing to adjust
-
-                # Convert pixel delta to normalized scroll_y delta:
-                #  - Kivy uses scroll_y 0..1 where 1 = top, 0 = bottom.
-                #  - Moving content up by +delta_px means increase scroll_y.
-                denominator = cont_h - viewport_h
-                if denominator <= 0:
-                    return None
-
-                delta_norm = delta_px / denominator
-                new_scroll_y = self._clamp01(scroll_view.scroll_y + delta_norm)
-
-                # Apply in one shot (no animation to avoid visible bounce)
-                scroll_view.scroll_y = new_scroll_y
-
-                return None
-
-            def _resched() -> None:
-                checks["count"] += 1
-                if checks["count"] < max_checks:
-                    Clock.schedule_once(_after_layout, 0)
-
-            Clock.schedule_once(_after_layout, 0)
+            Clock.schedule_once(
+                lambda dt: self._stabilize_scroll_after_layout(
+                    dt, parent_node, scroll_view, target_offset_px, checks
+                ),
+                0,
+            )
         finally:
             logger.debug(
                 f"Populated node '{get_clean_text_without_extra(parent_node.text)}'"
                 f" in {timing.get_elapsed_time_with_unit()}."
             )
+
+    def _stabilize_scroll_after_layout(
+        self,
+        _dt: float,
+        parent_node: ButtonTreeViewNode,
+        scroll_view: ScrollView,
+        target_offset_px: float,
+        checks: dict[str, float],
+    ) -> None:
+        # If user collapsed or navigated away, stop.
+        if not parent_node.is_open:
+            return
+
+        def _resched() -> None:
+            checks["count"] += 1
+            if checks["count"] < 180:  # ~3 seconds worst-case @ 60fps  # noqa: PLR2004
+                Clock.schedule_once(
+                    lambda dt: self._stabilize_scroll_after_layout(
+                        dt, parent_node, scroll_view, target_offset_px, checks
+                    ),
+                    0,
+                )
+
+        if not scroll_view.children:
+            _resched()
+            return
+
+        cont = scroll_view.children[0]
+        viewport_h = scroll_view.height
+        cont_h = cont.height
+
+        # Require non-trivial content to avoid div-by-zero and false positives.
+        if (cont_h <= 1) or (viewport_h <= 1) or (cont_h <= viewport_h):
+            _resched()
+            return
+
+        # Check stabilization of container height
+        if abs(cont_h - checks["last_h"]) < 0.5:  # noqa: PLR2004
+            checks["stable"] += 1
+        else:
+            checks["stable"] = 0
+        checks["last_h"] = cont_h
+
+        if checks["stable"] < 2:  # noqa: PLR2004
+            _resched()
+            return
+
+        # Current offset (parent top relative to SV top) *after* expansion
+        sv_top = scroll_view.to_window(0, scroll_view.top)[1]
+        new_parent_top = parent_node.to_window(0, parent_node.top)[1]
+        current_offset_px = new_parent_top - sv_top
+
+        # How far did the parent drift? Positive means it moved DOWN on screen.
+        delta_px = current_offset_px - target_offset_px
+        if abs(delta_px) < 0.5:  # noqa: PLR2004
+            return  # nothing to adjust
+
+        # Convert pixel delta to normalized scroll_y delta:
+        #  - Kivy uses scroll_y 0..1 where 1 = top, 0 = bottom.
+        #  - Moving content up by +delta_px means increase scroll_y.
+        denominator = cont_h - viewport_h
+        if denominator <= 0:
+            return
+
+        delta_norm = delta_px / denominator
+        new_scroll_y = self._clamp01(scroll_view.scroll_y + delta_norm)
+
+        # Apply in one shot (no animation to avoid visible bounce)
+        scroll_view.scroll_y = new_scroll_y
 
     @staticmethod
     def _clamp01(v: float) -> float:
