@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from comic_utils.timing import Timing
 from kivy.clock import Clock
@@ -51,6 +51,25 @@ _BAD_FANTA_VOLUMES_STATE = set(_FantaVolumesState) - _READY_FANTA_VOLUMES_STATE
 
 class AppInitializer:
     """Handles the application's startup sequence."""
+
+    _FANTA_STATE_ERROR_MAP: ClassVar[dict[_FantaVolumesState, tuple[str, ErrorTypes]]] = {
+        _FantaVolumesState.VOLUMES_NOT_SET: (
+            "Fantagraphics Directory Not Set",
+            ErrorTypes.FantagraphicsVolumeRootNotSet,
+        ),
+        _FantaVolumesState.VOLUMES_MISSING: (
+            "Fantagraphics Directory Not Found",
+            ErrorTypes.FantagraphicsVolumeRootNotFound,
+        ),
+        _FantaVolumesState.VOLUMES_WRONG_ORDER: (
+            "Wrong Content in Fantagraphics Directory",
+            ErrorTypes.WrongFantagraphicsVolume,
+        ),
+        _FantaVolumesState.VOLUMES_TOO_MANY: (
+            "Wrong Content in Fantagraphics Directory",
+            ErrorTypes.WrongFantagraphicsVolume,
+        ),
+    }
 
     def __init__(
         self,
@@ -130,28 +149,17 @@ class AppInitializer:
 
         reason, error_type = self.get_bad_fanta_volumes_reason()
 
-        def _on_error_popup_closed(fanta_volumes_missing_msg: str) -> None:
-            self._tree_view_screen.main_files_not_loaded_msg = fanta_volumes_missing_msg
-            self._tree_view_screen.main_files_not_loaded = True
-
-        self._user_error_handler.handle_error(
+        self._handle_error_ui(
             error_type,
             self._fanta_volumes_error_info,
-            _on_error_popup_closed,
-            f"Cannot Load Comic: {reason}",
+            msg=f"Cannot Load Comic: {reason}",
         )
 
         return False, reason
 
     def get_bad_fanta_volumes_reason(self) -> tuple[str, ErrorTypes]:
-        if self._fanta_volumes_state == _FantaVolumesState.VOLUMES_NOT_SET:
-            return "Fantagraphics Directory Not Set", ErrorTypes.FantagraphicsVolumeRootNotSet
-        if self._fanta_volumes_state == _FantaVolumesState.VOLUMES_MISSING:
-            return "Fantagraphics Directory Not Found", ErrorTypes.FantagraphicsVolumeRootNotFound
-        if self._fanta_volumes_state == _FantaVolumesState.VOLUMES_WRONG_ORDER:
-            return "Wrong Content in Fantagraphics Directory", ErrorTypes.WrongFantagraphicsVolume
-        if self._fanta_volumes_state == _FantaVolumesState.VOLUMES_TOO_MANY:
-            return "Wrong Content in Fantagraphics Directory", ErrorTypes.WrongFantagraphicsVolume
+        if self._fanta_volumes_state in self._FANTA_STATE_ERROR_MAP:
+            return self._FANTA_STATE_ERROR_MAP[self._fanta_volumes_state]
 
         msg = f'Unexpected fanta volumes state: "{self._fanta_volumes_state}".'
         raise RuntimeError(msg)
@@ -161,21 +169,8 @@ class AppInitializer:
         if self._fanta_volumes_state in _READY_FANTA_VOLUMES_STATE:
             return
 
-        error_type = (
-            ErrorTypes.FantagraphicsVolumeRootNotSet
-            if self._fanta_volumes_state == _FantaVolumesState.VOLUMES_NOT_SET
-            else ErrorTypes.FantagraphicsVolumeRootNotFound
-        )
-
-        def _on_error_popup_closed(fanta_volumes_missing_msg: str) -> None:
-            self._tree_view_screen.main_files_not_loaded_msg = fanta_volumes_missing_msg
-            self._tree_view_screen.main_files_not_loaded = True
-
-        self._user_error_handler.handle_error(
-            error_type,
-            None,
-            _on_error_popup_closed,
-        )
+        _reason, error_type = self.get_bad_fanta_volumes_reason()
+        self._handle_error_ui(error_type)
 
     def _get_post_build_fanta_volumes_state(self) -> _FantaVolumesState:
         if self._reader_settings.use_prebuilt_archives:
@@ -189,33 +184,38 @@ class AppInitializer:
     def _init_comic_book_data(self) -> bool:
         try:
             self._comic_reader_manager.init_comic_book_data()
-        except (WrongFantagraphicsVolumeError, TooManyArchiveFilesError) as e:
-
-            def _on_error_popup_closed(wrong_fanta_volumes_msg: str) -> None:
-                self._tree_view_screen.main_files_not_loaded_msg = wrong_fanta_volumes_msg
-                self._tree_view_screen.main_files_not_loaded = True
-
-            if type(e) is WrongFantagraphicsVolumeError:
-                error_type = ErrorTypes.WrongFantagraphicsVolume
-                self._fanta_volumes_error_info = ErrorInfo(
-                    file=str(e.file), file_volume=e.file_volume, expected_volume=e.expected_volume
-                )
-                self._fanta_volumes_state = _FantaVolumesState.VOLUMES_WRONG_ORDER
-            else:
-                assert type(e) is TooManyArchiveFilesError  # noqa: PT017
-                error_type = ErrorTypes.TooManyArchiveFiles
-                self._fanta_volumes_error_info = ErrorInfo(
-                    num_volumes=e.num_volumes, num_archive_files=e.num_archive_files
-                )
-                self._fanta_volumes_state = _FantaVolumesState.VOLUMES_TOO_MANY
-
-            self._user_error_handler.handle_error(
-                error_type, self._fanta_volumes_error_info, _on_error_popup_closed
+        except WrongFantagraphicsVolumeError as e:
+            self._fanta_volumes_state = _FantaVolumesState.VOLUMES_WRONG_ORDER
+            self._fanta_volumes_error_info = ErrorInfo(
+                file=str(e.file), file_volume=e.file_volume, expected_volume=e.expected_volume
             )
-
+            self._handle_error_ui(
+                ErrorTypes.WrongFantagraphicsVolume, self._fanta_volumes_error_info
+            )
+            return False
+        except TooManyArchiveFilesError as e:
+            self._fanta_volumes_state = _FantaVolumesState.VOLUMES_TOO_MANY
+            self._fanta_volumes_error_info = ErrorInfo(
+                num_volumes=e.num_volumes, num_archive_files=e.num_archive_files
+            )
+            self._handle_error_ui(ErrorTypes.TooManyArchiveFiles, self._fanta_volumes_error_info)
             return False
 
-        except Exception:
-            raise
-        else:
-            return True
+        return True
+
+    def _handle_error_ui(
+        self,
+        error_type: ErrorTypes,
+        error_info: ErrorInfo | None = None,
+        msg: str = "",
+    ) -> None:
+        def _on_error_popup_closed(popup_msg: str) -> None:
+            self._tree_view_screen.main_files_not_loaded_msg = popup_msg
+            self._tree_view_screen.main_files_not_loaded = True
+
+        self._user_error_handler.handle_error(
+            error_type,
+            error_info,
+            _on_error_popup_closed,
+            msg,
+        )
