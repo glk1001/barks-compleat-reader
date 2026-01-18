@@ -94,6 +94,7 @@ class RandomTitleImages:
 
         return [
             (Titles.VACATION_TIME, str(Path(VACATION_TIME) / f"076-8-flipped{file_ext}")),
+            (Titles.VACATION_TIME, str(Path(VACATION_TIME) / f"083-7-flipped{file_ext}")),
             (Titles.PIXILATED_PARROT_THE, str(Path(PIXILATED_PARROT_THE) / f"017-4{file_ext}")),
         ]
 
