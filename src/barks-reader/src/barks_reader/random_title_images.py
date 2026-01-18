@@ -18,7 +18,7 @@ from loguru import logger
 
 from barks_reader.image_file_getter import TitleImageFileGetter
 from barks_reader.reader_file_paths import ALL_TYPES, EMERGENCY_INSET_FILE, FileTypes
-from barks_reader.reader_utils import get_all_files_in_dir, prob_rand_less_equal
+from barks_reader.reader_utils import get_all_files_in_dir
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -35,9 +35,6 @@ SEARCH_TITLES = [
     Titles.BACK_TO_LONG_AGO,
     Titles.TRACKING_SANDY,
     Titles.SEARCH_FOR_THE_CUSPIDORIA,
-]
-APP_SPLASH_IMAGES = [
-    "006.png",
 ]
 
 FIT_MODE_CONTAIN = "contain"
@@ -85,23 +82,23 @@ class RandomTitleImages:
     def _add_last_image(self, image_filename: PanelPath) -> None:
         self._most_recently_used_images.append(image_filename)
 
+    def _get_fallback_image_info(self) -> ImageInfo:
+        return ImageInfo(
+            self._reader_settings.file_paths.get_comic_inset_file(EMERGENCY_INSET_FILE),
+            Titles.GOOD_NEIGHBORS,
+            FIT_MODE_COVER,
+        )
+
     def _get_censored_images(self) -> list[tuple[Titles, str]]:
         file_ext = self._reader_settings.file_paths.get_file_ext()
 
         return [
-            (
-                Titles.VACATION_TIME,
-                str(Path(VACATION_TIME) / ("076-8-flipped" + file_ext)),
-            ),
-            (
-                Titles.PIXILATED_PARROT_THE,
-                str(Path(PIXILATED_PARROT_THE) / ("017-4" + file_ext)),
-            ),
+            (Titles.VACATION_TIME, str(Path(VACATION_TIME) / f"076-8-flipped{file_ext}")),
+            (Titles.PIXILATED_PARROT_THE, str(Path(PIXILATED_PARROT_THE) / f"017-4{file_ext}")),
         ]
 
     def get_random_search_image(self) -> ImageInfo:
-        title_index = randrange(0, len(SEARCH_TITLES))
-        title = SEARCH_TITLES[title_index]
+        title = random.choice(SEARCH_TITLES)
 
         return ImageInfo(
             self._get_random_comic_file(
@@ -116,16 +113,15 @@ class RandomTitleImages:
     def get_random_reader_app_icon_file(self) -> Path:
         icon_path = self._all_reader_icon_files[self._next_reader_icon_file]
 
-        self._next_reader_icon_file += 1
-        if self._next_reader_icon_file >= len(self._all_reader_icon_files):
-            self._next_reader_icon_file = 0
+        self._next_reader_icon_file = (self._next_reader_icon_file + 1) % len(
+            self._all_reader_icon_files
+        )
 
         assert isinstance(icon_path, Path)
         return icon_path
 
     def get_random_censorship_fix_image(self) -> ImageInfo:
-        image_index = randrange(0, len(self._CENSORED_IMAGES))
-        title, file = self._CENSORED_IMAGES[image_index]
+        title, file = random.choice(self._CENSORED_IMAGES)
 
         return ImageInfo(
             self._reader_settings.file_paths.get_comic_favourite_files_dir() / file,
@@ -195,10 +191,10 @@ class RandomTitleImages:
         ]
 
         if preferred_images:
-            selected_image_info = preferred_images[randrange(0, len(preferred_images))]
+            selected_image_info = random.choice(preferred_images)
         else:
             # Fallback to any image if all have been recently used for this title.
-            selected_image_info = possible_images[randrange(0, len(possible_images))]
+            selected_image_info = random.choice(possible_images)
 
         assert selected_image_info
         image_filename = selected_image_info[0]
@@ -215,11 +211,7 @@ class RandomTitleImages:
     ) -> ImageInfo:
         if not title_list:
             # Handle empty title list gracefully
-            return ImageInfo(
-                self._reader_settings.file_paths.get_comic_inset_file(EMERGENCY_INSET_FILE),
-                Titles.GOOD_NEIGHBORS,
-                FIT_MODE_COVER,
-            )
+            return self._get_fallback_image_info()
 
         current_file_types = ALL_TYPES if file_types is None else file_types
         logger.debug(f"File types to choose random image from: {current_file_types}.")
@@ -248,11 +240,7 @@ class RandomTitleImages:
 
         # Fallback if all attempts fail,
         logger.warning("Failed to find a suitable random image after multiple attempts.")
-        return ImageInfo(
-            self._reader_settings.file_paths.get_comic_inset_file(EMERGENCY_INSET_FILE),
-            Titles.GOOD_NEIGHBORS,
-            FIT_MODE_COVER,
-        )
+        return self._get_fallback_image_info()
 
     def _select_random_title_or_nontitle(
         self,
@@ -269,7 +257,7 @@ class RandomTitleImages:
                 logger.debug("Chose a nontitle image based on bias.")
                 return None, None, self._nontitle_files
 
-        title_info = title_list[randrange(0, len(title_list))]
+        title_info = random.choice(title_list)
         comic_book_info = title_info.comic_book_info
         title_enum = comic_book_info.title
         title_str = comic_book_info.get_title_str()
@@ -302,7 +290,7 @@ class RandomTitleImages:
         if not candidates:
             candidates = possible_files
 
-        return candidates[randrange(0, len(candidates))]
+        return random.choice(candidates)
 
     def _get_fit_mode(self, use_random_fit_mode: bool) -> str:
         if use_random_fit_mode:
@@ -312,7 +300,7 @@ class RandomTitleImages:
 
     @staticmethod
     def _get_random_fit_mode() -> str:
-        return FIT_MODE_COVER if prob_rand_less_equal(50) else FIT_MODE_CONTAIN
+        return random.choice((FIT_MODE_COVER, FIT_MODE_CONTAIN))
 
     def _get_better_fitting_image_if_possible(
         self, image_filename: PanelPath, fit_mode: str, file_type_enum: FileTypes
@@ -333,9 +321,10 @@ class RandomTitleImages:
     ) -> PossibleFiles:
         possible_files: list[tuple[PanelPath, FileTypes]] = []
 
+        title_files = self._title_image_files.get(title_str, {})
         for file_type in file_types:
-            if file_type in self._title_image_files.get(title_str, {}):
-                for filename, is_edited in self._title_image_files[title_str][file_type]:
+            if file_type in title_files:
+                for filename, is_edited in title_files[file_type]:
                     if use_only_edited_if_possible and not is_edited:
                         continue
                     possible_files.append((filename, file_type))
@@ -366,8 +355,7 @@ class RandomTitleImages:
     ) -> Path:
         title_files = get_files_func(title_str, use_only_edited_if_possible)
         if title_files:
-            index = randrange(0, len(title_files))
-            return title_files[index]
+            return random.choice(title_files)
 
         raise AssertionError
 
