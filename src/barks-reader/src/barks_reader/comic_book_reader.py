@@ -176,7 +176,7 @@ class ComicBookReader(FloatLayout):
         reader_settings: ReaderSettings,
         font_manager: FontManager,
         on_comic_is_ready_to_read: Callable[[], None],
-        on_toggle_action_bar_visibility: Callable[[], None],
+        toggle_action_bar_visibility: Callable[[], None],
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
@@ -184,7 +184,7 @@ class ComicBookReader(FloatLayout):
         self._reader_settings = reader_settings
         self._font_manager = font_manager
         self._on_comic_is_ready_to_read = on_comic_is_ready_to_read
-        self._on_toggle_action_bar_visibility = on_toggle_action_bar_visibility
+        self._toggle_action_bar_visibility = toggle_action_bar_visibility
         self._goto_page_widget: Widget | None = None
 
         self._current_comic_path = ""
@@ -246,6 +246,11 @@ class ComicBookReader(FloatLayout):
     def get_last_read_page(self) -> str:
         return self._current_page_str
 
+    def is_click_in_top_margin(self, touch: MotionEvent) -> bool:
+        x_rel = round(touch.x - self.x)
+        y_rel = round(touch.y - self.y)
+        return self._navigation.is_in_top_margin(x_rel, y_rel)
+
     @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
         logger.debug(
@@ -255,26 +260,27 @@ class ComicBookReader(FloatLayout):
             f" x_mid = {self._navigation.x_mid}, y_top_margin = {self._navigation.y_top_margin}."
         )
 
+        if super().on_touch_down(touch):
+            return True
+
         x_rel = round(touch.x - self.x)
         y_rel = round(touch.y - self.y)
 
-        if self._navigation.is_in_top_margin(x_rel, y_rel):
-            logger.debug(f"Top margin pressed: x_rel,y_rel = {x_rel},{y_rel}.")
-            if WindowManager.is_fullscreen_now():
-                self._on_toggle_action_bar_visibility()
-        elif self._navigation.is_in_left_margin(x_rel, y_rel):
+        if self._navigation.is_in_left_margin(x_rel, y_rel):
             logger.debug(f"Left margin pressed: x_rel,y_rel = {x_rel},{y_rel}.")
             self._page_manager.prev_page()
-        elif self._navigation.is_in_right_margin(x_rel, y_rel):
+            return True
+
+        if self._navigation.is_in_right_margin(x_rel, y_rel):
             logger.debug(f"Right margin pressed: x_rel,y_rel = {x_rel},{y_rel}.")
             self._page_manager.next_page()
-        else:
-            logger.debug(
-                f"Dead zone: x_rel,y_rel = {x_rel},{y_rel},"
-                f" Screen mode = {WindowManager.get_screen_mode_now()}."
-            )
+            return True
 
-        return super().on_touch_down(touch)
+        logger.debug(
+            f"Dead zone: x_rel,y_rel = {x_rel},{y_rel},"
+            f" Screen mode = {WindowManager.get_screen_mode_now()}."
+        )
+        return False
 
     def init_data(self) -> None:
         self._comic_book_loader.init_data()
@@ -380,11 +386,17 @@ class ComicBookReader(FloatLayout):
             logger.exception(f"Error displaying image with index {self._current_page_index}: ")
             # Optionally display a placeholder image or error message
 
+    def _hide_action_bar_if_fullscreen(self) -> None:
+        if WindowManager.is_fullscreen_now():
+            self._toggle_action_bar_visibility()
+
     def goto_start_page(self) -> None:
         self._page_manager.goto_start_page()
+        self._hide_action_bar_if_fullscreen()
 
     def goto_last_page(self) -> None:
         self._page_manager.goto_last_page()
+        self._hide_action_bar_if_fullscreen()
 
     def _wait_for_image_to_load(self) -> None:
         if self._all_loaded:
@@ -423,6 +435,7 @@ class ComicBookReader(FloatLayout):
 
     def on_page_selected(self, _instance: Widget, page: str) -> None:
         self._page_manager.set_current_page_index_from_str(page)
+        self._hide_action_bar_if_fullscreen()
 
     def _create_goto_page_dropdown(self) -> None:
         max_dropdown_height = round(GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT * self.height)
@@ -528,6 +541,24 @@ class ComicBookReaderScreen(ReaderScreen):
             f" self._action_bar.width = {self._action_bar.width}."
             f" self._action_bar.opacity = {self._action_bar.opacity}."
         )
+
+    # Handle top margin press here, not the comic book reader. This allows
+    # top margin button presses to take precedence over top margin touches.
+    @override
+    def on_touch_down(self, touch: MotionEvent) -> bool:
+        if super().on_touch_down(touch):
+            # Another button has been pressed.
+            return True
+
+        if (
+            self.comic_book_reader.is_click_in_top_margin(touch)
+            and WindowManager.is_fullscreen_now()
+        ):
+            logger.debug("Toggling action bar visibility on top margin press.")
+            self._toggle_action_bar_visibility()
+            return True
+
+        return False
 
     def _on_comic_is_ready_to_read(self) -> None:
         self._on_comic_is_ready_to_read_func()
@@ -666,6 +697,7 @@ class ComicBookReaderScreen(ReaderScreen):
         logger.debug(f"Toggling action bar visibility. Current opacity: {self._action_bar.opacity}")
         # Toggle the opacity. The .kv file handles the rest.
         self._action_bar.opacity = 1.0 if self._action_bar.opacity < CLOSE_TO_ZERO else 0.0
+        logger.debug(f"Toggling action bar visibility. New opacity: {self._action_bar.opacity}")
 
     def _update_widget_states(self) -> None:
         if self.is_fullscreen:
