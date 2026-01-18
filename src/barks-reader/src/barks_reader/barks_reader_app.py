@@ -11,7 +11,7 @@ from comic_utils.timing import Timing
 from kivy.app import App  # can take ~2s in VM Windows
 from kivy.clock import Clock
 from kivy.config import Config
-from kivy.core.window import Window  # can take ~1s in VM Windows
+from kivy.core.window import Window, WindowBase  # can take ~1s in VM Windows
 from kivy.lang import Builder
 from kivy.uix.settings import Settings, SettingsWithSpinner  # can take ~1s in VM Windows
 from loguru import logger
@@ -88,8 +88,7 @@ class BarksReaderApp(App):
         self._resize_requested_size = 0, 0
 
     # TODO: Move this Window stuff to MainScreen.
-    # noinspection PyTypeHints
-    def _on_window_pos_change(self, _window: Window) -> None:
+    def _on_window_pos_change(self, _window: WindowBase) -> None:
         # Check if we've changed monitors. Adjust height if required.
 
         if Window.fullscreen:
@@ -141,8 +140,7 @@ class BarksReaderApp(App):
         Clock.schedule_once(do_resize, 0)
         self._resize_event = Clock.schedule_once(do_reset_resize, time_for_move_to_settle)
 
-    # noinspection PyTypeHints
-    def _on_window_resize(self, _window: Window, width: int, height: int) -> None:
+    def _on_window_resize(self, _window: WindowBase, width: int, height: int) -> None:
         # logger.debug(
         #     f"Main window resize event:"
         #     f" width, height = {width},{height},"

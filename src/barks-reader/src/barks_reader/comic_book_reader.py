@@ -7,7 +7,7 @@ from barks_fantagraphics.comics_consts import PageType
 from comic_utils.timing import Timing
 from kivy.clock import Clock
 from kivy.core.image import Image as CoreImage
-from kivy.core.window import Window
+from kivy.core.window import Window, WindowBase
 from kivy.event import EventDispatcher
 from kivy.lang import Builder
 from kivy.metrics import dp
@@ -69,8 +69,6 @@ class _ComicPageManager(EventDispatcher):
 
         self.bind(_current_page_index=current_page_index_bound_func)
 
-        # noinspection PyTypeHints
-        # Reason: inspection seems broken here.
         self.page_map: OrderedDict[str, PageInfo] | None = None
         self._index_to_page_map: dict[int, str] = {}
         self._first_page_to_read_index = -1
@@ -141,24 +139,27 @@ class _ComicPageManager(EventDispatcher):
 
     def get_image_load_order(self) -> list[str]:
         """Determine the optimal order to load images for a smooth user experience."""
-        image_load_order = []
-        page_to_first_goto = self._index_to_page_map[self._first_page_to_read_index]
-
         if self._first_page_to_read_index == 0:
-            image_load_order.extend(self.page_map.keys())
-            return image_load_order
+            return list(self.page_map.keys())
 
-        image_load_order.append(page_to_first_goto)
-        prev_page = self._index_to_page_map[self._first_page_to_read_index - 1]
-        image_load_order.append(prev_page)
+        # Start with the current page
+        image_load_order = [self._index_to_page_map[self._first_page_to_read_index]]
 
-        for page_index in range(self._first_page_to_read_index + 1, self._last_page_index + 1):
-            page = self._index_to_page_map[page_index]
-            image_load_order.append(page)
+        # Then the previous page (for immediate back navigation).
+        if self._first_page_to_read_index > 0:
+            image_load_order.append(self._index_to_page_map[self._first_page_to_read_index - 1])
 
-        for page_index in range(self._first_page_to_read_index - 2, -1, -1):
-            page = self._index_to_page_map[page_index]
-            image_load_order.append(page)
+        # Then all subsequent pages.
+        image_load_order.extend(
+            self._index_to_page_map[page_index]
+            for page_index in range(self._first_page_to_read_index + 1, self._last_page_index + 1)
+        )
+
+        # Finally, the rest of the previous pages in reverse order.
+        image_load_order.extend(
+            self._index_to_page_map[page_index]
+            for page_index in range(self._first_page_to_read_index - 2, -1, -1)
+        )
 
         return image_load_order
 
@@ -204,6 +205,7 @@ class ComicBookReader(FloatLayout):
         self._all_loaded = False
         self._closed = False
         self._goto_page_dropdown: DropDown | None = None
+        self._goto_page_buttons: list[Button] = []
 
         # Bind property changes to update the display
         self._page_manager = _ComicPageManager(self._show_page)
@@ -212,9 +214,9 @@ class ComicBookReader(FloatLayout):
 
         self._time_to_load_comic = Timing()
 
-    # noinspection PyNoneFunctionAssignment
     def _add_reader_widgets(self) -> None:
-        self._loading_page_image = get_image_stream(
+        # Don't mess with this. Using CoreImage will result in a 25% slowdown.
+        self._loading_page_texture = get_image_stream(
             self._reader_settings.sys_file_paths.get_empty_page_file()
         )
 
@@ -322,6 +324,7 @@ class ComicBookReader(FloatLayout):
     def reset_comic_book_reader(self) -> None:
         self._page_manager.reset_current_page_index()
         self._goto_page_dropdown = None
+        self._goto_page_buttons.clear()
         self._closed = True
 
     def _first_image_loaded(self) -> None:
@@ -346,7 +349,7 @@ class ComicBookReader(FloatLayout):
         self._comic_image.texture = None  # Clear previous texture
         self._comic_image.source = ""  # Clear previous source
         self._comic_image.reload()  # Ensure reload if source was same BytesIO object
-        self._comic_image.texture = self._loading_page_image
+        self._comic_image.texture = self._loading_page_texture
 
     def _show_page(self, _instance: Widget, _value: str) -> None:
         """Display the image for the current_page_index."""
@@ -402,9 +405,7 @@ class ComicBookReader(FloatLayout):
 
         selected_button = None
         # Update button colors to highlight the current page before opening
-        # noinspection PyUnresolvedReferences
-        # Reason: inspection seems broken here.
-        for button in self._goto_page_dropdown.children[0].children:
+        for button in self._goto_page_buttons:
             page_info = self._page_map[button.text]
             if page_info.page_index == self._current_page_index:
                 button.background_color = GOTO_PAGE_BUTTON_CURRENT_PAGE_COLOR
@@ -416,12 +417,8 @@ class ComicBookReader(FloatLayout):
                     else GOTO_PAGE_BUTTON_NONBODY_COLOR
                 )
 
-        # noinspection PyUnresolvedReferences
-        # Reason: inspection seems broken here.
         self._goto_page_dropdown.open(self._goto_page_widget)
         if selected_button:
-            # noinspection PyUnresolvedReferences
-            # Reason: inspection seems broken here.
             self._goto_page_dropdown.scroll_to(selected_button)
 
     def on_page_selected(self, _instance: Widget, page: str) -> None:
@@ -437,6 +434,7 @@ class ComicBookReader(FloatLayout):
             on_select=self.on_page_selected,
             max_height=max_dropdown_height,
         )
+        self._goto_page_buttons.clear()
 
         logger.debug(f"Adding {len(self._page_map)} page buttons to dropdown.")
         for page, page_info in self._page_map.items():
@@ -448,6 +446,7 @@ class ComicBookReader(FloatLayout):
             )
             button.bind(on_press=lambda btn: self._goto_page_dropdown.select(btn.text))
             self._goto_page_dropdown.add_widget(button)
+            self._goto_page_buttons.append(button)
 
 
 class ComicBookReaderScreen(ReaderScreen):
@@ -633,9 +632,7 @@ class ComicBookReaderScreen(ReaderScreen):
         self._is_closing = False
         self.comic_book_reader.reset_comic_book_reader()
 
-    # noinspection PyTypeHints
-    # Reason: inspection seems broken here.
-    def _on_window_resize(self, _window: Window, width: int, height: int) -> None:
+    def _on_window_resize(self, _window: WindowBase, width: int, height: int) -> None:
         if not self._active:
             return
 
