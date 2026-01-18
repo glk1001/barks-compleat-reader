@@ -1,5 +1,3 @@
-# ruff: noqa: ERA001
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -84,7 +82,7 @@ class ReaderTreeView(TreeView):
 
     previous_selected_node = ObjectProperty(None, allownone=True)
     # Internal variable to track the state
-    _current_selection_tracker = None
+    _current_selection_tracker: BaseTreeViewNode | None = None
 
     def reset_selection_tracking(self) -> None:
         self._current_selection_tracker = None
@@ -132,6 +130,8 @@ class MessagePopup(Popup):
     msg_text = StringProperty()
     ok_text = StringProperty()
     cancel_text = StringProperty()
+    ok = ObjectProperty(None, allownone=True)
+    cancel = ObjectProperty(None, allownone=True)
 
     # noinspection PyUnresolvedReferences
     def __init__(
@@ -170,7 +170,7 @@ class BaseTreeViewNode(TreeViewNode):
 class BaseSearchBoxTreeViewNode(FloatLayout, BaseTreeViewNode):
     """Base class for search boxes in the TreeView."""
 
-    populate_callback = None
+    populate_callback: Callable[[], None] | None = None
 
     @staticmethod
     def _set_spinner_values(spinner: Spinner, values: list[str]) -> None:
@@ -364,8 +364,6 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
 
     def _get_tags_matching_search_tag_str(self, value: str) -> list[Tags | TagGroups]:
         return self._title_search.get_tags_matching_prefix(value)
-        # if len(value) > 2:
-        #     unique_extend(title_list, self.title_search.get_titles_containing(value))
 
 
 class ButtonTreeViewNode(Button, BaseTreeViewNode):
@@ -382,15 +380,11 @@ class ButtonTreeViewNode(Button, BaseTreeViewNode):
     def get_name(self) -> str:
         return get_clean_text_without_extra(self.text)
 
-    # Override 'touch' so we can toggle the node open or closed.
-    @override
-    def on_touch_down(self, touch: MotionEvent) -> bool:
+    def on_press(self) -> None:
         # Node press will also toggle expand/collapse.
         nodes_treeview = self._get_nodes_treeview(self)
         assert nodes_treeview is not None
         nodes_treeview.toggle_node(self)
-
-        return super().on_touch_down(touch)
 
     @staticmethod
     def _get_nodes_treeview(node: ButtonTreeViewNode) -> TreeView | None:
