@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from random import randrange
-from typing import TYPE_CHECKING, Any, override
+from typing import TYPE_CHECKING, override
 
 from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES, TagGroups, Tags
 from barks_fantagraphics.barks_titles import (
@@ -50,7 +49,6 @@ from barks_reader.reader_ui_classes import (
     show_action_bar,
 )
 from barks_reader.reader_utils import (
-    get_all_files_in_dir,
     get_title_str_from_reader_icon_file,
     get_win_width_from_height,
 )
@@ -272,14 +270,6 @@ class MainScreen(ReaderScreen):
     def set_comic_book_reader_screen(self, comic_book_reader_screen: ComicBookReaderScreen) -> None:
         self._comic_reader_manager.set_comic_book_reader_screen(comic_book_reader_screen)
 
-    def _get_reader_app_icon_file(self) -> Path:
-        icon_files = get_all_files_in_dir(
-            self._reader_settings.sys_file_paths.get_reader_icon_files_dir(),
-        )
-        file_index = randrange(0, len(icon_files))
-        assert isinstance(icon_files[file_index], Path)
-        return icon_files[file_index]  # ty: ignore[invalid-return-type]
-
     def app_closing(self) -> None:
         logger.debug("Closing app...")
 
@@ -312,7 +302,7 @@ class MainScreen(ReaderScreen):
     def _on_tree_build_finished(self) -> None:
         pass
 
-    def display_settings(self, app_window: Any, settings: Widget) -> bool:  # noqa: ANN401
+    def display_settings(self, app_window: Widget, settings: Widget) -> bool:
         logger.debug("Display settings object.")
 
         if settings in app_window.children:
@@ -495,8 +485,14 @@ class MainScreen(ReaderScreen):
 
         # Get the year range node for this title.
         title_year_range = self._get_year_range_from_info(title_fanta_info)
-        year_node = self._year_range_nodes[title_year_range]
-        assert year_node
+        if title_year_range is None:
+            msg = f"No year range found for {title_fanta_info.comic_book_info.get_title_str()}."
+            raise RuntimeError(msg)
+        year_node = self._year_range_nodes.get(title_year_range)
+        if not year_node:
+            msg = f"No year node found for range '{title_year_range}'."
+            raise RuntimeError(msg)
+
         year_node.ensure_populated()
         logger.debug(f"For range {title_year_range}, year node has {len(year_node.nodes)} nodes.")
 
@@ -551,14 +547,12 @@ class MainScreen(ReaderScreen):
             )
 
     @staticmethod
-    def _get_year_range_from_info(fanta_info: FantaComicBookInfo) -> None | tuple[int, int]:
+    def _get_year_range_from_info(fanta_info: FantaComicBookInfo) -> tuple[int, int] | None:
         sub_year = fanta_info.comic_book_info.submitted_year
-
-        for year_range in CHRONO_YEAR_RANGES:
-            if year_range[0] <= sub_year <= year_range[1]:
-                return year_range
-
-        return None
+        return next(
+            (r for r in CHRONO_YEAR_RANGES if r[0] <= sub_year <= r[1]),
+            None,
+        )
 
     @staticmethod
     def _get_fanta_info(title: Titles) -> FantaComicBookInfo:
@@ -670,6 +664,7 @@ class MainScreen(ReaderScreen):
 
     def _set_goto_page_checkbox(self, last_read_page: SavedPageInfo | None = None) -> None:
         if not last_read_page:
+            assert self.fanta_info
             title_str = self.fanta_info.comic_book_info.get_title_str()
             last_read_page = self._comic_reader_manager.get_last_read_page(title_str)
 
