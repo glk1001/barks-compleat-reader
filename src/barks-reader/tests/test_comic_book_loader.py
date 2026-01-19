@@ -3,19 +3,24 @@
 from __future__ import annotations
 
 import io
-import unittest
 from collections import OrderedDict
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
+import pytest
 from barks_fantagraphics.barks_titles import ComicBookInfo
 from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 from barks_reader.comic_book_loader import ComicBookLoader
 from barks_reader.comic_book_page_info import PageInfo
 
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
-class TestComicBookLoader(unittest.TestCase):
-    def setUp(self) -> None:
+
+class TestComicBookLoader:
+    @pytest.fixture(autouse=True)
+    def setup(self) -> Generator[None]:
         self.mock_settings = MagicMock()
         self.mock_settings.sys_file_paths.get_empty_page_file.return_value = "empty.png"
 
@@ -49,7 +54,8 @@ class TestComicBookLoader(unittest.TestCase):
             1000,
         )
 
-    def tearDown(self) -> None:
+        yield
+
         self.open_patcher.stop()
         self.thread_patcher.stop()
         self.autotune_patcher.stop()

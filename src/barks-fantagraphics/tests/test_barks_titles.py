@@ -1,7 +1,6 @@
 # ruff: noqa: BLE001, FBT003
 
 import string
-import unittest
 
 import pytest
 from barks_fantagraphics.barks_titles import (
@@ -18,7 +17,7 @@ from barks_fantagraphics.barks_titles import (
 )
 
 
-class TestComicBookInfo(unittest.TestCase):
+class TestComicBookInfo:
     def test_get_issue_title(self) -> None:
         """Tests the formatting of the issue title."""
         info = ComicBookInfo(
@@ -50,7 +49,7 @@ class TestComicBookInfo(unittest.TestCase):
         assert info_us.get_short_issue_title() == expected_title_us
 
 
-class TestBarksInfo(unittest.TestCase):
+class TestBarksInfo:
     def test_sorted_by_chronological_number(self) -> None:
         """Tests if the titles list is sorted correctly."""
         for i in range(len(BARKS_TITLE_INFO) - 1):
@@ -141,10 +140,10 @@ class TestBarksInfo(unittest.TestCase):
         try:
             check_story_submitted_order(BARKS_TITLE_INFO)
         except Exception as e:
-            self.fail(f"get_all_comic_book_info raised an unexpected exception: {e}")
+            pytest.fail(f"get_all_comic_book_info raised an unexpected exception: {e}")
 
 
-class TestCheckStorySubmittedOrder(unittest.TestCase):
+class TestCheckStorySubmittedOrder:
     def test_valid_order(self) -> None:
         """Tests that correctly ordered data passes."""
         valid_data: list[ComicBookInfo] = [
@@ -158,7 +157,7 @@ class TestCheckStorySubmittedOrder(unittest.TestCase):
         try:
             check_story_submitted_order(valid_data)
         except Exception as e:
-            self.fail(
+            pytest.fail(
                 f"check_story_submitted_order raised an unexpected exception for valid data: {e}",
             )
 
@@ -209,7 +208,7 @@ class TestCheckStorySubmittedOrder(unittest.TestCase):
         try:
             check_story_submitted_order(data)
         except Exception as e:
-            self.fail(
+            pytest.fail(
                 f"check_story_submitted_order raised an unexpected exception with day=-1: {e}",
             )
 
@@ -221,7 +220,7 @@ class TestCheckStorySubmittedOrder(unittest.TestCase):
         try:
             check_story_submitted_order(data_equal)
         except Exception as e:
-            self.fail(
+            pytest.fail(
                 f"check_story_submitted_order raised an unexpected exception"
                 f" with day=-1 making dates equal: {e}",
             )

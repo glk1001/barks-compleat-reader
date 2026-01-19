@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-import unittest
 from unittest.mock import MagicMock, patch
 
+import pytest
 from barks_reader.reader_navigation import ReaderNavigation
 
 
-class TestReaderNavigation(unittest.TestCase):
-    def setUp(self) -> None:
+class TestReaderNavigation:
+    @pytest.fixture(autouse=True)
+    def setup(self) -> None:
         self.max_width = 2000
         self.top_frac = 0.1
         self.bottom_frac = 0.9

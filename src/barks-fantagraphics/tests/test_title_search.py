@@ -1,12 +1,12 @@
-import unittest
-
+import pytest
 from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.title_search import BarksTitleSearch
 
 
-class TestBarksTitleSearch(unittest.TestCase):
-    def setUp(self) -> None:
+class TestBarksTitleSearch:
+    @pytest.fixture(autouse=True)
+    def setup(self) -> None:
         """Set up a new BarksTitleSearch instance for each test."""
         self.search = BarksTitleSearch()
 
@@ -119,7 +119,3 @@ class TestBarksTitleSearch(unittest.TestCase):
 
         titles = BarksTitleSearch.get_titles_from_issue_num("US 10")
         assert titles == [Titles.FABULOUS_PHILOSOPHERS_STONE_THE, Titles.HEIRLOOM_WATCH]
-
-
-if __name__ == "__main__":
-    unittest.main()

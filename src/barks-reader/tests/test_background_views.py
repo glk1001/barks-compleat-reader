@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import unittest
 from collections import defaultdict
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import ANY, MagicMock, patch
 
+import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.fanta_comics_info import (
     ALL_LISTS,
@@ -15,9 +16,13 @@ from barks_reader.background_views import BackgroundViews, ImageThemes
 from barks_reader.random_title_images import FIT_MODE_COVER, ImageInfo
 from barks_reader.view_states import ViewStates
 
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
-class TestBackgroundViews(unittest.TestCase):
-    def setUp(self) -> None:
+
+class TestBackgroundViews:
+    @pytest.fixture(autouse=True)
+    def setup(self) -> Generator[None]:
         self.mock_settings = MagicMock()
         self.mock_random_images = MagicMock()
         self.title_lists = defaultdict(list)
@@ -53,7 +58,8 @@ class TestBackgroundViews(unittest.TestCase):
             self.mock_settings, self.title_lists, self.mock_random_images
         )
 
-    def tearDown(self) -> None:
+        yield
+
         self.clock_patcher.stop()
 
     def test_initialization(self) -> None:

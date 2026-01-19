@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import unittest
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
+import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.random_title_images import (
     FIT_MODE_CONTAIN,
@@ -14,9 +15,13 @@ from barks_reader.random_title_images import (
 )
 from barks_reader.reader_file_paths import FileTypes
 
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
-class TestRandomTitleImages(unittest.TestCase):
-    def setUp(self) -> None:
+
+class TestRandomTitleImages:
+    @pytest.fixture(autouse=True)
+    def setup(self) -> Generator[None]:
         self.mock_settings = MagicMock()
         self.mock_settings.file_paths = MagicMock()
         self.mock_settings.sys_file_paths = MagicMock()
@@ -48,7 +53,8 @@ class TestRandomTitleImages(unittest.TestCase):
 
         self.random_images = RandomTitleImages(self.mock_settings)
 
-    def tearDown(self) -> None:
+        yield
+
         self.patcher_getter.stop()
         self.patcher_utils.stop()
 

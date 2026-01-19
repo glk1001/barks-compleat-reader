@@ -1,11 +1,10 @@
-import unittest
-
+import pytest
 from barks_fantagraphics.barks_payments import (
     validate_payment_data,
 )
 
 
-class TestBarksPayments(unittest.TestCase):
+class TestBarksPayments:
     """Test suite for validating the Barks payment data."""
 
     def test_validate_payment_data_succeeds_with_current_data(self) -> None:
@@ -13,4 +12,4 @@ class TestBarksPayments(unittest.TestCase):
         try:
             validate_payment_data()
         except AssertionError:
-            self.fail("validate_payment_data() failed.")
+            pytest.fail("validate_payment_data() failed.")

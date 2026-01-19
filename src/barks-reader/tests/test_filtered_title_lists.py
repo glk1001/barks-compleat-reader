@@ -1,7 +1,7 @@
-import unittest
 from collections import defaultdict
 from unittest.mock import MagicMock, patch
 
+import pytest
 from barks_fantagraphics.barks_tags import TagCategories
 from barks_fantagraphics.fanta_comics_info import (
     SERIES_CS,
@@ -10,8 +10,9 @@ from barks_fantagraphics.fanta_comics_info import (
 from barks_reader.filtered_title_lists import FilteredTitleLists
 
 
-class TestFilteredTitleLists(unittest.TestCase):
-    def setUp(self) -> None:
+class TestFilteredTitleLists:
+    @pytest.fixture(autouse=True)
+    def setup(self) -> None:
         """Set up a new FilteredTitleLists instance for each test."""
         self.filtered_lists = FilteredTitleLists()
 
@@ -142,7 +143,3 @@ class TestFilteredTitleLists(unittest.TestCase):
         us_range_key = "US-1951-1954"
         assert us_range_key in results
         assert "US Book A" in results[us_range_key]
-
-
-if __name__ == "__main__":
-    unittest.main()

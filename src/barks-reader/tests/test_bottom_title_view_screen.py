@@ -2,20 +2,23 @@
 
 from __future__ import annotations
 
-import unittest
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
+import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
 from barks_reader.reader_consts_and_types import COMIC_BEGIN_PAGE
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from kivy.uix.widget import Widget
 
 
-class TestBottomTitleViewScreen(unittest.TestCase):
-    def setUp(self) -> None:
+class TestBottomTitleViewScreen:
+    @pytest.fixture(autouse=True)
+    def setup(self) -> Generator[None, Any]:
         self.mock_settings = MagicMock()
         self.mock_settings.is_first_use_of_reader = False
         self.mock_settings.file_paths.barks_panels_are_encrypted = False
@@ -62,7 +65,8 @@ class TestBottomTitleViewScreen(unittest.TestCase):
         self.mock_overrides = MagicMock()
         self.screen.set_special_fanta_overrides(self.mock_overrides)
 
-    def tearDown(self) -> None:
+        yield
+
         self.patcher_loader.stop()
         self.patcher_formatter.stop()
         self.patcher_anim.stop()
