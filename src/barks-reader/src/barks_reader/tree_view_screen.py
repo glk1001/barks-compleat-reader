@@ -14,11 +14,8 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 from kivy.uix.boxlayout import BoxLayout
 
 from barks_reader.random_title_images import FIT_MODE_COVER
-from barks_reader.reader_settings import (
-    BARKS_READER_SECTION,
-    SHOW_TOP_VIEW_TITLE_INFO,
-)
-from barks_reader.reader_tree_view_utils import find_node_by_path, find_tree_view_node
+from barks_reader.reader_settings import BARKS_READER_SECTION, SHOW_TOP_VIEW_TITLE_INFO
+from barks_reader.reader_tree_view_utils import find_node_by_path
 from barks_reader.reader_ui_classes import ARROW_WIDTH, BaseTreeViewNode
 from barks_reader.settings_notifier import settings_notifier
 
@@ -55,21 +52,14 @@ class TreeViewScreen(BoxLayout):
             BARKS_READER_SECTION, SHOW_TOP_VIEW_TITLE_INFO, self.on_change_show_current_title
         )
 
-    def set_title(self, title: Titles) -> None:
-        self.current_title_str = "" if not title else BARKS_TITLES[title]
+    def set_title(self, title: Titles | None) -> None:
+        self.current_title_str = "" if title is None else BARKS_TITLES[title]
 
-    def get_selected_node(self) -> BaseTreeViewNode:
+    def get_selected_node(self) -> BaseTreeViewNode | None:
         return self.ids.reader_tree_view.selected_node
 
     def find_node_by_path(self, path_from_root: list[str]) -> BaseTreeViewNode | None:
         return find_node_by_path(self.ids.reader_tree_view, list(reversed(path_from_root)))
-
-    def goto_node(self, node_text: str) -> None:
-        node = find_tree_view_node(self.ids.reader_tree_view.root, node_text)
-        if node:
-            self._close_open_nodes(self.ids.reader_tree_view.root)
-            self._open_all_parent_nodes(node)
-            self._goto_node(node)
 
     def select_node(self, node: BaseTreeViewNode) -> None:
         self.ids.reader_tree_view.select_node(node)
@@ -90,24 +80,24 @@ class TreeViewScreen(BoxLayout):
                 self.ids.reader_tree_view.toggle_node(parent_node)
 
     def deselect_and_close_open_nodes(self) -> int:
-        num_opened_nodes = 0
-        for node in self.ids.reader_tree_view.iterate_open_nodes():
-            self.ids.reader_tree_view.deselect_node(node)
+        selected_node = self.ids.reader_tree_view.selected_node
+        if selected_node:
+            self.ids.reader_tree_view.deselect_node(selected_node)
 
-            if node.is_open:
-                self.ids.reader_tree_view.toggle_node(node)
-                self._close_open_nodes(node)
-                num_opened_nodes += 1
+        num_opened_nodes = self._close_open_nodes(self.ids.reader_tree_view.root)
 
         self.ids.reader_tree_view.reset_selection_tracking()
 
         return num_opened_nodes
 
-    def _close_open_nodes(self, start_node: BaseTreeViewNode) -> None:
+    def _close_open_nodes(self, start_node: BaseTreeViewNode) -> int:
+        count = 0
         for node in start_node.nodes:
             if node.is_open:
+                count += 1
+                count += self._close_open_nodes(node)
                 self.ids.reader_tree_view.toggle_node(node)
-                self._close_open_nodes(node)
+        return count
 
     def on_change_show_current_title(self) -> None:
         self.show_current_title = self._reader_settings.show_top_view_title_info
