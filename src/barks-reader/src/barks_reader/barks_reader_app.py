@@ -347,6 +347,8 @@ class BarksReaderApp(App):
         This includes forcing an initial resize event to ensure all widgets
         are correctly sized based on the loaded configuration.
         """
+        self.icon = str(self.reader_settings.sys_file_paths.get_barks_reader_app_window_icon_path())
+
         if SCREEN_METRICS.NUM_MONITORS > 1:
             Window.bind(on_move=self._on_window_pos_change)
             Window.bind(on_resize=self._on_window_resize)

@@ -38,4 +38,4 @@ def _get_platform() -> Platform:
     return platform
 
 
-PLATFORM = _get_platform()
+PLATFORM: Platform = _get_platform()

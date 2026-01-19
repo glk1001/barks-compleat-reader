@@ -46,9 +46,9 @@ class SystemFilePaths:
         self._barks_reader_files_dir = reader_files_dir
 
         self._reader_icon_files_dir = self._barks_reader_files_dir / "Reader Icons"
-        self._app_window_icon_path = self._reader_icon_files_dir / "app-icon.png"
         self._various_files_dir = self._barks_reader_files_dir / "Various"
         self._indexes_dir = self._barks_reader_files_dir / "Indexes"
+        self._app_window_icon_path = self._various_files_dir / "app-icon.png"
         self._error_background_path = self._various_files_dir / "error-background.png"
         self._success_background_path = self._various_files_dir / "success-background.png"
         self._about_background_path = self._various_files_dir / "about-background.png"

@@ -45,12 +45,15 @@ from loguru import logger
 
 # ------------------------------------------------------------------ #
 
-load_dotenv(Path(__file__).parent / ".env.runtime")
+_APP_NAME = "BarksReader"
+if PLATFORM == Platform.LINUX:
+    # This ensures app icon can be set on the taskbar.
+    os.environ["SDL_VIDEO_X11_WMCLASS"] = _APP_NAME
 
+load_dotenv(Path(__file__).parent / ".env.runtime")
 
 # === GLOBAL EXCEPTION HANDLERS ==============================================
 _APP_TYPE = "app"
-_APP_NAME = "Barks Reader"
 
 
 def handle_uncaught_exception(exc_type, exc_value, exc_traceback) -> None:  # noqa: ANN001
@@ -195,14 +198,6 @@ def update_window_size(
     logger.debug(f"Main win dimensions: {win_height}, ({win_left}, {win_top}).")
 
     set_window_size(win_height, win_left, win_top)
-
-    if min_options.reader_app_icon_path:
-        # noinspection PyProtectedMember
-        from kivy import Config
-
-        logger.debug(f'App icon file: "{min_options.reader_app_icon_path}".')
-        # noinspection LongLine
-        Config.set("kivy", "window_icon", str(min_options.reader_app_icon_path))  # ty:ignore[possibly-missing-attribute]
 
 
 def get_main_win_info_from_ini_file(cfg_info: ConfigInfo) -> tuple[int, int, int]:
