@@ -383,7 +383,8 @@ class ButtonTreeViewNode(Button, BaseTreeViewNode):
     def on_press(self) -> None:
         # Node press will also toggle expand/collapse.
         nodes_treeview = self._get_nodes_treeview(self)
-        assert nodes_treeview is not None
+        if not nodes_treeview:
+            return
         nodes_treeview.toggle_node(self)
 
     @staticmethod

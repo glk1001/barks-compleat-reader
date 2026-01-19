@@ -90,9 +90,11 @@ class TreeViewManager:
     def setup_and_select_node(self, node: BaseTreeViewNode) -> None:
         logger.debug(f'Selecting and setting up node "{node.get_name()}".')
 
-        self._tree_view_screen.deselect_and_close_open_nodes()
-        self._tree_view_screen.open_all_parent_nodes(node)
-        self._tree_view_screen.select_node(node)
+        # noinspection PyArgumentList
+        with self.suppress_view_state_changes():
+            self._tree_view_screen.deselect_and_close_open_nodes()
+            self._tree_view_screen.open_all_parent_nodes(node)
+            self._tree_view_screen.select_node(node)
 
         if isinstance(node, TitleTreeViewNode):
             self._handle_title_node_selection(node)

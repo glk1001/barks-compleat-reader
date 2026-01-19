@@ -330,6 +330,7 @@ class MainScreen(ReaderScreen):
         self.ids.collapse_button.disabled = view_state == ViewStates.INITIAL
 
     def on_action_bar_go_back(self) -> None:
+        logger.info("'Go back' menu item selected.")
         self._tree_view_manager.go_back_to_previous_node()
 
     def on_action_bar_collapse(self) -> None:
