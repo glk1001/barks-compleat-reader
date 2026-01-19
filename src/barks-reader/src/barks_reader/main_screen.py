@@ -502,7 +502,7 @@ class MainScreen(ReaderScreen):
 
         # Open all parent nodes to 'year_node', get the title node, then goto it in the tree view.
         self._tree_view_manager.open_all_parent_nodes(year_node)
-        title_node = find_tree_view_title_node(year_node, image_info.from_title)
+        title_node = find_tree_view_title_node(year_node.nodes, image_info.from_title)
         assert title_node
         self._tree_view_manager.goto_node(title_node, scroll_to=True)
 

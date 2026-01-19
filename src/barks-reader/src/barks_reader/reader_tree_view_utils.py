@@ -7,23 +7,18 @@ from loguru import logger
 if TYPE_CHECKING:
     from barks_fantagraphics.barks_titles import Titles
 
-    from barks_reader.reader_ui_classes import (
-        BaseTreeViewNode,
-        ReaderTreeView,
-    )
+    from barks_reader.reader_ui_classes import BaseTreeViewNode, ReaderTreeView, TitleTreeViewNode
 
 
 def get_tree_view_node_path(node: BaseTreeViewNode) -> list[str]:
-    def get_node_name(n: BaseTreeViewNode) -> str:
-        if n.level == 0:
-            return "root"
-        return n.get_name()
-
     node_path = [node.get_name()]
-    node = node.parent_node
-    while node:
-        node_path.append(get_node_name(node))
-        node = node.parent_node
+    current = node.parent_node
+    while current:
+        if current.level == 0:
+            node_path.append("root")
+        else:
+            node_path.append(current.get_name())
+        current = current.parent_node
 
     return node_path
 
@@ -42,11 +37,7 @@ def find_node_by_path(tree: ReaderTreeView, path_from_root: list[str]) -> BaseTr
 
     # Iterate through each text component in the path (e.g., "Chronological", "1942-1943", ...)
     for i, node_text in enumerate(node_path):
-        node_in_path = None
-        for node in current_nodes:
-            if node.get_name() == node_text:
-                node_in_path = node
-                break
+        node_in_path = next((n for n in current_nodes if n.get_name() == node_text), None)
 
         if not node_in_path:
             logger.warning(
@@ -73,8 +64,7 @@ def find_tree_view_node(start_node: BaseTreeViewNode, node_text: str) -> BaseTre
 
     while nodes_to_visit:
         current_node = nodes_to_visit.pop()
-        current_node_text = current_node.get_name()
-        if current_node_text == node_text:
+        if current_node.get_name() == node_text:
             return current_node
         nodes_to_visit.extend(current_node.nodes)
 
@@ -82,14 +72,13 @@ def find_tree_view_node(start_node: BaseTreeViewNode, node_text: str) -> BaseTre
 
 
 def find_tree_view_title_node(
-    start_node: BaseTreeViewNode, target_title: Titles
+    nodes: list[TitleTreeViewNode], target_title: Titles
 ) -> BaseTreeViewNode | None:
-    nodes_to_visit = start_node.nodes.copy()
+    nodes_to_visit = nodes.copy()
 
     while nodes_to_visit:
         current_node = nodes_to_visit.pop()
-        node_title = current_node.get_title()
-        if node_title == target_title:
+        if current_node.get_title() == target_title:
             return current_node
         nodes_to_visit.extend(current_node.nodes)
 
