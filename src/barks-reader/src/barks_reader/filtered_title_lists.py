@@ -20,8 +20,6 @@ from barks_reader.reader_consts_and_types import CHRONO_YEAR_RANGES, CS_YEAR_RAN
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from barks_fantagraphics.barks_titles import ComicBookInfo
-
 CHRONO_YEARS_KEY_PREFIX = ""
 CS_YEARS_KEY_PREFIX = "CS-"
 US_YEARS_KEY_PREFIX = "US-"
@@ -64,41 +62,29 @@ class FilteredTitleLists:
         return f"{US_YEARS_KEY_PREFIX}{year_range_str}"
 
     def get_title_lists(self) -> dict[str, list[FantaComicBookInfo]]:
-        def create_year_lamba(yr: int) -> Callable[[ComicBookInfo], bool]:
-            # noinspection PyUnresolvedReferences
-            return lambda info: info.comic_book_info.submitted_year == yr
+        filters: dict[str, Callable[[FantaComicBookInfo], bool]] = {}
 
-        def create_series_lamba(series_name: str) -> Callable[[ComicBookInfo], bool]:
-            # noinspection PyUnresolvedReferences
-            return lambda info: info.series_name == series_name
-
-        def create_cs_year_lamba(yr: int) -> Callable[[ComicBookInfo], bool]:
-            # noinspection PyUnresolvedReferences
-            return lambda info: (info.series_name == SERIES_CS) and (
-                info.comic_book_info.submitted_year == yr
-            )
-
-        def create_us_year_lamba(yr: int) -> Callable[[ComicBookInfo], bool]:
-            # noinspection PyUnresolvedReferences
-            return lambda info: (info.series_name == SERIES_USA) and (
-                info.comic_book_info.submitted_year == yr
-            )
-
-        def create_category_lamba(cat: TagCategories) -> Callable[[ComicBookInfo], bool]:
-            # noinspection PyUnresolvedReferences
-            return lambda info: info.comic_book_info.title in BARKS_TAG_CATEGORIES_TITLES[cat]
-
-        filters = {}
         for year in self.chrono_years:
-            filters[str(year)] = create_year_lamba(year)
+            filters[str(year)] = lambda info, y=year: info.comic_book_info.submitted_year == y
+
         for name in self.series_names:
-            filters[name] = create_series_lamba(name)
+            filters[name] = lambda info, n=name: info.series_name == n
+
         for year in self.cs_years:
-            filters[self.get_cs_year_key_from_year(year)] = create_cs_year_lamba(year)
+            filters[self.get_cs_year_key_from_year(year)] = lambda info, y=year: (
+                info.series_name == SERIES_CS
+            ) and (info.comic_book_info.submitted_year == y)
+
         for year in self.us_years:
-            filters[self.get_us_year_key_from_year(year)] = create_us_year_lamba(year)
+            filters[self.get_us_year_key_from_year(year)] = lambda info, y=year: (
+                info.series_name == SERIES_USA
+            ) and (info.comic_book_info.submitted_year == y)
+
         for category in self.categories:
-            filters[category.value] = create_category_lamba(category)
+            filters[category.value] = (
+                lambda info, c=category: info.comic_book_info.title
+                in BARKS_TAG_CATEGORIES_TITLES[c]
+            )
 
         title_lists = get_filtered_title_lists(filters)
 
