@@ -44,154 +44,165 @@ MAIN_WINDOW_TOP = "main_window_top"
 
 LOG_LEVEL_OPTIONS = ["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
-# noinspection LongLine
-_READER_SETTINGS_JSON = f"""
-[
-   {{  "type": "title", "title": "Folders" }},
-   {{
-      "title": "Fantagraphics Directory",
-      "desc": "Fantagraphics comic zips directory.",
-      "type": "{LONG_PATH_SETTING}",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{FANTA_DIR}"
-   }},
-   {{
-      "title": "Png Barks Panels Directory",
-      "desc": "Directory containing Barks panels png images.",
-      "type": "{LONG_PATH_SETTING}",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{PNG_BARKS_PANELS_DIR}"
-   }},
-   {{
-      "title": "Prebuilt Comics Directory",
-      "desc": "Directory containing specially prebuilt comics.",
-      "type": "{LONG_PATH_SETTING}",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{PREBUILT_COMICS_DIR}"
-   }},
-   {{  "type": "title", "title": "Options" }},
-   {{
-      "title": "Goto Last Selection on Start",
-      "desc": "When the app starts, goto the last selection in the tree view.",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{GOTO_SAVED_NODE_ON_START}"
-   }},
-   {{
-      "title": "Goto Straight to Fullscreen on App Start",
-      "desc": "When the app starts it will go straight to fullscreen mode.",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{GOTO_FULLSCREEN_ON_APP_START}"
-   }},
-   {{
-      "title": "Goto Straight to Fullscreen for Comic Reading",
-      "desc": "When you press the comic read button, the app will go straight to fullscreen to read the comic.",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{GOTO_FULLSCREEN_ON_COMIC_READ}"
-   }},
-   {{
-      "title": "Show Title Info in Top Screen",
-      "desc": "Set this to true if you want to see the title associated with the top image.",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{SHOW_TOP_VIEW_TITLE_INFO}"
-   }},
-   {{
-      "title": "Show Title Info in Bottom Screen",
-      "desc": "Set this to true if you want to see the title associated with the bottom image.",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{SHOW_FUN_VIEW_TITLE_INFO}"
-   }},
-   {{
-      "title": "First Use of Reader",
-      "desc": "Set this to true if this is the first use of the Barks reader. You need to restart the app after changing this.",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{IS_FIRST_USE_OF_READER}"
-   }},
-   {{
-      "title": "Log Level",
-      "desc": "Level of logging information. You need to restart the app before this takes effect.",
-      "type": "options",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{LOG_LEVEL}",
-      "options": {json.dumps(LOG_LEVEL_OPTIONS)},
-      "value": "INFO"
-   }},
-   {{
-      "title": "Main Window Height",
-      "desc": "Set this to height you want for the main window. The width will be automatically calculated from this value. Setting to 0 will give the best fit. You need to restart the app after changing this.",
-      "type": "numeric",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{MAIN_WINDOW_HEIGHT}"
-   }},
-   {{
-      "title": "Main Window Left",
-      "desc": "Set this to the left position of the main window. Setting to -1 will give the best fit. You need to restart the app after changing this.",
-      "type": "numeric",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{MAIN_WINDOW_LEFT}"
-   }},
-   {{
-      "title": "Main Window Top",
-      "desc": "Set this to the top position of the main window. Setting to -1 will give the best fit. You need to restart the app after changing this.",
-      "type": "numeric",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{MAIN_WINDOW_TOP}"
-   }},
-   {{
-      "title": "Use Png Images",
-      "desc": "Use png images where possible (needs app RESTART if changed).",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{USE_PNG_IMAGES}"
-   }},
-   {{
-      "title": "Use Prebuilt Comics",
-      "desc": "Read comics from the prebuilt comics folder.",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{USE_PREBUILT_COMICS}"
-   }},
-   {{  "type": "title", "title": "Controversial Censorship Fixes" }},
-   {{
-      "title": "Use 'Harpies' Instead of 'Larkies'",
-      "desc": "When reading 'The Golden Fleecing', use 'Harpies' instead of 'Larkies'.",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{USE_HARPIES_INSTEAD_OF_LARKIES}"
-   }},
-   {{
-      "title": "Use 'Dere' Instead of 'Theah'",
-      "desc": "When reading 'Lost in the Andes!', use 'Dere' instead of 'Theah'.",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{USE_DERE_INSTEAD_OF_THEAH}"
-   }},
-   {{
-      "title": "Use Blank Eyeballs for Bombie",
-      "desc": "When reading 'Voodoo Hoodoo', use blank eyeballs for Bombie the Zombie.",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{USE_BLANK_EYEBALLS_FOR_BOMBIE}"
-   }},
-   {{
-      "title": "Don't Use Fantagraphics Ending for 'The Firebug'",
-      "desc": "When reading 'The Firebug', don't use the Fantagraphics ending.",
-      "type": "bool",
-      "section": "{BARKS_READER_SECTION}",
-      "key": "{USE_GLK_FIREBUG_ENDING}"
-   }}
-]
-"""  # noqa: E501
+
+def _get_reader_settings_json() -> str:
+    return json.dumps(
+        [
+            {"type": "title", "title": "Folders"},
+            {
+                "title": "Fantagraphics Directory",
+                "desc": "Fantagraphics comic zips directory.",
+                "type": LONG_PATH_SETTING,
+                "section": BARKS_READER_SECTION,
+                "key": FANTA_DIR,
+            },
+            {
+                "title": "Png Barks Panels Directory",
+                "desc": "Directory containing Barks panels png images.",
+                "type": LONG_PATH_SETTING,
+                "section": BARKS_READER_SECTION,
+                "key": PNG_BARKS_PANELS_DIR,
+            },
+            {
+                "title": "Prebuilt Comics Directory",
+                "desc": "Directory containing specially prebuilt comics.",
+                "type": LONG_PATH_SETTING,
+                "section": BARKS_READER_SECTION,
+                "key": PREBUILT_COMICS_DIR,
+            },
+            {"type": "title", "title": "Options"},
+            {
+                "title": "Goto Last Selection on Start",
+                "desc": "When the app starts, goto the last selection in the tree view.",
+                "type": "bool",
+                "section": BARKS_READER_SECTION,
+                "key": GOTO_SAVED_NODE_ON_START,
+            },
+            {
+                "title": "Go Straight to Fullscreen on App Start",
+                "desc": "When the app starts it will go straight to fullscreen mode.",
+                "type": "bool",
+                "section": BARKS_READER_SECTION,
+                "key": GOTO_FULLSCREEN_ON_APP_START,
+            },
+            {
+                "title": "Go Straight to Fullscreen for Comic Reading",
+                "desc": "When you press the comic read button, the app will go straight to"
+                " fullscreen mode to read the comic.",
+                "type": "bool",
+                "section": BARKS_READER_SECTION,
+                "key": GOTO_FULLSCREEN_ON_COMIC_READ,
+            },
+            {
+                "title": "Show Title Info in Top Screen",
+                "desc": "Set this to true if you want to see the title associated with the"
+                " top image.",
+                "type": "bool",
+                "section": BARKS_READER_SECTION,
+                "key": SHOW_TOP_VIEW_TITLE_INFO,
+            },
+            {
+                "title": "Show Title Info in Bottom Screen",
+                "desc": "Set this to true if you want to see the title associated with the"
+                " bottom image.",
+                "type": "bool",
+                "section": BARKS_READER_SECTION,
+                "key": SHOW_FUN_VIEW_TITLE_INFO,
+            },
+            {
+                "title": "First Use of Reader",
+                "desc": "Set this to true if this is the first use of the Barks reader. You need"
+                " to restart the app after changing this.",
+                "type": "bool",
+                "section": BARKS_READER_SECTION,
+                "key": IS_FIRST_USE_OF_READER,
+            },
+            {
+                "title": "Log Level",
+                "desc": "Level of logging information. You need to restart the app before this"
+                " takes effect.",
+                "type": "options",
+                "section": BARKS_READER_SECTION,
+                "key": LOG_LEVEL,
+                "options": LOG_LEVEL_OPTIONS,
+                "value": "INFO",
+            },
+            {
+                "title": "Main Window Height",
+                "desc": "Set this to height you want for the main window. The width will be"
+                " automatically calculated from this value. Set to 0 to give the best fit."
+                " You need to restart the app after changing this.",
+                "type": "numeric",
+                "section": BARKS_READER_SECTION,
+                "key": MAIN_WINDOW_HEIGHT,
+            },
+            {
+                "title": "Main Window Left",
+                "desc": "Set this to the left position of the main window. Set to -1 to give"
+                " a good default position. You need to restart the app after changing this.",
+                "type": "numeric",
+                "section": BARKS_READER_SECTION,
+                "key": MAIN_WINDOW_LEFT,
+            },
+            {
+                "title": "Main Window Top",
+                "desc": "Set this to the top position of the main window. Set to -1 to give"
+                " a good default position. You need to restart the app after changing this.",
+                "type": "numeric",
+                "section": BARKS_READER_SECTION,
+                "key": MAIN_WINDOW_TOP,
+            },
+            {
+                "title": "Use Png Images",
+                "desc": "Use png images where possible (needs app RESTART if changed).",
+                "type": "bool",
+                "section": BARKS_READER_SECTION,
+                "key": USE_PNG_IMAGES,
+            },
+            {
+                "title": "Use Prebuilt Comics",
+                "desc": "Read comics from the prebuilt comics folder.",
+                "type": "bool",
+                "section": BARKS_READER_SECTION,
+                "key": USE_PREBUILT_COMICS,
+            },
+            {"type": "title", "title": "Controversial Censorship Fixes"},
+            {
+                "title": "Use 'Harpies' Instead of 'Larkies'",
+                "desc": "When reading 'The Golden Fleecing', use 'Harpies' instead of 'Larkies'.",
+                "type": "bool",
+                "section": BARKS_READER_SECTION,
+                "key": USE_HARPIES_INSTEAD_OF_LARKIES,
+            },
+            {
+                "title": "Use 'Dere' Instead of 'Theah'",
+                "desc": "When reading 'Lost in the Andes!', use 'Dere' instead of 'Theah'.",
+                "type": "bool",
+                "section": BARKS_READER_SECTION,
+                "key": USE_DERE_INSTEAD_OF_THEAH,
+            },
+            {
+                "title": "Use Blank Eyeballs for Bombie",
+                "desc": "When reading 'Voodoo Hoodoo', use blank eyeballs for Bombie the Zombie.",
+                "type": "bool",
+                "section": BARKS_READER_SECTION,
+                "key": USE_BLANK_EYEBALLS_FOR_BOMBIE,
+            },
+            {
+                "title": "Don't Use Fantagraphics Ending for 'The Firebug'",
+                "desc": "When reading 'The Firebug', don't use the Fantagraphics ending.",
+                "type": "bool",
+                "section": BARKS_READER_SECTION,
+                "key": USE_GLK_FIREBUG_ENDING,
+            },
+        ]
+    )
 
 
 class ConfigParser(Protocol):
-    def get(self, section: str, key: str) -> Any: ...  # noqa: ANN401
-    def getboolean(self, section: str, key: str) -> Any: ...  # noqa: ANN401
+    def get(self, section: str, key: str) -> str: ...
+    def getboolean(self, section: str, key: str) -> bool: ...
+    def getint(self, section: str, key: str) -> int: ...
     def set(self, section: str, key: str, value: Any) -> None: ...  # noqa: ANN401
     def write(self) -> None: ...
 
@@ -325,15 +336,15 @@ class ReaderSettings:
 
     def _get_main_window_height(self) -> int:
         assert self._config
-        return self._config.get(BARKS_READER_SECTION, MAIN_WINDOW_HEIGHT)
+        return self._config.getint(BARKS_READER_SECTION, MAIN_WINDOW_HEIGHT)
 
     def _get_main_window_left(self) -> int:
         assert self._config
-        return self._config.get(BARKS_READER_SECTION, MAIN_WINDOW_LEFT)
+        return self._config.getint(BARKS_READER_SECTION, MAIN_WINDOW_LEFT)
 
     def _get_main_window_top(self) -> int:
         assert self._config
-        return self._config.get(BARKS_READER_SECTION, MAIN_WINDOW_TOP)
+        return self._config.getint(BARKS_READER_SECTION, MAIN_WINDOW_TOP)
 
     def get_use_harpies_instead_of_larkies(self) -> bool:
         assert self._config
@@ -488,7 +499,7 @@ class ReaderSettings:
 
 
 class BuildableConfigParser(ConfigParser):
-    def setdefaults(self, data: str, defaults: dict[str, Any]) -> None: ...
+    def setdefaults(self, section: str, defaults: dict[str, Any]) -> None: ...
 
 
 class Settings(Protocol):
@@ -578,7 +589,9 @@ class BuildableReaderSettings(ReaderSettings):
 
     def build_settings(self, settings: Settings) -> None:
         assert self._config
-        settings.add_json_panel(BARKS_READER_SECTION, self._config, data=_READER_SETTINGS_JSON)
+        settings.add_json_panel(
+            BARKS_READER_SECTION, self._config, data=_get_reader_settings_json()
+        )
         self._settings = settings
 
     def validate_settings(self) -> None:
