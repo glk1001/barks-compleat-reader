@@ -91,9 +91,9 @@ class ViewStates(IntEnum):
 
 
 _NODE_TYPE_TO_VIEW_STATE_MAP: dict[type, tuple[ViewStates, str]] = {
-    YearRangeTreeViewNode: (ViewStates.ON_YEAR_RANGE_NODE, "year_range"),
     CsYearRangeTreeViewNode: (ViewStates.ON_CS_YEAR_RANGE_NODE, "cs_year_range"),
     UsYearRangeTreeViewNode: (ViewStates.ON_US_YEAR_RANGE_NODE, "us_year_range"),
+    YearRangeTreeViewNode: (ViewStates.ON_YEAR_RANGE_NODE, "year_range"),
 }
 
 # fmt: off
@@ -177,17 +177,18 @@ def get_view_state_from_node(
     node: ButtonTreeViewNode,
 ) -> tuple[ViewStates | None, dict[str, str | TagGroups | Tags]]:
     """Determine the view state and parameters from a tree view node."""
-    node_type = type(node)
     view_state_params: dict[str, str | TagGroups | Tags] = {}
     new_view_state: ViewStates | None = None
     clean_node_text = get_clean_text_without_extra(node.text)
 
-    if node_type in _NODE_TYPE_TO_VIEW_STATE_MAP:
-        new_view_state, param_name = _NODE_TYPE_TO_VIEW_STATE_MAP[node_type]
-        view_state_params[param_name] = node.text
-    elif node_type is TitleSearchBoxTreeViewNode:
+    for node_type, (state, param_name) in _NODE_TYPE_TO_VIEW_STATE_MAP.items():
+        if isinstance(node, node_type):
+            # noinspection PyUnresolvedReferences
+            return state, {param_name: node.text}
+
+    if isinstance(node, TitleSearchBoxTreeViewNode):
         new_view_state = ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET
-    elif node_type is TagSearchBoxTreeViewNode:
+    elif isinstance(node, TagSearchBoxTreeViewNode):
         new_view_state = ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
     elif clean_node_text in _NODE_TEXT_TO_VIEW_STATE_MAP:
         new_view_state = _NODE_TEXT_TO_VIEW_STATE_MAP[clean_node_text]
