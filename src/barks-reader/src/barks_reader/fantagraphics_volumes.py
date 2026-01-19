@@ -1,5 +1,4 @@
-# ruff: noqa: ERA001
-
+import re
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -136,15 +135,13 @@ class FantagraphicsVolumeArchives:
             volume += 1
 
     def load(self) -> None:
-        archive_filenames = sorted(self.get_all_volume_filenames())
+        archive_filenames = sorted(self.get_all_volume_filenames(), key=self._get_fanta_volume)
         override_archive_filenames = self.get_all_volume_override_archives()
         self.check_archives_and_overrides(archive_filenames, override_archive_filenames)
 
         self._fantagraphics_archive_dict: dict[int, FantagraphicsArchive] = {}
         for archive in archive_filenames:
             logger.debug(f'Processing Fantagraphics archive "{archive}"...')
-
-            # self.__check_archive(archive)
 
             image_dir, image_filenames = self._get_archive_contents(archive)
             image_ext = Path(image_filenames[0]).suffix
@@ -247,16 +244,13 @@ class FantagraphicsVolumeArchives:
 
     @staticmethod
     def _get_fanta_volume(archive_filename: Path) -> int:
-        archive_basename = archive_filename.name
-        vol_str = archive_basename[:2]
-        try:
-            return int(vol_str)
-        except ValueError as e:
-            msg = (
-                f"Could not find Fantagraphics volume number"
-                f' in archive filename "{archive_filename}".'
-            )
-            raise ValueError(msg) from e
+        if match := re.match(r"^(\d+)", archive_filename.name):
+            return int(match.group(1))
+
+        msg = (
+            f'Could not find Fantagraphics volume number in archive filename "{archive_filename}".'
+        )
+        raise ValueError(msg)
 
     def _get_first_and_last_page_nums(self, filenames: list[str]) -> tuple[int, int]:
         first_image = Path(filenames[0]).stem
@@ -323,13 +317,11 @@ class FantagraphicsVolumeArchives:
 
     @staticmethod
     def _extract_image_int(image_name: str) -> int:
-        image_page = image_name[-3:]
+        if match := re.search(r"(\d+)$", image_name):
+            return int(match.group(1))
 
-        try:
-            return int(image_page)
-        except ValueError as e:
-            msg = f'Image name does not have an integer suffix: "{image_name}".'
-            raise ValueError(msg) from e
+        msg = f'Image name does not have an integer suffix: "{image_name}".'
+        raise ValueError(msg)
 
     def _check_image_names(self, img_files: list[str], first: int, last: int, img_ext: str) -> None:
         if first < 0:

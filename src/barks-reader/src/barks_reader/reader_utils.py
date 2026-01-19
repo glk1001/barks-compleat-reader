@@ -121,7 +121,7 @@ def read_text_paragraphs(filepath: Path) -> str:
     return text
 
 
-def read_title_list(filepath: Path) -> list[Titles]:
+def read_title_list(filepath: PanelPath) -> list[Titles]:
     # Return the list of titles in 'filepath', in submission date order.
 
     with filepath.open("r") as f:
