@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass
-from random import randrange
 from typing import TYPE_CHECKING, ClassVar
 
 from kivy.uix.screenmanager import (
@@ -28,10 +28,18 @@ INTRO_COMPLEAT_BARKS_READER_SCREEN = "intro_compleat_barks_reader"
 
 
 class ReaderScreen(Screen):
+    app_icon_filepath: str = ""
+
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
 
     def is_active(self, active: bool) -> None:
+        pass
+
+    def on_comic_closed(self) -> None:
+        pass
+
+    def on_intro_compleat_barks_reader_closed(self) -> None:
         pass
 
 
@@ -44,7 +52,7 @@ class ReaderScreens:
 
 @dataclass
 class ScreenSwitchers:
-    switch_to_settings: Callable
+    switch_to_settings: Callable[[], None]
 
     switch_to_comic_book_reader: Callable[[], None]
     close_comic_book_reader: Callable[[], None]
@@ -77,8 +85,6 @@ class ReaderScreenManager:
 
     def __init__(self, open_settings: Callable) -> None:
         self._screen_manager = ScreenManager()
-
-        self._screen_manager = ScreenManager()
         self._reader_screens: ReaderScreens | None = None
 
         self.screen_switchers = ScreenSwitchers(
@@ -103,10 +109,10 @@ class ReaderScreenManager:
         return root
 
     def _get_next_main_screen_transition(self) -> TransitionBase:
-        return self._MAIN_SCREEN_TRANSITIONS[randrange(0, len(self._MAIN_SCREEN_TRANSITIONS))]
+        return random.choice(self._MAIN_SCREEN_TRANSITIONS)
 
     def _get_next_reader_screen_transition(self) -> TransitionBase:
-        return self._READER_SCREEN_TRANSITIONS[randrange(0, len(self._READER_SCREEN_TRANSITIONS))]
+        return random.choice(self._READER_SCREEN_TRANSITIONS)
 
     def _switch_to_comic_book_reader(self) -> None:
         logger.debug("Switching to comic book reader...")

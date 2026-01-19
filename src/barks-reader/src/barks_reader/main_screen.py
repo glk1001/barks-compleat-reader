@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from random import randrange
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, override
 
 from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES, TagGroups, Tags
 from barks_fantagraphics.barks_titles import (
@@ -535,6 +535,7 @@ class MainScreen(ReaderScreen):
     def _read_intro_compleat_barks_reader(self) -> None:
         self._screen_switchers.switch_to_intro_compleat_barks_reader()
 
+    @override
     def on_intro_compleat_barks_reader_closed(self) -> None:
         self._view_state_manager.update_view_for_node(ViewStates.ON_INTRO_NODE)
 
@@ -697,6 +698,7 @@ class MainScreen(ReaderScreen):
             self._bottom_title_view_screen.use_overrides_active,
         )
 
+    @override
     def on_comic_closed(self) -> None:
         self._is_active(active=True)
 

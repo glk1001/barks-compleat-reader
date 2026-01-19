@@ -519,6 +519,7 @@ class ComicBookReaderScreen(ReaderScreen):
         self.comic_book_reader.set_goto_page_widget(self.ids.goto_page_button)
         self.ids.image_layout.add_widget(self.comic_book_reader)
 
+    @override
     def is_active(self, active: bool) -> None:
         logger.info(f"ComicBookReaderScreen active changed from {self._active} to {active}.")
 
