@@ -191,6 +191,7 @@ class BackgroundViews:
 
         self._fun_image_themes: set[ImageThemes] | None = None
         self._cached_fun_titles: tuple[list[FantaComicBookInfo], set[FileTypes]] | None = None
+        self.set_fun_image_themes(None)
 
         self._view_state = ViewStates.PRE_INIT
 
