@@ -4,9 +4,15 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from barks_reader import reader_formatter
+from barks_reader.reader_formatter import INVISIBLE_BREAK
 
 
 class TestReaderFormatterFunctions(unittest.TestCase):
+    def test_hyphenate_text(self) -> None:
+        text = "hyphenation"
+        res = reader_formatter.hyphenate_text(text)
+        assert reader_formatter.INVISIBLE_BREAK in res
+
     def test_get_bold_markup_text(self) -> None:
         assert reader_formatter.get_bold_markup_text("foo") == "[b]foo[/b]"
 
@@ -22,9 +28,17 @@ class TestReaderFormatterFunctions(unittest.TestCase):
         assert reader_formatter.get_clean_text_without_extra("[b]foo[/b]") == "foo"
         assert reader_formatter.get_clean_text_without_extra("foo") == "foo"
 
+        # Test greedy matching behavior
+        text = "[b]Title[/b] [i](Info)[/i]"
+        assert reader_formatter.get_clean_text_without_extra(text) == "Title"
+
     def test_get_text_with_markup_stripped(self) -> None:
         text = "[b]Bold[/b] and [i]Italic[/i]"
         assert reader_formatter.get_text_with_markup_stripped(text) == "Bold and Italic"
+
+        # Complex/Nested
+        text_complex = "[color=#ff0000]Red[/color] [size=20]Big[/size] [b]Bold[/b]"
+        assert reader_formatter.get_text_with_markup_stripped(text_complex) == "Red Big Bold"
 
     def test_text_includes_num_titles(self) -> None:
         assert reader_formatter.text_includes_num_titles("Something (5)[/i]")
@@ -85,7 +99,7 @@ class TestReaderFormatterFunctions(unittest.TestCase):
         res_sh = reader_formatter.mark_phrase_in_text(phrase, target_sh, "<b>", "</b>")
         assert res_sh == "Hello <b>Donald\xad\nDuck</b> world"
 
-    def test_get_indexable_title_with_page_nums(self) -> None:
+    def test_get_fitted_title_with_page_nums(self) -> None:
         func = reader_formatter.get_fitted_title_with_page_nums
 
         # Case 1: Short title, fits
@@ -132,6 +146,26 @@ class TestReaderFormatterFunctions(unittest.TestCase):
         _, res_str = func(title, page_nums, max_len)
         assert len(res_str) <= max_len
         assert res_str == f"{title}, 1,..."
+
+        # Case 6: Page num shortening triggered
+        title = "My Title"
+        page_nums = ["1", "2", "9", "10"]
+        # "My Title, 1, 2, 3, 4" -> 8 + 2 + 10 = 20 chars.
+        max_len = 15
+        # Should shorten page nums to "1,..." (5 chars)
+        # Combined: 8 + 2 + 5 = 15. Fits exactly.
+        _, res = func(title, page_nums, max_len)
+        assert res == "My Title, 1,..."
+
+        # Case 7: Title shortening after page num shortening
+        title = "Very Long Title Here"  # 20 chars
+        page_nums = ["1", "2", "8", "9"]
+        max_len = 15
+        # Page nums shortened -> "1,..." (5).
+        # Length now: 20 + 2 + 5 = 27 > 15.
+        # Title shortened to fit 8 chars: "Very..."
+        _, res = func(title, page_nums, max_len)
+        assert res == "Very..., 1,..."
 
 
 class TestReaderFormatterClass(unittest.TestCase):
@@ -262,7 +296,7 @@ class TestReaderFormatterClass(unittest.TestCase):
         mock_extra_info.__getitem__.return_value = "Extra Info"
 
         res = reader_formatter.ReaderFormatter.get_title_extra_info(fanta_info)
-        assert res == "Extra Info"
+        assert res == f"Ex{INVISIBLE_BREAK}tra In{INVISIBLE_BREAK}fo"
 
         # Unknown title
         fanta_info.comic_book_info.title = "Unknown"

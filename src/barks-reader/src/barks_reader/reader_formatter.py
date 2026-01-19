@@ -1,4 +1,3 @@
-# ruff: noqa: ERA001
 from __future__ import annotations
 
 import re
@@ -37,6 +36,8 @@ LONG_TITLE_SPLITS = {
 
 PYPHEN_DICT = pyphen.Pyphen(lang="en_US")
 INVISIBLE_BREAK = "[size=0][color=00000000] [/color][/size]"
+BOLD_TAG_PATTERN = re.compile(r"\[b](.*)\[/b]")
+MARKUP_TAG_PATTERN = re.compile(r"\[/?[^]]+]")
 
 
 def hyphenate_text(text: str) -> str:
@@ -44,21 +45,11 @@ def hyphenate_text(text: str) -> str:
 
     By default, Kivy cannot reliably process soft hyphens so we need a markup trick.
     """
-    words = text.split(" ")
-    processed_words = []
-
     # The Magic Trick:
     # 1. A space allows Kivy to wrap the line.
     # 2. [size=0] makes the space invisible and 0 width.
     # 3. [color=00000000] is a backup to ensure it's fully transparent.
-
-    for word in words:
-        # Pyphen finds the syllable breaks.
-        # We replace the potential break point with our invisible markup space.
-        split_word = PYPHEN_DICT.inserted(word, hyphen=INVISIBLE_BREAK)
-        processed_words.append(split_word)
-
-    return " ".join(processed_words)
+    return " ".join(PYPHEN_DICT.inserted(word, hyphen=INVISIBLE_BREAK) for word in text.split(" "))
 
 
 def get_bold_markup_text(text: str) -> str:
@@ -74,7 +65,7 @@ def get_markup_text_with_extra(text: str, extra: str) -> str:
 
 
 def get_clean_text_without_extra(markup_text: str) -> str:
-    match = re.search(r"\[b](.*)\[/b]", markup_text)
+    match = BOLD_TAG_PATTERN.search(markup_text)
     if match:
         return match.group(1)
 
@@ -82,7 +73,7 @@ def get_clean_text_without_extra(markup_text: str) -> str:
 
 
 def get_text_with_markup_stripped(text: str) -> str:
-    return text.replace("[b]", "").replace("[/b]", "").replace("[i]", "").replace("[/i]", "")
+    return MARKUP_TAG_PATTERN.sub("", text)
 
 
 def text_includes_num_titles(text: str) -> bool:
@@ -104,12 +95,7 @@ def get_formatted_payment_info(payment_info: PaymentInfo) -> str:
     if cpi_adjusted_payment < 0:
         return "CPI calculator is not available"
 
-    return (
-        f"${payment_info.payment:.0f} (${cpi_adjusted_payment:.0f} in {current_year})"
-        #        f" ({get_formatted_day(payment_info.accepted_day)}"
-        #        f" {MONTH_AS_SHORT_STR[payment_info.accepted_month]}"
-        #        f" {payment_info.accepted_year})"
-    )
+    return f"${payment_info.payment:.0f} (${cpi_adjusted_payment:.0f} in {current_year})"
 
 
 class ReaderFormatter:
@@ -135,8 +121,9 @@ class ReaderFormatter:
         fanta_info: FantaComicBookInfo, add_footnote: bool, sup_font_size: int, color: str
     ) -> str:
         first_published = get_short_formatted_first_published_str(fanta_info.comic_book_info)
-        # noinspection LongLine,PyUnresolvedReferences
-        submitted_date = __class__.get_formatted_submitted_str(fanta_info.comic_book_info, color)  # ty: ignore[unresolved-reference]
+        submitted_date = ReaderFormatter.get_formatted_submitted_str(
+            fanta_info.comic_book_info, color
+        )
 
         issue_info = first_published + submitted_date
 
@@ -237,37 +224,30 @@ LEN_PAGE_NUM_SEPERATOR_STR = len(TITLE_PAGE_NUM_SEPERATOR_STR)
 def get_fitted_title_with_page_nums(
     title_str: str, page_nums: list[str], max_title_with_pages_len: int
 ) -> tuple[str, str]:
-    len_title = len(title_str)
-
     page_nums_str = get_concat_page_nums_str(page_nums)
-    len_page_nums = len(page_nums_str)
-
-    len_title_and_page_nums = len_title + len_page_nums + LEN_PAGE_NUM_SEPERATOR_STR
+    len_combined = len(title_str) + len(page_nums_str) + LEN_PAGE_NUM_SEPERATOR_STR
 
     # Shorten the title plus page number list if it's too long.
     # Start with easy title shortening.
-    excess_len = max_title_with_pages_len - len_title_and_page_nums
-    if excess_len < 0:
-        excess_len = -excess_len
+    if len_combined > max_title_with_pages_len:
+        excess_len = len_combined - max_title_with_pages_len
         if (excess_len <= 2) and title_str.startswith("A "):  # noqa: PLR2004
             title_str = title_str[2:]
+            len_combined -= 2
         elif (excess_len <= 4) and title_str.startswith("The "):  # noqa: PLR2004
             title_str = title_str[4:]
-
-    page_nums_str = get_concat_page_nums_str(page_nums)
-
-    len_title = len(title_str)
-    len_title_and_page_nums = len_title + len(page_nums_str) + LEN_PAGE_NUM_SEPERATOR_STR
+            len_combined -= 4
 
     # Try shortening page num string.
     # noinspection LongLine
-    if (len_title_and_page_nums > max_title_with_pages_len) and (len(page_nums) > 3):  # noqa: PLR2004
+    if (len_combined > max_title_with_pages_len) and (len(page_nums) > 3):  # noqa: PLR2004
         page_nums_str = page_nums[0] + ",..."
-        len_title_and_page_nums = len_title + len(page_nums_str) + LEN_PAGE_NUM_SEPERATOR_STR
+        len_combined = len(title_str) + len(page_nums_str) + LEN_PAGE_NUM_SEPERATOR_STR
 
-    if len_title_and_page_nums > max_title_with_pages_len:
+    if len_combined > max_title_with_pages_len:
         # Shorten the title.
-        max_title_len = max_title_with_pages_len - len(page_nums_str)
-        title_str = textwrap.shorten(title_str, width=max_title_len, placeholder="...")
+        max_title_len = max_title_with_pages_len - len(page_nums_str) - LEN_PAGE_NUM_SEPERATOR_STR
+        if max_title_len > 0:
+            title_str = textwrap.shorten(title_str, width=max_title_len, placeholder="...")
 
     return page_nums[0], title_str + TITLE_PAGE_NUM_SEPERATOR_STR + page_nums_str
