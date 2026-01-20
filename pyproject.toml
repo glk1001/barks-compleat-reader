@@ -57,9 +57,20 @@ dev = [
     "pyinstrument>=5.1.1",
     "pyspellchecker>=0.8.4",
     "pytest>=8.4.2",
+    "pytest-benchmark>=5.2.3",
     "pytest-mock>=3.15.1",
     "snakeviz>=2.2.2",
 ]
 
 [tool.uv]
 package = false
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = ["tests"]
+addopts = """
+    --benchmark-time-unit=s
+    --benchmark-columns=min,max,mean,stddev
+    --benchmark-warmup=on
+    --benchmark-group-by=func
+"""

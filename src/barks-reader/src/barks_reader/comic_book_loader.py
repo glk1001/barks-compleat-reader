@@ -193,15 +193,17 @@ class ComicBookLoader:
         if self._stop:  # Already stopping
             return
 
+        logger.debug("Tell the comic book loader to stop...")
+        self._stop = True  # 1. SIGNAL FIRST: Immediately tell other threads to stop.
+
         if self._thread and self._thread.is_alive():
             logger.debug("Waiting for image loading thread to terminate...")
-            self._thread.join(timeout=2.0)  # Wait for 2 seconds
+            # WAIT 2 SECONDS for the thread to notice the flag and exit.
+            self._thread.join(timeout=2.0)
             if self._thread.is_alive():
                 logger.error("Image loading thread did not terminate in time.")
 
         self._thread = None
-        self._stop = True
-
         set_kivy_normal_cursor()
 
     def _start_loading_thread(self) -> None:
