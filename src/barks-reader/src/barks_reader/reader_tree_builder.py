@@ -313,14 +313,13 @@ class ReaderTreeBuilder:
         new_node = TagGroupStoryGroupTreeViewNode(
             tag_group, text=get_bold_markup_text(tag_group.value)
         )
+        tree.add_node(new_node, parent=parent_node)
 
         for tag in BARKS_TAG_GROUPS[tag_group]:
             if type(tag) is TagGroups:
                 yield from self._add_tag_group_node_gen(tree, tag, new_node)
             else:
                 yield from self._add_tag_node_gen(tree, tag, new_node)
-
-        tree.add_node(new_node, parent=parent_node)
 
     def _add_tag_node_gen(
         self,
