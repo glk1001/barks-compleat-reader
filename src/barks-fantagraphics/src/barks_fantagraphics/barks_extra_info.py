@@ -246,8 +246,8 @@ BARKS_EXTRA_INFO = {
     Titles.IN_THE_SWIM: "A new version of WDCS #54. (Barks pointed out the resemblance"
     " in a June 1956 letter to one of his editors at Western Publishing.)",
     Titles.ROCKET_RACE_AROUND_THE_WORLD: "This is a new version of [b][i]WDCS #93.[/i][/b]",
-    Titles.TERRIBLE_TOURIST: 'This is a new version of [b][i]"Silent Night."[/i][/b]'
-    " (Originally intended for WDCS #64.)",
+    Titles.TERRIBLE_TOURIST: "This is a new version of the 1945 censored story "
+    '[b][i]"Silent Night."[/i][/b]',
     Titles.YOICKS_THE_FOX: "This is a new version of [b][i]WDCS #98.[/i][/b]",
     Titles.NOBLE_PORPOISES: 'Barks commented: [i]"Got this story idea from my daughter."[/i]',
     Titles.WAX_MUSEUM_THE: 'Barks commented: [i]"Got this story idea from my daughter."[/i]',
