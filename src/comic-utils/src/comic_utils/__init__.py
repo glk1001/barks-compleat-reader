@@ -1,1 +1,1 @@
-"""Provide utils for help comic reading and building."""
+"""Provide utils for help with comic reading and building."""

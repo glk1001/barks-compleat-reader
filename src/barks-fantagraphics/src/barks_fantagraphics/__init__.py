@@ -1,1 +1,1 @@
-"""Provide functionality for managing all thing Barks/Fantagraphics."""
+"""Provide functionality for managing all things Barks/Fantagraphics."""

@@ -1,1 +1,1 @@
-"""Barks reader tests."""
+"""Barks Reader unit tests and benchmarks."""
