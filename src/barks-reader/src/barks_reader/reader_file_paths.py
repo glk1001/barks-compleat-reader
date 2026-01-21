@@ -158,7 +158,8 @@ class ReaderFilePaths:
         if self._barks_panels_zip:
             self._check_dirs_in_archive(dirs_to_check)
         else:
-            dirs_to_check.insert(0, self._barks_panels_source)  # ty: ignore[invalid-argument-type]
+            assert self._barks_panels_source is not None
+            dirs_to_check.insert(0, self._barks_panels_source)
             assert self._inset_edited_files_dir
             dirs_to_check.append(self._inset_edited_files_dir)
             self._check_dirs(dirs_to_check)
@@ -181,13 +182,6 @@ class ReaderFilePaths:
                     f'Required directory "{dir_path.name}"'
                     f' not found or is empty in zip "{self._barks_panels_source}".'
                 )
-                raise FileNotFoundError(msg)
-
-    @staticmethod
-    def _check_files(files_to_check: list[PanelPath]) -> None:
-        for file_path in files_to_check:
-            if not file_path.is_file():
-                msg = f'Required file not found: "{file_path}".'
                 raise FileNotFoundError(msg)
 
     def get_inset_file_ext(self) -> str:
@@ -416,7 +410,7 @@ class ReaderFilePaths:
 
             self._titles_cache[file_type] = all_titles
 
-        if len(allowed_titles) == 0:
+        if not allowed_titles:
             return all_titles
 
         return [title for title in all_titles if title in allowed_titles]
@@ -426,9 +420,9 @@ class ReaderFilePaths:
         return get_all_files_in_dir(image_dir)
 
     def get_edited_version_if_possible(self, image_file: PanelPath) -> tuple[PanelPath, bool]:
-        dir_path = image_file.parent
-        # noinspection LongLine
-        edited_image_file = dir_path / EDITED_SUBDIR / (image_file.stem + self._edited_files_ext)  # ty: ignore[unsupported-operator]
+        edited_image_file = (
+            image_file.parent / Path(EDITED_SUBDIR) / (image_file.stem + self._edited_files_ext)
+        )
         if edited_image_file.is_file():
             return edited_image_file, True
 
