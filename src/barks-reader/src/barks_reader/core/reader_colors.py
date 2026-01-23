@@ -1,6 +1,6 @@
 from random import randrange, sample
 
-from barks_reader.reader_utils import get_rand_int, prob_rand_less_equal
+from barks_reader.core.reader_utils import get_rand_int, prob_rand_less_equal
 
 Color = tuple[float, float, float, float]
 

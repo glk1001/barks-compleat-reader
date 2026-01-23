@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_reader.random_title_images import ImageInfo
+from barks_reader.core.random_title_images import ImageInfo
 from barks_reader.speech_index_screen import IndexItem, SpeechIndexScreen
 
 if TYPE_CHECKING:
@@ -37,7 +37,7 @@ def speech_index_screen(
         with (
             patch("barks_reader.speech_index_screen.SearchEngine") as mock_search_cls,
             patch("barks_reader.speech_index_screen.RandomTitleImages") as mock_random_cls,
-            patch("barks_reader.speech_index_screen.PanelImageLoader") as mock_loader_cls,
+            patch("barks_reader.speech_index_screen.PanelTextureLoader") as mock_loader_cls,
             patch("barks_reader.speech_index_screen.SpeechBubblesPopup") as mock_popup_cls,
             patch("barks_reader.speech_index_screen.SpeechIndexScreen._populate_alphabet_menu"),
         ):
@@ -61,7 +61,7 @@ def speech_index_screen(
             screen.index_theme = MagicMock()
             screen._font_manager = mock_font_manager
             screen._random_title_images = mock_random_cls.return_value
-            screen._image_loader = mock_loader_cls.return_value
+            screen._texture_loader = mock_loader_cls.return_value
             screen._whoosh_indexer = mock_indexer
             screen._speech_bubble_browser_popup = mock_popup_cls.return_value
 
@@ -165,7 +165,7 @@ class TestSpeechIndexScreen:
 
                 # Verify
                 # noinspection PyProtectedMember
-                speech_index_screen._image_loader.load_texture.assert_called()
+                speech_index_screen._texture_loader.load_texture.assert_called()
                 assert speech_index_screen.current_title_str != ""
 
     def test_handle_title_from_bubble_press(self, speech_index_screen: SpeechIndexScreen) -> None:

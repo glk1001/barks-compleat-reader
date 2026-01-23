@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 from loguru import logger
 from screeninfo import get_monitors
 
-from barks_reader.platform_info import PLATFORM, Platform
+from barks_reader.core.platform_info import PLATFORM, Platform
 
 
 def get_approximate_taskbar_height() -> int:
@@ -131,3 +133,7 @@ def log_screen_metrics() -> None:
 
 if __name__ == "__main__":
     log_screen_metrics()
+
+
+def get_best_window_height_fit(screen_height: int) -> int:
+    return screen_height - get_approximate_taskbar_height()

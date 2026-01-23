@@ -36,8 +36,8 @@ from comic_utils.timing import Timing
 from kivy.uix.button import Button
 from loguru import logger
 
-from barks_reader.filtered_title_lists import FilteredTitleLists
-from barks_reader.reader_consts_and_types import (
+from barks_reader.core.filtered_title_lists import FilteredTitleLists
+from barks_reader.core.reader_consts_and_types import (
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
     APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
     APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_TEXT,
@@ -59,11 +59,12 @@ from barks_reader.reader_consts_and_types import (
     THE_STORIES_NODE_TEXT,
     US_YEAR_RANGES,
 )
-from barks_reader.reader_formatter import (
+from barks_reader.core.reader_formatter import (
     get_bold_markup_text,
     get_markup_text_with_extra,
     get_markup_text_with_num_titles,
 )
+from barks_reader.core.reader_utils import read_title_list
 from barks_reader.reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
@@ -79,14 +80,13 @@ from barks_reader.reader_ui_classes import (
     UsYearRangeTreeViewNode,
     YearRangeTreeViewNode,
 )
-from barks_reader.reader_utils import read_title_list
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
     from kivy.uix.treeview import TreeViewNode
 
-    from barks_reader.reader_settings import ReaderSettings
+    from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.tree_view_manager import TreeViewManager
 
 BUTTON_ON_PRESS_CALLABLE = Callable[[Button], None]

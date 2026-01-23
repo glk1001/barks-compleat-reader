@@ -20,7 +20,7 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_USS,
 )
 
-from barks_reader.reader_consts_and_types import (
+from barks_reader.core.reader_consts_and_types import (
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
     APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
     APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_TEXT,
@@ -39,7 +39,7 @@ from barks_reader.reader_consts_and_types import (
     SERIES_NODE_TEXT,
     THE_STORIES_NODE_TEXT,
 )
-from barks_reader.reader_formatter import get_clean_text_without_extra
+from barks_reader.core.reader_formatter import get_clean_text_without_extra
 from barks_reader.reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,

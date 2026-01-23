@@ -2,229 +2,212 @@
 
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_reader.reader_file_paths import BarksPanelsExtType
-from barks_reader.reader_settings import (
+from barks_reader.core import reader_settings as reader_settings_module
+from barks_reader.core.reader_file_paths import BarksPanelsExtType, ReaderFilePaths
+from barks_reader.core.reader_settings import (
     BARKS_READER_SECTION,
     FANTA_DIR,
-    IS_FIRST_USE_OF_READER,
-    PNG_BARKS_PANELS_DIR,
-    PREBUILT_COMICS_DIR,
-    USE_PREBUILT_COMICS,
-    BuildableReaderSettings,
     ReaderSettings,
 )
+from barks_reader.core.system_file_paths import SystemFilePaths
 
 
 @pytest.fixture
 def mock_config() -> MagicMock:
-    return MagicMock()
+    """Mock the ConfigParser."""
+    config = MagicMock()
+    config.get.return_value = "/mock/path"
+    config.getboolean.return_value = False
+    config.getint.return_value = 0
+    return config
 
 
 @pytest.fixture
-def reader_settings(mock_config: MagicMock) -> ReaderSettings:
+def mock_reader_file_paths() -> MagicMock:
+    """Mock ReaderFilePaths."""
+    return MagicMock(spec=ReaderFilePaths)
+
+
+@pytest.fixture
+def mock_sys_file_paths() -> MagicMock:
+    """Mock SystemFilePaths."""
+    return MagicMock(spec=SystemFilePaths)
+
+
+@pytest.fixture
+def reader_settings(
+    mock_config: MagicMock,
+    mock_reader_file_paths: MagicMock,
+    mock_sys_file_paths: MagicMock,
+) -> ReaderSettings:
+    """Create a ReaderSettings instance with mocked dependencies."""
     with (
-        patch("barks_reader.reader_settings.ReaderFilePaths"),
-        patch("barks_reader.reader_settings.SystemFilePaths"),
+        patch.object(
+            reader_settings_module,
+            ReaderFilePaths.__name__,
+            return_value=mock_reader_file_paths,
+        ),
+        patch.object(
+            reader_settings_module,
+            SystemFilePaths.__name__,
+            return_value=mock_sys_file_paths,
+        ),
     ):
         settings = ReaderSettings()
+        app_settings_path = Path("/app/settings.ini")
+        app_data_dir = Path("/app/data")
         # noinspection PyTypeChecker
-        settings.set_config(mock_config, Path("/app/settings.ini"), Path("/app/data"))
-
-        # Ensure mocks are attached
-        # settings._reader_file_paths is set in __init__
-        return settings
-
-
-@pytest.fixture
-def buildable_settings(mock_config: MagicMock) -> BuildableReaderSettings:
-    with (
-        patch("barks_reader.reader_settings.ReaderFilePaths"),
-        patch("barks_reader.reader_settings.SystemFilePaths"),
-    ):
-        settings = BuildableReaderSettings()
-        # noinspection PyTypeChecker
-        settings.set_config(mock_config, Path("/app/settings.ini"), Path("/app/data"))
+        settings.set_config(mock_config, app_settings_path, app_data_dir)
         return settings
 
 
 class TestReaderSettings:
-    def test_init(self, reader_settings: ReaderSettings) -> None:
+    def test_init(self) -> None:
+        """Test initialization of ReaderSettings."""
+        with (
+            patch.object(reader_settings_module, ReaderFilePaths.__name__) as mock_rfp,
+            patch.object(reader_settings_module, SystemFilePaths.__name__) as mock_sfp,
+        ):
+            settings = ReaderSettings()
+            assert settings._reader_file_paths == mock_rfp.return_value
+            assert settings._reader_sys_file_paths == mock_sfp.return_value
+
+    def test_set_config(self, reader_settings: ReaderSettings, mock_config: MagicMock) -> None:
+        """Test setting the configuration."""
+        assert reader_settings._config == mock_config
         assert reader_settings.get_app_settings_path() == Path("/app/settings.ini")
         assert reader_settings.get_user_data_path() == Path("/app/barks-reader.json")
-        # Check derived path
-        assert reader_settings.reader_files_dir == Path("/app/data/Reader Files")
 
     def test_get_fantagraphics_volumes_dir(
         self, reader_settings: ReaderSettings, mock_config: MagicMock
     ) -> None:
-        mock_config.get.return_value = "/fanta/dir"
-        assert reader_settings.fantagraphics_volumes_dir == Path("/fanta/dir")
+        """Test retrieving the Fantagraphics volumes directory."""
+        mock_config.get.return_value = "/fanta/volumes"
+        path = reader_settings.fantagraphics_volumes_dir
+
         mock_config.get.assert_called_with(BARKS_READER_SECTION, FANTA_DIR)
-
-    def test_get_prebuilt_comics_dir(
-        self, reader_settings: ReaderSettings, mock_config: MagicMock
-    ) -> None:
-        with patch("os.path.expandvars", side_effect=lambda x: x.replace("$HOME", "/home/user")):
-            mock_config.get.return_value = "$HOME/prebuilt"
-            assert reader_settings.prebuilt_comics_dir == Path("/home/user/prebuilt")
-            mock_config.get.assert_called_with(BARKS_READER_SECTION, PREBUILT_COMICS_DIR)
-
-    def test_use_prebuilt_archives(
-        self, reader_settings: ReaderSettings, mock_config: MagicMock
-    ) -> None:
-        mock_config.getboolean.return_value = True
-        assert reader_settings.use_prebuilt_archives is True
-        mock_config.getboolean.assert_called_with(BARKS_READER_SECTION, USE_PREBUILT_COMICS)
+        assert path == Path("/fanta/volumes")
 
     def test_force_barks_panels_dir_png(
-        self, reader_settings: ReaderSettings, mock_config: MagicMock
+        self,
+        reader_settings: ReaderSettings,
+        mock_config: MagicMock,
+        mock_reader_file_paths: MagicMock,
     ) -> None:
-        # Setup for PNG
-        mock_config.getboolean.return_value = True  # USE_PNG_IMAGES
-        mock_config.get.return_value = "/png/dir"
+        """Test forcing Barks panels directory to PNG."""
+        mock_config.get.return_value = "$VAR/panels"
 
-        with patch("os.path.expandvars", return_value="/png/dir"):
-            reader_settings.set_barks_panels_dir()
+        # Patch os.path.expandvars in the module
+        with patch.object(
+            reader_settings_module.os.path,
+            os.path.expandvars.__name__,
+            return_value="/expanded/panels",
+        ) as mock_expand:
+            reader_settings.force_barks_panels_dir(use_png_images=True)
 
-        # noinspection PyProtectedMember, PyUnresolvedReferences,LongLine
-        reader_settings._reader_file_paths.set_barks_panels_source.assert_called_with(  # ty:ignore[unresolved-attribute]
-            Path("/png/dir"), BarksPanelsExtType.MOSTLY_PNG
-        )
+            mock_expand.assert_called_with("$VAR/panels")
+            mock_reader_file_paths.set_barks_panels_source.assert_called_with(
+                Path("/expanded/panels"), BarksPanelsExtType.MOSTLY_PNG
+            )
 
     def test_force_barks_panels_dir_jpg(
-        self, reader_settings: ReaderSettings, mock_config: MagicMock
+        self, reader_settings: ReaderSettings, mock_reader_file_paths: MagicMock
     ) -> None:
-        # Setup for JPG
-        mock_config.getboolean.return_value = False  # USE_PNG_IMAGES
-
-        reader_settings.set_barks_panels_dir()
-
+        """Test forcing Barks panels directory to JPG."""
         expected_path = Path("/app/data/Reader Files/Barks Panels.zip")
-        # noinspection PyProtectedMember, PyUnresolvedReferences,LongLine
-        reader_settings._reader_file_paths.set_barks_panels_source.assert_called_with(  # ty:ignore[unresolved-attribute]
+
+        reader_settings.force_barks_panels_dir(use_png_images=False)
+
+        mock_reader_file_paths.set_barks_panels_source.assert_called_with(
             expected_path, BarksPanelsExtType.JPG
         )
 
     def test_is_first_use_of_reader_setter(
         self, reader_settings: ReaderSettings, mock_config: MagicMock
     ) -> None:
-        # We need to patch _save_settings because it calls write() and _update_settings_panel
-        with patch.object(reader_settings, "_save_settings") as mock_save:
+        """Test setting the 'is_first_use_of_reader' property."""
+        with patch.object(reader_settings, ReaderSettings._save_settings.__name__) as mock_save:
             reader_settings.is_first_use_of_reader = False
-
-            mock_config.set.assert_called_with(BARKS_READER_SECTION, IS_FIRST_USE_OF_READER, 0)
+            mock_config.set.assert_called_with(BARKS_READER_SECTION, "is_first_use_of_reader", 0)
             mock_save.assert_called_once()
 
-    def test_is_valid_dir(self) -> None:
-        # Static method test
-        with patch("pathlib.Path.is_dir", return_value=True):
-            # noinspection PyProtectedMember
-            assert ReaderSettings._is_valid_dir("/valid/path") is True
+            mock_save.reset_mock()
+            reader_settings.is_first_use_of_reader = True
+            mock_config.set.assert_called_with(BARKS_READER_SECTION, "is_first_use_of_reader", 1)
+            mock_save.assert_called_once()
 
-        with patch("pathlib.Path.is_dir", return_value=False):
-            # noinspection PyProtectedMember
-            assert ReaderSettings._is_valid_dir("/invalid/path") is False
-
-
-class TestBuildableReaderSettings:
-    def test_build_config(self, mock_config: MagicMock) -> None:
-        BuildableReaderSettings.build_config(mock_config)
-        mock_config.setdefaults.assert_called_once()
-        args, _ = mock_config.setdefaults.call_args
-        assert args[0] == BARKS_READER_SECTION
-        assert FANTA_DIR in args[1]
-
-    def test_build_settings(
-        self, buildable_settings: BuildableReaderSettings, mock_config: MagicMock
+    def test_is_valid_fantagraphics_volumes_dir(
+        self, reader_settings: ReaderSettings, mock_config: MagicMock
     ) -> None:
-        mock_settings_panel = MagicMock()
-        # noinspection PyTypeChecker
-        buildable_settings.build_settings(mock_settings_panel)
-        mock_settings_panel.add_json_panel.assert_called_once()
-        args, _ = mock_settings_panel.add_json_panel.call_args
-        assert args[0] == BARKS_READER_SECTION
-        assert args[1] == mock_config
+        """Test validation of Fantagraphics volumes directory."""
+        # Case 1: use_prebuilt_archives is True
+        mock_config.getboolean.side_effect = lambda _section, key: key == "use_prebuilt_comics"
+        assert reader_settings.is_valid_fantagraphics_volumes_dir(Path("/any/path")) is True
 
-    def test_on_changed_setting_other_section(
-        self, buildable_settings: BuildableReaderSettings
-    ) -> None:
-        assert buildable_settings.on_changed_setting("OTHER", "key", "val") is True
+        # Case 2: use_prebuilt_archives is False, dir exists
+        mock_config.getboolean.side_effect = None
+        mock_config.getboolean.return_value = False
+        with patch.object(Path, Path.is_dir.__name__, return_value=True):
+            assert reader_settings.is_valid_fantagraphics_volumes_dir(Path("/valid/path")) is True
 
-    def test_on_changed_setting_valid_png(
-        self, buildable_settings: BuildableReaderSettings, mock_config: MagicMock
-    ) -> None:
-        # Mock validation to pass
-        # noinspection PyProtectedMember
-        buildable_settings._VALIDATION_METHODS[PNG_BARKS_PANELS_DIR] = MagicMock(return_value=True)
-
-        # Mock _get_use_png_images to return True so _get_barks_panels_ext_type returns MOSTLY_PNG
-        mock_config.getboolean.return_value = True
-
-        with patch("os.path.expandvars", return_value="/new/png"):
-            res = buildable_settings.on_changed_setting(
-                BARKS_READER_SECTION, PNG_BARKS_PANELS_DIR, "/new/png"
+        # Case 3: use_prebuilt_archives is False, dir does not exist
+        with patch.object(Path, Path.is_dir.__name__, return_value=False):
+            assert (
+                reader_settings.is_valid_fantagraphics_volumes_dir(Path("/invalid/path")) is False
             )
 
-        assert res is True
-        # noinspection PyProtectedMember, PyUnresolvedReferences,LongLine
-        buildable_settings._reader_file_paths.set_barks_panels_source.assert_called_with(  # ty:ignore[unresolved-attribute]
-            "/new/png", BarksPanelsExtType.MOSTLY_PNG
-        )
-
-    def test_on_changed_setting_invalid(self, buildable_settings: BuildableReaderSettings) -> None:
-        # noinspection PyProtectedMember
-        buildable_settings._VALIDATION_METHODS[PREBUILT_COMICS_DIR] = MagicMock(return_value=False)
-
-        res = buildable_settings.on_changed_setting(
-            BARKS_READER_SECTION, PREBUILT_COMICS_DIR, "/bad"
-        )
-        assert res is False
-
-    def test_save_settings(
-        self, buildable_settings: BuildableReaderSettings, mock_config: MagicMock
+    def test_is_valid_use_png_images(
+        self, reader_settings: ReaderSettings, mock_config: MagicMock
     ) -> None:
-        # Mock _update_settings_panel to avoid Kivy imports
-        with patch.object(buildable_settings, "_update_settings_panel") as mock_update:
-            # noinspection PyProtectedMember
-            buildable_settings._save_settings()
+        """Test validation of PNG images setting."""
+        # Case 1: use_png_images = True
+        mock_config.getboolean.return_value = True
+        mock_config.get.return_value = "/png/dir"
+        with (
+            patch.object(
+                reader_settings_module.os.path, os.path.expandvars.__name__, return_value="/png/dir"
+            ),
+            patch.object(Path, Path.is_dir.__name__, return_value=True),
+        ):
+            assert reader_settings._is_valid_use_png_images(use_png_images=True) is True
 
-            mock_config.write.assert_called_once()
-            mock_update.assert_called_once()
+        with (
+            patch.object(
+                reader_settings_module.os.path, os.path.expandvars.__name__, return_value="/png/dir"
+            ),
+            patch.object(Path, Path.is_dir.__name__, return_value=False),
+        ):
+            assert reader_settings._is_valid_use_png_images(use_png_images=True) is False
 
-    def test_update_settings_panel(self, buildable_settings: BuildableReaderSettings) -> None:
-        # 1. Test with no settings panel
-        # noinspection PyProtectedMember
-        buildable_settings._update_settings_panel()  # Should return early
+        # Case 2: use_png_images = False
+        mock_config.getboolean.return_value = False
+        with patch.object(Path, Path.is_file.__name__, return_value=True):
+            assert reader_settings._is_valid_use_png_images(use_png_images=False) is True
 
-        # 2. Test with settings panel
-        mock_settings = MagicMock()
-        # noinspection PyProtectedMember
-        buildable_settings._settings = mock_settings
+        with patch.object(Path, Path.is_file.__name__, return_value=False):
+            assert reader_settings._is_valid_use_png_images(use_png_images=False) is False
 
-        mock_panel = MagicMock()
-        mock_settings.interface.content.panels = {"panel1": mock_panel}
+    def test_get_reader_settings_json(self) -> None:
+        """Test generation of reader settings JSON."""
+        json_str = reader_settings_module._get_reader_settings_json()
+        assert isinstance(json_str, str)
+        data = json.loads(json_str)
+        assert isinstance(data, list)
+        assert len(data) > 0
 
-        # Create a dummy class to simulate SettingItem
-        class MockSettingItem:
-            def __init__(self) -> None:
-                self.section = "sec"
-                self.key = "key"
-                self.value = None
+    def test_properties(self, reader_settings: ReaderSettings, mock_config: MagicMock) -> None:
+        """Test various simple property getters."""
+        mock_config.getboolean.return_value = True
+        assert reader_settings.goto_saved_node_on_start is True
 
-        mock_module = MagicMock()
-        mock_module.SettingItem = MockSettingItem
+        mock_config.getint.return_value = 100
+        assert reader_settings._get_main_window_height() == 100  # noqa: PLR2004
 
-        with patch.dict("sys.modules", {"kivy.uix.settings": mock_module}):
-            child = MockSettingItem()
-            mock_panel.children = [child]
-
-            # noinspection PyProtectedMember
-            buildable_settings._update_settings_panel()
-
-            mock_panel.get_value.assert_called()
-            # Verify value assignment
-            assert child.value == mock_panel.get_value.return_value
+        mock_config.get.return_value = "INFO"
+        assert reader_settings.log_level == "INFO"

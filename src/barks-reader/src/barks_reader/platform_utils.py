@@ -10,7 +10,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from loguru import logger
 
-from barks_reader.platform_info import PLATFORM, Platform
+from barks_reader.core.platform_info import PLATFORM, Platform
 
 # Small timeout for non-Windows platforms to let the window system settle.
 _RESTORE_GEOMETRY_TIMEOUT = 0.05

@@ -8,10 +8,10 @@ from zipfile import ZipFile
 import psutil
 from loguru import logger
 
-from barks_reader.config_info import ConfigInfo
+from barks_reader.core.config_info import ConfigInfo
+from barks_reader.core.reader_consts_and_types import FANTAGRAPHICS_BARKS_LIBRARY
+from barks_reader.core.reader_utils import quote_and_join_with_and
 from barks_reader.error_handling import handle_app_fail, handle_app_fail_with_traceback
-from barks_reader.reader_consts_and_types import FANTAGRAPHICS_BARKS_LIBRARY
-from barks_reader.reader_utils import quote_and_join_with_and
 
 _APP_TYPE = "Installer"
 _APP_NAME = "Barks Reader Installation"
@@ -40,11 +40,11 @@ sys.excepthook = _handle_uncaught_exception
 
 
 def main() -> None:
-    from barks_reader.config_info import (  # noqa: PLC0415
+    from barks_reader.core.config_info import (  # noqa: PLC0415
         ConfigInfo,
         remove_barks_reader_installer_failed_flag,
     )
-    from barks_reader.platform_info import PLATFORM  # noqa: PLC0415
+    from barks_reader.core.platform_info import PLATFORM  # noqa: PLC0415
 
     remove_barks_reader_installer_failed_flag()
 
@@ -109,7 +109,7 @@ def _get_likely_executable_name() -> str:
 
 
 def _show_success_message(config_info: ConfigInfo, fanta_volumes_dir: Path | None) -> None:
-    from barks_reader.minimal_config_info import get_minimal_config_options  # noqa: PLC0415
+    from barks_reader.core.minimal_config_info import get_minimal_config_options  # noqa: PLC0415
     from barks_reader.pycrucible_pre_run_installer_show_message import (  # noqa: PLC0415
         show_installer_message,
     )
@@ -131,7 +131,7 @@ def _show_success_message(config_info: ConfigInfo, fanta_volumes_dir: Path | Non
 
 
 def _check_for_correct_pyarmor() -> None:
-    from barks_reader.reader_utils import safe_import_check  # noqa: PLC0415
+    from barks_reader.core.reader_utils import safe_import_check  # noqa: PLC0415
 
     if not safe_import_check("comic_utils.get_panel_bytes"):
         _handle_pyarmor_sanity_check_failed()
@@ -183,8 +183,8 @@ def _run_installer(config_info: ConfigInfo, installer_zip_paths: list[Path]) -> 
 
 
 def _configure_fanta_volumes_for_platform(config_info: ConfigInfo) -> Path | None:
-    from barks_reader.config_info import find_fanta_volumes_dirpath  # noqa: PLC0415
-    from barks_reader.reader_settings import BARKS_READER_SECTION, FANTA_DIR  # noqa: PLC0415
+    from barks_reader.core.config_info import find_fanta_volumes_dirpath  # noqa: PLC0415
+    from barks_reader.core.reader_settings import BARKS_READER_SECTION, FANTA_DIR  # noqa: PLC0415
 
     fanta_volumes_dir = find_fanta_volumes_dirpath(config_info, _EXPECTED_FANTA_VOLUMES_DIR_NAME)
     if not fanta_volumes_dir:
@@ -226,7 +226,7 @@ def _extract_subdir(installer_zip: Path, subdir: str, extract_to_dir: Path) -> N
 
 
 def _set_installer_failed_flag() -> None:
-    from barks_reader.config_info import (  # noqa: PLC0415
+    from barks_reader.core.config_info import (  # noqa: PLC0415
         get_barks_reader_installer_failed_flag_file,
         set_barks_reader_installer_failed_flag,
     )

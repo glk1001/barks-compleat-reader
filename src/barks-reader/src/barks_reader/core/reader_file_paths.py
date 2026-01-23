@@ -18,8 +18,8 @@ from barks_fantagraphics.barks_titles import (
 from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT, ZIP_FILE_EXT, PanelPath
 from loguru import logger
 
-from barks_reader.reader_consts_and_types import NO_OVERRIDES_SUFFIX
-from barks_reader.reader_utils import get_all_files_in_dir
+from barks_reader.core.reader_consts_and_types import NO_OVERRIDES_SUFFIX
+from barks_reader.core.reader_utils import get_all_files_in_dir
 
 if TYPE_CHECKING:
     from collections.abc import Callable

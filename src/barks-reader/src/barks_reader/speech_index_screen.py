@@ -24,6 +24,8 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
 from loguru import logger
 
+from barks_reader.core.random_title_images import ImageInfo, RandomTitleImages
+from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums, mark_phrase_in_text
 from barks_reader.index_screen import (
     MAX_TITLE_AND_PAGES_LEN,
     IndexItemButton,
@@ -34,9 +36,7 @@ from barks_reader.index_screen import (
     TitleItemButton,
     TitleShowSpeechButton,
 )
-from barks_reader.panel_image_loader import PanelImageLoader
-from barks_reader.random_title_images import ImageInfo, RandomTitleImages
-from barks_reader.reader_formatter import get_fitted_title_with_page_nums, mark_phrase_in_text
+from barks_reader.panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -48,8 +48,8 @@ if TYPE_CHECKING:
     from kivy.uix.boxlayout import BoxLayout
     from kivy.uix.button import Button
 
+    from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.font_manager import FontManager
-    from barks_reader.reader_settings import ReaderSettings
 
 INDEX_ITEM_ROW_HEIGHT = dp(21)
 INDEX_IMAGE_CHANGE_SECONDS = 15
@@ -90,7 +90,9 @@ class SpeechIndexScreen(IndexScreen):
             reader_settings.sys_file_paths.get_barks_reader_indexes_dir()
         )
         self._random_title_images = RandomTitleImages(reader_settings)
-        self._image_loader = PanelImageLoader(reader_settings.file_paths.barks_panels_are_encrypted)
+        self._texture_loader = PanelTextureLoader(
+            reader_settings.file_paths.barks_panels_are_encrypted
+        )
         self._index_image_change_event = None
         self._found_words_cache: dict[str, TitleDict] = {}
 
@@ -218,7 +220,7 @@ class SpeechIndexScreen(IndexScreen):
             self.image_texture = tex
             logger.debug(f"Time taken to set index image: {timing.get_elapsed_time_with_unit()}.")
 
-        self._image_loader.load_texture(image_info.filename, on_ready)
+        self._texture_loader.load_texture(image_info.filename, on_ready)
 
     @override
     def _create_index_button(self, item: IndexItem) -> IndexItemButton:

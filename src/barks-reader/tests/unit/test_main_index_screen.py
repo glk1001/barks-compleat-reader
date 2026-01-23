@@ -35,7 +35,7 @@ def main_index_screen(
         # Patch dependencies created in __init__
         with (
             patch("barks_reader.main_index_screen.RandomTitleImages") as mock_random_images_cls,
-            patch("barks_reader.main_index_screen.PanelImageLoader") as mock_loader_cls,
+            patch("barks_reader.main_index_screen.PanelTextureLoader") as mock_loader_cls,
             patch("barks_reader.main_index_screen.MainIndexScreen._populate_alphabet_menu"),
         ):
             screen = MainIndexScreen(mock_settings, mock_font_manager)

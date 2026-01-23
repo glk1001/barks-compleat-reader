@@ -14,6 +14,7 @@ from kivy.config import Config
 from kivy.core.window import Window, WindowBase  # can take ~1s in VM Windows
 from kivy.lang import Builder
 from kivy.uix.settings import Settings, SettingsWithSpinner  # can take ~1s in VM Windows
+from kivy.utils import escape_markup
 from loguru import logger
 from screeninfo import get_monitors
 
@@ -22,8 +23,12 @@ from barks_reader.bottom_title_view_screen import (
     BottomTitleViewScreen,
 )
 from barks_reader.comic_book_reader import get_barks_comic_reader_screen
+from barks_reader.core import services
+from barks_reader.core.filtered_title_lists import FilteredTitleLists
+from barks_reader.core.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING, OPTIONS_SETTING
+from barks_reader.core.reader_settings import BARKS_READER_SECTION
+from barks_reader.core.reader_utils import get_win_width_from_height
 from barks_reader.error_handling import handle_app_fail_with_traceback
-from barks_reader.filtered_title_lists import FilteredTitleLists
 from barks_reader.font_manager import FontManager
 from barks_reader.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, FunImageViewScreen
 from barks_reader.index_screen import INDEX_SCREEN_KV_FILE
@@ -32,7 +37,6 @@ from barks_reader.intro_compleat_barks_reader import (
 )
 from barks_reader.main_index_screen import MainIndexScreen
 from barks_reader.main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
-from barks_reader.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING, OPTIONS_SETTING
 from barks_reader.reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     INTRO_COMPLEAT_BARKS_READER_SCREEN,
@@ -40,15 +44,20 @@ from barks_reader.reader_screens import (
     ReaderScreenManager,
     ReaderScreens,
 )
-from barks_reader.reader_settings import BARKS_READER_SECTION, BuildableReaderSettings
+from barks_reader.reader_settings_buildable import BuildableReaderSettings
 from barks_reader.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
     READER_POPUPS_KV_FILE,
     READER_TREE_VIEW_KV_FILE,
     ReaderTreeBuilderEventDispatcher,
+    set_kivy_busy_cursor,
+    set_kivy_normal_cursor,
 )
-from barks_reader.reader_utils import get_best_window_height_fit, get_win_width_from_height
-from barks_reader.screen_metrics import SCREEN_METRICS, log_screen_metrics
+from barks_reader.screen_metrics import (
+    SCREEN_METRICS,
+    get_best_window_height_fit,
+    log_screen_metrics,
+)
 from barks_reader.settings_fix import SettingLongPath, SettingOptionsWithValue
 from barks_reader.settings_notifier import settings_notifier
 from barks_reader.speech_index_screen import SpeechIndexScreen
@@ -59,7 +68,7 @@ if TYPE_CHECKING:
     from kivy.uix.screenmanager import ScreenManager
     from kivy.uix.widget import Widget
 
-    from barks_reader.config_info import ConfigInfo
+    from barks_reader.core.config_info import ConfigInfo
 
 
 class BarksReaderApp(App):
@@ -406,6 +415,16 @@ def _handle_app_exception(config_info: ConfigInfo, exc_type, exc_value, exc_trac
 def reader_main(config_info: ConfigInfo) -> None:
     # noinspection PyBroadException
     try:
+        kivy_services = services.PlatformServices(
+            schedule_once=Clock.schedule_once,
+            set_busy_cursor=set_kivy_busy_cursor,
+            set_normal_cursor=set_kivy_normal_cursor,
+            escape_markup=escape_markup,
+        )
+
+        # 3. Register it once
+        services.register(kivy_services)
+
         log_screen_metrics()
 
         comics_database = ComicsDatabase(for_building_comics=False)

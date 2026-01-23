@@ -7,7 +7,8 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_CS,
     SERIES_USA,
 )
-from barks_reader.filtered_title_lists import FilteredTitleLists
+from barks_reader.core import filtered_title_lists as ftl_module
+from barks_reader.core.filtered_title_lists import FilteredTitleLists, get_filtered_title_lists
 
 
 class TestFilteredTitleLists:
@@ -24,7 +25,7 @@ class TestFilteredTitleLists:
         assert self.filtered_lists.get_us_year_key_from_year(1955) == "US-1955"
         assert self.filtered_lists.get_us_year_range_key_from_range("1950-1955") == "US-1950-1955"
 
-    @patch("barks_reader.filtered_title_lists.get_filtered_title_lists")
+    @patch.object(ftl_module, get_filtered_title_lists.__name__)
     def test_get_title_lists_creates_correct_filters(
         self, mock_get_filtered_title_lists: MagicMock
     ) -> None:
@@ -104,10 +105,10 @@ class TestFilteredTitleLists:
         mock_info.series_name = "Other"
         assert not us_filter(mock_info)
 
-    @patch("barks_reader.filtered_title_lists.get_filtered_title_lists")
+    @patch.object(ftl_module, get_filtered_title_lists.__name__)
     def test_add_year_ranges_aggregation(self, mock_get_filtered_title_lists: MagicMock) -> None:
         """Verify that year ranges are correctly aggregated into the result dictionary."""
-        # Setup a mock dictionary returned by the filter function
+        # Set up a mock dictionary returned by the filter function
         # We use defaultdict(list) because the code iterates over ALL years in a range,
         # so accessing a year key that doesn't exist would normally raise KeyError.
         mock_data = {

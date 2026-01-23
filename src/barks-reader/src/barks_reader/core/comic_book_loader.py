@@ -26,18 +26,20 @@ from comic_utils.pil_image_utils import (
     load_pil_image_from_zip,
 )
 from comic_utils.timing import Timing
-from kivy.clock import Clock
 from loguru import logger
 from PIL import Image, ImageOps
 from PIL import Image as PilImage
 
-from barks_reader.comic_book_loader_platform_settings import (
+from barks_reader.core.comic_book_loader_platform_settings import (
     autotune_worker_count,
     get_prefetch_tuning,
 )
-from barks_reader.fantagraphics_volumes import FantagraphicsArchive, FantagraphicsVolumeArchives
-from barks_reader.reader_ui_classes import set_kivy_busy_cursor, set_kivy_normal_cursor
-from barks_reader.reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
+from barks_reader.core.fantagraphics_volumes import (
+    FantagraphicsArchive,
+    FantagraphicsVolumeArchives,
+)
+from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
+from barks_reader.core.services import schedule_once, set_busy_cursor, set_normal_cursor
 
 if TYPE_CHECKING:
     import io
@@ -45,8 +47,8 @@ if TYPE_CHECKING:
 
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
 
-    from barks_reader.comic_book_page_info import PageInfo
-    from barks_reader.reader_settings import ReaderSettings
+    from barks_reader.core.comic_book_page_info import PageInfo
+    from barks_reader.core.reader_settings import ReaderSettings
 
 ALL_FANTA_VOLUMES = list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1))
 # ALL_FANTA_VOLUMES = [i for i in range(5, 7 + 1)]
@@ -204,7 +206,7 @@ class ComicBookLoader:
                 logger.error("Image loading thread did not terminate in time.")
 
         self._thread = None
-        set_kivy_normal_cursor()
+        set_normal_cursor()
 
     def _start_loading_thread(self) -> None:
         """Create and start the background thread for loading comic images."""
@@ -255,7 +257,7 @@ class ComicBookLoader:
 
         load_error = False
         load_warning_only = False
-        set_kivy_busy_cursor()
+        set_busy_cursor()
 
         try:
             self._images = [None for _i in range(len(self._page_map))]
@@ -276,7 +278,7 @@ class ComicBookLoader:
                 assert all(ev.is_set() for ev in self._image_loaded_events)
                 logger.info(f'Loaded {num_loaded} images from "{self._current_comic_path}".')
 
-                Clock.schedule_once(lambda _dt: self._on_all_images_loaded(), 0)
+                schedule_once(lambda _dt: self._on_all_images_loaded(), 0)
 
             except FileNotFoundError:
                 logger.exception(f'Comic file not found: "{self._current_comic_path}".')
@@ -310,7 +312,7 @@ class ComicBookLoader:
                 load_error = True
 
         finally:
-            set_kivy_normal_cursor()
+            set_normal_cursor()
             if load_error:
                 self._close_and_report_load_error(load_warning_only)
 
@@ -434,7 +436,7 @@ class ComicBookLoader:
                                 f"First page index to display, {page_index}, was loaded "
                                 f"after {timing.get_elapsed_time_with_unit()}."
                             )
-                            Clock.schedule_once(lambda _dt: self._on_first_image_loaded(), 0)
+                            schedule_once(lambda _dt: self._on_first_image_loaded(), 0)
 
                         # Refill window if possible.
                         if not self._stop:
@@ -462,7 +464,7 @@ class ComicBookLoader:
     def _close_and_report_load_error(self, load_warning_only: bool) -> None:
         self._stop = True
         self.close_comic()
-        Clock.schedule_once(lambda _dt: self._on_load_error(load_warning_only), 0)
+        schedule_once(lambda _dt: self._on_load_error(load_warning_only), 0)
 
     def _get_image_path(self, page_info: PageInfo) -> tuple[str, bool]:
         """Determine the path to an image file for a given page.

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import textwrap
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 import pyphen
 from barks_fantagraphics.barks_extra_info import BARKS_EXTRA_INFO
@@ -19,14 +19,13 @@ from barks_fantagraphics.comics_utils import (
 )
 from barks_fantagraphics.fanta_comics_info import FAN, FANTA_SOURCE_COMICS, FantaComicBookInfo
 from comic_utils.cpi_wrapper import inflate
-from kivy.utils import escape_markup
 
-from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO
-from barks_reader.reader_utils import get_concat_page_nums_str
+from barks_reader.core.reader_consts_and_types import CLOSE_TO_ZERO
+from barks_reader.core.reader_utils import get_concat_page_nums_str
+from barks_reader.core.services import escape_markup
 
 if TYPE_CHECKING:
-    from barks_reader.font_manager import FontManager
-    from barks_reader.reader_colors import Color
+    from barks_reader.core.reader_colors import Color
 
 LONG_TITLE_SPLITS = {
     Titles.DONALD_DUCK_FINDS_PIRATE_GOLD: "Donald Duck\nFinds Pirate Gold",
@@ -38,6 +37,11 @@ PYPHEN_DICT = pyphen.Pyphen(lang="en_US")
 INVISIBLE_BREAK = "[size=0][color=00000000] [/color][/size]"
 BOLD_TAG_PATTERN = re.compile(r"\[b](.*)\[/b]")
 MARKUP_TAG_PATTERN = re.compile(r"\[/?[^]]+]")
+
+
+class FontManagerProtocol(Protocol):
+    app_title_font_size: int | float
+    title_info_font_size: int | float
 
 
 def hyphenate_text(text: str) -> str:
@@ -80,7 +84,7 @@ def text_includes_num_titles(text: str) -> bool:
     return text.endswith(")[/i]")
 
 
-def get_action_bar_title(font_manager: FontManager, title: str) -> str:
+def get_action_bar_title(font_manager: FontManagerProtocol, title: str) -> str:
     return f"[font={CARL_BARKS_FONT_FILE}][size={int(font_manager.app_title_font_size)}]{title}"
 
 
@@ -99,7 +103,7 @@ def get_formatted_payment_info(payment_info: PaymentInfo) -> str:
 
 
 class ReaderFormatter:
-    def __init__(self, font_manager: FontManager) -> None:
+    def __init__(self, font_manager: FontManagerProtocol) -> None:
         self._font_manager = font_manager
 
         # Use a custom issue_name here to display slightly shorter names.

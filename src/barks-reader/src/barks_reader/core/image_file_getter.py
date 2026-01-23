@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING
 
 from comic_utils.comic_consts import PanelPath
 
-from barks_reader.reader_file_paths import FileTypes
+from barks_reader.core.reader_file_paths import FileTypes
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from barks_reader.reader_settings import ReaderSettings
+    from barks_reader.core.reader_settings import ReaderSettings
 
 
 class TitleImageFileGetter:

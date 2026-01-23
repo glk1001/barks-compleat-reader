@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_reader.reader_file_paths import (
+from barks_reader.core.reader_file_paths import (
     EDITED_SUBDIR,
     BarksPanelsExtType,
     FileTypes,

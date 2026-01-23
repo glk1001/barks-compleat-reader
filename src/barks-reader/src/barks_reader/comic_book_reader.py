@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
@@ -7,6 +8,9 @@ from barks_fantagraphics.comics_consts import PageType
 from comic_utils.timing import Timing
 from kivy.clock import Clock
 from kivy.core.image import Image as CoreImage
+
+# noinspection PyProtectedMember
+from kivy.core.image import Texture
 from kivy.core.window import Window, WindowBase
 from kivy.event import EventDispatcher
 from kivy.lang import Builder
@@ -23,14 +27,14 @@ from kivy.uix.image import Image
 from loguru import logger
 from screeninfo import get_monitors
 
-from barks_reader.comic_book_loader import ComicBookLoader
+from barks_reader.core.comic_book_loader import ComicBookLoader
+from barks_reader.core.reader_consts_and_types import CLOSE_TO_ZERO, COMIC_BEGIN_PAGE
+from barks_reader.core.reader_formatter import get_action_bar_title
+from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, get_win_width_from_height
 from barks_reader.platform_utils import WindowManager
-from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO, COMIC_BEGIN_PAGE
-from barks_reader.reader_formatter import get_action_bar_title
 from barks_reader.reader_navigation import ReaderNavigation
 from barks_reader.reader_screens import ReaderScreen
 from barks_reader.reader_ui_classes import ACTION_BAR_SIZE_Y
-from barks_reader.reader_utils import get_image_stream, get_win_width_from_height
 
 if TYPE_CHECKING:
     from collections import OrderedDict
@@ -38,12 +42,13 @@ if TYPE_CHECKING:
 
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+    from comic_utils.comic_consts import PanelPath
     from kivy.input import MotionEvent
     from kivy.uix.widget import Widget
 
-    from barks_reader.comic_book_page_info import PageInfo
+    from barks_reader.core.comic_book_page_info import PageInfo
+    from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.font_manager import FontManager
-    from barks_reader.reader_settings import ReaderSettings
 
 GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT = 0.97
 GOTO_PAGE_BUTTON_HEIGHT = dp(25)
@@ -735,3 +740,13 @@ def get_barks_comic_reader_screen(
         on_close_reader,
         name=screen_name,
     )
+
+
+def get_image_stream(file: PanelPath) -> Texture:
+    if isinstance(file, Path):
+        return CoreImage(str(file)).texture
+
+    zip_bytes = file.read_bytes()
+    image_stream = io.BytesIO(zip_bytes)
+    image_stream.seek(0)
+    return CoreImage(image_stream, ext=PNG_EXT_FOR_KIVY).texture

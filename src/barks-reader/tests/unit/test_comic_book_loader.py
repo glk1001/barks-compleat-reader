@@ -1,276 +1,283 @@
-# ruff: noqa: SLF001, PLR2004
+# ruff: noqa: SLF001
 
 from __future__ import annotations
 
 import io
+import threading
+import zipfile
 from collections import OrderedDict
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_fantagraphics.barks_titles import ComicBookInfo
+from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
-from barks_reader.comic_book_loader import ComicBookLoader
-from barks_reader.comic_book_page_info import PageInfo
+from barks_reader.core import comic_book_loader as loader_module
+from barks_reader.core.comic_book_loader import ComicBookLoader
+from barks_reader.core.comic_book_loader_platform_settings import (
+    autotune_worker_count,
+    get_prefetch_tuning,
+)
+from barks_reader.core.fantagraphics_volumes import FantagraphicsVolumeArchives
+from barks_reader.core.services import schedule_once, set_busy_cursor, set_normal_cursor
+from comic_utils.pil_image_utils import (
+    get_pil_image_as_png_bytes,
+    load_pil_image_from_bytes,
+    load_pil_image_from_zip,
+)
+from PIL import Image, ImageOps
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
 
-class TestComicBookLoader:
-    @pytest.fixture(autouse=True)
-    def setup(self) -> Generator[None]:
-        self.mock_settings = MagicMock()
-        self.mock_settings.sys_file_paths.get_empty_page_file.return_value = "empty.png"
+@pytest.fixture
+def mock_sys_file_paths(tmp_path: Path) -> MagicMock:
+    """Mock the system file paths helper."""
+    mock = MagicMock()
+    # Create a dummy empty page file
+    empty_page = tmp_path / "empty_page.png"
+    empty_page.write_bytes(b"fake_empty_page_data")
 
-        self.mock_on_first = MagicMock()
-        self.mock_on_all = MagicMock()
-        self.mock_on_error = MagicMock()
+    mock.get_empty_page_file.return_value = str(empty_page)
+    mock.get_barks_reader_fantagraphics_overrides_root_dir.return_value = str(
+        tmp_path / "overrides"
+    )
+    return mock
 
-        # Mock file reading in __init__ for empty page image
-        self.open_patcher = patch("pathlib.Path.open", new_callable=MagicMock)
-        self.mock_open = self.open_patcher.start()
-        self.mock_file_handle = MagicMock()
-        self.mock_open.return_value.__enter__.return_value = self.mock_file_handle
-        self.mock_file_handle.read.return_value = b"empty_bytes"
 
-        # Mock threading to prevent actual threads starting automatically
-        self.thread_patcher = patch("threading.Thread")
-        self.mock_thread_cls = self.thread_patcher.start()
+@pytest.fixture
+def mock_reader_settings(mock_sys_file_paths: MagicMock, tmp_path: Path) -> MagicMock:
+    """Mock the reader settings."""
+    mock = MagicMock()
+    mock.sys_file_paths = mock_sys_file_paths
+    mock.use_prebuilt_archives = True
+    mock.prebuilt_comics_dir = str(tmp_path / "comics")
+    mock.fantagraphics_volumes_dir = str(tmp_path / "fanta_volumes")
+    return mock
 
-        # Mock autotune to return 1 worker for simplicity
-        self.autotune_patcher = patch(
-            "barks_reader.comic_book_loader.autotune_worker_count", return_value=1
-        )
-        self.autotune_patcher.start()
 
-        self.loader = ComicBookLoader(
-            self.mock_settings,
-            self.mock_on_first,
-            self.mock_on_all,
-            self.mock_on_error,
-            1000,
-            1000,
-        )
+@pytest.fixture
+def mock_callbacks() -> dict[str, MagicMock]:
+    """Mock the callbacks passed to the loader."""
+    return {
+        "on_first_image_loaded": MagicMock(),
+        "on_all_images_loaded": MagicMock(),
+        "on_load_error": MagicMock(),
+    }
 
+
+@pytest.fixture
+def mock_services() -> Generator[tuple[MagicMock, MagicMock, MagicMock]]:
+    """Patches global services like schedule_once and cursor changes."""
+    with (
+        patch.object(loader_module, schedule_once.__name__) as mock_schedule,
+        patch.object(loader_module, set_busy_cursor.__name__) as mock_busy,
+        patch.object(loader_module, set_normal_cursor.__name__) as mock_normal,
+    ):
+        # Execute scheduled callbacks immediately
+        mock_schedule.side_effect = lambda func, dt: func(dt)
+
+        yield mock_schedule, mock_busy, mock_normal
+
+
+@pytest.fixture
+def mock_pil_utils() -> Generator[tuple[MagicMock, MagicMock, MagicMock, MagicMock]]:
+    """Patch PIL image utilities to avoid real image processing."""
+    with (
+        patch.object(loader_module, load_pil_image_from_zip.__name__) as mock_load_zip,
+        patch.object(loader_module, load_pil_image_from_bytes.__name__) as mock_load_bytes,
+        patch.object(loader_module, get_pil_image_as_png_bytes.__name__) as mock_get_bytes,
+        patch.object(loader_module.ImageOps, ImageOps.contain.__name__) as mock_contain,
+    ):
+        mock_image = MagicMock(spec=Image.Image)
+        mock_load_zip.return_value = mock_image
+        mock_load_bytes.return_value = mock_image
+        mock_contain.return_value = mock_image
+
+        # Return a BytesIO object for the png bytes
+        mock_get_bytes.return_value = io.BytesIO(b"processed_png_data")
+
+        yield mock_load_zip, mock_load_bytes, mock_get_bytes, mock_contain
+
+
+@pytest.fixture
+def mock_tuning() -> Generator[None]:
+    """Patch the prefetch tuning to return simple values."""
+    with patch.object(loader_module, get_prefetch_tuning.__name__) as mock_get:
+        tuning = MagicMock()
+        tuning.get_initial_dynamic_window.return_value = 2
+        tuning.get_new_dynamic_window.return_value = (50.0, 2)
+        mock_get.return_value = tuning
         yield
 
-        self.open_patcher.stop()
-        self.thread_patcher.stop()
-        self.autotune_patcher.stop()
 
-    def test_init_data_prebuilt(self) -> None:
-        self.mock_settings.use_prebuilt_archives = True
-        self.loader.init_data()
-        # noinspection PyProtectedMember
-        assert self.loader._fanta_volume_archives is None
+@pytest.fixture
+def loader(
+    mock_reader_settings: MagicMock,
+    mock_callbacks: dict[str, MagicMock],
+    mock_services: tuple[MagicMock, MagicMock, MagicMock],  # noqa: ARG001
+    mock_pil_utils: tuple[MagicMock, MagicMock, MagicMock, MagicMock],  # noqa: ARG001
+    mock_tuning: None,  # noqa: ARG001
+) -> Generator[ComicBookLoader]:
+    """Create a ComicBookLoader instance with mocked dependencies."""
+    # Patch autotune to use 1 worker for deterministic testing
+    with patch.object(loader_module, autotune_worker_count.__name__, return_value=1):
+        loader_instance = ComicBookLoader(
+            reader_settings=mock_reader_settings,
+            on_first_image_loaded=mock_callbacks["on_first_image_loaded"],
+            on_all_images_loaded=mock_callbacks["on_all_images_loaded"],
+            on_load_error=mock_callbacks["on_load_error"],
+            max_window_width=800,
+            max_window_height=600,
+        )
+        yield loader_instance
+        loader_instance.stop_now()
 
-    @patch("barks_reader.comic_book_loader.FantagraphicsVolumeArchives")
-    def test_init_data_fanta(self, mock_archives_cls: MagicMock) -> None:
-        self.mock_settings.use_prebuilt_archives = False
-        self.mock_settings.fantagraphics_volumes_dir = Path("/fanta")
 
-        sys_file_paths = self.mock_settings.sys_file_paths
-        sys_file_paths.get_barks_reader_fantagraphics_overrides_root_dir.return_value = Path(
-            "/overrides"
+@pytest.fixture
+def page_map_and_order() -> tuple[OrderedDict[str, Any], list[str]]:
+    """Create a sample page map and load order."""
+    p1 = MagicMock()
+    p1.page_index = 0
+    p1.dest_page.page_filename = "page_1.png"
+    p1.srce_page.page_filename = "page_1.png"
+    p1.display_page_num = "1"
+    p1.page_type = PageType.BODY
+
+    p2 = MagicMock()
+    p2.page_index = 1
+    p2.dest_page.page_filename = "page_2.png"
+    p2.srce_page.page_filename = "page_2.png"
+    p2.display_page_num = "2"
+    p2.page_type = PageType.BODY
+
+    page_map = OrderedDict([("p1", p1), ("p2", p2)])
+    load_order = ["p1", "p2"]
+    return page_map, load_order
+
+
+# noinspection LongLine
+@pytest.fixture
+def dummy_cbz(tmp_path: Path, page_map_and_order: tuple[OrderedDict[str, Any], list[str]]) -> Path:  # noqa: ARG001
+    """Create a valid temporary CBZ file matching the page map."""
+    cbz_path = tmp_path / "test_comic.cbz"
+    with zipfile.ZipFile(cbz_path, "w") as zf:
+        # The loader looks for "images/" + filename for prebuilt archives
+        zf.writestr("images/page_1.png", b"fake_image_1")
+        zf.writestr("images/page_2.png", b"fake_image_2")
+    return cbz_path
+
+
+def test_init(loader: ComicBookLoader, mock_reader_settings: MagicMock) -> None:
+    """Test initialization of the loader."""
+    assert loader._reader_settings == mock_reader_settings
+    assert loader._max_worker_count == 1
+    assert loader._empty_page_image == b"fake_empty_page_data"
+
+
+def test_init_data_prebuilt(loader: ComicBookLoader, mock_reader_settings: MagicMock) -> None:
+    """Test init_data when using prebuilt archives."""
+    mock_reader_settings.use_prebuilt_archives = True
+    loader.init_data()
+    assert loader._fanta_volume_archives is None
+
+
+def test_init_data_fanta_volumes(loader: ComicBookLoader, mock_reader_settings: MagicMock) -> None:
+    """Test init_data when using Fantagraphics volumes."""
+    mock_reader_settings.use_prebuilt_archives = False
+
+    with patch.object(loader_module, FantagraphicsVolumeArchives.__name__) as mock_archives:
+        loader.init_data()
+        mock_archives.assert_called_once()
+        mock_archives.return_value.load.assert_called_once()
+
+
+def test_set_comic_and_load_success(
+    loader: ComicBookLoader,
+    dummy_cbz: Path,
+    page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+    mock_callbacks: dict[str, MagicMock],
+) -> None:
+    """Test setting a comic and successfully loading it in the background thread."""
+    page_map, load_order = page_map_and_order
+    fanta_info = MagicMock(spec=FantaComicBookInfo)
+    builder = MagicMock()
+
+    # Patch _get_prebuilt_comic_path to return our dummy CBZ
+    with patch.object(
+        loader, ComicBookLoader._get_prebuilt_comic_path.__name__, return_value=dummy_cbz
+    ):
+        loader.set_comic(
+            fanta_info=fanta_info,
+            use_fantagraphics_overrides=False,
+            comic_book_image_builder=builder,
+            image_load_order=load_order,
+            page_map=page_map,
         )
 
-        self.loader.init_data()
+        # Wait for the background thread to finish
+        if loader._thread:
+            loader._thread.join(timeout=2.0)
 
-        mock_archives_cls.assert_called_once()
-        # noinspection PyProtectedMember
-        mock_archives_cls.return_value.load.assert_called_once()
+    # Verify callbacks
+    mock_callbacks["on_first_image_loaded"].assert_called_once()
+    mock_callbacks["on_all_images_loaded"].assert_called_once()
+    mock_callbacks["on_load_error"].assert_not_called()
 
-    def test_set_comic_prebuilt(self) -> None:
-        self.mock_settings.use_prebuilt_archives = True
-        self.mock_settings.prebuilt_comics_dir = "/prebuilt"
+    # Verify images loaded
+    assert len(loader._images) == 2  # noqa: PLR2004
+    assert loader._images[0] is not None
+    assert loader._images[1] is not None
 
-        mock_fanta_info = MagicMock(spec=FantaComicBookInfo)
 
-        mock_comic_info = MagicMock(spec=ComicBookInfo)
-        mock_comic_info.get_title_str.return_value = "Title"
-        mock_fanta_info.comic_book_info = mock_comic_info
+def test_load_error_file_not_found(
+    loader: ComicBookLoader,
+    page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+    mock_callbacks: dict[str, MagicMock],
+) -> None:
+    """Test handling of a missing comic file."""
+    page_map, load_order = page_map_and_order
+    fanta_info = MagicMock(spec=FantaComicBookInfo)
 
-        mock_fanta_info.fanta_chronological_number = 1
-        mock_fanta_info.get_short_issue_title.return_value = "FC 1"
+    # Point to a non-existent file
+    with patch.object(
+        loader,
+        ComicBookLoader._get_prebuilt_comic_path.__name__,
+        return_value=Path("non_existent.cbz"),
+    ):
+        loader.set_comic(
+            fanta_info,
+            use_fantagraphics_overrides=False,
+            comic_book_image_builder=MagicMock(),
+            image_load_order=load_order,
+            page_map=page_map,
+        )
+        if loader._thread:
+            loader._thread.join(timeout=2.0)
 
-        mock_builder = MagicMock()
-        page_map = OrderedDict([("1", MagicMock())])
-        load_order = ["1"]
+    mock_callbacks["on_load_error"].assert_called_once_with(False)  # noqa: FBT003
 
-        # Mock path existence checks
-        with patch("pathlib.Path.is_file", return_value=True):
-            self.loader.set_comic(
-                mock_fanta_info,
-                use_fantagraphics_overrides=False,
-                comic_book_image_builder=mock_builder,
-                image_load_order=load_order,
-                page_map=page_map,
-            )
 
-        # Check path construction (windows/linux separators handled by Path)
-        expected_path = Path("/prebuilt") / "001 Title [FC 1].cbz"
-        # noinspection PyProtectedMember
-        assert self.loader._current_comic_path == expected_path
-        self.mock_thread_cls.return_value.start.assert_called_once()
+def test_stop_now(loader: ComicBookLoader) -> None:
+    """Test stopping the loader thread."""
+    # Manually simulate a running thread to avoid complex race conditions with real loading
+    stop_event = threading.Event()
 
-    def test_close_comic(self) -> None:
-        # noinspection PyProtectedMember
-        self.loader._current_comic_path = "some/path"
-        # noinspection PyProtectedMember
-        mock_thread = MagicMock()
-        self.loader._thread = mock_thread
-        # noinspection PyProtectedMember
-        mock_thread.is_alive.return_value = True
+    def dummy_worker() -> None:
+        while not loader._stop and not stop_event.is_set():
+            pass
 
-        self.loader.close_comic()
+    t = threading.Thread(target=dummy_worker)
+    loader._thread = t
+    t.start()
 
-        # noinspection PyProtectedMember
-        assert self.loader._stop is True
-        # noinspection PyProtectedMember
-        mock_thread.join.assert_called()
-        # noinspection PyProtectedMember
-        assert self.loader._current_comic_path == ""
-        # noinspection PyProtectedMember
-        assert len(self.loader._images) == 0
+    loader.stop_now()
 
-    def test_get_image_ready_for_reading(self) -> None:
-        # Setup fake loaded images
-        # noinspection PyProtectedMember
-        self.loader._images = [(io.BytesIO(b"img1"), "png"), (io.BytesIO(b"img2"), "jpg")]
+    assert loader._stop is True
+    assert not t.is_alive()
 
-        stream, ext = self.loader.get_image_ready_for_reading(1)
-        assert stream.read() == b"img2"
-        assert ext == "jpg"
-
-    @patch("barks_reader.comic_book_loader.zipfile.ZipFile")
-    @patch("barks_reader.comic_book_loader.Clock")
-    def test_load_comic_in_thread_success(
-        self,
-        mock_clock: MagicMock,
-        _mock_zipfile: MagicMock,  # noqa: PT019
-    ) -> None:
-        # Setup
-        # noinspection PyProtectedMember
-        self.loader._current_comic_path = "test.cbz"
-        page_info = MagicMock(spec=PageInfo)
-        page_info.page_index = 0
-        page_info.display_page_num = "1"
-        # noinspection PyProtectedMember
-        self.loader._page_map = OrderedDict([("1", page_info)])
-        # noinspection PyProtectedMember
-        self.loader._image_load_order = ["1"]
-        # noinspection PyProtectedMember
-        self.loader._init_load_events()  # Initialize events based on page map
-
-        def mock_load_pages_side_effect(*_args, **_kwargs) -> int:  # noqa: ANN002, ANN003
-            # Simulate the side effect of _load_pages, which is setting the event
-            self.loader._image_loaded_events[0].set()
-            return 1
-
-        # Mock _load_pages to simulate loading
-        with patch.object(
-            self.loader, "_load_pages", side_effect=mock_load_pages_side_effect
-        ) as mock_load_pages:
-            # noinspection PyProtectedMember
-            self.loader._load_comic_in_thread()
-
-            mock_load_pages.assert_called_once()
-            # Check callback scheduled
-            # The lambda passed to schedule_once calls _on_all_images_loaded
-            args, _ = mock_clock.schedule_once.call_args
-            # Execute the lambda to verify it calls the right method
-            args[0](0)
-            self.mock_on_all.assert_called_once()
-
-    @patch("barks_reader.comic_book_loader.zipfile.ZipFile")
-    @patch("barks_reader.comic_book_loader.Clock")
-    def test_load_comic_in_thread_file_not_found(
-        self, mock_clock: MagicMock, mock_zipfile: MagicMock
-    ) -> None:
-        # noinspection PyProtectedMember
-        self.loader._current_comic_path = "missing.cbz"
-        mock_zipfile.side_effect = FileNotFoundError
-        # noinspection PyProtectedMember
-        self.loader._page_map = OrderedDict([("1", MagicMock())])
-        # noinspection PyProtectedMember
-        self.loader._images = [None]  # Initialize images list
-
-        with (
-            patch("barks_reader.comic_book_loader.set_kivy_busy_cursor"),
-            patch("barks_reader.comic_book_loader.set_kivy_normal_cursor"),
-        ):
-            # noinspection PyProtectedMember
-            self.loader._load_comic_in_thread()
-
-        # noinspection PyProtectedMember
-        assert self.loader._stop is True
-        # Check that on_load_error was scheduled
-        mock_clock.schedule_once.assert_called()
-
-    def test_wait_load_event(self) -> None:
-        # noinspection PyProtectedMember
-        self.loader._images = [None]
-        mock_event = MagicMock()
-        # noinspection PyProtectedMember
-        self.loader._image_loaded_events = [mock_event]
-
-        self.loader.wait_load_event(0, 1.0)
-        mock_event.wait.assert_called_with(1.0)
-
-    def test_get_image_path_prebuilt(self) -> None:
-        # noinspection PyProtectedMember
-        self.loader._fanta_volume_archive = None
-        page_info = MagicMock()
-        page_info.dest_page.page_filename = "p1.png"
-
-        # noinspection PyProtectedMember
-        path, is_archive = self.loader._get_image_path(page_info)
-        assert path == "images/p1.png"
-        assert is_archive is True
-
-    @patch("barks_reader.comic_book_loader.ThreadPoolExecutor")
-    @patch("barks_reader.comic_book_loader.get_prefetch_tuning")
-    def test_load_pages_logic(self, mock_get_tuning: MagicMock, mock_executor: MagicMock) -> None:
-        # Setup for _load_pages
-        # noinspection PyProtectedMember
-        self.loader._image_load_order = ["1", "2"]
-        p1 = MagicMock(page_index=0)
-        p2 = MagicMock(page_index=1)
-        # noinspection PyProtectedMember
-        self.loader._page_map = OrderedDict([("1", p1), ("2", p2)])
-        # noinspection PyProtectedMember
-        self.loader._images = [None, None]
-        # noinspection PyProtectedMember
-        self.loader._image_loaded_events = [MagicMock(), MagicMock()]
-
-        # Mock tuning
-        mock_tuning = MagicMock()
-        mock_tuning.get_initial_dynamic_window.return_value = 2
-        mock_tuning.get_new_dynamic_window.return_value = (100, 2)
-        mock_get_tuning.return_value = mock_tuning
-
-        # Mock executor
-        mock_future1 = MagicMock()
-        mock_future1.result.return_value = (io.BytesIO(b"1"), "png")
-        mock_future2 = MagicMock()
-        mock_future2.result.return_value = (io.BytesIO(b"2"), "png")
-
-        mock_executor_instance = mock_executor.return_value.__enter__.return_value
-        mock_executor_instance.submit.side_effect = [mock_future1, mock_future2]
-
-        # Mock wait to return futures as done
-        with patch("barks_reader.comic_book_loader.wait") as mock_wait:
-            # First call returns future1, second call returns future2
-            mock_wait.side_effect = [({mock_future1}, set()), ({mock_future2}, set())]
-
-            archive = MagicMock()
-            # noinspection PyProtectedMember
-            num_loaded = self.loader._load_pages(archive)
-
-            assert num_loaded == 2
-            # noinspection PyProtectedMember
-            assert self.loader._images[0][0].getvalue() == b"1"  # type: ignore[index]
-            # noinspection PyProtectedMember
-            assert self.loader._images[1][0].getvalue() == b"2"  # type: ignore[index]
+    # Cleanup
+    stop_event.set()
+    t.join()

@@ -29,15 +29,19 @@ from barks_reader.about_box import show_about_box
 from barks_reader.app_initializer import AppInitializer
 from barks_reader.background_views import BackgroundViews
 from barks_reader.comic_reader_manager import ComicReaderManager
-from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
-from barks_reader.platform_utils import WindowManager
-from barks_reader.random_title_images import ImageInfo, RandomTitleImages
-from barks_reader.reader_consts_and_types import (
+from barks_reader.core.random_title_images import ImageInfo, RandomTitleImages
+from barks_reader.core.reader_consts_and_types import (
     APP_TITLE,
     CHRONO_YEAR_RANGES,
     COMIC_BEGIN_PAGE,
 )
-from barks_reader.reader_formatter import get_action_bar_title
+from barks_reader.core.reader_formatter import get_action_bar_title
+from barks_reader.core.reader_utils import (
+    get_title_str_from_reader_icon_file,
+    get_win_width_from_height,
+)
+from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
+from barks_reader.platform_utils import WindowManager
 from barks_reader.reader_screens import ReaderScreen
 from barks_reader.reader_tree_builder import ReaderTreeBuilder
 from barks_reader.reader_tree_view_utils import find_tree_view_title_node
@@ -47,10 +51,6 @@ from barks_reader.reader_ui_classes import (
     ReaderTreeBuilderEventDispatcher,
     hide_action_bar,
     show_action_bar,
-)
-from barks_reader.reader_utils import (
-    get_title_str_from_reader_icon_file,
-    get_win_width_from_height,
 )
 from barks_reader.special_overrides_handler import SpecialFantaOverrides
 from barks_reader.tree_view_manager import TreeViewManager
@@ -67,12 +67,12 @@ if TYPE_CHECKING:
 
     from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
     from barks_reader.comic_book_reader import ComicBookReaderScreen
-    from barks_reader.filtered_title_lists import FilteredTitleLists
+    from barks_reader.core.filtered_title_lists import FilteredTitleLists
+    from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.font_manager import FontManager
     from barks_reader.fun_image_view_screen import FunImageViewScreen
     from barks_reader.main_index_screen import MainIndexScreen
     from barks_reader.reader_screens import ScreenSwitchers
-    from barks_reader.reader_settings import ReaderSettings
     from barks_reader.speech_index_screen import SpeechIndexScreen
     from barks_reader.tree_view_screen import TreeViewScreen
 

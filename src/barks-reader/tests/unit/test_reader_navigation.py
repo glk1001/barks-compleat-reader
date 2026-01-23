@@ -3,6 +3,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_reader import reader_navigation as nav_module
 from barks_reader.reader_navigation import ReaderNavigation
 
 
@@ -31,7 +32,7 @@ class TestReaderNavigation:
         # y_bottom_margin = (1000 - 0) - (0.9 * 1000) = 100
         assert self.nav.y_bottom_margin == 100  # noqa: PLR2004
 
-    @patch("barks_reader.reader_navigation.WindowManager")
+    @patch.object(nav_module, "WindowManager")
     def test_is_in_top_margin(self, mock_window_manager: MagicMock) -> None:
         self.nav.update_regions(1000, 1000, 0, 0)
         # y_top_margin is 900
@@ -54,7 +55,7 @@ class TestReaderNavigation:
         assert not self.nav.is_in_top_margin(400, 950)
         assert not self.nav.is_in_top_margin(1600, 950)
 
-    @patch("barks_reader.reader_navigation.WindowManager")
+    @patch.object(nav_module, "WindowManager")
     def test_is_in_bottom_margin(self, mock_window_manager: MagicMock) -> None:
         self.nav.update_regions(1000, 1000, 0, 0)
         # y_bottom_margin is 100

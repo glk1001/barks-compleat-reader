@@ -4,8 +4,8 @@
 
 import sys
 
-from barks_reader.reader_file_paths import ReaderFilePaths
-from barks_reader.reader_utils import get_paths_from_directory, get_paths_from_zip
+from barks_reader.core.reader_file_paths import ReaderFilePaths
+from barks_reader.core.reader_utils import get_paths_from_directory, get_paths_from_zip
 from loguru import logger
 
 

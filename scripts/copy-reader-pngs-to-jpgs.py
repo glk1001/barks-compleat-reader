@@ -8,8 +8,8 @@ from pathlib import Path
 import typer
 from barks_fantagraphics.comics_consts import PNG_FILE_EXT
 from barks_fantagraphics.comics_utils import get_abbrev_path, get_timestamp_str
-from barks_reader.config_info import ConfigInfo  # make sure this is before any kivy imports
-from barks_reader.reader_settings import ReaderSettings
+from barks_reader.core.config_info import ConfigInfo  # make sure this is before any kivy imports
+from barks_reader.core.reader_settings import ReaderSettings
 from comic_utils.comic_consts import JPG_FILE_EXT
 from comic_utils.common_typer_options import LogLevelArg
 from comic_utils.pil_image_utils import get_pil_image_as_jpg_bytes, load_pil_image_for_reading

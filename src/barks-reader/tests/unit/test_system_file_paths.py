@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from barks_reader.system_file_paths import SystemFilePaths
+from barks_reader.core.system_file_paths import SystemFilePaths
 
 
 class TestSystemFilePaths:

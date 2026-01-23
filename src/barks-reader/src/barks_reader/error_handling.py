@@ -73,7 +73,9 @@ def handle_app_fail(
     )
 
     if log_the_error:
-        from barks_reader.reader_formatter import get_text_with_markup_stripped  # noqa: PLC0415
+        from barks_reader.core.reader_formatter import (  # noqa: PLC0415
+            get_text_with_markup_stripped,
+        )
 
         logger.critical(f"An {app_type} error occurred: {get_text_with_markup_stripped(message)}.")
         logger.critical(get_text_with_markup_stripped(details))

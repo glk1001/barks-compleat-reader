@@ -6,13 +6,13 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_reader.core.random_title_images import ImageInfo
 from barks_reader.index_screen import (
     SAVED_NODE_STATE_FIRST_LETTER_KEY,
     IndexItemButton,
     IndexMenuButton,
     IndexScreen,
 )
-from barks_reader.random_title_images import ImageInfo
 from barks_reader.reader_ui_classes import MainTreeViewNode
 
 if TYPE_CHECKING:

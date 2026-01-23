@@ -8,10 +8,10 @@ import typer
 from barks_fantagraphics.comic_book import get_abbrev_jpg_page_list
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.comics_helpers import get_titles
-from barks_reader.config_info import ConfigInfo  # make sure this is before any kivy imports
-from barks_reader.image_file_getter import TitleImageFileGetter
-from barks_reader.reader_file_paths import FileTypes
-from barks_reader.reader_settings import ReaderSettings
+from barks_reader.core.config_info import ConfigInfo  # make sure this is before any kivy imports
+from barks_reader.core.image_file_getter import TitleImageFileGetter
+from barks_reader.core.reader_file_paths import FileTypes
+from barks_reader.core.reader_settings import ReaderSettings
 from comic_utils.common_typer_options import LogLevelArg, TitleArg, VolumesArg
 from dotenv import load_dotenv
 from intspan import intspan

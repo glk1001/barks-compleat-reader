@@ -7,10 +7,10 @@ from comic_utils.timing import Timing
 from loguru import logger
 
 from barks_reader.background_views import ImageThemes
-from barks_reader.panel_image_loader import PanelImageLoader
-from barks_reader.random_title_images import ImageInfo, get_title_str
-from barks_reader.reader_consts_and_types import CLOSE_TO_ZERO
-from barks_reader.reader_formatter import get_clean_text_without_extra
+from barks_reader.core.random_title_images import ImageInfo, get_title_str
+from barks_reader.core.reader_consts_and_types import CLOSE_TO_ZERO
+from barks_reader.core.reader_formatter import get_clean_text_without_extra
+from barks_reader.panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -24,9 +24,9 @@ if TYPE_CHECKING:
 
     from barks_reader.background_views import BackgroundViews
     from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
+    from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.fun_image_view_screen import FunImageViewScreen
     from barks_reader.main_index_screen import MainIndexScreen
-    from barks_reader.reader_settings import ReaderSettings
     from barks_reader.speech_index_screen import SpeechIndexScreen
     from barks_reader.tree_view_screen import TreeViewScreen
     from barks_reader.view_states import ViewStates
@@ -68,13 +68,13 @@ class ViewStateManager:
 
         self._fun_image_view_screen.set_load_image_func(self._load_new_fun_view_image)
 
-        self._top_view_image_loader = PanelImageLoader(
+        self._top_view_texture_loader = PanelTextureLoader(
             self._reader_settings.file_paths.barks_panels_are_encrypted
         )
-        self._fun_view_image_loader = PanelImageLoader(
+        self._fun_view_texture_loader = PanelTextureLoader(
             self._reader_settings.file_paths.barks_panels_are_encrypted
         )
-        self._bottom_title_view_image_loader = PanelImageLoader(
+        self._bottom_title_view_texture_loader = PanelTextureLoader(
             self._reader_settings.file_paths.barks_panels_are_encrypted
         )
 
@@ -220,7 +220,7 @@ class ViewStateManager:
 
     @staticmethod
     def _load_texture(
-        image_loader: PanelImageLoader,
+        texture_loader: PanelTextureLoader,
         image_info: ImageInfo,
         apply_texture: Callable[[Texture], None],
     ) -> None:
@@ -242,7 +242,7 @@ class ViewStateManager:
             )
 
         assert image_info.filename is not None
-        image_loader.load_texture(image_filename, on_ready)  # ty:ignore[invalid-argument-type]
+        texture_loader.load_texture(image_filename, on_ready)  # ty:ignore[invalid-argument-type]
 
     def _set_top_view_image(self) -> None:
         """Set the image and properties for the top view (behind the TreeView)."""
@@ -262,7 +262,7 @@ class ViewStateManager:
 
             assert self._top_view_image_info.filename is not None
 
-        self._load_texture(self._top_view_image_loader, self._top_view_image_info, apply)
+        self._load_texture(self._top_view_texture_loader, self._top_view_image_info, apply)
 
         assert self._top_view_image_info.from_title is not None
         self._tree_view_screen.set_title(self._top_view_image_info.from_title)
@@ -303,13 +303,13 @@ class ViewStateManager:
             )
             self._fun_image_view_screen.image_texture = tex
 
-        self._load_texture(self._fun_view_image_loader, self._bottom_view_fun_image_info, apply)
+        self._load_texture(self._fun_view_texture_loader, self._bottom_view_fun_image_info, apply)
 
     def _load_new_fun_view_image(self, image_info: ImageInfo) -> None:
         def apply(tex: Texture) -> None:
             self._fun_image_view_screen.image_texture = tex
 
-        self._load_texture(self._fun_view_image_loader, image_info, apply)
+        self._load_texture(self._fun_view_texture_loader, image_info, apply)
 
         self._bottom_view_fun_image_info = image_info
         self._background_views.set_bottom_view_fun_image(image_info)
@@ -340,7 +340,7 @@ class ViewStateManager:
                 self._bottom_title_view_screen.title_image_texture = tex
 
             self._load_texture(
-                self._bottom_title_view_image_loader, self._bottom_view_title_image_info, apply
+                self._bottom_title_view_texture_loader, self._bottom_view_title_image_info, apply
             )
 
     def _set_index_view(self) -> None:

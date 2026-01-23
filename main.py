@@ -1,7 +1,7 @@
 # ruff: noqa: PLC0415, EXE002, E402
 # -------------------------------------------------------------------- #
 # --- We need to change the KIVY_HOME directory to be under this   --- #
-# --- app's settings directory. The 'barks_reader.config_info'     --- #
+# --- app's settings directory. The 'barks_reader.core.config_info'--- #
 # --- module handles this, and for this to work, we need to import --- #
 # --- it before any kivy imports.                                  --- #
 
@@ -19,7 +19,7 @@ from comic_utils.timing import Timing
 
 _timing = Timing()
 
-from barks_reader.config_info import (  # IMPORT THIS BEFORE Kivy!!
+from barks_reader.core.config_info import (  # IMPORT THIS BEFORE Kivy!!
     KIVY_LOGGING_NAME,
     ConfigInfo,
     barks_reader_installer_failed,
@@ -29,17 +29,17 @@ from barks_reader.config_info import (  # IMPORT THIS BEFORE Kivy!!
     log_level,
     setup_loguru,
 )
-from barks_reader.minimal_config_info import MinimalConfigOptions, get_minimal_config_options
-from barks_reader.platform_info import PLATFORM, Platform
-from barks_reader.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
-from barks_reader.reader_settings import (
+from barks_reader.core.minimal_config_info import MinimalConfigOptions, get_minimal_config_options
+from barks_reader.core.platform_info import PLATFORM, Platform
+from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
+from barks_reader.core.reader_settings import (
     BARKS_READER_SECTION,
     MAIN_WINDOW_HEIGHT,
     MAIN_WINDOW_LEFT,
     MAIN_WINDOW_TOP,
 )
-from barks_reader.reader_utils import get_best_window_height_fit, get_win_width_from_height
-from barks_reader.screen_metrics import SCREEN_METRICS
+from barks_reader.core.reader_utils import get_win_width_from_height
+from barks_reader.screen_metrics import SCREEN_METRICS, get_best_window_height_fit
 from dotenv import load_dotenv
 from loguru import logger
 

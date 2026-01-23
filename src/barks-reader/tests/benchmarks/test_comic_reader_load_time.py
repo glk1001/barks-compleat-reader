@@ -12,14 +12,13 @@ from threading import Event
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
-import barks_reader.comic_book_loader
 import barks_reader.comic_book_reader
 import pytest
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.comics_utils import get_dest_comic_zip_file_stem
-from barks_reader.comic_book_page_info import PageInfo
 from barks_reader.comic_book_reader import ComicBookReader
-from barks_reader.reader_consts_and_types import COMIC_BEGIN_PAGE
+from barks_reader.core.comic_book_page_info import PageInfo
+from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from loguru import logger
 from PIL import Image as PilImage
 
@@ -182,15 +181,11 @@ class TestComicReaderLoadTime:
             patch("barks_reader.comic_book_reader.get_image_stream"),
             patch("barks_reader.comic_book_reader.get_monitors") as mock_monitors,
             patch("kivy.uix.floatlayout.FloatLayout.add_widget"),
-            patch.object(barks_reader.comic_book_loader, "Clock") as mock_loader_clock,
             patch.object(barks_reader.comic_book_reader, "Clock") as mock_reader_clock,
             patch("pathlib.Path.open", new_callable=MagicMock) as mock_open,
-            patch("barks_reader.comic_book_loader.set_kivy_busy_cursor"),
-            patch("barks_reader.comic_book_loader.set_kivy_normal_cursor"),
         ):
             mock_monitors.return_value = [MagicMock(width=1920, height=1080)]
 
-            mock_loader_clock.schedule_once.side_effect = mock_schedule_once
             mock_reader_clock.schedule_once.side_effect = mock_schedule_once
 
             mock_file = MagicMock()

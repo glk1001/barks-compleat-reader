@@ -23,14 +23,14 @@ from kivy.uix.popup import Popup
 from kivy.uix.treeview import TreeView, TreeViewNode
 from loguru import logger
 
-from barks_reader.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
-from barks_reader.reader_formatter import (
+from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
+from barks_reader.core.reader_formatter import (
     ReaderFormatter,
     get_clean_text_without_extra,
     get_markup_text_with_num_titles,
     text_includes_num_titles,
 )
-from barks_reader.reader_utils import title_needs_footnote, unique_extend
+from barks_reader.core.reader_utils import title_needs_footnote, unique_extend
 
 if TYPE_CHECKING:
     from collections.abc import Callable

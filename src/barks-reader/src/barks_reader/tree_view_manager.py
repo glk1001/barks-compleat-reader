@@ -11,7 +11,7 @@ from kivy.clock import Clock
 from kivy.uix.treeview import TreeViewNode
 from loguru import logger
 
-from barks_reader.reader_formatter import get_clean_text_without_extra
+from barks_reader.core.reader_formatter import get_clean_text_without_extra
 from barks_reader.reader_ui_classes import (
     BaseTreeViewNode,
     ButtonTreeViewNode,

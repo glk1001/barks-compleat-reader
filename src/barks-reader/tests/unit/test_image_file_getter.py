@@ -4,8 +4,8 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from barks_reader.image_file_getter import TitleImageFileGetter
-from barks_reader.reader_file_paths import FileTypes
+from barks_reader.core.image_file_getter import TitleImageFileGetter
+from barks_reader.core.reader_file_paths import FileTypes
 
 
 @pytest.fixture

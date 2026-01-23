@@ -26,14 +26,14 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 from kivy.uix.boxlayout import BoxLayout
 from loguru import logger
 
+from barks_reader.core.random_title_images import ImageInfo, RandomTitleImages
+from barks_reader.core.reader_utils import get_concat_page_nums_str
 from barks_reader.index_screen import (
     IndexItemButton,
     IndexScreen,
     TitleItemButton,
 )
-from barks_reader.panel_image_loader import PanelImageLoader
-from barks_reader.random_title_images import ImageInfo, RandomTitleImages
-from barks_reader.reader_utils import get_concat_page_nums_str
+from barks_reader.panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -42,8 +42,8 @@ if TYPE_CHECKING:
     from kivy.core.image import Texture
     from kivy.uix.button import Button
 
+    from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.font_manager import FontManager
-    from barks_reader.reader_settings import ReaderSettings
 
 INDEX_ITEM_ROW_HEIGHT = dp(25)
 INDEX_IMAGE_CHANGE_SECONDS = 5
@@ -97,7 +97,9 @@ class MainIndexScreen(IndexScreen):
 
         self._font_manager = font_manager
         self._random_title_images = RandomTitleImages(reader_settings)
-        self._image_loader = PanelImageLoader(reader_settings.file_paths.barks_panels_are_encrypted)
+        self._image_loader = PanelTextureLoader(
+            reader_settings.file_paths.barks_panels_are_encrypted
+        )
         self._index_image_change_event = None
         self._cached_all_titles_for_letter: list[FantaComicBookInfo] = []
         self._cached_hierarchies: dict[Titles, TitleHierarchy] = {}

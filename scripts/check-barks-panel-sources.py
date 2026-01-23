@@ -9,9 +9,9 @@ from barks_fantagraphics.barks_titles import (
     BARKS_TITLE_DICT,
     FILENAME_TO_TITLE_SPECIAL_CASE_MAP,
 )
-from barks_reader.reader_consts_and_types import NO_OVERRIDES_SUFFIX
-from barks_reader.reader_file_paths import EDITED_SUBDIR, PanelDirNames, ReaderFilePaths
-from barks_reader.reader_utils import get_paths_from_directory
+from barks_reader.core.reader_consts_and_types import NO_OVERRIDES_SUFFIX
+from barks_reader.core.reader_file_paths import EDITED_SUBDIR, PanelDirNames, ReaderFilePaths
+from barks_reader.core.reader_utils import get_paths_from_directory
 from loguru import logger
 
 

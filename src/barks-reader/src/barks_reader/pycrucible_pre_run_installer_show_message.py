@@ -3,11 +3,11 @@
 from pathlib import Path
 from typing import Any
 
-from barks_reader.kivy_standalone_show_message import show_standalone_popup
-from barks_reader.reader_utils import (
+from barks_reader.core.reader_utils import (
     get_centred_position_on_primary_monitor,
     quote_and_join_with_and,
 )
+from barks_reader.kivy_standalone_show_message import show_standalone_popup
 
 DEFAULT_INSTALLER_POPUP_SIZE = (800, 1000)
 

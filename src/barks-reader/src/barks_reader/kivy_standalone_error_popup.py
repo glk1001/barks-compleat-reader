@@ -43,8 +43,8 @@ def show_error_popup(
         background_image_file: Image to put behind everything
 
     """
+    from barks_reader.core.reader_utils import get_centred_position_on_primary_monitor
     from barks_reader.kivy_standalone_show_message import show_standalone_popup
-    from barks_reader.reader_utils import get_centred_position_on_primary_monitor
 
     x, y = get_centred_position_on_primary_monitor(*size)
 
@@ -93,7 +93,7 @@ def _get_error_content(
     from kivy.uix.scrollview import ScrollView
     from kivy.uix.widget import Widget
 
-    from barks_reader.reader_formatter import get_text_with_markup_stripped
+    from barks_reader.core.reader_formatter import get_text_with_markup_stripped
 
     banner_header_font_size = sp(19)
     section_header_font_size = sp(16)

@@ -8,7 +8,7 @@ from pathlib import Path
 from loguru import logger
 from loguru_config import LoguruConfig
 
-from barks_reader.platform_info import PLATFORM, Platform
+from barks_reader.core.platform_info import PLATFORM, Platform
 
 APP_NAME = "barks-reader"
 
@@ -38,7 +38,7 @@ class ConfigInfo:
 
     # noinspection PyTypeChecker
     def __init__(self) -> None:
-        main_script_dir = Path(__file__).parent.parent.parent.parent.parent
+        main_script_dir = Path(__file__).parent.parent.parent.parent.parent.parent
         assert (main_script_dir / "main.py").is_file()
         self.is_running_under_pycrucible = main_script_dir.name == "pycrucible_payload"
 

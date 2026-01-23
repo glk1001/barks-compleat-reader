@@ -52,6 +52,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "import-linter>=2.9",
     "pyarmor>=9.2.0",
     "pycrucible>=0.3.0",
     "pyinstrument>=5.1.1",

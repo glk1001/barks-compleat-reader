@@ -6,14 +6,15 @@ from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
+from barks_reader import app_initializer as app_initializer_module
 
 # noinspection PyProtectedMember
 from barks_reader.app_initializer import AppInitializer, _FantaVolumesState
-from barks_reader.fantagraphics_volumes import (
+from barks_reader.core.fantagraphics_volumes import (
     TooManyArchiveFilesError,
     WrongFantagraphicsVolumeError,
 )
-from barks_reader.reader_settings import UNSET_FANTA_DIR_MARKER
+from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
 from barks_reader.reader_ui_classes import BaseTreeViewNode
 from barks_reader.user_error_handler import ErrorTypes
 from barks_reader.view_states import ViewStates
@@ -43,7 +44,7 @@ class TestAppInitializer:
         mock_tree_builder = MagicMock()
         mock_callback = MagicMock()
 
-        with patch("barks_reader.app_initializer.Clock") as mock_clock:
+        with patch.object(app_initializer_module, "Clock") as mock_clock:
             app_initializer.start(mock_tree_builder, mock_callback)
 
             mock_clock.schedule_once.assert_called_once()
@@ -59,7 +60,9 @@ class TestAppInitializer:
         # noinspection PyProtectedMember
         app_initializer._on_tree_build_finished = mock_callback
 
-        with patch.object(app_initializer, "_post_build_setup") as mock_post_setup:
+        with patch.object(
+            app_initializer, AppInitializer._post_build_setup.__name__
+        ) as mock_post_setup:
             app_initializer.on_tree_build_finished(MagicMock())
 
             mock_callback.assert_called_once()
@@ -73,7 +76,7 @@ class TestAppInitializer:
 
         # Mock _init_comic_book_data to return True
         with patch.object(
-            app_initializer, "_init_comic_book_data", return_value=True
+            app_initializer, AppInitializer._init_comic_book_data.__name__, return_value=True
         ) as mock_init_data:
             # noinspection PyProtectedMember
             app_initializer._post_build_setup()
@@ -97,7 +100,9 @@ class TestAppInitializer:
         mock_dependencies["reader_settings"].goto_saved_node_on_start = False
         mock_dependencies["reader_settings"].fantagraphics_volumes_dir = UNSET_FANTA_DIR_MARKER
 
-        with patch.object(app_initializer, "_handle_error_ui") as mock_handle_error:
+        with patch.object(
+            app_initializer, AppInitializer._handle_error_ui.__name__
+        ) as mock_handle_error:
             # noinspection PyProtectedMember
             app_initializer._post_build_setup()
 
@@ -116,7 +121,9 @@ class TestAppInitializer:
         mock_path.is_dir.return_value = False
         mock_dependencies["reader_settings"].fantagraphics_volumes_dir = mock_path
 
-        with patch.object(app_initializer, "_handle_error_ui") as mock_handle_error:
+        with patch.object(
+            app_initializer, AppInitializer._handle_error_ui.__name__
+        ) as mock_handle_error:
             # noinspection PyProtectedMember
             app_initializer._post_build_setup()
 
@@ -139,7 +146,9 @@ class TestAppInitializer:
         mock_node = MagicMock(spec=BaseTreeViewNode)
         mock_dependencies["tree_view_screen"].find_node_by_path.return_value = mock_node
 
-        with patch.object(app_initializer, "_init_comic_book_data", return_value=True):
+        with patch.object(
+            app_initializer, AppInitializer._init_comic_book_data.__name__, return_value=True
+        ):
             # noinspection PyProtectedMember
             app_initializer._post_build_setup()
 
@@ -164,7 +173,9 @@ class TestAppInitializer:
         error = WrongFantagraphicsVolumeError(Path("file"), 1, 2, Path("/root"))
         mock_dependencies["comic_reader_manager"].init_comic_book_data.side_effect = error
 
-        with patch.object(app_initializer, "_handle_error_ui") as mock_handle_error:
+        with patch.object(
+            app_initializer, AppInitializer._handle_error_ui.__name__
+        ) as mock_handle_error:
             # noinspection PyProtectedMember
             assert app_initializer._init_comic_book_data() is False
 
@@ -184,7 +195,9 @@ class TestAppInitializer:
         error = TooManyArchiveFilesError(10, 12, Path("/root"))
         mock_dependencies["comic_reader_manager"].init_comic_book_data.side_effect = error
 
-        with patch.object(app_initializer, "_handle_error_ui") as mock_handle_error:
+        with patch.object(
+            app_initializer, AppInitializer._handle_error_ui.__name__
+        ) as mock_handle_error:
             # noinspection PyProtectedMember
             assert app_initializer._init_comic_book_data() is False
 
@@ -203,7 +216,9 @@ class TestAppInitializer:
         # noinspection PyProtectedMember
         app_initializer._fanta_volumes_state = _FantaVolumesState.VOLUMES_MISSING
 
-        with patch.object(app_initializer, "_handle_error_ui") as mock_handle_error:
+        with patch.object(
+            app_initializer, AppInitializer._handle_error_ui.__name__
+        ) as mock_handle_error:
             ok, reason = app_initializer.is_fanta_volumes_state_ok()
             assert ok is False
             assert reason == "Fantagraphics Directory Not Found"

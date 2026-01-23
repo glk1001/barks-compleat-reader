@@ -15,12 +15,12 @@ from kivy.uix.boxlayout import BoxLayout
 from loguru import logger
 from screeninfo import get_monitors
 
-from barks_reader.random_title_images import FIT_MODE_CONTAIN, ImageInfo
-from barks_reader.reader_navigation import ReaderNavigation
-from barks_reader.reader_settings import (
+from barks_reader.core.random_title_images import FIT_MODE_CONTAIN, ImageInfo
+from barks_reader.core.reader_settings import (
     BARKS_READER_SECTION,
     SHOW_FUN_VIEW_TITLE_INFO,
 )
+from barks_reader.reader_navigation import ReaderNavigation
 from barks_reader.reader_ui_classes import ARROW_WIDTH
 from barks_reader.settings_notifier import settings_notifier
 
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
     from kivy.input import MotionEvent
 
-    from barks_reader.reader_settings import ReaderSettings
+    from barks_reader.core.reader_settings import ReaderSettings
 
 FUN_IMAGE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 

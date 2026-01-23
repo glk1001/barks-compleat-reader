@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
-from barks_reader.reader_consts_and_types import COMIC_BEGIN_PAGE
+from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -27,7 +27,7 @@ class TestBottomTitleViewScreen:
         self.mock_font_manager = MagicMock()
 
         # Patch dependencies
-        self.patcher_loader = patch("barks_reader.bottom_title_view_screen.PanelImageLoader")
+        self.patcher_loader = patch("barks_reader.bottom_title_view_screen.PanelTextureLoader")
         self.mock_loader_cls = self.patcher_loader.start()
         self.mock_loader = self.mock_loader_cls.return_value
 

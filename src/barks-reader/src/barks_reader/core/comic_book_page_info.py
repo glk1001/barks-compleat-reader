@@ -13,7 +13,7 @@ from barks_fantagraphics.pages import (
 )
 from comic_utils.comic_consts import JSON_FILE_EXT
 
-from barks_reader.reader_settings import ReaderSettings
+from barks_reader.core.reader_settings import ReaderSettings
 
 
 @dataclass

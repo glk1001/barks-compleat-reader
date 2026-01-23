@@ -1,0 +1,3 @@
+<component name="DependencyValidationManager">
+  <scope name="third_party_code" pattern="file[barks-compleat-reader]:src/comic-utils/src/comic_utils/cpi*" />
+</component>

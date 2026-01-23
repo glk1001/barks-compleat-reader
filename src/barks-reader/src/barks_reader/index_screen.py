@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from kivy.uix.gridlayout import GridLayout
     from kivy.uix.widget import Widget
 
-    from barks_reader.random_title_images import ImageInfo
+    from barks_reader.core.random_title_images import ImageInfo
 
 MAX_TITLE_AND_PAGES_LEN = 34 + 8  # len(", 11,...") == 8
 

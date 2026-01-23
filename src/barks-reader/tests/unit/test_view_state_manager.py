@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.background_views import ImageThemes
-from barks_reader.random_title_images import FIT_MODE_COVER, ImageInfo
+from barks_reader.core.random_title_images import FIT_MODE_COVER, ImageInfo
 from barks_reader.view_state_manager import (
     ImageThemesChange,
     ImageThemesToUse,
@@ -39,8 +39,8 @@ def mock_dependencies() -> dict[str, MagicMock]:
 def view_state_manager(
     mock_dependencies: dict[str, MagicMock],
 ) -> Generator[ViewStateManager]:
-    # Patch PanelImageLoader to avoid actual image loading logic
-    with patch("barks_reader.view_state_manager.PanelImageLoader") as mock_loader_cls:
+    # Patch PanelTextureLoader to avoid actual image loading logic
+    with patch("barks_reader.view_state_manager.PanelTextureLoader") as mock_loader_cls:
         # Configure mock loader instance
         mock_loader = mock_loader_cls.return_value
 

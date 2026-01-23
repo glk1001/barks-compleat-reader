@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import json
 import re
 import subprocess
@@ -19,24 +18,15 @@ from comic_utils.comic_consts import ROMAN_NUMERALS
 from comic_utils.pil_image_utils import PNG_PIL_FORMAT
 from intspan import intspan
 
-from barks_reader.screen_metrics import get_approximate_taskbar_height
-
 if TYPE_CHECKING:
     from barks_fantagraphics.pages import CleanPage
     from comic_utils.comic_consts import PanelPath
-
-    # noinspection PyProtectedMember
-    from kivy.core.image import Texture
 
 COMIC_PAGE_ASPECT_RATIO = 3200.0 / 2120.0
 
 EMPTY_PAGE_KEY = "empty_page"
 PNG_EXT_FOR_KIVY = PNG_PIL_FORMAT.lower()
 ROMAN_NUMERALS_SET = set(ROMAN_NUMERALS.values())
-
-
-def get_best_window_height_fit(screen_height: int) -> int:
-    return screen_height - get_approximate_taskbar_height()
 
 
 def get_win_width_from_height(win_height: int) -> int:
@@ -58,18 +48,6 @@ def title_needs_footnote(fanta_info: FantaComicBookInfo) -> bool:
         and (fanta_info.comic_book_info.issue_name == Issues.CS)
         and (fanta_info.comic_book_info.title in US_CENSORED_TITLE_ENUMS)
     )
-
-
-def get_image_stream(file: PanelPath) -> Texture:
-    from kivy.core.image import Image as CoreImage  # noqa: PLC0415
-
-    if isinstance(file, Path):
-        return CoreImage(str(file)).texture
-
-    zip_bytes = file.read_bytes()
-    image_stream = io.BytesIO(zip_bytes)
-    image_stream.seek(0)
-    return CoreImage(image_stream, ext=PNG_EXT_FOR_KIVY).texture
 
 
 def prob_rand_less_equal(percent: int) -> bool:

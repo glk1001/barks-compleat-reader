@@ -3,8 +3,8 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_reader import reader_formatter
-from barks_reader.reader_formatter import INVISIBLE_BREAK
+from barks_reader.core import reader_formatter
+from barks_reader.core.reader_formatter import INVISIBLE_BREAK
 
 
 def test_hyphenate_text() -> None:
@@ -66,8 +66,8 @@ def test_get_formatted_color() -> None:
     assert result == "(0.10, 0.50, 0.90, 1.00)"
 
 
-@patch("barks_reader.reader_formatter.inflate")
-@patch("barks_reader.reader_formatter.datetime")
+@patch.object(reader_formatter, reader_formatter.inflate.__name__)
+@patch.object(reader_formatter, reader_formatter.datetime.__name__)
 def test_get_formatted_payment_info(mock_datetime: MagicMock, mock_inflate: MagicMock) -> None:
     # Setup mocks
     mock_now = MagicMock()
@@ -196,9 +196,11 @@ class TestReaderFormatterClass:
             == "Title[sup]*[/sup]"
         )
 
-    @patch("barks_reader.reader_formatter.escape_markup")
-    @patch("barks_reader.reader_formatter.get_short_formatted_first_published_str")
-    @patch("barks_reader.reader_formatter.get_short_submitted_day_and_month")
+    @patch.object(reader_formatter, reader_formatter.escape_markup.__name__)
+    @patch.object(
+        reader_formatter, reader_formatter.get_short_formatted_first_published_str.__name__
+    )
+    @patch.object(reader_formatter, reader_formatter.get_short_submitted_day_and_month.__name__)
     def test_get_issue_info(
         self,
         mock_short_sub: MagicMock,
@@ -231,8 +233,8 @@ class TestReaderFormatterClass:
         )
         assert "[sup]*[/sup]" in res_foot
 
-    @patch("barks_reader.reader_formatter.escape_markup")
-    @patch("barks_reader.reader_formatter.get_short_submitted_day_and_month")
+    @patch.object(reader_formatter, reader_formatter.escape_markup.__name__)
+    @patch.object(reader_formatter, reader_formatter.get_short_submitted_day_and_month.__name__)
     def test_get_formatted_submitted_str(
         self, mock_short_sub: MagicMock, mock_escape: MagicMock
     ) -> None:
@@ -245,12 +247,12 @@ class TestReaderFormatterClass:
         res = reader_formatter.ReaderFormatter.get_formatted_submitted_str(info, "blue")
         assert res == " E[01 Jan [b][color=blue]2000[/color][/b]E]"
 
-    @patch("barks_reader.reader_formatter.FAN", "FAN_ICON")
-    @patch("barks_reader.reader_formatter.BARKS_PAYMENTS")
-    @patch("barks_reader.reader_formatter.FANTA_SOURCE_COMICS")
-    @patch("barks_reader.reader_formatter.get_formatted_first_published_str")
-    @patch("barks_reader.reader_formatter.get_long_formatted_submitted_date")
-    @patch("barks_reader.reader_formatter.get_formatted_payment_info")
+    @patch.object(reader_formatter, "FAN", "FAN_ICON")
+    @patch.object(reader_formatter, "BARKS_PAYMENTS")
+    @patch.object(reader_formatter, "FANTA_SOURCE_COMICS")
+    @patch.object(reader_formatter, reader_formatter.get_formatted_first_published_str.__name__)
+    @patch.object(reader_formatter, reader_formatter.get_long_formatted_submitted_date.__name__)
+    @patch.object(reader_formatter, reader_formatter.get_formatted_payment_info.__name__)
     def test_get_title_info(
         self,
         mock_get_payment: MagicMock,
@@ -296,7 +298,7 @@ class TestReaderFormatterClass:
         res = self.formatter.get_title_info(fanta_info, 50, add_footnote=True)
         assert "[sup]*[/sup]" in res
 
-    @patch("barks_reader.reader_formatter.BARKS_EXTRA_INFO")
+    @patch.object(reader_formatter, "BARKS_EXTRA_INFO")
     def test_get_title_extra_info(self, mock_extra_info: MagicMock) -> None:
         fanta_info = MagicMock()
         fanta_info.comic_book_info.title = "KnownTitle"

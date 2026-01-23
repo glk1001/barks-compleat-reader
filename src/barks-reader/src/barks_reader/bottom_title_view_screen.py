@@ -15,11 +15,11 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 from kivy.uix.floatlayout import FloatLayout
 from loguru import logger
 
-from barks_reader.panel_image_loader import PanelImageLoader
-from barks_reader.random_title_images import FIT_MODE_COVER
-from barks_reader.reader_consts_and_types import COMIC_BEGIN_PAGE
-from barks_reader.reader_formatter import LONG_TITLE_SPLITS, ReaderFormatter
-from barks_reader.reader_utils import title_needs_footnote
+from barks_reader.core.random_title_images import FIT_MODE_COVER
+from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
+from barks_reader.core.reader_formatter import LONG_TITLE_SPLITS, ReaderFormatter
+from barks_reader.core.reader_utils import title_needs_footnote
+from barks_reader.panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
@@ -28,8 +28,8 @@ if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from kivy.core.image import Texture
 
+    from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.font_manager import FontManager
-    from barks_reader.reader_settings import ReaderSettings
     from barks_reader.special_overrides_handler import SpecialFantaOverrides
 
 BOTTOM_TITLE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
@@ -76,7 +76,7 @@ class BottomTitleViewScreen(FloatLayout):
     ) -> None:
         super().__init__(**kwargs)
         self._reader_settings = reader_settings
-        self._image_loader = PanelImageLoader(
+        self._texture_loader = PanelTextureLoader(
             self._reader_settings.file_paths.barks_panels_are_encrypted
         )
         self._formatter = ReaderFormatter(font_manager)
@@ -166,7 +166,7 @@ class BottomTitleViewScreen(FloatLayout):
                 f"Time taken to set title inset image: {timing.get_elapsed_time_with_unit()}."
             )
 
-        self._image_loader.load_texture(inset_image_source, on_ready)
+        self._texture_loader.load_texture(inset_image_source, on_ready)
 
     @staticmethod
     def _get_main_title_str(fanta_info: FantaComicBookInfo) -> str:

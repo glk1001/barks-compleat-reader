@@ -13,8 +13,8 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 )
 from kivy.uix.boxlayout import BoxLayout
 
-from barks_reader.random_title_images import FIT_MODE_COVER
-from barks_reader.reader_settings import BARKS_READER_SECTION, SHOW_TOP_VIEW_TITLE_INFO
+from barks_reader.core.random_title_images import FIT_MODE_COVER
+from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_TOP_VIEW_TITLE_INFO
 from barks_reader.reader_tree_view_utils import find_node_by_path
 from barks_reader.reader_ui_classes import ARROW_WIDTH, BaseTreeViewNode
 from barks_reader.settings_notifier import settings_notifier
@@ -22,7 +22,7 @@ from barks_reader.settings_notifier import settings_notifier
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from barks_reader.reader_settings import ReaderSettings
+    from barks_reader.core.reader_settings import ReaderSettings
 
 TREE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 

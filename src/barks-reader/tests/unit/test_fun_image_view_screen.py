@@ -8,8 +8,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
+from barks_reader.core.random_title_images import FIT_MODE_CONTAIN, ImageInfo
 from barks_reader.fun_image_view_screen import FunImageViewScreen
-from barks_reader.random_title_images import FIT_MODE_CONTAIN, ImageInfo
 
 if TYPE_CHECKING:
     from collections.abc import Generator

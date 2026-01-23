@@ -7,11 +7,11 @@ from comic_utils.timing import Timing
 from kivy.clock import Clock
 from loguru import logger
 
-from barks_reader.fantagraphics_volumes import (
+from barks_reader.core.fantagraphics_volumes import (
     TooManyArchiveFilesError,
     WrongFantagraphicsVolumeError,
 )
-from barks_reader.reader_settings import UNSET_FANTA_DIR_MARKER
+from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
 from barks_reader.reader_ui_classes import BaseTreeViewNode
 from barks_reader.user_error_handler import ErrorInfo, ErrorTypes
 from barks_reader.view_states import ViewStates
@@ -24,8 +24,8 @@ if TYPE_CHECKING:
     from kivy.uix.widget import Widget
 
     from barks_reader.comic_reader_manager import ComicReaderManager
+    from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.json_settings_manager import SettingsManager
-    from barks_reader.reader_settings import ReaderSettings
     from barks_reader.reader_tree_builder import ReaderTreeBuilder
     from barks_reader.tree_view_manager import TreeViewManager
     from barks_reader.tree_view_screen import TreeViewScreen

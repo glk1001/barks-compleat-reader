@@ -76,7 +76,7 @@ def test_get_view_state_from_node_text_static_mappings() -> None:
     assert state == ViewStates.ON_DD_NODE
 
 
-@patch("barks_reader.view_states.BARKS_TAG_CATEGORIES_DICT", {"My Category": "val"})
+@patch.object(view_states, "BARKS_TAG_CATEGORIES_DICT", {"My Category": "val"})
 def test_get_view_state_category() -> None:
     node = create_dummy_node(ButtonTreeViewNode, "My Category")
     state, params = view_states.get_view_state_from_node(node)
@@ -84,8 +84,8 @@ def test_get_view_state_category() -> None:
     assert params == {"category": "My Category"}
 
 
-@patch("barks_reader.view_states.is_tag_group_enum")
-@patch("barks_reader.view_states.TagGroups")
+@patch.object(view_states, "is_tag_group_enum")
+@patch.object(view_states, "TagGroups")
 def test_get_view_state_tag_group(mock_tag_groups: MagicMock, mock_is_group: MagicMock) -> None:
     mock_is_group.return_value = True
     node = create_dummy_node(ButtonTreeViewNode, "Some Tag Group")
@@ -97,8 +97,8 @@ def test_get_view_state_tag_group(mock_tag_groups: MagicMock, mock_is_group: Mag
     mock_tag_groups.assert_called_with("Some Tag Group")
 
 
-@patch("barks_reader.view_states.is_tag_enum")
-@patch("barks_reader.view_states.Tags")
+@patch.object(view_states, "is_tag_enum")
+@patch.object(view_states, "Tags")
 def test_get_view_state_tag(mock_tags: MagicMock, mock_is_tag: MagicMock) -> None:
     mock_is_tag.return_value = True
     node = create_dummy_node(ButtonTreeViewNode, "Some Tag")
