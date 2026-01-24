@@ -20,9 +20,9 @@ from barks_reader.core.reader_settings import (
     BARKS_READER_SECTION,
     SHOW_FUN_VIEW_TITLE_INFO,
 )
+from barks_reader.core.settings_notifier import settings_notifier
 from barks_reader.reader_navigation import ReaderNavigation
 from barks_reader.reader_ui_classes import ARROW_WIDTH
-from barks_reader.settings_notifier import settings_notifier
 
 if TYPE_CHECKING:
     from collections.abc import Callable

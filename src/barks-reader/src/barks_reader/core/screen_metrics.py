@@ -14,6 +14,10 @@ def get_approximate_taskbar_height() -> int:
     return 60
 
 
+def get_best_window_height_fit(screen_height: int) -> int:
+    return screen_height - get_approximate_taskbar_height()
+
+
 @dataclass
 class ScreenInfo:
     display: int
@@ -104,36 +108,3 @@ class ScreenMetrics:
 
 
 SCREEN_METRICS = ScreenMetrics()
-
-
-def log_screen_metrics() -> None:
-    from kivy.metrics import cm, dp, inch, sp  # noqa: PLC0415
-
-    logger.info("--- Detailed Monitor Metrics ---")
-
-    for info in SCREEN_METRICS.SCREEN_INFO:
-        logger.info(
-            f"Display {info.display}: {info.width_pixels} x {info.height_pixels} pixels"
-            f" at ({info.monitor_x}, {info.monitor_y})."
-        )
-        logger.info(
-            f"  -> Physical Size: {info.width_mm}mm x {info.height_mm}mm"
-            f" ({info.width_in:.2f}in x {info.height_in:.2f}in)."
-        )
-        logger.info(f"  -> Calculated DPI: {info.dpi:.2f}.")
-        logger.info(f"  -> Primary: {info.is_primary}.")
-
-    logger.info(f"1 cm = {cm(1):.1f} pixels.")
-    logger.info(f"1 in = {inch(1):.1f} pixels.")
-    logger.info(f"100 dp = {dp(100):.1f} pixels.")
-    logger.info(f"100 sp = {sp(100):.1f} pixels.")
-
-    logger.info("--------------------------------")
-
-
-if __name__ == "__main__":
-    log_screen_metrics()
-
-
-def get_best_window_height_fit(screen_height: int) -> int:
-    return screen_height - get_approximate_taskbar_height()

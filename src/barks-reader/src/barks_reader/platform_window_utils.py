@@ -1,16 +1,21 @@
+from __future__ import annotations
+
 import ctypes
 import os
-from collections.abc import Callable
 from ctypes import c_long, wintypes
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from kivy.clock import Clock
 from kivy.core.window import Window
 from loguru import logger
 
 from barks_reader.core.platform_info import PLATFORM, Platform
+from barks_reader.core.screen_metrics import SCREEN_METRICS
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # Small timeout for non-Windows platforms to let the window system settle.
 _RESTORE_GEOMETRY_TIMEOUT = 0.05
@@ -340,3 +345,32 @@ class WindowManager:
             )
         except Exception as e:  # noqa: BLE001
             logger.error(f"Win32 MoveWindow failed: {e}")
+
+
+def log_screen_metrics() -> None:
+    from kivy.metrics import cm, dp, inch, sp  # noqa: PLC0415
+
+    logger.info("--- Detailed Monitor Metrics ---")
+
+    for info in SCREEN_METRICS.SCREEN_INFO:
+        logger.info(
+            f"Display {info.display}: {info.width_pixels} x {info.height_pixels} pixels"
+            f" at ({info.monitor_x}, {info.monitor_y})."
+        )
+        logger.info(
+            f"  -> Physical Size: {info.width_mm}mm x {info.height_mm}mm"
+            f" ({info.width_in:.2f}in x {info.height_in:.2f}in)."
+        )
+        logger.info(f"  -> Calculated DPI: {info.dpi:.2f}.")
+        logger.info(f"  -> Primary: {info.is_primary}.")
+
+    logger.info(f"1 cm = {cm(1):.1f} pixels.")
+    logger.info(f"1 in = {inch(1):.1f} pixels.")
+    logger.info(f"100 dp = {dp(100):.1f} pixels.")
+    logger.info(f"100 sp = {sp(100):.1f} pixels.")
+
+    logger.info("--------------------------------")
+
+
+if __name__ == "__main__":
+    log_screen_metrics()

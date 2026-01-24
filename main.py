@@ -39,7 +39,7 @@ from barks_reader.core.reader_settings import (
     MAIN_WINDOW_TOP,
 )
 from barks_reader.core.reader_utils import get_win_width_from_height
-from barks_reader.screen_metrics import SCREEN_METRICS, get_best_window_height_fit
+from barks_reader.core.screen_metrics import SCREEN_METRICS, get_best_window_height_fit
 from dotenv import load_dotenv
 from loguru import logger
 

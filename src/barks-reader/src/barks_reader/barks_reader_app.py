@@ -28,6 +28,11 @@ from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING, OPTIONS_SETTING
 from barks_reader.core.reader_settings import BARKS_READER_SECTION
 from barks_reader.core.reader_utils import get_win_width_from_height
+from barks_reader.core.screen_metrics import (
+    SCREEN_METRICS,
+    get_best_window_height_fit,
+)
+from barks_reader.core.settings_notifier import settings_notifier
 from barks_reader.error_handling import handle_app_fail_with_traceback
 from barks_reader.font_manager import FontManager
 from barks_reader.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, FunImageViewScreen
@@ -37,6 +42,7 @@ from barks_reader.intro_compleat_barks_reader import (
 )
 from barks_reader.main_index_screen import MainIndexScreen
 from barks_reader.main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
+from barks_reader.platform_window_utils import log_screen_metrics
 from barks_reader.reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     INTRO_COMPLEAT_BARKS_READER_SCREEN,
@@ -53,13 +59,7 @@ from barks_reader.reader_ui_classes import (
     set_kivy_busy_cursor,
     set_kivy_normal_cursor,
 )
-from barks_reader.screen_metrics import (
-    SCREEN_METRICS,
-    get_best_window_height_fit,
-    log_screen_metrics,
-)
 from barks_reader.settings_fix import SettingLongPath, SettingOptionsWithValue
-from barks_reader.settings_notifier import settings_notifier
 from barks_reader.speech_index_screen import SpeechIndexScreen
 from barks_reader.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
 

@@ -41,7 +41,7 @@ from barks_reader.core.reader_utils import (
     get_win_width_from_height,
 )
 from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
-from barks_reader.platform_utils import WindowManager
+from barks_reader.platform_window_utils import WindowManager
 from barks_reader.reader_screens import ReaderScreen
 from barks_reader.reader_tree_builder import ReaderTreeBuilder
 from barks_reader.reader_tree_view_utils import find_tree_view_title_node

@@ -31,7 +31,7 @@ from barks_reader.core.comic_book_loader import ComicBookLoader
 from barks_reader.core.reader_consts_and_types import CLOSE_TO_ZERO, COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, get_win_width_from_height
-from barks_reader.platform_utils import WindowManager
+from barks_reader.platform_window_utils import WindowManager
 from barks_reader.reader_navigation import ReaderNavigation
 from barks_reader.reader_screens import ReaderScreen
 from barks_reader.reader_ui_classes import ACTION_BAR_SIZE_Y
