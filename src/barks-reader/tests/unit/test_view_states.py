@@ -4,8 +4,8 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_reader import view_states
-from barks_reader.reader_ui_classes import (
+from barks_reader.ui import view_states
+from barks_reader.ui.reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
     TagSearchBoxTreeViewNode,
@@ -13,7 +13,7 @@ from barks_reader.reader_ui_classes import (
     UsYearRangeTreeViewNode,
     YearRangeTreeViewNode,
 )
-from barks_reader.view_states import ViewStates
+from barks_reader.ui.view_states import ViewStates
 
 
 def create_dummy_node(cls: type, text: str = "") -> Any:  # noqa: ANN401

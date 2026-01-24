@@ -33,7 +33,7 @@ from barks_reader.core.random_title_images import FIT_MODE_COVER, ImageInfo, Ran
 from barks_reader.core.reader_colors import RandomColorTint
 from barks_reader.core.reader_file_paths import ALL_TYPES, FileTypes
 from barks_reader.core.reader_formatter import get_formatted_color
-from barks_reader.view_states import ViewStates
+from barks_reader.ui.view_states import ViewStates
 
 if TYPE_CHECKING:
     from comic_utils.comic_consts import PanelPath

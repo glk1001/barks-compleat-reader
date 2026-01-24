@@ -11,7 +11,7 @@ from typing import Any
 from barks_fantagraphics.comics_consts import ROBOTO_FONT
 from loguru import logger
 
-from barks_reader.kivy_standalone_show_message import divider_line
+from barks_reader.ui.kivy_standalone_show_message import divider_line
 
 DEFAULT_ERROR_POPUP_SIZE = (800, 1000)
 
@@ -44,7 +44,7 @@ def show_error_popup(
 
     """
     from barks_reader.core.reader_utils import get_centred_position_on_primary_monitor
-    from barks_reader.kivy_standalone_show_message import show_standalone_popup
+    from barks_reader.ui.kivy_standalone_show_message import show_standalone_popup
 
     x, y = get_centred_position_on_primary_monitor(*size)
 

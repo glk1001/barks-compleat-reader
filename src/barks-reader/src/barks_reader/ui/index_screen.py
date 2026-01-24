@@ -15,7 +15,7 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.popup import Popup
 from loguru import logger
 
-from barks_reader.reader_ui_classes import ARROW_WIDTH, MainTreeViewNode
+from barks_reader.ui.reader_ui_classes import ARROW_WIDTH, MainTreeViewNode
 
 if TYPE_CHECKING:
     from collections.abc import Callable

@@ -28,12 +28,12 @@ from loguru import logger
 
 from barks_reader.core.random_title_images import ImageInfo, RandomTitleImages
 from barks_reader.core.reader_utils import get_concat_page_nums_str
-from barks_reader.index_screen import (
+from barks_reader.ui.index_screen import (
     IndexItemButton,
     IndexScreen,
     TitleItemButton,
 )
-from barks_reader.panel_texture_loader import PanelTextureLoader
+from barks_reader.ui.panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     from kivy.uix.button import Button
 
     from barks_reader.core.reader_settings import ReaderSettings
-    from barks_reader.font_manager import FontManager
+    from barks_reader.ui.font_manager import FontManager
 
 INDEX_ITEM_ROW_HEIGHT = dp(25)
 INDEX_IMAGE_CHANGE_SECONDS = 5

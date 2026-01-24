@@ -58,7 +58,7 @@ def handle_app_fail(
     background_image_file: Path | None,
     show_details: bool = False,
 ) -> None:
-    from barks_reader.kivy_standalone_error_popup import show_error_popup  # noqa: PLC0415
+    from barks_reader.ui.kivy_standalone_error_popup import show_error_popup  # noqa: PLC0415
 
     show_error_popup(
         title_bar_text=app_type.capitalize(),

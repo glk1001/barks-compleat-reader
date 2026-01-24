@@ -6,10 +6,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
+import barks_reader.ui.fun_image_view_screen
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.random_title_images import FIT_MODE_CONTAIN, ImageInfo
-from barks_reader.fun_image_view_screen import FunImageViewScreen
+from barks_reader.ui.fun_image_view_screen import FunImageViewScreen
+from kivy.uix.boxlayout import BoxLayout
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -26,8 +28,8 @@ class TestFunImageViewScreen:
 
         # Mock dependencies used in __init__
         with (
-            patch("barks_reader.fun_image_view_screen.ReaderNavigation") as mock_nav_cls,
-            patch("kivy.uix.boxlayout.BoxLayout.__init__", autospec=True) as mock_layout_init,
+            patch.object(barks_reader.ui.fun_image_view_screen, "ReaderNavigation") as mock_nav_cls,
+            patch.object(BoxLayout, "__init__", autospec=True) as mock_layout_init,
         ):
             mock_nav_instance = mock_nav_cls.return_value
 

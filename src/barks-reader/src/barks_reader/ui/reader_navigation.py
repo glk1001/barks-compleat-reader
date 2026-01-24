@@ -1,6 +1,6 @@
 from loguru import logger
 
-from barks_reader.platform_window_utils import WindowManager
+from barks_reader.ui.platform_window_utils import WindowManager
 
 
 class ReaderNavigation:

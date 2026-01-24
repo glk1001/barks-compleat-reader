@@ -40,7 +40,7 @@ from barks_reader.core.reader_consts_and_types import (
     THE_STORIES_NODE_TEXT,
 )
 from barks_reader.core.reader_formatter import get_clean_text_without_extra
-from barks_reader.reader_ui_classes import (
+from barks_reader.ui.reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
     TagSearchBoxTreeViewNode,

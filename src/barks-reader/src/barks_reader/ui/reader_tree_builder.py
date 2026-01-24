@@ -65,7 +65,7 @@ from barks_reader.core.reader_formatter import (
     get_markup_text_with_num_titles,
 )
 from barks_reader.core.reader_utils import read_title_list
-from barks_reader.reader_ui_classes import (
+from barks_reader.ui.reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
     MainTreeViewNode,
@@ -87,7 +87,7 @@ if TYPE_CHECKING:
     from kivy.uix.treeview import TreeViewNode
 
     from barks_reader.core.reader_settings import ReaderSettings
-    from barks_reader.tree_view_manager import TreeViewManager
+    from barks_reader.ui.tree_view_manager import TreeViewManager
 
 BUTTON_ON_PRESS_CALLABLE = Callable[[Button], None]
 

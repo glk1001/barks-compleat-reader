@@ -45,7 +45,7 @@ def show_standalone_popup(  # noqa: PLR0915
     from kivy.uix.popup import Popup
     from kivy.uix.widget import Widget
 
-    from barks_reader.comic_book_reader import get_image_stream
+    from barks_reader.ui.comic_book_reader import get_image_stream
 
     app_already_running = (App.get_running_app() is not None) and (EventLoop.status == "started")
 

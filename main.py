@@ -63,7 +63,7 @@ def handle_uncaught_exception(exc_type, exc_value, exc_traceback) -> None:  # no
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
 
-    from barks_reader.error_handling import handle_app_fail_with_traceback
+    from barks_reader.ui.error_handling import handle_app_fail_with_traceback
 
     logger.critical("Uncaught exception in main thread.")
     handle_app_fail_with_traceback(
@@ -76,7 +76,7 @@ sys.excepthook = handle_uncaught_exception
 
 def handle_thread_exception(args) -> None:  # noqa: ANN001
     """Handle exceptions raised in background threads."""
-    from barks_reader.error_handling import handle_app_fail_with_traceback
+    from barks_reader.ui.error_handling import handle_app_fail_with_traceback
 
     logger.critical("Uncaught exception in non-main thread.")
     handle_app_fail_with_traceback(
@@ -268,7 +268,7 @@ def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
 
 
 def call_reader_main(cfg_info: ConfigInfo) -> None:
-    from barks_reader.barks_reader_app import reader_main
+    from barks_reader.ui.barks_reader_app import reader_main
 
     reader_main(cfg_info)
 

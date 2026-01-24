@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_reader.reader_tree_view_utils import (
+from barks_reader.ui.reader_tree_view_utils import (
     find_node_by_path,
     find_tree_view_node,
     find_tree_view_title_node,

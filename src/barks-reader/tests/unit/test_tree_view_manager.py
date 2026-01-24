@@ -4,16 +4,17 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import barks_reader.ui.tree_view_manager
 import pytest
-from barks_reader.reader_ui_classes import (
+from barks_reader.ui.reader_ui_classes import (
     ButtonTreeViewNode,
     TagGroupStoryGroupTreeViewNode,
     TagSearchBoxTreeViewNode,
     TitleSearchBoxTreeViewNode,
     TitleTreeViewNode,
 )
-from barks_reader.tree_view_manager import TreeViewManager
-from barks_reader.view_states import ViewStates
+from barks_reader.ui.tree_view_manager import TreeViewManager
+from barks_reader.ui.view_states import ViewStates
 
 
 @pytest.fixture
@@ -53,7 +54,7 @@ class TestTreeViewManager:
         node.get_name.return_value = "Title Node"
         node.ids.num_label.parent.fanta_info = "Fanta Info"
 
-        with patch("barks_reader.tree_view_manager.Clock.schedule_once") as mock_clock:
+        with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
             tree_view_manager.setup_and_select_node(node)
 
             mock_dependencies["tree_view_screen"].deselect_and_close_open_nodes.assert_called_once()
@@ -80,8 +81,9 @@ class TestTreeViewManager:
         node = MagicMock(spec=ButtonTreeViewNode)
         node.saved_state = {"open": False}
 
-        with patch(
-            "barks_reader.tree_view_manager.get_view_state_from_node",
+        with patch.object(
+            barks_reader.ui.tree_view_manager,
+            "get_view_state_from_node",
             return_value=(ViewStates.ON_INTRO_NODE, {}),
         ):
             tree_view_manager.setup_and_select_node(node)
@@ -94,7 +96,7 @@ class TestTreeViewManager:
         node = MagicMock(spec=TitleSearchBoxTreeViewNode)
         node.saved_state = {"text": "search term"}
 
-        with patch("barks_reader.tree_view_manager.Clock.schedule_once") as mock_clock:
+        with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
             tree_view_manager.setup_and_select_node(node)
 
             node.press_search_box.assert_called_once()
@@ -141,8 +143,9 @@ class TestTreeViewManager:
     ) -> None:
         node = MagicMock(spec=ButtonTreeViewNode)
 
-        with patch(
-            "barks_reader.tree_view_manager.get_view_state_from_node",
+        with patch.object(
+            barks_reader.ui.tree_view_manager,
+            "get_view_state_from_node",
             return_value=(ViewStates.ON_INTRO_NODE, {}),
         ):
             tree_view_manager.on_node_collapsed(MagicMock(), node)
@@ -160,8 +163,9 @@ class TestTreeViewManager:
         node.parent_node = MagicMock()
         node.parent_node.nodes = [node]  # No siblings to close
 
-        with patch(  # noqa: SIM117
-            "barks_reader.tree_view_manager.get_view_state_from_node",
+        with patch.object(  # noqa: SIM117
+            barks_reader.ui.tree_view_manager,
+            "get_view_state_from_node",
             return_value=(ViewStates.ON_INTRO_NODE, {}),
         ):
             # Mock _pin_parent_position_while_populating to avoid complex scroll logic
@@ -206,7 +210,9 @@ class TestTreeViewManager:
         parent_node.to_window.return_value = (0, 200)
         parent_node.populate_callback = MagicMock()
 
-        with patch("barks_reader.tree_view_manager.Clock.schedule_once") as mock_schedule:
+        with patch.object(
+            barks_reader.ui.tree_view_manager.Clock, "schedule_once"
+        ) as mock_schedule:
             # noinspection PyProtectedMember
             tree_view_manager._pin_parent_position_while_populating(parent_node, run_populate=True)
 
@@ -274,8 +280,9 @@ class TestTreeViewManager:
         node = MagicMock(spec=ButtonTreeViewNode)
         mock_title = MagicMock()
         mock_title.name = "Title"
-        with patch(
-            "barks_reader.tree_view_manager.get_view_state_and_article_title_from_node",
+        with patch.object(
+            barks_reader.ui.tree_view_manager,
+            "get_view_state_and_article_title_from_node",
             return_value=(ViewStates.ON_INTRO_NODE, mock_title),
         ):
             tree_view_manager.on_article_node_pressed(node)

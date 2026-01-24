@@ -31,10 +31,10 @@ from barks_reader.core.comic_book_loader import ComicBookLoader
 from barks_reader.core.reader_consts_and_types import CLOSE_TO_ZERO, COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, get_win_width_from_height
-from barks_reader.platform_window_utils import WindowManager
-from barks_reader.reader_navigation import ReaderNavigation
-from barks_reader.reader_screens import ReaderScreen
-from barks_reader.reader_ui_classes import ACTION_BAR_SIZE_Y
+from barks_reader.ui.platform_window_utils import WindowManager
+from barks_reader.ui.reader_navigation import ReaderNavigation
+from barks_reader.ui.reader_screens import ReaderScreen
+from barks_reader.ui.reader_ui_classes import ACTION_BAR_SIZE_Y
 
 if TYPE_CHECKING:
     from collections import OrderedDict
@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 
     from barks_reader.core.comic_book_page_info import PageInfo
     from barks_reader.core.reader_settings import ReaderSettings
-    from barks_reader.font_manager import FontManager
+    from barks_reader.ui.font_manager import FontManager
 
 GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT = 0.97
 GOTO_PAGE_BUTTON_HEIGHT = dp(25)

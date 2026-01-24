@@ -11,7 +11,7 @@ from loguru import logger
 from barks_reader.core.config_info import ConfigInfo
 from barks_reader.core.reader_consts_and_types import FANTAGRAPHICS_BARKS_LIBRARY
 from barks_reader.core.reader_utils import quote_and_join_with_and
-from barks_reader.error_handling import handle_app_fail, handle_app_fail_with_traceback
+from barks_reader.ui.error_handling import handle_app_fail, handle_app_fail_with_traceback
 
 _APP_TYPE = "Installer"
 _APP_NAME = "Barks Reader Installation"

@@ -7,7 +7,11 @@ from loguru import logger
 if TYPE_CHECKING:
     from barks_fantagraphics.barks_titles import Titles
 
-    from barks_reader.reader_ui_classes import BaseTreeViewNode, ReaderTreeView, TitleTreeViewNode
+    from barks_reader.ui.reader_ui_classes import (
+        BaseTreeViewNode,
+        ReaderTreeView,
+        TitleTreeViewNode,
+    )
 
 
 def get_tree_view_node_path(node: BaseTreeViewNode) -> list[str]:

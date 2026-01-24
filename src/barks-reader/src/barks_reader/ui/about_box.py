@@ -5,9 +5,9 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 
 from barks_reader._version import COPYRIGHT_YEARS, VERSION
-from barks_reader.font_manager import FontManager
-from barks_reader.kivy_standalone_show_message import show_standalone_popup
-from barks_reader.reader_consts_and_types import APP_TITLE, FANTAGRAPHICS_BARKS_LIBRARY
+from barks_reader.core.reader_consts_and_types import APP_TITLE, FANTAGRAPHICS_BARKS_LIBRARY
+from barks_reader.ui.font_manager import FontManager
+from barks_reader.ui.kivy_standalone_show_message import show_standalone_popup
 
 ABOUT_POPUP_TITLE = "About the Barks Reader"
 

@@ -5,15 +5,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
+import barks_reader.ui.index_screen
 import pytest
 from barks_reader.core.random_title_images import ImageInfo
-from barks_reader.index_screen import (
+from barks_reader.ui.index_screen import (
     SAVED_NODE_STATE_FIRST_LETTER_KEY,
     IndexItemButton,
     IndexMenuButton,
     IndexScreen,
 )
-from barks_reader.reader_ui_classes import MainTreeViewNode
+from barks_reader.ui.reader_ui_classes import MainTreeViewNode
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -56,7 +57,7 @@ class ConcreteIndexScreen(IndexScreen):
 
 @pytest.fixture
 def mock_app() -> Generator[MagicMock]:
-    with patch("barks_reader.index_screen.App.get_running_app") as mock_get_app:
+    with patch.object(barks_reader.ui.index_screen.App, "get_running_app") as mock_get_app:
         mock_app_instance = MagicMock()
         mock_get_app.return_value = mock_app_instance
         yield mock_app_instance
@@ -66,8 +67,8 @@ def mock_app() -> Generator[MagicMock]:
 def index_screen(mock_app: MagicMock) -> ConcreteIndexScreen:  # noqa: ARG001
     # Patch IndexMenuButton and IndexItemButton to avoid instantiation of Kivy widgets
     with (
-        patch("barks_reader.index_screen.IndexMenuButton") as mock_menu_btn_cls,
-        patch("barks_reader.index_screen.IndexItemButton") as mock_item_btn_cls,
+        patch.object(barks_reader.ui.index_screen, "IndexMenuButton") as mock_menu_btn_cls,
+        patch.object(barks_reader.ui.index_screen, "IndexItemButton") as mock_item_btn_cls,
     ):
         # Configure mock menu button
         def create_menu_btn(text: str | None = None) -> MagicMock:

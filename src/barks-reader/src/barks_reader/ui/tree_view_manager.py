@@ -12,7 +12,7 @@ from kivy.uix.treeview import TreeViewNode
 from loguru import logger
 
 from barks_reader.core.reader_formatter import get_clean_text_without_extra
-from barks_reader.reader_ui_classes import (
+from barks_reader.ui.reader_ui_classes import (
     BaseTreeViewNode,
     ButtonTreeViewNode,
     MainTreeViewNode,
@@ -22,7 +22,7 @@ from barks_reader.reader_ui_classes import (
     TitleSearchBoxTreeViewNode,
     TitleTreeViewNode,
 )
-from barks_reader.view_states import (
+from barks_reader.ui.view_states import (
     ViewStates,
     get_view_state_and_article_title_from_node,
     get_view_state_from_node,
@@ -34,12 +34,12 @@ if TYPE_CHECKING:
     from kivy.uix.scrollview import ScrollView
     from kivy.uix.spinner import Spinner
 
-    from barks_reader.background_views import BackgroundViews
-    from barks_reader.main_index_screen import MainIndexScreen
-    from barks_reader.reader_ui_classes import ReaderTreeView
-    from barks_reader.speech_index_screen import SpeechIndexScreen
-    from barks_reader.tree_view_screen import TreeViewScreen
-    from barks_reader.view_state_manager import ViewStateManager
+    from barks_reader.ui.background_views import BackgroundViews
+    from barks_reader.ui.main_index_screen import MainIndexScreen
+    from barks_reader.ui.reader_ui_classes import ReaderTreeView
+    from barks_reader.ui.speech_index_screen import SpeechIndexScreen
+    from barks_reader.ui.tree_view_screen import TreeViewScreen
+    from barks_reader.ui.view_state_manager import ViewStateManager
 
 UpdateTitleCallable = Callable[[str], bool]
 ReadArticleCallable = Callable[[Titles, ViewStates], None]

@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import barks_reader.ui.reader_ui_classes
 import pytest
-from barks_reader.reader_ui_classes import (
+from barks_reader.ui.reader_ui_classes import (
     BaseSearchBoxTreeViewNode,
     ButtonTreeViewNode,
     ReaderTreeBuilderEventDispatcher,
@@ -212,7 +213,9 @@ class TestTitleTreeViewNode:
         mock_app.font_manager.tree_view_issue_label_font_size = 10
 
         # noinspection LongLine
-        with patch("barks_reader.reader_ui_classes.App.get_running_app", return_value=mock_app):  # noqa: SIM117
+        with patch.object(  # noqa: SIM117
+            barks_reader.ui.reader_ui_classes.App, "get_running_app", return_value=mock_app
+        ):
             # Patch __init__ to avoid Kivy widget initialization and manually populate ids
             with patch.object(
                 TitleTreeViewNode, "__init__", return_value=None, autospec=True

@@ -5,18 +5,19 @@ from __future__ import annotations
 from collections import OrderedDict
 from unittest.mock import MagicMock, PropertyMock, patch
 
-import barks_reader.comic_book_reader
+import barks_reader.ui.comic_book_reader
 import pytest
 from barks_fantagraphics.comics_consts import PageType
+from barks_reader.core.comic_book_page_info import PageInfo
+from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 
 # noinspection PyProtectedMember
-from barks_reader.comic_book_reader import (
+from barks_reader.ui.comic_book_reader import (
     ComicBookReader,
     ComicBookReaderScreen,
     _ComicPageManager,
 )
-from barks_reader.core.comic_book_page_info import PageInfo
-from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
+from kivy.uix.floatlayout import FloatLayout
 
 
 class TestComicPageManager:
@@ -144,14 +145,14 @@ class TestComicBookReader:
 
         # Mocking Kivy widgets and properties that might be instantiated
         with (
-            patch("barks_reader.comic_book_reader.Image"),
-            patch("barks_reader.comic_book_reader.ComicBookLoader"),
+            patch.object(barks_reader.ui.comic_book_reader, "Image"),
+            patch.object(barks_reader.ui.comic_book_reader, "ComicBookLoader"),
             # Use patch.object to be sure we are patching the right module attribute
-            patch.object(barks_reader.comic_book_reader, "ReaderNavigation") as mock_nav_cls,
-            patch("barks_reader.comic_book_reader.get_image_stream"),
-            patch("barks_reader.comic_book_reader.get_monitors") as mock_monitors,
+            patch.object(barks_reader.ui.comic_book_reader, "ReaderNavigation") as mock_nav_cls,
+            patch.object(barks_reader.ui.comic_book_reader, "get_image_stream"),
+            patch.object(barks_reader.ui.comic_book_reader, "get_monitors") as mock_monitors,
             # Patch FloatLayout.add_widget to avoid Kivy widget tree logic
-            patch("kivy.uix.floatlayout.FloatLayout.add_widget"),
+            patch.object(FloatLayout, "add_widget"),
         ):
             mock_monitors.return_value = [MagicMock(width=1920, height=1080)]
 
@@ -189,8 +190,10 @@ class TestComicBookReader:
         )
 
         with (
-            patch("barks_reader.comic_book_reader.get_action_bar_title") as _mock_get_title,
-            patch("barks_reader.comic_book_reader.Clock.schedule_once"),
+            patch.object(
+                barks_reader.ui.comic_book_reader, "get_action_bar_title"
+            ) as _mock_get_title,
+            patch.object(barks_reader.ui.comic_book_reader.Clock, "schedule_once"),
         ):
             assert reader
             reader.read_comic(
@@ -255,13 +258,13 @@ class TestComicBookReaderScreen:
 
         # Mock Builder to avoid loading KV
         with (
-            patch("barks_reader.comic_book_reader.Builder.load_file"),
-            patch("barks_reader.comic_book_reader.ComicBookReader"),
-            patch("barks_reader.comic_book_reader.WindowManager"),
+            patch.object(barks_reader.ui.comic_book_reader.Builder, "load_file"),
+            patch.object(barks_reader.ui.comic_book_reader, "ComicBookReader"),
+            patch.object(barks_reader.ui.comic_book_reader, "WindowManager"),
             # Mock ids property on ComicBookReaderScreen
             patch.object(ComicBookReaderScreen, "ids", new_callable=PropertyMock) as mock_ids_prop,
             # Patch FloatLayout.add_widget to avoid Kivy widget tree logic
-            patch("kivy.uix.floatlayout.FloatLayout.add_widget"),
+            patch.object(FloatLayout, "add_widget"),
         ):
             # Set up the mock ids object (MagicMock supports dot access)
             mock_ids = MagicMock()
@@ -288,11 +291,12 @@ class TestComicBookReaderScreen:
 
     def test_toggle_screen_mode(self, screen: ComicBookReaderScreen) -> None:
         with (
-            patch(
-                "barks_reader.comic_book_reader.WindowManager.is_fullscreen_now",
+            patch.object(
+                barks_reader.ui.comic_book_reader.WindowManager,
+                "is_fullscreen_now",
                 return_value=True,
             ),
-            patch("barks_reader.comic_book_reader.Clock.schedule_once") as mock_schedule,
+            patch.object(barks_reader.ui.comic_book_reader.Clock, "schedule_once") as mock_schedule,
         ):
             screen.toggle_screen_mode()
             # Should schedule goto_windowed_mode
@@ -319,8 +323,9 @@ class TestComicBookReaderScreen:
 
         # Let's assume super().on_touch_down returns False.
 
-        with patch(  # noqa: SIM117
-            "barks_reader.comic_book_reader.WindowManager.is_fullscreen_now",
+        with patch.object(  # noqa: SIM117
+            barks_reader.ui.comic_book_reader.WindowManager,
+            "is_fullscreen_now",
             return_value=True,
         ):
             # We need to spy on _toggle_action_bar_visibility
@@ -330,8 +335,9 @@ class TestComicBookReaderScreen:
                 mock_toggle.assert_called_once()
 
         # Case: Not fullscreen
-        with patch(  # noqa: SIM117
-            "barks_reader.comic_book_reader.WindowManager.is_fullscreen_now",
+        with patch.object(  # noqa: SIM117
+            barks_reader.ui.comic_book_reader.WindowManager,
+            "is_fullscreen_now",
             return_value=False,
         ):
             with patch.object(screen, "_toggle_action_bar_visibility") as mock_toggle:

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # noinspection PyProtectedMember
-from barks_reader.font_manager import (
+from barks_reader.ui.font_manager import (
     HI_RES_FONTS,
     HI_RES_WINDOW_HEIGHT_CUTOFF,
     LOW_RES_FONTS,

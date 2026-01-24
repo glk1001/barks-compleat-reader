@@ -10,7 +10,7 @@ from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, Fan
 from barks_reader.core.config_info import ConfigInfo
 from barks_reader.core.random_title_images import RandomTitleImages
 from barks_reader.core.reader_file_paths import FileTypes
-from barks_reader.reader_settings_buildable import BuildableReaderSettings
+from barks_reader.ui.reader_settings_buildable import BuildableReaderSettings
 from loguru import logger
 
 if __name__ == "__main__":

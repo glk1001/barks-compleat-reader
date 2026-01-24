@@ -6,10 +6,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
+import barks_reader.ui.index_screen
+import barks_reader.ui.speech_index_screen
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.random_title_images import ImageInfo
-from barks_reader.speech_index_screen import IndexItem, SpeechIndexScreen
+from barks_reader.ui.speech_index_screen import IndexItem, SpeechIndexScreen
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -33,13 +35,19 @@ def speech_index_screen(
     mock_settings: MagicMock, mock_font_manager: MagicMock
 ) -> Generator[SpeechIndexScreen]:
     # Patch IndexScreen.__init__ to avoid Kivy widget initialization
-    with patch("barks_reader.index_screen.IndexScreen.__init__"):  # noqa: SIM117
+    with patch.object(barks_reader.ui.index_screen.IndexScreen, "__init__"):  # noqa: SIM117
         with (
-            patch("barks_reader.speech_index_screen.SearchEngine") as mock_search_cls,
-            patch("barks_reader.speech_index_screen.RandomTitleImages") as mock_random_cls,
-            patch("barks_reader.speech_index_screen.PanelTextureLoader") as mock_loader_cls,
-            patch("barks_reader.speech_index_screen.SpeechBubblesPopup") as mock_popup_cls,
-            patch("barks_reader.speech_index_screen.SpeechIndexScreen._populate_alphabet_menu"),
+            patch.object(barks_reader.ui.speech_index_screen, "SearchEngine") as mock_search_cls,
+            patch.object(
+                barks_reader.ui.speech_index_screen, "RandomTitleImages"
+            ) as mock_random_cls,
+            patch.object(
+                barks_reader.ui.speech_index_screen, "PanelTextureLoader"
+            ) as mock_loader_cls,
+            patch.object(
+                barks_reader.ui.speech_index_screen, "SpeechBubblesPopup"
+            ) as mock_popup_cls,
+            patch.object(SpeechIndexScreen, "_populate_alphabet_menu"),
         ):
             # Setup mock search engine
             mock_indexer = mock_search_cls.return_value
@@ -81,7 +89,7 @@ class TestSpeechIndexScreen:
 
     def test_populate_top_alphabet_split_menu(self, speech_index_screen: SpeechIndexScreen) -> None:
         # Mock IndexMenuButton
-        with patch("barks_reader.speech_index_screen.IndexMenuButton") as mock_btn_cls:
+        with patch.object(barks_reader.ui.speech_index_screen, "IndexMenuButton") as mock_btn_cls:
             mock_btn = MagicMock()
             mock_btn.text = "apple"
             mock_btn_cls.return_value = mock_btn
@@ -146,8 +154,8 @@ class TestSpeechIndexScreen:
             speech_index_screen, "_find_words", return_value={"Title": MagicMock()}
         ):
             # Mock ALL_FANTA_COMIC_BOOK_INFO lookup
-            with patch(
-                "barks_reader.speech_index_screen.ALL_FANTA_COMIC_BOOK_INFO"
+            with patch.object(
+                barks_reader.ui.speech_index_screen, "ALL_FANTA_COMIC_BOOK_INFO"
             ) as mock_all_info:
                 mock_info = MagicMock()
                 mock_all_info.__getitem__.return_value = mock_info
@@ -172,7 +180,9 @@ class TestSpeechIndexScreen:
         mock_callback = MagicMock()
         speech_index_screen.on_goto_title = mock_callback
 
-        with patch("barks_reader.speech_index_screen.Clock.schedule_once") as mock_schedule:
+        with patch.object(
+            barks_reader.ui.speech_index_screen.Clock, "schedule_once"
+        ) as mock_schedule:
             # noinspection PyProtectedMember
             speech_index_screen._handle_title_from_bubble_press(
                 "Donald Duck Finds Pirate Gold", "5"

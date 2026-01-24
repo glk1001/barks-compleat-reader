@@ -6,18 +6,18 @@ from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
-from barks_reader import app_initializer as app_initializer_module
-
-# noinspection PyProtectedMember
-from barks_reader.app_initializer import AppInitializer, _FantaVolumesState
 from barks_reader.core.fantagraphics_volumes import (
     TooManyArchiveFilesError,
     WrongFantagraphicsVolumeError,
 )
 from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
-from barks_reader.reader_ui_classes import BaseTreeViewNode
-from barks_reader.user_error_handler import ErrorTypes
-from barks_reader.view_states import ViewStates
+from barks_reader.ui import app_initializer as app_initializer_module
+
+# noinspection PyProtectedMember
+from barks_reader.ui.app_initializer import AppInitializer, _FantaVolumesState
+from barks_reader.ui.reader_ui_classes import BaseTreeViewNode
+from barks_reader.ui.user_error_handler import ErrorTypes
+from barks_reader.ui.view_states import ViewStates
 
 
 @pytest.fixture

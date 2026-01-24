@@ -5,12 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
+import barks_reader.ui.reader_tree_builder
 import pytest
 from barks_fantagraphics.barks_tags import TagCategories, TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.fanta_comics_info import SERIES_CS
-from barks_reader.reader_tree_builder import ReaderTreeBuilder
-from barks_reader.reader_ui_classes import (
+from barks_reader.ui.reader_tree_builder import ReaderTreeBuilder
+from barks_reader.ui.reader_ui_classes import (
     MainTreeViewNode,
     TagGroupStoryGroupTreeViewNode,
     TagStoryGroupTreeViewNode,
@@ -36,7 +37,7 @@ def tree_builder(
     mock_dependencies: dict[str, MagicMock],
 ) -> Generator[ReaderTreeBuilder]:
     # Patch BarksTitleSearch to avoid loading whoosh index
-    with patch("barks_reader.reader_tree_builder.BarksTitleSearch"):
+    with patch.object(barks_reader.ui.reader_tree_builder, "BarksTitleSearch"):
         builder = ReaderTreeBuilder(**mock_dependencies)
         yield builder
 
@@ -150,8 +151,8 @@ class TestReaderTreeBuilder:
         tag_group = TagGroups.AFRICA
 
         # Mock BARKS_TAG_GROUPS to return a simple list
-        with patch(
-            "barks_reader.reader_tree_builder.BARKS_TAG_GROUPS", {tag_group: [Tags.AIRPLANES]}
+        with patch.object(
+            barks_reader.ui.reader_tree_builder, "BARKS_TAG_GROUPS", {tag_group: [Tags.AIRPLANES]}
         ):
             # noinspection PyProtectedMember
             gen = tree_builder._add_tag_group_node_gen(mock_tree, tag_group, mock_parent)

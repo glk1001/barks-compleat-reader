@@ -12,9 +12,9 @@ from barks_reader.core.fantagraphics_volumes import (
     WrongFantagraphicsVolumeError,
 )
 from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
-from barks_reader.reader_ui_classes import BaseTreeViewNode
-from barks_reader.user_error_handler import ErrorInfo, ErrorTypes
-from barks_reader.view_states import ViewStates
+from barks_reader.ui.reader_ui_classes import BaseTreeViewNode
+from barks_reader.ui.user_error_handler import ErrorInfo, ErrorTypes
+from barks_reader.ui.view_states import ViewStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -23,14 +23,14 @@ if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from kivy.uix.widget import Widget
 
-    from barks_reader.comic_reader_manager import ComicReaderManager
     from barks_reader.core.reader_settings import ReaderSettings
-    from barks_reader.json_settings_manager import SettingsManager
-    from barks_reader.reader_tree_builder import ReaderTreeBuilder
-    from barks_reader.tree_view_manager import TreeViewManager
-    from barks_reader.tree_view_screen import TreeViewScreen
-    from barks_reader.user_error_handler import UserErrorHandler
-    from barks_reader.view_state_manager import ViewStateManager
+    from barks_reader.ui.comic_reader_manager import ComicReaderManager
+    from barks_reader.ui.json_settings_manager import SettingsManager
+    from barks_reader.ui.reader_tree_builder import ReaderTreeBuilder
+    from barks_reader.ui.tree_view_manager import TreeViewManager
+    from barks_reader.ui.tree_view_screen import TreeViewScreen
+    from barks_reader.ui.user_error_handler import UserErrorHandler
+    from barks_reader.ui.view_state_manager import ViewStateManager
 
 
 class _FantaVolumesState(Enum):

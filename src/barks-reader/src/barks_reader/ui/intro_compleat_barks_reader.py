@@ -8,9 +8,9 @@ from kivy.uix.screenmanager import Screen
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_settings import ReaderSettings
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
-from barks_reader.font_manager import FontManager
-from barks_reader.reader_screens import ReaderScreen
-from barks_reader.reader_ui_classes import ACTION_BAR_SIZE_Y
+from barks_reader.ui.font_manager import FontManager
+from barks_reader.ui.reader_screens import ReaderScreen
+from barks_reader.ui.reader_ui_classes import ACTION_BAR_SIZE_Y
 
 INTRO_COMPLEAT_BARKS_READER_KV_FILE = Path(__file__).with_suffix(".kv")
 

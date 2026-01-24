@@ -7,12 +7,12 @@ from barks_fantagraphics.comics_consts import PageType
 from kivy.storage.jsonstore import JsonStore
 from loguru import logger
 
-from barks_reader.reader_tree_view_utils import get_tree_view_node_path
+from barks_reader.ui.reader_tree_view_utils import get_tree_view_node_path
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from barks_reader.reader_ui_classes import BaseTreeViewNode
+    from barks_reader.ui.reader_ui_classes import BaseTreeViewNode
 
 _READER_SETTINGS = "AAA_Settings"
 _READER_SETTING_LAST_SELECTED_NODE = "last_selected_node"

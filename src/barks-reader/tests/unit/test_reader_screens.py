@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import no_type_check
 from unittest.mock import MagicMock, patch
 
+import barks_reader.ui.reader_screens
 import pytest
-from barks_reader.reader_screens import (
+from barks_reader.ui.reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     INTRO_COMPLEAT_BARKS_READER_SCREEN,
     MAIN_READER_SCREEN,
@@ -14,7 +15,7 @@ from barks_reader.reader_screens import (
     ReaderScreenManager,
     ReaderScreens,
 )
-from kivy.uix.screenmanager import TransitionBase
+from kivy.uix.screenmanager import Screen, TransitionBase
 
 
 @pytest.fixture
@@ -25,7 +26,7 @@ def mock_open_settings() -> MagicMock:
 @pytest.fixture
 def reader_screen_manager(mock_open_settings: MagicMock) -> ReaderScreenManager:
     # Patch ScreenManager to avoid Kivy window creation/interaction
-    with patch("barks_reader.reader_screens.ScreenManager"):
+    with patch.object(barks_reader.ui.reader_screens, "ScreenManager"):
         return ReaderScreenManager(mock_open_settings)
 
 
@@ -165,14 +166,14 @@ class TestReaderScreenManager:
 class TestReaderScreen:
     def test_init(self) -> None:
         # We need to patch Screen.__init__ because ReaderScreen inherits from it
-        with patch("kivy.uix.screenmanager.Screen.__init__", autospec=True) as mock_init:
+        with patch.object(Screen, "__init__", autospec=True) as mock_init:
             screen = ReaderScreen()
             mock_init.assert_called_once()
             assert screen.app_icon_filepath == ""
 
     def test_methods_exist(self) -> None:
         # Just verifying the interface exists and doesn't crash
-        with patch("kivy.uix.screenmanager.Screen.__init__", autospec=True):
+        with patch.object(Screen, "__init__", autospec=True):
             screen = ReaderScreen()
             screen.is_active(active=True)
             screen.on_comic_closed()

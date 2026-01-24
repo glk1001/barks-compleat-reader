@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING
 from comic_utils.timing import Timing
 from loguru import logger
 
-from barks_reader.background_views import ImageThemes
 from barks_reader.core.random_title_images import ImageInfo, get_title_str
 from barks_reader.core.reader_consts_and_types import CLOSE_TO_ZERO
 from barks_reader.core.reader_formatter import get_clean_text_without_extra
-from barks_reader.panel_texture_loader import PanelTextureLoader
+from barks_reader.ui.background_views import ImageThemes
+from barks_reader.ui.panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -22,14 +22,14 @@ if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from kivy.core.image import Texture
 
-    from barks_reader.background_views import BackgroundViews
-    from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
     from barks_reader.core.reader_settings import ReaderSettings
-    from barks_reader.fun_image_view_screen import FunImageViewScreen
-    from barks_reader.main_index_screen import MainIndexScreen
-    from barks_reader.speech_index_screen import SpeechIndexScreen
-    from barks_reader.tree_view_screen import TreeViewScreen
-    from barks_reader.view_states import ViewStates
+    from barks_reader.ui.background_views import BackgroundViews
+    from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
+    from barks_reader.ui.fun_image_view_screen import FunImageViewScreen
+    from barks_reader.ui.main_index_screen import MainIndexScreen
+    from barks_reader.ui.speech_index_screen import SpeechIndexScreen
+    from barks_reader.ui.tree_view_screen import TreeViewScreen
+    from barks_reader.ui.view_states import ViewStates
 
 
 class ImageThemesToUse(Enum):

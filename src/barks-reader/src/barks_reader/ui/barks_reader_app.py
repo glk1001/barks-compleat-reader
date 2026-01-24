@@ -18,11 +18,6 @@ from kivy.utils import escape_markup
 from loguru import logger
 from screeninfo import get_monitors
 
-from barks_reader.bottom_title_view_screen import (
-    BOTTOM_TITLE_VIEW_SCREEN_KV_FILE,
-    BottomTitleViewScreen,
-)
-from barks_reader.comic_book_reader import get_barks_comic_reader_screen
 from barks_reader.core import services
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING, OPTIONS_SETTING
@@ -33,25 +28,30 @@ from barks_reader.core.screen_metrics import (
     get_best_window_height_fit,
 )
 from barks_reader.core.settings_notifier import settings_notifier
-from barks_reader.error_handling import handle_app_fail_with_traceback
-from barks_reader.font_manager import FontManager
-from barks_reader.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, FunImageViewScreen
-from barks_reader.index_screen import INDEX_SCREEN_KV_FILE
-from barks_reader.intro_compleat_barks_reader import (
+from barks_reader.ui.bottom_title_view_screen import (
+    BOTTOM_TITLE_VIEW_SCREEN_KV_FILE,
+    BottomTitleViewScreen,
+)
+from barks_reader.ui.comic_book_reader import get_barks_comic_reader_screen
+from barks_reader.ui.error_handling import handle_app_fail_with_traceback
+from barks_reader.ui.font_manager import FontManager
+from barks_reader.ui.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, FunImageViewScreen
+from barks_reader.ui.index_screen import INDEX_SCREEN_KV_FILE
+from barks_reader.ui.intro_compleat_barks_reader import (
     get_intro_compleat_barks_reader_screen,  # can take ~3s on VM Windows
 )
-from barks_reader.main_index_screen import MainIndexScreen
-from barks_reader.main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
-from barks_reader.platform_window_utils import log_screen_metrics
-from barks_reader.reader_screens import (
+from barks_reader.ui.main_index_screen import MainIndexScreen
+from barks_reader.ui.main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
+from barks_reader.ui.platform_window_utils import log_screen_metrics
+from barks_reader.ui.reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     INTRO_COMPLEAT_BARKS_READER_SCREEN,
     MAIN_READER_SCREEN,
     ReaderScreenManager,
     ReaderScreens,
 )
-from barks_reader.reader_settings_buildable import BuildableReaderSettings
-from barks_reader.reader_ui_classes import (
+from barks_reader.ui.reader_settings_buildable import BuildableReaderSettings
+from barks_reader.ui.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
     READER_POPUPS_KV_FILE,
     READER_TREE_VIEW_KV_FILE,
@@ -59,9 +59,9 @@ from barks_reader.reader_ui_classes import (
     set_kivy_busy_cursor,
     set_kivy_normal_cursor,
 )
-from barks_reader.settings_fix import SettingLongPath, SettingOptionsWithValue
-from barks_reader.speech_index_screen import SpeechIndexScreen
-from barks_reader.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
+from barks_reader.ui.settings_fix import SettingLongPath, SettingOptionsWithValue
+from barks_reader.ui.speech_index_screen import SpeechIndexScreen
+from barks_reader.ui.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
 
 if TYPE_CHECKING:
     from kivy.config import ConfigParser

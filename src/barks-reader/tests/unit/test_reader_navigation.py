@@ -3,8 +3,8 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_reader import reader_navigation as nav_module
-from barks_reader.reader_navigation import ReaderNavigation
+from barks_reader.ui import reader_navigation as nav_module
+from barks_reader.ui.reader_navigation import ReaderNavigation
 
 
 class TestReaderNavigation:

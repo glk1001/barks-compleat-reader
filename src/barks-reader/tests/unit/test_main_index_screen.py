@@ -5,9 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
+import barks_reader.ui.index_screen
+import barks_reader.ui.main_index_screen
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_reader.main_index_screen import IndexItem, MainIndexScreen
+from barks_reader.ui.main_index_screen import IndexItem, MainIndexScreen
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -31,12 +33,16 @@ def main_index_screen(
     mock_settings: MagicMock, mock_font_manager: MagicMock
 ) -> Generator[MainIndexScreen]:
     # Patch the superclass __init__ to avoid Kivy widget initialization
-    with patch("barks_reader.index_screen.IndexScreen.__init__"):  # noqa: SIM117
+    with patch.object(barks_reader.ui.index_screen.IndexScreen, "__init__"):  # noqa: SIM117
         # Patch dependencies created in __init__
         with (
-            patch("barks_reader.main_index_screen.RandomTitleImages") as mock_random_images_cls,
-            patch("barks_reader.main_index_screen.PanelTextureLoader") as mock_loader_cls,
-            patch("barks_reader.main_index_screen.MainIndexScreen._populate_alphabet_menu"),
+            patch.object(
+                barks_reader.ui.main_index_screen, "RandomTitleImages"
+            ) as mock_random_images_cls,
+            patch.object(
+                barks_reader.ui.main_index_screen, "PanelTextureLoader"
+            ) as mock_loader_cls,
+            patch.object(MainIndexScreen, "_populate_alphabet_menu"),
         ):
             screen = MainIndexScreen(mock_settings, mock_font_manager)
 
@@ -96,7 +102,7 @@ class TestMainIndexScreen:
         item = MagicMock()
         item.display_text = "My Title"
 
-        with patch("barks_reader.main_index_screen.IndexItemButton") as mock_btn_cls:
+        with patch.object(barks_reader.ui.main_index_screen, "IndexItemButton") as mock_btn_cls:
             # noinspection PyProtectedMember
             btn = main_index_screen._create_index_button(item)
 
@@ -120,7 +126,9 @@ class TestMainIndexScreen:
         main_index_screen.on_goto_title = mock_callback
 
         # We need to patch Clock to execute the delayed calls
-        with patch("barks_reader.main_index_screen.Clock.schedule_once") as mock_schedule:
+        with patch.object(
+            barks_reader.ui.main_index_screen.Clock, "schedule_once"
+        ) as mock_schedule:
             # Capture lambdas
             callbacks = []
 

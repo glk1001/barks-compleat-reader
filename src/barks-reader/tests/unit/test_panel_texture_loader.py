@@ -4,8 +4,8 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_reader import panel_texture_loader as loader_module
-from barks_reader.panel_texture_loader import PanelTextureLoader
+from barks_reader.ui import panel_texture_loader as loader_module
+from barks_reader.ui.panel_texture_loader import PanelTextureLoader
 
 # noinspection PyProtectedMember
 from kivy.core.image import Texture

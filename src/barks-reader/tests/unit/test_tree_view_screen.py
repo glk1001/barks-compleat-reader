@@ -7,8 +7,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_reader.reader_ui_classes import BaseTreeViewNode
-from barks_reader.tree_view_screen import TreeViewScreen
+from barks_reader.ui import tree_view_screen as tree_view_screen_module
+from barks_reader.ui.reader_ui_classes import BaseTreeViewNode
+from barks_reader.ui.tree_view_screen import TreeViewScreen
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.widget import Widget
 
 if TYPE_CHECKING:
@@ -25,7 +27,7 @@ def mock_settings() -> MagicMock:
 @pytest.fixture
 def tree_view_screen(mock_settings: MagicMock) -> Generator[TreeViewScreen]:
     # Patch BoxLayout.__init__ to avoid Kivy window creation but initialize Widget properties
-    with patch("kivy.uix.boxlayout.BoxLayout.__init__", autospec=True) as mock_init:
+    with patch.object(BoxLayout, "__init__", autospec=True) as mock_init:
 
         def side_effect(self, **kwargs) -> None:  # noqa: ANN001, ANN003
             Widget.__init__(self, **kwargs)
@@ -36,7 +38,7 @@ def tree_view_screen(mock_settings: MagicMock) -> Generator[TreeViewScreen]:
         mock_init.side_effect = side_effect
 
         # Patch settings_notifier to avoid side effects
-        with patch("barks_reader.tree_view_screen.settings_notifier"):
+        with patch.object(tree_view_screen_module, "settings_notifier"):
             screen = TreeViewScreen(mock_settings)
             yield screen
 
@@ -62,7 +64,7 @@ class TestTreeViewScreen:
         assert tree_view_screen.get_selected_node() == mock_node
 
     def test_find_node_by_path(self, tree_view_screen: TreeViewScreen) -> None:
-        with patch("barks_reader.tree_view_screen.find_node_by_path") as mock_find:
+        with patch.object(tree_view_screen_module, "find_node_by_path") as mock_find:
             path = ["root", "child"]
             tree_view_screen.find_node_by_path(path)
             # It reverses the path before calling the util

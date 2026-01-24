@@ -7,8 +7,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
+from barks_reader.ui import bottom_title_view_screen
+from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -27,28 +28,28 @@ class TestBottomTitleViewScreen:
         self.mock_font_manager = MagicMock()
 
         # Patch dependencies
-        self.patcher_loader = patch("barks_reader.bottom_title_view_screen.PanelTextureLoader")
+        self.patcher_loader = patch.object(bottom_title_view_screen, "PanelTextureLoader")
         self.mock_loader_cls = self.patcher_loader.start()
         self.mock_loader = self.mock_loader_cls.return_value
 
-        self.patcher_formatter = patch("barks_reader.bottom_title_view_screen.ReaderFormatter")
+        self.patcher_formatter = patch.object(bottom_title_view_screen, "ReaderFormatter")
         self.mock_formatter_cls = self.patcher_formatter.start()
         self.mock_formatter = self.mock_formatter_cls.return_value
         self.mock_formatter.get_main_title.return_value = "Main Title"
         self.mock_formatter.get_title_info.return_value = "Title Info"
         self.mock_formatter.get_title_extra_info.return_value = "Extra Info"
 
-        self.patcher_anim = patch("barks_reader.bottom_title_view_screen.Animation")
+        self.patcher_anim = patch.object(bottom_title_view_screen, "Animation")
         self.mock_anim_cls = self.patcher_anim.start()
         self.mock_anim = self.mock_anim_cls.return_value
 
-        self.patcher_utils = patch("barks_reader.bottom_title_view_screen.title_needs_footnote")
+        self.patcher_utils = patch.object(bottom_title_view_screen, "title_needs_footnote")
         self.mock_needs_footnote = self.patcher_utils.start()
         self.mock_needs_footnote.return_value = False
 
         # Patch FloatLayout.__init__ to inject mock ids
-        self.patcher_layout = patch(
-            "barks_reader.bottom_title_view_screen.FloatLayout.__init__", autospec=True
+        self.patcher_layout = patch.object(
+            bottom_title_view_screen.FloatLayout, "__init__", autospec=True
         )
         self.mock_layout_init = self.patcher_layout.start()
 

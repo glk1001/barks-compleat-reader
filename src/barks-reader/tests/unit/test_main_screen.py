@@ -6,11 +6,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
+import barks_reader.ui.main_screen
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.random_title_images import ImageInfo
-from barks_reader.main_screen import MainScreen
-from barks_reader.view_states import ViewStates
+from barks_reader.ui.main_screen import MainScreen
+from barks_reader.ui.view_states import ViewStates
+from kivy.uix.screenmanager import Screen
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -38,7 +40,7 @@ def main_screen(
     mock_dependencies: dict[str, MagicMock],
 ) -> Generator[MainScreen]:
     # Patch Kivy Screen __init__ to avoid window creation
-    with patch("kivy.uix.screenmanager.Screen.__init__", autospec=True) as mock_screen_init:
+    with patch.object(Screen, "__init__", autospec=True) as mock_screen_init:
 
         def side_effect(self, **kwargs) -> None:  # noqa: ANN001, ANN003
             from kivy.uix.widget import Widget  # noqa: PLC0415
@@ -56,18 +58,18 @@ def main_screen(
 
         # Patch other internal initializations
         with (
-            patch("barks_reader.main_screen.WindowManager"),
-            patch("barks_reader.main_screen.RandomTitleImages"),
-            patch("barks_reader.main_screen.SettingsManager"),
-            patch("barks_reader.main_screen.SpecialFantaOverrides"),
-            patch("barks_reader.main_screen.UserErrorHandler"),
-            patch("barks_reader.main_screen.ComicReaderManager"),
-            patch("barks_reader.main_screen.BackgroundViews"),
-            patch("barks_reader.main_screen.ViewStateManager"),
-            patch("barks_reader.main_screen.TreeViewManager"),
-            patch("barks_reader.main_screen.AppInitializer"),
-            patch("barks_reader.main_screen.Factory"),
-            patch("barks_reader.main_screen.Screen"),
+            patch.object(barks_reader.ui.main_screen, "WindowManager"),
+            patch.object(barks_reader.ui.main_screen, "RandomTitleImages"),
+            patch.object(barks_reader.ui.main_screen, "SettingsManager"),
+            patch.object(barks_reader.ui.main_screen, "SpecialFantaOverrides"),
+            patch.object(barks_reader.ui.main_screen, "UserErrorHandler"),
+            patch.object(barks_reader.ui.main_screen, "ComicReaderManager"),
+            patch.object(barks_reader.ui.main_screen, "BackgroundViews"),
+            patch.object(barks_reader.ui.main_screen, "ViewStateManager"),
+            patch.object(barks_reader.ui.main_screen, "TreeViewManager"),
+            patch.object(barks_reader.ui.main_screen, "AppInitializer"),
+            patch.object(barks_reader.ui.main_screen, "Factory"),
+            patch.object(barks_reader.ui.main_screen, "Screen"),
         ):
             screen = MainScreen(**mock_dependencies)
 
@@ -132,7 +134,7 @@ class TestMainScreen:
         main_screen._year_range_nodes = {(1942, 1946): mock_year_node}
 
         # Mock find_tree_view_title_node
-        with patch("barks_reader.main_screen.find_tree_view_title_node") as mock_find:
+        with patch.object(barks_reader.ui.main_screen, "find_tree_view_title_node") as mock_find:
             mock_title_node = MagicMock()
             mock_find.return_value = mock_title_node
 

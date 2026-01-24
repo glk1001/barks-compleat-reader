@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from barks_fantagraphics.fanta_comics_info import FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER
 from kivy.clock import Clock
 
-from barks_reader.reader_ui_classes import MessagePopup
+from barks_reader.ui.reader_ui_classes import MessagePopup
 
 if TYPE_CHECKING:
     from collections.abc import Callable

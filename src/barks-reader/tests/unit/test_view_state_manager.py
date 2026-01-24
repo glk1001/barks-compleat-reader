@@ -6,16 +6,17 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
+import barks_reader.ui.view_state_manager
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_reader.background_views import ImageThemes
 from barks_reader.core.random_title_images import FIT_MODE_COVER, ImageInfo
-from barks_reader.view_state_manager import (
+from barks_reader.ui.background_views import ImageThemes
+from barks_reader.ui.view_state_manager import (
     ImageThemesChange,
     ImageThemesToUse,
     ViewStateManager,
 )
-from barks_reader.view_states import ViewStates
+from barks_reader.ui.view_states import ViewStates
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -40,7 +41,7 @@ def view_state_manager(
     mock_dependencies: dict[str, MagicMock],
 ) -> Generator[ViewStateManager]:
     # Patch PanelTextureLoader to avoid actual image loading logic
-    with patch("barks_reader.view_state_manager.PanelTextureLoader") as mock_loader_cls:
+    with patch.object(barks_reader.ui.view_state_manager, "PanelTextureLoader") as mock_loader_cls:
         # Configure mock loader instance
         mock_loader = mock_loader_cls.return_value
 

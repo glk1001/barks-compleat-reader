@@ -25,10 +25,6 @@ from kivy.properties import BooleanProperty, StringProperty  # ty: ignore[unreso
 from kivy.uix.screenmanager import Screen
 from loguru import logger
 
-from barks_reader.about_box import show_about_box
-from barks_reader.app_initializer import AppInitializer
-from barks_reader.background_views import BackgroundViews
-from barks_reader.comic_reader_manager import ComicReaderManager
 from barks_reader.core.random_title_images import ImageInfo, RandomTitleImages
 from barks_reader.core.reader_consts_and_types import (
     APP_TITLE,
@@ -40,23 +36,27 @@ from barks_reader.core.reader_utils import (
     get_title_str_from_reader_icon_file,
     get_win_width_from_height,
 )
-from barks_reader.json_settings_manager import SavedPageInfo, SettingsManager
-from barks_reader.platform_window_utils import WindowManager
-from barks_reader.reader_screens import ReaderScreen
-from barks_reader.reader_tree_builder import ReaderTreeBuilder
-from barks_reader.reader_tree_view_utils import find_tree_view_title_node
-from barks_reader.reader_ui_classes import (
+from barks_reader.core.special_overrides_handler import SpecialFantaOverrides
+from barks_reader.ui.about_box import show_about_box
+from barks_reader.ui.app_initializer import AppInitializer
+from barks_reader.ui.background_views import BackgroundViews
+from barks_reader.ui.comic_reader_manager import ComicReaderManager
+from barks_reader.ui.json_settings_manager import SavedPageInfo, SettingsManager
+from barks_reader.ui.platform_window_utils import WindowManager
+from barks_reader.ui.reader_screens import ReaderScreen
+from barks_reader.ui.reader_tree_builder import ReaderTreeBuilder
+from barks_reader.ui.reader_tree_view_utils import find_tree_view_title_node
+from barks_reader.ui.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
     ButtonTreeViewNode,
     ReaderTreeBuilderEventDispatcher,
     hide_action_bar,
     show_action_bar,
 )
-from barks_reader.special_overrides_handler import SpecialFantaOverrides
-from barks_reader.tree_view_manager import TreeViewManager
-from barks_reader.user_error_handler import UserErrorHandler
-from barks_reader.view_state_manager import ImageThemesChange, ImageThemesToUse, ViewStateManager
-from barks_reader.view_states import ViewStates
+from barks_reader.ui.tree_view_manager import TreeViewManager
+from barks_reader.ui.user_error_handler import UserErrorHandler
+from barks_reader.ui.view_state_manager import ImageThemesChange, ImageThemesToUse, ViewStateManager
+from barks_reader.ui.view_states import ViewStates
 
 if TYPE_CHECKING:
     from barks_fantagraphics.comic_book import ComicBook
@@ -65,16 +65,16 @@ if TYPE_CHECKING:
     from kivy.uix.button import Button
     from kivy.uix.widget import Widget
 
-    from barks_reader.bottom_title_view_screen import BottomTitleViewScreen
-    from barks_reader.comic_book_reader import ComicBookReaderScreen
     from barks_reader.core.filtered_title_lists import FilteredTitleLists
     from barks_reader.core.reader_settings import ReaderSettings
-    from barks_reader.font_manager import FontManager
-    from barks_reader.fun_image_view_screen import FunImageViewScreen
-    from barks_reader.main_index_screen import MainIndexScreen
-    from barks_reader.reader_screens import ScreenSwitchers
-    from barks_reader.speech_index_screen import SpeechIndexScreen
-    from barks_reader.tree_view_screen import TreeViewScreen
+    from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
+    from barks_reader.ui.comic_book_reader import ComicBookReaderScreen
+    from barks_reader.ui.font_manager import FontManager
+    from barks_reader.ui.fun_image_view_screen import FunImageViewScreen
+    from barks_reader.ui.main_index_screen import MainIndexScreen
+    from barks_reader.ui.reader_screens import ScreenSwitchers
+    from barks_reader.ui.speech_index_screen import SpeechIndexScreen
+    from barks_reader.ui.tree_view_screen import TreeViewScreen
 
 MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 

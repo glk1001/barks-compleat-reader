@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from kivy.uix.actionbar import ActionBar
     from kivy.uix.spinner import Spinner
 
-    from barks_reader.font_manager import FontManager
+    from barks_reader.ui.font_manager import FontManager
 
 READER_TREE_VIEW_KV_FILE = Path(__file__).parent / "reader-tree-view.kv"
 READER_POPUPS_KV_FILE = Path(__file__).parent / "reader_popups.kv"

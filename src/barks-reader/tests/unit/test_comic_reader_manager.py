@@ -5,15 +5,16 @@ from __future__ import annotations
 from collections import OrderedDict
 from unittest.mock import MagicMock, patch
 
+import barks_reader.ui.comic_reader_manager
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 from barks_fantagraphics.page_classes import RequiredDimensions
-from barks_reader.comic_reader_manager import ComicReaderManager
 from barks_reader.core.comic_book_page_info import ComicBookPageInfo, PageInfo
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
-from barks_reader.json_settings_manager import SavedPageInfo
+from barks_reader.ui.comic_reader_manager import ComicReaderManager
+from barks_reader.ui.json_settings_manager import SavedPageInfo
 
 
 @pytest.fixture
@@ -75,7 +76,9 @@ class TestComicReaderManager:
         manager._comic_page_info_mgr.get_comic_page_info = MagicMock(return_value=mock_page_info)  # type: ignore[assignment]
 
         # Mock ImageBuilder
-        with patch("barks_reader.comic_reader_manager.ComicBookImageBuilder") as mock_builder_cls:
+        with patch.object(
+            barks_reader.ui.comic_reader_manager, "ComicBookImageBuilder"
+        ) as mock_builder_cls:
             manager.read_article_as_comic_book(Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, "1")
 
             # Check fullscreen toggle logic
@@ -112,7 +115,7 @@ class TestComicReaderManager:
         # noinspection PyProtectedMember,LongLine
         manager._comic_page_info_mgr.get_comic_page_info = MagicMock(return_value=mock_page_info)  # type: ignore[assignment]
 
-        with patch("barks_reader.comic_reader_manager.ComicBookImageBuilder"):
+        with patch.object(barks_reader.ui.comic_reader_manager, "ComicBookImageBuilder"):
             manager.read_barks_comic_book(
                 mock_fanta_info, mock_comic, "1", use_overrides_active=True
             )

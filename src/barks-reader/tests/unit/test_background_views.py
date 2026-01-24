@@ -12,9 +12,10 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_CS,
     SERIES_USA,
 )
-from barks_reader.background_views import BackgroundViews, ImageThemes
 from barks_reader.core.random_title_images import FIT_MODE_COVER, ImageInfo
-from barks_reader.view_states import ViewStates
+from barks_reader.ui import background_views as background_views_module
+from barks_reader.ui.background_views import BackgroundViews, ImageThemes
+from barks_reader.ui.view_states import ViewStates
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -51,7 +52,7 @@ class TestBackgroundViews:
         self.mock_random_images.get_random_image_for_title.return_value = "random_title.png"
 
         # Patch Clock to avoid scheduling
-        self.clock_patcher = patch("barks_reader.background_views.Clock")
+        self.clock_patcher = patch.object(background_views_module, "Clock")
         self.mock_clock = self.clock_patcher.start()
 
         self.bg_views = BackgroundViews(
@@ -171,7 +172,7 @@ class TestBackgroundViews:
         # _get_themed_fun_image_titles uses it to reconstruct the list.
         # It does: [ALL_FANTA_COMIC_BOOK_INFO[title_str] for title_str in theme_titles]
 
-        with patch("barks_reader.background_views.ALL_FANTA_COMIC_BOOK_INFO") as mock_all_info:
+        with patch.object(background_views_module, "ALL_FANTA_COMIC_BOOK_INFO") as mock_all_info:
             mock_all_info.__getitem__.return_value = mock_info_1942
 
             # Set themes to FORTIES (1942-1949)
