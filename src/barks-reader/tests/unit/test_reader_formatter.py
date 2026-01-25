@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -51,7 +52,7 @@ def test_text_includes_num_titles() -> None:
 
 
 def test_get_action_bar_title() -> None:
-    mock_font_manager = MagicMock()
+    mock_font_manager: Any = MagicMock()
     mock_font_manager.app_title_font_size = 20.5
     # We check if the string contains expected parts since CARL_BARKS_FONT_FILE is imported
     result = reader_formatter.get_action_bar_title(mock_font_manager, "My Title")
@@ -179,7 +180,7 @@ def test_get_fitted_title_with_page_nums() -> None:
 class TestReaderFormatterClass:
     @pytest.fixture(autouse=True)
     def setup(self) -> None:
-        self.mock_font_manager = MagicMock()
+        self.mock_font_manager: Any = MagicMock()
         self.mock_font_manager.title_info_font_size = 10
         self.formatter = reader_formatter.ReaderFormatter(self.mock_font_manager)
 

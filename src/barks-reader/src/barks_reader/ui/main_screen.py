@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, cast, override
 
 from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES, TagGroups, Tags
 from barks_fantagraphics.barks_titles import (
@@ -32,6 +32,7 @@ from barks_reader.core.reader_consts_and_types import (
     COMIC_BEGIN_PAGE,
 )
 from barks_reader.core.reader_formatter import get_action_bar_title
+from barks_reader.core.reader_tree_view_utils import find_tree_view_title_node
 from barks_reader.core.reader_utils import (
     get_title_str_from_reader_icon_file,
     get_win_width_from_height,
@@ -45,9 +46,9 @@ from barks_reader.ui.json_settings_manager import SavedPageInfo, SettingsManager
 from barks_reader.ui.platform_window_utils import WindowManager
 from barks_reader.ui.reader_screens import ReaderScreen
 from barks_reader.ui.reader_tree_builder import ReaderTreeBuilder
-from barks_reader.ui.reader_tree_view_utils import find_tree_view_title_node
 from barks_reader.ui.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
+    BaseTreeViewNode,
     ButtonTreeViewNode,
     ReaderTreeBuilderEventDispatcher,
     hide_action_bar,
@@ -498,8 +499,9 @@ class MainScreen(ReaderScreen):
 
         # Open all parent nodes to 'year_node', get the title node, then goto it in the tree view.
         self._tree_view_manager.open_all_parent_nodes(year_node)
-        title_node = find_tree_view_title_node(year_node.nodes, image_info.from_title)
-        assert title_node
+        title_node = cast(
+            "BaseTreeViewNode", find_tree_view_title_node(year_node.nodes, image_info.from_title)
+        )
         self._tree_view_manager.goto_node(title_node, scroll_to=True)
 
         self._title_row_selected(title_fanta_info, image_info.filename)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from kivy.properties import (  # ty: ignore[unresolved-import]
@@ -15,8 +15,8 @@ from kivy.uix.boxlayout import BoxLayout
 
 from barks_reader.core.random_title_images import FIT_MODE_COVER
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_TOP_VIEW_TITLE_INFO
+from barks_reader.core.reader_tree_view_utils import find_and_expand_node_by_path
 from barks_reader.core.settings_notifier import settings_notifier
-from barks_reader.ui.reader_tree_view_utils import find_node_by_path
 from barks_reader.ui.reader_ui_classes import ARROW_WIDTH, BaseTreeViewNode
 
 if TYPE_CHECKING:
@@ -59,7 +59,11 @@ class TreeViewScreen(BoxLayout):
         return self.ids.reader_tree_view.selected_node
 
     def find_node_by_path(self, path_from_root: list[str]) -> BaseTreeViewNode | None:
-        return find_node_by_path(self.ids.reader_tree_view, list(reversed(path_from_root)))
+        # noinspection PyUnnecessaryCast
+        return cast(
+            "BaseTreeViewNode | None",
+            find_and_expand_node_by_path(self.ids.reader_tree_view, list(reversed(path_from_root))),
+        )
 
     def select_node(self, node: BaseTreeViewNode) -> None:
         self.ids.reader_tree_view.select_node(node)

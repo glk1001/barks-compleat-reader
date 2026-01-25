@@ -7,7 +7,7 @@ from barks_fantagraphics.comics_consts import PageType
 from kivy.storage.jsonstore import JsonStore
 from loguru import logger
 
-from barks_reader.ui.reader_tree_view_utils import get_tree_view_node_path
+from barks_reader.core.reader_tree_view_utils import get_tree_view_node_path
 
 if TYPE_CHECKING:
     from pathlib import Path

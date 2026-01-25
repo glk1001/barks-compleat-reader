@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_reader.ui.reader_tree_view_utils import (
-    find_node_by_path,
+from barks_reader.core.reader_tree_view_utils import (
+    find_and_expand_node_by_path,
     find_tree_view_node,
     find_tree_view_title_node,
     get_tree_view_node_path,
@@ -14,7 +15,7 @@ from barks_reader.ui.reader_tree_view_utils import (
 
 class TestReaderTreeViewUtils:
     @pytest.fixture
-    def mock_tree(self) -> tuple[MagicMock, MagicMock, MagicMock, MagicMock]:
+    def mock_tree(self) -> tuple[Any, Any, Any, Any]:
         """Create a mock tree structure for testing."""
         root = MagicMock()
         root.level = 0
@@ -46,9 +47,7 @@ class TestReaderTreeViewUtils:
 
         return tree, root, child1, grandchild1
 
-    def test_get_tree_view_node_path(
-        self, mock_tree: tuple[MagicMock, MagicMock, MagicMock, MagicMock]
-    ) -> None:
+    def test_get_tree_view_node_path(self, mock_tree: tuple[Any, Any, Any, Any]) -> None:
         """Test retrieving the path of a node."""
         _, root, child1, grandchild1 = mock_tree
 
@@ -61,33 +60,29 @@ class TestReaderTreeViewUtils:
         # Test nested child
         assert get_tree_view_node_path(grandchild1) == ["Grandchild 1", "Child 2", "root"]
 
-    def test_find_node_by_path(
-        self, mock_tree: tuple[MagicMock, MagicMock, MagicMock, MagicMock]
-    ) -> None:
+    def test_find_node_by_path(self, mock_tree: tuple[Any, Any, Any, Any]) -> None:
         """Test finding a node by its path."""
         tree, root, child1, grandchild1 = mock_tree
 
         # Test finding the root (not supported by this function, should be None)
-        assert find_node_by_path(tree, ["root"]) is None
+        assert find_and_expand_node_by_path(tree, ["root"]) is None
 
         # Test finding a first-level child
-        found_node = find_node_by_path(tree, ["root", "Child 1"])
+        found_node = find_and_expand_node_by_path(tree, ["root", "Child 1"])
         assert found_node == child1
 
         # Test finding a nested child
         child2 = root.nodes[1]
         child2.is_open = False  # Ensure we test the toggle logic
 
-        found_node = find_node_by_path(tree, ["root", "Child 2", "Grandchild 1"])
+        found_node = find_and_expand_node_by_path(tree, ["root", "Child 2", "Grandchild 1"])
         assert found_node == grandchild1
         tree.toggle_node.assert_called_once_with(child2)  # Check that it was opened
 
         # Test finding a non-existent node
-        assert find_node_by_path(tree, ["root", "Child 2", "Non-existent"]) is None
+        assert find_and_expand_node_by_path(tree, ["root", "Child 2", "Non-existent"]) is None
 
-    def test_find_tree_view_node(
-        self, mock_tree: tuple[MagicMock, MagicMock, MagicMock, MagicMock]
-    ) -> None:
+    def test_find_tree_view_node(self, mock_tree: tuple[Any, Any, Any, Any]) -> None:
         """Test finding a node by its text recursively."""
         _, root, _, grandchild1 = mock_tree
 
@@ -109,7 +104,7 @@ class TestReaderTreeViewUtils:
         node2.get_title.return_value = Titles.LOST_IN_THE_ANDES
         node2.nodes = []
 
-        nodes = [node1, node2]
+        nodes: list[Any] = [node1, node2]
 
         # Test finding an existing title
         found_node = find_tree_view_title_node(nodes, Titles.LOST_IN_THE_ANDES)

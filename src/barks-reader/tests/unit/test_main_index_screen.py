@@ -10,6 +10,7 @@ import barks_reader.ui.main_index_screen
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.ui.main_index_screen import IndexItem, MainIndexScreen
+from kivy.clock import Clock
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -126,9 +127,7 @@ class TestMainIndexScreen:
         main_index_screen.on_goto_title = mock_callback
 
         # We need to patch Clock to execute the delayed calls
-        with patch.object(
-            barks_reader.ui.main_index_screen.Clock, "schedule_once"
-        ) as mock_schedule:
+        with patch.object(Clock, "schedule_once") as mock_schedule:
             # Capture lambdas
             callbacks = []
 

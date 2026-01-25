@@ -12,6 +12,7 @@ import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.random_title_images import ImageInfo
 from barks_reader.ui.speech_index_screen import IndexItem, SpeechIndexScreen
+from kivy.clock import Clock
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -180,9 +181,7 @@ class TestSpeechIndexScreen:
         mock_callback = MagicMock()
         speech_index_screen.on_goto_title = mock_callback
 
-        with patch.object(
-            barks_reader.ui.speech_index_screen.Clock, "schedule_once"
-        ) as mock_schedule:
+        with patch.object(Clock, "schedule_once") as mock_schedule:
             # noinspection PyProtectedMember
             speech_index_screen._handle_title_from_bubble_press(
                 "Donald Duck Finds Pirate Gold", "5"

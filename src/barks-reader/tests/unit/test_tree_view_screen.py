@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
+from barks_reader.core.reader_tree_view_utils import find_and_expand_node_by_path
 from barks_reader.ui import tree_view_screen as tree_view_screen_module
 from barks_reader.ui.reader_ui_classes import BaseTreeViewNode
 from barks_reader.ui.tree_view_screen import TreeViewScreen
@@ -64,7 +65,9 @@ class TestTreeViewScreen:
         assert tree_view_screen.get_selected_node() == mock_node
 
     def test_find_node_by_path(self, tree_view_screen: TreeViewScreen) -> None:
-        with patch.object(tree_view_screen_module, "find_node_by_path") as mock_find:
+        with patch.object(
+            tree_view_screen_module, find_and_expand_node_by_path.__name__
+        ) as mock_find:
             path = ["root", "child"]
             tree_view_screen.find_node_by_path(path)
             # It reverses the path before calling the util

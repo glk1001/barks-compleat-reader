@@ -1,20 +1,33 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, cast
 
 from loguru import logger
 
 if TYPE_CHECKING:
     from barks_fantagraphics.barks_titles import Titles
 
-    from barks_reader.ui.reader_ui_classes import (
-        BaseTreeViewNode,
-        ReaderTreeView,
-        TitleTreeViewNode,
-    )
+
+class BaseTreeViewNodeProtocol(Protocol):
+    parent_node: BaseTreeViewNodeProtocol
+    nodes: list[BaseTreeViewNodeProtocol]
+    level: int
+    is_open: bool
+
+    def get_name(self) -> str: ...
 
 
-def get_tree_view_node_path(node: BaseTreeViewNode) -> list[str]:
+class TitleTreeViewNodeProtocol(BaseTreeViewNodeProtocol):
+    def get_title(self) -> Titles: ...  # ty:ignore[invalid-return-type]
+
+
+class ReaderTreeViewProtocol(Protocol):
+    root: BaseTreeViewNodeProtocol
+
+    def toggle_node(self, node: BaseTreeViewNodeProtocol) -> None: ...
+
+
+def get_tree_view_node_path(node: BaseTreeViewNodeProtocol) -> list[str]:
     node_path = [node.get_name()]
     current = node.parent_node
     while current:
@@ -27,7 +40,9 @@ def get_tree_view_node_path(node: BaseTreeViewNode) -> list[str]:
     return node_path
 
 
-def find_node_by_path(tree: ReaderTreeView, path_from_root: list[str]) -> BaseTreeViewNode | None:
+def find_and_expand_node_by_path(
+    tree: ReaderTreeViewProtocol, path_from_root: list[str]
+) -> BaseTreeViewNodeProtocol | None:
     """Find a node in a TreeView by its path from the root.
 
     Expands parent nodes along the way to make the target node visible.
@@ -63,7 +78,9 @@ def find_node_by_path(tree: ReaderTreeView, path_from_root: list[str]) -> BaseTr
     return found_node
 
 
-def find_tree_view_node(start_node: BaseTreeViewNode, node_text: str) -> BaseTreeViewNode | None:
+def find_tree_view_node(
+    start_node: BaseTreeViewNodeProtocol, node_text: str
+) -> BaseTreeViewNodeProtocol | None:
     nodes_to_visit = start_node.nodes.copy()
 
     while nodes_to_visit:
@@ -76,14 +93,14 @@ def find_tree_view_node(start_node: BaseTreeViewNode, node_text: str) -> BaseTre
 
 
 def find_tree_view_title_node(
-    nodes: list[TitleTreeViewNode], target_title: Titles
-) -> BaseTreeViewNode | None:
+    nodes: list[TitleTreeViewNodeProtocol], target_title: Titles
+) -> BaseTreeViewNodeProtocol | None:
     nodes_to_visit = nodes.copy()
 
     while nodes_to_visit:
         current_node = nodes_to_visit.pop()
         if current_node.get_title() == target_title:
             return current_node
-        nodes_to_visit.extend(current_node.nodes)
+        nodes_to_visit.extend(cast("list[TitleTreeViewNodeProtocol]", current_node.nodes))
 
     return None
