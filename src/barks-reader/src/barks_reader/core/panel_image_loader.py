@@ -63,6 +63,9 @@ class PanelImageLoader:
                     if self._barks_panels_are_encrypted
                     else panel_path.read_bytes()
                 )
+                if not raw:
+                    msg = f'None decrypted bytes returned from "{panel_path}".'
+                    raise ValueError(msg)  # noqa: TRY301
             else:
                 msg = f"Unsupported PanelPath type: {type(panel_path)}"
                 raise TypeError(msg)  # noqa: TRY301
@@ -78,7 +81,9 @@ class PanelImageLoader:
                 return
 
         except Exception as e:  # noqa: BLE001
-            logger.exception("Error loading image:")
+            logger.exception(
+                f"Error loading image (encrypted = {self._barks_panels_are_encrypted}):"
+            )
             ex = e
             schedule_once(lambda _dt: callback(None, ex), 0)
             return

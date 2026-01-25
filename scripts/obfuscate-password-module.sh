@@ -33,7 +33,7 @@ if [[ "$BARKS_ZIPS_KEY" == "" ]]; then
     exit 1
 fi
 
-uv run scripts/fernet-crypt.py --srce "$TEMPLATE_IN" --dest "$TEMPLATE" decrypt
+uv run scripts/fernet-crypt.py decrypt "$TEMPLATE_IN" "$TEMPLATE"
 
 sed "s/{{PANEL_KEY}}/$BARKS_ZIPS_KEY/g" <$TEMPLATE >$PLAINTEXT
 if [ ! -f "$PLAINTEXT" ]; then

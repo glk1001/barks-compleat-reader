@@ -225,3 +225,48 @@ class TestPanelImageLoader:
             # Verify join called on first thread
             mock_thread_instance.join.assert_called_once()
             assert loader._cancel is False  # Reset to false
+
+    def test_load_pil_decryption_error(self, mock_callback: MagicMock) -> None:
+        loader = PanelImageLoader(barks_panels_are_encrypted=True)
+        mock_path = MagicMock(spec=Path)
+        mock_path.read_bytes.return_value = b"encrypted_data"
+        error = ValueError("Decryption failed")
+
+        with (
+            patch.object(loader_module, threading.Thread.__name__) as mock_thread_cls,
+            patch.object(
+                loader_module, get_decrypted_bytes.__name__, side_effect=error
+            ) as mock_decrypt,
+            patch.object(loader_module, schedule_once.__name__) as mock_schedule,
+        ):
+            mock_thread_cls.side_effect = lambda target, args, daemon: MagicMock(
+                start=lambda: target(*args)
+            )
+            mock_schedule.side_effect = lambda func, dt: func(dt)
+
+            loader.load_pil(mock_path, mock_callback)
+
+            mock_decrypt.assert_called_once_with(b"encrypted_data")
+            mock_callback.assert_called_once_with(None, error)
+
+    def test_load_pil_not_encrypted_does_not_call_decrypt(
+        self, loader: PanelImageLoader, mock_callback: MagicMock
+    ) -> None:
+        mock_path = MagicMock(spec=Path)
+        mock_path.read_bytes.return_value = b"data"
+
+        with (
+            patch.object(loader_module, threading.Thread.__name__) as mock_thread_cls,
+            patch.object(loader_module, get_decrypted_bytes.__name__) as mock_decrypt,
+            patch.object(loader_module.Image, Image.open.__name__) as mock_img_open,
+            patch.object(loader_module, schedule_once.__name__) as mock_schedule,
+        ):
+            mock_thread_cls.side_effect = lambda target, args, daemon: MagicMock(
+                start=lambda: target(*args)
+            )
+            mock_schedule.side_effect = lambda func, dt: func(dt)
+
+            loader.load_pil(mock_path, mock_callback)
+
+            mock_decrypt.assert_not_called()
+            mock_img_open.assert_called_once()

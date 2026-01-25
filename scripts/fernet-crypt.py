@@ -1,9 +1,9 @@
 # ruff: noqa: T201
 
-import argparse
 import os
 from pathlib import Path
 
+import typer
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 
@@ -13,17 +13,19 @@ PANEL_KEY = os.environ["BARKS_ZIPS_KEY"]
 FERNET = Fernet(PANEL_KEY)
 
 
-def crypt_file(srce_file: Path, dest_file: Path, encrypt: bool) -> None:
+def crypt_file(srce_file: Path, dest_file: Path, crypt_flag: bool) -> None:
     try:
         with srce_file.open("rb") as file:
             data = file.read()
 
-        dest_data = FERNET.encrypt(data) if encrypt else FERNET.decrypt(data)
+        dest_data = FERNET.encrypt(data) if crypt_flag else FERNET.decrypt(data)
 
         with dest_file.open("wb") as file:
             file.write(dest_data)
 
-        print(f"File '{srce_file}' successfully crypted to '{dest_file}'.")
+        crypt_type = "encrypted" if crypt_flag else "decrypted"
+
+        print(f"File '{srce_file}' successfully {crypt_type} to '{dest_file}'.")
 
     except FileNotFoundError:
         print("Error: One of the specified files was not found.")
@@ -31,12 +33,18 @@ def crypt_file(srce_file: Path, dest_file: Path, encrypt: bool) -> None:
         print(f"An error occurred during decryption: {e}")
 
 
+app = typer.Typer()
+
+
+@app.command(help="Encrypt a source to a dest file")
+def encrypt(srce: Path, dest: Path) -> None:
+    crypt_file(srce, dest, crypt_flag=True)
+
+
+@app.command(help="Decrypt a source to a dest file")
+def decrypt(srce: Path, dest: Path) -> None:
+    crypt_file(srce, dest, crypt_flag=False)
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Encrypt and decrypt files using Fernet.")
-    parser.add_argument("action", choices=["encrypt", "decrypt"], help="Action to perform.")
-    parser.add_argument("--srce", help="Path to the file to encrypt or decrypt.", required=True)
-    parser.add_argument("--dest", help="Path of output file.", required=True)
-
-    args = parser.parse_args()
-
-    crypt_file(Path(args.srce), Path(args.dest), encrypt=args.action == "encrypt")
+    app()

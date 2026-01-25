@@ -17,6 +17,7 @@ from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 from loguru import logger
 from loguru_config import LoguruConfig
+from PIL import Image
 
 load_dotenv(Path(__file__).parent.parent / ".env.runtime")
 
@@ -107,8 +108,8 @@ app = typer.Typer()
 log_level = ""
 
 
-@app.command(help="Copy Barks png panels to jpg directory")
-def main(log_level_str: LogLevelArg = "DEBUG") -> None:
+@app.command(help="Copy Barks png panels to jpgs in zip")
+def copy_to_zip(log_level_str: LogLevelArg = "DEBUG") -> None:
     # Global variable accessed by loguru-config.
     global log_level  # noqa: PLW0603
     log_level = log_level_str
@@ -127,11 +128,13 @@ def main(log_level_str: LogLevelArg = "DEBUG") -> None:
 
         png_dir = reader_settings.file_paths.get_default_png_barks_panels_source()
         zip_file = reader_settings.file_paths.get_default_jpg_barks_panels_source()
+        logger.info(f'Copying pngs to zip "{zip_file}"...')
 
         if not zip_file.is_file():
             zip_backup = ""
         else:
             zip_backup = get_backup_filename(zip_file)
+            logger.info(f'Backing up existing zip to "{zip_backup}"...')
             zip_file.rename(zip_backup)
 
         traverse_and_process_dirs(png_dir, zip_file, file_processor_func=convert_and_zip_file)
@@ -143,5 +146,28 @@ def main(log_level_str: LogLevelArg = "DEBUG") -> None:
         logger.exception("Program error: ")
 
 
+@app.command(help="Verify encrypted images in a zip file")
+def verify_zip(zip_file: Path) -> None:
+    if not zip_file.is_file():
+        logger.error(f'File not found: "{zip_file}".')
+        return
+
+    with zipfile.ZipFile(zip_file, "r") as archive:
+        file_list = archive.namelist()
+        logger.info(f"Zip contains {len(file_list)} files. Now verify each file...")
+        for filename in file_list:
+            if not filename.lower().endswith((".jpg", ".jpeg", ".png")):
+                logger.info(f"Skipping non-image file: {filename}")
+                continue
+
+            try:
+                encrypted_data = archive.read(filename)
+                decrypted_data = FERNET.decrypt(encrypted_data)
+                with Image.open(io.BytesIO(decrypted_data)) as image:
+                    logger.info(f"Image: {filename}, Size: {image.size}")
+            except Exception as e:  # noqa: BLE001
+                logger.error(f'Failed to verify "{filename}": {e}')
+
+
 if __name__ == "__main__":
-    main()
+    app()

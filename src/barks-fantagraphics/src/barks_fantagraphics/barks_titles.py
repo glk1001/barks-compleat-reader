@@ -2951,7 +2951,7 @@ def get_shortest_issue_name(issue_name: Issues) -> str:
     return "CS" if issue_name == Issues.CS else SHORT_ISSUE_NAME[issue_name]
 
 
-BARKS_ISSUE_DICT: dict[str, list[Titles]] = {  # ty: ignore[invalid-assignment]
+BARKS_ISSUE_DICT: dict[str, list[Titles]] = {
     f"{get_shortest_issue_name(info.issue_name)} {info.issue_number}": sorted(
         inf.title
         for inf in BARKS_TITLE_INFO
