@@ -14,6 +14,7 @@ src/comic-utils/src/comic_utils/get_panel_bytes.py
 logs/
 .env.runtime
 .coverage
+src/barks_compleat_reader.egg-info
 
 # AWS User-specific
 .idea/**/aws.xml

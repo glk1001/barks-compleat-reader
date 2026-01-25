@@ -300,8 +300,8 @@ app = typer.Typer()
 
 @app.command(help="Compleat Barks Reader")
 def main(
-    win_height: int = -1,
-    win_left: int = 0,
+    win_height: int = 0,
+    win_left: int = -1,
     win_top: int = -1,
 ) -> None:
     cpi_loader.start_async()
