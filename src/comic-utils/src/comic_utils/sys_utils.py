@@ -1,8 +1,15 @@
+import hashlib
 import os
 import platform
 import subprocess
+from pathlib import Path
 
 import distro
+
+
+def get_hash_str(file: Path) -> str:
+    with file.open("rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
 
 
 def get_os_name() -> str:

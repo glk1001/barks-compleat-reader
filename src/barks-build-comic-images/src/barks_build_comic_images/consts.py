@@ -1,4 +1,4 @@
-from barks_fantagraphics.comics_consts import PageType
+from barks_fantagraphics.comics_consts import JSON_METADATA_FILENAME, PageType
 
 DEST_JPG_QUALITY = 95
 DEST_JPG_COMPRESS_LEVEL = 9
@@ -10,7 +10,6 @@ DEST_PANELS_BBOXES_FILENAME = "dest-panels-bboxes.json"
 README_FILENAME = "readme.txt"
 SUMMARY_FILENAME = "clean_summary.txt"
 METADATA_FILENAME = "metadata.txt"
-JSON_METADATA_FILENAME = "comic-metadata.json"
 DOUBLE_PAGES_SECTION = "double_pages"
 PAGE_NUMBERS_SECTION = "page_numbers"
 DOUBLE_PAGES = [PageType.BODY, PageType.BACK_NO_PANELS_DOUBLE, PageType.BLANK_PAGE]

@@ -26,6 +26,7 @@ from .barks_titles import (
 from .comics_consts import (
     BOUNDED_SUBDIR,
     IMAGES_SUBDIR,
+    JSON_METADATA_FILENAME,
     RESTORABLE_PAGE_TYPES,
     STORY_PAGE_TYPES,
     STORY_PAGE_TYPES_STR_LIST,
@@ -585,6 +586,9 @@ class ComicBook:
             self.chronological_number,
             self.get_comic_issue_title(),
         )
+
+    def get_metadata_filepath(self) -> Path:
+        return self.get_dest_dir() / JSON_METADATA_FILENAME
 
 
 def _get_lookup_title(title: str, file_title: str) -> str:

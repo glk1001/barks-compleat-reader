@@ -49,6 +49,8 @@ INTRO_TITLE_DEFAULT_FONT_FILE = CARL_BARKS_FONT_FILE
 INTRO_TEXT_FONT_FILE = str(FONT_DIR / "Verdana Italic.ttf")
 PAGE_NUM_FONT_FILE = str(FONT_DIR / "verdana.ttf")
 
+JSON_METADATA_FILENAME = "comic-metadata.json"
+
 ROBOTO_FONT = "Roboto"  # Kivy's default font
 
 
