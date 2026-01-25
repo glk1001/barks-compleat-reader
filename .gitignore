@@ -13,6 +13,7 @@ src/comic-utils/src/comic_utils/get_panel_bytes.py
 .idea/**/shelf
 logs/
 .env.runtime
+.coverage
 
 # AWS User-specific
 .idea/**/aws.xml
