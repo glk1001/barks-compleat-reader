@@ -113,7 +113,7 @@ class ComicBookLoader:
         assert self._images
         assert 0 <= page_index < len(self._images)
 
-        image_stream, image_ext = self._images[page_index]
+        image_stream, image_ext = self._images[page_index]  # ty:ignore[not-iterable]
         assert image_stream
 
         image_stream.seek(0)  # Ensure stream is at the beginning for reading

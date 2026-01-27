@@ -18,7 +18,7 @@ class BaseTreeViewNodeProtocol(Protocol):
 
 
 class TitleTreeViewNodeProtocol(BaseTreeViewNodeProtocol):
-    def get_title(self) -> Titles: ...  # ty:ignore[invalid-return-type]
+    def get_title(self) -> Titles: ...  # ty:ignore[empty-body]
 
 
 class ReaderTreeViewProtocol(Protocol):
