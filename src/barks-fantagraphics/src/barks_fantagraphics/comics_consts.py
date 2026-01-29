@@ -52,6 +52,7 @@ PAGE_NUM_FONT_FILE = str(FONT_DIR / "verdana.ttf")
 JSON_METADATA_FILENAME = "comic-metadata.json"
 
 ROBOTO_FONT = "Roboto"  # Kivy's default font
+OPEN_SANS_FONT = "OpenSans"
 
 
 class PageType(Enum):
