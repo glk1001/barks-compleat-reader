@@ -227,6 +227,7 @@ class SpeechIndexScreen(IndexScreen):
         button = IndexItemButton(
             text=item.display_text,
             font_name=self._font_manager.speech_index_item_font_name,
+            font_size=self._font_manager.speech_index_item_font_size,
             bold=False,
             height=INDEX_ITEM_ROW_HEIGHT,
         )
@@ -240,6 +241,7 @@ class SpeechIndexScreen(IndexScreen):
             text=f"*** No index items for '{letter}' ***",
             color=self.index_theme.MENU_TEXT,
             font_name=self._font_manager.speech_index_item_font_name,
+            font_size=self._font_manager.speech_index_item_font_size,
         )
 
     def _add_title_sub_items(self, _dt: float) -> None:

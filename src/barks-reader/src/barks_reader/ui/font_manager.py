@@ -40,7 +40,8 @@ class FontTheme:
     title_info: float
     title_extra_info: float
     index_menu: float
-    index_item: float
+    main_index_item: float
+    speech_index_item: float
     index_title_item: float
     speech_bubble_popup_title: float
     speech_bubble_text: float
@@ -64,7 +65,8 @@ LOW_RES_FONTS = FontTheme(
     title_info=sp(16),
     title_extra_info=sp(14),
     index_menu=sp(13),
-    index_item=sp(12),
+    main_index_item=sp(12),
+    speech_index_item=sp(11),
     index_title_item=sp(12),
     speech_bubble_popup_title=sp(17),
     speech_bubble_text=sp(14),
@@ -87,7 +89,8 @@ HI_RES_FONTS = FontTheme(
     title_info=sp(20),
     title_extra_info=sp(18),
     index_menu=sp(17),
-    index_item=sp(16),
+    main_index_item=sp(16),
+    speech_index_item=sp(15),
     index_title_item=sp(16),
     speech_bubble_popup_title=sp(20),
     speech_bubble_text=sp(16),
@@ -112,7 +115,8 @@ class FontManager(EventDispatcher):
     title_info_font_size = NumericProperty()
     title_extra_info_font_size = NumericProperty()
     index_menu_font_size = NumericProperty()
-    index_item_font_size = NumericProperty()
+    main_index_item_font_size = NumericProperty()
+    speech_index_item_font_size = NumericProperty()
     index_title_item_font_size = NumericProperty()
     speech_bubble_popup_title_font_size = NumericProperty()
     speech_bubble_text_font_size = NumericProperty()
@@ -190,7 +194,8 @@ class FontManager(EventDispatcher):
         self.title_info_font_size = theme.title_info
         self.title_extra_info_font_size = theme.title_extra_info
         self.index_menu_font_size = theme.index_menu
-        self.index_item_font_size = theme.index_item
+        self.main_index_item_font_size = theme.main_index_item
+        self.speech_index_item_font_size = theme.speech_index_item
         self.index_title_item_font_size = theme.index_title_item
         self.speech_bubble_popup_title_font_size = theme.speech_bubble_popup_title
         self.speech_bubble_text_font_size = theme.speech_bubble_text

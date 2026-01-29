@@ -36,7 +36,8 @@ def test_update_font_sizes_low_res(font_manager: FontManager) -> None:
 
     # Check a few properties to ensure LOW_RES_FONTS were applied
     assert font_manager.main_title_font_size == LOW_RES_FONTS.main_title
-    assert font_manager.index_item_font_size == LOW_RES_FONTS.index_item
+    assert font_manager.main_index_item_font_size == LOW_RES_FONTS.main_index_item
+    assert font_manager.speech_index_item_font_size == LOW_RES_FONTS.speech_index_item
     assert font_manager.app_title_font_size == LOW_RES_FONTS.app_title
 
     # Check internal state
@@ -51,7 +52,8 @@ def test_update_font_sizes_hi_res(font_manager: FontManager) -> None:
 
     # Check a few properties to ensure HI_RES_FONTS were applied
     assert font_manager.main_title_font_size == HI_RES_FONTS.main_title
-    assert font_manager.index_item_font_size == HI_RES_FONTS.index_item
+    assert font_manager.main_index_item_font_size == HI_RES_FONTS.main_index_item
+    assert font_manager.speech_index_item_font_size == HI_RES_FONTS.speech_index_item
     assert font_manager.app_title_font_size == HI_RES_FONTS.app_title
 
     # Check internal state
@@ -88,7 +90,8 @@ def test_apply_font_theme_mapping(font_manager: FontManager) -> None:  # noqa: P
     mock_theme.title_info = 12
     mock_theme.title_extra_info = 13
     mock_theme.index_menu = 14
-    mock_theme.index_item = 15
+    mock_theme.main_index_item = 16
+    mock_theme.speech_index_item = 15
     mock_theme.index_title_item = 16
     mock_theme.speech_bubble_popup_title = 17
     mock_theme.speech_bubble_text = 18
@@ -113,7 +116,8 @@ def test_apply_font_theme_mapping(font_manager: FontManager) -> None:  # noqa: P
     assert font_manager.title_info_font_size == 12
     assert font_manager.title_extra_info_font_size == 13
     assert font_manager.index_menu_font_size == 14
-    assert font_manager.index_item_font_size == 15
+    assert font_manager.main_index_item_font_size == 16
+    assert font_manager.speech_index_item_font_size == 15
     assert font_manager.index_title_item_font_size == 16
     assert font_manager.speech_bubble_popup_title_font_size == 17
     assert font_manager.speech_bubble_text_font_size == 18

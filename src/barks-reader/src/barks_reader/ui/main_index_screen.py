@@ -243,6 +243,7 @@ class MainIndexScreen(IndexScreen):
         button = IndexItemButton(
             text=item.display_text,
             font_name=self._font_manager.main_index_item_font_name,
+            font_size=self._font_manager.main_index_item_font_size,
             bold=type(item.id) is not Titles,
             italic=type(item.id) is Titles,
             height=INDEX_ITEM_ROW_HEIGHT,
@@ -257,6 +258,7 @@ class MainIndexScreen(IndexScreen):
             text=f"*** No index items for '{letter}' ***",
             color=self.index_theme.MENU_TEXT,
             font_name=self._font_manager.main_index_item_font_name,
+            font_size=self._font_manager.main_index_item_font_size,
         )
 
     def _add_sub_items(self, _dt: float) -> None:
