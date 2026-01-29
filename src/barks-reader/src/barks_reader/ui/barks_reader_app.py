@@ -64,11 +64,21 @@ from barks_reader.ui.speech_index_screen import SpeechIndexScreen
 from barks_reader.ui.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
 
 if TYPE_CHECKING:
+    from types import TracebackType
+
     from kivy.config import ConfigParser
     from kivy.uix.screenmanager import ScreenManager
     from kivy.uix.widget import Widget
 
     from barks_reader.core.config_info import ConfigInfo
+
+
+COMIC_PAGE_ASPECT_RATIO = 3200.0 / 2120.0
+DEFAULT_WINDOW_HEIGHT_PERCENT = 0.96
+WINDOW_SHOW_DELAY = 2.0
+MOVE_SETTLE_DELAY = 4.0
+DEFAULT_WINDOW_LEFT = 2400
+DEFAULT_WINDOW_TOP = 50
 
 
 class BarksReaderApp(App):
@@ -134,20 +144,19 @@ class BarksReaderApp(App):
 
         new_width = get_win_width_from_height(new_height - ACTION_BAR_SIZE_Y)
 
-        def do_resize(*_args: Any) -> None:  # noqa: ANN401
+        def do_resize(_dt: float) -> None:
             logger.debug(f"Executing resize to new monitor size ({new_width}, {new_height}).")
             Window.size = (new_width, new_height)
 
-        def do_reset_resize(*_args: Any) -> None:  # noqa: ANN401
+        def do_reset_resize(_dt: float) -> None:
             logger.debug("Clearing resize event.")
             self._resize_event = None
             self._resize_requested_size = 0, 0
 
-        time_for_move_to_settle = 4
         self._resize_requested_size = new_width, new_height
 
         Clock.schedule_once(do_resize, 0)
-        self._resize_event = Clock.schedule_once(do_reset_resize, time_for_move_to_settle)
+        self._resize_event = Clock.schedule_once(do_reset_resize, MOVE_SETTLE_DELAY)
 
     def _on_window_resize(self, _window: WindowBase, width: int, height: int) -> None:
         # logger.debug(
@@ -192,10 +201,9 @@ class BarksReaderApp(App):
     def build_config(self, config: ConfigParser) -> None:
         """Set default values for the application configuration."""
         # Set default window geometry if not already present in the config file
-        comic_page_aspect_ratio = 3200.0 / 2120.0
         primary_monitor = get_monitors()[0]
-        default_height = round(0.96 * primary_monitor.height)
-        default_width = round(default_height / comic_page_aspect_ratio)
+        default_height = round(DEFAULT_WINDOW_HEIGHT_PERCENT * primary_monitor.height)
+        default_width = round(default_height / COMIC_PAGE_ASPECT_RATIO)
         default_height_incl_action_bar = default_height + ACTION_BAR_SIZE_Y
 
         config.setdefaults(
@@ -203,8 +211,8 @@ class BarksReaderApp(App):
             {
                 "width": default_width,
                 "height": default_height_incl_action_bar,
-                "left": 2400,
-                "top": 50,
+                "left": DEFAULT_WINDOW_LEFT,
+                "top": DEFAULT_WINDOW_TOP,
             },
         )
 
@@ -381,7 +389,7 @@ class BarksReaderApp(App):
             Window.show()
             _log_screen_settings()
 
-        Clock.schedule_once(show_the_window, 2)
+        Clock.schedule_once(show_the_window, WINDOW_SHOW_DELAY)
 
 
 def _log_screen_settings() -> None:
@@ -399,7 +407,12 @@ def _log_screen_settings() -> None:
 
 
 # noinspection LongLine
-def _handle_app_exception(config_info: ConfigInfo, exc_type, exc_value, exc_traceback) -> None:  # noqa: ANN001
+def _handle_app_exception(
+    config_info: ConfigInfo,
+    exc_type: type[BaseException] | None,
+    exc_value: BaseException | None,
+    exc_traceback: TracebackType | None,
+) -> None:
     handle_app_fail_with_traceback(
         "app",
         "Barks Reader",
