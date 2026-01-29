@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, cast, override
 
 from barks_fantagraphics.barks_titles import (
     BARKS_TITLE_DICT,
@@ -14,14 +14,21 @@ from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_fantagraphics.whoosh_search_engine import SearchEngine, TitleInfo
 from comic_utils.timing import Timing
 from kivy.clock import Clock
+from kivy.graphics import Canvas, Color, Rectangle
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
+    ColorProperty,
+    ListProperty,
+    NumericProperty,
     ObjectProperty,
     StringProperty,
 )
+from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
+from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.widget import Widget
 from loguru import logger
 
 from barks_reader.core.random_title_images import ImageInfo, RandomTitleImages
@@ -33,7 +40,6 @@ from barks_reader.ui.index_screen import (
     IndexScreen,
     SpeechBubblesPopup,
     TextBoxWithTitleAndBorder,
-    TitleItemButton,
     TitleShowSpeechButton,
 )
 from barks_reader.ui.panel_texture_loader import PanelTextureLoader
@@ -45,7 +51,6 @@ if TYPE_CHECKING:
 
     # noinspection PyProtectedMember
     from kivy.core.image import Texture
-    from kivy.uix.button import Button
 
     from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.ui.font_manager import FontManager
@@ -58,6 +63,43 @@ INDEX_TERMS_HIGHLIGHT_START_TAG = f"[b][color={INDEX_TERMS_HIGHLIGHT_COLOR}]"
 INDEX_TERMS_HIGHLIGHT_END_TAG = "[/color][/b]"
 
 SAVED_NODE_STATE_PREFIX_KEY = "prefix"
+
+
+class _SpeechIndexTitleItemButton(Button):
+    background_color_normal = ColorProperty((0, 0, 0, 0))
+    background_color_down = ColorProperty((0, 0, 0, 0))
+    padding = ListProperty([0, 0, 0, 0])
+    gap_fill = NumericProperty(0)
+
+    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+        super().__init__(**kwargs)
+
+        self.italic = True
+        self.size_hint = (None, None)
+        self.height = INDEX_ITEM_ROW_HEIGHT
+        self.background_normal = ""
+        self.background_down = ""
+        self.background_color = (0, 0, 0, 0)
+        self.halign = "left"
+        self.valign = "middle"
+        self.gap_fill = dp(3)
+
+        self.bind(pos=self.update_canvas, size=self.update_canvas)
+
+    def update_canvas(self, *_args) -> None:  # noqa: ANN002
+        canvas = cast("Canvas", self.canvas)
+        canvas.before.clear()
+        with canvas.before:
+            Color(
+                *self.background_color_normal
+                if self.state == "normal"
+                else self.background_color_down
+            )
+            # Draw background starting from text start (padding[0]) to end of button width
+            Rectangle(
+                pos=(self.x + self.padding[0], self.y - self.gap_fill),
+                size=(self.width - self.padding[0], self.height + self.gap_fill),
+            )
 
 
 @dataclass
@@ -83,6 +125,7 @@ class SpeechIndexScreen(IndexScreen):
     ) -> None:
         # Call the parent constructor FIRST to ensure self.ids is populated.
         super().__init__(**kwargs)
+        self.num_columns = 3
 
         self._font_manager = font_manager
         self._whoosh_indexer = SearchEngine(
@@ -256,17 +299,14 @@ class SpeechIndexScreen(IndexScreen):
     def _get_title_sub_items_layout(self, index_term: str) -> GridLayout:
         logger.info(f'Laying out title sub-items for for index term "{index_term}".')
 
-        parent_padding = self._open_tag_button.padding[0]
-        sub_item_padding = parent_padding + self.index_theme.SUB_ITEM_INDENT_STEP
-
-        # --- Determine what items to display in the new sub-list ---
-        found = (
+        # Determine what items to display in the new sub-list.
+        found_words = (
             self._found_words_cache[index_term]
             if index_term in self._found_words_cache
             else self._find_words(index_term)
         )
         sub_items_to_display = []
-        for comic_title, title_speech_info in found.items():
+        for comic_title, title_speech_info in found_words.items():
             page_num_list = [page.comic_page for page in title_speech_info.fanta_pages.values()]
 
             sub_items_to_display.append(
@@ -279,27 +319,25 @@ class SpeechIndexScreen(IndexScreen):
 
         sub_items_to_display.sort(key=lambda t: t[2])
 
-        # Now create the layout.
-        sub_items_layout = GridLayout(
-            cols=2,
-            size_hint_y=None,
-            padding=[0, 0, dp(20), 0],
-            # pos_hint={"x": -0.25},  # Example: Offset x by 5% of parent width
-        )
-        sub_items_layout.bind(minimum_height=sub_items_layout.setter("height"))
+        parent_padding = self._open_tag_button.padding[0]
+        sub_item_padding = parent_padding + self.index_theme.SUB_ITEM_INDENT_STEP
+
+        button_list = []
+        max_title_button_width = 0.0
         for (
             title_str,
             first_page_to_goto,
             title_str_with_pages,
             title_speech_info,
         ) in sub_items_to_display:
-            logger.debug(
-                f'Creating title button for "{title_str}",'
-                f" first page to goto is {first_page_to_goto}."
-            )
-            title_button = TitleItemButton(
+            title_button = _SpeechIndexTitleItemButton(
                 text=title_str_with_pages,
                 padding=[sub_item_padding, 0, 0, 0],
+                color=self.index_theme.TITLE_TEXT,
+                background_color_normal=self.index_theme.TITLE_BG,
+                background_color_down=self.index_theme.TITLE_BG_SELECTED,
+                font_name=self._font_manager.index_title_item_font_name,
+                font_size=self._font_manager.index_title_item_font_size,
             )
             sub_item = IndexItem(
                 id=BARKS_TITLE_DICT[title_str],
@@ -309,7 +347,10 @@ class SpeechIndexScreen(IndexScreen):
             title_button.bind(
                 on_release=lambda btn, bound_item=sub_item: self._handle_title(btn, bound_item),
             )
-            sub_items_layout.add_widget(title_button)
+
+            title_button.texture_update()
+            req_width = title_button.texture_size[0]
+            max_title_button_width = max(max_title_button_width, req_width)
 
             show_speech_bubbles_button = TitleShowSpeechButton()
             show_speech_bubbles_button.bind(
@@ -320,24 +361,127 @@ class SpeechIndexScreen(IndexScreen):
                     bound_title_str, bound_index_terms, bound_title_speech_info
                 )
             )
+
+            logger.debug(
+                f'Created title button for "{title_str}",'
+                f" first page to goto is {first_page_to_goto},"
+                f" title_button_width = {title_button.width},"
+                f" req_width = {req_width},"
+                f" max_title_button_width = {max_title_button_width},"
+                f" show_speech_bubbles_button_width = {show_speech_bubbles_button.width}."
+            )
+
+            button_list.append((title_button, show_speech_bubbles_button))
+
+        # Now create the layout.
+        max_title_button_width += dp(7)
+
+        sub_items_layout = GridLayout(
+            cols=2,
+            size_hint_x=None,
+            size_hint_y=None,
+            padding=[0, 0, 0, 0],
+            spacing=[0, dp(1)],
+        )
+
+        # Bind the layout's width and height to its minimum required values. This allows it to
+        # expand automatically as the children (buttons) update their widths and heights based
+        # on texture size.
+        sub_items_layout.bind(minimum_width=sub_items_layout.setter("width"))
+        sub_items_layout.bind(minimum_height=sub_items_layout.setter("height"))
+
+        for title_button, show_speech_bubbles_button in button_list:
+            title_button.width = max_title_button_width
+            title_button.text_size = (max_title_button_width, title_button.height)
+            sub_items_layout.add_widget(title_button)
+
             sub_items_layout.add_widget(show_speech_bubbles_button)
 
-            logger.debug(f'Added title sub-item "{title_str_with_pages}".')
+        logger.debug(f"Finished setting up sub_items layout. Width = {sub_items_layout.width}.")
 
         return sub_items_layout
 
     def _insert_sub_items_layout(self, sub_items_layout: GridLayout) -> None:
         button = self._open_tag_button
-        index_items_layout = button.parent
+        target_layout = button.parent
 
-        # In Kivy layouts, inserting at the button's index typically places the new widget
-        # visually *after* (below) the button in the layout flow.
         logger.debug("Adding title sub-items layout to parent layout.")
-        insertion_index = index_items_layout.children.index(button)
-        index_items_layout.add_widget(sub_items_layout, index=insertion_index)
-        sub_items_layout.owner_button = self._open_tag_button  # Tag the layout with its owner
+        insertion_index = target_layout.children.index(button)
 
-        self._open_tag_widgets.append(sub_items_layout)
+        # Calculate the visual row index (0-based from top) of the button.
+        # Kivy's children list is typically in reverse visual order (index 0 is bottom).
+        row_index_from_top = len(target_layout.children) - 1 - insertion_index
+
+        wrapper = RelativeLayout(size_hint_y=None, size_hint_x=1)
+        sub_items_layout.bind(height=wrapper.setter("height"))
+
+        is_right_column = target_layout == self.ids.right_column_layout
+
+        def update_pos(_instance, _value) -> None:  # noqa: ANN001
+            if is_right_column and sub_items_layout.width > wrapper.width:
+                sub_items_layout.x = wrapper.width - sub_items_layout.width - dp(10)
+            else:
+                sub_items_layout.x = 0
+
+        sub_items_layout.bind(width=update_pos)
+        wrapper.bind(width=update_pos)
+
+        wrapper.add_widget(sub_items_layout)
+        target_layout.add_widget(wrapper, index=insertion_index)
+        wrapper.owner_button = self._open_tag_button  # Tag the layout with its owner
+        logger.debug(f"sub_items_layout.width after insertion = {sub_items_layout.width}.")
+
+        # Add the primary layout to the list of open widgets first. This is important
+        # for the collapse logic to correctly identify the level of the click.
+        self._open_tag_widgets.append(wrapper)
+
+        def _add_spacers_to_other_columns(_dt: float) -> None:
+            """Add spacer widgets to other columns to keep vertical alignment."""
+            spacer_height = sub_items_layout.height
+            if spacer_height == 0:
+                # The layout's height hasn't been calculated yet, try again next frame.
+                Clock.schedule_once(_add_spacers_to_other_columns)
+                return
+
+            logger.debug(f"Adding spacers of height {spacer_height} to other columns.")
+
+            all_columns = [
+                self.ids.left_column_layout,
+                self.ids.middle_column_layout,
+                self.ids.right_column_layout,
+            ]
+
+            try:
+                target_index = all_columns.index(target_layout)
+            except ValueError:
+                return
+
+            covered_width = target_layout.width
+
+            for i in range(target_index + 1, len(all_columns)):
+                if sub_items_layout.width <= covered_width:
+                    break
+
+                column = all_columns[i]
+
+                # Calculate insertion index to match the visual row of the clicked button.
+                # Insert the spacer immediately after the item at 'row_index_from_top'.
+                spacer_insertion_index = max(0, len(column.children) - 1 - row_index_from_top)
+
+                spacer = Widget(size_hint_y=None, height=spacer_height)
+
+                # Tag the spacer with the same owner button so it can be found and removed
+                # as part of the same group during collapse/expand operations.
+                spacer.owner_button = self._open_tag_button
+
+                column.add_widget(spacer, index=spacer_insertion_index)
+                self._open_tag_widgets.append(spacer)
+
+                covered_width += column.width
+
+        # Schedule the spacer addition to occur on the next frame. This allows Kivy's
+        # layout engine to calculate the height of the `sub_items_layout` first.
+        Clock.schedule_once(_add_spacers_to_other_columns)
 
     def _on_index_item_press(self, button: Button, item: IndexItem) -> None:
         """Handle a press on an individual index item."""

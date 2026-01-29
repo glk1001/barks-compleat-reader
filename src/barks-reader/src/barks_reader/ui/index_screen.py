@@ -8,7 +8,11 @@ from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from comic_utils.timing import Timing
 from kivy.app import App
 from kivy.metrics import dp
-from kivy.properties import BooleanProperty, ObjectProperty  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[unresolved-import]
+    BooleanProperty,
+    NumericProperty,
+    ObjectProperty,
+)
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
@@ -40,10 +44,6 @@ class IndexMenuButton(Button):
 
 class IndexItemButton(Button):
     """A custom button for the index items, styled in the .kv file."""
-
-
-class TitleItemButton(Button):
-    """A custom button for title items, styled in the .kv file."""
 
 
 class TitleShowSpeechButton(Button):
@@ -89,6 +89,7 @@ class IndexScreen(FloatLayout):
 
     index_theme = ObjectProperty()
     _selected_letter_button = ObjectProperty(None, allownone=True)
+    num_columns = NumericProperty(2)
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
@@ -168,8 +169,10 @@ class IndexScreen(FloatLayout):
         self._new_index_image()
 
         left_index_column: BoxLayout = self.ids.left_column_layout
+        middle_index_column: BoxLayout = self.ids.middle_column_layout
         right_index_column: BoxLayout = self.ids.right_column_layout
         left_index_column.clear_widgets()
+        middle_index_column.clear_widgets()
         right_index_column.clear_widgets()
 
         items_for_letter = self._get_items_for_letter(letter)
@@ -177,19 +180,33 @@ class IndexScreen(FloatLayout):
             left_index_column.add_widget(self._get_no_items_button(letter))
             return
 
-        # Populate the two columns
+        # Populate the columns
         num_items = len(items_for_letter)
-        split_point = (num_items + 1) // 2
-        left_index_items = items_for_letter[:split_point]
-        right_index_items = items_for_letter[split_point:]
 
-        for item in left_index_items:
-            item_button = self._create_index_button(item)
-            left_index_column.add_widget(item_button)
+        if self.num_columns == 3:  # noqa: PLR2004
+            split1 = (num_items + 2) // 3
+            split2 = split1 + (num_items - split1 + 1) // 2
 
-        for item in right_index_items:
-            item_button = self._create_index_button(item)
-            right_index_column.add_widget(item_button)
+            left_index_items = items_for_letter[:split1]
+            middle_index_items = items_for_letter[split1:split2]
+            right_index_items = items_for_letter[split2:]
+
+            for item in left_index_items:
+                left_index_column.add_widget(self._create_index_button(item))
+            for item in middle_index_items:
+                middle_index_column.add_widget(self._create_index_button(item))
+            for item in right_index_items:
+                right_index_column.add_widget(self._create_index_button(item))
+        else:
+            split_point = (num_items + 1) // 2
+            left_index_items = items_for_letter[:split_point]
+            right_index_items = items_for_letter[split_point:]
+
+            for item in left_index_items:
+                left_index_column.add_widget(self._create_index_button(item))
+
+            for item in right_index_items:
+                right_index_column.add_widget(self._create_index_button(item))
 
         self.ids.index_scroll_view.scroll_y = 1
 

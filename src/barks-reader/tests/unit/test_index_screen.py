@@ -92,6 +92,7 @@ def index_screen(mock_app: MagicMock) -> ConcreteIndexScreen:  # noqa: ARG001
         screen.ids = MagicMock()
         screen.ids.alphabet_side_layout = MagicMock()
         screen.ids.left_column_layout = MagicMock()
+        screen.ids.middle_column_layout = MagicMock()
         screen.ids.right_column_layout = MagicMock()
         screen.ids.index_scroll_view = MagicMock()
 
@@ -140,6 +141,7 @@ class TestIndexScreen:
         # Setup
         index_screen.ids.left_column_layout.clear_widgets = MagicMock()
         index_screen.ids.right_column_layout.clear_widgets = MagicMock()
+        index_screen.ids.middle_column_layout.clear_widgets = MagicMock()
 
         # Test with items (Letter A returns ["Apple", "Ant"])
         # noinspection PyProtectedMember
@@ -156,6 +158,7 @@ class TestIndexScreen:
         # Test with no items
         index_screen.ids.left_column_layout.reset_mock()
         index_screen.ids.right_column_layout.reset_mock()
+        index_screen.ids.middle_column_layout.reset_mock()
 
         # noinspection PyProtectedMember
         index_screen._populate_index_grid("Z")  # Returns []

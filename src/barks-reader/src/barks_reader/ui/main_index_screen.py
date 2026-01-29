@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, cast, override
 
 from barks_fantagraphics.barks_tags import (
     BARKS_TAG_GROUPS,
@@ -17,22 +17,21 @@ from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
 from comic_utils.timing import Timing
 from kivy.clock import Clock
+from kivy.graphics import Canvas, Color, Rectangle
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
+    ColorProperty,
     ObjectProperty,
     StringProperty,
 )
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
 from loguru import logger
 
 from barks_reader.core.random_title_images import ImageInfo, RandomTitleImages
 from barks_reader.core.reader_utils import get_concat_page_nums_str
-from barks_reader.ui.index_screen import (
-    IndexItemButton,
-    IndexScreen,
-    TitleItemButton,
-)
+from barks_reader.ui.index_screen import IndexItemButton, IndexScreen
 from barks_reader.ui.panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
@@ -40,13 +39,46 @@ if TYPE_CHECKING:
 
     # noinspection PyProtectedMember
     from kivy.core.image import Texture
-    from kivy.uix.button import Button
 
     from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.ui.font_manager import FontManager
 
 INDEX_ITEM_ROW_HEIGHT = dp(25)
 INDEX_IMAGE_CHANGE_SECONDS = 5
+
+
+class _MainIndexTitleItemButton(Button):
+    background_color_normal = ColorProperty((0, 0, 0, 0))
+    background_color_down = ColorProperty((0, 0, 0, 0))
+
+    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+        super().__init__(**kwargs)
+        self.background_normal = ""
+        self.background_down = ""
+        self.border = (0, 0, 0, 0)
+        self.background_color = (0, 0, 0, 0)
+        self.size_hint = (0.90, None)
+        self.halign = "left"
+        self.valign = "middle"
+
+        self.bind(size=self.setter("text_size"))
+        self.bind(pos=self.update_canvas, size=self.update_canvas, state=self.update_canvas)
+
+    def update_canvas(self, *_args) -> None:  # noqa: ANN002
+        canvas = cast("Canvas", self.canvas)
+        canvas.before.clear()
+        with canvas.before:
+            Color(
+                *(
+                    self.background_color_down
+                    if self.state == "down"
+                    else self.background_color_normal
+                )
+            )
+            # Draw a rectangle that respects the button's left padding.
+            # The KV rule used 0.8 * padding[0]
+            pad = 0.8 * self.padding[0]
+            Rectangle(pos=(self.x + pad, self.y), size=(self.width - pad, self.height))
 
 
 @dataclass()
@@ -277,6 +309,7 @@ class MainIndexScreen(IndexScreen):
         # --- Determine what items to display in the new sub-list ---
         if type(self._open_tag_item.id) is Tags:
             assert isinstance(item_id, Tags)
+            use_italic = True
             sub_items_to_display = [
                 (
                     title,
@@ -286,6 +319,7 @@ class MainIndexScreen(IndexScreen):
             ]
         else:  # It's a TagGroup
             assert isinstance(item_id, TagGroups)
+            use_italic = False
             sub_items_to_display = [
                 (tag, "", tag.value) for tag in get_all_tags_in_tag_group(item_id)
             ]
@@ -301,11 +335,17 @@ class MainIndexScreen(IndexScreen):
             sub_item_text,
         ) in sub_items_to_display:
             logger.info(f'For "{sub_item_text}", page to goto = {sub_item_page_to_goto}.')
-            title_button = TitleItemButton(
+            title_button = _MainIndexTitleItemButton(
                 text=sub_item_text,
-                italic=True,
+                italic=use_italic,
+                bold=not use_italic,  # not a title so must be TagGroup
+                font_name=str(self._font_manager.index_title_item_font_name),
+                font_size=self._font_manager.index_title_item_font_size,
+                color=self.index_theme.TITLE_TEXT,
+                background_color_normal=self.index_theme.TITLE_BG,
+                background_color_down=self.index_theme.TITLE_BG_SELECTED,
+                height=self.index_theme.ROW_HEIGHT,
                 padding=[sub_item_padding, 0, 0, 0],
-                size_hint=(0.90, None),
             )
             sub_item = IndexItem(
                 id=sub_item_id,
