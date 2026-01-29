@@ -22,6 +22,7 @@
     background_down: ''
     border: (0, 0, 0, 0)
     background_color: app.index_theme.ITEM_BG
+    font_name: ""  # filled in by constructor
     font_size: fm.index_item_font_size
     color: app.index_theme.ITEM_TEXT
     size_hint: 1, None
@@ -154,7 +155,7 @@
         mipmap: True
 
     GridLayout:
-        id: alphabet_layout
+        id: alphabet_side_layout
         cols: 1
         size_hint_x: None
         width: dp(40)
@@ -188,7 +189,7 @@
         bar_width: dp(12)
 
         size_hint: None, None
-        size: root.width - alphabet_layout.width - dp(15), 0.91 * root.height
+        size: root.width - alphabet_side_layout.width - dp(15), 0.91 * root.height
         pos_hint: {'right': 1, 'top': 0.95}
 
         FloatLayout:

@@ -45,7 +45,6 @@ if TYPE_CHECKING:
 
     # noinspection PyProtectedMember
     from kivy.core.image import Texture
-    from kivy.uix.boxlayout import BoxLayout
     from kivy.uix.button import Button
 
     from barks_reader.core.reader_settings import ReaderSettings
@@ -146,7 +145,7 @@ class SpeechIndexScreen(IndexScreen):
         else:
             first_prefix = self.treeview_index_node.saved_state[SAVED_NODE_STATE_PREFIX_KEY]
             if first_prefix not in first_letter_split_terms:
-                logger.error(f'Invalid restored prefix: "{first_prefix}".')
+                logger.warning(f'Invalid restored prefix: "{first_prefix}".')
                 first_prefix = next(iter(first_letter_split_terms))
 
         self.on_letter_prefix_press(self._prefix_buttons[first_prefix])
@@ -243,24 +242,26 @@ class SpeechIndexScreen(IndexScreen):
             font_name=self._font_manager.speech_index_item_font_name,
         )
 
-    def _add_sub_items(self, _dt: float) -> None:
+    def _add_title_sub_items(self, _dt: float) -> None:
         """Create and add the sub-item widgets to the layout."""
         assert type(self._open_tag_item.id) is str
         item_id: str = self._open_tag_item.id
-        logger.debug(f"Adding sub-items for {item_id}")
+        logger.debug(f'Adding title sub-items for "{item_id}".')
 
-        sub_items_layout = self._get_sub_item_layout(item_id)
+        sub_items_layout = self._get_title_sub_items_layout(item_id)
         self._insert_sub_items_layout(sub_items_layout)
 
-    def _get_sub_item_layout(self, index_terms: str) -> BoxLayout:
+    def _get_title_sub_items_layout(self, index_term: str) -> GridLayout:
+        logger.info(f'Laying out title sub-items for for index term "{index_term}".')
+
         parent_padding = self._open_tag_button.padding[0]
         sub_item_padding = parent_padding + self.index_theme.SUB_ITEM_INDENT_STEP
 
         # --- Determine what items to display in the new sub-list ---
         found = (
-            self._found_words_cache[index_terms]
-            if index_terms in self._found_words_cache
-            else self._find_words(index_terms)
+            self._found_words_cache[index_term]
+            if index_term in self._found_words_cache
+            else self._find_words(index_term)
         )
         sub_items_to_display = []
         for comic_title, title_speech_info in found.items():
@@ -277,7 +278,12 @@ class SpeechIndexScreen(IndexScreen):
         sub_items_to_display.sort(key=lambda t: t[2])
 
         # Now create the layout.
-        sub_items_layout = GridLayout(cols=2, size_hint_y=None, padding=[0, 0, dp(20), 0])
+        sub_items_layout = GridLayout(
+            cols=2,
+            size_hint_y=None,
+            padding=[0, 0, dp(20), 0],
+            # pos_hint={"x": -0.25},  # Example: Offset x by 5% of parent width
+        )
         sub_items_layout.bind(minimum_height=sub_items_layout.setter("height"))
         for (
             title_str,
@@ -285,7 +291,10 @@ class SpeechIndexScreen(IndexScreen):
             title_str_with_pages,
             title_speech_info,
         ) in sub_items_to_display:
-            logger.info(f'For "{title_str}", first page to goto = {first_page_to_goto}.')
+            logger.debug(
+                f'Creating title button for "{title_str}",'
+                f" first page to goto is {first_page_to_goto}."
+            )
             title_button = TitleItemButton(
                 text=title_str_with_pages,
                 padding=[sub_item_padding, 0, 0, 0],
@@ -304,23 +313,28 @@ class SpeechIndexScreen(IndexScreen):
             show_speech_bubbles_button.bind(
                 on_release=lambda _btn,
                 bound_title_str=title_str,
-                bound_index_terms=index_terms,
-                bound_title_speech_info=title_speech_info: self._handle_title_speech(
+                bound_index_terms=index_term,
+                bound_title_speech_info=title_speech_info: self._show_title_speech_bubbles(
                     bound_title_str, bound_index_terms, bound_title_speech_info
                 )
             )
             sub_items_layout.add_widget(show_speech_bubbles_button)
 
-            logger.debug(f'Added sub-item "{title_str_with_pages}".')
+            logger.debug(f'Added title sub-item "{title_str_with_pages}".')
 
         return sub_items_layout
 
-    def _insert_sub_items_layout(self, sub_items_layout: BoxLayout) -> None:
+    def _insert_sub_items_layout(self, sub_items_layout: GridLayout) -> None:
         button = self._open_tag_button
-        target_layout = button.parent
-        insertion_index = target_layout.children.index(button)
-        target_layout.add_widget(sub_items_layout, index=insertion_index)
+        index_items_layout = button.parent
+
+        # In Kivy layouts, inserting at the button's index typically places the new widget
+        # visually *after* (below) the button in the layout flow.
+        logger.debug("Adding title sub-items layout to parent layout.")
+        insertion_index = index_items_layout.children.index(button)
+        index_items_layout.add_widget(sub_items_layout, index=insertion_index)
         sub_items_layout.owner_button = self._open_tag_button  # Tag the layout with its owner
+
         self._open_tag_widgets.append(sub_items_layout)
 
     def _on_index_item_press(self, button: Button, item: IndexItem) -> None:
@@ -341,7 +355,7 @@ class SpeechIndexScreen(IndexScreen):
         self._handle_expand_or_switch(button)
 
         # --- Handle the actual press ---
-        self._handle_press(button, item)
+        self._handle_index_item_press(button, item)
 
     def _handle_collapse(self, level_of_click: int) -> None:
         # When collapsing a parent, close it and all its children.
@@ -413,12 +427,12 @@ class SpeechIndexScreen(IndexScreen):
 
         return level_of_click
 
-    def _handle_press(self, button: Button, item: IndexItem) -> None:
-        logger.info(f'Handling term: "{item.id}".')
+    def _handle_index_item_press(self, button: Button, item: IndexItem) -> None:
+        logger.info(f'Handling index term: "{item.id}".')
 
         self._open_tag_button = button
         self._open_tag_item = item
-        Clock.schedule_once(self._add_sub_items, 0)
+        Clock.schedule_once(self._add_title_sub_items, 0)
 
     def _handle_title(self, button: Button, item: IndexItem) -> None:
         assert type(item.id) is Titles
@@ -439,10 +453,10 @@ class SpeechIndexScreen(IndexScreen):
         Clock.schedule_once(lambda _dt: goto_title(), 0.01)
         Clock.schedule_once(lambda _dt: reset_background_color(), 0.1)
 
-    def _handle_title_speech(
+    def _show_title_speech_bubbles(
         self, title_str: str, index_terms: str, title_speech_info: TitleInfo
     ) -> None:
-        logger.info(f'Handling title speech for: "{title_str}" and index terms "{index_terms}".')
+        logger.info(f'Show speech bubbles for: "{title_str}" and index terms "{index_terms}".')
 
         text_boxes = GridLayout(cols=1, size_hint_y=None, spacing=dp(30), padding=dp(30))
         text_boxes.bind(minimum_height=text_boxes.setter("height"))

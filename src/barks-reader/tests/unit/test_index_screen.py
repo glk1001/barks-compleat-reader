@@ -90,7 +90,7 @@ def index_screen(mock_app: MagicMock) -> ConcreteIndexScreen:  # noqa: ARG001
 
         # Manually set ids since we bypassed KV loading
         screen.ids = MagicMock()
-        screen.ids.alphabet_layout = MagicMock()
+        screen.ids.alphabet_side_layout = MagicMock()
         screen.ids.left_column_layout = MagicMock()
         screen.ids.right_column_layout = MagicMock()
         screen.ids.index_scroll_view = MagicMock()
@@ -111,9 +111,9 @@ class TestIndexScreen:
         # noinspection PyProtectedMember
         index_screen._populate_alphabet_menu()
 
-        # Check if buttons were added to alphabet_layout
+        # Check if buttons were added to alphabet_side_layout
         # 0 + ' + A-Z = 28 buttons
-        assert index_screen.ids.alphabet_layout.add_widget.call_count == 28  # noqa: PLR2004
+        assert index_screen.ids.alphabet_side_layout.add_widget.call_count == 28  # noqa: PLR2004
         assert "A" in index_screen._alphabet_buttons
         assert "Z" in index_screen._alphabet_buttons
         assert "0" in index_screen._alphabet_buttons

@@ -115,12 +115,12 @@ class IndexScreen(FloatLayout):
         """Create the A-Z buttons and add them to the GridLayout."""
         timing = Timing()
 
-        alphabet_layout: GridLayout = self.ids.alphabet_layout
+        alphabet_side_layout: GridLayout = self.ids.alphabet_side_layout
         for letter in "0" + "'" + string.ascii_uppercase:
             button = IndexMenuButton(text=letter)
             button.bind(on_release=self.on_letter_press)
             self._alphabet_buttons[letter] = button
-            alphabet_layout.add_widget(button)
+            alphabet_side_layout.add_widget(button)
 
         logger.debug(f"Created A-Z index buttons in {timing.get_elapsed_time_with_unit()}.")
 
