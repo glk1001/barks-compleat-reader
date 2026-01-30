@@ -249,3 +249,51 @@ class IndexScreen(FloatLayout):
         if text_upper.startswith("A "):
             return text[2:] + ", A"
         return text
+
+    def _handle_collapse(self, level_of_click: int) -> None:
+        # When collapsing a parent, close it and all its children.
+        slice_index = level_of_click
+        widgets_to_close = self._open_tag_widgets[slice_index:]
+        for widget in widgets_to_close[:]:
+            if widget.parent:
+                widget.parent.remove_widget(widget)
+            self._open_tag_widgets.remove(widget)
+
+    def _handle_expand_or_switch(self, button: Button) -> None:
+        level_of_click = self._get_level_of_click_for_expand_or_switch(button)
+
+        # Determine slice index for cleanup based on click type
+        slice_index = (
+            0  # Top-level switch (e.g., Africa -> Asia). Close everything.
+            if level_of_click == -1
+            else (
+                level_of_click + 1
+            )  # Drill-down or lateral move. Close lists at the same or deeper level.
+        )
+
+        # Perform the cleanup.
+        widgets_to_close = self._open_tag_widgets[slice_index:]
+        if widgets_to_close:
+            for widget in widgets_to_close[:]:  # Iterate over a copy
+                if widget.parent:
+                    widget.parent.remove_widget(widget)
+                self._open_tag_widgets.remove(widget)
+
+    def _get_level_of_click_for_collapse(self, button: Button) -> tuple[bool, int]:
+        for i, container in enumerate(self._open_tag_widgets):
+            if getattr(container, "owner_button", None) == button:
+                return True, i
+        return False, -1
+
+    def _get_level_of_click_for_expand_or_switch(self, button: Button) -> int:
+        if self._open_tag_widgets:
+            for i, container in enumerate(self._open_tag_widgets):
+                # Walk up a maximum of 20 parents as a safety measure against infinite loops.
+                current = button
+                for _ in range(20):
+                    if not current:
+                        break
+                    if current == container:
+                        return i
+                    current = current.parent
+        return -1

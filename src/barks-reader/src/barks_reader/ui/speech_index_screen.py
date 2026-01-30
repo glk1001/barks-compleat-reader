@@ -299,25 +299,7 @@ class SpeechIndexScreen(IndexScreen):
     def _get_title_sub_items_layout(self, index_term: str) -> GridLayout:
         logger.info(f'Laying out title sub-items for for index term "{index_term}".')
 
-        # Determine what items to display in the new sub-list.
-        found_words = (
-            self._found_words_cache[index_term]
-            if index_term in self._found_words_cache
-            else self._find_words(index_term)
-        )
-        sub_items_to_display = []
-        for comic_title, title_speech_info in found_words.items():
-            page_num_list = [page.comic_page for page in title_speech_info.fanta_pages.values()]
-
-            sub_items_to_display.append(
-                (
-                    comic_title,
-                    *self._get_indexable_title_with_page_nums(comic_title, page_num_list),
-                    title_speech_info,
-                )
-            )
-
-        sub_items_to_display.sort(key=lambda t: t[2])
+        sub_items_to_display = self._get_sub_items_data(index_term)
 
         parent_padding = self._open_tag_button.padding[0]
         sub_item_padding = parent_padding + self.index_theme.SUB_ITEM_INDENT_STEP
@@ -401,6 +383,29 @@ class SpeechIndexScreen(IndexScreen):
 
         return sub_items_layout
 
+    def _get_sub_items_data(self, index_term: str) -> list:
+        """Retrieve and prepare the list of items to display in the sub-layout."""
+        found_words = (
+            self._found_words_cache[index_term]
+            if index_term in self._found_words_cache
+            else self._find_words(index_term)
+        )
+        sub_items_to_display = []
+        for comic_title, title_speech_info in found_words.items():
+            page_num_list = [page.comic_page for page in title_speech_info.fanta_pages.values()]
+
+            sub_items_to_display.append(
+                (
+                    comic_title,
+                    *self._get_indexable_title_with_page_nums(comic_title, page_num_list),
+                    title_speech_info,
+                )
+            )
+
+        sub_items_to_display.sort(key=lambda t: t[2])
+
+        return sub_items_to_display
+
     def _insert_sub_items_layout(self, sub_items_layout: GridLayout) -> None:
         button = self._open_tag_button
         target_layout = button.parent
@@ -435,53 +440,58 @@ class SpeechIndexScreen(IndexScreen):
         # for the collapse logic to correctly identify the level of the click.
         self._open_tag_widgets.append(wrapper)
 
-        def _add_spacers_to_other_columns(_dt: float) -> None:
-            """Add spacer widgets to other columns to keep vertical alignment."""
-            spacer_height = sub_items_layout.height
-            if spacer_height == 0:
-                # The layout's height hasn't been calculated yet, try again next frame.
-                Clock.schedule_once(_add_spacers_to_other_columns)
-                return
-
-            logger.debug(f"Adding spacers of height {spacer_height} to other columns.")
-
-            all_columns = [
-                self.ids.left_column_layout,
-                self.ids.middle_column_layout,
-                self.ids.right_column_layout,
-            ]
-
-            try:
-                target_index = all_columns.index(target_layout)
-            except ValueError:
-                return
-
-            covered_width = target_layout.width
-
-            for i in range(target_index + 1, len(all_columns)):
-                if sub_items_layout.width <= covered_width:
-                    break
-
-                column = all_columns[i]
-
-                # Calculate insertion index to match the visual row of the clicked button.
-                # Insert the spacer immediately after the item at 'row_index_from_top'.
-                spacer_insertion_index = max(0, len(column.children) - 1 - row_index_from_top)
-
-                spacer = Widget(size_hint_y=None, height=spacer_height)
-
-                # Tag the spacer with the same owner button so it can be found and removed
-                # as part of the same group during collapse/expand operations.
-                spacer.owner_button = self._open_tag_button
-
-                column.add_widget(spacer, index=spacer_insertion_index)
-                self._open_tag_widgets.append(spacer)
-
-                covered_width += column.width
-
         # Schedule the spacer addition to occur on the next frame. This allows Kivy's
         # layout engine to calculate the height of the `sub_items_layout` first.
-        Clock.schedule_once(_add_spacers_to_other_columns)
+        Clock.schedule_once(
+            lambda dt: self._add_spacers_to_columns(
+                dt, target_layout, sub_items_layout, row_index_from_top
+            )
+        )
+
+    def _add_spacers_to_columns(
+        self,
+        _dt: float,
+        target_layout: Widget,
+        sub_items_layout: Widget,
+        row_index_from_top: int,
+    ) -> None:
+        """Add spacer widgets to other columns to keep vertical alignment."""
+        spacer_height = sub_items_layout.height
+        if spacer_height == 0:
+            # The layout's height hasn't been calculated yet, try again next frame.
+            Clock.schedule_once(
+                lambda dt: self._add_spacers_to_columns(
+                    dt, target_layout, sub_items_layout, row_index_from_top
+                )
+            )
+            return
+
+        all_columns = [
+            self.ids.left_column_layout,
+            self.ids.middle_column_layout,
+            self.ids.right_column_layout,
+        ]
+
+        try:
+            target_index = all_columns.index(target_layout)
+        except ValueError:
+            return
+
+        covered_width = target_layout.width
+
+        for i in range(target_index + 1, len(all_columns)):
+            if sub_items_layout.width <= covered_width:
+                break
+
+            column = all_columns[i]
+            spacer_insertion_index = max(0, len(column.children) - 1 - row_index_from_top)
+            spacer = Widget(size_hint_y=None, height=spacer_height)
+            spacer.owner_button = self._open_tag_button
+
+            column.add_widget(spacer, index=spacer_insertion_index)
+            self._open_tag_widgets.append(spacer)
+
+            covered_width += column.width
 
     def _on_index_item_press(self, button: Button, item: IndexItem) -> None:
         """Handle a press on an individual index item."""
@@ -502,76 +512,6 @@ class SpeechIndexScreen(IndexScreen):
 
         # --- Handle the actual press ---
         self._handle_index_item_press(button, item)
-
-    def _handle_collapse(self, level_of_click: int) -> None:
-        # When collapsing a parent, close it and all its children.
-        slice_index = level_of_click
-        widgets_to_close = self._open_tag_widgets[slice_index:]
-        for widget in widgets_to_close[:]:
-            if widget.parent:
-                widget.parent.remove_widget(widget)
-            self._open_tag_widgets.remove(widget)
-
-    def _handle_expand_or_switch(self, button: Button) -> None:
-        level_of_click = self._get_level_of_click_for_expand_or_switch(button)
-
-        # Determine slice index for cleanup based on click type
-        slice_index = (
-            0  # Top-level switch (e.g., Africa -> Asia). Close everything.
-            if level_of_click == -1
-            else (
-                level_of_click + 1
-            )  # Drill-down or lateral move. Close lists at the same or deeper level.
-        )
-
-        # Perform the cleanup.
-        widgets_to_close = self._open_tag_widgets[slice_index:]
-        logger.debug(
-            f"slice_index = {slice_index}, len(widgets_to_close) = {len(widgets_to_close)}."
-        )
-        if widgets_to_close:
-            logger.debug(
-                f"Closing {len(widgets_to_close)} widget(s) from level {slice_index} onwards."
-            )
-            for widget in widgets_to_close[:]:  # Iterate over a copy
-                if widget.parent:
-                    widget.parent.remove_widget(widget)
-                self._open_tag_widgets.remove(widget)
-
-    def _get_level_of_click_for_collapse(self, button: Button) -> tuple[bool, int]:
-        is_collapse = False
-        level_of_click = -1
-
-        for i, container in enumerate(self._open_tag_widgets):
-            if getattr(container, "owner_button", None) == button:
-                is_collapse = True
-                level_of_click = i
-                break
-
-        return is_collapse, level_of_click
-
-    def _get_level_of_click_for_expand_or_switch(self, button: Button) -> int:
-        level_of_click = -1
-
-        if self._open_tag_widgets:
-            for i, container in enumerate(self._open_tag_widgets):
-                # The `walk()` method can be unreliable in dynamic layouts.
-                current = button
-                # Walk up a maximum of 20 parents as a safety measure against infinite loops.
-                for _ in range(20):
-                    if not current:
-                        break
-                    if current == container:
-                        level_of_click = i
-                        logger.debug(
-                            f'Button "{button.text}" is a descendant of a container at level {i}.'
-                        )
-                        break
-                    current = current.parent
-                if level_of_click != -1:
-                    break
-
-        return level_of_click
 
     def _handle_index_item_press(self, button: Button, item: IndexItem) -> None:
         logger.info(f'Handling index term: "{item.id}".')
