@@ -21,9 +21,8 @@ class JsonFiles:
         title: str,
     ) -> None:
         self.title = title
-        self.volume_dirname = comics_database.get_fantagraphics_volume_title(
-            comics_database.get_fanta_volume_int(title)
-        )
+        self.volume = comics_database.get_fanta_volume_int(title)
+        self.volume_dirname = comics_database.get_fantagraphics_volume_title(self.volume)
         self.title_prelim_results_dir = OCR_PRELIM_DIR / self.volume_dirname
         self.title_final_results_dir = OCR_FINAL_DIR / self.volume_dirname
         self.title_annotated_images_dir = OCR_ANNOTATIONS_DIR / self.volume_dirname
