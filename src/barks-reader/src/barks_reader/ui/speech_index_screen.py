@@ -453,6 +453,7 @@ class SpeechIndexScreen(IndexScreen):
             text = mark_phrase_in_text(
                 index_terms, text, INDEX_TERMS_HIGHLIGHT_START_TAG, INDEX_TERMS_HIGHLIGHT_END_TAG
             )
+            text = text.replace("\u00ad", "-")
             text_box = TextBoxWithTitleAndBorder(title=page_text, content=text.strip())
             text_box.ids.the_text_id.bind(
                 on_release=lambda _btn,
