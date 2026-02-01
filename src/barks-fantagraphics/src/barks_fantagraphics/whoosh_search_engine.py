@@ -18,7 +18,13 @@ from .comics_consts import RESTORABLE_PAGE_TYPES
 from .comics_database import ComicsDatabase
 from .ocr_json_files import JsonFiles
 from .pages import get_page_num_str, get_sorted_srce_and_dest_pages
-from .whoosh_barks_terms import BARKSIAN_EXTRA_TERMS, NAME_MAP, TERMS_TO_CAPITALIZE, TERMS_TO_REMOVE
+from .whoosh_barks_terms import (
+    ALL_CAPS,
+    BARKSIAN_EXTRA_TERMS,
+    NAME_MAP,
+    TERMS_TO_CAPITALIZE,
+    TERMS_TO_REMOVE,
+)
 from .whoosh_punct_tokenizer import WordWithPunctTokenizer
 
 COLLATOR = Collator()
@@ -193,6 +199,8 @@ class SearchEngineCreator(SearchEngine):
 
             if term in NAME_MAP:
                 cleaned_term = NAME_MAP[term]
+            elif term in ALL_CAPS:
+                cleaned_term = term.upper()
             elif term in TERMS_TO_CAPITALIZE:
                 cleaned_term = term.capitalize()
             else:
