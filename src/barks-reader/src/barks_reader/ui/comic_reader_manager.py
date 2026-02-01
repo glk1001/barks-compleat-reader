@@ -9,15 +9,17 @@ from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, Fan
 
 # noinspection PyUnresolvedReferences
 from comic_utils.get_panel_bytes import get_decrypted_bytes  # ty: ignore[unresolved-import]
+from kivy.clock import Clock
 from loguru import logger
 
 from barks_reader.core.comic_book_page_info import ComicBookPageInfo, ComicBookPageInfoManager
+from barks_reader.core.fantagraphics_volumes import MissingVolumeError
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_settings import ReaderSettings
 from barks_reader.ui.comic_book_reader import ComicBookReaderScreen
 from barks_reader.ui.json_settings_manager import SavedPageInfo, SettingsManager
 from barks_reader.ui.tree_view_screen import TreeViewScreen
-from barks_reader.ui.user_error_handler import UserErrorHandler
+from barks_reader.ui.user_error_handler import ErrorInfo, ErrorTypes, UserErrorHandler
 
 if TYPE_CHECKING:
     from barks_reader.ui.comic_book_reader import ComicBookReader
@@ -156,13 +158,25 @@ class ComicReaderManager:
             f' and goto page "{page_to_first_goto}".',
         )
 
-        self._comic_book_reader.read_comic(
-            self._fanta_info,
-            use_overrides_active,
-            comic_book_image_builder,
-            page_to_first_goto,
-            self._comic_page_info.page_map,
-        )
+        try:
+            self._comic_book_reader.read_comic(
+                self._fanta_info,
+                use_overrides_active,
+                comic_book_image_builder,
+                page_to_first_goto,
+                self._comic_page_info.page_map,
+            )
+        except MissingVolumeError as e:
+            logger.error(e)
+            error_info = ErrorInfo(missing_volumes=[e.missing_vol], title=e.title)
+            self._user_error_handler.handle_error(
+                ErrorTypes.MissingVolumeCannotShowTitle, error_info
+            )
+            # noinspection LongLine
+            Clock.schedule_once(
+                lambda _dt: self._comic_book_reader_screen.close_comic_book_reader(),  # ty:ignore[possibly-missing-attribute]
+                1,
+            )
 
     def comic_closed(self) -> SavedPageInfo | None:
         """Handle actions when a comic is closed, such as saving the last read page.

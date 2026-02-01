@@ -6,6 +6,7 @@
     title_align: "center"
     title_color: (1, 0, 0, 1)
     auto_dismiss: False
+    msg_halign: 'justify'
     size_hint: 0.9, 0.5
 
     BoxLayout:
@@ -18,7 +19,7 @@
             multiline: True
             markup: True
             size: self.texture_size
-            halign: 'justify'
+            halign: root.msg_halign
             valign: 'middle'
             size_hint: 0.7, 0.9
             pos_hint: {'center_x': 0.5, 'center_y': 0.5}
@@ -42,6 +43,10 @@
                 on_press: root.ok()
 
             Button:
+                disabled: not root.cancel_text
+                opacity: 0 if not root.cancel_text else 1
+                size_hint_x: 1 if root.cancel_text else None
+                width: 0
                 text: root.cancel_text
                 font_size: fm.error_popup_button_font_size
                 text_size: self.size

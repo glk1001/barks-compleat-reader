@@ -30,8 +30,15 @@ def mock_font_manager() -> MagicMock:
 
 
 @pytest.fixture
+def mock_user_error_handler() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
 def main_index_screen(
-    mock_settings: MagicMock, mock_font_manager: MagicMock
+    mock_settings: MagicMock,
+    mock_font_manager: MagicMock,
+    mock_user_error_handler: MagicMock,
 ) -> Generator[MainIndexScreen]:
     # Patch the superclass __init__ to avoid Kivy widget initialization
     with patch.object(barks_reader.ui.index_screen.IndexScreen, "__init__"):  # noqa: SIM117
@@ -45,7 +52,7 @@ def main_index_screen(
             ) as mock_loader_cls,
             patch.object(MainIndexScreen, "_populate_alphabet_menu"),
         ):
-            screen = MainIndexScreen(mock_settings, mock_font_manager)
+            screen = MainIndexScreen(mock_settings, mock_font_manager, mock_user_error_handler)
 
             # Manually initialize attributes that super().__init__ or __init__ would set
             screen.ids = MagicMock()

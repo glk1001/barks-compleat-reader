@@ -11,6 +11,7 @@ from barks_fantagraphics.barks_titles import (
     ComicBookInfo,
     Titles,
 )
+from barks_fantagraphics.comics_database import TitleNotFoundError
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
     SERIES_EXTRAS,
@@ -55,7 +56,7 @@ from barks_reader.ui.reader_ui_classes import (
     show_action_bar,
 )
 from barks_reader.ui.tree_view_manager import TreeViewManager
-from barks_reader.ui.user_error_handler import UserErrorHandler
+from barks_reader.ui.user_error_handler import ErrorInfo, ErrorTypes, UserErrorHandler
 from barks_reader.ui.view_state_manager import ImageThemesChange, ImageThemesToUse, ViewStateManager
 from barks_reader.ui.view_states import ViewStates
 
@@ -80,6 +81,13 @@ if TYPE_CHECKING:
 MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 
+class TitleNotInFantaInfoError(Exception):
+    """Exception raised for title not in Fanta info."""
+
+    def __init__(self, title_str: str) -> None:
+        super().__init__(f'Title "{title_str}" not in Fanta info.')
+
+
 class MainScreen(ReaderScreen):
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
@@ -101,6 +109,7 @@ class MainScreen(ReaderScreen):
         main_index_screen: MainIndexScreen,
         speech_index_screen: SpeechIndexScreen,
         font_manager: FontManager,
+        user_error_handler: UserErrorHandler,
         **kwargs: str,
     ) -> None:
         super().__init__(**kwargs)
@@ -124,6 +133,7 @@ class MainScreen(ReaderScreen):
         self._main_index_screen.on_goto_title = self._goto_title_with_page_num
         self._speech_index_screen = speech_index_screen
         self._speech_index_screen.on_goto_title = self._goto_title_with_page_num
+        self._user_error_handler = user_error_handler
 
         self.ids.main_layout.add_widget(self._tree_view_screen)
         self._bottom_base_view_screen = Screen(size_hint=(1, 1))
@@ -560,6 +570,9 @@ class MainScreen(ReaderScreen):
     def _get_fanta_info(title: Titles) -> FantaComicBookInfo:
         # TODO: Very roundabout way to get fanta info
         title_str = BARKS_TITLES[title]
+        if title_str not in ALL_FANTA_COMIC_BOOK_INFO:
+            raise TitleNotInFantaInfoError(title_str)
+
         return ALL_FANTA_COMIC_BOOK_INFO[title_str]
 
     def _title_row_selected(
@@ -685,12 +698,20 @@ class MainScreen(ReaderScreen):
         self._comic_reader_manager.read_article_as_comic_book(article_title, page_to_first_goto)
 
     def _read_barks_comic_book(self) -> None:
+        try:
+            comic_book = self._get_comic_book()
+        except TitleNotFoundError as e:
+            logger.error(e)
+            error_info = ErrorInfo(file_volume=-1, title=BARKS_TITLE_DICT[e.title])
+            self._user_error_handler.handle_error(ErrorTypes.ArchiveVolumeNotAvailable, error_info)
+            return
+
         self._is_active(active=False)
         self._read_comic_view_state = None
 
         self._comic_reader_manager.read_barks_comic_book(
             self.fanta_info,
-            self._get_comic_book(),
+            comic_book,
             self._get_page_to_first_goto(),
             self._bottom_title_view_screen.use_overrides_active,
         )

@@ -32,7 +32,13 @@ from loguru import logger
 from barks_reader.core.random_title_images import ImageInfo, RandomTitleImages
 from barks_reader.core.reader_utils import get_concat_page_nums_str
 from barks_reader.ui.index_screen import IndexItemButton, IndexScreen
+from barks_reader.ui.main_screen import TitleNotInFantaInfoError
 from barks_reader.ui.panel_texture_loader import PanelTextureLoader
+from barks_reader.ui.user_error_handler import (
+    ErrorTypes,
+    UserErrorHandler,
+    get_volume_not_available_error_info,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -122,12 +128,14 @@ class MainIndexScreen(IndexScreen):
         self,
         reader_settings: ReaderSettings,
         font_manager: FontManager,
+        user_error_handler: UserErrorHandler,
         **kwargs,  # noqa: ANN003
     ) -> None:
         # Call the parent constructor FIRST to ensure self.ids is populated.
         super().__init__(**kwargs)
 
         self._font_manager = font_manager
+        self._user_error_handler = user_error_handler
         self._random_title_images = RandomTitleImages(reader_settings)
         self._image_loader = PanelTextureLoader(
             reader_settings.file_paths.barks_panels_are_encrypted
@@ -410,7 +418,14 @@ class MainIndexScreen(IndexScreen):
 
         def goto_title() -> None:
             assert self.on_goto_title is not None
-            self.on_goto_title(image_info, item.page_to_goto)
+            try:
+                self.on_goto_title(image_info, item.page_to_goto)
+            except TitleNotInFantaInfoError as e:
+                logger.error(e)
+                self._user_error_handler.handle_error(
+                    ErrorTypes.ArchiveVolumeNotAvailable,
+                    get_volume_not_available_error_info(image_info),
+                )
 
         def reset_background_color() -> None:
             button.background_color = self.index_theme.ITEM_BG

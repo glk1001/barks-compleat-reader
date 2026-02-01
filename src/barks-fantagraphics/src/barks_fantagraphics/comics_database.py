@@ -55,6 +55,12 @@ from .fanta_comics_info import (
 from .page_classes import OriginalPage
 
 
+class TitleNotFoundError(Exception):
+    def __init__(self, msg: str, title: str) -> None:
+        super().__init__(msg)
+        self.title = title
+
+
 class ComicsDatabase:
     def __init__(self, for_building_comics: bool = True) -> None:
         self._database_dir = INTERNAL_DATA_DIR
@@ -411,9 +417,9 @@ class ComicsDatabase:
             else:
                 if close:
                     msg = f'Could not find title "{title}". Did you mean "{close}"?'
-                    raise RuntimeError(msg)
+                    raise TitleNotFoundError(msg, title)
                 msg = f'Could not find title "{title}".'
-                raise RuntimeError(msg)
+                raise TitleNotFoundError(msg, title)
 
         ini_file = self._story_titles_dir / get_filename_from_title_str(story_title, ".ini")
         logger.debug(f'Getting comic book info from config file "{get_relpath(ini_file)}".')

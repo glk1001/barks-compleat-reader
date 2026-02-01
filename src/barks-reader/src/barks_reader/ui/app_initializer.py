@@ -8,8 +8,9 @@ from kivy.clock import Clock
 from loguru import logger
 
 from barks_reader.core.fantagraphics_volumes import (
+    DuplicateArchiveFilesError,
+    MissingArchiveFilesError,
     TooManyArchiveFilesError,
-    WrongFantagraphicsVolumeError,
 )
 from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
 from barks_reader.ui.reader_ui_classes import BaseTreeViewNode
@@ -35,15 +36,17 @@ if TYPE_CHECKING:
 
 class _FantaVolumesState(Enum):
     VOLUMES_EXIST = auto()
-    VOLUMES_MISSING = auto()
+    ALL_VOLUMES_MISSING = auto()
+    SOME_VOLUMES_MISSING = auto()
     VOLUMES_NOT_SET = auto()
-    VOLUMES_WRONG_ORDER = auto()
     VOLUMES_TOO_MANY = auto()
+    DUPLICATE_VOLUMES = auto()
     VOLUMES_NOT_NEEDED = auto()
 
 
 _READY_FANTA_VOLUMES_STATE = {
     _FantaVolumesState.VOLUMES_EXIST,
+    _FantaVolumesState.SOME_VOLUMES_MISSING,
     _FantaVolumesState.VOLUMES_NOT_NEEDED,
 }
 _BAD_FANTA_VOLUMES_STATE = set(_FantaVolumesState) - _READY_FANTA_VOLUMES_STATE
@@ -57,17 +60,17 @@ class AppInitializer:
             "Fantagraphics Directory Not Set",
             ErrorTypes.FantagraphicsVolumeRootNotSet,
         ),
-        _FantaVolumesState.VOLUMES_MISSING: (
+        _FantaVolumesState.ALL_VOLUMES_MISSING: (
             "Fantagraphics Directory Not Found",
             ErrorTypes.FantagraphicsVolumeRootNotFound,
         ),
-        _FantaVolumesState.VOLUMES_WRONG_ORDER: (
-            "Wrong Content in Fantagraphics Directory",
-            ErrorTypes.WrongFantagraphicsVolume,
-        ),
         _FantaVolumesState.VOLUMES_TOO_MANY: (
-            "Wrong Content in Fantagraphics Directory",
-            ErrorTypes.WrongFantagraphicsVolume,
+            "Too Many Archive Files in Fantagraphics Directory",
+            ErrorTypes.TooManyVolumeArchiveFiles,
+        ),
+        _FantaVolumesState.DUPLICATE_VOLUMES: (
+            "Duplicate Archive Files in Fantagraphics Directory",
+            ErrorTypes.DuplicateVolumeArchiveFiles,
         ),
     }
 
@@ -178,28 +181,33 @@ class AppInitializer:
         if str(self._reader_settings.fantagraphics_volumes_dir) == UNSET_FANTA_DIR_MARKER:
             return _FantaVolumesState.VOLUMES_NOT_SET
         if not self._reader_settings.fantagraphics_volumes_dir.is_dir():
-            return _FantaVolumesState.VOLUMES_MISSING
+            return _FantaVolumesState.ALL_VOLUMES_MISSING
         return _FantaVolumesState.VOLUMES_EXIST
 
     def _init_comic_book_data(self) -> bool:
         try:
             self._comic_reader_manager.init_comic_book_data()
-        except WrongFantagraphicsVolumeError as e:
-            self._fanta_volumes_state = _FantaVolumesState.VOLUMES_WRONG_ORDER
-            self._fanta_volumes_error_info = ErrorInfo(
-                file=str(e.file), file_volume=e.file_volume, expected_volume=e.expected_volume
-            )
-            self._handle_error_ui(
-                ErrorTypes.WrongFantagraphicsVolume, self._fanta_volumes_error_info
-            )
-            return False
         except TooManyArchiveFilesError as e:
             self._fanta_volumes_state = _FantaVolumesState.VOLUMES_TOO_MANY
             self._fanta_volumes_error_info = ErrorInfo(
                 num_volumes=e.num_volumes, num_archive_files=e.num_archive_files
             )
-            self._handle_error_ui(ErrorTypes.TooManyArchiveFiles, self._fanta_volumes_error_info)
+            self._handle_error_ui(
+                ErrorTypes.TooManyVolumeArchiveFiles, self._fanta_volumes_error_info
+            )
             return False
+        except DuplicateArchiveFilesError as e:
+            self._fanta_volumes_state = _FantaVolumesState.VOLUMES_TOO_MANY
+            self._fanta_volumes_error_info = ErrorInfo(duplicate_volumes=e.duplicates)
+            self._handle_error_ui(
+                ErrorTypes.TooManyVolumeArchiveFiles, self._fanta_volumes_error_info
+            )
+            return False
+        except MissingArchiveFilesError as e:
+            self._fanta_volumes_state = _FantaVolumesState.SOME_VOLUMES_MISSING
+            self._fanta_volumes_error_info = ErrorInfo(missing_volumes=e.missing_file_vols)
+            self._handle_error_ui(ErrorTypes.MissingArchiveVolumes, self._fanta_volumes_error_info)
+            return True
 
         return True
 

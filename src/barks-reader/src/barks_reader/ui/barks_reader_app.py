@@ -62,6 +62,7 @@ from barks_reader.ui.reader_ui_classes import (
 from barks_reader.ui.settings_fix import SettingLongPath, SettingOptionsWithValue
 from barks_reader.ui.speech_index_screen import SpeechIndexScreen
 from barks_reader.ui.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
+from barks_reader.ui.user_error_handler import UserErrorHandler
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -297,13 +298,21 @@ class BarksReaderApp(App):
     def _build_screens(self) -> ScreenManager:
         logger.debug("Instantiating main screen...")
         # TODO: Can probably move some of these into main_screen
+        user_error_handler = UserErrorHandler(
+            self.reader_settings, self._reader_screen_manager.screen_switchers.switch_to_settings
+        )
+
         filtered_title_lists = FilteredTitleLists()
         reader_tree_events = ReaderTreeBuilderEventDispatcher()
         tree_view_screen = TreeViewScreen(self.reader_settings)
         bottom_title_view_screen = BottomTitleViewScreen(self.reader_settings, self.font_manager)
         fun_image_view_screen = FunImageViewScreen(self.reader_settings)
-        main_index_screen = MainIndexScreen(self.reader_settings, self.font_manager)
-        speech_index_screen = SpeechIndexScreen(self.reader_settings, self.font_manager)
+        main_index_screen = MainIndexScreen(
+            self.reader_settings, self.font_manager, user_error_handler
+        )
+        speech_index_screen = SpeechIndexScreen(
+            self.reader_settings, self.font_manager, user_error_handler
+        )
         self._main_screen = MainScreen(
             self._comics_database,
             self.reader_settings,
@@ -316,6 +325,7 @@ class BarksReaderApp(App):
             main_index_screen,
             speech_index_screen,
             self.font_manager,
+            user_error_handler,
             name=MAIN_READER_SCREEN,
         )
         self._set_custom_title_bar()

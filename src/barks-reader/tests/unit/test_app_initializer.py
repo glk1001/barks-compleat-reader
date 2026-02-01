@@ -6,10 +6,7 @@ from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
-from barks_reader.core.fantagraphics_volumes import (
-    TooManyArchiveFilesError,
-    WrongFantagraphicsVolumeError,
-)
+from barks_reader.core.fantagraphics_volumes import TooManyArchiveFilesError
 from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
 from barks_reader.ui import app_initializer as app_initializer_module
 
@@ -128,7 +125,7 @@ class TestAppInitializer:
             app_initializer._post_build_setup()
 
             # noinspection PyProtectedMember
-            assert app_initializer._fanta_volumes_state == _FantaVolumesState.VOLUMES_MISSING
+            assert app_initializer._fanta_volumes_state == _FantaVolumesState.ALL_VOLUMES_MISSING
 
             mock_handle_error.assert_called_with(ErrorTypes.FantagraphicsVolumeRootNotFound)
 
@@ -167,28 +164,6 @@ class TestAppInitializer:
         assert app_initializer._init_comic_book_data() is True
         mock_dependencies["comic_reader_manager"].init_comic_book_data.assert_called_once()
 
-    def test_init_comic_book_data_wrong_volume(
-        self, app_initializer: AppInitializer, mock_dependencies: dict[str, MagicMock]
-    ) -> None:
-        error = WrongFantagraphicsVolumeError(Path("file"), 1, 2, Path("/root"))
-        mock_dependencies["comic_reader_manager"].init_comic_book_data.side_effect = error
-
-        with patch.object(
-            app_initializer, AppInitializer._handle_error_ui.__name__
-        ) as mock_handle_error:
-            # noinspection PyProtectedMember
-            assert app_initializer._init_comic_book_data() is False
-
-            # noinspection PyProtectedMember
-            assert app_initializer._fanta_volumes_state == _FantaVolumesState.VOLUMES_WRONG_ORDER
-
-            mock_handle_error.assert_called_with(ErrorTypes.WrongFantagraphicsVolume, ANY)
-            # Verify ErrorInfo content in call args
-            args, _ = mock_handle_error.call_args
-            error_info = args[1]
-            assert error_info.file_volume == 1
-            assert error_info.expected_volume == 2  # noqa: PLR2004
-
     def test_init_comic_book_data_too_many_files(
         self, app_initializer: AppInitializer, mock_dependencies: dict[str, MagicMock]
     ) -> None:
@@ -204,7 +179,7 @@ class TestAppInitializer:
             # noinspection PyProtectedMember
             assert app_initializer._fanta_volumes_state == _FantaVolumesState.VOLUMES_TOO_MANY
 
-            mock_handle_error.assert_called_with(ErrorTypes.TooManyArchiveFiles, ANY)
+            mock_handle_error.assert_called_with(ErrorTypes.TooManyVolumeArchiveFiles, ANY)
 
     def test_is_fanta_volumes_state_ok(self, app_initializer: AppInitializer) -> None:
         # Case OK
@@ -214,7 +189,7 @@ class TestAppInitializer:
 
         # Case Bad
         # noinspection PyProtectedMember
-        app_initializer._fanta_volumes_state = _FantaVolumesState.VOLUMES_MISSING
+        app_initializer._fanta_volumes_state = _FantaVolumesState.ALL_VOLUMES_MISSING
 
         with patch.object(
             app_initializer, AppInitializer._handle_error_ui.__name__

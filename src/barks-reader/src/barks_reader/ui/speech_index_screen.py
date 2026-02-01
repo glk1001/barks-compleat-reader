@@ -54,6 +54,7 @@ if TYPE_CHECKING:
 
     from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.ui.font_manager import FontManager
+    from barks_reader.ui.user_error_handler import UserErrorHandler
 
 INDEX_ITEM_ROW_HEIGHT = dp(21)
 INDEX_IMAGE_CHANGE_SECONDS = 15
@@ -121,6 +122,7 @@ class SpeechIndexScreen(IndexScreen):
         self,
         reader_settings: ReaderSettings,
         font_manager: FontManager,
+        user_error_handler: UserErrorHandler,
         **kwargs,  # noqa: ANN003
     ) -> None:
         # Call the parent constructor FIRST to ensure self.ids is populated.
@@ -128,6 +130,7 @@ class SpeechIndexScreen(IndexScreen):
         self.num_columns = 3
 
         self._font_manager = font_manager
+        self._user_error_handler = user_error_handler
         self._whoosh_indexer = SearchEngine(
             reader_settings.sys_file_paths.get_barks_reader_indexes_dir()
         )

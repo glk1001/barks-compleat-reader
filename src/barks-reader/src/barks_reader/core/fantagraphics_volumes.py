@@ -1,8 +1,10 @@
 import re
 import zipfile
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
+from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from barks_fantagraphics.comic_book import get_page_str
 from barks_fantagraphics.fanta_comics_info import (
     FIRST_VOLUME_NUMBER,
@@ -12,15 +14,36 @@ from barks_fantagraphics.fanta_comics_info import (
 from comic_utils.comic_consts import CBZ_FILE_EXT, JPG_FILE_EXT, PNG_FILE_EXT, ZIP_FILE_EXT
 from loguru import logger
 
-VALID_IMAGE_EXTENSION = [PNG_FILE_EXT, JPG_FILE_EXT]
+_VALID_IMAGE_EXTENSION = [PNG_FILE_EXT, JPG_FILE_EXT]
 
 
-class NotEnoughArchiveFilesError(Exception):
-    def __init__(self, num_archive_files: int, num_volumes: int, archive_root: Path) -> None:
+class MissingArchiveFilesError(Exception):
+    def __init__(self, missing_file_vols: list[int], archive_root: Path) -> None:
+        missing_vols_str = ", ".join(map(str, missing_file_vols))
+
+        if len(missing_file_vols) == 1:
+            super().__init__(
+                f'There is a volume missing in "{archive_root}".'
+                f" The missing volume is '{missing_vols_str}'."
+            )
+        else:
+            super().__init__(
+                f'There are volumes missing in "{archive_root}".'
+                f"The missing volumes are '{missing_vols_str}'."
+            )
+
+        self.missing_file_vols = missing_file_vols
+
+
+class MissingVolumeError(Exception):
+    def __init__(self, missing_vol: int, title: Titles) -> None:
         super().__init__(
-            f'There are not enough archive files in "{archive_root}".'
-            f"There are {num_archive_files} but there should be {num_volumes}."
+            f'Cannot show the the title "{BARKS_TITLES[title]}".'
+            f" The Fantagraphics volume {missing_vol} is missing."
         )
+
+        self.missing_vol = missing_vol
+        self.title = title
 
 
 class TooManyArchiveFilesError(Exception):
@@ -32,6 +55,17 @@ class TooManyArchiveFilesError(Exception):
 
         self.num_archive_files = num_archive_files
         self.num_volumes = num_volumes
+        self.archive_root = archive_root
+
+
+class DuplicateArchiveFilesError(Exception):
+    def __init__(self, duplicates: list[int], archive_root: Path) -> None:
+        super().__init__(
+            f'There are duplicate volume files in "{archive_root}".'
+            f"The duplicate volumes are {', '.join(map(str, duplicates))}."
+        )
+
+        self.duplicates = duplicates
         self.archive_root = archive_root
 
 
@@ -51,14 +85,6 @@ class TooManyOverrideDirsError(Exception):
         )
 
 
-class WrongFantagraphicsVolumeError(Exception):
-    def __init__(self, file: Path, file_vol: int, expected_volume: int, archive_root: Path) -> None:
-        self.file = file
-        self.file_volume = file_vol
-        self.expected_volume = expected_volume
-        self.archive_root = archive_root
-
-
 class PageNumError(Exception):
     pass
 
@@ -69,9 +95,11 @@ class PageExtError(Exception):
 
 @dataclass
 class FantagraphicsArchive:
+    """Represents a single Fantagraphics volume archive and its metadata."""
+
     fanta_volume: int
     archive_filename: Path
-    archive_image_subdir: Path
+    archive_image_subdir: Path | None
     image_ext: str
     first_page: int
     last_page: int
@@ -80,6 +108,7 @@ class FantagraphicsArchive:
     extra_images_page_map: dict[str, Path]
     override_archive_filename: Path | None
     override_archive: zipfile.ZipFile | None = None
+    is_missing: bool = False
 
     def get_num_pages(self) -> int:
         return self.last_page - self.first_page + 1
@@ -89,6 +118,8 @@ class FantagraphicsArchive:
 
 
 class FantagraphicsVolumeArchives:
+    """Manages the loading and validation of Fantagraphics volume archives."""
+
     def __init__(self, archive_root: Path, override_root: Path, volume_list: list[int]) -> None:
         self._archive_root = archive_root
         self._override_root = override_root
@@ -107,87 +138,116 @@ class FantagraphicsVolumeArchives:
     ) -> None:
         self.check_correct_volume_numbers(archive_filenames)
 
-        if len(archive_filenames) < NUM_VOLUMES:
-            raise NotEnoughArchiveFilesError(
-                len(archive_filenames), NUM_VOLUMES, self._archive_root
-            )
-        if len(archive_filenames) > NUM_VOLUMES:
-            raise TooManyArchiveFilesError(len(archive_filenames), NUM_VOLUMES, self._archive_root)
         if len(override_archive_filenames) > NUM_VOLUMES:
             raise TooManyOverrideDirsError(
                 len(override_archive_filenames), NUM_VOLUMES, self._archive_root
             )
 
     def check_correct_volume_numbers(self, archive_filenames: list[Path]) -> None:
-        volume = FIRST_VOLUME_NUMBER
+        file_vols = sorted([self._get_fanta_volume(f) for f in archive_filenames])
 
-        for file in archive_filenames:
-            file_vol = self._get_fanta_volume(file)
+        # Check valid volume numbers.
+        if file_vols[-1] > LAST_VOLUME_NUMBER:
+            raise TooManyArchiveFilesError(len(archive_filenames), NUM_VOLUMES, self._archive_root)
 
-            if volume > LAST_VOLUME_NUMBER:
-                raise TooManyArchiveFilesError(
-                    len(archive_filenames), NUM_VOLUMES, self._archive_root
-                )
+        # Check there are no duplicates.
+        counts = Counter(file_vols)
+        duplicates = [item for item, count in counts.items() if count > 1]
+        if duplicates:
+            raise DuplicateArchiveFilesError(duplicates, self._archive_root)
 
-            if file_vol != volume:
-                raise WrongFantagraphicsVolumeError(file, file_vol, volume, self._archive_root)
-
-            volume += 1
+        # Check for missing volumes.
+        full_vol_set = set(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1))
+        file_vols_set = set(file_vols)
+        # The difference between the full set and the actual set are the gaps.
+        file_vol_gaps = sorted(full_vol_set - file_vols_set)
+        if file_vol_gaps:
+            raise MissingArchiveFilesError(file_vol_gaps, self._archive_root)
 
     def load(self) -> None:
+        """Load all archives and overrides from the configured directories."""
         archive_filenames = sorted(self.get_all_volume_filenames(), key=self._get_fanta_volume)
         override_archive_filenames = self.get_all_volume_override_archives()
-        self.check_archives_and_overrides(archive_filenames, override_archive_filenames)
+
+        try:
+            self.check_archives_and_overrides(archive_filenames, override_archive_filenames)
+        except MissingArchiveFilesError as e:
+            missing_volumes = e.missing_file_vols
+        else:
+            missing_volumes = []
 
         self._fantagraphics_archive_dict: dict[int, FantagraphicsArchive] = {}
-        for archive in archive_filenames:
-            logger.debug(f'Processing Fantagraphics archive "{archive}"...')
 
-            image_dir, image_filenames = self._get_archive_contents(archive)
+        for missing_volume in missing_volumes:
+            archive_filename = Path(f"{missing_volume}-MISSING.cbz")
+            override_archive_filename = override_archive_filenames.get(missing_volume, None)
+            archive_page_map = FantagraphicsArchive(
+                fanta_volume=missing_volume,
+                archive_filename=archive_filename,
+                archive_image_subdir=None,
+                image_ext="",
+                first_page=-1,
+                last_page=-1,
+                archive_images_page_map={},
+                override_images_page_map={},
+                extra_images_page_map={},
+                override_archive_filename=override_archive_filename,
+                is_missing=True,
+            )
+            self._fantagraphics_archive_dict[missing_volume] = archive_page_map
+
+        for archive_filename in archive_filenames:
+            logger.debug(f'Processing Fantagraphics archive "{archive_filename}"...')
+
+            fanta_volume = self._get_fanta_volume(archive_filename)
+            override_archive_filename = override_archive_filenames.get(fanta_volume, None)
+
+            archive_image_subdir, image_filenames = self._get_archive_contents(archive_filename)
             image_ext = Path(image_filenames[0]).suffix
-            if image_ext not in VALID_IMAGE_EXTENSION:
+            if image_ext not in _VALID_IMAGE_EXTENSION:
                 msg = (
                     f'For image "{image_filenames[0]}",'
-                    f' expecting extension to be in "{VALID_IMAGE_EXTENSION}".'
+                    f' expecting extension to be in "{_VALID_IMAGE_EXTENSION}".'
                 )
                 raise PageExtError(msg)
 
             first_page, last_page = self._get_first_and_last_page_nums(image_filenames)
             self._check_image_names(image_filenames, first_page, last_page, image_ext)
 
-            fanta_volume = self._get_fanta_volume(archive)
-            override_archive_filename = override_archive_filenames.get(fanta_volume, None)
-
-            archive_image_page_map = self._get_archive_image_page_map(
-                image_dir, image_filenames, first_page, last_page
+            archive_images_page_map = self._get_archive_image_page_map(
+                archive_image_subdir, image_filenames, first_page, last_page
             )
-            override_image_page_map, extra_images_page_map = (
+            override_images_page_map, extra_images_page_map = (
                 self._get_override_and_extra_images_page_maps(
-                    override_archive_filename, archive_image_page_map
+                    override_archive_filename, archive_images_page_map
                 )
             )
 
             archive_page_map = FantagraphicsArchive(
                 fanta_volume,
-                archive,
-                image_dir,
+                archive_filename,
+                archive_image_subdir,
                 image_ext,
                 first_page,
                 last_page,
-                archive_image_page_map,
-                override_image_page_map,
+                archive_images_page_map,
+                override_images_page_map,
                 extra_images_page_map,
                 override_archive_filename,
+                is_missing=False,
             )
-
             self._fantagraphics_archive_dict[fanta_volume] = archive_page_map
 
             logger.debug(
-                f'Finished processing archive "{archive}"'
+                f'Finished processing archive "{archive_filename}"'
                 f" ({first_page}-{last_page}, {last_page - first_page + 1} pages)."
             )
 
+        if missing_volumes:
+            raise MissingArchiveFilesError(missing_volumes, self._archive_root)
+
     def get_all_volume_filenames(self) -> list[Path]:
+        """Return a list of all valid volume archive filenames in the archive root."""
         archive_files = []
         for archive_file in self._archive_root.iterdir():
             if archive_file.suffix.lower() not in [CBZ_FILE_EXT, ZIP_FILE_EXT]:
@@ -204,6 +264,7 @@ class FantagraphicsVolumeArchives:
         return archive_files
 
     def get_all_volume_override_archives(self) -> dict[int, Path]:
+        """Return a map of volume number to override archive path."""
         override_archives = {}
         for override_archive_file in self._override_root.iterdir():
             if not override_archive_file.is_file():
@@ -221,15 +282,15 @@ class FantagraphicsVolumeArchives:
         return override_archives
 
     @staticmethod
-    def _check_archive(archive_filename: str) -> None:
-        with zipfile.ZipFile(archive_filename, "r") as archive:
-            archive.testzip()
-
-    @staticmethod
     def _get_archive_contents(archive_filename: Path) -> tuple[Path, list[str]]:
+        """Get the subdirectory and list of image filenames from the archive."""
         with zipfile.ZipFile(archive_filename, "r") as archive:
             image_names = sorted(
-                [Path(f) for f in archive.namelist() if f.lower().endswith((".png", ".jpg"))]
+                [
+                    Path(f)
+                    for f in archive.namelist()
+                    if f.lower().endswith(tuple(_VALID_IMAGE_EXTENSION))
+                ]
             )
             image_subdir = Path()
             image_filenames = []
@@ -289,10 +350,10 @@ class FantagraphicsVolumeArchives:
                 page = file.stem
                 ext = file.suffix
                 assert ext in [JPG_FILE_EXT, PNG_FILE_EXT]
-                if ext not in VALID_IMAGE_EXTENSION:
+                if ext not in _VALID_IMAGE_EXTENSION:
                     msg = (
                         f'For image "{file}" in "{override_archive_filename}",'
-                        f' expecting extension to be in "{VALID_IMAGE_EXTENSION}".'
+                        f' expecting extension to be in "{_VALID_IMAGE_EXTENSION}".'
                     )
                     raise PageExtError(msg)
 

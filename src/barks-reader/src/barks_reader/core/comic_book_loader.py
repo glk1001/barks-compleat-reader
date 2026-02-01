@@ -18,6 +18,7 @@ from barks_fantagraphics.fanta_comics_info import (
     FIRST_VOLUME_NUMBER,
     LAST_VOLUME_NUMBER,
     FantaComicBookInfo,
+    get_fanta_volume_from_str,
 )
 from comic_utils.comic_consts import CBZ_FILE_EXT, ZIP_FILE_EXT
 from comic_utils.pil_image_utils import (
@@ -37,6 +38,7 @@ from barks_reader.core.comic_book_loader_platform_settings import (
 from barks_reader.core.fantagraphics_volumes import (
     FantagraphicsArchive,
     FantagraphicsVolumeArchives,
+    MissingVolumeError,
 )
 from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
 from barks_reader.core.services import schedule_once, set_busy_cursor, set_normal_cursor
@@ -157,6 +159,12 @@ class ComicBookLoader:
             self._fanta_volume_archive = self._fanta_volume_archives.get_fantagraphics_archive(
                 int(fanta_info.fantagraphics_volume[-2:])
             )
+            if self._fanta_volume_archive.is_missing:
+                raise MissingVolumeError(
+                    get_fanta_volume_from_str(fanta_info.fantagraphics_volume),
+                    fanta_info.comic_book_info.title,
+                )
+
             if self._fanta_volume_archive.has_overrides():
                 assert self._fanta_volume_archive.override_archive_filename
                 self._fanta_volume_archive.override_archive = zipfile.ZipFile(
@@ -502,6 +510,7 @@ class ComicBookLoader:
         page_str = Path(page_info.srce_page.page_filename).stem
 
         assert self._fanta_volume_archive
+
         if page_str in self._fanta_volume_archive.extra_images_page_map:
             return Path(self._fanta_volume_archive.extra_images_page_map[page_str]), False
 

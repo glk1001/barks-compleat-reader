@@ -32,8 +32,15 @@ def mock_font_manager() -> MagicMock:
 
 
 @pytest.fixture
+def mock_user_error_handler() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
 def speech_index_screen(
-    mock_settings: MagicMock, mock_font_manager: MagicMock
+    mock_settings: MagicMock,
+    mock_font_manager: MagicMock,
+    mock_user_error_handler: MagicMock,
 ) -> Generator[SpeechIndexScreen]:
     # Patch IndexScreen.__init__ to avoid Kivy widget initialization
     with patch.object(barks_reader.ui.index_screen.IndexScreen, "__init__"):  # noqa: SIM117
@@ -58,7 +65,7 @@ def speech_index_screen(
                 "b": {"banana": ["banana"]},
             }
 
-            screen = SpeechIndexScreen(mock_settings, mock_font_manager)
+            screen = SpeechIndexScreen(mock_settings, mock_font_manager, mock_user_error_handler)
 
             # Manual init of attributes skipped by patching IndexScreen.__init__
             screen.ids = MagicMock()

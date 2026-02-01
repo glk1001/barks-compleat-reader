@@ -137,10 +137,11 @@ class MessagePopup(Popup):
     def __init__(
         self,
         text: str,
-        ok_func: None | Callable[[], None],
+        ok_func: Callable[[], None] | None,
         ok_text: str,
-        cancel_func: Callable[[], None],
+        cancel_func: Callable[[], None] | None,
         cancel_text: str,
+        msg_halign: str,
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
@@ -148,6 +149,7 @@ class MessagePopup(Popup):
         self.msg_text = text
         self.ok_text = ok_text
         self.cancel_text = cancel_text
+        self.msg_halign = msg_halign
 
         self.ok = ok_func
         self.cancel = cancel_func
