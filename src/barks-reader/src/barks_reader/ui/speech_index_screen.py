@@ -153,7 +153,6 @@ class SpeechIndexScreen(IndexScreen):
         self._populate_alphabet_menu()
 
         self._speech_bubble_browser_popup = SpeechBubblesPopup(
-            title_size=self._font_manager.speech_bubble_popup_title_font_size,
             title_font=self._font_manager.speech_bubble_popup_title_font_name,
             title_align="left",
             title_color=[0, 1, 1, 1],
@@ -579,6 +578,9 @@ class SpeechIndexScreen(IndexScreen):
 
         self._speech_bubble_browser_popup.title = (
             f"[b][i]{title_str}  \u2014  [/i]'{index_terms}'[/b]"
+        )
+        self._speech_bubble_browser_popup.title_size = (
+            self._font_manager.speech_bubble_popup_title_font_size
         )
         self._speech_bubble_browser_popup.content = scroll_view
         self._speech_bubble_browser_popup.open()

@@ -69,7 +69,7 @@ LOW_RES_FONTS = FontTheme(
     speech_index_item=sp(11),
     index_title_item=sp(12),
     speech_bubble_popup_title=sp(17),
-    speech_bubble_text=sp(14),
+    speech_bubble_text=sp(13),
     year_range=sp(14),
     message_title=sp(16),
     checkbox=sp(14),
@@ -93,7 +93,7 @@ HI_RES_FONTS = FontTheme(
     speech_index_item=sp(15),
     index_title_item=sp(16),
     speech_bubble_popup_title=sp(20),
-    speech_bubble_text=sp(16),
+    speech_bubble_text=sp(15),
     year_range=sp(18),
     message_title=sp(20),
     checkbox=sp(19),
@@ -146,8 +146,8 @@ class FontManager(EventDispatcher):
     message_title_font_name = main_title_font_name
     main_index_item_font_name = ROBOTO_FONT
     speech_index_item_font_name = OPEN_SANS_FONT  # Allows for words like H2O
-    speech_bubble_text_font_name = ROBOTO_FONT
-    speech_bubble_popup_title_font_name = ROBOTO_FONT
+    speech_bubble_text_font_name = OPEN_SANS_FONT  # Allows for words like H2O
+    speech_bubble_popup_title_font_name = OPEN_SANS_FONT  # Allows for words like H2O
     index_title_item_font_name = ROBOTO_FONT
 
     def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
