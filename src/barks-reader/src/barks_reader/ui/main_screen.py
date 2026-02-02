@@ -743,11 +743,9 @@ class MainScreen(ReaderScreen):
     def _get_comic_book(self) -> ComicBook:
         title_str = self.fanta_info.comic_book_info.get_title_str()
 
-        comic = self._comics_database.get_comic_book(title_str)
-
-        comic.intro_inset_file = self._special_fanta_overrides.get_inset_file(
+        overrides_intro_inset_file = self._special_fanta_overrides.get_inset_file(
             self.fanta_info.comic_book_info.title,
             self._bottom_title_view_screen.use_overrides_active,
         )
 
-        return comic
+        return self._comics_database.get_comic_book(title_str, overrides_intro_inset_file)

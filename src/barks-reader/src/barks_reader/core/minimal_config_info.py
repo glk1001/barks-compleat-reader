@@ -8,7 +8,7 @@ from loguru import logger
 from barks_reader.core.config_info import ConfigInfo
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class MinimalConfigOptions:
     error_background_path: Path | None = None
     success_background_path: Path | None = None

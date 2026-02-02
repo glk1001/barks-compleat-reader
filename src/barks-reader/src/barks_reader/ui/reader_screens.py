@@ -43,14 +43,14 @@ class ReaderScreen(Screen):
         pass
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ReaderScreens:
     main_screen: ReaderScreen
     comic_reader_screen: ReaderScreen
     intro_compleat_barks_reader_screen: ReaderScreen
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ScreenSwitchers:
     switch_to_settings: Callable[[], None]
 

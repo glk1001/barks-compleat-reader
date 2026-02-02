@@ -396,7 +396,7 @@ class ComicsDatabase:
 
         return self._all_comic_book_info[title]
 
-    def get_comic_book(self, title: str) -> ComicBook:
+    def get_comic_book(self, title: str, intro_inset_file: Path | None = None) -> ComicBook:
         story_title = ""
 
         found, titles, close = self.get_story_title_from_issue(title)
@@ -428,7 +428,8 @@ class ComicsDatabase:
         config.read(ini_file)
 
         issue_title = config["info"].get("issue_title", "")
-        intro_inset_file = self._get_inset_file(ini_file)
+        if not intro_inset_file:
+            intro_inset_file = self._get_inset_file(ini_file)
 
         fanta_info: FantaComicBookInfo = self.get_fanta_comic_book_info(story_title)
         fanta_book = FANTA_SOURCE_COMICS[config["info"]["source_comic"]]

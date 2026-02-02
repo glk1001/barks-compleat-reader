@@ -10,7 +10,7 @@ from PIL.Image import Image as PilImage
 BIG_NUM = 10000
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class KumikoBound:
     left: int
     top: int

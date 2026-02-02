@@ -7,7 +7,7 @@ from pathlib import Path
 PANEL_BOUNDS_WORK_FILE_SUFFIX = "_panel_bounds.txt"
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class BoundingBox:
     x_min: int = -1
     y_min: int = -1

@@ -264,7 +264,7 @@ def get_srce_dest_map(
     return srce_dest_map
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class SrceDependency:
     file: Path | zipfile.Path
     timestamp: float

@@ -103,7 +103,7 @@ class _SpeechIndexTitleItemButton(Button):
             )
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class IndexItem:
     id: str | Titles
     display_text: str

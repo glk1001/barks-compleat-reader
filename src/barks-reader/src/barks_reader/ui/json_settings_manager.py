@@ -23,7 +23,7 @@ _TITLE_SETTING_LAST_READ_PAGE = "last_read_page"
 JsonSavedPageInfo = dict[str, Any]
 
 
-@dataclass
+@dataclass(slots=True)
 class SavedPageInfo:
     page_index: int
     display_page_num: str

@@ -62,7 +62,7 @@ _WRONG_FANTA_VOLUMES_FIX_AND_RESTART_MSG = dedent("""\
     wrong archives, then restart the app!""")
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ErrorInfo:
     file: str = ""
     file_volume: int = 0

@@ -44,7 +44,7 @@ type PossibleFiles = list[tuple[PanelPath, FileTypes]]
 NON_TITLE_BIAS = 0.1
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ImageInfo:
     filename: PanelPath | None = None
     from_title: Titles | None = None

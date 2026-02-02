@@ -59,7 +59,7 @@ INTRO_TITLE_DEFAULT_FONT_SIZE = 155
 INTRO_AUTHOR_DEFAULT_FONT_SIZE = 90
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ComicBookDirs:
     srce_dir: Path
     srce_upscayled_dir: Path
@@ -83,7 +83,7 @@ class ModifiedType(Enum):
     ADDED = auto()
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ComicBook:
     ini_file: Path
     title: str

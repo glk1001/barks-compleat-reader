@@ -31,7 +31,7 @@ class _FontGroup(Enum):
     HI_RES = auto()
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class FontTheme:
     """A data class to hold all font sizes for a given theme."""
 

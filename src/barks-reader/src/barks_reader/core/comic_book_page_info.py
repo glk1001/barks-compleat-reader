@@ -16,7 +16,7 @@ from comic_utils.comic_consts import JSON_FILE_EXT
 from barks_reader.core.reader_settings import ReaderSettings
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class PageInfo:
     page_index: int
     display_page_num: str
@@ -25,7 +25,7 @@ class PageInfo:
     dest_page: CleanPage
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ComicBookPageInfo:
     # 'page_map' maps the comic book page numbers, starting with the roman numeral 'i',
     # to the three digit comic archive page number. For example:

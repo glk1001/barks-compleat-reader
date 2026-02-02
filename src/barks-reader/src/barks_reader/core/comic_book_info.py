@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from barks_fantagraphics.comics_database import ComicsDatabase
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ComicTitleInfo:
     chronological_number: int
     title: str

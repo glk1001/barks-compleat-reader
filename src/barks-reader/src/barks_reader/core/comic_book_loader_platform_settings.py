@@ -14,7 +14,7 @@ from loguru import logger
 from PIL import Image
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class SystemProfile:
     cpu_count: int
     ram_gb: float | None

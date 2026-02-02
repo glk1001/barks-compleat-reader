@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from enum import Enum, auto
 from typing import TYPE_CHECKING, ClassVar
 
@@ -610,7 +611,9 @@ class BackgroundViews:
             self.set_bottom_view_title_image_file(image_file)
 
     def set_bottom_view_title_image_file(self, image_file: PanelPath | None) -> None:
-        self._bottom_view_title_image_info.filename = image_file
+        self._bottom_view_title_image_info = replace(
+            self._bottom_view_title_image_info, filename=image_file
+        )
         self._log_bottom_view_title_state()
 
     def _set_bottom_view_title_image_color(self) -> None:

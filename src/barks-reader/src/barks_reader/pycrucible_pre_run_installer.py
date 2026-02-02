@@ -210,6 +210,7 @@ def _extract_subdir(installer_zip: Path, subdir: str, extract_to_dir: Path) -> N
     with ZipFile(installer_zip, "r") as installer_files:
         for member in installer_files.infolist():
             # TODO: Does this work with Windows????
+            # noinspection PyUnresolvedReferences
             if member.is_dir() or not member.filename.startswith(subdir):
                 continue
 

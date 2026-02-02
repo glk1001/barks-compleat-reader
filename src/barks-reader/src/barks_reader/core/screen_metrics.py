@@ -18,7 +18,7 @@ def get_best_window_height_fit(screen_height: int) -> int:
     return screen_height - get_approximate_taskbar_height()
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ScreenInfo:
     display: int
     monitor_x: int

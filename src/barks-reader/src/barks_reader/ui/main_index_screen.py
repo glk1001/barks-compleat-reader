@@ -87,7 +87,7 @@ class _MainIndexTitleItemButton(Button):
             Rectangle(pos=(self.x + pad, self.y), size=(self.width - pad, self.height))
 
 
-@dataclass()
+@dataclass(frozen=True, slots=True)
 class TitleHierarchy:
     tag_group: TagGroups | None
     tag: Tags | None
@@ -110,7 +110,7 @@ class TitleHierarchy:
         return title_str
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class IndexItem:
     id: Titles | Tags | TagGroups
     display_text: str

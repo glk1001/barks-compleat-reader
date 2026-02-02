@@ -2038,7 +2038,7 @@ BARKS_TITLES = [
 assert len(BARKS_TITLES) == NUM_TITLES, f"{len(BARKS_TITLES)} != {NUM_TITLES}"
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ComicBookInfo:
     title: Titles
     is_barks_title: bool

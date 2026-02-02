@@ -93,7 +93,7 @@ class PageExtError(Exception):
     pass
 
 
-@dataclass
+@dataclass(slots=True)
 class FantagraphicsArchive:
     """Represents a single Fantagraphics volume archive and its metadata."""
 

@@ -4,7 +4,7 @@ from .comics_consts import PageType
 from .panel_bounding_boxes import BoundingBox
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class OriginalPage:
     page_filenames: str
     page_type: PageType
@@ -23,20 +23,20 @@ class CleanPage:
         self.panels_bbox: BoundingBox = BoundingBox()
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class SrceAndDestPages:
     srce_pages: list[CleanPage]
     dest_pages: list[CleanPage]
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class RequiredDimensions:
     panels_bbox_width: int = -1
     panels_bbox_height: int = -1
     page_num_y_bottom: int = -1
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ComicDimensions:
     min_panels_bbox_width: int = -1
     max_panels_bbox_width: int = -1

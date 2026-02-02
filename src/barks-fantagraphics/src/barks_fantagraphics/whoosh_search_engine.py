@@ -34,13 +34,13 @@ SUB_ALPHA_SPLIT_SIZE = 56
 MY_STOP_WORDS = STOP_WORDS.union(["oh"])
 
 
-@dataclass
+@dataclass(slots=True)
 class PageInfo:
     comic_page: str = ""
     speech_bubbles: list[tuple[str, str]] = field(default_factory=list)
 
 
-@dataclass
+@dataclass(slots=True)
 class TitleInfo:
     fanta_vol: int = 0
     fanta_pages: dict[str, PageInfo] = field(default_factory=dict)

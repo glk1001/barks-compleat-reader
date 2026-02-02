@@ -26,7 +26,7 @@ class FullscreenEnum(Enum):
     WINDOWED = "windowed"
 
 
-@dataclass
+@dataclass(slots=True)
 class WindowState:
     screen: FullscreenEnum = FullscreenEnum.WINDOWED
     size: tuple[int, int] = (0, 0)

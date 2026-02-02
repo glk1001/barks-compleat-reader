@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Any
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class PlatformServices:
     """A collection of all UI/Platform specific functions.
 

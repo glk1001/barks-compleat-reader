@@ -11,7 +11,7 @@ from .barks_titles import (
 )
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class PaymentInfo:
     title: Titles
     num_pages: int

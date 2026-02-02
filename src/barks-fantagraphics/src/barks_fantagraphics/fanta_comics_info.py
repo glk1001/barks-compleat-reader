@@ -11,7 +11,7 @@ from .barks_titles import Titles as Bt
 from .comic_issues import ISSUE_NAME, Issues
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class FantaComicBookInfo:
     comic_book_info: ComicBookInfo
     colorist: str
@@ -69,7 +69,7 @@ def get_fanta_volume_from_str(volume_str: str) -> int:
     return int(volume_str[-2:])
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class FantaBook:
     title: str
     pub: str
@@ -253,7 +253,7 @@ NEA = "Nea Atkina A.E. and Kneon Transitt"
 EGMONT = "Egmont"
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class FantaSeriesInfo:
     title: Titles
     colorist: str

@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 
-@dataclass
+@dataclass(slots=True)
 class Timing:
     _start_time: datetime = field(default_factory=lambda: datetime.now(UTC))
 
