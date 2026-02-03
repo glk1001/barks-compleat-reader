@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+import textwrap
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast, override
@@ -57,6 +58,7 @@ if TYPE_CHECKING:
     from barks_reader.ui.user_error_handler import UserErrorHandler
 
 INDEX_ITEM_ROW_HEIGHT = dp(21)
+INDEX_ITEM_MAX_TEXT_WIDTH = 30
 INDEX_IMAGE_CHANGE_SECONDS = 15
 
 INDEX_TERMS_HIGHLIGHT_COLOR = "#1A6ABB"
@@ -611,7 +613,9 @@ class SpeechIndexScreen(IndexScreen):
 
 def shorten_if_necessary(text: str) -> str:
     if not text.startswith("500,000"):
-        return text
+        if len(text) <= INDEX_ITEM_MAX_TEXT_WIDTH:
+            return text
+        return textwrap.shorten(text, width=INDEX_ITEM_MAX_TEXT_WIDTH, placeholder="...")
 
     assert text.count("0") == (69 + 8)
     return "500,000,\u2014plus sixty-nine more zeroes\u2014,000.16"
