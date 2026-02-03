@@ -73,11 +73,32 @@ class Tags(Enum):
     CAMERAS = "cameras"
     CAR_313 = "313"
     CIGARETTES = "cigarettes"
+    CHEMICAL_FORMULA = "chemical formula"
+    COLUMBIUM = "columbium"
+    COPPER = "copper"
+    DUCKMITE = "duckmite"
     FIRE = "fire"
     HDL_DRIVING_CAR = "HDL driving car"
+    ISOTOPES = "isotopes"
+    LITHIUM = "lithium"
+    MANGANESE = "manganese"
+    NICKEL = "nickel"
+    NITROGEN = "nitrogen"
+    NITROGLYCERIN = "nitroglycerine"
+    NOSUCHIUM = "nosuchium"
+    OXYGEN = "oxygen"
+    PLATINUM = "platinum"
     SQUARE_EGGS = "square eggs"
+    SELENIUM = "selenium"
+    STROMBOLIUM = "strombolium"
+    TANTALUM = "tantalum"
+    THORIUM = "thorium"
     WEEMITE = "weemite"
+    WHATTISIUM = "whattisium"
+    WOLFRAMITE = "wolframite"
     WORRY_ROOM = "worry room"
+    YOUGUESSIUM = "youguessium"
+    ZIRCONIUM = "zirconium"
 
     CHRISTMAS_STORIES = "christmas stories"
     HYPNOSIS = "hypnosis"
@@ -187,6 +208,8 @@ class TagGroups(Enum):
     OTHER = "Other"
     SOUTH_AMERICA = "South America"
     CARS = "cars"
+    CHEMISTRY = "chemistry"
+    CHEMICAL_NAMES = "chemical names"
     DRUGS = "drugs"
     PRIMARY_CHARACTERS = "Primary Characters"
     SECONDARY_CHARACTERS = "Secondary Characters"
@@ -211,14 +234,15 @@ BARKS_TAG_CATEGORIES = {
         Tags.AIRPLANES,
         Tags.CAMERAS,
         TagGroups.CARS,
+        TagGroups.CHEMICAL_NAMES,
         Tags.CIGARETTES,
         Tags.FIRE,
         Tags.SQUARE_EGGS,
-        Tags.WEEMITE,
         Tags.WORRY_ROOM,
     ],
     TagCategories.THEMES: [
         Tags.CENSORED_STORIES_BUT_FIXED,
+        TagGroups.CHEMISTRY,
         Tags.CHRISTMAS_STORIES,
         TagGroups.DRUGS,
         Tags.HYPNOSIS,
@@ -346,6 +370,35 @@ BARKS_TAG_GROUPS = {
     TagGroups.CARS: [
         Tags.CAR_313,
         Tags.HDL_DRIVING_CAR,
+    ],
+    TagGroups.CHEMISTRY: [
+        Tags.CHEMICAL_FORMULA,
+        TagGroups.CHEMICAL_NAMES,
+        Tags.DUCKMITE,
+        Tags.WEEMITE,
+    ],
+    TagGroups.CHEMICAL_NAMES: [
+        Tags.COPPER,
+        Tags.COLUMBIUM,
+        Tags.DUCKMITE,
+        Tags.ISOTOPES,
+        Tags.LITHIUM,
+        Tags.MANGANESE,
+        Tags.NICKEL,
+        Tags.NITROGEN,
+        Tags.NITROGLYCERIN,
+        Tags.NOSUCHIUM,
+        Tags.OXYGEN,
+        Tags.PLATINUM,
+        Tags.SELENIUM,
+        Tags.STROMBOLIUM,
+        Tags.TANTALUM,
+        Tags.THORIUM,
+        Tags.WEEMITE,
+        Tags.WOLFRAMITE,
+        Tags.WHATTISIUM,
+        Tags.YOUGUESSIUM,
+        Tags.ZIRCONIUM,
     ],
     TagGroups.DRUGS: [
         Tags.CIGARETTES,
@@ -637,6 +690,9 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     ],
     Tags.OLD_DEMON_TOOTH: [Titles.GOLDEN_CHRISTMAS_TREE_THE, Titles.MONEY_STAIRS_THE],
     # Themes
+    Tags.CHEMICAL_FORMULA: [
+        Titles.MAD_CHEMIST_THE,
+    ],
     Tags.CHRISTMAS_STORIES: [
         Titles.DONALD_DUCKS_BEST_CHRISTMAS,
         Titles.SILENT_NIGHT,
@@ -750,9 +806,39 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.VACATION_TIME,
         Titles.BILLIONS_TO_SNEEZE_AT,
     ],
+    Tags.COLUMBIUM: [Titles.LAND_OF_THE_PYGMY_INDIANS],
+    Tags.COPPER: [
+        Titles.GOLD_FINDER_THE,
+        Titles.ONLY_A_POOR_OLD_MAN,
+        Titles.FABULOUS_PHILOSOPHERS_STONE_THE,
+        Titles.RICHES_RICHES_EVERYWHERE,
+        Titles.LAND_OF_THE_PYGMY_INDIANS,
+    ],
+    Tags.DUCKMITE: [Titles.MAD_CHEMIST_THE],
     Tags.FIRE: [Titles.FIREBUG_THE, Titles.FIREMAN_DONALD, Titles.LOVELORN_FIREMAN_THE],
+    Tags.ISOTOPES: [Titles.SUPER_SNOOPER],
+    Tags.LITHIUM: [Titles.LAND_OF_THE_PYGMY_INDIANS],
+    Tags.MANGANESE: [Titles.LAND_OF_THE_PYGMY_INDIANS],
+    Tags.NICKEL: [Titles.LAND_OF_THE_PYGMY_INDIANS],
+    Tags.NITROGEN: [Titles.MAD_CHEMIST_THE],
+    Tags.NITROGLYCERIN: [Titles.JAM_ROBBERS, Titles.ROCKET_RACE_TO_THE_MOON],
+    Tags.NOSUCHIUM: [Titles.LAND_OF_THE_PYGMY_INDIANS],
+    Tags.OXYGEN: [Titles.GOLDEN_HELMET_THE, Titles.TRALLA_LA, Titles.LAND_OF_THE_PYGMY_INDIANS],
+    Tags.PLATINUM: [
+        Titles.LAND_OF_THE_PYGMY_INDIANS,
+        Titles.RICHES_RICHES_EVERYWHERE,
+        Titles.STATUESQUE_SPENDTHRIFTS,
+    ],
+    Tags.SELENIUM: [Titles.LAND_OF_THE_PYGMY_INDIANS],
     Tags.SQUARE_EGGS: [Titles.LOST_IN_THE_ANDES],
+    Tags.STROMBOLIUM: [Titles.LAND_OF_THE_PYGMY_INDIANS],
+    Tags.TANTALUM: [Titles.LAND_OF_THE_PYGMY_INDIANS],
+    Tags.THORIUM: [Titles.LAND_OF_THE_PYGMY_INDIANS],
     Tags.WEEMITE: [Titles.ROCKET_ROASTED_CHRISTMAS_TURKEY],
+    Tags.WHATTISIUM: [Titles.LAND_OF_THE_PYGMY_INDIANS],
+    Tags.WOLFRAMITE: [Titles.LAND_OF_THE_PYGMY_INDIANS],
+    Tags.YOUGUESSIUM: [Titles.LAND_OF_THE_PYGMY_INDIANS],
+    Tags.ZIRCONIUM: [Titles.LAND_OF_THE_PYGMY_INDIANS],
     Tags.WORRY_ROOM: [
         Titles.SECRET_OF_ATLANTIS_THE,
         Titles.LAND_BENEATH_THE_GROUND,
@@ -1250,6 +1336,7 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
         "25",
         "26",
     ],
+    (Tags.CHEMICAL_FORMULA, Titles.MAD_CHEMIST_THE): ["1", "2"],
     (Tags.CIGARETTES, Titles.MAD_CHEMIST_THE): ["10"],
     (Tags.CIGARETTES, Titles.SWIMMING_SWINDLERS): ["1", "2", "7"],
     (Tags.CIGARETTES, Titles.GOING_BUGGY): ["3"],
@@ -1272,6 +1359,7 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.CIGARETTES, Titles.BILLIONS_TO_SNEEZE_AT): ["8"],
     (Tags.CORNELIUS_MC_COBB, Titles.VOODOO_HOODOO): ["20", "21", "22", "23"],
     (Tags.DAISY, Titles.EYES_IN_THE_DARK): ["7"],
+    (Tags.DUCKMITE, Titles.MAD_CHEMIST_THE): ["2", "3", "4", "5", "6", "10"],
     (Tags.EL_DORADO, Titles.GILDED_MAN_THE): [
         "8",
         "11",
@@ -1305,7 +1393,35 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.MALI, Titles.DAY_DUCKBURG_GOT_DYED_THE): ["10"],
     (Tags.NEIGHBOR_JONES, Titles.GOOD_DEEDS): ["1"],
     (Tags.P_J_MC_BRINE, Titles.FORBIDDEN_VALLEY): ["3"],
+    (Tags.COLUMBIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["23"],
+    (Tags.COPPER, Titles.GOLD_FINDER_THE): ["1"],
+    (Tags.COPPER, Titles.ONLY_A_POOR_OLD_MAN): ["8", "22"],
+    (Tags.COPPER, Titles.FABULOUS_PHILOSOPHERS_STONE_THE): ["1"],
+    (Tags.COPPER, Titles.RICHES_RICHES_EVERYWHERE): ["14"],
+    (Tags.COPPER, Titles.LAND_OF_THE_PYGMY_INDIANS): ["5"],
+    (Tags.ISOTOPES, Titles.SUPER_SNOOPER): ["4"],
+    (Tags.LITHIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["22"],
+    (Tags.MANGANESE, Titles.LAND_OF_THE_PYGMY_INDIANS): ["5"],
+    (Tags.NICKEL, Titles.LAND_OF_THE_PYGMY_INDIANS): ["2", "5", "19"],
+    (Tags.NITROGEN, Titles.MAD_CHEMIST_THE): ["2"],
+    (Tags.NITROGLYCERIN, Titles.JAM_ROBBERS): ["8", "9"],
+    (Tags.NITROGLYCERIN, Titles.ROCKET_RACE_TO_THE_MOON): ["8"],
+    (Tags.NOSUCHIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["24"],
+    (Tags.OXYGEN, Titles.GOLDEN_HELMET_THE): ["28"],
+    (Tags.OXYGEN, Titles.TRALLA_LA): ["8"],
+    (Tags.OXYGEN, Titles.LAND_OF_THE_PYGMY_INDIANS): ["27"],
+    (Tags.PLATINUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["5"],
+    (Tags.PLATINUM, Titles.RICHES_RICHES_EVERYWHERE): ["14"],
+    (Tags.PLATINUM, Titles.STATUESQUE_SPENDTHRIFTS): ["9"],
+    (Tags.SELENIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["22"],
+    (Tags.STROMBOLIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["24", "27"],
+    (Tags.TANTALUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["24"],
+    (Tags.THORIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["22"],
     (Tags.WEEMITE, Titles.ROCKET_ROASTED_CHRISTMAS_TURKEY): ["3", "4", "6", "7", "8"],
+    (Tags.WHATTISIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["23"],
+    (Tags.WOLFRAMITE, Titles.LAND_OF_THE_PYGMY_INDIANS): ["5"],
+    (Tags.YOUGUESSIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["24"],
+    (Tags.ZIRCONIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["23"],
     (Tags.WORRY_ROOM, Titles.SECRET_OF_ATLANTIS_THE): ["1"],
     (Tags.WORRY_ROOM, Titles.LAND_BENEATH_THE_GROUND): ["1"],
     (Tags.WORRY_ROOM, Titles.MONEY_WELL_THE): ["4"],
