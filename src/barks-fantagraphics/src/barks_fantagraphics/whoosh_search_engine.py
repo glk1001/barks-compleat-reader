@@ -3,21 +3,16 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from loguru import logger
 from pyuca import Collator
 from simplemma import lemmatize
 from whoosh.analysis import STOP_WORDS, LowercaseFilter, StemFilter, StopFilter
 from whoosh.fields import ID, TEXT, Schema
 from whoosh.index import create_in, open_dir
 from whoosh.qparser import QueryParser
-from whoosh.writing import SegmentWriter
 
-from .barks_titles import is_non_comic_title
-from .comic_book import ComicBook
-from .comics_consts import RESTORABLE_PAGE_TYPES
+from .barks_titles import BARKS_TITLES
 from .comics_database import ComicsDatabase
-from .ocr_json_files import JsonFiles
-from .pages import get_page_num_str, get_sorted_srce_and_dest_pages
+from .speech_groupers import SpeechGroups
 from .whoosh_barks_terms import (
     ALL_CAPS,
     BARKSIAN_EXTRA_TERMS,
@@ -159,17 +154,7 @@ class SearchEngineCreator(SearchEngine):
         with json_volumes_path.open("w") as f:
             json.dump(volumes, f, indent=4)
 
-        writer = self._index.writer()
-
-        titles = self._comics_database.get_configured_titles_in_fantagraphics_volumes(volumes)
-        for title, _ in titles:
-            if is_non_comic_title(title):
-                logger.warning(f'Not a comic title "{title}" - skipping.')
-                continue
-
-            self._add_page_content(writer, title)
-
-        writer.commit()
+        self._index_volume_titles(volumes)
 
         with self._index.reader() as reader:
             all_unstemmed_terms = [t.decode("utf-8") for t in reader.lexicon("unstemmed")]
@@ -189,6 +174,31 @@ class SearchEngineCreator(SearchEngine):
             json.dump(self._get_alpha_split_terms(cleaned_unstemmed_terms), f, indent=4)
         with self._cleaned_alpha_split_lemmatized_terms_path.open("w") as f:
             json.dump(self._get_alpha_split_terms(cleaned_lemmatized_terms), f, indent=4)
+
+    def _index_volume_titles(self, volumes: list[int]) -> None:
+        all_speech_groups = SpeechGroups(self._comics_database, volumes)
+        all_speech_groups.load_groups()
+
+        writer = self._index.writer()
+
+        for title, speech_groups in all_speech_groups.all_groups.items():
+            title_str = BARKS_TITLES[title]
+            for speech_group in speech_groups:
+                if speech_group["ocr_index"] != 1:  # only care about paddle ocr
+                    continue
+                speech_text = speech_group["group"]
+                writer.add_document(
+                    title=title_str,
+                    fanta_vol=str(speech_text["fanta_vol"]),
+                    fanta_page=speech_text["fanta_page"],
+                    comic_page=speech_text["comic_page"],
+                    content_id=speech_group["groupid"],
+                    content=speech_text["ai_text"],
+                    unstemmed=speech_text["ai_text"],
+                    content_raw=speech_text["raw_ai_text"],
+                )
+
+        writer.commit()
 
     @staticmethod
     def _get_cleaned_unstemmed_terms(unstemmed_terms: list[str]) -> set[str]:
@@ -220,68 +230,6 @@ class SearchEngineCreator(SearchEngine):
                 lemmatized_terms.add(term)
 
         return lemmatized_terms
-
-    def _add_page_content(self, writer: SegmentWriter, title: str) -> None:
-        json_files = JsonFiles(self._comics_database, title)
-
-        comic = self._comics_database.get_comic_book(title)
-        srce_dest_map = self._get_srce_page_to_dest_page_map(comic)
-        ocr_files = comic.get_srce_restored_raw_ocr_story_files(RESTORABLE_PAGE_TYPES)
-
-        for ocr_file in ocr_files:
-            json_files.set_ocr_file(ocr_file)
-            fanta_page = json_files.page
-            dest_page = srce_dest_map[fanta_page]
-
-            try:
-                ocr_prelim_group2 = json.loads(
-                    json_files.ocr_prelim_groups_json_file[1].read_text()
-                )
-            except Exception as e:
-                msg = (
-                    f"Error reading ocr_prelim_groups:"
-                    f' "{json_files.ocr_prelim_groups_json_file[1]}".'
-                )
-                raise ValueError(msg) from e
-
-            for group_id, group in ocr_prelim_group2["groups"].items():
-                ai_text_raw = group["ai_text"]
-                ai_text = (
-                    group["ai_text"]
-                    .replace("-\n", "-")
-                    .replace("\u00ad\n", "")
-                    .replace("\u200b\n", "")
-                )
-
-                if self.is_page_number(group):
-                    continue
-
-                writer.add_document(
-                    title=title,
-                    fanta_vol=str(comic.fanta_book.volume),
-                    fanta_page=fanta_page,
-                    comic_page=dest_page,
-                    content_id=group_id,
-                    content=ai_text,
-                    unstemmed=ai_text,
-                    content_raw=ai_text_raw,
-                )
-
-    @staticmethod
-    def is_page_number(group: dict) -> bool:
-        return int(group["panel_num"]) == -1 and "page number" in group["notes"].lower()
-
-    @staticmethod
-    def _get_srce_page_to_dest_page_map(comic: ComicBook) -> dict[str, str]:
-        srce_dest_map = {}
-
-        srce_and_dest_pages = get_sorted_srce_and_dest_pages(comic, get_full_paths=True)
-        for srce, dest in zip(
-            srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, strict=True
-        ):
-            srce_dest_map[Path(srce.page_filename).stem] = get_page_num_str(dest)
-
-        return srce_dest_map
 
     def _get_alpha_split_terms(self, terms: list[str]) -> dict[str, dict[str, list[str]]]:
         alpha_dict = {}
