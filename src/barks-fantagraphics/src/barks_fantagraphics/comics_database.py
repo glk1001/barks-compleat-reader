@@ -192,7 +192,13 @@ class ComicsDatabase:
                 fanta_book.volume,
             ),
             srce_restored_svg_dir=self.get_fantagraphics_restored_svg_volume_dir(fanta_book.volume),
-            srce_restored_raw_ocr_dir=self.get_fantagraphics_restored_raw_ocr_volume_dir(
+            srce_restored_ocr_raw_dir=self.get_fantagraphics_restored_ocr_raw_volume_dir(
+                fanta_book.volume
+            ),
+            srce_restored_ocr_prelim_dir=self.get_fantagraphics_restored_ocr_prelim_volume_dir(
+                fanta_book.volume
+            ),
+            srce_restored_ocr_annotations_dir=self.get_fantagraphics_restored_ocr_annotations_volume_dir(
                 fanta_book.volume
             ),
             srce_fixes_dir=self.get_fantagraphics_fixes_volume_dir(fanta_book.volume),
@@ -279,16 +285,30 @@ class ComicsDatabase:
     def get_fantagraphics_restored_ocr_root_dir(self) -> Path:
         return self.get_root_dir(self.get_fantagraphics_restored_ocr_dirname())
 
-    def get_fantagraphics_restored_raw_ocr_root_dir(self) -> Path:
-        return self.get_fantagraphics_restored_ocr_root_dir() / "Raw"
-
     @staticmethod
     def get_fantagraphics_restored_ocr_dirname() -> str:
         return FANTAGRAPHICS_RESTORED_OCR_DIRNAME
 
-    def get_fantagraphics_restored_raw_ocr_volume_dir(self, volume_num: int) -> Path:
+    def get_fantagraphics_restored_ocr_raw_root_dir(self) -> Path:
+        return self.get_fantagraphics_restored_ocr_root_dir() / "Raw"
+
+    def get_fantagraphics_restored_ocr_raw_volume_dir(self, volume_num: int) -> Path:
         title = self.get_fantagraphics_volume_title(volume_num)
-        return self.get_fantagraphics_restored_raw_ocr_root_dir() / title
+        return self.get_fantagraphics_restored_ocr_raw_root_dir() / title
+
+    def get_fantagraphics_restored_ocr_prelim_root_dir(self) -> Path:
+        return self.get_fantagraphics_restored_ocr_root_dir() / "Prelim"
+
+    def get_fantagraphics_restored_ocr_prelim_volume_dir(self, volume_num: int) -> Path:
+        title = self.get_fantagraphics_volume_title(volume_num)
+        return self.get_fantagraphics_restored_ocr_prelim_root_dir() / title
+
+    def get_fantagraphics_restored_ocr_annotations_root_dir(self) -> Path:
+        return self.get_fantagraphics_restored_ocr_root_dir() / "Annotations"
+
+    def get_fantagraphics_restored_ocr_annotations_volume_dir(self, volume_num: int) -> Path:
+        title = self.get_fantagraphics_volume_title(volume_num)
+        return self.get_fantagraphics_restored_ocr_annotations_root_dir() / title
 
     def get_fantagraphics_panel_segments_root_dir(self) -> Path:
         return self.get_root_dir(self.get_fantagraphics_panel_segments_dirname())
@@ -352,7 +372,7 @@ class ComicsDatabase:
             self._make_vol_dirs(self.get_fantagraphics_restored_volume_image_dir(volume))
             self._make_vol_dirs(self.get_fantagraphics_restored_upscayled_volume_image_dir(volume))
             self._make_vol_dirs(self.get_fantagraphics_restored_svg_volume_image_dir(volume))
-            self._make_vol_dirs(self.get_fantagraphics_restored_raw_ocr_volume_dir(volume))
+            self._make_vol_dirs(self.get_fantagraphics_restored_ocr_raw_volume_dir(volume))
             self._make_vol_dirs(self.get_fantagraphics_fixes_volume_image_dir(volume))
             self._make_vol_dirs(self.get_fantagraphics_upscayled_fixes_volume_image_dir(volume))
             self._make_vol_dirs(self.get_fantagraphics_panel_segments_volume_dir(volume))

@@ -49,6 +49,11 @@ from .fanta_comics_info import (
     FantaBook,
     FantaComicBookInfo,
 )
+from .ocr_file_paths import (
+    get_ocr_boxes_annotated_filename,
+    get_ocr_prelim_annotated_filename,
+    get_ocr_prelim_groups_json_filename,
+)
 from .page_classes import OriginalPage
 
 if TYPE_CHECKING:
@@ -66,7 +71,9 @@ class ComicBookDirs:
     srce_restored_dir: Path
     srce_restored_upscayled_dir: Path
     srce_restored_svg_dir: Path
-    srce_restored_raw_ocr_dir: Path
+    srce_restored_ocr_raw_dir: Path
+    srce_restored_ocr_prelim_dir: Path
+    srce_restored_ocr_annotations_dir: Path
     srce_fixes_dir: Path
     srce_upscayled_fixes_dir: Path
     panel_segments_dir: Path
@@ -155,9 +162,6 @@ class ComicBook:
     def get_srce_restored_svg_image_dir(self) -> Path:
         return self._get_image_subdir(self.dirs.srce_restored_svg_dir)
 
-    def get_srce_restored_ocr_image_dir(self) -> Path:
-        return self._get_image_subdir(self.dirs.srce_restored_raw_ocr_dir)
-
     def get_srce_original_fixes_image_dir(self) -> Path:
         return self._get_image_subdir(self.dirs.srce_fixes_dir)
 
@@ -182,12 +186,12 @@ class ComicBook:
     def get_srce_restored_svg_story_files(self, page_types: list[PageType]) -> list[Path]:
         return self._get_story_files(page_types, self.get_srce_restored_svg_story_file)
 
-    def get_srce_restored_raw_ocr_story_files(
+    def get_srce_restored_ocr_raw_story_files(
         self,
         page_types: list[PageType],
     ) -> list[tuple[Path, Path]]:
         return [
-            self._get_srce_restored_raw_ocr_story_file(page.page_filenames)
+            self._get_srce_restored_ocr_raw_story_file(page.page_filenames)
             for page in self.page_images_in_order
             if page.page_type in page_types
         ]
@@ -250,10 +254,25 @@ class ComicBook:
     def get_srce_restored_svg_story_file(self, page_num: str) -> Path:
         return self.get_srce_restored_svg_image_dir() / (page_num + SVG_FILE_EXT)
 
-    def _get_srce_restored_raw_ocr_story_file(self, page_num: str) -> tuple[Path, Path]:
-        return self.dirs.srce_restored_raw_ocr_dir / (
+    def _get_srce_restored_ocr_raw_story_file(self, page_num: str) -> tuple[Path, Path]:
+        return self.dirs.srce_restored_ocr_raw_dir / (
             page_num + ".easyocr" + JSON_FILE_EXT
-        ), self.dirs.srce_restored_raw_ocr_dir / (page_num + ".paddleocr" + JSON_FILE_EXT)
+        ), self.dirs.srce_restored_ocr_raw_dir / (page_num + ".paddleocr" + JSON_FILE_EXT)
+
+    def get_ocr_prelim_groups_json_file(self, page_num: str, ocr_type: str) -> Path:
+        return self.dirs.srce_restored_ocr_prelim_dir / get_ocr_prelim_groups_json_filename(
+            page_num, ocr_type
+        )
+
+    def get_ocr_prelim_annotated_file(self, page_num: str, ocr_type: str) -> Path:
+        return self.dirs.srce_restored_ocr_annotations_dir / get_ocr_prelim_annotated_filename(
+            page_num, ocr_type
+        )
+
+    def get_ocr_boxes_annotated_file(self, page_num: str, ocr_type: str) -> Path:
+        return self.dirs.srce_restored_ocr_annotations_dir / get_ocr_boxes_annotated_filename(
+            page_num, ocr_type
+        )
 
     def get_srce_panel_segments_file(self, page_num: str) -> Path:
         return self.dirs.panel_segments_dir / (page_num + JSON_FILE_EXT)
@@ -438,7 +457,7 @@ class ComicBook:
             return True
 
         # Non-comic titles.
-        if volume == 1 and page_num in [
+        if volume == 1 and page_num in [  # noqa: FURB171
             "268",
         ]:
             return True

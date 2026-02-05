@@ -181,22 +181,22 @@ class SearchEngineCreator(SearchEngine):
 
         writer = self._index.writer()
 
-        for title, speech_groups in all_speech_groups.all_groups.items():
+        for title, speech_page_groups in all_speech_groups.all_speech_page_groups.items():
             title_str = BARKS_TITLES[title]
-            for speech_group in speech_groups:
-                if speech_group["ocr_index"] != 1:  # only care about paddle ocr
+            for speech_page in speech_page_groups:
+                if speech_page["ocr_index"] != 1:  # only care about paddle ocr
                     continue
-                speech_text = speech_group["group"]
-                writer.add_document(
-                    title=title_str,
-                    fanta_vol=str(speech_text["fanta_vol"]),
-                    fanta_page=speech_text["fanta_page"],
-                    comic_page=speech_text["comic_page"],
-                    content_id=speech_group["groupid"],
-                    content=speech_text["ai_text"],
-                    unstemmed=speech_text["ai_text"],
-                    content_raw=speech_text["raw_ai_text"],
-                )
+                for speech_text in speech_page["speech_groups"]:
+                    writer.add_document(
+                        title=title_str,
+                        fanta_vol=str(speech_page["fanta_vol"]),
+                        fanta_page=speech_page["fanta_page"],
+                        comic_page=speech_page["comic_page"],
+                        content_id=speech_text["groupid"],
+                        content=speech_text["ai_text"],
+                        unstemmed=speech_text["ai_text"],
+                        content_raw=speech_text["raw_ai_text"],
+                    )
 
         writer.commit()
 

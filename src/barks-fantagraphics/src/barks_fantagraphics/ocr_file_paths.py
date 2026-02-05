@@ -26,25 +26,25 @@ def get_batch_requests_file(title: str) -> Path:
 
 
 # TODO: Remove json from inside name
-def get_ocr_predicted_groups_filename(svg_stem: str, ocr_type: str) -> str:
-    return f"{svg_stem}-{ocr_type}-json-ocr-ai-predicted-groups.json"
+def get_ocr_predicted_groups_filename(fanta_page: str, ocr_type: str) -> str:
+    return f"{fanta_page}-{ocr_type}-json-ocr-ai-predicted-groups.json"
 
 
-def get_ocr_prelim_groups_json_filename(svg_stem: str, ocr_type: str) -> str:
-    return svg_stem + f"-{ocr_type}-gemini-prelim-groups.json"
+def get_ocr_prelim_groups_json_filename(fanta_page: str, ocr_type: str) -> str:
+    return fanta_page + f"-{ocr_type}-gemini-prelim-groups.json"
 
 
-def get_ocr_final_groups_json_filename(svg_stem: str) -> str:
-    return svg_stem + "-gemini-final-groups.json"
+def get_ocr_prelim_annotated_filename(fanta_page: str, ocr_type: str) -> str:
+    return fanta_page + f"-{ocr_type}-ocr-gemini-prelim-annotated.png"
 
 
-def get_ocr_prelim_annotated_filename(svg_stem: str, ocr_type: str) -> str:
-    return svg_stem + f"-{ocr_type}-ocr-gemini-prelim-annotated.png"
+def get_ocr_boxes_annotated_filename(fanta_page: str, ocr_type: str) -> str:
+    return fanta_page + f"-{ocr_type}-ocr-gemini-boxes-annotated.png"
 
 
-def get_ocr_final_annotated_filename(svg_stem: str) -> str:
-    return svg_stem + "-ocr-gemini-final-annotated.png"
+def get_ocr_final_groups_json_filename(fanta_page: str) -> str:
+    return fanta_page + "-gemini-final-groups.json"
 
 
-def get_ocr_boxes_annotated_filename(svg_stem: str, ocr_type: str) -> str:
-    return svg_stem + f"-{ocr_type}-ocr-gemini-boxes-annotated.png"
+def get_ocr_final_annotated_filename(fanta_page: str) -> str:
+    return fanta_page + "-ocr-gemini-final-annotated.png"
