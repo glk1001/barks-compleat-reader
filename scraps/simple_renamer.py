@@ -1,19 +1,17 @@
 from pathlib import Path
 
 # ext = ".jpg"
-ext = ".png"
+# ext = ".png"
 # ext = ".json"
-# ext= ".svg"
-# ext= ".svg.png"
-# for srce_dir in Path.cwd().iterdir():
-#     if not srce_dir.is_dir():
-#         continue
-#    for srce_file in srce_dir.iterdir():
-for srce_file in Path.cwd().iterdir():
-    if "final" not in srce_file.name:
-        continue
-    file_str = str(srce_file).replace("final", "prelim")
-    dest_file = Path(file_str)
+ext= ".png"
+
+print(f'CWD: "{Path.cwd()}", ext: "{ext}"')
+
+for srce_file in Path.cwd().glob('*' + ext):
+    # file_str = str(srce_file).replace("final", "prelim")
+    # dest_file = Path(file_str)
+    renamed_file = srce_file.with_suffix(".svg.png")
+    dest_file = renamed_file
 
 #for i in range(7,31):
     # srce_file = Path(f"{i:03d}-gemini-final-groups-paddleocr{ext}")
