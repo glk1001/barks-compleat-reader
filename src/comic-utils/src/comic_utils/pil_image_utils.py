@@ -11,9 +11,6 @@ from PIL.PngImagePlugin import PngInfo
 
 from .comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
 
-# noinspection PyUnresolvedReferences
-from .get_panel_bytes import get_decrypted_bytes  # ty: ignore[unresolved-import]
-
 if TYPE_CHECKING:
     import zipfile
     from pathlib import Path
@@ -48,6 +45,11 @@ def load_pil_image_for_reading(file: Path) -> PilImage:
 
 
 def load_pil_image_from_zip(zip_path: zipfile.Path, encrypted: bool) -> PilImage:
+    # noinspection PyUnresolvedReferences
+    from .get_panel_bytes import (  # noqa: PLC0415
+        get_decrypted_bytes,  # ty: ignore[unresolved-import]
+    )
+
     current_log_level = logging.getLogger().level
     try:
         logging.getLogger().setLevel(logging.INFO)
