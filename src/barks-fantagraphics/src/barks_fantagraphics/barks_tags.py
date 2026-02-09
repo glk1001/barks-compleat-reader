@@ -720,6 +720,8 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     # Themes
     Tags.CHEMICAL_FORMULA: [
         Titles.MAD_CHEMIST_THE,
+        Titles.BEAR_TAMER_THE,
+        Titles.MIXED_UP_MIXER,
         Titles.PIED_PIPER_OF_DUCKBURG_THE,
     ],
     Tags.CHRISTMAS_STORIES: [
@@ -1388,6 +1390,8 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
         "26",
     ],
     (Tags.CHEMICAL_FORMULA, Titles.MAD_CHEMIST_THE): ["1", "2"],
+    (Tags.CHEMICAL_FORMULA, Titles.BEAR_TAMER_THE): ["4", "5"],
+    (Tags.CHEMICAL_FORMULA, Titles.MIXED_UP_MIXER): ["3"],
     (Tags.CHEMICAL_FORMULA, Titles.PIED_PIPER_OF_DUCKBURG_THE): ["2"],
     (Tags.CIGARETTES, Titles.MAD_CHEMIST_THE): ["10"],
     (Tags.CIGARETTES, Titles.SWIMMING_SWINDLERS): ["1", "2", "7"],
