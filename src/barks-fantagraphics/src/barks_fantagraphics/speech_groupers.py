@@ -82,7 +82,7 @@ class SpeechGroups:
                 except Exception as e:
                     msg = (
                         f"Error reading ocr_prelim_groups:"
-                        f' "{json_files.ocr_prelim_groups_json_file[ocr_index]}".'
+                        f' "{json_files.ocr_prelim_groups_json_file[ocr_index]}". Exception: {e}'
                     )
                     raise ValueError(msg) from e
 
@@ -136,4 +136,8 @@ class SpeechGroups:
 
     @staticmethod
     def is_page_number(group: dict) -> bool:
-        return int(group["panel_num"]) == -1 and "page number" in group["notes"].lower()
+        return (
+            int(group["panel_num"]) == -1
+            and group["notes"]
+            and "page number" in group["notes"].lower()
+        )

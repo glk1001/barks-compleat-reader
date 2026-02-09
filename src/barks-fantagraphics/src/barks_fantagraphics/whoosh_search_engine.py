@@ -29,10 +29,16 @@ SUB_ALPHA_SPLIT_SIZE = 56
 MY_STOP_WORDS = STOP_WORDS.union(["oh"])
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
+class SpeechInfo:
+    group_id: str
+    speech_text: str
+
+
+@dataclass(frozen=True, slots=True)
 class PageInfo:
-    comic_page: str = ""
-    speech_bubbles: list[tuple[str, str]] = field(default_factory=list)
+    comic_page: str
+    speech_info_list: list[SpeechInfo]
 
 
 @dataclass(slots=True)
@@ -75,15 +81,19 @@ class SearchEngine:
 
                 fanta_page = hit["fanta_page"]
                 comic_page = hit["comic_page"]
-                speech_bubble_id = hit["content_id"]
-                speech_bubble = hit["content_raw"]
+                speech_info = SpeechInfo(hit["content_id"], hit["content_raw"])
 
                 if fanta_page not in prelim_results[comic_title].fanta_pages:
-                    prelim_results[comic_title].fanta_pages[fanta_page] = PageInfo()
-                prelim_results[comic_title].fanta_pages[fanta_page].comic_page = comic_page
-                prelim_results[comic_title].fanta_pages[fanta_page].speech_bubbles.append(
-                    (speech_bubble_id, speech_bubble)
-                )
+                    prelim_results[comic_title].fanta_pages[fanta_page] = PageInfo(
+                        comic_page, [speech_info]
+                    )
+                else:
+                    assert (
+                        prelim_results[comic_title].fanta_pages[fanta_page].comic_page == comic_page
+                    )
+                    prelim_results[comic_title].fanta_pages[fanta_page].speech_info_list.append(
+                        speech_info
+                    )
 
         # Sort the results by title and page.
         title_results = defaultdict(TitleInfo)
@@ -91,7 +101,7 @@ class SearchEngine:
             title_results[title].fanta_vol = prelim_results[title].fanta_vol
             for fanta_page in sorted(prelim_results[title].fanta_pages.keys()):
                 page_info = prelim_results[title].fanta_pages[fanta_page]
-                page_info.speech_bubbles = sorted(page_info.speech_bubbles, key=lambda x: int(x[0]))
+                page_info.speech_info_list.sort(key=lambda x: int(x.group_id))
                 title_results[title].fanta_pages[fanta_page] = page_info
 
         return title_results

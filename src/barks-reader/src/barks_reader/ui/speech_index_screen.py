@@ -553,7 +553,7 @@ class SpeechIndexScreen(IndexScreen):
 
         for page_info in title_speech_info.fanta_pages.values():
             page_text = f"Page {page_info.comic_page}"
-            text = "\n\n".join([s[1] for s in page_info.speech_bubbles])
+            text = "\n\n".join([s.speech_text for s in page_info.speech_info_list])
             text = mark_phrase_in_text(
                 index_terms, text, INDEX_TERMS_HIGHLIGHT_START_TAG, INDEX_TERMS_HIGHLIGHT_END_TAG
             )
