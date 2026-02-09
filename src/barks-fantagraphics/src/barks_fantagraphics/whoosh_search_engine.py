@@ -32,6 +32,7 @@ MY_STOP_WORDS = STOP_WORDS.union(["oh"])
 @dataclass(frozen=True, slots=True)
 class SpeechInfo:
     group_id: str
+    panel_num: int
     speech_text: str
 
 
@@ -81,7 +82,9 @@ class SearchEngine:
 
                 fanta_page = hit["fanta_page"]
                 comic_page = hit["comic_page"]
-                speech_info = SpeechInfo(hit["content_id"], hit["content_raw"])
+                speech_info = SpeechInfo(
+                    hit["content_id"], int(hit["panel_num"]), hit["content_raw"]
+                )
 
                 if fanta_page not in prelim_results[comic_title].fanta_pages:
                     prelim_results[comic_title].fanta_pages[fanta_page] = PageInfo(
@@ -137,8 +140,12 @@ class SearchEngine:
 
 
 class SearchEngineCreator(SearchEngine):
-    def __init__(self, comics_database: ComicsDatabase, index_dir: Path) -> None:
+    def __init__(
+        self, comics_database: ComicsDatabase, index_dir: Path, ocr_index_to_use: int
+    ) -> None:
         self._comics_database = comics_database
+        self._ocr_index_to_use = ocr_index_to_use
+        assert self._ocr_index_to_use in [0, 1]
 
         # For keeping apostrophes and hyphens within words
         punct_analyzer = (
@@ -150,6 +157,7 @@ class SearchEngineCreator(SearchEngine):
             fanta_page=ID(stored=True),
             comic_page=ID(stored=True),
             content_id=ID(stored=True),
+            panel_num=ID(stored=True),
             content=TEXT(stored=False, lang="en", analyzer=punct_analyzer | StemFilter(lang="en")),
             unstemmed=TEXT(stored=False, lang="en", analyzer=punct_analyzer),
             content_raw=TEXT(stored=True, lang="en"),
@@ -194,7 +202,7 @@ class SearchEngineCreator(SearchEngine):
         for title, speech_page_groups in all_speech_groups.all_speech_page_groups.items():
             title_str = BARKS_TITLES[title]
             for speech_page in speech_page_groups:
-                if speech_page["ocr_index"] != 1:  # only care about paddle ocr
+                if speech_page["ocr_index"] != self._ocr_index_to_use:
                     continue
                 for speech_text in speech_page["speech_groups"]:
                     writer.add_document(
@@ -203,6 +211,7 @@ class SearchEngineCreator(SearchEngine):
                         fanta_page=speech_page["fanta_page"],
                         comic_page=speech_page["comic_page"],
                         content_id=speech_text["groupid"],
+                        panel_num=str(speech_text["panel_num"]),
                         content=speech_text["ai_text"],
                         unstemmed=speech_text["ai_text"],
                         content_raw=speech_text["raw_ai_text"],
