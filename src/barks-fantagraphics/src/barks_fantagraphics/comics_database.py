@@ -183,6 +183,7 @@ class ComicsDatabase:
         return fanta_book.num_pages
 
     def _get_comic_book_dirs(self, fanta_book: FantaBook) -> ComicBookDirs:
+        # noinspection LongLine
         return ComicBookDirs(
             srce_dir=self.get_fantagraphics_volume_dir(fanta_book.volume),
             srce_upscayled_dir=self.get_fantagraphics_upscayled_volume_dir(fanta_book.volume),

@@ -12,7 +12,7 @@ from whoosh.qparser import QueryParser
 
 from .barks_titles import BARKS_TITLES
 from .comics_database import ComicsDatabase
-from .speech_groupers import SpeechGroups
+from .speech_groupers import OcrTypes, SpeechGroups
 from .whoosh_barks_terms import (
     ALL_CAPS,
     BARKSIAN_EXTRA_TERMS,
@@ -141,11 +141,10 @@ class SearchEngine:
 
 class SearchEngineCreator(SearchEngine):
     def __init__(
-        self, comics_database: ComicsDatabase, index_dir: Path, ocr_index_to_use: int
+        self, comics_database: ComicsDatabase, index_dir: Path, ocr_index_to_use: OcrTypes
     ) -> None:
         self._comics_database = comics_database
         self._ocr_index_to_use = ocr_index_to_use
-        assert self._ocr_index_to_use in [0, 1]
 
         # For keeping apostrophes and hyphens within words
         punct_analyzer = (

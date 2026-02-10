@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import TypedDict
 
@@ -17,10 +18,13 @@ from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.ocr_file_paths import get_ocr_prelim_groups_json_filename
 from barks_fantagraphics.pages import get_page_num_str, get_sorted_srce_and_dest_pages
 
-OCR_TYPES: dict[int, str] = {
-    0: "easyocr",
-    1: "paddleocr",
-}
+
+class OcrTypes(StrEnum):
+    EASYOCR = "easyocr"
+    PADDLEOCR = "paddleocr"
+
+
+OCR_TYPE_DICT = {0: OcrTypes.EASYOCR, 1: OcrTypes.PADDLEOCR}
 
 
 class SpeechText(TypedDict):
@@ -37,7 +41,7 @@ SpeechTextGroup = dict[str, SpeechText]
 class SpeechPageGroup(TypedDict):
     fanta_vol: int
     title: Titles
-    ocr_index: int
+    ocr_index: OcrTypes
     fanta_page: str
     comic_page: str
     speech_groups: SpeechTextGroup
@@ -84,7 +88,7 @@ class SpeechGroups:
 
         speech_page_groups: list[SpeechPageGroup] = []
         for srce_page, dest_page in srce_dest_map.items():
-            for ocr_index in range(2):
+            for ocr_index in OcrTypes:
                 speech_page_group_with_json = get_speech_page_group_with_json(
                     self._comics_database, volume, title, ocr_index, srce_page, dest_page
                 )
@@ -111,13 +115,13 @@ def get_speech_page_group_with_json(
     comics_database: ComicsDatabase,
     volume: int,
     title: Titles,
-    ocr_index: int,
+    ocr_index: OcrTypes,
     srce_page: str,
     dest_page: str,
 ) -> SpeechPageGroupWithJson:
     ocr_prelim_dir = comics_database.get_fantagraphics_restored_ocr_prelim_volume_dir(volume)
     ocr_prelim_groups_json_file = ocr_prelim_dir / get_ocr_prelim_groups_json_filename(
-        srce_page, OCR_TYPES[ocr_index]
+        srce_page, ocr_index
     )
     speech_groups, speech_groups_json = _get_speech_text_list(ocr_prelim_groups_json_file)
 
