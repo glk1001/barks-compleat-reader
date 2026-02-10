@@ -287,3 +287,8 @@ def get_short_submitted_day_and_month(comic_book_info: ComicBookInfo) -> str:
         f"{get_formatted_day(comic_book_info.submitted_day)}"
         f" {MONTH_AS_SHORT_STR[comic_book_info.submitted_month]}"
     )
+
+
+def get_backup_file(file: Path) -> Path:
+    suffix = file.suffix
+    return Path(str(file.with_suffix("")) + "_" + get_timestamp_str(file) + suffix)

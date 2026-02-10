@@ -204,13 +204,13 @@ class SearchEngineCreator(SearchEngine):
             for speech_page in speech_page_groups:
                 if speech_page["ocr_index"] != self._ocr_index_to_use:
                     continue
-                for speech_text in speech_page["speech_groups"]:
+                for group_id, speech_text in speech_page["speech_groups"].items():
                     writer.add_document(
                         title=title_str,
                         fanta_vol=str(speech_page["fanta_vol"]),
                         fanta_page=speech_page["fanta_page"],
                         comic_page=speech_page["comic_page"],
-                        content_id=speech_text["groupid"],
+                        content_id=group_id,
                         panel_num=str(speech_text["panel_num"]),
                         content=speech_text["ai_text"],
                         unstemmed=speech_text["ai_text"],

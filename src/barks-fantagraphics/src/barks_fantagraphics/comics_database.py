@@ -2,6 +2,7 @@
 
 import configparser
 import difflib
+import functools
 from configparser import ConfigParser, ExtendedInterpolation
 from pathlib import Path
 
@@ -173,9 +174,7 @@ class ComicsDatabase:
     #     title         = "Carl Barks Vol. 2 - Donald Duck - Frozen Gold"
     @staticmethod
     def get_fantagraphics_volume_title(volume_num: int) -> str:
-        fanta_key = f"FANTA_{volume_num:02}"
-        fanta_book = FANTA_SOURCE_COMICS[fanta_key]
-        return fanta_book.title
+        return get_fanta_title_for_volume(volume_num)
 
     @staticmethod
     def get_num_pages_in_fantagraphics_volume(volume_num: int) -> int:
@@ -297,11 +296,14 @@ class ComicsDatabase:
         return self.get_fantagraphics_restored_ocr_raw_root_dir() / title
 
     def get_fantagraphics_restored_ocr_prelim_root_dir(self) -> Path:
-        return self.get_fantagraphics_restored_ocr_root_dir() / "Prelim"
+        return get_fanta_restored_ocr_prelim_root_dir(
+            self.get_fantagraphics_restored_ocr_root_dir()
+        )
 
     def get_fantagraphics_restored_ocr_prelim_volume_dir(self, volume_num: int) -> Path:
-        title = self.get_fantagraphics_volume_title(volume_num)
-        return self.get_fantagraphics_restored_ocr_prelim_root_dir() / title
+        return get_fanta_restored_ocr_prelim_volume_dir(
+            self.get_fantagraphics_restored_ocr_root_dir(), volume_num
+        )
 
     def get_fantagraphics_restored_ocr_annotations_root_dir(self) -> Path:
         return self.get_fantagraphics_restored_ocr_root_dir() / "Annotations"
@@ -559,3 +561,23 @@ def _get_story_titles_dir(db_dir: Path) -> Path:
         raise FileNotFoundError(msg)
 
     return story_titles_dir
+
+
+@functools.cache
+def get_fanta_restored_ocr_prelim_volume_dir(
+    fanta_restored_ocr_root_dir: Path, volume_num: int
+) -> Path:
+    title = get_fanta_title_for_volume(volume_num)
+    return get_fanta_restored_ocr_prelim_root_dir(fanta_restored_ocr_root_dir) / title
+
+
+@functools.cache
+def get_fanta_restored_ocr_prelim_root_dir(fanta_restored_ocr_root_dir: Path) -> Path:
+    return fanta_restored_ocr_root_dir / "Prelim"
+
+
+@functools.cache
+def get_fanta_title_for_volume(volume_num: int) -> str:
+    fanta_key = f"FANTA_{volume_num:02}"
+    fanta_book = FANTA_SOURCE_COMICS[fanta_key]
+    return fanta_book.title

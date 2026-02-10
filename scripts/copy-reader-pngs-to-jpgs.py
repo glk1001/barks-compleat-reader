@@ -7,7 +7,7 @@ from pathlib import Path
 
 import typer
 from barks_fantagraphics.comics_consts import PNG_FILE_EXT
-from barks_fantagraphics.comics_utils import get_abbrev_path, get_timestamp_str
+from barks_fantagraphics.comics_utils import get_abbrev_path, get_backup_file
 from barks_reader.core.config_info import ConfigInfo  # make sure this is before any kivy imports
 from barks_reader.core.reader_settings import ReaderSettings
 from comic_utils.comic_consts import JPG_FILE_EXT
@@ -25,10 +25,6 @@ APP_LOGGING_NAME = "zip"
 
 PANEL_KEY = os.environ["BARKS_ZIPS_KEY"]
 FERNET = Fernet(PANEL_KEY)
-
-
-def get_backup_filename(file: Path) -> Path:
-    return Path(str(file) + "_" + get_timestamp_str(file))
 
 
 def convert_and_zip_file(file_path: Path, archive: zipfile.ZipFile, dest_subdir: Path) -> None:
@@ -133,7 +129,7 @@ def copy_to_zip(log_level_str: LogLevelArg = "DEBUG") -> None:
         if not zip_file.is_file():
             zip_backup = ""
         else:
-            zip_backup = get_backup_filename(zip_file)
+            zip_backup = get_backup_file(zip_file)
             logger.info(f'Backing up existing zip to "{zip_backup}"...')
             zip_file.rename(zip_backup)
 
