@@ -8,7 +8,11 @@ from barks_fantagraphics.pages import get_sorted_srce_and_dest_pages
 
 
 def get_titles_and_info(
-    comics_database: ComicsDatabase, volumes: list[int], title: str, configured_only: bool = True
+    comics_database: ComicsDatabase,
+    volumes: list[int],
+    title: str,
+    configured_only: bool = True,
+    exclude_non_comics: bool = False,
 ) -> list[tuple[str, FantaComicBookInfo]]:
     assert not (volumes and title)
 
@@ -18,7 +22,9 @@ def get_titles_and_info(
 
     assert volumes
     if configured_only:
-        return comics_database.get_configured_titles_in_fantagraphics_volumes(volumes)
+        return comics_database.get_configured_titles_in_fantagraphics_volumes(
+            volumes, exclude_non_comics
+        )
 
     return comics_database.get_all_titles_in_fantagraphics_volumes(volumes)
 
@@ -29,8 +35,11 @@ def get_titles(
     title: str,
     submission_date_sorted: bool = True,
     configured_only: bool = True,
+    exclude_non_comics: bool = False,
 ) -> list[str]:
-    titles_and_info = get_titles_and_info(comics_database, volumes, title, configured_only)
+    titles_and_info = get_titles_and_info(
+        comics_database, volumes, title, configured_only, exclude_non_comics
+    )
 
     if submission_date_sorted:
         return get_titles_sorted_by_submission_date(titles_and_info)

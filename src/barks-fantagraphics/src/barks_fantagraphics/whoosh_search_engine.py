@@ -10,7 +10,7 @@ from whoosh.fields import ID, TEXT, Schema
 from whoosh.index import create_in, open_dir
 from whoosh.qparser import QueryParser
 
-from .barks_titles import BARKS_TITLES
+from .barks_titles import BARKS_TITLE_DICT
 from .comics_database import ComicsDatabase
 from .speech_groupers import OcrTypes, SpeechGroups
 from .whoosh_barks_terms import (
@@ -193,13 +193,17 @@ class SearchEngineCreator(SearchEngine):
             json.dump(self._get_alpha_split_terms(cleaned_lemmatized_terms), f, indent=4)
 
     def _index_volume_titles(self, volumes: list[int]) -> None:
-        all_speech_groups = SpeechGroups(self._comics_database, volumes)
-        all_speech_groups.load_groups()
+        all_speech_groups = SpeechGroups(self._comics_database)
 
         writer = self._index.writer()
 
-        for title, speech_page_groups in all_speech_groups.all_speech_page_groups.items():
-            title_str = BARKS_TITLES[title]
+        titles = self._comics_database.get_configured_titles_in_fantagraphics_volumes(
+            volumes, exclude_non_comics=True
+        )
+
+        for title_str, _ in titles:
+            title = BARKS_TITLE_DICT[title_str]
+            speech_page_groups = all_speech_groups.get_speech_page_groups(title)
             for speech_page in speech_page_groups:
                 if speech_page["ocr_index"] != self._ocr_index_to_use:
                     continue

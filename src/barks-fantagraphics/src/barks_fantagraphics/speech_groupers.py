@@ -4,14 +4,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import TypedDict
 
-from loguru import logger
-
-from barks_fantagraphics.barks_titles import (
-    BARKS_TITLE_DICT,
-    BARKS_TITLES,
-    Titles,
-    is_non_comic_title,
-)
+from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comics_consts import RESTORABLE_PAGE_TYPES
 from barks_fantagraphics.comics_database import ComicsDatabase
@@ -61,25 +54,10 @@ class SpeechPageGroupWithJson:
 
 
 class SpeechGroups:
-    def __init__(self, comics_database: ComicsDatabase, fanta_volumes: list[int]) -> None:
+    def __init__(self, comics_database: ComicsDatabase) -> None:
         self._comics_database = comics_database
-        self._volumes = fanta_volumes
-        self._all_speech_page_groups: dict[Titles, list[SpeechPageGroup]] = {}
 
-    @property
-    def all_speech_page_groups(self) -> dict[Titles, list[SpeechPageGroup]]:
-        return self._all_speech_page_groups
-
-    def load_groups(self) -> None:
-        titles = self._comics_database.get_configured_titles_in_fantagraphics_volumes(self._volumes)
-        for title_str, _ in titles:
-            if is_non_comic_title(title_str):
-                logger.warning(f'Not a comic title "{title_str}" - skipping.')
-                continue
-            title = BARKS_TITLE_DICT[title_str]
-            self._all_speech_page_groups[title] = self._get_speech_pages(title)
-
-    def _get_speech_pages(self, title: Titles) -> list[SpeechPageGroup]:
+    def get_speech_page_groups(self, title: Titles) -> list[SpeechPageGroup]:
         title_str = BARKS_TITLES[title]
 
         volume = self._comics_database.get_fanta_volume_int(title_str)

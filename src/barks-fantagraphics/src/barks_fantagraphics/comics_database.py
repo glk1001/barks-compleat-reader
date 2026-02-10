@@ -9,7 +9,12 @@ from pathlib import Path
 from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
 from loguru import logger
 
-from .barks_titles import get_filename_from_title_str, get_title_str_from_filename
+from .barks_titles import (
+    BARKS_TITLE_DICT,
+    NON_COMIC_TITLES,
+    get_filename_from_title_str,
+    get_title_str_from_filename,
+)
 from .comic_book import (
     INTRO_AUTHOR_DEFAULT_FONT_SIZE,
     INTRO_TITLE_DEFAULT_FONT_SIZE,
@@ -142,17 +147,21 @@ class ComicsDatabase:
     def get_configured_titles_in_fantagraphics_volumes(
         self,
         volume_nums: list[int],
+        exclude_non_comics: bool = False,
     ) -> list[tuple[str, FantaComicBookInfo]]:
         story_titles = []
 
         for volume in volume_nums:
-            story_titles.extend(self.get_configured_titles_in_fantagraphics_volume(volume))
+            story_titles.extend(
+                self.get_configured_titles_in_fantagraphics_volume(volume, exclude_non_comics)
+            )
 
         return sorted(story_titles)
 
     def get_configured_titles_in_fantagraphics_volume(
         self,
         volume: int,
+        exclude_non_comics: bool = False,
     ) -> list[tuple[str, FantaComicBookInfo]]:
         config = ConfigParser(interpolation=ExtendedInterpolation())
 
@@ -163,8 +172,9 @@ class ComicsDatabase:
             config.read(ini_file)
             if config["info"]["source_comic"] == fanta_key:
                 story_title = get_title_str_from_filename(file)
-                comic_info = self._all_comic_book_info[story_title]
-                story_titles.append((story_title, comic_info))
+                if not exclude_non_comics or BARKS_TITLE_DICT[story_title] not in NON_COMIC_TITLES:
+                    comic_info = self._all_comic_book_info[story_title]
+                    story_titles.append((story_title, comic_info))
 
         return sorted(story_titles)
 
