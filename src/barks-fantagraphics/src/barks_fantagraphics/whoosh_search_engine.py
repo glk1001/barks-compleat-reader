@@ -205,19 +205,19 @@ class SearchEngineCreator(SearchEngine):
             title = BARKS_TITLE_DICT[title_str]
             speech_page_groups = all_speech_groups.get_speech_page_groups(title)
             for speech_page in speech_page_groups:
-                if speech_page["ocr_index"] != self._ocr_index_to_use:
+                if speech_page.ocr_index != self._ocr_index_to_use:
                     continue
-                for group_id, speech_text in speech_page["speech_groups"].items():
+                for group_id, speech_text in speech_page.speech_groups.items():
                     writer.add_document(
                         title=title_str,
-                        fanta_vol=str(speech_page["fanta_vol"]),
-                        fanta_page=speech_page["fanta_page"],
-                        comic_page=speech_page["comic_page"],
+                        fanta_vol=str(speech_page.fanta_vol),
+                        fanta_page=speech_page.fanta_page,
+                        comic_page=speech_page.comic_page,
                         content_id=group_id,
-                        panel_num=str(speech_text["panel_num"]),
-                        content=speech_text["ai_text"],
-                        unstemmed=speech_text["ai_text"],
-                        content_raw=speech_text["raw_ai_text"],
+                        panel_num=str(speech_text.panel_num),
+                        content=speech_text.ai_text,
+                        unstemmed=speech_text.ai_text,
+                        content_raw=speech_text.raw_ai_text,
                     )
 
         writer.commit()
