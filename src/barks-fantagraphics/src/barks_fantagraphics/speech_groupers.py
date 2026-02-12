@@ -1,6 +1,7 @@
 import json
 from dataclasses import dataclass
 from enum import StrEnum
+from itertools import groupby
 from pathlib import Path
 
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
@@ -21,14 +22,12 @@ OCR_TYPE_DICT = {0: OcrTypes.EASYOCR, 1: OcrTypes.PADDLEOCR}
 
 @dataclass(frozen=True, slots=True)
 class SpeechText:
+    group_id: str
+    panel_num: int
     raw_ai_text: str
     ai_text: str
     type: str
-    panel_num: int
     text_box: list[tuple[int | float, int | float]]
-
-
-SpeechTextGroup = dict[str, SpeechText]
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,9 +37,17 @@ class SpeechPageGroup:
     ocr_index: OcrTypes
     fanta_page: str
     comic_page: str
-    speech_groups: SpeechTextGroup
+    speech_groups: dict[str, SpeechText]
     speech_page_json: dict
     ocr_prelim_groups_json_file: Path
+
+    def get_panel_groups(self) -> dict[int, list[SpeechText]]:
+        # Sort by panel_num is required for groupby
+        items = sorted(
+            (s for s in self.speech_groups.values() if s.panel_num != -1),
+            key=lambda s: s.panel_num,
+        )
+        return {k: list(g) for k, g in groupby(items, key=lambda s: s.panel_num)}
 
     def has_group_changed(self) -> bool:
         return _has_speech_page_group_changed(self)
@@ -112,14 +119,14 @@ def get_speech_page_group(
     )
 
 
-def _get_speech_text_list(ocr_prelim_groups_json_file: Path) -> tuple[SpeechTextGroup, dict]:
+def _get_speech_text_list(ocr_prelim_groups_json_file: Path) -> tuple[dict[str, SpeechText], dict]:
     try:
         ocr_prelim_group = json.loads(ocr_prelim_groups_json_file.read_text())
     except Exception as e:
         msg = f'Error reading ocr_prelim_groups: "{ocr_prelim_groups_json_file}". Exception: {e}'
         raise ValueError(msg) from e
 
-    speech_groups: SpeechTextGroup = SpeechTextGroup()
+    speech_groups = {}
     for group_id, group in ocr_prelim_group["groups"].items():
         raw_ai_text = group["ai_text"]
         ai_text = raw_ai_text.replace("-\n", "-").replace("\u00ad\n", "").replace("\u200b\n", "")
@@ -128,10 +135,11 @@ def _get_speech_text_list(ocr_prelim_groups_json_file: Path) -> tuple[SpeechText
             continue
 
         speech_groups[group_id] = SpeechText(
+            group_id=group_id,
+            panel_num=group["panel_num"],
             raw_ai_text=raw_ai_text,
             ai_text=ai_text,
             type=group["type"],
-            panel_num=group["panel_num"],
             text_box=group["text_box"],
         )
 
