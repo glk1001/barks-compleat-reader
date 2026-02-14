@@ -52,10 +52,10 @@ def show_error_popup(
     # noinspection PyProtectedMember
     from kivy import Config
 
-    Config.set("graphics", "left", x)  # ty: ignore[possibly-missing-attribute]
-    Config.set("graphics", "top", y)  # ty: ignore[possibly-missing-attribute]
-    Config.set("graphics", "width", size[0])  # ty: ignore[possibly-missing-attribute]
-    Config.set("graphics", "height", size[1])  # ty: ignore[possibly-missing-attribute]
+    Config.set("graphics", "left", x)  # ty: ignore[unresolved-attribute]
+    Config.set("graphics", "top", y)  # ty: ignore[unresolved-attribute]
+    Config.set("graphics", "width", size[0])  # ty: ignore[unresolved-attribute]
+    Config.set("graphics", "height", size[1])  # ty: ignore[unresolved-attribute]
 
     content = _get_error_content(
         title=title,
@@ -125,7 +125,7 @@ def _get_error_content(
             self.details_visible = False
 
             # ========== BACKGROUND & SHADOW ==========
-            with self.canvas.before:  # ty: ignore[possibly-missing-attribute]
+            with self.canvas.before:  # ty: ignore[unresolved-attribute]
                 # Drop shadow
                 Color(0, 0, 0, 0.25)
                 self.shadow_rect = RoundedRectangle(
@@ -162,7 +162,7 @@ def _get_error_content(
                 font_name=ROBOTO_FONT,
             )
 
-            with severity_banner.canvas.before:  # ty: ignore[possibly-missing-attribute]
+            with severity_banner.canvas.before:  # ty: ignore[unresolved-attribute]
                 Color(*color_scheme["bg"])
                 # Rounded corners on *all* sides for capsule-like look
                 self.severity_bgnd = RoundedRectangle(
@@ -208,7 +208,7 @@ def _get_error_content(
                     padding_x=10,
                 )
                 heading.bind(width=lambda inst, val: setattr(inst, "text_size", (val - 20, None)))
-                with heading.canvas.before:  # ty: ignore[possibly-missing-attribute]
+                with heading.canvas.before:  # ty:ignore[unresolved-attribute]
                     Color(0.95, 0.95, 0.95, 1)  # faint gray background
                     heading.bg_rect = Rectangle(size=heading.size, pos=heading.pos)
                 heading.bind(size=lambda inst, val: setattr(inst.bg_rect, "size", val))

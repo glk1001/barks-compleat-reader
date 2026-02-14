@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, override
+from typing import TYPE_CHECKING, Any, LiteralString, override
 
 from barks_fantagraphics.comics_database import ComicsDatabase
 from comic_utils.timing import Timing
@@ -194,8 +194,9 @@ class BarksReaderApp(App):
 
         return self._main_screen.display_settings(win, settings)
 
+    # noinspection LongLine
     @override
-    def get_application_config(self, _default_path: str = "") -> str:
+    def get_application_config(self, _default_path: str = "") -> LiteralString | str:  # ty:ignore[invalid-method-override]
         return str(self._config_info.app_config_path)
 
     @override
@@ -239,7 +240,7 @@ class BarksReaderApp(App):
         section: str,
         key: str,
         value: Any,
-    ) -> None:
+    ) -> None:  # ty:ignore[invalid-method-override]
         logger.info(f"Config change: section = '{section}', key = '{key}', value = '{value}'.")
         if self.reader_settings.on_changed_setting(section, key, value) and (
             section == BARKS_READER_SECTION
@@ -330,7 +331,7 @@ class BarksReaderApp(App):
         )
         self._set_custom_title_bar()
         # noinspection LongLine
-        self._main_screen.update_fonts(Config.getint("graphics", "height"))  # ty: ignore[possibly-missing-attribute]
+        self._main_screen.update_fonts(Config.getint("graphics", "height"))  # ty: ignore[unresolved-attribute]
 
         logger.debug("Instantiating comic reader screen...")
         comic_reader_screen = get_barks_comic_reader_screen(
@@ -383,10 +384,10 @@ class BarksReaderApp(App):
         # This is a known Kivy workaround. By briefly changing the window position,
         # we force an `on_resize` event to fire, which ensures that all UI elements
         # that depend on window size are correctly initialized.
-        config_left = Config.getint("graphics", "left")  # ty: ignore[possibly-missing-attribute]
+        config_left = Config.getint("graphics", "left")  # ty:ignore[unresolved-attribute]
         Window.left = config_left + 1
         Window.left = config_left
-        config_top = Config.getint("graphics", "top")  # ty: ignore[possibly-missing-attribute]
+        config_top = Config.getint("graphics", "top")  # ty:ignore[unresolved-attribute]
         Window.top = config_top + 1
         Window.top = config_top
 

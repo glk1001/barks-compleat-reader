@@ -113,14 +113,14 @@ class WordWithPunctTokenizer(Tokenizer):
                     text = inner
                     start_char_pos += 1
 
-            token.text = text
+            token.text = text  # ty:ignore[unresolved-attribute]
 
             if positions:
-                token.pos = pos
+                token.pos = pos  # ty:ignore[unresolved-attribute]
                 pos += 1
 
             if chars:
-                token.startchar = start_char_pos
-                token.endchar = start_char_pos + len(text)
+                token.startchar = start_char_pos  # ty:ignore[unresolved-attribute]
+                token.endchar = start_char_pos + len(text)  # ty:ignore[unresolved-attribute]
 
             yield token

@@ -16,7 +16,7 @@ def divider_line() -> Any:  # Widget  # noqa: ANN401
     from kivy.uix.widget import Widget
 
     w = Widget(size_hint_y=None, height=1)
-    with w.canvas.before:  # ty: ignore[possibly-missing-attribute]
+    with w.canvas.before:  # ty:ignore[unresolved-attribute]
         Color(0.5, 0.5, 0.5, 1)
         w.rect = Rectangle(size=w.size, pos=w.pos)
     w.bind(size=lambda inst, val: setattr(inst.rect, "size", val))
@@ -56,7 +56,7 @@ def show_standalone_popup(  # noqa: PLR0915
         # --- Title bar (gradient + shadow) ---
         title_bar = BoxLayout(size_hint_y=None, height=56, padding=[12, 8], spacing=8)
 
-        with title_bar.canvas.before:  # ty: ignore[possibly-missing-attribute]
+        with title_bar.canvas.before:  # ty:ignore[unresolved-attribute]
             # Shadow under title bar.
             Color(0, 0, 0, 0.1)
             shadow_rect = Rectangle(pos=(title_bar.x, title_bar.y - 4), size=(title_bar.width, 6))
@@ -109,7 +109,7 @@ def show_standalone_popup(  # noqa: PLR0915
         bgnd_rect = None
         bgnd_texture_size = None
 
-        with content_wrapper.canvas.before:  # ty: ignore[possibly-missing-attribute]
+        with content_wrapper.canvas.before:  # ty:ignore[unresolved-attribute]
             # Drop shadow.
             Color(0, 0, 0, 0.05)
             shadow = Rectangle(

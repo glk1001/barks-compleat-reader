@@ -95,7 +95,7 @@ def start_logging(cfg_info: ConfigInfo, min_options: MinimalConfigOptions) -> No
 
     setup_loguru(cfg_info, min_options.log_level)
 
-    Config.set("kivy", "log_level", log_level.lower())  # ty: ignore[possibly-missing-attribute]
+    Config.set("kivy", "log_level", log_level.lower())  # ty: ignore[unresolved-attribute]
     redirect_kivy_logs()
 
     logger.info("*** Starting barks reader ***")
@@ -250,17 +250,17 @@ def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
         # ZeroDivisionError: float division by zero
 
         # Don't show anything until the app decides to.
-        Config.set("graphics", "window_state", "hidden")  # ty: ignore[possibly-missing-attribute]
+        Config.set("graphics", "window_state", "hidden")  # ty: ignore[unresolved-attribute]
 
     # Note: Can't use dp(RAW_ACTION_BAR_SIZE_Y) here because importing 'dp'
     #       initializes the Window with wrong dimensions.
     win_width = get_win_width_from_height(win_height - RAW_ACTION_BAR_SIZE_Y)
     logger.debug(f"Main win width: {win_width}.")
 
-    Config.set("graphics", "left", win_left)  # ty: ignore[possibly-missing-attribute]
-    Config.set("graphics", "top", win_top)  # ty: ignore[possibly-missing-attribute]
-    Config.set("graphics", "width", win_width)  # ty: ignore[possibly-missing-attribute]
-    Config.set("graphics", "height", win_height)  # ty: ignore[possibly-missing-attribute]
+    Config.set("graphics", "left", win_left)  # ty:ignore[unresolved-attribute]
+    Config.set("graphics", "top", win_top)  # ty:ignore[unresolved-attribute]
+    Config.set("graphics", "width", win_width)  # ty:ignore[unresolved-attribute]
+    Config.set("graphics", "height", win_height)  # ty:ignore[unresolved-attribute]
 
     logger.info(
         f"Set window position and size: ({win_left}, {win_top}), ({win_width}, {win_height})."

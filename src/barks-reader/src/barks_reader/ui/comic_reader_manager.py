@@ -174,7 +174,7 @@ class ComicReaderManager:
             )
             # noinspection LongLine
             Clock.schedule_once(
-                lambda _dt: self._comic_book_reader_screen.close_comic_book_reader(),  # ty:ignore[possibly-missing-attribute]
+                lambda _dt: self._comic_book_reader_screen.close_comic_book_reader(),  # ty:ignore[unresolved-attribute]
                 1,
             )
 

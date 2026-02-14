@@ -27,10 +27,10 @@ def show_installer_message(
     # noinspection PyProtectedMember
     from kivy import Config
 
-    Config.set("graphics", "left", x)  # ty: ignore[possibly-missing-attribute]
-    Config.set("graphics", "top", y)  # ty: ignore[possibly-missing-attribute]
-    Config.set("graphics", "width", size[0])  # ty: ignore[possibly-missing-attribute]
-    Config.set("graphics", "height", size[1])  # ty: ignore[possibly-missing-attribute]
+    Config.set("graphics", "left", x)  # ty:ignore[unresolved-attribute]
+    Config.set("graphics", "top", y)  # ty:ignore[unresolved-attribute]
+    Config.set("graphics", "width", size[0])  # ty:ignore[unresolved-attribute]
+    Config.set("graphics", "height", size[1])  # ty:ignore[unresolved-attribute]
 
     show_standalone_popup(
         title,
@@ -87,7 +87,7 @@ def _get_installer_success_content(
                 grad.extend([t, t, 255, 255])
             tex.blit_buffer(bytes(grad), colorfmt="rgba", bufferfmt="ubyte")
 
-            with self.canvas.before:  # ty: ignore[possibly-missing-attribute]
+            with self.canvas.before:  # ty:ignore[unresolved-attribute]
                 # Drop shadow (same as error popup)
                 Color(0, 0, 0, 0.25)
                 self._shadow = RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(12)])
@@ -110,7 +110,7 @@ def _get_installer_success_content(
 
             # === SUCCESS BANNER ==================================================
             banner = BoxLayout(size_hint_y=None, height=70, padding=10)
-            with banner.canvas.before:  # ty: ignore[possibly-missing-attribute]
+            with banner.canvas.before:  # ty:ignore[unresolved-attribute]
                 Color(0.12, 0.6, 0.33, 1)
                 banner.bg = RoundedRectangle(size=banner.size, pos=banner.pos, radius=[dp(12)])
             banner.bind(size=lambda _i, v: setattr(banner.bg, "size", v))
@@ -260,7 +260,7 @@ def _get_installer_success_content(
         @staticmethod
         def _add_paths_box(parent: Widget, paths: list[Path]) -> None:
             card = BoxLayout(size_hint_y=None, height=45, padding=[10, 6])
-            with card.canvas.before:  # ty: ignore[possibly-missing-attribute]
+            with card.canvas.before:  # ty:ignore[unresolved-attribute]
                 Color(0.96, 0.97, 1, 0.5)
                 card.bg = RoundedRectangle(size=card.size, pos=card.pos, radius=[dp(5)])
             card.bind(size=lambda _i, v: setattr(card.bg, "size", v))

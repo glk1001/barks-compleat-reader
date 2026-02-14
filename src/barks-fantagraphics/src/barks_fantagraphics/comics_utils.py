@@ -119,9 +119,9 @@ def get_timestamp(file: Path | zipfile.Path) -> float:
         logger.warning(f'Trying to get stat for zipfile.Path: "{file}".')
 
     if file.is_symlink():
-        return file.lstat().st_mtime  # ty: ignore[possibly-missing-attribute]
+        return file.lstat().st_mtime  # ty:ignore[unresolved-attribute]
 
-    return file.stat().st_mtime  # ty: ignore[possibly-missing-attribute]
+    return file.stat().st_mtime  # ty:ignore[unresolved-attribute]
 
 
 def get_max_timestamp(files: list[Path]) -> float:
