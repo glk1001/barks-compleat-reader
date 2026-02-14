@@ -67,7 +67,7 @@ class SettingsManager:
             else {}
         )
 
-        return raw_path if raw_path else None, saved_state
+        return raw_path or None, saved_state
 
     def save_last_selected_node_path(self, last_selected_node: BaseTreeViewNode | None) -> None:
         """Save the path of the last selected node."""

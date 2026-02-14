@@ -127,7 +127,7 @@ class UserErrorHandler:
             not been set. You need to go to settings and enter the zips directory, then
             restart the app.""")
 
-        title = popup_title if popup_title else "Fantagraphics Directory Not Set"
+        title = popup_title or "Fantagraphics Directory Not Set"
 
         self._show_settings_error_popup(
             title=title,
@@ -154,7 +154,7 @@ class UserErrorHandler:
             settings and enter the correct directory, then restart the
             app.""")
 
-        title = popup_title if popup_title else "Fantagraphics Directory Not Found"
+        title = popup_title or "Fantagraphics Directory Not Found"
 
         self._show_settings_error_popup(
             title=title,
@@ -184,7 +184,7 @@ class UserErrorHandler:
             make sure the archives are prefixed with the numbers
             {FIRST_VOLUME_NUMBER:02d} to {LAST_VOLUME_NUMBER:02d} inclusive, without duplicates, then restart the app.""")  # noqa: E501
 
-        title = popup_title if popup_title else "Wrong Fantagraphics Archive File"
+        title = popup_title or "Wrong Fantagraphics Archive File"
 
         self._show_fatal_config_error(
             title=title,
@@ -208,7 +208,7 @@ class UserErrorHandler:
             make sure the archives are prefixed with the numbers
             {FIRST_VOLUME_NUMBER:02d} to {LAST_VOLUME_NUMBER:02d} inclusive, then restart the app.""")  # noqa: E501
 
-        title = popup_title if popup_title else "Too Many Fantagraphics Archives"
+        title = popup_title or "Too Many Fantagraphics Archives"
 
         self._show_fatal_config_error(
             title=title,

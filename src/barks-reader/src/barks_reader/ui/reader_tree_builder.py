@@ -529,7 +529,7 @@ class ReaderTreeBuilder:
         return self._create_and_add_year_range_node(
             tree,
             year_range,
-            lambda x: str(x),
+            str,
             lambda title_list: str(len(title_list)),
             YearRangeTreeViewNode,
             parent_node,
@@ -558,8 +558,8 @@ class ReaderTreeBuilder:
                 return 3
             return num
 
-        first_issue = get_us_issue_number(min(title_list, key=lambda x: get_us_issue_number(x)))
-        last_issue = get_us_issue_number(max(title_list, key=lambda x: get_us_issue_number(x)))
+        first_issue = get_us_issue_number(min(title_list, key=get_us_issue_number))
+        last_issue = get_us_issue_number(max(title_list, key=get_us_issue_number))
 
         return f"US {first_issue}-{last_issue}"
 
