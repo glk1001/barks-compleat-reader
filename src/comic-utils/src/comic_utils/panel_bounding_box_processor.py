@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from loguru import logger
+from PIL.Image import Image
 
 from .comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
 from .panel_segmentation import KumikoPanelSegmentation, get_min_max_panel_values
@@ -22,14 +23,35 @@ class BoundingBoxProcessor:
     ) -> dict[str, Any]:
         logger.debug("Getting panels segment info from kumiko.")
 
-        override_file_with_bbox = self._get_override_filename(srce_bounded_override_dir, srce_file)
+        bounds_override_file, overall_bounds_override_file = self._get_bounds_override_files(
+            srce_bounded_override_dir, srce_file
+        )
 
-        if not override_file_with_bbox.is_file():
+        if not bounds_override_file.is_file():
             srce_bounded_image = load_pil_image_for_reading(srce_file)
         else:
-            logger.warning(f'Using panels bounds override file "{override_file_with_bbox}".')
-            srce_bounded_image = load_pil_image_for_reading(override_file_with_bbox)
+            logger.warning(f'Using panels bounds override file "{bounds_override_file}".')
+            srce_bounded_image = load_pil_image_for_reading(bounds_override_file)
 
+        if not overall_bounds_override_file.is_file():
+            srce_overall_bounded_image = None
+        else:
+            logger.warning(
+                f'Using overall panels bounds override file "{overall_bounds_override_file}".'
+            )
+            srce_overall_bounded_image = load_pil_image_for_reading(overall_bounds_override_file)
+
+        bounds_segment_info = self._get_segment_info(srce_bounded_image, srce_file)
+
+        if srce_overall_bounded_image:
+            overall_bounds_segment_info = self._get_segment_info(
+                srce_overall_bounded_image, srce_file
+            )
+            bounds_segment_info["overall_bounds"] = overall_bounds_segment_info["overall_bounds"]
+
+        return bounds_segment_info
+
+    def _get_segment_info(self, srce_bounded_image: Image, srce_file: Path) -> dict[str, Any]:
         srce_bounded_image = srce_bounded_image.convert("RGB")
 
         segment_info = self._kumiko.get_panels_segment_info(srce_bounded_image, srce_file)
@@ -39,15 +61,27 @@ class BoundingBoxProcessor:
         return segment_info
 
     @staticmethod
-    def _get_override_filename(srce_bounded_override_dir: Path, srce_filename: Path) -> Path:
-        bad_override_filename = srce_filename.stem + PNG_FILE_EXT
-        bad_override_file = srce_bounded_override_dir / bad_override_filename
+    def _get_bounds_override_files(
+        srce_bounded_override_dir: Path, srce_file: Path
+    ) -> tuple[Path, Path]:
+        bad_override_file = srce_bounded_override_dir / (srce_file.stem + PNG_FILE_EXT)
         if bad_override_file.is_file():
             msg = f'Override panels bounds files should not be .png: "{bad_override_file}".'
             raise RuntimeError(msg)
 
-        override_filename = Path(srce_filename).stem + JPG_FILE_EXT
-        return srce_bounded_override_dir / override_filename
+        bounds_override_file = srce_bounded_override_dir / (Path(srce_file).stem + JPG_FILE_EXT)
+        overall_bounds_override_file = srce_bounded_override_dir / (
+            Path(srce_file).stem + "-overall-bounds-only" + JPG_FILE_EXT
+        )
+
+        if overall_bounds_override_file.is_file() and not bounds_override_file.is_file():
+            msg = (
+                f'Cannot have an overall bounds file "{overall_bounds_override_file}"'
+                f' AND NOT a bounds file "{bounds_override_file}".'
+            )
+            raise RuntimeError(msg)
+
+        return bounds_override_file, overall_bounds_override_file
 
     @staticmethod
     def save_panels_segment_info(segment_info_filename: Path, segment_info: dict[str, Any]) -> None:
