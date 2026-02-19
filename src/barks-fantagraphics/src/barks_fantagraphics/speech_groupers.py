@@ -55,6 +55,9 @@ class SpeechPageGroup:
     def save_group(self, to_file: Path | None = None, backup_file: Path | None = None) -> bool:
         return _save_speech_page_group(self, to_file, backup_file)
 
+    def save_json(self, to_file: Path | None = None, backup_file: Path | None = None) -> None:
+        _save_speech_page_group_json(self, to_file, backup_file)
+
 
 @dataclass(frozen=True, slots=True)
 class SpeechGroups:
@@ -178,12 +181,22 @@ def _save_speech_page_group(
             speech_page_json["groups"][group_id]["ai_text"] = speech_text.raw_ai_text
 
     if need_to_save:
-        if to_file is None:
-            to_file = speech_page_group.ocr_prelim_groups_json_file
-        if backup_file:
-            backup_file.parent.mkdir(parents=True, exist_ok=True)
-            to_file.rename(backup_file)
-        with to_file.open("w") as f:
-            json.dump(speech_page_json, f, indent=4)
+        _save_speech_page_group_json(speech_page_group, to_file, backup_file)
 
     return need_to_save
+
+
+def _save_speech_page_group_json(
+    speech_page_group: SpeechPageGroup,
+    to_file: Path | None,
+    backup_file: Path | None,
+) -> None:
+    speech_page_json = speech_page_group.speech_page_json
+
+    if to_file is None:
+        to_file = speech_page_group.ocr_prelim_groups_json_file
+    if backup_file:
+        backup_file.parent.mkdir(parents=True, exist_ok=True)
+        to_file.rename(backup_file)
+    with to_file.open("w") as f:
+        json.dump(speech_page_json, f, indent=4)
