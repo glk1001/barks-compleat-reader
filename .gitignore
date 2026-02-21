@@ -2,7 +2,6 @@
 **/pyarmor_runtime_000000/
 src/barks-reader/src/barks_reader/_version.py
 src/comic-utils/src/comic_utils/get_panel_bytes.py
-src/barks_compleat_reader.egg-info
 .venv/
 logs/
 .env.runtime
