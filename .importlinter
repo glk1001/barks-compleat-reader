@@ -1,8 +1,6 @@
 [importlinter]
 root_package = barks_reader
 include_external_packages=True
-# If your code is in src/barks_reader, standard python lookup works.
-# If import linter can't find it, you might need to run it from src/
 
 [importlinter:contract:1]
 name = Core should remain pure and never import UI
