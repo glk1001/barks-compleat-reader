@@ -68,7 +68,7 @@ All code lives under `src/`, split into four packages managed as a **uv workspac
 | `src/barks-build-comic-images/src` | `barks_build_comic_images` | Image building utilities |
 | `src/comic-utils/src` | `comic_utils` | Shared low-level utilities (image I/O, CV, timing, etc.) |
 
-Entry point: `main.py` (root). Run `uv sync` after cloning to install all workspace packages. Note: `pycrucible.toml` still sets `PYTHONPATH` for the bundled standalone executable's runtime — that is intentional.
+Entry point: `main.py` (root). Run `uv sync` after cloning to install all workspace packages. Note: `pycrucible.toml` still sets `PYTHONPATH` for the bundled standalone executable's runtime — that is intentional and cannot be removed. pycrucible uses a flat archive internally, so multiple `pyproject.toml` files collide on the same name and cannot be bundled. The workspace editable installs do not exist in the bundled executable context, so PYTHONPATH is the only way to locate packages within the extracted source tree.
 
 ### `barks_reader` Internal Layering
 
