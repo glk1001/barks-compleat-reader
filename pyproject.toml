@@ -69,8 +69,12 @@ dev = [
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-testpaths = ["src/barks-reader/tests"]
+testpaths = [
+    "src/barks-reader/tests",
+    "src/barks-fantagraphics/tests",
+]
 addopts = """
+    --import-mode=importlib
     --benchmark-time-unit=s
     --benchmark-columns=min,max,mean,stddev
     --benchmark-warmup=on
