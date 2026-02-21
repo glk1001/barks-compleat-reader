@@ -1,18 +1,6 @@
 [environment]
 python = "./.venv"
-root = [
-    ".",
-    "./src/barks-reader/src",
-    "./src/barks-build-comic-images/src",
-    "./src/barks-fantagraphics/src",
-    "./src/comic-utils/src",
-]
-extra-paths = [
-    "./src/barks-reader/src",
-    "./src/barks-build-comic-images/src",
-    "./src/barks-fantagraphics/src",
-    "./src/comic-utils/src",
-]
+root = ["."]
 
 [src]
 exclude = [
