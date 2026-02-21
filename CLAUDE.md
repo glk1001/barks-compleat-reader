@@ -41,7 +41,7 @@ uv run ruff format .
 
 **Type-check (ty):**
 ```bash
-uvx ty check
+uv run ty check
 ```
 
 **Check import layering:**
