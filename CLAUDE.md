@@ -59,7 +59,7 @@ bash scripts/build.sh
 
 ### Source Packages
 
-All code lives under `src/`, split into four packages that must be on `PYTHONPATH`:
+All code lives under `src/`, split into four packages managed as a **uv workspace**. Each has its own `pyproject.toml` and is installed as an editable package into the shared `.venv` — no `PYTHONPATH` configuration needed for development or tooling.
 
 | Directory | Python Package | Role |
 |---|---|---|
@@ -68,7 +68,7 @@ All code lives under `src/`, split into four packages that must be on `PYTHONPAT
 | `src/barks-build-comic-images/src` | `barks_build_comic_images` | Image building utilities |
 | `src/comic-utils/src` | `comic_utils` | Shared low-level utilities (image I/O, CV, timing, etc.) |
 
-Entry point: `main.py` (root). The `PYTHONPATH` env var must include all four `src` subdirectories.
+Entry point: `main.py` (root). Run `uv sync` after cloning to install all workspace packages. Note: `pycrucible.toml` still sets `PYTHONPATH` for the bundled standalone executable's runtime — that is intentional.
 
 ### `barks_reader` Internal Layering
 
@@ -86,9 +86,9 @@ Key `ui` modules: `barks_reader_app` (Kivy `App` subclass, orchestrates everythi
 
 ### Testing
 
-- Tests are in `src/barks-reader/tests/unit/` and `tests/benchmarks/`.
+- Tests are in `src/barks-reader/tests/unit/` and `src/barks-reader/tests/benchmarks/`.
 - Use `pytest` fixtures and `patch.object(module, ClassName)` style mocking — **not** string-path patching like `patch("barks_reader.core.module.ClassName")`.
-- `testpaths = ["tests"]` in `pyproject.toml`.
+- `testpaths = ["src/barks-reader/tests"]` in `pyproject.toml`.
 
 ## Code Style
 
