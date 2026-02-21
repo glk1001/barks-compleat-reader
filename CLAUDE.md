@@ -93,7 +93,7 @@ Key `ui` modules: `barks_reader_app` (Kivy `App` subclass, orchestrates everythi
 
 - Unit tests are in `src/barks-reader/tests/unit/` and `src/barks-fantagraphics/tests/`. Benchmarks are in `src/barks-reader/tests/benchmarks/` and are excluded from the default `uv run pytest` run.
 - Use `pytest` fixtures and `patch.object(module, ClassName)` style mocking — **not** string-path patching like `patch("barks_reader.core.module.ClassName")`.
-- `testpaths = ["src/barks-reader/tests"]` in `pyproject.toml`.
+- `testpaths = ["src/barks-reader/tests/unit", "src/barks-fantagraphics/tests"]` in `pyproject.toml`.
 
 ## Code Style
 

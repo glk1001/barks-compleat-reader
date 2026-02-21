@@ -4,5 +4,5 @@ echo
 git diff --name-only --diff-filter=ACMRTUXB HEAD | grep '\.py$'
 
 echo
-git diff --name-only --diff-filter=ACMRTUXB HEAD | grep '\.py$' | xargs uvx ruff check --force-exclude --respect-gitignore
+git diff --name-only --diff-filter=ACMRTUXB HEAD | grep '\.py$' | xargs uv run ruff check --force-exclude --respect-gitignore
 
