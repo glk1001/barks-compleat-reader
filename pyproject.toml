@@ -1,7 +1,6 @@
 [project]
 name = "barks-compleat-reader"
-# No version required - see '_version.py'
-dynamic = ["version"]
+version = "0.0.0"
 description = "Kivy app to navigate and read the Fantagraphics Barks library."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
