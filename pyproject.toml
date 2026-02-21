@@ -6,6 +6,10 @@ description = "Kivy app to navigate and read the Fantagraphics Barks library."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
+    "barks-reader",
+    "barks-fantagraphics",
+    "barks-build-comic-images",
+    "comic-utils",
     "better-exceptions==0.3.3",
     "certifi==2025.8.3",
     "colorama==0.4.6 ; sys_platform == 'win32'",
@@ -66,13 +70,27 @@ dev = [
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-testpaths = ["tests"]
+testpaths = ["src/barks-reader/tests"]
 addopts = """
     --benchmark-time-unit=s
     --benchmark-columns=min,max,mean,stddev
     --benchmark-warmup=on
     --benchmark-group-by=func
 """
+
+[tool.uv.workspace]
+members = [
+    "src/barks-reader",
+    "src/barks-fantagraphics",
+    "src/barks-build-comic-images",
+    "src/comic-utils",
+]
+
+[tool.uv.sources]
+barks-reader = { workspace = true }
+barks-fantagraphics = { workspace = true }
+barks-build-comic-images = { workspace = true }
+comic-utils = { workspace = true }
 
 [tool.coverage.run]
 # Only measure code in your source folder (ignore virtualenv stuff)

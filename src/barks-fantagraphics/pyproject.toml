@@ -1,0 +1,15 @@
+[project]
+name = "barks-fantagraphics"
+version = "0.1.0"
+requires-python = ">=3.13,<3.14"
+dependencies = ["comic-utils"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/barks_fantagraphics"]
+
+[tool.uv.sources]
+comic-utils = { workspace = true }

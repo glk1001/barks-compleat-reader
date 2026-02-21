@@ -1,0 +1,19 @@
+[project]
+name = "barks-build-comic-images"
+version = "0.1.0"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "barks-fantagraphics",
+    "comic-utils",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/barks_build_comic_images"]
+
+[tool.uv.sources]
+barks-fantagraphics = { workspace = true }
+comic-utils = { workspace = true }
