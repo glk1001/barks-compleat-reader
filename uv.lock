@@ -33,6 +33,7 @@ requires-dist = [
 
 [[package]]
 name = "barks-compleat-reader"
+version = "0.0.0"
 source = { virtual = "." }
 dependencies = [
     { name = "barks-build-comic-images" },
