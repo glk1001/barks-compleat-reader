@@ -103,3 +103,12 @@ Key `ui` modules: `barks_reader_app` (Kivy `App` subclass, orchestrates everythi
 - Formatter: `ruff` (line length 100, `ruff: noqa` rules in `.ruff.toml`).
 - Type checker: `ty` (config in `ty.toml`).
 - `experiments/` and `scraps/` directories are excluded from linting and type checking.
+
+## Instructions for Claude
+
+- Before implementing any complex change, use the `@askquestion` tool to verify my requirements.
+- Pause for input if the prompt is ambiguous or if a, b, or c are possible.
+- Use `AskUserQuestion` for:
+    1.  Clarifying technical implementation details.
+    2.  User approval for actions with side effects (e.g., deleting files, modifying large config files).
+    3.  Confirming the scope of a task.
