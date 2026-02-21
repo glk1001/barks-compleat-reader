@@ -28,6 +28,11 @@ uv run pytest src/barks-reader/tests/unit/test_reader_utils.py
 uv run pytest --cov
 ```
 
+**Run benchmarks** (excluded from the default test run):
+```bash
+uv run pytest src/barks-reader/tests/benchmarks/
+```
+
 **Lint (ruff):**
 ```bash
 uv run ruff check .
@@ -86,7 +91,7 @@ Key `ui` modules: `barks_reader_app` (Kivy `App` subclass, orchestrates everythi
 
 ### Testing
 
-- Tests are in `src/barks-reader/tests/unit/` and `src/barks-reader/tests/benchmarks/`.
+- Unit tests are in `src/barks-reader/tests/unit/` and `src/barks-fantagraphics/tests/`. Benchmarks are in `src/barks-reader/tests/benchmarks/` and are excluded from the default `uv run pytest` run.
 - Use `pytest` fixtures and `patch.object(module, ClassName)` style mocking — **not** string-path patching like `patch("barks_reader.core.module.ClassName")`.
 - `testpaths = ["src/barks-reader/tests"]` in `pyproject.toml`.
 

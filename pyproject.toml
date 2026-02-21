@@ -70,7 +70,7 @@ dev = [
 [tool.pytest.ini_options]
 minversion = "6.0"
 testpaths = [
-    "src/barks-reader/tests",
+    "src/barks-reader/tests/unit",
     "src/barks-fantagraphics/tests",
 ]
 addopts = """
