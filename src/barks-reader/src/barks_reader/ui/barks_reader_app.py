@@ -61,6 +61,7 @@ from barks_reader.ui.reader_ui_classes import (
 )
 from barks_reader.ui.settings_fix import SettingLongPath, SettingOptionsWithValue
 from barks_reader.ui.speech_index_screen import SpeechIndexScreen
+from barks_reader.ui.statistics_screen import STATISTICS_SCREEN_KV_FILE, StatisticsScreen
 from barks_reader.ui.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
 from barks_reader.ui.user_error_handler import UserErrorHandler
 
@@ -266,6 +267,7 @@ class BarksReaderApp(App):
         Builder.load_file(str(BOTTOM_TITLE_VIEW_SCREEN_KV_FILE))
         Builder.load_file(str(FUN_IMAGE_VIEW_SCREEN_KV_FILE))
         Builder.load_file(str(INDEX_SCREEN_KV_FILE))
+        Builder.load_file(str(STATISTICS_SCREEN_KV_FILE))
         Builder.load_file(str(MAIN_SCREEN_KV_FILE))
 
         root = self._build_screens()
@@ -314,6 +316,9 @@ class BarksReaderApp(App):
         speech_index_screen = SpeechIndexScreen(
             self.reader_settings, self.font_manager, user_error_handler
         )
+        statistics_screen = StatisticsScreen(
+            self.reader_settings.sys_file_paths.get_statistics_dir()
+        )
         self._main_screen = MainScreen(
             self._comics_database,
             self.reader_settings,
@@ -325,6 +330,7 @@ class BarksReaderApp(App):
             fun_image_view_screen,
             main_index_screen,
             speech_index_screen,
+            statistics_screen,
             self.font_manager,
             user_error_handler,
             name=MAIN_READER_SCREEN,

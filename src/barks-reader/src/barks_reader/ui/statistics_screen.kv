@@ -1,0 +1,52 @@
+<StatMenuButton>:
+    background_normal: ''
+    background_down: ''
+    border: (0, 0, 0, 0)
+    background_color: (0.0, 0.8, 0.0, 0.5) if self.is_selected else (0, 0, 0, 0)
+    color: (0, 0, 0, 1)
+    bold: True
+    size_hint: 1, None
+    height: dp(36)
+    text_size: self.size
+    halign: 'left'
+    valign: 'middle'
+    padding: dp(8), 0
+    canvas.after:
+        Color:
+            rgba: 0, 0, 0, 0.6
+        Line:
+            rectangle: self.x + dp(1), self.y + dp(1), self.width - dp(2), self.height - dp(2)
+            width: dp(0.5)
+
+<StatisticsScreen>:
+    opacity: 1 if root.is_visible else 0
+    size_hint: (1, 1) if root.is_visible else (0, 0)
+
+    # White background
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    # Left navigation column
+    GridLayout:
+        id: stat_menu_layout
+        cols: 1
+        size_hint_x: None
+        width: dp(175)
+        pos_hint: {'x': 0, 'top': 1}
+        padding: dp(4)
+        spacing: dp(3)
+
+    # Right chart image (fills remaining width, vertically centred)
+    Image:
+        id: stat_image
+        source: ""
+        fit_mode: "contain"
+        mipmap: True
+        size_hint: None, None
+        width: root.width - dp(183)
+        height: root.height
+        pos_hint: {'right': 1, 'top': 1}

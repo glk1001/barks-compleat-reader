@@ -377,6 +377,14 @@ class TreeViewManager:
         logger.info("Speech index node pressed.")
         self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_SPEECH_NODE)
 
+    def on_statistics_node_created(self, _node: ButtonTreeViewNode) -> None:
+        """Handle creation of the Statistics tree node."""
+
+    def on_statistics_node_pressed(self, _node: ButtonTreeViewNode) -> None:
+        """Handle a press on the Statistics tree node."""
+        logger.info("Statistics node pressed.")
+        self._view_state_manager.update_view_for_node(ViewStates.ON_APPENDIX_STATISTICS_NODE)
+
     def on_title_search_box_pressed(self, instance: TitleSearchBoxTreeViewNode) -> None:
         logger.debug(f"Title search box pressed: {instance}.")
 

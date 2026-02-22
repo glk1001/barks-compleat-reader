@@ -112,3 +112,4 @@ Key `ui` modules: `barks_reader_app` (Kivy `App` subclass, orchestrates everythi
     1.  Clarifying technical implementation details.
     2.  User approval for actions with side effects (e.g., deleting files, modifying large config files).
     3.  Confirming the scope of a task.
+- When you are using compact, please focus on test output and code changes

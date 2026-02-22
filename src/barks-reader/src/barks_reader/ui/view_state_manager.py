@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from barks_reader.ui.fun_image_view_screen import FunImageViewScreen
     from barks_reader.ui.main_index_screen import MainIndexScreen
     from barks_reader.ui.speech_index_screen import SpeechIndexScreen
+    from barks_reader.ui.statistics_screen import StatisticsScreen
     from barks_reader.ui.tree_view_screen import TreeViewScreen
     from barks_reader.ui.view_states import ViewStates
 
@@ -54,6 +55,7 @@ class ViewStateManager:
         fun_image_view_screen: FunImageViewScreen,
         main_index_screen: MainIndexScreen,
         speech_index_screen: SpeechIndexScreen,
+        statistics_screen: StatisticsScreen,
         on_view_state_changed_func: Callable[[ViewStates], None],
     ) -> None:
         self._reader_settings = reader_settings
@@ -64,6 +66,7 @@ class ViewStateManager:
         self._fun_image_view_screen = fun_image_view_screen
         self._main_index_screen = main_index_screen
         self._speech_index_screen = speech_index_screen
+        self._statistics_screen = statistics_screen
         self._on_view_state_changed = on_view_state_changed_func
 
         self._fun_image_view_screen.set_load_image_func(self._load_new_fun_view_image)
@@ -90,6 +93,7 @@ class ViewStateManager:
         self._fun_image_view_screen.is_visible = False
         self._main_index_screen.is_visible = False
         self._speech_index_screen.is_visible = False
+        self._statistics_screen.is_visible = False
 
     def get_top_view_image_info(self) -> ImageInfo:
         return self._top_view_image_info
@@ -350,8 +354,12 @@ class ViewStateManager:
         opacity = self._background_views.get_speech_index_view_opacity()
         self._speech_index_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
 
+        opacity = self._background_views.get_statistics_view_opacity()
+        self._statistics_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
+
         logger.debug(
             f"Setting new index view."
             f" Main index visibility: {self._main_index_screen.is_visible}."
             f" Speech index visibility: {self._speech_index_screen.is_visible}."
+            f" Statistics visibility: {self._statistics_screen.is_visible}."
         )

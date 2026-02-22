@@ -76,6 +76,7 @@ if TYPE_CHECKING:
     from barks_reader.ui.main_index_screen import MainIndexScreen
     from barks_reader.ui.reader_screens import ScreenSwitchers
     from barks_reader.ui.speech_index_screen import SpeechIndexScreen
+    from barks_reader.ui.statistics_screen import StatisticsScreen
     from barks_reader.ui.tree_view_screen import TreeViewScreen
 
 MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
@@ -108,6 +109,7 @@ class MainScreen(ReaderScreen):
         fun_image_view_screen: FunImageViewScreen,
         main_index_screen: MainIndexScreen,
         speech_index_screen: SpeechIndexScreen,
+        statistics_screen: StatisticsScreen,
         font_manager: FontManager,
         user_error_handler: UserErrorHandler,
         **kwargs: str,
@@ -133,6 +135,7 @@ class MainScreen(ReaderScreen):
         self._main_index_screen.on_goto_title = self._goto_title_with_page_num
         self._speech_index_screen = speech_index_screen
         self._speech_index_screen.on_goto_title = self._goto_title_with_page_num
+        self._statistics_screen = statistics_screen
         self._user_error_handler = user_error_handler
 
         self.ids.main_layout.add_widget(self._tree_view_screen)
@@ -141,6 +144,7 @@ class MainScreen(ReaderScreen):
         self._bottom_base_view_screen.add_widget(self._fun_image_view_screen)
         self._bottom_base_view_screen.add_widget(self._main_index_screen)
         self._bottom_base_view_screen.add_widget(self._speech_index_screen)
+        self._bottom_base_view_screen.add_widget(self._statistics_screen)
         self.ids.main_layout.add_widget(self._bottom_base_view_screen)
 
         self._screen_switchers = screen_switchers
@@ -193,6 +197,7 @@ class MainScreen(ReaderScreen):
             self._fun_image_view_screen,
             self._main_index_screen,
             self._speech_index_screen,
+            self._statistics_screen,
             self._on_view_state_changed,
         )
 

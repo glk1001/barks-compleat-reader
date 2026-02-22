@@ -90,14 +90,20 @@ _BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES = {
 _BOTTOM_VIEW_SPEECH_INDEX_OPACITY_1_STATES = {
     ViewStates.ON_INDEX_SPEECH_NODE,
 }
+_BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES = {
+    ViewStates.ON_APPENDIX_STATISTICS_NODE,
+}
 _BOTTOM_VIEW_TITLE_OPACITY_1_STATES = {
     ViewStates.ON_TITLE_NODE,
     ViewStates.ON_TITLE_SEARCH_BOX_NODE,
     ViewStates.ON_TAG_SEARCH_BOX_NODE,
 }
 _BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES = (
-    set(ViewStates) - _BOTTOM_VIEW_TITLE_OPACITY_1_STATES
-) - _BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES
+    set(ViewStates)
+    - _BOTTOM_VIEW_TITLE_OPACITY_1_STATES
+    - _BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES
+    - _BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES
+)
 
 
 # TODO: Consolidate views and currents into classes.
@@ -143,6 +149,7 @@ class BackgroundViews:
         ViewStates.ON_APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_NODE,
         ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE,
         ViewStates.ON_APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_NODE,
+        ViewStates.ON_APPENDIX_STATISTICS_NODE,
     }
 
     _INDEX_VIEW_STATES: ClassVar[set[ViewStates]] = {
@@ -253,6 +260,10 @@ class BackgroundViews:
 
     def get_speech_index_view_opacity(self) -> float:
         return 1.0 if (self._view_state in _BOTTOM_VIEW_SPEECH_INDEX_OPACITY_1_STATES) else 0.0
+
+    def get_statistics_view_opacity(self) -> float:
+        """Return 1.0 when the Statistics screen should be visible, else 0.0."""
+        return 1.0 if (self._view_state in _BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES) else 0.0
 
     def get_current_category(self) -> str:
         return self._current_category
@@ -481,6 +492,7 @@ class BackgroundViews:
             ViewStates.ON_TITLE_NODE,
             ViewStates.ON_INDEX_MAIN_NODE,
             ViewStates.ON_INDEX_SPEECH_NODE,
+            ViewStates.ON_APPENDIX_STATISTICS_NODE,
         ]:
             return
 

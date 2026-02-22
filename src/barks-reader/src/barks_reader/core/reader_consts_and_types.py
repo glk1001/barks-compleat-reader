@@ -27,6 +27,7 @@ APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT = "Don Ault: Life Among the Ducks"
 APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_TEXT = "Maggie Thompson: Comics Readers Find..."  # noqa: E501
 APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_TEXT = "George Lucas: An Appreciation"
 APPENDIX_CENSORSHIP_FIXES_NODE_TEXT = "Censorship Fixes and Other Changes"
+APPENDIX_STATISTICS_NODE_TEXT = "Statistics"
 INDEX_NODE_TEXT = "Indexes"
 INDEX_MAIN_TEXT = "Main Index"
 INDEX_SPEECH_TEXT = "Speech Bubble Index"

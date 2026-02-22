@@ -41,6 +41,7 @@ class SystemFilePaths:
 
         self._fantagraphics_overrides_root_dir: Path | None = None
         self._fantagraphics_panel_segments_root_dir: Path | None = None
+        self._statistics_dir: Path | None = None
 
     def set_barks_reader_files_dir(self, reader_files_dir: Path, check_files: bool = True) -> None:
         logger.info(f'SystemFilePaths: Setting reader_files_dir = "{reader_files_dir}".')
@@ -85,6 +86,7 @@ class SystemFilePaths:
         self._fantagraphics_panel_segments_root_dir = (
             self._barks_reader_files_dir / "Fantagraphics-panel-segments"
         )
+        self._statistics_dir = self._barks_reader_files_dir / "Statistics"
 
         if check_files:
             self._check_reader_files_dirs()
@@ -144,6 +146,16 @@ class SystemFilePaths:
             if not file_path.is_file():
                 msg = f'Required file not found: "{file_path}".'
                 raise FileNotFoundError(msg)
+
+    def get_statistics_dir(self) -> Path:
+        """Return the directory containing pre-generated statistics PNG images."""
+        assert self._statistics_dir
+        return self._statistics_dir
+
+    def get_stat_image_path(self, filename: str) -> Path:
+        """Return the full path to a statistics PNG image by filename."""
+        assert self._statistics_dir
+        return self._statistics_dir / filename
 
     def get_barks_reader_fantagraphics_overrides_root_dir(self) -> Path:
         assert self._fantagraphics_overrides_root_dir

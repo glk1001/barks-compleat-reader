@@ -76,18 +76,17 @@ class FilteredTitleLists:
 
         for year in self.cs_years:
             filters[self.get_cs_year_key_from_year(year)] = lambda info, y=year: (
-                info.series_name == SERIES_CS
-            ) and (info.comic_book_info.submitted_year == y)
+                (info.series_name == SERIES_CS) and (info.comic_book_info.submitted_year == y)
+            )
 
         for year in self.us_years:
             filters[self.get_us_year_key_from_year(year)] = lambda info, y=year: (
-                info.series_name == SERIES_USA
-            ) and (info.comic_book_info.submitted_year == y)
+                (info.series_name == SERIES_USA) and (info.comic_book_info.submitted_year == y)
+            )
 
         for category in self.categories:
-            filters[category.value] = (
-                lambda info, c=category: info.comic_book_info.title
-                in BARKS_TAG_CATEGORIES_TITLES[c]
+            filters[category.value] = lambda info, c=category: (
+                info.comic_book_info.title in BARKS_TAG_CATEGORIES_TITLES[c]
             )
 
         title_lists = get_filtered_title_lists(filters)
