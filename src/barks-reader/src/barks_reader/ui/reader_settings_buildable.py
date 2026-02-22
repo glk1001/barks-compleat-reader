@@ -9,6 +9,7 @@ from barks_reader.core.reader_file_paths import BarksPanelsExtType, ReaderFilePa
 # noinspection PyProtectedMember
 from barks_reader.core.reader_settings import (
     BARKS_READER_SECTION,
+    DOUBLE_PAGE_MODE,
     FANTA_DIR,
     GOTO_FULLSCREEN_ON_APP_START,
     GOTO_FULLSCREEN_ON_COMIC_READ,
@@ -37,7 +38,6 @@ from barks_reader.core.reader_settings import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
 
 class BuildableReaderSettings(ReaderSettings):
@@ -47,6 +47,7 @@ class BuildableReaderSettings(ReaderSettings):
         self._settings: Settings | None = None
 
         self._GETTER_METHODS = {
+            DOUBLE_PAGE_MODE: self._get_double_page_mode,
             FANTA_DIR: self._get_fantagraphics_volumes_dir,
             PNG_BARKS_PANELS_DIR: self._get_png_barks_panels_dir,
             USE_PNG_IMAGES: self._get_use_png_images,
@@ -68,7 +69,8 @@ class BuildableReaderSettings(ReaderSettings):
             USE_GLK_FIREBUG_ENDING: self.get_use_glk_firebug_ending,
         }
 
-        self._VALIDATION_METHODS: dict[str, Callable[[Path | bool | int | str], bool]] = {
+        self._VALIDATION_METHODS: dict[str, Callable[..., bool]] = {
+            DOUBLE_PAGE_MODE: self._is_valid_double_page_mode,
             FANTA_DIR: self.is_valid_fantagraphics_volumes_dir,
             PNG_BARKS_PANELS_DIR: self._is_valid_png_barks_panels_dir,
             USE_PNG_IMAGES: self._is_valid_use_png_images,
@@ -97,6 +99,7 @@ class BuildableReaderSettings(ReaderSettings):
         config.setdefaults(
             BARKS_READER_SECTION,
             {
+                DOUBLE_PAGE_MODE: 0,
                 FANTA_DIR: UNSET_FANTA_DIR_MARKER,
                 PNG_BARKS_PANELS_DIR: ReaderFilePaths.get_default_png_barks_panels_source(),
                 USE_PNG_IMAGES: 1,

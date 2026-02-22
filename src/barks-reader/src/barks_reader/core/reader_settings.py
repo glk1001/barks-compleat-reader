@@ -31,6 +31,7 @@ USE_BLANK_EYEBALLS_FOR_BOMBIE = "use_blank_eyeballs"
 USE_GLK_FIREBUG_ENDING = "use_glk_firebug_ending"
 IS_FIRST_USE_OF_READER = "is_first_use_of_reader"
 LOG_LEVEL = "log_level"
+DOUBLE_PAGE_MODE = "double_page_mode"
 SHOW_TOP_VIEW_TITLE_INFO = "show_tree_view_title_info"
 SHOW_FUN_VIEW_TITLE_INFO = "show_fun_view_title_info"
 MAIN_WINDOW_HEIGHT = "main_window_height"
@@ -66,6 +67,13 @@ def _get_reader_settings_json() -> str:
                 "key": PREBUILT_COMICS_DIR,
             },
             {"type": "title", "title": "Options"},
+            {
+                "title": "Double Page Mode",
+                "desc": "Show two pages side-by-side when reading comics.",
+                "type": "bool",
+                "section": BARKS_READER_SECTION,
+                "key": DOUBLE_PAGE_MODE,
+            },
             {
                 "title": "Goto Last Selection on Start",
                 "desc": "When the app starts, goto the last selection in the tree view.",
@@ -389,6 +397,21 @@ class ReaderSettings:
         assert self._config
         return self._config.get(BARKS_READER_SECTION, LOG_LEVEL)
 
+    @property
+    def double_page_mode(self) -> bool:
+        return self._get_double_page_mode()
+
+    def _get_double_page_mode(self) -> bool:
+        assert self._config
+        return self._config.getboolean(BARKS_READER_SECTION, DOUBLE_PAGE_MODE)
+
+    @double_page_mode.setter
+    def double_page_mode(self, value: bool) -> None:
+        logger.info(f"Setting double_page_mode = {value}.")
+        assert self._config
+        self._config.set(BARKS_READER_SECTION, DOUBLE_PAGE_MODE, 1 if value else 0)
+        self._save_settings()
+
     @is_first_use_of_reader.setter
     def is_first_use_of_reader(self, value: bool) -> None:
         logger.info(f"Setting is_first_use_of_reader = {value}.")
@@ -451,6 +474,10 @@ class ReaderSettings:
 
     @staticmethod
     def _is_valid_is_first_use_of_reader(_is_first_use_of_reader: bool) -> bool:
+        return True
+
+    @staticmethod
+    def _is_valid_double_page_mode(_double_page_mode: bool) -> bool:
         return True
 
     @staticmethod

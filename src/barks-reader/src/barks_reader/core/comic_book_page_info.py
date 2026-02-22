@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from barks_fantagraphics.comic_book import ComicBook
-from barks_fantagraphics.comics_consts import PageType
+from barks_fantagraphics.comics_consts import SOLO_PAGE_TYPES, PageType
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.page_classes import CleanPage, RequiredDimensions
 from barks_fantagraphics.pages import (
@@ -23,6 +23,15 @@ class PageInfo:
     page_type: PageType
     srce_page: CleanPage
     dest_page: CleanPage
+    is_solo: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class DisplayUnit:
+    """Represents one reading unit: either a solo page or a left+right page pair."""
+
+    left_page_index: int
+    right_page_index: int | None  # None means solo page
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,12 +94,15 @@ class ComicBookPageInfoManager:
                 if dest_page.page_type == PageType.BODY:
                     last_body_page = display_page_num
 
+            page_key = Path(srce_page.page_filename).stem
+            is_solo = dest_page.page_type in SOLO_PAGE_TYPES or page_key in comic.solo_page_keys
             page_map[display_page_num] = PageInfo(
                 index,
                 display_page_num,
                 dest_page.page_type,
                 srce_page,
                 dest_page,
+                is_solo,
             )
 
             orig_page_num += 1

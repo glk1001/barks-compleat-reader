@@ -114,6 +114,7 @@ class ComicBook:
 
     fanta_book: FantaBook
     fanta_info: FantaComicBookInfo
+    solo_page_keys: frozenset[str]
 
     # TODO(glk): Eventually just use fanta_info.comic_book_info.chronological_number
     @property

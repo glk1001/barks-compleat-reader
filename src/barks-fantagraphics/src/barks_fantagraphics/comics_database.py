@@ -487,8 +487,17 @@ class ComicsDatabase:
 
         # noinspection PyTypeChecker
         config_page_images = [
-            OriginalPage(key, PageType[config["pages"][key]]) for key in config["pages"]
+            OriginalPage(key, PageType[config["pages"][key]])
+            for key in config["pages"]
+            if key != "solo_pages"
         ]
+
+        solo_pages_str = config["pages"].get("solo_pages", "")
+        solo_page_keys: frozenset[str] = (
+            frozenset(f"{int(k.strip()):03d}" for k in solo_pages_str.split(",") if k.strip())
+            if solo_pages_str
+            else frozenset()
+        )
 
         comic = ComicBook(
             ini_file=ini_file,
@@ -510,6 +519,7 @@ class ComicsDatabase:
             publication_text=publication_text,
             fanta_book=fanta_book,
             fanta_info=fanta_info,
+            solo_page_keys=solo_page_keys,
         )
 
         if self._for_building_comics:

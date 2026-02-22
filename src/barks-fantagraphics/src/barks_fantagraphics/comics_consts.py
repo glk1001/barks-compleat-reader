@@ -73,6 +73,22 @@ class PageType(Enum):
     BLANK_PAGE = auto()
 
 
+SOLO_PAGE_TYPES: frozenset[PageType] = frozenset(
+    [
+        PageType.FRONT,
+        PageType.TITLE,
+        PageType.COVER,
+        PageType.SPLASH,
+        PageType.FRONT_NO_PANELS,
+        PageType.PAINTING,
+        PageType.PAINTING_NO_BORDER,
+        PageType.BACK_NO_PANELS,
+        PageType.BACK_NO_PANELS_DOUBLE,
+        PageType.BACK_PAINTING,
+        PageType.BACK_PAINTING_NO_BORDER,
+    ]
+)
+
 RESTORABLE_PAGE_TYPES = [
     PageType.BODY,
     PageType.FRONT_MATTER,

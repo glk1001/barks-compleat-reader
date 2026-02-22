@@ -28,6 +28,7 @@ from loguru import logger
 from screeninfo import get_monitors
 
 from barks_reader.core.comic_book_loader import ComicBookLoader
+from barks_reader.core.comic_book_page_info import DisplayUnit
 from barks_reader.core.reader_consts_and_types import CLOSE_TO_ZERO, COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, get_win_width_from_height
@@ -81,6 +82,10 @@ class _ComicPageManager(EventDispatcher):
         self._first_page_index = -1
         self._last_page_index = -1
 
+        self._display_units: list[DisplayUnit] = []
+        self._page_index_to_unit_idx: dict[int, int] = {}
+        self.double_page_mode: bool = False
+
     def get_current_page_index(self) -> int:
         return self._current_page_index
 
@@ -90,35 +95,88 @@ class _ComicPageManager(EventDispatcher):
     def get_current_page_str(self) -> str:
         return self._index_to_page_map.get(self._current_page_index, "")
 
+    def get_current_display_unit(self) -> DisplayUnit | None:
+        """Return the display unit that contains the current page index."""
+        if not self._display_units:
+            return None
+
+        unit_idx = self._page_index_to_unit_idx.get(self._current_page_index)
+        if unit_idx is None:
+            return None
+
+        return self._display_units[unit_idx]
+
     def set_current_page_index_from_str(self, page_str: str) -> None:
-        self._current_page_index = self.page_map[page_str].page_index
+        page_index = self.page_map[page_str].page_index
+
+        if self.double_page_mode and self._display_units:
+            unit_idx = self._page_index_to_unit_idx.get(page_index)
+            if unit_idx is not None:
+                self._current_page_index = self._display_units[unit_idx].left_page_index
+                return
+
+        self._current_page_index = page_index
 
     def set_to_first_page_to_read(self) -> None:
+        if self.double_page_mode and self._display_units:
+            unit_idx = self._page_index_to_unit_idx.get(self._first_page_to_read_index)
+            if unit_idx is not None:
+                self._current_page_index = self._display_units[unit_idx].left_page_index
+                return
+
         self._current_page_index = self._first_page_to_read_index
 
     def goto_start_page(self) -> None:
-        if self._current_page_index == self._first_page_index:
+        first_idx = (
+            self._display_units[0].left_page_index
+            if self.double_page_mode and self._display_units
+            else self._first_page_index
+        )
+        if self._current_page_index == first_idx:
             logger.debug(f"Already on the first page: current index = {self._current_page_index}.")
         else:
-            logger.debug("Goto start page: requested index = 0.")
-            self._current_page_index = self._first_page_index
+            logger.debug(f"Goto start page: requested index = {first_idx}.")
+            self._current_page_index = first_idx
 
     def goto_last_page(self) -> None:
-        if self._current_page_index == self._last_page_index:
+        last_idx = (
+            self._display_units[-1].left_page_index
+            if self.double_page_mode and self._display_units
+            else self._last_page_index
+        )
+        if self._current_page_index == last_idx:
             logger.debug(f"Already on the last page: current index = {self._current_page_index}.")
         else:
-            logger.debug(f"Last page: requested index = {self._last_page_index}.")
-            self._current_page_index = self._last_page_index
+            logger.debug(f"Last page: requested index = {last_idx}.")
+            self._current_page_index = last_idx
 
     def next_page(self) -> None:
-        if self._current_page_index >= self._last_page_index:
+        if self.double_page_mode and self._display_units:
+            unit_idx = self._page_index_to_unit_idx.get(self._current_page_index, -1)
+            if unit_idx < 0 or unit_idx >= len(self._display_units) - 1:
+                logger.debug(
+                    f"Already on the last unit: current index = {self._current_page_index}."
+                )
+            else:
+                next_unit = self._display_units[unit_idx + 1]
+                logger.debug(f"Next unit: left_page_index = {next_unit.left_page_index}.")
+                self._current_page_index = next_unit.left_page_index
+        elif self._current_page_index >= self._last_page_index:
             logger.debug(f"Already on the last page: current index = {self._current_page_index}.")
         else:
             logger.debug(f"Next page: requested index = {self._current_page_index + 1}")
             self._current_page_index += 1
 
     def prev_page(self) -> None:
-        if self._current_page_index <= self._first_page_index:
+        if self.double_page_mode and self._display_units:
+            unit_idx = self._page_index_to_unit_idx.get(self._current_page_index, -1)
+            if unit_idx <= 0:
+                logger.debug("Already on the first unit: current index = 0.")
+            else:
+                prev_unit = self._display_units[unit_idx - 1]
+                logger.debug(f"Prev unit: left_page_index = {prev_unit.left_page_index}.")
+                self._current_page_index = prev_unit.left_page_index
+        elif self._current_page_index <= self._first_page_index:
             logger.debug("Already on the first page: current index = 0.")
         else:
             logger.debug(f"Prev page: requested index = {self._current_page_index - 1}")
@@ -141,6 +199,28 @@ class _ComicPageManager(EventDispatcher):
 
         assert self._first_page_index == 0
         assert (self._last_page_index + 1) == len(self.page_map)
+
+        self._build_display_units(page_map)
+
+    def _build_display_units(self, page_map: OrderedDict[str, PageInfo]) -> None:
+        """Pre-compute display units for double-page mode from the page map."""
+        pages = list(page_map.values())
+        self._display_units = []
+        self._page_index_to_unit_idx = {}
+
+        i = 0
+        while i < len(pages):
+            if pages[i].is_solo or (i + 1 >= len(pages)) or pages[i + 1].is_solo:
+                unit_idx = len(self._display_units)
+                self._display_units.append(DisplayUnit(i, None))
+                self._page_index_to_unit_idx[i] = unit_idx
+                i += 1
+            else:
+                unit_idx = len(self._display_units)
+                self._display_units.append(DisplayUnit(i, i + 1))
+                self._page_index_to_unit_idx[i] = unit_idx
+                self._page_index_to_unit_idx[i + 1] = unit_idx
+                i += 2
 
     def get_image_load_order(self) -> list[str]:
         """Determine the optimal order to load images for a smooth user experience."""
@@ -307,6 +387,7 @@ class ComicBookReader(FloatLayout):
         self._page_manager.reset_current_page_index()
         self.action_bar_title = get_action_bar_title(self._font_manager, self._current_title_str)
 
+        self._page_manager.double_page_mode = self._reader_settings.double_page_mode
         self._page_manager.set_page_map(page_map, page_to_first_goto)
 
         self._time_to_load_comic.restart()
@@ -362,7 +443,7 @@ class ComicBookReader(FloatLayout):
         self._comic_image.reload()  # Ensure reload if source was same BytesIO object
         self._comic_image.texture = self._loading_page_texture
 
-    def _show_page(self, _instance: Widget, _value: str) -> None:
+    def _show_page(self, _instance: Widget | None, _value: str | None) -> None:
         """Display the image for the current_page_index."""
         if self._current_page_index == -1:
             logger.debug("Show page not ready: current_page_index = -1.")
@@ -374,7 +455,14 @@ class ComicBookReader(FloatLayout):
             f" {self._comic_book_loader.get_image_info_str(page_str)}."
         )
 
-        self._wait_for_image_to_load()
+        display_unit = self._page_manager.get_current_display_unit()
+        right_idx = (
+            display_unit.right_page_index
+            if display_unit is not None and self._reader_settings.double_page_mode
+            else None
+        )
+
+        self._wait_for_image_to_load(right_idx)
 
         # noinspection PyBroadException
         try:
@@ -383,9 +471,16 @@ class ComicBookReader(FloatLayout):
             self._comic_image.source = ""  # Clear previous source
             self._comic_image.reload()  # Ensure reload if source was same BytesIO object
 
-            image_stream, image_ext = self._comic_book_loader.get_image_ready_for_reading(
-                self._current_page_index
-            )
+            if right_idx is not None:
+                image_stream, image_ext = (
+                    self._comic_book_loader.get_double_page_image_ready_for_reading(
+                        self._current_page_index, right_idx
+                    )
+                )
+            else:
+                image_stream, image_ext = self._comic_book_loader.get_image_ready_for_reading(
+                    self._current_page_index
+                )
             self._comic_image.texture = CoreImage(image_stream, ext=image_ext).texture
         except Exception:  # noqa: BLE001
             logger.exception(f"Error displaying image with index {self._current_page_index}: ")
@@ -403,7 +498,15 @@ class ComicBookReader(FloatLayout):
         self._page_manager.goto_last_page()
         self._hide_action_bar_if_fullscreen()
 
-    def _wait_for_image_to_load(self) -> None:
+    def toggle_double_page_mode(self) -> None:
+        """Toggle double-page mode on/off, persisting the setting and redrawing."""
+        new_mode = not self._reader_settings.double_page_mode
+        self._reader_settings.double_page_mode = new_mode
+        self._page_manager.double_page_mode = new_mode
+        # Redraw current page with the new mode applied.
+        self._show_page(None, None)
+
+    def _wait_for_image_to_load(self, right_page_index: int | None = None) -> None:
         if self._all_loaded:
             return
 
@@ -413,6 +516,14 @@ class ComicBookReader(FloatLayout):
                 f"Still waiting for image with index {self._current_page_index} to finish loading."
             )
         logger.info(f"Finished waiting for image with index {self._current_page_index} to load.")
+
+        if right_page_index is not None:
+            logger.info(f"Waiting for right page image with index {right_page_index} to load.")
+            while not self._comic_book_loader.wait_load_event(right_page_index, 2):
+                logger.info(
+                    f"Still waiting for right page image with index {right_page_index} to load."
+                )
+            logger.info(f"Finished waiting for right page image with index {right_page_index}.")
 
     def goto_page(self) -> None:
         """Go to user requested page."""

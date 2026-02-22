@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from zipfile import ZipFile
 
+from barks_build_comic_images.build_comic_images import build_double_page_image
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.comics_utils import get_abbrev_path, get_dest_comic_zip_file_stem
 from barks_fantagraphics.fanta_comics_info import (
@@ -121,6 +122,33 @@ class ComicBookLoader:
         image_stream.seek(0)  # Ensure stream is at the beginning for reading
 
         return image_stream, image_ext
+
+    def get_double_page_image_ready_for_reading(
+        self, left_idx: int, right_idx: int
+    ) -> tuple[io.BytesIO, str]:
+        """Composite two cached page images side-by-side for double-page display.
+
+        Args:
+            left_idx: Page index of the left page.
+            right_idx: Page index of the right page.
+
+        Returns:
+            A tuple of (BytesIO, str) where BytesIO contains the composited PNG image
+            and str is the image extension for Kivy.
+
+        """
+        left_stream, _left_ext = self.get_image_ready_for_reading(left_idx)
+        right_stream, _right_ext = self.get_image_ready_for_reading(right_idx)
+
+        left_image = Image.open(left_stream)
+        right_image = Image.open(right_stream)
+
+        composited_image = build_double_page_image(left_image, right_image)
+        composited_stream = get_pil_image_as_png_bytes(composited_image)
+        assert composited_stream
+        composited_stream.seek(0)  # Ensure stream is at the beginning for reading
+
+        return composited_stream, PNG_EXT_FOR_KIVY
 
     def get_image_info_str(self, page_str: str) -> str:
         page_info = self._page_map[page_str]
