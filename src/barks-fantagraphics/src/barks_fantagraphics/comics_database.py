@@ -429,6 +429,7 @@ class ComicsDatabase:
 
         return self._all_comic_book_info[title]
 
+    # noinspection LongLine
     def get_comic_book(self, title: str, intro_inset_file: Path | None = None) -> ComicBook:  # noqa: C901
         story_title = ""
 

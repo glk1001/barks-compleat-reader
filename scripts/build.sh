@@ -44,6 +44,7 @@ echo -e "${YELLOW}Writing version: $VERSION ...${NC}"
 
 echo "COPYRIGHT_YEARS = \"${COPYRIGHT_YEARS}\"" > "$VERSION_FILE"
 echo "" >> "$VERSION_FILE"
+echo "# noinspection SpellCheckingInspection" >> "$VERSION_FILE"
 echo "VERSION = \"${VERSION}\"" >> "$VERSION_FILE"
 echo "" >> "$VERSION_FILE"
 

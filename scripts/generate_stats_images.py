@@ -52,8 +52,8 @@ DPI = 120
 BAR_COLOR = "#4477AA"
 ACCENT_COLOR = "#EE6677"
 GRID_COLOR = "#DDDDDD"
-TITLE_FONTSIZE = 14
-AXIS_FONTSIZE = 10
+TITLE_FONT_SIZE = 14
+AXIS_FONT_SIZE = 10
 
 
 # -- Helpers -----------------------------------------------------------------
@@ -66,12 +66,12 @@ def _save(fig: plt.Figure, output_dir: Path, filename: str) -> None:
     print(f"  Wrote {path}")
 
 
-def _style_ax(ax: plt.Axes, title: str, xlabel: str = "", ylabel: str = "") -> None:
-    ax.set_title(title, fontsize=TITLE_FONTSIZE, fontweight="bold", pad=12)
-    if xlabel:
-        ax.set_xlabel(xlabel, fontsize=AXIS_FONTSIZE)
-    if ylabel:
-        ax.set_ylabel(ylabel, fontsize=AXIS_FONTSIZE)
+def _style_ax(ax: plt.Axes, title: str, x_label: str = "", y_label: str = "") -> None:
+    ax.set_title(title, fontsize=TITLE_FONT_SIZE, fontweight="bold", pad=12)
+    if x_label:
+        ax.set_xlabel(x_label, fontsize=AXIS_FONT_SIZE)
+    if y_label:
+        ax.set_ylabel(y_label, fontsize=AXIS_FONT_SIZE)
     ax.yaxis.grid(visible=True, color=GRID_COLOR, linewidth=0.8, zorder=0)
     ax.set_axisbelow(True)
     ax.spines["top"].set_visible(False)
@@ -193,13 +193,13 @@ def gen_stories_per_series(output_dir: Path) -> None:
     series_names = [kv[0] for kv in sorted_items]
     values = [kv[1] for kv in sorted_items]
 
-    fig, ax = plt.subplots(figsize=(FIG_WIDTH, max(5, len(series_names) * 0.55)))
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH, max(5, round(len(series_names) * 0.55))))
     y_pos = np.arange(len(series_names))
     ax.barh(y_pos, values, color=BAR_COLOR, zorder=3)
     ax.set_yticks(y_pos)
     ax.set_yticklabels(series_names, fontsize=9)
     ax.invert_yaxis()
-    _style_ax(ax, "Stories per Fantagraphics Series", xlabel="Number of Stories")
+    _style_ax(ax, "Stories per Fantagraphics Series", x_label="Number of Stories")
     ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     ax.xaxis.grid(visible=True, color=GRID_COLOR, linewidth=0.8, zorder=0)
     ax.yaxis.grid(visible=False)
@@ -229,7 +229,7 @@ def gen_top_characters(output_dir: Path, top_n: int = 20) -> None:
     ax.bar(x_pos, values, color=BAR_COLOR, zorder=3)
     ax.set_xticks(x_pos)
     ax.set_xticklabels(names, rotation=45, ha="right", fontsize=9)
-    _style_ax(ax, f"Top {top_n} Characters by Story Appearances", ylabel="Number of Stories")
+    _style_ax(ax, f"Top {top_n} Characters by Story Appearances", y_label="Number of Stories")
     ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     fig.tight_layout()
     _save(fig, output_dir, "top_characters.png")
@@ -257,7 +257,7 @@ def gen_top_locations(output_dir: Path, top_n: int = 20) -> None:
     ax.bar(x_pos, values, color=ACCENT_COLOR, zorder=3)
     ax.set_xticks(x_pos)
     ax.set_xticklabels(names, rotation=45, ha="right", fontsize=9)
-    _style_ax(ax, f"Top {top_n} Locations by Story Appearances", ylabel="Number of Stories")
+    _style_ax(ax, f"Top {top_n} Locations by Story Appearances", y_label="Number of Stories")
     ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     fig.tight_layout()
     _save(fig, output_dir, "top_locations.png")
@@ -304,13 +304,15 @@ def gen_word_statistics(output_dir: Path, indexes_dir: Path | None) -> None:
 
     # Pad col2 if shorter
     while len(col2) < len(col1):
+        # noinspection PyTypeChecker
         col2.append(("", ""))
 
     table_data = [[c1[0], c1[1], c2[0], c2[1]] for c1, c2 in zip(col1, col2, strict=False)]
     col_labels = ["Word", "Count", "Word", "Count"]
 
-    fig, ax = plt.subplots(figsize=(FIG_WIDTH, max(5, half * 0.4 + 2)))
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH, max(5, round(half * 0.4) + 2)))
     ax.axis("off")
+    # noinspection PyArgumentList
     tbl = ax.table(
         cellText=table_data,
         colLabels=col_labels,
@@ -326,7 +328,7 @@ def gen_word_statistics(output_dir: Path, indexes_dir: Path | None) -> None:
         tbl[0, col_idx].set_text_props(color="white", fontweight="bold")
     ax.set_title(
         "Top Words in Comic Script (cleaned unstemmed terms)",
-        fontsize=TITLE_FONTSIZE,
+        fontsize=TITLE_FONT_SIZE,
         fontweight="bold",
         pad=12,
     )
