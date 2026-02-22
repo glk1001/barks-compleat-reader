@@ -1,3 +1,6 @@
+# Claude Code
+.claude/
+
 # Project-specific
 **/pyarmor_runtime_000000/
 src/barks-reader/src/barks_reader/_version.py
