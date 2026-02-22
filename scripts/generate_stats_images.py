@@ -17,17 +17,17 @@ The script writes eight PNG files to the output directory:
 
 from __future__ import annotations
 
-import argparse
 import json
-import sys
 from collections import defaultdict
-from pathlib import Path
+from pathlib import Path  # noqa: TC003  (typer resolves annotations at runtime)
+from typing import Annotated
 
 # -- matplotlib must be imported before any barks_fantagraphics module that
 # might trigger a Kivy import (there are none, but be safe). ----------------
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+import typer
 from matplotlib import ticker
 
 mpl.use("Agg")  # headless backend - no display required
@@ -337,29 +337,22 @@ def gen_word_statistics(output_dir: Path, indexes_dir: Path | None) -> None:
 # -- CLI entry point ---------------------------------------------------------
 
 
-def main() -> None:
-    """Generate all statistics PNG images."""
-    parser = argparse.ArgumentParser(
-        description="Generate pre-rendered statistics PNG images for the Barks Reader."
-    )
-    parser.add_argument(
-        "--output-dir",
-        required=True,
-        type=Path,
-        help="Directory to write the PNG files (will be created if absent).",
-    )
-    parser.add_argument(
-        "--indexes-dir",
-        type=Path,
-        default=None,
-        help=(
-            "Path to the Barks Reader Indexes directory containing"
-            " cleaned-unstemmed-terms.json. Required only for the Word Statistics chart."
+def main(
+    output_dir: Annotated[
+        Path,
+        typer.Option(help="Directory to write the PNG files (will be created if absent)."),
+    ],
+    indexes_dir: Annotated[
+        Path | None,
+        typer.Option(
+            help=(
+                "Path to the Barks Reader Indexes directory containing"
+                " cleaned-unstemmed-terms.json. Required only for the Word Statistics chart."
+            )
         ),
-    )
-    args = parser.parse_args()
-
-    output_dir: Path = args.output_dir
+    ] = None,
+) -> None:
+    """Generate pre-rendered statistics PNG images for the Barks Reader."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"Generating statistics PNGs in: {output_dir}")
@@ -371,10 +364,10 @@ def main() -> None:
     gen_stories_per_series(output_dir)
     gen_top_characters(output_dir)
     gen_top_locations(output_dir)
-    gen_word_statistics(output_dir, args.indexes_dir)
+    gen_word_statistics(output_dir, indexes_dir)
 
     print("Done.")
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    typer.run(main)
