@@ -41,7 +41,7 @@ def show_installer_message(
     )
 
 
-def _get_installer_success_content(
+def _get_installer_success_content(  # noqa: C901
     fanta_vol_dir: Path | None,
     dat_zips: list[Path],
     config_dir: Path,

@@ -46,7 +46,7 @@ def get_os_name() -> str:
 
 
 # noinspection PyBroadException
-def is_virtual_machine() -> bool:  # noqa: PLR0911
+def is_virtual_machine() -> bool:  # noqa: C901, PLR0911, PLR0912
     system = platform.system()
 
     # -------------------------

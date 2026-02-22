@@ -352,7 +352,7 @@ class ComicBookLoader:
             if load_error:
                 self._close_and_report_load_error(load_warning_only)
 
-    def _load_pages(self, archive: ZipFile) -> int:  # noqa: PLR0915
+    def _load_pages(self, archive: ZipFile) -> int:  # noqa: C901, PLR0912, PLR0915
         """Platform-aware dynamic prefetch window implementation.
 
         - Uses system profile (CPU, RAM) to pick prefetch and memory thresholds.

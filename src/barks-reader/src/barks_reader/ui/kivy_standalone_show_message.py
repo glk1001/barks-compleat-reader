@@ -25,7 +25,7 @@ def divider_line() -> Any:  # Widget  # noqa: ANN401
     return w
 
 
-def show_standalone_popup(  # noqa: PLR0915
+def show_standalone_popup(  # noqa: C901, PLR0915
     title: str,
     content,  # noqa: ANN001
     size_hint: tuple[float, float] = (0.9, 0.9),
@@ -49,7 +49,7 @@ def show_standalone_popup(  # noqa: PLR0915
 
     app_already_running = (App.get_running_app() is not None) and (EventLoop.status == "started")
 
-    def _show(*_) -> None:  # noqa: ANN002, PLR0915
+    def _show(*_) -> None:  # noqa: ANN002, C901, PLR0915
         # --- Root layout ---
         root_box = BoxLayout(orientation="vertical", spacing=0)
 

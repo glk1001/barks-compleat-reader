@@ -75,7 +75,7 @@ def show_error_popup(
     )
 
 
-def _get_error_content(
+def _get_error_content(  # noqa: C901
     title: str,
     message: str,
     log_path: str,

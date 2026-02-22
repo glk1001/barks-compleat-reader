@@ -6,7 +6,7 @@ from whoosh.analysis import Token, Tokenizer
 
 
 class WordWithPunctTokenizer(Tokenizer):
-    def __call__(  # noqa: PLR0915
+    def __call__(  # noqa: C901, PLR0912, PLR0915
         self,
         value: str,
         positions: bool = False,

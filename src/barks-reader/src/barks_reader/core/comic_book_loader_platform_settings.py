@@ -202,7 +202,7 @@ _AUTO_TUNED_THREAD_COUNT = None
 _AUTOTUNE_LOCK = threading.Lock()
 
 
-def autotune_worker_count(sample_images: list[str] | None = None) -> int:
+def autotune_worker_count(sample_images: list[str] | None = None) -> int:  # noqa: C901
     """Automatically determine the optimal number of worker threads for ZIP + JPEG decode workloads.
 
     sample_images: optional list of paths (inside ZIP or filesystem)

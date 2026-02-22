@@ -333,7 +333,7 @@ class BackgroundViews:
         self.set_next_bottom_view_title_image()
         self._set_bottom_view_title_image_color()
 
-    def _set_next_top_view_image(self) -> None:
+    def _set_next_top_view_image(self) -> None:  # noqa: C901, PLR0912
         if self._view_state in self._SERIES_VIEW_STATES:
             series_key = self._SERIES_VIEW_STATES[self._view_state]
             self._top_view_image_info = self._get_top_view_random_image(
