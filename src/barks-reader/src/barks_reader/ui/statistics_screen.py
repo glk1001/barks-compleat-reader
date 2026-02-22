@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import Self
 
 from kivy.properties import BooleanProperty  # ty: ignore[unresolved-import]
-from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.togglebutton import ToggleButton
 from loguru import logger
 
 STATISTICS_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
@@ -22,17 +22,20 @@ _STAT_ITEMS: list[tuple[str, str]] = [
 ]
 
 
-class StatMenuButton(Button):
-    """A named menu button for the Statistics left-side navigation."""
+class StatMenuButton(ToggleButton):
+    """A tab button for the Statistics top navigation bar."""
 
-    is_selected = BooleanProperty(defaultvalue=False)
+    def _do_press(self) -> None:
+        """Prevent deselecting the active tab by suppressing press when already down."""
+        if self.state == "normal":
+            super()._do_press()
 
 
 class StatisticsScreen(FloatLayout):
     """Screen that shows pre-rendered statistics PNG charts.
 
-    A left column of StatMenuButton widgets lets the user choose which chart
-    to display. The selected chart is shown as a Kivy Image on the right.
+    A top row of StatMenuButton tabs lets the user choose which chart to
+    display. The selected chart is shown as a Kivy Image below the tabs.
     The first item is auto-selected whenever the screen becomes visible.
     """
 
@@ -41,15 +44,14 @@ class StatisticsScreen(FloatLayout):
     def __init__(self, statistics_dir: Path, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
         self._statistics_dir = statistics_dir
-        self._selected_button: StatMenuButton | None = None
         self._stat_buttons: list[StatMenuButton] = []
         self._build_menu()
 
     def _build_menu(self) -> None:
         menu_layout = self.ids.stat_menu_layout
         for label, filename in _STAT_ITEMS:
-            btn = StatMenuButton(text=label)
-            btn.bind(on_press=lambda _, f=filename, b=btn: self._show_stat_by_filename(f, b))
+            btn = StatMenuButton(text=label, group="stats")
+            btn.bind(on_press=lambda _b, f=filename: self.show_stat(self._statistics_dir / f))
             menu_layout.add_widget(btn)
             self._stat_buttons.append(btn)
 
@@ -59,20 +61,14 @@ class StatisticsScreen(FloatLayout):
             self._on_screen_activated()
 
     def _on_screen_activated(self) -> None:
-        if self._stat_buttons:
-            first = self._stat_buttons[0]
-            _, filename = _STAT_ITEMS[0]
-            self._show_stat_by_filename(filename, first)
-
-    def _show_stat_by_filename(self, filename: str, button: StatMenuButton) -> None:
-        if self._selected_button is not None:
-            self._selected_button.is_selected = False
-        button.is_selected = True
-        self._selected_button = button
+        if not self._stat_buttons:
+            return
+        self._stat_buttons[0].state = "down"
+        _, filename = _STAT_ITEMS[0]
         self.show_stat(self._statistics_dir / filename)
 
     def show_stat(self, png_path: Path) -> None:
-        """Load and display the given PNG in the right-side image widget.
+        """Load and display the given PNG in the image widget below the tabs.
 
         Args:
             png_path: Absolute path to the statistics PNG image to display.

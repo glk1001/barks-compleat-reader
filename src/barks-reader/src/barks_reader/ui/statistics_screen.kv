@@ -2,15 +2,14 @@
     background_normal: ''
     background_down: ''
     border: (0, 0, 0, 0)
-    background_color: (0.0, 0.8, 0.0, 0.5) if self.is_selected else (0, 0, 0, 0)
+    background_color: (0.0, 0.8, 0.0, 0.5) if self.state == 'down' else (0, 0, 0, 0)
     color: (0, 0, 0, 1)
     bold: True
-    size_hint: 1, None
-    height: dp(36)
-    text_size: self.size
-    halign: 'left'
+    size_hint: 1, 1
+    text_size: self.width, None
+    halign: 'center'
     valign: 'middle'
-    padding: dp(8), 0
+    font_size: dp(11)
     canvas.after:
         Color:
             rgba: 0, 0, 0, 0.6
@@ -22,7 +21,6 @@
     opacity: 1 if root.is_visible else 0
     size_hint: (1, 1) if root.is_visible else (0, 0)
 
-    # White background
     canvas.before:
         Color:
             rgba: 1, 1, 1, 1
@@ -30,23 +28,22 @@
             pos: self.pos
             size: self.size
 
-    # Left navigation column
-    GridLayout:
+    # Top tab bar
+    BoxLayout:
         id: stat_menu_layout
-        cols: 1
-        size_hint_x: None
-        width: dp(175)
+        orientation: 'horizontal'
+        size_hint: 1, None
+        height: dp(36)
         pos_hint: {'x': 0, 'top': 1}
-        padding: dp(4)
-        spacing: dp(3)
+        spacing: dp(2)
+        padding: dp(2), dp(2)
 
-    # Right chart image (fills remaining width, vertically centred)
+    # Chart image fills the space below the tab bar
     Image:
         id: stat_image
         source: ""
         fit_mode: "contain"
         mipmap: True
-        size_hint: None, None
-        width: root.width - dp(183)
-        height: root.height
-        pos_hint: {'right': 1, 'top': 1}
+        size_hint: 1, None
+        height: root.height - dp(40)
+        pos_hint: {'x': 0, 'y': 0}
