@@ -282,6 +282,7 @@ class ReaderTreeBuilder:
 
         new_node.populate_callback = _populate
         new_node.populated = False
+        new_node.is_leaf = False
 
         # keep your index for quick lookups
         self.chrono_year_range_nodes[year_range] = new_node
@@ -341,6 +342,7 @@ class ReaderTreeBuilder:
         new_node.populated = False
 
         tree.add_node(new_node, parent=parent_node)
+        new_node.is_leaf = False
         yield
 
     def _add_title_nodes_gen(
@@ -377,6 +379,7 @@ class ReaderTreeBuilder:
 
         new_node.populate_callback = _populate
         new_node.populated = False
+        new_node.is_leaf = False
 
         yield
 
@@ -398,6 +401,7 @@ class ReaderTreeBuilder:
 
         new_node.populate_callback = _populate
         new_node.populated = False
+        new_node.is_leaf = False
 
         yield
 
@@ -413,6 +417,7 @@ class ReaderTreeBuilder:
 
         parent_node.populate_callback = _populate
         parent_node.populated = False
+        parent_node.is_leaf = False
 
         yield
 
