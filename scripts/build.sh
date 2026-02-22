@@ -77,6 +77,23 @@ esac
 echo -e "${YELLOW}Building with pycrucible for platform \"${OS}\"...${NC}"
 rm -rf ./pycrucible_payload
 
+# Strip workspace config from pyproject.toml before bundling.
+# Workspace member pyproject.toml files cannot be bundled (pycrucible flat archive limitation),
+# so uv would fail trying to find them. PYTHONPATH in pycrucible.toml handles package discovery.
+cp -p pyproject.toml pyproject.toml.bundle_bak
+trap 'mv -f pyproject.toml.bundle_bak pyproject.toml 2>/dev/null' EXIT
+python3 <<'PYEOF'
+import re
+with open('pyproject.toml') as f:
+    content = f.read()
+for pkg in ['barks-reader', 'barks-fantagraphics', 'barks-build-comic-images', 'comic-utils']:
+    content = re.sub('\n    "' + pkg + '",', '', content)
+content = re.sub(r'\n\[tool\.uv\.workspace\]\n.*?(?=\n\[)', '', content, flags=re.DOTALL)
+content = re.sub(r'\n\[tool\.uv\.sources\]\n.*?(?=\n\[|\Z)', '', content, flags=re.DOTALL)
+with open('pyproject.toml', 'w') as f:
+    f.write(content)
+PYEOF
+
 if [[ "${OS}" == "windows" ]]; then
     cp -p pycrucible.toml pycrucible.toml.orig
     sed -i '/^PYTHONPATH/s/:/;/g' pycrucible.toml
@@ -87,6 +104,9 @@ uv run pycrucible --embed . -o "${EXE}"
 if [[ "${OS}" == "windows" ]]; then
     mv pycrucible.toml.orig pycrucible.toml
 fi
+
+mv pyproject.toml.bundle_bak pyproject.toml
+trap - EXIT
 
 if [[ $DO_ZIPS == 1 ]]; then
   echo
