@@ -45,12 +45,12 @@ class ConfigInfo:
         self.app_dir = main_script_dir.parent
 
         self._app_name = APP_NAME
-        self.app_config_dir: Path = None
-        self.app_config_path: Path = None
-        self.app_data_dir: Path = None
-        self.kivy_config_dir: Path = None
-        self.app_log_path: Path = None
-        self.error_background_path: Path = None
+        self.app_config_dir: Path = None  # ty: ignore[invalid-assignment]
+        self.app_config_path: Path = None  # ty: ignore[invalid-assignment]
+        self.app_data_dir: Path = None  # ty: ignore[invalid-assignment]
+        self.kivy_config_dir: Path = None  # ty: ignore[invalid-assignment]
+        self.app_log_path: Path = None  # ty: ignore[invalid-assignment]
+        self.error_background_path: Path = None  # ty: ignore[invalid-assignment]
 
         self._setup_app_config_dir()
 

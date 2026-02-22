@@ -86,7 +86,7 @@ class UserErrorHandler:
             Callable[
                 [
                     ErrorInfo | None,
-                    Callable[[str | None], None],
+                    Callable[[str], None] | None,
                     str,
                 ],
                 None,
@@ -118,7 +118,7 @@ class UserErrorHandler:
     def _handle_fanta_root_not_set(
         self,
         _error_info: ErrorInfo | None,
-        on_popup_closed: Callable[[str], None],
+        on_popup_closed: Callable[[str], None] | None,
         popup_title: str,
     ) -> None:
         """Handle the case where the Fantagraphics directory has not been set."""
@@ -139,7 +139,7 @@ class UserErrorHandler:
     def _handle_fanta_root_not_found(
         self,
         _error_info: ErrorInfo | None,
-        on_popup_closed: Callable[[str], None],
+        on_popup_closed: Callable[[str], None] | None,
         popup_title: str,
     ) -> None:
         """Handle the case where the Fantagraphics directory is not found."""
@@ -166,7 +166,7 @@ class UserErrorHandler:
     def _handle_duplicate_archive_files(
         self,
         error_info: ErrorInfo | None,
-        on_popup_closed: Callable[[str], None],
+        on_popup_closed: Callable[[str], None] | None,
         popup_title: str,
     ) -> None:
         """Handle duplicate Fantagraphics archive files."""
@@ -195,7 +195,7 @@ class UserErrorHandler:
     def _handle_too_many_archive_files(
         self,
         error_info: ErrorInfo | None,
-        on_popup_closed: Callable[[str], None],
+        on_popup_closed: Callable[[str], None] | None,
         popup_title: str,
     ) -> None:
         """Handle finding too many Fantagraphics archive files."""
@@ -308,7 +308,7 @@ class UserErrorHandler:
         self,
         title: str,
         text: str,
-        on_popup_closed: Callable[[str], None],
+        on_popup_closed: Callable[[str], None] | None,
         close_message: str,
     ) -> None:
         """Show a popup for a settings-related error, offering to open settings."""
@@ -316,10 +316,12 @@ class UserErrorHandler:
         def _on_goto_settings() -> None:
             popup.dismiss()
             self._open_settings()
+            assert on_popup_closed
             on_popup_closed(close_message)
 
         def _on_cancel() -> None:
             popup.dismiss()
+            assert on_popup_closed
             on_popup_closed(close_message)
 
         popup = self._show_popup(
@@ -332,7 +334,7 @@ class UserErrorHandler:
         )
 
     def _show_fatal_config_error(
-        self, title: str, error_msg: str, on_popup_closed: Callable[[str], None]
+        self, title: str, error_msg: str, on_popup_closed: Callable[[str], None] | None
     ) -> None:
         """Show a non-recoverable error popup that only has a 'Close' button.
 
@@ -341,6 +343,7 @@ class UserErrorHandler:
 
         def _on_close() -> None:
             popup.dismiss()
+            assert on_popup_closed
             on_popup_closed(_WRONG_FANTA_VOLUMES_FIX_AND_RESTART_MSG)
 
         popup = self._show_popup(

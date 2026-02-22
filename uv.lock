@@ -7,14 +7,42 @@ resolution-markers = [
     "sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
+[manifest]
+members = [
+    "barks-build-comic-images",
+    "barks-compleat-reader",
+    "barks-fantagraphics",
+    "barks-reader",
+    "comic-utils",
+]
+
+[[package]]
+name = "barks-build-comic-images"
+version = "0.1.0"
+source = { editable = "src/barks-build-comic-images" }
+dependencies = [
+    { name = "barks-fantagraphics" },
+    { name = "comic-utils" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "barks-fantagraphics", editable = "src/barks-fantagraphics" },
+    { name = "comic-utils", editable = "src/comic-utils" },
+]
+
 [[package]]
 name = "barks-compleat-reader"
 version = "0.0.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "barks-build-comic-images" },
+    { name = "barks-fantagraphics" },
+    { name = "barks-reader" },
     { name = "better-exceptions" },
     { name = "certifi" },
     { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "comic-utils" },
     { name = "cryptography" },
     { name = "cython", marker = "sys_platform == 'darwin'" },
     { name = "distro" },
@@ -73,9 +101,13 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "barks-build-comic-images", editable = "src/barks-build-comic-images" },
+    { name = "barks-fantagraphics", editable = "src/barks-fantagraphics" },
+    { name = "barks-reader", editable = "src/barks-reader" },
     { name = "better-exceptions", specifier = "==0.3.3" },
     { name = "certifi", specifier = "==2025.8.3" },
     { name = "colorama", marker = "sys_platform == 'win32'", specifier = "==0.4.6" },
+    { name = "comic-utils", editable = "src/comic-utils" },
     { name = "cryptography", specifier = ">=46.0.3" },
     { name = "cython", marker = "sys_platform == 'darwin'", specifier = "==3.1.4" },
     { name = "distro", specifier = ">=1.9.0" },
@@ -130,6 +162,34 @@ dev = [
     { name = "pytest-mock", specifier = ">=3.15.1" },
     { name = "snakeviz", specifier = ">=2.2.2" },
     { name = "ty", specifier = ">=0.0.17" },
+]
+
+[[package]]
+name = "barks-fantagraphics"
+version = "0.1.0"
+source = { editable = "src/barks-fantagraphics" }
+dependencies = [
+    { name = "comic-utils" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "comic-utils", editable = "src/comic-utils" }]
+
+[[package]]
+name = "barks-reader"
+version = "0.1.0"
+source = { editable = "src/barks-reader" }
+dependencies = [
+    { name = "barks-build-comic-images" },
+    { name = "barks-fantagraphics" },
+    { name = "comic-utils" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "barks-build-comic-images", editable = "src/barks-build-comic-images" },
+    { name = "barks-fantagraphics", editable = "src/barks-fantagraphics" },
+    { name = "comic-utils", editable = "src/comic-utils" },
 ]
 
 [[package]]
@@ -230,6 +290,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/d8/53/6f443c9a4a8358a93
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6", size = 25335, upload-time = "2022-10-25T02:36:20.889Z" },
 ]
+
+[[package]]
+name = "comic-utils"
+version = "0.1.0"
+source = { editable = "src/comic-utils" }
 
 [[package]]
 name = "coverage"

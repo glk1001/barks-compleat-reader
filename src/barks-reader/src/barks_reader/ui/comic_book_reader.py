@@ -410,7 +410,7 @@ class ComicBookReader(FloatLayout):
             return
 
         self._comic_book_loader.stop_now()
-        self._wait_for_image_to_load()
+        self._wait_for_image_to_load(self._current_page_index)
         self._comic_book_loader.close_comic()
 
     def reset_comic_book_reader(self) -> None:
@@ -456,13 +456,14 @@ class ComicBookReader(FloatLayout):
         )
 
         display_unit = self._page_manager.get_current_display_unit()
-        right_idx = (
-            display_unit.right_page_index
-            if display_unit is not None and self._reader_settings.double_page_mode
-            else None
-        )
+        if display_unit is not None and self._page_manager.double_page_mode:
+            left_idx = display_unit.left_page_index
+            right_idx = display_unit.right_page_index
+        else:
+            left_idx = self._current_page_index
+            right_idx = None
 
-        self._wait_for_image_to_load(right_idx)
+        self._wait_for_image_to_load(left_idx, right_idx)
 
         # noinspection PyBroadException
         try:
@@ -474,12 +475,12 @@ class ComicBookReader(FloatLayout):
             if right_idx is not None:
                 image_stream, image_ext = (
                     self._comic_book_loader.get_double_page_image_ready_for_reading(
-                        self._current_page_index, right_idx
+                        left_idx, right_idx
                     )
                 )
             else:
                 image_stream, image_ext = self._comic_book_loader.get_image_ready_for_reading(
-                    self._current_page_index
+                    left_idx
                 )
             self._comic_image.texture = CoreImage(image_stream, ext=image_ext).texture
         except Exception:  # noqa: BLE001
@@ -498,32 +499,27 @@ class ComicBookReader(FloatLayout):
         self._page_manager.goto_last_page()
         self._hide_action_bar_if_fullscreen()
 
+    @property
+    def double_page_mode(self) -> bool:
+        """Return the current active double-page mode (not the config setting)."""
+        return self._page_manager.double_page_mode
+
     def toggle_double_page_mode(self) -> None:
-        """Toggle double-page mode on/off, persisting the setting and redrawing."""
-        new_mode = not self._reader_settings.double_page_mode
-        self._reader_settings.double_page_mode = new_mode
-        self._page_manager.double_page_mode = new_mode
-        # Redraw current page with the new mode applied.
+        """Toggle double-page mode on/off for the current comic only (does not change config)."""
+        self._page_manager.double_page_mode = not self._page_manager.double_page_mode
         self._show_page(None, None)
 
-    def _wait_for_image_to_load(self, right_page_index: int | None = None) -> None:
+    def _wait_for_image_to_load(
+        self, left_page_index: int, right_page_index: int | None = None
+    ) -> None:
         if self._all_loaded:
             return
 
-        logger.info(f"Waiting for image with index {self._current_page_index} to finish loading.")
-        while not self._comic_book_loader.wait_load_event(self._current_page_index, 2):
-            logger.info(
-                f"Still waiting for image with index {self._current_page_index} to finish loading."
-            )
-        logger.info(f"Finished waiting for image with index {self._current_page_index} to load.")
-
-        if right_page_index is not None:
-            logger.info(f"Waiting for right page image with index {right_page_index} to load.")
-            while not self._comic_book_loader.wait_load_event(right_page_index, 2):
-                logger.info(
-                    f"Still waiting for right page image with index {right_page_index} to load."
-                )
-            logger.info(f"Finished waiting for right page image with index {right_page_index}.")
+        for idx in filter(None.__ne__, [left_page_index, right_page_index]):
+            logger.info(f"Waiting for image with index {idx} to finish loading.")
+            while not self._comic_book_loader.wait_load_event(idx, 2):
+                logger.info(f"Still waiting for image with index {idx} to finish loading.")
+            logger.info(f"Finished waiting for image with index {idx} to load.")
 
     def goto_page(self) -> None:
         """Go to user requested page."""
@@ -680,6 +676,7 @@ class ComicBookReaderScreen(ReaderScreen):
     def _on_comic_is_ready_to_read(self) -> None:
         self._on_comic_is_ready_to_read_func()
         self.action_bar_title = self.comic_book_reader.action_bar_title
+        self._sync_double_page_button()
 
     def close_comic_book_reader(self) -> None:
         self._is_closing = True
@@ -715,9 +712,13 @@ class ComicBookReaderScreen(ReaderScreen):
             Clock.schedule_once(lambda _dt: self._goto_fullscreen_mode(), 0)
 
     def toggle_double_page_mode(self) -> None:
-        """Toggle double-page mode on/off, persisting the setting and redrawing."""
+        """Toggle double-page mode on/off for the current comic (does not change config)."""
         self.comic_book_reader.toggle_double_page_mode()
-        if self.comic_book_reader._page_manager.double_page_mode:  # noqa: SLF001
+        self._sync_double_page_button()
+
+    def _sync_double_page_button(self) -> None:
+        """Sync the double-page button icon to the current active mode."""
+        if self.comic_book_reader.double_page_mode:
             self.ids.double_page_button.icon = str(
                 self._reader_settings.sys_file_paths.get_barks_reader_single_page_icon_file()
             )
