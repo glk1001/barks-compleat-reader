@@ -24,6 +24,8 @@ class SystemFilePaths:
         self._menu_dots_icon_path: Path | None = None
         self._fullscreen_icon_path: Path | None = None
         self._fullscreen_exit_icon_path: Path | None = None
+        self._single_page_icon_path: Path | None = None
+        self._double_page_icon_path: Path | None = None
         self._goto_icon_path: Path | None = None
         self._goto_start_icon_path: Path | None = None
         self._goto_end_icon_path: Path | None = None
@@ -62,6 +64,8 @@ class SystemFilePaths:
         self._menu_dots_icon_path = self._action_bar_icons_dir / "icon-menu-dots.png"
         self._fullscreen_icon_path = self._action_bar_icons_dir / "icon-fullscreen.png"
         self._fullscreen_exit_icon_path = self._action_bar_icons_dir / "icon-fullscreen-exit.png"
+        self._single_page_icon_path = self._action_bar_icons_dir / "icon-single-page.png"
+        self._double_page_icon_path = self._action_bar_icons_dir / "icon-double-page.png"
         self._goto_icon_path = self._action_bar_icons_dir / "icon-goto.png"
         self._goto_start_icon_path = self._action_bar_icons_dir / "icon-goto-start.png"
         self._goto_end_icon_path = self._action_bar_icons_dir / "icon-goto-end.png"
@@ -108,6 +112,8 @@ class SystemFilePaths:
             self._menu_dots_icon_path,
             self._fullscreen_icon_path,
             self._fullscreen_exit_icon_path,
+            self._single_page_icon_path,
+            self._double_page_icon_path,
             self._goto_icon_path,
             self._goto_start_icon_path,
             self._goto_end_icon_path,
@@ -214,6 +220,14 @@ class SystemFilePaths:
     def get_barks_reader_fullscreen_exit_icon_file(self) -> Path:
         assert self._fullscreen_exit_icon_path
         return self._fullscreen_exit_icon_path
+
+    def get_barks_reader_single_page_icon_file(self) -> Path:
+        assert self._single_page_icon_path
+        return self._single_page_icon_path
+
+    def get_barks_reader_double_page_icon_file(self) -> Path:
+        assert self._double_page_icon_path
+        return self._double_page_icon_path
 
     def get_barks_reader_goto_icon_file(self) -> Path:
         assert self._goto_icon_path

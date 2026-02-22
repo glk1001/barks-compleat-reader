@@ -92,6 +92,13 @@
                         on_press: root.toggle_screen_mode()
 
                     BarButton:
+                        id: double_page_button
+                        text: "Double Page"
+                        icon: str(sys_paths.get_barks_reader_double_page_icon_file())
+                        important: True
+                        on_release: root.toggle_double_page_mode()
+
+                    BarButton:
                         text: "Goto Start"
                         icon: str(sys_paths.get_barks_reader_goto_start_icon_file())
                         important: True
@@ -109,13 +116,6 @@
                         icon: str(sys_paths.get_barks_reader_goto_icon_file())
                         important: True
                         on_release: root.comic_book_reader.goto_page()
-
-                    BarButton:
-                        id: double_page_button
-                        text: "Double Page"
-                        icon: str(sys_paths.get_barks_reader_goto_icon_file())
-                        important: True
-                        on_release: root.comic_book_reader.toggle_double_page_mode()
 
         # This is the container where the ComicBookReader widget will be added from Python.
         # It always fills the parent FloatLayout, and its padding makes space for the action bar.

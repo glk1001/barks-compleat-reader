@@ -714,6 +714,18 @@ class ComicBookReaderScreen(ReaderScreen):
             logger.info("Toggle screen mode to fullscreen mode.")
             Clock.schedule_once(lambda _dt: self._goto_fullscreen_mode(), 0)
 
+    def toggle_double_page_mode(self) -> None:
+        """Toggle double-page mode on/off, persisting the setting and redrawing."""
+        self.comic_book_reader.toggle_double_page_mode()
+        if self.comic_book_reader._page_manager.double_page_mode:  # noqa: SLF001
+            self.ids.double_page_button.icon = str(
+                self._reader_settings.sys_file_paths.get_barks_reader_single_page_icon_file()
+            )
+        else:
+            self.ids.double_page_button.icon = str(
+                self._reader_settings.sys_file_paths.get_barks_reader_double_page_icon_file()
+            )
+
     def _goto_windowed_mode(self) -> None:
         logger.info("Exiting fullscreen mode on ComicBookReaderScreen.")
 
