@@ -83,7 +83,7 @@ rm -rf ./pycrucible_payload
 # so uv would fail trying to find them. PYTHONPATH in pycrucible.toml handles package discovery.
 cp -p pyproject.toml pyproject.toml.bundle_bak
 trap 'mv -f pyproject.toml.bundle_bak pyproject.toml 2>/dev/null' EXIT
-python3 <<'PYEOF'
+uv run python <<'PYEOF'
 import re
 with open('pyproject.toml') as f:
     content = f.read()
@@ -100,7 +100,7 @@ if [[ "${OS}" == "windows" ]]; then
     sed -i '/^PYTHONPATH/s/:/;/g' pycrucible.toml
 fi
 
-uv run pycrucible --embed . -o "${EXE}"
+uv run --frozen pycrucible --embed . -o "${EXE}"
 
 if [[ "${OS}" == "windows" ]]; then
     mv pycrucible.toml.orig pycrucible.toml
