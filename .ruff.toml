@@ -1,28 +1,18 @@
-line-length = 100
+extend = "../.ruff.toml"
 
 exclude = [
-    	"experiments",
-        "scraps",
-        "**/src/comic-utils/src/comic_utils/pyarmor_runtime_000000/*",
-        "**/src/comic-utils/src/comic_utils/get_panel_bytes.py",
-        "**/src/comic-utils/src/comic_utils/cpi*",
-    ]
+    "experiments",
+    "scraps",
+    "**/src/comic-utils/src/comic_utils/pyarmor_runtime_000000/*",
+    "**/src/comic-utils/src/comic_utils/get_panel_bytes.py",
+    "**/src/comic-utils/src/comic_utils/cpi*",
+]
 
 [lint]
-    select = ["ALL"]
+ignore = [
+    "PLR0913",
+    "TD002",
+]
 
-    ignore = [
-        "D100", "D101", "D102", "D103", "D107", "D203", "D213",
-        "COM812",
-        "FBT001", "FBT002",
-        "FIX002",
-        "G004",
-        "PLR0913",
-        "S101",
-        "S311",
-        "TD002", "TD003",
-    ]
-
-    [lint.per-file-ignores]
-        "scripts/*" = ["INP001"]
-
+[lint.per-file-ignores]
+"scripts/*" = ["INP001"]

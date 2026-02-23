@@ -4,8 +4,8 @@ root = ["."]
 
 [src]
 exclude = [
-  	"**/experiments",
-   "**/scraps",
+    "**/experiments",
+    "**/scraps",
     "**/pyarmor_runtime_000000",
     "src/comic-utils/src/comic_utils/cpi_download.py",
     "src/comic-utils/src/comic_utils/cpi_models.py",
