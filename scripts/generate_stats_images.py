@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # ruff: noqa: T201
+
 """Generate statistics PNG images for the Barks Reader Statistics screen.
 
 Usage:
@@ -19,6 +20,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
+from itertools import zip_longest
 from pathlib import Path  # noqa: TC003  (typer resolves annotations at runtime)
 from typing import Annotated
 
@@ -29,6 +31,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import typer
 from matplotlib import ticker
+from matplotlib.transforms import Bbox
 
 mpl.use("Agg")  # headless backend - no display required
 
@@ -47,13 +50,29 @@ from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 
 # -- Constants ---------------------------------------------------------------
 FIG_WIDTH = 14
-FIG_HEIGHT = 7
-DPI = 120
+FIG_HEIGHT = 9
+DPI = 100
 BAR_COLOR = "#4477AA"
 ACCENT_COLOR = "#EE6677"
 GRID_COLOR = "#DDDDDD"
-TITLE_FONT_SIZE = 14
-AXIS_FONT_SIZE = 10
+TITLE_FONT_SIZE = 22
+AXIS_FONT_SIZE = 12
+
+STORIES_PER_SERIES_FIG_HEIGHT_MULTIPLIER = 1.1
+
+# --- Word Stats Pixel Configuration ---
+# Adjusted widths: Make Count slightly wider for the gray background to look good
+WORD_STATS_WORD_COL_PX = 100
+WORD_STATS_COUNT_COL_PX = 80
+WORD_STATS_ROW_HEIGHT_PX = 30
+WORD_STATS_HEADER_HEIGHT_PX = 40
+WORD_STATS_TITLE_HEIGHT_PX = 30  # Estimated height of the title (used for axes positioning)
+WORD_STATS_TITLE_FONT_SIZE = 12
+WORD_STATS_TITLE_TABLE_GAP_PX = 0  # Gap between title bottom and top of table
+WORD_STATS_TOP_MARGIN_PX = 0  # Whitespace above the title in the saved image
+WORD_STATS_MARGIN_PX = 20  # Whitespace left, right, and below the table in the saved image
+
+WORD_STATS_TOP_N_ITEMS = 80
 
 
 # -- Helpers -----------------------------------------------------------------
@@ -114,7 +133,7 @@ def gen_stories_per_year(output_dir: Path) -> None:
 
     fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
     ax.bar(years, values, color=BAR_COLOR, zorder=3)
-    _style_ax(ax, "Barks Stories Accepted per Year", "Year", "Number of Stories")
+    _style_ax(ax, "Barks Stories Submitted per Year", "Year", "Number of Stories")
     ax.set_xticks(years)
     ax.tick_params(axis="x", rotation=45)
     ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
@@ -193,7 +212,12 @@ def gen_stories_per_series(output_dir: Path) -> None:
     series_names = [kv[0] for kv in sorted_items]
     values = [kv[1] for kv in sorted_items]
 
-    fig, ax = plt.subplots(figsize=(FIG_WIDTH, max(5, round(len(series_names) * 0.55))))
+    fig, ax = plt.subplots(
+        figsize=(
+            FIG_WIDTH,
+            max(5, round(len(series_names) * STORIES_PER_SERIES_FIG_HEIGHT_MULTIPLIER)),
+        )
+    )
     y_pos = np.arange(len(series_names))
     ax.barh(y_pos, values, color=BAR_COLOR, zorder=3)
     ax.set_yticks(y_pos)
@@ -263,77 +287,159 @@ def gen_top_locations(output_dir: Path, top_n: int = 20) -> None:
     _save(fig, output_dir, "top_locations.png")
 
 
-def gen_word_statistics(output_dir: Path, indexes_dir: Path | None) -> None:
+def gen_word_statistics(output_dir: Path, indexes_dir: Path | None) -> None:  # noqa: PLR0915
     """Table image: top words from the search engine term list.
 
     Args:
         output_dir: Directory to write the output PNG.
         indexes_dir: Path to the Barks Reader Indexes directory that contains
-                     ``cleaned-unstemmed-terms.json``. If None this chart is skipped.
+                     ``most-common-terms.json``. If None this chart is skipped.
 
     """
+    # --- LOAD DATA ---
     if indexes_dir is None:
-        print("  --indexes-dir not provided; skipping word_statistics.png")
         return
-
-    terms_file = indexes_dir / "cleaned-unstemmed-terms.json"
-    if not terms_file.is_file():
-        print(f"  Terms file not found: {terms_file}; skipping word_statistics.png")
+    most_common_terms_file = indexes_dir / "most-common-unstemmed-terms.json"
+    if not most_common_terms_file.is_file():
         return
+    terms: list[tuple[str, int]] = json.loads(most_common_terms_file.read_text())
 
-    terms: list[str] = json.loads(terms_file.read_text())
-    # Build frequency count from the flat list (each occurrence is one entry)
-    freq: dict[str, int] = defaultdict(int)
-    for word in terms:
-        if word:
-            freq[word.lower()] += 1
-
-    top = sorted(freq.items(), key=lambda kv: kv[1], reverse=True)[:40]
+    top = terms[:WORD_STATS_TOP_N_ITEMS]
     if not top:
-        print("  No word data found; skipping word_statistics.png")
         return
 
-    words = [kv[0] for kv in top]
-    counts = [kv[1] for kv in top]
-
-    # Two-column table layout
+    # --- 3. PREPARE COLUMNS ---
     n = len(top)
-    half = (n + 1) // 2
-    col1 = [(words[i], counts[i]) for i in range(half)]
-    col2 = [(words[i], counts[i]) for i in range(half, n)]
+    chunk_size = (n + 3) // 4
 
-    # Pad col2 if shorter
-    while len(col2) < len(col1):
-        # noinspection PyTypeChecker
-        col2.append(("", ""))
+    s1 = top[0:chunk_size]
+    s2 = top[chunk_size : chunk_size * 2]
+    s3 = top[chunk_size * 2 : chunk_size * 3]
+    s4 = top[chunk_size * 3 :]
 
-    table_data = [[c1[0], c1[1], c2[0], c2[1]] for c1, c2 in zip(col1, col2, strict=False)]
-    col_labels = ["Word", "Count", "Word", "Count"]
+    table_data = []
+    for c1, c2, c3, c4 in zip_longest(s1, s2, s3, s4, fillvalue=("", "")):
+        table_data.append([c1[0], c1[1], c2[0], c2[1], c3[0], c3[1], c4[0], c4[1]])
 
-    fig, ax = plt.subplots(figsize=(FIG_WIDTH, max(5, round(half * 0.4) + 2)))
+    col_labels = ["Word", "Count", "Word", "Count", "Word", "Count", "Word", "Count"]
+
+    # --- 4. CALCULATE EXACT DIMENSIONS ---
+    total_width_px = (WORD_STATS_WORD_COL_PX + WORD_STATS_COUNT_COL_PX) * 4
+
+    # Figure height only needs to be large enough to hold the content; the actual
+    # saved image dimensions are determined by measuring rendered bboxes (section 9).
+    total_height_px = (
+        WORD_STATS_TITLE_HEIGHT_PX
+        + WORD_STATS_TITLE_TABLE_GAP_PX
+        + WORD_STATS_HEADER_HEIGHT_PX
+        + (len(table_data) * WORD_STATS_ROW_HEIGHT_PX)
+    )
+
+    fig_width_inch = total_width_px / DPI
+    fig_height_inch = total_height_px / DPI
+
+    rel_w_word = WORD_STATS_WORD_COL_PX / total_width_px
+    rel_w_count = WORD_STATS_COUNT_COL_PX / total_width_px
+    column_widths = [rel_w_word, rel_w_count] * 4
+
+    # --- SETUP PLOT ---
+    fig, ax = plt.subplots(figsize=(fig_width_inch, fig_height_inch), dpi=DPI)
     ax.axis("off")
+    fig.set_facecolor("white")
+
+    # --- POSITIONING ---
+
+    # Title sits at the figure top; WORD_STATS_TOP_MARGIN_PX is applied only when computing the
+    # saved-image bbox (section 9) and does not affect the table position.
+    title_y_pos = 1.0
+
+    # Axes starts below the title text + gap; WORD_STATS_TOP_MARGIN_PX is intentionally excluded
+    # so that TITLE_TABLE_GAP_PX is the sole control for that spacing.
+    header_start_px = WORD_STATS_TITLE_HEIGHT_PX + WORD_STATS_TITLE_TABLE_GAP_PX
+    axes_top_pos = 1.0 - (header_start_px / total_height_px)
+
+    # Manually constrain the Axes to the bottom section
+    plt.subplots_adjust(left=0, right=1, bottom=0, top=axes_top_pos)
+
+    # --- CONTENT ---
+
+    # Title (Anchor to top); save reference for bbox measurement below.
+    title_text = fig.text(
+        x=0.5,
+        y=title_y_pos,
+        s="Most Frequently Used Barksian Words",
+        fontsize=WORD_STATS_TITLE_FONT_SIZE,
+        fontweight="bold",
+        ha="center",
+        va="top",  # Text grows downwards from the y-point
+    )
+
+    # Table (Anchor to the top of the Axes area we defined)
     # noinspection PyArgumentList
     tbl = ax.table(
         cellText=table_data,
         colLabels=col_labels,
+        loc="upper center",
         cellLoc="left",
-        loc="center",
+        colWidths=column_widths,
     )
+
+    # --- 8. STYLING ---
     tbl.auto_set_font_size(value=False)
-    tbl.set_fontsize(9)
-    tbl.scale(1, 1.3)
-    # Style header cells
-    for col_idx in range(len(col_labels)):
-        tbl[0, col_idx].set_facecolor("#4477AA")
-        tbl[0, col_idx].set_text_props(color="white", fontweight="bold")
-    ax.set_title(
-        "Top Words in Comic Script (cleaned unstemmed terms)",
-        fontsize=TITLE_FONT_SIZE,
-        fontweight="bold",
-        pad=12,
+    tbl.set_fontsize(8)
+    tbl.scale(1, 1.2)
+
+    # Style Header
+    for col_idx in range(8):
+        cell = tbl[0, col_idx]
+        cell.set_facecolor("#4477AA")
+        cell.set_text_props(color="white", fontweight="bold")
+        cell.set_edgecolor("white")
+        cell.set_linewidth(1)
+
+    # Style Rows
+    for row_idx in range(1, len(table_data) + 1):
+        for col_idx in range(8):
+            cell = tbl[row_idx, col_idx]
+            if col_idx % 2 != 0:
+                cell.set_facecolor("#EAEAEA")
+                cell.set_text_props(ha="center")
+            else:
+                cell.set_facecolor("white")
+                cell.set_text_props(ha="left", fontweight="bold")
+            cell.set_edgecolor("#cccccc")
+
+    # --- SAVE ---
+    # bbox_inches='tight' does not reliably detect ax.table() extents (the axes extent
+    # is used instead of the table cells). Measure the actual rendered positions directly.
+    fig.canvas.draw()
+    # noinspection PyUnresolvedReferences
+    renderer = fig.canvas.get_renderer()  # ty:ignore[unresolved-attribute]
+
+    tbl_px = tbl.get_window_extent(renderer=renderer)
+    title_px = title_text.get_window_extent(renderer=renderer)
+
+    # Union bounding box of title + table in display pixels (origin = figure bottom-left).
+    # Apply margins independently: WORD_STATS_TOP_MARGIN_PX above the title, WORD_STATS_MARGIN_PX on
+    # the other three sides.  TITLE_TABLE_GAP_PX controls the gap between them (via
+    # axes positioning in section 6) and is not involved here.
+    x0 = min(tbl_px.x0, title_px.x0)
+    y0 = min(tbl_px.y0, title_px.y0)
+    x1 = max(tbl_px.x1, title_px.x1)
+    y1 = max(tbl_px.y1, title_px.y1)
+
+    m = WORD_STATS_MARGIN_PX
+    bbox_inch = Bbox(
+        [
+            [(x0 - m) / DPI, (y0 - m) / DPI],
+            [(x1 + m) / DPI, (y1 + WORD_STATS_TOP_MARGIN_PX) / DPI],
+        ]
     )
-    fig.tight_layout()
-    _save(fig, output_dir, "word_statistics.png")
+
+    path = output_dir / "word_statistics.png"
+    fig.savefig(path, dpi=DPI, bbox_inches=bbox_inch, facecolor="white")
+    plt.close(fig)
+    print(f"  Wrote {path}")
 
 
 # -- CLI entry point ---------------------------------------------------------

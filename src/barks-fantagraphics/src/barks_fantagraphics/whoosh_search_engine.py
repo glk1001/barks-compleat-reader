@@ -1,5 +1,6 @@
+import heapq
 import json
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -67,6 +68,12 @@ class SearchEngine:
         )
         self._cleaned_alpha_split_lemmatized_terms_path = (
             self._index.storage.folder / "cleaned-alpha-split-lemmatized-terms.json"
+        )
+        self._most_common_unstemmed_terms_path = (
+            self._index.storage.folder / "most-common-unstemmed-terms.json"
+        )
+        self._least_common_unstemmed_terms_path = (
+            self._index.storage.folder / "least-common-unstemmed-terms.json"
         )
 
     def find_words(self, search_words: str, use_unstemmed_terms: bool) -> TitleDict:
@@ -192,6 +199,14 @@ class SearchEngineCreator(SearchEngine):
         with self._cleaned_alpha_split_lemmatized_terms_path.open("w") as f:
             json.dump(self._get_alpha_split_terms(cleaned_lemmatized_terms), f, indent=4)
 
+        most_frequent_words = self._get_ai_text_term_frequencies().most_common()
+        with self._most_common_unstemmed_terms_path.open("w") as f:
+            json.dump(most_frequent_words, f, indent=4)
+
+        least_frequent_words = self._get_least_common_ai_text_terms()
+        with self._least_common_unstemmed_terms_path.open("w") as f:
+            json.dump(least_frequent_words, f, indent=4)
+
     def _index_volume_titles(self, volumes: list[int]) -> None:
         all_speech_groups = SpeechGroups(self._comics_database)
 
@@ -200,7 +215,6 @@ class SearchEngineCreator(SearchEngine):
         titles = self._comics_database.get_configured_titles_in_fantagraphics_volumes(
             volumes, exclude_non_comics=True
         )
-
         for title_str, _ in titles:
             title = BARKS_TITLE_DICT[title_str]
             speech_page_groups = all_speech_groups.get_speech_page_groups(title)
@@ -221,6 +235,31 @@ class SearchEngineCreator(SearchEngine):
                     )
 
         writer.commit()
+
+    def _get_ai_text_term_frequencies(self) -> Counter:
+        token_counts = Counter()
+
+        with self._index.reader() as reader:
+            # iter_field yields tuples: (text, doc_freq, total_freq)
+            for text, terminfo in reader.iter_field("unstemmed"):
+                # total_freq = Total times word appears across ALL docs
+                # _doc_freq   = Number of unique docs containing the word
+                token_counts[text.decode("utf-8")] = round(terminfo.weight())
+
+        return token_counts
+
+    def _get_least_common_ai_text_terms(self, top_n: int = 200) -> list[tuple[str, int]]:
+        with self._index.reader() as reader:
+            # Create a generator that yields (total_freq, text).
+            # We swap the order so the heap sorts by frequency first.
+            term_generator = (
+                (text.decode("utf-8"), round(terminfo.weight()))
+                for text, terminfo in reader.iter_field("unstemmed")
+                if terminfo.weight() > 1
+            )
+
+            # Efficiently find the N smallest items without sorting the whole list.
+            return heapq.nsmallest(top_n, term_generator)
 
     @staticmethod
     def _get_cleaned_unstemmed_terms(unstemmed_terms: list[str]) -> set[str]:
