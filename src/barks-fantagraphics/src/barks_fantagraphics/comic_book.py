@@ -173,7 +173,7 @@ class ComicBook:
         return self.get_srce_original_fixes_image_dir() / BOUNDED_SUBDIR
 
     def get_srce_original_story_files(self, page_types: list[PageType]) -> list[Path]:
-        return self._get_story_files(page_types, self._get_srce_original_story_file)
+        return self._get_story_files(page_types, self.get_srce_original_story_file)
 
     def get_srce_upscayled_story_files(self, page_types: list[PageType]) -> list[Path]:
         return self._get_story_files(page_types, self.get_srce_upscayled_story_file)
@@ -240,7 +240,7 @@ class ComicBook:
             if page.page_type in page_types
         ]
 
-    def _get_srce_original_story_file(self, page_num: str) -> Path:
+    def get_srce_original_story_file(self, page_num: str) -> Path:
         return self.get_srce_image_dir() / (page_num + JPG_FILE_EXT)
 
     def get_srce_upscayled_story_file(self, page_num: str) -> Path:
@@ -298,7 +298,7 @@ class ComicBook:
         page_num: str,
         page_type: PageType,
     ) -> tuple[Path, ModifiedType]:
-        srce_file = self._get_srce_original_story_file(page_num)
+        srce_file = self.get_srce_original_story_file(page_num)
         srce_fixes_file = self.get_srce_original_fixes_story_file(page_num)
 
         return self._get_final_story_file(
@@ -314,7 +314,7 @@ class ComicBook:
         page_num: str,
         page_type: PageType,
     ) -> tuple[Path, ModifiedType]:
-        srce_file = self._get_srce_original_story_file(page_num)
+        srce_file = self.get_srce_original_story_file(page_num)
         srce_upscayled_fixes_file_jpg = self.get_srce_upscayled_fixes_image_dir() / (
             page_num + JPG_FILE_EXT
         )
@@ -458,7 +458,7 @@ class ComicBook:
             return True
 
         # Non-comic titles.
-        if volume == 1 and page_num in [  # noqa: FURB171
+        if volume == 1 and page_num in [
             "268",
         ]:
             return True
@@ -502,7 +502,7 @@ class ComicBook:
         srce_restored_file = self._get_srce_restored_story_file(page_num)
         srce_upscayled_file = self.get_srce_upscayled_story_file(page_num)
         srce_upscayled_fixes_file = self.get_srce_upscayled_fixes_story_file(page_num)
-        srce_original_file = self._get_srce_original_story_file(page_num)
+        srce_original_file = self.get_srce_original_story_file(page_num)
         srce_original_fixes_file = self.get_srce_original_fixes_story_file(page_num)
 
         sources = []
