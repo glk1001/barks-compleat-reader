@@ -1,0 +1,14 @@
+line-length = 100
+
+[lint]
+select = ["ALL"]
+
+ignore = [
+    "D100", "D101", "D102", "D103", "D107", "D203", "D213",  # doc-strings
+    "COM812",  # trailing commas (conflicts with formatter)
+    "FBT001", "FBT002",  # boolean positional args
+    "FIX002",  # fixme
+    "G004",  # logging f-string
+    "S101", "S311",  # assert, random
+    "TD003",  # missing issue link in todo
+]
