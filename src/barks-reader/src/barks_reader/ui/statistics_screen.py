@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Self
 
+from kivy.factory import Factory
 from kivy.properties import BooleanProperty  # ty: ignore[unresolved-import]
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.togglebutton import ToggleButton
@@ -18,12 +19,16 @@ _STAT_ITEMS: list[tuple[str, str]] = [
     ("Stories per Series", "stories_per_series.png"),
     ("Top Characters", "top_characters.png"),
     ("Top Locations", "top_locations.png"),
-    ("Word Statistics", "word_statistics.png"),
+]
+
+_WORD_STAT_ITEMS: list[tuple[str, str]] = [
+    ("Most Frequent", "most_frequent.png"),
+    ("Word Cloud", "word_cloud.png"),
 ]
 
 
 class StatMenuButton(ToggleButton):
-    """A tab button for the Statistics top navigation bar."""
+    """A tab button for the Statistics action bar."""
 
     def _do_press(self) -> None:
         """Prevent deselecting the active tab by suppressing press when already down."""
@@ -34,9 +39,10 @@ class StatMenuButton(ToggleButton):
 class StatisticsScreen(FloatLayout):
     """Screen that shows pre-rendered statistics PNG charts.
 
-    A top row of StatMenuButton tabs lets the user choose which chart to
-    display. The selected chart is shown as a Kivy Image below the tabs.
+    A top action bar of StatMenuButton tabs lets the user choose which chart to
+    display. The selected chart is shown as a Kivy Image below the bar.
     The first item is auto-selected whenever the screen becomes visible.
+    The last button opens a dropdown for word-statistics sub-items.
     """
 
     is_visible = BooleanProperty(defaultvalue=False)
@@ -45,6 +51,8 @@ class StatisticsScreen(FloatLayout):
         super().__init__(**kwargs)
         self._statistics_dir = statistics_dir
         self._stat_buttons: list[StatMenuButton] = []
+        self._word_stat_button: StatMenuButton | None = None
+        self._word_stat_dropdown = None
         self._build_menu()
 
     def _build_menu(self) -> None:
@@ -54,6 +62,23 @@ class StatisticsScreen(FloatLayout):
             btn.bind(on_press=lambda _b, f=filename: self.show_stat(self._statistics_dir / f))
             menu_layout.add_widget(btn)
             self._stat_buttons.append(btn)
+
+        word_stat_btn = StatMenuButton(text="Word Statistics", group="stats")
+        word_stat_btn.bind(on_press=self._on_word_stat_button_pressed)
+        menu_layout.add_widget(word_stat_btn)
+        self._stat_buttons.append(word_stat_btn)
+        self._word_stat_button = word_stat_btn
+
+        self._word_stat_dropdown = Factory.WordStatDropDown()
+        self._word_stat_dropdown.bind(on_select=self._on_word_stat_selected)
+
+    def _on_word_stat_button_pressed(self, button: StatMenuButton) -> None:
+        self._word_stat_dropdown.open(button)
+
+    def _on_word_stat_selected(self, _dropdown: object, filename: str) -> None:
+        if self._word_stat_button:
+            self._word_stat_button.state = "down"
+        self.show_stat(self._statistics_dir / filename)
 
     def on_is_visible(self, _instance: Self, value: bool) -> None:
         """Auto-select the first stat item when the screen becomes visible."""
@@ -68,7 +93,7 @@ class StatisticsScreen(FloatLayout):
         self.show_stat(self._statistics_dir / filename)
 
     def show_stat(self, png_path: Path) -> None:
-        """Load and display the given PNG in the image widget below the tabs.
+        """Load and display the given PNG in the image widget below the bar.
 
         Args:
             png_path: Absolute path to the statistics PNG image to display.
