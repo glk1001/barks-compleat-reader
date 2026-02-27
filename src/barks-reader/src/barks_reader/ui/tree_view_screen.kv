@@ -58,55 +58,48 @@
         AnchorLayout:
             anchor_x: 'right'
             anchor_y: 'top'
-            padding: [0, dp(7), dp(10), 0]  # Add padding: [left, top, right, bottom]
- 
-            # Use a BoxLayout to group the label and button together.
-            # The AnchorLayout will position this box, and the box will position its children.
+            # Adjust these padding numbers to move the whole group exactly where we want it.
+            # padding: [left, top, right, bottom]
+            padding: [0, dp(10), dp(20), 0]
+
+            # Use BoxLayout to group Label + Button
             BoxLayout:
                 orientation: 'horizontal'
+
+                # --- CRITICAL: Shrink the box to fit the content ---
                 size_hint: None, None
-                width: self.minimum_width  # Shrink-wrap the content
-                height: goto_title_button.height
-                spacing: dp(10)
- 
-                # Title info label
+                width: self.minimum_width   # Width grows with content
+                height: self.minimum_height # Height grows with content
+
+                spacing: dp(0) # Space between Label and Button
+
                 Label:
                     text: "[i]" + root.current_title_str + "[/i]"
                     markup: True
                     color: (1, 1, 0, 1)
                     opacity: 0.3 if root.show_current_title else 0
                     font_size: sp(15)
+
+                    # Shrink label to text size
                     size_hint: None, None
                     size: self.texture_size
- 
+
+                    # Align vertically to the center of the button row
+                    pos_hint: {'center_y': 0.5}
+
                 # Goto title button
-                Button:
+                TouchExpandedButton:
                     id: goto_title_button
-                    text: ""
+
+                    # --- Pass Data ---
                     opacity: 0.8
-                    background_color: (0, 0, 0, 0)
-                    background_normal: ""
-                    size_hint: None, None
-                    size: (root.DOWN_ARROW_WIDTH, root.DOWN_ARROW_WIDTH)
+                    source: str(sys_paths.get_down_arrow_file())
+                    visual_size: root.DOWN_ARROW_WIDTH
+                    is_active: True
+
+                    # --- Positioning ---
+                    # The BoxLayout handles positioning.
+                    # Align vertically in the row
+                    pos_hint: {'center_y': 0.5}
+
                     on_press: root.on_goto_title()
- 
-                    canvas.before:
-                        Color:
-                            rgba: .1, .1, .1, 1
-                        BoxShadow:
-                            inset: False
-                            pos: self.pos
-                            size: self.size
-                            offset: 0, 0
-                            spread_radius: 3.5, 3.5
-                            border_radius: [self.height / 2, self.height / 2, self.height / 2, self.height / 2]
-                            blur_radius: 2
-                    Image:
-                        source: str(sys_paths.get_down_arrow_file())
-                        color: (1, 1, 1, 1)
-                        # Center the image on the button
-                        center_x: self.parent.center_x
-                        center_y: self.parent.center_y
-                        size: self.parent.size
-                        fit_mode: "contain"
-                        mipmap: True

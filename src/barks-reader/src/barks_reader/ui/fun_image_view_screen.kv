@@ -30,44 +30,25 @@
                 size_hint: None, None
                 size: self.texture_size
                 # Position the label to the left of the goto_title_button.
-                x: goto_title_button.x - self.width - dp(10)
-                center_y: goto_title_button.y
+                x: goto_title_button.x - self.width - dp(5)
+                y: goto_title_button.y + goto_title_button.touch_padding
 
             # Goto title button
-            Button:
+            TouchExpandedButton:
                 id: goto_title_button
-                text: ""
-                opacity: 1 if root.goto_title_button_active else 0
-                disabled: not root.goto_title_button_active
-                background_color: (1, 1, 1, 0)
-                background_normal: ""
-                x: self.parent.x + self.parent.width - (1.4 * root.UP_ARROW_WIDTH)
-                y: self.parent.y + (0.4 * root.UP_ARROW_WIDTH)
-                size: (root.UP_ARROW_WIDTH, root.UP_ARROW_WIDTH)
-                halign: "left"
-                valign: "top"
-                text_size: (self.width, self.height)
-                on_press: root.on_goto_title()
 
-                canvas.before:
-                    Color:
-                        rgba: .1, .1, .1, 1
-                    BoxShadow:
-                        inset: False
-                        pos: self.pos
-                        size: self.size
-                        offset: 0, 0
-                        spread_radius: 3.5, 3.5
-                        border_radius: 50, 50, 50, 50
-                        blur_radius: 2
-                Image:
-                    source: str(sys_paths.get_up_arrow_file())
-                    color: (1, 1, 1, 1)
-                    y: self.parent.y
-                    x: self.parent.x
-                    size: self.parent.size
-                    fit_mode: "contain"
-                    mipmap: True
+                # --- Pass Data ---
+                source: str(sys_paths.get_up_arrow_file())
+                visual_size: root.UP_ARROW_WIDTH
+                is_active: root.goto_title_button_active
+
+                # --- Positioning ---
+                # Note: We subtract the padding so the *visual* icon stays in the exact
+                # calculated spot, while the invisible button expands outwards.
+                x: self.parent.x + self.parent.width - (1.4 * root.UP_ARROW_WIDTH) - self.touch_padding
+                y: self.parent.y + (0.4 * root.UP_ARROW_WIDTH) - self.touch_padding
+
+                on_press: root.on_goto_title()
 
         # --- Main container for the fun view image options menu ---
         BoxLayout:

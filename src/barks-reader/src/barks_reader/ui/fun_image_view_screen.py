@@ -74,6 +74,14 @@ class FunImageViewScreen(BoxLayout):
             BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO, self.on_change_show_current_title
         )
 
+        logger.debug(
+            f"Goto title button touch region:"
+            f" {self.ids.goto_title_button.x},"
+            f" {self.ids.goto_title_button.y},"
+            f" {self.ids.goto_title_button.width},"
+            f" {self.ids.goto_title_button.height}."
+        )
+
     def set_load_image_func(self, load_image_func: Callable[[ImageInfo], None]) -> None:
         self._load_image = load_image_func
 
@@ -91,12 +99,17 @@ class FunImageViewScreen(BoxLayout):
         logger.debug(
             f"Touch down event: self.x,self.y = {self.x},{self.y},"
             f" touch.x,touch.y = {round(touch.x)},{round(touch.y)},"
+            f" window_width = {round(self.width)},"
+            f" window_height = {round(self.height)}."
             f" x_rel,y_rel = {x_rel},{y_rel},"
-            f" width = {round(self.width)}, height = {round(self.height)}."
             f" x_mid = {self._navigation.x_mid},"
             f" y_bottom_margin = {self._navigation.y_bottom_margin},"
             f" y_top_margin = {self._navigation.y_top_margin}."
         )
+
+        # Give the up-arrow button priority before margin navigation.
+        if self.ids.goto_title_button.collide_point(touch.x, touch.y):
+            return bool(super().on_touch_down(touch))
 
         if self._navigation.is_in_left_margin(x_rel, y_rel):
             logger.debug(f"Left margin pressed: x_rel,y_rel = {x_rel},{y_rel}.")
@@ -108,7 +121,7 @@ class FunImageViewScreen(BoxLayout):
             self._goto_next_image()
             return True
 
-        return super().on_touch_down(touch)
+        return bool(super().on_touch_down(touch))
 
     def _goto_previous_image(self) -> None:
         if self._current_history_index <= 0:

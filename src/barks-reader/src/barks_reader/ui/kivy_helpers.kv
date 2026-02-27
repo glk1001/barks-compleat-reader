@@ -1,0 +1,33 @@
+<TouchExpandedButton>:
+    opacity: 1 if self.is_active else 0
+    disabled: not self.is_active
+    background_color: (0, 0, 0, 0)
+    background_normal: ""
+
+    # Calculate total size (Visual + Padding)
+    size_hint: None, None
+    size: self.visual_size + (self.touch_padding * 2), self.visual_size + (self.touch_padding * 2)
+
+    canvas.before:
+        Color:
+            rgba: .1, .1, .1, 1
+        BoxShadow:
+            inset: False
+            # We use 'root' here to be safe, though 'self' works too.
+            # If visual_size is ever 0, this math is now safe.
+            pos: self.center_x - (self.visual_size / 2.0), self.center_y - (self.visual_size / 2.0)
+            size: self.visual_size, self.visual_size
+            offset: 0, 0
+            spread_radius: 3.5, 3.5
+            border_radius: 50, 50, 50, 50
+            blur_radius: 2
+
+    Image:
+        source: root.source
+        color: (1, 1, 1, 1)
+        size_hint: None, None
+        size: root.visual_size, root.visual_size
+        center_x: root.center_x
+        center_y: root.center_y
+        fit_mode: "contain"
+        mipmap: True

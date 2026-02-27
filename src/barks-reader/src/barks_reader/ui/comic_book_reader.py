@@ -341,7 +341,8 @@ class ComicBookReader(FloatLayout):
         logger.debug(
             f"Touch down event: self.x,self.y = {self.x},{self.y},"
             f" touch.x,touch.y = {round(touch.x)},{round(touch.y)},"
-            f" width = {round(self.width)}, height = {round(self.height)}."
+            f" window_width = {round(self.width)},"
+            f" window_height = {round(self.height)}."
             f" x_mid = {self._navigation.x_mid}, y_top_margin = {self._navigation.y_top_margin}."
         )
 

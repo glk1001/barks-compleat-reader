@@ -46,6 +46,7 @@ if TYPE_CHECKING:
 
     from barks_reader.ui.font_manager import FontManager
 
+KIVY_HELPERS_KV_FILE = Path(__file__).parent / "kivy_helpers.kv"
 READER_TREE_VIEW_KV_FILE = Path(__file__).parent / "reader-tree-view.kv"
 READER_POPUPS_KV_FILE = Path(__file__).parent / "reader_popups.kv"
 
@@ -119,6 +120,15 @@ class ReaderTreeBuilderEventDispatcher(EventDispatcher):
         )
         # noinspection PyUnresolvedReferences
         self.dispatch(self.on_finished_building_event.__name__)
+
+
+# A button with an image and an expanded touch region around the image.
+class TouchExpandedButton(Button):
+    # Defining these properties here prevents a "NoneType" error on initialization.
+    visual_size = NumericProperty(40)
+    touch_padding = NumericProperty(10)
+    source = StringProperty("")
+    is_active = BooleanProperty(defaultvalue=True)
 
 
 class LoadingDataPopup(Popup):
