@@ -111,7 +111,6 @@ class BarksReaderApp(App):
     # TODO: Move this Window stuff to MainScreen.
     def _on_window_pos_change(self, _window: WindowBase) -> None:
         # Check if we've changed monitors. Adjust height if required.
-
         if Window.fullscreen:
             # Leave fullscreen alone.
             return
@@ -410,6 +409,7 @@ class BarksReaderApp(App):
 
 
 def _log_screen_settings() -> None:
+    logger.info(f"Screen info: {SCREEN_METRICS.SCREEN_INFO[0]}.")
     logger.info(f"Window pos = {Window.left},{Window.top}.")
 
     assert Config is not None

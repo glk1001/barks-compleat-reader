@@ -40,10 +40,14 @@ class ScreenMetrics:
 
     @staticmethod
     def _get_screen_info() -> list[ScreenInfo]:
+        logger.debug("Inquiring about monitors.")
+
         monitors = get_monitors()
         if not monitors:
             logger.warning("No monitors found by screeninfo.")
             return []
+
+        logger.debug(f"There are {len(monitors)} monitors.")
 
         inch_in_mm = 25.4
         screens = []
@@ -71,6 +75,8 @@ class ScreenMetrics:
 
                 avg_dpi = (dpi_x + dpi_y) / 2
 
+            logger.info(f"Monitor {i}: {monitor}.")
+
             screens.append(
                 ScreenInfo(
                     i,
@@ -97,6 +103,9 @@ class ScreenMetrics:
         return self.SCREEN_INFO[0]
 
     def get_monitor_for_pos(self, x: int, y: int) -> ScreenInfo | None:
+        x = max(0, x)
+        y = max(0, y)
+
         for info in self.SCREEN_INFO:
             if (
                 info.monitor_x <= x < info.monitor_x + info.width_pixels
@@ -104,6 +113,10 @@ class ScreenMetrics:
             ):
                 return info
 
+        logger.error(
+            f"Could not find monitor for pos ({x},{y})."
+            f" (There are {len(self.SCREEN_INFO)} monitors.)"
+        )
         return None
 
 
