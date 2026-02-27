@@ -152,17 +152,23 @@ def verify_zip(zip_file: Path) -> None:
         file_list = archive.namelist()
         logger.info(f"Zip contains {len(file_list)} files. Now verify each file...")
         for filename in file_list:
-            if not filename.lower().endswith((".jpg", ".jpeg", ".png")):
+            if "\\" in filename:
+                # Check there are no backslashes.
+                logger.error(f'[BAD SEPARATOR] "{filename}".')
+            elif filename.startswith("/") or (len(filename) > 1 and filename[1] == ":"):
+                # Check no absolute paths.
+                # Files starting with / or X:/ are generally bad practice in zips.
+                logger.error(f'[ABSOLUTE PATH] "{filename}".')
+            elif not filename.lower().endswith((".jpg", ".jpeg", ".png")):
                 logger.info(f"Skipping non-image file: {filename}")
-                continue
-
-            try:
-                encrypted_data = archive.read(filename)
-                decrypted_data = FERNET.decrypt(encrypted_data)
-                with Image.open(io.BytesIO(decrypted_data)) as image:
-                    logger.info(f"Image: {filename}, Size: {image.size}")
-            except Exception as e:  # noqa: BLE001
-                logger.error(f'Failed to verify "{filename}": {e}')
+            else:
+                try:
+                    encrypted_data = archive.read(filename)
+                    decrypted_data = FERNET.decrypt(encrypted_data)
+                    with Image.open(io.BytesIO(decrypted_data)) as image:
+                        logger.info(f"Image: {filename}, Size: {image.size}")
+                except Exception as e:  # noqa: BLE001
+                    logger.error(f'Failed to verify "{filename}": {e}')
 
 
 if __name__ == "__main__":

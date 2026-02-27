@@ -13,7 +13,7 @@ from barks_fantagraphics.comics_consts import FANTA_VOLUME_OVERRIDES_ROOT
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import FANTA_OVERRIDE_ZIPS
 from barks_fantagraphics.pages import get_page_mod_type, get_sorted_srce_and_dest_pages
-from comic_utils.comic_consts import JPG_FILE_EXT
+from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
 from comic_utils.common_typer_options import LogLevelArg, VolumesArg  # noqa: TC002
 from comic_utils.pil_image_utils import (
     get_downscaled_jpg,
@@ -115,8 +115,16 @@ def process_comic_book(comic_book: ComicBook, override_archive: zipfile.ZipFile)
     for mod_file, file_type, orig_file in srce_mod_files:
         mod_arcname = Path(mod_file.name)
 
+        # TODO: Make this more robust
+        if orig_file.is_file():
+            small_file = orig_file
+        else:
+            small_file = Path(
+                str(orig_file).replace("Fantagraphics-original", "Fantagraphics-restored")
+            ).with_suffix(PNG_FILE_EXT)
+
         if file_type == FileType.UPSCAYLED:
-            downscale_and_zip(mod_file, override_archive, mod_arcname, orig_file)
+            downscale_and_zip(mod_file, override_archive, mod_arcname, small_file)
         elif file_type == FileType.ORIGINAL:
             just_zip(mod_file, override_archive, mod_arcname)
         else:
