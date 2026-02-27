@@ -18,7 +18,7 @@ from barks_fantagraphics.comics_utils import (
     get_short_submitted_day_and_month,
 )
 from barks_fantagraphics.fanta_comics_info import FAN, FANTA_SOURCE_COMICS, FantaComicBookInfo
-from comic_utils.cpi_wrapper import inflate
+from comic_utils.cpi_calculator import get_adjusted_usd
 
 from barks_reader.core.reader_consts_and_types import CLOSE_TO_ZERO
 from barks_reader.core.reader_utils import get_concat_page_nums_str
@@ -95,9 +95,7 @@ def get_formatted_color(color: Color) -> str:
 
 def get_formatted_payment_info(payment_info: PaymentInfo) -> str:
     current_year = datetime.now(UTC).year
-    cpi_adjusted_payment = inflate(payment_info.payment, payment_info.accepted_year)
-    if cpi_adjusted_payment < 0:
-        return "CPI calculator is not available"
+    cpi_adjusted_payment = get_adjusted_usd(payment_info.payment, payment_info.accepted_year)
 
     return f"${payment_info.payment:.0f} (${cpi_adjusted_payment:.0f} in {current_year})"
 

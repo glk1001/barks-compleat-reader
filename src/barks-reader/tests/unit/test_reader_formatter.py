@@ -67,7 +67,7 @@ def test_get_formatted_color() -> None:
     assert result == "(0.10, 0.50, 0.90, 1.00)"
 
 
-@patch.object(reader_formatter, reader_formatter.inflate.__name__)
+@patch.object(reader_formatter, reader_formatter.get_adjusted_usd.__name__)
 @patch.object(reader_formatter, reader_formatter.datetime.__name__)
 def test_get_formatted_payment_info(mock_datetime: MagicMock, mock_inflate: MagicMock) -> None:
     # Setup mocks
@@ -84,11 +84,6 @@ def test_get_formatted_payment_info(mock_datetime: MagicMock, mock_inflate: Magi
     result = reader_formatter.get_formatted_payment_info(mock_payment_info)
     assert result == "$100 ($1000 in 2023)"
     mock_inflate.assert_called_with(100.0, 1950)
-
-    # Case 2: CPI not available (inflate returns < 0)
-    mock_inflate.return_value = -1.0
-    result = reader_formatter.get_formatted_payment_info(mock_payment_info)
-    assert result == "CPI calculator is not available"
 
 
 def test_mark_phrase_in_text() -> None:

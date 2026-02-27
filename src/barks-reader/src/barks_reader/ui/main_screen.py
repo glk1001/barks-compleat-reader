@@ -17,7 +17,6 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_EXTRAS,
     FantaComicBookInfo,
 )
-from comic_utils import cpi_inflate
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -299,9 +298,10 @@ class MainScreen(ReaderScreen):
                 self._tree_view_screen.get_selected_node()
             )
 
+        # TODO: Still need a stale check?
         # This is not a bad place to give a warning if there is stale cpi data.
         # It's not easy to do near the start of the app because of cpi module load times.
-        cpi_inflate.check_for_stale_data()
+        #        cpi_inflate.check_for_stale_data()  # noqa: ERA001
 
     def build_tree_view(self) -> None:
         tree_builder = ReaderTreeBuilder(

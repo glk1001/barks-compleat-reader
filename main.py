@@ -14,7 +14,6 @@ from configparser import ConfigParser
 from pathlib import Path
 
 import typer
-from comic_utils.cpi_loader import cpi_loader
 from comic_utils.timing import Timing
 
 _timing = Timing()
@@ -304,8 +303,6 @@ def main(
     win_left: int = -1,
     win_top: int = -1,
 ) -> None:
-    cpi_loader.start_async()
-
     config_info = ConfigInfo()
 
     minimal_options = get_minimal_config_options(config_info)
