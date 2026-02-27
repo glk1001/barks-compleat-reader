@@ -17,6 +17,7 @@ include = [
     "**/pyarmor_runtime_000000/**/*.pyd",
 ]
 exclude = [
+    "experiments/**/*",
     "data/**/*",
     "**/scraps/**/*",
     "**/scripts/**/*",
