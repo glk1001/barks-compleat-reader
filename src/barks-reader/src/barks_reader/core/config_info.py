@@ -198,15 +198,21 @@ def _run_loguru_config(cfg_info: ConfigInfo) -> None:
 
 def find_fanta_volumes_dirpath(config_info: ConfigInfo, fanta_volumes_dirname: str) -> Path | None:
     if PLATFORM == Platform.WIN:
-        return _find_fanta_volumes(
-            config_info, fanta_volumes_dirname, WINDOWS_FANTA_VOLUMES_SEARCH_PATH
-        )
-    if PLATFORM == Platform.MACOSX:
-        return _find_fanta_volumes(
-            config_info, fanta_volumes_dirname, MACOS_FANTA_VOLUMES_SEARCH_PATH
+        search_path = WINDOWS_FANTA_VOLUMES_SEARCH_PATH
+    elif PLATFORM == Platform.MACOSX:
+        search_path = MACOS_FANTA_VOLUMES_SEARCH_PATH
+    else:
+        search_path = LINUX_FANTA_VOLUMES_SEARCH_PATH
+
+    vol_path = _find_fanta_volumes(config_info, fanta_volumes_dirname, search_path)
+    if not vol_path:
+        logger.warning(
+            f"Could not find Fantagraphics Barks Library"
+            f' directory "{fanta_volumes_dirname}".'
+            f' Looked in search path "{search_path}".'
         )
 
-    return _find_fanta_volumes(config_info, fanta_volumes_dirname, LINUX_FANTA_VOLUMES_SEARCH_PATH)
+    return vol_path
 
 
 def _find_fanta_volumes(
@@ -220,11 +226,13 @@ def _find_dir_on_search_path(search_path: list[str], target_dirname: str) -> Pat
     for path in search_path:
         dirpath = Path(path).expanduser()
         if not dirpath.is_dir():
+            logger.debug(f'Searching: "{dirpath}" is not a directory.')
             continue
 
         candidates = _find_dir_under_directory(dirpath, target_dirname)
         if candidates:
             return candidates[0]
+        logger.debug(f'Searching: "{target_dirname}" not found under "{dirpath}".')
 
     return None
 
