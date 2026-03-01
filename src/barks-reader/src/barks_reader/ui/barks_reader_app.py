@@ -82,6 +82,8 @@ WINDOW_SHOW_DELAY = 2.0
 MOVE_SETTLE_DELAY = 4.0
 DEFAULT_WINDOW_LEFT = 2400
 DEFAULT_WINDOW_TOP = 50
+MIN_WINDOW_WIDTH = 900
+RESIZE_CORRECTION_DELAY = 0.1
 
 
 class BarksReaderApp(App):
@@ -108,6 +110,8 @@ class BarksReaderApp(App):
         self._current_monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
         self._resize_event = None
         self._resize_requested_size = 0, 0
+        self._window_ready = False
+        self._correction_event = None
 
     # TODO: Move this Window stuff to MainScreen.
     def _on_window_pos_change(self, _window: WindowBase) -> None:
@@ -133,7 +137,7 @@ class BarksReaderApp(App):
         self._current_monitor = monitor
 
         new_max_height = get_best_window_height_fit(monitor.height_pixels)
-        new_height = round(scale_factor * new_max_height)
+        new_height = min(round(scale_factor * new_max_height), new_max_height)
 
         if new_height != old_height:
             self._change_win_height_after_move(new_height)
@@ -170,16 +174,50 @@ class BarksReaderApp(App):
         # )
 
         if Window.fullscreen:
-            # Leave fullscreen alone.
             return
 
-        if not self._resize_event or ((width, height) == self._resize_requested_size):
+        # Existing monitor-change guard: re-apply our requested size if OS overrides it.
+        if self._resize_event and ((width, height) != self._resize_requested_size):
+            assert self._resize_requested_size != (0, 0)
+            Window.size = self._resize_requested_size
+            logger.debug(f"Forced reset main window size after resize event: {Window.size}.")
+            self._main_screen.update_fonts(Window.height)
             return
 
-        assert self._resize_requested_size != (0, 0)
-        Window.size = self._resize_requested_size
-        logger.debug(f"Forced reset main window size after resize event: {Window.size}.")
-        self._main_screen.update_fonts(Window.height)
+        if not self._window_ready:
+            return
+
+        # Enforce fixed aspect ratio (height drives width) and minimum size.
+        # The minimum is only applied when it physically fits on the current monitor
+        # (e.g. a 1080p monitor cannot accommodate the minimum height).
+        correct_width = get_win_width_from_height(height - ACTION_BAR_SIZE_Y)
+        correct_height = height
+        if correct_width < MIN_WINDOW_WIDTH:
+            min_height = round(MIN_WINDOW_WIDTH * COMIC_PAGE_ASPECT_RATIO) + ACTION_BAR_SIZE_Y
+            monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
+            monitor_max_h = get_best_window_height_fit(monitor.height_pixels) if monitor else 0
+            if min_height <= monitor_max_h:
+                correct_width = MIN_WINDOW_WIDTH
+                correct_height = min_height
+
+        if (correct_width, correct_height) != (width, height):
+            if self._resize_event:
+                # Monitor-change in progress: keep guard consistent, correct immediately.
+                self._resize_requested_size = (correct_width, correct_height)
+                Window.size = (correct_width, correct_height)
+                return
+            # User resize: debounce so only one correction fires after the drag settles.
+            if self._correction_event:
+                self._correction_event.cancel()
+
+            def apply_correction(_dt: float) -> None:
+                self._correction_event = None
+                Window.size = (correct_width, correct_height)
+
+            self._correction_event = Clock.schedule_once(apply_correction, RESIZE_CORRECTION_DELAY)
+            return
+
+        self._main_screen.update_fonts(height)
 
     def close_app(self) -> None:
         self._main_screen.app_closing()
@@ -386,7 +424,7 @@ class BarksReaderApp(App):
 
         if SCREEN_METRICS.NUM_MONITORS > 1:
             Window.bind(on_move=self._on_window_pos_change)
-            Window.bind(on_resize=self._on_window_resize)
+        Window.bind(on_resize=self._on_window_resize)
 
         # This is a known Kivy workaround. By briefly changing the window position,
         # we force an `on_resize` event to fire, which ensures that all UI elements
@@ -404,6 +442,7 @@ class BarksReaderApp(App):
         # All the behind the scenes sizing and moving is done.
         # Now make the main window visible.
         def show_the_window(*_args: Any) -> None:  # noqa: ANN401
+            self._window_ready = True
             Window.show()
             _log_screen_settings()
 
