@@ -20,6 +20,7 @@ from screeninfo import get_monitors
 
 from barks_reader.core import services
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
+from barks_reader.core.platform_info import PLATFORM, Platform
 from barks_reader.core.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING, OPTIONS_SETTING
 from barks_reader.core.reader_settings import BARKS_READER_SECTION
 from barks_reader.core.reader_utils import get_win_width_from_height
@@ -466,6 +467,13 @@ class BarksReaderApp(App):
         if SCREEN_METRICS.NUM_MONITORS > 1:
             Window.bind(on_move=self._on_window_pos_change)
         Window.bind(on_resize=self._on_window_resize)
+
+        # On Windows the DPI scaling artefacts in the SDL2 backend make the aspect-ratio
+        # correction converge unreliably, causing erratic resize oscillations whenever the
+        # user drags the window border.  Locking the window prevents that entirely while
+        # still allowing programmatic resizes (monitor changes, comic open/close).
+        if PLATFORM == Platform.WIN:
+            Window.resizable = False
 
         # This is a known Kivy workaround. By briefly changing the window position,
         # we force an `on_resize` event to fire, which ensures that all UI elements
