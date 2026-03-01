@@ -112,6 +112,8 @@ class BarksReaderApp(App):
         self._resize_requested_size = 0, 0
         self._window_ready = False
         self._correction_event = None
+        self._suppress_correction = False
+        self._suppress_correction_event = None
 
     # TODO: Move this Window stuff to MainScreen.
     def _on_window_pos_change(self, _window: WindowBase) -> None:
@@ -176,17 +178,37 @@ class BarksReaderApp(App):
         if Window.fullscreen:
             return
 
-        # Existing monitor-change guard: re-apply our requested size if OS overrides it.
-        if self._resize_event and ((width, height) != self._resize_requested_size):
-            assert self._resize_requested_size != (0, 0)
-            Window.size = self._resize_requested_size
-            logger.debug(f"Forced reset main window size after resize event: {Window.size}.")
+        # Monitor-change guard: re-apply our requested size if the OS overrides it, then
+        # update fonts. Skip aspect-ratio enforcement entirely while the guard is active —
+        # calling _enforce_aspect_ratio during a monitor transition can interfere with the
+        # resize sequence and leave widgets at the old monitor's dimensions.
+        if self._resize_event:
+            if (width, height) != self._resize_requested_size:
+                assert self._resize_requested_size != (0, 0)
+                Window.size = self._resize_requested_size
+                logger.debug(f"Forced reset main window size after resize event: {Window.size}.")
+            assert self._main_screen is not None
             self._main_screen.update_fonts(Window.height)
             return
 
         if not self._window_ready:
             return
 
+        # Suppress corrections during/after comic reader close to avoid DPI-scaling
+        # feedback loops on Windows where spurious resize events fire during the transition.
+        if self._suppress_correction:
+            return
+
+        self._enforce_aspect_ratio(width, height)
+
+    def _enforce_aspect_ratio(self, width: int, height: int) -> None:
+        """Enforce a fixed aspect ratio (height drives width) with a minimum width floor.
+
+        Args:
+            width: Current window width reported by the resize event.
+            height: Current window height reported by the resize event.
+
+        """
         # Enforce fixed aspect ratio (height drives width) and minimum size.
         # The minimum is only applied when it physically fits on the current monitor
         # (e.g. a 1080p monitor cannot accommodate the minimum height).
@@ -201,11 +223,6 @@ class BarksReaderApp(App):
                 correct_height = min_height
 
         if (correct_width, correct_height) != (width, height):
-            if self._resize_event:
-                # Monitor-change in progress: keep guard consistent, correct immediately.
-                self._resize_requested_size = (correct_width, correct_height)
-                Window.size = (correct_width, correct_height)
-                return
             # User resize: debounce so only one correction fires after the drag settles.
             if self._correction_event:
                 self._correction_event.cancel()
@@ -217,7 +234,31 @@ class BarksReaderApp(App):
             self._correction_event = Clock.schedule_once(apply_correction, RESIZE_CORRECTION_DELAY)
             return
 
+        assert self._main_screen is not None
         self._main_screen.update_fonts(height)
+
+    def suppress_aspect_ratio_correction(self, duration: float = 2.0) -> None:
+        """Temporarily suppress aspect ratio corrections.
+
+        Args:
+            duration: How long to suppress, in seconds.
+
+        Call this before a programmatic window resize (e.g., closing the comic reader) to
+        prevent the correction from firing on spurious OS resize events and creating a loop.
+
+        """
+        if self._suppress_correction_event is not None:
+            self._suppress_correction_event.cancel()
+        if self._correction_event is not None:
+            self._correction_event.cancel()
+            self._correction_event = None
+        self._suppress_correction = True
+
+        def clear_suppress(_dt: float) -> None:
+            self._suppress_correction = False
+            self._suppress_correction_event = None
+
+        self._suppress_correction_event = Clock.schedule_once(clear_suppress, duration)
 
     def close_app(self) -> None:
         self._main_screen.app_closing()

@@ -4,6 +4,7 @@ import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar
 
+from kivy.app import App
 from kivy.uix.screenmanager import (
     CardTransition,
     FadeTransition,
@@ -130,6 +131,13 @@ class ReaderScreenManager:
 
     def _close_comic_book_reader(self) -> None:
         logger.debug("Closing comic and switching back to main screen...")
+
+        # Suppress aspect ratio corrections during the window restore that follows closing.
+        # On Windows, the transition fires spurious resize events (DPI scaling artefacts)
+        # that would otherwise trigger a correction feedback loop.
+        app = App.get_running_app()
+        if hasattr(app, "suppress_aspect_ratio_correction"):
+            app.suppress_aspect_ratio_correction()
 
         assert self._reader_screens
         self._reader_screens.main_screen.on_comic_closed()
