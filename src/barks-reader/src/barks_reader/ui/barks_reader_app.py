@@ -468,7 +468,7 @@ class BarksReaderApp(App):
             Window.bind(on_move=self._on_window_pos_change)
         Window.bind(on_resize=self._on_window_resize)
 
-        # On Windows the DPI scaling artefacts in the SDL2 backend make the aspect-ratio
+        # On Windows the DPI scaling artifacts in the SDL2 backend make the aspect-ratio
         # correction converge unreliably, causing erratic resize oscillations whenever the
         # user drags the window border.  Locking the window prevents that entirely while
         # still allowing programmatic resizes (monitor changes, comic open/close).

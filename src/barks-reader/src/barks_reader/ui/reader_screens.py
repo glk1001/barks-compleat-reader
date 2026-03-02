@@ -133,7 +133,7 @@ class ReaderScreenManager:
         logger.debug("Closing comic and switching back to main screen...")
 
         # Suppress aspect ratio corrections during the window restore that follows closing.
-        # On Windows, the transition fires spurious resize events (DPI scaling artefacts)
+        # On Windows, the transition fires spurious resize events (DPI scaling artifacts)
         # that would otherwise trigger a correction feedback loop.
         app = App.get_running_app()
         if hasattr(app, "suppress_aspect_ratio_correction"):

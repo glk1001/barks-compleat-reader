@@ -12,6 +12,7 @@
       <excludeFolder url="file://$MODULE_DIR$/src/barks-fantagraphics/data/fonts" />
       <excludeFolder url="file://$MODULE_DIR$/src/barks-fantagraphics/data/story-indexes" />
       <excludeFolder url="file://$MODULE_DIR$/experiments" />
+      <excludeFolder url="file://$MODULE_DIR$/htmlcov" />
     </content>
     <orderEntry type="jdk" jdkName="uv (barks-compleat-reader)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

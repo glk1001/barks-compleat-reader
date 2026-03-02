@@ -75,7 +75,7 @@ def _get_reader_settings_json() -> str:
                 "key": DOUBLE_PAGE_MODE,
             },
             {
-                "title": "Goto Last Selection on Start",
+                "title": "Goto Last Selection on App Start",
                 "desc": "When the app starts, goto the last selection in the tree view.",
                 "type": "bool",
                 "section": BARKS_READER_SECTION,
@@ -97,7 +97,7 @@ def _get_reader_settings_json() -> str:
                 "key": GOTO_FULLSCREEN_ON_COMIC_READ,
             },
             {
-                "title": "Show Title Info in Top Screen",
+                "title": "Show Title Info in Top View",
                 "desc": "Set this to true if you want to see the title associated with the"
                 " top image.",
                 "type": "bool",
@@ -105,7 +105,7 @@ def _get_reader_settings_json() -> str:
                 "key": SHOW_TOP_VIEW_TITLE_INFO,
             },
             {
-                "title": "Show Title Info in Bottom Screen",
+                "title": "Show Title Info in Bottom View",
                 "desc": "Set this to true if you want to see the title associated with the"
                 " bottom image.",
                 "type": "bool",

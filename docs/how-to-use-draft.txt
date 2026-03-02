@@ -1,0 +1,114 @@
+How to Use the Barks Reader
+
+Note to use: The Reader should be intuitive enough to understand here is more detail
+
+Concept
+    Full knowledge of all Barks stories combined with where stories are in the Fantagraphics volumes
+
+    No censorship
+       By providing override files with censorship fixes that are bundled with the app and are read instead of censored pages
+
+    Different navigation options:
+        Chronological
+        Series
+        Categories
+        Search:
+            by title
+            by tag
+        Can choose story associated with top or bottom image
+        Index:
+            alphabetic
+            speech bubble index
+    Extras
+        Intro articles
+        Appendix articles
+            Rich Tomasso
+            Don Ault
+            Maggie Thompson
+            George Lucas
+            Censorship fixes
+
+Configure
+    Fanta volumes
+        How to name
+        What directory to put them in
+
+    Nothing else to change
+
+    Settings
+        Your Fantagraphics Volumes directory containing all the Fantagraphics zips
+        Go straight to fullscreen on app start
+        Go straight to fullscreen for comic reading
+        Always read comic in double page mode
+        Toggle show title info in top view
+        Toggle show title info in bottom fun view
+        Toggle first use of reader
+        Goto last comic read
+        Options to turn off controversial censorship fixes
+        Logging level
+
+    Settings Files
+        barks-reader.ini
+        barks-reader.json
+        kivy configs
+
+    Installer
+        single exe plus installer zip
+        running exe always unzips python files to "pycrucible_payload", then launches app
+        first use of app
+            unzips files in installer zip
+            sets up config in appropriate directory:
+                Windows: "C:\Users\User\AppData\Roaming\barks-reader"
+                Macos: "~/Library/Application Support"
+                Linux: "~/.config/barks-reader"
+            sets up support data files (panels and overrides) in appropriate directory:
+                Windows: "C:\Users\<UserName>\BarksReader"
+                Macos: "~/Library/Application Support"
+                Linux: "~/.local/share/barks-reader"
+            then runs reader
+        subsequent runs of app
+            checks that config files are there, then runs reader
+
+Layout
+    Main screen top menu
+        close app, toggle fullscreen, got back, collapse navigation tree and show bottom fun view, refresh all images, settings
+        Can click on menu bar icon to goto the story associated with the icon image
+
+    Can be made full page
+
+    Top view
+        Intro
+        The Stories (Chronological, series, etc.)
+        Search (by title or tag)
+        Appendix
+        Indexes
+        Top background image
+            Can click on down arrow to goto the story associated with top image
+
+    Bottom view
+        Comic View
+            If on comic, then title info plus panel from comic plus title portal button
+            Can store last page read and option to turn off controversial censorship fixes
+            Partially transparent button top right of bottom view that will turn off title info and portal to show just panel image.
+                Can still click through portal button though
+
+        Fun View
+            Random selection of panels.
+            Panel categories can be controlled with button on top left of fun view
+            Can click on up arrow to goto the story associated with top image
+            Can click on left or right of panel to move through fun view panel history
+
+    Comic Reader
+        Can be made fullscreen
+        Simple navigation:
+            left click/right click page turns
+            top menu
+                make visible by clicking top
+                options: close, toggle fullscreen, toggle double page, goto start/end, goto page
+
+First Use
+    Click Me in big letters on title portal
+
+Logging
+    where stored
+    what logged

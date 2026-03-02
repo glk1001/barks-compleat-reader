@@ -358,7 +358,7 @@ class MainScreen(ReaderScreen):
             raise ValueError(msg)
 
     def open_how_to(self) -> None:
-        pass
+        self._read_article_as_comic_book(Titles.HOW_TO_USE_THE_BARKS_READER, None)
 
     def open_about(self) -> None:
         show_about_box(
@@ -695,7 +695,9 @@ class MainScreen(ReaderScreen):
                 last_read_page.display_page_num, active=True
             )
 
-    def _read_article_as_comic_book(self, article_title: Titles, view_state: ViewStates) -> None:
+    def _read_article_as_comic_book(
+        self, article_title: Titles, view_state: ViewStates | None
+    ) -> None:
         self._is_active(active=False)
         self._read_comic_view_state = view_state
 

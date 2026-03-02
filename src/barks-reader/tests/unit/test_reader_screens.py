@@ -67,7 +67,7 @@ class TestReaderScreenManager:
         # noinspection PyProtectedMember
         mock_sm = reader_screen_manager._screen_manager
 
-        assert mock_sm.add_widget.call_count == 3  # noqa: PLR2004
+        assert mock_sm.add_widget.call_count == 4  # noqa: PLR2004
         mock_sm.add_widget.assert_any_call(mock_reader_screens.main_screen)
         mock_sm.add_widget.assert_any_call(mock_reader_screens.comic_reader_screen)
         mock_sm.add_widget.assert_any_call(mock_reader_screens.intro_compleat_barks_reader_screen)

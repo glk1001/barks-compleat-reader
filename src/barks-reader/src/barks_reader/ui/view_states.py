@@ -156,7 +156,9 @@ _ARTICLE_VIEW_STATE_TO_TITLE_MAP = {
     ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE: Titles.CENSORSHIP_FIXES_AND_OTHER_CHANGES,
 }
 # fmt: on
-assert sorted(_ARTICLE_VIEW_STATE_TO_TITLE_MAP.values()) == sorted(NON_COMIC_TITLES)
+assert sorted(_ARTICLE_VIEW_STATE_TO_TITLE_MAP.values()) == sorted(
+    [x for x in NON_COMIC_TITLES if x != Titles.HOW_TO_USE_THE_BARKS_READER]
+)
 
 
 def get_view_state_and_article_title_from_node(

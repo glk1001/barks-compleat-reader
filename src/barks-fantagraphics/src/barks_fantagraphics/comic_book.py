@@ -458,7 +458,7 @@ class ComicBook:
             return True
 
         # Non-comic titles.
-        if volume == 1 and page_num in [
+        if volume == 1 and page_num in [  # noqa: FURB171
             "268",
         ]:
             return True
@@ -471,6 +471,9 @@ class ComicBook:
             "256",
             "257",
             "258",
+            "259",
+            "260",
+            "261",
         ]:
             return True
 

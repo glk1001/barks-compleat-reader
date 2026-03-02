@@ -14,7 +14,7 @@ from .comic_issues import (
     Issues,
 )
 
-NUM_TITLES = 660 + 5  # +5 for articles
+NUM_TITLES = 660 + 6  # +6 for articles
 
 GYRO_GEARLOOSE = "Gyro Gearloose"
 
@@ -691,6 +691,7 @@ DON_AULT___LIFE_AMONG_THE_DUCKS = "Don Ault - Life Among the Ducks"
 # noinspection LongLine
 MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD = "Maggie Thompson - Comics Readers Find Comic Book Gold"
 CENSORSHIP_FIXES_AND_OTHER_CHANGES = "Censorship Fixes and Other Changes"
+HOW_TO_USE_THE_BARKS_READER = "How to Use the Barks Reader"
 # fmt: on
 
 
@@ -1362,6 +1363,7 @@ class Titles(IntEnum):
     DON_AULT___LIFE_AMONG_THE_DUCKS = auto()
     MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD = auto()
     CENSORSHIP_FIXES_AND_OTHER_CHANGES = auto()
+    HOW_TO_USE_THE_BARKS_READER = auto()
 
 
 assert len(Titles) == NUM_TITLES, f"{len(Titles)} != {NUM_TITLES}"
@@ -2033,6 +2035,7 @@ BARKS_TITLES = [
     DON_AULT___LIFE_AMONG_THE_DUCKS,
     MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD,
     CENSORSHIP_FIXES_AND_OTHER_CHANGES,
+    HOW_TO_USE_THE_BARKS_READER,
 ]
 
 assert len(BARKS_TITLES) == NUM_TITLES, f"{len(BARKS_TITLES)} != {NUM_TITLES}"
@@ -2757,6 +2760,7 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.DON_AULT___LIFE_AMONG_THE_DUCKS, False, Issues.EXTRAS, 1, 1, 2014, 1, 1, 2014),
     ComicBookInfo(Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD, False, Issues.EXTRAS, 1, 1, 2025, 1, 1, 2025),
     ComicBookInfo(Titles.CENSORSHIP_FIXES_AND_OTHER_CHANGES, False, Issues.EXTRAS, 6, 8, 2025, 6, 8, 2025),
+    ComicBookInfo(Titles.HOW_TO_USE_THE_BARKS_READER, False, Issues.EXTRAS, 2, 3, 2026, 2, 3, 2026),
     # Sort these out
 ]
 # fmt: on
@@ -2792,6 +2796,7 @@ NON_COMIC_TITLES = [
     Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD,
     Titles.GEORGE_LUCAS___AN_APPRECIATION,
     Titles.CENSORSHIP_FIXES_AND_OTHER_CHANGES,
+    Titles.HOW_TO_USE_THE_BARKS_READER,
 ]
 
 ONE_PAGERS = [
