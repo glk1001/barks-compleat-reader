@@ -14,7 +14,6 @@ from kivy.uix.screenmanager import (
     Screen,
     ScreenManager,
     SlideTransition,
-    SwapTransition,
     TransitionBase,
     WipeTransition,
 )
@@ -68,7 +67,6 @@ class ReaderScreenManager:
         FadeTransition(),
         FallOutTransition(),
         RiseInTransition(),
-        SwapTransition(),
         WipeTransition(),
         SlideTransition(direction="left"),
         CardTransition(direction="left", mode="push"),
@@ -78,7 +76,6 @@ class ReaderScreenManager:
         FadeTransition(),
         FallOutTransition(),
         RiseInTransition(),
-        SwapTransition(),
         WipeTransition(),
         SlideTransition(direction="right"),
         CardTransition(direction="right", mode="pop"),
@@ -121,6 +118,10 @@ class ReaderScreenManager:
         self._screen_manager.transition = self._get_next_reader_screen_transition()
         self._screen_manager.current = COMIC_BOOK_READER_SCREEN
 
+        logger.debug(
+            f"Using screen transition '{self._screen_manager.transition.__class__.__name__}'."
+        )
+
         assert self._reader_screens
         self._reader_screens.comic_reader_screen.app_icon_filepath = (
             self._reader_screens.main_screen.app_icon_filepath
@@ -145,6 +146,10 @@ class ReaderScreenManager:
         self._screen_manager.transition = self._get_next_main_screen_transition()
         self._screen_manager.current = MAIN_READER_SCREEN
 
+        logger.debug(
+            f"Using screen transition '{self._screen_manager.transition.__class__.__name__}'."
+        )
+
         self._reader_screens.comic_reader_screen.is_active(active=False)
 
         logger.info("Main screen is active.")
@@ -160,4 +165,8 @@ class ReaderScreenManager:
 
         self._screen_manager.transition = self._get_next_main_screen_transition()
         self._screen_manager.current = MAIN_READER_SCREEN
+
+        logger.debug(
+            f"Using screen transition '{self._screen_manager.transition.__class__.__name__}'."
+        )
         logger.info("Main screen is active.")
