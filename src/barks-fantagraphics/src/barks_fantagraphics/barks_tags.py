@@ -16,6 +16,7 @@ class Tags(Enum):
     ALKALI = "alkali"
     ANDES = "Andes"
     ANTARCTICA = "Antarctica"
+    APPLECHEEKS_TEENGIGGLE = "Applecheeks Teengiggle"
     ARABIAN_PENINSULA = "Arabian Peninsula"
     ARCTIC_OCEAN = "Arctic Ocean"
     ARGUS_MCFIENDY = "Argus McFiendy"
@@ -189,6 +190,7 @@ BARKS_TAG_EXTRA_ALIASES = {
     "snozzie": Tags.GENERAL_SNOZZIE,
     "south pole": Tags.ANTARCTICA,
     "spell": Tags.MAGICA_DE_SPELL,
+    "teengiggle": Tags.APPLECHEEKS_TEENGIGGLE,
     "the beagle boys": Tags.BEAGLE_BOYS,
     "uncle": Tags.SCROOGE_NOT_IN_US,
     "woodchucks": Tags.JUNIOR_WOODCHUCKS,
@@ -443,6 +445,7 @@ BARKS_TAG_GROUPS = {
         TagGroups.PIG_VILLAINS,
     ],
     TagGroups.ONE_OFF_CHARACTERS: [
+        Tags.APPLECHEEKS_TEENGIGGLE,
         Tags.ARGUS_MCFIENDY,
         Tags.AZURE_BLUE,
         Tags.BENZENE_BANZOONY,
@@ -895,6 +898,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.HOUSE_OF_HAUNTS,
     ],
     # Characters
+    Tags.APPLECHEEKS_TEENGIGGLE: [Titles.PERSISTENT_POSTMAN_THE],
     Tags.ARGUS_MCFIENDY: [Titles.DARKEST_AFRICA],
     Tags.AZURE_BLUE: [Titles.GOLDEN_HELMET_THE],
     Tags.BEAGLE_BOYS: [
@@ -1313,6 +1317,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
 
 BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE): ["7"],
+    (Tags.APPLECHEEKS_TEENGIGGLE, Titles.PERSISTENT_POSTMAN_THE): ["2"],
     (Tags.BARNACLE_BAY, Titles.NO_SUCH_VARMINT): ["11"],
     (Tags.CAMERAS, Titles.SECRET_RESOLUTIONS): ["8"],
     (Tags.CAMERAS, Titles.VACATION_TIME): ["10"],  # plus more pages
