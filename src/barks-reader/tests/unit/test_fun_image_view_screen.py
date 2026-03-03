@@ -38,7 +38,12 @@ class TestFunImageViewScreen:
             mock_custom_options_box.children = []
 
             def side_effect(instance: Widget, **_kwargs) -> None:  # noqa: ANN003
-                instance.ids = {"custom_options_box": mock_custom_options_box}
+                mock_goto_title_button = MagicMock()
+                mock_goto_title_button.collide_point.return_value = False
+                instance.ids = {
+                    "custom_options_box": mock_custom_options_box,
+                    "goto_title_button": mock_goto_title_button,
+                }
                 # Initialize properties that might be set in kv
                 instance.x = 0
                 instance.y = 0
