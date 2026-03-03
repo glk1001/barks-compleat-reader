@@ -1,21 +1,22 @@
-# How to Use the Barks Reader
+<h1 style="text-align: center;">How to Use the Barks Reader</h1><br>
 
-The Barks Reader is designed to be intuitive, but this guide covers the details for those who want them.
+The Barks Reader is designed to be easy to use and intuitive, but this guide is just in case.
 
 ---
 
 ## Concept
 
-The Barks Reader gives you full access to Carl Barks's complete published output as presented
-in the Fantagraphics *"The Complete Carl Barks Disney Library".* It knows exactly which
+The Barks Reader gives you full access to all the Barks comics in your Fantagraphics
+*"The Complete Carl Barks Disney Library"* digital collection. It knows exactly which
 stories appear in which volumes and on which pages, and presents them through several
-complementary navigation systems. And if you have a touchscreen 2-in-1 or hybrid 16-inch laptop
-you will get a great Barks reading experience.
+complementary navigation systems. And if you have a touchscreen 2-in-1 or hybrid 16-inch laptop,
+then you can flip and fold it into a portrait screen and get a great Barks reading experience.
 
 **No censorship.** Where Fantagraphics made alterations to Barks's original artwork — replacing
 or modifying panels for editorial reasons — the Reader includes override image files that
-restore the original artwork. These are applied automatically. You can turn specific controversial fixes
-(like 'Larkies' to 'Harpies') off individually in Settings if you prefer the Fantagraphics versions.
+restore the original artwork. These are applied automatically. However, some of the controversial fixes
+(like 'Larkies' to 'Harpies') can be turned off individually in Settings if you prefer the
+Fantagraphics versions.
 
 ---
 
@@ -38,15 +39,15 @@ The bar across the top of the main screen contains:
 
 The tree on the left is the primary way to find stories. Its top-level sections are:
 
-- **Intro** — the introductory articles for the *Compleat Barks Reader* project.
+- **Intro** — introductory articles for the *Compleat Barks Reader* project.
 - **The Stories** — all Barks stories, browsable in four ways:
-  - *Chronological* — organised by publication year.
+  - *Chronological* — organised by Barks' submission dates.
   - *Series* — grouped by the comic series they appeared in (Comics & Stories, Donald Duck Adventures, 
     Uncle Scrooge Adventures, etc.).
   - *Categories* — thematic groupings.
 - **Search** — find stories by title text or by tag.
-- **Index** — two indexes: *alphabetic* and *speech bubbles*.
 - **Appendix** — supplementary articles and extra info.
+- **Index** — two indexes: *alphabetic* and *speech bubbles*.
 
 ### Top Image Area
 
@@ -79,7 +80,7 @@ publication info, and a sample panel. Contains:
 
 ---
 
-## Reading Comics
+## Reading the Comics
 
 Open a comic by clicking its **title portal button** in the bottom panel.
 
@@ -95,7 +96,7 @@ screen** to make it appear. It contains:
 
 - **Close** — return to the main screen.
 - **Fullscreen** — toggle fullscreen mode.
-- **Double Page** — display two pages side by side.
+- **Double Page** — toggle double page mode.
 - **Go to Start / Go to End** — jump to the first or last page.
 - **Go to Page** — opens a page selector showing all pages in the comic
 
