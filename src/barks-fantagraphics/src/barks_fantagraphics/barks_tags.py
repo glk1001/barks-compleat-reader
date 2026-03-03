@@ -79,6 +79,7 @@ class Tags(Enum):
     ISOTOPES = "isotopes"
     ITALY = "Italy"
     JUNIOR_WOODCHUCKS = "Junior Woodchucks"
+    J_MORGANBILT_GILTWHISKERS = "J. Morganbilt Giltwhiskers"
     LIBYA = "Libya"
     LITHIUM = "lithium"
     MAGIC = "magic"
@@ -167,10 +168,10 @@ BARKS_TAG_EXTRA_ALIASES = {
     "demon": Tags.OLD_DEMON_TOOTH,
     "dorado": Tags.EL_DORADO,
     "driving car": Tags.HDL_DRIVING_CAR,
-    "el": Tags.EL_DORADO,
     "flintheart": Tags.FLINTHEART_GLOMGOLD,
     "foola": Tags.FOOLA_ZOOLA,
     "gearloose": Tags.GYRO_GEARLOOSE,
+    "giltwhiskers": Tags.J_MORGANBILT_GILTWHISKERS,
     "gladstone": Tags.GLADSTONE_GANDER,
     "glomgold": Tags.FLINTHEART_GLOMGOLD,
     "gyro": Tags.GYRO_GEARLOOSE,
@@ -181,8 +182,8 @@ BARKS_TAG_EXTRA_ALIASES = {
     "mcfiendy": Tags.ARGUS_MCFIENDY,
     "mcsue": Tags.CHISEL_MC_SUE,
     "mcswine": Tags.MR_MC_SWINE,
+    "morganbilt": Tags.J_MORGANBILT_GILTWHISKERS,
     "mount demon tooth": Tags.OLD_DEMON_TOOTH,
-    "mrmcswine": Tags.MR_MC_SWINE,
     "niagara": Tags.NIAGARA_FALLS,
     "old demon tooth": Tags.OLD_DEMON_TOOTH,
     "pjmcbrine": Tags.P_J_MC_BRINE,
@@ -457,6 +458,7 @@ BARKS_TAG_GROUPS = {
         Tags.FERMIES,
         Tags.FOOLA_ZOOLA,
         Tags.GNEEZLES,
+        Tags.J_MORGANBILT_GILTWHISKERS,
         Tags.TERRIES,
     ],
     TagGroups.PIG_VILLAINS: [
@@ -1071,6 +1073,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.BEACH_BOY,
         Titles.BUBBLEWEIGHT_CHAMP,
     ],
+    Tags.J_MORGANBILT_GILTWHISKERS: [Titles.WIRED],
     Tags.LIBYA: [Titles.ROCKET_RACE_AROUND_THE_WORLD],
     Tags.LITHIUM: [Titles.LAND_OF_THE_PYGMY_INDIANS],
     Tags.MAGIC: [Titles.MAGICAL_MISERY],
@@ -1446,6 +1449,7 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.GYRO_NOT_IN_GG, Titles.UNDER_THE_POLAR_ICE): ["3"],
     (Tags.HDL_DRIVING_CAR, Titles.SHERIFF_OF_BULLET_VALLEY): ["11", "12", "14"],
     (Tags.ISOTOPES, Titles.SUPER_SNOOPER): ["4"],
+    (Tags.J_MORGANBILT_GILTWHISKERS, Titles.WIRED): ["10"],
     (Tags.LITHIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["22"],
     (Tags.MALI, Titles.DAY_DUCKBURG_GOT_DYED_THE): ["10"],
     (Tags.MANGANESE, Titles.LAND_OF_THE_PYGMY_INDIANS): ["5"],
