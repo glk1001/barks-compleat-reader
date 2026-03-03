@@ -328,11 +328,56 @@ class BarksReaderApp(App):
         ):
             settings_notifier.notify(section, key)
 
+    # noinspection LongLine
     @override
-    def build(self) -> Widget:
+    def build(self) -> Widget:  # noqa: C901
         logger.debug("Building app...")
 
         assert Window is not None
+
+        # Kivy 2.3.1 bug: several methods call canvas._remove_group() but the
+        # Canvas Cython extension only exposes the public remove_group().
+        # Patch the Python-level methods that make the bad call instead.
+        from kivy.uix.screenmanager import SwapTransition  # noqa: PLC0415
+        from kivy.uix.textinput import TextInput  # noqa: PLC0415
+
+        if not hasattr(TextInput, "_kivy_workaround_applied"):
+            # noinspection PyProtectedMember
+            _orig_ti = TextInput._update_graphics_selection  # noqa: SLF001
+
+            # noinspection PyShadowingNames
+            def _patched_update_graphics_selection(self: TextInput) -> None:
+                try:
+                    _orig_ti(self)
+                except AttributeError as exc:
+                    if "_remove_group" in str(exc):
+                        self.canvas.remove_group("selection")  # ty:ignore[unresolved-attribute]
+                    else:
+                        raise
+
+            TextInput._update_graphics_selection = _patched_update_graphics_selection  # noqa: SLF001
+            TextInput._kivy_workaround_applied = True  # noqa: SLF001
+
+        if not hasattr(SwapTransition, "_kivy_workaround_applied"):
+            _orig_st = SwapTransition.on_complete
+
+            # noinspection PyShadowingNames
+            def _patched_swap_on_complete(self: SwapTransition) -> None:
+                try:
+                    _orig_st(self)
+                except AttributeError as exc:
+                    if "_remove_group" in str(exc):
+                        for screen in self.screen_in, self.screen_out:
+                            for canvas in screen.canvas.before, screen.canvas.after:
+                                # noinspection SpellCheckingInspection
+                                canvas.remove_group("swaptransition_scale")
+                        # noinspection LongLine
+                        super(SwapTransition, self).on_complete()  # ty:ignore[invalid-super-argument]
+                    else:
+                        raise
+
+            SwapTransition.on_complete = _patched_swap_on_complete
+            SwapTransition._kivy_workaround_applied = True  # noqa: SLF001
 
         self._initialize_settings_and_db()
 

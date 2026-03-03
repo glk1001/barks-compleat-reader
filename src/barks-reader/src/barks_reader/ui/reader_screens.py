@@ -14,6 +14,7 @@ from kivy.uix.screenmanager import (
     Screen,
     ScreenManager,
     SlideTransition,
+    SwapTransition,
     TransitionBase,
     WipeTransition,
 )
@@ -67,6 +68,7 @@ class ReaderScreenManager:
         FadeTransition(),
         FallOutTransition(),
         RiseInTransition(),
+        SwapTransition(),
         WipeTransition(),
         SlideTransition(direction="left"),
         CardTransition(direction="left", mode="push"),
@@ -76,6 +78,7 @@ class ReaderScreenManager:
         FadeTransition(),
         FallOutTransition(),
         RiseInTransition(),
+        SwapTransition(),
         WipeTransition(),
         SlideTransition(direction="right"),
         CardTransition(direction="right", mode="pop"),
