@@ -8,6 +8,7 @@ from barks_fantagraphics.barks_tags import (
     BARKS_TAG_GROUPS,
     BARKS_TAGGED_PAGES,
     BARKS_TAGGED_TITLES,
+    BARKS_TAGS_ALIAS_LISTS,
     TagGroups,
     Tags,
     get_all_tags_in_tag_group,
@@ -173,11 +174,9 @@ class MainIndexScreen(IndexScreen):
         # Add all tags
         for tag in Tags:
             tag_name = self._get_sortable_string(tag.value)
-            first_letter = tag_name[0].upper()
-            assert ("0" <= first_letter <= "9") or ("A" <= first_letter <= "Z")
-            if "0" <= first_letter <= "9":
-                first_letter = "0"
-            self._item_index[first_letter].append(IndexItem(tag, tag_name))
+            self.add_tag_name(tag, tag_name)
+            for alias in BARKS_TAGS_ALIAS_LISTS.get(tag, []):
+                self.add_tag_name(tag, alias.title())
 
         # Add all tag groups
         for tag_group in TagGroups:
@@ -191,6 +190,13 @@ class MainIndexScreen(IndexScreen):
             self._item_index[letter].sort(key=lambda item: item.display_text.lower())
 
         logger.debug(f"Index build complete (in {timing.get_elapsed_time_with_unit()}).")
+
+    def add_tag_name(self, tag: Tags, tag_name: str) -> None:
+        first_letter = tag_name[0].upper()
+        assert ("0" <= first_letter <= "9") or ("A" <= first_letter <= "Z")
+        if "0" <= first_letter <= "9":
+            first_letter = "0"
+        self._item_index[first_letter].append(IndexItem(tag, tag_name))
 
     @override
     def _new_index_image(self) -> None:

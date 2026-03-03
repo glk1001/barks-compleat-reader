@@ -155,7 +155,6 @@ BARKS_TAG_EXTRA_ALIASES = {
     "azure": Tags.AZURE_BLUE,
     "banzoony": Tags.BENZENE_BANZOONY,
     "barnacle": Tags.BARNACLE_BAY,
-    "beagles": Tags.BEAGLE_BOYS,
     "beakoff": Tags.CARVER_BEAKOFF,
     "benzene": Tags.BENZENE_BANZOONY,
     "bombie": Tags.BOMBIE_THE_ZOMBIE,
@@ -193,13 +192,16 @@ BARKS_TAG_EXTRA_ALIASES = {
     "spell": Tags.MAGICA_DE_SPELL,
     "teengiggle": Tags.APPLECHEEKS_TEENGIGGLE,
     "the beagle boys": Tags.BEAGLE_BOYS,
-    "uncle": Tags.SCROOGE_NOT_IN_US,
     "woodchucks": Tags.JUNIOR_WOODCHUCKS,
     "zombie": Tags.BOMBIE_THE_ZOMBIE,
     "zoola": Tags.FOOLA_ZOOLA,
 }
 
 BARKS_TAG_ALIASES = {str(t.value).lower(): t for t in Tags} | BARKS_TAG_EXTRA_ALIASES
+BARKS_TAGS_ALIAS_LISTS: dict[Tags, list[str]] = {
+    t: [alias for alias in BARKS_TAG_EXTRA_ALIASES if BARKS_TAG_EXTRA_ALIASES[alias] == t]
+    for t in BARKS_TAG_EXTRA_ALIASES.values()
+}
 
 
 class TagCategories(Enum):
