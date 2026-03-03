@@ -103,9 +103,6 @@ class ScreenMetrics:
         return self.SCREEN_INFO[0]
 
     def get_monitor_for_pos(self, x: int, y: int) -> ScreenInfo | None:
-        x = max(0, x)
-        y = max(0, y)
-
         for info in self.SCREEN_INFO:
             if (
                 info.monitor_x <= x < info.monitor_x + info.width_pixels
