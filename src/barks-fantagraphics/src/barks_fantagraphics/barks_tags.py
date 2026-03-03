@@ -9,197 +9,191 @@ from .barks_titles import NON_COMIC_TITLES, Titles
 
 
 class Tags(Enum):
-    BARKS_FAVOURITES = "Barks' Picks"
-    EVERY_GEEK_FAVOURITES = "everygeek.net"
-    PERSONAL_FAVOURITES = "My Picks"
-    PETER_SCHILLING_FAVOURITES = "Peter Schilling"
-    WIKI_NOTABLE_STORIES = "Wiki Notable Stories"
-    CLASSICS = "The Classics"
-
-    CENSORED_STORIES_BUT_FIXED = "censored but fixed stories"
-
-    ARTICLES = "articles"
-
     AEOLIAN_ISLANDS = "Aeolian Islands"
+    AIRPLANES = "airplanes"
     ALASKA = "Alaska"
     ALGERIA = "Algeria"
+    ALKALI = "alkali"
     ANDES = "Andes"
     ANTARCTICA = "Antarctica"
     ARABIAN_PENINSULA = "Arabian Peninsula"
     ARCTIC_OCEAN = "Arctic Ocean"
+    ARGUS_MCFIENDY = "Argus McFiendy"
+    ARTICLES = "articles"
     ATLANTIS = "Atlantis"
     AUSTRALIA = "Australia"
+    AZURE_BLUE = "Azure Blue"
+    BARKS_FAVOURITES = "Barks' Picks"
     BARNACLE_BAY = "Barnacle Bay"
+    BEAGLE_BOYS = "The Beagle Boys"
+    BENZENE_BANZOONY = "Benzene Banzoony"
+    BOMBIE_THE_ZOMBIE = "Bombie the Zombie"
+    CALCIUM = "calcium"
+    CAMERAS = "cameras"
     CANADA = "Canada"
+    CARBON = "carbon"
+    CARVER_BEAKOFF = "Doctor Carver Beakoff"
+    CAR_313 = "313"
+    CENSORED_STORIES_BUT_FIXED = "censored but fixed stories"
     CENTRAL_AFRICA = "Central Africa"
+    CHEMICAL_FORMULA = "chemical formula"
     CHINA = "China"
+    CHISEL_MC_SUE = "Chisel McSue"
+    CHRISTMAS_STORIES = "christmas stories"
+    CIGARETTES = "cigarettes"
+    CLASSICS = "The Classics"
+    COLUMBIUM = "columbium"
     CONGO = "Congo"
+    COPPER = "copper"
+    CORNELIUS_MC_COBB = "Cornelius McCobb"
+    DAISY = "Daisy Duck"
     DUCKBURG = "Duckburg"
+    DUCKMITE = "duckmite"
     EGYPT = "Egypt"
+    EL_DORADO = "El Dorado"
+    EVERY_GEEK_FAVOURITES = "everygeek.net"
+    FERMIES = "Fermies"
+    FIRE = "fire"
+    FLINTHEART_GLOMGOLD = "Flintheart Glomgold"
     FLORIDA = "Florida"
+    FOOLA_ZOOLA = "Foola Zoola"
+    FORBIDIUM = "forbidium"
     FRANCE = "France"
+    GENERAL_SNOZZIE = "General Snozzie"
     GERMANY = "Germany"
+    GLADSTONE_GANDER = "Gladstone Gander"
+    GNEEZLES = "Gneezles"
     GREECE = "Greece"
+    GYRO_GEARLOOSE = barks_titles.GYRO_GEARLOOSE
+    GYRO_NOT_IN_GG = "Gyro not in GG series"
+    HASSAN_BEN_JAILD = "Hassan Ben Jaild"
+    HDL_DRIVING_CAR = "HDL driving car"
+    HERBERT = "Herbert"
     HIMALAYAS = "Himalayas"
+    HYPNOSIS = "hypnosis"
     INDIA = "India"
     INDIAN_OCEAN = "Indian Ocean"
     INDO_CHINA = "Indo-China"
     IRAQ = "Iraq"
+    ISOTOPES = "isotopes"
     ITALY = "Italy"
+    JUNIOR_WOODCHUCKS = "Junior Woodchucks"
     LIBYA = "Libya"
+    LITHIUM = "lithium"
+    MAGIC = "magic"
+    MAGICA_DE_SPELL = "Magica de Spell"
     MALI = "Mali"
+    MANGANESE = "manganese"
+    MERCURY = "mercury"
     MISSISSIPPI = "Mississippi"
     MONGOLIA = "Mongolia"
     MOROCCO = "Morocco"
+    MR_MC_SWINE = "Mr. McSwine"
+    NAPHTHA = "naphtha"
+    NEIGHBOR_JONES = "Neighbor Jones"
+    NEUTRON = "neutron"
+    NEW_VERSIONS = "new versions of old stories"
     NIAGARA_FALLS = "Niagara Falls"
+    NICKEL = "nickel"
+    NITROGEN = "nitrogen"
+    NITROGLYCERIN = "nitroglycerine"
     NORWAY = "Norway"
+    NOSUCHIUM = "nosuchium"
     OHIO = "Ohio"
     OLD_DEMON_TOOTH = "Old Demon Tooth"
+    OPA = "OPA"
+    OXYGEN = "oxygen"
     PAKISTAN = "Pakistan"
     PERSIA = "Persia"
+    PERSONAL_FAVOURITES = "My Picks"
+    PETER_SCHILLING_FAVOURITES = "Peter Schilling"
+    PHOSPHORUS = "phosphorus"
+    PHOTOGRAPHY = "photography"
     PLAIN_AWFUL = "Plain Awful"
+    PLASMA = "plasma"
+    PLATINUM = "platinum"
+    PORKMAN_DE_LARDO = "Porkman de Lardo"
+    POTASH = "potash"
+    P_J_MC_BRINE = "P.J.McBrine"
     RUSSIA = "Russia"
     SCOTLAND = "Scotland"
+    SCROOGE_NOT_IN_US = "Uncle Scrooge not in US series"
+    SELENIUM = "selenium"
+    SOAPY_SLICK = "Soapy Slick"
     SOUTH_AFRICA = "South Africa"
     SPAIN = "Spain"
+    SQUARE_EGGS = "square eggs"
+    STROMBOLIUM = "strombolium"
     SUDAN = "Sudan"
+    SULPHUR = "sulphur"
+    SULPHURIC_ACID = "sulphuric acid"
     SWEDEN = "Sweden"
     SWITZERLAND = "Switzerland"
     SYDNEY = "Sydney"
     SYRIA = "Syria"
     TANGANYIKA = "Tanganyika"
-
-    AIRPLANES = "airplanes"
-    ALKALI = "alkali"
-    CAMERAS = "cameras"
-    CALCIUM = "calcium"
-    CAR_313 = "313"
-    CARBON = "carbon"
-    CIGARETTES = "cigarettes"
-    CHEMICAL_FORMULA = "chemical formula"
-    COLUMBIUM = "columbium"
-    COPPER = "copper"
-    DUCKMITE = "duckmite"
-    FIRE = "fire"
-    FORBIDIUM = "forbidium"
-    HDL_DRIVING_CAR = "HDL driving car"
-    ISOTOPES = "isotopes"
-    LITHIUM = "lithium"
-    MANGANESE = "manganese"
-    MERCURY = "mercury"
-    NAPHTHA = "naphtha"
-    NICKEL = "nickel"
-    NITROGEN = "nitrogen"
-    NITROGLYCERIN = "nitroglycerine"
-    NEUTRON = "neutron"
-    NOSUCHIUM = "nosuchium"
-    OPA = "OPA"
-    OXYGEN = "oxygen"
-    PHOSPHORUS = "phosphorus"
-    PLASMA = "plasma"
-    PLATINUM = "platinum"
-    POTASH = "potash"
-    SQUARE_EGGS = "square eggs"
-    SELENIUM = "selenium"
-    STROMBOLIUM = "strombolium"
-    SULPHUR = "sulphur"
-    SULPHURIC_ACID = "sulphuric acid"
     TANTALUM = "tantalum"
+    TERRIES = "Terries"
     THORIUM = "thorium"
     WEEMITE = "weemite"
     WHATTISIUM = "whattisium"
+    WIKI_NOTABLE_STORIES = "Wiki Notable Stories"
     WOLFRAMITE = "wolframite"
     WORRY_ROOM = "worry room"
     YOUGUESSIUM = "youguessium"
     ZINC = "zinc"
     ZIRCONIUM = "zirconium"
 
-    CHRISTMAS_STORIES = "christmas stories"
-    HYPNOSIS = "hypnosis"
-    MAGIC = "magic"
-    PHOTOGRAPHY = "photography"
-    NEW_VERSIONS = "new versions of old stories"
-
-    AZURE_BLUE = "Azure Blue"
-    ARGUS_MCFIENDY = "Argus McFiendy"
-    BEAGLE_BOYS = "The Beagle Boys"
-    BENZENE_BANZOONY = "Benzene Banzoony"
-    BOMBIE_THE_ZOMBIE = "Bombie the Zombie"
-    CARVER_BEAKOFF = "Doctor Carver Beakoff"
-    CHISEL_MC_SUE = "Chisel McSue"
-    CORNELIUS_MC_COBB = "Cornelius McCobb"
-    DAISY = "Daisy Duck"
-    EL_DORADO = "El Dorado"
-    FERMIES = "Fermies"
-    FLINTHEART_GLOMGOLD = "Flintheart Glomgold"
-    FOOLA_ZOOLA = "Foola Zoola"
-    GENERAL_SNOZZIE = "General Snozzie"
-    GLADSTONE_GANDER = "Gladstone Gander"
-    GNEEZLES = "Gneezles"
-    GYRO_GEARLOOSE = barks_titles.GYRO_GEARLOOSE
-    GYRO_NOT_IN_GG = "Gyro not in GG series"
-    HASSAN_BEN_JAILD = "Hassan Ben Jaild"
-    HERBERT = "Herbert"
-    JUNIOR_WOODCHUCKS = "Junior Woodchucks"
-    MAGICA_DE_SPELL = "Magica de Spell"
-    MR_MC_SWINE = "Mr. McSwine"
-    NEIGHBOR_JONES = "Neighbor Jones"
-    P_J_MC_BRINE = "P.J.McBrine"
-    PORKMAN_DE_LARDO = "Porkman de Lardo"
-    SCROOGE_NOT_IN_US = "Uncle Scrooge not in US series"
-    SOAPY_SLICK = "Soapy Slick"
-    TERRIES = "Terries"
-
 
 BARKS_TAG_EXTRA_ALIASES = {
     "aeolian": Tags.AEOLIAN_ISLANDS,
-    "south pole": Tags.ANTARCTICA,
     "arabia": Tags.ARABIAN_PENINSULA,
     "arctic": Tags.ARCTIC_OCEAN,
-    "barnacle": Tags.BARNACLE_BAY,
-    "niagara": Tags.NIAGARA_FALLS,
     "argus": Tags.ARGUS_MCFIENDY,
-    "mcfiendy": Tags.ARGUS_MCFIENDY,
     "azure": Tags.AZURE_BLUE,
-    "the beagle boys": Tags.BEAGLE_BOYS,
-    "beagles": Tags.BEAGLE_BOYS,
-    "benzene": Tags.BENZENE_BANZOONY,
     "banzoony": Tags.BENZENE_BANZOONY,
+    "barnacle": Tags.BARNACLE_BAY,
+    "beagles": Tags.BEAGLE_BOYS,
+    "beakoff": Tags.CARVER_BEAKOFF,
+    "benzene": Tags.BENZENE_BANZOONY,
     "bombie": Tags.BOMBIE_THE_ZOMBIE,
-    "zombie": Tags.BOMBIE_THE_ZOMBIE,
     "car 313": Tags.CAR_313,
     "carver beakoff": Tags.CARVER_BEAKOFF,
-    "beakoff": Tags.CARVER_BEAKOFF,
     "carver": Tags.CARVER_BEAKOFF,
     "chisel": Tags.CHISEL_MC_SUE,
-    "mcsue": Tags.CHISEL_MC_SUE,
     "cornelius": Tags.CORNELIUS_MC_COBB,
-    "mccobb": Tags.CORNELIUS_MC_COBB,
     "daisy": Tags.DAISY,
-    "el": Tags.EL_DORADO,
-    "dorado": Tags.EL_DORADO,
-    "foola": Tags.FOOLA_ZOOLA,
-    "zoola": Tags.FOOLA_ZOOLA,
-    "flintheart": Tags.FLINTHEART_GLOMGOLD,
-    "glomgold": Tags.FLINTHEART_GLOMGOLD,
-    "snozzie": Tags.GENERAL_SNOZZIE,
-    "gladstone": Tags.GLADSTONE_GANDER,
-    "gyro": Tags.GYRO_GEARLOOSE,
-    "gearloose": Tags.GYRO_GEARLOOSE,
-    "driving car": Tags.HDL_DRIVING_CAR,
-    "woodchucks": Tags.JUNIOR_WOODCHUCKS,
-    "magica": Tags.MAGICA_DE_SPELL,
-    "spell": Tags.MAGICA_DE_SPELL,
-    "mcswine": Tags.MR_MC_SWINE,
-    "mrmcswine": Tags.MR_MC_SWINE,
-    "jones": Tags.NEIGHBOR_JONES,
     "demon": Tags.OLD_DEMON_TOOTH,
+    "dorado": Tags.EL_DORADO,
+    "driving car": Tags.HDL_DRIVING_CAR,
+    "el": Tags.EL_DORADO,
+    "flintheart": Tags.FLINTHEART_GLOMGOLD,
+    "foola": Tags.FOOLA_ZOOLA,
+    "gearloose": Tags.GYRO_GEARLOOSE,
+    "gladstone": Tags.GLADSTONE_GANDER,
+    "glomgold": Tags.FLINTHEART_GLOMGOLD,
+    "gyro": Tags.GYRO_GEARLOOSE,
+    "jones": Tags.NEIGHBOR_JONES,
+    "magica": Tags.MAGICA_DE_SPELL,
+    "mcbrine": Tags.P_J_MC_BRINE,
+    "mccobb": Tags.CORNELIUS_MC_COBB,
+    "mcfiendy": Tags.ARGUS_MCFIENDY,
+    "mcsue": Tags.CHISEL_MC_SUE,
+    "mcswine": Tags.MR_MC_SWINE,
     "mount demon tooth": Tags.OLD_DEMON_TOOTH,
+    "mrmcswine": Tags.MR_MC_SWINE,
+    "niagara": Tags.NIAGARA_FALLS,
     "old demon tooth": Tags.OLD_DEMON_TOOTH,
     "pjmcbrine": Tags.P_J_MC_BRINE,
-    "mcbrine": Tags.P_J_MC_BRINE,
-    "uncle": Tags.SCROOGE_NOT_IN_US,
     "scrooge": Tags.SCROOGE_NOT_IN_US,
+    "snozzie": Tags.GENERAL_SNOZZIE,
+    "south pole": Tags.ANTARCTICA,
+    "spell": Tags.MAGICA_DE_SPELL,
+    "the beagle boys": Tags.BEAGLE_BOYS,
+    "uncle": Tags.SCROOGE_NOT_IN_US,
+    "woodchucks": Tags.JUNIOR_WOODCHUCKS,
+    "zombie": Tags.BOMBIE_THE_ZOMBIE,
+    "zoola": Tags.FOOLA_ZOOLA,
 }
 
 BARKS_TAG_ALIASES = {str(t.value).lower(): t for t in Tags} | BARKS_TAG_EXTRA_ALIASES
@@ -217,18 +211,18 @@ class TagGroups(Enum):
     AFRICA = "Africa"
     ASIA = "Asia"
     AUSTRALASIA = "Australasia"
+    CARS = "cars"
+    CHEMICAL_NAMES = "chemical names"
+    CHEMISTRY = "chemistry"
+    DRUGS = "drugs"
     EUROPE = "Europe"
     NORTH_AMERICA = "North America"
+    ONE_OFF_CHARACTERS = "One-off Characters"
     OTHER = "Other"
-    SOUTH_AMERICA = "South America"
-    CARS = "cars"
-    CHEMISTRY = "chemistry"
-    CHEMICAL_NAMES = "chemical names"
-    DRUGS = "drugs"
+    PIG_VILLAINS = "Pig Villains"
     PRIMARY_CHARACTERS = "Primary Characters"
     SECONDARY_CHARACTERS = "Secondary Characters"
-    ONE_OFF_CHARACTERS = "One-off Characters"
-    PIG_VILLAINS = "Pig Villains"
+    SOUTH_AMERICA = "South America"
 
 
 BARKS_TAG_GROUPS_ALIASES = {str(t.value).lower(): t for t in TagGroups}
