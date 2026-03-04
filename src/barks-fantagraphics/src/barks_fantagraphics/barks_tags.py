@@ -23,12 +23,16 @@ class Tags(Enum):
     ARTICLES = "articles"
     ATLANTIS = "Atlantis"
     AUSTRALIA = "Australia"
+    AUSTRALIAN_ABORIGINALS = "Australian aboriginals"
     AZURE_BLUE = "Azure Blue"
+    BAGDAD = "Bagdad"
     BARKS_FAVOURITES = "Barks' Picks"
     BARNACLE_BAY = "Barnacle Bay"
     BEAGLE_BOYS = "The Beagle Boys"
     BENZENE_BANZOONY = "Benzene Banzoony"
     BOMBIE_THE_ZOMBIE = "Bombie the Zombie"
+    BOP_BOP = "Bop Bop"
+    CABBAGE_PROFESSOR = "The Cabbage Professor"
     CALCIUM = "calcium"
     CAMERAS = "cameras"
     CANADA = "Canada"
@@ -47,7 +51,9 @@ class Tags(Enum):
     CONGO = "Congo"
     COPPER = "copper"
     CORNELIUS_MC_COBB = "Cornelius McCobb"
+    CRETE = "Crete"
     DAISY = "Daisy Duck"
+    DAMASCUS = "Damascus"
     DUCKBURG = "Duckburg"
     DUCKMITE = "duckmite"
     EGYPT = "Egypt"
@@ -75,15 +81,22 @@ class Tags(Enum):
     INDIA = "India"
     INDIAN_OCEAN = "Indian Ocean"
     INDO_CHINA = "Indo-China"
+    INUIT = "Inuit"
     IRAQ = "Iraq"
     ISOTOPES = "isotopes"
     ITALY = "Italy"
     JAYNE_GIRLSFIELD = "Jayne Girlsfield"
+    JIVARO = "Jivaro"
     JUGHEAD_JONES = "Jughead Jones"
     JUNIOR_WOODCHUCKS = "Junior Woodchucks"
     J_MORGANBILT_GILTWHISKERS = "J. Morganbilt Giltwhiskers"
+    KAKIMAW_INDIANS = "Kakimaw Indians"
+    KAKIMAW_COUNTRY = "Kakimaw Country"
+    LABRADOR = "labrador"
     LIBYA = "Libya"
     LITHIUM = "lithium"
+    LONGHORN_TALLGRASS = "Longhorn Tallgrass"
+    MAD_SCIENTIST = "The Mad Scientist"
     MAGIC = "magic"
     MAGICA_DE_SPELL = "Magica de Spell"
     MALI = "Mali"
@@ -92,10 +105,12 @@ class Tags(Enum):
     MISSISSIPPI = "Mississippi"
     MONGOLIA = "Mongolia"
     MOROCCO = "Morocco"
+    MOURNFUL_MARY = "Mournful Mary"
     MR_MC_SWINE = "Mr. McSwine"
     NAPHTHA = "naphtha"
     NEIGHBOR_JONES = "Neighbor Jones"
     NEUTRON = "neutron"
+    NEWFOUNDLAND = "Newfoundland"
     NEW_VERSIONS = "new versions of old stories"
     NIAGARA_FALLS = "Niagara Falls"
     NICKEL = "nickel"
@@ -108,6 +123,7 @@ class Tags(Enum):
     OPA = "OPA"
     OXYGEN = "oxygen"
     PAKISTAN = "Pakistan"
+    PEEWEEGAH_INDIANS = "Peeweegah Indians"
     PERSIA = "Persia"
     PERSONAL_FAVOURITES = "My Picks"
     PETER_SCHILLING_FAVOURITES = "Peter Schilling"
@@ -118,6 +134,7 @@ class Tags(Enum):
     PLATINUM = "platinum"
     PORKMAN_DE_LARDO = "Porkman de Lardo"
     POTASH = "potash"
+    PULPHEART_CLABBERHEAD = "Pulpheart Clabberhead"
     P_J_MC_BRINE = "P.J.McBrine"
     RUSSIA = "Russia"
     SCOTLAND = "Scotland"
@@ -127,6 +144,7 @@ class Tags(Enum):
     SOUTH_AFRICA = "South Africa"
     SPAIN = "Spain"
     SQUARE_EGGS = "square eggs"
+    STICKAREE_INDIANS = "Stickaree Indians"
     STROMBOLIUM = "strombolium"
     SUDAN = "Sudan"
     SULPHUR = "sulphur"
@@ -136,6 +154,7 @@ class Tags(Enum):
     SYDNEY = "Sydney"
     SYRIA = "Syria"
     TANGANYIKA = "Tanganyika"
+    TANGKOR_WAT = "Tangkor Wat"
     TANTALUM = "tantalum"
     TERRIES = "Terries"
     THORIUM = "thorium"
@@ -221,11 +240,13 @@ class TagGroups(Enum):
     CARS = "cars"
     CHEMICAL_NAMES = "chemical names"
     CHEMISTRY = "chemistry"
+    COUNTRIES = "countries"
+    CULTURAL_GROUPS = "cultural groups"
     DRUGS = "drugs"
     EUROPE = "Europe"
     NORTH_AMERICA = "North America"
     ONE_OFF_CHARACTERS = "One-off Characters"
-    OTHER = "Other"
+    OTHER_PLACES = "Other"
     PIG_VILLAINS = "Pig Villains"
     PRIMARY_CHARACTERS = "Primary Characters"
     SECONDARY_CHARACTERS = "Secondary Characters"
@@ -237,6 +258,11 @@ BARKS_TAG_GROUPS_ALIASES = {str(t.value).lower(): t for t in TagGroups}
 BARKS_TAG_CATEGORIES_DICT = {cat.value: cat for cat in TagCategories}
 
 BARKS_TAG_CATEGORIES = {
+    TagCategories.CHARACTERS: [
+        TagGroups.PRIMARY_CHARACTERS,
+        TagGroups.SECONDARY_CHARACTERS,
+        TagGroups.ONE_OFF_CHARACTERS,
+    ],
     TagCategories.FAVOURITES: [
         Tags.BARKS_FAVOURITES,
         Tags.EVERY_GEEK_FAVOURITES,
@@ -244,31 +270,6 @@ BARKS_TAG_CATEGORIES = {
         Tags.PETER_SCHILLING_FAVOURITES,
         Tags.WIKI_NOTABLE_STORIES,
         Tags.CLASSICS,
-    ],
-    TagCategories.THINGS: [
-        Tags.AIRPLANES,
-        Tags.CAMERAS,
-        TagGroups.CARS,
-        TagGroups.CHEMICAL_NAMES,
-        Tags.CIGARETTES,
-        Tags.FIRE,
-        Tags.SQUARE_EGGS,
-        Tags.WORRY_ROOM,
-    ],
-    TagCategories.THEMES: [
-        Tags.CENSORED_STORIES_BUT_FIXED,
-        TagGroups.CHEMISTRY,
-        Tags.CHRISTMAS_STORIES,
-        TagGroups.DRUGS,
-        Tags.HYPNOSIS,
-        Tags.MAGIC,
-        Tags.PHOTOGRAPHY,
-        Tags.NEW_VERSIONS,
-    ],
-    TagCategories.CHARACTERS: [
-        TagGroups.PRIMARY_CHARACTERS,
-        TagGroups.SECONDARY_CHARACTERS,
-        TagGroups.ONE_OFF_CHARACTERS,
     ],
     TagCategories.PLACES: [
         Tags.AEOLIAN_ISLANDS,
@@ -283,11 +284,15 @@ BARKS_TAG_CATEGORIES = {
         TagGroups.ASIA,
         # Tags.AUSTRALIA,
         TagGroups.AUSTRALASIA,
+        Tags.BAGDAD,
         Tags.BARNACLE_BAY,
         Tags.CANADA,
         Tags.CENTRAL_AFRICA,
         Tags.CHINA,
         Tags.CONGO,
+        TagGroups.COUNTRIES,
+        Tags.CRETE,
+        Tags.DAMASCUS,
         Tags.DUCKBURG,
         Tags.EGYPT,
         TagGroups.EUROPE,
@@ -301,11 +306,14 @@ BARKS_TAG_CATEGORIES = {
         Tags.INDO_CHINA,
         Tags.IRAQ,
         Tags.ITALY,
+        Tags.KAKIMAW_COUNTRY,
         Tags.LIBYA,
+        Tags.LABRADOR,
         Tags.MALI,
         Tags.MISSISSIPPI,
         Tags.MONGOLIA,
         Tags.MOROCCO,
+        Tags.NEWFOUNDLAND,
         Tags.NIAGARA_FALLS,
         TagGroups.NORTH_AMERICA,
         Tags.NORWAY,
@@ -325,6 +333,28 @@ BARKS_TAG_CATEGORIES = {
         Tags.SYDNEY,
         Tags.SYRIA,
         Tags.TANGANYIKA,
+        Tags.TANGKOR_WAT,
+    ],
+    TagCategories.THEMES: [
+        Tags.CENSORED_STORIES_BUT_FIXED,
+        TagGroups.CHEMISTRY,
+        Tags.CHRISTMAS_STORIES,
+        TagGroups.CULTURAL_GROUPS,
+        TagGroups.DRUGS,
+        Tags.HYPNOSIS,
+        Tags.MAGIC,
+        Tags.PHOTOGRAPHY,
+        Tags.NEW_VERSIONS,
+    ],
+    TagCategories.THINGS: [
+        Tags.AIRPLANES,
+        Tags.CAMERAS,
+        TagGroups.CARS,
+        TagGroups.CHEMICAL_NAMES,
+        Tags.CIGARETTES,
+        Tags.FIRE,
+        Tags.SQUARE_EGGS,
+        Tags.WORRY_ROOM,
     ],
 }
 
@@ -343,7 +373,9 @@ BARKS_TAG_GROUPS = {
         Tags.TANGANYIKA,
     ],
     TagGroups.ASIA: [
+        Tags.BAGDAD,
         Tags.CHINA,
+        Tags.DAMASCUS,
         Tags.INDO_CHINA,
         Tags.HIMALAYAS,
         Tags.INDIA,
@@ -351,46 +383,16 @@ BARKS_TAG_GROUPS = {
         Tags.MONGOLIA,
         Tags.PAKISTAN,
         Tags.PERSIA,
+        Tags.SYRIA,
+        Tags.TANGKOR_WAT,
     ],
     TagGroups.AUSTRALASIA: [
         Tags.AUSTRALIA,
         Tags.SYDNEY,
     ],
-    TagGroups.EUROPE: [
-        Tags.AEOLIAN_ISLANDS,
-        Tags.FRANCE,
-        Tags.GERMANY,
-        Tags.GREECE,
-        Tags.ITALY,
-        Tags.NORWAY,
-        Tags.RUSSIA,
-        Tags.SCOTLAND,
-        Tags.SPAIN,
-        Tags.SWEDEN,
-        Tags.SWITZERLAND,
-    ],
-    TagGroups.NORTH_AMERICA: [Tags.ALASKA, Tags.CANADA, Tags.FLORIDA, Tags.MISSISSIPPI, Tags.OHIO],
-    TagGroups.OTHER: [
-        Tags.ANTARCTICA,
-        Tags.ARCTIC_OCEAN,
-        Tags.ATLANTIS,
-        Tags.BARNACLE_BAY,
-        Tags.DUCKBURG,
-        Tags.OLD_DEMON_TOOTH,
-    ],
-    TagGroups.SOUTH_AMERICA: [
-        Tags.ANDES,
-        Tags.PLAIN_AWFUL,
-    ],
     TagGroups.CARS: [
         Tags.CAR_313,
         Tags.HDL_DRIVING_CAR,
-    ],
-    TagGroups.CHEMISTRY: [
-        Tags.CHEMICAL_FORMULA,
-        TagGroups.CHEMICAL_NAMES,
-        Tags.DUCKMITE,
-        Tags.WEEMITE,
     ],
     TagGroups.CHEMICAL_NAMES: [
         Tags.ALKALI,
@@ -429,8 +431,119 @@ BARKS_TAG_GROUPS = {
         Tags.ZINC,
         Tags.ZIRCONIUM,
     ],
+    TagGroups.CHEMISTRY: [
+        Tags.CHEMICAL_FORMULA,
+        TagGroups.CHEMICAL_NAMES,
+        Tags.DUCKMITE,
+        Tags.WEEMITE,
+    ],
+    TagGroups.COUNTRIES: [
+        Tags.ALGERIA,
+        Tags.CANADA,
+        Tags.CHINA,
+        Tags.CONGO,
+        Tags.CRETE,
+        Tags.EGYPT,
+        Tags.FRANCE,
+        Tags.GERMANY,
+        Tags.GREECE,
+        Tags.INDIA,
+        Tags.INDO_CHINA,
+        Tags.IRAQ,
+        Tags.ITALY,
+        Tags.LIBYA,
+        Tags.MALI,
+        Tags.MONGOLIA,
+        Tags.MOROCCO,
+        Tags.NORWAY,
+        Tags.PAKISTAN,
+        Tags.PERSIA,
+        Tags.RUSSIA,
+        Tags.SCOTLAND,
+        Tags.SOUTH_AFRICA,
+        Tags.SPAIN,
+        Tags.SUDAN,
+        Tags.SWEDEN,
+        Tags.SWITZERLAND,
+        Tags.SYRIA,
+        Tags.TANGANYIKA,
+    ],
+    TagGroups.CULTURAL_GROUPS: [
+        Tags.AUSTRALIAN_ABORIGINALS,
+        Tags.GNEEZLES,
+        Tags.INUIT,
+        Tags.JIVARO,
+        Tags.KAKIMAW_INDIANS,
+        Tags.PEEWEEGAH_INDIANS,
+        Tags.STICKAREE_INDIANS,
+    ],
     TagGroups.DRUGS: [
         Tags.CIGARETTES,
+    ],
+    TagGroups.EUROPE: [
+        Tags.AEOLIAN_ISLANDS,
+        Tags.CRETE,
+        Tags.FRANCE,
+        Tags.GERMANY,
+        Tags.GREECE,
+        Tags.ITALY,
+        Tags.NORWAY,
+        Tags.RUSSIA,
+        Tags.SCOTLAND,
+        Tags.SPAIN,
+        Tags.SWEDEN,
+        Tags.SWITZERLAND,
+    ],
+    TagGroups.NORTH_AMERICA: [
+        Tags.ALASKA,
+        Tags.CANADA,
+        Tags.FLORIDA,
+        Tags.LABRADOR,
+        Tags.MISSISSIPPI,
+        Tags.NEWFOUNDLAND,
+        Tags.NIAGARA_FALLS,
+        Tags.OHIO,
+    ],
+    TagGroups.ONE_OFF_CHARACTERS: [
+        Tags.APPLECHEEKS_TEENGIGGLE,
+        Tags.ARGUS_MCFIENDY,
+        Tags.AZURE_BLUE,
+        Tags.BENZENE_BANZOONY,
+        Tags.BOMBIE_THE_ZOMBIE,
+        Tags.BOP_BOP,
+        Tags.CABBAGE_PROFESSOR,
+        Tags.CARVER_BEAKOFF,
+        Tags.CHISEL_MC_SUE,
+        Tags.CORNELIUS_MC_COBB,
+        Tags.EL_DORADO,
+        Tags.FERMIES,
+        Tags.FOOLA_ZOOLA,
+        Tags.GNEEZLES,
+        Tags.J_MORGANBILT_GILTWHISKERS,
+        Tags.JAYNE_GIRLSFIELD,
+        Tags.JUGHEAD_JONES,
+        Tags.LONGHORN_TALLGRASS,
+        Tags.MAD_SCIENTIST,
+        Tags.MOURNFUL_MARY,
+        Tags.PULPHEART_CLABBERHEAD,
+        Tags.TERRIES,
+    ],
+    TagGroups.OTHER_PLACES: [
+        Tags.ANTARCTICA,
+        Tags.ARCTIC_OCEAN,
+        Tags.ATLANTIS,
+        Tags.BARNACLE_BAY,
+        Tags.DUCKBURG,
+        Tags.INDIAN_OCEAN,
+        Tags.KAKIMAW_COUNTRY,
+        Tags.OLD_DEMON_TOOTH,
+    ],
+    TagGroups.PIG_VILLAINS: [
+        Tags.HASSAN_BEN_JAILD,
+        Tags.MR_MC_SWINE,
+        Tags.P_J_MC_BRINE,
+        Tags.PORKMAN_DE_LARDO,
+        Tags.SOAPY_SLICK,
     ],
     TagGroups.PRIMARY_CHARACTERS: [
         Tags.BEAGLE_BOYS,
@@ -449,30 +562,9 @@ BARKS_TAG_GROUPS = {
         Tags.NEIGHBOR_JONES,
         TagGroups.PIG_VILLAINS,
     ],
-    TagGroups.ONE_OFF_CHARACTERS: [
-        Tags.APPLECHEEKS_TEENGIGGLE,
-        Tags.ARGUS_MCFIENDY,
-        Tags.AZURE_BLUE,
-        Tags.BENZENE_BANZOONY,
-        Tags.BOMBIE_THE_ZOMBIE,
-        Tags.CARVER_BEAKOFF,
-        Tags.CHISEL_MC_SUE,
-        Tags.CORNELIUS_MC_COBB,
-        Tags.EL_DORADO,
-        Tags.FERMIES,
-        Tags.FOOLA_ZOOLA,
-        Tags.GNEEZLES,
-        Tags.J_MORGANBILT_GILTWHISKERS,
-        Tags.JAYNE_GIRLSFIELD,
-        Tags.JUGHEAD_JONES,
-        Tags.TERRIES,
-    ],
-    TagGroups.PIG_VILLAINS: [
-        Tags.HASSAN_BEN_JAILD,
-        Tags.MR_MC_SWINE,
-        Tags.P_J_MC_BRINE,
-        Tags.PORKMAN_DE_LARDO,
-        Tags.SOAPY_SLICK,
+    TagGroups.SOUTH_AMERICA: [
+        Tags.ANDES,
+        Tags.PLAIN_AWFUL,
     ],
 }
 
@@ -529,7 +621,9 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.RICHES_RICHES_EVERYWHERE,
         Titles.QUEEN_OF_THE_WILD_DOG_PACK_THE,
     ],
+    Tags.AUSTRALIAN_ABORIGINALS: [Titles.ADVENTURE_DOWN_UNDER],
     Tags.AZURE_BLUE: [Titles.GOLDEN_HELMET_THE],
+    Tags.BAGDAD: [Titles.FABULOUS_PHILOSOPHERS_STONE_THE],
     Tags.BARKS_FAVOURITES: [
         # This list of Barks' favorites is from https://www.cbarks.dk/thefavourites.htm
         Titles.LOST_IN_THE_ANDES,
@@ -583,6 +677,8 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     ],
     Tags.BENZENE_BANZOONY: [Titles.FIREBUG_THE],
     Tags.BOMBIE_THE_ZOMBIE: [Titles.VOODOO_HOODOO],
+    Tags.BOP_BOP: [Titles.VOODOO_HOODOO],
+    Tags.CABBAGE_PROFESSOR: [Titles.MYSTERIOUS_STONE_RAY_THE],
     Tags.CALCIUM: [Titles.KRANKENSTEIN_GYRO],
     Tags.CAMERAS: [
         Titles.CAMERA_CRAZY,
@@ -706,6 +802,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.LAND_OF_THE_PYGMY_INDIANS,
     ],
     Tags.CORNELIUS_MC_COBB: [Titles.VOODOO_HOODOO],
+    Tags.CRETE: [Titles.FABULOUS_PHILOSOPHERS_STONE_THE],
     Tags.DAISY: [
         Titles.MIGHTY_TRAPPER_THE,
         Titles.EYES_IN_THE_DARK,
@@ -767,6 +864,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.BEAUTY_BUSINESS_THE,
         Titles.NOT_SO_ANCIENT_MARINER_THE,
     ],
+    Tags.DAMASCUS: [Titles.FABULOUS_PHILOSOPHERS_STONE_THE],
     Tags.DUCKBURG: [
         Titles.HIGH_WIRE_DAREDEVILS,
         Titles.CHRISTMAS_IN_DUCKBURG,
@@ -1045,6 +1143,10 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.TREASURE_OF_MARCO_POLO,
         Titles.MONKEY_BUSINESS,
     ],
+    Tags.INUIT: [
+        Titles.FROZEN_GOLD,
+        Titles.LUCK_OF_THE_NORTH,
+    ],
     Tags.IRAQ: [
         Titles.FABULOUS_PHILOSOPHERS_STONE_THE,
         Titles.RUG_RIDERS_IN_THE_SKY,
@@ -1060,6 +1162,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.DUCKS_EYE_VIEW_OF_EUROPE_A,
     ],
     Tags.JAYNE_GIRLSFIELD: [Titles.SITTING_HIGH],
+    Tags.JIVARO: [Titles.MONEY_CHAMP_THE],
     Tags.JUGHEAD_JONES: [Titles.OUTFOXED_FOX],
     Tags.JUNIOR_WOODCHUCKS: [
         Titles.OPERATION_ST_BERNARD,
@@ -1082,8 +1185,13 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.BUBBLEWEIGHT_CHAMP,
     ],
     Tags.J_MORGANBILT_GILTWHISKERS: [Titles.WIRED],
+    Tags.KAKIMAW_INDIANS: [Titles.IN_KAKIMAW_COUNTRY],
+    Tags.KAKIMAW_COUNTRY: [Titles.IN_KAKIMAW_COUNTRY],
+    Tags.LABRADOR: [Titles.GOLDEN_HELMET_THE],
     Tags.LIBYA: [Titles.ROCKET_RACE_AROUND_THE_WORLD],
     Tags.LITHIUM: [Titles.LAND_OF_THE_PYGMY_INDIANS],
+    Tags.LONGHORN_TALLGRASS: [Titles.FABULOUS_TYCOON_THE],
+    Tags.MAD_SCIENTIST: [Titles.IN_ANCIENT_PERSIA],
     Tags.MAGIC: [Titles.MAGICAL_MISERY],
     Tags.MAGICA_DE_SPELL: [
         Titles.MIDAS_TOUCH_THE,
@@ -1105,6 +1213,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     Tags.MISSISSIPPI: [Titles.TERROR_OF_THE_RIVER_THE],
     Tags.MONGOLIA: [Titles.MONEY_CHAMP_THE],
     Tags.MOROCCO: [Titles.MAGIC_HOURGLASS_THE],
+    Tags.MOURNFUL_MARY: [Titles.ADVENTURE_DOWN_UNDER],
     Tags.MR_MC_SWINE: [Titles.MILKMAN_THE],
     Tags.NAPHTHA: [Titles.LOVELORN_FIREMAN_THE],
     Tags.NEIGHBOR_JONES: [
@@ -1118,6 +1227,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.UNFRIENDLY_ENEMIES,
     ],
     Tags.NEUTRON: [Titles.DANGEROUS_DISGUISE],
+    Tags.NEWFOUNDLAND: [Titles.GOLDEN_HELMET_THE],
     Tags.NEW_VERSIONS: [
         Titles.MOCKING_BIRD_RIDGE,
         Titles.DRAMATIC_DONALD,
@@ -1146,6 +1256,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     Tags.OPA: [Titles.MAD_CHEMIST_THE],
     Tags.OXYGEN: [Titles.GOLDEN_HELMET_THE, Titles.TRALLA_LA, Titles.LAND_OF_THE_PYGMY_INDIANS],
     Tags.PAKISTAN: [Titles.LOST_CROWN_OF_GENGHIS_KHAN_THE],
+    Tags.PEEWEEGAH_INDIANS: [Titles.LAND_OF_THE_PYGMY_INDIANS],
     Tags.PERSIA: [Titles.IN_ANCIENT_PERSIA],
     Tags.PETER_SCHILLING_FAVOURITES: [
         # This list of the Barks stories covered in Peter Schilling's book:
@@ -1174,6 +1285,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     ],
     Tags.PORKMAN_DE_LARDO: [Titles.STATUS_SEEKER_THE],
     Tags.POTASH: [Titles.KRANKENSTEIN_GYRO],
+    Tags.PULPHEART_CLABBERHEAD: [Titles.SPOIL_THE_ROD],
     Tags.P_J_MC_BRINE: [Titles.FORBIDDEN_VALLEY],
     Tags.RUSSIA: [Titles.CITY_OF_GOLDEN_ROOFS],
     Tags.SCOTLAND: [
@@ -1258,6 +1370,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.ROCKET_RACE_AROUND_THE_WORLD,
     ],
     Tags.SQUARE_EGGS: [Titles.LOST_IN_THE_ANDES],
+    Tags.STICKAREE_INDIANS: [Titles.FORBIDDEN_VALLEY],
     Tags.STROMBOLIUM: [Titles.LAND_OF_THE_PYGMY_INDIANS],
     Tags.SUDAN: [Titles.MINES_OF_KING_SOLOMON_THE],
     Tags.SULPHUR: [
@@ -1275,6 +1388,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     Tags.SYDNEY: [Titles.ADVENTURE_DOWN_UNDER],
     Tags.SYRIA: [Titles.FABULOUS_PHILOSOPHERS_STONE_THE],
     Tags.TANGANYIKA: [Titles.UNSAFE_SAFE_THE],
+    Tags.TANGKOR_WAT: [Titles.CITY_OF_GOLDEN_ROOFS],
     Tags.TANTALUM: [Titles.LAND_OF_THE_PYGMY_INDIANS],
     Tags.TERRIES: [Titles.LAND_BENEATH_THE_GROUND],
     Tags.THORIUM: [Titles.LAND_OF_THE_PYGMY_INDIANS],
@@ -1321,8 +1435,32 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
 BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE): ["7"],
     (Tags.ALKALI, Titles.TWENTY_FOUR_CARAT_MOON_THE): ["11"],
+    (Tags.AUSTRALIAN_ABORIGINALS, Titles.ADVENTURE_DOWN_UNDER): [
+        "7",
+        "13",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+    ],
     (Tags.APPLECHEEKS_TEENGIGGLE, Titles.PERSISTENT_POSTMAN_THE): ["2"],
+    (Tags.BAGDAD, Titles.FABULOUS_PHILOSOPHERS_STONE_THE): ["8"],
     (Tags.BARNACLE_BAY, Titles.NO_SUCH_VARMINT): ["11"],
+    (Tags.BOP_BOP, Titles.VOODOO_HOODOO): ["1"],
+    (Tags.CABBAGE_PROFESSOR, Titles.MYSTERIOUS_STONE_RAY_THE): [
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "26",
+        "27",
+        "28",
+    ],
     (Tags.CALCIUM, Titles.KRANKENSTEIN_GYRO): ["1"],
     (Tags.CAMERAS, Titles.SECRET_RESOLUTIONS): ["8"],
     (Tags.CAMERAS, Titles.VACATION_TIME): ["10"],  # plus more pages
@@ -1421,7 +1559,9 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.COPPER, Titles.ONLY_A_POOR_OLD_MAN): ["8", "22"],
     (Tags.COPPER, Titles.RICHES_RICHES_EVERYWHERE): ["14"],
     (Tags.CORNELIUS_MC_COBB, Titles.VOODOO_HOODOO): ["20", "21", "22", "23"],
+    (Tags.CRETE, Titles.FABULOUS_PHILOSOPHERS_STONE_THE): ["9"],
     (Tags.DAISY, Titles.EYES_IN_THE_DARK): ["7"],
+    (Tags.DAMASCUS, Titles.FABULOUS_PHILOSOPHERS_STONE_THE): ["8"],
     (Tags.DUCKMITE, Titles.MAD_CHEMIST_THE): ["2", "3", "4", "5", "6", "10"],
     (Tags.EL_DORADO, Titles.GILDED_MAN_THE): [
         "8",
@@ -1456,18 +1596,35 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.GYRO_NOT_IN_GG, Titles.KNIGHTS_OF_THE_FLYING_SLEDS): ["3"],
     (Tags.GYRO_NOT_IN_GG, Titles.UNDER_THE_POLAR_ICE): ["3"],
     (Tags.HDL_DRIVING_CAR, Titles.SHERIFF_OF_BULLET_VALLEY): ["11", "12", "14"],
+    (Tags.INUIT, Titles.FROZEN_GOLD): ["16", "17"],
+    (Tags.INUIT, Titles.LUCK_OF_THE_NORTH): ["14"],
     (Tags.ISOTOPES, Titles.SUPER_SNOOPER): ["4"],
     (Tags.JAYNE_GIRLSFIELD, Titles.SITTING_HIGH): ["1", "2"],
+    (Tags.JIVARO, Titles.MONEY_CHAMP_THE): ["15", "16", "17", "19", "20", "21", "22"],
     (Tags.JUGHEAD_JONES, Titles.OUTFOXED_FOX): ["2", "4"],
     (Tags.J_MORGANBILT_GILTWHISKERS, Titles.WIRED): ["10"],
+    (Tags.LABRADOR, Titles.GOLDEN_HELMET_THE): ["5", "6", "9", "10"],
     (Tags.LITHIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["22"],
     (Tags.MALI, Titles.DAY_DUCKBURG_GOT_DYED_THE): ["10"],
     (Tags.MANGANESE, Titles.LAND_OF_THE_PYGMY_INDIANS): ["5"],
     (Tags.MERCURY, Titles.FABULOUS_PHILOSOPHERS_STONE_THE): ["2"],
     (Tags.MISSISSIPPI, Titles.TERROR_OF_THE_RIVER_THE): ["16"],
+    (Tags.MOURNFUL_MARY, Titles.ADVENTURE_DOWN_UNDER): [
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "15",
+        "17",
+        "22",
+        "23",
+        "24",
+    ],
     (Tags.NAPHTHA, Titles.LOVELORN_FIREMAN_THE): ["3"],
     (Tags.NEIGHBOR_JONES, Titles.GOOD_DEEDS): ["1"],
     (Tags.NEUTRON, Titles.DANGEROUS_DISGUISE): ["27"],
+    (Tags.NEWFOUNDLAND, Titles.GOLDEN_HELMET_THE): ["9", "11", "23"],
     (Tags.NICKEL, Titles.LAND_OF_THE_PYGMY_INDIANS): ["2", "5", "19"],
     (Tags.NITROGEN, Titles.MAD_CHEMIST_THE): ["2"],
     (Tags.NITROGLYCERIN, Titles.JAM_ROBBERS): ["8", "9"],
@@ -1486,6 +1643,17 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.POTASH, Titles.KRANKENSTEIN_GYRO): ["1"],
     (Tags.P_J_MC_BRINE, Titles.FORBIDDEN_VALLEY): ["3"],
     (Tags.SELENIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["22"],
+    (Tags.STICKAREE_INDIANS, Titles.FORBIDDEN_VALLEY): [
+        "8",
+        "9",
+        "11",
+        "13",
+        "15",
+        "16",
+        "17",
+        "18",
+        "24",
+    ],
     (Tags.STROMBOLIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["24", "27"],
     (Tags.SULPHUR, Titles.DANGEROUS_DISGUISE): ["27"],
     (Tags.SULPHUR, Titles.FABULOUS_PHILOSOPHERS_STONE_THE): ["2"],
@@ -1495,6 +1663,7 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.SULPHUR, Titles.LOVELORN_FIREMAN_THE): ["3"],
     (Tags.SULPHUR, Titles.MAD_CHEMIST_THE): ["1", "2"],
     (Tags.SULPHURIC_ACID, Titles.BIG_BIN_ON_KILLMOTOR_HILL_THE): ["3"],
+    (Tags.TANGKOR_WAT, Titles.CITY_OF_GOLDEN_ROOFS): ["17"],
     (Tags.TANTALUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["24"],
     (Tags.THORIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["22"],
     (Tags.WEEMITE, Titles.ROCKET_ROASTED_CHRISTMAS_TURKEY): ["3", "4", "6", "7", "8"],
@@ -1618,6 +1787,28 @@ def validate_tag_data() -> None:
                 f"Invalid tag '{tag_item}' in group '{group.value}'. Must be Tags or TagGroups."
             )
 
+    _validate_places()
+
+
+def _validate_places() -> None:
+    places_groups = {
+        TagGroups.AFRICA,
+        TagGroups.AUSTRALASIA,
+        TagGroups.AUSTRALASIA,
+        TagGroups.ASIA,
+        TagGroups.EUROPE,
+        TagGroups.OTHER_PLACES,
+        TagGroups.NORTH_AMERICA,
+        TagGroups.SOUTH_AMERICA,
+    }
+
+    places_tags = set()
+    for group in places_groups:
+        places_tags.update(get_all_tags_in_tag_group(group))
+
+    symmetric_diff = places_tags ^ _get_all_tags_in_tag_category(TagCategories.PLACES)
+    assert len(symmetric_diff) == 0, f"Non-empty diff: '{symmetric_diff}'"
+
 
 def get_sorted_tagged_titles(tag: Tags) -> list[Titles]:
     """Retrieve a sorted list of unique titles associated with a specific tag.
@@ -1678,6 +1869,19 @@ def _get_titles_for_tags_or_groups(items_list: list[Tags | TagGroups]) -> set[Ti
             collected_titles.update(BARKS_TAGGED_TITLES[tag])
 
     return collected_titles
+
+
+def _get_all_tags_in_tag_category(tag_category: TagCategories) -> set[Tags]:
+    """Recursively collect all unique tags for a tag categpry."""
+    tags = set()
+    for tag_or_group in BARKS_TAG_CATEGORIES[tag_category]:
+        if isinstance(tag_or_group, Tags):
+            tags.add(tag_or_group)
+        else:
+            assert isinstance(tag_or_group, TagGroups)
+            tags.update(get_all_tags_in_tag_group(tag_or_group))
+
+    return tags
 
 
 def get_all_tags_in_tag_group(tag_group: TagGroups) -> set[Tags]:

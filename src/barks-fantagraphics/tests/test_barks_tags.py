@@ -241,7 +241,7 @@ def test_barks_character_tag_groups() -> None:
 def test_barks_tag_aliases() -> None:
     assert BARKS_TAG_ALIASES["fire"] == Tags.FIRE
     assert BARKS_TAG_ALIASES["arabia"] == Tags.ARABIAN_PENINSULA
-    assert BARKS_TAG_ALIASES["beagles"] == Tags.BEAGLE_BOYS
+    assert BARKS_TAG_ALIASES["morganbilt"] == Tags.J_MORGANBILT_GILTWHISKERS
     assert "non_existent_alias" not in BARKS_TAG_ALIASES
 
 
