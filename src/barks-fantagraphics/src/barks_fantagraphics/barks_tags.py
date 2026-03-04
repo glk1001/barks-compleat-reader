@@ -79,6 +79,7 @@ class Tags(Enum):
     ISOTOPES = "isotopes"
     ITALY = "Italy"
     JAYNE_GIRLSFIELD = "Jayne Girlsfield"
+    JUGHEAD_JONES = "Jughead Jones"
     JUNIOR_WOODCHUCKS = "Junior Woodchucks"
     J_MORGANBILT_GILTWHISKERS = "J. Morganbilt Giltwhiskers"
     LIBYA = "Libya"
@@ -462,6 +463,8 @@ BARKS_TAG_GROUPS = {
         Tags.FOOLA_ZOOLA,
         Tags.GNEEZLES,
         Tags.J_MORGANBILT_GILTWHISKERS,
+        Tags.JAYNE_GIRLSFIELD,
+        Tags.JUGHEAD_JONES,
         Tags.TERRIES,
     ],
     TagGroups.PIG_VILLAINS: [
@@ -1057,6 +1060,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.DUCKS_EYE_VIEW_OF_EUROPE_A,
     ],
     Tags.JAYNE_GIRLSFIELD: [Titles.SITTING_HIGH],
+    Tags.JUGHEAD_JONES: [Titles.OUTFOXED_FOX],
     Tags.JUNIOR_WOODCHUCKS: [
         Titles.OPERATION_ST_BERNARD,
         Titles.TEN_STAR_GENERALS,
@@ -1454,6 +1458,7 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.HDL_DRIVING_CAR, Titles.SHERIFF_OF_BULLET_VALLEY): ["11", "12", "14"],
     (Tags.ISOTOPES, Titles.SUPER_SNOOPER): ["4"],
     (Tags.JAYNE_GIRLSFIELD, Titles.SITTING_HIGH): ["1", "2"],
+    (Tags.JUGHEAD_JONES, Titles.OUTFOXED_FOX): ["2", "4"],
     (Tags.J_MORGANBILT_GILTWHISKERS, Titles.WIRED): ["10"],
     (Tags.LITHIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["22"],
     (Tags.MALI, Titles.DAY_DUCKBURG_GOT_DYED_THE): ["10"],
