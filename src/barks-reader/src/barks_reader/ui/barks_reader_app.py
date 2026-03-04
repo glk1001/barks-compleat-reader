@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, LiteralString, override
 
 from barks_fantagraphics.comics_database import ComicsDatabase
+from comic_utils.kivy_patches import apply_text_input_remove_group_patch
 from comic_utils.timing import Timing
 from kivy.app import App  # can take ~2s in VM Windows
 from kivy.clock import Clock
@@ -330,7 +331,7 @@ class BarksReaderApp(App):
 
     # noinspection LongLine
     @override
-    def build(self) -> Widget:  # noqa: C901
+    def build(self) -> Widget:
         logger.debug("Building app...")
 
         assert Window is not None
@@ -338,25 +339,10 @@ class BarksReaderApp(App):
         # Kivy 2.3.1 bug: several methods call canvas._remove_group() but the
         # Canvas Cython extension only exposes the public remove_group().
         # Patch the Python-level methods that make the bad call instead.
+        # TODO: Remove when Kivy fixes canvas._remove_group (broken in Kivy 2.3.1).
         from kivy.uix.screenmanager import SwapTransition  # noqa: PLC0415
-        from kivy.uix.textinput import TextInput  # noqa: PLC0415
 
-        if not hasattr(TextInput, "_kivy_workaround_applied"):
-            # noinspection PyProtectedMember
-            _orig_ti = TextInput._update_graphics_selection  # noqa: SLF001
-
-            # noinspection PyShadowingNames
-            def _patched_update_graphics_selection(self: TextInput) -> None:
-                try:
-                    _orig_ti(self)
-                except AttributeError as exc:
-                    if "_remove_group" in str(exc):
-                        self.canvas.remove_group("selection")  # ty:ignore[unresolved-attribute]
-                    else:
-                        raise
-
-            TextInput._update_graphics_selection = _patched_update_graphics_selection  # noqa: SLF001
-            TextInput._kivy_workaround_applied = True  # noqa: SLF001
+        apply_text_input_remove_group_patch()
 
         if not hasattr(SwapTransition, "_kivy_workaround_applied"):
             _orig_st = SwapTransition.on_complete
