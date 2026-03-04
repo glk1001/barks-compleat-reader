@@ -78,6 +78,7 @@ class Tags(Enum):
     IRAQ = "Iraq"
     ISOTOPES = "isotopes"
     ITALY = "Italy"
+    JAYNE_GIRLSFIELD = "Jayne Girlsfield"
     JUNIOR_WOODCHUCKS = "Junior Woodchucks"
     J_MORGANBILT_GILTWHISKERS = "J. Morganbilt Giltwhiskers"
     LIBYA = "Libya"
@@ -1055,6 +1056,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.MANY_FACES_OF_MAGICA_DE_SPELL_THE,
         Titles.DUCKS_EYE_VIEW_OF_EUROPE_A,
     ],
+    Tags.JAYNE_GIRLSFIELD: [Titles.SITTING_HIGH],
     Tags.JUNIOR_WOODCHUCKS: [
         Titles.OPERATION_ST_BERNARD,
         Titles.TEN_STAR_GENERALS,
@@ -1451,6 +1453,7 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.GYRO_NOT_IN_GG, Titles.UNDER_THE_POLAR_ICE): ["3"],
     (Tags.HDL_DRIVING_CAR, Titles.SHERIFF_OF_BULLET_VALLEY): ["11", "12", "14"],
     (Tags.ISOTOPES, Titles.SUPER_SNOOPER): ["4"],
+    (Tags.JAYNE_GIRLSFIELD, Titles.SITTING_HIGH): ["1", "2"],
     (Tags.J_MORGANBILT_GILTWHISKERS, Titles.WIRED): ["10"],
     (Tags.LITHIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["22"],
     (Tags.MALI, Titles.DAY_DUCKBURG_GOT_DYED_THE): ["10"],
