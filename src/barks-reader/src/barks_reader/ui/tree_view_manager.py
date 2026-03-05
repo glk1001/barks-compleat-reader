@@ -112,10 +112,9 @@ class TreeViewManager:
     def _handle_search_box_node_selection(
         node: TitleSearchBoxTreeViewNode | TagSearchBoxTreeViewNode,
     ) -> None:
-        def set_text() -> None:
-            node.text = node.saved_state.get("text", "")
-
-        Clock.schedule_once(lambda _dt: set_text(), 1)
+        # Delay one second to let the TextInput settle into the layout before
+        # restoring text — avoids cursor-positioning glitches on first render.
+        Clock.schedule_once(lambda _dt: node.restore_saved_state(), 1)
         node.press_search_box()
 
     def _handle_button_node_selection(self, node: ButtonTreeViewNode) -> None:
@@ -466,9 +465,10 @@ class TreeViewManager:
         instance: TagSearchBoxTreeViewNode,
         title_str: str,
     ) -> None:
+        current_tag = instance.get_current_tag()
+        tag_value = current_tag.value if current_tag is not None else "None"
         logger.debug(
-            f'Tag search box title changed: "{title_str}".'
-            f' Tag: "{instance.get_current_tag().value}".',
+            f'Tag search box title changed: "{title_str}". Tag: "{tag_value}".',
         )
 
         if not title_str:

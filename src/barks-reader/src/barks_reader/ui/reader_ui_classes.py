@@ -28,7 +28,6 @@ from barks_reader.core.reader_formatter import (
     ReaderFormatter,
     get_clean_text_without_extra,
     get_markup_text_with_num_titles,
-    text_includes_num_titles,
 )
 from barks_reader.core.reader_utils import title_needs_footnote, unique_extend
 
@@ -182,8 +181,6 @@ class BaseTreeViewNode(TreeViewNode):
 class BaseSearchBoxTreeViewNode(FloatLayout, BaseTreeViewNode):
     """Base class for search boxes in the TreeView."""
 
-    populate_callback: Callable[[], None] | None = None
-
     @staticmethod
     def _set_spinner_values(spinner: Spinner, values: list[str]) -> None:
         """Set value and state for a spinner."""
@@ -203,9 +200,6 @@ class BaseSearchBoxTreeViewNode(FloatLayout, BaseTreeViewNode):
 
 class TitleSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
     def on_title_search_box_pressed(self) -> None:
-        pass
-
-    def on_title_search_box_title_pressed(self) -> None:
         pass
 
     def on_title_search_box_title_changed(self, _value: str) -> None:
@@ -246,6 +240,12 @@ class TitleSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
     def get_current_title(self) -> str:
         return self.ids.title_search_box.text
 
+    def restore_saved_state(self) -> None:
+        self.text = self.saved_state.get("text", "")
+        saved_title = self.saved_state.get("title", "")
+        if saved_title:
+            self.ids.title_spinner.text = saved_title
+
     def _on_internal_search_box_text_changed(self, instance: Widget, value: str) -> None:
         logger.debug(f'**Title search box text changed: {instance}, text: "{value}".')
 
@@ -253,12 +253,14 @@ class TitleSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         self._set_spinner_values(self.ids.title_spinner, titles)
 
         self.saved_state["text"] = value
+        self.saved_state.pop("title", None)
 
     def _on_internal_title_search_box_title_changed(self, spinner: Spinner, title_str: str) -> None:
         logger.debug(
             f'**Title search box title spinner text changed: {spinner}, text: "{title_str}".'
         )
         self.dispatch(self.on_title_search_box_title_changed.__name__, title_str)
+        self.saved_state["title"] = title_str
 
     def _get_titles_matching_search_title_str(self, value: str) -> list[str]:
         title_list = self.title_search.get_titles_matching_prefix(value)
@@ -312,6 +314,7 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         self.ids.tag_spinner.bind(text=self._on_internal_tag_search_box_tag_changed)
         self.ids.tag_title_spinner.bind(text=self._on_internal_tag_search_box_title_changed)
         self._current_tag = None
+        self._updating_tag_spinner = False
 
     @override
     def get_name(self) -> str:
@@ -334,6 +337,15 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
     def get_current_title(self) -> str:
         return self.ids.tag_title_spinner.text
 
+    def restore_saved_state(self) -> None:
+        self.text = self.saved_state.get("text", "")
+        saved_tag = self.saved_state.get("tag", "")
+        if saved_tag:
+            self.ids.tag_spinner.text = saved_tag
+            saved_title = self.saved_state.get("title", "")
+            if saved_title:
+                self.ids.tag_title_spinner.text = saved_title
+
     def _on_internal_tag_search_box_text_changed(self, instance: Widget, value: str) -> None:
         logger.debug(f'**Tag search box text changed: {instance}, text: "{value}".')
 
@@ -351,10 +363,12 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         self._set_spinner_values(self.ids.tag_title_spinner, titles)
 
         self.saved_state["text"] = value
+        self.saved_state.pop("tag", None)
+        self.saved_state.pop("title", None)
 
     def _on_internal_tag_search_box_tag_changed(self, spinner: Spinner, tag_str: str) -> None:
         logger.debug(f'**Tag search box tag spinner text changed: {spinner}, text: "{tag_str}".')
-        if text_includes_num_titles(tag_str):
+        if self._updating_tag_spinner:
             return
 
         self.dispatch(self.on_tag_search_box_tag_changed.__name__, tag_str)
@@ -363,16 +377,23 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
             return
 
         self._current_tag, titles = self._title_search.get_titles_from_alias_tag(tag_str.lower())
-        self.ids.tag_spinner.text = get_markup_text_with_num_titles(tag_str, len(titles))
+        self._updating_tag_spinner = True
+        try:
+            self.ids.tag_spinner.text = get_markup_text_with_num_titles(tag_str, len(titles))
+        finally:
+            self._updating_tag_spinner = False
 
         str_titles = [] if not titles else self._title_search.get_titles_as_strings(titles)
         self._set_spinner_values(self.ids.tag_title_spinner, str_titles)
+        self.saved_state["tag"] = tag_str
+        self.saved_state.pop("title", None)
 
     def _on_internal_tag_search_box_title_changed(self, spinner: Spinner, title_str: str) -> None:
         logger.debug(
             f'**Tag search box tag title spinner text changed: {spinner}, text: "{title_str}".'
         )
         self.dispatch(self.on_tag_search_box_title_changed.__name__, title_str)
+        self.saved_state["title"] = title_str
 
     def _get_tags_matching_search_tag_str(self, value: str) -> list[Tags | TagGroups]:
         return self._title_search.get_tags_matching_prefix(value)

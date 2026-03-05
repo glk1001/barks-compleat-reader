@@ -155,6 +155,7 @@ class TestTagSearchBoxTreeViewNode:
             node.ids.tag_title_spinner = MagicMock()
             node.saved_state = {}
             node.dispatch = MagicMock()
+            node._updating_tag_spinner = False
             return node
 
     def test_on_internal_tag_search_box_text_changed(self, node: TagSearchBoxTreeViewNode) -> None:

@@ -101,11 +101,11 @@ class TestTreeViewManager:
 
             node.press_search_box.assert_called_once()
 
-            # Verify text setting lambda
+            # Verify restore_saved_state is called via the scheduled lambda
             args, _ = mock_clock.call_args
             lambda_func = args[0]
             lambda_func(0)
-            assert node.text == "search term"
+            node.restore_saved_state.assert_called_once()
 
     def test_deselect_and_close_open_nodes(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]

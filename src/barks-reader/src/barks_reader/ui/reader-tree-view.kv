@@ -25,52 +25,51 @@
     size: root.NODE_SIZE
     color_selected: root.SELECTED_COLOR
 
-    Label:
-        id: title_search_box_label
-        text: "Titles: "
-        font_size: fm.tree_view_title_search_label_font_size
-        color: root.TEXT_COLOR
-        background_color: root.TEXT_BACKGROUND_COLOR
-        size_hint: (0.08, 1)
-        x: root.x
-        y: root.y
-        halign: "left"
-        valign: "middle"
-        text_size: (self.width, self.height)
+    BoxLayout:
+        orientation: "horizontal"
+        size_hint: (1, 1)
+        pos: root.pos
 
-    TextInput:
-        id: title_search_box
-        text: root.text  # Allow the root widget to deal with text
-        on_text: root.text = self.text  # Allow 'text' bind on root widget
-        font_size: fm.tree_view_title_search_box_font_size
-        multiline: False
-        foreground_color: root.TEXT_COLOR
-        disabled_foreground_color: (1,1,1,0.5)
-        background_color: root.TEXT_BACKGROUND_COLOR
-        size_hint: (0.2, 1)
-        x: root.ids.title_search_box_label.x + root.ids.title_search_box_label.width
-        y: root.y
-        halign: "left"
-        valign: "middle"
-        text_size: (self.width, self.height)
+        Label:
+            id: title_search_box_label
+            text: "Titles: "
+            font_size: fm.tree_view_title_search_label_font_size
+            color: root.TEXT_COLOR
+            background_color: root.TEXT_BACKGROUND_COLOR
+            size_hint: (0.08, 1)
+            halign: "left"
+            valign: "middle"
+            text_size: (self.width, self.height)
 
-    Spinner:
-        id: title_spinner
-        option_cls: "TitleSpinnerOption"
-        text: ""
-        values: []
-        bold: True
-        font_size: fm.tree_view_title_spinner_font_size
-        color: root.SPINNER_TEXT_COLOR
-        background_color: root.SPINNER_BACKGROUND_COLOR
-        text_autoupdate: False
-        is_open: False
-        size_hint: (0.715, 1)
-        x: root.ids.title_search_box.x + root.ids.title_search_box.width
-        y: root.y
-        halign: "center"
-        valign: "middle"
-        text_size: (self.width, self.height)
+        TextInput:
+            id: title_search_box
+            text: root.text  # Allow the root widget to deal with text
+            on_text: root.text = self.text  # Allow 'text' bind on root widget
+            font_size: fm.tree_view_title_search_box_font_size
+            multiline: False
+            foreground_color: root.TEXT_COLOR
+            disabled_foreground_color: (1,1,1,0.5)
+            background_color: root.TEXT_BACKGROUND_COLOR
+            size_hint: (0.2, 1)
+            halign: "left"
+            valign: "middle"
+            text_size: (self.width, self.height)
+
+        Spinner:
+            id: title_spinner
+            option_cls: "TitleSpinnerOption"
+            text: ""
+            values: []
+            bold: True
+            font_size: fm.tree_view_title_spinner_font_size
+            color: root.SPINNER_TEXT_COLOR
+            background_color: root.SPINNER_BACKGROUND_COLOR
+            text_autoupdate: False
+            is_open: False
+            size_hint: (0.715, 1)
+            halign: "center"
+            valign: "middle"
+            text_size: (self.width, self.height)
 
 <TagSpinnerOption@SpinnerOption>:
     font_size: fm.tree_view_tag_spinner_font_size
@@ -82,70 +81,78 @@
     size: root.NODE_SIZE
     color_selected: root.SELECTED_COLOR
 
-    Label:
-        id: tag_search_label
-        text: "Tags: "
-        font_size: fm.tree_view_tag_search_label_font_size
-        color: root.TAG_LABEL_COLOR
-        background_color: root.TAG_LABEL_BACKGROUND_COLOR
-        size_hint: (0.08, 0.5)
-        x: root.x
-        y: root.y + root.ids.tag_search_box.height
-        halign: "left"
-        valign: "middle"
-        text_size: (self.width, self.height)
+    BoxLayout:
+        orientation: "vertical"
+        size_hint: (1, 1)
+        pos: root.pos
 
-    TextInput:
-        id: tag_search_box
-        text: root.text
-        on_text: root.text = self.text
-        font_size: fm.tree_view_tag_search_box_font_size
-        multiline: False
-        foreground_color: root.TAG_TEXT_COLOR
-        disabled_foreground_color: (1,1,1,0.5)
-        background_color: root.TAG_TEXT_BACKGROUND_COLOR
-        size_hint: (0.2, 0.5)
-        x: root.ids.tag_search_label.x + root.ids.tag_search_label.width
-        y: root.y + root.ids.tag_search_box.height
-        halign: "left"
-        valign: "middle"
-        text_size: (self.width, self.height)
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint: (1, 0.5)
 
-    Spinner:
-        id: tag_spinner
-        option_cls: "TagSpinnerOption"
-        text: ""
-        values: []
-        markup: True
-        font_size: fm.tree_view_tag_spinner_font_size
-        color: root.TAG_SPINNER_TEXT_COLOR
-        background_color: root.TAG_SPINNER_BACKGROUND_COLOR
-        text_autoupdate: False
-        is_open: False
-        size_hint: (0.715, 0.5)
-        x: root.ids.tag_search_box.x + root.ids.tag_search_box.width
-        y: root.y + root.ids.tag_search_box.height
-        halign: "center"
-        valign: "middle"
-        text_size: (self.width, self.height)
+            Label:
+                id: tag_search_label
+                text: "Tags: "
+                font_size: fm.tree_view_tag_search_label_font_size
+                color: root.TAG_LABEL_COLOR
+                background_color: root.TAG_LABEL_BACKGROUND_COLOR
+                size_hint: (0.08, 1)
+                halign: "left"
+                valign: "middle"
+                text_size: (self.width, self.height)
 
-    Spinner:
-        id: tag_title_spinner
-        option_cls: "TagTitleSpinnerOption"
-        text: ""
-        values: ["one", "two", "three"]
-        bold: True
-        font_size: fm.tree_view_tag_title_spinner_font_size
-        color: root.TAG_TITLE_SPINNER_TEXT_COLOR
-        background_color: root.TAG_TITLE_SPINNER_BACKGROUND_COLOR
-        text_autoupdate: False
-        is_open: False
-        size_hint: (0.715, 0.5)
-        x: root.ids.tag_search_box.x + root.ids.tag_search_box.width
-        y: root.y
-        halign: "center"
-        valign: "middle"
-        text_size: (self.width, self.height)
+            TextInput:
+                id: tag_search_box
+                text: root.text
+                on_text: root.text = self.text
+                font_size: fm.tree_view_tag_search_box_font_size
+                multiline: False
+                foreground_color: root.TAG_TEXT_COLOR
+                disabled_foreground_color: (1,1,1,0.5)
+                background_color: root.TAG_TEXT_BACKGROUND_COLOR
+                size_hint: (0.2, 1)
+                halign: "left"
+                valign: "middle"
+                text_size: (self.width, self.height)
+
+            Spinner:
+                id: tag_spinner
+                option_cls: "TagSpinnerOption"
+                text: ""
+                values: []
+                markup: True
+                font_size: fm.tree_view_tag_spinner_font_size
+                color: root.TAG_SPINNER_TEXT_COLOR
+                background_color: root.TAG_SPINNER_BACKGROUND_COLOR
+                text_autoupdate: False
+                is_open: False
+                size_hint: (0.715, 1)
+                halign: "center"
+                valign: "middle"
+                text_size: (self.width, self.height)
+
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint: (1, 0.5)
+
+            Widget:
+                size_hint: (0.28, 1)
+
+            Spinner:
+                id: tag_title_spinner
+                option_cls: "TagTitleSpinnerOption"
+                text: ""
+                values: []
+                bold: True
+                font_size: fm.tree_view_tag_title_spinner_font_size
+                color: root.TAG_TITLE_SPINNER_TEXT_COLOR
+                background_color: root.TAG_TITLE_SPINNER_BACKGROUND_COLOR
+                text_autoupdate: False
+                is_open: False
+                size_hint: (0.715, 1)
+                halign: "center"
+                valign: "middle"
+                text_size: (self.width, self.height)
 
 <StoryGroupTreeViewNode>:
     font_size: fm.tree_view_story_node_font_size
