@@ -33,6 +33,7 @@ class Tags(Enum):
     BENZENE_BANZOONY = "Benzene Banzoony"
     BOMBIE_THE_ZOMBIE = "Bombie the Zombie"
     BOP_BOP = "Bop Bop"
+    BRITISH_GUIANA = "British Guiana"
     CABBAGE_PROFESSOR = "The Cabbage Professor"
     CALCIUM = "calcium"
     CAMERAS = "cameras"
@@ -288,6 +289,7 @@ BARKS_TAG_CATEGORIES = {
         TagGroups.AUSTRALASIA,
         Tags.BAGDAD,
         Tags.BARNACLE_BAY,
+        Tags.BRITISH_GUIANA,
         Tags.CANADA,
         Tags.CENTRAL_AFRICA,
         Tags.CHINA,
@@ -442,6 +444,7 @@ BARKS_TAG_GROUPS = {
     ],
     TagGroups.COUNTRIES: [
         Tags.ALGERIA,
+        Tags.BRITISH_GUIANA,
         Tags.CANADA,
         Tags.CHINA,
         Tags.CONGO,
@@ -569,6 +572,7 @@ BARKS_TAG_GROUPS = {
     ],
     TagGroups.SOUTH_AMERICA: [
         Tags.ANDES,
+        Tags.BRITISH_GUIANA,
         Tags.PERU,
         Tags.PLAIN_AWFUL,
     ],
@@ -685,6 +689,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     Tags.BENZENE_BANZOONY: [Titles.FIREBUG_THE],
     Tags.BOMBIE_THE_ZOMBIE: [Titles.VOODOO_HOODOO],
     Tags.BOP_BOP: [Titles.VOODOO_HOODOO],
+    Tags.BRITISH_GUIANA: [Titles.GILDED_MAN_THE],
     Tags.CABBAGE_PROFESSOR: [Titles.MYSTERIOUS_STONE_RAY_THE],
     Tags.CALCIUM: [Titles.KRANKENSTEIN_GYRO],
     Tags.CAMERAS: [
@@ -1472,6 +1477,7 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.BAGDAD, Titles.FABULOUS_PHILOSOPHERS_STONE_THE): ["8"],
     (Tags.BARNACLE_BAY, Titles.NO_SUCH_VARMINT): ["11"],
     (Tags.BOP_BOP, Titles.VOODOO_HOODOO): ["1"],
+    (Tags.BRITISH_GUIANA, Titles.GILDED_MAN_THE): ["8"],
     (Tags.CABBAGE_PROFESSOR, Titles.MYSTERIOUS_STONE_RAY_THE): [
         "20",
         "21",
