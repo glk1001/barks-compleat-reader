@@ -17,6 +17,7 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.uix.dropdown import DropDown
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
 from kivy.uix.popup import Popup
@@ -52,6 +53,24 @@ READER_POPUPS_KV_FILE = Path(__file__).parent / "reader_popups.kv"
 TREE_VIEW_NODE_TEXT_COLOR = (1, 1, 1, 1)
 TREE_VIEW_NODE_SELECTED_COLOR = (1, 0, 1, 0.8)
 TREE_VIEW_NODE_BACKGROUND_COLOR = (0.0, 0.0, 0.0, 0.0)
+
+
+class ScrollableDropDown(DropDown):
+    """DropDown that doesn't consume touches when dismissing.
+
+    Kivy's default DropDown returns True (consuming the touch) when the user
+    clicks outside it, which prevents the clicked widget from receiving the
+    event. Returning False after dismiss lets the touch fall through so that,
+    for example, pressing the clear button while a dropdown is open both closes the dropdown
+    and clears the search box in a single tap.
+    """
+
+    def on_touch_down(self, touch: object) -> bool:
+        if not self.collide_point(*touch.pos) and self.auto_dismiss:  # type: ignore[arg-type]
+            self.dismiss()
+            return False
+        return super().on_touch_down(touch)
+
 
 ACTION_BAR_SIZE_Y = round(dp(RAW_ACTION_BAR_SIZE_Y))
 ARROW_WIDTH = round(dp(20))
@@ -186,7 +205,7 @@ class BaseSearchBoxTreeViewNode(FloatLayout, BaseTreeViewNode):
         """Set value and state for a spinner."""
         if not values:
             spinner.values = []
-            spinner.text = placeholder
+            spinner.text = ""
             spinner.is_open = False
         elif len(values) == 1:
             spinner.values = values
