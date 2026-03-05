@@ -24,6 +24,7 @@ class Tags(Enum):
     ATLANTIS = "Atlantis"
     AUSTRALIA = "Australia"
     AUSTRALIAN_ABORIGINALS = "Australian aboriginals"
+    AWFULTONIANS = "Awfultonians"
     AZURE_BLUE = "Azure Blue"
     BAGDAD = "Bagdad"
     BARKS_FAVOURITES = "Barks' Picks"
@@ -126,6 +127,7 @@ class Tags(Enum):
     PEEWEEGAH_INDIANS = "Peeweegah Indians"
     PERSIA = "Persia"
     PERSONAL_FAVOURITES = "My Picks"
+    PERU = "Peru"
     PETER_SCHILLING_FAVOURITES = "Peter Schilling"
     PHOSPHORUS = "phosphorus"
     PHOTOGRAPHY = "photography"
@@ -321,6 +323,7 @@ BARKS_TAG_CATEGORIES = {
         Tags.OLD_DEMON_TOOTH,
         Tags.PAKISTAN,
         Tags.PERSIA,
+        Tags.PERU,
         Tags.PLAIN_AWFUL,
         Tags.RUSSIA,
         Tags.SCOTLAND,
@@ -458,6 +461,7 @@ BARKS_TAG_GROUPS = {
         Tags.NORWAY,
         Tags.PAKISTAN,
         Tags.PERSIA,
+        Tags.PERU,
         Tags.RUSSIA,
         Tags.SCOTLAND,
         Tags.SOUTH_AFRICA,
@@ -470,6 +474,7 @@ BARKS_TAG_GROUPS = {
     ],
     TagGroups.CULTURAL_GROUPS: [
         Tags.AUSTRALIAN_ABORIGINALS,
+        Tags.AWFULTONIANS,
         Tags.GNEEZLES,
         Tags.INUIT,
         Tags.JIVARO,
@@ -564,6 +569,7 @@ BARKS_TAG_GROUPS = {
     ],
     TagGroups.SOUTH_AMERICA: [
         Tags.ANDES,
+        Tags.PERU,
         Tags.PLAIN_AWFUL,
     ],
 }
@@ -622,6 +628,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.QUEEN_OF_THE_WILD_DOG_PACK_THE,
     ],
     Tags.AUSTRALIAN_ABORIGINALS: [Titles.ADVENTURE_DOWN_UNDER],
+    Tags.AWFULTONIANS: [Titles.LOST_IN_THE_ANDES],
     Tags.AZURE_BLUE: [Titles.GOLDEN_HELMET_THE],
     Tags.BAGDAD: [Titles.FABULOUS_PHILOSOPHERS_STONE_THE],
     Tags.BARKS_FAVOURITES: [
@@ -1258,6 +1265,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     Tags.PAKISTAN: [Titles.LOST_CROWN_OF_GENGHIS_KHAN_THE],
     Tags.PEEWEEGAH_INDIANS: [Titles.LAND_OF_THE_PYGMY_INDIANS],
     Tags.PERSIA: [Titles.IN_ANCIENT_PERSIA],
+    Tags.PERU: [Titles.LOST_IN_THE_ANDES],
     Tags.PETER_SCHILLING_FAVOURITES: [
         # This list of the Barks stories covered in Peter Schilling's book:
         # "Carl Barks' Duck - Average American"
@@ -1435,6 +1443,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
 BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.ALASKA, Titles.BACK_TO_THE_KLONDIKE): ["7"],
     (Tags.ALKALI, Titles.TWENTY_FOUR_CARAT_MOON_THE): ["11"],
+    (Tags.APPLECHEEKS_TEENGIGGLE, Titles.PERSISTENT_POSTMAN_THE): ["2"],
     (Tags.AUSTRALIAN_ABORIGINALS, Titles.ADVENTURE_DOWN_UNDER): [
         "7",
         "13",
@@ -1447,7 +1456,19 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
         "22",
         "23",
     ],
-    (Tags.APPLECHEEKS_TEENGIGGLE, Titles.PERSISTENT_POSTMAN_THE): ["2"],
+    (Tags.AWFULTONIANS, Titles.LOST_IN_THE_ANDES): [
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "26",
+        "27",
+        "28",
+        "29",
+        "31",
+    ],
     (Tags.BAGDAD, Titles.FABULOUS_PHILOSOPHERS_STONE_THE): ["8"],
     (Tags.BARNACLE_BAY, Titles.NO_SUCH_VARMINT): ["11"],
     (Tags.BOP_BOP, Titles.VOODOO_HOODOO): ["1"],
