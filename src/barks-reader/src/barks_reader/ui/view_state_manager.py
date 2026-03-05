@@ -273,8 +273,15 @@ class ViewStateManager:
 
     def _set_fun_view(self) -> None:
         """Set the image and properties for the 'fun' bottom view."""
-        current_fun_view_info = self._bottom_view_fun_image_info
         next_opacity = self._background_views.get_bottom_view_fun_image_opacity()
+        self._fun_image_view_screen.is_visible = next_opacity > (1.0 - CLOSE_TO_ZERO)
+        if not self._fun_image_view_screen.is_visible:
+            return
+
+        if not self._background_views.has_bottom_view_fun_image_info():
+            return
+
+        current_fun_view_info = self._bottom_view_fun_image_info
         next_fun_view_info = self._background_views.get_bottom_view_fun_image_info()
 
         logger.debug(
@@ -283,10 +290,6 @@ class ViewStateManager:
             f' next from title = "{get_title_str(next_fun_view_info.from_title)}",'
             f" next_opacity = {next_opacity}."
         )
-
-        self._fun_image_view_screen.is_visible = next_opacity > (1.0 - CLOSE_TO_ZERO)
-        if not self._fun_image_view_screen.is_visible:
-            return
 
         if current_fun_view_info.from_title == next_fun_view_info.from_title:
             return

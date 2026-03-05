@@ -242,6 +242,9 @@ class BackgroundViews:
     def get_bottom_view_fun_image_color(self) -> Color:
         return self._bottom_view_fun_image_color
 
+    def has_bottom_view_fun_image_info(self) -> bool:
+        return self._bottom_view_fun_image_info is not None
+
     def get_bottom_view_fun_image_info(self) -> ImageInfo:
         assert self._bottom_view_fun_image_info is not None
         return self._bottom_view_fun_image_info
@@ -485,15 +488,25 @@ class BackgroundViews:
 
     def _set_next_bottom_view_fun_image(self) -> None:
         if self._view_state in [
-            ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET,
             ViewStates.ON_TITLE_SEARCH_BOX_NODE,
-            ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET,
             ViewStates.ON_TAG_SEARCH_BOX_NODE,
             ViewStates.ON_TITLE_NODE,
             ViewStates.ON_INDEX_MAIN_NODE,
             ViewStates.ON_INDEX_SPEECH_NODE,
             ViewStates.ON_APPENDIX_STATISTICS_NODE,
         ]:
+            return
+
+        if (
+            self._view_state
+            in [
+                ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET,
+                ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET,
+            ]
+            and self._bottom_view_fun_image_info is not None
+        ):
+            # Keep the current image stable while the user is searching.
+            # A None info means Refresh explicitly cleared it, so fall through and refresh.
             return
 
         if (self._view_state == ViewStates.INITIAL) and self._bottom_view_fun_image_info:

@@ -218,6 +218,36 @@ class TestViewStateManager:
         assert fun_screen.image_texture is not None
         fun_screen.set_last_loaded_image_info.assert_called_with(image_info)
 
+    def test_set_fun_view_not_visible_skips_info_lookup(
+        self, view_state_manager: ViewStateManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        # When opacity=0, fun view should be hidden without touching image info.
+        bg_views = mock_dependencies["background_views"]
+        bg_views.get_bottom_view_fun_image_opacity.return_value = 0.0
+
+        # noinspection PyProtectedMember
+        view_state_manager._set_fun_view()
+
+        assert mock_dependencies["fun_image_view_screen"].is_visible is False
+        bg_views.has_bottom_view_fun_image_info.assert_not_called()
+        bg_views.get_bottom_view_fun_image_info.assert_not_called()
+
+    def test_set_fun_view_visible_but_no_info_does_not_crash(
+        self, view_state_manager: ViewStateManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        # When opacity=1 but info is None (e.g. after Refresh in tag-search state), should not
+        # crash or call get_bottom_view_fun_image_info.
+        bg_views = mock_dependencies["background_views"]
+        bg_views.get_bottom_view_fun_image_opacity.return_value = 1.0
+        bg_views.has_bottom_view_fun_image_info.return_value = False
+
+        # noinspection PyProtectedMember
+        view_state_manager._set_fun_view()
+
+        fun_screen = mock_dependencies["fun_image_view_screen"]
+        assert fun_screen.is_visible is True
+        bg_views.get_bottom_view_fun_image_info.assert_not_called()
+
     def test_set_views_bottom_view(
         self, view_state_manager: ViewStateManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
