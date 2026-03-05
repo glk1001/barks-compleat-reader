@@ -60,7 +60,7 @@
             bold: True
             font_size: fm.tree_view_title_search_box_font_size
             size_hint: (0.04, 1)
-            background_color: (0.6, 0.1, 0.1, 1.0)
+            background_color: (0.35, 0.35, 0.35, 1.0)
             color: (1, 1, 1, 1)
             disabled: not root.text
             on_press: root.text = ""
@@ -130,7 +130,7 @@
                 bold: True
                 font_size: fm.tree_view_tag_search_box_font_size
                 size_hint: (0.04, 1)
-                background_color: (0.6, 0.1, 0.1, 1.0)
+                background_color: (0.35, 0.35, 0.35, 1.0)
                 color: (1, 1, 1, 1)
                 disabled: not root.text
                 on_press: root.text = ""
@@ -155,11 +155,21 @@
             orientation: "horizontal"
             size_hint: (1, 0.5)
 
+            Label:
+                text: "Title: "
+                font_size: fm.tree_view_tag_search_label_font_size
+                color: root.TAG_LABEL_COLOR
+                background_color: root.TAG_LABEL_BACKGROUND_COLOR
+                size_hint: (0.08, 1)
+                halign: "left"
+                valign: "middle"
+                text_size: (self.width, self.height)
+
             Widget:
-                size_hint: (0.28, 1)
+                size_hint: (0.22, 1)
 
             FloatLayout:
-                size_hint: (0.72, 1)
+                size_hint: (0.70, 1)
 
                 Spinner:
                     id: tag_title_spinner
@@ -181,7 +191,7 @@
                     text_size: (self.width, self.height)
 
                 Label:
-                    text: "← select a tag"
+                    text: "select a tag above"
                     italic: True
                     opacity: 0 if root.ids.tag_title_spinner.values else 0.6
                     color: root.TAG_TITLE_SPINNER_TEXT_COLOR
