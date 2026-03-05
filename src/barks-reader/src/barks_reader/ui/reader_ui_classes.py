@@ -239,6 +239,10 @@ class TitleSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
     def press_search_box(self) -> None:
         self.dispatch(self.on_title_search_box_pressed.__name__)
 
+    def clear_and_focus(self) -> None:
+        self.text = ""
+        Clock.schedule_once(lambda _dt: setattr(self.ids.title_search_box, "focus", True))
+
     def get_current_title(self) -> str:
         return self.ids.title_search_box.text
 
@@ -331,6 +335,10 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
 
     def press_search_box(self) -> None:
         self.dispatch(self.on_tag_search_box_pressed.__name__)
+
+    def clear_and_focus(self) -> None:
+        self.text = ""
+        Clock.schedule_once(lambda _dt: setattr(self.ids.tag_search_box, "focus", True))
 
     def get_current_tag(self) -> Tags | TagGroups:
         return self._current_tag

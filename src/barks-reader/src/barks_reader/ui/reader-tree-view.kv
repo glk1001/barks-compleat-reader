@@ -46,7 +46,7 @@
             color: root.ACTIVE_LABEL_COLOR if root.is_active else root.TEXT_COLOR
             background_color: root.TEXT_BACKGROUND_COLOR
             size_hint: (0.08, 1)
-            halign: "left"
+            halign: "right"
             valign: "middle"
             text_size: (self.width, self.height)
 
@@ -70,7 +70,7 @@
             background_color: (0.35, 0.35, 0.35, 1.0)
             color: (1, 1, 1, 1)
             disabled: not root.text
-            on_press: root.text = ""
+            on_press: root.clear_and_focus()
 
         FloatLayout:
             size_hint: (0.70, 1)
@@ -133,7 +133,7 @@
                 color: root.ACTIVE_LABEL_COLOR if root.is_active else root.TAG_LABEL_COLOR
                 background_color: root.TAG_LABEL_BACKGROUND_COLOR
                 size_hint: (0.08, 1)
-                halign: "left"
+                halign: "right"
                 valign: "middle"
                 text_size: (self.width, self.height)
 
@@ -157,7 +157,7 @@
                 background_color: (0.35, 0.35, 0.35, 1.0)
                 color: (1, 1, 1, 1)
                 disabled: not root.text
-                on_press: root.text = ""
+                on_press: root.clear_and_focus()
 
             FloatLayout:
                 size_hint: (0.70, 1)
