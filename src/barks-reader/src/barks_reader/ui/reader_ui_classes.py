@@ -304,7 +304,7 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
     TAG_SPINNER_TEXT_COLOR = (0, 1, 0, 1)
     TAG_SPINNER_BACKGROUND_COLOR = (1, 0, 1, 1)
     TAG_TITLE_SPINNER_TEXT_COLOR = (1, 1, 0, 1)
-    TAG_TITLE_SPINNER_BACKGROUND_COLOR = (0, 0, 1, 1)
+    TAG_TITLE_SPINNER_BACKGROUND_COLOR = (0.2, 0.25, 0.3, 1)
     NODE_SIZE = (dp(100), dp(60))
 
     def __init__(self, title_search: BarksTitleSearch) -> None:
