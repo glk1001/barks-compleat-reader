@@ -1,3 +1,11 @@
+#:import Factory kivy.factory.Factory
+
+<ScrollableDropDown@DropDown>:
+    scroll_type: ['bars', 'content']
+    bar_width: dp(8)
+    bar_color: [0.7, 0.7, 0.7, 0.9]
+    bar_inactive_color: [0.5, 0.5, 0.5, 0.4]
+
 <ReaderTreeView>:
     hide_root: True
     indent_level: root.TREE_VIEW_INDENT_LEVEL
@@ -28,6 +36,7 @@
     BoxLayout:
         orientation: "horizontal"
         size_hint: (1, 1)
+        padding: [0, 0, dp(4), 0]
         pos: root.pos
 
         Label:
@@ -68,6 +77,7 @@
         Spinner:
             id: title_spinner
             option_cls: "TitleSpinnerOption"
+            dropdown_cls: Factory.ScrollableDropDown
             text: ""
             values: []
             bold: True
@@ -99,6 +109,7 @@
         BoxLayout:
             orientation: "horizontal"
             size_hint: (1, 0.5)
+            padding: [0, 0, dp(4), 0]
 
             Label:
                 id: tag_search_label
@@ -138,6 +149,7 @@
             Spinner:
                 id: tag_spinner
                 option_cls: "TagSpinnerOption"
+                dropdown_cls: Factory.ScrollableDropDown
                 text: ""
                 values: []
                 markup: True
@@ -154,6 +166,7 @@
         BoxLayout:
             orientation: "horizontal"
             size_hint: (1, 0.5)
+            padding: [0, 0, dp(4), 0]
 
             Label:
                 text: "Title: "
@@ -174,6 +187,7 @@
                 Spinner:
                     id: tag_title_spinner
                     option_cls: "TagTitleSpinnerOption"
+                    dropdown_cls: Factory.ScrollableDropDown
                     text: ""
                     values: []
                     bold: False
