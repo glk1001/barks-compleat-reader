@@ -212,7 +212,9 @@ class TitleSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
 
     name = "Title Search Box"
     text = StringProperty("")
+    is_active = BooleanProperty(defaultvalue=False)
     SELECTED_COLOR = (0, 0, 0, 0.0)
+    ACTIVE_LABEL_COLOR = (0.4, 1, 0.4, 1)
     TEXT_COLOR = (1, 1, 1, 1)
     TEXT_BACKGROUND_COLOR = (0.5, 0.5, 0.5, 0.8)
     SPINNER_TEXT_COLOR = (1, 1, 0, 1)
@@ -296,7 +298,9 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
 
     name = "Tag Search Box"
     text = StringProperty("")
+    is_active = BooleanProperty(defaultvalue=False)
     SELECTED_COLOR = (0, 0, 0, 0.0)
+    ACTIVE_LABEL_COLOR = (0.4, 1, 0.4, 1)
     TAG_LABEL_COLOR = (1, 1, 1, 1)
     TAG_LABEL_BACKGROUND_COLOR = (0.5, 0.5, 0.5, 0.8)
     TAG_TEXT_COLOR = (1, 1, 1, 1)

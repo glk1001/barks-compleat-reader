@@ -80,6 +80,8 @@ class TreeViewManager:
         self._set_next_title_func = set_next_title_func
 
         self._allow_view_state_change = True
+        self._title_search_node: TitleSearchBoxTreeViewNode | None = None
+        self._tag_search_node: TagSearchBoxTreeViewNode | None = None
 
         assert self._update_title_func
         assert self._read_article_func
@@ -104,6 +106,7 @@ class TreeViewManager:
             self._handle_button_node_selection(node)
 
     def _handle_title_node_selection(self, node: TitleTreeViewNode) -> None:
+        self._set_active_search(title=False, tag=False)
         fanta_info = node.ids.num_label.parent.fanta_info
         self._set_next_title_func(fanta_info, None)
         self.scroll_to_node(node)
@@ -118,6 +121,7 @@ class TreeViewManager:
         node.press_search_box()
 
     def _handle_button_node_selection(self, node: ButtonTreeViewNode) -> None:
+        self._set_active_search(title=False, tag=False)
         if node.saved_state.get("open", True):
             node.trigger_action()
         else:
@@ -384,6 +388,18 @@ class TreeViewManager:
         logger.info("Statistics node pressed.")
         self._view_state_manager.update_view_for_node(ViewStates.ON_APPENDIX_STATISTICS_NODE)
 
+    def register_title_search_node(self, node: TitleSearchBoxTreeViewNode) -> None:
+        self._title_search_node = node
+
+    def register_tag_search_node(self, node: TagSearchBoxTreeViewNode) -> None:
+        self._tag_search_node = node
+
+    def _set_active_search(self, *, title: bool, tag: bool) -> None:
+        if self._title_search_node:
+            self._title_search_node.is_active = title
+        if self._tag_search_node:
+            self._tag_search_node.is_active = tag
+
     def on_title_search_box_pressed(self, instance: TitleSearchBoxTreeViewNode) -> None:
         logger.debug(f"Title search box pressed: {instance}.")
 
@@ -412,6 +428,7 @@ class TreeViewManager:
                 ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET
             )
         elif self._update_title_func(title_str):
+            self._set_active_search(title=True, tag=False)
             self._view_state_manager.update_view_for_node_with_title(
                 ViewStates.ON_TITLE_SEARCH_BOX_NODE
             )
@@ -476,6 +493,7 @@ class TreeViewManager:
                 ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
             )
         elif self._update_title_func(title_str):
+            self._set_active_search(title=False, tag=True)
             self._view_state_manager.update_view_for_node_with_title(
                 ViewStates.ON_TAG_SEARCH_BOX_NODE
             )

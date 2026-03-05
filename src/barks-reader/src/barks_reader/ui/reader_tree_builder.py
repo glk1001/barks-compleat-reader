@@ -609,6 +609,7 @@ class ReaderTreeBuilder:
         new_node.bind(
             on_title_search_box_title_changed=self._tree_view_manager.on_title_search_box_title_changed
         )
+        self._tree_view_manager.register_title_search_node(new_node)
 
         return tree.add_node(new_node, parent=parent_node)
 
@@ -627,6 +628,7 @@ class ReaderTreeBuilder:
         new_node.bind(
             on_tag_search_box_title_changed=self._tree_view_manager.on_tag_search_box_title_changed
         )
+        self._tree_view_manager.register_tag_search_node(new_node)
 
         return tree.add_node(new_node, parent=parent_node)
 
