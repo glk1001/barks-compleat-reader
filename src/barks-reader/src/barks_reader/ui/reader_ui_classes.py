@@ -182,11 +182,11 @@ class BaseSearchBoxTreeViewNode(FloatLayout, BaseTreeViewNode):
     """Base class for search boxes in the TreeView."""
 
     @staticmethod
-    def _set_spinner_values(spinner: Spinner, values: list[str]) -> None:
+    def _set_spinner_values(spinner: Spinner, values: list[str], placeholder: str = "") -> None:
         """Set value and state for a spinner."""
         if not values:
             spinner.values = []
-            spinner.text = ""
+            spinner.text = placeholder
             spinner.is_open = False
         elif len(values) == 1:
             spinner.values = values
@@ -194,7 +194,7 @@ class BaseSearchBoxTreeViewNode(FloatLayout, BaseTreeViewNode):
             spinner.is_open = False
         else:
             spinner.values = values
-            spinner.text = ""
+            spinner.text = placeholder
             spinner.is_open = True
 
 
@@ -335,7 +335,8 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         return self.ids.tag_spinner.text
 
     def get_current_title(self) -> str:
-        return self.ids.tag_title_spinner.text
+        spinner = self.ids.tag_title_spinner
+        return spinner.text if spinner.text in spinner.values else ""
 
     def restore_saved_state(self) -> None:
         self.text = self.saved_state.get("text", "")
@@ -361,7 +362,7 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
             titles = []
 
         self._set_spinner_values(self.ids.tag_spinner, tags)
-        self._set_spinner_values(self.ids.tag_title_spinner, titles)
+        self._set_spinner_values(self.ids.tag_title_spinner, titles, "[i]select a title[/i]")
 
         self.saved_state["text"] = value
         self.saved_state.pop("tag", None)
@@ -385,7 +386,7 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
             self._updating_tag_spinner = False
 
         str_titles = [] if not titles else self._title_search.get_titles_as_strings(titles)
-        self._set_spinner_values(self.ids.tag_title_spinner, str_titles)
+        self._set_spinner_values(self.ids.tag_title_spinner, str_titles, "[i]select a title[/i]")
         self.saved_state["tag"] = tag_str
         self.saved_state.pop("title", None)
 
