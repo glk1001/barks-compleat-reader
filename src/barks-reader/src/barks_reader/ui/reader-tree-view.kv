@@ -59,10 +59,8 @@
             foreground_color: root.TEXT_COLOR
             disabled_foreground_color: (1,1,1,0.5)
             background_color: root.TEXT_BACKGROUND_COLOR
+            padding: [dp(4), (self.height - self.line_height) / 2]
             size_hint: (0.18, 1)
-            halign: "left"
-            valign: "middle"
-            text_size: (self.width, self.height)
 
         Button:
             text: "×"
@@ -131,10 +129,8 @@
                 foreground_color: root.TAG_TEXT_COLOR
                 disabled_foreground_color: (1,1,1,0.5)
                 background_color: root.TAG_TEXT_BACKGROUND_COLOR
+                padding: [dp(4), (self.height - self.line_height) / 2]
                 size_hint: (0.18, 1)
-                halign: "left"
-                valign: "middle"
-                text_size: (self.width, self.height)
 
             Button:
                 text: "×"
