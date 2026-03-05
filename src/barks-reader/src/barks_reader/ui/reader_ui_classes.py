@@ -362,7 +362,11 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
             titles = []
 
         self._set_spinner_values(self.ids.tag_spinner, tags)
-        self._set_spinner_values(self.ids.tag_title_spinner, titles, "[i]select a title[/i]")
+        if len(tags) != 1:
+            # When there's exactly one tag, _set_spinner_values auto-selects it, which
+            # triggers _on_internal_tag_search_box_tag_changed and populates titles.
+            # Resetting the title spinner here would wipe that out.
+            self._set_spinner_values(self.ids.tag_title_spinner, titles, "[i]select a title[/i]")
 
         self.saved_state["text"] = value
         self.saved_state.pop("tag", None)
