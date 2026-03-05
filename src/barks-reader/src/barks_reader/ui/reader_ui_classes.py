@@ -352,6 +352,7 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         self.dispatch(self.on_tag_search_box_text_changed.__name__, value)
 
         if len(value) <= 1:
+            self._current_tag = None
             tags = []
             titles = []
         else:
