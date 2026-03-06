@@ -79,6 +79,7 @@
                     spacing: dp(2)
 
                     BarButton:
+                        id: close_button
                         text: "Close"
                         icon: str(sys_paths.get_barks_reader_close_icon_file())
                         important: True
@@ -99,12 +100,14 @@
                         on_release: root.toggle_double_page_mode()
 
                     BarButton:
+                        id: goto_start_button
                         text: "Goto Start"
                         icon: str(sys_paths.get_barks_reader_goto_start_icon_file())
                         important: True
                         on_release: root.comic_book_reader.goto_start_page()
 
                     BarButton:
+                        id: goto_end_button
                         text: "Goto End"
                         icon: str(sys_paths.get_barks_reader_goto_end_icon_file())
                         important: True
