@@ -22,7 +22,6 @@ from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.factory import Factory
-from kivy.graphics import Color, Line
 from kivy.properties import BooleanProperty, StringProperty  # ty: ignore[unresolved-import]
 from kivy.uix.screenmanager import Screen
 from loguru import logger
@@ -56,6 +55,8 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_TAB,
     KEY_UP,
     ActionBarNavMixin,
+    clear_focus_highlight,
+    draw_focus_highlight,
 )
 from barks_reader.ui.reader_screens import ReaderScreen
 from barks_reader.ui.reader_tree_builder import ReaderTreeBuilder
@@ -395,18 +396,10 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
         logger.debug("Exited bottom focus region.")
 
     def _update_bottom_focus_highlight(self) -> None:
-        widget = self._bottom_base_view_screen
-        widget.canvas.after.remove_group(_BOTTOM_FOCUS_HIGHLIGHT_GROUP)
-        with widget.canvas.after:
-            Color(1, 1, 0, 1, group=_BOTTOM_FOCUS_HIGHLIGHT_GROUP)
-            Line(
-                rectangle=(widget.x, widget.y, widget.width, widget.height),
-                width=2,
-                group=_BOTTOM_FOCUS_HIGHLIGHT_GROUP,
-            )
+        draw_focus_highlight(self._bottom_base_view_screen, _BOTTOM_FOCUS_HIGHLIGHT_GROUP)
 
     def _clear_bottom_focus_highlight(self) -> None:
-        self._bottom_base_view_screen.canvas.after.remove_group(_BOTTOM_FOCUS_HIGHLIGHT_GROUP)
+        clear_focus_highlight(self._bottom_base_view_screen, _BOTTOM_FOCUS_HIGHLIGHT_GROUP)
 
     def _tree_nav_move(self, delta: int) -> None:
         visible = self._tree_view_screen.get_visible_nodes()
