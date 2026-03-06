@@ -144,7 +144,7 @@ class ComicBookLoader:
         right_image = Image.open(right_stream)
 
         composited_image = build_double_page_image(left_image, right_image)
-        composited_stream = get_pil_image_as_png_bytes(composited_image)
+        composited_stream = get_pil_image_as_png_bytes(composited_image, compress_level=0)
         assert composited_stream
         composited_stream.seek(0)  # Ensure stream is at the beginning for reading
 
@@ -587,4 +587,4 @@ class ComicBookLoader:
             PilImage.Resampling.LANCZOS,
         )
 
-        return get_pil_image_as_png_bytes(pil_image_resized), PNG_EXT_FOR_KIVY
+        return get_pil_image_as_png_bytes(pil_image_resized, compress_level=0), PNG_EXT_FOR_KIVY

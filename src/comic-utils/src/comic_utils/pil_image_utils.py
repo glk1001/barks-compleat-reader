@@ -81,19 +81,16 @@ def _get_pil_format_from_ext(ext: str) -> str:
         raise ValueError(msg) from e
 
 
-def get_image_as_png_bytes(file: Path) -> io.BytesIO:
-    pil_image = load_pil_image_for_reading(file)
-    return get_pil_image_as_png_bytes(pil_image)
-
-
-def get_pil_image_as_png_bytes(pil_image: PilImage) -> io.BytesIO:
+def get_pil_image_as_png_bytes(
+    pil_image: PilImage, compress_level: int = SAVE_PNG_COMPRESSION
+) -> io.BytesIO:
     data = io.BytesIO()
     pil_image.save(
         data,
         format=PNG_PIL_FORMAT,
-        optimize=True,
-        compress_level=SAVE_PNG_COMPRESSION,
-        quality=SAVE_PNG_COMPRESSION,
+        optimize=compress_level == SAVE_PNG_COMPRESSION,
+        compress_level=compress_level,
+        quality=compress_level,
     )
     return data
 

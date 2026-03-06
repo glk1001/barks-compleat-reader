@@ -466,6 +466,8 @@ class ComicBookReader(FloatLayout):
 
         self._wait_for_image_to_load(left_idx, right_idx)
 
+        timing = Timing()
+
         # noinspection PyBroadException
         try:
             # Kivy Image widget can load from BytesIO
@@ -487,6 +489,10 @@ class ComicBookReader(FloatLayout):
         except Exception:  # noqa: BLE001
             logger.exception(f"Error displaying image with index {self._current_page_index}: ")
             # Optionally display a placeholder image or error message
+
+        logger.info(
+            f"Showed page {self._current_page_index} in {timing.get_elapsed_time_with_unit()}."
+        )
 
     def _hide_action_bar_if_fullscreen(self) -> None:
         if WindowManager.is_fullscreen_now():
