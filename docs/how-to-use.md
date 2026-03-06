@@ -1,4 +1,4 @@
-<h1 style="text-align: center;">How to Use the Barks Reader</h1><br>
+<h1  style="margin-top: 0; margin-bottom: 40px; line-height: 1;text-align: center;">How to Use the Barks Reader</h1>
 
 The Barks Reader is designed to be easy to use and intuitive, but this guide is just in case.
 
@@ -26,8 +26,7 @@ Fantagraphics versions.
 
 The bar across the top of the main screen contains:
 
-- **App icon** — clickable; navigates to the story associated with whichever image is
-  currently showing as the icon.
+- **App icon** — clickable; go to the story associated with icon image.
 - **Quit** — closes the application.
 - **Fullscreen** — toggles between windowed and fullscreen mode.
 - **Back** — returns to the previously selected navigation node.
