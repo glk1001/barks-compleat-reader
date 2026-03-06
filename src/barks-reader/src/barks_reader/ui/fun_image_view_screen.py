@@ -123,6 +123,12 @@ class FunImageViewScreen(BoxLayout):
 
         return bool(super().on_touch_down(touch))
 
+    def prev_image(self) -> None:
+        self._goto_previous_image()
+
+    def next_image(self) -> None:
+        self._goto_next_image()
+
     def _goto_previous_image(self) -> None:
         if self._current_history_index <= 0:
             return

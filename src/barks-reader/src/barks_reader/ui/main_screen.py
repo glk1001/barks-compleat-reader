@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING, cast, override
 
@@ -21,6 +22,7 @@ from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.factory import Factory
+from kivy.graphics import Color, Line
 from kivy.properties import BooleanProperty, StringProperty  # ty: ignore[unresolved-import]
 from kivy.uix.screenmanager import Screen
 from loguru import logger
@@ -48,7 +50,10 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_ESCAPE,
+    KEY_LEFT,
     KEY_NUMPAD_ENTER,
+    KEY_RIGHT,
+    KEY_TAB,
     KEY_UP,
     ActionBarNavMixin,
 )
@@ -59,6 +64,7 @@ from barks_reader.ui.reader_ui_classes import (
     BaseTreeViewNode,
     ButtonTreeViewNode,
     ReaderTreeBuilderEventDispatcher,
+    TitleTreeViewNode,
     hide_action_bar,
     show_action_bar,
 )
@@ -87,6 +93,13 @@ if TYPE_CHECKING:
     from barks_reader.ui.tree_view_screen import TreeViewScreen
 
 MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
+
+_BOTTOM_FOCUS_HIGHLIGHT_GROUP = "bottom_focus_highlight"
+
+
+class _FocusRegion(Enum):
+    TREE = auto()
+    BOTTOM = auto()
 
 
 class TitleNotInFantaInfoError(Exception):
@@ -234,9 +247,6 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
             self._set_next_title,
         )
 
-        self.menu_dots_dropdown = Factory.MenuDropDown()
-        self.menu_dots_dropdown.bind(on_select=self.on_action_bar_menu_dots_selected)
-
         # Ordered left-to-right as they appear in the action bar.
         self._setup_action_bar_nav(
             [
@@ -248,6 +258,8 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
                 self.ids.menu_button,
             ]
         )
+        self._focus_region = _FocusRegion.TREE
+        self._focus_region_before_comic: _FocusRegion | None = None
         Window.bind(on_key_down=self._on_key_down)
 
         self._active = True
@@ -258,6 +270,9 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
         self.menu_dots_dropdown.open(button)
 
     def _set_initial_state(self) -> None:
+        self.menu_dots_dropdown = Factory.MenuDropDown()
+        self.menu_dots_dropdown.bind(on_select=self.on_action_bar_menu_dots_selected)
+
         self._view_state_manager.set_view_state(ViewStates.PRE_INIT)
 
         self._main_index_screen.on_goto_background_title_func = self._goto_chrono_title
@@ -294,6 +309,8 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
         if active:
             Window.bind(on_key_down=self._on_key_down)
         else:
+            if self._focus_region == _FocusRegion.BOTTOM:
+                self._exit_bottom_focus()
             if self._menu_mode:
                 self._exit_menu_mode()
             Window.unbind(on_key_down=self._on_key_down)
@@ -316,11 +333,15 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
     ) -> bool:
         if self._menu_mode:
             return self._handle_menu_key(key)
+        if self._focus_region == _FocusRegion.BOTTOM:
+            return self._handle_bottom_key(key)
         return self._handle_tree_key(key)
 
     def _handle_tree_key(self, key: int) -> bool:
         if key == KEY_ESCAPE:
             self._enter_menu_mode()
+        elif key == KEY_TAB:
+            self._enter_bottom_focus()
         elif key == KEY_UP:
             self._tree_nav_move(-1)
         elif key == KEY_DOWN:
@@ -330,6 +351,62 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
         else:
             return False
         return True
+
+    def _handle_bottom_key(self, key: int) -> bool:
+        if key in (KEY_ESCAPE, KEY_TAB):
+            self._exit_bottom_focus()
+            return True
+        if self._fun_image_view_screen.is_visible:
+            return self._handle_fun_view_key(key)
+        if self._bottom_title_view_screen.is_visible:
+            return self._handle_title_view_key(key)
+        return False
+
+    def _handle_fun_view_key(self, key: int) -> bool:
+        if key == KEY_LEFT:
+            self._fun_image_view_screen.prev_image()
+        elif key == KEY_RIGHT:
+            self._fun_image_view_screen.next_image()
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self._fun_image_view_screen.on_goto_title()
+        else:
+            return False
+        return True
+
+    def _handle_title_view_key(self, key: int) -> bool:
+        if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self.on_title_portal_image_pressed()
+        else:
+            return False
+        return True
+
+    def _enter_bottom_focus(self) -> None:
+        if not (
+            self._fun_image_view_screen.is_visible or self._bottom_title_view_screen.is_visible
+        ):
+            return
+        self._focus_region = _FocusRegion.BOTTOM
+        self._update_bottom_focus_highlight()
+        logger.debug("Entered bottom focus region.")
+
+    def _exit_bottom_focus(self) -> None:
+        self._focus_region = _FocusRegion.TREE
+        self._clear_bottom_focus_highlight()
+        logger.debug("Exited bottom focus region.")
+
+    def _update_bottom_focus_highlight(self) -> None:
+        widget = self._bottom_base_view_screen
+        widget.canvas.after.remove_group(_BOTTOM_FOCUS_HIGHLIGHT_GROUP)
+        with widget.canvas.after:
+            Color(1, 1, 0, 1, group=_BOTTOM_FOCUS_HIGHLIGHT_GROUP)
+            Line(
+                rectangle=(widget.x, widget.y, widget.width, widget.height),
+                width=2,
+                group=_BOTTOM_FOCUS_HIGHLIGHT_GROUP,
+            )
+
+    def _clear_bottom_focus_highlight(self) -> None:
+        self._bottom_base_view_screen.canvas.after.remove_group(_BOTTOM_FOCUS_HIGHLIGHT_GROUP)
 
     def _tree_nav_move(self, delta: int) -> None:
         visible = self._tree_view_screen.get_visible_nodes()
@@ -343,11 +420,16 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
         node = visible[idx]
         self._tree_view_screen.select_node(node)
         self._tree_view_screen.scroll_to_node(node)
+        if isinstance(node, TitleTreeViewNode):
+            self._tree_view_manager.activate_node(node)
 
     def _tree_nav_activate(self) -> None:
         selected = self._tree_view_screen.get_selected_node()
-        if selected is not None:
-            self._tree_view_manager.activate_node(selected)
+        if selected is None:
+            return
+        self._tree_view_manager.activate_node(selected)
+        if isinstance(selected, TitleTreeViewNode):
+            self.on_title_portal_image_pressed()
 
     def set_comic_book_reader_screen(self, comic_book_reader_screen: ComicBookReaderScreen) -> None:
         self._comic_reader_manager.set_comic_book_reader_screen(comic_book_reader_screen)
@@ -780,6 +862,7 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
             self._user_error_handler.handle_error(ErrorTypes.ArchiveVolumeNotAvailable, error_info)
             return
 
+        self._focus_region_before_comic = self._focus_region
         self._is_active(active=False)
         self._read_comic_view_state = None
 
@@ -793,6 +876,10 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
     @override
     def on_comic_closed(self) -> None:
         self._is_active(active=True)
+
+        if self._focus_region_before_comic == _FocusRegion.BOTTOM:
+            self._enter_bottom_focus()
+        self._focus_region_before_comic = None
 
         if self._read_comic_view_state is not None:
             self._view_state_manager.update_view_for_node(self._read_comic_view_state)

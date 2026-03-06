@@ -4,13 +4,14 @@ from kivy.graphics import Color, Line
 from loguru import logger
 
 # Kivy SDL2 key codes for navigation keys.
+KEY_TAB = 9
+KEY_ENTER = 13
+KEY_ESCAPE = 27
 KEY_UP = 273
 KEY_DOWN = 274
 KEY_RIGHT = 275
 KEY_LEFT = 276
-KEY_ENTER = 13
 KEY_NUMPAD_ENTER = 271
-KEY_ESCAPE = 27
 
 MENU_FOCUS_HIGHLIGHT_GROUP = "menu_focus_highlight"
 
