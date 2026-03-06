@@ -159,6 +159,7 @@
                         spacing: dp(2)
 
                         BarButton:
+                            id: quit_button
                             text: 'Quit'
                             icon: str(sys_paths.get_barks_reader_close_icon_file())
                             important: True
@@ -172,6 +173,7 @@
                             on_press: root.toggle_screen_mode()
 
                         BarButton:
+                            id: go_back_button
                             text: 'Go Back'
                             icon: str(sys_paths.get_barks_reader_go_back_icon_file())
                             important: True
@@ -186,12 +188,14 @@
                             opacity: 0.5 if self.disabled else 1.0
 
                         BarButton:
+                            id: change_pics_button
                             text: 'Change Pics'
                             icon: str(sys_paths.get_barks_reader_refresh_arrow_icon_file())
                             important: True
                             on_release: root.on_action_bar_change_view_images()
 
                         BarButton:
+                            id: menu_button
                             text: 'Menu'
                             icon: str(sys_paths.get_barks_reader_menu_dots_icon_file())
                             important: True

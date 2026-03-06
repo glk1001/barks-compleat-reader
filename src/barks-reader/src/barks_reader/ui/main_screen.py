@@ -44,6 +44,14 @@ from barks_reader.ui.background_views import BackgroundViews
 from barks_reader.ui.comic_reader_manager import ComicReaderManager
 from barks_reader.ui.json_settings_manager import SavedPageInfo, SettingsManager
 from barks_reader.ui.platform_window_utils import WindowManager
+from barks_reader.ui.reader_keyboard_nav import (
+    KEY_DOWN,
+    KEY_ENTER,
+    KEY_ESCAPE,
+    KEY_NUMPAD_ENTER,
+    KEY_UP,
+    ActionBarNavMixin,
+)
 from barks_reader.ui.reader_screens import ReaderScreen
 from barks_reader.ui.reader_tree_builder import ReaderTreeBuilder
 from barks_reader.ui.reader_ui_classes import (
@@ -88,7 +96,7 @@ class TitleNotInFantaInfoError(Exception):
         super().__init__(f'Title "{title_str}" not in Fanta info.')
 
 
-class MainScreen(ReaderScreen):
+class MainScreen(ReaderScreen, ActionBarNavMixin):
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
     app_icon_filepath = StringProperty()
@@ -228,6 +236,20 @@ class MainScreen(ReaderScreen):
 
         self.menu_dots_dropdown = Factory.MenuDropDown()
         self.menu_dots_dropdown.bind(on_select=self.on_action_bar_menu_dots_selected)
+
+        # Ordered left-to-right as they appear in the action bar.
+        self._setup_action_bar_nav(
+            [
+                self.ids.quit_button,
+                self.ids.fullscreen_button,
+                self.ids.go_back_button,
+                self.ids.collapse_button,
+                self.ids.change_pics_button,
+                self.ids.menu_button,
+            ]
+        )
+        Window.bind(on_key_down=self._on_key_down)
+
         self._active = True
 
         self._set_initial_state()
@@ -269,6 +291,13 @@ class MainScreen(ReaderScreen):
         logger.debug(f"MainScreen active changed from {self._active} to {active}.")
         self._active = active
 
+        if active:
+            Window.bind(on_key_down=self._on_key_down)
+        else:
+            if self._menu_mode:
+                self._exit_menu_mode()
+            Window.unbind(on_key_down=self._on_key_down)
+
         self.size = get_win_width_from_height(Window.height - ACTION_BAR_SIZE_Y), Window.height
 
         logger.debug(
@@ -281,6 +310,44 @@ class MainScreen(ReaderScreen):
         )
 
         self._update_action_bar_visibility()
+
+    def _on_key_down(
+        self, _window: Window, key: int, _scancode: int, _codepoint: str, _modifier: list
+    ) -> bool:
+        if self._menu_mode:
+            return self._handle_menu_key(key)
+        return self._handle_tree_key(key)
+
+    def _handle_tree_key(self, key: int) -> bool:
+        if key == KEY_ESCAPE:
+            self._enter_menu_mode()
+        elif key == KEY_UP:
+            self._tree_nav_move(-1)
+        elif key == KEY_DOWN:
+            self._tree_nav_move(1)
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self._tree_nav_activate()
+        else:
+            return False
+        return True
+
+    def _tree_nav_move(self, delta: int) -> None:
+        visible = self._tree_view_screen.get_visible_nodes()
+        if not visible:
+            return
+        selected = self._tree_view_screen.get_selected_node()
+        if selected is None or selected not in visible:
+            idx = 0 if delta > 0 else len(visible) - 1
+        else:
+            idx = max(0, min(len(visible) - 1, visible.index(selected) + delta))
+        node = visible[idx]
+        self._tree_view_screen.select_node(node)
+        self._tree_view_screen.scroll_to_node(node)
+
+    def _tree_nav_activate(self) -> None:
+        selected = self._tree_view_screen.get_selected_node()
+        if selected is not None:
+            self._tree_view_manager.activate_node(selected)
 
     def set_comic_book_reader_screen(self, comic_book_reader_screen: ComicBookReaderScreen) -> None:
         self._comic_reader_manager.set_comic_book_reader_screen(comic_book_reader_screen)

@@ -13,7 +13,6 @@ from kivy.core.image import Image as CoreImage
 from kivy.core.image import Texture
 from kivy.core.window import Window, WindowBase
 from kivy.event import EventDispatcher
-from kivy.graphics import Color, Line
 from kivy.lang import Builder
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
@@ -34,6 +33,13 @@ from barks_reader.core.reader_consts_and_types import CLOSE_TO_ZERO, COMIC_BEGIN
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, get_win_width_from_height
 from barks_reader.ui.platform_window_utils import WindowManager
+from barks_reader.ui.reader_keyboard_nav import (
+    KEY_ESCAPE,
+    KEY_LEFT,
+    KEY_RIGHT,
+    KEY_UP,
+    ActionBarNavMixin,
+)
 from barks_reader.ui.reader_navigation import ReaderNavigation
 from barks_reader.ui.reader_screens import ReaderScreen
 from barks_reader.ui.reader_ui_classes import ACTION_BAR_SIZE_Y
@@ -52,15 +58,6 @@ if TYPE_CHECKING:
     from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.ui.font_manager import FontManager
 
-MENU_FOCUS_HIGHLIGHT_GROUP = "menu_focus_highlight"
-
-# Kivy SDL2 key codes for arrow keys and Enter.
-_KEY_UP = 273
-_KEY_DOWN = 274
-_KEY_RIGHT = 275
-_KEY_LEFT = 276
-_KEY_ENTER = 13
-_KEY_NUMPAD_ENTER = 271
 
 GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT = 0.97
 GOTO_PAGE_BUTTON_HEIGHT = dp(25)
@@ -598,7 +595,7 @@ class ComicBookReader(FloatLayout):
             self._goto_page_buttons.append(button)
 
 
-class ComicBookReaderScreen(ReaderScreen):
+class ComicBookReaderScreen(ReaderScreen, ActionBarNavMixin):
     ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     action_bar_title = StringProperty()
@@ -655,18 +652,17 @@ class ComicBookReaderScreen(ReaderScreen):
         self.comic_book_reader.set_goto_page_widget(self.ids.goto_page_button)
         self.ids.image_layout.add_widget(self.comic_book_reader)
 
-        self._menu_mode = False
-        self._focused_btn_idx = 0
-        self._showed_action_bar_for_menu = False
         # Ordered left-to-right as they appear in the action bar.
-        self._menu_buttons = [
-            self.ids.close_button,
-            self.ids.fullscreen_button,
-            self.ids.double_page_button,
-            self.ids.goto_start_button,
-            self.ids.goto_end_button,
-            self.ids.goto_page_button,
-        ]
+        self._setup_action_bar_nav(
+            [
+                self.ids.close_button,
+                self.ids.fullscreen_button,
+                self.ids.double_page_button,
+                self.ids.goto_start_button,
+                self.ids.goto_end_button,
+                self.ids.goto_page_button,
+            ]
+        )
 
     @override
     def is_active(self, active: bool) -> None:
@@ -727,69 +723,25 @@ class ComicBookReaderScreen(ReaderScreen):
             return self._handle_menu_key(key)
         return self._handle_reading_key(key)
 
-    def _handle_menu_key(self, key: int) -> bool:
-        if key == _KEY_RIGHT:
-            self._move_menu_focus(1)
-        elif key == _KEY_LEFT:
-            self._move_menu_focus(-1)
-        elif key in (_KEY_ENTER, _KEY_NUMPAD_ENTER):
-            self._activate_focused_button()
-        elif key == _KEY_DOWN:
-            self._exit_menu_mode()
-        else:
-            return False
-        return True
-
     def _handle_reading_key(self, key: int) -> bool:
-        if key == _KEY_RIGHT:
+        if key == KEY_RIGHT:
             self.comic_book_reader.next_page()
-        elif key == _KEY_LEFT:
+        elif key == KEY_LEFT:
             self.comic_book_reader.prev_page()
-        elif key == _KEY_UP:
+        elif key in (KEY_UP, KEY_ESCAPE):
             self._enter_menu_mode()
         else:
             return False
         return True
 
-    def _enter_menu_mode(self) -> None:
-        self._menu_mode = True
-        self._showed_action_bar_for_menu = False
-        if WindowManager.is_fullscreen_now() and self._action_bar.opacity < CLOSE_TO_ZERO:
-            self._toggle_action_bar_visibility()
-            self._showed_action_bar_for_menu = True
-        self._focused_btn_idx = 0
-        self._update_menu_focus()
+    def _is_action_bar_hidden(self) -> bool:
+        return WindowManager.is_fullscreen_now() and self._action_bar.opacity < CLOSE_TO_ZERO
 
-    def _exit_menu_mode(self) -> None:
-        self._clear_menu_focus()
-        self._menu_mode = False
-        if self._showed_action_bar_for_menu:
-            self._toggle_action_bar_visibility()
-            self._showed_action_bar_for_menu = False
+    def _on_action_bar_shown_for_menu(self) -> None:
+        self._toggle_action_bar_visibility()
 
-    def _move_menu_focus(self, delta: int) -> None:
-        self._focused_btn_idx = (self._focused_btn_idx + delta) % len(self._menu_buttons)
-        self._update_menu_focus()
-
-    def _update_menu_focus(self) -> None:
-        for i, btn in enumerate(self._menu_buttons):
-            btn.canvas.after.remove_group(MENU_FOCUS_HIGHLIGHT_GROUP)
-            if i == self._focused_btn_idx:
-                with btn.canvas.after:
-                    Color(1, 1, 0, 1, group=MENU_FOCUS_HIGHLIGHT_GROUP)
-                    Line(
-                        rectangle=(btn.x, btn.y, btn.width, btn.height),
-                        width=2,
-                        group=MENU_FOCUS_HIGHLIGHT_GROUP,
-                    )
-
-    def _clear_menu_focus(self) -> None:
-        for btn in self._menu_buttons:
-            btn.canvas.after.remove_group(MENU_FOCUS_HIGHLIGHT_GROUP)
-
-    def _activate_focused_button(self) -> None:
-        self._menu_buttons[self._focused_btn_idx].trigger_action()
-        self._exit_menu_mode()
+    def _on_action_bar_hidden_after_menu(self) -> None:
+        self._toggle_action_bar_visibility()
 
     def close_comic_book_reader(self) -> None:
         self._is_closing = True

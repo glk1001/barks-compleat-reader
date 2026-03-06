@@ -103,5 +103,19 @@ class TreeViewScreen(BoxLayout):
                 self.ids.reader_tree_view.toggle_node(node)
         return count
 
+    def get_visible_nodes(self) -> list[BaseTreeViewNode]:
+        """Return all currently visible (open) nodes in display order."""
+        nodes: list[BaseTreeViewNode] = []
+
+        def collect(parent: BaseTreeViewNode) -> None:
+            for child in parent.nodes:
+                if isinstance(child, BaseTreeViewNode):
+                    nodes.append(child)
+                    if child.is_open:
+                        collect(child)
+
+        collect(self.ids.reader_tree_view.root)
+        return nodes
+
     def on_change_show_current_title(self) -> None:
         self.show_current_title = self._reader_settings.show_top_view_title_info

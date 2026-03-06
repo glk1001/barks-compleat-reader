@@ -89,6 +89,16 @@ class TreeViewManager:
         assert self._set_tag_goto_page_checkbox_func
         assert self._set_next_title_func
 
+    def activate_node(self, node: BaseTreeViewNode) -> None:
+        """Activate a node as if pressed, without collapsing the rest of the tree."""
+        self._tree_view_screen.select_node(node)
+        if isinstance(node, TitleTreeViewNode):
+            self._handle_title_node_selection(node)
+        elif isinstance(node, (TitleSearchBoxTreeViewNode, TagSearchBoxTreeViewNode)):
+            self._handle_search_box_node_selection(node)
+        elif isinstance(node, ButtonTreeViewNode):
+            node.trigger_action()
+
     def setup_and_select_node(self, node: BaseTreeViewNode) -> None:
         logger.debug(f'Selecting and setting up node "{node.get_name()}".')
 
