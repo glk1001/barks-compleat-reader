@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from kivy.input import MotionEvent
     from kivy.uix.actionbar import ActionBar
     from kivy.uix.spinner import Spinner
+    from kivy.uix.textinput import TextInput
 
     from barks_reader.ui.font_manager import FontManager
 
@@ -200,6 +201,30 @@ class BaseTreeViewNode(TreeViewNode):
 class BaseSearchBoxTreeViewNode(FloatLayout, BaseTreeViewNode):
     """Base class for search boxes in the TreeView."""
 
+    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+        super().__init__(**kwargs)
+        self._get_text_input().bind(focus=self._on_focus_changed)
+
+    def _get_text_input(self) -> TextInput:
+        raise NotImplementedError
+
+    def _close_spinners(self) -> None:
+        raise NotImplementedError
+
+    def focus_input(self) -> None:
+        Clock.schedule_once(lambda _dt: setattr(self._get_text_input(), "focus", True))
+
+    @property
+    def is_focused(self) -> bool:
+        return bool(self._get_text_input().focus)
+
+    def blur(self) -> None:
+        self._get_text_input().focus = False
+
+    def _on_focus_changed(self, _instance: object, has_focus: bool) -> None:
+        if not has_focus:
+            self._close_spinners()
+
     @staticmethod
     def _set_spinner_values(spinner: Spinner, values: list[str], placeholder: str = "") -> None:
         """Set value and state for a spinner."""
@@ -245,7 +270,12 @@ class TitleSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         self.title_search = title_search
         self.bind(text=self._on_internal_search_box_text_changed)
         self.ids.title_spinner.bind(text=self._on_internal_title_search_box_title_changed)
-        self.ids.title_search_box.bind(focus=self._on_title_search_box_focus_changed)
+
+    def _get_text_input(self) -> TextInput:
+        return self.ids.title_search_box
+
+    def _close_spinners(self) -> None:
+        self.ids.title_spinner.is_open = False
 
     @override
     def get_name(self) -> str:
@@ -259,9 +289,6 @@ class TitleSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
     def press_search_box(self) -> None:
         self.dispatch(self.on_title_search_box_pressed.__name__)
 
-    def focus_input(self) -> None:
-        Clock.schedule_once(lambda _dt: setattr(self.ids.title_search_box, "focus", True))
-
     def clear_and_focus(self) -> None:
         self.text = ""
         Clock.schedule_once(lambda _dt: setattr(self.ids.title_search_box, "focus", True))
@@ -274,10 +301,6 @@ class TitleSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         saved_title = self.saved_state.get("title", "")
         if saved_title:
             self.ids.title_spinner.text = saved_title
-
-    def _on_title_search_box_focus_changed(self, _instance: Widget, has_focus: bool) -> None:
-        if not has_focus:
-            self.ids.title_spinner.is_open = False
 
     def _on_internal_search_box_text_changed(self, instance: Widget, value: str) -> None:
         logger.debug(f'**Title search box text changed: {instance}, text: "{value}".')
@@ -348,9 +371,15 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
         self.bind(text=self._on_internal_tag_search_box_text_changed)
         self.ids.tag_spinner.bind(text=self._on_internal_tag_search_box_tag_changed)
         self.ids.tag_title_spinner.bind(text=self._on_internal_tag_search_box_title_changed)
-        self.ids.tag_search_box.bind(focus=self._on_tag_search_box_focus_changed)
         self._current_tag = None
         self._updating_tag_spinner = False
+
+    def _get_text_input(self) -> TextInput:
+        return self.ids.tag_search_box
+
+    def _close_spinners(self) -> None:
+        self.ids.tag_spinner.is_open = False
+        self.ids.tag_title_spinner.is_open = False
 
     @override
     def get_name(self) -> str:
@@ -363,9 +392,6 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
 
     def press_search_box(self) -> None:
         self.dispatch(self.on_tag_search_box_pressed.__name__)
-
-    def focus_input(self) -> None:
-        Clock.schedule_once(lambda _dt: setattr(self.ids.tag_search_box, "focus", True))
 
     def clear_and_focus(self) -> None:
         self.text = ""
@@ -389,11 +415,6 @@ class TagSearchBoxTreeViewNode(BaseSearchBoxTreeViewNode):
             saved_title = self.saved_state.get("title", "")
             if saved_title:
                 self.ids.tag_title_spinner.text = saved_title
-
-    def _on_tag_search_box_focus_changed(self, _instance: Widget, has_focus: bool) -> None:
-        if not has_focus:
-            self.ids.tag_spinner.is_open = False
-            self.ids.tag_title_spinner.is_open = False
 
     def _on_internal_tag_search_box_text_changed(self, instance: Widget, value: str) -> None:
         logger.debug(f'**Tag search box text changed: {instance}, text: "{value}".')
