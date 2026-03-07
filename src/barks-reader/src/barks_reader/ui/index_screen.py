@@ -146,6 +146,11 @@ class IndexScreen(FloatLayout):
         self._nav_saved_grid_version: int = -1  # Version when ITEMS nav state was last saved.
         self._nav_focused_btn: Button | None = None  # Button ref for robust position restore.
 
+    def on_touch_down(self, touch: object) -> bool:
+        if self._nav_active:
+            self.exit_nav_focus()
+        return bool(super().on_touch_down(touch))
+
     def on_goto_background_title(self) -> None:
         assert self.on_goto_background_title_func is not None
         if not self._current_image_info:

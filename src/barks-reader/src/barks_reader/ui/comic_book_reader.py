@@ -697,6 +697,9 @@ class ComicBookReaderScreen(ReaderScreen, ActionBarNavMixin):
     # top margin button presses to take precedence over top margin touches.
     @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
+        if self._menu_mode:
+            self._exit_menu_mode()
+
         if super().on_touch_down(touch):
             # Another button has been pressed.
             return True
