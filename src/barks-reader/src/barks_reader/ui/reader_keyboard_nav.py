@@ -48,6 +48,7 @@ class ActionBarNavMixin:
     def _setup_action_bar_nav(self, menu_buttons: list) -> None:
         self._menu_mode: bool = False
         self._focused_btn_idx: int = 0
+        self._last_used_btn_idx: int = 0
         self._showed_action_bar_for_menu: bool = False
         self._menu_buttons = menu_buttons
 
@@ -71,7 +72,7 @@ class ActionBarNavMixin:
         if self._is_action_bar_hidden():
             self._on_action_bar_shown_for_menu()
             self._showed_action_bar_for_menu = True
-        self._focused_btn_idx = 0
+        self._focused_btn_idx = self._last_used_btn_idx
         self._update_menu_focus()
         logger.debug("Entered menu mode.")
 
@@ -116,5 +117,6 @@ class ActionBarNavMixin:
             clear_focus_highlight(btn, MENU_FOCUS_HIGHLIGHT_GROUP)
 
     def _activate_focused_button(self) -> None:
+        self._last_used_btn_idx = self._focused_btn_idx
         self._menu_buttons[self._focused_btn_idx].trigger_action()
         self._exit_menu_mode()
