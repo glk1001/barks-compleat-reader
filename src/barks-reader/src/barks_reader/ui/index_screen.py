@@ -61,6 +61,7 @@ _PAGE_SCROLL_STEP = 0.2
 
 class _IndexNavPanel(Enum):
     ALPHABET = auto()
+    PREFIX = auto()
     ITEMS = auto()
 
 
@@ -189,7 +190,7 @@ class IndexScreen(FloatLayout):
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._select_focused_letter()
         elif key == KEY_RIGHT:
-            self._enter_items_panel()
+            self._on_right_from_alphabet()
         elif key == KEY_ESCAPE:
             callback = self._nav_on_exit_request
             self.exit_nav_focus()
@@ -202,6 +203,7 @@ class IndexScreen(FloatLayout):
     def _move_letter_focus(self, delta: int) -> None:
         self._clear_letter_focus()
         self._nav_focused_letter_idx = (self._nav_focused_letter_idx + delta) % len(_LETTER_ORDER)
+        self._select_focused_letter()
         self._draw_letter_focus()
 
     def _select_focused_letter(self) -> None:
@@ -218,22 +220,31 @@ class IndexScreen(FloatLayout):
         self._nav_focused_item_idx = 0
         self._draw_item_focus()
 
+    def _on_right_from_alphabet(self) -> None:
+        self._enter_items_panel()
+
+    def _on_back_from_items(self) -> None:
+        self._enter_alphabet_panel()
+
+    def _on_up_from_first_item(self) -> None:
+        pass  # Default: stop at the top item.
+
     # --- Items panel navigation ---
 
     def _handle_items_key(self, key: int) -> bool:
         if key == KEY_UP:
-            self._move_item_focus(-1)
+            self._handle_items_up()
         elif key == KEY_DOWN:
             self._move_item_focus(1)
         elif key == KEY_RIGHT:
             self._move_col_focus(1)
         elif key == KEY_LEFT:
             if self._nav_focused_col == 0:
-                self._enter_alphabet_panel()
+                self._on_back_from_items()
             else:
                 self._move_col_focus(-1)
         elif key == KEY_ESCAPE:
-            self._enter_alphabet_panel()
+            self._on_back_from_items()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._activate_focused_item()
         elif key == KEY_PAGE_UP:
@@ -243,6 +254,12 @@ class IndexScreen(FloatLayout):
         else:
             return False
         return True
+
+    def _handle_items_up(self) -> None:
+        if self._nav_focused_item_idx == 0:
+            self._on_up_from_first_item()
+        else:
+            self._move_item_focus(-1)
 
     def _move_item_focus(self, delta: int) -> None:
         col_buttons = self._get_col_buttons(self._nav_focused_col)

@@ -35,6 +35,7 @@ from loguru import logger
 from barks_reader.core.random_title_images import ImageInfo, RandomTitleImages
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums, mark_phrase_in_text
 from barks_reader.ui.index_screen import (
+    INDEX_NAV_FOCUS_GROUP,
     MAX_TITLE_AND_PAGES_LEN,
     IndexItemButton,
     IndexMenuButton,
@@ -42,8 +43,19 @@ from barks_reader.ui.index_screen import (
     SpeechBubblesPopup,
     TextBoxWithTitleAndBorder,
     TitleShowSpeechButton,
+    _IndexNavPanel,
 )
 from barks_reader.ui.panel_texture_loader import PanelTextureLoader
+from barks_reader.ui.reader_keyboard_nav import (
+    KEY_DOWN,
+    KEY_ENTER,
+    KEY_ESCAPE,
+    KEY_LEFT,
+    KEY_NUMPAD_ENTER,
+    KEY_RIGHT,
+    clear_focus_highlight,
+    draw_focus_highlight,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -151,6 +163,7 @@ class SpeechIndexScreen(IndexScreen):
             self._whoosh_indexer.get_cleaned_alpha_split_lemmatized_terms()
         )
         self._prefix_buttons: dict[str, Button] = {}
+        self._nav_focused_prefix_idx: int = 0
 
         self._populate_alphabet_menu()
 
@@ -212,6 +225,101 @@ class SpeechIndexScreen(IndexScreen):
         self._item_index[first_letter] = [IndexItem(t, shorten_if_necessary(t)) for t in terms]
 
         self._populate_index_grid(first_letter)
+
+    # --- Keyboard navigation overrides ---
+
+    @override
+    def handle_key(self, key: int) -> bool:
+        if self._nav_active and self._nav_panel == _IndexNavPanel.PREFIX:
+            return self._handle_prefix_key(key)
+        return super().handle_key(key)
+
+    @override
+    def exit_nav_focus(self) -> None:
+        self._clear_prefix_focus()
+        super().exit_nav_focus()
+
+    @override
+    def _on_right_from_alphabet(self) -> None:
+        self._enter_prefix_panel()
+
+    @override
+    def _on_back_from_items(self) -> None:
+        self._enter_prefix_panel()
+
+    @override
+    def _on_up_from_first_item(self) -> None:
+        self._clear_all_item_focus()
+        self._enter_prefix_panel()
+
+    def _enter_prefix_panel(self) -> None:
+        self._clear_all_item_focus()
+        self._clear_letter_focus()
+        self._nav_panel = _IndexNavPanel.PREFIX
+        # Focus the currently selected prefix.
+        visible = self._get_visible_prefix_buttons()
+        if self._selected_prefix_button and self._selected_prefix_button in visible:
+            self._nav_focused_prefix_idx = visible.index(self._selected_prefix_button)
+        else:
+            self._nav_focused_prefix_idx = 0
+        self._draw_prefix_focus()
+
+    def _handle_prefix_key(self, key: int) -> bool:
+        visible = self._get_visible_prefix_buttons()
+        if not visible:
+            return False
+        idx = self._nav_focused_prefix_idx
+        if key == KEY_LEFT:
+            if idx == 0:
+                self._clear_prefix_focus()
+                self._enter_alphabet_panel()
+            else:
+                self._clear_prefix_focus()
+                self._nav_focused_prefix_idx = idx - 1
+                self._select_focused_prefix(visible)
+                self._draw_prefix_focus()
+        elif key == KEY_RIGHT:
+            if idx >= len(visible) - 1:
+                self._clear_prefix_focus()
+                self._enter_items_panel()
+            else:
+                self._clear_prefix_focus()
+                self._nav_focused_prefix_idx = idx + 1
+                self._select_focused_prefix(visible)
+                self._draw_prefix_focus()
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self._select_focused_prefix(visible)
+            self._clear_prefix_focus()
+            Clock.schedule_once(lambda _dt: self._enter_items_panel(), 0)
+        elif key == KEY_DOWN:
+            self._clear_prefix_focus()
+            self._enter_items_panel()
+        elif key == KEY_ESCAPE:
+            self._clear_prefix_focus()
+            self._enter_alphabet_panel()
+        else:
+            return False
+        return True
+
+    def _select_focused_prefix(self, visible: list[Button]) -> None:
+        btn = visible[self._nav_focused_prefix_idx]
+        self.on_letter_prefix_press(btn)
+
+    def _get_visible_prefix_buttons(self) -> list[Button]:
+        """Return the currently displayed prefix buttons in left-to-right order."""
+        layout = self.ids.alphabet_top_split_layout
+        return list(reversed(layout.children))
+
+    def _draw_prefix_focus(self) -> None:
+        visible = self._get_visible_prefix_buttons()
+        if not visible:
+            return
+        self._nav_focused_prefix_idx = min(self._nav_focused_prefix_idx, len(visible) - 1)
+        draw_focus_highlight(visible[self._nav_focused_prefix_idx], INDEX_NAV_FOCUS_GROUP)
+
+    def _clear_prefix_focus(self) -> None:
+        for btn in self._get_visible_prefix_buttons():
+            clear_focus_highlight(btn, INDEX_NAV_FOCUS_GROUP)
 
     @override
     def _get_items_for_letter(self, first_letter: str) -> list:
