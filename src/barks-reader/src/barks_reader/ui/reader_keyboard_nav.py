@@ -27,6 +27,7 @@ def draw_focus_highlight(
     widget: Widget,
     group: str,
     color: tuple[float, float, float, float] = (1, 1, 0, 1),
+    line_width: float = 2,
 ) -> None:
     canvas_after = widget.canvas.after  # ty: ignore[unresolved-attribute]
     canvas_after.remove_group(group)
@@ -34,7 +35,7 @@ def draw_focus_highlight(
         Color(*color, group=group)
         Line(
             rectangle=(widget.x, widget.y, widget.width, widget.height),
-            width=2,
+            width=line_width,
             group=group,
         )
 

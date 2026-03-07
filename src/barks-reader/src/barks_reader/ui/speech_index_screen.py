@@ -52,7 +52,10 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_ESCAPE,
     KEY_LEFT,
     KEY_NUMPAD_ENTER,
+    KEY_PAGE_DOWN,
+    KEY_PAGE_UP,
     KEY_RIGHT,
+    KEY_UP,
     clear_focus_highlight,
     draw_focus_highlight,
 )
@@ -78,6 +81,9 @@ INDEX_TERMS_HIGHLIGHT_START_TAG = f"[b][color={INDEX_TERMS_HIGHLIGHT_COLOR}]"
 INDEX_TERMS_HIGHLIGHT_END_TAG = "[/color][/b]"
 
 SAVED_NODE_STATE_PREFIX_KEY = "prefix"
+
+POPUP_NAV_FOCUS_GROUP = "popup_nav_focus"
+_POPUP_SCROLL_STEP = 0.2
 
 
 class _SpeechIndexTitleItemButton(Button):
@@ -164,6 +170,8 @@ class SpeechIndexScreen(IndexScreen):
         )
         self._prefix_buttons: dict[str, Button] = {}
         self._nav_focused_prefix_idx: int = 0
+        self._nav_on_speech_btn: bool = False
+        self._popup_focused_idx: int = 0
 
         self._populate_alphabet_menu()
 
@@ -175,6 +183,8 @@ class SpeechIndexScreen(IndexScreen):
             pos_hint={"x": 0.06, "y": 0.06},
         )
         self._speech_bubble_browser_popup.children[0].children[-1].markup = True
+        self._speech_bubble_browser_popup.bind(on_open=self._on_popup_opened)
+        self._speech_bubble_browser_popup.bind(on_dismiss=self._on_popup_dismissed)
 
     def _find_words(self, index_terms: str) -> TitleDict:
         if "0" <= index_terms[0] <= "9":
@@ -230,12 +240,15 @@ class SpeechIndexScreen(IndexScreen):
 
     @override
     def handle_key(self, key: int) -> bool:
+        if self._speech_bubble_browser_popup.parent is not None:
+            return self._handle_popup_key(key)
         if self._nav_active and self._nav_panel == _IndexNavPanel.PREFIX:
             return self._handle_prefix_key(key)
         return super().handle_key(key)
 
     @override
     def exit_nav_focus(self) -> None:
+        self._nav_on_speech_btn = False
         self._clear_prefix_focus()
         super().exit_nav_focus()
 
@@ -251,6 +264,155 @@ class SpeechIndexScreen(IndexScreen):
     def _on_up_from_first_item(self) -> None:
         self._clear_all_item_focus()
         self._enter_prefix_panel()
+
+    @override
+    def _enter_items_panel(self) -> None:
+        self._nav_on_speech_btn = False
+        super()._enter_items_panel()
+
+    @override
+    def _get_col_buttons(self, col_idx: int) -> list[Button]:
+        """Return navigable buttons (title/index only, no speech buttons) for Up/Down."""
+        all_btns = super()._get_col_buttons(col_idx)
+        return [b for b in all_btns if not isinstance(b, TitleShowSpeechButton)]
+
+    def _get_paired_speech_button(self, title_btn: Button) -> TitleShowSpeechButton | None:
+        """Return the TitleShowSpeechButton paired with a _SpeechIndexTitleItemButton."""
+        if not isinstance(title_btn, _SpeechIndexTitleItemButton):
+            return None
+        parent = title_btn.parent
+        if parent is None:
+            return None
+        children = parent.children
+        try:
+            title_idx = children.index(title_btn)
+        except ValueError:
+            return None
+        speech_idx = title_idx - 1
+        if 0 <= speech_idx < len(children) and isinstance(
+            children[speech_idx], TitleShowSpeechButton
+        ):
+            return children[speech_idx]
+        return None
+
+    @override
+    def _draw_item_focus(self) -> None:
+        if not self._nav_on_speech_btn:
+            super()._draw_item_focus()
+            return
+        col_buttons = self._get_col_buttons(self._nav_focused_col)
+        if not col_buttons or self._nav_focused_item_idx >= len(col_buttons):
+            return
+        speech_btn = self._get_paired_speech_button(col_buttons[self._nav_focused_item_idx])
+        if speech_btn:
+            draw_focus_highlight(speech_btn, INDEX_NAV_FOCUS_GROUP, color=(1, 0.55, 0, 1))
+            self.ids.index_scroll_view.scroll_to(speech_btn)
+
+    @override
+    def _handle_items_key(self, key: int) -> bool:
+        if self._nav_on_speech_btn:
+            if key in (KEY_UP, KEY_DOWN, KEY_LEFT):
+                # Return focus to the paired title button.
+                self._nav_on_speech_btn = False
+                self._clear_all_item_focus()
+                self._draw_item_focus()
+                return True
+            if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+                col_buttons = self._get_col_buttons(self._nav_focused_col)
+                if col_buttons and self._nav_focused_item_idx < len(col_buttons):
+                    speech_btn = self._get_paired_speech_button(
+                        col_buttons[self._nav_focused_item_idx]
+                    )
+                    if speech_btn:
+                        speech_btn.trigger_action(duration=0)
+                return True
+            if key == KEY_ESCAPE:
+                self._nav_on_speech_btn = False
+                self._on_back_from_items()
+                return True
+            # PAGE_UP / PAGE_DOWN and others: delegate to base (just scrolls).
+            return super()._handle_items_key(key)
+        # Not on speech button — check if Right from a title sub-item should enter speech button.
+        if key == KEY_RIGHT:
+            col_buttons = self._get_col_buttons(self._nav_focused_col)
+            if col_buttons and self._nav_focused_item_idx < len(col_buttons):
+                current_btn = col_buttons[self._nav_focused_item_idx]
+                speech_btn = self._get_paired_speech_button(current_btn)
+                if speech_btn:
+                    self._clear_all_item_focus()
+                    self._nav_on_speech_btn = True
+                    self._draw_item_focus()
+                    return True
+        return super()._handle_items_key(key)
+
+    # --- Popup keyboard navigation ---
+
+    def _on_popup_opened(self, *_args: object) -> None:
+        self._popup_focused_idx = 0
+        Clock.schedule_once(lambda _dt: self._draw_popup_focus(), 0)
+
+    def _on_popup_dismissed(self, *_args: object) -> None:
+        self._clear_popup_focus()
+
+    def _handle_popup_key(self, key: int) -> bool:
+        if key == KEY_ESCAPE:
+            self._speech_bubble_browser_popup.dismiss()
+        elif key == KEY_UP:
+            self._move_popup_focus(-1)
+        elif key == KEY_DOWN:
+            self._move_popup_focus(1)
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self._activate_popup_focused()
+        elif key == KEY_PAGE_UP:
+            self._scroll_popup(-1)
+        elif key == KEY_PAGE_DOWN:
+            self._scroll_popup(1)
+        else:
+            return False
+        return True
+
+    def _move_popup_focus(self, delta: int) -> None:
+        entries = self._get_popup_entries()
+        if not entries:
+            return
+        new_idx = max(0, min(len(entries) - 1, self._popup_focused_idx + delta))
+        if new_idx == self._popup_focused_idx:
+            return
+        self._clear_popup_focus()
+        self._popup_focused_idx = new_idx
+        self._draw_popup_focus()
+
+    def _activate_popup_focused(self) -> None:
+        entries = self._get_popup_entries()
+        if entries and self._popup_focused_idx < len(entries):
+            entries[self._popup_focused_idx].ids.the_text_id.trigger_action(duration=0)
+
+    def _draw_popup_focus(self) -> None:
+        entries = self._get_popup_entries()
+        if not entries:
+            return
+        self._popup_focused_idx = min(self._popup_focused_idx, len(entries) - 1)
+        entry = entries[self._popup_focused_idx]
+        draw_focus_highlight(entry, POPUP_NAV_FOCUS_GROUP, color=(1, 1, 0, 1), line_width=3)
+        sv = self._speech_bubble_browser_popup.content
+        if sv:
+            sv.scroll_to(entry)
+
+    def _clear_popup_focus(self) -> None:
+        for entry in self._get_popup_entries():
+            clear_focus_highlight(entry, POPUP_NAV_FOCUS_GROUP)
+
+    def _get_popup_entries(self) -> list:
+        sv = self._speech_bubble_browser_popup.content
+        if sv is None or not sv.children:
+            return []
+        grid = sv.children[0]
+        return list(reversed(grid.children))
+
+    def _scroll_popup(self, direction: int) -> None:
+        sv = self._speech_bubble_browser_popup.content
+        if sv:
+            sv.scroll_y = max(0.0, min(1.0, sv.scroll_y - direction * _POPUP_SCROLL_STEP))
 
     def _enter_prefix_panel(self) -> None:
         self._clear_all_item_focus()
