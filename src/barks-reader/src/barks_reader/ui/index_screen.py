@@ -142,6 +142,9 @@ class IndexScreen(FloatLayout):
         self._nav_focused_col: int = 0
         self._nav_focused_item_idx: int = 0
         self._nav_on_exit_request: Callable | None = None
+        self._grid_version: int = 0  # Incremented on every items grid repopulation.
+        self._nav_saved_grid_version: int = -1  # Version when ITEMS nav state was last saved.
+        self._nav_focused_btn: Button | None = None  # Button ref for robust position restore.
 
     def on_goto_background_title(self) -> None:
         assert self.on_goto_background_title_func is not None
@@ -155,6 +158,20 @@ class IndexScreen(FloatLayout):
         """Enter keyboard navigation mode. on_exit_request is called when the user exits."""
         self._nav_on_exit_request = on_exit_request
         self._nav_active = True
+        # Restore items position if the grid hasn't changed since we last left it.
+        if (
+            self._nav_panel == _IndexNavPanel.ITEMS
+            and self._nav_saved_grid_version == self._grid_version
+            and self._nav_focused_btn is not None
+        ):
+            # Search all columns for the saved button to guard against a stale _nav_focused_col.
+            for col_idx in range(self.num_columns):
+                col_buttons = self._get_col_buttons(col_idx)
+                if self._nav_focused_btn in col_buttons:
+                    self._nav_focused_col = col_idx
+                    self._nav_focused_item_idx = col_buttons.index(self._nav_focused_btn)
+                    self._draw_item_focus()
+                    return
         self._nav_panel = _IndexNavPanel.ALPHABET
         # Start focus on the currently selected letter.
         if self._selected_letter_button:
@@ -342,8 +359,10 @@ class IndexScreen(FloatLayout):
             return
         self._nav_focused_item_idx = min(self._nav_focused_item_idx, len(col_buttons) - 1)
         btn = col_buttons[self._nav_focused_item_idx]
+        self._nav_focused_btn = btn
         draw_focus_highlight(btn, INDEX_NAV_FOCUS_GROUP, color=(1, 0.55, 0, 1))
         self.ids.index_scroll_view.scroll_to(btn)
+        self._nav_saved_grid_version = self._grid_version
 
     def _clear_all_item_focus(self) -> None:
         for col_idx in range(self.num_columns):
@@ -431,6 +450,7 @@ class IndexScreen(FloatLayout):
 
     def _populate_index_grid(self, letter: str) -> None:
         """Handle a letter button press and display the corresponding index items."""
+        self._grid_version += 1
         timing = Timing()
 
         self._new_index_image()

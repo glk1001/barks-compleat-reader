@@ -574,6 +574,11 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
     def on_action_bar_go_back(self) -> None:
         logger.info("'Go back' menu item selected.")
         self._tree_view_manager.go_back_to_previous_node()
+        Clock.schedule_once(lambda _dt: self._enter_bottom_focus_if_index_visible(), 0)
+
+    def _enter_bottom_focus_if_index_visible(self) -> None:
+        if self._main_index_screen.is_visible or self._speech_index_screen.is_visible:
+            self._enter_bottom_focus()
 
     def on_action_bar_collapse(self) -> None:
         self._tree_view_manager.deselect_and_close_open_nodes()

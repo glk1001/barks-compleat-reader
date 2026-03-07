@@ -242,7 +242,7 @@ class SpeechIndexScreen(IndexScreen):
     def handle_key(self, key: int) -> bool:
         if self._speech_bubble_browser_popup.parent is not None:
             return self._handle_popup_key(key)
-        if self._nav_active and self._nav_panel == _IndexNavPanel.PREFIX:
+        if self._nav_panel == _IndexNavPanel.PREFIX and self._nav_active:
             return self._handle_prefix_key(key)
         return super().handle_key(key)
 
@@ -303,10 +303,13 @@ class SpeechIndexScreen(IndexScreen):
         col_buttons = self._get_col_buttons(self._nav_focused_col)
         if not col_buttons or self._nav_focused_item_idx >= len(col_buttons):
             return
-        speech_btn = self._get_paired_speech_button(col_buttons[self._nav_focused_item_idx])
+        title_btn = col_buttons[self._nav_focused_item_idx]
+        speech_btn = self._get_paired_speech_button(title_btn)
         if speech_btn:
+            self._nav_focused_btn = title_btn
             draw_focus_highlight(speech_btn, INDEX_NAV_FOCUS_GROUP, color=(1, 0.55, 0, 1))
             self.ids.index_scroll_view.scroll_to(speech_btn)
+            self._nav_saved_grid_version = self._grid_version
 
     @override
     def _handle_items_key(self, key: int) -> bool:
@@ -402,7 +405,7 @@ class SpeechIndexScreen(IndexScreen):
         for entry in self._get_popup_entries():
             clear_focus_highlight(entry, POPUP_NAV_FOCUS_GROUP)
 
-    def _get_popup_entries(self) -> list:
+    def _get_popup_entries(self) -> list[TextBoxWithTitleAndBorder]:
         sv = self._speech_bubble_browser_popup.content
         if sv is None or not sv.children:
             return []
