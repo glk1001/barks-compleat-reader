@@ -65,6 +65,8 @@ from barks_reader.ui.reader_ui_classes import (
     BaseTreeViewNode,
     ButtonTreeViewNode,
     ReaderTreeBuilderEventDispatcher,
+    TagSearchBoxTreeViewNode,
+    TitleSearchBoxTreeViewNode,
     TitleTreeViewNode,
     hide_action_bar,
     show_action_bar,
@@ -336,6 +338,8 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
             return self._handle_menu_key(key)
         if self._focus_region == _FocusRegion.BOTTOM:
             return self._handle_bottom_key(key)
+        if self._is_search_box_focused():
+            return self._handle_search_box_focused_key(key)
         return self._handle_tree_key(key)
 
     def _handle_tree_key(self, key: int) -> bool:
@@ -354,6 +358,33 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
         else:
             return False
         return True
+
+    def _is_search_box_focused(self) -> bool:
+        selected = self._tree_view_screen.get_selected_node()
+        if isinstance(selected, TitleSearchBoxTreeViewNode):
+            return bool(selected.ids.title_search_box.focus)
+        if isinstance(selected, TagSearchBoxTreeViewNode):
+            return bool(selected.ids.tag_search_box.focus)
+        return False
+
+    def _handle_search_box_focused_key(self, key: int) -> bool:
+        if key == KEY_ESCAPE:
+            self._blur_search_box()
+            return True
+        return False
+
+    def _blur_search_box(self) -> None:
+        selected = self._tree_view_screen.get_selected_node()
+        if isinstance(selected, TitleSearchBoxTreeViewNode):
+            selected.ids.title_search_box.focus = False
+        elif isinstance(selected, TagSearchBoxTreeViewNode):
+            selected.ids.tag_search_box.focus = False
+        else:
+            return
+        parent = selected.parent_node
+        if isinstance(parent, BaseTreeViewNode):
+            self._tree_view_screen.select_node(parent)
+            self._tree_view_screen.scroll_to_node(parent)
 
     def _handle_bottom_key(self, key: int) -> bool:
         if key in (KEY_ESCAPE, KEY_TAB):
@@ -422,9 +453,26 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
         selected = self._tree_view_screen.get_selected_node()
         if selected is None:
             return
+        was_closed = isinstance(selected, ButtonTreeViewNode) and not selected.is_open
         self._tree_view_manager.activate_node(selected)
         if isinstance(selected, TitleTreeViewNode):
             self.on_title_portal_image_pressed()
+        elif isinstance(selected, (TitleSearchBoxTreeViewNode, TagSearchBoxTreeViewNode)):
+            selected.focus_input()
+        elif was_closed and selected.nodes:
+            Clock.schedule_once(lambda _dt: self._select_first_child(selected), 0)
+
+    def _select_first_child(self, parent: ButtonTreeViewNode) -> None:
+        visible = self._tree_view_screen.get_visible_nodes()
+        try:
+            parent_idx = next(i for i, n in enumerate(visible) if n is parent)
+        except StopIteration:
+            return
+        if parent_idx + 1 < len(visible):
+            child = visible[parent_idx + 1]
+            self._tree_view_screen.select_node(child)
+            if isinstance(child, (TitleSearchBoxTreeViewNode, TagSearchBoxTreeViewNode)):
+                child.focus_input()
 
     def _tree_nav_collapse_to_parent(self) -> None:
         selected = self._tree_view_screen.get_selected_node()
