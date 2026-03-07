@@ -347,6 +347,8 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
             self._tree_nav_move(-1)
         elif key == KEY_DOWN:
             self._tree_nav_move(1)
+        elif key == KEY_LEFT:
+            self._tree_nav_collapse_to_parent()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._tree_nav_activate()
         else:
@@ -423,6 +425,21 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
         self._tree_view_manager.activate_node(selected)
         if isinstance(selected, TitleTreeViewNode):
             self.on_title_portal_image_pressed()
+
+    def _tree_nav_collapse_to_parent(self) -> None:
+        selected = self._tree_view_screen.get_selected_node()
+        if selected is None:
+            return
+        if isinstance(selected, ButtonTreeViewNode) and selected.is_open and selected.nodes:
+            self._tree_view_manager.activate_node(selected)
+            return
+        parent = selected.parent_node
+        if not isinstance(parent, ButtonTreeViewNode):
+            return
+        if parent.is_open:
+            self._tree_view_manager.activate_node(parent)
+        self._tree_view_screen.select_node(parent)
+        self._tree_view_screen.scroll_to_node(parent)
 
     def set_comic_book_reader_screen(self, comic_book_reader_screen: ComicBookReaderScreen) -> None:
         self._comic_reader_manager.set_comic_book_reader_screen(comic_book_reader_screen)
