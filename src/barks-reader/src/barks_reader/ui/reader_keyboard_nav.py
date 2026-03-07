@@ -17,15 +17,21 @@ KEY_DOWN = 274
 KEY_RIGHT = 275
 KEY_LEFT = 276
 KEY_NUMPAD_ENTER = 271
+KEY_PAGE_UP = 280
+KEY_PAGE_DOWN = 281
 
 MENU_FOCUS_HIGHLIGHT_GROUP = "menu_focus_highlight"
 
 
-def draw_focus_highlight(widget: Widget, group: str) -> None:
+def draw_focus_highlight(
+    widget: Widget,
+    group: str,
+    color: tuple[float, float, float, float] = (1, 1, 0, 1),
+) -> None:
     canvas_after = widget.canvas.after  # ty: ignore[unresolved-attribute]
     canvas_after.remove_group(group)
     with canvas_after:
-        Color(1, 1, 0, 1, group=group)
+        Color(*color, group=group)
         Line(
             rectangle=(widget.x, widget.y, widget.width, widget.height),
             width=2,

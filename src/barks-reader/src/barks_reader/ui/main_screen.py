@@ -88,6 +88,7 @@ if TYPE_CHECKING:
     from barks_reader.ui.comic_book_reader import ComicBookReaderScreen
     from barks_reader.ui.font_manager import FontManager
     from barks_reader.ui.fun_image_view_screen import FunImageViewScreen
+    from barks_reader.ui.index_screen import IndexScreen
     from barks_reader.ui.main_index_screen import MainIndexScreen
     from barks_reader.ui.reader_screens import ScreenSwitchers
     from barks_reader.ui.speech_index_screen import SpeechIndexScreen
@@ -379,6 +380,10 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
             self._tree_view_screen.scroll_to_node(parent)
 
     def _handle_bottom_key(self, key: int) -> bool:
+        if self._main_index_screen.is_visible:
+            return self._handle_index_screen_key(self._main_index_screen, key)
+        if self._speech_index_screen.is_visible:
+            return self._handle_index_screen_key(self._speech_index_screen, key)
         if key in (KEY_ESCAPE, KEY_TAB):
             self._exit_bottom_focus()
             return True
@@ -387,6 +392,12 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
         if self._bottom_title_view_screen.is_visible:
             return self._handle_title_view_key(key)
         return False
+
+    def _handle_index_screen_key(self, screen: IndexScreen, key: int) -> bool:
+        if key == KEY_TAB:
+            self._exit_bottom_focus()
+            return True
+        return screen.handle_key(key)
 
     def _handle_fun_view_key(self, key: int) -> bool:
         if key == KEY_LEFT:
@@ -407,15 +418,27 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
         return True
 
     def _enter_bottom_focus(self) -> None:
-        if not (
-            self._fun_image_view_screen.is_visible or self._bottom_title_view_screen.is_visible
-        ):
+        visible = (
+            self._fun_image_view_screen.is_visible
+            or self._bottom_title_view_screen.is_visible
+            or self._main_index_screen.is_visible
+            or self._speech_index_screen.is_visible
+        )
+        if not visible:
             return
         self._focus_region = _FocusRegion.BOTTOM
         self._update_bottom_focus_highlight()
+        if self._main_index_screen.is_visible:
+            self._main_index_screen.enter_nav_focus(self._exit_bottom_focus)
+        elif self._speech_index_screen.is_visible:
+            self._speech_index_screen.enter_nav_focus(self._exit_bottom_focus)
         logger.debug("Entered bottom focus region.")
 
     def _exit_bottom_focus(self) -> None:
+        if self._main_index_screen.is_visible:
+            self._main_index_screen.exit_nav_focus()
+        elif self._speech_index_screen.is_visible:
+            self._speech_index_screen.exit_nav_focus()
         self._focus_region = _FocusRegion.TREE
         self._clear_bottom_focus_highlight()
         logger.debug("Exited bottom focus region.")
@@ -441,9 +464,22 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
         if isinstance(node, TitleTreeViewNode):
             self._tree_view_manager.activate_node(node)
 
+    def _enter_index_bottom_focus(self, screen: IndexScreen, node: BaseTreeViewNode) -> None:
+        if screen.is_visible:
+            self._enter_bottom_focus()
+        else:
+            self._tree_view_manager.activate_node(node)
+            Clock.schedule_once(lambda _dt: self._enter_bottom_focus(), 0)
+
     def _tree_nav_activate(self) -> None:
         selected = self._tree_view_screen.get_selected_node()
         if selected is None:
+            return
+        if selected is self._main_index_screen.treeview_index_node:
+            self._enter_index_bottom_focus(self._main_index_screen, selected)
+            return
+        if selected is self._speech_index_screen.treeview_index_node:
+            self._enter_index_bottom_focus(self._speech_index_screen, selected)
             return
         was_closed = isinstance(selected, ButtonTreeViewNode) and not selected.is_open
         self._tree_view_manager.activate_node(selected)
