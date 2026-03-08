@@ -54,6 +54,7 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_RIGHT,
     KEY_TAB,
     KEY_UP,
+    MENU_FOCUS_HIGHLIGHT_GROUP,
     ActionBarNavMixin,
     clear_focus_highlight,
     draw_focus_highlight,
@@ -272,9 +273,77 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
     def open_menu_dots(self, button: Button) -> None:
         self.menu_dots_dropdown.open(button)
 
+    @override
+    def _activate_focused_button(self) -> None:
+        if self._menu_buttons[self._focused_btn_idx] is self.ids.menu_button:
+            self._last_used_btn_idx = self._focused_btn_idx
+            self._open_menu_dots_for_keyboard()
+        else:
+            super()._activate_focused_button()
+
+    @override
+    def _handle_menu_key(self, key: int) -> bool:
+        if self._dropdown_nav_mode:
+            return self._handle_dropdown_key(key)
+        return super()._handle_menu_key(key)
+
+    def _open_menu_dots_for_keyboard(self) -> None:
+        self._clear_menu_focus()
+        self.open_menu_dots(self.ids.menu_button)
+        self._dropdown_nav_mode = True
+        self._dropdown_focused_idx = 0
+        self._update_dropdown_focus()
+
+    def _on_menu_dropdown_dismissed(self, _instance: object) -> None:
+        if self._dropdown_nav_mode:
+            self._exit_dropdown_nav()
+            if self._menu_mode:
+                self._exit_menu_mode()
+
+    def _exit_dropdown_nav(self) -> None:
+        self._clear_dropdown_focus()
+        self._dropdown_nav_mode = False
+
+    def _get_dropdown_buttons(self) -> list:
+        """Return dropdown buttons in visual top-to-bottom order."""
+        return list(reversed(self.menu_dots_dropdown.container.children))
+
+    def _update_dropdown_focus(self) -> None:
+        for i, btn in enumerate(self._get_dropdown_buttons()):
+            if i == self._dropdown_focused_idx:
+                draw_focus_highlight(btn, MENU_FOCUS_HIGHLIGHT_GROUP)
+            else:
+                clear_focus_highlight(btn, MENU_FOCUS_HIGHLIGHT_GROUP)
+
+    def _clear_dropdown_focus(self) -> None:
+        for btn in self._get_dropdown_buttons():
+            clear_focus_highlight(btn, MENU_FOCUS_HIGHLIGHT_GROUP)
+
+    def _handle_dropdown_key(self, key: int) -> bool:
+        buttons = self._get_dropdown_buttons()
+        if key == KEY_UP:
+            self._dropdown_focused_idx = (self._dropdown_focused_idx - 1) % len(buttons)
+            self._update_dropdown_focus()
+        elif key == KEY_DOWN:
+            self._dropdown_focused_idx = (self._dropdown_focused_idx + 1) % len(buttons)
+            self._update_dropdown_focus()
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self._activate_dropdown_item()
+        elif key == KEY_ESCAPE:
+            self.menu_dots_dropdown.dismiss()
+        else:
+            return False
+        return True
+
+    def _activate_dropdown_item(self) -> None:
+        self._get_dropdown_buttons()[self._dropdown_focused_idx].trigger_action()
+
     def _set_initial_state(self) -> None:
+        self._dropdown_nav_mode: bool = False
+        self._dropdown_focused_idx: int = 0
         self.menu_dots_dropdown = Factory.MenuDropDown()
         self.menu_dots_dropdown.bind(on_select=self.on_action_bar_menu_dots_selected)
+        self.menu_dots_dropdown.bind(on_dismiss=self._on_menu_dropdown_dismissed)
 
         self._view_state_manager.set_view_state(ViewStates.PRE_INIT)
 
