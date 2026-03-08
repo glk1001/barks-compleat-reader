@@ -15,7 +15,7 @@ from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_fantagraphics.whoosh_search_engine import SearchEngine, TitleInfo
 from comic_utils.timing import Timing
 from kivy.clock import Clock
-from kivy.graphics import Canvas, Color, Rectangle
+from kivy.graphics import Canvas, Color, Line, Rectangle
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
@@ -396,14 +396,23 @@ class SpeechIndexScreen(IndexScreen):
             return
         self._popup_focused_idx = min(self._popup_focused_idx, len(entries) - 1)
         entry = entries[self._popup_focused_idx]
-        draw_focus_highlight(entry, POPUP_NAV_FOCUS_GROUP, color=(1, 1, 0, 1), line_width=3)
+        # Draw on canvas.before so the title label (a child) renders on top of the highlight.
+        canvas_before = entry.canvas.before  # ty: ignore[unresolved-attribute]
+        canvas_before.remove_group(POPUP_NAV_FOCUS_GROUP)
+        with canvas_before:
+            Color(1, 1, 0, 1, group=POPUP_NAV_FOCUS_GROUP)
+            Line(
+                rectangle=(entry.x, entry.y, entry.width, entry.height),
+                width=3,
+                group=POPUP_NAV_FOCUS_GROUP,
+            )
         sv = self._speech_bubble_browser_popup.content
         if sv:
             sv.scroll_to(entry)
 
     def _clear_popup_focus(self) -> None:
         for entry in self._get_popup_entries():
-            clear_focus_highlight(entry, POPUP_NAV_FOCUS_GROUP)
+            entry.canvas.before.remove_group(POPUP_NAV_FOCUS_GROUP)  # ty: ignore[unresolved-attribute]
 
     def _get_popup_entries(self) -> list[TextBoxWithTitleAndBorder]:
         sv = self._speech_bubble_browser_popup.content
