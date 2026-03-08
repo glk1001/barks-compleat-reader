@@ -251,7 +251,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._set_next_title,
         )
 
-        # Ordered left-to-right as they appear in the action bar.
+        # X is first; icon_hitbox is last so Left from X wraps to it.
         self._setup_action_bar_nav(
             [
                 self.ids.quit_button,
@@ -260,6 +260,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
                 self.ids.collapse_button,
                 self.ids.change_pics_button,
                 self.ids.menu_button,
+                self.ids.icon_hitbox,
             ]
         )
         self._focus_region = _FocusRegion.TREE
