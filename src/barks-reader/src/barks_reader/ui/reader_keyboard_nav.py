@@ -127,8 +127,118 @@ class ActionBarNavMixin:
         """Call from on_touch_down to exit menu mode on any mouse interaction."""
         if self._menu_mode:
             self._exit_menu_mode()
+            self._last_used_btn_idx = 0
 
     def _activate_focused_button(self) -> None:
         self._last_used_btn_idx = self._focused_btn_idx
         self._menu_buttons[self._focused_btn_idx].trigger_action()
         self._exit_menu_mode()
+
+
+class DropdownNavMixin:
+    """Mixin for keyboard navigation within an open Kivy DropDown.
+
+    Requires ActionBarNavMixin to also be in the MRO.
+
+    Usage:
+      1. Put DropdownNavMixin before ActionBarNavMixin in the class bases so that
+         _handle_menu_key intercepts dropdown keys before the action-bar handler.
+      2. Call _setup_dropdown_nav() in __init__ or an init helper.
+      3. Override _get_dropdown_buttons() and _dismiss_dropdown().
+      4. Optionally override _scroll_to_dropdown_button() for scrollable dropdowns.
+      5. Set class-level _dropdown_wraps=False and/or _dropdown_page_step>0 as needed.
+    """
+
+    _dropdown_wraps: bool = True  # wrap at ends; set False to clamp
+    _dropdown_page_step: int = 0  # 0 = no Page Up/Down keys
+
+    def _setup_dropdown_nav(self) -> None:
+        self._dropdown_nav_mode: bool = False
+        self._dropdown_focused_idx: int = 0
+        self._dropdown_prev_focused_idx: int = 0
+        self._dropdown_buttons_cache: list = []
+
+    # --- Abstract hooks ---
+
+    def _get_dropdown_buttons(self) -> list:
+        """Return the dropdown buttons in visual top-to-bottom order."""
+        return []
+
+    def _dismiss_dropdown(self) -> None:
+        """Dismiss the dropdown."""
+
+    def _scroll_to_dropdown_button(self, btn: object) -> None:
+        """Scroll the dropdown so btn is visible (optional)."""
+
+    # --- Lifecycle ---
+
+    def _enter_dropdown_nav(self, initial_idx: int = 0) -> None:
+        self._dropdown_nav_mode = True
+        self._dropdown_buttons_cache = self._get_dropdown_buttons()
+        self._dropdown_focused_idx = initial_idx
+        self._dropdown_prev_focused_idx = initial_idx
+        self._update_dropdown_focus()
+
+    def _exit_dropdown_nav(self) -> None:
+        self._clear_dropdown_focus()
+        self._dropdown_buttons_cache = []
+        self._dropdown_nav_mode = False
+
+    def _on_dropdown_dismissed(self) -> None:
+        if self._dropdown_nav_mode:
+            self._exit_dropdown_nav()
+            if self._menu_mode:  # ty: ignore[unresolved-attribute]
+                self._exit_menu_mode()  # ty: ignore[unresolved-attribute]
+
+    # --- Key handling ---
+
+    def _handle_menu_key(self, key: int) -> bool:
+        if self._dropdown_nav_mode:
+            return self._handle_dropdown_key(key)
+        return super()._handle_menu_key(key)  # type: ignore[misc]
+
+    def _handle_dropdown_key(self, key: int) -> bool:
+        buttons = self._dropdown_buttons_cache
+        if not buttons:
+            return False
+        n = len(buttons)
+        idx = self._dropdown_focused_idx
+        if key == KEY_UP:
+            idx = (idx - 1) % n if self._dropdown_wraps else max(0, idx - 1)
+        elif key == KEY_DOWN:
+            idx = (idx + 1) % n if self._dropdown_wraps else min(n - 1, idx + 1)
+        elif self._dropdown_page_step and key == KEY_PAGE_UP:
+            idx = max(0, idx - self._dropdown_page_step)
+        elif self._dropdown_page_step and key == KEY_PAGE_DOWN:
+            idx = min(n - 1, idx + self._dropdown_page_step)
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self._activate_dropdown_item()
+            return True
+        elif key == KEY_ESCAPE:
+            self._dismiss_dropdown()
+            return True
+        else:
+            return False
+        if idx != self._dropdown_focused_idx:
+            self._dropdown_focused_idx = idx
+            self._update_dropdown_focus()
+        return True
+
+    def _activate_dropdown_item(self) -> None:
+        self._dropdown_buttons_cache[self._dropdown_focused_idx].trigger_action()
+
+    # --- Focus management (O(1) per keypress) ---
+
+    def _update_dropdown_focus(self) -> None:
+        buttons = self._dropdown_buttons_cache
+        old_idx = self._dropdown_prev_focused_idx
+        new_idx = self._dropdown_focused_idx
+        if old_idx != new_idx:
+            clear_focus_highlight(buttons[old_idx], MENU_FOCUS_HIGHLIGHT_GROUP)
+        draw_focus_highlight(buttons[new_idx], MENU_FOCUS_HIGHLIGHT_GROUP)
+        self._scroll_to_dropdown_button(buttons[new_idx])
+        self._dropdown_prev_focused_idx = new_idx
+
+    def _clear_dropdown_focus(self) -> None:
+        for btn in self._dropdown_buttons_cache:
+            clear_focus_highlight(btn, MENU_FOCUS_HIGHLIGHT_GROUP)
