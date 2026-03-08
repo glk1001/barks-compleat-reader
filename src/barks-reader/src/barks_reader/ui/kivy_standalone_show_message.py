@@ -7,6 +7,8 @@ from typing import Any
 
 from loguru import logger
 
+from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE
+
 _SAME_SIZE_CUTOFF_PX = 10
 
 
@@ -38,6 +40,7 @@ def show_standalone_popup(  # noqa: C901, PLR0915
     from kivy.app import App
     from kivy.base import EventLoop, runTouchApp, stopTouchApp
     from kivy.clock import Clock
+    from kivy.core.window import Window
     from kivy.graphics import Color, Rectangle, RoundedRectangle
     from kivy.uix.boxlayout import BoxLayout
     from kivy.uix.button import Button
@@ -190,6 +193,15 @@ def show_standalone_popup(  # noqa: C901, PLR0915
                 update_wrapper_bgnd(content, 1)
 
         popup.bind(on_open=lambda *_: popup_is_open())
+
+        def _on_key_down(_win: object, key: int, *_args: object) -> bool:
+            if key == KEY_ESCAPE:
+                popup.dismiss()
+                return True
+            return False
+
+        Window.bind(on_key_down=_on_key_down)
+        popup.bind(on_dismiss=lambda *_: Window.unbind(on_key_down=_on_key_down))
 
         popup.open()
 
