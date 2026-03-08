@@ -333,8 +333,7 @@ class MainScreen(ReaderScreen, ActionBarNavMixin):
 
     def on_touch_down(self, touch: object) -> bool:
         if self._active:
-            if self._menu_mode:
-                self._exit_menu_mode()
+            self._clear_menu_on_touch()
             if self._focus_region == _FocusRegion.BOTTOM:
                 self._exit_bottom_focus()
         return bool(super().on_touch_down(touch))

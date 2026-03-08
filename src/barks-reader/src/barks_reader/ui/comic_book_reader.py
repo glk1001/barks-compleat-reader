@@ -647,7 +647,7 @@ class ComicBookReaderScreen(ReaderScreen, ActionBarNavMixin):
             self._reader_settings,
             font_manager,
             self._on_comic_is_ready_to_read,
-            self._toggle_action_bar_visibility,
+            self._hide_action_bar,
         )
         self.comic_book_reader.set_goto_page_widget(self.ids.goto_page_button)
         self.ids.image_layout.add_widget(self.comic_book_reader)
@@ -697,8 +697,7 @@ class ComicBookReaderScreen(ReaderScreen, ActionBarNavMixin):
     # top margin button presses to take precedence over top margin touches.
     @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
-        if self._menu_mode:
-            self._exit_menu_mode()
+        self._clear_menu_on_touch()
 
         if super().on_touch_down(touch):
             # Another button has been pressed.
@@ -744,7 +743,8 @@ class ComicBookReaderScreen(ReaderScreen, ActionBarNavMixin):
         self._toggle_action_bar_visibility()
 
     def _on_action_bar_hidden_after_menu(self) -> None:
-        self._toggle_action_bar_visibility()
+        if not self._is_action_bar_hidden():
+            self._toggle_action_bar_visibility()
 
     def close_comic_book_reader(self) -> None:
         self._is_closing = True
@@ -783,6 +783,8 @@ class ComicBookReaderScreen(ReaderScreen, ActionBarNavMixin):
         """Toggle double-page mode on/off for the current comic (does not change config)."""
         self.comic_book_reader.toggle_double_page_mode()
         self._sync_double_page_button()
+        if WindowManager.is_fullscreen_now():
+            self._hide_action_bar()
 
     def _sync_double_page_button(self) -> None:
         """Sync the double-page button icon to the current active mode."""
@@ -890,6 +892,11 @@ class ComicBookReaderScreen(ReaderScreen, ActionBarNavMixin):
     def _reset_action_bar_width(self) -> None:
         self.action_bar_width = max(0, get_win_width_from_height(Window.height - ACTION_BAR_SIZE_Y))
         logger.debug(f"self.action_bar_width = {self.action_bar_width}")
+
+    def _hide_action_bar(self) -> None:
+        """Hide the action bar if currently visible. No-op if already hidden."""
+        if not self._is_action_bar_hidden():
+            self._toggle_action_bar_visibility()
 
     def _toggle_action_bar_visibility(self) -> None:
         logger.debug(f"Toggling action bar visibility. Current opacity: {self._action_bar.opacity}")

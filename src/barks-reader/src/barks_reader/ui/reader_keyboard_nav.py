@@ -123,6 +123,11 @@ class ActionBarNavMixin:
         for btn in self._menu_buttons:
             clear_focus_highlight(btn, MENU_FOCUS_HIGHLIGHT_GROUP)
 
+    def _clear_menu_on_touch(self) -> None:
+        """Call from on_touch_down to exit menu mode on any mouse interaction."""
+        if self._menu_mode:
+            self._exit_menu_mode()
+
     def _activate_focused_button(self) -> None:
         self._last_used_btn_idx = self._focused_btn_idx
         self._menu_buttons[self._focused_btn_idx].trigger_action()
