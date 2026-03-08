@@ -311,36 +311,44 @@ class SpeechIndexScreen(IndexScreen):
             self.ids.index_scroll_view.scroll_to(speech_btn)
             self._nav_saved_grid_version = self._grid_version
 
+    def _handle_speech_btn_key(self, key: int) -> bool:
+        """Handle key events when focus is on a speech button. Returns True if consumed."""
+        if key in (KEY_UP, KEY_DOWN, KEY_LEFT):
+            # Return focus to the paired title button.
+            self._nav_on_speech_btn = False
+            self._clear_all_item_focus()
+            self._draw_item_focus()
+            return True
+        if key == KEY_RIGHT:
+            # Move to the next column as a title button (not a speech button).
+            next_col = self._nav_focused_col + 1
+            if next_col < self.num_columns and self._get_col_buttons(next_col):
+                self._nav_on_speech_btn = False
+                self._move_col_focus(1)
+            return True
+        if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            col_buttons = self._get_col_buttons(self._nav_focused_col)
+            if col_buttons and self._nav_focused_item_idx < len(col_buttons):
+                speech_btn = self._get_paired_speech_button(col_buttons[self._nav_focused_item_idx])
+                if speech_btn:
+                    speech_btn.trigger_action(duration=0)
+            return True
+        if key == KEY_ESCAPE:
+            self._nav_on_speech_btn = False
+            self._on_back_from_items()
+            return True
+        # PAGE_UP / PAGE_DOWN and others: delegate to base (just scrolls).
+        return super()._handle_items_key(key)
+
     @override
     def _handle_items_key(self, key: int) -> bool:
         if self._nav_on_speech_btn:
-            if key in (KEY_UP, KEY_DOWN, KEY_LEFT):
-                # Return focus to the paired title button.
-                self._nav_on_speech_btn = False
-                self._clear_all_item_focus()
-                self._draw_item_focus()
-                return True
-            if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
-                col_buttons = self._get_col_buttons(self._nav_focused_col)
-                if col_buttons and self._nav_focused_item_idx < len(col_buttons):
-                    speech_btn = self._get_paired_speech_button(
-                        col_buttons[self._nav_focused_item_idx]
-                    )
-                    if speech_btn:
-                        speech_btn.trigger_action(duration=0)
-                return True
-            if key == KEY_ESCAPE:
-                self._nav_on_speech_btn = False
-                self._on_back_from_items()
-                return True
-            # PAGE_UP / PAGE_DOWN and others: delegate to base (just scrolls).
-            return super()._handle_items_key(key)
+            return self._handle_speech_btn_key(key)
         # Not on speech button — check if Right from a title sub-item should enter speech button.
         if key == KEY_RIGHT:
             col_buttons = self._get_col_buttons(self._nav_focused_col)
             if col_buttons and self._nav_focused_item_idx < len(col_buttons):
-                current_btn = col_buttons[self._nav_focused_item_idx]
-                speech_btn = self._get_paired_speech_button(current_btn)
+                speech_btn = self._get_paired_speech_button(col_buttons[self._nav_focused_item_idx])
                 if speech_btn:
                     self._clear_all_item_focus()
                     self._nav_on_speech_btn = True
