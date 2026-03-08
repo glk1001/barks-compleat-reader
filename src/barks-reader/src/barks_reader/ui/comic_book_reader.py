@@ -34,11 +34,19 @@ from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, get_win_width_from_height
 from barks_reader.ui.platform_window_utils import WindowManager
 from barks_reader.ui.reader_keyboard_nav import (
+    KEY_DOWN,
+    KEY_ENTER,
     KEY_ESCAPE,
     KEY_LEFT,
+    KEY_NUMPAD_ENTER,
+    KEY_PAGE_DOWN,
+    KEY_PAGE_UP,
     KEY_RIGHT,
     KEY_UP,
+    MENU_FOCUS_HIGHLIGHT_GROUP,
     ActionBarNavMixin,
+    clear_focus_highlight,
+    draw_focus_highlight,
 )
 from barks_reader.ui.reader_navigation import ReaderNavigation
 from barks_reader.ui.reader_screens import ReaderScreen
@@ -570,6 +578,31 @@ class ComicBookReader(FloatLayout):
         self._page_manager.set_current_page_index_from_str(page)
         self._hide_action_bar_if_fullscreen()
 
+    def open_goto_page_for_keyboard(self, on_dismiss: Callable) -> int:
+        """Open the goto-page dropdown for keyboard nav. Returns focused button index."""
+        self.goto_page()
+        if self._goto_page_dropdown:
+            self._goto_page_dropdown.bind(on_dismiss=on_dismiss)
+        for i, btn in enumerate(self._goto_page_buttons):
+            if self._page_map[btn.text].page_index == self._current_page_index:
+                return i
+        return 0
+
+    def get_goto_page_buttons(self) -> list[Button]:
+        return list(self._goto_page_buttons)
+
+    def scroll_goto_page_to(self, button: Button) -> None:
+        if self._goto_page_dropdown:
+            self._goto_page_dropdown.scroll_to(button)
+
+    def dismiss_goto_page_dropdown(self) -> None:
+        if self._goto_page_dropdown:
+            self._goto_page_dropdown.dismiss()
+
+    def unbind_goto_page_dismiss(self, callback: Callable) -> None:
+        if self._goto_page_dropdown:
+            self._goto_page_dropdown.unbind(on_dismiss=callback)
+
     def _create_goto_page_dropdown(self) -> None:
         max_dropdown_height = round(GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT * self.height)
         logger.debug(f"Creating goto page dropdown. max_dropdown_height = {max_dropdown_height}.")
@@ -663,6 +696,86 @@ class ComicBookReaderScreen(ReaderScreen, ActionBarNavMixin):
                 self.ids.goto_page_button,
             ]
         )
+        self._goto_dropdown_nav_mode: bool = False
+        self._goto_dropdown_focused_idx: int = 0
+
+    @override
+    def _activate_focused_button(self) -> None:
+        if self._menu_buttons[self._focused_btn_idx] is self.ids.goto_page_button:
+            self._last_used_btn_idx = self._focused_btn_idx
+            self._open_goto_page_for_keyboard()
+        else:
+            super()._activate_focused_button()
+
+    @override
+    def _handle_menu_key(self, key: int) -> bool:
+        if self._goto_dropdown_nav_mode:
+            return self._handle_goto_dropdown_key(key)
+        return super()._handle_menu_key(key)
+
+    def _open_goto_page_for_keyboard(self) -> None:
+        self._clear_menu_focus()
+        focused_idx = self.comic_book_reader.open_goto_page_for_keyboard(
+            self._on_goto_page_dropdown_dismissed
+        )
+        self._goto_dropdown_nav_mode = True
+        self._goto_dropdown_focused_idx = focused_idx
+        self._update_goto_dropdown_focus()
+
+    def _on_goto_page_dropdown_dismissed(self, _instance: object) -> None:
+        self.comic_book_reader.unbind_goto_page_dismiss(self._on_goto_page_dropdown_dismissed)
+        if self._goto_dropdown_nav_mode:
+            self._exit_goto_dropdown_nav()
+            if self._menu_mode:
+                self._exit_menu_mode()
+
+    def _exit_goto_dropdown_nav(self) -> None:
+        self._clear_goto_dropdown_focus()
+        self._goto_dropdown_nav_mode = False
+
+    def _update_goto_dropdown_focus(self) -> None:
+        buttons = self.comic_book_reader.get_goto_page_buttons()
+        for i, btn in enumerate(buttons):
+            if i == self._goto_dropdown_focused_idx:
+                draw_focus_highlight(btn, MENU_FOCUS_HIGHLIGHT_GROUP)
+            else:
+                clear_focus_highlight(btn, MENU_FOCUS_HIGHLIGHT_GROUP)
+        if buttons and 0 <= self._goto_dropdown_focused_idx < len(buttons):
+            self.comic_book_reader.scroll_goto_page_to(buttons[self._goto_dropdown_focused_idx])
+
+    def _clear_goto_dropdown_focus(self) -> None:
+        for btn in self.comic_book_reader.get_goto_page_buttons():
+            clear_focus_highlight(btn, MENU_FOCUS_HIGHLIGHT_GROUP)
+
+    def _handle_goto_dropdown_key(self, key: int) -> bool:
+        buttons = self.comic_book_reader.get_goto_page_buttons()
+        if not buttons:
+            return False
+        n = len(buttons)
+        if key == KEY_UP:
+            self._goto_dropdown_focused_idx = max(0, self._goto_dropdown_focused_idx - 1)
+            self._update_goto_dropdown_focus()
+        elif key == KEY_DOWN:
+            self._goto_dropdown_focused_idx = min(n - 1, self._goto_dropdown_focused_idx + 1)
+            self._update_goto_dropdown_focus()
+        elif key == KEY_PAGE_UP:
+            self._goto_dropdown_focused_idx = max(0, self._goto_dropdown_focused_idx - 10)
+            self._update_goto_dropdown_focus()
+        elif key == KEY_PAGE_DOWN:
+            self._goto_dropdown_focused_idx = min(n - 1, self._goto_dropdown_focused_idx + 10)
+            self._update_goto_dropdown_focus()
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self._activate_goto_dropdown_item()
+        elif key == KEY_ESCAPE:
+            self.comic_book_reader.dismiss_goto_page_dropdown()
+        else:
+            return False
+        return True
+
+    def _activate_goto_dropdown_item(self) -> None:
+        buttons = self.comic_book_reader.get_goto_page_buttons()
+        if buttons:
+            buttons[self._goto_dropdown_focused_idx].trigger_action()
 
     @override
     def is_active(self, active: bool) -> None:
