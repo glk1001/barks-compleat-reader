@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import no_type_check
 from unittest.mock import MagicMock, patch
 
@@ -9,7 +10,7 @@ import barks_reader.ui.reader_screens
 import pytest
 from barks_reader.ui.reader_screens import (
     COMIC_BOOK_READER_SCREEN,
-    INTRO_COMPLEAT_BARKS_READER_SCREEN,
+    DOCUMENT_READER_SCREEN,
     MAIN_READER_SCREEN,
     ReaderScreen,
     ReaderScreenManager,
@@ -37,12 +38,12 @@ def mock_reader_screens() -> ReaderScreens:
     main_screen.app_icon_filepath = "icon.png"
 
     comic_reader_screen = MagicMock(spec=ReaderScreen)
-    intro_screen = MagicMock(spec=ReaderScreen)
+    document_reader_screen = MagicMock()
 
     return ReaderScreens(
         main_screen=main_screen,
         comic_reader_screen=comic_reader_screen,
-        intro_compleat_barks_reader_screen=intro_screen,
+        document_reader_screen=document_reader_screen,
     )
 
 
@@ -70,7 +71,7 @@ class TestReaderScreenManager:
         assert mock_sm.add_widget.call_count == 3  # noqa: PLR2004
         mock_sm.add_widget.assert_any_call(mock_reader_screens.main_screen)
         mock_sm.add_widget.assert_any_call(mock_reader_screens.comic_reader_screen)
-        mock_sm.add_widget.assert_any_call(mock_reader_screens.intro_compleat_barks_reader_screen)
+        mock_sm.add_widget.assert_any_call(mock_reader_screens.document_reader_screen)
 
         assert mock_sm.current == MAIN_READER_SCREEN
         assert root == mock_sm
@@ -130,21 +131,25 @@ class TestReaderScreenManager:
         # noinspection PyUnresolvedReferences
         mock_reader_screens.comic_reader_screen.is_active.assert_called_with(active=False)
 
-    def test_switch_to_intro_compleat_barks_reader(
+    def test_switch_to_document_reader(
         self,
         reader_screen_manager: ReaderScreenManager,
         mock_reader_screens: ReaderScreens,
     ) -> None:
         reader_screen_manager.add_screens(mock_reader_screens)
 
+        doc_dir = Path("/test-doc")
         # noinspection PyProtectedMember
-        reader_screen_manager._switch_to_intro_compleat_barks_reader()
+        reader_screen_manager._switch_to_document_reader(doc_dir, "Test Title")
 
         # noinspection PyProtectedMember
         mock_sm = reader_screen_manager._screen_manager
-        assert mock_sm.current == INTRO_COMPLEAT_BARKS_READER_SCREEN
+        assert mock_sm.current == DOCUMENT_READER_SCREEN
+        mock_reader_screens.document_reader_screen.open_document.assert_called_with(
+            doc_dir, "Test Title"
+        )
 
-    def test_close_intro_compleat_barks_reader(
+    def test_close_document_reader(
         self,
         reader_screen_manager: ReaderScreenManager,
         mock_reader_screens: ReaderScreens,
@@ -152,10 +157,10 @@ class TestReaderScreenManager:
         reader_screen_manager.add_screens(mock_reader_screens)
 
         # noinspection PyProtectedMember
-        reader_screen_manager._close_intro_compleat_barks_reader()
+        reader_screen_manager._close_document_reader()
 
         # noinspection PyUnresolvedReferences
-        mock_reader_screens.main_screen.on_intro_compleat_barks_reader_closed.assert_called_once()
+        mock_reader_screens.main_screen.on_document_reader_closed.assert_called_once()
 
         # noinspection PyProtectedMember
         mock_sm = reader_screen_manager._screen_manager
@@ -177,4 +182,4 @@ class TestReaderScreen:
             screen = ReaderScreen()
             screen.is_active(active=True)
             screen.on_comic_closed()
-            screen.on_intro_compleat_barks_reader_closed()
+            screen.on_document_reader_closed()

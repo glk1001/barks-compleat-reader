@@ -121,7 +121,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
     is_first_use_of_reader = BooleanProperty(defaultvalue=False)
 
-    def __init__(
+    def __init__(  # noqa: PLR0915
         self,
         comics_database: ComicsDatabase,
         reader_settings: ReaderSettings,
@@ -206,6 +206,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             user_error_handler,
         )
         self._read_comic_view_state: ViewStates | None = None
+        self._doc_reader_close_view_state: ViewStates | None = None
 
         background_views = BackgroundViews(
             self._reader_settings,
@@ -233,9 +234,10 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._speech_index_screen,
             self._update_title_from_tree_view,
             self._read_article_as_comic_book,
-            self._read_intro_compleat_barks_reader,
+            self._open_document_reader,
             self._set_tag_goto_page_checkbox,
             self._set_next_title,
+            sys_file_paths=self._reader_settings.sys_file_paths,
         )
 
         self.app_icon_filepath = str(self._random_title_images.get_random_reader_app_icon_file())
@@ -650,7 +652,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             raise ValueError(msg)
 
     def open_how_to(self) -> None:
-        self._read_article_as_comic_book(Titles.HOW_TO_USE_THE_BARKS_READER, None)
+        doc_dir = self._reader_settings.sys_file_paths.get_how_to_doc_dir()
+        self._open_document_reader(doc_dir, "How To Use the Barks Reader", view_state=None)
 
     def open_about(self) -> None:
         show_about_box(
@@ -837,12 +840,19 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         image_info = ImageInfo(icon_path, title)
         self._goto_chrono_title(image_info)
 
-    def _read_intro_compleat_barks_reader(self) -> None:
-        self._screen_switchers.switch_to_intro_compleat_barks_reader()
+    def _open_document_reader(
+        self, doc_dir: Path, title: str, view_state: ViewStates | None = None
+    ) -> None:
+        self._is_active(active=False)
+        self._doc_reader_close_view_state = view_state
+        self._screen_switchers.switch_to_document_reader(doc_dir, title)
 
     @override
-    def on_intro_compleat_barks_reader_closed(self) -> None:
-        self._view_state_manager.update_view_for_node(ViewStates.ON_INTRO_NODE)
+    def on_document_reader_closed(self) -> None:
+        self._is_active(active=True)
+        if self._doc_reader_close_view_state is not None:
+            self._view_state_manager.update_view_for_node(self._doc_reader_close_view_state)
+            self._doc_reader_close_view_state = None
 
     def _set_next_title(self, fanta_info: FantaComicBookInfo, tag: Tags | TagGroups | None) -> None:
         self.fanta_info = fanta_info

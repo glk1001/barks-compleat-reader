@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_tags import TagGroups, Tags
@@ -11,6 +12,10 @@ from kivy.clock import Clock
 from kivy.uix.treeview import TreeViewNode
 from loguru import logger
 
+from barks_reader.core.reader_consts_and_types import (
+    APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
+    INTRO_COMPLEAT_BARKS_READER_TEXT,
+)
 from barks_reader.core.reader_formatter import get_clean_text_without_extra
 from barks_reader.ui.reader_ui_classes import (
     BaseTreeViewNode,
@@ -34,6 +39,7 @@ if TYPE_CHECKING:
     from kivy.uix.scrollview import ScrollView
     from kivy.uix.spinner import Spinner
 
+    from barks_reader.core.system_file_paths import SystemFilePaths
     from barks_reader.ui.background_views import BackgroundViews
     from barks_reader.ui.main_index_screen import MainIndexScreen
     from barks_reader.ui.reader_ui_classes import ReaderTreeView
@@ -43,7 +49,7 @@ if TYPE_CHECKING:
 
 UpdateTitleCallable = Callable[[str], bool]
 ReadArticleCallable = Callable[[Titles, ViewStates], None]
-ReadIntroCompleatBarksReaderCallable = Callable[[], None]
+OpenDocumentReaderCallable = Callable[[Path, str, "ViewStates | None"], None]
 ScrollToNodeCallable = Callable[[TreeViewNode], None]
 SetTagGotoPageCheckboxCallable = Callable[[Tags | TagGroups, str], None]
 
@@ -60,9 +66,10 @@ class TreeViewManager:
         speech_index_screen: SpeechIndexScreen,
         update_title_func: UpdateTitleCallable,
         read_article_func: ReadArticleCallable,
-        read_intro_compleat_barks_reader_func: ReadIntroCompleatBarksReaderCallable,
+        open_document_reader_func: OpenDocumentReaderCallable,
         set_tag_goto_page_checkbox_func: SetTagGotoPageCheckboxCallable,
         set_next_title_func: Callable[[FantaComicBookInfo, Tags | TagGroups | None], None],
+        sys_file_paths: SystemFilePaths | None = None,
     ) -> None:
         self._background_views = background_views
         self._view_state_manager = view_state_manager
@@ -75,9 +82,10 @@ class TreeViewManager:
 
         self._update_title_func = update_title_func
         self._read_article_func = read_article_func
-        self._read_intro_compleat_barks_reader_func = read_intro_compleat_barks_reader_func
+        self._open_document_reader_func = open_document_reader_func
         self._set_tag_goto_page_checkbox_func = set_tag_goto_page_checkbox_func
         self._set_next_title_func = set_next_title_func
+        self._sys_file_paths = sys_file_paths
 
         self._allow_view_state_change = True
         self._title_search_node: TitleSearchBoxTreeViewNode | None = None
@@ -85,7 +93,7 @@ class TreeViewManager:
 
         assert self._update_title_func
         assert self._read_article_func
-        assert self._read_intro_compleat_barks_reader_func
+        assert self._open_document_reader_func
         assert self._set_tag_goto_page_checkbox_func
         assert self._set_next_title_func
 
@@ -365,8 +373,21 @@ class TreeViewManager:
 
         self._set_next_title_func(fanta_info, tag)
 
-    def on_intro_compleat_barks_reader_pressed(self, _button: Button) -> None:
-        self._read_intro_compleat_barks_reader_func()
+    def on_intro_doc_pressed(self, _button: Button) -> None:
+        assert self._sys_file_paths
+        self._open_document_reader_func(
+            self._sys_file_paths.get_intro_doc_dir(),
+            INTRO_COMPLEAT_BARKS_READER_TEXT,
+            ViewStates.ON_INTRO_COMPLEAT_BARKS_READER_NODE,
+        )
+
+    def on_censorship_fixes_doc_pressed(self, _button: Button) -> None:
+        assert self._sys_file_paths
+        self._open_document_reader_func(
+            self._sys_file_paths.get_censorship_fixes_doc_dir(),
+            APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
+            ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
+        )
 
     def on_article_node_pressed(self, node: ButtonTreeViewNode) -> None:
         """Consolidate handling of all simple article nodes."""

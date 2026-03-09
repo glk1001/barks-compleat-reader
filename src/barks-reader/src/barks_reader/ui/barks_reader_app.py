@@ -35,19 +35,17 @@ from barks_reader.ui.bottom_title_view_screen import (
     BottomTitleViewScreen,
 )
 from barks_reader.ui.comic_book_reader import get_barks_comic_reader_screen
+from barks_reader.ui.document_reader import get_document_reader_screen
 from barks_reader.ui.error_handling import handle_app_fail_with_traceback
 from barks_reader.ui.font_manager import FontManager
 from barks_reader.ui.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, FunImageViewScreen
 from barks_reader.ui.index_screen import INDEX_SCREEN_KV_FILE
-from barks_reader.ui.intro_compleat_barks_reader import (
-    get_intro_compleat_barks_reader_screen,  # can take ~3s on VM Windows
-)
 from barks_reader.ui.main_index_screen import MainIndexScreen
 from barks_reader.ui.main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
 from barks_reader.ui.platform_window_utils import log_screen_metrics
 from barks_reader.ui.reader_screens import (
     COMIC_BOOK_READER_SCREEN,
-    INTRO_COMPLEAT_BARKS_READER_SCREEN,
+    DOCUMENT_READER_SCREEN,
     MAIN_READER_SCREEN,
     ReaderScreenManager,
     ReaderScreens,
@@ -462,19 +460,17 @@ class BarksReaderApp(App):
         )
         self._main_screen.set_comic_book_reader_screen(comic_reader_screen)
 
-        logger.debug("Instantiating introduction screen...")
-        intro_screen = get_intro_compleat_barks_reader_screen(
-            INTRO_COMPLEAT_BARKS_READER_SCREEN,
-            self.reader_settings,
-            self._main_screen.app_icon_filepath,
+        logger.debug("Instantiating document reader screen...")
+        document_reader_screen = get_document_reader_screen(
+            DOCUMENT_READER_SCREEN,
             self.font_manager,
-            self._screen_switchers.close_intro_compleat_barks_reader,
+            self._screen_switchers.close_document_reader,
         )
 
         reader_screens = ReaderScreens(
             self._main_screen,
             comic_reader_screen,
-            intro_screen,
+            document_reader_screen,
         )
 
         return self._reader_screen_manager.add_screens(reader_screens)

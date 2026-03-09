@@ -36,8 +36,11 @@ class SystemFilePaths:
         self._down_arrow_path: Path | None = None
         self._transparent_blank_path: Path | None = None
         self._empty_page_path: Path | None = None
-        self._intro_image_path: Path | None = None
         self._favourite_titles_path: Path | None = None
+
+        self._intro_doc_dir: Path | None = None
+        self._censorship_fixes_doc_dir: Path | None = None
+        self._how_to_doc_dir: Path | None = None
 
         self._fantagraphics_overrides_root_dir: Path | None = None
         self._fantagraphics_panel_segments_root_dir: Path | None = None
@@ -77,8 +80,12 @@ class SystemFilePaths:
         self._down_arrow_path = self._various_files_dir / "down-arrow.png"
         self._transparent_blank_path = self._various_files_dir / "transparent-blank.png"
         self._empty_page_path = self._various_files_dir / "empty-page.jpg"
-        self._intro_image_path = self._various_files_dir / "intro-to-barks-reader.jpg"
         self._favourite_titles_path = self._various_files_dir / "favourite-titles.txt"
+
+        documents_dir = self._various_files_dir / "documents"
+        self._intro_doc_dir = documents_dir / "intro-to-barks-reader"
+        self._censorship_fixes_doc_dir = documents_dir / "censorship-fixes"
+        self._how_to_doc_dir = documents_dir / "how-to"
 
         self._fantagraphics_overrides_root_dir = (
             self._barks_reader_files_dir / "Fantagraphics Volumes Overrides"
@@ -99,6 +106,9 @@ class SystemFilePaths:
             self._various_files_dir,
             self._indexes_dir,
             self._fantagraphics_overrides_root_dir,
+            self._intro_doc_dir,
+            self._censorship_fixes_doc_dir,
+            self._how_to_doc_dir,
         ]
         self._check_dirs(dirs_to_check)
 
@@ -126,7 +136,6 @@ class SystemFilePaths:
             self._down_arrow_path,
             self._transparent_blank_path,
             self._empty_page_path,
-            self._intro_image_path,
             self._favourite_titles_path,
         ]
         self.check_files(files_to_check)
@@ -265,9 +274,17 @@ class SystemFilePaths:
         assert self._empty_page_path
         return self._empty_page_path
 
-    def get_intro_image_file(self) -> Path:
-        assert self._intro_image_path
-        return self._intro_image_path
+    def get_intro_doc_dir(self) -> Path:
+        assert self._intro_doc_dir
+        return self._intro_doc_dir
+
+    def get_censorship_fixes_doc_dir(self) -> Path:
+        assert self._censorship_fixes_doc_dir
+        return self._censorship_fixes_doc_dir
+
+    def get_how_to_doc_dir(self) -> Path:
+        assert self._how_to_doc_dir
+        return self._how_to_doc_dir
 
     def get_favourite_titles_path(self) -> Path:
         assert self._favourite_titles_path

@@ -446,7 +446,7 @@ class ReaderTreeBuilder:
             tree,
             INTRO_COMPLEAT_BARKS_READER_TEXT,
             parent_node=intro_node,
-            on_press_handler=self._tree_view_manager.on_intro_compleat_barks_reader_pressed,
+            on_press_handler=self._tree_view_manager.on_intro_doc_pressed,
         )
         child_node.saved_state["open"] = False
 
@@ -506,7 +506,7 @@ class ReaderTreeBuilder:
             tree,
             APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
             parent_node=appendix_node,
-            on_press_handler=self._tree_view_manager.on_article_node_pressed,
+            on_press_handler=self._tree_view_manager.on_censorship_fixes_doc_pressed,
         )
         child_node.saved_state["open"] = False
 

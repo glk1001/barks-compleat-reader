@@ -27,7 +27,7 @@ def mock_dependencies() -> dict[str, MagicMock]:
         "speech_index_screen": MagicMock(),
         "update_title_func": MagicMock(return_value=True),
         "read_article_func": MagicMock(),
-        "read_intro_compleat_barks_reader_func": MagicMock(),
+        "open_document_reader_func": MagicMock(),
         "set_tag_goto_page_checkbox_func": MagicMock(),
         "set_next_title_func": MagicMock(),
     }
