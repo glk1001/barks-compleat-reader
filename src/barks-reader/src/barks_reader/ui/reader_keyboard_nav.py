@@ -6,6 +6,8 @@ from kivy.graphics import Color, Line
 from loguru import logger
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from kivy.uix.widget import Widget
 
 # Kivy SDL2 key codes for navigation keys.
@@ -42,6 +44,26 @@ def draw_focus_highlight(
 
 def clear_focus_highlight(widget: Widget, group: str) -> None:
     widget.canvas.after.remove_group(group)  # ty: ignore[unresolved-attribute]
+
+
+def update_focus_in_list(
+    widgets: Iterable[Widget],
+    focused_idx: int,
+    group: str,
+    color: tuple[float, float, float, float] = (1, 1, 0, 1),
+) -> None:
+    """Draw a focus highlight on the widget at focused_idx, clearing all others."""
+    for i, widget in enumerate(widgets):
+        if i == focused_idx:
+            draw_focus_highlight(widget, group, color=color)
+        else:
+            clear_focus_highlight(widget, group)
+
+
+def clear_focus_in_list(widgets: Iterable[Widget], group: str) -> None:
+    """Clear focus highlights from all widgets in the iterable."""
+    for widget in widgets:
+        clear_focus_highlight(widget, group)
 
 
 class ActionBarNavMixin:
@@ -113,15 +135,10 @@ class ActionBarNavMixin:
         self._update_menu_focus()
 
     def _update_menu_focus(self) -> None:
-        for i, btn in enumerate(self._menu_buttons):
-            if i == self._focused_btn_idx:
-                draw_focus_highlight(btn, MENU_FOCUS_HIGHLIGHT_GROUP)
-            else:
-                clear_focus_highlight(btn, MENU_FOCUS_HIGHLIGHT_GROUP)
+        update_focus_in_list(self._menu_buttons, self._focused_btn_idx, MENU_FOCUS_HIGHLIGHT_GROUP)
 
     def _clear_menu_focus(self) -> None:
-        for btn in self._menu_buttons:
-            clear_focus_highlight(btn, MENU_FOCUS_HIGHLIGHT_GROUP)
+        clear_focus_in_list(self._menu_buttons, MENU_FOCUS_HIGHLIGHT_GROUP)
 
     def _clear_menu_on_touch(self) -> None:
         """Call from on_touch_down to exit menu mode on any mouse interaction."""

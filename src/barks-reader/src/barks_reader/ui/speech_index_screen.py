@@ -56,7 +56,7 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_PAGE_UP,
     KEY_RIGHT,
     KEY_UP,
-    clear_focus_highlight,
+    clear_focus_in_list,
     draw_focus_highlight,
 )
 
@@ -500,8 +500,7 @@ class SpeechIndexScreen(IndexScreen):
         draw_focus_highlight(visible[self._nav_focused_prefix_idx], INDEX_NAV_FOCUS_GROUP)
 
     def _clear_prefix_focus(self) -> None:
-        for btn in self._get_visible_prefix_buttons():
-            clear_focus_highlight(btn, INDEX_NAV_FOCUS_GROUP)
+        clear_focus_in_list(self._get_visible_prefix_buttons(), INDEX_NAV_FOCUS_GROUP)
 
     @override
     def _get_items_for_letter(self, first_letter: str) -> list:
@@ -629,14 +628,16 @@ class SpeechIndexScreen(IndexScreen):
             max_title_button_width = max(max_title_button_width, req_width)
 
             show_speech_bubbles_button = TitleShowSpeechButton()
-            show_speech_bubbles_button.bind(
-                on_release=lambda _btn,
-                bound_title_str=title_str,
-                bound_index_terms=index_term,
-                bound_title_speech_info=title_speech_info: self._show_title_speech_bubbles(
-                    bound_title_str, bound_index_terms, bound_title_speech_info
-                )
-            )
+
+            def _on_speech_btn(
+                _btn: object,
+                ts: str = title_str,
+                it: str = index_term,
+                tsi: TitleInfo = title_speech_info,
+            ) -> None:
+                self._show_title_speech_bubbles(ts, it, tsi)
+
+            show_speech_bubbles_button.bind(on_release=_on_speech_btn)
 
             logger.debug(
                 f'Created title button for "{title_str}",'
@@ -850,10 +851,8 @@ class SpeechIndexScreen(IndexScreen):
             text = text.replace("\u00ad", "-")
             text_box = TextBoxWithTitleAndBorder(title=page_text, content=text.strip())
             text_box.ids.the_text_id.bind(
-                on_release=lambda _btn,
-                bound_title=title_str,
-                bound_page=page_info.comic_page: self._handle_title_from_bubble_press(
-                    bound_title, bound_page
+                on_release=lambda _btn, bound_title=title_str, bound_page=page_info.comic_page: (
+                    self._handle_title_from_bubble_press(bound_title, bound_page)
                 ),
             )
             text_boxes.add_widget(text_box)

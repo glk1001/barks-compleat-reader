@@ -34,6 +34,7 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_RIGHT,
     KEY_UP,
     clear_focus_highlight,
+    clear_focus_in_list,
     draw_focus_highlight,
 )
 from barks_reader.ui.reader_ui_classes import ARROW_WIDTH, MainTreeViewNode
@@ -350,8 +351,7 @@ class IndexScreen(FloatLayout):
             draw_focus_highlight(btn, INDEX_NAV_FOCUS_GROUP)
 
     def _clear_letter_focus(self) -> None:
-        for btn in self._alphabet_buttons.values():
-            clear_focus_highlight(btn, INDEX_NAV_FOCUS_GROUP)
+        clear_focus_in_list(self._alphabet_buttons.values(), INDEX_NAV_FOCUS_GROUP)
 
     def _draw_item_focus(self) -> None:
         col_buttons = self._get_col_buttons(self._nav_focused_col)

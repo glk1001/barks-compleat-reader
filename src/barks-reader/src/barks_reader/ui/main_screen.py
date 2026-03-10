@@ -415,30 +415,18 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._tree_view_screen.scroll_to_node(parent)
 
     def _handle_bottom_key(self, key: int) -> bool:
-        if self._main_index_screen.is_visible:
-            return self._handle_index_screen_key(self._main_index_screen, key)
-        if self._speech_index_screen.is_visible:
-            return self._handle_index_screen_key(self._speech_index_screen, key)
-        if self._statistics_screen.is_visible:
-            return self._handle_statistics_screen_key(key)
+        nav_screen = self._get_active_nav_screen()
+        if nav_screen is not None:
+            if key == KEY_TAB:
+                self._exit_bottom_focus()
+                return True
+            return nav_screen.handle_key(key)
         if key in (KEY_ESCAPE, KEY_TAB):
             self._exit_bottom_focus()
             return True
         if self._fun_image_view_screen.is_visible:
             return self._handle_fun_view_key(key)
         return self._bottom_title_view_screen.is_visible and self._handle_title_view_key(key)
-
-    def _handle_index_screen_key(self, screen: IndexScreen, key: int) -> bool:
-        if key == KEY_TAB:
-            self._exit_bottom_focus()
-            return True
-        return screen.handle_key(key)
-
-    def _handle_statistics_screen_key(self, key: int) -> bool:
-        if key == KEY_TAB:
-            self._exit_bottom_focus()
-            return True
-        return self._statistics_screen.handle_key(key)
 
     def _handle_fun_view_key(self, key: int) -> bool:
         if key == KEY_LEFT:
@@ -458,6 +446,16 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             return False
         return True
 
+    def _get_active_nav_screen(self) -> IndexScreen | StatisticsScreen | None:
+        """Return the currently visible bottom screen that supports keyboard navigation."""
+        if self._main_index_screen.is_visible:
+            return self._main_index_screen
+        if self._speech_index_screen.is_visible:
+            return self._speech_index_screen
+        if self._statistics_screen.is_visible:
+            return self._statistics_screen
+        return None
+
     def _enter_bottom_focus(self) -> None:
         visible = (
             self._fun_image_view_screen.is_visible
@@ -470,21 +468,15 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             return
         self._focus_region = _FocusRegion.BOTTOM
         self._update_bottom_focus_highlight()
-        if self._main_index_screen.is_visible:
-            self._main_index_screen.enter_nav_focus(self._exit_bottom_focus)
-        elif self._speech_index_screen.is_visible:
-            self._speech_index_screen.enter_nav_focus(self._exit_bottom_focus)
-        elif self._statistics_screen.is_visible:
-            self._statistics_screen.enter_nav_focus(self._exit_bottom_focus)
+        nav_screen = self._get_active_nav_screen()
+        if nav_screen is not None:
+            nav_screen.enter_nav_focus(self._exit_bottom_focus)
         logger.debug("Entered bottom focus region.")
 
     def _exit_bottom_focus(self) -> None:
-        if self._main_index_screen.is_visible:
-            self._main_index_screen.exit_nav_focus()
-        elif self._speech_index_screen.is_visible:
-            self._speech_index_screen.exit_nav_focus()
-        elif self._statistics_screen.is_visible:
-            self._statistics_screen.exit_nav_focus()
+        nav_screen = self._get_active_nav_screen()
+        if nav_screen is not None:
+            nav_screen.exit_nav_focus()
         self._focus_region = _FocusRegion.TREE
         self._clear_bottom_focus_highlight()
         logger.debug("Exited bottom focus region.")

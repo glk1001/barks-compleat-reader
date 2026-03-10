@@ -21,8 +21,8 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_RIGHT,
     MENU_FOCUS_HIGHLIGHT_GROUP,
     DropdownNavMixin,
-    clear_focus_highlight,
-    draw_focus_highlight,
+    clear_focus_in_list,
+    update_focus_in_list,
 )
 
 STATISTICS_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
@@ -152,12 +152,12 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         self._nav_on_exit_request = on_exit_request
         self._nav_active = True
         self._nav_focused_idx = 0
-        self._update_focus(self._stat_buttons, self._nav_focused_idx)
+        update_focus_in_list(self._stat_buttons, self._nav_focused_idx, MENU_FOCUS_HIGHLIGHT_GROUP)
         logger.debug("StatisticsScreen: entered nav focus.")
 
     def exit_nav_focus(self) -> None:
         """Exit keyboard navigation mode and clean up all highlights."""
-        self._clear_focus(self._stat_buttons)
+        clear_focus_in_list(self._stat_buttons, MENU_FOCUS_HIGHLIGHT_GROUP)
         if self._dropdown_nav_mode:
             self._exit_dropdown_nav()
         if self._word_stat_dropdown:
@@ -189,25 +189,10 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
 
     def _move_tab_focus(self, delta: int) -> None:
         self._nav_focused_idx = (self._nav_focused_idx + delta) % len(self._stat_buttons)
-        self._update_focus(self._stat_buttons, self._nav_focused_idx)
+        update_focus_in_list(self._stat_buttons, self._nav_focused_idx, MENU_FOCUS_HIGHLIGHT_GROUP)
 
     def _activate_focused_tab(self) -> None:
         btn = self._stat_buttons[self._nav_focused_idx]
         btn.trigger_action()
         if btn is self._word_stat_button:
             Clock.schedule_once(lambda _dt: self._enter_dropdown_nav(), 0)
-
-    # --- Tab focus highlight helpers ---
-
-    @staticmethod
-    def _update_focus(buttons: list, focused_idx: int) -> None:
-        for i, btn in enumerate(buttons):
-            if i == focused_idx:
-                draw_focus_highlight(btn, MENU_FOCUS_HIGHLIGHT_GROUP)
-            else:
-                clear_focus_highlight(btn, MENU_FOCUS_HIGHLIGHT_GROUP)
-
-    @staticmethod
-    def _clear_focus(buttons: list) -> None:
-        for btn in buttons:
-            clear_focus_highlight(btn, MENU_FOCUS_HIGHLIGHT_GROUP)
