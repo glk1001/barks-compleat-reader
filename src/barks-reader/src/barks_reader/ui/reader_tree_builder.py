@@ -56,8 +56,11 @@ from barks_reader.core.reader_consts_and_types import (
     INTRO_NODE_TEXT,
     SEARCH_NODE_TEXT,
     SERIES_NODE_TEXT,
+    TAG_SEARCH_NODE_TEXT,
     THE_STORIES_NODE_TEXT,
+    TITLE_SEARCH_NODE_TEXT,
     US_YEAR_RANGES,
+    WORD_SEARCH_NODE_TEXT,
 )
 from barks_reader.core.reader_formatter import (
     get_bold_markup_text,
@@ -456,12 +459,21 @@ class ReaderTreeBuilder:
         return self._create_and_add_simple_node(tree, THE_STORIES_NODE_TEXT)
 
     def _add_search_node(self, tree: ReaderTreeView) -> None:
-        search_node = self._create_and_add_simple_node(
-            tree,
-            SEARCH_NODE_TEXT,
-            on_press_handler=self._tree_view_manager.on_search_node_pressed,
-        )
+        search_node = self._create_and_add_simple_node(tree, SEARCH_NODE_TEXT)
         self._tree_view_manager.on_search_node_created(search_node)
+
+        for text, handler in [
+            (TITLE_SEARCH_NODE_TEXT, self._tree_view_manager.on_title_search_node_pressed),
+            (TAG_SEARCH_NODE_TEXT, self._tree_view_manager.on_tag_search_node_pressed),
+            (WORD_SEARCH_NODE_TEXT, self._tree_view_manager.on_word_search_node_pressed),
+        ]:
+            self._create_and_add_simple_node(
+                tree,
+                text,
+                node_class=StoryGroupTreeViewNode,
+                parent_node=search_node,
+                on_press_handler=handler,
+            )
 
     def _add_appendix_node(self, tree: ReaderTreeView) -> None:
         appendix_node = self._create_and_add_simple_node(tree, APPENDIX_NODE_TEXT)

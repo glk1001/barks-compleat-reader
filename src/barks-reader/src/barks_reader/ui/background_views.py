@@ -94,7 +94,9 @@ _BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES = {
     ViewStates.ON_APPENDIX_STATISTICS_NODE,
 }
 _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES = {
-    ViewStates.ON_SEARCH_NODE,
+    ViewStates.ON_TITLE_SEARCH_NODE,
+    ViewStates.ON_TAG_SEARCH_NODE,
+    ViewStates.ON_WORD_SEARCH_NODE,
 }
 _BOTTOM_VIEW_TITLE_OPACITY_1_STATES = {
     ViewStates.ON_TITLE_NODE,
@@ -139,6 +141,9 @@ class BackgroundViews:
 
     _SEARCH_VIEW_STATES: ClassVar[set[ViewStates]] = {
         ViewStates.ON_SEARCH_NODE,
+        ViewStates.ON_TITLE_SEARCH_NODE,
+        ViewStates.ON_TAG_SEARCH_NODE,
+        ViewStates.ON_WORD_SEARCH_NODE,
     }
 
     _APPENDIX_VIEW_STATES: ClassVar[set[ViewStates]] = {
@@ -494,7 +499,9 @@ class BackgroundViews:
             ViewStates.ON_INDEX_MAIN_NODE,
             ViewStates.ON_INDEX_SPEECH_NODE,
             ViewStates.ON_APPENDIX_STATISTICS_NODE,
-            ViewStates.ON_SEARCH_NODE,
+            ViewStates.ON_TITLE_SEARCH_NODE,
+            ViewStates.ON_TAG_SEARCH_NODE,
+            ViewStates.ON_WORD_SEARCH_NODE,
         ]:
             return
 

@@ -413,7 +413,14 @@ class TreeViewManager:
     def search_node(self) -> MainTreeViewNode | None:
         return self._search_node
 
-    def on_search_node_pressed(self, _node: ButtonTreeViewNode) -> None:
-        """Handle a press on the Search tree node."""
-        logger.info("Search node pressed.")
-        self._view_state_manager.update_view_for_node(ViewStates.ON_SEARCH_NODE)
+    def on_title_search_node_pressed(self, _node: ButtonTreeViewNode) -> None:
+        logger.info("Title Search node pressed.")
+        self._view_state_manager.update_view_for_node(ViewStates.ON_TITLE_SEARCH_NODE)
+
+    def on_tag_search_node_pressed(self, _node: ButtonTreeViewNode) -> None:
+        logger.info("Tag Search node pressed.")
+        self._view_state_manager.update_view_for_node(ViewStates.ON_TAG_SEARCH_NODE)
+
+    def on_word_search_node_pressed(self, _node: ButtonTreeViewNode) -> None:
+        logger.info("Word Search node pressed.")
+        self._view_state_manager.update_view_for_node(ViewStates.ON_WORD_SEARCH_NODE)

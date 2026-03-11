@@ -514,17 +514,12 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
                 self._tree_view_manager.activate_node(selected)
                 Clock.schedule_once(lambda _dt: self._enter_bottom_focus(), 0)
             return
-        if selected is self._tree_view_manager.search_node:
-            if self._search_screen.is_visible:
-                self._enter_bottom_focus()
-            else:
-                self._tree_view_manager.activate_node(selected)
-                Clock.schedule_once(lambda _dt: self._enter_bottom_focus(), 0)
-            return
         was_closed = isinstance(selected, ButtonTreeViewNode) and not selected.is_open
         self._tree_view_manager.activate_node(selected)
         if isinstance(selected, TitleTreeViewNode):
             self.on_title_portal_image_pressed()
+        elif self._search_screen.is_visible:
+            Clock.schedule_once(lambda _dt: self._enter_bottom_focus(), 0)
         elif was_closed and selected.nodes:
             Clock.schedule_once(lambda _dt: self._select_first_child(selected), 0)
 

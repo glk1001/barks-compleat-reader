@@ -11,6 +11,7 @@ from barks_reader.core.reader_consts_and_types import CLOSE_TO_ZERO
 from barks_reader.core.reader_formatter import get_clean_text_without_extra
 from barks_reader.ui.background_views import ImageThemes
 from barks_reader.ui.panel_texture_loader import PanelTextureLoader
+from barks_reader.ui.view_states import ViewStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -31,7 +32,6 @@ if TYPE_CHECKING:
     from barks_reader.ui.speech_index_screen import SpeechIndexScreen
     from barks_reader.ui.statistics_screen import StatisticsScreen
     from barks_reader.ui.tree_view_screen import TreeViewScreen
-    from barks_reader.ui.view_states import ViewStates
 
 
 class ImageThemesToUse(Enum):
@@ -365,7 +365,16 @@ class ViewStateManager:
         self._statistics_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
 
         opacity = self._background_views.get_search_screen_opacity()
-        self._search_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
+        search_visible = opacity > (1.0 - CLOSE_TO_ZERO)
+        self._search_screen.is_visible = search_visible
+        if search_visible:
+            view_state = self._background_views.get_view_state()
+            if view_state == ViewStates.ON_TITLE_SEARCH_NODE:
+                self._search_screen.set_mode("Title")
+            elif view_state == ViewStates.ON_TAG_SEARCH_NODE:
+                self._search_screen.set_mode("Tag")
+            elif view_state == ViewStates.ON_WORD_SEARCH_NODE:
+                self._search_screen.set_mode("Word")
 
         logger.debug(
             f"Setting new index view."
