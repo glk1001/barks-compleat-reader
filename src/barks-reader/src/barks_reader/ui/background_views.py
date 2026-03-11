@@ -93,16 +93,18 @@ _BOTTOM_VIEW_SPEECH_INDEX_OPACITY_1_STATES = {
 _BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES = {
     ViewStates.ON_APPENDIX_STATISTICS_NODE,
 }
+_BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES = {
+    ViewStates.ON_SEARCH_NODE,
+}
 _BOTTOM_VIEW_TITLE_OPACITY_1_STATES = {
     ViewStates.ON_TITLE_NODE,
-    ViewStates.ON_TITLE_SEARCH_BOX_NODE,
-    ViewStates.ON_TAG_SEARCH_BOX_NODE,
 }
 _BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES = (
     set(ViewStates)
     - _BOTTOM_VIEW_TITLE_OPACITY_1_STATES
     - _BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES
     - _BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES
+    - _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES
 )
 
 
@@ -137,10 +139,6 @@ class BackgroundViews:
 
     _SEARCH_VIEW_STATES: ClassVar[set[ViewStates]] = {
         ViewStates.ON_SEARCH_NODE,
-        ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET,
-        ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET,
-        ViewStates.ON_TITLE_SEARCH_BOX_NODE,
-        ViewStates.ON_TAG_SEARCH_BOX_NODE,
     }
 
     _APPENDIX_VIEW_STATES: ClassVar[set[ViewStates]] = {
@@ -267,6 +265,10 @@ class BackgroundViews:
     def get_statistics_view_opacity(self) -> float:
         """Return 1.0 when the Statistics screen should be visible, else 0.0."""
         return 1.0 if (self._view_state in _BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES) else 0.0
+
+    def get_search_screen_opacity(self) -> float:
+        """Return 1.0 when the Search screen should be visible, else 0.0."""
+        return 1.0 if (self._view_state in _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES) else 0.0
 
     def get_current_category(self) -> str:
         return self._current_category
@@ -488,25 +490,12 @@ class BackgroundViews:
 
     def _set_next_bottom_view_fun_image(self) -> None:
         if self._view_state in [
-            ViewStates.ON_TITLE_SEARCH_BOX_NODE,
-            ViewStates.ON_TAG_SEARCH_BOX_NODE,
             ViewStates.ON_TITLE_NODE,
             ViewStates.ON_INDEX_MAIN_NODE,
             ViewStates.ON_INDEX_SPEECH_NODE,
             ViewStates.ON_APPENDIX_STATISTICS_NODE,
+            ViewStates.ON_SEARCH_NODE,
         ]:
-            return
-
-        if (
-            self._view_state
-            in [
-                ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET,
-                ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET,
-            ]
-            and self._bottom_view_fun_image_info is not None
-        ):
-            # Keep the current image stable while the user is searching.
-            # A None info means Refresh explicitly cleared it, so fall through and refresh.
             return
 
         if (self._view_state == ViewStates.INITIAL) and self._bottom_view_fun_image_info:

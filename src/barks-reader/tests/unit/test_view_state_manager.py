@@ -33,6 +33,7 @@ def mock_dependencies() -> dict[str, MagicMock]:
         "main_index_screen": MagicMock(),
         "speech_index_screen": MagicMock(),
         "statistics_screen": MagicMock(),
+        "search_screen": MagicMock(),
         "on_view_state_changed_func": MagicMock(),
     }
 
@@ -66,6 +67,7 @@ class TestViewStateManager:
         assert mock_dependencies["main_index_screen"].is_visible is False
         assert mock_dependencies["speech_index_screen"].is_visible is False
         assert mock_dependencies["statistics_screen"].is_visible is False
+        assert mock_dependencies["search_screen"].is_visible is False
 
         # Check callback registration
         mock_dependencies["fun_image_view_screen"].set_load_image_func.assert_called_once()
@@ -179,6 +181,7 @@ class TestViewStateManager:
         bg_views.get_main_index_view_opacity.return_value = 0.0
         bg_views.get_speech_index_view_opacity.return_value = 0.0
         bg_views.get_statistics_view_opacity.return_value = 0.0
+        bg_views.get_search_screen_opacity.return_value = 0.0
 
         # Call _set_views (private, but tested via public methods or directly if needed)
         # noinspection PyProtectedMember
@@ -207,6 +210,7 @@ class TestViewStateManager:
         bg_views.get_main_index_view_opacity.return_value = 0.0
         bg_views.get_speech_index_view_opacity.return_value = 0.0
         bg_views.get_statistics_view_opacity.return_value = 0.0
+        bg_views.get_search_screen_opacity.return_value = 0.0
 
         # noinspection PyProtectedMember
         view_state_manager._set_views()
@@ -261,6 +265,7 @@ class TestViewStateManager:
         bg_views.get_main_index_view_opacity.return_value = 0.0
         bg_views.get_speech_index_view_opacity.return_value = 0.0
         bg_views.get_statistics_view_opacity.return_value = 0.0
+        bg_views.get_search_screen_opacity.return_value = 0.0
         bg_views.get_bottom_view_title_image_color.return_value = (0, 0, 1, 1)
 
         # noinspection PyProtectedMember
@@ -281,6 +286,7 @@ class TestViewStateManager:
         bg_views.get_bottom_view_fun_image_opacity.return_value = 0.0
         bg_views.get_bottom_view_title_opacity.return_value = 0.0
         bg_views.get_statistics_view_opacity.return_value = 0.0
+        bg_views.get_search_screen_opacity.return_value = 0.0
 
         # noinspection PyProtectedMember
         view_state_manager._set_views()

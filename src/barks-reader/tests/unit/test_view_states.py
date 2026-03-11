@@ -8,8 +8,6 @@ from barks_reader.ui import view_states
 from barks_reader.ui.reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
-    TagSearchBoxTreeViewNode,
-    TitleSearchBoxTreeViewNode,
     UsYearRangeTreeViewNode,
     YearRangeTreeViewNode,
 )
@@ -44,18 +42,6 @@ def test_get_view_state_from_node_types() -> None:
     state, params = view_states.get_view_state_from_node(node)
     assert state == ViewStates.ON_US_YEAR_RANGE_NODE
     assert params == {"us_year_range": "US 1950"}
-
-    # Test TitleSearchBoxTreeViewNode
-    node = create_dummy_node(TitleSearchBoxTreeViewNode)
-    state, params = view_states.get_view_state_from_node(node)
-    assert state == ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET
-    assert params == {}
-
-    # Test TagSearchBoxTreeViewNode
-    node = create_dummy_node(TagSearchBoxTreeViewNode)
-    state, params = view_states.get_view_state_from_node(node)
-    assert state == ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
-    assert params == {}
 
 
 def test_get_view_state_from_node_text_static_mappings() -> None:

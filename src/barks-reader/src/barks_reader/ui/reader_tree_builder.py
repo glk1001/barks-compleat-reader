@@ -31,7 +31,6 @@ from barks_fantagraphics.fanta_comics_info import (
     FantaComicBookInfo,
     get_num_comic_book_titles,
 )
-from barks_fantagraphics.title_search import BarksTitleSearch
 from comic_utils.timing import Timing
 from kivy.uix.button import Button
 from loguru import logger
@@ -74,9 +73,7 @@ from barks_reader.ui.reader_ui_classes import (
     ReaderTreeView,
     StoryGroupTreeViewNode,
     TagGroupStoryGroupTreeViewNode,
-    TagSearchBoxTreeViewNode,
     TagStoryGroupTreeViewNode,
-    TitleSearchBoxTreeViewNode,
     TitleTreeViewNode,
     UsYearRangeTreeViewNode,
     YearRangeTreeViewNode,
@@ -84,8 +81,6 @@ from barks_reader.ui.reader_ui_classes import (
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-
-    from kivy.uix.treeview import TreeViewNode
 
     from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.ui.tree_view_manager import TreeViewManager
@@ -111,7 +106,6 @@ class ReaderTreeBuilder:
         self._reader_tree_events = reader_tree_events
         self._tree_view_manager = tree_view_manager
         self._title_lists = title_lists
-        self._title_search = BarksTitleSearch()
         self._tree_build_timing = Timing()
         self.chrono_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
 
@@ -462,10 +456,12 @@ class ReaderTreeBuilder:
         return self._create_and_add_simple_node(tree, THE_STORIES_NODE_TEXT)
 
     def _add_search_node(self, tree: ReaderTreeView) -> None:
-        search_node = self._create_and_add_simple_node(tree, SEARCH_NODE_TEXT)
-
-        self._create_and_add_title_search_box_node(tree, search_node)
-        self._create_and_add_tag_search_box_node(tree, search_node)
+        search_node = self._create_and_add_simple_node(
+            tree,
+            SEARCH_NODE_TEXT,
+            on_press_handler=self._tree_view_manager.on_search_node_pressed,
+        )
+        self._tree_view_manager.on_search_node_created(search_node)
 
     def _add_appendix_node(self, tree: ReaderTreeView) -> None:
         appendix_node = self._create_and_add_simple_node(tree, APPENDIX_NODE_TEXT)
@@ -593,42 +589,6 @@ class ReaderTreeBuilder:
 
         if on_press_handler is not None:
             new_node.bind(on_press=on_press_handler)
-
-        return tree.add_node(new_node, parent=parent_node)
-
-    def _create_and_add_title_search_box_node(
-        self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
-    ) -> TreeViewNode:
-        new_node = TitleSearchBoxTreeViewNode(self._title_search)
-
-        new_node.bind(
-            on_title_search_box_pressed=self._tree_view_manager.on_title_search_box_pressed
-        )
-        # TODO: Not sure why ruff does not break this as line too long.
-        # noinspection LongLine
-        new_node.bind(
-            on_title_search_box_title_changed=self._tree_view_manager.on_title_search_box_title_changed
-        )
-        self._tree_view_manager.register_title_search_node(new_node)
-
-        return tree.add_node(new_node, parent=parent_node)
-
-    def _create_and_add_tag_search_box_node(
-        self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
-    ) -> TreeViewNode:
-        new_node = TagSearchBoxTreeViewNode(self._title_search)
-
-        new_node.bind(on_tag_search_box_pressed=self._tree_view_manager.on_tag_search_box_pressed)
-        new_node.bind(
-            on_tag_search_box_text_changed=self._tree_view_manager.on_tag_search_box_text_changed
-        )
-        new_node.bind(
-            on_tag_search_box_tag_changed=self._tree_view_manager.on_tag_search_box_tag_changed
-        )
-        new_node.bind(
-            on_tag_search_box_title_changed=self._tree_view_manager.on_tag_search_box_title_changed
-        )
-        self._tree_view_manager.register_tag_search_node(new_node)
 
         return tree.add_node(new_node, parent=parent_node)
 

@@ -9,8 +9,6 @@ import pytest
 from barks_reader.ui.reader_ui_classes import (
     ButtonTreeViewNode,
     TagGroupStoryGroupTreeViewNode,
-    TagSearchBoxTreeViewNode,
-    TitleSearchBoxTreeViewNode,
     TitleTreeViewNode,
 )
 from barks_reader.ui.tree_view_manager import TreeViewManager
@@ -91,21 +89,6 @@ class TestTreeViewManager:
             mock_dependencies["view_state_manager"].set_view_state.assert_called_with(
                 ViewStates.ON_INTRO_NODE
             )
-
-    def test_setup_and_select_node_search_box(self, tree_view_manager: TreeViewManager) -> None:
-        node = MagicMock(spec=TitleSearchBoxTreeViewNode)
-        node.saved_state = {"text": "search term"}
-
-        with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
-            tree_view_manager.setup_and_select_node(node)
-
-            node.press_search_box.assert_called_once()
-
-            # Verify restore_saved_state is called via the scheduled lambda
-            args, _ = mock_clock.call_args
-            lambda_func = args[0]
-            lambda_func(0)
-            node.restore_saved_state.assert_called_once()
 
     def test_deselect_and_close_open_nodes(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
@@ -242,37 +225,6 @@ class TestTreeViewManager:
         tree_view_manager.on_title_row_button_pressed(button)
 
         mock_dependencies["set_next_title_func"].assert_called_with("Fanta Info", "Tag")
-
-    def test_on_title_search_box_title_changed(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
-    ) -> None:
-        # Case 1: Empty title
-        tree_view_manager.on_title_search_box_title_changed(MagicMock(), "")
-        mock_dependencies["view_state_manager"].update_view_for_node.assert_called_with(
-            ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET
-        )
-
-        # Case 2: Valid title
-        mock_dependencies["update_title_func"].return_value = True
-        tree_view_manager.on_title_search_box_title_changed(MagicMock(), "Title")
-        mock_dependencies["view_state_manager"].update_view_for_node_with_title.assert_called_with(
-            ViewStates.ON_TITLE_SEARCH_BOX_NODE
-        )
-
-    def test_on_tag_search_box_tag_changed(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
-    ) -> None:
-        # Case 1: Empty tag
-        tree_view_manager.on_tag_search_box_tag_changed(MagicMock(), "")
-        mock_dependencies["view_state_manager"].update_view_for_node.assert_not_called()
-
-        # Case 2: Tag changed, no current title
-        instance = MagicMock(spec=TagSearchBoxTreeViewNode)
-        instance.get_current_title.return_value = ""
-        tree_view_manager.on_tag_search_box_tag_changed(instance, "Tag")
-        mock_dependencies["view_state_manager"].update_view_for_node.assert_called_with(
-            ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
-        )
 
     def test_on_article_node_pressed(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]

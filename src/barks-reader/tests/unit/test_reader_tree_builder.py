@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.reader_tree_builder
@@ -16,9 +15,6 @@ from barks_reader.ui.reader_ui_classes import (
     TagGroupStoryGroupTreeViewNode,
     TagStoryGroupTreeViewNode,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Generator
 
 
 @pytest.fixture
@@ -35,19 +31,14 @@ def mock_dependencies() -> dict[str, MagicMock]:
 @pytest.fixture
 def tree_builder(
     mock_dependencies: dict[str, MagicMock],
-) -> Generator[ReaderTreeBuilder]:
-    # Patch BarksTitleSearch to avoid loading whoosh index
-    with patch.object(barks_reader.ui.reader_tree_builder, "BarksTitleSearch"):
-        builder = ReaderTreeBuilder(**mock_dependencies)
-        yield builder
+) -> ReaderTreeBuilder:
+    return ReaderTreeBuilder(**mock_dependencies)
 
 
 class TestReaderTreeBuilder:
     def test_init(self, tree_builder: ReaderTreeBuilder) -> None:
         # noinspection PyProtectedMember
         assert tree_builder._reader_tree_view is not None
-        # noinspection PyProtectedMember
-        assert tree_builder._title_search is not None
 
     def test_build_main_screen_tree(
         self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]

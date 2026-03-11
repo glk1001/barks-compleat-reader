@@ -22,9 +22,7 @@ from barks_reader.ui.reader_ui_classes import (
     ButtonTreeViewNode,
     MainTreeViewNode,
     TagGroupStoryGroupTreeViewNode,
-    TagSearchBoxTreeViewNode,
     TagStoryGroupTreeViewNode,
-    TitleSearchBoxTreeViewNode,
     TitleTreeViewNode,
 )
 from barks_reader.ui.view_states import (
@@ -37,7 +35,6 @@ if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from kivy.uix.button import Button
     from kivy.uix.scrollview import ScrollView
-    from kivy.uix.spinner import Spinner
 
     from barks_reader.core.system_file_paths import SystemFilePaths
     from barks_reader.ui.background_views import BackgroundViews
@@ -88,8 +85,7 @@ class TreeViewManager:
         self._sys_file_paths = sys_file_paths
 
         self._allow_view_state_change = True
-        self._title_search_node: TitleSearchBoxTreeViewNode | None = None
-        self._tag_search_node: TagSearchBoxTreeViewNode | None = None
+        self._search_node: MainTreeViewNode | None = None
 
         assert self._update_title_func
         assert self._read_article_func
@@ -102,8 +98,6 @@ class TreeViewManager:
         self._tree_view_screen.select_node(node)
         if isinstance(node, TitleTreeViewNode):
             self._handle_title_node_selection(node)
-        elif isinstance(node, (TitleSearchBoxTreeViewNode, TagSearchBoxTreeViewNode)):
-            self._handle_search_box_node_selection(node)
         elif isinstance(node, ButtonTreeViewNode):
             node.trigger_action()
 
@@ -118,28 +112,15 @@ class TreeViewManager:
 
         if isinstance(node, TitleTreeViewNode):
             self._handle_title_node_selection(node)
-        elif isinstance(node, (TitleSearchBoxTreeViewNode, TagSearchBoxTreeViewNode)):
-            self._handle_search_box_node_selection(node)
         elif isinstance(node, ButtonTreeViewNode):
             self._handle_button_node_selection(node)
 
     def _handle_title_node_selection(self, node: TitleTreeViewNode) -> None:
-        self._set_active_search(title=False, tag=False)
         fanta_info = node.ids.num_label.parent.fanta_info
         self._set_next_title_func(fanta_info, None)
         self.scroll_to_node(node)
 
-    @staticmethod
-    def _handle_search_box_node_selection(
-        node: TitleSearchBoxTreeViewNode | TagSearchBoxTreeViewNode,
-    ) -> None:
-        # Delay one second to let the TextInput settle into the layout before
-        # restoring text — avoids cursor-positioning glitches on first render.
-        Clock.schedule_once(lambda _dt: node.restore_saved_state(), 1)
-        node.press_search_box()
-
     def _handle_button_node_selection(self, node: ButtonTreeViewNode) -> None:
-        self._set_active_search(title=False, tag=False)
         if node.saved_state.get("open", True):
             node.trigger_action()
         else:
@@ -424,117 +405,15 @@ class TreeViewManager:
         logger.info("Statistics node pressed.")
         self._view_state_manager.update_view_for_node(ViewStates.ON_APPENDIX_STATISTICS_NODE)
 
-    def register_title_search_node(self, node: TitleSearchBoxTreeViewNode) -> None:
-        self._title_search_node = node
+    def on_search_node_created(self, node: MainTreeViewNode) -> None:
+        """Handle creation of the Search tree node."""
+        self._search_node = node
 
-    def register_tag_search_node(self, node: TagSearchBoxTreeViewNode) -> None:
-        self._tag_search_node = node
+    @property
+    def search_node(self) -> MainTreeViewNode | None:
+        return self._search_node
 
-    def _set_active_search(self, *, title: bool, tag: bool) -> None:
-        if self._title_search_node:
-            self._title_search_node.is_active = title
-        if self._tag_search_node:
-            self._tag_search_node.is_active = tag
-
-    def on_title_search_box_pressed(self, instance: TitleSearchBoxTreeViewNode) -> None:
-        logger.debug(f"Title search box pressed: {instance}.")
-
-        if not instance.get_current_title():
-            logger.debug("Have not got title search box text yet.")
-            self._view_state_manager.update_view_for_node(
-                ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET
-            )
-        elif self._background_views.get_view_state() != ViewStates.ON_TITLE_SEARCH_BOX_NODE:
-            logger.debug(
-                f"Forcing title search box change:"
-                f" view state = {self._background_views.get_view_state()},"
-                f' title search box text = "{instance.get_current_title()}",'
-                f' title spinner text = "{instance.ids.title_spinner.text}"',
-            )
-            self.on_title_search_box_title_changed(
-                instance.ids.title_spinner,
-                instance.ids.title_spinner.text,
-            )
-
-    def on_title_search_box_title_changed(self, _spinner: Spinner, title_str: str) -> None:
-        logger.debug(f'Title search box title changed: "{title_str}".')
-
-        if not title_str:
-            self._view_state_manager.update_view_for_node(
-                ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET
-            )
-        elif self._update_title_func(title_str):
-            self._set_active_search(title=True, tag=False)
-            self._view_state_manager.update_view_for_node_with_title(
-                ViewStates.ON_TITLE_SEARCH_BOX_NODE
-            )
-        else:
-            self._view_state_manager.update_view_for_node(
-                ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET
-            )
-
-    def on_tag_search_box_pressed(self, instance: TagSearchBoxTreeViewNode) -> None:
-        logger.debug(f"Tag search box pressed: {instance}.")
-
-        if not instance.get_current_tag_str():
-            logger.debug("Have not got tag search box text yet.")
-            self._view_state_manager.update_view_for_node(
-                ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
-            )
-        elif self._background_views.get_view_state() != ViewStates.ON_TAG_SEARCH_BOX_NODE:
-            logger.debug(
-                f"Forcing tag search box change:"
-                f" view state = {self._background_views.get_view_state()},"
-                f' tag search box text = "{instance.get_current_tag_str()}",'
-                f' tag title spinner text = "{instance.ids.tag_title_spinner.text}"',
-            )
-            self.on_tag_search_box_title_changed(instance, instance.ids.tag_title_spinner.text)
-
-    def on_tag_search_box_text_changed(self, instance: TagSearchBoxTreeViewNode, text: str) -> None:
-        logger.debug(f'Tag search box text changed: text: "{text}".')
-
-        if not instance.get_current_title():
-            self._view_state_manager.update_view_for_node(
-                ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
-            )
-
-    def on_tag_search_box_tag_changed(
-        self,
-        instance: TagSearchBoxTreeViewNode,
-        tag_str: str,
-    ) -> None:
-        logger.debug(f'Tag search box tag changed: "{tag_str}".')
-
-        if not tag_str:
-            return
-
-        if not instance.get_current_title():
-            self._view_state_manager.update_view_for_node(
-                ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
-            )
-
-    def on_tag_search_box_title_changed(
-        self,
-        instance: TagSearchBoxTreeViewNode,
-        title_str: str,
-    ) -> None:
-        current_tag = instance.get_current_tag()
-        tag_value = current_tag.value if current_tag is not None else "None"
-        logger.debug(
-            f'Tag search box title changed: "{title_str}". Tag: "{tag_value}".',
-        )
-
-        if not title_str:
-            self._view_state_manager.update_view_for_node(
-                ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
-            )
-        elif self._update_title_func(title_str):
-            self._set_active_search(title=False, tag=True)
-            self._view_state_manager.update_view_for_node_with_title(
-                ViewStates.ON_TAG_SEARCH_BOX_NODE
-            )
-            self._set_tag_goto_page_checkbox_func(instance.get_current_tag(), title_str)
-        else:
-            self._view_state_manager.update_view_for_node(
-                ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
-            )
+    def on_search_node_pressed(self, _node: ButtonTreeViewNode) -> None:
+        """Handle a press on the Search tree node."""
+        logger.info("Search node pressed.")
+        self._view_state_manager.update_view_for_node(ViewStates.ON_SEARCH_NODE)

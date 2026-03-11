@@ -60,6 +60,7 @@ from barks_reader.ui.reader_ui_classes import (
     set_kivy_busy_cursor,
     set_kivy_normal_cursor,
 )
+from barks_reader.ui.search_screen import SEARCH_SCREEN_KV_FILE, SearchScreen
 from barks_reader.ui.settings_fix import SettingLongPath, SettingOptionsWithValue
 from barks_reader.ui.speech_index_screen import SpeechIndexScreen
 from barks_reader.ui.statistics_screen import STATISTICS_SCREEN_KV_FILE, StatisticsScreen
@@ -378,6 +379,7 @@ class BarksReaderApp(App):
         Builder.load_file(str(FUN_IMAGE_VIEW_SCREEN_KV_FILE))
         Builder.load_file(str(INDEX_SCREEN_KV_FILE))
         Builder.load_file(str(STATISTICS_SCREEN_KV_FILE))
+        Builder.load_file(str(SEARCH_SCREEN_KV_FILE))
         Builder.load_file(str(MAIN_SCREEN_KV_FILE))
 
         root = self._build_screens()
@@ -429,6 +431,7 @@ class BarksReaderApp(App):
         statistics_screen = StatisticsScreen(
             self.reader_settings.sys_file_paths.get_statistics_dir()
         )
+        search_screen = SearchScreen(self.reader_settings, self.font_manager)
         self._main_screen = MainScreen(
             self._comics_database,
             self.reader_settings,
@@ -441,6 +444,7 @@ class BarksReaderApp(App):
             main_index_screen,
             speech_index_screen,
             statistics_screen,
+            search_screen,
             self.font_manager,
             user_error_handler,
             name=MAIN_READER_SCREEN,

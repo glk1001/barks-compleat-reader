@@ -44,8 +44,6 @@ from barks_reader.core.reader_formatter import get_clean_text_without_extra
 from barks_reader.ui.reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
-    TagSearchBoxTreeViewNode,
-    TitleSearchBoxTreeViewNode,
     UsYearRangeTreeViewNode,
     YearRangeTreeViewNode,
 )
@@ -86,10 +84,6 @@ class ViewStates(IntEnum):
     ON_TAG_GROUP_NODE = auto()
     ON_TAG_NODE = auto()
     ON_TITLE_NODE = auto()
-    ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET = auto()
-    ON_TITLE_SEARCH_BOX_NODE = auto()
-    ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET = auto()
-    ON_TAG_SEARCH_BOX_NODE = auto()
 
 
 _NODE_TYPE_TO_VIEW_STATE_MAP: dict[type, tuple[ViewStates, str]] = {
@@ -135,12 +129,6 @@ _NODE_TEXT_TO_VIEW_STATE_MAP: dict[str, ViewStates] = {
     "N/A" + ViewStates.ON_TAG_GROUP_NODE.name: ViewStates.ON_TAG_GROUP_NODE,
     "N/A" + ViewStates.ON_TAG_NODE.name: ViewStates.ON_TAG_NODE,
     "N/A" + ViewStates.ON_TITLE_NODE.name: ViewStates.ON_TITLE_NODE,
-    "N/A"
-    + ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET.name: ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET,  # noqa: E501
-    "N/A" + ViewStates.ON_TITLE_SEARCH_BOX_NODE.name: ViewStates.ON_TITLE_SEARCH_BOX_NODE,
-    "N/A"
-    + ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET.name: ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET,  # noqa: E501
-    "N/A" + ViewStates.ON_TAG_SEARCH_BOX_NODE.name: ViewStates.ON_TAG_SEARCH_BOX_NODE,
 }
 # fmt: on
 assert sorted(_NODE_TEXT_TO_VIEW_STATE_MAP.values()) == sorted(ViewStates)
@@ -195,11 +183,7 @@ def get_view_state_from_node(
             # noinspection PyUnresolvedReferences
             return state, {param_name: node.text}
 
-    if isinstance(node, TitleSearchBoxTreeViewNode):
-        new_view_state = ViewStates.ON_TITLE_SEARCH_BOX_NODE_NO_TITLE_YET
-    elif isinstance(node, TagSearchBoxTreeViewNode):
-        new_view_state = ViewStates.ON_TAG_SEARCH_BOX_NODE_NO_TITLE_YET
-    elif clean_node_text in _NODE_TEXT_TO_VIEW_STATE_MAP:
+    if clean_node_text in _NODE_TEXT_TO_VIEW_STATE_MAP:
         new_view_state = _NODE_TEXT_TO_VIEW_STATE_MAP[clean_node_text]
     elif clean_node_text in BARKS_TAG_CATEGORIES_DICT:
         new_view_state = ViewStates.ON_CATEGORY_NODE

@@ -63,7 +63,6 @@ from barks_reader.ui.reader_screens import ReaderScreen
 from barks_reader.ui.reader_tree_builder import ReaderTreeBuilder
 from barks_reader.ui.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
-    BaseSearchBoxTreeViewNode,
     BaseTreeViewNode,
     ButtonTreeViewNode,
     ReaderTreeBuilderEventDispatcher,
@@ -71,6 +70,7 @@ from barks_reader.ui.reader_ui_classes import (
     hide_action_bar,
     show_action_bar,
 )
+from barks_reader.ui.search_screen import SearchScreen
 from barks_reader.ui.tree_view_manager import TreeViewManager
 from barks_reader.ui.user_error_handler import ErrorInfo, ErrorTypes, UserErrorHandler
 from barks_reader.ui.view_state_manager import ImageThemesChange, ImageThemesToUse, ViewStateManager
@@ -92,6 +92,7 @@ if TYPE_CHECKING:
     from barks_reader.ui.index_screen import IndexScreen
     from barks_reader.ui.main_index_screen import MainIndexScreen
     from barks_reader.ui.reader_screens import ScreenSwitchers
+    from barks_reader.ui.search_screen import SearchScreen
     from barks_reader.ui.speech_index_screen import SpeechIndexScreen
     from barks_reader.ui.statistics_screen import StatisticsScreen
     from barks_reader.ui.tree_view_screen import TreeViewScreen
@@ -134,6 +135,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         main_index_screen: MainIndexScreen,
         speech_index_screen: SpeechIndexScreen,
         statistics_screen: StatisticsScreen,
+        search_screen: SearchScreen,
         font_manager: FontManager,
         user_error_handler: UserErrorHandler,
         **kwargs: str,
@@ -160,6 +162,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._speech_index_screen = speech_index_screen
         self._speech_index_screen.on_goto_title = self._goto_title_with_page_num
         self._statistics_screen = statistics_screen
+        self._search_screen = search_screen
+        self._search_screen.on_goto_title = self._update_title_from_tree_view
+        self._search_screen.on_goto_title_with_page = self._goto_title_with_page_num
         self._user_error_handler = user_error_handler
 
         self.ids.main_layout.add_widget(self._tree_view_screen)
@@ -169,6 +174,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._bottom_base_view_screen.add_widget(self._main_index_screen)
         self._bottom_base_view_screen.add_widget(self._speech_index_screen)
         self._bottom_base_view_screen.add_widget(self._statistics_screen)
+        self._bottom_base_view_screen.add_widget(self._search_screen)
         self.ids.main_layout.add_widget(self._bottom_base_view_screen)
 
         self._screen_switchers = screen_switchers
@@ -223,6 +229,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._main_index_screen,
             self._speech_index_screen,
             self._statistics_screen,
+            self._search_screen,
             self._on_view_state_changed,
         )
 
@@ -373,8 +380,6 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             return self._handle_menu_key(key)
         if self._focus_region == _FocusRegion.BOTTOM:
             return self._handle_bottom_key(key)
-        if self._is_search_box_focused():
-            return self._handle_search_box_focused_key(key)
         return self._handle_tree_key(key)
 
     def _handle_tree_key(self, key: int) -> bool:
@@ -393,26 +398,6 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         else:
             return False
         return True
-
-    def _is_search_box_focused(self) -> bool:
-        selected = self._tree_view_screen.get_selected_node()
-        return isinstance(selected, BaseSearchBoxTreeViewNode) and selected.is_focused
-
-    def _handle_search_box_focused_key(self, key: int) -> bool:
-        if key == KEY_ESCAPE:
-            self._blur_search_box()
-            return True
-        return False
-
-    def _blur_search_box(self) -> None:
-        selected = self._tree_view_screen.get_selected_node()
-        if not isinstance(selected, BaseSearchBoxTreeViewNode):
-            return
-        selected.blur()
-        parent = selected.parent_node
-        if isinstance(parent, BaseTreeViewNode):
-            self._tree_view_screen.select_node(parent)
-            self._tree_view_screen.scroll_to_node(parent)
 
     def _handle_bottom_key(self, key: int) -> bool:
         nav_screen = self._get_active_nav_screen()
@@ -446,7 +431,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             return False
         return True
 
-    def _get_active_nav_screen(self) -> IndexScreen | StatisticsScreen | None:
+    def _get_active_nav_screen(self) -> IndexScreen | StatisticsScreen | SearchScreen | None:
         """Return the currently visible bottom screen that supports keyboard navigation."""
         if self._main_index_screen.is_visible:
             return self._main_index_screen
@@ -454,6 +439,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             return self._speech_index_screen
         if self._statistics_screen.is_visible:
             return self._statistics_screen
+        if self._search_screen.is_visible:
+            return self._search_screen
         return None
 
     def _enter_bottom_focus(self) -> None:
@@ -463,6 +450,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             or self._main_index_screen.is_visible
             or self._speech_index_screen.is_visible
             or self._statistics_screen.is_visible
+            or self._search_screen.is_visible
         )
         if not visible:
             return
@@ -526,12 +514,17 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
                 self._tree_view_manager.activate_node(selected)
                 Clock.schedule_once(lambda _dt: self._enter_bottom_focus(), 0)
             return
+        if selected is self._tree_view_manager.search_node:
+            if self._search_screen.is_visible:
+                self._enter_bottom_focus()
+            else:
+                self._tree_view_manager.activate_node(selected)
+                Clock.schedule_once(lambda _dt: self._enter_bottom_focus(), 0)
+            return
         was_closed = isinstance(selected, ButtonTreeViewNode) and not selected.is_open
         self._tree_view_manager.activate_node(selected)
         if isinstance(selected, TitleTreeViewNode):
             self.on_title_portal_image_pressed()
-        elif isinstance(selected, BaseSearchBoxTreeViewNode):
-            selected.focus_input()
         elif was_closed and selected.nodes:
             Clock.schedule_once(lambda _dt: self._select_first_child(selected), 0)
 
@@ -544,8 +537,6 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         if parent_idx + 1 < len(visible):
             child = visible[parent_idx + 1]
             self._tree_view_screen.select_node(child)
-            if isinstance(child, BaseSearchBoxTreeViewNode):
-                child.focus_input()
 
     def _tree_nav_collapse_to_parent(self) -> None:
         selected = self._tree_view_screen.get_selected_node()

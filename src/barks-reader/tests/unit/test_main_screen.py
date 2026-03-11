@@ -34,6 +34,7 @@ def mock_dependencies() -> dict[str, MagicMock]:
         "statistics_screen": MagicMock(),
         "font_manager": MagicMock(),
         "user_error_handler": MagicMock(),
+        "search_screen": MagicMock(),
     }
 
 
