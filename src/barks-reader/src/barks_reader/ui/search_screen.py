@@ -389,7 +389,7 @@ class SearchScreen(FloatLayout):
             self._blur_all_inputs()
             if self._nav_on_exit_request:
                 self._nav_on_exit_request()
-        elif key in (KEY_TAB, KEY_DOWN):
+        elif key in (KEY_TAB, KEY_DOWN, KEY_ENTER, KEY_NUMPAD_ENTER):
             self._blur_all_inputs()
             if self._active_mode == "Tag" and self._get_tag_chip_buttons():
                 self._nav_focus_area = "tags"
