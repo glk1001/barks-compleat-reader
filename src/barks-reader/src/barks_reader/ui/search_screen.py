@@ -102,7 +102,7 @@ class SearchScreen(FloatLayout):
 
         self._nav_active: bool = False
         self._nav_on_exit_request: Callable | None = None
-        self._nav_focus_area: str = "input"  # "input", "tags", "results"
+        self._nav_focus_area: str = "input"  # "input", "clear", "tags", "results"
         self._nav_focused_result_idx: int = 0
         self._nav_focused_chip_idx: int = 0
 
@@ -368,6 +368,7 @@ class SearchScreen(FloatLayout):
         self._blur_all_inputs()
         self._clear_result_focus()
         self._clear_chip_focus()
+        self._clear_clear_focus()
         self._nav_active = False
         self._nav_focus_area = "input"
         logger.debug("SearchScreen: exited nav focus.")
@@ -378,6 +379,8 @@ class SearchScreen(FloatLayout):
 
         if self._nav_focus_area == "input":
             return self._handle_input_key(key)
+        if self._nav_focus_area == "clear":
+            return self._handle_clear_key(key)
         if self._nav_focus_area == "tags":
             return self._handle_tags_key(key)
         if self._nav_focus_area == "results":
@@ -420,6 +423,10 @@ class SearchScreen(FloatLayout):
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             if results and self._nav_focused_result_idx < len(results):
                 results[self._nav_focused_result_idx].trigger_action(duration=0)
+        elif key == KEY_LEFT:
+            self._clear_result_focus()
+            self._nav_focus_area = "clear"
+            self._draw_clear_focus()
         elif key == KEY_TAB:
             self._clear_result_focus()
             self._nav_focus_area = "input"
@@ -443,10 +450,29 @@ class SearchScreen(FloatLayout):
     def _nav_escape(self) -> None:
         self._clear_result_focus()
         self._clear_chip_focus()
+        self._clear_clear_focus()
         self._nav_focus_area = "input"
         self._blur_all_inputs()
         if self._nav_on_exit_request:
             self._nav_on_exit_request()
+
+    def _handle_clear_key(self, key: int) -> bool:
+        if key == KEY_LEFT:
+            self._clear_clear_focus()
+            self._nav_focus_area = "input"
+            self._focus_active_input()
+        elif key == KEY_RIGHT:
+            self._clear_clear_focus()
+            self._nav_focus_area = "results"
+            self._nav_focused_result_idx = 0
+            self._draw_result_focus()
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self._get_active_clear_button().trigger_action(duration=0)
+        elif key == KEY_ESCAPE:
+            self._nav_escape()
+        else:
+            return False
+        return True
 
     def _handle_tags_key(self, key: int) -> bool:
         chips = self._get_tag_chip_buttons()
@@ -494,6 +520,22 @@ class SearchScreen(FloatLayout):
         chips = self._get_tag_chip_buttons()
         for chip in chips:
             chip.chip_bg_color = _CHIP_BG_NORMAL
+
+    _CLEAR_BTN_NORMAL = (0.35, 0.35, 0.35, 1.0)
+    _CLEAR_BTN_FOCUSED = (0.0, 0.5, 0.0, 1.0)
+
+    def _get_active_clear_button(self) -> Button:
+        if self._active_mode == "Title":
+            return self.ids.title_clear_button
+        if self._active_mode == "Tag":
+            return self.ids.tag_clear_button
+        return self.ids.word_clear_button
+
+    def _draw_clear_focus(self) -> None:
+        self._get_active_clear_button().background_color = self._CLEAR_BTN_FOCUSED
+
+    def _clear_clear_focus(self) -> None:
+        self._get_active_clear_button().background_color = self._CLEAR_BTN_NORMAL
 
     def _focus_active_input(self) -> None:
         if self._active_mode == "Title":
