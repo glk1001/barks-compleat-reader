@@ -15,7 +15,7 @@ from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_fantagraphics.whoosh_search_engine import SearchEngine, TitleInfo
 from comic_utils.timing import Timing
 from kivy.clock import Clock
-from kivy.graphics import Canvas, Color, Line, Rectangle
+from kivy.graphics import Canvas, Color, Rectangle
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
@@ -40,6 +40,7 @@ from barks_reader.ui.index_screen import (
     IndexItemButton,
     IndexMenuButton,
     IndexScreen,
+    PopupKeyboardNav,
     SpeechBubblesPopup,
     TextBoxWithTitleAndBorder,
     TitleShowSpeechButton,
@@ -52,8 +53,6 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_ESCAPE,
     KEY_LEFT,
     KEY_NUMPAD_ENTER,
-    KEY_PAGE_DOWN,
-    KEY_PAGE_UP,
     KEY_RIGHT,
     KEY_UP,
     clear_focus_in_list,
@@ -81,9 +80,6 @@ INDEX_TERMS_HIGHLIGHT_START_TAG = f"[b][color={INDEX_TERMS_HIGHLIGHT_COLOR}]"
 INDEX_TERMS_HIGHLIGHT_END_TAG = "[/color][/b]"
 
 SAVED_NODE_STATE_PREFIX_KEY = "prefix"
-
-POPUP_NAV_FOCUS_GROUP = "popup_nav_focus"
-_POPUP_SCROLL_STEP = 0.2
 
 
 class _SpeechIndexTitleItemButton(Button):
@@ -171,7 +167,6 @@ class SpeechIndexScreen(IndexScreen):
         self._prefix_buttons: dict[str, Button] = {}
         self._nav_focused_prefix_idx: int = 0
         self._nav_on_speech_btn: bool = False
-        self._popup_focused_idx: int = 0
 
         self._populate_alphabet_menu()
 
@@ -183,8 +178,7 @@ class SpeechIndexScreen(IndexScreen):
             pos_hint={"x": 0.06, "y": 0.06},
         )
         self._speech_bubble_browser_popup.children[0].children[-1].markup = True
-        self._speech_bubble_browser_popup.bind(on_open=self._on_popup_opened)
-        self._speech_bubble_browser_popup.bind(on_dismiss=self._on_popup_dismissed)
+        self._popup_nav = PopupKeyboardNav(self._speech_bubble_browser_popup)
 
     def _find_words(self, index_terms: str) -> TitleDict:
         if "0" <= index_terms[0] <= "9":
@@ -240,8 +234,8 @@ class SpeechIndexScreen(IndexScreen):
 
     @override
     def handle_key(self, key: int) -> bool:
-        if self._speech_bubble_browser_popup.parent is not None:
-            return self._handle_popup_key(key)
+        if self._popup_nav.is_open:
+            return self._popup_nav.handle_key(key)
         if self._nav_panel == _IndexNavPanel.PREFIX and self._nav_active:
             return self._handle_prefix_key(key)
         return super().handle_key(key)
@@ -355,84 +349,6 @@ class SpeechIndexScreen(IndexScreen):
                     self._draw_item_focus()
                     return True
         return super()._handle_items_key(key)
-
-    # --- Popup keyboard navigation ---
-
-    def _on_popup_opened(self, *_args: object) -> None:
-        self._popup_focused_idx = 0
-        Clock.schedule_once(lambda _dt: self._draw_popup_focus(), 0)
-
-    def _on_popup_dismissed(self, *_args: object) -> None:
-        self._clear_popup_focus()
-
-    def _handle_popup_key(self, key: int) -> bool:
-        if key == KEY_ESCAPE:
-            self._speech_bubble_browser_popup.dismiss()
-        elif key == KEY_UP:
-            self._move_popup_focus(-1)
-        elif key == KEY_DOWN:
-            self._move_popup_focus(1)
-        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
-            self._activate_popup_focused()
-        elif key == KEY_PAGE_UP:
-            self._scroll_popup(-1)
-        elif key == KEY_PAGE_DOWN:
-            self._scroll_popup(1)
-        else:
-            return False
-        return True
-
-    def _move_popup_focus(self, delta: int) -> None:
-        entries = self._get_popup_entries()
-        if not entries:
-            return
-        new_idx = max(0, min(len(entries) - 1, self._popup_focused_idx + delta))
-        if new_idx == self._popup_focused_idx:
-            return
-        self._clear_popup_focus()
-        self._popup_focused_idx = new_idx
-        self._draw_popup_focus()
-
-    def _activate_popup_focused(self) -> None:
-        entries = self._get_popup_entries()
-        if entries and self._popup_focused_idx < len(entries):
-            entries[self._popup_focused_idx].ids.the_text_id.trigger_action(duration=0)
-
-    def _draw_popup_focus(self) -> None:
-        entries = self._get_popup_entries()
-        if not entries:
-            return
-        self._popup_focused_idx = min(self._popup_focused_idx, len(entries) - 1)
-        entry = entries[self._popup_focused_idx]
-        # Draw on canvas.before so the title label (a child) renders on top of the highlight.
-        canvas_before = entry.canvas.before  # ty: ignore[unresolved-attribute]
-        canvas_before.remove_group(POPUP_NAV_FOCUS_GROUP)
-        with canvas_before:
-            Color(1, 1, 0, 1, group=POPUP_NAV_FOCUS_GROUP)
-            Line(
-                rectangle=(entry.x, entry.y, entry.width, entry.height),
-                width=3,
-                group=POPUP_NAV_FOCUS_GROUP,
-            )
-        sv = self._speech_bubble_browser_popup.content
-        if sv:
-            sv.scroll_to(entry)
-
-    def _clear_popup_focus(self) -> None:
-        for entry in self._get_popup_entries():
-            entry.canvas.before.remove_group(POPUP_NAV_FOCUS_GROUP)  # ty: ignore[unresolved-attribute]
-
-    def _get_popup_entries(self) -> list[TextBoxWithTitleAndBorder]:
-        sv = self._speech_bubble_browser_popup.content
-        if sv is None or not sv.children:
-            return []
-        grid = sv.children[0]
-        return list(reversed(grid.children))
-
-    def _scroll_popup(self, direction: int) -> None:
-        sv = self._speech_bubble_browser_popup.content
-        if sv:
-            sv.scroll_y = max(0.0, min(1.0, sv.scroll_y - direction * _POPUP_SCROLL_STEP))
 
     def _enter_prefix_panel(self) -> None:
         self._clear_all_item_focus()

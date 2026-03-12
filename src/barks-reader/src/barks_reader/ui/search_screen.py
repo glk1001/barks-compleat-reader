@@ -23,6 +23,7 @@ from barks_reader.core.random_title_images import ImageInfo
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums, mark_phrase_in_text
 from barks_reader.core.reader_utils import unique_extend
 from barks_reader.ui.index_screen import (
+    PopupKeyboardNav,
     SpeechBubblesPopup,
     TextBoxWithTitleAndBorder,
     TitleShowSpeechButton,
@@ -105,6 +106,7 @@ class SearchScreen(FloatLayout):
         self._nav_focus_area: str = "input"  # "input", "clear", "tags", "results"
         self._nav_focused_result_idx: int = 0
         self._nav_focused_chip_idx: int = 0
+        self._nav_word_sub_focus: str = "title"  # "title" or "speech"
 
         # Tag search state
         self._current_tag = None
@@ -112,6 +114,10 @@ class SearchScreen(FloatLayout):
 
         # Word search state
         self._word_search_results: list[tuple[str, str, str, TitleInfo]] = []
+
+        # Last activated result (for restoring focus after go-back)
+        self._last_activated_result_idx: int | None = None
+        self._last_activated_word_sub_focus: str = "title"
 
         self._speech_bubble_popup = SpeechBubblesPopup(
             title_font=self._font_manager.speech_bubble_popup_title_font_name,
@@ -121,6 +127,7 @@ class SearchScreen(FloatLayout):
             pos_hint={"x": 0.06, "y": 0.06},
         )
         self._speech_bubble_popup.children[0].children[-1].markup = True
+        self._popup_nav = PopupKeyboardNav(self._speech_bubble_popup)
 
     def set_mode(self, mode: str) -> None:
         """Switch to the given search mode: 'Title', 'Tag', or 'Word'."""
@@ -284,6 +291,15 @@ class SearchScreen(FloatLayout):
             )
             results_layout.add_widget(no_results)
 
+        if found:
+            self._nav_active = True
+            self._blur_all_inputs()
+            self._nav_enter_results()
+            # Two frames: first for layout, second for drawing the highlight.
+            Clock.schedule_once(
+                lambda _dt: Clock.schedule_once(lambda _dt2: self._draw_result_focus())
+            )
+
     def _on_word_title_selected(self, title_str: str, page_to_goto: str) -> None:
         logger.info(f'Word search: navigating to "{title_str}", page {page_to_goto}.')
         if title_str not in BARKS_TITLE_DICT:
@@ -364,6 +380,23 @@ class SearchScreen(FloatLayout):
         self._focus_active_input()
         logger.debug("SearchScreen: entered nav focus.")
 
+    def enter_nav_focus_at_last_result(self, on_exit_request: Callable) -> None:
+        """Enter nav focus, restoring focus to the last activated result if available."""
+        self._nav_on_exit_request = on_exit_request
+        self._nav_active = True
+        rows = self._get_active_result_rows()
+        if self._last_activated_result_idx is not None and rows:
+            self._nav_focus_area = "results"
+            self._nav_focused_result_idx = min(self._last_activated_result_idx, len(rows) - 1)
+            self._nav_word_sub_focus = self._last_activated_word_sub_focus
+            Clock.schedule_once(
+                lambda _dt: Clock.schedule_once(lambda _dt2: self._draw_result_focus())
+            )
+        else:
+            self._nav_focus_area = "input"
+            self._focus_active_input()
+        logger.debug("SearchScreen: entered nav focus at last result.")
+
     def exit_nav_focus(self) -> None:
         self._blur_all_inputs()
         self._clear_result_focus()
@@ -374,33 +407,46 @@ class SearchScreen(FloatLayout):
         logger.debug("SearchScreen: exited nav focus.")
 
     def handle_key(self, key: int) -> bool:
+        if self._popup_nav.is_open:
+            return self._popup_nav.handle_key(key)
+
         if not self._nav_active:
             return False
 
-        if self._nav_focus_area == "input":
-            return self._handle_input_key(key)
-        if self._nav_focus_area == "clear":
-            return self._handle_clear_key(key)
-        if self._nav_focus_area == "tags":
-            return self._handle_tags_key(key)
-        if self._nav_focus_area == "results":
-            return self._handle_results_key(key)
-        return False
+        handlers = {
+            "input": self._handle_input_key,
+            "clear": self._handle_clear_key,
+            "tags": self._handle_tags_key,
+            "results": self._handle_results_key,
+        }
+        handler = handlers.get(self._nav_focus_area)
+        return handler(key) if handler else False
 
     def _handle_input_key(self, key: int) -> bool:
         if key == KEY_ESCAPE:
             self._blur_all_inputs()
             if self._nav_on_exit_request:
                 self._nav_on_exit_request()
-        elif key in (KEY_TAB, KEY_DOWN, KEY_ENTER, KEY_NUMPAD_ENTER):
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            if self._active_mode == "Word":
+                # Let the TextInput's on_text_validate handle the search
+                return False
             self._blur_all_inputs()
             if self._active_mode == "Tag" and self._get_tag_chip_buttons():
                 self._nav_focus_area = "tags"
                 self._nav_focused_chip_idx = 0
                 self._draw_chip_focus()
             else:
-                self._nav_focus_area = "results"
-                self._nav_focused_result_idx = 0
+                self._nav_enter_results()
+                self._draw_result_focus()
+        elif key in (KEY_TAB, KEY_DOWN):
+            self._blur_all_inputs()
+            if self._active_mode == "Tag" and self._get_tag_chip_buttons():
+                self._nav_focus_area = "tags"
+                self._nav_focused_chip_idx = 0
+                self._draw_chip_focus()
+            else:
+                self._nav_enter_results()
                 self._draw_result_focus()
         else:
             # Let the text input handle the key
@@ -408,25 +454,28 @@ class SearchScreen(FloatLayout):
         return True
 
     def _handle_results_key(self, key: int) -> bool:
-        results = self._get_active_result_buttons()
+        rows = self._get_active_result_rows()
         if key == KEY_UP:
             if self._nav_focused_result_idx <= 0:
                 self._clear_result_focus()
                 self._nav_up_from_results()
             else:
                 self._nav_focused_result_idx -= 1
+                self._nav_word_sub_focus = "title"
                 self._draw_result_focus()
         elif key == KEY_DOWN:
-            if results and self._nav_focused_result_idx < len(results) - 1:
+            if rows and self._nav_focused_result_idx < len(rows) - 1:
                 self._nav_focused_result_idx += 1
+                self._nav_word_sub_focus = "title"
                 self._draw_result_focus()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
-            if results and self._nav_focused_result_idx < len(results):
-                results[self._nav_focused_result_idx].trigger_action(duration=0)
-        elif key == KEY_LEFT:
-            self._clear_result_focus()
-            self._nav_focus_area = "clear"
-            self._draw_clear_focus()
+            focused = self._get_focused_result_widget(rows)
+            if focused is not None:
+                self._last_activated_result_idx = self._nav_focused_result_idx
+                self._last_activated_word_sub_focus = self._nav_word_sub_focus
+                focused.trigger_action(duration=0)
+        elif key in (KEY_LEFT, KEY_RIGHT):
+            return self._handle_results_left_right(key)
         elif key == KEY_TAB:
             self._clear_result_focus()
             self._nav_focus_area = "input"
@@ -436,6 +485,28 @@ class SearchScreen(FloatLayout):
         else:
             return False
         return True
+
+    def _handle_results_left_right(self, key: int) -> bool:
+        if key == KEY_RIGHT:
+            if self._active_mode == "Word" and self._nav_word_sub_focus == "title":
+                self._nav_word_sub_focus = "speech"
+                self._draw_result_focus()
+                return True
+            return False
+        # KEY_LEFT
+        if self._active_mode == "Word" and self._nav_word_sub_focus == "speech":
+            self._nav_word_sub_focus = "title"
+            self._draw_result_focus()
+        else:
+            self._clear_result_focus()
+            self._nav_focus_area = "clear"
+            self._draw_clear_focus()
+        return True
+
+    def _nav_enter_results(self) -> None:
+        self._nav_focus_area = "results"
+        self._nav_focused_result_idx = 0
+        self._nav_word_sub_focus = "title"
 
     def _nav_up_from_results(self) -> None:
         if self._active_mode == "Tag" and self._get_tag_chip_buttons():
@@ -463,8 +534,7 @@ class SearchScreen(FloatLayout):
             self._focus_active_input()
         elif key == KEY_RIGHT:
             self._clear_clear_focus()
-            self._nav_focus_area = "results"
-            self._nav_focused_result_idx = 0
+            self._nav_enter_results()
             self._draw_result_focus()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._get_active_clear_button().trigger_action(duration=0)
@@ -490,15 +560,13 @@ class SearchScreen(FloatLayout):
                 self._focus_active_input()
         elif key == KEY_TAB:
             self._clear_chip_focus()
-            self._nav_focus_area = "results"
-            self._nav_focused_result_idx = 0
+            self._nav_enter_results()
             self._draw_result_focus()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             if chips and self._nav_focused_chip_idx < len(chips):
                 chips[self._nav_focused_chip_idx].trigger_action(duration=0)
                 self._clear_chip_focus()
-                self._nav_focus_area = "results"
-                self._nav_focused_result_idx = 0
+                self._nav_enter_results()
                 Clock.schedule_once(lambda _dt: self._draw_result_focus())
         elif key == KEY_ESCAPE:
             self._nav_escape()
@@ -554,7 +622,7 @@ class SearchScreen(FloatLayout):
         self.ids.tag_search_input.focus = False
         self.ids.word_search_input.focus = False
 
-    def _get_active_result_buttons(self) -> list[Button]:
+    def _get_active_result_rows(self) -> list[Button]:
         if self._active_mode == "Title":
             layout = self.ids.title_results_layout
         elif self._active_mode == "Tag":
@@ -565,13 +633,44 @@ class SearchScreen(FloatLayout):
             return []
         return list(reversed(layout.children))
 
+    def _get_focused_result_widget(self, rows: list) -> Button | None:
+        if not rows:
+            return None
+        idx = min(self._nav_focused_result_idx, len(rows) - 1)
+        row = rows[idx]
+        if self._active_mode == "Word" and hasattr(row, "children") and row.children:
+            children = list(reversed(row.children))
+            sub_idx = 1 if self._nav_word_sub_focus == "speech" else 0
+            return children[min(sub_idx, len(children) - 1)]
+        return row
+
+    def _get_all_focusable_widgets(self, rows: list) -> list:
+        if self._active_mode != "Word":
+            return rows
+        widgets = []
+        for row in rows:
+            if hasattr(row, "children") and row.children:
+                widgets.extend(reversed(row.children))
+            else:
+                widgets.append(row)
+        return widgets
+
     def _draw_result_focus(self) -> None:
-        results = self._get_active_result_buttons()
-        if not results:
+        rows = self._get_active_result_rows()
+        if not rows:
             return
-        self._nav_focused_result_idx = min(self._nav_focused_result_idx, len(results) - 1)
-        update_focus_in_list(results, self._nav_focused_result_idx, _SEARCH_NAV_FOCUS_GROUP)
+        self._nav_focused_result_idx = min(self._nav_focused_result_idx, len(rows) - 1)
+        all_widgets = self._get_all_focusable_widgets(rows)
+        focused = self._get_focused_result_widget(rows)
+        if focused is None:
+            return
+        try:
+            focus_idx = all_widgets.index(focused)
+        except ValueError:
+            return
+        update_focus_in_list(all_widgets, focus_idx, _SEARCH_NAV_FOCUS_GROUP)
 
     def _clear_result_focus(self) -> None:
-        results = self._get_active_result_buttons()
-        clear_focus_in_list(results, _SEARCH_NAV_FOCUS_GROUP)
+        rows = self._get_active_result_rows()
+        all_widgets = self._get_all_focusable_widgets(rows)
+        clear_focus_in_list(all_widgets, _SEARCH_NAV_FOCUS_GROUP)

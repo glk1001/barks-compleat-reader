@@ -611,7 +611,11 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         Clock.schedule_once(lambda _dt: self._enter_bottom_focus_if_index_visible(), 0)
 
     def _enter_bottom_focus_if_index_visible(self) -> None:
-        if self._main_index_screen.is_visible or self._speech_index_screen.is_visible:
+        if self._search_screen.is_visible:
+            self._focus_region = _FocusRegion.BOTTOM
+            self._update_bottom_focus_highlight()
+            self._search_screen.enter_nav_focus_at_last_result(self._exit_bottom_focus)
+        elif self._main_index_screen.is_visible or self._speech_index_screen.is_visible:
             self._enter_bottom_focus()
 
     def on_action_bar_collapse(self) -> None:
