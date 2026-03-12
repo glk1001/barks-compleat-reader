@@ -476,19 +476,19 @@ class SearchScreen(FloatLayout):
 
     def _handle_tags_key(self, key: int) -> bool:
         chips = self._get_tag_chip_buttons()
-        if key == KEY_RIGHT:
+        if key in (KEY_RIGHT, KEY_DOWN):
             if chips and self._nav_focused_chip_idx < len(chips) - 1:
                 self._nav_focused_chip_idx += 1
                 self._draw_chip_focus()
-        elif key == KEY_LEFT:
+        elif key in (KEY_LEFT, KEY_UP):
             if self._nav_focused_chip_idx > 0:
                 self._nav_focused_chip_idx -= 1
                 self._draw_chip_focus()
-        elif key == KEY_UP:
-            self._clear_chip_focus()
-            self._nav_focus_area = "input"
-            self._focus_active_input()
-        elif key in (KEY_DOWN, KEY_TAB):
+            else:
+                self._clear_chip_focus()
+                self._nav_focus_area = "input"
+                self._focus_active_input()
+        elif key == KEY_TAB:
             self._clear_chip_focus()
             self._nav_focus_area = "results"
             self._nav_focused_result_idx = 0
@@ -496,6 +496,10 @@ class SearchScreen(FloatLayout):
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             if chips and self._nav_focused_chip_idx < len(chips):
                 chips[self._nav_focused_chip_idx].trigger_action(duration=0)
+                self._clear_chip_focus()
+                self._nav_focus_area = "results"
+                self._nav_focused_result_idx = 0
+                Clock.schedule_once(lambda _dt: self._draw_result_focus())
         elif key == KEY_ESCAPE:
             self._nav_escape()
         else:
