@@ -369,7 +369,10 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def on_touch_down(self, touch: object) -> bool:
         if self._active:
             self._clear_menu_on_touch()
-            if self._focus_region == _FocusRegion.BOTTOM:
+            if (
+                self._focus_region == _FocusRegion.BOTTOM
+                and not self._bottom_base_view_screen.collide_point(*touch.pos)  # ty: ignore[unresolved-attribute]
+            ):
                 self._exit_bottom_focus()
         return bool(super().on_touch_down(touch))
 

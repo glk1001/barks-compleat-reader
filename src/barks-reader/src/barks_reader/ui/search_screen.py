@@ -31,7 +31,9 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_ESCAPE,
+    KEY_LEFT,
     KEY_NUMPAD_ENTER,
+    KEY_RIGHT,
     KEY_TAB,
     KEY_UP,
     clear_focus_in_list,
@@ -57,6 +59,21 @@ _SEARCH_NAV_FOCUS_GROUP = "search_nav_focus"
 
 class _SearchResultButton(Button):
     """A clickable result row in a search results list."""
+
+
+_CHIP_BG_NORMAL = (0.2, 0.35, 0.2, 1)
+_CHIP_BG_SELECTED = (0.3, 0.55, 0.3, 1)
+
+
+class _TagChipButton(Button):
+    """A pill-shaped tag chip button for tag search results."""
+
+    chip_bg_color = ObjectProperty(_CHIP_BG_NORMAL)
+
+    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+        super().__init__(**kwargs)
+        self.texture_update()
+        self.width = self.texture_size[0] + dp(24)
 
 
 class SearchScreen(FloatLayout):
@@ -85,8 +102,9 @@ class SearchScreen(FloatLayout):
 
         self._nav_active: bool = False
         self._nav_on_exit_request: Callable | None = None
-        self._nav_focus_area: str = "input"  # "input", "results"
+        self._nav_focus_area: str = "input"  # "input", "tags", "results"
         self._nav_focused_result_idx: int = 0
+        self._nav_focused_chip_idx: int = 0
 
         # Tag search state
         self._current_tag = None
@@ -154,13 +172,13 @@ class SearchScreen(FloatLayout):
 
     def on_title_clear(self) -> None:
         self.ids.title_search_input.text = ""
-        Clock.schedule_once(lambda _dt: setattr(self.ids.title_search_input, "focus", True))
+        self.ids.title_search_input.focus = True
 
     # --- Tag Search ---
 
     def on_tag_search_text(self, text: str) -> None:
-        tag_results_layout: BoxLayout = self.ids.tag_results_layout
-        tag_results_layout.clear_widgets()
+        chips_layout = self.ids.tag_chips_layout
+        chips_layout.clear_widgets()
         self._clear_tag_title_results()
 
         if len(text) <= 1:
@@ -170,9 +188,9 @@ class SearchScreen(FloatLayout):
         tags = sorted([str(t.value) for t in found_tags]) if found_tags else []
 
         for tag_str in tags:
-            btn = _SearchResultButton(text=tag_str)
+            btn = _TagChipButton(text=tag_str)
             btn.bind(on_release=lambda _b, t=tag_str: self._on_tag_result_selected(t))
-            tag_results_layout.add_widget(btn)
+            chips_layout.add_widget(btn)
 
         if len(tags) == 1:
             self._on_tag_result_selected(tags[0])
@@ -200,8 +218,9 @@ class SearchScreen(FloatLayout):
 
     def on_tag_clear(self) -> None:
         self.ids.tag_search_input.text = ""
+        self.ids.tag_chips_layout.clear_widgets()
         self._clear_tag_title_results()
-        Clock.schedule_once(lambda _dt: setattr(self.ids.tag_search_input, "focus", True))
+        self.ids.tag_search_input.focus = True
 
     # --- Word Search ---
 
@@ -337,7 +356,7 @@ class SearchScreen(FloatLayout):
     def on_word_clear(self) -> None:
         self.ids.word_search_input.text = ""
         self.ids.word_results_layout.clear_widgets()
-        Clock.schedule_once(lambda _dt: setattr(self.ids.word_search_input, "focus", True))
+        self.ids.word_search_input.focus = True
 
     # --- Keyboard Navigation ---
 
@@ -351,6 +370,7 @@ class SearchScreen(FloatLayout):
     def exit_nav_focus(self) -> None:
         self._blur_all_inputs()
         self._clear_result_focus()
+        self._clear_chip_focus()
         self._nav_active = False
         self._nav_focus_area = "input"
         logger.debug("SearchScreen: exited nav focus.")
@@ -361,6 +381,8 @@ class SearchScreen(FloatLayout):
 
         if self._nav_focus_area == "input":
             return self._handle_input_key(key)
+        if self._nav_focus_area == "tags":
+            return self._handle_tags_key(key)
         if self._nav_focus_area == "results":
             return self._handle_results_key(key)
         return False
@@ -372,9 +394,14 @@ class SearchScreen(FloatLayout):
                 self._nav_on_exit_request()
         elif key in (KEY_TAB, KEY_DOWN):
             self._blur_all_inputs()
-            self._nav_focus_area = "results"
-            self._nav_focused_result_idx = 0
-            self._draw_result_focus()
+            if self._active_mode == "Tag" and self._get_tag_chip_buttons():
+                self._nav_focus_area = "tags"
+                self._nav_focused_chip_idx = 0
+                self._draw_chip_focus()
+            else:
+                self._nav_focus_area = "results"
+                self._nav_focused_result_idx = 0
+                self._draw_result_focus()
         else:
             # Let the text input handle the key
             return False
@@ -385,8 +412,7 @@ class SearchScreen(FloatLayout):
         if key == KEY_UP:
             if self._nav_focused_result_idx <= 0:
                 self._clear_result_focus()
-                self._nav_focus_area = "input"
-                self._focus_active_input()
+                self._nav_up_from_results()
             else:
                 self._nav_focused_result_idx -= 1
                 self._draw_result_focus()
@@ -402,22 +428,83 @@ class SearchScreen(FloatLayout):
             self._nav_focus_area = "input"
             self._focus_active_input()
         elif key == KEY_ESCAPE:
-            self._clear_result_focus()
-            self._nav_focus_area = "input"
-            self._blur_all_inputs()
-            if self._nav_on_exit_request:
-                self._nav_on_exit_request()
+            self._nav_escape()
         else:
             return False
         return True
 
+    def _nav_up_from_results(self) -> None:
+        if self._active_mode == "Tag" and self._get_tag_chip_buttons():
+            self._nav_focus_area = "tags"
+            chips = self._get_tag_chip_buttons()
+            self._nav_focused_chip_idx = len(chips) - 1
+            self._draw_chip_focus()
+        else:
+            self._nav_focus_area = "input"
+            self._focus_active_input()
+
+    def _nav_escape(self) -> None:
+        self._clear_result_focus()
+        self._clear_chip_focus()
+        self._nav_focus_area = "input"
+        self._blur_all_inputs()
+        if self._nav_on_exit_request:
+            self._nav_on_exit_request()
+
+    def _handle_tags_key(self, key: int) -> bool:
+        chips = self._get_tag_chip_buttons()
+        if key == KEY_RIGHT:
+            if chips and self._nav_focused_chip_idx < len(chips) - 1:
+                self._nav_focused_chip_idx += 1
+                self._draw_chip_focus()
+        elif key == KEY_LEFT:
+            if self._nav_focused_chip_idx > 0:
+                self._nav_focused_chip_idx -= 1
+                self._draw_chip_focus()
+        elif key == KEY_UP:
+            self._clear_chip_focus()
+            self._nav_focus_area = "input"
+            self._focus_active_input()
+        elif key in (KEY_DOWN, KEY_TAB):
+            self._clear_chip_focus()
+            self._nav_focus_area = "results"
+            self._nav_focused_result_idx = 0
+            self._draw_result_focus()
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            if chips and self._nav_focused_chip_idx < len(chips):
+                chips[self._nav_focused_chip_idx].trigger_action(duration=0)
+        elif key == KEY_ESCAPE:
+            self._nav_escape()
+        else:
+            return False
+        return True
+
+    def _get_tag_chip_buttons(self) -> list[_TagChipButton]:
+        if not hasattr(self.ids, "tag_chips_layout"):
+            return []
+        return list(reversed(self.ids.tag_chips_layout.children))
+
+    def _draw_chip_focus(self) -> None:
+        chips = self._get_tag_chip_buttons()
+        if not chips:
+            return
+        self._nav_focused_chip_idx = min(self._nav_focused_chip_idx, len(chips) - 1)
+        for i, chip in enumerate(chips):
+            is_focused = i == self._nav_focused_chip_idx
+            chip.chip_bg_color = _CHIP_BG_SELECTED if is_focused else _CHIP_BG_NORMAL
+
+    def _clear_chip_focus(self) -> None:
+        chips = self._get_tag_chip_buttons()
+        for chip in chips:
+            chip.chip_bg_color = _CHIP_BG_NORMAL
+
     def _focus_active_input(self) -> None:
         if self._active_mode == "Title":
-            Clock.schedule_once(lambda _dt: setattr(self.ids.title_search_input, "focus", True))
+            self.ids.title_search_input.focus = True
         elif self._active_mode == "Tag":
-            Clock.schedule_once(lambda _dt: setattr(self.ids.tag_search_input, "focus", True))
+            self.ids.tag_search_input.focus = True
         elif self._active_mode == "Word":
-            Clock.schedule_once(lambda _dt: setattr(self.ids.word_search_input, "focus", True))
+            self.ids.word_search_input.focus = True
 
     def _blur_all_inputs(self) -> None:
         self.ids.title_search_input.focus = False
