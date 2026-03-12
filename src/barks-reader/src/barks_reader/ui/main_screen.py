@@ -163,7 +163,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._speech_index_screen.on_goto_title = self._goto_title_with_page_num
         self._statistics_screen = statistics_screen
         self._search_screen = search_screen
-        self._search_screen.on_goto_title = self._update_title_from_tree_view
+        self._search_screen.on_goto_title = self._goto_search_title
         self._search_screen.on_goto_title_with_page = self._goto_title_with_page_num
         self._user_error_handler = user_error_handler
 
@@ -879,6 +879,17 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         self._set_goto_page_checkbox()
         self._set_use_overrides_checkbox()
+
+    def _goto_search_title(self, title_str: str) -> bool:
+        """Navigate to a title selected from the search screen."""
+        title_str = ComicBookInfo.get_title_str_from_display_title(title_str)
+        if title_str not in BARKS_TITLE_DICT:
+            logger.debug(f'Search goto title: not found: "{title_str}".')
+            return False
+        title = BARKS_TITLE_DICT[title_str]
+        image_info = ImageInfo(from_title=title, filename=None)
+        self._goto_chrono_title(image_info)
+        return True
 
     def _update_title_from_tree_view(self, title_str: str) -> bool:
         logger.debug(f'Update title: "{title_str}".')

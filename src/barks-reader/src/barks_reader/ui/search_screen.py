@@ -127,15 +127,12 @@ class SearchScreen(FloatLayout):
         self._active_mode = mode
 
         self.ids.title_search_content.opacity = 1 if mode == "Title" else 0
-        self.ids.title_search_content.disabled = mode != "Title"
         self.ids.title_search_content.size_hint = (1, 1) if mode == "Title" else (0, 0)
 
         self.ids.tag_search_content.opacity = 1 if mode == "Tag" else 0
-        self.ids.tag_search_content.disabled = mode != "Tag"
         self.ids.tag_search_content.size_hint = (1, 1) if mode == "Tag" else (0, 0)
 
         self.ids.word_search_content.opacity = 1 if mode == "Word" else 0
-        self.ids.word_search_content.disabled = mode != "Word"
         self.ids.word_search_content.size_hint = (1, 1) if mode == "Word" else (0, 0)
 
         logger.debug(f"SearchScreen mode set to '{mode}'.")
