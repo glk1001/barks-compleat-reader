@@ -21,10 +21,12 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.gridlayout import GridLayout
 from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from loguru import logger
 
+from barks_reader.core.reader_formatter import mark_phrase_in_text
 from barks_reader.ui.reader_keyboard_nav import (
     KEY_DOWN,
     KEY_ENTER,
@@ -44,7 +46,7 @@ from barks_reader.ui.reader_ui_classes import ARROW_WIDTH, MainTreeViewNode
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from kivy.uix.gridlayout import GridLayout
+    from barks_fantagraphics.whoosh_search_engine import TitleInfo
     from kivy.uix.widget import Widget
 
     from barks_reader.core.random_title_images import ImageInfo
@@ -56,6 +58,10 @@ INDEX_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 SAVED_NODE_STATE_FIRST_LETTER_KEY = "first_letter"
 
 INDEX_NAV_FOCUS_GROUP = "index_nav_focus"
+
+SPEECH_HIGHLIGHT_COLOR = "#1A6ABB"
+SPEECH_HIGHLIGHT_START_TAG = f"[b][color={SPEECH_HIGHLIGHT_COLOR}]"
+SPEECH_HIGHLIGHT_END_TAG = "[/color][/b]"
 
 _LETTER_ORDER = list("0'" + string.ascii_uppercase)
 
@@ -93,6 +99,47 @@ class TextBoxWithTitleAndBorder(BoxLayout):
         super().__init__(**kwargs)
         self.title = title
         self.content = content
+
+
+def show_speech_bubbles_popup(
+    popup: SpeechBubblesPopup,
+    title_str: str,
+    search_terms: str,
+    title_speech_info: TitleInfo,
+    on_page_press: Callable[[str, str], None],
+    title_font_size: float,
+) -> None:
+    """Build and show a speech bubbles popup for a title's matching pages."""
+    text_boxes = GridLayout(cols=1, size_hint_y=None, spacing=dp(30), padding=dp(30))
+    text_boxes.bind(minimum_height=text_boxes.setter("height"))
+
+    for page_info in title_speech_info.fanta_pages.values():
+        page_text = f"Page {page_info.comic_page}"
+        text = "\n\n".join([s.speech_text for s in page_info.speech_info_list])
+        text = mark_phrase_in_text(
+            search_terms, text, SPEECH_HIGHLIGHT_START_TAG, SPEECH_HIGHLIGHT_END_TAG
+        )
+        text = text.replace("\u00ad", "-")
+        text_box = TextBoxWithTitleAndBorder(title=page_text, content=text.strip())
+        text_box.ids.the_text_id.bind(
+            on_release=lambda _btn, bt=title_str, bp=page_info.comic_page: on_page_press(bt, bp),
+        )
+        text_boxes.add_widget(text_box)
+
+    scroll_view = ScrollView(
+        always_overscroll=False,
+        effect_cls="ScrollEffect",
+        scroll_type=["bars", "content"],
+        bar_color=(0.8, 0.8, 0.8, 1),
+        bar_inactive_color=(0.8, 0.8, 0.8, 0.8),
+        bar_width=dp(8),
+    )
+    scroll_view.add_widget(text_boxes)
+
+    popup.title = f"[b][i]{title_str}  \u2014  [/i]'{search_terms}'[/b]"
+    popup.title_size = title_font_size
+    popup.content = scroll_view
+    popup.open()
 
 
 POPUP_NAV_FOCUS_GROUP = "popup_nav_focus"

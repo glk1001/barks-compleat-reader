@@ -28,12 +28,11 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.relativelayout import RelativeLayout
-from kivy.uix.scrollview import ScrollView
 from kivy.uix.widget import Widget
 from loguru import logger
 
 from barks_reader.core.random_title_images import ImageInfo, RandomTitleImages
-from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums, mark_phrase_in_text
+from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 from barks_reader.ui.index_screen import (
     INDEX_NAV_FOCUS_GROUP,
     MAX_TITLE_AND_PAGES_LEN,
@@ -42,9 +41,9 @@ from barks_reader.ui.index_screen import (
     IndexScreen,
     PopupKeyboardNav,
     SpeechBubblesPopup,
-    TextBoxWithTitleAndBorder,
     TitleShowSpeechButton,
     _IndexNavPanel,
+    show_speech_bubbles_popup,
 )
 from barks_reader.ui.panel_texture_loader import PanelTextureLoader
 from barks_reader.ui.reader_keyboard_nav import (
@@ -74,10 +73,6 @@ if TYPE_CHECKING:
 INDEX_ITEM_ROW_HEIGHT = dp(21)
 INDEX_ITEM_MAX_TEXT_WIDTH = 30
 INDEX_IMAGE_CHANGE_SECONDS = 15
-
-INDEX_TERMS_HIGHLIGHT_COLOR = "#1A6ABB"
-INDEX_TERMS_HIGHLIGHT_START_TAG = f"[b][color={INDEX_TERMS_HIGHLIGHT_COLOR}]"
-INDEX_TERMS_HIGHLIGHT_END_TAG = "[/color][/b]"
 
 SAVED_NODE_STATE_PREFIX_KEY = "prefix"
 
@@ -754,43 +749,14 @@ class SpeechIndexScreen(IndexScreen):
         self, title_str: str, index_terms: str, title_speech_info: TitleInfo
     ) -> None:
         logger.info(f'Show speech bubbles for: "{title_str}" and index terms "{index_terms}".')
-
-        text_boxes = GridLayout(cols=1, size_hint_y=None, spacing=dp(30), padding=dp(30))
-        text_boxes.bind(minimum_height=text_boxes.setter("height"))
-
-        for page_info in title_speech_info.fanta_pages.values():
-            page_text = f"Page {page_info.comic_page}"
-            text = "\n\n".join([s.speech_text for s in page_info.speech_info_list])
-            text = mark_phrase_in_text(
-                index_terms, text, INDEX_TERMS_HIGHLIGHT_START_TAG, INDEX_TERMS_HIGHLIGHT_END_TAG
-            )
-            text = text.replace("\u00ad", "-")
-            text_box = TextBoxWithTitleAndBorder(title=page_text, content=text.strip())
-            text_box.ids.the_text_id.bind(
-                on_release=lambda _btn, bound_title=title_str, bound_page=page_info.comic_page: (
-                    self._handle_title_from_bubble_press(bound_title, bound_page)
-                ),
-            )
-            text_boxes.add_widget(text_box)
-
-        scroll_view = ScrollView(
-            always_overscroll=False,
-            effect_cls="ScrollEffect",
-            scroll_type=["bars", "content"],
-            bar_color=(0.8, 0.8, 0.8, 1),
-            bar_inactive_color=(0.8, 0.8, 0.8, 0.8),
-            bar_width=dp(8),
+        show_speech_bubbles_popup(
+            self._speech_bubble_browser_popup,
+            title_str,
+            index_terms,
+            title_speech_info,
+            self._handle_title_from_bubble_press,
+            self._font_manager.speech_bubble_popup_title_font_size,
         )
-        scroll_view.add_widget(text_boxes)
-
-        self._speech_bubble_browser_popup.title = (
-            f"[b][i]{title_str}  \u2014  [/i]'{index_terms}'[/b]"
-        )
-        self._speech_bubble_browser_popup.title_size = (
-            self._font_manager.speech_bubble_popup_title_font_size
-        )
-        self._speech_bubble_browser_popup.content = scroll_view
-        self._speech_bubble_browser_popup.open()
 
     def _handle_title_from_bubble_press(self, title_str: str, page_to_goto: str) -> None:
         logger.info(f'Handling title from speech bubble browser: "{title_str}" - {page_to_goto}.')

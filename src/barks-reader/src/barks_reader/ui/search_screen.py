@@ -15,18 +15,16 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.scrollview import ScrollView
 from loguru import logger
 
 from barks_reader.core.random_title_images import ImageInfo
-from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums, mark_phrase_in_text
+from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 from barks_reader.core.reader_utils import unique_extend
 from barks_reader.ui.index_screen import (
     PopupKeyboardNav,
     SpeechBubblesPopup,
-    TextBoxWithTitleAndBorder,
     TitleShowSpeechButton,
+    show_speech_bubbles_popup,
 )
 from barks_reader.ui.reader_keyboard_nav import (
     KEY_DOWN,
@@ -50,10 +48,6 @@ if TYPE_CHECKING:
 SEARCH_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 MAX_WORD_SEARCH_TITLE_AND_PAGES_LEN = 50
-
-INDEX_TERMS_HIGHLIGHT_COLOR = "#1A6ABB"
-INDEX_TERMS_HIGHLIGHT_START_TAG = f"[b][color={INDEX_TERMS_HIGHLIGHT_COLOR}]"
-INDEX_TERMS_HIGHLIGHT_END_TAG = "[/color][/b]"
 
 _SEARCH_NAV_FOCUS_GROUP = "search_nav_focus"
 
@@ -133,14 +127,15 @@ class SearchScreen(FloatLayout):
         """Switch to the given search mode: 'Title', 'Tag', or 'Word'."""
         self._active_mode = mode
 
-        self.ids.title_search_content.opacity = 1 if mode == "Title" else 0
-        self.ids.title_search_content.size_hint = (1, 1) if mode == "Title" else (0, 0)
-
-        self.ids.tag_search_content.opacity = 1 if mode == "Tag" else 0
-        self.ids.tag_search_content.size_hint = (1, 1) if mode == "Tag" else (0, 0)
-
-        self.ids.word_search_content.opacity = 1 if mode == "Word" else 0
-        self.ids.word_search_content.size_hint = (1, 1) if mode == "Word" else (0, 0)
+        for content_mode, content_id in [
+            ("Title", "title_search_content"),
+            ("Tag", "tag_search_content"),
+            ("Word", "word_search_content"),
+        ]:
+            active = mode == content_mode
+            widget = self.ids[content_id]
+            widget.opacity = 1 if active else 0
+            widget.size_hint = (1, 1) if active else (0, 0)
 
         logger.debug(f"SearchScreen mode set to '{mode}'.")
 
@@ -302,69 +297,32 @@ class SearchScreen(FloatLayout):
 
     def _on_word_title_selected(self, title_str: str, page_to_goto: str) -> None:
         logger.info(f'Word search: navigating to "{title_str}", page {page_to_goto}.')
+        self._goto_title_with_page(title_str, page_to_goto)
+
+    def _show_word_speech_bubbles(self, title_str: str, title_speech_info: TitleInfo) -> None:
+        search_text = self.ids.word_search_input.text.strip()
+        logger.info(f'Show speech bubbles for: "{title_str}" and search "{search_text}".')
+        show_speech_bubbles_popup(
+            self._speech_bubble_popup,
+            title_str,
+            search_text,
+            title_speech_info,
+            self._handle_bubble_title_press,
+            self._font_manager.speech_bubble_popup_title_font_size,
+        )
+
+    def _handle_bubble_title_press(self, title_str: str, page_to_goto: str) -> None:
+        logger.info(f'Word search bubble press: "{title_str}" page {page_to_goto}.')
+        self._speech_bubble_popup.dismiss()
+        Clock.schedule_once(lambda _dt: self._goto_title_with_page(title_str, page_to_goto), 0.01)
+
+    def _goto_title_with_page(self, title_str: str, page_to_goto: str) -> None:
         if title_str not in BARKS_TITLE_DICT:
             return
         title = BARKS_TITLE_DICT[title_str]
         image_info = ImageInfo(from_title=title, filename=None)
         if self.on_goto_title_with_page:
             self.on_goto_title_with_page(image_info, page_to_goto)
-
-    def _show_word_speech_bubbles(self, title_str: str, title_speech_info: TitleInfo) -> None:
-        search_text = self.ids.word_search_input.text.strip()
-        logger.info(f'Show speech bubbles for: "{title_str}" and search "{search_text}".')
-
-        text_boxes = GridLayout(cols=1, size_hint_y=None, spacing=dp(30), padding=dp(30))
-        text_boxes.bind(minimum_height=text_boxes.setter("height"))
-
-        for page_info in title_speech_info.fanta_pages.values():
-            page_text = f"Page {page_info.comic_page}"
-            text = "\n\n".join([s.speech_text for s in page_info.speech_info_list])
-            text = mark_phrase_in_text(
-                search_text,
-                text,
-                INDEX_TERMS_HIGHLIGHT_START_TAG,
-                INDEX_TERMS_HIGHLIGHT_END_TAG,
-            )
-            text = text.replace("\u00ad", "-")
-            text_box = TextBoxWithTitleAndBorder(title=page_text, content=text.strip())
-            text_box.ids.the_text_id.bind(
-                on_release=lambda _btn, bt=title_str, bp=page_info.comic_page: (
-                    self._handle_bubble_title_press(bt, bp)
-                ),
-            )
-            text_boxes.add_widget(text_box)
-
-        scroll_view = ScrollView(
-            always_overscroll=False,
-            effect_cls="ScrollEffect",
-            scroll_type=["bars", "content"],
-            bar_color=(0.8, 0.8, 0.8, 1),
-            bar_inactive_color=(0.8, 0.8, 0.8, 0.8),
-            bar_width=dp(8),
-        )
-        scroll_view.add_widget(text_boxes)
-
-        self._speech_bubble_popup.title = f"[b][i]{title_str}  \u2014  [/i]'{search_text}'[/b]"
-        self._speech_bubble_popup.title_size = (
-            self._font_manager.speech_bubble_popup_title_font_size
-        )
-        self._speech_bubble_popup.content = scroll_view
-        self._speech_bubble_popup.open()
-
-    def _handle_bubble_title_press(self, title_str: str, page_to_goto: str) -> None:
-        logger.info(f'Word search bubble press: "{title_str}" page {page_to_goto}.')
-        self._speech_bubble_popup.dismiss()
-
-        if title_str not in BARKS_TITLE_DICT:
-            return
-        title = BARKS_TITLE_DICT[title_str]
-        image_info = ImageInfo(from_title=title, filename=None)
-
-        def goto_title() -> None:
-            if self.on_goto_title_with_page:
-                self.on_goto_title_with_page(image_info, page_to_goto)
-
-        Clock.schedule_once(lambda _dt: goto_title(), 0.01)
 
     def on_word_clear(self) -> None:
         self.ids.word_search_input.text = ""
@@ -432,26 +390,23 @@ class SearchScreen(FloatLayout):
                 # Let the TextInput's on_text_validate handle the search
                 return False
             self._blur_all_inputs()
-            if self._active_mode == "Tag" and self._get_tag_chip_buttons():
-                self._nav_focus_area = "tags"
-                self._nav_focused_chip_idx = 0
-                self._draw_chip_focus()
-            else:
-                self._nav_enter_results()
-                self._draw_result_focus()
+            self._nav_to_tags_or_results()
         elif key in (KEY_TAB, KEY_DOWN):
             self._blur_all_inputs()
-            if self._active_mode == "Tag" and self._get_tag_chip_buttons():
-                self._nav_focus_area = "tags"
-                self._nav_focused_chip_idx = 0
-                self._draw_chip_focus()
-            else:
-                self._nav_enter_results()
-                self._draw_result_focus()
+            self._nav_to_tags_or_results()
         else:
             # Let the text input handle the key
             return False
         return True
+
+    def _nav_to_tags_or_results(self) -> None:
+        if self._active_mode == "Tag" and self._get_tag_chip_buttons():
+            self._nav_focus_area = "tags"
+            self._nav_focused_chip_idx = 0
+            self._draw_chip_focus()
+        else:
+            self._nav_enter_results()
+            self._draw_result_focus()
 
     def _handle_results_key(self, key: int) -> bool:
         rows = self._get_active_result_rows()
