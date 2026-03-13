@@ -109,6 +109,7 @@
                     font_size: dp(12)
 
                 ScrollView:
+                    id: title_results_scroll
                     always_overscroll: False
                     effect_cls: 'ScrollEffect'
                     scroll_type: ['bars', 'content']
@@ -190,6 +191,7 @@
                         padding: dp(2)
 
             ScrollView:
+                id: tag_results_scroll
                 size_hint_x: 0.75
                 always_overscroll: False
                 effect_cls: 'ScrollEffect'
@@ -267,6 +269,7 @@
                 Widget:
 
             ScrollView:
+                id: word_results_scroll
                 size_hint_x: 0.75
                 always_overscroll: False
                 effect_cls: 'ScrollEffect'

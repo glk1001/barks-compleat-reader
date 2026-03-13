@@ -42,6 +42,8 @@ from barks_reader.ui.reader_keyboard_nav import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from kivy.uix.scrollview import ScrollView
+
     from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.ui.font_manager import FontManager
 
@@ -577,6 +579,13 @@ class SearchScreen(FloatLayout):
         self.ids.tag_search_input.focus = False
         self.ids.word_search_input.focus = False
 
+    def _get_active_results_scroll_view(self) -> ScrollView:
+        if self._active_mode == "Title":
+            return self.ids.title_results_scroll
+        if self._active_mode == "Tag":
+            return self.ids.tag_results_scroll
+        return self.ids.word_results_scroll
+
     def _get_active_result_rows(self) -> list[Button]:
         if self._active_mode == "Title":
             layout = self.ids.title_results_layout
@@ -624,6 +633,9 @@ class SearchScreen(FloatLayout):
         except ValueError:
             return
         update_focus_in_list(all_widgets, focus_idx, _SEARCH_NAV_FOCUS_GROUP)
+        scroll_view = self._get_active_results_scroll_view()
+        scroll_target = rows[self._nav_focused_result_idx]
+        scroll_view.scroll_to(scroll_target)
 
     def _clear_result_focus(self) -> None:
         rows = self._get_active_result_rows()
