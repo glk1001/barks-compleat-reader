@@ -495,6 +495,8 @@ class SearchScreen(FloatLayout):
             self._draw_result_focus()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._get_active_clear_button().trigger_action(duration=0)
+            self._clear_clear_focus()
+            self._nav_focus_area = "input"
         elif key == KEY_ESCAPE:
             self._nav_escape()
         else:
