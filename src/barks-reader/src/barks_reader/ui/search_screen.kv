@@ -93,21 +93,35 @@
 
                 Widget:
 
-            ScrollView:
+            BoxLayout:
+                orientation: 'vertical'
                 size_hint_x: 0.75
-                always_overscroll: False
-                effect_cls: 'ScrollEffect'
-                scroll_type: ['bars', 'content']
-                bar_color: (0.7, 0.7, 0.7, 0.9)
-                bar_inactive_color: (0.5, 0.5, 0.5, 0.4)
-                bar_width: dp(8)
+                spacing: dp(4)
 
-                BoxLayout:
-                    id: title_results_layout
-                    orientation: 'vertical'
+                Label:
+                    text: "Titles"
                     size_hint_y: None
-                    height: self.minimum_height
-                    spacing: dp(1)
+                    height: dp(24)
+                    color: (0.5, 1, 0.5, 1)
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+                    font_size: dp(12)
+
+                ScrollView:
+                    always_overscroll: False
+                    effect_cls: 'ScrollEffect'
+                    scroll_type: ['bars', 'content']
+                    bar_color: (0.7, 0.7, 0.7, 0.9)
+                    bar_inactive_color: (0.5, 0.5, 0.5, 0.4)
+                    bar_width: dp(8)
+
+                    BoxLayout:
+                        id: title_results_layout
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: dp(1)
 
         # ---- Tag Search Content ----
         BoxLayout:
