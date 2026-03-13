@@ -287,6 +287,9 @@ class SearchScreen(FloatLayout):
                 disabled=True,
             )
             results_layout.add_widget(no_results)
+            self._nav_focus_area = "input"
+            Clock.schedule_once(lambda _dt: self._focus_active_input())
+            return
 
         if found:
             self._nav_active = True
