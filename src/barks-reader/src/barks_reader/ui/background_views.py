@@ -529,6 +529,9 @@ class BackgroundViews:
             f" Opacity: {self._bottom_view_fun_image_opacity}."
         )
 
+    def set_search_screen_image_for_title(self, title: Titles) -> None:
+        self._search_screen_image_info = self._random_title_images.get_search_image_for_title(title)
+
     def _set_next_search_screen_image(self) -> None:
         if self._view_state not in _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES:
             return

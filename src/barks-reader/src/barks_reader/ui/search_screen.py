@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import random
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, BARKS_TITLES
+from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, BARKS_TITLES, Titles
 from barks_fantagraphics.title_search import BarksTitleSearch
 from barks_fantagraphics.whoosh_search_engine import SearchEngine, TitleInfo
 from kivy.clock import Clock
@@ -104,6 +105,7 @@ class SearchScreen(FloatLayout):
 
         self._current_image_info: ImageInfo | None = None
         self.on_goto_background_title_func: Callable[[ImageInfo], None] | None = None
+        self.on_search_results_title_changed: Callable[[Titles], None] | None = None
         self.show_current_title = self._reader_settings.show_fun_view_title_info
 
         settings_notifier.register_callback(
@@ -165,13 +167,15 @@ class SearchScreen(FloatLayout):
         if len(text) <= 1:
             return
 
-        titles = self._get_titles_matching(text)
-        for title_str in titles:
+        title_enums, title_strings = self._get_titles_matching(text)
+        for title_str in title_strings:
             btn = _SearchResultButton(text=title_str)
             btn.bind(on_release=lambda _b, t=title_str: self._on_title_result_selected(t))
             results_layout.add_widget(btn)
 
-    def _get_titles_matching(self, value: str) -> list[str]:
+        self._update_background_from_results(title_enums)
+
+    def _get_titles_matching(self, value: str) -> tuple[list[Titles], list[str]]:
         title_list = self._title_search.get_titles_matching_prefix(value)
         min_title_chars_len = 2
         if len(value) > min_title_chars_len:
@@ -179,7 +183,7 @@ class SearchScreen(FloatLayout):
                 title_list = self._title_search.get_titles_from_issue_num(value)
             if not title_list:
                 unique_extend(title_list, self._title_search.get_titles_containing(value))
-        return self._title_search.get_titles_as_strings(title_list)
+        return title_list, self._title_search.get_titles_as_strings(title_list)
 
     def _on_title_result_selected(self, title_str: str) -> None:
         logger.info(f'Title search: selected "{title_str}".')
@@ -222,6 +226,8 @@ class SearchScreen(FloatLayout):
             btn = _SearchResultButton(text=title_str)
             btn.bind(on_release=lambda _b, t=title_str: self._on_tag_title_result_selected(t))
             title_results_layout.add_widget(btn)
+
+        self._update_background_from_results(titles or [])
 
     def _on_tag_title_result_selected(self, title_str: str) -> None:
         logger.info(f'Tag search: selected title "{title_str}".')
@@ -306,6 +312,9 @@ class SearchScreen(FloatLayout):
             Clock.schedule_once(lambda _dt: self._focus_active_input())
             return
 
+        word_result_titles = [BARKS_TITLE_DICT[ct] for ct in found if ct in BARKS_TITLE_DICT]
+        self._update_background_from_results(word_result_titles)
+
         if found:
             self._nav_active = True
             self._blur_all_inputs()
@@ -348,6 +357,13 @@ class SearchScreen(FloatLayout):
         self.ids.word_search_input.text = ""
         self.ids.word_results_layout.clear_widgets()
         self.ids.word_search_input.focus = True
+
+    # --- Background Image Update from Results ---
+
+    def _update_background_from_results(self, titles: list[Titles]) -> None:
+        if not titles or not self.on_search_results_title_changed:
+            return
+        self.on_search_results_title_changed(random.choice(titles))
 
     # --- Background Image ---
 

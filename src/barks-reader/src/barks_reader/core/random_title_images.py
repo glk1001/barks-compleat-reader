@@ -123,6 +123,13 @@ class RandomTitleImages:
             FIT_MODE_COVER,
         )
 
+    def get_search_image_for_title(self, title: Titles) -> ImageInfo:
+        return ImageInfo(
+            self._reader_settings.file_paths.get_comic_inset_file(title),
+            title,
+            FIT_MODE_COVER,
+        )
+
     def get_random_reader_app_icon_file(self) -> Path:
         icon_path = self._all_reader_icon_files[self._next_reader_icon_file]
 

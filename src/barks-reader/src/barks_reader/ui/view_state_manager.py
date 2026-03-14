@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from barks_fantagraphics.barks_tags import TagGroups, Tags
+    from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
 
@@ -154,6 +155,17 @@ class ViewStateManager:
 
         self._set_views()
         self._on_view_state_changed(view_state)
+
+    def update_search_background(self, title: Titles) -> None:
+        self._background_views.set_search_screen_image_for_title(title)
+        search_image_info = self._background_views.get_search_screen_image_info()
+        if search_image_info.filename:
+            self._search_screen.set_background_image(search_image_info)
+
+            def apply_search(tex: Texture) -> None:
+                self._search_screen.image_texture = tex
+
+            self._load_texture(self._search_texture_loader, search_image_info, apply_search)
 
     def change_background_views(self) -> None:
         logger.debug("Changing background views.")

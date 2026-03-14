@@ -316,6 +316,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._main_index_screen.on_goto_background_title_func = self._goto_chrono_title
         self._speech_index_screen.on_goto_background_title_func = self._goto_chrono_title
         self._search_screen.on_goto_background_title_func = self._goto_chrono_title
+        self._search_screen.on_search_results_title_changed = (
+            self._view_state_manager.update_search_background
+        )
 
         self._bottom_title_view_screen.set_special_fanta_overrides(self._special_fanta_overrides)
         self._bottom_title_view_screen.on_title_portal_image_pressed_func = (
