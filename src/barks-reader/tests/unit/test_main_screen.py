@@ -51,11 +51,17 @@ def main_screen(
             # Initialize Widget base to set up children list, properties, etc.
             Widget.__init__(self, **kwargs)
 
-            self.ids = MagicMock()
-            self.ids.main_layout = MagicMock()
-            self.ids.action_bar = MagicMock()
-            self.ids.fullscreen_button = MagicMock()
-            self.ids.collapse_button = MagicMock()
+            self.ids = {
+                "main_layout": MagicMock(),
+                "action_bar": MagicMock(),
+                "fullscreen_button": MagicMock(),
+                "collapse_button": MagicMock(),
+                "quit_button": MagicMock(),
+                "go_back_button": MagicMock(),
+                "change_pics_button": MagicMock(),
+                "menu_button": MagicMock(),
+                "icon_hitbox": MagicMock(),
+            }
 
         mock_screen_init.side_effect = side_effect
 
@@ -156,6 +162,39 @@ class TestMainScreen:
             # noinspection PyProtectedMember
             main_screen._view_state_manager.set_view_state.assert_called_with(
                 ViewStates.ON_TITLE_NODE, title_str="Title Str"
+            )
+
+    def test_goto_chrono_title_preserves_back_node(self, main_screen: MainScreen) -> None:
+        """Back button should return to the node that was selected before _goto_chrono_title."""
+        image_info = ImageInfo(filename=Path("img.png"), from_title=Titles.ADVENTURE_DOWN_UNDER)
+
+        mock_fanta_info = MagicMock()
+        mock_fanta_info.comic_book_info.get_title_str.return_value = "Title Str"
+        mock_fanta_info.comic_book_info.submitted_year = 1942
+
+        # noinspection PyProtectedMember,LongLine
+        main_screen._get_fanta_info = MagicMock(return_value=mock_fanta_info)  # type: ignore[assignment]
+
+        mock_year_node = MagicMock()
+        mock_year_node.nodes = []
+        # noinspection PyProtectedMember
+        main_screen._year_range_nodes = {(1942, 1946): mock_year_node}
+
+        # Simulate a previously selected node (e.g. the Search/Titles node).
+        mock_search_node = MagicMock()
+        # noinspection PyProtectedMember
+        main_screen._tree_view_screen.get_selected_node.return_value = mock_search_node
+
+        with patch.object(barks_reader.ui.main_screen, "find_tree_view_title_node") as mock_find:
+            mock_find.return_value = MagicMock()
+
+            # noinspection PyProtectedMember
+            main_screen._goto_chrono_title(image_info)
+
+            # The back node should be restored so pressing Back returns to the search node.
+            # noinspection PyProtectedMember
+            main_screen._tree_view_screen.ids.reader_tree_view.set_back_node.assert_called_once_with(
+                mock_search_node,
             )
 
     def test_goto_title_with_page_num_comic(self, main_screen: MainScreen) -> None:
