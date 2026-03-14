@@ -146,6 +146,8 @@ class TestMainScreen:
 
             # Verify interactions
             # noinspection PyProtectedMember
+            main_screen._tree_view_manager.deselect_and_close_open_nodes.assert_called_once()
+            # noinspection PyProtectedMember
             main_screen._tree_view_manager.open_all_parent_nodes.assert_called_with(mock_year_node)
             # noinspection PyProtectedMember
             main_screen._tree_view_manager.goto_node.assert_called_with(
