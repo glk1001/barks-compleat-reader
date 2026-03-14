@@ -1,6 +1,7 @@
 <_SearchResultButton>:
     background_normal: ''
     background_down: ''
+    border: [0, 0, 0, 0]
     background_color: (0.15, 0.15, 0.15, 0.4) if self.state == 'normal' else (0.0, 0.4, 0.0, 0.55)
     color: (1, 1, 0, 1)
     size_hint_y: None
@@ -57,14 +58,14 @@
         BoxLayout:
             id: title_search_content
             orientation: 'horizontal'
-            size_hint: 1, 1
-            pos_hint: {'x': 0, 'y': 0}
-            padding: [dp(40), dp(8), dp(40), dp(8)]
+            size_hint: 0.86, 1
+            pos_hint: {'center_x': 0.5, 'y': 0}
+            padding: [dp(40), dp(30), dp(40), dp(35)]
             spacing: dp(8)
 
             BoxLayout:
                 orientation: 'vertical'
-                size_hint_x: 0.30
+                size_hint_x: 0.35
                 spacing: dp(4)
 
                 Label:
@@ -106,7 +107,7 @@
 
             BoxLayout:
                 orientation: 'vertical'
-                size_hint_x: 0.70
+                size_hint_x: 0.65
                 spacing: dp(4)
 
                 Label:
@@ -141,13 +142,13 @@
             orientation: 'horizontal'
             size_hint: 0, 0
             opacity: 0
-            pos_hint: {'x': 0, 'y': 0}
-            padding: [dp(40), dp(8), dp(40), dp(8)]
+            pos_hint: {'center_x': 0.5, 'y': 0}
+            padding: [dp(40), dp(30), dp(40), dp(35)]
             spacing: dp(8)
 
             BoxLayout:
                 orientation: 'vertical'
-                size_hint_x: 0.30
+                size_hint_x: 0.35
                 spacing: dp(4)
 
                 Label:
@@ -203,7 +204,7 @@
 
             BoxLayout:
                 orientation: 'vertical'
-                size_hint_x: 0.70
+                size_hint_x: 0.65
                 spacing: dp(4)
 
                 Label:
@@ -238,13 +239,13 @@
             orientation: 'horizontal'
             size_hint: 0, 0
             opacity: 0
-            pos_hint: {'x': 0, 'y': 0}
-            padding: [dp(40), dp(8), dp(40), dp(8)]
+            pos_hint: {'center_x': 0.5, 'y': 0}
+            padding: [dp(40), dp(30), dp(40), dp(35)]
             spacing: dp(8)
 
             BoxLayout:
                 orientation: 'vertical'
-                size_hint_x: 0.30
+                size_hint_x: 0.35
                 spacing: dp(4)
 
                 Label:
@@ -295,7 +296,7 @@
 
             BoxLayout:
                 orientation: 'vertical'
-                size_hint_x: 0.70
+                size_hint_x: 0.65
                 spacing: dp(4)
 
                 Label:

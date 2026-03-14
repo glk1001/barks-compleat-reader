@@ -419,6 +419,15 @@ class IndexScreen(FloatLayout):
 
     def _handle_items_up(self) -> None:
         if self._nav_focused_item_idx == 0:
+            # Try moving to the bottom of the previous column.
+            if self._nav_focused_col > 0:
+                prev_col_buttons = self._get_col_buttons(self._nav_focused_col - 1)
+                if prev_col_buttons:
+                    self._clear_all_item_focus()
+                    self._nav_focused_col -= 1
+                    self._nav_focused_item_idx = len(prev_col_buttons) - 1
+                    self._draw_item_focus()
+                    return
             self._on_up_from_first_item()
         else:
             self._move_item_focus(-1)
@@ -427,7 +436,19 @@ class IndexScreen(FloatLayout):
         col_buttons = self._get_col_buttons(self._nav_focused_col)
         if not col_buttons:
             return
-        new_idx = max(0, min(len(col_buttons) - 1, self._nav_focused_item_idx + delta))
+        new_idx = self._nav_focused_item_idx + delta
+        # Wrap to the top of the next column when moving past the bottom.
+        if new_idx >= len(col_buttons):
+            next_col = self._nav_focused_col + 1
+            if next_col < self.num_columns:
+                next_col_buttons = self._get_col_buttons(next_col)
+                if next_col_buttons:
+                    self._clear_all_item_focus()
+                    self._nav_focused_col = next_col
+                    self._nav_focused_item_idx = 0
+                    self._draw_item_focus()
+            return
+        new_idx = max(0, new_idx)
         if new_idx == self._nav_focused_item_idx:
             return
         self._clear_all_item_focus()
