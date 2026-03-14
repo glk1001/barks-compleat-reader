@@ -101,6 +101,10 @@ class ReaderTreeView(TreeView):
         self._current_selection_tracker = None
         self.previous_selected_node = None
 
+    def set_back_node(self, node: BaseTreeViewNode | None) -> None:
+        """Set the node that 'go back' will return to."""
+        self._current_selection_tracker = node
+
     def on_selected_node(self, _instance: ReaderTreeView, new_node: BaseTreeViewNode) -> None:
         """Triggered automatically when 'selected_node' changes."""
         # 1. Assign the OLD current node to previous_node

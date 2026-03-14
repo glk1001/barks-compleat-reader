@@ -796,8 +796,16 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         year_node.ensure_populated()
         logger.debug(f"For range {title_year_range}, year node has {len(year_node.nodes)} nodes.")
 
+        # Save the currently selected node so Back can return to it.
+        back_node = self._tree_view_screen.get_selected_node()
+
         # Close any open nodes, then open parent nodes to 'year_node' and goto it in the tree view.
         self._tree_view_manager.deselect_and_close_open_nodes()
+
+        # Restore the back node after deselect_and_close_open_nodes resets selection tracking.
+        if back_node is not None:
+            self._tree_view_screen.ids.reader_tree_view.set_back_node(back_node)
+
         self._tree_view_manager.open_all_parent_nodes(year_node)
         title_node = cast(
             "BaseTreeViewNode", find_tree_view_title_node(year_node.nodes, image_info.from_title)
