@@ -365,7 +365,7 @@ class RandomTitleImages:
         title_str: str,
         get_files_func: Callable[[str, bool], list[PanelPath]],
         use_only_edited_if_possible: bool,
-    ) -> Path:
+    ) -> PanelPath:
         title_files = get_files_func(title_str, use_only_edited_if_possible)
         if title_files:
             return random.choice(title_files)

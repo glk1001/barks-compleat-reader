@@ -42,6 +42,17 @@
         size_hint: 1, 1
         pos_hint: {'x': 0, 'y': 0}
 
+        Image:
+            texture: root.image_texture
+            fit_mode: "cover"
+            opacity: 0.253
+            mipmap: True
+
+        GotoTitleOverlay:
+            current_title_str: root.current_title_str
+            show_title: root.show_current_title
+            on_arrow_press: root.on_goto_background_title()
+
         # ---- Title Search Content ----
         BoxLayout:
             id: title_search_content

@@ -83,6 +83,9 @@ class ViewStateManager:
         self._bottom_title_view_texture_loader = PanelTextureLoader(
             self._reader_settings.file_paths.barks_panels_are_encrypted
         )
+        self._search_texture_loader = PanelTextureLoader(
+            self._reader_settings.file_paths.barks_panels_are_encrypted
+        )
 
         # Take ownership of the view-specific state
         self._top_view_image_info: ImageInfo = ImageInfo()
@@ -375,6 +378,15 @@ class ViewStateManager:
                 self._search_screen.set_mode("Tag")
             elif view_state == ViewStates.ON_WORD_SEARCH_NODE:
                 self._search_screen.set_mode("Word")
+
+            search_image_info = self._background_views.get_search_screen_image_info()
+            if search_image_info.filename:
+                self._search_screen.set_background_image(search_image_info)
+
+                def apply_search(tex: Texture) -> None:
+                    self._search_screen.image_texture = tex
+
+                self._load_texture(self._search_texture_loader, search_image_info, apply_search)
 
         logger.debug(
             f"Setting new index view."

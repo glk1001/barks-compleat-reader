@@ -17,7 +17,7 @@ from barks_reader.core.random_title_images import FIT_MODE_COVER
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_TOP_VIEW_TITLE_INFO
 from barks_reader.core.reader_tree_view_utils import find_and_expand_node_by_path
 from barks_reader.core.settings_notifier import settings_notifier
-from barks_reader.ui.reader_ui_classes import ARROW_WIDTH, BaseTreeViewNode
+from barks_reader.ui.reader_ui_classes import BaseTreeViewNode
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -36,8 +36,6 @@ class TreeViewScreen(BoxLayout):
     top_view_image_opacity = NumericProperty(0.0)
     current_title_str = StringProperty()
     show_current_title = BooleanProperty(defaultvalue=False)
-
-    DOWN_ARROW_WIDTH = ARROW_WIDTH
 
     main_files_not_loaded = BooleanProperty(defaultvalue=False)
     main_files_not_loaded_msg = StringProperty()

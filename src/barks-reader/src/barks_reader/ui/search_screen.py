@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT
+from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, BARKS_TITLES
 from barks_fantagraphics.title_search import BarksTitleSearch
 from barks_fantagraphics.whoosh_search_engine import SearchEngine, TitleInfo
 from kivy.clock import Clock
@@ -11,6 +11,7 @@ from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     ObjectProperty,
+    StringProperty,
 )
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -19,7 +20,9 @@ from loguru import logger
 
 from barks_reader.core.random_title_images import ImageInfo
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
+from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO
 from barks_reader.core.reader_utils import unique_extend
+from barks_reader.core.settings_notifier import settings_notifier
 from barks_reader.ui.index_screen import (
     PopupKeyboardNav,
     SpeechBubblesPopup,
@@ -77,6 +80,9 @@ class SearchScreen(FloatLayout):
     """Bottom view screen for search. Mode is set externally via set_mode()."""
 
     is_visible = BooleanProperty(defaultvalue=False)
+    image_texture = ObjectProperty(allownone=True)
+    current_title_str = StringProperty()
+    show_current_title = BooleanProperty(defaultvalue=True)
     on_goto_title: Callable[[str], bool] | None = ObjectProperty(None, allownone=True)
     on_goto_title_with_page: Callable[[ImageInfo, str], None] | None = ObjectProperty(
         None, allownone=True
@@ -89,10 +95,19 @@ class SearchScreen(FloatLayout):
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
+        self._reader_settings = reader_settings
         self._font_manager = font_manager
         self._title_search = BarksTitleSearch()
         self._whoosh_indexer = SearchEngine(
             reader_settings.sys_file_paths.get_barks_reader_indexes_dir()
+        )
+
+        self._current_image_info: ImageInfo | None = None
+        self.on_goto_background_title_func: Callable[[ImageInfo], None] | None = None
+        self.show_current_title = self._reader_settings.show_fun_view_title_info
+
+        settings_notifier.register_callback(
+            BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO, self._on_change_show_current_title
         )
 
         self._active_mode: str = "Title"
@@ -333,6 +348,21 @@ class SearchScreen(FloatLayout):
         self.ids.word_search_input.text = ""
         self.ids.word_results_layout.clear_widgets()
         self.ids.word_search_input.focus = True
+
+    # --- Background Image ---
+
+    def set_background_image(self, image_info: ImageInfo) -> None:
+        self._current_image_info = image_info
+        self.current_title_str = (
+            "" if image_info.from_title is None else BARKS_TITLES[image_info.from_title]
+        )
+
+    def on_goto_background_title(self) -> None:
+        if self.on_goto_background_title_func and self._current_image_info:
+            self.on_goto_background_title_func(self._current_image_info)
+
+    def _on_change_show_current_title(self) -> None:
+        self.show_current_title = self._reader_settings.show_fun_view_title_info
 
     # --- Keyboard Navigation ---
 

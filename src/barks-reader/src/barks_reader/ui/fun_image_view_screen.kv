@@ -18,37 +18,13 @@
             fit_mode: root.image_fit_mode
             mipmap: True
 
-            # Title info label
-            BgColorLabel:
-                text: "[i]" + root.current_title_str + "[/i]"
-                sizing_factor_x: 1.07  # make background slightly longer than the title
-                markup: True
-                color: (1, 1, 0, 1)
-                background_color: (0.1, 0.1, 0.1, 0.5 if root.current_title_str else 0)
-                opacity: 0.8 if root.show_current_title else 0
-                font_size: sp(15)
-                size_hint: None, None
-                size: self.texture_size
-                # Position the label to the left of the goto_title_button.
-                x: goto_title_button.x - self.width - dp(5)
-                y: goto_title_button.y + goto_title_button.touch_padding
-
-            # Goto title button
-            TouchExpandedButton:
-                id: goto_title_button
-
-                # --- Pass Data ---
-                source: str(sys_paths.get_up_arrow_file())
-                visual_size: root.UP_ARROW_WIDTH
-                is_active: root.goto_title_button_active
-
-                # --- Positioning ---
-                # Note: We subtract the padding so the *visual* icon stays in the exact
-                # calculated spot, while the invisible button expands outwards.
-                x: self.parent.x + self.parent.width - (1.4 * root.UP_ARROW_WIDTH) - self.touch_padding
-                y: self.parent.y + (0.4 * root.UP_ARROW_WIDTH) - self.touch_padding
-
-                on_press: root.on_goto_title()
+        GotoTitleOverlay:
+            id: goto_title_overlay
+            current_title_str: root.current_title_str
+            show_title: root.show_current_title
+            is_active: root.goto_title_button_active
+            label_bg_color: (0.1, 0.1, 0.1, 0.5 if root.current_title_str else 0)
+            on_arrow_press: root.on_goto_title()
 
         # --- Main container for the fun view image options menu ---
         BoxLayout:

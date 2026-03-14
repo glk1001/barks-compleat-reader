@@ -53,53 +53,11 @@
                     size_hint_y: None
                     height: self.minimum_height
 
-        # Use a separate AnchorLayout to pin the button to the top-right corner
-        # This is a sibling to the main content, so it's not affected by other layouts.
-        AnchorLayout:
-            anchor_x: 'right'
-            anchor_y: 'top'
-            # Adjust these padding numbers to move the whole group exactly where we want it.
-            # padding: [left, top, right, bottom]
-            padding: [0, dp(10), dp(20), 0]
-
-            # Use BoxLayout to group Label + Button
-            BoxLayout:
-                orientation: 'horizontal'
-
-                # --- CRITICAL: Shrink the box to fit the content ---
-                size_hint: None, None
-                width: self.minimum_width   # Width grows with content
-                height: self.minimum_height # Height grows with content
-
-                spacing: dp(0) # Space between Label and Button
-
-                Label:
-                    text: "[i]" + root.current_title_str + "[/i]"
-                    markup: True
-                    color: (1, 1, 0, 1)
-                    opacity: 0.3 if root.show_current_title else 0
-                    font_size: sp(15)
-
-                    # Shrink label to text size
-                    size_hint: None, None
-                    size: self.texture_size
-
-                    # Align vertically to the center of the button row
-                    pos_hint: {'center_y': 0.5}
-
-                # Goto title button
-                TouchExpandedButton:
-                    id: goto_title_button
-
-                    # --- Pass Data ---
-                    opacity: 0.8
-                    source: str(sys_paths.get_down_arrow_file())
-                    visual_size: root.DOWN_ARROW_WIDTH
-                    is_active: True
-
-                    # --- Positioning ---
-                    # The BoxLayout handles positioning.
-                    # Align vertically in the row
-                    pos_hint: {'center_y': 0.5}
-
-                    on_press: root.on_goto_title()
+        GotoTitleOverlay:
+            current_title_str: root.current_title_str
+            show_title: root.show_current_title
+            arrow_direction: "down"
+            position: "top-right"
+            label_opacity: 0.3
+            label_bg_color: (0, 0, 0, 0)
+            on_arrow_press: root.on_goto_title()

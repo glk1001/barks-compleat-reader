@@ -22,7 +22,6 @@ from barks_reader.core.reader_settings import (
 )
 from barks_reader.core.settings_notifier import settings_notifier
 from barks_reader.ui.reader_navigation import ReaderNavigation
-from barks_reader.ui.reader_ui_classes import ARROW_WIDTH
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -45,7 +44,6 @@ class FunImageViewScreen(BoxLayout):
 
     # TODO: What happens if monitor changes??
     MAX_WINDOW_WIDTH = get_monitors()[0].width
-    UP_ARROW_WIDTH = ARROW_WIDTH
 
     goto_title_button_active = BooleanProperty(defaultvalue=True)
 
@@ -74,12 +72,13 @@ class FunImageViewScreen(BoxLayout):
             BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO, self.on_change_show_current_title
         )
 
+        goto_button = self.ids.goto_title_overlay.goto_button
         logger.debug(
             f"Goto title button touch region:"
-            f" {self.ids.goto_title_button.x},"
-            f" {self.ids.goto_title_button.y},"
-            f" {self.ids.goto_title_button.width},"
-            f" {self.ids.goto_title_button.height}."
+            f" {goto_button.x},"
+            f" {goto_button.y},"
+            f" {goto_button.width},"
+            f" {goto_button.height}."
         )
 
     def set_load_image_func(self, load_image_func: Callable[[ImageInfo], None]) -> None:
@@ -108,7 +107,7 @@ class FunImageViewScreen(BoxLayout):
         )
 
         # Give the up-arrow button priority before margin navigation.
-        if self.ids.goto_title_button.collide_point(touch.x, touch.y):
+        if self.ids.goto_title_overlay.goto_button.collide_point(touch.x, touch.y):
             return bool(super().on_touch_down(touch))
 
         if self._navigation.is_in_left_margin(x_rel, y_rel):

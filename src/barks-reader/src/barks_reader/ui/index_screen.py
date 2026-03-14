@@ -41,7 +41,6 @@ from barks_reader.ui.reader_keyboard_nav import (
     clear_focus_in_list,
     draw_focus_highlight,
 )
-from barks_reader.ui.reader_ui_classes import ARROW_WIDTH, MainTreeViewNode
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -50,6 +49,7 @@ if TYPE_CHECKING:
     from kivy.uix.widget import Widget
 
     from barks_reader.core.random_title_images import ImageInfo
+    from barks_reader.ui.reader_ui_classes import MainTreeViewNode
 
 MAX_TITLE_AND_PAGES_LEN = 34 + 8  # len(", 11,...") == 8
 
@@ -261,8 +261,6 @@ class Theme:
 
 # noinspection PyAbstractClass
 class IndexScreen(FloatLayout):
-    UP_ARROW_WIDTH = ARROW_WIDTH
-
     index_theme = ObjectProperty()
     _selected_letter_button = ObjectProperty(None, allownone=True)
     num_columns = NumericProperty(2)

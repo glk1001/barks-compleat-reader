@@ -38,11 +38,13 @@ class TestFunImageViewScreen:
             mock_custom_options_box.children = []
 
             def side_effect(instance: Widget, **_kwargs) -> None:  # noqa: ANN003
-                mock_goto_title_button = MagicMock()
-                mock_goto_title_button.collide_point.return_value = False
+                mock_goto_button = MagicMock()
+                mock_goto_button.collide_point.return_value = False
+                mock_goto_title_overlay = MagicMock()
+                mock_goto_title_overlay.goto_button = mock_goto_button
                 instance.ids = {
                     "custom_options_box": mock_custom_options_box,
-                    "goto_title_button": mock_goto_title_button,
+                    "goto_title_overlay": mock_goto_title_overlay,
                 }
                 # Initialize properties that might be set in kv
                 instance.x = 0

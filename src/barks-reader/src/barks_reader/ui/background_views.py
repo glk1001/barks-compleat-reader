@@ -42,10 +42,10 @@ if TYPE_CHECKING:
     from barks_reader.core.reader_colors import Color
     from barks_reader.core.reader_settings import ReaderSettings
 
-_TOP_VIEW_IMAGE_TYPES = {
+_TOP_VIEW_IMAGE_TYPES: set[FileTypes] = {
     t for t in FileTypes if t not in [FileTypes.NONTITLE, FileTypes.ORIGINAL_ART]
 }
-_TITLE_VIEW_IMAGE_TYPES = {
+_TITLE_VIEW_IMAGE_TYPES: set[FileTypes] = {
     t for t in FileTypes if t not in [FileTypes.INSET, FileTypes.ORIGINAL_ART]
 }
 
@@ -200,6 +200,8 @@ class BackgroundViews:
         self._current_tag = None
         self._current_bottom_view_title = ""
 
+        self._search_screen_image_info: ImageInfo = ImageInfo()
+
         self._fun_image_themes: set[ImageThemes] | None = None
         self._cached_fun_titles: tuple[list[FantaComicBookInfo], set[FileTypes]] | None = None
         self.set_fun_image_themes(None)
@@ -275,6 +277,9 @@ class BackgroundViews:
         """Return 1.0 when the Search screen should be visible, else 0.0."""
         return 1.0 if (self._view_state in _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES) else 0.0
 
+    def get_search_screen_image_info(self) -> ImageInfo:
+        return self._search_screen_image_info
+
     def get_current_category(self) -> str:
         return self._current_category
 
@@ -340,6 +345,7 @@ class BackgroundViews:
 
         self._set_next_top_view_image()
         self._set_next_bottom_view_fun_image()
+        self._set_next_search_screen_image()
         self.set_next_bottom_view_title_image()
         self._set_bottom_view_title_image_color()
 
@@ -522,6 +528,11 @@ class BackgroundViews:
             f" Color: {get_formatted_color(self._bottom_view_fun_image_color)},"
             f" Opacity: {self._bottom_view_fun_image_opacity}."
         )
+
+    def _set_next_search_screen_image(self) -> None:
+        if self._view_state not in _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES:
+            return
+        self._search_screen_image_info = self._random_title_images.get_random_search_image()
 
     def _get_next_fun_view_image_info(self) -> ImageInfo:
         if self._view_state == ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE:

@@ -39,6 +39,7 @@ from barks_reader.ui.document_reader import get_document_reader_screen
 from barks_reader.ui.error_handling import handle_app_fail_with_traceback
 from barks_reader.ui.font_manager import FontManager
 from barks_reader.ui.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, FunImageViewScreen
+from barks_reader.ui.goto_title_overlay import GOTO_TITLE_OVERLAY_KV_FILE
 from barks_reader.ui.index_screen import INDEX_SCREEN_KV_FILE
 from barks_reader.ui.main_index_screen import MainIndexScreen
 from barks_reader.ui.main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
@@ -381,6 +382,7 @@ class BarksReaderApp(App):
         Builder.load_file(str(STATISTICS_SCREEN_KV_FILE))
         Builder.load_file(str(SEARCH_SCREEN_KV_FILE))
         Builder.load_file(str(MAIN_SCREEN_KV_FILE))
+        Builder.load_file(str(GOTO_TITLE_OVERLAY_KV_FILE))
 
         root = self._build_screens()
 
