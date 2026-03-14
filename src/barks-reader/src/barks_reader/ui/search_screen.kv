@@ -2,7 +2,7 @@
     background_normal: ''
     background_down: ''
     border: [0, 0, 0, 0]
-    background_color: (0.15, 0.15, 0.15, 0.4) if self.state == 'normal' else (0.0, 0.4, 0.0, 0.55)
+    background_color: ((0.15, 0.15, 0.15, 0.4) if self.row_index % 2 == 0 else (0.22, 0.22, 0.22, 0.4)) if self.state == 'normal' else (0.0, 0.4, 0.0, 0.55)
     color: (1, 1, 0, 1)
     size_hint_y: None
     height: dp(28)
