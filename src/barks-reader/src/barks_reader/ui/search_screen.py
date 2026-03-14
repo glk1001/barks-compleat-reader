@@ -154,7 +154,7 @@ class SearchScreen(FloatLayout):
             active = mode == content_mode
             widget = self.ids[content_id]
             widget.opacity = 1 if active else 0
-            widget.size_hint = (1, 1) if active else (0, 0)
+            widget.size_hint = (0.86, 1) if active else (0, 0)
 
         logger.debug(f"SearchScreen mode set to '{mode}'.")
 
