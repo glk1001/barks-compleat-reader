@@ -107,6 +107,12 @@ def test_apply_font_theme_mapping(font_manager: FontManager) -> None:  # noqa: P
     mock_theme.about_box_title = 28
     mock_theme.about_box_version = 29
     mock_theme.about_box_fine_print = 30
+    mock_theme.search_result = 31
+    mock_theme.search_input = 32
+    mock_theme.search_tag_chip = 33
+    mock_theme.search_label = 34
+    mock_theme.search_clear_button = 35
+    mock_theme.search_button = 36
 
     # noinspection PyProtectedMember
     font_manager._apply_font_theme(mock_theme)
@@ -147,3 +153,9 @@ def test_apply_font_theme_mapping(font_manager: FontManager) -> None:  # noqa: P
     assert font_manager.about_box_title_font_size == 28
     assert font_manager.about_box_version_font_size == 29
     assert font_manager.about_box_fine_print_font_size == 30
+    assert font_manager.search_result_font_size == 31
+    assert font_manager.search_input_font_size == 32
+    assert font_manager.search_tag_chip_font_size == 33
+    assert font_manager.search_label_font_size == 34
+    assert font_manager.search_clear_button_font_size == 35
+    assert font_manager.search_button_font_size == 36

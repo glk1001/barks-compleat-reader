@@ -57,6 +57,12 @@ class FontTheme:
     about_box_title: float
     about_box_version: float
     about_box_fine_print: float
+    search_result: float
+    search_input: float
+    search_tag_chip: float
+    search_label: float
+    search_clear_button: float
+    search_button: float
 
 
 LOW_RES_FONTS = FontTheme(
@@ -82,6 +88,12 @@ LOW_RES_FONTS = FontTheme(
     about_box_title=sp(20),
     about_box_version=sp(17),
     about_box_fine_print=sp(14),
+    search_result=sp(14),
+    search_input=sp(14),
+    search_tag_chip=sp(13),
+    search_label=sp(14),
+    search_clear_button=sp(16),
+    search_button=sp(14),
 )
 HI_RES_FONTS = FontTheme(
     main_title=sp(40),
@@ -106,6 +118,12 @@ HI_RES_FONTS = FontTheme(
     about_box_title=sp(26),
     about_box_version=sp(23),
     about_box_fine_print=sp(16),
+    search_result=sp(18),
+    search_input=sp(18),
+    search_tag_chip=sp(17),
+    search_label=sp(18),
+    search_clear_button=sp(20),
+    search_button=sp(18),
 )
 
 
@@ -125,6 +143,12 @@ class FontManager(EventDispatcher):
     error_popup_font_size = NumericProperty()
     error_popup_button_font_size = NumericProperty()
     text_block_heading_font_size = NumericProperty()
+    search_result_font_size = NumericProperty()
+    search_input_font_size = NumericProperty()
+    search_tag_chip_font_size = NumericProperty()
+    search_label_font_size = NumericProperty()
+    search_clear_button_font_size = NumericProperty()
+    search_button_font_size = NumericProperty()
 
     tree_view_main_node_font_size = NumericProperty()
     tree_view_story_node_font_size = NumericProperty()
@@ -209,6 +233,12 @@ class FontManager(EventDispatcher):
         self.about_box_version_font_size = theme.about_box_version
         self.about_box_fine_print_font_size = theme.about_box_fine_print
         self.message_title_size = theme.message_title
+        self.search_result_font_size = theme.search_result
+        self.search_input_font_size = theme.search_input
+        self.search_tag_chip_font_size = theme.search_tag_chip
+        self.search_label_font_size = theme.search_label
+        self.search_clear_button_font_size = theme.search_clear_button
+        self.search_button_font_size = theme.search_button
 
         # Apply default and specific sizes for tree view
         self.tree_view_main_node_font_size = theme.default

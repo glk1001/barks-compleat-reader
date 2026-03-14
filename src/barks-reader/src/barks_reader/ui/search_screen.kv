@@ -8,13 +8,13 @@
     halign: 'left'
     valign: 'middle'
     text_size: self.width, self.height
-    font_size: dp(14)
+    font_size: fm.search_result_font_size
     padding: [dp(8), 0]
 
 <_TagChipButton>:
     size_hint: None, None
     height: dp(26)
-    font_size: dp(13)
+    font_size: fm.search_tag_chip_font_size
     background_normal: ''
     background_down: ''
     background_color: (0, 0, 0, 0)
@@ -64,7 +64,7 @@
                     halign: 'left'
                     valign: 'middle'
                     text_size: self.size
-                    font_size: dp(12)
+                    font_size: fm.search_label_font_size
 
                 BoxLayout:
                     orientation: 'horizontal'
@@ -75,7 +75,7 @@
                     TextInput:
                         id: title_search_input
                         multiline: False
-                        font_size: dp(14)
+                        font_size: fm.search_input_font_size
                         foreground_color: (1, 1, 1, 1)
                         background_color: (0.3, 0.3, 0.3, 0.8)
                         padding: [dp(4), (self.height - self.line_height) / 2]
@@ -85,7 +85,7 @@
                         id: title_clear_button
                         text: "\u00d7"
                         bold: True
-                        font_size: dp(14)
+                        font_size: fm.search_clear_button_font_size
                         size_hint_x: None
                         width: dp(30)
                         background_color: (0.35, 0.35, 0.35, 1.0)
@@ -106,7 +106,7 @@
                     halign: 'left'
                     valign: 'middle'
                     text_size: self.size
-                    font_size: dp(12)
+                    font_size: fm.search_label_font_size
 
                 ScrollView:
                     id: title_results_scroll
@@ -147,7 +147,7 @@
                     halign: 'left'
                     valign: 'middle'
                     text_size: self.size
-                    font_size: dp(12)
+                    font_size: fm.search_label_font_size
 
                 BoxLayout:
                     orientation: 'horizontal'
@@ -158,7 +158,7 @@
                     TextInput:
                         id: tag_search_input
                         multiline: False
-                        font_size: dp(14)
+                        font_size: fm.search_input_font_size
                         foreground_color: (1, 1, 1, 1)
                         background_color: (0.3, 0.3, 0.3, 0.8)
                         padding: [dp(4), (self.height - self.line_height) / 2]
@@ -168,7 +168,7 @@
                         id: tag_clear_button
                         text: "\u00d7"
                         bold: True
-                        font_size: dp(14)
+                        font_size: fm.search_clear_button_font_size
                         size_hint_x: None
                         width: dp(30)
                         background_color: (0.35, 0.35, 0.35, 1.0)
@@ -203,7 +203,7 @@
                     halign: 'left'
                     valign: 'middle'
                     text_size: self.size
-                    font_size: dp(12)
+                    font_size: fm.search_label_font_size
 
                 ScrollView:
                     id: tag_results_scroll
@@ -244,7 +244,7 @@
                     halign: 'left'
                     valign: 'middle'
                     text_size: self.size
-                    font_size: dp(12)
+                    font_size: fm.search_label_font_size
 
                 BoxLayout:
                     orientation: 'horizontal'
@@ -255,7 +255,7 @@
                     TextInput:
                         id: word_search_input
                         multiline: False
-                        font_size: dp(14)
+                        font_size: fm.search_input_font_size
                         foreground_color: (1, 1, 1, 1)
                         background_color: (0.3, 0.3, 0.3, 0.8)
                         padding: [dp(4), (self.height - self.line_height) / 2]
@@ -265,7 +265,7 @@
                         id: word_clear_button
                         text: "\u00d7"
                         bold: True
-                        font_size: dp(14)
+                        font_size: fm.search_clear_button_font_size
                         size_hint_x: None
                         width: dp(30)
                         background_color: (0.35, 0.35, 0.35, 1.0)
@@ -274,7 +274,7 @@
                 Button:
                     text: "Search"
                     bold: True
-                    font_size: dp(12)
+                    font_size: fm.search_button_font_size
                     size_hint_y: None
                     height: dp(30)
                     background_color: (0.0, 0.4, 0.0, 1.0)
@@ -295,7 +295,7 @@
                     halign: 'left'
                     valign: 'middle'
                     text_size: self.size
-                    font_size: dp(12)
+                    font_size: fm.search_label_font_size
 
                 ScrollView:
                     id: word_results_scroll
