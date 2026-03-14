@@ -11,6 +11,7 @@ from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
+    NumericProperty,
     ObjectProperty,
     StringProperty,
 )
@@ -60,6 +61,8 @@ _SEARCH_NAV_FOCUS_GROUP = "search_nav_focus"
 
 class _SearchResultButton(Button):
     """A clickable result row in a search results list."""
+
+    row_index = NumericProperty(0)
 
 
 _CHIP_BG_NORMAL = (0.2, 0.35, 0.2, 1)
@@ -168,8 +171,8 @@ class SearchScreen(FloatLayout):
             return
 
         title_enums, title_strings = self._get_titles_matching(text)
-        for title_str in title_strings:
-            btn = _SearchResultButton(text=title_str)
+        for i, title_str in enumerate(title_strings):
+            btn = _SearchResultButton(text=title_str, row_index=i)
             btn.bind(on_release=lambda _b, t=title_str: self._on_title_result_selected(t))
             results_layout.add_widget(btn)
 
@@ -222,8 +225,8 @@ class SearchScreen(FloatLayout):
 
         title_results_layout: BoxLayout = self.ids.tag_title_results_layout
         title_results_layout.clear_widgets()
-        for title_str in self._tag_titles:
-            btn = _SearchResultButton(text=title_str)
+        for i, title_str in enumerate(self._tag_titles):
+            btn = _SearchResultButton(text=title_str, row_index=i)
             btn.bind(on_release=lambda _b, t=title_str: self._on_tag_title_result_selected(t))
             title_results_layout.add_widget(btn)
 
@@ -269,16 +272,17 @@ class SearchScreen(FloatLayout):
 
         self._word_search_results.sort(key=lambda t: t[2])
 
-        for (
+        for i, (
             comic_title,
             first_page_num,
             title_with_pages,
             title_speech_info,
-        ) in self._word_search_results:
+        ) in enumerate(self._word_search_results):
             row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(28))
 
             title_btn = _SearchResultButton(
                 text=title_with_pages,
+                row_index=i,
                 size_hint=(0.9, 1),
                 halign="left",
                 valign="middle",
@@ -463,12 +467,10 @@ class SearchScreen(FloatLayout):
         rows = self._get_active_result_rows()
         if key == KEY_UP:
             if self._nav_focused_result_idx <= 0:
-                self._clear_result_focus()
-                self._nav_up_from_results()
-            else:
-                self._nav_focused_result_idx -= 1
-                self._nav_word_sub_focus = "title"
-                self._draw_result_focus()
+                return True
+            self._nav_focused_result_idx -= 1
+            self._nav_word_sub_focus = "title"
+            self._draw_result_focus()
         elif key == KEY_DOWN:
             if rows and self._nav_focused_result_idx < len(rows) - 1:
                 self._nav_focused_result_idx += 1
