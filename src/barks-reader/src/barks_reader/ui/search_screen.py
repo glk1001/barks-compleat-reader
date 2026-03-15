@@ -459,7 +459,7 @@ class SearchScreen(FloatLayout):
             title_btn = _SearchResultButton(
                 text=title_with_pages,
                 row_index=i,
-                size_hint=(0.9, 1),
+                size_hint=(0.94, 1),
                 halign="left",
                 valign="middle",
             )
@@ -472,7 +472,8 @@ class SearchScreen(FloatLayout):
             )
             row.add_widget(title_btn)
 
-            speech_btn = TitleShowSpeechButton(size_hint=(0.1, 1))
+            row_bg = (0.15, 0.15, 0.15, 0.4) if i % 2 == 0 else (0.22, 0.22, 0.22, 0.4)
+            speech_btn = TitleShowSpeechButton(size_hint=(0.06, 1), background_color=row_bg)
             speech_btn.bind(
                 on_release=lambda _b, ct=comic_title, tsi=title_speech_info: (
                     self._show_word_speech_bubbles(ct, tsi)

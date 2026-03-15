@@ -43,9 +43,9 @@
     Image:
         source: str(sys_paths.get_speech_bubble_icon_file())
         x: self.parent.x + dp(3)
-        y: self.parent.y - (0.1 * ((1-0.7) * self.parent.height))
-        size: 0.7 * self.parent.width, 0.7 * self.parent.height
-        fit_mode: "contain"
+        y: self.parent.y - (0.1 * ((1-0.8) * self.parent.height)) + dp(2)
+        size: 0.8 * self.parent.width, 0.8 * self.parent.height
+        fit_mode: "cover"
         mipmap: True
 
 #:set POPUP_BGND_COLOR [0, 0, 1, 0.3]  # Faint blue
