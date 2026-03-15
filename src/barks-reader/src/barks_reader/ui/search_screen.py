@@ -408,7 +408,7 @@ class SearchScreen(FloatLayout):
                     (0.15, 0.15, 0.15, 0.4) if idx % 2 == 0 else (0.22, 0.22, 0.22, 0.4)
                 )
 
-        found = self._whoosh_indexer.find_all_words(word)
+        found = self._whoosh_indexer.find_unstemmed_words(word)
 
         results_layout: BoxLayout = self.ids.word_results_layout
         results_layout.clear_widgets()

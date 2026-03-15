@@ -60,7 +60,7 @@ def speech_index_screen(
             # Setup mock search engine
             mock_indexer = mock_search_cls.return_value
             # Required structure: {letter: {prefix: [terms]}}
-            mock_indexer.get_cleaned_alpha_split_lemmatized_terms.return_value = {
+            mock_indexer.get_cleaned_alpha_split_unstemmed_terms.return_value = {
                 "a": {"apple": ["apple", "apples"], "ant": ["ant"]},
                 "b": {"banana": ["banana"]},
             }
@@ -139,7 +139,7 @@ class TestSpeechIndexScreen:
         # noinspection PyProtectedMember
         speech_index_screen._find_words("test")
         # noinspection PyProtectedMember
-        speech_index_screen._whoosh_indexer.find_all_words.assert_called_with("test")
+        speech_index_screen._whoosh_indexer.find_unstemmed_words.assert_called_with("test")
 
         # noinspection PyProtectedMember
         speech_index_screen._find_words("1942")

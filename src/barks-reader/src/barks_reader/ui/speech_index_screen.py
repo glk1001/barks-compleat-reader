@@ -157,7 +157,7 @@ class SpeechIndexScreen(IndexScreen):
         self.on_goto_title: Callable[[ImageInfo, str], None] | None = None
 
         self._cleaned_alpha_split_terms = (
-            self._whoosh_indexer.get_cleaned_alpha_split_lemmatized_terms()
+            self._whoosh_indexer.get_cleaned_alpha_split_unstemmed_terms()
         )
         self._prefix_buttons: dict[str, Button] = {}
         self._nav_focused_prefix_idx: int = 0
@@ -176,10 +176,7 @@ class SpeechIndexScreen(IndexScreen):
         self._popup_nav = PopupKeyboardNav(self._speech_bubble_browser_popup)
 
     def _find_words(self, index_terms: str) -> TitleDict:
-        if "0" <= index_terms[0] <= "9":
-            return self._whoosh_indexer.find_unstemmed_words(index_terms)
-
-        return self._whoosh_indexer.find_all_words(index_terms)
+        return self._whoosh_indexer.find_unstemmed_words(index_terms)
 
     def _populate_index_for_letter(self, first_letter: str) -> None:
         self._populate_top_alphabet_split_menu(first_letter)
