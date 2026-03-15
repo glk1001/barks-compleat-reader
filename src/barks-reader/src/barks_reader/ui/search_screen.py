@@ -69,11 +69,12 @@ class _SearchResultButton(Button):
 _CHIP_BG_NORMAL = (0.2, 0.35, 0.2, 1)
 _CHIP_BG_ACTIVE = (0.25, 0.45, 0.25, 1)
 _CHIP_BG_MEMBER = (0.18, 0.30, 0.22, 1)
-_CHIP_BG_MEMBER_ACTIVE = (0.25, 0.45, 0.25, 1)
 
 
 _CHIP_BORDER_NONE = (0, 0, 0, 0)
 _CHIP_BORDER_FOCUSED = (0.5, 1, 0.5, 1)
+
+_WORD_ITEM_SELECTED_BG = (0.15, 0.35, 0.55, 0.8)
 
 
 class _TagChipButton(Button):
@@ -312,47 +313,40 @@ class SearchScreen(FloatLayout):
                 label += " \u25b8"
             btn = _TagChipButton(text=label)
             btn.chip_bg_color = (
-                _CHIP_BG_MEMBER_ACTIVE if label == self._selected_member else _CHIP_BG_MEMBER
+                _CHIP_BG_ACTIVE if label == self._selected_member else _CHIP_BG_MEMBER
             )
             btn.bind(on_release=lambda _b, m=label: self._on_member_tag_selected(m))
             stack.add_widget(btn)
         return stack
 
-    def _on_tag_result_selected(self, tag_str: str) -> None:
-        logger.info(f'Tag search: selected tag "{tag_str}".')
-        self._selected_tag = tag_str
-        self._selected_member = ""
-        self._current_tag, titles = self._title_search.get_titles_from_alias_tag(tag_str.lower())
+    def _show_tag_titles(self, tag_str: str) -> None:
+        """Look up titles for a tag and populate the results list."""
+        _, titles = self._title_search.get_titles_from_alias_tag(tag_str.lower())
         self._tag_titles = self._title_search.get_titles_as_strings(titles) if titles else []
-
-        self._rebuild_tag_chips()
-
         title_results_layout: BoxLayout = self.ids.tag_title_results_layout
         self._populate_title_results(
             title_results_layout, self._tag_titles, self._on_result_goto_title
         )
         self._update_background_from_results(titles or [])
+
+    def _on_tag_result_selected(self, tag_str: str) -> None:
+        logger.info(f'Tag search: selected tag "{tag_str}".')
+        self._selected_tag = tag_str
+        self._selected_member = ""
+        self._current_tag, _ = self._title_search.get_titles_from_alias_tag(tag_str.lower())
+        self._rebuild_tag_chips()
+        self._show_tag_titles(tag_str)
 
     def _on_member_tag_selected(self, member_label: str) -> None:
         # Strip sub-group indicator suffix
         member_str = member_label.rstrip(" \u25b8")
         logger.info(f'Tag search: selected member "{member_str}".')
         self._selected_member = member_label
-
-        _, titles = self._title_search.get_titles_from_alias_tag(member_str.lower())
-        self._tag_titles = self._title_search.get_titles_as_strings(titles) if titles else []
-
-        title_results_layout: BoxLayout = self.ids.tag_title_results_layout
-        self._populate_title_results(
-            title_results_layout, self._tag_titles, self._on_result_goto_title
-        )
-        self._update_background_from_results(titles or [])
+        self._show_tag_titles(member_str)
 
         # Highlight the selected member chip
         for chip in self._get_member_chip_buttons():
-            chip.chip_bg_color = (
-                _CHIP_BG_MEMBER_ACTIVE if chip.text == member_label else _CHIP_BG_MEMBER
-            )
+            chip.chip_bg_color = _CHIP_BG_ACTIVE if chip.text == member_label else _CHIP_BG_MEMBER
 
     def _clear_tag_title_results(self) -> None:
         self.ids.tag_title_results_layout.clear_widgets()
@@ -401,15 +395,13 @@ class SearchScreen(FloatLayout):
         matching.sort()
         return matching
 
-    _WORD_ITEM_SELECTED_BG = (0.15, 0.35, 0.55, 0.8)
-
     def _on_word_chip_selected(self, word: str) -> None:
         logger.info(f'Word search: selected chip "{word}".')
         self._selected_word = word
 
         for btn in reversed(self.ids.word_chips_layout.children):
             if btn.text == word:
-                btn.background_color = self._WORD_ITEM_SELECTED_BG
+                btn.background_color = _WORD_ITEM_SELECTED_BG
             else:
                 idx = btn.row_index
                 btn.background_color = (
@@ -769,15 +761,9 @@ class SearchScreen(FloatLayout):
         if is_open_group:
             # Collapse the open group: show the group's own titles
             self._selected_member = ""
-            _, titles = self._title_search.get_titles_from_alias_tag(self._selected_tag.lower())
-            self._tag_titles = self._title_search.get_titles_as_strings(titles) if titles else []
             self._current_tag = None
             self._rebuild_tag_chips()
-            title_results_layout: BoxLayout = self.ids.tag_title_results_layout
-            self._populate_title_results(
-                title_results_layout, self._tag_titles, self._on_result_goto_title
-            )
-            self._update_background_from_results(titles or [])
+            self._show_tag_titles(self._selected_tag)
             new_chips = self._get_tag_chip_buttons()
             self._nav_focused_chip_idx = next(
                 (i for i, c in enumerate(new_chips) if c.text == self._selected_tag), 0
@@ -841,6 +827,21 @@ class SearchScreen(FloatLayout):
             return self._get_word_chip_buttons()
         return self._get_tag_chip_buttons()
 
+    def _update_tag_chip_colors(
+        self, chips: list[_TagChipButton], focused_idx: int | None = None
+    ) -> None:
+        """Set bg and border colors on tag chips. If focused_idx is given, highlight that chip."""
+        main_chips = {id(c) for c in self._get_main_tag_chip_buttons()}
+        for i, chip in enumerate(chips):
+            is_main = id(chip) in main_chips
+            if is_main:
+                is_selected = chip.text == self._selected_tag
+                chip.chip_bg_color = _CHIP_BG_ACTIVE if is_selected else _CHIP_BG_NORMAL
+            else:
+                is_selected = chip.text == self._selected_member
+                chip.chip_bg_color = _CHIP_BG_ACTIVE if is_selected else _CHIP_BG_MEMBER
+            chip.chip_border_color = _CHIP_BORDER_FOCUSED if i == focused_idx else _CHIP_BORDER_NONE
+
     def _draw_chip_focus(self) -> None:
         chips = self._get_active_chip_buttons()
         if not chips:
@@ -850,34 +851,14 @@ class SearchScreen(FloatLayout):
             update_focus_in_list(chips, self._nav_focused_chip_idx, _SEARCH_NAV_FOCUS_GROUP)
             self.ids.word_chips_scroll.scroll_to(chips[self._nav_focused_chip_idx])
         else:
-            main_chips = {id(c) for c in self._get_main_tag_chip_buttons()}
-            for i, chip in enumerate(chips):
-                is_main = id(chip) in main_chips
-                if is_main:
-                    is_selected = chip.text == self._selected_tag
-                    chip.chip_bg_color = _CHIP_BG_ACTIVE if is_selected else _CHIP_BG_NORMAL
-                else:
-                    is_selected = chip.text == self._selected_member
-                    chip.chip_bg_color = _CHIP_BG_MEMBER_ACTIVE if is_selected else _CHIP_BG_MEMBER
-                chip.chip_border_color = (
-                    _CHIP_BORDER_FOCUSED if i == self._nav_focused_chip_idx else _CHIP_BORDER_NONE
-                )
+            self._update_tag_chip_colors(chips, self._nav_focused_chip_idx)
 
     def _clear_chip_focus(self) -> None:
         chips = self._get_active_chip_buttons()
         if self._active_mode == "Word":
             clear_focus_in_list(chips, _SEARCH_NAV_FOCUS_GROUP)
         else:
-            main_chips = {id(c) for c in self._get_main_tag_chip_buttons()}
-            for chip in chips:
-                is_main = id(chip) in main_chips
-                if is_main:
-                    is_selected = chip.text == self._selected_tag
-                    chip.chip_bg_color = _CHIP_BG_ACTIVE if is_selected else _CHIP_BG_NORMAL
-                else:
-                    is_selected = chip.text == self._selected_member
-                    chip.chip_bg_color = _CHIP_BG_MEMBER_ACTIVE if is_selected else _CHIP_BG_MEMBER
-                chip.chip_border_color = _CHIP_BORDER_NONE
+            self._update_tag_chip_colors(chips)
 
     _CLEAR_BTN_NORMAL = (0.35, 0.35, 0.35, 1.0)
     _CLEAR_BTN_FOCUSED = (0.0, 0.5, 0.0, 1.0)
