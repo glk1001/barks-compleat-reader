@@ -23,21 +23,6 @@
             margin: 0 auto;
         }
 
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: white;
-            text-decoration: none;
-            margin-bottom: 30px;
-            font-weight: 500;
-            transition: gap 0.3s ease;
-        }
-
-        .back-link:hover {
-            gap: 12px;
-        }
-
         header {
             text-align: center;
             color: white;
@@ -145,13 +130,6 @@
             background-image: url('requirements-bg.jpg');
         }
 
-        #troubleshooting::before {
-            background-image: url('troubleshooting-bg.jpg');
-        }
-
-        #download::before {
-            background-image: url('download-bg.jpg');
-        }
 
         .tab-content > * {
             position: relative;
@@ -463,12 +441,12 @@
                 <strong><em>The Compleat Barks Disney Reader</em></strong> is a multi-platform app for reading your
                 digital copy of the
                 <strong><em>Fantagraphics Complete Carl Barks Disney Library.</em></strong> This app knows all the Barks
-                disney stories and how they are laid out in the Fantagraphics library.
+                Disney stories and how they are laid out in the Fantagraphics library.
                 It can help you read the stories chronologically or by series or by categories/tags; and there is a
                 title/tag search option and a full index. Once you've navigated to your story of choice, the reader will
                 open separate window and present the stories with pages centered and with the original page numbering.
                 Each story
-                is individually itemised and accessible from the navigation view. The app as a whole has copius amounts
+                is individually itemised and accessible from the navigation view. The app as a whole has copious amounts
                 of Barks panels as backgrounds and enhancements to the navigation process. And a key focus is to make
                 this a complete reader. So all censorship issues found in the Fantagraphics library have been addressed.
                 They have been carefully fixed using digital versions of the original comics or the CBL, and colored
@@ -514,7 +492,7 @@
 
             <div class="feature-grid">
                 <div class="feature-card">
-                    <h4>🎯 Chronolgical Access to All Stories</h4>
+                    <h4>🎯 Chronological Access to All Stories</h4>
                     <p>The table of contents is a treeview allowing you to browse titles chronologically, or by series,
                         or category.
                         Story ordering is done using Barks's submission dates - the dates he recorded as having
@@ -563,9 +541,9 @@
                 <div class="feature-card">
                     <h4>🔒 You Supply Your Fantagraphics Zips</h4>
                     <p>All you need to do is make sure all your Fantagraphics comic zips are in a single directory and
-                        the name of each zip starts with the volume number - so '01' to '30'. The zips must be in 'zip'
-                        format not 'rar' format. If you have a volume in the 'rar' format you just need to un-rar it,
-                        then zip it up. If you put your zips in a folder called <strong>"Fantagraphics Complete Carl
+                        the name of each zip starts with the volume number - so '01' to '29'. The zips must be in '.zip'
+                        or '.cbz' format not 'rar' format. If you have a volume in the 'rar' format you just need to
+                        un-rar it, then zip it up. If you put your zips in a folder called <strong>"Fantagraphics Complete Carl
                             Barks Disney Library"</strong>, and it's on the Barks readers' search path (see
                         the Installation tab)
                         it will be automatically added to the readers' configuration.
@@ -586,8 +564,16 @@
                 </div>
 
                 <div class="feature-card">
+                    <h4>💬 Speech Bubble Index</h4>
+                    <p>Search all speech text across every Barks story. The speech index lets you find any word or phrase
+                        spoken in any comic, with results linking directly to the specific page. Great for tracking down
+                        that half-remembered quote or finding every time a character says a particular phrase.
+                    </p>
+                </div>
+
+                <div class="feature-card">
                     <h4>🔄 Works on Windows, macOS, and Linux</h4>
-                    <p>The app is written in Python and has been run and tested on Windows, Ubuntu, and Macos.
+                    <p>The app is written in Python and has been run and tested on Windows, Ubuntu, and macOS.
                         With further work, it should be possible to get it running on Android and ipads.
                     </p>
                 </div>
@@ -611,6 +597,10 @@
                     <h4>Full Index with Links</h4>
                     <img src="screenshot4.png" alt="Full Index">
                 </div>
+                <div class="screenshot-item">
+                    <h4>Settings</h4>
+                    <img src="screenshot-settings.png" alt="Settings">
+                </div>
             </div>
         </div>
 
@@ -633,13 +623,12 @@
                     <h4>Step 1: Download</h4>
                     <p>
                         Download the latest Windows release from the Download tab or directly from GitHub Releases.
-                        The files to download are:
+                        The files to download are:</p>
                     <ul>
                         <li><strong>"barks-reader-win.exe"</strong></li>
                         <li><strong>"barks-reader-data-1.zip"</strong></li>
                         <li><strong>"barks-reader-data-2.zip"</strong></li>
                     </ul>
-                    </p>
                 </div>
 
                 <div class="install-step">
@@ -648,13 +637,12 @@
                     to create its runtime environment.</strong><br/><br/>
                     <p>
                         Move the executable and data files to your preferred location but note that this must be a
-                        directory where you have write permissions, such as:
+                        directory where you have write permissions, such as:</p>
                     <ul>
                         <li><strong>"C:\Users\YourUsername\BarksReader"</strong></li>
                         <li><strong>"C:\BarksReader"</strong></li>
                         <li><strong>"C:\Users\YourUsername\Documents\BarksReader"</strong></li>
                     </ul>
-                    </p>
                     <p>The following steps assume you've chosen <strong>"C:\Users\YourUsername\BarksReader"</strong>
                         as the Barks reader app directory.
                     </p>
@@ -664,7 +652,7 @@
                     <h4>Step 3: Organise Your Fantagraphics Zips</h4>
                     <p>Your Fantagraphics comic zips must be in a single folder and can be either '.zip' or '.cbz'
                         files. The first part of each volumes' filename must be the volume number, from '01' to '29'.
-                        For example:
+                        For example:</p>
                     <table class="requirements-table filename-example-table">
                         <tbody>
                         <tr>
@@ -684,7 +672,6 @@
                         </tr>
                         </tbody>
                     </table>
-                    </p>
                     <p>See the next step for more information on making it easier for the app to automatically configure
                         itself with your Fantagraphics zips.</p>
                 </div>
@@ -692,14 +679,14 @@
                 <div class="install-step">
                     <h4>Step 4: Optional - Move Your Fantagraphics Zips</h4>
                     <p>If you put your Fantagraphics comic zips in a folder called <strong>"Fantagraphics Complete Carl
-                        Barks Disney Library"</strong></p> and make sure this folder is under one of these
-                    locations:
+                        Barks Disney Library"</strong> and make sure this folder is under one of these
+                    locations:</p>
                     <ul>
-                        <li><strong>"C:\Users\YourUsername\BarksReader"</strong>
-                        <li><strong>"C:\Users\YourUsername\Documents"</strong>
-                        <li><strong>"C:\Users\YourUsername\Books"</strong>
+                        <li><strong>"C:\Users\YourUsername\BarksReader"</strong></li>
+                        <li><strong>"C:\Users\YourUsername\Documents"</strong></li>
+                        <li><strong>"C:\Users\YourUsername\Books"</strong></li>
                     </ul>
-                    then the app will automatically add this location to its configuration.</p>
+                    <p>then the app will automatically add this location to its configuration.</p>
                 </div>
 
                 <div class="install-step">
@@ -716,13 +703,13 @@
                     next step). Depending on your machine
                     and connection it still may take a while to unzip the supporting data packs. Once these are
                     done (and providing there are no errors) you will get a welcome screen popup. Here you can
-                    press OK to launch the reader app. One you've done the install for the first time, subsequent
+                    press OK to launch the reader app. Once you've done the install for the first time, subsequent
                     app launches should be fairly quick.</p>
                 </div>
 
                 <div class="install-step">
                     <h4>Step 6: On First Launch</h4>
-                    <p>When the application is first launched it will do further installation steps:
+                    <p>When the application is first launched it will do further installation steps:</p>
                     <ul>
                         <li>It will run the astral python package manager <strong>'uv'</strong> to download and install python
                             packages required by the app,
@@ -735,19 +722,18 @@
                         <li>It will search for a directory called <strong>"Fantagraphics Complete Carl Barks Disney
                             Library"</strong> with your comic zips in the following locations:
                             <ul>
-                                <li><strong>"C:\Users\YourUsername\BarksReader"</strong>
-                                <li><strong>"C:\Users\YourUsername\Documents"</strong>
-                                <li><strong>"C:\Users\YourUsername\Books"</strong>
+                                <li><strong>"C:\Users\YourUsername\BarksReader"</strong></li>
+                                <li><strong>"C:\Users\YourUsername\Documents"</strong></li>
+                                <li><strong>"C:\Users\YourUsername\Books"</strong></li>
                             </ul>
                         </li>
                         <li>And finally, it will launch the actual reader app.</li>
                         <li><strong>NOTE: It will only do the above installation steps on the first app launch.</strong></li>
                     </ul>
-                    </p>
                 </div>
 
                 <div class="install-step">
-                    <h4>Step 7: Afer the First Launch</h4>
+                    <h4>Step 7: After the First Launch</h4>
                     <p>The <strong>"barks-reader-data-1.zip"</strong> and <strong>"barks-reader-data-2.zip"</strong>
                         files are no longer needed, and you can safely delete them.</p>
                 </div>
@@ -760,26 +746,24 @@
                     <h4>Step 1: Download</h4>
                     <p>
                         Download the latest macOS release from the Download tab or directly from GitHub Releases.
-                        The files to download are:
+                        The files to download are:</p>
                     <ul>
                         <li><strong>"barks-reader-macos"</strong></li>
                         <li><strong>"barks-reader-data-1.zip"</strong></li>
                         <li><strong>"barks-reader-data-2.zip"</strong></li>
                     </ul>
-                    </p>
                 </div>
 
                 <div class="install-step">
                     <h4>Step 2: Move the Downloaded Files</h4>
-                    <p>Move the executable and data files to a user-writable location such as:
+                    <p>Move the executable and data files to a user-writable location such as:</p>
                     <ul>
                         <li><strong>"~/Applications/BarksReader"</strong> (create folder if it doesn't exist)</li>
                         <li><strong>"~/BarksReader"</strong></li>
                         <li><strong>"~/Documents"</strong></li>
                     </ul>
-                    Do NOT extract to "/Applications" - the app needs write permissions.
-                    You may need to run: chmod +x barks-reader-macos
-                    </p>
+                    <p>Do NOT extract to "/Applications" - the app needs write permissions.
+                    You may need to run: chmod +x barks-reader-macos</p>
                     <p>The following steps assume you've chosen <strong>"~/Applications/BarksReader"</strong>
                         as the Barks reader app directory.
                     </p>
@@ -794,8 +778,9 @@
 
                 <div class="install-step">
                     <h4>Step 4: Organise Your Fantagraphics Zips</h4>
-                    <p>Your Fantagraphics comic zips must be in a single folder and the first part of each volumes'
-                        filename must be the volume number, from '01' to '28'. For example:
+                    <p>Your Fantagraphics comic zips must be in a single folder and can be either '.zip' or '.cbz'
+                        files. The first part of each volumes' filename must be the volume number, from '01' to '29'.
+                        For example:</p>
                     <table class="requirements-table filename-example-table">
                         <tbody>
                         <tr>
@@ -808,14 +793,13 @@
                             <td><strong>...</strong></td>
                         </tr>
                         <tr>
-                            <td><strong>27 - Donald Duck - 'Duck Luck'.cbz</strong></td>
+                            <td><strong>28 - Uncle Scrooge - 'Cave of Ali Baba'.cbz</strong></td>
                         </tr>
                         <tr>
-                            <td><strong>28 - Uncle Scrooge - 'Cave of Ali Baba'.cbz</strong></td>
+                            <td><strong>29 - Donald Duck - 'The Lonely Lighthouse on Cape Quack'.cbz</strong></td>
                         </tr>
                         </tbody>
                     </table>
-                    </p>
                     <p>See the next step for more information on making it easier for the app to automatically configure
                         itself with your Fantagraphics zips.</p>
                 </div>
@@ -823,15 +807,15 @@
                 <div class="install-step">
                     <h4>Step 5: Optional - Move Your Fantagraphics Zips</h4>
                     <p>If you put your Fantagraphics comic zips in a folder called <strong>"Fantagraphics Complete Carl
-                        Barks Disney Library"</strong></p> and make sure this folder is under one of these
-                    locations:
+                        Barks Disney Library"</strong> and make sure this folder is under one of these
+                    locations:</p>
                     <ul>
-                        <li><strong>"~/Applications/BarksReader"</strong>
-                        <li><strong>"~/BarksReader"</strong>
-                        <li><strong>"~/Documents"</strong>
-                        <li><strong>"~/Books"</strong>
+                        <li><strong>"~/Applications/BarksReader"</strong></li>
+                        <li><strong>"~/BarksReader"</strong></li>
+                        <li><strong>"~/Documents"</strong></li>
+                        <li><strong>"~/Books"</strong></li>
                     </ul>
-                    then the app will automatically add this location to its configuration.</p>
+                    <p>then the app will automatically add this location to its configuration.</p>
                 </div>
 
                 <div class="install-step">
@@ -846,13 +830,13 @@
                     next step). Depending on your machine
                     and connection it still may take a while to unzip the supporting data packs. Once these are
                     done (and providing there are no errors) you will get a welcome screen popup. Here you can
-                    press OK to launch the reader app. One you've done the install for the first time, subsequent
+                    press OK to launch the reader app. Once you've done the install for the first time, subsequent
                     app launches should be fairly quick.</p>
                 </div>
 
                 <div class="install-step">
                     <h4>Step 7: On First Launch</h4>
-                    <p>When the application is first launched it will do further installation steps:
+                    <p>When the application is first launched it will do further installation steps:</p>
                     <ul>
                         <li>It will run the astral python package manager <strong>'uv'</strong> to download and install python
                             packages required by the app
@@ -866,16 +850,15 @@
                         <li>It will search for a directory called <strong>"Fantagraphics Complete Carl Barks Disney
                             Library"</strong> with your comic zips in the following locations:
                             <ul>
-                                <li><strong>"~/Applications/BarksReader"</strong>
-                                <li><strong>"~/BarksReader"</strong>
-                                <li><strong>"~/Documents"</strong>
-                                <li><strong>"~/Books"</strong>
+                                <li><strong>"~/Applications/BarksReader"</strong></li>
+                                <li><strong>"~/BarksReader"</strong></li>
+                                <li><strong>"~/Documents"</strong></li>
+                                <li><strong>"~/Books"</strong></li>
                             </ul>
                         </li>
                         <li>And finally, it will launch the app</li>
-                    <li><strong>NOTE: It will only do the installation steps on the first app launch</strong></li>
+                        <li><strong>NOTE: It will only do the installation steps on the first app launch</strong></li>
                     </ul>
-                    </p>
                 </div>
 
                 <div class="install-step">
@@ -892,26 +875,24 @@
                     <h4>Step 1: Download</h4>
                     <p>
                         Download the latest Linux release from the Download tab or directly from GitHub Releases.
-                        The files to download are:
+                        The files to download are:</p>
                     <ul>
                         <li><strong>"barks-reader-linux"</strong></li>
                         <li><strong>"barks-reader-data-1.zip"</strong></li>
                         <li><strong>"barks-reader-data-2.zip"</strong></li>
                     </ul>
-                    </p>
                 </div>
 
                 <div class="install-step">
                     <h4>Step 2: Move the Downloaded Files</h4>
-                    <p>Move the downloaded files to a user-writable location such as:
+                    <p>Move the downloaded files to a user-writable location such as:</p>
                     <ul>
                         <li><strong>"~/opt/barks-reader"</strong></li>
                         <li><strong>"~/barks-reader"</strong></li>
                         <li>Any directory in your home folder</li>
                     </ul>
-                    You will need to make <strong>"barks-reader-linux"</strong> executable: <em>chmod +x
-                    barks-reader-linux</em>
-                    </p>
+                    <p>You will need to make <strong>"barks-reader-linux"</strong> executable: <em>chmod +x
+                    barks-reader-linux</em></p>
                     <p>The following steps assume you've chosen <strong>"~/opt/barks-reader"</strong>
                         as the Barks reader app directory.
                     </p>
@@ -919,8 +900,9 @@
 
                 <div class="install-step">
                     <h4>Step 3: Organise Your Fantagraphics Zips</h4>
-                    <p>Your Fantagraphics comic zips must be in a single folder and the first part of each volumes'
-                        filename must be the volume number, from '01' to '28'. For example:
+                    <p>Your Fantagraphics comic zips must be in a single folder and can be either '.zip' or '.cbz'
+                        files. The first part of each volumes' filename must be the volume number, from '01' to '29'.
+                        For example:</p>
                     <table class="requirements-table filename-example-table">
                         <tbody>
                         <tr>
@@ -933,14 +915,13 @@
                             <td><strong>...</strong></td>
                         </tr>
                         <tr>
-                            <td><strong>27 - Donald Duck - 'Duck Luck'.cbz</strong></td>
+                            <td><strong>28 - Uncle Scrooge - 'Cave of Ali Baba'.cbz</strong></td>
                         </tr>
                         <tr>
-                            <td><strong>28 - Uncle Scrooge - 'Cave of Ali Baba'.cbz</strong></td>
+                            <td><strong>29 - Donald Duck - 'The Lonely Lighthouse on Cape Quack'.cbz</strong></td>
                         </tr>
                         </tbody>
                     </table>
-                    </p>
                     <p>See the next step for more information on making it easier for the app to automatically configure
                         itself with your Fantagraphics zips.</p>
                 </div>
@@ -948,14 +929,14 @@
                 <div class="install-step">
                     <h4>Step 4: Optional - Move Your Fantagraphics Zips</h4>
                     <p>If you put your Fantagraphics comic zips in a folder called <strong>"Fantagraphics Complete Carl
-                        Barks Disney Library"</strong></p> and make sure this folder is under one of these
-                    locations (you could use a symlink to do this):
+                        Barks Disney Library"</strong> and make sure this folder is under one of these
+                    locations (you could use a symlink to do this):</p>
                     <ul>
-                        <li><strong>"~/opt/barks-reader"</strong>
-                        <li><strong>"~/Documents"</strong>
-                        <li><strong>"~/Books"</strong>
+                        <li><strong>"~/opt/barks-reader"</strong></li>
+                        <li><strong>"~/Documents"</strong></li>
+                        <li><strong>"~/Books"</strong></li>
                     </ul>
-                    then the app will automatically add this location to its configuration.</p>
+                    <p>then the app will automatically add this location to its configuration.</p>
                 </div>
 
                 <div class="install-step">
@@ -973,13 +954,13 @@
                     next step). Depending on your machine
                     and connection it still may take a while to unzip the supporting data packs. Once these are
                     done (and providing there are no errors) you will get a welcome screen popup. Here you can
-                    press OK to launch the reader app. One you've done the install for the first time, subsequent
+                    press OK to launch the reader app. Once you've done the install for the first time, subsequent
                     app launches should be fairly quick.</p>
                 </div>
 
                 <div class="install-step">
                     <h4>Step 6: On First Launch</h4>
-                    <p>When the application is first launched it will do further installation steps:
+                    <p>When the application is first launched it will do further installation steps:</p>
                     <ul>
                         <li>It will run the astral python package manager <strong>'uv'</strong> to download and install python
                             packages required by the app
@@ -993,15 +974,14 @@
                         <li>It will search for a directory called <strong>"Fantagraphics Complete Carl Barks Disney
                             Library"</strong> with your comic zips in the following locations:
                             <ul>
-                                <li><strong>"~/opt/barks-reader"</strong>
-                                <li><strong>"~/Documents"</strong>
-                                <li><strong>"~/Books"</strong>
+                                <li><strong>"~/opt/barks-reader"</strong></li>
+                                <li><strong>"~/Documents"</strong></li>
+                                <li><strong>"~/Books"</strong></li>
                             </ul>
                         </li>
                         <li>And finally, it will run the app</li>
                         <li><strong>NOTE: It will only do the installation steps on the first app launch</strong></li>
                     </ul>
-                    </p>
                 </div>
 
                 <div class="install-step">
@@ -1098,18 +1078,18 @@
         <!-- Troubleshooting Tab -->
         <div id="troubleshooting" class="tab-content">
             <h2>Troubleshooting</h2>
-            <p>Common issues and their solutions. If your problem isn't listed here, please check our GitHub Issues
-                page.</p>
+            <p>Common issues and their solutions. If your problem isn't listed here, please check our
+                <a href="https://github.com/glk1001/barks-compleat-reader/issues" style="color: #667eea; font-weight: 600;">GitHub Issues page</a>.</p>
 
             <div class="troubleshooting-item">
                 <h4>❌ Application won't start / crashes on launch</h4>
                 <div class="solution">
                     <p><strong>Solutions:</strong></p>
                     <ul>
-                        <li>Ensure all files from the ZIP archive are extracted together</li>
+                        <li>Ensure the executable and both data zip files (<strong>"barks-reader-data-1.zip"</strong> and <strong>"barks-reader-data-2.zip"</strong>) are in the same directory</li>
                         <li>Check that your system meets the minimum requirements</li>
                         <li>Try running as administrator (Windows) or with elevated permissions</li>
-                        <li>Check that data files are in the correct directory</li>
+                        <li>Check that the app directory has write permissions (do not install to <em>"C:\Program Files"</em> on Windows or <em>"/Applications"</em> on macOS)</li>
                         <li>Reinstall from a fresh download</li>
                     </ul>
                 </div>
@@ -1149,7 +1129,7 @@
                         <li>Ensure you meet the recommended system requirements</li>
                         <li>Check for available system updates</li>
                         <li>Move data files to an SSD if using HDD</li>
-                        <li>Reduce quality settings in app preferences (if available)</li>
+                        <li>Ensure your Fantagraphics zips are on an SSD rather than HDD</li>
                     </ul>
                 </div>
             </div>
@@ -1169,7 +1149,9 @@
 
             <h3>Still Having Issues?</h3>
             <p>
-                If none of these solutions work, please visit our GitHub repository and create an issue with:
+                If none of these solutions work, please visit our
+                <a href="https://github.com/glk1001/barks-compleat-reader/issues" style="color: #667eea; font-weight: 600;">GitHub repository</a>
+                and create an issue with:
             </p>
             <ul>
                 <li>Your operating system and version</li>
@@ -1217,27 +1199,18 @@
                 }
 
                 document.getElementById(tabName).classList.add("active");
-                evt.currentTarget.classList.add("active");
+
+                // Find and activate the correct tab button by matching the tab name
+                for (i = 0; i < tabs.length; i++) {
+                    if (tabs[i].getAttribute("onclick") &&
+                        tabs[i].getAttribute("onclick").indexOf("'" + tabName + "'") !== -1) {
+                        tabs[i].classList.add("active");
+                        break;
+                    }
+                }
             }
 
             function openPlatform(evt, platformName) {
-                var i, platformContent, platformTabs;
-
-                platformContent = document.getElementsByClassName("platform-content");
-                for (i = 0; i < platformContent.length; i++) {
-                    platformContent[i].classList.remove("active");
-                }
-
-                platformTabs = document.getElementsByClassName("platform-tab");
-                for (i = 0; i < platformTabs.length; i++) {
-                    platformTabs[i].classList.remove("active");
-                }
-
-                document.getElementById(platformName).classList.add("active");
-                evt.currentTarget.classList.add("active");
-            }
-
-            function openDownloadPlatform(evt, platformName) {
                 var i, platformContent, platformTabs;
 
                 platformContent = document.getElementsByClassName("platform-content");
@@ -1317,7 +1290,7 @@
             function initializeDownloadTabs() {
                 // Generate platform tabs
                 const tabsHTML = downloadPlatforms.map((platform, index) => `
-                    <button class="platform-tab ${index === 0 ? 'active' : ''}"
+                    <button class="platform-tab download-platform-tab ${index === 0 ? 'active' : ''}"
                             onclick="openDownloadPlatform(event, '${platform.id}')">
                         ${platform.icon} ${platform.name}
                     </button>
@@ -1327,7 +1300,7 @@
 
                 // Generate platform content
                 const contentHTML = downloadPlatforms.map((platform, index) => `
-                    <div id="${platform.id}" class="platform-content ${index === 0 ? 'active' : ''}">
+                    <div id="${platform.id}" class="platform-content download-platform-content ${index === 0 ? 'active' : ''}">
                         <h3>${platform.name} Download</h3>
                         <p>Download the ${platform.name} executable and data files.</p>
 
@@ -1355,12 +1328,12 @@
             function openDownloadPlatform(evt, platformName) {
                 var i, platformContent, platformTabs;
 
-                platformContent = document.getElementsByClassName("platform-content");
+                platformContent = document.getElementsByClassName("download-platform-content");
                 for (i = 0; i < platformContent.length; i++) {
                     platformContent[i].classList.remove("active");
                 }
 
-                platformTabs = document.getElementsByClassName("platform-tab");
+                platformTabs = document.getElementsByClassName("download-platform-tab");
                 for (i = 0; i < platformTabs.length; i++) {
                     platformTabs[i].classList.remove("active");
                 }
