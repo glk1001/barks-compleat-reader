@@ -4,6 +4,7 @@ import random
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
+from barks_fantagraphics.barks_tags import TagGroups
 from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, BARKS_TITLES, Titles
 from barks_fantagraphics.title_search import BarksTitleSearch
 from barks_fantagraphics.whoosh_search_engine import SearchEngine, TitleInfo
@@ -18,6 +19,7 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.stacklayout import StackLayout
 from loguru import logger
 
 from barks_reader.core.random_title_images import ImageInfo
@@ -67,6 +69,8 @@ class _SearchResultButton(Button):
 
 _CHIP_BG_NORMAL = (0.2, 0.35, 0.2, 1)
 _CHIP_BG_ACTIVE = (0.25, 0.45, 0.25, 1)
+_CHIP_BG_MEMBER = (0.18, 0.30, 0.22, 1)
+_CHIP_BG_MEMBER_ACTIVE = (0.25, 0.45, 0.25, 1)
 
 
 _CHIP_BORDER_NONE = (0, 0, 0, 0)
@@ -154,6 +158,8 @@ class SearchScreen(FloatLayout):
         # Tag search state
         self._current_tag = None
         self._selected_tag: str = ""
+        self._selected_member: str = ""
+        self._tag_chip_strings: list[str] = []
         self._tag_titles: list[str] = []
 
         # Word search state
@@ -237,38 +243,119 @@ class SearchScreen(FloatLayout):
     # --- Tag Search ---
 
     def on_tag_search_text(self, text: str) -> None:
-        chips_layout = self.ids.tag_chips_layout
-        chips_layout.clear_widgets()
+        self.ids.tag_chips_layout.clear_widgets()
+        self._tag_chip_strings = []
+        self._selected_member = ""
         self._clear_tag_title_results()
 
         if len(text) <= 1:
             return
 
         found_tags = self._title_search.get_tags_matching_prefix(text)
-        tags = sorted([str(t.value) for t in found_tags]) if found_tags else []
+        self._tag_chip_strings = sorted([str(t.value) for t in found_tags]) if found_tags else []
 
-        for tag_str in tags:
+        self._rebuild_tag_chips()
+
+        if len(self._tag_chip_strings) == 1:
+            self._on_tag_result_selected(self._tag_chip_strings[0])
+
+    def _rebuild_tag_chips(self) -> None:
+        """Rebuild the tag chips layout, inserting member chips after the selected group."""
+        container: BoxLayout = self.ids.tag_chips_layout
+        container.clear_widgets()
+
+        selected = self._selected_tag
+        selected_is_group = isinstance(self._current_tag, TagGroups) and selected
+
+        # Find the split point (index after the selected group chip)
+        split_idx: int | None = None
+        if selected_is_group:
+            for i, tag_str in enumerate(self._tag_chip_strings):
+                if tag_str == selected:
+                    split_idx = i + 1
+                    break
+
+        if split_idx is not None:
+            before = self._tag_chip_strings[:split_idx]
+            after = self._tag_chip_strings[split_idx:]
+            container.add_widget(self._make_main_chip_stack(before, selected))
+            member_stack = self._make_member_chip_stack()
+            if member_stack:
+                container.add_widget(member_stack)
+            if after:
+                container.add_widget(self._make_main_chip_stack(after, selected))
+        else:
+            container.add_widget(self._make_main_chip_stack(self._tag_chip_strings, selected))
+
+    def _make_main_chip_stack(self, tag_strings: list[str], selected: str) -> StackLayout:
+        stack = StackLayout(orientation="lr-tb", size_hint_y=None, spacing=dp(4), padding=dp(2))
+        stack.bind(minimum_height=stack.setter("height"))
+        for tag_str in tag_strings:
             btn = _TagChipButton(text=tag_str)
+            btn.chip_bg_color = _CHIP_BG_ACTIVE if tag_str == selected else _CHIP_BG_NORMAL
             btn.bind(on_release=lambda _b, t=tag_str: self._on_tag_result_selected(t))
-            chips_layout.add_widget(btn)
+            stack.add_widget(btn)
+        return stack
 
-        if len(tags) == 1:
-            self._on_tag_result_selected(tags[0])
+    def _make_member_chip_stack(self) -> StackLayout | None:
+        members = self._title_search.get_direct_group_members(self._current_tag)
+        if not members:
+            return None
+        stack = StackLayout(
+            orientation="lr-tb",
+            size_hint_y=None,
+            spacing=dp(4),
+            padding=[dp(16), dp(2), dp(2), dp(2)],
+        )
+        stack.is_member_layout = True
+        stack.bind(minimum_height=stack.setter("height"))
+        for member in members:
+            label = str(member.value)
+            if isinstance(member, TagGroups):
+                label += " \u25b8"
+            btn = _TagChipButton(text=label)
+            btn.chip_bg_color = (
+                _CHIP_BG_MEMBER_ACTIVE if label == self._selected_member else _CHIP_BG_MEMBER
+            )
+            btn.bind(on_release=lambda _b, m=label: self._on_member_tag_selected(m))
+            stack.add_widget(btn)
+        return stack
 
     def _on_tag_result_selected(self, tag_str: str) -> None:
         logger.info(f'Tag search: selected tag "{tag_str}".')
         self._selected_tag = tag_str
+        self._selected_member = ""
         self._current_tag, titles = self._title_search.get_titles_from_alias_tag(tag_str.lower())
         self._tag_titles = self._title_search.get_titles_as_strings(titles) if titles else []
 
-        for chip in self._get_tag_chip_buttons():
-            chip.chip_bg_color = _CHIP_BG_ACTIVE if chip.text == tag_str else _CHIP_BG_NORMAL
+        self._rebuild_tag_chips()
 
         title_results_layout: BoxLayout = self.ids.tag_title_results_layout
         self._populate_title_results(
             title_results_layout, self._tag_titles, self._on_result_goto_title
         )
         self._update_background_from_results(titles or [])
+
+    def _on_member_tag_selected(self, member_label: str) -> None:
+        # Strip sub-group indicator suffix
+        member_str = member_label.rstrip(" \u25b8")
+        logger.info(f'Tag search: selected member "{member_str}".')
+        self._selected_member = member_label
+
+        _, titles = self._title_search.get_titles_from_alias_tag(member_str.lower())
+        self._tag_titles = self._title_search.get_titles_as_strings(titles) if titles else []
+
+        title_results_layout: BoxLayout = self.ids.tag_title_results_layout
+        self._populate_title_results(
+            title_results_layout, self._tag_titles, self._on_result_goto_title
+        )
+        self._update_background_from_results(titles or [])
+
+        # Highlight the selected member chip
+        for chip in self._get_member_chip_buttons():
+            chip.chip_bg_color = (
+                _CHIP_BG_MEMBER_ACTIVE if chip.text == member_label else _CHIP_BG_MEMBER
+            )
 
     def _clear_tag_title_results(self) -> None:
         self.ids.tag_title_results_layout.clear_widgets()
@@ -277,6 +364,8 @@ class SearchScreen(FloatLayout):
     def on_tag_clear(self) -> None:
         self.ids.tag_search_input.text = ""
         self.ids.tag_chips_layout.clear_widgets()
+        self._tag_chip_strings = []
+        self._selected_member = ""
         self._clear_tag_title_results()
         self.ids.tag_search_input.focus = True
 
@@ -580,9 +669,9 @@ class SearchScreen(FloatLayout):
             self._clear_result_focus()
             self._nav_focus_area = "tags"
             tag_chips = self._get_tag_chip_buttons()
-            selected_idx = next(
-                (i for i, c in enumerate(tag_chips) if c.text == self._selected_tag), 0
-            )
+            # Go back to the selected member chip if one is active, otherwise the group chip
+            target = self._selected_member or self._selected_tag
+            selected_idx = next((i for i, c in enumerate(tag_chips) if c.text == target), 0)
             self._nav_focused_chip_idx = selected_idx
             self._draw_chip_focus()
         else:
@@ -653,23 +742,78 @@ class SearchScreen(FloatLayout):
             self._nav_enter_results()
             self._draw_result_focus()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
-            if chips and self._nav_focused_chip_idx < len(chips):
-                chips[self._nav_focused_chip_idx].trigger_action(duration=0)
-                self._clear_chip_focus()
-                self._nav_enter_results()
-                Clock.schedule_once(
-                    lambda _dt: Clock.schedule_once(lambda _dt2: self._draw_result_focus())
-                )
+            self._handle_tags_enter(chips)
         elif key == KEY_ESCAPE:
             self._nav_escape()
         else:
             return False
         return True
 
-    def _get_tag_chip_buttons(self) -> list[_TagChipButton]:
+    def _handle_tags_enter(self, chips: list[Button]) -> None:
+        if not chips or self._nav_focused_chip_idx >= len(chips):
+            return
+        focused_chip = chips[self._nav_focused_chip_idx]
+        was_main = focused_chip in self._get_main_tag_chip_buttons()
+        is_open_group = (
+            was_main and focused_chip.text == self._selected_tag and self._get_member_chip_buttons()
+        )
+        if is_open_group:
+            # Collapse the open group: clear member state and rebuild
+            self._selected_member = ""
+            self._current_tag = None
+            self._rebuild_tag_chips()
+            new_chips = self._get_tag_chip_buttons()
+            self._nav_focused_chip_idx = next(
+                (i for i, c in enumerate(new_chips) if c.text == self._selected_tag), 0
+            )
+            self._draw_chip_focus()
+            return
+        focused_chip.trigger_action(duration=0)
+        self._clear_chip_focus()
+        # If a main group chip was selected, focus and select the first member chip
+        member_chips = self._get_member_chip_buttons()
+        if was_main and self._active_mode == "Tag" and member_chips:
+            all_chips = self._get_tag_chip_buttons()
+            selected_idx = next(
+                (i for i, c in enumerate(all_chips) if c.text == self._selected_tag), -1
+            )
+            self._nav_focused_chip_idx = selected_idx + 1
+            member_chips[0].trigger_action(duration=0)
+            Clock.schedule_once(
+                lambda _dt: Clock.schedule_once(lambda _dt2: self._draw_chip_focus())
+            )
+        else:
+            self._nav_enter_results()
+            Clock.schedule_once(
+                lambda _dt: Clock.schedule_once(lambda _dt2: self._draw_result_focus())
+            )
+
+    def _get_main_tag_chip_buttons(self) -> list[_TagChipButton]:
         if not hasattr(self.ids, "tag_chips_layout"):
             return []
-        return list(reversed(self.ids.tag_chips_layout.children))
+        result: list[_TagChipButton] = []
+        for stack in reversed(self.ids.tag_chips_layout.children):
+            if not getattr(stack, "is_member_layout", False):
+                result.extend(reversed(stack.children))
+        return result
+
+    def _get_member_chip_buttons(self) -> list[_TagChipButton]:
+        if not hasattr(self.ids, "tag_chips_layout"):
+            return []
+        result: list[_TagChipButton] = []
+        for stack in reversed(self.ids.tag_chips_layout.children):
+            if getattr(stack, "is_member_layout", False):
+                result.extend(reversed(stack.children))
+        return result
+
+    def _get_tag_chip_buttons(self) -> list[_TagChipButton]:
+        """Return all tag chips (main + member) in visual order for keyboard nav."""
+        if not hasattr(self.ids, "tag_chips_layout"):
+            return []
+        result: list[_TagChipButton] = []
+        for stack in reversed(self.ids.tag_chips_layout.children):
+            result.extend(reversed(stack.children))
+        return result
 
     def _get_word_chip_buttons(self) -> list[Button]:
         if not hasattr(self.ids, "word_chips_layout"):
@@ -690,9 +834,15 @@ class SearchScreen(FloatLayout):
             update_focus_in_list(chips, self._nav_focused_chip_idx, _SEARCH_NAV_FOCUS_GROUP)
             self.ids.word_chips_scroll.scroll_to(chips[self._nav_focused_chip_idx])
         else:
+            main_chips = {id(c) for c in self._get_main_tag_chip_buttons()}
             for i, chip in enumerate(chips):
-                is_selected = chip.text == self._selected_tag
-                chip.chip_bg_color = _CHIP_BG_ACTIVE if is_selected else _CHIP_BG_NORMAL
+                is_main = id(chip) in main_chips
+                if is_main:
+                    is_selected = chip.text == self._selected_tag
+                    chip.chip_bg_color = _CHIP_BG_ACTIVE if is_selected else _CHIP_BG_NORMAL
+                else:
+                    is_selected = chip.text == self._selected_member
+                    chip.chip_bg_color = _CHIP_BG_MEMBER_ACTIVE if is_selected else _CHIP_BG_MEMBER
                 chip.chip_border_color = (
                     _CHIP_BORDER_FOCUSED if i == self._nav_focused_chip_idx else _CHIP_BORDER_NONE
                 )
@@ -702,9 +852,15 @@ class SearchScreen(FloatLayout):
         if self._active_mode == "Word":
             clear_focus_in_list(chips, _SEARCH_NAV_FOCUS_GROUP)
         else:
+            main_chips = {id(c) for c in self._get_main_tag_chip_buttons()}
             for chip in chips:
-                is_selected = chip.text == self._selected_tag
-                chip.chip_bg_color = _CHIP_BG_ACTIVE if is_selected else _CHIP_BG_NORMAL
+                is_main = id(chip) in main_chips
+                if is_main:
+                    is_selected = chip.text == self._selected_tag
+                    chip.chip_bg_color = _CHIP_BG_ACTIVE if is_selected else _CHIP_BG_NORMAL
+                else:
+                    is_selected = chip.text == self._selected_member
+                    chip.chip_bg_color = _CHIP_BG_MEMBER_ACTIVE if is_selected else _CHIP_BG_MEMBER
                 chip.chip_border_color = _CHIP_BORDER_NONE
 
     _CLEAR_BTN_NORMAL = (0.35, 0.35, 0.35, 1.0)

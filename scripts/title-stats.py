@@ -1,6 +1,6 @@
 # ruff: noqa: T201
 
-from barks_fantagraphics.barks_titles import BARKS_TITLES, NON_COMIC_TITLES, NUM_TITLES, Titles
+from barks_fantagraphics.barks_titles import BARKS_TITLES, NUM_TITLES
 
 
 def get_top_title_lengths() -> list[tuple[int, str]]:

@@ -4,6 +4,7 @@ from collections import defaultdict
 
 from .barks_tags import (
     BARKS_TAG_ALIASES,
+    BARKS_TAG_GROUPS,
     BARKS_TAG_GROUPS_ALIASES,
     BARKS_TAGGED_TITLES,
     TagGroups,
@@ -120,6 +121,10 @@ class BarksTitleSearch:
             return tag_group, sorted(title_set)
 
         return None, []
+
+    @staticmethod
+    def get_direct_group_members(tag_group: TagGroups) -> list[Tags | TagGroups]:
+        return BARKS_TAG_GROUPS.get(tag_group, [])
 
     def _get_titles_with_one_char_tag_search(self, prefix: str) -> list[Tags | TagGroups]:
         assert len(prefix) == 1
