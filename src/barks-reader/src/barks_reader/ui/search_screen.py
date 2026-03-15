@@ -19,7 +19,6 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.stacklayout import StackLayout
 from loguru import logger
 
 from barks_reader.core.random_title_images import ImageInfo
@@ -85,8 +84,6 @@ class _TagChipButton(Button):
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
-        self.texture_update()
-        self.width = self.texture_size[0] + dp(24)
 
 
 class SearchScreen(FloatLayout):
@@ -287,8 +284,8 @@ class SearchScreen(FloatLayout):
         else:
             container.add_widget(self._make_main_chip_stack(self._tag_chip_strings, selected))
 
-    def _make_main_chip_stack(self, tag_strings: list[str], selected: str) -> StackLayout:
-        stack = StackLayout(orientation="lr-tb", size_hint_y=None, spacing=dp(4), padding=dp(2))
+    def _make_main_chip_stack(self, tag_strings: list[str], selected: str) -> BoxLayout:
+        stack = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(4), padding=dp(2))
         stack.bind(minimum_height=stack.setter("height"))
         for tag_str in tag_strings:
             btn = _TagChipButton(text=tag_str)
@@ -297,15 +294,15 @@ class SearchScreen(FloatLayout):
             stack.add_widget(btn)
         return stack
 
-    def _make_member_chip_stack(self) -> StackLayout | None:
+    def _make_member_chip_stack(self) -> BoxLayout | None:
         members = self._title_search.get_direct_group_members(self._current_tag)
         if not members:
             return None
-        stack = StackLayout(
-            orientation="lr-tb",
+        stack = BoxLayout(
+            orientation="vertical",
             size_hint_y=None,
             spacing=dp(4),
-            padding=[dp(16), dp(2), dp(2), dp(2)],
+            padding=[dp(48), dp(2), dp(2), dp(2)],
         )
         stack.is_member_layout = True
         stack.bind(minimum_height=stack.setter("height"))
@@ -758,10 +755,17 @@ class SearchScreen(FloatLayout):
             was_main and focused_chip.text == self._selected_tag and self._get_member_chip_buttons()
         )
         if is_open_group:
-            # Collapse the open group: clear member state and rebuild
+            # Collapse the open group: show the group's own titles
             self._selected_member = ""
+            _, titles = self._title_search.get_titles_from_alias_tag(self._selected_tag.lower())
+            self._tag_titles = self._title_search.get_titles_as_strings(titles) if titles else []
             self._current_tag = None
             self._rebuild_tag_chips()
+            title_results_layout: BoxLayout = self.ids.tag_title_results_layout
+            self._populate_title_results(
+                title_results_layout, self._tag_titles, self._on_result_goto_title
+            )
+            self._update_background_from_results(titles or [])
             new_chips = self._get_tag_chip_buttons()
             self._nav_focused_chip_idx = next(
                 (i for i, c in enumerate(new_chips) if c.text == self._selected_tag), 0
