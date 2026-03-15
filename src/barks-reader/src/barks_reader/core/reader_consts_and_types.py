@@ -13,7 +13,7 @@ CLOSE_TO_ZERO = 0.001
 
 # fmt: off
 INTRO_NODE_TEXT = "Introduction"
-INTRO_COMPLEAT_BARKS_READER_TEXT = "Introduction to the Compleat Barks Reader"
+INTRO_COMPLEAT_BARKS_READER_TEXT = "The Compleat Barks Disney Reader"
 INTRO_DON_AULT_FANTA_INTRO_TEXT = "Don Ault: Fantagraphics Introduction"
 THE_STORIES_NODE_TEXT = "The Stories"
 CHRONOLOGICAL_NODE_TEXT = "Chronological"
