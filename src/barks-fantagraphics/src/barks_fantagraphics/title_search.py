@@ -4,11 +4,11 @@ from collections import defaultdict
 
 from .barks_tags import (
     BARKS_TAG_ALIASES,
-    BARKS_TAG_GROUPS,
     BARKS_TAG_GROUPS_ALIASES,
     BARKS_TAGGED_TITLES,
     TagGroups,
     Tags,
+    get_all_tags_in_tag_group,
 )
 from .barks_titles import BARKS_ISSUE_DICT, BARKS_TITLE_INFO, Titles
 from .comic_issues import Issues
@@ -115,16 +115,8 @@ class BarksTitleSearch:
 
         if alias_tag_str in BARKS_TAG_GROUPS_ALIASES:
             tag_group = BARKS_TAG_GROUPS_ALIASES[alias_tag_str]
-            tags = BARKS_TAG_GROUPS[tag_group]
-            for tag in tags:
-                if type(tag) is not TagGroups:
-                    title_set.update(BARKS_TAGGED_TITLES[tag])
-                else:
-                    assert isinstance(tag, TagGroups)
-                    # TODO: Aren't enums iterable??
-                    # noinspection PyTypeChecker
-                    for t in tag:  # ty: ignore[not-iterable]
-                        title_set.update(BARKS_TAGGED_TITLES[t])
+            for tag in get_all_tags_in_tag_group(tag_group):
+                title_set.update(BARKS_TAGGED_TITLES[tag])
             return tag_group, sorted(title_set)
 
         return None, []

@@ -66,13 +66,18 @@ class _SearchResultButton(Button):
 
 
 _CHIP_BG_NORMAL = (0.2, 0.35, 0.2, 1)
-_CHIP_BG_SELECTED = (0.3, 0.55, 0.3, 1)
+_CHIP_BG_ACTIVE = (0.25, 0.45, 0.25, 1)
+
+
+_CHIP_BORDER_NONE = (0, 0, 0, 0)
+_CHIP_BORDER_FOCUSED = (0.5, 1, 0.5, 1)
 
 
 class _TagChipButton(Button):
     """A pill-shaped tag chip button for tag search results."""
 
     chip_bg_color = ObjectProperty(_CHIP_BG_NORMAL)
+    chip_border_color = ObjectProperty(_CHIP_BORDER_NONE)
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
@@ -148,6 +153,7 @@ class SearchScreen(FloatLayout):
 
         # Tag search state
         self._current_tag = None
+        self._selected_tag: str = ""
         self._tag_titles: list[str] = []
 
         # Word search state
@@ -251,8 +257,12 @@ class SearchScreen(FloatLayout):
 
     def _on_tag_result_selected(self, tag_str: str) -> None:
         logger.info(f'Tag search: selected tag "{tag_str}".')
+        self._selected_tag = tag_str
         self._current_tag, titles = self._title_search.get_titles_from_alias_tag(tag_str.lower())
         self._tag_titles = self._title_search.get_titles_as_strings(titles) if titles else []
+
+        for chip in self._get_tag_chip_buttons():
+            chip.chip_bg_color = _CHIP_BG_ACTIVE if chip.text == tag_str else _CHIP_BG_NORMAL
 
         title_results_layout: BoxLayout = self.ids.tag_title_results_layout
         self._populate_title_results(
@@ -566,6 +576,15 @@ class SearchScreen(FloatLayout):
             )
             self._nav_focused_chip_idx = selected_idx
             self._draw_chip_focus()
+        elif self._active_mode == "Tag" and self._get_tag_chip_buttons():
+            self._clear_result_focus()
+            self._nav_focus_area = "tags"
+            tag_chips = self._get_tag_chip_buttons()
+            selected_idx = next(
+                (i for i, c in enumerate(tag_chips) if c.text == self._selected_tag), 0
+            )
+            self._nav_focused_chip_idx = selected_idx
+            self._draw_chip_focus()
         else:
             self._clear_result_focus()
             self._nav_focus_area = "clear"
@@ -672,8 +691,11 @@ class SearchScreen(FloatLayout):
             self.ids.word_chips_scroll.scroll_to(chips[self._nav_focused_chip_idx])
         else:
             for i, chip in enumerate(chips):
-                is_focused = i == self._nav_focused_chip_idx
-                chip.chip_bg_color = _CHIP_BG_SELECTED if is_focused else _CHIP_BG_NORMAL
+                is_selected = chip.text == self._selected_tag
+                chip.chip_bg_color = _CHIP_BG_ACTIVE if is_selected else _CHIP_BG_NORMAL
+                chip.chip_border_color = (
+                    _CHIP_BORDER_FOCUSED if i == self._nav_focused_chip_idx else _CHIP_BORDER_NONE
+                )
 
     def _clear_chip_focus(self) -> None:
         chips = self._get_active_chip_buttons()
@@ -681,7 +703,9 @@ class SearchScreen(FloatLayout):
             clear_focus_in_list(chips, _SEARCH_NAV_FOCUS_GROUP)
         else:
             for chip in chips:
-                chip.chip_bg_color = _CHIP_BG_NORMAL
+                is_selected = chip.text == self._selected_tag
+                chip.chip_bg_color = _CHIP_BG_ACTIVE if is_selected else _CHIP_BG_NORMAL
+                chip.chip_border_color = _CHIP_BORDER_NONE
 
     _CLEAR_BTN_NORMAL = (0.35, 0.35, 0.35, 1.0)
     _CLEAR_BTN_FOCUSED = (0.0, 0.5, 0.0, 1.0)
