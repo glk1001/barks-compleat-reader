@@ -15,10 +15,10 @@ BARKS_EXTRA_INFO = {
     Titles.RABBITS_FOOT_THE: "The first Donald Duck story both written and drawn by Barks."
     "\n\nFrom a letter from Barks to Michael Barrier:"
     '[i]"They sent me a ready-written script to draw for story #1 several weeks after I left the'
-    " studio... The script was the Crow story [WDCS 31]. I noticed some bad errors in the plot, and"
-    " wrote the editor for permission to change things around. The result was they invited me to"
-    " see if I could do a whole original story myself. The story of the kids and their"
-    " 'rabbit foot' was my answer to the opportunity.\"[/i]",
+    " studio... The script was the Crow story &bl;WDCS 31&br;. I noticed some bad errors in the"
+    " plot, and wrote the editor for permission to change things around. The result was they"
+    " invited me to see if I could do a whole original story myself. The story of the kids and"
+    " their 'rabbit foot' was my answer to the opportunity.\"[/i]",
     Titles.TOO_MANY_PETS: "In a June 9, 1968 letter to Michael Barrier, Barks wrote:"
     " [i]\"In the Sept. 1943 D.D. the story 'Too Many Pets' was a sort of collaboration. The script"
     " was started by a writer at the Disney Studio who found himself so overloaded with work on"
@@ -47,13 +47,13 @@ BARKS_EXTRA_INFO = {
     " like little gnomes that lived out in there. And as soon as I thought of them, my ideas"
     " of how to use them just kept popping into my head. So I just sat there and let the"
     " thoughts just pour all over me ... When I had gotten enough that I knew I had a story,"
-    " I [re]joined the party and hoisted a few drinks. Next day I was hard at it writing"
+    " I &bl;re&br;joined the party and hoisted a few drinks. Next day I was hard at it writing"
     ' the Gneezles story."[/i]',
     Titles.FIREBUG_THE: "Barks said this about Western's change to The Firebug ending:"
     ' [i]"The editors objected to the last couple of panels of that story because I had Donald set'
-    " fire to the judge's wastebasket. [It] accidentally burned down the courthouse, and he wound"
-    " up in jail. Western couldn't have a Disney character looking out from behind bars in the"
-    " final panel of the story, so they changed the ending. They didn't usually redraw my art"
+    " fire to the judge's wastebasket. &bl;It&br; accidentally burned down the courthouse, and he"
+    " wound up in jail. Western couldn't have a Disney character looking out from behind bars in"
+    " the final panel of the story, so they changed the ending. They didn't usually redraw my art"
     " like that; the editors would often suggest that the artist do the changing himself. But"
     " these two panels would have been done by one of the staff artists, either Carl Buettner"
     ' or Tom McKimson."[/i]\n'
