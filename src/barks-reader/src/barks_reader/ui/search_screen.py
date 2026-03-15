@@ -597,6 +597,14 @@ class SearchScreen(FloatLayout):
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER, KEY_TAB, KEY_DOWN):
             self._blur_all_inputs()
             self._nav_to_tags_or_results()
+        elif key == KEY_RIGHT:
+            text_input = self._active_widget(0)
+            if text_input.cursor_index() >= len(text_input.text):
+                self._blur_all_inputs()
+                self._nav_enter_results()
+                self._draw_result_focus()
+            else:
+                return False
         else:
             # Let the text input handle the key
             return False
@@ -722,10 +730,14 @@ class SearchScreen(FloatLayout):
 
     def _handle_tags_key(self, key: int) -> bool:
         chips = self._get_active_chip_buttons()
-        if key in (KEY_RIGHT, KEY_DOWN):
+        if key == KEY_DOWN:
             if chips and self._nav_focused_chip_idx < len(chips) - 1:
                 self._nav_focused_chip_idx += 1
                 self._draw_chip_focus()
+        elif key == KEY_RIGHT:
+            self._clear_chip_focus()
+            self._nav_enter_results()
+            self._draw_result_focus()
         elif key in (KEY_LEFT, KEY_UP):
             if self._nav_focused_chip_idx > 0:
                 self._nav_focused_chip_idx -= 1
