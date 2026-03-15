@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, Self
 
 from barks_fantagraphics.barks_tags import TagGroups
 from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, BARKS_TITLES, Titles
@@ -55,6 +55,7 @@ if TYPE_CHECKING:
 
 SEARCH_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
+SEARCH_IMAGE_CHANGE_SECONDS = 10
 MAX_WORD_SEARCH_TITLE_AND_PAGES_LEN = 50
 
 _SEARCH_NAV_FOCUS_GROUP = "search_nav_focus"
@@ -138,6 +139,8 @@ class SearchScreen(FloatLayout):
         self._current_image_info: ImageInfo | None = None
         self.on_goto_background_title_func: Callable[[ImageInfo], None] | None = None
         self.on_search_results_title_changed: Callable[[Titles], None] | None = None
+        self._search_result_titles: list[Titles] = []
+        self._image_change_event = None
         self.show_current_title = self._reader_settings.show_fun_view_title_info
 
         settings_notifier.register_callback(
@@ -178,6 +181,10 @@ class SearchScreen(FloatLayout):
         )
         self._speech_bubble_popup.children[0].children[-1].markup = True
         self._popup_nav = PopupKeyboardNav(self._speech_bubble_popup)
+
+    def on_is_visible(self, _instance: Self, value: bool) -> None:
+        if not value:
+            self._cancel_image_change_event()
 
     def set_mode(self, mode: str) -> None:
         """Switch to the given search mode: 'Title', 'Tag', or 'Word'."""
@@ -235,6 +242,7 @@ class SearchScreen(FloatLayout):
         return title_list, self._title_search.get_titles_as_strings(title_list)
 
     def on_title_clear(self) -> None:
+        self._cancel_image_change_event()
         self.ids.title_search_input.text = ""
         self.ids.title_search_input.focus = True
 
@@ -353,6 +361,7 @@ class SearchScreen(FloatLayout):
         self._tag_titles = []
 
     def on_tag_clear(self) -> None:
+        self._cancel_image_change_event()
         self.ids.tag_search_input.text = ""
         self.ids.tag_chips_layout.clear_widgets()
         self._tag_chip_strings = []
@@ -503,6 +512,7 @@ class SearchScreen(FloatLayout):
             self.on_goto_title_with_page(image_info, page_to_goto)
 
     def on_word_clear(self) -> None:
+        self._cancel_image_change_event()
         self.ids.word_search_input.text = ""
         self.ids.word_chips_layout.clear_widgets()
         self.ids.word_results_layout.clear_widgets()
@@ -513,7 +523,22 @@ class SearchScreen(FloatLayout):
     def _update_background_from_results(self, titles: list[Titles]) -> None:
         if not titles or not self.on_search_results_title_changed:
             return
+        self._search_result_titles = titles
+        self._cancel_image_change_event()
         self.on_search_results_title_changed(random.choice(titles))
+        self._image_change_event = Clock.schedule_interval(
+            lambda _dt: self._next_background_image(), SEARCH_IMAGE_CHANGE_SECONDS
+        )
+
+    def _next_background_image(self) -> None:
+        if not self._search_result_titles or not self.on_search_results_title_changed:
+            return
+        self.on_search_results_title_changed(random.choice(self._search_result_titles))
+
+    def _cancel_image_change_event(self) -> None:
+        if self._image_change_event:
+            self._image_change_event.cancel()
+            self._image_change_event = None
 
     # --- Background Image ---
 
