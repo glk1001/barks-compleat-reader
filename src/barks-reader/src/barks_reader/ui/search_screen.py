@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, BARKS_TITLES, Titles
 from barks_fantagraphics.title_search import BarksTitleSearch
@@ -92,6 +92,28 @@ class SearchScreen(FloatLayout):
         None, allownone=True
     )
 
+    # Per-mode widget ID mapping: mode -> (input, clear_button, scroll_view, results_layout)
+    _MODE_WIDGETS: ClassVar[dict[str, tuple[str, str, str, str]]] = {
+        "Title": (
+            "title_search_input",
+            "title_clear_button",
+            "title_results_scroll",
+            "title_results_layout",
+        ),
+        "Tag": (
+            "tag_search_input",
+            "tag_clear_button",
+            "tag_results_scroll",
+            "tag_title_results_layout",
+        ),
+        "Word": (
+            "word_search_input",
+            "word_clear_button",
+            "word_results_scroll",
+            "word_results_layout",
+        ),
+    }
+
     def __init__(
         self,
         reader_settings: ReaderSettings,
@@ -130,6 +152,8 @@ class SearchScreen(FloatLayout):
 
         # Word search state
         self._word_search_results: list[tuple[str, str, str, TitleInfo]] = []
+        self._word_terms = self._whoosh_indexer.get_cleaned_alpha_split_unstemmed_terms()
+        self._selected_word: str = ""
 
         # Last activated result (for restoring focus after go-back)
         self._last_activated_result_idx: int | None = None
@@ -161,6 +185,22 @@ class SearchScreen(FloatLayout):
 
         logger.debug(f"SearchScreen mode set to '{mode}'.")
 
+    # --- Shared Helpers ---
+
+    def _populate_title_results(
+        self, layout: BoxLayout, title_strings: list[str], on_select: Callable[[str], None]
+    ) -> None:
+        layout.clear_widgets()
+        for i, title_str in enumerate(title_strings):
+            btn = _SearchResultButton(text=title_str, row_index=i)
+            btn.bind(on_release=lambda _b, t=title_str: on_select(t))
+            layout.add_widget(btn)
+
+    def _on_result_goto_title(self, title_str: str) -> None:
+        logger.info(f'Search: selected "{title_str}".')
+        if self.on_goto_title:
+            self.on_goto_title(title_str)
+
     # --- Title Search ---
 
     def on_title_search_text(self, text: str) -> None:
@@ -171,11 +211,7 @@ class SearchScreen(FloatLayout):
             return
 
         title_enums, title_strings = self._get_titles_matching(text)
-        for i, title_str in enumerate(title_strings):
-            btn = _SearchResultButton(text=title_str, row_index=i)
-            btn.bind(on_release=lambda _b, t=title_str: self._on_title_result_selected(t))
-            results_layout.add_widget(btn)
-
+        self._populate_title_results(results_layout, title_strings, self._on_result_goto_title)
         self._update_background_from_results(title_enums)
 
     def _get_titles_matching(self, value: str) -> tuple[list[Titles], list[str]]:
@@ -187,11 +223,6 @@ class SearchScreen(FloatLayout):
             if not title_list:
                 unique_extend(title_list, self._title_search.get_titles_containing(value))
         return title_list, self._title_search.get_titles_as_strings(title_list)
-
-    def _on_title_result_selected(self, title_str: str) -> None:
-        logger.info(f'Title search: selected "{title_str}".')
-        if self.on_goto_title:
-            self.on_goto_title(title_str)
 
     def on_title_clear(self) -> None:
         self.ids.title_search_input.text = ""
@@ -224,18 +255,10 @@ class SearchScreen(FloatLayout):
         self._tag_titles = self._title_search.get_titles_as_strings(titles) if titles else []
 
         title_results_layout: BoxLayout = self.ids.tag_title_results_layout
-        title_results_layout.clear_widgets()
-        for i, title_str in enumerate(self._tag_titles):
-            btn = _SearchResultButton(text=title_str, row_index=i)
-            btn.bind(on_release=lambda _b, t=title_str: self._on_tag_title_result_selected(t))
-            title_results_layout.add_widget(btn)
-
+        self._populate_title_results(
+            title_results_layout, self._tag_titles, self._on_result_goto_title
+        )
         self._update_background_from_results(titles or [])
-
-    def _on_tag_title_result_selected(self, title_str: str) -> None:
-        logger.info(f'Tag search: selected title "{title_str}".')
-        if self.on_goto_title:
-            self.on_goto_title(title_str)
 
     def _clear_tag_title_results(self) -> None:
         self.ids.tag_title_results_layout.clear_widgets()
@@ -249,29 +272,85 @@ class SearchScreen(FloatLayout):
 
     # --- Word Search ---
 
-    def on_word_search_submit(self) -> None:
-        search_text = self.ids.word_search_input.text.strip()
-        if not search_text:
+    def on_word_search_text(self, text: str) -> None:
+        self.ids.word_chips_layout.clear_widgets()
+        self.ids.word_results_layout.clear_widgets()
+        self._word_search_results = []
+
+        if not text:
             return
 
-        logger.info(f'Word search: "{search_text}".')
-        found = self._whoosh_indexer.find_all_words(search_text)
+        words = self._get_words_matching_prefix(text)
+
+        for i, word in enumerate(words):
+            btn = _SearchResultButton(text=word, row_index=i, color=(0.65, 0.8, 1, 1))
+            btn.bind(on_release=lambda _b, w=word: self._on_word_chip_selected(w))
+            self.ids.word_chips_layout.add_widget(btn)
+
+        if len(words) == 1:
+            self._on_word_chip_selected(words[0])
+
+    def _get_words_matching_prefix(self, text: str) -> list[str]:
+        query = text.lower()
+        first_char = query[0]
+        letter_group = self._word_terms.get(first_char, {})
+
+        min_prefix_len = 2
+        if len(query) >= min_prefix_len:
+            candidates = letter_group.get(query[:min_prefix_len], [])
+        else:
+            candidates = [w for group in letter_group.values() for w in group]
+
+        matching = [w for w in candidates if w.startswith(query)]
+        matching.sort()
+        return matching
+
+    _WORD_ITEM_SELECTED_BG = (0.15, 0.35, 0.55, 0.8)
+
+    def _on_word_chip_selected(self, word: str) -> None:
+        logger.info(f'Word search: selected chip "{word}".')
+        self._selected_word = word
+
+        for btn in reversed(self.ids.word_chips_layout.children):
+            if btn.text == word:
+                btn.background_color = self._WORD_ITEM_SELECTED_BG
+            else:
+                idx = btn.row_index
+                btn.background_color = (
+                    (0.15, 0.15, 0.15, 0.4) if idx % 2 == 0 else (0.22, 0.22, 0.22, 0.4)
+                )
+
+        found = self._whoosh_indexer.find_all_words(word)
 
         results_layout: BoxLayout = self.ids.word_results_layout
         results_layout.clear_widgets()
-        self._word_search_results = []
 
+        self._word_search_results = self._build_word_results(found)
+        self._populate_word_results_layout(results_layout)
+
+        if not found:
+            results_layout.add_widget(
+                _SearchResultButton(text=f'No results for "{word}"', disabled=True)
+            )
+            return
+
+        word_result_titles = [BARKS_TITLE_DICT[ct] for ct in found if ct in BARKS_TITLE_DICT]
+        self._update_background_from_results(word_result_titles)
+
+    def _build_word_results(
+        self, found: dict[str, TitleInfo]
+    ) -> list[tuple[str, str, str, TitleInfo]]:
+        results: list[tuple[str, str, str, TitleInfo]] = []
         for comic_title, title_speech_info in found.items():
             page_num_list = [page.comic_page for page in title_speech_info.fanta_pages.values()]
             first_page_num, title_with_pages = get_fitted_title_with_page_nums(
                 comic_title, page_num_list, MAX_WORD_SEARCH_TITLE_AND_PAGES_LEN
             )
-            self._word_search_results.append(
-                (comic_title, first_page_num, title_with_pages, title_speech_info)
-            )
+            results.append((comic_title, first_page_num, title_with_pages, title_speech_info))
+        results.sort(key=lambda t: t[2])
+        return results
 
-        self._word_search_results.sort(key=lambda t: t[2])
-
+    def _populate_word_results_layout(self, results_layout: BoxLayout) -> None:
         for i, (
             comic_title,
             first_page_num,
@@ -306,34 +385,12 @@ class SearchScreen(FloatLayout):
 
             results_layout.add_widget(row)
 
-        if not found:
-            no_results = _SearchResultButton(
-                text=f'No results for "{search_text}"',
-                disabled=True,
-            )
-            results_layout.add_widget(no_results)
-            self._nav_focus_area = "input"
-            Clock.schedule_once(lambda _dt: self._focus_active_input())
-            return
-
-        word_result_titles = [BARKS_TITLE_DICT[ct] for ct in found if ct in BARKS_TITLE_DICT]
-        self._update_background_from_results(word_result_titles)
-
-        if found:
-            self._nav_active = True
-            self._blur_all_inputs()
-            self._nav_enter_results()
-            # Two frames: first for layout, second for drawing the highlight.
-            Clock.schedule_once(
-                lambda _dt: Clock.schedule_once(lambda _dt2: self._draw_result_focus())
-            )
-
     def _on_word_title_selected(self, title_str: str, page_to_goto: str) -> None:
         logger.info(f'Word search: navigating to "{title_str}", page {page_to_goto}.')
         self._goto_title_with_page(title_str, page_to_goto)
 
     def _show_word_speech_bubbles(self, title_str: str, title_speech_info: TitleInfo) -> None:
-        search_text = self.ids.word_search_input.text.strip()
+        search_text = self._selected_word
         logger.info(f'Show speech bubbles for: "{title_str}" and search "{search_text}".')
         show_speech_bubbles_popup(
             self._speech_bubble_popup,
@@ -359,6 +416,7 @@ class SearchScreen(FloatLayout):
 
     def on_word_clear(self) -> None:
         self.ids.word_search_input.text = ""
+        self.ids.word_chips_layout.clear_widgets()
         self.ids.word_results_layout.clear_widgets()
         self.ids.word_search_input.focus = True
 
@@ -440,13 +498,7 @@ class SearchScreen(FloatLayout):
             self._blur_all_inputs()
             if self._nav_on_exit_request:
                 self._nav_on_exit_request()
-        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
-            if self._active_mode == "Word":
-                # Let the TextInput's on_text_validate handle the search
-                return False
-            self._blur_all_inputs()
-            self._nav_to_tags_or_results()
-        elif key in (KEY_TAB, KEY_DOWN):
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER, KEY_TAB, KEY_DOWN):
             self._blur_all_inputs()
             self._nav_to_tags_or_results()
         else:
@@ -455,7 +507,7 @@ class SearchScreen(FloatLayout):
         return True
 
     def _nav_to_tags_or_results(self) -> None:
-        if self._active_mode == "Tag" and self._get_tag_chip_buttons():
+        if self._active_mode in ("Tag", "Word") and self._get_active_chip_buttons():
             self._nav_focus_area = "tags"
             self._nav_focused_chip_idx = 0
             self._draw_chip_focus()
@@ -505,6 +557,15 @@ class SearchScreen(FloatLayout):
         if self._active_mode == "Word" and self._nav_word_sub_focus == "speech":
             self._nav_word_sub_focus = "title"
             self._draw_result_focus()
+        elif self._active_mode == "Word" and self._get_word_chip_buttons():
+            self._clear_result_focus()
+            self._nav_focus_area = "tags"
+            word_buttons = self._get_word_chip_buttons()
+            selected_idx = next(
+                (i for i, b in enumerate(word_buttons) if b.text == self._selected_word), 0
+            )
+            self._nav_focused_chip_idx = selected_idx
+            self._draw_chip_focus()
         else:
             self._clear_result_focus()
             self._nav_focus_area = "clear"
@@ -517,9 +578,9 @@ class SearchScreen(FloatLayout):
         self._nav_word_sub_focus = "title"
 
     def _nav_up_from_results(self) -> None:
-        if self._active_mode == "Tag" and self._get_tag_chip_buttons():
+        if self._active_mode in ("Tag", "Word") and self._get_active_chip_buttons():
             self._nav_focus_area = "tags"
-            chips = self._get_tag_chip_buttons()
+            chips = self._get_active_chip_buttons()
             self._nav_focused_chip_idx = len(chips) - 1
             self._draw_chip_focus()
         else:
@@ -555,7 +616,7 @@ class SearchScreen(FloatLayout):
         return True
 
     def _handle_tags_key(self, key: int) -> bool:
-        chips = self._get_tag_chip_buttons()
+        chips = self._get_active_chip_buttons()
         if key in (KEY_RIGHT, KEY_DOWN):
             if chips and self._nav_focused_chip_idx < len(chips) - 1:
                 self._nav_focused_chip_idx += 1
@@ -577,7 +638,9 @@ class SearchScreen(FloatLayout):
                 chips[self._nav_focused_chip_idx].trigger_action(duration=0)
                 self._clear_chip_focus()
                 self._nav_enter_results()
-                Clock.schedule_once(lambda _dt: self._draw_result_focus())
+                Clock.schedule_once(
+                    lambda _dt: Clock.schedule_once(lambda _dt2: self._draw_result_focus())
+                )
         elif key == KEY_ESCAPE:
             self._nav_escape()
         else:
@@ -589,29 +652,46 @@ class SearchScreen(FloatLayout):
             return []
         return list(reversed(self.ids.tag_chips_layout.children))
 
+    def _get_word_chip_buttons(self) -> list[Button]:
+        if not hasattr(self.ids, "word_chips_layout"):
+            return []
+        return list(reversed(self.ids.word_chips_layout.children))
+
+    def _get_active_chip_buttons(self) -> list[Button]:
+        if self._active_mode == "Word":
+            return self._get_word_chip_buttons()
+        return self._get_tag_chip_buttons()
+
     def _draw_chip_focus(self) -> None:
-        chips = self._get_tag_chip_buttons()
+        chips = self._get_active_chip_buttons()
         if not chips:
             return
         self._nav_focused_chip_idx = min(self._nav_focused_chip_idx, len(chips) - 1)
-        for i, chip in enumerate(chips):
-            is_focused = i == self._nav_focused_chip_idx
-            chip.chip_bg_color = _CHIP_BG_SELECTED if is_focused else _CHIP_BG_NORMAL
+        if self._active_mode == "Word":
+            update_focus_in_list(chips, self._nav_focused_chip_idx, _SEARCH_NAV_FOCUS_GROUP)
+            self.ids.word_chips_scroll.scroll_to(chips[self._nav_focused_chip_idx])
+        else:
+            for i, chip in enumerate(chips):
+                is_focused = i == self._nav_focused_chip_idx
+                chip.chip_bg_color = _CHIP_BG_SELECTED if is_focused else _CHIP_BG_NORMAL
 
     def _clear_chip_focus(self) -> None:
-        chips = self._get_tag_chip_buttons()
-        for chip in chips:
-            chip.chip_bg_color = _CHIP_BG_NORMAL
+        chips = self._get_active_chip_buttons()
+        if self._active_mode == "Word":
+            clear_focus_in_list(chips, _SEARCH_NAV_FOCUS_GROUP)
+        else:
+            for chip in chips:
+                chip.chip_bg_color = _CHIP_BG_NORMAL
 
     _CLEAR_BTN_NORMAL = (0.35, 0.35, 0.35, 1.0)
     _CLEAR_BTN_FOCUSED = (0.0, 0.5, 0.0, 1.0)
 
+    def _active_widget(self, index: int):  # noqa: ANN202
+        """Return the widget for the active mode at the given _MODE_WIDGETS index."""
+        return self.ids[self._MODE_WIDGETS[self._active_mode][index]]
+
     def _get_active_clear_button(self) -> Button:
-        if self._active_mode == "Title":
-            return self.ids.title_clear_button
-        if self._active_mode == "Tag":
-            return self.ids.tag_clear_button
-        return self.ids.word_clear_button
+        return self._active_widget(1)
 
     def _draw_clear_focus(self) -> None:
         self._get_active_clear_button().background_color = self._CLEAR_BTN_FOCUSED
@@ -620,35 +700,17 @@ class SearchScreen(FloatLayout):
         self._get_active_clear_button().background_color = self._CLEAR_BTN_NORMAL
 
     def _focus_active_input(self) -> None:
-        if self._active_mode == "Title":
-            self.ids.title_search_input.focus = True
-        elif self._active_mode == "Tag":
-            self.ids.tag_search_input.focus = True
-        elif self._active_mode == "Word":
-            self.ids.word_search_input.focus = True
+        self._active_widget(0).focus = True
 
     def _blur_all_inputs(self) -> None:
-        self.ids.title_search_input.focus = False
-        self.ids.tag_search_input.focus = False
-        self.ids.word_search_input.focus = False
+        for _input_id, _, _, _ in self._MODE_WIDGETS.values():
+            self.ids[_input_id].focus = False
 
     def _get_active_results_scroll_view(self) -> ScrollView:
-        if self._active_mode == "Title":
-            return self.ids.title_results_scroll
-        if self._active_mode == "Tag":
-            return self.ids.tag_results_scroll
-        return self.ids.word_results_scroll
+        return self._active_widget(2)
 
     def _get_active_result_rows(self) -> list[Button]:
-        if self._active_mode == "Title":
-            layout = self.ids.title_results_layout
-        elif self._active_mode == "Tag":
-            layout = self.ids.tag_title_results_layout
-        elif self._active_mode == "Word":
-            layout = self.ids.word_results_layout
-        else:
-            return []
-        return list(reversed(layout.children))
+        return list(reversed(self._active_widget(3).children))
 
     def _get_focused_result_widget(self, rows: list) -> Button | None:
         if not rows:

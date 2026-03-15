@@ -271,7 +271,7 @@
                         foreground_color: (1, 1, 1, 1)
                         background_color: (0.3, 0.3, 0.3, 0.8)
                         padding: [dp(4), (self.height - self.line_height) / 2]
-                        on_text_validate: root.on_word_search_submit()
+                        on_text: root.on_word_search_text(self.text)
 
                     Button:
                         id: word_clear_button
@@ -283,16 +283,21 @@
                         background_color: (0.35, 0.35, 0.35, 1.0)
                         on_release: root.on_word_clear()
 
-                Button:
-                    text: "Search"
-                    bold: True
-                    font_size: fm.search_button_font_size
-                    size_hint_y: None
-                    height: dp(30)
-                    background_color: (0.0, 0.4, 0.0, 1.0)
-                    on_press: root.on_word_search_submit()
+                ScrollView:
+                    id: word_chips_scroll
+                    always_overscroll: False
+                    effect_cls: 'ScrollEffect'
+                    scroll_type: ['bars', 'content']
+                    bar_color: (0.7, 0.7, 0.7, 0.9)
+                    bar_inactive_color: (0.5, 0.5, 0.5, 0.4)
+                    bar_width: dp(8)
 
-                Widget:
+                    BoxLayout:
+                        id: word_chips_layout
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: dp(1)
 
             BoxLayout:
                 orientation: 'vertical'
