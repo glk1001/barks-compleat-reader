@@ -15,6 +15,7 @@ from whoosh.searching import Hit
 
 from .barks_titles import BARKS_TITLE_DICT
 from .comics_database import ComicsDatabase
+from .entity_types import EntityType
 from .speech_groupers import OcrTypes, SpeechGroups
 from .whoosh_barks_terms import (
     ALL_CAPS,
@@ -33,7 +34,7 @@ SUB_ALPHA_SPLIT_SIZE = 56
 
 MY_STOP_WORDS = STOP_WORDS.union(["oh"])
 
-ENTITY_TYPES = ["person", "location", "org", "work", "misc"]
+ENTITY_TYPES = list(EntityType)
 ENTITY_FIELDS = [f"entities_{t}" for t in ENTITY_TYPES]
 
 # Lowercase→proper-case lookup from curated names for normalizing entity casing

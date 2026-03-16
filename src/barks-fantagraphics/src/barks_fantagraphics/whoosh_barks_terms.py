@@ -1,4 +1,5 @@
 from barks_fantagraphics.barks_words import US_STATES
+from barks_fantagraphics.entity_types import EntityType
 
 TERMS_TO_REMOVE: frozenset[str] = frozenset(
     {
@@ -1673,20 +1674,21 @@ BARKSIAN_WORDS_WITH_OPTIONAL_HYPHENS: frozenset[str] = frozenset(
         "ya-woo",
         "yi-yi",
         "yo'-all",
+        "zoola",
     }
 )
 
 # Mapping from entity set → entity type, used by entity_tagger.py.
-BARKSIAN_ENTITY_TYPE_MAP: dict[frozenset[str], str] = {
-    BARKSIAN_NAMES: "person",
-    BARKSIAN_FULL_NAMES: "person",
-    BARKSIAN_PLACE_RELATED_WORDS: "location",
-    COUNTRIES: "location",
-    frozenset(US_STATES): "location",
-    BARKSIAN_PLACES_FULL_NAMES: "location",
-    BARKSIAN_THINGS_FULL_NAMES: "org",
-    BARKSIAN_TITLES: "work",
-    BARKSIAN_MISC_FULL_NAMES: "misc",
+BARKSIAN_ENTITY_TYPE_MAP: dict[frozenset[str], EntityType] = {
+    BARKSIAN_NAMES: EntityType.PERSON,
+    BARKSIAN_FULL_NAMES: EntityType.PERSON,
+    BARKSIAN_PLACE_RELATED_WORDS: EntityType.LOCATION,
+    COUNTRIES: EntityType.LOCATION,
+    frozenset(US_STATES): EntityType.LOCATION,
+    BARKSIAN_PLACES_FULL_NAMES: EntityType.LOCATION,
+    BARKSIAN_THINGS_FULL_NAMES: EntityType.ORG,
+    BARKSIAN_TITLES: EntityType.WORK,
+    BARKSIAN_MISC_FULL_NAMES: EntityType.MISC,
 }
 
 BARKSIAN_EXTRA_TERMS: frozenset[str] = BARKSIAN_FULL_NAMES.union(
