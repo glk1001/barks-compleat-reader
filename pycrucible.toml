@@ -1,7 +1,7 @@
 entrypoint = "main.py"
 
 [options]
-debug = false
+debug = true
 extract_to_temp = false  # Important - the pycrucible_pre_run_installer.py script depends on this
 delete_after_run = true
 

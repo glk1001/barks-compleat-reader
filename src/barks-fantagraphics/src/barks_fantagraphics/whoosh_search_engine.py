@@ -11,6 +11,7 @@ from whoosh.analysis import STOP_WORDS, LowercaseFilter, StemFilter, StopFilter
 from whoosh.fields import ID, KEYWORD, TEXT, Schema
 from whoosh.index import create_in, open_dir
 from whoosh.qparser import QueryParser
+from whoosh.searching import Hit
 
 from .barks_titles import BARKS_TITLE_DICT
 from .comics_database import ComicsDatabase
@@ -18,7 +19,9 @@ from .speech_groupers import OcrTypes, SpeechGroups
 from .whoosh_barks_terms import (
     ALL_CAPS,
     BARKSIAN_EXTRA_TERMS,
-    NAME_MAP,
+    CAPITALIZATION_MAP,
+    FRAGMENTS_TO_SUPPRESS,
+    MULTI_WORD_TERMS_TO_SUPPRESS,
     TERMS_TO_CAPITALIZE,
     TERMS_TO_REMOVE,
 )
@@ -33,12 +36,46 @@ MY_STOP_WORDS = STOP_WORDS.union(["oh"])
 ENTITY_TYPES = ["person", "location", "org", "work", "misc"]
 ENTITY_FIELDS = [f"entities_{t}" for t in ENTITY_TYPES]
 
+# Lowercase→proper-case lookup from curated names for normalizing entity casing
+_CURATED_NAME_LOOKUP: dict[str, str] = {t.lower(): t for t in BARKSIAN_EXTRA_TERMS}
+
+
+def _normalize_entity_names(extra_terms: set[str], existing_lower: set[str]) -> set[str]:
+    """Normalize entity names against curated sets, filtering garbage spaCy names."""
+    normalized = set()
+    for t in extra_terms:
+        low = t.lower()
+        # Skip if a single-word term already covers this
+        if low in existing_lower:
+            continue
+        # Use curated casing if available
+        if low in _CURATED_NAME_LOOKUP:
+            normalized.add(_CURATED_NAME_LOOKUP[low])
+            continue
+        # For spaCy-only entities: reject garbage
+        if _is_valid_entity_term(t):
+            normalized.add(t)
+    return normalized
+
+
+def _is_valid_entity_term(term: str) -> bool:
+    """Filter garbage spaCy-only entity names not matched by curated sets."""
+    if not term or "\n" in term:
+        return False
+    first = term[0].lower()
+    if not (("a" <= first <= "z") or ("0" <= first <= "9") or first == "'"):
+        return False
+    # Reject if any word is all-caps (longer than 2 chars) — speech bubble artifact
+    max_caps_len = 2
+    return not any(w == w.upper() and len(w) > max_caps_len for w in term.split())
+
 
 @dataclass(frozen=True, slots=True)
 class SpeechInfo:
     group_id: str
     panel_num: int
     speech_text: str
+    entity_types: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +120,18 @@ class SearchEngine:
             t: self._index.storage.folder / f"entities-{t}-terms.json" for t in ENTITY_TYPES
         }
 
+    @staticmethod
+    def _get_entity_types(hit: Hit, search_words: str) -> tuple[str, ...]:
+        words_lower = [w.lower() for w in search_words.split()]
+        types = []
+        for entity_type in ENTITY_TYPES:
+            field_value = hit.get(f"entities_{entity_type}", "")
+            if field_value:
+                entity_names = [n.strip().lower() for n in field_value.split(",")]
+                if any(w in name for w in words_lower for name in entity_names):
+                    types.append(entity_type)
+        return tuple(types)
+
     def find_words(self, search_words: str, use_unstemmed_terms: bool) -> TitleDict:
         prelim_results = defaultdict(TitleInfo)
         with self._index.searcher() as searcher:
@@ -97,7 +146,10 @@ class SearchEngine:
                 fanta_page = hit["fanta_page"]
                 comic_page = hit["comic_page"]
                 speech_info = SpeechInfo(
-                    hit["content_id"], int(hit["panel_num"]), hit["content_raw"]
+                    hit["content_id"],
+                    int(hit["panel_num"]),
+                    hit["content_raw"],
+                    self._get_entity_types(hit, search_words),
                 )
 
                 if fanta_page not in prelim_results[comic_title].fanta_pages:
@@ -165,7 +217,10 @@ class SearchEngine:
                 fanta_page = hit["fanta_page"]
                 comic_page = hit["comic_page"]
                 speech_info = SpeechInfo(
-                    hit["content_id"], int(hit["panel_num"]), hit["content_raw"]
+                    hit["content_id"],
+                    int(hit["panel_num"]),
+                    hit["content_raw"],
+                    self._get_entity_types(hit, entity_name),
                 )
 
                 if fanta_page not in prelim_results[comic_title].fanta_pages:
@@ -230,12 +285,22 @@ class SearchEngineCreator(SearchEngine):
         self,
         volumes: list[int],
         entity_tagger: Callable[[str], dict[str, set[str]]] | None = None,
+        entity_provider: Callable[[str, str, str], dict[str, set[str]]] | None = None,
     ) -> None:
         json_volumes_path = self._index.storage.folder / "volumes.json"
         with json_volumes_path.open("w") as f:
             json.dump(volumes, f, indent=4)
 
-        self._index_volume_titles(volumes, entity_tagger=entity_tagger)
+        self._index_volume_titles(
+            volumes, entity_tagger=entity_tagger, entity_provider=entity_provider
+        )
+
+        if entity_tagger or entity_provider:
+            self._generate_entity_term_lists()
+
+        all_entity_names: set[str] = set()
+        for entity_type in ENTITY_TYPES:
+            all_entity_names.update(self.get_entity_terms(entity_type))
 
         with self._index.reader() as reader:
             all_unstemmed_terms = [t.decode("utf-8") for t in reader.lexicon("unstemmed")]
@@ -243,7 +308,10 @@ class SearchEngineCreator(SearchEngine):
             json.dump(all_unstemmed_terms, f, indent=4)
         with self._cleaned_unstemmed_terms_path.open("w") as f:
             cleaned_unstemmed_terms = sorted(
-                self._get_cleaned_unstemmed_terms(all_unstemmed_terms), key=COLLATOR.sort_key
+                self._get_cleaned_unstemmed_terms(
+                    all_unstemmed_terms, entity_names=all_entity_names
+                ),
+                key=COLLATOR.sort_key,
             )
             json.dump(cleaned_unstemmed_terms, f, indent=4)
         with self._cleaned_lemmatized_terms_path.open("w") as f:
@@ -264,13 +332,11 @@ class SearchEngineCreator(SearchEngine):
         with self._least_common_unstemmed_terms_path.open("w") as f:
             json.dump(least_frequent_words, f, indent=4)
 
-        if entity_tagger:
-            self._generate_entity_term_lists()
-
     def _index_volume_titles(
         self,
         volumes: list[int],
         entity_tagger: Callable[[str], dict[str, set[str]]] | None = None,
+        entity_provider: Callable[[str, str, str], dict[str, set[str]]] | None = None,
     ) -> None:
         all_speech_groups = SpeechGroups(self._comics_database)
 
@@ -287,7 +353,14 @@ class SearchEngineCreator(SearchEngine):
                     continue
                 for group_id, speech_text in speech_page.speech_groups.items():
                     entity_kwargs = {}
-                    if entity_tagger:
+                    if entity_provider:
+                        entities = entity_provider(title_str, speech_page.fanta_page, group_id)
+                        for entity_type in ENTITY_TYPES:
+                            field_name = f"entities_{entity_type}"
+                            entity_kwargs[field_name] = ",".join(
+                                sorted(entities.get(entity_type, set()))
+                            )
+                    elif entity_tagger:
                         entities = entity_tagger(speech_text.ai_text)
                         for entity_type in ENTITY_TYPES:
                             field_name = f"entities_{entity_type}"
@@ -348,14 +421,19 @@ class SearchEngineCreator(SearchEngine):
             return heapq.nsmallest(top_n, term_generator)
 
     @staticmethod
-    def _get_cleaned_unstemmed_terms(unstemmed_terms: list[str]) -> set[str]:
+    def _get_cleaned_unstemmed_terms(
+        unstemmed_terms: list[str],
+        entity_names: set[str] | None = None,
+    ) -> set[str]:
         cleaned_unstemmed_terms = set()
         for term in unstemmed_terms:
             if term in TERMS_TO_REMOVE:
                 continue
+            if term in FRAGMENTS_TO_SUPPRESS:
+                continue
 
-            if term in NAME_MAP:
-                cleaned_term = NAME_MAP[term]
+            if term in CAPITALIZATION_MAP:
+                cleaned_term = CAPITALIZATION_MAP[term]
             elif term in ALL_CAPS:
                 cleaned_term = term.upper()
             elif term in TERMS_TO_CAPITALIZE:
@@ -366,7 +444,14 @@ class SearchEngineCreator(SearchEngine):
             if cleaned_term:
                 cleaned_unstemmed_terms.add(cleaned_term)
 
-        return cleaned_unstemmed_terms.union(BARKSIAN_EXTRA_TERMS)
+        extra_terms = (
+            set(BARKSIAN_EXTRA_TERMS | entity_names) if entity_names else set(BARKSIAN_EXTRA_TERMS)
+        )
+        existing_lower = {t.lower() for t in cleaned_unstemmed_terms}
+        normalized_extra = _normalize_entity_names(extra_terms, existing_lower)
+        result = cleaned_unstemmed_terms.union(normalized_extra)
+        suppress_lower = {t.lower() for t in MULTI_WORD_TERMS_TO_SUPPRESS}
+        return {t for t in result if t.lower() not in suppress_lower}
 
     @staticmethod
     def _get_cleaned_lemmatized_terms(terms: list[str]) -> set[str]:
