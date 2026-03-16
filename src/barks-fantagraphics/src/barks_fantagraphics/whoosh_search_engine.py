@@ -1,13 +1,14 @@
 import heapq
 import json
 from collections import Counter, defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from pyuca import Collator
 from simplemma import lemmatize
 from whoosh.analysis import STOP_WORDS, LowercaseFilter, StemFilter, StopFilter
-from whoosh.fields import ID, TEXT, Schema
+from whoosh.fields import ID, KEYWORD, TEXT, Schema
 from whoosh.index import create_in, open_dir
 from whoosh.qparser import QueryParser
 
@@ -28,6 +29,9 @@ COLLATOR = Collator()
 SUB_ALPHA_SPLIT_SIZE = 56
 
 MY_STOP_WORDS = STOP_WORDS.union(["oh"])
+
+ENTITY_TYPES = ["person", "location", "org", "work", "misc"]
+ENTITY_FIELDS = [f"entities_{t}" for t in ENTITY_TYPES]
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,6 +79,9 @@ class SearchEngine:
         self._least_common_unstemmed_terms_path = (
             self._index.storage.folder / "least-common-unstemmed-terms.json"
         )
+        self._entity_terms_paths = {
+            t: self._index.storage.folder / f"entities-{t}-terms.json" for t in ENTITY_TYPES
+        }
 
     def find_words(self, search_words: str, use_unstemmed_terms: bool) -> TitleDict:
         prelim_results = defaultdict(TitleInfo)
@@ -145,6 +152,47 @@ class SearchEngine:
 
         return self.find_unstemmed_words(search_words)
 
+    def find_entities(self, entity_type: str, entity_name: str) -> TitleDict:
+        field_name = f"entities_{entity_type}"
+        prelim_results = defaultdict(TitleInfo)
+        with self._index.searcher() as searcher:
+            query = QueryParser(field_name, self._index.schema).parse(entity_name)
+            results = searcher.search(query, limit=1000)
+            for hit in results:
+                comic_title = hit["title"]
+                prelim_results[comic_title].fanta_vol = int(hit["fanta_vol"])
+
+                fanta_page = hit["fanta_page"]
+                comic_page = hit["comic_page"]
+                speech_info = SpeechInfo(
+                    hit["content_id"], int(hit["panel_num"]), hit["content_raw"]
+                )
+
+                if fanta_page not in prelim_results[comic_title].fanta_pages:
+                    prelim_results[comic_title].fanta_pages[fanta_page] = PageInfo(
+                        comic_page, [speech_info]
+                    )
+                else:
+                    prelim_results[comic_title].fanta_pages[fanta_page].speech_info_list.append(
+                        speech_info
+                    )
+
+        title_results = defaultdict(TitleInfo)
+        for title in sorted(prelim_results.keys()):
+            title_results[title].fanta_vol = prelim_results[title].fanta_vol
+            for fanta_page in sorted(prelim_results[title].fanta_pages.keys()):
+                page_info = prelim_results[title].fanta_pages[fanta_page]
+                page_info.speech_info_list.sort(key=lambda x: int(x.group_id))
+                title_results[title].fanta_pages[fanta_page] = page_info
+
+        return title_results
+
+    def get_entity_terms(self, entity_type: str) -> list[str]:
+        path = self._entity_terms_paths[entity_type]
+        if path.exists():
+            return json.loads(path.read_text())
+        return []
+
 
 class SearchEngineCreator(SearchEngine):
     def __init__(
@@ -167,18 +215,27 @@ class SearchEngineCreator(SearchEngine):
             content=TEXT(stored=False, lang="en", analyzer=punct_analyzer | StemFilter(lang="en")),
             unstemmed=TEXT(stored=False, lang="en", analyzer=punct_analyzer),
             content_raw=TEXT(stored=True, lang="en"),
+            entities_person=KEYWORD(stored=True, commas=True, scorable=True),
+            entities_location=KEYWORD(stored=True, commas=True, scorable=True),
+            entities_org=KEYWORD(stored=True, commas=True, scorable=True),
+            entities_work=KEYWORD(stored=True, commas=True, scorable=True),
+            entities_misc=KEYWORD(stored=True, commas=True, scorable=True),
         )
         index_dir.mkdir(parents=True, exist_ok=True)
         self._index = create_in(index_dir, schema)
 
         super().__init__(index_dir)
 
-    def index_volumes(self, volumes: list[int]) -> None:
+    def index_volumes(
+        self,
+        volumes: list[int],
+        entity_tagger: Callable[[str], dict[str, set[str]]] | None = None,
+    ) -> None:
         json_volumes_path = self._index.storage.folder / "volumes.json"
         with json_volumes_path.open("w") as f:
             json.dump(volumes, f, indent=4)
 
-        self._index_volume_titles(volumes)
+        self._index_volume_titles(volumes, entity_tagger=entity_tagger)
 
         with self._index.reader() as reader:
             all_unstemmed_terms = [t.decode("utf-8") for t in reader.lexicon("unstemmed")]
@@ -207,7 +264,14 @@ class SearchEngineCreator(SearchEngine):
         with self._least_common_unstemmed_terms_path.open("w") as f:
             json.dump(least_frequent_words, f, indent=4)
 
-    def _index_volume_titles(self, volumes: list[int]) -> None:
+        if entity_tagger:
+            self._generate_entity_term_lists()
+
+    def _index_volume_titles(
+        self,
+        volumes: list[int],
+        entity_tagger: Callable[[str], dict[str, set[str]]] | None = None,
+    ) -> None:
         all_speech_groups = SpeechGroups(self._comics_database)
 
         writer = self._index.writer()
@@ -222,6 +286,18 @@ class SearchEngineCreator(SearchEngine):
                 if speech_page.ocr_index != self._ocr_index_to_use:
                     continue
                 for group_id, speech_text in speech_page.speech_groups.items():
+                    entity_kwargs = {}
+                    if entity_tagger:
+                        entities = entity_tagger(speech_text.ai_text)
+                        for entity_type in ENTITY_TYPES:
+                            field_name = f"entities_{entity_type}"
+                            entity_kwargs[field_name] = ",".join(
+                                sorted(entities.get(entity_type, set()))
+                            )
+                    else:
+                        for field_name in ENTITY_FIELDS:
+                            entity_kwargs[field_name] = ""
+
                     writer.add_document(
                         title=title_str,
                         fanta_vol=str(speech_page.fanta_vol),
@@ -232,9 +308,19 @@ class SearchEngineCreator(SearchEngine):
                         content=speech_text.ai_text,
                         unstemmed=speech_text.ai_text,
                         content_raw=speech_text.raw_ai_text,
+                        **entity_kwargs,
                     )
 
         writer.commit()
+
+    def _generate_entity_term_lists(self) -> None:
+        with self._index.reader() as reader:
+            for entity_type in ENTITY_TYPES:
+                field_name = f"entities_{entity_type}"
+                terms = sorted({t.decode("utf-8") for t in reader.lexicon(field_name)})
+                path = self._entity_terms_paths[entity_type]
+                with path.open("w") as f:
+                    json.dump(terms, f, indent=4)
 
     def _get_ai_text_term_frequencies(self) -> Counter:
         token_counts = Counter()
