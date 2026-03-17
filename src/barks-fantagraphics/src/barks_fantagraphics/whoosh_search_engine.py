@@ -155,39 +155,31 @@ class SearchEngine:
                     types.append(entity_type)
         return tuple(types)
 
-    def find_words(self, search_words: str, use_unstemmed_terms: bool) -> TitleDict:
+    def _collect_and_sort_results(self, hits: list[Hit], search_words: str) -> TitleDict:
         prelim_results = defaultdict(TitleInfo)
-        with self._index.searcher() as searcher:
-            field_name = "unstemmed" if use_unstemmed_terms else "content"
-            query = QueryParser(field_name, self._index.schema).parse(search_words, debug=False)
+        for hit in hits:
+            comic_title = hit["title"]
+            prelim_results[comic_title].fanta_vol = int(hit["fanta_vol"])
 
-            results = searcher.search(query, limit=1000)
-            for hit in results:
-                comic_title = hit["title"]
-                prelim_results[comic_title].fanta_vol = int(hit["fanta_vol"])
+            fanta_page = hit["fanta_page"]
+            comic_page = hit["comic_page"]
+            speech_info = SpeechInfo(
+                hit["content_id"],
+                int(hit["panel_num"]),
+                hit["content_raw"],
+                self._get_entity_types(hit, search_words),
+            )
 
-                fanta_page = hit["fanta_page"]
-                comic_page = hit["comic_page"]
-                speech_info = SpeechInfo(
-                    hit["content_id"],
-                    int(hit["panel_num"]),
-                    hit["content_raw"],
-                    self._get_entity_types(hit, search_words),
+            if fanta_page not in prelim_results[comic_title].fanta_pages:
+                prelim_results[comic_title].fanta_pages[fanta_page] = PageInfo(
+                    comic_page, [speech_info]
+                )
+            else:
+                assert prelim_results[comic_title].fanta_pages[fanta_page].comic_page == comic_page
+                prelim_results[comic_title].fanta_pages[fanta_page].speech_info_list.append(
+                    speech_info
                 )
 
-                if fanta_page not in prelim_results[comic_title].fanta_pages:
-                    prelim_results[comic_title].fanta_pages[fanta_page] = PageInfo(
-                        comic_page, [speech_info]
-                    )
-                else:
-                    assert (
-                        prelim_results[comic_title].fanta_pages[fanta_page].comic_page == comic_page
-                    )
-                    prelim_results[comic_title].fanta_pages[fanta_page].speech_info_list.append(
-                        speech_info
-                    )
-
-        # Sort the results by title and page.
         title_results = defaultdict(TitleInfo)
         for title in sorted(prelim_results.keys()):
             title_results[title].fanta_vol = prelim_results[title].fanta_vol
@@ -197,6 +189,13 @@ class SearchEngine:
                 title_results[title].fanta_pages[fanta_page] = page_info
 
         return title_results
+
+    def find_words(self, search_words: str, use_unstemmed_terms: bool) -> TitleDict:
+        with self._index.searcher() as searcher:
+            field_name = "unstemmed" if use_unstemmed_terms else "content"
+            query = QueryParser(field_name, self._index.schema).parse(search_words, debug=False)
+            results = searcher.search(query, limit=1000)
+            return self._collect_and_sort_results(results, search_words)
 
     def get_all_titles(self) -> set[str]:
         with self._index.reader() as reader:
@@ -229,41 +228,10 @@ class SearchEngine:
 
     def find_entities(self, entity_type: str, entity_name: str) -> TitleDict:
         field_name = f"entities_{entity_type}"
-        prelim_results = defaultdict(TitleInfo)
         with self._index.searcher() as searcher:
             query = QueryParser(field_name, self._index.schema).parse(entity_name)
             results = searcher.search(query, limit=1000)
-            for hit in results:
-                comic_title = hit["title"]
-                prelim_results[comic_title].fanta_vol = int(hit["fanta_vol"])
-
-                fanta_page = hit["fanta_page"]
-                comic_page = hit["comic_page"]
-                speech_info = SpeechInfo(
-                    hit["content_id"],
-                    int(hit["panel_num"]),
-                    hit["content_raw"],
-                    self._get_entity_types(hit, entity_name),
-                )
-
-                if fanta_page not in prelim_results[comic_title].fanta_pages:
-                    prelim_results[comic_title].fanta_pages[fanta_page] = PageInfo(
-                        comic_page, [speech_info]
-                    )
-                else:
-                    prelim_results[comic_title].fanta_pages[fanta_page].speech_info_list.append(
-                        speech_info
-                    )
-
-        title_results = defaultdict(TitleInfo)
-        for title in sorted(prelim_results.keys()):
-            title_results[title].fanta_vol = prelim_results[title].fanta_vol
-            for fanta_page in sorted(prelim_results[title].fanta_pages.keys()):
-                page_info = prelim_results[title].fanta_pages[fanta_page]
-                page_info.speech_info_list.sort(key=lambda x: int(x.group_id))
-                title_results[title].fanta_pages[fanta_page] = page_info
-
-        return title_results
+            return self._collect_and_sort_results(results, entity_name)
 
     def get_entity_terms(self, entity_type: str) -> list[str]:
         path = self._entity_terms_paths[entity_type]
@@ -477,26 +445,21 @@ class SearchEngineCreator(SearchEngine):
                 if speech_page.ocr_index != self._ocr_index_to_use:
                     continue
                 for group_id, speech_text in speech_page.speech_groups.items():
-                    entity_kwargs = {}
                     if entity_provider:
                         entities = entity_provider(title_str, speech_page.fanta_page, group_id)
-                        entities = _filter_entities_to_curated(entities, curated_sets)
-                        for entity_type in ENTITY_TYPES:
-                            field_name = f"entities_{entity_type}"
-                            entity_kwargs[field_name] = ",".join(
-                                sorted(entities.get(entity_type, set()))
-                            )
                     elif entity_tagger:
                         entities = entity_tagger(speech_text.ai_text)
-                        entities = _filter_entities_to_curated(entities, curated_sets)
-                        for entity_type in ENTITY_TYPES:
-                            field_name = f"entities_{entity_type}"
-                            entity_kwargs[field_name] = ",".join(
-                                sorted(entities.get(entity_type, set()))
-                            )
                     else:
-                        for field_name in ENTITY_FIELDS:
-                            entity_kwargs[field_name] = ""
+                        entities = None
+
+                    if entities is not None:
+                        entities = _filter_entities_to_curated(entities, curated_sets)
+                        entity_kwargs = {
+                            f"entities_{et}": ",".join(sorted(entities.get(et, set())))
+                            for et in ENTITY_TYPES
+                        }
+                    else:
+                        entity_kwargs = dict.fromkeys(ENTITY_FIELDS, "")
 
                     writer.add_document(
                         title=title_str,
