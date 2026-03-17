@@ -31,7 +31,7 @@ def mock_dependencies() -> dict[str, MagicMock]:
         "fun_image_view_screen": MagicMock(),
         "main_index_screen": MagicMock(),
         "speech_index_screen": MagicMock(),
-        "persons_index_screen": MagicMock(),
+        "names_index_screen": MagicMock(),
         "locations_index_screen": MagicMock(),
         "statistics_screen": MagicMock(),
         "font_manager": MagicMock(),

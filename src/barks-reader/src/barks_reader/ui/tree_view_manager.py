@@ -62,7 +62,7 @@ class TreeViewManager:
         tree_view_screen: TreeViewScreen,
         main_index_screen: MainIndexScreen,
         speech_index_screen: SpeechIndexScreen,
-        persons_index_screen: EntityIndexScreen,
+        names_index_screen: EntityIndexScreen,
         locations_index_screen: EntityIndexScreen,
         update_title_func: UpdateTitleCallable,
         read_article_func: ReadArticleCallable,
@@ -76,7 +76,7 @@ class TreeViewManager:
         self._tree_view_screen = tree_view_screen
         self._main_index_screen = main_index_screen
         self._speech_index_screen = speech_index_screen
-        self._persons_index_screen = persons_index_screen
+        self._names_index_screen = names_index_screen
         self._locations_index_screen = locations_index_screen
 
         self._tree_view_screen.ids.reader_tree_view.bind(on_node_expand=self.on_node_expanded)
@@ -411,12 +411,12 @@ class TreeViewManager:
         self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_SPEECH_WORDS_NODE)
         Clock.schedule_once(lambda _dt: self.allow_view_state_change(), 0)
 
-    def on_persons_index_node_created(self, persons_index_node: MainTreeViewNode) -> None:
-        self._persons_index_screen.treeview_index_node = persons_index_node
+    def on_names_index_node_created(self, names_index_node: MainTreeViewNode) -> None:
+        self._names_index_screen.treeview_index_node = names_index_node
 
-    def on_persons_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
-        logger.info("Persons index node pressed.")
-        self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_PERSONS_NODE)
+    def on_names_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
+        logger.info("Names index node pressed.")
+        self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_NAMES_NODE)
 
     def on_locations_index_node_created(self, locations_index_node: MainTreeViewNode) -> None:
         self._locations_index_screen.treeview_index_node = locations_index_node

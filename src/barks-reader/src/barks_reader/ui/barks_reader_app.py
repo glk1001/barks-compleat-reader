@@ -432,7 +432,7 @@ class BarksReaderApp(App):
         speech_index_screen = SpeechIndexScreen(
             self.reader_settings, self.font_manager, user_error_handler
         )
-        persons_index_screen = EntityIndexScreen(
+        names_index_screen = EntityIndexScreen(
             EntityType.PERSON, self.reader_settings, self.font_manager, user_error_handler
         )
         locations_index_screen = EntityIndexScreen(
@@ -453,7 +453,7 @@ class BarksReaderApp(App):
             fun_image_view_screen,
             main_index_screen,
             speech_index_screen,
-            persons_index_screen,
+            names_index_screen,
             locations_index_screen,
             statistics_screen,
             search_screen,

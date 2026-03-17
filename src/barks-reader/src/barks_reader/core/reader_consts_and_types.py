@@ -35,7 +35,7 @@ INDEX_NODE_TEXT = "Indexes"
 INDEX_MAIN_TEXT = "Main Index"
 INDEX_SPEECH_TEXT = "Speech Bubble Index"
 INDEX_SPEECH_WORDS_TEXT = "Words"
-INDEX_PERSONS_TEXT = "Persons"
+INDEX_NAMES_TEXT = "Names"
 INDEX_LOCATIONS_TEXT = "Locations"
 # fmt: on
 

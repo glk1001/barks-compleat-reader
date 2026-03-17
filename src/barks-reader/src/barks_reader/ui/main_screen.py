@@ -135,7 +135,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         fun_image_view_screen: FunImageViewScreen,
         main_index_screen: MainIndexScreen,
         speech_index_screen: SpeechIndexScreen,
-        persons_index_screen: EntityIndexScreen,
+        names_index_screen: EntityIndexScreen,
         locations_index_screen: EntityIndexScreen,
         statistics_screen: StatisticsScreen,
         search_screen: SearchScreen,
@@ -164,8 +164,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._main_index_screen.on_goto_title = self._goto_title_with_page_num
         self._speech_index_screen = speech_index_screen
         self._speech_index_screen.on_goto_title = self._goto_title_with_page_num
-        self._persons_index_screen = persons_index_screen
-        self._persons_index_screen.on_goto_title = self._goto_title_with_page_num
+        self._names_index_screen = names_index_screen
+        self._names_index_screen.on_goto_title = self._goto_title_with_page_num
         self._locations_index_screen = locations_index_screen
         self._locations_index_screen.on_goto_title = self._goto_title_with_page_num
         self._statistics_screen = statistics_screen
@@ -180,7 +180,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._bottom_base_view_screen.add_widget(self._fun_image_view_screen)
         self._bottom_base_view_screen.add_widget(self._main_index_screen)
         self._bottom_base_view_screen.add_widget(self._speech_index_screen)
-        self._bottom_base_view_screen.add_widget(self._persons_index_screen)
+        self._bottom_base_view_screen.add_widget(self._names_index_screen)
         self._bottom_base_view_screen.add_widget(self._locations_index_screen)
         self._bottom_base_view_screen.add_widget(self._statistics_screen)
         self._bottom_base_view_screen.add_widget(self._search_screen)
@@ -237,7 +237,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._fun_image_view_screen,
             self._main_index_screen,
             self._speech_index_screen,
-            self._persons_index_screen,
+            self._names_index_screen,
             self._locations_index_screen,
             self._statistics_screen,
             self._search_screen,
@@ -250,7 +250,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._tree_view_screen,
             self._main_index_screen,
             self._speech_index_screen,
-            self._persons_index_screen,
+            self._names_index_screen,
             self._locations_index_screen,
             self._update_title_from_tree_view,
             self._read_article_as_comic_book,
@@ -328,7 +328,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         self._main_index_screen.on_goto_background_title_func = self._goto_chrono_title
         self._speech_index_screen.on_goto_background_title_func = self._goto_chrono_title
-        self._persons_index_screen.on_goto_background_title_func = self._goto_chrono_title
+        self._names_index_screen.on_goto_background_title_func = self._goto_chrono_title
         self._locations_index_screen.on_goto_background_title_func = self._goto_chrono_title
         self._search_screen.on_goto_background_title_func = self._goto_chrono_title
         self._search_screen.on_search_results_title_changed = (
@@ -459,8 +459,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             return self._main_index_screen
         if self._speech_index_screen.is_visible:
             return self._speech_index_screen
-        if self._persons_index_screen.is_visible:
-            return self._persons_index_screen
+        if self._names_index_screen.is_visible:
+            return self._names_index_screen
         if self._locations_index_screen.is_visible:
             return self._locations_index_screen
         if self._statistics_screen.is_visible:
@@ -475,7 +475,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             or self._bottom_title_view_screen.is_visible
             or self._main_index_screen.is_visible
             or self._speech_index_screen.is_visible
-            or self._persons_index_screen.is_visible
+            or self._names_index_screen.is_visible
             or self._locations_index_screen.is_visible
             or self._statistics_screen.is_visible
             or self._search_screen.is_visible
@@ -535,8 +535,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         if selected is self._speech_index_screen.treeview_index_node:
             self._enter_index_bottom_focus(self._speech_index_screen, selected)
             return
-        if selected is self._persons_index_screen.treeview_index_node:
-            self._enter_index_bottom_focus(self._persons_index_screen, selected)
+        if selected is self._names_index_screen.treeview_index_node:
+            self._enter_index_bottom_focus(self._names_index_screen, selected)
             return
         if selected is self._locations_index_screen.treeview_index_node:
             self._enter_index_bottom_focus(self._locations_index_screen, selected)
@@ -649,7 +649,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         elif (
             self._main_index_screen.is_visible
             or self._speech_index_screen.is_visible
-            or self._persons_index_screen.is_visible
+            or self._names_index_screen.is_visible
             or self._locations_index_screen.is_visible
         ):
             self._enter_bottom_focus()

@@ -50,8 +50,8 @@ from barks_reader.core.reader_consts_and_types import (
     CS_YEAR_RANGES,
     INDEX_LOCATIONS_TEXT,
     INDEX_MAIN_TEXT,
+    INDEX_NAMES_TEXT,
     INDEX_NODE_TEXT,
-    INDEX_PERSONS_TEXT,
     INDEX_SPEECH_TEXT,
     INDEX_SPEECH_WORDS_TEXT,
     INTRO_COMPLEAT_BARKS_READER_TEXT,
@@ -557,13 +557,13 @@ class ReaderTreeBuilder:
         )
         self._tree_view_manager.on_speech_words_node_created(words_node)
 
-        persons_node = self._create_and_add_simple_node(
+        names_node = self._create_and_add_simple_node(
             tree,
-            INDEX_PERSONS_TEXT,
+            INDEX_NAMES_TEXT,
             parent_node=speech_node,
-            on_press_handler=self._tree_view_manager.on_persons_index_node_pressed,
+            on_press_handler=self._tree_view_manager.on_names_index_node_pressed,
         )
-        self._tree_view_manager.on_persons_index_node_created(persons_node)
+        self._tree_view_manager.on_names_index_node_created(names_node)
 
         locations_node = self._create_and_add_simple_node(
             tree,

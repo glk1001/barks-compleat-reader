@@ -58,7 +58,7 @@ class ViewStateManager:
         fun_image_view_screen: FunImageViewScreen,
         main_index_screen: MainIndexScreen,
         speech_index_screen: SpeechIndexScreen,
-        persons_index_screen: EntityIndexScreen,
+        names_index_screen: EntityIndexScreen,
         locations_index_screen: EntityIndexScreen,
         statistics_screen: StatisticsScreen,
         search_screen: SearchScreen,
@@ -72,7 +72,7 @@ class ViewStateManager:
         self._fun_image_view_screen = fun_image_view_screen
         self._main_index_screen = main_index_screen
         self._speech_index_screen = speech_index_screen
-        self._persons_index_screen = persons_index_screen
+        self._names_index_screen = names_index_screen
         self._locations_index_screen = locations_index_screen
         self._statistics_screen = statistics_screen
         self._search_screen = search_screen
@@ -105,7 +105,7 @@ class ViewStateManager:
         self._fun_image_view_screen.is_visible = False
         self._main_index_screen.is_visible = False
         self._speech_index_screen.is_visible = False
-        self._persons_index_screen.is_visible = False
+        self._names_index_screen.is_visible = False
         self._locations_index_screen.is_visible = False
         self._statistics_screen.is_visible = False
         self._search_screen.is_visible = False
@@ -383,8 +383,8 @@ class ViewStateManager:
         opacity = self._background_views.get_speech_index_view_opacity()
         self._speech_index_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
 
-        opacity = self._background_views.get_persons_index_view_opacity()
-        self._persons_index_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
+        opacity = self._background_views.get_names_index_view_opacity()
+        self._names_index_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
 
         opacity = self._background_views.get_locations_index_view_opacity()
         self._locations_index_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
@@ -417,7 +417,7 @@ class ViewStateManager:
             f"Setting new index view."
             f" Main index visibility: {self._main_index_screen.is_visible}."
             f" Speech index visibility: {self._speech_index_screen.is_visible}."
-            f" Persons index visibility: {self._persons_index_screen.is_visible}."
+            f" Names index visibility: {self._names_index_screen.is_visible}."
             f" Locations index visibility: {self._locations_index_screen.is_visible}."
             f" Statistics visibility: {self._statistics_screen.is_visible}."
             f" Search visibility: {self._search_screen.is_visible}."
