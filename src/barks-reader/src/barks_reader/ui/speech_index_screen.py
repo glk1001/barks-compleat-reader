@@ -156,9 +156,7 @@ class SpeechIndexScreen(IndexScreen):
         self._item_index: dict[str, list[IndexItem]] = defaultdict(list)
         self.on_goto_title: Callable[[ImageInfo, str], None] | None = None
 
-        self._cleaned_alpha_split_terms = (
-            self._whoosh_indexer.get_cleaned_alpha_split_unstemmed_terms()
-        )
+        self._cleaned_alpha_split_terms = self._whoosh_indexer.get_cleaned_alpha_split_terms()
         self._prefix_buttons: dict[str, Button] = {}
         self._nav_focused_prefix_idx: int = 0
         self._nav_on_speech_btn: bool = False
@@ -176,7 +174,7 @@ class SpeechIndexScreen(IndexScreen):
         self._popup_nav = PopupKeyboardNav(self._speech_bubble_browser_popup)
 
     def _find_words(self, index_terms: str) -> TitleDict:
-        return self._whoosh_indexer.find_unstemmed_words(index_terms)
+        return self._whoosh_indexer.find_words(index_terms)
 
     def _populate_index_for_letter(self, first_letter: str) -> None:
         self._populate_top_alphabet_split_menu(first_letter)
@@ -262,7 +260,8 @@ class SpeechIndexScreen(IndexScreen):
         all_btns = super()._get_col_buttons(col_idx)
         return [b for b in all_btns if not isinstance(b, TitleShowSpeechButton)]
 
-    def _get_paired_speech_button(self, title_btn: Button) -> TitleShowSpeechButton | None:
+    @staticmethod
+    def _get_paired_speech_button(title_btn: Button) -> TitleShowSpeechButton | None:
         """Return the TitleShowSpeechButton paired with a _SpeechIndexTitleItemButton."""
         if not isinstance(title_btn, _SpeechIndexTitleItemButton):
             return None

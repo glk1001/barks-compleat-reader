@@ -49,8 +49,8 @@ def person_index_screen(
             patch.object(EntityIndexScreen, "_populate_alphabet_menu"),
         ):
             mock_indexer = mock_search_cls.return_value
-            # get_cleaned_alpha_split_unstemmed_terms is called by SpeechIndexScreen.__init__
-            mock_indexer.get_cleaned_alpha_split_unstemmed_terms.return_value = {
+            # get_cleaned_alpha_split_terms is called by SpeechIndexScreen.__init__
+            mock_indexer.get_cleaned_alpha_split_terms.return_value = {
                 "a": {"al": ["Alice"]},
             }
             # get_entity_terms is called by EntityIndexScreen.__init__
@@ -154,7 +154,7 @@ class TestEntityIndexScreen:
                 patch.object(EntityIndexScreen, "_populate_alphabet_menu"),
             ):
                 mock_indexer = mock_search_cls.return_value
-                mock_indexer.get_cleaned_alpha_split_unstemmed_terms.return_value = {}
+                mock_indexer.get_cleaned_alpha_split_terms.return_value = {}
                 mock_indexer.get_entity_terms.return_value = [
                     "-ER-",
                     "",

@@ -6,8 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from pyuca import Collator
-from simplemma import lemmatize
-from whoosh.analysis import STOP_WORDS, LowercaseFilter, StemFilter, StopFilter
+from whoosh.analysis import STOP_WORDS, LowercaseFilter, StopFilter
 from whoosh.fields import ID, KEYWORD, TEXT, Schema
 from whoosh.index import create_in, open_dir
 from whoosh.qparser import QueryParser
@@ -121,17 +120,9 @@ class SearchEngine:
         self._index = open_dir(index_dir)
 
         self._unstemmed_terms_path = self._index.storage.folder / "unstemmed-terms.json"
-        self._cleaned_unstemmed_terms_path = (
-            self._index.storage.folder / "cleaned-unstemmed-terms.json"
-        )
-        self._cleaned_lemmatized_terms_path = (
-            self._index.storage.folder / "cleaned-lemmatized-terms.json"
-        )
-        self._cleaned_alpha_split_unstemmed_terms_path = (
+        self._cleaned_terms_path = self._index.storage.folder / "cleaned-unstemmed-terms.json"
+        self._cleaned_alpha_split_terms_path = (
             self._index.storage.folder / "cleaned-alpha-split-unstemmed-terms.json"
-        )
-        self._cleaned_alpha_split_lemmatized_terms_path = (
-            self._index.storage.folder / "cleaned-alpha-split-lemmatized-terms.json"
         )
         self._most_common_unstemmed_terms_path = (
             self._index.storage.folder / "most-common-unstemmed-terms.json"
@@ -190,10 +181,9 @@ class SearchEngine:
 
         return title_results
 
-    def find_words(self, search_words: str, use_unstemmed_terms: bool) -> TitleDict:
+    def find_words(self, search_words: str) -> TitleDict:
         with self._index.searcher() as searcher:
-            field_name = "unstemmed" if use_unstemmed_terms else "content"
-            query = QueryParser(field_name, self._index.schema).parse(search_words, debug=False)
+            query = QueryParser("unstemmed", self._index.schema).parse(search_words, debug=False)
             results = searcher.search(query, limit=1000)
             return self._collect_and_sort_results(results, search_words)
 
@@ -201,30 +191,11 @@ class SearchEngine:
         with self._index.reader() as reader:
             return {t.decode("utf-8") for t in reader.lexicon("title")}
 
-    def get_cleaned_unstemmed_terms(self) -> list[str]:
-        return json.loads(self._cleaned_unstemmed_terms_path.read_text())
+    def get_cleaned_terms(self) -> list[str]:
+        return json.loads(self._cleaned_terms_path.read_text())
 
-    def get_cleaned_lemmatized_terms(self) -> list[str]:
-        return json.loads(self._cleaned_lemmatized_terms_path.read_text())
-
-    def get_cleaned_alpha_split_unstemmed_terms(self) -> dict[str, dict[str, list[str]]]:
-        return json.loads(self._cleaned_alpha_split_unstemmed_terms_path.read_text())
-
-    def get_cleaned_alpha_split_lemmatized_terms(self) -> dict[str, dict[str, list[str]]]:
-        return json.loads(self._cleaned_alpha_split_lemmatized_terms_path.read_text())
-
-    def find_stemmed_words(self, search_words: str) -> TitleDict:
-        return self.find_words(search_words, use_unstemmed_terms=False)
-
-    def find_unstemmed_words(self, search_words: str) -> TitleDict:
-        return self.find_words(search_words, use_unstemmed_terms=True)
-
-    def find_all_words(self, search_words: str) -> TitleDict:
-        found = self.find_stemmed_words(search_words)
-        if found:
-            return found
-
-        return self.find_unstemmed_words(search_words)
+    def get_cleaned_alpha_split_terms(self) -> dict[str, dict[str, list[str]]]:
+        return json.loads(self._cleaned_alpha_split_terms_path.read_text())
 
     def find_entities(self, entity_type: str, entity_name: str) -> TitleDict:
         field_name = f"entities_{entity_type}"
@@ -359,7 +330,6 @@ class SearchEngineCreator(SearchEngine):
             comic_page=ID(stored=True),
             content_id=ID(stored=True),
             panel_num=ID(stored=True),
-            content=TEXT(stored=False, lang="en", analyzer=punct_analyzer | StemFilter(lang="en")),
             unstemmed=TEXT(stored=False, lang="en", analyzer=punct_analyzer),
             content_raw=TEXT(stored=True, lang="en"),
             entities_person=KEYWORD(stored=True, commas=True, scorable=True),
@@ -398,23 +368,14 @@ class SearchEngineCreator(SearchEngine):
             all_unstemmed_terms = [t.decode("utf-8") for t in reader.lexicon("unstemmed")]
         with self._unstemmed_terms_path.open("w") as f:
             json.dump(all_unstemmed_terms, f, indent=4)
-        with self._cleaned_unstemmed_terms_path.open("w") as f:
-            cleaned_unstemmed_terms = sorted(
-                self._get_cleaned_unstemmed_terms(
-                    all_unstemmed_terms, entity_names=all_entity_names
-                ),
+        with self._cleaned_terms_path.open("w") as f:
+            cleaned_terms = sorted(
+                self._get_cleaned_terms(all_unstemmed_terms, entity_names=all_entity_names),
                 key=COLLATOR.sort_key,
             )
-            json.dump(cleaned_unstemmed_terms, f, indent=4)
-        with self._cleaned_lemmatized_terms_path.open("w") as f:
-            cleaned_lemmatized_terms = sorted(
-                self._get_cleaned_lemmatized_terms(cleaned_unstemmed_terms), key=COLLATOR.sort_key
-            )
-            json.dump(cleaned_lemmatized_terms, f, indent=4)
-        with self._cleaned_alpha_split_unstemmed_terms_path.open("w") as f:
-            json.dump(self._get_alpha_split_terms(cleaned_unstemmed_terms), f, indent=4)
-        with self._cleaned_alpha_split_lemmatized_terms_path.open("w") as f:
-            json.dump(self._get_alpha_split_terms(cleaned_lemmatized_terms), f, indent=4)
+            json.dump(cleaned_terms, f, indent=4)
+        with self._cleaned_alpha_split_terms_path.open("w") as f:
+            json.dump(self._get_alpha_split_terms(cleaned_terms), f, indent=4)
 
         most_frequent_words = self._get_ai_text_term_frequencies().most_common()
         with self._most_common_unstemmed_terms_path.open("w") as f:
@@ -468,7 +429,6 @@ class SearchEngineCreator(SearchEngine):
                         comic_page=speech_page.comic_page,
                         content_id=group_id,
                         panel_num=str(speech_text.panel_num),
-                        content=speech_text.ai_text,
                         unstemmed=speech_text.ai_text,
                         content_raw=speech_text.raw_ai_text,
                         **entity_kwargs,
@@ -511,11 +471,11 @@ class SearchEngineCreator(SearchEngine):
             return heapq.nsmallest(top_n, term_generator)
 
     @staticmethod
-    def _get_cleaned_unstemmed_terms(
+    def _get_cleaned_terms(
         unstemmed_terms: list[str],
         entity_names: set[str] | None = None,
     ) -> set[str]:
-        cleaned_unstemmed_terms = set()
+        cleaned_terms = set()
         for term in unstemmed_terms:
             if term in TERMS_TO_REMOVE:
                 continue
@@ -532,23 +492,13 @@ class SearchEngineCreator(SearchEngine):
                 cleaned_term = term
 
             if cleaned_term:
-                cleaned_unstemmed_terms.add(cleaned_term)
+                cleaned_terms.add(cleaned_term)
 
         extra_terms = (
             set(BARKSIAN_EXTRA_TERMS | entity_names) if entity_names else set(BARKSIAN_EXTRA_TERMS)
         )
-        existing_lower = {t.lower() for t in cleaned_unstemmed_terms}
+        existing_lower = {t.lower() for t in cleaned_terms}
         normalized_extra = _normalize_entity_names(extra_terms, existing_lower)
-        result = cleaned_unstemmed_terms.union(normalized_extra)
+        result = cleaned_terms.union(normalized_extra)
         suppress_lower = {t.lower() for t in MULTI_WORD_TERMS_TO_SUPPRESS}
         return {t for t in result if t.lower() not in suppress_lower}
-
-    @staticmethod
-    def _get_cleaned_lemmatized_terms(terms: list[str]) -> set[str]:
-        lemmatized_terms = set()
-        for term in terms:
-            lemmatized_term = lemmatize(term, lang="en")
-            if lemmatized_term == term or lemmatized_term not in lemmatized_terms:
-                lemmatized_terms.add(term)
-
-        return lemmatized_terms
