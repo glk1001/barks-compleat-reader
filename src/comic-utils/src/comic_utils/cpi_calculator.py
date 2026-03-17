@@ -48,8 +48,8 @@ def get_adjusted_usd(
         result = cursor.fetchone()
 
         if result is None or result[0] is None:
-            msg = f"No CPI data found for year {year} with series {series_id}"
-            raise ValueError(msg)
+            errmsg = f"No CPI data found for year {year} with series {series_id}"
+            raise ValueError(errmsg)
 
         return result[0]
 

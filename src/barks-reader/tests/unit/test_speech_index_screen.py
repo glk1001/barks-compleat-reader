@@ -11,7 +11,8 @@ import barks_reader.ui.speech_index_screen
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.random_title_images import ImageInfo
-from barks_reader.ui.speech_index_screen import IndexItem, SpeechIndexScreen
+from barks_reader.ui.index_screen import IndexItem
+from barks_reader.ui.speech_index_screen import SpeechIndexScreen
 from kivy.clock import Clock
 
 if TYPE_CHECKING:
@@ -53,8 +54,10 @@ def speech_index_screen(
                 barks_reader.ui.speech_index_screen, "PanelTextureLoader"
             ) as mock_loader_cls,
             patch.object(
-                barks_reader.ui.speech_index_screen, "SpeechBubblesPopup"
-            ) as mock_popup_cls,
+                barks_reader.ui.speech_index_screen,
+                "create_speech_bubble_popup",
+                return_value=(MagicMock(), MagicMock()),
+            ),
             patch.object(SpeechIndexScreen, "_populate_alphabet_menu"),
         ):
             # Setup mock search engine
@@ -79,7 +82,6 @@ def speech_index_screen(
             screen._random_title_images = mock_random_cls.return_value
             screen._texture_loader = mock_loader_cls.return_value
             screen._whoosh_indexer = mock_indexer
-            screen._speech_bubble_browser_popup = mock_popup_cls.return_value
 
             screen.treeview_index_node = MagicMock()
             screen.treeview_index_node.saved_state = {}

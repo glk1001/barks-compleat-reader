@@ -27,9 +27,8 @@ from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_FUN_VIE
 from barks_reader.core.reader_utils import unique_extend
 from barks_reader.core.settings_notifier import settings_notifier
 from barks_reader.ui.index_screen import (
-    PopupKeyboardNav,
-    SpeechBubblesPopup,
     TitleShowSpeechButton,
+    create_speech_bubble_popup,
     show_speech_bubbles_popup,
 )
 from barks_reader.ui.reader_keyboard_nav import (
@@ -172,15 +171,9 @@ class SearchScreen(FloatLayout):
         self._last_activated_result_idx: int | None = None
         self._last_activated_word_sub_focus: str = "title"
 
-        self._speech_bubble_popup = SpeechBubblesPopup(
-            title_font=self._font_manager.speech_bubble_popup_title_font_name,
-            title_align="left",
-            title_color=[0, 1, 1, 1],
-            size_hint=(0.7, 0.4),
-            pos_hint={"x": 0.06, "y": 0.06},
+        self._speech_bubble_popup, self._popup_nav = create_speech_bubble_popup(
+            self._font_manager.speech_bubble_popup_title_font_name,
         )
-        self._speech_bubble_popup.children[0].children[-1].markup = True
-        self._popup_nav = PopupKeyboardNav(self._speech_bubble_popup)
 
     def on_is_visible(self, _instance: Self, value: bool) -> None:
         if not value:
@@ -204,8 +197,9 @@ class SearchScreen(FloatLayout):
 
     # --- Shared Helpers ---
 
+    @staticmethod
     def _populate_title_results(
-        self, layout: BoxLayout, title_strings: list[str], on_select: Callable[[str], None]
+        layout: BoxLayout, title_strings: list[str], on_select: Callable[[str], None]
     ) -> None:
         layout.clear_widgets()
         for i, title_str in enumerate(title_strings):
@@ -346,7 +340,7 @@ class SearchScreen(FloatLayout):
         self._show_tag_titles(tag_str)
 
     def _on_member_tag_selected(self, member_label: str) -> None:
-        # Strip sub-group indicator suffix
+        # Strip subgroup indicator suffix
         member_str = member_label.rstrip(" \u25b8")
         logger.info(f'Tag search: selected member "{member_str}".')
         self._selected_member = member_label
@@ -434,9 +428,8 @@ class SearchScreen(FloatLayout):
         word_result_titles = [BARKS_TITLE_DICT[ct] for ct in found if ct in BARKS_TITLE_DICT]
         self._update_background_from_results(word_result_titles)
 
-    def _build_word_results(
-        self, found: dict[str, TitleInfo]
-    ) -> list[tuple[str, str, str, TitleInfo]]:
+    @staticmethod
+    def _build_word_results(found: dict[str, TitleInfo]) -> list[tuple[str, str, str, TitleInfo]]:
         results: list[tuple[str, str, str, TitleInfo]] = []
         for comic_title, title_speech_info in found.items():
             page_num_list = [page.comic_page for page in title_speech_info.fanta_pages.values()]
@@ -605,6 +598,7 @@ class SearchScreen(FloatLayout):
             "results": self._handle_results_key,
         }
         handler = handlers.get(self._nav_focus_area)
+        # noinspection PyArgumentList
         return handler(key) if handler else False
 
     def _handle_input_key(self, key: int) -> bool:

@@ -26,6 +26,13 @@ if TYPE_CHECKING:
     from barks_reader.core.reader_settings import ReaderSettings
 
 
+class TitleNotInFantaInfoError(Exception):
+    """Exception raised for title not in Fanta info."""
+
+    def __init__(self, title_str: str) -> None:
+        super().__init__(f'Title "{title_str}" not in Fanta info.')
+
+
 class ErrorTypes(Enum):
     FantagraphicsVolumeRootNotSet = auto()
     FantagraphicsVolumeRootNotFound = auto()

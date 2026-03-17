@@ -10,7 +10,7 @@ import barks_reader.ui.speech_index_screen
 import pytest
 from barks_fantagraphics.entity_types import EntityType
 from barks_reader.ui.entity_index_screen import EntityIndexScreen
-from barks_reader.ui.speech_index_screen import IndexItem
+from barks_reader.ui.index_screen import IndexItem
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -45,7 +45,11 @@ def person_index_screen(
             patch.object(barks_reader.ui.speech_index_screen, "SearchEngine") as mock_search_cls,
             patch.object(barks_reader.ui.speech_index_screen, "RandomTitleImages"),
             patch.object(barks_reader.ui.speech_index_screen, "PanelTextureLoader"),
-            patch.object(barks_reader.ui.speech_index_screen, "SpeechBubblesPopup"),
+            patch.object(
+                barks_reader.ui.speech_index_screen,
+                "create_speech_bubble_popup",
+                return_value=(MagicMock(), MagicMock()),
+            ),
             patch.object(EntityIndexScreen, "_populate_alphabet_menu"),
         ):
             mock_indexer = mock_search_cls.return_value
@@ -150,7 +154,11 @@ class TestEntityIndexScreen:
                 ) as mock_search_cls,
                 patch.object(barks_reader.ui.speech_index_screen, "RandomTitleImages"),
                 patch.object(barks_reader.ui.speech_index_screen, "PanelTextureLoader"),
-                patch.object(barks_reader.ui.speech_index_screen, "SpeechBubblesPopup"),
+                patch.object(
+                    barks_reader.ui.speech_index_screen,
+                    "create_speech_bubble_popup",
+                    return_value=(MagicMock(), MagicMock()),
+                ),
                 patch.object(EntityIndexScreen, "_populate_alphabet_menu"),
             ):
                 mock_indexer = mock_search_cls.return_value

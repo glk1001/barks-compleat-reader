@@ -70,9 +70,13 @@ from barks_reader.ui.reader_ui_classes import (
     hide_action_bar,
     show_action_bar,
 )
-from barks_reader.ui.search_screen import SearchScreen
 from barks_reader.ui.tree_view_manager import TreeViewManager
-from barks_reader.ui.user_error_handler import ErrorInfo, ErrorTypes, UserErrorHandler
+from barks_reader.ui.user_error_handler import (
+    ErrorInfo,
+    ErrorTypes,
+    TitleNotInFantaInfoError,
+    UserErrorHandler,
+)
 from barks_reader.ui.view_state_manager import ImageThemesChange, ImageThemesToUse, ViewStateManager
 from barks_reader.ui.view_states import ViewStates
 
@@ -106,13 +110,6 @@ _BOTTOM_FOCUS_HIGHLIGHT_GROUP = "bottom_focus_highlight"
 class _FocusRegion(Enum):
     TREE = auto()
     BOTTOM = auto()
-
-
-class TitleNotInFantaInfoError(Exception):
-    """Exception raised for title not in Fanta info."""
-
-    def __init__(self, title_str: str) -> None:
-        super().__init__(f'Title "{title_str}" not in Fanta info.')
 
 
 class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
@@ -388,6 +385,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def on_touch_down(self, touch: object) -> bool:
         if self._active:
             self._clear_menu_on_touch()
+            # noinspection LongLine,PyUnresolvedReferences
             if (
                 self._focus_region == _FocusRegion.BOTTOM
                 and not self._bottom_base_view_screen.collide_point(*touch.pos)  # ty: ignore[unresolved-attribute]
@@ -396,7 +394,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         return bool(super().on_touch_down(touch))
 
     def _on_key_down(
-        self, _window: Window, key: int, _scancode: int, _codepoint: str, _modifier: list
+        self, _window: object, key: int, _scancode: int, _codepoint: str, _modifier: list
     ) -> bool:
         if self._menu_mode:
             return self._handle_menu_key(key)
@@ -453,6 +451,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             return False
         return True
 
+    # noinspection LongLine
     def _get_active_nav_screen(self) -> IndexScreen | StatisticsScreen | SearchScreen | None:  # noqa: PLR0911
         """Return the currently visible bottom screen that supports keyboard navigation."""
         if self._main_index_screen.is_visible:
@@ -525,6 +524,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._tree_view_manager.activate_node(node)
             Clock.schedule_once(lambda _dt: self._enter_bottom_focus(), 0)
 
+    # noinspection PyTypeChecker
     def _tree_nav_activate(self) -> None:  # noqa: C901, PLR0911
         selected = self._tree_view_screen.get_selected_node()
         if selected is None:
@@ -558,6 +558,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         elif self._search_screen.is_visible:
             Clock.schedule_once(lambda _dt: self._enter_bottom_focus(), 0)
         elif was_closed and selected.nodes:
+            assert isinstance(selected, ButtonTreeViewNode)
             Clock.schedule_once(lambda _dt: self._select_first_child(selected), 0)
 
     def _select_first_child(self, parent: ButtonTreeViewNode) -> None:

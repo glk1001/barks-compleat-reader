@@ -3,7 +3,6 @@ from __future__ import annotations
 import random
 import textwrap
 from collections import defaultdict
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast, override
 
 from barks_fantagraphics.barks_titles import (
@@ -36,13 +35,13 @@ from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 from barks_reader.ui.index_screen import (
     INDEX_NAV_FOCUS_GROUP,
     MAX_TITLE_AND_PAGES_LEN,
+    IndexItem,
     IndexItemButton,
     IndexMenuButton,
     IndexScreen,
-    PopupKeyboardNav,
-    SpeechBubblesPopup,
     TitleShowSpeechButton,
     _IndexNavPanel,
+    create_speech_bubble_popup,
     show_speech_bubbles_popup,
 )
 from barks_reader.ui.panel_texture_loader import PanelTextureLoader
@@ -59,8 +58,6 @@ from barks_reader.ui.reader_keyboard_nav import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from barks_fantagraphics.whoosh_search_engine import TitleDict
 
     # noinspection PyProtectedMember
@@ -114,13 +111,6 @@ class _SpeechIndexTitleItemButton(Button):
             )
 
 
-@dataclass(frozen=True, slots=True)
-class IndexItem:
-    id: str | Titles
-    display_text: str
-    page_to_goto: str = ""
-
-
 class SpeechIndexScreen(IndexScreen):
     """A widget that displays an A-Z index of speech bubble texts."""
 
@@ -149,12 +139,10 @@ class SpeechIndexScreen(IndexScreen):
         self._texture_loader = PanelTextureLoader(
             reader_settings.file_paths.barks_panels_are_encrypted
         )
-        self._index_image_change_event = None
         self._found_words_cache: dict[str, TitleDict] = {}
 
         self._open_tag_item: IndexItem | None = None
         self._item_index: dict[str, list[IndexItem]] = defaultdict(list)
-        self.on_goto_title: Callable[[ImageInfo, str], None] | None = None
 
         self._cleaned_alpha_split_terms = self._whoosh_indexer.get_cleaned_alpha_split_terms()
         self._prefix_buttons: dict[str, Button] = {}
@@ -163,15 +151,9 @@ class SpeechIndexScreen(IndexScreen):
 
         self._populate_alphabet_menu()
 
-        self._speech_bubble_browser_popup = SpeechBubblesPopup(
-            title_font=self._font_manager.speech_bubble_popup_title_font_name,
-            title_align="left",
-            title_color=[0, 1, 1, 1],
-            size_hint=(0.7, 0.4),
-            pos_hint={"x": 0.06, "y": 0.06},
+        self._speech_bubble_browser_popup, self._popup_nav = create_speech_bubble_popup(
+            self._font_manager.speech_bubble_popup_title_font_name,
         )
-        self._speech_bubble_browser_popup.children[0].children[-1].markup = True
-        self._popup_nav = PopupKeyboardNav(self._speech_bubble_browser_popup)
 
     def _find_words(self, index_terms: str) -> TitleDict:
         return self._whoosh_indexer.find_words(index_terms)
@@ -422,11 +404,6 @@ class SpeechIndexScreen(IndexScreen):
         self._index_image_change_event = Clock.schedule_interval(
             lambda _dt: self._next_background_image(), INDEX_IMAGE_CHANGE_SECONDS
         )
-
-    def _cancel_index_image_change_events(self) -> None:
-        if self._index_image_change_event:
-            self._index_image_change_event.cancel()
-            self._index_image_change_event = None
 
     # noinspection PyNoneFunctionAssignment
     def _next_background_image(self) -> None:
@@ -721,25 +698,6 @@ class SpeechIndexScreen(IndexScreen):
         self._open_tag_button = button
         self._open_tag_item = item
         Clock.schedule_once(self._add_title_sub_items, 0)
-
-    def _handle_title(self, button: Button, item: IndexItem) -> None:
-        assert type(item.id) is Titles
-        logger.info(f'Handling title: "{item.id.name}".')
-        image_info = ImageInfo(from_title=item.id, filename=None)
-
-        def set_background_color_to_selected() -> None:
-            button.background_color = self.index_theme.ITEM_BG_SELECTED
-
-        def goto_title() -> None:
-            assert self.on_goto_title is not None
-            self.on_goto_title(image_info, item.page_to_goto)
-
-        def reset_background_color() -> None:
-            button.background_color = self.index_theme.ITEM_BG
-
-        Clock.schedule_once(lambda _dt: set_background_color_to_selected(), 0)
-        Clock.schedule_once(lambda _dt: goto_title(), 0.01)
-        Clock.schedule_once(lambda _dt: reset_background_color(), 0.1)
 
     def _show_title_speech_bubbles(
         self, title_str: str, index_terms: str, title_speech_info: TitleInfo

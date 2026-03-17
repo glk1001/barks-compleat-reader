@@ -3,7 +3,8 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING, override
 
-from barks_reader.ui.speech_index_screen import IndexItem, SpeechIndexScreen, shorten_if_necessary
+from barks_reader.ui.index_screen import IndexItem
+from barks_reader.ui.speech_index_screen import SpeechIndexScreen, shorten_if_necessary
 
 if TYPE_CHECKING:
     from barks_fantagraphics.entity_types import EntityType

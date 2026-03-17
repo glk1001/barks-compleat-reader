@@ -709,6 +709,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self.comic_book_reader.dismiss_goto_page_dropdown()
 
     def _scroll_to_dropdown_button(self, btn: object) -> None:
+        assert isinstance(btn, Button)
         self.comic_book_reader.scroll_goto_page_to(btn)
 
     def _open_goto_page_for_keyboard(self) -> None:

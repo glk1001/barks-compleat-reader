@@ -9,7 +9,8 @@ import barks_reader.ui.index_screen
 import barks_reader.ui.main_index_screen
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_reader.ui.main_index_screen import IndexItem, MainIndexScreen
+from barks_reader.ui.index_screen import IndexItem
+from barks_reader.ui.main_index_screen import MainIndexScreen
 from kivy.clock import Clock
 
 if TYPE_CHECKING:

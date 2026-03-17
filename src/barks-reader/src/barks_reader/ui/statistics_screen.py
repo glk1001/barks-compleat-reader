@@ -139,7 +139,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         super()._enter_dropdown_nav(initial_idx)
         logger.debug("StatisticsScreen: entered dropdown nav.")
 
-    def _on_dropdown_dismissed(self, _dropdown: object) -> None:  # type: ignore[override]
+    def _on_dropdown_dismissed(self) -> None:
         """Override to match Kivy's on_dismiss callback signature (no ActionBarNavMixin)."""
         if self._dropdown_nav_mode:
             self._exit_dropdown_nav()

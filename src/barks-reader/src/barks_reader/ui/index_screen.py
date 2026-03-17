@@ -3,6 +3,7 @@ from __future__ import annotations
 import string
 import textwrap
 from abc import abstractmethod
+from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Self
@@ -26,6 +27,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from loguru import logger
 
+from barks_reader.core.random_title_images import ImageInfo
 from barks_reader.core.reader_formatter import mark_phrase_in_text
 from barks_reader.ui.reader_keyboard_nav import (
     KEY_DOWN,
@@ -41,15 +43,21 @@ from barks_reader.ui.reader_keyboard_nav import (
     clear_focus_in_list,
     draw_focus_highlight,
 )
+from barks_reader.ui.user_error_handler import (
+    ErrorTypes,
+    TitleNotInFantaInfoError,
+    get_volume_not_available_error_info,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from barks_fantagraphics.barks_tags import TagGroups, Tags
     from barks_fantagraphics.whoosh_search_engine import TitleInfo
     from kivy.uix.widget import Widget
 
-    from barks_reader.core.random_title_images import ImageInfo
     from barks_reader.ui.reader_ui_classes import MainTreeViewNode
+    from barks_reader.ui.user_error_handler import UserErrorHandler
 
 MAX_TITLE_AND_PAGES_LEN = 34 + 8  # len(", 11,...") == 8
 
@@ -90,6 +98,13 @@ class TitleShowSpeechButton(Button):
 
 class SpeechBubblesPopup(Popup):
     """A custom popup for showing speech bubbles, styled in the .kv file."""
+
+
+@dataclass(frozen=True, slots=True)
+class IndexItem:
+    id: str | Titles | Tags | TagGroups
+    display_text: str
+    page_to_goto: str = ""
 
 
 class TextBoxWithTitleAndBorder(BoxLayout):
@@ -224,6 +239,7 @@ class PopupKeyboardNav:
 
     def _clear_focus(self) -> None:
         for entry in self._get_entries():
+            # noinspection LongLine
             entry.canvas.before.remove_group(POPUP_NAV_FOCUS_GROUP)  # ty: ignore[unresolved-attribute]
 
     def _get_entries(self) -> list[TextBoxWithTitleAndBorder]:
@@ -237,6 +253,22 @@ class PopupKeyboardNav:
         sv = self._popup.content
         if isinstance(sv, ScrollView):
             sv.scroll_y = max(0.0, min(1.0, sv.scroll_y - direction * _POPUP_SCROLL_STEP))
+
+
+def create_speech_bubble_popup(
+    font_name: str,
+) -> tuple[SpeechBubblesPopup, PopupKeyboardNav]:
+    """Create a speech bubbles popup and its keyboard nav helper."""
+    popup = SpeechBubblesPopup(
+        title_font=font_name,
+        title_align="left",
+        title_color=[0, 1, 1, 1],
+        size_hint=(0.7, 0.4),
+        pos_hint={"x": 0.06, "y": 0.06},
+    )
+    popup.children[0].children[-1].markup = True
+    nav = PopupKeyboardNav(popup)
+    return popup, nav
 
 
 class Theme:
@@ -272,7 +304,10 @@ class IndexScreen(FloatLayout):
         App.get_running_app().index_theme = self.index_theme  # Make theme accessible globally in kv
 
         self._current_image_info: ImageInfo | None = None
+        self._index_image_change_event = None
+        self._user_error_handler: UserErrorHandler | None = None
         self.on_goto_background_title_func: Callable[[ImageInfo], None] | None = None
+        self.on_goto_title: Callable[[ImageInfo, str], None] | None = None
 
         self.treeview_index_node: MainTreeViewNode | None = None
 
@@ -296,6 +331,33 @@ class IndexScreen(FloatLayout):
         if not self._current_image_info:
             return
         self.on_goto_background_title_func(self._current_image_info)
+
+    def _handle_title(self, button: Button, item: IndexItem) -> None:
+        assert type(item.id) is Titles
+        logger.info(f'Handling title: "{item.id.name}".')
+        image_info = ImageInfo(from_title=item.id, filename=None)
+
+        def set_background_color_to_selected() -> None:
+            button.background_color = self.index_theme.ITEM_BG_SELECTED
+
+        def goto_title() -> None:
+            assert self.on_goto_title is not None
+            try:
+                self.on_goto_title(image_info, item.page_to_goto)
+            except TitleNotInFantaInfoError as e:
+                logger.error(e)
+                assert self._user_error_handler is not None
+                self._user_error_handler.handle_error(
+                    ErrorTypes.ArchiveVolumeNotAvailable,
+                    get_volume_not_available_error_info(image_info),
+                )
+
+        def reset_background_color() -> None:
+            button.background_color = self.index_theme.ITEM_BG
+
+        Clock.schedule_once(lambda _dt: set_background_color_to_selected(), 0)
+        Clock.schedule_once(lambda _dt: goto_title(), 0.01)
+        Clock.schedule_once(lambda _dt: reset_background_color(), 0.1)
 
     # --- Keyboard navigation public API ---
 
@@ -356,7 +418,8 @@ class IndexScreen(FloatLayout):
         elif key == KEY_ESCAPE:
             callback = self._nav_on_exit_request
             self.exit_nav_focus()
-            if callback:
+            if callback is not None:
+                # noinspection PyCallingNonCallable
                 callback()
         else:
             return False
@@ -589,9 +652,10 @@ class IndexScreen(FloatLayout):
     def _create_index_button(self, item: Any) -> IndexItemButton:  # noqa: ANN401
         pass
 
-    @abstractmethod
     def _cancel_index_image_change_events(self) -> None:
-        pass
+        if self._index_image_change_event:
+            self._index_image_change_event.cancel()
+            self._index_image_change_event = None
 
     @abstractmethod
     def _get_items_for_letter(self, first_letter: str) -> list:

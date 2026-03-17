@@ -145,6 +145,7 @@ class TestReaderScreenManager:
         # noinspection PyProtectedMember
         mock_sm = reader_screen_manager._screen_manager
         assert mock_sm.current == DOCUMENT_READER_SCREEN
+        # noinspection PyUnresolvedReferences
         mock_reader_screens.document_reader_screen.open_document.assert_called_with(
             doc_dir, "Test Title"
         )

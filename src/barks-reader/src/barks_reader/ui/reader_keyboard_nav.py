@@ -204,7 +204,9 @@ class DropdownNavMixin:
     def _on_dropdown_dismissed(self) -> None:
         if self._dropdown_nav_mode:
             self._exit_dropdown_nav()
+            # noinspection PyUnresolvedReferences
             if self._menu_mode:  # ty: ignore[unresolved-attribute]
+                # noinspection PyUnresolvedReferences
                 self._exit_menu_mode()  # ty: ignore[unresolved-attribute]
 
     # --- Key handling ---
@@ -212,6 +214,7 @@ class DropdownNavMixin:
     def _handle_menu_key(self, key: int) -> bool:
         if self._dropdown_nav_mode:
             return self._handle_dropdown_key(key)
+        # noinspection PyProtectedMember
         return super()._handle_menu_key(key)  # type: ignore[misc]
 
     def _handle_dropdown_key(self, key: int) -> bool:

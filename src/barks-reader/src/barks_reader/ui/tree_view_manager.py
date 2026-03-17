@@ -47,7 +47,7 @@ if TYPE_CHECKING:
 
 UpdateTitleCallable = Callable[[str], bool]
 ReadArticleCallable = Callable[[Titles, ViewStates], None]
-OpenDocumentReaderCallable = Callable[[Path, str, "ViewStates | None"], None]
+OpenDocumentReaderCallable = Callable[[Path, str, ViewStates | None], None]
 ScrollToNodeCallable = Callable[[TreeViewNode], None]
 SetTagGotoPageCheckboxCallable = Callable[[Tags | TagGroups, str], None]
 
@@ -92,6 +92,8 @@ class TreeViewManager:
         self._allow_view_state_change = True
         self._search_node: MainTreeViewNode | None = None
         self._speech_words_node: ButtonTreeViewNode | None = None
+
+        self._statistics_node: ButtonTreeViewNode | None = None
 
         assert self._update_title_func
         assert self._read_article_func

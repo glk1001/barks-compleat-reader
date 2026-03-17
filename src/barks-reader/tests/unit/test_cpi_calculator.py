@@ -48,6 +48,6 @@ class TestGetAdjustedUsd:
         """
         bogus = Path("/nonexistent/path/cpi.db")
         # This should raise FileNotFoundError but doesn't due to the bug.
-        # Instead it raises an OperationalError from sqlite3 trying to open the file.
+        # Instead, it raises an OperationalError from sqlite3 trying to open the file.
         with pytest.raises(sqlite3.OperationalError):
             get_adjusted_usd(100.0, 1945, 2025, bogus)

@@ -30,25 +30,18 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from loguru import logger
 
-from barks_reader.core.random_title_images import ImageInfo, RandomTitleImages
+from barks_reader.core.random_title_images import RandomTitleImages
 from barks_reader.core.reader_utils import get_concat_page_nums_str
-from barks_reader.ui.index_screen import IndexItemButton, IndexScreen
-from barks_reader.ui.main_screen import TitleNotInFantaInfoError
+from barks_reader.ui.index_screen import IndexItem, IndexItemButton, IndexScreen
 from barks_reader.ui.panel_texture_loader import PanelTextureLoader
-from barks_reader.ui.user_error_handler import (
-    ErrorTypes,
-    UserErrorHandler,
-    get_volume_not_available_error_info,
-)
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     # noinspection PyProtectedMember
     from kivy.core.image import Texture
 
     from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.ui.font_manager import FontManager
+    from barks_reader.ui.user_error_handler import UserErrorHandler
 
 INDEX_ITEM_ROW_HEIGHT = dp(25)
 INDEX_IMAGE_CHANGE_SECONDS = 5
@@ -111,13 +104,6 @@ class TitleHierarchy:
         return title_str
 
 
-@dataclass(frozen=True, slots=True)
-class IndexItem:
-    id: Titles | Tags | TagGroups
-    display_text: str
-    page_to_goto: str = ""
-
-
 class MainIndexScreen(IndexScreen):
     """A widget that displays an A-Z index of comic titles and tags."""
 
@@ -141,13 +127,11 @@ class MainIndexScreen(IndexScreen):
         self._image_loader = PanelTextureLoader(
             reader_settings.file_paths.barks_panels_are_encrypted
         )
-        self._index_image_change_event = None
         self._cached_all_titles_for_letter: list[FantaComicBookInfo] = []
         self._cached_hierarchies: dict[Titles, TitleHierarchy] = {}
 
         self._open_tag_item: IndexItem | None = None
         self._item_index: dict[str, list[IndexItem]] = defaultdict(list)
-        self.on_goto_title: Callable[[ImageInfo, str], None] | None = None
 
         self._build_index()
         self._populate_alphabet_menu()
@@ -210,11 +194,6 @@ class MainIndexScreen(IndexScreen):
         self._index_image_change_event = Clock.schedule_interval(
             lambda _dt: self._next_background_image(), INDEX_IMAGE_CHANGE_SECONDS
         )
-
-    def _cancel_index_image_change_events(self) -> None:
-        if self._index_image_change_event:
-            self._index_image_change_event.cancel()
-            self._index_image_change_event = None
 
     # noinspection PyNoneFunctionAssignment
     def _next_background_image(self) -> None:
@@ -412,33 +391,6 @@ class MainIndexScreen(IndexScreen):
             self._handle_tag(button, item)
         elif type(item.id) is TagGroups:
             self._handle_tag_group(button, item)
-
-    def _handle_title(self, button: Button, item: IndexItem) -> None:
-        logger.info(f'Handling title: "{item.id.name}".')
-
-        assert type(item.id) is Titles
-        image_info = ImageInfo(from_title=item.id, filename=None)
-
-        def set_background_color_to_selected() -> None:
-            button.background_color = self.index_theme.ITEM_BG_SELECTED
-
-        def goto_title() -> None:
-            assert self.on_goto_title is not None
-            try:
-                self.on_goto_title(image_info, item.page_to_goto)
-            except TitleNotInFantaInfoError as e:
-                logger.error(e)
-                self._user_error_handler.handle_error(
-                    ErrorTypes.ArchiveVolumeNotAvailable,
-                    get_volume_not_available_error_info(image_info),
-                )
-
-        def reset_background_color() -> None:
-            button.background_color = self.index_theme.ITEM_BG
-
-        Clock.schedule_once(lambda _dt: set_background_color_to_selected(), 0)
-        Clock.schedule_once(lambda _dt: goto_title(), 0.01)
-        Clock.schedule_once(lambda _dt: reset_background_color(), 0.1)
 
     def _handle_tag(self, button: Button, item: IndexItem) -> None:
         assert type(item.id) is Tags

@@ -194,7 +194,7 @@ class TestMainScreen:
             main_screen._goto_chrono_title(image_info)
 
             # The back node should be restored so pressing Back returns to the search node.
-            # noinspection PyProtectedMember
+            # noinspection PyProtectedMember,LongLine
             main_screen._tree_view_screen.ids.reader_tree_view.set_back_node.assert_called_once_with(
                 mock_search_node,
             )
