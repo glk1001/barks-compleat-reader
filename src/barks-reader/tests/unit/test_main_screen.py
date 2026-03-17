@@ -78,6 +78,7 @@ def main_screen(
             patch.object(barks_reader.ui.main_screen, "BackgroundViews"),
             patch.object(barks_reader.ui.main_screen, "ViewStateManager"),
             patch.object(barks_reader.ui.main_screen, "TreeViewManager"),
+            patch.object(barks_reader.ui.main_screen, "MainScreenNavigation"),
             patch.object(barks_reader.ui.main_screen, "AppInitializer"),
             patch.object(barks_reader.ui.main_screen, "Factory"),
             patch.object(barks_reader.ui.main_screen, "Screen"),
