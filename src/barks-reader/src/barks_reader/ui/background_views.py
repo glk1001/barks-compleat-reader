@@ -25,6 +25,7 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_USA,
     SERIES_USS,
     FantaComicBookInfo,
+    get_fanta_info,
 )
 from kivy.clock import Clock
 from loguru import logger
@@ -226,16 +227,8 @@ class BackgroundViews:
         self._cached_fun_titles = self._get_fun_image_titles()
 
     @staticmethod
-    def _get_fanta_info(title: Titles) -> None | FantaComicBookInfo:
-        # TODO: Very roundabout way to get fanta info
-        # TODO: And duplicated in main_screen
-        title_str = BARKS_TITLES[title]
-        if title_str not in ALL_FANTA_COMIC_BOOK_INFO:
-            return None
-        return ALL_FANTA_COMIC_BOOK_INFO[title_str]
-
-    def _get_fanta_title_list(self, titles: list[Titles]) -> list[FantaComicBookInfo]:
-        fanta_title_list = [self._get_fanta_info(title) for title in titles]
+    def _get_fanta_title_list(titles: list[Titles]) -> list[FantaComicBookInfo]:
+        fanta_title_list = [get_fanta_info(title) for title in titles]
         return [title for title in fanta_title_list if title]
 
     def get_view_state(self) -> ViewStates:

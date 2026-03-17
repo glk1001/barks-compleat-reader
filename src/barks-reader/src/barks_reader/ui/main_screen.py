@@ -17,6 +17,7 @@ from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
     SERIES_EXTRAS,
     FantaComicBookInfo,
+    get_fanta_info,
 )
 from kivy.app import App
 from kivy.clock import Clock
@@ -909,12 +910,11 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
     @staticmethod
     def _get_fanta_info(title: Titles) -> FantaComicBookInfo:
-        # TODO: Very roundabout way to get fanta info
-        title_str = BARKS_TITLES[title]
-        if title_str not in ALL_FANTA_COMIC_BOOK_INFO:
-            raise TitleNotInFantaInfoError(title_str)
+        fanta_info = get_fanta_info(title)
+        if fanta_info is None:
+            raise TitleNotInFantaInfoError(BARKS_TITLES[title])
 
-        return ALL_FANTA_COMIC_BOOK_INFO[title_str]
+        return fanta_info
 
     def _title_row_selected(
         self,

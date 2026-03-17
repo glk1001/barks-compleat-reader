@@ -13,14 +13,12 @@ from barks_fantagraphics.barks_tags import (
     special_case_personal_favourites_tag_update,
 )
 from barks_fantagraphics.barks_titles import (
-    BARKS_TITLES,
     US_1_FC_ISSUE_NUM,
     US_2_FC_ISSUE_NUM,
     US_3_FC_ISSUE_NUM,
     Titles,
 )
 from barks_fantagraphics.fanta_comics_info import (
-    ALL_FANTA_COMIC_BOOK_INFO,
     SERIES_CS,
     SERIES_DDA,
     SERIES_DDS,
@@ -29,6 +27,7 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_USA,
     SERIES_USS,
     FantaComicBookInfo,
+    get_fanta_info,
     get_num_comic_book_titles,
 )
 from comic_utils.timing import Timing
@@ -350,10 +349,8 @@ class ReaderTreeBuilder:
         self, tree: ReaderTreeView, titles: list[Titles], parent_node: ButtonTreeViewNode
     ) -> Generator[None]:
         for i, title in enumerate(titles):
-            # TODO: Very roundabout way to get fanta info
-            title_str = BARKS_TITLES[title]
-            if title_str in ALL_FANTA_COMIC_BOOK_INFO:
-                title_info = ALL_FANTA_COMIC_BOOK_INFO[title_str]
+            title_info = get_fanta_info(title)
+            if title_info is not None:
                 node = TitleTreeViewNode.create_from_fanta_info(
                     title_info, self._tree_view_manager.on_title_row_button_pressed
                 )

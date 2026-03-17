@@ -752,6 +752,12 @@ def get_filtered_title_lists(
 ALL_FANTA_COMIC_BOOK_INFO: FantaComicBookInfoDict = _get_all_fanta_comic_book_info()
 
 
+def get_fanta_info(title: Titles) -> FantaComicBookInfo | None:
+    """Look up the FantaComicBookInfo for a given title enum, or return None if not found."""
+    title_str = BARKS_TITLES[title]
+    return ALL_FANTA_COMIC_BOOK_INFO.get(title_str)
+
+
 def get_num_comic_book_titles(year_range: tuple[int, int]) -> int:
     return len(
         [
