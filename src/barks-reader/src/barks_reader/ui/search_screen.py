@@ -400,7 +400,7 @@ class SearchScreen(FloatLayout):
         else:
             candidates = [w for group in letter_group.values() for w in group]
 
-        matching = [w for w in candidates if w.startswith(query)]
+        matching = [w for w in candidates if w.lower().startswith(query)]
         matching.sort()
         return matching
 
