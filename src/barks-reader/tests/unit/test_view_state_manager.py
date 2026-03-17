@@ -32,6 +32,8 @@ def mock_dependencies() -> dict[str, MagicMock]:
         "fun_image_view_screen": MagicMock(),
         "main_index_screen": MagicMock(),
         "speech_index_screen": MagicMock(),
+        "persons_index_screen": MagicMock(),
+        "locations_index_screen": MagicMock(),
         "statistics_screen": MagicMock(),
         "search_screen": MagicMock(),
         "on_view_state_changed_func": MagicMock(),
@@ -66,6 +68,8 @@ class TestViewStateManager:
         assert mock_dependencies["fun_image_view_screen"].is_visible is False
         assert mock_dependencies["main_index_screen"].is_visible is False
         assert mock_dependencies["speech_index_screen"].is_visible is False
+        assert mock_dependencies["persons_index_screen"].is_visible is False
+        assert mock_dependencies["locations_index_screen"].is_visible is False
         assert mock_dependencies["statistics_screen"].is_visible is False
         assert mock_dependencies["search_screen"].is_visible is False
 
@@ -180,6 +184,8 @@ class TestViewStateManager:
         bg_views.get_bottom_view_title_opacity.return_value = 0.0
         bg_views.get_main_index_view_opacity.return_value = 0.0
         bg_views.get_speech_index_view_opacity.return_value = 0.0
+        bg_views.get_persons_index_view_opacity.return_value = 0.0
+        bg_views.get_locations_index_view_opacity.return_value = 0.0
         bg_views.get_statistics_view_opacity.return_value = 0.0
         bg_views.get_search_screen_opacity.return_value = 0.0
 
@@ -209,6 +215,8 @@ class TestViewStateManager:
         bg_views.get_bottom_view_title_opacity.return_value = 0.0
         bg_views.get_main_index_view_opacity.return_value = 0.0
         bg_views.get_speech_index_view_opacity.return_value = 0.0
+        bg_views.get_persons_index_view_opacity.return_value = 0.0
+        bg_views.get_locations_index_view_opacity.return_value = 0.0
         bg_views.get_statistics_view_opacity.return_value = 0.0
         bg_views.get_search_screen_opacity.return_value = 0.0
 
@@ -264,6 +272,8 @@ class TestViewStateManager:
         bg_views.get_bottom_view_fun_image_opacity.return_value = 0.0
         bg_views.get_main_index_view_opacity.return_value = 0.0
         bg_views.get_speech_index_view_opacity.return_value = 0.0
+        bg_views.get_persons_index_view_opacity.return_value = 0.0
+        bg_views.get_locations_index_view_opacity.return_value = 0.0
         bg_views.get_statistics_view_opacity.return_value = 0.0
         bg_views.get_search_screen_opacity.return_value = 0.0
         bg_views.get_bottom_view_title_image_color.return_value = (0, 0, 1, 1)
@@ -283,6 +293,8 @@ class TestViewStateManager:
         bg_views = mock_dependencies["background_views"]
         bg_views.get_main_index_view_opacity.return_value = 1.0
         bg_views.get_speech_index_view_opacity.return_value = 0.0
+        bg_views.get_persons_index_view_opacity.return_value = 0.0
+        bg_views.get_locations_index_view_opacity.return_value = 0.0
         bg_views.get_bottom_view_fun_image_opacity.return_value = 0.0
         bg_views.get_bottom_view_title_opacity.return_value = 0.0
         bg_views.get_statistics_view_opacity.return_value = 0.0
@@ -293,6 +305,8 @@ class TestViewStateManager:
 
         assert mock_dependencies["main_index_screen"].is_visible is True
         assert mock_dependencies["speech_index_screen"].is_visible is False
+        assert mock_dependencies["persons_index_screen"].is_visible is False
+        assert mock_dependencies["locations_index_screen"].is_visible is False
 
     def test_load_new_fun_view_image(
         self, view_state_manager: ViewStateManager, mock_dependencies: dict[str, MagicMock]

@@ -87,6 +87,7 @@ if TYPE_CHECKING:
     from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
     from barks_reader.ui.comic_book_reader import ComicBookReaderScreen
+    from barks_reader.ui.entity_index_screen import EntityIndexScreen
     from barks_reader.ui.font_manager import FontManager
     from barks_reader.ui.fun_image_view_screen import FunImageViewScreen
     from barks_reader.ui.index_screen import IndexScreen
@@ -134,6 +135,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         fun_image_view_screen: FunImageViewScreen,
         main_index_screen: MainIndexScreen,
         speech_index_screen: SpeechIndexScreen,
+        persons_index_screen: EntityIndexScreen,
+        locations_index_screen: EntityIndexScreen,
         statistics_screen: StatisticsScreen,
         search_screen: SearchScreen,
         font_manager: FontManager,
@@ -161,6 +164,10 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._main_index_screen.on_goto_title = self._goto_title_with_page_num
         self._speech_index_screen = speech_index_screen
         self._speech_index_screen.on_goto_title = self._goto_title_with_page_num
+        self._persons_index_screen = persons_index_screen
+        self._persons_index_screen.on_goto_title = self._goto_title_with_page_num
+        self._locations_index_screen = locations_index_screen
+        self._locations_index_screen.on_goto_title = self._goto_title_with_page_num
         self._statistics_screen = statistics_screen
         self._search_screen = search_screen
         self._search_screen.on_goto_title = self._goto_search_title
@@ -173,6 +180,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._bottom_base_view_screen.add_widget(self._fun_image_view_screen)
         self._bottom_base_view_screen.add_widget(self._main_index_screen)
         self._bottom_base_view_screen.add_widget(self._speech_index_screen)
+        self._bottom_base_view_screen.add_widget(self._persons_index_screen)
+        self._bottom_base_view_screen.add_widget(self._locations_index_screen)
         self._bottom_base_view_screen.add_widget(self._statistics_screen)
         self._bottom_base_view_screen.add_widget(self._search_screen)
         self.ids.main_layout.add_widget(self._bottom_base_view_screen)
@@ -228,6 +237,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._fun_image_view_screen,
             self._main_index_screen,
             self._speech_index_screen,
+            self._persons_index_screen,
+            self._locations_index_screen,
             self._statistics_screen,
             self._search_screen,
             self._on_view_state_changed,
@@ -239,6 +250,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._tree_view_screen,
             self._main_index_screen,
             self._speech_index_screen,
+            self._persons_index_screen,
+            self._locations_index_screen,
             self._update_title_from_tree_view,
             self._read_article_as_comic_book,
             self._open_document_reader,
@@ -315,6 +328,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         self._main_index_screen.on_goto_background_title_func = self._goto_chrono_title
         self._speech_index_screen.on_goto_background_title_func = self._goto_chrono_title
+        self._persons_index_screen.on_goto_background_title_func = self._goto_chrono_title
+        self._locations_index_screen.on_goto_background_title_func = self._goto_chrono_title
         self._search_screen.on_goto_background_title_func = self._goto_chrono_title
         self._search_screen.on_search_results_title_changed = (
             self._view_state_manager.update_search_background
@@ -438,12 +453,16 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             return False
         return True
 
-    def _get_active_nav_screen(self) -> IndexScreen | StatisticsScreen | SearchScreen | None:
+    def _get_active_nav_screen(self) -> IndexScreen | StatisticsScreen | SearchScreen | None:  # noqa: PLR0911
         """Return the currently visible bottom screen that supports keyboard navigation."""
         if self._main_index_screen.is_visible:
             return self._main_index_screen
         if self._speech_index_screen.is_visible:
             return self._speech_index_screen
+        if self._persons_index_screen.is_visible:
+            return self._persons_index_screen
+        if self._locations_index_screen.is_visible:
+            return self._locations_index_screen
         if self._statistics_screen.is_visible:
             return self._statistics_screen
         if self._search_screen.is_visible:
@@ -456,6 +475,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             or self._bottom_title_view_screen.is_visible
             or self._main_index_screen.is_visible
             or self._speech_index_screen.is_visible
+            or self._persons_index_screen.is_visible
+            or self._locations_index_screen.is_visible
             or self._statistics_screen.is_visible
             or self._search_screen.is_visible
         )
@@ -504,7 +525,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._tree_view_manager.activate_node(node)
             Clock.schedule_once(lambda _dt: self._enter_bottom_focus(), 0)
 
-    def _tree_nav_activate(self) -> None:
+    def _tree_nav_activate(self) -> None:  # noqa: C901
         selected = self._tree_view_screen.get_selected_node()
         if selected is None:
             return
@@ -513,6 +534,12 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             return
         if selected is self._speech_index_screen.treeview_index_node:
             self._enter_index_bottom_focus(self._speech_index_screen, selected)
+            return
+        if selected is self._persons_index_screen.treeview_index_node:
+            self._enter_index_bottom_focus(self._persons_index_screen, selected)
+            return
+        if selected is self._locations_index_screen.treeview_index_node:
+            self._enter_index_bottom_focus(self._locations_index_screen, selected)
             return
         if selected is self._tree_view_manager.statistics_node:
             if self._statistics_screen.is_visible:
@@ -619,7 +646,12 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._focus_region = _FocusRegion.BOTTOM
             self._update_bottom_focus_highlight()
             self._search_screen.enter_nav_focus_at_last_result(self._exit_bottom_focus)
-        elif self._main_index_screen.is_visible or self._speech_index_screen.is_visible:
+        elif (
+            self._main_index_screen.is_visible
+            or self._speech_index_screen.is_visible
+            or self._persons_index_screen.is_visible
+            or self._locations_index_screen.is_visible
+        ):
             self._enter_bottom_focus()
 
     def on_action_bar_collapse(self) -> None:

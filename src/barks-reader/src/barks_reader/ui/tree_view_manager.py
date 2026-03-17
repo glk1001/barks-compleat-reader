@@ -38,6 +38,7 @@ if TYPE_CHECKING:
 
     from barks_reader.core.system_file_paths import SystemFilePaths
     from barks_reader.ui.background_views import BackgroundViews
+    from barks_reader.ui.entity_index_screen import EntityIndexScreen
     from barks_reader.ui.main_index_screen import MainIndexScreen
     from barks_reader.ui.reader_ui_classes import ReaderTreeView
     from barks_reader.ui.speech_index_screen import SpeechIndexScreen
@@ -61,6 +62,8 @@ class TreeViewManager:
         tree_view_screen: TreeViewScreen,
         main_index_screen: MainIndexScreen,
         speech_index_screen: SpeechIndexScreen,
+        persons_index_screen: EntityIndexScreen,
+        locations_index_screen: EntityIndexScreen,
         update_title_func: UpdateTitleCallable,
         read_article_func: ReadArticleCallable,
         open_document_reader_func: OpenDocumentReaderCallable,
@@ -73,6 +76,8 @@ class TreeViewManager:
         self._tree_view_screen = tree_view_screen
         self._main_index_screen = main_index_screen
         self._speech_index_screen = speech_index_screen
+        self._persons_index_screen = persons_index_screen
+        self._locations_index_screen = locations_index_screen
 
         self._tree_view_screen.ids.reader_tree_view.bind(on_node_expand=self.on_node_expanded)
         self._tree_view_screen.ids.reader_tree_view.bind(on_node_collapse=self.on_node_collapsed)
@@ -86,6 +91,7 @@ class TreeViewManager:
 
         self._allow_view_state_change = True
         self._search_node: MainTreeViewNode | None = None
+        self._speech_words_node: ButtonTreeViewNode | None = None
 
         assert self._update_title_func
         assert self._read_article_func
@@ -391,6 +397,33 @@ class TreeViewManager:
     def on_speech_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
         logger.info("Speech index node pressed.")
         self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_SPEECH_NODE)
+        # Auto-select the Words child node in the tree view to match the default bottom view.
+        if self._speech_words_node is not None:
+            self._tree_view_screen.select_node(self._speech_words_node)
+
+    def on_speech_words_node_created(self, node: MainTreeViewNode) -> None:
+        # Words child shares the same speech index screen's treeview node.
+        self._speech_words_node = node
+
+    def on_speech_words_node_pressed(self, _node: ButtonTreeViewNode) -> None:
+        logger.info("Speech Words node pressed.")
+        self.disallow_view_state_change()
+        self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_SPEECH_WORDS_NODE)
+        Clock.schedule_once(lambda _dt: self.allow_view_state_change(), 0)
+
+    def on_persons_index_node_created(self, persons_index_node: MainTreeViewNode) -> None:
+        self._persons_index_screen.treeview_index_node = persons_index_node
+
+    def on_persons_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
+        logger.info("Persons index node pressed.")
+        self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_PERSONS_NODE)
+
+    def on_locations_index_node_created(self, locations_index_node: MainTreeViewNode) -> None:
+        self._locations_index_screen.treeview_index_node = locations_index_node
+
+    def on_locations_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
+        logger.info("Locations index node pressed.")
+        self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_LOCATIONS_NODE)
 
     def on_statistics_node_created(self, node: ButtonTreeViewNode) -> None:
         """Handle creation of the Statistics tree node."""

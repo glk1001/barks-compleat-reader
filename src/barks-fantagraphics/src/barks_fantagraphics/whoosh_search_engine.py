@@ -249,6 +249,107 @@ class SearchEngine:
             return json.loads(path.read_text())
         return []
 
+    def get_alpha_split_entity_terms(self, entity_type: str) -> dict[str, dict[str, list[str]]]:
+        terms = self.get_entity_terms(entity_type)
+        if not terms:
+            return {}
+        # Entity terms may contain garbage entries with invalid first chars (e.g. "-ER-").
+        # Filter to only terms starting with a letter, digit, or apostrophe.
+        valid = [
+            t
+            for t in terms
+            if t and (("a" <= t[0].lower() <= "z") or ("0" <= t[0] <= "9") or t[0] == "'")
+        ]
+        return self._get_alpha_split_terms(valid) if valid else {}
+
+    def _get_alpha_split_terms(self, terms: list[str]) -> dict[str, dict[str, list[str]]]:
+        alpha_dict = {}
+        first_letter_list = []
+        current_first_letter_group = "0"
+        for term in terms:
+            first_letter = term[0].lower()
+            if not (
+                ("a" <= first_letter <= "z")
+                or ("0" <= first_letter <= "9")
+                or (first_letter == "'")
+            ):
+                msg = f'Invalid first letter: "{first_letter}". Term: "{term}".'
+                raise ValueError(msg)
+            if "0" <= first_letter <= "9":
+                first_letter = "0"
+
+            if current_first_letter_group != first_letter:
+                if first_letter_list:
+                    alpha_dict[current_first_letter_group] = self._get_sub_alpha_split_terms(
+                        first_letter_list
+                    )
+                first_letter_list = []
+                current_first_letter_group = first_letter
+
+            first_letter_list.append(term)
+
+        if first_letter_list:
+            alpha_dict[current_first_letter_group] = self._get_sub_alpha_split_terms(
+                first_letter_list
+            )
+
+        return self._get_similar_size_alpha_groups(alpha_dict)
+
+    @staticmethod
+    def _get_sub_alpha_split_terms(
+        alpha_terms: list[str],
+    ) -> dict[str, list[str]]:
+        if not alpha_terms:
+            return {}
+
+        prefix_len = 1 if "0" <= alpha_terms[0][0] <= "9" else 2
+        current_prefix = alpha_terms[0][:prefix_len].lower()
+
+        sub_alpha_dict = {current_prefix: []}
+        for term in alpha_terms:
+            if current_prefix != term[:prefix_len].lower():
+                current_prefix = term[:prefix_len].lower()
+                sub_alpha_dict[current_prefix] = []
+            sub_alpha_dict[current_prefix].append(term)
+
+        return sub_alpha_dict
+
+    def _get_similar_size_alpha_groups(
+        self, alpha_unstemmed_terms: dict[str, dict[str, list[str]]]
+    ) -> dict[str, dict[str, list[str]]]:
+        assert alpha_unstemmed_terms
+
+        similar_size_alpha_terms = {}
+        for first_letter, sub_alpha_lists in alpha_unstemmed_terms.items():
+            similar_size_alpha_terms[first_letter] = self._get_similar_size_sub_alpha_groups(
+                sub_alpha_lists
+            )
+
+        return similar_size_alpha_terms
+
+    @staticmethod
+    def _get_similar_size_sub_alpha_groups(
+        sub_alpha_lists: dict[str, list[str]],
+    ) -> dict[str, list[str]]:
+        assert sub_alpha_lists
+
+        similar_size_sub_alpha_terms = defaultdict(list)
+        current_size = 0
+        current_prefix = ""
+        for prefix, sub_alpha_list in sub_alpha_lists.items():
+            if not current_prefix:
+                current_prefix = prefix
+
+            current_size += len(sub_alpha_list)
+
+            if current_size > SUB_ALPHA_SPLIT_SIZE:
+                current_prefix = prefix
+                current_size = len(sub_alpha_list)
+
+            similar_size_sub_alpha_terms[current_prefix].extend(sub_alpha_list)
+
+        return similar_size_sub_alpha_terms
+
 
 class SearchEngineCreator(SearchEngine):
     def __init__(
@@ -463,90 +564,3 @@ class SearchEngineCreator(SearchEngine):
                 lemmatized_terms.add(term)
 
         return lemmatized_terms
-
-    def _get_alpha_split_terms(self, terms: list[str]) -> dict[str, dict[str, list[str]]]:
-        alpha_dict = {}
-        first_letter_list = []
-        current_first_letter_group = "0"
-        for term in terms:
-            first_letter = term[0].lower()
-            if not (
-                ("a" <= first_letter <= "z")
-                or ("0" <= first_letter <= "9")
-                or (first_letter == "'")
-            ):
-                msg = f'Invalid first letter: "{first_letter}". Term: "{term}".'
-                raise ValueError(msg)
-            if "0" <= first_letter <= "9":
-                first_letter = "0"
-
-            if current_first_letter_group != first_letter:
-                alpha_dict[current_first_letter_group] = self._get_sub_alpha_split_terms(
-                    first_letter_list
-                )
-                first_letter_list = []
-                current_first_letter_group = first_letter
-
-            first_letter_list.append(term)
-
-        if first_letter_list:
-            alpha_dict[current_first_letter_group] = self._get_sub_alpha_split_terms(
-                first_letter_list
-            )
-
-        return self._get_similar_size_alpha_groups(alpha_dict)
-
-    @staticmethod
-    def _get_sub_alpha_split_terms(
-        alpha_terms: list[str],
-    ) -> dict[str, list[str]]:
-        if not alpha_terms:
-            return {}
-
-        prefix_len = 1 if "0" <= alpha_terms[0][0] <= "9" else 2
-        current_prefix = alpha_terms[0][:prefix_len].lower()
-
-        sub_alpha_dict = {current_prefix: []}
-        for term in alpha_terms:
-            if current_prefix != term[:prefix_len].lower():
-                current_prefix = term[:prefix_len].lower()
-                sub_alpha_dict[current_prefix] = []
-            sub_alpha_dict[current_prefix].append(term)
-
-        return sub_alpha_dict
-
-    def _get_similar_size_alpha_groups(
-        self, alpha_unstemmed_terms: dict[str, dict[str, list[str]]]
-    ) -> dict[str, dict[str, list[str]]]:
-        assert alpha_unstemmed_terms
-
-        similar_size_alpha_terms = {}
-        for first_letter, sub_alpha_lists in alpha_unstemmed_terms.items():
-            similar_size_alpha_terms[first_letter] = self._get_similar_size_sub_alpha_groups(
-                sub_alpha_lists
-            )
-
-        return similar_size_alpha_terms
-
-    @staticmethod
-    def _get_similar_size_sub_alpha_groups(
-        sub_alpha_lists: dict[str, list[str]],
-    ) -> dict[str, list[str]]:
-        assert sub_alpha_lists
-
-        similar_size_sub_alpha_terms = defaultdict(list)
-        current_size = 0
-        current_prefix = ""
-        for prefix, sub_alpha_list in sub_alpha_lists.items():
-            if not current_prefix:
-                current_prefix = prefix
-
-            current_size += len(sub_alpha_list)
-
-            if current_size > SUB_ALPHA_SPLIT_SIZE:
-                current_prefix = prefix
-                current_size = len(sub_alpha_list)
-
-            similar_size_sub_alpha_terms[current_prefix].extend(sub_alpha_list)
-
-        return similar_size_sub_alpha_terms

@@ -48,9 +48,12 @@ from barks_reader.core.reader_consts_and_types import (
     CHRONO_YEAR_RANGES,
     CHRONOLOGICAL_NODE_TEXT,
     CS_YEAR_RANGES,
+    INDEX_LOCATIONS_TEXT,
     INDEX_MAIN_TEXT,
     INDEX_NODE_TEXT,
+    INDEX_PERSONS_TEXT,
     INDEX_SPEECH_TEXT,
+    INDEX_SPEECH_WORDS_TEXT,
     INTRO_COMPLEAT_BARKS_READER_TEXT,
     INTRO_DON_AULT_FANTA_INTRO_TEXT,
     INTRO_NODE_TEXT,
@@ -538,13 +541,37 @@ class ReaderTreeBuilder:
         )
         self._tree_view_manager.on_main_index_node_created(child_node)
 
-        child_node = self._create_and_add_simple_node(
+        speech_node = self._create_and_add_simple_node(
             tree,
             INDEX_SPEECH_TEXT,
             parent_node=index_node,
             on_press_handler=self._tree_view_manager.on_speech_index_node_pressed,
         )
-        self._tree_view_manager.on_speech_index_node_created(child_node)
+        self._tree_view_manager.on_speech_index_node_created(speech_node)
+
+        words_node = self._create_and_add_simple_node(
+            tree,
+            INDEX_SPEECH_WORDS_TEXT,
+            parent_node=speech_node,
+            on_press_handler=self._tree_view_manager.on_speech_words_node_pressed,
+        )
+        self._tree_view_manager.on_speech_words_node_created(words_node)
+
+        persons_node = self._create_and_add_simple_node(
+            tree,
+            INDEX_PERSONS_TEXT,
+            parent_node=speech_node,
+            on_press_handler=self._tree_view_manager.on_persons_index_node_pressed,
+        )
+        self._tree_view_manager.on_persons_index_node_created(persons_node)
+
+        locations_node = self._create_and_add_simple_node(
+            tree,
+            INDEX_LOCATIONS_TEXT,
+            parent_node=speech_node,
+            on_press_handler=self._tree_view_manager.on_locations_index_node_pressed,
+        )
+        self._tree_view_manager.on_locations_index_node_created(locations_node)
 
     def _add_chrono_year_range_node(
         self, tree: ReaderTreeView, year_range: tuple[int, int], parent_node: ButtonTreeViewNode

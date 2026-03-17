@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, LiteralString, override
 
 from barks_fantagraphics.comics_database import ComicsDatabase
+from barks_fantagraphics.entity_types import EntityType
 from comic_utils.kivy_patches import apply_text_input_remove_group_patch
 from comic_utils.timing import Timing
 from kivy.app import App  # can take ~2s in VM Windows
@@ -36,6 +37,7 @@ from barks_reader.ui.bottom_title_view_screen import (
 )
 from barks_reader.ui.comic_book_reader import get_barks_comic_reader_screen
 from barks_reader.ui.document_reader import get_document_reader_screen
+from barks_reader.ui.entity_index_screen import EntityIndexScreen
 from barks_reader.ui.error_handling import handle_app_fail_with_traceback
 from barks_reader.ui.font_manager import FontManager
 from barks_reader.ui.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, FunImageViewScreen
@@ -430,6 +432,12 @@ class BarksReaderApp(App):
         speech_index_screen = SpeechIndexScreen(
             self.reader_settings, self.font_manager, user_error_handler
         )
+        persons_index_screen = EntityIndexScreen(
+            EntityType.PERSON, self.reader_settings, self.font_manager, user_error_handler
+        )
+        locations_index_screen = EntityIndexScreen(
+            EntityType.LOCATION, self.reader_settings, self.font_manager, user_error_handler
+        )
         statistics_screen = StatisticsScreen(
             self.reader_settings.sys_file_paths.get_statistics_dir()
         )
@@ -445,6 +453,8 @@ class BarksReaderApp(App):
             fun_image_view_screen,
             main_index_screen,
             speech_index_screen,
+            persons_index_screen,
+            locations_index_screen,
             statistics_screen,
             search_screen,
             self.font_manager,

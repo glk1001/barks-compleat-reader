@@ -89,6 +89,13 @@ _BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES = {
 }
 _BOTTOM_VIEW_SPEECH_INDEX_OPACITY_1_STATES = {
     ViewStates.ON_INDEX_SPEECH_NODE,
+    ViewStates.ON_INDEX_SPEECH_WORDS_NODE,
+}
+_BOTTOM_VIEW_PERSONS_INDEX_OPACITY_1_STATES = {
+    ViewStates.ON_INDEX_PERSONS_NODE,
+}
+_BOTTOM_VIEW_LOCATIONS_INDEX_OPACITY_1_STATES = {
+    ViewStates.ON_INDEX_LOCATIONS_NODE,
 }
 _BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES = {
     ViewStates.ON_APPENDIX_STATISTICS_NODE,
@@ -107,6 +114,8 @@ _BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES = (
     - _BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES
     - _BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES
     - _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES
+    - _BOTTOM_VIEW_PERSONS_INDEX_OPACITY_1_STATES
+    - _BOTTOM_VIEW_LOCATIONS_INDEX_OPACITY_1_STATES
 )
 
 
@@ -159,6 +168,9 @@ class BackgroundViews:
         ViewStates.ON_INDEX_NODE,
         ViewStates.ON_INDEX_MAIN_NODE,
         ViewStates.ON_INDEX_SPEECH_NODE,
+        ViewStates.ON_INDEX_SPEECH_WORDS_NODE,
+        ViewStates.ON_INDEX_PERSONS_NODE,
+        ViewStates.ON_INDEX_LOCATIONS_NODE,
     }
 
     def __init__(
@@ -268,6 +280,12 @@ class BackgroundViews:
 
     def get_speech_index_view_opacity(self) -> float:
         return 1.0 if (self._view_state in _BOTTOM_VIEW_SPEECH_INDEX_OPACITY_1_STATES) else 0.0
+
+    def get_persons_index_view_opacity(self) -> float:
+        return 1.0 if (self._view_state in _BOTTOM_VIEW_PERSONS_INDEX_OPACITY_1_STATES) else 0.0
+
+    def get_locations_index_view_opacity(self) -> float:
+        return 1.0 if (self._view_state in _BOTTOM_VIEW_LOCATIONS_INDEX_OPACITY_1_STATES) else 0.0
 
     def get_statistics_view_opacity(self) -> float:
         """Return 1.0 when the Statistics screen should be visible, else 0.0."""
@@ -504,6 +522,9 @@ class BackgroundViews:
             ViewStates.ON_TITLE_NODE,
             ViewStates.ON_INDEX_MAIN_NODE,
             ViewStates.ON_INDEX_SPEECH_NODE,
+            ViewStates.ON_INDEX_SPEECH_WORDS_NODE,
+            ViewStates.ON_INDEX_PERSONS_NODE,
+            ViewStates.ON_INDEX_LOCATIONS_NODE,
             ViewStates.ON_APPENDIX_STATISTICS_NODE,
             ViewStates.ON_TITLE_SEARCH_NODE,
             ViewStates.ON_TAG_SEARCH_NODE,

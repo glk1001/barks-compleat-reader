@@ -23,6 +23,8 @@ def mock_dependencies() -> dict[str, MagicMock]:
         "tree_view_screen": MagicMock(),
         "main_index_screen": MagicMock(),
         "speech_index_screen": MagicMock(),
+        "persons_index_screen": MagicMock(),
+        "locations_index_screen": MagicMock(),
         "update_title_func": MagicMock(return_value=True),
         "read_article_func": MagicMock(),
         "open_document_reader_func": MagicMock(),

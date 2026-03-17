@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.ui.background_views import BackgroundViews
     from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
+    from barks_reader.ui.entity_index_screen import EntityIndexScreen
     from barks_reader.ui.fun_image_view_screen import FunImageViewScreen
     from barks_reader.ui.main_index_screen import MainIndexScreen
     from barks_reader.ui.search_screen import SearchScreen
@@ -57,6 +58,8 @@ class ViewStateManager:
         fun_image_view_screen: FunImageViewScreen,
         main_index_screen: MainIndexScreen,
         speech_index_screen: SpeechIndexScreen,
+        persons_index_screen: EntityIndexScreen,
+        locations_index_screen: EntityIndexScreen,
         statistics_screen: StatisticsScreen,
         search_screen: SearchScreen,
         on_view_state_changed_func: Callable[[ViewStates], None],
@@ -69,6 +72,8 @@ class ViewStateManager:
         self._fun_image_view_screen = fun_image_view_screen
         self._main_index_screen = main_index_screen
         self._speech_index_screen = speech_index_screen
+        self._persons_index_screen = persons_index_screen
+        self._locations_index_screen = locations_index_screen
         self._statistics_screen = statistics_screen
         self._search_screen = search_screen
         self._on_view_state_changed = on_view_state_changed_func
@@ -100,6 +105,8 @@ class ViewStateManager:
         self._fun_image_view_screen.is_visible = False
         self._main_index_screen.is_visible = False
         self._speech_index_screen.is_visible = False
+        self._persons_index_screen.is_visible = False
+        self._locations_index_screen.is_visible = False
         self._statistics_screen.is_visible = False
         self._search_screen.is_visible = False
 
@@ -376,6 +383,12 @@ class ViewStateManager:
         opacity = self._background_views.get_speech_index_view_opacity()
         self._speech_index_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
 
+        opacity = self._background_views.get_persons_index_view_opacity()
+        self._persons_index_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
+
+        opacity = self._background_views.get_locations_index_view_opacity()
+        self._locations_index_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
+
         opacity = self._background_views.get_statistics_view_opacity()
         self._statistics_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
 
@@ -404,6 +417,8 @@ class ViewStateManager:
             f"Setting new index view."
             f" Main index visibility: {self._main_index_screen.is_visible}."
             f" Speech index visibility: {self._speech_index_screen.is_visible}."
+            f" Persons index visibility: {self._persons_index_screen.is_visible}."
+            f" Locations index visibility: {self._locations_index_screen.is_visible}."
             f" Statistics visibility: {self._statistics_screen.is_visible}."
             f" Search visibility: {self._search_screen.is_visible}."
         )
