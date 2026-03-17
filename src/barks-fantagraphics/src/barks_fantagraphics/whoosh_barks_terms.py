@@ -10,13 +10,16 @@ TERMS_TO_REMOVE: frozenset[str] = frozenset(
 # noinspection SpellCheckingInspection
 BARKSIAN_FULL_NAMES: frozenset[str] = frozenset(
     {
-        "Almostus Extinctus",
         "Applecheeks Teengiggle",
         "Alvis Lessly",
+        "Argus Eye",
+        "Argus Gimleteye",
+        "Argus McFiendy",
+        "Attila the Hun",
+        "Autry Mack Brown Rogers",
         "Benzine Banzoony",
         "Bey of El Dagga",
         "Black Mariah",
-        "Bugless Aircraft Corp.",
         "Casaba Cantaloupa",
         "Cora Crane",
         "Chickie Biddy",
@@ -32,7 +35,6 @@ BARKSIAN_FULL_NAMES: frozenset[str] = frozenset(
         "Porko de Lardo",
         "Don Quixote",
         "Dr. U. Qwik",
-        "Falcon Rover",
         "Finnan Haddie",
         "Flintheart Glomgold",
         "Foola Zoola",
@@ -40,7 +42,6 @@ BARKSIAN_FULL_NAMES: frozenset[str] = frozenset(
         "Fulldrip Pulpbugle",
         "General Snozzie",
         "Genghis Khan",
-        "Ghaspan Ghulp Plateau",
         "Glittering Goldie",
         "Great Thunderface",
         "Great Rain-in-Teepee",
@@ -50,6 +51,7 @@ BARKSIAN_FULL_NAMES: frozenset[str] = frozenset(
         "I.M. Slick",
         "Jayne Girlsfield",
         "Jim Dandy",
+        "Joan of Arc",
         "John the Junkman",
         "Jolly Roger",
         "Jughead Jones's",
@@ -64,9 +66,9 @@ BARKSIAN_FULL_NAMES: frozenset[str] = frozenset(
         "Mesmer J. Spellcaster",
         "Mournful Mary",
         "Mousie Mona from Corona",
-        "Needle Nose",
         "Orville Orb",
         "Knuckleball Noogan",
+        "Needle Nose",
         "Olaf the Blue",
         "P.J. McBrine",
         "Perry Cougar",
@@ -83,13 +85,10 @@ BARKSIAN_FULL_NAMES: frozenset[str] = frozenset(
         "Prof. Umbugg von Pfake",
         "Prof. Utterbunk",
         "Prof. Missilebug",
-        "Puffhard Super Eight",
         "Queen of the Kangaroos",
         "Queen of Seiprah",
         "Queen Bess",
         "Queen Elizabeth",
-        "Joan of Arc",
-        "Attila the Hun",
         "Queen Mary",
         "Queen Veronica",
         "Queen Victoria's",
@@ -101,6 +100,7 @@ BARKSIAN_FULL_NAMES: frozenset[str] = frozenset(
         "Sandy McCinder",
         "Silas Shoat",
         "Santa Claus",
+        "Scotland X. McYard",
         "Senator Snoggin",
         "Smoked Barracuda",
         "Sheik Hassan Ben Happi",
@@ -132,6 +132,7 @@ BARKSIAN_PLACES_FULL_NAMES: frozenset[str] = frozenset(
         "Cape Cantravelwell",
         "Cattail Slough",
         "Cape Sourweather",
+        "Chillspine Buoy",
         "Codfeesh Cove",
         "Codfish Cove",
         "Coney Island",
@@ -146,6 +147,7 @@ BARKSIAN_PLACES_FULL_NAMES: frozenset[str] = frozenset(
         "Fisherman's Pier",
         "Frostbite on the Chillblain",
         "Frozenbear Lake",
+        "Ghaspan Ghulp Plateau",
         "Gneezle Gnob",
         "Greenwood Canyon",
         "Hag's Fang Cliff",
@@ -194,7 +196,6 @@ BARKSIAN_THINGS_FULL_NAMES: frozenset[str] = frozenset(
         "Belgian Prince Leopold",
         "Bungling Bros Circus",
         "Casa del Hoosier Motel",
-        "Chillspine Buoy",
         "Creole Belle",
         "Crepe Suzettes",
         "cat-o'-nine-tails",
@@ -202,10 +203,10 @@ BARKSIAN_THINGS_FULL_NAMES: frozenset[str] = frozenset(
         "Eager Edgars",
         "Junior Sub-teen-age Debbies Club",
         "Lobster NewbUrg",
+        "Puffhard Super Eight",
         "Quackly Hall",
         "Ramona Pageant Bowl",
         "River Belle",
-        "Squeezem, Fleecem, Skinem, and Skip",
         "Squanderbilt Hotel",
         "Worry Room",
     }
@@ -237,13 +238,16 @@ BARKSIAN_TITLES: frozenset[str] = frozenset(
 # noinspection SpellCheckingInspection
 BARKSIAN_MISC_FULL_NAMES: frozenset[str] = frozenset(
     {
+        "Almostus Extinctus",
         "Almostus Extinctuses",
-        "Autry Mack Brown Rogers",
         "Blue Danube",
         "Blue Danube Waltz",
         "Boer War",
         "Brahms Concerto",
+        "Bugless Aircraft Corp.",
+        "Falcon Rover",
         "Mammalarius Aquapodicus",
+        "Squeezem, Fleecem, Skinem, and Skip",
     }
 )
 
@@ -327,15 +331,19 @@ FRAGMENTS_TO_SUPPRESS: frozenset[str] = frozenset(
         "antone",  # San Antone
         "applecheeks",  # Applecheeks Teengiggle
         "alvis",  # Alvis Lessly
+        "argus",  # Argus McFiendy, Argus Gimleteye, Argus Eye
         "b-197",  # B-197 X-NG
         "boer",  # Boer War
         "brookside",  # Brookside Park
+        "castoria",  # Swelldorf-Castoria
         "cattail",  # Cattail Slough
+        "chemica",  # Chemica Curiosa
         "chillspine",  # Chillspine Buoy
         "codfeesh",  # Codfeesh Cove
         "coney",  # Coney Island
         "conippus",  # Pippus Conippus
         "cora",  # Cora Crane
+        "costa",  # Costa Lotta, Costa Rica
         "creole",  # Creole Belle
         "crepe",  # Crepe Suzettes
         "daniel",  # Daniel Boone
@@ -368,6 +376,7 @@ FRAGMENTS_TO_SUPPRESS: frozenset[str] = frozenset(
         "rogers",  # Autry Mack Brown Rogers
         "squeezem",  # Squeezem, Fleecem, Skinem, and Skip
         "suzettes",  # Crepe Suzettes
+        "swelldorf",  # Swelldorf-Castoria
         "tangkor",  # Tangkor Wat
         "tryle",  # Tryle N. Error
         "wat",  # Tangkor Wat
@@ -420,7 +429,28 @@ ALL_CAPS: frozenset[str] = frozenset(
 # noinspection SpellCheckingInspection
 MULTI_WORD_TERMS_TO_SUPPRESS: frozenset[str] = frozenset(
     {
+        "A Cold Bargain",
+        "And Skip",
+        "Back To Long Ago",
+        "Carat Moon",
+        "Carl Barks",
+        "Fishy Warden",
         "The Fabulous Tycoon",
+        "The Golden River",
+        'The Hard Loser"',
+        "The Madball Pitcher",
+        "The Money Champ",
+        "The Money Well",
+        "The Old Castle's Secret",
+        "The Pied Piper of Duckburg",
+        "The Second-Richest Duck",
+        "The Strange Shipwrecks",
+        "Too Many Pets",
+        "Tralla La",
+        "X. McYard",
+        "Walt Disney",
+        "Walt Disney's",
+        "Willim Van Horn",
     }
 )
 
@@ -462,7 +492,6 @@ BARKSIAN_NAMES: frozenset[str] = frozenset(
         "argo",
         "argo's",
         "argosy",
-        "argus",
         "ariadne",
         "arky",
         "artefact",
@@ -597,6 +626,7 @@ BARKSIAN_NAMES: frozenset[str] = frozenset(
         "crusoe",
         "crustaceous",
         "cupid",
+        "curiosa",
         "cush",
         "cuthbert",
         "cyril",
@@ -737,6 +767,7 @@ BARKSIAN_NAMES: frozenset[str] = frozenset(
         "goldie",
         "goldie's",
         "goldilocks",
+        "goldstein",
         "goldwad",
         "goliath",
         "goliath's",
@@ -1247,7 +1278,6 @@ BARKSIAN_PLACE_RELATED_WORDS: frozenset[str] = frozenset(
         "cornwall",
         "corsican",
         "corvallis",
-        "costa",
         "crete",
         "cretan",
         "curacao",
