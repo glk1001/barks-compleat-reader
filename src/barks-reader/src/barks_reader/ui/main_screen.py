@@ -525,7 +525,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._tree_view_manager.activate_node(node)
             Clock.schedule_once(lambda _dt: self._enter_bottom_focus(), 0)
 
-    def _tree_nav_activate(self) -> None:  # noqa: C901
+    def _tree_nav_activate(self) -> None:  # noqa: C901, PLR0911
         selected = self._tree_view_screen.get_selected_node()
         if selected is None:
             return
@@ -547,6 +547,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             else:
                 self._tree_view_manager.activate_node(selected)
                 Clock.schedule_once(lambda _dt: self._enter_bottom_focus(), 0)
+            return
+        if selected is self._tree_view_manager.speech_words_node:
+            self._enter_index_bottom_focus(self._speech_index_screen, selected)
             return
         was_closed = isinstance(selected, ButtonTreeViewNode) and not selected.is_open
         self._tree_view_manager.activate_node(selected)

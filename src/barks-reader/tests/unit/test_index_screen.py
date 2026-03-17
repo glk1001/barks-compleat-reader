@@ -204,6 +204,66 @@ class TestIndexScreen:
         # noinspection PyProtectedMember
         assert index_screen._get_sortable_string("Carrot") == "Carrot"
 
+    def test_resync_item_focus_first_expand(self, index_screen: ConcreteIndexScreen) -> None:
+        """First expansion: no prior sub-items, count increases, focus moves to first sub-item."""
+        parent_btn = MagicMock(spec=IndexItemButton)
+        sub_item_btn = MagicMock(spec=IndexItemButton)
+
+        # After expansion the column has [parent_btn, sub_item_btn, other_btn].
+        col_buttons = [parent_btn, sub_item_btn, MagicMock(spec=IndexItemButton)]
+        with patch.object(index_screen, "_get_col_buttons", return_value=col_buttons):
+            index_screen._nav_active = True
+            index_screen._nav_panel = barks_reader.ui.index_screen._IndexNavPanel.ITEMS
+            index_screen._nav_focused_col = 0
+            index_screen._nav_focused_item_idx = 0
+
+            # old_count=2 (before expansion), now 3 buttons → expansion detected.
+            index_screen._resync_item_focus(parent_btn, old_count=2)
+
+            assert index_screen._nav_focused_item_idx == 1
+
+    def test_resync_item_focus_switch_expand(self, index_screen: ConcreteIndexScreen) -> None:
+        """Second expansion after switching items: old sub-items removed then new ones added.
+
+        The parent button's position shifts after old sub-items above it are removed,
+        so resync must locate the button's current index before adding 1.
+        """
+        btn_a = MagicMock(spec=IndexItemButton)
+        btn_b = MagicMock(spec=IndexItemButton)  # The button we just expanded.
+        new_sub = MagicMock(spec=IndexItemButton)
+
+        # After old sub-items removed and new ones added: [btn_a, btn_b, new_sub].
+        col_buttons = [btn_a, btn_b, new_sub]
+        with patch.object(index_screen, "_get_col_buttons", return_value=col_buttons):
+            index_screen._nav_active = True
+            index_screen._nav_panel = barks_reader.ui.index_screen._IndexNavPanel.ITEMS
+            index_screen._nav_focused_col = 0
+            # Stale index from before the synchronous removal shifted positions.
+            index_screen._nav_focused_item_idx = 5
+
+            # old_count=2 (post-removal, pre-addition), now 3 → expansion detected.
+            index_screen._resync_item_focus(btn_b, old_count=2)
+
+            # Focus should land on new_sub (btn_b is at index 1, so first sub-item is 2).
+            assert index_screen._nav_focused_item_idx == 2  # noqa: PLR2004
+
+    def test_resync_item_focus_collapse(self, index_screen: ConcreteIndexScreen) -> None:
+        """Collapse: count unchanged or decreased, focus stays on the parent button."""
+        btn_a = MagicMock(spec=IndexItemButton)
+        btn_b = MagicMock(spec=IndexItemButton)
+
+        col_buttons = [btn_a, btn_b]
+        with patch.object(index_screen, "_get_col_buttons", return_value=col_buttons):
+            index_screen._nav_active = True
+            index_screen._nav_panel = barks_reader.ui.index_screen._IndexNavPanel.ITEMS
+            index_screen._nav_focused_col = 0
+            index_screen._nav_focused_item_idx = 0
+
+            # old_count=3, now 2 → collapse.
+            index_screen._resync_item_focus(btn_a, old_count=3)
+
+            assert index_screen._nav_focused_item_idx == 0
+
     def test_on_goto_background_title(self, index_screen: ConcreteIndexScreen) -> None:
         mock_func = MagicMock()
         index_screen.on_goto_background_title_func = mock_func

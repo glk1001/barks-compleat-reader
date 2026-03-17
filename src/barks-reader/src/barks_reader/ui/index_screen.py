@@ -472,27 +472,32 @@ class IndexScreen(FloatLayout):
         if not col_buttons or self._nav_focused_item_idx >= len(col_buttons):
             return
         btn = col_buttons[self._nav_focused_item_idx]
-        old_count = len(col_buttons)
         btn.trigger_action(duration=0)
         # Re-sync focus after items may have been added/removed by the action.
         # duration=0 fires on_release synchronously, so sub-items are scheduled
         # (via Clock.schedule_once at delay 0) before our resync runs.
-        Clock.schedule_once(lambda _dt: self._resync_item_focus(btn, old_count), 0.05)
+        # Capture count AFTER trigger_action, which synchronously removes old sub-items
+        # but before async addition of new ones, so the comparison detects the expansion.
+        post_action_count = len(self._get_col_buttons(self._nav_focused_col))
+        Clock.schedule_once(lambda _dt: self._resync_item_focus(btn, post_action_count), 0.05)
 
     def _resync_item_focus(self, btn: Button, old_count: int) -> None:
         if not self._nav_active or self._nav_panel != _IndexNavPanel.ITEMS:
             return
         col_buttons = self._get_col_buttons(self._nav_focused_col)
         new_count = len(col_buttons)
+        # Always locate btn's current position first (it may have shifted due to
+        # synchronous removal of earlier sub-items).
+        try:
+            btn_idx = col_buttons.index(btn)
+        except ValueError:
+            btn_idx = min(self._nav_focused_item_idx, max(0, new_count - 1))
         if new_count > old_count:
-            # Sub-items were expanded — move focus to the first one.
-            self._nav_focused_item_idx = min(self._nav_focused_item_idx + 1, new_count - 1)
+            # Sub-items were expanded — move focus to the first one after btn.
+            self._nav_focused_item_idx = min(btn_idx + 1, new_count - 1)
         else:
             # Collapsed or unchanged — stay on (or near) the parent button.
-            try:
-                self._nav_focused_item_idx = col_buttons.index(btn)
-            except ValueError:
-                self._nav_focused_item_idx = min(self._nav_focused_item_idx, max(0, new_count - 1))
+            self._nav_focused_item_idx = btn_idx
         self._clear_all_item_focus()
         self._draw_item_focus()
 

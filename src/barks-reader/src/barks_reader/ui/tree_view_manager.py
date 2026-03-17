@@ -405,6 +405,10 @@ class TreeViewManager:
         # Words child shares the same speech index screen's treeview node.
         self._speech_words_node = node
 
+    @property
+    def speech_words_node(self) -> ButtonTreeViewNode | None:
+        return self._speech_words_node
+
     def on_speech_words_node_pressed(self, _node: ButtonTreeViewNode) -> None:
         logger.info("Speech Words node pressed.")
         self.disallow_view_state_change()
