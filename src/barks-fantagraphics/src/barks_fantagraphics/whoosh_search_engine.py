@@ -19,6 +19,7 @@ from .entity_types import EntityType
 from .speech_groupers import OcrTypes, SpeechGroups
 from .whoosh_barks_terms import (
     ALL_CAPS,
+    BARKSIAN_ENTITY_TYPE_MAP,
     BARKSIAN_EXTRA_TERMS,
     CAPITALIZATION_MAP,
     FRAGMENTS_TO_SUPPRESS,
@@ -39,6 +40,27 @@ ENTITY_FIELDS = [f"entities_{t}" for t in ENTITY_TYPES]
 
 # Lowercase→proper-case lookup from curated names for normalizing entity casing
 _CURATED_NAME_LOOKUP: dict[str, str] = {t.lower(): t for t in BARKSIAN_EXTRA_TERMS}
+
+
+def _build_curated_entity_sets() -> dict[EntityType, set[str]]:
+    """Build a mapping from EntityType to the set of lowercase curated names for that type."""
+    curated: dict[EntityType, set[str]] = {t: set() for t in EntityType}
+    for term_set, entity_type in BARKSIAN_ENTITY_TYPE_MAP.items():
+        for term in term_set:
+            curated[entity_type].add(term.lower())
+    return curated
+
+
+def _filter_entities_to_curated(
+    entities: dict[str, set[str]], curated_sets: dict[EntityType, set[str]]
+) -> dict[str, set[str]]:
+    """Keep only entity names whose lowercase form is in the curated set for that type."""
+    filtered: dict[str, set[str]] = {}
+    for entity_type in ENTITY_TYPES:
+        curated = curated_sets.get(EntityType(entity_type), set())
+        names = entities.get(entity_type, set())
+        filtered[entity_type] = {n for n in names if n.lower() in curated}
+    return filtered
 
 
 def _normalize_entity_names(extra_terms: set[str], existing_lower: set[str]) -> set[str]:
@@ -441,6 +463,7 @@ class SearchEngineCreator(SearchEngine):
         entity_provider: Callable[[str, str, str], dict[str, set[str]]] | None = None,
     ) -> None:
         all_speech_groups = SpeechGroups(self._comics_database)
+        curated_sets = _build_curated_entity_sets()
 
         writer = self._index.writer()
 
@@ -457,6 +480,7 @@ class SearchEngineCreator(SearchEngine):
                     entity_kwargs = {}
                     if entity_provider:
                         entities = entity_provider(title_str, speech_page.fanta_page, group_id)
+                        entities = _filter_entities_to_curated(entities, curated_sets)
                         for entity_type in ENTITY_TYPES:
                             field_name = f"entities_{entity_type}"
                             entity_kwargs[field_name] = ",".join(
@@ -464,6 +488,7 @@ class SearchEngineCreator(SearchEngine):
                             )
                     elif entity_tagger:
                         entities = entity_tagger(speech_text.ai_text)
+                        entities = _filter_entities_to_curated(entities, curated_sets)
                         for entity_type in ENTITY_TYPES:
                             field_name = f"entities_{entity_type}"
                             entity_kwargs[field_name] = ",".join(
