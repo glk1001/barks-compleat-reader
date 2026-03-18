@@ -372,43 +372,8 @@ class ComicsDatabase:
         return self.get_fantagraphics_fixes_scraps_volume_dir(volume_num) / IMAGES_SUBDIR
 
     def make_all_fantagraphics_directories(self) -> None:
-        FANTA_VOLUME_OVERRIDES_ROOT.mkdir(parents=True, exist_ok=True)
-
-        for volume in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1):
-            # Create these directories if they're already not there.
-            self._make_vol_dirs(self.get_fantagraphics_upscayled_volume_image_dir(volume))
-            self._make_vol_dirs(self.get_fantagraphics_restored_volume_image_dir(volume))
-            self._make_vol_dirs(self.get_fantagraphics_restored_upscayled_volume_image_dir(volume))
-            self._make_vol_dirs(self.get_fantagraphics_restored_svg_volume_image_dir(volume))
-            self._make_vol_dirs(self.get_fantagraphics_restored_ocr_raw_volume_dir(volume))
-            self._make_vol_dirs(self.get_fantagraphics_fixes_volume_image_dir(volume))
-            self._make_vol_dirs(self.get_fantagraphics_upscayled_fixes_volume_image_dir(volume))
-            self._make_vol_dirs(self.get_fantagraphics_panel_segments_volume_dir(volume))
-
-            scraps_image_dir = self.get_fantagraphics_fixes_scraps_volume_image_dir(volume)
-            self._make_vol_dirs(scraps_image_dir / "standard")
-            self._make_vol_dirs(scraps_image_dir / "upscayled")
-            self._make_vol_dirs(scraps_image_dir / "restored")
-
-        # Symlinks - just make sure these exist.
-        self._check_symlink_exists(self.get_fantagraphics_upscayled_root_dir())
-        self._check_symlink_exists(self.get_fantagraphics_restored_upscayled_root_dir())
-        self._check_symlink_exists(self.get_fantagraphics_restored_svg_root_dir())
-
-    @staticmethod
-    def _make_vol_dirs(vol_dirname: Path) -> None:
-        if vol_dirname.is_dir():
-            logger.debug(f'Dir already exists - nothing to do: "{vol_dirname}".')
-        else:
-            vol_dirname.mkdir(parents=True, exist_ok=True)
-            logger.info(f'Created dir "{vol_dirname}".')
-
-    @staticmethod
-    def _check_symlink_exists(symlink: Path) -> None:
-        if not symlink.is_symlink():
-            logger.error(f'Symlink not found: "{symlink}".')
-        else:
-            logger.debug(f'Symlink exists - all good: "{symlink}".')
+        """Create all required Fantagraphics volume directories and verify symlinks."""
+        make_all_fantagraphics_directories(self)
 
     def get_fanta_comic_book_info(self, title: str) -> FantaComicBookInfo:
         found, titles, close = self.get_story_title_from_issue(title)
@@ -425,7 +390,7 @@ class ComicsDatabase:
         return self._all_comic_book_info[title]
 
     # noinspection LongLine
-    def get_comic_book(self, title: str, intro_inset_file: Path | None = None) -> ComicBook:  # noqa: C901
+    def get_comic_book(self, title: str, intro_inset_file: Path | None = None) -> ComicBook:
         story_title = ""
 
         found, titles, close = self.get_story_title_from_issue(title)
@@ -451,113 +416,31 @@ class ComicsDatabase:
                 raise TitleNotFoundError(msg, title)
 
         ini_file = self._story_titles_dir / get_filename_from_title_str(story_title, ".ini")
-        logger.debug(f'Getting comic book info from config file "{get_relpath(ini_file)}".')
 
-        config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
-        config.read(ini_file)
-
-        issue_title = config["info"].get("issue_title", "")
         if not intro_inset_file:
             intro_inset_file = self._get_inset_file(ini_file)
 
         fanta_info: FantaComicBookInfo = self.get_fanta_comic_book_info(story_title)
+
+        config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
+        config.read(ini_file)
         fanta_book = FANTA_SOURCE_COMICS[config["info"]["source_comic"]]
-
-        title = config["info"]["title"]
-        if not title and fanta_info.comic_book_info.is_barks_title:
-            msg = f'"{story_title}" is a barks title and should be set in the ini file.'
-            raise RuntimeError(msg)
-        if title and not fanta_info.comic_book_info.is_barks_title:
-            msg = f'"{story_title}" is a not barks title and should not be set in the ini file.'
-            raise RuntimeError(msg)
-
-        srce_dir_num_page_files = fanta_book.num_pages
         comic_book_dirs = self._get_comic_book_dirs(fanta_book)
 
-        publication_date = get_formatted_first_published_str(fanta_info.comic_book_info)
-        submitted_date = get_formatted_submitted_date(fanta_info.comic_book_info)
-
-        publication_text = get_main_publication_info(story_title, fanta_info, fanta_book)
-        if "extra_pub_info" in config["info"]:
-            publication_text += "\n" + config["info"]["extra_pub_info"]
-
-        # noinspection PyTypeChecker
-        config_page_images = [
-            OriginalPage(key, PageType[config["pages"][key]])
-            for key in config["pages"]
-            if key != "solo_pages"
-        ]
-
-        solo_pages_str = config["pages"].get("solo_pages", "")
-        solo_page_keys: frozenset[str] = (
-            frozenset(f"{int(k.strip()):03d}" for k in solo_pages_str.split(",") if k.strip())
-            if solo_pages_str
-            else frozenset()
-        )
-
-        comic = ComicBook(
+        return _build_comic_book(
+            story_title=story_title,
             ini_file=ini_file,
-            title=title,
-            title_font_file=INTRO_TITLE_DEFAULT_FONT_FILE,
-            title_font_size=config["info"].getint("title_font_size", INTRO_TITLE_DEFAULT_FONT_SIZE),
-            issue_title=issue_title,
-            author_font_size=config["info"].getint(
-                "author_font_size",
-                INTRO_AUTHOR_DEFAULT_FONT_SIZE,
-            ),
-            srce_dir_num_page_files=srce_dir_num_page_files,
-            dirs=comic_book_dirs,
-            intro_inset_file=intro_inset_file,
-            config_page_images=config_page_images,
-            page_images_in_order=_get_pages_in_order(config_page_images),
-            publication_date=publication_date,
-            submitted_date=submitted_date,
-            publication_text=publication_text,
-            fanta_book=fanta_book,
             fanta_info=fanta_info,
-            solo_page_keys=solo_page_keys,
+            fanta_book=fanta_book,
+            intro_inset_file=intro_inset_file,
+            comic_book_dirs=comic_book_dirs,
+            for_building_comics=self._for_building_comics,
         )
-
-        if self._for_building_comics:
-            self.check_comic_ok_for_building(comic)
-
-        return comic
 
     @staticmethod
     def check_comic_ok_for_building(comic: ComicBook) -> None:
-        if not comic.dirs.srce_dir.is_dir():
-            msg = f'Could not find srce directory "{comic.dirs.srce_dir}".'
-            raise FileNotFoundError(msg)
-        if not comic.get_srce_image_dir().is_dir():
-            msg = f'Could not find srce image directory "{comic.get_srce_image_dir()}".'
-            raise FileNotFoundError(msg)
-        if not comic.dirs.srce_upscayled_dir.is_dir():
-            msg = f'Could not find srce upscayled directory "{comic.dirs.srce_upscayled_dir}".'
-            raise FileNotFoundError(msg)
-        if not comic.get_srce_upscayled_image_dir().is_dir():
-            msg = (
-                f"Could not find srce upscayled image directory"
-                f' "{comic.get_srce_upscayled_image_dir()}".'
-            )
-            raise FileNotFoundError(msg)
-        if not comic.dirs.srce_restored_dir.is_dir():
-            msg = f'Could not find srce restored directory "{comic.dirs.srce_restored_dir}".'
-            raise FileNotFoundError(msg)
-        if not comic.get_srce_restored_image_dir().is_dir():
-            msg = (
-                f"Could not find srce restored image directory"
-                f' "{comic.get_srce_restored_image_dir()}".'
-            )
-            raise FileNotFoundError(msg)
-        if not comic.dirs.srce_fixes_dir.is_dir():
-            msg = f'Could not find srce fixes directory "{comic.dirs.srce_fixes_dir}".'
-            raise FileNotFoundError(msg)
-        if not comic.get_srce_original_fixes_image_dir().is_dir():
-            msg = (
-                f"Could not find srce fixes image directory "
-                f'"{comic.get_srce_original_fixes_image_dir()}".'
-            )
-            raise FileNotFoundError(msg)
+        """Verify that all required source directories for building a comic exist."""
+        check_comic_ok_for_building(comic)
 
     # TODO: Make type PanelPath
     def _get_inset_file(self, ini_file: Path) -> Path:
@@ -568,6 +451,172 @@ class ComicsDatabase:
         inset_filename = title + self._inset_ext
 
         return self._inset_dir / inset_filename
+
+
+def _build_comic_book(
+    story_title: str,
+    ini_file: Path,
+    fanta_info: FantaComicBookInfo,
+    fanta_book: FantaBook,
+    intro_inset_file: Path,
+    comic_book_dirs: ComicBookDirs,
+    for_building_comics: bool,
+) -> ComicBook:
+    logger.debug(f'Getting comic book info from config file "{get_relpath(ini_file)}".')
+
+    config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
+    config.read(ini_file)
+
+    issue_title = config["info"].get("issue_title", "")
+
+    title = config["info"]["title"]
+    if not title and fanta_info.comic_book_info.is_barks_title:
+        msg = f'"{story_title}" is a barks title and should be set in the ini file.'
+        raise RuntimeError(msg)
+    if title and not fanta_info.comic_book_info.is_barks_title:
+        msg = f'"{story_title}" is a not barks title and should not be set in the ini file.'
+        raise RuntimeError(msg)
+
+    srce_dir_num_page_files = fanta_book.num_pages
+
+    publication_date = get_formatted_first_published_str(fanta_info.comic_book_info)
+    submitted_date = get_formatted_submitted_date(fanta_info.comic_book_info)
+
+    publication_text = get_main_publication_info(story_title, fanta_info, fanta_book)
+    if "extra_pub_info" in config["info"]:
+        publication_text += "\n" + config["info"]["extra_pub_info"]
+
+    # noinspection PyTypeChecker
+    config_page_images = [
+        OriginalPage(key, PageType[config["pages"][key]])
+        for key in config["pages"]
+        if key != "solo_pages"
+    ]
+
+    solo_pages_str = config["pages"].get("solo_pages", "")
+    solo_page_keys: frozenset[str] = (
+        frozenset(f"{int(k.strip()):03d}" for k in solo_pages_str.split(",") if k.strip())
+        if solo_pages_str
+        else frozenset()
+    )
+
+    comic = ComicBook(
+        ini_file=ini_file,
+        title=title,
+        title_font_file=INTRO_TITLE_DEFAULT_FONT_FILE,
+        title_font_size=config["info"].getint("title_font_size", INTRO_TITLE_DEFAULT_FONT_SIZE),
+        issue_title=issue_title,
+        author_font_size=config["info"].getint(
+            "author_font_size",
+            INTRO_AUTHOR_DEFAULT_FONT_SIZE,
+        ),
+        srce_dir_num_page_files=srce_dir_num_page_files,
+        dirs=comic_book_dirs,
+        intro_inset_file=intro_inset_file,
+        config_page_images=config_page_images,
+        page_images_in_order=_get_pages_in_order(config_page_images),
+        publication_date=publication_date,
+        submitted_date=submitted_date,
+        publication_text=publication_text,
+        fanta_book=fanta_book,
+        fanta_info=fanta_info,
+        solo_page_keys=solo_page_keys,
+    )
+
+    if for_building_comics:
+        check_comic_ok_for_building(comic)
+
+    return comic
+
+
+def make_all_fantagraphics_directories(db: "ComicsDatabase") -> None:
+    """Create all required Fantagraphics volume directories and verify symlinks.
+
+    Args:
+        db: The ComicsDatabase instance providing volume directory paths.
+
+    """
+    FANTA_VOLUME_OVERRIDES_ROOT.mkdir(parents=True, exist_ok=True)
+
+    for volume in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1):
+        # Create these directories if they're already not there.
+        _make_vol_dir(db.get_fantagraphics_upscayled_volume_image_dir(volume))
+        _make_vol_dir(db.get_fantagraphics_restored_volume_image_dir(volume))
+        _make_vol_dir(db.get_fantagraphics_restored_upscayled_volume_image_dir(volume))
+        _make_vol_dir(db.get_fantagraphics_restored_svg_volume_image_dir(volume))
+        _make_vol_dir(db.get_fantagraphics_restored_ocr_raw_volume_dir(volume))
+        _make_vol_dir(db.get_fantagraphics_fixes_volume_image_dir(volume))
+        _make_vol_dir(db.get_fantagraphics_upscayled_fixes_volume_image_dir(volume))
+        _make_vol_dir(db.get_fantagraphics_panel_segments_volume_dir(volume))
+
+        scraps_image_dir = db.get_fantagraphics_fixes_scraps_volume_image_dir(volume)
+        _make_vol_dir(scraps_image_dir / "standard")
+        _make_vol_dir(scraps_image_dir / "upscayled")
+        _make_vol_dir(scraps_image_dir / "restored")
+
+    # Symlinks - just make sure these exist.
+    _check_symlink_exists(db.get_fantagraphics_upscayled_root_dir())
+    _check_symlink_exists(db.get_fantagraphics_restored_upscayled_root_dir())
+    _check_symlink_exists(db.get_fantagraphics_restored_svg_root_dir())
+
+
+def _make_vol_dir(vol_dirname: Path) -> None:
+    if vol_dirname.is_dir():
+        logger.debug(f'Dir already exists - nothing to do: "{vol_dirname}".')
+    else:
+        vol_dirname.mkdir(parents=True, exist_ok=True)
+        logger.info(f'Created dir "{vol_dirname}".')
+
+
+def _check_symlink_exists(symlink: Path) -> None:
+    if not symlink.is_symlink():
+        logger.error(f'Symlink not found: "{symlink}".')
+    else:
+        logger.debug(f'Symlink exists - all good: "{symlink}".')
+
+
+def check_comic_ok_for_building(comic: ComicBook) -> None:
+    """Verify that all required source directories for building a comic exist.
+
+    Args:
+        comic: The ComicBook whose directories are checked.
+
+    Raises:
+        FileNotFoundError: If any required directory is missing.
+
+    """
+    if not comic.dirs.srce_dir.is_dir():
+        msg = f'Could not find srce directory "{comic.dirs.srce_dir}".'
+        raise FileNotFoundError(msg)
+    if not comic.get_srce_image_dir().is_dir():
+        msg = f'Could not find srce image directory "{comic.get_srce_image_dir()}".'
+        raise FileNotFoundError(msg)
+    if not comic.dirs.srce_upscayled_dir.is_dir():
+        msg = f'Could not find srce upscayled directory "{comic.dirs.srce_upscayled_dir}".'
+        raise FileNotFoundError(msg)
+    if not comic.get_srce_upscayled_image_dir().is_dir():
+        msg = (
+            f"Could not find srce upscayled image directory"
+            f' "{comic.get_srce_upscayled_image_dir()}".'
+        )
+        raise FileNotFoundError(msg)
+    if not comic.dirs.srce_restored_dir.is_dir():
+        msg = f'Could not find srce restored directory "{comic.dirs.srce_restored_dir}".'
+        raise FileNotFoundError(msg)
+    if not comic.get_srce_restored_image_dir().is_dir():
+        msg = (
+            f'Could not find srce restored image directory "{comic.get_srce_restored_image_dir()}".'
+        )
+        raise FileNotFoundError(msg)
+    if not comic.dirs.srce_fixes_dir.is_dir():
+        msg = f'Could not find srce fixes directory "{comic.dirs.srce_fixes_dir}".'
+        raise FileNotFoundError(msg)
+    if not comic.get_srce_original_fixes_image_dir().is_dir():
+        msg = (
+            f"Could not find srce fixes image directory "
+            f'"{comic.get_srce_original_fixes_image_dir()}".'
+        )
+        raise FileNotFoundError(msg)
 
 
 def _get_story_titles_dir(db_dir: Path) -> Path:
