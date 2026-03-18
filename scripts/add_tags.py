@@ -38,8 +38,10 @@ import typer
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 
-BARKS_TAGS_FILE = _REPO_ROOT / "src/barks-fantagraphics/src/barks_fantagraphics/barks_tags.py"
-BARKS_TITLES_FILE = _REPO_ROOT / "src/barks-fantagraphics/src/barks_fantagraphics/barks_titles.py"
+_FANTA_SRC = _REPO_ROOT / "src/barks-fantagraphics/src/barks_fantagraphics"
+BARKS_TAGS_FILE = _FANTA_SRC / "barks_tags.py"
+BARKS_TAGS_DATA_FILE = _FANTA_SRC / "barks_tags_data.py"
+BARKS_TITLES_FILE = _FANTA_SRC / "barks_titles.py"
 
 
 # ---------------------------------------------------------------------------
@@ -350,15 +352,16 @@ class BarkTagsModifier:
 
 
 def process_entry(
-    modifier: BarkTagsModifier,
+    enum_modifier: BarkTagsModifier,
+    data_modifier: BarkTagsModifier,
     seen_enums: set[str],
     tag_term: str,
     title_enum: str,
     page: int,
 ) -> None:
-    """Apply one input-file entry to the in-memory modifier."""
+    """Apply one input-file entry to the in-memory modifiers."""
     derived = tag_term_to_enum_name(tag_term)
-    enum_name, already_exists = modifier.resolve_enum_name(tag_term, derived)
+    enum_name, already_exists = enum_modifier.resolve_enum_name(tag_term, derived)
 
     desc = f'"{tag_term}" -> Tags.{enum_name}, Titles.{title_enum}'
     if page >= 0:
@@ -370,12 +373,12 @@ def process_entry(
         if already_exists:
             print(f"  WARNING: Tags.{enum_name} already exists, skipping enum step")
         else:
-            modifier.add_enum_member(enum_name, tag_term)
+            enum_modifier.add_enum_member(enum_name, tag_term)
 
-    modifier.add_title_to_tagged_titles(enum_name, title_enum)
+    data_modifier.add_title_to_tagged_titles(enum_name, title_enum)
 
     if page >= 0:
-        modifier.add_page_to_tagged_pages(enum_name, title_enum, page)
+        data_modifier.add_page_to_tagged_pages(enum_name, title_enum, page)
 
 
 # ---------------------------------------------------------------------------
@@ -408,21 +411,24 @@ def main(
             print(f"ERROR: Unknown Titles enum member: {t}", file=sys.stderr)
         raise typer.Exit(1)
 
-    modifier = BarkTagsModifier(BARKS_TAGS_FILE)
+    enum_modifier = BarkTagsModifier(BARKS_TAGS_FILE)
+    data_modifier = BarkTagsModifier(BARKS_TAGS_DATA_FILE)
     seen_enums: set[str] = set()
 
     for tag_term, title_enum, page in entries:
-        process_entry(modifier, seen_enums, tag_term, title_enum, page)
+        process_entry(enum_modifier, data_modifier, seen_enums, tag_term, title_enum, page)
 
     if dry_run:
-        diff = modifier.unified_diff()
-        if diff:
-            sys.stdout.writelines(diff)
+        diffs = [enum_modifier.unified_diff(), data_modifier.unified_diff()]
+        if any(diffs):
+            for diff in diffs:
+                sys.stdout.writelines(diff)
         else:
             print("\n(no changes)")
         print("\nDry-run: nothing written.")
     else:
-        modifier.save()
+        enum_modifier.save()
+        data_modifier.save()
 
 
 if __name__ == "__main__":
