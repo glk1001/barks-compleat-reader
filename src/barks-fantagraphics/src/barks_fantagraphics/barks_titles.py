@@ -10,7 +10,7 @@ from .comic_issues import (
     Issues,
 )
 
-NUM_TITLES = 660 + 6  # +6 for articles
+NUM_TITLES = 660 + 4  # +4 for articles
 
 GYRO_GEARLOOSE = "Gyro Gearloose"
 
@@ -686,8 +686,6 @@ DON_AULT___FANTAGRAPHICS_INTRODUCTION = "Don Ault - Fantagraphics Introduction"
 DON_AULT___LIFE_AMONG_THE_DUCKS = "Don Ault - Life Among the Ducks"
 # noinspection LongLine
 MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD = "Maggie Thompson - Comics Readers Find Comic Book Gold"
-CENSORSHIP_FIXES_AND_OTHER_CHANGES = "Censorship Fixes and Other Changes"
-HOW_TO_USE_THE_BARKS_READER = "How to Use the Barks Reader"
 # fmt: on
 
 
@@ -1358,8 +1356,6 @@ class Titles(IntEnum):
     DON_AULT___FANTAGRAPHICS_INTRODUCTION = auto()
     DON_AULT___LIFE_AMONG_THE_DUCKS = auto()
     MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD = auto()
-    CENSORSHIP_FIXES_AND_OTHER_CHANGES = auto()
-    HOW_TO_USE_THE_BARKS_READER = auto()
 
 
 assert len(Titles) == NUM_TITLES, f"{len(Titles)} != {NUM_TITLES}"
@@ -2030,8 +2026,6 @@ BARKS_TITLES = [
     DON_AULT___FANTAGRAPHICS_INTRODUCTION,
     DON_AULT___LIFE_AMONG_THE_DUCKS,
     MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD,
-    CENSORSHIP_FIXES_AND_OTHER_CHANGES,
-    HOW_TO_USE_THE_BARKS_READER,
 ]
 
 assert len(BARKS_TITLES) == NUM_TITLES, f"{len(BARKS_TITLES)} != {NUM_TITLES}"

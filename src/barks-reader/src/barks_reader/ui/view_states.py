@@ -160,14 +160,7 @@ _ARTICLE_VIEW_STATE_TO_TITLE_MAP = {
     ViewStates.ON_APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_NODE: Titles.GEORGE_LUCAS___AN_APPRECIATION,
 }
 # fmt: on
-# Censorship fixes and How To are now handled via the document reader, not as articles.
-_DOCUMENT_READER_TITLES = {
-    Titles.HOW_TO_USE_THE_BARKS_READER,
-    Titles.CENSORSHIP_FIXES_AND_OTHER_CHANGES,
-}
-assert sorted(_ARTICLE_VIEW_STATE_TO_TITLE_MAP.values()) == sorted(
-    [x for x in NON_COMIC_TITLES if x not in _DOCUMENT_READER_TITLES]
-)
+assert sorted(_ARTICLE_VIEW_STATE_TO_TITLE_MAP.values()) == sorted(NON_COMIC_TITLES)
 
 
 def get_view_state_and_article_title_from_node(

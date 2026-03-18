@@ -740,8 +740,6 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, False, Issues.EXTRAS, 1, 1, 2011, 1, 1, 2011),
     ComicBookInfo(Titles.DON_AULT___LIFE_AMONG_THE_DUCKS, False, Issues.EXTRAS, 1, 1, 2014, 1, 1, 2014),
     ComicBookInfo(Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD, False, Issues.EXTRAS, 1, 1, 2025, 1, 1, 2025),
-    ComicBookInfo(Titles.CENSORSHIP_FIXES_AND_OTHER_CHANGES, False, Issues.EXTRAS, 6, 8, 2025, 6, 8, 2025),
-    ComicBookInfo(Titles.HOW_TO_USE_THE_BARKS_READER, False, Issues.EXTRAS, 2, 3, 2026, 2, 3, 2026),
     # Sort these out
 ]
 # fmt: on
@@ -776,8 +774,6 @@ NON_COMIC_TITLES = [
     Titles.DON_AULT___LIFE_AMONG_THE_DUCKS,
     Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD,
     Titles.GEORGE_LUCAS___AN_APPRECIATION,
-    Titles.CENSORSHIP_FIXES_AND_OTHER_CHANGES,
-    Titles.HOW_TO_USE_THE_BARKS_READER,
 ]
 
 
