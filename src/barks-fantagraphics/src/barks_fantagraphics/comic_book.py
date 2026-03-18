@@ -63,6 +63,46 @@ if TYPE_CHECKING:
 INTRO_TITLE_DEFAULT_FONT_SIZE = 155
 INTRO_AUTHOR_DEFAULT_FONT_SIZE = 90
 
+# (volume, page_num) pairs that are "edited" or "added" fixes special cases.
+# Used by is_fixes_special_case / is_fixes_special_case_added to avoid long
+# chains of conditionals.
+_FIXES_SPECIAL_CASES: frozenset[tuple[int, str]] = frozenset(
+    {
+        (16, "209"),  # Happy New Year page
+        (4, "227"),  # Restored "The Bill Collectors"
+    }
+)
+
+_FIXES_SPECIAL_CASES_ADDED: frozenset[tuple[int, str]] = frozenset(
+    {
+        (4, "227"),  # Restored "The Bill Collectors"
+        (7, "240"),  # Copied from volume 8, jpeg 31
+        (7, "241"),  # Copied from volume 8, jpeg 32
+        (16, "235"),  # Copied from volume 14, jpeg 145
+        # Non-comic title pages — volume 1
+        (1, "268"),
+        # Non-comic title pages — volume 2
+        (2, "252"),
+        (2, "253"),
+        (2, "254"),
+        (2, "255"),
+        (2, "256"),
+        (2, "257"),
+        (2, "258"),
+        (2, "259"),
+        (2, "260"),
+        (2, "261"),
+        # Non-comic title pages — volume 7
+        (7, "260"),
+        (7, "261"),
+        (7, "262"),
+        (7, "263"),
+        (7, "264"),
+        (7, "265"),
+        (7, "266"),
+    }
+)
+
 
 @dataclass(frozen=True, slots=True)
 class ComicBookDirs:
@@ -433,62 +473,11 @@ class ComicBook:
 
     @staticmethod
     def is_fixes_special_case(volume: int, page_num: str) -> bool:
-        # Happy New Year page.
-        if volume == 16 and page_num == "209":  # noqa: PLR2004
-            return True
-        # Restored "The Bill Collectors"
-        if volume == 4 and page_num == "227":  # noqa: PLR2004, SIM103
-            return True
-
-        return False
+        return (volume, page_num) in _FIXES_SPECIAL_CASES
 
     @staticmethod
-    def is_fixes_special_case_added(volume: int, page_num: str) -> bool:  # noqa: PLR0911
-        # Restored "The Bill Collectors"
-        if volume == 4 and page_num == "227":  # noqa: PLR2004
-            return True
-        # Copied from volume 8, jpeg 31.
-        if volume == 7 and page_num == "240":  # noqa: PLR2004
-            return True
-        # Copied from volume 8, jpeg 32.
-        if volume == 7 and page_num == "241":  # noqa: PLR2004
-            return True
-        # Copied from volume 14, jpeg 145.
-        if volume == 16 and page_num == "235":  # noqa: PLR2004
-            return True
-
-        # Non-comic titles.
-        if volume == 1 and page_num in [  # noqa: FURB171
-            "268",
-        ]:
-            return True
-
-        if volume == 2 and page_num in [  # noqa: PLR2004
-            "252",
-            "253",
-            "254",
-            "255",
-            "256",
-            "257",
-            "258",
-            "259",
-            "260",
-            "261",
-        ]:
-            return True
-
-        if volume == 7 and page_num in [  # noqa: PLR2004, SIM103
-            "260",
-            "261",
-            "262",
-            "263",
-            "264",
-            "265",
-            "266",
-        ]:
-            return True
-
-        return False
+    def is_fixes_special_case_added(volume: int, page_num: str) -> bool:
+        return (volume, page_num) in _FIXES_SPECIAL_CASES_ADDED
 
     def _is_edited_fixes_special_case(self, page_num: str) -> bool:
         return bool(self.fanta_book.volume == 16 and page_num == "209")  # noqa: PLR2004
