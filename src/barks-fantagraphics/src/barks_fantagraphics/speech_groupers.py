@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from itertools import groupby
 from pathlib import Path
+from typing import Any
 
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from barks_fantagraphics.comic_book import ComicBook
@@ -122,7 +123,9 @@ def get_speech_page_group(
     )
 
 
-def _get_speech_text_list(ocr_prelim_groups_json_file: Path) -> tuple[dict[str, SpeechText], dict]:
+def _get_speech_text_list(
+    ocr_prelim_groups_json_file: Path,
+) -> tuple[dict[str, SpeechText], dict[str, Any]]:
     try:
         ocr_prelim_group = json.loads(ocr_prelim_groups_json_file.read_text())
     except Exception as e:
@@ -149,7 +152,7 @@ def _get_speech_text_list(ocr_prelim_groups_json_file: Path) -> tuple[dict[str, 
     return speech_groups, ocr_prelim_group
 
 
-def _is_page_number(group: dict) -> bool:
+def _is_page_number(group: dict[str, Any]) -> bool:
     return (
         int(group["panel_num"]) == -1 and group["notes"] and "page number" in group["notes"].lower()
     )
