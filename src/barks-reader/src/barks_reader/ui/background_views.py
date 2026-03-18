@@ -38,6 +38,8 @@ from barks_reader.core.reader_formatter import get_formatted_color
 from barks_reader.ui.view_states import ViewStates
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from comic_utils.comic_consts import PanelPath
 
     from barks_reader.core.reader_colors import Color
@@ -360,40 +362,65 @@ class BackgroundViews:
         self.set_next_bottom_view_title_image()
         self._set_bottom_view_title_image_color()
 
-    def _set_next_top_view_image(self) -> None:  # noqa: C901, PLR0912
-        if self._view_state in self._SERIES_VIEW_STATES:
-            series_key = self._SERIES_VIEW_STATES[self._view_state]
-            self._top_view_image_info = self._get_top_view_random_image(
-                self._title_lists[series_key]
-            )
-        elif self._view_state in {ViewStates.PRE_INIT, ViewStates.INITIAL}:
-            self._set_top_view_image_fixed(Titles.COLD_BARGAIN_A)
-        elif self._view_state in self._INTRO_VIEW_STATES:
-            self._set_top_view_image_fixed(Titles.ADVENTURE_DOWN_UNDER)
-        elif self._view_state in self._STORIES_VIEW_STATES:
-            self._top_view_image_info = self._get_top_view_random_image(
-                self._title_lists[ALL_LISTS]
-            )
-        elif self._view_state == ViewStates.ON_CS_YEAR_RANGE_NODE:
-            self._set_top_view_image_for_cs_year_range()
-        elif self._view_state == ViewStates.ON_US_YEAR_RANGE_NODE:
-            self._set_top_view_image_for_us_year_range()
-        elif self._view_state == ViewStates.ON_YEAR_RANGE_NODE:
-            self._set_top_view_image_for_year_range()
-        elif self._view_state == ViewStates.ON_CATEGORY_NODE:
-            self._set_top_view_image_for_category()
-        elif self._view_state == ViewStates.ON_TAG_GROUP_NODE:
-            self._set_top_view_image_for_tag_group()
-        elif self._view_state == ViewStates.ON_TAG_NODE:
-            self._set_top_view_image_for_tag()
-        elif self._view_state in self._SEARCH_VIEW_STATES:
-            self._set_top_view_image_for_search()
-        elif self._view_state in self._APPENDIX_VIEW_STATES:
-            self._set_top_view_image_fixed(Titles.FABULOUS_PHILOSOPHERS_STONE_THE)
-        elif self._view_state == ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE:
-            self._set_top_view_image_for_appendix_censorship_fixes()
-        elif self._view_state in self._INDEX_VIEW_STATES:
-            self._set_top_view_image_fixed(Titles.TRUANT_OFFICER_DONALD)
+    def _set_next_top_view_image(self) -> None:
+        # Dispatch table: (predicate, handler) pairs checked in order.
+        dispatch: list[tuple[bool, Callable[[], None]]] = [
+            (
+                self._view_state in self._SERIES_VIEW_STATES,
+                self._set_top_view_image_for_series,
+            ),
+            (
+                self._view_state in {ViewStates.PRE_INIT, ViewStates.INITIAL},
+                lambda: self._set_top_view_image_fixed(Titles.COLD_BARGAIN_A),
+            ),
+            (
+                self._view_state in self._INTRO_VIEW_STATES,
+                lambda: self._set_top_view_image_fixed(Titles.ADVENTURE_DOWN_UNDER),
+            ),
+            (
+                self._view_state in self._STORIES_VIEW_STATES,
+                self._set_top_view_image_for_stories,
+            ),
+            (
+                self._view_state == ViewStates.ON_CS_YEAR_RANGE_NODE,
+                self._set_top_view_image_for_cs_year_range,
+            ),
+            (
+                self._view_state == ViewStates.ON_US_YEAR_RANGE_NODE,
+                self._set_top_view_image_for_us_year_range,
+            ),
+            (
+                self._view_state == ViewStates.ON_YEAR_RANGE_NODE,
+                self._set_top_view_image_for_year_range,
+            ),
+            (
+                self._view_state == ViewStates.ON_CATEGORY_NODE,
+                self._set_top_view_image_for_category,
+            ),
+            (
+                self._view_state == ViewStates.ON_TAG_GROUP_NODE,
+                self._set_top_view_image_for_tag_group,
+            ),
+            (self._view_state == ViewStates.ON_TAG_NODE, self._set_top_view_image_for_tag),
+            (self._view_state in self._SEARCH_VIEW_STATES, self._set_top_view_image_for_search),
+            (
+                self._view_state in self._APPENDIX_VIEW_STATES,
+                lambda: self._set_top_view_image_fixed(Titles.FABULOUS_PHILOSOPHERS_STONE_THE),
+            ),
+            (
+                self._view_state == ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
+                self._set_top_view_image_for_appendix_censorship_fixes,
+            ),
+            (
+                self._view_state in self._INDEX_VIEW_STATES,
+                lambda: self._set_top_view_image_fixed(Titles.TRUANT_OFFICER_DONALD),
+            ),
+        ]
+
+        for predicate, handler in dispatch:
+            if predicate:
+                handler()
+                break
         else:
             msg = f"Unhandled view state: {self._view_state}"
             raise AssertionError(msg)
@@ -411,6 +438,13 @@ class BackgroundViews:
             f" Color: {get_formatted_color(self._top_view_image_color)},"
             f" Opacity: {self._top_view_image_opacity}."
         )
+
+    def _set_top_view_image_for_series(self) -> None:
+        series_key = self._SERIES_VIEW_STATES[self._view_state]
+        self._top_view_image_info = self._get_top_view_random_image(self._title_lists[series_key])
+
+    def _set_top_view_image_for_stories(self) -> None:
+        self._top_view_image_info = self._get_top_view_random_image(self._title_lists[ALL_LISTS])
 
     def _set_top_view_image_fixed(self, title: Titles) -> None:
         self._top_view_image_info = ImageInfo(
