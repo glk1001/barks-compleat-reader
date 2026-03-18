@@ -96,15 +96,23 @@ barks-build-comic-images = { workspace = true }
 comic-utils = { workspace = true }
 
 [tool.coverage.run]
-# Only measure code in your source folder (ignore virtualenv stuff)
-source = ["src/barks-reader/src/barks_reader"]
+source = [
+    "src/barks-reader/src/barks_reader",
+    "src/barks-fantagraphics/src/barks_fantagraphics",
+]
+branch = true
 
 [tool.coverage.report]
-# fail_under = 80
+fail_under = 40
 show_missing = true
 skip_empty = true
-# Don't check the tests themselves, only the app code
 omit = [
     "*/tests/*",
     "*/__init__.py",
+    # Pycrucible installer runs only inside the bundled executable
+    "*/pycrucible_pre_run_installer.py",
+    "*/pycrucible_pre_run_installer_show_message.py",
+    # Standalone Kivy error/message popups run outside the normal app context
+    "*/kivy_standalone_error_popup.py",
+    "*/kivy_standalone_show_message.py",
 ]
