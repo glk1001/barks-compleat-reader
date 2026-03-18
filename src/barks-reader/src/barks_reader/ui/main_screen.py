@@ -101,7 +101,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
     is_first_use_of_reader = BooleanProperty(defaultvalue=False)
 
-    def __init__(  # noqa: PLR0915
+    def __init__(
         self,
         comics_database: ComicsDatabase,
         reader_settings: ReaderSettings,
@@ -125,40 +125,22 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         self._comics_database = comics_database
         self._reader_settings = reader_settings
-
-        self._tree_view_screen = tree_view_screen
-        self._tree_view_screen.on_goto_title = self._on_goto_top_view_title
-
-        self._bottom_title_view_screen = bottom_title_view_screen
-        self._fun_image_view_screen = fun_image_view_screen
-        self._main_index_screen = main_index_screen
-        self._main_index_screen.on_goto_title = self._goto_title_with_page_num
-        self._speech_index_screen = speech_index_screen
-        self._speech_index_screen.on_goto_title = self._goto_title_with_page_num
-        self._names_index_screen = names_index_screen
-        self._names_index_screen.on_goto_title = self._goto_title_with_page_num
-        self._locations_index_screen = locations_index_screen
-        self._locations_index_screen.on_goto_title = self._goto_title_with_page_num
-        self._statistics_screen = statistics_screen
-        self._search_screen = search_screen
-        self._search_screen.on_goto_title = self._goto_search_title
-        self._search_screen.on_goto_title_with_page = self._goto_title_with_page_num
-        self._user_error_handler = user_error_handler
-
-        self.ids.main_layout.add_widget(self._tree_view_screen)
-        self._bottom_base_view_screen = Screen(size_hint=(1, 1))
-        self._bottom_base_view_screen.add_widget(self._bottom_title_view_screen)
-        self._bottom_base_view_screen.add_widget(self._fun_image_view_screen)
-        self._bottom_base_view_screen.add_widget(self._main_index_screen)
-        self._bottom_base_view_screen.add_widget(self._speech_index_screen)
-        self._bottom_base_view_screen.add_widget(self._names_index_screen)
-        self._bottom_base_view_screen.add_widget(self._locations_index_screen)
-        self._bottom_base_view_screen.add_widget(self._statistics_screen)
-        self._bottom_base_view_screen.add_widget(self._search_screen)
-        self.ids.main_layout.add_widget(self._bottom_base_view_screen)
-
         self._screen_switchers = screen_switchers
         self._font_manager = font_manager
+        self._user_error_handler = user_error_handler
+
+        self._wire_screens(
+            tree_view_screen,
+            bottom_title_view_screen,
+            fun_image_view_screen,
+            main_index_screen,
+            speech_index_screen,
+            names_index_screen,
+            locations_index_screen,
+            statistics_screen,
+            search_screen,
+        )
+
         self._title_lists: dict[str, list[FantaComicBookInfo]] = (
             filtered_title_lists.get_title_lists()
         )
@@ -166,20 +148,12 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self.is_first_use_of_reader = self._reader_settings.is_first_use_of_reader
 
         self._action_bar = self.ids.action_bar
-        self._action_bar_fullscreen_icon = str(
-            self._reader_settings.sys_file_paths.get_barks_reader_fullscreen_icon_file()
-        )
-        self._action_bar_fullscreen_exit_icon = str(
-            self._reader_settings.sys_file_paths.get_barks_reader_fullscreen_exit_icon_file()
-        )
         self._fullscreen_button = self.ids.fullscreen_button
-
         self._json_settings_manager = SettingsManager(self._reader_settings.get_user_data_path())
         self._special_fanta_overrides = SpecialFantaOverrides(self._reader_settings)
 
         self.fanta_info: FantaComicBookInfo | None = None
         self._year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
-
         self._reader_tree_events = reader_tree_events
 
         user_error_handler = UserErrorHandler(reader_settings, screen_switchers.switch_to_settings)
@@ -199,8 +173,12 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             comic_reader_manager=self._comic_reader_manager,
             action_bar=self._action_bar,
             fullscreen_button=self._fullscreen_button,
-            fullscreen_icon=self._action_bar_fullscreen_icon,
-            fullscreen_exit_icon=self._action_bar_fullscreen_exit_icon,
+            fullscreen_icon=str(
+                self._reader_settings.sys_file_paths.get_barks_reader_fullscreen_icon_file()
+            ),
+            fullscreen_exit_icon=str(
+                self._reader_settings.sys_file_paths.get_barks_reader_fullscreen_exit_icon_file()
+            ),
             main_layout=self.ids.main_layout,
             fun_image_view_screen=self._fun_image_view_screen,
             update_fonts=self.update_fonts,
@@ -291,6 +269,48 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         self._set_initial_state()
 
+    def _wire_screens(
+        self,
+        tree_view_screen: TreeViewScreen,
+        bottom_title_view_screen: BottomTitleViewScreen,
+        fun_image_view_screen: FunImageViewScreen,
+        main_index_screen: MainIndexScreen,
+        speech_index_screen: SpeechIndexScreen,
+        names_index_screen: EntityIndexScreen,
+        locations_index_screen: EntityIndexScreen,
+        statistics_screen: StatisticsScreen,
+        search_screen: SearchScreen,
+    ) -> None:
+        self._tree_view_screen = tree_view_screen
+        self._tree_view_screen.on_goto_title = self._on_goto_top_view_title
+
+        self._bottom_title_view_screen = bottom_title_view_screen
+        self._fun_image_view_screen = fun_image_view_screen
+        self._main_index_screen = main_index_screen
+        self._main_index_screen.on_goto_title = self._goto_title_with_page_num
+        self._speech_index_screen = speech_index_screen
+        self._speech_index_screen.on_goto_title = self._goto_title_with_page_num
+        self._names_index_screen = names_index_screen
+        self._names_index_screen.on_goto_title = self._goto_title_with_page_num
+        self._locations_index_screen = locations_index_screen
+        self._locations_index_screen.on_goto_title = self._goto_title_with_page_num
+        self._statistics_screen = statistics_screen
+        self._search_screen = search_screen
+        self._search_screen.on_goto_title = self._goto_search_title
+        self._search_screen.on_goto_title_with_page = self._goto_title_with_page_num
+
+        self.ids.main_layout.add_widget(self._tree_view_screen)
+        self._bottom_base_view_screen = Screen(size_hint=(1, 1))
+        self._bottom_base_view_screen.add_widget(self._bottom_title_view_screen)
+        self._bottom_base_view_screen.add_widget(self._fun_image_view_screen)
+        self._bottom_base_view_screen.add_widget(self._main_index_screen)
+        self._bottom_base_view_screen.add_widget(self._speech_index_screen)
+        self._bottom_base_view_screen.add_widget(self._names_index_screen)
+        self._bottom_base_view_screen.add_widget(self._locations_index_screen)
+        self._bottom_base_view_screen.add_widget(self._statistics_screen)
+        self._bottom_base_view_screen.add_widget(self._search_screen)
+        self.ids.main_layout.add_widget(self._bottom_base_view_screen)
+
     def open_menu_dots(self, button: Button) -> None:
         self.menu_dots_dropdown.open(button)
 
@@ -324,6 +344,12 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         self._view_state_manager.set_view_state(ViewStates.PRE_INIT)
 
+        self._bind_screen_callbacks()
+
+        self._window_helper.resize_binding()
+        self._update_action_bar_visibility()
+
+    def _bind_screen_callbacks(self) -> None:
         self._main_index_screen.on_goto_background_title_func = self._goto_chrono_title
         self._speech_index_screen.on_goto_background_title_func = self._goto_chrono_title
         self._names_index_screen.on_goto_background_title_func = self._goto_chrono_title
@@ -349,10 +375,6 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._reader_tree_events.bind(
             on_finished_building_event=self._app_initializer.on_tree_build_finished
         )
-
-        self._window_helper.resize_binding()
-
-        self._update_action_bar_visibility()
 
     def _is_active(self, active: bool) -> None:
         if self._active == active:
