@@ -1,4 +1,4 @@
-# ruff: noqa: T201
+# ruff: noqa: T201, ERA001, PLW0108
 
 from barks_fantagraphics.barks_titles import BARKS_TITLES, NUM_TITLES
 
