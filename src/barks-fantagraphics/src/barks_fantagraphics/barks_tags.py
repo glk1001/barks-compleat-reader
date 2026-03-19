@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from enum import Enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 from . import barks_titles
 from .barks_titles import Titles
@@ -258,7 +262,7 @@ class TagGroups(Enum):
     SOUTH_AMERICA = "South America"
 
 
-BARKS_TAG_GROUPS_ALIASES = {str(t.value).lower(): t for t in TagGroups}
+BARKS_TAG_GROUPS_ALIASES: dict[str, TagGroups] = {str(t.value).lower(): t for t in TagGroups}
 
 BARKS_TAG_CATEGORIES_DICT = {cat.value: cat for cat in TagCategories}
 
@@ -442,7 +446,7 @@ def _get_tag_groups_titles() -> dict[TagGroups, list[Titles]]:
     return tag_groups_titles
 
 
-def _get_titles_for_tags_or_groups(items_list: list[Tags | TagGroups]) -> set[Titles]:
+def _get_titles_for_tags_or_groups(items_list: Sequence[Tags | TagGroups]) -> set[Titles]:
     """Recursively collect all unique titles for a list that may contain individual
     Tags or TagGroups.
     """

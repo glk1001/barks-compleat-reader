@@ -88,8 +88,8 @@ class ScreenMetrics:
                     height_mm,
                     width_in,
                     height_in,
-                    avg_dpi,
-                    monitor.is_primary,
+                    int(avg_dpi),
+                    monitor.is_primary or False,
                 )
             )
 

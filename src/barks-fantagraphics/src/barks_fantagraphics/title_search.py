@@ -124,7 +124,7 @@ class BarksTitleSearch:
 
     @staticmethod
     def get_direct_group_members(tag_group: TagGroups) -> list[Tags | TagGroups]:
-        return BARKS_TAG_GROUPS.get(tag_group, [])
+        return list(BARKS_TAG_GROUPS.get(tag_group, []))
 
     def _get_titles_with_one_char_tag_search(self, prefix: str) -> list[Tags | TagGroups]:
         assert len(prefix) == 1
