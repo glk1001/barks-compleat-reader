@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import string
 from collections import defaultdict
 from typing import TYPE_CHECKING, override
 
@@ -42,19 +43,21 @@ class EntityIndexScreen(SpeechIndexScreen):
             if not t:
                 continue
             ch = t[0].lower()
-            if "a" <= ch <= "z":
-                letter = ch.upper()
-            elif "0" <= ch <= "9":
-                letter = "0"
-            elif ch == "'":
-                letter = "'"
-            else:
-                continue  # skip garbage like "-ER-"
+            if not "a" <= ch <= "z":
+                msg = f'Entity term has non-alpha prefix: "{t}".'
+                raise RuntimeError(msg)
+
+            letter = ch.upper()
             self._item_index[letter].append(IndexItem(t, shorten_if_necessary(t)))
 
         # Hide the top prefix bar (widget defined in the .kv file).
         self.ids.alphabet_top_split_layout.height = 0
         self.ids.alphabet_top_split_layout.opacity = 0
+
+    @override
+    def _get_alphabet_letters(self) -> str:
+        """Return only A-Z for entity indexes (no digits or apostrophes)."""
+        return string.ascii_uppercase
 
     @override
     def _find_words(self, index_terms: str) -> TitleDict:

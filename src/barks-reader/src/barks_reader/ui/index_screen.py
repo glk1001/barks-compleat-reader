@@ -636,13 +636,20 @@ class IndexScreen(FloatLayout):
         timing = Timing()
 
         alphabet_side_layout: GridLayout = self.ids.alphabet_side_layout
-        for letter in "0" + "'" + string.ascii_uppercase:
+        for letter in self._get_alphabet_letters():
             button = IndexMenuButton(text=letter)
             button.bind(on_release=self.on_letter_press)
             self._alphabet_buttons[letter] = button
             alphabet_side_layout.add_widget(button)
 
         logger.debug(f"Created A-Z index buttons in {timing.get_elapsed_time_with_unit()}.")
+
+    def _get_alphabet_letters(self) -> str:
+        """Return the characters to display in the side alphabet menu.
+
+        Subclasses can override this to restrict the menu (e.g. A-Z only).
+        """
+        return "0" + "'" + string.ascii_uppercase
 
     @abstractmethod
     def _new_index_image(self) -> None:
