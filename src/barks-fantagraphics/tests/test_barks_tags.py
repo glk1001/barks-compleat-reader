@@ -28,7 +28,7 @@ def test_initial_validation_passes() -> None:
     try:
         barks_tags.validate_tag_data()
     except AssertionError as e:
-        pytest.fail(f"validate_tag_data failed with presumably valid data: {e}")
+        pytest.fail(f"validate_tag_data failed with presumably invalid data: {e}")
 
 
 # --- Tests for validate_tag_data failures ---

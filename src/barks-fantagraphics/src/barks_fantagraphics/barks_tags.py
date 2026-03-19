@@ -79,6 +79,7 @@ class Tags(Enum):
     HDL_DRIVING_CAR = "HDL driving car"
     HERBERT = "Herbert"
     HIMALAYAS = "Himalayas"
+    HONDORICA = "Hondorica"
     HYPNOSIS = "hypnosis"
     INDIA = "India"
     INDIAN_OCEAN = "Indian Ocean"

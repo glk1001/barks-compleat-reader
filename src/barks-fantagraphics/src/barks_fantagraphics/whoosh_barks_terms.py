@@ -1324,6 +1324,7 @@ BARKSIAN_PLACE_RELATED_WORDS: frozenset[str] = frozenset(
         "hackensack",
         "hindu",
         "hollywood",
+        "hondorica",
         "hottentot",
         "howduyustan",
         "ironheelia",
