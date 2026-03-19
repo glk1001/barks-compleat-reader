@@ -119,6 +119,17 @@ class TestFilterEntitiesToCurated:
 
         assert result[EntityType.PERSON] == set()
 
+    def test_normalizes_to_curated_casing(self) -> None:
+        """Entity names with wrong casing (e.g. from spaCy) are normalized to curated form."""
+        curated_sets = {et: set() for et in EntityType}
+        curated_sets[EntityType.LOCATION] = {"lost dutchman's"}
+        # Simulate spaCy producing title-cased output (capitalizes after apostrophe).
+        entities = {EntityType.LOCATION: {"Lost Dutchman'S"}}
+
+        result = _filter_entities_to_curated(entities, curated_sets)
+
+        assert result[EntityType.LOCATION] == {"Lost Dutchman's"}
+
 
 # ---------------------------------------------------------------------------
 # _normalize_entity_names

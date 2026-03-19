@@ -140,13 +140,13 @@ class TestEntityIndexScreen:
         assert len(items) == 2  # noqa: PLR2004
         assert all(isinstance(i, IndexItem) for i in items)
 
-    def test_garbage_terms_filtered(
+    def test_non_alpha_term_raises(
         self,
         mock_settings: MagicMock,
         mock_font_manager: MagicMock,
         mock_user_error_handler: MagicMock,
     ) -> None:
-        """Terms with invalid first chars (like '-ER-') should be filtered out."""
+        """Terms with non-alpha first chars (like '-ER-') should raise RuntimeError."""
         with patch.object(barks_reader.ui.index_screen.IndexScreen, "__init__"):  # noqa: SIM117
             with (
                 patch.object(
@@ -165,24 +165,17 @@ class TestEntityIndexScreen:
                 mock_indexer.get_cleaned_alpha_split_terms.return_value = {}
                 mock_indexer.get_entity_terms.return_value = [
                     "-ER-",
-                    "",
                     "Alice",
-                    "Bob",
                 ]
 
                 mock_ids = MagicMock()
-                with patch.object(EntityIndexScreen, "ids", mock_ids):
-                    screen = EntityIndexScreen(
+                with (
+                    patch.object(EntityIndexScreen, "ids", mock_ids),
+                    pytest.raises(RuntimeError, match="non-alpha prefix"),
+                ):
+                    EntityIndexScreen(
                         EntityType.PERSON,
                         mock_settings,
                         mock_font_manager,
                         mock_user_error_handler,
                     )
-
-                # Only valid terms should be in _item_index
-                all_items = [item for items in screen._item_index.values() for item in items]
-                ids = [item.id for item in all_items]
-                assert "Alice" in ids
-                assert "Bob" in ids
-                assert "-ER-" not in ids
-                assert "" not in ids

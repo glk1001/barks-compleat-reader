@@ -53,12 +53,14 @@ def _build_curated_entity_sets() -> dict[EntityType, set[str]]:
 def _filter_entities_to_curated(
     entities: dict[str, set[str]], curated_sets: dict[EntityType, set[str]]
 ) -> dict[str, set[str]]:
-    """Keep only entity names whose lowercase form is in the curated set for that type."""
+    """Keep only curated entity names, normalized to their canonical casing."""
     filtered: dict[str, set[str]] = {}
     for entity_type in ENTITY_TYPES:
         curated = curated_sets.get(EntityType(entity_type), set())
         names = entities.get(entity_type, set())
-        filtered[entity_type] = {n for n in names if n.lower() in curated}
+        filtered[entity_type] = {
+            _CURATED_NAME_LOOKUP.get(n.lower(), n) for n in names if n.lower() in curated
+        }
     return filtered
 
 
