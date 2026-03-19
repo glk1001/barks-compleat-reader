@@ -35,8 +35,11 @@ BARKSIAN_FULL_NAMES: frozenset[str] = frozenset(
         "Porko de Lardo",
         "Don Quixote",
         "Dr. U. Qwik",
+        "Duk Duk",
         "Finnan Haddie",
+        "Fliegende Hollander",
         "Flintheart Glomgold",
+        "Flying Dutchman",
         "Foola Zoola",
         "Francisco de Ulloa",
         "Fulldrip Pulpbugle",
@@ -153,6 +156,7 @@ BARKSIAN_PLACES_FULL_NAMES: frozenset[str] = frozenset(
         "Hag's Fang Cliff",
         "Hagtooth Rock",
         "Isle of Capri",
+        "Itsa Faka",
         "Jugneck Cove",
         "Laguna Mountains",
         "Los Angeles",
@@ -166,6 +170,7 @@ BARKSIAN_PLACES_FULL_NAMES: frozenset[str] = frozenset(
         "Pago Pago",
         "Palo Casaba",
         "Pango Pango",
+        "Phonus Artichokus",
         "Pizen Valley",
         "Qualmy Vista",
         "Sagmore Springs",
@@ -348,18 +353,25 @@ FRAGMENTS_TO_SUPPRESS: frozenset[str] = frozenset(
         "crepe",  # Crepe Suzettes
         "daniel",  # Daniel Boone
         "debbies",  # Junior Sub-teen-age Debbies Club
+        "disney"  # Walt Disney
+        "disney's",  # Walt Disney's
         "donna",  # Donna Duck
+        "du",  # Hu Du
+        "duk",  # Duk Duk
         "extinctus",  # Almostus Extinctus
         "extinctuses",  # Almostus Extinctuses
+        "faka",  # Itsa Faka
         "fe",  # Santa Fe
         "foola",  # Foola Zoola
         "frozenbear",  # Frozenbear Lake
         "hagtooth",  # Hagtooth Rock
         "i.m.",  # I.M. Slick
+        "itsa",  # Itsa Faka
         "jayne",  # Jayne Girlsfield
         "lessly",  # Alvis Lessly
         "longhorn",  # Longhorn Tallgrass
         "los",  # Los Angeles
+        "lotta",  # Costa Lotta, Costa Rica
         "mammalarius",  # Mammalarius Aquapodicus
         "marco",  # Marco Polo
         "mournful",  # Mournful Mary
@@ -369,16 +381,19 @@ FRAGMENTS_TO_SUPPRESS: frozenset[str] = frozenset(
         "pango",  # Pango Pango
         "philea",  # Phoebus Philea
         "phoebus",  # Phoebus Philea
+        "phonus",  # Phonus Artichokus
         "pippus",  # Pippus Conippus
         "polo",  # Marco Polo
         "pulpheart",  # Pulpheart Clabberhead
         "qualmy",  # Qualmy Vista
+        "rica",  # Costa Lotta, Costa Rica
         "rogers",  # Autry Mack Brown Rogers
         "squeezem",  # Squeezem, Fleecem, Skinem, and Skip
         "suzettes",  # Crepe Suzettes
         "swelldorf",  # Swelldorf-Castoria
         "tangkor",  # Tangkor Wat
         "tryle",  # Tryle N. Error
+        "walt"  # Walt Disney
         "wat",  # Tangkor Wat
         "x-ng",  # B-197 X-NG
     }
@@ -450,7 +465,7 @@ MULTI_WORD_TERMS_TO_SUPPRESS: frozenset[str] = frozenset(
         "X. McYard",
         "Walt Disney",
         "Walt Disney's",
-        "Willim Van Horn",
+        "William Van Horn",
     }
 )
 
@@ -656,8 +671,6 @@ BARKSIAN_NAMES: frozenset[str] = frozenset(
         "dick",
         "dickens",
         "diego",
-        "disney",
-        "disney's",
         "disneyland",
         "dobbin",
         "dobbin's",
@@ -669,10 +682,8 @@ BARKSIAN_NAMES: frozenset[str] = frozenset(
         "doomgurgle",
         "dorotea",
         "dracula",
-        "du",
         "duck",
         "ducko",
-        "duk",
         "ed",
         "edgars",
         "edgerton",
@@ -870,7 +881,6 @@ BARKSIAN_NAMES: frozenset[str] = frozenset(
         "laguna",
         "lancelot",
         "lardo",
-        "laredo",
         "larsen's",
         "lazy-k",
         "leary's",
@@ -1150,7 +1160,6 @@ BARKSIAN_NAMES: frozenset[str] = frozenset(
         "vishnu",
         "vulcan",
         "vulcan's",
-        "walt",
         "walter",
         "washingtons",
         "watt",
@@ -1303,7 +1312,6 @@ BARKSIAN_PLACE_RELATED_WORDS: frozenset[str] = frozenset(
         "england",
         "english",
         "europe",
-        "faka",
         "fakfak",
         "felina",
         "floodout",
@@ -1330,7 +1338,6 @@ BARKSIAN_PLACE_RELATED_WORDS: frozenset[str] = frozenset(
         "ironheelia",
         "india",
         "iquitos",
-        "itsa",
         "jac",
         "jacinto",
         "jay",
@@ -1342,12 +1349,14 @@ BARKSIAN_PLACE_RELATED_WORDS: frozenset[str] = frozenset(
         "kachoongalese",
         "kankakee",
         "kashmir",
+        "kish",
         "klondike",
         "kokomo",
         "krakatoa",
         "kush",
         "lapland",
         "laramie",
+        "laredo",
         "limpopo",
         "london",
         "lucille",
@@ -1371,7 +1380,6 @@ BARKSIAN_PLACE_RELATED_WORDS: frozenset[str] = frozenset(
         "perthshire",
         "petrolia",
         "philadelphia",
-        "phonus",
         "picketburg",
         "pickleburg",
         "pisces",
@@ -1381,7 +1389,6 @@ BARKSIAN_PLACE_RELATED_WORDS: frozenset[str] = frozenset(
         "potomac",
         "pumpkinburg",
         "quackville",
-        "rica",
         "riviera",
         "rockies",
         "sacramento",
@@ -1403,6 +1410,7 @@ BARKSIAN_PLACE_RELATED_WORDS: frozenset[str] = frozenset(
         "swingingdore",
         "sulphuria",
         "sulu",
+        "susa",
         "sydney",
         "tasmainia",
         "taurus",
@@ -1487,7 +1495,6 @@ COUNTRIES: frozenset[str] = frozenset(
         "comoros",
         "congo",
         "congo {democratic rep}",
-        "costa",
         "croatia",
         "cuba",
         "cyprus",

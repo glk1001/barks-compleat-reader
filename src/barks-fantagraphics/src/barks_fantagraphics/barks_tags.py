@@ -88,6 +88,7 @@ class Tags(Enum):
     IRAQ = "Iraq"
     ISOTOPES = "isotopes"
     ITALY = "Italy"
+    ITSA_FAKA = "Itsa Faka"
     JAYNE_GIRLSFIELD = "Jayne Girlsfield"
     JIVARO = "Jivaro"
     JUGHEAD_JONES = "Jughead Jones"
