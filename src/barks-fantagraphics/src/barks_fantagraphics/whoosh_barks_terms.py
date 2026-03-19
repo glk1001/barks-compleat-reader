@@ -1,14 +1,7 @@
-from barks_fantagraphics.barks_words import US_STATES
 from barks_fantagraphics.entity_types import EntityType
 
-TERMS_TO_REMOVE: frozenset[str] = frozenset(
-    {
-        "_",
-    }
-)
-
 # noinspection SpellCheckingInspection
-BARKSIAN_FULL_NAMES: frozenset[str] = frozenset(
+_BARKSIAN_FULL_NAMES: frozenset[str] = frozenset(
     {
         "Applecheeks Teengiggle",
         "Alvis Lessly",
@@ -123,7 +116,7 @@ BARKSIAN_FULL_NAMES: frozenset[str] = frozenset(
 )
 
 # noinspection SpellCheckingInspection
-BARKSIAN_PLACES_FULL_NAMES: frozenset[str] = frozenset(
+_BARKSIAN_PLACES_FULL_NAMES: frozenset[str] = frozenset(
     {
         "Ancient Bengali",
         "Ancient Cathay",
@@ -195,7 +188,7 @@ BARKSIAN_PLACES_FULL_NAMES: frozenset[str] = frozenset(
 )
 
 # noinspection SpellCheckingInspection
-BARKSIAN_THINGS_FULL_NAMES: frozenset[str] = frozenset(
+_BARKSIAN_THINGS_FULL_NAMES: frozenset[str] = frozenset(
     {
         "B-197 X-NG",
         "Belgian Prince Leopold",
@@ -217,9 +210,25 @@ BARKSIAN_THINGS_FULL_NAMES: frozenset[str] = frozenset(
     }
 )
 
+# noinspection SpellCheckingInspection
+_BARKSIAN_MISC_FULL_NAMES: frozenset[str] = frozenset(
+    {
+        "Almostus Extinctus",
+        "Almostus Extinctuses",
+        "Blue Danube",
+        "Blue Danube Waltz",
+        "Boer War",
+        "Brahms Concerto",
+        "Bugless Aircraft Corp.",
+        "Falcon Rover",
+        "Mammalarius Aquapodicus",
+        "Squeezem, Fleecem, Skinem, and Skip",
+    }
+)
+
 # TODO: Maybe put these in map?
 # noinspection SpellCheckingInspection
-BARKSIAN_TITLES: frozenset[str] = frozenset(
+_BARKSIAN_TITLES: frozenset[str] = frozenset(
     {
         "Alice in Wonderland",
         "Blistering Bullets",
@@ -241,236 +250,7 @@ BARKSIAN_TITLES: frozenset[str] = frozenset(
 )
 
 # noinspection SpellCheckingInspection
-BARKSIAN_MISC_FULL_NAMES: frozenset[str] = frozenset(
-    {
-        "Almostus Extinctus",
-        "Almostus Extinctuses",
-        "Blue Danube",
-        "Blue Danube Waltz",
-        "Boer War",
-        "Brahms Concerto",
-        "Bugless Aircraft Corp.",
-        "Falcon Rover",
-        "Mammalarius Aquapodicus",
-        "Squeezem, Fleecem, Skinem, and Skip",
-    }
-)
-
-# Special capitalization — single-word terms that need non-standard casing.
-# noinspection SpellCheckingInspection
-CAPITALIZATION_MAP: dict[str, str] = {
-    "b-boys": "B-Boys",
-    "b-boys'": "B-Boys'",
-    "bhagi-bhreeches": "Bhagi-Bhreeches",
-    "crack-in-cloud": "Crack-in-Cloud",
-    "crooge": "Scrooge",  # Handles '$crooge'
-    "duckburg-bahamalulu": "Duckburg-Bahamalulu",
-    "duckburg-to-bahamalulu": "Duckburg-to-Bahamalulu",
-    "ele-phant": "elephant",
-    "indo-china": "Indo-China",
-    "lazy-k": "Lazy-K",
-    "mc-who": "Mc-Who",
-    "mcarchives": "McArchives",
-    "mcbray": "McBray",
-    "mcbrine": "McBrine",
-    "mcbrine's": "McBrine's",
-    "mccann's": "McCann's",
-    "mcchain": "McChain",
-    "mcchicken": "McChicken",
-    "mccinder": "McCinder",
-    "mccobb": "McCobb",
-    "mccornburger's": "McCornburger's",
-    "mccoy": "McCoy",
-    "mccrow": "McCrow",
-    "mcdock": "McDock",
-    "mcdome": "McDome",
-    "mcduck": "McDuck",
-    "mcduck's": "McDuck's",
-    "mcduck-mcwhisker": "McDuck-McWhisker",
-    "mcducks": "McDucks",
-    "mcducko": "McDucko",
-    "mceagle": "McEagle",
-    "mcelk": "McElk",
-    "mceye": "McEye",
-    "mcfiendy": "McFiendy",
-    "mcgillicuddy": "McGillicuddy",
-    "mcgonnigle": "McGonnigle",
-    "mcgoose": "McGoose",
-    "mcgoose's": "McGoose's",
-    "mchawk": "McHawk",
-    "mchen": "McHen",
-    "mchowl": "McHowl",
-    "mcknucks": "McKnucks",
-    "mcmooch": "McMooch",
-    "mcowl": "McOwl",
-    "mcpooch": "McPooch",
-    "mcquirt": "McQuirt",
-    "mcsixgun": "McSixgun",
-    "mcspray": "McSpray",
-    "mcsue": "McSue",
-    "mcswine": "McSwine",
-    "mcterrier": "McTerrier",
-    "mcviper": "McViper",
-    "mcwhisker": "McWhisker",
-    "mcyard": "McYard",
-    "n-napoleon": "N-Napoleon",
-    "rain-in-teepee": "Rain-in-Teepee",
-    "rolls-regal": "Rolls-Regal",
-    "rolls-smackhard": "Rolls-Smackhard",
-    "s.mcd.": "S.McD.",
-    "scroogeville-on-the-latex": "Scroogeville-on-the-Latex",
-    "swansdown-swoonsudden": "Swansdown-Swoonsudden",
-    "swelldorf-castoria": "Swelldorf-Castoria",
-    "triple-x": "Triple-X",
-    "waha-go-gaga": "Waha-Go-Gaga",
-}
-
-# Fragments to suppress — single words that are parts of multi-word names.
-# These are removed from the word index; the full multi-word names come
-# from entity_names or BARKSIAN_EXTRA_TERMS.
-# noinspection SpellCheckingInspection
-FRAGMENTS_TO_SUPPRESS: frozenset[str] = frozenset(
-    {
-        "almostus",  # Almostus Extinctus
-        "angeles",  # Los Angeles
-        "antone",  # San Antone
-        "applecheeks",  # Applecheeks Teengiggle
-        "alvis",  # Alvis Lessly
-        "argus",  # Argus McFiendy, Argus Gimleteye, Argus Eye
-        "b-197",  # B-197 X-NG
-        "boer",  # Boer War
-        "brookside",  # Brookside Park
-        "castoria",  # Swelldorf-Castoria
-        "cattail",  # Cattail Slough
-        "chemica",  # Chemica Curiosa
-        "chillspine",  # Chillspine Buoy
-        "codfeesh",  # Codfeesh Cove
-        "coney",  # Coney Island
-        "conippus",  # Pippus Conippus
-        "cora",  # Cora Crane
-        "costa",  # Costa Lotta, Costa Rica
-        "creole",  # Creole Belle
-        "crepe",  # Crepe Suzettes
-        "daniel",  # Daniel Boone
-        "debbies",  # Junior Sub-teen-age Debbies Club
-        "disney"  # Walt Disney
-        "disney's",  # Walt Disney's
-        "donna",  # Donna Duck
-        "du",  # Hu Du
-        "duk",  # Duk Duk
-        "extinctus",  # Almostus Extinctus
-        "extinctuses",  # Almostus Extinctuses
-        "faka",  # Itsa Faka
-        "fe",  # Santa Fe
-        "foola",  # Foola Zoola
-        "frozenbear",  # Frozenbear Lake
-        "hagtooth",  # Hagtooth Rock
-        "i.m.",  # I.M. Slick
-        "itsa",  # Itsa Faka
-        "jayne",  # Jayne Girlsfield
-        "lessly",  # Alvis Lessly
-        "longhorn",  # Longhorn Tallgrass
-        "los",  # Los Angeles
-        "lotta",  # Costa Lotta, Costa Rica
-        "mammalarius",  # Mammalarius Aquapodicus
-        "marco",  # Marco Polo
-        "mournful",  # Mournful Mary
-        "orb",  # Orville Orb
-        "p.j.",  # P.J. McBrine
-        "pago",  # Pago Pago
-        "pango",  # Pango Pango
-        "philea",  # Phoebus Philea
-        "phoebus",  # Phoebus Philea
-        "phonus",  # Phonus Artichokus
-        "pippus",  # Pippus Conippus
-        "polo",  # Marco Polo
-        "pulpheart",  # Pulpheart Clabberhead
-        "qualmy",  # Qualmy Vista
-        "rica",  # Costa Lotta, Costa Rica
-        "rogers",  # Autry Mack Brown Rogers
-        "squeezem",  # Squeezem, Fleecem, Skinem, and Skip
-        "suzettes",  # Crepe Suzettes
-        "swelldorf",  # Swelldorf-Castoria
-        "tangkor",  # Tangkor Wat
-        "tryle",  # Tryle N. Error
-        "walt"  # Walt Disney
-        "wat",  # Tangkor Wat
-        "x-ng",  # B-197 X-NG
-    }
-)
-
-# noinspection SpellCheckingInspection
-ALL_CAPS: frozenset[str] = frozenset(
-    {
-        "6-a-77",
-        "b-6",
-        "b.b.",
-        "b.j.",
-        "b.p.f.b.",
-        "dbc",
-        "ddt",
-        "g-m-g",
-        "hi-2-u",
-        "h.m.s.",
-        "k-12",
-        "k-13",
-        "k.o.",
-        "l.a.",
-        "l.t.a.b.",
-        "s.a.",
-        "s.h.",
-        "s.o.s",
-        "s.o.s.",
-        "s.s.",
-        "s.w.",
-        "t.n.t",
-        "t.n.t.",
-        "u-2",
-        "u-235",
-        "v-16",
-        "v-2",
-        "v-2's",
-        "v24",
-        "x-2",
-        "x-99",
-        "x2001",
-        "xk-2",
-    }
-)
-
-# Multi-word terms to suppress from the unstemmed index.
-# These are typically story titles or phrases detected by spaCy
-# that should not appear in the word list.
-# noinspection SpellCheckingInspection
-MULTI_WORD_TERMS_TO_SUPPRESS: frozenset[str] = frozenset(
-    {
-        "A Cold Bargain",
-        "And Skip",
-        "Back To Long Ago",
-        "Carat Moon",
-        "Carl Barks",
-        "Fishy Warden",
-        "The Fabulous Tycoon",
-        "The Golden River",
-        'The Hard Loser"',
-        "The Madball Pitcher",
-        "The Money Champ",
-        "The Money Well",
-        "The Old Castle's Secret",
-        "The Pied Piper of Duckburg",
-        "The Second-Richest Duck",
-        "The Strange Shipwrecks",
-        "Too Many Pets",
-        "Tralla La",
-        "X. McYard",
-        "Walt Disney",
-        "Walt Disney's",
-        "William Van Horn",
-    }
-)
-
-# noinspection SpellCheckingInspection
-BARKSIAN_NAMES: frozenset[str] = frozenset(
+_BARKSIAN_NAMES: frozenset[str] = frozenset(
     {
         "abie",
         "abie's",
@@ -1182,7 +962,7 @@ BARKSIAN_NAMES: frozenset[str] = frozenset(
 )
 
 # noinspection SpellCheckingInspection
-BARKSIAN_PLACE_RELATED_WORDS: frozenset[str] = frozenset(
+_BARKSIAN_PLACE_RELATED_WORDS: frozenset[str] = frozenset(
     {
         "abilene",
         "acapulco",
@@ -1451,7 +1231,7 @@ BARKSIAN_PLACE_RELATED_WORDS: frozenset[str] = frozenset(
     }
 )
 
-COUNTRIES: frozenset[str] = frozenset(
+_COUNTRIES: frozenset[str] = frozenset(
     {
         "afghanistan",
         "albania",
@@ -1653,6 +1433,62 @@ COUNTRIES: frozenset[str] = frozenset(
     }
 )
 
+_US_STATES: frozenset[str] = frozenset(
+    {
+        "alabama",
+        "alaska",
+        "arizona",
+        "arkansas",
+        "california",
+        "colorado",
+        "connecticut",
+        "delaware",
+        "district of columbia",
+        "florida",
+        "georgia",
+        "hawaii",
+        "idaho",
+        "illinois",
+        "indiana",
+        "iowa",
+        "kansas",
+        "kentucky",
+        "louisiana",
+        "maine",
+        "montana",
+        "nebraska",
+        "nevada",
+        "new hampshire",
+        "new jersey",
+        "new mexico",
+        "new york",
+        "north carolina",
+        "north dakota",
+        "ohio",
+        "oklahoma",
+        "oregon",
+        "maryland",
+        "massachusetts",
+        "michigan",
+        "minnesota",
+        "mississippi",
+        "missouri",
+        "pennsylvania",
+        "rhode island",
+        "south carolina",
+        "south dakota",
+        "tennessee",
+        "texas",
+        "utah",
+        "vermont",
+        "virginia",
+        "washington",
+        "west virginia",
+        "wisconsin",
+        "wyoming",
+    }
+)
+
 BARKSIAN_WORDS_WITH_OPTIONAL_HYPHENS: frozenset[str] = frozenset(
     {
         "13-13",
@@ -1716,25 +1552,243 @@ BARKSIAN_WORDS_WITH_OPTIONAL_HYPHENS: frozenset[str] = frozenset(
     }
 )
 
-# Mapping from entity set → entity type, used by entity_tagger.py.
-BARKSIAN_ENTITY_TYPE_MAP: dict[frozenset[str], EntityType] = {
-    BARKSIAN_NAMES: EntityType.PERSON,
-    BARKSIAN_FULL_NAMES: EntityType.PERSON,
-    BARKSIAN_PLACE_RELATED_WORDS: EntityType.LOCATION,
-    COUNTRIES: EntityType.LOCATION,
-    frozenset(US_STATES): EntityType.LOCATION,
-    BARKSIAN_PLACES_FULL_NAMES: EntityType.LOCATION,
-    BARKSIAN_THINGS_FULL_NAMES: EntityType.ORG,
-    BARKSIAN_TITLES: EntityType.WORK,
-    BARKSIAN_MISC_FULL_NAMES: EntityType.MISC,
+# Special capitalization — single-word terms that need non-standard casing.
+# noinspection SpellCheckingInspection
+CAPITALIZATION_MAP: dict[str, str] = {
+    "b-boys": "B-Boys",
+    "b-boys'": "B-Boys'",
+    "bhagi-bhreeches": "Bhagi-Bhreeches",
+    "crack-in-cloud": "Crack-in-Cloud",
+    "crooge": "Scrooge",  # Handles '$crooge'
+    "duckburg-bahamalulu": "Duckburg-Bahamalulu",
+    "duckburg-to-bahamalulu": "Duckburg-to-Bahamalulu",
+    "ele-phant": "elephant",
+    "indo-china": "Indo-China",
+    "lazy-k": "Lazy-K",
+    "mc-who": "Mc-Who",
+    "mcarchives": "McArchives",
+    "mcbray": "McBray",
+    "mcbrine": "McBrine",
+    "mcbrine's": "McBrine's",
+    "mccann's": "McCann's",
+    "mcchain": "McChain",
+    "mcchicken": "McChicken",
+    "mccinder": "McCinder",
+    "mccobb": "McCobb",
+    "mccornburger's": "McCornburger's",
+    "mccoy": "McCoy",
+    "mccrow": "McCrow",
+    "mcdock": "McDock",
+    "mcdome": "McDome",
+    "mcduck": "McDuck",
+    "mcduck's": "McDuck's",
+    "mcduck-mcwhisker": "McDuck-McWhisker",
+    "mcducks": "McDucks",
+    "mcducko": "McDucko",
+    "mceagle": "McEagle",
+    "mcelk": "McElk",
+    "mceye": "McEye",
+    "mcfiendy": "McFiendy",
+    "mcgillicuddy": "McGillicuddy",
+    "mcgonnigle": "McGonnigle",
+    "mcgoose": "McGoose",
+    "mcgoose's": "McGoose's",
+    "mchawk": "McHawk",
+    "mchen": "McHen",
+    "mchowl": "McHowl",
+    "mcknucks": "McKnucks",
+    "mcmooch": "McMooch",
+    "mcowl": "McOwl",
+    "mcpooch": "McPooch",
+    "mcquirt": "McQuirt",
+    "mcsixgun": "McSixgun",
+    "mcspray": "McSpray",
+    "mcsue": "McSue",
+    "mcswine": "McSwine",
+    "mcterrier": "McTerrier",
+    "mcviper": "McViper",
+    "mcwhisker": "McWhisker",
+    "mcyard": "McYard",
+    "n-napoleon": "N-Napoleon",
+    "rain-in-teepee": "Rain-in-Teepee",
+    "rolls-regal": "Rolls-Regal",
+    "rolls-smackhard": "Rolls-Smackhard",
+    "s.mcd.": "S.McD.",
+    "scroogeville-on-the-latex": "Scroogeville-on-the-Latex",
+    "swansdown-swoonsudden": "Swansdown-Swoonsudden",
+    "swelldorf-castoria": "Swelldorf-Castoria",
+    "triple-x": "Triple-X",
+    "waha-go-gaga": "Waha-Go-Gaga",
 }
 
-BARKSIAN_EXTRA_TERMS: frozenset[str] = BARKSIAN_FULL_NAMES.union(
-    BARKSIAN_PLACES_FULL_NAMES.union(BARKSIAN_THINGS_FULL_NAMES).union(
-        BARKSIAN_TITLES.union(BARKSIAN_MISC_FULL_NAMES)
+# noinspection SpellCheckingInspection
+ALL_CAPS: frozenset[str] = frozenset(
+    {
+        "6-a-77",
+        "b-6",
+        "b.b.",
+        "b.j.",
+        "b.p.f.b.",
+        "dbc",
+        "ddt",
+        "g-m-g",
+        "hi-2-u",
+        "h.m.s.",
+        "k-12",
+        "k-13",
+        "k.o.",
+        "l.a.",
+        "l.t.a.b.",
+        "s.a.",
+        "s.h.",
+        "s.o.s",
+        "s.o.s.",
+        "s.s.",
+        "s.w.",
+        "t.n.t",
+        "t.n.t.",
+        "u-2",
+        "u-235",
+        "v-16",
+        "v-2",
+        "v-2's",
+        "v24",
+        "x-2",
+        "x-99",
+        "x2001",
+        "xk-2",
+    }
+)
+
+# Fragments to suppress — single words that are parts of multi-word names.
+# These are removed from the word index; the full multi-word names come
+# from entity_names or BARKSIAN_EXTRA_TERMS.
+# noinspection SpellCheckingInspection
+FRAGMENTS_TO_SUPPRESS: frozenset[str] = frozenset(
+    {
+        "almostus",  # Almostus Extinctus
+        "angeles",  # Los Angeles
+        "antone",  # San Antone
+        "applecheeks",  # Applecheeks Teengiggle
+        "alvis",  # Alvis Lessly
+        "argus",  # Argus McFiendy, Argus Gimleteye, Argus Eye
+        "b-197",  # B-197 X-NG
+        "boer",  # Boer War
+        "brookside",  # Brookside Park
+        "castoria",  # Swelldorf-Castoria
+        "cattail",  # Cattail Slough
+        "chemica",  # Chemica Curiosa
+        "chillspine",  # Chillspine Buoy
+        "codfeesh",  # Codfeesh Cove
+        "coney",  # Coney Island
+        "conippus",  # Pippus Conippus
+        "cora",  # Cora Crane
+        "costa",  # Costa Lotta, Costa Rica
+        "creole",  # Creole Belle
+        "crepe",  # Crepe Suzettes
+        "daniel",  # Daniel Boone
+        "debbies",  # Junior Sub-teen-age Debbies Club
+        "disney"  # Walt Disney
+        "disney's",  # Walt Disney's
+        "donna",  # Donna Duck
+        "du",  # Hu Du
+        "duk",  # Duk Duk
+        "extinctus",  # Almostus Extinctus
+        "extinctuses",  # Almostus Extinctuses
+        "faka",  # Itsa Faka
+        "fe",  # Santa Fe
+        "foola",  # Foola Zoola
+        "frozenbear",  # Frozenbear Lake
+        "hagtooth",  # Hagtooth Rock
+        "i.m.",  # I.M. Slick
+        "itsa",  # Itsa Faka
+        "jayne",  # Jayne Girlsfield
+        "lessly",  # Alvis Lessly
+        "longhorn",  # Longhorn Tallgrass
+        "los",  # Los Angeles
+        "lotta",  # Costa Lotta, Costa Rica
+        "mammalarius",  # Mammalarius Aquapodicus
+        "marco",  # Marco Polo
+        "mournful",  # Mournful Mary
+        "orb",  # Orville Orb
+        "p.j.",  # P.J. McBrine
+        "pago",  # Pago Pago
+        "pango",  # Pango Pango
+        "philea",  # Phoebus Philea
+        "phoebus",  # Phoebus Philea
+        "phonus",  # Phonus Artichokus
+        "pippus",  # Pippus Conippus
+        "polo",  # Marco Polo
+        "pulpheart",  # Pulpheart Clabberhead
+        "qualmy",  # Qualmy Vista
+        "rica",  # Costa Lotta, Costa Rica
+        "rogers",  # Autry Mack Brown Rogers
+        "squeezem",  # Squeezem, Fleecem, Skinem, and Skip
+        "suzettes",  # Crepe Suzettes
+        "swelldorf",  # Swelldorf-Castoria
+        "tangkor",  # Tangkor Wat
+        "tryle",  # Tryle N. Error
+        "walt"  # Walt Disney
+        "wat",  # Tangkor Wat
+        "x-ng",  # B-197 X-NG
+    }
+)
+
+# Multi-word terms to suppress from the unstemmed index.
+# These are typically story titles or phrases detected by spaCy
+# that should not appear in the word list.
+# noinspection SpellCheckingInspection
+MULTI_WORD_TERMS_TO_SUPPRESS: frozenset[str] = frozenset(
+    {
+        "A Cold Bargain",
+        "And Skip",
+        "Back To Long Ago",
+        "Carat Moon",
+        "Carl Barks",
+        "Fishy Warden",
+        "The Fabulous Tycoon",
+        "The Golden River",
+        'The Hard Loser"',
+        "The Madball Pitcher",
+        "The Money Champ",
+        "The Money Well",
+        "The Old Castle's Secret",
+        "The Pied Piper of Duckburg",
+        "The Second-Richest Duck",
+        "The Strange Shipwrecks",
+        "Too Many Pets",
+        "Tralla La",
+        "X. McYard",
+        "Walt Disney",
+        "Walt Disney's",
+        "William Van Horn",
+    }
+)
+
+BARKSIAN_ENTITY_TYPE_MAP: dict[frozenset[str], EntityType] = {
+    _BARKSIAN_NAMES: EntityType.PERSON,
+    _BARKSIAN_FULL_NAMES: EntityType.PERSON,
+    _BARKSIAN_PLACE_RELATED_WORDS: EntityType.LOCATION,
+    _COUNTRIES: EntityType.LOCATION,
+    _US_STATES: EntityType.LOCATION,
+    _BARKSIAN_PLACES_FULL_NAMES: EntityType.LOCATION,
+    _BARKSIAN_THINGS_FULL_NAMES: EntityType.ORG,
+    _BARKSIAN_TITLES: EntityType.WORK,
+    _BARKSIAN_MISC_FULL_NAMES: EntityType.MISC,
+}
+
+BARKSIAN_EXTRA_TERMS: frozenset[str] = _BARKSIAN_FULL_NAMES.union(
+    _BARKSIAN_PLACES_FULL_NAMES.union(_BARKSIAN_THINGS_FULL_NAMES).union(
+        _BARKSIAN_TITLES.union(_BARKSIAN_MISC_FULL_NAMES)
     )
 )
 
+TERMS_TO_REMOVE: frozenset[str] = frozenset(
+    {
+        "_",
+    }
+)
+
 TERMS_TO_CAPITALIZE: frozenset[str] = (
-    BARKSIAN_NAMES.union(BARKSIAN_PLACE_RELATED_WORDS).union(US_STATES).union(COUNTRIES)
+    _BARKSIAN_NAMES.union(_BARKSIAN_PLACE_RELATED_WORDS).union(_US_STATES).union(_COUNTRIES)
 )

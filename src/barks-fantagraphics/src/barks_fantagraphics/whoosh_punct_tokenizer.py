@@ -23,7 +23,7 @@ class WordWithPunctTokenizer(Tokenizer):
 
     @classmethod
     def _consume_punctuation(cls, value: str, i: int, start_i: int, length: int, ch: str) -> bool:
-        """Return True if the punctuation at i should be included in the current token."""
+        """Return True if the punctuation at 'i' should be included in the current token."""
         if ch == "'":
             return True
         if ch == ",":

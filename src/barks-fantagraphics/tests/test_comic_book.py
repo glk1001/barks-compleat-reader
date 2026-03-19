@@ -6,6 +6,8 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+# noinspection PyProtectedMember
 from barks_fantagraphics.comic_book import (
     ComicBook,
     ComicBookDirs,

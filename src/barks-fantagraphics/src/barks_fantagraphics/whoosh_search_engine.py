@@ -201,6 +201,7 @@ class SearchEngine:
 
     def find_entities(self, entity_type: str, entity_name: str) -> TitleDict:
         field_name = f"entities_{entity_type}"
+        # noinspection GrazieInspection
         with self._index.searcher() as searcher:
             # Quote the entity name so multi-word names (e.g. "Duk Duk") match
             # as a single token in the comma-separated KEYWORD field.

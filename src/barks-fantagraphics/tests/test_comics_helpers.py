@@ -334,7 +334,8 @@ class TestGetTitleFromVolumePage:
 
 
 class TestDrawPanelBoundsOnImage:
-    def _make_page_panel_boxes(self, panels: list[PanelBox], overall: PanelBox) -> PagePanelBoxes:
+    @staticmethod
+    def _make_page_panel_boxes(panels: list[PanelBox], overall: PanelBox) -> PagePanelBoxes:
         return PagePanelBoxes(
             page_num="001",
             page_width=100,

@@ -138,7 +138,8 @@ class TestGetOverallBoundsBox:
 
 
 class TestGetPanelBoxes:
-    def _make_tpb(self) -> TitlePanelBoxes:
+    @staticmethod
+    def _make_tpb() -> TitlePanelBoxes:
         return TitlePanelBoxes(_comics_database=MagicMock())
 
     def test_raises_when_file_not_found(self, tmp_path: pytest.TempPathFactory) -> None:

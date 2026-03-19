@@ -7,6 +7,8 @@ from unittest.mock import MagicMock
 
 import pytest
 from barks_fantagraphics.entity_types import EntityType
+
+# noinspection PyProtectedMember
 from barks_fantagraphics.whoosh_search_engine import (
     SUB_ALPHA_SPLIT_SIZE,
     SearchEngine,
@@ -161,7 +163,8 @@ class TestNormalizeEntityNames:
 
 
 class TestGetEntityTypes:
-    def _make_hit(self, entity_fields: dict[str, str]) -> MagicMock:
+    @staticmethod
+    def _make_hit(entity_fields: dict[str, str]) -> MagicMock:
         hit = MagicMock()
         hit.get.side_effect = lambda field, default="": entity_fields.get(field, default)
         return hit

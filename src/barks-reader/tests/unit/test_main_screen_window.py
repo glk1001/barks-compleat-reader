@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_reader.ui import main_screen_window as window_module
 from barks_reader.ui.main_screen_window import MainScreenWindowHelper
 
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
 
 @pytest.fixture
-def helper() -> MainScreenWindowHelper:
+def helper() -> Generator[MainScreenWindowHelper, Any]:
     with (
         patch.object(window_module, "WindowManager") as mock_wm_cls,
     ):

@@ -225,7 +225,7 @@ class ComicsDatabase:
     def _fanta_volume_dir(self, dirname: str, volume_num: int, subdir: str | None = None) -> Path:
         root = self.get_root_dir(dirname)
         if subdir is not None:
-            root = root / subdir
+            root /= subdir
         return root / self.get_fantagraphics_volume_title(volume_num)
 
     def get_fantagraphics_original_root_dir(self) -> Path:

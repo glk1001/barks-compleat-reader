@@ -8,6 +8,8 @@ from unittest.mock import MagicMock
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
+
+# noinspection PyProtectedMember
 from barks_fantagraphics.speech_groupers import (
     OCR_TYPE_DICT,
     OcrTypes,

@@ -462,7 +462,7 @@ def _get_titles_for_tags_or_groups(items_list: list[Tags | TagGroups]) -> set[Ti
 
 
 def _get_all_tags_in_tag_category(tag_category: TagCategories) -> set[Tags]:
-    """Recursively collect all unique tags for a tag categpry."""
+    """Recursively collect all unique tags for a tag category."""
     tags = set()
     for tag_or_group in BARKS_TAG_CATEGORIES[tag_category]:
         if isinstance(tag_or_group, Tags):

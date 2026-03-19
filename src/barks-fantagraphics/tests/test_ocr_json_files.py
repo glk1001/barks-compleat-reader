@@ -83,8 +83,8 @@ class TestJsonFilesInit:
 
 
 class TestSetOcrFile:
+    @staticmethod
     def _ocr_pair(
-        self,
         page: str = "001",
         types: tuple[str, str] = ("hires", "lores"),
     ) -> tuple[Path, Path]:
