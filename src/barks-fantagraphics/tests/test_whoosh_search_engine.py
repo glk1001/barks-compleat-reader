@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
@@ -15,6 +16,9 @@ from barks_fantagraphics.whoosh_search_engine import (
     _is_valid_entity_term,
     _normalize_entity_names,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # _is_valid_entity_term
@@ -286,3 +290,79 @@ class TestGetCleanedTerms:
         term = next(iter(ALL_CAPS))
         result = SearchEngineCreator._get_cleaned_terms([term])
         assert term.upper() in result
+
+
+# ---------------------------------------------------------------------------
+# SearchEngine.find_entities — multi-word entity search
+# ---------------------------------------------------------------------------
+
+
+class TestFindEntities:
+    """Test that find_entities correctly matches multi-word entity names."""
+
+    @pytest.fixture
+    def index_dir(self, tmp_path: Path) -> Path:
+        """Create a temporary Whoosh index with a test document."""
+        from barks_fantagraphics.whoosh_punct_tokenizer import WordWithPunctTokenizer
+        from whoosh.analysis import LowercaseFilter, StopFilter
+        from whoosh.fields import ID, KEYWORD, TEXT, Schema
+        from whoosh.index import create_in
+
+        punct_analyzer = (
+            WordWithPunctTokenizer() | LowercaseFilter() | StopFilter(stoplist={"the", "a"})
+        )
+        schema = Schema(
+            title=ID(stored=True),
+            fanta_vol=ID(stored=True),
+            fanta_page=ID(stored=True),
+            comic_page=ID(stored=True),
+            content_id=ID(stored=True),
+            panel_num=ID(stored=True),
+            unstemmed=TEXT(stored=False, lang="en", analyzer=punct_analyzer),
+            content_raw=TEXT(stored=True, lang="en"),
+            entities_person=KEYWORD(stored=True, commas=True, scorable=True),
+            entities_location=KEYWORD(stored=True, commas=True, scorable=True),
+            entities_org=KEYWORD(stored=True, commas=True, scorable=True),
+            entities_work=KEYWORD(stored=True, commas=True, scorable=True),
+            entities_misc=KEYWORD(stored=True, commas=True, scorable=True),
+        )
+        index = create_in(str(tmp_path), schema)
+        writer = index.writer()
+        writer.add_document(
+            title="Bongo on the Congo",
+            fanta_vol="26",
+            fanta_page="074",
+            comic_page="6",
+            content_id="16",
+            panel_num="7",
+            unstemmed="qwak qwaks are a terrible voodoo cult of the duk duk tribe",
+            content_raw="QWAK QWAKS ARE A TERRIBLE VOODOO CULT OF THE DUK DUK TRIBE",
+            entities_person="Duk Duk,Qwak Qwaks",
+            entities_location="",
+            entities_org="",
+            entities_work="",
+            entities_misc="",
+        )
+        writer.commit()
+        return tmp_path
+
+    def test_multi_word_entity_found(self, index_dir: Path) -> None:
+        engine = SearchEngine(index_dir)
+        results = engine.find_entities("person", "Duk Duk")
+        assert len(results) == 1
+        assert "Bongo on the Congo" in results
+
+    def test_single_word_entity_found(self, index_dir: Path) -> None:
+        engine = SearchEngine(index_dir)
+        results = engine.find_entities("person", "Qwak Qwaks")
+        assert len(results) == 1
+
+    def test_entity_not_in_index_returns_empty(self, index_dir: Path) -> None:
+        engine = SearchEngine(index_dir)
+        results = engine.find_entities("person", "Donald Duck")
+        assert len(results) == 0
+
+    def test_wrong_entity_type_returns_empty(self, index_dir: Path) -> None:
+        engine = SearchEngine(index_dir)
+        results = engine.find_entities("location", "Duk Duk")
+        assert len(results) == 0

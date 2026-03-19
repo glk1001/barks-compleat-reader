@@ -200,7 +200,10 @@ class SearchEngine:
     def find_entities(self, entity_type: str, entity_name: str) -> TitleDict:
         field_name = f"entities_{entity_type}"
         with self._index.searcher() as searcher:
-            query = QueryParser(field_name, self._index.schema).parse(entity_name)
+            # Quote the entity name so multi-word names (e.g. "Duk Duk") match
+            # as a single token in the comma-separated KEYWORD field.
+            quoted_name = f'"{entity_name}"'
+            query = QueryParser(field_name, self._index.schema).parse(quoted_name)
             results = searcher.search(query, limit=1000)
             return self._collect_and_sort_results(results, entity_name)
 
