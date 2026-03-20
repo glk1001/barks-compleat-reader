@@ -93,7 +93,9 @@ class TestBoundingBox:
 
     def test_is_frozen(self) -> None:
         bb = BoundingBox(0, 0, 10, 10)
+        # noinspection PyTypeChecker
         with pytest.raises((AttributeError, TypeError)):
+            # noinspection PyDataclass
             bb.x_min = 99  # type: ignore[misc]
 
 

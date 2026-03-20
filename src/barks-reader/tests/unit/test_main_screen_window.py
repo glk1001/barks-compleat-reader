@@ -63,6 +63,7 @@ class TestForceFullscreen:
             mock_clock.schedule_once.assert_called_once()
 
 
+# noinspection PyUnresolvedReferences
 class TestExitFullscreen:
     def test_noop_when_not_fullscreen(self, helper: MainScreenWindowHelper) -> None:
         helper._mock_wm_cls.is_fullscreen_now.return_value = False
@@ -80,6 +81,7 @@ class TestExitFullscreen:
         helper._window_manager.goto_windowed_mode.assert_called_once()
 
 
+# noinspection PyUnresolvedReferences
 class TestGotoWindowedMode:
     def test_clears_state_and_delegates(self, helper: MainScreenWindowHelper) -> None:
         helper._goto_windowed_mode()
@@ -95,6 +97,7 @@ class TestSetHintsForWindowedMode:
         assert helper._host.size_hint == (1, 1)
 
 
+# noinspection PyUnresolvedReferences
 class TestOnFinishedGotoWindowedMode:
     def test_updates_button_and_fonts(self, helper: MainScreenWindowHelper) -> None:
         with (
@@ -111,6 +114,7 @@ class TestOnFinishedGotoWindowedMode:
             mock_show.assert_called_once_with(helper._action_bar)
 
 
+# noinspection PyUnresolvedReferences
 class TestGotoFullscreenMode:
     def test_saves_state_and_delegates(self, helper: MainScreenWindowHelper) -> None:
         helper._goto_fullscreen_mode()
@@ -119,6 +123,7 @@ class TestGotoFullscreenMode:
         helper._window_manager.goto_fullscreen_mode.assert_called_once()
 
 
+# noinspection PyUnresolvedReferences
 class TestOnFinishedGotoFullscreenMode:
     def test_updates_button_and_fonts(self, helper: MainScreenWindowHelper) -> None:
         with patch.object(window_module, "Window") as mock_window:

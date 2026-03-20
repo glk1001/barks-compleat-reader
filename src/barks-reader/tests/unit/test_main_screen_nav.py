@@ -62,6 +62,7 @@ def nav(screens: dict[str, MagicMock]) -> Generator[MainScreenNavigation]:
         yield n
 
 
+# noinspection PyUnresolvedReferences
 class TestHandleKey:
     def test_delegates_to_menu_when_in_menu_mode(self, nav: MainScreenNavigation) -> None:
         nav._is_in_menu_mode.return_value = True
@@ -94,6 +95,7 @@ class TestHandleKey:
         assert nav._focus_region.name == "TREE"
 
 
+# noinspection PyUnresolvedReferences
 class TestHandleTreeKey:
     def test_escape_enters_menu_mode(self, nav: MainScreenNavigation) -> None:
         assert nav._handle_tree_key(KEY_ESCAPE) is True
@@ -146,6 +148,7 @@ class TestHandleTreeKey:
         assert nav._handle_tree_key(999) is False
 
 
+# noinspection PyUnresolvedReferences
 class TestHandleBottomKey:
     def test_tab_exits_bottom_focus(self, nav: MainScreenNavigation) -> None:
         nav._focus_region = nav._focus_region.__class__(2)  # BOTTOM
@@ -230,6 +233,7 @@ class TestHandleBottomKey:
         nav._on_title_activated.assert_called_once()
 
 
+# noinspection PyUnresolvedReferences
 class TestTreeNavMove:
     def test_no_visible_nodes(self, nav: MainScreenNavigation) -> None:
         nav._tree_view_screen.get_visible_nodes.return_value = []
@@ -285,6 +289,7 @@ class TestTreeNavMove:
         nav._tree_view_manager.activate_node.assert_called_with(title_node)
 
 
+# noinspection PyUnresolvedReferences
 class TestTreeNavActivate:
     def test_no_selection_does_nothing(self, nav: MainScreenNavigation) -> None:
         nav._tree_view_screen.get_selected_node.return_value = None
@@ -309,7 +314,9 @@ class TestTreeNavActivate:
         nav._speech_index_screen.treeview_index_node = MagicMock()
         nav._names_index_screen.treeview_index_node = MagicMock()
         nav._locations_index_screen.treeview_index_node = MagicMock()
+        # noinspection PyPropertyAccess
         nav._tree_view_manager.speech_words_node = MagicMock()
+        # noinspection PyPropertyAccess
         nav._tree_view_manager.statistics_node = MagicMock()
         nav._tree_view_screen.get_selected_node.return_value = node
         nav._main_index_screen.is_visible = True
@@ -329,7 +336,9 @@ class TestTreeNavActivate:
         nav._speech_index_screen.treeview_index_node = MagicMock()
         nav._names_index_screen.treeview_index_node = MagicMock()
         nav._locations_index_screen.treeview_index_node = MagicMock()
+        # noinspection PyPropertyAccess
         nav._tree_view_manager.speech_words_node = MagicMock()
+        # noinspection PyPropertyAccess
         nav._tree_view_manager.statistics_node = MagicMock()
         nav._search_screen.is_visible = False
 
@@ -340,6 +349,7 @@ class TestTreeNavActivate:
         mock_clock.schedule_once.assert_called_once()
 
 
+# noinspection PyUnresolvedReferences
 class TestTreeNavCollapseToParent:
     def test_no_selection(self, nav: MainScreenNavigation) -> None:
         nav._tree_view_screen.get_selected_node.return_value = None
@@ -413,6 +423,7 @@ class TestFocusSaveRestore:
         assert nav.is_in_bottom_focus
 
 
+# noinspection PyUnresolvedReferences
 class TestEnterBottomFocus:
     def test_nothing_visible_stays_in_tree(self, nav: MainScreenNavigation) -> None:
         nav._fun_image_view_screen.is_visible = False
@@ -465,6 +476,7 @@ class TestGetActiveNavScreen:
         assert nav._get_active_nav_screen() is nav._speech_index_screen
 
 
+# noinspection PyUnresolvedReferences
 class TestEnterBottomFocusIfIndexVisible:
     def test_search_screen_visible(self, nav: MainScreenNavigation) -> None:
         nav._search_screen.is_visible = True

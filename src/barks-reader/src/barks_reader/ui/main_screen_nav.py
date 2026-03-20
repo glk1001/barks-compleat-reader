@@ -259,6 +259,7 @@ class MainScreenNavigation:
             Clock.schedule_once(lambda _dt: self.enter_bottom_focus(), 0)
         elif was_closed and selected.nodes:
             assert isinstance(selected, ButtonTreeViewNode)
+            # noinspection PyTypeChecker
             Clock.schedule_once(lambda _dt: self._select_first_child(selected), 0)
 
     def _select_first_child(self, parent: ButtonTreeViewNode) -> None:
