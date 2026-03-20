@@ -42,7 +42,7 @@ def person_index_screen(
 ) -> Generator[EntityIndexScreen]:
     with patch.object(barks_reader.ui.index_screen.IndexScreen, "__init__"):  # noqa: SIM117
         with (
-            patch.object(barks_reader.ui.speech_index_screen, "SearchEngine") as mock_search_cls,
+            patch.object(barks_reader.ui.speech_index_screen, "ComicSearch") as mock_search_cls,
             patch.object(barks_reader.ui.speech_index_screen, "RandomTitleImages"),
             patch.object(barks_reader.ui.speech_index_screen, "PanelTextureLoader"),
             patch.object(
@@ -53,8 +53,8 @@ def person_index_screen(
             patch.object(EntityIndexScreen, "_populate_alphabet_menu"),
         ):
             mock_indexer = mock_search_cls.return_value
-            # get_cleaned_alpha_split_terms is called by SpeechIndexScreen.__init__
-            mock_indexer.get_cleaned_alpha_split_terms.return_value = {
+            # get_alpha_split_terms is called by SpeechIndexScreen.__init__
+            mock_indexer.get_alpha_split_terms.return_value = {
                 "a": {"al": ["Alice"]},
             }
             # get_entity_terms is called by EntityIndexScreen.__init__
@@ -73,7 +73,7 @@ def person_index_screen(
             screen.ids = MagicMock()
             screen.index_theme = MagicMock()
             screen._font_manager = mock_font_manager
-            screen._whoosh_indexer = mock_indexer
+            screen._search = mock_indexer
             screen.treeview_index_node = MagicMock()
             screen.treeview_index_node.saved_state = {}
 
@@ -99,7 +99,7 @@ class TestEntityIndexScreen:
         self, person_index_screen: EntityIndexScreen
     ) -> None:
         person_index_screen._find_words("Donald Duck")
-        person_index_screen._whoosh_indexer.find_entities.assert_called_with(
+        person_index_screen._search.find_entities.assert_called_with(
             EntityType.PERSON, "Donald Duck"
         )
 
@@ -149,9 +149,7 @@ class TestEntityIndexScreen:
         """Terms with non-alpha first chars (like '-ER-') should raise RuntimeError."""
         with patch.object(barks_reader.ui.index_screen.IndexScreen, "__init__"):  # noqa: SIM117
             with (
-                patch.object(
-                    barks_reader.ui.speech_index_screen, "SearchEngine"
-                ) as mock_search_cls,
+                patch.object(barks_reader.ui.speech_index_screen, "ComicSearch") as mock_search_cls,
                 patch.object(barks_reader.ui.speech_index_screen, "RandomTitleImages"),
                 patch.object(barks_reader.ui.speech_index_screen, "PanelTextureLoader"),
                 patch.object(
@@ -162,7 +160,7 @@ class TestEntityIndexScreen:
                 patch.object(EntityIndexScreen, "_populate_alphabet_menu"),
             ):
                 mock_indexer = mock_search_cls.return_value
-                mock_indexer.get_cleaned_alpha_split_terms.return_value = {}
+                mock_indexer.get_alpha_split_terms.return_value = {}
                 mock_indexer.get_entity_terms.return_value = [
                     "-ER-",
                     "Alice",

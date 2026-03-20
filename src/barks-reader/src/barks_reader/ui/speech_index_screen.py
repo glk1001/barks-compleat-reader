@@ -10,8 +10,8 @@ from barks_fantagraphics.barks_titles import (
     BARKS_TITLES,
     Titles,
 )
+from barks_fantagraphics.comic_search import ComicSearch
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
-from barks_fantagraphics.whoosh_search_engine import SearchEngine, TitleInfo
 from comic_utils.timing import Timing
 from kivy.clock import Clock
 from kivy.graphics import Canvas, Color, Rectangle
@@ -58,7 +58,7 @@ from barks_reader.ui.reader_keyboard_nav import (
 )
 
 if TYPE_CHECKING:
-    from barks_fantagraphics.whoosh_search_engine import TitleDict
+    from barks_fantagraphics.whoosh_search_engine import TitleDict, TitleInfo
 
     # noinspection PyProtectedMember
     from kivy.core.image import Texture
@@ -132,9 +132,7 @@ class SpeechIndexScreen(IndexScreen):
 
         self._font_manager = font_manager
         self._user_error_handler = user_error_handler
-        self._whoosh_indexer = SearchEngine(
-            reader_settings.sys_file_paths.get_barks_reader_indexes_dir()
-        )
+        self._search = ComicSearch(reader_settings.sys_file_paths.get_barks_reader_indexes_dir())
         self._random_title_images = RandomTitleImages(reader_settings)
         self._texture_loader = PanelTextureLoader(
             reader_settings.file_paths.barks_panels_are_encrypted
@@ -144,7 +142,7 @@ class SpeechIndexScreen(IndexScreen):
         self._open_tag_item: IndexItem | None = None
         self._item_index: dict[str, list[IndexItem]] = defaultdict(list)
 
-        self._cleaned_alpha_split_terms = self._whoosh_indexer.get_cleaned_alpha_split_terms()
+        self._cleaned_alpha_split_terms = self._search.get_alpha_split_terms()
         self._prefix_buttons: dict[str, Button] = {}
         self._nav_focused_prefix_idx: int = 0
         self._nav_on_speech_btn: bool = False
@@ -156,7 +154,7 @@ class SpeechIndexScreen(IndexScreen):
         )
 
     def _find_words(self, index_terms: str) -> TitleDict:
-        return self._whoosh_indexer.find_words(index_terms)
+        return self._search.find_words(index_terms)
 
     def _populate_index_for_letter(self, first_letter: str) -> None:
         self._populate_top_alphabet_split_menu(first_letter)

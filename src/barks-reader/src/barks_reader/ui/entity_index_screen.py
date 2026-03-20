@@ -38,7 +38,7 @@ class EntityIndexScreen(SpeechIndexScreen):
         # Build a flat {letter: [IndexItem, ...]} from entity terms, bypassing
         # the nested alpha-split structure that SpeechIndexScreen uses.
         self._item_index = defaultdict(list)
-        terms = self._whoosh_indexer.get_entity_terms(self._entity_type)
+        terms = self._search.get_entity_terms(self._entity_type)
         for t in terms:
             if not t:
                 continue
@@ -61,7 +61,7 @@ class EntityIndexScreen(SpeechIndexScreen):
 
     @override
     def _find_words(self, index_terms: str) -> TitleDict:
-        return self._whoosh_indexer.find_entities(self._entity_type, index_terms)
+        return self._search.find_entities(self._entity_type, index_terms)
 
     # --- Skip the prefix layer: go straight from alphabet to items grid ---
 

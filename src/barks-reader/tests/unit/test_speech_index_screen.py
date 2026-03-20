@@ -46,7 +46,7 @@ def speech_index_screen(
     # Patch IndexScreen.__init__ to avoid Kivy widget initialization
     with patch.object(barks_reader.ui.index_screen.IndexScreen, "__init__"):  # noqa: SIM117
         with (
-            patch.object(barks_reader.ui.speech_index_screen, "SearchEngine") as mock_search_cls,
+            patch.object(barks_reader.ui.speech_index_screen, "ComicSearch") as mock_search_cls,
             patch.object(
                 barks_reader.ui.speech_index_screen, "RandomTitleImages"
             ) as mock_random_cls,
@@ -63,7 +63,7 @@ def speech_index_screen(
             # Setup mock search engine
             mock_indexer = mock_search_cls.return_value
             # Required structure: {letter: {prefix: [terms]}}
-            mock_indexer.get_cleaned_alpha_split_terms.return_value = {
+            mock_indexer.get_alpha_split_terms.return_value = {
                 "a": {"apple": ["apple", "apples"], "ant": ["ant"]},
                 "b": {"banana": ["banana"]},
             }
@@ -81,7 +81,7 @@ def speech_index_screen(
             screen._font_manager = mock_font_manager
             screen._random_title_images = mock_random_cls.return_value
             screen._texture_loader = mock_loader_cls.return_value
-            screen._whoosh_indexer = mock_indexer
+            screen._search = mock_indexer
 
             screen.treeview_index_node = MagicMock()
             screen.treeview_index_node.saved_state = {}
@@ -93,7 +93,7 @@ def speech_index_screen(
 class TestSpeechIndexScreen:
     def test_init(self, speech_index_screen: SpeechIndexScreen) -> None:
         # noinspection PyProtectedMember
-        assert speech_index_screen._whoosh_indexer is not None
+        assert speech_index_screen._search is not None
         # noinspection PyProtectedMember
         assert speech_index_screen._cleaned_alpha_split_terms is not None
 
@@ -141,12 +141,12 @@ class TestSpeechIndexScreen:
         # noinspection PyProtectedMember
         speech_index_screen._find_words("test")
         # noinspection PyProtectedMember
-        speech_index_screen._whoosh_indexer.find_words.assert_called_with("test")
+        speech_index_screen._search.find_words.assert_called_with("test")
 
         # noinspection PyProtectedMember
         speech_index_screen._find_words("1942")
         # noinspection PyProtectedMember
-        speech_index_screen._whoosh_indexer.find_words.assert_called_with("1942")
+        speech_index_screen._search.find_words.assert_called_with("1942")
 
     def test_next_background_image(self, speech_index_screen: SpeechIndexScreen) -> None:
         # Setup state
