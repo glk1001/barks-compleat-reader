@@ -349,6 +349,10 @@ class SearchEngineCreator(SearchEngine):
 
         super().__init__(index_dir)
 
+    def get_search_engine(self) -> SearchEngine:
+        """Return a read-only search engine backed by the index just built."""
+        return self
+
     def index_volumes(
         self,
         volumes: list[int],
