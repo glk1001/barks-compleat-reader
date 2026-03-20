@@ -1,4 +1,4 @@
-import '../barks-comic-building/.justfile'
+import '../barks-comic-building/justfile'
 
 _default2:
     just --list --unsorted
