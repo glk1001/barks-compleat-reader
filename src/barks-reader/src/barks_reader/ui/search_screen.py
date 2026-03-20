@@ -6,8 +6,7 @@ from typing import TYPE_CHECKING, ClassVar, Self
 
 from barks_fantagraphics.barks_tags import TagGroups
 from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, BARKS_TITLES, Titles
-from barks_fantagraphics.title_search import BarksTitleSearch
-from barks_fantagraphics.whoosh_search_engine import SearchEngine, TitleInfo
+from barks_fantagraphics.comic_search import ComicSearch, SearchMode
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
@@ -24,7 +23,6 @@ from loguru import logger
 from barks_reader.core.random_title_images import ImageInfo
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO
-from barks_reader.core.reader_utils import unique_extend
 from barks_reader.core.settings_notifier import settings_notifier
 from barks_reader.ui.index_screen import (
     TitleShowSpeechButton,
@@ -47,6 +45,7 @@ from barks_reader.ui.reader_keyboard_nav import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from barks_fantagraphics.whoosh_search_engine import TitleInfo
     from kivy.uix.scrollview import ScrollView
 
     from barks_reader.core.reader_settings import ReaderSettings
@@ -130,10 +129,7 @@ class SearchScreen(FloatLayout):
         super().__init__(**kwargs)
         self._reader_settings = reader_settings
         self._font_manager = font_manager
-        self._title_search = BarksTitleSearch()
-        self._whoosh_indexer = SearchEngine(
-            reader_settings.sys_file_paths.get_barks_reader_indexes_dir()
-        )
+        self._search = ComicSearch(reader_settings.sys_file_paths.get_barks_reader_indexes_dir())
 
         self._current_image_info: ImageInfo | None = None
         self.on_goto_background_title_func: Callable[[ImageInfo], None] | None = None
@@ -164,7 +160,7 @@ class SearchScreen(FloatLayout):
 
         # Word search state
         self._word_search_results: list[tuple[str, str, str, TitleInfo]] = []
-        self._word_terms = self._whoosh_indexer.get_cleaned_alpha_split_terms()
+        self._word_terms = self._search.get_alpha_split_terms()
         self._selected_word: str = ""
 
         # Last activated result (for restoring focus after go-back)
@@ -226,14 +222,8 @@ class SearchScreen(FloatLayout):
         self._update_background_from_results(title_enums)
 
     def _get_titles_matching(self, value: str) -> tuple[list[Titles], list[str]]:
-        title_list = self._title_search.get_titles_matching_prefix(value)
-        min_title_chars_len = 2
-        if len(value) > min_title_chars_len:
-            if not title_list:
-                title_list = self._title_search.get_titles_from_issue_num(value)
-            if not title_list:
-                unique_extend(title_list, self._title_search.get_titles_containing(value))
-        return title_list, self._title_search.get_titles_as_strings(title_list)
+        result = self._search.search(value, SearchMode.TITLE)
+        return result.titles, result.title_strings
 
     def on_title_clear(self) -> None:
         self._cancel_image_change_event()
@@ -251,7 +241,7 @@ class SearchScreen(FloatLayout):
         if len(text) <= 1:
             return
 
-        found_tags = self._title_search.get_tags_matching_prefix(text)
+        found_tags = self._search.search(text, SearchMode.TAG).matched_tags
         self._tag_chip_strings = sorted([str(t.value) for t in found_tags]) if found_tags else []
 
         self._rebuild_tag_chips()
@@ -298,7 +288,7 @@ class SearchScreen(FloatLayout):
         return stack
 
     def _make_member_chip_stack(self) -> BoxLayout | None:
-        members = self._title_search.get_direct_group_members(self._current_tag)
+        members = self._search.get_tag_group_members(self._current_tag)
         if not members:
             return None
         stack = BoxLayout(
@@ -323,8 +313,8 @@ class SearchScreen(FloatLayout):
 
     def _show_tag_titles(self, tag_str: str) -> None:
         """Look up titles for a tag and populate the results list."""
-        _, titles = self._title_search.get_titles_from_alias_tag(tag_str.lower())
-        self._tag_titles = self._title_search.get_titles_as_strings(titles) if titles else []
+        _, titles = self._search.resolve_tag(tag_str.lower())
+        self._tag_titles = self._search.get_title_display_strings(titles) if titles else []
         title_results_layout: BoxLayout = self.ids.tag_title_results_layout
         self._populate_title_results(
             title_results_layout, self._tag_titles, self._on_result_goto_title
@@ -335,7 +325,7 @@ class SearchScreen(FloatLayout):
         logger.info(f'Tag search: selected tag "{tag_str}".')
         self._selected_tag = tag_str
         self._selected_member = ""
-        self._current_tag, _ = self._title_search.get_titles_from_alias_tag(tag_str.lower())
+        self._current_tag, _ = self._search.resolve_tag(tag_str.lower())
         self._rebuild_tag_chips()
         self._show_tag_titles(tag_str)
 
@@ -411,7 +401,7 @@ class SearchScreen(FloatLayout):
                     (0.15, 0.15, 0.15, 0.4) if idx % 2 == 0 else (0.22, 0.22, 0.22, 0.4)
                 )
 
-        found = self._whoosh_indexer.find_words(word)
+        found = self._search.find_words(word)
 
         results_layout: BoxLayout = self.ids.word_results_layout
         results_layout.clear_widgets()
