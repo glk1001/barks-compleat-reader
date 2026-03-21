@@ -34,6 +34,7 @@ PYTHONPATH="src/barks-reader/src:src/barks-build-comic-images/src:src/barks-fant
 UV_VENV_CLEAR="1"
 UV_LINK_MODE="copy"
 UV_NO_DEV="1"
+RUST_LOG="uv=info"
 
 [hooks]
 pre_run = "src/barks-reader/src/barks_reader/pycrucible_pre_run_installer.py"

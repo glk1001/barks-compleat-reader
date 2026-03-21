@@ -100,7 +100,10 @@ if [[ "${OS}" == "windows" ]]; then
     sed -i '/^PYTHONPATH/s/:/;/g' pycrucible.toml
 fi
 
-uv run --frozen pycrucible --embed . -o "${EXE}"
+uv run --frozen pycrucible --debug --embed . -o "${EXE}" \
+    |& grep -v "Debug: \[payload.embed_payload\]" \
+    |& grep -v "Debug: \[project.collect_source_files\]" \
+    |& grep -v "Debug: \[main.embed_source\]"
 
 if [[ "${OS}" == "windows" ]]; then
     mv pycrucible.toml.orig pycrucible.toml
