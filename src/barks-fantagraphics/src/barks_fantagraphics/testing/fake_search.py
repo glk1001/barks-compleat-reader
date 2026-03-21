@@ -6,7 +6,7 @@ Construct it with canned data for the methods your test exercises::
     fake = InMemoryFullTextSearch(
         find_words_results={"duck": {
             "The Golden Helmet": TitleInfo(fanta_vol=7),
-        }},
+        }}
     )
 """
 

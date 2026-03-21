@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Self
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from kivy.uix.widget import Widget
+
 from kivy.clock import Clock
 from kivy.factory import Factory
 from kivy.properties import BooleanProperty  # ty: ignore[unresolved-import]
@@ -139,7 +141,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         super()._enter_dropdown_nav(initial_idx)
         logger.debug("StatisticsScreen: entered dropdown nav.")
 
-    def _on_dropdown_dismissed(self) -> None:
+    def _on_dropdown_dismissed(self, _dropdown: Widget | None) -> None:
         """Override to match Kivy's on_dismiss callback signature (no ActionBarNavMixin)."""
         if self._dropdown_nav_mode:
             self._exit_dropdown_nav()

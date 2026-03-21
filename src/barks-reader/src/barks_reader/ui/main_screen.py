@@ -333,8 +333,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self.open_menu_dots(self.ids.menu_button)
         self._enter_dropdown_nav(initial_idx=0)
 
-    def _on_menu_dropdown_dismissed(self, _instance: object) -> None:
-        self._on_dropdown_dismissed()
+    def _on_menu_dropdown_dismissed(self, instance: Widget) -> None:
+        self._on_dropdown_dismissed(instance)
 
     def _set_initial_state(self) -> None:
         self._setup_dropdown_nav()

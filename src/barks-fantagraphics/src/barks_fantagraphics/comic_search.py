@@ -148,7 +148,7 @@ class ComicSearch:
             tag_group: The tag group to expand.
 
         Returns:
-            Direct child tags and sub-groups.
+            Direct child tags and subgroups.
 
         """
         ts = self._get_title_search()

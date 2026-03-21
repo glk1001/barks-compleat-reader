@@ -719,9 +719,9 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         )
         self._enter_dropdown_nav(initial_idx=focused_idx)
 
-    def _on_goto_page_dropdown_dismissed(self, _instance: object) -> None:
+    def _on_goto_page_dropdown_dismissed(self, instance: Widget) -> None:
         self.comic_book_reader.unbind_goto_page_dismiss(self._on_goto_page_dropdown_dismissed)
-        self._on_dropdown_dismissed()
+        self._on_dropdown_dismissed(instance)
 
     @override
     def is_active(self, active: bool) -> None:

@@ -201,7 +201,7 @@ class DropdownNavMixin:
         self._dropdown_buttons_cache = []
         self._dropdown_nav_mode = False
 
-    def _on_dropdown_dismissed(self) -> None:
+    def _on_dropdown_dismissed(self, _dropdown: Widget) -> None:
         if self._dropdown_nav_mode:
             self._exit_dropdown_nav()
             # noinspection PyUnresolvedReferences
