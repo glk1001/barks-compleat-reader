@@ -26,19 +26,26 @@ Fantagraphics versions.
 
 The bar across the top of the main screen contains:
 
-- **App icon** — clickable; go to the story associated with icon image.
-- **Quit** — closes the application.
-- **Fullscreen** — toggles between windowed and fullscreen mode.
-- **Back** — returns to the previously selected navigation node.
-- **Collapse** — collapses all expanded nodes in the navigation tree.
-- **Refresh** — randomly refreshes the background and panel images.
-- **⋯ Menu** — opens a dropdown containing **Settings**, **How To**, and **About**.
+- **App icon** — on the far left, clickable; go to the story associated with icon image.
+- <img src="icon-close-orig.png" alt="[b]Quit[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  — closes the application.
+- <img src="icon-fullscreen-orig.png" alt="[b]Fullscreen[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  — toggles between windowed and fullscreen mode.
+- <img src="icon-back-arrow-orig.png" alt="[b]Back[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  — returns to the previously selected navigation node.
+- <img src="icon-collapse-black.png" alt="[b]Collapse[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  — collapses all expanded nodes in the navigation tree.
+- <img src="icon-refresh-arrow-orig.png" alt="[b]Refresh[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  — randomly refreshes the background and panel images.
+- <img src="icon-menu-dots-too-big-black.png" alt="[b]Menu[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  — opens a dropdown containing
+    <strong><em>Settings,</em></strong> <strong><em>How To,</em></strong> and <strong><em>About.</em></strong>
 
 ### Navigation Tree (left panel)
 
 The tree on the left is the primary way to find stories. Its top-level sections are:
 
-- **Intro** — introductory articles for the *Compleat Barks Reader* project.
+- **Introduction** — introductory articles for the *Compleat Barks Reader* project.
 - **The Stories** — all Barks stories, browsable in four ways:
   - *Chronological* — organised by Barks' submission dates.
   - *Series* — grouped by the comic series they appeared in (Comics & Stories, Donald Duck Adventures, 
@@ -46,14 +53,13 @@ The tree on the left is the primary way to find stories. Its top-level sections 
   - *Categories* — thematic groupings.
 - **Search** — find stories by title text or by tag.
 - **Appendix** — supplementary articles and extra info.
-- **Index** — two indexes: *alphabetic* and *speech bubbles*.
+- **Indexes** — two indexes: *alphabetic* and *speech bubbles*.
 
 ### Top Image Area
 
 A large background image sits behind the navigation tree. It is decorative but also interactive:
 
-- A **down-arrow button** at the bottom of the image navigates to the story associated with
-  that image.
+- A **down-arrow button** at the top right navigates to the story associated with that image.
 - Click **Refresh** in the menu bar to pick a new random image.
 
 ### Bottom Panel
@@ -61,51 +67,70 @@ A large background image sits behind the navigation tree. It is decorative but a
 The bottom half below the main tree content switches between two modes:
 
 **Comic View** — shown when a story is selected in the tree. Displays the story's title,
-publication info, and a sample panel. Contains:
+publication info, and a favorite panel. Contains:
 
 - A **title portal button** (bottom right) that opens the comic reader directly.
-- A **last page read** indicator — the Reader remembers where you left off, and the portal
+- A **last page read** indicator (optional) — the Reader remembers where you left off, and the portal
   button takes you back there.
-- An **override toggle** — lets you turn off the censorship fix for this specific story.
+- An **override toggle** (optional) — lets you turn off the censorship fix for this specific story.
 - A **partially transparent collapse button** (top right of the bottom view) that hides the
   title info to show just the panel image. The portal button remains clickable even when
   collapsed.
 
 **Fun View** — shown when no specific story is selected. Displays a random comic panel.
 
-- A **category filter button** (top left) lets you control which panel categories are shown.
-- **Left/right arrows** step through the panel history.
-- An **up-arrow button** navigates to the story associated with the currently displayed panel.
+- A **category filter button** at the top left of the fun image lets you control which panel categories are shown.
+- An **up-arrow button** at the bottom right of the fun image navigates to the story associated with
+  the currently displayed panel.
+- **Click left/right** of fun image or use **left/right keys** to step through the panel history.
 
 ---
 
 ## Reading the Comics
 
-Open a comic by clicking its **title portal button** in the bottom panel.
+Open a comic by clicking its **title portal button** in the bottom comic view panel.
 
 ### Navigation
 
-- **Click the left half** of the page to go back one page.
-- **Click the right half** to go forward one page.
+- **Click the left half** of the page, or use the **left arrow key** to go back one page.
+- **Click the right half** of page, or use the **right arrow key** to go forward one page.
 
 ### Top Menu Bar (in the Reader)
 
 The reader's menu bar is hidden by default in fullscreen mode. **Click near the top of the
-screen** to make it appear. It contains:
+screen** or use the **up arrow key** to make it appear. It contains:
 
-- **Close** — return to the main screen.
-- **Fullscreen** — toggle fullscreen mode.
-- **Double Page** — toggle double page mode.
-- **Go to Start / Go to End** — jump to the first or last page.
-- **Go to Page** — opens a page selector showing all pages in the comic
+- <img src="icon-close-orig.png" alt="[b]Close[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  — return to the main screen.
+- <img src="icon-fullscreen-orig.png" alt="[b]Fullscreen[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  — toggles between windowed and fullscreen mode.
+- <img src="icon-double-page-black.png" alt="[b]Double Page[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  — toggle double page mode.
+- <img src="icon-goto-start-orig.png" alt="[b]Go to Start[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  — jump to the first page.
+- <img src="icon-goto-end-orig.png" alt="[b]Go to End[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  — jump to the last page.
+- <img src="icon-goto-orig-2.png" alt="[b]Go to Page[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  — opens a page selector showing all pages in the comic.
 
 ---
 
-<br>
+## Keyboard Navigation
+
+You can navigate everything using a mouse, or if you have a touchscreen, using touch. But you can
+also navigate almost everything using the keyboard (some small esoteric buttons are excluded).
+Keyboard navigation is great if you're on a big screen TV and using a TV remote.
+Keyboard navigation includes:
+ 
+- **Left | Right arrow keys** — things like turning pages or moving focus to the left or right.
+- **Up | Down arrow keys** — things like scrolling lists or moving focus up or down.
+- **Esc key** — moving to a previous focus.
+
+---
 
 ## Settings
 
-Open Settings from the **⋯ menu** on the main screen. Key options are:
+Open *Settings* from the **⋯** menu on the top action bar. Key options are:
 
 | Setting                                       | What it does                                                   |
 |-----------------------------------------------|----------------------------------------------------------------|
