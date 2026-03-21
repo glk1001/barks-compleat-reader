@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import barks_reader.ui.comic_book_reader
@@ -189,11 +190,25 @@ class TestComicBookReader:
             ]
         )
 
+        # Configure the mocked loader to return a proper tuple from resolve_archive_for_comic
+        # noinspection PyProtectedMember
+        reader._comic_book_loader.resolve_archive_for_comic.return_value = (
+            Path("test.cbz"),
+            None,
+        )
+        # noinspection PyProtectedMember
+        reader._comic_book_loader.empty_page_image = b"fake"
+        # noinspection PyProtectedMember
+        reader._comic_book_loader.max_window_width = 800
+        # noinspection PyProtectedMember
+        reader._comic_book_loader.max_window_height = 600
+
         with (
             patch.object(
                 barks_reader.ui.comic_book_reader, "get_action_bar_title"
             ) as _mock_get_title,
             patch.object(barks_reader.ui.comic_book_reader.Clock, "schedule_once"),
+            patch.object(barks_reader.ui.comic_book_reader, "ArchivePageImageSource"),
         ):
             assert reader
             reader.read_comic(

@@ -27,6 +27,7 @@ from kivy.uix.image import Image
 from loguru import logger
 from screeninfo import get_monitors
 
+from barks_reader.core.archive_page_image_source import ArchivePageImageSource
 from barks_reader.core.comic_book_loader import ComicBookLoader
 from barks_reader.core.comic_book_page_info import DisplayUnit
 from barks_reader.core.reader_consts_and_types import CLOSE_TO_ZERO, COMIC_BEGIN_PAGE
@@ -402,12 +403,24 @@ class ComicBookReader(FloatLayout):
 
         self._time_to_load_comic.restart()
 
+        archive_path, fanta_volume_archive = self._comic_book_loader.resolve_archive_for_comic(
+            fanta_info
+        )
+        image_source = ArchivePageImageSource(
+            archive_path=archive_path,
+            fanta_volume_archive=fanta_volume_archive,
+            comic_book_image_builder=comic_book_image_builder,
+            empty_page_image=self._comic_book_loader.empty_page_image,
+            use_fantagraphics_overrides=use_fantagraphics_overrides,
+            max_width=self._comic_book_loader.max_window_width,
+            max_height=self._comic_book_loader.max_window_height,
+        )
+        archive_desc = str(archive_path)
         self._comic_book_loader.set_comic(
-            fanta_info,
-            use_fantagraphics_overrides,
-            comic_book_image_builder,
+            image_source,
             self._page_manager.get_image_load_order(),
             page_map,
+            archive_desc=archive_desc,
         )
 
         self._closed = False
