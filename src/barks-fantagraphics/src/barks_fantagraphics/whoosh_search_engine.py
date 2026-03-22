@@ -1,7 +1,7 @@
 import heapq
 import json
 from collections import Counter, defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -188,6 +188,12 @@ class SearchEngine:
             query = QueryParser("unstemmed", self._index.schema).parse(search_words, debug=False)
             results = searcher.search(query, limit=1000)
             return self._collect_and_sort_results(results, search_words)
+
+    def iter_all_stored_fields(self) -> Iterator[dict[str, str]]:
+        """Yield stored fields for every document in the index."""
+        with self._index.reader() as reader:
+            for docnum in reader.all_doc_ids():
+                yield reader.stored_fields(docnum)
 
     def get_all_titles(self) -> set[str]:
         with self._index.reader() as reader:
