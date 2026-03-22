@@ -123,7 +123,34 @@
         }
 
         #intro::before {
+            background-image: none;
+        }
+
+        .intro-hero {
+            position: relative;
+            margin: -40px -40px 0 -40px;
+            padding: 40px 40px 10px;
+        }
+
+        .intro-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background-image: url('intro-bg.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.15;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .intro-hero > * {
+            position: relative;
+            z-index: 1;
         }
 
         #features::before {
@@ -513,29 +540,35 @@
 
         <!-- Introduction Tab -->
         <div id="intro" class="tab-content active">
-            <h2>The Compleat Barks Disney Reader</h2>
-            <p>
-                <strong><em>The Compleat Barks Disney Reader</em></strong> is a multi-platform desktop app for
-                reading your digital copy of the
-                <strong><em>Fantagraphics Complete Carl Barks Disney Library.</em></strong>
-                You supply your own Fantagraphics comic zips &mdash; the app provides the rest.
-            </p>
-            <ul>
-                <li>Browse and read all Barks stories chronologically, by series, or by category</li>
-                <li>Censorship removed: language fixes, plus <strong><em>"Silent Night,"</em></strong>
-                    <strong><em>"Good Deeds,"</em></strong> and
-                    <strong><em>"Bill Collectors"</em></strong> restored</li>
-                <li>Full title/tag index and speech bubble index with links to every story</li>
-                <li>Hundreds of favourite Barks panels as backgrounds and enhancements</li>
-                <li>Works on Windows, macOS, and Linux &mdash; PCs, laptops,
-                    hybrid 2-in-1 touchscreens, or 4K TVs</li>
-            </ul>
+            <div class="intro-hero">
+                <h2>The Compleat Barks Disney Reader</h2>
+                <p>
+                    <strong><em>The Compleat Barks Disney Reader</em></strong> is a multi-platform desktop app for
+                    reading your digital copy of the
+                    <strong><em>Fantagraphics Complete Carl Barks Disney Library.</em></strong>
+                    You supply your own Fantagraphics comic zips &mdash; the app does the rest.
+                </p>
+                <ul>
+                    <li>Browse and read all Barks stories chronologically, by series, or by category</li>
+                    <li>Censorship removed: language fixes, plus <strong><em>"Silent Night,"</em></strong>
+                        <strong><em>"Good Deeds,"</em></strong> and
+                        <strong><em>"Bill Collectors"</em></strong> restored</li>
+                    <li>Full title/tag index and speech bubble index with links to every story</li>
+                    <li>Title/tag and speech bubble word searches with links to stories</li>
+                    <li>Hundreds of favourite Barks panels as backgrounds and enhancements</li>
+                    <li>Fast comic book reader that centres pages with original comic book numbering.
+                        Optional double page mode available</li>
+                    <li>Works on Windows, macOS, and Linux &mdash; PCs, laptops,
+                        hybrid 2-in-1 touchscreens, or 4K TVs (with a NUC)</li>
+                </ul>
+                <p style="margin-top: 25px;">
+                    <button class="cta-button" onclick="openTab(event, 'download')">Download Now</button>
+                </p>
 
-            <p style="margin-top: 25px;">
-                <button class="cta-button" onclick="openTab(event, 'download')">Download Now</button>
-            </p>
+                <hr style="margin-top: 35px; border: none; border-top: 2px solid #ddd;">
 
-            <h2 style="margin-top: 40px;">Screenshots</h2>
+                <h2 style="margin-top: 20px;">Screenshots</h2>
+            </div>
             <div class="screenshots-grid">
                 <div class="screenshot-item">
                     <h4>Main Window</h4>
@@ -569,14 +602,14 @@
                 (favourite panels and censorship fixes).
                 Everything you need to get started is included &mdash; no additional downloads required.
                 <strong>You need to supply your own legally obtained Fantagraphics digital library in a single directory
-                    of DRM-free .cbz or .zip zips. </strong>
+                    of DRM-free .cbz or .zip files. </strong>
             </p>
 
             <div class="about-section">
                 <h3>About This Project</h3>
                 <p>
-                    I have loved Barks' stories since childhood, and as a teenager, I dreamt of a complete uncensored Barks
-                    library. That almost happened with the CBL and CBL in color,
+                    I have loved Barks' stories since childhood, and as I got older, I dreamt of a complete uncensored
+                    Barks library. That almost happened with the CBL and CBL in color,
                     except, sadly, for <em>"Darkest Africa"</em> and <em>"Voodoo Hoodoo."</em> The Fantagraphics
                     library is pretty good (although I'm not a fan of the smaller page size). But the digital edition
                     of the library is a game-changer. This democratizes access to all Barks' Disney work and will allow
@@ -643,15 +676,12 @@
                     <h4>🔒 You Supply Your Fantagraphics Zips</h4>
                     <p>All you need to do is make sure all your Fantagraphics comic zips are in a single directory and
                         the name of each zip starts with the volume number &mdash; so '01' to '29'. The zips must be in
-                        '.zip'
-                        or '.cbz' format not 'rar' format. If you have a volume in the 'rar' format you just need to
-                        un-rar it, then zip it up. If you put your zips in a folder called <strong>"Fantagraphics
-                            Complete Carl
-                            Barks Disney Library"</strong>, and it's on the Barks readers' search path (see
-                        the Installation tab)
-                        it will be automatically added to the readers' configuration.
-                        Otherwise, when you first use the app, you will have the opportunity to tell it where to look
-                        for the zips.
+                        DRM-free '.zip' or '.cbz' format and not 'rar' format. If you have a volume in the 'rar' format
+                        you just need to un-rar it, then zip it up. If you put your zips in a folder called
+                        <strong>"Fantagraphics Complete Carl Barks Disney Library"</strong>, and it's on the Barks
+                        readers' search path (see the Installation tab) it will be automatically added to the readers'
+                        configuration. Otherwise, when you first use the app, you will have the opportunity to tell it
+                        where to look for the zips.
                     </p>
                 </div>
 
@@ -659,19 +689,23 @@
                     <h4>📊 Fullscreen Reader</h4>
                     <p>When you select a story through the title portal image, the comic is presented in a new window.
                         Each comic page is centered so there is consistent positioning from page to page, and the page
-                        numbering
-                        uses the original comic page numbering not the Fantagraphics numbering. There are menu options
-                        to
-                        toggle fullscreen, goto beginning or end, and goto a page number.
+                        numbering uses the original comic page numbering not the Fantagraphics numbering. There are
+                        menu options to toggle fullscreen and double page modes, and go to beginning or end, and go to
+                        a page number. The single page fullscreen mode is very effective on a large 2-in-1 touchscreen
+                        laptop while the double page fullscreen mode looks great on a 4K TV. (You'll need a NUC-like
+                        device to drive the TV though.)
                     </p>
                 </div>
 
                 <div class="feature-card">
-                    <h4>💬 Speech Bubble Index</h4>
-                    <p>Search all speech text across every Barks story. The speech index lets you find any word or
-                        phrase
-                        spoken in any comic, with results linking directly to the specific page. Great for tracking down
-                        that half-remembered quote or finding every time a character says a particular phrase.
+                    <h4>💬 Titles/Tags and Speech Bubble Index</h4>
+                    <p>There are two indexes: a titles/tags index and a speech bubble index.
+                        The Titles/Tags index contains alphabetic access to all stories via title names or tags.
+                        The speech bubble index contains all words used in speech bubbles or
+                        narration boxes and sound effects and signs from all stories. All items in each index
+                        are linked to the associated page within a story so you can start reading the story
+                        directly from the link. There are also corresponding Search functions for Titles/Tags and
+                        speech bubbles.
                     </p>
                 </div>
 
@@ -710,9 +744,9 @@
         <div id="installation" class="tab-content">
             <h2>Installation Guide</h2>
             <p style="margin-bottom: 20px; font-size: 1.05rem;">
-                <strong><em>The Compleat Barks Disney Reader</em></strong> is a <strong>Portable Application</strong>.
-                It does not use a traditional installer, which is why it must be manually placed in a user-directory
-                rather than system folders like 'Program Files' or 'Applications'.
+                <strong>NOTE: <em>The Compleat Barks Disney Reader</em></strong> is a <strong>Portable
+                Application</strong>. It does not use a traditional installer, which is why it must be manually placed
+                in a user-directory rather than system folders like 'Program Files' or 'Applications'.
             </p>
 
             <p>Follow these platform-specific instructions to install the app on your system.</p>

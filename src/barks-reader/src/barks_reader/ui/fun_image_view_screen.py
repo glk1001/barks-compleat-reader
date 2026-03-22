@@ -74,7 +74,7 @@ class FunImageViewScreen(BoxLayout):
 
         goto_button = self.ids.goto_title_overlay.goto_button
         logger.debug(
-            f"Goto title button touch region:"
+            f"Go to title button touch region:"
             f" {goto_button.x},"
             f" {goto_button.y},"
             f" {goto_button.width},"
