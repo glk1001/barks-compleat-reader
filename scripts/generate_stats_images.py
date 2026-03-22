@@ -30,6 +30,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import typer
+from comic_utils.cpi_calculator import CURRENT_YEAR, get_adjusted_usd
 from matplotlib import ticker
 from matplotlib.transforms import Bbox
 
@@ -166,12 +167,19 @@ def gen_payments_per_year(output_dir: Path) -> None:
     for info in BARKS_PAYMENTS.values():
         totals[info.accepted_year] += info.payment
 
+    adjust_for_cpi(totals)
+
     years = sorted(totals)
     values = [totals[y] for y in years]
 
     fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
     ax.bar(years, values, color=BAR_COLOR, zorder=3)
-    _style_ax(ax, "Total Payment per Year (USD)", "Year", "Payment (USD)")
+    _style_ax(
+        ax,
+        f"Total Payments per Year ({CURRENT_YEAR} USD)",
+        "Year",
+        f"Payments ({CURRENT_YEAR} USD)",
+    )
     ax.set_xticks(years)
     ax.tick_params(axis="x", rotation=45)
     ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("${x:,.0f}"))
@@ -187,17 +195,29 @@ def gen_payment_rate(output_dir: Path) -> None:
         pages[info.accepted_year] += info.num_pages
         payments[info.accepted_year] += info.payment
 
+    adjust_for_cpi(payments)
+
     years = sorted(pages)
     rates = [payments[y] / pages[y] if pages[y] else 0.0 for y in years]
 
     fig, ax = plt.subplots(figsize=(FIG_WIDTH, FIG_HEIGHT))
     ax.plot(years, rates, color=ACCENT_COLOR, linewidth=2, marker="o", markersize=5, zorder=3)
-    _style_ax(ax, "Payment Rate (USD per Page) per Year", "Year", "USD / Page")
+    _style_ax(
+        ax,
+        f"Per Page Payment Rate ({CURRENT_YEAR} USD per Page) per Year",
+        "Year",
+        f"{CURRENT_YEAR} USD / Page",
+    )
     ax.set_xticks(years)
     ax.tick_params(axis="x", rotation=45)
-    ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("${x:.2f}"))
+    ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("${x:.0f}"))
     fig.tight_layout()
     _save(fig, output_dir, "payment_rate.png")
+
+
+def adjust_for_cpi(totals: dict[int, float]) -> None:
+    for year, payment in totals.items():
+        totals[year] = get_adjusted_usd(payment, year)
 
 
 def gen_stories_per_series(output_dir: Path) -> None:
