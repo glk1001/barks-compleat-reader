@@ -34,8 +34,8 @@ from barks_fantagraphics.barks_titles import BARKS_TITLE_INFO
 from barks_fantagraphics.whoosh_search_engine import SearchEngine
 
 # -- Constants ---------------------------------------------------------------
-WORDCLOUD_WIDTH = 1600
-WORDCLOUD_HEIGHT = 800
+WORDCLOUD_WIDTH = 1668
+WORDCLOUD_HEIGHT = 1176
 WORDCLOUD_MAX_WORDS = 200
 WORDCLOUD_BG_COLOR = "white"
 FIG_DPI = 100
@@ -75,7 +75,13 @@ def _compute_tfidf(title_texts: dict[str, str]) -> list[tuple[str, float]]:
     Returns a list of (word, score) sorted descending by score.
     """
     documents = list(title_texts.values())
-    vectorizer = TfidfVectorizer(stop_words="english", min_df=2, max_df=0.85)
+    # Token pattern: match normal words plus apostrophe-prefixed contractions like 'em, 'twas, 'til
+    vectorizer = TfidfVectorizer(
+        stop_words="english",
+        min_df=2,
+        max_df=0.85,
+        token_pattern=r"(?u)(?:'\w+|\b\w\w+\b)",  # noqa: S106
+    )
     tfidf_matrix = vectorizer.fit_transform(documents)
     feature_names = vectorizer.get_feature_names_out()
 
@@ -87,7 +93,9 @@ def _compute_tfidf(title_texts: dict[str, str]) -> list[tuple[str, float]]:
     return [(word, float(score)) for word, score in word_scores]
 
 
-def _generate_word_cloud(word_scores: list[tuple[str, float]], output_path: Path) -> None:
+def _generate_word_cloud(
+    word_scores: list[tuple[str, float]], output_path: Path, title: str = ""
+) -> None:
     """Render a word cloud from TF-IDF scores and save as PNG."""
     freq = dict(word_scores[:WORDCLOUD_MAX_WORDS])
     wc = WordCloud(
@@ -100,6 +108,20 @@ def _generate_word_cloud(word_scores: list[tuple[str, float]], output_path: Path
     fig, ax = plt.subplots(figsize=(WORDCLOUD_WIDTH / FIG_DPI, WORDCLOUD_HEIGHT / FIG_DPI))
     ax.imshow(wc, interpolation="bilinear")
     ax.axis("off")
+    if title:
+        ax.text(
+            0.99,
+            0.002,
+            title,
+            transform=ax.transAxes,
+            fontsize=12,
+            fontweight="bold",
+            fontstyle="italic",
+            color="red",
+            ha="right",
+            va="bottom",
+            bbox={"boxstyle": "round,pad=0.3", "facecolor": "white", "edgecolor": "none"},
+        )
     fig.tight_layout(pad=0)
     fig.savefig(output_path, dpi=FIG_DPI, bbox_inches="tight", facecolor="white")
     plt.close(fig)
@@ -154,8 +176,19 @@ def main(
     print(f"Titles with indexed text: {len(title_texts)}")
 
     if not title_texts:
-        print("No text found — nothing to generate.")
+        print("No text found - nothing to generate.")
         raise typer.Exit(code=1)
+
+    # Diagnostic: total words and per-title stats
+    word_counts = {title: len(text.split()) for title, text in title_texts.items()}
+    total_words = sum(word_counts.values())
+    avg_words = total_words / len(word_counts)
+    min_title = min(word_counts, key=word_counts.get)  # type: ignore[arg-type]
+    max_title = max(word_counts, key=word_counts.get)  # type: ignore[arg-type]
+    print(f"Total words: {total_words:,}")
+    print(f"Avg words/title: {avg_words:,.0f}")
+    print(f"Min: {word_counts[min_title]:,} words ({min_title})")
+    print(f"Max: {word_counts[max_title]:,} words ({max_title})")
 
     # 3. Compute TF-IDF
     word_scores = _compute_tfidf(title_texts)
@@ -163,7 +196,11 @@ def main(
 
     # 4. Generate outputs
     year_suffix = f"{start_year}-{end_year % 100:02d}"
-    _generate_word_cloud(word_scores, output_dir / f"tfidf_wordcloud_{year_suffix}.png")
+    _generate_word_cloud(
+        word_scores,
+        output_dir / f"tfidf_wordcloud_{year_suffix}.png",
+        title=f"Carl Barks TF-IDF Word Cloud ({start_year}\u2013{end_year})",
+    )
     _write_ranked_words(word_scores, output_dir / f"tfidf_ranked_words_{year_suffix}.txt")
 
     print("Done.")

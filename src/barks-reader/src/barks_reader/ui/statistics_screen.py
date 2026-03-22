@@ -8,9 +8,13 @@ if TYPE_CHECKING:
 
     from kivy.uix.widget import Widget
 
+import re
+
 from kivy.clock import Clock
-from kivy.factory import Factory
+from kivy.metrics import dp
 from kivy.properties import BooleanProperty  # ty: ignore[unresolved-import]
+from kivy.uix.button import Button
+from kivy.uix.dropdown import DropDown
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.togglebutton import ToggleButton
 from loguru import logger
@@ -38,6 +42,28 @@ _STAT_ITEMS: list[tuple[str, str]] = [
     ("Top Characters", "top_characters.png"),
     ("Top Locations", "top_locations.png"),
 ]
+
+
+def _discover_wordclouds(statistics_dir: Path) -> list[tuple[str, str]]:
+    """Discover TF-IDF wordcloud images in the statistics directory.
+
+    Globs for ``tfidf_wordcloud_*.png`` files and derives human-readable labels
+    from the filenames (e.g. ``tfidf_wordcloud_1943-46.png`` → ``"Word Cloud 1943-46"``).
+
+    Args:
+        statistics_dir: Directory to search for wordcloud PNGs.
+
+    Returns:
+        Sorted list of ``(label, filename)`` tuples.
+
+    """
+    pattern = re.compile(r"^tfidf_wordcloud_(.+)\.png$")
+    results: list[tuple[str, str]] = []
+    for path in sorted(statistics_dir.glob("tfidf_wordcloud_*.png")):
+        m = pattern.match(path.name)
+        if m:
+            results.append((f"Word Cloud {m.group(1)}", path.name))
+    return results
 
 
 class StatMenuButton(ToggleButton):
@@ -86,7 +112,21 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         self._stat_buttons.append(word_stat_btn)
         self._word_stat_button = word_stat_btn
 
-        self._word_stat_dropdown = Factory.WordStatDropDown()
+        self._word_stat_dropdown = DropDown(auto_width=False, width=dp(160))
+        items = [
+            ("Most Frequent", "most_frequent.png"),
+            *_discover_wordclouds(self._statistics_dir),
+        ]
+        for label, filename in items:
+            btn = Button(
+                text=label,
+                size_hint_y=None,
+                height=dp(40),
+                background_color=(0.12, 0.12, 0.12, 1),
+                color=(1, 1, 1, 1),
+            )
+            btn.bind(on_release=lambda _b, f=filename: self._word_stat_dropdown.select(f))
+            self._word_stat_dropdown.add_widget(btn)
         self._word_stat_dropdown.bind(on_select=self._on_word_stat_selected)
         self._word_stat_dropdown.bind(on_dismiss=self._on_dropdown_dismissed)
 
