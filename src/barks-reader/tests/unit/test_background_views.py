@@ -12,7 +12,7 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_CS,
     SERIES_USA,
 )
-from barks_reader.core.random_title_images import FIT_MODE_COVER, ImageInfo
+from barks_reader.core.image_selector import FIT_MODE_COVER, ImageInfo
 from barks_reader.ui import background_views as background_views_module
 from barks_reader.ui.background_views import BackgroundViews, ImageThemes
 from barks_reader.ui.view_states import ViewStates

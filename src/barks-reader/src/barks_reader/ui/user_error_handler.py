@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.barks_titles import Titles
 
-    from barks_reader.core.random_title_images import ImageInfo
+    from barks_reader.core.image_selector import ImageInfo
     from barks_reader.core.reader_settings import ReaderSettings
 
 

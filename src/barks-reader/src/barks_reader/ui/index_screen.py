@@ -27,7 +27,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from loguru import logger
 
-from barks_reader.core.random_title_images import ImageInfo
+from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.reader_formatter import mark_phrase_in_text
 from barks_reader.ui.reader_keyboard_nav import (
     KEY_DOWN,

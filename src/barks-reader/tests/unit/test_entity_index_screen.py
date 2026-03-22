@@ -43,7 +43,8 @@ def person_index_screen(
     with patch.object(barks_reader.ui.index_screen.IndexScreen, "__init__"):  # noqa: SIM117
         with (
             patch.object(barks_reader.ui.speech_index_screen, "ComicSearch") as mock_search_cls,
-            patch.object(barks_reader.ui.speech_index_screen, "RandomTitleImages"),
+            patch.object(barks_reader.ui.speech_index_screen, "ImageSelector"),
+            patch.object(barks_reader.ui.speech_index_screen, "ReaderFilePathsResolver"),
             patch.object(barks_reader.ui.speech_index_screen, "PanelTextureLoader"),
             patch.object(
                 barks_reader.ui.speech_index_screen,
@@ -150,7 +151,8 @@ class TestEntityIndexScreen:
         with patch.object(barks_reader.ui.index_screen.IndexScreen, "__init__"):  # noqa: SIM117
             with (
                 patch.object(barks_reader.ui.speech_index_screen, "ComicSearch") as mock_search_cls,
-                patch.object(barks_reader.ui.speech_index_screen, "RandomTitleImages"),
+                patch.object(barks_reader.ui.speech_index_screen, "ImageSelector"),
+                patch.object(barks_reader.ui.speech_index_screen, "ReaderFilePathsResolver"),
                 patch.object(barks_reader.ui.speech_index_screen, "PanelTextureLoader"),
                 patch.object(
                     barks_reader.ui.speech_index_screen,

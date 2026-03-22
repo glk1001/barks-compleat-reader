@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 import barks_reader.ui.view_state_manager
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_reader.core.random_title_images import FIT_MODE_COVER, ImageInfo
+from barks_reader.core.image_selector import FIT_MODE_COVER, ImageInfo
 from barks_reader.ui.background_views import ImageThemes
 from barks_reader.ui.view_state_manager import (
     ImageThemesChange,

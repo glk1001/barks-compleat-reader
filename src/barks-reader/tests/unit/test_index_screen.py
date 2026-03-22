@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.index_screen
 import pytest
-from barks_reader.core.random_title_images import ImageInfo
+from barks_reader.core.image_selector import ImageInfo
 from barks_reader.ui.index_screen import (
     SAVED_NODE_STATE_FIRST_LETTER_KEY,
     IndexItemButton,

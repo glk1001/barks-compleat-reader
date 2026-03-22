@@ -15,7 +15,7 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 from kivy.uix.floatlayout import FloatLayout
 from loguru import logger
 
-from barks_reader.core.random_title_images import FIT_MODE_COVER
+from barks_reader.core.image_selector import FIT_MODE_COVER
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import LONG_TITLE_SPLITS, ReaderFormatter
 from barks_reader.core.reader_utils import title_needs_footnote

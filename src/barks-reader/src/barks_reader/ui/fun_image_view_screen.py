@@ -15,7 +15,7 @@ from kivy.uix.boxlayout import BoxLayout
 from loguru import logger
 from screeninfo import get_monitors
 
-from barks_reader.core.random_title_images import FIT_MODE_CONTAIN, ImageInfo
+from barks_reader.core.image_selector import FIT_MODE_CONTAIN, ImageInfo
 from barks_reader.core.reader_settings import (
     BARKS_READER_SECTION,
     SHOW_FUN_VIEW_TITLE_INFO,

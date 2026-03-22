@@ -20,7 +20,7 @@ from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from loguru import logger
 
-from barks_reader.core.random_title_images import ImageInfo
+from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO
 from barks_reader.core.settings_notifier import settings_notifier

@@ -46,8 +46,9 @@ def main_index_screen(
         # Patch dependencies created in __init__
         with (
             patch.object(
-                barks_reader.ui.main_index_screen, "RandomTitleImages"
+                barks_reader.ui.main_index_screen, "ImageSelector"
             ) as mock_random_images_cls,
+            patch.object(barks_reader.ui.main_index_screen, "ReaderFilePathsResolver"),
             patch.object(
                 barks_reader.ui.main_index_screen, "PanelTextureLoader"
             ) as mock_loader_cls,

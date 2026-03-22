@@ -31,7 +31,7 @@ from kivy.clock import Clock
 from loguru import logger
 
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
-from barks_reader.core.random_title_images import FIT_MODE_COVER, ImageInfo, RandomTitleImages
+from barks_reader.core.image_selector import FIT_MODE_COVER, ImageInfo, ImageSelector
 from barks_reader.core.reader_colors import RandomColorTint
 from barks_reader.core.reader_file_paths import ALL_TYPES, FileTypes
 from barks_reader.core.reader_formatter import get_formatted_color
@@ -180,7 +180,7 @@ class BackgroundViews:
         self,
         reader_settings: ReaderSettings,
         title_lists: dict[str, list[FantaComicBookInfo]],
-        random_title_images: RandomTitleImages,
+        random_title_images: ImageSelector,
     ) -> None:
         self._reader_settings = reader_settings
         self._title_lists = title_lists

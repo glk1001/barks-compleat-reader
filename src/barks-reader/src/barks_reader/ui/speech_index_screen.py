@@ -30,7 +30,8 @@ from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.widget import Widget
 from loguru import logger
 
-from barks_reader.core.random_title_images import ImageInfo, RandomTitleImages
+from barks_reader.core.image_selector import ImageInfo, ImageSelector
+from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 from barks_reader.ui.index_screen import (
     INDEX_NAV_FOCUS_GROUP,
@@ -133,7 +134,8 @@ class SpeechIndexScreen(IndexScreen):
         self._font_manager = font_manager
         self._user_error_handler = user_error_handler
         self._search = ComicSearch(reader_settings.sys_file_paths.get_barks_reader_indexes_dir())
-        self._random_title_images = RandomTitleImages(reader_settings)
+        resolver = ReaderFilePathsResolver(reader_settings.file_paths)
+        self._random_title_images = ImageSelector(resolver, reader_settings)
         self._texture_loader = PanelTextureLoader(
             reader_settings.file_paths.barks_panels_are_encrypted
         )

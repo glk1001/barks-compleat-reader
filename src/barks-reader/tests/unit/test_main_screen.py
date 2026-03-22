@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 import barks_reader.ui.main_screen
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_reader.core.random_title_images import ImageInfo
+from barks_reader.core.image_selector import ImageInfo
 from barks_reader.ui.main_screen import MainScreen
 from barks_reader.ui.view_states import ViewStates
 from kivy.uix.screenmanager import Screen
@@ -70,7 +70,8 @@ def main_screen(
         # Patch other internal initializations
         with (
             patch.object(barks_reader.ui.main_screen, "WindowManager"),
-            patch.object(barks_reader.ui.main_screen, "RandomTitleImages"),
+            patch.object(barks_reader.ui.main_screen, "ImageSelector"),
+            patch.object(barks_reader.ui.main_screen, "ReaderFilePathsResolver"),
             patch.object(barks_reader.ui.main_screen, "SettingsManager"),
             patch.object(barks_reader.ui.main_screen, "SpecialFantaOverrides"),
             patch.object(barks_reader.ui.main_screen, "UserErrorHandler"),

@@ -8,8 +8,9 @@ from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from barks_fantagraphics.comics_utils import get_abbrev_path
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
 from barks_reader.core.config_info import ConfigInfo
-from barks_reader.core.random_title_images import RandomTitleImages
+from barks_reader.core.image_selector import ImageSelector
 from barks_reader.core.reader_file_paths import FileTypes
+from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.ui.reader_settings_buildable import BuildableReaderSettings
 from loguru import logger
 
@@ -69,9 +70,10 @@ if __name__ == "__main__":
     settings.set_barks_panels_dir()
 
     # --- Test the Class ---
-    print("\n--- Testing RandomTitleImages ---")
+    print("\n--- Testing ImageSelector ---")
     random.seed(1)
-    random_image_selector = RandomTitleImages(settings)
+    resolver = ReaderFilePathsResolver(settings.file_paths)
+    random_image_selector = ImageSelector(resolver, settings)
 
     # Get a list of all comic book info objects to choose from
     all_titles = list(ALL_FANTA_COMIC_BOOK_INFO.values())

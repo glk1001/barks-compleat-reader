@@ -10,7 +10,7 @@ import barks_reader.ui.index_screen
 import barks_reader.ui.speech_index_screen
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_reader.core.random_title_images import ImageInfo
+from barks_reader.core.image_selector import ImageInfo
 from barks_reader.ui.index_screen import IndexItem
 from barks_reader.ui.speech_index_screen import SpeechIndexScreen
 from kivy.clock import Clock
@@ -47,9 +47,8 @@ def speech_index_screen(
     with patch.object(barks_reader.ui.index_screen.IndexScreen, "__init__"):  # noqa: SIM117
         with (
             patch.object(barks_reader.ui.speech_index_screen, "ComicSearch") as mock_search_cls,
-            patch.object(
-                barks_reader.ui.speech_index_screen, "RandomTitleImages"
-            ) as mock_random_cls,
+            patch.object(barks_reader.ui.speech_index_screen, "ImageSelector") as mock_random_cls,
+            patch.object(barks_reader.ui.speech_index_screen, "ReaderFilePathsResolver"),
             patch.object(
                 barks_reader.ui.speech_index_screen, "PanelTextureLoader"
             ) as mock_loader_cls,

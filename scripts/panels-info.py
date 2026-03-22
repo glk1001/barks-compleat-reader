@@ -9,8 +9,8 @@ from barks_fantagraphics.comic_book import get_abbrev_jpg_page_list
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.comics_helpers import get_titles
 from barks_reader.core.config_info import ConfigInfo  # make sure this is before any kivy imports
-from barks_reader.core.image_file_getter import TitleImageFileGetter
 from barks_reader.core.reader_file_paths import FileTypes
+from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_settings import ReaderSettings
 from comic_utils.common_typer_options import LogLevelArg, TitleArg, VolumesArg
 from dotenv import load_dotenv
@@ -76,13 +76,13 @@ def main(
         comics_database = ComicsDatabase(for_building_comics=True)
         titles = get_titles(comics_database, volumes, title_str)
 
-        image_getter = TitleImageFileGetter(reader_settings)
+        resolver = ReaderFilePathsResolver(reader_settings.file_paths)
         image_dict: dict[str, tuple[dict[FileTypes, set[tuple[PanelPath, bool]]], str]] = {}
         for title in titles:
             comic_book = comics_database.get_comic_book(title)
             page_lst = ", ".join(get_abbrev_jpg_page_list(comic_book)).replace(" - ", "-")
 
-            image_dict[title] = (image_getter.get_all_title_image_files(title), page_lst)
+            image_dict[title] = (resolver.resolve_all_title_image_files(title), page_lst)
 
         console = Console()
         table = Table(show_header=True, header_style="bold magenta")

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from comic_utils.timing import Timing
 from loguru import logger
 
-from barks_reader.core.random_title_images import ImageInfo, get_title_str
+from barks_reader.core.image_selector import ImageInfo, get_title_str
 from barks_reader.core.reader_consts_and_types import CLOSE_TO_ZERO
 from barks_reader.core.reader_formatter import get_clean_text_without_extra
 from barks_reader.ui.background_views import ImageThemes

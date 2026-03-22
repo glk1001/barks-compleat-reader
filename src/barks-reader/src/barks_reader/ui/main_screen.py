@@ -26,12 +26,13 @@ from kivy.properties import BooleanProperty, StringProperty  # ty: ignore[unreso
 from kivy.uix.screenmanager import Screen
 from loguru import logger
 
-from barks_reader.core.random_title_images import ImageInfo, RandomTitleImages
+from barks_reader.core.image_selector import ImageInfo, ImageSelector
 from barks_reader.core.reader_consts_and_types import (
     APP_TITLE,
     CHRONO_YEAR_RANGES,
     COMIC_BEGIN_PAGE,
 )
+from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_tree_view_utils import find_tree_view_title_node
 from barks_reader.core.reader_utils import (
@@ -144,7 +145,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._title_lists: dict[str, list[FantaComicBookInfo]] = (
             filtered_title_lists.get_title_lists()
         )
-        self._random_title_images = RandomTitleImages(self._reader_settings)
+        resolver = ReaderFilePathsResolver(self._reader_settings.file_paths)
+        self._random_title_images = ImageSelector(resolver, self._reader_settings)
         self.is_first_use_of_reader = self._reader_settings.is_first_use_of_reader
 
         self._action_bar = self.ids.action_bar

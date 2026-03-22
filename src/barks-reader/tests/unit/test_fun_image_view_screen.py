@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 import barks_reader.ui.fun_image_view_screen
 import pytest
 from barks_fantagraphics.barks_titles import Titles
-from barks_reader.core.random_title_images import FIT_MODE_CONTAIN, ImageInfo
+from barks_reader.core.image_selector import FIT_MODE_CONTAIN, ImageInfo
 from barks_reader.ui.fun_image_view_screen import FunImageViewScreen
 from kivy.uix.boxlayout import BoxLayout
 
