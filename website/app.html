@@ -130,6 +130,15 @@
             background-image: url('requirements-bg.jpg');
         }
 
+        #troubleshooting::before {
+            background-image: url('features-bg.jpg');
+            background-size: auto 100%;
+        }
+
+        #download::before {
+            background-image: url('intro-bg.png');
+        }
+
 
         .tab-content > * {
             position: relative;
@@ -339,6 +348,25 @@
             margin-top: 15px;
         }
 
+        .cta-button {
+            display: inline-block;
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1.05rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .cta-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
         ul {
             margin: 15px 0;
             padding-left: 25px;
@@ -415,78 +443,145 @@
             padding-top: 3px !important;
             padding-bottom: 3px !important;
         }
+
+        .about-section {
+            margin-top: 30px;
+            padding: 25px;
+            background: rgba(248, 249, 250, 0.7);
+            border-radius: 10px;
+            border-left: 4px solid #764ba2;
+        }
+
+        .about-section h3 {
+            margin-top: 0;
+        }
+
+        .quick-start {
+            padding: 20px;
+            background: rgba(102, 126, 234, 0.08);
+            border-radius: 10px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            margin-bottom: 25px;
+        }
+
+        .quick-start h3 {
+            margin-top: 0;
+            color: #667eea;
+        }
+
+        .quick-start ol {
+            margin: 10px 0 0;
+            padding-left: 25px;
+        }
+
+        .quick-start li {
+            margin-bottom: 4px;
+        }
+
+        .first-launch-note {
+            padding: 20px;
+            background: rgba(255, 243, 205, 0.7);
+            border-radius: 8px;
+            border-left: 4px solid #f59e0b;
+            margin: 20px 0;
+        }
+
+        .first-launch-note h4 {
+            color: #b45309;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
 <div class="container">
     <header>
         <h1><img src="main-header.png" class="icon-img" alt=""> The Compleat Barks Disney Reader</h1>
-        <p class="subtitle">Documentation and downloads</p>
+        <p class="subtitle">Documentation and downloads &mdash; <span id="header-version"></span></p>
     </header>
 
     <div class="main-content">
         <div class="tabs">
             <button class="tab active" onclick="openTab(event, 'intro')">Introduction</button>
             <button class="tab" onclick="openTab(event, 'features')">Features</button>
+            <button class="tab" onclick="openTab(event, 'download')">Download</button>
             <button class="tab" onclick="openTab(event, 'installation')">Installation</button>
             <button class="tab" onclick="openTab(event, 'requirements')">Requirements</button>
             <button class="tab" onclick="openTab(event, 'troubleshooting')">Troubleshooting</button>
-            <button class="tab" onclick="openTab(event, 'download')">Download</button>
         </div>
 
         <!-- Introduction Tab -->
         <div id="intro" class="tab-content active">
             <h2>The Compleat Barks Disney Reader</h2>
             <p>
-                <strong><em>The Compleat Barks Disney Reader</em></strong> is a multi-platform app for reading your
-                digital copy of the
-                <strong><em>Fantagraphics Complete Carl Barks Disney Library.</em></strong> This app knows all the Barks
-                Disney stories and how they are laid out in the Fantagraphics library.
-                It can help you read the stories chronologically or by series or by categories/tags; and there is a
-                title/tag search option and a full index and speech bubble index. Once you've navigated to your story
-                of choice, the reader will open separate window and present the stories with pages centered and with the
-                original page numbering. Each story
-                is individually itemised and accessible from the navigation view. The app as a whole has copious amounts
-                of Barks panels as backgrounds and enhancements to the navigation process. And a key focus is to make
-                this a complete reader. So all censorship issues found in the Fantagraphics library have been addressed.
-                They have been carefully fixed using digital versions of the original comics or the CBL, and colored
-                in the flat Fantagraphics style.
+                <strong><em>The Compleat Barks Disney Reader</em></strong> is a multi-platform desktop app for
+                reading your digital copy of the
+                <strong><em>Fantagraphics Complete Carl Barks Disney Library.</em></strong>
+                You supply your own Fantagraphics comic zips &mdash; the app provides the rest.
             </p>
-            <p>
-                I have loved Barks' stories since a kid and as a teenager I dreamt of a complete uncensored Barks
-                library. That almost happened with the CBL and CBL in color,
-                except, sadly, for <em>"Darkest Africa"</em> and <em>"Voodoo Hoodoo."</em> The Fantagraphics library is
-                pretty good (although I'm not a fan of the smaller pagesize). But the digital edition
-                of the library is a game-changer. This democratizes access to all Barks' Disney work and will allow
-                quality uncensored presentations in the future.
-                My hope is <strong><em>The Compleat Barks Disney Reader</em></strong> will be a good start to this.
+            <ul>
+                <li>Browse and read all Barks stories chronologically, by series, or by category</li>
+                <li>Censorship removed: language fixes, plus <strong><em>"Silent Night,"</em></strong>
+                    <strong><em>"Good Deeds,"</em></strong> and
+                    <strong><em>"Bill Collectors"</em></strong> restored</li>
+                <li>Full title/tag index and speech bubble index with links to every story</li>
+                <li>Hundreds of favourite Barks panels as backgrounds and enhancements</li>
+                <li>Works on Windows, macOS, and Linux &mdash; PCs, laptops,
+                    hybrid 2-in-1 touchscreens, or 4K TVs</li>
+            </ul>
+
+            <p style="margin-top: 25px;">
+                <button class="cta-button" onclick="openTab(event, 'download')">Download Now</button>
             </p>
 
-            <h3>Key Highlights</h3>
-            <ul>
-                <li>Complete chronological reader for the <strong><em>Fantagraphics Complete Carl Barks Disney
-                    Library.</em></strong></li>
-                <li>Censorship addressed: language fixes, and <strong><em>"Silent Night,"</em></strong>
-                    <strong><em>"Good Deeds,"</em></strong> and <strong><em>"Bill Collectors"</em></strong> restored
-                </li>
-                <li>Favourite, significant, and fun Barks panels used as backgrounds and enhancements throughout the
-                    reader
-                </li>
-                <li>A full titles and tags index, and a speech bubble index, with links to all stories</li>
-                <li>Cross-platform compatibility &mdash; works on Windows, macOS, and Linux</li>
-                <li>Works on PCs, laptops, hybrid 2-in-1 laptops with touchscreens, or 4K TVs controlled
-                    by a Linux or Windows NUC
-                </li>
-            </ul>
+            <h2 style="margin-top: 40px;">Screenshots</h2>
+            <div class="screenshots-grid">
+                <div class="screenshot-item">
+                    <h4>Main Window</h4>
+                    <img src="screenshot-main-window.png" alt="Main Interface">
+                </div>
+                <div class="screenshot-item">
+                    <h4>Selecting a Title</h4>
+                    <img src="screenshot-selecting-a-title.png" alt="Selecting a Title">
+                </div>
+                <div class="screenshot-item">
+                    <h4>Reading a Story</h4>
+                    <img src="screenshot-reading-a-story.png" alt="Reading a Story">
+                </div>
+                <div class="screenshot-item">
+                    <h4>Settings</h4>
+                    <img src="screenshot-settings.png" alt="Settings">
+                </div>
+                <div class="screenshot-item">
+                    <h4>Full Index with Links</h4>
+                    <img src="screenshot-main-index.png" alt="Full Index">
+                </div>
+                <div class="screenshot-item">
+                    <h4>Speech Bubble Index with Links</h4>
+                    <img src="screenshot-speech-bubble-index.png" alt="Speech Index">
+                </div>
+            </div>
 
             <h3>What's Included</h3>
             <p>
                 The download package includes the main application executable along with approximately 2GB of data files
-                (favorite panels and censorship fixes).
-                Everything you need to get started is included &mdash; no additional downloads required. You need to
-                supply
-                your own Fantagraphics digital library in a single directory of comic zips.
+                (favourite panels and censorship fixes).
+                Everything you need to get started is included &mdash; no additional downloads required.
+                <strong>You need to supply your own legally obtained Fantagraphics digital library in a single directory
+                    of DRM-free .cbz or .zip zips. </strong>
             </p>
+
+            <div class="about-section">
+                <h3>About This Project</h3>
+                <p>
+                    I have loved Barks' stories since a kid and as a teenager I dreamt of a complete uncensored Barks
+                    library. That almost happened with the CBL and CBL in color,
+                    except, sadly, for <em>"Darkest Africa"</em> and <em>"Voodoo Hoodoo."</em> The Fantagraphics
+                    library is pretty good (although I'm not a fan of the smaller pagesize). But the digital edition
+                    of the library is a game-changer. This democratizes access to all Barks' Disney work and will allow
+                    quality uncensored presentations in the future.
+                    My hope is <strong><em>The Compleat Barks Disney Reader</em></strong> will be a good start to this.
+                </p>
+            </div>
         </div>
 
         <!-- Features Tab -->
@@ -518,19 +613,20 @@
                         find these comparable in quality to the other uncensored stories. Longstanding
                         censorship has also been tackled (this may be a bit controversial but can be turned off):
                         'Larkie' has been
-                        replaced with 'Harpie' in <em>"The Golden Fleecing,"</em> Bombie's eyes are white without pupils
-                        in <em>"Voodoo Hoodoo,"</em> and 'Theah' (and similar Southern words) have been replaced with
-                        'Dere' in <em>"Lost in the Andes!"</em>
+                        replaced with 'Harpie' in <em>"The Golden Fleecing,"</em> Bombie's eyes are white without
+                        pupils in <em>"Voodoo Hoodoo,"</em> and 'Theah' (and similar Southern words) have been
+                        replaced with 'Dere' in <em>"Lost in the Andes!"</em>
                     </p>
                 </div>
 
                 <div class="feature-card">
-                    <h4>🎨 Copius Amounts of Barks Panels as Backgrounds</h4>
+                    <h4>🎨 Copious Amounts of Barks Panels as Backgrounds</h4>
                     <p>There are hundreds of individual comic panels scattered throughout the app as backgrounds or
                         story enhancements.
                         And there is a view where you can randomly cycle through the panels and select the story the
                         panel comes from.
-                        Also, there are many, many AI versions of panels that give fun re-interpretations of Barks' art.
+                        Also, there are many, many AI versions of panels that give fun re-interpretations of Barks'
+                        art.
                     </p>
                     <p>
                         When you click on a story title you are taken to a view with a panel from the story as a
@@ -585,41 +681,59 @@
                     </p>
                 </div>
             </div>
+        </div>
 
-            <h2>Screenshots</h2>
-            <div class="screenshots-grid">
-                <div class="screenshot-item">
-                    <h4>Main Window</h4>
-                    <img src="screenshot-main-window.png" alt="Main Interface">
-                </div>
-                <div class="screenshot-item">
-                    <h4>Selecting a Title</h4>
-                    <img src="screenshot-selecting-a-title.png" alt="Selecting a Title">
-                </div>
-                <div class="screenshot-item">
-                    <h4>Reading a Story</h4>
-                    <img src="screenshot-reading-a-story.png" alt="Reading a Story">
-                </div>
-                <div class="screenshot-item">
-                    <h4>Settings</h4>
-                    <img src="screenshot-settings.png" alt="Settings">
-                </div>
-                <div class="screenshot-item">
-                    <h4>Full Index with Links</h4>
-                    <img src="screenshot-main-index.png" alt="Full Index">
-                </div>
-                <div class="screenshot-item">
-                    <h4>Speech Bubble Index with Links</h4>
-                    <img src="screenshot-speech-bubble-index.png" alt="Speech Index">
-                </div>
+        <!-- Download Tab -->
+        <div id="download" class="tab-content">
+            <h2>Download The Compleat Barks Disney Reader</h2>
+            <p>Get the latest version of <strong><em>The Compleat Barks Disney Reader</em></strong> for your platform.
+                All downloads are hosted on GitHub Releases.</p>
+
+            <div class="platform-tabs" id="download-platform-tabs">
+                <!-- Generated by JavaScript -->
             </div>
+
+            <div id="download-platforms-container">
+                <!-- Generated by JavaScript -->
+            </div>
+
+            <h3>Installation</h3>
+            <p>
+                After downloading, head to the <a href="#" onclick="openTab(event, 'installation'); return false;"
+                                                  style="color: #667eea; font-weight: 600;">Installation tab</a> for
+                platform-specific setup instructions.
+            </p>
         </div>
 
         <!-- Installation Tab -->
         <div id="installation" class="tab-content">
             <h2>Installation Guide</h2>
-            <p>Follow these platform-specific instructions to install <strong><em>The Compleat Barks Disney Reader
-               </em></strong> on your system.</p>
+            <p>Follow these platform-specific instructions to install
+                <strong><em>The Compleat Barks Disney Reader</em></strong> on your system.</p>
+
+            <div class="quick-start">
+                <h3>Quick Start</h3>
+                <ol>
+                    <li>Download the executable and both data zip files from the
+                        <a href="#" onclick="openTab(event, 'download'); return false;"
+                           style="color: #667eea; font-weight: 600;">Download tab</a></li>
+                    <li>Move all three files to a folder where you have write permissions
+                        (not <em>"C:\Program Files"</em> or <em>"/Applications"</em>)</li>
+                    <li>Make the executable runnable (macOS/Linux: <code>chmod +x</code>)</li>
+                    <li>Run the executable &mdash; first launch will handle the rest</li>
+                </ol>
+            </div>
+
+            <div class="first-launch-note">
+                <h4>First Launch &mdash; Please Be Patient</h4>
+                <p>Depending on the speed of your machine and your internet connection, the first launch may take
+                    a few minutes. On Windows, you will see a black console screen at first (where all logging will
+                    go). On macOS/Linux, you can launch from a terminal to see logging.
+                    Once the executable has self-extracted you will start to see activity. It may still take a while
+                    to unzip the supporting data packs. Once these are done (and providing there are no errors) you
+                    will get a welcome screen popup where you can press OK to launch the reader app.
+                    Subsequent app launches should be fairly quick.</p>
+            </div>
 
             <div class="platform-tabs">
                 <button class="platform-tab active" onclick="openPlatform(event, 'windows')">🪟 Windows</button>
@@ -645,8 +759,7 @@
                 <div class="install-step">
                     <h4>Step 2: Move the Downloaded Files</h4>
                     <strong>IMPORTANT: Do NOT extract to <i>"C:\Program Files"</i> &mdash; the application needs write
-                        access
-                        to create its runtime environment.</strong><br/><br/>
+                        access to create its runtime environment.</strong><br/><br/>
                     <p>
                         Move the executable and data files to your preferred location but note that this must be a
                         directory where you have write permissions, such as:</p>
@@ -686,6 +799,9 @@
                     </table>
                     <p>See the next step for more information on making it easier for the app to automatically configure
                         itself with your Fantagraphics zips.</p>
+                    <p> <strong>Note:</strong> The app manipulates, centers, and reorganizes comic book images, so
+                        encrypted or proprietary file formats (such as native Kindle or Comixology files) are not
+                        supported. You must have DRM-free .cbz or .zip files.</p>
                 </div>
 
                 <div class="install-step">
@@ -708,17 +824,6 @@
                     <p>You may need to allow the app through Windows Defender SmartScreen on first run.</p>
                     <p>You can also create a shortcut by right-clicking: <strong>barks-reader-win.exe</strong> → Send to
                         → Desktop (create shortcut) for easy access.</p>
-
-                    <p><strong>IMPORTANT:</strong> Depending on the speed of your machine and your internet connection,
-                        this may take a few minutes for the app to launch. You will see a black console screen at first
-                        (where all
-                        logging will go) but once the exe has self-extracted you will start to see activity (detailed in
-                        the
-                        next step). Depending on your machine
-                        and connection it still may take a while to unzip the supporting data packs. Once these are
-                        done (and providing there are no errors) you will get a welcome screen popup. Here you can
-                        press OK to launch the reader app. Once you've done the install for the first time, subsequent
-                        app launches should be fairly quick.</p>
                 </div>
 
                 <div class="install-step">
@@ -726,8 +831,7 @@
                     <p>When the application is first launched it will do further installation steps:</p>
                     <ul>
                         <li>It will run the astral python package manager <strong>'uv'</strong> to download and install
-                            python
-                            packages required by the app,
+                            python packages required by the app,
                         </li>
                         <li>It will unzip <strong>"barks-reader-data-1.zip"</strong> and
                             <strong>"barks-reader-data-2.zip"</strong> and copy their contents
@@ -744,8 +848,8 @@
                             </ul>
                         </li>
                         <li>And finally, it will launch the actual reader app.</li>
-                        <li><strong>NOTE: It will only do the above installation steps on the first app launch.</strong>
-                        </li>
+                        <li><strong>NOTE: It will only do the above installation steps on the first app
+                            launch.</strong></li>
                     </ul>
                 </div>
 
@@ -819,6 +923,9 @@
                     </table>
                     <p>See the next step for more information on making it easier for the app to automatically configure
                         itself with your Fantagraphics zips.</p>
+                    <p> <strong>Note:</strong> The app manipulates, centers, and reorganizes comic book images, so
+                        encrypted or proprietary file formats (such as native Kindle or Comixology files) are not
+                        supported. You must have DRM-free .cbz or .zip files.</p>
                 </div>
 
                 <div class="install-step">
@@ -839,18 +946,6 @@
                     <h4>Step 6: Run the Application</h4>
                     <p>After granting permissions, the application will launch normally. Future launches can be done by
                         double-clicking.</p>
-
-                    <p><strong>IMPORTANT:</strong> Depending on the speed of your machine and your internet connection,
-                        it may take a few minutes for the app to launch. To get a better idea of what's happening,
-                        you can launch the app from a terminal where you will see logging. At first, you won't see
-                        anything
-                        at all while the exe self-extracts, but eventually you will start to see activity (detailed in
-                        the
-                        next step). Depending on your machine
-                        and connection it still may take a while to unzip the supporting data packs. Once these are
-                        done (and providing there are no errors) you will get a welcome screen popup. Here you can
-                        press OK to launch the reader app. Once you've done the install for the first time, subsequent
-                        app launches should be fairly quick.</p>
                 </div>
 
                 <div class="install-step">
@@ -858,8 +953,7 @@
                     <p>When the application is first launched it will do further installation steps:</p>
                     <ul>
                         <li>It will run the astral python package manager <strong>'uv'</strong> to download and install
-                            python
-                            packages required by the app
+                            python packages required by the app
                         </li>
                         <li>It will unzip <strong>"barks-reader-data-1.zip"</strong> and
                             <strong>"barks-reader-data-2.zip"</strong> and copy their contents
@@ -911,8 +1005,8 @@
                         <li><strong>"~/barks-reader"</strong></li>
                         <li>Any directory in your home folder</li>
                     </ul>
-                    <p>You will need to make <strong>"barks-reader-linux"</strong> executable: <em>chmod +x
-                        barks-reader-linux</em></p>
+                    <p>You will need to make <strong>"barks-reader-linux"</strong> executable:
+                        <em>chmod +x barks-reader-linux</em></p>
                     <p>The following steps assume you've chosen <strong>"~/opt/barks-reader"</strong>
                         as the Barks reader app directory.
                     </p>
@@ -944,6 +1038,9 @@
                     </table>
                     <p>See the next step for more information on making it easier for the app to automatically configure
                         itself with your Fantagraphics zips.</p>
+                    <p> <strong>Note:</strong> The app manipulates, centers, and reorganizes comic book images, so
+                        encrypted or proprietary file formats (such as native Kindle or Comixology files) are not
+                        supported. You must have DRM-free .cbz or .zip files.</p>
                 </div>
 
                 <div class="install-step">
@@ -962,23 +1059,10 @@
                 <div class="install-step">
                     <h4>Step 5: Run the Application</h4>
                     <p>Run the executable <strong>"~/opt/barks-reader/barks-reader-linux"</strong> either from a file
-                        explorer or a
-                        terminal.</p>
+                        explorer or a terminal.</p>
                     <p>Or create a desktop shortcut by creating a .desktop file in
                         <strong>"~/.local/share/applications/"</strong>
                     </p>
-
-                    <p><strong>IMPORTANT:</strong> Depending on the speed of your machine and your internet connection,
-                        it may take a few minutes for the app to launch. To get a better idea of what's happening,
-                        you can launch the app from a terminal where you will see logging. At first, you won't see
-                        anything
-                        at all while the exe self-extracts, but eventually you will start to see activity (detailed in
-                        the
-                        next step). Depending on your machine
-                        and connection it still may take a while to unzip the supporting data packs. Once these are
-                        done (and providing there are no errors) you will get a welcome screen popup. Here you can
-                        press OK to launch the reader app. Once you've done the install for the first time, subsequent
-                        app launches should be fairly quick.</p>
                 </div>
 
                 <div class="install-step">
@@ -986,8 +1070,7 @@
                     <p>When the application is first launched it will do further installation steps:</p>
                     <ul>
                         <li>It will run the astral python package manager <strong>'uv'</strong> to download and install
-                            python
-                            packages required by the app
+                            python packages required by the app
                         </li>
                         <li>It will unzip <strong>"barks-reader-data-1.zip"</strong> and
                             <strong>"barks-reader-data-2.zip"</strong> and copy their contents
@@ -1089,8 +1172,8 @@
             <ul>
                 <li>Internet connection required for initial setup and updates.</li>
                 <li>Some features may require additional libraries (automatically installed).</li>
-                <li>You must supply your own comic zips for the <strong><em>Fantagraphics Complete Carl Barks Disney
-                    Library.</em></strong></li>
+                <li>You must supply your own DRM-free comic zips for the <strong><em>Fantagraphics Complete Carl Barks
+                    Disney Library.</em></strong></li>
                 <li>Performance is hard to gauge accurately. But for example, the app works very well with Ubuntu
                     24.04 on an AMD Ryzen 7 5700G PC with SSDs and 16GB of RAM.
                     A slow example is Windows 10 with an Intel i3-8109U PC with 8GB RAM where the installation takes
@@ -1192,28 +1275,6 @@
             </ul>
         </div>
 
-        <!-- Download Tab -->
-        <div id="download" class="tab-content">
-            <h2>Download The Compleat Barks Disney Reader</h2>
-            <p>Get the latest version of <strong><em>The Compleat Barks Disney Reader</em></strong> for your platform.
-                All downloads are hosted on GitHub Releases.</p>
-
-            <div class="platform-tabs" id="download-platform-tabs">
-                <!-- Generated by JavaScript -->
-            </div>
-
-            <div id="download-platforms-container">
-                <!-- Generated by JavaScript -->
-            </div>
-
-            <h3>Installation</h3>
-            <p>
-                After downloading, head to the <a href="#" onclick="openTab(event, 'installation'); return false;"
-                                                  style="color: #667eea; font-weight: 600;">Installation tab</a> for
-                platform-specific setup instructions.
-            </p>
-        </div>
-
         <script>
             function openTab(evt, tabName) {
                 var i, tabcontent, tabs;
@@ -1303,15 +1364,12 @@
             function createDataFilesHTML() {
                 return `
                     <h4 style="margin-top: 30px;">Required Data Files</h4>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;
-                     margin-top: 20px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
                         ${dataFiles.map(file => `
-                            <div style="padding: 20px; background: rgba(248, 249, 250, 0.7); border-radius: 8px;
-                             text-align: center;">
+                            <div style="padding: 20px; background: rgba(248, 249, 250, 0.7); border-radius: 8px; text-align: center;">
                                 <p style="font-weight: 600; margin-bottom: 10px;">${file.name}</p>
                                 <a href="${generateDownloadURL(file.filename)}"
-                                style="display: inline-block; padding: 10px 20px; background: #667eea; color: white;
-                                 text-decoration: none; border-radius: 6px; font-weight: 600;" download>
+                                style="display: inline-block; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; font-weight: 600;" download>
                                     Download ${file.name}
                                 </a>
                             </div>
@@ -1333,8 +1391,7 @@
 
                 // Generate platform content
                 const contentHTML = downloadPlatforms.map((platform, index) => `
-                    <div id="${platform.id}" class="platform-content download-platform-content ${index === 0 ? 'active'
-                     : ''}">
+                    <div id="${platform.id}" class="platform-content download-platform-content ${index === 0 ? 'active' : ''}">
                         <h3>${platform.name} Download</h3>
                         <p>Download the ${platform.name} executable and data files.</p>
 
@@ -1349,8 +1406,7 @@
 
                         ${createDataFilesHTML()}
 
-                        <p style="margin-top: 20px; padding: 15px; background: rgba(255, 243, 205, 0.7); border-radius:
-                         6px; border-left: 4px solid #f59e0b;">
+                        <p style="margin-top: 20px; padding: 15px; background: rgba(255, 243, 205, 0.7); border-radius: 6px; border-left: 4px solid #f59e0b;">
                             <strong>Note:</strong> ${platform.note}
                             ${platform.extraInstructions ? '<br>' + platform.extraInstructions : ''}
                         </p>
@@ -1377,9 +1433,10 @@
                 evt.currentTarget.classList.add("active");
             }
 
-            // Initialize download tabs when page loads
+            // Initialize download tabs and version display when page loads
             document.addEventListener('DOMContentLoaded', function() {
                 initializeDownloadTabs();
+                document.getElementById('header-version').textContent = RELEASE_VERSION;
             });
 
         </script>
