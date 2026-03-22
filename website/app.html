@@ -13,7 +13,15 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            /* Added a subtle halftone dot pattern over the gradient for a slight comic-book feel */
+            background-color: #667eea;
+            background-image:
+                radial-gradient(rgba(255, 255, 255, 0.1) 2px, transparent 2px),
+                radial-gradient(rgba(255, 255, 255, 0.1) 2px, transparent 2px),
+                linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-size: 30px 30px, 30px 30px, 100% 100%;
+            background-position: 0 0, 15px 15px, 0 0;
+            background-attachment: fixed;
             min-height: 100vh;
             padding: 40px 20px;
         }
@@ -27,6 +35,7 @@
             text-align: center;
             color: white;
             margin-bottom: 40px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
         h1 {
@@ -138,7 +147,6 @@
         #download::before {
             background-image: url('intro-bg.png');
         }
-
 
         .tab-content > * {
             position: relative;
@@ -274,12 +282,6 @@
             padding: 15px;
             text-align: left;
             border-bottom: 1px solid #e9ecef;
-        }
-
-        .requirements-table th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #333;
         }
 
         .requirements-table tr:hover {
@@ -573,10 +575,10 @@
             <div class="about-section">
                 <h3>About This Project</h3>
                 <p>
-                    I have loved Barks' stories since a kid and as a teenager I dreamt of a complete uncensored Barks
+                    I have loved Barks' stories since childhood, and as a teenager, I dreamt of a complete uncensored Barks
                     library. That almost happened with the CBL and CBL in color,
                     except, sadly, for <em>"Darkest Africa"</em> and <em>"Voodoo Hoodoo."</em> The Fantagraphics
-                    library is pretty good (although I'm not a fan of the smaller pagesize). But the digital edition
+                    library is pretty good (although I'm not a fan of the smaller page size). But the digital edition
                     of the library is a game-changer. This democratizes access to all Barks' Disney work and will allow
                     quality uncensored presentations in the future.
                     My hope is <strong><em>The Compleat Barks Disney Reader</em></strong> will be a good start to this.
@@ -609,10 +611,9 @@
                         <em>"The Bill Collectors."</em> Language was changed.
                         These have been painstakingly restored using digitised images and text from "The Fine Art of
                         Donald Duck" and the CBL.
-                        Hopefully you'll
-                        find these comparable in quality to the other uncensored stories. Longstanding
-                        censorship has also been tackled (this may be a bit controversial but can be turned off):
-                        'Larkie' has been
+                        Hopefully, you'll find these restored pages comparable in quality to the other uncensored
+                        stories. Longstanding censorship has also been tackled (this may be a bit controversial but
+                        can be turned off): 'Larkie' has been
                         replaced with 'Harpie' in <em>"The Golden Fleecing,"</em> Bombie's eyes are white without
                         pupils in <em>"Voodoo Hoodoo,"</em> and 'Theah' (and similar Southern words) have been
                         replaced with 'Dere' in <em>"Lost in the Andes!"</em>
@@ -708,8 +709,13 @@
         <!-- Installation Tab -->
         <div id="installation" class="tab-content">
             <h2>Installation Guide</h2>
-            <p>Follow these platform-specific instructions to install
-                <strong><em>The Compleat Barks Disney Reader</em></strong> on your system.</p>
+            <p style="margin-bottom: 20px; font-size: 1.05rem;">
+                <strong><em>The Compleat Barks Disney Reader</em></strong> is a <strong>Portable Application</strong>.
+                It does not use a traditional installer, which is why it must be manually placed in a user-directory
+                rather than system folders like 'Program Files' or 'Applications'.
+            </p>
+
+            <p>Follow these platform-specific instructions to install the app on your system.</p>
 
             <div class="quick-start">
                 <h3>Quick Start</h3>
@@ -718,7 +724,7 @@
                         <a href="#" onclick="openTab(event, 'download'); return false;"
                            style="color: #667eea; font-weight: 600;">Download tab</a></li>
                     <li>Move all three files to a folder where you have write permissions
-                        (not <em>"C:\Program Files"</em> or <em>"/Applications"</em>)</li>
+                        (<strong>NOT <em>"C:\Program Files"</em> or <em>"/Applications"</em></strong>)</li>
                     <li>Make the executable runnable (macOS/Linux: <code>chmod +x</code>)</li>
                     <li>Run the executable &mdash; first launch will handle the rest</li>
                 </ol>
@@ -726,6 +732,8 @@
 
             <div class="first-launch-note">
                 <h4>First Launch &mdash; Please Be Patient</h4>
+                <p style="color: #b45309; font-weight: bold; margin-bottom: 10px;">⚠️ An active internet connection is
+                    strictly required for the first launch so the app can download its required Python dependencies.</p>
                 <p>Depending on the speed of your machine and your internet connection, the first launch may take
                     a few minutes. On Windows, you will see a black console screen at first (where all logging will
                     go). On macOS/Linux, you can launch from a terminal to see logging.
@@ -1190,6 +1198,21 @@
                    style="color: #667eea; font-weight: 600;">GitHub Issues page</a>.</p>
 
             <div class="troubleshooting-item">
+                <h4>🛡️ Antivirus or SmartScreen blocks the app</h4>
+                <div class="solution">
+                    <p><strong>Solutions:</strong></p>
+                    <ul>
+                        <li>Because the app downloads required Python packages via <code>uv</code> on its first run,
+                            some Antivirus software (or Windows SmartScreen) may flag it as suspicious. This is a
+                            false positive.</li>
+                        <li>In Windows SmartScreen, click "More info" and then "Run anyway".</li>
+                        <li>If your Antivirus removes the executable, you may need to add an exception or exclusion
+                            for your BarksReader installation folder.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="troubleshooting-item">
                 <h4>❌ Application won't start / crashes on launch</h4>
                 <div class="solution">
                     <p><strong>Solutions:</strong></p>
@@ -1319,10 +1342,10 @@
             }
 
             // Download platform configuration
-            const RELEASE_VERSION = "v1.0.0";
+            let currentReleaseVersion = "v1.0.0"; // Will be overwritten by GitHub API if successful
             const GITHUB_REPO = "glk1001/barks-compleat-reader";
 
-            const downloadPlatforms = [
+            const downloadPlatforms =[
                 {
                     id: 'download-windows',
                     name: 'Windows',
@@ -1352,13 +1375,13 @@
                 }
             ];
 
-            const dataFiles = [
+            const dataFiles =[
                 { name: 'Data Pack 1', filename: 'barks-reader-data-1.zip' },
                 { name: 'Data Pack 2', filename: 'barks-reader-data-2.zip' }
             ];
 
             function generateDownloadURL(filename) {
-                return `https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_VERSION}/${filename}`;
+                return `https://github.com/${GITHUB_REPO}/releases/download/${currentReleaseVersion}/${filename}`;
             }
 
             function createDataFilesHTML() {
@@ -1433,10 +1456,23 @@
                 evt.currentTarget.classList.add("active");
             }
 
-            // Initialize download tabs and version display when page loads
-            document.addEventListener('DOMContentLoaded', function() {
+            // Initialize download tabs and version display when page loads (Now with Auto-Updating GitHub API)
+            document.addEventListener('DOMContentLoaded', async function() {
+                try {
+                    // Fetch the latest release data from GitHub
+                    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        currentReleaseVersion = data.tag_name; // Automatically update version, e.g., "v1.0.1"
+                    }
+                } catch (error) {
+                    console.error('Error fetching latest release:', error);
+                    // Silently fail and continue using the fallback version defined above
+                }
+
+                // Now initialize tabs with the correct version mapped into the buttons
                 initializeDownloadTabs();
-                document.getElementById('header-version').textContent = RELEASE_VERSION;
+                document.getElementById('header-version').textContent = currentReleaseVersion;
             });
 
         </script>
