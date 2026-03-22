@@ -105,25 +105,35 @@ def _generate_word_cloud(
         background_color=WORDCLOUD_BG_COLOR,
     ).generate_from_frequencies(freq)
 
-    fig, ax = plt.subplots(figsize=(WORDCLOUD_WIDTH / FIG_DPI, WORDCLOUD_HEIGHT / FIG_DPI))
+    side_margin = 0.01
+    top_margin = 0.02
+    bottom_margin = 0.04
+    fig_w = WORDCLOUD_WIDTH / FIG_DPI
+    fig_h = WORDCLOUD_HEIGHT / FIG_DPI
+    fig = plt.figure(figsize=(fig_w, fig_h))
+    ax = fig.add_axes(
+        (
+            side_margin,
+            bottom_margin,
+            1 - 2 * side_margin,
+            1 - top_margin - bottom_margin,
+        )
+    )
     ax.imshow(wc, interpolation="bilinear")
     ax.axis("off")
     if title:
-        ax.text(
-            0.99,
-            0.002,
+        fig.text(
+            1 - (2 * side_margin),
+            bottom_margin * 0.2,
             title,
-            transform=ax.transAxes,
             fontsize=12,
             fontweight="bold",
             fontstyle="italic",
             color="red",
             ha="right",
             va="bottom",
-            bbox={"boxstyle": "round,pad=0.3", "facecolor": "white", "edgecolor": "none"},
         )
-    fig.tight_layout(pad=0)
-    fig.savefig(output_path, dpi=FIG_DPI, bbox_inches="tight", facecolor="white")
+    fig.savefig(output_path, dpi=FIG_DPI, facecolor="white")
     plt.close(fig)
     print(f"  Wrote {output_path}")
 
