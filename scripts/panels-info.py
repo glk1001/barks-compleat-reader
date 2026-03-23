@@ -1,5 +1,4 @@
 # ruff: noqa: T201
-
 from configparser import ConfigParser
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -96,11 +95,15 @@ def main(
             counts = {ft: len(file_dict.get(ft, [])) for ft in RELEVANT_FILE_TYPES}
             total = sum(counts.values())
             row = [title, str(total), *[str(c) for c in counts.values()], page_lst]
-            style = (
-                "orange1"
-                if (counts[FileTypes.INSET] == 0 or counts[FileTypes.FAVOURITE] == 0)
-                else None
+
+            needed_sum = sum(
+                value
+                for ft, value in counts.items()
+                if ft
+                in {FileTypes.FAVOURITE, FileTypes.SILHOUETTE, FileTypes.SPLASH, FileTypes.CLOSEUP}
             )
+            style = "orange1" if (counts[FileTypes.INSET] == 0 or needed_sum == 0) else None
+
             table.add_row(*row, style=style)
 
         console.print(table)
