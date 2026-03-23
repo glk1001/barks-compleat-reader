@@ -68,6 +68,7 @@ dev = [
     "scikit-learn>=1.6",
     "wordcloud>=1.9",
     "ty>=0.0.17",
+    "prek>=0.3.8",
 ]
 
 [tool.pytest.ini_options]
