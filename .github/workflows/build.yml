@@ -1,0 +1,53 @@
+name: Build Verification
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            exe: barks-reader-linux
+          - os: macos-latest
+            exe: barks-reader-macos
+          - os: windows-latest
+            exe: barks-reader-win.exe
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for git describe
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1 libmtdev1t64
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Generate stub for obfuscated module
+        shell: bash
+        run: |
+          cat > src/comic-utils/src/comic_utils/get_panel_bytes.py <<'STUB'
+          def get_decrypted_bytes(data: bytes) -> bytes:
+              return data
+          STUB
+
+      - name: Build executable
+        shell: bash
+        run: bash scripts/build.sh
+

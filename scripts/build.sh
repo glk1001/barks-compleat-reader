@@ -1,7 +1,7 @@
 #!/bin/bash
 # build.sh - Regular build (uses already-obfuscated modules)
 
-set -e
+set -eo pipefail
 
 if [[ "$1" == "--include-zips" ]]; then
   declare -r DO_ZIPS=1
@@ -82,7 +82,13 @@ rm -rf ./pycrucible_payload
 # Workspace member pyproject.toml files cannot be bundled (pycrucible flat archive limitation),
 # so uv would fail trying to find them. PYTHONPATH in pycrucible.toml handles package discovery.
 cp -p pyproject.toml pyproject.toml.bundle_bak
-trap 'mv -f pyproject.toml.bundle_bak pyproject.toml 2>/dev/null' EXIT
+PYCRUCIBLE_LOG=$(mktemp)
+cleanup() {
+    mv -f pyproject.toml.bundle_bak pyproject.toml 2>/dev/null
+    [[ -f pycrucible.toml.orig ]] && mv -f pycrucible.toml.orig pycrucible.toml
+    rm -f "$PYCRUCIBLE_LOG"
+}
+trap cleanup EXIT
 uv run python <<'PYEOF'
 import re
 with open('pyproject.toml') as f:
@@ -100,17 +106,22 @@ if [[ "${OS}" == "windows" ]]; then
     sed -i '/^PYTHONPATH/s/:/;/g' pycrucible.toml
 fi
 
-uv run --frozen pycrucible --debug --embed . -o "${EXE}" \
-    |& grep -v "Debug: \[payload.embed_payload\]" \
-    |& grep -v "Debug: \[project.collect_source_files\]" \
-    |& grep -v "Debug: \[main.embed_source\]"
+uv run --frozen pycrucible --debug --embed . -o "${EXE}" > "$PYCRUCIBLE_LOG" 2>&1 || {
+    echo -e "${RED}ERROR: pycrucible failed.${NC}"
+    cat "$PYCRUCIBLE_LOG"
+    exit 1
+}
 
-if [[ "${OS}" == "windows" ]]; then
-    mv pycrucible.toml.orig pycrucible.toml
+# Show filtered output.
+grep -v "Debug: \[payload.embed_payload\]" "$PYCRUCIBLE_LOG" \
+    | grep -v "Debug: \[project.collect_source_files\]" \
+    | grep -v "Debug: \[main.embed_source\]"
+
+# Fail on any warnings (e.g. pycrucible silently falls back to defaults on config errors).
+if grep -qi "Warning:" "$PYCRUCIBLE_LOG"; then
+    echo -e "${RED}ERROR: pycrucible produced warnings — build may be broken.${NC}"
+    exit 1
 fi
-
-mv pyproject.toml.bundle_bak pyproject.toml
-trap - EXIT
 
 if [[ $DO_ZIPS == 1 ]]; then
   echo
