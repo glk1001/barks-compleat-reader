@@ -1,23 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, cast, override
+from typing import TYPE_CHECKING, override
 
-from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES, TagGroups, Tags
-from barks_fantagraphics.barks_titles import (
-    BARKS_TITLE_DICT,
-    BARKS_TITLES,
-    NON_COMIC_TITLES,
-    ComicBookInfo,
-    Titles,
-)
-from barks_fantagraphics.comics_database import TitleNotFoundError
-from barks_fantagraphics.fanta_comics_info import (
-    ALL_FANTA_COMIC_BOOK_INFO,
-    SERIES_EXTRAS,
-    FantaComicBookInfo,
-    get_fanta_info,
-)
+from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -27,14 +13,9 @@ from kivy.uix.screenmanager import Screen
 from loguru import logger
 
 from barks_reader.core.image_selector import ImageInfo, ImageSelector
-from barks_reader.core.reader_consts_and_types import (
-    APP_TITLE,
-    CHRONO_YEAR_RANGES,
-    COMIC_BEGIN_PAGE,
-)
+from barks_reader.core.reader_consts_and_types import APP_TITLE
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_formatter import get_action_bar_title
-from barks_reader.core.reader_tree_view_utils import find_tree_view_title_node
 from barks_reader.core.reader_utils import (
     get_title_str_from_reader_icon_file,
     get_win_width_from_height,
@@ -44,9 +25,10 @@ from barks_reader.ui.about_box import show_about_box
 from barks_reader.ui.app_initializer import AppInitializer
 from barks_reader.ui.background_views import BackgroundViews
 from barks_reader.ui.comic_reader_manager import ComicReaderManager
-from barks_reader.ui.json_settings_manager import SavedPageInfo, SettingsManager
+from barks_reader.ui.json_settings_manager import SettingsManager
 from barks_reader.ui.main_screen_nav import MainScreenNavigation
 from barks_reader.ui.main_screen_window import MainScreenWindowHelper
+from barks_reader.ui.navigation_coordinator import NavigationCoordinator
 from barks_reader.ui.platform_window_utils import WindowManager
 from barks_reader.ui.reader_keyboard_nav import (
     ActionBarNavMixin,
@@ -56,24 +38,15 @@ from barks_reader.ui.reader_screens import ReaderScreen
 from barks_reader.ui.reader_tree_builder import ReaderTreeBuilder
 from barks_reader.ui.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
-    BaseTreeViewNode,
-    ButtonTreeViewNode,
     ReaderTreeBuilderEventDispatcher,
 )
 from barks_reader.ui.tree_view_manager import TreeViewManager
-from barks_reader.ui.user_error_handler import (
-    ErrorInfo,
-    ErrorTypes,
-    TitleNotInFantaInfoError,
-    UserErrorHandler,
-)
+from barks_reader.ui.user_error_handler import UserErrorHandler
 from barks_reader.ui.view_state_manager import ImageThemesChange, ImageThemesToUse, ViewStateManager
 from barks_reader.ui.view_states import ViewStates
 
 if TYPE_CHECKING:
-    from barks_fantagraphics.comic_book import ComicBook
     from barks_fantagraphics.comics_database import ComicsDatabase
-    from comic_utils.comic_consts import PanelPath
     from kivy.uix.button import Button
     from kivy.uix.widget import Widget
 
@@ -142,9 +115,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             search_screen,
         )
 
-        self._title_lists: dict[str, list[FantaComicBookInfo]] = (
-            filtered_title_lists.get_title_lists()
-        )
+        self._title_lists = filtered_title_lists.get_title_lists()
         resolver = ReaderFilePathsResolver(self._reader_settings.file_paths)
         self._random_title_images = ImageSelector(resolver, self._reader_settings)
         self.is_first_use_of_reader = self._reader_settings.is_first_use_of_reader
@@ -154,8 +125,6 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._json_settings_manager = SettingsManager(self._reader_settings.get_user_data_path())
         self._special_fanta_overrides = SpecialFantaOverrides(self._reader_settings)
 
-        self.fanta_info: FantaComicBookInfo | None = None
-        self._year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
         self._reader_tree_events = reader_tree_events
 
         user_error_handler = UserErrorHandler(reader_settings, screen_switchers.switch_to_settings)
@@ -167,8 +136,6 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._tree_view_screen,
             user_error_handler,
         )
-        self._read_comic_view_state: ViewStates | None = None
-        self._doc_reader_close_view_state: ViewStates | None = None
 
         self._window_helper = MainScreenWindowHelper(
             host_screen=self,
@@ -207,6 +174,19 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._on_view_state_changed,
         )
 
+        self._nav_coord = NavigationCoordinator(
+            reader_settings=self._reader_settings,
+            comics_database=self._comics_database,
+            view_state_manager=self._view_state_manager,
+            comic_reader_manager=self._comic_reader_manager,
+            bottom_title_view_screen=self._bottom_title_view_screen,
+            tree_view_screen=self._tree_view_screen,
+            screen_switchers=self._screen_switchers,
+            special_fanta_overrides=self._special_fanta_overrides,
+            user_error_handler=user_error_handler,
+            on_active_changed=self._is_active,
+        )
+
         self._tree_view_manager = TreeViewManager(
             background_views,
             self._view_state_manager,
@@ -215,13 +195,11 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._speech_index_screen,
             self._names_index_screen,
             self._locations_index_screen,
-            self._update_title_from_tree_view,
-            self._read_article_as_comic_book,
-            self._open_document_reader,
-            self._set_tag_goto_page_checkbox,
-            self._set_next_title,
+            self._nav_coord,
             sys_file_paths=self._reader_settings.sys_file_paths,
         )
+
+        self._nav_coord.set_tree_view_manager(self._tree_view_manager)
 
         self.app_icon_filepath = str(self._random_title_images.get_random_reader_app_icon_file())
 
@@ -233,7 +211,6 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._view_state_manager,
             self._tree_view_manager,
             self._tree_view_screen,
-            self._set_next_title,
         )
 
         # X is first; icon_hitbox is last so Left from X wraps to it.
@@ -284,22 +261,14 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         search_screen: SearchScreen,
     ) -> None:
         self._tree_view_screen = tree_view_screen
-        self._tree_view_screen.on_goto_title = self._on_goto_top_view_title
-
         self._bottom_title_view_screen = bottom_title_view_screen
         self._fun_image_view_screen = fun_image_view_screen
         self._main_index_screen = main_index_screen
-        self._main_index_screen.on_goto_title = self._goto_title_with_page_num
         self._speech_index_screen = speech_index_screen
-        self._speech_index_screen.on_goto_title = self._goto_title_with_page_num
         self._names_index_screen = names_index_screen
-        self._names_index_screen.on_goto_title = self._goto_title_with_page_num
         self._locations_index_screen = locations_index_screen
-        self._locations_index_screen.on_goto_title = self._goto_title_with_page_num
         self._statistics_screen = statistics_screen
         self._search_screen = search_screen
-        self._search_screen.on_goto_title = self._goto_search_title
-        self._search_screen.on_goto_title_with_page = self._goto_title_with_page_num
 
         self.ids.main_layout.add_widget(self._tree_view_screen)
         self._bottom_base_view_screen = Screen(size_hint=(1, 1))
@@ -352,11 +321,27 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._update_action_bar_visibility()
 
     def _bind_screen_callbacks(self) -> None:
-        self._main_index_screen.on_goto_background_title_func = self._goto_chrono_title
-        self._speech_index_screen.on_goto_background_title_func = self._goto_chrono_title
-        self._names_index_screen.on_goto_background_title_func = self._goto_chrono_title
-        self._locations_index_screen.on_goto_background_title_func = self._goto_chrono_title
-        self._search_screen.on_goto_background_title_func = self._goto_chrono_title
+        self._tree_view_screen.on_goto_title = self._on_goto_top_view_title
+
+        self._main_index_screen.on_goto_title = self._nav_coord.navigate_to_title_with_page
+        self._main_index_screen.on_goto_background_title_func = (
+            self._nav_coord.navigate_to_chrono_title
+        )
+        self._speech_index_screen.on_goto_title = self._nav_coord.navigate_to_title_with_page
+        self._speech_index_screen.on_goto_background_title_func = (
+            self._nav_coord.navigate_to_chrono_title
+        )
+        self._names_index_screen.on_goto_title = self._nav_coord.navigate_to_title_with_page
+        self._names_index_screen.on_goto_background_title_func = (
+            self._nav_coord.navigate_to_chrono_title
+        )
+        self._locations_index_screen.on_goto_title = self._nav_coord.navigate_to_title_with_page
+        self._locations_index_screen.on_goto_background_title_func = (
+            self._nav_coord.navigate_to_chrono_title
+        )
+        self._search_screen.on_goto_title = self._nav_coord.navigate_to_search_result
+        self._search_screen.on_goto_title_with_page = self._nav_coord.navigate_to_title_with_page
+        self._search_screen.on_goto_background_title_func = self._nav_coord.navigate_to_chrono_title
         self._search_screen.on_search_results_title_changed = (
             self._view_state_manager.update_search_background
         )
@@ -453,7 +438,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._title_lists,
         )
 
-        self._year_range_nodes = tree_builder.chrono_year_range_nodes
+        self._nav_coord.set_year_range_nodes(tree_builder.chrono_year_range_nodes)
         self._app_initializer.start(tree_builder, self._on_tree_build_finished)
 
     def _on_tree_build_finished(self) -> None:
@@ -501,7 +486,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
     def open_how_to(self) -> None:
         doc_dir = self._reader_settings.sys_file_paths.get_how_to_doc_dir()
-        self._open_document_reader(doc_dir, "How To Use the Barks Reader", view_state=None)
+        self._nav_coord.open_document(doc_dir, "How To Use the Barks Reader")
 
     def open_about(self) -> None:
         show_about_box(
@@ -528,58 +513,12 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self.app_title = get_action_bar_title(self._font_manager, APP_TITLE)
 
     def _on_goto_top_view_title(self) -> None:
-        self._goto_chrono_title(self._view_state_manager.get_top_view_image_info())
+        self._nav_coord.navigate_to_chrono_title(self._view_state_manager.get_top_view_image_info())
 
     def _on_goto_fun_view_title(self) -> None:
-        self._goto_chrono_title(self._view_state_manager.get_bottom_view_fun_image_info())
-
-    def _goto_chrono_title(self, image_info: ImageInfo) -> None:
-        assert image_info.from_title is not None
-
-        logger.debug(f'Goto title: "{image_info.from_title.name}", "{image_info.filename}".')
-        title_fanta_info = self._get_fanta_info(image_info.from_title)
-
-        # Get the year range node for this title.
-        title_year_range = self._get_year_range_from_info(title_fanta_info)
-        if title_year_range is None:
-            msg = f"No year range found for {title_fanta_info.comic_book_info.get_title_str()}."
-            raise RuntimeError(msg)
-        year_node = self._year_range_nodes.get(title_year_range)
-        if not year_node:
-            msg = f"No year node found for range '{title_year_range}'."
-            raise RuntimeError(msg)
-
-        year_node.ensure_populated()
-        logger.debug(f"For range {title_year_range}, year node has {len(year_node.nodes)} nodes.")
-
-        # Save the currently selected node so Back can return to it.
-        back_node = self._tree_view_screen.get_selected_node()
-
-        # Close any open nodes, then open parent nodes to 'year_node' and goto it in the tree view.
-        self._tree_view_manager.deselect_and_close_open_nodes()
-
-        # Restore the back node after deselect_and_close_open_nodes resets selection tracking.
-        if back_node is not None:
-            self._tree_view_screen.ids.reader_tree_view.set_back_node(back_node)
-
-        self._tree_view_manager.open_all_parent_nodes(year_node)
-        title_node = cast(
-            "BaseTreeViewNode", find_tree_view_title_node(year_node.nodes, image_info.from_title)
+        self._nav_coord.navigate_to_chrono_title(
+            self._view_state_manager.get_bottom_view_fun_image_info()
         )
-        self._tree_view_manager.goto_node(title_node, scroll_to=True)
-
-        self._title_row_selected(title_fanta_info, image_info.filename)
-
-    def _goto_title_with_page_num(self, image_info: ImageInfo, page_to_goto: str) -> None:
-        if image_info.from_title in NON_COMIC_TITLES:
-            self._read_article_as_comic_book(image_info.from_title, ViewStates.ON_INDEX_NODE)
-            return
-
-        self._goto_chrono_title(image_info)
-
-        if page_to_goto:
-            logger.debug(f"Setting page to goto: {page_to_goto}.")
-            self._bottom_title_view_screen.set_goto_page_state(page_to_goto, active=True)
 
     def goto_reader_icon_title(self) -> None:
         logger.debug(f'App reader icon "{self.app_icon_filepath}" pressed.')
@@ -592,110 +531,12 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         title = BARKS_TITLE_DICT[title_str]
         image_info = ImageInfo(icon_path, title)
-        self._goto_chrono_title(image_info)
-
-    def _open_document_reader(
-        self, doc_dir: Path, title: str, view_state: ViewStates | None = None
-    ) -> None:
-        self._is_active(active=False)
-        self._doc_reader_close_view_state = view_state
-        self._screen_switchers.switch_to_document_reader(doc_dir, title)
+        self._nav_coord.navigate_to_chrono_title(image_info)
 
     @override
     def on_document_reader_closed(self) -> None:
         self._is_active(active=True)
-        if self._doc_reader_close_view_state is not None:
-            self._view_state_manager.update_view_for_node(self._doc_reader_close_view_state)
-            self._doc_reader_close_view_state = None
-
-    def _set_next_title(self, fanta_info: FantaComicBookInfo, tag: Tags | TagGroups | None) -> None:
-        self.fanta_info = fanta_info
-        self._set_title()
-        self._view_state_manager.update_view_for_node_with_title(ViewStates.ON_TITLE_NODE)
-
-        if tag is not None:
-            self._set_tag_goto_page_checkbox(
-                tag,
-                self.fanta_info.comic_book_info.get_title_str(),
-            )
-
-    @staticmethod
-    def _get_year_range_from_info(fanta_info: FantaComicBookInfo) -> tuple[int, int] | None:
-        sub_year = fanta_info.comic_book_info.submitted_year
-        return next(
-            (r for r in CHRONO_YEAR_RANGES if r[0] <= sub_year <= r[1]),
-            None,
-        )
-
-    @staticmethod
-    def _get_fanta_info(title: Titles) -> FantaComicBookInfo:
-        fanta_info = get_fanta_info(title)
-        if fanta_info is None:
-            raise TitleNotInFantaInfoError(BARKS_TITLES[title])
-
-        return fanta_info
-
-    def _title_row_selected(
-        self,
-        new_fanta_info: FantaComicBookInfo,
-        title_image_file: PanelPath | None,
-    ) -> None:
-        self.fanta_info = new_fanta_info
-        self._set_title(title_image_file)
-        self._view_state_manager.set_view_state(
-            ViewStates.ON_TITLE_NODE, title_str=self.fanta_info.comic_book_info.get_title_str()
-        )
-
-    def _set_title(self, title_image_file: PanelPath | None = None) -> None:
-        self._view_state_manager.set_title(self.fanta_info, title_image_file)
-
-        self._set_goto_page_checkbox()
-        self._set_use_overrides_checkbox()
-
-    def _goto_search_title(self, title_str: str) -> bool:
-        """Navigate to a title selected from the search screen."""
-        title_str = ComicBookInfo.get_title_str_from_display_title(title_str)
-        if title_str not in BARKS_TITLE_DICT:
-            logger.debug(f'Search goto title: not found: "{title_str}".')
-            return False
-        title = BARKS_TITLE_DICT[title_str]
-        image_info = ImageInfo(from_title=title, filename=None)
-        self._goto_chrono_title(image_info)
-        return True
-
-    def _update_title_from_tree_view(self, title_str: str) -> bool:
-        logger.debug(f'Update title: "{title_str}".')
-        assert title_str != ""
-
-        title_str = ComicBookInfo.get_title_str_from_display_title(title_str)
-
-        if title_str not in ALL_FANTA_COMIC_BOOK_INFO:
-            logger.debug(f'Update title: Not configured yet: "{title_str}".')
-            return False
-
-        next_fanta_info = ALL_FANTA_COMIC_BOOK_INFO[title_str]
-        if next_fanta_info.series_name == SERIES_EXTRAS:
-            logger.debug(f'Title is in EXTRA series: "{title_str}".')
-            return False
-
-        self.fanta_info = next_fanta_info
-        self._set_title()
-
-        return True
-
-    def _set_use_overrides_checkbox(self) -> None:
-        title = self.fanta_info.comic_book_info.title
-        if (
-            self._reader_settings.use_prebuilt_archives
-            or not self._special_fanta_overrides.is_title_where_overrides_are_optional(title)
-        ):
-            self._bottom_title_view_screen.set_overrides_state(active=True)
-            return
-
-        self._bottom_title_view_screen.set_overrides_state(
-            description=self._special_fanta_overrides.get_description(title),
-            active=self._special_fanta_overrides.get_overrides_setting(title),
-        )
+        self._nav_coord.on_document_closed()
 
     def on_checkbox_all_image_types_changed(self, _instance: Widget, use_all_images: bool) -> None:
         self._view_state_manager.bottom_view_fun_image_themes_changed(
@@ -716,7 +557,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         )
 
     def on_title_portal_image_pressed(self) -> None:
-        if self.fanta_info is None:
+        if self._nav_coord.current_fanta_info is None:
             logger.error("Title portal image pressed pressed. But no title selected.")
             return
 
@@ -727,85 +568,15 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         logger.debug("Title portal image pressed pressed.")
 
-        self._read_barks_comic_book()
-        self._set_no_longer_first_use()
-
-    def _get_page_to_first_goto(self) -> str:
-        if not self._bottom_title_view_screen.goto_page_active:
-            return COMIC_BEGIN_PAGE
-
-        return self._bottom_title_view_screen.goto_page_num
-
-    def _set_tag_goto_page_checkbox(self, tag: Tags | TagGroups, title_str: str) -> None:
-        logger.debug(f'Setting tag goto page for ({tag.value}, "{title_str}").')
-
-        if type(tag) is Tags:
-            title = BARKS_TITLE_DICT[ComicBookInfo.get_title_str_from_display_title(title_str)]
-            if (tag, title) not in BARKS_TAGGED_PAGES:
-                logger.debug(f'No pages for ({tag.value}, "{title_str}").')
-            else:
-                page_to_goto = BARKS_TAGGED_PAGES[(tag, title)][0]
-                logger.debug(f"Setting page to goto: {page_to_goto}.")
-                self._bottom_title_view_screen.set_goto_page_state(page_to_goto, active=True)
-
-    def _set_goto_page_checkbox(self, last_read_page: SavedPageInfo | None = None) -> None:
-        if not last_read_page:
-            assert self.fanta_info
-            title_str = self.fanta_info.comic_book_info.get_title_str()
-            last_read_page = self._comic_reader_manager.get_last_read_page(title_str)
-
-        if not last_read_page or (last_read_page.display_page_num == COMIC_BEGIN_PAGE):
-            self._bottom_title_view_screen.set_goto_page_state(active=False)
-        else:
-            self._bottom_title_view_screen.set_goto_page_state(
-                last_read_page.display_page_num, active=True
-            )
-
-    def _read_article_as_comic_book(
-        self, article_title: Titles, view_state: ViewStates | None
-    ) -> None:
-        self._is_active(active=False)
-        self._read_comic_view_state = view_state
-
-        page_to_first_goto = "1"
-        self._comic_reader_manager.read_article_as_comic_book(article_title, page_to_first_goto)
-
-    def _read_barks_comic_book(self) -> None:
-        try:
-            comic_book = self._get_comic_book()
-        except TitleNotFoundError as e:
-            logger.error(e)
-            error_info = ErrorInfo(file_volume=-1, title=BARKS_TITLE_DICT[e.title])
-            self._user_error_handler.handle_error(ErrorTypes.ArchiveVolumeNotAvailable, error_info)
-            return
-
         self._nav.save_focus_before_comic()
-        self._is_active(active=False)
-        self._read_comic_view_state = None
-
-        self._comic_reader_manager.read_barks_comic_book(
-            self.fanta_info,
-            comic_book,
-            self._get_page_to_first_goto(),
-            self._bottom_title_view_screen.use_overrides_active,
-        )
+        if self._nav_coord.read_comic():
+            self._set_no_longer_first_use()
 
     @override
     def on_comic_closed(self) -> None:
         self._is_active(active=True)
-
         self._nav.restore_focus_after_comic()
-
-        if self._read_comic_view_state is not None:
-            self._view_state_manager.update_view_for_node(self._read_comic_view_state)
-            self._read_comic_view_state = None
-
-        if not self.fanta_info:
-            return
-
-        last_read_page = self._comic_reader_manager.comic_closed()
-
-        self._set_goto_page_checkbox(last_read_page)
+        self._nav_coord.on_comic_closed()
 
     def _set_no_longer_first_use(self) -> None:
         if not self.is_first_use_of_reader:
@@ -815,13 +586,3 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._reader_settings.is_first_use_of_reader = False
         self.is_first_use_of_reader = False
         self._bottom_title_view_screen.is_first_use_of_reader = False
-
-    def _get_comic_book(self) -> ComicBook:
-        title_str = self.fanta_info.comic_book_info.get_title_str()
-
-        overrides_intro_inset_file = self._special_fanta_overrides.get_inset_file(
-            self.fanta_info.comic_book_info.title,
-            self._bottom_title_view_screen.use_overrides_active,
-        )
-
-        return self._comics_database.get_comic_book(title_str, overrides_intro_inset_file)

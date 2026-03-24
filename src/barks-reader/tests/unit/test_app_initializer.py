@@ -27,7 +27,6 @@ def mock_dependencies() -> dict[str, MagicMock]:
         "view_state_manager": MagicMock(),
         "tree_view_manager": MagicMock(),
         "tree_view_screen": MagicMock(),
-        "set_next_title_func": MagicMock(),
     }
 
 

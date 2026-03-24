@@ -1,15 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_tags import TagGroups, Tags
-from barks_fantagraphics.barks_titles import Titles
 from comic_utils.timing import Timing
 from kivy.clock import Clock
-from kivy.uix.treeview import TreeViewNode
 from loguru import logger
 
 from barks_reader.core.reader_consts_and_types import (
@@ -32,7 +27,8 @@ from barks_reader.ui.view_states import (
 )
 
 if TYPE_CHECKING:
-    from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+    from collections.abc import Iterator
+
     from kivy.uix.button import Button
     from kivy.uix.scrollview import ScrollView
 
@@ -40,16 +36,11 @@ if TYPE_CHECKING:
     from barks_reader.ui.background_views import BackgroundViews
     from barks_reader.ui.entity_index_screen import EntityIndexScreen
     from barks_reader.ui.main_index_screen import MainIndexScreen
+    from barks_reader.ui.navigation_coordinator import NavigationCoordinator
     from barks_reader.ui.reader_ui_classes import ReaderTreeView
     from barks_reader.ui.speech_index_screen import SpeechIndexScreen
     from barks_reader.ui.tree_view_screen import TreeViewScreen
     from barks_reader.ui.view_state_manager import ViewStateManager
-
-UpdateTitleCallable = Callable[[str], bool]
-ReadArticleCallable = Callable[[Titles, ViewStates], None]
-OpenDocumentReaderCallable = Callable[[Path, str, ViewStates | None], None]
-ScrollToNodeCallable = Callable[[TreeViewNode], None]
-SetTagGotoPageCheckboxCallable = Callable[[Tags | TagGroups, str], None]
 
 
 class TreeViewManager:
@@ -64,11 +55,7 @@ class TreeViewManager:
         speech_index_screen: SpeechIndexScreen,
         names_index_screen: EntityIndexScreen,
         locations_index_screen: EntityIndexScreen,
-        update_title_func: UpdateTitleCallable,
-        read_article_func: ReadArticleCallable,
-        open_document_reader_func: OpenDocumentReaderCallable,
-        set_tag_goto_page_checkbox_func: SetTagGotoPageCheckboxCallable,
-        set_next_title_func: Callable[[FantaComicBookInfo, Tags | TagGroups | None], None],
+        nav_coordinator: NavigationCoordinator,
         sys_file_paths: SystemFilePaths | None = None,
     ) -> None:
         self._background_views = background_views
@@ -82,11 +69,7 @@ class TreeViewManager:
         self._tree_view_screen.ids.reader_tree_view.bind(on_node_expand=self.on_node_expanded)
         self._tree_view_screen.ids.reader_tree_view.bind(on_node_collapse=self.on_node_collapsed)
 
-        self._update_title_func = update_title_func
-        self._read_article_func = read_article_func
-        self._open_document_reader_func = open_document_reader_func
-        self._set_tag_goto_page_checkbox_func = set_tag_goto_page_checkbox_func
-        self._set_next_title_func = set_next_title_func
+        self._nav = nav_coordinator
         self._sys_file_paths = sys_file_paths
 
         self._allow_view_state_change = True
@@ -94,12 +77,6 @@ class TreeViewManager:
         self._speech_words_node: ButtonTreeViewNode | None = None
 
         self._statistics_node: ButtonTreeViewNode | None = None
-
-        assert self._update_title_func
-        assert self._read_article_func
-        assert self._open_document_reader_func
-        assert self._set_tag_goto_page_checkbox_func
-        assert self._set_next_title_func
 
     def activate_node(self, node: BaseTreeViewNode) -> None:
         """Activate a node as if pressed, without collapsing the rest of the tree."""
@@ -124,8 +101,10 @@ class TreeViewManager:
             self._handle_button_node_selection(node)
 
     def _handle_title_node_selection(self, node: TitleTreeViewNode) -> None:
+        from barks_reader.ui.navigation_coordinator import TitleTarget  # noqa: PLC0415
+
         fanta_info = node.ids.num_label.parent.fanta_info
-        self._set_next_title_func(fanta_info, None)
+        self._nav.select_title(TitleTarget(fanta_info=fanta_info))
         self.scroll_to_node(node)
 
     def _handle_button_node_selection(self, node: ButtonTreeViewNode) -> None:
@@ -349,6 +328,8 @@ class TreeViewManager:
         return 0.0 if v < 0.0 else (min(v, 1.0))
 
     def on_title_row_button_pressed(self, button: Button) -> None:
+        from barks_reader.ui.navigation_coordinator import TitleTarget  # noqa: PLC0415
+
         fanta_info = button.parent.fanta_info
 
         tag = (
@@ -360,11 +341,11 @@ class TreeViewManager:
             else button.parent.parent_node.tag
         )
 
-        self._set_next_title_func(fanta_info, tag)
+        self._nav.select_title(TitleTarget(fanta_info=fanta_info, tag=tag))
 
     def on_intro_doc_pressed(self, _button: Button) -> None:
         assert self._sys_file_paths
-        self._open_document_reader_func(
+        self._nav.open_document(
             self._sys_file_paths.get_intro_doc_dir(),
             INTRO_COMPLEAT_BARKS_READER_TEXT,
             ViewStates.ON_INTRO_COMPLEAT_BARKS_READER_NODE,
@@ -372,7 +353,7 @@ class TreeViewManager:
 
     def on_censorship_fixes_doc_pressed(self, _button: Button) -> None:
         assert self._sys_file_paths
-        self._open_document_reader_func(
+        self._nav.open_document(
             self._sys_file_paths.get_censorship_fixes_doc_dir(),
             APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
             ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
@@ -384,7 +365,7 @@ class TreeViewManager:
 
         logger.info(f"Article node pressed: Reading '{article_title.name}'.")
 
-        self._read_article_func(article_title, view_state)
+        self._nav.read_article(article_title, view_state)
 
     def on_main_index_node_created(self, main_index_node: MainTreeViewNode) -> None:
         self._main_index_screen.treeview_index_node = main_index_node

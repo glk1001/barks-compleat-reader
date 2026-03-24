@@ -20,8 +20,6 @@ from barks_reader.ui.view_states import ViewStates
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from barks_fantagraphics.barks_tags import TagGroups, Tags
-    from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from kivy.uix.widget import Widget
 
     from barks_reader.core.reader_settings import ReaderSettings
@@ -83,7 +81,6 @@ class AppInitializer:
         view_state_manager: ViewStateManager,
         tree_view_manager: TreeViewManager,
         tree_view_screen: TreeViewScreen,
-        set_next_title_func: Callable[[FantaComicBookInfo, Tags | TagGroups | None], None],
     ) -> None:
         self._reader_settings = reader_settings
         self._user_error_handler = user_error_handler
@@ -92,7 +89,6 @@ class AppInitializer:
         self._tree_view_screen = tree_view_screen
         self._tree_view_manager = tree_view_manager
         self._view_state_manager = view_state_manager
-        self._set_next_title_func = set_next_title_func
 
         self._fanta_volumes_state: _FantaVolumesState = _FantaVolumesState.VOLUMES_NOT_SET
         self._fanta_volumes_error_info: ErrorInfo | None = None

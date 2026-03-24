@@ -6,7 +6,7 @@ import functools
 from configparser import ConfigParser, ExtendedInterpolation
 from pathlib import Path
 
-from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
+from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT, PanelPath
 from loguru import logger
 
 from .barks_titles import (
@@ -390,7 +390,7 @@ class ComicsDatabase:
         return self._all_comic_book_info[title]
 
     # noinspection LongLine
-    def get_comic_book(self, title: str, intro_inset_file: Path | None = None) -> ComicBook:
+    def get_comic_book(self, title: str, intro_inset_file: PanelPath | None = None) -> ComicBook:
         story_title = ""
 
         found, titles, close = self.get_story_title_from_issue(title)
@@ -458,7 +458,7 @@ def _build_comic_book(
     ini_file: Path,
     fanta_info: FantaComicBookInfo,
     fanta_book: FantaBook,
-    intro_inset_file: Path,
+    intro_inset_file: PanelPath,
     comic_book_dirs: ComicBookDirs,
     for_building_comics: bool,
 ) -> ComicBook:

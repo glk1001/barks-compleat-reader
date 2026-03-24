@@ -17,6 +17,8 @@ from barks_reader.ui.view_states import ViewStates
 
 @pytest.fixture
 def mock_dependencies() -> dict[str, MagicMock]:
+    nav_coordinator = MagicMock()
+    nav_coordinator.update_title.return_value = True
     return {
         "background_views": MagicMock(),
         "view_state_manager": MagicMock(),
@@ -25,11 +27,7 @@ def mock_dependencies() -> dict[str, MagicMock]:
         "speech_index_screen": MagicMock(),
         "names_index_screen": MagicMock(),
         "locations_index_screen": MagicMock(),
-        "update_title_func": MagicMock(return_value=True),
-        "read_article_func": MagicMock(),
-        "open_document_reader_func": MagicMock(),
-        "set_tag_goto_page_checkbox_func": MagicMock(),
-        "set_next_title_func": MagicMock(),
+        "nav_coordinator": nav_coordinator,
     }
 
 
@@ -61,7 +59,7 @@ class TestTreeViewManager:
             mock_dependencies["tree_view_screen"].open_all_parent_nodes.assert_called_with(node)
             mock_dependencies["tree_view_screen"].select_node.assert_called_with(node)
 
-            mock_dependencies["set_next_title_func"].assert_called_with("Fanta Info", None)
+            mock_dependencies["nav_coordinator"].select_title.assert_called_once()
 
             # Check scroll_to_node scheduled
             mock_clock.assert_called()
@@ -213,7 +211,7 @@ class TestTreeViewManager:
 
         tree_view_manager.on_title_row_button_pressed(button)
 
-        mock_dependencies["set_next_title_func"].assert_called_with("Fanta Info", None)
+        mock_dependencies["nav_coordinator"].select_title.assert_called_once()
 
     def test_on_title_row_button_pressed_with_tag(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
@@ -226,7 +224,7 @@ class TestTreeViewManager:
 
         tree_view_manager.on_title_row_button_pressed(button)
 
-        mock_dependencies["set_next_title_func"].assert_called_with("Fanta Info", "Tag")
+        mock_dependencies["nav_coordinator"].select_title.assert_called_once()
 
     def test_on_article_node_pressed(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
@@ -240,6 +238,6 @@ class TestTreeViewManager:
             return_value=(ViewStates.ON_INTRO_NODE, mock_title),
         ):
             tree_view_manager.on_article_node_pressed(node)
-            mock_dependencies["read_article_func"].assert_called_with(
+            mock_dependencies["nav_coordinator"].read_article.assert_called_with(
                 mock_title, ViewStates.ON_INTRO_NODE
             )
