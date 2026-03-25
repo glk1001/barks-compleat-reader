@@ -21,6 +21,7 @@ from .whoosh_barks_terms import (
     BARKSIAN_ENTITY_TYPE_MAP,
     BARKSIAN_EXTRA_TERMS,
     CAPITALIZATION_MAP,
+    CONTEXT_SENSITIVE_WORDS,
     FRAGMENTS_TO_SUPPRESS,
     MULTI_WORD_TERMS_TO_SUPPRESS,
     TERMS_TO_CAPITALIZE,
@@ -44,9 +45,18 @@ _CURATED_NAME_LOOKUP: dict[str, str] = {t.lower(): t for t in BARKSIAN_EXTRA_TER
 def _build_curated_entity_sets() -> dict[EntityType, set[str]]:
     """Build a mapping from EntityType to the set of lowercase curated names for that type."""
     curated: dict[EntityType, set[str]] = {t: set() for t in EntityType}
+
     for term_set, entity_type in BARKSIAN_ENTITY_TYPE_MAP.items():
         for term in term_set:
             curated[entity_type].add(term.lower())
+
+    # Include context-sensitive canonicals so they survive the curated filter.
+    # The entity tagger already returns correct casing for these, so no lookup update needed.
+    for fallback_type, fallback_canonical, rules in CONTEXT_SENSITIVE_WORDS.values():
+        curated[fallback_type].add(fallback_canonical.lower())
+        for _pat, etype, canon in rules:
+            curated[etype].add(canon.lower())
+
     return curated
 
 

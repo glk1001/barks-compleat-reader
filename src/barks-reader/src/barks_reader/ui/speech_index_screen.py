@@ -12,6 +12,7 @@ from barks_fantagraphics.barks_titles import (
 )
 from barks_fantagraphics.comic_search import ComicSearch
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
+from barks_fantagraphics.whoosh_barks_terms import CONTEXT_SENSITIVE_WORDS
 from comic_utils.timing import Timing
 from kivy.clock import Clock
 from kivy.graphics import Canvas, Color, Rectangle
@@ -59,6 +60,7 @@ from barks_reader.ui.reader_keyboard_nav import (
 )
 
 if TYPE_CHECKING:
+    from barks_fantagraphics.entity_types import EntityType
     from barks_fantagraphics.whoosh_search_engine import TitleDict, TitleInfo
 
     # noinspection PyProtectedMember
@@ -139,7 +141,19 @@ class SpeechIndexScreen(IndexScreen):
         self._texture_loader = PanelTextureLoader(
             reader_settings.file_paths.barks_panels_are_encrypted
         )
-        self._found_words_cache: dict[str, TitleDict] = {}
+        self._found_words_cache: dict[IndexItem, TitleDict] = {}
+        # Separate cache for background image word searches — never used for click results.
+        self._background_words_cache: dict[str, TitleDict] = {}
+
+        # Map from base word (lowercase) → sorted list of (EntityType, canonical) pairs.
+        # Built from CONTEXT_SENSITIVE_WORDS so ambiguous words expand into typed index entries.
+        self._context_entity_map: dict[str, list[tuple[EntityType, str]]] = {}
+        for word, (fallback_type, fallback_canonical, rules) in CONTEXT_SENSITIVE_WORDS.items():
+            entries: list[tuple[EntityType, str]] = [(fallback_type, fallback_canonical)]
+            for _pat, etype, canon in rules:
+                entries.append((etype, canon))
+            entries.sort(key=lambda x: x[1].lower())
+            self._context_entity_map[word] = entries
 
         self._open_tag_item: IndexItem | None = None
         self._item_index: dict[str, list[IndexItem]] = defaultdict(list)
@@ -198,7 +212,20 @@ class SpeechIndexScreen(IndexScreen):
 
         first_letter = "0" if "0" <= prefix <= "9" else prefix[0].upper()
         terms = self._cleaned_alpha_split_terms[first_letter.lower()][prefix]
-        self._item_index[first_letter] = [IndexItem(t, shorten_if_necessary(t)) for t in terms]
+        items: list[IndexItem] = []
+        for t in terms:
+            if t.lower() in self._context_entity_map:
+                for entity_type, canonical in self._context_entity_map[t.lower()]:
+                    items.append(
+                        IndexItem(
+                            id=canonical,
+                            display_text=shorten_if_necessary(canonical),
+                            entity_type=entity_type,
+                        )
+                    )
+            else:
+                items.append(IndexItem(t, shorten_if_necessary(t)))
+        self._item_index[first_letter] = items
 
         self._populate_index_grid(first_letter)
 
@@ -411,13 +438,12 @@ class SpeechIndexScreen(IndexScreen):
         index_terms = self._item_index[first_letter]
         if not index_terms:
             return
-        rand_term = random.choice(index_terms).id
+        rand_item = random.choice(index_terms)
+        rand_id = str(rand_item.id)
 
-        if rand_term in self._found_words_cache:
-            found = self._found_words_cache[rand_term]
-        else:
-            found = self._find_words(rand_term)
-            self._found_words_cache[rand_term] = found
+        if rand_id not in self._background_words_cache:
+            self._background_words_cache[rand_id] = self._find_words(rand_id)
+        found = self._background_words_cache[rand_id]
 
         found_titles = [ALL_FANTA_COMIC_BOOK_INFO[title_str] for title_str in found]
         image_info = self._random_title_images.get_random_image(found_titles)
@@ -466,17 +492,19 @@ class SpeechIndexScreen(IndexScreen):
 
     def _add_title_sub_items(self, _dt: float) -> None:
         """Create and add the sub-item widgets to the layout."""
-        assert type(self._open_tag_item.id) is str
-        item_id: str = self._open_tag_item.id
-        logger.debug(f'Adding title sub-items for "{item_id}".')
+        assert self._open_tag_item is not None
+        item = self._open_tag_item
+        assert type(item.id) is str
+        logger.debug(f'Adding title sub-items for "{item.id}".')
 
-        sub_items_layout = self._get_title_sub_items_layout(item_id)
+        sub_items_layout = self._get_title_sub_items_layout(item)
         self._insert_sub_items_layout(sub_items_layout)
 
-    def _get_title_sub_items_layout(self, index_term: str) -> GridLayout:
+    def _get_title_sub_items_layout(self, item: IndexItem) -> GridLayout:
+        index_term: str = item.id  # type: ignore[assignment]
         logger.info(f'Laying out title sub-items for for index term "{index_term}".')
 
-        sub_items_to_display = self._get_sub_items_data(index_term)
+        sub_items_to_display = self._get_sub_items_data(item)
 
         parent_padding = self._open_tag_button.padding[0]
         sub_item_padding = parent_padding + self.index_theme.SUB_ITEM_INDENT_STEP
@@ -562,13 +590,16 @@ class SpeechIndexScreen(IndexScreen):
 
         return sub_items_layout
 
-    def _get_sub_items_data(self, index_term: str) -> list:
+    def _get_sub_items_data(self, item: IndexItem) -> list:
         """Retrieve and prepare the list of items to display in the sub-layout."""
-        found_words = (
-            self._found_words_cache[index_term]
-            if index_term in self._found_words_cache
-            else self._find_words(index_term)
-        )
+        if item in self._found_words_cache:
+            found_words = self._found_words_cache[item]
+        elif item.entity_type is not None:
+            found_words = self._search.find_entities(str(item.entity_type), str(item.id))
+            self._found_words_cache[item] = found_words
+        else:
+            found_words = self._find_words(str(item.id))
+            self._found_words_cache[item] = found_words
         sub_items_to_display = []
         for comic_title, title_speech_info in found_words.items():
             page_num_list = [page.comic_page for page in title_speech_info.fanta_pages.values()]

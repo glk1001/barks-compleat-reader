@@ -1,5 +1,28 @@
 from barks_fantagraphics.entity_types import EntityType
 
+# Context-sensitive words: same word maps to different entity types depending on surrounding text.
+# Each entry: base_word → (fallback_type, fallback_canonical, rules)
+# where rules is a list of (pattern_str, entity_type, canonical).
+# Patterns are matched against lowercased text. For each occurrence of the base word, the first
+# matching pattern's entity type is used; unmatched occurrences get the fallback type.
+# noinspection SpellCheckingInspection
+CONTEXT_SENSITIVE_WORDS: dict[str, tuple[EntityType, str, list[tuple[str, EntityType, str]]]] = {
+    "buckboard": (
+        EntityType.MISC,
+        "buckboard",
+        [
+            (r"\b(mr\.?|mister)\s+buckboard\b", EntityType.PERSON, "Buckboard"),
+        ],
+    ),
+    "daisy": (
+        EntityType.PERSON,
+        "Daisy",
+        [
+            (r"\b(a)\s+daisy\b", EntityType.MISC, "daisy"),
+        ],
+    ),
+}
+
 # noinspection SpellCheckingInspection
 _BARKSIAN_FULL_NAMES: frozenset[str] = frozenset(
     {
@@ -97,6 +120,7 @@ _BARKSIAN_FULL_NAMES: frozenset[str] = frozenset(
         "Silas Shoat",
         "Santa Claus",
         "Scotland X. McYard",
+        "Seafoam McDuck",
         "Senator Snoggin",
         "Smoked Barracuda",
         "Sheik Hassan Ben Happi",
@@ -1723,6 +1747,7 @@ FRAGMENTS_TO_SUPPRESS: frozenset[str] = frozenset(
         "qualmy",  # Qualmy Vista
         "rica",  # Costa Lotta, Costa Rica
         "rogers",  # Autry Mack Brown Rogers
+        "seafoam",  # Seafoam McDuck
         "squeezem",  # Squeezem, Fleecem, Skinem, and Skip
         "suzettes",  # Crepe Suzettes
         "swelldorf",  # Swelldorf-Castoria

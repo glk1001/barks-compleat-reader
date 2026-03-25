@@ -53,6 +53,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from barks_fantagraphics.barks_tags import TagGroups, Tags
+    from barks_fantagraphics.entity_types import EntityType
     from barks_fantagraphics.whoosh_search_engine import TitleInfo
     from kivy.uix.widget import Widget
 
@@ -105,6 +106,7 @@ class IndexItem:
     id: str | Titles | Tags | TagGroups
     display_text: str
     page_to_goto: str = ""
+    entity_type: EntityType | None = None  # None = plain word search; set for entity index items
 
 
 class TextBoxWithTitleAndBorder(BoxLayout):
