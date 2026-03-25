@@ -469,7 +469,7 @@ class ImageSelector:
         get_files_func: object,
         use_only_edited_if_possible: bool,
     ) -> PanelPath:
-        title_files = get_files_func(title_str, use_only_edited_if_possible)  # type: ignore[operator]
+        title_files = get_files_func(title_str, use_only_edited_if_possible)  # ty: ignore[call-non-callable]
         if title_files:
             return random.choice(title_files)
 

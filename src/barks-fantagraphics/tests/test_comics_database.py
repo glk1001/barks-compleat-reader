@@ -76,11 +76,11 @@ class TestGetFantaRestoredOcrPrelimVolumeDir:
 
 
 class TestGetStoryTitlesDir:
-    def test_raises_when_dir_not_found(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_raises_when_dir_not_found(self, tmp_path: Path) -> None:
         with pytest.raises(FileNotFoundError, match="story titles directory"):
             _get_story_titles_dir(tmp_path)  # type: ignore[arg-type]
 
-    def test_returns_dir_when_exists(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_returns_dir_when_exists(self, tmp_path: Path) -> None:
         story_titles = tmp_path / "story-titles"  # type: ignore[operator]
         story_titles.mkdir()
         result = _get_story_titles_dir(tmp_path)  # type: ignore[arg-type]

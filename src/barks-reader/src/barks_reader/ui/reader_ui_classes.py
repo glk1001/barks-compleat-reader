@@ -60,7 +60,7 @@ class ScrollableDropDown(DropDown):
     """
 
     def on_touch_down(self, touch: object) -> bool:
-        if not self.collide_point(*touch.pos) and self.auto_dismiss:  # type: ignore[arg-type]
+        if not self.collide_point(*touch.pos) and self.auto_dismiss:  # ty: ignore[unresolved-attribute]
             self.dismiss()
             return False
         return super().on_touch_down(touch)

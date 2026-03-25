@@ -501,7 +501,7 @@ class SpeechIndexScreen(IndexScreen):
         self._insert_sub_items_layout(sub_items_layout)
 
     def _get_title_sub_items_layout(self, item: IndexItem) -> GridLayout:
-        index_term: str = item.id  # type: ignore[assignment]
+        index_term: str = item.id  # ty: ignore[invalid-assignment]
         logger.info(f'Laying out title sub-items for for index term "{index_term}".')
 
         sub_items_to_display = self._get_sub_items_data(item)

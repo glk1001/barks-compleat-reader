@@ -73,7 +73,7 @@ class TestComicReaderManager:
             last_page="1",
         )
         # noinspection PyProtectedMember,LongLine
-        manager._comic_page_info_mgr.get_comic_page_info = MagicMock(return_value=mock_page_info)  # type: ignore[assignment]
+        manager._comic_page_info_mgr.get_comic_page_info = MagicMock(return_value=mock_page_info)  # ty: ignore[invalid-assignment]
 
         # Mock ImageBuilder
         with patch.object(
@@ -113,7 +113,7 @@ class TestComicReaderManager:
             last_page="1",
         )
         # noinspection PyProtectedMember,LongLine
-        manager._comic_page_info_mgr.get_comic_page_info = MagicMock(return_value=mock_page_info)  # type: ignore[assignment]
+        manager._comic_page_info_mgr.get_comic_page_info = MagicMock(return_value=mock_page_info)  # ty: ignore[invalid-assignment]
 
         with patch.object(barks_reader.ui.comic_reader_manager, "ComicBookImageBuilder"):
             manager.read_barks_comic_book(

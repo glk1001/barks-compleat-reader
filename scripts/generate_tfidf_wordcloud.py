@@ -193,8 +193,8 @@ def main(
     word_counts = {title: len(text.split()) for title, text in title_texts.items()}
     total_words = sum(word_counts.values())
     avg_words = total_words / len(word_counts)
-    min_title = min(word_counts, key=word_counts.get)  # type: ignore[arg-type]
-    max_title = max(word_counts, key=word_counts.get)  # type: ignore[arg-type]
+    min_title = min(word_counts, key=word_counts.get)  # ty: ignore[no-matching-overload]
+    max_title = max(word_counts, key=word_counts.get)  # ty: ignore[no-matching-overload]
     print(f"Total words: {total_words:,}")
     print(f"Avg words/title: {avg_words:,.0f}")
     print(f"Min: {word_counts[min_title]:,} words ({min_title})")

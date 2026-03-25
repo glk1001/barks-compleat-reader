@@ -131,7 +131,7 @@ class TestIsPageNumber:
 
 
 class TestGetSpeechTextList:
-    def test_parses_basic_group(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_parses_basic_group(self, tmp_path: Path) -> None:
         f = tmp_path / "groups.json"  # type: ignore[operator]
         f.write_text(
             json.dumps(_make_json_content({"1": _make_group_entry(ai_text="Hello world")}))
@@ -146,7 +146,7 @@ class TestGetSpeechTextList:
         assert st.ai_text == "Hello world"
         assert st.panel_num == 1
 
-    def test_skips_page_numbers(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_skips_page_numbers(self, tmp_path: Path) -> None:
         f = tmp_path / "groups.json"  # type: ignore[operator]
         f.write_text(
             json.dumps(
@@ -164,7 +164,7 @@ class TestGetSpeechTextList:
         assert "1" in speech_groups
         assert "2" not in speech_groups
 
-    def test_ai_text_hyphen_newline_replaced(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_ai_text_hyphen_newline_replaced(self, tmp_path: Path) -> None:
         f = tmp_path / "groups.json"  # type: ignore[operator]
         f.write_text(
             json.dumps(_make_json_content({"1": _make_group_entry(ai_text="hyph-\nnated")}))
@@ -175,7 +175,7 @@ class TestGetSpeechTextList:
         assert speech_groups["1"].ai_text == "hyph-nated"
         assert speech_groups["1"].raw_ai_text == "hyph-\nnated"
 
-    def test_soft_hyphen_newline_removed(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_soft_hyphen_newline_removed(self, tmp_path: Path) -> None:
         f = tmp_path / "groups.json"  # type: ignore[operator]
         f.write_text(
             json.dumps(_make_json_content({"1": _make_group_entry(ai_text="soft\u00ad\nhyph")}))
@@ -185,12 +185,12 @@ class TestGetSpeechTextList:
 
         assert speech_groups["1"].ai_text == "softhyph"
 
-    def test_raises_value_error_on_missing_file(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_raises_value_error_on_missing_file(self, tmp_path: Path) -> None:
         missing = tmp_path / "no-such-file.json"  # type: ignore[operator]
         with pytest.raises(ValueError, match="Error reading ocr_prelim_groups"):
             _get_speech_text_list(missing)
 
-    def test_returns_raw_json(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_returns_raw_json(self, tmp_path: Path) -> None:
         content = _make_json_content({"1": _make_group_entry()})
         f = tmp_path / "groups.json"  # type: ignore[operator]
         f.write_text(json.dumps(content))
@@ -199,7 +199,7 @@ class TestGetSpeechTextList:
 
         assert raw_json == content
 
-    def test_empty_groups(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_empty_groups(self, tmp_path: Path) -> None:
         f = tmp_path / "groups.json"  # type: ignore[operator]
         f.write_text(json.dumps(_make_json_content()))
 
@@ -288,7 +288,7 @@ class TestHasSpeechPageGroupChanged:
 
 
 class TestSaveSpeechPageGroup:
-    def test_no_changes_returns_false(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_no_changes_returns_false(self, tmp_path: Path) -> None:
         groups = {"1": _make_speech_text("1", raw_ai_text="Same")}
         json_data = _make_json_content({"1": _make_group_entry(ai_text="Same")})
         f = tmp_path / "out.json"  # type: ignore[operator]
@@ -299,7 +299,7 @@ class TestSaveSpeechPageGroup:
         assert result is False
         assert not f.exists()
 
-    def test_with_changes_returns_true_and_writes(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_with_changes_returns_true_and_writes(self, tmp_path: Path) -> None:
         groups = {"1": _make_speech_text("1", raw_ai_text="New")}
         json_data = _make_json_content({"1": _make_group_entry(ai_text="Old")})
         f = tmp_path / "out.json"  # type: ignore[operator]
@@ -312,7 +312,7 @@ class TestSaveSpeechPageGroup:
         saved = json.loads(f.read_text())
         assert saved["groups"]["1"]["ai_text"] == "New"
 
-    def test_updates_json_dict_in_place(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_updates_json_dict_in_place(self, tmp_path: Path) -> None:
         groups = {"1": _make_speech_text("1", raw_ai_text="Updated")}
         json_data = _make_json_content({"1": _make_group_entry(ai_text="Original")})
         f = tmp_path / "out.json"  # type: ignore[operator]
@@ -329,7 +329,7 @@ class TestSaveSpeechPageGroup:
 
 
 class TestSaveSpeechPageGroupJson:
-    def test_writes_to_explicit_file(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_writes_to_explicit_file(self, tmp_path: Path) -> None:
         json_data = _make_json_content({"1": _make_group_entry(ai_text="Hello")})
         f = tmp_path / "out.json"  # type: ignore[operator]
         spg = _make_speech_page_group(speech_page_json=json_data, json_file=f)
@@ -339,7 +339,7 @@ class TestSaveSpeechPageGroupJson:
         saved = json.loads(f.read_text())
         assert saved == json_data
 
-    def test_writes_to_default_file_when_none(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_writes_to_default_file_when_none(self, tmp_path: Path) -> None:
         json_data = _make_json_content({"1": _make_group_entry()})
         f = tmp_path / "default.json"  # type: ignore[operator]
         spg = _make_speech_page_group(speech_page_json=json_data, json_file=f)
@@ -350,7 +350,7 @@ class TestSaveSpeechPageGroupJson:
         saved = json.loads(f.read_text())
         assert saved == json_data
 
-    def test_backup_file_gets_original_renamed(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_backup_file_gets_original_renamed(self, tmp_path: Path) -> None:
         json_data = _make_json_content()
         original = tmp_path / "original.json"  # type: ignore[operator]
         original.write_text(json.dumps({"old": True}))
@@ -371,7 +371,7 @@ class TestSaveSpeechPageGroupJson:
 
 
 class TestGetSpeechPageGroup:
-    def test_returns_correct_speech_page_group(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_returns_correct_speech_page_group(self, tmp_path: Path) -> None:
         db = MagicMock()
         db.get_fantagraphics_restored_ocr_prelim_volume_dir.return_value = tmp_path
 

@@ -265,7 +265,7 @@ class ComicBookLoader:
         self.stop_now()
 
         if self._image_source and hasattr(self._image_source, "close"):
-            self._image_source.close()  # type: ignore[attr-defined]
+            self._image_source.close()  # ty: ignore[call-non-callable]
         self._image_source = None
         self._images.clear()
         self._image_loaded_events.clear()
@@ -338,7 +338,7 @@ class ComicBookLoader:
 
             assert self._image_source is not None
             if hasattr(self._image_source, "open"):
-                self._image_source.open()  # type: ignore[attr-defined]
+                self._image_source.open()  # ty: ignore[call-non-callable]
 
             # noinspection PyBroadException
             try:

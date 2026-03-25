@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 import barks_fantagraphics.panel_boxes as panel_boxes_module
 import pytest
@@ -79,7 +83,7 @@ class TestPanelBox:
         # noinspection PyTypeChecker
         with pytest.raises((AttributeError, TypeError)):
             # noinspection PyDataclass
-            pb.x0 = 99  # type: ignore[misc]
+            pb.x0 = 99  # ty: ignore[invalid-assignment]
 
 
 # ---------------------------------------------------------------------------
@@ -144,14 +148,14 @@ class TestGetPanelBoxes:
     def _make_tpb() -> TitlePanelBoxes:
         return TitlePanelBoxes(_comics_database=MagicMock())
 
-    def test_raises_when_file_not_found(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_raises_when_file_not_found(self, tmp_path: Path) -> None:
         tpb = self._make_tpb()
         missing = tmp_path / "nonexistent.json"  # type: ignore[operator]
 
         with pytest.raises(FileNotFoundError, match="panel segments file"):
             tpb.get_panel_boxes(missing, "001")
 
-    def test_parses_size_correctly(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_parses_size_correctly(self, tmp_path: Path) -> None:
         tpb = self._make_tpb()
         f = tmp_path / "panels.json"  # type: ignore[operator]
         f.write_text(_make_panel_segments_json(width=1024, height=768))
@@ -162,7 +166,7 @@ class TestGetPanelBoxes:
         assert result.page_height == 768
         assert result.page_num == "001"
 
-    def test_parses_single_panel(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_parses_single_panel(self, tmp_path: Path) -> None:
         tpb = self._make_tpb()
         f = tmp_path / "panels.json"  # type: ignore[operator]
         f.write_text(_make_panel_segments_json(panels=[[5, 10, 80, 160]]))
@@ -179,7 +183,7 @@ class TestGetPanelBoxes:
         assert pb.x1 == 5 + 80 - 1
         assert pb.y1 == 10 + 160 - 1
 
-    def test_parses_multiple_panels_in_order(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_parses_multiple_panels_in_order(self, tmp_path: Path) -> None:
         tpb = self._make_tpb()
         f = tmp_path / "panels.json"  # type: ignore[operator]
         f.write_text(
@@ -193,7 +197,7 @@ class TestGetPanelBoxes:
         assert result.panel_boxes[1].panel_num == 2
         assert result.panel_boxes[2].panel_num == 3
 
-    def test_parses_overall_bounds(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_parses_overall_bounds(self, tmp_path: Path) -> None:
         tpb = self._make_tpb()
         f = tmp_path / "panels.json"  # type: ignore[operator]
         f.write_text(_make_panel_segments_json(overall_bounds=[5, 10, 795, 590]))
@@ -207,7 +211,7 @@ class TestGetPanelBoxes:
         assert ob.x1 == 795
         assert ob.y1 == 590
 
-    def test_empty_panels_list(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_empty_panels_list(self, tmp_path: Path) -> None:
         tpb = self._make_tpb()
         f = tmp_path / "panels.json"  # type: ignore[operator]
         f.write_text(_make_panel_segments_json(panels=[]))
@@ -273,7 +277,7 @@ class TestGetSrcePageNums:
 
 
 class TestPrivateGetPanelBoxes:
-    def test_delegates_to_get_panel_boxes(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_delegates_to_get_panel_boxes(self, tmp_path: Path) -> None:
         db = MagicMock()
         tpb = TitlePanelBoxes(_comics_database=db)
 
@@ -296,7 +300,7 @@ class TestPrivateGetPanelBoxes:
 
 
 class TestGetPagePanelBoxes:
-    def test_returns_title_pages_panel_boxes(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_returns_title_pages_panel_boxes(self, tmp_path: Path) -> None:
         db = MagicMock()
         db.get_fanta_volume_int.return_value = 3
 
