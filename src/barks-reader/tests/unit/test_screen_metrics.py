@@ -6,6 +6,7 @@ from barks_reader.core import screen_metrics as screen_metrics_module
 from barks_reader.core.platform_info import Platform
 from barks_reader.core.screen_metrics import (
     ScreenMetrics,
+    calculate_fitted_window_height,
     get_approximate_taskbar_height,
     get_best_window_height_fit,
 )
@@ -153,3 +154,130 @@ class TestScreenMetrics:
             # Outside
             assert metrics.get_monitor_for_pos(-100, 0) is None
             assert metrics.get_monitor_for_pos(0, 2000) is None
+
+    def test_refresh_no_change(self) -> None:
+        """Test refresh returns False when monitor dimensions are unchanged."""
+        mock_monitor = MagicMock()
+        mock_monitor.x = 0
+        mock_monitor.y = 0
+        mock_monitor.width = 1920
+        mock_monitor.height = 1080
+        mock_monitor.width_mm = 508
+        mock_monitor.height_mm = 285
+        mock_monitor.is_primary = True
+
+        with patch.object(
+            screen_metrics_module, get_monitors.__name__, return_value=[mock_monitor]
+        ):
+            metrics = ScreenMetrics()
+            assert metrics.refresh() is False
+
+    def test_refresh_detects_rotation(self) -> None:
+        """Test refresh returns True when monitor dimensions change (rotation)."""
+        mock_landscape = MagicMock()
+        mock_landscape.x = 0
+        mock_landscape.y = 0
+        mock_landscape.width = 1920
+        mock_landscape.height = 1080
+        mock_landscape.width_mm = 508
+        mock_landscape.height_mm = 285
+        mock_landscape.is_primary = True
+
+        mock_portrait = MagicMock()
+        mock_portrait.x = 0
+        mock_portrait.y = 0
+        mock_portrait.width = 1080
+        mock_portrait.height = 1920
+        mock_portrait.width_mm = 285
+        mock_portrait.height_mm = 508
+        mock_portrait.is_primary = True
+
+        with patch.object(
+            screen_metrics_module, get_monitors.__name__, return_value=[mock_landscape]
+        ):
+            metrics = ScreenMetrics()
+
+        with patch.object(
+            screen_metrics_module, get_monitors.__name__, return_value=[mock_portrait]
+        ):
+            assert metrics.refresh() is True
+            assert metrics.SCREEN_INFO[0].width_pixels == 1080  # noqa: PLR2004
+            assert metrics.SCREEN_INFO[0].height_pixels == 1920  # noqa: PLR2004
+
+
+class TestCalculateFittedWindowHeight:
+    """Tests for the calculate_fitted_window_height pure function."""
+
+    ASPECT_RATIO = 3200.0 / 2120.0  # ~1.509
+    ACTION_BAR = 45
+
+    def test_landscape_screen_height_limited(self) -> None:
+        """On a landscape screen, height is the limiting factor."""
+        height = calculate_fitted_window_height(
+            screen_width=1920,
+            screen_height=1080,
+            aspect_ratio=self.ASPECT_RATIO,
+            action_bar_height=self.ACTION_BAR,
+        )
+        # Height-limited: max_h = int(0.9 * 1080) = 972
+        assert height == 972  # noqa: PLR2004
+        # Verify width fits: content_w = round((972 - 45) / 1.509...) = 614
+        content_w = round((height - self.ACTION_BAR) / self.ASPECT_RATIO)
+        assert content_w <= int(0.9 * 1920)
+
+    def test_portrait_screen_width_limited(self) -> None:
+        """On a portrait screen, width is the limiting factor."""
+        height = calculate_fitted_window_height(
+            screen_width=1080,
+            screen_height=1920,
+            aspect_ratio=self.ASPECT_RATIO,
+            action_bar_height=self.ACTION_BAR,
+        )
+        # Width-limited: max_w = int(0.9 * 1080) = 972
+        # content_h = round(972 * 1.509...) = 1467, total = 1467 + 45 = 1512
+        content_w = round((height - self.ACTION_BAR) / self.ASPECT_RATIO)
+        assert content_w <= int(0.9 * 1080)
+        assert height <= int(0.9 * 1920)
+
+    def test_square_screen(self) -> None:
+        """On a square screen, width is limiting since aspect ratio > 1."""
+        height = calculate_fitted_window_height(
+            screen_width=1080,
+            screen_height=1080,
+            aspect_ratio=self.ASPECT_RATIO,
+            action_bar_height=self.ACTION_BAR,
+        )
+        content_w = round((height - self.ACTION_BAR) / self.ASPECT_RATIO)
+        assert content_w <= int(0.9 * 1080)
+        assert height <= int(0.9 * 1080)
+
+    def test_small_screen(self) -> None:
+        """Produces a valid positive height even on a small screen."""
+        height = calculate_fitted_window_height(
+            screen_width=800,
+            screen_height=600,
+            aspect_ratio=self.ASPECT_RATIO,
+            action_bar_height=self.ACTION_BAR,
+        )
+        assert height > self.ACTION_BAR
+        content_w = round((height - self.ACTION_BAR) / self.ASPECT_RATIO)
+        assert content_w <= int(0.9 * 800)
+        assert height <= int(0.9 * 600)
+
+    def test_custom_fit_fraction(self) -> None:
+        """Respects a custom fit_fraction."""
+        height_90 = calculate_fitted_window_height(
+            screen_width=1920,
+            screen_height=1080,
+            aspect_ratio=self.ASPECT_RATIO,
+            action_bar_height=self.ACTION_BAR,
+            fit_fraction=0.9,
+        )
+        height_50 = calculate_fitted_window_height(
+            screen_width=1920,
+            screen_height=1080,
+            aspect_ratio=self.ASPECT_RATIO,
+            action_bar_height=self.ACTION_BAR,
+            fit_fraction=0.5,
+        )
+        assert height_50 < height_90

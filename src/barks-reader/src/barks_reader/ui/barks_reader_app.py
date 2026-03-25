@@ -28,6 +28,7 @@ from barks_reader.core.reader_settings import BARKS_READER_SECTION
 from barks_reader.core.reader_utils import get_win_width_from_height
 from barks_reader.core.screen_metrics import (
     SCREEN_METRICS,
+    calculate_fitted_window_height,
     get_best_window_height_fit,
 )
 from barks_reader.core.settings_notifier import settings_notifier
@@ -88,6 +89,8 @@ DEFAULT_WINDOW_LEFT = 2400
 DEFAULT_WINDOW_TOP = 50
 MIN_WINDOW_WIDTH = 900
 RESIZE_CORRECTION_DELAY = 0.1
+ROTATION_POLL_INTERVAL = 2.0
+ROTATION_FIT_FRACTION = 0.9
 
 
 class BarksReaderApp(App):
@@ -118,6 +121,7 @@ class BarksReaderApp(App):
         self._correction_event = None
         self._suppress_correction = False
         self._suppress_correction_event = None
+        self._rotation_poll_event: Any = None
 
     # TODO: Move this Window stuff to MainScreen.
     def _on_window_pos_change(self, _window: WindowBase) -> None:
@@ -265,9 +269,65 @@ class BarksReaderApp(App):
         self._suppress_correction_event = Clock.schedule_once(clear_suppress, duration)
 
     def close_app(self) -> None:
+        if self._rotation_poll_event:
+            self._rotation_poll_event.cancel()
         self._main_screen.app_closing()
         App.get_running_app().stop()
         Window.close()
+
+    def _start_rotation_polling(self) -> None:
+        """Begin periodic checks for screen rotation."""
+        self._rotation_poll_event = Clock.schedule_interval(
+            self._check_for_rotation, ROTATION_POLL_INTERVAL
+        )
+
+    def _check_for_rotation(self, _dt: float) -> None:
+        """Poll screeninfo for dimension changes indicating rotation."""
+        if Window.fullscreen:
+            return
+        if SCREEN_METRICS.refresh():
+            logger.info("Screen rotation detected -- resizing window to fit new dimensions.")
+            self._handle_rotation()
+
+    def _handle_rotation(self) -> None:
+        """Resize and reposition the window after a screen rotation."""
+        monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
+        if monitor is None:
+            monitor = SCREEN_METRICS.get_primary_screen_info()
+
+        self._current_monitor = monitor
+
+        new_height = calculate_fitted_window_height(
+            screen_width=monitor.width_pixels,
+            screen_height=monitor.height_pixels,
+            aspect_ratio=COMIC_PAGE_ASPECT_RATIO,
+            action_bar_height=ACTION_BAR_SIZE_Y,
+            fit_fraction=ROTATION_FIT_FRACTION,
+        )
+        new_width = get_win_width_from_height(new_height - ACTION_BAR_SIZE_Y)
+
+        center_x = monitor.monitor_x + (monitor.width_pixels - new_width) // 2
+        center_y = monitor.monitor_y + (monitor.height_pixels - new_height) // 2
+
+        logger.info(
+            f"Rotation resize: ({new_width}, {new_height}) at ({center_x}, {center_y})"
+            f" on monitor {monitor.display}"
+            f" ({monitor.width_pixels}x{monitor.height_pixels})."
+        )
+
+        self._resize_requested_size = new_width, new_height
+
+        def do_resize(_dt: float) -> None:
+            Window.size = (new_width, new_height)
+            Window.left = center_x
+            Window.top = center_y
+
+        def do_reset_resize(_dt: float) -> None:
+            self._resize_event = None
+            self._resize_requested_size = 0, 0
+
+        Clock.schedule_once(do_resize, 0)
+        self._resize_event = Clock.schedule_once(do_reset_resize, MOVE_SETTLE_DELAY)
 
     @override
     def display_settings(self, settings: Widget) -> bool:
@@ -530,6 +590,8 @@ class BarksReaderApp(App):
 
         if self.reader_settings.goto_fullscreen_on_app_start:
             self._main_screen.force_fullscreen()
+
+        self._start_rotation_polling()
 
         # All the behind the scenes sizing and moving is done.
         # Now make the main window visible.
