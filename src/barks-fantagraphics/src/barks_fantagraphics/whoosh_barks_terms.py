@@ -136,6 +136,7 @@ _BARKSIAN_FULL_NAMES: frozenset[str] = frozenset(
         "Whirlman Dervish",
         "Wild Bill Carson",
         "Wild Bill Trueshot",
+        "William Tell",
     }
 )
 
@@ -153,6 +154,7 @@ _BARKSIAN_PLACES_FULL_NAMES: frozenset[str] = frozenset(
         "Cattail Slough",
         "Cape Sourweather",
         "Chillspine Buoy",
+        "Coca Bola Island",
         "Codfeesh Cove",
         "Codfish Cove",
         "Coney Island",
@@ -172,10 +174,12 @@ _BARKSIAN_PLACES_FULL_NAMES: frozenset[str] = frozenset(
         "Greenwood Canyon",
         "Hag's Fang Cliff",
         "Hagtooth Rock",
+        "Hooky Hill",
         "Isle of Capri",
         "Itsa Faka",
         "Jugneck Cove",
         "Laguna Mountains",
+        "Lightest Africa",
         "Los Angeles",
         "Lost Dutchman's",
         "Lower California",
@@ -208,6 +212,9 @@ _BARKSIAN_PLACES_FULL_NAMES: frozenset[str] = frozenset(
         "Upper Whambesi",
         "Vale of Kashmir",
         "Wagga Wagga",
+        "Whambo Jambo",
+        "University of Rotterdam",
+        "University of Ypsilanti",
     }
 )
 
@@ -645,6 +652,7 @@ _BARKSIAN_NAMES: frozenset[str] = frozenset(
         "james",
         "jan",
         "jane",
+        "jasmine",
         "jason",
         "jean",
         "jeebs",
@@ -658,6 +666,7 @@ _BARKSIAN_NAMES: frozenset[str] = frozenset(
         "joan",
         "jocko",
         "joe",
+        "joe's",
         "joes",
         "joey",
         "joltmobile",
@@ -981,6 +990,7 @@ _BARKSIAN_NAMES: frozenset[str] = frozenset(
         "yonson",
         "yonson's",
         "zippo",
+        "zoola",
         "zulu",
     }
 )
@@ -1195,6 +1205,7 @@ _BARKSIAN_PLACE_RELATED_WORDS: frozenset[str] = frozenset(
         "quackville",
         "riviera",
         "rockies",
+        "rome",
         "sacramento",
         "san",
         "saturn",
@@ -1216,7 +1227,8 @@ _BARKSIAN_PLACE_RELATED_WORDS: frozenset[str] = frozenset(
         "sulu",
         "susa",
         "sydney",
-        "tasmainia",
+        "tahiti",
+        "tasmania",
         "taurus",
         "thrushwhistle",
         "thule",
@@ -1248,6 +1260,7 @@ _BARKSIAN_PLACE_RELATED_WORDS: frozenset[str] = frozenset(
         "whambesi",
         "whiskerville",
         "whiskervilles",
+        "ypsilanti",
         "yucatan",
         "zanzibar",
         "zululand",
@@ -1401,6 +1414,7 @@ _COUNTRIES: frozenset[str] = frozenset(
         "portugal",
         "qatar",
         "romania",
+        "rotterdam",
         "russian federation",
         "rwanda",
         "st kitts & nevis",
@@ -1572,7 +1586,6 @@ BARKSIAN_WORDS_WITH_OPTIONAL_HYPHENS: frozenset[str] = frozenset(
         "ya-woo",
         "yi-yi",
         "yo'-all",
-        "zoola",
     }
 )
 
@@ -1634,6 +1647,7 @@ CAPITALIZATION_MAP: dict[str, str] = {
     "mcwhisker": "McWhisker",
     "mcyard": "McYard",
     "n-napoleon": "N-Napoleon",
+    "pan-afro": "Pan-Afro",
     "rain-in-teepee": "Rain-in-Teepee",
     "rolls-regal": "Rolls-Regal",
     "rolls-smackhard": "Rolls-Smackhard",
@@ -1726,6 +1740,7 @@ FRAGMENTS_TO_SUPPRESS: frozenset[str] = frozenset(
         "hagtooth",  # Hagtooth Rock
         "i.m.",  # I.M. Slick
         "itsa",  # Itsa Faka
+        "jambo",  # Whambo Jambo
         "jayne",  # Jayne Girlsfield
         "lessly",  # Alvis Lessly
         "longhorn",  # Longhorn Tallgrass
@@ -1755,6 +1770,8 @@ FRAGMENTS_TO_SUPPRESS: frozenset[str] = frozenset(
         "tryle",  # Tryle N. Error
         "walt"  # Walt Disney
         "wat",  # Tangkor Wat
+        "whambo",  # Whambo Jambo
+        "william",  # William Tell
         "x-ng",  # B-197 X-NG
     }
 )
