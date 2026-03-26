@@ -1,5 +1,8 @@
 [importlinter]
-root_package = barks_reader
+root_packages =
+    barks_reader
+    barks_fantagraphics
+    comic_utils
 include_external_packages=True
 
 [importlinter:contract:1]
@@ -10,4 +13,21 @@ source_modules =
 forbidden_modules =
     barks_reader.ui
     kivy
+
+[importlinter:contract:2]
+name = barks_fantagraphics must not import barks_reader
+type = forbidden
+source_modules =
+    barks_fantagraphics
+forbidden_modules =
+    barks_reader
+
+[importlinter:contract:3]
+name = comic_utils must not import barks_reader or barks_fantagraphics
+type = forbidden
+source_modules =
+    comic_utils
+forbidden_modules =
+    barks_reader
+    barks_fantagraphics
 
