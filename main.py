@@ -32,7 +32,7 @@ from barks_reader.core.config_info import (
 from barks_reader.core.minimal_config_info import MinimalConfigOptions, get_minimal_config_options
 from barks_reader.core.platform_info import PLATFORM, Platform
 from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
-from barks_reader.core.reader_utils import get_win_width_from_height
+from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import SCREEN_METRICS, get_best_window_height_fit
 from dotenv import load_dotenv
 from loguru import logger
@@ -200,8 +200,12 @@ def get_main_win_from_screen_metrics() -> tuple[int, int, int]:
     win_centre = primary_screen_info.monitor_x + round(primary_screen_info.width_pixels / 2)
 
     win_height_margin = 20
-    win_height = get_best_window_height_fit(primary_screen_info.height_pixels) - win_height_margin
-    win_left = win_centre - round(get_win_width_from_height(win_height) / 2)
+    max_height = get_best_window_height_fit(primary_screen_info.height_pixels) - win_height_margin
+    win_width, content_h = get_win_dimensions(
+        max_height - RAW_ACTION_BAR_SIZE_Y, primary_screen_info.width_pixels
+    )
+    win_height = content_h + RAW_ACTION_BAR_SIZE_Y
+    win_left = win_centre - round(win_width / 2)
     win_top = win_height_margin // 2
 
     logger.debug(f"Best fit main win dimensions: {win_height}, ({win_left}, {win_top}).")
@@ -230,7 +234,9 @@ def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
 
     # Note: Can't use dp(RAW_ACTION_BAR_SIZE_Y) here because importing 'dp'
     #       initializes the Window with wrong dimensions.
-    win_width = get_win_width_from_height(win_height - RAW_ACTION_BAR_SIZE_Y)
+    monitor_width = SCREEN_METRICS.get_primary_screen_info().width_pixels
+    win_width, content_h = get_win_dimensions(win_height - RAW_ACTION_BAR_SIZE_Y, monitor_width)
+    win_height = content_h + RAW_ACTION_BAR_SIZE_Y
     logger.debug(f"Main win width: {win_width}.")
 
     Config.set("graphics", "left", win_left)  # ty:ignore[unresolved-attribute]

@@ -6,7 +6,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from loguru import logger
 
-from barks_reader.core.reader_utils import get_win_width_from_height
+from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.ui.platform_window_utils import WindowManager
 from barks_reader.ui.reader_ui_classes import ACTION_BAR_SIZE_Y, hide_action_bar, show_action_bar
 
@@ -123,7 +123,8 @@ class MainScreenWindowHelper:
             height = Window.height
             logger.info(f"New height too low: adjusted new fullscreen height = {height}.")
         self._host.size_hint = None, None
-        self._host.size = get_win_width_from_height(height - ACTION_BAR_SIZE_Y), height
+        width, content_h = get_win_dimensions(height - ACTION_BAR_SIZE_Y, Window.width)
+        self._host.size = width, content_h + ACTION_BAR_SIZE_Y
         assert WindowManager.is_fullscreen_now()
         logger.info(
             f"New fullscreen window settings:"

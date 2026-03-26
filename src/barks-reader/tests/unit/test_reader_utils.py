@@ -22,6 +22,7 @@ from barks_reader.core.reader_utils import (
     get_quoted_items,
     get_rand_int,
     get_title_str_from_reader_icon_file,
+    get_win_dimensions,
     get_win_width_from_height,
     is_blank_page,
     is_title_page,
@@ -43,6 +44,23 @@ class TestReaderUtils:
         height = 1000
         expected = round(1000 / COMIC_PAGE_ASPECT_RATIO)
         assert get_win_width_from_height(height) == expected
+
+    def test_get_win_dimensions_height_limited(self) -> None:
+        """When derived width fits within max_width, return it unchanged."""
+        content_h = 1000
+        max_w = 2000
+        width, result_h = get_win_dimensions(content_h, max_w)
+        assert width == get_win_width_from_height(content_h)
+        assert result_h == content_h
+
+    def test_get_win_dimensions_width_limited(self) -> None:
+        """When derived width exceeds max_width, clamp to max_width and reduce height."""
+        content_h = 1000
+        max_w = 400  # Much smaller than derived width (~662)
+        width, result_h = get_win_dimensions(content_h, max_w)
+        assert width == max_w
+        assert result_h == round(max_w * COMIC_PAGE_ASPECT_RATIO)
+        assert result_h < content_h
 
     def test_get_title_str_from_reader_icon_file(self) -> None:
         """Test extracting title from icon filename."""

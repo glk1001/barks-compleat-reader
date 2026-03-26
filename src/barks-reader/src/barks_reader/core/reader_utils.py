@@ -33,6 +33,25 @@ def get_win_width_from_height(win_height: int) -> int:
     return round(win_height / COMIC_PAGE_ASPECT_RATIO)
 
 
+def get_win_dimensions(content_height: int, max_width: int) -> tuple[int, int]:
+    """Compute (width, content_height) maintaining aspect ratio, respecting max_width.
+
+    Args:
+        content_height: Desired content height (excluding action bar).
+        max_width: Maximum allowed width.
+
+    Returns:
+        (width, content_height) tuple. If the width derived from content_height exceeds
+        max_width, width is set to max_width and content_height is reduced to match.
+
+    """
+    width = get_win_width_from_height(content_height)
+    if width <= max_width:
+        return width, content_height
+    # Width-limited: derive content height from max_width.
+    return max_width, round(max_width * COMIC_PAGE_ASPECT_RATIO)
+
+
 def get_title_str_from_reader_icon_file(icon_path: Path) -> str:
     # Use a regular expression to split the stem at the beginning of the
     # trailing numeric suffix (e.g., "-1-1"). This correctly handles

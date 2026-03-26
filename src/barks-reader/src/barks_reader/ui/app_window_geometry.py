@@ -6,7 +6,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window, WindowBase
 from loguru import logger
 
-from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO, get_win_width_from_height
+from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO, get_win_dimensions
 from barks_reader.core.screen_metrics import (
     SCREEN_METRICS,
     ScreenInfo,
@@ -82,7 +82,10 @@ class AppWindowGeometryHelper:
         new_height = min(round(scale_factor * new_max_height), new_max_height)
 
         if new_height != old_height:
-            new_width = get_win_width_from_height(new_height - ACTION_BAR_SIZE_Y)
+            new_width, content_h = get_win_dimensions(
+                new_height - ACTION_BAR_SIZE_Y, monitor.width_pixels
+            )
+            new_height = content_h + ACTION_BAR_SIZE_Y
             self._schedule_guarded_resize(new_width, new_height)
 
     # ruff: noqa: ERA001
@@ -169,8 +172,10 @@ class AppWindowGeometryHelper:
             height: Current window height reported by the resize event.
 
         """
-        correct_width = get_win_width_from_height(height - ACTION_BAR_SIZE_Y)
-        correct_height = height
+        monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
+        monitor_w = monitor.width_pixels if monitor else 0
+        correct_width, content_h = get_win_dimensions(height - ACTION_BAR_SIZE_Y, monitor_w)
+        correct_height = content_h + ACTION_BAR_SIZE_Y
         if correct_width < MIN_WINDOW_WIDTH:
             min_height = round(MIN_WINDOW_WIDTH * COMIC_PAGE_ASPECT_RATIO) + ACTION_BAR_SIZE_Y
             monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
@@ -217,7 +222,10 @@ class AppWindowGeometryHelper:
             action_bar_height=ACTION_BAR_SIZE_Y,
             fit_fraction=ROTATION_FIT_FRACTION,
         )
-        new_width = get_win_width_from_height(new_height - ACTION_BAR_SIZE_Y)
+        new_width, content_h = get_win_dimensions(
+            new_height - ACTION_BAR_SIZE_Y, monitor.width_pixels
+        )
+        new_height = content_h + ACTION_BAR_SIZE_Y
 
         center_x = monitor.monitor_x + (monitor.width_pixels - new_width) // 2
         center_y = monitor.monitor_y + (monitor.height_pixels - new_height) // 2
@@ -225,7 +233,8 @@ class AppWindowGeometryHelper:
         logger.info(
             f"Rotation resize: ({new_width}, {new_height}) at ({center_x}, {center_y})"
             f" on monitor {monitor.display}"
-            f" ({monitor.width_pixels}x{monitor.height_pixels})."
+            f" ({monitor.width_pixels}x{monitor.height_pixels})"
+            f" at ({center_x},{center_y})."
         )
 
         self._schedule_guarded_resize(new_width, new_height, reposition=(center_x, center_y))
@@ -254,7 +263,10 @@ class AppWindowGeometryHelper:
         def do_resize(_dt: float) -> None:
             logger.debug(f"Executing guarded resize to ({new_width}, {new_height}).")
             Window.size = (new_width, new_height)
+
+        def do_reposition(_dt: float) -> None:
             if reposition is not None:
+                logger.debug(f"Repositioning window to {reposition}.")
                 Window.left, Window.top = reposition
 
         def do_reset_resize(_dt: float) -> None:
@@ -263,4 +275,5 @@ class AppWindowGeometryHelper:
             self._resize_requested_size = 0, 0
 
         Clock.schedule_once(do_resize, 0)
+        Clock.schedule_once(do_reposition, RESIZE_CORRECTION_DELAY)
         self._resize_event = Clock.schedule_once(do_reset_resize, MOVE_SETTLE_DELAY)

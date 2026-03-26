@@ -32,8 +32,8 @@
         orientation: "vertical"
         pos_hint: {"center_x": 0.5, "center_y": 0.5}
         size_hint: None,None
-        height: root.height
-        width: (self.height - doc_action_bar.height) / root.ASPECT_RATIO
+        width: min((root.height - doc_action_bar.height) / root.ASPECT_RATIO, root.width)
+        height: self.width * root.ASPECT_RATIO + doc_action_bar.height
         # Add padding to the top to make space for the ActionBar.
         padding: [dp(0), doc_action_bar.height, dp(0), dp(0)]
 

@@ -32,7 +32,7 @@ from barks_reader.core.comic_book_loader import ComicBookLoader
 from barks_reader.core.comic_book_page_info import DisplayUnit
 from barks_reader.core.reader_consts_and_types import CLOSE_TO_ZERO, COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import get_action_bar_title
-from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, get_win_width_from_height
+from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, get_win_dimensions
 from barks_reader.ui.platform_window_utils import WindowManager
 from barks_reader.ui.reader_keyboard_nav import (
     KEY_ESCAPE,
@@ -940,7 +940,8 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             return
 
         if WindowManager.is_fullscreen_now():
-            self.size = get_win_width_from_height(height - ACTION_BAR_SIZE_Y), height
+            w, ch = get_win_dimensions(height - ACTION_BAR_SIZE_Y, Window.width)
+            self.size = w, ch + ACTION_BAR_SIZE_Y
 
         logger.debug(
             f"Active comic book reader window resize event:"
@@ -962,7 +963,8 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self.comic_book_reader.set_reader_navigation_regions(Window.width, Window.height)
 
     def _reset_action_bar_width(self) -> None:
-        self.action_bar_width = max(0, get_win_width_from_height(Window.height - ACTION_BAR_SIZE_Y))
+        w, _ = get_win_dimensions(Window.height - ACTION_BAR_SIZE_Y, Window.width)
+        self.action_bar_width = max(0, w)
         logger.debug(f"self.action_bar_width = {self.action_bar_width}")
 
     def _hide_action_bar(self) -> None:

@@ -18,7 +18,7 @@ from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import (
     get_title_str_from_reader_icon_file,
-    get_win_width_from_height,
+    get_win_dimensions,
 )
 from barks_reader.core.special_overrides_handler import SpecialFantaOverrides
 from barks_reader.ui.about_box import show_about_box
@@ -379,7 +379,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
                 self._exit_menu_mode()
             Window.unbind(on_key_down=self._on_key_down)
 
-        self.size = get_win_width_from_height(Window.height - ACTION_BAR_SIZE_Y), Window.height
+        width, content_h = get_win_dimensions(Window.height - ACTION_BAR_SIZE_Y, Window.width)
+        self.size = width, content_h + ACTION_BAR_SIZE_Y
 
         logger.debug(
             f"Main screen self._active = {self._active}:"
