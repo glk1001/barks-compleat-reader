@@ -25,6 +25,38 @@ MACOS_FANTA_VOLUMES_SEARCH_PATH = [
 
 # This app will hook into kivy logging, so there is no kivy console
 # logging required.
+
+
+def _running_under_pytest() -> bool:
+    return "pytest" in sys.modules
+
+
+def _assert_kivy_not_yet_imported() -> None:
+    """Raise ImportError if any kivy module has already been imported.
+
+    This module sets environment variables (KIVY_HOME, KIVY_NO_ARGS, KIVY_NO_CONSOLELOG)
+    that Kivy reads on first import. If Kivy is already loaded, those env vars have no
+    effect and the app will misbehave silently.
+
+    Skipped under pytest, where test isolation means Kivy may already be loaded.
+    """
+    if _running_under_pytest():
+        return
+
+    kivy_modules = [name for name in sys.modules if name == "kivy" or name.startswith("kivy.")]
+    if kivy_modules:
+        loaded = ", ".join(sorted(kivy_modules)[:5])
+        msg = (
+            f"Kivy was imported before barks_reader.core.config_info. "
+            f"This breaks env-var configuration (KIVY_HOME, KIVY_NO_ARGS, etc.). "
+            f"Already-loaded kivy modules: {loaded}. "
+            f"Fix: ensure config_info is imported before any kivy import."
+        )
+        raise ImportError(msg)
+
+
+_assert_kivy_not_yet_imported()
+
 os.environ["KIVY_NO_ARGS"] = "1"
 os.environ["KIVY_NO_CONSOLELOG"] = "1"
 
@@ -75,6 +107,7 @@ class ConfigInfo:
         assert self.app_data_dir
 
         self.kivy_config_dir = self.app_config_dir / "kivy"
+        _assert_kivy_not_yet_imported()
         os.environ["KIVY_HOME"] = str(self.kivy_config_dir)
 
         log_dir = self.kivy_config_dir / "logs"

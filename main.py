@@ -18,7 +18,9 @@ from comic_utils.timing import Timing
 
 _timing = Timing()
 
-from barks_reader.core.config_info import (  # IMPORT THIS BEFORE Kivy!!
+# config_info sets KIVY_HOME and other env vars that Kivy reads on first
+# import. A runtime guard in config_info.py enforces this ordering.
+from barks_reader.core.config_info import (
     KIVY_LOGGING_NAME,
     ConfigInfo,
     barks_reader_installer_failed,
