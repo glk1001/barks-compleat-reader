@@ -10,7 +10,6 @@ import logging
 import os
 import sys
 import threading
-from configparser import ConfigParser
 from pathlib import Path
 
 import typer
@@ -33,12 +32,6 @@ from barks_reader.core.config_info import (
 from barks_reader.core.minimal_config_info import MinimalConfigOptions, get_minimal_config_options
 from barks_reader.core.platform_info import PLATFORM, Platform
 from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
-from barks_reader.core.reader_settings import (
-    BARKS_READER_SECTION,
-    MAIN_WINDOW_HEIGHT,
-    MAIN_WINDOW_LEFT,
-    MAIN_WINDOW_TOP,
-)
 from barks_reader.core.reader_utils import get_win_width_from_height
 from barks_reader.core.screen_metrics import SCREEN_METRICS, get_best_window_height_fit
 from dotenv import load_dotenv
@@ -199,24 +192,6 @@ def update_window_size(
     logger.debug(f"Main win dimensions: {win_height}, ({win_left}, {win_top}).")
 
     set_window_size(win_height, win_left, win_top)
-
-
-def get_main_win_info_from_ini_file(cfg_info: ConfigInfo) -> tuple[int, int, int]:
-    barks_config = ConfigParser()
-    barks_config.read(cfg_info.app_config_path)
-
-    try:
-        win_height = int(barks_config.get(BARKS_READER_SECTION, MAIN_WINDOW_HEIGHT))
-        win_left = int(barks_config.get(BARKS_READER_SECTION, MAIN_WINDOW_LEFT))
-        win_top = int(barks_config.get(BARKS_READER_SECTION, MAIN_WINDOW_TOP))
-
-        logger.debug(f"Ini main win dimensions: {win_height}, ({win_left}, {win_top}).")
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"Ini error: {e}.")
-        logger.debug("Ini main win dimensions: 0, (-1, -1).")
-        return 0, 0, 0
-    else:
-        return win_height, win_left, win_top
 
 
 def get_main_win_from_screen_metrics() -> tuple[int, int, int]:
