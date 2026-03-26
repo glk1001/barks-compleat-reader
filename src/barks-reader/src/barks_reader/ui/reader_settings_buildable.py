@@ -30,6 +30,7 @@ from barks_reader.core.reader_settings import (
     USE_HARPIES_INSTEAD_OF_LARKIES,
     USE_PNG_IMAGES,
     USE_PREBUILT_COMICS,
+    USE_VIRTUAL_KEYBOARD,
     BuildableConfigParser,
     ReaderSettings,
     Settings,
@@ -47,6 +48,7 @@ class BuildableReaderSettings(ReaderSettings):
         self._settings: Settings | None = None
 
         self._GETTER_METHODS = {
+            USE_VIRTUAL_KEYBOARD: self._get_use_virtual_keyboard,
             DOUBLE_PAGE_MODE: self._get_double_page_mode,
             FANTA_DIR: self._get_fantagraphics_volumes_dir,
             PNG_BARKS_PANELS_DIR: self._get_png_barks_panels_dir,
@@ -70,6 +72,7 @@ class BuildableReaderSettings(ReaderSettings):
         }
 
         self._VALIDATION_METHODS: dict[str, Callable[..., bool]] = {
+            USE_VIRTUAL_KEYBOARD: self._is_valid_use_virtual_keyboard,
             DOUBLE_PAGE_MODE: self._is_valid_double_page_mode,
             FANTA_DIR: self.is_valid_fantagraphics_volumes_dir,
             PNG_BARKS_PANELS_DIR: self._is_valid_png_barks_panels_dir,
@@ -99,6 +102,7 @@ class BuildableReaderSettings(ReaderSettings):
         config.setdefaults(
             BARKS_READER_SECTION,
             {
+                USE_VIRTUAL_KEYBOARD: 0,
                 DOUBLE_PAGE_MODE: 0,
                 FANTA_DIR: UNSET_FANTA_DIR_MARKER,
                 PNG_BARKS_PANELS_DIR: ReaderFilePaths.get_default_png_barks_panels_source(),

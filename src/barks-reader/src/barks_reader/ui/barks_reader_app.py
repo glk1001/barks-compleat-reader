@@ -262,6 +262,13 @@ class BarksReaderApp(App):
             self.config, Path(self.get_application_config()), self._config_info.app_data_dir
         )
         self.reader_settings.set_barks_panels_dir()
+
+        if self.reader_settings.use_virtual_keyboard:
+            Window.allow_vkeyboard = True
+            Window.docked_vkeyboard = True
+            Window.single_vkeyboard = True
+            Window.use_syskeyboard = False
+
         self.reader_settings.validate_settings()
 
         self._comics_database.set_inset_info(

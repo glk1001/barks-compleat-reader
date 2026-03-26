@@ -31,6 +31,7 @@ USE_BLANK_EYEBALLS_FOR_BOMBIE = "use_blank_eyeballs"
 USE_GLK_FIREBUG_ENDING = "use_glk_firebug_ending"
 IS_FIRST_USE_OF_READER = "is_first_use_of_reader"
 LOG_LEVEL = "log_level"
+USE_VIRTUAL_KEYBOARD = "use_virtual_keyboard"
 DOUBLE_PAGE_MODE = "double_page_mode"
 SHOW_TOP_VIEW_TITLE_INFO = "show_tree_view_title_info"
 SHOW_FUN_VIEW_TITLE_INFO = "show_fun_view_title_info"
@@ -154,6 +155,14 @@ def _get_reader_settings_json() -> str:
                 "type": "numeric",
                 "section": BARKS_READER_SECTION,
                 "key": MAIN_WINDOW_TOP,
+            },
+            {
+                "title": "Use Virtual Keyboard",
+                "desc": "Always show an on-screen keyboard when tapping search fields, "
+                "even if a physical keyboard is connected. Requires app restart.",
+                "type": "bool",
+                "section": BARKS_READER_SECTION,
+                "key": USE_VIRTUAL_KEYBOARD,
             },
             {
                 "title": "Use Png Images",
@@ -398,6 +407,14 @@ class ReaderSettings:
         return self._config.get(BARKS_READER_SECTION, LOG_LEVEL)
 
     @property
+    def use_virtual_keyboard(self) -> bool:
+        return self._get_use_virtual_keyboard()
+
+    def _get_use_virtual_keyboard(self) -> bool:
+        assert self._config
+        return self._config.getboolean(BARKS_READER_SECTION, USE_VIRTUAL_KEYBOARD)
+
+    @property
     def double_page_mode(self) -> bool:
         return self._get_double_page_mode()
 
@@ -474,6 +491,10 @@ class ReaderSettings:
 
     @staticmethod
     def _is_valid_is_first_use_of_reader(_is_first_use_of_reader: bool) -> bool:
+        return True
+
+    @staticmethod
+    def _is_valid_use_virtual_keyboard(_use_virtual_keyboard: bool) -> bool:
         return True
 
     @staticmethod
