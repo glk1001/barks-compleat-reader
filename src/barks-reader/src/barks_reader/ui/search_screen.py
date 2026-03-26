@@ -41,6 +41,7 @@ from barks_reader.ui.reader_keyboard_nav import (
     clear_focus_in_list,
     update_focus_in_list,
 )
+from barks_reader.ui.touch_keyboard import TouchAwareTextInput  # noqa: F401  # used in .kv
 
 if TYPE_CHECKING:
     from collections.abc import Callable

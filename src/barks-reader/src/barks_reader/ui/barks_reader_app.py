@@ -268,6 +268,8 @@ class BarksReaderApp(App):
             Window.docked_vkeyboard = True
             Window.single_vkeyboard = True
             Window.use_syskeyboard = False
+            if PLATFORM == Platform.LINUX:
+                self._enable_linux_touchscreen_input()
 
         self.reader_settings.validate_settings()
 
@@ -279,6 +281,13 @@ class BarksReaderApp(App):
         self.reader_settings.sys_file_paths.set_barks_reader_files_dir(
             self.reader_settings.reader_files_dir
         )
+
+    @staticmethod
+    def _enable_linux_touchscreen_input() -> None:
+        """Register MTD providers so touchscreen taps can be distinguished from mouse clicks."""
+        from barks_reader.ui.touch_keyboard import enable_linux_touchscreen_input  # noqa: PLC0415
+
+        enable_linux_touchscreen_input()
 
     def _build_screens(self) -> ScreenManager:
         logger.debug("Instantiating main screen...")
