@@ -2,17 +2,12 @@ echo Ty checking uncommited python files:
 
 echo
 # Get changed Python files, excluding paths listed in ty.toml [src.exclude]
-EXCLUDED_PATTERNS=(
-    "experiments/"
-    "scraps/"
-    "benchmarks/"
-    "pyarmor_runtime_000000/"
-    "tests/test_barks_tags.py"
-    "tests/test_panel_bounding.py"
-    "tests/test_whoosh_search_engine.py"
-    "tests/unit/test_image_selector.py"
-    "tests/unit/test_main_screen_nav.py"
-    "tests/unit/test_main_screen_window.py"
+TOML_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../ty.toml"
+mapfile -t EXCLUDED_PATTERNS < <(
+    awk '/^exclude = \[/{found=1; next} found && /^\]/{exit} found{print}' "$TOML_FILE" \
+    | grep -v '^\s*#' \
+    | sed 's/^\s*"\(.*\)",\?\s*$/\1/' \
+    | sed 's|^\*\*/||'
 )
 
 FILES=$(git diff --name-only --diff-filter=ACMRTUXB HEAD | grep '\.py$')
