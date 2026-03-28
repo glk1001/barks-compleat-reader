@@ -68,7 +68,7 @@ BONGO_ON_THE_CONGO = "Bongo on the Congo"
 BORDERLINE_HERO = "Borderline Hero"
 BOTTLED_BATTLERS = "Bottled Battlers"
 BOXED_IN = "Boxed-In"
-BRAIN_STRAIN = "Brain Strain"
+BRAIN_STRAIN = "Brain-Strain"
 BUBBLEWEIGHT_CHAMP = "Bubbleweight Champ"
 BUFFALOED_BY_BUFFALOES = "Buffaloed by Buffaloes"
 BUFFO_OR_BUST = "Buffo or Bust"
@@ -452,7 +452,7 @@ PHANTOM_OF_NOTRE_DUCK_THE = "The Phantom of Notre Duck"
 PICNIC = "Picnic"
 PICNIC_TRICKS = "Picnic Tricks"
 PIED_PIPER_OF_DUCKBURG_THE = "The Pied Piper of Duckburg"
-PIED_PIPER_OF_DUCKBURG_JIPPES_THE = "The Pied Piper of Duckburg (Jippes)"
+PIED_PIPER_OF_DUCKBURG = "Pied Piper of Duckburg"  # Jippes version
 PIPELINE_TO_DANGER = "Pipeline to Danger"
 PIXILATED_PARROT_THE = "The Pixilated Parrot"
 PIZEN_SPRING_DUDE_RANCH = "Pizen Spring Dude Ranch"
@@ -1123,7 +1123,7 @@ class Titles(IntEnum):
     WAX_MUSEUM_THE = auto()
     PAUL_BUNYAN_MACHINE_THE = auto()
     PIED_PIPER_OF_DUCKBURG_THE = auto()
-    PIED_PIPER_OF_DUCKBURG_JIPPES_THE = auto()
+    PIED_PIPER_OF_DUCKBURG = auto()  # Jippes version
     KNIGHTS_OF_THE_FLYING_SLEDS = auto()
     FUN_WHATS_THAT = auto()
     WITCHING_STICK_THE = auto()
@@ -1793,7 +1793,7 @@ BARKS_TITLES = [
     WAX_MUSEUM_THE,
     PAUL_BUNYAN_MACHINE_THE,
     PIED_PIPER_OF_DUCKBURG_THE,
-    PIED_PIPER_OF_DUCKBURG_JIPPES_THE,
+    PIED_PIPER_OF_DUCKBURG,  # Jippes version
     KNIGHTS_OF_THE_FLYING_SLEDS,
     FUN_WHATS_THAT,
     WITCHING_STICK_THE,
