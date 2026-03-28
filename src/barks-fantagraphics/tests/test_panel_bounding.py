@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import barks_fantagraphics.panel_bounding as panel_bounding_module
@@ -27,6 +28,9 @@ from barks_fantagraphics.panel_bounding import (
     set_srce_panel_bounding_boxes,
 )
 from barks_fantagraphics.panel_bounding_boxes import BoundingBox, get_panels_bounding_box_from_file
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -96,7 +100,7 @@ class TestBoundingBox:
         # noinspection PyTypeChecker
         with pytest.raises((AttributeError, TypeError)):
             # noinspection PyDataclass
-            bb.x_min = 99  # type: ignore[misc]
+            bb.x_min = 99  # ty: ignore[invalid-assignment]
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +109,7 @@ class TestBoundingBox:
 
 
 class TestGetPanelsBoundingBoxFromFile:
-    def test_reads_overall_bounds(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_reads_overall_bounds(self, tmp_path: Path) -> None:
         f = tmp_path / "segments.json"  # type: ignore[operator]
         f.write_text(_make_panel_segments_json([5, 10, 800, 1400]))
 
@@ -188,7 +192,7 @@ class TestGetRequiredPanelsBboxWidthHeight:
 
 
 class TestSetSrcePanelBoundingBoxes:
-    def test_sets_bbox_from_file(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_sets_bbox_from_file(self, tmp_path: Path) -> None:
         f = tmp_path / "001.json"  # type: ignore[operator]
         f.write_text(_make_panel_segments_json([5, 10, 800, 1400]))
 
@@ -201,14 +205,14 @@ class TestSetSrcePanelBoundingBoxes:
         assert page.panels_bbox.x_max == 800
         assert page.panels_bbox.y_max == 1400
 
-    def test_skips_pages_without_panels(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_skips_pages_without_panels(self, tmp_path: Path) -> None:
         page = _front_page()
         missing = tmp_path / "nonexistent.json"  # type: ignore[operator]
         # Should not raise even though file is missing — FRONT pages are skipped
         # noinspection LongLine
         set_srce_panel_bounding_boxes([page], [missing], check_srce_page_timestamps=False)  # type: ignore[list-item]
 
-    def test_raises_when_segment_file_missing(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_raises_when_segment_file_missing(self, tmp_path: Path) -> None:
         page = _body_page()
         missing = tmp_path / "nonexistent.json"  # type: ignore[operator]
 
@@ -216,7 +220,7 @@ class TestSetSrcePanelBoundingBoxes:
             # noinspection LongLine
             set_srce_panel_bounding_boxes([page], [missing], check_srce_page_timestamps=False)  # type: ignore[list-item]
 
-    def test_raises_on_stale_timestamp(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_raises_on_stale_timestamp(self, tmp_path: Path) -> None:
         f = tmp_path / "001.json"  # type: ignore[operator]
         f.write_text(_make_panel_segments_json())
         page = _body_page()
@@ -228,7 +232,7 @@ class TestSetSrcePanelBoundingBoxes:
             # noinspection LongLine
             set_srce_panel_bounding_boxes([page], [f], check_srce_page_timestamps=True)  # type: ignore[list-item]
 
-    def test_no_timestamp_check_skips_stale_check(self, tmp_path: pytest.TempPathFactory) -> None:
+    def test_no_timestamp_check_skips_stale_check(self, tmp_path: Path) -> None:
         f = tmp_path / "001.json"  # type: ignore[operator]
         f.write_text(_make_panel_segments_json())
         page = _body_page()

@@ -20,47 +20,49 @@ from barks_reader.core.reader_utils import get_all_files_in_dir
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from comic_utils.comic_consts import PanelPath
+
 
 class FakeResolver:
     """A dict-based fake ImageFileResolver for testing (no filesystem)."""
 
     def __init__(self) -> None:
         # title_str -> {FileTypes -> [(path, is_edited), ...]}
-        self.files: dict[str, dict[FileTypes, list[tuple[Path, bool]]]] = defaultdict(
+        self.files: dict[str, dict[FileTypes, list[tuple[PanelPath, bool]]]] = defaultdict(
             lambda: defaultdict(list)
         )
-        self.nontitle_files: list[Path] = [Path("nontitle1.png")]
-        self.inset_file: Path = Path("inset.png")
-        self.fav_dir: Path = Path("/faves")
+        self.nontitle_files: list[PanelPath] = [Path("nontitle1.png")]
+        self.inset_file: PanelPath = Path("inset.png")
+        self.fav_dir: PanelPath = Path("/faves")
         self.file_ext: str = ".png"
-        self.search_files: list[Path] = [Path("search1.png")]
-        self.edited_version: tuple[Path, bool] = (Path("edited.png"), True)
+        self.search_files: list[PanelPath] = [Path("search1.png")]
+        self.edited_version: tuple[PanelPath, bool] = (Path("edited.png"), True)
 
     def resolve(
         self, title_str: str, category: FileTypes, prefer_edited: bool
-    ) -> list[tuple[Path, bool]]:
+    ) -> list[tuple[PanelPath, bool]]:
         all_files = self.files.get(title_str, {}).get(category, [])
         if prefer_edited:
             edited = [(f, e) for f, e in all_files if e]
             return edited or []
         return all_files
 
-    def get_nontitle_files(self) -> list[Path]:
+    def get_nontitle_files(self) -> list[PanelPath]:
         return self.nontitle_files
 
-    def get_comic_inset_file(self, title: Titles, prefer_edited: bool = False) -> Path:  # noqa: ARG002
+    def get_comic_inset_file(self, title: Titles, prefer_edited: bool = False) -> PanelPath:  # noqa: ARG002
         return self.inset_file
 
-    def get_edited_version_if_possible(self, image_file: Path) -> tuple[Path, bool]:  # noqa: ARG002
+    def get_edited_version_if_possible(self, image_file: PanelPath) -> tuple[PanelPath, bool]:  # noqa: ARG002
         return self.edited_version
 
-    def get_comic_favourite_files_dir(self) -> Path:
+    def get_comic_favourite_files_dir(self) -> PanelPath:
         return self.fav_dir
 
     def get_file_ext(self) -> str:
         return self.file_ext
 
-    def get_comic_search_files(self, title_str: str, prefer_edited: bool) -> list[Path]:  # noqa: ARG002
+    def get_comic_search_files(self, title_str: str, prefer_edited: bool) -> list[PanelPath]:  # noqa: ARG002
         return self.search_files
 
 

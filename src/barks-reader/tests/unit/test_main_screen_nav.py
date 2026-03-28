@@ -65,17 +65,17 @@ def nav(screens: dict[str, MagicMock]) -> Generator[MainScreenNavigation]:
 # noinspection PyUnresolvedReferences
 class TestHandleKey:
     def test_delegates_to_menu_when_in_menu_mode(self, nav: MainScreenNavigation) -> None:
-        nav._is_in_menu_mode.return_value = True
-        nav._handle_menu_key.return_value = True
+        nav._is_in_menu_mode.return_value = True  # ty: ignore[invalid-assignment]
+        nav._handle_menu_key.return_value = True  # ty: ignore[invalid-assignment]
 
         assert nav.handle_key(KEY_ENTER) is True
-        nav._handle_menu_key.assert_called_once_with(KEY_ENTER)
+        nav._handle_menu_key.assert_called_once_with(KEY_ENTER)  # ty: ignore[unresolved-attribute]
 
     def test_delegates_to_tree_key_by_default(self, nav: MainScreenNavigation) -> None:
         result = nav.handle_key(KEY_ESCAPE)
 
         assert result is True
-        nav._enter_menu_mode.assert_called_once()
+        nav._enter_menu_mode.assert_called_once()  # ty: ignore[unresolved-attribute]
 
     def test_delegates_to_bottom_key_when_in_bottom_focus(self, nav: MainScreenNavigation) -> None:
         # Set up: no visible screens so bottom key falls through to fun/title checks
@@ -99,7 +99,7 @@ class TestHandleKey:
 class TestHandleTreeKey:
     def test_escape_enters_menu_mode(self, nav: MainScreenNavigation) -> None:
         assert nav._handle_tree_key(KEY_ESCAPE) is True
-        nav._enter_menu_mode.assert_called_once()
+        nav._enter_menu_mode.assert_called_once()  # ty: ignore[unresolved-attribute]
 
     def test_tab_enters_bottom_focus(self, nav: MainScreenNavigation) -> None:
         # Make at least one bottom screen visible
@@ -116,31 +116,31 @@ class TestHandleTreeKey:
         assert nav.is_in_bottom_focus
 
     def test_up_moves_tree(self, nav: MainScreenNavigation) -> None:
-        nav._tree_view_screen.get_visible_nodes.return_value = [MagicMock(), MagicMock()]
-        nav._tree_view_screen.get_selected_node.return_value = None
+        nav._tree_view_screen.get_visible_nodes.return_value = [MagicMock(), MagicMock()]  # ty: ignore[invalid-assignment]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[invalid-assignment]
 
         assert nav._handle_tree_key(KEY_UP) is True
-        nav._tree_view_screen.select_node.assert_called_once()
+        nav._tree_view_screen.select_node.assert_called_once()  # ty: ignore[unresolved-attribute]
 
     def test_down_moves_tree(self, nav: MainScreenNavigation) -> None:
-        nav._tree_view_screen.get_visible_nodes.return_value = [MagicMock(), MagicMock()]
-        nav._tree_view_screen.get_selected_node.return_value = None
+        nav._tree_view_screen.get_visible_nodes.return_value = [MagicMock(), MagicMock()]  # ty: ignore[invalid-assignment]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[invalid-assignment]
 
         assert nav._handle_tree_key(KEY_DOWN) is True
-        nav._tree_view_screen.select_node.assert_called_once()
+        nav._tree_view_screen.select_node.assert_called_once()  # ty: ignore[unresolved-attribute]
 
     def test_left_collapses(self, nav: MainScreenNavigation) -> None:
-        nav._tree_view_screen.get_selected_node.return_value = None
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[invalid-assignment]
 
         assert nav._handle_tree_key(KEY_LEFT) is True
 
     def test_enter_activates(self, nav: MainScreenNavigation) -> None:
-        nav._tree_view_screen.get_selected_node.return_value = None
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[invalid-assignment]
 
         assert nav._handle_tree_key(KEY_ENTER) is True
 
     def test_numpad_enter_activates(self, nav: MainScreenNavigation) -> None:
-        nav._tree_view_screen.get_selected_node.return_value = None
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[invalid-assignment]
 
         assert nav._handle_tree_key(KEY_NUMPAD_ENTER) is True
 
@@ -181,7 +181,7 @@ class TestHandleBottomKey:
 
     def test_delegates_to_nav_screen(self, nav: MainScreenNavigation) -> None:
         nav._main_index_screen.is_visible = True
-        nav._main_index_screen.handle_key.return_value = True
+        nav._main_index_screen.handle_key.return_value = True  # ty: ignore[invalid-assignment]
         nav._speech_index_screen.is_visible = False
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
@@ -189,7 +189,7 @@ class TestHandleBottomKey:
         nav._search_screen.is_visible = False
 
         assert nav._handle_bottom_key(KEY_DOWN) is True
-        nav._main_index_screen.handle_key.assert_called_once_with(KEY_DOWN)
+        nav._main_index_screen.handle_key.assert_called_once_with(KEY_DOWN)  # ty: ignore[unresolved-attribute]
 
     def test_tab_on_nav_screen_exits(self, nav: MainScreenNavigation) -> None:
         nav._focus_region = nav._focus_region.__class__(2)
@@ -201,7 +201,7 @@ class TestHandleBottomKey:
         nav._search_screen.is_visible = False
 
         assert nav._handle_bottom_key(KEY_TAB) is True
-        nav._main_index_screen.exit_nav_focus.assert_called_once()
+        nav._main_index_screen.exit_nav_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
 
     def test_fun_view_left_right(self, nav: MainScreenNavigation) -> None:
         nav._main_index_screen.is_visible = False
@@ -214,10 +214,10 @@ class TestHandleBottomKey:
         nav._bottom_title_view_screen.is_visible = False
 
         assert nav._handle_bottom_key(KEY_LEFT) is True
-        nav._fun_image_view_screen.prev_image.assert_called_once()
+        nav._fun_image_view_screen.prev_image.assert_called_once()  # ty: ignore[unresolved-attribute]
 
         assert nav._handle_bottom_key(KEY_RIGHT) is True
-        nav._fun_image_view_screen.next_image.assert_called_once()
+        nav._fun_image_view_screen.next_image.assert_called_once()  # ty: ignore[unresolved-attribute]
 
     def test_title_view_enter(self, nav: MainScreenNavigation) -> None:
         nav._main_index_screen.is_visible = False
@@ -230,83 +230,83 @@ class TestHandleBottomKey:
         nav._bottom_title_view_screen.is_visible = True
 
         assert nav._handle_bottom_key(KEY_ENTER) is True
-        nav._on_title_activated.assert_called_once()
+        nav._on_title_activated.assert_called_once()  # ty: ignore[unresolved-attribute]
 
 
 # noinspection PyUnresolvedReferences
 class TestTreeNavMove:
     def test_no_visible_nodes(self, nav: MainScreenNavigation) -> None:
-        nav._tree_view_screen.get_visible_nodes.return_value = []
+        nav._tree_view_screen.get_visible_nodes.return_value = []  # ty: ignore[invalid-assignment]
 
         nav._tree_nav_move(1)
 
-        nav._tree_view_screen.select_node.assert_not_called()
+        nav._tree_view_screen.select_node.assert_not_called()  # ty: ignore[unresolved-attribute]
 
     def test_no_selection_delta_positive(self, nav: MainScreenNavigation) -> None:
         nodes = [MagicMock(), MagicMock(), MagicMock()]
-        nav._tree_view_screen.get_visible_nodes.return_value = nodes
-        nav._tree_view_screen.get_selected_node.return_value = None
+        nav._tree_view_screen.get_visible_nodes.return_value = nodes  # ty: ignore[invalid-assignment]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[invalid-assignment]
 
         nav._tree_nav_move(1)
 
-        nav._tree_view_screen.select_node.assert_called_with(nodes[0])
+        nav._tree_view_screen.select_node.assert_called_with(nodes[0])  # ty: ignore[unresolved-attribute]
 
     def test_no_selection_delta_negative(self, nav: MainScreenNavigation) -> None:
         nodes = [MagicMock(), MagicMock(), MagicMock()]
-        nav._tree_view_screen.get_visible_nodes.return_value = nodes
-        nav._tree_view_screen.get_selected_node.return_value = None
+        nav._tree_view_screen.get_visible_nodes.return_value = nodes  # ty: ignore[invalid-assignment]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[invalid-assignment]
 
         nav._tree_nav_move(-1)
 
-        nav._tree_view_screen.select_node.assert_called_with(nodes[2])
+        nav._tree_view_screen.select_node.assert_called_with(nodes[2])  # ty: ignore[unresolved-attribute]
 
     def test_move_down_from_middle(self, nav: MainScreenNavigation) -> None:
         nodes = [MagicMock(), MagicMock(), MagicMock()]
-        nav._tree_view_screen.get_visible_nodes.return_value = nodes
-        nav._tree_view_screen.get_selected_node.return_value = nodes[1]
+        nav._tree_view_screen.get_visible_nodes.return_value = nodes  # ty: ignore[invalid-assignment]
+        nav._tree_view_screen.get_selected_node.return_value = nodes[1]  # ty: ignore[invalid-assignment]
 
         nav._tree_nav_move(1)
 
-        nav._tree_view_screen.select_node.assert_called_with(nodes[2])
-        nav._tree_view_screen.scroll_to_node.assert_called_with(nodes[2])
+        nav._tree_view_screen.select_node.assert_called_with(nodes[2])  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.scroll_to_node.assert_called_with(nodes[2])  # ty: ignore[unresolved-attribute]
 
     def test_clamps_at_end(self, nav: MainScreenNavigation) -> None:
         nodes = [MagicMock(), MagicMock()]
-        nav._tree_view_screen.get_visible_nodes.return_value = nodes
-        nav._tree_view_screen.get_selected_node.return_value = nodes[1]
+        nav._tree_view_screen.get_visible_nodes.return_value = nodes  # ty: ignore[invalid-assignment]
+        nav._tree_view_screen.get_selected_node.return_value = nodes[1]  # ty: ignore[invalid-assignment]
 
         nav._tree_nav_move(1)
 
-        nav._tree_view_screen.select_node.assert_called_with(nodes[1])
+        nav._tree_view_screen.select_node.assert_called_with(nodes[1])  # ty: ignore[unresolved-attribute]
 
     def test_activates_title_node(self, nav: MainScreenNavigation) -> None:
         title_node = MagicMock(spec=TitleTreeViewNode)
-        nav._tree_view_screen.get_visible_nodes.return_value = [title_node]
-        nav._tree_view_screen.get_selected_node.return_value = None
+        nav._tree_view_screen.get_visible_nodes.return_value = [title_node]  # ty: ignore[invalid-assignment]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[invalid-assignment]
 
         nav._tree_nav_move(1)
 
-        nav._tree_view_manager.activate_node.assert_called_with(title_node)
+        nav._tree_view_manager.activate_node.assert_called_with(title_node)  # ty: ignore[unresolved-attribute]
 
 
 # noinspection PyUnresolvedReferences
 class TestTreeNavActivate:
     def test_no_selection_does_nothing(self, nav: MainScreenNavigation) -> None:
-        nav._tree_view_screen.get_selected_node.return_value = None
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[invalid-assignment]
 
         nav._tree_nav_activate()
 
-        nav._tree_view_manager.activate_node.assert_not_called()
+        nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[unresolved-attribute]
 
     def test_title_node_calls_on_title_activated(self, nav: MainScreenNavigation) -> None:
         selected = MagicMock(spec=TitleTreeViewNode)
-        nav._tree_view_screen.get_selected_node.return_value = selected
+        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[invalid-assignment]
 
         with patch.object(nav_module, "Clock"):
             nav._tree_nav_activate()
 
-        nav._tree_view_manager.activate_node.assert_called_with(selected)
-        nav._on_title_activated.assert_called_once()
+        nav._tree_view_manager.activate_node.assert_called_with(selected)  # ty: ignore[unresolved-attribute]
+        nav._on_title_activated.assert_called_once()  # ty: ignore[unresolved-attribute]
 
     def test_index_node_enters_bottom_focus(self, nav: MainScreenNavigation) -> None:
         node = MagicMock()
@@ -315,10 +315,10 @@ class TestTreeNavActivate:
         nav._names_index_screen.treeview_index_node = MagicMock()
         nav._locations_index_screen.treeview_index_node = MagicMock()
         # noinspection PyPropertyAccess
-        nav._tree_view_manager.speech_words_node = MagicMock()
+        nav._tree_view_manager.speech_words_node = MagicMock()  # ty: ignore[invalid-assignment]
         # noinspection PyPropertyAccess
-        nav._tree_view_manager.statistics_node = MagicMock()
-        nav._tree_view_screen.get_selected_node.return_value = node
+        nav._tree_view_manager.statistics_node = MagicMock()  # ty: ignore[invalid-assignment]
+        nav._tree_view_screen.get_selected_node.return_value = node  # ty: ignore[invalid-assignment]
         nav._main_index_screen.is_visible = True
 
         with patch.object(nav_module, "Clock"):
@@ -331,54 +331,54 @@ class TestTreeNavActivate:
         selected = MagicMock(spec=ButtonTreeViewNode)
         selected.is_open = False
         selected.nodes = [MagicMock()]
-        nav._tree_view_screen.get_selected_node.return_value = selected
+        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[invalid-assignment]
         nav._main_index_screen.treeview_index_node = MagicMock()
         nav._speech_index_screen.treeview_index_node = MagicMock()
         nav._names_index_screen.treeview_index_node = MagicMock()
         nav._locations_index_screen.treeview_index_node = MagicMock()
         # noinspection PyPropertyAccess
-        nav._tree_view_manager.speech_words_node = MagicMock()
+        nav._tree_view_manager.speech_words_node = MagicMock()  # ty: ignore[invalid-assignment]
         # noinspection PyPropertyAccess
-        nav._tree_view_manager.statistics_node = MagicMock()
+        nav._tree_view_manager.statistics_node = MagicMock()  # ty: ignore[invalid-assignment]
         nav._search_screen.is_visible = False
 
         with patch.object(nav_module, "Clock") as mock_clock:
             nav._tree_nav_activate()
 
-        nav._tree_view_manager.activate_node.assert_called_with(selected)
+        nav._tree_view_manager.activate_node.assert_called_with(selected)  # ty: ignore[unresolved-attribute]
         mock_clock.schedule_once.assert_called_once()
 
 
 # noinspection PyUnresolvedReferences
 class TestTreeNavCollapseToParent:
     def test_no_selection(self, nav: MainScreenNavigation) -> None:
-        nav._tree_view_screen.get_selected_node.return_value = None
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[invalid-assignment]
 
         nav._tree_nav_collapse_to_parent()
 
-        nav._tree_view_manager.activate_node.assert_not_called()
+        nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[unresolved-attribute]
 
     def test_open_button_node_collapses(self, nav: MainScreenNavigation) -> None:
         selected = MagicMock(spec=ButtonTreeViewNode)
         selected.is_open = True
         selected.nodes = [MagicMock()]
-        nav._tree_view_screen.get_selected_node.return_value = selected
+        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[invalid-assignment]
 
         nav._tree_nav_collapse_to_parent()
 
-        nav._tree_view_manager.activate_node.assert_called_with(selected)
+        nav._tree_view_manager.activate_node.assert_called_with(selected)  # ty: ignore[unresolved-attribute]
 
     def test_child_node_selects_parent(self, nav: MainScreenNavigation) -> None:
         parent = MagicMock(spec=ButtonTreeViewNode)
         parent.is_open = True
         selected = MagicMock()
         selected.parent_node = parent
-        nav._tree_view_screen.get_selected_node.return_value = selected
+        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[invalid-assignment]
 
         nav._tree_nav_collapse_to_parent()
 
-        nav._tree_view_manager.activate_node.assert_called_with(parent)
-        nav._tree_view_screen.scroll_to_node.assert_called_with(parent)
+        nav._tree_view_manager.activate_node.assert_called_with(parent)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.scroll_to_node.assert_called_with(parent)  # ty: ignore[unresolved-attribute]
 
     def test_child_with_closed_parent_selects_without_activating(
         self, nav: MainScreenNavigation
@@ -387,12 +387,12 @@ class TestTreeNavCollapseToParent:
         parent.is_open = False
         selected = MagicMock()
         selected.parent_node = parent
-        nav._tree_view_screen.get_selected_node.return_value = selected
+        nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[invalid-assignment]
 
         nav._tree_nav_collapse_to_parent()
 
-        nav._tree_view_screen.select_node.assert_called_with(parent)
-        nav._tree_view_screen.scroll_to_node.assert_called_with(parent)
+        nav._tree_view_screen.select_node.assert_called_with(parent)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.scroll_to_node.assert_called_with(parent)  # ty: ignore[unresolved-attribute]
 
 
 class TestFocusSaveRestore:
@@ -451,7 +451,7 @@ class TestEnterBottomFocus:
 
         nav.enter_bottom_focus()
 
-        nav._main_index_screen.enter_nav_focus.assert_called_once()
+        nav._main_index_screen.enter_nav_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
 
 
 class TestGetActiveNavScreen:
@@ -488,7 +488,7 @@ class TestEnterBottomFocusIfIndexVisible:
         nav.enter_bottom_focus_if_index_visible()
 
         assert nav.is_in_bottom_focus
-        nav._search_screen.enter_nav_focus_at_last_result.assert_called_once()
+        nav._search_screen.enter_nav_focus_at_last_result.assert_called_once()  # ty: ignore[unresolved-attribute]
 
     def test_index_screen_visible(self, nav: MainScreenNavigation) -> None:
         nav._search_screen.is_visible = False

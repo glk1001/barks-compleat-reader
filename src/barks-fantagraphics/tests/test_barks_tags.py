@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 from enum import Enum  # For creating mock enums in tests
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -141,7 +142,7 @@ def test_validate_invalid_page_type_in_barks_tagged_pages() -> None:
 
 def test_validate_invalid_category_key_in_barks_tag_categories() -> None:
     invalid_data_content = deepcopy(barks_tags.BARKS_TAG_CATEGORIES)
-    invalid_data_content["NOT_A_CATEGORY_ENUM"] = [Tags.FIRE]
+    invalid_data_content["NOT_A_CATEGORY_ENUM"] = [Tags.FIRE]  # ty: ignore[invalid-assignment]
     with patch.dict(barks_tags.BARKS_TAG_CATEGORIES, invalid_data_content, clear=True):
         with pytest.raises(AssertionError, match="Invalid category key"):
             barks_tags.validate_tag_data()
@@ -152,7 +153,8 @@ def test_validate_invalid_item_in_barks_tag_categories() -> None:
     # Ensure TagCategories.THINGS exists
     if TagCategories.THINGS not in invalid_data_content:
         invalid_data_content[TagCategories.THINGS] = []
-    invalid_data_content[TagCategories.THINGS].append("NOT_A_TAG_OR_GROUP_ENUM")
+    # noinspection LongLine
+    invalid_data_content[TagCategories.THINGS].append("NOT_A_TAG_OR_GROUP_ENUM")  # ty: ignore[invalid-argument-type]
 
     with patch.dict(barks_tags.BARKS_TAG_CATEGORIES, invalid_data_content, clear=True):
         with pytest.raises(
@@ -164,7 +166,7 @@ def test_validate_invalid_item_in_barks_tag_categories() -> None:
 
 def test_validate_invalid_group_key_in_barks_tag_groups() -> None:
     invalid_data_content = deepcopy(barks_tags.BARKS_TAG_GROUPS)
-    invalid_data_content["NOT_A_GROUP_ENUM"] = [Tags.FIRE]
+    invalid_data_content["NOT_A_GROUP_ENUM"] = [Tags.FIRE]  # ty: ignore[invalid-assignment]
     with patch.dict(barks_tags.BARKS_TAG_GROUPS, invalid_data_content, clear=True):
         with pytest.raises(AssertionError, match="Invalid group key"):
             barks_tags.validate_tag_data()
@@ -175,7 +177,8 @@ def test_validate_invalid_tag_in_barks_tag_groups() -> None:
     # Ensure TagGroups.AFRICA exists
     if TagGroups.AFRICA not in invalid_data_content:
         invalid_data_content[TagGroups.AFRICA] = []
-    invalid_data_content[TagGroups.AFRICA].append("NOT_A_TAG_ENUM")
+    # noinspection LongLine
+    invalid_data_content[TagGroups.AFRICA].append("NOT_A_TAG_ENUM")  # ty: ignore[invalid-argument-type]
 
     with patch.dict(barks_tags.BARKS_TAG_GROUPS, invalid_data_content, clear=True):
         with pytest.raises(AssertionError, match=r"Invalid tag .* in group .* Must be Tags"):
@@ -229,7 +232,7 @@ def test_barks_tag_categories_titles_computation() -> None:
 
 
 def test_barks_character_tag_groups() -> None:
-    character_groups = BARKS_TAG_CATEGORIES[TagCategories.CHARACTERS]
+    character_groups = cast("list[TagGroups]", BARKS_TAG_CATEGORIES[TagCategories.CHARACTERS])
     for tag_group in character_groups:
         mutually_exclusive_groups = character_groups.copy()
         mutually_exclusive_groups.remove(tag_group)

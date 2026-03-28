@@ -8,11 +8,4 @@ exclude = [
     "**/scraps",
     "**/benchmarks",
     "**/pyarmor_runtime_000000",
-    # Excluded: heavy use of unittest.mock (spec'd MagicMock) that ty cannot type-check
-    "src/barks-fantagraphics/tests/test_barks_tags.py",
-    "src/barks-fantagraphics/tests/test_panel_bounding.py",
-    "src/barks-fantagraphics/tests/test_whoosh_search_engine.py",
-    "src/barks-reader/tests/unit/test_image_selector.py",
-    "src/barks-reader/tests/unit/test_main_screen_nav.py",
-    "src/barks-reader/tests/unit/test_main_screen_window.py",
 ]

@@ -4,6 +4,7 @@ from collections import Counter, defaultdict
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import cast
 
 from pyuca import Collator
 from whoosh.analysis import STOP_WORDS, LowercaseFilter, StopFilter
@@ -61,10 +62,10 @@ def _build_curated_entity_sets() -> dict[EntityType, set[str]]:
 
 
 def _filter_entities_to_curated(
-    entities: dict[str, set[str]], curated_sets: dict[EntityType, set[str]]
-) -> dict[str, set[str]]:
+    entities: dict[EntityType, set[str]], curated_sets: dict[EntityType, set[str]]
+) -> dict[EntityType, set[str]]:
     """Keep only curated entity names, normalized to their canonical casing."""
-    filtered: dict[str, set[str]] = {}
+    filtered: dict[EntityType, set[str]] = {}
     for entity_type in ENTITY_TYPES:
         curated = curated_sets.get(EntityType(entity_type), set())
         names = entities.get(entity_type, set())
@@ -440,7 +441,9 @@ class SearchEngineCreator(SearchEngine):
                         entities = None
 
                     if entities is not None:
-                        entities = _filter_entities_to_curated(entities, curated_sets)
+                        entities = _filter_entities_to_curated(
+                            cast("dict[EntityType, set[str]]", entities), curated_sets
+                        )
                         entity_kwargs = {
                             f"entities_{et}": ",".join(sorted(entities.get(et, set())))
                             for et in ENTITY_TYPES
