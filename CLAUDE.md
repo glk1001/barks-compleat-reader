@@ -62,6 +62,14 @@ bash scripts/build.sh
 
 ## Architecture
 
+### Cross-Repository Dependencies
+
+`src/barks-fantagraphics/` and `src/comic-utils/` are also consumed by sibling repositories:
+- `../barks-ocr/` — OCR pipeline
+- `../barks-comic-building/` — comic image build pipeline
+
+Breaking changes to the public API of either package require coordinated updates in those repos.
+
 ### Source Packages
 
 All code lives under `src/`, split into four packages managed as a **uv workspace**. Each has its own `pyproject.toml` and is installed as an editable package into the shared `.venv` — no `PYTHONPATH` configuration needed for development or tooling.
