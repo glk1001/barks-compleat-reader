@@ -2,7 +2,8 @@ from enum import IntEnum, auto
 
 
 class Issues(IntEnum):
-    CH = 0
+    ANDERS = 0
+    CH = auto()
     CID = auto()
     CP = auto()
     CS = auto()
@@ -23,6 +24,7 @@ class Issues(IntEnum):
 
 
 SHORT_ISSUE_NAME = [
+    "ANDERS",
     "CG",
     "CID",
     "CP",
@@ -44,6 +46,7 @@ SHORT_ISSUE_NAME = [
 ]
 
 ISSUE_NAME = [
+    "Anders And & Co",
     "Cheerios Giveaway",
     "Christmas in Disneyland",
     "Christmas Parade",
