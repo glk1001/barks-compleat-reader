@@ -1,4 +1,4 @@
-# ruff: noqa: E501
+# ruff: noqa: E501, T201, ERA001
 
 from dataclasses import dataclass
 
@@ -25,7 +25,7 @@ class PaymentInfo:
 # noinspection LongLine
 BARKS_PAYMENTS = {
     Titles.DONALD_DUCK_FINDS_PIRATE_GOLD: PaymentInfo(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, 64, 21, 5, 1942, 320.0),
-    Titles.VICTORY_GARDEN_THE: PaymentInfo(Titles.VICTORY_GARDEN_THE, 10, 23, 11, 1943, 126.25),
+    Titles.VICTORY_GARDEN_THE: PaymentInfo(Titles.VICTORY_GARDEN_THE, 10, 23, 11, 1942, 126.25),
     Titles.RABBITS_FOOT_THE: PaymentInfo(Titles.RABBITS_FOOT_THE, 10, 14, 1, 1943, 150.0),
     Titles.LIFEGUARD_DAZE: PaymentInfo(Titles.LIFEGUARD_DAZE, 10, 29, 1, 1943, 152.49),
     Titles.GOOD_DEEDS: PaymentInfo(Titles.GOOD_DEEDS, 10, 24, 2, 1943, 150.0),
@@ -534,11 +534,20 @@ BARKS_PAYMENTS = {
     Titles.BOTTLED_BATTLERS: PaymentInfo(Titles.BOTTLED_BATTLERS, 12, 21, 8, 1970, 138.0),
     Titles.MAPLE_SUGAR_TIME_HOW_SWEET_IT_IS: PaymentInfo(Titles.MAPLE_SUGAR_TIME_HOW_SWEET_IT_IS, 13, 11, 9, 1970, 149.50),
     Titles.TRAITOR_IN_THE_RANKS: PaymentInfo(Titles.TRAITOR_IN_THE_RANKS, 13, 26, 10, 1970, 149.50),
+    Titles.EAGLE_SAVERS: PaymentInfo(Titles.EAGLE_SAVERS, 12, 26, 10, 1970, 138.0),
+    Titles.STORM_DANCERS: PaymentInfo(Titles.STORM_DANCERS, 12, 4, 3, 1971,138.0),
+    Titles.HOUND_OF_THE_MOANING_HILLS: PaymentInfo(Titles.HOUND_OF_THE_MOANING_HILLS, 13, 3, 3, 1971,149.50),
+    Titles.DAY_THE_MOUNTAIN_SHOOK_THE: PaymentInfo(Titles.DAY_THE_MOUNTAIN_SHOOK_THE, 13, 4, 5, 1971,149.50),
 }
 # fmt: on
 
 
 def validate_payment_data() -> None:
+    # TODO: Use this when all titles configured.
+    # assert len(BARKS_PAYMENTS) == len(BARKS_TITLE_INFO), (
+    #     f"Num payments = {len(BARKS_PAYMENTS)}, num titles = {len(BARKS_TITLE_INFO)}"
+    # )
+
     there_were_errors = False
     for title_info in BARKS_TITLE_INFO:
         title = title_info.title
@@ -547,7 +556,26 @@ def validate_payment_data() -> None:
             and (title not in NON_COMIC_TITLES)
             and (title not in BARKS_PAYMENTS)
         ):
-            print(f'Title "{BARKS_TITLES[title]}" has no payment info.')  # noqa: T201
+            print(f'Title "{BARKS_TITLES[title]}" has no payment info.')
             there_were_errors = True
+        elif title not in BARKS_PAYMENTS and (title not in NON_COMIC_TITLES):
+            print(f'Title "{BARKS_TITLES[title]}" has no payment info.')
+        else:
+            payment_info = BARKS_PAYMENTS[title]
+            if payment_info.accepted_day != title_info.submitted_day:
+                print(
+                    f'"{BARKS_TITLES[title]}":'
+                    f" payment day {payment_info.accepted_day} != {title_info.submitted_day}"
+                )
+            if payment_info.accepted_month != title_info.submitted_month:
+                print(
+                    f'"{BARKS_TITLES[title]}":'
+                    f" payment month {payment_info.accepted_month} != {title_info.submitted_month}"
+                )
+            if payment_info.accepted_year != title_info.submitted_year:
+                print(
+                    f'"{BARKS_TITLES[title]}":'
+                    f" payment year {payment_info.accepted_year} != {title_info.submitted_year}"
+                )
 
     assert not there_were_errors

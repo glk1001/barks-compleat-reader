@@ -10,7 +10,7 @@ from .comic_issues import (
     Issues,
 )
 
-NUM_TITLES = 660 + 4  # +4 for articles
+NUM_TITLES = 664 + 4  # +4 for articles
 
 GYRO_GEARLOOSE = "Gyro Gearloose"
 
@@ -125,6 +125,7 @@ DARKEST_AFRICA = "Darkest Africa"
 DAYS_AT_THE_LAZY_K = "Days at the Lazy K"
 DAY_DUCKBURG_GOT_DYED_THE = "The Day Duckburg Got Dyed"
 DAY_THE_FARM_STOOD_STILL_THE = "The Day the Farm Stood Still"
+DAY_THE_MOUNTAIN_SHOOK_THE = "The Day the Mountain Shook"
 DEEP_DECISION = "Deep Decision"
 DEEP_DOWN_DOINGS = "Deep Down Doings"
 DELIVERY_DILEMMA = "Delivery Dilemma"
@@ -166,6 +167,7 @@ DUCK_IN_THE_IRON_PANTS_THE = "The Duck in the Iron Pants"
 DUCK_LUCK = "Duck Luck"
 DUCK_OUT_OF_LUCK = "Duck Out of Luck"
 DUELING_TYCOONS = "Dueling Tycoons"
+EAGLE_SAVERS = "Eagle Savers"
 EARLY_TO_BUILD = "Early to Build"
 EASTER_ELECTION_THE = "The Easter Election"
 EASY_MOWING = "Easy Mowing"
@@ -276,6 +278,7 @@ HORSERADISH_STORY_THE = "The Horseradish Story"
 HORSESHOE_LUCK = "Horseshoe Luck"
 HOSPITALITY_WEEK = "Hospitality Week"
 HOUND_HOUNDER = "Hound Hounder"
+HOUND_OF_THE_MOANING_HILLS = "Hound of the Moaning Hills"
 HOUND_OF_THE_WHISKERVILLES = "Hound of the Whiskervilles"
 HOUSEBOAT_HOLIDAY = "Houseboat Holiday"
 HOUSE_OF_HAUNTS = "House of Haunts"
@@ -558,6 +561,7 @@ STATUES_OF_LIMITATIONS = "Statues of Limitations"
 STATUS_SEEKER_THE = "The Status Seeker"
 STICKY_SITUATION_A = "A Sticky Situation"
 STONES_THROW_FROM_GHOST_TOWN_A = "A Stone's Throw from Ghost Town"
+STORM_DANCERS = "Storm Dancers"
 STRANGER_THAN_FICTION = "Stranger Than Fiction"
 STRANGE_SHIPWRECKS_THE = "The Strange Shipwrecks"
 STUBBORN_STORK_THE = "The Stubborn Stork"
@@ -1350,6 +1354,10 @@ class Titles(IntEnum):
     BOTTLED_BATTLERS = auto()
     MAPLE_SUGAR_TIME_HOW_SWEET_IT_IS = auto()
     TRAITOR_IN_THE_RANKS = auto()
+    EAGLE_SAVERS = auto()
+    STORM_DANCERS = auto()
+    HOUND_OF_THE_MOANING_HILLS = auto()
+    DAY_THE_MOUNTAIN_SHOOK_THE = auto()
     # Not comics below!
     GEORGE_LUCAS___AN_APPRECIATION = auto()
     RICH_TOMASSO___ON_COLORING_BARKS = auto()
@@ -2020,6 +2028,10 @@ BARKS_TITLES = [
     BOTTLED_BATTLERS,
     MAPLE_SUGAR_TIME_HOW_SWEET_IT_IS,
     TRAITOR_IN_THE_RANKS,
+    EAGLE_SAVERS,
+    STORM_DANCERS,
+    HOUND_OF_THE_MOANING_HILLS,
+    DAY_THE_MOUNTAIN_SHOOK_THE,
     # Not comics below!
     GEORGE_LUCAS___AN_APPRECIATION,
     RICH_TOMASSO___ON_COLORING_BARKS,
