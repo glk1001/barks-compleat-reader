@@ -249,6 +249,8 @@ BAR = "Barry Englin Grossman"
 COL = "Colleen Winkler"
 NEA = "Nea Atkina A.E. and Kneon Transitt"
 EGMONT = "Egmont"
+MARJ = "Marie Javins"
+SUMH = "Summer Hinton"
 
 
 @dataclass(frozen=True, slots=True)
