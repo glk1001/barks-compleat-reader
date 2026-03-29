@@ -483,8 +483,7 @@ def _build_comic_book(
     submitted_date = get_formatted_submitted_date(fanta_info.comic_book_info)
 
     publication_text = get_main_publication_info(story_title, fanta_info, fanta_book)
-    if "extra_pub_info" in config["info"]:
-        publication_text += "\n" + config["info"]["extra_pub_info"]
+    extra_pub_info = config["info"].get("extra_pub_info", "")
 
     # noinspection PyTypeChecker
     config_page_images = [
@@ -518,6 +517,7 @@ def _build_comic_book(
         publication_date=publication_date,
         submitted_date=submitted_date,
         publication_text=publication_text,
+        extra_pub_info=extra_pub_info,
         fanta_book=fanta_book,
         fanta_info=fanta_info,
         solo_page_keys=solo_page_keys,

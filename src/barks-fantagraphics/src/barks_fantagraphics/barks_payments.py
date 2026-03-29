@@ -551,14 +551,13 @@ def validate_payment_data() -> None:
     there_were_errors = False
     for title_info in BARKS_TITLE_INFO:
         title = title_info.title
-        if (
-            (title not in ONE_PAGERS)
-            and (title not in NON_COMIC_TITLES)
-            and (title not in BARKS_PAYMENTS)
-        ):
+        if title in NON_COMIC_TITLES:
+            continue
+
+        if (title not in ONE_PAGERS) and (title not in BARKS_PAYMENTS):
             print(f'Title "{BARKS_TITLES[title]}" has no payment info.')
             there_were_errors = True
-        elif title not in BARKS_PAYMENTS and (title not in NON_COMIC_TITLES):
+        elif title not in BARKS_PAYMENTS:
             print(f'Title "{BARKS_TITLES[title]}" has no payment info.')
         else:
             payment_info = BARKS_PAYMENTS[title]

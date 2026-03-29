@@ -151,6 +151,7 @@ class ComicBook:
     publication_date: str
     submitted_date: str
     publication_text: str
+    extra_pub_info: str
 
     fanta_book: FantaBook
     fanta_info: FantaComicBookInfo
@@ -177,6 +178,11 @@ class ComicBook:
         assert self.series_name != ""
         assert self.number_in_series > 0
         assert self.title or not self.is_barks_title()
+
+        if self.extra_pub_info:
+            object.__setattr__(
+                self, "publication_text", self.publication_text + "\n" + self.extra_pub_info
+            )
 
     def is_barks_title(self) -> bool:
         return self.fanta_info.comic_book_info.is_barks_title

@@ -151,6 +151,7 @@ def _make_comic(
         config_page_images=pages,
         page_images_in_order=_get_pages_in_order(pages),
         publication_date="June 1948",
+        extra_pub_info="",
         submitted_date="March 15, 1948",
         publication_text="Published in WDCS 91",
         fanta_book=_make_fanta_book(volume),
