@@ -32,7 +32,8 @@ if TYPE_CHECKING:
 
 FUN_IMAGE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
-MAX_IMAGES_HISTORY = 20
+_MAX_IMAGES_HISTORY = 20
+_DEBUG = False
 
 
 class FunImageViewScreen(BoxLayout):
@@ -59,7 +60,7 @@ class FunImageViewScreen(BoxLayout):
         super().__init__(**kwargs)
 
         self._load_image: Callable[[ImageInfo], None] | None = None
-        self._image_history: deque[ImageInfo] = deque(maxlen=MAX_IMAGES_HISTORY)
+        self._image_history: deque[ImageInfo] = deque(maxlen=_MAX_IMAGES_HISTORY)
         self._current_history_index = -1
         self._navigation = ReaderNavigation(self.MAX_WINDOW_WIDTH, 0.54, 0.98)
 
@@ -95,16 +96,17 @@ class FunImageViewScreen(BoxLayout):
         x_rel = round(touch.x - self.x)
         y_rel = round(touch.y - self.y)
 
-        logger.debug(
-            f"Touch down event: self.x,self.y = {self.x},{self.y},"
-            f" touch.x,touch.y = {round(touch.x)},{round(touch.y)},"
-            f" window_width = {round(self.width)},"
-            f" window_height = {round(self.height)}."
-            f" x_rel,y_rel = {x_rel},{y_rel},"
-            f" x_mid = {self._navigation.x_mid},"
-            f" y_bottom_margin = {self._navigation.y_bottom_margin},"
-            f" y_top_margin = {self._navigation.y_top_margin}."
-        )
+        if _DEBUG:
+            logger.debug(
+                f"Touch down event: self.x,self.y = {self.x},{self.y},"
+                f" touch.x,touch.y = {round(touch.x)},{round(touch.y)},"
+                f" window_width = {round(self.width)},"
+                f" window_height = {round(self.height)}."
+                f" x_rel,y_rel = {x_rel},{y_rel},"
+                f" x_mid = {self._navigation.x_mid},"
+                f" y_bottom_margin = {self._navigation.y_bottom_margin},"
+                f" y_top_margin = {self._navigation.y_top_margin}."
+            )
 
         # Give the up-arrow button priority before margin navigation.
         if self.ids.goto_title_overlay.goto_button.collide_point(touch.x, touch.y):
