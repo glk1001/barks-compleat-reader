@@ -40,6 +40,7 @@ from barks_reader.ui.reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
     ReaderTreeBuilderEventDispatcher,
 )
+from barks_reader.ui.snapshot_applicator import SnapshotApplicator
 from barks_reader.ui.tree_view_manager import TreeViewManager
 from barks_reader.ui.user_error_handler import UserErrorHandler
 from barks_reader.ui.view_state_manager import ImageThemesChange, ImageThemesToUse, ViewStateManager
@@ -52,17 +53,10 @@ if TYPE_CHECKING:
 
     from barks_reader.core.filtered_title_lists import FilteredTitleLists
     from barks_reader.core.reader_settings import ReaderSettings
-    from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
     from barks_reader.ui.comic_book_reader import ComicBookReaderScreen
-    from barks_reader.ui.entity_index_screen import EntityIndexScreen
     from barks_reader.ui.font_manager import FontManager
-    from barks_reader.ui.fun_image_view_screen import FunImageViewScreen
-    from barks_reader.ui.main_index_screen import MainIndexScreen
     from barks_reader.ui.reader_screens import ScreenSwitchers
-    from barks_reader.ui.search_screen import SearchScreen
-    from barks_reader.ui.speech_index_screen import SpeechIndexScreen
-    from barks_reader.ui.statistics_screen import StatisticsScreen
-    from barks_reader.ui.tree_view_screen import TreeViewScreen
+    from barks_reader.ui.screen_bundle import ScreenBundle
 
 MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
@@ -82,15 +76,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         reader_tree_events: ReaderTreeBuilderEventDispatcher,
         filtered_title_lists: FilteredTitleLists,
         screen_switchers: ScreenSwitchers,
-        tree_view_screen: TreeViewScreen,
-        bottom_title_view_screen: BottomTitleViewScreen,
-        fun_image_view_screen: FunImageViewScreen,
-        main_index_screen: MainIndexScreen,
-        speech_index_screen: SpeechIndexScreen,
-        names_index_screen: EntityIndexScreen,
-        locations_index_screen: EntityIndexScreen,
-        statistics_screen: StatisticsScreen,
-        search_screen: SearchScreen,
+        screens: ScreenBundle,
         font_manager: FontManager,
         user_error_handler: UserErrorHandler,
         **kwargs: str,
@@ -102,18 +88,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._screen_switchers = screen_switchers
         self._font_manager = font_manager
         self._user_error_handler = user_error_handler
+        self._screens = screens
 
-        self._wire_screens(
-            tree_view_screen,
-            bottom_title_view_screen,
-            fun_image_view_screen,
-            main_index_screen,
-            speech_index_screen,
-            names_index_screen,
-            locations_index_screen,
-            statistics_screen,
-            search_screen,
-        )
+        self._wire_screens(screens)
 
         self._title_lists = filtered_title_lists.get_title_lists()
         resolver = ReaderFilePathsResolver(self._reader_settings.file_paths)
@@ -159,18 +136,16 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._random_title_images,
         )
 
+        applicator = SnapshotApplicator(
+            screens,
+            self._reader_settings.file_paths.barks_panels_are_encrypted,
+        )
+
         self._view_state_manager = ViewStateManager(
             self._reader_settings,
             background_views,
-            self._tree_view_screen,
-            self._bottom_title_view_screen,
-            self._fun_image_view_screen,
-            self._main_index_screen,
-            self._speech_index_screen,
-            self._names_index_screen,
-            self._locations_index_screen,
-            self._statistics_screen,
-            self._search_screen,
+            screens,
+            applicator,
             self._on_view_state_changed,
         )
 
@@ -188,13 +163,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         )
 
         self._tree_view_manager = TreeViewManager(
-            background_views,
             self._view_state_manager,
-            self._tree_view_screen,
-            self._main_index_screen,
-            self._speech_index_screen,
-            self._names_index_screen,
-            self._locations_index_screen,
+            screens,
             self._nav_coord,
             sys_file_paths=self._reader_settings.sys_file_paths,
         )
@@ -226,16 +196,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             ]
         )
         self._nav = MainScreenNavigation(
-            tree_view_screen=self._tree_view_screen,
+            screens=screens,
             tree_view_manager=self._tree_view_manager,
-            bottom_title_view_screen=self._bottom_title_view_screen,
-            fun_image_view_screen=self._fun_image_view_screen,
-            main_index_screen=self._main_index_screen,
-            speech_index_screen=self._speech_index_screen,
-            names_index_screen=self._names_index_screen,
-            locations_index_screen=self._locations_index_screen,
-            statistics_screen=self._statistics_screen,
-            search_screen=self._search_screen,
             bottom_base_view_screen=self._bottom_base_view_screen,
             on_title_activated=self.on_title_portal_image_pressed,
             enter_menu_mode=self._enter_menu_mode,
@@ -248,38 +210,21 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         self._set_initial_state()
 
-    def _wire_screens(
-        self,
-        tree_view_screen: TreeViewScreen,
-        bottom_title_view_screen: BottomTitleViewScreen,
-        fun_image_view_screen: FunImageViewScreen,
-        main_index_screen: MainIndexScreen,
-        speech_index_screen: SpeechIndexScreen,
-        names_index_screen: EntityIndexScreen,
-        locations_index_screen: EntityIndexScreen,
-        statistics_screen: StatisticsScreen,
-        search_screen: SearchScreen,
-    ) -> None:
-        self._tree_view_screen = tree_view_screen
-        self._bottom_title_view_screen = bottom_title_view_screen
-        self._fun_image_view_screen = fun_image_view_screen
-        self._main_index_screen = main_index_screen
-        self._speech_index_screen = speech_index_screen
-        self._names_index_screen = names_index_screen
-        self._locations_index_screen = locations_index_screen
-        self._statistics_screen = statistics_screen
-        self._search_screen = search_screen
+    def _wire_screens(self, screens: ScreenBundle) -> None:
+        self._tree_view_screen = screens.tree_view
+        self._bottom_title_view_screen = screens.bottom_title_view
+        self._fun_image_view_screen = screens.fun_image_view
+        self._main_index_screen = screens.main_index
+        self._speech_index_screen = screens.speech_index
+        self._names_index_screen = screens.names_index
+        self._locations_index_screen = screens.locations_index
+        self._statistics_screen = screens.statistics
+        self._search_screen = screens.search
 
         self.ids.main_layout.add_widget(self._tree_view_screen)
         self._bottom_base_view_screen = Screen(size_hint=(1, 1))
-        self._bottom_base_view_screen.add_widget(self._bottom_title_view_screen)
-        self._bottom_base_view_screen.add_widget(self._fun_image_view_screen)
-        self._bottom_base_view_screen.add_widget(self._main_index_screen)
-        self._bottom_base_view_screen.add_widget(self._speech_index_screen)
-        self._bottom_base_view_screen.add_widget(self._names_index_screen)
-        self._bottom_base_view_screen.add_widget(self._locations_index_screen)
-        self._bottom_base_view_screen.add_widget(self._statistics_screen)
-        self._bottom_base_view_screen.add_widget(self._search_screen)
+        for screen in screens.bottom_screens:
+            self._bottom_base_view_screen.add_widget(screen)
         self.ids.main_layout.add_widget(self._bottom_base_view_screen)
 
     def open_menu_dots(self, button: Button) -> None:
@@ -323,22 +268,10 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def _bind_screen_callbacks(self) -> None:
         self._tree_view_screen.on_goto_title = self._on_goto_top_view_title
 
-        self._main_index_screen.on_goto_title = self._nav_coord.navigate_to_title_with_page
-        self._main_index_screen.on_goto_background_title_func = (
-            self._nav_coord.navigate_to_chrono_title
-        )
-        self._speech_index_screen.on_goto_title = self._nav_coord.navigate_to_title_with_page
-        self._speech_index_screen.on_goto_background_title_func = (
-            self._nav_coord.navigate_to_chrono_title
-        )
-        self._names_index_screen.on_goto_title = self._nav_coord.navigate_to_title_with_page
-        self._names_index_screen.on_goto_background_title_func = (
-            self._nav_coord.navigate_to_chrono_title
-        )
-        self._locations_index_screen.on_goto_title = self._nav_coord.navigate_to_title_with_page
-        self._locations_index_screen.on_goto_background_title_func = (
-            self._nav_coord.navigate_to_chrono_title
-        )
+        for index_screen in self._screens.index_screens:
+            index_screen.on_goto_title = self._nav_coord.navigate_to_title_with_page
+            index_screen.on_goto_background_title_func = self._nav_coord.navigate_to_chrono_title
+
         self._search_screen.on_goto_title = self._nav_coord.navigate_to_search_result
         self._search_screen.on_goto_title_with_page = self._nav_coord.navigate_to_title_with_page
         self._search_screen.on_goto_background_title_func = self._nav_coord.navigate_to_chrono_title

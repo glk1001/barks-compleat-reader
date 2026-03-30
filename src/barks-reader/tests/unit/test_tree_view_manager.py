@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.tree_view_manager
@@ -11,42 +12,64 @@ from barks_reader.ui.reader_ui_classes import (
     TagGroupStoryGroupTreeViewNode,
     TitleTreeViewNode,
 )
+from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.tree_view_manager import TreeViewManager
 from barks_reader.ui.view_states import ViewStates
 
 
 @pytest.fixture
-def mock_dependencies() -> dict[str, MagicMock]:
+def screen_mocks() -> dict[str, MagicMock]:
+    return {
+        "tree_view": MagicMock(),
+        "bottom_title_view": MagicMock(),
+        "fun_image_view": MagicMock(),
+        "main_index": MagicMock(),
+        "speech_index": MagicMock(),
+        "names_index": MagicMock(),
+        "locations_index": MagicMock(),
+        "statistics": MagicMock(),
+        "search": MagicMock(),
+    }
+
+
+@pytest.fixture
+def mock_screens(screen_mocks: dict[str, MagicMock]) -> ScreenBundle:
+    return ScreenBundle(**screen_mocks)
+
+
+@pytest.fixture
+def mock_dependencies(mock_screens: ScreenBundle) -> dict[str, Any]:
     nav_coordinator = MagicMock()
     nav_coordinator.update_title.return_value = True
     return {
-        "background_views": MagicMock(),
         "view_state_manager": MagicMock(),
-        "tree_view_screen": MagicMock(),
-        "main_index_screen": MagicMock(),
-        "speech_index_screen": MagicMock(),
-        "names_index_screen": MagicMock(),
-        "locations_index_screen": MagicMock(),
+        "screens": mock_screens,
         "nav_coordinator": nav_coordinator,
     }
 
 
 @pytest.fixture
-def tree_view_manager(mock_dependencies: dict[str, MagicMock]) -> TreeViewManager:
+def tree_view_manager(
+    mock_dependencies: dict[str, Any],
+    screen_mocks: dict[str, MagicMock],
+) -> TreeViewManager:
     # We need to mock the bind calls in __init__
-    _mock_tree = mock_dependencies["tree_view_screen"].ids.reader_tree_view
+    _mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
 
     return TreeViewManager(**mock_dependencies)
 
 
 class TestTreeViewManager:
     @pytest.mark.usefixtures("tree_view_manager")
-    def test_init(self, mock_dependencies: dict[str, MagicMock]) -> None:
-        mock_tree = mock_dependencies["tree_view_screen"].ids.reader_tree_view
+    def test_init(self, screen_mocks: dict[str, MagicMock]) -> None:
+        mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
         assert mock_tree.bind.call_count == 2  # noqa: PLR2004
 
     def test_setup_and_select_node_title_node(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+        self,
+        tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, Any],
+        screen_mocks: dict[str, MagicMock],
     ) -> None:
         node = MagicMock(spec=TitleTreeViewNode)
         node.get_name.return_value = "Title Node"
@@ -55,9 +78,9 @@ class TestTreeViewManager:
         with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
             tree_view_manager.setup_and_select_node(node)
 
-            mock_dependencies["tree_view_screen"].deselect_and_close_open_nodes.assert_called_once()
-            mock_dependencies["tree_view_screen"].open_all_parent_nodes.assert_called_with(node)
-            mock_dependencies["tree_view_screen"].select_node.assert_called_with(node)
+            screen_mocks["tree_view"].deselect_and_close_open_nodes.assert_called_once()
+            screen_mocks["tree_view"].open_all_parent_nodes.assert_called_with(node)
+            screen_mocks["tree_view"].select_node.assert_called_with(node)
 
             mock_dependencies["nav_coordinator"].select_title.assert_called_once()
 
@@ -91,9 +114,12 @@ class TestTreeViewManager:
             )
 
     def test_deselect_and_close_open_nodes(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+        self,
+        tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, MagicMock],
+        screen_mocks: dict[str, MagicMock],
     ) -> None:
-        mock_dependencies["tree_view_screen"].deselect_and_close_open_nodes.return_value = 1
+        screen_mocks["tree_view"].deselect_and_close_open_nodes.return_value = 1
 
         tree_view_manager.deselect_and_close_open_nodes()
 
@@ -102,15 +128,17 @@ class TestTreeViewManager:
         )
 
     def test_go_back_to_previous_node(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+        self,
+        tree_view_manager: TreeViewManager,
+        screen_mocks: dict[str, MagicMock],
     ) -> None:
-        mock_tree = mock_dependencies["tree_view_screen"].ids.reader_tree_view
-        mock_dependencies["tree_view_screen"].deselect_and_close_open_nodes.return_value = 0
+        mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
+        screen_mocks["tree_view"].deselect_and_close_open_nodes.return_value = 0
 
         # Case 1: No previous node
         mock_tree.previous_selected_node = None
         tree_view_manager.go_back_to_previous_node()
-        mock_dependencies["tree_view_screen"].deselect_and_close_open_nodes.assert_called()
+        screen_mocks["tree_view"].deselect_and_close_open_nodes.assert_called()
 
         # Case 2: Previous node exists
         prev_node = MagicMock(spec=ButtonTreeViewNode)
@@ -164,7 +192,7 @@ class TestTreeViewManager:
                 )
 
     def test_close_siblings(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
     ) -> None:
         node = MagicMock(spec=ButtonTreeViewNode)
         sibling = MagicMock(spec=ButtonTreeViewNode)
@@ -177,14 +205,12 @@ class TestTreeViewManager:
         # noinspection PyProtectedMember
         tree_view_manager._close_siblings(node)
 
-        mock_dependencies["tree_view_screen"].ids.reader_tree_view.toggle_node.assert_called_with(
-            sibling
-        )
+        screen_mocks["tree_view"].ids.reader_tree_view.toggle_node.assert_called_with(sibling)
 
     def test_pin_parent_position_while_populating(
-        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
     ) -> None:
-        scroll_view = mock_dependencies["tree_view_screen"].ids.scroll_view
+        scroll_view = screen_mocks["tree_view"].ids.scroll_view
         scroll_view.children = [MagicMock()]  # Container
         scroll_view.to_window.return_value = (0, 100)
 

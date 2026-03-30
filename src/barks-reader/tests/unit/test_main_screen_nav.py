@@ -19,30 +19,34 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_UP,
 )
 from barks_reader.ui.reader_ui_classes import ButtonTreeViewNode, TitleTreeViewNode
+from barks_reader.ui.screen_bundle import ScreenBundle
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
 
 @pytest.fixture
-def screens() -> dict[str, MagicMock]:
+def screen_mocks() -> dict[str, MagicMock]:
     return {
-        "tree_view_screen": MagicMock(),
-        "tree_view_manager": MagicMock(),
-        "bottom_title_view_screen": MagicMock(),
-        "fun_image_view_screen": MagicMock(),
-        "main_index_screen": MagicMock(),
-        "speech_index_screen": MagicMock(),
-        "names_index_screen": MagicMock(),
-        "locations_index_screen": MagicMock(),
-        "statistics_screen": MagicMock(),
-        "search_screen": MagicMock(),
-        "bottom_base_view_screen": MagicMock(),
+        "tree_view": MagicMock(),
+        "bottom_title_view": MagicMock(),
+        "fun_image_view": MagicMock(),
+        "main_index": MagicMock(),
+        "speech_index": MagicMock(),
+        "names_index": MagicMock(),
+        "locations_index": MagicMock(),
+        "statistics": MagicMock(),
+        "search": MagicMock(),
     }
 
 
 @pytest.fixture
-def nav(screens: dict[str, MagicMock]) -> Generator[MainScreenNavigation]:
+def screens(screen_mocks: dict[str, MagicMock]) -> ScreenBundle:
+    return ScreenBundle(**screen_mocks)
+
+
+@pytest.fixture
+def nav(screens: ScreenBundle) -> Generator[MainScreenNavigation]:
     on_title_activated = MagicMock()
     enter_menu_mode = MagicMock()
     handle_menu_key = MagicMock(return_value=True)
@@ -53,7 +57,9 @@ def nav(screens: dict[str, MagicMock]) -> Generator[MainScreenNavigation]:
         patch.object(nav_module, "clear_focus_highlight"),
     ):
         n = MainScreenNavigation(
-            **screens,
+            screens=screens,
+            tree_view_manager=MagicMock(),
+            bottom_base_view_screen=MagicMock(),
             on_title_activated=on_title_activated,
             enter_menu_mode=enter_menu_mode,
             handle_menu_key=handle_menu_key,

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.main_screen
 import pytest
 from barks_reader.ui.main_screen import MainScreen
+from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.view_states import ViewStates
 from kivy.uix.screenmanager import Screen
 
@@ -16,24 +17,27 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture
-def mock_dependencies() -> dict[str, MagicMock]:
+def mock_dependencies() -> dict[str, Any]:
+    screens = ScreenBundle(
+        tree_view=MagicMock(),
+        bottom_title_view=MagicMock(),
+        fun_image_view=MagicMock(),
+        main_index=MagicMock(),
+        speech_index=MagicMock(),
+        names_index=MagicMock(),
+        locations_index=MagicMock(),
+        statistics=MagicMock(),
+        search=MagicMock(),
+    )
     return {
         "comics_database": MagicMock(),
         "reader_settings": MagicMock(),
         "reader_tree_events": MagicMock(),
         "filtered_title_lists": MagicMock(),
         "screen_switchers": MagicMock(),
-        "tree_view_screen": MagicMock(),
-        "bottom_title_view_screen": MagicMock(),
-        "fun_image_view_screen": MagicMock(),
-        "main_index_screen": MagicMock(),
-        "speech_index_screen": MagicMock(),
-        "names_index_screen": MagicMock(),
-        "locations_index_screen": MagicMock(),
-        "statistics_screen": MagicMock(),
+        "screens": screens,
         "font_manager": MagicMock(),
         "user_error_handler": MagicMock(),
-        "search_screen": MagicMock(),
     }
 
 

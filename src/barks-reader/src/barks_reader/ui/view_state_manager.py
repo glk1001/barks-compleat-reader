@@ -3,15 +3,10 @@ from __future__ import annotations
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
-from comic_utils.timing import Timing
 from loguru import logger
 
-from barks_reader.core.image_selector import ImageInfo, get_title_str
-from barks_reader.core.reader_consts_and_types import CLOSE_TO_ZERO
 from barks_reader.core.reader_formatter import get_clean_text_without_extra
 from barks_reader.ui.background_views import ImageThemes
-from barks_reader.ui.panel_texture_loader import PanelTextureLoader
-from barks_reader.ui.view_states import ViewStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -21,19 +16,12 @@ if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
 
-    # noinspection PyProtectedMember
-    from kivy.core.image import Texture
-
+    from barks_reader.core.image_selector import ImageInfo
     from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.ui.background_views import BackgroundViews
-    from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
-    from barks_reader.ui.entity_index_screen import EntityIndexScreen
-    from barks_reader.ui.fun_image_view_screen import FunImageViewScreen
-    from barks_reader.ui.main_index_screen import MainIndexScreen
-    from barks_reader.ui.search_screen import SearchScreen
-    from barks_reader.ui.speech_index_screen import SpeechIndexScreen
-    from barks_reader.ui.statistics_screen import StatisticsScreen
-    from barks_reader.ui.tree_view_screen import TreeViewScreen
+    from barks_reader.ui.screen_bundle import ScreenBundle
+    from barks_reader.ui.snapshot_applicator import SnapshotApplicator
+    from barks_reader.ui.view_states import ViewStates
 
 
 class ImageThemesToUse(Enum):
@@ -53,68 +41,42 @@ class ViewStateManager:
         self,
         reader_settings: ReaderSettings,
         background_views: BackgroundViews,
-        tree_view_screen: TreeViewScreen,
-        bottom_title_view_screen: BottomTitleViewScreen,
-        fun_image_view_screen: FunImageViewScreen,
-        main_index_screen: MainIndexScreen,
-        speech_index_screen: SpeechIndexScreen,
-        names_index_screen: EntityIndexScreen,
-        locations_index_screen: EntityIndexScreen,
-        statistics_screen: StatisticsScreen,
-        search_screen: SearchScreen,
+        screens: ScreenBundle,
+        applicator: SnapshotApplicator,
         on_view_state_changed_func: Callable[[ViewStates], None],
     ) -> None:
         self._reader_settings = reader_settings
         self._background_views = background_views
+        self._applicator = applicator
 
-        self._tree_view_screen = tree_view_screen
-        self._bottom_title_view_screen = bottom_title_view_screen
-        self._fun_image_view_screen = fun_image_view_screen
-        self._main_index_screen = main_index_screen
-        self._speech_index_screen = speech_index_screen
-        self._names_index_screen = names_index_screen
-        self._locations_index_screen = locations_index_screen
-        self._statistics_screen = statistics_screen
-        self._search_screen = search_screen
-        self._on_view_state_changed = on_view_state_changed_func
+        self._bottom_title_view_screen = screens.bottom_title_view
+        self._fun_image_view_screen = screens.fun_image_view
+        self._search_screen = screens.search
 
         self._fun_image_view_screen.set_load_image_func(self._load_new_fun_view_image)
 
-        self._top_view_texture_loader = PanelTextureLoader(
-            self._reader_settings.file_paths.barks_panels_are_encrypted
-        )
-        self._fun_view_texture_loader = PanelTextureLoader(
-            self._reader_settings.file_paths.barks_panels_are_encrypted
-        )
-        self._bottom_title_view_texture_loader = PanelTextureLoader(
-            self._reader_settings.file_paths.barks_panels_are_encrypted
-        )
-        self._search_texture_loader = PanelTextureLoader(
-            self._reader_settings.file_paths.barks_panels_are_encrypted
-        )
+        self._on_view_state_changed = on_view_state_changed_func
 
-        # Take ownership of the view-specific state
-        self._top_view_image_info: ImageInfo = ImageInfo()
-        self._bottom_view_title_image_info: ImageInfo = ImageInfo()
-        self._bottom_view_fun_image_info: ImageInfo = ImageInfo()
         self._bottom_view_fun_image_themes: set[ImageThemes] | None = None
         self._bottom_view_fun_custom_image_themes: set[ImageThemes] = set(ImageThemes)
 
         # Set initial visibilities
-        self._bottom_title_view_screen.is_visible = False
-        self._fun_image_view_screen.is_visible = False
-        self._main_index_screen.is_visible = False
-        self._speech_index_screen.is_visible = False
-        self._names_index_screen.is_visible = False
-        self._locations_index_screen.is_visible = False
-        self._statistics_screen.is_visible = False
-        self._search_screen.is_visible = False
+        screens.bottom_title_view.is_visible = False
+        screens.fun_image_view.is_visible = False
+        screens.main_index.is_visible = False
+        screens.speech_index.is_visible = False
+        screens.names_index.is_visible = False
+        screens.locations_index.is_visible = False
+        screens.statistics.is_visible = False
+        screens.search.is_visible = False
 
     def get_top_view_image_info(self) -> ImageInfo:
-        return self._top_view_image_info
+        """Return the last-applied top view image info."""
+        return self._applicator.get_prev_top_view_image_info()
 
     def get_bottom_view_fun_image_info(self) -> ImageInfo:
-        return self._bottom_view_fun_image_info
+        """Return the last-applied fun view image info."""
+        return self._applicator.get_prev_fun_view_image_info()
 
     def bottom_view_fun_image_themes_changed(self, themes_to_use: ImageThemesToUse) -> None:
         if themes_to_use == ImageThemesToUse.ALL:
@@ -160,7 +122,12 @@ class ViewStateManager:
         self._background_views.set_fun_image_themes(self._bottom_view_fun_image_themes)
         self._background_views.set_view_state(view_state)
 
-        self._set_views()
+        snapshot = self._background_views.compute_snapshot()
+        self._applicator.apply(snapshot)
+
+        # Reset the title image file now that we've used it.
+        self._background_views.set_bottom_view_title_image_file(None)
+
         self._on_view_state_changed(view_state)
 
     def update_search_background(self, title: Titles) -> None:
@@ -168,11 +135,10 @@ class ViewStateManager:
         search_image_info = self._background_views.get_search_screen_image_info()
         if search_image_info.filename:
             self._search_screen.set_background_image(search_image_info)
-
-            def apply_search(tex: Texture) -> None:
-                self._search_screen.image_texture = tex
-
-            self._load_texture(self._search_texture_loader, search_image_info, apply_search)
+            self._applicator.load_search_texture(
+                search_image_info,
+                lambda tex: setattr(self._search_screen, "image_texture", tex),
+            )
 
     def change_background_views(self) -> None:
         logger.debug("Changing background views.")
@@ -207,22 +173,6 @@ class ViewStateManager:
         # TODO: Not sure how to deal with 'ty' and **args.
         self.set_view_state(view_state, **args)  # ty: ignore[invalid-argument-type]
 
-    def _set_views(self) -> None:
-        """Update all the visual components of the main screen."""
-        self._set_top_view_image()
-        self._set_fun_view()
-        self._set_bottom_view()
-        self._set_index_view()
-
-        self._fun_image_view_screen.goto_title_button_active = (
-            self._fun_image_view_screen.fun_view_from_title
-            and (not self._bottom_title_view_screen.is_visible)
-        )
-
-        # Reset the title image file now that we've used it. This makes sure we can get
-        # a random image next time around.
-        self._background_views.set_bottom_view_title_image_file(None)
-
     def set_title(
         self, fanta_info: FantaComicBookInfo, title_image_file: PanelPath | None = None
     ) -> None:
@@ -248,177 +198,6 @@ class ViewStateManager:
 
         self._bottom_title_view_screen.set_title_view(fanta_info)
 
-    @staticmethod
-    def _load_texture(
-        texture_loader: PanelTextureLoader,
-        image_info: ImageInfo,
-        apply_texture: Callable[[Texture], None],
-    ) -> None:
-        image_filename = image_info.filename
-
-        timing = Timing()
-
-        def on_ready(tex: Texture, err: Exception) -> None:
-            if err:
-                raise RuntimeError(err)
-            assert tex is not None
-
-            apply_texture(tex)
-
-            assert image_filename is not None
-            logger.debug(
-                f'Time taken to load image "{image_filename.name}" was'
-                f" {timing.get_elapsed_time_with_unit()}."
-            )
-
-        assert image_info.filename is not None
-        texture_loader.load_texture(image_filename, on_ready)  # ty:ignore[invalid-argument-type]
-
-    def _set_top_view_image(self) -> None:
-        """Set the image and properties for the top view (behind the TreeView)."""
-        self._top_view_image_info = self._background_views.get_top_view_image_info()
-
-        logger.debug(f"Setting new top view: {self._top_view_image_info.filename}.")
-
-        def apply(tex: Texture) -> None:
-            self._tree_view_screen.top_view_image_opacity = (
-                self._background_views.get_top_view_image_opacity()
-            )
-            self._tree_view_screen.top_view_image_fit_mode = self._top_view_image_info.fit_mode
-            self._tree_view_screen.top_view_image_color = (
-                self._background_views.get_top_view_image_color()
-            )
-            self._tree_view_screen.top_view_image_texture = tex
-
-            assert self._top_view_image_info.filename is not None
-
-        self._load_texture(self._top_view_texture_loader, self._top_view_image_info, apply)
-
-        assert self._top_view_image_info.from_title is not None
-        self._tree_view_screen.set_title(self._top_view_image_info.from_title)
-
-    def _set_fun_view(self) -> None:
-        """Set the image and properties for the 'fun' bottom view."""
-        next_opacity = self._background_views.get_bottom_view_fun_image_opacity()
-        self._fun_image_view_screen.is_visible = next_opacity > (1.0 - CLOSE_TO_ZERO)
-        if not self._fun_image_view_screen.is_visible:
-            return
-
-        if not self._background_views.has_bottom_view_fun_image_info():
-            return
-
-        current_fun_view_info = self._bottom_view_fun_image_info
-        next_fun_view_info = self._background_views.get_bottom_view_fun_image_info()
-
-        logger.debug(
-            f"Setting new fun view:"
-            f' current from title = "{get_title_str(current_fun_view_info.from_title)}",'
-            f' next from title = "{get_title_str(next_fun_view_info.from_title)}",'
-            f" next_opacity = {next_opacity}."
-        )
-
-        if current_fun_view_info.from_title == next_fun_view_info.from_title:
-            return
-
-        self._bottom_view_fun_image_info = next_fun_view_info
-
-        if not self._bottom_view_fun_image_info.filename:
-            self._fun_image_view_screen.image_texture = None
-        else:
-            self._load_fun_view_image()
-            self._fun_image_view_screen.set_last_loaded_image_info(self._bottom_view_fun_image_info)
-
-    def _load_fun_view_image(self) -> None:
-        def apply(tex: Texture) -> None:
-            self._fun_image_view_screen.image_fit_mode = self._bottom_view_fun_image_info.fit_mode
-            self._fun_image_view_screen.image_color = (
-                self._background_views.get_bottom_view_fun_image_color()
-            )
-            self._fun_image_view_screen.image_texture = tex
-
-        self._load_texture(self._fun_view_texture_loader, self._bottom_view_fun_image_info, apply)
-
     def _load_new_fun_view_image(self, image_info: ImageInfo) -> None:
-        def apply(tex: Texture) -> None:
-            self._fun_image_view_screen.image_texture = tex
-
-        self._load_texture(self._fun_view_texture_loader, image_info, apply)
-
-        self._bottom_view_fun_image_info = image_info
+        self._applicator.load_new_fun_view_image(image_info)
         self._background_views.set_bottom_view_fun_image(image_info)
-
-    def _set_bottom_view(self) -> None:
-        """Set the image and properties for the title information bottom view."""
-        opacity = self._background_views.get_bottom_view_title_opacity()
-
-        logger.debug(f"Setting new bottom view opacity to {opacity}.")
-
-        self._bottom_title_view_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
-
-        self._bottom_view_title_image_info = (
-            self._background_views.get_bottom_view_title_image_info()
-        )
-
-        if not self._bottom_view_title_image_info.filename:
-            self._bottom_title_view_screen.title_image_texture = None
-        else:
-
-            def apply(tex: Texture) -> None:
-                self._bottom_title_view_screen.title_image_fit_mode = (
-                    self._bottom_view_title_image_info.fit_mode
-                )
-                self._bottom_title_view_screen.title_image_color = (
-                    self._background_views.get_bottom_view_title_image_color()
-                )
-                self._bottom_title_view_screen.title_image_texture = tex
-
-            self._load_texture(
-                self._bottom_title_view_texture_loader, self._bottom_view_title_image_info, apply
-            )
-
-    def _set_index_view(self) -> None:
-        opacity = self._background_views.get_main_index_view_opacity()
-        self._main_index_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
-
-        opacity = self._background_views.get_speech_index_view_opacity()
-        self._speech_index_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
-
-        opacity = self._background_views.get_names_index_view_opacity()
-        self._names_index_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
-
-        opacity = self._background_views.get_locations_index_view_opacity()
-        self._locations_index_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
-
-        opacity = self._background_views.get_statistics_view_opacity()
-        self._statistics_screen.is_visible = opacity > (1.0 - CLOSE_TO_ZERO)
-
-        opacity = self._background_views.get_search_screen_opacity()
-        search_visible = opacity > (1.0 - CLOSE_TO_ZERO)
-        self._search_screen.is_visible = search_visible
-        if search_visible:
-            view_state = self._background_views.get_view_state()
-            if view_state == ViewStates.ON_TITLE_SEARCH_NODE:
-                self._search_screen.set_mode("Title")
-            elif view_state == ViewStates.ON_TAG_SEARCH_NODE:
-                self._search_screen.set_mode("Tag")
-            elif view_state == ViewStates.ON_WORD_SEARCH_NODE:
-                self._search_screen.set_mode("Word")
-
-            search_image_info = self._background_views.get_search_screen_image_info()
-            if search_image_info.filename:
-                self._search_screen.set_background_image(search_image_info)
-
-                def apply_search(tex: Texture) -> None:
-                    self._search_screen.image_texture = tex
-
-                self._load_texture(self._search_texture_loader, search_image_info, apply_search)
-
-        logger.debug(
-            f"Setting new index view."
-            f" Main index visibility: {self._main_index_screen.is_visible}."
-            f" Speech index visibility: {self._speech_index_screen.is_visible}."
-            f" Names index visibility: {self._names_index_screen.is_visible}."
-            f" Locations index visibility: {self._locations_index_screen.is_visible}."
-            f" Statistics visibility: {self._statistics_screen.is_visible}."
-            f" Search visibility: {self._search_screen.is_visible}."
-        )

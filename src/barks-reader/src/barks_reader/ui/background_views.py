@@ -35,6 +35,14 @@ from barks_reader.core.image_selector import FIT_MODE_COVER, ImageInfo, ImageSel
 from barks_reader.core.reader_colors import RandomColorTint
 from barks_reader.core.reader_file_paths import ALL_TYPES, FileTypes
 from barks_reader.core.reader_formatter import get_formatted_color
+from barks_reader.core.view_snapshot import (
+    FunViewSnapshot,
+    ScreenVisibility,
+    SearchViewSnapshot,
+    TitleViewSnapshot,
+    TopViewSnapshot,
+    ViewSnapshot,
+)
 from barks_reader.ui.view_states import ViewStates
 
 if TYPE_CHECKING:
@@ -120,6 +128,11 @@ _BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES = (
     - _BOTTOM_VIEW_NAMES_INDEX_OPACITY_1_STATES
     - _BOTTOM_VIEW_LOCATIONS_INDEX_OPACITY_1_STATES
 )
+_SEARCH_MODE_MAP: dict[ViewStates, str] = {
+    ViewStates.ON_TITLE_SEARCH_NODE: "Title",
+    ViewStates.ON_TAG_SEARCH_NODE: "Tag",
+    ViewStates.ON_WORD_SEARCH_NODE: "Word",
+}
 
 
 # TODO: Consolidate views and currents into classes.
@@ -236,59 +249,8 @@ class BackgroundViews:
     def get_view_state(self) -> ViewStates:
         return self._view_state
 
-    def get_top_view_image_opacity(self) -> float:
-        return self._top_view_image_opacity
-
-    def get_top_view_image_color(self) -> Color:
-        return self._top_view_image_color
-
-    def get_top_view_image_info(self) -> ImageInfo:
-        return self._top_view_image_info
-
-    def get_bottom_view_title_opacity(self) -> float:
-        return self._bottom_view_title_opacity
-
-    def get_bottom_view_fun_image_opacity(self) -> float:
-        return self._bottom_view_fun_image_opacity
-
-    def get_bottom_view_fun_image_color(self) -> Color:
-        return self._bottom_view_fun_image_color
-
-    def has_bottom_view_fun_image_info(self) -> bool:
-        return self._bottom_view_fun_image_info is not None
-
-    def get_bottom_view_fun_image_info(self) -> ImageInfo:
-        assert self._bottom_view_fun_image_info is not None
-        return self._bottom_view_fun_image_info
-
     def reset_bottom_view_fun_image_info(self) -> None:
         self._bottom_view_fun_image_info = None
-
-    def get_bottom_view_title_image_color(self) -> Color:
-        return self._bottom_view_title_image_color
-
-    def get_bottom_view_title_image_info(self) -> ImageInfo:
-        return self._bottom_view_title_image_info
-
-    def get_main_index_view_opacity(self) -> float:
-        return 1.0 if (self._view_state in _BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES) else 0.0
-
-    def get_speech_index_view_opacity(self) -> float:
-        return 1.0 if (self._view_state in _BOTTOM_VIEW_SPEECH_INDEX_OPACITY_1_STATES) else 0.0
-
-    def get_names_index_view_opacity(self) -> float:
-        return 1.0 if (self._view_state in _BOTTOM_VIEW_NAMES_INDEX_OPACITY_1_STATES) else 0.0
-
-    def get_locations_index_view_opacity(self) -> float:
-        return 1.0 if (self._view_state in _BOTTOM_VIEW_LOCATIONS_INDEX_OPACITY_1_STATES) else 0.0
-
-    def get_statistics_view_opacity(self) -> float:
-        """Return 1.0 when the Statistics screen should be visible, else 0.0."""
-        return 1.0 if (self._view_state in _BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES) else 0.0
-
-    def get_search_screen_opacity(self) -> float:
-        """Return 1.0 when the Search screen should be visible, else 0.0."""
-        return 1.0 if (self._view_state in _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES) else 0.0
 
     def get_search_screen_image_info(self) -> ImageInfo:
         return self._search_screen_image_info
@@ -339,6 +301,47 @@ class BackgroundViews:
         logger.info(f"Updating background view state to {view_state.name}.")
         self._view_state = view_state
         self._update_views()
+
+    def compute_snapshot(self) -> ViewSnapshot:
+        """Build an immutable snapshot of the current view state.
+
+        Must be called after ``set_view_state()`` (which runs ``_update_views()``
+        to refresh internal fields).  Reads those fields and returns a
+        ``ViewSnapshot`` that fully describes the desired UI.
+        """
+        search_mode = _SEARCH_MODE_MAP.get(self._view_state, "")
+        search_visible = self._view_state in _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES
+
+        return ViewSnapshot(
+            view_state=self._view_state,
+            top_view=TopViewSnapshot(
+                image_info=self._top_view_image_info,
+                image_opacity=self._top_view_image_opacity,
+                image_color=self._top_view_image_color,
+            ),
+            fun_view=FunViewSnapshot(
+                is_visible=self._bottom_view_fun_image_opacity > 0.0,
+                image_info=self._bottom_view_fun_image_info,
+                image_color=self._bottom_view_fun_image_color,
+            ),
+            title_view=TitleViewSnapshot(
+                is_visible=self._bottom_view_title_opacity > 0.0,
+                image_info=self._bottom_view_title_image_info,
+                image_color=self._bottom_view_title_image_color,
+            ),
+            screen_visibility=ScreenVisibility(
+                main_index=self._view_state in _BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES,
+                speech_index=self._view_state in _BOTTOM_VIEW_SPEECH_INDEX_OPACITY_1_STATES,
+                names_index=self._view_state in _BOTTOM_VIEW_NAMES_INDEX_OPACITY_1_STATES,
+                locations_index=self._view_state in _BOTTOM_VIEW_LOCATIONS_INDEX_OPACITY_1_STATES,
+                statistics=self._view_state in _BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES,
+            ),
+            search_view=SearchViewSnapshot(
+                is_visible=search_visible,
+                mode=search_mode,
+                image_info=self._search_screen_image_info if search_visible else None,
+            ),
+        )
 
     def _update_views(self) -> None:
         if self._view_state == ViewStates.PRE_INIT:

@@ -29,16 +29,11 @@ if TYPE_CHECKING:
 
     from kivy.uix.screenmanager import Screen
 
-    from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
-    from barks_reader.ui.entity_index_screen import EntityIndexScreen
-    from barks_reader.ui.fun_image_view_screen import FunImageViewScreen
     from barks_reader.ui.index_screen import IndexScreen
-    from barks_reader.ui.main_index_screen import MainIndexScreen
+    from barks_reader.ui.screen_bundle import ScreenBundle
     from barks_reader.ui.search_screen import SearchScreen
-    from barks_reader.ui.speech_index_screen import SpeechIndexScreen
     from barks_reader.ui.statistics_screen import StatisticsScreen
     from barks_reader.ui.tree_view_manager import TreeViewManager
-    from barks_reader.ui.tree_view_screen import TreeViewScreen
 
 _BOTTOM_FOCUS_HIGHLIGHT_GROUP = "bottom_focus_highlight"
 
@@ -53,32 +48,24 @@ class MainScreenNavigation:
 
     def __init__(
         self,
-        tree_view_screen: TreeViewScreen,
+        screens: ScreenBundle,
         tree_view_manager: TreeViewManager,
-        bottom_title_view_screen: BottomTitleViewScreen,
-        fun_image_view_screen: FunImageViewScreen,
-        main_index_screen: MainIndexScreen,
-        speech_index_screen: SpeechIndexScreen,
-        names_index_screen: EntityIndexScreen,
-        locations_index_screen: EntityIndexScreen,
-        statistics_screen: StatisticsScreen,
-        search_screen: SearchScreen,
         bottom_base_view_screen: Screen,
         on_title_activated: Callable[[], None],
         enter_menu_mode: Callable[[], None],
         handle_menu_key: Callable[[int], bool],
         is_in_menu_mode: Callable[[], bool],
     ) -> None:
-        self._tree_view_screen = tree_view_screen
+        self._tree_view_screen = screens.tree_view
         self._tree_view_manager = tree_view_manager
-        self._bottom_title_view_screen = bottom_title_view_screen
-        self._fun_image_view_screen = fun_image_view_screen
-        self._main_index_screen = main_index_screen
-        self._speech_index_screen = speech_index_screen
-        self._names_index_screen = names_index_screen
-        self._locations_index_screen = locations_index_screen
-        self._statistics_screen = statistics_screen
-        self._search_screen = search_screen
+        self._bottom_title_view_screen = screens.bottom_title_view
+        self._fun_image_view_screen = screens.fun_image_view
+        self._main_index_screen = screens.main_index
+        self._speech_index_screen = screens.speech_index
+        self._names_index_screen = screens.names_index
+        self._locations_index_screen = screens.locations_index
+        self._statistics_screen = screens.statistics
+        self._search_screen = screens.search
         self._bottom_base_view_screen = bottom_base_view_screen
         self._on_title_activated = on_title_activated
         self._enter_menu_mode = enter_menu_mode

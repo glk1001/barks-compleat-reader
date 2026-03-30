@@ -33,13 +33,9 @@ if TYPE_CHECKING:
     from kivy.uix.scrollview import ScrollView
 
     from barks_reader.core.system_file_paths import SystemFilePaths
-    from barks_reader.ui.background_views import BackgroundViews
-    from barks_reader.ui.entity_index_screen import EntityIndexScreen
-    from barks_reader.ui.main_index_screen import MainIndexScreen
     from barks_reader.ui.navigation_coordinator import NavigationCoordinator
     from barks_reader.ui.reader_ui_classes import ReaderTreeView
-    from barks_reader.ui.speech_index_screen import SpeechIndexScreen
-    from barks_reader.ui.tree_view_screen import TreeViewScreen
+    from barks_reader.ui.screen_bundle import ScreenBundle
     from barks_reader.ui.view_state_manager import ViewStateManager
 
 
@@ -48,23 +44,17 @@ class TreeViewManager:
 
     def __init__(
         self,
-        background_views: BackgroundViews,
         view_state_manager: ViewStateManager,
-        tree_view_screen: TreeViewScreen,
-        main_index_screen: MainIndexScreen,
-        speech_index_screen: SpeechIndexScreen,
-        names_index_screen: EntityIndexScreen,
-        locations_index_screen: EntityIndexScreen,
+        screens: ScreenBundle,
         nav_coordinator: NavigationCoordinator,
         sys_file_paths: SystemFilePaths | None = None,
     ) -> None:
-        self._background_views = background_views
         self._view_state_manager = view_state_manager
-        self._tree_view_screen = tree_view_screen
-        self._main_index_screen = main_index_screen
-        self._speech_index_screen = speech_index_screen
-        self._names_index_screen = names_index_screen
-        self._locations_index_screen = locations_index_screen
+        self._tree_view_screen = screens.tree_view
+        self._main_index_screen = screens.main_index
+        self._speech_index_screen = screens.speech_index
+        self._names_index_screen = screens.names_index
+        self._locations_index_screen = screens.locations_index
 
         self._tree_view_screen.ids.reader_tree_view.bind(on_node_expand=self.on_node_expanded)
         self._tree_view_screen.ids.reader_tree_view.bind(on_node_collapse=self.on_node_collapsed)

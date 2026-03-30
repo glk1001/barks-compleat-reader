@@ -67,35 +67,32 @@ class TestBackgroundViews:
         assert self.bg_views.get_view_state() == ViewStates.PRE_INIT
 
     def test_set_view_state_pre_init(self) -> None:
-        # PRE_INIT sets opacities specifically
         self.bg_views.set_view_state(ViewStates.PRE_INIT)
-        assert self.bg_views.get_top_view_image_opacity() == 0.5  # noqa: PLR2004
-        assert self.bg_views.get_bottom_view_fun_image_opacity() == 0.5  # noqa: PLR2004
-        assert self.bg_views.get_bottom_view_title_opacity() == 0.0
+        snap = self.bg_views.compute_snapshot()
+        assert snap.top_view.image_opacity == 0.5  # noqa: PLR2004
+        assert snap.fun_view.is_visible is True
+        assert snap.title_view.is_visible is False
 
     # noinspection GrazieInspection
     def test_set_view_state_series(self) -> None:
-        # Test ON_CS_NODE -> SERIES_CS
         self.bg_views.set_view_state(ViewStates.ON_CS_NODE)
 
-        # Check if get_random_image was called with the CS list
         self.mock_random_images.get_random_image.assert_any_call(
             self.title_lists[SERIES_CS], file_types=ANY, use_only_edited_if_possible=True
         )
-        assert self.bg_views.get_top_view_image_info() == self.dummy_image_info
+        snap = self.bg_views.compute_snapshot()
+        assert snap.top_view.image_info == self.dummy_image_info
 
     def test_set_view_state_intro(self) -> None:
-        # Test ON_INTRO_NODE -> Fixed Image (Adventure Down Under)
         self.mock_settings.file_paths.get_comic_inset_file.return_value = "intro.png"
 
         self.bg_views.set_view_state(ViewStates.ON_INTRO_NODE)
 
-        info = self.bg_views.get_top_view_image_info()
-        assert info.filename == "intro.png"
-        assert info.from_title == Titles.ADVENTURE_DOWN_UNDER
+        snap = self.bg_views.compute_snapshot()
+        assert snap.top_view.image_info.filename == "intro.png"
+        assert snap.top_view.image_info.from_title == Titles.ADVENTURE_DOWN_UNDER
 
     def test_set_view_state_stories(self) -> None:
-        # Test ON_THE_STORIES_NODE -> ALL_LISTS
         self.bg_views.set_view_state(ViewStates.ON_THE_STORIES_NODE)
 
         self.mock_random_images.get_random_image.assert_any_call(
@@ -103,12 +100,10 @@ class TestBackgroundViews:
         )
 
     def test_set_view_state_cs_year_range(self) -> None:
-        # Setup current range
         self.bg_views.set_current_cs_year_range("1942-1946")
 
         self.bg_views.set_view_state(ViewStates.ON_CS_YEAR_RANGE_NODE)
 
-        # Should look up "CS-1942-1946" in title_lists
         self.mock_random_images.get_random_image.assert_any_call(
             self.title_lists["CS-1942-1946"], file_types=ANY, use_only_edited_if_possible=True
         )
@@ -130,61 +125,44 @@ class TestBackgroundViews:
         self.mock_settings.file_paths.get_comic_inset_file.return_value = "appendix.png"
         self.bg_views.set_view_state(ViewStates.ON_APPENDIX_NODE)
 
-        info = self.bg_views.get_top_view_image_info()
-        assert info.filename == "appendix.png"
-        assert info.from_title == Titles.FABULOUS_PHILOSOPHERS_STONE_THE
+        snap = self.bg_views.compute_snapshot()
+        assert snap.top_view.image_info.filename == "appendix.png"
+        assert snap.top_view.image_info.from_title == Titles.FABULOUS_PHILOSOPHERS_STONE_THE
 
     def test_set_view_state_index(self) -> None:
         self.mock_settings.file_paths.get_comic_inset_file.return_value = "index.png"
         self.bg_views.set_view_state(ViewStates.ON_INDEX_NODE)
 
-        info = self.bg_views.get_top_view_image_info()
-        assert info.filename == "index.png"
-        assert info.from_title == Titles.TRUANT_OFFICER_DONALD
+        snap = self.bg_views.compute_snapshot()
+        assert snap.top_view.image_info.filename == "index.png"
+        assert snap.top_view.image_info.from_title == Titles.TRUANT_OFFICER_DONALD
 
     def test_opacities(self) -> None:
-        # ON_TITLE_NODE: Title opacity 1, Fun opacity 0
+        # ON_TITLE_NODE: Title visible, Fun not visible
         self.bg_views.set_view_state(ViewStates.ON_TITLE_NODE)
-        assert self.bg_views.get_bottom_view_title_opacity() == 1.0
-        assert self.bg_views.get_bottom_view_fun_image_opacity() == 0.0
+        snap = self.bg_views.compute_snapshot()
+        assert snap.title_view.is_visible is True
+        assert snap.fun_view.is_visible is False
 
-        # ON_INTRO_NODE: Title opacity 0, Fun opacity 1
+        # ON_INTRO_NODE: Title not visible, Fun visible
         self.bg_views.set_view_state(ViewStates.ON_INTRO_NODE)
-        assert self.bg_views.get_bottom_view_title_opacity() == 0.0
-        assert self.bg_views.get_bottom_view_fun_image_opacity() == 1.0
+        snap = self.bg_views.compute_snapshot()
+        assert snap.title_view.is_visible is False
+        assert snap.fun_view.is_visible is True
 
     def test_set_fun_image_themes(self) -> None:
-        # This tests _get_themed_fun_image_titles logic indirectly
-
-        # Mock file paths to return empty set for file type titles to simplify
         self.mock_settings.file_paths.get_file_type_titles.return_value = set()
 
-        # We need to mock BARKS_TITLES lookup.
-        # The code does: BARKS_TITLES[info.comic_book_info.title]
-        # So our mock info objects in title_lists need this structure.
-
-        # Let's mock the info objects in "1942" list
         mock_info_1942 = MagicMock()
         mock_info_1942.comic_book_info.title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
         self.title_lists["1942"] = [mock_info_1942]
 
-        # We also need ALL_FANTA_COMIC_BOOK_INFO to be mocked or patched because
-        # _get_themed_fun_image_titles uses it to reconstruct the list.
-        # It does: [ALL_FANTA_COMIC_BOOK_INFO[title_str] for title_str in theme_titles]
-
         with patch.object(background_views_module, "ALL_FANTA_COMIC_BOOK_INFO") as mock_all_info:
             mock_all_info.__getitem__.return_value = mock_info_1942
 
-            # Set themes to FORTIES (1942-1949)
             self.bg_views.set_fun_image_themes({ImageThemes.FORTIES})
-
-            # Now trigger an update that uses the fun image (e.g. ON_INTRO_NODE)
-            # This calls _set_next_bottom_view_fun_image -> _get_next_fun_view_image_info
-            # -> uses cached titles
             self.bg_views.set_view_state(ViewStates.ON_INTRO_NODE)
 
-            # Verify get_random_image was called with our filtered list
-            # The list should contain mock_info_1942 because it's in 1942 which is in FORTIES
             args, _ = self.mock_random_images.get_random_image.call_args
             passed_list = args[0]
             assert mock_info_1942 in passed_list
@@ -192,7 +170,10 @@ class TestBackgroundViews:
     def test_set_bottom_view_title_image(self) -> None:
         # Case 1: Explicit file provided
         self.bg_views.set_bottom_view_title_image_file(Path("explicit.png"))
-        assert self.bg_views.get_bottom_view_title_image_info().filename == Path("explicit.png")
+        self.bg_views.set_view_state(ViewStates.ON_TITLE_NODE)
+        snap = self.bg_views.compute_snapshot()
+        assert snap.title_view.image_info is not None
+        assert snap.title_view.image_info.filename == Path("explicit.png")
 
         # Case 2: Random based on current title
         self.bg_views.set_bottom_view_title_image_file(None)  # Reset
@@ -200,20 +181,26 @@ class TestBackgroundViews:
         self.mock_random_images.get_random_image_for_title.return_value = Path("random.png")
 
         self.bg_views.set_next_bottom_view_title_image()
-        assert self.bg_views.get_bottom_view_title_image_info().filename == Path("random.png")
+        self.bg_views.set_view_state(ViewStates.ON_TITLE_NODE)
+        snap = self.bg_views.compute_snapshot()
+        assert snap.title_view.image_info is not None
+        assert snap.title_view.image_info.filename == Path("random.png")
 
     def test_index_view_opacities(self) -> None:
         # Main Index
         self.bg_views.set_view_state(ViewStates.ON_INDEX_MAIN_NODE)
-        assert self.bg_views.get_main_index_view_opacity() == 1.0
-        assert self.bg_views.get_speech_index_view_opacity() == 0.0
+        snap = self.bg_views.compute_snapshot()
+        assert snap.screen_visibility.main_index is True
+        assert snap.screen_visibility.speech_index is False
 
         # Speech Index
         self.bg_views.set_view_state(ViewStates.ON_INDEX_SPEECH_NODE)
-        assert self.bg_views.get_main_index_view_opacity() == 0.0
-        assert self.bg_views.get_speech_index_view_opacity() == 1.0
+        snap = self.bg_views.compute_snapshot()
+        assert snap.screen_visibility.main_index is False
+        assert snap.screen_visibility.speech_index is True
 
         # Other
         self.bg_views.set_view_state(ViewStates.ON_INTRO_NODE)
-        assert self.bg_views.get_main_index_view_opacity() == 0.0
-        assert self.bg_views.get_speech_index_view_opacity() == 0.0
+        snap = self.bg_views.compute_snapshot()
+        assert snap.screen_visibility.main_index is False
+        assert snap.screen_visibility.speech_index is False
