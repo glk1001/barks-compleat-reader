@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import typer
+from intspan import intspan
 from PIL import Image, ImageDraw
 
 from barks_fantagraphics.barks_titles import get_safe_title
@@ -123,3 +125,20 @@ def draw_panel_bounds_on_image(
         draw.rectangle(page_panel_boxes.overall_bounds.box, outline="red", width=2)
 
     return True
+
+
+def get_comic_titles(volumes_str: str, title_str: str) -> tuple[ComicsDatabase, list[str]]:
+    """Validate volume/title mutual exclusivity, parse args, and return database + titles.
+
+    Raises:
+        typer.BadParameter: If both volumes_str and title_str are provided.
+
+    """
+    if volumes_str and title_str:
+        msg = "Options --volume and --title are mutually exclusive."
+        raise typer.BadParameter(msg)
+
+    volumes = list(intspan(volumes_str))
+    comics_database = ComicsDatabase()
+    titles = get_titles(comics_database, volumes, title_str)
+    return comics_database, titles

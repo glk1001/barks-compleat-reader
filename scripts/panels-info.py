@@ -1,6 +1,5 @@
 # ruff: noqa: T201
 from configparser import ConfigParser
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import typer
@@ -11,11 +10,11 @@ from barks_reader.core.config_info import ConfigInfo  # make sure this is before
 from barks_reader.core.reader_file_paths import FileTypes
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_settings import ReaderSettings
+from cli_setup import init_logging
 from comic_utils.common_typer_options import LogLevelArg, TitleArg, VolumesArg
 from dotenv import load_dotenv
 from intspan import intspan
 from loguru import logger
-from loguru_config import LoguruConfig
 from rich.console import Console
 from rich.table import Table
 
@@ -43,7 +42,6 @@ load_dotenv(".env.runtime")
 
 
 app = typer.Typer()
-log_level = ""
 
 
 @app.command(help="Fanta volumes panels info")
@@ -56,10 +54,7 @@ def main(
 
     volumes = list(intspan(volumes_str))
 
-    # Global variable accessed by loguru-config.
-    global log_level  # noqa: PLW0603
-    log_level = log_level_str
-    LoguruConfig.load(Path(__file__).parent / "log-config.yaml")
+    init_logging(APP_LOGGING_NAME, "panels-info.log", log_level_str)
 
     # noinspection PyBroadException
     try:

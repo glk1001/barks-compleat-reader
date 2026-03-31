@@ -13,6 +13,7 @@ from barks_fantagraphics.comics_consts import FANTA_VOLUME_OVERRIDES_ROOT
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import FANTA_OVERRIDE_ZIPS
 from barks_fantagraphics.pages import get_page_mod_type, get_sorted_srce_and_dest_pages
+from cli_setup import init_logging
 from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
 from comic_utils.common_typer_options import LogLevelArg, VolumesArg  # noqa: TC002
 from comic_utils.pil_image_utils import (
@@ -24,7 +25,6 @@ from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 from intspan import intspan
 from loguru import logger
-from loguru_config import LoguruConfig
 from PIL import Image
 
 if TYPE_CHECKING:
@@ -159,17 +159,13 @@ def process_volumes(comics_database: ComicsDatabase, volumes_to_process: list[in
 
 
 app = typer.Typer()
-log_level = ""
 
 
 @app.command(help="Write Fantagraphics edited files to overrides directory")
 def main(volumes_str: VolumesArg = "", log_level_str: LogLevelArg = "DEBUG") -> None:
     volumes = list(intspan(volumes_str))
 
-    # Global variable accessed by loguru-config.
-    global log_level  # noqa: PLW0603
-    log_level = log_level_str
-    LoguruConfig.load(Path(__file__).parent / "log-config.yaml")
+    init_logging(APP_LOGGING_NAME, "fantagraphics-write-mods.log", log_level_str)
 
     process_volumes(ComicsDatabase(for_building_comics=True), volumes)
 

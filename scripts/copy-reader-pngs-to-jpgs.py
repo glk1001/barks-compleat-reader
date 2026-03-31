@@ -10,13 +10,13 @@ from barks_fantagraphics.comics_consts import PNG_FILE_EXT
 from barks_fantagraphics.comics_utils import get_abbrev_path, get_backup_file
 from barks_reader.core.config_info import ConfigInfo  # make sure this is before any kivy imports
 from barks_reader.core.reader_settings import ReaderSettings
+from cli_setup import init_logging
 from comic_utils.comic_consts import JPG_FILE_EXT
 from comic_utils.common_typer_options import LogLevelArg
 from comic_utils.pil_image_utils import get_pil_image_as_jpg_bytes, load_pil_image_for_reading
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 from loguru import logger
-from loguru_config import LoguruConfig
 from PIL import Image
 
 load_dotenv(Path(__file__).parent.parent / ".env.runtime")
@@ -101,15 +101,11 @@ def traverse_and_process_dirs(
 
 
 app = typer.Typer()
-log_level = ""
 
 
 @app.command(help="Copy Barks png panels to jpgs in zip")
 def copy_to_zip(log_level_str: LogLevelArg = "DEBUG") -> None:
-    # Global variable accessed by loguru-config.
-    global log_level  # noqa: PLW0603
-    log_level = log_level_str
-    LoguruConfig.load(Path(__file__).parent / "log-config.yaml")
+    init_logging(APP_LOGGING_NAME, "copy-reader-pngs-to-jpgs.log", log_level_str)
 
     # noinspection PyBroadException
     try:
