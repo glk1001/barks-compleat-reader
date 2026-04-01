@@ -71,7 +71,6 @@ class ComicBookInfo:
 
 
 # fmt: off
-# noinspection LongLine
 BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, True, Issues.FC, 9, 10, 1942, 21, 5, 1942),
     ComicBookInfo(Titles.VICTORY_GARDEN_THE, False, Issues.CS, 31, 4, 1943, 23, 11, 1942),

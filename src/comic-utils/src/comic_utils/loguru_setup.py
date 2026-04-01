@@ -2,13 +2,11 @@ LOGGER_SYS_NAME_KEY = "sys_name"
 
 
 # Global formatter function for 'loguru-config'.
-# noinspection Annotator
 def log_to_file_formatter(_record) -> str:  # noqa: ANN001
     return _get_log_color_format_string(module_etc_at_end=False)
 
 
 # Global formatter function for 'loguru-config'.
-# noinspection Annotator
 def log_to_console_formatter(_record) -> str:  # noqa: ANN001
     return _get_log_color_format_string(module_etc_at_end=True)
 
@@ -38,10 +36,9 @@ if __name__ == "__main__":
 
     @logger.catch
     def func_with_exception() -> None:
-        # noinspection Annotator
         print("About to raise ex")  # noqa: T201
         y = 1
-        # noinspection PyUnusedLocal,Annotator
+        # noinspection PyUnusedLocal
         x = y / 0  # noqa: F841
 
     logger.configure(extra={"sys_name": "app"})

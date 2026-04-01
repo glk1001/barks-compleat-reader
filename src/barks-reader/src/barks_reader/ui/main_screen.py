@@ -329,7 +329,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def on_touch_down(self, touch: object) -> bool:
         if self._active:
             self._clear_menu_on_touch()
-            # noinspection LongLine,PyUnresolvedReferences
+            # noinspection PyUnresolvedReferences
             if (
                 self._nav.is_in_bottom_focus
                 and not self._bottom_base_view_screen.collide_point(*touch.pos)  # ty: ignore[unresolved-attribute]

@@ -126,6 +126,7 @@ class TestFilterEntitiesToCurated:
         curated_sets = {et: set() for et in EntityType}
         curated_sets[EntityType.LOCATION] = {"lost dutchman's"}
         # Simulate spaCy producing title-cased output (capitalizes after apostrophe).
+        # noinspection GrazieInspectionRunner
         entities = {EntityType.LOCATION: {"Lost Dutchman'S"}}
 
         result = _filter_entities_to_curated(entities, curated_sets)

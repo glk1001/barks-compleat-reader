@@ -181,7 +181,6 @@ class UserErrorHandler:
 
         archive_file = textwrap.fill(str(error_info.file), 50)
         assert error_info.duplicate_volumes is not None
-        # noinspection LongLine
         msg = dedent(f"""\
             There were duplicate Fantagraphics archive files in the directory:
 
@@ -208,7 +207,6 @@ class UserErrorHandler:
         """Handle finding too many Fantagraphics archive files."""
         assert error_info is not None
 
-        # noinspection LongLine
         msg = dedent(f"""\
             There were too many Fantagraphics archive files. The
             expected number of files is {error_info.num_volumes} not {error_info.num_archive_files}. You need to

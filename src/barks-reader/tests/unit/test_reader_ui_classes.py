@@ -105,7 +105,6 @@ class TestTitleTreeViewNode:
         mock_app = MagicMock()
         mock_app.font_manager.tree_view_issue_label_font_size = 10
 
-        # noinspection LongLine
         with patch.object(  # noqa: SIM117
             barks_reader.ui.reader_ui_classes.App, "get_running_app", return_value=mock_app
         ):

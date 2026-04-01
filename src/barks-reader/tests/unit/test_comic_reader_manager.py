@@ -184,7 +184,8 @@ class TestComicReaderManager:
         mock_dependencies["json_settings_manager"].get_last_read_page.return_value = saved_info
         res = manager.get_last_read_page("Title")
         assert res == saved_info
-        assert res.display_page_num == "6"  # ty:ignore[unresolved-attribute]
+        assert res is not None
+        assert res.display_page_num == "6"
 
         # Case 3: Saved page is last page (finished)
         saved_info_finished = SavedPageInfo(

@@ -120,6 +120,7 @@ class BarksReaderApp(App):
 
     def close_app(self) -> None:
         self._window_geometry.stop_polling()
+        assert self._main_screen is not None
         self._main_screen.app_closing()
         App.get_running_app().stop()
         Window.close()
@@ -131,9 +132,9 @@ class BarksReaderApp(App):
             msg = "No windows are set on the application, you cannot open settings yet."
             raise RuntimeError(msg)
 
+        assert self._main_screen is not None
         return self._main_screen.display_settings(win, settings)
 
-    # noinspection LongLine
     @override
     def get_application_config(self, _default_path: str = "") -> LiteralString | str:  # ty:ignore[invalid-method-override]
         return str(self._config_info.app_config_path)
@@ -186,7 +187,6 @@ class BarksReaderApp(App):
         ):
             settings_notifier.notify(section, key)
 
-    # noinspection LongLine
     @override
     def build(self) -> Widget:
         logger.debug("Building app...")
@@ -214,7 +214,6 @@ class BarksReaderApp(App):
                             for canvas in screen.canvas.before, screen.canvas.after:
                                 # noinspection SpellCheckingInspection
                                 canvas.remove_group("swaptransition_scale")
-                        # noinspection LongLine
                         super(SwapTransition, self).on_complete()  # ty:ignore[invalid-super-argument]
                     else:
                         raise
@@ -340,8 +339,8 @@ class BarksReaderApp(App):
             user_error_handler,
             name=MAIN_READER_SCREEN,
         )
+        assert self._main_screen is not None
         self._set_custom_title_bar()
-        # noinspection LongLine
         self._main_screen.update_fonts(Config.getint("graphics", "height"))  # ty: ignore[unresolved-attribute]
 
         logger.debug("Instantiating comic reader screen...")
@@ -371,6 +370,7 @@ class BarksReaderApp(App):
         return self._reader_screen_manager.add_screens(reader_screens)
 
     def _set_custom_title_bar(self) -> None:
+        assert self._main_screen is not None
         Window.custom_titlebar = True
         title_bar = self._main_screen.ids.draggable_title_bar
         if Window.set_custom_titlebar(title_bar):
@@ -407,6 +407,7 @@ class BarksReaderApp(App):
         Window.top = config_top + 1
         Window.top = config_top
 
+        assert self._main_screen is not None
         if self.reader_settings.goto_fullscreen_on_app_start:
             self._main_screen.force_fullscreen()
 
@@ -437,7 +438,6 @@ def _log_screen_settings() -> None:
     )
 
 
-# noinspection LongLine
 def _handle_app_exception(
     config_info: ConfigInfo,
     exc_type: type[BaseException] | None,

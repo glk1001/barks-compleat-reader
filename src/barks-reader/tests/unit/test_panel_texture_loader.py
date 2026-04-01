@@ -36,7 +36,7 @@ class TestPanelTextureLoader:
         mock_pil.tobytes.return_value = b"pixels"
 
         # Mock Texture class in the module
-        with patch.object(loader_module, Texture.__name__) as mock_texture_cls:
+        with patch.object(loader_module, "Texture") as mock_texture_cls:
             mock_texture = MagicMock(spec=Texture)
             mock_texture_cls.create.return_value = mock_texture
 
@@ -86,7 +86,7 @@ class TestPanelTextureLoader:
         mock_pil.size = (50, 50)
         mock_pil.tobytes.return_value = b"data"
 
-        with patch.object(loader_module, Texture.__name__) as mock_texture_cls:
+        with patch.object(loader_module, "Texture") as mock_texture_cls:
             mock_tex = MagicMock()
             mock_texture_cls.create.return_value = mock_tex
 

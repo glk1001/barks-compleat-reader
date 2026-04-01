@@ -104,7 +104,6 @@ _NODE_TYPE_TO_VIEW_STATE_MAP: dict[type, tuple[ViewStates, str]] = {
 }
 
 # fmt: off
-# noinspection LongLine
 _NODE_TEXT_TO_VIEW_STATE_MAP: dict[str, ViewStates] = {
     "N/A" + ViewStates.PRE_INIT.name: ViewStates.PRE_INIT,
     "N/A" + ViewStates.INITIAL.name: ViewStates.INITIAL,
@@ -151,7 +150,6 @@ _NODE_TEXT_TO_VIEW_STATE_MAP: dict[str, ViewStates] = {
 assert sorted(_NODE_TEXT_TO_VIEW_STATE_MAP.values()) == sorted(ViewStates)
 
 # fmt: off
-# noinspection LongLine
 _ARTICLE_VIEW_STATE_TO_TITLE_MAP = {
     ViewStates.ON_APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_NODE: Titles.RICH_TOMASSO___ON_COLORING_BARKS,  # noqa: E501
     ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE: Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,

@@ -132,6 +132,7 @@ def _make_comic(
             ("002", PageType.BODY),
             ("003", PageType.BODY),
         )
+    assert pages is not None
     fanta_info = _make_fanta_info(
         series_name=series_name,
         number_in_series=number_in_series,

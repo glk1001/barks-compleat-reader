@@ -136,6 +136,7 @@ class NavigationCoordinator:
         self._view_state_manager.update_view_for_node_with_title(ViewStates.ON_TITLE_NODE)
 
         if target.tag is not None:
+            assert self._current_fanta_info is not None
             self._set_tag_goto_page_checkbox(
                 target.tag,
                 self._current_fanta_info.comic_book_info.get_title_str(),
@@ -322,6 +323,7 @@ class NavigationCoordinator:
         title_image_file: PanelPath | None,
     ) -> None:
         self._current_fanta_info = new_fanta_info
+        assert self._current_fanta_info is not None
         self._set_title(title_image_file)
         self._view_state_manager.set_view_state(
             ViewStates.ON_TITLE_NODE,

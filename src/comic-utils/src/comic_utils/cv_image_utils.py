@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# noinspection PyUnresolvedReferences
 import cv2 as cv  # ty: ignore[unresolved-import]
 import numpy as np
 

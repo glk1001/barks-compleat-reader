@@ -241,7 +241,6 @@ class PopupKeyboardNav:
 
     def _clear_focus(self) -> None:
         for entry in self._get_entries():
-            # noinspection LongLine
             entry.canvas.before.remove_group(POPUP_NAV_FOCUS_GROUP)  # ty: ignore[unresolved-attribute]
 
     def _get_entries(self) -> list[TextBoxWithTitleAndBorder]:
@@ -335,7 +334,7 @@ class IndexScreen(FloatLayout):
         self.on_goto_background_title_func(self._current_image_info)
 
     def _handle_title(self, button: Button, item: IndexItem) -> None:
-        assert type(item.id) is Titles
+        assert isinstance(item.id, Titles)
         logger.info(f'Handling title: "{item.id.name}".')
         image_info = ImageInfo(from_title=item.id, filename=None)
 
@@ -681,6 +680,7 @@ class IndexScreen(FloatLayout):
 
         first_letter = button.text
         logger.debug(f"Letter '{first_letter}' pressed.")
+        assert self.treeview_index_node is not None
         self.treeview_index_node.saved_state[SAVED_NODE_STATE_FIRST_LETTER_KEY] = first_letter
 
         # Let the .kv file handle the color changes by setting the property.
@@ -755,6 +755,7 @@ class IndexScreen(FloatLayout):
             self._new_index_image()
         else:
             # Which 'first_letter' to show first.
+            assert self.treeview_index_node is not None
             if SAVED_NODE_STATE_FIRST_LETTER_KEY not in self.treeview_index_node.saved_state:
                 first_letter = "A"
             else:

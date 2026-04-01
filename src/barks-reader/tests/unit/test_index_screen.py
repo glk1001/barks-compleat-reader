@@ -128,6 +128,7 @@ class TestIndexScreen:
         with patch.object(index_screen, "_populate_index_for_letter") as mock_populate:
             index_screen.on_letter_press(button_a)
 
+            assert index_screen.treeview_index_node is not None
             assert (
                 index_screen.treeview_index_node.saved_state[SAVED_NODE_STATE_FIRST_LETTER_KEY]
                 == "A"
@@ -179,6 +180,7 @@ class TestIndexScreen:
             mock_press.assert_called_with(index_screen._alphabet_buttons["A"])
 
         # Case 2: Saved state exists
+        assert index_screen.treeview_index_node is not None
         index_screen.treeview_index_node.saved_state[SAVED_NODE_STATE_FIRST_LETTER_KEY] = "B"
         with patch.object(index_screen, "on_letter_press") as mock_press:
             index_screen.on_is_visible(index_screen, value=True)

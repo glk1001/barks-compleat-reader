@@ -193,7 +193,6 @@ class ComicsDatabase:
         return fanta_book.num_pages
 
     def _get_comic_book_dirs(self, fanta_book: FantaBook) -> ComicBookDirs:
-        # noinspection LongLine
         return ComicBookDirs(
             srce_dir=self.get_fantagraphics_volume_dir(fanta_book.volume),
             srce_upscayled_dir=self.get_fantagraphics_upscayled_volume_dir(fanta_book.volume),
@@ -389,7 +388,6 @@ class ComicsDatabase:
 
         return self._all_comic_book_info[title]
 
-    # noinspection LongLine
     def get_comic_book(self, title: str, intro_inset_file: PanelPath | None = None) -> ComicBook:
         story_title = ""
 
@@ -419,6 +417,7 @@ class ComicsDatabase:
 
         if not intro_inset_file:
             intro_inset_file = self._get_inset_file(ini_file)
+        assert intro_inset_file is not None
 
         fanta_info: FantaComicBookInfo = self.get_fanta_comic_book_info(story_title)
 
@@ -485,7 +484,6 @@ def _build_comic_book(
     publication_text = get_main_publication_info(story_title, fanta_info, fanta_book)
     extra_pub_info = config["info"].get("extra_pub_info", "")
 
-    # noinspection PyTypeChecker
     config_page_images = [
         OriginalPage(key, PageType[config["pages"][key]])
         for key in config["pages"]

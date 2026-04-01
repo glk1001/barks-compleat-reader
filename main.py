@@ -117,13 +117,11 @@ def redirect_kivy_logs() -> None:
 
     # Redirect Kivy's log messages to our main loguru setup.
     class LoguruKivyHandler(logging.Handler):
-        # noinspection Annotator
         def __init__(self, logr) -> None:  # noqa: ANN001
             self.logr = logr
             super().__init__()
 
         def emit(self, record: logging.LogRecord) -> None:
-            # noinspection Annotator
             def patch_loguru_rec(rec) -> None:  # noqa: ANN001
                 rec.update(exception=record.exc_info)
                 rec.update(file=record.filename)
@@ -217,7 +215,6 @@ def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
     # noinspection PyProtectedMember
     from kivy import Config
 
-    # noinspection LongLine
     if PLATFORM != Platform.WIN:
         # For some reason, kivy on Windows does not like window_state = 'hidden'.
         # It trashes fonts, and crashes with

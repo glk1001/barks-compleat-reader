@@ -59,6 +59,7 @@ class ScrollableDropDown(DropDown):
     and clears the search box in a single tap.
     """
 
+    # noinspection PyUnresolvedReferences
     def on_touch_down(self, touch: object) -> bool:
         if not self.collide_point(*touch.pos) and self.auto_dismiss:  # ty: ignore[unresolved-attribute]
             self.dismiss()

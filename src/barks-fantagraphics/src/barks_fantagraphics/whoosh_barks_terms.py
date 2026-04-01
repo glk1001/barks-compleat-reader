@@ -23,7 +23,7 @@ CONTEXT_SENSITIVE_WORDS: dict[str, tuple[EntityType, str, list[tuple[str, Entity
     ),
 }
 
-# noinspection SpellCheckingInspection
+# noinspection SpellCheckingInspection,GrazieInspectionRunner
 _BARKSIAN_FULL_NAMES: frozenset[str] = frozenset(
     {
         "Applecheeks Teengiggle",
@@ -140,7 +140,7 @@ _BARKSIAN_FULL_NAMES: frozenset[str] = frozenset(
     }
 )
 
-# noinspection SpellCheckingInspection
+# noinspection SpellCheckingInspection,GrazieInspectionRunner
 _BARKSIAN_PLACES_FULL_NAMES: frozenset[str] = frozenset(
     {
         "Ancient Bengali",
@@ -218,7 +218,7 @@ _BARKSIAN_PLACES_FULL_NAMES: frozenset[str] = frozenset(
     }
 )
 
-# noinspection SpellCheckingInspection
+# noinspection SpellCheckingInspection,GrazieInspectionRunner
 _BARKSIAN_THINGS_FULL_NAMES: frozenset[str] = frozenset(
     {
         "B-197 X-NG",
@@ -241,7 +241,7 @@ _BARKSIAN_THINGS_FULL_NAMES: frozenset[str] = frozenset(
     }
 )
 
-# noinspection SpellCheckingInspection
+# noinspection SpellCheckingInspection,GrazieInspectionRunner
 _BARKSIAN_MISC_FULL_NAMES: frozenset[str] = frozenset(
     {
         "Almostus Extinctus",
@@ -258,7 +258,7 @@ _BARKSIAN_MISC_FULL_NAMES: frozenset[str] = frozenset(
 )
 
 # TODO: Maybe put these in map?
-# noinspection SpellCheckingInspection
+# noinspection SpellCheckingInspection,GrazieInspectionRunner
 _BARKSIAN_TITLES: frozenset[str] = frozenset(
     {
         "Alice in Wonderland",
@@ -280,7 +280,7 @@ _BARKSIAN_TITLES: frozenset[str] = frozenset(
     }
 )
 
-# noinspection SpellCheckingInspection
+# noinspection SpellCheckingInspection,GrazieInspectionRunner
 _BARKSIAN_NAMES: frozenset[str] = frozenset(
     {
         "abie",
@@ -995,7 +995,7 @@ _BARKSIAN_NAMES: frozenset[str] = frozenset(
     }
 )
 
-# noinspection SpellCheckingInspection
+# noinspection SpellCheckingInspection,GrazieInspectionRunner
 _BARKSIAN_PLACE_RELATED_WORDS: frozenset[str] = frozenset(
     {
         "abilene",
@@ -1268,6 +1268,7 @@ _BARKSIAN_PLACE_RELATED_WORDS: frozenset[str] = frozenset(
     }
 )
 
+# noinspection GrazieInspectionRunner
 _COUNTRIES: frozenset[str] = frozenset(
     {
         "afghanistan",
@@ -1471,6 +1472,7 @@ _COUNTRIES: frozenset[str] = frozenset(
     }
 )
 
+# noinspection GrazieInspectionRunner
 _US_STATES: frozenset[str] = frozenset(
     {
         "alabama",
@@ -1590,7 +1592,7 @@ BARKSIAN_WORDS_WITH_OPTIONAL_HYPHENS: frozenset[str] = frozenset(
 )
 
 # Special capitalization — single-word terms that need non-standard casing.
-# noinspection SpellCheckingInspection
+# noinspection SpellCheckingInspection,GrazieInspectionRunner
 CAPITALIZATION_MAP: dict[str, str] = {
     "b-boys": "B-Boys",
     "b-boys'": "B-Boys'",
@@ -1701,7 +1703,7 @@ ALL_CAPS: frozenset[str] = frozenset(
 # Fragments to suppress — single words that are parts of multi-word names.
 # These are removed from the word index; the full multi-word names come
 # from entity_names or BARKSIAN_EXTRA_TERMS.
-# noinspection SpellCheckingInspection
+# noinspection SpellCheckingInspection,GrazieInspectionRunner
 FRAGMENTS_TO_SUPPRESS: frozenset[str] = frozenset(
     {
         "almostus",  # Almostus Extinctus

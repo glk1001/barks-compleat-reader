@@ -110,7 +110,6 @@ class TestSpeechIndexScreen:
 
                 # Should create buttons for "apple" and "ant"
                 assert mock_btn_cls.call_count == 2  # noqa: PLR2004
-                # noinspection LongLine
                 assert (
                     speech_index_screen.ids.alphabet_top_split_layout.add_widget.call_count == 2  # noqa: PLR2004
                 )
@@ -124,6 +123,7 @@ class TestSpeechIndexScreen:
         with patch.object(speech_index_screen, "_populate_index_grid") as mock_populate_grid:
             speech_index_screen.on_letter_prefix_press(mock_button)
 
+            assert speech_index_screen.treeview_index_node is not None
             assert speech_index_screen.treeview_index_node.saved_state["prefix"] == "ant"
             # noinspection PyProtectedMember
             assert speech_index_screen._selected_prefix_button == mock_button

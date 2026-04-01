@@ -8,6 +8,7 @@ from PIL import Image
 
 from barks_reader.core.panel_image_loader import PanelImageLoader
 
+# noinspection PyUnresolvedReferences
 type TextureLoaderCallback = Callable[[Texture | None, Exception | None], None]
 
 
@@ -38,7 +39,7 @@ class PanelTextureLoader(PanelImageLoader):
 
     @staticmethod
     def _pil_to_texture(pil: Image.Image) -> Texture:
-        # noinspection PyArgumentList
+        # noinspection PyArgumentList,PyUnresolvedReferences
         tex = Texture.create(size=pil.size)
         tex.blit_buffer(pil.tobytes(), colorfmt="rgba", bufferfmt="ubyte")
         tex.flip_vertical()

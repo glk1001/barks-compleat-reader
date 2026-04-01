@@ -50,10 +50,10 @@ class FakeResolver:
     def get_nontitle_files(self) -> list[PanelPath]:
         return self.nontitle_files
 
-    def get_comic_inset_file(self, title: Titles, prefer_edited: bool = False) -> PanelPath:  # noqa: ARG002
+    def get_comic_inset_file(self, _title: Titles, _prefer_edited: bool = False) -> PanelPath:
         return self.inset_file
 
-    def get_edited_version_if_possible(self, image_file: PanelPath) -> tuple[PanelPath, bool]:  # noqa: ARG002
+    def get_edited_version_if_possible(self, _image_file: PanelPath) -> tuple[PanelPath, bool]:
         return self.edited_version
 
     def get_comic_favourite_files_dir(self) -> PanelPath:
@@ -62,7 +62,7 @@ class FakeResolver:
     def get_file_ext(self) -> str:
         return self.file_ext
 
-    def get_comic_search_files(self, title_str: str, prefer_edited: bool) -> list[PanelPath]:  # noqa: ARG002
+    def get_comic_search_files(self, _title_str: str, _prefer_edited: bool) -> list[PanelPath]:
         return self.search_files
 
 
@@ -92,7 +92,7 @@ def image_selector(
         ),
         patch.object(random, random.shuffle.__name__),
     ):
-        selector = ImageSelector(fake_resolver, mock_settings)
+        selector = ImageSelector(fake_resolver, mock_settings)  # ty: ignore[invalid-argument-type]
         yield selector
 
 

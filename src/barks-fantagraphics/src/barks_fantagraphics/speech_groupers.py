@@ -198,6 +198,7 @@ def _save_speech_page_group_json(
 
     if to_file is None:
         to_file = speech_page_group.ocr_prelim_groups_json_file
+    assert to_file is not None
     if backup_file:
         backup_file.parent.mkdir(parents=True, exist_ok=True)
         to_file.rename(backup_file)

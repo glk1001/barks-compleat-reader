@@ -241,7 +241,6 @@ def get_fitted_title_with_page_nums(
             len_combined -= 4
 
     # Try shortening page num string.
-    # noinspection LongLine
     if (len_combined > max_title_with_pages_len) and (len(page_nums) > 3):  # noqa: PLR2004
         page_nums_str = page_nums[0] + ",..."
         len_combined = len(title_str) + len(page_nums_str) + LEN_PAGE_NUM_SEPERATOR_STR

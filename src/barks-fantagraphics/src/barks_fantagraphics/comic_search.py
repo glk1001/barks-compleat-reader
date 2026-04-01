@@ -220,6 +220,7 @@ class ComicSearch:
             from .title_search import BarksTitleSearch as _BarksTitleSearch  # noqa: PLC0415
 
             self._title_search = _BarksTitleSearch()
+        assert self._title_search is not None
         return self._title_search
 
     def _get_full_text(self) -> FullTextSearchPort:
@@ -227,6 +228,7 @@ class ComicSearch:
             from .whoosh_search_engine import SearchEngine  # noqa: PLC0415
 
             self._full_text = SearchEngine(self._index_dir)
+        assert self._full_text is not None
         return self._full_text
 
     def _search_titles(self, query: str) -> SearchResult:

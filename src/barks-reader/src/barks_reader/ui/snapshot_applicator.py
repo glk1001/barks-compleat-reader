@@ -153,9 +153,10 @@ class SnapshotApplicator:
         if title_info is None or not title_info.filename:
             self._screens.bottom_title_view.title_image_texture = None
         else:
+            _title_info = title_info
 
             def apply_tex(tex: Texture) -> None:
-                self._screens.bottom_title_view.title_image_fit_mode = title_info.fit_mode
+                self._screens.bottom_title_view.title_image_fit_mode = _title_info.fit_mode
                 self._screens.bottom_title_view.title_image_color = title.image_color
                 self._screens.bottom_title_view.title_image_texture = tex
 

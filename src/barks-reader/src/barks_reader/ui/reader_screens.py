@@ -101,6 +101,7 @@ class ReaderScreenManager:
 
     def add_screens(self, reader_screens: ReaderScreens) -> ScreenManager:
         self._reader_screens = reader_screens
+        assert self._reader_screens is not None
 
         root = self._screen_manager
 

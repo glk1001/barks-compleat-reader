@@ -197,7 +197,6 @@ class TestSetSrcePanelBoundingBoxes:
         f.write_text(_make_panel_segments_json([5, 10, 800, 1400]))
 
         page = _body_page()
-        # noinspection LongLine
         set_srce_panel_bounding_boxes([page], [f], check_srce_page_timestamps=False)  # type: ignore[list-item]
 
         assert page.panels_bbox.x_min == 5
@@ -209,7 +208,6 @@ class TestSetSrcePanelBoundingBoxes:
         page = _front_page()
         missing = tmp_path / "nonexistent.json"  # type: ignore[operator]
         # Should not raise even though file is missing — FRONT pages are skipped
-        # noinspection LongLine
         set_srce_panel_bounding_boxes([page], [missing], check_srce_page_timestamps=False)  # type: ignore[list-item]
 
     def test_raises_when_segment_file_missing(self, tmp_path: Path) -> None:
@@ -217,7 +215,6 @@ class TestSetSrcePanelBoundingBoxes:
         missing = tmp_path / "nonexistent.json"  # type: ignore[operator]
 
         with pytest.raises(FileNotFoundError, match="panels segments info file"):
-            # noinspection LongLine
             set_srce_panel_bounding_boxes([page], [missing], check_srce_page_timestamps=False)  # type: ignore[list-item]
 
     def test_raises_on_stale_timestamp(self, tmp_path: Path) -> None:
@@ -229,7 +226,6 @@ class TestSetSrcePanelBoundingBoxes:
             patch.object(panel_bounding_module, "dest_file_is_older_than_srce", return_value=True),
             pytest.raises(RuntimeError, match="older than srce"),
         ):
-            # noinspection LongLine
             set_srce_panel_bounding_boxes([page], [f], check_srce_page_timestamps=True)  # type: ignore[list-item]
 
     def test_no_timestamp_check_skips_stale_check(self, tmp_path: Path) -> None:
@@ -239,7 +235,6 @@ class TestSetSrcePanelBoundingBoxes:
 
         with patch.object(panel_bounding_module, "dest_file_is_older_than_srce", return_value=True):
             # Should not raise because check_srce_page_timestamps=False
-            # noinspection LongLine
             set_srce_panel_bounding_boxes([page], [f], check_srce_page_timestamps=False)  # type: ignore[list-item]
 
 

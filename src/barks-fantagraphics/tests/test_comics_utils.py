@@ -67,8 +67,9 @@ class TestGetFormattedDay:
         result = get_formatted_day(day)
         assert result == f"{day}{expected_suffix}"
 
-    # noinspection GrazieInspection
+    # noinspection GrazieInspection,GrazieInspectionRunner
     def test_day_21_bug(self) -> None:
+        # noinspection GrazieInspectionRunner
         """Day 21 should end in 'st' but current implementation returns '21th'."""
         result = get_formatted_day(21)
         # This documents the current (buggy) behavior: 21 -> "21th" instead of "21st"

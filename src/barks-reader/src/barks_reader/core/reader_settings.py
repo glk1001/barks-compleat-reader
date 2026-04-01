@@ -235,7 +235,7 @@ class ReaderSettings:
         self._config: ConfigParser = config
         self._app_settings_path = app_settings_path
         self._app_data_dir = app_data_dir
-        self._user_data_path = self._app_settings_path.parent / "barks-reader.json"
+        self._user_data_path = app_settings_path.parent / "barks-reader.json"
 
     def get_app_settings_path(self) -> Path:
         assert self._app_settings_path
@@ -531,13 +531,12 @@ class ReaderSettings:
 
     @staticmethod
     def _is_valid_dir(dir_path: str | Path) -> bool:
-        if isinstance(dir_path, str):
-            dir_path = Path(dir_path)
+        path = Path(dir_path)
 
-        if dir_path.is_dir():
+        if path.is_dir():
             return True
 
-        logger.error(f'Reader Settings: Required directory not found: "{dir_path}".')
+        logger.error(f'Reader Settings: Required directory not found: "{path}".')
         return False
 
 

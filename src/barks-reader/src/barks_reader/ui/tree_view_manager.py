@@ -171,7 +171,6 @@ class TreeViewManager:
         if new_view_state is None:
             msg = f"No view state mapping found for node: '{node.get_name()}' ({type(node)})"
             raise RuntimeError(msg)
-        # noinspection LongLine
         self._view_state_manager.set_view_state(new_view_state, **view_state_params)  # ty: ignore[invalid-argument-type]
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:

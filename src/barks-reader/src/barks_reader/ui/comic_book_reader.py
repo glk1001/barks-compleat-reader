@@ -117,6 +117,7 @@ class _ComicPageManager(EventDispatcher):
         return self._display_units[unit_idx]
 
     def set_current_page_index_from_str(self, page_str: str) -> None:
+        assert self.page_map is not None
         page_index = self.page_map[page_str].page_index
 
         if self.double_page_mode and self._display_units:
@@ -194,6 +195,7 @@ class _ComicPageManager(EventDispatcher):
 
     def set_page_map(self, page_map: OrderedDict[str, PageInfo], page_to_first_goto: str) -> None:
         self.page_map = page_map
+        assert self.page_map is not None
         self._index_to_page_map: dict[int, str] = {
             page_info.page_index: page_str for page_str, page_info in page_map.items()
         }
@@ -234,6 +236,7 @@ class _ComicPageManager(EventDispatcher):
 
     def get_image_load_order(self) -> list[str]:
         """Determine the optimal order to load images for a smooth user experience."""
+        assert self.page_map is not None
         if self._first_page_to_read_index == 0:
             return list(self.page_map.keys())
 
@@ -609,6 +612,7 @@ class ComicBookReader(FloatLayout):
         if self._goto_page_dropdown:
             self._goto_page_dropdown.unbind(on_dismiss=callback)
 
+    # noinspection PyUnresolvedReferences
     def _create_goto_page_dropdown(self) -> None:
         max_dropdown_height = round(GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT * self.height)
         logger.debug(f"Creating goto page dropdown. max_dropdown_height = {max_dropdown_height}.")
@@ -619,6 +623,7 @@ class ComicBookReader(FloatLayout):
             on_select=self.on_page_selected,
             max_height=max_dropdown_height,
         )
+        assert self._goto_page_dropdown is not None
         self._goto_page_buttons.clear()
 
         logger.debug(f"Adding {len(self._page_map)} page buttons to dropdown.")

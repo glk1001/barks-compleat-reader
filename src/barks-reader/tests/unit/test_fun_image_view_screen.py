@@ -79,6 +79,7 @@ class TestFunImageViewScreen:
         mock_func = MagicMock()
         screen.set_load_image_func(mock_func)
         # noinspection PyProtectedMember
+        assert screen._load_image is not None
         assert screen._load_image == mock_func
 
     def test_set_last_loaded_image_info(

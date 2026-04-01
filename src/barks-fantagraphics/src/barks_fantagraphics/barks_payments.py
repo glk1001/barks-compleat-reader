@@ -22,7 +22,6 @@ class PaymentInfo:
 
 
 # fmt: off
-# noinspection LongLine
 BARKS_PAYMENTS = {
     Titles.DONALD_DUCK_FINDS_PIRATE_GOLD: PaymentInfo(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, 64, 21, 5, 1942, 320.0),
     Titles.VICTORY_GARDEN_THE: PaymentInfo(Titles.VICTORY_GARDEN_THE, 10, 23, 11, 1942, 126.25),

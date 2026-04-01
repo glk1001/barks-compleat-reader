@@ -26,7 +26,7 @@ def get_batch_requests_file(title: str) -> Path:
     return UNPROCESSED_BATCH_JOBS_DIR / f"{title}-batch-requests-with-image.json"
 
 
-# TODO: Remove json from inside name
+# TODO: Remove JSON from inside name
 def get_ocr_predicted_groups_filename(fanta_page: str, ocr_type: str) -> str:
     return f"{fanta_page}-{ocr_type}-json-ocr-ai-predicted-groups.json"
 

@@ -46,12 +46,13 @@ class PanelImageLoader:
             self._current_thread.join()
 
         self._cancel = False
-        self._current_thread = Thread(
+        current_thread = Thread(
             target=self._worker,
             args=(panel_path, callback),
             daemon=True,
         )
-        self._current_thread.start()
+        current_thread.start()
+        self._current_thread = current_thread
 
     def _worker(self, panel_path: PanelPath, callback: ImageLoaderCallback) -> None:
         # noinspection PyBroadException

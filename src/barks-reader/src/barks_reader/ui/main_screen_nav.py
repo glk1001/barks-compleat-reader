@@ -244,8 +244,7 @@ class MainScreenNavigation:
             self._on_title_activated()
         elif self._search_screen.is_visible:
             Clock.schedule_once(lambda _dt: self.enter_bottom_focus(), 0)
-        elif was_closed and selected.nodes:
-            assert isinstance(selected, ButtonTreeViewNode)
+        elif was_closed and isinstance(selected, ButtonTreeViewNode) and selected.nodes:
             # noinspection PyTypeChecker
             Clock.schedule_once(lambda _dt: self._select_first_child(selected), 0)
 

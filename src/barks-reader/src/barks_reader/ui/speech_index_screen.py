@@ -190,6 +190,7 @@ class SpeechIndexScreen(IndexScreen):
             alphabet_top_split_layout.add_widget(button)
 
         # Which 'prefix' to show first.
+        assert self.treeview_index_node is not None
         if SAVED_NODE_STATE_PREFIX_KEY not in self.treeview_index_node.saved_state:
             first_prefix = next(iter(first_letter_split_terms))
         else:
@@ -203,6 +204,7 @@ class SpeechIndexScreen(IndexScreen):
     def on_letter_prefix_press(self, button: Button) -> None:
         prefix = button.text
         logger.debug(f"Pressed prefix button: '{prefix}.")
+        assert self.treeview_index_node is not None
         self.treeview_index_node.saved_state[SAVED_NODE_STATE_PREFIX_KEY] = prefix
 
         if self._selected_prefix_button and self._selected_prefix_button != button:
@@ -506,6 +508,7 @@ class SpeechIndexScreen(IndexScreen):
 
         sub_items_to_display = self._get_sub_items_data(item)
 
+        assert self._open_tag_button is not None
         parent_padding = self._open_tag_button.padding[0]
         sub_item_padding = parent_padding + self.index_theme.SUB_ITEM_INDENT_STEP
 
@@ -618,6 +621,7 @@ class SpeechIndexScreen(IndexScreen):
 
     def _insert_sub_items_layout(self, sub_items_layout: GridLayout) -> None:
         button = self._open_tag_button
+        assert button is not None
         target_layout = button.parent
 
         logger.debug("Adding title sub-items layout to parent layout.")

@@ -9,6 +9,8 @@ import pytest
 from barks_reader.ui import reader_keyboard_nav as reader_keyboard_nav_module
 from barks_reader.ui import statistics_screen as statistics_screen_module
 from barks_reader.ui.reader_keyboard_nav import KEY_DOWN
+
+# noinspection PyProtectedMember
 from barks_reader.ui.statistics_screen import (
     StatisticsScreen,
     StatMenuButton,
@@ -104,6 +106,7 @@ class TestStatisticsScreen:
         assert menu_layout.add_widget.call_count == 8
 
         word_button = screen._word_stat_button
+        assert word_button is not None
         word_button.bind.assert_called_with(on_press=screen._on_word_stat_button_pressed)
 
         dropdown = screen._word_stat_dropdown
@@ -156,6 +159,7 @@ class TestStatisticsScreen:
     def test_word_stat_selected(self, screen: StatisticsScreen, statistics_dir: Path) -> None:
         """Test selecting an item from the word statistics dropdown."""
         word_button = screen._word_stat_button
+        assert word_button is not None
 
         with patch.object(screen, "show_stat") as mock_show_stat:
             screen._on_word_stat_selected(None, "word_stat.png")
@@ -209,6 +213,7 @@ class TestStatisticsScreen:
         focused_button = screen._stat_buttons[0]
 
         screen.handle_key(statistics_screen_module.KEY_ENTER)
+        # noinspection PyUnresolvedReferences
         focused_button.trigger_action.assert_called_once()
 
     def test_handle_tab_key_enter_on_word_stats(self, screen: StatisticsScreen) -> None:
@@ -219,11 +224,13 @@ class TestStatisticsScreen:
         screen._nav_focused_idx = len(screen._stat_buttons) - 1
         word_button = screen._word_stat_button
 
+        assert word_button is not None
         with (
             patch.object(statistics_screen_module.Clock, "schedule_once") as mock_schedule,
             patch.object(screen, "_enter_dropdown_nav") as mock_enter_dropdown,
         ):
             screen.handle_key(statistics_screen_module.KEY_ENTER)
+            # noinspection PyUnresolvedReferences
             word_button.trigger_action.assert_called_once()
 
             mock_schedule.assert_called_once()

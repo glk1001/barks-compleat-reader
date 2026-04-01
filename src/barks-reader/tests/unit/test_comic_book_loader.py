@@ -6,7 +6,6 @@ import io
 import threading
 import time
 from collections import OrderedDict
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
@@ -44,7 +43,7 @@ class FakePageImageSource:
     def close(self) -> None:
         self.closed = True
 
-    def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:  # noqa: ARG002
+    def load_page_image(self, _page_info: PageInfo) -> tuple[io.BytesIO, str]:
         """Return fake PNG bytes."""
         if self._delay:
             time.sleep(self._delay)
@@ -54,7 +53,8 @@ class FakePageImageSource:
         self.load_count += 1
         return io.BytesIO(b"fake_png_data"), ".png"
 
-    def get_image_info_str(self, page_info: PageInfo) -> str:
+    @staticmethod
+    def get_image_info_str(page_info: PageInfo) -> str:
         """Return a fake description."""
         return f'"fake_image" (from test, page {page_info.page_index})'
 
@@ -194,7 +194,7 @@ def test_set_comic_and_load_success(
     page_map, load_order = page_map_and_order
     source = FakePageImageSource()
 
-    loader.set_comic(source, load_order, page_map, archive_desc="test_comic.cbz")
+    loader.set_comic(source, load_order, page_map, archive_desc="test_comic.cbz")  # ty: ignore[invalid-argument-type]
 
     if loader._thread:
         loader._thread.join(timeout=2.0)
@@ -219,7 +219,7 @@ def test_load_error_file_not_found(
     page_map, load_order = page_map_and_order
     source = FakePageImageSource(fail=True)
 
-    loader.set_comic(source, load_order, page_map, archive_desc="missing_comic.cbz")
+    loader.set_comic(source, load_order, page_map, archive_desc="missing_comic.cbz")  # ty: ignore[invalid-argument-type]
 
     if loader._thread:
         loader._thread.join(timeout=2.0)
@@ -256,7 +256,7 @@ def test_close_comic_calls_source_close(
     page_map, load_order = page_map_and_order
     source = FakePageImageSource()
 
-    loader.set_comic(source, load_order, page_map, archive_desc="test.cbz")
+    loader.set_comic(source, load_order, page_map, archive_desc="test.cbz")  # ty: ignore[invalid-argument-type]
 
     if loader._thread:
         loader._thread.join(timeout=2.0)
@@ -274,7 +274,7 @@ def test_stop_cancels_inflight_loads(
     page_map, load_order = page_map_and_order
     source = FakePageImageSource(delay=0.5)
 
-    loader.set_comic(source, load_order, page_map, archive_desc="slow.cbz")
+    loader.set_comic(source, load_order, page_map, archive_desc="slow.cbz")  # ty: ignore[invalid-argument-type]
     time.sleep(0.1)
     loader.stop_now()
 
@@ -289,7 +289,7 @@ def test_get_image_info_str_delegates_to_source(
     page_map, load_order = page_map_and_order
     source = FakePageImageSource()
 
-    loader.set_comic(source, load_order, page_map, archive_desc="test.cbz")
+    loader.set_comic(source, load_order, page_map, archive_desc="test.cbz")  # ty: ignore[invalid-argument-type]
 
     if loader._thread:
         loader._thread.join(timeout=2.0)

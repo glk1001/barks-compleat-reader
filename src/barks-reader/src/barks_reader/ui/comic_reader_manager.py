@@ -67,6 +67,7 @@ class ComicReaderManager:
     def set_comic_book_reader_screen(self, comic_book_reader_screen: ComicBookReaderScreen) -> None:
         """Set the comic book reader screen instance."""
         self._comic_book_reader_screen = comic_book_reader_screen
+        assert self._comic_book_reader_screen is not None
         self._comic_book_reader = self._comic_book_reader_screen.comic_book_reader
 
     def init_comic_book_data(self) -> None:
@@ -128,6 +129,7 @@ class ComicReaderManager:
 
         self._read_comic_book(comic, page_to_first_goto, use_overrides_active=use_overrides_active)
 
+    # noinspection PyUnresolvedReferences
     def _read_comic_book(
         self,
         comic: ComicBook,
@@ -172,7 +174,7 @@ class ComicReaderManager:
             self._user_error_handler.handle_error(
                 ErrorTypes.MissingVolumeCannotShowTitle, error_info
             )
-            # noinspection LongLine
+            assert self._comic_book_reader_screen is not None
             Clock.schedule_once(
                 lambda _dt: self._comic_book_reader_screen.close_comic_book_reader(),  # ty:ignore[unresolved-attribute]
                 1,

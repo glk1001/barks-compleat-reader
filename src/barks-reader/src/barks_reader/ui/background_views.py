@@ -244,7 +244,7 @@ class BackgroundViews:
     @staticmethod
     def _get_fanta_title_list(titles: list[Titles]) -> list[FantaComicBookInfo]:
         fanta_title_list = [get_fanta_info(title) for title in titles]
-        return [title for title in fanta_title_list if title]
+        return [title for title in fanta_title_list if title is not None]
 
     def get_view_state(self) -> ViewStates:
         return self._view_state
@@ -569,6 +569,7 @@ class BackgroundViews:
         self._set_bottom_view_fun_image_color()
         self._schedule_bottom_view_fun_image_event()
 
+        assert self._bottom_view_fun_image_info is not None
         assert self._bottom_view_fun_image_info.filename
 
         logger.debug(

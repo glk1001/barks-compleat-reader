@@ -60,7 +60,6 @@ from .fanta_comics_info import (
 )
 
 # fmt: off
-# noinspection LongLine
 SERIES_INFO: list[FantaSeriesInfo] = [
     # DDA
     FantaSeriesInfo(Bt.DONALD_DUCK_FINDS_PIRATE_GOLD, GLEA, SERIES_MISC, FANTA_01),

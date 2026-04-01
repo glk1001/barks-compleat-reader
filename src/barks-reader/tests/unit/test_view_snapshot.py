@@ -28,6 +28,7 @@ class TestTopViewSnapshot:
     def test_frozen(self) -> None:
         snap = TopViewSnapshot(image_info=ImageInfo(), image_opacity=0.5, image_color=(1, 1, 1, 1))
         with pytest.raises(FrozenInstanceError):
+            # noinspection PyDataclass
             snap.image_opacity = 0.9  # type: ignore[misc]  # ty: ignore[invalid-assignment]
 
     def test_equality(self) -> None:

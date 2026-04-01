@@ -107,7 +107,7 @@ class ComicBookLoader:
         return self._max_window_height
 
     def init_data(self) -> None:
-        """Pre-load Fantagraphics volume metadata (if not using prebuilt archives)."""
+        """Preload Fantagraphics volume metadata (if not using prebuilt archives)."""
         if self._reader_settings.use_prebuilt_archives:
             logger.info("Using prebuilt archives. No extra data to initialize.")
             self._fanta_volume_archives = None
@@ -115,12 +115,13 @@ class ComicBookLoader:
             timing = Timing()
 
             logger.info("Using Fantagraphics volume archives. Now loading volume info...")
-            self._fanta_volume_archives = FantagraphicsVolumeArchives(
+            fanta_volume_archives = FantagraphicsVolumeArchives(
                 self._reader_settings.fantagraphics_volumes_dir,
                 self._sys_file_paths.get_barks_reader_fantagraphics_overrides_root_dir(),
                 ALL_FANTA_VOLUMES,
             )
-            self._fanta_volume_archives.load()
+            fanta_volume_archives.load()
+            self._fanta_volume_archives = fanta_volume_archives
 
             logger.info(f"Finished loading all volumes in {timing.get_elapsed_time_with_unit()}.")
 
@@ -318,8 +319,9 @@ class ComicBookLoader:
             return
 
         logger.debug(f'Starting comic load in background thread for: "{self._current_comic_desc}"')
-        self._thread = threading.Thread(target=self._load_comic_in_thread, daemon=True)
-        self._thread.start()
+        thread = threading.Thread(target=self._load_comic_in_thread, daemon=True)
+        thread.start()
+        self._thread = thread
 
     def _init_load_events(self) -> None:
         self._image_loaded_events.clear()
@@ -500,6 +502,7 @@ class ComicBookLoader:
 
                         # Normal page delivery.
                         self._images[page_index] = (image_stream, image_ext)
+                        # noinspection PyUnresolvedReferences
                         self._image_loaded_events[page_index].set()
                         num_loaded += 1
 

@@ -51,49 +51,52 @@ class SystemFilePaths:
 
         self._barks_reader_files_dir = reader_files_dir
 
-        self._reader_icon_files_dir = self._barks_reader_files_dir / "Reader Icons"
-        self._various_files_dir = self._barks_reader_files_dir / "Various"
-        self._indexes_dir = self._barks_reader_files_dir / "Indexes"
-        self._app_window_icon_path = self._various_files_dir / "app-icon.png"
-        self._error_background_path = self._various_files_dir / "error-background.png"
-        self._success_background_path = self._various_files_dir / "success-background.png"
-        self._about_background_path = self._various_files_dir / "about-background.png"
+        reader_icon_files_dir = reader_files_dir / "Reader Icons"
+        self._reader_icon_files_dir = reader_icon_files_dir
+        various_files_dir = reader_files_dir / "Various"
+        self._various_files_dir = various_files_dir
+        self._indexes_dir = reader_files_dir / "Indexes"
+        self._app_window_icon_path = various_files_dir / "app-icon.png"
+        self._error_background_path = various_files_dir / "error-background.png"
+        self._success_background_path = various_files_dir / "success-background.png"
+        self._about_background_path = various_files_dir / "about-background.png"
 
-        self._action_bar_icons_dir = self._reader_icon_files_dir / "ActionBar Icons"
-        self._close_icon_path = self._action_bar_icons_dir / "icon-close.png"
-        self._go_back_icon_path = self._action_bar_icons_dir / "icon-back-arrow.png"
-        self._collapse_icon_path = self._action_bar_icons_dir / "icon-collapse.png"
-        self._refresh_arrow_icon_path = self._action_bar_icons_dir / "icon-refresh-arrow.png"
-        self._settings_icon_path = self._action_bar_icons_dir / "icon-settings.png"
-        self._menu_dots_icon_path = self._action_bar_icons_dir / "icon-menu-dots.png"
-        self._fullscreen_icon_path = self._action_bar_icons_dir / "icon-fullscreen.png"
-        self._fullscreen_exit_icon_path = self._action_bar_icons_dir / "icon-fullscreen-exit.png"
-        self._single_page_icon_path = self._action_bar_icons_dir / "icon-single-page.png"
-        self._double_page_icon_path = self._action_bar_icons_dir / "icon-double-page.png"
-        self._goto_icon_path = self._action_bar_icons_dir / "icon-goto.png"
-        self._goto_start_icon_path = self._action_bar_icons_dir / "icon-goto-start.png"
-        self._goto_end_icon_path = self._action_bar_icons_dir / "icon-goto-end.png"
-        self._hamburger_menu_icon_path = self._action_bar_icons_dir / "menu-hamburger-icon.png"
+        action_bar_icons_dir = reader_icon_files_dir / "ActionBar Icons"
+        self._action_bar_icons_dir = action_bar_icons_dir
+        self._close_icon_path = action_bar_icons_dir / "icon-close.png"
+        self._go_back_icon_path = action_bar_icons_dir / "icon-back-arrow.png"
+        self._collapse_icon_path = action_bar_icons_dir / "icon-collapse.png"
+        self._refresh_arrow_icon_path = action_bar_icons_dir / "icon-refresh-arrow.png"
+        self._settings_icon_path = action_bar_icons_dir / "icon-settings.png"
+        self._menu_dots_icon_path = action_bar_icons_dir / "icon-menu-dots.png"
+        self._fullscreen_icon_path = action_bar_icons_dir / "icon-fullscreen.png"
+        self._fullscreen_exit_icon_path = action_bar_icons_dir / "icon-fullscreen-exit.png"
+        self._single_page_icon_path = action_bar_icons_dir / "icon-single-page.png"
+        self._double_page_icon_path = action_bar_icons_dir / "icon-double-page.png"
+        self._goto_icon_path = action_bar_icons_dir / "icon-goto.png"
+        self._goto_start_icon_path = action_bar_icons_dir / "icon-goto-start.png"
+        self._goto_end_icon_path = action_bar_icons_dir / "icon-goto-end.png"
+        self._hamburger_menu_icon_path = action_bar_icons_dir / "menu-hamburger-icon.png"
 
-        self._speech_bubble_icon_path = self._various_files_dir / "speech-bubble-icon.png"
-        self._up_arrow_path = self._various_files_dir / "up-arrow.png"
-        self._down_arrow_path = self._various_files_dir / "down-arrow.png"
-        self._transparent_blank_path = self._various_files_dir / "transparent-blank.png"
-        self._empty_page_path = self._various_files_dir / "empty-page.jpg"
-        self._favourite_titles_path = self._various_files_dir / "favourite-titles.txt"
+        self._speech_bubble_icon_path = various_files_dir / "speech-bubble-icon.png"
+        self._up_arrow_path = various_files_dir / "up-arrow.png"
+        self._down_arrow_path = various_files_dir / "down-arrow.png"
+        self._transparent_blank_path = various_files_dir / "transparent-blank.png"
+        self._empty_page_path = various_files_dir / "empty-page.jpg"
+        self._favourite_titles_path = various_files_dir / "favourite-titles.txt"
 
-        documents_dir = self._various_files_dir / "documents"
+        documents_dir = various_files_dir / "documents"
         self._intro_doc_dir = documents_dir / "intro-to-barks-reader"
         self._censorship_fixes_doc_dir = documents_dir / "censorship-fixes"
         self._how_to_doc_dir = documents_dir / "how-to"
 
         self._fantagraphics_overrides_root_dir = (
-            self._barks_reader_files_dir / "Fantagraphics Volumes Overrides"
+            reader_files_dir / "Fantagraphics Volumes Overrides"
         )
         self._fantagraphics_panel_segments_root_dir = (
-            self._barks_reader_files_dir / "Fantagraphics-panel-segments"
+            reader_files_dir / "Fantagraphics-panel-segments"
         )
-        self._statistics_dir = self._barks_reader_files_dir / "Statistics"
+        self._statistics_dir = reader_files_dir / "Statistics"
 
         if check_files:
             self._check_reader_files_dirs()

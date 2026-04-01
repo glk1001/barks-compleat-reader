@@ -94,7 +94,7 @@ class BottomTitleViewScreen(FloatLayout):
         self._fanta_info = fanta_info
 
         title_text = self._get_main_title_str(fanta_info)
-        add_footnote = title_needs_footnote(self._fanta_info)
+        add_footnote = title_needs_footnote(fanta_info)
         self.main_title_text = self._formatter.get_main_title(title_text, add_footnote)
         self.title_info_text = self._formatter.get_title_info(
             fanta_info, self.MAX_TITLE_INFO_LEN_BEFORE_SHORTEN, add_footnote
@@ -111,6 +111,7 @@ class BottomTitleViewScreen(FloatLayout):
         self._set_title_inset_image(inset_image_source)
 
     def _get_footnote_text(self) -> str:
+        assert self._fanta_info is not None
         return (
             f"[*] Rejected by Western but intended for {self._fanta_info.get_short_issue_title()}"
         )
@@ -122,6 +123,7 @@ class BottomTitleViewScreen(FloatLayout):
         if not self._fanta_info:
             return
 
+        assert self._special_fanta_overrides is not None
         inset_image_source = self._special_fanta_overrides.get_title_page_inset_file(
             self._fanta_info.comic_book_info.title,
             use_overrides,

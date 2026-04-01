@@ -19,7 +19,6 @@ US_2_FC_ISSUE_NUM = 456
 US_3_FC_ISSUE_NUM = 495
 
 # fmt: off
-# noinspection LongLine
 ADVENTURE_DOWN_UNDER = "Adventure Down Under"
 ALL_AT_SEA = "All at Sea"
 ALL_CHOKED_UP = "All Choked Up"
@@ -688,7 +687,6 @@ GEORGE_LUCAS___AN_APPRECIATION = "George Lucas - An Appreciation"
 RICH_TOMASSO___ON_COLORING_BARKS = "Rich Tomasso - On Coloring Barks"
 DON_AULT___FANTAGRAPHICS_INTRODUCTION = "Don Ault - Fantagraphics Introduction"
 DON_AULT___LIFE_AMONG_THE_DUCKS = "Don Ault - Life Among the Ducks"
-# noinspection LongLine
 MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD = "Maggie Thompson - Comics Readers Find Comic Book Gold"
 # fmt: on
 
@@ -2259,10 +2257,9 @@ def get_filename_from_title_str(title_str: str, ext: str) -> str:
 
 
 def get_title_str_from_filename(filename: str | PanelPath) -> str:
-    if isinstance(filename, str):
-        filename = Path(filename)
+    path: PanelPath = Path(filename) if isinstance(filename, str) else filename
 
     # Can't use 'stem' on directories because a title may contain a '.'
-    name = filename.name if filename.is_dir() else filename.stem
+    name = path.name if path.is_dir() else path.stem
 
     return FILENAME_TO_TITLE_SPECIAL_CASE_MAP.get(name, name)

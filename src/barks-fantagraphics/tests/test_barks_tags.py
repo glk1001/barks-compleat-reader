@@ -51,7 +51,7 @@ def test_validate_invalid_title_in_barks_tagged_titles() -> None:
         invalid_data_content[Tags.FIRE] = []
 
     # Test that bad enum is caught.
-    # noinspection PyTypeChecker,LongLine
+    # noinspection PyTypeChecker
     invalid_data_content[Tags.FIRE].append("NOT_A_TITLE_ENUM_MEMBER")  # ty: ignore[invalid-argument-type]
 
     with patch.dict(barks_tags.BARKS_TAGGED_TITLES, invalid_data_content, clear=True):
@@ -153,7 +153,6 @@ def test_validate_invalid_item_in_barks_tag_categories() -> None:
     # Ensure TagCategories.THINGS exists
     if TagCategories.THINGS not in invalid_data_content:
         invalid_data_content[TagCategories.THINGS] = []
-    # noinspection LongLine
     invalid_data_content[TagCategories.THINGS].append("NOT_A_TAG_OR_GROUP_ENUM")  # ty: ignore[invalid-argument-type]
 
     with patch.dict(barks_tags.BARKS_TAG_CATEGORIES, invalid_data_content, clear=True):
@@ -177,7 +176,6 @@ def test_validate_invalid_tag_in_barks_tag_groups() -> None:
     # Ensure TagGroups.AFRICA exists
     if TagGroups.AFRICA not in invalid_data_content:
         invalid_data_content[TagGroups.AFRICA] = []
-    # noinspection LongLine
     invalid_data_content[TagGroups.AFRICA].append("NOT_A_TAG_ENUM")  # ty: ignore[invalid-argument-type]
 
     with patch.dict(barks_tags.BARKS_TAG_GROUPS, invalid_data_content, clear=True):
@@ -201,7 +199,7 @@ def test_get_tagged_titles() -> None:
         NON_EXISTENT = "Non Existent Tag"
 
     # Test invalid Tag enum is caught.
-    # noinspection PyTypeChecker,LongLine
+    # noinspection PyTypeChecker
     assert get_sorted_tagged_titles(MockNonExistentTag.NON_EXISTENT) == []  # ty: ignore[invalid-argument-type]
 
 

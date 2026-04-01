@@ -122,10 +122,11 @@ class ReaderFilePaths:
         }
 
     def set_barks_panels_source(self, panels_source: Path, ext_type: BarksPanelsExtType) -> None:
-        self._barks_panels_source = Path(os.path.expandvars(panels_source))
+        source = Path(os.path.expandvars(panels_source))
+        self._barks_panels_source = source
         self._panels_ext_type = ext_type
 
-        is_zip = self._barks_panels_source.suffix == ZIP_FILE_EXT
+        is_zip = source.suffix == ZIP_FILE_EXT
         panels_root: Path | zipfile.Path
 
         if is_zip:

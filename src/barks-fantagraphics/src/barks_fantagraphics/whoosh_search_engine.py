@@ -218,7 +218,7 @@ class SearchEngine:
 
     def find_entities(self, entity_type: str, entity_name: str) -> TitleDict:
         field_name = f"entities_{entity_type}"
-        # noinspection GrazieInspection
+        # noinspection GrazieInspection,GrazieInspectionRunner
         with self._index.searcher() as searcher:
             # Quote the entity name so multi-word names (e.g. "Duk Duk") match
             # as a single token in the comma-separated KEYWORD field.
@@ -228,7 +228,7 @@ class SearchEngine:
             return self._collect_and_sort_results(results, entity_name)
 
     def get_entity_terms(self, entity_type: str) -> list[str]:
-        path = self._entity_terms_paths[entity_type]
+        path = self._entity_terms_paths[EntityType(entity_type)]
         if path.exists():
             return json.loads(path.read_text())
         return []

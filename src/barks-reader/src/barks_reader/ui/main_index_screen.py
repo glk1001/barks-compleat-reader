@@ -290,6 +290,7 @@ class MainIndexScreen(IndexScreen):
 
     def _add_sub_items(self, _dt: float) -> None:
         """Create and add the sub-item widgets to the layout."""
+        assert self._open_tag_item is not None
         item_id: Tags | TagGroups = self._open_tag_item.id
         logger.debug(f"Adding sub-items for {item_id.name}")
 
@@ -298,10 +299,12 @@ class MainIndexScreen(IndexScreen):
 
     def _get_sub_item_layout(self, item_id: Tags | TagGroups) -> BoxLayout:
         # The new padding is the parent button's padding plus an indent step.
+        assert self._open_tag_button is not None
         parent_padding = self._open_tag_button.padding[0]
         sub_item_padding = parent_padding + self.index_theme.SUB_ITEM_INDENT_STEP
 
         # --- Determine what items to display in the new sub-list ---
+        # noinspection PyUnresolvedReferences
         if type(self._open_tag_item.id) is Tags:
             assert isinstance(item_id, Tags)
             use_italic = True
@@ -359,6 +362,7 @@ class MainIndexScreen(IndexScreen):
 
     def _insert_sub_items_layout(self, sub_items_layout: BoxLayout) -> None:
         button = self._open_tag_button
+        assert button is not None
         target_layout = button.parent
         insertion_index = target_layout.children.index(button)
         target_layout.add_widget(sub_items_layout, index=insertion_index)

@@ -19,6 +19,8 @@ from barks_reader.core.reader_file_paths import ALL_TYPES, EMERGENCY_INSET_FILE,
 from barks_reader.core.reader_utils import get_all_files_in_dir
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
 
@@ -288,8 +290,8 @@ class ImageSelector:
         else:
             selected_image_info = random.choice(possible_images)
 
-        assert selected_image_info
         image_filename = selected_image_info[0]
+        assert str(image_filename) != "", f"Empty image filename for title '{title_str}'"
         self._last_title_image[title_str] = image_filename
 
         return image_filename
@@ -466,10 +468,10 @@ class ImageSelector:
     @staticmethod
     def _get_random_comic_file(
         title_str: str,
-        get_files_func: object,
+        get_files_func: Callable[[str, bool], list[PanelPath]],
         use_only_edited_if_possible: bool,
     ) -> PanelPath:
-        title_files = get_files_func(title_str, use_only_edited_if_possible)  # ty: ignore[call-non-callable]
+        title_files = get_files_func(title_str, use_only_edited_if_possible)
         if title_files:
             return random.choice(title_files)
 

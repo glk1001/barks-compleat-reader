@@ -382,6 +382,5 @@ class SettingOptionsWithValue(SettingOptions):
 
         Clock.schedule_once(lambda _dt: self._update_value_display(), 0.1)
 
-    # noinspection LongLine
     def on_value(self, _instance, _value) -> None:  # ty:ignore[invalid-method-override]  # noqa: ANN001
         self._update_value_display()

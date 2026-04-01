@@ -150,7 +150,7 @@ def get_prefetch_tuning(worker_count: int, num_pages: int) -> PrefetchTuning:
         mem_low = 150.0
         mem_high = 300.0
     elif profile.is_mid_range:
-        # Modest PCs / mid laptops:
+        # Modest PCs / mid-laptops:
         prefetch_min = 2
         prefetch_max_factor = 0.75
         mem_low = 200.0
@@ -170,6 +170,7 @@ def get_prefetch_tuning(worker_count: int, num_pages: int) -> PrefetchTuning:
         worker_count=worker_count,
         num_pages=num_pages,
     )
+    assert _PREFETCH_TUNING is not None
     _PREFETCH_TUNING.base_max_window = max(prefetch_min, int(worker_count * prefetch_max_factor))
 
     logger.debug(
@@ -184,16 +185,17 @@ def _get_system_profile() -> SystemProfile:
     global _SYSTEM_PROFILE  # noqa: PLW0603
     if _SYSTEM_PROFILE is None:
         _SYSTEM_PROFILE = PrefetchTuning.detect_system_profile()
-        logger.debug(
-            "System profile detected: cpu_count={cpu}, ram_gb={ram}, "
-            "low={low}, mid={mid}, high={high}".format(
-                cpu=_SYSTEM_PROFILE.cpu_count,
-                ram=f"{_SYSTEM_PROFILE.ram_gb:.1f}" if _SYSTEM_PROFILE.ram_gb else "unknown",
-                low=_SYSTEM_PROFILE.is_low_end,
-                mid=_SYSTEM_PROFILE.is_mid_range,
-                high=_SYSTEM_PROFILE.is_high_end,
-            )
+    assert _SYSTEM_PROFILE is not None
+    logger.debug(
+        "System profile detected: cpu_count={cpu}, ram_gb={ram}, "
+        "low={low}, mid={mid}, high={high}".format(
+            cpu=_SYSTEM_PROFILE.cpu_count,
+            ram=f"{_SYSTEM_PROFILE.ram_gb:.1f}" if _SYSTEM_PROFILE.ram_gb else "unknown",
+            low=_SYSTEM_PROFILE.is_low_end,
+            mid=_SYSTEM_PROFILE.is_mid_range,
+            high=_SYSTEM_PROFILE.is_high_end,
         )
+    )
     return _SYSTEM_PROFILE
 
 

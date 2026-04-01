@@ -98,9 +98,12 @@ def get_relpath(file: Path | zipfile.Path) -> str:
         # noinspection PyUnresolvedReferences
         return file.at.replace("\\", "/")
 
+    assert isinstance(file, Path)
+    # noinspection PyUnresolvedReferences
     if file.is_relative_to(BARKS_ROOT_DIR):
         return str(file.relative_to(BARKS_ROOT_DIR))
 
+    # noinspection PyUnresolvedReferences
     return str(Path(*file.parts[-2:]))
 
 
@@ -118,9 +121,12 @@ def get_timestamp(file: Path | zipfile.Path) -> float:
     if isinstance(file, zipfile.Path):
         logger.warning(f'Trying to get stat for zipfile.Path: "{file}".')
 
+    # noinspection PyUnresolvedReferences
     if file.is_symlink():
+        # noinspection PyUnresolvedReferences
         return file.lstat().st_mtime  # ty:ignore[unresolved-attribute]
 
+    # noinspection PyUnresolvedReferences
     return file.stat().st_mtime  # ty:ignore[unresolved-attribute]
 
 

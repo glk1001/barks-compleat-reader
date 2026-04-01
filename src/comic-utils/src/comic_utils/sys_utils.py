@@ -99,7 +99,6 @@ def is_virtual_machine() -> bool:  # noqa: C901, PLR0911, PLR0912
     # -------------------------
     if system == "Windows":
         try:
-            # noinspection LongLine
             out = subprocess.check_output(["systeminfo"], text=True, errors="ignore").lower()  # noqa: S607
 
             vm_keywords = ["virtualbox", "vmware", "hyper-v", "kvm", "qemu", "parallels", "xen"]
@@ -117,7 +116,6 @@ def is_virtual_machine() -> bool:  # noqa: C901, PLR0911, PLR0912
     # -------------------------
     if system == "Darwin":
         try:
-            # noinspection LongLine
             out = subprocess.check_output(["sysctl", "machdep.cpu.brand_string"], text=True).lower()  # noqa: S607
 
             if "virtualbox" in out or "vmware" in out:

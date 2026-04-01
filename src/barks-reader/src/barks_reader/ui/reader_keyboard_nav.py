@@ -211,6 +211,7 @@ class DropdownNavMixin:
 
     # --- Key handling ---
 
+    # noinspection PyUnresolvedReferences
     def _handle_menu_key(self, key: int) -> bool:
         if self._dropdown_nav_mode:
             return self._handle_dropdown_key(key)
