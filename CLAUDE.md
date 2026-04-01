@@ -4,13 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-The Compleat Barks Disney Reader is a Kivy-based Python desktop application for browsing and reading the Fantagraphics Carl Barks comic library. It is packaged as a single-file executable via `pycrucible`.
+The Compleat Barks Disney Reader is a Kivy-based Python desktop application for browsing and
+reading the Fantagraphics Carl Barks comic library. It is packaged as a single-file executable via `pycrucible`.
 
 ## Commands
 
 **Run the application:**
 ```bash
-uv run python main.py
+uv run main.py
 ```
 
 **Run all tests:**
@@ -30,7 +31,7 @@ uv run pytest --cov
 
 **Run benchmarks** (excluded from the default test run):
 ```bash
-uv run pytest src/barks-reader/tests/benchmarks/
+bash scripts/run_benchmark.sh
 ```
 
 **Lint (ruff):**
@@ -83,15 +84,15 @@ All code lives under `src/`, split into four packages managed as a **uv workspac
 
 Entry point: `main.py` (root). Run `uv sync` after cloning to install all workspace packages. Note: `pycrucible.toml` still sets `PYTHONPATH` for the bundled standalone executable's runtime — that is intentional and cannot be removed. pycrucible uses a flat archive internally, so multiple `pyproject.toml` files collide on the same name and cannot be bundled. `build.sh` works around this by temporarily stripping the `[tool.uv.workspace]`, `[tool.uv.sources]`, and workspace package entries from `pyproject.toml` before running pycrucible, then restoring it. The workspace editable installs do not exist in the bundled executable context, so PYTHONPATH is the only way to locate packages within the extracted source tree.
 
-### `barks_reader` Internal Layering
+### Import Layering
 
-Enforced by `import-linter` (`.importlinter`):
+Enforced by `import-linter` (`.importlinter`), three contracts:
 - `barks_reader.core` — **must never import** from `barks_reader.ui` or `kivy`. Pure business logic.
 - `barks_reader.ui` — Kivy widgets, screens, and app. May import from `core`.
+- `barks_fantagraphics` — **must not import** from `barks_reader`.
+- `comic_utils` — **must not import** from `barks_reader` or `barks_fantagraphics`.
 
-Key `core` modules: `config_info`, `comic_book_loader`, `filtered_title_lists`, `image_file_getter`, `panel_image_loader`, `reader_settings`, `services`, `fantagraphics_volumes`.
-
-Key `ui` modules: `barks_reader_app` (Kivy `App` subclass, orchestrates everything), `main_screen`, `tree_view_screen`, `comic_book_reader`, `bottom_title_view_screen`, `reader_screens` (screen manager), `view_state_manager`.
+Always run `uv run lint-imports` after any code changes — not just when imports change.
 
 ### Kivy Initialization Order (Critical)
 
@@ -99,7 +100,8 @@ Key `ui` modules: `barks_reader_app` (Kivy `App` subclass, orchestrates everythi
 
 ### Testing
 
-- Unit tests are in `src/barks-reader/tests/unit/` and `src/barks-fantagraphics/tests/`. Benchmarks are in `src/barks-reader/tests/benchmarks/` and are excluded from the default `uv run pytest` run.
+- Unit tests are in `src/barks-reader/tests/unit/` and `src/barks-fantagraphics/tests/`.
+  Benchmarks are in `src/barks-reader/tests/benchmarks/` and are excluded from the default `uv run pytest` run.
 - Use `pytest` fixtures and `patch.object(module, ClassName)` style mocking — **not** string-path patching like `patch("barks_reader.core.module.ClassName")`.
 - `testpaths = ["src/barks-reader/tests/unit", "src/barks-fantagraphics/tests"]` in `pyproject.toml`.
 
