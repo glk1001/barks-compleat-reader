@@ -62,7 +62,6 @@ def reader_settings(
         settings = ReaderSettings()
         app_settings_path = Path("/app/settings.ini")
         app_data_dir = Path("/app/data")
-        # noinspection PyTypeChecker
         settings.set_config(mock_config, app_settings_path, app_data_dir)
         return settings
 

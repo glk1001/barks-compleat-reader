@@ -140,7 +140,6 @@ class TestPanelImageLoader:
             )
             mock_schedule.side_effect = lambda func, dt: func(dt)
 
-            # noinspection PyTypeChecker
             loader.load_pil("not a path", mock_callback)  # ty:ignore[invalid-argument-type]
 
             args, _ = mock_callback.call_args

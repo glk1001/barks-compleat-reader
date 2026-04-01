@@ -68,7 +68,6 @@ class ConfigInfo:
     For this to work, this module must be imported before any kivy imports.
     """
 
-    # noinspection PyTypeChecker
     def __init__(self) -> None:
         main_script_dir = Path(__file__).parent.parent.parent.parent.parent.parent
         assert (main_script_dir / "main.py").is_file()

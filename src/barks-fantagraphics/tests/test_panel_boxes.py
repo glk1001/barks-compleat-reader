@@ -80,7 +80,6 @@ class TestPanelBox:
 
     def test_is_frozen(self) -> None:
         pb = PanelBox(panel_num=1, x0=0, y0=0, x1=10, y1=10, w=10, h=10)
-        # noinspection PyTypeChecker
         with pytest.raises((AttributeError, TypeError)):
             # noinspection PyDataclass
             pb.x0 = 99  # ty: ignore[invalid-assignment]

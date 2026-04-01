@@ -4,7 +4,7 @@
 """Generate statistics PNG images for the Barks Reader Statistics screen.
 
 Usage:
-    uv run python scripts/generate_stats_images.py --output-dir <path>
+    uv run scripts/generate_stats_images.py --output-dir <path>
 
 Optional:
     --indexes-dir <path>   Path to the Barks Reader indexes directory, required

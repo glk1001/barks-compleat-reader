@@ -51,7 +51,6 @@ def test_validate_invalid_title_in_barks_tagged_titles() -> None:
         invalid_data_content[Tags.FIRE] = []
 
     # Test that bad enum is caught.
-    # noinspection PyTypeChecker
     invalid_data_content[Tags.FIRE].append("NOT_A_TITLE_ENUM_MEMBER")  # ty: ignore[invalid-argument-type]
 
     with patch.dict(barks_tags.BARKS_TAGGED_TITLES, invalid_data_content, clear=True):
@@ -132,7 +131,6 @@ def test_validate_invalid_page_type_in_barks_tagged_pages() -> None:
     invalid_data_content = deepcopy(barks_tags.BARKS_TAGGED_PAGES)
     # Test invalid int page is caught.
     # Page as int, not str
-    # noinspection PyTypeChecker
     invalid_data_content[key_to_test] = [123]  # ty: ignore[invalid-assignment]
 
     with patch.dict(barks_tags.BARKS_TAGGED_PAGES, invalid_data_content, clear=True):
@@ -199,7 +197,6 @@ def test_get_tagged_titles() -> None:
         NON_EXISTENT = "Non Existent Tag"
 
     # Test invalid Tag enum is caught.
-    # noinspection PyTypeChecker
     assert get_sorted_tagged_titles(MockNonExistentTag.NON_EXISTENT) == []  # ty: ignore[invalid-argument-type]
 
 

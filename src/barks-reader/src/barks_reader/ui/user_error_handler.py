@@ -387,7 +387,6 @@ class UserErrorHandler:
 
 
 def get_volume_not_available_error_info(image_info: ImageInfo) -> ErrorInfo:
-    # noinspection PyTypeChecker
     fanta_volume = (
         -1
         if image_info.from_title not in ALL_FANTA_COMIC_BOOK_INFO
