@@ -4,7 +4,7 @@
 """Generate a TF-IDF word cloud and ranked word list from Barks comic speech text.
 
 Usage:
-    uv run python scripts/generate_tfidf_wordcloud.py \
+    uv run scripts/generate_tfidf_wordcloud.py \
         --indexes-dir <path> --output-dir <path>
 
 Optional:
@@ -142,8 +142,7 @@ def _write_ranked_words(
     word_scores: list[tuple[str, float]], output_path: Path, top_n: int = 200
 ) -> None:
     """Write a ranked word list with TF-IDF scores to a text file."""
-    lines = [f"{'Rank':<6} {'Word':<30} {'TF-IDF Score':<12}"]
-    lines.append("-" * 50)
+    lines = [f"{'Rank':<6} {'Word':<30} {'TF-IDF Score':<12}", "-" * 50]
     for rank, (word, score) in enumerate(word_scores[:top_n], start=1):
         lines.append(f"{rank:<6} {word:<30} {score:.6f}")
     output_path.write_text("\n".join(lines) + "\n")

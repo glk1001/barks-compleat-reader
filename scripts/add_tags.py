@@ -4,7 +4,7 @@
 """Add new tags to barks_tags.py from an input file.
 
 Usage:
-    python scripts/add_tags.py <input_file> [--dry-run]
+    uv run scripts/add_tags.py <input_file> [--dry-run]
 
 Input format — whitespace-separated, one entry per line:
     "tag term"  TITLES_ENUM_NAME  page_number  [extra fields ignored ...]
@@ -49,6 +49,7 @@ BARKS_TITLES_FILE = _FANTA_SRC / "barks_titles.py"
 # ---------------------------------------------------------------------------
 
 
+# noinspection GrazieInspectionRunner
 def tag_term_to_enum_name(tag_term: str) -> str:
     """Convert a human-readable tag term to a candidate Tags enum member name.
 
@@ -173,6 +174,7 @@ class BarkTagsModifier:
     # BARKS_TAGGED_TITLES                                                  #
     # ------------------------------------------------------------------ #
 
+    # noinspection GrazieInspectionRunner
     def add_title_to_tagged_titles(self, enum_name: str, title_enum: str) -> None:
         """Add title_enum to the BARKS_TAGGED_TITLES entry for enum_name."""
         ts, te = self._dict_bounds("BARKS_TAGGED_TITLES")
@@ -216,6 +218,7 @@ class BarkTagsModifier:
     # BARKS_TAGGED_PAGES                                                   #
     # ------------------------------------------------------------------ #
 
+    # noinspection GrazieInspectionRunner
     def add_page_to_tagged_pages(self, enum_name: str, title_enum: str, page: int) -> None:
         """Add page to the BARKS_TAGGED_PAGES entry for (enum_name, title_enum)."""
         ps, pe = self._dict_bounds("BARKS_TAGGED_PAGES")
@@ -255,6 +258,7 @@ class BarkTagsModifier:
     # Internals                                                            #
     # ------------------------------------------------------------------ #
 
+    # noinspection GrazieInspectionRunner
     def _tagged_titles_insert_idx(self, enum_name: str, dict_start: int, dict_end: int) -> int:
         """Return the line index for alphabetical insertion in BARKS_TAGGED_TITLES.
 
@@ -303,6 +307,7 @@ class BarkTagsModifier:
         msg = f"Cannot find closing brace of {dict_name}"
         raise RuntimeError(msg)
 
+    # noinspection GrazieInspectionRunner
     def _list_entry(self, key_str: str, dict_start: int, dict_end: int) -> tuple[int, int]:
         """Find (start_line, end_line) for 'key_str: [...],' within a dict.
 

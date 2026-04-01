@@ -1529,6 +1529,7 @@ _US_STATES: frozenset[str] = frozenset(
     }
 )
 
+# noinspection GrazieInspectionRunner
 BARKSIAN_WORDS_WITH_OPTIONAL_HYPHENS: frozenset[str] = frozenset(
     {
         "13-13",
@@ -1781,7 +1782,7 @@ FRAGMENTS_TO_SUPPRESS: frozenset[str] = frozenset(
 # Multi-word terms to suppress from the unstemmed index.
 # These are typically story titles or phrases detected by spaCy
 # that should not appear in the word list.
-# noinspection SpellCheckingInspection
+# noinspection SpellCheckingInspection,GrazieInspectionRunner
 MULTI_WORD_TERMS_TO_SUPPRESS: frozenset[str] = frozenset(
     {
         "A Cold Bargain",
