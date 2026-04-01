@@ -11,8 +11,6 @@ import pytest
 from barks_reader.core import panel_image_loader as loader_module
 from barks_reader.core.panel_image_loader import PanelImageLoader
 from barks_reader.core.services import schedule_once
-
-# noinspection PyUnresolvedReferences
 from comic_utils.get_panel_bytes import get_decrypted_bytes  # ty:ignore[unresolved-import]
 from PIL import Image
 

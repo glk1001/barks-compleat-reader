@@ -203,7 +203,6 @@ class TestComicBookReader:
 
             assert reader._current_title_str == "Title"
             reader._comic_book_loader.set_comic.assert_called()
-            # noinspection PyUnresolvedReferences
             reader._on_comic_is_ready_to_read.assert_called()
 
     def test_on_touch_down_navigation(self, reader: ComicBookReader) -> None:

@@ -6,8 +6,6 @@ from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
-
-# noinspection PyUnresolvedReferences
 from comic_utils.get_panel_bytes import get_decrypted_bytes  # ty: ignore[unresolved-import]
 from kivy.clock import Clock
 from loguru import logger
@@ -129,7 +127,6 @@ class ComicReaderManager:
 
         self._read_comic_book(comic, page_to_first_goto, use_overrides_active=use_overrides_active)
 
-    # noinspection PyUnresolvedReferences
     def _read_comic_book(
         self,
         comic: ComicBook,

@@ -188,7 +188,6 @@ def get_view_state_from_node(
 
     for node_type, (state, param_name) in _NODE_TYPE_TO_VIEW_STATE_MAP.items():
         if isinstance(node, node_type):
-            # noinspection PyUnresolvedReferences
             return state, {param_name: node.text}
 
     if clean_node_text in _NODE_TEXT_TO_VIEW_STATE_MAP:

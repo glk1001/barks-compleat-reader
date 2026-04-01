@@ -610,7 +610,6 @@ class ComicBookReader(FloatLayout):
         if self._goto_page_dropdown:
             self._goto_page_dropdown.unbind(on_dismiss=callback)
 
-    # noinspection PyUnresolvedReferences
     def _create_goto_page_dropdown(self) -> None:
         max_dropdown_height = round(GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT * self.height)
         logger.debug(f"Creating goto page dropdown. max_dropdown_height = {max_dropdown_height}.")

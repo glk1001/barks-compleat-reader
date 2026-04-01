@@ -502,7 +502,6 @@ class ComicBookLoader:
 
                         # Normal page delivery.
                         self._images[page_index] = (image_stream, image_ext)
-                        # noinspection PyUnresolvedReferences
                         self._image_loaded_events[page_index].set()
                         num_loaded += 1
 

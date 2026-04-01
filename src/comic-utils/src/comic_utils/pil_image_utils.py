@@ -45,7 +45,6 @@ def load_pil_image_for_reading(file: Path) -> PilImage:
 
 
 def load_pil_image_from_zip(zip_path: zipfile.Path, encrypted: bool) -> PilImage:
-    # noinspection PyUnresolvedReferences
     from .get_panel_bytes import (  # noqa: PLC0415
         get_decrypted_bytes,  # ty: ignore[unresolved-import]
     )

@@ -137,22 +137,19 @@ class ConfigInfo:
         if PLATFORM == Platform.IOS:
             config_dir = Path(IOS_CONFIG_DIR).expanduser() / self._app_name
         elif PLATFORM == Platform.ANDROID:
-            pass
             # from jnius import autoclass
             #
-            # # noinspection PyPep8Naming
             # PythonActivity = autoclass("org.kivy.android.PythonActivity")
-            # # noinspection PyTypeHints
             # context = cast("android.content.Context", PythonActivity.mActivity)
-            # # noinspection PyTypeHints
             # file_p = cast("java.io.File", context.getFilesDir())
             # config_dir = Path(file_p.getAbsolutePath())
+            # TODO: This is wrong. Need to fix for Android.
+            config_dir = self.app_dir
         else:  # anything else...:
             config_dir = self.app_dir
             config_dir /= "config"
 
         # Need to sort out Android and installer requirements.
-        # noinspection PyUnboundLocalVariable
         return config_dir
 
     def _get_app_data_dir(self) -> Path:

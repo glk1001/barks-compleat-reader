@@ -101,7 +101,6 @@ class TestReaderScreenManager:
         assert mock_sm.current == COMIC_BOOK_READER_SCREEN
 
         assert mock_reader_screens.comic_reader_screen.app_icon_filepath == "icon.png"
-        # noinspection PyUnresolvedReferences
         mock_reader_screens.comic_reader_screen.is_active.assert_called_with(active=True)
 
     def test_close_comic_book_reader(
@@ -113,7 +112,6 @@ class TestReaderScreenManager:
 
         reader_screen_manager._close_comic_book_reader()
 
-        # noinspection PyUnresolvedReferences
         mock_reader_screens.main_screen.on_comic_closed.assert_called_once()
 
         mock_sm = reader_screen_manager._screen_manager
@@ -134,7 +132,6 @@ class TestReaderScreenManager:
 
         mock_sm = reader_screen_manager._screen_manager
         assert mock_sm.current == DOCUMENT_READER_SCREEN
-        # noinspection PyUnresolvedReferences
         mock_reader_screens.document_reader_screen.open_document.assert_called_with(
             doc_dir, "Test Title"
         )

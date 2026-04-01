@@ -5,8 +5,6 @@ from pathlib import Path
 from threading import Thread
 
 from comic_utils.comic_consts import PanelPath
-
-# noinspection PyUnresolvedReferences
 from comic_utils.get_panel_bytes import get_decrypted_bytes  # ty: ignore[unresolved-import]
 from loguru import logger
 from PIL import Image

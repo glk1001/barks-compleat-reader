@@ -211,7 +211,6 @@ class TestStatisticsScreen:
         focused_button = screen._stat_buttons[0]
 
         screen.handle_key(statistics_screen_module.KEY_ENTER)
-        # noinspection PyUnresolvedReferences
         focused_button.trigger_action.assert_called_once()
 
     def test_handle_tab_key_enter_on_word_stats(self, screen: StatisticsScreen) -> None:
@@ -228,7 +227,6 @@ class TestStatisticsScreen:
             patch.object(screen, "_enter_dropdown_nav") as mock_enter_dropdown,
         ):
             screen.handle_key(statistics_screen_module.KEY_ENTER)
-            # noinspection PyUnresolvedReferences
             word_button.trigger_action.assert_called_once()
 
             mock_schedule.assert_called_once()

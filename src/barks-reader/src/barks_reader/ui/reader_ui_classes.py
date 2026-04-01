@@ -59,7 +59,6 @@ class ScrollableDropDown(DropDown):
     and clears the search box in a single tap.
     """
 
-    # noinspection PyUnresolvedReferences
     def on_touch_down(self, touch: object) -> bool:
         if not self.collide_point(*touch.pos) and self.auto_dismiss:  # ty: ignore[unresolved-attribute]
             self.dismiss()
@@ -124,7 +123,6 @@ class ReaderTreeView(TreeView):
 
 class ReaderTreeBuilderEventDispatcher(EventDispatcher):
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
-        # noinspection PyUnresolvedReferences
         self.register_event_type(self.on_finished_building_event.__name__)
         super().__init__(**kwargs)
 
@@ -135,7 +133,6 @@ class ReaderTreeBuilderEventDispatcher(EventDispatcher):
         logger.debug(
             f"Finished treeview build: dispatching '{self.on_finished_building_event.__name__}'."
         )
-        # noinspection PyUnresolvedReferences
         self.dispatch(self.on_finished_building_event.__name__)
 
 
@@ -160,7 +157,6 @@ class MessagePopup(Popup):
     ok = ObjectProperty(None, allownone=True)
     cancel = ObjectProperty(None, allownone=True)
 
-    # noinspection PyUnresolvedReferences
     def __init__(
         self,
         text: str,
@@ -219,7 +215,6 @@ class ButtonTreeViewNode(Button, BaseTreeViewNode):
 
     @staticmethod
     def _get_nodes_treeview(node: ButtonTreeViewNode) -> TreeView | None:
-        # noinspection PyUnresolvedReferences
         parent = node.parent
         while parent:
             if isinstance(parent, TreeView):

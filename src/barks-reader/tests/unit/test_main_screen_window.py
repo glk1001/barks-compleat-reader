@@ -76,7 +76,6 @@ class TestExitFullscreen:
 
         hf.helper.exit_fullscreen()
 
-        # noinspection PyUnresolvedReferences
         hf.helper._comic_reader_manager.clear_window_state.assert_not_called()  # ty: ignore[unresolved-attribute]
 
     def test_exits_when_fullscreen(self, hf: HelperFixture) -> None:
@@ -84,9 +83,7 @@ class TestExitFullscreen:
 
         hf.helper.exit_fullscreen()
 
-        # noinspection PyUnresolvedReferences
         hf.helper._comic_reader_manager.clear_window_state.assert_called_once()  # ty: ignore[unresolved-attribute]
-        # noinspection PyUnresolvedReferences
         hf.helper._window_manager.goto_windowed_mode.assert_called_once()  # ty: ignore[unresolved-attribute]
 
 
@@ -94,9 +91,7 @@ class TestGotoWindowedMode:
     def test_clears_state_and_delegates(self, hf: HelperFixture) -> None:
         hf.helper._goto_windowed_mode()
 
-        # noinspection PyUnresolvedReferences
         hf.helper._comic_reader_manager.clear_window_state.assert_called_once()  # ty: ignore[unresolved-attribute]
-        # noinspection PyUnresolvedReferences
         hf.helper._window_manager.goto_windowed_mode.assert_called_once()  # ty: ignore[unresolved-attribute]
 
 
@@ -119,7 +114,6 @@ class TestOnFinishedGotoWindowedMode:
 
             assert hf.helper._fullscreen_button.text == "Fullscreen"
             assert hf.helper._fullscreen_button.icon == "fullscreen.png"
-            # noinspection PyUnresolvedReferences
             hf.helper._update_fonts.assert_called_with(800)  # ty: ignore[unresolved-attribute]
             mock_show.assert_called_once_with(hf.helper._action_bar)
 
@@ -128,9 +122,7 @@ class TestGotoFullscreenMode:
     def test_saves_state_and_delegates(self, hf: HelperFixture) -> None:
         hf.helper._goto_fullscreen_mode()
 
-        # noinspection PyUnresolvedReferences
         hf.helper._comic_reader_manager.save_window_state_now.assert_called_once()  # ty: ignore[unresolved-attribute]
-        # noinspection PyUnresolvedReferences
         hf.helper._window_manager.goto_fullscreen_mode.assert_called_once()  # ty: ignore[unresolved-attribute]
 
 
@@ -145,7 +137,6 @@ class TestOnFinishedGotoFullscreenMode:
 
             assert hf.helper._fullscreen_button.text == "Windowed"
             assert hf.helper._fullscreen_button.icon == "exit_fullscreen.png"
-            # noinspection PyUnresolvedReferences
             hf.helper._update_fonts.assert_called_with(1080)  # ty: ignore[unresolved-attribute]
 
     def test_adjusts_host_height_when_too_small(self, hf: HelperFixture) -> None:

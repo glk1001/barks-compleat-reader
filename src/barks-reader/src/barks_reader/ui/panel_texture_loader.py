@@ -6,7 +6,6 @@ from PIL import Image
 
 from barks_reader.core.panel_image_loader import PanelImageLoader
 
-# noinspection PyUnresolvedReferences
 type TextureLoaderCallback = Callable[[Texture | None, Exception | None], None]
 
 

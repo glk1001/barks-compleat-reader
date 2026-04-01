@@ -303,7 +303,6 @@ class MainIndexScreen(IndexScreen):
         sub_item_padding = parent_padding + self.index_theme.SUB_ITEM_INDENT_STEP
 
         # --- Determine what items to display in the new sub-list ---
-        # noinspection PyUnresolvedReferences
         if type(self._open_tag_item.id) is Tags:
             assert isinstance(item_id, Tags)
             use_italic = True
