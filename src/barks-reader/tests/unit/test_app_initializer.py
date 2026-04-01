@@ -9,8 +9,6 @@ import pytest
 from barks_reader.core.fantagraphics_volumes import TooManyArchiveFilesError
 from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
 from barks_reader.ui import app_initializer as app_initializer_module
-
-# noinspection PyProtectedMember
 from barks_reader.ui.app_initializer import AppInitializer, _FantaVolumesState
 from barks_reader.ui.reader_ui_classes import BaseTreeViewNode
 from barks_reader.ui.user_error_handler import ErrorTypes
@@ -53,7 +51,6 @@ class TestAppInitializer:
     def test_on_tree_build_finished(self, app_initializer: AppInitializer) -> None:
         mock_callback = MagicMock()
         # Manually set the callback as start() would
-        # noinspection PyProtectedMember
         app_initializer._on_tree_build_finished = mock_callback
 
         with patch.object(
@@ -74,11 +71,9 @@ class TestAppInitializer:
         with patch.object(
             app_initializer, AppInitializer._init_comic_book_data.__name__, return_value=True
         ) as mock_init_data:
-            # noinspection PyProtectedMember
             app_initializer._post_build_setup()
 
             # Check state
-            # noinspection PyProtectedMember
             assert app_initializer._fanta_volumes_state == _FantaVolumesState.VOLUMES_NOT_NEEDED
 
             # Check view state set to INITIAL
@@ -99,10 +94,8 @@ class TestAppInitializer:
         with patch.object(
             app_initializer, AppInitializer._handle_error_ui.__name__
         ) as mock_handle_error:
-            # noinspection PyProtectedMember
             app_initializer._post_build_setup()
 
-            # noinspection PyProtectedMember
             assert app_initializer._fanta_volumes_state == _FantaVolumesState.VOLUMES_NOT_SET
 
             mock_handle_error.assert_called_with(ErrorTypes.FantagraphicsVolumeRootNotSet)
@@ -120,10 +113,8 @@ class TestAppInitializer:
         with patch.object(
             app_initializer, AppInitializer._handle_error_ui.__name__
         ) as mock_handle_error:
-            # noinspection PyProtectedMember
             app_initializer._post_build_setup()
 
-            # noinspection PyProtectedMember
             assert app_initializer._fanta_volumes_state == _FantaVolumesState.ALL_VOLUMES_MISSING
 
             mock_handle_error.assert_called_with(ErrorTypes.FantagraphicsVolumeRootNotFound)
@@ -145,7 +136,6 @@ class TestAppInitializer:
         with patch.object(
             app_initializer, AppInitializer._init_comic_book_data.__name__, return_value=True
         ):
-            # noinspection PyProtectedMember
             app_initializer._post_build_setup()
 
             mock_dependencies["tree_view_screen"].find_node_by_path.assert_called_with(
@@ -159,7 +149,6 @@ class TestAppInitializer:
     def test_init_comic_book_data_success(
         self, app_initializer: AppInitializer, mock_dependencies: dict[str, MagicMock]
     ) -> None:
-        # noinspection PyProtectedMember
         assert app_initializer._init_comic_book_data() is True
         mock_dependencies["comic_reader_manager"].init_comic_book_data.assert_called_once()
 
@@ -172,22 +161,18 @@ class TestAppInitializer:
         with patch.object(
             app_initializer, AppInitializer._handle_error_ui.__name__
         ) as mock_handle_error:
-            # noinspection PyProtectedMember
             assert app_initializer._init_comic_book_data() is False
 
-            # noinspection PyProtectedMember
             assert app_initializer._fanta_volumes_state == _FantaVolumesState.VOLUMES_TOO_MANY
 
             mock_handle_error.assert_called_with(ErrorTypes.TooManyVolumeArchiveFiles, ANY)
 
     def test_is_fanta_volumes_state_ok(self, app_initializer: AppInitializer) -> None:
         # Case OK
-        # noinspection PyProtectedMember
         app_initializer._fanta_volumes_state = _FantaVolumesState.VOLUMES_EXIST
         assert app_initializer.is_fanta_volumes_state_ok() == (True, "")
 
         # Case Bad
-        # noinspection PyProtectedMember
         app_initializer._fanta_volumes_state = _FantaVolumesState.ALL_VOLUMES_MISSING
 
         with patch.object(
@@ -203,7 +188,6 @@ class TestAppInitializer:
     ) -> None:
         # Test that the callback passed to user_error_handler works as expected
 
-        # noinspection PyProtectedMember
         app_initializer._handle_error_ui(ErrorTypes.FantagraphicsVolumeRootNotFound)
 
         mock_dependencies["user_error_handler"].handle_error.assert_called_once()

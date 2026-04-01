@@ -7,8 +7,6 @@ from unittest.mock import MagicMock
 
 import pytest
 from barks_fantagraphics.entity_types import EntityType
-
-# noinspection PyProtectedMember
 from barks_fantagraphics.whoosh_search_engine import (
     SUB_ALPHA_SPLIT_SIZE,
     SearchEngine,

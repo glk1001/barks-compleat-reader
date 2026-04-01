@@ -1,8 +1,6 @@
 from collections.abc import Callable
 
 from comic_utils.comic_consts import PanelPath
-
-# noinspection PyProtectedMember
 from kivy.core.image import Texture
 from PIL import Image
 

@@ -176,7 +176,6 @@ class TouchAwareTextInput(TextInput):
         """
         from kivy.uix.behaviors import FocusBehavior  # noqa: PLC0415
 
-        # noinspection PyProtectedMember
         sys_kb = Window._system_keyboard  # noqa: SLF001
         if sys_kb in FocusBehavior._keyboards:  # noqa: SLF001
             FocusBehavior._keyboards[sys_kb] = None  # noqa: SLF001

@@ -16,7 +16,6 @@ def apply_text_input_remove_group_patch() -> None:
     if hasattr(TextInput, "_kivy_workaround_applied"):
         return
 
-    # noinspection PyProtectedMember
     _orig = TextInput._update_graphics_selection  # noqa: SLF001
 
     def _patched(self: TextInput) -> None:  # ty:ignore[invalid-type-form]

@@ -84,7 +84,6 @@ threading.excepthook = handle_thread_exception
 
 def start_logging(cfg_info: ConfigInfo, min_options: MinimalConfigOptions) -> None:
     # 'kivy.Config' is defined under an 'if'.
-    # noinspection PyProtectedMember
     from kivy import Config, kivy_home_dir
 
     setup_loguru(cfg_info, min_options.log_level)
@@ -112,7 +111,6 @@ def start_logging(cfg_info: ConfigInfo, min_options: MinimalConfigOptions) -> No
 
 
 def redirect_kivy_logs() -> None:
-    # noinspection PyProtectedMember
     from kivy import Logger as KivyLogger
 
     # Redirect Kivy's log messages to our main loguru setup.
@@ -212,7 +210,6 @@ def get_main_win_from_screen_metrics() -> tuple[int, int, int]:
 
 
 def set_window_size(win_height: int, win_left: int, win_top: int) -> None:
-    # noinspection PyProtectedMember
     from kivy import Config
 
     if PLATFORM != Platform.WIN:

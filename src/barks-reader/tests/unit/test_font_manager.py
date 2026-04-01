@@ -5,8 +5,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-# noinspection PyProtectedMember
 from barks_reader.ui.font_manager import (
     HI_RES_FONTS,
     HI_RES_WINDOW_HEIGHT_CUTOFF,
@@ -25,7 +23,6 @@ def test_initialization(font_manager: FontManager) -> None:
     # Check initial state
     assert font_manager.app_title_font_size == 0
     # Check internal state
-    # noinspection PyProtectedMember
     assert font_manager._previous_font_group == _FontGroup.NOT_SET
 
 
@@ -41,7 +38,6 @@ def test_update_font_sizes_low_res(font_manager: FontManager) -> None:
     assert font_manager.app_title_font_size == LOW_RES_FONTS.app_title
 
     # Check internal state
-    # noinspection PyProtectedMember
     assert font_manager._previous_font_group == _FontGroup.LOW_RES
 
 
@@ -57,14 +53,12 @@ def test_update_font_sizes_hi_res(font_manager: FontManager) -> None:
     assert font_manager.app_title_font_size == HI_RES_FONTS.app_title
 
     # Check internal state
-    # noinspection PyProtectedMember
     assert font_manager._previous_font_group == _FontGroup.HI_RES
 
 
 def test_update_font_sizes_optimization(font_manager: FontManager) -> None:
     # 1. Set to Low Res
     font_manager.update_font_sizes(1000)
-    # noinspection PyProtectedMember
     assert font_manager._previous_font_group == _FontGroup.LOW_RES
 
     # Mock _apply_font_theme to verify it's not called again
@@ -78,7 +72,6 @@ def test_update_font_sizes_optimization(font_manager: FontManager) -> None:
         font_manager.update_font_sizes(2000)
 
         mock_apply.assert_called_once()
-        # noinspection PyProtectedMember
         assert font_manager._previous_font_group == _FontGroup.HI_RES
 
 
@@ -114,7 +107,6 @@ def test_apply_font_theme_mapping(font_manager: FontManager) -> None:  # noqa: P
     mock_theme.search_clear_button = 35
     mock_theme.search_button = 36
 
-    # noinspection PyProtectedMember
     font_manager._apply_font_theme(mock_theme)
 
     assert font_manager.main_title_font_size == 10

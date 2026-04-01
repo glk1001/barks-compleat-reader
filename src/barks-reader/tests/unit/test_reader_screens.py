@@ -51,7 +51,6 @@ class TestReaderScreenManager:
     def test_init(self, reader_screen_manager: ReaderScreenManager) -> None:
         assert reader_screen_manager.screen_switchers is not None
         # Check that callbacks are correctly assigned
-        # noinspection PyProtectedMember
         assert (
             reader_screen_manager.screen_switchers.switch_to_comic_book_reader
             == reader_screen_manager._switch_to_comic_book_reader
@@ -65,7 +64,6 @@ class TestReaderScreenManager:
     ) -> None:
         root = reader_screen_manager.add_screens(mock_reader_screens)
 
-        # noinspection PyProtectedMember
         mock_sm = reader_screen_manager._screen_manager
 
         assert mock_sm.add_widget.call_count == 3  # noqa: PLR2004
@@ -79,14 +77,12 @@ class TestReaderScreenManager:
     def test_get_next_main_screen_transition(
         self, reader_screen_manager: ReaderScreenManager
     ) -> None:
-        # noinspection PyProtectedMember
         transition = reader_screen_manager._get_next_main_screen_transition()
         assert isinstance(transition, TransitionBase)
 
     def test_get_next_reader_screen_transition(
         self, reader_screen_manager: ReaderScreenManager
     ) -> None:
-        # noinspection PyProtectedMember
         transition = reader_screen_manager._get_next_reader_screen_transition()
         assert isinstance(transition, TransitionBase)
 
@@ -97,10 +93,8 @@ class TestReaderScreenManager:
     ) -> None:
         reader_screen_manager.add_screens(mock_reader_screens)
 
-        # noinspection PyProtectedMember
         reader_screen_manager._switch_to_comic_book_reader()
 
-        # noinspection PyProtectedMember
         mock_sm = reader_screen_manager._screen_manager
 
         assert isinstance(mock_sm.transition, TransitionBase)
@@ -117,18 +111,15 @@ class TestReaderScreenManager:
     ) -> None:
         reader_screen_manager.add_screens(mock_reader_screens)
 
-        # noinspection PyProtectedMember
         reader_screen_manager._close_comic_book_reader()
 
         # noinspection PyUnresolvedReferences
         mock_reader_screens.main_screen.on_comic_closed.assert_called_once()
 
-        # noinspection PyProtectedMember
         mock_sm = reader_screen_manager._screen_manager
         assert isinstance(mock_sm.transition, TransitionBase)
         assert mock_sm.current == MAIN_READER_SCREEN
 
-        # noinspection PyUnresolvedReferences
         mock_reader_screens.comic_reader_screen.is_active.assert_called_with(active=False)
 
     def test_switch_to_document_reader(
@@ -139,10 +130,8 @@ class TestReaderScreenManager:
         reader_screen_manager.add_screens(mock_reader_screens)
 
         doc_dir = Path("/test-doc")
-        # noinspection PyProtectedMember
         reader_screen_manager._switch_to_document_reader(doc_dir, "Test Title")
 
-        # noinspection PyProtectedMember
         mock_sm = reader_screen_manager._screen_manager
         assert mock_sm.current == DOCUMENT_READER_SCREEN
         # noinspection PyUnresolvedReferences
@@ -157,13 +146,10 @@ class TestReaderScreenManager:
     ) -> None:
         reader_screen_manager.add_screens(mock_reader_screens)
 
-        # noinspection PyProtectedMember
         reader_screen_manager._close_document_reader()
 
-        # noinspection PyUnresolvedReferences
         mock_reader_screens.main_screen.on_document_reader_closed.assert_called_once()
 
-        # noinspection PyProtectedMember
         mock_sm = reader_screen_manager._screen_manager
         assert isinstance(mock_sm.transition, TransitionBase)
         assert mock_sm.current == MAIN_READER_SCREEN

@@ -62,8 +62,6 @@ from barks_reader.ui.reader_keyboard_nav import (
 if TYPE_CHECKING:
     from barks_fantagraphics.entity_types import EntityType
     from barks_fantagraphics.whoosh_search_engine import TitleDict, TitleInfo
-
-    # noinspection PyProtectedMember
     from kivy.core.image import Texture
 
     from barks_reader.core.reader_settings import ReaderSettings

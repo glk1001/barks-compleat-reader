@@ -42,25 +42,21 @@ class TestReaderTreeView:
 
         # Initial state
         assert tree.previous_selected_node is None
-        # noinspection PyProtectedMember
         assert tree._current_selection_tracker is None
 
         # Select Node 1
         tree.on_selected_node(tree, node1)
         assert tree.previous_selected_node is None
-        # noinspection PyProtectedMember
         assert tree._current_selection_tracker == node1
 
         # Select Node 2
         tree.on_selected_node(tree, node2)
         assert tree.previous_selected_node == node1
-        # noinspection PyProtectedMember
         assert tree._current_selection_tracker == node2
 
         # Reset
         tree.reset_selection_tracking()
         assert tree.previous_selected_node is None
-        # noinspection PyProtectedMember
         assert tree._current_selection_tracker is None
 
 

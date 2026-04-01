@@ -8,8 +8,6 @@ from barks_fantagraphics.comics_consts import PageType
 from comic_utils.timing import Timing
 from kivy.clock import Clock
 from kivy.core.image import Image as CoreImage
-
-# noinspection PyProtectedMember
 from kivy.core.image import Texture
 from kivy.core.window import Window, WindowBase
 from kivy.event import EventDispatcher

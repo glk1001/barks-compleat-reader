@@ -11,8 +11,6 @@ import pytest
 from barks_fantagraphics.comics_consts import PageType
 from barks_reader.core.comic_book_page_info import PageInfo
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
-
-# noinspection PyProtectedMember
 from barks_reader.ui.comic_book_reader import (
     ComicBookReader,
     ComicBookReaderScreen,
@@ -57,19 +55,14 @@ class TestComicPageManager:
 
         pm.set_page_map(page_map, COMIC_BEGIN_PAGE)
 
-        # noinspection PyProtectedMember
         assert pm._first_page_index == 0
-        # noinspection PyProtectedMember
         assert pm._last_page_index == 2
-        # noinspection PyProtectedMember
         assert (
             pm._current_page_index == -1
         )  # It doesn't set current page index, just first_page_to_read_index
-        # noinspection PyProtectedMember
         assert pm._first_page_to_read_index == 0
 
         pm.set_to_first_page_to_read()
-        # noinspection PyProtectedMember
         assert pm._current_page_index == 0
 
     def test_navigation(self, page_manager: tuple[_ComicPageManager, MagicMock]) -> None:
@@ -88,27 +81,21 @@ class TestComicPageManager:
         pm.set_to_first_page_to_read()  # index 0
 
         pm.next_page()
-        # noinspection PyProtectedMember
         assert pm._current_page_index == 1
 
         pm.prev_page()
-        # noinspection PyProtectedMember
         assert pm._current_page_index == 0
 
         pm.prev_page()  # Should stay at 0
-        # noinspection PyProtectedMember
         assert pm._current_page_index == 0
 
         pm.goto_last_page()
-        # noinspection PyProtectedMember
         assert pm._current_page_index == 4
 
         pm.next_page()  # Should stay at 4
-        # noinspection PyProtectedMember
         assert pm._current_page_index == 4
 
         pm.goto_start_page()
-        # noinspection PyProtectedMember
         assert pm._current_page_index == 0
 
     def test_get_image_load_order(self, page_manager: tuple[_ComicPageManager, MagicMock]) -> None:
@@ -165,7 +152,6 @@ class TestComicBookReader:
 
             # Ensure the attribute exists (it should, but just in case of weird Kivy behavior)
             if not hasattr(reader, "_on_toggle_action_bar_visibility"):
-                # noinspection PyProtectedMember
                 reader._on_toggle_action_bar_visibility = on_toggle
 
             return reader
@@ -191,16 +177,12 @@ class TestComicBookReader:
         )
 
         # Configure the mocked loader to return a proper tuple from resolve_archive_for_comic
-        # noinspection PyProtectedMember
         reader._comic_book_loader.resolve_archive_for_comic.return_value = (
             Path("test.cbz"),
             None,
         )
-        # noinspection PyProtectedMember
         reader._comic_book_loader.empty_page_image = b"fake"
-        # noinspection PyProtectedMember
         reader._comic_book_loader.max_window_width = 800
-        # noinspection PyProtectedMember
         reader._comic_book_loader.max_window_height = 600
 
         with (
@@ -219,16 +201,13 @@ class TestComicBookReader:
                 page_map=page_map,
             )
 
-            # noinspection PyProtectedMember
             assert reader._current_title_str == "Title"
-            # noinspection PyProtectedMember
             reader._comic_book_loader.set_comic.assert_called()
-            # noinspection PyProtectedMember,PyUnresolvedReferences
+            # noinspection PyUnresolvedReferences
             reader._on_comic_is_ready_to_read.assert_called()
 
     def test_on_touch_down_navigation(self, reader: ComicBookReader) -> None:
         # Setup navigation mock
-        # noinspection PyProtectedMember
         mock_nav = reader._navigation
         mock_nav.is_in_top_margin.return_value = False
         mock_nav.is_in_left_margin.return_value = False
@@ -243,23 +222,17 @@ class TestComicBookReader:
         reader.height = 200
 
         # Mock page manager
-        # noinspection PyProtectedMember
         reader._page_manager = MagicMock()
 
         # Case 1: Right margin -> Next page
-        # noinspection PyProtectedMember
         mock_nav.is_in_right_margin.return_value = True
         reader.on_touch_down(touch)
-        # noinspection PyProtectedMember
         reader._page_manager.next_page.assert_called()
 
         # Case 2: Left margin -> Prev page
-        # noinspection PyProtectedMember
         mock_nav.is_in_right_margin.return_value = False
-        # noinspection PyProtectedMember
         mock_nav.is_in_left_margin.return_value = True
         reader.on_touch_down(touch)
-        # noinspection PyProtectedMember
         reader._page_manager.prev_page.assert_called()
 
 
@@ -297,11 +270,9 @@ class TestComicBookReaderScreen:
 
     def test_is_active(self, screen: ComicBookReaderScreen) -> None:
         screen.is_active(active=True)
-        # noinspection PyProtectedMember
         assert screen._active
 
         screen.is_active(active=False)
-        # noinspection PyProtectedMember
         assert not screen._active
 
     def test_toggle_screen_mode(self, screen: ComicBookReaderScreen) -> None:

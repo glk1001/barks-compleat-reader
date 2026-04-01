@@ -91,9 +91,7 @@ def speech_index_screen(
 
 class TestSpeechIndexScreen:
     def test_init(self, speech_index_screen: SpeechIndexScreen) -> None:
-        # noinspection PyProtectedMember
         assert speech_index_screen._search is not None
-        # noinspection PyProtectedMember
         assert speech_index_screen._cleaned_alpha_split_terms is not None
 
     def test_populate_top_alphabet_split_menu(self, speech_index_screen: SpeechIndexScreen) -> None:
@@ -105,7 +103,6 @@ class TestSpeechIndexScreen:
 
             # Mock _populate_index_grid to prevent further chain execution
             with patch.object(speech_index_screen, "_populate_index_grid"):
-                # noinspection PyProtectedMember
                 speech_index_screen._populate_top_alphabet_split_menu("A")
 
                 # Should create buttons for "apple" and "ant"
@@ -125,11 +122,9 @@ class TestSpeechIndexScreen:
 
             assert speech_index_screen.treeview_index_node is not None
             assert speech_index_screen.treeview_index_node.saved_state["prefix"] == "ant"
-            # noinspection PyProtectedMember
             assert speech_index_screen._selected_prefix_button == mock_button
 
             # Check items populated for "A" (from "ant" prefix)
-            # noinspection PyProtectedMember
             items = speech_index_screen._item_index["A"]
             assert len(items) == 1
             assert items[0].display_text == "ant"
@@ -137,25 +132,19 @@ class TestSpeechIndexScreen:
             mock_populate_grid.assert_called_with("A")
 
     def test_find_words(self, speech_index_screen: SpeechIndexScreen) -> None:
-        # noinspection PyProtectedMember
         speech_index_screen._find_words("test")
-        # noinspection PyProtectedMember
         speech_index_screen._search.find_words.assert_called_with("test")
 
-        # noinspection PyProtectedMember
         speech_index_screen._find_words("1942")
-        # noinspection PyProtectedMember
         speech_index_screen._search.find_words.assert_called_with("1942")
 
     def test_next_background_image(self, speech_index_screen: SpeechIndexScreen) -> None:
         # Setup state
         mock_selected_letter = MagicMock()
         mock_selected_letter.text = "A"
-        # noinspection PyProtectedMember
         speech_index_screen._selected_letter_button = mock_selected_letter
 
         # Populate item index
-        # noinspection PyProtectedMember
         speech_index_screen._item_index["A"] = [IndexItem("term", "term")]
 
         # Mock find_words
@@ -173,15 +162,12 @@ class TestSpeechIndexScreen:
                 image_info = ImageInfo(
                     filename=Path("img.png"), from_title=Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
                 )
-                # noinspection PyProtectedMember
                 speech_index_screen._random_title_images.get_random_image.return_value = image_info
 
                 # Execute
-                # noinspection PyProtectedMember
                 speech_index_screen._next_background_image()
 
                 # Verify
-                # noinspection PyProtectedMember
                 speech_index_screen._texture_loader.load_texture.assert_called()
                 assert speech_index_screen.current_title_str != ""
 
@@ -190,12 +176,10 @@ class TestSpeechIndexScreen:
         speech_index_screen.on_goto_title = mock_callback
 
         with patch.object(Clock, "schedule_once") as mock_schedule:
-            # noinspection PyProtectedMember
             speech_index_screen._handle_title_from_bubble_press(
                 "Donald Duck Finds Pirate Gold", "5"
             )
 
-            # noinspection PyProtectedMember
             speech_index_screen._speech_bubble_browser_popup.dismiss.assert_called_once()
 
             # Execute lambda

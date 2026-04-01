@@ -195,7 +195,6 @@ class TestComicReaderLoadTime:
 
             reader = ComicBookReader(settings, font_manager, on_first_loaded, on_toggle)
 
-            # noinspection PyProtectedMember
             reader._comic_book_loader._on_all_images_loaded = on_all_loaded
 
             with (

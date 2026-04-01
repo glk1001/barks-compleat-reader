@@ -24,8 +24,6 @@ from barks_reader.ui.panel_texture_loader import PanelTextureLoader
 if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
-
-    # noinspection PyProtectedMember
     from kivy.core.image import Texture
 
     from barks_reader.core.reader_settings import ReaderSettings

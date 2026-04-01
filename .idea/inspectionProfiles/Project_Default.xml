@@ -292,7 +292,7 @@
       <scope name="pyarmor_gen_files" level="WARNING" enabled="false" />
       <scope name="third_party_code" level="WARNING" enabled="false" />
     </inspection_tool>
-    <inspection_tool class="PyProtectedMemberInspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+    <inspection_tool class="PyProtectedMemberInspection" enabled="true" level="WEAK WARNING" enabled_by_default="false">
       <scope name="pyarmor_gen_files" level="WEAK WARNING" enabled="false" />
       <scope name="third_party_code" level="WEAK WARNING" enabled="false" />
     </inspection_tool>

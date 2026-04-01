@@ -71,29 +71,22 @@ def main_index_screen(
 
 class TestMainIndexScreen:
     def test_init(self, main_index_screen: MainIndexScreen) -> None:
-        # noinspection PyProtectedMember
         assert main_index_screen._font_manager is not None
-        # noinspection PyProtectedMember
         assert main_index_screen._random_title_images is not None
-        # noinspection PyProtectedMember
         assert main_index_screen._image_loader is not None
 
     def test_get_items_for_letter(self, main_index_screen: MainIndexScreen) -> None:
         # Clear the index built during init so we can test with controlled data
-        # noinspection PyProtectedMember
         main_index_screen._item_index.clear()
 
         # Manually populate with test items
-        # noinspection PyProtectedMember
         main_index_screen._item_index["A"] = [
             IndexItem(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, "Apple"),
             IndexItem(Titles.VICTORY_GARDEN_THE, "Ant, The"),
         ]
-        # noinspection PyProtectedMember
         main_index_screen._item_index["B"] = [IndexItem(Titles.RABBITS_FOOT_THE, "Banana")]
 
         # Test 'A'
-        # noinspection PyProtectedMember
         items_a = main_index_screen._get_items_for_letter("A")
 
         assert len(items_a) == 2  # noqa: PLR2004
@@ -102,7 +95,6 @@ class TestMainIndexScreen:
         assert "Ant, The" in display_texts
 
         # Test 'B'
-        # noinspection PyProtectedMember
         items_b = main_index_screen._get_items_for_letter("B")
         assert len(items_b) == 1
         assert items_b[0].display_text == "Banana"
@@ -113,7 +105,6 @@ class TestMainIndexScreen:
         item.display_text = "My Title"
 
         with patch.object(barks_reader.ui.main_index_screen, "IndexItemButton") as mock_btn_cls:
-            # noinspection PyProtectedMember
             btn = main_index_screen._create_index_button(item)
 
             mock_btn_cls.assert_called_once()
@@ -145,7 +136,6 @@ class TestMainIndexScreen:
 
             mock_schedule.side_effect = side_effect
 
-            # noinspection PyProtectedMember
             main_index_screen._on_index_item_press(mock_button, mock_item)
 
             # Execute callbacks (highlight, goto, reset)

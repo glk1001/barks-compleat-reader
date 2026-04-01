@@ -109,7 +109,6 @@ class TestIndexScreen:
         assert index_screen._alphabet_buttons == {}
 
     def test_populate_alphabet_menu(self, index_screen: ConcreteIndexScreen) -> None:
-        # noinspection PyProtectedMember
         index_screen._populate_alphabet_menu()
 
         # Check if buttons were added to alphabet_side_layout
@@ -121,7 +120,6 @@ class TestIndexScreen:
         assert "'" in index_screen._alphabet_buttons
 
     def test_on_letter_press(self, index_screen: ConcreteIndexScreen) -> None:
-        # noinspection PyProtectedMember
         index_screen._populate_alphabet_menu()
         button_a = index_screen._alphabet_buttons["A"]
 
@@ -134,7 +132,6 @@ class TestIndexScreen:
                 == "A"
             )
             assert button_a.is_selected is True
-            # noinspection PyProtectedMember
             assert index_screen._selected_letter_button == button_a
             mock_populate.assert_called_with("A")
 
@@ -145,7 +142,6 @@ class TestIndexScreen:
         index_screen.ids.middle_column_layout.clear_widgets = MagicMock()
 
         # Test with items (Letter A returns ["Apple", "Ant"])
-        # noinspection PyProtectedMember
         index_screen._populate_index_grid("A")
 
         index_screen.ids.left_column_layout.clear_widgets.assert_called_once()
@@ -161,7 +157,6 @@ class TestIndexScreen:
         index_screen.ids.right_column_layout.reset_mock()
         index_screen.ids.middle_column_layout.reset_mock()
 
-        # noinspection PyProtectedMember
         index_screen._populate_index_grid("Z")  # Returns []
 
         # Should add "No items" button to left column
@@ -171,7 +166,6 @@ class TestIndexScreen:
         assert "*** No index items for 'Z' ***" in args[0].text
 
     def test_on_is_visible_true(self, index_screen: ConcreteIndexScreen) -> None:
-        # noinspection PyProtectedMember
         index_screen._populate_alphabet_menu()
 
         # Case 1: No selected button, no saved state -> Default 'A'
@@ -187,7 +181,6 @@ class TestIndexScreen:
             mock_press.assert_called_with(index_screen._alphabet_buttons["B"])
 
         # Case 3: Already selected button
-        # noinspection PyProtectedMember
         index_screen._selected_letter_button = index_screen._alphabet_buttons["C"]
         with patch.object(index_screen, "_new_index_image") as mock_new_image:
             index_screen.on_is_visible(index_screen, value=True)
@@ -199,11 +192,8 @@ class TestIndexScreen:
             mock_cancel.assert_called_once()
 
     def test_get_sortable_string(self, index_screen: ConcreteIndexScreen) -> None:
-        # noinspection PyProtectedMember
         assert index_screen._get_sortable_string("The Apple") == "Apple, The"
-        # noinspection PyProtectedMember
         assert index_screen._get_sortable_string("A Banana") == "Banana, A"
-        # noinspection PyProtectedMember
         assert index_screen._get_sortable_string("Carrot") == "Carrot"
 
     def test_resync_item_focus_first_expand(self, index_screen: ConcreteIndexScreen) -> None:
@@ -271,14 +261,12 @@ class TestIndexScreen:
         index_screen.on_goto_background_title_func = mock_func
 
         # No image info
-        # noinspection PyProtectedMember
         index_screen._current_image_info = None
         index_screen.on_goto_background_title()
         mock_func.assert_not_called()
 
         # With image info
         info = ImageInfo()
-        # noinspection PyProtectedMember
         index_screen._current_image_info = info
         index_screen.on_goto_background_title()
         mock_func.assert_called_with(info)

@@ -41,14 +41,11 @@ class TestComicReaderManager:
 
         manager.set_comic_book_reader_screen(mock_screen)
 
-        # noinspection PyProtectedMember
         assert manager._comic_book_reader_screen == mock_screen
-        # noinspection PyProtectedMember
         assert manager._comic_book_reader == mock_reader
 
     def test_init_comic_book_data(self, manager: ComicReaderManager) -> None:
         mock_reader = MagicMock()
-        # noinspection PyProtectedMember
         manager._comic_book_reader = mock_reader
 
         manager.init_comic_book_data()
@@ -72,7 +69,6 @@ class TestComicReaderManager:
             last_body_page="1",
             last_page="1",
         )
-        # noinspection PyProtectedMember,LongLine
         manager._comic_page_info_mgr.get_comic_page_info = MagicMock(return_value=mock_page_info)  # ty: ignore[invalid-assignment]
 
         # Mock ImageBuilder
@@ -112,7 +108,6 @@ class TestComicReaderManager:
             last_body_page="1",
             last_page="1",
         )
-        # noinspection PyProtectedMember,LongLine
         manager._comic_page_info_mgr.get_comic_page_info = MagicMock(return_value=mock_page_info)  # ty: ignore[invalid-assignment]
 
         with patch.object(barks_reader.ui.comic_reader_manager, "ComicBookImageBuilder"):
@@ -121,11 +116,9 @@ class TestComicReaderManager:
             )
 
             mock_reader.read_comic.assert_called_once()
-            # noinspection PyProtectedMember
             assert manager._save_last_page is True
 
     def test_comic_closed_no_save(self, manager: ComicReaderManager) -> None:
-        # noinspection PyProtectedMember
         manager._save_last_page = False
         assert manager.comic_closed() is None
 
@@ -135,13 +128,11 @@ class TestComicReaderManager:
         # Setup state
         mock_reader = MagicMock()
         mock_reader.get_last_read_page.return_value = "5"
-        # noinspection PyProtectedMember
         manager._comic_book_reader = mock_reader
 
         mock_fanta_info = MagicMock(spec=FantaComicBookInfo)
         mock_fanta_info.comic_book_info = MagicMock()
         mock_fanta_info.comic_book_info.get_title_str.return_value = "My Title"
-        # noinspection PyProtectedMember
         manager._fanta_info = mock_fanta_info
 
         # Setup page info to map "5" to a PageInfo object
@@ -158,7 +149,6 @@ class TestComicReaderManager:
             last_body_page="10",
             last_page="10",
         )
-        # noinspection PyProtectedMember
         manager._comic_page_info = mock_comic_page_info
 
         # Execute

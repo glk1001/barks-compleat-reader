@@ -46,7 +46,6 @@ def tree_view_screen(mock_settings: MagicMock) -> Generator[TreeViewScreen]:
 
 class TestTreeViewScreen:
     def test_init(self, tree_view_screen: TreeViewScreen, mock_settings: MagicMock) -> None:
-        # noinspection PyProtectedMember
         assert tree_view_screen._reader_settings == mock_settings
         assert tree_view_screen.show_current_title is True
 

@@ -37,7 +37,6 @@ def tree_builder(
 
 class TestReaderTreeBuilder:
     def test_init(self, tree_builder: ReaderTreeBuilder) -> None:
-        # noinspection PyProtectedMember
         assert tree_builder._reader_tree_view is not None
 
     def test_build_main_screen_tree(
@@ -78,7 +77,6 @@ class TestReaderTreeBuilder:
             patch.object(tree_builder, "_add_category_node_gen", return_value=iter([])),
             patch.object(tree_builder, "_finished_all_nodes") as mock_finished,
         ):
-            # noinspection PyProtectedMember
             tree_builder._build_story_nodes(mock_tree, mock_parent)
 
             # Verify main nodes creation
@@ -102,7 +100,6 @@ class TestReaderTreeBuilder:
         mock_tree.add_node.side_effect = lambda n, parent=None: n  # noqa: ARG005
         mock_parent = MagicMock()
 
-        # noinspection PyProtectedMember
         node = tree_builder._create_and_add_simple_node(
             mock_tree, "Test Node", MainTreeViewNode, parent_node=mock_parent
         )
@@ -122,7 +119,6 @@ class TestReaderTreeBuilder:
         with patch.object(
             tree_builder, "_get_tagged_titles", return_value=[Titles.VICTORY_GARDEN_THE]
         ):
-            # noinspection PyProtectedMember
             gen = tree_builder._add_tag_node_gen(mock_tree, tag, mock_parent)
             # Run generator
             list(gen)
@@ -145,7 +141,6 @@ class TestReaderTreeBuilder:
         with patch.object(
             barks_reader.ui.reader_tree_builder, "BARKS_TAG_GROUPS", {tag_group: [Tags.AIRPLANES]}
         ):
-            # noinspection PyProtectedMember
             gen = tree_builder._add_tag_group_node_gen(mock_tree, tag_group, mock_parent)
             list(gen)
 
@@ -167,7 +162,6 @@ class TestReaderTreeBuilder:
         with patch.object(
             tree_builder, "_populate_splittable_series_node_gen", return_value=iter([])
         ) as mock_split:
-            # noinspection PyProtectedMember
             gen = tree_builder._populate_series_node_gen(mock_tree, SERIES_CS, mock_parent)
             list(gen)
 

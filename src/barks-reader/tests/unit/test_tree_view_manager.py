@@ -202,7 +202,6 @@ class TestTreeViewManager:
         parent.nodes = [node, sibling]
         node.parent_node = parent
 
-        # noinspection PyProtectedMember
         tree_view_manager._close_siblings(node)
 
         screen_mocks["tree_view"].ids.reader_tree_view.toggle_node.assert_called_with(sibling)
@@ -222,7 +221,6 @@ class TestTreeViewManager:
         with patch.object(
             barks_reader.ui.tree_view_manager.Clock, "schedule_once"
         ) as mock_schedule:
-            # noinspection PyProtectedMember
             tree_view_manager._pin_parent_position_while_populating(parent_node, run_populate=True)
 
             parent_node.populate_callback.assert_called_once()

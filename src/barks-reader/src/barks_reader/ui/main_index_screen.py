@@ -37,7 +37,6 @@ from barks_reader.ui.index_screen import IndexItem, IndexItemButton, IndexScreen
 from barks_reader.ui.panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
-    # noinspection PyProtectedMember
     from kivy.core.image import Texture
 
     from barks_reader.core.reader_settings import ReaderSettings

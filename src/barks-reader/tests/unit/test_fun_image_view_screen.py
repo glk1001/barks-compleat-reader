@@ -67,9 +67,7 @@ class TestFunImageViewScreen:
         assert screen.is_visible is False
         assert screen.image_fit_mode == FIT_MODE_CONTAIN
         assert screen.fun_options_enabled is False
-        # noinspection PyProtectedMember
         assert screen._current_history_index == -1
-        # noinspection PyProtectedMember
         assert len(screen._image_history) == 0
 
     def test_set_load_image_func(
@@ -78,7 +76,6 @@ class TestFunImageViewScreen:
         screen, _, _ = screen_setup
         mock_func = MagicMock()
         screen.set_load_image_func(mock_func)
-        # noinspection PyProtectedMember
         assert screen._load_image is not None
         assert screen._load_image == mock_func
 
@@ -95,11 +92,8 @@ class TestFunImageViewScreen:
 
         screen.set_last_loaded_image_info(image_info)
 
-        # noinspection PyProtectedMember
         assert len(screen._image_history) == 1
-        # noinspection PyProtectedMember
         assert screen._image_history[0] == image_info
-        # noinspection PyProtectedMember
         assert screen._current_history_index == 0
         assert screen.current_title_str != ""
 
@@ -119,33 +113,24 @@ class TestFunImageViewScreen:
         screen.set_last_loaded_image_info(info2)
 
         # Current index should be 1 (pointing to info2)
-        # noinspection PyProtectedMember
         assert screen._current_history_index == 1
 
         # Go back
-        # noinspection PyProtectedMember
         screen._goto_previous_image()
-        # noinspection PyProtectedMember
         assert screen._current_history_index == 0
         mock_load_func.assert_called_with(info1)
 
         # Go back again (should stay at 0)
-        # noinspection PyProtectedMember
         screen._goto_previous_image()
-        # noinspection PyProtectedMember
         assert screen._current_history_index == 0
 
         # Go forward
-        # noinspection PyProtectedMember
         screen._goto_next_image()
-        # noinspection PyProtectedMember
         assert screen._current_history_index == 1
         mock_load_func.assert_called_with(info2)
 
         # Go forward again (should stay at 1)
-        # noinspection PyProtectedMember
         screen._goto_next_image()
-        # noinspection PyProtectedMember
         assert screen._current_history_index == 1
 
     def test_on_touch_down_navigation(
@@ -167,7 +152,6 @@ class TestFunImageViewScreen:
         mock_nav.is_in_right_margin.return_value = False
 
         # Mock internal methods to verify calls
-        # noinspection PyProtectedMember
         with (
             patch.object(screen, "_goto_previous_image") as mock_prev,
             patch.object(screen, "_goto_next_image") as mock_next,

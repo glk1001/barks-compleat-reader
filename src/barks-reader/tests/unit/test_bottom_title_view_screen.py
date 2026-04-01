@@ -111,7 +111,6 @@ class TestBottomTitleViewScreen:
         self.mock_overrides.get_title_page_inset_file.return_value = "override.png"
 
         # Trigger change
-        # noinspection PyProtectedMember
         self.screen._on_use_overrides_checkbox_changed(None, use_overrides=True)
 
         self.mock_overrides.get_title_page_inset_file.assert_called_with(
@@ -158,11 +157,9 @@ class TestBottomTitleViewScreen:
         mock_info = MagicMock()
         mock_info.comic_book_info.is_barks_title = True
         mock_info.comic_book_info.title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
-        # noinspection PyProtectedMember
         assert "Donald Duck\nFinds" in self.screen._get_main_title_str(mock_info)
 
         # Case 2: Non-Barks title
         mock_info.comic_book_info.is_barks_title = False
         mock_info.comic_book_info.get_title_from_issue_name.return_value = "Issue Title"
-        # noinspection PyProtectedMember
         assert self.screen._get_main_title_str(mock_info) == "Issue Title"

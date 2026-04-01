@@ -4,8 +4,6 @@ from pathlib import Path
 
 import pytest
 from barks_fantagraphics.comics_consts import BARKS_ROOT_DIR
-
-# noinspection PyProtectedMember
 from barks_fantagraphics.comics_database import (
     ComicsDatabase,
     TitleNotFoundError,

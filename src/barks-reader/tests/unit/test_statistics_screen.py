@@ -9,8 +9,6 @@ import pytest
 from barks_reader.ui import reader_keyboard_nav as reader_keyboard_nav_module
 from barks_reader.ui import statistics_screen as statistics_screen_module
 from barks_reader.ui.reader_keyboard_nav import KEY_DOWN
-
-# noinspection PyProtectedMember
 from barks_reader.ui.statistics_screen import (
     StatisticsScreen,
     StatMenuButton,

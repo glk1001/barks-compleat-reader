@@ -62,13 +62,10 @@ class TestReaderFilePaths:
             reader_file_paths.set_barks_panels_source(panels_dir, BarksPanelsExtType.MOSTLY_PNG)
 
         assert reader_file_paths.barks_panels_are_encrypted is False
-        # noinspection PyProtectedMember
         assert reader_file_paths._barks_panels_zip is None
-        # noinspection PyProtectedMember
         assert reader_file_paths._panels_ext_type == BarksPanelsExtType.MOSTLY_PNG
 
         # Check a specific dir
-        # noinspection PyProtectedMember
         assert reader_file_paths._panel_dirs[PanelDirNames.COVERS] == panels_dir / "Covers"
 
     def test_set_barks_panels_source_zip(
@@ -78,9 +75,7 @@ class TestReaderFilePaths:
             reader_file_paths.set_barks_panels_source(panels_zip, BarksPanelsExtType.JPG)
 
         assert reader_file_paths.barks_panels_are_encrypted is True
-        # noinspection PyProtectedMember
         assert reader_file_paths._barks_panels_zip is not None
-        # noinspection PyProtectedMember
         assert reader_file_paths._panels_ext_type == BarksPanelsExtType.JPG
 
     def test_set_barks_panels_source_missing_dir(

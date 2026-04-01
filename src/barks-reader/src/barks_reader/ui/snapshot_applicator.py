@@ -18,7 +18,6 @@ from barks_reader.ui.panel_texture_loader import PanelTextureLoader
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    # noinspection PyProtectedMember
     from kivy.core.image import Texture
 
     from barks_reader.core.view_snapshot import (

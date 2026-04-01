@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING, Any, override
 from loguru import logger
 
 from barks_reader.core.reader_file_paths import BarksPanelsExtType, ReaderFilePaths
-
-# noinspection PyProtectedMember
 from barks_reader.core.reader_settings import (
     BARKS_READER_SECTION,
     DOUBLE_PAGE_MODE,

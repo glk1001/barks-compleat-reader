@@ -6,8 +6,6 @@ from unittest.mock import patch
 
 import pytest
 from barks_reader.core import config_info
-
-# noinspection PyProtectedMember
 from barks_reader.core.config_info import _assert_kivy_not_yet_imported
 
 _NOT_UNDER_PYTEST = patch.object(config_info, "_running_under_pytest", return_value=False)

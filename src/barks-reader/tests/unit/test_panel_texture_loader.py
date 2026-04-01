@@ -6,8 +6,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_reader.ui import panel_texture_loader as loader_module
 from barks_reader.ui.panel_texture_loader import PanelTextureLoader
-
-# noinspection PyProtectedMember
 from kivy.core.image import Texture
 from PIL import Image
 
@@ -90,7 +88,6 @@ class TestPanelTextureLoader:
             mock_tex = MagicMock()
             mock_texture_cls.create.return_value = mock_tex
 
-            # noinspection PyProtectedMember
             result = PanelTextureLoader._pil_to_texture(mock_pil)
 
             mock_texture_cls.create.assert_called_once_with(size=(50, 50))
