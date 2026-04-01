@@ -51,6 +51,8 @@ class TestBackgroundViews:
         self.mock_random_images.get_random_censorship_fix_image.return_value = self.dummy_image_info
         self.mock_random_images.get_random_image_for_title.return_value = "random_title.png"
 
+        self.mock_settings.file_paths.get_comic_inset_file.return_value = Path("dummy_inset.png")
+
         # Patch Clock to avoid scheduling
         self.clock_patcher = patch.object(background_views_module, "Clock")
         self.mock_clock = self.clock_patcher.start()

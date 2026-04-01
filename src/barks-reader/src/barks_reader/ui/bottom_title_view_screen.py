@@ -114,7 +114,6 @@ class BottomTitleViewScreen(FloatLayout):
             f"[*] Rejected by Western but intended for {self._fanta_info.get_short_issue_title()}"
         )
 
-    # noinspection PyNoneFunctionAssignment
     def _on_use_overrides_checkbox_changed(self, _instance: object, use_overrides: bool) -> None:
         logger.debug(f"Use overrides checkbox changed: use_overrides = {use_overrides}.")
 

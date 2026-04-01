@@ -432,7 +432,6 @@ class SpeechIndexScreen(IndexScreen):
             lambda _dt: self._next_background_image(), INDEX_IMAGE_CHANGE_SECONDS
         )
 
-    # noinspection PyNoneFunctionAssignment
     def _next_background_image(self) -> None:
         first_letter = self._selected_letter_button.text
         index_terms = self._item_index[first_letter]

@@ -122,7 +122,6 @@ def show_standalone_popup(  # noqa: C901, PLR0915
 
             # Background image (if provided)
             if background_image_file:
-                # noinspection PyNoneFunctionAssignment
                 bgnd_texture = get_image_stream(background_image_file)
                 bgnd_texture_size = (
                     (bgnd_texture.width, bgnd_texture.height) if bgnd_texture else (1, 1)

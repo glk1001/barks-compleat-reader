@@ -166,7 +166,6 @@ class WindowManager:
 
         Clock.schedule_once(lambda _dt: self._on_finished_goto_windowed_mode(), 0)
 
-    # noinspection PyPep8Naming,PyUnresolvedReferences
     def _init_win32(self) -> None:
         """Initialize Win32 handles for direct window manipulation."""
         try:
@@ -221,7 +220,6 @@ class WindowManager:
             logger.warning(f"Could not initialize Win32 handles: {e}")
             self._win32_hwnd = None
 
-    # noinspection PyPep8Naming,PyUnresolvedReferences
     @staticmethod
     def _find_win32_hwnd_by_enum_windows() -> Any:  # noqa: ANN401
         # Find our window by enumerating all windows and matching process ID.

@@ -196,7 +196,6 @@ class MainIndexScreen(IndexScreen):
             lambda _dt: self._next_background_image(), INDEX_IMAGE_CHANGE_SECONDS
         )
 
-    # noinspection PyNoneFunctionAssignment
     def _next_background_image(self) -> None:
         if not self._cached_all_titles_for_letter:
             letter = self._selected_letter_button.text

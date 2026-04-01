@@ -36,7 +36,6 @@ class PanelTextureLoader(PanelImageLoader):
 
     @staticmethod
     def _pil_to_texture(pil: Image.Image) -> Texture:
-        # noinspection PyArgumentList,PyUnresolvedReferences
         tex = Texture.create(size=pil.size)
         tex.blit_buffer(pil.tobytes(), colorfmt="rgba", bufferfmt="ubyte")
         tex.flip_vertical()
