@@ -77,6 +77,18 @@ jobs:
       - name: Check import layering
         run: uv run lint-imports
 
+  spell-check:
+    name: Spell Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Spell check
+        run: bunx cspell
+
   test:
     name: Test
     runs-on: ubuntu-latest

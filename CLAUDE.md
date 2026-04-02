@@ -50,10 +50,16 @@ uv run ty check
 uv run lint-imports
 ```
 
-**Check only uncommitted files (ruff/ty):**
+**Spell-check (cspell):**
+```bash
+bunx cspell
+```
+
+**Check only uncommitted files (ruff/ty/cspell):**
 ```bash
 bash scripts/git-ruff.sh
 bash scripts/git-ty.sh
+bash scripts/git-cspell.sh
 ```
 
 **Build standalone executable:**
