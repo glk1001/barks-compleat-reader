@@ -739,7 +739,7 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.DAY_THE_MOUNTAIN_SHOOK_THE,True, Issues.HDL, 13, 3, 1972, 4, 5, 1971),
     # Not comics below!
     ComicBookInfo(Titles.GEORGE_LUCAS___AN_APPRECIATION, False, Issues.EXTRAS, 1, 1, 1983, 1, 1, 1983),
-    ComicBookInfo(Titles.RICH_TOMASSO___ON_COLORING_BARKS, False, Issues.EXTRAS, 1, 1, 2011, 1, 1, 2011),
+    ComicBookInfo(Titles.RICH_TOMMASO___ON_COLORING_BARKS, False, Issues.EXTRAS, 1, 1, 2011, 1, 1, 2011),
     ComicBookInfo(Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, False, Issues.EXTRAS, 1, 1, 2011, 1, 1, 2011),
     ComicBookInfo(Titles.DON_AULT___LIFE_AMONG_THE_DUCKS, False, Issues.EXTRAS, 1, 1, 2014, 1, 1, 2014),
     ComicBookInfo(Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD, False, Issues.EXTRAS, 1, 1, 2025, 1, 1, 2025),
@@ -772,7 +772,7 @@ BARKS_TITLE_DICT: dict[str, Titles] = {
 }
 
 NON_COMIC_TITLES = [
-    Titles.RICH_TOMASSO___ON_COLORING_BARKS,
+    Titles.RICH_TOMMASO___ON_COLORING_BARKS,
     Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
     Titles.DON_AULT___LIFE_AMONG_THE_DUCKS,
     Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD,

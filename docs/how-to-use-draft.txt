@@ -22,7 +22,7 @@ Concept
     Extras
         Intro articles
         Appendix articles
-            Rich Tomasso
+            Rich Tommaso
             Don Ault
             Maggie Thompson
             George Lucas

@@ -41,7 +41,7 @@ from barks_reader.core.reader_consts_and_types import (
     APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_TEXT,
     APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_TEXT,
     APPENDIX_NODE_TEXT,
-    APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT,
+    APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_TEXT,
     APPENDIX_STATISTICS_NODE_TEXT,
     CATEGORIES_NODE_TEXT,
     CHRONO_YEAR_RANGES,
@@ -480,7 +480,7 @@ class ReaderTreeBuilder:
 
         child_node = self._create_and_add_simple_node(
             tree,
-            APPENDIX_RICH_TOMASSO_ON_COLORING_BARKS_TEXT,
+            APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_TEXT,
             parent_node=appendix_node,
             on_press_handler=self._tree_view_manager.on_article_node_pressed,
         )
