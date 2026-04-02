@@ -1,0 +1,12 @@
+# cspell global word list — words shared across all packages
+# One word per line. Case-insensitive.
+
+bhyve
+cuur
+distros
+innotek
+kumiko
+machdep
+systeminfo
+virt
+virtio
