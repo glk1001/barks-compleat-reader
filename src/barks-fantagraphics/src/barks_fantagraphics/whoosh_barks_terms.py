@@ -207,7 +207,7 @@ _BARKSIAN_PLACES_FULL_NAMES: frozenset[str] = frozenset(
         "Sutter's Fort",
         "Tabu Yama",
         "Tangkor Wat",
-        "Thrushwistle Glen",
+        "Thrushwhistle Glen",
         "Tulebug River",
         "Upper Whambesi",
         "Vale of Kashmir",
@@ -1230,7 +1230,6 @@ _BARKSIAN_PLACE_RELATED_WORDS: frozenset[str] = frozenset(
         "tahiti",
         "tasmania",
         "taurus",
-        "thrushwhistle",
         "thule",
         "timbuctoo",
         "tokyo",
@@ -1770,6 +1769,7 @@ FRAGMENTS_TO_SUPPRESS: frozenset[str] = frozenset(
         "suzettes",  # Crepe Suzettes
         "swelldorf",  # Swelldorf-Castoria
         "tangkor",  # Tangkor Wat
+        "thrushwhistle",  # Thrushwhistle Glen
         "tryle",  # Tryle N. Error
         "walt"  # Walt Disney
         "wat",  # Tangkor Wat
