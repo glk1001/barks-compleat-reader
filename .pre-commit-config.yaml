@@ -13,3 +13,8 @@ repos:
             language: system
             types: [python]
             pass_filenames: false
+          - id: cspell
+            name: cspell
+            entry: bunx cspell --no-must-find-files
+            language: system
+            types: [python]
