@@ -1,16 +1,17 @@
 version: "0.2"
 language: "en"
 
-# Python source files only — same scope as ruff and ty
+# Python source files, OpenDocument flat text, and Markdown
 files:
   - "**/*.py"
+  - "**/*.fodt"
+  - "**/*.md"
 
 # Respect .gitignore, then add ruff/ty-specific excludes
 useGitignore: true
 ignorePaths:
   - "**/experiments/**"
   - "**/scraps/**"
-  - "**/benchmarks/**"
   - "**/pyarmor_runtime_000000/**"
   - "**/get_panel_bytes.py"
 
@@ -35,3 +36,15 @@ dictionaries:
   - comic-utils
   - barks-fantagraphics
   - barks-reader
+
+# Per-file-type overrides
+overrides:
+  - filename: "**/*.fodt"
+    ignoreRegExpList:
+      # Skip all XML tags except <text:p> and </text:p> (those contain readable prose)
+      - "<(?!\\/?text:p[\\s>/])[^>]*>"
+      # Skip XML comments (may contain '>' inside, so handled separately)
+      - "<!--[\\s\\S]*?-->"
+      # Skip word fragments split across inline <text:span> elements (e.g. "evol<text:span...>ved</text:span>")
+      # Trade-off: words entirely inside a span are also skipped
+      - "[A-Za-z]*<text:span\\b[^>]*>[A-Za-z]*</text:span>[A-Za-z]*"
