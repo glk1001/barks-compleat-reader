@@ -219,15 +219,15 @@ def mark_phrase_in_text(phrase: str, target_text: str, start_tag: str, end_tag: 
     return result  # noqa: RET504
 
 
-TITLE_PAGE_NUM_SEPERATOR_STR = ", "
-LEN_PAGE_NUM_SEPERATOR_STR = len(TITLE_PAGE_NUM_SEPERATOR_STR)
+TITLE_PAGE_NUM_SEPARATOR_STR = ", "
+LEN_PAGE_NUM_SEPARATOR_STR = len(TITLE_PAGE_NUM_SEPARATOR_STR)
 
 
 def get_fitted_title_with_page_nums(
     title_str: str, page_nums: list[str], max_title_with_pages_len: int
 ) -> tuple[str, str]:
     page_nums_str = get_concat_page_nums_str(page_nums)
-    len_combined = len(title_str) + len(page_nums_str) + LEN_PAGE_NUM_SEPERATOR_STR
+    len_combined = len(title_str) + len(page_nums_str) + LEN_PAGE_NUM_SEPARATOR_STR
 
     # Shorten the title plus page number list if it's too long.
     # Start with easy title shortening.
@@ -243,12 +243,12 @@ def get_fitted_title_with_page_nums(
     # Try shortening page num string.
     if (len_combined > max_title_with_pages_len) and (len(page_nums) > 3):  # noqa: PLR2004
         page_nums_str = page_nums[0] + ",..."
-        len_combined = len(title_str) + len(page_nums_str) + LEN_PAGE_NUM_SEPERATOR_STR
+        len_combined = len(title_str) + len(page_nums_str) + LEN_PAGE_NUM_SEPARATOR_STR
 
     if len_combined > max_title_with_pages_len:
         # Shorten the title.
-        max_title_len = max_title_with_pages_len - len(page_nums_str) - LEN_PAGE_NUM_SEPERATOR_STR
+        max_title_len = max_title_with_pages_len - len(page_nums_str) - LEN_PAGE_NUM_SEPARATOR_STR
         if max_title_len > 0:
             title_str = textwrap.shorten(title_str, width=max_title_len, placeholder="...")
 
-    return page_nums[0], title_str + TITLE_PAGE_NUM_SEPERATOR_STR + page_nums_str
+    return page_nums[0], title_str + TITLE_PAGE_NUM_SEPARATOR_STR + page_nums_str
