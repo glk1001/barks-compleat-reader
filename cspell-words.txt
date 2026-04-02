@@ -2,19 +2,23 @@
 # One word per line. Case-insensitive.
 
 alnum
+apos
 arcname
 autotune
 autouse
 axisbelow
 bboxes
 blit
+browsable
 bufferfmt
+bunx
 chrono
 codepoint
 colorfmt
 compresslevel
 configfile
 consolelog
+docstrings
 dotenv
 edgecolor
 errmsg
@@ -32,6 +36,7 @@ getpid
 getpixel
 hidinput
 hitbox
+importlinter
 imread
 imshow
 intspan
@@ -44,6 +49,7 @@ logr
 markersize
 mtdev
 numpad
+organised
 pnginfo
 ppid
 ryzen
@@ -54,6 +60,7 @@ separator
 splittable
 srce
 sysfs
+testpaths
 textbbox
 textlength
 tobytes
