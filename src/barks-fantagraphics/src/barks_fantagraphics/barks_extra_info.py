@@ -150,7 +150,9 @@ BARKS_EXTRA_INFO = {
     Titles.IN_OLD_CALIFORNIA: "In the [i]Duck Man[/i] interview Barks said this about"
     " [i]In Old California:[/i]"
     ' [i]"I was able to present a little love story in that, and also'
-    ' got in a great deal of nostalgia and a little history, and a little bit of villainy."[/i]',
+    ' got in a great deal of nostalgia and a little history, and a little bit of villainy."[/i]'
+    "\n\n"
+    "And the first pig villain: Don Porko de Lardo.",
     Titles.DANGEROUS_DISGUISE: "In the [i]Duck Man[/i] interview Barks said this about"
     " his use of humans in [i]Dangerous Disguise:[/i]"
     " [i]\"Well, that was a situation which I somehow couldn't visualize all these"
