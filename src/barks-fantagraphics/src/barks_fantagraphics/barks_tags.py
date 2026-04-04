@@ -142,6 +142,7 @@ class Tags(Enum):
     PLASMA = "plasma"
     PLATINUM = "platinum"
     PORKMAN_DE_LARDO = "Porkman de Lardo"
+    PORKO_DE_LARDO = "Porko de Lardo"
     POTASH = "potash"
     PULPHEART_CLABBERHEAD = "Pulpheart Clabberhead"
     P_J_MC_BRINE = "P.J.McBrine"
