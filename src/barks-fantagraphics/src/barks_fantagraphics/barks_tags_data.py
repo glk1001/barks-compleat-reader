@@ -299,6 +299,7 @@ BARKS_TAG_GROUPS = {
         Tags.MR_MC_SWINE,
         Tags.P_J_MC_BRINE,
         Tags.PORKMAN_DE_LARDO,
+        Tags.PORKO_DE_LARDO,
         Tags.SOAPY_SLICK,
     ],
     TagGroups.PRIMARY_CHARACTERS: [
@@ -1050,6 +1051,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.STATUESQUE_SPENDTHRIFTS,
     ],
     Tags.PORKMAN_DE_LARDO: [Titles.STATUS_SEEKER_THE],
+    Tags.PORKO_DE_LARDO: [Titles.IN_OLD_CALIFORNIA],
     Tags.POTASH: [Titles.KRANKENSTEIN_GYRO],
     Tags.PULPHEART_CLABBERHEAD: [Titles.SPOIL_THE_ROD],
     Tags.P_J_MC_BRINE: [Titles.FORBIDDEN_VALLEY],
@@ -1423,6 +1425,7 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.PLATINUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["5"],
     (Tags.PLATINUM, Titles.RICHES_RICHES_EVERYWHERE): ["14"],
     (Tags.PLATINUM, Titles.STATUESQUE_SPENDTHRIFTS): ["9"],
+    (Tags.PORKO_DE_LARDO, Titles.IN_OLD_CALIFORNIA): ["16", "18"],
     (Tags.POTASH, Titles.KRANKENSTEIN_GYRO): ["1"],
     (Tags.P_J_MC_BRINE, Titles.FORBIDDEN_VALLEY): ["3"],
     (Tags.SELENIUM, Titles.LAND_OF_THE_PYGMY_INDIANS): ["22"],
