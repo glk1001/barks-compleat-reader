@@ -90,12 +90,19 @@ jobs:
         run: bunx cspell
 
   test:
-    name: Test
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }})
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: macos-latest
+          - os: windows-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install system dependencies
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgl1 libmtdev1t64 xvfb
@@ -110,6 +117,7 @@ jobs:
         run: uv sync
 
       - name: Generate stubs for gitignored modules
+        shell: bash
         run: |
           cat > src/barks-reader/src/barks_reader/_version.py <<'STUB'
           COPYRIGHT_YEARS = "2025"
@@ -120,5 +128,10 @@ jobs:
               return data
           STUB
 
-      - name: Run tests
-        run: xvfb-run uv run pytest
+      - name: Run tests (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum uv run pytest
+
+      - name: Run tests (macOS/Windows)
+        if: runner.os != 'Linux'
+        run: uv run pytest
