@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 from . import barks_titles
-from .barks_titles import Titles
+from .barks_titles import BARKS_TITLE_INFO, Titles
 
 
 class Tags(Enum):
@@ -50,7 +50,7 @@ class Tags(Enum):
     CHEMICAL_FORMULA = "chemical formula"
     CHINA = "China"
     CHISEL_MC_SUE = "Chisel McSue"
-    CHRISTMAS_STORIES = "christmas stories"
+    CHRISTMAS_STORIES = "Christmas stories"
     CIGARETTES = "cigarettes"
     CLASSICS = "The Classics"
     COLUMBIUM = "columbium"
@@ -67,6 +67,24 @@ class Tags(Enum):
     EVERY_GEEK_FAVOURITES = "everygeek.net"
     FERMIES = "Fermies"
     FIRE = "fire"
+    FIRST_BEAGLE_BOYS = "first Beagle Boys appearance"
+    FIRST_CAR_313 = "first car 313 appearance"
+    FIRST_DAISY = "first Daisy appearance"
+    FIRST_DUCKBURG = "first mention of Duckburg"
+    FIRST_FLINTHEART = "first Flintheart Glomgold appearance"
+    FIRST_GARE_INK = "first Garé inked story"
+    FIRST_GLADSTONE = "first Gladstone appearance"
+    FIRST_GYRO = "first Gyro appearance"
+    FIRST_HERBERT = "first Herbert appearance"
+    FIRST_LITTLE_HELPER = "first Little Helper appearance"
+    FIRST_MAGICA = "first Magica appearance"
+    FIRST_MONEY_BIN = "first Money Bin appearance"
+    FIRST_NEIGHBOR_JONES = "first Mr. Jones appearance"
+    FIRST_NUMBER_ONE_DIME = "first number one dime appearance"
+    FIRST_PIG_VILLAIN = "first pig villain"
+    FIRST_REAL_NEIGHBOR_JONES = "first neighbor Jones appearance"
+    FIRST_UNCLE_SCROOGE = "first Uncle Scrooge appearance"
+    FIRST_WORRY_ROOM = "first worry room appearance"
     FLINTHEART_GLOMGOLD = "Flintheart Glomgold"
     FLORIDA = "Florida"
     FOOLA_ZOOLA = "Foola Zoola"
@@ -234,6 +252,27 @@ BARKS_TAGS_ALIAS_LISTS: dict[Tags, list[str]] = {
     for t in BARKS_TAG_EXTRA_ALIASES.values()
 }
 
+BARKS_FIRSTS_MAP: dict[Tags, Tags] = {
+    Tags.FIRST_BEAGLE_BOYS: Tags.BEAGLE_BOYS,
+    Tags.FIRST_CAR_313: Tags.CAR_313,
+    Tags.FIRST_DAISY: Tags.DAISY,
+    Tags.FIRST_DUCKBURG: Tags.DUCKBURG,
+    Tags.FIRST_FLINTHEART: Tags.FLINTHEART_GLOMGOLD,
+    # Tags.FIRST_GARE_INK,
+    Tags.FIRST_GLADSTONE: Tags.GLADSTONE_GANDER,
+    Tags.FIRST_GYRO: Tags.GYRO_GEARLOOSE,
+    Tags.FIRST_HERBERT: Tags.HERBERT,
+    # Tags.FIRST_LITTLE_HELPER:Tags.LITTLE_HELPER,
+    Tags.FIRST_MAGICA: Tags.MAGICA_DE_SPELL,
+    # Tags.FIRST_MONEY_BIN,
+    Tags.FIRST_NEIGHBOR_JONES: Tags.NEIGHBOR_JONES,
+    # Tags.FIRST_NUMBER_ONE_DIME,
+    Tags.FIRST_PIG_VILLAIN: Tags.PORKO_DE_LARDO,
+    # Tags.FIRST_REAL_NEIGHBOR_JONES,
+    Tags.FIRST_UNCLE_SCROOGE: Tags.SCROOGE_NOT_IN_US,
+    Tags.FIRST_WORRY_ROOM: Tags.WORRY_ROOM,
+}
+
 
 class TagCategories(Enum):
     CHARACTERS = "Characters"
@@ -254,6 +293,7 @@ class TagGroups(Enum):
     CULTURAL_GROUPS = "cultural groups"
     DRUGS = "drugs"
     EUROPE = "Europe"
+    FIRSTS = "firsts"
     NORTH_AMERICA = "North America"
     ONE_OFF_CHARACTERS = "One-off Characters"
     OTHER_PLACES = "Other"
@@ -277,11 +317,50 @@ from .barks_tags_data import (  # noqa: E402
 )
 
 
+def _set_firsts_tags() -> None:
+    submission_date = {
+        info.title: (info.submitted_year, info.submitted_month, info.submitted_day)
+        for info in BARKS_TITLE_INFO
+    }
+
+    for firsts_tag in BARKS_TAG_GROUPS[TagGroups.FIRSTS]:
+        if firsts_tag in BARKS_FIRSTS_MAP:
+            tag = BARKS_FIRSTS_MAP[firsts_tag]
+            titles = BARKS_TAGGED_TITLES[tag]
+            # Sort the titles in order of submission dates from BARKS_TITLE_INFO
+            titles = sorted(titles, key=lambda t: submission_date[t])
+            first_title = titles[0]
+            BARKS_TAGGED_TITLES[firsts_tag] = [first_title]
+            if (tag, first_title) in BARKS_TAGGED_PAGES:
+                BARKS_TAGGED_PAGES[(firsts_tag, first_title)] = [
+                    BARKS_TAGGED_PAGES[(tag, first_title)][0]
+                ]
+
+    BARKS_TAGGED_TITLES[Tags.FIRST_GARE_INK] = [Titles.SOMETHIN_FISHY_HERE]
+    BARKS_TAGGED_TITLES[Tags.FIRST_LITTLE_HELPER] = [Titles.CAT_BOX_THE]
+    BARKS_TAGGED_TITLES[Tags.FIRST_MONEY_BIN] = [Titles.BIG_BIN_ON_KILLMOTOR_HILL_THE]
+    BARKS_TAGGED_TITLES[Tags.FIRST_NUMBER_ONE_DIME] = [Titles.ROUND_MONEY_BIN_THE]
+    BARKS_TAGGED_TITLES[Tags.FIRST_REAL_NEIGHBOR_JONES] = [Titles.GOOD_NEIGHBORS]
+
+    BARKS_TAGGED_PAGES[(Tags.FIRST_NUMBER_ONE_DIME, Titles.ROUND_MONEY_BIN_THE)] = ["2", "9"]
+
+
+_set_firsts_tags()
+
+
+def _validate_firsts_tags() -> None:
+    """Validate that every 'Tags' enum starting with 'FIRST_' is in 'BARKS_TAG_GROUPS[FIRSTS]'."""
+    firsts_group = set(BARKS_TAG_GROUPS[TagGroups.FIRSTS])
+    first_tags = {tag for tag in Tags if tag.name.startswith("FIRST_")}
+    missing = first_tags - firsts_group
+    assert not missing, f"FIRST_ tags missing from BARKS_TAG_GROUPS[FIRSTS]: {missing}"
+
+
 def special_case_personal_favourites_tag_update(my_title_picks: list[Titles]) -> None:
     BARKS_TAGGED_TITLES[Tags.PERSONAL_FAVOURITES] = my_title_picks
 
 
-def set_tag_alias(main_tag: Tags, alias_tag: Tags) -> None:
+def _set_tag_alias(main_tag: Tags, alias_tag: Tags) -> None:
     assert alias_tag not in BARKS_TAGGED_TITLES
     BARKS_TAGGED_TITLES[alias_tag] = BARKS_TAGGED_TITLES[main_tag]
 
@@ -291,7 +370,7 @@ def set_tag_alias(main_tag: Tags, alias_tag: Tags) -> None:
         BARKS_TAGGED_PAGES[(alias_tag, title)] = pages
 
 
-set_tag_alias(Tags.CAMERAS, Tags.PHOTOGRAPHY)
+_set_tag_alias(Tags.CAMERAS, Tags.PHOTOGRAPHY)
 
 
 def is_tag_group_enum(value: str) -> bool:
@@ -383,6 +462,7 @@ def validate_tag_data() -> None:
             )
 
     _validate_places()
+    _validate_firsts_tags()
 
 
 def _validate_places() -> None:
