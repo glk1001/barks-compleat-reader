@@ -6,10 +6,8 @@
   <component name="ProjectRootManager" version="2" project-jdk-name="uv (barks-compleat-reader)" project-jdk-type="Python SDK" />
   <component name="RuffConfiguration">
     <option name="enabled" value="true" />
-    <option name="executableDiscoveryMode" value="PATH" />
   </component>
   <component name="TyConfiguration">
     <option name="enabled" value="true" />
-    <option name="executableDiscoveryMode" value="PATH" />
   </component>
 </project>
