@@ -6,10 +6,12 @@ files:
   - "**/*.py"
   - "**/*.fodt"
   - "**/*.md"
+  - "**/*.ini"
 
 # Respect .gitignore, then add ruff/ty-specific excludes
 useGitignore: true
 ignorePaths:
+  - "data/**"
   - "**/experiments/**"
   - "**/scraps/**"
   - "**/pyarmor_runtime_000000/**"

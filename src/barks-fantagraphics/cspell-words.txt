@@ -119,6 +119,7 @@ castoria
 castrovian
 cauliflowernia
 cbdl
+ccbdl
 cellarful
 centrifipillion
 centrifu
@@ -150,6 +151,7 @@ cockadoodle
 codfeesh
 collossalest
 colossalest
+columbium
 conippus
 constanza
 coocoo
@@ -399,6 +401,7 @@ kachoonga
 kachoongalese
 kakimaw
 kakimaws
+karp
 kelpers
 kess
 killmotor
@@ -419,6 +422,7 @@ larkies
 lessly
 limpspire
 linc
+lockman
 looketh
 loonville
 luluduckita
@@ -538,6 +542,7 @@ overseeded
 paddleocr
 pago
 pago
+pahlsom
 palo
 panchita
 panchita's
@@ -584,6 +589,7 @@ porko
 posthasty
 powderburns
 powderhorn
+printz
 profundo
 puffhard
 puffhards
@@ -746,6 +752,7 @@ teenie
 terminfo
 terries
 tesseract
+thats
 theah
 thinknoble
 thisaway
