@@ -162,7 +162,7 @@ class TestTreeViewManager:
             tree_view_manager.on_node_collapsed(MagicMock(), node)
 
             mock_dependencies["view_state_manager"].set_view_state.assert_called_with(
-                ViewStates.ON_INTRO_NODE
+                ViewStates.ON_INTRO_NODE, preserve_top_view=False
             )
 
     def test_on_node_expanded(
@@ -188,7 +188,7 @@ class TestTreeViewManager:
                 mock_pin.assert_called_with(node, run_populate=True)
                 assert node.populated is True
                 mock_dependencies["view_state_manager"].set_view_state.assert_called_with(
-                    ViewStates.ON_INTRO_NODE
+                    ViewStates.ON_INTRO_NODE, preserve_top_view=False
                 )
 
     def test_close_siblings(

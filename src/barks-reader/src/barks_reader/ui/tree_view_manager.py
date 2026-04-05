@@ -166,12 +166,18 @@ class TreeViewManager:
 
         self.set_view_state_for_node(node)
 
-    def set_view_state_for_node(self, node: ButtonTreeViewNode) -> None:
+    def set_view_state_for_node(
+        self, node: ButtonTreeViewNode, *, preserve_top_view: bool = False
+    ) -> None:
         new_view_state, view_state_params = get_view_state_from_node(node)
         if new_view_state is None:
             msg = f"No view state mapping found for node: '{node.get_name()}' ({type(node)})"
             raise RuntimeError(msg)
-        self._view_state_manager.set_view_state(new_view_state, **view_state_params)  # ty: ignore[invalid-argument-type]
+        self._view_state_manager.set_view_state(
+            new_view_state,
+            preserve_top_view=preserve_top_view,
+            **view_state_params,  # ty: ignore[invalid-argument-type]
+        )
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
         logger.info(f"Node expanded: '{node.get_name()}'.")
@@ -181,7 +187,11 @@ class TreeViewManager:
             return
 
         # 1) Collapse any previously-open group (reduces height shocks).
-        self._close_siblings(node)
+        #    Suppress view-state changes so the sibling collapse doesn't update
+        #    the top background image before we get to step 3.
+        # noinspection PyArgumentList
+        with self.suppress_view_state_changes():
+            self._close_siblings(node)
 
         # 2) Lazy populate ONCE, while pinning the parent's position to avoid a jump.
         if node.populate_callback and not node.populated:
@@ -192,35 +202,39 @@ class TreeViewManager:
             # keep the parent row stationary.
             self._pin_parent_position_while_populating(node, run_populate=False)
 
-        # 3) View-state logic
-        self.set_view_state_for_node(node)
+        # 3) View-state logic.
+        if self._has_single_title_child(node):
+            # Single-child node: skip the intermediate tag view state and go straight
+            # to selecting the title.  This avoids a visible flicker where the tag's
+            # fun-image briefly appears before the title view replaces it.
+            logger.info(f"Single-child node '{node.get_name()}': auto-selecting only title.")
+            self._auto_select_single_child(node)
+        else:
+            self.set_view_state_for_node(node)
 
-        # 4) If exactly one title child, auto-select it.
-        self._auto_select_single_child(node)
+        # 4) NOTE: Do not call scroll_to_node() here — that causes the "snap-to-top/bottom" jump.
 
-        # 5) NOTE: Do not call scroll_to_node() here — that causes the “snap-to-top/bottom” jump.
+    @staticmethod
+    def _has_single_title_child(node: ButtonTreeViewNode) -> bool:
+        """Return True if the node has exactly one TitleTreeViewNode child."""
+        title_children = [c for c in node.nodes if isinstance(c, TitleTreeViewNode)]
+        return len(title_children) == 1
 
     def _auto_select_single_child(self, node: ButtonTreeViewNode) -> None:
-        """If a node has exactly one TitleTreeViewNode child, auto-select it.
+        """Auto-select the only TitleTreeViewNode child synchronously.
 
-        Selects the title without changing the background image so the tag-level
-        background stays visible.
+        Caller must have already verified that the node has exactly one title child.
+        Skips the intermediate tag view state and goes directly to the title,
+        preserving the top background image.
         """
         from barks_reader.ui.navigation_coordinator import TitleTarget  # noqa: PLC0415
 
-        title_children = [c for c in node.nodes if isinstance(c, TitleTreeViewNode)]
-        if len(title_children) != 1:
-            return
-
-        only_child = title_children[0]
-
-        def _select(_dt: float) -> None:
-            self._tree_view_screen.select_node(only_child)
-            fanta_info = only_child.ids.num_label.parent.fanta_info
-            self._nav.select_title(TitleTarget(fanta_info=fanta_info), preserve_top_view=True)
-            self.scroll_to_node(only_child)
-
-        Clock.schedule_once(_select, 0)
+        only_child = next(c for c in node.nodes if isinstance(c, TitleTreeViewNode))
+        self._tree_view_screen.select_node(only_child)
+        fanta_info = only_child.ids.num_label.parent.fanta_info
+        self._nav.select_title(TitleTarget(fanta_info=fanta_info), preserve_top_view=True)
+        # Don't call scroll_to_node here — the parent is already being pinned in view
+        # by _pin_parent_position_while_populating and the child is right below it.
 
     def _close_siblings(self, node: ButtonTreeViewNode) -> None:
         parent = node.parent_node
