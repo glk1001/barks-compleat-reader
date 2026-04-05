@@ -134,4 +134,6 @@ jobs:
 
       - name: Run tests (macOS/Windows)
         if: runner.os != 'Linux'
+        env:
+          SDL_VIDEODRIVER: dummy
         run: uv run pytest
