@@ -166,18 +166,12 @@ class TreeViewManager:
 
         self.set_view_state_for_node(node)
 
-    def set_view_state_for_node(
-        self, node: ButtonTreeViewNode, *, preserve_top_view: bool = False
-    ) -> None:
+    def set_view_state_for_node(self, node: ButtonTreeViewNode) -> None:
         new_view_state, view_state_params = get_view_state_from_node(node)
         if new_view_state is None:
             msg = f"No view state mapping found for node: '{node.get_name()}' ({type(node)})"
             raise RuntimeError(msg)
-        self._view_state_manager.set_view_state(
-            new_view_state,
-            preserve_top_view=preserve_top_view,
-            **view_state_params,  # ty: ignore[invalid-argument-type]
-        )
+        self._view_state_manager.set_view_state(new_view_state, **view_state_params)  # ty: ignore[invalid-argument-type]
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
         logger.info(f"Node expanded: '{node.get_name()}'.")
@@ -232,7 +226,12 @@ class TreeViewManager:
         only_child = next(c for c in node.nodes if isinstance(c, TitleTreeViewNode))
         self._tree_view_screen.select_node(only_child)
         fanta_info = only_child.ids.num_label.parent.fanta_info
-        self._nav.select_title(TitleTarget(fanta_info=fanta_info), preserve_top_view=True)
+        tag = (
+            node.tag
+            if isinstance(node, (TagStoryGroupTreeViewNode, TagGroupStoryGroupTreeViewNode))
+            else None
+        )
+        self._nav.select_title(TitleTarget(fanta_info=fanta_info, tag=tag), preserve_top_view=True)
         # Don't call scroll_to_node here — the parent is already being pinned in view
         # by _pin_parent_position_while_populating and the child is right below it.
 
