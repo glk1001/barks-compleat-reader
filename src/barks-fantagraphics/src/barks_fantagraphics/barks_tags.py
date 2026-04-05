@@ -74,7 +74,7 @@ class Tags(Enum):
     FIRST_FLINTHEART = "first Flintheart Glomgold appearance"
     FIRST_GARE_INK = "first Garé inked story"
     FIRST_GLADSTONE = "first Gladstone appearance"
-    FIRST_GYRO = "first Gyro appearance"
+    FIRST_GYRO_NOT_IN_GG = "first Gyro appearance"
     FIRST_HERBERT = "first Herbert appearance"
     FIRST_LITTLE_HELPER = "first Little Helper appearance"
     FIRST_MAGICA = "first Magica appearance"
@@ -260,7 +260,7 @@ BARKS_FIRSTS_MAP: dict[Tags, Tags] = {
     Tags.FIRST_FLINTHEART: Tags.FLINTHEART_GLOMGOLD,
     # Tags.FIRST_GARE_INK,
     Tags.FIRST_GLADSTONE: Tags.GLADSTONE_GANDER,
-    Tags.FIRST_GYRO: Tags.GYRO_GEARLOOSE,
+    Tags.FIRST_GYRO_NOT_IN_GG: Tags.GYRO_NOT_IN_GG,
     Tags.FIRST_HERBERT: Tags.HERBERT,
     # Tags.FIRST_LITTLE_HELPER:Tags.LITTLE_HELPER,
     Tags.FIRST_MAGICA: Tags.MAGICA_DE_SPELL,
