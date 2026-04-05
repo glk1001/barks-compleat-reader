@@ -79,6 +79,7 @@ _FIXES_SPECIAL_CASES_ADDED: frozenset[tuple[int, str]] = frozenset(
         (7, "240"),  # Copied from volume 8, jpeg 31
         (7, "241"),  # Copied from volume 8, jpeg 32
         (16, "235"),  # Copied from volume 14, jpeg 145
+        (28, "207"),  # "A Spicy Take" cover restored from Internet image
         # Non-comic title pages — volume 1
         (1, "268"),
         # Non-comic title pages — volume 2
