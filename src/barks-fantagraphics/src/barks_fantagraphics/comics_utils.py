@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import zipfile
 from datetime import UTC, date, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
@@ -99,9 +99,9 @@ def get_relpath(file: Path | zipfile.Path) -> str:
 
     assert isinstance(file, Path)
     if file.is_relative_to(BARKS_ROOT_DIR):
-        return str(file.relative_to(BARKS_ROOT_DIR))
+        return file.relative_to(BARKS_ROOT_DIR).as_posix()
 
-    return str(Path(*file.parts[-2:]))
+    return PurePosixPath(*file.parts[-2:]).as_posix()
 
 
 def get_abspath_from_relpath(relpath: Path, root_dir: Path = BARKS_ROOT_DIR) -> Path:
