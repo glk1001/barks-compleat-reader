@@ -6,7 +6,7 @@ import subprocess
 import sys
 import textwrap
 import zipfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from random import randrange
 from typing import TYPE_CHECKING, Any
 
@@ -171,7 +171,7 @@ def get_paths_from_zip(zip_path: Path) -> set[str]:
         for name in zf.namelist():
             # Ignore directory entries
             if not name.endswith("/"):
-                path = Path(name)
+                path = PurePosixPath(name)
                 paths.add(str(path.with_suffix("")))
 
     return paths
