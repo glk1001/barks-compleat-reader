@@ -195,7 +195,24 @@ class TreeViewManager:
         # 3) View-state logic
         self.set_view_state_for_node(node)
 
-        # 4) NOTE: Do not call scroll_to_node() here — that causes the “snap-to-top/bottom” jump.
+        # 4) If exactly one title child, auto-select it.
+        self._auto_select_single_child(node)
+
+        # 5) NOTE: Do not call scroll_to_node() here — that causes the “snap-to-top/bottom” jump.
+
+    def _auto_select_single_child(self, node: ButtonTreeViewNode) -> None:
+        """If a node has exactly one TitleTreeViewNode child, auto-select it."""
+        title_children = [c for c in node.nodes if isinstance(c, TitleTreeViewNode)]
+        if len(title_children) != 1:
+            return
+
+        only_child = title_children[0]
+
+        def _select(_dt: float) -> None:
+            self._tree_view_screen.select_node(only_child)
+            self._handle_title_node_selection(only_child)
+
+        Clock.schedule_once(_select, 0)
 
     def _close_siblings(self, node: ButtonTreeViewNode) -> None:
         parent = node.parent_node
