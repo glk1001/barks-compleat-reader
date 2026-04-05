@@ -126,6 +126,7 @@ _BARKSIAN_FULL_NAMES: frozenset[str] = frozenset(
         "Sheik Hassan Ben Happi",
         "Sir Galahad",
         "St. George",
+        "Treatem Nyce",
         "Trestleman Truckhorse",
         "Tryle N. Error",
         "Trigger Trueshot",
@@ -1770,6 +1771,7 @@ FRAGMENTS_TO_SUPPRESS: frozenset[str] = frozenset(
         "swelldorf",  # Swelldorf-Castoria
         "tangkor",  # Tangkor Wat
         "thrushwhistle",  # Thrushwhistle Glen
+        "treatem",  # Treatem Nyce
         "tryle",  # Tryle N. Error
         "walt"  # Walt Disney
         "wat",  # Tangkor Wat
