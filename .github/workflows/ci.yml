@@ -134,4 +134,8 @@ jobs:
 
       - name: Run tests (macOS/Windows)
         if: runner.os != 'Linux'
+        env:
+          KIVY_DPI: "96"
+          KIVY_METRICS_DENSITY: "1"
+          KIVY_METRICS_FONTSCALE: "1"
         run: uv run pytest

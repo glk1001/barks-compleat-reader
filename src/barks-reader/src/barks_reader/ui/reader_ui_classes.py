@@ -66,31 +66,8 @@ class ScrollableDropDown(DropDown):
         return super().on_touch_down(touch)
 
 
-_ACTION_BAR_SIZE_Y: int | None = None
-_ARROW_WIDTH: int | None = None
-
-
-def _ensure_dp_constants() -> None:
-    global _ACTION_BAR_SIZE_Y, _ARROW_WIDTH  # noqa: PLW0603
-    if _ACTION_BAR_SIZE_Y is None:
-        _ACTION_BAR_SIZE_Y = round(dp(RAW_ACTION_BAR_SIZE_Y))
-        _ARROW_WIDTH = round(dp(20))
-
-
-# Lazy properties so dp() is not called at import time (requires a Kivy window).
-
-
-def __getattr__(name: str) -> int:
-    if name == "ACTION_BAR_SIZE_Y":
-        _ensure_dp_constants()
-        assert _ACTION_BAR_SIZE_Y is not None
-        return _ACTION_BAR_SIZE_Y
-    if name == "ARROW_WIDTH":
-        _ensure_dp_constants()
-        assert _ARROW_WIDTH is not None
-        return _ARROW_WIDTH
-    msg = f"module {__name__!r} has no attribute {name!r}"
-    raise AttributeError(msg)
+ACTION_BAR_SIZE_Y = round(dp(RAW_ACTION_BAR_SIZE_Y))
+ARROW_WIDTH = round(dp(20))
 
 
 def set_kivy_busy_cursor() -> None:
@@ -102,8 +79,7 @@ def set_kivy_normal_cursor() -> None:
 
 
 def show_action_bar(action_bar: ActionBar) -> None:
-    _ensure_dp_constants()
-    action_bar.height = _ACTION_BAR_SIZE_Y
+    action_bar.height = ACTION_BAR_SIZE_Y
     action_bar.opacity = 1
     action_bar.disabled = False
 
