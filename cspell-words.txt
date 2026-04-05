@@ -4,6 +4,7 @@
 alnum
 apos
 arcname
+argtypes
 autotune
 autouse
 axisbelow
@@ -52,6 +53,7 @@ numpad
 organised
 pnginfo
 ppid
+returncode
 ryzen
 scancode
 screeninfo

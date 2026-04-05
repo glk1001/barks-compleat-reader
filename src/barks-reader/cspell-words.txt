@@ -9,6 +9,7 @@ bgnd
 bolditalic
 borderless
 boxlayout
+btns
 defaultvalue
 dirselect
 etype
