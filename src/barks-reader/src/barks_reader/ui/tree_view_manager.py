@@ -201,7 +201,13 @@ class TreeViewManager:
         # 5) NOTE: Do not call scroll_to_node() here — that causes the “snap-to-top/bottom” jump.
 
     def _auto_select_single_child(self, node: ButtonTreeViewNode) -> None:
-        """If a node has exactly one TitleTreeViewNode child, auto-select it."""
+        """If a node has exactly one TitleTreeViewNode child, auto-select it.
+
+        Selects the title without changing the background image so the tag-level
+        background stays visible.
+        """
+        from barks_reader.ui.navigation_coordinator import TitleTarget  # noqa: PLC0415
+
         title_children = [c for c in node.nodes if isinstance(c, TitleTreeViewNode)]
         if len(title_children) != 1:
             return
@@ -210,7 +216,9 @@ class TreeViewManager:
 
         def _select(_dt: float) -> None:
             self._tree_view_screen.select_node(only_child)
-            self._handle_title_node_selection(only_child)
+            fanta_info = only_child.ids.num_label.parent.fanta_info
+            self._nav.select_title(TitleTarget(fanta_info=fanta_info), preserve_top_view=True)
+            self.scroll_to_node(only_child)
 
         Clock.schedule_once(_select, 0)
 

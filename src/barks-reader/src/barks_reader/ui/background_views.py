@@ -297,10 +297,10 @@ class BackgroundViews:
     def set_current_bottom_view_title(self, title: str) -> None:
         self._current_bottom_view_title = title
 
-    def set_view_state(self, view_state: ViewStates) -> None:
+    def set_view_state(self, view_state: ViewStates, *, preserve_top_view: bool = False) -> None:
         logger.info(f"Updating background view state to {view_state.name}.")
         self._view_state = view_state
-        self._update_views()
+        self._update_views(preserve_top_view=preserve_top_view)
 
     def compute_snapshot(self) -> ViewSnapshot:
         """Build an immutable snapshot of the current view state.
@@ -343,7 +343,7 @@ class BackgroundViews:
             ),
         )
 
-    def _update_views(self) -> None:
+    def _update_views(self, *, preserve_top_view: bool = False) -> None:
         if self._view_state == ViewStates.PRE_INIT:
             self._top_view_image_opacity = 0.5
             self._set_next_top_view_image()
@@ -359,7 +359,8 @@ class BackgroundViews:
             1.0 if self._view_state in _BOTTOM_VIEW_TITLE_OPACITY_1_STATES else 0.0
         )
 
-        self._set_next_top_view_image()
+        if not preserve_top_view:
+            self._set_next_top_view_image()
         self._set_next_bottom_view_fun_image()
         self._set_next_search_screen_image()
         self.set_next_bottom_view_title_image()

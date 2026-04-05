@@ -48,7 +48,7 @@ class TestNavigationCoordinator:
 
         assert nav_coord.current_fanta_info == mock_fanta_info
         mock_deps["view_state_manager"].update_view_for_node_with_title.assert_called_with(
-            ViewStates.ON_TITLE_NODE
+            ViewStates.ON_TITLE_NODE, preserve_top_view=False
         )
 
     def test_navigate_to_chrono_title(

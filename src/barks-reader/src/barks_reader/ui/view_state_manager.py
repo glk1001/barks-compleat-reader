@@ -105,8 +105,14 @@ class ViewStateManager:
         tag_group: TagGroups | None = None,
         tag: Tags | None = None,
         title_str: str = "",
+        *,
+        preserve_top_view: bool = False,
     ) -> None:
-        """Set the current context and update all views accordingly."""
+        """Set the current context and update all views accordingly.
+
+        If ``preserve_top_view`` is True the top background image is kept as-is
+        (used when auto-selecting the only child of a tag node on expand).
+        """
         self._background_views.set_current_category(category)
         self._background_views.set_current_year_range(get_clean_text_without_extra(year_range))
         self._background_views.set_current_cs_year_range(
@@ -120,7 +126,7 @@ class ViewStateManager:
         self._background_views.set_current_bottom_view_title(title_str)
 
         self._background_views.set_fun_image_themes(self._bottom_view_fun_image_themes)
-        self._background_views.set_view_state(view_state)
+        self._background_views.set_view_state(view_state, preserve_top_view=preserve_top_view)
 
         snapshot = self._background_views.compute_snapshot()
         self._applicator.apply(snapshot)
@@ -158,20 +164,25 @@ class ViewStateManager:
             self._background_views.get_current_bottom_view_title(),
         )
 
-    def update_view_for_node_with_title(self, view_state: ViewStates) -> None:
+    def update_view_for_node_with_title(
+        self, view_state: ViewStates, *, preserve_top_view: bool = False
+    ) -> None:
         self.update_view_for_node(
             view_state,
             title_str=self._background_views.get_current_bottom_view_title(),
+            preserve_top_view=preserve_top_view,
         )
 
     def update_view_for_node(
         self,
         view_state: ViewStates,
+        *,
+        preserve_top_view: bool = False,
         **args: str | TagGroups | Tags | None,
     ) -> None:
         logger.debug(f'Updating background views for node "{view_state}".')
         # TODO: Not sure how to deal with 'ty' and **args.
-        self.set_view_state(view_state, **args)  # ty: ignore[invalid-argument-type]
+        self.set_view_state(view_state, preserve_top_view=preserve_top_view, **args)  # ty: ignore[invalid-argument-type]
 
     def set_title(
         self, fanta_info: FantaComicBookInfo, title_image_file: PanelPath | None = None

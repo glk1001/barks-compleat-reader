@@ -124,16 +124,21 @@ class NavigationCoordinator:
 
     # === Primary path: tree-view title selection ===
 
-    def select_title(self, target: TitleTarget) -> None:
+    def select_title(self, target: TitleTarget, *, preserve_top_view: bool = False) -> None:
         """Handle 'user picked a title from the tree view'.
 
         Sets the title on ViewStateManager, updates view state to ON_TITLE_NODE,
         configures goto-page checkbox, and handles tag-page navigation if a tag
         is provided.
+
+        If ``preserve_top_view`` is True the top background image is left unchanged
+        (used when a single-child node is auto-selected on expand).
         """
         self._current_fanta_info = target.fanta_info
         self._set_title(target.title_image_file)
-        self._view_state_manager.update_view_for_node_with_title(ViewStates.ON_TITLE_NODE)
+        self._view_state_manager.update_view_for_node_with_title(
+            ViewStates.ON_TITLE_NODE, preserve_top_view=preserve_top_view
+        )
 
         if target.tag is not None:
             assert self._current_fanta_info is not None

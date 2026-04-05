@@ -118,7 +118,9 @@ class TestViewStateManager:
         bg_views.set_current_category.assert_called_with("Cat")
         bg_views.set_current_year_range.assert_called_with("1940-1950")
         bg_views.set_current_bottom_view_title.assert_called_with("Title")
-        bg_views.set_view_state.assert_called_with(ViewStates.ON_INTRO_NODE)
+        bg_views.set_view_state.assert_called_with(
+            ViewStates.ON_INTRO_NODE, preserve_top_view=False
+        )
 
         # Verify snapshot flow
         bg_views.compute_snapshot.assert_called_once()
