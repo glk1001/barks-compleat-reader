@@ -4,12 +4,12 @@ import typer
 from intspan import intspan
 from PIL import Image, ImageDraw
 
-from barks_fantagraphics.barks_titles import get_safe_title
-from barks_fantagraphics.comics_database import ComicsDatabase
-from barks_fantagraphics.comics_utils import get_titles_sorted_by_submission_date
-from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
-from barks_fantagraphics.pages import get_sorted_srce_and_dest_pages
-from barks_fantagraphics.panel_boxes import PagePanelBoxes
+from .barks_titles import get_safe_title
+from .comics_database import ComicsDatabase
+from .comics_utils import get_titles_sorted_by_submission_date
+from .fanta_comics_info import FantaComicBookInfo
+from .pages import get_sorted_srce_and_dest_pages
+from .panel_boxes import PagePanelBoxes
 
 
 def get_titles_and_info(

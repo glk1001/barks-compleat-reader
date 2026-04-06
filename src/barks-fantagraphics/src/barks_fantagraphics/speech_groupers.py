@@ -5,12 +5,12 @@ from itertools import groupby
 from pathlib import Path
 from typing import Any
 
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
-from barks_fantagraphics.comic_book import ComicBook
-from barks_fantagraphics.comics_consts import RESTORABLE_PAGE_TYPES
-from barks_fantagraphics.comics_database import ComicsDatabase
-from barks_fantagraphics.ocr_file_paths import get_ocr_prelim_groups_json_filename
-from barks_fantagraphics.pages import get_page_num_str, get_sorted_srce_and_dest_pages
+from .barks_titles import BARKS_TITLES, Titles
+from .comic_book import ComicBook
+from .comics_consts import RESTORABLE_PAGE_TYPES
+from .comics_database import ComicsDatabase
+from .ocr_file_paths import get_ocr_prelim_groups_json_filename
+from .pages import get_page_num_str, get_sorted_srce_and_dest_pages
 
 
 class OcrTypes(StrEnum):

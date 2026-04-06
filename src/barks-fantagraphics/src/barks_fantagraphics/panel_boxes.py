@@ -2,11 +2,11 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
-from barks_fantagraphics.comic_book import ComicBook, get_page_str
-from barks_fantagraphics.comics_consts import RESTORABLE_PAGE_TYPES
-from barks_fantagraphics.comics_database import ComicsDatabase
-from barks_fantagraphics.pages import get_sorted_srce_and_dest_pages
+from .barks_titles import BARKS_TITLES, Titles
+from .comic_book import ComicBook, get_page_str
+from .comics_consts import RESTORABLE_PAGE_TYPES
+from .comics_database import ComicsDatabase
+from .pages import get_sorted_srce_and_dest_pages
 
 
 @dataclass(frozen=True, slots=True)

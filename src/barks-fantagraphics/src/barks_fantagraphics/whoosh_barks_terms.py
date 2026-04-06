@@ -1,4 +1,4 @@
-from barks_fantagraphics.entity_types import EntityType
+from .entity_types import EntityType
 
 # Context-sensitive words: same word maps to different entity types depending on surrounding text.
 # Each entry: base_word → (fallback_type, fallback_canonical, rules)

@@ -5,14 +5,14 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_titles import (
+from .barks_titles import (
     BARKS_TITLE_INFO,
     US_1_FC_ISSUE_NUM,
     US_2_FC_ISSUE_NUM,
     US_3_FC_ISSUE_NUM,
     Titles,
 )
-from barks_fantagraphics.comic_issues import Issues
+from .comic_issues import Issues
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
