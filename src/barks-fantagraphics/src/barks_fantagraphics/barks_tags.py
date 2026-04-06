@@ -5,11 +5,18 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from barks_fantagraphics import barks_titles as bt
+from barks_fantagraphics.barks_titles import (
+    BARKS_TITLE_INFO,
+    US_1_FC_ISSUE_NUM,
+    US_2_FC_ISSUE_NUM,
+    US_3_FC_ISSUE_NUM,
+    Titles,
+)
+from barks_fantagraphics.comic_issues import Issues
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
-
-from . import barks_titles
-from .barks_titles import BARKS_TITLE_INFO, Titles
 
 
 class Tags(Enum):
@@ -95,7 +102,7 @@ class Tags(Enum):
     GLADSTONE_GANDER = "Gladstone Gander"
     GNEEZLES = "Gneezles"
     GREECE = "Greece"
-    GYRO_GEARLOOSE = barks_titles.GYRO_GEARLOOSE
+    GYRO_GEARLOOSE = bt.GYRO_GEARLOOSE
     GYRO_NOT_IN_GG = "Gyro not in GG series"
     HASSAN_BEN_JAILD = "Hassan Ben Jaild"
     HDL_DRIVING_CAR = "HDL driving car"
@@ -356,6 +363,26 @@ def _validate_firsts_tags() -> None:
     assert not missing, f"FIRST_ tags missing from BARKS_TAG_GROUPS[FIRSTS]: {missing}"
 
 
+def _validate_gyro_tags() -> None:
+    gyro_titles = set(BARKS_TAGGED_TITLES[Tags.GYRO_GEARLOOSE])
+    gyro_not_in_gg_titles = set(BARKS_TAGGED_TITLES[Tags.GYRO_NOT_IN_GG])
+    assert gyro_not_in_gg_titles.issubset(gyro_titles), f"{gyro_not_in_gg_titles - gyro_titles}"
+
+
+def _validate_uncle_scrooge_tags() -> None:
+    us_not_in_us_titles = set(BARKS_TAGGED_TITLES[Tags.SCROOGE_NOT_IN_US])
+    wrong_titles = [
+        t
+        for t in us_not_in_us_titles
+        if (BARKS_TITLE_INFO[t].issue_name == Issues.US)
+        or (
+            BARKS_TITLE_INFO[t].issue_number
+            in [US_1_FC_ISSUE_NUM, US_2_FC_ISSUE_NUM, US_3_FC_ISSUE_NUM]
+        )
+    ]
+    assert len(wrong_titles) == 0, f"{wrong_titles}"
+
+
 def special_case_personal_favourites_tag_update(my_title_picks: list[Titles]) -> None:
     BARKS_TAGGED_TITLES[Tags.PERSONAL_FAVOURITES] = my_title_picks
 
@@ -463,6 +490,8 @@ def validate_tag_data() -> None:
 
     _validate_places()
     _validate_firsts_tags()
+    _validate_gyro_tags()
+    _validate_uncle_scrooge_tags()
 
 
 def _validate_places() -> None:
