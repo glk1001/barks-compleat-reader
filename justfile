@@ -1,3 +1,5 @@
+set shell := ["bash", "-uc"]
+
 import '../barks-comic-building/justfile'
 
 _default2:
@@ -15,8 +17,14 @@ reader-1080p win_left="10" win_top="10" win_height="1020":
 panels-info volume:
     uv run --project "{{source_dir()}}" "{{source_dir()}}/scripts/panels-info.py" --log-level WARNING --volume {{volume}}
 
+# Image dimensions utils
 inset-width height:
     @bash "{{source_dir()}}/scripts/inset_width.sh" {{height}}
 
 view-width height:
     @bash "{{source_dir()}}/scripts/view_width.sh" {{height}}
+
+# Run the Barks reader CI locally
+act-ci:
+    act -P ubuntu-latest=catthehacker/ubuntu:act-latest -P macos-latest=catthehacker/ubuntu:act-latest -P windows-latest=catthehacker/ubuntu:act-latest |& tee /tmp/act-output.log
+
