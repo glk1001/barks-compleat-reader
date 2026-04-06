@@ -8,7 +8,7 @@ from pathlib import Path
 from loguru import logger
 from loguru_config import LoguruConfig
 
-from barks_reader.core.platform_info import PLATFORM, Platform
+from .platform_info import PLATFORM, Platform
 
 APP_NAME = "barks-reader"
 

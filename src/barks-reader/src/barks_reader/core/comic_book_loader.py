@@ -25,25 +25,25 @@ from comic_utils.timing import Timing
 from loguru import logger
 from PIL import Image
 
-from barks_reader.core.comic_book_loader_platform_settings import (
+from .comic_book_loader_platform_settings import (
     autotune_worker_count,
     get_prefetch_tuning,
 )
-from barks_reader.core.fantagraphics_volumes import (
+from .fantagraphics_volumes import (
     FantagraphicsVolumeArchives,
     MissingVolumeError,
 )
-from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY
-from barks_reader.core.services import schedule_once, set_busy_cursor, set_normal_cursor
+from .reader_utils import PNG_EXT_FOR_KIVY
+from .services import schedule_once, set_busy_cursor, set_normal_cursor
 
 if TYPE_CHECKING:
     import io
     from collections.abc import Callable
 
-    from barks_reader.core.comic_book_page_info import PageInfo
-    from barks_reader.core.fantagraphics_volumes import FantagraphicsArchive
-    from barks_reader.core.page_image_source import PageImageSource
-    from barks_reader.core.reader_settings import ReaderSettings
+    from .comic_book_page_info import PageInfo
+    from .fantagraphics_volumes import FantagraphicsArchive
+    from .page_image_source import PageImageSource
+    from .reader_settings import ReaderSettings
 
 ALL_FANTA_VOLUMES = list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1))
 # ALL_FANTA_VOLUMES = [i for i in range(5, 7 + 1)]

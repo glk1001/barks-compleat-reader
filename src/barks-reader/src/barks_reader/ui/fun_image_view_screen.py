@@ -21,7 +21,8 @@ from barks_reader.core.reader_settings import (
     SHOW_FUN_VIEW_TITLE_INFO,
 )
 from barks_reader.core.settings_notifier import settings_notifier
-from barks_reader.ui.reader_navigation import ReaderNavigation
+
+from .reader_navigation import ReaderNavigation
 
 if TYPE_CHECKING:
     from collections.abc import Callable

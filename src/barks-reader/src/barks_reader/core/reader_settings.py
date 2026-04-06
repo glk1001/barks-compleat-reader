@@ -7,9 +7,9 @@ from typing import Any, Protocol
 
 from loguru import logger
 
-from barks_reader.core.reader_consts_and_types import LONG_PATH_SETTING
-from barks_reader.core.reader_file_paths import BarksPanelsExtType, ReaderFilePaths
-from barks_reader.core.system_file_paths import SystemFilePaths
+from .reader_consts_and_types import LONG_PATH_SETTING
+from .reader_file_paths import BarksPanelsExtType, ReaderFilePaths
+from .system_file_paths import SystemFilePaths
 
 READER_FILES_DIR = "Reader Files"  # relative to app data directory
 JPG_BARKS_PANELS_ZIP = "Barks Panels.zip"

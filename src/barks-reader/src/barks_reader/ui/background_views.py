@@ -43,7 +43,8 @@ from barks_reader.core.view_snapshot import (
     TopViewSnapshot,
     ViewSnapshot,
 )
-from barks_reader.ui.view_states import ViewStates
+
+from .view_states import ViewStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable

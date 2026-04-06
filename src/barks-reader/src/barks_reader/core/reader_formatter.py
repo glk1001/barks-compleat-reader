@@ -20,12 +20,12 @@ from barks_fantagraphics.comics_utils import (
 from barks_fantagraphics.fanta_comics_info import FAN, FANTA_SOURCE_COMICS, FantaComicBookInfo
 from comic_utils.cpi_calculator import get_adjusted_usd
 
-from barks_reader.core.reader_consts_and_types import CLOSE_TO_ZERO
-from barks_reader.core.reader_utils import get_concat_page_nums_str
-from barks_reader.core.services import escape_markup
+from .reader_consts_and_types import CLOSE_TO_ZERO
+from .reader_utils import get_concat_page_nums_str
+from .services import escape_markup
 
 if TYPE_CHECKING:
-    from barks_reader.core.reader_colors import Color
+    from .reader_colors import Color
 
 LONG_TITLE_SPLITS = {
     Titles.DONALD_DUCK_FINDS_PIRATE_GOLD: "Donald Duck\nFinds Pirate Gold",

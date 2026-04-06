@@ -21,15 +21,15 @@ from loguru import logger
 from PIL import Image as PilImage
 from PIL import ImageOps
 
-from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
+from .reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
 
 if TYPE_CHECKING:
     import io
 
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
 
-    from barks_reader.core.comic_book_page_info import PageInfo
-    from barks_reader.core.fantagraphics_volumes import FantagraphicsArchive
+    from .comic_book_page_info import PageInfo
+    from .fantagraphics_volumes import FantagraphicsArchive
 
 
 class ArchivePageImageSource:

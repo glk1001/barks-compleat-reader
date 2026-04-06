@@ -46,7 +46,8 @@ from barks_reader.core.reader_consts_and_types import (
     WORD_SEARCH_NODE_TEXT,
 )
 from barks_reader.core.reader_formatter import get_clean_text_without_extra
-from barks_reader.ui.reader_ui_classes import (
+
+from .reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
     UsYearRangeTreeViewNode,

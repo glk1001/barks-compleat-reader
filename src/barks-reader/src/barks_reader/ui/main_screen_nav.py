@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from kivy.clock import Clock
 from loguru import logger
 
-from barks_reader.ui.reader_keyboard_nav import (
+from .reader_keyboard_nav import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_ESCAPE,
@@ -18,7 +18,7 @@ from barks_reader.ui.reader_keyboard_nav import (
     clear_focus_highlight,
     draw_focus_highlight,
 )
-from barks_reader.ui.reader_ui_classes import (
+from .reader_ui_classes import (
     BaseTreeViewNode,
     ButtonTreeViewNode,
     TitleTreeViewNode,
@@ -29,11 +29,11 @@ if TYPE_CHECKING:
 
     from kivy.uix.screenmanager import Screen
 
-    from barks_reader.ui.index_screen import IndexScreen
-    from barks_reader.ui.screen_bundle import ScreenBundle
-    from barks_reader.ui.search_screen import SearchScreen
-    from barks_reader.ui.statistics_screen import StatisticsScreen
-    from barks_reader.ui.tree_view_manager import TreeViewManager
+    from .index_screen import IndexScreen
+    from .screen_bundle import ScreenBundle
+    from .search_screen import SearchScreen
+    from .statistics_screen import StatisticsScreen
+    from .tree_view_manager import TreeViewManager
 
 _BOTTOM_FOCUS_HIGHLIGHT_GROUP = "bottom_focus_highlight"
 

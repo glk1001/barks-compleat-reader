@@ -3,13 +3,13 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-from barks_reader.core.reader_file_paths import FileTypes
+from .reader_file_paths import FileTypes
 
 if TYPE_CHECKING:
     from barks_fantagraphics.barks_titles import Titles
     from comic_utils.comic_consts import PanelPath
 
-    from barks_reader.core.reader_file_paths import ReaderFilePaths
+    from .reader_file_paths import ReaderFilePaths
 
 
 class ReaderFilePathsResolver:

@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     import io
 
-    from barks_reader.core.comic_book_page_info import PageInfo
+    from .comic_book_page_info import PageInfo
 
 
 @runtime_checkable

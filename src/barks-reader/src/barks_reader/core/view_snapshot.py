@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from barks_reader.core.image_selector import ImageInfo
-    from barks_reader.core.reader_colors import Color
+    from .image_selector import ImageInfo
+    from .reader_colors import Color
 
 
 @dataclass(frozen=True, slots=True)

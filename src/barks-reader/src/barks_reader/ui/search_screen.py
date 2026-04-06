@@ -24,12 +24,13 @@ from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO
 from barks_reader.core.settings_notifier import settings_notifier
-from barks_reader.ui.index_screen import (
+
+from .index_screen import (
     TitleShowSpeechButton,
     create_speech_bubble_popup,
     show_speech_bubbles_popup,
 )
-from barks_reader.ui.reader_keyboard_nav import (
+from .reader_keyboard_nav import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_ESCAPE,
@@ -41,7 +42,7 @@ from barks_reader.ui.reader_keyboard_nav import (
     clear_focus_in_list,
     update_focus_in_list,
 )
-from barks_reader.ui.touch_keyboard import TouchAwareTextInput  # noqa: F401  # used in .kv
+from .touch_keyboard import TouchAwareTextInput  # noqa: F401  # used in .kv
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -50,7 +51,8 @@ if TYPE_CHECKING:
     from kivy.uix.scrollview import ScrollView
 
     from barks_reader.core.reader_settings import ReaderSettings
-    from barks_reader.ui.font_manager import FontManager
+
+    from .font_manager import FontManager
 
 SEARCH_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 

@@ -15,7 +15,7 @@ from barks_fantagraphics.fanta_comics_info import (
     get_filtered_title_lists,
 )
 
-from barks_reader.core.reader_consts_and_types import (
+from .reader_consts_and_types import (
     CHRONO_YEAR_RANGES,
     CS_YEAR_RANGES,
     US_YEAR_RANGES,

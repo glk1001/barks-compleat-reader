@@ -4,16 +4,17 @@ import string
 from collections import defaultdict
 from typing import TYPE_CHECKING, override
 
-from barks_reader.ui.index_screen import IndexItem
-from barks_reader.ui.speech_index_screen import SpeechIndexScreen, shorten_if_necessary
+from .index_screen import IndexItem
+from .speech_index_screen import SpeechIndexScreen, shorten_if_necessary
 
 if TYPE_CHECKING:
     from barks_fantagraphics.entity_types import EntityType
     from barks_fantagraphics.whoosh_search_engine import TitleDict
 
     from barks_reader.core.reader_settings import ReaderSettings
-    from barks_reader.ui.font_manager import FontManager
-    from barks_reader.ui.user_error_handler import UserErrorHandler
+
+    from .font_manager import FontManager
+    from .user_error_handler import UserErrorHandler
 
 
 class EntityIndexScreen(SpeechIndexScreen):

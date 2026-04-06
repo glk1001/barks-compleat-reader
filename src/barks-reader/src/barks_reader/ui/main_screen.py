@@ -21,30 +21,31 @@ from barks_reader.core.reader_utils import (
     get_win_dimensions,
 )
 from barks_reader.core.special_overrides_handler import SpecialFantaOverrides
-from barks_reader.ui.about_box import show_about_box
-from barks_reader.ui.app_initializer import AppInitializer
-from barks_reader.ui.background_views import BackgroundViews
-from barks_reader.ui.comic_reader_manager import ComicReaderManager
-from barks_reader.ui.json_settings_manager import SettingsManager
-from barks_reader.ui.main_screen_nav import MainScreenNavigation
-from barks_reader.ui.main_screen_window import MainScreenWindowHelper
-from barks_reader.ui.navigation_coordinator import NavigationCoordinator
-from barks_reader.ui.platform_window_utils import WindowManager
-from barks_reader.ui.reader_keyboard_nav import (
+
+from .about_box import show_about_box
+from .app_initializer import AppInitializer
+from .background_views import BackgroundViews
+from .comic_reader_manager import ComicReaderManager
+from .json_settings_manager import SettingsManager
+from .main_screen_nav import MainScreenNavigation
+from .main_screen_window import MainScreenWindowHelper
+from .navigation_coordinator import NavigationCoordinator
+from .platform_window_utils import WindowManager
+from .reader_keyboard_nav import (
     ActionBarNavMixin,
     DropdownNavMixin,
 )
-from barks_reader.ui.reader_screens import ReaderScreen
-from barks_reader.ui.reader_tree_builder import ReaderTreeBuilder
-from barks_reader.ui.reader_ui_classes import (
+from .reader_screens import ReaderScreen
+from .reader_tree_builder import ReaderTreeBuilder
+from .reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
     ReaderTreeBuilderEventDispatcher,
 )
-from barks_reader.ui.snapshot_applicator import SnapshotApplicator
-from barks_reader.ui.tree_view_manager import TreeViewManager
-from barks_reader.ui.user_error_handler import UserErrorHandler
-from barks_reader.ui.view_state_manager import ImageThemesChange, ImageThemesToUse, ViewStateManager
-from barks_reader.ui.view_states import ViewStates
+from .snapshot_applicator import SnapshotApplicator
+from .tree_view_manager import TreeViewManager
+from .user_error_handler import UserErrorHandler
+from .view_state_manager import ImageThemesChange, ImageThemesToUse, ViewStateManager
+from .view_states import ViewStates
 
 if TYPE_CHECKING:
     from barks_fantagraphics.comics_database import ComicsDatabase
@@ -53,10 +54,11 @@ if TYPE_CHECKING:
 
     from barks_reader.core.filtered_title_lists import FilteredTitleLists
     from barks_reader.core.reader_settings import ReaderSettings
-    from barks_reader.ui.comic_book_reader import ComicBookReaderScreen
-    from barks_reader.ui.font_manager import FontManager
-    from barks_reader.ui.reader_screens import ScreenSwitchers
-    from barks_reader.ui.screen_bundle import ScreenBundle
+
+    from .comic_book_reader import ComicBookReaderScreen
+    from .font_manager import FontManager
+    from .reader_screens import ScreenSwitchers
+    from .screen_bundle import ScreenBundle
 
 MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 

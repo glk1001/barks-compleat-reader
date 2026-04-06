@@ -13,7 +13,8 @@ from barks_reader.core.screen_metrics import (
     calculate_fitted_window_height,
     get_best_window_height_fit,
 )
-from barks_reader.ui.reader_ui_classes import ACTION_BAR_SIZE_Y
+
+from .reader_ui_classes import ACTION_BAR_SIZE_Y
 
 if TYPE_CHECKING:
     from collections.abc import Callable

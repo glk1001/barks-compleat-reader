@@ -26,31 +26,32 @@ from barks_reader.core.reader_settings import BARKS_READER_SECTION
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 from barks_reader.core.screen_metrics import SCREEN_METRICS
 from barks_reader.core.settings_notifier import settings_notifier
-from barks_reader.ui.app_window_geometry import AppWindowGeometryHelper
-from barks_reader.ui.bottom_title_view_screen import (
+
+from .app_window_geometry import AppWindowGeometryHelper
+from .bottom_title_view_screen import (
     BOTTOM_TITLE_VIEW_SCREEN_KV_FILE,
     BottomTitleViewScreen,
 )
-from barks_reader.ui.comic_book_reader import get_barks_comic_reader_screen
-from barks_reader.ui.document_reader import get_document_reader_screen
-from barks_reader.ui.entity_index_screen import EntityIndexScreen
-from barks_reader.ui.error_handling import handle_app_fail_with_traceback
-from barks_reader.ui.font_manager import FontManager
-from barks_reader.ui.fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, FunImageViewScreen
-from barks_reader.ui.goto_title_overlay import GOTO_TITLE_OVERLAY_KV_FILE
-from barks_reader.ui.index_screen import INDEX_SCREEN_KV_FILE
-from barks_reader.ui.main_index_screen import MainIndexScreen
-from barks_reader.ui.main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
-from barks_reader.ui.platform_window_utils import log_screen_metrics
-from barks_reader.ui.reader_screens import (
+from .comic_book_reader import get_barks_comic_reader_screen
+from .document_reader import get_document_reader_screen
+from .entity_index_screen import EntityIndexScreen
+from .error_handling import handle_app_fail_with_traceback
+from .font_manager import FontManager
+from .fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, FunImageViewScreen
+from .goto_title_overlay import GOTO_TITLE_OVERLAY_KV_FILE
+from .index_screen import INDEX_SCREEN_KV_FILE
+from .main_index_screen import MainIndexScreen
+from .main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
+from .platform_window_utils import log_screen_metrics
+from .reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     DOCUMENT_READER_SCREEN,
     MAIN_READER_SCREEN,
     ReaderScreenManager,
     ReaderScreens,
 )
-from barks_reader.ui.reader_settings_buildable import BuildableReaderSettings
-from barks_reader.ui.reader_ui_classes import (
+from .reader_settings_buildable import BuildableReaderSettings
+from .reader_ui_classes import (
     ACTION_BAR_SIZE_Y,
     KIVY_HELPERS_KV_FILE,
     READER_POPUPS_KV_FILE,
@@ -59,13 +60,13 @@ from barks_reader.ui.reader_ui_classes import (
     set_kivy_busy_cursor,
     set_kivy_normal_cursor,
 )
-from barks_reader.ui.screen_bundle import ScreenBundle
-from barks_reader.ui.search_screen import SEARCH_SCREEN_KV_FILE, SearchScreen
-from barks_reader.ui.settings_fix import SettingLongPath, SettingOptionsWithValue
-from barks_reader.ui.speech_index_screen import SpeechIndexScreen
-from barks_reader.ui.statistics_screen import STATISTICS_SCREEN_KV_FILE, StatisticsScreen
-from barks_reader.ui.tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
-from barks_reader.ui.user_error_handler import UserErrorHandler
+from .screen_bundle import ScreenBundle
+from .search_screen import SEARCH_SCREEN_KV_FILE, SearchScreen
+from .settings_fix import SettingLongPath, SettingOptionsWithValue
+from .speech_index_screen import SpeechIndexScreen
+from .statistics_screen import STATISTICS_SCREEN_KV_FILE, StatisticsScreen
+from .tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
+from .user_error_handler import UserErrorHandler
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -285,7 +286,7 @@ class BarksReaderApp(App):
     @staticmethod
     def _enable_linux_touchscreen_input() -> None:
         """Register MTD providers so touchscreen taps can be distinguished from mouse clicks."""
-        from barks_reader.ui.touch_keyboard import enable_linux_touchscreen_input  # noqa: PLC0415
+        from .touch_keyboard import enable_linux_touchscreen_input  # noqa: PLC0415
 
         enable_linux_touchscreen_input()
 

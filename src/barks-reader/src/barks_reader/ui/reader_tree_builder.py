@@ -70,7 +70,8 @@ from barks_reader.core.reader_formatter import (
     get_markup_text_with_num_titles,
 )
 from barks_reader.core.reader_utils import read_title_list
-from barks_reader.ui.reader_ui_classes import (
+
+from .reader_ui_classes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
     MainTreeViewNode,
@@ -88,7 +89,8 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from barks_reader.core.reader_settings import ReaderSettings
-    from barks_reader.ui.tree_view_manager import TreeViewManager
+
+    from .tree_view_manager import TreeViewManager
 
 BUTTON_ON_PRESS_CALLABLE = Callable[[Button], None]
 

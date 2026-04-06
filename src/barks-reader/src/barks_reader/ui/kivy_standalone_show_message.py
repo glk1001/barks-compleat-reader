@@ -7,7 +7,7 @@ from typing import Any
 
 from loguru import logger
 
-from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE
+from .reader_keyboard_nav import KEY_ESCAPE
 
 _SAME_SIZE_CUTOFF_PX = 10
 
@@ -48,7 +48,7 @@ def show_standalone_popup(  # noqa: C901, PLR0915
     from kivy.uix.popup import Popup
     from kivy.uix.widget import Widget
 
-    from barks_reader.ui.comic_book_reader import get_image_stream
+    from .comic_book_reader import get_image_stream
 
     app_already_running = (App.get_running_app() is not None) and (EventLoop.status == "started")
 

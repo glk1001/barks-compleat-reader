@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 
-    from barks_reader.ui.font_manager import FontManager
+    from .font_manager import FontManager
 
 READER_TREE_VIEW_KV_FILE = Path(__file__).parent / "reader-tree-view.kv"
 

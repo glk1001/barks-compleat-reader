@@ -19,7 +19,7 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.togglebutton import ToggleButton
 from loguru import logger
 
-from barks_reader.ui.reader_keyboard_nav import (
+from .reader_keyboard_nav import (
     KEY_ENTER,
     KEY_ESCAPE,
     KEY_LEFT,

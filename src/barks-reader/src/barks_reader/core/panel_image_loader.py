@@ -9,7 +9,7 @@ from comic_utils.get_panel_bytes import get_decrypted_bytes  # ty: ignore[unreso
 from loguru import logger
 from PIL import Image
 
-from barks_reader.core.services import schedule_once
+from .services import schedule_once
 
 type ImageLoaderCallback = Callable[[Image.Image | None, Exception | None], None]
 

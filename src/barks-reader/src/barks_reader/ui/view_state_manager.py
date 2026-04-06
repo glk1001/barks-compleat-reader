@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from barks_reader.core.reader_formatter import get_clean_text_without_extra
-from barks_reader.ui.background_views import ImageThemes
+
+from .background_views import ImageThemes
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -18,10 +19,11 @@ if TYPE_CHECKING:
 
     from barks_reader.core.image_selector import ImageInfo
     from barks_reader.core.reader_settings import ReaderSettings
-    from barks_reader.ui.background_views import BackgroundViews
-    from barks_reader.ui.screen_bundle import ScreenBundle
-    from barks_reader.ui.snapshot_applicator import SnapshotApplicator
-    from barks_reader.ui.view_states import ViewStates
+
+    from .background_views import BackgroundViews
+    from .screen_bundle import ScreenBundle
+    from .snapshot_applicator import SnapshotApplicator
+    from .view_states import ViewStates
 
 
 class ImageThemesToUse(Enum):

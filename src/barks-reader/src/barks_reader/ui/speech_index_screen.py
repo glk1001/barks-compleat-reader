@@ -34,7 +34,8 @@ from loguru import logger
 from barks_reader.core.image_selector import ImageInfo, ImageSelector
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
-from barks_reader.ui.index_screen import (
+
+from .index_screen import (
     INDEX_NAV_FOCUS_GROUP,
     MAX_TITLE_AND_PAGES_LEN,
     IndexItem,
@@ -46,8 +47,8 @@ from barks_reader.ui.index_screen import (
     create_speech_bubble_popup,
     show_speech_bubbles_popup,
 )
-from barks_reader.ui.panel_texture_loader import PanelTextureLoader
-from barks_reader.ui.reader_keyboard_nav import (
+from .panel_texture_loader import PanelTextureLoader
+from .reader_keyboard_nav import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_ESCAPE,
@@ -65,8 +66,9 @@ if TYPE_CHECKING:
     from kivy.core.image import Texture
 
     from barks_reader.core.reader_settings import ReaderSettings
-    from barks_reader.ui.font_manager import FontManager
-    from barks_reader.ui.user_error_handler import UserErrorHandler
+
+    from .font_manager import FontManager
+    from .user_error_handler import UserErrorHandler
 
 INDEX_ITEM_ROW_HEIGHT = dp(21)
 INDEX_ITEM_MAX_TEXT_WIDTH = 30

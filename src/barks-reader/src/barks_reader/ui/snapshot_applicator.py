@@ -13,7 +13,8 @@ from comic_utils.timing import Timing
 from loguru import logger
 
 from barks_reader.core.image_selector import ImageInfo, get_title_str
-from barks_reader.ui.panel_texture_loader import PanelTextureLoader
+
+from .panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -27,7 +28,8 @@ if TYPE_CHECKING:
         TopViewSnapshot,
         ViewSnapshot,
     )
-    from barks_reader.ui.screen_bundle import ScreenBundle
+
+    from .screen_bundle import ScreenBundle
 
 
 class SnapshotApplicator:

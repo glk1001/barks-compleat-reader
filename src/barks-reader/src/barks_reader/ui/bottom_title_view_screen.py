@@ -19,7 +19,8 @@ from barks_reader.core.image_selector import FIT_MODE_COVER
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import LONG_TITLE_SPLITS, ReaderFormatter
 from barks_reader.core.reader_utils import title_needs_footnote
-from barks_reader.ui.panel_texture_loader import PanelTextureLoader
+
+from .panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
@@ -28,7 +29,8 @@ if TYPE_CHECKING:
 
     from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.core.special_overrides_handler import SpecialFantaOverrides
-    from barks_reader.ui.font_manager import FontManager
+
+    from .font_manager import FontManager
 
 BOTTOM_TITLE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 

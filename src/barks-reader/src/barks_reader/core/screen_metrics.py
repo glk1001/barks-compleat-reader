@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from loguru import logger
 from screeninfo import get_monitors
 
-from barks_reader.core.platform_info import PLATFORM, Platform
+from .platform_info import PLATFORM, Platform
 
 
 def get_approximate_taskbar_height() -> int:

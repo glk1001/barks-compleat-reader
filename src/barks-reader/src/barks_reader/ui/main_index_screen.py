@@ -33,15 +33,17 @@ from loguru import logger
 from barks_reader.core.image_selector import ImageSelector
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_utils import get_concat_page_nums_str
-from barks_reader.ui.index_screen import IndexItem, IndexItemButton, IndexScreen
-from barks_reader.ui.panel_texture_loader import PanelTextureLoader
+
+from .index_screen import IndexItem, IndexItemButton, IndexScreen
+from .panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
     from kivy.core.image import Texture
 
     from barks_reader.core.reader_settings import ReaderSettings
-    from barks_reader.ui.font_manager import FontManager
-    from barks_reader.ui.user_error_handler import UserErrorHandler
+
+    from .font_manager import FontManager
+    from .user_error_handler import UserErrorHandler
 
 INDEX_ITEM_ROW_HEIGHT = dp(25)
 INDEX_IMAGE_CHANGE_SECONDS = 5

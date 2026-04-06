@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-    from barks_reader.ui.document_reader import DocumentReaderScreen
+    from .document_reader import DocumentReaderScreen
 
 MAIN_READER_SCREEN = "main_screen"
 COMIC_BOOK_READER_SCREEN = "comic_book_reader"

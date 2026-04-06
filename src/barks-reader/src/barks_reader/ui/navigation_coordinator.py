@@ -29,8 +29,9 @@ from loguru import logger
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.reader_consts_and_types import CHRONO_YEAR_RANGES, COMIC_BEGIN_PAGE
 from barks_reader.core.reader_tree_view_utils import find_tree_view_title_node
-from barks_reader.ui.user_error_handler import ErrorInfo, ErrorTypes, TitleNotInFantaInfoError
-from barks_reader.ui.view_states import ViewStates
+
+from .user_error_handler import ErrorInfo, ErrorTypes, TitleNotInFantaInfoError
+from .view_states import ViewStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -42,15 +43,16 @@ if TYPE_CHECKING:
 
     from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.core.special_overrides_handler import SpecialFantaOverrides
-    from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
-    from barks_reader.ui.comic_reader_manager import ComicReaderManager
-    from barks_reader.ui.json_settings_manager import SavedPageInfo
-    from barks_reader.ui.reader_screens import ScreenSwitchers
-    from barks_reader.ui.reader_ui_classes import BaseTreeViewNode, ButtonTreeViewNode
-    from barks_reader.ui.tree_view_manager import TreeViewManager
-    from barks_reader.ui.tree_view_screen import TreeViewScreen
-    from barks_reader.ui.user_error_handler import UserErrorHandler
-    from barks_reader.ui.view_state_manager import ViewStateManager
+
+    from .bottom_title_view_screen import BottomTitleViewScreen
+    from .comic_reader_manager import ComicReaderManager
+    from .json_settings_manager import SavedPageInfo
+    from .reader_screens import ScreenSwitchers
+    from .reader_ui_classes import BaseTreeViewNode, ButtonTreeViewNode
+    from .tree_view_manager import TreeViewManager
+    from .tree_view_screen import TreeViewScreen
+    from .user_error_handler import UserErrorHandler
+    from .view_state_manager import ViewStateManager
 
 
 @dataclass(frozen=True, slots=True)

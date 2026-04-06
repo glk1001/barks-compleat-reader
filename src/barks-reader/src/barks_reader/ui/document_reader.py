@@ -9,22 +9,23 @@ from kivy.properties import StringProperty  # ty: ignore[unresolved-import]
 
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
-from barks_reader.ui.reader_keyboard_nav import (
+
+from .reader_keyboard_nav import (
     KEY_ESCAPE,
     KEY_LEFT,
     KEY_RIGHT,
     KEY_UP,
     ActionBarNavMixin,
 )
-from barks_reader.ui.reader_screens import ReaderScreen
-from barks_reader.ui.reader_ui_classes import ACTION_BAR_SIZE_Y
+from .reader_screens import ReaderScreen
+from .reader_ui_classes import ACTION_BAR_SIZE_Y
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from kivy.input import MotionEvent
 
-    from barks_reader.ui.font_manager import FontManager
+    from .font_manager import FontManager
 
 DOCUMENT_READER_KV_FILE = Path(__file__).with_suffix(".kv")
 

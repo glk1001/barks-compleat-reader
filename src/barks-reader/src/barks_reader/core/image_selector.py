@@ -13,8 +13,8 @@ from barks_fantagraphics.barks_titles import (
 )
 from loguru import logger
 
-from barks_reader.core.reader_file_paths import ALL_TYPES, EMERGENCY_INSET_FILE, FileTypes
-from barks_reader.core.reader_utils import get_all_files_in_dir
+from .reader_file_paths import ALL_TYPES, EMERGENCY_INSET_FILE, FileTypes
+from .reader_utils import get_all_files_in_dir
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
 
-    from barks_reader.core.reader_settings import ReaderSettings
+    from .reader_settings import ReaderSettings
 
 NUM_RAND_ATTEMPTS = 10
 MAX_IMAGE_FILENAMES_TO_KEEP = 100

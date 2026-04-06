@@ -13,9 +13,10 @@ from barks_reader.core.fantagraphics_volumes import (
     TooManyArchiveFilesError,
 )
 from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
-from barks_reader.ui.reader_ui_classes import BaseTreeViewNode
-from barks_reader.ui.user_error_handler import ErrorInfo, ErrorTypes
-from barks_reader.ui.view_states import ViewStates
+
+from .reader_ui_classes import BaseTreeViewNode
+from .user_error_handler import ErrorInfo, ErrorTypes
+from .view_states import ViewStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -23,13 +24,14 @@ if TYPE_CHECKING:
     from kivy.uix.widget import Widget
 
     from barks_reader.core.reader_settings import ReaderSettings
-    from barks_reader.ui.comic_reader_manager import ComicReaderManager
-    from barks_reader.ui.json_settings_manager import SettingsManager
-    from barks_reader.ui.reader_tree_builder import ReaderTreeBuilder
-    from barks_reader.ui.tree_view_manager import TreeViewManager
-    from barks_reader.ui.tree_view_screen import TreeViewScreen
-    from barks_reader.ui.user_error_handler import UserErrorHandler
-    from barks_reader.ui.view_state_manager import ViewStateManager
+
+    from .comic_reader_manager import ComicReaderManager
+    from .json_settings_manager import SettingsManager
+    from .reader_tree_builder import ReaderTreeBuilder
+    from .tree_view_manager import TreeViewManager
+    from .tree_view_screen import TreeViewScreen
+    from .user_error_handler import UserErrorHandler
+    from .view_state_manager import ViewStateManager
 
 
 class _FantaVolumesState(Enum):

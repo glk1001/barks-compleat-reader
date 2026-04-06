@@ -14,13 +14,14 @@ from barks_reader.core.comic_book_page_info import ComicBookPageInfo, ComicBookP
 from barks_reader.core.fantagraphics_volumes import MissingVolumeError
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_settings import ReaderSettings
-from barks_reader.ui.comic_book_reader import ComicBookReaderScreen
-from barks_reader.ui.json_settings_manager import SavedPageInfo, SettingsManager
-from barks_reader.ui.tree_view_screen import TreeViewScreen
-from barks_reader.ui.user_error_handler import ErrorInfo, ErrorTypes, UserErrorHandler
+
+from .comic_book_reader import ComicBookReaderScreen
+from .json_settings_manager import SavedPageInfo, SettingsManager
+from .tree_view_screen import TreeViewScreen
+from .user_error_handler import ErrorInfo, ErrorTypes, UserErrorHandler
 
 if TYPE_CHECKING:
-    from barks_reader.ui.comic_book_reader import ComicBookReader
+    from .comic_book_reader import ComicBookReader
 
 
 class ComicReaderManager:

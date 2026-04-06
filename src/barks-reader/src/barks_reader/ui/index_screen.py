@@ -29,7 +29,8 @@ from loguru import logger
 
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.reader_formatter import mark_phrase_in_text
-from barks_reader.ui.reader_keyboard_nav import (
+
+from .reader_keyboard_nav import (
     KEY_DOWN,
     KEY_ENTER,
     KEY_ESCAPE,
@@ -43,7 +44,7 @@ from barks_reader.ui.reader_keyboard_nav import (
     clear_focus_in_list,
     draw_focus_highlight,
 )
-from barks_reader.ui.user_error_handler import (
+from .user_error_handler import (
     ErrorTypes,
     TitleNotInFantaInfoError,
     get_volume_not_available_error_info,
@@ -57,8 +58,8 @@ if TYPE_CHECKING:
     from barks_fantagraphics.whoosh_search_engine import TitleInfo
     from kivy.uix.widget import Widget
 
-    from barks_reader.ui.reader_ui_classes import MainTreeViewNode
-    from barks_reader.ui.user_error_handler import UserErrorHandler
+    from .reader_ui_classes import MainTreeViewNode
+    from .user_error_handler import UserErrorHandler
 
 MAX_TITLE_AND_PAGES_LEN = 34 + 8  # len(", 11,...") == 8
 

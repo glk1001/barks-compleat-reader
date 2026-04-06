@@ -6,15 +6,15 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
-    from barks_reader.ui.entity_index_screen import EntityIndexScreen
-    from barks_reader.ui.fun_image_view_screen import FunImageViewScreen
-    from barks_reader.ui.index_screen import IndexScreen
-    from barks_reader.ui.main_index_screen import MainIndexScreen
-    from barks_reader.ui.search_screen import SearchScreen
-    from barks_reader.ui.speech_index_screen import SpeechIndexScreen
-    from barks_reader.ui.statistics_screen import StatisticsScreen
-    from barks_reader.ui.tree_view_screen import TreeViewScreen
+    from .bottom_title_view_screen import BottomTitleViewScreen
+    from .entity_index_screen import EntityIndexScreen
+    from .fun_image_view_screen import FunImageViewScreen
+    from .index_screen import IndexScreen
+    from .main_index_screen import MainIndexScreen
+    from .search_screen import SearchScreen
+    from .speech_index_screen import SpeechIndexScreen
+    from .statistics_screen import StatisticsScreen
+    from .tree_view_screen import TreeViewScreen
 
 
 @dataclass(frozen=True, slots=True)

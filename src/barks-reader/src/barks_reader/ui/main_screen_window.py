@@ -7,8 +7,9 @@ from kivy.core.window import Window
 from loguru import logger
 
 from barks_reader.core.reader_utils import get_win_dimensions
-from barks_reader.ui.platform_window_utils import WindowManager
-from barks_reader.ui.reader_ui_classes import ACTION_BAR_SIZE_Y, hide_action_bar, show_action_bar
+
+from .platform_window_utils import WindowManager
+from .reader_ui_classes import ACTION_BAR_SIZE_Y, hide_action_bar, show_action_bar
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
     from kivy.uix.screenmanager import Screen
     from kivy.uix.widget import Widget
 
-    from barks_reader.ui.comic_reader_manager import ComicReaderManager
+    from .comic_reader_manager import ComicReaderManager
 
 
 class MainScreenWindowHelper:

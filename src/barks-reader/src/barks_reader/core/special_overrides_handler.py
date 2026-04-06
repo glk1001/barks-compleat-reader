@@ -3,8 +3,8 @@ from collections.abc import Callable
 from barks_fantagraphics.barks_titles import Titles
 from comic_utils.comic_consts import PanelPath
 
-from barks_reader.core.reader_consts_and_types import NO_OVERRIDES_SUFFIX
-from barks_reader.core.reader_settings import ReaderSettings
+from .reader_consts_and_types import NO_OVERRIDES_SUFFIX
+from .reader_settings import ReaderSettings
 
 
 class SpecialFantaOverrides:

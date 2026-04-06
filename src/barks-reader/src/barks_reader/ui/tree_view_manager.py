@@ -12,7 +12,8 @@ from barks_reader.core.reader_consts_and_types import (
     INTRO_COMPLEAT_BARKS_READER_TEXT,
 )
 from barks_reader.core.reader_formatter import get_clean_text_without_extra
-from barks_reader.ui.reader_ui_classes import (
+
+from .reader_ui_classes import (
     BaseTreeViewNode,
     ButtonTreeViewNode,
     MainTreeViewNode,
@@ -20,7 +21,7 @@ from barks_reader.ui.reader_ui_classes import (
     TagStoryGroupTreeViewNode,
     TitleTreeViewNode,
 )
-from barks_reader.ui.view_states import (
+from .view_states import (
     ViewStates,
     get_view_state_and_article_title_from_node,
     get_view_state_from_node,
@@ -33,10 +34,11 @@ if TYPE_CHECKING:
     from kivy.uix.scrollview import ScrollView
 
     from barks_reader.core.system_file_paths import SystemFilePaths
-    from barks_reader.ui.navigation_coordinator import NavigationCoordinator
-    from barks_reader.ui.reader_ui_classes import ReaderTreeView
-    from barks_reader.ui.screen_bundle import ScreenBundle
-    from barks_reader.ui.view_state_manager import ViewStateManager
+
+    from .navigation_coordinator import NavigationCoordinator
+    from .reader_ui_classes import ReaderTreeView
+    from .screen_bundle import ScreenBundle
+    from .view_state_manager import ViewStateManager
 
 
 class TreeViewManager:
@@ -91,7 +93,7 @@ class TreeViewManager:
             self._handle_button_node_selection(node)
 
     def _handle_title_node_selection(self, node: TitleTreeViewNode) -> None:
-        from barks_reader.ui.navigation_coordinator import TitleTarget  # noqa: PLC0415
+        from .navigation_coordinator import TitleTarget  # noqa: PLC0415
 
         fanta_info = node.ids.num_label.parent.fanta_info
         self._nav.select_title(TitleTarget(fanta_info=fanta_info))
@@ -221,7 +223,7 @@ class TreeViewManager:
         Skips the intermediate tag view state and goes directly to the title,
         preserving the top background image.
         """
-        from barks_reader.ui.navigation_coordinator import TitleTarget  # noqa: PLC0415
+        from .navigation_coordinator import TitleTarget  # noqa: PLC0415
 
         only_child = next(c for c in node.nodes if isinstance(c, TitleTreeViewNode))
         self._tree_view_screen.select_node(only_child)
@@ -355,7 +357,7 @@ class TreeViewManager:
         return 0.0 if v < 0.0 else (min(v, 1.0))
 
     def on_title_row_button_pressed(self, button: Button) -> None:
-        from barks_reader.ui.navigation_coordinator import TitleTarget  # noqa: PLC0415
+        from .navigation_coordinator import TitleTarget  # noqa: PLC0415
 
         fanta_info = button.parent.fanta_info
 
