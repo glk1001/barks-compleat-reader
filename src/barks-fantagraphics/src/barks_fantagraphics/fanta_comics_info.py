@@ -5,7 +5,6 @@ from collections import OrderedDict, defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from . import barks_titles as bt
 from .barks_titles import BARKS_TITLE_INFO, BARKS_TITLES, ComicBookInfo, Titles
 from .comic_issues import ISSUE_NAME, Issues
 
@@ -275,8 +274,9 @@ SERIES_INFO_START_NUMBERS: dict[str, int] = {
 
 US_CENSORED_TITLE_ENUMS = [Titles.SILENT_NIGHT, Titles.MILKMAN_THE]
 US_CENSORED_TITLES = [BARKS_TITLES[t] for t in US_CENSORED_TITLE_ENUMS]
-CENSORED_TITLES = [bt.GOOD_DEEDS, bt.SILENT_NIGHT, bt.MILKMAN_THE]
-HAND_RESTORED_TITLES = [bt.GOOD_DEEDS, bt.SILENT_NIGHT]
+_CENSORED_TITLE_ENUMS = (Titles.GOOD_DEEDS, Titles.SILENT_NIGHT, Titles.MILKMAN_THE)
+CENSORED_TITLES = [BARKS_TITLES[t] for t in _CENSORED_TITLE_ENUMS]
+HAND_RESTORED_TITLES = [BARKS_TITLES[t] for t in (Titles.GOOD_DEEDS, Titles.SILENT_NIGHT)]
 SILENT_NIGHT_PUBLICATION_ISSUE = "Gemstone's Christmas Parade, No.3, 2005"
 
 # Late import: fanta_series_data imports FantaSeriesInfo and constants from this module.

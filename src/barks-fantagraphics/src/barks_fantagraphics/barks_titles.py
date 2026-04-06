@@ -1,14 +1,4 @@
-# ruff: noqa: E501, S105
-
 from enum import CONTINUOUS, UNIQUE, IntEnum, auto, verify
-from pathlib import Path
-
-from comic_utils.comic_consts import PanelPath
-
-from .comic_issues import (
-    SHORT_ISSUE_NAME,
-    Issues,
-)
 
 NUM_TITLES = 664 + 4  # +4 for articles
 
@@ -17,678 +7,6 @@ GYRO_GEARLOOSE = "Gyro Gearloose"
 US_1_FC_ISSUE_NUM = 386
 US_2_FC_ISSUE_NUM = 456
 US_3_FC_ISSUE_NUM = 495
-
-# fmt: off
-ADVENTURE_DOWN_UNDER = "Adventure Down Under"
-ALL_AT_SEA = "All at Sea"
-ALL_CHOKED_UP = "All Choked Up"
-ALL_SEASON_HAT = "All Season Hat"
-APRIL_FOOLERS_THE = "The April Foolers"
-ARMORED_RESCUE = "Armored Rescue"
-ART_APPRECIATION = "Art Appreciation"
-ART_OF_SECURITY_THE = "The Art of Security"
-ATTIC_ANTICS = "Attic Antics"
-AUGUST_ACCIDENT = "August Accident"
-AWASH_IN_SUCCESS = "Awash in Success"
-BACKYARD_BONANZA = "Backyard Bonanza"
-BACK_TO_LONG_AGO = "Back to Long Ago!"
-BACK_TO_THE_KLONDIKE = "Back to the Klondike"
-BAD_DAY_FOR_TROOP_A = "Bad Day for Troop 'A'"
-BALLET_EVASIONS = "Ballet Evasions"
-BALLOONATICS = "Balloonatics"
-BALMY_SWAMI_THE = "The Balmy Swami"
-BARBER_COLLEGE = "Barber College"
-BEACHCOMBERS_PICNIC_THE = "The Beachcombers' Picnic"
-BEACH_BOY = "Beach Boy"
-BEAN_TAKEN = "Bean Taken"
-BEAR_TAMER_THE = "The Bear Tamer"
-BEAUTY_BUSINESS_THE = "The Beauty Business"
-BEAUTY_QUEEN_THE = "The Beauty Queen"
-BEE_BUMBLES = "Bee Bumbles"
-BEST_LAID_PLANS = "Best Laid Plans"
-BICEPS_BLUES = "Biceps Blues"
-BIGGER_THE_BEGGAR_THE = "The Bigger the Beggar"
-BIG_BIN_ON_KILLMOTOR_HILL_THE = "The Big Bin on Killmotor Hill"
-BIG_BOBBER_THE = "The Big Bobber"
-BIG_TOP_BEDLAM = "Big-Top Bedlam"
-BILLIONS_IN_THE_HOLE = "Billions in the Hole"
-BILLIONS_TO_SNEEZE_AT = "Billions to Sneeze At"
-BILLION_DOLLAR_SAFARI_THE = "The Billion Dollar Safari"
-BILL_COLLECTORS_THE = "The Bill Collectors"
-BILL_WIND = "Bill Wind"
-BIRD_CAMERA_THE = "The Bird Camera"
-BIRD_WATCHING = "Bird Watching"
-BLACK_FOREST_RESCUE_THE = "The Black Forest Rescue"
-BLACK_PEARLS_OF_TABU_YAMA_THE = "The Black Pearls of Tabu Yama"
-BLACK_WEDNESDAY = "Black Wednesday"
-BLANKET_INVESTMENT = "Blanket Investment"
-BOAT_BUSTER = "Boat Buster"
-BONGO_ON_THE_CONGO = "Bongo on the Congo"
-BORDERLINE_HERO = "Borderline Hero"
-BOTTLED_BATTLERS = "Bottled Battlers"
-BOXED_IN = "Boxed-In"
-BRAIN_STRAIN = "Brain-Strain"
-BUBBLEWEIGHT_CHAMP = "Bubbleweight Champ"
-BUFFALOED_BY_BUFFALOES = "Buffaloed by Buffaloes"
-BUFFO_OR_BUST = "Buffo or Bust"
-BUM_STEER = "Bum Steer"
-CALL_OF_THE_WILD_THE = "The Call of the Wild"
-CAMERA_CRAZY = "Camera Crazy"
-CAMPAIGN_OF_NOTE_A = "A Campaign of Note"
-CAMPING_CONFUSION = "Camping Confusion"
-CAMP_COUNSELOR = "Camp Counselor"
-CANDY_KID_THE = "The Candy Kid"
-CANTANKEROUS_CAT_THE = "The Cantankerous Cat"
-CAPN_BLIGHTS_MYSTERY_SHIP = "Cap'n Blight's Mystery Ship"
-CASE_OF_THE_STICKY_MONEY_THE = "The Case of the Sticky Money"
-CASH_ON_THE_BRAIN = "Cash on the Brain"
-CAST_OF_THOUSANDS = "Cast of Thousands"
-CATTLE_KING_THE = "The Cattle King"
-CAT_BOX_THE = "The Cat Box"
-CAVE_OF_ALI_BABA = "Cave of Ali Baba"
-CAVE_OF_THE_WINDS = "Cave of the Winds"
-CHARITABLE_CHORE_A = "A Charitable Chore"
-CHEAPEST_WEIGH_THE = "The Cheapest Weigh"
-CHECKER_GAME_THE = "The Checker Game"
-CHELTENHAMS_CHOICE = "Cheltenham's Choice"
-CHICKADEE_CHALLENGE_THE = "The Chickadee Challenge"
-CHINA_SHOP_SHAKEUP = "China Shop Shakeup"
-CHRISTMAS_CHA_CHA_THE = "The Christmas Cha Cha"
-CHRISTMAS_CHEERS = "Christmas Cheers"
-CHRISTMAS_FOR_SHACKTOWN_A = "A Christmas for Shacktown"
-CHRISTMAS_IN_DUCKBURG = "Christmas in Duckburg"
-CHRISTMAS_KISS = "Christmas Kiss"
-CHRISTMAS_ON_BEAR_MOUNTAIN = "Christmas on Bear Mountain"
-CHUGWAGON_DERBY = "Chugwagon Derby"
-CITY_OF_GOLDEN_ROOFS = "City of Golden Roofs"
-CLASSY_TAXI = "Classy Taxi!"
-CLOTHES_MAKE_THE_DUCK = "Clothes Make the Duck"
-CODE_OF_DUCKBURG_THE = "The Code of Duckburg"
-COFFEE_FOR_TWO = "Coffee for Two"
-COLD_BARGAIN_A = "A Cold Bargain"
-COLLECTION_DAY = "Collection Day"
-COLOSSALEST_SURPRISE_QUIZ_SHOW_THE = "The Colossalest Surprise Quiz Show"
-COME_AS_YOU_ARE = "Come as You are"
-COURTSIDE_HEATING = "Courtside Heating"
-CRAFTY_CORNER = "Crafty Corner"
-CRAWLS_FOR_CASH = "Crawls for Cash"
-CRAZY_QUIZ_SHOW_THE = "The Crazy Quiz Show"
-CROWN_OF_THE_MAYAS = "Crown of the Mayas"
-CUBE_THE = "The Cube"
-CUSTARD_GUN_THE = "The Custard Gun"
-DAFFY_TAFFY_PULL_THE = "The Daffy Taffy Pull"
-DAISYS_DAZED_DAYS = "Daisy's Dazed Days"
-DANGEROUS_DISGUISE = "Dangerous Disguise"
-DARINGLY_DIFFERENT = "Daringly Different"
-DARKEST_AFRICA = "Darkest Africa"
-DAYS_AT_THE_LAZY_K = "Days at the Lazy K"
-DAY_DUCKBURG_GOT_DYED_THE = "The Day Duckburg Got Dyed"
-DAY_THE_FARM_STOOD_STILL_THE = "The Day the Farm Stood Still"
-DAY_THE_MOUNTAIN_SHOOK_THE = "The Day the Mountain Shook"
-DEEP_DECISION = "Deep Decision"
-DEEP_DOWN_DOINGS = "Deep Down Doings"
-DELIVERY_DILEMMA = "Delivery Dilemma"
-DESCENT_INTERVAL_A = "A Descent Interval"
-DIG_IT = "Dig it!"
-DINER_DILEMMA = "Diner Dilemma"
-DODGING_MISS_DAISY = "Dodging Miss Daisy"
-DOGCATCHER_DUCK = "Dogcatcher Duck"
-DOGGED_DETERMINATION = "Dogged Determination"
-DOG_SITTER_THE = "The Dog-sitter"
-DONALDS_BAY_LOT = "Donald's Bay Lot"
-DONALDS_GRANDMA_DUCK = "Donald's Grandma Duck"
-DONALDS_LOVE_LETTERS = "Donald's Love Letters"
-DONALDS_MONSTER_KITE = "Donald's Monster Kite"
-DONALDS_PARTY = "Donald's Party"
-DONALDS_PET_SERVICE = "Donald's Pet Service"
-DONALDS_POSY_PATCH = "Donald's Posy Patch"
-DONALDS_RAUCOUS_ROLE = "Donald's Raucous Role"
-DONALD_DUCKS_ATOM_BOMB = "Donald Duck's Atom Bomb"
-DONALD_DUCKS_BEST_CHRISTMAS = "Donald Duck's Best Christmas"
-DONALD_DUCKS_WORST_NIGHTMARE = "Donald Duck's Worst Nightmare"
-DONALD_DUCK_AND_THE_MUMMYS_RING = "Donald Duck and the Mummy's Ring"
-DONALD_DUCK_FINDS_PIRATE_GOLD = "Donald Duck Finds Pirate Gold"
-DONALD_DUCK_TELLS_ABOUT_KITES = "Donald Duck Tells About Kites"
-DONALD_MINES_HIS_OWN_BUSINESS = "Donald Mines His Own Business"
-DONALD_OF_THE_COAST_GUARD = "Donald of the Coast Guard"
-DONALD_TAMES_HIS_TEMPER = "Donald Tames His Temper"
-DOOM_DIAMOND_THE = "The Doom Diamond"
-DOUBLE_DATE_THE = "The Double Date"
-DOUBLE_MASQUERADE = "Double Masquerade"
-DOUGHNUT_DARE = "Doughnut Dare"
-DOWN_FOR_THE_COUNT = "Down for the Count"
-DOWSING_DUCKS = "Dowsing Ducks"
-DRAMATIC_DONALD = "Dramatic Donald"
-DUCKBURGS_DAY_OF_PERIL = "Duckburg's Day of Peril"
-DUCKBURG_PET_PARADE_THE = "The Duckburg Pet Parade"
-DUCKS_EYE_VIEW_OF_EUROPE_A = "A Duck's-eye View of Europe"
-DUCK_IN_THE_IRON_PANTS_THE = "The Duck in the Iron Pants"
-DUCK_LUCK = "Duck Luck"
-DUCK_OUT_OF_LUCK = "Duck Out of Luck"
-DUELING_TYCOONS = "Dueling Tycoons"
-EAGLE_SAVERS = "Eagle Savers"
-EARLY_TO_BUILD = "Early to Build"
-EASTER_ELECTION_THE = "The Easter Election"
-EASY_MOWING = "Easy Mowing"
-EYES_HAVE_IT_THE = "The Eyes Have It"
-EYES_IN_THE_DARK = "Eyes in the Dark"
-FABULOUS_PHILOSOPHERS_STONE_THE = "The Fabulous Philosopher's Stone"
-FABULOUS_TYCOON_THE = "The Fabulous Tycoon"
-FANTASTIC_RIVER_RACE_THE = "The Fantastic River Race"
-FARE_DELAY = "Fare Delay"
-FARRAGUT_THE_FALCON = "Farragut the Falcon"
-FASHION_FORECAST = "Fashion Forecast"
-FASHION_IN_FLIGHT = "Fashion in Flight"
-FAST_AWAY_CASTAWAY = "Fast Away Castaway"
-FAULTY_FORTUNE = "Faulty Fortune"
-FEARSOME_FLOWERS = "Fearsome Flowers"
-FERTILE_ASSETS = "Fertile Assets"
-FETCHING_PRICE_A = "A Fetching Price"
-FEUD_AND_FAR_BETWEEN = "Feud and Far Between"
-FINANCIAL_FABLE_A = "A Financial Fable"
-FINNY_FUN = "Finny Fun"
-FIREBUG_THE = "The Firebug"
-FIREFLIES_ARE_FREE = "Fireflies are Free"
-FIREFLY_TRACKER_THE = "The Firefly Tracker"
-FIREMAN_DONALD = "Fireman Donald"
-FIREMAN_SCROOGE = "Fireman Scrooge"
-FISHING_MYSTERY = "Fishing Mystery"
-FISHY_WARDEN = "Fishy Warden"
-FIX_UP_MIX_UP = "Fix-up Mix-up"
-FLIP_DECISION = "Flip Decision"
-FLOATING_ISLAND_THE = "The Floating Island"
-FLOUR_FOLLIES = "Flour Follies"
-FLOWERS_ARE_FLOWERS = "Flowers Are Flowers"
-FLYING_DUTCHMAN_THE = "The Flying Dutchman"
-FLYING_FARMHAND_THE = "The Flying Farmhand"
-FOLLOW_THE_RAINBOW = "Follow the Rainbow"
-FORBIDDEN_VALLEY = "Forbidden Valley"
-FORBIDIUM_MONEY_BIN_THE = "The Forbidium Money Bin"
-FORECASTING_FOLLIES = "Forecasting Follies"
-FORGOTTEN_PRECAUTION = "Forgotten Precaution"
-FOR_OLD_DIMES_SAKE = "For Old Dime's Sake"
-FOXY_RELATIONS = "Foxy Relations"
-FRACTIOUS_FUN = "Fractious Fun"
-FRAIDY_FALCON_THE = "The Fraidy Falcon"
-FRAMED_MIRROR_THE = "The Framed Mirror"
-FREE_SKI_SPREE = "Free Ski Spree"
-FRIGHTFUL_FACE = "Frightful Face"
-FROGGY_FARMER = "Froggy Farmer"
-FROZEN_GOLD = "Frozen Gold"
-FULL_SERVICE_WINDOWS = "Full-Service Windows"
-FUN_WHATS_THAT = "Fun? What's That?"
-GAB_MUFFER_THE = "The Gab-Muffer"
-GALL_OF_THE_WILD = "Gall of the Wild"
-GEMSTONE_HUNTERS = "Gemstone Hunters"
-GENUINE_ARTICLE_THE = "The Genuine Article"
-GETTING_THE_BIRD = "Getting the Bird"
-GETTING_THOR = "Getting Thor"
-GHOST_OF_THE_GROTTO_THE = "The Ghost of the Grotto"
-GHOST_SHERIFF_OF_LAST_GASP_THE = "The Ghost Sheriff of Last Gasp"
-GIANT_ROBOT_ROBBERS_THE = "The Giant Robot Robbers"
-GIFT_LION = "Gift Lion"
-GILDED_MAN_THE = "The Gilded Man"
-GLADSTONES_LUCK = "Gladstone's Luck"
-GLADSTONES_TERRIBLE_SECRET = "Gladstone's Terrible Secret"
-GLADSTONES_USUAL_VERY_GOOD_YEAR = "Gladstone's Usual Very Good Year"
-GLADSTONE_RETURNS = "Gladstone Returns"
-GOING_APE = "Going Ape"
-GOING_BUGGY = "Going Buggy"
-GOING_TO_PIECES = "Going to Pieces"
-GOLDEN_CHRISTMAS_TREE_THE = "The Golden Christmas Tree"
-GOLDEN_FLEECING_THE = "The Golden Fleecing"
-GOLDEN_HELMET_THE = "The Golden Helmet"
-GOLDEN_NUGGET_BOAT_THE = "The Golden Nugget Boat"
-GOLDEN_RIVER_THE = "The Golden River"
-GOLDILOCKS_GAMBIT_THE = "The Goldilocks Gambit"
-GOLD_FINDER_THE = "The Gold-Finder"
-GOLD_RUSH = "Gold Rush"
-GOOD_CANOES_AND_BAD_CANOES = "Good Canoes and Bad Canoes"
-GOOD_DEEDS = "Good Deeds"
-GOOD_DEEDS_THE = "The Good Deeds"
-GOOD_NEIGHBORS = "Good Neighbors"
-GOPHER_GOOF_UPS = "Gopher Goof-Ups"
-GRANDMAS_PRESENT = "Grandma's Present"
-GREAT_DUCKBURG_FROG_JUMPING_CONTEST_THE = "The Great Duckburg Frog-Jumping Contest"
-GREAT_POP_UP_THE = "The Great Pop Up"
-GREAT_SKI_RACE_THE = "The Great Ski Race"
-GREAT_STEAMBOAT_RACE_THE = "The Great Steamboat Race"
-GREAT_WIG_MYSTERY_THE = "The Great Wig Mystery"
-GYROS_IMAGINATION_INVENTION = "Gyro's Imagination Invention"
-GYRO_BUILDS_A_BETTER_HOUSE = "Gyro Builds a Better House"
-GYRO_GOES_FOR_A_DIP = "Gyro Goes for a Dip"
-HALF_BAKED_BAKER_THE = "The Half-Baked Baker"
-HALL_OF_THE_MERMAID_QUEEN = "Hall of the Mermaid Queen"
-HAMMY_CAMEL_THE = "The Hammy Camel"
-HARD_LOSER_THE = "The Hard Loser"
-HAVE_GUN_WILL_DANCE = "Have Gun, Will Dance"
-HEEDLESS_HORSEMAN_THE = "The Heedless Horseman"
-HEIRLOOM_WATCH = "Heirloom Watch"
-HELPERS_HELPING_HAND_A = "A Helper's Helping Hand"
-HERO_OF_THE_DIKE = "Hero of the Dike"
-HIGH_RIDER = "High Rider"
-HIGH_WIRE_DAREDEVILS = "High-wire Daredevils"
-HISTORY_TOSSED = "History Tossed"
-HIS_HANDY_ANDY = "His Handy Andy"
-HIS_SHINING_HOUR = "His Shining Hour"
-HOBBLIN_GOBLINS = "Hobblin' Goblins"
-HONEY_OF_A_HEN_A = "A Honey of a Hen"
-HORSERADISH_STORY_THE = "The Horseradish Story"
-HORSESHOE_LUCK = "Horseshoe Luck"
-HOSPITALITY_WEEK = "Hospitality Week"
-HOUND_HOUNDER = "Hound Hounder"
-HOUND_OF_THE_MOANING_HILLS = "Hound of the Moaning Hills"
-HOUND_OF_THE_WHISKERVILLES = "Hound of the Whiskervilles"
-HOUSEBOAT_HOLIDAY = "Houseboat Holiday"
-HOUSE_OF_HAUNTS = "House of Haunts"
-HOUSE_ON_CYCLONE_HILL_THE = "The House on Cyclone Hill"
-HOW_GREEN_WAS_MY_LETTUCE = "How Green Was My Lettuce"
-HYPNO_GUN_THE = "The Hypno-Gun"
-ICEBOAT_TO_BEAVER_ISLAND = "Iceboat to Beaver Island"
-ICEBOX_ROBBER_THE = "The Icebox Robber"
-ICE_TAXIS_THE = "The Ice Taxis"
-IF_THE_HAT_FITS = "If the Hat Fits"
-IMMOVABLE_MISER = "Immovable Miser"
-INSTANT_HERCULES = "Instant Hercules"
-INTERPLANETARY_POSTMAN = "Interplanetary Postman"
-INVENTORS_CONTEST_THE = "The Inventors' Contest"
-INVENTOR_OF_ANYTHING = "Inventor of Anything"
-INVISIBLE_INTRUDER_THE = "The Invisible Intruder"
-IN_ANCIENT_PERSIA = "In Ancient Persia"
-IN_KAKIMAW_COUNTRY = "In Kakimaw Country"
-IN_OLD_CALIFORNIA = "In Old California!"
-IN_THE_SWIM = "In the Swim"
-ISLAND_IN_THE_SKY = "Island in the Sky"
-ISLE_OF_GOLDEN_GEESE = "Isle of Golden Geese"
-ITCHING_TO_SHARE = "Itching to Share"
-IT_HAPPENED_ONE_WINTER = "It Happened One Winter"
-JAM_ROBBERS = "Jam Robbers"
-JET_RESCUE = "Jet Rescue"
-JET_WITCH = "Jet Witch"
-JINXED_JALOPY_RACE_THE = "The Jinxed Jalopy Race"
-JONAH_GYRO = "Jonah Gyro"
-JUMPING_TO_CONCLUSIONS = "Jumping to Conclusions"
-JUNGLE_BUNGLE = "Jungle Bungle"
-JUNGLE_HI_JINKS = "Jungle Hi-Jinks"
-KING_SCROOGE_THE_FIRST = "King Scrooge the First"
-KING_SIZE_CONE = "King-Size Cone"
-KITE_WEATHER = "Kite Weather"
-KITTY_GO_ROUND = "Kitty-Go-Round"
-KNIGHTLY_RIVALS = "Knightly Rivals"
-KNIGHTS_OF_THE_FLYING_SLEDS = "Knights of the Flying Sleds"
-KNIGHT_IN_SHINING_ARMOR = "Knight in Shining Armor"
-KNOW_IT_ALL_MACHINE_THE = "The Know-It-All Machine"
-KRANKENSTEIN_GYRO = "Krankenstein Gyro"
-LAND_BENEATH_THE_GROUND = "Land Beneath the Ground!"
-LAND_OF_THE_PYGMY_INDIANS = "Land of the Pygmy Indians"
-LAND_OF_THE_TOTEM_POLES = "Land of the Totem Poles"
-LAUNDRY_FOR_LESS = "Laundry for Less"
-LEMMING_WITH_THE_LOCKET_THE = "The Lemming with the Locket"
-LEMONADE_FLING_THE = "The Lemonade Fling"
-LETTER_TO_SANTA = "Letter to Santa"
-LET_SLEEPING_BONES_LIE = "Let Sleeping Bones Lie"
-LIBRARIAN_THE = "The Librarian"
-LIFEGUARD_DAZE = "Lifeguard Daze"
-LIFE_SAVERS = "Life Savers"
-LIGHTS_OUT = "Lights Out"
-LIMBER_W_GUEST_RANCH_THE = "The Limber W. Guest Ranch"
-LINKS_HIJINKS = "Links Hijinks"
-LITTLEST_CHICKEN_THIEF_THE = "The Littlest Chicken Thief"
-LOCK_OUT_THE = "The Lock Out"
-LOG_JOCKEY = "Log Jockey"
-LONG_DISTANCE_COLLISION = "Long Distance Collision"
-LONG_RACE_TO_PUMPKINBURG_THE = "The Long Race to Pumpkinburg"
-LOONY_LUNAR_GOLD_RUSH_THE = "The Loony Lunar Gold Rush"
-LOSING_FACE = "Losing Face"
-LOST_BENEATH_THE_SEA = "Lost Beneath the Sea"
-LOST_CROWN_OF_GENGHIS_KHAN_THE = "The Lost Crown of Genghis Khan!"
-LOST_FRONTIER = "Lost Frontier"
-LOST_IN_THE_ANDES = "Lost in the Andes!"
-LOST_PEG_LEG_MINE_THE = "The Lost Peg Leg Mine"
-LOST_RABBIT_FOOT_THE = "The Lost Rabbit Foot"
-LOVELORN_FIREMAN_THE = "The Lovelorn Fireman"
-LUCK_OF_THE_NORTH = "Luck of the North"
-LUNCHEON_LAMENT = "Luncheon Lament"
-MACHINE_MIX_UP = "Machine Mix-Up"
-MADBALL_PITCHER_THE = "The Madball Pitcher"
-MADCAP_INVENTORS = "Madcap Inventors"
-MADCAP_MARINER_THE = "The Madcap Mariner"
-MAD_CHEMIST_THE = "The Mad Chemist"
-MAGICAL_MISERY = "Magical Misery"
-MAGIC_HOURGLASS_THE = "The Magic Hourglass"
-MAGIC_INK_THE = "The Magic Ink"
-MAHARAJAH_DONALD = "Maharajah Donald"
-MANAGING_THE_ECHO_SYSTEM = "Managing the Echo System"
-MANY_FACES_OF_MAGICA_DE_SPELL_THE = "The Many Faces of Magica de Spell"
-MAN_VERSUS_MACHINE = "Man Versus Machine"
-MAPLE_SUGAR_TIME_HOW_SWEET_IT_IS = "Maple Sugar Time (How Sweet It Is!)"
-MASTERING_THE_MATTERHORN = "Mastering the Matterhorn"
-MASTERS_OF_MELODY_THE = "The Masters of Melody"
-MASTER_GLASSER_THE = "The Master Glasser"
-MASTER_ICE_FISHER = "Master Ice Fisher"
-MASTER_MOVER_THE = "The Master Mover"
-MASTER_RAINMAKER_THE = "The Master Rainmaker"
-MASTER_THE = "The Master"
-MASTER_WRECKER = "Master Wrecker"
-MATINEE_MADNESS = "Matinee Madness"
-MATTER_OF_FACTORY_A = "A Matter of Factory"
-MCDUCK_OF_ARABIA = "McDuck of Arabia"
-MCDUCK_TAKES_A_DIVE = "McDuck Takes a Dive"
-MEDALING_AROUND = "Medaling Around"
-MENEHUNE_MYSTERY_THE = "The Menehune Mystery"
-MENTAL_FEE = "Mental Fee"
-MERRY_FERRY = "Merry Ferry"
-MICRO_DUCKS_FROM_OUTER_SPACE = "Micro-Ducks from Outer Space"
-MIDAS_TOUCH_THE = "The Midas Touch"
-MIDGETS_MADNESS = "Midgets Madness"
-MIGHTY_TRAPPER_THE = "The Mighty Trapper"
-MIGRATING_MILLIONS = "Migrating Millions"
-MIGHTY_BUT_MISERABLE = "Mighty but Miserable"
-MILKMAN_THE = "The Milkman"
-MILKTIME_MELODIES = "Milktime Melodies"
-MILLION_DOLLAR_PIGEON = "Million Dollar Pigeon"
-MILLION_DOLLAR_SHOWER = "Million-Dollar Shower"
-MINES_OF_KING_SOLOMON_THE = "The Mines of King Solomon"
-MISSILE_FIZZLE = "Missile Fizzle"
-MIXED_UP_MIXER = "Mixed-Up Mixer"
-MOCKING_BIRD_RIDGE = "Mocking Bird Ridge"
-MONEY_BAG_GOAT = "Money Bag Goat"
-MONEY_CHAMP_THE = "The Money Champ"
-MONEY_HAT_THE = "The Money Hat"
-MONEY_LADDER_THE = "The Money Ladder"
-MONEY_STAIRS_THE = "The Money Stairs"
-MONEY_WELL_THE = "The Money Well"
-MONKEY_BUSINESS = "Monkey Business"
-MOOLA_ON_THE_MOVE = "Moola on the Move"
-MONSTERVILLE = "Monsterville"
-MOPPING_UP = "Mopping Up"
-MOVIE_MAD = "Movie Mad"
-MR_PRIVATE_EYE = "Mr. Private Eye"
-MUCH_ADO_ABOUT_QUACKLY_HALL = "Much Ado about Quackly Hall"
-MUCH_LUCK_MCDUCK = "Much Luck McDuck"
-MUSH = "Mush!"
-MYSTERIOUS_STONE_RAY_THE = "The Mysterious Stone Ray"
-MYSTERY_OF_THE_GHOST_TOWN_RAILROAD = "Mystery of the Ghost Town Railroad"
-MYSTERY_OF_THE_LOCH = "Mystery of the Loch"
-MYSTERY_OF_THE_SWAMP = "Mystery of the Swamp"
-MYTHTIC_MYSTERY = "Mythtic Mystery"
-MY_LUCKY_VALENTINE = "My Lucky Valentine"
-NEST_EGG_COLLECTOR = "Nest Egg Collector"
-NET_WORTH = "Net Worth"
-NEW_GIRL_THE = "The New Girl"
-NEW_TOYS = "New Toys"
-NEW_YEARS_REVOLUTIONS = "New Year's Revolutions"
-NOBLE_PORPOISES = "Noble Porpoises"
-NOISE_NULLIFIER = "Noise Nullifier"
-NORTHEASTER_ON_CAPE_QUACK = "Northeaster on Cape Quack"
-NORTH_OF_THE_YUKON = "North of the Yukon"
-NOT_SO_ANCIENT_MARINER_THE = "The Not-so-Ancient Mariner"
-NO_BARGAIN = "No Bargain"
-NO_NOISE_IS_GOOD_NOISE = "No Noise is Good Noise"
-NO_PLACE_TO_HIDE = "No Place to Hide"
-NO_SUCH_VARMINT = "No Such Varmint"
-NOSE_KNOWS_THE = "The Nose Knows"
-ODDBALL_ODYSSEY = "Oddball Odyssey"
-ODD_ORDER_THE = "The Odd Order"
-OIL_THE_NEWS = "Oil the News"
-OLD_CASTLES_SECRET_THE = "The Old Castle's Secret"
-OLD_FROGGIE_CATAPULT = "Old Froggie Catapult"
-OLYMPIAN_TORCH_BEARER_THE = "The Olympian Torch Bearer"
-OLYMPIC_HOPEFUL_THE = "The Olympic Hopeful"
-OMELET = "Omelet"
-ONCE_UPON_A_CARNIVAL = "Once Upon a Carnival"
-ONLY_A_POOR_OLD_MAN = "Only a Poor Old Man"
-ON_THE_DREAM_PLANET = "On the Dream Planet"
-OODLES_OF_OOMPH = "Oodles of Oomph"
-OPERATION_ST_BERNARD = "Operation St. Bernard"
-ORNAMENTS_ON_THE_WAY = "Ornaments on the Way"
-OSOGOOD_SILVER_POLISH = "Osogood Silver Polish"
-OUTFOXED_FOX = "Outfoxed Fox"
-PAUL_BUNYAN_MACHINE_THE = "The Paul Bunyan Machine"
-PEACEFUL_HILLS_THE = "The Peaceful Hills"
-PEARLS_OF_WISDOM = "Pearls of Wisdom"
-PECKING_ORDER = "Pecking Order"
-PERIL_OF_THE_BLACK_FOREST = "Peril of the Black Forest"
-PERSISTENT_POSTMAN_THE = "The Persistent Postman"
-PHANTOM_OF_NOTRE_DUCK_THE = "The Phantom of Notre Duck"
-PICNIC = "Picnic"
-PICNIC_TRICKS = "Picnic Tricks"
-PIED_PIPER_OF_DUCKBURG_THE = "The Pied Piper of Duckburg"
-PIED_PIPER_OF_DUCKBURG = "Pied Piper of Duckburg"  # Jippes version
-PIPELINE_TO_DANGER = "Pipeline to Danger"
-PIXILATED_PARROT_THE = "The Pixilated Parrot"
-PIZEN_SPRING_DUDE_RANCH = "Pizen Spring Dude Ranch"
-PLAYIN_HOOKEY = "Playin' Hookey"
-PLAYMATES = "Playmates"
-PLENTY_OF_PETS = "Plenty of Pets"
-PLUMMETING_WITH_PRECISION = "Plummeting with Precision"
-POOL_SHARKS = "Pool Sharks"
-POOR_LOSER = "Poor Loser"
-POSTHASTY_POSTMAN = "Posthasty Postman"
-POUND_FOR_SOUND = "Pound for Sound"
-POWER_PLOWING = "Power Plowing"
-PRANK_ABOVE_A = "A Prank Above"
-PRICE_OF_FAME_THE = "The Price of Fame"
-PRIZE_OF_PIZARRO_THE = "The Prize of Pizarro"
-PROJECTING_DESIRES = "Projecting Desires"
-PURLOINED_PUTTY_THE = "The Purloined Putty"
-PYRAMID_SCHEME = "Pyramid Scheme"
-QUEEN_OF_THE_WILD_DOG_PACK_THE = "The Queen of the Wild Dog Pack"
-RABBITS_FOOT_THE = "The Rabbit's Foot"
-RACE_TO_THE_SOUTH_SEAS = "Race to the South Seas!"
-RAFFLE_REVERSAL = "Raffle Reversal"
-RAGS_TO_RICHES = "Rags to Riches"
-RANTS_ABOUT_ANTS = "Rants About Ants"
-RAVEN_MAD = "Raven Mad"
-RED_APPLE_SAP = "Red Apple Sap"
-RELATIVE_REACTION = "Relative Reaction"
-REMEMBER_THIS = "Remember This"
-RESCUE_ENHANCEMENT = "Rescue Enhancement"
-RETURN_TO_PIZEN_BLUFF = "Return to Pizen Bluff"
-REVERSED_RESCUE_THE = "The Reversed Rescue"
-RICHES_RICHES_EVERYWHERE = "Riches, Riches, Everywhere!"
-RIDDLE_OF_THE_RED_HAT_THE = "The Riddle of the Red Hat"
-RIDING_THE_PONY_EXPRESS = "Riding the Pony Express"
-RIGGED_UP_ROLLER = "Rigged-Up Roller"
-RING_LEADER_ROUNDUP = "Ring Leader Roundup"
-RIP_VAN_DONALD = "Rip Van Donald"
-RIVAL_BEACHCOMBERS = "Rival Beachcombers"
-RIVAL_BOATMEN = "Rival Boatmen"
-ROCKET_RACE_AROUND_THE_WORLD = "Rocket Race Around the World"
-ROCKET_RACE_TO_THE_MOON = "Rocket Race to the Moon"
-ROCKET_ROASTED_CHRISTMAS_TURKEY = "Rocket-Roasted Christmas Turkey"
-ROCKET_WING_SAVES_THE_DAY = "Rocket Wing Saves the Day"
-ROCKS_TO_RICHES = "Rocks to Riches"
-ROSCOE_THE_ROBOT = "Roscoe the Robot"
-ROUNDABOUT_HANDOUT = "Roundabout Handout"
-ROUND_MONEY_BIN_THE = "The Round Money Bin"
-RUG_RIDERS_IN_THE_SKY = "Rug Riders in the Sky"
-RULING_THE_ROOST = "Ruling the Roost"
-RUNAWAY_TRAIN_THE = "The Runaway Train"
-SAGMORE_SPRINGS_HOTEL = "Sagmore Springs Hotel"
-SALESMAN_DONALD = "Salesman Donald"
-SALMON_DERBY = "Salmon Derby"
-SANTAS_STORMY_VISIT = "Santa's Stormy Visit"
-SAVED_BY_THE_BAG = "Saved by the Bag!"
-SAVIORS_OF_THE_LAKE = "Saviors of the Lake"
-SCREAMING_COWBOY_THE = "The Screaming Cowboy"
-SEALS_ARE_SO_SMART = "Seals Are So Smart!"
-SEARCHING_FOR_A_SUCCESSOR = "Searching for a Successor"
-SEARCH_FOR_THE_CUSPIDORIA = "Search for the Cuspidoria"
-SECOND_RICHEST_DUCK_THE = "The Second-Richest Duck"
-SECRET_BOOK_THE = "The Secret Book"
-SECRET_OF_ATLANTIS_THE = "The Secret of Atlantis"
-SECRET_OF_HONDORICA = "Secret of Hondorica"
-SECRET_RESOLUTIONS = "Secret Resolutions"
-SEEING_IS_BELIEVING = "Seeing is Believing"
-SEPTEMBER_SCRIMMAGE = "September Scrimmage"
-SERUM_TO_CODFISH_COVE = "Serum to Codfish Cove"
-SEVEN_CITIES_OF_CIBOLA_THE = "The Seven Cities of Cibola"
-SHEEPISH_COWBOYS_THE = "The Sheepish Cowboys"
-SHERIFF_OF_BULLET_VALLEY = "Sheriff of Bullet Valley"
-SIDEWALK_OF_THE_MIND = "Sidewalk of the Mind"
-SILENT_NIGHT = "Silent Night"
-SINGAPORE_JOE = "Singapore Joe"
-SITTING_HIGH = "Sitting High"
-SKI_LIFT_LETDOWN = "Ski Lift Letdown"
-SLEEPIES_THE = "The Sleepies"
-SLEEPY_SITTERS = "Sleepy Sitters"
-SLIPPERY_SHINE = "Slippery Shine"
-SLIPPERY_SIPPER = "Slippery Sipper"
-SMASH_SUCCESS = "Smash Success"
-SMOKE_WRITER_IN_THE_SKY = "Smoke Writer in the Sky"
-SMUGSNORKLE_SQUATTIE_THE = "The Smugsnorkle Squattie"
-SNAKE_TAKE = "Snake Take"
-SNOW_CHASER_THE = "The Snow Chaser"
-SNOW_DUSTER = "Snow Duster"
-SNOW_FUN = "Snow Fun"
-SOMETHIN_FISHY_HERE = "Somethin' Fishy Here"
-SOME_HEIR_OVER_THE_RAINBOW = "Some Heir Over the Rainbow"
-SORRY_TO_BE_SAFE = "Sorry to be Safe"
-SOUPLINE_EIGHT = "Soupline Eight"
-SO_FAR_AND_NO_SAFARI = "So Far and No Safari"
-SPARE_THAT_HAIR = "Spare That Hair"
-SPECIAL_DELIVERY = "Special Delivery"
-SPENDING_MONEY = "Spending Money"
-SPICY_TALE_A = "A Spicy Tale"
-SPOIL_THE_ROD = "Spoil the Rod"
-SPRING_FEVER = "Spring Fever"
-STABLE_PRICES = "Stable Prices"
-STALWART_RANGER = "Stalwart Ranger"
-STATUESQUE_SPENDTHRIFTS = "Statuesque Spendthrifts"
-STATUES_OF_LIMITATIONS = "Statues of Limitations"
-STATUS_SEEKER_THE = "The Status Seeker"
-STICKY_SITUATION_A = "A Sticky Situation"
-STONES_THROW_FROM_GHOST_TOWN_A = "A Stone's Throw from Ghost Town"
-STORM_DANCERS = "Storm Dancers"
-STRANGER_THAN_FICTION = "Stranger Than Fiction"
-STRANGE_SHIPWRECKS_THE = "The Strange Shipwrecks"
-STUBBORN_STORK_THE = "The Stubborn Stork"
-SUNKEN_YACHT_THE = "The Sunken Yacht"
-SUPER_SNOOPER = "Super Snooper"
-SURE_FIRE_GOLD_FINDER_THE = "The Sure-Fire Gold Finder"
-SWAMP_OF_NO_RETURN_THE = "The Swamp of No Return"
-SWEAT_DEAL_A = "A Sweat Deal"
-SWIMMING_SWINDLERS = "Swimming Swindlers"
-TALE_OF_THE_TAPE = "Tale of the Tape"
-TALKING_DOG_THE = "The Talking Dog"
-TALKING_PARROT = "Talking Parrot"
-TAMING_THE_RAPIDS = "Taming the Rapids"
-TEMPER_TAMPERING = "Temper Tampering"
-TENDERFOOT_TRAP_THE = "The Tenderfoot Trap"
-TEN_CENTS_WORTH_OF_TROUBLE = "Ten Cents' Worth of Trouble"
-TEN_CENT_VALENTINE = "Ten-Cent Valentine"
-TEN_DOLLAR_DITHER = "Ten-Dollar Dither"
-TEN_STAR_GENERALS = "Ten-Star Generals"
-TERRIBLE_TOURIST = "Terrible Tourist"
-TERRIBLE_TURKEY_THE = "The Terrible Turkey"
-TERROR_OF_THE_BEAGLE_BOYS = "Terror of the Beagle Boys"
-TERROR_OF_THE_RIVER_THE = "The Terror of the River!!"
-THATS_NO_FABLE = "That's No Fable!"
-THAT_SINKING_FEELING = "That Sinking Feeling"
-THAT_SMALL_FEELING = "That Small Feeling"
-THIEVERY_AFOOT = "Thievery Afoot"
-THINK_BOX_BOLLIX_THE = "The Think Box Bollix"
-THREE_DIRTY_LITTLE_DUCKS = "Three Dirty Little Ducks"
-THREE_GOOD_LITTLE_DUCKS = "Three Good Little Ducks"
-THREE_UN_DUCKS = "Three Un-Ducks"
-THRIFTY_SPENDTHRIFT_THE = "The Thrifty Spendthrift"
-THRIFT_GIFT_A = "A Thrift Gift"
-THUG_BUSTERS = "Thug Busters"
-THUMBS_UP = "Thumbs Up"
-TICKING_DETECTOR = "Ticking Detector"
-TIED_DOWN_TOOLS = "Tied-Down Tools"
-TIGHT_SHOES = "Tight Shoes"
-TITANIC_ANTS_THE = "The Titanic Ants!"
-TOASTY_TOYS = "Toasty Toys"
-TOO_FIT_TO_FIT = "Too Fit to Fit"
-TOO_MANY_PETS = "Too Many Pets"
-TOO_MUCH_HELP = "Too Much Help"
-TOO_SAFE_SAFE = "Too Safe Safe"
-TOP_WAGES = "Top Wages"
-TOUCHE_TOUPEE = "Touche Toupee"
-TOYLAND = "Toyland"
-TRACKING_SANDY = "Tracking Sandy"
-TRAIL_OF_THE_UNICORN = "Trail of the Unicorn"
-TRAIL_TYCOON = "Trail Tycoon"
-TRAINING_FARM_FUSS_THE = "The Training Farm Fuss"
-TRAITOR_IN_THE_RANKS = "Traitor in the Ranks"
-TRALLA_LA = "Tralla La"
-TRAMP_STEAMER_THE = "The Tramp Steamer"
-TRAPPED_LIGHTNING = "Trapped Lightning"
-TRAVELLING_TRUANTS = "Travelling Truants"
-TRAVEL_TIGHTWAD_THE = "The Travel Tightwad"
-TREASURE_OF_MARCO_POLO = "Treasure of Marco Polo"
-TREEING_OFF = "Treeing Off"
-TREE_TRICK = "Tree Trick"
-TRICKY_EXPERIMENT = "Tricky Experiment"
-TRICK_OR_TREAT = "Trick or Treat"
-TROUBLE_INDEMNITY = "Trouble Indemnity"
-TROUBLE_WITH_DIMES_THE = "The Trouble With Dimes"
-TRUANT_NEPHEWS_THE = "The Truant Nephews"
-TRUANT_OFFICER_DONALD = "Truant Officer Donald"
-TRUE_TEST_THE = "The True Test"
-TUCKERED_TIGER_THE = "The Tuckered Tiger"
-TUNNEL_VISION = "Tunnel Vision"
-TURKEY_RAFFLE = "Turkey Raffle"
-TURKEY_TROT_AT_ONE_WHISTLE = "Turkey Trot at One Whistle"
-TURKEY_TROUBLE = "Turkey Trouble"
-TURKEY_WITH_ALL_THE_SCHEMINGS = "Turkey with All the Schemings"
-TURN_FOR_THE_WORSE = "Turn for the Worse"
-TV_BABYSITTER_THE = "The TV Babysitter"
-TWENTY_FOUR_CARAT_MOON_THE = "The Twenty-four Carat Moon"
-TWO_WAY_LUCK = "Two-Way Luck"
-UNCLE_SCROOGE___MONKEY_BUSINESS = "Uncle Scrooge - Monkey Business"
-UNDER_THE_POLAR_ICE = "Under the Polar Ice"
-UNFRIENDLY_ENEMIES = "Unfriendly Enemies"
-UNORTHODOX_OX_THE = "The Unorthodox Ox"
-UNSAFE_SAFE_THE = "The Unsafe Safe"
-UP_AND_AT_IT = "Up and at It"
-VACATION_MISERY = "Vacation Misery"
-VACATION_TIME = "Vacation Time"
-VICTORY_GARDEN_THE = "The Victory Garden"
-VILLAGE_BLACKSMITH_THE = "The Village Blacksmith"
-VOLCANO_VALLEY = "Volcano Valley"
-VOODOO_HOODOO = "Voodoo Hoodoo"
-WALTZ_KING_THE = "The Waltz King"
-WANT_TO_BUY_AN_ISLAND = "Want to Buy an Island?"
-WAR_PAINT = "War Paint"
-WASTED_WORDS = "Wasted Words"
-WATCHFUL_PARENTS_THE = "The Watchful Parents"
-WATCHING_THE_WATCHMAN = "Watching the Watchman"
-WATER_SKI_RACE = "Water Ski Race"
-WATT_AN_OCCASION = "Watt an Occasion"
-WAX_MUSEUM_THE = "The Wax Museum"
-WAY_OUT_YONDER = "Way Out Yonder"
-WEATHER_WATCHERS_THE = "The Weather Watchers"
-WEBFOOTED_WRANGLER = "Webfooted Wrangler"
-WHALE_OF_A_GOOD_DEED = "Whale of a Good Deed"
-WHALE_OF_A_STORY_A = "A Whale of a Story"
-WHOLE_HERD_OF_HELP_THE = "The Whole Herd of Help"
-WILD_ABOUT_FLOWERS = "Wild about Flowers"
-WILY_RIVAL = "Wily Rival"
-WINDFALL_OF_THE_MIND = "Windfall of the Mind"
-WINDY_STORY_THE = "The Windy Story"
-WINTERTIME_WAGER = "Wintertime Wager"
-WIRED = "Wired"
-WISHFUL_EXCESS = "Wishful Excess"
-WISHING_STONE_ISLAND = "Wishing Stone Island"
-WISHING_WELL_THE = "The Wishing Well"
-WISPY_WILLIE = "Wispy Willie"
-WITCHING_STICK_THE = "The Witching Stick"
-WORM_WEARY = "Worm Weary"
-WRONG_NUMBER = "Wrong Number"
-YOICKS_THE_FOX = "Yoicks! The Fox!"
-YOU_CANT_GUESS = "You Can't Guess!"
-YOU_CANT_WIN = "You Can't Win"
-ZERO_HERO = "Zero Hero"
-# Not comics below!
-GEORGE_LUCAS___AN_APPRECIATION = "George Lucas - An Appreciation"
-RICH_TOMMASO___ON_COLORING_BARKS = "Rich Tommaso - On Coloring Barks"
-DON_AULT___FANTAGRAPHICS_INTRODUCTION = "Don Ault - Fantagraphics Introduction"
-DON_AULT___LIFE_AMONG_THE_DUCKS = "Don Ault - Life Among the Ducks"
-MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD = "Maggie Thompson - Comics Readers Find Comic Book Gold"
-# fmt: on
 
 
 @verify(CONTINUOUS, UNIQUE)
@@ -1366,900 +684,200 @@ class Titles(IntEnum):
 
 assert len(Titles) == NUM_TITLES, f"{len(Titles)} != {NUM_TITLES}"
 
-BARKS_TITLES = [
-    DONALD_DUCK_FINDS_PIRATE_GOLD,
-    VICTORY_GARDEN_THE,
-    RABBITS_FOOT_THE,
-    LIFEGUARD_DAZE,
-    GOOD_DEEDS,
-    LIMBER_W_GUEST_RANCH_THE,
-    MIGHTY_TRAPPER_THE,
-    DONALD_DUCK_AND_THE_MUMMYS_RING,
-    HARD_LOSER_THE,
-    TOO_MANY_PETS,
-    GOOD_NEIGHBORS,
-    SALESMAN_DONALD,
-    SNOW_FUN,
-    DUCK_IN_THE_IRON_PANTS_THE,
-    KITE_WEATHER,
-    THREE_DIRTY_LITTLE_DUCKS,
-    MAD_CHEMIST_THE,
-    RIVAL_BOATMEN,
-    CAMERA_CRAZY,
-    FARRAGUT_THE_FALCON,
-    PURLOINED_PUTTY_THE,
-    HIGH_WIRE_DAREDEVILS,
-    TEN_CENTS_WORTH_OF_TROUBLE,
-    DONALDS_BAY_LOT,
-    FROZEN_GOLD,
-    THIEVERY_AFOOT,
-    MYSTERY_OF_THE_SWAMP,
-    TRAMP_STEAMER_THE,
-    LONG_RACE_TO_PUMPKINBURG_THE,
-    WEBFOOTED_WRANGLER,
-    ICEBOX_ROBBER_THE,
-    PECKING_ORDER,
-    TAMING_THE_RAPIDS,
-    EYES_IN_THE_DARK,
-    DAYS_AT_THE_LAZY_K,
-    RIDDLE_OF_THE_RED_HAT_THE,
-    THUG_BUSTERS,
-    GREAT_SKI_RACE_THE,
-    FIREBUG_THE,
-    TEN_DOLLAR_DITHER,
-    DONALD_DUCKS_BEST_CHRISTMAS,
-    SILENT_NIGHT,
-    DONALD_TAMES_HIS_TEMPER,
-    SINGAPORE_JOE,
-    MASTER_ICE_FISHER,
-    JET_RESCUE,
-    DONALDS_MONSTER_KITE,
-    TERROR_OF_THE_RIVER_THE,
-    SEALS_ARE_SO_SMART,
-    BICEPS_BLUES,
-    SMUGSNORKLE_SQUATTIE_THE,
-    SANTAS_STORMY_VISIT,
-    SWIMMING_SWINDLERS,
-    PLAYIN_HOOKEY,
-    GOLD_FINDER_THE,
-    BILL_COLLECTORS_THE,
-    TURKEY_RAFFLE,
-    MAHARAJAH_DONALD,
-    CANTANKEROUS_CAT_THE,
-    DONALD_DUCKS_ATOM_BOMB,
-    GOING_BUGGY,
-    PEACEFUL_HILLS_THE,
-    JAM_ROBBERS,
-    PICNIC_TRICKS,
-    VOLCANO_VALLEY,
-    IF_THE_HAT_FITS,
-    DONALDS_POSY_PATCH,
-    DONALD_MINES_HIS_OWN_BUSINESS,
-    MAGICAL_MISERY,
-    THREE_GOOD_LITTLE_DUCKS,
-    VACATION_MISERY,
-    ADVENTURE_DOWN_UNDER,
-    GHOST_OF_THE_GROTTO_THE,
-    WALTZ_KING_THE,
-    MASTERS_OF_MELODY_THE,
-    FIREMAN_DONALD,
-    CHRISTMAS_ON_BEAR_MOUNTAIN,
-    FASHION_IN_FLIGHT,
-    TURN_FOR_THE_WORSE,
-    MACHINE_MIX_UP,
-    TERRIBLE_TURKEY_THE,
-    WINTERTIME_WAGER,
-    WATCHING_THE_WATCHMAN,
-    DARKEST_AFRICA,
-    WIRED,
-    GOING_APE,
-    OLD_CASTLES_SECRET_THE,
-    SPOIL_THE_ROD,
-    BIRD_WATCHING,
-    HORSESHOE_LUCK,
-    BEAN_TAKEN,
-    ROCKET_RACE_TO_THE_MOON,
-    DONALD_OF_THE_COAST_GUARD,
-    GLADSTONE_RETURNS,
-    SHERIFF_OF_BULLET_VALLEY,
-    LINKS_HIJINKS,
-    SORRY_TO_BE_SAFE,
-    BEST_LAID_PLANS,
-    GENUINE_ARTICLE_THE,
-    PEARLS_OF_WISDOM,
-    FOXY_RELATIONS,
-    CRAZY_QUIZ_SHOW_THE,
-    GOLDEN_CHRISTMAS_TREE_THE,
-    TOYLAND,
-    JUMPING_TO_CONCLUSIONS,
-    TRUE_TEST_THE,
-    ORNAMENTS_ON_THE_WAY,
-    TRUANT_OFFICER_DONALD,
-    DONALD_DUCKS_WORST_NIGHTMARE,
-    PIZEN_SPRING_DUDE_RANCH,
-    RIVAL_BEACHCOMBERS,
-    LOST_IN_THE_ANDES,
-    TOO_FIT_TO_FIT,
-    TUNNEL_VISION,
-    SLEEPY_SITTERS,
-    SUNKEN_YACHT_THE,
-    RACE_TO_THE_SOUTH_SEAS,
-    MANAGING_THE_ECHO_SYSTEM,
-    PLENTY_OF_PETS,
-    VOODOO_HOODOO,
-    SLIPPERY_SHINE,
-    FRACTIOUS_FUN,
-    KING_SIZE_CONE,
-    SUPER_SNOOPER,
-    GREAT_DUCKBURG_FROG_JUMPING_CONTEST_THE,
-    DOWSING_DUCKS,
-    GOLDILOCKS_GAMBIT_THE,
-    LETTER_TO_SANTA,
-    NO_NOISE_IS_GOOD_NOISE,
-    LUCK_OF_THE_NORTH,
-    NEW_TOYS,
-    TOASTY_TOYS,
-    NO_PLACE_TO_HIDE,
-    TIED_DOWN_TOOLS,
-    DONALDS_LOVE_LETTERS,
-    RIP_VAN_DONALD,
-    TRAIL_OF_THE_UNICORN,
-    LAND_OF_THE_TOTEM_POLES,
-    NOISE_NULLIFIER,
-    MATINEE_MADNESS,
-    FETCHING_PRICE_A,
-    SERUM_TO_CODFISH_COVE,
-    WILD_ABOUT_FLOWERS,
-    IN_ANCIENT_PERSIA,
-    VACATION_TIME,
-    DONALDS_GRANDMA_DUCK,
-    CAMP_COUNSELOR,
-    PIXILATED_PARROT_THE,
-    MAGIC_HOURGLASS_THE,
-    BIG_TOP_BEDLAM,
-    YOU_CANT_GUESS,
-    DANGEROUS_DISGUISE,
-    NO_SUCH_VARMINT,
-    BILLIONS_TO_SNEEZE_AT,
-    OPERATION_ST_BERNARD,
-    FINANCIAL_FABLE_A,
-    APRIL_FOOLERS_THE,
-    IN_OLD_CALIFORNIA,
-    KNIGHTLY_RIVALS,
-    POOL_SHARKS,
-    TROUBLE_WITH_DIMES_THE,
-    GLADSTONES_LUCK,
-    TEN_STAR_GENERALS,
-    CHRISTMAS_FOR_SHACKTOWN_A,
-    ATTIC_ANTICS,
-    TRUANT_NEPHEWS_THE,
-    TERROR_OF_THE_BEAGLE_BOYS,
-    TALKING_PARROT,
-    TREEING_OFF,
-    CHRISTMAS_KISS,
-    PROJECTING_DESIRES,
-    BIG_BIN_ON_KILLMOTOR_HILL_THE,
-    GLADSTONES_USUAL_VERY_GOOD_YEAR,
-    SCREAMING_COWBOY_THE,
-    STATUESQUE_SPENDTHRIFTS,
-    ROCKET_WING_SAVES_THE_DAY,
-    GLADSTONES_TERRIBLE_SECRET,
-    ONLY_A_POOR_OLD_MAN,
-    OSOGOOD_SILVER_POLISH,
-    COFFEE_FOR_TWO,
-    SOUPLINE_EIGHT,
-    THINK_BOX_BOLLIX_THE,
-    GOLDEN_HELMET_THE,
-    FULL_SERVICE_WINDOWS,
-    RIGGED_UP_ROLLER,
-    AWASH_IN_SUCCESS,
-    HOUSEBOAT_HOLIDAY,
-    GEMSTONE_HUNTERS,
-    GILDED_MAN_THE,
-    STABLE_PRICES,
-    ARMORED_RESCUE,
-    CRAFTY_CORNER,
-    SPENDING_MONEY,
-    HYPNO_GUN_THE,
-    TRICK_OR_TREAT,
-    PRANK_ABOVE_A,
-    FRIGHTFUL_FACE,
-    HOBBLIN_GOBLINS,
-    OMELET,
-    CHARITABLE_CHORE_A,
-    TURKEY_WITH_ALL_THE_SCHEMINGS,
-    FLIP_DECISION,
-    MY_LUCKY_VALENTINE,
-    FARE_DELAY,
-    SOMETHIN_FISHY_HERE,
-    BACK_TO_THE_KLONDIKE,
-    MONEY_LADDER_THE,
-    CHECKER_GAME_THE,
-    EASTER_ELECTION_THE,
-    TALKING_DOG_THE,
-    WORM_WEARY,
-    MUCH_ADO_ABOUT_QUACKLY_HALL,
-    SOME_HEIR_OVER_THE_RAINBOW,
-    MASTER_RAINMAKER_THE,
-    MONEY_STAIRS_THE,
-    MILLION_DOLLAR_PIGEON,
-    TEMPER_TAMPERING,
-    DINER_DILEMMA,
-    HORSERADISH_STORY_THE,
-    ROUND_MONEY_BIN_THE,
-    BARBER_COLLEGE,
-    FOLLOW_THE_RAINBOW,
-    ITCHING_TO_SHARE,
-    WISPY_WILLIE,
-    HAMMY_CAMEL_THE,
-    BALLET_EVASIONS,
-    CHEAPEST_WEIGH_THE,
-    BUM_STEER,
-    BEE_BUMBLES,
-    MENEHUNE_MYSTERY_THE,
-    TURKEY_TROT_AT_ONE_WHISTLE,
-    RAFFLE_REVERSAL,
-    FIX_UP_MIX_UP,
-    SECRET_OF_ATLANTIS_THE,
-    HOSPITALITY_WEEK,
-    MCDUCK_TAKES_A_DIVE,
-    SLIPPERY_SIPPER,
-    FLOUR_FOLLIES,
-    PRICE_OF_FAME_THE,
-    MIDGETS_MADNESS,
-    SALMON_DERBY,
-    TRALLA_LA,
-    OIL_THE_NEWS,
-    DIG_IT,
-    MENTAL_FEE,
-    OUTFOXED_FOX,
-    CHELTENHAMS_CHOICE,
-    TRAVELLING_TRUANTS,
-    RANTS_ABOUT_ANTS,
-    SEVEN_CITIES_OF_CIBOLA_THE,
-    WRONG_NUMBER,
-    TOO_SAFE_SAFE,
-    SEARCH_FOR_THE_CUSPIDORIA,
-    NEW_YEARS_REVOLUTIONS,
-    ICEBOAT_TO_BEAVER_ISLAND,
-    MYSTERIOUS_STONE_RAY_THE,
-    CAMPAIGN_OF_NOTE_A,
-    CASH_ON_THE_BRAIN,
-    CLASSY_TAXI,
-    BLANKET_INVESTMENT,
-    DAFFY_TAFFY_PULL_THE,
-    TUCKERED_TIGER_THE,
-    DONALD_DUCK_TELLS_ABOUT_KITES,
-    LEMMING_WITH_THE_LOCKET_THE,
-    EASY_MOWING,
-    SKI_LIFT_LETDOWN,
-    CAST_OF_THOUSANDS,
-    GHOST_SHERIFF_OF_LAST_GASP_THE,
-    DESCENT_INTERVAL_A,
-    SECRET_OF_HONDORICA,
-    DOGCATCHER_DUCK,
-    COURTSIDE_HEATING,
-    POWER_PLOWING,
-    REMEMBER_THIS,
-    FABULOUS_PHILOSOPHERS_STONE_THE,
-    HEIRLOOM_WATCH,
-    DONALDS_RAUCOUS_ROLE,
-    GOOD_CANOES_AND_BAD_CANOES,
-    DEEP_DECISION,
-    SMASH_SUCCESS,
-    TROUBLE_INDEMNITY,
-    CHICKADEE_CHALLENGE_THE,
-    UNORTHODOX_OX_THE,
-    GREAT_STEAMBOAT_RACE_THE,
-    COME_AS_YOU_ARE,
-    ROUNDABOUT_HANDOUT,
-    FAULTY_FORTUNE,
-    RICHES_RICHES_EVERYWHERE,
-    CUSTARD_GUN_THE,
-    THREE_UN_DUCKS,
-    SECRET_RESOLUTIONS,
-    ICE_TAXIS_THE,
-    SEARCHING_FOR_A_SUCCESSOR,
-    OLYMPIC_HOPEFUL_THE,
-    GOLDEN_FLEECING_THE,
-    WATT_AN_OCCASION,
-    DOUGHNUT_DARE,
-    SWEAT_DEAL_A,
-    GOPHER_GOOF_UPS,
-    IN_THE_SWIM,
-    LAND_BENEATH_THE_GROUND,
-    TRAPPED_LIGHTNING,
-    ART_OF_SECURITY_THE,
-    FASHION_FORECAST,
-    MUSH,
-    CAMPING_CONFUSION,
-    MASTER_THE,
-    WHALE_OF_A_STORY_A,
-    SMOKE_WRITER_IN_THE_SKY,
-    INVENTOR_OF_ANYTHING,
-    LOST_CROWN_OF_GENGHIS_KHAN_THE,
-    LUNCHEON_LAMENT,
-    RUNAWAY_TRAIN_THE,
-    GOLD_RUSH,
-    FIREFLIES_ARE_FREE,
-    EARLY_TO_BUILD,
-    STATUES_OF_LIMITATIONS,
-    BORDERLINE_HERO,
-    SECOND_RICHEST_DUCK_THE,
-    MIGRATING_MILLIONS,
-    CAT_BOX_THE,
-    CHINA_SHOP_SHAKEUP,
-    BUFFO_OR_BUST,
-    POUND_FOR_SOUND,
-    FERTILE_ASSETS,
-    GRANDMAS_PRESENT,
-    KNIGHT_IN_SHINING_ARMOR,
-    FEARSOME_FLOWERS,
-    DONALDS_PET_SERVICE,
-    BACK_TO_LONG_AGO,
-    COLOSSALEST_SURPRISE_QUIZ_SHOW_THE,
-    FORECASTING_FOLLIES,
-    BACKYARD_BONANZA,
-    ALL_SEASON_HAT,
-    EYES_HAVE_IT_THE,
-    RELATIVE_REACTION,
-    SECRET_BOOK_THE,
-    TREE_TRICK,
-    IN_KAKIMAW_COUNTRY,
-    LOST_PEG_LEG_MINE_THE,
-    LOSING_FACE,
-    DAY_DUCKBURG_GOT_DYED_THE,
-    PICNIC,
-    FISHING_MYSTERY,
-    COLD_BARGAIN_A,
-    GYROS_IMAGINATION_INVENTION,
-    RED_APPLE_SAP,
-    SURE_FIRE_GOLD_FINDER_THE,
-    SPECIAL_DELIVERY,
-    CODE_OF_DUCKBURG_THE,
-    LAND_OF_THE_PYGMY_INDIANS,
-    NET_WORTH,
-    FORBIDDEN_VALLEY,
-    FANTASTIC_RIVER_RACE_THE,
-    SAGMORE_SPRINGS_HOTEL,
-    TENDERFOOT_TRAP_THE,
-    MINES_OF_KING_SOLOMON_THE,
-    GYRO_BUILDS_A_BETTER_HOUSE,
-    HISTORY_TOSSED,
-    BLACK_PEARLS_OF_TABU_YAMA_THE,
-    AUGUST_ACCIDENT,
-    SEPTEMBER_SCRIMMAGE,
-    WISHING_STONE_ISLAND,
-    ROCKET_RACE_AROUND_THE_WORLD,
-    ROSCOE_THE_ROBOT,
-    CITY_OF_GOLDEN_ROOFS,
-    GETTING_THOR,
-    DOGGED_DETERMINATION,
-    FORGOTTEN_PRECAUTION,
-    BIG_BOBBER_THE,
-    WINDFALL_OF_THE_MIND,
-    TITANIC_ANTS_THE,
-    RESCUE_ENHANCEMENT,
-    PERSISTENT_POSTMAN_THE,
-    HALF_BAKED_BAKER_THE,
-    DODGING_MISS_DAISY,
-    MONEY_WELL_THE,
-    MILKMAN_THE,
-    MOCKING_BIRD_RIDGE,
-    OLD_FROGGIE_CATAPULT,
-    GOING_TO_PIECES,
-    HIGH_RIDER,
-    THAT_SINKING_FEELING,
-    WATER_SKI_RACE,
-    BALMY_SWAMI_THE,
-    WINDY_STORY_THE,
-    GOLDEN_RIVER_THE,
-    MOOLA_ON_THE_MOVE,
-    THUMBS_UP,
-    KNOW_IT_ALL_MACHINE_THE,
-    STRANGE_SHIPWRECKS_THE,
-    FABULOUS_TYCOON_THE,
-    GYRO_GOES_FOR_A_DIP,
-    BILL_WIND,
-    TWENTY_FOUR_CARAT_MOON_THE,
-    HOUSE_ON_CYCLONE_HILL_THE,
-    FORBIDIUM_MONEY_BIN_THE,
-    NOBLE_PORPOISES,
-    MAGIC_INK_THE,
-    SLEEPIES_THE,
-    TRACKING_SANDY,
-    LITTLEST_CHICKEN_THIEF_THE,
-    BEACHCOMBERS_PICNIC_THE,
-    LIGHTS_OUT,
-    DRAMATIC_DONALD,
-    CHRISTMAS_IN_DUCKBURG,
-    ROCKET_ROASTED_CHRISTMAS_TURKEY,
-    MASTER_MOVER_THE,
-    SPRING_FEVER,
-    FLYING_DUTCHMAN_THE,
-    PYRAMID_SCHEME,
-    WISHING_WELL_THE,
-    IMMOVABLE_MISER,
-    RETURN_TO_PIZEN_BLUFF,
-    KRANKENSTEIN_GYRO,
-    MONEY_CHAMP_THE,
-    HIS_HANDY_ANDY,
-    FIREFLY_TRACKER_THE,
-    PRIZE_OF_PIZARRO_THE,
-    LOVELORN_FIREMAN_THE,
-    KITTY_GO_ROUND,
-    POOR_LOSER,
-    FLOATING_ISLAND_THE,
-    CRAWLS_FOR_CASH,
-    BLACK_FOREST_RESCUE_THE,
-    GOOD_DEEDS_THE,
-    BLACK_WEDNESDAY,
-    ALL_CHOKED_UP,
-    WATCHFUL_PARENTS_THE,
-    WAX_MUSEUM_THE,
-    PAUL_BUNYAN_MACHINE_THE,
-    PIED_PIPER_OF_DUCKBURG_THE,
-    PIED_PIPER_OF_DUCKBURG,  # Jippes version
-    KNIGHTS_OF_THE_FLYING_SLEDS,
-    FUN_WHATS_THAT,
-    WITCHING_STICK_THE,
-    INVENTORS_CONTEST_THE,
-    JUNGLE_HI_JINKS,
-    MASTERING_THE_MATTERHORN,
-    ON_THE_DREAM_PLANET,
-    TRAIL_TYCOON,
-    FLYING_FARMHAND_THE,
-    HONEY_OF_A_HEN_A,
-    WEATHER_WATCHERS_THE,
-    SHEEPISH_COWBOYS_THE,
-    GAB_MUFFER_THE,
-    BIRD_CAMERA_THE,
-    ODD_ORDER_THE,
-    STUBBORN_STORK_THE,
-    MILKTIME_MELODIES,
-    LOST_RABBIT_FOOT_THE,
-    OODLES_OF_OOMPH,
-    DAISYS_DAZED_DAYS,
-    LIBRARIAN_THE,
-    DOUBLE_DATE_THE,
-    TV_BABYSITTER_THE,
-    BEAUTY_QUEEN_THE,
-    TIGHT_SHOES,
-    FRAMED_MIRROR_THE,
-    NEW_GIRL_THE,
-    MASTER_GLASSER_THE,
-    MONEY_HAT_THE,
-    CHRISTMAS_CHA_CHA_THE,
-    DONALDS_PARTY,
-    ISLAND_IN_THE_SKY,
-    UNDER_THE_POLAR_ICE,
-    HOUND_OF_THE_WHISKERVILLES,
-    TOUCHE_TOUPEE,
-    FREE_SKI_SPREE,
-    MOPPING_UP,
-    SNOW_CHASER_THE,
-    RIDING_THE_PONY_EXPRESS,
-    CAVE_OF_THE_WINDS,
-    MADBALL_PITCHER_THE,
-    MIXED_UP_MIXER,
-    WANT_TO_BUY_AN_ISLAND,
-    FROGGY_FARMER,
-    CALL_OF_THE_WILD_THE,
-    TALE_OF_THE_TAPE,
-    HIS_SHINING_HOUR,
-    BEAR_TAMER_THE,
-    PIPELINE_TO_DANGER,
-    YOICKS_THE_FOX,
-    WAR_PAINT,
-    DOG_SITTER_THE,
-    MYSTERY_OF_THE_LOCH,
-    VILLAGE_BLACKSMITH_THE,
-    FRAIDY_FALCON_THE,
-    ALL_AT_SEA,
-    FISHY_WARDEN,
-    TWO_WAY_LUCK,
-    BALLOONATICS,
-    TURKEY_TROUBLE,
-    MISSILE_FIZZLE,
-    ROCKS_TO_RICHES,
-    SITTING_HIGH,
-    THATS_NO_FABLE,
-    CLOTHES_MAKE_THE_DUCK,
-    STICKY_SITUATION_A,
-    RING_LEADER_ROUNDUP,
-    TOO_MUCH_HELP,
-    RULING_THE_ROOST,
-    DARINGLY_DIFFERENT,
-    THAT_SMALL_FEELING,
-    MADCAP_MARINER_THE,
-    TERRIBLE_TOURIST,
-    THRIFT_GIFT_A,
-    LOST_FRONTIER,
-    WHOLE_HERD_OF_HELP_THE,
-    DAY_THE_FARM_STOOD_STILL_THE,
-    TRAINING_FARM_FUSS_THE,
-    REVERSED_RESCUE_THE,
-    YOU_CANT_WIN,
-    BILLIONS_IN_THE_HOLE,
-    BONGO_ON_THE_CONGO,
-    MONSTERVILLE,
-    CUBE_THE,
-    MIGHTY_BUT_MISERABLE,
-    BRAIN_STRAIN,
-    NOSE_KNOWS_THE,
-    STRANGER_THAN_FICTION,
-    BOXED_IN,
-    CHUGWAGON_DERBY,
-    MYTHTIC_MYSTERY,
-    WILY_RIVAL,
-    DUCK_LUCK,
-    MR_PRIVATE_EYE,
-    HOUND_HOUNDER,
-    GOLDEN_NUGGET_BOAT_THE,
-    FAST_AWAY_CASTAWAY,
-    GIFT_LION,
-    JET_WITCH,
-    BOAT_BUSTER,
-    MIDAS_TOUCH_THE,
-    MONEY_BAG_GOAT,
-    DUCKBURGS_DAY_OF_PERIL,
-    NORTHEASTER_ON_CAPE_QUACK,
-    MOVIE_MAD,
-    TEN_CENT_VALENTINE,
-    BUFFALOED_BY_BUFFALOES,
-    CAVE_OF_ALI_BABA,
-    DEEP_DOWN_DOINGS,
-    GREAT_POP_UP_THE,
-    JUNGLE_BUNGLE,
-    MERRY_FERRY,
-    UNSAFE_SAFE_THE,
-    MUCH_LUCK_MCDUCK,
-    UNCLE_SCROOGE___MONKEY_BUSINESS,
-    COLLECTION_DAY,
-    SEEING_IS_BELIEVING,
-    PLAYMATES,
-    RAGS_TO_RICHES,
-    ART_APPRECIATION,
-    FLOWERS_ARE_FLOWERS,
-    MADCAP_INVENTORS,
-    MEDALING_AROUND,
-    WAY_OUT_YONDER,
-    CANDY_KID_THE,
-    SPICY_TALE_A,
-    FINNY_FUN,
-    GETTING_THE_BIRD,
-    NEST_EGG_COLLECTOR,
-    MILLION_DOLLAR_SHOWER,
-    TRICKY_EXPERIMENT,
-    MASTER_WRECKER,
-    RAVEN_MAD,
-    STALWART_RANGER,
-    LOG_JOCKEY,
-    SNOW_DUSTER,
-    ODDBALL_ODYSSEY,
-    POSTHASTY_POSTMAN,
-    STATUS_SEEKER_THE,
-    MATTER_OF_FACTORY_A,
-    CHRISTMAS_CHEERS,
-    JINXED_JALOPY_RACE_THE,
-    FOR_OLD_DIMES_SAKE,
-    STONES_THROW_FROM_GHOST_TOWN_A,
-    SPARE_THAT_HAIR,
-    DUCKS_EYE_VIEW_OF_EUROPE_A,
-    CASE_OF_THE_STICKY_MONEY_THE,
-    DUELING_TYCOONS,
-    WISHFUL_EXCESS,
-    SIDEWALK_OF_THE_MIND,
-    NO_BARGAIN,
-    UP_AND_AT_IT,
-    GALL_OF_THE_WILD,
-    ZERO_HERO,
-    BEACH_BOY,
-    CROWN_OF_THE_MAYAS,
-    INVISIBLE_INTRUDER_THE,
-    ISLE_OF_GOLDEN_GEESE,
-    TRAVEL_TIGHTWAD_THE,
-    DUCKBURG_PET_PARADE_THE,
-    HELPERS_HELPING_HAND_A,
-    HAVE_GUN_WILL_DANCE,
-    LOST_BENEATH_THE_SEA,
-    LEMONADE_FLING_THE,
-    FIREMAN_SCROOGE,
-    SAVED_BY_THE_BAG,
-    ONCE_UPON_A_CARNIVAL,
-    DOUBLE_MASQUERADE,
-    MAN_VERSUS_MACHINE,
-    TICKING_DETECTOR,
-    IT_HAPPENED_ONE_WINTER,
-    THRIFTY_SPENDTHRIFT_THE,
-    FEUD_AND_FAR_BETWEEN,
-    BUBBLEWEIGHT_CHAMP,
-    JONAH_GYRO,
-    MANY_FACES_OF_MAGICA_DE_SPELL_THE,
-    CAPN_BLIGHTS_MYSTERY_SHIP,
-    LOONY_LUNAR_GOLD_RUSH_THE,
-    OLYMPIAN_TORCH_BEARER_THE,
-    RUG_RIDERS_IN_THE_SKY,
-    HOW_GREEN_WAS_MY_LETTUCE,
-    GREAT_WIG_MYSTERY_THE,
-    HERO_OF_THE_DIKE,
-    INTERPLANETARY_POSTMAN,
-    UNFRIENDLY_ENEMIES,
-    BILLION_DOLLAR_SAFARI_THE,
-    DELIVERY_DILEMMA,
-    INSTANT_HERCULES,
-    MCDUCK_OF_ARABIA,
-    MYSTERY_OF_THE_GHOST_TOWN_RAILROAD,
-    DUCK_OUT_OF_LUCK,
-    LOCK_OUT_THE,
-    BIGGER_THE_BEGGAR_THE,
-    PLUMMETING_WITH_PRECISION,
-    SNAKE_TAKE,
-    SWAMP_OF_NO_RETURN_THE,
-    MONKEY_BUSINESS,
-    GIANT_ROBOT_ROBBERS_THE,
-    LAUNDRY_FOR_LESS,
-    LONG_DISTANCE_COLLISION,
-    TOP_WAGES,
-    NORTH_OF_THE_YUKON,
-    DOWN_FOR_THE_COUNT,
-    WASTED_WORDS,
-    PHANTOM_OF_NOTRE_DUCK_THE,
-    SO_FAR_AND_NO_SAFARI,
-    QUEEN_OF_THE_WILD_DOG_PACK_THE,
-    HOUSE_OF_HAUNTS,
-    TREASURE_OF_MARCO_POLO,
-    BEAUTY_BUSINESS_THE,
-    MICRO_DUCKS_FROM_OUTER_SPACE,
-    NOT_SO_ANCIENT_MARINER_THE,
-    HEEDLESS_HORSEMAN_THE,
-    HALL_OF_THE_MERMAID_QUEEN,
-    DOOM_DIAMOND_THE,
-    CATTLE_KING_THE,
-    KING_SCROOGE_THE_FIRST,
-    PERIL_OF_THE_BLACK_FOREST,
-    LIFE_SAVERS,
-    WHALE_OF_A_GOOD_DEED,
-    BAD_DAY_FOR_TROOP_A,
-    LET_SLEEPING_BONES_LIE,
-    SAVIORS_OF_THE_LAKE,
-    BOTTLED_BATTLERS,
-    MAPLE_SUGAR_TIME_HOW_SWEET_IT_IS,
-    TRAITOR_IN_THE_RANKS,
-    EAGLE_SAVERS,
-    STORM_DANCERS,
-    HOUND_OF_THE_MOANING_HILLS,
-    DAY_THE_MOUNTAIN_SHOOK_THE,
-    # Not comics below!
-    GEORGE_LUCAS___AN_APPRECIATION,
-    RICH_TOMMASO___ON_COLORING_BARKS,
-    DON_AULT___FANTAGRAPHICS_INTRODUCTION,
-    DON_AULT___LIFE_AMONG_THE_DUCKS,
-    MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD,
-]
+_SMALL_WORDS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "about",
+        "but",
+        "by",
+        "for",
+        "from",
+        "in",
+        "is",
+        "it",
+        "nor",
+        "of",
+        "on",
+        "or",
+        "the",
+        "to",
+        "up",
+        "with",
+    }
+)
 
+# fmt: off
+# Titles whose human-readable form cannot be derived algorithmically from the enum name
+# (apostrophes, hyphens, punctuation, non-standard casing, etc.).
+_TITLE_OVERRIDES: dict[str, str] = {
+    "ALL_CHOKED_UP": "All Choked Up",
+    "BACK_TO_LONG_AGO": "Back to Long Ago!",
+    "BAD_DAY_FOR_TROOP_A": "Bad Day for Troop 'A'",
+    "BEACHCOMBERS_PICNIC_THE": "The Beachcombers' Picnic",
+    "BIG_TOP_BEDLAM": "Big-Top Bedlam",
+    "BILLIONS_TO_SNEEZE_AT": "Billions to Sneeze At",
+    "BOXED_IN": "Boxed-In",
+    "BRAIN_STRAIN": "Brain-Strain",
+    "CAPN_BLIGHTS_MYSTERY_SHIP": "Cap'n Blight's Mystery Ship",
+    "CHELTENHAMS_CHOICE": "Cheltenham's Choice",
+    "CLASSY_TAXI": "Classy Taxi!",
+    "DAISYS_DAZED_DAYS": "Daisy's Dazed Days",
+    "DIG_IT": "Dig it!",
+    "DOG_SITTER_THE": "The Dog-sitter",
+    "DONALD_DUCK_AND_THE_MUMMYS_RING": "Donald Duck and the Mummy's Ring",
+    "DONALD_DUCK_TELLS_ABOUT_KITES": "Donald Duck Tells About Kites",
+    "DONALD_DUCKS_ATOM_BOMB": "Donald Duck's Atom Bomb",
+    "DONALD_DUCKS_BEST_CHRISTMAS": "Donald Duck's Best Christmas",
+    "DONALD_DUCKS_WORST_NIGHTMARE": "Donald Duck's Worst Nightmare",
+    "DONALDS_BAY_LOT": "Donald's Bay Lot",
+    "DONALDS_GRANDMA_DUCK": "Donald's Grandma Duck",
+    "DONALDS_LOVE_LETTERS": "Donald's Love Letters",
+    "DONALDS_MONSTER_KITE": "Donald's Monster Kite",
+    "DONALDS_PARTY": "Donald's Party",
+    "DONALDS_PET_SERVICE": "Donald's Pet Service",
+    "DONALDS_POSY_PATCH": "Donald's Posy Patch",
+    "DONALDS_RAUCOUS_ROLE": "Donald's Raucous Role",
+    "DUCKBURGS_DAY_OF_PERIL": "Duckburg's Day of Peril",
+    "DUCKS_EYE_VIEW_OF_EUROPE_A": "A Duck's-eye View of Europe",
+    "EYES_HAVE_IT_THE": "The Eyes Have It",
+    "FABULOUS_PHILOSOPHERS_STONE_THE": "The Fabulous Philosopher's Stone",
+    "FIX_UP_MIX_UP": "Fix-up Mix-up",
+    "FLOWERS_ARE_FLOWERS": "Flowers Are Flowers",
+    "FOR_OLD_DIMES_SAKE": "For Old Dime's Sake",
+    "FULL_SERVICE_WINDOWS": "Full-Service Windows",
+    "FUN_WHATS_THAT": "Fun? What's That?",
+    "GAB_MUFFER_THE": "The Gab-Muffer",
+    "GLADSTONES_LUCK": "Gladstone's Luck",
+    "GLADSTONES_TERRIBLE_SECRET": "Gladstone's Terrible Secret",
+    "GLADSTONES_USUAL_VERY_GOOD_YEAR": "Gladstone's Usual Very Good Year",
+    "GOLD_FINDER_THE": "The Gold-Finder",
+    "GOPHER_GOOF_UPS": "Gopher Goof-Ups",
+    "GRANDMAS_PRESENT": "Grandma's Present",
+    "GREAT_DUCKBURG_FROG_JUMPING_CONTEST_THE": "The Great Duckburg Frog-Jumping Contest",
+    "GREAT_POP_UP_THE": "The Great Pop Up",
+    "GYROS_IMAGINATION_INVENTION": "Gyro's Imagination Invention",
+    "HALF_BAKED_BAKER_THE": "The Half-Baked Baker",
+    "HAVE_GUN_WILL_DANCE": "Have Gun, Will Dance",
+    "HELPERS_HELPING_HAND_A": "A Helper's Helping Hand",
+    "HIGH_WIRE_DAREDEVILS": "High-wire Daredevils",
+    "HOBBLIN_GOBLINS": "Hobblin' Goblins",
+    "HYPNO_GUN_THE": "The Hypno-Gun",
+    "IN_OLD_CALIFORNIA": "In Old California!",
+    "INVENTORS_CONTEST_THE": "The Inventors' Contest",
+    "JUNGLE_HI_JINKS": "Jungle Hi-Jinks",
+    "KING_SIZE_CONE": "King-Size Cone",
+    "KITTY_GO_ROUND": "Kitty-Go-Round",
+    "KNOW_IT_ALL_MACHINE_THE": "The Know-It-All Machine",
+    "LAND_BENEATH_THE_GROUND": "Land Beneath the Ground!",
+    "LIMBER_W_GUEST_RANCH_THE": "The Limber W. Guest Ranch",
+    "LOST_CROWN_OF_GENGHIS_KHAN_THE": "The Lost Crown of Genghis Khan!",
+    "LOST_IN_THE_ANDES": "Lost in the Andes!",
+    "MACHINE_MIX_UP": "Machine Mix-Up",
+    "MANY_FACES_OF_MAGICA_DE_SPELL_THE": "The Many Faces of Magica de Spell",
+    "MAPLE_SUGAR_TIME_HOW_SWEET_IT_IS": "Maple Sugar Time (How Sweet It Is!)",
+    "MCDUCK_OF_ARABIA": "McDuck of Arabia",
+    "MCDUCK_TAKES_A_DIVE": "McDuck Takes a Dive",
+    "MICRO_DUCKS_FROM_OUTER_SPACE": "Micro-Ducks from Outer Space",
+    "MILLION_DOLLAR_SHOWER": "Million-Dollar Shower",
+    "MIXED_UP_MIXER": "Mixed-Up Mixer",
+    "MOPPING_UP": "Mopping Up",
+    "MR_PRIVATE_EYE": "Mr. Private Eye",
+    "MUCH_LUCK_MCDUCK": "Much Luck McDuck",
+    "MUSH": "Mush!",
+    "NEW_YEARS_REVOLUTIONS": "New Year's Revolutions",
+    "NOT_SO_ANCIENT_MARINER_THE": "The Not-so-Ancient Mariner",
+    "OLD_CASTLES_SECRET_THE": "The Old Castle's Secret",
+    "OPERATION_ST_BERNARD": "Operation St. Bernard",
+    "PLAYIN_HOOKEY": "Playin' Hookey",
+    "RACE_TO_THE_SOUTH_SEAS": "Race to the South Seas!",
+    "RANTS_ABOUT_ANTS": "Rants About Ants",
+    "RABBITS_FOOT_THE": "The Rabbit's Foot",
+    "RICHES_RICHES_EVERYWHERE": "Riches, Riches, Everywhere!",
+    "RIGGED_UP_ROLLER": "Rigged-Up Roller",
+    "ROCKET_ROASTED_CHRISTMAS_TURKEY": "Rocket-Roasted Christmas Turkey",
+    "SANTAS_STORMY_VISIT": "Santa's Stormy Visit",
+    "SAVED_BY_THE_BAG": "Saved by the Bag!",
+    "SEALS_ARE_SO_SMART": "Seals Are So Smart!",
+    "SECOND_RICHEST_DUCK_THE": "The Second-Richest Duck",
+    "SOMETHIN_FISHY_HERE": "Somethin' Fishy Here",
+    "SORRY_TO_BE_SAFE": "Sorry to be Safe",
+    "STONES_THROW_FROM_GHOST_TOWN_A": "A Stone's Throw from Ghost Town",
+    "SURE_FIRE_GOLD_FINDER_THE": "The Sure-Fire Gold Finder",
+    "TEN_CENT_VALENTINE": "Ten-Cent Valentine",
+    "TEN_CENTS_WORTH_OF_TROUBLE": "Ten Cents' Worth of Trouble",
+    "TEN_DOLLAR_DITHER": "Ten-Dollar Dither",
+    "TEN_STAR_GENERALS": "Ten-Star Generals",
+    "TERROR_OF_THE_RIVER_THE": "The Terror of the River!!",
+    "THATS_NO_FABLE": "That's No Fable!",
+    "THREE_UN_DUCKS": "Three Un-Ducks",
+    "THUMBS_UP": "Thumbs Up",
+    "TIED_DOWN_TOOLS": "Tied-Down Tools",
+    "TITANIC_ANTS_THE": "The Titanic Ants!",
+    "TROUBLE_WITH_DIMES_THE": "The Trouble With Dimes",
+    "TV_BABYSITTER_THE": "The TV Babysitter",
+    "TWENTY_FOUR_CARAT_MOON_THE": "The Twenty-four Carat Moon",
+    "TWO_WAY_LUCK": "Two-Way Luck",
+    "UP_AND_AT_IT": "Up and at It",
+    "WANT_TO_BUY_AN_ISLAND": "Want to Buy an Island?",
+    "YOICKS_THE_FOX": "Yoicks! The Fox!",
+    "YOU_CANT_GUESS": "You Can't Guess!",
+    "YOU_CANT_WIN": "You Can't Win",
+}
+# fmt: on
+
+
+def _title_case_segment(segment: str) -> str:
+    words = segment.split("_")
+    return " ".join(
+        w.capitalize() if i == 0 else (w.lower() if w.lower() in _SMALL_WORDS else w.capitalize())
+        for i, w in enumerate(words)
+    )
+
+
+def _title_name_from_enum(title: Titles) -> str:
+    """Derive the human-readable title string from a Titles enum member name."""
+    name = title.name
+    if name in _TITLE_OVERRIDES:
+        return _TITLE_OVERRIDES[name]
+
+    if name.endswith("_THE"):
+        name = "THE_" + name[:-4]
+    elif name.endswith("_A"):
+        name = "A_" + name[:-2]
+
+    parts = name.split("___")
+    if len(parts) > 1:
+        return " - ".join(_title_case_segment(p) for p in parts)
+
+    return _title_case_segment(name)
+
+
+BARKS_TITLES: list[str] = [_title_name_from_enum(t) for t in Titles]
 assert len(BARKS_TITLES) == NUM_TITLES, f"{len(BARKS_TITLES)} != {NUM_TITLES}"
 
 # Late import: comic_book_info imports Titles/BARKS_TITLES/GYRO_GEARLOOSE from this module.
 # The circular import is safe because those symbols are fully defined above this line.
+from .barks_title_utils import (  # noqa: E402, F401
+    BARKS_ISSUE_DICT,
+    FILENAME_TO_TITLE_SPECIAL_CASE_MAP,
+    ONE_PAGERS,
+    TITLE_TO_FILENAME_SPECIAL_CASE_MAP,
+    get_filename_from_title,
+    get_filename_from_title_str,
+    get_safe_title,
+    get_title_str_from_filename,
+)
 from .comic_book_info import (  # noqa: E402
     BARKS_TITLE_DICT,  # noqa: F401
-    BARKS_TITLE_INFO,
+    BARKS_TITLE_INFO,  # noqa: F401
     NON_COMIC_TITLES,  # noqa: F401
     USEFUL_TITLES,  # noqa: F401
     ComicBookInfo,  # noqa: F401
     check_story_submitted_order,  # noqa: F401
     is_non_comic_title,  # noqa: F401
 )
-
-ONE_PAGERS = [
-    Titles.IF_THE_HAT_FITS,
-    Titles.FASHION_IN_FLIGHT,
-    Titles.TURN_FOR_THE_WORSE,
-    Titles.MACHINE_MIX_UP,
-    Titles.BIRD_WATCHING,
-    Titles.HORSESHOE_LUCK,
-    Titles.BEAN_TAKEN,
-    Titles.SORRY_TO_BE_SAFE,
-    Titles.BEST_LAID_PLANS,
-    Titles.GENUINE_ARTICLE_THE,
-    Titles.JUMPING_TO_CONCLUSIONS,
-    Titles.TRUE_TEST_THE,
-    Titles.ORNAMENTS_ON_THE_WAY,
-    Titles.TOO_FIT_TO_FIT,
-    Titles.TUNNEL_VISION,
-    Titles.SLEEPY_SITTERS,
-    Titles.SLIPPERY_SHINE,
-    Titles.FRACTIOUS_FUN,
-    Titles.KING_SIZE_CONE,
-    Titles.NO_NOISE_IS_GOOD_NOISE,
-    Titles.TOASTY_TOYS,
-    Titles.NO_PLACE_TO_HIDE,
-    Titles.TIED_DOWN_TOOLS,
-    Titles.NOISE_NULLIFIER,
-    Titles.MATINEE_MADNESS,
-    Titles.FETCHING_PRICE_A,
-    Titles.TALKING_PARROT,
-    Titles.TREEING_OFF,
-    Titles.CHRISTMAS_KISS,
-    Titles.PROJECTING_DESIRES,
-    Titles.OSOGOOD_SILVER_POLISH,
-    Titles.COFFEE_FOR_TWO,
-    Titles.SOUPLINE_EIGHT,
-    Titles.FULL_SERVICE_WINDOWS,
-    Titles.RIGGED_UP_ROLLER,
-    Titles.AWASH_IN_SUCCESS,
-    Titles.STABLE_PRICES,
-    Titles.ARMORED_RESCUE,
-    Titles.CRAFTY_CORNER,
-    Titles.PRANK_ABOVE_A,
-    Titles.FRIGHTFUL_FACE,
-    Titles.FARE_DELAY,
-    Titles.MONEY_LADDER_THE,
-    Titles.CHECKER_GAME_THE,
-    Titles.TEMPER_TAMPERING,
-    Titles.DINER_DILEMMA,
-    Titles.BARBER_COLLEGE,
-    Titles.FOLLOW_THE_RAINBOW,
-    Titles.ITCHING_TO_SHARE,
-    Titles.BALLET_EVASIONS,
-    Titles.CHEAPEST_WEIGH_THE,
-    Titles.BUM_STEER,
-    Titles.HOSPITALITY_WEEK,
-    Titles.MCDUCK_TAKES_A_DIVE,
-    Titles.SLIPPERY_SIPPER,
-    Titles.OIL_THE_NEWS,
-    Titles.DIG_IT,
-    Titles.MENTAL_FEE,
-    Titles.WRONG_NUMBER,
-    Titles.CASH_ON_THE_BRAIN,
-    Titles.CLASSY_TAXI,
-    Titles.BLANKET_INVESTMENT,
-    Titles.EASY_MOWING,
-    Titles.SKI_LIFT_LETDOWN,
-    Titles.CAST_OF_THOUSANDS,
-    Titles.COURTSIDE_HEATING,
-    Titles.POWER_PLOWING,
-    Titles.REMEMBER_THIS,
-    Titles.DEEP_DECISION,
-    Titles.SMASH_SUCCESS,
-    Titles.COME_AS_YOU_ARE,
-    Titles.ROUNDABOUT_HANDOUT,
-    Titles.WATT_AN_OCCASION,
-    Titles.DOUGHNUT_DARE,
-    Titles.SWEAT_DEAL_A,
-    Titles.ART_OF_SECURITY_THE,
-    Titles.FASHION_FORECAST,
-    Titles.MUSH,
-    Titles.LUNCHEON_LAMENT,
-    Titles.GOLD_RUSH,
-    Titles.FIREFLIES_ARE_FREE,
-    Titles.EARLY_TO_BUILD,
-    Titles.CHINA_SHOP_SHAKEUP,
-    Titles.BUFFO_OR_BUST,
-    Titles.POUND_FOR_SOUND,
-    Titles.FERTILE_ASSETS,
-    Titles.BACKYARD_BONANZA,
-    Titles.ALL_SEASON_HAT,
-    Titles.EYES_HAVE_IT_THE,
-    Titles.RELATIVE_REACTION,
-    Titles.SECRET_BOOK_THE,
-    Titles.TREE_TRICK,
-    Titles.NET_WORTH,
-    Titles.HISTORY_TOSSED,
-    Titles.DOGGED_DETERMINATION,
-    Titles.FORGOTTEN_PRECAUTION,
-    Titles.BIG_BOBBER_THE,
-    Titles.WINDFALL_OF_THE_MIND,
-    Titles.RESCUE_ENHANCEMENT,
-    Titles.GOING_TO_PIECES,
-    Titles.HIGH_RIDER,
-    Titles.THAT_SINKING_FEELING,
-    Titles.BALMY_SWAMI_THE,
-    Titles.WINDY_STORY_THE,
-    Titles.MOOLA_ON_THE_MOVE,
-    Titles.THUMBS_UP,
-    Titles.BILL_WIND,
-    Titles.SLEEPIES_THE,
-    Titles.LIGHTS_OUT,
-    Titles.IMMOVABLE_MISER,
-    Titles.KITTY_GO_ROUND,
-    Titles.POOR_LOSER,
-    Titles.CRAWLS_FOR_CASH,
-    Titles.ALL_CHOKED_UP,
-    Titles.BIRD_CAMERA_THE,
-    Titles.ODD_ORDER_THE,
-    Titles.MONEY_HAT_THE,
-    Titles.CALL_OF_THE_WILD_THE,
-    Titles.TALE_OF_THE_TAPE,
-    Titles.HIS_SHINING_HOUR,
-    Titles.THRIFT_GIFT_A,
-    Titles.UNCLE_SCROOGE___MONKEY_BUSINESS,
-    Titles.COLLECTION_DAY,
-    Titles.SEEING_IS_BELIEVING,
-    Titles.PLAYMATES,
-    Titles.RAGS_TO_RICHES,
-    Titles.ART_APPRECIATION,
-    Titles.FLOWERS_ARE_FLOWERS,
-    Titles.GETTING_THE_BIRD,
-    Titles.NEST_EGG_COLLECTOR,
-    Titles.MILLION_DOLLAR_SHOWER,
-    Titles.DUELING_TYCOONS,
-    Titles.WISHFUL_EXCESS,
-    Titles.SIDEWALK_OF_THE_MIND,
-    Titles.NO_BARGAIN,
-    Titles.UP_AND_AT_IT,
-    Titles.FIREMAN_SCROOGE,
-    Titles.SAVED_BY_THE_BAG,
-    Titles.TICKING_DETECTOR,
-    Titles.IT_HAPPENED_ONE_WINTER,
-    Titles.LOCK_OUT_THE,
-    Titles.BIGGER_THE_BEGGAR_THE,
-    Titles.PLUMMETING_WITH_PRECISION,
-    Titles.SNAKE_TAKE,
-    Titles.LAUNDRY_FOR_LESS,
-    Titles.LONG_DISTANCE_COLLISION,
-    Titles.TOP_WAGES,
-    Titles.DOWN_FOR_THE_COUNT,
-    Titles.WASTED_WORDS,
-]
-
-
-def get_shortest_issue_name(issue_name: Issues) -> str:
-    return "CS" if issue_name == Issues.CS else SHORT_ISSUE_NAME[issue_name]
-
-
-BARKS_ISSUE_DICT: dict[str, list[Titles]] = {
-    f"{get_shortest_issue_name(info.issue_name)} {info.issue_number}": sorted(
-        inf.title
-        for inf in BARKS_TITLE_INFO
-        if (inf.issue_name == info.issue_name)
-        and (inf.issue_number == info.issue_number)
-        and (inf.title not in ONE_PAGERS)
-    )
-    for info in BARKS_TITLE_INFO
-}
-# Add Uncle Scrooge special cases:
-BARKS_ISSUE_DICT[f"{SHORT_ISSUE_NAME[Issues.US]} 1"] = BARKS_ISSUE_DICT[
-    f"{SHORT_ISSUE_NAME[Issues.FC]} {US_1_FC_ISSUE_NUM}"
-]
-BARKS_ISSUE_DICT[f"{SHORT_ISSUE_NAME[Issues.US]} 2"] = BARKS_ISSUE_DICT[
-    f"{SHORT_ISSUE_NAME[Issues.FC]} {US_2_FC_ISSUE_NUM}"
-]
-BARKS_ISSUE_DICT[f"{SHORT_ISSUE_NAME[Issues.US]} 3"] = BARKS_ISSUE_DICT[
-    f"{SHORT_ISSUE_NAME[Issues.FC]} {US_3_FC_ISSUE_NUM}"
-]
-
-
-def get_safe_title(title: str) -> str:
-    safe_title = title.replace("\n", " ")
-    safe_title = safe_title.replace("- ", "-")
-    safe_title = safe_title.replace('"', "")
-    return safe_title  # noqa: RET504
-
-
-TITLE_TO_FILENAME_SPECIAL_CASE_MAP: dict[str, str] = {
-    FUN_WHATS_THAT: "Fun What's That",
-    WANT_TO_BUY_AN_ISLAND: "Want to Buy an Island",
-}
-FILENAME_TO_TITLE_SPECIAL_CASE_MAP: dict[str, str] = {
-    "Fun What's That": FUN_WHATS_THAT,
-    "Want to Buy an Island": WANT_TO_BUY_AN_ISLAND,
-}
-
-
-def get_filename_from_title(title: Titles, ext: str) -> str:
-    return get_filename_from_title_str(BARKS_TITLES[title], ext)
-
-
-def get_filename_from_title_str(title_str: str, ext: str) -> str:
-    return TITLE_TO_FILENAME_SPECIAL_CASE_MAP.get(title_str, title_str) + ext
-
-
-def get_title_str_from_filename(filename: str | PanelPath) -> str:
-    path: PanelPath = Path(filename) if isinstance(filename, str) else filename
-
-    # Can't use 'stem' on directories because a title may contain a '.'
-    name = path.name if path.is_dir() else path.stem
-
-    return FILENAME_TO_TITLE_SPECIAL_CASE_MAP.get(name, name)

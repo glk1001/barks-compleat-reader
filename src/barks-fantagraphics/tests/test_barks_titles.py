@@ -8,13 +8,12 @@ from barks_fantagraphics.barks_titles import (
     BARKS_TITLE_INFO,
     BARKS_TITLES,
     NUM_TITLES,
-    # Import the raw data for some tests
-    SHORT_ISSUE_NAME,
     ComicBookInfo,
-    Issues,
     Titles,
+    _title_name_from_enum,
     check_story_submitted_order,
 )
+from barks_fantagraphics.comic_issues import SHORT_ISSUE_NAME, Issues
 
 
 class TestComicBookInfo:
@@ -135,6 +134,15 @@ class TestBarksInfo:
         assert len(BARKS_TITLE_INFO) == NUM_TITLES
         assert BARKS_TITLE_INFO[0].chronological_number == 1
         assert BARKS_TITLE_INFO[-1].chronological_number == NUM_TITLES
+
+    def test_derivation_matches_barks_titles(self) -> None:
+        """Validates that _title_name_from_enum produces the exact same string as BARKS_TITLES."""
+        for title in Titles:
+            derived = _title_name_from_enum(title)
+            actual = BARKS_TITLES[title]
+            assert derived == actual, (
+                f"Derivation mismatch for {title.name}: derived={derived!r}, actual={actual!r}"
+            )
 
     def test_story_submitted_order(self) -> None:
         try:

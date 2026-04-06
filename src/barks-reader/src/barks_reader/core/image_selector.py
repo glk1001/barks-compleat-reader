@@ -9,8 +9,6 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from barks_fantagraphics.barks_titles import (
     BARKS_TITLES,
-    PIXILATED_PARROT_THE,
-    VACATION_TIME,
     Titles,
 )
 from loguru import logger
@@ -145,18 +143,20 @@ class ImageSelector:
     def _get_censored_images(self) -> list[tuple[Titles, str]]:
         file_ext = self._resolver.get_file_ext()
 
+        vacation = BARKS_TITLES[Titles.VACATION_TIME]
+        parrot = BARKS_TITLES[Titles.PIXILATED_PARROT_THE]
         return [
             (
                 Titles.VACATION_TIME,
-                self._get_posix_join(VACATION_TIME, f"076-8-flipped{file_ext}"),
+                self._get_posix_join(vacation, f"076-8-flipped{file_ext}"),
             ),
             (
                 Titles.VACATION_TIME,
-                self._get_posix_join(VACATION_TIME, f"083-7-flipped{file_ext}"),
+                self._get_posix_join(vacation, f"083-7-flipped{file_ext}"),
             ),
             (
                 Titles.PIXILATED_PARROT_THE,
-                self._get_posix_join(PIXILATED_PARROT_THE, f"017-4{file_ext}"),
+                self._get_posix_join(parrot, f"017-4{file_ext}"),
             ),
         ]
 

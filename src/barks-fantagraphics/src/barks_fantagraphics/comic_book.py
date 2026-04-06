@@ -16,10 +16,8 @@ from loguru import logger
 
 from .barks_titles import (
     BARKS_TITLE_DICT,
+    BARKS_TITLES,
     FILENAME_TO_TITLE_SPECIAL_CASE_MAP,
-    GOOD_DEEDS,
-    MILKMAN_THE,
-    SILENT_NIGHT,
     Titles,
     get_safe_title,
 )
@@ -626,14 +624,14 @@ def get_main_publication_info(
     first_published = get_formatted_first_published_str(fanta_info.comic_book_info)
     submitted_date = get_formatted_submitted_date(fanta_info.comic_book_info)
 
-    if file_title == SILENT_NIGHT:
+    if file_title == BARKS_TITLES[Titles.SILENT_NIGHT]:
         # Originally intended for WDCS 64
         return (
             f"(*) Rejected by Western editors in 1945, this story was originally\n"
             f" intended for publication in {first_published}\n"
             f"Submitted to Western Publishing{submitted_date}\n"
         )
-    if file_title == MILKMAN_THE:
+    if file_title == BARKS_TITLES[Titles.MILKMAN_THE]:
         # Originally intended for WDCS 215
         return (
             f"(*) Rejected by Western editors in 1957, this story was originally\n"
@@ -643,7 +641,7 @@ def get_main_publication_info(
             f"Color restoration by {fanta_info.colorist}"
         )
 
-    if file_title == GOOD_DEEDS:
+    if file_title == BARKS_TITLES[Titles.GOOD_DEEDS]:
         fanta_pub_info = ""
     else:
         fanta_pub_info = (

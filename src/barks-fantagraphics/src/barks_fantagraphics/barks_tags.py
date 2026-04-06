@@ -5,7 +5,6 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics import barks_titles as bt
 from barks_fantagraphics.barks_titles import (
     BARKS_TITLE_INFO,
     US_1_FC_ISSUE_NUM,
@@ -102,7 +101,7 @@ class Tags(Enum):
     GLADSTONE_GANDER = "Gladstone Gander"
     GNEEZLES = "Gneezles"
     GREECE = "Greece"
-    GYRO_GEARLOOSE = bt.GYRO_GEARLOOSE
+    GYRO_GEARLOOSE = "Gyro Gearloose"
     GYRO_NOT_IN_GG = "Gyro not in GG series"
     HASSAN_BEN_JAILD = "Hassan Ben Jaild"
     HDL_DRIVING_CAR = "HDL driving car"
