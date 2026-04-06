@@ -246,6 +246,20 @@ class ComicReaderManager:
 
         last_read_page = self._comic_page_info.page_map[last_read_page_str]
 
+        # In double page mode, use the right page of the display unit if it exists.
+        # The right page represents the furthest reading progress and may be
+        # front/back matter even when the left page is a body page.
+        display_unit = self._comic_book_reader.get_current_display_unit()
+        if (
+            self._comic_book_reader.double_page_mode
+            and display_unit is not None
+            and display_unit.right_page_index is not None
+        ):
+            for page_info in self._comic_page_info.page_map.values():
+                if page_info.page_index == display_unit.right_page_index:
+                    last_read_page = page_info
+                    break
+
         return SavedPageInfo(
             last_read_page.page_index,
             last_read_page.display_page_num,

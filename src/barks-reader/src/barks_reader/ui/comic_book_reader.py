@@ -344,6 +344,10 @@ class ComicBookReader(FloatLayout):
     def get_last_read_page(self) -> str:
         return self._current_page_str
 
+    def get_current_display_unit(self) -> DisplayUnit | None:
+        """Return the current display unit (for double page mode awareness)."""
+        return self._page_manager.get_current_display_unit()
+
     def is_click_in_top_margin(self, touch: MotionEvent) -> bool:
         x_rel = round(touch.x - self.x)
         y_rel = round(touch.y - self.y)
