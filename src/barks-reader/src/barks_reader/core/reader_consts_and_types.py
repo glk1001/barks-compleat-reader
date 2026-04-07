@@ -9,6 +9,7 @@ LONG_PATH_SETTING = "longpath"
 OPTIONS_SETTING = "options"
 NO_OVERRIDES_SUFFIX = "-no-overrides"
 COMIC_BEGIN_PAGE = "0"
+FIRST_BODY_PAGE = "1"
 CLOSE_TO_ZERO = 0.001
 
 # fmt: off

@@ -10,9 +10,13 @@ from comic_utils.get_panel_bytes import get_decrypted_bytes  # ty: ignore[unreso
 from kivy.clock import Clock
 from loguru import logger
 
-from barks_reader.core.comic_book_page_info import ComicBookPageInfo, ComicBookPageInfoManager
+from barks_reader.core.comic_book_page_info import (
+    ComicBookPageInfo,
+    ComicBookPageInfoManager,
+    PageInfo,
+)
 from barks_reader.core.fantagraphics_volumes import MissingVolumeError
-from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
+from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE, FIRST_BODY_PAGE
 from barks_reader.core.reader_settings import ReaderSettings
 
 from .comic_book_reader import ComicBookReaderScreen
@@ -230,10 +234,25 @@ class ComicReaderManager:
 
         return last_read_page_info
 
+    def _get_page_info_by_index(self, page_index: int) -> PageInfo | None:
+        assert self._comic_page_info
+        for page_info in self._comic_page_info.page_map.values():
+            if page_info.page_index == page_index:
+                return page_info
+        return None
+
+    def _page_info_is_inside_body(self, page_info: PageInfo) -> bool:
+        assert self._comic_page_info
+        return (page_info.page_type == PageType.BODY) and page_info.display_page_num not in (
+            FIRST_BODY_PAGE,
+            self._comic_page_info.last_body_page,
+        )
+
     @staticmethod
     def _is_inside_body_pages(page_info: SavedPageInfo) -> bool:
-        return (page_info.page_type == PageType.BODY) and (
-            page_info.display_page_num != page_info.last_body_page
+        return (page_info.page_type == PageType.BODY) and page_info.display_page_num not in (
+            FIRST_BODY_PAGE,
+            page_info.last_body_page,
         )
 
     def _get_last_read_page_from_comic(self) -> SavedPageInfo | None:
@@ -246,19 +265,24 @@ class ComicReaderManager:
 
         last_read_page = self._comic_page_info.page_map[last_read_page_str]
 
-        # In double page mode, use the right page of the display unit if it exists.
-        # The right page represents the furthest reading progress and may be
-        # front/back matter even when the left page is a body page.
+        # In double page mode, the reading position spans the whole display unit,
+        # so it should only count as "in the middle of reading" when BOTH pages
+        # of the unit are inside the body. If either page is outside (cover,
+        # first body page, last body page, back matter), pick that page so the
+        # save logic resets to the beginning. Otherwise prefer the right page
+        # since it represents the furthest reading progress.
         display_unit = self._comic_book_reader.get_current_display_unit()
         if (
             self._comic_book_reader.double_page_mode
             and display_unit is not None
             and display_unit.right_page_index is not None
         ):
-            for page_info in self._comic_page_info.page_map.values():
-                if page_info.page_index == display_unit.right_page_index:
-                    last_read_page = page_info
-                    break
+            left_page = self._get_page_info_by_index(display_unit.left_page_index)
+            right_page = self._get_page_info_by_index(display_unit.right_page_index)
+            if left_page is not None and not self._page_info_is_inside_body(left_page):
+                last_read_page = left_page
+            elif right_page is not None:
+                last_read_page = right_page
 
         return SavedPageInfo(
             last_read_page.page_index,

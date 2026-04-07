@@ -236,3 +236,91 @@ class TestComicReaderManager:
         assert result is not None
         # Should reset to beginning since right page is back matter.
         assert result.display_page_num == COMIC_BEGIN_PAGE
+
+    def test_comic_closed_double_page_on_first_body_pair(self, manager: ComicReaderManager) -> None:
+        """Double page mode on first body pair should reset to begin.
+
+        On the first body display unit (pages 1 and 2), the page should not be
+        saved (treated like the very start of reading).
+        """
+        body_page_1 = PageInfo(
+            page_index=0,
+            display_page_num="1",
+            page_type=PageType.BODY,
+            srce_page=MagicMock(),
+            dest_page=MagicMock(),
+        )
+        body_page_2 = PageInfo(
+            page_index=1,
+            display_page_num="2",
+            page_type=PageType.BODY,
+            srce_page=MagicMock(),
+            dest_page=MagicMock(),
+        )
+
+        mock_reader = MagicMock()
+        mock_reader.get_last_read_page.return_value = "1"
+        mock_reader.double_page_mode = True
+        mock_reader.get_current_display_unit.return_value = DisplayUnit(
+            left_page_index=0, right_page_index=1
+        )
+        manager._comic_book_reader = mock_reader
+
+        mock_fanta_info = MagicMock(spec=FantaComicBookInfo)
+        mock_fanta_info.comic_book_info = MagicMock()
+        mock_fanta_info.comic_book_info.get_title_str.return_value = "My Title"
+        manager._fanta_info = mock_fanta_info
+
+        mock_comic_page_info = ComicBookPageInfo(
+            required_dim=RequiredDimensions(100, 100),
+            page_map=OrderedDict([("1", body_page_1), ("2", body_page_2)]),
+            last_body_page="10",
+            last_page="10",
+        )
+        manager._comic_page_info = mock_comic_page_info
+
+        result = manager.comic_closed()
+
+        assert result is not None
+        # Should reset to beginning since the unit's left page is the first body page.
+        assert result.display_page_num == COMIC_BEGIN_PAGE
+
+    def test_comic_closed_single_page_on_first_body_page(self, manager: ComicReaderManager) -> None:
+        """Single page mode on first body page should reset to begin.
+
+        The first body page should not be saved as a meaningful position; it
+        should reset to the beginning on close.
+        """
+        body_page_1 = PageInfo(
+            page_index=0,
+            display_page_num="1",
+            page_type=PageType.BODY,
+            srce_page=MagicMock(),
+            dest_page=MagicMock(),
+        )
+
+        mock_reader = MagicMock()
+        mock_reader.get_last_read_page.return_value = "1"
+        mock_reader.double_page_mode = False
+        mock_reader.get_current_display_unit.return_value = DisplayUnit(
+            left_page_index=0, right_page_index=None
+        )
+        manager._comic_book_reader = mock_reader
+
+        mock_fanta_info = MagicMock(spec=FantaComicBookInfo)
+        mock_fanta_info.comic_book_info = MagicMock()
+        mock_fanta_info.comic_book_info.get_title_str.return_value = "My Title"
+        manager._fanta_info = mock_fanta_info
+
+        mock_comic_page_info = ComicBookPageInfo(
+            required_dim=RequiredDimensions(100, 100),
+            page_map=OrderedDict([("1", body_page_1)]),
+            last_body_page="10",
+            last_page="10",
+        )
+        manager._comic_page_info = mock_comic_page_info
+
+        result = manager.comic_closed()
+
+        assert result is not None
+        assert result.display_page_num == COMIC_BEGIN_PAGE
