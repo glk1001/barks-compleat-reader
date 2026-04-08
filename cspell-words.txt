@@ -46,6 +46,7 @@ jpginfo
 jpgs
 keepends
 lanczos
+lfs
 licence
 logr
 markersize
