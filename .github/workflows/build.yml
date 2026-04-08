@@ -5,6 +5,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+env:
+  # Opt in early to Node 24 for JS actions. Silences the deprecation warning
+  # emitted for actions/cache@v4 and actions/upload-artifact@v4, which still
+  # declare Node 20 as their runtime. Safe to remove once those actions ship
+  # new majors that declare Node 24 natively.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   build:
     name: Build (${{ matrix.os }})
