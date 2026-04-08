@@ -18,6 +18,8 @@ jobs:
           - os: windows-latest
             exe: barks-reader-win.exe
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write  # Needed to create/update releases on tag pushes.
     env:
       BARKS_ZIPS_KEY: ${{ secrets.BARKS_ZIPS_KEY }}
 
@@ -59,3 +61,18 @@ jobs:
         shell: bash
         run: bash scripts/build.sh
 
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.exe }}
+          path: ${{ matrix.exe }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Attach to GitHub Release (tag pushes only)
+        if: startsWith(github.ref, 'refs/tags/') && env.BARKS_ZIPS_KEY != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.exe }}
+          fail_on_unmatched_files: true
+          draft: true
