@@ -152,7 +152,7 @@ class ArchivePageImageSource:
             return load_pil_image_from_zip(zip_path, encrypted=False)
 
         if page_info.srce_page.page_type in [PageType.BLANK_PAGE, PageType.TITLE]:
-            ext = Path(image_path).suffix if image_path != "__empty_page__" else ".png"
+            ext = Path(image_path).suffix if image_path != "__empty_page__" else ".jpg"
             return load_pil_image_from_bytes(self._empty_page_image, ext)
 
         assert self._fanta_volume_archive is not None
