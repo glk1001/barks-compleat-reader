@@ -18,6 +18,8 @@ jobs:
           - os: windows-latest
             exe: barks-reader-win.exe
     runs-on: ${{ matrix.os }}
+    env:
+      BARKS_ZIPS_KEY: ${{ secrets.BARKS_ZIPS_KEY }}
 
     steps:
       - uses: actions/checkout@v5
@@ -39,11 +41,17 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      - name: Generate stub for obfuscated module
+      - name: Build panel module (Cython, real)
+        if: env.BARKS_ZIPS_KEY != ''
+        shell: bash
+        run: bash scripts/cythonize-panel-module.sh
+
+      - name: Build panel module (stub fallback for fork PRs)
+        if: env.BARKS_ZIPS_KEY == ''
         shell: bash
         run: |
           cat > src/comic-utils/src/comic_utils/get_panel_bytes.py <<'STUB'
-          def get_decrypted_bytes(data: bytes) -> bytes:
+          def get_decrypted_bytes(data: bytes) -> bytes | None:
               return data
           STUB
 

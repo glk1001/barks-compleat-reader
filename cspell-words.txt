@@ -19,6 +19,7 @@ colorfmt
 compresslevel
 configfile
 consolelog
+cythonize
 docstrings
 dotenv
 edgecolor
@@ -54,6 +55,7 @@ numpad
 organised
 pnginfo
 ppid
+pyeof
 returncode
 ryzen
 scancode

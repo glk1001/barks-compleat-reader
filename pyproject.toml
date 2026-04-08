@@ -13,7 +13,8 @@ dependencies = [
     "certifi==2025.8.3",
     "colorama==0.4.6 ; sys_platform == 'win32'",
     "cryptography>=46.0.3",
-    "cython==3.1.4 ; sys_platform == 'darwin'",
+    "cython==3.1.4",
+    "setuptools>=80",
     "distro>=1.9.0",
     "docutils==0.22",
     "docutils-stubs==0.0.22",
@@ -54,7 +55,6 @@ dependencies = [
 [dependency-groups]
 dev = [
     "import-linter>=2.9",
-    "pyarmor>=9.2.0",
     "pycrucible==0.4.0",
     "pyinstrument>=5.1.1",
     "pyspellchecker>=0.8.4",

@@ -13,8 +13,8 @@ include = [
     "**/*.ttf",
     "**/*.db",
     "**/*.md",
-    "**/pyarmor_runtime_000000/**/*",
-    "**/pyarmor_runtime_000000/**/*.pyd",
+    "**/*.so",
+    "**/*.pyd",
 ]
 exclude = [
     "experiments/**/*",
