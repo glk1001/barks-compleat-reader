@@ -20,9 +20,6 @@ class PanelTextureLoader(PanelImageLoader):
     Texture upload always happens on the UI thread (required by Kivy).
     """
 
-    def __init__(self, barks_panels_are_encrypted: bool) -> None:
-        super().__init__(barks_panels_are_encrypted)
-
     def load_texture(self, panel_path: PanelPath, callback: TextureLoaderCallback) -> None:
         def pil_callback(img: Image.Image | None, err: Exception | None) -> None:
             if err:

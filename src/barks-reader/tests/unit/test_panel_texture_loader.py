@@ -17,13 +17,12 @@ def mock_callback() -> MagicMock:
 
 @pytest.fixture
 def loader() -> PanelTextureLoader:
-    return PanelTextureLoader(barks_panels_are_encrypted=False)
+    return PanelTextureLoader()
 
 
 class TestPanelTextureLoader:
     def test_init(self, loader: PanelTextureLoader) -> None:
         assert isinstance(loader, PanelTextureLoader)
-        assert loader._barks_panels_are_encrypted is False
 
     def test_load_texture_success(
         self, loader: PanelTextureLoader, mock_callback: MagicMock

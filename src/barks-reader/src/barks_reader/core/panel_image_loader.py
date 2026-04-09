@@ -26,8 +26,7 @@ class PanelImageLoader:
     Texture upload always happens on the UI thread (required by Kivy).
     """
 
-    def __init__(self, barks_panels_are_encrypted: bool) -> None:
-        self._barks_panels_are_encrypted = barks_panels_are_encrypted
+    def __init__(self) -> None:
         self._cancel = False
         self._current_thread: Thread | None = None
 
@@ -55,19 +54,17 @@ class PanelImageLoader:
     def _worker(self, panel_path: PanelPath, callback: ImageLoaderCallback) -> None:
         # noinspection PyBroadException
         try:
-            # PanelPath may be Path or zipfile.Path.
-            if isinstance(panel_path, (Path, zipfile.Path)):
-                raw = (
-                    get_decrypted_bytes(panel_path.read_bytes())
-                    if self._barks_panels_are_encrypted
-                    else panel_path.read_bytes()
-                )
-                if not raw:
-                    msg = f'None decrypted bytes returned from "{panel_path}".'
-                    raise ValueError(msg)  # noqa: TRY301
+            # PanelPath may be Path (loose, unencrypted) or zipfile.Path (encrypted).
+            if isinstance(panel_path, zipfile.Path):
+                raw = get_decrypted_bytes(panel_path.read_bytes())
+            elif isinstance(panel_path, Path):
+                raw = panel_path.read_bytes()
             else:
                 msg = f"Unsupported PanelPath type: {type(panel_path)}"
                 raise TypeError(msg)  # noqa: TRY301
+            if not raw:
+                msg = f'No bytes returned from "{panel_path}".'
+                raise ValueError(msg)  # noqa: TRY301
 
             if self._cancel:
                 return
@@ -80,9 +77,7 @@ class PanelImageLoader:
                 return
 
         except Exception as e:  # noqa: BLE001
-            logger.exception(
-                f"Error loading image (encrypted = {self._barks_panels_are_encrypted}):"
-            )
+            logger.exception(f'Error loading image "{panel_path}":')
             ex = e
             schedule_once(lambda _dt: callback(None, ex), 0)
             return

@@ -58,7 +58,7 @@ def applicator(screens: ScreenBundle) -> Generator[SnapshotApplicator]:
 
         mock_loader.load_texture.side_effect = side_effect
 
-        yield SnapshotApplicator(screens=screens, panels_are_encrypted=False)
+        yield SnapshotApplicator(screens=screens)
 
 
 def _make_snapshot(

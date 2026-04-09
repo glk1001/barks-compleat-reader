@@ -76,9 +76,7 @@ class BottomTitleViewScreen(FloatLayout):
     ) -> None:
         super().__init__(**kwargs)
         self._reader_settings = reader_settings
-        self._texture_loader = PanelTextureLoader(
-            self._reader_settings.file_paths.barks_panels_are_encrypted
-        )
+        self._texture_loader = PanelTextureLoader()
         self._formatter = ReaderFormatter(font_manager)
         self._special_fanta_overrides: SpecialFantaOverrides | None = None
         self._fanta_info: FantaComicBookInfo | None = None

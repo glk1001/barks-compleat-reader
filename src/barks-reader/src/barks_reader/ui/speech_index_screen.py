@@ -138,9 +138,7 @@ class SpeechIndexScreen(IndexScreen):
         self._search = ComicSearch(reader_settings.sys_file_paths.get_barks_reader_indexes_dir())
         resolver = ReaderFilePathsResolver(reader_settings.file_paths)
         self._random_title_images = ImageSelector(resolver, reader_settings)
-        self._texture_loader = PanelTextureLoader(
-            reader_settings.file_paths.barks_panels_are_encrypted
-        )
+        self._texture_loader = PanelTextureLoader()
         self._found_words_cache: dict[IndexItem, TitleDict] = {}
         # Separate cache for background image word searches — never used for click results.
         self._background_words_cache: dict[str, TitleDict] = {}

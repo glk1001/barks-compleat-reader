@@ -35,13 +35,13 @@ if TYPE_CHECKING:
 class SnapshotApplicator:
     """Push a ``ViewSnapshot`` to the Kivy widgets in a ``ScreenBundle``."""
 
-    def __init__(self, screens: ScreenBundle, panels_are_encrypted: bool) -> None:
+    def __init__(self, screens: ScreenBundle) -> None:
         self._screens = screens
 
-        self._top_view_texture_loader = PanelTextureLoader(panels_are_encrypted)
-        self._fun_view_texture_loader = PanelTextureLoader(panels_are_encrypted)
-        self._bottom_title_view_texture_loader = PanelTextureLoader(panels_are_encrypted)
-        self._search_texture_loader = PanelTextureLoader(panels_are_encrypted)
+        self._top_view_texture_loader = PanelTextureLoader()
+        self._fun_view_texture_loader = PanelTextureLoader()
+        self._bottom_title_view_texture_loader = PanelTextureLoader()
+        self._search_texture_loader = PanelTextureLoader()
 
         # Track the last-applied image infos.
         self._prev_top_view_image_info: ImageInfo = ImageInfo()

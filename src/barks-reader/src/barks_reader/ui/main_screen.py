@@ -138,10 +138,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._random_title_images,
         )
 
-        applicator = SnapshotApplicator(
-            screens,
-            self._reader_settings.file_paths.barks_panels_are_encrypted,
-        )
+        applicator = SnapshotApplicator(screens)
 
         self._view_state_manager = ViewStateManager(
             self._reader_settings,

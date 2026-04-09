@@ -127,9 +127,7 @@ class MainIndexScreen(IndexScreen):
         self._user_error_handler = user_error_handler
         resolver = ReaderFilePathsResolver(reader_settings.file_paths)
         self._random_title_images = ImageSelector(resolver, reader_settings)
-        self._image_loader = PanelTextureLoader(
-            reader_settings.file_paths.barks_panels_are_encrypted
-        )
+        self._image_loader = PanelTextureLoader()
         self._cached_all_titles_for_letter: list[FantaComicBookInfo] = []
         self._cached_hierarchies: dict[Titles, TitleHierarchy] = {}
 

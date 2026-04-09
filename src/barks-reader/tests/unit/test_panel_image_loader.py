@@ -22,13 +22,12 @@ def mock_callback() -> MagicMock:
 
 @pytest.fixture
 def loader() -> PanelImageLoader:
-    return PanelImageLoader(barks_panels_are_encrypted=False)
+    return PanelImageLoader()
 
 
 class TestPanelImageLoader:
     def test_init(self) -> None:
-        loader = PanelImageLoader(barks_panels_are_encrypted=True)
-        assert loader._barks_panels_are_encrypted is True
+        loader = PanelImageLoader()
         assert loader._cancel is False
         assert loader._current_thread is None
 
@@ -69,8 +68,8 @@ class TestPanelImageLoader:
             mock_callback.assert_called_once_with(mock_converted_image, None)
 
     def test_load_pil_encrypted(self, mock_callback: MagicMock) -> None:
-        loader = PanelImageLoader(barks_panels_are_encrypted=True)
-        mock_path = MagicMock(spec=Path)
+        loader = PanelImageLoader()
+        mock_path = MagicMock(spec=zipfile.Path)
         mock_path.read_bytes.return_value = b"encrypted_data"
 
         with (
@@ -97,6 +96,9 @@ class TestPanelImageLoader:
 
         with (
             patch.object(loader_module, threading.Thread.__name__) as mock_thread_cls,
+            patch.object(
+                loader_module, get_decrypted_bytes.__name__, return_value=b"decrypted"
+            ) as mock_decrypt,
             patch.object(loader_module.Image, Image.open.__name__) as mock_img_open,
             patch.object(loader_module, schedule_once.__name__) as mock_schedule,
         ):
@@ -107,6 +109,7 @@ class TestPanelImageLoader:
 
             loader.load_pil(mock_path, mock_callback)
 
+            mock_decrypt.assert_called_once_with(b"zip_data")
             mock_img_open.assert_called_once()
 
     def test_load_pil_error(self, loader: PanelImageLoader, mock_callback: MagicMock) -> None:
@@ -224,8 +227,8 @@ class TestPanelImageLoader:
             assert loader._cancel is False  # Reset to false
 
     def test_load_pil_decryption_error(self, mock_callback: MagicMock) -> None:
-        loader = PanelImageLoader(barks_panels_are_encrypted=True)
-        mock_path = MagicMock(spec=Path)
+        loader = PanelImageLoader()
+        mock_path = MagicMock(spec=zipfile.Path)
         mock_path.read_bytes.return_value = b"encrypted_data"
         error = ValueError("Decryption failed")
 
