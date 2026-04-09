@@ -178,6 +178,13 @@ class AppWindowGeometryHelper:
             height: Current window height reported by the resize event.
 
         """
+        # Bail out on degenerate transient sizes (e.g. ``(0, 45)`` events that fire during
+        # the Windows fullscreen-exit resize storm). Without this guard we would compute
+        # a degenerate correction and schedule ``Window.size = (0, 45)``, which Win32 then
+        # clamps to its hit-test minimum and the window stays tiny.
+        if width <= 0 or height <= ACTION_BAR_SIZE_Y:
+            return
+
         monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
         monitor_w = monitor.width_pixels if monitor else 0
         correct_width, content_h = get_win_dimensions(height - ACTION_BAR_SIZE_Y, monitor_w)
@@ -189,6 +196,18 @@ class AppWindowGeometryHelper:
             if min_height <= monitor_max_h:
                 correct_width = MIN_WINDOW_WIDTH
                 correct_height = min_height
+
+        # Refuse to schedule a degenerate correction. Can happen when ``Window.left``/``top``
+        # is off-screen (monitor lookup returns ``None``) and the recovery branch above
+        # was unable to fall back to a valid (MIN_WINDOW_WIDTH, min_height) pair.
+        if correct_width <= 0 or correct_height <= ACTION_BAR_SIZE_Y:
+            logger.debug(
+                f"Skipping aspect-ratio correction:"
+                f" width = {width}, height = {height},"
+                f" correct = ({correct_width}, {correct_height}),"
+                f" Window.left/top = ({Window.left}, {Window.top})."
+            )
+            return
 
         if (correct_width, correct_height) != (width, height):
             # User resize: debounce so only one correction fires after the drag settles.
