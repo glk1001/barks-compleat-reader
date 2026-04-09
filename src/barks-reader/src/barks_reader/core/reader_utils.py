@@ -53,10 +53,12 @@ def get_win_dimensions(content_height: int, max_width: int) -> tuple[int, int]:
 
 
 def get_title_str_from_reader_icon_file(icon_path: Path) -> str:
+    stem = icon_path.stem.removesuffix("-flipped")
+
     # Use a regular expression to split the stem at the beginning of the
     # trailing numeric suffix (e.g., "-1-1"). This correctly handles
     # titles that contain hyphens or other special characters.
-    parts = re.split(r"(-\d+)+$", icon_path.stem)
+    parts = re.split(r"(-\d+)+$", stem)
 
     return parts[0]
 
