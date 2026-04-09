@@ -315,7 +315,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             Window.unbind(on_key_down=self._on_key_down)
 
         width, content_h = get_win_dimensions(Window.height - ACTION_BAR_SIZE_Y, Window.width)
-        self.size = width, content_h + ACTION_BAR_SIZE_Y
+        if width > 0 and content_h > 0:
+            self.size = width, content_h + ACTION_BAR_SIZE_Y
 
         logger.debug(
             f"Main screen self._active = {self._active}:"

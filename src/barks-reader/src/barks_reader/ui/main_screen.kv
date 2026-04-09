@@ -95,7 +95,7 @@
                 RelativeLayout:
                     id: icon_container
                     # Position the icon button from the left edge.
-                    pos_hint: {'x': dp(2) / root.width, 'center_y': 0.5}
+                    pos_hint: {'x': dp(2) / max(root.width, 1), 'center_y': 0.5}
                     size_hint: None, None
                     height: action_bar.height
                     width: dp(70)
@@ -123,7 +123,7 @@
                 RelativeLayout:
                     id: draggable_title_bar
                     # Position this layout between the icon and the right-hand buttons.
-                    pos_hint: {'x': (icon_container.width + dp(5)) / action_bar.width, 'center_y': 0.5}
+                    pos_hint: {'x': (icon_container.width + dp(5)) / max(action_bar.width, 1), 'center_y': 0.5}
                     size_hint: None, 1
                     width: right_buttons.x - icon_container.right
                     Label:
