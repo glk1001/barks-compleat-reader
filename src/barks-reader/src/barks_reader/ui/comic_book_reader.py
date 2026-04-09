@@ -28,10 +28,11 @@ from screeninfo import get_monitors
 from barks_reader.core.archive_page_image_source import ArchivePageImageSource
 from barks_reader.core.comic_book_loader import ComicBookLoader
 from barks_reader.core.comic_book_page_info import DisplayUnit
-from barks_reader.core.reader_consts_and_types import CLOSE_TO_ZERO, COMIC_BEGIN_PAGE
+from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, get_win_dimensions
 
+from .action_bar_helpers import hide_action_bar, show_action_bar
 from .platform_window_utils import WindowManager
 from .reader_keyboard_nav import (
     KEY_ESCAPE,
@@ -646,6 +647,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     action_bar_title = StringProperty()
+    # Width of the inner action bar (centered to match the comic image's aspect-fit width).
     action_bar_width = NumericProperty(1)  # must be non-zero for initial build
     app_icon_filepath = StringProperty()
     is_fullscreen = BooleanProperty(defaultvalue=False)
@@ -682,7 +684,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._action_bar_fullscreen_exit_icon = str(
             self._reader_settings.sys_file_paths.get_barks_reader_fullscreen_exit_icon_file()
         )
-        self.action_bar_width = self.width
+        self._reset_action_bar_width()
 
         self._was_fullscreen_on_entry = False
         self._fullscreen_button = self.ids.fullscreen_button
@@ -769,12 +771,12 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             f" self._was_fullscreen_on_entry = {self._was_fullscreen_on_entry}."
             f" self._goto_fullscreen_on_comic_read = {self._goto_fullscreen_on_comic_read}."
             f" self.is_fullscreen = {self.is_fullscreen}."
-            f" self._action_bar.width = {self._action_bar.width}."
-            f" self._action_bar.opacity = {self._action_bar.opacity}."
+            f" self._action_bar.height = {self._action_bar.height}."
         )
 
-    # Handle top margin press here, not the comic book reader. This allows
-    # top margin button presses to take precedence over top margin touches.
+    # In fullscreen with the action bar hidden, a click in the top margin reveals the bar.
+    # When the action bar is visible, top-region clicks pass through to the action bar buttons
+    # (which sit naturally above the image area thanks to the BoxLayout reflow).
     @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
         self._clear_menu_on_touch()
@@ -783,12 +785,9 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             # Another button has been pressed.
             return True
 
-        if (
-            self.comic_book_reader.is_click_in_top_margin(touch)
-            and WindowManager.is_fullscreen_now()
-        ):
-            logger.debug("Toggling action bar visibility on top margin press.")
-            self._toggle_action_bar_visibility()
+        if self._is_action_bar_hidden() and self.comic_book_reader.is_click_in_top_margin(touch):
+            logger.debug("Showing action bar on top margin press.")
+            self._show_action_bar()
             return True
 
         return False
@@ -817,14 +816,14 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         return True
 
     def _is_action_bar_hidden(self) -> bool:
-        return WindowManager.is_fullscreen_now() and self._action_bar.opacity < CLOSE_TO_ZERO
+        return self._action_bar.disabled
 
     def _on_action_bar_shown_for_menu(self) -> None:
-        self._toggle_action_bar_visibility()
+        self._show_action_bar()
 
     def _on_action_bar_hidden_after_menu(self) -> None:
         if not self._is_action_bar_hidden():
-            self._toggle_action_bar_visibility()
+            self._hide_action_bar()
 
     def close_comic_book_reader(self) -> None:
         self._is_closing = True
@@ -893,6 +892,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._finish_closing_comic()
 
         self.is_fullscreen = False
+        self._update_widget_states()
         self._update_fullscreen_button()
         logger.info("Entered windowed mode on ComicBookReaderScreen.")
 
@@ -919,18 +919,10 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
                 f"Finishing goto fullscreen on ComicBookReaderScreen but Window fullscreen"
                 f" = '{WindowManager.get_screen_mode_now()}'. "
             )
-        if self.height < Window.height:
-            logger.info(
-                f"Finishing goto fullscreen on ComicBookReaderScreen but self.height"
-                f" = {self.height} < Window.height = {Window.height} = Window.height."
-            )
-            self.height = Window.height
-            logger.info(f"New height too low: adjusted new fullscreen height = {self.height}.")
 
         self.is_fullscreen = True
+        self._update_widget_states()
         self._update_fullscreen_button()
-
-        self.height = max(self.height, Window.height)
 
         logger.info("Entered fullscreen mode on ComicBookReaderScreen.")
 
@@ -946,10 +938,6 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def _on_window_resize(self, _window: WindowBase, width: int, height: int) -> None:
         if not self._active:
             return
-
-        if WindowManager.is_fullscreen_now():
-            w, ch = get_win_dimensions(height - ACTION_BAR_SIZE_Y, Window.width)
-            self.size = w, ch + ACTION_BAR_SIZE_Y
 
         logger.debug(
             f"Active comic book reader window resize event:"
@@ -971,26 +959,26 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self.comic_book_reader.set_reader_navigation_regions(Window.width, Window.height)
 
     def _reset_action_bar_width(self) -> None:
+        # Match the inner action bar's width to the comic image's aspect-fit width so it
+        # spans only the visible image area, not the full monitor width in fullscreen.
         w, _ = get_win_dimensions(Window.height - ACTION_BAR_SIZE_Y, Window.width)
-        self.action_bar_width = max(0, w)
-        logger.debug(f"self.action_bar_width = {self.action_bar_width}")
+        self.action_bar_width = max(1, w)
+
+    def _show_action_bar(self) -> None:
+        """Show the action bar if currently hidden. No-op if already visible."""
+        if self._is_action_bar_hidden():
+            show_action_bar(self._action_bar)
 
     def _hide_action_bar(self) -> None:
         """Hide the action bar if currently visible. No-op if already hidden."""
         if not self._is_action_bar_hidden():
-            self._toggle_action_bar_visibility()
-
-    def _toggle_action_bar_visibility(self) -> None:
-        logger.debug(f"Toggling action bar visibility. Current opacity: {self._action_bar.opacity}")
-        # Toggle the opacity. The .kv file handles the rest.
-        self._action_bar.opacity = 1.0 if self._action_bar.opacity < CLOSE_TO_ZERO else 0.0
-        logger.debug(f"Toggling action bar visibility. New opacity: {self._action_bar.opacity}")
+            hide_action_bar(self._action_bar)
 
     def _update_widget_states(self) -> None:
         if self.is_fullscreen:
-            self._action_bar.opacity = 0
+            hide_action_bar(self._action_bar)
         else:
-            self._action_bar.opacity = 1
+            show_action_bar(self._action_bar)
 
         self._update_fullscreen_button()
 

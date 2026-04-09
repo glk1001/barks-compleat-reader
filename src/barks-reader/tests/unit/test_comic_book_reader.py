@@ -295,40 +295,17 @@ class TestComicBookReaderScreen:
         screen.comic_book_reader = MagicMock()
         screen.comic_book_reader.is_click_in_top_margin.return_value = True
 
-        # Mock super().on_touch_down to return False (not handled by children)
-        # We can't easily mock super(), but since we patched FloatLayout.add_widget,
-        # the screen has no children (except what we added manually if any).
-        # But wait, we mocked ComicBookReader class, so screen.comic_book_reader is a mock.
-        # However, screen itself is a ReaderScreen (Screen).
-        # Screen.on_touch_down delegates to children.
-
-        # To avoid super().on_touch_down issues, we can mock it if possible,
-        # or ensure children don't handle it.
-        # Since we patched add_widget, the screen might be empty or have mocks.
-
-        # Let's assume super().on_touch_down returns False.
-
-        with patch.object(  # noqa: SIM117
-            barks_reader.ui.comic_book_reader.WindowManager,
-            "is_fullscreen_now",
-            return_value=True,
-        ):
-            # We need to spy on _toggle_action_bar_visibility
-            with patch.object(screen, "_toggle_action_bar_visibility") as mock_toggle:
+        # Case: action bar hidden -> top margin click should show it.
+        with patch.object(screen, "_is_action_bar_hidden", return_value=True):  # noqa: SIM117
+            with patch.object(screen, "_show_action_bar") as mock_show:
                 handled = screen.on_touch_down(touch)
                 assert handled is True
-                mock_toggle.assert_called_once()
+                mock_show.assert_called_once()
 
-        # Case: Not fullscreen
-        with patch.object(  # noqa: SIM117
-            barks_reader.ui.comic_book_reader.WindowManager,
-            "is_fullscreen_now",
-            return_value=False,
-        ):
-            with patch.object(screen, "_toggle_action_bar_visibility") as mock_toggle:
+        # Case: action bar visible -> top margin click is NOT consumed (passes through to
+        # the action bar buttons).
+        with patch.object(screen, "_is_action_bar_hidden", return_value=False):  # noqa: SIM117
+            with patch.object(screen, "_show_action_bar") as mock_show:
                 handled = screen.on_touch_down(touch)
-                # Should return False because top margin click is only handled in fullscreen
-                # UNLESS super() handles it.
-                # If super() returns False, then False.
                 assert handled is False
-                mock_toggle.assert_not_called()
+                mock_show.assert_not_called()

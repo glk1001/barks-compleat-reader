@@ -1,133 +1,135 @@
 <ComicBookReaderScreen>:
     pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
-    # Use a FloatLayout as the root to allow stacking the ActionBar on top of the comic image.
-    FloatLayout:
-        # A custom title bar using a FloatLayout to separate clickable and draggable regions.
-        # Container for the custom action bar.
-        # Its height is controlled by the opacity, which is driven by the is_fullscreen state.
+    # Vertical BoxLayout reflow pattern (matches MainScreen): the action bar is a fixed-height
+    # row that collapses to height 0 when hidden via hide_action_bar(). The image_layout fills
+    # whatever space is left, so no padding/opacity cascade is needed.
+    BoxLayout:
+        id: main_layout
+        orientation: "vertical"
+
+        # Action bar row. Visibility is driven from Python via show_action_bar/hide_action_bar
+        # (height + opacity + disabled). Do NOT bind opacity here.
+        # The outer FloatLayout fills the row full-width so the height-collapse trick works.
+        # The inner FloatLayout (action_bar_inner) is centered and sized to match the comic
+        # image aspect-fit width — that's what carries the visible background and content.
         FloatLayout:
             id: action_bar
-            pos_hint: {"center_x": 0.5, 'top': 1}
-            size_hint: None, None
+            size_hint_y: None
             height: root.ACTION_BAR_HEIGHT
-            width: root.action_bar_width
-            # In fullscreen, the bar is invisible.
-            opacity: 0 if root.is_fullscreen else 1
-            canvas.before:
-                Color:
-                    rgba: 0.12, 0.12, 0.12, 1  # Standard ActionBar background color
-                Rectangle:
-                    pos: self.pos
-                    size: self.size
-
-            # --- 1. Non-Clickable Icon Area ---
-            # Use a RelativeLayout to correctly position the child Image.
-            RelativeLayout:
-                id: icon_container
-                # Position the icon button from the left edge.
-                pos_hint: {'x': dp(2) / root.width, 'center_y': 0.5}
-                size_hint: None, None
-                height: action_bar.height
-                width: dp(70)
-
-                Image:
-                    source: root.app_icon_filepath
-                    size_hint: None, None
-                    # Make the image slightly smaller than its parent to create padding.
-                    size: (self.parent.width - dp(8), self.parent.height - dp(8))
-                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                    fit_mode: "contain"
-                    mipmap: True
-
-            # --- 2. Draggable Title Area ---
-            RelativeLayout:
-                # Position this layout between the icon and the right-hand buttons.
-                pos_hint: {'x': (icon_container.width + dp(5)) / action_bar.width, 'center_y': 0.5}
-                size_hint: None, 1
-                width: right_buttons.x - icon_container.right
-                Label:
-                    text: root.action_bar_title
-                    color: root.ACTION_BAR_TITLE_COLOR
-                    markup: True
-                    text_size: self.size
-                    halign: 'left'
-                    valign: 'middle'
-
-            # --- 3. Clickable Buttons Area (Not Draggable) ---
-            BoxLayout:
-                id: right_buttons
-                pos_hint: {'right': 1, 'y': 0}
-                size_hint_x: None
-                width: self.minimum_width
-                padding: [dp(5), 0]
-
-                # A separator widget
-                Widget:
-                    size_hint_x: None
-                    width: dp(1)
-                    canvas:
-                        Color:
-                            rgba: 0.3, 0.3, 0.3, 1
-                        Rectangle:
-                            pos: self.center_x, self.y
-                            size: self.width, self.height
-
-                BoxLayout:
-                    size_hint_x: None
-                    width: self.minimum_width
-                    spacing: dp(2)
-
-                    BarButton:
-                        id: close_button
-                        text: "Close"
-                        icon: str(sys_paths.get_barks_reader_close_icon_file())
-                        important: True
-                        on_release: root.close_comic_book_reader()
-
-                    BarButton:
-                        id: fullscreen_button
-                        text: "Fullscreen"
-                        icon: str(sys_paths.get_barks_reader_fullscreen_icon_file())
-                        important: True
-                        on_press: root.toggle_screen_mode()
-
-                    BarButton:
-                        id: double_page_button
-                        text: "Double Page"
-                        icon: str(sys_paths.get_barks_reader_double_page_icon_file())
-                        important: True
-                        on_release: root.toggle_double_page_mode()
-
-                    BarButton:
-                        id: goto_start_button
-                        text: "Goto Start"
-                        icon: str(sys_paths.get_barks_reader_goto_start_icon_file())
-                        important: True
-                        on_release: root.comic_book_reader.goto_start_page()
-
-                    BarButton:
-                        id: goto_end_button
-                        text: "Goto End"
-                        icon: str(sys_paths.get_barks_reader_goto_end_icon_file())
-                        important: True
-                        on_release: root.comic_book_reader.goto_last_page()
-
-                    BarButton:
-                        id: goto_page_button
-                        text: "Goto Page"
-                        icon: str(sys_paths.get_barks_reader_goto_icon_file())
-                        important: True
-                        on_release: root.comic_book_reader.goto_page()
-
-        # This is the container where the ComicBookReader widget will be added from Python.
-        # It always fills the parent FloatLayout, and its padding makes space for the action bar.
-        BoxLayout:
-            orientation: "vertical"
-            size_hint: 1, 1
-            pos_hint: {'x': 0, 'y': 0}
-            # Add padding to the top to make space for the ActionBar when it's visible.
-            padding: [0, 0 if action_bar.opacity < 0.5 else action_bar.height, 0, 0]
 
             FloatLayout:
-                id: image_layout
+                id: action_bar_inner
+                pos_hint: {'center_x': 0.5, 'top': 1}
+                size_hint: None, 1
+                width: root.action_bar_width
+                canvas.before:
+                    Color:
+                        rgba: 0.12, 0.12, 0.12, 1  # Standard ActionBar background color
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+
+                # --- 1. Non-Clickable Icon Area ---
+                # Use a RelativeLayout to correctly position the child Image.
+                RelativeLayout:
+                    id: icon_container
+                    # Position the icon button from the left edge.
+                    pos_hint: {'x': dp(2) / max(action_bar_inner.width, 1), 'center_y': 0.5}
+                    size_hint: None, None
+                    height: action_bar_inner.height
+                    width: dp(70)
+
+                    Image:
+                        source: root.app_icon_filepath
+                        size_hint: None, None
+                        # Make the image slightly smaller than its parent to create padding.
+                        size: (self.parent.width - dp(8), self.parent.height - dp(8))
+                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                        fit_mode: "contain"
+                        mipmap: True
+
+                # --- 2. Title Area ---
+                RelativeLayout:
+                    # Position this layout between the icon and the right-hand buttons.
+                    pos_hint: {'x': (icon_container.width + dp(5)) / max(action_bar_inner.width, 1), 'center_y': 0.5}
+                    size_hint: None, 1
+                    width: right_buttons.x - icon_container.right
+                    Label:
+                        text: root.action_bar_title
+                        color: root.ACTION_BAR_TITLE_COLOR
+                        markup: True
+                        text_size: self.size
+                        halign: 'left'
+                        valign: 'middle'
+
+                # --- 3. Clickable Buttons Area ---
+                BoxLayout:
+                    id: right_buttons
+                    pos_hint: {'right': 1, 'y': 0}
+                    size_hint_x: None
+                    width: self.minimum_width
+                    padding: [dp(5), 0]
+
+                    # A separator widget
+                    Widget:
+                        size_hint_x: None
+                        width: dp(1)
+                        canvas:
+                            Color:
+                                rgba: 0.3, 0.3, 0.3, 1
+                            Rectangle:
+                                pos: self.center_x, self.y
+                                size: self.width, self.height
+
+                    BoxLayout:
+                        size_hint_x: None
+                        width: self.minimum_width
+                        spacing: dp(2)
+
+                        BarButton:
+                            id: close_button
+                            text: "Close"
+                            icon: str(sys_paths.get_barks_reader_close_icon_file())
+                            important: True
+                            on_release: root.close_comic_book_reader()
+
+                        BarButton:
+                            id: fullscreen_button
+                            text: "Fullscreen"
+                            icon: str(sys_paths.get_barks_reader_fullscreen_icon_file())
+                            important: True
+                            on_press: root.toggle_screen_mode()
+
+                        BarButton:
+                            id: double_page_button
+                            text: "Double Page"
+                            icon: str(sys_paths.get_barks_reader_double_page_icon_file())
+                            important: True
+                            on_release: root.toggle_double_page_mode()
+
+                        BarButton:
+                            id: goto_start_button
+                            text: "Goto Start"
+                            icon: str(sys_paths.get_barks_reader_goto_start_icon_file())
+                            important: True
+                            on_release: root.comic_book_reader.goto_start_page()
+
+                        BarButton:
+                            id: goto_end_button
+                            text: "Goto End"
+                            icon: str(sys_paths.get_barks_reader_goto_end_icon_file())
+                            important: True
+                            on_release: root.comic_book_reader.goto_last_page()
+
+                        BarButton:
+                            id: goto_page_button
+                            text: "Goto Page"
+                            icon: str(sys_paths.get_barks_reader_goto_icon_file())
+                            important: True
+                            on_release: root.comic_book_reader.goto_page()
+
+        # Image content row — fills remaining space. The inner ComicBookReader is added here
+        # from Python and will fit_mode="contain" the comic image inside this area.
+        FloatLayout:
+            id: image_layout
