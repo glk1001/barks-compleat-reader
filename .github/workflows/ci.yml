@@ -58,9 +58,7 @@ jobs:
           STUB
 
       - name: Type check with ty
-        # Ignore unused-ignore-comment: ty: ignore[unresolved-import] comments are needed
-        # locally (Pyarmor-encrypted source) but become unused here (plain stubs).
-        run: uv run ty check --ignore unused-ignore-comment
+        run: uv run ty check
 
   import-layering:
     name: Import Layering

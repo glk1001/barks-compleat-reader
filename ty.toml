@@ -6,8 +6,6 @@ root = ["."]
 exclude = [
     "**/experiments",
     "**/scraps",
-    "**/benchmarks",
-    "**/pyarmor_runtime_000000",
 ]
 
 [[overrides]]
@@ -15,3 +13,4 @@ include = ["src/barks-reader/tests/unit/test_main_screen_nav.py"]
 
 [overrides.rules]
 unused-ignore-comment = "ignore"
+

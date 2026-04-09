@@ -3,7 +3,6 @@ extend = ".ruff-base.toml"
 exclude = [
     "experiments",
     "scraps",
-    "**/src/comic-utils/src/comic_utils/pyarmor_runtime_000000/*",
     "**/src/comic-utils/src/comic_utils/get_panel_bytes.py",
 ]
 

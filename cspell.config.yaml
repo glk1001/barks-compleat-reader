@@ -14,7 +14,6 @@ ignorePaths:
   - "data/**"
   - "**/experiments/**"
   - "**/scraps/**"
-  - "**/pyarmor_runtime_000000/**"
   - "**/get_panel_bytes.py"
 
 # Enable Python built-in dictionary plus word lists (global and per-package)

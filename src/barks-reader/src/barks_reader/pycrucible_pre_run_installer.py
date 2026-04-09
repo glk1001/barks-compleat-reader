@@ -62,8 +62,8 @@ def main() -> None:
 
         config_info = ConfigInfo()
 
-        logger.info("Checking that pyarmor is correctly installed.")
-        _check_for_correct_pyarmor()
+        logger.info("Checking that Cython compiled module is correctly installed.")
+        _check_cython_compiled_module_is_correct()
 
         # Make sure we're running in the right directory. Pycrucible has been set with the options:
         #       extract_to_temp = false  # noqa: ERA001
@@ -130,11 +130,11 @@ def _show_success_message(config_info: ConfigInfo, fanta_volumes_dir: Path | Non
     )
 
 
-def _check_for_correct_pyarmor() -> None:
+def _check_cython_compiled_module_is_correct() -> None:
     from barks_reader.core.reader_utils import safe_import_check  # noqa: PLC0415
 
     if not safe_import_check("comic_utils.get_panel_bytes"):
-        _handle_pyarmor_sanity_check_failed()
+        _handle_cython_compiled_module_sanity_check_failed()
 
 
 def _check_barks_reader_exe_location(config_info: ConfigInfo, parent_executable: str) -> None:
@@ -238,8 +238,8 @@ def _set_installer_failed_flag() -> None:
     )
 
 
-def _handle_pyarmor_sanity_check_failed() -> None:
-    message = "The PyArmor-protected module failed to load."
+def _handle_cython_compiled_module_sanity_check_failed() -> None:
+    message = "The Cython-protected module failed to load."
     details = (
         "A critical part of The Barks Reader has not been configured properly. This is an"
         " unexpected error and you'll need to contact The Barks Reader developer for a fix."

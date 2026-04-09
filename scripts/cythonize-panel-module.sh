@@ -22,12 +22,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Clean prior build artifacts (including any PyArmor leftovers).
+# Clean prior build artifacts.
 rm -f "$PY_FILE"
 rm -f "${PACKAGE_DIR}/${MODULE_BASENAME}".*.so
 rm -f "${PACKAGE_DIR}/${MODULE_BASENAME}".*.pyd
 rm -f "${PACKAGE_DIR}/${MODULE_BASENAME}.pyd"
-rm -rf "${PACKAGE_DIR}/pyarmor_runtime_000000"
 rm -rf "${PACKAGE_DIR}/__pycache__"
 
 if [ ! -f "$TEMPLATE_IN" ]; then

@@ -25,7 +25,6 @@ labellayout
 longpath
 nonbody
 overscroll
-pyarmor
 pycrucible
 pydroid
 relativelayout
