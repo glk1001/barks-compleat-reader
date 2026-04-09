@@ -30,8 +30,10 @@ class AppWindowGeometryHelper:
     """Manages window geometry: monitor changes, aspect ratio, rotation, and resize guarding."""
 
     def __init__(self) -> None:
+        # Window.left/top can be off-screen at startup on Windows; fall back to primary.
         initial_monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
-        assert initial_monitor is not None
+        if initial_monitor is None:
+            initial_monitor = SCREEN_METRICS.get_primary_screen_info()
         self._current_monitor: ScreenInfo = initial_monitor
         self._resize_event: Any = None
         self._resize_requested_size = 0, 0
@@ -63,8 +65,11 @@ class AppWindowGeometryHelper:
         if Window.fullscreen:
             return
 
+        # On Windows, on_move can fire with a position that doesn't map to any monitor
+        # (e.g. during shutdown or while the OS is repositioning the window). Skip those.
         monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
-        assert monitor is not None
+        if monitor is None:
+            return
         if monitor.display == self._current_monitor.display:
             return
 
