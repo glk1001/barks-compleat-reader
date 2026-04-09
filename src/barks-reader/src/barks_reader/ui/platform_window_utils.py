@@ -19,6 +19,9 @@ if TYPE_CHECKING:
 
 # Small timeout for non-Windows platforms to let the window system settle.
 _RESTORE_GEOMETRY_TIMEOUT = 0.05
+# Windows needs longer: SDL fullscreen-exit fires a resize storm that can starve the
+# Kivy Clock and leave the window at its hit-test minimum before our restore runs.
+_RESTORE_GEOMETRY_TIMEOUT_WIN = 0.25
 
 
 class FullscreenEnum(Enum):
@@ -312,10 +315,23 @@ class WindowManager:
 
             Clock.schedule_once(sync_and_finish, 0)
 
-        Clock.schedule_once(restore, _RESTORE_GEOMETRY_TIMEOUT)
+        Clock.schedule_once(restore, _RESTORE_GEOMETRY_TIMEOUT_WIN)
 
     def _win32_set_window_rect(self, x: int, y: int, width: int, height: int) -> None:
-        """Set window position and size using Win32 MoveWindow API."""
+        """Set window position and size using Win32 MoveWindow API.
+
+        On Windows, SDL2's fullscreen-exit path can fire a storm of resize events that
+        starve the Kivy Clock and leave the window collapsed at its hit-test minimum
+        (e.g. ``(136, 45)`` — the action bar's minimum content size) before our scheduled
+        MoveWindow even runs. In that state MoveWindow can return success but be a no-op.
+
+        Recovery strategy when the post-MoveWindow rect doesn't match the request:
+          1. Set ``Window.size`` / ``Window.left`` / ``Window.top`` via Kivy. This goes
+             through SDL_SetWindowSize and bypasses whatever sticky Win32 state was
+             blocking MoveWindow.
+          2. Schedule a deferred MoveWindow retry on the next frame so the Win32 outer
+             rect matches the saved state once SDL has settled.
+        """
         if not self._win32_hwnd:
             return
 
@@ -325,23 +341,56 @@ class WindowManager:
             # Verify the operation succeeded.
             actual_rect = self.RECT()
             self._GetWindowRect(self._win32_hwnd, actual_rect)
+            actual_w = actual_rect.right - actual_rect.left
+            actual_h = actual_rect.bottom - actual_rect.top
 
-            log_func = (
-                logger.info
-                if self._saved_window_state.is_saved_state_same_as_current()
-                else logger.warning
-            )
+            mismatch = (actual_w, actual_h) != (width, height)
+            log_func = logger.warning if mismatch else logger.info
 
             log_func(
                 f"Win32: Requested size = ({width}, {height}); "
-                f" Actual size = ({(actual_rect.right - actual_rect.left)},"
-                f" {(actual_rect.bottom - actual_rect.top)}); "
+                f" Actual size = ({actual_w}, {actual_h}); "
                 f" Requested pos = ({x}, {y});"
                 f" Actual pos = ({actual_rect.left}, {actual_rect.top}), "
                 f"Result = {result}."
             )
+
+            if mismatch:
+                self._recover_from_failed_move(x, y, width, height)
         except Exception as e:  # noqa: BLE001
             logger.error(f"Win32 MoveWindow failed: {e}")
+
+    def _recover_from_failed_move(self, x: int, y: int, width: int, height: int) -> None:
+        """Fallback when MoveWindow returns success but the window stays at the wrong size.
+
+        Uses Kivy's Window properties (which go through SDL_SetWindowSize) to break the
+        sticky state, then schedules a deferred MoveWindow retry to confirm the outer
+        Win32 rect matches the saved state.
+        """
+        logger.warning(
+            f"Win32 MoveWindow no-op detected; recovering via Window.size = ({width}, {height})."
+        )
+        try:
+            Window.size = (width, height)
+            Window.left = x
+            Window.top = y
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Window.size recovery failed: {e}")
+
+        def retry(_dt: float) -> None:
+            if not self._win32_hwnd:
+                return
+            self._MoveWindow(self._win32_hwnd, x, y, width, height, True)  # noqa: FBT003
+            actual_rect = self.RECT()
+            self._GetWindowRect(self._win32_hwnd, actual_rect)
+            logger.info(
+                f"Win32 retry: Requested size = ({width}, {height}); "
+                f" Actual size = ({actual_rect.right - actual_rect.left},"
+                f" {actual_rect.bottom - actual_rect.top}); "
+                f" Actual pos = ({actual_rect.left}, {actual_rect.top})."
+            )
+
+        Clock.schedule_once(retry, 0)
 
 
 def log_screen_metrics() -> None:
