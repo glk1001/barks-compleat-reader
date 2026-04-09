@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import ctypes
-import os
-from ctypes import c_long, wintypes
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Protocol
 
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -19,9 +16,6 @@ if TYPE_CHECKING:
 
 # Small timeout for non-Windows platforms to let the window system settle.
 _RESTORE_GEOMETRY_TIMEOUT = 0.05
-# Windows needs longer: SDL fullscreen-exit fires a resize storm that can starve the
-# Kivy Clock and leave the window at its hit-test minimum before our restore runs.
-_RESTORE_GEOMETRY_TIMEOUT_WIN = 0.25
 
 
 class FullscreenEnum(Enum):
@@ -48,6 +42,64 @@ class WindowState:
         return FullscreenEnum.FULLSCREEN if Window.fullscreen else FullscreenEnum.WINDOWED
 
 
+class WindowBackend(Protocol):
+    """Platform-specific save/restore for the application window."""
+
+    def save_state(self, state: WindowState) -> None:
+        """Populate ``state`` with the current window geometry."""
+        ...
+
+    def schedule_restore(
+        self,
+        state: WindowState,
+        on_first_resize: Callable[[], None],
+        on_done: Callable[[], None],
+    ) -> None:
+        """Schedule a restore of the window to ``state``'s saved geometry.
+
+        ``on_first_resize`` is invoked once the resize has been issued (used by callers
+        to apply size hints), and ``on_done`` is invoked once the restore has settled.
+        """
+        ...
+
+
+class KivyWindowBackend:
+    """Default backend that uses Kivy's ``Window`` properties.
+
+    Used on Linux/Mac and as a fallback when Win32 initialization fails.
+    """
+
+    def save_state(self, state: WindowState) -> None:
+        state.save_state_now()
+
+    def schedule_restore(
+        self,
+        state: WindowState,
+        on_first_resize: Callable[[], None],
+        on_done: Callable[[], None],
+    ) -> None:
+        def restore(*_args) -> None:  # noqa: ANN002
+            Window.size = state.size
+            Window.left, Window.top = state.pos
+            on_first_resize()
+            on_done()
+
+        Clock.schedule_once(restore, _RESTORE_GEOMETRY_TIMEOUT)
+
+
+def _create_window_backend() -> WindowBackend:
+    """Return the best available backend for the current platform."""
+    if PLATFORM == Platform.WIN:
+        # Lazy import to keep the Win32 module out of import graphs on other platforms.
+        from .platform_window_win32 import Win32WindowBackend  # noqa: PLC0415
+
+        win32_backend = Win32WindowBackend()
+        if win32_backend.is_available():
+            return win32_backend
+        logger.warning("Win32 backend unavailable; falling back to Kivy backend.")
+    return KivyWindowBackend()
+
+
 class WindowManager:
     def __init__(
         self,
@@ -66,10 +118,7 @@ class WindowManager:
         assert self._on_finished_goto_fullscreen_mode is not None
 
         self._saved_window_state = WindowState()
-        self._win32_hwnd = None
-
-        if PLATFORM == Platform.WIN:
-            self._init_win32()
+        self._backend: WindowBackend = _create_window_backend()
 
     @staticmethod
     def is_fullscreen_now() -> bool:
@@ -83,13 +132,7 @@ class WindowManager:
         self._saved_window_state = WindowState()
 
     def save_state_now(self) -> None:
-        # On Windows with Win32, save the actual window rectangle (including decorations).
-        # On other platforms, use Kivy's reported values.
-        if PLATFORM == Platform.WIN and self._win32_hwnd:
-            self._save_state_win32()
-        else:
-            self._saved_window_state.save_state_now()
-
+        self._backend.save_state(self._saved_window_state)
         logger.info(
             f"{self._client}: Saved window state: size = {self._saved_window_state.size}, "
             f"pos = {self._saved_window_state.pos}"
@@ -133,27 +176,14 @@ class WindowManager:
             f" Window.size = {Window.size}, pos = ({Window.left}, {Window.top})."
         )
 
-        if PLATFORM == Platform.WIN and self._win32_hwnd:
-            self._restore_window_win32()
-        else:
-            self._restore_window_kivy()
-
-    def _restore_window_kivy(self) -> None:
-        """Restore window using Kivy API - simple for non-Windows platforms."""
-
-        def restore(*_args) -> None:  # noqa: ANN002
-            Window.size = self._saved_window_state.size
-            Window.left, Window.top = self._saved_window_state.pos
-
-            if self._on_goto_windowed_mode_first_resize:
-                self._on_goto_windowed_mode_first_resize()
-
-            self._finish_restore()
-
-        Clock.schedule_once(restore, _RESTORE_GEOMETRY_TIMEOUT)
+        self._backend.schedule_restore(
+            self._saved_window_state,
+            self._on_goto_windowed_mode_first_resize,
+            self._finish_restore,
+        )
 
     def _finish_restore(self) -> None:
-        """Log final state and call completion callback."""
+        """Log final state and call the windowed-mode completion callback."""
         log_func = (
             logger.info
             if self._saved_window_state.is_saved_state_same_as_current()
@@ -168,229 +198,6 @@ class WindowManager:
         )
 
         Clock.schedule_once(lambda _dt: self._on_finished_goto_windowed_mode(), 0)
-
-    def _init_win32(self) -> None:
-        """Initialize Win32 handles for direct window manipulation."""
-        try:
-            # Define RECT structure
-            class RECT(ctypes.Structure):
-                _fields_: ClassVar[list[tuple[str, type[c_long]]]] = [
-                    ("left", wintypes.LONG),
-                    ("top", wintypes.LONG),
-                    ("right", wintypes.LONG),
-                    ("bottom", wintypes.LONG),
-                ]
-
-            self.RECT = RECT
-
-            found_hwnd = ctypes.windll.user32.GetActiveWindow()  # ty: ignore[unresolved-attribute]
-            if found_hwnd:
-                logger.info(f"Found hwnd using GetActiveWindow: {hex(found_hwnd)}")
-            else:
-                found_hwnd = self._find_win32_hwnd_by_enum_windows()
-
-            if not found_hwnd:
-                logger.warning("Could not get Win32 handle for Kivy window.")
-                return
-
-            self._win32_hwnd = found_hwnd
-
-            # Load a fresh instance of user32.dll to avoid conflicts with Kivy's Win32 calls,
-            user32 = ctypes.WinDLL("user32", use_last_error=True)  # ty: ignore[unresolved-attribute]
-
-            # Set up Win32 functions with proper type signatures
-            self._MoveWindow = user32.MoveWindow
-            self._MoveWindow.argtypes = [
-                wintypes.HWND,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                wintypes.BOOL,
-            ]
-            self._MoveWindow.restype = wintypes.BOOL
-
-            self._GetWindowRect = user32.GetWindowRect
-            self._GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(RECT)]
-            self._GetWindowRect.restype = wintypes.BOOL
-
-            self._GetClientRect = user32.GetClientRect
-            self._GetClientRect.argtypes = [wintypes.HWND, ctypes.POINTER(RECT)]
-            self._GetClientRect.restype = wintypes.BOOL
-
-            logger.info(f"Win32 window handle initialized: {hex(self._win32_hwnd)}.")
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"Could not initialize Win32 handles: {e}")
-            self._win32_hwnd = None
-
-    @staticmethod
-    def _find_win32_hwnd_by_enum_windows() -> Any:  # noqa: ANN401
-        # Find our window by enumerating all windows and matching process ID.
-        GetWindowThreadProcessId = ctypes.windll.user32.GetWindowThreadProcessId  # noqa: N806  # ty: ignore[unresolved-attribute]
-        EnumWindows = ctypes.windll.user32.EnumWindows  # noqa: N806  # ty: ignore[unresolved-attribute]
-        IsWindowVisible = ctypes.windll.user32.IsWindowVisible  # noqa: N806  # ty: ignore[unresolved-attribute]
-        GetClassNameW = ctypes.windll.user32.GetClassNameW  # noqa: N806  # ty: ignore[unresolved-attribute]
-
-        current_pid = os.getpid()
-        found_hwnd = 0
-
-        def enum_callback(hwnd_candidate, _lparam) -> bool:  # noqa: ANN001
-            nonlocal found_hwnd
-            if IsWindowVisible(hwnd_candidate):
-                pid = wintypes.DWORD()
-                GetWindowThreadProcessId(hwnd_candidate, ctypes.byref(pid))
-
-                if pid.value == current_pid:
-                    # Check if it's an SDL window (Kivy uses SDL2)
-                    class_name = ctypes.create_unicode_buffer(256)
-                    GetClassNameW(hwnd_candidate, class_name, 256)
-
-                    if class_name.value.startswith("SDL"):
-                        found_hwnd = hwnd_candidate
-                        logger.info(
-                            f"Found SDL window:"
-                            f" HWND = {hex(hwnd_candidate)}, class = {class_name.value}."
-                        )
-                        return False  # Stop enumeration
-            return True  # Continue enumeration
-
-        # Create callback and enumerate windows.
-        ENUM_WINDOWS_PROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)  # noqa: N806  # ty: ignore[unresolved-attribute]
-        callback_ptr = ENUM_WINDOWS_PROC(enum_callback)
-        EnumWindows(callback_ptr, 0)
-
-        if found_hwnd:
-            logger.info(f"Found window via EnumWindows: {hex(found_hwnd)}.")
-
-        return found_hwnd
-
-    def _save_state_win32(self) -> None:
-        """Save window state using Win32 to get accurate window rectangle."""
-        try:
-            window_rect = self.RECT()
-            client_rect = self.RECT()
-            self._GetWindowRect(self._win32_hwnd, window_rect)
-            self._GetClientRect(self._win32_hwnd, client_rect)
-
-            self._saved_window_state.screen = (
-                FullscreenEnum.FULLSCREEN if Window.fullscreen else FullscreenEnum.WINDOWED
-            )
-            self._saved_window_state.pos = (window_rect.left, window_rect.top)
-            self._saved_window_state.size = (
-                window_rect.right - window_rect.left,
-                window_rect.bottom - window_rect.top,
-            )
-
-            logger.debug(
-                f"Win32: Saved window rect size = ({window_rect.right - window_rect.left},"
-                f" {window_rect.bottom - window_rect.top}),"
-                f" pos = ({window_rect.left}, {window_rect.top}),"
-                f" client size = ({client_rect.right}, {client_rect.bottom})."
-            )
-        except Exception as e:  # noqa: BLE001
-            logger.error(f"Win32 save state failed, falling back to Kivy: {e}")
-            self._saved_window_state.save_state_now()
-
-    def _restore_window_win32(self) -> None:
-        """Restore window using direct Win32 calls - atomic and reliable."""
-
-        def restore(*_args) -> None:  # noqa: ANN002
-            # Single atomic Win32 call to set position and size.
-            self._win32_set_window_rect(
-                self._saved_window_state.pos[0],
-                self._saved_window_state.pos[1],
-                self._saved_window_state.size[0],
-                self._saved_window_state.size[1],
-            )
-
-            # Let Kivy sync its internal state
-            def sync_and_finish(*_args) -> None:  # noqa: ANN002
-                # Trigger Kivy to update its internal values from the actual window
-                _ = Window.size  # Read to sync
-
-                if self._on_goto_windowed_mode_first_resize:
-                    self._on_goto_windowed_mode_first_resize()
-
-                self._finish_restore()
-
-            Clock.schedule_once(sync_and_finish, 0)
-
-        Clock.schedule_once(restore, _RESTORE_GEOMETRY_TIMEOUT_WIN)
-
-    def _win32_set_window_rect(self, x: int, y: int, width: int, height: int) -> None:
-        """Set window position and size using Win32 MoveWindow API.
-
-        On Windows, SDL2's fullscreen-exit path can fire a storm of resize events that
-        starve the Kivy Clock and leave the window collapsed at its hit-test minimum
-        (e.g. ``(136, 45)`` — the action bar's minimum content size) before our scheduled
-        MoveWindow even runs. In that state MoveWindow can return success but be a no-op.
-
-        Recovery strategy when the post-MoveWindow rect doesn't match the request:
-          1. Set ``Window.size`` / ``Window.left`` / ``Window.top`` via Kivy. This goes
-             through SDL_SetWindowSize and bypasses whatever sticky Win32 state was
-             blocking MoveWindow.
-          2. Schedule a deferred MoveWindow retry on the next frame so the Win32 outer
-             rect matches the saved state once SDL has settled.
-        """
-        if not self._win32_hwnd:
-            return
-
-        try:
-            result = self._MoveWindow(self._win32_hwnd, x, y, width, height, True)  # noqa: FBT003
-
-            # Verify the operation succeeded.
-            actual_rect = self.RECT()
-            self._GetWindowRect(self._win32_hwnd, actual_rect)
-            actual_w = actual_rect.right - actual_rect.left
-            actual_h = actual_rect.bottom - actual_rect.top
-
-            mismatch = (actual_w, actual_h) != (width, height)
-            log_func = logger.warning if mismatch else logger.info
-
-            log_func(
-                f"Win32: Requested size = ({width}, {height}); "
-                f" Actual size = ({actual_w}, {actual_h}); "
-                f" Requested pos = ({x}, {y});"
-                f" Actual pos = ({actual_rect.left}, {actual_rect.top}), "
-                f"Result = {result}."
-            )
-
-            if mismatch:
-                self._recover_from_failed_move(x, y, width, height)
-        except Exception as e:  # noqa: BLE001
-            logger.error(f"Win32 MoveWindow failed: {e}")
-
-    def _recover_from_failed_move(self, x: int, y: int, width: int, height: int) -> None:
-        """Fallback when MoveWindow returns success but the window stays at the wrong size.
-
-        Uses Kivy's Window properties (which go through SDL_SetWindowSize) to break the
-        sticky state, then schedules a deferred MoveWindow retry to confirm the outer
-        Win32 rect matches the saved state.
-        """
-        logger.warning(
-            f"Win32 MoveWindow no-op detected; recovering via Window.size = ({width}, {height})."
-        )
-        try:
-            Window.size = (width, height)
-            Window.left = x
-            Window.top = y
-        except Exception as e:  # noqa: BLE001
-            logger.error(f"Window.size recovery failed: {e}")
-
-        def retry(_dt: float) -> None:
-            if not self._win32_hwnd:
-                return
-            self._MoveWindow(self._win32_hwnd, x, y, width, height, True)  # noqa: FBT003
-            actual_rect = self.RECT()
-            self._GetWindowRect(self._win32_hwnd, actual_rect)
-            logger.info(
-                f"Win32 retry: Requested size = ({width}, {height}); "
-                f" Actual size = ({actual_rect.right - actual_rect.left},"
-                f" {actual_rect.bottom - actual_rect.top}); "
-                f" Actual pos = ({actual_rect.left}, {actual_rect.top})."
-            )
-
-        Clock.schedule_once(retry, 0)
 
 
 def log_screen_metrics() -> None:
