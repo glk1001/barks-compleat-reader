@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
 from kivy.core.window import Window, WindowBase
 from loguru import logger
 
-from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO, get_win_dimensions
+from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import (
     SCREEN_METRICS,
     ScreenInfo,
@@ -14,22 +15,40 @@ from barks_reader.core.screen_metrics import (
     get_best_window_height_fit,
 )
 
-from .reader_ui_classes import ACTION_BAR_SIZE_Y
-
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 MOVE_SETTLE_DELAY = 4.0
-MIN_WINDOW_WIDTH = 900
 RESIZE_CORRECTION_DELAY = 0.1
 ROTATION_POLL_INTERVAL = 2.0
 ROTATION_FIT_FRACTION = 0.9
 
 
+@dataclass(frozen=True, slots=True)
+class WindowSizeConstraints:
+    """Geometry constants the window helper needs, injected at construction time.
+
+    Decoupling these from module-level imports lets the helper be unit-tested with
+    arbitrary values and removes the implicit assumption that the action bar is
+    always visible (the previous degenerate-size guard hardcoded the bar height).
+    """
+
+    aspect_ratio: float
+    """Content aspect ratio: ``content_height / content_width`` (e.g. comic page)."""
+
+    chrome_height: int
+    """Pixels of non-content chrome below the content (e.g. action bar)."""
+
+    min_window_width: int
+    """Floor for the window width before the helper falls back to a minimum size."""
+
+
 class AppWindowGeometryHelper:
     """Manages window geometry: monitor changes, aspect ratio, rotation, and resize guarding."""
 
-    def __init__(self) -> None:
+    def __init__(self, constraints: WindowSizeConstraints) -> None:
+        self._constraints = constraints
+
         # Window.left/top can be off-screen at startup on Windows; fall back to primary.
         initial_monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
         if initial_monitor is None:
@@ -88,10 +107,9 @@ class AppWindowGeometryHelper:
         new_height = min(round(scale_factor * new_max_height), new_max_height)
 
         if new_height != old_height:
-            new_width, content_h = get_win_dimensions(
-                new_height - ACTION_BAR_SIZE_Y, monitor.width_pixels
-            )
-            new_height = content_h + ACTION_BAR_SIZE_Y
+            chrome = self._constraints.chrome_height
+            new_width, content_h = get_win_dimensions(new_height - chrome, monitor.width_pixels)
+            new_height = content_h + chrome
             self._schedule_guarded_resize(new_width, new_height)
 
     # ruff: noqa: ERA001
@@ -178,29 +196,32 @@ class AppWindowGeometryHelper:
             height: Current window height reported by the resize event.
 
         """
+        chrome = self._constraints.chrome_height
+        min_width = self._constraints.min_window_width
+
         # Bail out on degenerate transient sizes (e.g. ``(0, 45)`` events that fire during
         # the Windows fullscreen-exit resize storm). Without this guard we would compute
         # a degenerate correction and schedule ``Window.size = (0, 45)``, which Win32 then
         # clamps to its hit-test minimum and the window stays tiny.
-        if width <= 0 or height <= ACTION_BAR_SIZE_Y:
+        if width <= 0 or height <= chrome:
             return
 
         monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
         monitor_w = monitor.width_pixels if monitor else 0
-        correct_width, content_h = get_win_dimensions(height - ACTION_BAR_SIZE_Y, monitor_w)
-        correct_height = content_h + ACTION_BAR_SIZE_Y
-        if correct_width < MIN_WINDOW_WIDTH:
-            min_height = round(MIN_WINDOW_WIDTH * COMIC_PAGE_ASPECT_RATIO) + ACTION_BAR_SIZE_Y
+        correct_width, content_h = get_win_dimensions(height - chrome, monitor_w)
+        correct_height = content_h + chrome
+        if correct_width < min_width:
+            min_height = round(min_width * self._constraints.aspect_ratio) + chrome
             monitor = SCREEN_METRICS.get_monitor_for_pos(Window.left, Window.top)
             monitor_max_h = get_best_window_height_fit(monitor.height_pixels) if monitor else 0
             if min_height <= monitor_max_h:
-                correct_width = MIN_WINDOW_WIDTH
+                correct_width = min_width
                 correct_height = min_height
 
         # Refuse to schedule a degenerate correction. Can happen when ``Window.left``/``top``
         # is off-screen (monitor lookup returns ``None``) and the recovery branch above
-        # was unable to fall back to a valid (MIN_WINDOW_WIDTH, min_height) pair.
-        if correct_width <= 0 or correct_height <= ACTION_BAR_SIZE_Y:
+        # was unable to fall back to a valid (min_width, min_height) pair.
+        if correct_width <= 0 or correct_height <= chrome:
             logger.debug(
                 f"Skipping aspect-ratio correction:"
                 f" width = {width}, height = {height},"
@@ -240,17 +261,16 @@ class AppWindowGeometryHelper:
 
         self._current_monitor = monitor
 
+        chrome = self._constraints.chrome_height
         new_height = calculate_fitted_window_height(
             screen_width=monitor.width_pixels,
             screen_height=monitor.height_pixels,
-            aspect_ratio=COMIC_PAGE_ASPECT_RATIO,
-            action_bar_height=ACTION_BAR_SIZE_Y,
+            aspect_ratio=self._constraints.aspect_ratio,
+            action_bar_height=chrome,
             fit_fraction=ROTATION_FIT_FRACTION,
         )
-        new_width, content_h = get_win_dimensions(
-            new_height - ACTION_BAR_SIZE_Y, monitor.width_pixels
-        )
-        new_height = content_h + ACTION_BAR_SIZE_Y
+        new_width, content_h = get_win_dimensions(new_height - chrome, monitor.width_pixels)
+        new_height = content_h + chrome
 
         center_x = monitor.monitor_x + (monitor.width_pixels - new_width) // 2
         center_y = monitor.monitor_y + (monitor.height_pixels - new_height) // 2

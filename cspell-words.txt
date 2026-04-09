@@ -9,6 +9,7 @@ autotune
 autouse
 axisbelow
 bboxes
+behaviour
 blit
 browsable
 bufferfmt

@@ -27,7 +27,7 @@ from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 from barks_reader.core.screen_metrics import SCREEN_METRICS
 from barks_reader.core.settings_notifier import settings_notifier
 
-from .app_window_geometry import AppWindowGeometryHelper
+from .app_window_geometry import AppWindowGeometryHelper, WindowSizeConstraints
 from .bottom_title_view_screen import (
     BOTTOM_TITLE_VIEW_SCREEN_KV_FILE,
     BottomTitleViewScreen,
@@ -105,7 +105,13 @@ class BarksReaderApp(App):
 
         self._main_screen: MainScreen | None = None
 
-        self._window_geometry = AppWindowGeometryHelper()
+        self._window_geometry = AppWindowGeometryHelper(
+            WindowSizeConstraints(
+                aspect_ratio=COMIC_PAGE_ASPECT_RATIO,
+                chrome_height=ACTION_BAR_SIZE_Y,
+                min_window_width=900,
+            )
+        )
 
     def suppress_aspect_ratio_correction(self, duration: float = 2.0) -> None:
         """Temporarily suppress aspect ratio corrections.
