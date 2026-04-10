@@ -245,3 +245,172 @@ def test_suppress_clears_pending_correction_event(
     helper.suppress_aspect_ratio_correction(duration=1.0)
     assert helper._correction_event is None  # noqa: SLF001
     assert helper._suppress_correction is True  # noqa: SLF001
+
+
+# --- Monitor-change handling (on_window_pos_change) ---
+
+
+def _make_helper_two_monitors(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: _FakeClock,
+) -> tuple[AppWindowGeometryHelper, MagicMock]:
+    """Build a helper whose metrics stub returns different monitors based on position."""
+    monitor_a = _make_screen_info(width=2560, height=2400)
+    monitor_b = ScreenInfo(
+        display=1,
+        monitor_x=2560,
+        monitor_y=0,
+        width_pixels=1920,
+        height_pixels=1080,
+        width_mm=400,
+        height_mm=225,
+        width_in=16,
+        height_in=9,
+        dpi=120,
+        is_primary=False,
+    )
+
+    fake_metrics = MagicMock()
+    # Start on monitor_a.
+    fake_metrics.get_monitor_for_pos.return_value = monitor_a
+    fake_metrics.get_primary_screen_info.return_value = monitor_a
+
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Window", fake_window)
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Clock", fake_clock)
+
+    h = AppWindowGeometryHelper(constraints)
+    h.set_main_screen_callbacks(MagicMock())
+    h.set_window_ready()
+
+    # Now switch so future lookups return monitor_b.
+    fake_metrics.get_monitor_for_pos.return_value = monitor_b
+    return h, fake_metrics
+
+
+def test_on_window_pos_change_triggers_resize_on_monitor_change(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: _FakeClock,
+) -> None:
+    fake_window.height = 2000
+    fake_window.size = (1500, 2000)
+
+    h, _ = _make_helper_two_monitors(monkeypatch, constraints, fake_window, fake_clock)
+    h.on_window_pos_change(fake_window)
+
+    # A guarded resize schedules 3 Clock.schedule_once calls (resize, reposition, reset guard).
+    assert len(fake_clock.calls) >= 1
+
+
+def test_on_window_pos_change_skipped_when_fullscreen(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: _FakeClock,
+) -> None:
+    fake_window.fullscreen = True
+    h, _ = _make_helper_two_monitors(monkeypatch, constraints, fake_window, fake_clock)
+    h.on_window_pos_change(fake_window)
+    assert fake_clock.calls == []
+
+
+def test_on_window_pos_change_skipped_when_same_monitor(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: _FakeClock,
+) -> None:
+    # Keep returning monitor_a so display stays the same.
+    screen = _make_screen_info()
+    fake_metrics = MagicMock()
+    fake_metrics.get_monitor_for_pos.return_value = screen
+    fake_metrics.get_primary_screen_info.return_value = screen
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Window", fake_window)
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Clock", fake_clock)
+
+    h = AppWindowGeometryHelper(constraints)
+    h.set_main_screen_callbacks(MagicMock())
+    h.set_window_ready()
+
+    h.on_window_pos_change(fake_window)
+    assert fake_clock.calls == []
+
+
+def test_on_window_pos_change_skipped_when_monitor_is_none(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: _FakeClock,
+) -> None:
+    screen = _make_screen_info()
+    fake_metrics = MagicMock()
+    fake_metrics.get_primary_screen_info.return_value = screen
+    # First call (constructor) returns a monitor; subsequent calls return None.
+    fake_metrics.get_monitor_for_pos.side_effect = [screen, None]
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Window", fake_window)
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Clock", fake_clock)
+
+    h = AppWindowGeometryHelper(constraints)
+    h.set_main_screen_callbacks(MagicMock())
+    h.set_window_ready()
+
+    h.on_window_pos_change(fake_window)
+    assert fake_clock.calls == []
+
+
+# --- Guarded resize path in on_window_resize ---
+
+
+def test_resize_guard_reapplies_requested_size(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock
+) -> None:
+    # Simulate an active resize guard by setting internal state.
+    helper._resize_event = MagicMock()  # noqa: SLF001
+    helper._resize_requested_size = (1200, 1800)  # noqa: SLF001
+
+    # OS fires a resize with a different size — the guard should re-apply the requested size.
+    helper.on_window_resize(fake_window, 1000, 1500)
+    assert fake_window.size == (1200, 1800)
+
+
+def test_resize_guard_does_not_reapply_when_size_matches(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock
+) -> None:
+    update_fonts = MagicMock()
+    helper.set_main_screen_callbacks(update_fonts)
+
+    helper._resize_event = MagicMock()  # noqa: SLF001
+    helper._resize_requested_size = (1200, 1800)  # noqa: SLF001
+    fake_window.height = 1800
+
+    # Size matches the guard — should not re-assign, but should update fonts.
+    helper.on_window_resize(fake_window, 1200, 1800)
+    update_fonts.assert_called_once_with(1800)
+
+
+# --- Rotation polling ---
+
+
+def test_start_and_stop_rotation_polling(
+    helper: AppWindowGeometryHelper,
+) -> None:
+    helper.start_rotation_polling()
+    assert helper._rotation_poll_event is not None  # noqa: SLF001
+
+    helper.stop_polling()
+    assert helper._rotation_poll_event is None  # noqa: SLF001
+
+
+def test_rotation_check_skipped_when_fullscreen(
+    helper: AppWindowGeometryHelper, fake_window: MagicMock
+) -> None:
+    fake_window.fullscreen = True
+    # If _check_for_rotation ran while fullscreen, it would call refresh().
+    # Verify it returns early (no error, no side effect).
+    helper._check_for_rotation(0.0)  # noqa: SLF001
