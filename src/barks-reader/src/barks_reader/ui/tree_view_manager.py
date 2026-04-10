@@ -92,7 +92,9 @@ class TreeViewManager:
         with self.suppress_view_state_changes():
             self._tree_view_screen.deselect_and_close_open_nodes()
             self._tree_view_screen.open_all_parent_nodes(node)
-            self._tree_view_screen.select_node(node)
+
+        self._tree_view_screen.open_node(node)
+        self._tree_view_screen.select_node(node)
 
         if isinstance(node, TitleTreeViewNode):
             self._handle_title_node_selection(node)
@@ -132,10 +134,10 @@ class TreeViewManager:
         self._tree_view_screen.select_node(node)
         self._tree_view_screen.scroll_to_node(node)
 
-    def open_all_parent_nodes(self, node: ButtonTreeViewNode) -> None:
+    def open_node_and_parent_nodes(self, node: ButtonTreeViewNode) -> None:
         # noinspection PyArgumentList
         with self.suppress_view_state_changes():
-            self._tree_view_screen.open_all_parent_nodes(node)
+            self._tree_view_screen.open_node_and_all_parent_nodes(node)
 
     def go_back_to_previous_node(self) -> None:
         if not self._tree_view_screen.ids.reader_tree_view.previous_selected_node:
@@ -205,6 +207,9 @@ class TreeViewManager:
 
         if not self._allow_view_state_change or isinstance(node, TitleTreeViewNode):
             logger.info(f"Node opened but not allowing state change: '{node.get_name()}'.")
+            # No stabilization will run on this path, so lift the suppression
+            # that track_node just set — otherwise end_suppression is never called.
+            self._collapse_overlay.end_suppression()
             return
 
         # 1) Collapse any previously-open group (reduces height shocks).

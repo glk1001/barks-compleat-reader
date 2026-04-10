@@ -185,7 +185,7 @@ class NavigationCoordinator:
         if back_node is not None:
             self._tree_view_screen.ids.reader_tree_view.set_back_node(back_node)
 
-        self._tree_view_manager.open_all_parent_nodes(year_node)
+        self._tree_view_manager.open_node_and_parent_nodes(year_node)
         title_node = cast(
             "BaseTreeViewNode",
             find_tree_view_title_node(year_node.nodes, image_info.from_title),

@@ -100,7 +100,7 @@ class TestTreeViewScreen:
         # parent_nodes list will be [node, parent, root]
         # Then reversed: root, parent, node.
 
-        tree_view_screen.open_all_parent_nodes(node)
+        tree_view_screen.open_node_and_all_parent_nodes(node)
 
         # root is open, so toggle_node shouldn't be called for it.
         # parent is closed, so toggle_node should be called.

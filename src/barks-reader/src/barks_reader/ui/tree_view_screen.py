@@ -75,13 +75,17 @@ class TreeViewScreen(BoxLayout):
     def select_node(self, node: BaseTreeViewNode) -> None:
         self.ids.reader_tree_view.select_node(node)
 
+    def open_node(self, node: BaseTreeViewNode) -> None:
+        if not node.is_open:
+            self.ids.reader_tree_view.toggle_node(node)
+
     def scroll_to_node(self, node: BaseTreeViewNode) -> None:
         self.ids.scroll_view.scroll_to(node, padding=50)
 
     def open_all_parent_nodes(self, node: BaseTreeViewNode) -> None:
-        # Get all the parent nodes first, then open from top parent down to last child.
+        # Get all the parent nodes first, then open from top parent down to last parent.
         parent_nodes = []
-        parent_node = node
+        parent_node = node.parent_node
         while parent_node and isinstance(parent_node, BaseTreeViewNode):
             parent_nodes.append(parent_node)
             parent_node = parent_node.parent_node
@@ -89,6 +93,14 @@ class TreeViewScreen(BoxLayout):
         for parent_node in reversed(parent_nodes):
             if not parent_node.is_open:
                 self.ids.reader_tree_view.toggle_node(parent_node)
+
+    def open_node_and_all_parent_nodes(self, node: BaseTreeViewNode) -> None:
+        # Get all the parent nodes first, then open from top parent down to last child.
+
+        self.open_all_parent_nodes(node)
+
+        if not node.is_open:
+            self.ids.reader_tree_view.toggle_node(node)
 
     def deselect_and_close_open_nodes(self) -> int:
         selected_node = self.ids.reader_tree_view.selected_node
