@@ -20,6 +20,7 @@ colorfmt
 compresslevel
 configfile
 consolelog
+cpus
 cythonize
 docstrings
 dotenv
@@ -66,6 +67,7 @@ screenmanager
 separator
 splittable
 srce
+sunos
 sysfs
 testpaths
 textbbox
