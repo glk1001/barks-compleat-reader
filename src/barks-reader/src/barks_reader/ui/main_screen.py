@@ -400,7 +400,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         Clock.schedule_once(lambda _dt: self._nav.enter_bottom_focus_if_index_visible(), 0)
 
     def on_action_bar_collapse(self) -> None:
-        self._tree_view_manager.deselect_and_close_open_nodes()
+        self._tree_view_manager.deselect_and_close_open_nodes(from_collapse_all=True)
 
     def on_action_bar_change_view_images(self) -> None:
         self.app_icon_filepath = str(self._random_title_images.get_random_reader_app_icon_file())

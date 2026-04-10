@@ -35,6 +35,7 @@ if TYPE_CHECKING:
 
     from barks_reader.core.system_file_paths import SystemFilePaths
 
+    from .collapse_parent_overlay import CollapseParentOverlay
     from .navigation_coordinator import NavigationCoordinator
     from .reader_ui_classes import ReaderTreeView
     from .screen_bundle import ScreenBundle
@@ -69,6 +70,12 @@ class TreeViewManager:
         self._speech_words_node: ButtonTreeViewNode | None = None
 
         self._statistics_node: ButtonTreeViewNode | None = None
+
+        self._tree_view_screen.setup_collapse_overlay(self._on_collapse_overlay_pressed)
+
+    @property
+    def _collapse_overlay(self) -> CollapseParentOverlay:
+        return self._tree_view_screen.ids.collapse_parent_overlay
 
     def activate_node(self, node: BaseTreeViewNode) -> None:
         """Activate a node as if pressed, without collapsing the rest of the tree."""
@@ -107,13 +114,23 @@ class TreeViewManager:
             if saved_view_state is not None:
                 self._view_state_manager.set_view_state(saved_view_state)
 
-    def deselect_and_close_open_nodes(self) -> None:
+    def deselect_and_close_open_nodes(self, *, from_collapse_all: bool = False) -> None:
         # noinspection PyArgumentList
         with self.suppress_view_state_changes():
             num_opened_nodes = self._tree_view_screen.deselect_and_close_open_nodes()
 
         if num_opened_nodes > 0:
             self._view_state_manager.set_view_state(ViewStates.INITIAL)
+
+        if from_collapse_all:
+            self._collapse_overlay.clear_tracking()
+
+    def _on_collapse_overlay_pressed(self, node: ButtonTreeViewNode) -> None:
+        """Handle a tap on the collapse-parent overlay bar."""
+        if node.is_open:
+            self._tree_view_screen.ids.reader_tree_view.toggle_node(node)
+        self._tree_view_screen.select_node(node)
+        self._tree_view_screen.scroll_to_node(node)
 
     def open_all_parent_nodes(self, node: ButtonTreeViewNode) -> None:
         # noinspection PyArgumentList
@@ -122,7 +139,7 @@ class TreeViewManager:
 
     def go_back_to_previous_node(self) -> None:
         if not self._tree_view_screen.ids.reader_tree_view.previous_selected_node:
-            self.deselect_and_close_open_nodes()
+            self.deselect_and_close_open_nodes(from_collapse_all=True)
             return
 
         logger.info(
@@ -159,6 +176,9 @@ class TreeViewManager:
             self.allow_view_state_change()
 
     def on_node_collapsed(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
+        # The tracked node may have been collapsed (e.g. via left-arrow key).
+        self._collapse_overlay.recheck_visibility()
+
         # Check allow state change flag or is leaf/title row.
         if not self._allow_view_state_change or isinstance(node, TitleTreeViewNode):
             logger.info(f"Node collapsed but not allowing state change: '{node.get_name()}'.")
@@ -177,6 +197,11 @@ class TreeViewManager:
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
         logger.info(f"Node expanded: '{node.get_name()}'.")
+
+        # Always track the expanded node for the collapse overlay, even when
+        # view-state changes are suppressed (e.g. during goto-title navigation).
+        if not isinstance(node, TitleTreeViewNode):
+            self._collapse_overlay.track_node(node)
 
         if not self._allow_view_state_change or isinstance(node, TitleTreeViewNode):
             logger.info(f"Node opened but not allowing state change: '{node.get_name()}'.")
@@ -293,6 +318,7 @@ class TreeViewManager:
     ) -> None:
         # If user collapsed or navigated away, stop.
         if not parent_node.is_open:
+            self._collapse_overlay.end_suppression()
             return
 
         def _resched() -> None:
@@ -304,6 +330,8 @@ class TreeViewManager:
                     ),
                     0,
                 )
+            else:
+                self._collapse_overlay.end_suppression()
 
         if not scroll_view.children:
             _resched()
@@ -337,6 +365,7 @@ class TreeViewManager:
         # How far did the parent drift? Positive means it moved DOWN on screen.
         delta_px = current_offset_px - target_offset_px
         if abs(delta_px) < 0.5:  # noqa: PLR2004
+            self._collapse_overlay.end_suppression()
             return  # nothing to adjust
 
         # Convert pixel delta to normalized scroll_y delta:
@@ -344,6 +373,7 @@ class TreeViewManager:
         #  - Moving content up by +delta_px means increase scroll_y.
         denominator = cont_h - viewport_h
         if denominator <= 0:
+            self._collapse_overlay.end_suppression()
             return
 
         delta_norm = delta_px / denominator
@@ -351,6 +381,7 @@ class TreeViewManager:
 
         # Apply in one shot (no animation to avoid visible bounce)
         scroll_view.scroll_y = new_scroll_y
+        self._collapse_overlay.end_suppression()
 
     @staticmethod
     def _clamp01(v: float) -> float:

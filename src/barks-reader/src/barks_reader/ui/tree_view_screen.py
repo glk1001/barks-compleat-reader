@@ -25,6 +25,8 @@ if TYPE_CHECKING:
 
     from barks_reader.core.reader_settings import ReaderSettings
 
+    from .reader_ui_classes import ButtonTreeViewNode
+
 TREE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 
@@ -50,6 +52,12 @@ class TreeViewScreen(BoxLayout):
         settings_notifier.register_callback(
             BARKS_READER_SECTION, SHOW_TOP_VIEW_TITLE_INFO, self.on_change_show_current_title
         )
+
+    def setup_collapse_overlay(self, on_collapse: Callable[[ButtonTreeViewNode], None]) -> None:
+        """Wire up the collapse-parent overlay after KV post-init."""
+        overlay = self.ids.collapse_parent_overlay
+        overlay.setup(self.ids.scroll_view)
+        overlay.on_collapse_request = on_collapse
 
     def set_title(self, title: Titles | None) -> None:
         self.current_title_str = "" if title is None else BARKS_TITLES[title]

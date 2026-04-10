@@ -32,6 +32,7 @@ from .bottom_title_view_screen import (
     BOTTOM_TITLE_VIEW_SCREEN_KV_FILE,
     BottomTitleViewScreen,
 )
+from .collapse_parent_overlay import COLLAPSE_PARENT_OVERLAY_KV_FILE
 from .comic_book_reader import get_barks_comic_reader_screen
 from .document_reader import get_document_reader_screen
 from .entity_index_screen import EntityIndexScreen
@@ -246,6 +247,7 @@ class BarksReaderApp(App):
         Builder.load_file(str(SEARCH_SCREEN_KV_FILE))
         Builder.load_file(str(MAIN_SCREEN_KV_FILE))
         Builder.load_file(str(GOTO_TITLE_OVERLAY_KV_FILE))
+        Builder.load_file(str(COLLAPSE_PARENT_OVERLAY_KV_FILE))
 
         root = self._build_screens()
 
