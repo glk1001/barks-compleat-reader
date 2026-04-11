@@ -75,6 +75,7 @@ def fake_clock() -> MagicMock:
     clock = MagicMock()
 
     # Make schedule_once invoke its callback immediately.
+    # noinspection PyUnusedLocal
     def immediate_schedule(callback: Callable[..., None], timeout: float = 0) -> MagicMock:  # noqa: ARG001
         callback(0.0)
         return MagicMock()
@@ -298,6 +299,7 @@ class TestKivyWindowBackend:
 
         fake_clock = MagicMock()
 
+        # noinspection PyUnusedLocal
         def run_callback(callback: Callable[..., None], timeout: float = 0) -> MagicMock:  # noqa: ARG001
             callback(0.0)
             return MagicMock()

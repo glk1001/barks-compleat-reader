@@ -69,11 +69,12 @@ class KivyWindowBackend:
     Used on Linux/Mac and as a fallback when Win32 initialization fails.
     """
 
-    def save_state(self, state: WindowState) -> None:
+    @staticmethod
+    def save_state(state: WindowState) -> None:
         state.save_state_now()
 
+    @staticmethod
     def schedule_restore(
-        self,
         state: WindowState,
         on_first_resize: Callable[[], None],
         on_done: Callable[[], None],

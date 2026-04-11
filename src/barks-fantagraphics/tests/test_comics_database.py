@@ -12,6 +12,7 @@ from barks_fantagraphics.comics_database import (
     get_fanta_restored_ocr_prelim_volume_dir,
     get_fanta_title_for_volume,
 )
+from barks_fantagraphics.comics_helpers import validate_ini_files_against_barks_titles
 from barks_fantagraphics.fanta_comics_info import (
     FANTAGRAPHICS_DIRNAME,
     FANTAGRAPHICS_FIXES_DIRNAME,
@@ -83,6 +84,11 @@ class TestGetStoryTitlesDir:
         story_titles.mkdir()
         result = _get_story_titles_dir(tmp_path)  # type: ignore[arg-type]
         assert result == story_titles
+
+
+class TestComicBookIniFiles:
+    def test_all_ini_files_are_valid(self) -> None:
+        validate_ini_files_against_barks_titles()
 
 
 # ---------------------------------------------------------------------------

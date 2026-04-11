@@ -1,10 +1,12 @@
+from configparser import ConfigParser, ExtendedInterpolation
 from pathlib import Path
 
 import typer
 from intspan import intspan
 from PIL import Image, ImageDraw
 
-from .barks_titles import get_safe_title
+from .barks_title_utils import get_safe_title, get_title_str_from_filename
+from .comic_book_info import BARKS_TITLE_DICT
 from .comics_database import ComicsDatabase
 from .comics_utils import get_titles_sorted_by_submission_date
 from .fanta_comics_info import FantaComicBookInfo
@@ -141,3 +143,22 @@ def get_comic_titles(volumes_str: str, title_str: str) -> tuple[ComicsDatabase, 
     comics_database = ComicsDatabase()
     titles = get_titles(comics_database, volumes, title_str)
     return comics_database, titles
+
+
+def validate_ini_files_against_barks_titles() -> None:
+    comics_database = ComicsDatabase()
+    config = ConfigParser(interpolation=ExtendedInterpolation())
+
+    for file in comics_database._ini_files:  # noqa: SLF001
+        ini_file = comics_database.get_story_titles_dir() / file
+        config.read(ini_file)
+
+        story_title = get_title_str_from_filename(file)
+        if story_title not in BARKS_TITLE_DICT:
+            msg = f'Ini story title "{story_title}" not in BARKS_TITLE_DICT'
+            raise ValueError(msg)
+
+        title_in_ini = get_safe_title(config["info"]["title"])
+        if title_in_ini not in ("", story_title):
+            msg = f'Ini title "{title_in_ini}" != story title "{story_title}"'
+            raise ValueError(msg)

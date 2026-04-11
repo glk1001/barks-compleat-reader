@@ -42,6 +42,7 @@ def _test_imports_ui(item: pytest.Item) -> bool:
     return any(prefix in source for prefix in ("from barks_reader.ui", "from kivy"))
 
 
+# noinspection PyUnusedLocal
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:  # noqa: ARG001
     """Skip UI tests on headless CI where Kivy cannot create an OpenGL context."""
     if not _HEADLESS_CI:

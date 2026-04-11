@@ -3,7 +3,7 @@
 These tests focus on ``_enforce_aspect_ratio`` -- the core decision logic that
 gates whether a window resize triggers a correction. The recent Windows fix
 (commit 190427c) added the degenerate-size guard at the top of this method,
-and this file pins down its behaviour so future refactors do not regress it.
+and this file pins down its behavior so future refactors do not regress it.
 
 Skipped automatically on headless CI by ``conftest.py`` (Kivy cannot create
 an OpenGL context without a display).
@@ -56,10 +56,10 @@ class _FakeClock:
         # Return a mock with .cancel() so the helper's debounce code works.
         return MagicMock()
 
+    @staticmethod
     def schedule_interval(
-        self,
-        callback: Callable[[float], None],  # noqa: ARG002
-        interval: float,  # noqa: ARG002
+        _callback: Callable[[float], None],
+        _interval: float,
     ) -> MagicMock:
         return MagicMock()
 

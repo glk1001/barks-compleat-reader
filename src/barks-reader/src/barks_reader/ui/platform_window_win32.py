@@ -38,6 +38,7 @@ class _RECT(ctypes.Structure):
     ]
 
 
+# noinspection PyCallingNonCallable
 class Win32WindowBackend:
     """Save/restore the window via direct Win32 calls."""
 
