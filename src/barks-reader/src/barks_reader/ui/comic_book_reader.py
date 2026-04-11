@@ -32,7 +32,11 @@ from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, get_win_dimensions
 
-from .action_bar_helpers import hide_action_bar, show_action_bar
+from .action_bar_helpers import (
+    ActionBarVisibility,
+    is_action_bar_visible,
+    set_action_bar_visibility,
+)
 from .platform_window_utils import WindowManager
 from .reader_keyboard_nav import (
     KEY_ESCAPE,
@@ -816,7 +820,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         return True
 
     def _is_action_bar_hidden(self) -> bool:
-        return self._action_bar.disabled
+        return not is_action_bar_visible(self._action_bar)
 
     def _on_action_bar_shown_for_menu(self) -> None:
         self._show_action_bar()
@@ -966,19 +970,19 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
     def _show_action_bar(self) -> None:
         """Show the action bar if currently hidden. No-op if already visible."""
-        if self._is_action_bar_hidden():
-            show_action_bar(self._action_bar)
+        if not is_action_bar_visible(self._action_bar):
+            set_action_bar_visibility(self._action_bar, ActionBarVisibility.VISIBLE)
 
     def _hide_action_bar(self) -> None:
         """Hide the action bar if currently visible. No-op if already hidden."""
-        if not self._is_action_bar_hidden():
-            hide_action_bar(self._action_bar)
+        if is_action_bar_visible(self._action_bar):
+            set_action_bar_visibility(self._action_bar, ActionBarVisibility.HIDDEN)
 
     def _update_widget_states(self) -> None:
-        if self.is_fullscreen:
-            hide_action_bar(self._action_bar)
-        else:
-            show_action_bar(self._action_bar)
+        visibility = (
+            ActionBarVisibility.HIDDEN if self.is_fullscreen else ActionBarVisibility.VISIBLE
+        )
+        set_action_bar_visibility(self._action_bar, visibility)
 
         self._update_fullscreen_button()
 

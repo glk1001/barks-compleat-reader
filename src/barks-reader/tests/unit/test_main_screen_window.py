@@ -106,7 +106,7 @@ class TestOnFinishedGotoWindowedMode:
     def test_updates_button_and_fonts(self, hf: HelperFixture) -> None:
         with (
             patch.object(window_module, "Window") as mock_window,
-            patch.object(window_module, "show_action_bar") as mock_show,
+            patch.object(window_module, "set_action_bar_visibility") as mock_set_vis,
         ):
             mock_window.height = 800
 
@@ -115,7 +115,9 @@ class TestOnFinishedGotoWindowedMode:
             assert hf.helper._fullscreen_button.text == "Fullscreen"
             assert hf.helper._fullscreen_button.icon == "fullscreen.png"
             hf.helper._update_fonts.assert_called_with(800)  # ty: ignore[unresolved-attribute]
-            mock_show.assert_called_once_with(hf.helper._action_bar)
+            mock_set_vis.assert_called_once_with(
+                hf.helper._action_bar, window_module.ActionBarVisibility.VISIBLE
+            )
 
 
 class TestGotoFullscreenMode:
@@ -218,11 +220,15 @@ class TestResizeBinding:
 
 class TestActionBarVisibility:
     def test_hide_action_bar(self, hf: HelperFixture) -> None:
-        with patch.object(window_module, "hide_action_bar") as mock_hide:
+        with patch.object(window_module, "set_action_bar_visibility") as mock_set_vis:
             hf.helper.hide_action_bar()
-            mock_hide.assert_called_once_with(hf.helper._action_bar)
+            mock_set_vis.assert_called_once_with(
+                hf.helper._action_bar, window_module.ActionBarVisibility.HIDDEN
+            )
 
     def test_show_action_bar(self, hf: HelperFixture) -> None:
-        with patch.object(window_module, "show_action_bar") as mock_show:
+        with patch.object(window_module, "set_action_bar_visibility") as mock_set_vis:
             hf.helper.show_action_bar()
-            mock_show.assert_called_once_with(hf.helper._action_bar)
+            mock_set_vis.assert_called_once_with(
+                hf.helper._action_bar, window_module.ActionBarVisibility.VISIBLE
+            )

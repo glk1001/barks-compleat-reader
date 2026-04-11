@@ -8,8 +8,9 @@ from loguru import logger
 
 from barks_reader.core.reader_utils import get_win_dimensions
 
+from .action_bar_helpers import ActionBarVisibility, set_action_bar_visibility
 from .platform_window_utils import WindowManager
-from .reader_ui_classes import ACTION_BAR_SIZE_Y, hide_action_bar, show_action_bar
+from .reader_ui_classes import ACTION_BAR_SIZE_Y
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -140,13 +141,13 @@ class MainScreenWindowHelper:
         self._main_layout.bind(size=self.on_main_layout_size_changed)
 
     def hide_action_bar(self) -> None:
-        hide_action_bar(self._action_bar)
+        set_action_bar_visibility(self._action_bar, ActionBarVisibility.HIDDEN)
         logger.debug(
             f"MainScreen actionbar is hidden: self._action_bar.height = {self._action_bar.height}"
         )
 
     def show_action_bar(self) -> None:
-        show_action_bar(self._action_bar)
+        set_action_bar_visibility(self._action_bar, ActionBarVisibility.VISIBLE)
         logger.debug(
             f"MainScreen actionbar is visible: self.action_bar.height = {self._action_bar.height}"
         )

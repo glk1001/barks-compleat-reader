@@ -3,7 +3,10 @@
 from .action_bar_helpers import (  # noqa: F401
     ACTION_BAR_SIZE_Y,
     ARROW_WIDTH,
+    ActionBarVisibility,
     hide_action_bar,
+    is_action_bar_visible,
+    set_action_bar_visibility,
     show_action_bar,
 )
 from .popup_widgets import (  # noqa: F401
