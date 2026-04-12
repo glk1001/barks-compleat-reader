@@ -859,25 +859,3 @@ def _title_name_from_enum(title: Titles) -> str:
 
 BARKS_TITLES: list[str] = [_title_name_from_enum(t) for t in Titles]
 assert len(BARKS_TITLES) == NUM_TITLES, f"{len(BARKS_TITLES)} != {NUM_TITLES}"
-
-# Late import: comic_book_info imports Titles/BARKS_TITLES/GYRO_GEARLOOSE from this module.
-# The circular import is safe because those symbols are fully defined above this line.
-from .barks_title_utils import (  # noqa: E402, F401
-    BARKS_ISSUE_DICT,
-    FILENAME_TO_TITLE_SPECIAL_CASE_MAP,
-    ONE_PAGERS,
-    TITLE_TO_FILENAME_SPECIAL_CASE_MAP,
-    get_filename_from_title,
-    get_filename_from_title_str,
-    get_safe_title,
-    get_title_str_from_filename,
-)
-from .comic_book_info import (  # noqa: E402
-    BARKS_TITLE_DICT,  # noqa: F401
-    BARKS_TITLE_INFO,  # noqa: F401
-    NON_COMIC_TITLES,  # noqa: F401
-    USEFUL_TITLES,  # noqa: F401
-    ComicBookInfo,  # noqa: F401
-    check_story_submitted_order,  # noqa: F401
-    is_non_comic_title,  # noqa: F401
-)

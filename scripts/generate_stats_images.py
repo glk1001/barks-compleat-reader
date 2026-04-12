@@ -46,7 +46,7 @@ from barks_fantagraphics.barks_tags import (
     TagGroups,
     Tags,
 )
-from barks_fantagraphics.barks_titles import BARKS_TITLE_INFO
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 
 # -- Constants ---------------------------------------------------------------

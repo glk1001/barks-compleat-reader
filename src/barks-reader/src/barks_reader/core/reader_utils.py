@@ -10,7 +10,7 @@ from pathlib import Path, PurePosixPath
 from random import randrange
 from typing import TYPE_CHECKING, Any
 
-from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, Titles
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_DICT
 from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.fanta_comics_info import US_CENSORED_TITLE_ENUMS, FantaComicBookInfo
@@ -19,6 +19,7 @@ from comic_utils.pil_image_utils import PNG_PIL_FORMAT
 from intspan import intspan
 
 if TYPE_CHECKING:
+    from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.pages import CleanPage
     from comic_utils.comic_consts import PanelPath
 

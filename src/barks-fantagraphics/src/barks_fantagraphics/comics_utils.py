@@ -14,7 +14,7 @@ from .comic_issues import ISSUE_NAME
 from .comics_consts import BARKS_ROOT_DIR
 
 if TYPE_CHECKING:
-    from .barks_titles import ComicBookInfo
+    from .comic_book_info import ComicBookInfo
     from .fanta_comics_info import FantaComicBookInfo
 
 
@@ -292,3 +292,11 @@ def get_short_submitted_day_and_month(comic_book_info: ComicBookInfo) -> str:
 def get_backup_file(file: Path) -> Path:
     suffix = file.suffix
     return Path(str(file.with_suffix("")) + "_" + get_timestamp_str(file) + suffix)
+
+
+def get_safe_title(title: str) -> str:
+    """Return a filesystem-safe version of the title string."""
+    safe_title = title.replace("\n", " ")
+    safe_title = safe_title.replace("- ", "-")
+    safe_title = safe_title.replace('"', "")
+    return safe_title  # noqa: RET504

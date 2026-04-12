@@ -4,13 +4,15 @@ import string
 
 import pytest
 from barks_fantagraphics.barks_titles import (
-    BARKS_ISSUE_DICT,
-    BARKS_TITLE_INFO,
     BARKS_TITLES,
     NUM_TITLES,
-    ComicBookInfo,
     Titles,
     _title_name_from_enum,
+)
+from barks_fantagraphics.comic_book_info import (
+    BARKS_ISSUE_DICT,
+    BARKS_TITLE_INFO,
+    ComicBookInfo,
     check_story_submitted_order,
 )
 from barks_fantagraphics.comic_issues import SHORT_ISSUE_NAME, Issues

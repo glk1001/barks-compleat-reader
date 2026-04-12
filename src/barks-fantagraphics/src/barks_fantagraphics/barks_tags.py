@@ -6,12 +6,12 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 from .barks_titles import (
-    BARKS_TITLE_INFO,
     US_1_FC_ISSUE_NUM,
     US_2_FC_ISSUE_NUM,
     US_3_FC_ISSUE_NUM,
     Titles,
 )
+from .comic_book_info import BARKS_TITLE_INFO
 from .comic_issues import Issues
 
 if TYPE_CHECKING:

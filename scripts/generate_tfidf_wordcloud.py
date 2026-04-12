@@ -30,7 +30,7 @@ from wordcloud import WordCloud
 
 mpl.use("Agg")
 
-from barks_fantagraphics.barks_titles import BARKS_TITLE_INFO
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.whoosh_search_engine import SearchEngine
 
 # -- Constants ---------------------------------------------------------------

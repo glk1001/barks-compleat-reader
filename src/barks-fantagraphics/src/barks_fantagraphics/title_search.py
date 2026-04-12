@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 from .barks_tags import (
     BARKS_TAG_ALIASES,
@@ -11,8 +12,11 @@ from .barks_tags import (
     Tags,
     get_all_tags_in_tag_group,
 )
-from .barks_titles import BARKS_ISSUE_DICT, BARKS_TITLE_INFO, Titles
+from .comic_book_info import BARKS_ISSUE_DICT, BARKS_TITLE_INFO
 from .comic_issues import Issues
+
+if TYPE_CHECKING:
+    from .barks_titles import Titles
 
 PREFIX_LEN = 2
 

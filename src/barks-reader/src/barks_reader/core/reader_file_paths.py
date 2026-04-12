@@ -8,10 +8,10 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_titles import (
+from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.comic_book_info import (
     BARKS_TITLE_DICT,
     BARKS_TITLE_INFO,
-    Titles,
     get_filename_from_title,
     get_title_str_from_filename,
 )

@@ -10,13 +10,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
 from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES, TagGroups, Tags
-from barks_fantagraphics.barks_titles import (
-    BARKS_TITLE_DICT,
-    BARKS_TITLES,
-    NON_COMIC_TITLES,
-    ComicBookInfo,
-    Titles,
-)
+from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_DICT, NON_COMIC_TITLES, ComicBookInfo
 from barks_fantagraphics.comics_database import TitleNotFoundError
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,

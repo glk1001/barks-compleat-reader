@@ -9,7 +9,8 @@ from barks_fantagraphics.barks_tags import (
     is_tag_enum,
     is_tag_group_enum,
 )
-from barks_fantagraphics.barks_titles import NON_COMIC_TITLES, Titles
+from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.comic_book_info import NON_COMIC_TITLES
 from barks_fantagraphics.fanta_comics_info import (
     SERIES_CS,
     SERIES_DDA,

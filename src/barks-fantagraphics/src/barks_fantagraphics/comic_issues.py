@@ -74,3 +74,7 @@ ISSUE_NAME_WRAPPED = {
     Issues.USGTD: "Uncle Scrooge\nGoes to\nDisneyland",
     Issues.CID: "Christmas\nin\nDisneyland",
 }
+
+
+def _get_shortest_issue_name(issue_name: Issues) -> str:
+    return "CS" if issue_name == Issues.CS else SHORT_ISSUE_NAME[issue_name]

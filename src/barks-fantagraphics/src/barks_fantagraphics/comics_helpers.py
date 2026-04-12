@@ -5,10 +5,9 @@ import typer
 from intspan import intspan
 from PIL import Image, ImageDraw
 
-from .barks_title_utils import get_safe_title, get_title_str_from_filename
-from .comic_book_info import BARKS_TITLE_DICT
+from .comic_book_info import BARKS_TITLE_DICT, get_title_str_from_filename
 from .comics_database import ComicsDatabase
-from .comics_utils import get_titles_sorted_by_submission_date
+from .comics_utils import get_safe_title, get_titles_sorted_by_submission_date
 from .fanta_comics_info import FantaComicBookInfo
 from .pages import get_sorted_srce_and_dest_pages
 from .panel_boxes import PagePanelBoxes

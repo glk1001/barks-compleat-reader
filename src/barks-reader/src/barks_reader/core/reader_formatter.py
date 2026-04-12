@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Protocol
 import pyphen
 from barks_fantagraphics.barks_extra_info import BARKS_EXTRA_INFO
 from barks_fantagraphics.barks_payments import BARKS_PAYMENTS, PaymentInfo
-from barks_fantagraphics.barks_titles import ComicBookInfo, Titles
+from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
 from barks_fantagraphics.comics_consts import CARL_BARKS_FONT_FILE
 from barks_fantagraphics.comics_utils import (
@@ -25,6 +25,8 @@ from .reader_utils import get_concat_page_nums_str
 from .services import escape_markup
 
 if TYPE_CHECKING:
+    from barks_fantagraphics.comic_book_info import ComicBookInfo
+
     from .reader_colors import Color
 
 LONG_TITLE_SPLITS = {

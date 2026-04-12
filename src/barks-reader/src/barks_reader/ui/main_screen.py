@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_DICT
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window

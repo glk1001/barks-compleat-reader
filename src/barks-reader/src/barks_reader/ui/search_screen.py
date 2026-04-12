@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Self
 
 from barks_fantagraphics.barks_tags import TagGroups
-from barks_fantagraphics.barks_titles import BARKS_TITLE_DICT, BARKS_TITLES, Titles
+from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_DICT
 from barks_fantagraphics.comic_search import ComicSearch, SearchMode
 from kivy.clock import Clock
 from kivy.metrics import dp

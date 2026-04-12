@@ -14,13 +14,8 @@ from comic_utils.comic_consts import (
 )
 from loguru import logger
 
-from .barks_titles import (
-    BARKS_TITLE_DICT,
-    BARKS_TITLES,
-    FILENAME_TO_TITLE_SPECIAL_CASE_MAP,
-    Titles,
-    get_safe_title,
-)
+from .barks_titles import BARKS_TITLES, Titles
+from .comic_book_info import BARKS_TITLE_DICT, FILENAME_TO_TITLE_SPECIAL_CASE_MAP
 from .comics_consts import (
     BOUNDED_SUBDIR,
     IMAGES_SUBDIR,
@@ -40,6 +35,7 @@ from .comics_utils import (
     get_dest_comic_zip_file_stem,
     get_formatted_first_published_str,
     get_formatted_submitted_date,
+    get_safe_title,
 )
 from .fanta_comics_info import (
     CENSORED_TITLES,

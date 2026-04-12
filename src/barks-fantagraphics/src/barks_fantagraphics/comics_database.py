@@ -9,12 +9,6 @@ from pathlib import Path
 from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT, PanelPath
 from loguru import logger
 
-from .barks_titles import (
-    BARKS_TITLE_DICT,
-    NON_COMIC_TITLES,
-    get_filename_from_title_str,
-    get_title_str_from_filename,
-)
 from .comic_book import (
     INTRO_AUTHOR_DEFAULT_FONT_SIZE,
     INTRO_TITLE_DEFAULT_FONT_SIZE,
@@ -22,6 +16,12 @@ from .comic_book import (
     ComicBookDirs,
     _get_pages_in_order,
     get_main_publication_info,
+)
+from .comic_book_info import (
+    BARKS_TITLE_DICT,
+    NON_COMIC_TITLES,
+    get_filename_from_title_str,
+    get_title_str_from_filename,
 )
 from .comics_consts import (
     BARKS_ROOT_DIR,

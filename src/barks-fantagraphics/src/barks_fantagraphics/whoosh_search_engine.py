@@ -13,7 +13,7 @@ from whoosh.index import create_in, open_dir
 from whoosh.qparser import QueryParser
 from whoosh.searching import Hit
 
-from .barks_titles import BARKS_TITLE_DICT
+from .comic_book_info import BARKS_TITLE_DICT
 from .comics_database import ComicsDatabase
 from .entity_types import EntityType
 from .speech_groupers import OcrTypes, SpeechGroups

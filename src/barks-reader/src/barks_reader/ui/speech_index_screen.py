@@ -5,11 +5,8 @@ import textwrap
 from collections import defaultdict
 from typing import TYPE_CHECKING, cast, override
 
-from barks_fantagraphics.barks_titles import (
-    BARKS_TITLE_DICT,
-    BARKS_TITLES,
-    Titles,
-)
+from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_DICT
 from barks_fantagraphics.comic_search import ComicSearch
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_fantagraphics.whoosh_barks_terms import CONTEXT_SENSITIVE_WORDS

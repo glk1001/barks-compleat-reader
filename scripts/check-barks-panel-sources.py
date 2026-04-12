@@ -5,7 +5,7 @@
 import sys
 from pathlib import Path
 
-from barks_fantagraphics.barks_titles import (
+from barks_fantagraphics.comic_book_info import (
     BARKS_TITLE_DICT,
     FILENAME_TO_TITLE_SPECIAL_CASE_MAP,
 )

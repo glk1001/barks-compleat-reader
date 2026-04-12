@@ -5,7 +5,8 @@ from collections import OrderedDict, defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from .barks_titles import BARKS_TITLE_INFO, BARKS_TITLES, ComicBookInfo, Titles
+from .barks_titles import BARKS_TITLES, Titles
+from .comic_book_info import BARKS_TITLE_INFO, ComicBookInfo
 from .comic_issues import ISSUE_NAME, Issues
 
 
