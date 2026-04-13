@@ -63,7 +63,12 @@ case "$(uname -s)" in
         ;;
     Darwin*)
         OS="macos"
-        EXE="barks-reader-macos"
+        ARCH=$(uname -m)
+        if [[ "$ARCH" == "arm64" ]]; then
+            EXE="barks-reader-macos-arm64"
+        else
+            EXE="barks-reader-macos-x64"
+        fi
         ;;
     CYGWIN*|MINGW*|MSYS*|Windows_NT*)
         OS="windows"
