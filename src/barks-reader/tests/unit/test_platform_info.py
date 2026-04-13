@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import platform as platform_mod
 from unittest.mock import patch
 
 from barks_reader.core import platform_info as platform_info_module
@@ -45,12 +46,21 @@ class TestGetPlatform:
         ):
             assert _get_platform() == Platform.WIN
 
-    def test_macosx(self) -> None:
+    def test_macosx_arm64(self) -> None:
         with (
             patch.dict(platform_info_module.os.environ, {"KIVY_BUILD": ""}, clear=True),
             patch.object(platform_info_module, "_sys_platform", "darwin"),
+            patch.object(platform_mod, "machine", return_value="arm64"),
         ):
-            assert _get_platform() == Platform.MACOSX
+            assert _get_platform() == Platform.MACOS_ARM64
+
+    def test_macosx_x64(self) -> None:
+        with (
+            patch.dict(platform_info_module.os.environ, {"KIVY_BUILD": ""}, clear=True),
+            patch.object(platform_info_module, "_sys_platform", "darwin"),
+            patch.object(platform_mod, "machine", return_value="x86_64"),
+        ):
+            assert _get_platform() == Platform.MACOS_X64
 
     def test_linux(self) -> None:
         with (

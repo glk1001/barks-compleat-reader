@@ -1,4 +1,5 @@
 import os
+import platform as _platform_mod
 from enum import Enum
 from sys import platform as _sys_platform
 
@@ -6,7 +7,8 @@ from sys import platform as _sys_platform
 class Platform(Enum):
     ANDROID = "android"
     IOS = "ios"
-    MACOSX = "macosx"
+    MACOS_ARM64 = "macos-arm64"
+    MACOS_X64 = "macos-x64"
     LINUX = "linux"
     WIN = "win"
     UNKNOWN = "unknown"
@@ -29,7 +31,10 @@ def _get_platform() -> Platform:
     elif _sys_platform in ("win32", "cygwin"):
         platform = Platform.WIN
     elif _sys_platform == "darwin":
-        platform = Platform.MACOSX
+        if _platform_mod.machine() == "arm64":
+            platform = Platform.MACOS_ARM64
+        else:
+            platform = Platform.MACOS_X64
     elif _sys_platform.startswith(("linux", "freebsd")):
         platform = Platform.LINUX
     else:
@@ -39,3 +44,5 @@ def _get_platform() -> Platform:
 
 
 PLATFORM: Platform = _get_platform()
+
+IS_MACOSX: bool = PLATFORM in (Platform.MACOS_ARM64, Platform.MACOS_X64)
