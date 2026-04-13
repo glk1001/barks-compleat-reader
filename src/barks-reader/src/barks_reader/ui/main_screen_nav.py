@@ -74,15 +74,38 @@ class MainScreenNavigation:
 
         self._focus_region = _FocusRegion.TREE
         self._focus_region_before_comic: _FocusRegion | None = None
+        self._auto_exited_bottom_focus = False
 
     @property
     def is_in_bottom_focus(self) -> bool:
         return self._focus_region == _FocusRegion.BOTTOM
 
+    @property
+    def was_bottom_focus_auto_exited(self) -> bool:
+        """True if bottom focus was exited because the active screen became invisible."""
+        return self._auto_exited_bottom_focus
+
+    def on_bottom_screen_visibility_changed(self) -> None:
+        """Exit bottom focus if the active bottom screen is no longer visible."""
+        if self._focus_region != _FocusRegion.BOTTOM:
+            return
+        visible = (
+            self._fun_image_view_screen.is_visible
+            or self._bottom_title_view_screen.is_visible
+            or self._get_active_nav_screen() is not None
+        )
+        if not visible:
+            self.exit_bottom_focus()
+            # Set *after* exit_bottom_focus (which clears the flag).
+            self._auto_exited_bottom_focus = True
+            logger.debug("Auto-exited bottom focus: active screen no longer visible.")
+
     def save_focus_before_comic(self) -> None:
         self._focus_region_before_comic = self._focus_region
+        logger.debug(f"Saved focus before comic: {self._focus_region_before_comic}.")
 
     def restore_focus_after_comic(self) -> None:
+        logger.debug(f"Focus after comic: {self._focus_region_before_comic}.")
         if self._focus_region_before_comic == _FocusRegion.BOTTOM:
             self.enter_bottom_focus()
         self._focus_region_before_comic = None
@@ -168,6 +191,7 @@ class MainScreenNavigation:
         )
         if not visible:
             return
+        self._auto_exited_bottom_focus = False
         self._focus_region = _FocusRegion.BOTTOM
         self._update_bottom_focus_highlight()
         nav_screen = self._get_active_nav_screen()
@@ -180,6 +204,7 @@ class MainScreenNavigation:
         if nav_screen is not None:
             nav_screen.exit_nav_focus()
         self._focus_region = _FocusRegion.TREE
+        self._auto_exited_bottom_focus = False
         self._clear_bottom_focus_highlight()
         logger.debug("Exited bottom focus region.")
 
@@ -274,6 +299,8 @@ class MainScreenNavigation:
         self._tree_view_screen.scroll_to_node(parent)
 
     def enter_bottom_focus_if_index_visible(self) -> None:
+        logger.debug(f"Current focus region: {self._focus_region}.")
+        self._auto_exited_bottom_focus = False
         if self._search_screen.is_visible:
             self._focus_region = _FocusRegion.BOTTOM
             self._update_bottom_focus_highlight()

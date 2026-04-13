@@ -25,12 +25,16 @@ KEY_PAGE_DOWN = 281
 MENU_FOCUS_HIGHLIGHT_GROUP = "menu_focus_highlight"
 
 
-def draw_focus_highlight(
+_FOCUS_BINDING_ATTR = "_focus_highlight_cb"
+
+
+def _draw_highlight(
     widget: Widget,
     group: str,
-    color: tuple[float, float, float, float] = (1, 1, 0, 1),
-    line_width: float = 2,
+    color: tuple[float, float, float, float],
+    line_width: float,
 ) -> None:
+    """Draw (or redraw) the focus rectangle at the widget's current geometry."""
     canvas_after = widget.canvas.after  # ty: ignore[unresolved-attribute]
     canvas_after.remove_group(group)
     with canvas_after:
@@ -42,7 +46,38 @@ def draw_focus_highlight(
         )
 
 
+def draw_focus_highlight(
+    widget: Widget,
+    group: str,
+    color: tuple[float, float, float, float] = (1, 1, 0, 1),
+    line_width: float = 2,
+) -> None:
+    """Draw a focus highlight that tracks the widget's geometry.
+
+    The highlight redraws automatically when the widget's pos or size changes
+    (e.g. after a deferred Kivy layout pass).
+    """
+    # Remove any previous binding before installing a new one.
+    _unbind_highlight(widget)
+
+    _draw_highlight(widget, group, color, line_width)
+
+    def _on_geometry_change(*_args: object) -> None:
+        _draw_highlight(widget, group, color, line_width)
+
+    setattr(widget, _FOCUS_BINDING_ATTR, _on_geometry_change)
+    widget.bind(pos=_on_geometry_change, size=_on_geometry_change)
+
+
+def _unbind_highlight(widget: Widget) -> None:
+    cb = getattr(widget, _FOCUS_BINDING_ATTR, None)
+    if cb is not None:
+        widget.unbind(pos=cb, size=cb)
+        setattr(widget, _FOCUS_BINDING_ATTR, None)
+
+
 def clear_focus_highlight(widget: Widget, group: str) -> None:
+    _unbind_highlight(widget)
     widget.canvas.after.remove_group(group)  # ty: ignore[unresolved-attribute]
 
 

@@ -391,11 +391,14 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
     def _on_view_state_changed(self, view_state: ViewStates) -> None:
         self.ids.collapse_button.disabled = view_state == ViewStates.INITIAL
+        self._nav.on_bottom_screen_visibility_changed()
 
     def on_action_bar_go_back(self) -> None:
         logger.info("'Go back' menu item selected.")
+        should_restore = self._nav.is_in_bottom_focus or self._nav.was_bottom_focus_auto_exited
         self._tree_view_manager.go_back_to_previous_node()
-        Clock.schedule_once(lambda _dt: self._nav.enter_bottom_focus_if_index_visible(), 0)
+        if should_restore:
+            Clock.schedule_once(lambda _dt: self._nav.enter_bottom_focus_if_index_visible(), 0)
 
     def on_action_bar_collapse(self) -> None:
         self._tree_view_manager.deselect_and_close_open_nodes(from_collapse_all=True)

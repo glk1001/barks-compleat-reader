@@ -512,3 +512,109 @@ class TestEnterBottomFocusIfIndexVisible:
         nav.enter_bottom_focus_if_index_visible()
 
         assert not nav.is_in_bottom_focus
+
+    def test_skipped_when_not_already_in_bottom_focus(self, nav: MainScreenNavigation) -> None:
+        """Simulates 'Go Back' via mouse when user was in tree focus.
+
+        Even though an index screen is visible, bottom focus should NOT be
+        entered because the caller should guard on is_in_bottom_focus and
+        was_bottom_focus_auto_exited.
+        """
+        nav._main_index_screen.is_visible = True
+        nav._search_screen.is_visible = False
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+
+        assert not nav.is_in_bottom_focus
+        assert not nav.was_bottom_focus_auto_exited
+
+        # The caller (on_action_bar_go_back) should check both flags
+        # before calling enter_bottom_focus_if_index_visible.
+        if nav.is_in_bottom_focus or nav.was_bottom_focus_auto_exited:
+            nav.enter_bottom_focus_if_index_visible()
+
+        assert not nav.is_in_bottom_focus
+
+
+class TestOnBottomScreenVisibilityChanged:
+    def test_exits_bottom_focus_when_no_screen_visible(self, nav: MainScreenNavigation) -> None:
+        # Enter bottom focus with a visible screen.
+        nav._main_index_screen.is_visible = True
+        nav._fun_image_view_screen.is_visible = False
+        nav._bottom_title_view_screen.is_visible = False
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+        nav._statistics_screen.is_visible = False
+        nav._search_screen.is_visible = False
+        nav.enter_bottom_focus()
+        assert nav.is_in_bottom_focus
+
+        # Hide all screens, then notify.
+        nav._main_index_screen.is_visible = False
+        nav.on_bottom_screen_visibility_changed()
+
+        assert not nav.is_in_bottom_focus
+        assert nav.was_bottom_focus_auto_exited
+
+    def test_noop_when_in_tree_focus(self, nav: MainScreenNavigation) -> None:
+        assert not nav.is_in_bottom_focus
+
+        nav.on_bottom_screen_visibility_changed()
+
+        assert not nav.is_in_bottom_focus
+        assert not nav.was_bottom_focus_auto_exited
+
+    def test_noop_when_screen_still_visible(self, nav: MainScreenNavigation) -> None:
+        nav._main_index_screen.is_visible = True
+        nav._fun_image_view_screen.is_visible = False
+        nav._bottom_title_view_screen.is_visible = False
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+        nav._statistics_screen.is_visible = False
+        nav._search_screen.is_visible = False
+        nav.enter_bottom_focus()
+
+        nav.on_bottom_screen_visibility_changed()
+
+        assert nav.is_in_bottom_focus
+        assert not nav.was_bottom_focus_auto_exited
+
+    def test_auto_exit_flag_cleared_on_enter_bottom_focus(self, nav: MainScreenNavigation) -> None:
+        # Simulate auto-exit.
+        nav._main_index_screen.is_visible = True
+        nav._fun_image_view_screen.is_visible = False
+        nav._bottom_title_view_screen.is_visible = False
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+        nav._statistics_screen.is_visible = False
+        nav._search_screen.is_visible = False
+        nav.enter_bottom_focus()
+        nav._main_index_screen.is_visible = False
+        nav.on_bottom_screen_visibility_changed()
+        assert nav.was_bottom_focus_auto_exited
+
+        # Re-enter bottom focus — flag should clear.
+        nav._main_index_screen.is_visible = True
+        nav.enter_bottom_focus()
+
+        assert nav.is_in_bottom_focus
+        assert not nav.was_bottom_focus_auto_exited
+
+    def test_auto_exit_flag_cleared_on_explicit_exit(self, nav: MainScreenNavigation) -> None:
+        nav._main_index_screen.is_visible = True
+        nav._fun_image_view_screen.is_visible = False
+        nav._bottom_title_view_screen.is_visible = False
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+        nav._statistics_screen.is_visible = False
+        nav._search_screen.is_visible = False
+        nav.enter_bottom_focus()
+
+        nav.exit_bottom_focus()
+
+        assert not nav.was_bottom_focus_auto_exited
