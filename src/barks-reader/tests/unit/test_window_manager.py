@@ -275,6 +275,84 @@ class TestWindowState:
         assert WindowState.get_current_screen_mode() == FullscreenEnum.FULLSCREEN
 
 
+class TestRoundTrip:
+    def test_save_fullscreen_windowed_round_trip(
+        self,
+        manager: tuple[WindowManager, MagicMock, MagicMock, MagicMock],
+        fake_window: MagicMock,
+        backend: _FakeBackend,
+    ) -> None:
+        wm, on_first_resize, on_finished_windowed, on_finished_fullscreen = manager
+
+        # Start in windowed mode -> enter fullscreen.
+        fake_window.fullscreen = False
+        wm.goto_fullscreen_mode()
+
+        assert len(backend.saved_states) == 1
+        on_finished_fullscreen.assert_called_once()
+        assert fake_window.fullscreen == "auto"
+
+        # Now simulate Window being in fullscreen and exit back to windowed.
+        fake_window.fullscreen = True
+        wm.goto_windowed_mode()
+
+        # Backend was asked to restore the previously-saved state.
+        assert len(backend.restore_calls) == 1
+        restored = backend.restore_calls[0]
+        assert restored.size == (1200, 1800)
+        assert restored.pos == (100, 50)
+        on_first_resize.assert_called_once()
+        on_finished_windowed.assert_called_once()
+
+
+class TestFinishRestore:
+    def test_finish_restore_logs_warning_when_state_differs(
+        self,
+        manager: tuple[WindowManager, MagicMock, MagicMock, MagicMock],
+        fake_window: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        wm, _, _, _ = manager
+
+        fake_logger = MagicMock()
+        monkeypatch.setattr("barks_reader.ui.platform_window_utils.logger", fake_logger)
+
+        # Saved state differs from current Window geometry.
+        wm._saved_window_state.size = (1200, 1800)
+        wm._saved_window_state.pos = (100, 50)
+        fake_window.size = (999, 999)
+        fake_window.left = 0
+        fake_window.top = 0
+
+        wm._finish_restore()
+
+        fake_logger.warning.assert_called_once()
+        fake_logger.info.assert_not_called()
+
+    def test_finish_restore_logs_info_when_state_matches(
+        self,
+        manager: tuple[WindowManager, MagicMock, MagicMock, MagicMock],
+        fake_window: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        wm, _, _, _ = manager
+
+        fake_logger = MagicMock()
+        monkeypatch.setattr("barks_reader.ui.platform_window_utils.logger", fake_logger)
+
+        # Saved state matches current Window geometry.
+        wm._saved_window_state.size = (1200, 1800)
+        wm._saved_window_state.pos = (100, 50)
+        fake_window.size = (1200, 1800)
+        fake_window.left = 100
+        fake_window.top = 50
+
+        wm._finish_restore()
+
+        fake_logger.info.assert_called_once()
+        fake_logger.warning.assert_not_called()
+
+
 class TestKivyWindowBackend:
     def test_save_state(self, fake_window: MagicMock, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("barks_reader.ui.platform_window_utils.Window", fake_window)

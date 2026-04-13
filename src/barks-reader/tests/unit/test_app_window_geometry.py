@@ -414,3 +414,71 @@ def test_rotation_check_skipped_when_fullscreen(
     # If _check_for_rotation ran while fullscreen, it would call refresh().
     # Verify it returns early (no error, no side effect).
     helper._check_for_rotation(0.0)  # noqa: SLF001
+
+
+def test_rotation_detected_triggers_guarded_resize(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: _FakeClock,
+) -> None:
+    screen = _make_screen_info()
+    fake_metrics = MagicMock()
+    fake_metrics.get_monitor_for_pos.return_value = screen
+    fake_metrics.get_primary_screen_info.return_value = screen
+    # First call (during construction) returns False; subsequent call (during
+    # rotation check) returns True to indicate rotation was detected.
+    fake_metrics.refresh.return_value = True
+
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Window", fake_window)
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Clock", fake_clock)
+
+    h = AppWindowGeometryHelper(constraints)
+    h.set_main_screen_callbacks(MagicMock())
+    h.set_window_ready()
+
+    h._check_for_rotation(0.0)  # noqa: SLF001
+
+    # Rotation handler schedules: do_resize, do_reposition, do_reset_resize.
+    assert len(fake_clock.calls) >= 1
+    # Resize guard should be set with the new requested size.
+    assert h._resize_requested_size != (0, 0)  # noqa: SLF001
+
+
+# --- Second degenerate guard (after correct_width computation) ---
+
+
+def test_correction_skipped_when_monitor_lookup_fails_after_construction(
+    monkeypatch: pytest.MonkeyPatch,
+    constraints: WindowSizeConstraints,
+    fake_window: MagicMock,
+    fake_clock: _FakeClock,
+) -> None:
+    """When monitor lookup returns None mid-resize, the second degenerate guard fires.
+
+    This exercises the ``correct_width <= 0`` branch (line 224 in
+    ``app_window_geometry.py``): get_win_dimensions with monitor_w=0 produces a
+    degenerate correct_width, and the min-width fallback also fails because the
+    monitor is None. No correction should be scheduled.
+    """
+    screen = _make_screen_info()
+    fake_metrics = MagicMock()
+    fake_metrics.get_primary_screen_info.return_value = screen
+    # Return a monitor at construction, then None for all subsequent lookups.
+    fake_metrics.get_monitor_for_pos.side_effect = [screen, None, None, None]
+
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Window", fake_window)
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.SCREEN_METRICS", fake_metrics)
+    monkeypatch.setattr("barks_reader.ui.app_window_geometry.Clock", fake_clock)
+
+    h = AppWindowGeometryHelper(constraints)
+    h.set_main_screen_callbacks(MagicMock())
+    h.set_window_ready()
+
+    # Trigger _enforce_aspect_ratio with a tiny height that will, combined with
+    # monitor_w=0, push correct_width below MIN_WIDTH and prevent the fallback.
+    h._enforce_aspect_ratio(800, 100)  # noqa: SLF001
+
+    # No correction scheduled — the second degenerate guard should have fired.
+    assert fake_clock.calls == []
