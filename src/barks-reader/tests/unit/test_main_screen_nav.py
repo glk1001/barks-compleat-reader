@@ -513,13 +513,10 @@ class TestEnterBottomFocusIfIndexVisible:
 
         assert not nav.is_in_bottom_focus
 
-    def test_skipped_when_not_already_in_bottom_focus(self, nav: MainScreenNavigation) -> None:
-        """Simulates 'Go Back' via mouse when user was in tree focus.
-
-        Even though an index screen is visible, bottom focus should NOT be
-        entered because the caller should guard on is_in_bottom_focus and
-        was_bottom_focus_auto_exited.
-        """
+    def test_enters_focus_when_index_visible_regardless_of_prior_focus(
+        self, nav: MainScreenNavigation
+    ) -> None:
+        """Go Back always restores bottom focus when an index screen is visible."""
         nav._main_index_screen.is_visible = True
         nav._search_screen.is_visible = False
         nav._speech_index_screen.is_visible = False
@@ -527,14 +524,10 @@ class TestEnterBottomFocusIfIndexVisible:
         nav._locations_index_screen.is_visible = False
 
         assert not nav.is_in_bottom_focus
-        assert not nav.was_bottom_focus_auto_exited
 
-        # The caller (on_action_bar_go_back) should check both flags
-        # before calling enter_bottom_focus_if_index_visible.
-        if nav.is_in_bottom_focus or nav.was_bottom_focus_auto_exited:
-            nav.enter_bottom_focus_if_index_visible()
+        nav.enter_bottom_focus_if_index_visible()
 
-        assert not nav.is_in_bottom_focus
+        assert nav.is_in_bottom_focus
 
 
 class TestOnBottomScreenVisibilityChanged:

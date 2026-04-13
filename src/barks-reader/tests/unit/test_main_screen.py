@@ -98,8 +98,11 @@ class TestMainScreen:
         assert main_screen._view_state_manager is not None
 
     def test_on_action_bar_go_back(self, main_screen: MainScreen) -> None:
-        main_screen.on_action_bar_go_back()
+        with patch.object(barks_reader.ui.main_screen.Clock, "schedule_once") as mock_schedule:
+            main_screen.on_action_bar_go_back()
+
         main_screen._tree_view_manager.go_back_to_previous_node.assert_called_once()
+        mock_schedule.assert_called_once()
 
     def test_on_action_bar_collapse(self, main_screen: MainScreen) -> None:
         main_screen.on_action_bar_collapse()
