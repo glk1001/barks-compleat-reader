@@ -7,7 +7,7 @@ from sys import platform as _sys_platform
 class Platform(Enum):
     ANDROID = "android"
     IOS = "ios"
-    MACOS_ARM64 = "macos-arm64"
+    MACOS_ARM64 = "macos"  # Assume most users have arm64
     MACOS_X64 = "macos-x64"
     LINUX = "linux"
     WIN = "win"

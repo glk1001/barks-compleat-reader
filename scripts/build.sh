@@ -65,7 +65,8 @@ case "$(uname -s)" in
         OS="macos"
         ARCH=$(uname -m)
         if [[ "$ARCH" == "arm64" ]]; then
-            EXE="barks-reader-macos-arm64"
+            # Assume most macOS users are arm64.
+            EXE="barks-reader-macos"
         else
             EXE="barks-reader-macos-x64"
         fi

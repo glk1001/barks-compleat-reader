@@ -21,7 +21,7 @@ jobs:
           - os: ubuntu-latest
             exe: barks-reader-linux
           - os: macos-latest
-            exe: barks-reader-macos-arm64
+            exe: barks-reader-macos
           - os: macos-15-intel
             exe: barks-reader-macos-x64
             deploy_target: "12.0"
