@@ -46,7 +46,7 @@ class TestGetPlatform:
         ):
             assert _get_platform() == Platform.WIN
 
-    def test_macosx_arm64(self) -> None:
+    def test_macos_arm64(self) -> None:
         with (
             patch.dict(platform_info_module.os.environ, {"KIVY_BUILD": ""}, clear=True),
             patch.object(platform_info_module, "_sys_platform", "darwin"),
@@ -54,7 +54,7 @@ class TestGetPlatform:
         ):
             assert _get_platform() == Platform.MACOS_ARM64
 
-    def test_macosx_x64(self) -> None:
+    def test_macos_x64(self) -> None:
         with (
             patch.dict(platform_info_module.os.environ, {"KIVY_BUILD": ""}, clear=True),
             patch.object(platform_info_module, "_sys_platform", "darwin"),

@@ -45,4 +45,4 @@ def _get_platform() -> Platform:
 
 PLATFORM: Platform = _get_platform()
 
-IS_MACOSX: bool = PLATFORM in (Platform.MACOS_ARM64, Platform.MACOS_X64)
+IS_MACOS: bool = PLATFORM in (Platform.MACOS_ARM64, Platform.MACOS_X64)

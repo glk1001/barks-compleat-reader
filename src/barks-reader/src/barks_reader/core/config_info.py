@@ -8,7 +8,7 @@ from pathlib import Path
 from loguru import logger
 from loguru_config import LoguruConfig
 
-from .platform_info import IS_MACOSX, PLATFORM, Platform
+from .platform_info import IS_MACOS, PLATFORM, Platform
 
 APP_NAME = "barks-reader"
 
@@ -229,7 +229,7 @@ def _run_loguru_config(cfg_info: ConfigInfo) -> None:
 def find_fanta_volumes_dirpath(config_info: ConfigInfo, fanta_volumes_dirname: str) -> Path | None:
     if PLATFORM == Platform.WIN:
         search_path = WINDOWS_FANTA_VOLUMES_SEARCH_PATH
-    elif IS_MACOSX:
+    elif IS_MACOS:
         search_path = MACOS_FANTA_VOLUMES_SEARCH_PATH
     else:
         search_path = LINUX_FANTA_VOLUMES_SEARCH_PATH
