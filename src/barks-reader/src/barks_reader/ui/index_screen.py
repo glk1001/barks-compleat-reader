@@ -58,7 +58,7 @@ if TYPE_CHECKING:
     from barks_fantagraphics.whoosh_search_engine import TitleInfo
     from kivy.uix.widget import Widget
 
-    from .reader_ui_classes import MainTreeViewNode
+    from .tree_view_nodes import MainTreeViewNode
     from .user_error_handler import UserErrorHandler
 
 MAX_TITLE_AND_PAGES_LEN = 34 + 8  # len(", 11,...") == 8

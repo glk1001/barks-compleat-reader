@@ -18,8 +18,8 @@ from barks_reader.ui.reader_keyboard_nav import (
     KEY_TAB,
     KEY_UP,
 )
-from barks_reader.ui.reader_ui_classes import ButtonTreeViewNode, TitleTreeViewNode
 from barks_reader.ui.screen_bundle import ScreenBundle
+from barks_reader.ui.tree_view_nodes import ButtonTreeViewNode, TitleTreeViewNode
 
 if TYPE_CHECKING:
     from collections.abc import Generator

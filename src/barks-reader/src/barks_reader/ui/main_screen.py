@@ -23,6 +23,7 @@ from barks_reader.core.reader_utils import (
 from barks_reader.core.special_overrides_handler import SpecialFantaOverrides
 
 from .about_box import show_about_box
+from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .app_initializer import AppInitializer
 from .background_views import BackgroundViews
 from .comic_reader_manager import ComicReaderManager
@@ -37,10 +38,6 @@ from .reader_keyboard_nav import (
 )
 from .reader_screens import ReaderScreen
 from .reader_tree_builder import ReaderTreeBuilder
-from .reader_ui_classes import (
-    ACTION_BAR_SIZE_Y,
-    ReaderTreeBuilderEventDispatcher,
-)
 from .snapshot_applicator import SnapshotApplicator
 from .tree_view_manager import TreeViewManager
 from .user_error_handler import UserErrorHandler
@@ -59,6 +56,7 @@ if TYPE_CHECKING:
     from .font_manager import FontManager
     from .reader_screens import ScreenSwitchers
     from .screen_bundle import ScreenBundle
+    from .tree_view_nodes import ReaderTreeBuilderEventDispatcher
 
 MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 

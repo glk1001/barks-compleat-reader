@@ -27,6 +27,7 @@ from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 from barks_reader.core.screen_metrics import SCREEN_METRICS
 from barks_reader.core.settings_notifier import settings_notifier
 
+from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .app_window_geometry import AppWindowGeometryHelper, WindowSizeConstraints
 from .bottom_title_view_screen import (
     BOTTOM_TITLE_VIEW_SCREEN_KV_FILE,
@@ -44,6 +45,7 @@ from .index_screen import INDEX_SCREEN_KV_FILE
 from .main_index_screen import MainIndexScreen
 from .main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
 from .platform_window_utils import log_screen_metrics
+from .popup_widgets import READER_POPUPS_KV_FILE
 from .reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     DOCUMENT_READER_SCREEN,
@@ -52,21 +54,14 @@ from .reader_screens import (
     ReaderScreens,
 )
 from .reader_settings_buildable import BuildableReaderSettings
-from .reader_ui_classes import (
-    ACTION_BAR_SIZE_Y,
-    KIVY_HELPERS_KV_FILE,
-    READER_POPUPS_KV_FILE,
-    READER_TREE_VIEW_KV_FILE,
-    ReaderTreeBuilderEventDispatcher,
-    set_kivy_busy_cursor,
-    set_kivy_normal_cursor,
-)
 from .screen_bundle import ScreenBundle
 from .search_screen import SEARCH_SCREEN_KV_FILE, SearchScreen
 from .settings_fix import SettingLongPath, SettingOptionsWithValue
 from .speech_index_screen import SpeechIndexScreen
 from .statistics_screen import STATISTICS_SCREEN_KV_FILE, StatisticsScreen
+from .tree_view_nodes import READER_TREE_VIEW_KV_FILE, ReaderTreeBuilderEventDispatcher
 from .tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
+from .ui_helpers import KIVY_HELPERS_KV_FILE, set_kivy_busy_cursor, set_kivy_normal_cursor
 from .user_error_handler import UserErrorHandler
 
 if TYPE_CHECKING:

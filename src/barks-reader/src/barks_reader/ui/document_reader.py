@@ -10,6 +10,7 @@ from kivy.properties import StringProperty  # ty: ignore[unresolved-import]
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 
+from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .reader_keyboard_nav import (
     KEY_ESCAPE,
     KEY_LEFT,
@@ -18,7 +19,6 @@ from .reader_keyboard_nav import (
     ActionBarNavMixin,
 )
 from .reader_screens import ReaderScreen
-from .reader_ui_classes import ACTION_BAR_SIZE_Y
 
 if TYPE_CHECKING:
     from collections.abc import Callable

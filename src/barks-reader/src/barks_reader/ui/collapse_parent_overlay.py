@@ -18,7 +18,7 @@ from loguru import logger
 if TYPE_CHECKING:
     from kivy.uix.scrollview import ScrollView
 
-    from .reader_ui_classes import ButtonTreeViewNode
+    from .tree_view_nodes import ButtonTreeViewNode
 
 COLLAPSE_PARENT_OVERLAY_KV_FILE = Path(__file__).with_suffix(".kv")
 
@@ -58,7 +58,7 @@ class CollapseParentOverlay(FloatLayout):
         The overlay won't appear until the user scrolls past the node
         (detected via the scroll_y binding).
         """
-        from .reader_ui_classes import ButtonTreeViewNode  # noqa: PLC0415
+        from .tree_view_nodes import ButtonTreeViewNode  # noqa: PLC0415
 
         if not isinstance(node, ButtonTreeViewNode):
             return

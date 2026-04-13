@@ -14,7 +14,7 @@ from barks_reader.core.fantagraphics_volumes import (
 )
 from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
 
-from .reader_ui_classes import BaseTreeViewNode
+from .tree_view_nodes import BaseTreeViewNode
 from .user_error_handler import ErrorInfo, ErrorTypes
 from .view_states import ViewStates
 

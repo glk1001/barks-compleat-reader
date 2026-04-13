@@ -43,8 +43,8 @@ if TYPE_CHECKING:
     from .comic_reader_manager import ComicReaderManager
     from .json_settings_manager import SavedPageInfo
     from .reader_screens import ScreenSwitchers
-    from .reader_ui_classes import BaseTreeViewNode, ButtonTreeViewNode
     from .tree_view_manager import TreeViewManager
+    from .tree_view_nodes import BaseTreeViewNode, ButtonTreeViewNode
     from .tree_view_screen import TreeViewScreen
     from .user_error_handler import UserErrorHandler
     from .view_state_manager import ViewStateManager

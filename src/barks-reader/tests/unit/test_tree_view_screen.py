@@ -9,7 +9,7 @@ import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.reader_tree_view_utils import find_and_expand_node_by_path
 from barks_reader.ui import tree_view_screen as tree_view_screen_module
-from barks_reader.ui.reader_ui_classes import BaseTreeViewNode
+from barks_reader.ui.tree_view_nodes import BaseTreeViewNode
 from barks_reader.ui.tree_view_screen import TreeViewScreen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.widget import Widget

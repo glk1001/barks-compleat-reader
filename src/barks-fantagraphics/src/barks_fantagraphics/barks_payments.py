@@ -2,9 +2,8 @@
 
 from dataclasses import dataclass
 
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, NON_COMIC_TITLES, ONE_PAGERS
-
 from .barks_titles import BARKS_TITLES, Titles
+from .comic_book_info import BARKS_TITLE_INFO, NON_COMIC_TITLES, ONE_PAGERS
 
 
 @dataclass(frozen=True, slots=True)

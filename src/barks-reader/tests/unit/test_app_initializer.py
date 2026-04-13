@@ -10,7 +10,7 @@ from barks_reader.core.fantagraphics_volumes import TooManyArchiveFilesError
 from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
 from barks_reader.ui import app_initializer as app_initializer_module
 from barks_reader.ui.app_initializer import AppInitializer, _FantaVolumesState
-from barks_reader.ui.reader_ui_classes import BaseTreeViewNode
+from barks_reader.ui.tree_view_nodes import BaseTreeViewNode
 from barks_reader.ui.user_error_handler import ErrorTypes
 from barks_reader.ui.view_states import ViewStates
 

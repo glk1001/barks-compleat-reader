@@ -18,14 +18,14 @@ from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_TOP_VIE
 from barks_reader.core.reader_tree_view_utils import find_and_expand_node_by_path
 from barks_reader.core.settings_notifier import settings_notifier
 
-from .reader_ui_classes import BaseTreeViewNode
+from .tree_view_nodes import BaseTreeViewNode
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from barks_reader.core.reader_settings import ReaderSettings
 
-    from .reader_ui_classes import ButtonTreeViewNode
+    from .tree_view_nodes import ButtonTreeViewNode
 
 TREE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 

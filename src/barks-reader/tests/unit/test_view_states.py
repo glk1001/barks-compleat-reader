@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_reader.ui import view_states
-from barks_reader.ui.reader_ui_classes import (
+from barks_reader.ui.tree_view_nodes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
     UsYearRangeTreeViewNode,

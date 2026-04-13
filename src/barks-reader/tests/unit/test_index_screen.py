@@ -14,7 +14,7 @@ from barks_reader.ui.index_screen import (
     IndexMenuButton,
     IndexScreen,
 )
-from barks_reader.ui.reader_ui_classes import MainTreeViewNode
+from barks_reader.ui.tree_view_nodes import MainTreeViewNode
 
 if TYPE_CHECKING:
     from collections.abc import Generator

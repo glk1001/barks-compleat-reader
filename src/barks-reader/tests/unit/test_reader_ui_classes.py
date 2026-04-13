@@ -6,13 +6,12 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.tree_view_nodes
-from barks_reader.ui.reader_ui_classes import (
+from barks_reader.ui.action_bar_helpers import hide_action_bar, show_action_bar
+from barks_reader.ui.tree_view_nodes import (
     ButtonTreeViewNode,
     ReaderTreeBuilderEventDispatcher,
     ReaderTreeView,
     TitleTreeViewNode,
-    hide_action_bar,
-    show_action_bar,
 )
 
 

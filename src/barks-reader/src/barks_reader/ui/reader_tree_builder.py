@@ -71,7 +71,7 @@ from barks_reader.core.reader_formatter import (
 )
 from barks_reader.core.reader_utils import read_title_list
 
-from .reader_ui_classes import (
+from .tree_view_nodes import (
     ButtonTreeViewNode,
     CsYearRangeTreeViewNode,
     MainTreeViewNode,

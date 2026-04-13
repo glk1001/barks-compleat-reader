@@ -15,7 +15,7 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from kivy.clock import Clock
 
-from .reader_ui_classes import MessagePopup
+from .popup_widgets import MessagePopup
 
 if TYPE_CHECKING:
     from collections.abc import Callable

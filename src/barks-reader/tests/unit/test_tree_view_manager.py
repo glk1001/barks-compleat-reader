@@ -7,13 +7,13 @@ from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.tree_view_manager
 import pytest
-from barks_reader.ui.reader_ui_classes import (
+from barks_reader.ui.screen_bundle import ScreenBundle
+from barks_reader.ui.tree_view_manager import TreeViewManager
+from barks_reader.ui.tree_view_nodes import (
     ButtonTreeViewNode,
     TagGroupStoryGroupTreeViewNode,
     TitleTreeViewNode,
 )
-from barks_reader.ui.screen_bundle import ScreenBundle
-from barks_reader.ui.tree_view_manager import TreeViewManager
 from barks_reader.ui.view_states import ViewStates
 
 

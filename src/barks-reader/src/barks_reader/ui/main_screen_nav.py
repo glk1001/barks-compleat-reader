@@ -18,7 +18,7 @@ from .reader_keyboard_nav import (
     clear_focus_highlight,
     draw_focus_highlight,
 )
-from .reader_ui_classes import (
+from .tree_view_nodes import (
     BaseTreeViewNode,
     ButtonTreeViewNode,
     TitleTreeViewNode,

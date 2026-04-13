@@ -33,6 +33,7 @@ from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, get_win_dimensions
 
 from .action_bar_helpers import (
+    ACTION_BAR_SIZE_Y,
     ActionBarVisibility,
     is_action_bar_visible,
     set_action_bar_visibility,
@@ -48,7 +49,6 @@ from .reader_keyboard_nav import (
 )
 from .reader_navigation import ReaderNavigation
 from .reader_screens import ReaderScreen
-from .reader_ui_classes import ACTION_BAR_SIZE_Y
 
 if TYPE_CHECKING:
     from collections import OrderedDict

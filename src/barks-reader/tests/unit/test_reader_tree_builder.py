@@ -10,7 +10,7 @@ from barks_fantagraphics.barks_tags import TagCategories, TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.fanta_comics_info import SERIES_CS
 from barks_reader.ui.reader_tree_builder import ReaderTreeBuilder
-from barks_reader.ui.reader_ui_classes import (
+from barks_reader.ui.tree_view_nodes import (
     MainTreeViewNode,
     TagGroupStoryGroupTreeViewNode,
     TagStoryGroupTreeViewNode,

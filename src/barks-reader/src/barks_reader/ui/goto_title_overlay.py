@@ -14,7 +14,8 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 )
 from kivy.uix.floatlayout import FloatLayout
 
-from .reader_ui_classes import ARROW_WIDTH, TouchExpandedButton
+from .action_bar_helpers import ARROW_WIDTH
+from .ui_helpers import TouchExpandedButton
 
 GOTO_TITLE_OVERLAY_KV_FILE = Path(__file__).with_suffix(".kv")
 
