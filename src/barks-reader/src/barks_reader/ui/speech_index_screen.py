@@ -48,13 +48,13 @@ from .panel_texture_loader import PanelTextureLoader
 from .reader_keyboard_nav import (
     KEY_DOWN,
     KEY_ENTER,
-    KEY_ESCAPE,
     KEY_LEFT,
     KEY_NUMPAD_ENTER,
     KEY_RIGHT,
     KEY_UP,
     clear_focus_in_list,
     draw_focus_highlight,
+    is_escape_key,
 )
 
 if TYPE_CHECKING:
@@ -324,7 +324,7 @@ class SpeechIndexScreen(IndexScreen):
                 if speech_btn:
                     speech_btn.trigger_action(duration=0)
             return True
-        if key == KEY_ESCAPE:
+        if is_escape_key(key):
             self._nav_on_speech_btn = False
             self._on_back_from_items()
             return True
@@ -389,7 +389,7 @@ class SpeechIndexScreen(IndexScreen):
         elif key == KEY_DOWN:
             self._clear_prefix_focus()
             self._enter_items_panel()
-        elif key == KEY_ESCAPE:
+        elif is_escape_key(key):
             self._clear_prefix_focus()
             self._enter_alphabet_panel()
         else:

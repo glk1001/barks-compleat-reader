@@ -7,7 +7,7 @@ from typing import Any
 
 from loguru import logger
 
-from .reader_keyboard_nav import KEY_ESCAPE
+from .reader_keyboard_nav import is_escape_key
 
 _SAME_SIZE_CUTOFF_PX = 10
 
@@ -193,7 +193,7 @@ def show_standalone_popup(  # noqa: C901, PLR0915
         popup.bind(on_open=lambda *_: popup_is_open())
 
         def _on_key_down(_win: object, key: int, *_args: object) -> bool:
-            if key == KEY_ESCAPE:
+            if is_escape_key(key):
                 popup.dismiss()
                 return True
             return False

@@ -9,7 +9,6 @@ from loguru import logger
 from .reader_keyboard_nav import (
     KEY_DOWN,
     KEY_ENTER,
-    KEY_ESCAPE,
     KEY_LEFT,
     KEY_NUMPAD_ENTER,
     KEY_RIGHT,
@@ -17,6 +16,7 @@ from .reader_keyboard_nav import (
     KEY_UP,
     clear_focus_highlight,
     draw_focus_highlight,
+    is_escape_key,
 )
 from .tree_view_nodes import (
     BaseTreeViewNode,
@@ -118,7 +118,7 @@ class MainScreenNavigation:
         return self._handle_tree_key(key)
 
     def _handle_tree_key(self, key: int) -> bool:
-        if key == KEY_ESCAPE:
+        if is_escape_key(key):
             self._enter_menu_mode()
         elif key == KEY_TAB:
             self.enter_bottom_focus()
@@ -141,7 +141,7 @@ class MainScreenNavigation:
                 self.exit_bottom_focus()
                 return True
             return nav_screen.handle_key(key)
-        if key in (KEY_ESCAPE, KEY_TAB):
+        if is_escape_key(key) or key == KEY_TAB:
             self.exit_bottom_focus()
             return True
         if self._fun_image_view_screen.is_visible:

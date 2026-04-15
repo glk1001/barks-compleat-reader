@@ -12,11 +12,11 @@ from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .reader_keyboard_nav import (
-    KEY_ESCAPE,
     KEY_LEFT,
     KEY_RIGHT,
     KEY_UP,
     ActionBarNavMixin,
+    is_escape_key,
 )
 from .reader_screens import ReaderScreen
 
@@ -108,7 +108,7 @@ class DocumentReaderScreen(ReaderScreen, ActionBarNavMixin):
             self.prev_page()
         elif key == KEY_RIGHT:
             self.next_page()
-        elif key in (KEY_ESCAPE, KEY_UP):
+        elif key == KEY_UP or is_escape_key(key):
             self._enter_menu_mode()
         else:
             return False

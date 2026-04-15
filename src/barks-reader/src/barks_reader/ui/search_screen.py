@@ -34,13 +34,13 @@ from .index_screen import (
 from .reader_keyboard_nav import (
     KEY_DOWN,
     KEY_ENTER,
-    KEY_ESCAPE,
     KEY_LEFT,
     KEY_NUMPAD_ENTER,
     KEY_RIGHT,
     KEY_TAB,
     KEY_UP,
     clear_focus_in_list,
+    is_escape_key,
     update_focus_in_list,
 )
 from .touch_keyboard import TouchAwareTextInput  # noqa: F401  # used in .kv
@@ -596,7 +596,7 @@ class SearchScreen(FloatLayout):
         return handler(key) if handler else False
 
     def _handle_input_key(self, key: int) -> bool:
-        if key == KEY_ESCAPE:
+        if is_escape_key(key):
             self._blur_all_inputs()
             if self._nav_on_exit_request:
                 self._nav_on_exit_request()
@@ -650,7 +650,7 @@ class SearchScreen(FloatLayout):
             self._clear_result_focus()
             self._nav_focus_area = "input"
             self._focus_active_input()
-        elif key == KEY_ESCAPE:
+        elif is_escape_key(key):
             self._nav_escape()
         else:
             return False
@@ -728,7 +728,7 @@ class SearchScreen(FloatLayout):
             self._get_active_clear_button().trigger_action(duration=0)
             self._clear_clear_focus()
             self._nav_focus_area = "input"
-        elif key == KEY_ESCAPE:
+        elif is_escape_key(key):
             self._nav_escape()
         else:
             return False
@@ -758,7 +758,7 @@ class SearchScreen(FloatLayout):
             self._draw_result_focus()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._handle_tags_enter(chips)
-        elif key == KEY_ESCAPE:
+        elif is_escape_key(key):
             self._nav_escape()
         else:
             return False

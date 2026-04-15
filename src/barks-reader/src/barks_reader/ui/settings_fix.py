@@ -4,7 +4,7 @@ from kivy.clock import Clock
 from kivy.factory import Factory
 from kivy.input import MotionEvent
 from kivy.lang import Builder
-from kivy.properties import ObjectProperty  # ty: ignore[unresolved-import]
+from kivy.properties import ObjectProperty, StringProperty  # ty: ignore[unresolved-import]
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.label import Label
@@ -12,6 +12,9 @@ from kivy.uix.popup import Popup
 from kivy.uix.settings import SettingItem, SettingOptions
 from kivy.uix.widget import Widget
 from loguru import logger
+
+from .alt_escape_capture_popup import AltEscapeCapturePopup, keycode_to_name
+from .reader_keyboard_nav import set_alt_escape_key
 
 KV_SETTINGS_OVERRIDE = """
 <-SettingItem>:
@@ -68,6 +71,14 @@ KV_SETTINGS_OVERRIDE = """
         valign: 'middle'
         shorten: True
         shorten_from: 'center'
+        text_size: self.width, None
+
+<SettingAltEscapeKey>:
+    Label:
+        text: root.display_text
+        font_size: '15sp'
+        halign: 'center'
+        valign: 'middle'
         text_size: self.width, None
 
 # Custom selection color for file entries
@@ -384,3 +395,49 @@ class SettingOptionsWithValue(SettingOptions):
 
     def on_value(self, _instance, _value) -> None:  # ty:ignore[invalid-method-override]  # noqa: ANN001
         self._update_value_display()
+
+
+class SettingAltEscapeKey(SettingItem):
+    """Settings widget that captures a key press to use as an alternate Escape."""
+
+    display_text = StringProperty("<unset>")
+
+    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+        super().__init__(**kwargs)
+        self.bind(on_release=self._open_capture_popup)
+        self._refresh_display_text()
+
+    def _refresh_display_text(self) -> None:
+        try:
+            keycode = int(self.value) if self.value else 0
+        except (TypeError, ValueError):
+            keycode = 0
+        self.display_text = keycode_to_name(keycode)
+
+    def on_value(self, _instance, _value) -> None:  # ty:ignore[invalid-method-override]  # noqa: ANN001
+        self._refresh_display_text()
+
+    def _open_capture_popup(self, _instance: Widget) -> None:
+        try:
+            current = int(self.value) if self.value else 0
+        except (TypeError, ValueError):
+            current = 0
+
+        popup = AltEscapeCapturePopup(
+            current_keycode=current,
+            on_capture=self._set_keycode,
+            on_clear=lambda: self._set_keycode(0),
+        )
+        popup.open()
+
+    def _set_keycode(self, keycode: int) -> None:
+        self.value = str(int(keycode))
+
+        # Manually ensure it's saved to config (Kivy SettingItem subclasses don't auto-persist).
+        if hasattr(self, "panel") and self.panel:
+            config = self.panel.config
+            if config:
+                config.set(self.section, self.key, self.value)
+                config.write()
+
+        set_alt_escape_key(int(keycode))

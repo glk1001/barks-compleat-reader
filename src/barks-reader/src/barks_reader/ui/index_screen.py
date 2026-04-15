@@ -33,7 +33,6 @@ from barks_reader.core.reader_formatter import mark_phrase_in_text
 from .reader_keyboard_nav import (
     KEY_DOWN,
     KEY_ENTER,
-    KEY_ESCAPE,
     KEY_LEFT,
     KEY_NUMPAD_ENTER,
     KEY_PAGE_DOWN,
@@ -43,6 +42,7 @@ from .reader_keyboard_nav import (
     clear_focus_highlight,
     clear_focus_in_list,
     draw_focus_highlight,
+    is_escape_key,
 )
 from .user_error_handler import (
     ErrorTypes,
@@ -182,7 +182,7 @@ class PopupKeyboardNav:
         return self._popup.parent is not None
 
     def handle_key(self, key: int) -> bool:
-        if key == KEY_ESCAPE:
+        if is_escape_key(key):
             self._popup.dismiss()
         elif key == KEY_UP:
             self._move_focus(-1)
@@ -417,7 +417,7 @@ class IndexScreen(FloatLayout):
             self._select_focused_letter()
         elif key == KEY_RIGHT:
             self._on_right_from_alphabet()
-        elif key == KEY_ESCAPE:
+        elif is_escape_key(key):
             callback = self._nav_on_exit_request
             self.exit_nav_focus()
             if callback is not None:
@@ -470,7 +470,7 @@ class IndexScreen(FloatLayout):
                 self._on_back_from_items()
             else:
                 self._move_col_focus(-1)
-        elif key == KEY_ESCAPE:
+        elif is_escape_key(key):
             self._on_back_from_items()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._activate_focused_item()

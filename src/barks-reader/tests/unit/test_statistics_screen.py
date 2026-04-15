@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_reader.ui import reader_keyboard_nav as reader_keyboard_nav_module
 from barks_reader.ui import statistics_screen as statistics_screen_module
-from barks_reader.ui.reader_keyboard_nav import KEY_DOWN
+from barks_reader.ui.reader_keyboard_nav import KEY_DOWN, KEY_ESCAPE
 from barks_reader.ui.statistics_screen import (
     StatisticsScreen,
     StatMenuButton,
@@ -240,7 +240,7 @@ class TestStatisticsScreen:
         with patch.object(statistics_screen_module, "update_focus_in_list"):
             screen.enter_nav_focus(on_exit)
 
-        screen.handle_key(statistics_screen_module.KEY_ESCAPE)
+        screen.handle_key(KEY_ESCAPE)
         on_exit.assert_called_once()
 
     def test_dropdown_nav(self, screen: StatisticsScreen) -> None:

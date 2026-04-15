@@ -22,6 +22,25 @@ KEY_NUMPAD_ENTER = 271
 KEY_PAGE_UP = 280
 KEY_PAGE_DOWN = 281
 
+_alt_escape_key: int = 0
+
+
+def set_alt_escape_key(key: int) -> None:
+    """Set the user-configured alternate Escape keycode (0 = unset)."""
+    global _alt_escape_key  # noqa: PLW0603
+    _alt_escape_key = int(key) if key else 0
+
+
+def get_alt_escape_key() -> int:
+    """Return the current alternate Escape keycode (0 = unset)."""
+    return _alt_escape_key
+
+
+def is_escape_key(key: int) -> bool:
+    """Return True if key is real Escape or the user-configured alternate Escape."""
+    return key == KEY_ESCAPE or (_alt_escape_key != 0 and key == _alt_escape_key)
+
+
 MENU_FOCUS_HIGHLIGHT_GROUP = "menu_focus_highlight"
 
 
@@ -157,7 +176,7 @@ class ActionBarNavMixin:
             self._move_menu_focus(-1)
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._activate_focused_button()
-        elif key == KEY_ESCAPE:
+        elif is_escape_key(key):
             self._exit_menu_mode()
         else:
             return False
@@ -266,7 +285,7 @@ class DropdownNavMixin:
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._activate_dropdown_item()
             return True
-        elif key == KEY_ESCAPE:
+        elif is_escape_key(key):
             self._dismiss_dropdown()
             return True
         else:

@@ -7,7 +7,7 @@ from typing import Any, Protocol
 
 from loguru import logger
 
-from .reader_consts_and_types import LONG_PATH_SETTING
+from .reader_consts_and_types import ALT_ESCAPE_KEY_SETTING, LONG_PATH_SETTING
 from .reader_file_paths import BarksPanelsExtType, ReaderFilePaths
 from .system_file_paths import SystemFilePaths
 
@@ -38,6 +38,8 @@ SHOW_FUN_VIEW_TITLE_INFO = "show_fun_view_title_info"
 MAIN_WINDOW_HEIGHT = "main_window_height"
 MAIN_WINDOW_LEFT = "main_window_left"
 MAIN_WINDOW_TOP = "main_window_top"
+ALT_ESCAPE_KEY = "alt_escape_key"
+ALT_ESCAPE_KEY_UNSET = 0
 
 LOG_LEVEL_OPTIONS = ["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
@@ -155,6 +157,14 @@ def _get_reader_settings_json() -> str:
                 "type": "numeric",
                 "section": BARKS_READER_SECTION,
                 "key": MAIN_WINDOW_TOP,
+            },
+            {
+                "title": "Alternate Escape Key",
+                "desc": "Optional extra key that behaves like Escape (for remote controls"
+                " without an Escape key). Real Escape always still works.",
+                "type": ALT_ESCAPE_KEY_SETTING,
+                "section": BARKS_READER_SECTION,
+                "key": ALT_ESCAPE_KEY,
             },
             {
                 "title": "Use Virtual Keyboard",
@@ -374,6 +384,19 @@ class ReaderSettings:
         assert self._config
         return self._config.getboolean(BARKS_READER_SECTION, USE_GLK_FIREBUG_ENDING)
 
+    def get_alt_escape_key(self) -> int:
+        assert self._config
+        try:
+            return self._config.getint(BARKS_READER_SECTION, ALT_ESCAPE_KEY)
+        except (ValueError, TypeError):
+            return ALT_ESCAPE_KEY_UNSET
+
+    def set_alt_escape_key(self, keycode: int) -> None:
+        logger.info(f"Setting alt_escape_key = {keycode}.")
+        assert self._config
+        self._config.set(BARKS_READER_SECTION, ALT_ESCAPE_KEY, int(keycode))
+        self._save_settings()
+
     @property
     def show_top_view_title_info(self) -> bool:
         return self._get_show_top_view_title_info()
@@ -515,6 +538,10 @@ class ReaderSettings:
 
     @staticmethod
     def _is_valid_main_window_top(_main_window_top: int) -> bool:
+        return True
+
+    @staticmethod
+    def _is_valid_alt_escape_key(_alt_escape_key: int) -> bool:
         return True
 
     def _is_valid_png_barks_panels_dir(self, dir_path: Path) -> bool:

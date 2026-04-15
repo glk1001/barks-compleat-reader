@@ -105,6 +105,17 @@ class TestHandleTreeKey:
         assert nav._handle_tree_key(KEY_ESCAPE) is True
         nav._enter_menu_mode.assert_called_once()  # ty: ignore[unresolved-attribute]
 
+    def test_alt_escape_enters_menu_mode(self, nav: MainScreenNavigation) -> None:
+        from barks_reader.ui.reader_keyboard_nav import set_alt_escape_key  # noqa: PLC0415
+
+        backspace = 8
+        set_alt_escape_key(backspace)
+        try:
+            assert nav._handle_tree_key(backspace) is True
+            nav._enter_menu_mode.assert_called_once()  # ty: ignore[unresolved-attribute]
+        finally:
+            set_alt_escape_key(0)
+
     def test_tab_enters_bottom_focus(self, nav: MainScreenNavigation) -> None:
         # Make at least one bottom screen visible
         nav._fun_image_view_screen.is_visible = True

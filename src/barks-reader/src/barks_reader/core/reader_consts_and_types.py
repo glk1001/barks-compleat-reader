@@ -7,6 +7,7 @@ FANTAGRAPHICS_BARKS_LIBRARY = "Fantagraphics Complete Carl Barks Disney Library"
 
 LONG_PATH_SETTING = "longpath"
 OPTIONS_SETTING = "options"
+ALT_ESCAPE_KEY_SETTING = "altescapekey"
 NO_OVERRIDES_SUFFIX = "-no-overrides"
 COMIC_BEGIN_PAGE = "0"
 FIRST_BODY_PAGE = "1"

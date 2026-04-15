@@ -6,6 +6,8 @@ from loguru import logger
 
 from barks_reader.core.reader_file_paths import BarksPanelsExtType, ReaderFilePaths
 from barks_reader.core.reader_settings import (
+    ALT_ESCAPE_KEY,
+    ALT_ESCAPE_KEY_UNSET,
     BARKS_READER_SECTION,
     DOUBLE_PAGE_MODE,
     FANTA_DIR,
@@ -67,6 +69,7 @@ class BuildableReaderSettings(ReaderSettings):
             USE_DERE_INSTEAD_OF_THEAH: self.get_use_dere_instead_of_theah,
             USE_BLANK_EYEBALLS_FOR_BOMBIE: self.get_use_blank_eyeballs_for_bombie,
             USE_GLK_FIREBUG_ENDING: self.get_use_glk_firebug_ending,
+            ALT_ESCAPE_KEY: self.get_alt_escape_key,
         }
 
         self._VALIDATION_METHODS: dict[str, Callable[..., bool]] = {
@@ -91,6 +94,7 @@ class BuildableReaderSettings(ReaderSettings):
             USE_DERE_INSTEAD_OF_THEAH: self._is_valid_use_dere_instead_of_theah,
             USE_BLANK_EYEBALLS_FOR_BOMBIE: self._is_valid_use_blank_eyeballs_for_bombie,
             USE_GLK_FIREBUG_ENDING: self._is_valid_use_glk_firebug_ending,
+            ALT_ESCAPE_KEY: self._is_valid_alt_escape_key,
         }
 
     @staticmethod
@@ -121,6 +125,7 @@ class BuildableReaderSettings(ReaderSettings):
                 MAIN_WINDOW_HEIGHT: 0,
                 MAIN_WINDOW_LEFT: -1,
                 MAIN_WINDOW_TOP: -1,
+                ALT_ESCAPE_KEY: ALT_ESCAPE_KEY_UNSET,
             },
         )
 

@@ -3,6 +3,7 @@
 
 actionbar
 allownone
+altescapekey
 anchorlayout
 autoclass
 bgnd
@@ -23,6 +24,7 @@ jsonstore
 kivy
 labellayout
 longpath
+modalview
 nonbody
 overscroll
 pycrucible
@@ -32,6 +34,7 @@ rescanning
 resched
 scrollview
 setdefaults
+settingitem
 swaptransition
 syskeyboard
 tfidf

@@ -21,8 +21,13 @@ from screeninfo import get_monitors
 from barks_reader.core import services
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.platform_info import PLATFORM, Platform
-from barks_reader.core.reader_consts_and_types import APP_TITLE, LONG_PATH_SETTING, OPTIONS_SETTING
-from barks_reader.core.reader_settings import BARKS_READER_SECTION
+from barks_reader.core.reader_consts_and_types import (
+    ALT_ESCAPE_KEY_SETTING,
+    APP_TITLE,
+    LONG_PATH_SETTING,
+    OPTIONS_SETTING,
+)
+from barks_reader.core.reader_settings import ALT_ESCAPE_KEY, BARKS_READER_SECTION
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 from barks_reader.core.screen_metrics import SCREEN_METRICS
 from barks_reader.core.settings_notifier import settings_notifier
@@ -46,6 +51,7 @@ from .main_index_screen import MainIndexScreen
 from .main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
 from .platform_window_utils import log_screen_metrics
 from .popup_widgets import READER_POPUPS_KV_FILE
+from .reader_keyboard_nav import get_alt_escape_key, is_escape_key, set_alt_escape_key
 from .reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     DOCUMENT_READER_SCREEN,
@@ -56,7 +62,7 @@ from .reader_screens import (
 from .reader_settings_buildable import BuildableReaderSettings
 from .screen_bundle import ScreenBundle
 from .search_screen import SEARCH_SCREEN_KV_FILE, SearchScreen
-from .settings_fix import SettingLongPath, SettingOptionsWithValue
+from .settings_fix import SettingAltEscapeKey, SettingLongPath, SettingOptionsWithValue
 from .speech_index_screen import SpeechIndexScreen
 from .statistics_screen import STATISTICS_SCREEN_KV_FILE, StatisticsScreen
 from .tree_view_nodes import READER_TREE_VIEW_KV_FILE, ReaderTreeBuilderEventDispatcher
@@ -169,6 +175,7 @@ class BarksReaderApp(App):
         # Register our custom widget type with the name 'longpath'
         settings.register_type(LONG_PATH_SETTING, SettingLongPath)
         settings.register_type(OPTIONS_SETTING, SettingOptionsWithValue)
+        settings.register_type(ALT_ESCAPE_KEY_SETTING, SettingAltEscapeKey)
 
         self.reader_settings.build_settings(settings)
         self.config.write()
@@ -188,6 +195,11 @@ class BarksReaderApp(App):
         if self.reader_settings.on_changed_setting(section, key, value) and (
             section == BARKS_READER_SECTION
         ):
+            if key == ALT_ESCAPE_KEY:
+                try:
+                    set_alt_escape_key(int(value))
+                except (TypeError, ValueError):
+                    set_alt_escape_key(0)
             settings_notifier.notify(section, key)
 
     @override
@@ -266,6 +278,9 @@ class BarksReaderApp(App):
             self.config, Path(self.get_application_config()), self._config_info.app_data_dir
         )
         self.reader_settings.set_barks_panels_dir()
+
+        set_alt_escape_key(self.reader_settings.get_alt_escape_key())
+        Window.bind(on_key_down=_dismiss_top_popup_on_alt_escape)
 
         if self.reader_settings.use_virtual_keyboard:
             Window.allow_vkeyboard = True
@@ -425,6 +440,27 @@ class BarksReaderApp(App):
             _log_screen_settings()
 
         Clock.schedule_once(show_the_window, WINDOW_SHOW_DELAY)
+
+
+def _dismiss_top_popup_on_alt_escape(
+    _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list
+) -> bool:
+    """Dismiss the top Kivy Popup/ModalView when the user-configured alt Escape key fires.
+
+    Real Escape is already handled by Kivy's own ModalView dispatch, so only the alt key
+    needs manual forwarding.
+    """
+    alt = get_alt_escape_key()
+    if alt == 0 or key != alt or not is_escape_key(key):
+        return False
+    # Import lazily — kivy's ModalView import is cheap but keeps module top short.
+    from kivy.uix.modalview import ModalView  # noqa: PLC0415
+
+    for child in Window.children:
+        if isinstance(child, ModalView) and getattr(child, "auto_dismiss", False):
+            child.dismiss()
+            return True
+    return False
 
 
 def _log_screen_settings() -> None:

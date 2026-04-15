@@ -35,8 +35,10 @@ from .platform_window_utils import WindowManager
 from .reader_keyboard_nav import (
     ActionBarNavMixin,
     DropdownNavMixin,
+    is_escape_key,
 )
 from .reader_screens import ReaderScreen
+from .settings_keyboard_nav import SettingsKeyboardNav
 from .reader_tree_builder import ReaderTreeBuilder
 from .snapshot_applicator import SnapshotApplicator
 from .tree_view_manager import TreeViewManager
@@ -203,6 +205,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         )
         Window.bind(on_key_down=self._on_key_down)
 
+        self._settings_nav: SettingsKeyboardNav | None = None
         self._active = True
 
         self._set_initial_state()

@@ -21,13 +21,13 @@ from loguru import logger
 
 from .reader_keyboard_nav import (
     KEY_ENTER,
-    KEY_ESCAPE,
     KEY_LEFT,
     KEY_NUMPAD_ENTER,
     KEY_RIGHT,
     MENU_FOCUS_HIGHLIGHT_GROUP,
     DropdownNavMixin,
     clear_focus_in_list,
+    is_escape_key,
     update_focus_in_list,
 )
 
@@ -222,7 +222,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
             self._move_tab_focus(-1)
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._activate_focused_tab()
-        elif key == KEY_ESCAPE:
+        elif is_escape_key(key):
             if self._nav_on_exit_request:
                 self._nav_on_exit_request()
         else:

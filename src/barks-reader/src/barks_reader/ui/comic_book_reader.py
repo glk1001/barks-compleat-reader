@@ -40,12 +40,12 @@ from .action_bar_helpers import (
 )
 from .platform_window_utils import WindowManager
 from .reader_keyboard_nav import (
-    KEY_ESCAPE,
     KEY_LEFT,
     KEY_RIGHT,
     KEY_UP,
     ActionBarNavMixin,
     DropdownNavMixin,
+    is_escape_key,
 )
 from .reader_navigation import ReaderNavigation
 from .reader_screens import ReaderScreen
@@ -813,7 +813,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self.comic_book_reader.next_page()
         elif key == KEY_LEFT:
             self.comic_book_reader.prev_page()
-        elif key in (KEY_UP, KEY_ESCAPE):
+        elif key == KEY_UP or is_escape_key(key):
             self._enter_menu_mode()
         else:
             return False
