@@ -38,8 +38,8 @@ from .reader_keyboard_nav import (
     is_escape_key,
 )
 from .reader_screens import ReaderScreen
-from .settings_keyboard_nav import SettingsKeyboardNav
 from .reader_tree_builder import ReaderTreeBuilder
+from .settings_keyboard_nav import SettingsKeyboardNav
 from .snapshot_applicator import SnapshotApplicator
 from .tree_view_manager import TreeViewManager
 from .user_error_handler import UserErrorHandler
@@ -340,6 +340,13 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def _on_key_down(
         self, _window: object, key: int, _scancode: int, _codepoint: str, _modifier: list
     ) -> bool:
+        if self._settings_nav is not None:
+            if self._settings_nav.handle_key(key):
+                return True
+            if is_escape_key(key):
+                self._close_settings()
+                return True
+            return True
         return self._nav.handle_key(key)
 
     def set_comic_book_reader_screen(self, comic_book_reader_screen: ComicBookReaderScreen) -> None:
@@ -390,7 +397,21 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         settings.size = self.size
         settings.pos_hint = {"center_x": 0.5, "center_y": 0.5}
 
+        self._settings_nav = SettingsKeyboardNav(settings)
+        settings.bind(on_close=self._on_settings_closed)
+
         return True
+
+    def _on_settings_closed(self, *_args: object) -> None:
+        if self._settings_nav is not None:
+            self._settings_nav.reset()
+            self._settings_nav = None
+
+    def _close_settings(self) -> None:
+        if self._settings_nav is not None:
+            self._settings_nav.reset()
+            self._settings_nav = None
+        App.get_running_app().close_settings()
 
     def _on_view_state_changed(self, view_state: ViewStates) -> None:
         self.ids.collapse_button.disabled = view_state == ViewStates.INITIAL
