@@ -127,7 +127,9 @@ def draw_panel_bounds_on_image(
     return True
 
 
-def get_comic_titles(volumes_str: str, title_str: str) -> tuple[ComicsDatabase, list[str]]:
+def get_comic_titles(
+    volumes_str: str, title_str: str, exclude_non_comics: bool = False
+) -> tuple[ComicsDatabase, list[str]]:
     """Validate volume/title mutual exclusivity, parse args, and return database + titles.
 
     Raises:
@@ -140,7 +142,7 @@ def get_comic_titles(volumes_str: str, title_str: str) -> tuple[ComicsDatabase, 
 
     volumes = list(intspan(volumes_str))
     comics_database = ComicsDatabase()
-    titles = get_titles(comics_database, volumes, title_str)
+    titles = get_titles(comics_database, volumes, title_str, exclude_non_comics=exclude_non_comics)
     return comics_database, titles
 
 
