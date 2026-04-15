@@ -70,8 +70,8 @@ def nav(screens: ScreenBundle) -> Generator[MainScreenNavigation]:
 
 class TestHandleKey:
     def test_delegates_to_menu_when_in_menu_mode(self, nav: MainScreenNavigation) -> None:
-        nav._is_in_menu_mode.return_value = True  # ty: ignore[invalid-assignment]
-        nav._handle_menu_key.return_value = True  # ty: ignore[invalid-assignment]
+        nav._is_in_menu_mode.return_value = True  # ty: ignore[unresolved-attribute]
+        nav._handle_menu_key.return_value = True  # ty: ignore[unresolved-attribute]
 
         assert nav.handle_key(KEY_ENTER) is True
         nav._handle_menu_key.assert_called_once_with(KEY_ENTER)  # ty: ignore[unresolved-attribute]
