@@ -59,6 +59,19 @@ class SpeechPageGroup:
     def save_json(self, to_file: Path | None = None, backup_file: Path | None = None) -> None:
         _save_speech_page_group_json(self, to_file, backup_file)
 
+    def renumber_groups(self) -> bool:
+        """Renumber group keys to sequential "0", "1", "2"... preserving order.
+
+        Returns True if any renumbering was needed.
+        """
+        groups = self.speech_page_json.get("groups", {})
+        expected = [str(i) for i in range(len(groups))]
+        actual = list(groups.keys())
+        if actual == expected:
+            return False
+        self.speech_page_json["groups"] = {str(i): value for i, value in enumerate(groups.values())}
+        return True
+
 
 @dataclass(frozen=True, slots=True)
 class SpeechGroups:
