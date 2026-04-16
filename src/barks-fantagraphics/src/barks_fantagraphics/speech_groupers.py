@@ -31,6 +31,26 @@ class SpeechText:
     text_box: list[tuple[int | float, int | float]]
 
 
+# Vertical bucket size (px) for spatial sorting — bubbles whose min_y values
+# fall in the same bucket are treated as the same row and sorted left-to-right.
+_Y_BUCKET_PX = 100
+
+
+def _group_sort_key(group: dict) -> tuple[int, float, float]:
+    """Sort key for OCR groups: (panel_num, bucketed_y, min_x).  panel_num -1 sorts last."""
+    panel_num = int(group.get("panel_num", -1))
+    text_box = group.get("text_box", [])
+    if text_box:
+        min_y = min(p[1] for p in text_box)
+        min_x = min(p[0] for p in text_box)
+    else:
+        min_y = float("inf")
+        min_x = float("inf")
+    sort_panel = panel_num if panel_num >= 0 else 999
+    bucket_y = round(min_y / _Y_BUCKET_PX) * _Y_BUCKET_PX
+    return (sort_panel, bucket_y, min_x)
+
+
 @dataclass(frozen=True, slots=True)
 class SpeechPageGroup:
     fanta_vol: int
@@ -60,16 +80,27 @@ class SpeechPageGroup:
         _save_speech_page_group_json(self, to_file, backup_file)
 
     def renumber_groups(self) -> bool:
-        """Renumber group keys to sequential "0", "1", "2"... preserving order.
+        """Sort groups by panel_num then spatial position, and renumber sequentially.
 
-        Returns True if any renumbering was needed.
+        Groups are sorted by (panel_num, min_y, min_x) so that both OCR engines
+        produce the same ordering for the same page.  Groups with panel_num == -1
+        sort last.
+
+        Returns True if ordering or numbering changed.
         """
         groups = self.speech_page_json.get("groups", {})
-        expected = [str(i) for i in range(len(groups))]
-        actual = list(groups.keys())
-        if actual == expected:
+        old_items = list(groups.items())
+        sorted_items = sorted(old_items, key=lambda kv: _group_sort_key(kv[1]))
+        renumbered = {str(i): value for i, (_, value) in enumerate(sorted_items)}
+
+        expected_keys = [str(i) for i in range(len(groups))]
+        old_keys = list(groups.keys())
+        old_values = [v for _, v in old_items]
+        new_values = [v for _, v in sorted_items]
+        if old_keys == expected_keys and old_values == new_values:
             return False
-        self.speech_page_json["groups"] = {str(i): value for i, value in enumerate(groups.values())}
+
+        self.speech_page_json["groups"] = renumbered
         return True
 
 
