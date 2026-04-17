@@ -40,12 +40,11 @@ def _group_sort_key(group: dict) -> tuple[int, float, float]:
     """Sort key for OCR groups: (panel_num, bucketed_y, min_x).  panel_num -1 sorts last."""
     panel_num = int(group.get("panel_num", -1))
     text_box = group.get("text_box", [])
-    if text_box:
-        min_y = min(p[1] for p in text_box)
-        min_x = min(p[0] for p in text_box)
-    else:
-        min_y = float("inf")
-        min_x = float("inf")
+    if not text_box:
+        msg = f"OCR group has empty text_box: {group}"
+        raise ValueError(msg)
+    min_y = min(p[1] for p in text_box)
+    min_x = min(p[0] for p in text_box)
     sort_panel = panel_num if panel_num >= 0 else 999
     bucket_y = round(min_y / _Y_BUCKET_PX) * _Y_BUCKET_PX
     return (sort_panel, bucket_y, min_x)
