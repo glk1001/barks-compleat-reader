@@ -1,8 +1,9 @@
 """Production ``PageImageSource`` backed by ZIP archives.
 
 Handles both prebuilt CBZ archives and Fantagraphics volume archives
-(with override/extra image priority), image transformation via
-``ComicBookImageBuilder``, and resizing to display dimensions.
+(with override/extra image priority). Actual read/decode/resize/encode
+stages live in :mod:`image_pipeline`; this module composes them and
+owns archive-specific source resolution.
 """
 
 from __future__ import annotations
@@ -12,21 +13,21 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.comics_consts import PageType
-from comic_utils.pil_image_utils import (
-    get_pil_image_as_png_bytes,
-    load_pil_image_from_bytes,
-    load_pil_image_from_zip,
-)
 from loguru import logger
-from PIL import Image as PilImage
-from PIL import ImageOps
 
+from .image_pipeline import (
+    decode_pil,
+    encode_png_stream,
+    load_pil,
+    resize_contain,
+)
 from .reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
 
 if TYPE_CHECKING:
     import io
 
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
+    from PIL.Image import Image
 
     from .comic_book_page_info import PageInfo
     from .fantagraphics_volumes import FantagraphicsArchive
@@ -36,10 +37,11 @@ class ArchivePageImageSource:
     """Loads display-ready page images from ZIP archives.
 
     Owns the archive lifecycle: call :meth:`open` before loading pages
-    and :meth:`close` when done.  Handles image source resolution
-    (prebuilt vs. Fantagraphics with override priority), raw I/O
-    (ZIP reads, decryption), optional transformation via
-    ``ComicBookImageBuilder``, and LANCZOS resizing.
+    and :meth:`close` when done. Composes the shared
+    :mod:`image_pipeline` stages; this class only adds the logic that
+    is archive-specific: source resolution (prebuilt vs. Fantagraphics
+    with override priority) and optional transformation via
+    ``ComicBookImageBuilder``.
 
     Args:
         archive_path: Path to the main ZIP archive (prebuilt CBZ or Fantagraphics volume).
@@ -101,7 +103,15 @@ class ArchivePageImageSource:
         )
 
         pil_image = self._read_image(page_info, image_path, is_from_archive)
-        return self._transform_and_encode(pil_image, page_info)
+
+        if self._fanta_volume_archive:
+            assert self._comic_book_image_builder
+            pil_image = self._comic_book_image_builder.get_dest_page_image(
+                pil_image, page_info.srce_page, page_info.dest_page
+            )
+
+        resized = resize_contain(pil_image, self._max_width, self._max_height)
+        return encode_png_stream(resized, compress_level=0), PNG_EXT_FOR_KIVY
 
     def get_image_info_str(self, page_info: PageInfo) -> str:
         """Return a human-readable description of the image source for *page_info*."""
@@ -142,37 +152,24 @@ class ArchivePageImageSource:
 
         return Path(self._fanta_volume_archive.archive_images_page_map[page_str]), True
 
-    def _read_image(
-        self, page_info: PageInfo, image_path: str, is_from_archive: bool
-    ) -> PilImage.Image:
+    def _read_image(self, page_info: PageInfo, image_path: str, is_from_archive: bool) -> Image:
         assert self._archive is not None
 
         if is_from_archive:
-            zip_path = zipfile.Path(self._archive, at=str(image_path))
-            return load_pil_image_from_zip(zip_path, encrypted=False)
+            return load_pil(
+                zipfile.Path(self._archive, at=str(image_path)),
+                encrypted_zip=False,
+                use_ext_hint=True,
+            )
 
         if page_info.srce_page.page_type in [PageType.BLANK_PAGE, PageType.TITLE]:
             ext = Path(image_path).suffix if image_path != "__empty_page__" else ".jpg"
-            return load_pil_image_from_bytes(self._empty_page_image, ext)
+            return decode_pil(self._empty_page_image, ext=ext)
 
         assert self._fanta_volume_archive is not None
         assert self._fanta_volume_archive.override_archive is not None
-        zip_path = zipfile.Path(self._fanta_volume_archive.override_archive, at=str(image_path))
-        return load_pil_image_from_zip(zip_path, encrypted=True)
-
-    def _transform_and_encode(
-        self, pil_image: PilImage.Image, page_info: PageInfo
-    ) -> tuple[io.BytesIO, str]:
-        if self._fanta_volume_archive:
-            assert self._comic_book_image_builder
-            pil_image = self._comic_book_image_builder.get_dest_page_image(
-                pil_image, page_info.srce_page, page_info.dest_page
-            )
-
-        pil_image_resized = ImageOps.contain(
-            pil_image,
-            (self._max_width, self._max_height),
-            PilImage.Resampling.LANCZOS,
+        return load_pil(
+            zipfile.Path(self._fanta_volume_archive.override_archive, at=str(image_path)),
+            encrypted_zip=True,
+            use_ext_hint=True,
         )
-
-        return get_pil_image_as_png_bytes(pil_image_resized, compress_level=0), PNG_EXT_FOR_KIVY

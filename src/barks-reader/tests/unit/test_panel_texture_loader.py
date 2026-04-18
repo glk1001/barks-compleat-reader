@@ -4,6 +4,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_reader.core.panel_image_loader import PanelImageLoader
 from barks_reader.ui import panel_texture_loader as loader_module
 from barks_reader.ui.panel_texture_loader import PanelTextureLoader
 from kivy.core.image import Texture
@@ -16,69 +17,85 @@ def mock_callback() -> MagicMock:
 
 
 @pytest.fixture
-def loader() -> PanelTextureLoader:
-    return PanelTextureLoader()
+def mock_pil_loader() -> MagicMock:
+    return MagicMock(spec=PanelImageLoader)
 
 
-class TestPanelTextureLoader:
-    def test_init(self, loader: PanelTextureLoader) -> None:
-        assert isinstance(loader, PanelTextureLoader)
+@pytest.fixture
+def loader(mock_pil_loader: MagicMock) -> PanelTextureLoader:
+    return PanelTextureLoader(pil_loader=mock_pil_loader)
 
+
+class TestPanelTextureLoaderComposition:
+    """Composition (not inheritance) over :class:`PanelImageLoader`."""
+
+    def test_default_constructs_own_pil_loader(self) -> None:
+        tl = PanelTextureLoader()
+        assert isinstance(tl._pil_loader, PanelImageLoader)
+
+    def test_cancel_delegates_to_pil_loader(
+        self, loader: PanelTextureLoader, mock_pil_loader: MagicMock
+    ) -> None:
+        loader.cancel()
+        mock_pil_loader.cancel.assert_called_once()
+
+    def test_is_not_subclass_of_pil_loader(self) -> None:
+        assert not issubclass(PanelTextureLoader, PanelImageLoader)
+
+
+class TestLoadTexture:
     def test_load_texture_success(
-        self, loader: PanelTextureLoader, mock_callback: MagicMock
+        self,
+        loader: PanelTextureLoader,
+        mock_pil_loader: MagicMock,
+        mock_callback: MagicMock,
     ) -> None:
         mock_path = MagicMock()
         mock_pil = MagicMock(spec=Image.Image)
         mock_pil.size = (100, 100)
         mock_pil.tobytes.return_value = b"pixels"
 
-        # Mock Texture class in the module
         with patch.object(loader_module, "Texture") as mock_texture_cls:
             mock_texture = MagicMock(spec=Texture)
             mock_texture_cls.create.return_value = mock_texture
 
-            # Mock _start_worker to intercept the internal callback
-            with patch.object(
-                loader, PanelTextureLoader._start_worker.__name__
-            ) as mock_start_worker:
-                loader.load_texture(mock_path, mock_callback)
-
-                # Verify _start_worker called
-                mock_start_worker.assert_called_once()
-                args, kwargs = mock_start_worker.call_args
-                assert args[0] == mock_path
-                pil_callback = kwargs["callback"]
-
-                # Simulate success in worker
-                pil_callback(mock_pil, None)
-
-                # Verify Texture creation
-                mock_texture_cls.create.assert_called_once_with(size=(100, 100))
-                mock_texture.blit_buffer.assert_called_once_with(
-                    b"pixels", colorfmt="rgba", bufferfmt="ubyte"
-                )
-                mock_texture.flip_vertical.assert_called_once()
-
-                # Verify user callback
-                mock_callback.assert_called_once_with(mock_texture, None)
-
-    def test_load_texture_error(self, loader: PanelTextureLoader, mock_callback: MagicMock) -> None:
-        mock_path = MagicMock()
-        error = Exception("Load failed")
-
-        with patch.object(loader, PanelTextureLoader._start_worker.__name__) as mock_start_worker:
             loader.load_texture(mock_path, mock_callback)
 
-            _args, kwargs = mock_start_worker.call_args
-            pil_callback = kwargs["callback"]
+            # Verify the pil loader was delegated to with an internal wrapping callback.
+            mock_pil_loader.load_pil.assert_called_once()
+            args, _ = mock_pil_loader.load_pil.call_args
+            assert args[0] is mock_path
+            pil_callback = args[1]
 
-            # Simulate error
-            pil_callback(None, error)
+            # Simulate successful PIL load arriving on the UI thread.
+            pil_callback(mock_pil, None)
 
-            mock_callback.assert_called_once_with(None, error)
+            mock_texture_cls.create.assert_called_once_with(size=(100, 100))
+            mock_texture.blit_buffer.assert_called_once_with(
+                b"pixels", colorfmt="rgba", bufferfmt="ubyte"
+            )
+            mock_texture.flip_vertical.assert_called_once()
+            mock_callback.assert_called_once_with(mock_texture, None)
 
-    def test_pil_to_texture(self) -> None:
-        # Test the static method directly.
+    def test_load_texture_error(
+        self,
+        loader: PanelTextureLoader,
+        mock_pil_loader: MagicMock,
+        mock_callback: MagicMock,
+    ) -> None:
+        mock_path = MagicMock()
+        error = OSError("Load failed")
+
+        loader.load_texture(mock_path, mock_callback)
+
+        args, _ = mock_pil_loader.load_pil.call_args
+        pil_callback = args[1]
+
+        pil_callback(None, error)
+
+        mock_callback.assert_called_once_with(None, error)
+
+    def test_pil_to_texture_is_static(self) -> None:
         mock_pil = MagicMock(spec=Image.Image)
         mock_pil.size = (50, 50)
         mock_pil.tobytes.return_value = b"data"
@@ -94,4 +111,4 @@ class TestPanelTextureLoader:
                 b"data", colorfmt="rgba", bufferfmt="ubyte"
             )
             mock_tex.flip_vertical.assert_called_once()
-            assert result == mock_tex
+            assert result is mock_tex

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import threading
-import zipfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -11,7 +10,6 @@ import pytest
 from barks_reader.core import panel_image_loader as loader_module
 from barks_reader.core.panel_image_loader import PanelImageLoader
 from barks_reader.core.services import schedule_once
-from comic_utils.get_panel_bytes import get_decrypted_bytes  # ty:ignore[unresolved-import]
 from PIL import Image
 
 
@@ -25,6 +23,13 @@ def loader() -> PanelImageLoader:
     return PanelImageLoader()
 
 
+def _patch_sync_worker(loader_ref: PanelImageLoader) -> tuple:  # noqa: ARG001
+    """Return patchers that run the worker thread synchronously and execute schedule_once inline."""
+    thread_patch = patch.object(loader_module, threading.Thread.__name__)
+    schedule_patch = patch.object(loader_module, schedule_once.__name__)
+    return thread_patch, schedule_patch
+
+
 class TestPanelImageLoader:
     def test_init(self) -> None:
         loader = PanelImageLoader()
@@ -35,49 +40,18 @@ class TestPanelImageLoader:
         loader.cancel()
         assert loader._cancel is True
 
-    def test_load_pil_success_path(
+    def test_load_pil_success_invokes_callback_with_rgba_image(
         self, loader: PanelImageLoader, mock_callback: MagicMock
     ) -> None:
         mock_path = MagicMock(spec=Path)
-        mock_path.read_bytes.return_value = b"fake_image_data"
-
-        mock_image = MagicMock(spec=Image.Image)
-        mock_converted_image = MagicMock(spec=Image.Image)
-        mock_image.convert.return_value = mock_converted_image
+        raw_pil = MagicMock(spec=Image.Image)
+        converted = MagicMock(spec=Image.Image)
+        raw_pil.convert.return_value = converted
 
         with (
             patch.object(loader_module, threading.Thread.__name__) as mock_thread_cls,
-            patch.object(
-                loader_module.Image, Image.open.__name__, return_value=mock_image
-            ) as mock_img_open,
-            patch.object(loader_module, schedule_once.__name__) as mock_schedule,
-        ):
-            # Execute worker synchronously
-            mock_thread_cls.side_effect = lambda target, args, daemon: MagicMock(
-                start=lambda: target(*args)
-            )
-            mock_schedule.side_effect = lambda func, dt: func(dt)
-
-            loader.load_pil(mock_path, mock_callback)
-
-            mock_path.read_bytes.assert_called_once()
-            mock_img_open.assert_called_once()
-            mock_image.load.assert_called_once()
-            mock_image.convert.assert_called_with("RGBA")
-
-            mock_callback.assert_called_once_with(mock_converted_image, None)
-
-    def test_load_pil_encrypted(self, mock_callback: MagicMock) -> None:
-        loader = PanelImageLoader()
-        mock_path = MagicMock(spec=zipfile.Path)
-        mock_path.read_bytes.return_value = b"encrypted_data"
-
-        with (
-            patch.object(loader_module, threading.Thread.__name__) as mock_thread_cls,
-            patch.object(
-                loader_module, get_decrypted_bytes.__name__, return_value=b"decrypted"
-            ) as mock_decrypt,
-            patch.object(loader_module.Image, Image.open.__name__) as mock_img_open,
+            patch.object(loader_module, "load_pil", return_value=raw_pil) as mock_load_pil,
+            patch.object(loader_module, "convert_mode", return_value=converted) as mock_convert,
             patch.object(loader_module, schedule_once.__name__) as mock_schedule,
         ):
             mock_thread_cls.side_effect = lambda target, args, daemon: MagicMock(
@@ -87,38 +61,17 @@ class TestPanelImageLoader:
 
             loader.load_pil(mock_path, mock_callback)
 
-            mock_decrypt.assert_called_once_with(b"encrypted_data")
-            mock_img_open.assert_called_once()
+            mock_load_pil.assert_called_once_with(mock_path, encrypted_zip=True)
+            mock_convert.assert_called_once_with(raw_pil, "RGBA")
+            mock_callback.assert_called_once_with(converted, None)
 
-    def test_load_pil_zip_path(self, loader: PanelImageLoader, mock_callback: MagicMock) -> None:
-        mock_path = MagicMock(spec=zipfile.Path)
-        mock_path.read_bytes.return_value = b"zip_data"
-
-        with (
-            patch.object(loader_module, threading.Thread.__name__) as mock_thread_cls,
-            patch.object(
-                loader_module, get_decrypted_bytes.__name__, return_value=b"decrypted"
-            ) as mock_decrypt,
-            patch.object(loader_module.Image, Image.open.__name__) as mock_img_open,
-            patch.object(loader_module, schedule_once.__name__) as mock_schedule,
-        ):
-            mock_thread_cls.side_effect = lambda target, args, daemon: MagicMock(
-                start=lambda: target(*args)
-            )
-            mock_schedule.side_effect = lambda func, dt: func(dt)
-
-            loader.load_pil(mock_path, mock_callback)
-
-            mock_decrypt.assert_called_once_with(b"zip_data")
-            mock_img_open.assert_called_once()
-
-    def test_load_pil_error(self, loader: PanelImageLoader, mock_callback: MagicMock) -> None:
+    def test_load_pil_error_path(self, loader: PanelImageLoader, mock_callback: MagicMock) -> None:
         mock_path = MagicMock(spec=Path)
         error = OSError("Read failed")
-        mock_path.read_bytes.side_effect = error
 
         with (
             patch.object(loader_module, threading.Thread.__name__) as mock_thread_cls,
+            patch.object(loader_module, "load_pil", side_effect=error),
             patch.object(loader_module, schedule_once.__name__) as mock_schedule,
         ):
             mock_thread_cls.side_effect = lambda target, args, daemon: MagicMock(
@@ -130,80 +83,53 @@ class TestPanelImageLoader:
 
             mock_callback.assert_called_once_with(None, error)
 
-    # noinspection PyShadowingNames
-    def test_load_pil_unsupported_type(
+    def test_worker_cancel_before_decode_skips_callback(
         self, loader: PanelImageLoader, mock_callback: MagicMock
     ) -> None:
-        with (
-            patch.object(loader_module, threading.Thread.__name__) as mock_thread_cls,
-            patch.object(loader_module, schedule_once.__name__) as mock_schedule,
-        ):
-            mock_thread_cls.side_effect = lambda target, args, daemon: MagicMock(
-                start=lambda: target(*args)
-            )
-            mock_schedule.side_effect = lambda func, dt: func(dt)
-
-            loader.load_pil("not a path", mock_callback)  # ty:ignore[invalid-argument-type]
-
-            args, _ = mock_callback.call_args
-            assert args[0] is None
-            assert isinstance(args[1], TypeError)
-
-    def test_worker_cancel_early(self, loader: PanelImageLoader, mock_callback: MagicMock) -> None:
-        """Test cancellation after read_bytes but before image processing."""
         mock_path = MagicMock(spec=Path)
-        mock_path.read_bytes.return_value = b"data"
+
+        def cancel_during_load(*_a: object, **_k: object) -> MagicMock:
+            loader.cancel()
+            return MagicMock(spec=Image.Image)
 
         with (
             patch.object(loader_module, threading.Thread.__name__) as mock_thread_cls,
-            patch.object(loader_module.Image, Image.open.__name__) as mock_img_open,
+            patch.object(loader_module, "load_pil", side_effect=cancel_during_load),
+            patch.object(loader_module, "convert_mode") as mock_convert,
             patch.object(loader_module, schedule_once.__name__) as mock_schedule,
         ):
-            # Side effect to cancel during read_bytes
-            def side_effect_cancel() -> bytes:
-                loader.cancel()
-                return b"data"
-
-            mock_path.read_bytes.side_effect = side_effect_cancel
-
             mock_thread_cls.side_effect = lambda target, args, daemon: MagicMock(
                 start=lambda: target(*args)
             )
 
             loader.load_pil(mock_path, mock_callback)
 
-            # Should return early
-            mock_img_open.assert_not_called()
+            # Cancel happened right after load_pil; convert_mode should not run.
+            mock_convert.assert_not_called()
             mock_schedule.assert_not_called()
 
-    def test_worker_cancel_late(self, loader: PanelImageLoader, mock_callback: MagicMock) -> None:
-        """Test cancellation after image processing but before callback."""
+    def test_worker_cancel_after_convert_skips_callback(
+        self, loader: PanelImageLoader, mock_callback: MagicMock
+    ) -> None:
         mock_path = MagicMock(spec=Path)
-        mock_path.read_bytes.return_value = b"data"
+        raw_pil = MagicMock(spec=Image.Image)
+
+        def cancel_during_convert(*_a: object, **_k: object) -> MagicMock:
+            loader.cancel()
+            return MagicMock(spec=Image.Image)
 
         with (
             patch.object(loader_module, threading.Thread.__name__) as mock_thread_cls,
-            patch.object(loader_module.Image, Image.open.__name__) as mock_img_open,
+            patch.object(loader_module, "load_pil", return_value=raw_pil),
+            patch.object(loader_module, "convert_mode", side_effect=cancel_during_convert),
             patch.object(loader_module, schedule_once.__name__) as mock_schedule,
         ):
-            mock_image = MagicMock()
-            mock_img_open.return_value = mock_image
-
-            # Set cancel during image conversion
-            # noinspection PyUnusedLocal
-            def side_effect_convert(mode: str) -> MagicMock:  # noqa: ARG001
-                loader.cancel()
-                return MagicMock()
-
-            mock_image.convert.side_effect = side_effect_convert
-
             mock_thread_cls.side_effect = lambda target, args, daemon: MagicMock(
                 start=lambda: target(*args)
             )
 
             loader.load_pil(mock_path, mock_callback)
 
-            mock_img_open.assert_called()
             mock_schedule.assert_not_called()
 
     def test_start_worker_kills_previous_thread(
@@ -215,58 +141,10 @@ class TestPanelImageLoader:
             mock_thread_instance = MagicMock()
             mock_thread_cls.return_value = mock_thread_instance
 
-            # Start first thread
             loader.load_pil(mock_path, mock_callback)
             assert loader._current_thread == mock_thread_instance
 
-            # Start second thread
             loader.load_pil(mock_path, mock_callback)
 
-            # Verify join called on first thread
             mock_thread_instance.join.assert_called_once()
             assert loader._cancel is False  # Reset to false
-
-    def test_load_pil_decryption_error(self, mock_callback: MagicMock) -> None:
-        loader = PanelImageLoader()
-        mock_path = MagicMock(spec=zipfile.Path)
-        mock_path.read_bytes.return_value = b"encrypted_data"
-        error = ValueError("Decryption failed")
-
-        with (
-            patch.object(loader_module, threading.Thread.__name__) as mock_thread_cls,
-            patch.object(
-                loader_module, get_decrypted_bytes.__name__, side_effect=error
-            ) as mock_decrypt,
-            patch.object(loader_module, schedule_once.__name__) as mock_schedule,
-        ):
-            mock_thread_cls.side_effect = lambda target, args, daemon: MagicMock(
-                start=lambda: target(*args)
-            )
-            mock_schedule.side_effect = lambda func, dt: func(dt)
-
-            loader.load_pil(mock_path, mock_callback)
-
-            mock_decrypt.assert_called_once_with(b"encrypted_data")
-            mock_callback.assert_called_once_with(None, error)
-
-    def test_load_pil_not_encrypted_does_not_call_decrypt(
-        self, loader: PanelImageLoader, mock_callback: MagicMock
-    ) -> None:
-        mock_path = MagicMock(spec=Path)
-        mock_path.read_bytes.return_value = b"data"
-
-        with (
-            patch.object(loader_module, threading.Thread.__name__) as mock_thread_cls,
-            patch.object(loader_module, get_decrypted_bytes.__name__) as mock_decrypt,
-            patch.object(loader_module.Image, Image.open.__name__) as mock_img_open,
-            patch.object(loader_module, schedule_once.__name__) as mock_schedule,
-        ):
-            mock_thread_cls.side_effect = lambda target, args, daemon: MagicMock(
-                start=lambda: target(*args)
-            )
-            mock_schedule.side_effect = lambda func, dt: func(dt)
-
-            loader.load_pil(mock_path, mock_callback)
-
-            mock_decrypt.assert_not_called()
-            mock_img_open.assert_called_once()

@@ -1,14 +1,11 @@
-import io
-import zipfile
 from collections.abc import Callable
-from pathlib import Path
 from threading import Thread
 
 from comic_utils.comic_consts import PanelPath
-from comic_utils.get_panel_bytes import get_decrypted_bytes  # ty: ignore[unresolved-import]
 from loguru import logger
 from PIL import Image
 
+from .image_pipeline import convert_mode, load_pil
 from .services import schedule_once
 
 type ImageLoaderCallback = Callable[[Image.Image | None, Exception | None], None]
@@ -52,26 +49,14 @@ class PanelImageLoader:
         self._current_thread = current_thread
 
     def _worker(self, panel_path: PanelPath, callback: ImageLoaderCallback) -> None:
-        # noinspection PyBroadException
         try:
-            # PanelPath may be Path (loose, unencrypted) or zipfile.Path (encrypted).
-            if isinstance(panel_path, zipfile.Path):
-                raw = get_decrypted_bytes(panel_path.read_bytes())
-            elif isinstance(panel_path, Path):
-                raw = panel_path.read_bytes()
-            else:
-                msg = f"Unsupported PanelPath type: {type(panel_path)}"
-                raise TypeError(msg)  # noqa: TRY301
-            if not raw:
-                msg = f'No bytes returned from "{panel_path}".'
-                raise ValueError(msg)  # noqa: TRY301
+            # Panel zipfile.Path bytes are always encrypted in this app.
+            pil = load_pil(panel_path, encrypted_zip=True)
 
             if self._cancel:
                 return
 
-            pil = Image.open(io.BytesIO(raw))
-            pil.load()
-            pil = pil.convert("RGBA")  # ensures reliable texture creation
+            pil = convert_mode(pil, "RGBA")  # ensures reliable texture creation
 
             if self._cancel:
                 return

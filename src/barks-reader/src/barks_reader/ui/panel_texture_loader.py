@@ -9,7 +9,7 @@ from barks_reader.core.panel_image_loader import PanelImageLoader
 type TextureLoaderCallback = Callable[[Texture | None, Exception | None], None]
 
 
-class PanelTextureLoader(PanelImageLoader):
+class PanelTextureLoader:
     """Load a texture in a background thread.
 
       From either:
@@ -17,19 +17,26 @@ class PanelTextureLoader(PanelImageLoader):
       - PanelPath = filesystem Path
       - PanelPath = zipfile.Path
 
-    Texture upload always happens on the UI thread (required by Kivy).
+    Composes a :class:`PanelImageLoader` for the off-UI read/decode work, and
+    uploads the resulting PIL image to a Kivy texture on the UI thread.
     """
+
+    def __init__(self, pil_loader: PanelImageLoader | None = None) -> None:
+        self._pil_loader = pil_loader if pil_loader is not None else PanelImageLoader()
+
+    def cancel(self) -> None:
+        self._pil_loader.cancel()
 
     def load_texture(self, panel_path: PanelPath, callback: TextureLoaderCallback) -> None:
         def pil_callback(img: Image.Image | None, err: Exception | None) -> None:
-            if err:
+            if err is not None:
                 callback(None, err)
                 return
 
-            assert img
+            assert img is not None
             callback(self._pil_to_texture(img), None)
 
-        self._start_worker(panel_path, callback=pil_callback)
+        self._pil_loader.load_pil(panel_path, pil_callback)
 
     @staticmethod
     def _pil_to_texture(pil: Image.Image) -> Texture:
