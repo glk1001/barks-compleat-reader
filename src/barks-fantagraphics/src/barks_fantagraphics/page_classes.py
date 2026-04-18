@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from .comics_consts import PageType
-from .panel_bounding_boxes import BoundingBox
+from .panel_geometry import BoundingBox
 
 
 @dataclass(frozen=True, slots=True)

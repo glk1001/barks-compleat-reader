@@ -28,7 +28,7 @@ from barks_fantagraphics.comics_utils import get_relpath
 from barks_fantagraphics.fanta_comics_info import US_CENSORED_TITLES
 from barks_fantagraphics.page_classes import CleanPage, RequiredDimensions
 from barks_fantagraphics.pages import get_page_num_str
-from barks_fantagraphics.panel_bounding import get_scaled_panels_bbox_height
+from barks_fantagraphics.panel_geometry import scale_height
 from comic_utils.pil_image_utils import load_pil_image_from_bytes
 from loguru import logger
 from PIL import Image, ImageDraw, ImageFont
@@ -236,7 +236,7 @@ class ComicBookImageBuilder:
                 f" Using black bars.",
             )
 
-        required_height = get_scaled_panels_bbox_height(
+        required_height = scale_height(
             DEST_TARGET_WIDTH,
             srce_page_image.width,
             srce_page_image.height,

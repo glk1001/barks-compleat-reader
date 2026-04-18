@@ -1,3 +1,12 @@
+"""Orchestration around panel bounding boxes.
+
+Reads per-page panels-segments JSON from disk, extracts source box sizes from
+:class:`CleanPage` objects, and delegates all arithmetic to
+:mod:`.panel_geometry`. This module owns the I/O, logging, and page-type
+filtering — the pure geometry lives in ``panel_geometry``.
+"""
+
+import json
 from pathlib import Path
 from typing import Literal
 
@@ -12,9 +21,25 @@ from .comics_consts import (
 )
 from .comics_utils import dest_file_is_older_than_srce, get_abbrev_path
 from .page_classes import CleanPage, ComicDimensions, RequiredDimensions, SrceAndDestPages
-from .panel_bounding_boxes import BoundingBox, get_panels_bounding_box_from_file
+from .panel_geometry import (
+    BoundingBox,
+    centered_bbox,
+    compute_box_size_stats,
+    compute_page_num_y_bottom,
+    compute_required_panels_bbox_size,
+    scale_height,
+)
 
 warn_on_panels_bbox_height_less_than_av: Literal[True, False] = True
+
+
+def get_panels_bounding_box_from_file(panels_segments_file: Path) -> BoundingBox:
+    """Read the overall panels bounding box from a panels-segments JSON file."""
+    with panels_segments_file.open() as f:
+        segment_info = json.load(f)
+
+    x_min, y_min, x_max, y_max = segment_info["overall_bounds"]
+    return BoundingBox(x_min, y_min, x_max, y_max)
 
 
 def get_required_panels_bbox_width_height(
@@ -22,108 +47,46 @@ def get_required_panels_bbox_width_height(
     required_page_height: int,
     required_page_number_height: int,
 ) -> tuple[ComicDimensions, RequiredDimensions]:
-    (
-        min_panels_bbox_width,
-        max_panels_bbox_width,
-        min_panels_bbox_height,
-        max_panels_bbox_height,
-    ) = _get_min_max_panels_bbox_width_height(srce_pages)
+    """Compute source and required destination panel-bbox dimensions.
 
-    av_panels_bbox_width, av_panels_bbox_height = _get_average_panels_bbox_width_height(
-        max_panels_bbox_height,
-        srce_pages,
-    )
-    assert av_panels_bbox_width > 0
-    assert av_panels_bbox_height > 0
+    Args:
+        srce_pages: All source pages for a comic; pages without panels are skipped.
+        required_page_height: Destination page height in pixels.
+        required_page_number_height: Height of the rendered page-number text.
 
-    required_panels_bbox_width = DEST_TARGET_WIDTH - (2 * DEST_TARGET_X_MARGIN)
-    required_panels_bbox_height = get_scaled_panels_bbox_height(
-        required_panels_bbox_width,
-        av_panels_bbox_width,
-        av_panels_bbox_height,
+    """
+    panel_sizes = [
+        (p.panels_bbox.get_width(), p.panels_bbox.get_height())
+        for p in srce_pages
+        if p.page_type not in PAGES_WITHOUT_PANELS
+    ]
+
+    stats = compute_box_size_stats(panel_sizes, PANELS_BBOX_HEIGHT_SIMILARITY_MARGIN)
+    assert stats.avg_width > 0
+    assert stats.avg_height > 0
+
+    required_width, required_height = compute_required_panels_bbox_size(
+        stats.avg_width,
+        stats.avg_height,
+        DEST_TARGET_WIDTH,
+        DEST_TARGET_X_MARGIN,
     )
-    page_num_y_centre = round(0.5 * (0.5 * (required_page_height - required_panels_bbox_height)))
-    required_page_num_y_bottom = int(page_num_y_centre - (required_page_number_height / 2))
+    page_num_y_bottom = compute_page_num_y_bottom(
+        required_page_height,
+        required_height,
+        required_page_number_height,
+    )
 
     return (
         ComicDimensions(
-            min_panels_bbox_width,
-            max_panels_bbox_width,
-            min_panels_bbox_height,
-            max_panels_bbox_height,
-            av_panels_bbox_width,
-            av_panels_bbox_height,
+            stats.min_width,
+            stats.max_width,
+            stats.min_height,
+            stats.max_height,
+            stats.avg_width,
+            stats.avg_height,
         ),
-        RequiredDimensions(
-            required_panels_bbox_width,
-            required_panels_bbox_height,
-            required_page_num_y_bottom,
-        ),
-    )
-
-
-def get_scaled_panels_bbox_height(
-    scaled_panels_bbox_width: int,
-    panels_bbox_width: int,
-    panels_bbox_height: int,
-) -> int:
-    return round((panels_bbox_height * scaled_panels_bbox_width) / panels_bbox_width)
-
-
-def _get_average_panels_bbox_width_height(
-    max_panels_bbox_height: int,
-    srce_pages: list[CleanPage],
-) -> tuple[int, int]:
-    sum_panels_bbox_width = 0
-    sum_panels_bbox_height = 0
-    num_pages = 0
-    for srce_page in srce_pages:
-        if srce_page.page_type in PAGES_WITHOUT_PANELS:
-            continue
-
-        panels_height = srce_page.panels_bbox.get_height()
-        if panels_height < (max_panels_bbox_height - PANELS_BBOX_HEIGHT_SIMILARITY_MARGIN):
-            continue
-
-        panels_width = srce_page.panels_bbox.get_width()
-
-        sum_panels_bbox_width += panels_width
-        sum_panels_bbox_height += panels_height
-        num_pages += 1
-
-    assert num_pages > 0
-    return round(float(sum_panels_bbox_width) / float(num_pages)), round(
-        float(sum_panels_bbox_height) / float(num_pages),
-    )
-
-
-def _get_min_max_panels_bbox_width_height(
-    srce_pages: list[CleanPage],
-) -> tuple[int, int, int, int]:
-    big_num = 10000
-
-    min_panels_bbox_width = big_num
-    min_panels_bbox_height = big_num
-    max_panels_bbox_width = 0
-    max_panels_bbox_height = 0
-
-    for srce_page in srce_pages:
-        if srce_page.page_type in PAGES_WITHOUT_PANELS:
-            continue
-
-        panels_bbox_width = srce_page.panels_bbox.get_width()
-        panels_bbox_height = srce_page.panels_bbox.get_height()
-
-        min_panels_bbox_width = min(min_panels_bbox_width, panels_bbox_width)
-        min_panels_bbox_height = min(min_panels_bbox_height, panels_bbox_height)
-        max_panels_bbox_width = max(max_panels_bbox_width, panels_bbox_width)
-        max_panels_bbox_height = max(max_panels_bbox_height, panels_bbox_height)
-
-    return (
-        min_panels_bbox_width,
-        max_panels_bbox_width,
-        min_panels_bbox_height,
-        max_panels_bbox_height,
+        RequiredDimensions(required_width, required_height, page_num_y_bottom),
     )
 
 
@@ -132,6 +95,7 @@ def set_srce_panel_bounding_boxes(
     srce_panels_segment_info_files: list[Path],
     check_srce_page_timestamps: bool,
 ) -> None:
+    """Populate ``panels_bbox`` on each source page from its segments file."""
     logger.debug("Setting srce panel bounding boxes.")
 
     for srce_page, srce_panels_segment_info_file in zip(
@@ -161,6 +125,7 @@ def set_dest_panel_bounding_boxes(
     required_dim: RequiredDimensions,
     pages: SrceAndDestPages,
 ) -> None:
+    """Populate ``panels_bbox`` on each destination page from the source dimensions."""
     logger.debug("Setting dest panel bounding boxes.")
 
     for srce_page, dest_page in zip(pages.srce_pages, pages.dest_pages, strict=True):
@@ -179,19 +144,18 @@ def _get_dest_panels_bounding_box(
 
     assert srce_dim.min_panels_bbox_width != -1
     assert required_dim.panels_bbox_width != -1
+    assert srce_dim.av_panels_bbox_height > 0
 
-    required_panels_width = int(DEST_TARGET_WIDTH - (2 * DEST_TARGET_X_MARGIN))
+    required_panels_width = required_dim.panels_bbox_width
     srce_panels_bbox_width = srce_page.panels_bbox.get_width()
     srce_panels_bbox_height = srce_page.panels_bbox.get_height()
-
-    assert srce_dim.av_panels_bbox_height > 0
 
     if srce_panels_bbox_height >= (
         srce_dim.av_panels_bbox_height - PANELS_BBOX_HEIGHT_SIMILARITY_MARGIN
     ):
         required_panels_height = required_dim.panels_bbox_height
     else:
-        required_panels_height = get_scaled_panels_bbox_height(
+        required_panels_height = scale_height(
             required_panels_width,
             srce_panels_bbox_width,
             srce_panels_bbox_height,
@@ -209,10 +173,10 @@ def _get_dest_panels_bounding_box(
             f" not {required_dim.panels_bbox_height}.",
         )
 
-    # Center the dest panels image on an empty page.
-    dest_panels_x_min = DEST_TARGET_X_MARGIN
-    dest_panels_y_min = int(0.5 * (DEST_TARGET_HEIGHT - required_panels_height))
-    dest_panels_x_max = dest_panels_x_min + (required_panels_width - 1)
-    dest_panels_y_max = dest_panels_y_min + (required_panels_height - 1)
-
-    return BoundingBox(dest_panels_x_min, dest_panels_y_min, dest_panels_x_max, dest_panels_y_max)
+    return centered_bbox(
+        DEST_TARGET_WIDTH,
+        DEST_TARGET_HEIGHT,
+        required_panels_width,
+        required_panels_height,
+        DEST_TARGET_X_MARGIN,
+    )

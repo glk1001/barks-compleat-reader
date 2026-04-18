@@ -22,12 +22,12 @@ from barks_fantagraphics.page_classes import (
     SrceAndDestPages,
 )
 from barks_fantagraphics.panel_bounding import (
+    get_panels_bounding_box_from_file,
     get_required_panels_bbox_width_height,
-    get_scaled_panels_bbox_height,
     set_dest_panel_bounding_boxes,
     set_srce_panel_bounding_boxes,
 )
-from barks_fantagraphics.panel_bounding_boxes import BoundingBox, get_panels_bounding_box_from_file
+from barks_fantagraphics.panel_geometry import BoundingBox, scale_height
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -121,27 +121,27 @@ class TestGetPanelsBoundingBoxFromFile:
 
 
 # ---------------------------------------------------------------------------
-# get_scaled_panels_bbox_height
+# scale_height
 # ---------------------------------------------------------------------------
 
 
-class TestGetScaledPanelsBboxHeight:
+class TestScaleHeight:
     def test_basic_scaling(self) -> None:
         # If width doubles, height doubles
-        result = get_scaled_panels_bbox_height(
-            scaled_panels_bbox_width=2000,
-            panels_bbox_width=1000,
-            panels_bbox_height=1500,
+        result = scale_height(
+            target_width=2000,
+            source_width=1000,
+            source_height=1500,
         )
         assert result == 3000
 
     def test_identity_scaling(self) -> None:
-        result = get_scaled_panels_bbox_height(1000, 1000, 1500)
+        result = scale_height(1000, 1000, 1500)
         assert result == 1500
 
     def test_rounds_result(self) -> None:
         # 1500 * 1001 / 1000 = 1501.5 → rounds to 1502
-        result = get_scaled_panels_bbox_height(1001, 1000, 1500)
+        result = scale_height(1001, 1000, 1500)
         assert result == 1502
 
 
