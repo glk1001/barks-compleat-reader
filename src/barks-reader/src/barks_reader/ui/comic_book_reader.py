@@ -27,7 +27,7 @@ from screeninfo import get_monitors
 
 from barks_reader.core.archive_page_image_source import ArchivePageImageSource
 from barks_reader.core.comic_book_loader import ComicBookLoader
-from barks_reader.core.comic_book_page_info import DisplayUnit
+from barks_reader.core.display_unit import DisplayUnit
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import PNG_EXT_FOR_KIVY, get_win_dimensions

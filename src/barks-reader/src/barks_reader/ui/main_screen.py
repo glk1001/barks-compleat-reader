@@ -12,7 +12,9 @@ from kivy.properties import BooleanProperty, StringProperty  # ty: ignore[unreso
 from kivy.uix.screenmanager import Screen
 from loguru import logger
 
+from barks_reader.core.comic_book_page_info import ComicLayoutBuilder
 from barks_reader.core.image_selector import ImageInfo, ImageSelector
+from barks_reader.core.page_info_adapters import FantagraphicsPanelSegmentsAdapter
 from barks_reader.core.reader_consts_and_types import APP_TITLE
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_formatter import get_action_bar_title
@@ -108,10 +110,20 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         user_error_handler = UserErrorHandler(reader_settings, screen_switchers.switch_to_settings)
 
+        panel_segments_adapter = FantagraphicsPanelSegmentsAdapter(
+            self._comics_database,
+            self._reader_settings.sys_file_paths.get_barks_reader_fantagraphics_panel_segments_root_dir(),
+        )
+        layout_builder = ComicLayoutBuilder(
+            sorted_pages_port=panel_segments_adapter,
+            required_dimensions_port=panel_segments_adapter,
+        )
+
         self._comic_reader_manager = ComicReaderManager(
             self._comics_database,
             self._reader_settings,
             self._json_settings_manager,
+            layout_builder,
             self._tree_view_screen,
             user_error_handler,
         )

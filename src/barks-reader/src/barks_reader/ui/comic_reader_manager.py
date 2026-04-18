@@ -3,24 +3,20 @@ from typing import TYPE_CHECKING
 from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from barks_fantagraphics.comic_book import ComicBook
-from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
 from comic_utils.get_panel_bytes import get_decrypted_bytes  # ty: ignore[unresolved-import]
 from kivy.clock import Clock
 from loguru import logger
 
-from barks_reader.core.comic_book_page_info import (
-    ComicBookPageInfo,
-    ComicBookPageInfoManager,
-    PageInfo,
-)
+from barks_reader.core.comic_book_page_info import ComicLayout, ComicLayoutBuilder
 from barks_reader.core.fantagraphics_volumes import MissingVolumeError
-from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE, FIRST_BODY_PAGE
+from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_settings import ReaderSettings
+from barks_reader.core.saved_page_info import SavedPageInfo
 
 from .comic_book_reader import ComicBookReaderScreen
-from .json_settings_manager import SavedPageInfo, SettingsManager
+from .json_settings_manager import SettingsManager
 from .tree_view_screen import TreeViewScreen
 from .user_error_handler import ErrorInfo, ErrorTypes, UserErrorHandler
 
@@ -36,6 +32,7 @@ class ComicReaderManager:
         comics_database: ComicsDatabase,
         reader_settings: ReaderSettings,
         json_settings_manager: SettingsManager,
+        layout_builder: ComicLayoutBuilder,
         tree_view_screen: TreeViewScreen,
         user_error_handler: UserErrorHandler,
     ) -> None:
@@ -45,6 +42,7 @@ class ComicReaderManager:
             comics_database: The database of comics.
             reader_settings: The application settings.
             json_settings_manager: Manager for JSON-based settings (last read pages).
+            layout_builder: Builds a ``ComicLayout`` for each comic to be read.
             tree_view_screen: The tree view screen controller.
             user_error_handler: Handler for user-facing errors.
 
@@ -56,11 +54,8 @@ class ComicReaderManager:
 
         self.all_fanta_titles = ALL_FANTA_COMIC_BOOK_INFO
         self._json_settings_manager = json_settings_manager
-        self._comic_page_info_mgr = ComicBookPageInfoManager(
-            self._comics_database,
-            self._reader_settings,
-        )
-        self._comic_page_info: ComicBookPageInfo | None = None
+        self._layout_builder = layout_builder
+        self._layout: ComicLayout | None = None
 
         self._comic_book_reader_screen: ComicBookReaderScreen | None = None
         self._comic_book_reader: ComicBookReader | None = None
@@ -143,8 +138,7 @@ class ComicReaderManager:
         assert self._fanta_info
         assert self._fanta_info.comic_book_info
 
-        self._comic_page_info = self._comic_page_info_mgr.get_comic_page_info(comic)
-        assert self._comic_page_info
+        self._layout = self._layout_builder.build(comic)
 
         get_decrypted_func = None
         if self._reader_settings.file_paths.barks_panels_are_encrypted:
@@ -155,7 +149,9 @@ class ComicReaderManager:
             self._reader_settings.sys_file_paths.get_empty_page_file(),
             get_inset_decrypted_bytes=get_decrypted_func,
         )
-        comic_book_image_builder.set_required_dim(self._comic_page_info.required_dim)
+        comic_book_image_builder.set_required_dim(
+            self._layout_builder.get_required_dimensions(comic)
+        )
 
         logger.debug(
             f'Load "{self._fanta_info.comic_book_info.get_title_str()}"'
@@ -168,7 +164,7 @@ class ComicReaderManager:
                 use_overrides_active,
                 comic_book_image_builder,
                 page_to_first_goto,
-                self._comic_page_info.page_map,
+                self._layout.page_map,
             )
         except MissingVolumeError as e:
             logger.error(e)
@@ -207,7 +203,7 @@ class ComicReaderManager:
                 f'"{title_str}": Saved last read page "{last_read_page.display_page_num}".',
             )
 
-            if not self._is_inside_body_pages(last_read_page):
+            if not last_read_page.is_inside_body():
                 last_read_page.display_page_num = COMIC_BEGIN_PAGE
 
         return last_read_page
@@ -226,7 +222,7 @@ class ComicReaderManager:
         if not last_read_page_info:
             return None
 
-        if not self._is_inside_body_pages(last_read_page_info):
+        if not last_read_page_info.is_inside_body():
             # The comic has been read. Go back to the first page.
             last_read_page_info.display_page_num = COMIC_BEGIN_PAGE
 
@@ -234,59 +230,16 @@ class ComicReaderManager:
 
         return last_read_page_info
 
-    def _get_page_info_by_index(self, page_index: int) -> PageInfo | None:
-        assert self._comic_page_info
-        for page_info in self._comic_page_info.page_map.values():
-            if page_info.page_index == page_index:
-                return page_info
-        return None
-
-    def _page_info_is_inside_body(self, page_info: PageInfo) -> bool:
-        assert self._comic_page_info
-        return (page_info.page_type == PageType.BODY) and page_info.display_page_num not in (
-            FIRST_BODY_PAGE,
-            self._comic_page_info.last_body_page,
-        )
-
-    @staticmethod
-    def _is_inside_body_pages(page_info: SavedPageInfo) -> bool:
-        return (page_info.page_type == PageType.BODY) and page_info.display_page_num not in (
-            FIRST_BODY_PAGE,
-            page_info.last_body_page,
-        )
-
     def _get_last_read_page_from_comic(self) -> SavedPageInfo | None:
         assert self._comic_book_reader
-        assert self._comic_page_info
+        assert self._layout
 
         last_read_page_str = self._comic_book_reader.get_last_read_page()
         if not last_read_page_str:
             return None
 
-        last_read_page = self._comic_page_info.page_map[last_read_page_str]
-
-        # In double page mode, the reading position spans the whole display unit,
-        # so it should only count as "in the middle of reading" when BOTH pages
-        # of the unit are inside the body. If either page is outside (cover,
-        # first body page, last body page, back matter), pick that page so the
-        # save logic resets to the beginning. Otherwise prefer the right page
-        # since it represents the furthest reading progress.
-        display_unit = self._comic_book_reader.get_current_display_unit()
-        if (
-            self._comic_book_reader.double_page_mode
-            and display_unit is not None
-            and display_unit.right_page_index is not None
-        ):
-            left_page = self._get_page_info_by_index(display_unit.left_page_index)
-            right_page = self._get_page_info_by_index(display_unit.right_page_index)
-            if left_page is not None and not self._page_info_is_inside_body(left_page):
-                last_read_page = left_page
-            elif right_page is not None:
-                last_read_page = right_page
-
-        return SavedPageInfo(
-            last_read_page.page_index,
-            last_read_page.display_page_num,
-            last_read_page.page_type,
-            self._comic_page_info.last_body_page,
+        return self._layout.resolve_last_read(
+            last_read_page_str,
+            self._comic_book_reader.get_current_display_unit(),
+            self._comic_book_reader.double_page_mode,
         )

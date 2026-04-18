@@ -1,19 +1,22 @@
+from __future__ import annotations
+
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comics_consts import SOLO_PAGE_TYPES, PageType
-from barks_fantagraphics.comics_database import ComicsDatabase
-from barks_fantagraphics.page_classes import CleanPage, RequiredDimensions
-from barks_fantagraphics.pages import (
-    FRONT_MATTER_PAGES,
-    ROMAN_NUMERALS,
-    get_sorted_srce_and_dest_pages_with_dimensions,
-)
-from comic_utils.comic_consts import JSON_FILE_EXT
+from barks_fantagraphics.pages import FRONT_MATTER_PAGES, ROMAN_NUMERALS
 
-from .reader_settings import ReaderSettings
+from .display_unit import DisplayUnit
+from .reader_consts_and_types import FIRST_BODY_PAGE
+from .saved_page_info import SavedPageInfo
+
+if TYPE_CHECKING:
+    from barks_fantagraphics.comic_book import ComicBook
+    from barks_fantagraphics.page_classes import CleanPage, RequiredDimensions, SrceAndDestPages
+
+    from .page_info_ports import RequiredDimensionsPort, SortedPagesPort
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,85 +29,181 @@ class PageInfo:
     is_solo: bool = False
 
 
-@dataclass(frozen=True, slots=True)
-class DisplayUnit:
-    """Represents one reading unit: either a solo page or a left+right page pair."""
+class ComicLayout:
+    """Immutable view of a paginated comic.
 
-    left_page_index: int
-    right_page_index: int | None  # None means solo page
+    Owns page lookups (by display number, by index), the ordered list of
+    display units for double-page mode, the "inside body pages" predicate,
+    and ``SavedPageInfo`` conversion.
+    """
 
+    __slots__ = (
+        "_display_units",
+        "_index_to_page",
+        "_last_body_page",
+        "_page_map",
+        "_unit_idx_for_index",
+    )
 
-@dataclass(frozen=True, slots=True)
-class ComicBookPageInfo:
-    # 'page_map' maps the comic book page numbers, starting with the roman numeral 'i',
-    # to the three digit comic archive page number. For example:
-    #     'i':  '210'   front matter
-    #     'ii': '211'   front matter
-    #     '1':  '220'   '1' is the first body page
-    #     '2':  '221'   '2' is the second body page
-    #     '3':  '222'   '3' is the last body page
-    #     '4':  '250'   '4' is a back matter page and the last page
-    page_map: OrderedDict[str, PageInfo]
-    last_body_page: str
-    last_page: str
-    required_dim: RequiredDimensions
+    def __init__(
+        self,
+        page_map: OrderedDict[str, PageInfo],
+        last_body_page: str,
+    ) -> None:
+        self._page_map = page_map
+        self._last_body_page = last_body_page
+        self._index_to_page: dict[int, PageInfo] = {p.page_index: p for p in page_map.values()}
+        self._display_units, self._unit_idx_for_index = _build_display_units(page_map)
 
+    @property
+    def page_map(self) -> OrderedDict[str, PageInfo]:
+        return self._page_map
 
-class ComicBookPageInfoManager:
-    def __init__(self, comics_database: ComicsDatabase, reader_settings: ReaderSettings) -> None:
-        self._comics_database = comics_database
-        self._sys_file_paths = reader_settings.sys_file_paths
+    @property
+    def last_body_page(self) -> str:
+        return self._last_body_page
 
-    def get_comic_page_info(self, comic: ComicBook) -> ComicBookPageInfo:
-        panel_segments_root_dir = (
-            self._sys_file_paths.get_barks_reader_fantagraphics_panel_segments_root_dir()
+    @property
+    def display_units(self) -> list[DisplayUnit]:
+        return self._display_units
+
+    def page_by_display(self, display_page_num: str) -> PageInfo:
+        return self._page_map[display_page_num]
+
+    def page_by_index(self, page_index: int) -> PageInfo | None:
+        return self._index_to_page.get(page_index)
+
+    def unit_idx_for(self, page_index: int) -> int | None:
+        return self._unit_idx_for_index.get(page_index)
+
+    def is_inside_body(self, page: PageInfo) -> bool:
+        return page.page_type == PageType.BODY and page.display_page_num not in (
+            FIRST_BODY_PAGE,
+            self._last_body_page,
         )
-        vol_title = self._comics_database.get_fantagraphics_volume_title(comic.get_fanta_volume())
-        panel_segments_dir = Path(panel_segments_root_dir) / vol_title
 
-        def get_srce_panel_segments_file(page_num: str) -> Path:
-            return panel_segments_dir / (page_num + JSON_FILE_EXT)
-
-        # TODO: Don't need dimensions if using prebuilt comics.
-        srce_and_dest_pages, _srce_dim, required_dim = (
-            get_sorted_srce_and_dest_pages_with_dimensions(
-                comic,
-                get_srce_panel_segments_file=get_srce_panel_segments_file,
-                get_full_paths=False,
-                check_srce_page_timestamps=False,
-            )
+    def to_saved(self, page: PageInfo) -> SavedPageInfo:
+        return SavedPageInfo(
+            page.page_index,
+            page.display_page_num,
+            page.page_type,
+            self._last_body_page,
         )
 
-        page_map = OrderedDict()
-        last_body_page = ""
-        last_page = ""
-        body_start_page_num = -1
-        orig_page_num = 0 if srce_and_dest_pages.srce_pages[0].page_type == PageType.FRONT else 1
+    def resolve_last_read(
+        self,
+        current_page_display_num: str,
+        current_display_unit: DisplayUnit | None,
+        double_page_mode: bool,
+    ) -> SavedPageInfo:
+        """Pick the saved page for the current reading position.
 
-        for index, (srce_page, dest_page) in enumerate(
-            zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, strict=False)
+        In double-page mode with a full pair, prefer the right page (furthest
+        progress) unless the left page is an edge page (cover, first body page,
+        last body page, back matter) — in that case pick left so the save
+        logic resets to the beginning.
+        """
+        last_read = self._page_map[current_page_display_num]
+        if (
+            double_page_mode
+            and current_display_unit is not None
+            and current_display_unit.right_page_index is not None
         ):
-            if dest_page.page_type not in FRONT_MATTER_PAGES and body_start_page_num == -1:
-                body_start_page_num = orig_page_num
+            left = self.page_by_index(current_display_unit.left_page_index)
+            right = self.page_by_index(current_display_unit.right_page_index)
+            if left is not None and not self.is_inside_body(left):
+                last_read = left
+            elif right is not None:
+                last_read = right
+        return self.to_saved(last_read)
 
-            if body_start_page_num == -1:
-                display_page_num = "0" if orig_page_num == 0 else ROMAN_NUMERALS[orig_page_num]
-            else:
-                display_page_num = str(orig_page_num - body_start_page_num + 1)
-                if dest_page.page_type == PageType.BODY:
-                    last_body_page = display_page_num
 
-            page_key = Path(srce_page.page_filename).stem
-            is_solo = dest_page.page_type in SOLO_PAGE_TYPES or page_key in comic.solo_page_keys
-            page_map[display_page_num] = PageInfo(
-                index,
-                display_page_num,
-                dest_page.page_type,
-                srce_page,
-                dest_page,
-                is_solo,
-            )
+class ComicLayoutBuilder:
+    """Builds a :class:`ComicLayout` for a comic.
 
-            orig_page_num += 1
+    Takes a :class:`SortedPagesPort` (required) and an optional
+    :class:`RequiredDimensionsPort`. The dimensions port is queried via
+    :meth:`get_required_dimensions` and is split out so prebuilt-comic flows
+    can skip the panel-segment I/O entirely by omitting the port.
+    """
 
-        return ComicBookPageInfo(page_map, last_body_page, last_page, required_dim)
+    def __init__(
+        self,
+        sorted_pages_port: SortedPagesPort,
+        required_dimensions_port: RequiredDimensionsPort | None = None,
+    ) -> None:
+        self._sorted_pages_port = sorted_pages_port
+        self._required_dimensions_port = required_dimensions_port
+
+    def build(self, comic: ComicBook) -> ComicLayout:
+        srce_and_dest_pages = self._sorted_pages_port.get_sorted_pages(comic)
+        page_map, last_body_page = _build_page_map(comic, srce_and_dest_pages)
+        return ComicLayout(page_map, last_body_page)
+
+    def get_required_dimensions(self, comic: ComicBook) -> RequiredDimensions:
+        if self._required_dimensions_port is None:
+            msg = "RequiredDimensionsPort was not wired"
+            raise RuntimeError(msg)
+        return self._required_dimensions_port.get_required_dimensions(comic)
+
+
+def _build_page_map(
+    comic: ComicBook,
+    srce_and_dest_pages: SrceAndDestPages,
+) -> tuple[OrderedDict[str, PageInfo], str]:
+    page_map: OrderedDict[str, PageInfo] = OrderedDict()
+    last_body_page = ""
+    body_start_page_num = -1
+    orig_page_num = 0 if srce_and_dest_pages.srce_pages[0].page_type == PageType.FRONT else 1
+
+    for index, (srce_page, dest_page) in enumerate(
+        zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, strict=False)
+    ):
+        if dest_page.page_type not in FRONT_MATTER_PAGES and body_start_page_num == -1:
+            body_start_page_num = orig_page_num
+
+        if body_start_page_num == -1:
+            display_page_num = "0" if orig_page_num == 0 else ROMAN_NUMERALS[orig_page_num]
+        else:
+            display_page_num = str(orig_page_num - body_start_page_num + 1)
+            if dest_page.page_type == PageType.BODY:
+                last_body_page = display_page_num
+
+        page_key = Path(srce_page.page_filename).stem
+        is_solo = dest_page.page_type in SOLO_PAGE_TYPES or page_key in comic.solo_page_keys
+        page_map[display_page_num] = PageInfo(
+            index,
+            display_page_num,
+            dest_page.page_type,
+            srce_page,
+            dest_page,
+            is_solo,
+        )
+
+        orig_page_num += 1
+
+    return page_map, last_body_page
+
+
+def _build_display_units(
+    page_map: OrderedDict[str, PageInfo],
+) -> tuple[list[DisplayUnit], dict[int, int]]:
+    pages = list(page_map.values())
+    units: list[DisplayUnit] = []
+    unit_idx_for_index: dict[int, int] = {}
+
+    i = 0
+    while i < len(pages):
+        if pages[i].is_solo or (i + 1 >= len(pages)) or pages[i + 1].is_solo:
+            unit_idx = len(units)
+            units.append(DisplayUnit(i, None))
+            unit_idx_for_index[i] = unit_idx
+            i += 1
+        else:
+            unit_idx = len(units)
+            units.append(DisplayUnit(i, i + 1))
+            unit_idx_for_index[i] = unit_idx
+            unit_idx_for_index[i + 1] = unit_idx
+            i += 2
+
+    return units, unit_idx_for_index

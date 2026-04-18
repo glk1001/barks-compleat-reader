@@ -1,51 +1,24 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any
 
-from barks_fantagraphics.comics_consts import PageType
 from kivy.storage.jsonstore import JsonStore
 from loguru import logger
 
 from barks_reader.core.reader_tree_view_utils import get_tree_view_node_path
+from barks_reader.core.saved_page_info import JsonSavedPageInfo, SavedPageInfo
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from .tree_view_nodes import BaseTreeViewNode
 
+__all__ = ["JsonSavedPageInfo", "SavedPageInfo", "SettingsManager"]
+
 _READER_SETTINGS = "AAA_Settings"
 _READER_SETTING_LAST_SELECTED_NODE = "last_selected_node"
 _READER_SETTING_LAST_SELECTED_NODE_STATE = "last_selected_node_state"
 _TITLE_SETTING_LAST_READ_PAGE = "last_read_page"
-
-
-JsonSavedPageInfo = dict[str, Any]
-
-
-@dataclass(slots=True)
-class SavedPageInfo:
-    page_index: int
-    display_page_num: str
-    page_type: PageType
-    last_body_page: str
-
-    def to_json(self) -> JsonSavedPageInfo:
-        return {
-            "page_index": self.page_index,
-            "display_page_num": self.display_page_num,
-            "page_type": self.page_type.name,
-            "last_body_page": self.last_body_page,
-        }
-
-    @classmethod
-    def from_json(cls, json_page_info: JsonSavedPageInfo) -> Self:
-        return cls(
-            json_page_info["page_index"],
-            json_page_info["display_page_num"],
-            PageType[json_page_info["page_type"]],
-            json_page_info["last_body_page"],
-        )
 
 
 class SettingsManager:
