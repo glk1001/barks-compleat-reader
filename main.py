@@ -44,6 +44,11 @@ if PLATFORM == Platform.LINUX:
     # This ensures app icon can be set on the taskbar.
     os.environ["SDL_VIDEO_X11_WMCLASS"] = _APP_NAME
 
+# Pass the focus-regain click through to widgets. Without this, SDL2 swallows
+# the first mouse-down after the window regains focus, so buttons need a
+# second click to fire.
+os.environ["SDL_MOUSE_FOCUS_CLICKTHROUGH"] = "1"
+
 load_dotenv(Path(__file__).parent / ".env.runtime")
 
 # === GLOBAL EXCEPTION HANDLERS ==============================================
@@ -89,10 +94,12 @@ def start_logging(cfg_info: ConfigInfo, min_options: MinimalConfigOptions) -> No
     setup_loguru(cfg_info, min_options.log_level)
 
     Config.set("kivy", "log_level", log_level.lower())  # ty: ignore[unresolved-attribute]
-    # Disable Kivy's right-click/ctrl-click multitouch emulation and stop
-    # ProbeSysfs from attaching MTD readers to /dev/input/event* — on Linux
-    # laptops those raw touch events duplicate SDL2's mouse events and cause
-    # phantom clicks, highlights, and drag-selects.
+    # Disable Kivy's right-click/ctrl-click multitouch emulation (applies on
+    # all platforms) and stop ProbeSysfs from attaching MTD readers to
+    # /dev/input/event* on Linux laptops — those raw touch events duplicate
+    # SDL2's mouse events and cause phantom clicks, highlights, and
+    # drag-selects. The remove_option call is a no-op on Windows and macOS
+    # (the %(name)s / ProbeSysfs default only applies on Linux).
     Config.set("input", "mouse", "mouse,disable_multitouch")  # ty: ignore[unresolved-attribute]
     Config.remove_option("input", "%(name)s")  # ty: ignore[unresolved-attribute]
     redirect_kivy_logs()

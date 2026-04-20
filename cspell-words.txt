@@ -15,6 +15,7 @@ browsable
 bufferfmt
 bunx
 chrono
+clickthrough
 codepoint
 colorfmt
 compresslevel
