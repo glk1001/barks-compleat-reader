@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -44,181 +46,278 @@ ALT_ESCAPE_KEY_UNSET = 0
 LOG_LEVEL_OPTIONS = ["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
 
+class FieldKind(Enum):
+    """Setting types accepted by Kivy's settings panel."""
+
+    BOOL = "bool"
+    INT = "numeric"
+    OPTIONS = "options"
+    LONG_PATH = LONG_PATH_SETTING
+    ALT_ESCAPE = ALT_ESCAPE_KEY_SETTING
+
+
+@dataclass(frozen=True, slots=True)
+class FieldSpec:
+    """Declarative description of a single configurable setting.
+
+    A single :class:`FieldSpec` is the source of truth for the Kivy settings
+    schema entry, the ``ConfigParser`` default value, and the names of the
+    bound :class:`ReaderSettings` methods used to read and validate the value.
+    """
+
+    key: str
+    title: str
+    desc: str
+    kind: FieldKind
+    section_header: str | None = None
+    options: tuple[str, ...] | None = None
+    config_default: Any = None
+    getter_method_name: str = ""
+    validator_method_name: str = ""
+
+
+def _resolve_default(spec: FieldSpec) -> Any:  # noqa: ANN401
+    """Return ``spec.config_default``, calling it first if it is a zero-arg callable."""
+    return spec.config_default() if callable(spec.config_default) else spec.config_default
+
+
+_FIELDS: tuple[FieldSpec, ...] = (
+    # -- Folders --
+    FieldSpec(
+        key=FANTA_DIR,
+        title="Fantagraphics Directory",
+        desc="Fantagraphics comic zips directory.",
+        kind=FieldKind.LONG_PATH,
+        section_header="Folders",
+        config_default=UNSET_FANTA_DIR_MARKER,
+        getter_method_name="_get_fantagraphics_volumes_dir",
+        validator_method_name="is_valid_fantagraphics_volumes_dir",
+    ),
+    FieldSpec(
+        key=PNG_BARKS_PANELS_DIR,
+        title="Png Barks Panels Directory",
+        desc="Directory containing Barks panels png images.",
+        kind=FieldKind.LONG_PATH,
+        config_default=ReaderFilePaths.get_default_png_barks_panels_source,
+        getter_method_name="_get_png_barks_panels_dir",
+        validator_method_name="_is_valid_png_barks_panels_dir",
+    ),
+    FieldSpec(
+        key=PREBUILT_COMICS_DIR,
+        title="Prebuilt Comics Directory",
+        desc="Directory containing specially prebuilt comics.",
+        kind=FieldKind.LONG_PATH,
+        config_default=ReaderFilePaths.get_default_prebuilt_comic_zips_dir,
+        getter_method_name="_get_prebuilt_comics_dir",
+        validator_method_name="_is_valid_prebuilt_comics_dir",
+    ),
+    # -- Options --
+    FieldSpec(
+        key=DOUBLE_PAGE_MODE,
+        title="Double Page Mode",
+        desc="Show two pages side-by-side when reading comics.",
+        kind=FieldKind.BOOL,
+        section_header="Options",
+        config_default=0,
+        getter_method_name="_get_double_page_mode",
+        validator_method_name="_is_valid_double_page_mode",
+    ),
+    FieldSpec(
+        key=GOTO_SAVED_NODE_ON_START,
+        title="Goto Last Selection on App Start",
+        desc="When the app starts, goto the last selection in the tree view.",
+        kind=FieldKind.BOOL,
+        config_default=1,
+        getter_method_name="_get_goto_saved_node_on_start",
+        validator_method_name="_is_valid_goto_saved_node_on_start",
+    ),
+    FieldSpec(
+        key=GOTO_FULLSCREEN_ON_APP_START,
+        title="Go Straight to Fullscreen on App Start",
+        desc="When the app starts it will go straight to fullscreen mode.",
+        kind=FieldKind.BOOL,
+        config_default=0,
+        getter_method_name="_get_goto_fullscreen_on_app_start",
+        validator_method_name="_is_valid_goto_fullscreen_on_app_start",
+    ),
+    FieldSpec(
+        key=GOTO_FULLSCREEN_ON_COMIC_READ,
+        title="Go Straight to Fullscreen for Comic Reading",
+        desc="When you press the comic read button, the app will go straight to"
+        " fullscreen mode to read the comic.",
+        kind=FieldKind.BOOL,
+        config_default=0,
+        getter_method_name="_get_goto_fullscreen_on_comic_read",
+        validator_method_name="_is_valid_goto_fullscreen_on_comic_read",
+    ),
+    FieldSpec(
+        key=SHOW_TOP_VIEW_TITLE_INFO,
+        title="Show Title Info in Top View",
+        desc="Set this to true if you want to see the title associated with the top image.",
+        kind=FieldKind.BOOL,
+        config_default=1,
+        getter_method_name="_get_show_top_view_title_info",
+        validator_method_name="_is_valid_show_top_view_title_info",
+    ),
+    FieldSpec(
+        key=SHOW_FUN_VIEW_TITLE_INFO,
+        title="Show Title Info in Bottom View",
+        desc="Set this to true if you want to see the title associated with the bottom image.",
+        kind=FieldKind.BOOL,
+        config_default=1,
+        getter_method_name="_get_show_fun_view_title_info",
+        validator_method_name="_is_valid_show_fun_view_title_info",
+    ),
+    FieldSpec(
+        key=IS_FIRST_USE_OF_READER,
+        title="First Use of Reader",
+        desc="Set this to true if this is the first use of the Barks reader. You need"
+        " to restart the app after changing this.",
+        kind=FieldKind.BOOL,
+        config_default=1,
+        getter_method_name="_get_is_first_use_of_reader",
+        validator_method_name="_is_valid_is_first_use_of_reader",
+    ),
+    FieldSpec(
+        key=LOG_LEVEL,
+        title="Log Level",
+        desc="Level of logging information. You need to restart the app before this takes effect.",
+        kind=FieldKind.OPTIONS,
+        options=tuple(LOG_LEVEL_OPTIONS),
+        config_default="INFO",
+        getter_method_name="_get_log_level",
+        validator_method_name="_is_valid_log_level",
+    ),
+    FieldSpec(
+        key=MAIN_WINDOW_HEIGHT,
+        title="Main Window Height",
+        desc="Set this to height you want for the main window. The width will be"
+        " automatically calculated from this value. Set to 0 to give the best fit."
+        " You need to restart the app after changing this.",
+        kind=FieldKind.INT,
+        config_default=0,
+        getter_method_name="_get_main_window_height",
+        validator_method_name="_is_valid_main_window_height",
+    ),
+    FieldSpec(
+        key=MAIN_WINDOW_LEFT,
+        title="Main Window Left",
+        desc="Set this to the left position of the main window. Set to -1 to give"
+        " a good default position. You need to restart the app after changing this.",
+        kind=FieldKind.INT,
+        config_default=-1,
+        getter_method_name="_get_main_window_left",
+        validator_method_name="_is_valid_main_window_left",
+    ),
+    FieldSpec(
+        key=MAIN_WINDOW_TOP,
+        title="Main Window Top",
+        desc="Set this to the top position of the main window. Set to -1 to give"
+        " a good default position. You need to restart the app after changing this.",
+        kind=FieldKind.INT,
+        config_default=-1,
+        getter_method_name="_get_main_window_top",
+        validator_method_name="_is_valid_main_window_top",
+    ),
+    FieldSpec(
+        key=ALT_ESCAPE_KEY,
+        title="Alternate Escape Key",
+        desc="Optional extra key that behaves like Escape (for remote controls"
+        " without an Escape key). Real Escape always still works.",
+        kind=FieldKind.ALT_ESCAPE,
+        config_default=ALT_ESCAPE_KEY_UNSET,
+        getter_method_name="get_alt_escape_key",
+        validator_method_name="_is_valid_alt_escape_key",
+    ),
+    FieldSpec(
+        key=USE_VIRTUAL_KEYBOARD,
+        title="Use Virtual Keyboard",
+        desc="Always show an on-screen keyboard when tapping search fields, "
+        "even if a physical keyboard is connected. Requires app restart.",
+        kind=FieldKind.BOOL,
+        config_default=0,
+        getter_method_name="_get_use_virtual_keyboard",
+        validator_method_name="_is_valid_use_virtual_keyboard",
+    ),
+    FieldSpec(
+        key=USE_PNG_IMAGES,
+        title="Use Png Images",
+        desc="Use png images where possible (needs app RESTART if changed).",
+        kind=FieldKind.BOOL,
+        config_default=1,
+        getter_method_name="_get_use_png_images",
+        validator_method_name="_is_valid_use_png_images",
+    ),
+    FieldSpec(
+        key=USE_PREBUILT_COMICS,
+        title="Use Prebuilt Comics",
+        desc="Read comics from the prebuilt comics folder.",
+        kind=FieldKind.BOOL,
+        config_default=0,
+        getter_method_name="_get_use_prebuilt_archives",
+        validator_method_name="_is_valid_use_prebuilt_archives",
+    ),
+    # -- Controversial Censorship Fixes --
+    FieldSpec(
+        key=USE_HARPIES_INSTEAD_OF_LARKIES,
+        title="Use 'Harpies' Instead of 'Larkies'",
+        desc="When reading 'The Golden Fleecing', use 'Harpies' instead of 'Larkies'.",
+        kind=FieldKind.BOOL,
+        section_header="Controversial Censorship Fixes",
+        config_default=1,
+        getter_method_name="get_use_harpies_instead_of_larkies",
+        validator_method_name="_is_valid_use_harpies_instead_of_larkies",
+    ),
+    FieldSpec(
+        key=USE_DERE_INSTEAD_OF_THEAH,
+        title="Use 'Dere' Instead of 'Theah'",
+        desc="When reading 'Lost in the Andes!', use 'Dere' instead of 'Theah'.",
+        kind=FieldKind.BOOL,
+        config_default=1,
+        getter_method_name="get_use_dere_instead_of_theah",
+        validator_method_name="_is_valid_use_dere_instead_of_theah",
+    ),
+    FieldSpec(
+        key=USE_BLANK_EYEBALLS_FOR_BOMBIE,
+        title="Use Blank Eyeballs for Bombie",
+        desc="When reading 'Voodoo Hoodoo', use blank eyeballs for Bombie the Zombie.",
+        kind=FieldKind.BOOL,
+        config_default=1,
+        getter_method_name="get_use_blank_eyeballs_for_bombie",
+        validator_method_name="_is_valid_use_blank_eyeballs_for_bombie",
+    ),
+    FieldSpec(
+        key=USE_GLK_FIREBUG_ENDING,
+        title="Don't Use Fantagraphics Ending for 'The Firebug'",
+        desc="When reading 'The Firebug', don't use the Fantagraphics ending.",
+        kind=FieldKind.BOOL,
+        config_default=1,
+        getter_method_name="get_use_glk_firebug_ending",
+        validator_method_name="_is_valid_use_glk_firebug_ending",
+    ),
+)
+
+_FIELDS_BY_KEY: dict[str, FieldSpec] = {f.key: f for f in _FIELDS}
+
+
 def _get_reader_settings_json() -> str:
-    return json.dumps(
-        [
-            {"type": "title", "title": "Folders"},
-            {
-                "title": "Fantagraphics Directory",
-                "desc": "Fantagraphics comic zips directory.",
-                "type": LONG_PATH_SETTING,
-                "section": BARKS_READER_SECTION,
-                "key": FANTA_DIR,
-            },
-            {
-                "title": "Png Barks Panels Directory",
-                "desc": "Directory containing Barks panels png images.",
-                "type": LONG_PATH_SETTING,
-                "section": BARKS_READER_SECTION,
-                "key": PNG_BARKS_PANELS_DIR,
-            },
-            {
-                "title": "Prebuilt Comics Directory",
-                "desc": "Directory containing specially prebuilt comics.",
-                "type": LONG_PATH_SETTING,
-                "section": BARKS_READER_SECTION,
-                "key": PREBUILT_COMICS_DIR,
-            },
-            {"type": "title", "title": "Options"},
-            {
-                "title": "Double Page Mode",
-                "desc": "Show two pages side-by-side when reading comics.",
-                "type": "bool",
-                "section": BARKS_READER_SECTION,
-                "key": DOUBLE_PAGE_MODE,
-            },
-            {
-                "title": "Goto Last Selection on App Start",
-                "desc": "When the app starts, goto the last selection in the tree view.",
-                "type": "bool",
-                "section": BARKS_READER_SECTION,
-                "key": GOTO_SAVED_NODE_ON_START,
-            },
-            {
-                "title": "Go Straight to Fullscreen on App Start",
-                "desc": "When the app starts it will go straight to fullscreen mode.",
-                "type": "bool",
-                "section": BARKS_READER_SECTION,
-                "key": GOTO_FULLSCREEN_ON_APP_START,
-            },
-            {
-                "title": "Go Straight to Fullscreen for Comic Reading",
-                "desc": "When you press the comic read button, the app will go straight to"
-                " fullscreen mode to read the comic.",
-                "type": "bool",
-                "section": BARKS_READER_SECTION,
-                "key": GOTO_FULLSCREEN_ON_COMIC_READ,
-            },
-            {
-                "title": "Show Title Info in Top View",
-                "desc": "Set this to true if you want to see the title associated with the"
-                " top image.",
-                "type": "bool",
-                "section": BARKS_READER_SECTION,
-                "key": SHOW_TOP_VIEW_TITLE_INFO,
-            },
-            {
-                "title": "Show Title Info in Bottom View",
-                "desc": "Set this to true if you want to see the title associated with the"
-                " bottom image.",
-                "type": "bool",
-                "section": BARKS_READER_SECTION,
-                "key": SHOW_FUN_VIEW_TITLE_INFO,
-            },
-            {
-                "title": "First Use of Reader",
-                "desc": "Set this to true if this is the first use of the Barks reader. You need"
-                " to restart the app after changing this.",
-                "type": "bool",
-                "section": BARKS_READER_SECTION,
-                "key": IS_FIRST_USE_OF_READER,
-            },
-            {
-                "title": "Log Level",
-                "desc": "Level of logging information. You need to restart the app before this"
-                " takes effect.",
-                "type": "options",
-                "section": BARKS_READER_SECTION,
-                "key": LOG_LEVEL,
-                "options": LOG_LEVEL_OPTIONS,
-                "value": "INFO",
-            },
-            {
-                "title": "Main Window Height",
-                "desc": "Set this to height you want for the main window. The width will be"
-                " automatically calculated from this value. Set to 0 to give the best fit."
-                " You need to restart the app after changing this.",
-                "type": "numeric",
-                "section": BARKS_READER_SECTION,
-                "key": MAIN_WINDOW_HEIGHT,
-            },
-            {
-                "title": "Main Window Left",
-                "desc": "Set this to the left position of the main window. Set to -1 to give"
-                " a good default position. You need to restart the app after changing this.",
-                "type": "numeric",
-                "section": BARKS_READER_SECTION,
-                "key": MAIN_WINDOW_LEFT,
-            },
-            {
-                "title": "Main Window Top",
-                "desc": "Set this to the top position of the main window. Set to -1 to give"
-                " a good default position. You need to restart the app after changing this.",
-                "type": "numeric",
-                "section": BARKS_READER_SECTION,
-                "key": MAIN_WINDOW_TOP,
-            },
-            {
-                "title": "Alternate Escape Key",
-                "desc": "Optional extra key that behaves like Escape (for remote controls"
-                " without an Escape key). Real Escape always still works.",
-                "type": ALT_ESCAPE_KEY_SETTING,
-                "section": BARKS_READER_SECTION,
-                "key": ALT_ESCAPE_KEY,
-            },
-            {
-                "title": "Use Virtual Keyboard",
-                "desc": "Always show an on-screen keyboard when tapping search fields, "
-                "even if a physical keyboard is connected. Requires app restart.",
-                "type": "bool",
-                "section": BARKS_READER_SECTION,
-                "key": USE_VIRTUAL_KEYBOARD,
-            },
-            {
-                "title": "Use Png Images",
-                "desc": "Use png images where possible (needs app RESTART if changed).",
-                "type": "bool",
-                "section": BARKS_READER_SECTION,
-                "key": USE_PNG_IMAGES,
-            },
-            {
-                "title": "Use Prebuilt Comics",
-                "desc": "Read comics from the prebuilt comics folder.",
-                "type": "bool",
-                "section": BARKS_READER_SECTION,
-                "key": USE_PREBUILT_COMICS,
-            },
-            {"type": "title", "title": "Controversial Censorship Fixes"},
-            {
-                "title": "Use 'Harpies' Instead of 'Larkies'",
-                "desc": "When reading 'The Golden Fleecing', use 'Harpies' instead of 'Larkies'.",
-                "type": "bool",
-                "section": BARKS_READER_SECTION,
-                "key": USE_HARPIES_INSTEAD_OF_LARKIES,
-            },
-            {
-                "title": "Use 'Dere' Instead of 'Theah'",
-                "desc": "When reading 'Lost in the Andes!', use 'Dere' instead of 'Theah'.",
-                "type": "bool",
-                "section": BARKS_READER_SECTION,
-                "key": USE_DERE_INSTEAD_OF_THEAH,
-            },
-            {
-                "title": "Use Blank Eyeballs for Bombie",
-                "desc": "When reading 'Voodoo Hoodoo', use blank eyeballs for Bombie the Zombie.",
-                "type": "bool",
-                "section": BARKS_READER_SECTION,
-                "key": USE_BLANK_EYEBALLS_FOR_BOMBIE,
-            },
-            {
-                "title": "Don't Use Fantagraphics Ending for 'The Firebug'",
-                "desc": "When reading 'The Firebug', don't use the Fantagraphics ending.",
-                "type": "bool",
-                "section": BARKS_READER_SECTION,
-                "key": USE_GLK_FIREBUG_ENDING,
-            },
-        ]
-    )
+    items: list[dict[str, Any]] = []
+    for spec in _FIELDS:
+        if spec.section_header:
+            items.append({"type": "title", "title": spec.section_header})
+        entry: dict[str, Any] = {
+            "title": spec.title,
+            "desc": spec.desc,
+            "type": spec.kind.value,
+            "section": BARKS_READER_SECTION,
+            "key": spec.key,
+        }
+        if spec.options is not None:
+            entry["options"] = list(spec.options)
+        if spec.kind is FieldKind.OPTIONS:
+            entry["value"] = spec.config_default
+        items.append(entry)
+    return json.dumps(items)
 
 
 class ConfigParser(Protocol):

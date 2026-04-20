@@ -4,37 +4,17 @@ from typing import TYPE_CHECKING, Any, override
 
 from loguru import logger
 
-from barks_reader.core.reader_file_paths import BarksPanelsExtType, ReaderFilePaths
+from barks_reader.core.reader_file_paths import BarksPanelsExtType
 from barks_reader.core.reader_settings import (
-    ALT_ESCAPE_KEY,
-    ALT_ESCAPE_KEY_UNSET,
+    _FIELDS,
     BARKS_READER_SECTION,
-    DOUBLE_PAGE_MODE,
-    FANTA_DIR,
-    GOTO_FULLSCREEN_ON_APP_START,
-    GOTO_FULLSCREEN_ON_COMIC_READ,
-    GOTO_SAVED_NODE_ON_START,
-    IS_FIRST_USE_OF_READER,
-    LOG_LEVEL,
-    MAIN_WINDOW_HEIGHT,
-    MAIN_WINDOW_LEFT,
-    MAIN_WINDOW_TOP,
     PNG_BARKS_PANELS_DIR,
-    PREBUILT_COMICS_DIR,
-    SHOW_FUN_VIEW_TITLE_INFO,
-    SHOW_TOP_VIEW_TITLE_INFO,
-    UNSET_FANTA_DIR_MARKER,
-    USE_BLANK_EYEBALLS_FOR_BOMBIE,
-    USE_DERE_INSTEAD_OF_THEAH,
-    USE_GLK_FIREBUG_ENDING,
-    USE_HARPIES_INSTEAD_OF_LARKIES,
     USE_PNG_IMAGES,
-    USE_PREBUILT_COMICS,
-    USE_VIRTUAL_KEYBOARD,
     BuildableConfigParser,
     ReaderSettings,
     Settings,
     _get_reader_settings_json,
+    _resolve_default,
 )
 
 if TYPE_CHECKING:
@@ -47,54 +27,11 @@ class BuildableReaderSettings(ReaderSettings):
 
         self._settings: Settings | None = None
 
-        self._GETTER_METHODS = {
-            USE_VIRTUAL_KEYBOARD: self._get_use_virtual_keyboard,
-            DOUBLE_PAGE_MODE: self._get_double_page_mode,
-            FANTA_DIR: self._get_fantagraphics_volumes_dir,
-            PNG_BARKS_PANELS_DIR: self._get_png_barks_panels_dir,
-            USE_PNG_IMAGES: self._get_use_png_images,
-            PREBUILT_COMICS_DIR: self._get_prebuilt_comics_dir,
-            USE_PREBUILT_COMICS: self._get_use_prebuilt_archives,
-            SHOW_TOP_VIEW_TITLE_INFO: self._get_show_top_view_title_info,
-            SHOW_FUN_VIEW_TITLE_INFO: self._get_show_fun_view_title_info,
-            IS_FIRST_USE_OF_READER: self._get_is_first_use_of_reader,
-            LOG_LEVEL: self._get_log_level,
-            MAIN_WINDOW_HEIGHT: self._get_main_window_height,
-            MAIN_WINDOW_LEFT: self._get_main_window_left,
-            MAIN_WINDOW_TOP: self._get_main_window_top,
-            GOTO_SAVED_NODE_ON_START: self._get_goto_saved_node_on_start,
-            GOTO_FULLSCREEN_ON_APP_START: self._get_goto_fullscreen_on_app_start,
-            GOTO_FULLSCREEN_ON_COMIC_READ: self._get_goto_fullscreen_on_comic_read,
-            USE_HARPIES_INSTEAD_OF_LARKIES: self.get_use_harpies_instead_of_larkies,
-            USE_DERE_INSTEAD_OF_THEAH: self.get_use_dere_instead_of_theah,
-            USE_BLANK_EYEBALLS_FOR_BOMBIE: self.get_use_blank_eyeballs_for_bombie,
-            USE_GLK_FIREBUG_ENDING: self.get_use_glk_firebug_ending,
-            ALT_ESCAPE_KEY: self.get_alt_escape_key,
+        self._GETTER_METHODS: dict[str, Callable[[], Any]] = {
+            spec.key: getattr(self, spec.getter_method_name) for spec in _FIELDS
         }
-
         self._VALIDATION_METHODS: dict[str, Callable[..., bool]] = {
-            USE_VIRTUAL_KEYBOARD: self._is_valid_use_virtual_keyboard,
-            DOUBLE_PAGE_MODE: self._is_valid_double_page_mode,
-            FANTA_DIR: self.is_valid_fantagraphics_volumes_dir,
-            PNG_BARKS_PANELS_DIR: self._is_valid_png_barks_panels_dir,
-            USE_PNG_IMAGES: self._is_valid_use_png_images,
-            PREBUILT_COMICS_DIR: self._is_valid_prebuilt_comics_dir,
-            USE_PREBUILT_COMICS: self._is_valid_use_prebuilt_archives,
-            GOTO_SAVED_NODE_ON_START: self._is_valid_goto_saved_node_on_start,
-            GOTO_FULLSCREEN_ON_APP_START: self._is_valid_goto_fullscreen_on_app_start,
-            GOTO_FULLSCREEN_ON_COMIC_READ: self._is_valid_goto_fullscreen_on_comic_read,
-            SHOW_TOP_VIEW_TITLE_INFO: self._is_valid_show_top_view_title_info,
-            SHOW_FUN_VIEW_TITLE_INFO: self._is_valid_show_fun_view_title_info,
-            IS_FIRST_USE_OF_READER: self._is_valid_is_first_use_of_reader,
-            LOG_LEVEL: self._is_valid_log_level,
-            MAIN_WINDOW_HEIGHT: self._is_valid_main_window_height,
-            MAIN_WINDOW_LEFT: self._is_valid_main_window_left,
-            MAIN_WINDOW_TOP: self._is_valid_main_window_top,
-            USE_HARPIES_INSTEAD_OF_LARKIES: self._is_valid_use_harpies_instead_of_larkies,
-            USE_DERE_INSTEAD_OF_THEAH: self._is_valid_use_dere_instead_of_theah,
-            USE_BLANK_EYEBALLS_FOR_BOMBIE: self._is_valid_use_blank_eyeballs_for_bombie,
-            USE_GLK_FIREBUG_ENDING: self._is_valid_use_glk_firebug_ending,
-            ALT_ESCAPE_KEY: self._is_valid_alt_escape_key,
+            spec.key: getattr(self, spec.validator_method_name) for spec in _FIELDS
         }
 
     @staticmethod
@@ -103,30 +40,7 @@ class BuildableReaderSettings(ReaderSettings):
         #       Not sure why.
         config.setdefaults(
             BARKS_READER_SECTION,
-            {
-                USE_VIRTUAL_KEYBOARD: 0,
-                DOUBLE_PAGE_MODE: 0,
-                FANTA_DIR: UNSET_FANTA_DIR_MARKER,
-                PNG_BARKS_PANELS_DIR: ReaderFilePaths.get_default_png_barks_panels_source(),
-                USE_PNG_IMAGES: 1,
-                PREBUILT_COMICS_DIR: ReaderFilePaths.get_default_prebuilt_comic_zips_dir(),
-                USE_PREBUILT_COMICS: 0,
-                GOTO_SAVED_NODE_ON_START: 1,
-                GOTO_FULLSCREEN_ON_APP_START: 0,
-                GOTO_FULLSCREEN_ON_COMIC_READ: 0,
-                USE_HARPIES_INSTEAD_OF_LARKIES: 1,
-                USE_DERE_INSTEAD_OF_THEAH: 1,
-                USE_BLANK_EYEBALLS_FOR_BOMBIE: 1,
-                USE_GLK_FIREBUG_ENDING: 1,
-                SHOW_TOP_VIEW_TITLE_INFO: 1,
-                SHOW_FUN_VIEW_TITLE_INFO: 1,
-                IS_FIRST_USE_OF_READER: 1,
-                LOG_LEVEL: "INFO",
-                MAIN_WINDOW_HEIGHT: 0,
-                MAIN_WINDOW_LEFT: -1,
-                MAIN_WINDOW_TOP: -1,
-                ALT_ESCAPE_KEY: ALT_ESCAPE_KEY_UNSET,
-            },
+            {spec.key: _resolve_default(spec) for spec in _FIELDS},
         )
 
     def build_settings(self, settings: Settings) -> None:
