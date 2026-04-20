@@ -52,10 +52,6 @@ jobs:
           COPYRIGHT_YEARS = "2025"
           VERSION = "ci"
           STUB
-          cat > src/comic-utils/src/comic_utils/get_panel_bytes.py <<'STUB'
-          def get_decrypted_bytes(data: bytes) -> bytes:
-              return data
-          STUB
 
       - name: Type check with ty
         run: uv run ty check --error-on-warning

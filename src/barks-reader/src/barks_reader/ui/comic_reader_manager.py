@@ -5,7 +5,7 @@ from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
-from comic_utils.get_panel_bytes import get_decrypted_bytes  # ty: ignore[unresolved-import]
+from comic_utils.get_panel_bytes import get_decrypted_bytes
 from kivy.clock import Clock
 from loguru import logger
 

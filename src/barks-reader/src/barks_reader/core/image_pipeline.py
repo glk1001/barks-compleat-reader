@@ -14,7 +14,7 @@ import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from comic_utils.get_panel_bytes import get_decrypted_bytes  # ty: ignore[unresolved-import]
+from comic_utils.get_panel_bytes import get_decrypted_bytes
 from comic_utils.pil_image_utils import (
     get_pil_image_as_png_bytes,
     load_pil_image_from_bytes,

@@ -13,19 +13,3 @@ include = ["src/barks-reader/tests/unit/test_main_screen_nav.py"]
 
 [overrides.rules]
 unused-ignore-comment = "ignore"
-
-# `comic_utils.get_panel_bytes` is a Cython extension built from a `.pyx.template.in`.
-# Locally ty cannot resolve the `.so` binary so the `# ty: ignore[unresolved-import]` is
-# required, but in CI the import resolves and ty flags the ignore as unused. Silence
-# `unused-ignore-comment` here so the same source works in both environments.
-[[overrides]]
-include = [
-    "src/barks-reader/src/barks_reader/core/panel_image_loader.py",
-    "src/barks-reader/src/barks_reader/ui/comic_reader_manager.py",
-    "src/barks-reader/tests/unit/test_panel_image_loader.py",
-    "src/comic-utils/src/comic_utils/pil_image_utils.py",
-]
-
-[overrides.rules]
-unused-ignore-comment = "ignore"
-

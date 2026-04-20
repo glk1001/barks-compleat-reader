@@ -45,9 +45,7 @@ def load_pil_image_for_reading(file: Path) -> PilImage:
 
 
 def load_pil_image_from_zip(zip_path: zipfile.Path, encrypted: bool) -> PilImage:
-    from .get_panel_bytes import (  # noqa: PLC0415  # ty: ignore[unresolved-import]
-        get_decrypted_bytes,
-    )
+    from .get_panel_bytes import get_decrypted_bytes  # noqa: PLC0415
 
     current_log_level = logging.getLogger().level
     try:

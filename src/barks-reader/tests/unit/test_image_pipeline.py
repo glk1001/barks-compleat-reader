@@ -21,7 +21,7 @@ from barks_reader.core.image_pipeline import (
     read_raw_bytes,
     resize_contain,
 )
-from comic_utils.get_panel_bytes import get_decrypted_bytes  # ty:ignore[unresolved-import]
+from comic_utils.get_panel_bytes import get_decrypted_bytes
 from PIL import Image
 
 if TYPE_CHECKING:
