@@ -1,110 +1,16 @@
+"""Tests for the `barks_reader.ui.view_states` re-export shim.
+
+Node-text and article lookups previously lived in this module; they moved to
+`barks_reader.core.navigation` (and are tested via `NavigationModel` destinations).
+This file now only guards the back-compat re-export.
+"""
+
 from __future__ import annotations
 
-from typing import Any
-from unittest.mock import MagicMock, patch
-
-import pytest
-from barks_reader.ui import view_states
-from barks_reader.ui.tree_view_nodes import (
-    ButtonTreeViewNode,
-    CsYearRangeTreeViewNode,
-    UsYearRangeTreeViewNode,
-    YearRangeTreeViewNode,
-)
-from barks_reader.ui.view_states import ViewStates
+from barks_reader.core.navigation.view_states import ViewStates as CoreViewStates
+from barks_reader.ui.view_states import ViewStates as UiViewStates
 
 
-def create_dummy_node(cls: type, text: str = "") -> Any:  # noqa: ANN401
-    """Create a dummy object that mimics the class of a Kivy widget.
-
-    Using MagicMock with spec satisfies isinstance() checks without instantiation.
-    """
-    node = MagicMock(spec=cls)
-    node.text = text
-    return node
-
-
-def test_get_view_state_from_node_types() -> None:
-    # Test YearRangeTreeViewNode -> ON_YEAR_RANGE_NODE
-    node = create_dummy_node(YearRangeTreeViewNode, "1940-1950")
-    state, params = view_states.get_view_state_from_node(node)
-    assert state == ViewStates.ON_YEAR_RANGE_NODE
-    assert params == {"year_range": "1940-1950"}
-
-    # Test CsYearRangeTreeViewNode -> ON_CS_YEAR_RANGE_NODE
-    node = create_dummy_node(CsYearRangeTreeViewNode, "CS 1940")
-    state, params = view_states.get_view_state_from_node(node)
-    assert state == ViewStates.ON_CS_YEAR_RANGE_NODE
-    assert params == {"cs_year_range": "CS 1940"}
-
-    # Test UsYearRangeTreeViewNode -> ON_US_YEAR_RANGE_NODE
-    node = create_dummy_node(UsYearRangeTreeViewNode, "US 1950")
-    state, params = view_states.get_view_state_from_node(node)
-    assert state == ViewStates.ON_US_YEAR_RANGE_NODE
-    assert params == {"us_year_range": "US 1950"}
-
-
-def test_get_view_state_from_node_text_static_mappings() -> None:
-    # Test simple text mapping (Introduction)
-    node = create_dummy_node(ButtonTreeViewNode, view_states.INTRO_NODE_TEXT)
-    state, params = view_states.get_view_state_from_node(node)
-    assert state == ViewStates.ON_INTRO_NODE
-    assert params == {}
-
-    # Test text mapping with markup (should be stripped)
-    node = create_dummy_node(ButtonTreeViewNode, f"[b]{view_states.INTRO_NODE_TEXT}[/b]")
-    state, params = view_states.get_view_state_from_node(node)
-    assert state == ViewStates.ON_INTRO_NODE
-
-    # Test Series mapping
-    node = create_dummy_node(ButtonTreeViewNode, view_states.SERIES_DDA)
-    state, params = view_states.get_view_state_from_node(node)
-    assert state == ViewStates.ON_DD_NODE
-
-
-@patch.object(view_states, "BARKS_TAG_CATEGORIES_DICT", {"My Category": "val"})
-def test_get_view_state_category() -> None:
-    node = create_dummy_node(ButtonTreeViewNode, "My Category")
-    state, params = view_states.get_view_state_from_node(node)
-    assert state == ViewStates.ON_CATEGORY_NODE
-    assert params == {"category": "My Category"}
-
-
-@patch.object(view_states, "is_tag_group_enum")
-@patch.object(view_states, "TagGroups")
-def test_get_view_state_tag_group(mock_tag_groups: MagicMock, mock_is_group: MagicMock) -> None:
-    mock_is_group.return_value = True
-    node = create_dummy_node(ButtonTreeViewNode, "Some Tag Group")
-
-    state, params = view_states.get_view_state_from_node(node)
-
-    assert state == ViewStates.ON_TAG_GROUP_NODE
-    assert "tag_group" in params
-    mock_tag_groups.assert_called_with("Some Tag Group")
-
-
-@patch.object(view_states, "is_tag_enum")
-@patch.object(view_states, "Tags")
-def test_get_view_state_tag(mock_tags: MagicMock, mock_is_tag: MagicMock) -> None:
-    mock_is_tag.return_value = True
-    node = create_dummy_node(ButtonTreeViewNode, "Some Tag")
-
-    state, params = view_states.get_view_state_from_node(node)
-
-    assert state == ViewStates.ON_TAG_NODE
-    assert "tag" in params
-    mock_tags.assert_called_with("Some Tag")
-
-
-def test_get_view_state_and_article_title_from_node() -> None:
-    # Test a known article node text
-    node = create_dummy_node(ButtonTreeViewNode, view_states.INTRO_DON_AULT_FANTA_INTRO_TEXT)
-    state, title = view_states.get_view_state_and_article_title_from_node(node)
-
-    assert state == ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE
-    assert title.name == "DON_AULT___FANTAGRAPHICS_INTRODUCTION"
-
-    # Test unknown article
-    node = create_dummy_node(ButtonTreeViewNode, "Unknown Article")
-    with pytest.raises(RuntimeError):
-        view_states.get_view_state_and_article_title_from_node(node)
+def test_view_states_reexport_identity() -> None:
+    """`ui.view_states.ViewStates` must be the same enum object as the core one."""
+    assert UiViewStates is CoreViewStates

@@ -2,19 +2,34 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.tree_view_manager
 import pytest
+from barks_fantagraphics.barks_tags import TagGroups
+from barks_fantagraphics.barks_titles import Titles
+from barks_reader.core.navigation import (
+    ArticleDestination,
+    IntroDestination,
+    TagGroupDestination,
+    TitleDestination,
+)
 from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.tree_view_manager import TreeViewManager
 from barks_reader.ui.tree_view_nodes import (
     ButtonTreeViewNode,
-    TagGroupStoryGroupTreeViewNode,
     TitleTreeViewNode,
 )
 from barks_reader.ui.view_states import ViewStates
+
+if TYPE_CHECKING:
+    from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+
+
+def _fake_fanta() -> FantaComicBookInfo:
+    """Sentinel fanta_info — identity-comparable, not type-checked at runtime."""
+    return cast("FantaComicBookInfo", object())
 
 
 @pytest.fixture
@@ -71,9 +86,10 @@ class TestTreeViewManager:
         mock_dependencies: dict[str, Any],
         screen_mocks: dict[str, MagicMock],
     ) -> None:
+        fanta = _fake_fanta()
         node = MagicMock(spec=TitleTreeViewNode)
         node.get_name.return_value = "Title Node"
-        node.ids.num_label.parent.fanta_info = "Fanta Info"
+        node.destination = TitleDestination(fanta_info=fanta)
 
         with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
             tree_view_manager.setup_and_select_node(node)
@@ -101,17 +117,13 @@ class TestTreeViewManager:
     ) -> None:
         node = MagicMock(spec=ButtonTreeViewNode)
         node.saved_state = {"open": False}
+        node.destination = IntroDestination()
 
-        with patch.object(
-            barks_reader.ui.tree_view_manager,
-            "get_view_state_from_node",
-            return_value=(ViewStates.ON_INTRO_NODE, {}),
-        ):
-            tree_view_manager.setup_and_select_node(node)
+        tree_view_manager.setup_and_select_node(node)
 
-            mock_dependencies["view_state_manager"].set_view_state.assert_called_with(
-                ViewStates.ON_INTRO_NODE
-            )
+        mock_dependencies["view_state_manager"].set_view_state.assert_called_with(
+            ViewStates.ON_INTRO_NODE
+        )
 
     def test_deselect_and_close_open_nodes(
         self,
@@ -153,17 +165,13 @@ class TestTreeViewManager:
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
         node = MagicMock(spec=ButtonTreeViewNode)
+        node.destination = IntroDestination()
 
-        with patch.object(
-            barks_reader.ui.tree_view_manager,
-            "get_view_state_from_node",
-            return_value=(ViewStates.ON_INTRO_NODE, {}),
-        ):
-            tree_view_manager.on_node_collapsed(MagicMock(), node)
+        tree_view_manager.on_node_collapsed(MagicMock(), node)
 
-            mock_dependencies["view_state_manager"].set_view_state.assert_called_with(
-                ViewStates.ON_INTRO_NODE
-            )
+        mock_dependencies["view_state_manager"].set_view_state.assert_called_with(
+            ViewStates.ON_INTRO_NODE
+        )
 
     def test_on_node_expanded(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
@@ -171,25 +179,19 @@ class TestTreeViewManager:
         node = MagicMock(spec=ButtonTreeViewNode)
         node.populate_callback = MagicMock()
         node.populated = False
+        node.destination = IntroDestination()
         node.parent_node = MagicMock()
         node.parent_node.nodes = [node]  # No siblings to close
 
-        with patch.object(  # noqa: SIM117
-            barks_reader.ui.tree_view_manager,
-            "get_view_state_from_node",
-            return_value=(ViewStates.ON_INTRO_NODE, {}),
-        ):
-            # Mock _pin_parent_position_while_populating to avoid complex scroll logic
-            with patch.object(
-                tree_view_manager, "_pin_parent_position_while_populating"
-            ) as mock_pin:
-                tree_view_manager.on_node_expanded(MagicMock(), node)
+        # Mock _pin_parent_position_while_populating to avoid complex scroll logic
+        with patch.object(tree_view_manager, "_pin_parent_position_while_populating") as mock_pin:
+            tree_view_manager.on_node_expanded(MagicMock(), node)
 
-                mock_pin.assert_called_with(node, run_populate=True)
-                assert node.populated is True
-                mock_dependencies["view_state_manager"].set_view_state.assert_called_with(
-                    ViewStates.ON_INTRO_NODE
-                )
+            mock_pin.assert_called_with(node, run_populate=True)
+            assert node.populated is True
+            mock_dependencies["view_state_manager"].set_view_state.assert_called_with(
+                ViewStates.ON_INTRO_NODE
+            )
 
     def test_close_siblings(
         self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
@@ -229,9 +231,10 @@ class TestTreeViewManager:
     def test_on_title_row_button_pressed(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
+        fanta = _fake_fanta()
         button = MagicMock()
-        button.parent.fanta_info = "Fanta Info"
-        button.parent.parent_node = MagicMock()  # Not a tag node
+        button.parent.destination = TitleDestination(fanta_info=fanta)
+        button.parent.parent_node.destination = None
 
         tree_view_manager.on_title_row_button_pressed(button)
 
@@ -240,11 +243,10 @@ class TestTreeViewManager:
     def test_on_title_row_button_pressed_with_tag(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
+        fanta = _fake_fanta()
         button = MagicMock()
-        button.parent.fanta_info = "Fanta Info"
-        tag_node = MagicMock(spec=TagGroupStoryGroupTreeViewNode)
-        tag_node.tag = "Tag"
-        button.parent.parent_node = tag_node
+        button.parent.destination = TitleDestination(fanta_info=fanta)
+        button.parent.parent_node.destination = TagGroupDestination(tag_group=TagGroups.AFRICA)
 
         tree_view_manager.on_title_row_button_pressed(button)
 
@@ -254,14 +256,12 @@ class TestTreeViewManager:
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
         node = MagicMock(spec=ButtonTreeViewNode)
-        mock_title = MagicMock()
-        mock_title.name = "Title"
-        with patch.object(
-            barks_reader.ui.tree_view_manager,
-            "get_view_state_and_article_title_from_node",
-            return_value=(ViewStates.ON_INTRO_NODE, mock_title),
-        ):
-            tree_view_manager.on_article_node_pressed(node)
-            mock_dependencies["nav_coordinator"].read_article.assert_called_with(
-                mock_title, ViewStates.ON_INTRO_NODE
-            )
+        node.destination = ArticleDestination(
+            view_state=ViewStates.ON_INTRO_NODE,
+            article_title=Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
+        )
+
+        tree_view_manager.on_article_node_pressed(node)
+        mock_dependencies["nav_coordinator"].read_article.assert_called_with(
+            Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, ViewStates.ON_INTRO_NODE
+        )

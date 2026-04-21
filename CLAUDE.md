@@ -100,6 +100,17 @@ Enforced by `import-linter` (`.importlinter`), three contracts:
 
 Always run `uv run lint-imports` after any code changes — not just when imports change.
 
+### Navigation model
+
+`barks_reader.core.navigation` owns tree-view navigation policy independent of Kivy:
+- `Destination` — frozen-dataclass hierarchy describing every navigable target (intro, stories, year ranges, series, categories, tag groups, tags, titles, articles, search, index, appendix). One subclass per navigable kind; payloads (e.g. `TagDestination.tag`, `TitleDestination.fanta_info`) live on destinations, not on widget subclasses.
+- `NavigationModel.view_state_for(dest)` — resolves `(ViewStates, params)` for a destination.
+- `NavigationModel.auto_select_target(parent, children)` — single-title-child auto-select rule.
+- `NavigationModel.tag_context(dest)` — tag/tag-group carried by a parent destination.
+- `ViewStates` — enum of all navigable states, re-exported from `ui.view_states` for back-compat.
+
+Tree-view widgets (`ui/tree_view_nodes.py`) carry a `destination: Destination | None` slot. `ui/tree_view_manager.py` and `ui/navigation_coordinator.py` route through `NavigationModel` rather than switching on widget subclass. Adding a new navigable target = add a `Destination` subclass + register it in the model.
+
 ### Kivy Initialization Order (Critical)
 
 `barks_reader.core.config_info` **must be imported before any Kivy imports** to redirect `KIVY_HOME` to the app's config directory. `main.py` enforces this at the top with a comment.

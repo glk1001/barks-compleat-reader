@@ -7,6 +7,11 @@ from comic_utils.timing import Timing
 from kivy.clock import Clock
 from loguru import logger
 
+from barks_reader.core.navigation import (
+    ArticleDestination,
+    NavigationModel,
+    TitleDestination,
+)
 from barks_reader.core.reader_consts_and_types import (
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
     INTRO_COMPLEAT_BARKS_READER_TEXT,
@@ -17,15 +22,9 @@ from .tree_view_nodes import (
     BaseTreeViewNode,
     ButtonTreeViewNode,
     MainTreeViewNode,
-    TagGroupStoryGroupTreeViewNode,
-    TagStoryGroupTreeViewNode,
     TitleTreeViewNode,
 )
-from .view_states import (
-    ViewStates,
-    get_view_state_and_article_title_from_node,
-    get_view_state_from_node,
-)
+from .view_states import ViewStates
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -51,6 +50,7 @@ class TreeViewManager:
         screens: ScreenBundle,
         nav_coordinator: NavigationCoordinator,
         sys_file_paths: SystemFilePaths | None = None,
+        nav_model: NavigationModel | None = None,
     ) -> None:
         self._view_state_manager = view_state_manager
         self._tree_view_screen = screens.tree_view
@@ -64,6 +64,7 @@ class TreeViewManager:
 
         self._nav = nav_coordinator
         self._sys_file_paths = sys_file_paths
+        self._nav_model = nav_model or NavigationModel()
 
         self._allow_view_state_change = True
         self._search_node: MainTreeViewNode | None = None
@@ -104,17 +105,16 @@ class TreeViewManager:
     def _handle_title_node_selection(self, node: TitleTreeViewNode) -> None:
         from .navigation_coordinator import TitleTarget  # noqa: PLC0415
 
-        fanta_info = node.ids.num_label.parent.fanta_info
-        self._nav.select_title(TitleTarget(fanta_info=fanta_info))
+        assert isinstance(node.destination, TitleDestination)
+        self._nav.select_title(TitleTarget(fanta_info=node.destination.fanta_info))
         self.scroll_to_node(node)
 
     def _handle_button_node_selection(self, node: ButtonTreeViewNode) -> None:
         if node.saved_state.get("open", True):
             node.trigger_action()
-        else:
-            saved_view_state, _ = get_view_state_from_node(node)
-            if saved_view_state is not None:
-                self._view_state_manager.set_view_state(saved_view_state)
+        elif node.destination is not None:
+            saved_view_state, _ = self._nav_model.view_state_for(node.destination)
+            self._view_state_manager.set_view_state(saved_view_state)
 
     def deselect_and_close_open_nodes(self, *, from_collapse_all: bool = False) -> None:
         # noinspection PyArgumentList
@@ -191,11 +191,11 @@ class TreeViewManager:
         self.set_view_state_for_node(node)
 
     def set_view_state_for_node(self, node: ButtonTreeViewNode) -> None:
-        new_view_state, view_state_params = get_view_state_from_node(node)
-        if new_view_state is None:
-            msg = f"No view state mapping found for node: '{node.get_name()}' ({type(node)})"
+        if node.destination is None:
+            msg = f"Node has no destination: '{node.get_name()}' ({type(node)})"
             raise RuntimeError(msg)
-        self._view_state_manager.set_view_state(new_view_state, **view_state_params)  # ty: ignore[invalid-argument-type]
+        new_view_state, view_state_params = self._nav_model.view_state_for(node.destination)
+        self._view_state_manager.set_view_state(new_view_state, **view_state_params)
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
         logger.info(f"Node expanded: '{node.get_name()}'.")
@@ -257,11 +257,10 @@ class TreeViewManager:
 
         only_child = next(c for c in node.nodes if isinstance(c, TitleTreeViewNode))
         self._tree_view_screen.select_node(only_child)
-        fanta_info = only_child.ids.num_label.parent.fanta_info
+        assert isinstance(only_child.destination, TitleDestination)
+        fanta_info = only_child.destination.fanta_info
         tag = (
-            node.tag
-            if isinstance(node, (TagStoryGroupTreeViewNode, TagGroupStoryGroupTreeViewNode))
-            else None
+            self._nav_model.tag_context(node.destination) if node.destination is not None else None
         )
         self._nav.select_title(TitleTarget(fanta_info=fanta_info, tag=tag), preserve_top_view=True)
         # Don't call scroll_to_node here — the parent is already being pinned in view
@@ -395,15 +394,16 @@ class TreeViewManager:
     def on_title_row_button_pressed(self, button: Button) -> None:
         from .navigation_coordinator import TitleTarget  # noqa: PLC0415
 
-        fanta_info = button.parent.fanta_info
+        title_node = button.parent
+        assert isinstance(title_node.destination, TitleDestination)
+        fanta_info = title_node.destination.fanta_info
 
+        parent_node = title_node.parent_node
+        parent_destination = getattr(parent_node, "destination", None)
         tag = (
-            None
-            if not isinstance(
-                button.parent.parent_node,
-                (TagStoryGroupTreeViewNode, TagGroupStoryGroupTreeViewNode),
-            )
-            else button.parent.parent_node.tag
+            self._nav_model.tag_context(parent_destination)
+            if parent_destination is not None
+            else None
         )
 
         self._nav.select_title(TitleTarget(fanta_info=fanta_info, tag=tag))
@@ -426,7 +426,9 @@ class TreeViewManager:
 
     def on_article_node_pressed(self, node: ButtonTreeViewNode) -> None:
         """Consolidate handling of all simple article nodes."""
-        view_state, article_title = get_view_state_and_article_title_from_node(node)
+        assert isinstance(node.destination, ArticleDestination)
+        view_state = node.destination.view_state
+        article_title = node.destination.article_title
 
         logger.info(f"Article node pressed: Reading '{article_title.name}'.")
 

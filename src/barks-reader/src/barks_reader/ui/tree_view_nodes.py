@@ -8,6 +8,7 @@ from kivy.event import EventDispatcher
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
+    NumericProperty,
     ObjectProperty,
 )
 from kivy.uix.boxlayout import BoxLayout
@@ -15,6 +16,7 @@ from kivy.uix.button import Button
 from kivy.uix.treeview import TreeView, TreeViewNode
 from loguru import logger
 
+from barks_reader.core.navigation import TitleDestination
 from barks_reader.core.reader_formatter import (
     ReaderFormatter,
     get_clean_text_without_extra,
@@ -24,9 +26,10 @@ from barks_reader.core.reader_utils import title_needs_footnote
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from barks_fantagraphics.barks_tags import TagGroups, Tags
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+
+    from barks_reader.core.navigation import Destination
 
     from .font_manager import FontManager
 
@@ -84,9 +87,10 @@ class ReaderTreeBuilderEventDispatcher(EventDispatcher):
 
 
 class BaseTreeViewNode(TreeViewNode):
-    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, destination: Destination | None = None, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
         self.saved_state: dict[str, Any] = {}
+        self.destination: Destination | None = destination
 
     def get_name(self) -> str:
         return "<unknown>"
@@ -137,31 +141,10 @@ class StoryGroupTreeViewNode(ButtonTreeViewNode):
     NODE_HEIGHT = dp(30)
 
 
-class TagStoryGroupTreeViewNode(StoryGroupTreeViewNode):
-    def __init__(self, tag: Tags, **kwargs) -> None:  # noqa: ANN003
-        super().__init__(**kwargs)
-        self.tag = tag
-
-
-class TagGroupStoryGroupTreeViewNode(StoryGroupTreeViewNode):
-    def __init__(self, tag_group: TagGroups, **kwargs) -> None:  # noqa: ANN003
-        super().__init__(**kwargs)
-        self.tag = tag_group
-
-
 class YearRangeTreeViewNode(ButtonTreeViewNode):
-    NODE_WIDTH = dp(150)
-    NODE_HEIGHT = dp(30)
-
-
-class CsYearRangeTreeViewNode(YearRangeTreeViewNode):
-    NODE_WIDTH = dp(250)
-    NODE_HEIGHT = dp(30)
-
-
-class UsYearRangeTreeViewNode(YearRangeTreeViewNode):
-    NODE_WIDTH = dp(250)
-    NODE_HEIGHT = dp(30)
+    # NumericProperty so callers can pass a wider NODE_WIDTH=dp(250) for CS/US ranges.
+    NODE_WIDTH = NumericProperty(dp(150))
+    NODE_HEIGHT = NumericProperty(dp(30))
 
 
 class TitleTreeViewNode(BoxLayout, BaseTreeViewNode):
@@ -183,6 +166,7 @@ class TitleTreeViewNode(BoxLayout, BaseTreeViewNode):
     ISSUE_LABEL_SUBMITTED_YEAR_COLOR = "#FCFABE"  # "#FFFF00"
 
     def __init__(self, fanta_info: FantaComicBookInfo, **kwargs) -> None:  # noqa: ANN003
+        kwargs.setdefault("destination", TitleDestination(fanta_info=fanta_info))
         super().__init__(**kwargs)
         self.fanta_info = fanta_info
 

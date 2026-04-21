@@ -9,11 +9,11 @@ import pytest
 from barks_fantagraphics.barks_tags import TagCategories, TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.fanta_comics_info import SERIES_CS
+from barks_reader.core.navigation import TagDestination, TagGroupDestination
 from barks_reader.ui.reader_tree_builder import ReaderTreeBuilder
 from barks_reader.ui.tree_view_nodes import (
     MainTreeViewNode,
-    TagGroupStoryGroupTreeViewNode,
-    TagStoryGroupTreeViewNode,
+    StoryGroupTreeViewNode,
 )
 
 
@@ -123,11 +123,11 @@ class TestReaderTreeBuilder:
             # Run generator
             list(gen)
 
-            # Verify node added
+            # Verify node added — tag payload now lives in `destination`, not on the widget.
             args, _ = mock_tree.add_node.call_args
             node = args[0]
-            assert isinstance(node, TagStoryGroupTreeViewNode)
-            assert node.tag == tag
+            assert isinstance(node, StoryGroupTreeViewNode)
+            assert node.destination == TagDestination(tag=tag)
             assert node.populate_callback is not None
 
     def test_add_tag_group_node_gen(
@@ -149,8 +149,8 @@ class TestReaderTreeBuilder:
             assert mock_tree.add_node.call_count >= 1
             # First call should be the group node
             node = mock_tree.add_node.call_args_list[0][0][0]
-            assert isinstance(node, TagGroupStoryGroupTreeViewNode)
-            assert node.tag == tag_group
+            assert isinstance(node, StoryGroupTreeViewNode)
+            assert node.destination == TagGroupDestination(tag_group=tag_group)
 
     def test_populate_series_node_gen_cs(
         self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]
