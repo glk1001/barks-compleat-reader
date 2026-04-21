@@ -96,3 +96,92 @@ class TestReaderFilePathsResolver:
         result = resolver.get_file_type_titles(FileTypes.SPLASH)
 
         assert result == ["Title A", "Title B"]
+
+    def test_resolve_list_type_empty(self, mock_file_paths: MagicMock) -> None:
+        mock_file_paths.FILE_TYPE_FILE_GETTERS = {FileTypes.SPLASH: MagicMock(return_value=[])}
+        resolver = ReaderFilePathsResolver(mock_file_paths)
+
+        result = resolver.resolve("Title", FileTypes.SPLASH, prefer_edited=False)
+
+        assert result == []
+
+    def test_get_file_ext(self, mock_file_paths: MagicMock) -> None:
+        mock_file_paths.FILE_TYPE_FILE_GETTERS = {}
+        resolver = ReaderFilePathsResolver(mock_file_paths)
+
+        assert resolver.get_file_ext() == ".png"
+
+    def test_get_comic_favourite_files_dir(self, mock_file_paths: MagicMock) -> None:
+        mock_file_paths.FILE_TYPE_FILE_GETTERS = {}
+        resolver = ReaderFilePathsResolver(mock_file_paths)
+
+        assert resolver.get_comic_favourite_files_dir() == Path("/faves")
+
+    def test_get_comic_search_files(self, mock_file_paths: MagicMock) -> None:
+        mock_file_paths.FILE_TYPE_FILE_GETTERS = {}
+        resolver = ReaderFilePathsResolver(mock_file_paths)
+
+        result = resolver.get_comic_search_files("Title", prefer_edited=True)
+
+        mock_file_paths.get_comic_search_files.assert_called_once_with(
+            "Title",
+            True,  # noqa: FBT003
+        )
+        assert result == [Path("search.png")]
+
+
+class TestResolveAllTitleImageFiles:
+    def test_merges_edited_and_standard_files_across_categories(self) -> None:
+        fp = MagicMock()
+        # Cover: edited variant differs from the standard variant.
+        cover_edited = Path("cover-edited.png")
+        cover_std = Path("cover.png")
+        # Splash: edited variant is the same as one of the standard list entries.
+        splash_shared = Path("splash-edited.png")
+        splash_plain = Path("splash.png")
+
+        cover_getter = MagicMock(
+            side_effect=lambda _title, prefer_edited: cover_edited if prefer_edited else cover_std
+        )
+        splash_getter = MagicMock(
+            side_effect=lambda _title, prefer_edited: (
+                [splash_shared] if prefer_edited else [splash_shared, splash_plain]
+            )
+        )
+
+        # Only include COVER and SPLASH; other types return empty.
+        empty_getter = MagicMock(return_value=[])
+        fp.FILE_TYPE_FILE_GETTERS = {
+            ft: empty_getter for ft in FileTypes if ft != FileTypes.NONTITLE
+        }
+        fp.FILE_TYPE_FILE_GETTERS[FileTypes.COVER] = cover_getter
+        fp.FILE_TYPE_FILE_GETTERS[FileTypes.SPLASH] = splash_getter
+
+        resolver = ReaderFilePathsResolver(fp)
+
+        result = resolver.resolve_all_title_image_files("Title X")
+
+        # NONTITLE is skipped entirely.
+        assert FileTypes.NONTITLE not in result
+
+        # Cover: the edited and the standard paths both appear,
+        # the edited one flagged True and the standard one flagged False.
+        assert result[FileTypes.COVER] == {(cover_edited, True), (cover_std, False)}
+
+        # Splash: the shared path is flagged True (from the edited list) and
+        # must NOT appear again with False; splash_plain appears with False.
+        assert result[FileTypes.SPLASH] == {(splash_shared, True), (splash_plain, False)}
+
+    def test_skips_categories_with_no_files(self) -> None:
+        fp = MagicMock()
+        fp.FILE_TYPE_FILE_GETTERS = {
+            ft: MagicMock(return_value=[]) for ft in FileTypes if ft != FileTypes.NONTITLE
+        }
+        # COVER getter returns None for both prefer_edited values.
+        fp.FILE_TYPE_FILE_GETTERS[FileTypes.COVER] = MagicMock(return_value=None)
+
+        resolver = ReaderFilePathsResolver(fp)
+
+        result = resolver.resolve_all_title_image_files("Title Y")
+
+        assert result == {}
