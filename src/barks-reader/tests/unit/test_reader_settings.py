@@ -206,7 +206,7 @@ class TestReaderSettings:
         assert reader_settings.goto_saved_node_on_start is True
 
         mock_config.getint.return_value = 100
-        assert reader_settings._get_main_window_height() == 100  # noqa: PLR2004
+        assert reader_settings._read(reader_settings_module.MAIN_WINDOW_HEIGHT) == 100  # noqa: PLR2004
 
         mock_config.get.return_value = "INFO"
         assert reader_settings.log_level == "INFO"

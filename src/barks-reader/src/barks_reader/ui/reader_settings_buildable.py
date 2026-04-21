@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import partial
 from typing import TYPE_CHECKING, Any, override
 
 from loguru import logger
@@ -21,6 +22,10 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
+def _always_true(_value: Any) -> bool:  # noqa: ANN401
+    return True
+
+
 class BuildableReaderSettings(ReaderSettings):
     def __init__(self) -> None:
         super().__init__()
@@ -28,10 +33,11 @@ class BuildableReaderSettings(ReaderSettings):
         self._settings: Settings | None = None
 
         self._GETTER_METHODS: dict[str, Callable[[], Any]] = {
-            spec.key: getattr(self, spec.getter_method_name) for spec in _FIELDS
+            spec.key: partial(self._read, spec.key) for spec in _FIELDS
         }
         self._VALIDATION_METHODS: dict[str, Callable[..., bool]] = {
-            spec.key: getattr(self, spec.validator_method_name) for spec in _FIELDS
+            spec.key: partial(spec.validator, self) if spec.validator else _always_true
+            for spec in _FIELDS
         }
 
     @staticmethod
@@ -69,7 +75,7 @@ class BuildableReaderSettings(ReaderSettings):
         elif key == USE_PNG_IMAGES:
             if value:
                 self._reader_file_paths.set_barks_panels_source(
-                    self._get_png_barks_panels_dir(), BarksPanelsExtType.MOSTLY_PNG
+                    self._read(PNG_BARKS_PANELS_DIR), BarksPanelsExtType.MOSTLY_PNG
                 )
             else:
                 self._reader_file_paths.set_barks_panels_source(

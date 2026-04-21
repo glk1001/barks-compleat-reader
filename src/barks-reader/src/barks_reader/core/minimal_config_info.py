@@ -20,12 +20,12 @@ class MinimalConfigOptions:
 
 def get_minimal_config_options(cfg_info: ConfigInfo) -> MinimalConfigOptions:
     from .reader_settings import (  # noqa: PLC0415
-        BARKS_READER_SECTION,
         LOG_LEVEL,
         MAIN_WINDOW_HEIGHT,
         MAIN_WINDOW_LEFT,
         MAIN_WINDOW_TOP,
         ReaderSettings,
+        read_setting_from_config,
     )
     from .system_file_paths import SystemFilePaths  # noqa: PLC0415
 
@@ -34,10 +34,10 @@ def get_minimal_config_options(cfg_info: ConfigInfo) -> MinimalConfigOptions:
 
     try:
         reader_files_dir = ReaderSettings.get_reader_files_dir(cfg_info.app_data_dir)
-        win_height = int(barks_config.get(BARKS_READER_SECTION, MAIN_WINDOW_HEIGHT))
-        win_left = int(barks_config.get(BARKS_READER_SECTION, MAIN_WINDOW_LEFT))
-        win_top = int(barks_config.get(BARKS_READER_SECTION, MAIN_WINDOW_TOP))
-        log_lvl = barks_config.get(BARKS_READER_SECTION, LOG_LEVEL)
+        win_height = read_setting_from_config(barks_config, MAIN_WINDOW_HEIGHT)
+        win_left = read_setting_from_config(barks_config, MAIN_WINDOW_LEFT)
+        win_top = read_setting_from_config(barks_config, MAIN_WINDOW_TOP)
+        log_lvl = read_setting_from_config(barks_config, LOG_LEVEL)
 
         sys_paths = SystemFilePaths()
         sys_paths.set_barks_reader_files_dir(reader_files_dir, check_files=False)
