@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.image_selector import FIT_MODE_CONTAIN, FIT_MODE_COVER, ImageInfo
+from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.view_snapshot import (
     FunViewSnapshot,
     ScreenVisibility,
@@ -21,7 +22,6 @@ from barks_reader.core.view_snapshot import (
 )
 from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.snapshot_applicator import SnapshotApplicator
-from barks_reader.ui.view_states import ViewStates
 
 
 def _make_screen_mocks() -> dict[str, MagicMock]:

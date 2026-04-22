@@ -5,13 +5,13 @@ from unittest.mock import MagicMock
 
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.image_selector import FIT_MODE_COVER, ImageInfo
+from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.view_snapshot import (
     ScreenVisibility,
     TopViewSnapshot,
     ViewSnapshot,
 )
 from barks_reader.ui.background_views import BackgroundViews
-from barks_reader.ui.view_states import ViewStates
 
 
 def _make_background_views() -> BackgroundViews:

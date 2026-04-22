@@ -12,6 +12,7 @@ from barks_reader.core.navigation import (
     NavigationModel,
     TitleDestination,
 )
+from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_consts_and_types import (
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
     INTRO_COMPLEAT_BARKS_READER_TEXT,
@@ -24,7 +25,6 @@ from .tree_view_nodes import (
     MainTreeViewNode,
     TitleTreeViewNode,
 )
-from .view_states import ViewStates
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

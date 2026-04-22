@@ -22,11 +22,11 @@ from barks_fantagraphics.fanta_comics_info import (
 from loguru import logger
 
 from barks_reader.core.image_selector import ImageInfo
+from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_consts_and_types import CHRONO_YEAR_RANGES, COMIC_BEGIN_PAGE
 from barks_reader.core.reader_tree_view_utils import find_tree_view_title_node
 
 from .user_error_handler import ErrorInfo, ErrorTypes, TitleNotInFantaInfoError
-from .view_states import ViewStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable

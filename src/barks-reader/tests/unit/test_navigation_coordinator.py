@@ -9,8 +9,8 @@ import barks_reader.ui.navigation_coordinator
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.image_selector import ImageInfo
+from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.ui.navigation_coordinator import NavigationCoordinator, TitleTarget
-from barks_reader.ui.view_states import ViewStates
 
 
 @pytest.fixture

@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.main_screen
 import pytest
+from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.ui.main_screen import MainScreen
 from barks_reader.ui.screen_bundle import ScreenBundle
-from barks_reader.ui.view_states import ViewStates
 from kivy.uix.screenmanager import Screen
 
 if TYPE_CHECKING:

@@ -23,6 +23,7 @@ def loader() -> PanelImageLoader:
     return PanelImageLoader()
 
 
+# noinspection PyUnusedLocal
 def _patch_sync_worker(loader_ref: PanelImageLoader) -> tuple:  # noqa: ARG001
     """Return patchers that run the worker thread synchronously and execute schedule_once inline."""
     thread_patch = patch.object(loader_module, threading.Thread.__name__)

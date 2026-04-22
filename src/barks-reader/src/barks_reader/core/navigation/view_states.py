@@ -2,8 +2,7 @@
 
 The enum identifies every top-level reader view. Domain-driven lookup tables
 (article → title, etc.) live alongside `NavigationModel` in
-`navigation_model.py`. UI-specific maps (keyed on Kivy node text or widget type)
-live in `ui/view_states.py`.
+`navigation_model.py`.
 """
 
 from __future__ import annotations

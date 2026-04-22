@@ -47,7 +47,7 @@ def _group_sort_key(group: dict) -> tuple[int, float, float]:
     min_x = min(p[0] for p in text_box)
     sort_panel = panel_num if panel_num >= 0 else 999
     bucket_y = round(min_y / _Y_BUCKET_PX) * _Y_BUCKET_PX
-    return (sort_panel, bucket_y, min_x)
+    return sort_panel, bucket_y, min_x
 
 
 @dataclass(frozen=True, slots=True)

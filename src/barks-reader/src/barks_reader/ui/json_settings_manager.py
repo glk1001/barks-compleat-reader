@@ -6,14 +6,12 @@ from kivy.storage.jsonstore import JsonStore
 from loguru import logger
 
 from barks_reader.core.reader_tree_view_utils import get_tree_view_node_path
-from barks_reader.core.saved_page_info import JsonSavedPageInfo, SavedPageInfo
+from barks_reader.core.saved_page_info import SavedPageInfo
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from .tree_view_nodes import BaseTreeViewNode
-
-__all__ = ["JsonSavedPageInfo", "SavedPageInfo", "SettingsManager"]
 
 _READER_SETTINGS = "AAA_Settings"
 _READER_SETTING_LAST_SELECTED_NODE = "last_selected_node"

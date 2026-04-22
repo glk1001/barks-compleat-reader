@@ -15,13 +15,13 @@ from barks_reader.core.navigation import (
     TagGroupDestination,
     TitleDestination,
 )
+from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.tree_view_manager import TreeViewManager
 from barks_reader.ui.tree_view_nodes import (
     ButtonTreeViewNode,
     TitleTreeViewNode,
 )
-from barks_reader.ui.view_states import ViewStates
 
 if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo

@@ -14,6 +14,7 @@ from loguru import logger
 
 from barks_reader.core.comic_book_page_info import ComicLayoutBuilder
 from barks_reader.core.image_selector import ImageInfo, ImageSelector
+from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.page_info_adapters import FantagraphicsPanelSegmentsAdapter
 from barks_reader.core.reader_consts_and_types import APP_TITLE
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
@@ -46,7 +47,6 @@ from .snapshot_applicator import SnapshotApplicator
 from .tree_view_manager import TreeViewManager
 from .user_error_handler import UserErrorHandler
 from .view_state_manager import ImageThemesChange, ImageThemesToUse, ViewStateManager
-from .view_states import ViewStates
 
 if TYPE_CHECKING:
     from barks_fantagraphics.comics_database import ComicsDatabase

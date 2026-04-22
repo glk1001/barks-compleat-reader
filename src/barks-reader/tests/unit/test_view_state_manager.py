@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.image_selector import ImageInfo
+from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.ui.background_views import ImageThemes
 from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.view_state_manager import (
@@ -16,7 +17,6 @@ from barks_reader.ui.view_state_manager import (
     ImageThemesToUse,
     ViewStateManager,
 )
-from barks_reader.ui.view_states import ViewStates
 
 
 def _make_mock_screens() -> dict[str, MagicMock]:

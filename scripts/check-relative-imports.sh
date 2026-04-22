@@ -13,7 +13,8 @@ check_dir() {
     # Remaining args are passed directly to grep (e.g. --exclude-dir, --exclude).
     local extra_args=("$@")
 
-    local grep_args=(-rn "$pattern" "$dir" --include='*.py' "${extra_args[@]}")
+	# Just grep one dir level.
+    local grep_args=(-n "$pattern" "$dir"/* --include='*.py' "${extra_args[@]}")
 
     local matches
     matches=$(grep "${grep_args[@]}" 2>/dev/null || true)
@@ -29,6 +30,10 @@ echo
 check_dir \
     "src/barks-reader/src/barks_reader/core" \
     "from barks_reader\.core\."
+
+check_dir \
+    "src/barks-reader/src/barks_reader/core/navigation" \
+    "from barks_reader\.core\.navigation\."
 
 check_dir \
     "src/barks-reader/src/barks_reader/ui" \

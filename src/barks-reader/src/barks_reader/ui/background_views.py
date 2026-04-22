@@ -32,6 +32,7 @@ from loguru import logger
 
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.image_selector import FIT_MODE_COVER, ImageInfo, ImageSelector
+from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_colors import RandomColorTint
 from barks_reader.core.reader_file_paths import ALL_TYPES, FileTypes
 from barks_reader.core.reader_formatter import get_formatted_color
@@ -43,8 +44,6 @@ from barks_reader.core.view_snapshot import (
     TopViewSnapshot,
     ViewSnapshot,
 )
-
-from .view_states import ViewStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable

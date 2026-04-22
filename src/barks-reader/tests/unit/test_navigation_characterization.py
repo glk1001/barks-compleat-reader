@@ -316,7 +316,7 @@ def test_select_title_with_tag_sets_goto_page_checkbox(
     nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
 ) -> None:
     """Pins the tag -> goto-page side effect in select_title."""
-    from barks_reader.ui.view_states import ViewStates  # noqa: PLC0415
+    from barks_reader.core.navigation.view_states import ViewStates  # noqa: PLC0415
 
     fanta = MagicMock()
     fanta.comic_book_info.get_title_str.return_value = "T"

@@ -18,12 +18,12 @@ if TYPE_CHECKING:
     from comic_utils.comic_consts import PanelPath
 
     from barks_reader.core.image_selector import ImageInfo
+    from barks_reader.core.navigation.view_states import ViewStates
     from barks_reader.core.reader_settings import ReaderSettings
 
     from .background_views import BackgroundViews
     from .screen_bundle import ScreenBundle
     from .snapshot_applicator import SnapshotApplicator
-    from .view_states import ViewStates
 
 
 class ImageThemesToUse(Enum):

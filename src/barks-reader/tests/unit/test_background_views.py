@@ -13,9 +13,9 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_USA,
 )
 from barks_reader.core.image_selector import FIT_MODE_COVER, ImageInfo
+from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.ui import background_views as background_views_module
 from barks_reader.ui.background_views import BackgroundViews, ImageThemes
-from barks_reader.ui.view_states import ViewStates
 
 if TYPE_CHECKING:
     from collections.abc import Generator

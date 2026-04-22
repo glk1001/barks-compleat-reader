@@ -125,7 +125,8 @@ class NavigationModel:
     natural home.
     """
 
-    def view_state_for(self, dest: Destination) -> tuple[ViewStates, dict[str, Any]]:  # noqa: PLR0911
+    @staticmethod
+    def view_state_for(dest: Destination) -> tuple[ViewStates, dict[str, Any]]:  # noqa: PLR0911
         """Resolve the view state and params to activate when `dest` is selected.
 
         The returned params dict is forwarded to `ViewStateManager.set_view_state`.
@@ -159,8 +160,9 @@ class NavigationModel:
         msg = f"No view state mapping for destination: {type(dest).__name__}"
         raise RuntimeError(msg)
 
+    @staticmethod
     def auto_select_target(
-        self, _parent: Destination, children: Sequence[Destination]
+        _parent: Destination, children: Sequence[Destination]
     ) -> TitleDestination | None:
         """Single-title-child rule: if exactly one child is a title, return it.
 
@@ -172,7 +174,8 @@ class NavigationModel:
             return title_children[0]
         return None
 
-    def tag_context(self, dest: Destination) -> Tags | TagGroups | None:
+    @staticmethod
+    def tag_context(dest: Destination) -> Tags | TagGroups | None:
         """Return the tag/tag-group carried by a destination, if any.
 
         Used when a title is selected under a tag container to determine which
