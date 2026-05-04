@@ -19,7 +19,9 @@ from loguru import logger
 from screeninfo import get_monitors
 
 from barks_reader.core import services
+from barks_reader.core.config_info import APP_NAME
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
+from barks_reader.core.linux_desktop_entry import write_linux_desktop_entry
 from barks_reader.core.platform_info import PLATFORM, Platform
 from barks_reader.core.reader_consts_and_types import (
     ALT_ESCAPE_KEY_SETTING,
@@ -69,6 +71,7 @@ from .tree_view_nodes import READER_TREE_VIEW_KV_FILE, ReaderTreeBuilderEventDis
 from .tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
 from .ui_helpers import KIVY_HELPERS_KV_FILE, set_kivy_busy_cursor, set_kivy_normal_cursor
 from .user_error_handler import UserErrorHandler
+from .x11_wm_class import force_x11_wm_class
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -403,7 +406,10 @@ class BarksReaderApp(App):
         This includes forcing an initial resize event to ensure all widgets
         are correctly sized based on the loaded configuration.
         """
-        self.icon = str(self.reader_settings.sys_file_paths.get_barks_reader_app_window_icon_path())
+        icon_path = self.reader_settings.sys_file_paths.get_barks_reader_app_window_icon_path()
+        self.icon = str(icon_path)
+        write_linux_desktop_entry(icon_path, APP_TITLE)
+        force_x11_wm_class(APP_NAME)
 
         if SCREEN_METRICS.NUM_MONITORS > 1:
             Window.bind(on_move=self._window_geometry.on_window_pos_change)

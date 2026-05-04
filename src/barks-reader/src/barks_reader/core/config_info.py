@@ -61,6 +61,15 @@ _assert_kivy_not_yet_imported()
 os.environ["KIVY_NO_ARGS"] = "1"
 os.environ["KIVY_NO_CONSOLELOG"] = "1"
 
+# Pin the SDL2 window class so Wayland compositors (and X11 window managers) can
+# match the running window against the freedesktop ``barks-reader.desktop`` entry
+# and show the correct icon in the taskbar/dock. Must be set before SDL2 init.
+# SDL_APP_ID is the modern unified hint (SDL 2.0.18+); the WMCLASS pair is the
+# pre-2.0.18 fallback.
+os.environ.setdefault("SDL_APP_ID", APP_NAME)
+os.environ.setdefault("SDL_VIDEO_WAYLAND_WMCLASS", APP_NAME)
+os.environ.setdefault("SDL_VIDEO_X11_WMCLASS", APP_NAME)
+
 
 class ConfigInfo:
     """Configure the apps config directory and force Kivy to use it.

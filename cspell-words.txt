@@ -50,6 +50,7 @@ jpgs
 keepends
 lanczos
 lfs
+libx
 licence
 logr
 markersize
