@@ -215,7 +215,7 @@ def get_main_win_from_screen_metrics() -> tuple[int, int, int]:
     )
     win_height = content_h + RAW_ACTION_BAR_SIZE_Y
     win_left = win_centre - round(win_width / 2)
-    win_top = win_height_margin // 2
+    win_top = primary_screen_info.monitor_y + win_height_margin // 2
 
     logger.debug(f"Best fit main win dimensions: {win_height}, ({win_left}, {win_top}).")
 
