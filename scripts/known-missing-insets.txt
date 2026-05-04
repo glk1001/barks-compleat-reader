@@ -1,0 +1,9 @@
+# Known-missing inset allow-list for validate-barks-reader-files.py.
+#
+# One title-string per line. Lines starting with `#` and blank lines are
+# ignored. Title strings must match the keys of BARKS_TITLE_DICT exactly
+# (i.e. the same strings used in barks_fantagraphics.barks_titles).
+#
+# Adding a title here suppresses the "missing_inset" failure in Phase 8 of
+# the validator, so use it only for titles that are intentionally not
+# accompanied by an inset image yet.
