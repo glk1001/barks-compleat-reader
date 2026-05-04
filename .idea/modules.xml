@@ -2,7 +2,11 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/barks-build-comic-images.iml" filepath="$PROJECT_DIR$/.idea/barks-build-comic-images.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/barks-compleat-reader.iml" filepath="$PROJECT_DIR$/.idea/barks-compleat-reader.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/barks-fantagraphics.iml" filepath="$PROJECT_DIR$/.idea/barks-fantagraphics.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/barks-reader.iml" filepath="$PROJECT_DIR$/.idea/barks-reader.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/comic-utils.iml" filepath="$PROJECT_DIR$/.idea/comic-utils.iml" />
     </modules>
   </component>
 </project>
