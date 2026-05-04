@@ -14,6 +14,7 @@ import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from comic_utils.decryption import DecryptionError
 from comic_utils.get_panel_bytes import get_decrypted_bytes
 from comic_utils.pil_image_utils import (
     get_pil_image_as_png_bytes,
@@ -40,6 +41,8 @@ def read_raw_bytes(panel_path: PanelPath, *, encrypted_zip: bool = False) -> byt
 
     Raises:
         TypeError: If *panel_path* is neither ``Path`` nor ``zipfile.Path``.
+        DecryptionError: If *encrypted_zip* is ``True`` and decryption
+            returns empty bytes.
 
     """
     if isinstance(panel_path, zipfile.Path):
@@ -48,7 +51,7 @@ def read_raw_bytes(panel_path: PanelPath, *, encrypted_zip: bool = False) -> byt
             raw = get_decrypted_bytes(raw)
             if not raw:
                 msg = f'Image decryption failed with empty bytes: "{panel_path}".'
-                raise RuntimeError(msg)
+                raise DecryptionError(msg)
         return raw
 
     if isinstance(panel_path, Path):

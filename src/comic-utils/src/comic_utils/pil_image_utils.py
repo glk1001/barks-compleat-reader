@@ -45,6 +45,7 @@ def load_pil_image_for_reading(file: Path) -> PilImage:
 
 
 def load_pil_image_from_zip(zip_path: zipfile.Path, encrypted: bool) -> PilImage:
+    from .decryption import DecryptionError  # noqa: PLC0415
     from .get_panel_bytes import get_decrypted_bytes  # noqa: PLC0415
 
     current_log_level = logging.getLogger().level
@@ -54,6 +55,9 @@ def load_pil_image_from_zip(zip_path: zipfile.Path, encrypted: bool) -> PilImage
         file_data = zip_path.read_bytes()
         if encrypted:
             file_data = get_decrypted_bytes(file_data)
+            if not file_data:
+                msg = f'Image decryption failed with empty bytes: "{zip_path}".'
+                raise DecryptionError(msg)
         return load_pil_image_from_bytes(file_data, ext)
     finally:
         logging.getLogger().setLevel(current_log_level)

@@ -29,6 +29,7 @@ from barks_fantagraphics.fanta_comics_info import US_CENSORED_TITLES
 from barks_fantagraphics.page_classes import CleanPage, RequiredDimensions
 from barks_fantagraphics.pages import get_page_num_str
 from barks_fantagraphics.panel_geometry import scale_height
+from comic_utils.decryption import DecryptionError
 from comic_utils.pil_image_utils import load_pil_image_from_bytes
 from loguru import logger
 from PIL import Image, ImageDraw, ImageFont
@@ -462,6 +463,12 @@ class ComicBookImageBuilder:
             buffer = self._comic.intro_inset_file.read_bytes()
             if self._get_inset_decrypted_bytes:
                 buffer = self._get_inset_decrypted_bytes(buffer)
+                if not buffer:
+                    msg = (
+                        f"Inset decryption failed with empty bytes:"
+                        f' "{self._comic.intro_inset_file}".'
+                    )
+                    raise DecryptionError(msg)
             inset = load_pil_image_from_bytes(buffer, ext=self._comic.intro_inset_file.suffix)
 
         inset_width, inset_height = inset.size

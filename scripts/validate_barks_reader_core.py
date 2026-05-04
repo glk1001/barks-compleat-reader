@@ -73,6 +73,7 @@ from comic_utils.comic_consts import (
     JSON_FILE_EXT,
     PNG_FILE_EXT,
 )
+from comic_utils.decryption import DecryptionError
 from comic_utils.pil_image_utils import load_pil_image_from_zip
 from loguru import logger
 
@@ -835,6 +836,7 @@ class _Phase9Counts:
     load_failed: int = 0
     missing_dir: int = 0
     page_load_failed: int = 0
+    decryption_failed: int = 0
     missing_json: int = 0
     stale_json: int = 0
 
@@ -908,6 +910,12 @@ def _check_one_source_page(
                 load_pil_image_from_zip(
                     zipfile.Path(target_zip, at=str(member)),
                     encrypted=encrypted,
+                )
+            except DecryptionError as exc:
+                counts.decryption_failed += 1
+                phase.add(
+                    f"Title:{title_str} kind=decryption_failed page={page_str}"
+                    f" source={source_label} reason={exc}"
                 )
             except (
                 KeyError,
@@ -1086,6 +1094,7 @@ def _phase9_per_title_load(
         f"({counts.load_failed} load-failed,"
         f" {counts.missing_dir} missing-dirs,"
         f" {counts.page_load_failed} page-load-failed,"
+        f" {counts.decryption_failed} decryption-failed,"
         f" {counts.missing_json} missing-json,"
         f" {counts.stale_json} stale-json)"
     )
