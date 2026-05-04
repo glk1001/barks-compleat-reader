@@ -19,9 +19,12 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from barks_fantagraphics.comics_database import ComicsDatabase
+from barks_fantagraphics.comics_helpers import get_titles
 from barks_reader.core.reader_settings import READER_FILES_DIR, USE_PREBUILT_COMICS
 from barks_reader.core.system_file_paths import SystemFilePaths
 from dotenv import load_dotenv
+from intspan import intspan
 from loguru import logger
 
 # Load env vars (BARKS_READER_CONFIG_DIR, BARKS_READER_DATA_DIR, ...) before
@@ -32,22 +35,64 @@ load_dotenv(_PROJECT_ROOT / ".env.runtime")
 
 from comic_utils.common_typer_options import TitleArg, VolumesArg  # noqa: E402, TC002
 from validate_barks_reader_core import (  # noqa: E402
-    _ALLOW_LIST_FILENAME,
+    ALLOW_MISSING_INSETS_LIST_FILENAME,
     ErrorCollector,
-    _build_reader_file_paths,
-    _load_inset_allow_list,
-    _phase1_config,
-    _phase2_system_file_paths,
-    _phase3_reader_file_paths,
-    _phase4_introduction,
-    _phase5_appendices,
-    _phase6_fantagraphics,
-    _phase7_prebuilt_cbzs,
-    _phase8_per_title,
-    _phase9_per_title_load,
-    _print_final_report,
-    resolve_phase9_title_filter,
+    build_reader_file_paths,
+    load_inset_allow_list,
+    phase1_config,
+    phase2_system_file_paths,
+    phase3_reader_file_paths,
+    phase4_introduction,
+    phase5_appendices,
+    phase6_fantagraphics,
+    phase7_prebuilt_cbzs,
+    phase8_per_title,
+    phase9_per_title_load,
 )
+
+
+def resolve_phase9_title_filter(volumes_str: str, title_str: str) -> list[str] | None:
+    """Resolve ``--volume`` / ``--title`` CLI args to a Phase 9 title filter.
+
+    Args:
+        volumes_str: ``intspan`` expression (e.g. ``"1-10"``); empty for no
+            volume filter.
+        title_str: Single comic title; empty for no title filter.
+
+    Returns:
+        ``None`` if neither argument is provided (Phase 9 runs every title).
+        Otherwise, the list of titles matching the filter.
+
+    Raises:
+        typer.BadParameter: If both arguments are provided together.
+
+    """
+    if volumes_str and title_str:
+        msg = "Options --volume and --title are mutually exclusive."
+        raise typer.BadParameter(msg)
+    if not volumes_str and not title_str:
+        return None
+    volumes = list(intspan(volumes_str))
+    db = ComicsDatabase(for_building_comics=False)
+    return get_titles(db, volumes, title_str)
+
+
+def _print_final_report(collector: ErrorCollector, elapsed: float) -> None:
+    """Emit the summary block and the overall result line."""
+    logger.info("")
+    logger.info(f"Validation complete in {elapsed:.1f}s.")
+    width = max(len(p.name) for p in collector.phases) + 2
+    for phase in collector.phases:
+        status = "SKIPPED" if phase.skipped else ("FAIL" if phase.failed else "OK")
+        label = (phase.name + ":").ljust(width)
+        extra = f" {phase.summary_extra}" if phase.summary_extra else ""
+        logger.info(
+            f"  {label}{status:7s} ({len(phase.errors)} errors,"
+            f" {phase.items_checked} checked){extra}"
+        )
+    overall = "FAIL" if collector.any_failed else "OK"
+    logger.info(f"Result: {overall}")
+
 
 # ---------------------------------------------------------------------------
 # CLI entry point
@@ -119,7 +164,7 @@ def main(
 
     collector = ErrorCollector()
 
-    cfg_info = _phase1_config(collector, app_config_dir, app_data_dir)
+    cfg_info = phase1_config(collector, app_config_dir, app_data_dir)
     if cfg_info is None:
         _print_final_report(collector, time.time() - started)
         raise typer.Exit(code=1)
@@ -130,23 +175,25 @@ def main(
     sys_paths = SystemFilePaths()
     sys_paths.set_barks_reader_files_dir(reader_files_dir, check_files=False)
 
-    allow_list = _load_inset_allow_list(_PROJECT_ROOT / "scripts" / _ALLOW_LIST_FILENAME)
+    allow_list = load_inset_allow_list(
+        _PROJECT_ROOT / "scripts" / ALLOW_MISSING_INSETS_LIST_FILENAME
+    )
 
     if not titles_only:
-        _phase2_system_file_paths(collector, sys_paths)
-        _phase3_reader_file_paths(collector, cfg_info, reader_files_dir)
-        file_paths = _build_reader_file_paths(cfg_info, reader_files_dir)
-        _phase4_introduction(collector, sys_paths, file_paths, allow_list)
-        _phase5_appendices(collector, sys_paths, file_paths, allow_list)
+        phase2_system_file_paths(collector, sys_paths)
+        phase3_reader_file_paths(collector, cfg_info, reader_files_dir)
+        file_paths = build_reader_file_paths(cfg_info, reader_files_dir)
+        phase4_introduction(collector, sys_paths, file_paths, allow_list)
+        phase5_appendices(collector, sys_paths, file_paths, allow_list)
     else:
-        file_paths = _build_reader_file_paths(cfg_info, reader_files_dir)
+        file_paths = build_reader_file_paths(cfg_info, reader_files_dir)
 
-    fanta_state = _phase6_fantagraphics(collector, cfg_info, sys_paths)
-    _phase7_prebuilt_cbzs(collector, cfg_info)
-    _phase8_per_title(collector, file_paths, fanta_state, allow_list)
+    fanta_state = phase6_fantagraphics(collector, cfg_info, sys_paths)
+    phase7_prebuilt_cbzs(collector, cfg_info)
+    phase8_per_title(collector, file_paths, fanta_state, allow_list)
 
     if full_load_check:
-        _phase9_per_title_load(collector, sys_paths, fanta_state, titles_filter)
+        phase9_per_title_load(collector, sys_paths, fanta_state, titles_filter)
 
     _print_final_report(collector, time.time() - started)
     if collector.any_failed:

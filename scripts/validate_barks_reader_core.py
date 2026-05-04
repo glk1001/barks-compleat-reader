@@ -4,11 +4,6 @@ Aggregates every missing or invalid asset discovered across config, system
 files, panel sources, intro/appendix documents, Fantagraphics archives,
 prebuilt comics, and per-title insets into a single report. Exits non-zero
 on any failure.
-
-Run via ``uv run scripts/validate-barks-reader-files.py``. The script never
-imports Kivy or any UI module: it reads the same on-disk layout as the
-running app but without touching the GUI stack, so it can be wired into
-post-install / post-deploy checks.
 """
 
 import os
@@ -17,7 +12,6 @@ from configparser import ConfigParser
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import typer
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comic_book_info import (
@@ -27,7 +21,6 @@ from barks_fantagraphics.comic_book_info import (
 )
 from barks_fantagraphics.comics_consts import PAGES_WITHOUT_PANELS
 from barks_fantagraphics.comics_database import ComicsDatabase, TitleNotFoundError
-from barks_fantagraphics.comics_helpers import get_titles
 from barks_fantagraphics.comics_utils import (
     dest_file_is_older_than_srce,
     get_dest_comic_zip_file_stem,
@@ -76,10 +69,9 @@ from comic_utils.comic_consts import (
 )
 from comic_utils.decryption import DecryptionError
 from comic_utils.pil_image_utils import load_pil_image_from_zip
-from intspan import intspan
 from loguru import logger
 
-_ALLOW_LIST_FILENAME = "known-missing-insets.txt"
+ALLOW_MISSING_INSETS_LIST_FILENAME = "known-missing-insets.txt"
 _PAGE_EXTS = (JPG_FILE_EXT, PNG_FILE_EXT)
 
 _INTRO_ARTICLE = Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION
@@ -206,7 +198,7 @@ def _check_dir_has_pngs(phase: PhaseResult, label: str, path: Path) -> bool:
     return True
 
 
-def _load_inset_allow_list(path: Path) -> set[str]:
+def load_inset_allow_list(path: Path) -> set[str]:
     """Parse the known-missing-insets file into a set of title strings.
 
     Args:
@@ -235,7 +227,7 @@ def _load_inset_allow_list(path: Path) -> set[str]:
 # ---------------------------------------------------------------------------
 
 
-def _phase1_config(
+def phase1_config(
     collector: ErrorCollector,
     app_config_dir: Path | None,
     app_data_dir: Path | None,
@@ -280,7 +272,7 @@ def _phase1_config(
 # ---------------------------------------------------------------------------
 
 
-def _phase2_system_file_paths(
+def phase2_system_file_paths(
     collector: ErrorCollector,
     sys_paths: SystemFilePaths,
 ) -> None:
@@ -420,7 +412,7 @@ def _enumerate_panel_dirs(phase: PhaseResult, panels_source: Path) -> None:
         phase.add(f"panels_dir: missing 'Insets/{EDITED_SUBDIR}' under {panels_source}")
 
 
-def _phase3_reader_file_paths(
+def phase3_reader_file_paths(
     collector: ErrorCollector,
     cfg_info: ConfigInfo,
     reader_files_dir: Path,
@@ -494,7 +486,7 @@ def _validate_title_inset(
 # ---------------------------------------------------------------------------
 
 
-def _phase4_introduction(
+def phase4_introduction(
     collector: ErrorCollector,
     sys_paths: SystemFilePaths,
     file_paths: ReaderFilePaths | None,
@@ -513,7 +505,7 @@ def _phase4_introduction(
 # ---------------------------------------------------------------------------
 
 
-def _phase5_appendices(
+def phase5_appendices(
     collector: ErrorCollector,
     sys_paths: SystemFilePaths,
     file_paths: ReaderFilePaths | None,
@@ -609,7 +601,7 @@ def _process_archive_filenames(
         state.archives[fanta_volume] = archive
 
 
-def _phase6_fantagraphics(
+def phase6_fantagraphics(
     collector: ErrorCollector,
     cfg_info: ConfigInfo,
     sys_paths: SystemFilePaths,
@@ -719,7 +711,7 @@ def _process_one_archive(
 # ---------------------------------------------------------------------------
 
 
-def _phase7_prebuilt_cbzs(collector: ErrorCollector, cfg_info: ConfigInfo) -> None:
+def phase7_prebuilt_cbzs(collector: ErrorCollector, cfg_info: ConfigInfo) -> None:
     """Always-on check: every title's expected prebuilt CBZ must exist on disk."""
     phase = collector.start_phase("Prebuilt CBZs")
 
@@ -756,7 +748,7 @@ def _phase7_prebuilt_cbzs(collector: ErrorCollector, cfg_info: ConfigInfo) -> No
 # ---------------------------------------------------------------------------
 
 
-def _phase8_per_title(
+def phase8_per_title(
     collector: ErrorCollector,
     file_paths: ReaderFilePaths | None,
     fanta_state: FantaState,
@@ -1022,33 +1014,7 @@ def check_one_title_load(
             main_zip.close()
 
 
-def resolve_phase9_title_filter(volumes_str: str, title_str: str) -> list[str] | None:
-    """Resolve ``--volume`` / ``--title`` CLI args to a Phase 9 title filter.
-
-    Args:
-        volumes_str: ``intspan`` expression (e.g. ``"1-10"``); empty for no
-            volume filter.
-        title_str: Single comic title; empty for no title filter.
-
-    Returns:
-        ``None`` if neither argument is provided (Phase 9 runs every title).
-        Otherwise the list of titles matching the filter.
-
-    Raises:
-        typer.BadParameter: If both arguments are provided together.
-
-    """
-    if volumes_str and title_str:
-        msg = "Options --volume and --title are mutually exclusive."
-        raise typer.BadParameter(msg)
-    if not volumes_str and not title_str:
-        return None
-    volumes = list(intspan(volumes_str))
-    db = ComicsDatabase(for_building_comics=False)
-    return get_titles(db, volumes, title_str)
-
-
-def _phase9_per_title_load(
+def phase9_per_title_load(
     collector: ErrorCollector,
     sys_paths: SystemFilePaths,
     fanta_state: FantaState,
@@ -1093,12 +1059,17 @@ def _phase9_per_title_load(
     counts = _Phase9Counts()
     filter_set = set(titles_filter) if titles_filter is not None else None
 
-    for title_str, fanta_info in ALL_FANTA_COMIC_BOOK_INFO.items():
-        if filter_set is not None and title_str not in filter_set:
-            continue
-        title_enum = BARKS_TITLE_DICT.get(title_str)
-        if title_enum is None or title_enum in NON_COMIC_TITLES:
-            continue
+    candidates = [
+        (title_str, fanta_info)
+        for title_str, fanta_info in ALL_FANTA_COMIC_BOOK_INFO.items()
+        if filter_set is None or title_str in filter_set
+    ]
+    total = len(candidates)
+    progress_step = 5
+
+    for idx, (title_str, fanta_info) in enumerate(candidates, start=1):
+        if idx in (1, total) or idx % progress_step == 0:
+            logger.info(f"[{idx}/{total}] {title_str}")
 
         try:
             volume = get_fanta_volume_from_str(fanta_info.fantagraphics_volume)
@@ -1139,31 +1110,7 @@ def _phase9_per_title_load(
     collector.finalize_phase(phase)
 
 
-# ---------------------------------------------------------------------------
-# Final report
-# ---------------------------------------------------------------------------
-
-
-def _print_final_report(collector: ErrorCollector, elapsed: float) -> None:
-    """Emit the summary block and the overall result line."""
-    logger.info("")
-    logger.info(f"Validation complete in {elapsed:.1f}s.")
-    width = max(len(p.name) for p in collector.phases) + 2
-    for phase in collector.phases:
-        status = "SKIPPED" if phase.skipped else ("FAIL" if phase.failed else "OK")
-        label = (phase.name + ":").ljust(width)
-        extra = f" {phase.summary_extra}" if phase.summary_extra else ""
-        logger.info(
-            f"  {label}{status:7s} ({len(phase.errors)} errors,"
-            f" {phase.items_checked} checked){extra}"
-        )
-    overall = "FAIL" if collector.any_failed else "OK"
-    logger.info(f"Result: {overall}")
-
-
-def _build_reader_file_paths(
-    cfg_info: ConfigInfo, reader_files_dir: Path
-) -> ReaderFilePaths | None:
+def build_reader_file_paths(cfg_info: ConfigInfo, reader_files_dir: Path) -> ReaderFilePaths | None:
     """Construct a :class:`ReaderFilePaths` for inset lookups, or return ``None``.
 
     Phase 3 already reported any structural error; this helper only succeeds if
