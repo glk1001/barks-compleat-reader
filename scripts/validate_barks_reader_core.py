@@ -7,6 +7,7 @@ on any failure.
 """
 
 import os
+import time
 import zipfile
 from configparser import ConfigParser
 from dataclasses import dataclass, field
@@ -22,8 +23,8 @@ from barks_fantagraphics.comic_book_info import (
 from barks_fantagraphics.comics_consts import PAGES_WITHOUT_PANELS
 from barks_fantagraphics.comics_database import ComicsDatabase, TitleNotFoundError
 from barks_fantagraphics.comics_utils import (
-    dest_file_is_older_than_srce,
     get_dest_comic_zip_file_stem,
+    get_timestamp_as_str,
 )
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
@@ -877,6 +878,9 @@ def _check_one_source_page(
     page_str = Path(page_filename).stem
     phase.items_checked += 1
 
+    member: Path | None = None
+    target_zip: zipfile.ZipFile | None = None
+
     resolved = _resolve_page_source(archive, page_str)
     if resolved is None:
         counts.page_load_failed += 1
@@ -925,18 +929,48 @@ def _check_one_source_page(
                 )
 
     # Panel-segments JSON only required for pages with panels.
-    if page_type in PAGES_WITHOUT_PANELS:
-        return
+    title_enum = BARKS_TITLE_DICT[title_str]
+    if (title_enum not in NON_COMIC_TITLES) and (page_type not in PAGES_WITHOUT_PANELS):
+        _check_segments_json(
+            phase, counts, title_str, page_str, panel_segments_dir, target_zip, member
+        )
 
+
+def _check_segments_json(
+    phase: PhaseResult,
+    counts: _Phase9Counts,
+    title_str: str,
+    page_str: str,
+    panel_segments_dir: Path,
+    target_zip: zipfile.ZipFile | None,
+    member: Path | None,
+) -> None:
+    """Verify the panel-segments JSON exists and is no older than its source page."""
     json_path = panel_segments_dir / (page_str + JSON_FILE_EXT)
     if not json_path.is_file():
         counts.missing_json += 1
         phase.add(f"Title:{title_str} kind=missing_segments_json page={page_str} path={json_path}")
         return
-    if dest_file_is_older_than_srce(
-        archive.archive_filename, json_path, include_missing_dest=False
-    ):
+
+    # Compare against the source image's stored mtime inside the zip, not the
+    # zip file's own filesystem mtime — the archive is rewritten as a whole
+    # whenever any page changes, so its mtime would flag every page in the
+    # volume as stale after a single re-pack.
+    if target_zip is None or member is None:
+        return
+    try:
+        srce_zinfo = target_zip.getinfo(str(member))
+    except KeyError:
+        return
+    # ZipInfo.date_time is naive local time; mktime interprets it the same way,
+    # giving a Unix timestamp comparable to ``st_mtime``.
+    srce_mtime = time.mktime((*srce_zinfo.date_time, 0, 0, -1))
+    if json_path.stat().st_mtime < srce_mtime:
         counts.stale_json += 1
+        logger.debug(
+            f"Srce date: {get_timestamp_as_str(srce_mtime)},"
+            f" json date: {get_timestamp_as_str(json_path.stat().st_mtime)}"
+        )
         phase.add(f"Title:{title_str} kind=stale_segments_json page={page_str} path={json_path}")
 
 

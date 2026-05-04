@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import io
 import os
 import zipfile
@@ -74,6 +75,14 @@ def get_mod_file(comic: ComicBook, srce: CleanPage) -> tuple[Path, FileType, Pat
     raise FileNotFoundError(msg)
 
 
+def make_zip_info(arcname: Path, srce_file: Path) -> zipfile.ZipInfo:
+    mtime = datetime.datetime.fromtimestamp(srce_file.stat().st_mtime)  # noqa: DTZ006
+    return zipfile.ZipInfo(
+        filename=str(arcname),
+        date_time=(mtime.year, mtime.month, mtime.day, mtime.hour, mtime.minute, mtime.second),
+    )
+
+
 def downscale_and_zip(
     srce_file: Path,
     override_archive: zipfile.ZipFile,
@@ -92,7 +101,7 @@ def downscale_and_zip(
     buffer = io.BytesIO(FERNET.encrypt(buffer.getvalue()))
     buffer.seek(0)
 
-    override_archive.writestr(str(arcname), buffer.read())
+    override_archive.writestr(make_zip_info(arcname, srce_file), buffer.read())
 
 
 def just_zip(srce_file: Path, override_archive: zipfile.ZipFile, arcname: Path) -> None:
@@ -103,7 +112,7 @@ def just_zip(srce_file: Path, override_archive: zipfile.ZipFile, arcname: Path) 
     buffer = io.BytesIO(FERNET.encrypt(original))
     buffer.seek(0)
 
-    override_archive.writestr(str(arcname), buffer.read())
+    override_archive.writestr(make_zip_info(arcname, srce_file), buffer.read())
 
 
 def process_comic_book(comic_book: ComicBook, override_archive: zipfile.ZipFile) -> int:

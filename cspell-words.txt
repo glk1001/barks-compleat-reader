@@ -56,6 +56,7 @@ libx
 licence
 logr
 markersize
+mktime
 modifyitems
 mtdev
 numpad
@@ -90,6 +91,7 @@ xticks
 ylabel
 yticklabels
 yticks
+zinfo
 zorder
 zorder
 zorder
