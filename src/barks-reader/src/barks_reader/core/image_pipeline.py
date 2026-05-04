@@ -46,9 +46,14 @@ def read_raw_bytes(panel_path: PanelPath, *, encrypted_zip: bool = False) -> byt
         raw = panel_path.read_bytes()
         if encrypted_zip:
             raw = get_decrypted_bytes(raw)
+            if not raw:
+                msg = f'Image decryption failed with empty bytes: "{panel_path}".'
+                raise RuntimeError(msg)
         return raw
+
     if isinstance(panel_path, Path):
         return panel_path.read_bytes()
+
     msg = f"Unsupported PanelPath type: {type(panel_path)}"
     raise TypeError(msg)
 
