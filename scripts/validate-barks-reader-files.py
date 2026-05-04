@@ -30,6 +30,7 @@ from loguru import logger
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_PROJECT_ROOT / ".env.runtime")
 
+from comic_utils.common_typer_options import TitleArg, VolumesArg  # noqa: E402, TC002
 from validate_barks_reader_core import (  # noqa: E402
     _ALLOW_LIST_FILENAME,
     ErrorCollector,
@@ -45,6 +46,7 @@ from validate_barks_reader_core import (  # noqa: E402
     _phase8_per_title,
     _phase9_per_title_load,
     _print_final_report,
+    resolve_phase9_title_filter,
 )
 
 # ---------------------------------------------------------------------------
@@ -100,6 +102,8 @@ def main(
             ),
         ),
     ] = False,
+    volume: VolumesArg = "",
+    title: TitleArg = "",
     log_level: Annotated[
         str,
         typer.Option(help="Loguru log level (TRACE/DEBUG/INFO/WARNING/ERROR)."),
@@ -108,6 +112,10 @@ def main(
     """Validate every on-disk asset the Barks Reader expects at startup."""
     _setup_logging(log_level)
     started = time.time()
+
+    # Resolve the optional Phase 9 title filter early so a bad --volume / --title
+    # combination fails before any phase work is done.
+    titles_filter = resolve_phase9_title_filter(volume, title)
 
     collector = ErrorCollector()
 
@@ -138,7 +146,7 @@ def main(
     _phase8_per_title(collector, file_paths, fanta_state, allow_list)
 
     if full_load_check:
-        _phase9_per_title_load(collector, sys_paths, fanta_state)
+        _phase9_per_title_load(collector, sys_paths, fanta_state, titles_filter)
 
     _print_final_report(collector, time.time() - started)
     if collector.any_failed:

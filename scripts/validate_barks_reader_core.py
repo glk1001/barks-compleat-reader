@@ -12,12 +12,12 @@ post-install / post-deploy checks.
 """
 
 import os
-import sys
 import zipfile
 from configparser import ConfigParser
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import typer
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comic_book_info import (
@@ -27,6 +27,7 @@ from barks_fantagraphics.comic_book_info import (
 )
 from barks_fantagraphics.comics_consts import PAGES_WITHOUT_PANELS
 from barks_fantagraphics.comics_database import ComicsDatabase, TitleNotFoundError
+from barks_fantagraphics.comics_helpers import get_titles
 from barks_fantagraphics.comics_utils import (
     dest_file_is_older_than_srce,
     get_dest_comic_zip_file_stem,
@@ -75,6 +76,7 @@ from comic_utils.comic_consts import (
 )
 from comic_utils.decryption import DecryptionError
 from comic_utils.pil_image_utils import load_pil_image_from_zip
+from intspan import intspan
 from loguru import logger
 
 _ALLOW_LIST_FILENAME = "known-missing-insets.txt"
@@ -1020,15 +1022,50 @@ def check_one_title_load(
             main_zip.close()
 
 
+def resolve_phase9_title_filter(volumes_str: str, title_str: str) -> list[str] | None:
+    """Resolve ``--volume`` / ``--title`` CLI args to a Phase 9 title filter.
+
+    Args:
+        volumes_str: ``intspan`` expression (e.g. ``"1-10"``); empty for no
+            volume filter.
+        title_str: Single comic title; empty for no title filter.
+
+    Returns:
+        ``None`` if neither argument is provided (Phase 9 runs every title).
+        Otherwise the list of titles matching the filter.
+
+    Raises:
+        typer.BadParameter: If both arguments are provided together.
+
+    """
+    if volumes_str and title_str:
+        msg = "Options --volume and --title are mutually exclusive."
+        raise typer.BadParameter(msg)
+    if not volumes_str and not title_str:
+        return None
+    volumes = list(intspan(volumes_str))
+    db = ComicsDatabase(for_building_comics=False)
+    return get_titles(db, volumes, title_str)
+
+
 def _phase9_per_title_load(
     collector: ErrorCollector,
     sys_paths: SystemFilePaths,
     fanta_state: FantaState,
+    titles_filter: list[str] | None = None,
 ) -> None:
     """Phase 9: dry-run the loader for every title, as if use_prebuilt_comics=0.
 
     Catches missing/unreadable source pages, missing/stale panel-segments
     JSONs, and ComicBook construction failures (per-title INI errors).
+
+    Args:
+        collector: Aggregator for phase results.
+        sys_paths: Resolved :class:`SystemFilePaths` from Phase 2.
+        fanta_state: Cached Phase 6 outcome.
+        titles_filter: Optional subset of titles to check (from
+            :func:`resolve_phase9_title_filter`). ``None`` runs all titles.
+
     """
     phase = collector.start_phase("PerTitleLoad")
     logger.info(
@@ -1054,11 +1091,12 @@ def _phase9_per_title_load(
         return
 
     counts = _Phase9Counts()
+    filter_set = set(titles_filter) if titles_filter is not None else None
 
     for title_str, fanta_info in ALL_FANTA_COMIC_BOOK_INFO.items():
-        title_enum = BARKS_TITLE_DICT.get(title_str)
-        if title_enum != Titles.PLENTY_OF_PETS:
+        if filter_set is not None and title_str not in filter_set:
             continue
+        title_enum = BARKS_TITLE_DICT.get(title_str)
         if title_enum is None or title_enum in NON_COMIC_TITLES:
             continue
 
@@ -1121,23 +1159,6 @@ def _print_final_report(collector: ErrorCollector, elapsed: float) -> None:
         )
     overall = "FAIL" if collector.any_failed else "OK"
     logger.info(f"Result: {overall}")
-
-
-# ---------------------------------------------------------------------------
-# CLI entry point
-# ---------------------------------------------------------------------------
-
-
-def _setup_logging(log_level: str) -> None:
-    """Configure loguru to emit a single, predictable stream to stdout."""
-    logger.remove()
-    logger.add(
-        sys.stdout,
-        level=log_level.upper(),
-        format=(
-            "<green>{time:HH:mm:ss}</green> <level>{level:<7}</level> <level>{message}</level>"
-        ),
-    )
 
 
 def _build_reader_file_paths(
