@@ -36,7 +36,6 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from barks_fantagraphics.page_classes import CleanPage
 from barks_fantagraphics.pages import _get_srce_and_dest_pages_in_order
-from barks_reader.core.config_info import ConfigInfo, find_fanta_volumes_dirpath
 from barks_reader.core.fantagraphics_volumes import (
     DuplicateArchiveFilesError,
     FantagraphicsArchive,
@@ -46,19 +45,6 @@ from barks_reader.core.fantagraphics_volumes import (
     PageNumError,
     TooManyArchiveFilesError,
     TooManyOverrideDirsError,
-)
-from barks_reader.core.reader_file_paths import (
-    EDITED_SUBDIR,
-    BarksPanelsExtType,
-    PanelDirNames,
-    ReaderFilePaths,
-)
-from barks_reader.core.reader_settings import (
-    FANTA_DIR,
-    JPG_BARKS_PANELS_ZIP,
-    PNG_BARKS_PANELS_DIR,
-    PREBUILT_COMICS_DIR,
-    read_setting_from_config,
 )
 from barks_reader.core.reader_utils import is_blank_page, is_title_page
 from barks_reader.core.system_file_paths import SystemFilePaths
@@ -71,9 +57,30 @@ from comic_utils.comic_consts import (
 )
 from comic_utils.decryption import DecryptionError
 from comic_utils.pil_image_utils import load_pil_image_for_reading, load_pil_image_from_zip
+from dotenv import load_dotenv
 from loguru import logger
 
-ALLOW_MISSING_INSETS_LIST_FILENAME = "known-missing-insets.txt"
+# Load env vars (BARKS_READER_CONFIG_DIR, BARKS_READER_DATA_DIR, ...) before
+# importing barks_reader.core.config_info, which constructs nothing at module
+# load time but does set Kivy/SDL env vars defensively.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(PROJECT_ROOT / ".env.runtime")
+
+from barks_reader.core.config_info import ConfigInfo, find_fanta_volumes_dirpath  # noqa: E402
+from barks_reader.core.reader_file_paths import (  # noqa: E402
+    EDITED_SUBDIR,
+    BarksPanelsExtType,
+    PanelDirNames,
+    ReaderFilePaths,
+)
+from barks_reader.core.reader_settings import (  # noqa: E402
+    FANTA_DIR,
+    JPG_BARKS_PANELS_ZIP,
+    PNG_BARKS_PANELS_DIR,
+    PREBUILT_COMICS_DIR,
+    read_setting_from_config,
+)
+
 _PAGE_EXTS = (JPG_FILE_EXT, PNG_FILE_EXT)
 _CROSSCHECK_MIN_VARIANTS = 2
 
@@ -199,30 +206,6 @@ def _check_dir_has_pngs(phase: PhaseResult, label: str, path: Path) -> bool:
         phase.add(f"{label}: no PNG files in {path}")
         return False
     return True
-
-
-def load_inset_allow_list(path: Path) -> set[str]:
-    """Parse the known-missing-insets file into a set of title strings.
-
-    Args:
-        path: Path to the allow-list file. Missing file is treated as empty.
-
-    Returns:
-        Set of title strings whose missing-inset failures should be suppressed.
-
-    """
-    if not path.is_file():
-        logger.info(f"Inset allow-list not found ({path}); treating as empty.")
-        return set()
-
-    titles: set[str] = set()
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-        titles.add(line)
-    logger.info(f"Loaded {len(titles)} title(s) from inset allow-list {path}.")
-    return titles
 
 
 # ---------------------------------------------------------------------------
@@ -461,8 +444,7 @@ def phase3_reader_file_paths(
 #                            "Original Art", Search, Silhouettes, Splash}
 #
 # Existence requirements are deliberately sparse:
-#   * Insets/<title>.<ext> must exist for every comic title not in
-#     ``allow_list`` and not in ``NON_COMIC_TITLES``.
+#   * Insets/<title>.<ext> must exist for every comic title not in ``NON_COMIC_TITLES``.
 #   * Every comic title (not in ``NON_COMIC_TITLES``) must have at least one
 #     file under one of {Closeups, Favourites, Silhouettes, Splash}.
 #   * All other paths are optional — but every file that *is* present is
@@ -679,7 +661,6 @@ def _validate_title_files(
     file_paths: ReaderFilePaths | None,
     ctx: _AuditCtx,
     title_str: str,
-    allow_list: set[str],
 ) -> _TitleCounts | None:
     """Validate inset, cover, and per-category subdir files for one title.
 
@@ -691,8 +672,6 @@ def _validate_title_files(
         ctx: Per-variant audit context. Each file the sweep visits is
             recorded so the audit pass can later report any unvisited file.
         title_str: The title identifier as keyed in ``BARKS_TITLE_DICT``.
-        allow_list: Titles whose missing-inset failures should be suppressed
-            (also suppresses the "must have a panel file" check).
 
     Returns:
         ``_TitleCounts`` summarising every file seen for this title across
@@ -706,8 +685,6 @@ def _validate_title_files(
 
     title = BARKS_TITLE_DICT.get(title_str)
     if title is None:
-        if title_str not in allow_list:
-            phase.add(f"Title:{title_str} kind=unknown_title")
         return None
 
     is_article = title in NON_COMIC_TITLES
@@ -727,7 +704,7 @@ def _validate_title_files(
         label="inset",
         main_filename=inset_filename,
         edited_filename=inset_filename,
-        require_main=(not is_article) and (title_str not in allow_list),
+        require_main=(not is_article),
     )
 
     # Covers — flat: Covers/<title>.jpg (always JPG) + Covers/edited/<title>.<inset_ext>.
@@ -792,7 +769,7 @@ def _validate_title_files(
         phase, ctx, title_str, file_paths.get_comic_splash_files_dir(), encrypted, label="splash"
     )
 
-    if not is_article and (title_str not in allow_list) and not counts.has_required_panel_file:
+    if not is_article and not counts.has_required_panel_file:
         phase.add(
             f"Title:{title_str} kind=no_panel_files"
             f" reason=no_files_in_(Closeups|Favourites|Silhouettes|Splash)"
@@ -817,7 +794,6 @@ def phase4_introduction(
     collector: ErrorCollector,
     sys_paths: SystemFilePaths,
     file_paths_variants: list[ReaderFilePaths],
-    allow_list: set[str],
 ) -> None:
     """Validate intro document pages and the intro article inset (per panel-source variant)."""
     phase = collector.start_phase("Introduction")
@@ -828,7 +804,7 @@ def phase4_introduction(
         # audit pass. Visiting the intro/appendix files here is harmless: the
         # audit re-visits them in Phase 8 anyway.
         ctx = _build_audit_ctx(file_paths)
-        _validate_title_files(phase, file_paths, ctx, title_str, allow_list)
+        _validate_title_files(phase, file_paths, ctx, title_str)
     collector.finalize_phase(phase)
 
 
@@ -841,7 +817,6 @@ def phase5_appendices(
     collector: ErrorCollector,
     sys_paths: SystemFilePaths,
     file_paths_variants: list[ReaderFilePaths],
-    allow_list: set[str],
 ) -> None:
     """Validate censorship-fixes pages and the four appendix article insets (per variant)."""
     phase = collector.start_phase("Appendices")
@@ -854,7 +829,7 @@ def phase5_appendices(
         title_str = BARKS_TITLES[article]
         for file_paths in file_paths_variants:
             ctx = _build_audit_ctx(file_paths)
-            _validate_title_files(phase, file_paths, ctx, title_str, allow_list)
+            _validate_title_files(phase, file_paths, ctx, title_str)
     collector.finalize_phase(phase)
 
 
@@ -1087,7 +1062,6 @@ def phase8_per_title(
     collector: ErrorCollector,
     file_paths_variants: list[ReaderFilePaths],
     fanta_state: FantaState,
-    allow_list: set[str],
     titles_filter: list[str] | None = None,
 ) -> list[_AuditCtx]:
     """Per-title file + volume-binding sweep across ALL_FANTA_COMIC_BOOK_INFO.
@@ -1103,7 +1077,6 @@ def phase8_per_title(
         file_paths_variants: Resolved panel-source variants (JPG zip first,
             optional PNG dir second).
         fanta_state: Cached Phase 6 outcome.
-        allow_list: Titles whose missing-inset failures should be suppressed.
         titles_filter: Optional subset of titles to check (matches Phase 9's
             argument). ``None`` runs every title.
 
@@ -1133,7 +1106,7 @@ def phase8_per_title(
         for variant_idx, (file_paths, ctx) in enumerate(
             zip(file_paths_variants, ctx_by_variant, strict=True)
         ):
-            counts = _validate_title_files(phase, file_paths, ctx, title_str, allow_list)
+            counts = _validate_title_files(phase, file_paths, ctx, title_str)
             if counts is not None:
                 counts_by_variant[variant_idx][title_str] = counts
         after_files = len(phase.errors)
@@ -1578,7 +1551,7 @@ def phase9_per_title_load(
     """
     phase = collector.start_phase("PerTitleLoad")
     logger.info(
-        "Phase 9: per-title full-load dry-run."
+        "Phase: per-title full-load dry-run."
         " Decodes every source page through image_pipeline.load_pil"
         " and checks each panel-segments JSON exists + is no older than"
         " its volume CBZ. This may take a minute or two."

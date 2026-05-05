@@ -21,24 +21,14 @@ from typing import Annotated
 import typer
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.comics_helpers import get_titles
-from barks_reader.core.reader_settings import READER_FILES_DIR, USE_PREBUILT_COMICS
+from barks_reader.core.reader_settings import READER_FILES_DIR
 from barks_reader.core.system_file_paths import SystemFilePaths
-from dotenv import load_dotenv
+from comic_utils.common_typer_options import LogLevelArg, TitleArg, VolumesArg  # noqa: TC002
 from intspan import intspan
 from loguru import logger
-
-# Load env vars (BARKS_READER_CONFIG_DIR, BARKS_READER_DATA_DIR, ...) before
-# importing barks_reader.core.config_info, which constructs nothing at module
-# load time but does set Kivy/SDL env vars defensively.
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
-load_dotenv(_PROJECT_ROOT / ".env.runtime")
-
-from comic_utils.common_typer_options import TitleArg, VolumesArg  # noqa: E402, TC002
-from validate_barks_reader_core import (  # noqa: E402
-    ALLOW_MISSING_INSETS_LIST_FILENAME,
+from validate_barks_reader_core import (
     ErrorCollector,
     build_reader_file_paths,
-    load_inset_allow_list,
     phase1_config,
     phase2_system_file_paths,
     phase3_reader_file_paths,
@@ -112,48 +102,52 @@ def _setup_logging(log_level: str) -> None:
     )
 
 
+AppDataDirArg = Annotated[
+    Path | None,
+    typer.Option(help="Override BARKS_READER_DATA_DIR for this run."),
+]
+AppConfigDirArg = Annotated[
+    Path | None,
+    typer.Option(help="Override BARKS_READER_CONFIG_DIR for this run."),
+]
+ReaderFilesDirArg = Annotated[
+    Path | None,
+    typer.Option(
+        help=(
+            "Override the Reader Files directory location."
+            f" Defaults to <app-data-dir>/{READER_FILES_DIR}."
+        )
+    ),
+]
+TitlesOnlyArg = Annotated[
+    bool,
+    typer.Option("--titles-only", help="Skip non-title phases (config / system / panels)."),
+]
+FullLoadCheckArg = Annotated[
+    bool,
+    typer.Option(
+        "--full-load-check",
+        help=(
+            "Run Phase 9: dry-run the comic loader for every title (as if"
+            " use_prebuilt_comics=0). Reads each source page from its"
+            " volume / override CBZ via the same image_pipeline.load_pil"
+            " call the reader uses, and verifies every required"
+            " panel-segments JSON exists and is no older than its volume CBZ."
+            " Adds ~30-90s of wall time."
+        ),
+    ),
+]
+
+
 def main(
-    app_data_dir: Annotated[
-        Path | None,
-        typer.Option(help="Override BARKS_READER_DATA_DIR for this run."),
-    ] = None,
-    app_config_dir: Annotated[
-        Path | None,
-        typer.Option(help="Override BARKS_READER_CONFIG_DIR for this run."),
-    ] = None,
-    reader_files_dir: Annotated[
-        Path | None,
-        typer.Option(
-            help=(
-                "Override the Reader Files directory location."
-                f" Defaults to <app-data-dir>/{READER_FILES_DIR}."
-            )
-        ),
-    ] = None,
-    titles_only: Annotated[
-        bool,
-        typer.Option("--titles-only", help="Skip non-title phases (config / system / panels)."),
-    ] = False,
-    full_load_check: Annotated[
-        bool,
-        typer.Option(
-            "--full-load-check",
-            help=(
-                "Run Phase 9: dry-run the comic loader for every title (as if"
-                " use_prebuilt_comics=0). Reads each source page from its"
-                " volume / override CBZ via the same image_pipeline.load_pil"
-                " call the reader uses, and verifies every required"
-                " panel-segments JSON exists and is no older than its volume CBZ."
-                " Adds ~30-90s of wall time."
-            ),
-        ),
-    ] = False,
+    app_data_dir: AppDataDirArg = None,
+    app_config_dir: AppConfigDirArg = None,
+    reader_files_dir: ReaderFilesDirArg = None,
+    titles_only: TitlesOnlyArg = False,
+    full_load_check: FullLoadCheckArg = False,
     volume: VolumesArg = "",
     title: TitleArg = "",
-    log_level: Annotated[
-        str,
-        typer.Option(help="Loguru log level (TRACE/DEBUG/INFO/WARNING/ERROR)."),
-    ] = "INFO",
+    log_level: LogLevelArg = "INFO",
 ) -> None:
     """Validate every on-disk asset the Barks Reader expects at startup."""
     _setup_logging(log_level)
@@ -177,24 +171,18 @@ def main(
     sys_paths = SystemFilePaths()
     sys_paths.set_barks_reader_files_dir(reader_files_dir, check_files=False)
 
-    allow_list = load_inset_allow_list(
-        _PROJECT_ROOT / "scripts" / ALLOW_MISSING_INSETS_LIST_FILENAME
-    )
-
-    if not titles_only:
+    if titles_only:
+        file_paths_variants = build_reader_file_paths(cfg_info, reader_files_dir)
+    else:
         phase2_system_file_paths(collector, sys_paths)
         phase3_reader_file_paths(collector, cfg_info, reader_files_dir)
         file_paths_variants = build_reader_file_paths(cfg_info, reader_files_dir)
-        phase4_introduction(collector, sys_paths, file_paths_variants, allow_list)
-        phase5_appendices(collector, sys_paths, file_paths_variants, allow_list)
-    else:
-        file_paths_variants = build_reader_file_paths(cfg_info, reader_files_dir)
+        phase4_introduction(collector, sys_paths, file_paths_variants)
+        phase5_appendices(collector, sys_paths, file_paths_variants)
 
     fanta_state = phase6_fantagraphics(collector, cfg_info, sys_paths)
     phase7_prebuilt_cbzs(collector, cfg_info)
-    ctx_by_variant = phase8_per_title(
-        collector, file_paths_variants, fanta_state, allow_list, titles_filter
-    )
+    ctx_by_variant = phase8_per_title(collector, file_paths_variants, fanta_state, titles_filter)
     phase_audit_panel_files(
         collector,
         file_paths_variants,
@@ -208,12 +196,6 @@ def main(
     _print_final_report(collector, time.time() - started)
     if collector.any_failed:
         raise typer.Exit(code=1)
-
-
-# Silence the "use_prebuilt_archives" unused-import false positive: the symbol
-# is part of the public API surface we mirror, but the validator never reads
-# the flag (Phase 7 always runs).
-_ = USE_PREBUILT_COMICS
 
 
 if __name__ == "__main__":
