@@ -9,6 +9,7 @@ on any failure.
 import os
 import time
 import zipfile
+from collections.abc import Iterator
 from configparser import ConfigParser
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -57,7 +58,6 @@ from barks_reader.core.reader_settings import (
     JPG_BARKS_PANELS_ZIP,
     PNG_BARKS_PANELS_DIR,
     PREBUILT_COMICS_DIR,
-    USE_PNG_IMAGES,
     read_setting_from_config,
 )
 from barks_reader.core.reader_utils import is_blank_page, is_title_page
@@ -67,13 +67,15 @@ from comic_utils.comic_consts import (
     JPG_FILE_EXT,
     JSON_FILE_EXT,
     PNG_FILE_EXT,
+    PanelPath,
 )
 from comic_utils.decryption import DecryptionError
-from comic_utils.pil_image_utils import load_pil_image_from_zip
+from comic_utils.pil_image_utils import load_pil_image_for_reading, load_pil_image_from_zip
 from loguru import logger
 
 ALLOW_MISSING_INSETS_LIST_FILENAME = "known-missing-insets.txt"
 _PAGE_EXTS = (JPG_FILE_EXT, PNG_FILE_EXT)
+_CROSSCHECK_MIN_VARIANTS = 2
 
 _INTRO_ARTICLE = Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION
 _APPENDIX_ARTICLES: tuple[Titles, ...] = (
@@ -353,36 +355,38 @@ def phase2_system_file_paths(
 # ---------------------------------------------------------------------------
 
 
-def _resolve_panels_source(
+def _resolve_panel_sources(
     phase: PhaseResult,
     cfg_info: ConfigInfo,
     reader_files_dir: Path,
-) -> tuple[Path, BarksPanelsExtType] | None:
-    """Read panel-source settings from the INI and resolve to (path, ext_type).
+) -> list[tuple[Path, BarksPanelsExtType]]:
+    """Resolve every panel source the validator should check.
 
-    Returns ``None`` (after recording an error on ``phase``) if the INI is
-    unreadable or the panel-source setting cannot be parsed.
+    Always includes the JPG zip (use_png_images=False). Additionally
+    includes the PNG dir when the INI configures one and that directory
+    exists on disk. The PNG variant is *additive*: missing or unconfigured
+    PNG dirs are silently skipped, since the user-facing requirement is
+    that the JPG zip is always present.
     """
+    sources: list[tuple[Path, BarksPanelsExtType]] = [
+        (reader_files_dir / JPG_BARKS_PANELS_ZIP, BarksPanelsExtType.JPG),
+    ]
+
     if not cfg_info.app_config_path.is_file():
         phase.add(f"app config INI not readable: {cfg_info.app_config_path}")
-        return None
+        return sources
+
     barks_config = ConfigParser()
     barks_config.read(cfg_info.app_config_path)
     try:
-        use_png_images = bool(read_setting_from_config(barks_config, USE_PNG_IMAGES))
-    except Exception as exc:  # noqa: BLE001
-        phase.add(f"could not read {USE_PNG_IMAGES} from config: {exc}")
-        return None
-
-    if not use_png_images:
-        return reader_files_dir / JPG_BARKS_PANELS_ZIP, BarksPanelsExtType.JPG
-
-    try:
         png_dir = read_setting_from_config(barks_config, PNG_BARKS_PANELS_DIR)
-    except Exception as exc:  # noqa: BLE001
-        phase.add(f"could not read {PNG_BARKS_PANELS_DIR} from config: {exc}")
-        return None
-    return Path(png_dir), BarksPanelsExtType.MOSTLY_PNG
+    except Exception:  # noqa: BLE001 - missing/unset PNG dir is fine; just skip it
+        return sources
+
+    png_path = png_dir if isinstance(png_dir, Path) else Path(png_dir) if png_dir else None
+    if png_path is not None and png_path.is_dir():
+        sources.append((png_path, BarksPanelsExtType.MOSTLY_PNG))
+    return sources
 
 
 def _enumerate_panel_dirs(phase: PhaseResult, panels_source: Path) -> None:
@@ -418,68 +422,383 @@ def phase3_reader_file_paths(
     cfg_info: ConfigInfo,
     reader_files_dir: Path,
 ) -> None:
-    """Validate panel sources (zip or PNG dir + every ``PanelDirNames.*`` entry)."""
+    """Validate every panel source (JPG zip always, PNG dir if configured)."""
     phase = collector.start_phase("ReaderFilePaths")
 
-    resolved = _resolve_panels_source(phase, cfg_info, reader_files_dir)
-    if resolved is None:
-        collector.finalize_phase(phase)
-        return
-    panels_source, ext_type = resolved
+    sources = _resolve_panel_sources(phase, cfg_info, reader_files_dir)
+    for panels_source, ext_type in sources:
+        phase.items_checked += 1
+        if not panels_source.exists():
+            phase.add(f"panels_source: missing {panels_source}")
+            continue
 
-    phase.items_checked += 1
-    if not panels_source.exists():
-        phase.add(f"panels_source: missing {panels_source}")
-        collector.finalize_phase(phase)
-        return
+        file_paths = ReaderFilePaths()
+        try:
+            file_paths.set_barks_panels_source(panels_source, ext_type)
+        except FileNotFoundError as exc:
+            # The app's _check_panels_dirs raised on the first missing dir.
+            # Re-enumerate below so we report every missing one.
+            phase.add(f"panels_source check raised: {exc}")
+        except Exception as exc:  # noqa: BLE001
+            phase.add(f"set_barks_panels_source failed: {exc}")
+            continue
 
-    file_paths = ReaderFilePaths()
-    try:
-        file_paths.set_barks_panels_source(panels_source, ext_type)
-    except FileNotFoundError as exc:
-        # The app's _check_panels_dirs raised on the first missing dir.
-        # Re-enumerate below so we report every missing one.
-        phase.add(f"panels_source check raised: {exc}")
-    except Exception as exc:  # noqa: BLE001
-        phase.add(f"set_barks_panels_source failed: {exc}")
-        collector.finalize_phase(phase)
-        return
+        _enumerate_panel_dirs(phase, panels_source)
 
-    _enumerate_panel_dirs(phase, panels_source)
     collector.finalize_phase(phase)
 
 
 # ---------------------------------------------------------------------------
-# Phase 4/5 helpers
+# Phase 4/5/8 helpers — per-title file validation
 # ---------------------------------------------------------------------------
+#
+# A title's on-disk presence is checked across many roots:
+#
+#   Insets/<title>.ext + Insets/edited/<title>.ext         (flat per-title files)
+#   Covers/<title>.jpg + Covers/edited/<title>.<ext>       (flat per-title files)
+#   <Category>/<title>/* + <Category>/<title>/edited/*     (per-title subdirs)
+#       where <Category> in {AI, BW, Censorship, Closeups, Favourites,
+#                            "Original Art", Search, Silhouettes, Splash}
+#
+# Existence requirements are deliberately sparse:
+#   * Insets/<title>.<ext> must exist for every comic title not in
+#     ``allow_list`` and not in ``NON_COMIC_TITLES``.
+#   * Every comic title (not in ``NON_COMIC_TITLES``) must have at least one
+#     file under one of {Closeups, Favourites, Silhouettes, Splash}.
+#   * All other paths are optional — but every file that *is* present is
+#     test-decoded (encrypted=True for the JPG zip variant, =False for the
+#     PNG dir variant) so corrupt content fails this phase.
 
 
-def _validate_title_inset(
+@dataclass(slots=True)
+class _TitleCounts:
+    """Per-category file counts for one (title, panel-source-variant) pair."""
+
+    insets: int = 0
+    covers: int = 0
+    bw: int = 0
+    ai: int = 0
+    censorship: int = 0
+    closeups: int = 0
+    favourites: int = 0
+    original_art: int = 0
+    search: int = 0
+    silhouettes: int = 0
+    splash: int = 0
+
+    @property
+    def total(self) -> int:
+        """Sum of every per-category count for the title."""
+        return (
+            self.insets
+            + self.covers
+            + self.bw
+            + self.ai
+            + self.censorship
+            + self.closeups
+            + self.favourites
+            + self.original_art
+            + self.search
+            + self.silhouettes
+            + self.splash
+        )
+
+    @property
+    def has_required_panel_file(self) -> bool:
+        """True iff at least one of the four required panel categories has a file."""
+        return bool(self.closeups or self.favourites or self.silhouettes or self.splash)
+
+
+def _load_test_image(panel_path: PanelPath, encrypted: bool) -> Exception | None:
+    """Decode the image at ``panel_path``; return ``None`` on success, the exception on failure.
+
+    Picks the right loader based on the path's runtime type: zip members go
+    through ``load_pil_image_from_zip`` (which handles the panel-key
+    decryption when ``encrypted=True``), filesystem paths go through
+    ``load_pil_image_for_reading``.
+    """
+    try:
+        if isinstance(panel_path, zipfile.Path):
+            load_pil_image_from_zip(panel_path, encrypted=encrypted)
+        else:
+            load_pil_image_for_reading(panel_path)
+    except DecryptionError as exc:
+        return exc
+    except (OSError, RuntimeError, ValueError, KeyError, zipfile.BadZipFile) as exc:
+        return exc
+    return None
+
+
+@dataclass(slots=True)
+class _AuditCtx:
+    """Per-variant state tracking which panel files the per-title sweep visited.
+
+    A "visit" is recorded each time the sweep examines a specific file path
+    (test-loads it, errors it as a non-image, or notes its existence). The
+    :func:`phase_audit_panel_files` pass uses ``visited`` to find files the
+    sweep never touched, which is how stray files outside the per-title
+    naming scheme (e.g. typos in a title-named subdir, files dropped into
+    the wrong category dir) get surfaced.
+    """
+
+    panel_source: Path
+    is_zip: bool
+    visited: set[str] = field(default_factory=set)
+
+    def visit(self, panel_path: PanelPath) -> None:
+        """Mark ``panel_path`` as inspected by the per-title sweep."""
+        self.visited.add(_panel_key(self, panel_path))
+
+
+def _panel_key(ctx: _AuditCtx, panel_path: PanelPath) -> str:
+    """Return a stable key identifying ``panel_path`` within its variant.
+
+    For zip variants the key is the member's ``at`` attribute (the path
+    inside the archive). For filesystem variants it's the POSIX-style path
+    relative to ``ctx.panel_source``.
+    """
+    if isinstance(panel_path, zipfile.Path):
+        return panel_path.at
+    return panel_path.relative_to(ctx.panel_source).as_posix()
+
+
+def _validate_image_files_in(
+    phase: PhaseResult,
+    ctx: _AuditCtx,
+    title_str: str,
+    dir_path: PanelPath,
+    encrypted: bool,
+    *,
+    label: str,
+) -> int:
+    """Inspect every file directly under ``dir_path``: test-load images, error non-images.
+
+    Returns the count of image files found (regardless of load success —
+    load failures are recorded on the phase, but the file is still counted
+    so the JPG↔PNG cross-check sees a true count). Non-image files are
+    recorded as errors with kind ``<label>_non_image_file`` and are not
+    counted toward the image total. Every visited file (image or not) is
+    added to ``ctx`` so the audit pass won't re-flag it as unvisited.
+    """
+    image_count = 0
+    for f in dir_path.iterdir():
+        if not f.is_file():
+            continue
+        ctx.visit(f)
+        suffix = Path(f.name).suffix.lower()
+        if suffix not in _PAGE_EXTS:
+            phase.add(f"Title:{title_str} kind={label}_non_image_file path={f}")
+            continue
+        image_count += 1
+        err = _load_test_image(f, encrypted)
+        if err is not None:
+            phase.add(
+                f"Title:{title_str} kind={label}_load_failed path={f}"
+                f" reason={type(err).__name__}: {err}"
+            )
+    return image_count
+
+
+def _check_subdir_title(
+    phase: PhaseResult,
+    ctx: _AuditCtx,
+    title_str: str,
+    parent_dir: PanelPath,
+    encrypted: bool,
+    *,
+    label: str,
+) -> int:
+    """Check ``<parent_dir>/<title_str>/*`` and optional ``<parent_dir>/<title_str>/edited/*``.
+
+    Title-named subdirs are inherently optional — most titles do not have
+    closeup/silhouette/etc files. Returns 0 silently when the title subdir
+    is absent. Each present file is test-image-loaded; non-image files
+    inside the subdir (or its ``edited`` subdir) are flagged as errors.
+    """
+    title_dir = parent_dir / title_str
+    if not title_dir.is_dir():
+        return 0
+    count = _validate_image_files_in(phase, ctx, title_str, title_dir, encrypted, label=label)
+    edited_dir = title_dir / EDITED_SUBDIR
+    if edited_dir.is_dir():
+        count += _validate_image_files_in(
+            phase, ctx, title_str, edited_dir, encrypted, label=f"edited_{label}"
+        )
+    return count
+
+
+def _check_flat_pair(
+    phase: PhaseResult,
+    ctx: _AuditCtx,
+    title_str: str,
+    parent_dir: PanelPath,
+    encrypted: bool,
+    *,
+    label: str,
+    main_filename: str,
+    edited_filename: str,
+    require_main: bool,
+) -> int:
+    """Check a flat per-title file pair (main + optional edited) under ``parent_dir``.
+
+    Used for flat per-title artifacts (insets and covers). Either may be
+    absent: ``require_main`` flips the missing-main case from "ignore" to
+    "report". Each present file is test-image-loaded and marked visited.
+    """
+    count = 0
+    main_path = parent_dir / main_filename
+    if main_path.is_file():
+        ctx.visit(main_path)
+        err = _load_test_image(main_path, encrypted)
+        if err is not None:
+            phase.add(
+                f"Title:{title_str} kind={label}_load_failed path={main_path}"
+                f" reason={type(err).__name__}: {err}"
+            )
+        count += 1
+    elif require_main:
+        phase.add(f"Title:{title_str} kind=missing_{label} path={main_path}")
+
+    edited_dir = parent_dir / EDITED_SUBDIR
+    if edited_dir.is_dir():
+        edited_path = edited_dir / edited_filename
+        if edited_path.is_file():
+            ctx.visit(edited_path)
+            err = _load_test_image(edited_path, encrypted)
+            if err is not None:
+                phase.add(
+                    f"Title:{title_str} kind=edited_{label}_load_failed path={edited_path}"
+                    f" reason={type(err).__name__}: {err}"
+                )
+            count += 1
+    return count
+
+
+def _validate_title_files(
     phase: PhaseResult,
     file_paths: ReaderFilePaths | None,
+    ctx: _AuditCtx,
     title_str: str,
     allow_list: set[str],
-) -> None:
-    """Check that the inset for ``title_str`` exists or is allow-listed."""
+) -> _TitleCounts | None:
+    """Validate inset, cover, and per-category subdir files for one title.
+
+    Args:
+        phase: Phase result to record errors against.
+        file_paths: Resolved :class:`ReaderFilePaths` for one panel-source
+            variant. ``None`` short-circuits (Phase 3 already reported the
+            panels_source problem).
+        ctx: Per-variant audit context. Each file the sweep visits is
+            recorded so the audit pass can later report any unvisited file.
+        title_str: The title identifier as keyed in ``BARKS_TITLE_DICT``.
+        allow_list: Titles whose missing-inset failures should be suppressed
+            (also suppresses the "must have a panel file" check).
+
+    Returns:
+        ``_TitleCounts`` summarising every file seen for this title across
+        every category; ``None`` if the title is unknown or ``file_paths``
+        is unavailable.
+
+    """
     phase.items_checked += 1
     if file_paths is None:
-        # Phase 3 already reported the panels_source problem; nothing to do.
-        return
-    if title_str in allow_list:
-        return
+        return None
 
     title = BARKS_TITLE_DICT.get(title_str)
-    if title in NON_COMIC_TITLES:
-        return
     if title is None:
-        phase.add(f"Title:{title_str} kind=unknown_title")
-        return
+        if title_str not in allow_list:
+            phase.add(f"Title:{title_str} kind=unknown_title")
+        return None
 
-    inset_dir = file_paths.get_comic_inset_files_dir()
-    inset_filename = get_filename_from_title(title, file_paths.get_inset_file_ext())
-    computed = inset_dir / inset_filename
-    if not computed.is_file():
-        phase.add(f"Title:{title_str} kind=missing_inset path={computed}")
+    is_article = title in NON_COMIC_TITLES
+    encrypted = file_paths.barks_panels_are_encrypted
+    inset_ext = file_paths.get_inset_file_ext()
+
+    counts = _TitleCounts()
+
+    # Insets — flat: Insets/<filename(title)>.ext + Insets/edited/<filename(title)>.ext
+    inset_filename = get_filename_from_title(title, inset_ext)
+    counts.insets = _check_flat_pair(
+        phase,
+        ctx,
+        title_str,
+        file_paths.get_comic_inset_files_dir(),
+        encrypted,
+        label="inset",
+        main_filename=inset_filename,
+        edited_filename=inset_filename,
+        require_main=(not is_article) and (title_str not in allow_list),
+    )
+
+    # Covers — flat: Covers/<title>.jpg (always JPG) + Covers/edited/<title>.<inset_ext>.
+    counts.covers = _check_flat_pair(
+        phase,
+        ctx,
+        title_str,
+        file_paths.get_comic_cover_files_dir(),
+        encrypted,
+        label="cover",
+        main_filename=title_str + JPG_FILE_EXT,
+        edited_filename=title_str + inset_ext,
+        require_main=False,
+    )
+
+    # Per-category subdirs.
+    counts.bw = _check_subdir_title(
+        phase, ctx, title_str, file_paths.get_comic_bw_files_dir(), encrypted, label="bw"
+    )
+    counts.ai = _check_subdir_title(
+        phase, ctx, title_str, file_paths.get_comic_ai_files_dir(), encrypted, label="ai"
+    )
+    counts.censorship = _check_subdir_title(
+        phase,
+        ctx,
+        title_str,
+        file_paths.get_comic_censorship_files_dir(),
+        encrypted,
+        label="censorship",
+    )
+    counts.closeups = _check_subdir_title(
+        phase, ctx, title_str, file_paths.get_comic_closeup_files_dir(), encrypted, label="closeup"
+    )
+    counts.favourites = _check_subdir_title(
+        phase,
+        ctx,
+        title_str,
+        file_paths.get_comic_favourite_files_dir(),
+        encrypted,
+        label="favourite",
+    )
+    counts.original_art = _check_subdir_title(
+        phase,
+        ctx,
+        title_str,
+        file_paths.get_comic_original_art_files_dir(),
+        encrypted,
+        label="original_art",
+    )
+    counts.search = _check_subdir_title(
+        phase, ctx, title_str, file_paths.get_comic_search_files_dir(), encrypted, label="search"
+    )
+    counts.silhouettes = _check_subdir_title(
+        phase,
+        ctx,
+        title_str,
+        file_paths.get_comic_silhouette_files_dir(),
+        encrypted,
+        label="silhouette",
+    )
+    counts.splash = _check_subdir_title(
+        phase, ctx, title_str, file_paths.get_comic_splash_files_dir(), encrypted, label="splash"
+    )
+
+    if not is_article and (title_str not in allow_list) and not counts.has_required_panel_file:
+        phase.add(
+            f"Title:{title_str} kind=no_panel_files"
+            f" reason=no_files_in_(Closeups|Favourites|Silhouettes|Splash)"
+        )
+
+    return counts
 
 
 # ---------------------------------------------------------------------------
@@ -487,17 +806,29 @@ def _validate_title_inset(
 # ---------------------------------------------------------------------------
 
 
+def _build_audit_ctx(file_paths: ReaderFilePaths) -> _AuditCtx:
+    """Construct an :class:`_AuditCtx` for one resolved panel-source variant."""
+    panel_source = file_paths._barks_panels_source  # noqa: SLF001
+    assert panel_source is not None
+    return _AuditCtx(panel_source=panel_source, is_zip=panel_source.suffix == ".zip")
+
+
 def phase4_introduction(
     collector: ErrorCollector,
     sys_paths: SystemFilePaths,
-    file_paths: ReaderFilePaths | None,
+    file_paths_variants: list[ReaderFilePaths],
     allow_list: set[str],
 ) -> None:
-    """Validate intro document pages and the intro article inset."""
+    """Validate intro document pages and the intro article inset (per panel-source variant)."""
     phase = collector.start_phase("Introduction")
     _check_dir_has_pages(phase, "intro_doc_dir", sys_paths.get_intro_doc_dir())
     title_str = BARKS_TITLES[_INTRO_ARTICLE]
-    _validate_title_inset(phase, file_paths, title_str, allow_list)
+    for file_paths in file_paths_variants:
+        # Phase 4/5 use a throwaway ctx — only Phase 8 retains its ctx for the
+        # audit pass. Visiting the intro/appendix files here is harmless: the
+        # audit re-visits them in Phase 8 anyway.
+        ctx = _build_audit_ctx(file_paths)
+        _validate_title_files(phase, file_paths, ctx, title_str, allow_list)
     collector.finalize_phase(phase)
 
 
@@ -509,10 +840,10 @@ def phase4_introduction(
 def phase5_appendices(
     collector: ErrorCollector,
     sys_paths: SystemFilePaths,
-    file_paths: ReaderFilePaths | None,
+    file_paths_variants: list[ReaderFilePaths],
     allow_list: set[str],
 ) -> None:
-    """Validate censorship-fixes pages and the four appendix article insets."""
+    """Validate censorship-fixes pages and the four appendix article insets (per variant)."""
     phase = collector.start_phase("Appendices")
     _check_dir_has_pages(
         phase,
@@ -520,7 +851,10 @@ def phase5_appendices(
         sys_paths.get_censorship_fixes_doc_dir(),
     )
     for article in _APPENDIX_ARTICLES:
-        _validate_title_inset(phase, file_paths, BARKS_TITLES[article], allow_list)
+        title_str = BARKS_TITLES[article]
+        for file_paths in file_paths_variants:
+            ctx = _build_audit_ctx(file_paths)
+            _validate_title_files(phase, file_paths, ctx, title_str, allow_list)
     collector.finalize_phase(phase)
 
 
@@ -751,31 +1085,110 @@ def phase7_prebuilt_cbzs(collector: ErrorCollector, cfg_info: ConfigInfo) -> Non
 
 def phase8_per_title(
     collector: ErrorCollector,
-    file_paths: ReaderFilePaths | None,
+    file_paths_variants: list[ReaderFilePaths],
     fanta_state: FantaState,
     allow_list: set[str],
-) -> None:
-    """Per-title inset + volume-binding sweep across ALL_FANTA_COMIC_BOOK_INFO."""
+    titles_filter: list[str] | None = None,
+) -> list[_AuditCtx]:
+    """Per-title file + volume-binding sweep across ALL_FANTA_COMIC_BOOK_INFO.
+
+    For each variant in ``file_paths_variants`` (JPG zip first, optional PNG
+    dir second), every title is checked via :func:`_validate_title_files`,
+    which test-image-loads every present file. When two variants are
+    available the per-title totals are cross-checked: a mismatch flags a
+    discrepancy between the JPG and PNG panel sources.
+
+    Args:
+        collector: Aggregator for phase results.
+        file_paths_variants: Resolved panel-source variants (JPG zip first,
+            optional PNG dir second).
+        fanta_state: Cached Phase 6 outcome.
+        allow_list: Titles whose missing-inset failures should be suppressed.
+        titles_filter: Optional subset of titles to check (matches Phase 9's
+            argument). ``None`` runs every title.
+
+    Returns:
+        Per-variant :class:`_AuditCtx` instances populated with every panel
+        file the sweep visited. The audit pass consumes these to find files
+        the sweep failed to visit.
+
+    """
     phase = collector.start_phase("Per-title")
 
-    missing_inset_count = 0
+    title_count_errors = 0
     invalid_volume_count = 0
+    counts_by_variant: list[dict[str, _TitleCounts]] = [{} for _ in file_paths_variants]
+    ctx_by_variant: list[_AuditCtx] = [_build_audit_ctx(fp) for fp in file_paths_variants]
 
-    for title_str, fanta_info in ALL_FANTA_COMIC_BOOK_INFO.items():
-        before_inset = len(phase.errors)
-        _validate_title_inset(phase, file_paths, title_str, allow_list)
-        after_inset = len(phase.errors)
-        if after_inset > before_inset:
-            missing_inset_count += 1
+    filter_set = set(titles_filter) if titles_filter is not None else None
+    titles = [t for t in ALL_FANTA_COMIC_BOOK_INFO if filter_set is None or t in filter_set]
+    total = len(titles)
+    progress_step = max(1, total // 40)
 
+    for idx, title_str in enumerate(titles, start=1):
+        if total > 0 and (idx in (1, total) or idx % progress_step == 0):
+            logger.info(f"[{idx}/{total}] {title_str}")
+
+        before_files = len(phase.errors)
+        for variant_idx, (file_paths, ctx) in enumerate(
+            zip(file_paths_variants, ctx_by_variant, strict=True)
+        ):
+            counts = _validate_title_files(phase, file_paths, ctx, title_str, allow_list)
+            if counts is not None:
+                counts_by_variant[variant_idx][title_str] = counts
+        after_files = len(phase.errors)
+        if after_files > before_files:
+            title_count_errors += 1
+
+        fanta_info = ALL_FANTA_COMIC_BOOK_INFO[title_str]
         _validate_title_volume_binding(phase, title_str, fanta_info, fanta_state)
-        if len(phase.errors) > after_inset:
+        if len(phase.errors) > after_files:
             invalid_volume_count += 1
 
+    mismatch_count = _crosscheck_variant_counts(phase, counts_by_variant)
+    files_inspected_per_variant = [
+        sum(c.total for c in variant.values()) for variant in counts_by_variant
+    ]
+    files_inspected = "+".join(str(n) for n in files_inspected_per_variant) or "0"
+    filter_note = f", filtered to {total} titles" if filter_set is not None else ""
+
     phase.summary_extra = (
-        f"({missing_inset_count} missing insets, {invalid_volume_count} broken volume bindings)"
+        f"({title_count_errors} titles with file errors,"
+        f" {invalid_volume_count} broken volume bindings,"
+        f" {mismatch_count} JPG/PNG count mismatches,"
+        f" {files_inspected} files test-loaded{filter_note})"
     )
     collector.finalize_phase(phase)
+    return ctx_by_variant
+
+
+def _crosscheck_variant_counts(
+    phase: PhaseResult,
+    counts_by_variant: list[dict[str, _TitleCounts]],
+) -> int:
+    """Compare per-title totals across panel-source variants; report mismatches.
+
+    Only runs when two variants were validated (the JPG zip and the PNG
+    dir). For each title present in both, the total across all categories
+    (insets + covers + per-category subdir files, including ``edited``) must
+    match — the PNG dir is meant to mirror the JPG zip, so a count
+    discrepancy means one source is missing files the other has. Returns
+    the number of mismatches reported.
+    """
+    if len(counts_by_variant) < _CROSSCHECK_MIN_VARIANTS:
+        return 0
+    jpg_counts, png_counts = counts_by_variant[0], counts_by_variant[1]
+    mismatch_count = 0
+    for title_str in jpg_counts.keys() & png_counts.keys():
+        jpg_total = jpg_counts[title_str].total
+        png_total = png_counts[title_str].total
+        if jpg_total != png_total:
+            mismatch_count += 1
+            phase.add(
+                f"Title:{title_str} kind=file_count_mismatch"
+                f" jpg_total={jpg_total} png_total={png_total}"
+            )
+    return mismatch_count
 
 
 def _validate_title_volume_binding(
@@ -798,6 +1211,102 @@ def _validate_title_volume_binding(
         return
     if volume in fanta_state.error_volumes:
         phase.add(f"Title:{title_str} kind=volume_invalid volume={volume}")
+
+
+# ---------------------------------------------------------------------------
+# Phase 8b - Panel-files audit (post per-title sweep)
+# ---------------------------------------------------------------------------
+
+
+def phase_audit_panel_files(
+    collector: ErrorCollector,
+    file_paths_variants: list[ReaderFilePaths],
+    ctx_by_variant: list[_AuditCtx],
+    *,
+    title_filter_active: bool = False,
+) -> None:
+    """Walk each panel source and flag files the per-title sweep didn't visit.
+
+    For each panel-source variant this enumerates every file under the
+    source (filesystem walk for PNG dirs, namelist scan for the JPG zip)
+    and reports:
+
+        * ``kind=non_image_file`` — the file's extension is not ``.jpg`` or
+          ``.png``. Anything other than image data inside a panels source is
+          suspicious (stray ``.DS_Store``, leftover ``.json`` indices, etc.).
+          Files already flagged by the per-title sweep are not re-reported.
+        * ``kind=unvisited_image_file`` — image file the sweep never
+          inspected. Typical causes: typos in a title-named subdir (so the
+          name doesn't match any entry in ``BARKS_TITLE_DICT``), files
+          dropped into the wrong category dir, files at unexpected nesting
+          depths.
+
+    Files in the ``Nontitles/`` subtree are excluded from the
+    unvisited-image error: the per-title sweep deliberately doesn't iterate
+    that subtree because its files aren't keyed by title. Non-image files
+    inside ``Nontitles/`` are still flagged.
+
+    When ``title_filter_active`` is True the unvisited-image check is
+    silenced (every file outside the filtered title set would otherwise be
+    reported as unvisited, which is expected). The non-image-file check
+    still runs since stray non-images are an error regardless of which
+    titles are being validated.
+    """
+    phase = collector.start_phase("PanelFilesAudit")
+    nontitles_prefix = PanelDirNames.NONTITLES.value + "/"
+
+    unvisited_image_count = 0
+    non_image_count = 0
+    for file_paths, ctx in zip(file_paths_variants, ctx_by_variant, strict=True):
+        for key, panel_path in _enumerate_panel_files(file_paths, ctx):
+            phase.items_checked += 1
+            suffix = Path(key).suffix.lower()
+            if suffix not in _PAGE_EXTS:
+                if key not in ctx.visited:
+                    non_image_count += 1
+                    phase.add(
+                        f"Source:{ctx.panel_source.name} kind=non_image_file path={panel_path}"
+                    )
+                continue
+            if title_filter_active or key in ctx.visited:
+                continue
+            if key.startswith(nontitles_prefix):
+                continue
+            unvisited_image_count += 1
+            phase.add(f"Source:{ctx.panel_source.name} kind=unvisited_image_file path={panel_path}")
+
+    filter_note = (
+        " — unvisited-image check skipped: title filter active" if title_filter_active else ""
+    )
+    phase.summary_extra = (
+        f"({non_image_count} non-image files,"
+        f" {unvisited_image_count} unvisited image files{filter_note})"
+    )
+    collector.finalize_phase(phase)
+
+
+def _enumerate_panel_files(
+    file_paths: ReaderFilePaths,
+    ctx: _AuditCtx,
+) -> Iterator[tuple[str, PanelPath]]:
+    """Yield ``(key, panel_path)`` for every file under a variant's panel source.
+
+    ``key`` is the same path representation used by :func:`_panel_key`, so
+    membership in ``ctx.visited`` can be tested directly. For zip variants
+    that's the member ``at`` string; for filesystem variants it's the POSIX
+    path relative to the panel source.
+    """
+    if ctx.is_zip:
+        panels_zip = file_paths._barks_panels_zip  # noqa: SLF001
+        assert panels_zip is not None
+        for name in panels_zip.namelist():
+            if name.endswith("/"):
+                continue
+            yield name, zipfile.Path(panels_zip, at=name)
+    else:
+        for path in ctx.panel_source.rglob("*"):
+            if path.is_file():
+                yield path.relative_to(ctx.panel_source).as_posix(), path
 
 
 # ---------------------------------------------------------------------------
@@ -1144,42 +1653,42 @@ def phase9_per_title_load(
     collector.finalize_phase(phase)
 
 
-def build_reader_file_paths(cfg_info: ConfigInfo, reader_files_dir: Path) -> ReaderFilePaths | None:
-    """Construct a :class:`ReaderFilePaths` for inset lookups, or return ``None``.
+def build_reader_file_paths(cfg_info: ConfigInfo, reader_files_dir: Path) -> list[ReaderFilePaths]:
+    """Construct one :class:`ReaderFilePaths` per resolvable panel source.
 
-    Phase 3 already reported any structural error; this helper only succeeds if
-    the panel source can be opened. Failures are silent so callers can fall back
-    to skipping inset checks rather than re-reporting the same error.
+    Always tries the JPG zip (the canonical source). Additionally tries the
+    PNG dir when the INI configures one and that directory exists. Returns
+    them in JPG-first order; an empty list means neither variant could be
+    opened (Phase 3 will already have logged the underlying error).
     """
     barks_config = ConfigParser()
     barks_config.read(cfg_info.app_config_path)
-    try:
-        use_png_images = bool(read_setting_from_config(barks_config, USE_PNG_IMAGES))
-    except Exception:  # noqa: BLE001
-        return None
 
-    if use_png_images:
+    candidates: list[tuple[Path, BarksPanelsExtType]] = [
+        (reader_files_dir / JPG_BARKS_PANELS_ZIP, BarksPanelsExtType.JPG),
+    ]
+    try:
+        png_dir = read_setting_from_config(barks_config, PNG_BARKS_PANELS_DIR)
+    except Exception:  # noqa: BLE001
+        png_dir = None
+    png_path = png_dir if isinstance(png_dir, Path) else Path(png_dir) if png_dir else None
+    if png_path is not None and png_path.is_dir():
+        candidates.append((png_path, BarksPanelsExtType.MOSTLY_PNG))
+
+    result: list[ReaderFilePaths] = []
+    for panels_source, ext_type in candidates:
+        if not panels_source.exists():
+            continue
+        file_paths = ReaderFilePaths()
         try:
-            png_dir = read_setting_from_config(barks_config, PNG_BARKS_PANELS_DIR)
-        except Exception:  # noqa: BLE001
-            return None
-        panels_source = Path(png_dir)
-        ext_type = BarksPanelsExtType.MOSTLY_PNG
-    else:
-        panels_source = reader_files_dir / JPG_BARKS_PANELS_ZIP
-        ext_type = BarksPanelsExtType.JPG
-
-    if not panels_source.exists():
-        return None
-
-    file_paths = ReaderFilePaths()
-    try:
-        file_paths.set_barks_panels_source(panels_source, ext_type)
-    except FileNotFoundError:
-        # Panels source incomplete; inset paths still resolve relative to the
-        # configured INSETS dir, so keep the object.
-        return file_paths
-    except Exception:  # noqa: BLE001
-        return None
-    else:
-        return file_paths
+            file_paths.set_barks_panels_source(panels_source, ext_type)
+        except FileNotFoundError:
+            # Panels source incomplete; inset paths still resolve relative
+            # to the configured INSETS dir, so keep the object.
+            result.append(file_paths)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(f"build_reader_file_paths: skipping {panels_source}: {exc}")
+            continue
+        else:
+            result.append(file_paths)
+    return result

@@ -72,6 +72,7 @@ screenmanager
 separator
 splittable
 srce
+summarising
 sunos
 sysfs
 testpaths

@@ -48,11 +48,12 @@ from validate_barks_reader_core import (  # noqa: E402
     phase7_prebuilt_cbzs,
     phase8_per_title,
     phase9_per_title_load,
+    phase_audit_panel_files,
 )
 
 
-def resolve_phase9_title_filter(volumes_str: str, title_str: str) -> list[str] | None:
-    """Resolve ``--volume`` / ``--title`` CLI args to a Phase 9 title filter.
+def resolve_title_filter(volumes_str: str, title_str: str) -> list[str] | None:
+    """Resolve ``--volume`` / ``--title`` CLI args to a Phase 8/9 title filter.
 
     Args:
         volumes_str: ``intspan`` expression (e.g. ``"1-10"``); empty for no
@@ -60,7 +61,7 @@ def resolve_phase9_title_filter(volumes_str: str, title_str: str) -> list[str] |
         title_str: Single comic title; empty for no title filter.
 
     Returns:
-        ``None`` if neither argument is provided (Phase 9 runs every title).
+        ``None`` if neither argument is provided (every title is checked).
         Otherwise, the list of titles matching the filter.
 
     Raises:
@@ -158,9 +159,10 @@ def main(
     _setup_logging(log_level)
     started = time.time()
 
-    # Resolve the optional Phase 9 title filter early so a bad --volume / --title
-    # combination fails before any phase work is done.
-    titles_filter = resolve_phase9_title_filter(volume, title)
+    # Resolve the optional title filter early so a bad --volume / --title
+    # combination fails before any phase work is done. The same filter is
+    # applied to Phase 8 and Phase 9.
+    titles_filter = resolve_title_filter(volume, title)
 
     collector = ErrorCollector()
 
@@ -182,15 +184,23 @@ def main(
     if not titles_only:
         phase2_system_file_paths(collector, sys_paths)
         phase3_reader_file_paths(collector, cfg_info, reader_files_dir)
-        file_paths = build_reader_file_paths(cfg_info, reader_files_dir)
-        phase4_introduction(collector, sys_paths, file_paths, allow_list)
-        phase5_appendices(collector, sys_paths, file_paths, allow_list)
+        file_paths_variants = build_reader_file_paths(cfg_info, reader_files_dir)
+        phase4_introduction(collector, sys_paths, file_paths_variants, allow_list)
+        phase5_appendices(collector, sys_paths, file_paths_variants, allow_list)
     else:
-        file_paths = build_reader_file_paths(cfg_info, reader_files_dir)
+        file_paths_variants = build_reader_file_paths(cfg_info, reader_files_dir)
 
     fanta_state = phase6_fantagraphics(collector, cfg_info, sys_paths)
     phase7_prebuilt_cbzs(collector, cfg_info)
-    phase8_per_title(collector, file_paths, fanta_state, allow_list)
+    ctx_by_variant = phase8_per_title(
+        collector, file_paths_variants, fanta_state, allow_list, titles_filter
+    )
+    phase_audit_panel_files(
+        collector,
+        file_paths_variants,
+        ctx_by_variant,
+        title_filter_active=titles_filter is not None,
+    )
 
     if full_load_check:
         phase9_per_title_load(collector, sys_paths, fanta_state, titles_filter)
