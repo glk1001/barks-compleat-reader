@@ -125,7 +125,7 @@ class ErrorCollector:
     def __init__(self) -> None:
         self._phases: list[PhaseResult] = []
 
-    def start_phase(self, name: str, num: int) -> PhaseResult:
+    def start_phase(self, name: str, num: str) -> PhaseResult:
         """Begin a new phase, log a banner, and return its result object."""
         logger.info("")
         logger.info(f"=== Phase {num}: {name} ===")
@@ -160,6 +160,47 @@ class ErrorCollector:
 # ---------------------------------------------------------------------------
 # Generic helpers
 # ---------------------------------------------------------------------------
+
+
+def build_reader_file_paths(cfg_info: ConfigInfo, reader_files_dir: Path) -> list[ReaderFilePaths]:
+    """Construct one :class:`ReaderFilePaths` per resolvable panel source.
+
+    Always tries the JPG zip (the canonical source). Additionally, tries the
+    PNG dir when the INI configures one and that directory exists. Returns
+    them in JPG-first order; an empty list means neither variant could be
+    opened (Phase 3 will already have logged the underlying error).
+    """
+    barks_config = ConfigParser()
+    barks_config.read(cfg_info.app_config_path)
+
+    candidates: list[tuple[Path, BarksPanelsExtType]] = [
+        (reader_files_dir / JPG_BARKS_PANELS_ZIP, BarksPanelsExtType.JPG),
+    ]
+    try:
+        png_dir = read_setting_from_config(barks_config, PNG_BARKS_PANELS_DIR)
+    except Exception:  # noqa: BLE001
+        png_dir = None
+    png_path = png_dir if isinstance(png_dir, Path) else Path(png_dir) if png_dir else None
+    if png_path is not None and png_path.is_dir():
+        candidates.append((png_path, BarksPanelsExtType.MOSTLY_PNG))
+
+    result: list[ReaderFilePaths] = []
+    for panels_source, ext_type in candidates:
+        if not panels_source.exists():
+            continue
+        file_paths = ReaderFilePaths()
+        try:
+            file_paths.set_barks_panels_source(panels_source, ext_type)
+        except FileNotFoundError:
+            # Panels source incomplete; inset paths still resolve relative
+            # to the configured INSETS dir, so keep the object.
+            result.append(file_paths)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(f"build_reader_file_paths: skipping {panels_source}: {exc}")
+            continue
+        else:
+            result.append(file_paths)
+    return result
 
 
 def _check_dir(phase: PhaseResult, label: str, path: Path) -> bool:
@@ -229,7 +270,7 @@ def phase1_config(
         The constructed :class:`ConfigInfo` or ``None`` if construction failed.
 
     """
-    phase = collector.start_phase("Config", 1)
+    phase = collector.start_phase("Config", "1")
 
     if app_config_dir is not None:
         os.environ["BARKS_READER_CONFIG_DIR"] = str(app_config_dir)
@@ -269,7 +310,7 @@ def phase2_system_file_paths(
     ``SystemFilePaths._check_reader_files_dirs`` (kept in sync manually) and
     appends each missing entry to the collector instead of raising.
     """
-    phase = collector.start_phase("System File Paths", 2)
+    phase = collector.start_phase("System File Paths", "2")
 
     # Mirror the lists in SystemFilePaths._check_reader_files_dirs (private but
     # intentionally duplicated here so this script stays decoupled from the
@@ -339,6 +380,37 @@ def phase2_system_file_paths(
 # ---------------------------------------------------------------------------
 
 
+def phase3_reader_file_paths(
+    collector: ErrorCollector,
+    cfg_info: ConfigInfo,
+    reader_files_dir: Path,
+) -> None:
+    """Validate every panel source (JPG zip always, PNG dir if configured)."""
+    phase = collector.start_phase("Reader File Paths", "3")
+
+    sources = _resolve_panel_sources(phase, cfg_info, reader_files_dir)
+    for panels_source, ext_type in sources:
+        phase.items_checked += 1
+        if not panels_source.exists():
+            phase.add(f"panels_source: missing {panels_source}")
+            continue
+
+        file_paths = ReaderFilePaths()
+        try:
+            file_paths.set_barks_panels_source(panels_source, ext_type)
+        except FileNotFoundError as exc:
+            # The app's _check_panels_dirs raised on the first missing dir.
+            # Re-enumerate below so we report every missing one.
+            phase.add(f"panels_source check raised: {exc}")
+        except Exception as exc:  # noqa: BLE001
+            phase.add(f"set_barks_panels_source failed: {exc}")
+            continue
+
+        _enumerate_panel_dirs(phase, panels_source)
+
+    collector.finalize_phase(phase)
+
+
 def _resolve_panel_sources(
     phase: PhaseResult,
     cfg_info: ConfigInfo,
@@ -399,37 +471,6 @@ def _enumerate_panel_dirs(phase: PhaseResult, panels_source: Path) -> None:
     phase.items_checked += 1
     if not edited.is_dir():
         phase.add(f"panels_dir: missing 'Insets/{EDITED_SUBDIR}' under {panels_source}")
-
-
-def phase3_reader_file_paths(
-    collector: ErrorCollector,
-    cfg_info: ConfigInfo,
-    reader_files_dir: Path,
-) -> None:
-    """Validate every panel source (JPG zip always, PNG dir if configured)."""
-    phase = collector.start_phase("Reader File Paths", 3)
-
-    sources = _resolve_panel_sources(phase, cfg_info, reader_files_dir)
-    for panels_source, ext_type in sources:
-        phase.items_checked += 1
-        if not panels_source.exists():
-            phase.add(f"panels_source: missing {panels_source}")
-            continue
-
-        file_paths = ReaderFilePaths()
-        try:
-            file_paths.set_barks_panels_source(panels_source, ext_type)
-        except FileNotFoundError as exc:
-            # The app's _check_panels_dirs raised on the first missing dir.
-            # Re-enumerate below so we report every missing one.
-            phase.add(f"panels_source check raised: {exc}")
-        except Exception as exc:  # noqa: BLE001
-            phase.add(f"set_barks_panels_source failed: {exc}")
-            continue
-
-        _enumerate_panel_dirs(phase, panels_source)
-
-    collector.finalize_phase(phase)
 
 
 # ---------------------------------------------------------------------------
@@ -784,20 +825,13 @@ def _validate_title_files(
 # ---------------------------------------------------------------------------
 
 
-def _build_audit_ctx(file_paths: ReaderFilePaths) -> _AuditCtx:
-    """Construct an :class:`_AuditCtx` for one resolved panel-source variant."""
-    panel_source = file_paths._barks_panels_source  # noqa: SLF001
-    assert panel_source is not None
-    return _AuditCtx(panel_source=panel_source, is_zip=panel_source.suffix == ".zip")
-
-
 def phase4_introduction(
     collector: ErrorCollector,
     sys_paths: SystemFilePaths,
     file_paths_variants: list[ReaderFilePaths],
 ) -> None:
     """Validate intro document pages and the intro article inset (per panel-source variant)."""
-    phase = collector.start_phase("Introduction", 4)
+    phase = collector.start_phase("Introduction", "4")
     _check_dir_has_pages(phase, "intro_doc_dir", sys_paths.get_intro_doc_dir())
     title_str = BARKS_TITLES[_INTRO_ARTICLE]
     for file_paths in file_paths_variants:
@@ -807,6 +841,13 @@ def phase4_introduction(
         ctx = _build_audit_ctx(file_paths)
         _validate_title_files(phase, file_paths, ctx, title_str)
     collector.finalize_phase(phase)
+
+
+def _build_audit_ctx(file_paths: ReaderFilePaths) -> _AuditCtx:
+    """Construct an :class:`_AuditCtx` for one resolved panel-source variant."""
+    panel_source = file_paths._barks_panels_source  # noqa: SLF001
+    assert panel_source is not None
+    return _AuditCtx(panel_source=panel_source, is_zip=panel_source.suffix == ".zip")
 
 
 # ---------------------------------------------------------------------------
@@ -820,7 +861,7 @@ def phase5_appendices(
     file_paths_variants: list[ReaderFilePaths],
 ) -> None:
     """Validate censorship-fixes pages and the four appendix article insets (per variant)."""
-    phase = collector.start_phase("Appendices", 5)
+    phase = collector.start_phase("Appendices", "5")
     _check_dir_has_pages(
         phase,
         "censorship_fixes_doc_dir",
@@ -845,6 +886,71 @@ class FantaState:
 
     archives: dict[int, FantagraphicsArchive] = field(default_factory=dict)
     error_volumes: set[int] = field(default_factory=set)
+
+
+def phase6_fantagraphics(
+    collector: ErrorCollector,
+    cfg_info: ConfigInfo,
+    sys_paths: SystemFilePaths,
+) -> FantaState:
+    """Replicate :meth:`FantagraphicsVolumeArchives.load` per-volume."""
+    phase = collector.start_phase("Fantagraphics Volumes and Overrides", "6")
+    state = FantaState()
+
+    barks_config = ConfigParser()
+    barks_config.read(cfg_info.app_config_path)
+
+    archive_root = _resolve_archive_root(cfg_info, barks_config)
+    if archive_root is None or not archive_root.is_dir():
+        phase.add(f"archive_root: missing {archive_root}")
+        collector.finalize_phase(phase)
+        return state
+
+    override_root = sys_paths.get_barks_reader_fantagraphics_overrides_root_dir()
+    if not override_root.is_dir():
+        phase.add(f"override_root: missing {override_root}")
+        collector.finalize_phase(phase)
+        return state
+
+    volumes = list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1))
+    archives_mgr = FantagraphicsVolumeArchives(archive_root, override_root, volumes)
+
+    try:
+        archive_filenames = sorted(
+            archives_mgr.get_all_volume_filenames(),
+            key=archives_mgr._get_fanta_volume,  # noqa: SLF001
+        )
+    except Exception as exc:  # noqa: BLE001
+        phase.add(f"could not enumerate volume archives: {exc}")
+        collector.finalize_phase(phase)
+        return state
+
+    try:
+        override_archive_filenames = archives_mgr.get_all_volume_override_archives()
+    except FileExistsError as exc:
+        phase.add(f"override directory contains a non-file entry: {exc}")
+        override_archive_filenames = {}
+    except Exception as exc:  # noqa: BLE001
+        phase.add(f"could not enumerate override archives: {exc}")
+        override_archive_filenames = {}
+
+    _check_volume_numbers(phase, state, archives_mgr, archive_filenames)
+
+    if len(override_archive_filenames) > LAST_VOLUME_NUMBER - FIRST_VOLUME_NUMBER + 1:
+        try:
+            archives_mgr.check_archives_and_overrides(archive_filenames, override_archive_filenames)
+        except TooManyOverrideDirsError as exc:
+            phase.add(f"too many override archives: {exc}")
+
+    _process_archive_filenames(
+        phase, state, archives_mgr, archive_filenames, override_archive_filenames
+    )
+
+    phase.summary_extra = (
+        f"({len(state.archives)} archives loaded, {len(state.error_volumes)} volumes flagged)"
+    )
+    collector.finalize_phase(phase)
+    return state
 
 
 def _resolve_archive_root(cfg_info: ConfigInfo, barks_config: ConfigParser) -> Path | None:
@@ -912,71 +1018,6 @@ def _process_archive_filenames(
         state.archives[fanta_volume] = archive
 
 
-def phase6_fantagraphics(
-    collector: ErrorCollector,
-    cfg_info: ConfigInfo,
-    sys_paths: SystemFilePaths,
-) -> FantaState:
-    """Replicate :meth:`FantagraphicsVolumeArchives.load` per-volume."""
-    phase = collector.start_phase("Fantagraphics Volumes and Overrides", 6)
-    state = FantaState()
-
-    barks_config = ConfigParser()
-    barks_config.read(cfg_info.app_config_path)
-
-    archive_root = _resolve_archive_root(cfg_info, barks_config)
-    if archive_root is None or not archive_root.is_dir():
-        phase.add(f"archive_root: missing {archive_root}")
-        collector.finalize_phase(phase)
-        return state
-
-    override_root = sys_paths.get_barks_reader_fantagraphics_overrides_root_dir()
-    if not override_root.is_dir():
-        phase.add(f"override_root: missing {override_root}")
-        collector.finalize_phase(phase)
-        return state
-
-    volumes = list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1))
-    archives_mgr = FantagraphicsVolumeArchives(archive_root, override_root, volumes)
-
-    try:
-        archive_filenames = sorted(
-            archives_mgr.get_all_volume_filenames(),
-            key=archives_mgr._get_fanta_volume,  # noqa: SLF001
-        )
-    except Exception as exc:  # noqa: BLE001
-        phase.add(f"could not enumerate volume archives: {exc}")
-        collector.finalize_phase(phase)
-        return state
-
-    try:
-        override_archive_filenames = archives_mgr.get_all_volume_override_archives()
-    except FileExistsError as exc:
-        phase.add(f"override directory contains a non-file entry: {exc}")
-        override_archive_filenames = {}
-    except Exception as exc:  # noqa: BLE001
-        phase.add(f"could not enumerate override archives: {exc}")
-        override_archive_filenames = {}
-
-    _check_volume_numbers(phase, state, archives_mgr, archive_filenames)
-
-    if len(override_archive_filenames) > LAST_VOLUME_NUMBER - FIRST_VOLUME_NUMBER + 1:
-        try:
-            archives_mgr.check_archives_and_overrides(archive_filenames, override_archive_filenames)
-        except TooManyOverrideDirsError as exc:
-            phase.add(f"too many override archives: {exc}")
-
-    _process_archive_filenames(
-        phase, state, archives_mgr, archive_filenames, override_archive_filenames
-    )
-
-    phase.summary_extra = (
-        f"({len(state.archives)} archives loaded, {len(state.error_volumes)} volumes flagged)"
-    )
-    collector.finalize_phase(phase)
-    return state
-
-
 def _process_one_archive(
     archives_mgr: FantagraphicsVolumeArchives,
     fanta_volume: int,
@@ -1024,7 +1065,7 @@ def _process_one_archive(
 
 def phase7_prebuilt_cbzs(collector: ErrorCollector, cfg_info: ConfigInfo) -> None:
     """Always-on check: every title's expected prebuilt CBZ must exist on disk."""
-    phase = collector.start_phase("Prebuilt CBZs", 7)
+    phase = collector.start_phase("Prebuilt CBZs", "7")
 
     barks_config = ConfigParser()
     barks_config.read(cfg_info.app_config_path)
@@ -1059,7 +1100,7 @@ def phase7_prebuilt_cbzs(collector: ErrorCollector, cfg_info: ConfigInfo) -> Non
 # ---------------------------------------------------------------------------
 
 
-def phase8_per_title(
+def phase8a_per_title_panel_files(
     collector: ErrorCollector,
     file_paths_variants: list[ReaderFilePaths],
     fanta_state: FantaState,
@@ -1087,7 +1128,7 @@ def phase8_per_title(
         the sweep failed to visit.
 
     """
-    phase = collector.start_phase("Per-title Panel Files", 8)
+    phase = collector.start_phase("Per-title Panel Files", "8a")
 
     title_count_errors = 0
     invalid_volume_count = 0
@@ -1191,7 +1232,7 @@ def _validate_title_volume_binding(
 # ---------------------------------------------------------------------------
 
 
-def phase_audit_panel_files(
+def phase8b_audit_panel_files(
     collector: ErrorCollector,
     file_paths_variants: list[ReaderFilePaths],
     ctx_by_variant: list[_AuditCtx],
@@ -1225,7 +1266,7 @@ def phase_audit_panel_files(
     still runs since stray non-images are an error regardless of which
     titles are being validated.
     """
-    phase = collector.start_phase("Panel Files Audit", 8)
+    phase = collector.start_phase("Panel Files Audit", "8b")
     nontitles_prefix = PanelDirNames.NONTITLES.value + "/"
 
     unvisited_image_count = 0
@@ -1316,6 +1357,102 @@ class _Phase9Counts:
     decryption_failed: int = 0
     missing_json: int = 0
     stale_json: int = 0
+
+
+def phase9_per_title_load(
+    collector: ErrorCollector,
+    sys_paths: SystemFilePaths,
+    fanta_state: FantaState,
+    titles_filter: list[str] | None = None,
+) -> None:
+    """Phase 9: dry-run the loader for every title, as if use_prebuilt_comics=0.
+
+    Catches missing/unreadable source pages, missing/stale panel-segments
+    JSONs, and ComicBook construction failures (per-title INI errors).
+
+    Args:
+        collector: Aggregator for phase results.
+        sys_paths: Resolved :class:`SystemFilePaths` from Phase 2.
+        fanta_state: Cached Phase 6 outcome.
+        titles_filter: Optional subset of titles to check (from
+            :func:`resolve_phase9_title_filter`). ``None`` runs all titles.
+
+    """
+    phase = collector.start_phase("Per-title Image Loads", "9")
+    logger.info(
+        "Phase: per-title full-load dry-run."
+        " Decodes every source page through image_pipeline.load_pil"
+        " and checks each panel-segments JSON exists + is no older than"
+        " its volume CBZ. This may take a minute or two."
+    )
+
+    if not fanta_state.archives:
+        phase.add(
+            "Phase 6 produced no archives — skipping per-title load checks."
+            " Resolve Fantagraphics volume errors first."
+        )
+        collector.finalize_phase(phase)
+        return
+
+    try:
+        db = ComicsDatabase(for_building_comics=False)
+    except Exception as exc:  # noqa: BLE001
+        phase.add(f"could not construct ComicsDatabase: {exc}")
+        collector.finalize_phase(phase)
+        return
+
+    counts = _Phase9Counts()
+    filter_set = set(titles_filter) if titles_filter is not None else None
+
+    candidates = [
+        (title_str, fanta_info)
+        for title_str, fanta_info in ALL_FANTA_COMIC_BOOK_INFO.items()
+        if filter_set is None or title_str in filter_set
+    ]
+    total = len(candidates)
+    progress_step = 5
+
+    for idx, (title_str, fanta_info) in enumerate(candidates, start=1):
+        if idx in (1, total) or idx % progress_step == 0:
+            logger.info(f"[{idx}/{total}] {title_str}")
+
+        try:
+            volume = get_fanta_volume_from_str(fanta_info.fantagraphics_volume)
+        except (AssertionError, ValueError):
+            # Phase 8 already records this; skip silently here.
+            continue
+
+        archive = fanta_state.archives.get(volume)
+        if archive is None or archive.is_missing:
+            # Phase 8 already records this as missing_volume.
+            continue
+
+        try:
+            comic = db.get_comic_book(title_str)
+        except (
+            TitleNotFoundError,
+            FileNotFoundError,
+            RuntimeError,
+            KeyError,
+            AssertionError,
+        ) as exc:
+            counts.load_failed += 1
+            phase.add(
+                f"Title:{title_str} kind=comic_book_load_failed reason={type(exc).__name__}: {exc}"
+            )
+            continue
+
+        check_one_title_load(phase, counts, sys_paths, title_str, comic, archive)
+
+    phase.summary_extra = (
+        f"({counts.load_failed} load-failed,"
+        f" {counts.missing_dir} missing-dirs,"
+        f" {counts.page_load_failed} page-load-failed,"
+        f" {counts.decryption_failed} decryption-failed,"
+        f" {counts.missing_json} missing-json,"
+        f" {counts.stale_json} stale-json)"
+    )
+    collector.finalize_phase(phase)
 
 
 def _resolve_page_source(
@@ -1528,140 +1665,3 @@ def check_one_title_load(
             override_zip.close()
         if main_zip is not None:
             main_zip.close()
-
-
-def phase9_per_title_load(
-    collector: ErrorCollector,
-    sys_paths: SystemFilePaths,
-    fanta_state: FantaState,
-    titles_filter: list[str] | None = None,
-) -> None:
-    """Phase 9: dry-run the loader for every title, as if use_prebuilt_comics=0.
-
-    Catches missing/unreadable source pages, missing/stale panel-segments
-    JSONs, and ComicBook construction failures (per-title INI errors).
-
-    Args:
-        collector: Aggregator for phase results.
-        sys_paths: Resolved :class:`SystemFilePaths` from Phase 2.
-        fanta_state: Cached Phase 6 outcome.
-        titles_filter: Optional subset of titles to check (from
-            :func:`resolve_phase9_title_filter`). ``None`` runs all titles.
-
-    """
-    phase = collector.start_phase("Per-title Image Loads", 9)
-    logger.info(
-        "Phase: per-title full-load dry-run."
-        " Decodes every source page through image_pipeline.load_pil"
-        " and checks each panel-segments JSON exists + is no older than"
-        " its volume CBZ. This may take a minute or two."
-    )
-
-    if not fanta_state.archives:
-        phase.add(
-            "Phase 6 produced no archives — skipping per-title load checks."
-            " Resolve Fantagraphics volume errors first."
-        )
-        collector.finalize_phase(phase)
-        return
-
-    try:
-        db = ComicsDatabase(for_building_comics=False)
-    except Exception as exc:  # noqa: BLE001
-        phase.add(f"could not construct ComicsDatabase: {exc}")
-        collector.finalize_phase(phase)
-        return
-
-    counts = _Phase9Counts()
-    filter_set = set(titles_filter) if titles_filter is not None else None
-
-    candidates = [
-        (title_str, fanta_info)
-        for title_str, fanta_info in ALL_FANTA_COMIC_BOOK_INFO.items()
-        if filter_set is None or title_str in filter_set
-    ]
-    total = len(candidates)
-    progress_step = 5
-
-    for idx, (title_str, fanta_info) in enumerate(candidates, start=1):
-        if idx in (1, total) or idx % progress_step == 0:
-            logger.info(f"[{idx}/{total}] {title_str}")
-
-        try:
-            volume = get_fanta_volume_from_str(fanta_info.fantagraphics_volume)
-        except (AssertionError, ValueError):
-            # Phase 8 already records this; skip silently here.
-            continue
-
-        archive = fanta_state.archives.get(volume)
-        if archive is None or archive.is_missing:
-            # Phase 8 already records this as missing_volume.
-            continue
-
-        try:
-            comic = db.get_comic_book(title_str)
-        except (
-            TitleNotFoundError,
-            FileNotFoundError,
-            RuntimeError,
-            KeyError,
-            AssertionError,
-        ) as exc:
-            counts.load_failed += 1
-            phase.add(
-                f"Title:{title_str} kind=comic_book_load_failed reason={type(exc).__name__}: {exc}"
-            )
-            continue
-
-        check_one_title_load(phase, counts, sys_paths, title_str, comic, archive)
-
-    phase.summary_extra = (
-        f"({counts.load_failed} load-failed,"
-        f" {counts.missing_dir} missing-dirs,"
-        f" {counts.page_load_failed} page-load-failed,"
-        f" {counts.decryption_failed} decryption-failed,"
-        f" {counts.missing_json} missing-json,"
-        f" {counts.stale_json} stale-json)"
-    )
-    collector.finalize_phase(phase)
-
-
-def build_reader_file_paths(cfg_info: ConfigInfo, reader_files_dir: Path) -> list[ReaderFilePaths]:
-    """Construct one :class:`ReaderFilePaths` per resolvable panel source.
-
-    Always tries the JPG zip (the canonical source). Additionally tries the
-    PNG dir when the INI configures one and that directory exists. Returns
-    them in JPG-first order; an empty list means neither variant could be
-    opened (Phase 3 will already have logged the underlying error).
-    """
-    barks_config = ConfigParser()
-    barks_config.read(cfg_info.app_config_path)
-
-    candidates: list[tuple[Path, BarksPanelsExtType]] = [
-        (reader_files_dir / JPG_BARKS_PANELS_ZIP, BarksPanelsExtType.JPG),
-    ]
-    try:
-        png_dir = read_setting_from_config(barks_config, PNG_BARKS_PANELS_DIR)
-    except Exception:  # noqa: BLE001
-        png_dir = None
-    png_path = png_dir if isinstance(png_dir, Path) else Path(png_dir) if png_dir else None
-    if png_path is not None and png_path.is_dir():
-        candidates.append((png_path, BarksPanelsExtType.MOSTLY_PNG))
-
-    result: list[ReaderFilePaths] = []
-    for panels_source, ext_type in candidates:
-        if not panels_source.exists():
-            continue
-        file_paths = ReaderFilePaths()
-        try:
-            file_paths.set_barks_panels_source(panels_source, ext_type)
-        except FileNotFoundError:
-            # Panels source incomplete; inset paths still resolve relative
-            # to the configured INSETS dir, so keep the object.
-            result.append(file_paths)
-        except Exception as exc:  # noqa: BLE001
-            logger.debug(f"build_reader_file_paths: skipping {panels_source}: {exc}")
-            continue
-        else:
-            result.append(file_paths)
-    return result

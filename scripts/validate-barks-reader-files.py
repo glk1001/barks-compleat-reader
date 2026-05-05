@@ -2,7 +2,7 @@
 
 Aggregates every missing or invalid asset discovered across config, system
 files, panel sources, intro/appendix documents, Fantagraphics archives,
-prebuilt comics, and per-title insets into a single report. Exits non-zero
+prebuilt comics, and per-title panel files into a single report. Exits non-zero
 on any failure.
 
 Run via ``uv run scripts/validate-barks-reader-files.py``. The script never
@@ -36,9 +36,9 @@ from validate_barks_reader_core import (
     phase5_appendices,
     phase6_fantagraphics,
     phase7_prebuilt_cbzs,
-    phase8_per_title,
+    phase8a_per_title_panel_files,
+    phase8b_audit_panel_files,
     phase9_per_title_load,
-    phase_audit_panel_files,
 )
 
 
@@ -191,8 +191,10 @@ def main(
 
     fanta_state = phase6_fantagraphics(collector, cfg_info, sys_paths)
     phase7_prebuilt_cbzs(collector, cfg_info)
-    ctx_by_variant = phase8_per_title(collector, file_paths_variants, fanta_state, titles_filter)
-    phase_audit_panel_files(
+    ctx_by_variant = phase8a_per_title_panel_files(
+        collector, file_paths_variants, fanta_state, titles_filter
+    )
+    phase8b_audit_panel_files(
         collector,
         file_paths_variants,
         ctx_by_variant,
