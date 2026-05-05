@@ -68,10 +68,19 @@ def resolve_title_filter(volumes_str: str, title_str: str) -> list[str] | None:
     return get_titles(db, volumes, title_str)
 
 
-def _print_final_report(collector: ErrorCollector, elapsed: float) -> None:
+def _print_final_report(
+    collector: ErrorCollector, elapsed: float, titles_filter: list[str] | None
+) -> None:
     """Emit the summary block and the overall result line."""
+    total_filtered_titles = len(titles_filter) if titles_filter else 0
+    filter_note = (
+        "(No title filter active.)"
+        if total_filtered_titles == 0
+        else f"(Filtered to {total_filtered_titles} titles.)"
+    )
+
     logger.info("")
-    logger.info(f"Validation complete in {elapsed:.1f}s.")
+    logger.info(f"Validation complete in {elapsed:.1f}s. {filter_note}")
     width = max(len(p.name) for p in collector.phases) + 2
     for phase in collector.phases:
         status = "SKIPPED" if phase.skipped else ("FAIL" if phase.failed else "OK")
@@ -79,7 +88,7 @@ def _print_final_report(collector: ErrorCollector, elapsed: float) -> None:
         extra = f" {phase.summary_extra}" if phase.summary_extra else ""
         logger.info(
             f"  {label}{status:7s} ({len(phase.errors)} errors,"
-            f" {phase.items_checked} checked){extra}"
+            f" {phase.items_checked:4d} checked){extra}"
         )
     overall = "FAIL" if collector.any_failed else "OK"
     logger.info(f"Result: {overall}")
@@ -162,7 +171,7 @@ def main(
 
     cfg_info = phase1_config(collector, app_config_dir, app_data_dir)
     if cfg_info is None:
-        _print_final_report(collector, time.time() - started)
+        _print_final_report(collector, time.time() - started, titles_filter)
         raise typer.Exit(code=1)
 
     if reader_files_dir is None:
@@ -193,7 +202,7 @@ def main(
     if full_load_check:
         phase9_per_title_load(collector, sys_paths, fanta_state, titles_filter)
 
-    _print_final_report(collector, time.time() - started)
+    _print_final_report(collector, time.time() - started, titles_filter)
     if collector.any_failed:
         raise typer.Exit(code=1)
 

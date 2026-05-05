@@ -2,7 +2,7 @@
 
 Aggregates every missing or invalid asset discovered across config, system
 files, panel sources, intro/appendix documents, Fantagraphics archives,
-prebuilt comics, and per-title insets into a single report. Exits non-zero
+prebuilt comics, and per-title panel files into a single report. Exits non-zero
 on any failure.
 """
 
@@ -125,10 +125,10 @@ class ErrorCollector:
     def __init__(self) -> None:
         self._phases: list[PhaseResult] = []
 
-    def start_phase(self, name: str) -> PhaseResult:
+    def start_phase(self, name: str, num: int) -> PhaseResult:
         """Begin a new phase, log a banner, and return its result object."""
         logger.info("")
-        logger.info(f"=== Phase: {name} ===")
+        logger.info(f"=== Phase {num}: {name} ===")
         phase = PhaseResult(name=name)
         self._phases.append(phase)
         return phase
@@ -229,7 +229,7 @@ def phase1_config(
         The constructed :class:`ConfigInfo` or ``None`` if construction failed.
 
     """
-    phase = collector.start_phase("Config")
+    phase = collector.start_phase("Config", 1)
 
     if app_config_dir is not None:
         os.environ["BARKS_READER_CONFIG_DIR"] = str(app_config_dir)
@@ -250,6 +250,7 @@ def phase1_config(
     _check_dir(phase, "kivy_config_dir", cfg_info.kivy_config_dir)
 
     collector.finalize_phase(phase)
+
     return cfg_info
 
 
@@ -268,7 +269,7 @@ def phase2_system_file_paths(
     ``SystemFilePaths._check_reader_files_dirs`` (kept in sync manually) and
     appends each missing entry to the collector instead of raising.
     """
-    phase = collector.start_phase("SystemFilePaths")
+    phase = collector.start_phase("System File Paths", 2)
 
     # Mirror the lists in SystemFilePaths._check_reader_files_dirs (private but
     # intentionally duplicated here so this script stays decoupled from the
@@ -406,7 +407,7 @@ def phase3_reader_file_paths(
     reader_files_dir: Path,
 ) -> None:
     """Validate every panel source (JPG zip always, PNG dir if configured)."""
-    phase = collector.start_phase("ReaderFilePaths")
+    phase = collector.start_phase("Reader File Paths", 3)
 
     sources = _resolve_panel_sources(phase, cfg_info, reader_files_dir)
     for panels_source, ext_type in sources:
@@ -796,7 +797,7 @@ def phase4_introduction(
     file_paths_variants: list[ReaderFilePaths],
 ) -> None:
     """Validate intro document pages and the intro article inset (per panel-source variant)."""
-    phase = collector.start_phase("Introduction")
+    phase = collector.start_phase("Introduction", 4)
     _check_dir_has_pages(phase, "intro_doc_dir", sys_paths.get_intro_doc_dir())
     title_str = BARKS_TITLES[_INTRO_ARTICLE]
     for file_paths in file_paths_variants:
@@ -819,7 +820,7 @@ def phase5_appendices(
     file_paths_variants: list[ReaderFilePaths],
 ) -> None:
     """Validate censorship-fixes pages and the four appendix article insets (per variant)."""
-    phase = collector.start_phase("Appendices")
+    phase = collector.start_phase("Appendices", 5)
     _check_dir_has_pages(
         phase,
         "censorship_fixes_doc_dir",
@@ -917,7 +918,7 @@ def phase6_fantagraphics(
     sys_paths: SystemFilePaths,
 ) -> FantaState:
     """Replicate :meth:`FantagraphicsVolumeArchives.load` per-volume."""
-    phase = collector.start_phase("Fantagraphics")
+    phase = collector.start_phase("Fantagraphics Volumes and Overrides", 6)
     state = FantaState()
 
     barks_config = ConfigParser()
@@ -1023,7 +1024,7 @@ def _process_one_archive(
 
 def phase7_prebuilt_cbzs(collector: ErrorCollector, cfg_info: ConfigInfo) -> None:
     """Always-on check: every title's expected prebuilt CBZ must exist on disk."""
-    phase = collector.start_phase("Prebuilt CBZs")
+    phase = collector.start_phase("Prebuilt CBZs", 7)
 
     barks_config = ConfigParser()
     barks_config.read(cfg_info.app_config_path)
@@ -1086,7 +1087,7 @@ def phase8_per_title(
         the sweep failed to visit.
 
     """
-    phase = collector.start_phase("Per-title")
+    phase = collector.start_phase("Per-title Panel Files", 8)
 
     title_count_errors = 0
     invalid_volume_count = 0
@@ -1096,7 +1097,7 @@ def phase8_per_title(
     filter_set = set(titles_filter) if titles_filter is not None else None
     titles = [t for t in ALL_FANTA_COMIC_BOOK_INFO if filter_set is None or t in filter_set]
     total = len(titles)
-    progress_step = max(1, total // 40)
+    progress_step = max(5, total // 20)
 
     for idx, title_str in enumerate(titles, start=1):
         if total > 0 and (idx in (1, total) or idx % progress_step == 0):
@@ -1123,13 +1124,12 @@ def phase8_per_title(
         sum(c.total for c in variant.values()) for variant in counts_by_variant
     ]
     files_inspected = "+".join(str(n) for n in files_inspected_per_variant) or "0"
-    filter_note = f", filtered to {total} titles" if filter_set is not None else ""
 
     phase.summary_extra = (
         f"({title_count_errors} titles with file errors,"
         f" {invalid_volume_count} broken volume bindings,"
         f" {mismatch_count} JPG/PNG count mismatches,"
-        f" {files_inspected} files test-loaded{filter_note})"
+        f" {files_inspected} files test-loaded)"
     )
     collector.finalize_phase(phase)
     return ctx_by_variant
@@ -1225,7 +1225,7 @@ def phase_audit_panel_files(
     still runs since stray non-images are an error regardless of which
     titles are being validated.
     """
-    phase = collector.start_phase("PanelFilesAudit")
+    phase = collector.start_phase("Panel Files Audit", 8)
     nontitles_prefix = PanelDirNames.NONTITLES.value + "/"
 
     unvisited_image_count = 0
@@ -1549,7 +1549,7 @@ def phase9_per_title_load(
             :func:`resolve_phase9_title_filter`). ``None`` runs all titles.
 
     """
-    phase = collector.start_phase("PerTitleLoad")
+    phase = collector.start_phase("Per-title Image Loads", 9)
     logger.info(
         "Phase: per-title full-load dry-run."
         " Decodes every source page through image_pipeline.load_pil"
