@@ -67,6 +67,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(PROJECT_ROOT / ".env.runtime")
 
 from barks_reader.core.config_info import ConfigInfo, find_fanta_volumes_dirpath  # noqa: E402
+from barks_reader.core.reader_consts_and_types import NO_OVERRIDES_SUFFIX  # noqa: E402
 from barks_reader.core.reader_file_paths import (  # noqa: E402
     EDITED_SUBDIR,
     BarksPanelsExtType,
@@ -662,12 +663,17 @@ def _check_flat_pair(
     main_filename: str,
     edited_filename: str,
     require_main: bool,
+    also_check_no_overrides: bool = False,
 ) -> int:
     """Check a flat per-title file pair (main + optional edited) under ``parent_dir``.
 
     Used for flat per-title artifacts (insets and covers). Either may be
     absent: ``require_main`` flips the missing-main case from "ignore" to
     "report". Each present file is test-image-loaded and marked visited.
+
+    When ``also_check_no_overrides`` is True, the optional
+    ``<stem>-no-overrides<ext>`` sibling (in both the main and edited
+    directories) is also test-image-loaded and marked visited if present.
     """
     count = 0
     main_path = parent_dir / main_filename
@@ -683,6 +689,11 @@ def _check_flat_pair(
     elif require_main:
         phase.add(f"Title:{title_str} kind=missing_{label} path={main_path}")
 
+    if also_check_no_overrides:
+        count += _check_no_overrides_variant(
+            phase, ctx, title_str, parent_dir, main_filename, encrypted, label=label
+        )
+
     edited_dir = parent_dir / EDITED_SUBDIR
     if edited_dir.is_dir():
         edited_path = edited_dir / edited_filename
@@ -695,7 +706,49 @@ def _check_flat_pair(
                     f" reason={type(err).__name__}: {err}"
                 )
             count += 1
+        if also_check_no_overrides:
+            count += _check_no_overrides_variant(
+                phase,
+                ctx,
+                title_str,
+                edited_dir,
+                edited_filename,
+                encrypted,
+                label=f"edited_{label}",
+            )
     return count
+
+
+def _check_no_overrides_variant(
+    phase: PhaseResult,
+    ctx: _AuditCtx,
+    title_str: str,
+    parent_dir: PanelPath,
+    base_filename: str,
+    encrypted: bool,
+    *,
+    label: str,
+) -> int:
+    """Load-check the ``<stem>-no-overrides<ext>`` sibling of ``base_filename`` if present.
+
+    Returns 1 when the variant exists (and is therefore counted, regardless
+    of load success — load failures are reported on the phase) and 0 when
+    it is absent. The no-overrides variant is optional: only the four
+    titles in :class:`SpecialFantaOverrides` ship one.
+    """
+    base = Path(base_filename)
+    no_overrides_filename = f"{base.stem}{NO_OVERRIDES_SUFFIX}{base.suffix}"
+    no_overrides_path = parent_dir / no_overrides_filename
+    if not no_overrides_path.is_file():
+        return 0
+    ctx.visit(no_overrides_path)
+    err = _load_test_image(no_overrides_path, encrypted)
+    if err is not None:
+        phase.add(
+            f"Title:{title_str} kind={label}_load_failed path={no_overrides_path}"
+            f" reason={type(err).__name__}: {err}"
+        )
+    return 1
 
 
 def _validate_title_files(
@@ -747,6 +800,7 @@ def _validate_title_files(
         main_filename=inset_filename,
         edited_filename=inset_filename,
         require_main=(not is_article),
+        also_check_no_overrides=True,
     )
 
     # Covers — flat: Covers/<title>.jpg (always JPG) + Covers/edited/<title>.<inset_ext>.
@@ -1260,6 +1314,11 @@ def phase8b_audit_panel_files(
     that subtree because its files aren't keyed by title. Non-image files
     inside ``Nontitles/`` are still flagged.
 
+    Image files whose stem ends with :data:`NO_OVERRIDES_SUFFIX` are also
+    excluded from the unvisited-image error: those are the optional
+    ``-no-overrides`` siblings used by :class:`SpecialFantaOverrides`, which
+    the inset load check exercises directly.
+
     When ``title_filter_active`` is True the unvisited-image check is
     silenced (every file outside the filtered title set would otherwise be
     reported as unvisited, which is expected). The non-image-file check
@@ -1274,7 +1333,8 @@ def phase8b_audit_panel_files(
     for file_paths, ctx in zip(file_paths_variants, ctx_by_variant, strict=True):
         for key, panel_path in _enumerate_panel_files(file_paths, ctx):
             phase.items_checked += 1
-            suffix = Path(key).suffix.lower()
+            key_path = Path(key)
+            suffix = key_path.suffix.lower()
             if suffix not in _PAGE_EXTS:
                 if key not in ctx.visited:
                     non_image_count += 1
@@ -1285,6 +1345,10 @@ def phase8b_audit_panel_files(
             if title_filter_active or key in ctx.visited:
                 continue
             if key.startswith(nontitles_prefix):
+                continue
+            if key_path.stem.endswith(NO_OVERRIDES_SUFFIX):
+                continue
+            if key_path.parent.parent.stem.endswith("Paintings"):
                 continue
             unvisited_image_count += 1
             phase.add(f"Source:{ctx.panel_source.name} kind=unvisited_image_file path={panel_path}")

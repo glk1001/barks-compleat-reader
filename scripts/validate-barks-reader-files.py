@@ -21,6 +21,7 @@ from typing import Annotated
 import typer
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.comics_helpers import get_titles
+from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core.reader_settings import READER_FILES_DIR
 from barks_reader.core.system_file_paths import SystemFilePaths
 from comic_utils.common_typer_options import LogLevelArg, TitleArg, VolumesArg  # noqa: TC002
@@ -72,9 +73,10 @@ def _print_final_report(
     collector: ErrorCollector, elapsed: float, titles_filter: list[str] | None
 ) -> None:
     """Emit the summary block and the overall result line."""
+    total_titles = len(ALL_FANTA_COMIC_BOOK_INFO)
     total_filtered_titles = len(titles_filter) if titles_filter else 0
     filter_note = (
-        "(No title filter active.)"
+        f"({total_titles} titles, no title filter active.)"
         if total_filtered_titles == 0
         else f"(Filtered to {total_filtered_titles} titles.)"
     )
