@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
 
@@ -28,7 +29,12 @@ from barks_fantagraphics.comics_consts import (
 from barks_fantagraphics.comics_utils import get_relpath
 from barks_fantagraphics.fanta_comics_info import US_CENSORED_TITLES
 from barks_fantagraphics.page_classes import CleanPage, RequiredDimensions
-from barks_fantagraphics.pages import get_page_num_str
+from barks_fantagraphics.pages import (
+    FinalStoryFileResolver,
+    SrceStoryFileResolver,
+    SvgPngStoryFileResolver,
+    get_page_num_str,
+)
 from barks_fantagraphics.panel_geometry import scale_height
 from comic_utils.decryption import DecryptionError
 from comic_utils.pil_image_utils import load_pil_image_from_bytes
@@ -145,6 +151,32 @@ class AdaptivePageImageSource(PageImageSource):
         if panels_image.mode == "RGBA":
             return self._rgba_source.to_renderable(panels_image)
         return self._rgb_source.to_renderable(panels_image)
+
+
+@dataclass(frozen=True)
+class BuildSourceProfile:
+    """Pairs a source-file resolver with the matching page-image renderer.
+
+    The resolver decides *where* source images live (final JPG vs SVG-derived PNG,
+    etc.) and the renderer decides *how* to paint them onto the destination page.
+    The two choices are inherently coupled — alpha-PNG paths need the alpha
+    renderer, RGB JPGs need the RGB renderer — so they are bundled here to prevent
+    mis-pairing at construction sites.
+    """
+
+    page_image_source: PageImageSource
+    srce_story_file_resolver: SrceStoryFileResolver
+
+
+RGB_PROFILE = BuildSourceProfile(
+    page_image_source=RgbPageImageSource(),
+    srce_story_file_resolver=FinalStoryFileResolver(),
+)
+
+SVG_ADAPTIVE_PROFILE = BuildSourceProfile(
+    page_image_source=AdaptivePageImageSource(),
+    srce_story_file_resolver=SvgPngStoryFileResolver(fallback=FinalStoryFileResolver()),
+)
 
 
 class ComicBookImageBuilder:
@@ -365,19 +397,9 @@ class ComicBookImageBuilder:
         panels_rgb, paste_mask = self._page_image_source.to_renderable(panels_image)
 
         if dest_page.page_type not in PAGES_WITHOUT_PANELS:
-            target_size = (
-                dest_page.panels_bbox.get_width(),
-                dest_page.panels_bbox.get_height(),
+            panels_rgb, paste_mask = self._get_resized_srce_images(
+                dest_page, panels_rgb, paste_mask
             )
-            panels_rgb = panels_rgb.resize(
-                size=target_size,
-                resample=Image.Resampling.BICUBIC,
-            )
-            if paste_mask is not None:
-                paste_mask = paste_mask.resize(
-                    size=target_size,
-                    resample=Image.Resampling.BICUBIC,
-                )
 
         dest_page_image = self._empty_page_image.copy()
         dest_panels_pos = (dest_page.panels_bbox.x_min, dest_page.panels_bbox.y_min)
@@ -399,6 +421,25 @@ class ComicBookImageBuilder:
         self._write_page_number(dest_page_image, dest_page, PAGE_NUM_COLOR)
 
         return dest_page_image
+
+    @staticmethod
+    def _get_resized_srce_images(
+        dest_page: CleanPage, panels_rgb: PilImage, paste_mask: PilImage | None
+    ) -> tuple[PilImage, PilImage | None]:
+        target_size = (
+            dest_page.panels_bbox.get_width(),
+            dest_page.panels_bbox.get_height(),
+        )
+        panels_rgb = panels_rgb.resize(
+            size=target_size,
+            resample=Image.Resampling.BICUBIC,
+        )
+        if paste_mask is not None:
+            paste_mask = paste_mask.resize(
+                size=target_size,
+                resample=Image.Resampling.BICUBIC,
+            )
+        return panels_rgb, paste_mask
 
     def _write_page_number(
         self,

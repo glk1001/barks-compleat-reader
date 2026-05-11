@@ -296,6 +296,9 @@ class ComicBook:
     def get_srce_restored_svg_story_file(self, page_num: str) -> Path:
         return self.get_srce_restored_svg_image_dir() / (page_num + SVG_FILE_EXT)
 
+    def get_srce_restored_svg_png_story_file(self, page_num: str) -> Path:
+        return self.get_srce_restored_svg_image_dir() / (page_num + SVG_FILE_EXT + PNG_FILE_EXT)
+
     def _get_srce_restored_ocr_raw_story_file(self, page_num: str) -> tuple[Path, Path]:
         return self.dirs.srce_restored_ocr_raw_dir / (
             page_num + ".easyocr" + JSON_FILE_EXT

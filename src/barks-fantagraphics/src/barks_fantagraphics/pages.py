@@ -91,7 +91,7 @@ class SvgPngStoryFileResolver(SrceStoryFileResolver):
         self._fallback = fallback
 
     def get_story_file(self, comic: ComicBook, page: CleanPage) -> Path:
-        png_path = Path(str(comic.get_srce_restored_svg_story_file(page.page_filename)) + ".png")
+        png_path = comic.get_srce_restored_svg_png_story_file(page.page_filename)
         if png_path.is_file():
             return png_path
         if self._fallback is not None:
@@ -283,7 +283,7 @@ def get_relative_srce_filepath(page: CleanPage) -> str:
 
 
 def get_page_mod_type(comic: ComicBook, page: CleanPage) -> ModifiedType:
-    if page.page_filename in (TITLE_EMPTY_FILENAME, EMPTY_FILENAME):
+    if page.page_type in (PageType.TITLE, PageType.BLANK_PAGE):
         mod_type = ModifiedType.ORIGINAL
     else:
         page_num_str = get_page_str(page.page_num)
