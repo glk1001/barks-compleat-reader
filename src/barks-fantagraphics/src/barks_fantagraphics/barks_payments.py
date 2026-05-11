@@ -1,6 +1,9 @@
 # ruff: noqa: E501, T201, ERA001
 
 from dataclasses import dataclass
+from datetime import date
+
+from dateutil.relativedelta import relativedelta
 
 from .barks_titles import BARKS_TITLES, Titles
 from .comic_book_info import BARKS_TITLE_INFO, NON_COMIC_TITLES, ONE_PAGERS
@@ -542,7 +545,13 @@ def validate_payment_data() -> None:
     #     f"Num payments = {len(BARKS_PAYMENTS)}, num titles = {len(BARKS_TITLE_INFO)}"
     # )
 
-    there_were_errors = False
+    missing_payment_errors = 0
+    missing_one_pager_payments = 0
+    date_order_errors = 0
+    date_gap_errors = 0
+    max_acceptance_months_gap = 13
+    max_acceptance_gap = relativedelta(months=max_acceptance_months_gap)
+
     for title_info in BARKS_TITLE_INFO:
         title = title_info.title
         if title in NON_COMIC_TITLES:
@@ -550,25 +559,44 @@ def validate_payment_data() -> None:
 
         if (title not in ONE_PAGERS) and (title not in BARKS_PAYMENTS):
             print(f'Title "{BARKS_TITLES[title]}" has no payment info.')
-            there_were_errors = True
-        elif title not in BARKS_PAYMENTS:
+            missing_payment_errors += 1
+            continue
+        if title not in BARKS_PAYMENTS:
             print(f'Title "{BARKS_TITLES[title]}" has no payment info.')
-        else:
-            payment_info = BARKS_PAYMENTS[title]
-            if payment_info.accepted_day != title_info.submitted_day:
-                print(
-                    f'"{BARKS_TITLES[title]}":'
-                    f" payment day {payment_info.accepted_day} != {title_info.submitted_day}"
-                )
-            if payment_info.accepted_month != title_info.submitted_month:
-                print(
-                    f'"{BARKS_TITLES[title]}":'
-                    f" payment month {payment_info.accepted_month} != {title_info.submitted_month}"
-                )
-            if payment_info.accepted_year != title_info.submitted_year:
-                print(
-                    f'"{BARKS_TITLES[title]}":'
-                    f" payment year {payment_info.accepted_year} != {title_info.submitted_year}"
-                )
+            missing_one_pager_payments += 1
+            continue
 
-    assert not there_were_errors
+        payment_info = BARKS_PAYMENTS[title]
+        submitted_day = 1 if title_info.submitted_day == -1 else title_info.submitted_day
+        submitted_date = date(title_info.submitted_year, title_info.submitted_month, submitted_day)
+        accepted_date = date(
+            payment_info.accepted_year, payment_info.accepted_month, payment_info.accepted_day
+        )
+
+        if accepted_date < submitted_date:
+            print(
+                f'"{BARKS_TITLES[title]}":'
+                f" accepted date {accepted_date} is before submitted date {submitted_date}."
+            )
+            date_order_errors += 1
+        elif accepted_date > submitted_date + max_acceptance_gap:
+            print(
+                f'"{BARKS_TITLES[title]}":'
+                f" accepted date {accepted_date} is more than 3 months after"
+                f" submitted date {submitted_date}."
+            )
+            date_gap_errors += 1
+
+    total_issues = (
+        missing_payment_errors + missing_one_pager_payments + date_order_errors + date_gap_errors
+    )
+    print(
+        f"\nvalidate_payment_data summary: {total_issues} issue(s) found"
+        f" (missing payment info: {missing_payment_errors},"
+        f" missing one-pager payments: {missing_one_pager_payments},"
+        f" accepted-before-submitted: {date_order_errors},"
+        f" accepted-more-than-{max_acceptance_months_gap}-months-after-submitted:"
+        f" {date_gap_errors})."
+    )
+
+    assert missing_payment_errors == 0

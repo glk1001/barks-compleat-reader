@@ -25,6 +25,7 @@ configfile
 consolelog
 cpus
 cythonize
+dateutil
 docstrings
 dotenv
 edgecolor
@@ -64,6 +65,7 @@ organised
 pnginfo
 ppid
 pyeof
+relativedelta
 returncode
 ryzen
 scancode
