@@ -1,5 +1,6 @@
 # ruff: noqa: PLR0911
 
+from abc import ABC, abstractmethod
 from collections.abc import Callable
 from enum import Enum, auto
 from pathlib import Path
@@ -64,15 +65,99 @@ class BasePageType(Enum):
     BLACK_PAGE = auto()
 
 
+class PageImageSource(ABC):
+    """Strategy describing how to interpret a source page image for the panel pages.
+
+    Different source kinds (flat RGB scans, alpha-channel line art, etc.) need
+    different conversions before the cropped panels region can be pasted onto the
+    destination page. A subclass owns that conversion and supplies an optional
+    paste mask so the empty page can show through transparent regions.
+    """
+
+    @abstractmethod
+    def to_renderable(
+        self,
+        panels_image: PilImage,
+    ) -> tuple[PilImage, PilImage | None]:
+        """Convert a cropped panels region into an RGB image and an optional paste mask.
+
+        Args:
+            panels_image: The cropped source-image panels region, in whatever pixel
+                format the concrete source produces (e.g. RGB or RGBA).
+
+        Returns:
+            A ``(rgb_image, paste_mask)`` tuple. ``rgb_image`` is the image to paste
+            onto the empty page. ``paste_mask`` is the mask passed to ``PIL.paste``
+            (0 = transparent, 255 = opaque), or ``None`` for a fully opaque paste.
+
+        """
+
+
+class RgbPageImageSource(PageImageSource):
+    """Source images are flat RGB scans; pasted opaquely with no mask."""
+
+    def to_renderable(
+        self,
+        panels_image: PilImage,
+    ) -> tuple[PilImage, PilImage | None]:
+        return panels_image, None
+
+
+class AlphaPageImageSource(PageImageSource):
+    """Source images are PNGs whose alpha channel carries the line art.
+
+    The visible RGB is a grayscale rendition derived from the inverted alpha (so dark
+    ink shows on a light page), and the original alpha is returned as the paste mask
+    so transparent areas reveal the empty page underneath.
+    """
+
+    def to_renderable(
+        self,
+        panels_image: PilImage,
+    ) -> tuple[PilImage, PilImage | None]:
+        _, _, _, alpha = panels_image.split()
+        inverted_alpha = alpha.point(lambda p: 255 - p)
+        rgb = Image.merge("RGB", (inverted_alpha, inverted_alpha, inverted_alpha))
+        return rgb, alpha
+
+
+class AdaptivePageImageSource(PageImageSource):
+    """Dispatches between an RGBA and an RGB source based on the loaded image's PIL mode.
+
+    Useful when a per-page resolver may fall back from an alpha-channel PNG to a flat
+    RGB JPG: the rendering strategy follows the actual pixel format rather than being
+    pinned globally. ``RGBA`` images go through ``rgba_source``; everything else
+    (``RGB``, ``L``, ``P``, ...) goes through ``rgb_source``.
+    """
+
+    def __init__(
+        self,
+        rgba_source: PageImageSource | None = None,
+        rgb_source: PageImageSource | None = None,
+    ) -> None:
+        self._rgba_source = rgba_source or AlphaPageImageSource()
+        self._rgb_source = rgb_source or RgbPageImageSource()
+
+    def to_renderable(
+        self,
+        panels_image: PilImage,
+    ) -> tuple[PilImage, PilImage | None]:
+        if panels_image.mode == "RGBA":
+            return self._rgba_source.to_renderable(panels_image)
+        return self._rgb_source.to_renderable(panels_image)
+
+
 class ComicBookImageBuilder:
     def __init__(
         self,
         comic: ComicBook,
         empty_page_file: Path,
+        page_image_source: PageImageSource | None = None,
         get_inset_decrypted_bytes: Callable[[bytes], bytes] | None = None,
     ) -> None:
         self._comic = comic
         self._empty_page_image = open_image_for_reading(empty_page_file)
+        self._page_image_source = page_image_source or RgbPageImageSource()
         self._get_inset_decrypted_bytes = get_inset_decrypted_bytes
         self._required_dim: RequiredDimensions = RequiredDimensions()
 
@@ -276,8 +361,27 @@ class ComicBookImageBuilder:
         srce_page: CleanPage,
         dest_page: CleanPage,
     ) -> PilImage:
-        dest_panels_image = srce_page_image.crop(srce_page.panels_bbox.get_box())
-        dest_page_image = self._get_centred_dest_page_image(dest_page, dest_panels_image)
+        panels_image = srce_page_image.crop(srce_page.panels_bbox.get_box())
+        panels_rgb, paste_mask = self._page_image_source.to_renderable(panels_image)
+
+        if dest_page.page_type not in PAGES_WITHOUT_PANELS:
+            target_size = (
+                dest_page.panels_bbox.get_width(),
+                dest_page.panels_bbox.get_height(),
+            )
+            panels_rgb = panels_rgb.resize(
+                size=target_size,
+                resample=Image.Resampling.BICUBIC,
+            )
+            if paste_mask is not None:
+                paste_mask = paste_mask.resize(
+                    size=target_size,
+                    resample=Image.Resampling.BICUBIC,
+                )
+
+        dest_page_image = self._empty_page_image.copy()
+        dest_panels_pos = (dest_page.panels_bbox.x_min, dest_page.panels_bbox.y_min)
+        dest_page_image.paste(panels_rgb, dest_panels_pos, mask=paste_mask)
 
         if dest_page_image.width != DEST_TARGET_WIDTH:
             msg = (
@@ -293,24 +397,6 @@ class ComicBookImageBuilder:
             raise RuntimeError(msg)
 
         self._write_page_number(dest_page_image, dest_page, PAGE_NUM_COLOR)
-
-        return dest_page_image
-
-    def _get_centred_dest_page_image(
-        self, dest_page: CleanPage, panels_image: PilImage
-    ) -> PilImage:
-        if dest_page.page_type not in PAGES_WITHOUT_PANELS:
-            panels_image = panels_image.resize(
-                size=(
-                    dest_page.panels_bbox.get_width(),
-                    dest_page.panels_bbox.get_height(),
-                ),
-                resample=Image.Resampling.BICUBIC,
-            )
-
-        dest_panels_pos = (dest_page.panels_bbox.x_min, dest_page.panels_bbox.y_min)
-        dest_page_image = self._empty_page_image.copy()
-        dest_page_image.paste(panels_image, dest_panels_pos)
 
         return dest_page_image
 

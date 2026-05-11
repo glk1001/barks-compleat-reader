@@ -66,6 +66,7 @@ pnginfo
 ppid
 pyeof
 relativedelta
+renderable
 returncode
 ryzen
 scancode

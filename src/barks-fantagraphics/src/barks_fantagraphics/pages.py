@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -54,6 +55,51 @@ EMPTY_IMAGE_FILES = {
 }
 
 
+class SrceStoryFileNotFoundError(FileNotFoundError):
+    """Raised when a ``SrceStoryFileResolver`` cannot locate the source story file."""
+
+
+class SrceStoryFileResolver(ABC):
+    """Strategy describing where to find a story page's source image on disk.
+
+    Different builds may pull from different source pipelines (the final restored
+    JPG, the SVG-derived alpha PNG, etc.). A subclass owns that lookup so the rest
+    of the page-list pipeline stays agnostic of the source kind.
+    """
+
+    @abstractmethod
+    def get_story_file(self, comic: ComicBook, page: CleanPage) -> Path:
+        """Return the absolute path to the source image for ``page`` in ``comic``."""
+
+
+class FinalStoryFileResolver(SrceStoryFileResolver):
+    """Resolves to the final restored story file (typically the JPG scan)."""
+
+    def get_story_file(self, comic: ComicBook, page: CleanPage) -> Path:
+        return Path(comic.get_final_srce_story_file(page.page_filename, page.page_type)[0])
+
+
+class SvgPngStoryFileResolver(SrceStoryFileResolver):
+    """Resolves to the ``.png`` alpha-channel rendition of the restored SVG.
+
+    If the PNG is missing and a ``fallback`` resolver is configured, the lookup is
+    delegated to it (useful when not every page has been SVG-rendered yet). With no
+    fallback, a missing PNG raises ``SrceStoryFileNotFoundError``.
+    """
+
+    def __init__(self, fallback: SrceStoryFileResolver | None = None) -> None:
+        self._fallback = fallback
+
+    def get_story_file(self, comic: ComicBook, page: CleanPage) -> Path:
+        png_path = Path(str(comic.get_srce_restored_svg_story_file(page.page_filename)) + ".png")
+        if png_path.is_file():
+            return png_path
+        if self._fallback is not None:
+            return self._fallback.get_story_file(comic, page)
+        msg = f'SVG-PNG source file not found: "{png_path}".'
+        raise SrceStoryFileNotFoundError(msg)
+
+
 def get_max_timestamp(pages: list[CleanPage]) -> float:
     return max(get_timestamp(Path(p.page_filename)) for p in pages)
 
@@ -80,12 +126,14 @@ def get_sorted_srce_and_dest_pages(
     get_full_paths: bool,
     get_srce_panel_segments_file: Callable[[str], Path] | None = None,
     check_srce_page_timestamps: bool = True,
+    srce_story_file_resolver: SrceStoryFileResolver | None = None,
 ) -> SrceAndDestPages:
     return get_sorted_srce_and_dest_pages_with_dimensions(
         comic,
         get_full_paths,
         get_srce_panel_segments_file,
         check_srce_page_timestamps,
+        srce_story_file_resolver,
     )[0]
 
 
@@ -94,11 +142,14 @@ def get_sorted_srce_and_dest_pages_with_dimensions(
     get_full_paths: bool,
     get_srce_panel_segments_file: Callable[[str], Path] | None = None,
     check_srce_page_timestamps: bool = True,
+    srce_story_file_resolver: SrceStoryFileResolver | None = None,
 ) -> tuple[SrceAndDestPages, ComicDimensions, RequiredDimensions]:
     if get_srce_panel_segments_file is None:
         get_srce_panel_segments_file = comic.get_srce_panel_segments_file
 
-    srce_and_dest_pages = _get_srce_and_dest_pages_in_order(comic, get_full_paths)
+    srce_and_dest_pages = _get_srce_and_dest_pages_in_order(
+        comic, get_full_paths, srce_story_file_resolver
+    )
 
     srce_panels_segment_info_files = [
         get_srce_panel_segments_file(get_page_str(srce_page.page_num))
@@ -121,7 +172,11 @@ def get_sorted_srce_and_dest_pages_with_dimensions(
     return srce_and_dest_pages, srce_dim, required_dim
 
 
-def _get_srce_and_dest_pages_in_order(comic: ComicBook, get_full_paths: bool) -> SrceAndDestPages:
+def _get_srce_and_dest_pages_in_order(
+    comic: ComicBook,
+    get_full_paths: bool,
+    srce_story_file_resolver: SrceStoryFileResolver | None = None,
+) -> SrceAndDestPages:
     required_pages = get_required_pages_in_order(comic.page_images_in_order)
 
     srce_page_list = []
@@ -164,7 +219,7 @@ def _get_srce_and_dest_pages_in_order(comic: ComicBook, get_full_paths: bool) ->
 
         file_num_str = f"{file_section_num}-{file_page_num:02d}"
         if get_full_paths:
-            srce_file = str(get_full_srce_filepath(comic, page))
+            srce_file = str(get_full_srce_filepath(comic, page, srce_story_file_resolver))
             dest_file = str(comic.get_dest_image_dir() / (file_num_str + DEST_FILE_EXT))
         else:
             srce_file = get_relative_srce_filepath(page)
@@ -201,13 +256,19 @@ def get_required_pages_in_order(page_images_in_book: list[OriginalPage]) -> list
     return req_pages
 
 
-def get_full_srce_filepath(comic: ComicBook, page: CleanPage) -> Path:
+def get_full_srce_filepath(
+    comic: ComicBook,
+    page: CleanPage,
+    resolver: SrceStoryFileResolver | None = None,
+) -> Path:
     if page.page_filename == TITLE_EMPTY_FILENAME:
         return TITLE_EMPTY_IMAGE_FILEPATH
     if page.page_filename == EMPTY_FILENAME:
         return EMPTY_IMAGE_FILEPATH
 
-    return Path(comic.get_final_srce_story_file(page.page_filename, page.page_type)[0])
+    if resolver is None:
+        resolver = FinalStoryFileResolver()
+    return resolver.get_story_file(comic, page)
 
 
 def get_relative_srce_filepath(page: CleanPage) -> str:
@@ -225,7 +286,7 @@ def get_page_mod_type(comic: ComicBook, page: CleanPage) -> ModifiedType:
     if page.page_filename in (TITLE_EMPTY_FILENAME, EMPTY_FILENAME):
         mod_type = ModifiedType.ORIGINAL
     else:
-        page_num_str = Path(page.page_filename).stem
+        page_num_str = get_page_str(page.page_num)
         _, mod_type = comic.get_final_srce_story_file(page_num_str, page.page_type)
         if mod_type == ModifiedType.ORIGINAL:
             _, mod_type = comic.get_final_srce_upscayled_story_file(page_num_str, page.page_type)

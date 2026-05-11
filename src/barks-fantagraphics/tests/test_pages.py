@@ -185,7 +185,7 @@ class TestGetPageModType:
             Path("/some/001.jpg"),
             ModifiedType.MODIFIED,
         )
-        page = CleanPage("001.jpg", PageType.BODY)
+        page = CleanPage("001.jpg", PageType.BODY, 1)
 
         result = get_page_mod_type(comic, page)
 
@@ -199,7 +199,7 @@ class TestGetPageModType:
             Path("/x.jpg"),
             ModifiedType.ADDED,
         )
-        page = CleanPage("001.jpg", PageType.BODY)
+        page = CleanPage("001.jpg", PageType.BODY, 1)
 
         result = get_page_mod_type(comic, page)
 
@@ -216,12 +216,25 @@ class TestGetPageModType:
             Path("/x.jpg"),
             ModifiedType.ORIGINAL,
         )
-        page = CleanPage("001.jpg", PageType.BODY)
+        page = CleanPage("001.jpg", PageType.BODY, 1)
 
         result = get_page_mod_type(comic, page)
 
         comic.get_final_srce_original_story_file.assert_called_once_with("001", PageType.BODY)
         assert result == ModifiedType.ORIGINAL
+
+    def test_uses_page_num_not_filename_stem_for_multi_extension_paths(self) -> None:
+        comic = MagicMock()
+        comic.get_final_srce_story_file.return_value = (
+            Path("/some/199.svg.png"),
+            ModifiedType.MODIFIED,
+        )
+        page = CleanPage("/some/dir/199.svg.png", PageType.BODY, 199)
+
+        result = get_page_mod_type(comic, page)
+
+        assert result == ModifiedType.MODIFIED
+        comic.get_final_srce_story_file.assert_called_once_with("199", PageType.BODY)
 
 
 # ---------------------------------------------------------------------------
