@@ -108,6 +108,11 @@ def get_pil_image_as_jpg_bytes(pil_image: PilImage) -> io.BytesIO:
     return data
 
 
+def get_image_size(image_file: Path) -> tuple[int, int]:
+    image = load_pil_image_for_reading(image_file)
+    return image.size
+
+
 def copy_file_to_jpg(srce_file: Path, dest_file: Path) -> None:
     image = load_pil_image_for_reading(srce_file).convert("RGB")
 
