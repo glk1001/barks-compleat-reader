@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from unittest.mock import MagicMock, patch
 
-import barks_reader.ui.comic_reader_manager
+import barks_reader.core.reader_setup
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comics_consts import PageType
@@ -78,7 +78,7 @@ class TestComicReaderManager:
         mock_dependencies["layout_builder"].build.return_value = mock_layout
 
         with patch.object(
-            barks_reader.ui.comic_reader_manager, "ComicBookImageBuilder"
+            barks_reader.core.reader_setup, "ComicBookImageBuilder"
         ) as mock_builder_cls:
             manager.read_article_as_comic_book(Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, "1")
 
@@ -115,7 +115,7 @@ class TestComicReaderManager:
         mock_layout = _make_layout(OrderedDict([("1", page_info_obj)]), last_body_page="1")
         mock_dependencies["layout_builder"].build.return_value = mock_layout
 
-        with patch.object(barks_reader.ui.comic_reader_manager, "ComicBookImageBuilder"):
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
             manager.read_barks_comic_book(
                 mock_fanta_info, mock_comic, "1", use_overrides_active=True
             )

@@ -1,11 +1,9 @@
 from typing import TYPE_CHECKING
 
-from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
 from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
-from comic_utils.get_panel_bytes import get_decrypted_bytes
 from kivy.clock import Clock
 from loguru import logger
 
@@ -13,6 +11,7 @@ from barks_reader.core.comic_book_page_info import ComicLayout, ComicLayoutBuild
 from barks_reader.core.fantagraphics_volumes import MissingVolumeError
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_settings import ReaderSettings
+from barks_reader.core.reader_setup import prepare_comic_for_reading
 from barks_reader.core.saved_page_info import SavedPageInfo
 
 from .comic_book_reader import ComicBookReaderScreen
@@ -138,19 +137,8 @@ class ComicReaderManager:
         assert self._fanta_info
         assert self._fanta_info.comic_book_info
 
-        self._layout = self._layout_builder.build(comic)
-
-        get_decrypted_func = None
-        if self._reader_settings.file_paths.barks_panels_are_encrypted:
-            get_decrypted_func = get_decrypted_bytes
-
-        comic_book_image_builder = ComicBookImageBuilder(
-            comic,
-            self._reader_settings.sys_file_paths.get_empty_page_file(),
-            get_inset_decrypted_bytes=get_decrypted_func,
-        )
-        comic_book_image_builder.set_required_dim(
-            self._layout_builder.get_required_dimensions(comic)
+        self._layout, comic_book_image_builder = prepare_comic_for_reading(
+            comic, self._reader_settings, self._layout_builder
         )
 
         logger.debug(

@@ -26,6 +26,7 @@ from barks_reader.core.fantagraphics_volumes import MissingVolumeError
 from barks_reader.core.page_info_adapters import FantagraphicsPanelSegmentsAdapter
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE, RAW_ACTION_BAR_SIZE_Y
 from barks_reader.core.reader_settings import ReaderSettings
+from barks_reader.core.reader_setup import bootstrap_reader_environment, prepare_comic_for_reading
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import SCREEN_METRICS, get_best_window_height_fit
 from cli_setup import init_logging
@@ -58,15 +59,8 @@ def main(
     parser.read(config_info.app_config_path)
 
     reader_settings = ReaderSettings()
-    reader_settings.set_config(parser, config_info.app_config_path, config_info.app_data_dir)  # ty: ignore[invalid-argument-type]
-    reader_settings.set_barks_panels_dir()
-
     comics_database = ComicsDatabase(for_building_comics=False)
-    comics_database.set_inset_info(
-        reader_settings.file_paths.get_comic_inset_files_dir(),  # ty: ignore[invalid-argument-type]
-        reader_settings.file_paths.get_inset_file_ext(),
-    )
-    reader_settings.sys_file_paths.set_barks_reader_files_dir(reader_settings.reader_files_dir)
+    bootstrap_reader_environment(reader_settings, comics_database, parser, config_info)
 
     comic = comics_database.get_comic_book(title)
 
@@ -87,12 +81,11 @@ def _print_title_not_found(title: str) -> None:
             print(f"  - {suggestion}")
 
 
-def _set_window_geometry_on_primary_monitor(config: object) -> None:
-    """Force the Kivy window onto the primary monitor at a sensible size.
+def _primary_monitor_window_geometry() -> tuple[int, int, int, int]:
+    """Return ``(left, top, width, height)`` for a window pinned to the primary monitor.
 
-    Mirrors the slice of ``main.py:get_main_win_from_screen_metrics`` and
-    ``set_window_size`` that positions the main app's window. Called before
-    any Kivy Window is realised so the values stick.
+    Mirrors the slice of ``main.py:get_main_win_from_screen_metrics`` /
+    ``set_window_size`` that sizes the main app's window.
     """
     primary = SCREEN_METRICS.get_primary_screen_info()
     margin = 20
@@ -103,14 +96,7 @@ def _set_window_geometry_on_primary_monitor(config: object) -> None:
     win_height = content_h + RAW_ACTION_BAR_SIZE_Y
     win_left = primary.monitor_x + round(primary.width_pixels / 2) - round(win_width / 2)
     win_top = primary.monitor_y + margin // 2
-
-    config.set("graphics", "left", win_left)  # ty: ignore[unresolved-attribute]
-    config.set("graphics", "top", win_top)  # ty: ignore[unresolved-attribute]
-    config.set("graphics", "width", win_width)  # ty: ignore[unresolved-attribute]
-    config.set("graphics", "height", win_height)  # ty: ignore[unresolved-attribute]
-    logger.info(
-        f"CLI window pinned to primary monitor: ({win_left},{win_top}) {win_width}x{win_height}."
-    )
+    return win_left, win_top, win_width, win_height
 
 
 def _run_cli_reader(
@@ -121,32 +107,58 @@ def _run_cli_reader(
 ) -> None:
     # Deferred kivy imports — must happen only after ``ConfigInfo()`` has set
     # KIVY_HOME.
+    from barks_reader.core import services
+    from kivy.clock import Clock
     from kivy.config import Config
 
     # Pin the window onto the primary monitor before the Window is realised.
     # The shared barks-reader.ini may carry coordinates from a previous run on
     # a different monitor, which otherwise leaves a black window on the wrong
     # display.
-    _set_window_geometry_on_primary_monitor(Config)
+    win_left, win_top, win_width, win_height = _primary_monitor_window_geometry()
+    Config.set("graphics", "left", win_left)  # ty: ignore[unresolved-attribute]
+    Config.set("graphics", "top", win_top)  # ty: ignore[unresolved-attribute]
+    Config.set("graphics", "width", win_width)  # ty: ignore[unresolved-attribute]
+    Config.set("graphics", "height", win_height)  # ty: ignore[unresolved-attribute]
+    logger.info(
+        f"CLI window pinned to primary monitor: ({win_left},{win_top}) {win_width}x{win_height}."
+    )
 
-    from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
-    from barks_reader.core import services
+    # The comic_book_loader uses ``services.schedule_once`` to marshal worker
+    # thread callbacks back to the Kivy main thread. Without a registered
+    # Kivy implementation the proxy raises; with the wrong (synchronous)
+    # implementation, OpenGL texture uploads happen off the GL thread and the
+    # comic image canvas stays black.
+    services.register(services.PlatformServices(schedule_once=Clock.schedule_once))
+
+    app_cls = _build_cli_app_class(reader_settings, comics_database, fanta_info, comic)
+
+    try:
+        app_cls().run()
+    except MissingVolumeError as exc:
+        logger.error(f"Cannot read '{exc.title}': missing volume '{exc.missing_vol}'.")
+        raise typer.Exit(code=1) from exc
+
+
+def _build_cli_app_class(
+    reader_settings: ReaderSettings,
+    comics_database: ComicsDatabase,
+    fanta_info: FantaComicBookInfo,
+    comic: ComicBook,
+) -> type:
+    """Build the single-screen Kivy ``App`` subclass that hosts the reader.
+
+    Kivy imports are local: this factory may only be called after
+    ``ConfigInfo()`` has set ``KIVY_HOME``. The returned class closes over the
+    four reader inputs so ``app_cls()`` takes no arguments.
+    """
     from barks_reader.ui.comic_book_reader import get_barks_comic_reader_screen
     from barks_reader.ui.font_manager import FontManager
     from barks_reader.ui.reader_screens import COMIC_BOOK_READER_SCREEN
-    from comic_utils.get_panel_bytes import get_decrypted_bytes
     from kivy.app import App
-    from kivy.clock import Clock
     from kivy.core.window import Window
     from kivy.lang import Builder
     from kivy.uix.screenmanager import ScreenManager
-
-    # The comic_book_loader uses ``services.schedule_once`` to marshal worker
-    # thread callbacks back to the Kivy main thread. Without registering a real
-    # Kivy implementation, the default null-impl runs them inline on the worker
-    # thread, which triggers an OpenGL texture upload from off-main-thread and
-    # leaves the comic image canvas black.
-    services.register(services.PlatformServices(schedule_once=Clock.schedule_once))
 
     class BarksComicReaderCliApp(App):
         def __init__(self, **kwargs: str) -> None:
@@ -189,19 +201,9 @@ def _run_cli_reader(
                 sorted_pages_port=panel_segments_adapter,
                 required_dimensions_port=panel_segments_adapter,
             )
-            layout = layout_builder.build(comic)
-
-            get_decrypted_func = (
-                get_decrypted_bytes
-                if self.reader_settings.file_paths.barks_panels_are_encrypted
-                else None
+            layout, image_builder = prepare_comic_for_reading(
+                comic, self.reader_settings, layout_builder
             )
-            image_builder = ComicBookImageBuilder(
-                comic,
-                self.reader_settings.sys_file_paths.get_empty_page_file(),
-                get_inset_decrypted_bytes=get_decrypted_func,
-            )
-            image_builder.set_required_dim(layout_builder.get_required_dimensions(comic))
 
             assert self._screen is not None
             self._screen.comic_book_reader.read_comic(
@@ -220,11 +222,7 @@ def _run_cli_reader(
             App.get_running_app().stop()
             Window.close()
 
-    try:
-        BarksComicReaderCliApp().run()
-    except MissingVolumeError as exc:
-        logger.error(f"Cannot read '{exc.title}': missing volume '{exc.missing_vol}'.")
-        raise typer.Exit(code=1) from exc
+    return BarksComicReaderCliApp
 
 
 if __name__ == "__main__":

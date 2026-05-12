@@ -12,6 +12,20 @@ import sys
 from pathlib import Path
 
 import pytest
+from barks_reader.core import services
+
+
+@pytest.fixture(autouse=True)
+def _register_null_services() -> None:
+    """Register the synchronous null PlatformServices for every test.
+
+    Production code calls ``services.register()`` during Kivy boot, but
+    tests don't go through that path. The singleton is deliberately unset
+    by default (fail-fast for unregistered Kivy hosts), so each test needs
+    the null impl swapped in.
+    """
+    services.register(services.PlatformServices())
+
 
 _HEADLESS_CI = os.environ.get("KIVY_HEADLESS_CI", "") == "1"
 

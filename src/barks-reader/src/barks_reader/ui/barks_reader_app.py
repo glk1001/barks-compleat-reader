@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, LiteralString, override
 
 from barks_fantagraphics.comics_database import ComicsDatabase
@@ -30,6 +29,7 @@ from barks_reader.core.reader_consts_and_types import (
     OPTIONS_SETTING,
 )
 from barks_reader.core.reader_settings import ALT_ESCAPE_KEY, BARKS_READER_SECTION
+from barks_reader.core.reader_setup import bootstrap_reader_environment
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 from barks_reader.core.screen_metrics import SCREEN_METRICS
 from barks_reader.core.settings_notifier import settings_notifier
@@ -277,10 +277,12 @@ class BarksReaderApp(App):
 
     def _initialize_settings_and_db(self) -> None:
         """Handle the initial setup of settings and the database."""
-        self.reader_settings.set_config(
-            self.config, Path(self.get_application_config()), self._config_info.app_data_dir
+        bootstrap_reader_environment(
+            self.reader_settings,
+            self._comics_database,
+            self.config,
+            self._config_info,
         )
-        self.reader_settings.set_barks_panels_dir()
 
         set_alt_escape_key(self.reader_settings.get_alt_escape_key())
         Window.bind(on_key_down=_dismiss_top_popup_on_alt_escape)
@@ -294,15 +296,6 @@ class BarksReaderApp(App):
                 self._enable_linux_touchscreen_input()
 
         self.reader_settings.validate_settings()
-
-        self._comics_database.set_inset_info(
-            self.reader_settings.file_paths.get_comic_inset_files_dir(),
-            self.reader_settings.file_paths.get_inset_file_ext(),
-        )
-
-        self.reader_settings.sys_file_paths.set_barks_reader_files_dir(
-            self.reader_settings.reader_files_dir
-        )
 
     @staticmethod
     def _enable_linux_touchscreen_input() -> None:
