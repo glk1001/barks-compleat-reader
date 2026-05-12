@@ -82,6 +82,7 @@ srce
 summarising
 sunos
 sysfs
+sysrsync
 testpaths
 textbbox
 textlength

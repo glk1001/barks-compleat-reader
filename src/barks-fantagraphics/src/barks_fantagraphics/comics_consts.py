@@ -36,6 +36,12 @@ FANTA_VOLUME_OVERRIDES_ROOT = (
     / "Reader Files"
     / "Fantagraphics Volumes Overrides"
 )
+FANTA_VOLUME_READER_PANEL_SEGMENTS_ROOT = (
+    BARKS_ROOT_DIR
+    / "Compleat Barks Disney Reader"
+    / "Reader Files"
+    / "Fantagraphics-panel-segments"
+)
 
 PNG_INSET_DIR = BARKS_ROOT_DIR / "Barks Panels Pngs" / "Insets"
 PNG_INSET_EXT = PNG_FILE_EXT

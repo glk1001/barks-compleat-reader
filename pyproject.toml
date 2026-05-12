@@ -69,6 +69,7 @@ dev = [
     "wordcloud>=1.9",
     "ty>=0.0.17",
     "prek>=0.3.8",
+    "sysrsync>=1.1.1",
 ]
 
 [tool.pytest.ini_options]
