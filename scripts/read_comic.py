@@ -131,7 +131,7 @@ def _run_cli_reader(
     # comic image canvas stays black.
     services.register(services.PlatformServices(schedule_once=Clock.schedule_once))
 
-    app_cls = _build_cli_app_class(reader_settings, comics_database, fanta_info, comic)
+    app_cls = _build_cli_app_class(reader_settings, comics_database, fanta_info, comic, win_height)
 
     try:
         app_cls().run()
@@ -145,12 +145,15 @@ def _build_cli_app_class(
     comics_database: ComicsDatabase,
     fanta_info: FantaComicBookInfo,
     comic: ComicBook,
+    window_height: int,
 ) -> type:
     """Build the single-screen Kivy ``App`` subclass that hosts the reader.
 
     Kivy imports are local: this factory may only be called after
     ``ConfigInfo()`` has set ``KIVY_HOME``. The returned class closes over the
-    four reader inputs so ``app_cls()`` takes no arguments.
+    reader inputs so ``app_cls()`` takes no arguments. ``window_height`` is
+    needed up-front to seed ``FontManager`` — without it, font sizes default
+    to 0 and the action-bar title renders as dots.
     """
     from barks_reader.ui.comic_book_reader import get_barks_comic_reader_screen
     from barks_reader.ui.font_manager import FontManager
@@ -160,12 +163,18 @@ def _build_cli_app_class(
     from kivy.lang import Builder
     from kivy.uix.screenmanager import ScreenManager
 
+    app_icon_path = str(reader_settings.sys_file_paths.get_barks_reader_app_window_icon_path())
+
     class BarksComicReaderCliApp(App):
         def __init__(self, **kwargs: str) -> None:
             super().__init__(**kwargs)
             self.title = f"Barks Reader - {fanta_info.comic_book_info.get_title_str()}"
+            self.icon = app_icon_path
             self.reader_settings = reader_settings
             self.font_manager = FontManager()
+            # Without this the action-bar title's [size={app_title_font_size}]
+            # markup expands to size=0 and the title renders invisibly.
+            self.font_manager.update_font_sizes(window_height)
             self._screen = None
 
         def build(self) -> ScreenManager:
@@ -181,7 +190,7 @@ def _build_cli_app_class(
             self._screen = get_barks_comic_reader_screen(
                 COMIC_BOOK_READER_SCREEN,
                 self.reader_settings,
-                "",
+                app_icon_path,
                 self.font_manager,
                 self._on_comic_ready,
                 self._on_close,
