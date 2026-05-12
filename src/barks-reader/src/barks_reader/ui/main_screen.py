@@ -31,6 +31,7 @@ from .app_initializer import AppInitializer
 from .background_views import BackgroundViews
 from .comic_reader_manager import ComicReaderManager
 from .json_settings_manager import SettingsManager
+from .last_read_page_tracker import LastReadPageTracker
 from .main_screen_nav import MainScreenNavigation
 from .main_screen_window import MainScreenWindowHelper
 from .navigation_coordinator import NavigationCoordinator
@@ -104,6 +105,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._action_bar = self.ids.action_bar
         self._fullscreen_button = self.ids.fullscreen_button
         self._json_settings_manager = SettingsManager(self._reader_settings.get_user_data_path())
+        self._last_read_page_tracker = LastReadPageTracker(self._json_settings_manager)
         self._special_fanta_overrides = SpecialFantaOverrides(self._reader_settings)
 
         self._reader_tree_events = reader_tree_events
@@ -122,7 +124,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._comic_reader_manager = ComicReaderManager(
             self._comics_database,
             self._reader_settings,
-            self._json_settings_manager,
+            self._last_read_page_tracker,
             layout_builder,
             self._tree_view_screen,
             user_error_handler,

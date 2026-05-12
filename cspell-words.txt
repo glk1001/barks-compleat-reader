@@ -60,8 +60,11 @@ markersize
 mktime
 modifyitems
 mtdev
+normalised
+normalises
 numpad
 organised
+passthroughs
 pnginfo
 ppid
 pyeof
