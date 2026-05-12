@@ -65,6 +65,7 @@ organised
 pnginfo
 ppid
 pyeof
+realised
 relativedelta
 renderable
 returncode
