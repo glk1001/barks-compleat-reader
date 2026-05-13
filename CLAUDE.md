@@ -120,7 +120,7 @@ Tree-view widgets (`ui/tree_view_nodes.py`) carry a `destination: Destination | 
 - Unit tests are in `src/barks-reader/tests/unit/` and `src/barks-fantagraphics/tests/`.
   Benchmarks are in `src/barks-reader/tests/benchmarks/` and are excluded from the default `uv run pytest` run.
 - Use `pytest` fixtures and `patch.object(module, ClassName)` style mocking — **not** string-path patching like `patch("barks_reader.core.module.ClassName")`.
-- `testpaths = ["src/barks-reader/tests/unit", "src/barks-fantagraphics/tests"]` in `pyproject.toml`.
+- `testpaths` in `pyproject.toml` covers `src/barks-reader/tests/unit`, `src/barks-fantagraphics/tests`, and `src/barks-build-comic-images/tests`.
 
 ## Code Style
 

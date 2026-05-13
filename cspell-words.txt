@@ -14,6 +14,7 @@ blit
 browsable
 bufferfmt
 bunx
+capsys
 catchable
 cbzs
 chrono
@@ -67,6 +68,7 @@ organised
 passthroughs
 pnginfo
 ppid
+putpixel
 pyeof
 realised
 relativedelta
