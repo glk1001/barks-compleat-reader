@@ -1,22 +1,7 @@
 from pathlib import Path
 
 import cv2 as cv  # ty: ignore[unresolved-import]
-import numpy as np
 
 
-def get_bw_image_from_alpha(rgba_file: Path, scale: int = 1) -> cv.typing.MatLike:
-    black_mask = cv.imread(str(rgba_file), -1)
-
-    if scale != 1:
-        black_mask = cv.resize(
-            black_mask,
-            (0, 0),
-            fx=1.0 / scale,
-            fy=1.0 / scale,
-            interpolation=cv.INTER_AREA,
-        )
-
-    _, _, _, binary = cv.split(black_mask)
-    binary = np.uint8(255 - binary)
-
-    return binary  # noqa: RET504
+def get_bw_image_from_alpha(rgba_file: Path) -> cv.typing.MatLike:
+    return cv.imread(str(rgba_file), cv.IMREAD_GRAYSCALE)
