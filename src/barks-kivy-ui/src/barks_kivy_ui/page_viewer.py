@@ -38,6 +38,9 @@ class ClickNavLayout(BoxLayout):
         self._on_right_click = on_right_click
 
     def on_touch_down(self, touch: MotionEvent) -> bool:
+        # Let children intercept first (e.g. draggable overlay labels).
+        if super().on_touch_down(touch):
+            return True
         if not self.collide_point(*touch.pos):
             return False
         if getattr(touch, "button", "left") != "left":
