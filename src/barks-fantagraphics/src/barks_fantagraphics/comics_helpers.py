@@ -115,13 +115,16 @@ def get_title_from_volume_page(
 
 
 def draw_panel_bounds_on_image(
-    image: Image.Image, page_panel_boxes: PagePanelBoxes, include_overall_bound: bool = True
+    image: Image.Image,
+    page_panel_boxes: PagePanelBoxes,
+    bounds_color: tuple[int, int, int, int] = (0, 128, 0, 255),
+    include_overall_bound: bool = True,
 ) -> bool:
     draw = ImageDraw.Draw(image)
     font = ImageFont.load_default(size=80)
     for panel in page_panel_boxes.panel_boxes:
-        draw.rectangle(panel.box, outline="green", width=10)
-        draw.text((panel.x1 - 80, panel.y0 + 20), str(panel.panel_num), fill="orange", font=font)
+        draw.rectangle(panel.box, outline=bounds_color, width=10)
+        draw.text((panel.x1 - 80, panel.y0 + 20), str(panel.panel_num), fill="red", font=font)
 
     if include_overall_bound:
         draw.rectangle(page_panel_boxes.overall_bounds.box, outline="red", width=2)
