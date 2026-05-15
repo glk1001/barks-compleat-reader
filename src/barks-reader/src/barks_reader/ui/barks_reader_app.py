@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, LiteralString, override
 
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.entity_types import EntityType
-from comic_utils.kivy_patches import apply_text_input_remove_group_patch
+from barks_kivy_ui.kivy_patches import apply_text_input_remove_group_patch
 from comic_utils.timing import Timing
 from kivy.app import App  # can take ~2s in VM Windows
 from kivy.clock import Clock

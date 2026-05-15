@@ -7,6 +7,7 @@ members = [
     "barks-build-comic-images",
     "barks-compleat-reader",
     "barks-fantagraphics",
+    "barks-kivy-ui",
     "barks-reader",
     "comic-utils",
 ]
@@ -188,12 +189,28 @@ dependencies = [
 requires-dist = [{ name = "comic-utils", editable = "src/comic-utils" }]
 
 [[package]]
+name = "barks-kivy-ui"
+version = "0.1.0"
+source = { editable = "src/barks-kivy-ui" }
+dependencies = [
+    { name = "kivy" },
+    { name = "pillow" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "kivy", specifier = "==2.3.1" },
+    { name = "pillow" },
+]
+
+[[package]]
 name = "barks-reader"
 version = "0.1.0"
 source = { editable = "src/barks-reader" }
 dependencies = [
     { name = "barks-build-comic-images" },
     { name = "barks-fantagraphics" },
+    { name = "barks-kivy-ui" },
     { name = "comic-utils" },
 ]
 
@@ -201,6 +218,7 @@ dependencies = [
 requires-dist = [
     { name = "barks-build-comic-images", editable = "src/barks-build-comic-images" },
     { name = "barks-fantagraphics", editable = "src/barks-fantagraphics" },
+    { name = "barks-kivy-ui", editable = "src/barks-kivy-ui" },
     { name = "comic-utils", editable = "src/comic-utils" },
 ]
 

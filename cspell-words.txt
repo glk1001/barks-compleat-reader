@@ -60,6 +60,7 @@ logr
 markersize
 mktime
 modifyitems
+motionevent
 mtdev
 normalised
 normalises

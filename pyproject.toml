@@ -92,6 +92,7 @@ members = [
     "src/barks-reader",
     "src/barks-fantagraphics",
     "src/barks-build-comic-images",
+    "src/barks-kivy-ui",
     "src/comic-utils",
 ]
 
@@ -99,6 +100,7 @@ members = [
 barks-reader = { workspace = true }
 barks-fantagraphics = { workspace = true }
 barks-build-comic-images = { workspace = true }
+barks-kivy-ui = { workspace = true }
 comic-utils = { workspace = true }
 
 [tool.coverage.run]

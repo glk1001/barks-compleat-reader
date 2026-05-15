@@ -31,3 +31,12 @@ forbidden_modules =
     barks_reader
     barks_fantagraphics
 
+[importlinter:contract:4]
+name = Low-level packages must not import kivy
+type = forbidden
+source_modules =
+    barks_fantagraphics
+    comic_utils
+forbidden_modules =
+    kivy
+

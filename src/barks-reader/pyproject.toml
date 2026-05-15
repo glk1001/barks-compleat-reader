@@ -5,6 +5,7 @@ requires-python = ">=3.13,<3.14"
 dependencies = [
     "barks-fantagraphics",
     "barks-build-comic-images",
+    "barks-kivy-ui",
     "comic-utils",
 ]
 
@@ -18,4 +19,5 @@ packages = ["src/barks_reader"]
 [tool.uv.sources]
 barks-fantagraphics = { workspace = true }
 barks-build-comic-images = { workspace = true }
+barks-kivy-ui = { workspace = true }
 comic-utils = { workspace = true }
