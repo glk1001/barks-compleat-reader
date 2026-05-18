@@ -65,13 +65,19 @@ class FakeScheduler:
     def advance(self, secs: float) -> None:
         """Advance virtual time by *secs* seconds, firing scheduled callbacks.
 
-        Each active interval fires ``floor(secs / period)`` times.
+        Each interval active at the *start* of the call fires ``floor(secs /
+        period)`` times. Intervals scheduled by callbacks during this advance
+        do not fire — they wait for the next `advance()` call. This avoids
+        runaway recursion when a callback reschedules itself.
         """
-        for interval in self._intervals:
+        snapshot = list(self._intervals)
+        for interval in snapshot:
             if interval.cancelled:
                 continue
             ticks = int(secs // interval.period_secs)
             for _ in range(ticks):
+                if interval.cancelled:
+                    break
                 interval.callback()
 
 
