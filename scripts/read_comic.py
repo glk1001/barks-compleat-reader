@@ -107,8 +107,6 @@ def _run_cli_reader(
 ) -> None:
     # Deferred kivy imports — must happen only after ``ConfigInfo()`` has set
     # KIVY_HOME.
-    from barks_reader.core import services
-    from kivy.clock import Clock
     from kivy.config import Config
 
     # Pin the window onto the primary monitor before the Window is realised.
@@ -123,13 +121,6 @@ def _run_cli_reader(
     logger.info(
         f"CLI window pinned to primary monitor: ({win_left},{win_top}) {win_width}x{win_height}."
     )
-
-    # The comic_book_loader uses ``services.schedule_once`` to marshal worker
-    # thread callbacks back to the Kivy main thread. Without a registered
-    # Kivy implementation the proxy raises; with the wrong (synchronous)
-    # implementation, OpenGL texture uploads happen off the GL thread and the
-    # comic image canvas stays black.
-    services.register(services.PlatformServices(schedule_once=Clock.schedule_once))
 
     app_cls = _build_cli_app_class(reader_settings, comics_database, fanta_info, comic, win_height)
 
