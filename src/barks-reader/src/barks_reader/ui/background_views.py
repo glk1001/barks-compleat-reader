@@ -1,193 +1,52 @@
-# ruff: noqa: ERA001
+"""Backward-compatibility shim — delegates to `core.view_pipeline.ViewPipeline`.
+
+All logic moved to `barks_reader.core.view_pipeline`. This module exists for
+the migration window so existing callers (`ViewStateManager`, tests) keep
+working; once they migrate to `ViewRenderer` / `ViewPipeline` directly, this
+file will be deleted.
+"""
 
 from __future__ import annotations
 
-from dataclasses import replace
-from enum import Enum, auto
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_tags import (
-    BARKS_TAG_GROUPS_TITLES,
-    BARKS_TAGGED_TITLES,
-    TagGroups,
-    Tags,
+from barks_reader.core.view_pipeline import (
+    IMAGE_THEME_TO_FILE_TYPE_MAP,
+    IMAGE_THEMES_WITH_NO_FILES,
+    ImageThemes,
+    ViewPipeline,
 )
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
-from barks_fantagraphics.comics_utils import get_abbrev_path
-from barks_fantagraphics.fanta_comics_info import (
-    ALL_FANTA_COMIC_BOOK_INFO,
-    ALL_LISTS,
-    SERIES_CS,
-    SERIES_DDA,
-    SERIES_DDS,
-    SERIES_GG,
-    SERIES_MISC,
-    SERIES_USA,
-    SERIES_USS,
-    FantaComicBookInfo,
-    get_fanta_info,
-)
-from kivy.clock import Clock
-from loguru import logger
 
-from barks_reader.core.filtered_title_lists import FilteredTitleLists
-from barks_reader.core.image_selector import FIT_MODE_COVER, ImageInfo, ImageSelector
-from barks_reader.core.navigation.view_states import ViewStates
-from barks_reader.core.reader_colors import RandomColorTint
-from barks_reader.core.reader_file_paths import ALL_TYPES, FileTypes
-from barks_reader.core.reader_formatter import get_formatted_color
-from barks_reader.core.view_snapshot import (
-    FunViewSnapshot,
-    ScreenVisibility,
-    SearchViewSnapshot,
-    TitleViewSnapshot,
-    TopViewSnapshot,
-    ViewSnapshot,
-)
+from .adapters import KivyClockScheduler, TintColorSource
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
+    from barks_fantagraphics.barks_tags import TagGroups, Tags
+    from barks_fantagraphics.barks_titles import Titles
+    from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
 
-    from barks_reader.core.reader_colors import Color
+    from barks_reader.core.image_selector import ImageInfo, ImageSelector
+    from barks_reader.core.navigation.view_states import ViewStates
     from barks_reader.core.reader_settings import ReaderSettings
+    from barks_reader.core.view_snapshot import ViewSnapshot
 
-_TOP_VIEW_IMAGE_TYPES: set[FileTypes] = {
-    t for t in FileTypes if t not in [FileTypes.NONTITLE, FileTypes.ORIGINAL_ART]
-}
-_TITLE_VIEW_IMAGE_TYPES: set[FileTypes] = {
-    t for t in FileTypes if t not in [FileTypes.INSET, FileTypes.ORIGINAL_ART]
-}
-
-_DEBUG_FUN_IMAGE_TITLES = None
-# _DEBUG_FUN_IMAGE_TITLES = [Titles.LOST_IN_THE_ANDES]
+__all__ = [
+    "IMAGE_THEMES_WITH_NO_FILES",
+    "IMAGE_THEME_TO_FILE_TYPE_MAP",
+    "BackgroundViews",
+    "ImageThemes",
+]
 
 
-class ImageThemes(Enum):
-    AI = auto()
-    BLACK_AND_WHITE = auto()
-    CENSORSHIP = auto()
-    CLASSICS = auto()
-    FAVOURITES = auto()
-    INSETS = auto()
-    SILHOUETTES = auto()
-    SPLASHES = auto()
-    FORTIES = auto()
-    FIFTIES = auto()
-    SIXTIES = auto()
-
-
-IMAGE_THEME_TO_FILE_TYPE_MAP = {
-    ImageThemes.AI: FileTypes.AI,
-    ImageThemes.BLACK_AND_WHITE: FileTypes.BLACK_AND_WHITE,
-    ImageThemes.CENSORSHIP: FileTypes.CENSORSHIP,
-    ImageThemes.FAVOURITES: FileTypes.FAVOURITE,
-    ImageThemes.INSETS: FileTypes.INSET,
-    ImageThemes.SILHOUETTES: FileTypes.SILHOUETTE,
-    ImageThemes.SPLASHES: FileTypes.SPLASH,
-}
-IMAGE_THEMES_WITH_NO_FILES = {
-    ImageThemes.CLASSICS,
-    ImageThemes.FORTIES,
-    ImageThemes.FIFTIES,
-    ImageThemes.SIXTIES,
-}
-assert len(ImageThemes) == (len(IMAGE_THEME_TO_FILE_TYPE_MAP) + len(IMAGE_THEMES_WITH_NO_FILES))
-
-_BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES = {
-    ViewStates.ON_INDEX_MAIN_NODE,
-}
-_BOTTOM_VIEW_SPEECH_INDEX_OPACITY_1_STATES = {
-    ViewStates.ON_INDEX_SPEECH_NODE,
-    ViewStates.ON_INDEX_SPEECH_WORDS_NODE,
-}
-_BOTTOM_VIEW_NAMES_INDEX_OPACITY_1_STATES = {
-    ViewStates.ON_INDEX_NAMES_NODE,
-}
-_BOTTOM_VIEW_LOCATIONS_INDEX_OPACITY_1_STATES = {
-    ViewStates.ON_INDEX_LOCATIONS_NODE,
-}
-_BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES = {
-    ViewStates.ON_APPENDIX_STATISTICS_NODE,
-}
-_BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES = {
-    ViewStates.ON_TITLE_SEARCH_NODE,
-    ViewStates.ON_TAG_SEARCH_NODE,
-    ViewStates.ON_WORD_SEARCH_NODE,
-}
-_BOTTOM_VIEW_TITLE_OPACITY_1_STATES = {
-    ViewStates.ON_TITLE_NODE,
-}
-_BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES = (
-    set(ViewStates)
-    - _BOTTOM_VIEW_TITLE_OPACITY_1_STATES
-    - _BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES
-    - _BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES
-    - _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES
-    - _BOTTOM_VIEW_NAMES_INDEX_OPACITY_1_STATES
-    - _BOTTOM_VIEW_LOCATIONS_INDEX_OPACITY_1_STATES
-)
-_SEARCH_MODE_MAP: dict[ViewStates, str] = {
-    ViewStates.ON_TITLE_SEARCH_NODE: "Title",
-    ViewStates.ON_TAG_SEARCH_NODE: "Tag",
-    ViewStates.ON_WORD_SEARCH_NODE: "Word",
-}
-
-
-# TODO: Consolidate views and currents into classes.
 class BackgroundViews:
-    TOP_VIEW_EVENT_TIMEOUT_SECS = 1000.0
-    BOTTOM_VIEW_EVENT_TIMEOUT_SECS = 1000.0
+    """Thin shim that wraps a `ViewPipeline` configured with production adapters.
 
-    _INTRO_VIEW_STATES: ClassVar[set[ViewStates]] = {
-        ViewStates.ON_INTRO_NODE,
-        ViewStates.ON_INTRO_COMPLEAT_BARKS_READER_NODE,
-        ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,
-    }
+    Preserves the original `BackgroundViews` API while the rest of the codebase
+    migrates to `ViewPipeline` / `ViewRenderer` directly.
+    """
 
-    _STORIES_VIEW_STATES: ClassVar[set[ViewStates]] = {
-        ViewStates.ON_THE_STORIES_NODE,
-        ViewStates.ON_CHRONO_BY_YEAR_NODE,
-        ViewStates.ON_SERIES_NODE,
-        ViewStates.ON_CATEGORIES_NODE,
-        ViewStates.ON_TITLE_NODE,
-    }
-
-    _SERIES_VIEW_STATES: ClassVar[dict[ViewStates, str]] = {
-        ViewStates.ON_CS_NODE: SERIES_CS,
-        ViewStates.ON_DD_NODE: SERIES_DDA,
-        ViewStates.ON_US_NODE: SERIES_USA,
-        ViewStates.ON_DDS_NODE: SERIES_DDS,
-        ViewStates.ON_USS_NODE: SERIES_USS,
-        ViewStates.ON_GG_NODE: SERIES_GG,
-        ViewStates.ON_MISC_NODE: SERIES_MISC,
-    }
-
-    _SEARCH_VIEW_STATES: ClassVar[set[ViewStates]] = {
-        ViewStates.ON_SEARCH_NODE,
-        ViewStates.ON_TITLE_SEARCH_NODE,
-        ViewStates.ON_TAG_SEARCH_NODE,
-        ViewStates.ON_WORD_SEARCH_NODE,
-    }
-
-    _APPENDIX_VIEW_STATES: ClassVar[set[ViewStates]] = {
-        ViewStates.ON_APPENDIX_NODE,
-        ViewStates.ON_APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_NODE,
-        ViewStates.ON_APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_NODE,
-        ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE,
-        ViewStates.ON_APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_NODE,
-        ViewStates.ON_APPENDIX_STATISTICS_NODE,
-    }
-
-    _INDEX_VIEW_STATES: ClassVar[set[ViewStates]] = {
-        ViewStates.ON_INDEX_NODE,
-        ViewStates.ON_INDEX_MAIN_NODE,
-        ViewStates.ON_INDEX_SPEECH_NODE,
-        ViewStates.ON_INDEX_SPEECH_WORDS_NODE,
-        ViewStates.ON_INDEX_NAMES_NODE,
-        ViewStates.ON_INDEX_LOCATIONS_NODE,
-    }
+    TOP_VIEW_EVENT_TIMEOUT_SECS = ViewPipeline.TOP_VIEW_EVENT_TIMEOUT_SECS
+    BOTTOM_VIEW_EVENT_TIMEOUT_SECS = ViewPipeline.BOTTOM_VIEW_EVENT_TIMEOUT_SECS
 
     def __init__(
         self,
@@ -195,544 +54,87 @@ class BackgroundViews:
         title_lists: dict[str, list[FantaComicBookInfo]],
         random_title_images: ImageSelector,
     ) -> None:
-        self._reader_settings = reader_settings
-        self._title_lists = title_lists
-        self._random_title_images = random_title_images
+        self._pipeline = ViewPipeline(
+            reader_settings=reader_settings,
+            title_lists=title_lists,
+            image_selector=random_title_images,
+            scheduler=KivyClockScheduler(),
+            colors=TintColorSource(),
+        )
 
-        self._top_view_image_random_color_tint = RandomColorTint(30, 50)
-        self._bottom_view_fun_image_random_color_tint = RandomColorTint(80, 50)
-        self._bottom_view_title_image_random_color_tint = RandomColorTint(30, 70)
-        self._bottom_view_title_image_random_color_tint.set_full_color_alpha_range(100, 150)
-        self._bottom_view_title_image_random_color_tint.set_alpha_range(150, 200)
-
-        self._top_view_image_opacity = 0.0
-        self._top_view_image_info: ImageInfo = ImageInfo()
-        self._top_view_image_color: Color = (0, 0, 0, 0)
-        self._top_view_change_event = None
-
-        self._bottom_view_title_opacity = 0.0
-
-        self._bottom_view_fun_image_opacity = 0.0
-        self._bottom_view_fun_image_info: ImageInfo | None = None
-        self._bottom_view_fun_image_color: Color = (0, 0, 0, 0)
-        self._bottom_view_change_fun_image_event = None
-
-        self._bottom_view_title_image_info: ImageInfo = ImageInfo()
-        self._bottom_view_title_image_color: Color = (0, 0, 0, 0)
-
-        self._current_year_range = ""
-        self._current_cs_year_range = ""
-        self._current_us_year_range = ""
-        self._current_category = ""
-        self._current_tag_group = None
-        self._current_tag = None
-        self._current_bottom_view_title = ""
-
-        self._search_screen_image_info: ImageInfo = ImageInfo()
-
-        self._fun_image_themes: set[ImageThemes] | None = None
-        self._cached_fun_titles: tuple[list[FantaComicBookInfo], set[FileTypes]] | None = None
-        self.set_fun_image_themes(None)
-
-        self._view_state = ViewStates.PRE_INIT
+    @property
+    def pipeline(self) -> ViewPipeline:
+        """Expose the underlying pipeline (for callers migrating to it directly)."""
+        return self._pipeline
 
     def set_fun_image_themes(self, image_themes: set[ImageThemes] | None) -> None:
-        logger.debug(f"Set self._fun_image_themes = {image_themes}.")
-        self._fun_image_themes = image_themes
-        self._cached_fun_titles = self._get_fun_image_titles()
-
-    @staticmethod
-    def _get_fanta_title_list(titles: list[Titles]) -> list[FantaComicBookInfo]:
-        fanta_title_list = [get_fanta_info(title) for title in titles]
-        return [title for title in fanta_title_list if title is not None]
+        self._pipeline.set_fun_image_themes(image_themes)
 
     def get_view_state(self) -> ViewStates:
-        return self._view_state
+        return self._pipeline.get_view_state()
 
     def reset_bottom_view_fun_image_info(self) -> None:
-        self._bottom_view_fun_image_info = None
+        self._pipeline.reset_bottom_view_fun_image_info()
 
     def get_search_screen_image_info(self) -> ImageInfo:
-        return self._search_screen_image_info
+        return self._pipeline.get_search_screen_image_info()
 
     def get_current_category(self) -> str:
-        return self._current_category
+        return self._pipeline.get_current_category()
 
     def set_current_category(self, cat: str) -> None:
-        self._current_category = cat
+        self._pipeline.set_current_category(cat)
 
     def get_current_tag_group(self) -> None | TagGroups:
-        return self._current_tag_group
+        return self._pipeline.get_current_tag_group()
 
     def set_current_tag_group(self, tag_group: None | TagGroups) -> None:
-        self._current_tag_group = tag_group
+        self._pipeline.set_current_tag_group(tag_group)
 
     def get_current_tag(self) -> None | Tags:
-        return self._current_tag
+        return self._pipeline.get_current_tag()
 
     def set_current_tag(self, tag: None | Tags) -> None:
-        self._current_tag = tag
+        self._pipeline.set_current_tag(tag)
 
     def get_current_year_range(self) -> str:
-        return self._current_year_range
+        return self._pipeline.get_current_year_range()
 
     def set_current_year_range(self, year_range: str) -> None:
-        self._current_year_range = year_range
+        self._pipeline.set_current_year_range(year_range)
 
     def get_current_cs_year_range(self) -> str:
-        return self._current_cs_year_range
+        return self._pipeline.get_current_cs_year_range()
 
     def set_current_cs_year_range(self, year_range: str) -> None:
-        self._current_cs_year_range = year_range
+        self._pipeline.set_current_cs_year_range(year_range)
 
     def get_current_us_year_range(self) -> str:
-        return self._current_us_year_range
+        return self._pipeline.get_current_us_year_range()
 
     def set_current_us_year_range(self, year_range: str) -> None:
-        self._current_us_year_range = year_range
+        self._pipeline.set_current_us_year_range(year_range)
 
     def get_current_bottom_view_title(self) -> str:
-        return self._current_bottom_view_title
+        return self._pipeline.get_current_bottom_view_title()
 
     def set_current_bottom_view_title(self, title: str) -> None:
-        self._current_bottom_view_title = title
+        self._pipeline.set_current_bottom_view_title(title)
 
     def set_view_state(self, view_state: ViewStates, *, preserve_top_view: bool = False) -> None:
-        logger.info(f"Updating background view state to {view_state.name}.")
-        self._view_state = view_state
-        self._update_views(preserve_top_view=preserve_top_view)
+        self._pipeline.set_view_state(view_state, preserve_top_view=preserve_top_view)
 
     def compute_snapshot(self) -> ViewSnapshot:
-        """Build an immutable snapshot of the current view state.
-
-        Must be called after ``set_view_state()`` (which runs ``_update_views()``
-        to refresh internal fields).  Reads those fields and returns a
-        ``ViewSnapshot`` that fully describes the desired UI.
-        """
-        search_mode = _SEARCH_MODE_MAP.get(self._view_state, "")
-        search_visible = self._view_state in _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES
-
-        return ViewSnapshot(
-            view_state=self._view_state,
-            top_view=TopViewSnapshot(
-                image_info=self._top_view_image_info,
-                image_opacity=self._top_view_image_opacity,
-                image_color=self._top_view_image_color,
-            ),
-            fun_view=FunViewSnapshot(
-                is_visible=self._bottom_view_fun_image_opacity > 0.0,
-                image_info=self._bottom_view_fun_image_info,
-                image_color=self._bottom_view_fun_image_color,
-            ),
-            title_view=TitleViewSnapshot(
-                is_visible=self._bottom_view_title_opacity > 0.0,
-                image_info=self._bottom_view_title_image_info,
-                image_color=self._bottom_view_title_image_color,
-            ),
-            screen_visibility=ScreenVisibility(
-                main_index=self._view_state in _BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES,
-                speech_index=self._view_state in _BOTTOM_VIEW_SPEECH_INDEX_OPACITY_1_STATES,
-                names_index=self._view_state in _BOTTOM_VIEW_NAMES_INDEX_OPACITY_1_STATES,
-                locations_index=self._view_state in _BOTTOM_VIEW_LOCATIONS_INDEX_OPACITY_1_STATES,
-                statistics=self._view_state in _BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES,
-            ),
-            search_view=SearchViewSnapshot(
-                is_visible=search_visible,
-                mode=search_mode,
-                image_info=self._search_screen_image_info if search_visible else None,
-            ),
-        )
-
-    def _update_views(self, *, preserve_top_view: bool = False) -> None:
-        if self._view_state == ViewStates.PRE_INIT:
-            self._top_view_image_opacity = 0.5
-            self._set_next_top_view_image()
-            self._bottom_view_fun_image_opacity = 0.5
-            self._set_next_bottom_view_fun_image()
-            self._bottom_view_title_opacity = 0.0
-            return
-
-        self._bottom_view_fun_image_opacity = (
-            1.0 if self._view_state in _BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES else 0.0
-        )
-        self._bottom_view_title_opacity = (
-            1.0 if self._view_state in _BOTTOM_VIEW_TITLE_OPACITY_1_STATES else 0.0
-        )
-
-        if not preserve_top_view:
-            self._set_next_top_view_image()
-        self._set_next_bottom_view_fun_image()
-        self._set_next_search_screen_image()
-        self.set_next_bottom_view_title_image()
-        self._set_bottom_view_title_image_color()
-
-    def _set_next_top_view_image(self) -> None:
-        # Dispatch table: (predicate, handler) pairs checked in order.
-        dispatch: list[tuple[bool, Callable[[], None]]] = [
-            (
-                self._view_state in self._SERIES_VIEW_STATES,
-                self._set_top_view_image_for_series,
-            ),
-            (
-                self._view_state in {ViewStates.PRE_INIT, ViewStates.INITIAL},
-                lambda: self._set_top_view_image_fixed(Titles.COLD_BARGAIN_A),
-            ),
-            (
-                self._view_state in self._INTRO_VIEW_STATES,
-                lambda: self._set_top_view_image_fixed(Titles.ADVENTURE_DOWN_UNDER),
-            ),
-            (
-                self._view_state in self._STORIES_VIEW_STATES,
-                self._set_top_view_image_for_stories,
-            ),
-            (
-                self._view_state == ViewStates.ON_CS_YEAR_RANGE_NODE,
-                self._set_top_view_image_for_cs_year_range,
-            ),
-            (
-                self._view_state == ViewStates.ON_US_YEAR_RANGE_NODE,
-                self._set_top_view_image_for_us_year_range,
-            ),
-            (
-                self._view_state == ViewStates.ON_YEAR_RANGE_NODE,
-                self._set_top_view_image_for_year_range,
-            ),
-            (
-                self._view_state == ViewStates.ON_CATEGORY_NODE,
-                self._set_top_view_image_for_category,
-            ),
-            (
-                self._view_state == ViewStates.ON_TAG_GROUP_NODE,
-                self._set_top_view_image_for_tag_group,
-            ),
-            (self._view_state == ViewStates.ON_TAG_NODE, self._set_top_view_image_for_tag),
-            (self._view_state in self._SEARCH_VIEW_STATES, self._set_top_view_image_for_search),
-            (
-                self._view_state in self._APPENDIX_VIEW_STATES,
-                lambda: self._set_top_view_image_fixed(Titles.FABULOUS_PHILOSOPHERS_STONE_THE),
-            ),
-            (
-                self._view_state == ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
-                self._set_top_view_image_for_appendix_censorship_fixes,
-            ),
-            (
-                self._view_state in self._INDEX_VIEW_STATES,
-                lambda: self._set_top_view_image_fixed(Titles.TRUANT_OFFICER_DONALD),
-            ),
-        ]
-
-        for predicate, handler in dispatch:
-            if predicate:
-                handler()
-                break
-        else:
-            msg = f"Unhandled view state: {self._view_state}"
-            raise AssertionError(msg)
-
-        self._set_top_view_image_color()
-        self._schedule_top_view_event()
-
-        assert self._top_view_image_info.filename
-
-        logger.debug(
-            f"Top view image:"
-            f" State: {self._view_state.name},"
-            f" Image: '{get_abbrev_path(self._top_view_image_info.filename)}',"
-            f" FitMode: '{self._top_view_image_info.fit_mode}',"
-            f" Color: {get_formatted_color(self._top_view_image_color)},"
-            f" Opacity: {self._top_view_image_opacity}."
-        )
-
-    def _set_top_view_image_for_series(self) -> None:
-        series_key = self._SERIES_VIEW_STATES[self._view_state]
-        self._top_view_image_info = self._get_top_view_random_image(self._title_lists[series_key])
-
-    def _set_top_view_image_for_stories(self) -> None:
-        self._top_view_image_info = self._get_top_view_random_image(self._title_lists[ALL_LISTS])
-
-    def _set_top_view_image_fixed(self, title: Titles) -> None:
-        self._top_view_image_info = ImageInfo(
-            self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
-        )
-
-    def _set_top_view_image_for_category(self) -> None:
-        logger.debug(f"Current category: '{self._current_category}'.")
-        if not self._current_category:
-            title = Titles.GOOD_NEIGHBORS
-            self._top_view_image_info = ImageInfo(
-                self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
-            )
-        else:
-            self._top_view_image_info = self._get_top_view_random_image(
-                self._title_lists[self._current_category]
-            )
-
-    def _set_top_view_image_for_tag_group(self) -> None:
-        logger.debug(f"Current tag_group: '{self._current_tag_group}'.")
-        if not self._current_tag_group:
-            title = Titles.GOOD_NEIGHBORS
-            self._top_view_image_info = ImageInfo(
-                self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
-            )
-        else:
-            fanta_title_list = self._get_fanta_title_list(
-                BARKS_TAG_GROUPS_TITLES[self._current_tag_group]
-            )
-            self._top_view_image_info = self._get_top_view_random_image(fanta_title_list)
-
-    def _set_top_view_image_for_tag(self) -> None:
-        logger.debug(f"Current tag: '{self._current_tag}'.")
-        if not self._current_tag:
-            title = Titles.GOOD_NEIGHBORS
-            self._top_view_image_info = ImageInfo(
-                self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
-            )
-        else:
-            fanta_title_list = self._get_fanta_title_list(BARKS_TAGGED_TITLES[self._current_tag])
-            self._top_view_image_info = self._get_top_view_random_image(fanta_title_list)
-
-    def _set_top_view_image_for_year_range(self) -> None:
-        logger.debug(f"Year range: '{self._current_year_range}'.")
-        if not self._current_year_range:
-            title = Titles.GOOD_NEIGHBORS
-            self._top_view_image_info = ImageInfo(
-                self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
-            )
-        else:
-            self._top_view_image_info = self._get_top_view_random_image(
-                self._title_lists[self._current_year_range]
-            )
-
-    def _set_top_view_image_for_cs_year_range(self) -> None:
-        logger.debug(f"CS Year range: '{self._current_cs_year_range}'.")
-        if not self._current_cs_year_range:
-            title = Titles.GOOD_NEIGHBORS
-            self._top_view_image_info = ImageInfo(
-                self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
-            )
-        else:
-            cs_range = FilteredTitleLists.get_cs_year_range_key_from_range(
-                self._current_cs_year_range
-            )
-            logger.debug(f"CS Year range key: '{cs_range}'.")
-            self._top_view_image_info = self._get_top_view_random_image(self._title_lists[cs_range])
-
-    def _set_top_view_image_for_us_year_range(self) -> None:
-        logger.debug(f"US Year range: '{self._current_us_year_range}'.")
-        if not self._current_us_year_range:
-            title = Titles.BACK_TO_THE_KLONDIKE
-            self._top_view_image_info = ImageInfo(
-                self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
-            )
-        else:
-            us_range = FilteredTitleLists.get_us_year_range_key_from_range(
-                self._current_us_year_range
-            )
-            logger.debug(f"US Year range key: '{us_range}'.")
-            self._top_view_image_info = self._get_top_view_random_image(self._title_lists[us_range])
-
-    def _get_top_view_random_image(self, title_list: list[FantaComicBookInfo]) -> ImageInfo:
-        return self._random_title_images.get_random_image(
-            title_list, file_types=_TOP_VIEW_IMAGE_TYPES, use_only_edited_if_possible=True
-        )
-
-    def _set_top_view_image_for_search(self) -> None:
-        self._top_view_image_info = self._random_title_images.get_random_search_image()
-
-    def _set_top_view_image_for_appendix_censorship_fixes(self) -> None:
-        self._top_view_image_info = self._random_title_images.get_random_censorship_fix_image()
-
-    def _set_top_view_image_color(self) -> None:
-        self._top_view_image_color = self._top_view_image_random_color_tint.get_random_color()
+        return self._pipeline.compute_snapshot()
 
     def set_bottom_view_fun_image(self, image_info: ImageInfo) -> None:
-        self._bottom_view_fun_image_info = image_info
-
-    def _set_next_bottom_view_fun_image(self) -> None:
-        if self._view_state in [
-            ViewStates.ON_TITLE_NODE,
-            ViewStates.ON_INDEX_MAIN_NODE,
-            ViewStates.ON_INDEX_SPEECH_NODE,
-            ViewStates.ON_INDEX_SPEECH_WORDS_NODE,
-            ViewStates.ON_INDEX_NAMES_NODE,
-            ViewStates.ON_INDEX_LOCATIONS_NODE,
-            ViewStates.ON_APPENDIX_STATISTICS_NODE,
-            ViewStates.ON_TITLE_SEARCH_NODE,
-            ViewStates.ON_TAG_SEARCH_NODE,
-            ViewStates.ON_WORD_SEARCH_NODE,
-        ]:
-            return
-
-        if (self._view_state == ViewStates.INITIAL) and self._bottom_view_fun_image_info:
-            return
-
-        self._bottom_view_fun_image_info = self._get_next_fun_view_image_info()
-        self._set_bottom_view_fun_image_color()
-        self._schedule_bottom_view_fun_image_event()
-
-        assert self._bottom_view_fun_image_info is not None
-        assert self._bottom_view_fun_image_info.filename
-
-        logger.debug(
-            f"Bottom view fun image:"
-            f" State: {self._view_state.name},"
-            f" Image: '{get_abbrev_path(self._bottom_view_fun_image_info.filename)}',"
-            f" FitMode: '{self._bottom_view_fun_image_info.fit_mode}',"
-            f" Color: {get_formatted_color(self._bottom_view_fun_image_color)},"
-            f" Opacity: {self._bottom_view_fun_image_opacity}."
-        )
+        self._pipeline.set_bottom_view_fun_image(image_info)
 
     def set_search_screen_image_for_title(self, title: Titles) -> None:
-        self._search_screen_image_info = self._random_title_images.get_search_image_for_title(title)
-
-    def _set_next_search_screen_image(self) -> None:
-        if self._view_state not in _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES:
-            return
-        self._search_screen_image_info = self._random_title_images.get_random_search_image()
-
-    def _get_next_fun_view_image_info(self) -> ImageInfo:
-        if self._view_state == ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE:
-            fanta_title_list = self._get_fanta_title_list(
-                BARKS_TAGGED_TITLES[Tags.CENSORED_STORIES_BUT_FIXED]
-            )
-            return self._random_title_images.get_random_image(
-                fanta_title_list, use_random_fit_mode=True
-            )
-
-        assert self._cached_fun_titles
-        titles, file_types = self._cached_fun_titles
-
-        return self._random_title_images.get_random_image(
-            titles,
-            file_types=file_types,
-            use_random_fit_mode=True,
-        )
-
-    def _get_fun_image_titles(self) -> tuple[list[FantaComicBookInfo], set[FileTypes]]:
-        if _DEBUG_FUN_IMAGE_TITLES:
-            return [
-                t
-                for t in self._title_lists[ALL_LISTS]
-                if t.comic_book_info.title in _DEBUG_FUN_IMAGE_TITLES
-            ], self._get_file_types_to_use()
-
-        if not self._fun_image_themes:
-            return self._title_lists[ALL_LISTS], self._get_file_types_to_use()
-
-        return self._get_themed_fun_image_titles()
-
-    def _get_themed_fun_image_titles(self) -> tuple[list[FantaComicBookInfo], set[FileTypes]]:
-        file_types = self._get_file_types_to_use()
-
-        theme_titles: set[str] = set()
-
-        assert self._fun_image_themes
-
-        for theme, year_range in {
-            ImageThemes.FORTIES: (1942, 1949),
-            ImageThemes.FIFTIES: (1950, 1959),
-            ImageThemes.SIXTIES: (1960, 1961),
-        }.items():
-            if theme in self._fun_image_themes:
-                self._update_titles(theme_titles, year_range)
-
-        if ImageThemes.CLASSICS in self._fun_image_themes:
-            theme_titles.update(
-                [BARKS_TITLES[title] for title in BARKS_TAGGED_TITLES[Tags.CLASSICS]]
-            )
-
-        for file_type in file_types:
-            theme_titles.update(
-                self._reader_settings.file_paths.get_file_type_titles(file_type, theme_titles)
-            )
-
-        return [ALL_FANTA_COMIC_BOOK_INFO[title_str] for title_str in theme_titles], file_types
-
-    def _update_titles(self, title_set: set[str], year_range: tuple[int, int]) -> None:
-        for year in range(year_range[0], year_range[1] + 1):
-            title_set.update(
-                BARKS_TITLES[info.comic_book_info.title] for info in self._title_lists[str(year)]
-            )
-
-    def _get_file_types_to_use(self) -> set[FileTypes]:
-        if self._fun_image_themes is None:
-            return ALL_TYPES
-
-        file_types_to_use = set()
-
-        for theme in self._fun_image_themes:
-            if theme not in IMAGE_THEME_TO_FILE_TYPE_MAP:
-                continue
-            file_types_to_use.add(IMAGE_THEME_TO_FILE_TYPE_MAP[theme])
-
-        if len(file_types_to_use) == 0:
-            file_types_to_use = ALL_TYPES.copy()
-            file_types_to_use.discard(FileTypes.NONTITLE)
-
-        logger.debug(f"file_types_to_use = {file_types_to_use}")
-
-        return file_types_to_use
-
-    # TODO: Rationalize image color setters - make more responsive to individual images
-    #       have fun images weighted to larger opacity and full color
-    def _set_bottom_view_fun_image_color(self) -> None:
-        self._bottom_view_fun_image_color = (
-            self._bottom_view_fun_image_random_color_tint.get_random_color()
-        )
+        self._pipeline.set_search_screen_image_for_title(title)
 
     def set_next_bottom_view_title_image(self) -> None:
-        if self._bottom_view_title_image_info.filename:
-            logger.debug(
-                f'Using provided title image file "{self._bottom_view_title_image_info.filename}".'
-            )
-        else:
-            if not self._current_bottom_view_title:
-                logger.debug("No bottom view title set. Nothing to do.")
-                return
-
-            image_file = self._random_title_images.get_random_image_for_title(
-                self._current_bottom_view_title,
-                _TITLE_VIEW_IMAGE_TYPES,
-                use_only_edited_if_possible=True,
-            )
-            logger.debug(f'Using random title image file "{image_file}".')
-            self.set_bottom_view_title_image_file(image_file)
+        self._pipeline.set_next_bottom_view_title_image()
 
     def set_bottom_view_title_image_file(self, image_file: PanelPath | None) -> None:
-        self._bottom_view_title_image_info = replace(
-            self._bottom_view_title_image_info, filename=image_file
-        )
-        self._log_bottom_view_title_state()
-
-    def _set_bottom_view_title_image_color(self) -> None:
-        self._bottom_view_title_image_color = (
-            self._bottom_view_title_image_random_color_tint.get_random_color()
-        )
-
-        self._log_bottom_view_title_state()
-
-    def _log_bottom_view_title_state(self) -> None:
-        logger.debug(
-            f"Bottom view title image:"
-            f" State: {self._view_state.name},"
-            f" Image: '{self._bottom_view_title_image_info.filename}',"
-            f" FitMode: '{self._bottom_view_title_image_info.fit_mode}',"
-            f" Color: {get_formatted_color(self._bottom_view_title_image_color)},"
-            f" Opacity: {self._bottom_view_title_opacity}."
-        )
-
-    def _schedule_top_view_event(self) -> None:
-        if self._top_view_change_event:
-            self._top_view_change_event.cancel()
-
-        self._top_view_change_event = Clock.schedule_interval(
-            lambda _dt: self._set_next_top_view_image(), self.TOP_VIEW_EVENT_TIMEOUT_SECS
-        )
-
-    def _schedule_bottom_view_fun_image_event(self) -> None:
-        if self._bottom_view_change_fun_image_event:
-            self._bottom_view_change_fun_image_event.cancel()
-
-        self._bottom_view_change_fun_image_event = Clock.schedule_interval(
-            lambda _dt: self._set_next_bottom_view_fun_image(), self.BOTTOM_VIEW_EVENT_TIMEOUT_SECS
-        )
+        self._pipeline.set_bottom_view_title_image_file(image_file)
