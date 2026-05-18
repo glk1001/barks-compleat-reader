@@ -155,6 +155,7 @@ class BarksReaderApp(App):
     def build_config(self, config: ConfigParser) -> None:
         """Set default values for the application configuration."""
         # Set default window geometry if not already present in the config file
+        logger.debug("Building application config...")
         primary_monitor = get_monitors()[0]
         default_height = round(DEFAULT_WINDOW_HEIGHT_PERCENT * primary_monitor.height)
         default_width = round(default_height / COMIC_PAGE_ASPECT_RATIO)
@@ -176,6 +177,7 @@ class BarksReaderApp(App):
     @override
     def build_settings(self, settings: Settings) -> None:
         # Register our custom widget type with the name 'longpath'
+        logger.debug("Building application settings...")
         settings.register_type(LONG_PATH_SETTING, SettingLongPath)
         settings.register_type(OPTIONS_SETTING, SettingOptionsWithValue)
         settings.register_type(ALT_ESCAPE_KEY_SETTING, SettingAltEscapeKey)

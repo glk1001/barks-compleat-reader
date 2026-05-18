@@ -1,4 +1,4 @@
-"""Production `PeriodicScheduler` adapter that wraps `kivy.clock.Clock`."""
+"""Production `Scheduler` adapter that wraps `kivy.clock.Clock`."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ class _ClockEventHandle:
 
 
 class KivyClockScheduler:
-    """A `PeriodicScheduler` that delegates to `kivy.clock.Clock.schedule_interval`.
+    """A `Scheduler` that delegates to `kivy.clock.Clock`.
 
     Kivy's clock callbacks receive a `dt: float` argument; this adapter drops it
     so the port's zero-argument callback signature is preserved.
@@ -44,3 +44,11 @@ class KivyClockScheduler:
         """
         event = Clock.schedule_interval(lambda _dt: callback(), period_secs)
         return _ClockEventHandle(event)
+
+    @staticmethod
+    def schedule_once(callback: Callable[[], None], timeout_secs: float = 0) -> None:
+        """Schedule *callback* to fire once on the UI thread after *timeout_secs*.
+
+        Worker threads use this to marshal results onto the UI thread.
+        """
+        Clock.schedule_once(lambda _dt: callback(), timeout_secs)

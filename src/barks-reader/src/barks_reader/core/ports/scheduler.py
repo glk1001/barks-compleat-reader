@@ -1,4 +1,4 @@
-"""Periodic-scheduler port — abstracts the Kivy `Clock` so `core` stays Kivy-free."""
+"""Scheduler port — abstracts the Kivy `Clock` so `core` stays Kivy-free."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 @runtime_checkable
 class CancelHandle(Protocol):
-    """Handle returned by `PeriodicScheduler.schedule_interval` to cancel a timer."""
+    """Handle returned by `Scheduler.schedule_interval` to cancel a timer."""
 
     def cancel(self) -> None:
         """Cancel the scheduled interval. Idempotent."""
@@ -18,12 +18,12 @@ class CancelHandle(Protocol):
 
 
 @runtime_checkable
-class PeriodicScheduler(Protocol):
-    """Schedule a callback to fire repeatedly on a fixed interval.
+class Scheduler(Protocol):
+    """Marshal a callback onto the UI thread (one-shot or repeating).
 
-    The production adapter wraps `kivy.clock.Clock.schedule_interval`. The test
-    adapter (`core.testing.fakes.FakeScheduler`) records intervals and exposes
-    `.advance(seconds)` to fire callbacks deterministically.
+    The production adapter wraps `kivy.clock.Clock`. Test adapters
+    (`core.testing.fakes.FakeScheduler`) record interval schedules and expose
+    `.advance(seconds)` to fire them, while one-shot schedules run inline.
     """
 
     def schedule_interval(self, callback: Callable[[], None], period_secs: float) -> CancelHandle:
@@ -35,6 +35,20 @@ class PeriodicScheduler(Protocol):
 
         Returns:
             A handle whose `.cancel()` method stops further callbacks.
+
+        """
+        ...
+
+    def schedule_once(self, callback: Callable[[], None], timeout_secs: float = 0) -> None:
+        """Schedule *callback* to fire once after *timeout_secs*.
+
+        The dominant use is `timeout_secs=0` — marshal a worker-thread result
+        onto the UI thread on the next frame. Production runs the callback on
+        the UI thread; tests run it inline on the calling thread.
+
+        Args:
+            callback: The zero-argument callable to invoke.
+            timeout_secs: Delay before invocation, in seconds.
 
         """
         ...

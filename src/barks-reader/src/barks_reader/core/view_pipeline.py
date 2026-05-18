@@ -7,7 +7,7 @@ It produces a `ViewSnapshot` describing the desired UI; an external
 `SnapshotSink` (e.g. `ui.snapshot_applicator.SnapshotApplicator`) then pushes
 that snapshot into the actual Kivy widgets.
 
-External dependencies arrive as ports (`PeriodicScheduler`, `ColorSource`) so
+External dependencies arrive as ports (`Scheduler`, `ColorSource`) so
 the pipeline can be tested end-to-end without Kivy.
 """
 
@@ -42,7 +42,7 @@ from loguru import logger
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.image_selector import FIT_MODE_COVER, ImageInfo, ImageSelector
 from barks_reader.core.navigation.view_states import ViewStates
-from barks_reader.core.ports import CancelHandle, ColorSource, PaletteId, PeriodicScheduler
+from barks_reader.core.ports import CancelHandle, ColorSource, PaletteId, Scheduler
 from barks_reader.core.reader_file_paths import ALL_TYPES, FileTypes
 from barks_reader.core.reader_formatter import get_formatted_color
 from barks_reader.core.view_snapshot import (
@@ -156,7 +156,7 @@ class ViewPipeline:
     desired UI; callers (typically `ui.view_renderer.ViewRenderer`) feed that
     into a `SnapshotSink` to actually push to widgets.
 
-    No Kivy imports here — periodic timing comes through the `PeriodicScheduler`
+    No Kivy imports here — periodic timing comes through the `Scheduler`
     port and color generation through the `ColorSource` port.
     """
 
@@ -218,7 +218,7 @@ class ViewPipeline:
         reader_settings: ReaderSettings,
         title_lists: dict[str, list[FantaComicBookInfo]],
         image_selector: ImageSelector,
-        scheduler: PeriodicScheduler,
+        scheduler: Scheduler,
         colors: ColorSource,
     ) -> None:
         self._reader_settings = reader_settings
@@ -406,6 +406,7 @@ class ViewPipeline:
         self._set_bottom_view_title_image_color()
 
     def _set_next_top_view_image(self) -> None:
+        # Dispatch table: (predicate, handler) pairs checked in order.
         dispatch: list[tuple[bool, Callable[[], None]]] = [
             (
                 self._view_state in self._SERIES_VIEW_STATES,

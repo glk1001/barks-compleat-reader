@@ -208,6 +208,11 @@ def show_standalone_popup(  # noqa: C901, PLR0915
             Clock.schedule_once(_show, 0)
         else:
             logger.warning("No Kivy app running, starting temporary UI loop for popup.")
+            # Window may be hidden (graphics.window_state=hidden is set during boot
+            # and Window.show() normally runs only after a successful build()). If an
+            # error popup is rendered into a hidden Window, the user can't dismiss
+            # it and the runTouchApp loop below hangs forever.
+            Window.show()
             Clock.schedule_once(_show, 0)
             runTouchApp()
     except Exception as e:

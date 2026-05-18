@@ -1,6 +1,6 @@
-"""In-memory adapters for the view-pipeline ports.
+"""In-memory adapters for the platform-service ports.
 
-These let tests exercise `ViewPipeline` end-to-end without Kivy, without disk
+These let tests exercise core modules end-to-end without Kivy, without disk
 I/O, and without the global `random` module's state.
 """
 
@@ -40,14 +40,18 @@ class _RecordedHandle:
 
 
 class FakeScheduler:
-    """A `PeriodicScheduler` that records intervals instead of running real timers.
+    """A `Scheduler` that records intervals and runs one-shot callbacks inline.
 
-    Tests use `advance(secs)` to deterministically fire scheduled callbacks the
-    correct number of times.
+    Tests use `advance(secs)` to deterministically fire interval callbacks the
+    correct number of times. One-shot callbacks (`schedule_once`) run inline on
+    the calling thread immediately — matching the synchronous-null behavior
+    needed by worker-thread → UI-thread bridges in `comic_book_loader` and
+    `panel_image_loader`.
     """
 
     def __init__(self) -> None:
         self._intervals: list[_ScheduledInterval] = []
+        self.scheduled_once_count: int = 0
 
     @property
     def active_intervals(self) -> list[_ScheduledInterval]:
@@ -61,6 +65,11 @@ class FakeScheduler:
         scheduled = _ScheduledInterval(callback=callback, period_secs=period_secs)
         self._intervals.append(scheduled)
         return _RecordedHandle(scheduled)
+
+    def schedule_once(self, callback: Callable[[], None], timeout_secs: float = 0) -> None:  # noqa: ARG002
+        """Run *callback* inline on the calling thread; count for assertions."""
+        self.scheduled_once_count += 1
+        callback()
 
     def advance(self, secs: float) -> None:
         """Advance virtual time by *secs* seconds, firing scheduled callbacks.
@@ -105,6 +114,26 @@ class ScriptedColorSource:
         index = self._indices.get(palette, 0)
         self._indices[palette] = index + 1
         return sequence[index % len(sequence)]
+
+
+# ----------------------------------------------------------------------
+# Cursor
+# ----------------------------------------------------------------------
+
+
+@dataclass(slots=True)
+class RecordingCursor:
+    """A `Cursor` that records every state change to a list."""
+
+    states: list[str] = field(default_factory=list)
+
+    def set_busy(self) -> None:
+        """Record a busy-cursor state change."""
+        self.states.append("busy")
+
+    def set_normal(self) -> None:
+        """Record a normal-cursor state change."""
+        self.states.append("normal")
 
 
 # ----------------------------------------------------------------------

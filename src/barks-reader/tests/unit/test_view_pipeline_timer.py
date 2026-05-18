@@ -1,4 +1,4 @@
-"""Verify `ViewPipeline`'s integration with the `PeriodicScheduler` port.
+"""Verify `ViewPipeline`'s integration with the `Scheduler` port.
 
 These tests rely on `FakeScheduler.advance(secs)` to fire the rotation timer
 deterministically — proving the pipeline can be exercised end-to-end without
