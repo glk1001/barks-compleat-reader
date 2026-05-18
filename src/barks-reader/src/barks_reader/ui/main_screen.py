@@ -14,6 +14,7 @@ from loguru import logger
 
 from barks_reader.core.comic_book_page_info import ComicLayoutBuilder
 from barks_reader.core.image_selector import ImageInfo, ImageSelector
+from barks_reader.core.navigation import NavigationModel
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.page_info_adapters import FantagraphicsPanelSegmentsAdapter
 from barks_reader.core.reader_consts_and_types import APP_TITLE
@@ -24,11 +25,12 @@ from barks_reader.core.reader_utils import (
     get_win_dimensions,
 )
 from barks_reader.core.special_overrides_handler import SpecialFantaOverrides
+from barks_reader.core.view_pipeline import ViewPipeline
 
 from .about_box import show_about_box
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
+from .adapters import KivyClockScheduler, TintColorSource
 from .app_initializer import AppInitializer
-from .background_views import BackgroundViews
 from .comic_reader_manager import ComicReaderManager
 from .json_settings_manager import SettingsManager
 from .last_read_page_tracker import LastReadPageTracker
@@ -47,7 +49,7 @@ from .settings_keyboard_nav import SettingsKeyboardNav
 from .snapshot_applicator import SnapshotApplicator
 from .tree_view_manager import TreeViewManager
 from .user_error_handler import UserErrorHandler
-from .view_state_manager import ImageThemesChange, ImageThemesToUse, ViewStateManager
+from .view_renderer import ImageThemesChange, ImageThemesToUse, ViewRenderer
 
 if TYPE_CHECKING:
     from barks_fantagraphics.comics_database import ComicsDatabase
@@ -146,26 +148,29 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             update_fonts=self.update_fonts,
         )
 
-        background_views = BackgroundViews(
-            self._reader_settings,
-            self._title_lists,
-            self._random_title_images,
+        pipeline = ViewPipeline(
+            reader_settings=self._reader_settings,
+            title_lists=self._title_lists,
+            image_selector=self._random_title_images,
+            scheduler=KivyClockScheduler(),
+            colors=TintColorSource(),
         )
 
         applicator = SnapshotApplicator(screens)
 
-        self._view_state_manager = ViewStateManager(
-            self._reader_settings,
-            background_views,
-            screens,
-            applicator,
-            self._on_view_state_changed,
+        self._renderer = ViewRenderer(
+            reader_settings=self._reader_settings,
+            pipeline=pipeline,
+            applicator=applicator,
+            screens=screens,
+            nav_model=NavigationModel(),
+            on_view_state_changed=self._on_view_state_changed,
         )
 
         self._nav_coord = NavigationCoordinator(
             reader_settings=self._reader_settings,
             comics_database=self._comics_database,
-            view_state_manager=self._view_state_manager,
+            renderer=self._renderer,
             comic_reader_manager=self._comic_reader_manager,
             bottom_title_view_screen=self._bottom_title_view_screen,
             tree_view_screen=self._tree_view_screen,
@@ -176,7 +181,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         )
 
         self._tree_view_manager = TreeViewManager(
-            self._view_state_manager,
+            self._renderer,
             screens,
             self._nav_coord,
             sys_file_paths=self._reader_settings.sys_file_paths,
@@ -191,7 +196,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             user_error_handler,
             self._comic_reader_manager,
             self._json_settings_manager,
-            self._view_state_manager,
+            self._renderer,
             self._tree_view_manager,
             self._tree_view_screen,
         )
@@ -272,7 +277,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self.menu_dots_dropdown.bind(on_select=self.on_action_bar_menu_dots_selected)
         self.menu_dots_dropdown.bind(on_dismiss=self._on_menu_dropdown_dismissed)
 
-        self._view_state_manager.set_view_state(ViewStates.PRE_INIT)
+        self._renderer.render_state(ViewStates.PRE_INIT)
 
         self._bind_screen_callbacks()
 
@@ -290,7 +295,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._search_screen.on_goto_title_with_page = self._nav_coord.navigate_to_title_with_page
         self._search_screen.on_goto_background_title_func = self._nav_coord.navigate_to_chrono_title
         self._search_screen.on_search_results_title_changed = (
-            self._view_state_manager.update_search_background
+            self._renderer.update_search_background
         )
 
         self._bottom_title_view_screen.set_special_fanta_overrides(self._special_fanta_overrides)
@@ -441,7 +446,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
     def on_action_bar_change_view_images(self) -> None:
         self.app_icon_filepath = str(self._random_title_images.get_random_reader_app_icon_file())
-        self._view_state_manager.change_background_views()
+        self._renderer.refresh()
 
     def on_action_bar_menu_dots_selected(self, _instance: Widget, value: str) -> None:
         if value == "settings":
@@ -483,12 +488,10 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self.app_title = get_action_bar_title(self._font_manager, APP_TITLE)
 
     def _on_goto_top_view_title(self) -> None:
-        self._nav_coord.navigate_to_chrono_title(self._view_state_manager.get_top_view_image_info())
+        self._nav_coord.navigate_to_chrono_title(self._renderer.get_top_view_image_info())
 
     def _on_goto_fun_view_title(self) -> None:
-        self._nav_coord.navigate_to_chrono_title(
-            self._view_state_manager.get_bottom_view_fun_image_info()
-        )
+        self._nav_coord.navigate_to_chrono_title(self._renderer.get_bottom_view_fun_image_info())
 
     def goto_reader_icon_title(self) -> None:
         logger.debug(f'App reader icon "{self.app_icon_filepath}" pressed.')
@@ -509,19 +512,19 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._nav_coord.on_document_closed()
 
     def on_checkbox_all_image_types_changed(self, _instance: Widget, use_all_images: bool) -> None:
-        self._view_state_manager.bottom_view_fun_image_themes_changed(
+        self._renderer.bottom_view_fun_image_themes_changed(
             ImageThemesToUse.ALL if use_all_images else ImageThemesToUse.CUSTOM,
         )
 
     def on_checkbox_custom_image_types_changed(
         self, _instance: Widget, use_custom_images: bool
     ) -> None:
-        self._view_state_manager.bottom_view_fun_image_themes_changed(
+        self._renderer.bottom_view_fun_image_themes_changed(
             ImageThemesToUse.ALL if not use_custom_images else ImageThemesToUse.CUSTOM,
         )
 
     def on_checkbox_row_changed(self, checkbox_row: Factory.CheckBoxRow) -> None:
-        self._view_state_manager.bottom_view_alter_fun_image_themes(
+        self._renderer.bottom_view_alter_fun_image_themes(
             checkbox_row.theme_enum,
             ImageThemesChange.ADD if checkbox_row.active else ImageThemesChange.DISCARD,
         )

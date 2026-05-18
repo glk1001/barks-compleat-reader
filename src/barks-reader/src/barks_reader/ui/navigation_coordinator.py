@@ -47,7 +47,7 @@ if TYPE_CHECKING:
     from .tree_view_nodes import BaseTreeViewNode, ButtonTreeViewNode
     from .tree_view_screen import TreeViewScreen
     from .user_error_handler import UserErrorHandler
-    from .view_state_manager import ViewStateManager
+    from .view_renderer import ViewRenderer
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,7 +76,7 @@ class NavigationCoordinator:
         self,
         reader_settings: ReaderSettings,
         comics_database: ComicsDatabase,
-        view_state_manager: ViewStateManager,
+        renderer: ViewRenderer,
         comic_reader_manager: ComicReaderManager,
         bottom_title_view_screen: BottomTitleViewScreen,
         tree_view_screen: TreeViewScreen,
@@ -87,7 +87,7 @@ class NavigationCoordinator:
     ) -> None:
         self._reader_settings = reader_settings
         self._comics_database = comics_database
-        self._view_state_manager = view_state_manager
+        self._renderer = renderer
         self._comic_reader_manager = comic_reader_manager
         self._bottom_title_view_screen = bottom_title_view_screen
         self._tree_view_screen = tree_view_screen
@@ -124,7 +124,7 @@ class NavigationCoordinator:
     def select_title(self, target: TitleTarget, *, preserve_top_view: bool = False) -> None:
         """Handle 'user picked a title from the tree view'.
 
-        Sets the title on ViewStateManager, updates view state to ON_TITLE_NODE,
+        Sets the title on the view renderer, transitions to ON_TITLE_NODE,
         configures goto-page checkbox, and handles tag-page navigation if a tag
         is provided.
 
@@ -132,10 +132,13 @@ class NavigationCoordinator:
         (used when a single-child node is auto-selected on expand).
         """
         self._current_fanta_info = target.fanta_info
-        self._set_title(target.title_image_file)
-        self._view_state_manager.update_view_for_node_with_title(
-            ViewStates.ON_TITLE_NODE, preserve_top_view=preserve_top_view
+        self._renderer.render_title(
+            target.fanta_info,
+            title_image_file=target.title_image_file,
+            preserve_top_view=preserve_top_view,
         )
+        self._set_goto_page_checkbox()
+        self._set_use_overrides_checkbox()
 
         if target.tag is not None:
             assert self._current_fanta_info is not None
@@ -302,7 +305,7 @@ class NavigationCoordinator:
     def on_comic_closed(self) -> None:
         """Handle return from comic reader. Restores view state, saves last-read page."""
         if self._read_comic_view_state is not None:
-            self._view_state_manager.update_view_for_node(self._read_comic_view_state)
+            self._renderer.render_state(self._read_comic_view_state)
             self._read_comic_view_state = None
 
         if not self._current_fanta_info:
@@ -314,7 +317,7 @@ class NavigationCoordinator:
     def on_document_closed(self) -> None:
         """Handle return from document reader. Restores view state."""
         if self._doc_reader_close_view_state is not None:
-            self._view_state_manager.update_view_for_node(self._doc_reader_close_view_state)
+            self._renderer.render_state(self._doc_reader_close_view_state)
             self._doc_reader_close_view_state = None
 
     # === Internal helpers ===
@@ -326,15 +329,14 @@ class NavigationCoordinator:
     ) -> None:
         self._current_fanta_info = new_fanta_info
         assert self._current_fanta_info is not None
-        self._set_title(title_image_file)
-        self._view_state_manager.set_view_state(
-            ViewStates.ON_TITLE_NODE,
-            title_str=self._current_fanta_info.comic_book_info.get_title_str(),
-        )
+        self._renderer.render_title(new_fanta_info, title_image_file=title_image_file)
+        self._set_goto_page_checkbox()
+        self._set_use_overrides_checkbox()
 
     def _set_title(self, title_image_file: PanelPath | None = None) -> None:
+        """Configure the title view without triggering a view-state transition."""
         assert self._current_fanta_info is not None
-        self._view_state_manager.set_title(self._current_fanta_info, title_image_file)
+        self._renderer.set_title_without_render(self._current_fanta_info, title_image_file)
         self._set_goto_page_checkbox()
         self._set_use_overrides_checkbox()
 

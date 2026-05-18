@@ -22,7 +22,7 @@ def mock_dependencies() -> dict[str, MagicMock]:
         "user_error_handler": MagicMock(),
         "comic_reader_manager": MagicMock(),
         "json_settings_manager": MagicMock(),
-        "view_state_manager": MagicMock(),
+        "renderer": MagicMock(),
         "tree_view_manager": MagicMock(),
         "tree_view_screen": MagicMock(),
     }
@@ -77,9 +77,7 @@ class TestAppInitializer:
             assert app_initializer._fanta_volumes_state == _FantaVolumesState.VOLUMES_NOT_NEEDED
 
             # Check view state set to INITIAL
-            mock_dependencies["view_state_manager"].set_view_state.assert_called_with(
-                ViewStates.INITIAL
-            )
+            mock_dependencies["renderer"].render_state.assert_called_with(ViewStates.INITIAL)
 
             # Check init called
             mock_init_data.assert_called_once()

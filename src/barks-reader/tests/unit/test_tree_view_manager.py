@@ -57,7 +57,7 @@ def mock_dependencies(mock_screens: ScreenBundle) -> dict[str, Any]:
     nav_coordinator = MagicMock()
     nav_coordinator.update_title.return_value = True
     return {
-        "view_state_manager": MagicMock(),
+        "renderer": MagicMock(),
         "screens": mock_screens,
         "nav_coordinator": nav_coordinator,
     }
@@ -121,9 +121,7 @@ class TestTreeViewManager:
 
         tree_view_manager.setup_and_select_node(node)
 
-        mock_dependencies["view_state_manager"].set_view_state.assert_called_with(
-            ViewStates.ON_INTRO_NODE
-        )
+        mock_dependencies["renderer"].render.assert_called_with(IntroDestination())
 
     def test_deselect_and_close_open_nodes(
         self,
@@ -135,9 +133,7 @@ class TestTreeViewManager:
 
         tree_view_manager.deselect_and_close_open_nodes()
 
-        mock_dependencies["view_state_manager"].set_view_state.assert_called_with(
-            ViewStates.INITIAL
-        )
+        mock_dependencies["renderer"].render_state.assert_called_with(ViewStates.INITIAL)
 
     def test_go_back_to_previous_node(
         self,
@@ -169,9 +165,7 @@ class TestTreeViewManager:
 
         tree_view_manager.on_node_collapsed(MagicMock(), node)
 
-        mock_dependencies["view_state_manager"].set_view_state.assert_called_with(
-            ViewStates.ON_INTRO_NODE
-        )
+        mock_dependencies["renderer"].render.assert_called_with(IntroDestination())
 
     def test_on_node_expanded(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
@@ -189,9 +183,7 @@ class TestTreeViewManager:
 
             mock_pin.assert_called_with(node, run_populate=True)
             assert node.populated is True
-            mock_dependencies["view_state_manager"].set_view_state.assert_called_with(
-                ViewStates.ON_INTRO_NODE
-            )
+            mock_dependencies["renderer"].render.assert_called_with(IntroDestination())
 
     def test_close_siblings(
         self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]

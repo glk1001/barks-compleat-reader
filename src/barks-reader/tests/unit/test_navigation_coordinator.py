@@ -18,7 +18,7 @@ def mock_deps() -> dict[str, MagicMock]:
     return {
         "reader_settings": MagicMock(),
         "comics_database": MagicMock(),
-        "view_state_manager": MagicMock(),
+        "renderer": MagicMock(),
         "comic_reader_manager": MagicMock(),
         "bottom_title_view_screen": MagicMock(),
         "tree_view_screen": MagicMock(),
@@ -47,8 +47,8 @@ class TestNavigationCoordinator:
         nav_coord.select_title(target)
 
         assert nav_coord.current_fanta_info == mock_fanta_info
-        mock_deps["view_state_manager"].update_view_for_node_with_title.assert_called_with(
-            ViewStates.ON_TITLE_NODE, preserve_top_view=False
+        mock_deps["renderer"].render_title.assert_called_with(
+            mock_fanta_info, title_image_file=None, preserve_top_view=False
         )
 
     def test_navigate_to_chrono_title(
@@ -79,8 +79,8 @@ class TestNavigationCoordinator:
             nav_coord.navigate_to_chrono_title(image_info)
 
             assert nav_coord.current_fanta_info == mock_fanta_info
-            mock_deps["view_state_manager"].set_view_state.assert_called_with(
-                ViewStates.ON_TITLE_NODE, title_str="Title Str"
+            mock_deps["renderer"].render_title.assert_called_with(
+                mock_fanta_info, title_image_file=image_info.filename
             )
 
     def test_navigate_to_chrono_title_preserves_back_node(
@@ -149,9 +149,7 @@ class TestNavigationCoordinator:
 
         nav_coord.on_comic_closed()
 
-        mock_deps["view_state_manager"].update_view_for_node.assert_called_with(
-            ViewStates.ON_INDEX_NODE
-        )
+        mock_deps["renderer"].render_state.assert_called_with(ViewStates.ON_INDEX_NODE)
         assert nav_coord._read_comic_view_state is None
 
     def test_on_document_closed_restores_view_state(
@@ -161,7 +159,5 @@ class TestNavigationCoordinator:
 
         nav_coord.on_document_closed()
 
-        mock_deps["view_state_manager"].update_view_for_node.assert_called_with(
-            ViewStates.ON_INTRO_NODE
-        )
+        mock_deps["renderer"].render_state.assert_called_with(ViewStates.ON_INTRO_NODE)
         assert nav_coord._doc_reader_close_view_state is None

@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from .navigation_coordinator import NavigationCoordinator
     from .screen_bundle import ScreenBundle
     from .tree_view_nodes import ReaderTreeView
-    from .view_state_manager import ViewStateManager
+    from .view_renderer import ViewRenderer
 
 
 class TreeViewManager:
@@ -46,13 +46,13 @@ class TreeViewManager:
 
     def __init__(
         self,
-        view_state_manager: ViewStateManager,
+        renderer: ViewRenderer,
         screens: ScreenBundle,
         nav_coordinator: NavigationCoordinator,
         sys_file_paths: SystemFilePaths | None = None,
         nav_model: NavigationModel | None = None,
     ) -> None:
-        self._view_state_manager = view_state_manager
+        self._renderer = renderer
         self._tree_view_screen = screens.tree_view
         self._main_index_screen = screens.main_index
         self._speech_index_screen = screens.speech_index
@@ -113,8 +113,7 @@ class TreeViewManager:
         if node.saved_state.get("open", True):
             node.trigger_action()
         elif node.destination is not None:
-            saved_view_state, _ = self._nav_model.view_state_for(node.destination)
-            self._view_state_manager.set_view_state(saved_view_state)
+            self._renderer.render(node.destination)
 
     def deselect_and_close_open_nodes(self, *, from_collapse_all: bool = False) -> None:
         # noinspection PyArgumentList
@@ -122,7 +121,7 @@ class TreeViewManager:
             num_opened_nodes = self._tree_view_screen.deselect_and_close_open_nodes()
 
         if num_opened_nodes > 0:
-            self._view_state_manager.set_view_state(ViewStates.INITIAL)
+            self._renderer.render_state(ViewStates.INITIAL)
 
         if from_collapse_all:
             self._collapse_overlay.clear_tracking()
@@ -194,8 +193,7 @@ class TreeViewManager:
         if node.destination is None:
             msg = f"Node has no destination: '{node.get_name()}' ({type(node)})"
             raise RuntimeError(msg)
-        new_view_state, view_state_params = self._nav_model.view_state_for(node.destination)
-        self._view_state_manager.set_view_state(new_view_state, **view_state_params)
+        self._renderer.render(node.destination)
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
         logger.info(f"Node expanded: '{node.get_name()}'.")
@@ -439,14 +437,14 @@ class TreeViewManager:
 
     def on_main_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
         logger.info("Main index node pressed.")
-        self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_MAIN_NODE)
+        self._renderer.render_state(ViewStates.ON_INDEX_MAIN_NODE)
 
     def on_speech_index_node_created(self, speech_index_node: MainTreeViewNode) -> None:
         self._speech_index_screen.treeview_index_node = speech_index_node
 
     def on_speech_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
         logger.info("Speech index node pressed.")
-        self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_SPEECH_NODE)
+        self._renderer.render_state(ViewStates.ON_INDEX_SPEECH_NODE)
         # Auto-select the Words child node in the tree view to match the default bottom view.
         if self._speech_words_node is not None:
             self._tree_view_screen.select_node(self._speech_words_node)
@@ -462,7 +460,7 @@ class TreeViewManager:
     def on_speech_words_node_pressed(self, _node: ButtonTreeViewNode) -> None:
         logger.info("Speech Words node pressed.")
         self.disallow_view_state_change()
-        self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_SPEECH_WORDS_NODE)
+        self._renderer.render_state(ViewStates.ON_INDEX_SPEECH_WORDS_NODE)
         Clock.schedule_once(lambda _dt: self.allow_view_state_change(), 0)
 
     def on_names_index_node_created(self, names_index_node: MainTreeViewNode) -> None:
@@ -470,14 +468,14 @@ class TreeViewManager:
 
     def on_names_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
         logger.info("Names index node pressed.")
-        self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_NAMES_NODE)
+        self._renderer.render_state(ViewStates.ON_INDEX_NAMES_NODE)
 
     def on_locations_index_node_created(self, locations_index_node: MainTreeViewNode) -> None:
         self._locations_index_screen.treeview_index_node = locations_index_node
 
     def on_locations_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
         logger.info("Locations index node pressed.")
-        self._view_state_manager.update_view_for_node(ViewStates.ON_INDEX_LOCATIONS_NODE)
+        self._renderer.render_state(ViewStates.ON_INDEX_LOCATIONS_NODE)
 
     def on_statistics_node_created(self, node: ButtonTreeViewNode) -> None:
         """Handle creation of the Statistics tree node."""
@@ -490,7 +488,7 @@ class TreeViewManager:
     def on_statistics_node_pressed(self, _node: ButtonTreeViewNode) -> None:
         """Handle a press on the Statistics tree node."""
         logger.info("Statistics node pressed.")
-        self._view_state_manager.update_view_for_node(ViewStates.ON_APPENDIX_STATISTICS_NODE)
+        self._renderer.render_state(ViewStates.ON_APPENDIX_STATISTICS_NODE)
 
     def on_search_node_created(self, node: MainTreeViewNode) -> None:
         """Handle creation of the Search tree node."""
@@ -502,12 +500,12 @@ class TreeViewManager:
 
     def on_title_search_node_pressed(self, _node: ButtonTreeViewNode) -> None:
         logger.info("Title Search node pressed.")
-        self._view_state_manager.update_view_for_node(ViewStates.ON_TITLE_SEARCH_NODE)
+        self._renderer.render_state(ViewStates.ON_TITLE_SEARCH_NODE)
 
     def on_tag_search_node_pressed(self, _node: ButtonTreeViewNode) -> None:
         logger.info("Tag Search node pressed.")
-        self._view_state_manager.update_view_for_node(ViewStates.ON_TAG_SEARCH_NODE)
+        self._renderer.render_state(ViewStates.ON_TAG_SEARCH_NODE)
 
     def on_word_search_node_pressed(self, _node: ButtonTreeViewNode) -> None:
         logger.info("Word Search node pressed.")
-        self._view_state_manager.update_view_for_node(ViewStates.ON_WORD_SEARCH_NODE)
+        self._renderer.render_state(ViewStates.ON_WORD_SEARCH_NODE)

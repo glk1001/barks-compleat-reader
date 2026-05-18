@@ -68,7 +68,7 @@ def tvm_deps(mock_screens: ScreenBundle) -> dict[str, Any]:
     nav_coordinator = MagicMock()
     nav_coordinator.update_title.return_value = True
     return {
-        "view_state_manager": MagicMock(),
+        "renderer": MagicMock(),
         "screens": mock_screens,
         "nav_coordinator": nav_coordinator,
     }
@@ -243,7 +243,7 @@ def nav_coord_deps() -> dict[str, MagicMock]:
     return {
         "reader_settings": MagicMock(),
         "comics_database": MagicMock(),
-        "view_state_manager": MagicMock(),
+        "renderer": MagicMock(),
         "comic_reader_manager": MagicMock(),
         "bottom_title_view_screen": MagicMock(),
         "tree_view_screen": MagicMock(),
@@ -316,16 +316,14 @@ def test_select_title_with_tag_sets_goto_page_checkbox(
     nav_coord: NavigationCoordinator, nav_coord_deps: dict[str, MagicMock]
 ) -> None:
     """Pins the tag -> goto-page side effect in select_title."""
-    from barks_reader.core.navigation.view_states import ViewStates  # noqa: PLC0415
-
     fanta = MagicMock()
     fanta.comic_book_info.get_title_str.return_value = "T"
     target = TitleTarget(fanta_info=fanta, tag=TagGroups.AFRICA)
 
     nav_coord.select_title(target)
 
-    nav_coord_deps["view_state_manager"].update_view_for_node_with_title.assert_called_with(
-        ViewStates.ON_TITLE_NODE, preserve_top_view=False
+    nav_coord_deps["renderer"].render_title.assert_called_with(
+        fanta, title_image_file=None, preserve_top_view=False
     )
     # A TagGroups tag (not Tags) short-circuits the per-page branch — just verify
     # no crash and view state was set. The Tags-type branch is covered elsewhere.

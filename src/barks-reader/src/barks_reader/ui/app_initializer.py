@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from .tree_view_manager import TreeViewManager
     from .tree_view_screen import TreeViewScreen
     from .user_error_handler import UserErrorHandler
-    from .view_state_manager import ViewStateManager
+    from .view_renderer import ViewRenderer
 
 
 class _FantaVolumesState(Enum):
@@ -80,7 +80,7 @@ class AppInitializer:
         user_error_handler: UserErrorHandler,
         comic_reader_manager: ComicReaderManager,
         json_settings_manager: SettingsManager,
-        view_state_manager: ViewStateManager,
+        renderer: ViewRenderer,
         tree_view_manager: TreeViewManager,
         tree_view_screen: TreeViewScreen,
     ) -> None:
@@ -90,7 +90,7 @@ class AppInitializer:
         self._json_settings_manager = json_settings_manager
         self._tree_view_screen = tree_view_screen
         self._tree_view_manager = tree_view_manager
-        self._view_state_manager = view_state_manager
+        self._renderer = renderer
 
         self._fanta_volumes_state: _FantaVolumesState = _FantaVolumesState.VOLUMES_NOT_SET
         self._fanta_volumes_error_info: ErrorInfo | None = None
@@ -118,7 +118,7 @@ class AppInitializer:
             self._set_post_build_fanta_volumes_state()
             logger.debug(f"_fanta_volumes_state = {self._fanta_volumes_state}.")
 
-            self._view_state_manager.set_view_state(ViewStates.INITIAL)
+            self._renderer.render_state(ViewStates.INITIAL)
 
             if (self._fanta_volumes_state in _READY_FANTA_VOLUMES_STATE) and (
                 not self._init_comic_book_data()

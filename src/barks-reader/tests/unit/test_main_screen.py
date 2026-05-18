@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import ExitStack
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
@@ -69,33 +70,39 @@ def main_screen(
         mock_screen_init.side_effect = side_effect
 
         # Patch other internal initializations
-        with (
-            patch.object(barks_reader.ui.main_screen, "WindowManager"),
-            patch.object(barks_reader.ui.main_screen, "ImageSelector"),
-            patch.object(barks_reader.ui.main_screen, "ReaderFilePathsResolver"),
-            patch.object(barks_reader.ui.main_screen, "SettingsManager"),
-            patch.object(barks_reader.ui.main_screen, "SpecialFantaOverrides"),
-            patch.object(barks_reader.ui.main_screen, "UserErrorHandler"),
-            patch.object(barks_reader.ui.main_screen, "ComicReaderManager"),
-            patch.object(barks_reader.ui.main_screen, "BackgroundViews"),
-            patch.object(barks_reader.ui.main_screen, "ViewStateManager"),
-            patch.object(barks_reader.ui.main_screen, "TreeViewManager"),
-            patch.object(barks_reader.ui.main_screen, "NavigationCoordinator"),
-            patch.object(barks_reader.ui.main_screen, "MainScreenNavigation"),
-            patch.object(barks_reader.ui.main_screen, "MainScreenWindowHelper"),
-            patch.object(barks_reader.ui.main_screen, "AppInitializer"),
-            patch.object(barks_reader.ui.main_screen, "Factory"),
-            patch.object(barks_reader.ui.main_screen, "Screen"),
-        ):
+        patched_attrs = [
+            "WindowManager",
+            "ImageSelector",
+            "ReaderFilePathsResolver",
+            "SettingsManager",
+            "SpecialFantaOverrides",
+            "UserErrorHandler",
+            "ComicReaderManager",
+            "ViewPipeline",
+            "ViewRenderer",
+            "SnapshotApplicator",
+            "KivyClockScheduler",
+            "TintColorSource",
+            "NavigationModel",
+            "TreeViewManager",
+            "NavigationCoordinator",
+            "MainScreenNavigation",
+            "MainScreenWindowHelper",
+            "AppInitializer",
+            "Factory",
+            "Screen",
+        ]
+        with ExitStack() as stack:
+            for attr in patched_attrs:
+                stack.enter_context(patch.object(barks_reader.ui.main_screen, attr))
             screen = MainScreen(**mock_dependencies)
-
             yield screen
 
 
 class TestMainScreen:
     def test_init(self, main_screen: MainScreen) -> None:
         assert main_screen._active is True
-        assert main_screen._view_state_manager is not None
+        assert main_screen._renderer is not None
 
     def test_on_action_bar_go_back(self, main_screen: MainScreen) -> None:
         with patch.object(barks_reader.ui.main_screen.Clock, "schedule_once") as mock_schedule:
@@ -114,7 +121,7 @@ class TestMainScreen:
         main_screen.on_action_bar_change_view_images()
 
         assert main_screen.app_icon_filepath == "icon.png"
-        main_screen._view_state_manager.change_background_views.assert_called_once()
+        main_screen._renderer.refresh.assert_called_once()
 
     def test_on_view_state_changed(self, main_screen: MainScreen) -> None:
         # Initial state -> disabled
