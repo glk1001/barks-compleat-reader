@@ -34,7 +34,6 @@ from .fantagraphics_volumes import (
     MissingVolumeError,
 )
 from .reader_utils import PNG_EXT_FOR_KIVY
-from .services import schedule_once, set_busy_cursor, set_normal_cursor
 
 if TYPE_CHECKING:
     import io
@@ -43,6 +42,7 @@ if TYPE_CHECKING:
     from .comic_book_page_info import PageInfo
     from .fantagraphics_volumes import FantagraphicsArchive
     from .page_image_source import PageImageSource
+    from .ports import Cursor, Scheduler
     from .reader_settings import ReaderSettings
 
 ALL_FANTA_VOLUMES = list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1))
@@ -64,12 +64,17 @@ class ComicBookLoader:
         on_load_error: Callable[[bool], None],
         max_window_width: int,
         max_window_height: int,
+        *,
+        scheduler: Scheduler,
+        cursor: Cursor,
     ) -> None:
         self._reader_settings = reader_settings
         self._sys_file_paths = self._reader_settings.sys_file_paths
         self._fanta_volume_archives: FantagraphicsVolumeArchives | None = None
         self._max_window_width = max_window_width
         self._max_window_height = max_window_height
+        self._scheduler = scheduler
+        self._cursor = cursor
 
         self._image_loaded_events: list[threading.Event] = []
         self._image_load_order: list[str] = []
@@ -287,7 +292,7 @@ class ComicBookLoader:
                 logger.error("Image loading thread did not terminate in time.")
 
         self._thread = None
-        set_normal_cursor()
+        self._cursor.set_normal()
 
     # ------------------------------------------------------------------
     # Internals
@@ -333,7 +338,7 @@ class ComicBookLoader:
 
         load_error = False
         load_warning_only = False
-        set_busy_cursor()
+        self._cursor.set_busy()
 
         try:
             self._images = [None for _i in range(len(self._page_map))]
@@ -357,7 +362,7 @@ class ComicBookLoader:
                 assert all(ev.is_set() for ev in self._image_loaded_events)
                 logger.info(f'Loaded {num_loaded} images from "{self._current_comic_desc}".')
 
-                schedule_once(lambda _dt: self._on_all_images_loaded(), 0)
+                self._scheduler.schedule_once(self._on_all_images_loaded)
 
             except FileNotFoundError:
                 logger.exception(f'Comic file not found: "{self._current_comic_desc}".')
@@ -391,7 +396,7 @@ class ComicBookLoader:
                 load_error = True
 
         finally:
-            set_normal_cursor()
+            self._cursor.set_normal()
             if load_error:
                 self._close_and_report_load_error(load_warning_only)
 
@@ -516,7 +521,7 @@ class ComicBookLoader:
                                 f"First page index to display, {page_index}, was loaded "
                                 f"after {timing.get_elapsed_time_with_unit()}."
                             )
-                            schedule_once(lambda _dt: self._on_first_image_loaded(), 0)
+                            self._scheduler.schedule_once(self._on_first_image_loaded)
 
                         # Refill window if possible.
                         if not self._stop:
@@ -545,4 +550,4 @@ class ComicBookLoader:
     def _close_and_report_load_error(self, load_warning_only: bool) -> None:
         self._stop = True
         self.close_comic()
-        schedule_once(lambda _dt: self._on_load_error(load_warning_only), 0)
+        self._scheduler.schedule_once(lambda: self._on_load_error(load_warning_only))

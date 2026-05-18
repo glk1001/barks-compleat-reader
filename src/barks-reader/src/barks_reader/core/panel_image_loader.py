@@ -1,12 +1,19 @@
-from collections.abc import Callable
-from threading import Thread
+from __future__ import annotations
 
-from comic_utils.comic_consts import PanelPath
+from threading import Thread
+from typing import TYPE_CHECKING
+
 from loguru import logger
 from PIL import Image
 
 from .image_pipeline import convert_mode, load_pil
-from .services import schedule_once
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from comic_utils.comic_consts import PanelPath
+
+    from .ports import Scheduler
 
 type ImageLoaderCallback = Callable[[Image.Image | None, Exception | None], None]
 
@@ -23,14 +30,17 @@ class PanelImageLoader:
     Texture upload always happens on the UI thread (required by Kivy).
     """
 
-    def __init__(self) -> None:
+    def __init__(self, scheduler: Scheduler) -> None:
+        self._scheduler = scheduler
         self._cancel = False
         self._current_thread: Thread | None = None
 
     def cancel(self) -> None:
+        """Cancel the current load if one is in flight."""
         self._cancel = True
 
     def load_pil(self, panel_path: PanelPath, callback: ImageLoaderCallback) -> None:
+        """Schedule *panel_path* to be decoded; *callback* fires on the UI thread."""
         self._start_worker(panel_path, callback=callback)
 
     def _start_worker(self, panel_path: PanelPath, callback: ImageLoaderCallback) -> None:
@@ -64,7 +74,7 @@ class PanelImageLoader:
         except Exception as e:  # noqa: BLE001
             logger.exception(f'Error loading image "{panel_path}":')
             ex = e
-            schedule_once(lambda _dt: callback(None, ex), 0)
+            self._scheduler.schedule_once(lambda: callback(None, ex))
             return
 
-        schedule_once(lambda _dt: callback(pil, None), 0)
+        self._scheduler.schedule_once(lambda: callback(pil, None))

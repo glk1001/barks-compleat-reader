@@ -18,7 +18,7 @@ from barks_reader.core.comic_book_loader_platform_settings import (
     get_prefetch_tuning,
 )
 from barks_reader.core.fantagraphics_volumes import FantagraphicsVolumeArchives
-from barks_reader.core.services import schedule_once, set_busy_cursor, set_normal_cursor
+from barks_reader.core.testing import FakeScheduler, RecordingCursor
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -95,15 +95,15 @@ def mock_callbacks() -> dict[str, MagicMock]:
 
 
 @pytest.fixture
-def mock_services() -> Generator[tuple[MagicMock, MagicMock, MagicMock]]:
-    """Patches global services like schedule_once and cursor changes."""
-    with (
-        patch.object(loader_module, schedule_once.__name__) as mock_schedule,
-        patch.object(loader_module, set_busy_cursor.__name__) as mock_busy,
-        patch.object(loader_module, set_normal_cursor.__name__) as mock_normal,
-    ):
-        mock_schedule.side_effect = lambda func, dt: func(dt)
-        yield mock_schedule, mock_busy, mock_normal
+def fake_scheduler() -> FakeScheduler:
+    """Inline scheduler — `schedule_once` callbacks run on the calling thread."""
+    return FakeScheduler()
+
+
+@pytest.fixture
+def recording_cursor() -> RecordingCursor:
+    """Capture every busy/normal cursor transition for assertions."""
+    return RecordingCursor()
 
 
 @pytest.fixture
@@ -121,7 +121,8 @@ def mock_tuning() -> Generator[None]:
 def loader(
     mock_reader_settings: MagicMock,
     mock_callbacks: dict[str, MagicMock],
-    mock_services: tuple[MagicMock, MagicMock, MagicMock],  # noqa: ARG001
+    fake_scheduler: FakeScheduler,
+    recording_cursor: RecordingCursor,
     mock_tuning: None,  # noqa: ARG001
 ) -> Generator[ComicBookLoader]:
     """Create a ComicBookLoader instance with mocked dependencies."""
@@ -134,6 +135,8 @@ def loader(
             on_load_error=mock_callbacks["on_load_error"],
             max_window_width=800,
             max_window_height=600,
+            scheduler=fake_scheduler,
+            cursor=recording_cursor,
         )
         yield loader_instance
         loader_instance.stop_now()

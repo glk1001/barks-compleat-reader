@@ -6,6 +6,8 @@ from PIL import Image
 
 from barks_reader.core.panel_image_loader import PanelImageLoader
 
+from .adapters import KivyClockScheduler
+
 type TextureLoaderCallback = Callable[[Texture | None, Exception | None], None]
 
 
@@ -22,7 +24,9 @@ class PanelTextureLoader:
     """
 
     def __init__(self, pil_loader: PanelImageLoader | None = None) -> None:
-        self._pil_loader = pil_loader if pil_loader is not None else PanelImageLoader()
+        self._pil_loader = (
+            pil_loader if pil_loader is not None else PanelImageLoader(KivyClockScheduler())
+        )
 
     def cancel(self) -> None:
         self._pil_loader.cancel()

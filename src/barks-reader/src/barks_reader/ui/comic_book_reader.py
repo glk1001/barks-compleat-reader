@@ -38,6 +38,7 @@ from .action_bar_helpers import (
     is_action_bar_visible,
     set_action_bar_visibility,
 )
+from .adapters import KivyClockScheduler, KivyCursor
 from .platform_window_utils import WindowManager
 from .reader_keyboard_nav import (
     KEY_LEFT,
@@ -303,6 +304,8 @@ class ComicBookReader(FloatLayout):
             self._load_error,
             self.MAX_WINDOW_WIDTH,
             self.MAX_WINDOW_HEIGHT,
+            scheduler=KivyClockScheduler(),
+            cursor=KivyCursor(),
         )
 
         self._all_loaded = False

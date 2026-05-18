@@ -192,7 +192,7 @@ class TestReaderFormatterClass:
             == "Title[sup]*[/sup]"
         )
 
-    @patch.object(reader_formatter, reader_formatter.escape_markup.__name__)
+    @patch.object(reader_formatter, "_escape_kivy_markup")
     @patch.object(
         reader_formatter, reader_formatter.get_short_formatted_first_published_str.__name__
     )
@@ -229,7 +229,7 @@ class TestReaderFormatterClass:
         )
         assert "[sup]*[/sup]" in res_foot
 
-    @patch.object(reader_formatter, reader_formatter.escape_markup.__name__)
+    @patch.object(reader_formatter, "_escape_kivy_markup")
     @patch.object(reader_formatter, reader_formatter.get_short_submitted_day_and_month.__name__)
     def test_get_formatted_submitted_str(
         self, mock_short_sub: MagicMock, mock_escape: MagicMock

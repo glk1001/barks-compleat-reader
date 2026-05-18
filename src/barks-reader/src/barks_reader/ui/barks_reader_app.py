@@ -13,11 +13,9 @@ from kivy.config import Config
 from kivy.core.window import Window  # can take ~1s in VM Windows
 from kivy.lang import Builder
 from kivy.uix.settings import Settings, SettingsWithSpinner  # can take ~1s in VM Windows
-from kivy.utils import escape_markup
 from loguru import logger
 from screeninfo import get_monitors
 
-from barks_reader.core import services
 from barks_reader.core.config_info import APP_NAME
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.linux_desktop_entry import write_linux_desktop_entry
@@ -69,7 +67,7 @@ from .speech_index_screen import SpeechIndexScreen
 from .statistics_screen import STATISTICS_SCREEN_KV_FILE, StatisticsScreen
 from .tree_view_nodes import READER_TREE_VIEW_KV_FILE, ReaderTreeBuilderEventDispatcher
 from .tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
-from .ui_helpers import KIVY_HELPERS_KV_FILE, set_kivy_busy_cursor, set_kivy_normal_cursor
+from .ui_helpers import KIVY_HELPERS_KV_FILE
 from .user_error_handler import UserErrorHandler
 from .x11_wm_class import force_x11_wm_class
 
@@ -500,16 +498,6 @@ def _handle_app_exception(
 def reader_main(config_info: ConfigInfo) -> None:
     # noinspection PyBroadException
     try:
-        kivy_services = services.PlatformServices(
-            schedule_once=Clock.schedule_once,
-            set_busy_cursor=set_kivy_busy_cursor,
-            set_normal_cursor=set_kivy_normal_cursor,
-            escape_markup=escape_markup,
-        )
-
-        # 3. Register it once
-        services.register(kivy_services)
-
         log_screen_metrics()
 
         comics_database = ComicsDatabase(for_building_comics=False)

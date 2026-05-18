@@ -22,12 +22,17 @@ from comic_utils.cpi_calculator import get_adjusted_usd
 
 from .reader_consts_and_types import CLOSE_TO_ZERO
 from .reader_utils import get_concat_page_nums_str
-from .services import escape_markup
 
 if TYPE_CHECKING:
     from barks_fantagraphics.comic_book_info import ComicBookInfo
 
     from .reader_colors import Color
+
+
+def _escape_kivy_markup(text: str) -> str:
+    """Escape `&`, `[`, `]` for Kivy markup. Matches `kivy.utils.escape_markup`."""
+    return text.replace("&", "&amp;").replace("[", "&bl;").replace("]", "&br;")
+
 
 LONG_TITLE_SPLITS = {
     Titles.DONALD_DUCK_FINDS_PIRATE_GOLD: "Donald Duck\nFinds Pirate Gold",
@@ -138,8 +143,8 @@ class ReaderFormatter:
 
     @staticmethod
     def get_formatted_submitted_str(comic_book_info: ComicBookInfo, color: str) -> str:
-        left_sq_bracket = escape_markup("[")
-        right_sq_bracket = escape_markup("]")
+        left_sq_bracket = _escape_kivy_markup("[")
+        right_sq_bracket = _escape_kivy_markup("]")
 
         return (
             f" {left_sq_bracket}"
