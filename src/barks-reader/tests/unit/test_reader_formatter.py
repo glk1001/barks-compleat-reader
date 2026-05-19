@@ -14,6 +14,28 @@ def test_hyphenate_text() -> None:
     assert reader_formatter.INVISIBLE_BREAK in res
 
 
+# `_escape_kivy_markup` is the inlined replacement for `kivy.utils.escape_markup`.
+# Pin its behavior so a future "simplification" can't silently break Kivy text
+# rendering anywhere the helper is called from.
+class TestEscapeKivyMarkup:
+    def test_escapes_left_bracket(self) -> None:
+        assert reader_formatter._escape_kivy_markup("[") == "&bl;"  # noqa: SLF001
+
+    def test_escapes_right_bracket(self) -> None:
+        assert reader_formatter._escape_kivy_markup("]") == "&br;"  # noqa: SLF001
+
+    def test_escapes_ampersand(self) -> None:
+        assert reader_formatter._escape_kivy_markup("a & b") == "a &amp; b"  # noqa: SLF001
+
+    def test_escapes_ampersand_before_brackets(self) -> None:
+        # If `&` weren't escaped first, the `&bl;` from the `[` escape would
+        # itself get re-escaped to `&amp;bl;` — catch that ordering bug.
+        assert reader_formatter._escape_kivy_markup("&[") == "&amp;&bl;"  # noqa: SLF001
+
+    def test_identity_on_plain_text(self) -> None:
+        assert reader_formatter._escape_kivy_markup("plain text") == "plain text"  # noqa: SLF001
+
+
 def test_get_bold_markup_text() -> None:
     assert reader_formatter.get_bold_markup_text("foo") == "[b]foo[/b]"
 
