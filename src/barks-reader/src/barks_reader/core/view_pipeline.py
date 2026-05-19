@@ -39,13 +39,13 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from loguru import logger
 
-from barks_reader.core.filtered_title_lists import FilteredTitleLists
-from barks_reader.core.image_selector import FIT_MODE_COVER, ImageInfo, ImageSelector
-from barks_reader.core.navigation.view_states import ViewStates
-from barks_reader.core.ports import CancelHandle, ColorSource, PaletteId, Scheduler
-from barks_reader.core.reader_file_paths import ALL_TYPES, FileTypes
-from barks_reader.core.reader_formatter import get_formatted_color
-from barks_reader.core.view_snapshot import (
+from .filtered_title_lists import FilteredTitleLists
+from .image_selector import FIT_MODE_COVER, ImageInfo, ImageSelector
+from .navigation.view_states import ViewStates
+from .ports import CancelHandle, ColorSource, PaletteId, Scheduler
+from .reader_file_paths import ALL_TYPES, FileTypes
+from .reader_formatter import get_formatted_color
+from .view_snapshot import (
     FunViewSnapshot,
     ScreenVisibility,
     SearchViewSnapshot,
@@ -59,8 +59,8 @@ if TYPE_CHECKING:
 
     from comic_utils.comic_consts import PanelPath
 
-    from barks_reader.core.reader_colors import Color
-    from barks_reader.core.reader_settings import ReaderSettings
+    from .reader_colors import Color
+    from .reader_settings import ReaderSettings
 
 
 _TOP_VIEW_IMAGE_TYPES: set[FileTypes] = {
