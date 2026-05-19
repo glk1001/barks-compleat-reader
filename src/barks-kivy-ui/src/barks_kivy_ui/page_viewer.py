@@ -63,7 +63,7 @@ class KivyPageViewer(App):
         start_page: int,
         win_left: int,
         win_top: int,
-        win_size: tuple[int, int] = (1000, 1400),
+        win_size: tuple[int, int] = (900, 1300),
     ) -> None:
         super().__init__()
         self._window_title = window_title
