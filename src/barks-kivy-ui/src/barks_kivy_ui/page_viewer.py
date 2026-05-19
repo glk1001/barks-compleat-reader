@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 
+from comic_utils.screen_utils import get_centred_position_on_primary_monitor
 from kivy.app import App
 from kivy.core.image import Texture
 from kivy.core.window import Window
@@ -61,23 +62,25 @@ class KivyPageViewer(App):
         window_title: str,
         pages: list[tuple[str, Image.Image]],
         start_page: int,
-        win_left: int,
-        win_top: int,
         win_size: tuple[int, int] = (900, 1300),
+        win_left: int | None = None,
+        win_top: int | None = None,
     ) -> None:
         super().__init__()
         self._window_title = window_title
         self._pages = pages
         self._index = max(0, min(len(pages) - 1, start_page - 1))
+        self._win_size = win_size
         self._win_left = win_left
         self._win_top = win_top
-        self._win_size = win_size
         self._page_label: Label | None = None
         self._image_widget: KivyImage | None = None
 
     def build(self) -> BoxLayout:
         self.title = self._window_title
         Window.size = self._win_size
+        if self._win_left is None or self._win_top is None:
+            self._win_left, self._win_top = get_centred_position_on_primary_monitor(*self._win_size)
         Window.left = self._win_left
         Window.top = self._win_top
 

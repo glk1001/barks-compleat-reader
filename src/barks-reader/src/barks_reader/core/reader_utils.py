@@ -223,23 +223,17 @@ def join_with_and(items: list[Any]) -> str:
 
 
 def get_centred_position_on_primary_monitor(win_width: int, win_height: int) -> tuple[int, int]:
-    """Position window on primary monitor, centered."""
-    import screeninfo  # noqa: PLC0415
+    """Position window on primary monitor, centered.
 
-    # noinspection PyBroadException
-    try:
-        monitors = screeninfo.get_monitors()
-        primary = next((m for m in monitors if m.is_primary), monitors[0] if monitors else None)
-        if primary:
-            return (
-                primary.x + (primary.width - win_width) // 2,
-                primary.y + (primary.height - win_height) // 2,
-            )
+    Thin wrapper kept for backward compatibility; the implementation lives in
+    ``comic_utils.screen_utils`` so the same helper is shared by all GUI tools
+    across the workspace.
+    """
+    from comic_utils.screen_utils import (  # noqa: PLC0415
+        get_centred_position_on_primary_monitor as _impl,
+    )
 
-    except Exception:  # noqa: BLE001, S110
-        pass
-
-    return 100, 100
+    return _impl(win_width, win_height)
 
 
 def safe_import_check(module_name: str, timeout: float = 5.0) -> bool:
