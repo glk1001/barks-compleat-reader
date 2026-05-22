@@ -7,6 +7,7 @@ from pathlib import Path
 from random import randrange
 from unittest.mock import MagicMock, patch
 
+import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.comics_consts import PageType
@@ -285,3 +286,49 @@ class TestReaderUtils:
             # Exception/Crash case
             mock_proc.returncode = 1
             assert safe_import_check("crash") is False
+
+    def test_read_title_list_raises_on_unknown_title(self, tmp_path: Path) -> None:
+        """Unknown title in the favourites file should raise RuntimeError."""
+        f = tmp_path / "titles.txt"
+        f.write_text("Known Title\nUnknown Title\n", encoding="utf-8")
+
+        mock_dict = {"Known Title": Titles.DONALD_DUCK_FINDS_PIRATE_GOLD}
+
+        with (
+            patch.object(utils_module, "BARKS_TITLE_DICT", mock_dict),
+            pytest.raises(RuntimeError, match='Unknown title "Unknown Title"'),
+        ):
+            read_title_list(f)
+
+    def test_get_paths_from_directory_returns_empty_when_not_dir(self, tmp_path: Path) -> None:
+        """Non-existent directory should yield an empty set, not raise."""
+        missing = tmp_path / "does_not_exist"
+        assert get_paths_from_directory(missing) == set()
+
+    def test_get_paths_from_zip_returns_empty_when_not_file(self, tmp_path: Path) -> None:
+        """Non-existent zip path should yield an empty set, not raise."""
+        missing = tmp_path / "does_not_exist.zip"
+        assert get_paths_from_zip(missing) == set()
+
+    def test_get_concat_page_nums_str_raises_on_non_int(self) -> None:
+        """Non-roman, non-int input should raise ValueError from inner converter."""
+        with (
+            patch.object(utils_module, "ROMAN_NUMERALS_SET", set()),
+            pytest.raises(ValueError, match="Could not convert page nums list"),
+        ):
+            get_concat_page_nums_str(["abc", "1"])
+
+    def test_get_concat_page_nums_str_roman_only(self) -> None:
+        """When input is only roman numerals, no trailing comma+arabic is appended."""
+        with patch.object(utils_module, "ROMAN_NUMERALS_SET", {"i", "ii"}):
+            assert get_concat_page_nums_str(["ii", "i"]) == "i,ii"
+
+    def test_safe_import_check_handles_malformed_json(self) -> None:
+        """Subprocess returning success but malformed stdout falls back to False."""
+        with patch.object(utils_module.subprocess, subprocess.run.__name__) as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = "not json at all"
+            mock_run.return_value = mock_proc
+
+            assert safe_import_check("anything") is False

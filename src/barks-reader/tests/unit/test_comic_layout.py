@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import pytest
 from barks_fantagraphics.comics_consts import PageType
-from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
+from barks_fantagraphics.page_classes import (
+    CleanPage,
+    RequiredDimensions,
+    SrceAndDestPages,
+)
+from barks_reader.core.comic_book_page_info import ComicLayout, ComicLayoutBuilder, PageInfo
 from barks_reader.core.display_unit import DisplayUnit
 from barks_reader.core.reader_consts_and_types import FIRST_BODY_PAGE
 
@@ -164,3 +171,186 @@ class TestResolveLastRead:
         saved = layout.to_saved(p5)
 
         assert saved.last_body_page == "20"
+
+
+# ------------------------------------------------------------------
+# ComicLayoutBuilder + _build_page_map
+# ------------------------------------------------------------------
+
+
+def _srce_pages(specs: list[tuple[str, PageType]]) -> list[CleanPage]:
+    return [CleanPage(page_filename=name, page_type=pt) for name, pt in specs]
+
+
+def _srce_dest(
+    specs: list[tuple[str, PageType]],
+    dest_types: list[PageType] | None = None,
+) -> SrceAndDestPages:
+    """Build a SrceAndDestPages where dest types default to the same as srce types."""
+    srce = _srce_pages(specs)
+    if dest_types is None:
+        dest = _srce_pages(specs)
+    else:
+        dest = [
+            CleanPage(page_filename=name, page_type=dt)
+            for (name, _), dt in zip(specs, dest_types, strict=True)
+        ]
+    return SrceAndDestPages(srce_pages=srce, dest_pages=dest)
+
+
+def _comic(solo_page_keys: set[str] | None = None) -> object:
+    """Minimal ComicBook stub — only solo_page_keys is read by _build_page_map."""
+    return SimpleNamespace(solo_page_keys=solo_page_keys or set())
+
+
+class FakeSortedPagesPort:
+    def __init__(self, pages: SrceAndDestPages) -> None:
+        self.pages = pages
+        self.calls: list[object] = []
+
+    def get_sorted_pages(self, comic: object) -> SrceAndDestPages:
+        self.calls.append(comic)
+        return self.pages
+
+
+class FakeRequiredDimensionsPort:
+    def __init__(self, dimensions: RequiredDimensions) -> None:
+        self.dimensions = dimensions
+        self.calls: list[object] = []
+
+    def get_required_dimensions(self, comic: object) -> RequiredDimensions:
+        self.calls.append(comic)
+        return self.dimensions
+
+
+class TestBuildPageMap:
+    def test_starts_at_zero_when_first_is_front(self) -> None:
+        pages = _srce_dest(
+            [
+                ("cover.jpg", PageType.FRONT),
+                ("body1.jpg", PageType.BODY),
+            ]
+        )
+        port = FakeSortedPagesPort(pages)
+        builder = ComicLayoutBuilder(sorted_pages_port=port)
+
+        layout = builder.build(_comic())  # ty: ignore[invalid-argument-type]
+
+        assert "0" in layout.page_map
+        assert "1" in layout.page_map
+        assert layout.page_map["0"].page_type is PageType.FRONT
+
+    def test_uses_roman_for_front_matter_then_arabic_for_body(self) -> None:
+        pages = _srce_dest(
+            [
+                ("title.jpg", PageType.TITLE),
+                ("cover.jpg", PageType.COVER),
+                ("body1.jpg", PageType.BODY),
+                ("body2.jpg", PageType.BODY),
+            ]
+        )
+        port = FakeSortedPagesPort(pages)
+        builder = ComicLayoutBuilder(sorted_pages_port=port)
+
+        layout = builder.build(_comic())  # ty: ignore[invalid-argument-type]
+
+        # No leading FRONT, so orig_page_num starts at 1 → "i" first.
+        assert list(layout.page_map.keys()) == ["i", "ii", "1", "2"]
+
+    def test_uses_arabic_when_first_page_is_body(self) -> None:
+        pages = _srce_dest(
+            [
+                ("body1.jpg", PageType.BODY),
+                ("body2.jpg", PageType.BODY),
+            ]
+        )
+        port = FakeSortedPagesPort(pages)
+        builder = ComicLayoutBuilder(sorted_pages_port=port)
+
+        layout = builder.build(_comic())  # ty: ignore[invalid-argument-type]
+
+        assert list(layout.page_map.keys()) == ["1", "2"]
+        # No roman numerals were generated.
+        assert "i" not in layout.page_map
+
+    def test_tracks_last_body_page_excluding_back_matter(self) -> None:
+        pages = _srce_dest(
+            [
+                ("body1.jpg", PageType.BODY),
+                ("body2.jpg", PageType.BODY),
+                ("back.jpg", PageType.BACK_MATTER),
+            ]
+        )
+        port = FakeSortedPagesPort(pages)
+        builder = ComicLayoutBuilder(sorted_pages_port=port)
+
+        layout = builder.build(_comic())  # ty: ignore[invalid-argument-type]
+
+        # last_body_page is the last page with type BODY, not the back-matter page.
+        assert layout.last_body_page == "2"
+
+    def test_marks_solo_for_solo_page_types(self) -> None:
+        # BACK_MATTER is in SOLO_PAGE_TYPES but not in FRONT_MATTER_PAGES.
+        pages = _srce_dest(
+            [
+                ("body1.jpg", PageType.BODY),
+                ("back.jpg", PageType.BACK_MATTER),
+            ]
+        )
+        port = FakeSortedPagesPort(pages)
+        builder = ComicLayoutBuilder(sorted_pages_port=port)
+
+        layout = builder.build(_comic())  # ty: ignore[invalid-argument-type]
+
+        # "1" is BODY (not in SOLO_PAGE_TYPES), "2" is BACK_MATTER (in SOLO_PAGE_TYPES).
+        assert layout.page_map["1"].is_solo is False
+        assert layout.page_map["2"].is_solo is True
+
+    def test_marks_solo_for_comic_solo_keys(self) -> None:
+        pages = _srce_dest(
+            [
+                ("special.jpg", PageType.BODY),
+                ("ordinary.jpg", PageType.BODY),
+            ]
+        )
+        port = FakeSortedPagesPort(pages)
+        builder = ComicLayoutBuilder(sorted_pages_port=port)
+
+        layout = builder.build(_comic(solo_page_keys={"special"}))  # ty: ignore[invalid-argument-type]
+
+        assert layout.page_map["1"].is_solo is True
+        assert layout.page_map["2"].is_solo is False
+
+
+class TestComicLayoutBuilder:
+    def test_build_delegates_to_sorted_pages_port(self) -> None:
+        pages = _srce_dest([("p.jpg", PageType.BODY)])
+        port = FakeSortedPagesPort(pages)
+        builder = ComicLayoutBuilder(sorted_pages_port=port)
+        comic = _comic()
+
+        builder.build(comic)  # ty: ignore[invalid-argument-type]
+
+        assert port.calls == [comic]
+
+    def test_get_required_dimensions_raises_when_port_missing(self) -> None:
+        port = FakeSortedPagesPort(_srce_dest([("p.jpg", PageType.BODY)]))
+        builder = ComicLayoutBuilder(sorted_pages_port=port, required_dimensions_port=None)
+
+        with pytest.raises(RuntimeError, match="RequiredDimensionsPort was not wired"):
+            builder.get_required_dimensions(MagicMock())
+
+    def test_get_required_dimensions_delegates_to_port(self) -> None:
+        dims = RequiredDimensions(panels_bbox_width=100, panels_bbox_height=200)
+        srce_port = FakeSortedPagesPort(_srce_dest([("p.jpg", PageType.BODY)]))
+        dims_port = FakeRequiredDimensionsPort(dims)
+        builder = ComicLayoutBuilder(
+            sorted_pages_port=srce_port,
+            required_dimensions_port=dims_port,
+        )
+        comic = _comic()
+
+        result = builder.get_required_dimensions(comic)  # ty: ignore[invalid-argument-type]
+
+        assert result is dims
+        assert dims_port.calls == [comic]

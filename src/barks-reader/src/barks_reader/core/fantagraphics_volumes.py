@@ -369,7 +369,7 @@ class FantagraphicsVolumeArchives:
                     if page in extra_pages_map:
                         msg = (
                             f'Cannot have jpg and png override in "{override_archive_filename}":'
-                            f' "{file}" and "{override_pages_map[page]}".'
+                            f' "{file}" and "{extra_pages_map[page]}".'
                         )
                         raise RuntimeError(msg)
                     extra_pages_map[page] = file

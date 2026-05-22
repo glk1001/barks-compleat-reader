@@ -36,6 +36,7 @@ executemany
 facecolor
 favourite
 favourites
+fcbi
 figsize
 fillvalue
 fontsize
@@ -56,6 +57,7 @@ lanczos
 lfs
 libx
 licence
+lita
 logr
 markersize
 mktime
@@ -64,6 +66,7 @@ motionevent
 mtdev
 normalised
 normalises
+notvol
 numpad
 organised
 passthroughs

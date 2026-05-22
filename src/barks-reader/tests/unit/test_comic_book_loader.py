@@ -43,7 +43,7 @@ class FakePageImageSource:
     def close(self) -> None:
         self.closed = True
 
-    def load_page_image(self, _page_info: PageInfo) -> tuple[io.BytesIO, str]:
+    def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:  # noqa: ARG002
         """Return fake PNG bytes."""
         if self._delay:
             time.sleep(self._delay)
@@ -197,8 +197,7 @@ def test_set_comic_and_load_success(
     page_map, load_order = page_map_and_order
     source = FakePageImageSource()
 
-    loader.set_comic(source, load_order, page_map, archive_desc="test_comic.cbz")  # ty: ignore[invalid-argument-type]
-
+    loader.set_comic(source, load_order, page_map, archive_desc="test_comic.cbz")
     if loader._thread:
         loader._thread.join(timeout=2.0)
 
@@ -222,8 +221,7 @@ def test_load_error_file_not_found(
     page_map, load_order = page_map_and_order
     source = FakePageImageSource(fail=True)
 
-    loader.set_comic(source, load_order, page_map, archive_desc="missing_comic.cbz")  # ty: ignore[invalid-argument-type]
-
+    loader.set_comic(source, load_order, page_map, archive_desc="missing_comic.cbz")
     if loader._thread:
         loader._thread.join(timeout=2.0)
 
@@ -259,8 +257,7 @@ def test_close_comic_calls_source_close(
     page_map, load_order = page_map_and_order
     source = FakePageImageSource()
 
-    loader.set_comic(source, load_order, page_map, archive_desc="test.cbz")  # ty: ignore[invalid-argument-type]
-
+    loader.set_comic(source, load_order, page_map, archive_desc="test.cbz")
     if loader._thread:
         loader._thread.join(timeout=2.0)
 
@@ -277,7 +274,7 @@ def test_stop_cancels_inflight_loads(
     page_map, load_order = page_map_and_order
     source = FakePageImageSource(delay=0.5)
 
-    loader.set_comic(source, load_order, page_map, archive_desc="slow.cbz")  # ty: ignore[invalid-argument-type]
+    loader.set_comic(source, load_order, page_map, archive_desc="slow.cbz")
     time.sleep(0.1)
     loader.stop_now()
 
@@ -292,10 +289,137 @@ def test_get_image_info_str_delegates_to_source(
     page_map, load_order = page_map_and_order
     source = FakePageImageSource()
 
-    loader.set_comic(source, load_order, page_map, archive_desc="test.cbz")  # ty: ignore[invalid-argument-type]
-
+    loader.set_comic(source, load_order, page_map, archive_desc="test.cbz")
     if loader._thread:
         loader._thread.join(timeout=2.0)
 
     info_str = loader.get_image_info_str("p1")
     assert "fake_image" in info_str
+
+
+# ---------------------------------------------------------------------------
+# resolve_archive_for_comic + _get_prebuilt_comic_path + double-page composite
+# ---------------------------------------------------------------------------
+
+
+def _make_fanta_info(
+    *,
+    title: str = "Adventure Down Under",
+    chrono: int = 42,
+    issue: str = "WDC 100",
+    volume: str = "FANTA_07",
+) -> MagicMock:
+    """Build a FantaComicBookInfo stub with the fields read by the loader."""
+    info = MagicMock()
+    info.comic_book_info.get_title_str.return_value = title
+    info.comic_book_info.title = title
+    info.fanta_chronological_number = chrono
+    info.get_short_issue_title.return_value = issue
+    info.fantagraphics_volume = volume
+    return info
+
+
+def test_resolve_archive_for_comic_returns_prebuilt_when_setting_enabled(
+    loader: ComicBookLoader,
+    mock_reader_settings: MagicMock,
+    tmp_path: Path,
+) -> None:
+    """Prebuilt branch: returns the on-disk cbz path and None for the volume archive."""
+    mock_reader_settings.use_prebuilt_archives = True
+    comics_dir = tmp_path / "comics"
+    comics_dir.mkdir()
+    mock_reader_settings.prebuilt_comics_dir = str(comics_dir)
+
+    fanta_info = _make_fanta_info(title="Lost in the Andes", chrono=77, issue="FC 223")
+    expected_stem = "077 Lost in the Andes [FC 223]"
+    expected_path = comics_dir / f"{expected_stem}.cbz"
+    expected_path.write_bytes(b"PK\x03\x04")  # minimal cbz placeholder
+
+    archive_path, archive = loader.resolve_archive_for_comic(fanta_info)
+    assert archive_path == expected_path
+    assert archive is None
+
+
+def test_resolve_archive_for_comic_returns_fanta_volume_when_not_prebuilt(
+    loader: ComicBookLoader,
+    mock_reader_settings: MagicMock,
+) -> None:
+    """Non-prebuilt branch: returns the fanta volume archive without overrides."""
+    mock_reader_settings.use_prebuilt_archives = False
+    fake_archive = MagicMock()
+    fake_archive.is_missing = False
+    fake_archive.has_overrides.return_value = False
+    fake_archive.archive_filename = "/fake/path/07.cbz"
+
+    fanta_volume_archives = MagicMock()
+    fanta_volume_archives.get_fantagraphics_archive.return_value = fake_archive
+    loader._fanta_volume_archives = fanta_volume_archives
+
+    fanta_info = _make_fanta_info(volume="FANTA_07")
+
+    archive_path, returned = loader.resolve_archive_for_comic(fanta_info)
+    fanta_volume_archives.get_fantagraphics_archive.assert_called_once_with(7)
+    assert archive_path == "/fake/path/07.cbz"
+    assert returned is fake_archive
+
+
+def test_resolve_archive_for_comic_raises_when_volume_is_missing(
+    loader: ComicBookLoader,
+    mock_reader_settings: MagicMock,
+) -> None:
+    """is_missing volume triggers MissingVolumeError."""
+    from barks_fantagraphics.barks_titles import Titles  # noqa: PLC0415
+    from barks_reader.core.fantagraphics_volumes import MissingVolumeError  # noqa: PLC0415
+
+    mock_reader_settings.use_prebuilt_archives = False
+    fake_archive = MagicMock()
+    fake_archive.is_missing = True
+
+    fanta_volume_archives = MagicMock()
+    fanta_volume_archives.get_fantagraphics_archive.return_value = fake_archive
+    loader._fanta_volume_archives = fanta_volume_archives
+
+    fanta_info = _make_fanta_info(volume="FANTA_12")
+    fanta_info.comic_book_info.title = Titles.LOST_IN_THE_ANDES
+
+    with pytest.raises(MissingVolumeError):
+        loader.resolve_archive_for_comic(fanta_info)
+
+
+def test_get_prebuilt_comic_path_raises_when_file_missing(
+    loader: ComicBookLoader,
+    mock_reader_settings: MagicMock,
+    tmp_path: Path,
+) -> None:
+    """No file on disk → FileNotFoundError."""
+    mock_reader_settings.prebuilt_comics_dir = str(tmp_path / "nonexistent")
+    fanta_info = _make_fanta_info()
+
+    with pytest.raises(FileNotFoundError, match="Could not find comic file"):
+        loader._get_prebuilt_comic_path(fanta_info)
+
+
+def test_get_double_page_image_ready_for_reading_composes_two_pages(
+    loader: ComicBookLoader,
+) -> None:
+    """Compose two real PNG streams into a wider landscape PNG."""
+    from PIL import Image  # noqa: PLC0415
+
+    left_buf = io.BytesIO()
+    Image.new("RGB", (50, 80), (255, 0, 0)).save(left_buf, format="PNG")
+    right_buf = io.BytesIO()
+    Image.new("RGB", (50, 80), (0, 255, 0)).save(right_buf, format="PNG")
+
+    # Stub the loader's image cache directly.
+    loader._images = [(left_buf, ".png"), (right_buf, ".png")]
+
+    stream, ext = loader.get_double_page_image_ready_for_reading(0, 1)
+
+    assert ext == "png"  # PNG_EXT_FOR_KIVY (no leading dot)
+    data = stream.read()
+    assert data.startswith(b"\x89PNG\r\n")
+
+    # The composited image must be wider than either source.
+    out_image = Image.open(io.BytesIO(data))
+    assert out_image.width == 100  # noqa: PLR2004
+    assert out_image.height == 80  # noqa: PLR2004
