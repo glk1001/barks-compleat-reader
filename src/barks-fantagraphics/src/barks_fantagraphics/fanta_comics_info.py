@@ -234,6 +234,7 @@ SERIES_CS = ISSUE_NAME[Issues.CS]
 SERIES_GG = "Gyro Gearloose"
 SERIES_MISC = "Misc"
 SERIES_EXTRAS = "Extras"
+SERIES_ONE_PAGERS = "One Pagers"
 
 RTOM = "Rich Tommaso"
 GLEA = "Gary Leach"
@@ -271,6 +272,7 @@ SERIES_INFO_START_NUMBERS: dict[str, int] = {
     SERIES_GG: 1,
     SERIES_MISC: 1,
     SERIES_EXTRAS: 1,
+    SERIES_ONE_PAGERS: 1,
 }
 
 US_CENSORED_TITLE_ENUMS = [Titles.SILENT_NIGHT, Titles.MILKMAN_THE]

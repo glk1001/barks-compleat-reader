@@ -22,6 +22,8 @@ from .comic_issues import (
     Issues,
     _get_shortest_issue_name,
 )
+from .comics_consts import PageType
+from .page_classes import OriginalPage
 
 
 @dataclass(frozen=True, slots=True)
@@ -745,6 +747,8 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, False, Issues.EXTRAS, 1, 1, 2011, 1, 1, 2011),
     ComicBookInfo(Titles.DON_AULT___LIFE_AMONG_THE_DUCKS, False, Issues.EXTRAS, 1, 1, 2014, 1, 1, 2014),
     ComicBookInfo(Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD, False, Issues.EXTRAS, 1, 1, 2025, 1, 1, 2025),
+    # Synthetic "All One-Pagers" collection - bundles every one-pager into one comic.
+    ComicBookInfo(Titles.ALL_ONE_PAGERS, True, Issues.EXTRAS, 1, 1, 1948, 1, 1, 1948),
     # Sort these out
 ]
 # fmt: on
@@ -903,6 +907,237 @@ ONE_PAGERS = [
     Titles.WASTED_WORDS,
 ]
 
+# Hand-authored location of each one-pager within the Fantagraphics CBDL volumes.
+# Maps a one-pager `Titles` enum member to `(fantagraphics_volume, page_number)`,
+# where `page_number` is the page's number within that volume (the same numbering
+# used in the story-title `[pages]` sections). This is the single source of truth
+# that drives the synthetic "All One-Pagers" collection comic and the deep-link
+# from each one-pager's tree node to its page in that collection.
+#
+# `_TODO` (== `(0, 0)`) marks an entry whose location still needs to be authored by
+# hand. `_TODO` entries are skipped everywhere - they will not appear in the
+# collection or the One Pagers series - until given real values.
+_TODO = (0, 0)
+# fmt: off
+ONE_PAGER_LOCATIONS: dict[Titles, tuple[int, int]] = {
+    Titles.IF_THE_HAT_FITS: (5, 118),
+    Titles.FASHION_IN_FLIGHT: (5, 26),
+    Titles.TURN_FOR_THE_WORSE: (5, 27),
+    Titles.MACHINE_MIX_UP: (5, 198),
+    Titles.BIRD_WATCHING: (6, 38),
+    Titles.HORSESHOE_LUCK: (6, 39),
+    Titles.BEAN_TAKEN: (6, 102),
+    Titles.SORRY_TO_BE_SAFE: (6, 103),
+    Titles.BEST_LAID_PLANS: (6, 176),
+    Titles.GENUINE_ARTICLE_THE: (6, 177),
+    Titles.JUMPING_TO_CONCLUSIONS: _TODO,  # Jumping to Conclusions
+    Titles.TRUE_TEST_THE: _TODO,  # The True Test
+    Titles.ORNAMENTS_ON_THE_WAY: _TODO,  # Ornaments on the Way
+    Titles.TOO_FIT_TO_FIT: _TODO,  # Too Fit to Fit
+    Titles.TUNNEL_VISION: _TODO,  # Tunnel Vision
+    Titles.SLEEPY_SITTERS: _TODO,  # Sleepy Sitters
+    Titles.SLIPPERY_SHINE: _TODO,  # Slippery Shine
+    Titles.FRACTIOUS_FUN: _TODO,  # Fractious Fun
+    Titles.KING_SIZE_CONE: _TODO,  # King-Size Cone
+    Titles.NO_NOISE_IS_GOOD_NOISE: _TODO,  # No Noise is Good Noise
+    Titles.TOASTY_TOYS: _TODO,  # Toasty Toys
+    Titles.NO_PLACE_TO_HIDE: _TODO,  # No Place to Hide
+    Titles.TIED_DOWN_TOOLS: _TODO,  # Tied-Down Tools
+    Titles.NOISE_NULLIFIER: _TODO,  # Noise Nullifier
+    Titles.MATINEE_MADNESS: _TODO,  # Matinee Madness
+    Titles.FETCHING_PRICE_A: _TODO,  # A Fetching Price
+    Titles.TALKING_PARROT: _TODO,  # Talking Parrot
+    Titles.TREEING_OFF: _TODO,  # Treeing Off
+    Titles.CHRISTMAS_KISS: _TODO,  # Christmas Kiss
+    Titles.PROJECTING_DESIRES: _TODO,  # Projecting Desires
+    Titles.OSOGOOD_SILVER_POLISH: _TODO,  # Osogood Silver Polish
+    Titles.COFFEE_FOR_TWO: _TODO,  # Coffee for Two
+    Titles.SOUPLINE_EIGHT: _TODO,  # Soupline Eight
+    Titles.FULL_SERVICE_WINDOWS: _TODO,  # Full-Service Windows
+    Titles.RIGGED_UP_ROLLER: _TODO,  # Rigged-Up Roller
+    Titles.AWASH_IN_SUCCESS: _TODO,  # Awash in Success
+    Titles.STABLE_PRICES: _TODO,  # Stable Prices
+    Titles.ARMORED_RESCUE: _TODO,  # Armored Rescue
+    Titles.CRAFTY_CORNER: _TODO,  # Crafty Corner
+    Titles.PRANK_ABOVE_A: _TODO,  # A Prank Above
+    Titles.FRIGHTFUL_FACE: _TODO,  # Frightful Face
+    Titles.FARE_DELAY: _TODO,  # Fare Delay
+    Titles.MONEY_LADDER_THE: _TODO,  # The Money Ladder
+    Titles.CHECKER_GAME_THE: _TODO,  # The Checker Game
+    Titles.TEMPER_TAMPERING: _TODO,  # Temper Tampering
+    Titles.DINER_DILEMMA: _TODO,  # Diner Dilemma
+    Titles.BARBER_COLLEGE: _TODO,  # Barber College
+    Titles.FOLLOW_THE_RAINBOW: _TODO,  # Follow the Rainbow
+    Titles.ITCHING_TO_SHARE: _TODO,  # Itching to Share
+    Titles.BALLET_EVASIONS: _TODO,  # Ballet Evasions
+    Titles.CHEAPEST_WEIGH_THE: _TODO,  # The Cheapest Weigh
+    Titles.BUM_STEER: _TODO,  # Bum Steer
+    Titles.HOSPITALITY_WEEK: _TODO,  # Hospitality Week
+    Titles.MCDUCK_TAKES_A_DIVE: _TODO,  # McDuck Takes a Dive
+    Titles.SLIPPERY_SIPPER: _TODO,  # Slippery Sipper
+    Titles.OIL_THE_NEWS: _TODO,  # Oil the News
+    Titles.DIG_IT: _TODO,  # Dig it!
+    Titles.MENTAL_FEE: _TODO,  # Mental Fee
+    Titles.WRONG_NUMBER: _TODO,  # Wrong Number
+    Titles.CASH_ON_THE_BRAIN: _TODO,  # Cash on the Brain
+    Titles.CLASSY_TAXI: _TODO,  # Classy Taxi!
+    Titles.BLANKET_INVESTMENT: _TODO,  # Blanket Investment
+    Titles.EASY_MOWING: _TODO,  # Easy Mowing
+    Titles.SKI_LIFT_LETDOWN: _TODO,  # Ski Lift Letdown
+    Titles.CAST_OF_THOUSANDS: _TODO,  # Cast of Thousands
+    Titles.COURTSIDE_HEATING: _TODO,  # Courtside Heating
+    Titles.POWER_PLOWING: _TODO,  # Power Plowing
+    Titles.REMEMBER_THIS: _TODO,  # Remember This
+    Titles.DEEP_DECISION: _TODO,  # Deep Decision
+    Titles.SMASH_SUCCESS: _TODO,  # Smash Success
+    Titles.COME_AS_YOU_ARE: _TODO,  # Come as You are
+    Titles.ROUNDABOUT_HANDOUT: _TODO,  # Roundabout Handout
+    Titles.WATT_AN_OCCASION: _TODO,  # Watt an Occasion
+    Titles.DOUGHNUT_DARE: _TODO,  # Doughnut Dare
+    Titles.SWEAT_DEAL_A: _TODO,  # A Sweat Deal
+    Titles.ART_OF_SECURITY_THE: _TODO,  # The Art of Security
+    Titles.FASHION_FORECAST: _TODO,  # Fashion Forecast
+    Titles.MUSH: _TODO,  # Mush!
+    Titles.LUNCHEON_LAMENT: _TODO,  # Luncheon Lament
+    Titles.GOLD_RUSH: _TODO,  # Gold Rush
+    Titles.FIREFLIES_ARE_FREE: _TODO,  # Fireflies are Free
+    Titles.EARLY_TO_BUILD: _TODO,  # Early to Build
+    Titles.CHINA_SHOP_SHAKEUP: _TODO,  # China Shop Shakeup
+    Titles.BUFFO_OR_BUST: _TODO,  # Buffo or Bust
+    Titles.POUND_FOR_SOUND: _TODO,  # Pound for Sound
+    Titles.FERTILE_ASSETS: _TODO,  # Fertile Assets
+    Titles.BACKYARD_BONANZA: _TODO,  # Backyard Bonanza
+    Titles.ALL_SEASON_HAT: _TODO,  # All Season Hat
+    Titles.EYES_HAVE_IT_THE: _TODO,  # The Eyes Have It
+    Titles.RELATIVE_REACTION: _TODO,  # Relative Reaction
+    Titles.SECRET_BOOK_THE: _TODO,  # The Secret Book
+    Titles.TREE_TRICK: _TODO,  # Tree Trick
+    Titles.NET_WORTH: _TODO,  # Net Worth
+    Titles.HISTORY_TOSSED: _TODO,  # History Tossed
+    Titles.DOGGED_DETERMINATION: _TODO,  # Dogged Determination
+    Titles.FORGOTTEN_PRECAUTION: _TODO,  # Forgotten Precaution
+    Titles.BIG_BOBBER_THE: _TODO,  # The Big Bobber
+    Titles.WINDFALL_OF_THE_MIND: _TODO,  # Windfall of the Mind
+    Titles.RESCUE_ENHANCEMENT: _TODO,  # Rescue Enhancement
+    Titles.GOING_TO_PIECES: _TODO,  # Going to Pieces
+    Titles.HIGH_RIDER: _TODO,  # High Rider
+    Titles.THAT_SINKING_FEELING: _TODO,  # That Sinking Feeling
+    Titles.BALMY_SWAMI_THE: _TODO,  # The Balmy Swami
+    Titles.WINDY_STORY_THE: _TODO,  # The Windy Story
+    Titles.MOOLA_ON_THE_MOVE: _TODO,  # Moola on the Move
+    Titles.THUMBS_UP: _TODO,  # Thumbs Up
+    Titles.BILL_WIND: _TODO,  # Bill Wind
+    Titles.SLEEPIES_THE: _TODO,  # The Sleepies
+    Titles.LIGHTS_OUT: _TODO,  # Lights Out
+    Titles.IMMOVABLE_MISER: _TODO,  # Immovable Miser
+    Titles.KITTY_GO_ROUND: _TODO,  # Kitty-Go-Round
+    Titles.POOR_LOSER: _TODO,  # Poor Loser
+    Titles.CRAWLS_FOR_CASH: _TODO,  # Crawls for Cash
+    Titles.ALL_CHOKED_UP: _TODO,  # All Choked Up
+    Titles.BIRD_CAMERA_THE: _TODO,  # The Bird Camera
+    Titles.ODD_ORDER_THE: _TODO,  # The Odd Order
+    Titles.MONEY_HAT_THE: _TODO,  # The Money Hat
+    Titles.CALL_OF_THE_WILD_THE: _TODO,  # The Call of the Wild
+    Titles.TALE_OF_THE_TAPE: _TODO,  # Tale of the Tape
+    Titles.HIS_SHINING_HOUR: _TODO,  # His Shining Hour
+    Titles.THRIFT_GIFT_A: _TODO,  # A Thrift Gift
+    Titles.UNCLE_SCROOGE___MONKEY_BUSINESS: _TODO,  # Uncle Scrooge - Monkey Business
+    Titles.COLLECTION_DAY: _TODO,  # Collection Day
+    Titles.SEEING_IS_BELIEVING: _TODO,  # Seeing is Believing
+    Titles.PLAYMATES: _TODO,  # Playmates
+    Titles.RAGS_TO_RICHES: _TODO,  # Rags to Riches
+    Titles.ART_APPRECIATION: _TODO,  # Art Appreciation
+    Titles.FLOWERS_ARE_FLOWERS: _TODO,  # Flowers Are Flowers
+    Titles.GETTING_THE_BIRD: _TODO,  # Getting the Bird
+    Titles.NEST_EGG_COLLECTOR: _TODO,  # Nest Egg Collector
+    Titles.MILLION_DOLLAR_SHOWER: _TODO,  # Million-Dollar Shower
+    Titles.DUELING_TYCOONS: _TODO,  # Dueling Tycoons
+    Titles.WISHFUL_EXCESS: _TODO,  # Wishful Excess
+    Titles.SIDEWALK_OF_THE_MIND: _TODO,  # Sidewalk of the Mind
+    Titles.NO_BARGAIN: _TODO,  # No Bargain
+    Titles.UP_AND_AT_IT: _TODO,  # Up and at It
+    Titles.FIREMAN_SCROOGE: _TODO,  # Fireman Scrooge
+    Titles.SAVED_BY_THE_BAG: _TODO,  # Saved by the Bag!
+    Titles.TICKING_DETECTOR: _TODO,  # Ticking Detector
+    Titles.IT_HAPPENED_ONE_WINTER: _TODO,  # It Happened One Winter
+    Titles.LOCK_OUT_THE: _TODO,  # The Lock Out
+    Titles.BIGGER_THE_BEGGAR_THE: _TODO,  # The Bigger the Beggar
+    Titles.PLUMMETING_WITH_PRECISION: _TODO,  # Plummeting with Precision
+    Titles.SNAKE_TAKE: _TODO,  # Snake Take
+    Titles.LAUNDRY_FOR_LESS: _TODO,  # Laundry for Less
+    Titles.LONG_DISTANCE_COLLISION: _TODO,  # Long Distance Collision
+    Titles.TOP_WAGES: _TODO,  # Top Wages
+    Titles.DOWN_FOR_THE_COUNT: _TODO,  # Down for the Count
+    Titles.WASTED_WORDS: _TODO,  # Wasted Words
+}
+# fmt: on
+
+
+def is_one_pager_located(title: Titles) -> bool:
+    """Return whether a one-pager has an authored (volume, page) location.
+
+    Args:
+        title: The one-pager title to check.
+
+    Returns:
+        True if the title has a real location (both volume and page > 0).
+
+    """
+    loc = ONE_PAGER_LOCATIONS.get(title)
+    return loc is not None and loc[0] > 0 and loc[1] > 0
+
+
+def get_located_one_pagers() -> list["Titles"]:
+    """Return one-pagers with an authored location, in chronological order.
+
+    Returns:
+        The located one-pager titles, ordered as in `ONE_PAGERS`.
+
+    """
+    return [t for t in ONE_PAGERS if is_one_pager_located(t)]
+
+
+def is_one_pager_collection(title: "Titles") -> bool:
+    """Return whether a title is the synthetic "All One-Pagers" collection."""
+    return title == Titles.ALL_ONE_PAGERS
+
+
+def get_one_pager_collection_pages() -> list[OriginalPage]:
+    """Return the body pages making up the "All One-Pagers" collection.
+
+    One `BODY` page per *located* one-pager, in chronological order, each tagged
+    with the Fantagraphics volume it is sourced from (so the reader can gather
+    them across volumes). Derived entirely from `ONE_PAGER_LOCATIONS`.
+
+    Returns:
+        Ordered `OriginalPage` list; empty until one-pager locations are authored.
+
+    """
+    pages = []
+    for title in get_located_one_pagers():
+        volume, page_num = ONE_PAGER_LOCATIONS[title]
+        pages.append(OriginalPage(f"{page_num:03d}", PageType.BODY, volume))
+    return pages
+
+
+def get_one_pager_collection_page_num(title: "Titles") -> int | None:
+    """Return a one-pager's 1-based page position within the collection.
+
+    Used to deep-link a one-pager's tree node to its page in the collection.
+
+    Args:
+        title: The one-pager title.
+
+    Returns:
+        The 1-based page number, or None if the one-pager has no authored location.
+
+    """
+    located = get_located_one_pagers()
+    if title not in located:
+        return None
+    return located.index(title) + 1
+
+
 USEFUL_TITLES = {
     Titles.HORSERADISH_STORY_THE: "Uncle Scrooge #3",
     Titles.ROUND_MONEY_BIN_THE: "Uncle Scrooge #3",
@@ -931,6 +1166,14 @@ NON_COMIC_TITLES = [
     Titles.DON_AULT___LIFE_AMONG_THE_DUCKS,
     Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD,
     Titles.GEORGE_LUCAS___AN_APPRECIATION,
+]
+
+# Synthetic titles that are not real Barks stories: they have no payment record and
+# no natural chronological position, so they are exempt from those data-integrity
+# checks. (Unlike NON_COMIC_TITLES, these are readable comics, so they are kept out
+# of NON_COMIC_TITLES to avoid the article-routing/display semantics attached to it.)
+SYNTHETIC_TITLES = [
+    Titles.ALL_ONE_PAGERS,
 ]
 
 BARKS_ISSUE_DICT: dict[str, list[Titles]] = {
@@ -982,6 +1225,9 @@ def check_story_submitted_order(title_list: list[ComicBookInfo]) -> None:
     prev_title: ComicBookInfo | None = None
     prev_submitted_date = date(1940, 1, 1)
     for title in title_list:
+        if title.title in SYNTHETIC_TITLES:
+            # Synthetic collections have no real submission date - skip ordering.
+            continue
         if not JAN <= title.submitted_month <= DEC:
             msg = f'"{title}": Invalid submission month: {title.submitted_month}.'
             raise RuntimeError(msg)

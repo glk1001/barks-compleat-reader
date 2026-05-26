@@ -9,6 +9,7 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_DDS,
     SERIES_GG,
     SERIES_MISC,
+    SERIES_ONE_PAGERS,
     SERIES_USA,
     SERIES_USS,
     FantaComicBookInfo,
@@ -28,9 +29,18 @@ CHRONO_YEARS_KEY_PREFIX = ""
 CS_YEARS_KEY_PREFIX = "CS-"
 US_YEARS_KEY_PREFIX = "US-"
 
+# Whether one-pagers (the "One Pagers" series, including the synthetic
+# "All One-Pagers" collection) appear in the chronological year nodes. They are
+# always reachable under the One Pagers series node regardless of this flag;
+# this only controls whether they also interleave into the chronological lists.
+INCLUDE_ONE_PAGERS_IN_CHRONO = False
+
 
 class FilteredTitleLists:
-    def __init__(self) -> None:
+    def __init__(
+        self, *, include_one_pagers_in_chrono: bool = INCLUDE_ONE_PAGERS_IN_CHRONO
+    ) -> None:
+        self.include_one_pagers_in_chrono = include_one_pagers_in_chrono
         self.chrono_years = range(CHRONO_YEAR_RANGES[0][0], CHRONO_YEAR_RANGES[-1][1] + 1)
         self.cs_years = range(CS_YEAR_RANGES[0][0], CS_YEAR_RANGES[-1][1] + 1)
         self.us_years = range(US_YEAR_RANGES[0][0], US_YEAR_RANGES[-1][1] + 1)
@@ -40,6 +50,7 @@ class FilteredTitleLists:
             SERIES_DDS,
             SERIES_GG,
             SERIES_MISC,
+            SERIES_ONE_PAGERS,
             SERIES_USA,
             SERIES_USS,
         ]
@@ -68,8 +79,12 @@ class FilteredTitleLists:
     def get_title_lists(self) -> dict[str, list[FantaComicBookInfo]]:
         filters: dict[str, Callable[[FantaComicBookInfo], bool]] = {}
 
+        exclude_one_pagers = not self.include_one_pagers_in_chrono
         for year in self.chrono_years:
-            filters[str(year)] = lambda info, y=year: info.comic_book_info.submitted_year == y
+            filters[str(year)] = lambda info, y=year: (
+                info.comic_book_info.submitted_year == y
+                and not (exclude_one_pagers and info.series_name == SERIES_ONE_PAGERS)
+            )
 
         for name in self.series_names:
             filters[name] = lambda info, n=name: info.series_name == n

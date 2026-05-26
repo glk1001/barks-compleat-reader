@@ -1,6 +1,6 @@
 from enum import CONTINUOUS, UNIQUE, IntEnum, auto, verify
 
-NUM_TITLES = 664 + 4  # +4 for articles
+NUM_TITLES = 664 + 4 + 1  # +4 for articles, +1 for the All One-Pagers collection
 
 GYRO_GEARLOOSE = "Gyro Gearloose"
 
@@ -680,6 +680,8 @@ class Titles(IntEnum):
     DON_AULT___FANTAGRAPHICS_INTRODUCTION = auto()
     DON_AULT___LIFE_AMONG_THE_DUCKS = auto()
     MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD = auto()
+    # Synthetic collection (not a real Barks story) - bundles every one-pager.
+    ALL_ONE_PAGERS = auto()
 
 
 assert len(Titles) == NUM_TITLES, f"{len(Titles)} != {NUM_TITLES}"
@@ -716,6 +718,7 @@ _SMALL_WORDS = frozenset(
 # (apostrophes, hyphens, punctuation, non-standard casing, etc.).
 _TITLE_OVERRIDES: dict[str, str] = {
     "ALL_CHOKED_UP": "All Choked Up",
+    "ALL_ONE_PAGERS": "All One-Pagers",
     "BACK_TO_LONG_AGO": "Back to Long Ago!",
     "BAD_DAY_FOR_TROOP_A": "Bad Day for Troop 'A'",
     "BEACHCOMBERS_PICNIC_THE": "The Beachcombers' Picnic",

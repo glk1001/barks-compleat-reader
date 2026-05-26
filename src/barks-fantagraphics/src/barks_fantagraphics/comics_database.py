@@ -21,7 +21,9 @@ from .comic_book_info import (
     BARKS_TITLE_DICT,
     NON_COMIC_TITLES,
     get_filename_from_title_str,
+    get_one_pager_collection_pages,
     get_title_str_from_filename,
+    is_one_pager_collection,
 )
 from .comics_consts import (
     BARKS_ROOT_DIR,
@@ -452,6 +454,23 @@ class ComicsDatabase:
         return self._inset_dir / inset_filename
 
 
+def _parse_config_page(key: str, page_type_str: str) -> OriginalPage:
+    """Parse a ``[pages]`` entry into an :class:`OriginalPage`.
+
+    A normal key is a page spec ("150", "150-159", "title_empty"). A
+    multi-volume collection key is prefixed with its source volume, e.g.
+    ``FANTA_10/150`` (ConfigParser lower-cases keys, so matching is
+    case-insensitive). The prefix sets ``OriginalPage.fanta_volume``.
+    """
+    fanta_volume: int | None = None
+    page_spec = key
+    if "/" in key:
+        vol_part, page_spec = key.split("/", 1)
+        fanta_volume = get_fanta_volume_from_str(vol_part.upper())
+
+    return OriginalPage(page_spec, PageType[page_type_str], fanta_volume)
+
+
 def _build_comic_book(
     story_title: str,
     ini_file: Path,
@@ -484,11 +503,16 @@ def _build_comic_book(
     publication_text = get_main_publication_info(story_title, fanta_info, fanta_book)
     extra_pub_info = config["info"].get("extra_pub_info", "")
 
-    config_page_images = [
-        OriginalPage(key, PageType[config["pages"][key]])
-        for key in config["pages"]
-        if key != "solo_pages"
-    ]
+    if is_one_pager_collection(fanta_info.comic_book_info.title):
+        # The "All One-Pagers" collection's pages are gathered across volumes from
+        # ONE_PAGER_LOCATIONS rather than listed in the ini's [pages] section.
+        config_page_images = get_one_pager_collection_pages()
+    else:
+        config_page_images = [
+            _parse_config_page(key, config["pages"][key])
+            for key in config["pages"]
+            if key != "solo_pages"
+        ]
 
     solo_pages_str = config["pages"].get("solo_pages", "")
     solo_page_keys: frozenset[str] = (

@@ -8,6 +8,11 @@ from .panel_geometry import BoundingBox
 class OriginalPage:
     page_filenames: str
     page_type: PageType
+    # Fantagraphics volume this page is sourced from. ``None`` means "use the
+    # comic's own (single) volume" - the normal case. It is set only for
+    # multi-volume collection comics (e.g. the "All One-Pagers" collection)
+    # whose pages are gathered from several different volumes.
+    fanta_volume: int | None = None
 
 
 class CleanPage:

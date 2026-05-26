@@ -6,7 +6,7 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 
 from .barks_titles import BARKS_TITLES, Titles
-from .comic_book_info import BARKS_TITLE_INFO, NON_COMIC_TITLES, ONE_PAGERS
+from .comic_book_info import BARKS_TITLE_INFO, NON_COMIC_TITLES, ONE_PAGERS, SYNTHETIC_TITLES
 
 
 @dataclass(frozen=True, slots=True)
@@ -554,7 +554,7 @@ def validate_payment_data() -> None:
 
     for title_info in BARKS_TITLE_INFO:
         title = title_info.title
-        if title in NON_COMIC_TITLES:
+        if title in NON_COMIC_TITLES or title in SYNTHETIC_TITLES:
             continue
 
         if (title not in ONE_PAGERS) and (title not in BARKS_PAYMENTS):
