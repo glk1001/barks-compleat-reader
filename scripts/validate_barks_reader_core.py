@@ -46,6 +46,7 @@ from barks_reader.core.fantagraphics_volumes import (
     TooManyArchiveFilesError,
     TooManyOverrideDirsError,
 )
+from barks_reader.core.image_pipeline import load_pil as reader_load_pil
 from barks_reader.core.reader_utils import is_blank_page, is_title_page
 from barks_reader.core.system_file_paths import SystemFilePaths
 from comic_utils.comic_consts import (
@@ -56,7 +57,6 @@ from comic_utils.comic_consts import (
     PanelPath,
 )
 from comic_utils.decryption import DecryptionError
-from comic_utils.pil_image_utils import load_pil_image_for_reading, load_pil_image_from_zip
 from dotenv import load_dotenv
 from loguru import logger
 
@@ -537,16 +537,15 @@ class _TitleCounts:
 def _load_test_image(panel_path: PanelPath, encrypted: bool) -> Exception | None:
     """Decode the image at ``panel_path``; return ``None`` on success, the exception on failure.
 
-    Picks the right loader based on the path's runtime type: zip members go
-    through ``load_pil_image_from_zip`` (which handles the panel-key
-    decryption when ``encrypted=True``), filesystem paths go through
-    ``load_pil_image_for_reading``.
+    Loads through the reader's OWN primitive ``image_pipeline.load_pil`` - the
+    exact call ``panel_image_loader`` makes at read time - so this check stays
+    faithful to the live reader and reproduces (rather than masks) a
+    decryption-caller regression the compiled panel-key allow-list would reject.
+    ``load_pil`` decrypts zip members when ``encrypted_zip=True`` and reads
+    filesystem paths verbatim (the flag is ignored for them).
     """
     try:
-        if isinstance(panel_path, zipfile.Path):
-            load_pil_image_from_zip(panel_path, encrypted=encrypted)
-        else:
-            load_pil_image_for_reading(panel_path)
+        reader_load_pil(panel_path, encrypted_zip=encrypted)
     except DecryptionError as exc:
         return exc
     except (OSError, RuntimeError, ValueError, KeyError, zipfile.BadZipFile) as exc:
@@ -1580,17 +1579,18 @@ def _check_one_source_page(
                 f" source={source_label} reason=override_archive_not_open"
             )
         else:
-            # Call the canonical loader inside ``comic_utils.pil_image_utils``;
-            # ``image_pipeline.load_pil`` is functionally equivalent but the
-            # compiled Cython panel-key module restricts the encrypted-decrypt
-            # path to a fixed allow-list of callers (``comic_utils.pil_image_utils``
-            # is on it; ``barks_reader.core.image_pipeline`` is not). Using the
-            # allowed entry point keeps Phase 9 honest without bypassing the
-            # caller check.
+            # Decode + decrypt through the reader's OWN primitive
+            # (``barks_reader.core.image_pipeline.load_pil``), i.e. the exact
+            # call ``ArchivePageImageSource`` makes at read time. Using the
+            # reader's path - rather than a different decryptor entry point -
+            # is what keeps Phase 9 faithful: if the reader's decryption ever
+            # regresses (e.g. a caller the compiled panel-key allow-list
+            # rejects), this phase reproduces the failure instead of masking it.
             try:
-                load_pil_image_from_zip(
+                reader_load_pil(
                     zipfile.Path(target_zip, at=str(member)),
-                    encrypted=encrypted,
+                    encrypted_zip=encrypted,
+                    use_ext_hint=True,
                 )
             except DecryptionError as exc:
                 counts.decryption_failed += 1

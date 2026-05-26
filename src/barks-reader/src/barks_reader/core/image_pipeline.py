@@ -14,11 +14,10 @@ import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from comic_utils.decryption import DecryptionError
-from comic_utils.get_panel_bytes import get_decrypted_bytes
 from comic_utils.pil_image_utils import (
     get_pil_image_as_png_bytes,
     load_pil_image_from_bytes,
+    load_pil_image_from_zip,
 )
 from PIL import Image as PilImage
 from PIL import ImageOps
@@ -28,31 +27,28 @@ if TYPE_CHECKING:
     from PIL.Image import Image
 
 
-def read_raw_bytes(panel_path: PanelPath, *, encrypted_zip: bool = False) -> bytes:
+def read_raw_bytes(panel_path: PanelPath) -> bytes:
     """Read raw image bytes from either a filesystem ``Path`` or a ``zipfile.Path``.
+
+    This reads bytes verbatim and never decrypts. Decryption of encrypted zip
+    members must go through :func:`load_pil` (``encrypted_zip=True``), which
+    delegates to ``comic_utils.pil_image_utils.load_pil_image_from_zip`` — the
+    canonical entry point the compiled panel-key module's caller allow-list
+    permits. This module is *not* on that allow-list, so it must never call the
+    decryptor directly.
 
     Args:
         panel_path: Source path.
-        encrypted_zip: When ``True`` and *panel_path* is a ``zipfile.Path``,
-            decrypt the bytes before returning. Ignored for filesystem paths.
 
     Returns:
-        Raw file bytes (decrypted if requested).
+        Raw file bytes.
 
     Raises:
         TypeError: If *panel_path* is neither ``Path`` nor ``zipfile.Path``.
-        DecryptionError: If *encrypted_zip* is ``True`` and decryption
-            returns empty bytes.
 
     """
     if isinstance(panel_path, zipfile.Path):
-        raw = panel_path.read_bytes()
-        if encrypted_zip:
-            raw = get_decrypted_bytes(raw)
-            if not raw:
-                msg = f'Image decryption failed with empty bytes: "{panel_path}".'
-                raise DecryptionError(msg)
-        return raw
+        return panel_path.read_bytes()
 
     if isinstance(panel_path, Path):
         return panel_path.read_bytes()
@@ -92,16 +88,25 @@ def load_pil(
 
     Args:
         panel_path: Source path.
-        encrypted_zip: Whether zipfile bytes are encrypted (passed to
-            :func:`read_raw_bytes`).
+        encrypted_zip: When ``True`` and *panel_path* is a ``zipfile.Path``,
+            decrypt via the allow-listed ``load_pil_image_from_zip``. Ignored
+            for filesystem paths.
         use_ext_hint: When ``True``, pass the path's suffix to
-            :func:`decode_pil` so PIL validates the format.
+            :func:`decode_pil` so PIL validates the format. (The encrypted-zip
+            path always validates by extension.)
 
     Returns:
         A loaded PIL image.
 
     """
-    raw = read_raw_bytes(panel_path, encrypted_zip=encrypted_zip)
+    if encrypted_zip and isinstance(panel_path, zipfile.Path):
+        # Decryption must run inside comic_utils.pil_image_utils: the compiled
+        # panel-key module restricts the decryptor to an allow-list of caller
+        # modules that does NOT include this one. load_pil_image_from_zip is the
+        # canonical allow-listed entry point (read + decrypt + decode-with-ext).
+        return load_pil_image_from_zip(panel_path, encrypted=True)
+
+    raw = read_raw_bytes(panel_path)
     ext = panel_path.suffix if use_ext_hint else None
     return decode_pil(raw, ext=ext)
 

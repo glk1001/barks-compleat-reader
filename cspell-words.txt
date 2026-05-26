@@ -27,6 +27,7 @@ consolelog
 cpus
 cythonize
 dateutil
+decryptor
 docstrings
 dotenv
 edgecolor

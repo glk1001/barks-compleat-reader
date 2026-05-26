@@ -21,7 +21,6 @@ from barks_reader.core.image_pipeline import (
     read_raw_bytes,
     resize_contain,
 )
-from comic_utils.get_panel_bytes import get_decrypted_bytes
 from PIL import Image
 
 if TYPE_CHECKING:
@@ -66,23 +65,6 @@ class TestReadRawBytes:
             result = read_raw_bytes(zipfile.Path(zf, at="images/p1.png"))
 
         assert result == data
-
-    def test_read_from_zip_path_encrypted_calls_decrypt(self, tmp_path: Path) -> None:
-        raw = b"cipher_text_bytes"
-        zip_path = tmp_path / "archive.zip"
-        _write_zip(zip_path, {"p.png": raw})
-
-        decrypted = b"plain_bytes"
-        with (
-            zipfile.ZipFile(zip_path, "r") as zf,
-            patch.object(
-                image_pipeline, get_decrypted_bytes.__name__, return_value=decrypted
-            ) as mock_decrypt,
-        ):
-            result = read_raw_bytes(zipfile.Path(zf, at="p.png"), encrypted_zip=True)
-
-        mock_decrypt.assert_called_once_with(raw)
-        assert result == decrypted
 
     def test_unsupported_type_raises_type_error(self) -> None:
         with pytest.raises(TypeError, match="Unsupported PanelPath type"):
@@ -131,6 +113,29 @@ class TestLoadPil:
             )
 
         assert pil.size == (16, 8)
+
+    def test_load_pil_encrypted_zip_delegates_to_allow_listed_loader(self, tmp_path: Path) -> None:
+        """Encrypted reads must go through comic_utils' allow-listed loader.
+
+        The compiled panel-key module rejects decryption requested from this
+        module, so ``load_pil`` must delegate the encrypted-zip case to
+        ``load_pil_image_from_zip`` rather than decrypting here.
+        """
+        zip_path = tmp_path / "enc.zip"
+        _write_zip(zip_path, {"p.png": b"cipher"})
+        sentinel = Image.new("RGB", (5, 5))
+
+        with (
+            zipfile.ZipFile(zip_path, "r") as zf,
+            patch.object(
+                image_pipeline, "load_pil_image_from_zip", return_value=sentinel
+            ) as mock_loader,
+        ):
+            zip_member = zipfile.Path(zf, at="p.png")
+            result = load_pil(zip_member, encrypted_zip=True, use_ext_hint=True)
+
+        mock_loader.assert_called_once_with(zip_member, encrypted=True)
+        assert result is sentinel
 
 
 class TestTransformStages:
