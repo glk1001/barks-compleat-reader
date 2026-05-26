@@ -494,7 +494,7 @@ class ComicBook:
 
         return False
 
-    def get_story_file_sources(self, page_num: str) -> list[str]:
+    def get_story_file_sources(self, page_num: str) -> list[Path]:
         srce_restored_file = self._get_srce_restored_story_file(page_num)
         srce_upscayled_file = self.get_srce_upscayled_story_file(page_num)
         srce_upscayled_fixes_file = self.get_srce_upscayled_fixes_story_file(page_num)

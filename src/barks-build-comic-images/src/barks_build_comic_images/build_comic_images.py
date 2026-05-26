@@ -776,7 +776,7 @@ class ComicBookImageBuilder:
                     self._draw_superscript_title_text(
                         FOOTNOTE_CHAR,
                         color,
-                        left,
+                        int(left),
                         line_top + line_top_extra,
                         spacing,
                         draw,

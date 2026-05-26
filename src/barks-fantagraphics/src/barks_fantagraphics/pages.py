@@ -301,8 +301,8 @@ def get_srce_dest_map(
     srce_dim: ComicDimensions,
     required_dim: RequiredDimensions,
     pages: SrceAndDestPages,
-) -> dict[str, str | int | dict[str, str]]:
-    srce_dest_map: dict[str, str | int | dict[str, str]] = {
+) -> dict[str, str | int | dict[str, dict[str, str]]]:
+    srce_dest_map: dict[str, str | int | dict[str, dict[str, str]]] = {
         "srce_dirname": Path(comic.dirs.srce_dir).name,
         "dest_dirname": comic.get_dest_rel_dirname(),
         "srce_min_panels_bbox_width": srce_dim.min_panels_bbox_width,
