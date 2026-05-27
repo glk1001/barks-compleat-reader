@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from .barks_titles import Titles as Bt
+from .comic_book_info import ONE_PAGER_LOCATIONS, get_located_one_pagers
 from .fanta_comics_info import (
     BAR,
     BIGD,
@@ -51,12 +52,14 @@ from .fanta_comics_info import (
     SERIES_EXTRAS,
     SERIES_GG,
     SERIES_MISC,
+    SERIES_ONE_PAGERS,
     SERIES_USA,
     SERIES_USS,
     SLEA,
     SUMH,
     TOZ,
     FantaSeriesInfo,
+    get_fanta_volume_str,
 )
 
 # fmt: off
@@ -525,17 +528,14 @@ SERIES_INFO: list[FantaSeriesInfo] = [
 
 # --- One Pagers (generated from ONE_PAGER_LOCATIONS) --------------------------
 # The "One Pagers" series is derived from the hand-authored volume+page table in
-# comic_book_info rather than listed by hand here. Each *located* one-pager gets
-# an entry in its real volume, plus the synthetic "All One-Pagers" collection
-# container. Adding them to SERIES_INFO is what makes them enter
+# comic_book_info rather than listed by hand here. Each *located* one-pager gets an
+# entry in its real Fantagraphics volume, plus the synthetic "All One-Pagers"
+# collection container. Appending them to SERIES_INFO is what makes them enter
 # ALL_FANTA_COMIC_BOOK_INFO and appear in the reader tree. One-pagers without an
 # authored location are skipped until their location is filled in.
-from .comic_book_info import ONE_PAGER_LOCATIONS, get_located_one_pagers  # noqa: E402
-from .fanta_comics_info import SERIES_ONE_PAGERS, get_fanta_volume_str  # noqa: E402
-
-# The collection spans every volume, so its nominal "primary" volume is a fixed
-# anchor (FANTA_01) - per-page volumes carry the real source (see OriginalPage).
-# This is kept in sync with data/story-titles/All One-Pagers.ini's source_comic.
+#
+# The collection is pre-baked into a single nominal volume (FANTA_01), kept in sync
+# with data/story-titles/All One-Pagers.ini's source_comic.
 SERIES_INFO.append(FantaSeriesInfo(Bt.ALL_ONE_PAGERS, "", SERIES_ONE_PAGERS, FANTA_01))
 SERIES_INFO.extend(
     FantaSeriesInfo(

@@ -4,6 +4,7 @@
 alnum
 apos
 arcname
+arcnames
 argtypes
 autotune
 autouse
@@ -91,6 +92,7 @@ srce
 summarising
 sunos
 sysfs
+syspath
 sysrsync
 testpaths
 textbbox

@@ -435,7 +435,11 @@ class ComicBookReader(FloatLayout):
         self._page_manager.reset_current_page_index()
         self.action_bar_title = get_action_bar_title(self._font_manager, self._current_title_str)
 
-        self._page_manager.double_page_mode = self._reader_settings.double_page_mode
+        # The "All One-Pagers" collection is always single-page: each page is a
+        # separate gag, so a two-page spread would pair unrelated one-pagers.
+        self._page_manager.double_page_mode = (
+            False if self._is_one_pager_collection else self._reader_settings.double_page_mode
+        )
         self._page_manager.set_page_map(page_map, page_to_first_goto)
 
         self._time_to_load_comic.restart()
@@ -586,6 +590,11 @@ class ComicBookReader(FloatLayout):
         """Return the current active double-page mode (not the config setting)."""
         return self._page_manager.double_page_mode
 
+    @property
+    def is_one_pager_collection(self) -> bool:
+        """Whether the comic currently being read is the All One-Pagers collection."""
+        return self._is_one_pager_collection
+
     def next_page(self) -> None:
         self._page_manager.next_page()
 
@@ -594,6 +603,9 @@ class ComicBookReader(FloatLayout):
 
     def toggle_double_page_mode(self) -> None:
         """Toggle double-page mode on/off for the current comic only (does not change config)."""
+        if self._is_one_pager_collection:
+            # The one-pager collection is always single-page - ignore the toggle.
+            return
         self._page_manager.double_page_mode = not self._page_manager.double_page_mode
         self._show_page(None, None)
 
@@ -691,6 +703,9 @@ class ComicBookReader(FloatLayout):
 class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
+    # Opacity for an action-bar button that is greyed out (e.g. the double-page
+    # toggle while reading the single-page-only one-pager collection).
+    _GREYED_BUTTON_OPACITY = 0.4
     action_bar_title = StringProperty()
     # Width of the inner action bar (centered to match the comic image's aspect-fit width).
     action_bar_width = NumericProperty(1)  # must be non-zero for initial build
@@ -914,13 +929,25 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._hide_action_bar()
 
     def _sync_double_page_button(self) -> None:
-        """Sync the double-page button icon to the current active mode."""
+        """Sync the double-page button to the current mode; grey it for the collection.
+
+        The one-pager collection is single-page only, so the toggle is greyed out.
+        We dim via opacity rather than the ``disabled`` flag: this is an icon
+        ActionButton, and Kivy's disabled state drops the icon and reveals the faint
+        "Double Page" text label. ``toggle_double_page_mode`` is already a no-op for
+        the collection, so the greyed (but technically enabled) button is inert.
+        """
+        button = self.ids.double_page_button
+        button.opacity = (
+            self._GREYED_BUTTON_OPACITY if self.comic_book_reader.is_one_pager_collection else 1.0
+        )
+
         if self.comic_book_reader.double_page_mode:
-            self.ids.double_page_button.icon = str(
+            button.icon = str(
                 self._reader_settings.sys_file_paths.get_barks_reader_single_page_icon_file()
             )
         else:
-            self.ids.double_page_button.icon = str(
+            button.icon = str(
                 self._reader_settings.sys_file_paths.get_barks_reader_double_page_icon_file()
             )
 
