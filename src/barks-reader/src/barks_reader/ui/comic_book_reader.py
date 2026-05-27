@@ -421,7 +421,7 @@ class ComicBookReader(FloatLayout):
     ) -> None:
         assert (page_to_first_goto == COMIC_BEGIN_PAGE) or (page_to_first_goto in page_map)
 
-        self._current_title_str = fanta_info.comic_book_info.get_title_str()
+        self._current_title_str = self.get_reader_comic_title(fanta_info)
 
         # For the "All One-Pagers" collection the window title is per-page (set in
         # _show_page); for everything else it is the comic's title, set once here.
@@ -468,6 +468,12 @@ class ComicBookReader(FloatLayout):
 
         self._on_comic_is_ready_to_read()
         Clock.schedule_once(lambda _dt: self._show_loading_page(), 0)
+
+    @staticmethod
+    def get_reader_comic_title(fanta_info: FantaComicBookInfo) -> str:
+        if fanta_info.comic_book_info.is_barks_title:
+            return fanta_info.comic_book_info.get_title_str()
+        return fanta_info.comic_book_info.get_title_from_issue_name()
 
     def close_comic_book_reader(self) -> None:
         if self._closed:
