@@ -46,6 +46,7 @@ class ViewStates(IntEnum):
     ON_USS_NODE = auto()
     ON_GG_NODE = auto()
     ON_MISC_NODE = auto()
+    ON_ONE_PAGERS_NODE = auto()
     ON_CATEGORIES_NODE = auto()
     ON_CATEGORY_NODE = auto()
     ON_TAG_GROUP_NODE = auto()

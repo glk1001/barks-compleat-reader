@@ -32,7 +32,7 @@ def mock_dependencies() -> dict[str, MagicMock]:
 def tree_builder(
     mock_dependencies: dict[str, MagicMock],
 ) -> ReaderTreeBuilder:
-    return ReaderTreeBuilder(**mock_dependencies)
+    return ReaderTreeBuilder(**mock_dependencies, include_one_pagers_in_chrono=False)
 
 
 class TestReaderTreeBuilder:

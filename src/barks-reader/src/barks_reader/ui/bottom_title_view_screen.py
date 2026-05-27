@@ -4,6 +4,7 @@ import random
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from barks_fantagraphics.comic_book_info import ONE_PAGERS, get_one_pager_display_title
 from comic_utils.timing import Timing
 from kivy.animation import Animation
 from kivy.properties import (  # ty: ignore[unresolved-import]
@@ -169,9 +170,17 @@ class BottomTitleViewScreen(FloatLayout):
 
     @staticmethod
     def _get_main_title_str(fanta_info: FantaComicBookInfo) -> str:
-        if fanta_info.comic_book_info.is_barks_title:
-            if fanta_info.comic_book_info.title in LONG_TITLE_SPLITS:
-                return LONG_TITLE_SPLITS[fanta_info.comic_book_info.title]
-            return fanta_info.comic_book_info.get_title_str()
+        comic_book_info = fanta_info.comic_book_info
 
-        return fanta_info.comic_book_info.get_title_from_issue_name()
+        # One-pagers always show their issue plus the page within that issue
+        # (rather than the gag's own title), since they are read as a page of the
+        # "All One-Pagers" collection rather than as a standalone comic.
+        if comic_book_info.title in ONE_PAGERS:
+            return get_one_pager_display_title(comic_book_info.title)
+
+        if comic_book_info.is_barks_title:
+            if comic_book_info.title in LONG_TITLE_SPLITS:
+                return LONG_TITLE_SPLITS[comic_book_info.title]
+            return comic_book_info.get_title_str()
+
+        return comic_book_info.get_title_from_issue_name()

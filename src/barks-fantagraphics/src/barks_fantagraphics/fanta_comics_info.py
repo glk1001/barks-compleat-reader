@@ -34,6 +34,7 @@ def _get_all_fanta_comic_book_info() -> FantaComicBookInfoDict:
     chrono_sorted_series_info = sorted(SERIES_INFO, key=lambda x: x.title)
 
     fanta_chronological_number = 1
+    one_pager_chronological_number = 1
     for title_info in chrono_sorted_series_info:
         # if title not in SERIES_INFO:
         #     logger.debug(f'Title "{title}" not in SERIES_INFO.')
@@ -41,19 +42,28 @@ def _get_all_fanta_comic_book_info() -> FantaComicBookInfoDict:
 
         comic_book_info = BARKS_TITLE_INFO[title_info.title]
 
+        # One-pagers (and the "All One-Pagers" collection) are not part of the main
+        # chronological sequence: they must not consume numbers there and shift the
+        # regular comics. They get their own independent ordering instead.
+        if title_info.series_name == SERIES_ONE_PAGERS:
+            chrono_num = one_pager_chronological_number
+            one_pager_chronological_number += 1
+        else:
+            chrono_num = fanta_chronological_number
+            fanta_chronological_number += 1
+
         fanta_info = FantaComicBookInfo(
             comic_book_info=comic_book_info,
             colorist=title_info.colorist,
             series_name=title_info.series_name,
             fantagraphics_volume=title_info.fanta_volume,
             number_in_series=current_number_in_series[title_info.series_name],
-            fanta_chronological_number=fanta_chronological_number,
+            fanta_chronological_number=chrono_num,
         )
 
         all_fanta_info[comic_book_info.get_title_str()] = fanta_info
 
         current_number_in_series[title_info.series_name] += 1
-        fanta_chronological_number += 1
 
     return all_fanta_info
 
@@ -316,12 +326,28 @@ def get_fanta_info(title: Titles) -> FantaComicBookInfo | None:
     return ALL_FANTA_COMIC_BOOK_INFO.get(title_str)
 
 
-def get_num_comic_book_titles(year_range: tuple[int, int]) -> int:
+def get_num_comic_book_titles(
+    year_range: tuple[int, int], *, include_one_pagers: bool = False
+) -> int:
+    """Count titles submitted within ``year_range``.
+
+    Args:
+        year_range: Inclusive (start, end) submitted-year range.
+        include_one_pagers: When False (default), one-pagers and the
+            "All One-Pagers" collection (the ``SERIES_ONE_PAGERS`` series) are
+            excluded - matching the chronological tree nodes, which omit them
+            unless that inclusion is enabled.
+
+    Returns:
+        The number of matching titles.
+
+    """
     return len(
         [
             info.fanta_chronological_number
             for info in ALL_FANTA_COMIC_BOOK_INFO.values()
             if year_range[0] <= info.comic_book_info.submitted_year <= year_range[1]
+            and (include_one_pagers or info.series_name != SERIES_ONE_PAGERS)
         ]
     )
 

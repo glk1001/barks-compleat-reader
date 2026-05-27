@@ -11,7 +11,13 @@ from typing import TYPE_CHECKING, cast
 
 from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES, TagGroups, Tags
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_DICT, NON_COMIC_TITLES, ComicBookInfo
+from barks_fantagraphics.comic_book_info import (
+    BARKS_TITLE_DICT,
+    NON_COMIC_TITLES,
+    ONE_PAGERS,
+    ComicBookInfo,
+    get_one_pager_collection_page_num,
+)
 from barks_fantagraphics.comics_database import TitleNotFoundError
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
@@ -264,6 +270,14 @@ class NavigationCoordinator:
             True if the comic was successfully opened, False on error.
 
         """
+        assert self._current_fanta_info is not None
+        if self._current_fanta_info.comic_book_info.title in ONE_PAGERS:
+            # One-pagers have no comic of their own - read them as a page within
+            # the pre-baked "All One-Pagers" collection.
+            return self._read_one_pager_in_collection(
+                self._current_fanta_info.comic_book_info.title
+            )
+
         try:
             comic_book = self._get_comic_book()
         except TitleNotFoundError as e:
@@ -275,11 +289,52 @@ class NavigationCoordinator:
         self._on_active_changed(False)  # noqa: FBT003
         self._read_comic_view_state = None
 
-        assert self._current_fanta_info is not None
         self._comic_reader_manager.read_barks_comic_book(
             self._current_fanta_info,
             comic_book,
             self._get_page_to_first_goto(),
+            self._bottom_title_view_screen.use_overrides_active,
+        )
+        return True
+
+    def _read_one_pager_in_collection(self, one_pager: Titles) -> bool:
+        """Open the "All One-Pagers" collection at the selected one-pager's page.
+
+        One-pagers are not standalone comics; each is a body page in the collection.
+        Opens the collection comic (FANTA_01) and jumps to this one-pager's 1-based
+        position within it.
+
+        Args:
+            one_pager: The selected one-pager title.
+
+        Returns:
+            True if the collection was opened, False on error.
+
+        """
+        page_num = get_one_pager_collection_page_num(one_pager)
+        collection_info = get_fanta_info(Titles.ALL_ONE_PAGERS)
+        if page_num is None or collection_info is None:
+            logger.error(
+                f'Cannot open one-pager "{BARKS_TITLES[one_pager]}":'
+                " it is not present in the All One-Pagers collection."
+            )
+            return False
+
+        try:
+            comic_book = self._comics_database.get_comic_book(BARKS_TITLES[Titles.ALL_ONE_PAGERS])
+        except TitleNotFoundError as e:
+            logger.error(e)
+            error_info = ErrorInfo(file_volume=-1, title=BARKS_TITLE_DICT[e.title])
+            self._user_error_handler.handle_error(ErrorTypes.ArchiveVolumeNotAvailable, error_info)
+            return False
+
+        self._on_active_changed(False)  # noqa: FBT003
+        self._read_comic_view_state = None
+
+        self._comic_reader_manager.read_barks_comic_book(
+            collection_info,
+            comic_book,
+            str(page_num),
             self._bottom_title_view_screen.use_overrides_active,
         )
         return True

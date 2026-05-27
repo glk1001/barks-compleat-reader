@@ -24,6 +24,7 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_DDS,
     SERIES_GG,
     SERIES_MISC,
+    SERIES_ONE_PAGERS,
     SERIES_USA,
     SERIES_USS,
     FantaComicBookInfo,
@@ -140,12 +141,15 @@ class ReaderTreeBuilder:
         reader_tree_events: ReaderTreeBuilderEventDispatcher,
         tree_view_manager: TreeViewManager,
         title_lists: dict[str, list[FantaComicBookInfo]],
+        *,
+        include_one_pagers_in_chrono: bool = False,
     ) -> None:
         self._reader_settings = reader_settings
         self._reader_tree_view = reader_tree_view
         self._reader_tree_events = reader_tree_events
         self._tree_view_manager = tree_view_manager
         self._title_lists = title_lists
+        self._include_one_pagers_in_chrono = include_one_pagers_in_chrono
         self._tree_build_timing = Timing()
         self.chrono_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
 
@@ -157,6 +161,7 @@ class ReaderTreeBuilder:
             SERIES_USS,
             SERIES_GG,
             SERIES_MISC,
+            SERIES_ONE_PAGERS,
         ]
 
     def _get_tagged_titles(self, tag: Tags) -> list[Titles]:
@@ -314,7 +319,9 @@ class ReaderTreeBuilder:
         new_node, year_range_titles = self._add_chrono_year_range_node(
             tree, year_range, parent_node
         )
-        assert len(year_range_titles) == get_num_comic_book_titles(year_range)
+        assert len(year_range_titles) == get_num_comic_book_titles(
+            year_range, include_one_pagers=self._include_one_pagers_in_chrono
+        )
 
         # 👇 instead of eagerly creating 100% of title children now, defer…
         def _populate() -> None:

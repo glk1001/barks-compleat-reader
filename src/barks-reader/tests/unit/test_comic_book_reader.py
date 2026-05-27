@@ -192,6 +192,8 @@ class TestComicBookReader:
             patch.object(barks_reader.ui.comic_book_reader.Clock, "schedule_once"),
             patch.object(barks_reader.ui.comic_book_reader, "ArchivePageImageSource"),
         ):
+            # action_bar_title is a StringProperty, so the formatter must yield a str.
+            _mock_get_title.return_value = "Title"
             assert reader
             reader.read_comic(
                 fanta_info,

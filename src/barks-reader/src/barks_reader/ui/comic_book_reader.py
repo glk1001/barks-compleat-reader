@@ -4,6 +4,11 @@ import io
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
+from barks_fantagraphics.comic_book_info import (
+    get_located_one_pagers,
+    get_one_pager_display_title,
+    is_one_pager_collection,
+)
 from barks_fantagraphics.comics_consts import PageType
 from comic_utils.timing import Timing
 from kivy.clock import Clock
@@ -56,6 +61,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
+    from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
     from kivy.input import MotionEvent
@@ -275,6 +281,10 @@ class ComicBookReader(FloatLayout):
     MAX_WINDOW_WIDTH = get_monitors()[0].width
     MAX_WINDOW_HEIGHT = get_monitors()[0].height
 
+    # The window/action-bar title. A Kivy property so the screen can bind to it and
+    # reflect per-page title changes (e.g. the "All One-Pagers" collection).
+    action_bar_title = StringProperty()
+
     def __init__(
         self,
         reader_settings: ReaderSettings,
@@ -294,6 +304,11 @@ class ComicBookReader(FloatLayout):
         self._current_comic_path = ""
         self._current_title_str = ""
         self.action_bar_title = ""
+
+        # When reading the "All One-Pagers" collection, the window title tracks the
+        # one-pager on the current page (updated per page turn in _show_page).
+        self._is_one_pager_collection = False
+        self._collection_one_pagers: list[Titles] = []
 
         self._add_reader_widgets()
 
@@ -408,6 +423,13 @@ class ComicBookReader(FloatLayout):
 
         self._current_title_str = fanta_info.comic_book_info.get_title_str()
 
+        # For the "All One-Pagers" collection the window title is per-page (set in
+        # _show_page); for everything else it is the comic's title, set once here.
+        self._is_one_pager_collection = is_one_pager_collection(fanta_info.comic_book_info.title)
+        self._collection_one_pagers = (
+            get_located_one_pagers() if self._is_one_pager_collection else []
+        )
+
         self._all_loaded = False
         self._goto_page_dropdown = None
         self._page_manager.reset_current_page_index()
@@ -481,6 +503,19 @@ class ComicBookReader(FloatLayout):
         self._comic_image.reload()  # Ensure reload if source was same BytesIO object
         self._comic_image.texture = self._loading_page_texture
 
+    def _set_one_pager_action_bar_title(self, page_str: str) -> None:
+        """Set the window title to the one-pager shown on the collection's *page_str*.
+
+        Collection display pages are ``1..N`` in ``get_located_one_pagers()`` order,
+        so page ``N`` maps to ``self._collection_one_pagers[N - 1]``.
+        """
+        try:
+            one_pager = self._collection_one_pagers[int(page_str) - 1]
+        except (ValueError, IndexError):
+            return
+        title = get_one_pager_display_title(one_pager)
+        self.action_bar_title = get_action_bar_title(self._font_manager, title)
+
     def _show_page(self, _instance: Widget | None, _value: str | None) -> None:
         """Display the image for the current_page_index."""
         if self._current_page_index == -1:
@@ -492,6 +527,9 @@ class ComicBookReader(FloatLayout):
             f"Displaying image {self._current_page_index}:"
             f" {self._comic_book_loader.get_image_info_str(page_str)}."
         )
+
+        if self._is_one_pager_collection:
+            self._set_one_pager_action_bar_title(page_str)
 
         display_unit = self._page_manager.get_current_display_unit()
         if display_unit is not None and self._page_manager.double_page_mode:
@@ -706,6 +744,9 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._hide_action_bar,
         )
         self.comic_book_reader.set_goto_page_widget(self.ids.goto_page_button)
+        # Mirror the reader's title onto the screen so per-page title changes (e.g. the
+        # "All One-Pagers" collection) reach the action bar automatically.
+        self.comic_book_reader.bind(action_bar_title=self.setter("action_bar_title"))
         self.ids.image_layout.add_widget(self.comic_book_reader)
 
         # Ordered left-to-right as they appear in the action bar.

@@ -24,6 +24,7 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_DDS,
     SERIES_GG,
     SERIES_MISC,
+    SERIES_ONE_PAGERS,
     SERIES_USA,
     SERIES_USS,
     FantaComicBookInfo,
@@ -125,6 +126,7 @@ def test_view_state_for_title_destination(model: NavigationModel) -> None:
         (SERIES_USS, ViewStates.ON_USS_NODE),
         (SERIES_GG, ViewStates.ON_GG_NODE),
         (SERIES_MISC, ViewStates.ON_MISC_NODE),
+        (SERIES_ONE_PAGERS, ViewStates.ON_ONE_PAGERS_NODE),
     ],
 )
 def test_view_state_for_series(

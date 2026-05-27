@@ -907,29 +907,30 @@ ONE_PAGERS = [
     Titles.WASTED_WORDS,
 ]
 
-# Hand-authored location of each one-pager within the Fantagraphics CBDL volumes.
-# Maps a one-pager `Titles` enum member to `(fantagraphics_volume, page_number)`,
-# where `page_number` is the page's number within that volume (the same numbering
-# used in the story-title `[pages]` sections). This is the single source of truth
-# that drives the synthetic "All One-Pagers" collection comic and the deep-link
-# from each one-pager's tree node to its page in that collection.
+# Hand-authored location of each one-pager. Maps a one-pager `Titles` member to
+# `(fantagraphics_volume, fantagraphics_page, original_issue_page)`:
+#   * fantagraphics_volume / fantagraphics_page - where the page lives in the CBDL
+#     volumes (drives the pre-baked "All One-Pagers" collection and the deep-link
+#     from each one-pager's node). Both must be > 0 for the one-pager to count as
+#     "located" (and thus appear in the collection / One Pagers series).
+#   * original_issue_page - the page within the originally-published comic issue,
+#     shown next to the issue in the bottom title panel. 0 means "not recorded yet".
 #
-# `_TODO` (== `(0, 0)`) marks an entry whose location still needs to be authored by
-# hand. `_TODO` entries are skipped everywhere - they will not appear in the
-# collection or the One Pagers series - until given real values.
-_TODO = (0, 0)
+# `_TODO` (== `(0, 0, 0)`) marks an unauthored entry; `_TODO` entries are skipped
+# everywhere until given real Fantagraphics volume+page values.
+_TODO = (0, 0, 0)
 # fmt: off
-ONE_PAGER_LOCATIONS: dict[Titles, tuple[int, int]] = {
-    Titles.IF_THE_HAT_FITS: (5, 118),
-    Titles.FASHION_IN_FLIGHT: (5, 26),
-    Titles.TURN_FOR_THE_WORSE: (5, 27),
-    Titles.MACHINE_MIX_UP: (5, 198),
-    Titles.BIRD_WATCHING: (6, 38),
-    Titles.HORSESHOE_LUCK: (6, 39),
-    Titles.BEAN_TAKEN: (6, 102),
-    Titles.SORRY_TO_BE_SAFE: (6, 103),
-    Titles.BEST_LAID_PLANS: (6, 176),
-    Titles.GENUINE_ARTICLE_THE: (6, 177),
+ONE_PAGER_LOCATIONS: dict[Titles, tuple[int, int, int]] = {
+    Titles.IF_THE_HAT_FITS: (5, 123, 2),
+    Titles.FASHION_IN_FLIGHT: (5, 26, 2),
+    Titles.TURN_FOR_THE_WORSE: (5, 27, 23),
+    Titles.MACHINE_MIX_UP: (5, 198, 24),
+    Titles.BIRD_WATCHING: (6, 38, 2),
+    Titles.HORSESHOE_LUCK: (6, 39, 35),
+    Titles.BEAN_TAKEN: (6, 102, 36),
+    Titles.SORRY_TO_BE_SAFE: (6, 103, 2),
+    Titles.BEST_LAID_PLANS: (6, 176, 35),
+    Titles.GENUINE_ARTICLE_THE: (6, 177, 36),
     Titles.JUMPING_TO_CONCLUSIONS: _TODO,  # Jumping to Conclusions
     Titles.TRUE_TEST_THE: _TODO,  # The True Test
     Titles.ORNAMENTS_ON_THE_WAY: _TODO,  # Ornaments on the Way
@@ -1097,27 +1098,88 @@ def get_located_one_pagers() -> list["Titles"]:
     return [t for t in ONE_PAGERS if is_one_pager_located(t)]
 
 
+def get_one_pager_issue_page(title: "Titles") -> int | None:
+    """Return a one-pager's page within its originally-published comic issue.
+
+    Args:
+        title: The one-pager title.
+
+    Returns:
+        The 1-based original-issue page number, or None if not recorded (0) or the
+        title has no location entry.
+
+    """
+    loc = ONE_PAGER_LOCATIONS.get(title)
+    if loc is None or loc[2] <= 0:
+        return None
+    return loc[2]
+
+
+def get_one_pager_fanta_page(title: "Titles") -> int | None:
+    """Return a one-pager's page within its Fantagraphics CBDL volume.
+
+    Args:
+        title: The one-pager title.
+
+    Returns:
+        The page number within the Fantagraphics volume, or None if the title has
+        no (located) entry.
+
+    """
+    loc = ONE_PAGER_LOCATIONS.get(title)
+    if loc is None or loc[1] <= 0:
+        return None
+    return loc[1]
+
+
+def get_one_pager_display_title(title: "Titles") -> str:
+    """Return a one-pager's display title: its issue plus its original-issue page.
+
+    For example "Four Color #178, p. 2". Used for both the bottom title panel and
+    the comic-reader window title (so they never drift). Falls back to just the
+    issue name when the original-issue page is not recorded.
+
+    Args:
+        title: The one-pager title.
+
+    Returns:
+        The formatted display title.
+
+    """
+    comic_book_info = BARKS_TITLE_INFO[title]
+    issue = comic_book_info.get_title_from_issue_name()
+    issue_page = get_one_pager_issue_page(title)
+    return f"{issue}, p. {issue_page}" if issue_page is not None else issue
+
+
 def is_one_pager_collection(title: "Titles") -> bool:
     """Return whether a title is the synthetic "All One-Pagers" collection."""
     return title == Titles.ALL_ONE_PAGERS
 
 
+# Page number of the first one-pager within the collection's nominal volume
+# (FANTA_01). Chosen well above any real Fantagraphics volume's page count so the
+# pre-baked "extra" pages never collide with real volume pages or fixes.
+ONE_PAGER_COLLECTION_PAGE_BASE = 500
+
+
 def get_one_pager_collection_pages() -> list[OriginalPage]:
     """Return the body pages making up the "All One-Pagers" collection.
 
-    One `BODY` page per *located* one-pager, in chronological order, each tagged
-    with the Fantagraphics volume it is sourced from (so the reader can gather
-    them across volumes). Derived entirely from `ONE_PAGER_LOCATIONS`.
+    One `BODY` page per *located* one-pager, in chronological order. The pages are
+    pre-baked offline as "extra" images in the collection's nominal volume
+    (FANTA_01) override, numbered sequentially from
+    `ONE_PAGER_COLLECTION_PAGE_BASE` so they never collide with that volume's real
+    pages. The offline assembly script must use this same numbering.
 
     Returns:
         Ordered `OriginalPage` list; empty until one-pager locations are authored.
 
     """
-    pages = []
-    for title in get_located_one_pagers():
-        volume, page_num = ONE_PAGER_LOCATIONS[title]
-        pages.append(OriginalPage(f"{page_num:03d}", PageType.BODY, volume))
-    return pages
+    return [
+        OriginalPage(f"{ONE_PAGER_COLLECTION_PAGE_BASE + i:03d}", PageType.BODY)
+        for i, _title in enumerate(get_located_one_pagers())
+    ]
 
 
 def get_one_pager_collection_page_num(title: "Titles") -> int | None:

@@ -183,25 +183,7 @@ class ComicBook:
         return self.fanta_info.comic_book_info.is_barks_title
 
     def get_fanta_volume(self) -> int:
-        """Return the comic's primary (single) Fantagraphics volume.
-
-        For a multi-volume collection this is the volume of ``fanta_book`` and is
-        only meaningful as a fallback; per-page volumes live on each
-        ``OriginalPage.fanta_volume``. See :meth:`is_multi_volume`.
-        """
         return self.fanta_book.volume
-
-    def is_multi_volume(self) -> bool:
-        """Whether this comic gathers pages from more than one volume.
-
-        True when any page carries an explicit ``fanta_volume`` (set only for
-        collection comics such as the "All One-Pagers" collection).
-        """
-        return any(page.fanta_volume is not None for page in self.page_images_in_order)
-
-    def get_page_fanta_volume(self, page: OriginalPage) -> int:
-        """Return the volume a given page is sourced from (per-page or primary)."""
-        return page.fanta_volume if page.fanta_volume is not None else self.get_fanta_volume()
 
     @staticmethod
     def _get_image_subdir(dirpath: Path) -> Path:
@@ -686,9 +668,7 @@ def _get_pages_in_order(config_pages: list[OriginalPage]) -> list[OriginalPage]:
             end_num = int(end)
             for file_num in range(start_num, end_num + 1):
                 filename = get_page_str(file_num)
-                page_images.append(
-                    OriginalPage(filename, config_page.page_type, config_page.fanta_volume)
-                )
+                page_images.append(OriginalPage(filename, config_page.page_type))
 
     return page_images
 

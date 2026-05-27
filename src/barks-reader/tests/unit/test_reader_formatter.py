@@ -4,6 +4,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core import reader_formatter
 from barks_reader.core.reader_formatter import INVISIBLE_BREAK
 
@@ -315,6 +316,37 @@ class TestReaderFormatterClass:
         # Case 3: With footnote
         res = self.formatter.get_title_info(fanta_info, 50, add_footnote=True)
         assert "[sup]*[/sup]" in res
+
+    @patch.object(reader_formatter, "get_one_pager_fanta_page")
+    @patch.object(reader_formatter, "FAN", "FAN_ICON")
+    @patch.object(reader_formatter, "BARKS_PAYMENTS")
+    @patch.object(reader_formatter, "FANTA_SOURCE_COMICS")
+    @patch.object(reader_formatter, reader_formatter.get_formatted_first_published_str.__name__)
+    @patch.object(reader_formatter, reader_formatter.get_long_formatted_submitted_date.__name__)
+    def test_get_title_info_one_pager_includes_fanta_page(
+        self,
+        mock_long_sub: MagicMock,
+        mock_fmt_pub: MagicMock,
+        mock_fanta_source: MagicMock,
+        mock_barks_payments: MagicMock,
+        mock_fanta_page: MagicMock,
+    ) -> None:
+        """A one-pager's Source line also carries its Fantagraphics page number."""
+        fanta_info = MagicMock()
+        fanta_info.comic_book_info.title = Titles.IF_THE_HAT_FITS  # a one-pager
+        fanta_info.fantagraphics_volume = 5
+
+        mock_fmt_pub.return_value = "IssueInfo"
+        mock_long_sub.return_value = "SubmittedInfo"
+        mock_vol = MagicMock()
+        mock_vol.volume = 5
+        mock_vol.year = 2013
+        mock_fanta_source.__getitem__.return_value = mock_vol
+        mock_barks_payments.get.return_value = None
+        mock_fanta_page.return_value = 123
+
+        res = self.formatter.get_title_info(fanta_info, 50, add_footnote=False)
+        assert "FAN_ICON CBDL, Vol 5, 2013, p. 123" in res
 
     @patch.object(reader_formatter, "BARKS_EXTRA_INFO")
     def test_get_title_extra_info(self, mock_extra_info: MagicMock) -> None:

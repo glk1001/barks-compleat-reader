@@ -136,6 +136,60 @@ class TestNavigationCoordinator:
         mock_deps["on_active_changed"].assert_called_once()
         mock_deps["comic_reader_manager"].read_barks_comic_book.assert_called_once()
 
+    def test_read_comic_one_pager_opens_collection_at_its_page(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        """Selecting a one-pager opens the collection at the one-pager's page."""
+        mock_fanta_info = MagicMock()
+        mock_fanta_info.comic_book_info.title = Titles.IF_THE_HAT_FITS  # a one-pager
+        nav_coord._current_fanta_info = mock_fanta_info
+        mock_deps["bottom_title_view_screen"].use_overrides_active = False
+
+        mock_collection_info = MagicMock()
+        mock_comic = MagicMock()
+        mock_deps["comics_database"].get_comic_book.return_value = mock_comic
+
+        with (
+            patch.object(
+                barks_reader.ui.navigation_coordinator,
+                "get_one_pager_collection_page_num",
+                return_value=7,
+            ),
+            patch.object(
+                barks_reader.ui.navigation_coordinator,
+                "get_fanta_info",
+                return_value=mock_collection_info,
+            ),
+        ):
+            result = nav_coord.read_comic()
+
+        assert result is True
+        # Opens the collection comic with the collection's fanta_info, at page "7".
+        manager = mock_deps["comic_reader_manager"]
+        manager.read_barks_comic_book.assert_called_once()
+        call = manager.read_barks_comic_book.call_args
+        assert call.args[0] is mock_collection_info
+        assert call.args[1] is mock_comic
+        assert call.args[2] == "7"
+
+    def test_read_comic_unlocated_one_pager_returns_false(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        """A one-pager not present in the collection does not open anything."""
+        mock_fanta_info = MagicMock()
+        mock_fanta_info.comic_book_info.title = Titles.IF_THE_HAT_FITS
+        nav_coord._current_fanta_info = mock_fanta_info
+
+        with patch.object(
+            barks_reader.ui.navigation_coordinator,
+            "get_one_pager_collection_page_num",
+            return_value=None,
+        ):
+            result = nav_coord.read_comic()
+
+        assert result is False
+        mock_deps["comic_reader_manager"].read_barks_comic_book.assert_not_called()
+
     def test_on_comic_closed_restores_view_state(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:

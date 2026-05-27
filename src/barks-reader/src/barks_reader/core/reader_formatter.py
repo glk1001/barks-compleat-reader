@@ -9,6 +9,7 @@ import pyphen
 from barks_fantagraphics.barks_extra_info import BARKS_EXTRA_INFO
 from barks_fantagraphics.barks_payments import BARKS_PAYMENTS, PaymentInfo
 from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.comic_book_info import ONE_PAGERS, get_one_pager_fanta_page
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
 from barks_fantagraphics.comics_consts import CARL_BARKS_FONT_FILE
 from barks_fantagraphics.comics_utils import (
@@ -168,7 +169,12 @@ class ReaderFormatter:
 
         submitted_info = get_long_formatted_submitted_date(fanta_info.comic_book_info)
         fanta_book = FANTA_SOURCE_COMICS[fanta_info.fantagraphics_volume]
+        title = fanta_info.comic_book_info.title
         source = f"{FAN} CBDL, Vol {fanta_book.volume}, {fanta_book.year}"
+        fanta_page = get_one_pager_fanta_page(title) if title in ONE_PAGERS else None
+        if fanta_page is not None:
+            # One-pagers also show the page within the Fantagraphics volume.
+            source += f", p. {fanta_page}"
         payment_info = BARKS_PAYMENTS.get(fanta_info.comic_book_info.title, None)
 
         if (not payment_info) or (payment_info.payment < CLOSE_TO_ZERO):

@@ -33,6 +33,7 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_DDS,
     SERIES_GG,
     SERIES_MISC,
+    SERIES_ONE_PAGERS,
     SERIES_USA,
     SERIES_USS,
     FantaComicBookInfo,
@@ -185,6 +186,7 @@ class ViewPipeline:
         ViewStates.ON_USS_NODE: SERIES_USS,
         ViewStates.ON_GG_NODE: SERIES_GG,
         ViewStates.ON_MISC_NODE: SERIES_MISC,
+        ViewStates.ON_ONE_PAGERS_NODE: SERIES_ONE_PAGERS,
     }
 
     _SEARCH_VIEW_STATES: ClassVar[set[ViewStates]] = {

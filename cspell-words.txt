@@ -47,6 +47,7 @@ getpid
 getpixel
 hidinput
 hitbox
+idempotently
 importlinter
 imread
 imshow
@@ -61,6 +62,7 @@ licence
 lita
 logr
 markersize
+materialises
 mktime
 modifyitems
 motionevent
@@ -96,6 +98,7 @@ textlength
 tobytes
 tofile
 touchpads
+unauthored
 unauthorised
 vectorizer
 vmem

@@ -100,6 +100,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._wire_screens(screens)
 
         self._title_lists = filtered_title_lists.get_title_lists()
+        self._include_one_pagers_in_chrono = filtered_title_lists.include_one_pagers_in_chrono
         resolver = ReaderFilePathsResolver(self._reader_settings.file_paths)
         self._random_title_images = ImageSelector(resolver, self._reader_settings)
         self.is_first_use_of_reader = self._reader_settings.is_first_use_of_reader
@@ -396,6 +397,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._reader_tree_events,
             self._tree_view_manager,
             self._title_lists,
+            include_one_pagers_in_chrono=self._include_one_pagers_in_chrono,
         )
 
         self._nav_coord.set_year_range_nodes(tree_builder.chrono_year_range_nodes)

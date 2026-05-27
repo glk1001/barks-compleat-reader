@@ -4,11 +4,14 @@ import pytest
 from barks_fantagraphics import comic_book_info as cbi
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import (
+    BARKS_TITLE_INFO,
     ONE_PAGER_LOCATIONS,
     ONE_PAGERS,
     get_located_one_pagers,
     get_one_pager_collection_page_num,
     get_one_pager_collection_pages,
+    get_one_pager_display_title,
+    get_one_pager_issue_page,
     is_one_pager_collection,
     is_one_pager_located,
 )
@@ -28,17 +31,48 @@ class TestOnePagerLocations:
     def test_located_means_positive_volume_and_page(self) -> None:
         located = get_located_one_pagers()
         for title in located:
-            volume, page = ONE_PAGER_LOCATIONS[title]
+            volume, page, _issue_page = ONE_PAGER_LOCATIONS[title]
             assert volume > 0
             assert page > 0
         # Located list is a subset of ONE_PAGERS, in chronological (ONE_PAGERS) order.
         assert located == [t for t in ONE_PAGERS if t in located]
 
     def test_todo_sentinel_is_not_located(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """A `_TODO` (0, 0) entry counts as unlocated and is skipped."""
-        monkeypatch.setattr(cbi, "ONE_PAGER_LOCATIONS", {Titles.IF_THE_HAT_FITS: (0, 0)})
+        """A `_TODO` (0, 0, 0) entry counts as unlocated and is skipped."""
+        monkeypatch.setattr(cbi, "ONE_PAGER_LOCATIONS", {Titles.IF_THE_HAT_FITS: (0, 0, 0)})
         assert not is_one_pager_located(Titles.IF_THE_HAT_FITS)
         assert get_located_one_pagers() == []
+
+    def test_issue_page_returned_only_when_recorded(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        issue_page = 7
+        monkeypatch.setattr(
+            cbi,
+            "ONE_PAGER_LOCATIONS",
+            {
+                Titles.IF_THE_HAT_FITS: (5, 123, issue_page),
+                Titles.FASHION_IN_FLIGHT: (5, 26, 0),
+            },
+        )
+        assert get_one_pager_issue_page(Titles.IF_THE_HAT_FITS) == issue_page
+        # 0 means "not recorded yet".
+        assert get_one_pager_issue_page(Titles.FASHION_IN_FLIGHT) is None
+        # Absent from the table.
+        assert get_one_pager_issue_page(Titles.BIRD_WATCHING) is None
+
+    def test_display_title_includes_issue_page(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        issue_page = 2
+        monkeypatch.setattr(
+            cbi, "ONE_PAGER_LOCATIONS", {Titles.IF_THE_HAT_FITS: (5, 123, issue_page)}
+        )
+        issue = BARKS_TITLE_INFO[Titles.IF_THE_HAT_FITS].get_title_from_issue_name()
+        assert get_one_pager_display_title(Titles.IF_THE_HAT_FITS) == f"{issue}, p. {issue_page}"
+
+    def test_display_title_falls_back_to_issue_when_page_unset(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(cbi, "ONE_PAGER_LOCATIONS", {Titles.IF_THE_HAT_FITS: (5, 123, 0)})
+        issue = BARKS_TITLE_INFO[Titles.IF_THE_HAT_FITS].get_title_from_issue_name()
+        assert get_one_pager_display_title(Titles.IF_THE_HAT_FITS) == issue
 
 
 class TestOnePagerCollection:
@@ -52,17 +86,20 @@ class TestOnePagerCollection:
         assert is_one_pager_collection(Titles.ALL_ONE_PAGERS)
         assert not is_one_pager_collection(Titles.IF_THE_HAT_FITS)
 
-    def test_collection_pages_built_from_locations(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """The collection's pages are gathered across volumes from the table."""
-        fake = {Titles.IF_THE_HAT_FITS: (10, 123), Titles.FASHION_IN_FLIGHT: (11, 45)}
+    def test_collection_pages_are_sequential_base_pages(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Collection pages are sequential FANTA_01 'extra' pages from the base number."""
+        fake = {Titles.IF_THE_HAT_FITS: (10, 123, 0), Titles.FASHION_IN_FLIGHT: (11, 45, 0)}
         monkeypatch.setattr(cbi, "ONE_PAGER_LOCATIONS", fake)
 
+        base = cbi.ONE_PAGER_COLLECTION_PAGE_BASE
         pages = get_one_pager_collection_pages()
-        assert [(p.page_filenames, p.page_type, p.fanta_volume) for p in pages] == [
-            ("123", PageType.BODY, 10),
-            ("045", PageType.BODY, 11),
+        assert [(p.page_filenames, p.page_type) for p in pages] == [
+            (f"{base:03d}", PageType.BODY),
+            (f"{base + 1:03d}", PageType.BODY),
         ]
-        # Deep-link page numbers are the 1-based position within the collection.
+        # Deep-link page numbers are the 1-based display position within the collection.
         assert [
             get_one_pager_collection_page_num(Titles.IF_THE_HAT_FITS),
             get_one_pager_collection_page_num(Titles.FASHION_IN_FLIGHT),
@@ -71,7 +108,7 @@ class TestOnePagerCollection:
     def test_unlocated_one_pager_has_no_collection_page(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(cbi, "ONE_PAGER_LOCATIONS", {Titles.IF_THE_HAT_FITS: (10, 123)})
+        monkeypatch.setattr(cbi, "ONE_PAGER_LOCATIONS", {Titles.IF_THE_HAT_FITS: (10, 123, 0)})
         assert get_one_pager_collection_page_num(Titles.FASHION_IN_FLIGHT) is None
 
     def test_collection_present_in_all_fanta_info(self) -> None:
