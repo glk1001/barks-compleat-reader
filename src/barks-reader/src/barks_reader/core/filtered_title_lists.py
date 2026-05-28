@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_tags import BARKS_TAG_CATEGORIES_TITLES, TagCategories
+from barks_fantagraphics.comic_book_info import is_one_pager_collection
 from barks_fantagraphics.fanta_comics_info import (
     SERIES_CS,
     SERIES_DDA,
@@ -87,7 +88,12 @@ class FilteredTitleLists:
             )
 
         for name in self.series_names:
-            filters[name] = lambda info, n=name: info.series_name == n
+            # The synthetic "All One-Pagers" collection lives in SERIES_ONE_PAGERS so
+            # it enters ALL_FANTA_COMIC_BOOK_INFO, but it must not show as a node under
+            # the One Pagers series - it is reached only by selecting a one-pager.
+            filters[name] = lambda info, n=name: (
+                info.series_name == n and not is_one_pager_collection(info.comic_book_info.title)
+            )
 
         for year in self.cs_years:
             filters[self.get_cs_year_key_from_year(year)] = lambda info, y=year: (

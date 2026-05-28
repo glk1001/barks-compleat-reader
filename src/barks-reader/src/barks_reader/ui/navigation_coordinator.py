@@ -166,6 +166,13 @@ class NavigationCoordinator:
         logger.debug(f'Goto title: "{image_info.from_title.name}", "{image_info.filename}".')
         title_fanta_info = self._get_fanta_info(image_info.from_title)
 
+        if image_info.from_title in ONE_PAGERS:
+            # One-pagers are not in the chronological tree - they live under the One
+            # Pagers series and are read via the "All One-Pagers" collection. Show the
+            # title view directly (no tree navigation); reading deep-links to the page.
+            self._title_row_selected(title_fanta_info, image_info.filename)
+            return
+
         title_year_range = self._get_year_range_from_info(title_fanta_info)
         if title_year_range is None:
             msg = f"No year range found for {title_fanta_info.comic_book_info.get_title_str()}."
@@ -209,7 +216,9 @@ class NavigationCoordinator:
 
         self.navigate_to_chrono_title(image_info)
 
-        if page_to_goto:
+        # One-pagers ignore the index page (reading deep-links to the gag's page in
+        # the collection), so don't set a misleading goto-page checkbox for them.
+        if page_to_goto and image_info.from_title not in ONE_PAGERS:
             logger.debug(f"Setting page to goto: {page_to_goto}.")
             self._bottom_title_view_screen.set_goto_page_state(page_to_goto, active=True)
 

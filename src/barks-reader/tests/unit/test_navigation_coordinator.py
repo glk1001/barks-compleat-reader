@@ -83,6 +83,28 @@ class TestNavigationCoordinator:
                 mock_fanta_info, title_image_file=image_info.filename
             )
 
+    def test_navigate_to_chrono_title_one_pager_shows_title_view_without_tree_nav(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        """One-pagers show the title view directly, not via the chronological tree."""
+        tree_manager = MagicMock()
+        nav_coord.set_tree_view_manager(tree_manager)
+        image_info = ImageInfo(filename=Path("img.png"), from_title=Titles.IF_THE_HAT_FITS)
+        mock_fanta_info = MagicMock()
+
+        with patch.object(
+            barks_reader.ui.navigation_coordinator,
+            "get_fanta_info",
+            return_value=mock_fanta_info,
+        ):
+            nav_coord.navigate_to_chrono_title(image_info)
+
+        # Title view shown; no chronological tree navigation attempted (no crash).
+        mock_deps["renderer"].render_title.assert_called_with(
+            mock_fanta_info, title_image_file=image_info.filename
+        )
+        tree_manager.goto_node.assert_not_called()
+
     def test_navigate_to_chrono_title_preserves_back_node(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:
