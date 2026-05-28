@@ -85,7 +85,8 @@ BARKS_PAYMENTS = {
     Titles.PEACEFUL_HILLS_THE: PaymentInfo(Titles.PEACEFUL_HILLS_THE, 2, 4, 10, 1947, 46.0),
     Titles.JAM_ROBBERS: PaymentInfo(Titles.JAM_ROBBERS, 10, 28, 10, 1947, 230.0),
     Titles.PICNIC_TRICKS: PaymentInfo(Titles.PICNIC_TRICKS, 10, 18, 11, 1947, 230.0),
-    Titles.VOLCANO_VALLEY: PaymentInfo(Titles.VOLCANO_VALLEY, 30, 9, 12, 1947, 690.0),
+    Titles.VOLCANO_VALLEY: PaymentInfo(Titles.VOLCANO_VALLEY, 30, 9, 12, 1946, 690.0),
+    Titles.IF_THE_HAT_FITS: PaymentInfo(Titles.IF_THE_HAT_FITS, 1, 30, 12, 1946, 25.0),
     Titles.DONALDS_POSY_PATCH: PaymentInfo(Titles.DONALDS_POSY_PATCH, 10, 10, 1, 1947, 230.0),
     Titles.DONALD_MINES_HIS_OWN_BUSINESS: PaymentInfo(Titles.DONALD_MINES_HIS_OWN_BUSINESS, 10, 28, 1, 1947, 250.0),
     Titles.MAGICAL_MISERY: PaymentInfo(Titles.MAGICAL_MISERY, 10, 19, 2, 1947, 250.0),
@@ -97,18 +98,27 @@ BARKS_PAYMENTS = {
     Titles.MASTERS_OF_MELODY_THE: PaymentInfo(Titles.MASTERS_OF_MELODY_THE, 10, 15, 5, 1947, 250.0),
     Titles.FIREMAN_DONALD: PaymentInfo(Titles.FIREMAN_DONALD, 10, 23, 6, 1947, 250.0),
     Titles.CHRISTMAS_ON_BEAR_MOUNTAIN: PaymentInfo(Titles.CHRISTMAS_ON_BEAR_MOUNTAIN, 20, 22, 7, 1947, 500.0),
+    Titles.FASHION_IN_FLIGHT: PaymentInfo(Titles.FASHION_IN_FLIGHT, 1, 22, 7, 1947, 30.0),
+    Titles.TURN_FOR_THE_WORSE: PaymentInfo(Titles.TURN_FOR_THE_WORSE, 1, 22, 7, 1947, 30.0),
+    Titles.MACHINE_MIX_UP: PaymentInfo(Titles.MACHINE_MIX_UP, 1, 22, 7, 1947, 30.0),
     Titles.TERRIBLE_TURKEY_THE: PaymentInfo(Titles.TERRIBLE_TURKEY_THE, 10, 31, 7, 1947, 250.0),
     Titles.WINTERTIME_WAGER: PaymentInfo(Titles.WINTERTIME_WAGER, 10, 15, 8, 1948, 250.0),
     Titles.WATCHING_THE_WATCHMAN: PaymentInfo(Titles.WATCHING_THE_WATCHMAN, 10, 4, 9, 1948, 250.0),
     Titles.DARKEST_AFRICA: PaymentInfo(Titles.DARKEST_AFRICA, 22, 26, 9, 1948, 550.0),
     Titles.WIRED: PaymentInfo(Titles.WIRED, 10, 9, 10, 1948, 250.0),
     Titles.GOING_APE: PaymentInfo(Titles.GOING_APE, 10, 28, 10, 1948, 250.0),
-    Titles.OLD_CASTLES_SECRET_THE: PaymentInfo(Titles.OLD_CASTLES_SECRET_THE, 32, 3, 12, 1948, 800.0),
+    Titles.OLD_CASTLES_SECRET_THE: PaymentInfo(Titles.OLD_CASTLES_SECRET_THE, 32, 3, 12, 1947, 800.0),
+    Titles.BIRD_WATCHING: PaymentInfo(Titles.BIRD_WATCHING, 1, 16, 1, 1948, 30.0),
+    Titles.HORSESHOE_LUCK: PaymentInfo(Titles.HORSESHOE_LUCK, 1, 16, 1, 1948, 30.0),
+    Titles.BEAN_TAKEN: PaymentInfo(Titles.BEAN_TAKEN, 1, 16, 1, 1948, 30.0),
     Titles.SPOIL_THE_ROD: PaymentInfo(Titles.SPOIL_THE_ROD, 10, 30, 12, 1948, 250.0),
     Titles.ROCKET_RACE_TO_THE_MOON: PaymentInfo(Titles.ROCKET_RACE_TO_THE_MOON, 10, 16, 1, 1948, 250.0),
     Titles.DONALD_OF_THE_COAST_GUARD: PaymentInfo(Titles.DONALD_OF_THE_COAST_GUARD, 10, 3, 2, 1948, 250.0),
     Titles.GLADSTONE_RETURNS: PaymentInfo(Titles.GLADSTONE_RETURNS, 10, 19, 2, 1948, 250.0),
     Titles.SHERIFF_OF_BULLET_VALLEY: PaymentInfo(Titles.SHERIFF_OF_BULLET_VALLEY, 32, 16, 3, 1948, 800.0),
+    Titles.SORRY_TO_BE_SAFE: PaymentInfo(Titles.SORRY_TO_BE_SAFE, 1, 22, 3, 1948, 30.0),
+    Titles.BEST_LAID_PLANS: PaymentInfo(Titles.BEST_LAID_PLANS, 1, 22, 3, 1948, 30.0),
+    Titles.GENUINE_ARTICLE_THE: PaymentInfo(Titles.GENUINE_ARTICLE_THE, 1, 22, 3, 1948, 30.0),
     Titles.LINKS_HIJINKS: PaymentInfo(Titles.LINKS_HIJINKS, 10, 25, 3, 1948, 250.0),
     Titles.PEARLS_OF_WISDOM: PaymentInfo(Titles.PEARLS_OF_WISDOM, 10, 29, 4, 1948, 250.0),
     Titles.FOXY_RELATIONS: PaymentInfo(Titles.FOXY_RELATIONS, 10, 28, 5, 1948, 250.0),
@@ -339,7 +349,7 @@ BARKS_PAYMENTS = {
     Titles.WAX_MUSEUM_THE: PaymentInfo(Titles.WAX_MUSEUM_THE, 10, 20, 11, 1959, 425.0),
     Titles.PAUL_BUNYAN_MACHINE_THE: PaymentInfo(Titles.PAUL_BUNYAN_MACHINE_THE, 21, 18, 12, 1959, 892.0),
     Titles.PIED_PIPER_OF_DUCKBURG_THE: PaymentInfo(Titles.PIED_PIPER_OF_DUCKBURG_THE, 8, 1, 1, 1959, 0),
-    Titles.PIED_PIPER_OF_DUCKBURG: PaymentInfo(Titles.PIED_PIPER_OF_DUCKBURG_THE, 8, 1, 1, 1959, 0),
+    Titles.PIED_PIPER_OF_DUCKBURG: PaymentInfo(Titles.PIED_PIPER_OF_DUCKBURG, 8, 1, 1, 1959, 0),
     Titles.KNIGHTS_OF_THE_FLYING_SLEDS: PaymentInfo(Titles.KNIGHTS_OF_THE_FLYING_SLEDS, 10, 20, 8, 1960, 445.0),
     Titles.FUN_WHATS_THAT: PaymentInfo(Titles.FUN_WHATS_THAT, 10, 15, 1, 1959, 425.0),
     Titles.WITCHING_STICK_THE: PaymentInfo(Titles.WITCHING_STICK_THE, 5, 22, 1, 1959, 212.5),
@@ -567,6 +577,13 @@ def validate_payment_data() -> None:
             continue
 
         payment_info = BARKS_PAYMENTS[title]
+        assert payment_info.title == title, (
+            f"Payment title {payment_info.title.name} is different from title {title.name}"
+        )
+        assert (title not in ONE_PAGERS) or payment_info.num_pages == 1, (
+            f"Payment num pages != 1 for one-pager {payment_info.title.name}"
+        )
+
         submitted_day = 1 if title_info.submitted_day == -1 else title_info.submitted_day
         submitted_date = date(title_info.submitted_year, title_info.submitted_month, submitted_day)
         accepted_date = date(
