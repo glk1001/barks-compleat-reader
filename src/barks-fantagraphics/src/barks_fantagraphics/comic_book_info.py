@@ -931,19 +931,19 @@ ONE_PAGER_LOCATIONS: dict[Titles, tuple[int, int, int]] = {
     Titles.SORRY_TO_BE_SAFE: (6, 103, 2),
     Titles.BEST_LAID_PLANS: (6, 176, 35),
     Titles.GENUINE_ARTICLE_THE: (6, 177, 36),
-    Titles.JUMPING_TO_CONCLUSIONS: _TODO,  # Jumping to Conclusions
-    Titles.TRUE_TEST_THE: _TODO,  # The True Test
-    Titles.ORNAMENTS_ON_THE_WAY: _TODO,  # Ornaments on the Way
-    Titles.TOO_FIT_TO_FIT: _TODO,  # Too Fit to Fit
-    Titles.TUNNEL_VISION: _TODO,  # Tunnel Vision
-    Titles.SLEEPY_SITTERS: _TODO,  # Sleepy Sitters
-    Titles.SLIPPERY_SHINE: _TODO,  # Slippery Shine
-    Titles.FRACTIOUS_FUN: _TODO,  # Fractious Fun
-    Titles.KING_SIZE_CONE: _TODO,  # King-Size Cone
-    Titles.NO_NOISE_IS_GOOD_NOISE: _TODO,  # No Noise is Good Noise
-    Titles.TOASTY_TOYS: _TODO,  # Toasty Toys
-    Titles.NO_PLACE_TO_HIDE: _TODO,  # No Place to Hide
-    Titles.TIED_DOWN_TOOLS: _TODO,  # Tied-Down Tools
+    Titles.JUMPING_TO_CONCLUSIONS: (7, 210, 2),
+    Titles.TRUE_TEST_THE: (7, 211, 23),
+    Titles.ORNAMENTS_ON_THE_WAY: (7, 212, 24),
+    Titles.TOO_FIT_TO_FIT: (7, 213, 2),
+    Titles.TUNNEL_VISION: (7, 216, 35),
+    Titles.SLEEPY_SITTERS: (7, 214, 36),
+    Titles.SLIPPERY_SHINE: (7, 215, 2),
+    Titles.FRACTIOUS_FUN: (7, 240, 35),
+    Titles.KING_SIZE_CONE: (7, 241, 36),
+    Titles.NO_NOISE_IS_GOOD_NOISE: (8, 78, 132),
+    Titles.TOASTY_TOYS: (8, 77, 2),
+    Titles.NO_PLACE_TO_HIDE: (8, 107, 35),
+    Titles.TIED_DOWN_TOOLS: (8, 108, 36),
     Titles.NOISE_NULLIFIER: _TODO,  # Noise Nullifier
     Titles.MATINEE_MADNESS: _TODO,  # Matinee Madness
     Titles.FETCHING_PRICE_A: _TODO,  # A Fetching Price
