@@ -12,7 +12,7 @@ if __name__ == "__main__":
         source=str(panel_segments_srce_root),
         destination=str(panel_segments_reader_root),
         sync_source_contents=True,
-        options=["--delete", "-avh"],
+        options=["--delete", "-L", "-avh"],
         strict=True,
         verbose=True,
     )
