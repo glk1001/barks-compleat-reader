@@ -19,6 +19,7 @@ from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
+    SERIES_EXTRAS,
     SERIES_ONE_PAGERS,
     get_fanta_info,
 )
@@ -77,11 +78,21 @@ class TestOnePagerLocations:
 
 
 class TestOnePagerCollection:
-    def test_collection_is_in_one_pagers_series(self) -> None:
+    def test_collection_is_in_extras_series(self) -> None:
+        # The collection itself is an "Extra" in FANTA_01 (alongside the introductions
+        # and appreciations); its constituent one-pagers stay in the "One Pagers" series.
         info = get_fanta_info(Titles.ALL_ONE_PAGERS)
         assert info is not None
-        assert info.series_name == SERIES_ONE_PAGERS
+        assert info.series_name == SERIES_EXTRAS
         assert info.fantagraphics_volume == "FANTA_01"
+
+    def test_located_one_pagers_are_in_one_pagers_series(self) -> None:
+        located = get_located_one_pagers()
+        assert located, "No located one-pagers to check."
+        for title in located:
+            info = get_fanta_info(title)
+            assert info is not None, f"No fanta info for located one-pager: {title}."
+            assert info.series_name == SERIES_ONE_PAGERS
 
     def test_is_one_pager_collection(self) -> None:
         assert is_one_pager_collection(Titles.ALL_ONE_PAGERS)

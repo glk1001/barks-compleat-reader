@@ -19,6 +19,7 @@ capsys
 catchable
 cbzs
 chrono
+ciphertext
 clickthrough
 codepoint
 colorfmt
