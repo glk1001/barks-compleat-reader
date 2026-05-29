@@ -9,12 +9,14 @@ zip must contain *exactly* the contiguous collection pages ``500 .. 500+N-1`` as
 ``.jpg`` entries, where ``N`` is the number of located one-pagers.
 
 Unlike the rest of the suite, this reads the real (machine-local) reader override
-archive under ``FANTA_VOLUME_OVERRIDES_ROOT``; a missing archive is a hard
-failure, not a skip.
+archive under ``FANTA_VOLUME_OVERRIDES_ROOT``. Locally a missing archive is a hard
+failure (it guards against the baked pages drifting), but on CI - where this
+machine-local data legitimately does not exist - the test is skipped instead.
 """
 
 from __future__ import annotations
 
+import os
 import zipfile
 from pathlib import Path
 
@@ -51,9 +53,16 @@ def _expected_collection_arcnames() -> list[str]:
 
 @pytest.fixture(scope="module")
 def override_zip_path() -> Path:
-    """Path to the real FANTA_01 override archive; hard-fails if it is absent."""
+    """Path to the real FANTA_01 override archive.
+
+    Hard-fails if absent locally; skips on CI, where the archive does not exist.
+    """
     zip_path = _override_zip_path()
-    assert zip_path.is_file(), f'FANTA_01 override archive is missing: "{zip_path}".'
+    if not zip_path.is_file():
+        msg = f'FANTA_01 override archive is missing: "{zip_path}".'
+        if os.environ.get("CI"):
+            pytest.skip(msg)
+        pytest.fail(msg)
     return zip_path
 
 
