@@ -15,7 +15,11 @@ from comic_utils.comic_consts import (
 from loguru import logger
 
 from .barks_titles import BARKS_TITLES, Titles
-from .comic_book_info import BARKS_TITLE_DICT, FILENAME_TO_TITLE_SPECIAL_CASE_MAP
+from .comic_book_info import (
+    BARKS_TITLE_DICT,
+    FILENAME_TO_TITLE_SPECIAL_CASE_MAP,
+    is_one_pager_collection,
+)
 from .comics_consts import (
     BOUNDED_SUBDIR,
     IMAGES_SUBDIR,
@@ -488,6 +492,11 @@ class ComicBook:
 
     def _is_added_fixes_special_case(self, page_num: str, page_type: PageType) -> bool:
         if self.is_fixes_special_case_added(self.fanta_book.volume, page_num):
+            return True
+        if is_one_pager_collection(self.fanta_info.comic_book_info.title):
+            # The synthetic "All One-Pagers" collection's pages are staged as FANTA_01
+            # "extra" (ADDED) fixes. Allow ADDED for them so upscayl/restore can build
+            # one-pagers that aren't already part of another comic.
             return True
         if self.get_ini_title() in CENSORED_TITLES:
             return page_type == PageType.BODY

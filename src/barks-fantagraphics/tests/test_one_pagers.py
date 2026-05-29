@@ -16,6 +16,7 @@ from barks_fantagraphics.comic_book_info import (
     is_one_pager_located,
 )
 from barks_fantagraphics.comics_consts import PageType
+from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
     SERIES_ONE_PAGERS,
@@ -114,3 +115,18 @@ class TestOnePagerCollection:
     def test_collection_present_in_all_fanta_info(self) -> None:
         """The collection is registered in ALL_FANTA_COMIC_BOOK_INFO at import time."""
         assert "All One-Pagers" in ALL_FANTA_COMIC_BOOK_INFO
+
+
+class TestOnePagerCollectionBuild:
+    def test_collection_allows_added_body_pages(self) -> None:
+        """The collection's BODY pages may be ADDED fixes (staged FANTA_01 extras).
+
+        This lets upscayl/restore build one-pagers not already part of another comic;
+        a normal title rejects an ADDED BODY page.
+        """
+        comic = ComicsDatabase(for_building_comics=False).get_comic_book("All One-Pagers")
+        assert comic._is_added_fixes_special_case("500", PageType.BODY) is True  # noqa: SLF001
+
+    def test_regular_comic_disallows_added_body_pages(self) -> None:
+        comic = ComicsDatabase(for_building_comics=False).get_comic_book("Sheriff of Bullet Valley")
+        assert comic._is_added_fixes_special_case("999", PageType.BODY) is False  # noqa: SLF001

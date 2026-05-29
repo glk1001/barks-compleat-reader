@@ -536,7 +536,7 @@ SERIES_INFO: list[FantaSeriesInfo] = [
 #
 # The collection is pre-baked into a single nominal volume (FANTA_01), kept in sync
 # with data/story-titles/All One-Pagers.ini's source_comic.
-SERIES_INFO.append(FantaSeriesInfo(Bt.ALL_ONE_PAGERS, "", SERIES_ONE_PAGERS, FANTA_01))
+SERIES_INFO.append(FantaSeriesInfo(Bt.ALL_ONE_PAGERS, "", SERIES_EXTRAS, FANTA_01))
 SERIES_INFO.extend(
     FantaSeriesInfo(
         title, "", SERIES_ONE_PAGERS, get_fanta_volume_str(ONE_PAGER_LOCATIONS[title][0])

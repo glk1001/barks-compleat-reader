@@ -741,15 +741,14 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.STORM_DANCERS,True, Issues.HDL, 12, 1, 1972, 4, 2, 1971),
     ComicBookInfo(Titles.HOUND_OF_THE_MOANING_HILLS,True, Issues.HDL, 12, 1, 1972, 3, 3, 1971),
     ComicBookInfo(Titles.DAY_THE_MOUNTAIN_SHOOK_THE,True, Issues.HDL, 13, 3, 1972, 4, 5, 1971),
+    # Synthetic "All One-Pagers" collection - bundles every one-pager into one comic.
+    ComicBookInfo(Titles.ALL_ONE_PAGERS, True, Issues.EXTRAS, 1, 1, 1982, 1, 1, 1982),
     # Not comics below!
     ComicBookInfo(Titles.GEORGE_LUCAS___AN_APPRECIATION, False, Issues.EXTRAS, 1, 1, 1983, 1, 1, 1983),
     ComicBookInfo(Titles.RICH_TOMMASO___ON_COLORING_BARKS, False, Issues.EXTRAS, 1, 1, 2011, 1, 1, 2011),
     ComicBookInfo(Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, False, Issues.EXTRAS, 1, 1, 2011, 1, 1, 2011),
     ComicBookInfo(Titles.DON_AULT___LIFE_AMONG_THE_DUCKS, False, Issues.EXTRAS, 1, 1, 2014, 1, 1, 2014),
     ComicBookInfo(Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD, False, Issues.EXTRAS, 1, 1, 2025, 1, 1, 2025),
-    # Synthetic "All One-Pagers" collection - bundles every one-pager into one comic.
-    ComicBookInfo(Titles.ALL_ONE_PAGERS, True, Issues.EXTRAS, 1, 1, 1948, 1, 1, 1948),
-    # Sort these out
 ]
 # fmt: on
 

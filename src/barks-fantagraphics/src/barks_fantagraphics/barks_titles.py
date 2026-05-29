@@ -674,14 +674,14 @@ class Titles(IntEnum):
     STORM_DANCERS = auto()
     HOUND_OF_THE_MOANING_HILLS = auto()
     DAY_THE_MOUNTAIN_SHOOK_THE = auto()
+    # Synthetic collection (not a real Barks story) - bundles every one-pager.
+    ALL_ONE_PAGERS = auto()
     # Not comics below!
     GEORGE_LUCAS___AN_APPRECIATION = auto()
     RICH_TOMMASO___ON_COLORING_BARKS = auto()
     DON_AULT___FANTAGRAPHICS_INTRODUCTION = auto()
     DON_AULT___LIFE_AMONG_THE_DUCKS = auto()
     MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD = auto()
-    # Synthetic collection (not a real Barks story) - bundles every one-pager.
-    ALL_ONE_PAGERS = auto()
 
 
 assert len(Titles) == NUM_TITLES, f"{len(Titles)} != {NUM_TITLES}"
