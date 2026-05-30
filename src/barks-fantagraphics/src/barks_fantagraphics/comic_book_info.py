@@ -918,7 +918,6 @@ ONE_PAGERS = [
 # `_TODO` (== `(0, 0, 0)`) marks an unauthored entry; `_TODO` entries are skipped
 # everywhere until given real Fantagraphics volume+page values.
 _TODO = (0, 0, 0)
-# fmt: off
 ONE_PAGER_LOCATIONS: dict[Titles, tuple[int, int, int]] = {
     Titles.IF_THE_HAT_FITS: (5, 123, 2),
     Titles.FASHION_IN_FLIGHT: (5, 26, 2),
@@ -1070,7 +1069,6 @@ ONE_PAGER_LOCATIONS: dict[Titles, tuple[int, int, int]] = {
     Titles.DOWN_FOR_THE_COUNT: _TODO,  # Down for the Count
     Titles.WASTED_WORDS: _TODO,  # Wasted Words
 }
-# fmt: on
 
 
 def is_one_pager_located(title: Titles) -> bool:
@@ -1087,7 +1085,7 @@ def is_one_pager_located(title: Titles) -> bool:
     return loc is not None and loc[0] > 0 and loc[1] > 0
 
 
-def get_located_one_pagers() -> list["Titles"]:
+def get_located_one_pagers() -> list[Titles]:
     """Return one-pagers with an authored location, in chronological order.
 
     Returns:
@@ -1097,7 +1095,7 @@ def get_located_one_pagers() -> list["Titles"]:
     return [t for t in ONE_PAGERS if is_one_pager_located(t)]
 
 
-def get_one_pager_issue_page(title: "Titles") -> int | None:
+def get_one_pager_issue_page(title: Titles) -> int | None:
     """Return a one-pager's page within its originally-published comic issue.
 
     Args:
@@ -1114,7 +1112,24 @@ def get_one_pager_issue_page(title: "Titles") -> int | None:
     return loc[2]
 
 
-def get_one_pager_fanta_page(title: "Titles") -> int | None:
+def get_one_pager_fanta_vol_and_page(title: Titles) -> tuple[int | None, int | None]:
+    """Return a one-pager's volume and page within its Fantagraphics CBDL volume.
+
+    Args:
+        title: The one-pager title.
+
+    Returns:
+        The volume and page number within the Fantagraphics volume, or None if the title has
+        no (located) entry.
+
+    """
+    loc = ONE_PAGER_LOCATIONS.get(title)
+    if loc is None or loc[1] <= 0:
+        return None, None
+    return loc[0], loc[1]
+
+
+def get_one_pager_fanta_page(title: Titles) -> int | None:
     """Return a one-pager's page within its Fantagraphics CBDL volume.
 
     Args:
@@ -1131,7 +1146,7 @@ def get_one_pager_fanta_page(title: "Titles") -> int | None:
     return loc[1]
 
 
-def get_one_pager_display_title(title: "Titles") -> str:
+def get_one_pager_display_title(title: Titles) -> str:
     """Return a one-pager's display title: its issue plus its original-issue page.
 
     For example "Four Color #178, p. 2". Used for both the bottom title panel and
@@ -1151,7 +1166,7 @@ def get_one_pager_display_title(title: "Titles") -> str:
     return f"{issue}, p. {issue_page}" if issue_page is not None else issue
 
 
-def is_one_pager_collection(title: "Titles") -> bool:
+def is_one_pager_collection(title: Titles) -> bool:
     """Return whether a title is the synthetic "All One-Pagers" collection."""
     return title == Titles.ALL_ONE_PAGERS
 
@@ -1181,7 +1196,7 @@ def get_one_pager_collection_pages() -> list[OriginalPage]:
     ]
 
 
-def get_one_pager_collection_page_num(title: "Titles") -> int | None:
+def get_one_pager_collection_page_num(title: Titles) -> int | None:
     """Return a one-pager's 1-based page position within the collection.
 
     Used to deep-link a one-pager's tree node to its page in the collection.
