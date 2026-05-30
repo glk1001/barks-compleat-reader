@@ -943,9 +943,9 @@ ONE_PAGER_LOCATIONS: dict[Titles, tuple[int, int, int]] = {
     Titles.TOASTY_TOYS: (8, 77, 2),
     Titles.NO_PLACE_TO_HIDE: (8, 107, 35),
     Titles.TIED_DOWN_TOOLS: (8, 108, 36),
-    Titles.NOISE_NULLIFIER: _TODO,  # Noise Nullifier
-    Titles.MATINEE_MADNESS: _TODO,  # Matinee Madness
-    Titles.FETCHING_PRICE_A: _TODO,  # A Fetching Price
+    Titles.NOISE_NULLIFIER: (8, 141, 2),
+    Titles.MATINEE_MADNESS: (8, 142, 51),
+    Titles.FETCHING_PRICE_A: (8, 197, 52),
     Titles.TALKING_PARROT: _TODO,  # Talking Parrot
     Titles.TREEING_OFF: _TODO,  # Treeing Off
     Titles.CHRISTMAS_KISS: _TODO,  # Christmas Kiss
