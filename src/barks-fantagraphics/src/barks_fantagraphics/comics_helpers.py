@@ -5,7 +5,16 @@ import typer
 from intspan import intspan
 from PIL import Image, ImageDraw, ImageFont
 
-from .comic_book_info import BARKS_TITLE_DICT, get_title_str_from_filename
+from .barks_titles import BARKS_TITLES
+from .comic_book import get_page_str
+from .comic_book_info import (
+    BARKS_TITLE_DICT,
+    ONE_PAGER_LOCATIONS,
+    ONE_PAGERS,
+    get_one_pager_fanta_vol_and_page,
+    get_title_str_from_filename,
+)
+from .comics_consts import PageType
 from .comics_database import ComicsDatabase
 from .comics_utils import get_safe_title, get_titles_sorted_by_submission_date
 from .fanta_comics_info import FantaComicBookInfo
@@ -92,9 +101,48 @@ def get_issue_title(comics_database: ComicsDatabase, ttl: str) -> str:
     return comic_issue_title
 
 
+def get_volume_and_page(
+    comics_database: ComicsDatabase, title_str: str, page_num_str: str
+) -> tuple[int, str]:
+    title = BARKS_TITLE_DICT[title_str]
+    if title in ONE_PAGERS:
+        volume, page = get_one_pager_fanta_vol_and_page(title)
+        if page is None:
+            msg = f'Could not find one-pager\'s volume and page for "{title_str}".'
+            raise RuntimeError(msg)
+        assert volume
+        assert page
+        return volume, get_page_str(page)
+
+    comic = comics_database.get_comic_book(title_str)
+    volume = comic.get_fanta_volume()
+    valid_page_list = [
+        p.page_filenames for p in comic.page_images_in_order if p.page_type == PageType.BODY
+    ]
+
+    first_page = int(valid_page_list[0])
+    page = first_page if not page_num_str else first_page + int(page_num_str) - 1
+    page = get_page_str(page)
+
+    if page not in valid_page_list:
+        msg = 'Page {page_num_str} not valid for "{title_str}".'
+        raise RuntimeError(msg)
+
+    return volume, page
+
+
 def get_title_from_volume_page(
     comics_database: ComicsDatabase, volume: int, page: str
 ) -> tuple[str, int]:
+    # Is it a one-pager?
+    try:
+        page_num = int(page)
+        for title, (vol, fanta_page, comic_page) in ONE_PAGER_LOCATIONS.items():
+            if vol == volume and page_num == fanta_page:
+                return BARKS_TITLES[title], comic_page
+    except ValueError:
+        pass
+
     titles = comics_database.get_all_titles_in_fantagraphics_volumes([volume])
 
     found_title = ""
