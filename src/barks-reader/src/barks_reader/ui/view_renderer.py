@@ -167,9 +167,12 @@ class ViewRenderer:
 
         self._pipeline.set_current_bottom_view_title(title_str)
         self._pipeline.set_bottom_view_title_image_file(title_image_file)
-        self._pipeline.set_next_bottom_view_title_image()
         self._screens.bottom_title_view.set_title_view(fanta_info)
 
+        # NOTE: Don't pick the title image here - `_apply_view_state` triggers exactly
+        # one pick via `_update_views`. Picking here too would re-roll twice per title
+        # change, and the one-pager re-roll (which ignores any provided file) flips back
+        # to the same image when the collection has an even number of candidates.
         self._apply_view_state(
             ViewStates.ON_TITLE_NODE,
             {"title_str": title_str},

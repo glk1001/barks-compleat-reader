@@ -14,7 +14,8 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from barks_fantagraphics.barks_tags import TagGroups, Tags
-from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, ONE_PAGERS
 from barks_fantagraphics.fanta_comics_info import ALL_LISTS
 from barks_reader.core import view_pipeline as vp_module
 from barks_reader.core.image_selector import FIT_MODE_COVER, ImageInfo
@@ -539,3 +540,59 @@ class TestPublicDelegations:
         # No image was picked — image_selector was never consulted.
         _selector(pipeline).get_random_image_for_title.assert_not_called()
         assert pipeline._bottom_view_title_image_info.filename is None
+
+    def test_set_next_bottom_view_title_image_one_pager_uses_collection_image(self) -> None:
+        pipeline = _make_pipeline()
+        one_pager_title_str = BARKS_TITLE_INFO[ONE_PAGERS[0]].get_title_str()
+        pipeline._current_bottom_view_title = one_pager_title_str
+        # An explicitly provided file should be overridden for one-pagers.
+        pipeline._bottom_view_title_image_info = ImageInfo(filename=Path("individual.png"))
+        collection_image = Path("all-one-pagers.png")
+        _selector(pipeline).get_random_image_for_title.return_value = collection_image
+
+        pipeline.set_next_bottom_view_title_image()
+
+        # A random image is picked from the synthetic "All One-Pagers" collection's
+        # title-view types - not the individual gag image, and not the Insets directory.
+        _selector(pipeline).get_random_image_for_title.assert_called_once_with(
+            BARKS_TITLES[Titles.ALL_ONE_PAGERS],
+            vp_module._TITLE_VIEW_IMAGE_TYPES,
+            use_only_edited_if_possible=True,
+        )
+        assert pipeline._bottom_view_title_image_info.filename == collection_image
+
+    def test_one_pager_title_render_rerolls_collection_image_each_time(self) -> None:
+        # Every one-pager title node change must re-roll a fresh random "All
+        # One-Pagers" image (overriding any cached/provided file), so the large
+        # background image refreshes on each selection.
+        pipeline = _make_pipeline()
+        picks = iter([Path("p1.png"), Path("p2.png"), Path("p3.png")])
+        _selector(pipeline).get_random_image_for_title.side_effect = lambda *_a, **_k: next(picks)
+
+        title_a = BARKS_TITLE_INFO[ONE_PAGERS[0]].get_title_str()
+        title_b = BARKS_TITLE_INFO[ONE_PAGERS[1]].get_title_str()
+
+        shown: list[Path | None] = []
+        for title_str in (title_a, title_b, title_a):
+            pipeline.set_current_bottom_view_title(title_str)
+            pipeline.set_view_state(ViewStates.ON_TITLE_NODE)
+            shown.append(pipeline.compute_snapshot().title_view.image_info.filename)
+
+        # A fresh image is picked on each render - even re-selecting the same one-pager.
+        assert shown == [Path("p1.png"), Path("p2.png"), Path("p3.png")]
+        assert _selector(pipeline).get_random_image_for_title.call_count == len(shown)
+        assert all(
+            call.args[0] == BARKS_TITLES[Titles.ALL_ONE_PAGERS]
+            for call in _selector(pipeline).get_random_image_for_title.call_args_list
+        )
+
+    def test_set_next_bottom_view_title_image_non_one_pager_uses_random(self) -> None:
+        pipeline = _make_pipeline()
+        pipeline._current_bottom_view_title = "Lost in the Andes"
+        pipeline._bottom_view_title_image_info = ImageInfo()
+        _selector(pipeline).get_random_image_for_title.return_value = Path("random-title.png")
+
+        pipeline.set_next_bottom_view_title_image()
+
+        _selector(pipeline).get_random_image_for_title.assert_called_once()
+        assert pipeline._bottom_view_title_image_info.filename == Path("random-title.png")

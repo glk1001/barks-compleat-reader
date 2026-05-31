@@ -24,6 +24,11 @@ from barks_fantagraphics.barks_tags import (
     Tags,
 )
 from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.comic_book_info import (
+    BARKS_TITLE_DICT,
+    ONE_PAGERS,
+    is_one_pager_collection,
+)
 from barks_fantagraphics.comics_utils import get_abbrev_path
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
@@ -727,23 +732,44 @@ class ViewPipeline:
         self._bottom_view_fun_image_color = self._colors.next_color(PaletteId.FUN)
 
     def set_next_bottom_view_title_image(self) -> None:
-        """Pick a random title-view image if one wasn't already provided."""
+        """Pick the large bottom title-view image.
+
+        One-pagers always draw their large image at random from the synthetic
+        "All One-Pagers" collection (across whatever image types that collection
+        has), rather than from the individual gag's title, since they are read
+        as a page of that collection. This wins even over an explicitly provided
+        image file. Otherwise an explicitly provided file is kept, falling back
+        to a random image picked for the current title.
+        """
+        if self._current_title_is_one_pager():
+            self._set_bottom_view_title_image_for(BARKS_TITLES[Titles.ALL_ONE_PAGERS])
+            return
+
         if self._bottom_view_title_image_info.filename:
             logger.debug(
                 f'Using provided title image file "{self._bottom_view_title_image_info.filename}".'
             )
-        else:
-            if not self._current_bottom_view_title:
-                logger.debug("No bottom view title set. Nothing to do.")
-                return
+            return
 
-            image_file = self._image_selector.get_random_image_for_title(
-                self._current_bottom_view_title,
-                _TITLE_VIEW_IMAGE_TYPES,
-                use_only_edited_if_possible=True,
-            )
-            logger.debug(f'Using random title image file "{image_file}".')
-            self.set_bottom_view_title_image_file(image_file)
+        if not self._current_bottom_view_title:
+            logger.debug("No bottom view title set. Nothing to do.")
+            return
+
+        self._set_bottom_view_title_image_for(self._current_bottom_view_title)
+
+    def _set_bottom_view_title_image_for(self, title_str: str) -> None:
+        image_file = self._image_selector.get_random_image_for_title(
+            title_str,
+            _TITLE_VIEW_IMAGE_TYPES,
+            use_only_edited_if_possible=True,
+        )
+        logger.debug(f'Using random title image file "{image_file}" for "{title_str}".')
+        self.set_bottom_view_title_image_file(image_file)
+
+    def _current_title_is_one_pager(self) -> bool:
+        """Whether the current bottom-view title is a one-pager or the collection itself."""
+        title = BARKS_TITLE_DICT.get(self._current_bottom_view_title)
+        return title is not None and (title in ONE_PAGERS or is_one_pager_collection(title))
 
     def set_bottom_view_title_image_file(self, image_file: PanelPath | None) -> None:
         """Replace the title-view image filename, preserving the other fields."""
