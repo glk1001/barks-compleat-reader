@@ -946,126 +946,146 @@ ONE_PAGER_LOCATIONS: dict[Titles, tuple[int, int, int]] = {
     Titles.TREEING_OFF: (11, 208, 2),
     Titles.CHRISTMAS_KISS: (11, 209, 35),
     Titles.PROJECTING_DESIRES: (11, 210, 36),
-    Titles.OSOGOOD_SILVER_POLISH: _TODO,  # Osogood Silver Polish
-    Titles.COFFEE_FOR_TWO: _TODO,  # Coffee for Two
-    Titles.SOUPLINE_EIGHT: _TODO,  # Soupline Eight
-    Titles.FULL_SERVICE_WINDOWS: _TODO,  # Full-Service Windows
-    Titles.RIGGED_UP_ROLLER: _TODO,  # Rigged-Up Roller
-    Titles.AWASH_IN_SUCCESS: _TODO,  # Awash in Success
-    Titles.STABLE_PRICES: _TODO,  # Stable Prices
-    Titles.ARMORED_RESCUE: _TODO,  # Armored Rescue
-    Titles.CRAFTY_CORNER: _TODO,  # Crafty Corner
-    Titles.PRANK_ABOVE_A: _TODO,  # A Prank Above
-    Titles.FRIGHTFUL_FACE: _TODO,  # Frightful Face
-    Titles.FARE_DELAY: _TODO,  # Fare Delay
-    Titles.MONEY_LADDER_THE: _TODO,  # The Money Ladder
-    Titles.CHECKER_GAME_THE: _TODO,  # The Checker Game
-    Titles.TEMPER_TAMPERING: _TODO,  # Temper Tampering
-    Titles.DINER_DILEMMA: _TODO,  # Diner Dilemma
-    Titles.BARBER_COLLEGE: _TODO,  # Barber College
-    Titles.FOLLOW_THE_RAINBOW: _TODO,  # Follow the Rainbow
-    Titles.ITCHING_TO_SHARE: _TODO,  # Itching to Share
-    Titles.BALLET_EVASIONS: _TODO,  # Ballet Evasions
-    Titles.CHEAPEST_WEIGH_THE: _TODO,  # The Cheapest Weigh
-    Titles.BUM_STEER: _TODO,  # Bum Steer
-    Titles.HOSPITALITY_WEEK: _TODO,  # Hospitality Week
-    Titles.MCDUCK_TAKES_A_DIVE: _TODO,  # McDuck Takes a Dive
-    Titles.SLIPPERY_SIPPER: _TODO,  # Slippery Sipper
-    Titles.OIL_THE_NEWS: _TODO,  # Oil the News
-    Titles.DIG_IT: _TODO,  # Dig it!
-    Titles.MENTAL_FEE: _TODO,  # Mental Fee
-    Titles.WRONG_NUMBER: _TODO,  # Wrong Number
-    Titles.CASH_ON_THE_BRAIN: _TODO,  # Cash on the Brain
-    Titles.CLASSY_TAXI: _TODO,  # Classy Taxi!
-    Titles.BLANKET_INVESTMENT: _TODO,  # Blanket Investment
-    Titles.EASY_MOWING: _TODO,  # Easy Mowing
-    Titles.SKI_LIFT_LETDOWN: _TODO,  # Ski Lift Letdown
-    Titles.CAST_OF_THOUSANDS: _TODO,  # Cast of Thousands
-    Titles.COURTSIDE_HEATING: _TODO,  # Courtside Heating
-    Titles.POWER_PLOWING: _TODO,  # Power Plowing
-    Titles.REMEMBER_THIS: _TODO,  # Remember This
-    Titles.DEEP_DECISION: _TODO,  # Deep Decision
-    Titles.SMASH_SUCCESS: _TODO,  # Smash Success
-    Titles.COME_AS_YOU_ARE: _TODO,  # Come as You are
-    Titles.ROUNDABOUT_HANDOUT: _TODO,  # Roundabout Handout
-    Titles.WATT_AN_OCCASION: _TODO,  # Watt an Occasion
-    Titles.DOUGHNUT_DARE: _TODO,  # Doughnut Dare
-    Titles.SWEAT_DEAL_A: _TODO,  # A Sweat Deal
-    Titles.ART_OF_SECURITY_THE: _TODO,  # The Art of Security
-    Titles.FASHION_FORECAST: _TODO,  # Fashion Forecast
-    Titles.MUSH: _TODO,  # Mush!
-    Titles.LUNCHEON_LAMENT: _TODO,  # Luncheon Lament
-    Titles.GOLD_RUSH: _TODO,  # Gold Rush
-    Titles.FIREFLIES_ARE_FREE: _TODO,  # Fireflies are Free
-    Titles.EARLY_TO_BUILD: _TODO,  # Early to Build
-    Titles.CHINA_SHOP_SHAKEUP: _TODO,  # China Shop Shakeup
-    Titles.BUFFO_OR_BUST: _TODO,  # Buffo or Bust
-    Titles.POUND_FOR_SOUND: _TODO,  # Pound for Sound
-    Titles.FERTILE_ASSETS: _TODO,  # Fertile Assets
-    Titles.BACKYARD_BONANZA: _TODO,  # Backyard Bonanza
-    Titles.ALL_SEASON_HAT: _TODO,  # All Season Hat
-    Titles.EYES_HAVE_IT_THE: _TODO,  # The Eyes Have It
-    Titles.RELATIVE_REACTION: _TODO,  # Relative Reaction
-    Titles.SECRET_BOOK_THE: _TODO,  # The Secret Book
-    Titles.TREE_TRICK: _TODO,  # Tree Trick
-    Titles.NET_WORTH: _TODO,  # Net Worth
-    Titles.HISTORY_TOSSED: _TODO,  # History Tossed
-    Titles.DOGGED_DETERMINATION: _TODO,  # Dogged Determination
-    Titles.FORGOTTEN_PRECAUTION: _TODO,  # Forgotten Precaution
-    Titles.BIG_BOBBER_THE: _TODO,  # The Big Bobber
-    Titles.WINDFALL_OF_THE_MIND: _TODO,  # Windfall of the Mind
-    Titles.RESCUE_ENHANCEMENT: _TODO,  # Rescue Enhancement
-    Titles.GOING_TO_PIECES: _TODO,  # Going to Pieces
-    Titles.HIGH_RIDER: _TODO,  # High Rider
-    Titles.THAT_SINKING_FEELING: _TODO,  # That Sinking Feeling
-    Titles.BALMY_SWAMI_THE: _TODO,  # The Balmy Swami
-    Titles.WINDY_STORY_THE: _TODO,  # The Windy Story
-    Titles.MOOLA_ON_THE_MOVE: _TODO,  # Moola on the Move
-    Titles.THUMBS_UP: _TODO,  # Thumbs Up
-    Titles.BILL_WIND: _TODO,  # Bill Wind
-    Titles.SLEEPIES_THE: _TODO,  # The Sleepies
-    Titles.LIGHTS_OUT: _TODO,  # Lights Out
-    Titles.IMMOVABLE_MISER: _TODO,  # Immovable Miser
-    Titles.KITTY_GO_ROUND: _TODO,  # Kitty-Go-Round
-    Titles.POOR_LOSER: _TODO,  # Poor Loser
-    Titles.CRAWLS_FOR_CASH: _TODO,  # Crawls for Cash
-    Titles.ALL_CHOKED_UP: _TODO,  # All Choked Up
-    Titles.BIRD_CAMERA_THE: _TODO,  # The Bird Camera
-    Titles.ODD_ORDER_THE: _TODO,  # The Odd Order
-    Titles.MONEY_HAT_THE: _TODO,  # The Money Hat
-    Titles.CALL_OF_THE_WILD_THE: _TODO,  # The Call of the Wild
-    Titles.TALE_OF_THE_TAPE: _TODO,  # Tale of the Tape
-    Titles.HIS_SHINING_HOUR: _TODO,  # His Shining Hour
-    Titles.THRIFT_GIFT_A: _TODO,  # A Thrift Gift
-    Titles.UNCLE_SCROOGE___MONKEY_BUSINESS: _TODO,  # Uncle Scrooge - Monkey Business
-    Titles.COLLECTION_DAY: _TODO,  # Collection Day
-    Titles.SEEING_IS_BELIEVING: _TODO,  # Seeing is Believing
-    Titles.PLAYMATES: _TODO,  # Playmates
-    Titles.RAGS_TO_RICHES: _TODO,  # Rags to Riches
-    Titles.ART_APPRECIATION: _TODO,  # Art Appreciation
-    Titles.FLOWERS_ARE_FLOWERS: _TODO,  # Flowers Are Flowers
-    Titles.GETTING_THE_BIRD: _TODO,  # Getting the Bird
-    Titles.NEST_EGG_COLLECTOR: _TODO,  # Nest Egg Collector
-    Titles.MILLION_DOLLAR_SHOWER: _TODO,  # Million-Dollar Shower
-    Titles.DUELING_TYCOONS: _TODO,  # Dueling Tycoons
-    Titles.WISHFUL_EXCESS: _TODO,  # Wishful Excess
-    Titles.SIDEWALK_OF_THE_MIND: _TODO,  # Sidewalk of the Mind
-    Titles.NO_BARGAIN: _TODO,  # No Bargain
-    Titles.UP_AND_AT_IT: _TODO,  # Up and at It
-    Titles.FIREMAN_SCROOGE: _TODO,  # Fireman Scrooge
-    Titles.SAVED_BY_THE_BAG: _TODO,  # Saved by the Bag!
-    Titles.TICKING_DETECTOR: _TODO,  # Ticking Detector
-    Titles.IT_HAPPENED_ONE_WINTER: _TODO,  # It Happened One Winter
-    Titles.LOCK_OUT_THE: _TODO,  # The Lock Out
-    Titles.BIGGER_THE_BEGGAR_THE: _TODO,  # The Bigger the Beggar
-    Titles.PLUMMETING_WITH_PRECISION: _TODO,  # Plummeting with Precision
-    Titles.SNAKE_TAKE: _TODO,  # Snake Take
-    Titles.LAUNDRY_FOR_LESS: _TODO,  # Laundry for Less
-    Titles.LONG_DISTANCE_COLLISION: _TODO,  # Long Distance Collision
-    Titles.TOP_WAGES: _TODO,  # Top Wages
-    Titles.DOWN_FOR_THE_COUNT: _TODO,  # Down for the Count
-    Titles.WASTED_WORDS: _TODO,  # Wasted Words
+    Titles.OSOGOOD_SILVER_POLISH: _TODO,
+    Titles.COFFEE_FOR_TWO: _TODO,
+    Titles.SOUPLINE_EIGHT: _TODO,
+    Titles.FULL_SERVICE_WINDOWS: _TODO,
+    Titles.RIGGED_UP_ROLLER: _TODO,
+    Titles.AWASH_IN_SUCCESS: _TODO,
+    Titles.STABLE_PRICES: _TODO,
+    Titles.ARMORED_RESCUE: _TODO,
+    Titles.CRAFTY_CORNER: _TODO,
+    Titles.PRANK_ABOVE_A: _TODO,
+    Titles.FRIGHTFUL_FACE: _TODO,
+    Titles.FARE_DELAY: _TODO,
+    Titles.MONEY_LADDER_THE: _TODO,
+    Titles.CHECKER_GAME_THE: _TODO,
+    Titles.TEMPER_TAMPERING: _TODO,
+    Titles.DINER_DILEMMA: _TODO,
+    Titles.BARBER_COLLEGE: _TODO,
+    Titles.FOLLOW_THE_RAINBOW: _TODO,
+    Titles.ITCHING_TO_SHARE: _TODO,
+    Titles.BALLET_EVASIONS: _TODO,
+    Titles.CHEAPEST_WEIGH_THE: _TODO,
+    Titles.BUM_STEER: _TODO,
+    Titles.HOSPITALITY_WEEK: _TODO,
+    Titles.MCDUCK_TAKES_A_DIVE: _TODO,
+    Titles.SLIPPERY_SIPPER: _TODO,
+    Titles.OIL_THE_NEWS: _TODO,
+    Titles.DIG_IT: _TODO,
+    Titles.MENTAL_FEE: _TODO,
+    Titles.WRONG_NUMBER: _TODO,
+    Titles.CASH_ON_THE_BRAIN: _TODO,
+    Titles.CLASSY_TAXI: _TODO,
+    Titles.BLANKET_INVESTMENT: _TODO,
+    Titles.EASY_MOWING: _TODO,
+    Titles.SKI_LIFT_LETDOWN: _TODO,
+    Titles.CAST_OF_THOUSANDS: _TODO,
+    Titles.COURTSIDE_HEATING: _TODO,
+    Titles.POWER_PLOWING: _TODO,
+    Titles.REMEMBER_THIS: _TODO,
+    Titles.DEEP_DECISION: _TODO,
+    Titles.SMASH_SUCCESS: _TODO,
+    Titles.COME_AS_YOU_ARE: _TODO,
+    Titles.ROUNDABOUT_HANDOUT: _TODO,
+    Titles.WATT_AN_OCCASION: _TODO,
+    Titles.DOUGHNUT_DARE: _TODO,
+    Titles.SWEAT_DEAL_A: _TODO,
+    Titles.ART_OF_SECURITY_THE: _TODO,
+    Titles.FASHION_FORECAST: _TODO,
+    Titles.MUSH: _TODO,
+    Titles.LUNCHEON_LAMENT: _TODO,
+    Titles.GOLD_RUSH: _TODO,
+    Titles.FIREFLIES_ARE_FREE: _TODO,
+    Titles.EARLY_TO_BUILD: _TODO,
+    Titles.CHINA_SHOP_SHAKEUP: _TODO,
+    Titles.BUFFO_OR_BUST: _TODO,
+    Titles.POUND_FOR_SOUND: _TODO,
+    Titles.FERTILE_ASSETS: _TODO,
+    Titles.BACKYARD_BONANZA: _TODO,
+    Titles.ALL_SEASON_HAT: _TODO,
+    Titles.EYES_HAVE_IT_THE: _TODO,
+    Titles.RELATIVE_REACTION: _TODO,
+    Titles.SECRET_BOOK_THE: _TODO,
+    Titles.TREE_TRICK: _TODO,
+    Titles.NET_WORTH: _TODO,
+    Titles.HISTORY_TOSSED: _TODO,
+    Titles.DOGGED_DETERMINATION: _TODO,
+    Titles.FORGOTTEN_PRECAUTION: _TODO,
+    Titles.BIG_BOBBER_THE: _TODO,
+    Titles.WINDFALL_OF_THE_MIND: _TODO,
+    Titles.RESCUE_ENHANCEMENT: _TODO,
+    Titles.GOING_TO_PIECES: _TODO,
+    Titles.HIGH_RIDER: _TODO,
+    Titles.THAT_SINKING_FEELING: _TODO,
+    Titles.BALMY_SWAMI_THE: _TODO,
+    Titles.WINDY_STORY_THE: _TODO,
+    Titles.MOOLA_ON_THE_MOVE: _TODO,
+    Titles.THUMBS_UP: _TODO,
+    Titles.BILL_WIND: _TODO,
+    Titles.SLEEPIES_THE: _TODO,
+    Titles.LIGHTS_OUT: _TODO,
+    Titles.IMMOVABLE_MISER: _TODO,
+    Titles.KITTY_GO_ROUND: _TODO,
+    Titles.POOR_LOSER: _TODO,
+    Titles.CRAWLS_FOR_CASH: _TODO,
+    Titles.ALL_CHOKED_UP: _TODO,
+    Titles.BIRD_CAMERA_THE: _TODO,
+    Titles.ODD_ORDER_THE: _TODO,
+    Titles.MONEY_HAT_THE: _TODO,
+    Titles.CALL_OF_THE_WILD_THE: _TODO,
+    Titles.TALE_OF_THE_TAPE: _TODO,
+    Titles.HIS_SHINING_HOUR: _TODO,
+    Titles.THRIFT_GIFT_A: _TODO,
+    Titles.UNCLE_SCROOGE___MONKEY_BUSINESS: _TODO,
+    Titles.COLLECTION_DAY: _TODO,
+    Titles.SEEING_IS_BELIEVING: _TODO,
+    Titles.PLAYMATES: _TODO,
+    Titles.RAGS_TO_RICHES: _TODO,
+    Titles.ART_APPRECIATION: _TODO,
+    Titles.FLOWERS_ARE_FLOWERS: _TODO,
+    Titles.GETTING_THE_BIRD: _TODO,
+    Titles.NEST_EGG_COLLECTOR: _TODO,
+    Titles.MILLION_DOLLAR_SHOWER: _TODO,
+    Titles.DUELING_TYCOONS: _TODO,
+    Titles.WISHFUL_EXCESS: _TODO,
+    Titles.SIDEWALK_OF_THE_MIND: _TODO,
+    Titles.NO_BARGAIN: _TODO,
+    Titles.UP_AND_AT_IT: _TODO,
+    Titles.FIREMAN_SCROOGE: _TODO,
+    Titles.SAVED_BY_THE_BAG: _TODO,
+    Titles.TICKING_DETECTOR: _TODO,
+    Titles.IT_HAPPENED_ONE_WINTER: _TODO,
+    Titles.LOCK_OUT_THE: _TODO,
+    Titles.BIGGER_THE_BEGGAR_THE: _TODO,
+    Titles.PLUMMETING_WITH_PRECISION: _TODO,
+    Titles.SNAKE_TAKE: _TODO,
+    Titles.LAUNDRY_FOR_LESS: _TODO,
+    Titles.LONG_DISTANCE_COLLISION: _TODO,
+    Titles.TOP_WAGES: _TODO,
+    Titles.DOWN_FOR_THE_COUNT: _TODO,
+    Titles.WASTED_WORDS: _TODO,
 }
+
+
+def _get_located_loc(title: Titles) -> tuple[int, int, int] | None:
+    """Return a one-pager's authored ``(volume, page, issue_page)``, or None.
+
+    A title is "located" only when both its Fantagraphics volume and page are > 0;
+    unauthored ``_TODO`` placeholders (and unknown titles) return None. This is the
+    single gate every one-pager accessor below relies on.
+
+    Args:
+        title: The one-pager title.
+
+    Returns:
+        The location tuple, or None if the title has no authored location.
+
+    """
+    loc = ONE_PAGER_LOCATIONS.get(title)
+    if loc is None or loc[0] <= 0 or loc[1] <= 0:
+        return None
+    return loc
 
 
 def is_one_pager_located(title: Titles) -> bool:
@@ -1078,8 +1098,7 @@ def is_one_pager_located(title: Titles) -> bool:
         True if the title has a real location (both volume and page > 0).
 
     """
-    loc = ONE_PAGER_LOCATIONS.get(title)
-    return loc is not None and loc[0] > 0 and loc[1] > 0
+    return _get_located_loc(title) is not None
 
 
 def get_located_one_pagers() -> list[Titles]:
@@ -1103,7 +1122,7 @@ def get_one_pager_issue_page(title: Titles) -> int | None:
         title has no location entry.
 
     """
-    loc = ONE_PAGER_LOCATIONS.get(title)
+    loc = _get_located_loc(title)
     if loc is None or loc[2] <= 0:
         return None
     return loc[2]
@@ -1120,8 +1139,8 @@ def get_one_pager_fanta_vol_and_page(title: Titles) -> tuple[int | None, int | N
         no (located) entry.
 
     """
-    loc = ONE_PAGER_LOCATIONS.get(title)
-    if loc is None or loc[1] <= 0:
+    loc = _get_located_loc(title)
+    if loc is None:
         return None, None
     return loc[0], loc[1]
 
@@ -1137,10 +1156,7 @@ def get_one_pager_fanta_page(title: Titles) -> int | None:
         no (located) entry.
 
     """
-    loc = ONE_PAGER_LOCATIONS.get(title)
-    if loc is None or loc[1] <= 0:
-        return None
-    return loc[1]
+    return get_one_pager_fanta_vol_and_page(title)[1]
 
 
 def get_one_pager_display_title(title: Titles) -> str:

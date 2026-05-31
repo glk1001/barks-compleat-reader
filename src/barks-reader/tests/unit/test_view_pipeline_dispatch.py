@@ -11,6 +11,7 @@ by exercising the individual private helpers in isolation.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 from barks_fantagraphics.barks_tags import TagGroups, Tags
@@ -23,6 +24,9 @@ from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_file_paths import ALL_TYPES, FileTypes
 from barks_reader.core.testing import FakeScheduler, ScriptedColorSource
 from barks_reader.core.view_pipeline import ImageThemes, ViewPipeline
+
+if TYPE_CHECKING:
+    from zipfile import Path as ZipPath
 
 EXPECTED_FIFTIES_YEAR_COUNT = 10
 
@@ -572,11 +576,13 @@ class TestPublicDelegations:
         title_a = BARKS_TITLE_INFO[ONE_PAGERS[0]].get_title_str()
         title_b = BARKS_TITLE_INFO[ONE_PAGERS[1]].get_title_str()
 
-        shown: list[Path | None] = []
+        shown: list[Path | ZipPath | None] = []
         for title_str in (title_a, title_b, title_a):
             pipeline.set_current_bottom_view_title(title_str)
             pipeline.set_view_state(ViewStates.ON_TITLE_NODE)
-            shown.append(pipeline.compute_snapshot().title_view.image_info.filename)
+            image_info = pipeline.compute_snapshot().title_view.image_info
+            assert image_info is not None
+            shown.append(image_info.filename)
 
         # A fresh image is picked on each render - even re-selecting the same one-pager.
         assert shown == [Path("p1.png"), Path("p2.png"), Path("p3.png")]

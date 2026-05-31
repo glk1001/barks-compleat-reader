@@ -42,9 +42,10 @@ def _get_all_fanta_comic_book_info() -> FantaComicBookInfoDict:
 
         comic_book_info = BARKS_TITLE_INFO[title_info.title]
 
-        # One-pagers (and the "All One-Pagers" collection) are not part of the main
-        # chronological sequence: they must not consume numbers there and shift the
-        # regular comics. They get their own independent ordering instead.
+        # One-pagers are not part of the main chronological sequence: they must not
+        # consume numbers there and shift the regular comics. They get their own
+        # independent ordering instead. (The synthetic "All One-Pagers" collection is
+        # in SERIES_EXTRAS, not here, so it is numbered with the regular comics.)
         if title_info.series_name == SERIES_ONE_PAGERS:
             chrono_num = one_pager_chronological_number
             one_pager_chronological_number += 1
@@ -333,10 +334,11 @@ def get_num_comic_book_titles(
 
     Args:
         year_range: Inclusive (start, end) submitted-year range.
-        include_one_pagers: When False (default), one-pagers and the
-            "All One-Pagers" collection (the ``SERIES_ONE_PAGERS`` series) are
-            excluded - matching the chronological tree nodes, which omit them
-            unless that inclusion is enabled.
+        include_one_pagers: When False (default), one-pagers (the
+            ``SERIES_ONE_PAGERS`` series) are excluded - matching the chronological
+            tree nodes, which omit them unless that inclusion is enabled. (The
+            "All One-Pagers" collection is in ``SERIES_EXTRAS``, not affected by
+            this flag; it falls outside the chrono year ranges this is called with.)
 
     Returns:
         The number of matching titles.

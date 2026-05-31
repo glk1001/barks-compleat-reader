@@ -107,11 +107,9 @@ def get_volume_and_page(
     title = BARKS_TITLE_DICT[title_str]
     if title in ONE_PAGERS:
         volume, page = get_one_pager_fanta_vol_and_page(title)
-        if page is None:
+        if volume is None or page is None:
             msg = f'Could not find one-pager\'s volume and page for "{title_str}".'
             raise RuntimeError(msg)
-        assert volume
-        assert page
         return volume, get_page_str(page)
 
     comic = comics_database.get_comic_book(title_str)
@@ -125,7 +123,7 @@ def get_volume_and_page(
     page = get_page_str(page)
 
     if page not in valid_page_list:
-        msg = 'Page {page_num_str} not valid for "{title_str}".'
+        msg = f'Page {page_num_str} not valid for "{title_str}".'
         raise RuntimeError(msg)
 
     return volume, page

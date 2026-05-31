@@ -88,9 +88,10 @@ class FilteredTitleLists:
             )
 
         for name in self.series_names:
-            # The synthetic "All One-Pagers" collection lives in SERIES_ONE_PAGERS so
-            # it enters ALL_FANTA_COMIC_BOOK_INFO, but it must not show as a node under
-            # the One Pagers series - it is reached only by selecting a one-pager.
+            # The synthetic "All One-Pagers" collection is reached only by selecting a
+            # one-pager, never as a series node of its own. It lives in SERIES_EXTRAS
+            # (which has no node here), so this guard is belt-and-suspenders: it keeps
+            # the collection out should it ever be reclassified into a listed series.
             filters[name] = lambda info, n=name: (
                 info.series_name == n and not is_one_pager_collection(info.comic_book_info.title)
             )
