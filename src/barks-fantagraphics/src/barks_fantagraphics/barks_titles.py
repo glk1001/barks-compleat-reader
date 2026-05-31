@@ -1,6 +1,6 @@
 from enum import CONTINUOUS, UNIQUE, IntEnum, auto, verify
 
-NUM_TITLES = 664 + 4 + 1  # +4 for articles, +1 for the All One-Pagers collection
+NUM_TITLES = 663 + 4 + 1  # +4 for articles, +1 for the All One-Pagers collection
 
 GYRO_GEARLOOSE = "Gyro Gearloose"
 
@@ -178,7 +178,6 @@ class Titles(IntEnum):
     ATTIC_ANTICS = auto()
     TRUANT_NEPHEWS_THE = auto()
     TERROR_OF_THE_BEAGLE_BOYS = auto()
-    TALKING_PARROT = auto()
     TREEING_OFF = auto()
     CHRISTMAS_KISS = auto()
     PROJECTING_DESIRES = auto()

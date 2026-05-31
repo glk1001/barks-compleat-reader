@@ -243,7 +243,6 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.ATTIC_ANTICS, False, Issues.CS, 132, 9, 1951, 29, 3, 1951),
     ComicBookInfo(Titles.TRUANT_NEPHEWS_THE, False, Issues.CS, 133, 10, 1951, 12, 4, 1951),
     ComicBookInfo(Titles.TERROR_OF_THE_BEAGLE_BOYS, False, Issues.CS, 134, 11, 1951, 5, 5, 1951),
-    ComicBookInfo(Titles.TALKING_PARROT, False, Issues.FC, 356, 11, 1951, 24, 5, 1951),
     ComicBookInfo(Titles.TREEING_OFF, False, Issues.FC, 367, 1, 1952, 24, 5, 1951),
     ComicBookInfo(Titles.CHRISTMAS_KISS, False, Issues.FC, 367, 1, 1952, 24, 5, 1951),
     ComicBookInfo(Titles.PROJECTING_DESIRES, False, Issues.FC, 367, 1, 1952, 24, 5, 1951),
@@ -781,7 +780,6 @@ ONE_PAGERS = [
     Titles.NOISE_NULLIFIER,
     Titles.MATINEE_MADNESS,
     Titles.FETCHING_PRICE_A,
-    Titles.TALKING_PARROT,
     Titles.TREEING_OFF,
     Titles.CHRISTMAS_KISS,
     Titles.PROJECTING_DESIRES,
@@ -945,10 +943,9 @@ ONE_PAGER_LOCATIONS: dict[Titles, tuple[int, int, int]] = {
     Titles.NOISE_NULLIFIER: (8, 141, 2),
     Titles.MATINEE_MADNESS: (8, 142, 51),
     Titles.FETCHING_PRICE_A: (8, 197, 52),
-    Titles.TALKING_PARROT: _TODO,  # Talking Parrot
-    Titles.TREEING_OFF: _TODO,  # Treeing Off
-    Titles.CHRISTMAS_KISS: _TODO,  # Christmas Kiss
-    Titles.PROJECTING_DESIRES: _TODO,  # Projecting Desires
+    Titles.TREEING_OFF: (11, 208, 2),
+    Titles.CHRISTMAS_KISS: (11, 209, 35),
+    Titles.PROJECTING_DESIRES: (11, 210, 36),
     Titles.OSOGOOD_SILVER_POLISH: _TODO,  # Osogood Silver Polish
     Titles.COFFEE_FOR_TWO: _TODO,  # Coffee for Two
     Titles.SOUPLINE_EIGHT: _TODO,  # Soupline Eight
