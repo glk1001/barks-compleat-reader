@@ -41,7 +41,7 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 _FANTA_SRC = _REPO_ROOT / "src/barks-fantagraphics/src/barks_fantagraphics"
 BARKS_TAGS_FILE = _FANTA_SRC / "barks_tags.py"
 BARKS_TAGS_DATA_FILE = _FANTA_SRC / "barks_tags_data.py"
-BARKS_TITLES_FILE = _FANTA_SRC / "barks_titles.py"
+ENUM_TO_STR_TITLE_FILE = _FANTA_SRC / "barks_titles.py"
 
 
 # ---------------------------------------------------------------------------
@@ -409,7 +409,7 @@ def main(
         raise typer.Exit(1)
 
     # Validate all title enum names up front before touching any file
-    known = known_title_enums(BARKS_TITLES_FILE)
+    known = known_title_enums(ENUM_TO_STR_TITLE_FILE)
     unknown = sorted({t for _, t, _ in entries if t not in known})
     if unknown:
         for t in unknown:

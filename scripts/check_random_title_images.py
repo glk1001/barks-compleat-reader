@@ -4,7 +4,7 @@ import random
 import sys
 from configparser import ConfigParser
 
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.comics_utils import get_abbrev_path
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
 from barks_reader.core.config_info import ConfigInfo
@@ -34,7 +34,7 @@ if __name__ == "__main__":
                 use_only_edited_if_possible=use_only_edited_if_possible,
             )
             ttl = (
-                BARKS_TITLES[random_image_info.from_title]
+                ENUM_TO_STR_TITLE[random_image_info.from_title]
                 if random_image_info.from_title is not None
                 else ""
             )

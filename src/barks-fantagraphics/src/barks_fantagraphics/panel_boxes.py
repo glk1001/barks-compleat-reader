@@ -2,7 +2,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from .barks_titles import BARKS_TITLES, Titles
+from .barks_titles import ENUM_TO_STR_TITLE, Titles
 from .comic_book import ComicBook, get_page_str
 from .comics_consts import RESTORABLE_PAGE_TYPES
 from .comics_database import ComicsDatabase
@@ -46,7 +46,7 @@ class TitlePanelBoxes:
     _comics_database: ComicsDatabase
 
     def get_page_panel_boxes(self, title: Titles) -> TitlePagesPanelBoxes:
-        title_str = BARKS_TITLES[title]
+        title_str = ENUM_TO_STR_TITLE[title]
 
         volume = self._comics_database.get_fanta_volume_int(title_str)
         comic = self._comics_database.get_comic_book(title_str)

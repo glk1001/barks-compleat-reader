@@ -7,10 +7,10 @@ from pathlib import Path
 from comic_utils.comic_consts import DEC, JAN, PanelPath
 
 from .barks_titles import (
-    BARKS_TITLES,
-    ENUM_FROM_BARKS_TITLE,
+    ENUM_TO_STR_TITLE,
     GYRO_GEARLOOSE,
     NUM_TITLES,
+    STR_TITLE_TO_ENUM,
     US_1_FC_ISSUE_NUM,
     US_2_FC_ISSUE_NUM,
     US_3_FC_ISSUE_NUM,
@@ -44,7 +44,7 @@ class ComicBookInfo:
         return self.title + 1
 
     def get_title_str(self) -> str:
-        return BARKS_TITLES[self.title]
+        return ENUM_TO_STR_TITLE[self.title]
 
     def get_issue_name(self) -> str:
         return ISSUE_NAME[self.issue_name]
@@ -1354,12 +1354,12 @@ def is_non_comic_title(title_str: str) -> bool:
         True if the title is in NON_COMIC_TITLES, False otherwise.
 
     """
-    return ENUM_FROM_BARKS_TITLE[title_str] in NON_COMIC_TITLES
+    return STR_TITLE_TO_ENUM[title_str] in NON_COMIC_TITLES
 
 
 def get_filename_from_title(title: Titles, ext: str) -> str:
     """Return the filename for a given title enum member."""
-    return get_filename_from_title_str(BARKS_TITLES[title], ext)
+    return get_filename_from_title_str(ENUM_TO_STR_TITLE[title], ext)
 
 
 def get_filename_from_title_str(title_str: str, ext: str) -> str:

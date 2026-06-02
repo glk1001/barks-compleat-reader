@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from barks_fantagraphics.barks_titles import ENUM_FROM_BARKS_TITLE
+from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -500,11 +500,11 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         icon_path = Path(self.app_icon_filepath)
         title_str = get_title_str_from_reader_icon_file(icon_path)
-        if title_str not in ENUM_FROM_BARKS_TITLE:
+        if title_str not in STR_TITLE_TO_ENUM:
             msg = f'Invalid title string: "{title_str}"'
             raise ValueError(msg)
 
-        title = ENUM_FROM_BARKS_TITLE[title_str]
+        title = STR_TITLE_TO_ENUM[title_str]
         image_info = ImageInfo(icon_path, title)
         self._nav_coord.navigate_to_chrono_title(image_info)
 

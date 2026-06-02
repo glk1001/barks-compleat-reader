@@ -5,7 +5,7 @@ import typer
 from intspan import intspan
 from PIL import Image, ImageDraw, ImageFont
 
-from .barks_titles import BARKS_TITLES, ENUM_FROM_BARKS_TITLE
+from .barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM
 from .comic_book import get_page_str
 from .comic_book_info import (
     ONE_PAGER_LOCATIONS,
@@ -103,7 +103,7 @@ def get_issue_title(comics_database: ComicsDatabase, ttl: str) -> str:
 def get_volume_and_page(
     comics_database: ComicsDatabase, title_str: str, page_num_str: str
 ) -> tuple[int, str]:
-    title = ENUM_FROM_BARKS_TITLE[title_str]
+    title = STR_TITLE_TO_ENUM[title_str]
     if title in ONE_PAGERS:
         volume, page = get_one_pager_fanta_vol_and_page(title)
         if volume is None or page is None:
@@ -136,7 +136,7 @@ def get_title_from_volume_page(
         page_num = int(page)
         for title, (vol, fanta_page, comic_page) in ONE_PAGER_LOCATIONS.items():
             if vol == volume and page_num == fanta_page:
-                return BARKS_TITLES[title], comic_page
+                return ENUM_TO_STR_TITLE[title], comic_page
     except ValueError:
         pass
 
@@ -205,8 +205,8 @@ def validate_ini_files_against_barks_titles() -> None:
         config.read(ini_file)
 
         story_title = get_title_str_from_filename(file)
-        if story_title not in ENUM_FROM_BARKS_TITLE:
-            msg = f'Ini story title "{story_title}" not in ENUM_FROM_BARKS_TITLE'
+        if story_title not in STR_TITLE_TO_ENUM:
+            msg = f'Ini story title "{story_title}" not in STR_TITLE_TO_ENUM'
             raise ValueError(msg)
 
         title_in_ini = get_safe_title(config["info"]["title"])

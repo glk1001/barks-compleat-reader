@@ -8,7 +8,7 @@ from random import randrange
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from barks_fantagraphics.barks_titles import (
-    BARKS_TITLES,
+    ENUM_TO_STR_TITLE,
     Titles,
 )
 from loguru import logger
@@ -52,7 +52,7 @@ class ImageInfo:
 
 def get_title_str(title: Titles | None) -> str:
     """Return the display string for a title, or empty string if None."""
-    return BARKS_TITLES[title] if title is not None else ""
+    return ENUM_TO_STR_TITLE[title] if title is not None else ""
 
 
 @runtime_checkable
@@ -143,8 +143,8 @@ class ImageSelector:
     def _get_censored_images(self) -> list[tuple[Titles, str]]:
         file_ext = self._resolver.get_file_ext()
 
-        vacation = BARKS_TITLES[Titles.VACATION_TIME]
-        parrot = BARKS_TITLES[Titles.PIXILATED_PARROT_THE]
+        vacation = ENUM_TO_STR_TITLE[Titles.VACATION_TIME]
+        parrot = ENUM_TO_STR_TITLE[Titles.PIXILATED_PARROT_THE]
         return [
             (
                 Titles.VACATION_TIME,
@@ -170,7 +170,7 @@ class ImageSelector:
 
         return ImageInfo(
             self._get_random_comic_file(
-                BARKS_TITLES[title],
+                ENUM_TO_STR_TITLE[title],
                 self._resolver.get_comic_search_files,
                 use_only_edited_if_possible=False,
             ),

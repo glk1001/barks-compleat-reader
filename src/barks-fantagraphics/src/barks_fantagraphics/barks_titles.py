@@ -859,11 +859,11 @@ def _title_name_from_enum(title: Titles) -> str:
     return _title_case_segment(name)
 
 
-BARKS_TITLES: list[str] = [_title_name_from_enum(t) for t in Titles]
-assert len(BARKS_TITLES) == NUM_TITLES, f"{len(BARKS_TITLES)} != {NUM_TITLES}"
+ENUM_TO_STR_TITLE: list[str] = [_title_name_from_enum(t) for t in Titles]
+assert len(ENUM_TO_STR_TITLE) == NUM_TITLES, f"{len(ENUM_TO_STR_TITLE)} != {NUM_TITLES}"
 
-# Reverse of BARKS_TITLES: canonical display string -> Titles enum member. BARKS_TITLES is
+# Reverse of ENUM_TO_STR_TITLE: canonical display string -> Titles enum member. ENUM_TO_STR_TITLE is
 # indexed by enum value, so this round-trips exactly.
-ENUM_FROM_BARKS_TITLE: dict[str, Titles] = {
-    title_str: Titles(index) for index, title_str in enumerate(BARKS_TITLES)
+STR_TITLE_TO_ENUM: dict[str, Titles] = {
+    title_str: Titles(index) for index, title_str in enumerate(ENUM_TO_STR_TITLE)
 }

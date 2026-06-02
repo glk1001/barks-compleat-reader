@@ -5,7 +5,7 @@
 import sys
 from pathlib import Path
 
-from barks_fantagraphics.barks_titles import ENUM_FROM_BARKS_TITLE
+from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM
 from barks_fantagraphics.comic_book_info import FILENAME_TO_TITLE_SPECIAL_CASE_MAP
 from barks_reader.core.reader_consts_and_types import NO_OVERRIDES_SUFFIX
 from barks_reader.core.reader_file_paths import EDITED_SUBDIR, PanelDirNames, ReaderFilePaths
@@ -35,7 +35,7 @@ def check_file_paths_are_titles(path_set: set[str]) -> None:
         if title in FILENAME_TO_TITLE_SPECIAL_CASE_MAP:
             title = FILENAME_TO_TITLE_SPECIAL_CASE_MAP[title]
 
-        if title not in ENUM_FROM_BARKS_TITLE:
+        if title not in STR_TITLE_TO_ENUM:
             print(f'"{path}" is not a title.')
             num_errors += 1
 

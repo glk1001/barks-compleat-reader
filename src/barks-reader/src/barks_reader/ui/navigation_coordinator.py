@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
 from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES, TagGroups, Tags
-from barks_fantagraphics.barks_titles import BARKS_TITLES, ENUM_FROM_BARKS_TITLE, Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book_info import (
     NON_COMIC_TITLES,
     ONE_PAGERS,
@@ -232,10 +232,10 @@ class NavigationCoordinator:
 
         """
         title_str = ComicBookInfo.get_title_str_from_display_title(title_str)
-        if title_str not in ENUM_FROM_BARKS_TITLE:
+        if title_str not in STR_TITLE_TO_ENUM:
             logger.debug(f'Search goto title: not found: "{title_str}".')
             return False
-        title = ENUM_FROM_BARKS_TITLE[title_str]
+        title = STR_TITLE_TO_ENUM[title_str]
         image_info = ImageInfo(from_title=title, filename=None)
         self.navigate_to_chrono_title(image_info)
         return True
@@ -255,7 +255,7 @@ class NavigationCoordinator:
 
         title_str = ComicBookInfo.get_title_str_from_display_title(title_str)
 
-        title = ENUM_FROM_BARKS_TITLE.get(title_str)
+        title = STR_TITLE_TO_ENUM.get(title_str)
         if title is None or title not in ALL_FANTA_COMIC_BOOK_INFO:
             logger.debug(f'Update title: Not configured yet: "{title_str}".')
             return False
@@ -291,7 +291,7 @@ class NavigationCoordinator:
             comic_book = self._get_comic_book()
         except TitleNotFoundError as e:
             logger.error(e)
-            error_info = ErrorInfo(file_volume=-1, title=ENUM_FROM_BARKS_TITLE[e.title])
+            error_info = ErrorInfo(file_volume=-1, title=STR_TITLE_TO_ENUM[e.title])
             self._user_error_handler.handle_error(ErrorTypes.ArchiveVolumeNotAvailable, error_info)
             return False
 
@@ -324,16 +324,18 @@ class NavigationCoordinator:
         collection_info = get_fanta_info(Titles.ALL_ONE_PAGERS)
         if page_num is None or collection_info is None:
             logger.error(
-                f'Cannot open one-pager "{BARKS_TITLES[one_pager]}":'
+                f'Cannot open one-pager "{ENUM_TO_STR_TITLE[one_pager]}":'
                 " it is not present in the All One-Pagers collection."
             )
             return False
 
         try:
-            comic_book = self._comics_database.get_comic_book(BARKS_TITLES[Titles.ALL_ONE_PAGERS])
+            comic_book = self._comics_database.get_comic_book(
+                ENUM_TO_STR_TITLE[Titles.ALL_ONE_PAGERS]
+            )
         except TitleNotFoundError as e:
             logger.error(e)
-            error_info = ErrorInfo(file_volume=-1, title=ENUM_FROM_BARKS_TITLE[e.title])
+            error_info = ErrorInfo(file_volume=-1, title=STR_TITLE_TO_ENUM[e.title])
             self._user_error_handler.handle_error(ErrorTypes.ArchiveVolumeNotAvailable, error_info)
             return False
 
@@ -408,7 +410,7 @@ class NavigationCoordinator:
         logger.debug(f'Setting tag goto page for ({tag.value}, "{title_str}").')
 
         if type(tag) is Tags:
-            title = ENUM_FROM_BARKS_TITLE[ComicBookInfo.get_title_str_from_display_title(title_str)]
+            title = STR_TITLE_TO_ENUM[ComicBookInfo.get_title_str_from_display_title(title_str)]
             if (tag, title) not in BARKS_TAGGED_PAGES:
                 logger.debug(f'No pages for ({tag.value}, "{title_str}").')
             else:
@@ -473,6 +475,6 @@ class NavigationCoordinator:
     def _get_fanta_info(title: Titles) -> FantaComicBookInfo:
         fanta_info = get_fanta_info(title)
         if fanta_info is None:
-            raise TitleNotInFantaInfoError(BARKS_TITLES[title])
+            raise TitleNotInFantaInfoError(ENUM_TO_STR_TITLE[title])
 
         return fanta_info

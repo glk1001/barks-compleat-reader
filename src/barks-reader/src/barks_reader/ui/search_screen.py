@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Self
 
 from barks_fantagraphics.barks_tags import TagGroups
-from barks_fantagraphics.barks_titles import BARKS_TITLES, ENUM_FROM_BARKS_TITLE, Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_search import ComicSearch, SearchMode
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -418,9 +418,7 @@ class SearchScreen(FloatLayout):
             )
             return
 
-        word_result_titles = [
-            ENUM_FROM_BARKS_TITLE[ct] for ct in found if ct in ENUM_FROM_BARKS_TITLE
-        ]
+        word_result_titles = [STR_TITLE_TO_ENUM[ct] for ct in found if ct in STR_TITLE_TO_ENUM]
         self._update_background_from_results(word_result_titles)
 
     @staticmethod
@@ -493,9 +491,9 @@ class SearchScreen(FloatLayout):
         Clock.schedule_once(lambda _dt: self._goto_title_with_page(title_str, page_to_goto), 0.01)
 
     def _goto_title_with_page(self, title_str: str, page_to_goto: str) -> None:
-        if title_str not in ENUM_FROM_BARKS_TITLE:
+        if title_str not in STR_TITLE_TO_ENUM:
             return
-        title = ENUM_FROM_BARKS_TITLE[title_str]
+        title = STR_TITLE_TO_ENUM[title_str]
         image_info = ImageInfo(from_title=title, filename=None)
         if self.on_goto_title_with_page:
             self.on_goto_title_with_page(image_info, page_to_goto)
@@ -534,7 +532,7 @@ class SearchScreen(FloatLayout):
     def set_background_image(self, image_info: ImageInfo) -> None:
         self._current_image_info = image_info
         self.current_title_str = (
-            "" if image_info.from_title is None else BARKS_TITLES[image_info.from_title]
+            "" if image_info.from_title is None else ENUM_TO_STR_TITLE[image_info.from_title]
         )
 
     def on_goto_background_title(self) -> None:

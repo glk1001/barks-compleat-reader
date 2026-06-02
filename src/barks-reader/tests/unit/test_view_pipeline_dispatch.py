@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 from barks_fantagraphics.barks_tags import TagGroups, Tags
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, ONE_PAGERS
 from barks_fantagraphics.fanta_comics_info import ALL_LISTS
 from barks_reader.core import view_pipeline as vp_module
@@ -331,8 +331,8 @@ class TestThemeExpansion:
         _settings(pipeline).file_paths.get_file_type_titles.return_value = set()
 
         with (
-            patch.object(vp_module, "BARKS_TITLES", {Titles.ATTIC_ANTICS: "Attic Antics"}),
-            patch.object(vp_module, "ENUM_FROM_BARKS_TITLE", {"Attic Antics": Titles.ATTIC_ANTICS}),
+            patch.object(vp_module, "ENUM_TO_STR_TITLE", {Titles.ATTIC_ANTICS: "Attic Antics"}),
+            patch.object(vp_module, "STR_TITLE_TO_ENUM", {"Attic Antics": Titles.ATTIC_ANTICS}),
             patch.object(
                 vp_module,
                 "ALL_FANTA_COMIC_BOOK_INFO",
@@ -355,8 +355,8 @@ class TestThemeExpansion:
 
         lita = Titles.LOST_IN_THE_ANDES
         with (
-            patch.object(vp_module, "BARKS_TITLES", {lita: "Lost in the Andes"}),
-            patch.object(vp_module, "ENUM_FROM_BARKS_TITLE", {"Lost in the Andes": lita}),
+            patch.object(vp_module, "ENUM_TO_STR_TITLE", {lita: "Lost in the Andes"}),
+            patch.object(vp_module, "STR_TITLE_TO_ENUM", {"Lost in the Andes": lita}),
             patch.object(
                 vp_module,
                 "ALL_FANTA_COMIC_BOOK_INFO",
@@ -376,8 +376,8 @@ class TestThemeExpansion:
         _settings(pipeline).file_paths.get_file_type_titles.return_value = set()
 
         with (
-            patch.object(vp_module, "BARKS_TITLES", {Titles.ATTIC_ANTICS: "Attic Antics"}),
-            patch.object(vp_module, "ENUM_FROM_BARKS_TITLE", {"Attic Antics": Titles.ATTIC_ANTICS}),
+            patch.object(vp_module, "ENUM_TO_STR_TITLE", {Titles.ATTIC_ANTICS: "Attic Antics"}),
+            patch.object(vp_module, "STR_TITLE_TO_ENUM", {"Attic Antics": Titles.ATTIC_ANTICS}),
             patch.object(
                 vp_module,
                 "ALL_FANTA_COMIC_BOOK_INFO",
@@ -399,12 +399,12 @@ class TestThemeExpansion:
             ),
             patch.object(
                 vp_module,
-                "BARKS_TITLES",
+                "ENUM_TO_STR_TITLE",
                 {Titles.LOST_IN_THE_ANDES: "Lost in the Andes"},
             ),
             patch.object(
                 vp_module,
-                "ENUM_FROM_BARKS_TITLE",
+                "STR_TITLE_TO_ENUM",
                 {"Lost in the Andes": Titles.LOST_IN_THE_ANDES},
             ),
             patch.object(
@@ -431,7 +431,7 @@ class TestThemeExpansion:
         with (
             patch.object(
                 vp_module,
-                "BARKS_TITLES",
+                "ENUM_TO_STR_TITLE",
                 {
                     Titles.ATTIC_ANTICS: "Attic Antics",
                     Titles.LOST_IN_THE_ANDES: "Lost in the Andes",
@@ -439,7 +439,7 @@ class TestThemeExpansion:
             ),
             patch.object(
                 vp_module,
-                "ENUM_FROM_BARKS_TITLE",
+                "STR_TITLE_TO_ENUM",
                 {
                     "Attic Antics": Titles.ATTIC_ANTICS,
                     "Lost in the Andes": Titles.LOST_IN_THE_ANDES,
@@ -575,7 +575,7 @@ class TestPublicDelegations:
         # A random image is picked from the synthetic "All One-Pagers" collection's
         # title-view types - not the individual gag image, and not the Insets directory.
         _selector(pipeline).get_random_image_for_title.assert_called_once_with(
-            BARKS_TITLES[Titles.ALL_ONE_PAGERS],
+            ENUM_TO_STR_TITLE[Titles.ALL_ONE_PAGERS],
             vp_module._TITLE_VIEW_IMAGE_TYPES,
             use_only_edited_if_possible=True,
         )
@@ -604,7 +604,7 @@ class TestPublicDelegations:
         assert shown == [Path("p1.png"), Path("p2.png"), Path("p3.png")]
         assert _selector(pipeline).get_random_image_for_title.call_count == len(shown)
         assert all(
-            call.args[0] == BARKS_TITLES[Titles.ALL_ONE_PAGERS]
+            call.args[0] == ENUM_TO_STR_TITLE[Titles.ALL_ONE_PAGERS]
             for call in _selector(pipeline).get_random_image_for_title.call_args_list
         )
 

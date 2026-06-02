@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
@@ -95,7 +95,7 @@ class ComicReaderManager:
             page_to_first_goto: The page ID to navigate to initially.
 
         """
-        article_title_str = BARKS_TITLES[article_title]
+        article_title_str = ENUM_TO_STR_TITLE[article_title]
         self._fanta_info = self.all_fanta_titles[article_title]
         article_as_comic = self._comics_database.get_comic_book(article_title_str)
 

@@ -4,7 +4,7 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.comic_book import get_page_str
 from barks_fantagraphics.fanta_comics_info import (
     FIRST_VOLUME_NUMBER,
@@ -38,7 +38,7 @@ class MissingArchiveFilesError(Exception):
 class MissingVolumeError(Exception):
     def __init__(self, missing_vol: int, title: Titles) -> None:
         super().__init__(
-            f'Cannot show the the title "{BARKS_TITLES[title]}".'
+            f'Cannot show the the title "{ENUM_TO_STR_TITLE[title]}".'
             f" The Fantagraphics volume {missing_vol} is missing."
         )
 

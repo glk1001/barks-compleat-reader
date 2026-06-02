@@ -11,7 +11,7 @@ from configparser import ConfigParser
 from pathlib import Path
 
 import typer
-from barks_fantagraphics.barks_titles import BARKS_TITLES, ENUM_FROM_BARKS_TITLE
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM
 from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import (
@@ -50,7 +50,7 @@ def main(
 ) -> None:
     init_logging(APP_LOGGING_NAME, "read-comic.log", log_level_str)
 
-    title_enum = ENUM_FROM_BARKS_TITLE.get(title)
+    title_enum = STR_TITLE_TO_ENUM.get(title)
     fanta_info = ALL_FANTA_COMIC_BOOK_INFO.get(title_enum) if title_enum is not None else None
     if fanta_info is None:
         _print_title_not_found(title)
@@ -71,7 +71,7 @@ def main(
 
 def _print_title_not_found(title_str: str) -> None:
     needle = title_str.lower()
-    title_strs = [BARKS_TITLES[t] for t in ALL_FANTA_COMIC_BOOK_INFO]
+    title_strs = [ENUM_TO_STR_TITLE[t] for t in ALL_FANTA_COMIC_BOOK_INFO]
     suggestions = [t for t in title_strs if needle in t.lower()]
     print(f'Title not found: "{title_str}".')
     if suggestions:

@@ -8,7 +8,7 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Self
 
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from comic_utils.timing import Timing
 from kivy.app import App
 from kivy.clock import Clock
@@ -767,7 +767,7 @@ class IndexScreen(FloatLayout):
             self.on_letter_press(self._alphabet_buttons[first_letter])
 
     def _get_indexable_title(self, title: Titles) -> str:
-        return self._get_indexable_title_from_str(BARKS_TITLES[title])
+        return self._get_indexable_title_from_str(ENUM_TO_STR_TITLE[title])
 
     def _get_indexable_title_from_str(self, title_str: str) -> str:
         title_str = textwrap.shorten(title_str, width=MAX_TITLE_AND_PAGES_LEN, placeholder="...")

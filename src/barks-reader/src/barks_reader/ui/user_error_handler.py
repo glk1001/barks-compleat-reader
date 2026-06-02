@@ -6,7 +6,7 @@ from enum import Enum, auto
 from textwrap import dedent
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_titles import BARKS_TITLES
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
     FIRST_VOLUME_NUMBER,
@@ -261,7 +261,7 @@ class UserErrorHandler:
 
         title = "Fantagraphics Volume Missing"
         msg = (
-            f'Cannot show the title "{BARKS_TITLES[error_info.title]}".\n\n'
+            f'Cannot show the title "{ENUM_TO_STR_TITLE[error_info.title]}".\n\n'
             f"Fantagraphics volume '{error_info.missing_volumes[0]}' is missing."
         )
 
@@ -277,7 +277,7 @@ class UserErrorHandler:
         assert error_info is not None
         assert error_info.title is not None
 
-        cannot_show = f'Cannot show the title [b]"{BARKS_TITLES[error_info.title]}."[/b]'
+        cannot_show = f'Cannot show the title [b]"{ENUM_TO_STR_TITLE[error_info.title]}."[/b]'
 
         if error_info.file_volume == -1:
             title = "Fantagraphics Volume Not Available"

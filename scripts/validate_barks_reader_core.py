@@ -14,7 +14,7 @@ from configparser import ConfigParser
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from barks_fantagraphics.barks_titles import BARKS_TITLES, ENUM_FROM_BARKS_TITLE, Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comic_book_info import (
     NON_COMIC_TITLES,
@@ -767,7 +767,7 @@ def _validate_title_files(
             panels_source problem).
         ctx: Per-variant audit context. Each file the sweep visits is
             recorded so the audit pass can later report any unvisited file.
-        title_str: The title identifier as keyed in ``ENUM_FROM_BARKS_TITLE``.
+        title_str: The title identifier as keyed in ``STR_TITLE_TO_ENUM``.
 
     Returns:
         ``_TitleCounts`` summarising every file seen for this title across
@@ -779,7 +779,7 @@ def _validate_title_files(
     if file_paths is None:
         return None
 
-    title = ENUM_FROM_BARKS_TITLE.get(title_str)
+    title = STR_TITLE_TO_ENUM.get(title_str)
     if title is None:
         return None
 
@@ -904,7 +904,7 @@ def phase4_introduction(
     """Validate intro document pages and the intro article inset (per panel-source variant)."""
     phase = collector.start_phase("Introduction", "4")
     _check_dir_has_pages(phase, "intro_doc_dir", sys_paths.get_intro_doc_dir())
-    title_str = BARKS_TITLES[_INTRO_ARTICLE]
+    title_str = ENUM_TO_STR_TITLE[_INTRO_ARTICLE]
     for file_paths in file_paths_variants:
         # Phase 4/5 use a throwaway ctx — only Phase 8 retains its ctx for the
         # audit pass. Visiting the intro/appendix files here is harmless: the
@@ -939,7 +939,7 @@ def phase5_appendices(
         sys_paths.get_censorship_fixes_doc_dir(),
     )
     for article in _APPENDIX_ARTICLES:
-        title_str = BARKS_TITLES[article]
+        title_str = ENUM_TO_STR_TITLE[article]
         for file_paths in file_paths_variants:
             ctx = _build_audit_ctx(file_paths)
             _validate_title_files(phase, file_paths, ctx, title_str)
@@ -1158,7 +1158,7 @@ def phase7_prebuilt_cbzs(collector: ErrorCollector, cfg_info: ConfigInfo) -> Non
             # as a page within the "All One-Pagers" collection, whose CBZ is checked
             # like any other title.
             continue
-        title_str = BARKS_TITLES[title]
+        title_str = ENUM_TO_STR_TITLE[title]
         phase.items_checked += 1
         cbz_stem = get_dest_comic_zip_file_stem(
             title_str,
@@ -1214,13 +1214,15 @@ def phase8a_per_title_panel_files(
 
     filter_set = set(titles_filter) if titles_filter is not None else None
     titles = [
-        t for t in ALL_FANTA_COMIC_BOOK_INFO if filter_set is None or BARKS_TITLES[t] in filter_set
+        t
+        for t in ALL_FANTA_COMIC_BOOK_INFO
+        if filter_set is None or ENUM_TO_STR_TITLE[t] in filter_set
     ]
     total = len(titles)
     progress_step = max(5, total // 20)
 
     for idx, title in enumerate(titles, start=1):
-        title_str = BARKS_TITLES[title]
+        title_str = ENUM_TO_STR_TITLE[title]
 
         if total > 0 and (idx in (1, total) or idx % progress_step == 0):
             logger.info(f"[{idx}/{total}] {title_str}")
@@ -1332,7 +1334,7 @@ def phase8b_audit_panel_files(
           Files already flagged by the per-title sweep are not re-reported.
         * ``kind=unvisited_image_file`` — image file the sweep never
           inspected. Typical causes: typos in a title-named subdir (so the
-          name doesn't match any entry in ``ENUM_FROM_BARKS_TITLE``), files
+          name doesn't match any entry in ``STR_TITLE_TO_ENUM``), files
           dropped into the wrong category dir, files at unexpected nesting
           depths.
 
@@ -1499,9 +1501,10 @@ def phase9_per_title_load(
     # within the "All One-Pagers" collection, which is itself loaded here as a normal
     # title — so their source pages and panel-segments JSONs are validated through it.
     candidates = [
-        (BARKS_TITLES[title], fanta_info)
+        (ENUM_TO_STR_TITLE[title], fanta_info)
         for title, fanta_info in ALL_FANTA_COMIC_BOOK_INFO.items()
-        if (filter_set is None or BARKS_TITLES[title] in filter_set) and title not in ONE_PAGERS
+        if (filter_set is None or ENUM_TO_STR_TITLE[title] in filter_set)
+        and title not in ONE_PAGERS
     ]
     total = len(candidates)
     progress_step = 5
@@ -1643,7 +1646,7 @@ def _check_one_source_page(
                 )
 
     # Panel-segments JSON only required for pages with panels.
-    title_enum = ENUM_FROM_BARKS_TITLE[title_str]
+    title_enum = STR_TITLE_TO_ENUM[title_str]
     if (title_enum not in NON_COMIC_TITLES) and (page_type not in PAGES_WITHOUT_PANELS):
         _check_segments_json(
             phase, counts, title_str, page_str, panel_segments_dir, target_zip, member

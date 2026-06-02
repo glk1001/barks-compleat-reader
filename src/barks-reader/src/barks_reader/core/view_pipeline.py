@@ -23,7 +23,7 @@ from barks_fantagraphics.barks_tags import (
     TagGroups,
     Tags,
 )
-from barks_fantagraphics.barks_titles import BARKS_TITLES, ENUM_FROM_BARKS_TITLE, Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book_info import ONE_PAGERS, is_one_pager_collection
 from barks_fantagraphics.comics_utils import get_abbrev_path
 from barks_fantagraphics.fanta_comics_info import (
@@ -680,7 +680,7 @@ class ViewPipeline:
 
         if ImageThemes.CLASSICS in self._fun_image_themes:
             theme_titles.update(
-                [BARKS_TITLES[title] for title in BARKS_TAGGED_TITLES[Tags.CLASSICS]]
+                [ENUM_TO_STR_TITLE[title] for title in BARKS_TAGGED_TITLES[Tags.CLASSICS]]
             )
 
         for file_type in file_types:
@@ -689,14 +689,14 @@ class ViewPipeline:
             )
 
         return [
-            ALL_FANTA_COMIC_BOOK_INFO[ENUM_FROM_BARKS_TITLE[title_str]]
-            for title_str in theme_titles
+            ALL_FANTA_COMIC_BOOK_INFO[STR_TITLE_TO_ENUM[title_str]] for title_str in theme_titles
         ], file_types
 
     def _update_titles(self, title_set: set[str], year_range: tuple[int, int]) -> None:
         for year in range(year_range[0], year_range[1] + 1):
             title_set.update(
-                BARKS_TITLES[info.comic_book_info.title] for info in self._title_lists[str(year)]
+                ENUM_TO_STR_TITLE[info.comic_book_info.title]
+                for info in self._title_lists[str(year)]
             )
 
     def _get_file_types_to_use(self) -> set[FileTypes]:
@@ -741,7 +741,7 @@ class ViewPipeline:
         to a random image picked for the current title.
         """
         if self._current_title_is_one_pager():
-            self._set_bottom_view_title_image_for(BARKS_TITLES[Titles.ALL_ONE_PAGERS])
+            self._set_bottom_view_title_image_for(ENUM_TO_STR_TITLE[Titles.ALL_ONE_PAGERS])
             return
 
         if self._bottom_view_title_image_info.filename:
@@ -767,7 +767,7 @@ class ViewPipeline:
 
     def _current_title_is_one_pager(self) -> bool:
         """Whether the current bottom-view title is a one-pager or the collection itself."""
-        title = ENUM_FROM_BARKS_TITLE.get(self._current_bottom_view_title)
+        title = STR_TITLE_TO_ENUM.get(self._current_bottom_view_title)
         return title is not None and (title in ONE_PAGERS or is_one_pager_collection(title))
 
     def set_bottom_view_title_image_file(self, image_file: PanelPath | None) -> None:

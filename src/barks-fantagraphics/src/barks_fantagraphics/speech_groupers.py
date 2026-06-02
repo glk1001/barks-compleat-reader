@@ -5,7 +5,7 @@ from itertools import groupby
 from pathlib import Path
 from typing import Any
 
-from .barks_titles import BARKS_TITLES, Titles
+from .barks_titles import ENUM_TO_STR_TITLE, Titles
 from .comic_book import ComicBook
 from .comics_consts import RESTORABLE_PAGE_TYPES
 from .comics_database import ComicsDatabase
@@ -109,7 +109,7 @@ class SpeechGroups:
 
     # TODO: Have a way to get with/with json and ocr file.
     def get_speech_page_groups(self, title: Titles) -> list[SpeechPageGroup]:
-        title_str = BARKS_TITLES[title]
+        title_str = ENUM_TO_STR_TITLE[title]
 
         volume = self._comics_database.get_fanta_volume_int(title_str)
         comic = self._comics_database.get_comic_book(title_str)

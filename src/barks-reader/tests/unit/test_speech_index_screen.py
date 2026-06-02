@@ -153,7 +153,7 @@ class TestSpeechIndexScreen:
         ):
             # Mock the title-string -> Titles enum -> FantaComicBookInfo lookup chain.
             with (
-                patch.object(barks_reader.ui.speech_index_screen, "ENUM_FROM_BARKS_TITLE"),
+                patch.object(barks_reader.ui.speech_index_screen, "STR_TITLE_TO_ENUM"),
                 patch.object(
                     barks_reader.ui.speech_index_screen, "ALL_FANTA_COMIC_BOOK_INFO"
                 ) as mock_all_info,

@@ -5,7 +5,7 @@ from datetime import date
 
 from dateutil.relativedelta import relativedelta
 
-from .barks_titles import BARKS_TITLES, Titles
+from .barks_titles import ENUM_TO_STR_TITLE, Titles
 from .comic_book_info import BARKS_TITLE_INFO, NON_COMIC_TITLES, ONE_PAGERS, SYNTHETIC_TITLES
 
 
@@ -586,11 +586,11 @@ def validate_payment_data() -> None:
             continue
 
         if (title not in ONE_PAGERS) and (title not in BARKS_PAYMENTS):
-            print(f'Title "{BARKS_TITLES[title]}" has no payment info.')
+            print(f'Title "{ENUM_TO_STR_TITLE[title]}" has no payment info.')
             missing_payment_errors += 1
             continue
         if title not in BARKS_PAYMENTS:
-            print(f'Title "{BARKS_TITLES[title]}" has no payment info.')
+            print(f'Title "{ENUM_TO_STR_TITLE[title]}" has no payment info.')
             missing_one_pager_payments += 1
             continue
 
@@ -610,13 +610,13 @@ def validate_payment_data() -> None:
 
         if accepted_date < submitted_date:
             print(
-                f'"{BARKS_TITLES[title]}":'
+                f'"{ENUM_TO_STR_TITLE[title]}":'
                 f" accepted date {accepted_date} is before submitted date {submitted_date}."
             )
             date_order_errors += 1
         elif accepted_date > submitted_date + max_acceptance_gap:
             print(
-                f'"{BARKS_TITLES[title]}":'
+                f'"{ENUM_TO_STR_TITLE[title]}":'
                 f" accepted date {accepted_date} is more than 3 months after"
                 f" submitted date {submitted_date}."
             )

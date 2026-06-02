@@ -173,8 +173,8 @@ class TestReaderUtils:
             "Title Two": Titles.DONALD_DUCK_AND_THE_MUMMYS_RING,
         }
 
-        # Patch ENUM_FROM_BARKS_TITLE to use our dummy map
-        with patch.object(utils_module, "ENUM_FROM_BARKS_TITLE", mock_dict):
+        # Patch STR_TITLE_TO_ENUM to use our dummy map
+        with patch.object(utils_module, "STR_TITLE_TO_ENUM", mock_dict):
             titles = read_title_list(f)
             # Should be sorted by enum value.
             assert len(titles) == 2  # noqa: PLR2004
@@ -295,7 +295,7 @@ class TestReaderUtils:
         mock_dict = {"Known Title": Titles.DONALD_DUCK_FINDS_PIRATE_GOLD}
 
         with (
-            patch.object(utils_module, "ENUM_FROM_BARKS_TITLE", mock_dict),
+            patch.object(utils_module, "STR_TITLE_TO_ENUM", mock_dict),
             pytest.raises(RuntimeError, match='Unknown title "Unknown Title"'),
         ):
             read_title_list(f)

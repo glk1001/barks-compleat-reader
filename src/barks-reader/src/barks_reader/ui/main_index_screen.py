@@ -14,7 +14,7 @@ from barks_fantagraphics.barks_tags import (
     get_all_tags_in_tag_group,
     get_tag_titles,
 )
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
 from comic_utils.timing import Timing
 from kivy.clock import Clock
@@ -91,7 +91,7 @@ class TitleHierarchy:
 
     def get_title_with_hierarchy(self) -> str:
         assert self.title is not None
-        title_str = BARKS_TITLES[self.title]
+        title_str = ENUM_TO_STR_TITLE[self.title]
 
         if not self.tag_group and not self.tag:
             return title_str

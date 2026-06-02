@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     ColorProperty,
@@ -60,7 +60,7 @@ class TreeViewScreen(BoxLayout):
         overlay.on_collapse_request = on_collapse
 
     def set_title(self, title: Titles | None) -> None:
-        self.current_title_str = "" if title is None else BARKS_TITLES[title]
+        self.current_title_str = "" if title is None else ENUM_TO_STR_TITLE[title]
 
     def get_selected_node(self) -> BaseTreeViewNode | None:
         return self.ids.reader_tree_view.selected_node

@@ -10,7 +10,7 @@ from pathlib import Path, PurePosixPath
 from random import randrange
 from typing import TYPE_CHECKING, Any
 
-from barks_fantagraphics.barks_titles import ENUM_FROM_BARKS_TITLE
+from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM
 from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.fanta_comics_info import US_CENSORED_TITLE_ENUMS, FantaComicBookInfo
@@ -130,10 +130,10 @@ def read_title_list(filepath: PanelPath) -> list[Titles]:
     titles = []
     for line in lines:
         title_str = line.strip()
-        if title_str not in ENUM_FROM_BARKS_TITLE:
+        if title_str not in STR_TITLE_TO_ENUM:
             msg = f'Unknown title "{title_str}" in favourites file "{filepath}".'
             raise RuntimeError(msg)
-        titles.append(ENUM_FROM_BARKS_TITLE[title_str])
+        titles.append(STR_TITLE_TO_ENUM[title_str])
 
     # Now sort these in enum order (which is guaranteed to be submission date order).
     return sorted(titles)

@@ -4,7 +4,7 @@ import zipfile
 from pathlib import Path
 
 import pytest
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.fanta_comics_info import NUM_VOLUMES
 from barks_reader.core.fantagraphics_volumes import (
     DuplicateArchiveFilesError,
@@ -233,7 +233,7 @@ class TestExceptionMessages:
         title = Titles.VACATION_TIME
         err = MissingVolumeError(missing_vol=14, title=title)
         msg = str(err)
-        assert BARKS_TITLES[title] in msg
+        assert ENUM_TO_STR_TITLE[title] in msg
         assert "14" in msg
         assert err.missing_vol == 14
         assert err.title is title

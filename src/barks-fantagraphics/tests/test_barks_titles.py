@@ -4,7 +4,7 @@ import string
 
 import pytest
 from barks_fantagraphics.barks_titles import (
-    BARKS_TITLES,
+    ENUM_TO_STR_TITLE,
     NUM_TITLES,
     Titles,
     _title_name_from_enum,
@@ -71,7 +71,7 @@ class TestBarksInfo:
             )
 
     def test_correct_title_strings(self) -> None:
-        for title, title_str in enumerate(BARKS_TITLES):
+        for title, title_str in enumerate(ENUM_TO_STR_TITLE):
             expected_enum_var = self.get_title_var(title_str)
             actual_enum_var = Titles(title).name
             assert actual_enum_var == expected_enum_var, (
@@ -132,16 +132,16 @@ class TestBarksInfo:
         return enum_var
 
     def test_correct_number_of_titles(self) -> None:
-        assert len(BARKS_TITLES) == NUM_TITLES
+        assert len(ENUM_TO_STR_TITLE) == NUM_TITLES
         assert len(BARKS_TITLE_INFO) == NUM_TITLES
         assert BARKS_TITLE_INFO[0].chronological_number == 1
         assert BARKS_TITLE_INFO[-1].chronological_number == NUM_TITLES
 
     def test_derivation_matches_barks_titles(self) -> None:
-        """Validates that _title_name_from_enum produces the exact same string as BARKS_TITLES."""
+        """Validates that _title_name_from_enum produces the same string as ENUM_TO_STR_TITLE."""
         for title in Titles:
             derived = _title_name_from_enum(title)
-            actual = BARKS_TITLES[title]
+            actual = ENUM_TO_STR_TITLE[title]
             assert derived == actual, (
                 f"Derivation mismatch for {title.name}: derived={derived!r}, actual={actual!r}"
             )
