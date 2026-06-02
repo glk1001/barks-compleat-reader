@@ -281,6 +281,10 @@ class MainScreenNavigation:
         if parent_idx + 1 < len(visible):
             child = visible[parent_idx + 1]
             self._tree_view_screen.select_node(child)
+            if isinstance(child, TitleTreeViewNode):
+                # Selecting alone only sets the tree's selection state; activating the
+                # title node renders its info and portal button in the bottom panel.
+                self._tree_view_manager.activate_node(child)
 
     def _tree_nav_collapse_to_parent(self) -> None:
         selected = self._tree_view_screen.get_selected_node()
