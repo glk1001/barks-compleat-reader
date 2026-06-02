@@ -46,17 +46,15 @@ class TitlePanelBoxes:
     _comics_database: ComicsDatabase
 
     def get_page_panel_boxes(self, title: Titles) -> TitlePagesPanelBoxes:
-        title_str = ENUM_TO_STR_TITLE[title]
-
-        volume = self._comics_database.get_fanta_volume_int(title_str)
-        comic = self._comics_database.get_comic_book(title_str)
+        volume = self._comics_database.get_fanta_volume_int_for(title)
+        comic = self._comics_database.get_comic_book_for(title)
 
         pages = {
             page_num: self._get_panel_boxes(comic, page_num)
             for page_num in self._get_srce_page_nums(comic)
         }
 
-        return TitlePagesPanelBoxes(title, title_str, volume, pages)
+        return TitlePagesPanelBoxes(title, ENUM_TO_STR_TITLE[title], volume, pages)
 
     def get_panel_boxes(self, panel_segments_file: Path, page_num: str) -> PagePanelBoxes:
         if not panel_segments_file.is_file():

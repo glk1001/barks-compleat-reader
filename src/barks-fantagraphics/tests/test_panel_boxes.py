@@ -301,14 +301,14 @@ class TestPrivateGetPanelBoxes:
 class TestGetPagePanelBoxes:
     def test_returns_title_pages_panel_boxes(self, tmp_path: Path) -> None:
         db = MagicMock()
-        db.get_fanta_volume_int.return_value = 3
+        db.get_fanta_volume_int_for.return_value = 3
 
         panel_file = tmp_path / "001.json"  # type: ignore[operator]
         panel_file.write_text(_make_panel_segments_json())
 
         comic = MagicMock()
         comic.get_srce_panel_segments_file.return_value = panel_file
-        db.get_comic_book.return_value = comic
+        db.get_comic_book_for.return_value = comic
 
         body_page = MagicMock(page_num=1, page_type=PageType.BODY)
         srce_dest = MagicMock()

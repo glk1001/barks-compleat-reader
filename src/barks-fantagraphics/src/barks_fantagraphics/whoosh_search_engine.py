@@ -13,7 +13,6 @@ from whoosh.index import create_in, open_dir
 from whoosh.qparser import QueryParser
 from whoosh.searching import Hit
 
-from .barks_titles import STR_TITLE_TO_ENUM
 from .comics_database import ComicsDatabase
 from .entity_types import EntityType
 from .speech_groupers import OcrTypes, SpeechGroups
@@ -426,8 +425,8 @@ class SearchEngineCreator(SearchEngine):
         titles = self._comics_database.get_configured_titles_in_fantagraphics_volumes(
             volumes, exclude_non_comics=True
         )
-        for title_str, _ in titles:
-            title = STR_TITLE_TO_ENUM[title_str]
+        for title_str, fanta_info in titles:
+            title = fanta_info.comic_book_info.title
             speech_page_groups = all_speech_groups.get_speech_page_groups(title)
             for speech_page in speech_page_groups:
                 if speech_page.ocr_index != self._ocr_index_to_use:

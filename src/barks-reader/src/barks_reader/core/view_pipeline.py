@@ -666,7 +666,7 @@ class ViewPipeline:
     def _get_themed_fun_image_titles(self) -> tuple[list[FantaComicBookInfo], set[FileTypes]]:
         file_types = self._get_file_types_to_use()
 
-        theme_titles: set[str] = set()
+        theme_titles: set[Titles] = set()
 
         assert self._fun_image_themes
 
@@ -679,25 +679,24 @@ class ViewPipeline:
                 self._update_titles(theme_titles, year_range)
 
         if ImageThemes.CLASSICS in self._fun_image_themes:
-            theme_titles.update(
-                [ENUM_TO_STR_TITLE[title] for title in BARKS_TAGGED_TITLES[Tags.CLASSICS]]
-            )
+            theme_titles.update(BARKS_TAGGED_TITLES[Tags.CLASSICS])
 
         for file_type in file_types:
+            # `get_file_type_titles` works in filesystem title strings, so project the
+            # accumulated enum set to strings for filtering and convert the result back.
+            allowed_title_strs = {ENUM_TO_STR_TITLE[title] for title in theme_titles}
             theme_titles.update(
-                self._reader_settings.file_paths.get_file_type_titles(file_type, theme_titles)
+                STR_TITLE_TO_ENUM[title_str]
+                for title_str in self._reader_settings.file_paths.get_file_type_titles(
+                    file_type, allowed_title_strs
+                )
             )
 
-        return [
-            ALL_FANTA_COMIC_BOOK_INFO[STR_TITLE_TO_ENUM[title_str]] for title_str in theme_titles
-        ], file_types
+        return [ALL_FANTA_COMIC_BOOK_INFO[title] for title in theme_titles], file_types
 
-    def _update_titles(self, title_set: set[str], year_range: tuple[int, int]) -> None:
+    def _update_titles(self, title_set: set[Titles], year_range: tuple[int, int]) -> None:
         for year in range(year_range[0], year_range[1] + 1):
-            title_set.update(
-                ENUM_TO_STR_TITLE[info.comic_book_info.title]
-                for info in self._title_lists[str(year)]
-            )
+            title_set.update(info.comic_book_info.title for info in self._title_lists[str(year)])
 
     def _get_file_types_to_use(self) -> set[FileTypes]:
         if self._fun_image_themes is None:

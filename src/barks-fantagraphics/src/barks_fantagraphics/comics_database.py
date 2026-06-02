@@ -9,7 +9,7 @@ from pathlib import Path
 from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT, PanelPath
 from loguru import logger
 
-from .barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM
+from .barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from .comic_book import (
     INTRO_AUTHOR_DEFAULT_FONT_SIZE,
     INTRO_TITLE_DEFAULT_FONT_SIZE,
@@ -113,6 +113,14 @@ class ComicsDatabase:
 
     def get_fanta_volume_int(self, story_title: str) -> int:
         return get_fanta_volume_from_str(self.get_fanta_volume(story_title))
+
+    def get_fanta_volume_int_for(self, title: Titles) -> int:
+        """Return the Fantagraphics volume number for a title enum.
+
+        Convenience wrapper for callers that already hold a ``Titles`` enum, avoiding a
+        redundant enum-to-string conversion at the call site.
+        """
+        return get_fanta_volume_from_str(self._all_comic_book_info[title].fantagraphics_volume)
 
     def is_story_title(self, title: str) -> tuple[bool, str]:
         if title in self._story_titles:
@@ -438,6 +446,24 @@ class ComicsDatabase:
             comic_book_dirs=comic_book_dirs,
             for_building_comics=self._for_building_comics,
         )
+
+    def get_comic_book_for(
+        self, title: Titles, intro_inset_file: PanelPath | None = None
+    ) -> ComicBook:
+        """Return the comic book for a title enum.
+
+        Convenience wrapper for callers that already hold a ``Titles`` enum, avoiding a
+        redundant enum-to-string conversion at the call site.
+
+        Args:
+            title: The title enum member.
+            intro_inset_file: Optional override for the intro inset image.
+
+        Returns:
+            The ``ComicBook`` for the given title.
+
+        """
+        return self.get_comic_book(ENUM_TO_STR_TITLE[title], intro_inset_file)
 
     @staticmethod
     def check_comic_ok_for_building(comic: ComicBook) -> None:
