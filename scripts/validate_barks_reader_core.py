@@ -18,7 +18,10 @@ from barks_fantagraphics.barks_titles import BARKS_TITLES, ENUM_FROM_BARKS_TITLE
 from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comic_book_info import (
     NON_COMIC_TITLES,
+    ONE_PAGERS,
     get_filename_from_title,
+    is_one_pager_collection,
+    is_one_pager_located,
 )
 from barks_fantagraphics.comics_consts import PAGES_WITHOUT_PANELS
 from barks_fantagraphics.comics_database import ComicsDatabase, TitleNotFoundError
@@ -781,12 +784,25 @@ def _validate_title_files(
         return None
 
     is_article = title in NON_COMIC_TITLES
+    is_one_pager = title in ONE_PAGERS
     encrypted = file_paths.barks_panels_are_encrypted
     inset_ext = file_paths.get_inset_file_ext()
 
     counts = _TitleCounts()
 
-    # Insets — flat: Insets/<filename(title)>.ext + Insets/edited/<filename(title)>.ext
+    # Insets — flat: Insets/<filename(title)>.ext + Insets/edited/<filename(title)>.ext.
+    # Required for every comic title except articles. Individual one-pagers have no
+    # standalone comic, prebuilt CBZ, or panel files of their own — they are read as a
+    # page within the "All One-Pagers" collection. The one per-title asset they must
+    # still ship is the inset thumbnail shown in the tree, and only when the one-pager
+    # has a valid location (and therefore appears in the collection). The synthetic
+    # collection itself has no inset of its own, so it is exempt too.
+    if is_one_pager_collection(title):
+        inset_required = False
+    elif is_one_pager:
+        inset_required = is_one_pager_located(title)
+    else:
+        inset_required = not is_article
     inset_filename = get_filename_from_title(title, inset_ext)
     counts.insets = _check_flat_pair(
         phase,
@@ -797,7 +813,7 @@ def _validate_title_files(
         label="inset",
         main_filename=inset_filename,
         edited_filename=inset_filename,
-        require_main=(not is_article),
+        require_main=inset_required,
         also_check_no_overrides=True,
     )
 
@@ -863,7 +879,10 @@ def _validate_title_files(
         phase, ctx, title_str, file_paths.get_comic_splash_files_dir(), encrypted, label="splash"
     )
 
-    if not is_article and not counts.has_required_panel_file:
+    # One-pagers carry no Closeups/Favourites/Silhouettes/Splash files of their own
+    # (their large images are drawn from the "All One-Pagers" collection), so the
+    # required-panel-file rule does not apply to them.
+    if not is_article and not is_one_pager and not counts.has_required_panel_file:
         phase.add(
             f"Title:{title_str} kind=no_panel_files"
             f" reason=no_files_in_(Closeups|Favourites|Silhouettes|Splash)"
@@ -1134,6 +1153,11 @@ def phase7_prebuilt_cbzs(collector: ErrorCollector, cfg_info: ConfigInfo) -> Non
         return
 
     for title, fanta_info in ALL_FANTA_COMIC_BOOK_INFO.items():
+        if title in ONE_PAGERS:
+            # Individual one-pagers have no prebuilt CBZ of their own — they are read
+            # as a page within the "All One-Pagers" collection, whose CBZ is checked
+            # like any other title.
+            continue
         title_str = BARKS_TITLES[title]
         phase.items_checked += 1
         cbz_stem = get_dest_comic_zip_file_stem(
@@ -1471,10 +1495,13 @@ def phase9_per_title_load(
     counts = _Phase9Counts()
     filter_set = set(titles_filter) if titles_filter is not None else None
 
+    # Individual one-pagers have no standalone comic to load: they are read as a page
+    # within the "All One-Pagers" collection, which is itself loaded here as a normal
+    # title — so their source pages and panel-segments JSONs are validated through it.
     candidates = [
         (BARKS_TITLES[title], fanta_info)
         for title, fanta_info in ALL_FANTA_COMIC_BOOK_INFO.items()
-        if filter_set is None or BARKS_TITLES[title] in filter_set
+        if (filter_set is None or BARKS_TITLES[title] in filter_set) and title not in ONE_PAGERS
     ]
     total = len(candidates)
     progress_step = 5
