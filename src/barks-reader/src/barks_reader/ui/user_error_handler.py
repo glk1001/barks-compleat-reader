@@ -389,7 +389,7 @@ class UserErrorHandler:
 def get_volume_not_available_error_info(image_info: ImageInfo) -> ErrorInfo:
     fanta_volume = (
         -1
-        if image_info.from_title not in ALL_FANTA_COMIC_BOOK_INFO
+        if image_info.from_title is None or image_info.from_title not in ALL_FANTA_COMIC_BOOK_INFO
         else (
             get_fanta_volume_from_str(
                 ALL_FANTA_COMIC_BOOK_INFO[image_info.from_title].fantagraphics_volume

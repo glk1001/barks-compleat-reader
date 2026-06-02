@@ -143,7 +143,7 @@ if __name__ == "__main__":
     show_results(results, max_title_len)
 
     test_titles = [Titles.MAHARAJAH_DONALD, Titles.DONALD_DUCK_AND_THE_MUMMYS_RING]
-    test_title_list = [ALL_FANTA_COMIC_BOOK_INFO[BARKS_TITLES[title]] for title in test_titles]
+    test_title_list = [ALL_FANTA_COMIC_BOOK_INFO[title] for title in test_titles]
     test_file_types = {FileTypes.AI}
     test_use_random_fit_mode = False
     test_edited_only = True

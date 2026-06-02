@@ -9,6 +9,7 @@ from pathlib import Path
 from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT, PanelPath
 from loguru import logger
 
+from .barks_titles import BARKS_TITLES
 from .comic_book import (
     INTRO_AUTHOR_DEFAULT_FONT_SIZE,
     INTRO_TITLE_DEFAULT_FONT_SIZE,
@@ -89,12 +90,13 @@ class ComicsDatabase:
 
     def _get_all_issue_titles(self) -> dict[str, list[str]]:
         all_issues = {}
-        for title in self._all_comic_book_info:
-            issue_title = self._all_comic_book_info[title].get_short_issue_title()
+        for title, fanta_info in self._all_comic_book_info.items():
+            title_str = BARKS_TITLES[title]
+            issue_title = fanta_info.get_short_issue_title()
             if issue_title not in all_issues:
-                all_issues[issue_title] = [title]
+                all_issues[issue_title] = [title_str]
             else:
-                all_issues[issue_title].append(title)
+                all_issues[issue_title].append(title_str)
 
         return all_issues
 
@@ -108,7 +110,7 @@ class ComicsDatabase:
         return self._story_titles_dir / get_filename_from_title_str(story_title, ".ini")
 
     def get_fanta_volume(self, story_title: str) -> str:
-        return self._all_comic_book_info[story_title].fantagraphics_volume
+        return self._all_comic_book_info[BARKS_TITLE_DICT[story_title]].fantagraphics_volume
 
     def get_fanta_volume_int(self, story_title: str) -> int:
         return get_fanta_volume_from_str(self.get_fanta_volume(story_title))
@@ -142,7 +144,7 @@ class ComicsDatabase:
             fanta_key = get_fanta_volume_str(volume_num)
             for title, comic_info in self._all_comic_book_info.items():
                 if comic_info.fantagraphics_volume == fanta_key:
-                    story_titles.append((title, comic_info))
+                    story_titles.append((BARKS_TITLES[title], comic_info))
 
         return sorted(story_titles)
 
@@ -175,7 +177,7 @@ class ComicsDatabase:
             if config["info"]["source_comic"] == fanta_key:
                 story_title = get_title_str_from_filename(file)
                 if not exclude_non_comics or BARKS_TITLE_DICT[story_title] not in NON_COMIC_TITLES:
-                    comic_info = self._all_comic_book_info[story_title]
+                    comic_info = self._all_comic_book_info[BARKS_TITLE_DICT[story_title]]
                     story_titles.append((story_title, comic_info))
 
         return sorted(story_titles)
@@ -388,7 +390,7 @@ class ComicsDatabase:
             msg = f'Could not find issue title "{title}". Did you mean "{close}"?'
             raise RuntimeError(msg)
 
-        return self._all_comic_book_info[title]
+        return self._all_comic_book_info[BARKS_TITLE_DICT[title]]
 
     def get_comic_book(self, title: str, intro_inset_file: PanelPath | None = None) -> ComicBook:
         story_title = ""

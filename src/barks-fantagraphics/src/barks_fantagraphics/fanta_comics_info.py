@@ -23,7 +23,7 @@ class FantaComicBookInfo:
         return self.comic_book_info.get_short_issue_title()
 
 
-FantaComicBookInfoDict = OrderedDict[str, FantaComicBookInfo]
+FantaComicBookInfoDict = OrderedDict[Titles, FantaComicBookInfo]
 
 
 def _get_all_fanta_comic_book_info() -> FantaComicBookInfoDict:
@@ -62,7 +62,7 @@ def _get_all_fanta_comic_book_info() -> FantaComicBookInfoDict:
             fanta_chronological_number=chrono_num,
         )
 
-        all_fanta_info[comic_book_info.get_title_str()] = fanta_info
+        all_fanta_info[title_info.title] = fanta_info
 
         current_number_in_series[title_info.series_name] += 1
 
@@ -323,8 +323,7 @@ ALL_FANTA_COMIC_BOOK_INFO: FantaComicBookInfoDict = _get_all_fanta_comic_book_in
 
 def get_fanta_info(title: Titles) -> FantaComicBookInfo | None:
     """Look up the FantaComicBookInfo for a given title enum, or return None if not found."""
-    title_str = BARKS_TITLES[title]
-    return ALL_FANTA_COMIC_BOOK_INFO.get(title_str)
+    return ALL_FANTA_COMIC_BOOK_INFO.get(title)
 
 
 def get_num_comic_book_titles(

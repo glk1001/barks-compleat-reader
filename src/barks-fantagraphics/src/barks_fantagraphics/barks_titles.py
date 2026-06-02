@@ -861,3 +861,9 @@ def _title_name_from_enum(title: Titles) -> str:
 
 BARKS_TITLES: list[str] = [_title_name_from_enum(t) for t in Titles]
 assert len(BARKS_TITLES) == NUM_TITLES, f"{len(BARKS_TITLES)} != {NUM_TITLES}"
+
+# Reverse of BARKS_TITLES: canonical display string -> Titles enum member. BARKS_TITLES is
+# indexed by enum value, so this round-trips exactly.
+_TITLE_FROM_STR: dict[str, Titles] = {
+    title_str: Titles(index) for index, title_str in enumerate(BARKS_TITLES)
+}

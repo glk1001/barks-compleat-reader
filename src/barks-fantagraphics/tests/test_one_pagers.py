@@ -125,7 +125,7 @@ class TestOnePagerCollection:
 
     def test_collection_present_in_all_fanta_info(self) -> None:
         """The collection is registered in ALL_FANTA_COMIC_BOOK_INFO at import time."""
-        assert "All One-Pagers" in ALL_FANTA_COMIC_BOOK_INFO
+        assert Titles.ALL_ONE_PAGERS in ALL_FANTA_COMIC_BOOK_INFO
 
 
 class TestOnePagerCollectionBuild:

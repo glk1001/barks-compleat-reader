@@ -256,11 +256,12 @@ class NavigationCoordinator:
 
         title_str = ComicBookInfo.get_title_str_from_display_title(title_str)
 
-        if title_str not in ALL_FANTA_COMIC_BOOK_INFO:
+        title = BARKS_TITLE_DICT.get(title_str)
+        if title is None or title not in ALL_FANTA_COMIC_BOOK_INFO:
             logger.debug(f'Update title: Not configured yet: "{title_str}".')
             return False
 
-        next_fanta_info = ALL_FANTA_COMIC_BOOK_INFO[title_str]
+        next_fanta_info = ALL_FANTA_COMIC_BOOK_INFO[title]
         if next_fanta_info.series_name == SERIES_EXTRAS:
             logger.debug(f'Title is in EXTRA series: "{title_str}".')
             return False

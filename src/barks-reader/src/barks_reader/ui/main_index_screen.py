@@ -235,9 +235,9 @@ class MainIndexScreen(IndexScreen):
             self._update_all_titles_and_hierarchies(index_item.id, all_titles, hierarchies)
 
         return [
-            ALL_FANTA_COMIC_BOOK_INFO[BARKS_TITLES[title_id]]
-            for title_id in all_titles
-            if BARKS_TITLES[title_id] in ALL_FANTA_COMIC_BOOK_INFO
+            ALL_FANTA_COMIC_BOOK_INFO[title]
+            for title in all_titles
+            if title in ALL_FANTA_COMIC_BOOK_INFO
         ], hierarchies
 
     def _update_all_titles_and_hierarchies(

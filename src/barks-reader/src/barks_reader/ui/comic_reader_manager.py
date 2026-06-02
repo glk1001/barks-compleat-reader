@@ -96,7 +96,7 @@ class ComicReaderManager:
 
         """
         article_title_str = BARKS_TITLES[article_title]
-        self._fanta_info = self.all_fanta_titles[article_title_str]
+        self._fanta_info = self.all_fanta_titles[article_title]
         article_as_comic = self._comics_database.get_comic_book(article_title_str)
 
         assert self._comic_book_reader_screen

@@ -692,7 +692,9 @@ class ViewPipeline:
                 self._reader_settings.file_paths.get_file_type_titles(file_type, theme_titles)
             )
 
-        return [ALL_FANTA_COMIC_BOOK_INFO[title_str] for title_str in theme_titles], file_types
+        return [
+            ALL_FANTA_COMIC_BOOK_INFO[BARKS_TITLE_DICT[title_str]] for title_str in theme_titles
+        ], file_types
 
     def _update_titles(self, title_set: set[str], year_range: tuple[int, int]) -> None:
         for year in range(year_range[0], year_range[1] + 1):

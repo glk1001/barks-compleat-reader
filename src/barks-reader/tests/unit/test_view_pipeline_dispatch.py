@@ -332,10 +332,11 @@ class TestThemeExpansion:
 
         with (
             patch.object(vp_module, "BARKS_TITLES", {Titles.ATTIC_ANTICS: "Attic Antics"}),
+            patch.object(vp_module, "BARKS_TITLE_DICT", {"Attic Antics": Titles.ATTIC_ANTICS}),
             patch.object(
                 vp_module,
                 "ALL_FANTA_COMIC_BOOK_INFO",
-                {"Attic Antics": _fake_fcbi(Titles.ATTIC_ANTICS)},
+                {Titles.ATTIC_ANTICS: _fake_fcbi(Titles.ATTIC_ANTICS)},
             ),
         ):
             titles, _ = pipeline._get_themed_fun_image_titles()
@@ -355,10 +356,11 @@ class TestThemeExpansion:
         lita = Titles.LOST_IN_THE_ANDES
         with (
             patch.object(vp_module, "BARKS_TITLES", {lita: "Lost in the Andes"}),
+            patch.object(vp_module, "BARKS_TITLE_DICT", {"Lost in the Andes": lita}),
             patch.object(
                 vp_module,
                 "ALL_FANTA_COMIC_BOOK_INFO",
-                {"Lost in the Andes": _fake_fcbi(lita)},
+                {lita: _fake_fcbi(lita)},
             ),
         ):
             titles, _ = pipeline._get_themed_fun_image_titles()
@@ -375,10 +377,11 @@ class TestThemeExpansion:
 
         with (
             patch.object(vp_module, "BARKS_TITLES", {Titles.ATTIC_ANTICS: "Attic Antics"}),
+            patch.object(vp_module, "BARKS_TITLE_DICT", {"Attic Antics": Titles.ATTIC_ANTICS}),
             patch.object(
                 vp_module,
                 "ALL_FANTA_COMIC_BOOK_INFO",
-                {"Attic Antics": _fake_fcbi(Titles.ATTIC_ANTICS)},
+                {Titles.ATTIC_ANTICS: _fake_fcbi(Titles.ATTIC_ANTICS)},
             ),
         ):
             titles, _ = pipeline._get_themed_fun_image_titles()
@@ -401,8 +404,13 @@ class TestThemeExpansion:
             ),
             patch.object(
                 vp_module,
+                "BARKS_TITLE_DICT",
+                {"Lost in the Andes": Titles.LOST_IN_THE_ANDES},
+            ),
+            patch.object(
+                vp_module,
                 "ALL_FANTA_COMIC_BOOK_INFO",
-                {"Lost in the Andes": _fake_fcbi(Titles.LOST_IN_THE_ANDES)},
+                {Titles.LOST_IN_THE_ANDES: _fake_fcbi(Titles.LOST_IN_THE_ANDES)},
             ),
         ):
             titles, _ = pipeline._get_themed_fun_image_titles()
@@ -431,10 +439,18 @@ class TestThemeExpansion:
             ),
             patch.object(
                 vp_module,
+                "BARKS_TITLE_DICT",
+                {
+                    "Attic Antics": Titles.ATTIC_ANTICS,
+                    "Lost in the Andes": Titles.LOST_IN_THE_ANDES,
+                },
+            ),
+            patch.object(
+                vp_module,
                 "ALL_FANTA_COMIC_BOOK_INFO",
                 {
-                    "Attic Antics": _fake_fcbi(Titles.ATTIC_ANTICS),
-                    "Lost in the Andes": _fake_fcbi(Titles.LOST_IN_THE_ANDES),
+                    Titles.ATTIC_ANTICS: _fake_fcbi(Titles.ATTIC_ANTICS),
+                    Titles.LOST_IN_THE_ANDES: _fake_fcbi(Titles.LOST_IN_THE_ANDES),
                 },
             ),
         ):
@@ -523,7 +539,7 @@ class TestPublicDelegations:
             patch.object(
                 vp_module,
                 "ALL_FANTA_COMIC_BOOK_INFO",
-                {"Attic Antics": tagged},
+                {Titles.ATTIC_ANTICS: tagged},
             ),
         ):
             pipeline._get_next_fun_view_image_info()

@@ -441,7 +441,9 @@ class SpeechIndexScreen(IndexScreen):
             self._background_words_cache[rand_id] = self._find_words(rand_id)
         found = self._background_words_cache[rand_id]
 
-        found_titles = [ALL_FANTA_COMIC_BOOK_INFO[title_str] for title_str in found]
+        found_titles = [
+            ALL_FANTA_COMIC_BOOK_INFO[BARKS_TITLE_DICT[title_str]] for title_str in found
+        ]
         image_info = self._random_title_images.get_random_image(found_titles)
 
         # TODO: Get rid of this hack!!

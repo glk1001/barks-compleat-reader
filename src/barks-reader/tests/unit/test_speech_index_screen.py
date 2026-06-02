@@ -151,10 +151,13 @@ class TestSpeechIndexScreen:
         with patch.object(  # noqa: SIM117
             speech_index_screen, "_find_words", return_value={"Title": MagicMock()}
         ):
-            # Mock ALL_FANTA_COMIC_BOOK_INFO lookup
-            with patch.object(
-                barks_reader.ui.speech_index_screen, "ALL_FANTA_COMIC_BOOK_INFO"
-            ) as mock_all_info:
+            # Mock the title-string -> Titles enum -> FantaComicBookInfo lookup chain.
+            with (
+                patch.object(barks_reader.ui.speech_index_screen, "BARKS_TITLE_DICT"),
+                patch.object(
+                    barks_reader.ui.speech_index_screen, "ALL_FANTA_COMIC_BOOK_INFO"
+                ) as mock_all_info,
+            ):
                 mock_info = MagicMock()
                 mock_all_info.__getitem__.return_value = mock_info
 

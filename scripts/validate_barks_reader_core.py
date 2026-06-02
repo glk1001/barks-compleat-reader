@@ -1134,7 +1134,8 @@ def phase7_prebuilt_cbzs(collector: ErrorCollector, cfg_info: ConfigInfo) -> Non
         collector.finalize_phase(phase)
         return
 
-    for title_str, fanta_info in ALL_FANTA_COMIC_BOOK_INFO.items():
+    for title, fanta_info in ALL_FANTA_COMIC_BOOK_INFO.items():
+        title_str = BARKS_TITLES[title]
         phase.items_checked += 1
         cbz_stem = get_dest_comic_zip_file_stem(
             title_str,
@@ -1189,11 +1190,15 @@ def phase8a_per_title_panel_files(
     ctx_by_variant: list[_AuditCtx] = [_build_audit_ctx(fp) for fp in file_paths_variants]
 
     filter_set = set(titles_filter) if titles_filter is not None else None
-    titles = [t for t in ALL_FANTA_COMIC_BOOK_INFO if filter_set is None or t in filter_set]
+    titles = [
+        t for t in ALL_FANTA_COMIC_BOOK_INFO if filter_set is None or BARKS_TITLES[t] in filter_set
+    ]
     total = len(titles)
     progress_step = max(5, total // 20)
 
-    for idx, title_str in enumerate(titles, start=1):
+    for idx, title in enumerate(titles, start=1):
+        title_str = BARKS_TITLES[title]
+
         if total > 0 and (idx in (1, total) or idx % progress_step == 0):
             logger.info(f"[{idx}/{total}] {title_str}")
 
@@ -1208,7 +1213,7 @@ def phase8a_per_title_panel_files(
         if after_files > before_files:
             title_count_errors += 1
 
-        fanta_info = ALL_FANTA_COMIC_BOOK_INFO[title_str]
+        fanta_info = ALL_FANTA_COMIC_BOOK_INFO[title]
         _validate_title_volume_binding(phase, title_str, fanta_info, fanta_state)
         if len(phase.errors) > after_files:
             invalid_volume_count += 1
@@ -1468,9 +1473,9 @@ def phase9_per_title_load(
     filter_set = set(titles_filter) if titles_filter is not None else None
 
     candidates = [
-        (title_str, fanta_info)
-        for title_str, fanta_info in ALL_FANTA_COMIC_BOOK_INFO.items()
-        if filter_set is None or title_str in filter_set
+        (BARKS_TITLES[title], fanta_info)
+        for title, fanta_info in ALL_FANTA_COMIC_BOOK_INFO.items()
+        if filter_set is None or BARKS_TITLES[title] in filter_set
     ]
     total = len(candidates)
     progress_step = 5
