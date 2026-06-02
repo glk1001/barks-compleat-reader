@@ -2,7 +2,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from .barks_titles import ENUM_TO_STR_TITLE, Titles
+from .barks_titles import Titles
 from .comic_book import ComicBook, get_page_str
 from .comics_consts import RESTORABLE_PAGE_TYPES
 from .comics_database import ComicsDatabase
@@ -36,7 +36,6 @@ class PagePanelBoxes:
 @dataclass(frozen=True, slots=True)
 class TitlePagesPanelBoxes:
     title: Titles
-    title_str: str
     volume: int
     pages: dict[str, PagePanelBoxes]
 
@@ -54,7 +53,7 @@ class TitlePanelBoxes:
             for page_num in self._get_srce_page_nums(comic)
         }
 
-        return TitlePagesPanelBoxes(title, ENUM_TO_STR_TITLE[title], volume, pages)
+        return TitlePagesPanelBoxes(title, volume, pages)
 
     def get_panel_boxes(self, panel_segments_file: Path, page_num: str) -> PagePanelBoxes:
         if not panel_segments_file.is_file():

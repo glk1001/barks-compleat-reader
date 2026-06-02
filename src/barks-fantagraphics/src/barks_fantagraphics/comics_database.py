@@ -119,6 +119,13 @@ class ComicsDatabase:
 
         Convenience wrapper for callers that already hold a ``Titles`` enum, avoiding a
         redundant enum-to-string conversion at the call site.
+
+        Args:
+            title: The title enum member.
+
+        Returns:
+            The Fantagraphics volume number containing the title.
+
         """
         return get_fanta_volume_from_str(self._all_comic_book_info[title].fantagraphics_volume)
 
