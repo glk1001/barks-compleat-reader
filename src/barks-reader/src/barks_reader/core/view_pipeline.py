@@ -23,12 +23,8 @@ from barks_fantagraphics.barks_tags import (
     TagGroups,
     Tags,
 )
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
-from barks_fantagraphics.comic_book_info import (
-    BARKS_TITLE_DICT,
-    ONE_PAGERS,
-    is_one_pager_collection,
-)
+from barks_fantagraphics.barks_titles import BARKS_TITLES, ENUM_FROM_BARKS_TITLE, Titles
+from barks_fantagraphics.comic_book_info import ONE_PAGERS, is_one_pager_collection
 from barks_fantagraphics.comics_utils import get_abbrev_path
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
@@ -693,7 +689,8 @@ class ViewPipeline:
             )
 
         return [
-            ALL_FANTA_COMIC_BOOK_INFO[BARKS_TITLE_DICT[title_str]] for title_str in theme_titles
+            ALL_FANTA_COMIC_BOOK_INFO[ENUM_FROM_BARKS_TITLE[title_str]]
+            for title_str in theme_titles
         ], file_types
 
     def _update_titles(self, title_set: set[str], year_range: tuple[int, int]) -> None:
@@ -770,7 +767,7 @@ class ViewPipeline:
 
     def _current_title_is_one_pager(self) -> bool:
         """Whether the current bottom-view title is a one-pager or the collection itself."""
-        title = BARKS_TITLE_DICT.get(self._current_bottom_view_title)
+        title = ENUM_FROM_BARKS_TITLE.get(self._current_bottom_view_title)
         return title is not None and (title in ONE_PAGERS or is_one_pager_collection(title))
 
     def set_bottom_view_title_image_file(self, image_file: PanelPath | None) -> None:

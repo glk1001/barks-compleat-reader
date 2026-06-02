@@ -332,7 +332,7 @@ class TestThemeExpansion:
 
         with (
             patch.object(vp_module, "BARKS_TITLES", {Titles.ATTIC_ANTICS: "Attic Antics"}),
-            patch.object(vp_module, "BARKS_TITLE_DICT", {"Attic Antics": Titles.ATTIC_ANTICS}),
+            patch.object(vp_module, "ENUM_FROM_BARKS_TITLE", {"Attic Antics": Titles.ATTIC_ANTICS}),
             patch.object(
                 vp_module,
                 "ALL_FANTA_COMIC_BOOK_INFO",
@@ -356,7 +356,7 @@ class TestThemeExpansion:
         lita = Titles.LOST_IN_THE_ANDES
         with (
             patch.object(vp_module, "BARKS_TITLES", {lita: "Lost in the Andes"}),
-            patch.object(vp_module, "BARKS_TITLE_DICT", {"Lost in the Andes": lita}),
+            patch.object(vp_module, "ENUM_FROM_BARKS_TITLE", {"Lost in the Andes": lita}),
             patch.object(
                 vp_module,
                 "ALL_FANTA_COMIC_BOOK_INFO",
@@ -377,7 +377,7 @@ class TestThemeExpansion:
 
         with (
             patch.object(vp_module, "BARKS_TITLES", {Titles.ATTIC_ANTICS: "Attic Antics"}),
-            patch.object(vp_module, "BARKS_TITLE_DICT", {"Attic Antics": Titles.ATTIC_ANTICS}),
+            patch.object(vp_module, "ENUM_FROM_BARKS_TITLE", {"Attic Antics": Titles.ATTIC_ANTICS}),
             patch.object(
                 vp_module,
                 "ALL_FANTA_COMIC_BOOK_INFO",
@@ -404,7 +404,7 @@ class TestThemeExpansion:
             ),
             patch.object(
                 vp_module,
-                "BARKS_TITLE_DICT",
+                "ENUM_FROM_BARKS_TITLE",
                 {"Lost in the Andes": Titles.LOST_IN_THE_ANDES},
             ),
             patch.object(
@@ -439,7 +439,7 @@ class TestThemeExpansion:
             ),
             patch.object(
                 vp_module,
-                "BARKS_TITLE_DICT",
+                "ENUM_FROM_BARKS_TITLE",
                 {
                     "Attic Antics": Titles.ATTIC_ANTICS,
                     "Lost in the Andes": Titles.LOST_IN_THE_ANDES,

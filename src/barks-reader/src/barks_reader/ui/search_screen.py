@@ -5,8 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Self
 
 from barks_fantagraphics.barks_tags import TagGroups
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_DICT
+from barks_fantagraphics.barks_titles import BARKS_TITLES, ENUM_FROM_BARKS_TITLE, Titles
 from barks_fantagraphics.comic_search import ComicSearch, SearchMode
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -419,7 +418,9 @@ class SearchScreen(FloatLayout):
             )
             return
 
-        word_result_titles = [BARKS_TITLE_DICT[ct] for ct in found if ct in BARKS_TITLE_DICT]
+        word_result_titles = [
+            ENUM_FROM_BARKS_TITLE[ct] for ct in found if ct in ENUM_FROM_BARKS_TITLE
+        ]
         self._update_background_from_results(word_result_titles)
 
     @staticmethod
@@ -492,9 +493,9 @@ class SearchScreen(FloatLayout):
         Clock.schedule_once(lambda _dt: self._goto_title_with_page(title_str, page_to_goto), 0.01)
 
     def _goto_title_with_page(self, title_str: str, page_to_goto: str) -> None:
-        if title_str not in BARKS_TITLE_DICT:
+        if title_str not in ENUM_FROM_BARKS_TITLE:
             return
-        title = BARKS_TITLE_DICT[title_str]
+        title = ENUM_FROM_BARKS_TITLE[title_str]
         image_info = ImageInfo(from_title=title, filename=None)
         if self.on_goto_title_with_page:
             self.on_goto_title_with_page(image_info, page_to_goto)

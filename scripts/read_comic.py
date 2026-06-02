@@ -11,9 +11,8 @@ from configparser import ConfigParser
 from pathlib import Path
 
 import typer
-from barks_fantagraphics.barks_titles import BARKS_TITLES
+from barks_fantagraphics.barks_titles import BARKS_TITLES, ENUM_FROM_BARKS_TITLE
 from barks_fantagraphics.comic_book import ComicBook
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_DICT
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
@@ -51,7 +50,7 @@ def main(
 ) -> None:
     init_logging(APP_LOGGING_NAME, "read-comic.log", log_level_str)
 
-    title_enum = BARKS_TITLE_DICT.get(title)
+    title_enum = ENUM_FROM_BARKS_TITLE.get(title)
     fanta_info = ALL_FANTA_COMIC_BOOK_INFO.get(title_enum) if title_enum is not None else None
     if fanta_info is None:
         _print_title_not_found(title)

@@ -8,9 +8,8 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.barks_titles import ENUM_FROM_BARKS_TITLE, Titles
 from barks_fantagraphics.comic_book_info import (
-    BARKS_TITLE_DICT,
     BARKS_TITLE_INFO,
     get_filename_from_title,
     get_title_str_from_filename,
@@ -273,7 +272,7 @@ class ReaderFilePaths:
     def get_comic_inset_files(
         self, title_str: str, use_only_edited_if_possible: bool = False
     ) -> list[PanelPath]:
-        title = BARKS_TITLE_DICT[title_str]
+        title = ENUM_FROM_BARKS_TITLE[title_str]
 
         inset_list = []
 

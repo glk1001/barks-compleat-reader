@@ -14,9 +14,8 @@ from comic_utils.comic_consts import (
 )
 from loguru import logger
 
-from .barks_titles import BARKS_TITLES, Titles
+from .barks_titles import BARKS_TITLES, ENUM_FROM_BARKS_TITLE, Titles
 from .comic_book_info import (
-    BARKS_TITLE_DICT,
     FILENAME_TO_TITLE_SPECIAL_CASE_MAP,
     is_one_pager_collection,
 )
@@ -592,7 +591,7 @@ class ComicBook:
 
     def get_title_enum(self) -> Titles:
         ini_title = self.get_ini_title()
-        return BARKS_TITLE_DICT[FILENAME_TO_TITLE_SPECIAL_CASE_MAP.get(ini_title, ini_title)]
+        return ENUM_FROM_BARKS_TITLE[FILENAME_TO_TITLE_SPECIAL_CASE_MAP.get(ini_title, ini_title)]
 
     def get_comic_title(self) -> str:
         if self.title != "":

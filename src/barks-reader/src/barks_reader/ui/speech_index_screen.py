@@ -5,8 +5,7 @@ import textwrap
 from collections import defaultdict
 from typing import TYPE_CHECKING, cast, override
 
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_DICT
+from barks_fantagraphics.barks_titles import BARKS_TITLES, ENUM_FROM_BARKS_TITLE, Titles
 from barks_fantagraphics.comic_search import ComicSearch
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_fantagraphics.whoosh_barks_terms import CONTEXT_SENSITIVE_WORDS
@@ -442,7 +441,7 @@ class SpeechIndexScreen(IndexScreen):
         found = self._background_words_cache[rand_id]
 
         found_titles = [
-            ALL_FANTA_COMIC_BOOK_INFO[BARKS_TITLE_DICT[title_str]] for title_str in found
+            ALL_FANTA_COMIC_BOOK_INFO[ENUM_FROM_BARKS_TITLE[title_str]] for title_str in found
         ]
         image_info = self._random_title_images.get_random_image(found_titles)
 
@@ -526,7 +525,7 @@ class SpeechIndexScreen(IndexScreen):
                 font_size=self._font_manager.index_title_item_font_size,
             )
             sub_item = IndexItem(
-                id=BARKS_TITLE_DICT[title_str],
+                id=ENUM_FROM_BARKS_TITLE[title_str],
                 display_text=title_str_with_pages,
                 page_to_goto=first_page_to_goto,
             )
@@ -747,7 +746,7 @@ class SpeechIndexScreen(IndexScreen):
         logger.info(f'Handling title from speech bubble browser: "{title_str}" - {page_to_goto}.')
         self._speech_bubble_browser_popup.dismiss()
 
-        image_info = ImageInfo(from_title=BARKS_TITLE_DICT[title_str], filename=None)
+        image_info = ImageInfo(from_title=ENUM_FROM_BARKS_TITLE[title_str], filename=None)
 
         def goto_title() -> None:
             assert self.on_goto_title is not None

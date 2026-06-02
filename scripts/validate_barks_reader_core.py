@@ -14,10 +14,9 @@ from configparser import ConfigParser
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from barks_fantagraphics.barks_titles import BARKS_TITLES, Titles
+from barks_fantagraphics.barks_titles import BARKS_TITLES, ENUM_FROM_BARKS_TITLE, Titles
 from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comic_book_info import (
-    BARKS_TITLE_DICT,
     NON_COMIC_TITLES,
     get_filename_from_title,
 )
@@ -765,7 +764,7 @@ def _validate_title_files(
             panels_source problem).
         ctx: Per-variant audit context. Each file the sweep visits is
             recorded so the audit pass can later report any unvisited file.
-        title_str: The title identifier as keyed in ``BARKS_TITLE_DICT``.
+        title_str: The title identifier as keyed in ``ENUM_FROM_BARKS_TITLE``.
 
     Returns:
         ``_TitleCounts`` summarising every file seen for this title across
@@ -777,7 +776,7 @@ def _validate_title_files(
     if file_paths is None:
         return None
 
-    title = BARKS_TITLE_DICT.get(title_str)
+    title = ENUM_FROM_BARKS_TITLE.get(title_str)
     if title is None:
         return None
 
@@ -1309,7 +1308,7 @@ def phase8b_audit_panel_files(
           Files already flagged by the per-title sweep are not re-reported.
         * ``kind=unvisited_image_file`` — image file the sweep never
           inspected. Typical causes: typos in a title-named subdir (so the
-          name doesn't match any entry in ``BARKS_TITLE_DICT``), files
+          name doesn't match any entry in ``ENUM_FROM_BARKS_TITLE``), files
           dropped into the wrong category dir, files at unexpected nesting
           depths.
 
@@ -1617,7 +1616,7 @@ def _check_one_source_page(
                 )
 
     # Panel-segments JSON only required for pages with panels.
-    title_enum = BARKS_TITLE_DICT[title_str]
+    title_enum = ENUM_FROM_BARKS_TITLE[title_str]
     if (title_enum not in NON_COMIC_TITLES) and (page_type not in PAGES_WITHOUT_PANELS):
         _check_segments_json(
             phase, counts, title_str, page_str, panel_segments_dir, target_zip, member

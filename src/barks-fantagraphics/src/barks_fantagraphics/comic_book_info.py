@@ -8,6 +8,7 @@ from comic_utils.comic_consts import DEC, JAN, PanelPath
 
 from .barks_titles import (
     BARKS_TITLES,
+    ENUM_FROM_BARKS_TITLE,
     GYRO_GEARLOOSE,
     NUM_TITLES,
     US_1_FC_ISSUE_NUM,
@@ -1245,10 +1246,6 @@ USEFUL_TITLES = {
     Titles.SURE_FIRE_GOLD_FINDER_THE: GYRO_GEARLOOSE,
 }
 
-BARKS_TITLE_DICT: dict[str, Titles] = {
-    info.get_title_str(): info.title for info in BARKS_TITLE_INFO
-}
-
 NON_COMIC_TITLES = [
     Titles.RICH_TOMMASO___ON_COLORING_BARKS,
     Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
@@ -1357,7 +1354,7 @@ def is_non_comic_title(title_str: str) -> bool:
         True if the title is in NON_COMIC_TITLES, False otherwise.
 
     """
-    return BARKS_TITLE_DICT[title_str] in NON_COMIC_TITLES
+    return ENUM_FROM_BARKS_TITLE[title_str] in NON_COMIC_TITLES
 
 
 def get_filename_from_title(title: Titles, ext: str) -> str:
