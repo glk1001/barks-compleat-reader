@@ -401,6 +401,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         )
 
         self._nav_coord.set_year_range_nodes(tree_builder.chrono_year_range_nodes)
+        self._nav_coord.set_series_nodes(tree_builder.series_nodes)
         self._app_initializer.start(tree_builder, self._on_tree_build_finished)
 
     def _on_tree_build_finished(self) -> None:

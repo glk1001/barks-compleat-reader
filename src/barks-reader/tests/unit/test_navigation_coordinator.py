@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import barks_reader.ui.navigation_coordinator
 import pytest
 from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.fanta_comics_info import SERIES_ONE_PAGERS
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.ui.navigation_coordinator import NavigationCoordinator, TitleTarget
@@ -83,27 +84,41 @@ class TestNavigationCoordinator:
                 mock_fanta_info, title_image_file=image_info.filename
             )
 
-    def test_navigate_to_chrono_title_one_pager_shows_title_view_without_tree_nav(
+    def test_navigate_to_chrono_title_one_pager_navigates_one_pagers_series_node(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:
-        """One-pagers show the title view directly, not via the chronological tree."""
+        """One-pagers navigate the tree via the One Pagers series node, not a year range."""
         tree_manager = MagicMock()
         nav_coord.set_tree_view_manager(tree_manager)
         image_info = ImageInfo(filename=Path("img.png"), from_title=Titles.IF_THE_HAT_FITS)
         mock_fanta_info = MagicMock()
 
-        with patch.object(
-            barks_reader.ui.navigation_coordinator,
-            "get_fanta_info",
-            return_value=mock_fanta_info,
+        mock_one_pagers_node = MagicMock()
+        mock_one_pagers_node.nodes = []
+        nav_coord.set_series_nodes({SERIES_ONE_PAGERS: mock_one_pagers_node})
+
+        mock_title_node = MagicMock()
+        with (
+            patch.object(
+                barks_reader.ui.navigation_coordinator,
+                "get_fanta_info",
+                return_value=mock_fanta_info,
+            ),
+            patch.object(
+                barks_reader.ui.navigation_coordinator,
+                "find_tree_view_title_node",
+                return_value=mock_title_node,
+            ),
         ):
             nav_coord.navigate_to_chrono_title(image_info)
 
-        # Title view shown; no chronological tree navigation attempted (no crash).
+        # Title view shown AND the One Pagers series node is opened and navigated to.
         mock_deps["renderer"].render_title.assert_called_with(
             mock_fanta_info, title_image_file=image_info.filename
         )
-        tree_manager.goto_node.assert_not_called()
+        mock_one_pagers_node.ensure_populated.assert_called_once()
+        tree_manager.open_node_and_parent_nodes.assert_called_once_with(mock_one_pagers_node)
+        tree_manager.goto_node.assert_called_once_with(mock_title_node, scroll_to=True)
 
     def test_navigate_to_chrono_title_preserves_back_node(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]

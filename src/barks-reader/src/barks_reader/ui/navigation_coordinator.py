@@ -21,6 +21,7 @@ from barks_fantagraphics.comics_database import TitleNotFoundError
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
     SERIES_EXTRAS,
+    SERIES_ONE_PAGERS,
     FantaComicBookInfo,
     get_fanta_info,
 )
@@ -103,6 +104,7 @@ class NavigationCoordinator:
 
         self._tree_view_manager: TreeViewManager | None = None
         self._year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
+        self._series_nodes: dict[str, ButtonTreeViewNode] = {}
         self._current_fanta_info: FantaComicBookInfo | None = None
         self._read_comic_view_state: ViewStates | None = None
         self._doc_reader_close_view_state: ViewStates | None = None
@@ -116,6 +118,10 @@ class NavigationCoordinator:
     ) -> None:
         """Set year-range nodes (deferred — populated after tree build)."""
         self._year_range_nodes = year_range_nodes
+
+    def set_series_nodes(self, series_nodes: dict[str, ButtonTreeViewNode]) -> None:
+        """Set series nodes (deferred — populated after tree build)."""
+        self._series_nodes = series_nodes
 
     # === State queries ===
 
@@ -155,34 +161,20 @@ class NavigationCoordinator:
     # === Navigation paths ===
 
     def navigate_to_chrono_title(self, image_info: ImageInfo) -> None:
-        """Navigate to a title's chronological position from a background image.
+        """Navigate to a title's position in the tree from a background image.
 
-        Resolves the year-range node, opens the tree to the correct position,
-        then updates the title view.
+        Resolves the parent node (year-range node, or the One Pagers series node
+        for one-pagers), opens the tree to the correct position, then updates the
+        title view.
         """
         assert image_info.from_title is not None
 
         logger.debug(f'Goto title: "{image_info.from_title.name}", "{image_info.filename}".')
         title_fanta_info = self._get_fanta_info(image_info.from_title)
 
-        if image_info.from_title in ONE_PAGERS:
-            # One-pagers are not in the chronological tree - they live under the One
-            # Pagers series and are read via the "All One-Pagers" collection. Show the
-            # title view directly (no tree navigation); reading deep-links to the page.
-            self._title_row_selected(title_fanta_info, image_info.filename)
-            return
-
-        title_year_range = self._get_year_range_from_info(title_fanta_info)
-        if title_year_range is None:
-            msg = f"No year range found for {title_fanta_info.comic_book_info.get_title_str()}."
-            raise RuntimeError(msg)
-        year_node = self._year_range_nodes.get(title_year_range)
-        if not year_node:
-            msg = f"No year node found for range '{title_year_range}'."
-            raise RuntimeError(msg)
-
-        year_node.ensure_populated()
-        logger.debug(f"For range {title_year_range}, year node has {len(year_node.nodes)} nodes.")
+        parent_node = self._get_title_parent_node(image_info.from_title, title_fanta_info)
+        parent_node.ensure_populated()
+        logger.debug(f"Parent node has {len(parent_node.nodes)} nodes.")
 
         assert self._tree_view_manager is not None
 
@@ -195,14 +187,40 @@ class NavigationCoordinator:
         if back_node is not None:
             self._tree_view_screen.ids.reader_tree_view.set_back_node(back_node)
 
-        self._tree_view_manager.open_node_and_parent_nodes(year_node)
+        self._tree_view_manager.open_node_and_parent_nodes(parent_node)
         title_node = cast(
             "BaseTreeViewNode",
-            find_tree_view_title_node(year_node.nodes, image_info.from_title),
+            find_tree_view_title_node(parent_node.nodes, image_info.from_title),
         )
         self._tree_view_manager.goto_node(title_node, scroll_to=True)
 
         self._title_row_selected(title_fanta_info, image_info.filename)
+
+    def _get_title_parent_node(
+        self, title: Titles, title_fanta_info: FantaComicBookInfo
+    ) -> ButtonTreeViewNode:
+        """Return the tree node whose children contain ``title``.
+
+        One-pagers are not in the chronological tree - they live under the One
+        Pagers series node (and are read via the "All One-Pagers" collection).
+        Every other title lives under its chronological year-range node.
+        """
+        if title in ONE_PAGERS:
+            one_pagers_node = self._series_nodes.get(SERIES_ONE_PAGERS)
+            if not one_pagers_node:
+                msg = f"No series node found for '{SERIES_ONE_PAGERS}'."
+                raise RuntimeError(msg)
+            return one_pagers_node
+
+        title_year_range = self._get_year_range_from_info(title_fanta_info)
+        if title_year_range is None:
+            msg = f"No year range found for {title_fanta_info.comic_book_info.get_title_str()}."
+            raise RuntimeError(msg)
+        year_node = self._year_range_nodes.get(title_year_range)
+        if not year_node:
+            msg = f"No year node found for range '{title_year_range}'."
+            raise RuntimeError(msg)
+        return year_node
 
     def navigate_to_title_with_page(self, image_info: ImageInfo, page_to_goto: str) -> None:
         """Navigate to a title and set a specific page (from index screens).

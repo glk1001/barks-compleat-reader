@@ -152,6 +152,7 @@ class ReaderTreeBuilder:
         self._include_one_pagers_in_chrono = include_one_pagers_in_chrono
         self._tree_build_timing = Timing()
         self.chrono_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
+        self.series_nodes: dict[str, ButtonTreeViewNode] = {}
 
         self._series_names = [
             SERIES_CS,
@@ -233,6 +234,7 @@ class ReaderTreeBuilder:
                 text=series_text, destination=SeriesDestination(series_name=series_name)
             )
             tree.add_node(new_series_node, parent=series_node)
+            self.series_nodes[series_name] = new_series_node
 
             gen = self._populate_series_node_gen(tree, series_name, new_series_node)
             self._run_generator(gen)
