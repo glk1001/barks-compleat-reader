@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from barks_fantagraphics.comic_book_info import ONE_PAGERS, get_one_pager_display_title
 from comic_utils.timing import Timing
 from kivy.animation import Animation
+from kivy.graphics.texture import Texture  # ty: ignore[unresolved-import]
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     ColorProperty,
@@ -26,7 +27,6 @@ from .panel_texture_loader import PanelTextureLoader
 if TYPE_CHECKING:
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
-    from kivy.core.image import Texture
 
     from barks_reader.core.reader_settings import ReaderSettings
     from barks_reader.core.special_overrides_handler import SpecialFantaOverrides
@@ -36,6 +36,39 @@ if TYPE_CHECKING:
 BOTTOM_TITLE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 TITLE_PORTAL_OPENING_ANIMATION_MAX_DURATION_SECS = 4
+
+
+def _make_title_banner_texture(
+    color: tuple[float, float, float], peak_alpha: float, height: int = 128
+) -> Texture:
+    """Build a 1px-wide vertical-fade texture for the main-title banner.
+
+    The alpha is solid through the middle and fades to fully transparent at the top and
+    bottom edges, giving a soft "lower-third" band when the 1px-wide texture is stretched
+    across the full title row.
+
+    Args:
+        color: The banner RGB colour, each channel in 0.0..1.0.
+        peak_alpha: The maximum (mid-band) opacity, 0.0..1.0.
+        height: The texture height in texels (the gradient's vertical resolution).
+
+    Returns:
+        An RGBA Kivy texture suitable for a full-width ``Rectangle``.
+
+    """
+    red, green, blue = round(color[0] * 255), round(color[1] * 255), round(color[2] * 255)
+    half = (height - 1) / 2
+    plateau = 0.6  # fraction of the half-height kept fully opaque before fading to the edges
+    buffer = bytearray()
+    for row in range(height):
+        dist = abs(row - half) / half
+        fade = 1.0 if dist <= plateau else 1.0 - (dist - plateau) / (1.0 - plateau)
+        buffer.extend((red, green, blue, round(peak_alpha * fade * 255)))
+
+    texture = Texture.create(size=(1, height), colorfmt="rgba")
+    texture.blit_buffer(bytes(buffer), colorfmt="rgba", bufferfmt="ubyte")
+    texture.wrap = "clamp_to_edge"
+    return texture
 
 
 class BottomTitleViewScreen(FloatLayout):
@@ -49,15 +82,31 @@ class BottomTitleViewScreen(FloatLayout):
 
     is_first_use_of_reader = BooleanProperty(defaultvalue=False)
 
-    MAIN_TITLE_BACKGROUND_COLOR = (0.01, 0.01, 0.01, 0.075)
     MAIN_TITLE_COLOR = (1, 1, 0, 1)
     MAIN_TITLE_FOOTNOTE_COLOR = (1, 1, 0, 1)
+    # Dark text outline so the title/footnote stay legible over the busy mosaic background.
+    MAIN_TITLE_OUTLINE_COLOR = (0, 0, 0, 1)
+    # Soft "lower-third" gradient banner behind the main title (replaces the old flat box):
+    # solid-dark through the middle, fading to transparent at the top and bottom edges.
+    MAIN_TITLE_BANNER_COLOR = (0.0, 0.0, 0.0)
+    MAIN_TITLE_BANNER_PEAK_ALPHA = 0.55
+    # One-pagers sit over the busy collage and keep the full banner; other titles get a
+    # lighter banner (the baked texture alpha scaled by this factor).
+    MAIN_TITLE_BANNER_DIM_FACTOR = 0.3
+    main_title_banner_texture = ObjectProperty(allownone=True)
     main_title_text = StringProperty()
     main_title_footnote = StringProperty()
 
     TITLE_INFO_LABEL_COLOR = (1.0, 0.99, 0.9, 1.0)
     TITLE_EXTRA_INFO_LABEL_COLOR = (1.0, 1.0, 1.0, 1.0)
+    # Dark text outline for the left-column info text, for the same reason.
+    TITLE_INFO_OUTLINE_COLOR = (0, 0, 0, 1)
+    # Background scrim behind the main info label. One-pagers use a darker scrim because their
+    # info sits over the busy "All One-Pagers" collage rather than a calmer title page.
+    TITLE_INFO_BACKGROUND_COLOR = (0.01, 0.01, 0.01, 0.1)
+    TITLE_INFO_ONE_PAGER_BACKGROUND_COLOR = (0.01, 0.01, 0.01, 0.5)
     MAX_TITLE_INFO_LEN_BEFORE_SHORTEN = 36
+    is_one_pager_title = BooleanProperty(defaultvalue=False)
     title_info_text = StringProperty()
     title_extra_info_text = StringProperty()
     title_inset_image_texture = ObjectProperty()
@@ -83,6 +132,9 @@ class BottomTitleViewScreen(FloatLayout):
         self._fanta_info: FantaComicBookInfo | None = None
         self.is_first_use_of_reader = self._reader_settings.is_first_use_of_reader
         self.on_title_portal_image_pressed_func = None
+        self.main_title_banner_texture = _make_title_banner_texture(
+            self.MAIN_TITLE_BANNER_COLOR, self.MAIN_TITLE_BANNER_PEAK_ALPHA
+        )
 
         self.ids.use_overrides_checkbox.bind(active=self._on_use_overrides_checkbox_changed)
 
@@ -91,6 +143,7 @@ class BottomTitleViewScreen(FloatLayout):
 
     def set_title_view(self, fanta_info: FantaComicBookInfo) -> None:
         self._fanta_info = fanta_info
+        self.is_one_pager_title = fanta_info.comic_book_info.title in ONE_PAGERS
 
         title_text = self._get_main_title_str(fanta_info)
         add_footnote = title_needs_footnote(fanta_info)

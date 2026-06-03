@@ -96,6 +96,7 @@ sysfs
 syspath
 sysrsync
 testpaths
+texels
 textbbox
 textlength
 tobytes

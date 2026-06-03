@@ -56,6 +56,15 @@
             FloatLayout:
                 size_hint: 1, 0.18
 
+                # Soft gradient banner behind the title (dark middle, transparent top/bottom edges).
+                canvas.before:
+                    Color:
+                        rgba: 1, 1, 1, (1.0 if root.is_one_pager_title else root.MAIN_TITLE_BANNER_DIM_FACTOR)
+                    Rectangle:
+                        texture: root.main_title_banner_texture
+                        pos: self.pos
+                        size: self.size
+
                 BgColorLabel:
                     id: main_title_label
                     pos_hint: {'center_x': 0.5, 'center_y': 0.5}
@@ -63,7 +72,8 @@
                     font_name: fm.main_title_font_name
                     font_size: fm.main_title_font_size
                     color: root.MAIN_TITLE_COLOR
-                    background_color: root.MAIN_TITLE_BACKGROUND_COLOR
+                    outline_color: root.MAIN_TITLE_OUTLINE_COLOR
+                    outline_width: dp(4)
                     bold: True
                     markup: True
                     mipmap: True
@@ -80,6 +90,8 @@
                     pos_hint: {'x': 0.005, 'y': 0.05}
                     font_size: fm.main_title_footnote_font_size
                     color: root.MAIN_TITLE_FOOTNOTE_COLOR
+                    outline_color: root.MAIN_TITLE_OUTLINE_COLOR
+                    outline_width: dp(1)
                     bold: False
                     mipmap: True
                     size_hint: None, None
@@ -107,17 +119,19 @@
                         text: root.title_info_text
                         font_size: fm.title_info_font_size
                         color: root.TITLE_INFO_LABEL_COLOR
+                        outline_color: root.TITLE_INFO_OUTLINE_COLOR
+                        outline_width: dp(1)
                         background_color:
                             (0, 1, 0, root.DEBUG_BACKGROUND_OPACITY) if root.DEBUG_BACKGROUND_OPACITY > 0 \
-                            else (0.01, 0.01, 0.01, 0.1)
+                            else root.TITLE_INFO_ONE_PAGER_BACKGROUND_COLOR if root.is_one_pager_title \
+                            else root.TITLE_INFO_BACKGROUND_COLOR
                         sizing_factor_x: 1.05  # make background leak out a bit
                         sizing_factor_y: 1.10
                         corner_radius: 20
                         markup: True
                         mipmap: True
-                        size_hint_y: None
-                        height: self.texture_size[1]
-                        text_size: self.width, None
+                        size_hint: None, None
+                        size: self.texture_size
                         padding: [dp(1), dp(1), 0, dp(3)]
 
                     BgColorLabel:
@@ -125,6 +139,8 @@
                         text: root.title_extra_info_text
                         font_size: fm.title_extra_info_font_size
                         color: root.TITLE_EXTRA_INFO_LABEL_COLOR
+                        outline_color: root.TITLE_INFO_OUTLINE_COLOR
+                        outline_width: dp(1)
                         opacity: 1 if root.title_extra_info_text else 0
                         background_color:
                             (0, 1, 1, root.DEBUG_BACKGROUND_OPACITY) if root.DEBUG_BACKGROUND_OPACITY > 0 \
