@@ -6,7 +6,7 @@ from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, NUM_TITLES
 def get_top_title_lengths() -> list[tuple[int, str]]:
     # if title in NON_COMIC_TITLES:
     #     continue
-    sorted_by_len = sorted(ENUM_TO_STR_TITLE, key=lambda x: len(x), reverse=True)
+    sorted_by_len = sorted(ENUM_TO_STR_TITLE, key=len, reverse=True)
     return [(len(t), t) for t in sorted_by_len[:10]]
 
 
