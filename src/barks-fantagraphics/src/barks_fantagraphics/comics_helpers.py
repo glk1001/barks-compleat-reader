@@ -3,6 +3,7 @@ from pathlib import Path
 
 import typer
 from intspan import intspan
+from loguru import logger
 from PIL import Image, ImageDraw, ImageFont
 
 from .barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM
@@ -145,6 +146,10 @@ def get_title_from_volume_page(
     found_title = ""
     found_page = -1
     for title in titles:
+        title_enum = STR_TITLE_TO_ENUM[title[0]]
+        if title_enum in ONE_PAGERS:
+            logger.debug(f'Skipping one-pager title "{title[0]}".')
+            continue
         comic_book = comics_database.get_comic_book(title[0])
         srce_and_dest_pages = get_sorted_srce_and_dest_pages(
             comic_book, get_full_paths=False, check_srce_page_timestamps=False
