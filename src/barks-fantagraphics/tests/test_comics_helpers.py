@@ -271,9 +271,14 @@ def _make_srce_dest_pages(page_stems: list[str], dest_page_nums: list[int]) -> M
 
 
 class TestGetTitleFromVolumePage:
+    # Real (non-one-pager) titles are required: the function looks each up in
+    # STR_TITLE_TO_ENUM to skip one-pagers before searching its pages.
+    TITLE_A = "Donald Duck Finds Pirate Gold"
+    TITLE_B = "The Victory Garden"
+
     def test_page_found_returns_title_and_page_num(self) -> None:
         db = _make_db()
-        db.get_all_titles_in_fantagraphics_volumes.return_value = [("Found Title", MagicMock())]
+        db.get_all_titles_in_fantagraphics_volumes.return_value = [(self.TITLE_A, MagicMock())]
         db.get_comic_book.return_value = MagicMock()
         srce_dest = _make_srce_dest_pages(["page-001", "page-002"], [10, 11])
 
@@ -282,12 +287,12 @@ class TestGetTitleFromVolumePage:
         ):
             title, page_num = get_title_from_volume_page(db, 1, "page-002")
 
-        assert title == "Found Title"
+        assert title == self.TITLE_A
         assert page_num == 11
 
     def test_page_not_found_returns_empty_and_minus_one(self) -> None:
         db = _make_db()
-        db.get_all_titles_in_fantagraphics_volumes.return_value = [("Some Title", MagicMock())]
+        db.get_all_titles_in_fantagraphics_volumes.return_value = [(self.TITLE_A, MagicMock())]
         db.get_comic_book.return_value = MagicMock()
         srce_dest = _make_srce_dest_pages(["page-001"], [5])
 
@@ -301,7 +306,7 @@ class TestGetTitleFromVolumePage:
 
     def test_stops_at_first_matching_title(self) -> None:
         db = _make_db()
-        titles = [("Title One", MagicMock()), ("Title Two", MagicMock())]
+        titles = [(self.TITLE_A, MagicMock()), (self.TITLE_B, MagicMock())]
         db.get_all_titles_in_fantagraphics_volumes.return_value = titles
         db.get_comic_book.side_effect = [MagicMock(), MagicMock()]
         srce_dest1 = _make_srce_dest_pages(["page-001"], [3])
@@ -314,7 +319,7 @@ class TestGetTitleFromVolumePage:
         ):
             title, page_num = get_title_from_volume_page(db, 1, "page-001")
 
-        assert title == "Title One"
+        assert title == self.TITLE_A
         assert page_num == 3
         assert db.get_comic_book.call_count == 1
 
@@ -326,6 +331,16 @@ class TestGetTitleFromVolumePage:
 
         assert title == ""
         assert page_num == -1
+
+    def test_one_pager_numeric_page_short_circuits(self) -> None:
+        # "If the Hat Fits" is a one-pager at volume 5, fanta page 123 -> comic page 2.
+        db = _make_db()
+
+        title, page_num = get_title_from_volume_page(db, 5, "123")
+
+        assert title == "If the Hat Fits"
+        assert page_num == 2
+        db.get_all_titles_in_fantagraphics_volumes.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
