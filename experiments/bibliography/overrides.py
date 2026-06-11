@@ -80,10 +80,12 @@ OVERRIDES: dict[Titles, tuple[Issues, int, int, int] | None] = {
     # Donald Duck 45
     Titles.POWER_PLOWING: (Issues.DD, 45, 1956, 3),          # "aggressive snowplow driver"
     Titles.REMEMBER_THIS: (Issues.DD, 45, 1956, 2),          # remaining slot
+    # WDCS 215
+    Titles.MOCKING_BIRD_RIDGE: (Issues.CS, 215, 8, 58),
 
     # --- no counterpart in Barrier's 1978 bibliography (validation findings) - #
     Titles.SILENT_NIGHT: None,        # famous unpublished story; not listed in WDCS 64
-    Titles.MOCKING_BIRD_RIDGE: None,  # WDCS 215 lists only one Donald story (The Milkman)
+    Titles.MILKMAN_THE: None,         # unpublished story; not listed in WDCS 215
     Titles.LIGHTS_OUT: None,          # US 23 lists 4 Barks items; this is not among them
     Titles.ALL_CHOKED_UP: None,       # US 23 — as above
     Titles.BIRD_CAMERA_THE: None,     # FC 1047 lists 5 Gyro stories; Bird Camera absent

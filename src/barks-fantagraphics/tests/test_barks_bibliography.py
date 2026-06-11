@@ -30,7 +30,7 @@ MIN_ENTRIES = 900
 EXPECTED_WITHOUT_BIB_ENTRY: frozenset[Titles] = frozenset(
     {
         Titles.SILENT_NIGHT,
-        Titles.MOCKING_BIRD_RIDGE,
+        Titles.MILKMAN_THE,
         Titles.LIGHTS_OUT,
         Titles.ALL_CHOKED_UP,
         Titles.BIRD_CAMERA_THE,
@@ -91,6 +91,29 @@ def test_matched_story_entries_have_unique_titles() -> None:
     """Story/gag entry <-> Titles member is one-to-one."""
     matched = [e for e in _all_entries() if e.disposition == Disposition.MATCHED_TITLE]
     assert len(matched) == len(TITLE_TO_BIB_ENTRY)
+
+
+def test_matched_entries_sit_in_the_curated_issue() -> None:
+    """A matched entry's enclosing issue agrees with ComicBookInfo's issue.
+
+    Compares issue name and number only: the issue *number* is the join key the
+    generator matches on, while Barrier's cover-date years are known to differ
+    from comic_book_info by a year for some issues. Barrier records unnumbered
+    giveaway issues (March of Comics, Firestone, Kite Fun Book) as number -1
+    where the curated data assigns the conventional number, so -1 skips the
+    number comparison.
+    """
+    cbi_by_title = {c.title: c for c in BARKS_TITLE_INFO}
+    for series in BIBLIOGRAPHY:
+        for issue in series.issues:
+            for entry in issue.entries:
+                if entry.disposition != Disposition.MATCHED_TITLE:
+                    continue
+                assert entry.title is not None
+                cbi = cbi_by_title[entry.title]
+                assert issue.issue_name is cbi.issue_name, entry.title.name
+                if issue.issue_number != -1:
+                    assert issue.issue_number == cbi.issue_number, entry.title.name
 
 
 def test_cover_entries_match_registry_one_to_one() -> None:
