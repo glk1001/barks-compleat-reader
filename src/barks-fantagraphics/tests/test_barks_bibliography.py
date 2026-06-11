@@ -156,6 +156,9 @@ def test_matched_entries_sit_in_the_curated_issue() -> None:
                 assert entry.title is not None
                 cbi = cbi_by_title[entry.title]
                 assert issue.issue_name is cbi.issue_name, entry.title.name
+                # -1 = an unnumbered giveaway (March of Comics 4, the Firestone
+                # Christmas books, the Kite Fun Book): Barrier has no number to
+                # compare, while the curated data assigns the conventional one.
                 if issue.issue_number != -1:
                     assert issue.issue_number == cbi.issue_number, entry.title.name
                 assert issue.issue_year != -1, entry.title.name
