@@ -6,6 +6,8 @@ invariants the generator guarantees, so an accidental hand-edit or a
 regeneration regression is caught.
 """
 
+import re
+
 from barks_fantagraphics.barks_bibliography import (
     BIBLIOGRAPHY,
     TITLE_TO_BIB_ENTRY,
@@ -114,6 +116,64 @@ def test_matched_entries_sit_in_the_curated_issue() -> None:
                 assert issue.issue_name is cbi.issue_name, entry.title.name
                 if issue.issue_number != -1:
                     assert issue.issue_number == cbi.issue_number, entry.title.name
+
+
+# The dash class covers both hyphen and en dash, as printed in Barrier.
+_MONTH_SPAN_RE = re.compile(r"([A-Za-z]{3,9})\.?\s*[-\u2013]\s*([A-Za-z]{3,9})\.?")
+_YEAR_RE = re.compile(r"19\d{2}")
+_MONTH_PREFIXES = (
+    "jan",
+    "feb",
+    "mar",
+    "apr",
+    "may",
+    "jun",
+    "jul",
+    "aug",
+    "sep",
+    "oct",
+    "nov",
+    "dec",
+)
+
+
+def _month_number(token: str) -> int:
+    prefix = token.lower()[:3]
+    return _MONTH_PREFIXES.index(prefix) + 1 if prefix in _MONTH_PREFIXES else -1
+
+
+def _expected_curated_year(issue: BibIssue) -> int:
+    """Curated issue year implied by Barrier's issue date.
+
+    Dell dated quarterly issues with a cover-date span; when the span crosses a
+    year boundary with a single printed year ("Dec.-Feb. 1956", "Nov.-Jan.
+    1960"), that year belongs to the *end* month while comic_book_info dates
+    the issue by the start month - so expect Barrier's year minus one. A
+    bracketed code date ("[(November) 1960]") already carries the true year,
+    and a two-year span ("Dec. 1953-Feb. 1954") parses to the start year -
+    both agree with the curated year as-is.
+    """
+    if "[" not in issue.raw_date:
+        span = _MONTH_SPAN_RE.search(issue.raw_date)
+        if span and len(_YEAR_RE.findall(issue.raw_date)) == 1:
+            start, end = (_month_number(t) for t in span.groups())
+            if start > end > 0:
+                return issue.issue_year - 1
+    return issue.issue_year
+
+
+def test_matched_entries_issue_years_agree() -> None:
+    """ComicBookInfo's issue year matches Barrier's, with year-spans normalized."""
+    cbi_by_title = {c.title: c for c in BARKS_TITLE_INFO}
+    for series in BIBLIOGRAPHY:
+        for issue in series.issues:
+            for entry in issue.entries:
+                if entry.disposition != Disposition.MATCHED_TITLE:
+                    continue
+                assert entry.title is not None
+                assert issue.issue_year != -1, entry.title.name
+                cbi_year = cbi_by_title[entry.title].issue_year
+                assert cbi_year == _expected_curated_year(issue), entry.title.name
 
 
 def test_cover_entries_match_registry_one_to_one() -> None:

@@ -252,7 +252,15 @@ def parse_issue_date(date_str: str) -> tuple[int, int]:
     s = date_str.strip()
     bracket = re.search(r"\[(.*?)\]", s)
     if bracket:  # e.g. "Dec.-Feb. 1961 [(November) 1960]" -> code date in brackets
-        s = bracket.group(1)
+        inner = bracket.group(1)
+        if not re.search(r"19\d{2}", inner):
+            # Nested the other way: "Apr.-June 1960 ([March] 1960)" — only the
+            # month is bracketed, so widen to the enclosing parenthetical to
+            # keep the code date's year.
+            paren = re.search(r"\(([^()]*\[[^\]]*\][^()]*)\)", s)
+            if paren:
+                inner = paren.group(1).replace("[", " ").replace("]", " ")
+        s = inner
     year_m = re.search(r"(19\d{2})", s)
     year = int(year_m.group(1)) if year_m else -1
     mon_m = re.search(r"\(?([A-Za-z]{3,9})\.?\)?", s)
