@@ -30,11 +30,17 @@ uv run python parse_bibliography.py
 uv run python parse_bibliography.py --emit
 ```
 
-The report sections: **COVERAGE** (match counts), **NOT IN BARRIER** /
-**NO BARRIER ENTRY** (titles with no counterpart — expected), **UNMATCHED**
-(needs an override — should be 0), **MATCHED BY KEYWORD / ORDER ALIGNMENT**
-(heuristic matches to spot-check), and **DATE DISCREPANCIES** (`cbi=` is the
-reader's date, `bib=` is Barrier's).
+The report sections: **COVERAGE** (match counts), **ISSUE HEADERS NOT IN
+&lt;h2&gt;** (headers the EPUB tagged `<strong>`/`<h3>`/`<p>` instead of `<h2>` —
+worth fixing in source), **NOT IN BARRIER** / **NO BARRIER ENTRY** (titles with
+no counterpart — expected), **UNMATCHED** (needs an override — should be 0),
+**MATCHED BY KEYWORD / ORDER ALIGNMENT** (heuristic matches to spot-check), and
+**DATE DISCREPANCIES** (`cbi=` is the reader's date, `bib=` is Barrier's).
+
+Text fields (descriptions, notes, titles) preserve inline formatting tags
+(`<em>`, `<i>`, `<strong>`, ...); structural tags are stripped. Dates are parsed
+on a tag-stripped copy, so a wrapped date like `<em>(Mar. 14, 1957)</em>` still
+works.
 
 ## Fixing an error in the source
 
@@ -75,7 +81,12 @@ Issue identity is keyed on `(issue_name, issue_number)` — Barrier's cover-date
 *years* often differ from `comic_book_info` by a year, so the issue **number** is
 the reliable join key, not the year. Within an issue, each `ComicBookInfo` record
 is matched to one entry by, in order: full-title substring → description keyword →
-sole-remaining-candidate → date-aware order alignment → manual override. Front
-covers are never matched (they aren't reader titles). Submission dates are used
-only as a tie-breaker within a confirmed set — never as the primary key, since
-validating them is the whole point.
+sole-remaining-candidate → conservative exact-date alignment → manual override.
+Front covers are never matched (they aren't reader titles).
+
+The order pass is deliberately conservative: it pairs a record to an entry only
+when they are each other's *unique same-date partner*. It never guesses across a
+date tie or a date discrepancy — validating the dates means we can't lean on them
+to break ambiguity. Same-issue gag clusters whose pun titles appear in neither the
+text nor the date therefore land in `overrides.py`, pinned by reading the
+description.

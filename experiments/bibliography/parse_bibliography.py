@@ -72,6 +72,15 @@ BLOCK_RE = re.compile(r"<(h1|h2|h3|p)\b[^>]*>(.*?)</\1>", re.DOTALL)
 TAG_RE = re.compile(r"<[^>]+>")
 SPAN_RE = re.compile(r"<span\b[^>]*/>")
 
+# Inline formatting tags preserved in stored text fields (descriptions, notes,
+# titles); everything else is structural and stripped.
+INLINE_KEEP = ("em", "i", "strong", "b", "sup", "sub", "u", "small")
+_KEEP = "|".join(INLINE_KEEP)
+NON_KEEP_TAG_RE = re.compile(rf"</?(?!(?:{_KEEP})\b)[a-zA-Z][^>]*>")
+# A formatting tag wrapping a trailing submission date, e.g. "<em>(...)</em>".
+WRAP_OPEN_RE = re.compile(rf"<(?:{_KEEP})\b[^>]*>\s*$", re.IGNORECASE)
+WRAP_CLOSE_RE = re.compile(rf"\.?\s*</(?:{_KEEP})\s*>", re.IGNORECASE)
+
 # Trailing parenthetical at the very end of a paragraph (the candidate date).
 TAIL_PAREN_RE = re.compile(r"\(([^()]*)\)\.?\s*$")
 # A strict Barks submission date: "Dec. 3, 1947" / "May 14?, 1959" / "April 18, 1957".
@@ -119,6 +128,7 @@ class BibIssue:
     page_count: int
     official_title: str | None
     raw_date: str
+    header_tag: str = "h2"  # source tag the header came from: h2 / h3 / strong / p
     entries: list[BibEntry] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
 
@@ -135,11 +145,24 @@ class BibSeries:
 # Text helpers
 # --------------------------------------------------------------------------- #
 def clean(raw_html: str) -> str:
-    """Strip inline tags/spans and unescape entities, collapsing whitespace."""
+    """Strip all tags/spans and unescape entities, collapsing whitespace."""
     text = SPAN_RE.sub("", raw_html)
     text = TAG_RE.sub("", text)
     text = html.unescape(text)
     return re.sub(r"\s+", " ", text).strip()
+
+
+def clean_rich(raw_html: str) -> str:
+    """Like ``clean`` but keep inline formatting tags (``<em>``, ``<i>``, ...)."""
+    text = SPAN_RE.sub("", raw_html)
+    text = NON_KEEP_TAG_RE.sub("", text)
+    text = html.unescape(text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def strip_tags(text: str) -> str:
+    """Remove any remaining tags from an already-cleaned (rich) string."""
+    return re.sub(r"\s+", " ", TAG_RE.sub("", text)).strip()
 
 
 def bare_series_name(h1: str) -> str:
@@ -153,9 +176,10 @@ def parse_month_token(token: str) -> int:
 
 def parse_submission_date(paren_text: str) -> tuple[int, int, int, bool] | None:
     """Return (day, month, year, unavailable) for a strict submission date."""
-    # Drop bracketed annotations, e.g. "Feb. 6, 1953 [idea] and May 21, 1953 [art]",
-    # and repair a stray period in a typo'd year, e.g. "195.1" -> "1951".
-    t = re.sub(r"\[[^\]]*\]", "", paren_text).strip()
+    # Drop any inline tags and bracketed annotations, e.g.
+    # "<em>Feb. 6, 1953 [idea] and May 21, 1953 [art]</em>", and repair a stray
+    # period in a typo'd year, e.g. "195.1" -> "1951".
+    t = re.sub(r"\[[^\]]*\]", "", strip_tags(paren_text)).strip()
     t = re.sub(r"(\d)\.(\d)", r"\1\2", t)
     t = re.sub(r"\s+", " ", t)
     if t.rstrip(".").lower() == "date not available":
@@ -247,18 +271,20 @@ def parse_tree() -> list[BibSeries]:
 
     for m in BLOCK_RE.finditer(body):
         tag = m.group(1)
+        raw_inner = m.group(2)
         # A block may pack several logical lines, separated by <br/> or a raw
         # newline — e.g. an entry followed by its note, or an issue header
-        # followed by its official title. Treat each as its own line.
-        segments = [s for s in (clean(p) for p in re.split(r"<br\s*/?>|\n", m.group(2))) if s]
+        # followed by its official title. Treat each as its own line. Inline
+        # formatting tags (<em>, ...) are preserved; structural tags are dropped.
+        segments = [s for s in (clean_rich(p) for p in re.split(r"<br\s*/?>|\n", raw_inner)) if s]
         if not segments:
             continue
         first = segments[0]
+        first_plain = strip_tags(first)
 
         if tag == "h1":
-            cur_series = BibSeries(
-                h1_name=first, issue_name=SERIES_TO_ISSUE.get(bare_series_name(first))
-            )
+            name = strip_tags(first)
+            cur_series = BibSeries(h1_name=name, issue_name=SERIES_TO_ISSUE.get(bare_series_name(name)))
             series_list.append(cur_series)
             cur_issue = None
             cur_entry = None
@@ -268,11 +294,16 @@ def parse_tree() -> list[BibSeries]:
         if cur_series is None:
             continue
 
-        issue_m = ISSUE_RE.match(first)
-        if issue_m and not is_entry(first):
+        issue_m = ISSUE_RE.match(first_plain)
+        if issue_m and not is_entry(first_plain):
             issue_id, date_str = split_issue_blob(issue_m.group(1).strip())
             month, year = parse_issue_date(date_str)
             official = segments[1] if len(segments) > 1 else pending_official_title
+            # Record the source tag so the report can flag headers not in <h2>.
+            if tag == "p":
+                header_tag = "strong" if re.match(r"\s*<strong\b", raw_inner, re.IGNORECASE) else "p"
+            else:
+                header_tag = tag
             cur_issue = BibIssue(
                 raw_issue_id=issue_id,
                 issue_name=issue_type_for(issue_id, cur_series.issue_name),
@@ -282,6 +313,7 @@ def parse_tree() -> list[BibSeries]:
                 page_count=int(issue_m.group(2)),
                 official_title=official,
                 raw_date=date_str,
+                header_tag=header_tag,
             )
             cur_series.issues.append(cur_issue)
             cur_entry = None
@@ -300,7 +332,7 @@ def parse_tree() -> list[BibSeries]:
         # then treat each resulting unit independently.
         units: list[str] = []
         for seg in segments:
-            if units and not re.match(r'^["“(]?\s*[A-Z]', seg):
+            if units and not re.match(r'^["“(]?\s*[A-Z]', strip_tags(seg)):
                 units[-1] = f"{units[-1]} {seg}"
             else:
                 units.append(seg)
@@ -322,7 +354,7 @@ def parse_tree() -> list[BibSeries]:
         for unit in units:
             # An entry runs up to its submission date; text after the date is a
             # trailing note. Undated gags/covers are detected structurally.
-            if looks_like_entry(unit):
+            if looks_like_entry(strip_tags(unit)):
                 date_hit = find_submission_date(unit)
                 if date_hit is not None:
                     (day, month, year, unavail), raw_date, dstart, dend = date_hit
@@ -351,11 +383,24 @@ ENDS_IN_PAGES_RE = re.compile(r"[-–—]\s*\d+\s+[Pp]ages?\.?$")
 
 
 def find_submission_date(full: str) -> tuple[tuple[int, int, int, bool], str, int, int] | None:
-    """Locate the first parenthesised Barks submission date in a paragraph."""
+    """Locate the first parenthesised Barks submission date in a paragraph.
+
+    Returns the parsed date, the clean date text, and the [start, end) span to
+    cut at — extended to swallow a wrapping formatting tag, e.g. the ``<em>`` and
+    ``</em>`` around ``<em>(Mar. 14, 1957)</em>``, so neither dangles in a field.
+    """
     for mm in re.finditer(r"\(([^()]*)\)", full):
         parsed = parse_submission_date(mm.group(1))
-        if parsed is not None:
-            return parsed, mm.group(1).strip(), mm.start(), mm.end()
+        if parsed is None:
+            continue
+        start, end = mm.start(), mm.end()
+        pre = WRAP_OPEN_RE.search(full[:start])
+        if pre:
+            start = pre.start()
+        post = WRAP_CLOSE_RE.match(full[end:])
+        if post:
+            end += post.end()
+        return parsed, strip_tags(mm.group(1)).strip(), start, end
     return None
 
 
@@ -379,8 +424,11 @@ def is_entry(txt: str) -> bool:
 def build_entry(
     body: str, day: int, month: int, year: int, unavailable: bool, raw_date: str
 ) -> BibEntry:
-    is_cover = bool(COVER_RE.match(body))
-    qmatch = QUALIFIER_RE.search(body)
+    # ``body`` keeps inline tags; classify on a stripped copy but store the rich
+    # title/description.
+    stripped = strip_tags(body)
+    is_cover = bool(COVER_RE.match(stripped))
+    qmatch = QUALIFIER_RE.search(stripped)
     qualifier = qmatch.group(1).lower() if qmatch else None
     raw_title, page_count, description = split_entry_body(body, is_cover)
     return BibEntry(
@@ -424,7 +472,7 @@ def split_entry_body(body: str, is_cover: bool) -> tuple[str, str, str]:
 # Matching
 # --------------------------------------------------------------------------- #
 def norm(s: str) -> str:
-    s = s.lower()
+    s = TAG_RE.sub(" ", s).lower()  # drop inline tags so they don't pollute matching
     s = s.replace("’", "'").replace("‘", "'").replace("“", '"').replace("”", '"')
     s = re.sub(r"[^a-z0-9 ]+", " ", s)
     return re.sub(r"\s+", " ", s).strip()
@@ -557,10 +605,12 @@ def match_all(series_list: list[BibSeries]) -> list[MatchResult]:
                 claim(cbi.title, cands[0], "single")
                 changed = True
 
-    # Pass 4: order alignment. comic_book_info was derived from this bibliography,
-    # so when an issue's remaining cbis and remaining (non-cover) entries are an
-    # equal-sized set, align them by document order. Guarded by count-equality so
-    # we never guess across a mismatch (those stay unmatched for manual review).
+    # Pass 4: conservative exact-date alignment. Within a same-issue group of
+    # still-unmatched cbis and unmatched (non-cover) entries, pair a cbi to an
+    # entry ONLY when they are each other's UNIQUE same-date partner. This
+    # resolves title-less gags whose dates agree, but never guesses across a date
+    # tie or a date discrepancy (validating dates means we can't lean on them to
+    # break ambiguity) — those are left unmatched for a manual override.
     groups: dict[tuple[int, ...], tuple[list[BibIssue], list[ComicBookInfo]]] = {}
     for cbi in cbis:
         if cbi.title in done:
@@ -570,24 +620,32 @@ def match_all(series_list: list[BibSeries]) -> list[MatchResult]:
             continue
         key = tuple(id(i) for i in iss)
         groups.setdefault(key, (iss, []))[1].append(cbi)
+
+    def cbi_date(c: ComicBookInfo) -> tuple[int, int, int]:
+        return (c.submitted_year, c.submitted_month, c.submitted_day)
+
+    def ent_date(e: BibEntry) -> tuple[int, int, int]:
+        return (e.submitted_year, e.submitted_month, e.submitted_day)
+
     for iss, group_cbis in groups.values():
-        entries = [e for i in iss for e in i.entries if not e.is_cover and id(e) not in linked]
-        if not entries or len(entries) != len(group_cbis):
-            continue
-        # Within a confirmed bijection, pair by chronological order when every
-        # entry is dated (this disambiguates same-issue stories far more reliably
-        # than raw document order); otherwise fall back to document order.
-        if len(entries) > 1 and all(e.submitted_year != -1 for e in entries):
-            ordered_cbis = sorted(
-                group_cbis, key=lambda c: (c.submitted_year, c.submitted_month, c.submitted_day)
-            )
-            ordered_entries = sorted(
-                entries, key=lambda e: (e.submitted_year, e.submitted_month, e.submitted_day)
-            )
-        else:
-            ordered_cbis, ordered_entries = group_cbis, entries
-        for cbi, entry in zip(ordered_cbis, ordered_entries):
-            claim(cbi.title, entry, "order")
+        rem_cbis = list(group_cbis)
+        rem_entries = [e for i in iss for e in i.entries if not e.is_cover and id(e) not in linked]
+        changed = True
+        while changed:
+            changed = False
+            for c in list(rem_cbis):
+                if cbi_date(c) == (-1, -1, -1):
+                    continue
+                twins = [e for e in rem_entries if ent_date(e) == cbi_date(c)]
+                if len(twins) != 1:
+                    continue
+                entry = twins[0]
+                if sum(1 for cc in rem_cbis if cbi_date(cc) == ent_date(entry)) != 1:
+                    continue  # the entry's date is shared by >1 cbi -> ambiguous
+                claim(c.title, entry, "order")
+                rem_cbis.remove(c)
+                rem_entries.remove(entry)
+                changed = True
 
     results = [
         MatchResult(cbi, done[cbi.title][0], done[cbi.title][1])
@@ -632,6 +690,20 @@ def report(series_list: list[BibSeries], results: list[MatchResult]) -> None:
     for method in ("title", "keyword", "single", "order", "override", "absent", "unmatched"):
         print(f"  {method:10s}: {by_method.get(method, 0)}")
     print("=" * 78)
+
+    # Source-quality flag: issue headers that were tagged <strong>/<h3>/<p>
+    # instead of <h2> in the EPUB (worth correcting in source.xhtml).
+    mis_tagged = [
+        (s, i) for s in series_list for i in s.issues if i.header_tag != "h2"
+    ]
+    if mis_tagged:
+        print(f"\nISSUE HEADERS NOT IN <h2> ({len(mis_tagged)}) — fix the tag in source.xhtml:")
+        for s, i in mis_tagged:
+            name = i.issue_name.name if i.issue_name else "—"
+            print(
+                f"  <{i.header_tag}>  {bare_series_name(s.h1_name)} :: "
+                f"{i.raw_issue_id!r} ({i.raw_date}) [{name}]"
+            )
 
     post1978 = [r for r in results if r.entry is None and r.method == "unmatched" and r.cbi.issue_year > 1978]
     overridden_absent = [r for r in results if r.method == "absent"]
