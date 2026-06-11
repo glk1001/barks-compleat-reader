@@ -12,8 +12,9 @@ reconciles it against `comic_book_info.BARKS_TITLE_INFO` (primarily to
 |---|---|
 | `source.xhtml` | The input — a copy of the EPUB bibliography chapter. **Edit this** to fix the source. |
 | `parse_bibliography.py` | Parser + matcher + reconciliation report + module emitter. |
-| `overrides.py` | Manual table for ambiguous / absent matches (see caveat below). |
+| `overrides.py` | Manual tables for ambiguous / absent matches and exclusions (see caveat below). |
 | *(generated)* `…/barks_fantagraphics/barks_bibliography.py` | The committed output. **Never hand-edit.** |
+| *(bootstrapped)* `…/barks_fantagraphics/barks_covers.py` | The cover registry. Bootstrap-generated once with `--emit-covers`, **hand-maintained thereafter** (like `comic_book_info.py`); the report verifies it against the bibliography instead of regenerating. |
 
 `experiments/` is excluded from ruff/ty/cspell; the generated module is excluded
 from cspell only (`ignorePaths` in `cspell.config.yaml`).
@@ -28,14 +29,40 @@ uv run python parse_bibliography.py
 
 # Report + regenerate the committed module (also runs `ruff format` on it):
 uv run python parse_bibliography.py --emit
+
+# Re-bootstrap the cover registry (only for a deliberate reset — it is
+# hand-maintained after the first generation):
+uv run python parse_bibliography.py --emit-covers
 ```
 
 The report sections: **COVERAGE** (match counts), **ISSUE HEADERS NOT IN
 &lt;h2&gt;** (headers the EPUB tagged `<strong>`/`<h3>`/`<p>` instead of `<h2>` —
 worth fixing in source), **NOT IN BARRIER** / **NO BARRIER ENTRY** (titles with
 no counterpart — expected), **UNMATCHED** (needs an override — should be 0),
-**MATCHED BY KEYWORD / ORDER ALIGNMENT** (heuristic matches to spot-check), and
-**DATE DISCREPANCIES** (`cbi=` is the reader's date, `bib=` is Barrier's).
+**MATCHED BY KEYWORD / ORDER ALIGNMENT** (heuristic matches to spot-check),
+**DATE DISCREPANCIES** (`cbi=` is the reader's date, `bib=` is Barrier's), and
+**DISPOSITIONS / UNDISPOSED** (see below).
+
+### Dispositions (the one-to-one invariant)
+
+Every bibliography entry must carry exactly one disposition (see
+`PLAN-one-to-one.md`): `MATCHED_TITLE` (linked to a `Titles` member), `COVER`
+(linked to the Phase 3 cover registry), `REPRINT` (originals carry the link),
+`EXCLUDED_SECTION` (non-duck series, `EXCLUDED_SERIES` in the parser),
+or `EXCLUDED_ENTRY` (individually excluded with a reason — `ENTRY_EXCLUSIONS`
+in `overrides.py`, each pinned by a positional locator *plus* a guard snippet so
+shifted indices are reported, not silently misapplied). Whatever remains is
+listed under **UNDISPOSED** — the outstanding work queue; the end state is
+`UNDISPOSED: 0`, enforced by the bijection tests in
+`src/barks-fantagraphics/tests/test_barks_bibliography.py`.
+
+`COVER` dispositions are earned by verification against `barks_covers.py`: each
+in-scope cover entry is keyed by `(series, issue_number, issue_year, kind, seq)`
+and must match exactly one `BarksCover` record (date, qualifier, description and
+`illustrates` are compared; mismatches and orphans land in **DISPOSITION
+WARNINGS**). `(Illustrating "X.")` parentheticals resolve X to a `Titles` member,
+with `ILLUSTRATES_OVERRIDES` in `overrides.py` covering the covers Barks drew for
+other artists' interior stories (resolved to `None`).
 
 Text fields (descriptions, notes, titles) preserve inline formatting tags
 (`<em>`, `<i>`, `<strong>`, ...); structural tags are stripped. Dates are parsed

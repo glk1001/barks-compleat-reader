@@ -575,10 +575,16 @@ BARKS_PAYMENTS = {
     Titles.DOOM_DIAMOND_THE: PaymentInfo(Titles.DOOM_DIAMOND_THE, 24, 24, 3, 1967, 1092.0),
     Titles.CATTLE_KING_THE: PaymentInfo(Titles.CATTLE_KING_THE, 24, 2, 6, 1967, 1092.0),
     Titles.KING_SCROOGE_THE_FIRST: PaymentInfo(Titles.KING_SCROOGE_THE_FIRST, 21, 22, 6, 1967, 276.0),
+    # TODO(glk): Placeholder payment rows for the script-only titles added from the Barrier
+    # bibliography: accepted date = Barrier submission date; payment amount unknown (-1.0).
+    Titles.PAWNS_OF_THE_LOUP_GAROU: PaymentInfo(Titles.PAWNS_OF_THE_LOUP_GAROU, 21, 21, 3, 1967, -1.0),
+    Titles.OFFICER_OF_THE_DAY: PaymentInfo(Titles.OFFICER_OF_THE_DAY, 14, 6, 11, 1968, -1.0),
     Titles.PERIL_OF_THE_BLACK_FOREST: PaymentInfo(Titles.PERIL_OF_THE_BLACK_FOREST, 14, 3, 10, 1969, 161),
     Titles.LIFE_SAVERS: PaymentInfo(Titles.LIFE_SAVERS, 5, 3, 10, 1969, 57.50),
     Titles.WHALE_OF_A_GOOD_DEED: PaymentInfo(Titles.WHALE_OF_A_GOOD_DEED, 14, 1, 1, 1970, 161),
     Titles.BAD_DAY_FOR_TROOP_A: PaymentInfo(Titles.BAD_DAY_FOR_TROOP_A, 6, 1, 1, 1970, 69),
+    # TODO(glk): Placeholder (see note above).
+    Titles.DAY_IN_A_DUCKS_LIFE_A: PaymentInfo(Titles.DAY_IN_A_DUCKS_LIFE_A, 13, 16, 2, 1970, -1.0),
     Titles.LET_SLEEPING_BONES_LIE: PaymentInfo(Titles.LET_SLEEPING_BONES_LIE, 4, 16, 3, 1970, 46),
     Titles.SAVIORS_OF_THE_LAKE: PaymentInfo(Titles.SAVIORS_OF_THE_LAKE, 13, 25, 6, 1970, 149.50),
     Titles.BOTTLED_BATTLERS: PaymentInfo(Titles.BOTTLED_BATTLERS, 12, 21, 8, 1970, 138.0),
@@ -588,6 +594,19 @@ BARKS_PAYMENTS = {
     Titles.STORM_DANCERS: PaymentInfo(Titles.STORM_DANCERS, 12, 4, 3, 1971,138.0),
     Titles.HOUND_OF_THE_MOANING_HILLS: PaymentInfo(Titles.HOUND_OF_THE_MOANING_HILLS, 13, 3, 3, 1971,149.50),
     Titles.DAY_THE_MOUNTAIN_SHOOK_THE: PaymentInfo(Titles.DAY_THE_MOUNTAIN_SHOOK_THE, 13, 4, 5, 1971,149.50),
+    # TODO(glk): Placeholder payment rows for the Junior Woodchucks script-only titles added
+    # from the Barrier bibliography: accepted date = Barrier submission date; payment unknown.
+    Titles.GOLD_OF_THE_49ERS: PaymentInfo(Titles.GOLD_OF_THE_49ERS, 12, 25, 5, 1971, -1.0),
+    Titles.DUCKMADE_DISASTER: PaymentInfo(Titles.DUCKMADE_DISASTER, 13, 30, 7, 1971, -1.0),
+    Titles.WAILING_WHALERS: PaymentInfo(Titles.WAILING_WHALERS, 18, 30, 9, 1971, -1.0),
+    Titles.WHERE_THERES_SMOKE: PaymentInfo(Titles.WHERE_THERES_SMOKE, 16, 3, 1, 1972, -1.0),
+    Titles.BE_LEERY_OF_LAKE_EERIE: PaymentInfo(Titles.BE_LEERY_OF_LAKE_EERIE, 16, 27, 1, 1972, -1.0),
+    Titles.TEAHOUSE_OF_THE_WAGGIN_DRAGON: PaymentInfo(Titles.TEAHOUSE_OF_THE_WAGGIN_DRAGON, 17, 31, 3, 1972, -1.0),
+    Titles.NEW_ZOO_BREWS_ADO: PaymentInfo(Titles.NEW_ZOO_BREWS_ADO, 17, 5, 6, 1972, -1.0),
+    Titles.MUSIC_HATH_CHARMS: PaymentInfo(Titles.MUSIC_HATH_CHARMS, 16, 18, 9, 1972, -1.0),
+    Titles.PHANTOM_JOKER_THE: PaymentInfo(Titles.PHANTOM_JOKER_THE, 15, 9, 12, 1972, -1.0),
+    Titles.HARK_HARK_THE_ARK: PaymentInfo(Titles.HARK_HARK_THE_ARK, 15, 9, 3, 1973, -1.0),
+    Titles.CAPTAINS_OUTRAGEOUS: PaymentInfo(Titles.CAPTAINS_OUTRAGEOUS, 15, 30, 3, 1973, -1.0),
 }
 # fmt: on
 

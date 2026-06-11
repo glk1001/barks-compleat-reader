@@ -1,5 +1,19 @@
 # Plan: one-to-one match between `comic_book_info` and the Barrier bibliography
 
+> **Status (2026-06-11): implemented.** All four phases are done; the report
+> shows `UNDISPOSED: 0` and the invariant is enforced by tests in
+> `src/barks-fantagraphics/tests/test_barks_bibliography.py`.
+> Outstanding (user input needed):
+> 1. the 27 DATE DISCREPANCIES (per-case review: fix `comic_book_info.py` or
+>    `source.xhtml`);
+> 2. real payment amounts for the 14 script-only additions (placeholder
+>    `payment=-1.0` rows in `barks_payments.py`, marked `TODO(glk)`);
+> 3. Friendly Enemy / Undercover Girl / The Inventive Gentleman are printed in
+>    FANTA_27 pp. 118-120 but left `_TODO` in `ONE_PAGER_LOCATIONS` — locating
+>    them requires re-baking the pre-baked All One-Pagers archive first (see the
+>    comment in `comic_book_info.py`). The other 18 additions are in no
+>    published Fantagraphics volume, so no `SERIES_INFO`/location rows exist yet.
+
 ## Goal
 
 Every Barrier bibliography entry (outside explicitly excluded sections/categories)

@@ -1,4 +1,4 @@
-"""Manual override table for ambiguous / unresolvable bibliography matches.
+"""Manual override tables for ambiguous / unresolvable bibliography matches.
 
 Two kinds of overrides:
 
@@ -89,4 +89,56 @@ OVERRIDES: dict[Titles, tuple[Issues, int, int, int] | None] = {
     Titles.BIRD_CAMERA_THE: None,     # FC 1047 lists 5 Gyro stories; Bird Camera absent
     Titles.UP_AND_AT_IT: None,        # US 47 note: gag left unplaced by Barks
     Titles.IT_HAPPENED_ONE_WINTER: None,  # US 61 lists 4 Barks items; this is not among them
+}
+
+# Bibliography entries with *no* library counterpart, excluded by hand with a
+# reason (the EXCLUDED_ENTRY disposition). Keyed by the same positional locator
+# as OVERRIDES: (issue_name, issue_number, issue_year, entry_index). Because the
+# index is positional, each exclusion carries a guard snippet that must appear in
+# the entry's text — if a source edit shifts the indices, the disposition pass
+# reports the mismatch instead of silently excluding the wrong entry.
+ENTRY_EXCLUSIONS: dict[tuple[Issues, int, int, int], tuple[str, str]] = {
+    (Issues.US, 25, 1959, 6): (
+        "binoculars to read a newspaper",
+        "One-page gag marked '(Not listed.)' — absent from Barks's own records; "
+        "uncertain attribution, not in the curated library.",
+    ),
+    (Issues.US, 32, 1961, 4): (
+        "beautifies",  # "Scrooge 'beautifies' his money bags with bows"
+        "'The Homey Touch' gag marked '(Not listed.)' — absent from Barks's own "
+        "records; uncertain attribution, not in the curated library.",
+    ),
+    (Issues.US, 32, 1961, 6): (
+        "pursued by a hoodlum",
+        "'Turnabout' gag marked '(Not listed.)' — absent from Barks's own "
+        "records; uncertain attribution, not in the curated library.",
+    ),
+    (Issues.US, 61, 1966, 5): (
+        "fur coat to a ragged man",
+        "Inside-back-cover gag with uncertain attribution: Barks's list shows the "
+        "Aug. 19, 1963 art submission as intended for US 47; Barrier only "
+        "tentatively places it here.",
+    ),
+    (Issues.DD, 71, 1960, 1): (
+        "first to the end of the rainbow",
+        "'Rainbow's End' gag marked '(Not listed.)' — absent from Barks's own "
+        "records; uncertain attribution, not in the curated library.",
+    ),
+}
+
+# Cover descriptions say '(Illustrating "X.")'; X is resolved against the curated
+# title strings. The titles below have no Titles member — Barks drew the cover for
+# another artist's interior story — so they intentionally resolve to None.
+ILLUSTRATES_OVERRIDES: dict[str, Titles | None] = {
+    "The Crocodile Collector": None,        # FC 348 interior story not by Barks
+    "From Rags to Riches": None,            # FC 356 interior story not by Barks
+    "Malayalaya": None,                     # FC 394 interior story not by Barks
+    "The Flying Horse": None,               # DD 27 interior story not by Barks
+    "Robert the Robot": None,               # DD 28 interior story not by Barks
+    "The Incredible Golden Iceberg": None,  # DD 101 interior story not by Barks
+    "Treasure of Aztec-Land,": None,        # DD 103 interior story not by Barks
+    "The Great Rainbow Race": None,         # DD 105 interior story not by Barks
+    "Ambush at Thunder Mountain": None,     # DD 106 interior story not by Barks
+    "The Giant of Duckburg": None,          # DD 111 interior story not by Barks
+    "Timber Tycoon": None,                  # CS 295 interior story not by Barks
 }

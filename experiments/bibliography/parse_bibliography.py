@@ -18,24 +18,20 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
+from enum import Enum, auto
 from pathlib import Path
 
-from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, ComicBookInfo
 from barks_fantagraphics.comic_issues import Issues
 
-from overrides import OVERRIDES
+from overrides import ENTRY_EXCLUSIONS, ILLUSTRATES_OVERRIDES, OVERRIDES
 
 HERE = Path(__file__).parent
 SOURCE = HERE / "source.xhtml"
-OUT_MODULE = (
-    HERE.parent.parent
-    / "src"
-    / "barks-fantagraphics"
-    / "src"
-    / "barks_fantagraphics"
-    / "barks_bibliography.py"
-)
+_PKG_DIR = HERE.parent.parent / "src" / "barks-fantagraphics" / "src" / "barks_fantagraphics"
+OUT_MODULE = _PKG_DIR / "barks_bibliography.py"
+OUT_COVERS_MODULE = _PKG_DIR / "barks_covers.py"
 
 # --------------------------------------------------------------------------- #
 # H1 series name -> Issues enum (only series that overlap the curated data).
@@ -60,6 +56,26 @@ SERIES_TO_ISSUE: dict[str, Issues] = {
     "HUEY, DEWEY AND LOUIE JUNIOR WOODCHUCKS": Issues.HDL,
     "WALT DISNEY’S COMICS AND STORIES": Issues.CS,
 }
+
+# H1 sections that are wholly out of scope for the one-to-one reconciliation:
+# non-duck series whose stories *and* covers have no library counterpart.
+EXCLUDED_SERIES: frozenset[str] = frozenset(
+    {
+        "OUR GANG COMICS",
+        "NEW FUNNIES",
+        "PORKY PIG",
+        "TOM AND JERRY SUMMER FUN",
+        "TOM AND JERRY WINTER CARNIVAL",
+    }
+)
+
+# Entry text that marks a reprint of an earlier appearance: "A reprint of ...",
+# "Reprinted from ...", and the USA 1 variant "Reprinted with changes by Barks
+# from ...". Reprints are excluded as a category (the original carries the link).
+REPRINT_RE = re.compile(
+    r"\b(?:a reprint of|reprinted(?:\s+with\s+changes\s+by\s+barks)?\s+from)\b",
+    re.IGNORECASE,
+)
 
 MONTHS = {
     "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
@@ -99,6 +115,21 @@ COVER_RE = re.compile(r"^(?:Front|Back|Inside (?:front|back)) cover\b", re.IGNOR
 QUALIFIER_RE = re.compile(r"\b(art only|script only)\b", re.IGNORECASE)
 
 
+class Disposition(Enum):
+    """Why a bibliography entry does (or does not) link to a library record.
+
+    Every entry must end up with exactly one disposition; ``None`` means
+    undisposed — the work queue. ``COVER`` is assigned by the Phase 3 cover
+    registry; until then covers stay undisposed.
+    """
+
+    MATCHED_TITLE = auto()  # linked to a Titles member via ComicBookInfo
+    COVER = auto()  # linked to a BarksCover registry record (Phase 3)
+    REPRINT = auto()  # reprint of an earlier appearance; the original has the link
+    EXCLUDED_SECTION = auto()  # whole H1 section out of scope (non-duck series)
+    EXCLUDED_ENTRY = auto()  # individually excluded, with a reason (overrides.py)
+
+
 # --------------------------------------------------------------------------- #
 # Builder dataclasses (mirrored by the emitted module).
 # --------------------------------------------------------------------------- #
@@ -116,6 +147,9 @@ class BibEntry:
     date_unavailable: bool
     notes: list[str] = field(default_factory=list)
     title: Titles | None = None
+    disposition: Disposition | None = None
+    disposition_reason: str | None = None
+    cover_key: tuple[str, int, int, str, int] | None = None  # BarksCover.key for COVER entries
 
 
 @dataclass
@@ -673,13 +707,300 @@ def resolve_override(idx: IssueIndex, loc: tuple[Issues, int, int, int]) -> BibE
 
 
 # --------------------------------------------------------------------------- #
+# Dispositions
+# --------------------------------------------------------------------------- #
+def assign_dispositions(series_list: list[BibSeries]) -> list[str]:
+    """Stamp a ``Disposition`` on every entry; return human-readable warnings.
+
+    Must run *after* ``match_all`` (matching writes ``entry.title``).
+    Precedence: excluded section > matched title > manual entry exclusion >
+    reprint. Anything left is undisposed — the work queue for Phases 2-3
+    (story add-candidates and the cover registry).
+    """
+    warnings: list[str] = []
+    idx = IssueIndex(series_list)
+
+    # Resolve the manual exclusions up front, verifying each guard snippet so a
+    # shifted positional index is reported instead of silently misfiring.
+    excluded_entries: dict[int, str] = {}  # id(entry) -> reason
+    for loc, (guard, reason) in ENTRY_EXCLUSIONS.items():
+        entry = resolve_override(idx, loc)
+        if entry is None:
+            warnings.append(f"ENTRY_EXCLUSIONS {loc}: locator resolves to no entry")
+            continue
+        text = strip_tags(f"{entry.raw_title} {entry.description}")
+        if guard.lower() not in text.lower():
+            warnings.append(
+                f"ENTRY_EXCLUSIONS {loc}: guard {guard!r} not found in "
+                f"{text[:60]!r} — entry indices shifted?"
+            )
+            continue
+        if entry.title is not None:
+            warnings.append(
+                f"ENTRY_EXCLUSIONS {loc}: entry is matched to {entry.title.name} — "
+                "an exclusion must not shadow a real match"
+            )
+            continue
+        excluded_entries[id(entry)] = reason
+
+    for series in series_list:
+        series_name = bare_series_name(series.h1_name)
+        in_excluded_section = series_name in EXCLUDED_SERIES
+        for issue in series.issues:
+            for e in issue.entries:
+                body = strip_tags(f"{e.raw_title} {e.description} {' '.join(e.notes)}")
+                is_reprint = bool(REPRINT_RE.search(body))
+                if in_excluded_section:
+                    if e.title is not None:
+                        warnings.append(
+                            f"{series_name} {issue.raw_issue_id}: entry matched to "
+                            f"{e.title.name} inside an excluded section"
+                        )
+                    e.disposition = Disposition.EXCLUDED_SECTION
+                    e.disposition_reason = f"non-duck section: {series_name}"
+                elif e.title is not None:
+                    if is_reprint:
+                        warnings.append(
+                            f"{series_name} {issue.raw_issue_id}: matched entry "
+                            f"{e.title.name} also looks like a reprint — check"
+                        )
+                    e.disposition = Disposition.MATCHED_TITLE
+                elif id(e) in excluded_entries:
+                    e.disposition = Disposition.EXCLUDED_ENTRY
+                    e.disposition_reason = excluded_entries[id(e)]
+                elif is_reprint:
+                    e.disposition = Disposition.REPRINT
+                else:
+                    e.disposition = None  # undisposed: the Phase 2-3 work queue
+    return warnings
+
+
+# --------------------------------------------------------------------------- #
+# Cover registry (barks_covers.py)
+# --------------------------------------------------------------------------- #
+COVER_KIND_RE = re.compile(r"^(Front|Inside front|Inside back|Back) cover", re.IGNORECASE)
+COVER_QUALIFIER_RE = re.compile(r"^[^(]*\(([^)]*)\)")
+ILLUSTRATING_RE = re.compile(r"\(\s*Illustrating\s+[“\"](.+?)[”\"]\s*\.?\s*\)")
+
+
+@dataclass
+class CoverRec:
+    """A registry-shaped view of one bibliography cover entry."""
+
+    entry: BibEntry
+    series_name: str
+    issue_name: Issues | None
+    issue_number: int
+    issue_month: int
+    issue_year: int
+    kind: str  # CoverKind member name: FRONT / INSIDE_FRONT / INSIDE_BACK / BACK
+    seq: int
+    qualifier: str | None
+    description: str
+    illustrates: Titles | None
+
+    @property
+    def key(self) -> tuple[str, int, int, str, int]:
+        return (self.series_name, self.issue_number, self.issue_year, self.kind, self.seq)
+
+
+def collect_covers(series_list: list[BibSeries], warnings: list[str]) -> list[CoverRec]:
+    """Build registry records for every in-scope (non-excluded) cover entry.
+
+    Must run after ``assign_dispositions``: covers already dispositioned as
+    reprints or excluded-section members are out of scope. ``seq`` is the 0-based
+    position within ``(series, issue_number, issue_year, kind)`` in bibliography
+    order, mirroring how the emitted registry disambiguates same-kind covers.
+    """
+    norm_title_map = {norm(s): t for s, t in STR_TITLE_TO_ENUM.items()}
+    seqs: dict[tuple[str, int, int, str], int] = {}
+    recs: list[CoverRec] = []
+    for series in series_list:
+        series_name = bare_series_name(series.h1_name)
+        for issue in series.issues:
+            for e in issue.entries:
+                if not e.is_cover or e.disposition not in (None, Disposition.COVER):
+                    continue
+                head = strip_tags(e.raw_title)
+                kind_m = COVER_KIND_RE.match(head)
+                if kind_m is None:
+                    warnings.append(f"{series_name} {issue.raw_issue_id}: cover kind unparsable: {head!r}")
+                    continue
+                kind = kind_m.group(1).upper().replace(" ", "_")
+                qual_m = COVER_QUALIFIER_RE.match(head)
+                qualifier = qual_m.group(1).strip().lower() if qual_m else None
+
+                illustrates: Titles | None = None
+                ill_m = ILLUSTRATING_RE.search(strip_tags(e.description))
+                if ill_m:
+                    raw = ill_m.group(1).rstrip(".").strip()
+                    if raw in STR_TITLE_TO_ENUM:
+                        illustrates = STR_TITLE_TO_ENUM[raw]
+                    elif norm(raw) in norm_title_map:
+                        illustrates = norm_title_map[norm(raw)]
+                    elif raw in ILLUSTRATES_OVERRIDES:
+                        illustrates = ILLUSTRATES_OVERRIDES[raw]
+                    else:
+                        warnings.append(
+                            f"{series_name} {issue.raw_issue_id}: unresolved "
+                            f"(Illustrating {raw!r}) — add to ILLUSTRATES_OVERRIDES"
+                        )
+
+                seq_key = (series_name, issue.issue_number, issue.issue_year, kind)
+                seq = seqs.get(seq_key, 0)
+                seqs[seq_key] = seq + 1
+                e.cover_key = (series_name, issue.issue_number, issue.issue_year, kind, seq)
+                recs.append(
+                    CoverRec(
+                        entry=e,
+                        series_name=series_name,
+                        issue_name=issue.issue_name,
+                        issue_number=issue.issue_number,
+                        issue_month=issue.issue_month,
+                        issue_year=issue.issue_year,
+                        kind=kind,
+                        seq=seq,
+                        qualifier=qualifier,
+                        description=e.description,
+                        illustrates=illustrates,
+                    )
+                )
+    return recs
+
+
+def verify_covers(cover_recs: list[CoverRec], warnings: list[str]) -> None:
+    """Verify the bibliography covers ↔ ``BARKS_COVERS`` bijection.
+
+    Each verified entry gets ``Disposition.COVER``. Mismatched fields, missing
+    registry records and orphaned registry records are reported as warnings, so
+    later ``source.xhtml`` edits are flagged rather than silently absorbed.
+    """
+    try:
+        from barks_fantagraphics.barks_covers import BARKS_COVERS
+    except ImportError:
+        warnings.append("barks_covers.py not generated yet — run with --emit-covers to bootstrap")
+        return
+
+    by_key = {(c.series_name, c.issue_number, c.issue_year, c.kind.name, c.seq): c for c in BARKS_COVERS}
+    if len(by_key) != len(BARKS_COVERS):
+        warnings.append("BARKS_COVERS contains duplicate keys")
+    claimed: set[tuple] = set()
+    for rec in cover_recs:
+        cover = by_key.get(rec.key)
+        if cover is None:
+            warnings.append(f"cover registry: no BarksCover for bibliography entry {rec.key}")
+            continue
+        claimed.add(rec.key)
+        mismatches = []
+        if (cover.submitted_day, cover.submitted_month, cover.submitted_year) != (
+            rec.entry.submitted_day, rec.entry.submitted_month, rec.entry.submitted_year
+        ):
+            mismatches.append("submitted date")
+        if cover.qualifier != rec.qualifier:
+            mismatches.append("qualifier")
+        if strip_tags(cover.description) != strip_tags(rec.description):
+            mismatches.append("description")
+        if cover.illustrates != rec.illustrates:
+            mismatches.append("illustrates")
+        if mismatches:
+            warnings.append(f"cover registry: {rec.key} differs from bibliography: {', '.join(mismatches)}")
+            continue
+        rec.entry.disposition = Disposition.COVER
+    for key in by_key.keys() - claimed:
+        warnings.append(f"cover registry: BarksCover {key} has no bibliography entry")
+
+
+def emit_covers_module(cover_recs: list[CoverRec]) -> None:
+    lines: list[str] = []
+    w = lines.append
+    w("# ruff: noqa: E501, RUF001")
+    w("")
+    w('"""Carl Barks comic-book covers, from Michael Barrier\'s bibliography.')
+    w("")
+    w("Bootstrap-generated by experiments/bibliography/parse_bibliography.py --emit-covers,")
+    w("then hand-maintained (like comic_book_info.py). The reconciliation report verifies")
+    w("the one-to-one match between these records and the bibliography's cover entries.")
+    w('"""')
+    w("")
+    w("from dataclasses import dataclass")
+    w("from enum import Enum, auto")
+    w("")
+    w("from .barks_titles import Titles")
+    w("from .comic_issues import Issues")
+    w("")
+    w("")
+    w("class CoverKind(Enum):")
+    w("    FRONT = auto()")
+    w("    INSIDE_FRONT = auto()")
+    w("    INSIDE_BACK = auto()")
+    w("    BACK = auto()")
+    w("")
+    w("")
+    w("CoverKey = tuple[str, int, int, str, int]")
+    w("")
+    w("")
+    w('''@dataclass(frozen=True)
+class BarksCover:
+    issue_name: Issues | None  # None for series with no Issues member (cover-only albums)
+    series_name: str  # bibliography H1 series name
+    issue_number: int  # -1 for unnumbered issues
+    issue_month: int
+    issue_year: int
+    kind: CoverKind
+    seq: int  # 0-based tie-breaker within (series, issue, year, kind)
+    qualifier: str | None  # e.g. "art only", "part", "pencil rough only"
+    description: str
+    submitted_day: int
+    submitted_month: int
+    submitted_year: int
+    illustrates: Titles | None  # the curated story this cover illustrates, if any
+
+    @property
+    def key(self) -> CoverKey:
+        return (self.series_name, self.issue_number, self.issue_year, self.kind.name, self.seq)''')
+    w("")
+    w("")
+    w("BARKS_COVERS: list[BarksCover] = [")
+    for rec in cover_recs:
+        e = rec.entry
+        w("    BarksCover(")
+        w(f"        issue_name={py_repr(rec.issue_name)},")
+        w(f"        series_name={rec.series_name!r},")
+        w(f"        issue_number={rec.issue_number!r},")
+        w(f"        issue_month={rec.issue_month!r},")
+        w(f"        issue_year={rec.issue_year!r},")
+        w(f"        kind=CoverKind.{rec.kind},")
+        w(f"        seq={rec.seq!r},")
+        w(f"        qualifier={rec.qualifier!r},")
+        w(f"        description={rec.description!r},")
+        w(f"        submitted_day={e.submitted_day!r},")
+        w(f"        submitted_month={e.submitted_month!r},")
+        w(f"        submitted_year={e.submitted_year!r},")
+        w(f"        illustrates={py_repr(rec.illustrates)},")
+        w("    ),")
+    w("]")
+    w("")
+    w("BARKS_COVER_BY_KEY: dict[CoverKey, BarksCover] = {cover.key: cover for cover in BARKS_COVERS}")
+    w("assert len(BARKS_COVER_BY_KEY) == len(BARKS_COVERS), \"duplicate BarksCover keys\"")
+    w("")
+
+    OUT_COVERS_MODULE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    subprocess.run(["uv", "run", "ruff", "format", str(OUT_COVERS_MODULE)], check=False)
+    print(f"\nWROTE {OUT_COVERS_MODULE} ({len(cover_recs)} covers)")
+
+
+# --------------------------------------------------------------------------- #
 # Reporting
 # --------------------------------------------------------------------------- #
 def date_tuple(cbi: ComicBookInfo) -> tuple[int, int, int]:
     return (cbi.submitted_day, cbi.submitted_month, cbi.submitted_year)
 
 
-def report(series_list: list[BibSeries], results: list[MatchResult]) -> None:
+def report(
+    series_list: list[BibSeries],
+    results: list[MatchResult],
+    disposition_warnings: list[str],
+) -> None:
     n = len(results)
     by_method: dict[str, int] = {}
     for r in results:
@@ -765,12 +1086,53 @@ def report(series_list: list[BibSeries], results: list[MatchResult]) -> None:
         for r in unavailable:
             print(f"  {ENUM_TO_STR_TITLE[r.cbi.title]}")
 
-    total_entries = sum(len(i.entries) for s in series_list for i in s.issues)
-    linked = sum(1 for r in results if r.entry is not None)
-    print(
-        f"\nEXTRAS: {total_entries - linked} bibliography entries with no ComicBookInfo "
-        f"(front covers, reprints, non-curated)."
-    )
+    # ----------------------------------------------------------------- #
+    # Dispositions: every bibliography entry must end up explained.
+    # ----------------------------------------------------------------- #
+    disp_counts: dict[str, int] = {}
+    undisposed_covers: list[tuple[BibSeries, BibIssue, BibEntry]] = []
+    undisposed_stories: list[tuple[BibSeries, BibIssue, BibEntry]] = []
+    for s in series_list:
+        for i in s.issues:
+            for e in i.entries:
+                key = e.disposition.name if e.disposition is not None else "UNDISPOSED"
+                disp_counts[key] = disp_counts.get(key, 0) + 1
+                if e.disposition is None:
+                    (undisposed_covers if e.is_cover else undisposed_stories).append((s, i, e))
+
+    total_entries = sum(disp_counts.values())
+    print(f"\nDISPOSITIONS ({total_entries} bibliography entries):")
+    for name in (*(d.name for d in Disposition), "UNDISPOSED"):
+        print(f"  {name:16s}: {disp_counts.get(name, 0)}")
+
+    if disposition_warnings:
+        print(f"\nDISPOSITION WARNINGS ({len(disposition_warnings)}) — fix before trusting the counts:")
+        for warning in disposition_warnings:
+            print(f"  {warning}")
+
+    if undisposed_covers:
+        by_series: dict[str, int] = {}
+        for s, _i, _e in undisposed_covers:
+            name = bare_series_name(s.h1_name)
+            by_series[name] = by_series.get(name, 0) + 1
+        print(
+            f"\nUNDISPOSED COVERS ({len(undisposed_covers)}) — Phase 3 cover-registry work queue:"
+        )
+        for name, count in sorted(by_series.items()):
+            print(f"  {count:4d}  {name}")
+
+    if undisposed_stories:
+        print(
+            f"\nUNDISPOSED STORIES ({len(undisposed_stories)}) — Phase 2 add-candidates:"
+        )
+        for s, i, e in undisposed_stories:
+            print(
+                f"  {bare_series_name(s.h1_name)[:28]:28s} {i.raw_issue_id:15s} "
+                f"{strip_tags(e.raw_title)[:42]:44s} {strip_tags(e.description)[:50]}"
+            )
+
+    if not undisposed_covers and not undisposed_stories:
+        print("\nUNDISPOSED: 0 — one-to-one invariant holds.")
 
 
 def dump_issue_entries(series_list: list[BibSeries], cbi: ComicBookInfo) -> None:
@@ -809,12 +1171,25 @@ def emit_module(series_list: list[BibSeries]) -> None:
     w('"""')
     w("")
     w("from dataclasses import dataclass")
+    w("from enum import Enum, auto")
     w("")
     w("from .barks_titles import Titles")
     w("from .comic_issues import Issues")
     w("")
     w("")
     for cls in (
+        '''class Disposition(Enum):
+    """Why this entry does (or does not) link to a library record.
+
+    Every entry carries exactly one disposition - the one-to-one invariant
+    between the bibliography and the curated library.
+    """
+
+    MATCHED_TITLE = auto()  # linked to a Titles member (see ``title``)
+    COVER = auto()  # linked to a BarksCover registry record (see ``cover_key``)
+    REPRINT = auto()  # reprint of an earlier appearance; the original carries the link
+    EXCLUDED_SECTION = auto()  # whole section out of scope (non-duck series)
+    EXCLUDED_ENTRY = auto()  # individually excluded, with a reason''',
         '''@dataclass(frozen=True)
 class BibEntry:
     raw_title: str
@@ -828,7 +1203,10 @@ class BibEntry:
     raw_date: str
     date_unavailable: bool
     notes: tuple[str, ...]
-    title: Titles | None''',
+    title: Titles | None
+    disposition: Disposition
+    disposition_reason: str | None
+    cover_key: tuple[str, int, int, str, int] | None''',
         '''@dataclass(frozen=True)
 class BibIssue:
     raw_issue_id: str
@@ -884,6 +1262,12 @@ class BibSeries:
                 w(f"                        date_unavailable={e.date_unavailable!r},")
                 w(f"                        notes={tuple(e.notes)!r},")
                 w(f"                        title={py_repr(e.title)},")
+                if e.disposition is None:
+                    msg = f"entry {e.raw_title!r} has no disposition - cannot emit"
+                    raise ValueError(msg)
+                w(f"                        disposition=Disposition.{e.disposition.name},")
+                w(f"                        disposition_reason={e.disposition_reason!r},")
+                w(f"                        cover_key={e.cover_key!r},")
                 w("                    ),")
             w("                ),")
             w(f"                notes={tuple(issue.notes)!r},")
@@ -911,7 +1295,12 @@ class BibSeries:
 def main() -> None:
     series_list = parse_tree()
     results = match_all(series_list)
-    report(series_list, results)
+    disposition_warnings = assign_dispositions(series_list)
+    cover_recs = collect_covers(series_list, disposition_warnings)
+    if "--emit-covers" in sys.argv:
+        emit_covers_module(cover_recs)
+    verify_covers(cover_recs, disposition_warnings)
+    report(series_list, results, disposition_warnings)
     if "--emit" in sys.argv:
         emit_module(series_list)
 

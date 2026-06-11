@@ -12,7 +12,9 @@ from barks_fantagraphics.barks_bibliography import (
     BibEntry,
     BibIssue,
     BibSeries,
+    Disposition,
 )
+from barks_fantagraphics.barks_covers import BARKS_COVER_BY_KEY, BARKS_COVERS
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 
@@ -68,3 +70,45 @@ def test_mapped_entries_have_descriptions() -> None:
     for entry in TITLE_TO_BIB_ENTRY.values():
         assert not entry.is_cover
         assert entry.description or entry.notes
+
+
+def _all_entries() -> list[BibEntry]:
+    return [e for s in BIBLIOGRAPHY for i in s.issues for e in i.entries]
+
+
+def test_every_entry_has_exactly_one_disposition() -> None:
+    """Zero undisposed entries - the permanent one-to-one invariant."""
+    for entry in _all_entries():
+        assert isinstance(entry.disposition, Disposition)
+        # The disposition's payload fields agree with the disposition kind.
+        assert (entry.disposition == Disposition.MATCHED_TITLE) == (entry.title is not None)
+        assert (entry.disposition == Disposition.COVER) == (entry.cover_key is not None)
+        if entry.disposition in (Disposition.EXCLUDED_SECTION, Disposition.EXCLUDED_ENTRY):
+            assert entry.disposition_reason
+
+
+def test_matched_story_entries_have_unique_titles() -> None:
+    """Story/gag entry <-> Titles member is one-to-one."""
+    matched = [e for e in _all_entries() if e.disposition == Disposition.MATCHED_TITLE]
+    assert len(matched) == len(TITLE_TO_BIB_ENTRY)
+
+
+def test_cover_entries_match_registry_one_to_one() -> None:
+    """Cover entry <-> BarksCover record is one-to-one."""
+    cover_entries = [e for e in _all_entries() if e.disposition == Disposition.COVER]
+    keys = [e.cover_key for e in cover_entries]
+    assert len(keys) == len(set(keys)), "duplicate cover keys among bibliography entries"
+    for key in keys:
+        assert key in BARKS_COVER_BY_KEY, f"no BarksCover for bibliography cover {key}"
+    assert len(cover_entries) == len(BARKS_COVERS), (
+        "BarksCover records with no bibliography cover entry"
+    )
+
+
+def test_cover_registry_keys_are_consistent() -> None:
+    """Each registry record's key property round-trips through BARKS_COVER_BY_KEY."""
+    assert len(BARKS_COVER_BY_KEY) == len(BARKS_COVERS)
+    for cover in BARKS_COVERS:
+        assert BARKS_COVER_BY_KEY[cover.key] is cover
+        if cover.illustrates is not None:
+            assert isinstance(cover.illustrates, Titles)

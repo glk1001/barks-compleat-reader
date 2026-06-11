@@ -14,7 +14,6 @@ alvis
 americanos
 amun
 anders
-anders
 angelboy
 angelface
 applecheeks
@@ -211,6 +210,7 @@ duckburgian
 duckburgians
 duckburgs
 duckfeathers
+duckmade
 duckmite
 ducko
 duplicatillion
@@ -278,6 +278,7 @@ frozenbear
 fuddy
 fued
 fulldrip
+garou
 garé
 garé's
 gaston
@@ -431,6 +432,7 @@ madball
 magica
 magica's
 magnifique
+malayalaya
 mam'selle
 mammalarius
 manco
@@ -524,7 +526,6 @@ nnated
 nontitle
 nontitles
 noogan
-noogan
 northdale
 nosuchium
 numa
@@ -540,8 +541,8 @@ outfly
 outscramble
 overplusillion
 overseeded
+paddleballs
 paddleocr
-pago
 pago
 pahlsom
 palo
@@ -598,7 +599,6 @@ pulpbugle
 pulpheart
 pumpkinburg
 punc
-punct
 punct
 pupp
 putzoutski
@@ -823,6 +823,7 @@ virginny
 volcanovia
 volcanovian
 wagga
+waggin
 wagonload
 waha
 walkie

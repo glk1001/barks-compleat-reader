@@ -1,6 +1,6 @@
 from enum import CONTINUOUS, UNIQUE, IntEnum, auto, verify
 
-NUM_TITLES = 663 + 4 + 1  # +4 for articles, +1 for the All One-Pagers collection
+NUM_TITLES = 684 + 4 + 1  # +4 for articles, +1 for the All One-Pagers collection
 
 GYRO_GEARLOOSE = "Gyro Gearloose"
 
@@ -513,6 +513,11 @@ class Titles(IntEnum):
     TOO_MUCH_HELP = auto()
     RULING_THE_ROOST = auto()
     DARINGLY_DIFFERENT = auto()
+    SMALL_FRYERS = auto()
+    FALSE_FLATTERY = auto()
+    FRIENDLY_ENEMY = auto()
+    UNDERCOVER_GIRL = auto()
+    INVENTIVE_GENTLEMAN_THE = auto()
     THAT_SMALL_FEELING = auto()
     MADCAP_MARINER_THE = auto()
     TERRIBLE_TOURIST = auto()
@@ -530,6 +535,8 @@ class Titles(IntEnum):
     MIGHTY_BUT_MISERABLE = auto()
     BRAIN_STRAIN = auto()
     NOSE_KNOWS_THE = auto()
+    OLD_TIMER_THE = auto()
+    MECHANIZED_MESS = auto()
     STRANGER_THAN_FICTION = auto()
     BOXED_IN = auto()
     CHUGWAGON_DERBY = auto()
@@ -660,10 +667,13 @@ class Titles(IntEnum):
     DOOM_DIAMOND_THE = auto()
     CATTLE_KING_THE = auto()
     KING_SCROOGE_THE_FIRST = auto()
+    PAWNS_OF_THE_LOUP_GAROU = auto()
+    OFFICER_OF_THE_DAY = auto()
     PERIL_OF_THE_BLACK_FOREST = auto()
     LIFE_SAVERS = auto()
     WHALE_OF_A_GOOD_DEED = auto()
     BAD_DAY_FOR_TROOP_A = auto()
+    DAY_IN_A_DUCKS_LIFE_A = auto()
     LET_SLEEPING_BONES_LIE = auto()
     SAVIORS_OF_THE_LAKE = auto()
     BOTTLED_BATTLERS = auto()
@@ -673,6 +683,17 @@ class Titles(IntEnum):
     STORM_DANCERS = auto()
     HOUND_OF_THE_MOANING_HILLS = auto()
     DAY_THE_MOUNTAIN_SHOOK_THE = auto()
+    GOLD_OF_THE_49ERS = auto()
+    DUCKMADE_DISASTER = auto()
+    WAILING_WHALERS = auto()
+    WHERE_THERES_SMOKE = auto()
+    BE_LEERY_OF_LAKE_EERIE = auto()
+    TEAHOUSE_OF_THE_WAGGIN_DRAGON = auto()
+    NEW_ZOO_BREWS_ADO = auto()
+    MUSIC_HATH_CHARMS = auto()
+    PHANTOM_JOKER_THE = auto()
+    HARK_HARK_THE_ARK = auto()
+    CAPTAINS_OUTRAGEOUS = auto()
     # Synthetic collection (not a real Barks story) - bundles every one-pager.
     ALL_ONE_PAGERS = auto()
     # Not comics below!
@@ -729,6 +750,7 @@ _TITLE_OVERRIDES: dict[str, str] = {
     "CHELTENHAMS_CHOICE": "Cheltenham's Choice",
     "CLASSY_TAXI": "Classy Taxi!",
     "DAISYS_DAZED_DAYS": "Daisy's Dazed Days",
+    "DAY_IN_A_DUCKS_LIFE_A": "A Day in a Duck's Life",
     "DIG_IT": "Dig it!",
     "DOG_SITTER_THE": "The Dog-sitter",
     "DONALD_DUCK_AND_THE_MUMMYS_RING": "Donald Duck and the Mummy's Ring",
@@ -758,12 +780,14 @@ _TITLE_OVERRIDES: dict[str, str] = {
     "GLADSTONES_TERRIBLE_SECRET": "Gladstone's Terrible Secret",
     "GLADSTONES_USUAL_VERY_GOOD_YEAR": "Gladstone's Usual Very Good Year",
     "GOLD_FINDER_THE": "The Gold-Finder",
+    "GOLD_OF_THE_49ERS": "Gold of the '49ers",
     "GOPHER_GOOF_UPS": "Gopher Goof-Ups",
     "GRANDMAS_PRESENT": "Grandma's Present",
     "GREAT_DUCKBURG_FROG_JUMPING_CONTEST_THE": "The Great Duckburg Frog-Jumping Contest",
     "GREAT_POP_UP_THE": "The Great Pop Up",
     "GYROS_IMAGINATION_INVENTION": "Gyro's Imagination Invention",
     "HALF_BAKED_BAKER_THE": "The Half-Baked Baker",
+    "HARK_HARK_THE_ARK": "Hark, Hark, the Ark",
     "HAVE_GUN_WILL_DANCE": "Have Gun, Will Dance",
     "HELPERS_HELPING_HAND_A": "A Helper's Helping Hand",
     "HIGH_WIRE_DAREDEVILS": "High-wire Daredevils",
@@ -813,6 +837,7 @@ _TITLE_OVERRIDES: dict[str, str] = {
     "TEN_CENT_VALENTINE": "Ten-Cent Valentine",
     "TEN_CENTS_WORTH_OF_TROUBLE": "Ten Cents' Worth of Trouble",
     "TEN_DOLLAR_DITHER": "Ten-Dollar Dither",
+    "TEAHOUSE_OF_THE_WAGGIN_DRAGON": "Teahouse of the Waggin' Dragon",
     "TEN_STAR_GENERALS": "Ten-Star Generals",
     "TERROR_OF_THE_RIVER_THE": "The Terror of the River!!",
     "THATS_NO_FABLE": "That's No Fable!",
@@ -826,6 +851,7 @@ _TITLE_OVERRIDES: dict[str, str] = {
     "TWO_WAY_LUCK": "Two-Way Luck",
     "UP_AND_AT_IT": "Up and at It",
     "WANT_TO_BUY_AN_ISLAND": "Want to Buy an Island?",
+    "WHERE_THERES_SMOKE": "Where There's Smoke",
     "YOICKS_THE_FOX": "Yoicks! The Fox!",
     "YOU_CANT_GUESS": "You Can't Guess!",
     "YOU_CANT_WIN": "You Can't Win",
