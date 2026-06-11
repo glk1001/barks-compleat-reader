@@ -118,8 +118,7 @@ def test_matched_entries_sit_in_the_curated_issue() -> None:
                     assert issue.issue_number == cbi.issue_number, entry.title.name
 
 
-# The dash class covers both hyphen and en dash, as printed in Barrier.
-_MONTH_SPAN_RE = re.compile(r"([A-Za-z]{3,9})\.?\s*[-\u2013]\s*([A-Za-z]{3,9})\.?")
+_MONTH_SPAN_RE = re.compile(r"([A-Za-z]{3,9})\.?\s*-\s*([A-Za-z]{3,9})\.?")
 _YEAR_RE = re.compile(r"19\d{2}")
 _MONTH_PREFIXES = (
     "jan",
