@@ -7,7 +7,69 @@ from dataclasses import dataclass
 
 from .barks_titles import ENUM_TO_STR_TITLE, Titles
 from .comic_book_info import BARKS_TITLE_INFO, ComicBookInfo
-from .comic_issues import ISSUE_NAME, Issues
+from .fanta_series_data import SERIES_INFO
+
+# Many of these are unused here and re-exported for backward compatibility -
+# their definitions moved to fanta_series_info.
+from .fanta_series_info import (  # noqa: F401
+    BAR,
+    BIGD,
+    COL,
+    DIGI,
+    DIT,
+    EGMONT,
+    EROS,
+    FANTA_01,
+    FANTA_02,
+    FANTA_03,
+    FANTA_04,
+    FANTA_05,
+    FANTA_06,
+    FANTA_07,
+    FANTA_08,
+    FANTA_09,
+    FANTA_10,
+    FANTA_11,
+    FANTA_12,
+    FANTA_13,
+    FANTA_14,
+    FANTA_15,
+    FANTA_16,
+    FANTA_17,
+    FANTA_18,
+    FANTA_19,
+    FANTA_20,
+    FANTA_21,
+    FANTA_22,
+    FANTA_23,
+    FANTA_24,
+    FANTA_25,
+    FANTA_26,
+    FANTA_27,
+    FANTA_28,
+    FANTA_29,
+    GER,
+    GLEA,
+    JRC,
+    MARJ,
+    NEA,
+    RTOM,
+    SERIES_CS,
+    SERIES_DDA,
+    SERIES_DDS,
+    SERIES_EXTRAS,
+    SERIES_GG,
+    SERIES_MISC,
+    SERIES_ONE_PAGERS,
+    SERIES_USA,
+    SERIES_USS,
+    SLEA,
+    SUMH,
+    TOZ,
+    FantaSeriesInfo,
+    get_fanta_volume_from_str,
+    get_fanta_volume_str,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,15 +135,6 @@ def _get_all_fanta_comic_book_info() -> FantaComicBookInfoDict:
     return all_fanta_info
 
 
-def get_fanta_volume_str(volume: int) -> str:
-    return f"FANTA_{volume:02}"
-
-
-def get_fanta_volume_from_str(volume_str: str) -> int:
-    assert volume_str.startswith("FANTA_")
-    return int(volume_str[-2:])
-
-
 @dataclass(frozen=True, slots=True)
 class FantaBook:
     title: str
@@ -109,36 +162,6 @@ FANTAGRAPHICS_FIXES_DIRNAME = FANTAGRAPHICS + "-fixes-and-additions"
 FANTAGRAPHICS_FIXES_SCRAPS_DIRNAME = FANTAGRAPHICS_FIXES_DIRNAME + "-scraps"
 FANTAGRAPHICS_UPSCAYLED_FIXES_DIRNAME = FANTAGRAPHICS_UPSCAYLED_DIRNAME + "-fixes-and-additions"
 FANTAGRAPHICS_PANEL_SEGMENTS_DIRNAME = FANTAGRAPHICS_RESTORED_DIRNAME + "-panel-segments"
-
-FANTA_01 = "FANTA_01"
-FANTA_02 = "FANTA_02"
-FANTA_03 = "FANTA_03"
-FANTA_04 = "FANTA_04"
-FANTA_05 = "FANTA_05"
-FANTA_06 = "FANTA_06"
-FANTA_07 = "FANTA_07"
-FANTA_08 = "FANTA_08"
-FANTA_09 = "FANTA_09"
-FANTA_10 = "FANTA_10"
-FANTA_11 = "FANTA_11"
-FANTA_12 = "FANTA_12"
-FANTA_13 = "FANTA_13"
-FANTA_14 = "FANTA_14"
-FANTA_15 = "FANTA_15"
-FANTA_16 = "FANTA_16"
-FANTA_17 = "FANTA_17"
-FANTA_18 = "FANTA_18"
-FANTA_19 = "FANTA_19"
-FANTA_20 = "FANTA_20"
-FANTA_21 = "FANTA_21"
-FANTA_22 = "FANTA_22"
-FANTA_23 = "FANTA_23"
-FANTA_24 = "FANTA_24"
-FANTA_25 = "FANTA_25"
-FANTA_26 = "FANTA_26"
-FANTA_27 = "FANTA_27"
-FANTA_28 = "FANTA_28"
-FANTA_29 = "FANTA_29"
 
 DD = "Donald Duck"
 US = "Uncle Scrooge"
@@ -241,43 +264,6 @@ FIRST_VOLUME_NUMBER = 1
 LAST_VOLUME_NUMBER = len(FANTA_SOURCE_COMICS)
 NUM_VOLUMES = LAST_VOLUME_NUMBER - FIRST_VOLUME_NUMBER + 1
 
-SERIES_DDA = ISSUE_NAME[Issues.DD] + " Adventures"
-SERIES_USA = ISSUE_NAME[Issues.US] + " Adventures"
-SERIES_DDS = ISSUE_NAME[Issues.DD] + " Short Stories"
-SERIES_USS = ISSUE_NAME[Issues.US] + " Short Stories"
-SERIES_CS = ISSUE_NAME[Issues.CS]
-SERIES_GG = "Gyro Gearloose"
-SERIES_MISC = "Misc"
-SERIES_EXTRAS = "Extras"
-SERIES_ONE_PAGERS = "One Pagers"
-
-RTOM = "Rich Tommaso"
-GLEA = "Gary Leach"
-SLEA = "Susan Daigle-Leach"
-DIGI = "Digikore Studios"
-BIGD = "Big Doors Studios"
-JRC = "Joseph Robert Cowles"
-TOZ = "Tom Ziuko"
-EROS = "Erik Rosengarten"
-DIT = "Disney Italia"
-GER = "David Gerstein"
-BAR = "Barry Englin Grossman"
-COL = "Colleen Winkler"
-NEA = "Nea Atkina A.E. and Kneon Transitt"
-EGMONT = "Egmont"
-MARJ = "Marie Javins"
-SUMH = "Summer Hinton"
-
-
-@dataclass(frozen=True, slots=True)
-class FantaSeriesInfo:
-    title: Titles
-    colorist: str
-    series_name: str
-    fanta_volume: str
-    number_in_series: int = -1
-
-
 SERIES_INFO_START_NUMBERS: dict[str, int] = {
     SERIES_DDA: 1,
     SERIES_USA: 1,
@@ -296,10 +282,6 @@ _CENSORED_TITLE_ENUMS = (Titles.GOOD_DEEDS, Titles.SILENT_NIGHT, Titles.MILKMAN_
 CENSORED_TITLES = [ENUM_TO_STR_TITLE[t] for t in _CENSORED_TITLE_ENUMS]
 HAND_RESTORED_TITLES = [ENUM_TO_STR_TITLE[t] for t in (Titles.GOOD_DEEDS, Titles.SILENT_NIGHT)]
 SILENT_NIGHT_PUBLICATION_ISSUE = "Gemstone's Christmas Parade, No.3, 2005"
-
-# Late import: fanta_series_data imports FantaSeriesInfo and constants from this module.
-# The circular import is safe because those symbols are fully defined above this line.
-from .fanta_series_data import SERIES_INFO  # noqa: E402
 
 ALL_LISTS = "All"
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from .barks_titles import Titles as Bt
 from .comic_book_info import ONE_PAGER_LOCATIONS, get_located_one_pagers
-from .fanta_comics_info import (
+from .fanta_series_info import (
     BAR,
     BIGD,
     COL,

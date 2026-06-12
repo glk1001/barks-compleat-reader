@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .barks_tags import TagCategories, TagGroups, Tags
+from .barks_tags_enums import TagCategories, TagGroups, Tags
 from .barks_titles import Titles
 from .comic_book_info import NON_COMIC_TITLES
 
