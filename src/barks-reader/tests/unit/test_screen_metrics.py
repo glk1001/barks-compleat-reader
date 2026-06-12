@@ -13,6 +13,27 @@ from barks_reader.core.screen_metrics import (
 from screeninfo import get_monitors
 
 
+def _mock_monitor(
+    *,
+    x: int = 0,
+    y: int = 0,
+    width: int = 1920,
+    height: int = 1080,
+    width_mm: int | None = 100,
+    height_mm: int | None = 100,
+    is_primary: bool = True,
+) -> MagicMock:
+    monitor = MagicMock()
+    monitor.x = x
+    monitor.y = y
+    monitor.width = width
+    monitor.height = height
+    monitor.width_mm = width_mm
+    monitor.height_mm = height_mm
+    monitor.is_primary = is_primary
+    return monitor
+
+
 class TestScreenMetrics:
     def test_get_approximate_taskbar_height(self) -> None:
         """Test taskbar height calculation for different platforms."""
@@ -38,14 +59,7 @@ class TestScreenMetrics:
 
     def test_init_valid_monitors(self) -> None:
         """Test initialization with valid monitors."""
-        mock_monitor = MagicMock()
-        mock_monitor.x = 0
-        mock_monitor.y = 0
-        mock_monitor.width = 1920
-        mock_monitor.height = 1080
-        mock_monitor.width_mm = 508
-        mock_monitor.height_mm = 285
-        mock_monitor.is_primary = True
+        mock_monitor = _mock_monitor(width_mm=508, height_mm=285)
 
         with patch.object(
             screen_metrics_module, get_monitors.__name__, return_value=[mock_monitor]
@@ -63,14 +77,9 @@ class TestScreenMetrics:
 
     def test_init_invalid_dimensions(self) -> None:
         """Test initialization with monitors having invalid physical dimensions."""
-        mock_monitor = MagicMock()
-        mock_monitor.x = 0
-        mock_monitor.y = 0
-        mock_monitor.width = 1024
-        mock_monitor.height = 768
-        mock_monitor.width_mm = None
-        mock_monitor.height_mm = 0
-        mock_monitor.is_primary = False
+        mock_monitor = _mock_monitor(
+            width=1024, height=768, width_mm=None, height_mm=0, is_primary=False
+        )
 
         with patch.object(
             screen_metrics_module, get_monitors.__name__, return_value=[mock_monitor]
@@ -86,15 +95,8 @@ class TestScreenMetrics:
 
     def test_get_primary_screen_info(self) -> None:
         """Test retrieving the primary screen info."""
-        mock_primary = MagicMock()
-        mock_primary.is_primary = True
-        mock_primary.width_mm = 100
-        mock_primary.height_mm = 100
-
-        mock_secondary = MagicMock()
-        mock_secondary.is_primary = False
-        mock_secondary.width_mm = 100
-        mock_secondary.height_mm = 100
+        mock_primary = _mock_monitor(is_primary=True)
+        mock_secondary = _mock_monitor(is_primary=False)
 
         with patch.object(
             screen_metrics_module,
@@ -107,10 +109,7 @@ class TestScreenMetrics:
 
     def test_get_primary_screen_info_fallback(self) -> None:
         """Test fallback to first screen if no primary is marked."""
-        mock_secondary = MagicMock()
-        mock_secondary.is_primary = False
-        mock_secondary.width_mm = 100
-        mock_secondary.height_mm = 100
+        mock_secondary = _mock_monitor(is_primary=False)
 
         with patch.object(
             screen_metrics_module, get_monitors.__name__, return_value=[mock_secondary]
@@ -122,25 +121,8 @@ class TestScreenMetrics:
 
     def test_get_monitor_for_pos(self) -> None:
         """Test finding a monitor for a given coordinate."""
-        # Monitor 1: 0,0 to 1920,1080
-        m1 = MagicMock()
-        m1.x = 0
-        m1.y = 0
-        m1.width = 1920
-        m1.height = 1080
-        m1.width_mm = 100
-        m1.height_mm = 100
-        m1.is_primary = True
-
-        # Monitor 2: 1920,0 to 3840,1080
-        m2 = MagicMock()
-        m2.x = 1920
-        m2.y = 0
-        m2.width = 1920
-        m2.height = 1080
-        m2.width_mm = 100
-        m2.height_mm = 100
-        m2.is_primary = False
+        m1 = _mock_monitor()  # Monitor 1: 0,0 to 1920,1080
+        m2 = _mock_monitor(x=1920, is_primary=False)  # Monitor 2: 1920,0 to 3840,1080
 
         with patch.object(screen_metrics_module, get_monitors.__name__, return_value=[m1, m2]):
             metrics = ScreenMetrics()
@@ -157,14 +139,7 @@ class TestScreenMetrics:
 
     def test_refresh_no_change(self) -> None:
         """Test refresh returns False when monitor dimensions are unchanged."""
-        mock_monitor = MagicMock()
-        mock_monitor.x = 0
-        mock_monitor.y = 0
-        mock_monitor.width = 1920
-        mock_monitor.height = 1080
-        mock_monitor.width_mm = 508
-        mock_monitor.height_mm = 285
-        mock_monitor.is_primary = True
+        mock_monitor = _mock_monitor(width_mm=508, height_mm=285)
 
         with patch.object(
             screen_metrics_module, get_monitors.__name__, return_value=[mock_monitor]
@@ -174,23 +149,8 @@ class TestScreenMetrics:
 
     def test_refresh_detects_rotation(self) -> None:
         """Test refresh returns True when monitor dimensions change (rotation)."""
-        mock_landscape = MagicMock()
-        mock_landscape.x = 0
-        mock_landscape.y = 0
-        mock_landscape.width = 1920
-        mock_landscape.height = 1080
-        mock_landscape.width_mm = 508
-        mock_landscape.height_mm = 285
-        mock_landscape.is_primary = True
-
-        mock_portrait = MagicMock()
-        mock_portrait.x = 0
-        mock_portrait.y = 0
-        mock_portrait.width = 1080
-        mock_portrait.height = 1920
-        mock_portrait.width_mm = 285
-        mock_portrait.height_mm = 508
-        mock_portrait.is_primary = True
+        mock_landscape = _mock_monitor(width_mm=508, height_mm=285)
+        mock_portrait = _mock_monitor(width=1080, height=1920, width_mm=285, height_mm=508)
 
         with patch.object(
             screen_metrics_module, get_monitors.__name__, return_value=[mock_landscape]

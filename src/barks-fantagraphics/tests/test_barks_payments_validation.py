@@ -52,19 +52,29 @@ def _payment(
     )
 
 
-def _patch_data(
+def _run_validation(
+    capsys: pytest.CaptureFixture[str],
     *,
     title_info: list[ComicBookInfo],
     payments: dict[Titles, PaymentInfo],
     one_pagers: list[Titles] | None = None,
     non_comic: list[Titles] | None = None,
-) -> tuple:
-    return (
+    expect_assertion_error: bool = False,
+) -> str:
+    """Run ``validate_payment_data`` against patched data tables and return its output."""
+    with (
         patch.object(bp_module, "BARKS_TITLE_INFO", title_info),
         patch.object(bp_module, "BARKS_PAYMENTS", payments),
         patch.object(bp_module, "ONE_PAGERS", one_pagers or []),
         patch.object(bp_module, "NON_COMIC_TITLES", non_comic or []),
-    )
+    ):
+        if expect_assertion_error:
+            with pytest.raises(AssertionError):
+                validate_payment_data()
+        else:
+            validate_payment_data()  # Should not raise.
+
+    return capsys.readouterr().out
 
 
 class TestValidatePaymentData:
@@ -72,14 +82,11 @@ class TestValidatePaymentData:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
-        patches = _patch_data(
+        out = _run_validation(
+            capsys,
             title_info=[_info(title, 1, 1, 1943)],
             payments={title: _payment(title, 15, 2, 1943)},
         )
-        with patches[0], patches[1], patches[2], patches[3]:
-            validate_payment_data()  # Should not raise.
-
-        out = capsys.readouterr().out
         assert "0 issue(s) found" in out
 
     def test_missing_payment_for_multi_page_title_raises(
@@ -88,14 +95,12 @@ class TestValidatePaymentData:
         # Multi-page (non one-pager) without a payment entry — counted as
         # ``missing_payment_errors`` and fails the assertion.
         title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
-        patches = _patch_data(
+        out = _run_validation(
+            capsys,
             title_info=[_info(title, 1, 1, 1943)],
             payments={},
+            expect_assertion_error=True,
         )
-        with patches[0], patches[1], patches[2], patches[3], pytest.raises(AssertionError):
-            validate_payment_data()
-
-        out = capsys.readouterr().out
         assert "has no payment info" in out
         assert "missing payment info: 1" in out
 
@@ -105,15 +110,12 @@ class TestValidatePaymentData:
         # One-pagers without payment info are reported but not counted as a
         # hard error — assertion still passes.
         title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
-        patches = _patch_data(
+        out = _run_validation(
+            capsys,
             title_info=[_info(title, 1, 1, 1943)],
             payments={},
             one_pagers=[title],
         )
-        with patches[0], patches[1], patches[2], patches[3]:
-            validate_payment_data()
-
-        out = capsys.readouterr().out
         assert "missing one-pager payments: 1" in out
         assert "missing payment info: 0" in out
 
@@ -121,14 +123,11 @@ class TestValidatePaymentData:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
-        patches = _patch_data(
+        out = _run_validation(
+            capsys,
             title_info=[_info(title, 15, 6, 1943)],
             payments={title: _payment(title, 1, 6, 1943)},
         )
-        with patches[0], patches[1], patches[2], patches[3]:
-            validate_payment_data()
-
-        out = capsys.readouterr().out
         assert "is before submitted date" in out
         assert "accepted-before-submitted: 1" in out
 
@@ -136,14 +135,11 @@ class TestValidatePaymentData:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
-        patches = _patch_data(
+        out = _run_validation(
+            capsys,
             title_info=[_info(title, 1, 1, 1943)],
             payments={title: _payment(title, 15, 3, 1944)},  # 14 months later.
         )
-        with patches[0], patches[1], patches[2], patches[3]:
-            validate_payment_data()
-
-        out = capsys.readouterr().out
         assert "more than 3 months after" in out
         assert "13-months-after-submitted: 1" in out
 
@@ -151,14 +147,11 @@ class TestValidatePaymentData:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
-        patches = _patch_data(
+        out = _run_validation(
+            capsys,
             title_info=[_info(title, 1, 1, 1943)],
             payments={title: _payment(title, 1, 2, 1944)},  # Exactly 13 months.
         )
-        with patches[0], patches[1], patches[2], patches[3]:
-            validate_payment_data()
-
-        out = capsys.readouterr().out
         assert "0 issue(s) found" in out
 
     def test_submitted_day_minus_one_normalised_to_first_of_month(
@@ -168,28 +161,22 @@ class TestValidatePaymentData:
         # accepted date later in the same month must NOT be flagged as
         # accepted-before-submitted.
         title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
-        patches = _patch_data(
+        out = _run_validation(
+            capsys,
             title_info=[_info(title, -1, 5, 1943)],
             payments={title: _payment(title, 20, 5, 1943)},
         )
-        with patches[0], patches[1], patches[2], patches[3]:
-            validate_payment_data()
-
-        out = capsys.readouterr().out
         assert "0 issue(s) found" in out
 
     def test_non_comic_titles_are_skipped(self, capsys: pytest.CaptureFixture[str]) -> None:
         # A non-comic entry with no payment info should not be flagged.
         title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
-        patches = _patch_data(
+        out = _run_validation(
+            capsys,
             title_info=[_info(title, 1, 1, 1943)],
             payments={},
             non_comic=[title],
         )
-        with patches[0], patches[1], patches[2], patches[3]:
-            validate_payment_data()
-
-        out = capsys.readouterr().out
         assert "0 issue(s) found" in out
 
     def test_summary_counts_all_categories(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -201,7 +188,8 @@ class TestValidatePaymentData:
         t_gap = Titles.LIFEGUARD_DAZE
         t_good = Titles.GOOD_DEEDS
 
-        patches = _patch_data(
+        out = _run_validation(
+            capsys,
             title_info=[
                 _info(t_missing, 1, 1, 1943),
                 _info(t_one_pager, 1, 1, 1943),
@@ -215,11 +203,8 @@ class TestValidatePaymentData:
                 t_good: _payment(t_good, 15, 2, 1943),
             },
             one_pagers=[t_one_pager],
+            expect_assertion_error=True,
         )
-        with patches[0], patches[1], patches[2], patches[3], pytest.raises(AssertionError):
-            validate_payment_data()
-
-        out = capsys.readouterr().out
         assert "4 issue(s) found" in out
         assert "missing payment info: 1" in out
         assert "missing one-pager payments: 1" in out

@@ -24,88 +24,44 @@ def _reset_platform_caches() -> None:
     platform_settings_module._AUTO_TUNED_THREAD_COUNT = None  # noqa: SLF001
 
 
+def _detect_profile(cpu_count: int, ram_gb: int | None) -> SystemProfile:
+    """Run detect_system_profile with patched cpu_count and RAM (None = RAM lookup fails)."""
+    vm_patch = (
+        patch.object(platform_settings_module.psutil, "virtual_memory", side_effect=RuntimeError)
+        if ram_gb is None
+        else patch.object(
+            platform_settings_module.psutil,
+            "virtual_memory",
+            return_value=MagicMock(total=ram_gb * 1024**3),
+        )
+    )
+    with patch.object(platform_settings_module.os, "cpu_count", return_value=cpu_count), vm_patch:
+        return PrefetchTuning.detect_system_profile()
+
+
 class TestSystemProfile:
-    def test_low_end_few_cpus_low_ram(self) -> None:
-        with (
-            patch.object(platform_settings_module.os, "cpu_count", return_value=2),
-            patch.object(platform_settings_module.psutil, "virtual_memory") as mock_vm,
-        ):
-            mock_vm.return_value = MagicMock(total=3 * 1024**3)
-            profile = PrefetchTuning.detect_system_profile()
+    @pytest.mark.parametrize(
+        ("cpu_count", "ram_gb", "expected_tier"),
+        [
+            pytest.param(2, 3, "low", id="low_end_few_cpus_low_ram"),
+            pytest.param(8, 4, "low", id="low_end_many_cpus_but_low_ram"),
+            pytest.param(4, 8, "mid", id="mid_range"),
+            pytest.param(16, 32, "high", id="high_end"),
+            pytest.param(2, None, "low", id="ram_unknown_few_cpus_is_low_end"),
+            pytest.param(8, None, "high", id="ram_unknown_many_cpus_is_high_end"),
+            pytest.param(4, None, "mid", id="ram_unknown_mid_cpus_is_mid_range"),
+        ],
+    )
+    def test_profile_tier(self, cpu_count: int, ram_gb: int | None, expected_tier: str) -> None:
+        profile = _detect_profile(cpu_count, ram_gb)
 
-        assert profile.is_low_end is True
-        assert profile.is_mid_range is False
-        assert profile.is_high_end is False
-
-    def test_low_end_many_cpus_but_low_ram(self) -> None:
-        with (
-            patch.object(platform_settings_module.os, "cpu_count", return_value=8),
-            patch.object(platform_settings_module.psutil, "virtual_memory") as mock_vm,
-        ):
-            mock_vm.return_value = MagicMock(total=4 * 1024**3)
-            profile = PrefetchTuning.detect_system_profile()
-
-        assert profile.is_low_end is True
-
-    def test_mid_range(self) -> None:
-        with (
-            patch.object(platform_settings_module.os, "cpu_count", return_value=4),
-            patch.object(platform_settings_module.psutil, "virtual_memory") as mock_vm,
-        ):
-            mock_vm.return_value = MagicMock(total=8 * 1024**3)
-            profile = PrefetchTuning.detect_system_profile()
-
-        assert profile.is_low_end is False
-        assert profile.is_mid_range is True
-        assert profile.is_high_end is False
-
-    def test_high_end(self) -> None:
-        with (
-            patch.object(platform_settings_module.os, "cpu_count", return_value=16),
-            patch.object(platform_settings_module.psutil, "virtual_memory") as mock_vm,
-        ):
-            mock_vm.return_value = MagicMock(total=32 * 1024**3)
-            profile = PrefetchTuning.detect_system_profile()
-
-        assert profile.is_low_end is False
-        assert profile.is_mid_range is False
-        assert profile.is_high_end is True
-
-    def test_ram_unknown_few_cpus_is_low_end(self) -> None:
-        with (
-            patch.object(platform_settings_module.os, "cpu_count", return_value=2),
-            patch.object(
-                platform_settings_module.psutil, "virtual_memory", side_effect=RuntimeError
-            ),
-        ):
-            profile = PrefetchTuning.detect_system_profile()
-
-        assert profile.ram_gb is None
-        assert profile.is_low_end is True
-
-    def test_ram_unknown_many_cpus_is_high_end(self) -> None:
-        with (
-            patch.object(platform_settings_module.os, "cpu_count", return_value=8),
-            patch.object(
-                platform_settings_module.psutil, "virtual_memory", side_effect=RuntimeError
-            ),
-        ):
-            profile = PrefetchTuning.detect_system_profile()
-
-        assert profile.ram_gb is None
-        assert profile.is_high_end is True
-
-    def test_ram_unknown_mid_cpus_is_mid_range(self) -> None:
-        with (
-            patch.object(platform_settings_module.os, "cpu_count", return_value=4),
-            patch.object(
-                platform_settings_module.psutil, "virtual_memory", side_effect=RuntimeError
-            ),
-        ):
-            profile = PrefetchTuning.detect_system_profile()
-
-        assert profile.ram_gb is None
-        assert profile.is_mid_range is True
+        if ram_gb is None:
+            assert profile.ram_gb is None
+        assert (profile.is_low_end, profile.is_mid_range, profile.is_high_end) == (
+            expected_tier == "low",
+            expected_tier == "mid",
+            expected_tier == "high",
+        )
 
 
 class TestPrefetchTuning:
@@ -137,55 +93,33 @@ class TestPrefetchTuning:
     def test_initial_dynamic_window_capped_by_base_max(self, tuning: PrefetchTuning) -> None:
         assert tuning.get_initial_dynamic_window() == 4  # noqa: PLR2004
 
-    def test_dynamic_window_shrinks_under_high_memory(self, tuning: PrefetchTuning) -> None:
+    # The tuning fixture has low water 200 MiB, high water 400 MiB,
+    # prefetch_min 2, and base_max_window 4.
+    @pytest.mark.parametrize(
+        ("traced_mib", "dynamic_window", "expected_window"),
+        [
+            pytest.param(500, 4, 3, id="shrinks_under_high_memory"),
+            pytest.param(100, 2, 3, id="grows_under_low_memory"),
+            pytest.param(300, 3, 3, id="stays_when_between_thresholds"),
+            pytest.param(500, 2, 2, id="does_not_shrink_below_min"),
+            pytest.param(50, 4, 4, id="does_not_grow_above_base_max"),
+        ],
+    )
+    def test_dynamic_window(
+        self,
+        tuning: PrefetchTuning,
+        traced_mib: int,
+        dynamic_window: int,
+        expected_window: int,
+    ) -> None:
         with patch.object(
             platform_settings_module.tracemalloc,
             "get_traced_memory",
-            return_value=(500 * 1024 * 1024, 0),  # 500 MiB > high water 400
+            return_value=(traced_mib * 1024 * 1024, 0),
         ):
-            _mib, new_window = tuning.get_new_dynamic_window(dynamic_window=4)
+            _mib, new_window = tuning.get_new_dynamic_window(dynamic_window=dynamic_window)
 
-        assert new_window == 3  # noqa: PLR2004
-
-    def test_dynamic_window_grows_under_low_memory(self, tuning: PrefetchTuning) -> None:
-        with patch.object(
-            platform_settings_module.tracemalloc,
-            "get_traced_memory",
-            return_value=(100 * 1024 * 1024, 0),  # 100 MiB < low water 200
-        ):
-            _mib, new_window = tuning.get_new_dynamic_window(dynamic_window=2)
-
-        assert new_window == 3  # noqa: PLR2004
-
-    def test_dynamic_window_stays_when_between_thresholds(self, tuning: PrefetchTuning) -> None:
-        with patch.object(
-            platform_settings_module.tracemalloc,
-            "get_traced_memory",
-            return_value=(300 * 1024 * 1024, 0),  # 300 MiB between 200 and 400
-        ):
-            _mib, new_window = tuning.get_new_dynamic_window(dynamic_window=3)
-
-        assert new_window == 3  # noqa: PLR2004
-
-    def test_dynamic_window_does_not_shrink_below_min(self, tuning: PrefetchTuning) -> None:
-        with patch.object(
-            platform_settings_module.tracemalloc,
-            "get_traced_memory",
-            return_value=(500 * 1024 * 1024, 0),
-        ):
-            _mib, new_window = tuning.get_new_dynamic_window(dynamic_window=2)
-
-        assert new_window == 2  # noqa: PLR2004  (prefetch_min)
-
-    def test_dynamic_window_does_not_grow_above_base_max(self, tuning: PrefetchTuning) -> None:
-        with patch.object(
-            platform_settings_module.tracemalloc,
-            "get_traced_memory",
-            return_value=(50 * 1024 * 1024, 0),
-        ):
-            _mib, new_window = tuning.get_new_dynamic_window(dynamic_window=4)
-
-        assert new_window == 4  # noqa: PLR2004  (base_max_window)
+        assert new_window == expected_window
 
 
 # ---------------------------------------------------------------------------
@@ -204,38 +138,43 @@ def _profile(*, low: bool = False, mid: bool = False, high: bool = False) -> Sys
 
 
 class TestGetPrefetchTuning:
-    def test_low_end_profile_sets_conservative_params(self) -> None:
-        with patch.object(
-            platform_settings_module, "_get_system_profile", return_value=_profile(low=True)
-        ):
-            tuning = get_prefetch_tuning(worker_count=2, num_pages=10)
+    @pytest.mark.parametrize(
+        (
+            "profile",
+            "worker_count",
+            "expected_min",
+            "expected_factor",
+            "expected_low",
+            "expected_high",
+        ),
+        [
+            pytest.param(
+                _profile(low=True), 2, 1, 0.5, 150.0, 300.0, id="low_end_conservative_params"
+            ),
+            pytest.param(
+                _profile(mid=True), 4, 2, 0.75, 200.0, 350.0, id="mid_range_modest_params"
+            ),
+            pytest.param(
+                _profile(high=True), 8, 2, 1.0, 250.0, 450.0, id="high_end_generous_params"
+            ),
+        ],
+    )
+    def test_profile_sets_params(
+        self,
+        profile: SystemProfile,
+        worker_count: int,
+        expected_min: int,
+        expected_factor: float,
+        expected_low: float,
+        expected_high: float,
+    ) -> None:
+        with patch.object(platform_settings_module, "_get_system_profile", return_value=profile):
+            tuning = get_prefetch_tuning(worker_count=worker_count, num_pages=10)
 
-        assert tuning.prefetch_min == 1
-        assert tuning.prefetch_max_factor == 0.5  # noqa: PLR2004
-        assert tuning.memory_low_water_mib == 150.0  # noqa: PLR2004
-        assert tuning.memory_high_water_mib == 300.0  # noqa: PLR2004
-
-    def test_mid_range_profile_sets_modest_params(self) -> None:
-        with patch.object(
-            platform_settings_module, "_get_system_profile", return_value=_profile(mid=True)
-        ):
-            tuning = get_prefetch_tuning(worker_count=4, num_pages=10)
-
-        assert tuning.prefetch_min == 2  # noqa: PLR2004
-        assert tuning.prefetch_max_factor == 0.75  # noqa: PLR2004
-        assert tuning.memory_low_water_mib == 200.0  # noqa: PLR2004
-        assert tuning.memory_high_water_mib == 350.0  # noqa: PLR2004
-
-    def test_high_end_profile_sets_generous_params(self) -> None:
-        with patch.object(
-            platform_settings_module, "_get_system_profile", return_value=_profile(high=True)
-        ):
-            tuning = get_prefetch_tuning(worker_count=8, num_pages=10)
-
-        assert tuning.prefetch_min == 2  # noqa: PLR2004
-        assert tuning.prefetch_max_factor == 1.0
-        assert tuning.memory_low_water_mib == 250.0  # noqa: PLR2004
-        assert tuning.memory_high_water_mib == 450.0  # noqa: PLR2004
+        assert tuning.prefetch_min == expected_min
+        assert tuning.prefetch_max_factor == expected_factor
+        assert tuning.memory_low_water_mib == expected_low
+        assert tuning.memory_high_water_mib == expected_high
 
     def test_caches_result_across_calls(self) -> None:
         with patch.object(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -13,7 +14,7 @@ from barks_reader.ui.entity_index_screen import EntityIndexScreen
 from barks_reader.ui.index_screen import IndexItem
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Iterator
 
 
 @pytest.fixture
@@ -24,14 +25,33 @@ def mock_settings() -> MagicMock:
     return settings
 
 
-@pytest.fixture
-def mock_font_manager() -> MagicMock:
-    return MagicMock()
+@contextmanager
+def _patched_screen_deps(alpha_split_terms: dict, entity_terms: list[str]) -> Iterator[MagicMock]:
+    """Patch the Kivy and search dependencies needed to construct an EntityIndexScreen.
 
+    Yields the mock ComicSearch indexer instance.
+    """
+    with (
+        patch.object(barks_reader.ui.index_screen.IndexScreen, "__init__"),
+        patch.object(barks_reader.ui.speech_index_screen, "ComicSearch") as mock_search_cls,
+        patch.object(barks_reader.ui.speech_index_screen, "ImageSelector"),
+        patch.object(barks_reader.ui.speech_index_screen, "ReaderFilePathsResolver"),
+        patch.object(barks_reader.ui.speech_index_screen, "PanelTextureLoader"),
+        patch.object(
+            barks_reader.ui.speech_index_screen,
+            "create_speech_bubble_popup",
+            return_value=(MagicMock(), MagicMock()),
+        ),
+        patch.object(EntityIndexScreen, "_populate_alphabet_menu"),
+        patch.object(EntityIndexScreen, "ids", MagicMock()),
+    ):
+        mock_indexer = mock_search_cls.return_value
+        # get_alpha_split_terms is called by SpeechIndexScreen.__init__
+        mock_indexer.get_alpha_split_terms.return_value = alpha_split_terms
+        # get_entity_terms is called by EntityIndexScreen.__init__
+        mock_indexer.get_entity_terms.return_value = entity_terms
 
-@pytest.fixture
-def mock_user_error_handler() -> MagicMock:
-    return MagicMock()
+        yield mock_indexer
 
 
 @pytest.fixture
@@ -40,45 +60,22 @@ def person_index_screen(
     mock_font_manager: MagicMock,
     mock_user_error_handler: MagicMock,
 ) -> Generator[EntityIndexScreen]:
-    with patch.object(barks_reader.ui.index_screen.IndexScreen, "__init__"):  # noqa: SIM117
-        with (
-            patch.object(barks_reader.ui.speech_index_screen, "ComicSearch") as mock_search_cls,
-            patch.object(barks_reader.ui.speech_index_screen, "ImageSelector"),
-            patch.object(barks_reader.ui.speech_index_screen, "ReaderFilePathsResolver"),
-            patch.object(barks_reader.ui.speech_index_screen, "PanelTextureLoader"),
-            patch.object(
-                barks_reader.ui.speech_index_screen,
-                "create_speech_bubble_popup",
-                return_value=(MagicMock(), MagicMock()),
-            ),
-            patch.object(EntityIndexScreen, "_populate_alphabet_menu"),
-        ):
-            mock_indexer = mock_search_cls.return_value
-            # get_alpha_split_terms is called by SpeechIndexScreen.__init__
-            mock_indexer.get_alpha_split_terms.return_value = {
-                "a": {"al": ["Alice"]},
-            }
-            # get_entity_terms is called by EntityIndexScreen.__init__
-            mock_indexer.get_entity_terms.return_value = [
-                "Daisy Duck",
-                "Donald Duck",
-                "Scrooge McDuck",
-            ]
+    with _patched_screen_deps(
+        alpha_split_terms={"a": {"al": ["Alice"]}},
+        entity_terms=["Daisy Duck", "Donald Duck", "Scrooge McDuck"],
+    ) as mock_indexer:
+        screen = EntityIndexScreen(
+            EntityType.PERSON, mock_settings, mock_font_manager, mock_user_error_handler
+        )
 
-            mock_ids = MagicMock()
-            with patch.object(EntityIndexScreen, "ids", mock_ids):
-                screen = EntityIndexScreen(
-                    EntityType.PERSON, mock_settings, mock_font_manager, mock_user_error_handler
-                )
+        screen.ids = MagicMock()
+        screen.index_theme = MagicMock()
+        screen._font_manager = mock_font_manager
+        screen._search = mock_indexer
+        screen.treeview_index_node = MagicMock()
+        screen.treeview_index_node.saved_state = {}
 
-            screen.ids = MagicMock()
-            screen.index_theme = MagicMock()
-            screen._font_manager = mock_font_manager
-            screen._search = mock_indexer
-            screen.treeview_index_node = MagicMock()
-            screen.treeview_index_node.saved_state = {}
-
-            yield screen
+        yield screen
 
 
 class TestEntityIndexScreen:
@@ -148,34 +145,13 @@ class TestEntityIndexScreen:
         mock_user_error_handler: MagicMock,
     ) -> None:
         """Terms with non-alpha first chars (like '-ER-') should raise RuntimeError."""
-        with patch.object(barks_reader.ui.index_screen.IndexScreen, "__init__"):  # noqa: SIM117
-            with (
-                patch.object(barks_reader.ui.speech_index_screen, "ComicSearch") as mock_search_cls,
-                patch.object(barks_reader.ui.speech_index_screen, "ImageSelector"),
-                patch.object(barks_reader.ui.speech_index_screen, "ReaderFilePathsResolver"),
-                patch.object(barks_reader.ui.speech_index_screen, "PanelTextureLoader"),
-                patch.object(
-                    barks_reader.ui.speech_index_screen,
-                    "create_speech_bubble_popup",
-                    return_value=(MagicMock(), MagicMock()),
-                ),
-                patch.object(EntityIndexScreen, "_populate_alphabet_menu"),
-            ):
-                mock_indexer = mock_search_cls.return_value
-                mock_indexer.get_alpha_split_terms.return_value = {}
-                mock_indexer.get_entity_terms.return_value = [
-                    "-ER-",
-                    "Alice",
-                ]
-
-                mock_ids = MagicMock()
-                with (
-                    patch.object(EntityIndexScreen, "ids", mock_ids),
-                    pytest.raises(RuntimeError, match="non-alpha prefix"),
-                ):
-                    EntityIndexScreen(
-                        EntityType.PERSON,
-                        mock_settings,
-                        mock_font_manager,
-                        mock_user_error_handler,
-                    )
+        with (
+            _patched_screen_deps(alpha_split_terms={}, entity_terms=["-ER-", "Alice"]),
+            pytest.raises(RuntimeError, match="non-alpha prefix"),
+        ):
+            EntityIndexScreen(
+                EntityType.PERSON,
+                mock_settings,
+                mock_font_manager,
+                mock_user_error_handler,
+            )

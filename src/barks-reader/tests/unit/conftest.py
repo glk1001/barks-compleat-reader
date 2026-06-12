@@ -10,10 +10,22 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
 _HEADLESS_CI = os.environ.get("KIVY_HEADLESS_CI", "") == "1"
+
+
+@pytest.fixture
+def mock_font_manager() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_user_error_handler() -> MagicMock:
+    return MagicMock()
+
 
 _UI_IMPORT_PREFIXES = ("barks_reader.ui", "kivy.uix", "kivy.core.window")
 

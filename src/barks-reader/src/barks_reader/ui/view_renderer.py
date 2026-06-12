@@ -155,18 +155,7 @@ class ViewRenderer:
         version of *title_image_file* if one exists, and then transitions to
         `ON_TITLE_NODE` carrying the title.
         """
-        self._screens.bottom_title_view.fade_in_bottom_view_title()
-
-        title_str = fanta_info.comic_book_info.get_title_str()
-        logger.debug(f'Setting title to "{title_str}". Title image file is "{title_image_file}".')
-
-        if title_image_file is not None:
-            title_image_file = self._reader_settings.file_paths.get_edited_version_if_possible(
-                title_image_file
-            )[0]
-
-        self._pipeline.set_current_bottom_view_title(title_str)
-        self._pipeline.set_bottom_view_title_image_file(title_image_file)
+        title_str = self._set_bottom_title_view(fanta_info, title_image_file)
         self._screens.bottom_title_view.set_title_view(fanta_info)
 
         # NOTE: Don't pick the title image here - `_apply_view_state` triggers exactly
@@ -189,6 +178,20 @@ class ViewRenderer:
         Mirrors the legacy `ViewStateManager.set_title` behavior. Most callers
         should prefer `render_title`, which also drives the view-state change.
         """
+        self._set_bottom_title_view(fanta_info, title_image_file)
+        self._pipeline.set_next_bottom_view_title_image()
+        self._screens.bottom_title_view.set_title_view(fanta_info)
+
+    def _set_bottom_title_view(
+        self,
+        fanta_info: FantaComicBookInfo,
+        title_image_file: PanelPath | None,
+    ) -> str:
+        """Fade in the bottom-title view and update the pipeline.
+
+        Pushes the title and the edited version of *title_image_file* (if one
+        exists) into the pipeline. Returns the title string.
+        """
         self._screens.bottom_title_view.fade_in_bottom_view_title()
 
         title_str = fanta_info.comic_book_info.get_title_str()
@@ -197,14 +200,12 @@ class ViewRenderer:
         self._pipeline.set_current_bottom_view_title(title_str)
 
         if title_image_file is not None:
-            assert self._pipeline.get_current_bottom_view_title() != ""
             title_image_file = self._reader_settings.file_paths.get_edited_version_if_possible(
                 title_image_file
             )[0]
 
         self._pipeline.set_bottom_view_title_image_file(title_image_file)
-        self._pipeline.set_next_bottom_view_title_image()
-        self._screens.bottom_title_view.set_title_view(fanta_info)
+        return title_str
 
     def refresh(self) -> None:
         """Re-apply the current view state, picking fresh decorative images."""

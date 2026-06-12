@@ -497,81 +497,71 @@ class ViewPipeline:
             self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
         )
 
+    def _set_top_view_image_from_titles_or_fixed[T](
+        self,
+        current: T | None,
+        get_title_list: Callable[[T], list[FantaComicBookInfo]],
+        fallback_title: Titles = Titles.GOOD_NEIGHBORS,
+    ) -> None:
+        """Set a random top-view image from *get_title_list*.
+
+        Falls back to *fallback_title* if *current* (the navigation context the
+        list depends on) is unset.
+        """
+        if not current:
+            self._set_top_view_image_fixed(fallback_title)
+        else:
+            self._top_view_image_info = self._get_top_view_random_image(get_title_list(current))
+
     def _set_top_view_image_for_category(self) -> None:
         logger.debug(f"Current category: '{self._current_category}'.")
-        if not self._current_category:
-            title = Titles.GOOD_NEIGHBORS
-            self._top_view_image_info = ImageInfo(
-                self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
-            )
-        else:
-            self._top_view_image_info = self._get_top_view_random_image(
-                self._title_lists[self._current_category]
-            )
+        self._set_top_view_image_from_titles_or_fixed(
+            self._current_category,
+            lambda category: self._title_lists[category],
+        )
 
     def _set_top_view_image_for_tag_group(self) -> None:
         logger.debug(f"Current tag_group: '{self._current_tag_group}'.")
-        if not self._current_tag_group:
-            title = Titles.GOOD_NEIGHBORS
-            self._top_view_image_info = ImageInfo(
-                self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
-            )
-        else:
-            fanta_title_list = self._get_fanta_title_list(
-                BARKS_TAG_GROUPS_TITLES[self._current_tag_group]
-            )
-            self._top_view_image_info = self._get_top_view_random_image(fanta_title_list)
+        self._set_top_view_image_from_titles_or_fixed(
+            self._current_tag_group,
+            lambda tag_group: self._get_fanta_title_list(BARKS_TAG_GROUPS_TITLES[tag_group]),
+        )
 
     def _set_top_view_image_for_tag(self) -> None:
         logger.debug(f"Current tag: '{self._current_tag}'.")
-        if not self._current_tag:
-            title = Titles.GOOD_NEIGHBORS
-            self._top_view_image_info = ImageInfo(
-                self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
-            )
-        else:
-            fanta_title_list = self._get_fanta_title_list(BARKS_TAGGED_TITLES[self._current_tag])
-            self._top_view_image_info = self._get_top_view_random_image(fanta_title_list)
+        self._set_top_view_image_from_titles_or_fixed(
+            self._current_tag,
+            lambda tag: self._get_fanta_title_list(BARKS_TAGGED_TITLES[tag]),
+        )
 
     def _set_top_view_image_for_year_range(self) -> None:
         logger.debug(f"Year range: '{self._current_year_range}'.")
-        if not self._current_year_range:
-            title = Titles.GOOD_NEIGHBORS
-            self._top_view_image_info = ImageInfo(
-                self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
-            )
-        else:
-            self._top_view_image_info = self._get_top_view_random_image(
-                self._title_lists[self._current_year_range]
-            )
+        self._set_top_view_image_from_titles_or_fixed(
+            self._current_year_range,
+            lambda year_range: self._title_lists[year_range],
+        )
 
     def _set_top_view_image_for_cs_year_range(self) -> None:
         logger.debug(f"CS Year range: '{self._current_cs_year_range}'.")
-        if not self._current_cs_year_range:
-            title = Titles.GOOD_NEIGHBORS
-            self._top_view_image_info = ImageInfo(
-                self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
-            )
-        else:
-            cs_range = FilteredTitleLists.get_cs_year_range_key_from_range(
-                self._current_cs_year_range
-            )
+
+        def get_titles(year_range: str) -> list[FantaComicBookInfo]:
+            cs_range = FilteredTitleLists.get_cs_year_range_key_from_range(year_range)
             logger.debug(f"CS Year range key: '{cs_range}'.")
-            self._top_view_image_info = self._get_top_view_random_image(self._title_lists[cs_range])
+            return self._title_lists[cs_range]
+
+        self._set_top_view_image_from_titles_or_fixed(self._current_cs_year_range, get_titles)
 
     def _set_top_view_image_for_us_year_range(self) -> None:
         logger.debug(f"US Year range: '{self._current_us_year_range}'.")
-        if not self._current_us_year_range:
-            title = Titles.BACK_TO_THE_KLONDIKE
-            self._top_view_image_info = ImageInfo(
-                self._reader_settings.file_paths.get_comic_inset_file(title), title, FIT_MODE_COVER
-            )
-        else:
-            us_range = FilteredTitleLists.get_us_year_range_key_from_range(
-                self._current_us_year_range
-            )
+
+        def get_titles(year_range: str) -> list[FantaComicBookInfo]:
+            us_range = FilteredTitleLists.get_us_year_range_key_from_range(year_range)
             logger.debug(f"US Year range key: '{us_range}'.")
-            self._top_view_image_info = self._get_top_view_random_image(self._title_lists[us_range])
+            return self._title_lists[us_range]
+
+        self._set_top_view_image_from_titles_or_fixed(
+            self._current_us_year_range, get_titles, fallback_title=Titles.BACK_TO_THE_KLONDIKE
+        )
 
     def _get_top_view_random_image(self, title_list: list[FantaComicBookInfo]) -> ImageInfo:
         return self._image_selector.get_random_image(

@@ -326,13 +326,10 @@ class ReaderTreeBuilder:
         )
 
         # 👇 instead of eagerly creating 100% of title children now, defer…
-        def _populate() -> None:
-            gen = self._add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node)
-            self._run_generator(gen)
-
-        new_node.populate_callback = _populate
-        new_node.populated = False
-        new_node.is_leaf = False
+        self._defer_node_population(
+            new_node,
+            lambda: self._add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node),
+        )
 
         # keep your index for quick lookups
         self.chrono_year_range_nodes[year_range] = new_node
@@ -385,17 +382,25 @@ class ReaderTreeBuilder:
             destination=TagDestination(tag=tag),
         )
 
-        # Defer creation of the tag's title rows.
-        def _populate() -> None:
-            gen = self._add_title_nodes_gen(tree, titles, new_node)
-            self._run_generator(gen)
-
-        new_node.populate_callback = _populate
-        new_node.populated = False
-
         tree.add_node(new_node, parent=parent_node)
-        new_node.is_leaf = False
+
+        # Defer creation of the tag's title rows.
+        self._defer_node_population(
+            new_node, lambda: self._add_title_nodes_gen(tree, titles, new_node)
+        )
         yield
+
+    def _defer_node_population(
+        self, node: ButtonTreeViewNode, make_children_gen: Callable[[], Generator[None]]
+    ) -> None:
+        """Defer creating *node*'s title children until the node is first expanded."""
+
+        def _populate() -> None:
+            self._run_generator(make_children_gen())
+
+        node.populate_callback = _populate
+        node.populated = False
+        node.is_leaf = False
 
     def _add_title_nodes_gen(
         self, tree: ReaderTreeView, titles: list[Titles], parent_node: ButtonTreeViewNode
@@ -423,13 +428,10 @@ class ReaderTreeBuilder:
             kind=YearRangeKind.CS,
         )
 
-        def _populate() -> None:
-            gen = self._add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node)
-            self._run_generator(gen)
-
-        new_node.populate_callback = _populate
-        new_node.populated = False
-        new_node.is_leaf = False
+        self._defer_node_population(
+            new_node,
+            lambda: self._add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node),
+        )
 
         yield
 
@@ -445,13 +447,10 @@ class ReaderTreeBuilder:
             kind=YearRangeKind.US,
         )
 
-        def _populate() -> None:
-            gen = self._add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node)
-            self._run_generator(gen)
-
-        new_node.populate_callback = _populate
-        new_node.populated = False
-        new_node.is_leaf = False
+        self._defer_node_population(
+            new_node,
+            lambda: self._add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node),
+        )
 
         yield
 
@@ -461,13 +460,10 @@ class ReaderTreeBuilder:
         """Populate a simple series node with its title list."""
         title_list = self._title_lists[series_name]
 
-        def _populate() -> None:
-            gen = self._add_fanta_info_story_nodes_gen(tree, title_list, parent_node)
-            self._run_generator(gen)
-
-        parent_node.populate_callback = _populate
-        parent_node.populated = False
-        parent_node.is_leaf = False
+        self._defer_node_population(
+            parent_node,
+            lambda: self._add_fanta_info_story_nodes_gen(tree, title_list, parent_node),
+        )
 
         yield
 

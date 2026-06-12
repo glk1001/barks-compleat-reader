@@ -26,16 +26,6 @@ def mock_settings() -> MagicMock:
 
 
 @pytest.fixture
-def mock_font_manager() -> MagicMock:
-    return MagicMock()
-
-
-@pytest.fixture
-def mock_user_error_handler() -> MagicMock:
-    return MagicMock()
-
-
-@pytest.fixture
 def main_index_screen(
     mock_settings: MagicMock,
     mock_font_manager: MagicMock,

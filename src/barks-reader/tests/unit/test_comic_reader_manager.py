@@ -35,13 +35,30 @@ def _make_layout(page_map: OrderedDict[str, PageInfo], last_body_page: str = "10
     return ComicLayout(page_map=page_map, last_body_page=last_body_page)
 
 
+def _attach_reader_screen(manager: ComicReaderManager) -> tuple[MagicMock, MagicMock]:
+    """Attach a mock reader screen to *manager* and return (screen, reader)."""
+    mock_screen = MagicMock()
+    mock_reader = MagicMock()
+    mock_screen.comic_book_reader = mock_reader
+    manager.set_comic_book_reader_screen(mock_screen)
+    return mock_screen, mock_reader
+
+
+def _single_body_page_layout() -> ComicLayout:
+    """Return a layout with a single body page "1"."""
+    page_info_obj = PageInfo(
+        page_index=0,
+        display_page_num="1",
+        page_type=PageType.BODY,
+        srce_page=MagicMock(),
+        dest_page=MagicMock(),
+    )
+    return _make_layout(OrderedDict([("1", page_info_obj)]), last_body_page="1")
+
+
 class TestComicReaderManager:
     def test_set_comic_book_reader_screen(self, manager: ComicReaderManager) -> None:
-        mock_screen = MagicMock()
-        mock_reader = MagicMock()
-        mock_screen.comic_book_reader = mock_reader
-
-        manager.set_comic_book_reader_screen(mock_screen)
+        mock_screen, mock_reader = _attach_reader_screen(manager)
 
         assert manager._comic_book_reader_screen == mock_screen
         assert manager._comic_book_reader == mock_reader
@@ -56,22 +73,12 @@ class TestComicReaderManager:
     def test_read_article_begins_tracker_with_save_disabled(
         self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
-        mock_screen = MagicMock()
-        mock_reader = MagicMock()
-        mock_screen.comic_book_reader = mock_reader
-        manager.set_comic_book_reader_screen(mock_screen)
+        mock_screen, mock_reader = _attach_reader_screen(manager)
 
         mock_comic = MagicMock()
         mock_dependencies["comics_database"].get_comic_book.return_value = mock_comic
 
-        page_info_obj = PageInfo(
-            page_index=0,
-            display_page_num="1",
-            page_type=PageType.BODY,
-            srce_page=MagicMock(),
-            dest_page=MagicMock(),
-        )
-        mock_layout = _make_layout(OrderedDict([("1", page_info_obj)]), last_body_page="1")
+        mock_layout = _single_body_page_layout()
         mock_dependencies["layout_builder"].build.return_value = mock_layout
 
         with patch.object(
@@ -96,10 +103,7 @@ class TestComicReaderManager:
     def test_read_barks_begins_tracker_with_save_enabled(
         self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
-        mock_screen = MagicMock()
-        mock_reader = MagicMock()
-        mock_screen.comic_book_reader = mock_reader
-        manager.set_comic_book_reader_screen(mock_screen)
+        _mock_screen, mock_reader = _attach_reader_screen(manager)
 
         mock_fanta_info = MagicMock(spec=FantaComicBookInfo)
         mock_fanta_info.comic_book_info = MagicMock()
@@ -107,14 +111,7 @@ class TestComicReaderManager:
 
         mock_comic = MagicMock()
 
-        page_info_obj = PageInfo(
-            page_index=0,
-            display_page_num="1",
-            page_type=PageType.BODY,
-            srce_page=MagicMock(),
-            dest_page=MagicMock(),
-        )
-        mock_layout = _make_layout(OrderedDict([("1", page_info_obj)]), last_body_page="1")
+        mock_layout = _single_body_page_layout()
         mock_dependencies["layout_builder"].build.return_value = mock_layout
 
         with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):

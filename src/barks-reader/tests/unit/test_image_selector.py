@@ -96,6 +96,13 @@ def image_selector(
         yield selector
 
 
+def _make_title_info(title: Titles, title_str: str) -> MagicMock:
+    title_info = MagicMock()
+    title_info.comic_book_info.title = title
+    title_info.comic_book_info.get_title_str.return_value = title_str
+    return title_info
+
+
 class TestImageSelector:
     def test_init(self, image_selector: ImageSelector, mock_settings: MagicMock) -> None:
         assert image_selector._reader_settings == mock_settings
@@ -132,9 +139,9 @@ class TestImageSelector:
     def test_get_random_image_success(
         self, image_selector: ImageSelector, fake_resolver: FakeResolver
     ) -> None:
-        mock_title_info = MagicMock()
-        mock_title_info.comic_book_info.title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
-        mock_title_info.comic_book_info.get_title_str.return_value = "Donald Duck Finds Pirate Gold"
+        mock_title_info = _make_title_info(
+            Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, "Donald Duck Finds Pirate Gold"
+        )
 
         # Add files to the fake resolver for this title
         fake_resolver.files["Donald Duck Finds Pirate Gold"][FileTypes.SPLASH] = [
@@ -208,9 +215,7 @@ class TestImageSelector:
         image_selector: ImageSelector,
         fake_resolver: FakeResolver,
     ) -> None:
-        mock_title_info = MagicMock()
-        mock_title_info.comic_book_info.title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
-        mock_title_info.comic_book_info.get_title_str.return_value = "Pirate Gold"
+        mock_title_info = _make_title_info(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, "Pirate Gold")
 
         fake_resolver.files["Pirate Gold"][FileTypes.COVER] = [(Path("cover.png"), False)]
 
@@ -243,9 +248,7 @@ class TestImageSelector:
             FileTypes.SPLASH: {(Path("splash1.png"), False), (Path("splash2.png"), False)}
         }
 
-        mock_title_info = MagicMock()
-        mock_title_info.comic_book_info.title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
-        mock_title_info.comic_book_info.get_title_str.return_value = title_str
+        mock_title_info = _make_title_info(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, title_str)
 
         with patch.object(is_module, randrange.__name__, return_value=0):
             # random.choice should be called with only splash2 (splash1 is in MRU)
@@ -341,9 +344,7 @@ class TestImageSelector:
         title_str = "Pirate Gold"
         fake_resolver.files[title_str][FileTypes.SPLASH] = [(Path("splash.png"), False)]
 
-        mock_title_info = MagicMock()
-        mock_title_info.comic_book_info.title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
-        mock_title_info.comic_book_info.get_title_str.return_value = title_str
+        mock_title_info = _make_title_info(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, title_str)
 
         with (
             patch.object(is_module, randrange.__name__, return_value=0),
@@ -370,9 +371,7 @@ class TestImageSelector:
         # Resolver reports no edited version available.
         fake_resolver.edited_version = (Path("cover.png"), False)
 
-        mock_title_info = MagicMock()
-        mock_title_info.comic_book_info.title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
-        mock_title_info.comic_book_info.get_title_str.return_value = title_str
+        mock_title_info = _make_title_info(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, title_str)
 
         with (
             patch.object(is_module, randrange.__name__, return_value=0),
