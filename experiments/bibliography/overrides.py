@@ -86,8 +86,8 @@ OVERRIDES: dict[Titles, tuple[Issues, int, int, int] | None] = {
     # --- no counterpart in Barrier's 1978 bibliography (validation findings) - #
     Titles.SILENT_NIGHT: None,        # famous unpublished story; not listed in WDCS 64
     Titles.MILKMAN_THE: None,         # unpublished story; not listed in WDCS 215
-    Titles.LIGHTS_OUT: None,          # US 23 lists 4 Barks items; this is not among them
-    Titles.ALL_CHOKED_UP: None,       # US 23 — as above
+    # (LIGHTS_OUT and ALL_CHOKED_UP were recorded here as absent until the US 23
+    # entries were restored to source.xhtml from Appendix A's dates, 2026-06-12.)
     Titles.BIRD_CAMERA_THE: None,     # FC 1047 lists 5 Gyro stories; Bird Camera absent
     Titles.UP_AND_AT_IT: None,        # US 47 note: gag left unplaced by Barks
     Titles.IT_HAPPENED_ONE_WINTER: None,  # US 61 lists 4 Barks items; this is not among them
