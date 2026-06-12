@@ -66,6 +66,10 @@ def _get_all_fanta_comic_book_info() -> FantaComicBookInfoDict:
 
         current_number_in_series[title_info.series_name] += 1
 
+    # A duplicate title in SERIES_INFO would silently consume a chronological number
+    # and a number-in-series, shifting every later title's numbering.
+    assert len(all_fanta_info) == len(SERIES_INFO), "Duplicate title in SERIES_INFO."
+
     return all_fanta_info
 
 
