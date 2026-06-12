@@ -167,7 +167,34 @@ class ActionBarNavMixin:
             self._showed_action_bar_for_menu = False
         logger.debug("Exited menu mode.")
 
+    # --- Page-turn hooks ---
+
+    def _reading_next_page(self) -> None:
+        """Turn to the next page. Override to use _handle_reader_key."""
+        raise NotImplementedError
+
+    def _reading_prev_page(self) -> None:
+        """Turn to the previous page. Override to use _handle_reader_key."""
+        raise NotImplementedError
+
     # --- Key handling ---
+
+    def _handle_reader_key(self, key: int) -> bool:
+        """Dispatch a key press to the menu handler or the reading-mode handler."""
+        if self._menu_mode:
+            return self._handle_menu_key(key)
+        return self._handle_reading_key(key)
+
+    def _handle_reading_key(self, key: int) -> bool:
+        if key == KEY_RIGHT:
+            self._reading_next_page()
+        elif key == KEY_LEFT:
+            self._reading_prev_page()
+        elif key == KEY_UP or is_escape_key(key):
+            self._enter_menu_mode()
+        else:
+            return False
+        return True
 
     def _handle_menu_key(self, key: int) -> bool:
         if key == KEY_RIGHT:

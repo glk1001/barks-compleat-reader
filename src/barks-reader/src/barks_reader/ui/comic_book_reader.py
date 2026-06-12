@@ -46,12 +46,8 @@ from .action_bar_helpers import (
 from .adapters import KivyClockScheduler, KivyCursor
 from .platform_window_utils import WindowManager
 from .reader_keyboard_nav import (
-    KEY_LEFT,
-    KEY_RIGHT,
-    KEY_UP,
     ActionBarNavMixin,
     DropdownNavMixin,
-    is_escape_key,
 )
 from .reader_navigation import ReaderNavigation
 from .reader_screens import ReaderScreen
@@ -869,20 +865,13 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def _on_key_down(
         self, _window: WindowBase, key: int, _scancode: int, _codepoint: str, _modifier: list
     ) -> bool:
-        if self._menu_mode:
-            return self._handle_menu_key(key)
-        return self._handle_reading_key(key)
+        return self._handle_reader_key(key)
 
-    def _handle_reading_key(self, key: int) -> bool:
-        if key == KEY_RIGHT:
-            self.comic_book_reader.next_page()
-        elif key == KEY_LEFT:
-            self.comic_book_reader.prev_page()
-        elif key == KEY_UP or is_escape_key(key):
-            self._enter_menu_mode()
-        else:
-            return False
-        return True
+    def _reading_next_page(self) -> None:
+        self.comic_book_reader.next_page()
+
+    def _reading_prev_page(self) -> None:
+        self.comic_book_reader.prev_page()
 
     def _is_action_bar_hidden(self) -> bool:
         return not is_action_bar_visible(self._action_bar)
