@@ -13,6 +13,8 @@ reconciles it against `comic_book_info.BARKS_TITLE_INFO` (primarily to
 | `source.xhtml` | The input — a copy of the EPUB bibliography chapter. **Edit this** to fix the source. |
 | `parse_bibliography.py` | Parser + matcher + reconciliation report + module emitter. |
 | `overrides.py` | Manual tables for ambiguous / absent matches and exclusions (see caveat below). |
+| `appendix-a.md` | OCR copy of the book's Appendix A, pages 207–215 — the *chronological* listing of the same data. Editable, like `source.xhtml`; Barrier's published corrections (michaelbarrier.com) are applied to it. |
+| `chrono_check.py` | Independent cross-check: verifies, in both directions, that Appendix A's (submission date, issue) pairs agree with the generated `barks_bibliography` module. Run `uv run python chrono_check.py`; the page scans for adjudicating OCR doubts are at `~/Books/Carl Barks/Books/Carl Barks and the Art of the Comic Book/jpg-pages/`. |
 | *(generated)* `…/barks_fantagraphics/barks_bibliography.py` | The committed output. **Never hand-edit.** |
 | *(bootstrapped)* `…/barks_fantagraphics/barks_covers.py` | The cover registry. Bootstrap-generated once with `--emit-covers`, **hand-maintained thereafter** (like `comic_book_info.py`); the report verifies it against the bibliography instead of regenerating. |
 

@@ -216,6 +216,9 @@ def parse_submission_date(paren_text: str) -> tuple[int, int, int, bool] | None:
     t = re.sub(r"\[[^\]]*\]", "", strip_tags(paren_text)).strip()
     t = re.sub(r"(\d)\.(\d)", r"\1\2", t)
     t = re.sub(r"\s+", " ", t)
+    # A hedged date is still a date: "(Probably May 24, 1956)" - US 33 Tree
+    # Trick and the DD FC at source line ~1565.
+    t = re.sub(r"^Probably\s+", "", t, flags=re.IGNORECASE)
     if t.rstrip(".").lower() == "date not available":
         return (-1, -1, -1, True)
     m = DATE_RE.match(t)
@@ -374,7 +377,12 @@ def parse_tree() -> list[BibSeries]:
         # then treat each resulting unit independently.
         units: list[str] = []
         for seg in segments:
-            if units and not re.match(r'^["“(]?\s*[A-Z]', strip_tags(seg)):
+            seg_text = strip_tags(seg)
+            # A line that is nothing but a parenthetical submission date belongs
+            # to the entry above it (the EPUB wraps some dates onto their own
+            # line, e.g. US 65 Micro-ducks' "(Dec. 7, 1965)").
+            bare_date = re.match(r"^\([^()]*19\d\d[^()]*\)\.?$", seg_text)
+            if units and (bare_date or not re.match(r'^["“(]?\s*[A-Z]', seg_text)):
                 units[-1] = f"{units[-1]} {seg}"
             else:
                 units.append(seg)
