@@ -13,19 +13,19 @@ wiring) that doesn't belong in `core/`.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
 from barks_reader.core.navigation.view_states import ViewStates
-from barks_reader.core.reader_formatter import get_clean_text_without_extra
 from barks_reader.core.view_pipeline import ImageThemes, ViewPipeline
+from barks_reader.core.view_request import ViewRequest
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from barks_fantagraphics.barks_tags import TagGroups, Tags
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
@@ -125,22 +125,24 @@ class ViewRenderer:
     # ------------------------------------------------------------------
     def render(self, destination: Destination, *, preserve_top_view: bool = False) -> None:
         """Resolve *destination* via `NavigationModel` and render the resulting view state."""
-        view_state, params = self._nav_model.view_state_for(destination)
-        self._apply_view_state(view_state, params, preserve_top_view=preserve_top_view)
+        request = self._nav_model.view_state_for(destination)
+        self._dispatch(
+            replace(
+                request,
+                fun_image_themes=self._bottom_view_fun_image_themes,
+                preserve_top_view=preserve_top_view,
+            )
+        )
 
     def render_state(self, view_state: ViewStates, *, preserve_top_view: bool = False) -> None:
         """Render *view_state* without any destination context (for boot / return paths)."""
-        self._apply_view_state(view_state, {}, preserve_top_view=preserve_top_view)
-
-    def render_view_state_with_params(
-        self,
-        view_state: ViewStates,
-        params: dict[str, Any],
-        *,
-        preserve_top_view: bool = False,
-    ) -> None:
-        """Render *view_state* with explicit *params* (used by the legacy shim)."""
-        self._apply_view_state(view_state, params, preserve_top_view=preserve_top_view)
+        self._dispatch(
+            ViewRequest(
+                view_state=view_state,
+                fun_image_themes=self._bottom_view_fun_image_themes,
+                preserve_top_view=preserve_top_view,
+            )
+        )
 
     def render_title(
         self,
@@ -155,17 +157,22 @@ class ViewRenderer:
         version of *title_image_file* if one exists, and then transitions to
         `ON_TITLE_NODE` carrying the title.
         """
-        title_str = self._set_bottom_title_view(fanta_info, title_image_file)
+        title_str = fanta_info.comic_book_info.get_title_str()
+        title_image_file = self._fade_in_title_view(fanta_info, title_image_file)
         self._screens.bottom_title_view.set_title_view(fanta_info)
 
-        # NOTE: Don't pick the title image here - `_apply_view_state` triggers exactly
-        # one pick via `_update_views`. Picking here too would re-roll twice per title
-        # change, and the one-pager re-roll (which ignores any provided file) flips back
-        # to the same image when the collection has an even number of candidates.
-        self._apply_view_state(
-            ViewStates.ON_TITLE_NODE,
-            {"title_str": title_str},
-            preserve_top_view=preserve_top_view,
+        # NOTE: Don't pick the title image here - `render` triggers exactly one pick
+        # via `_update_views`. Picking here too would re-roll twice per title change,
+        # and the one-pager re-roll (which ignores any provided file) flips back to the
+        # same image when the collection has an even number of candidates.
+        self._dispatch(
+            ViewRequest(
+                view_state=ViewStates.ON_TITLE_NODE,
+                title_str=title_str,
+                title_image_file=title_image_file,
+                fun_image_themes=self._bottom_view_fun_image_themes,
+                preserve_top_view=preserve_top_view,
+            )
         )
 
     def set_title_without_render(
@@ -178,44 +185,39 @@ class ViewRenderer:
         Mirrors the legacy `ViewStateManager.set_title` behavior. Most callers
         should prefer `render_title`, which also drives the view-state change.
         """
-        self._set_bottom_title_view(fanta_info, title_image_file)
-        self._pipeline.set_next_bottom_view_title_image()
+        title_str = fanta_info.comic_book_info.get_title_str()
+        title_image_file = self._fade_in_title_view(fanta_info, title_image_file)
+        self._pipeline.set_title(title_str, title_image_file)
         self._screens.bottom_title_view.set_title_view(fanta_info)
 
-    def _set_bottom_title_view(
+    def _fade_in_title_view(
         self,
         fanta_info: FantaComicBookInfo,
         title_image_file: PanelPath | None,
-    ) -> str:
-        """Fade in the bottom-title view and update the pipeline.
+    ) -> PanelPath | None:
+        """Fade in the bottom-title view and resolve the edited title image file.
 
-        Pushes the title and the edited version of *title_image_file* (if one
-        exists) into the pipeline. Returns the title string.
+        Returns the edited version of *title_image_file* (if one exists), ready
+        to place into a `ViewRequest` or `ViewPipeline.set_title`.
         """
         self._screens.bottom_title_view.fade_in_bottom_view_title()
 
         title_str = fanta_info.comic_book_info.get_title_str()
         logger.debug(f'Setting title to "{title_str}". Title image file is "{title_image_file}".')
 
-        self._pipeline.set_current_bottom_view_title(title_str)
-
         if title_image_file is not None:
             title_image_file = self._reader_settings.file_paths.get_edited_version_if_possible(
                 title_image_file
             )[0]
 
-        self._pipeline.set_bottom_view_title_image_file(title_image_file)
-        return title_str
+        return title_image_file
 
     def refresh(self) -> None:
         """Re-apply the current view state, picking fresh decorative images."""
         logger.debug("Refreshing background views.")
-        logger.debug(f'Current title: "{self._pipeline.get_current_bottom_view_title()}".')
-
-        if self._screens.fun_image_view.is_visible:
-            self._pipeline.reset_bottom_view_fun_image_info()
-
-        self._apply_view_state(self._pipeline.get_view_state(), self._collect_current_params())
+        request = self._pipeline.current_request()
+        logger.debug(f'Current title: "{request.title_str}".')
+        self._dispatch(request, force_fresh_fun_image=self._screens.fun_image_view.is_visible)
 
     def update_search_background(self, title: Titles) -> None:
         """Refresh the search-screen background to one drawn from *title*."""
@@ -231,54 +233,11 @@ class ViewRenderer:
     # ------------------------------------------------------------------
     # Internal
     # ------------------------------------------------------------------
-    def _apply_view_state(
-        self,
-        view_state: ViewStates,
-        params: dict[str, Any],
-        *,
-        preserve_top_view: bool = False,
-    ) -> None:
-        """Apply view state + params: update pipeline context, compute, apply, notify."""
-        self._apply_params(params)
-        self._pipeline.set_fun_image_themes(self._bottom_view_fun_image_themes)
-        self._pipeline.set_view_state(view_state, preserve_top_view=preserve_top_view)
-        self._applicator.apply(self._pipeline.compute_snapshot())
-        # Reset the title image file now that we've used it.
-        self._pipeline.set_bottom_view_title_image_file(None)
-        self._on_view_state_changed(view_state)
-
-    def _apply_params(self, params: dict[str, Any]) -> None:
-        """Forward `NavigationModel` params dict to the pipeline's context setters.
-
-        Missing keys clear their respective context fields, matching the legacy
-        `ViewStateManager.set_view_state` defaults.
-        """
-        category: str = params.get("category", "")
-        year_range: str = params.get("year_range", "")
-        cs_year_range: str = params.get("cs_year_range", "")
-        us_year_range: str = params.get("us_year_range", "")
-        tag_group: TagGroups | None = params.get("tag_group")
-        tag: Tags | None = params.get("tag")
-        title_str: str = params.get("title_str", "")
-
-        self._pipeline.set_current_category(category)
-        self._pipeline.set_current_year_range(get_clean_text_without_extra(year_range))
-        self._pipeline.set_current_cs_year_range(get_clean_text_without_extra(cs_year_range))
-        self._pipeline.set_current_us_year_range(get_clean_text_without_extra(us_year_range))
-        self._pipeline.set_current_tag_group(tag_group)
-        self._pipeline.set_current_tag(tag)
-        self._pipeline.set_current_bottom_view_title(title_str)
-
-    def _collect_current_params(self) -> dict[str, Any]:
-        return {
-            "category": self._pipeline.get_current_category(),
-            "year_range": self._pipeline.get_current_year_range(),
-            "cs_year_range": self._pipeline.get_current_cs_year_range(),
-            "us_year_range": self._pipeline.get_current_us_year_range(),
-            "tag_group": self._pipeline.get_current_tag_group(),
-            "tag": self._pipeline.get_current_tag(),
-            "title_str": self._pipeline.get_current_bottom_view_title(),
-        }
+    def _dispatch(self, request: ViewRequest, *, force_fresh_fun_image: bool = False) -> None:
+        """Render *request* through the pipeline, apply the snapshot, and notify."""
+        snapshot = self._pipeline.render(request, force_fresh_fun_image=force_fresh_fun_image)
+        self._applicator.apply(snapshot)
+        self._on_view_state_changed(request.view_state)
 
     def _load_new_fun_view_image(self, image_info: ImageInfo) -> None:
         self._applicator.load_new_fun_view_image(image_info)

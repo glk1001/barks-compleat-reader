@@ -1,9 +1,9 @@
 """Tests for `ViewRenderer` orchestration.
 
 These tests pin the renderer's translation from caller-facing methods (render,
-render_state, render_title, refresh) into the underlying ViewPipeline +
-SnapshotApplicator calls. The pipeline and applicator are mocked because we
-want to verify the orchestration, not re-test the pipeline.
+render_state, render_title, refresh) into a single `ViewPipeline.render(request)`
+call plus the `SnapshotApplicator`. The pipeline and applicator are mocked
+because we want to verify the orchestration, not re-test the pipeline.
 """
 
 from __future__ import annotations
@@ -25,12 +25,18 @@ from barks_reader.core.navigation import (
 )
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.view_pipeline import ImageThemes
+from barks_reader.core.view_request import ViewRequest
 from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.view_renderer import (
     ImageThemesChange,
     ImageThemesToUse,
     ViewRenderer,
 )
+
+
+def _rendered_request(deps: dict[str, Any]) -> ViewRequest:
+    """Return the `ViewRequest` passed to the most recent `pipeline.render` call."""
+    return deps["pipeline"].render.call_args.args[0]
 
 
 @pytest.fixture
@@ -52,13 +58,7 @@ def mock_screens() -> ScreenBundle:
 def mock_pipeline() -> MagicMock:
     pipeline = MagicMock()
     pipeline.get_view_state.return_value = ViewStates.ON_INTRO_NODE
-    pipeline.get_current_category.return_value = ""
-    pipeline.get_current_year_range.return_value = ""
-    pipeline.get_current_cs_year_range.return_value = ""
-    pipeline.get_current_us_year_range.return_value = ""
-    pipeline.get_current_tag_group.return_value = None
-    pipeline.get_current_tag.return_value = None
-    pipeline.get_current_bottom_view_title.return_value = ""
+    pipeline.current_request.return_value = ViewRequest(view_state=ViewStates.ON_INTRO_NODE)
     return pipeline
 
 
@@ -84,19 +84,20 @@ class TestRenderState:
         view_renderer, deps = renderer
         view_renderer.render_state(ViewStates.INITIAL)
 
-        deps["pipeline"].set_view_state.assert_called_with(
-            ViewStates.INITIAL, preserve_top_view=False
-        )
-        deps["applicator"].apply.assert_called_once()
+        request = _rendered_request(deps)
+        assert request.view_state == ViewStates.INITIAL
+        assert request.preserve_top_view is False
+        # The snapshot returned by render is what gets applied.
+        deps["applicator"].apply.assert_called_once_with(deps["pipeline"].render.return_value)
         deps["on_view_state_changed"].assert_called_with(ViewStates.INITIAL)
 
-    def test_render_state_resets_title_image_file_after_apply(
+    def test_render_state_request_carries_no_one_shot_title_image(
         self, renderer: tuple[ViewRenderer, dict[str, Any]]
     ) -> None:
         view_renderer, deps = renderer
         view_renderer.render_state(ViewStates.INITIAL)
 
-        deps["pipeline"].set_bottom_view_title_image_file.assert_called_with(None)
+        assert _rendered_request(deps).title_image_file is None
 
 
 class TestRender:
@@ -106,9 +107,7 @@ class TestRender:
         view_renderer, deps = renderer
         view_renderer.render(IntroDestination())
 
-        deps["pipeline"].set_view_state.assert_called_with(
-            ViewStates.ON_INTRO_NODE, preserve_top_view=False
-        )
+        assert _rendered_request(deps).view_state == ViewStates.ON_INTRO_NODE
 
     def test_render_category_destination_passes_category_to_pipeline(
         self, renderer: tuple[ViewRenderer, dict[str, Any]]
@@ -116,10 +115,9 @@ class TestRender:
         view_renderer, deps = renderer
         view_renderer.render(CategoryDestination(category="MyCategory"))
 
-        deps["pipeline"].set_current_category.assert_called_with("MyCategory")
-        deps["pipeline"].set_view_state.assert_called_with(
-            ViewStates.ON_CATEGORY_NODE, preserve_top_view=False
-        )
+        request = _rendered_request(deps)
+        assert request.view_state == ViewStates.ON_CATEGORY_NODE
+        assert request.category == "MyCategory"
 
     def test_render_tag_group_destination_passes_tag_group_to_pipeline(
         self, renderer: tuple[ViewRenderer, dict[str, Any]]
@@ -127,7 +125,7 @@ class TestRender:
         view_renderer, deps = renderer
         view_renderer.render(TagGroupDestination(tag_group=TagGroups.AFRICA))
 
-        deps["pipeline"].set_current_tag_group.assert_called_with(TagGroups.AFRICA)
+        assert _rendered_request(deps).tag_group == TagGroups.AFRICA
 
     def test_render_tag_destination_passes_tag_to_pipeline(
         self, renderer: tuple[ViewRenderer, dict[str, Any]]
@@ -135,7 +133,15 @@ class TestRender:
         view_renderer, deps = renderer
         view_renderer.render(TagDestination(tag=Tags.AIRPLANES))
 
-        deps["pipeline"].set_current_tag.assert_called_with(Tags.AIRPLANES)
+        assert _rendered_request(deps).tag == Tags.AIRPLANES
+
+    def test_render_preserve_top_view_propagates(
+        self, renderer: tuple[ViewRenderer, dict[str, Any]]
+    ) -> None:
+        view_renderer, deps = renderer
+        view_renderer.render(IntroDestination(), preserve_top_view=True)
+
+        assert _rendered_request(deps).preserve_top_view is True
 
 
 class TestRenderTitle:
@@ -150,9 +156,9 @@ class TestRenderTitle:
 
         deps["screens"].bottom_title_view.fade_in_bottom_view_title.assert_called_once()
         deps["screens"].bottom_title_view.set_title_view.assert_called_with(fanta_info)
-        deps["pipeline"].set_view_state.assert_called_with(
-            ViewStates.ON_TITLE_NODE, preserve_top_view=False
-        )
+        request = _rendered_request(deps)
+        assert request.view_state == ViewStates.ON_TITLE_NODE
+        assert request.title_str == "Story Title"
 
     def test_render_title_resolves_edited_image_if_provided(
         self, renderer: tuple[ViewRenderer, dict[str, Any]]
@@ -170,27 +176,43 @@ class TestRenderTitle:
         deps["reader_settings"].file_paths.get_edited_version_if_possible.assert_called_with(
             Path("orig.png")
         )
-        # Title image file is set to the edited version, then reset after apply.
-        # Both calls happen on set_bottom_view_title_image_file.
-        calls = deps["pipeline"].set_bottom_view_title_image_file.call_args_list
-        assert any(c.args == (Path("edited.png"),) for c in calls)
+        # The edited file is carried on the request as the one-shot title image.
+        assert _rendered_request(deps).title_image_file == Path("edited.png")
 
 
-class TestRefresh:
-    def test_refresh_replays_current_state(
+class TestSetTitleWithoutRender:
+    def test_set_title_without_render_sets_title_on_pipeline(
         self, renderer: tuple[ViewRenderer, dict[str, Any]]
     ) -> None:
         view_renderer, deps = renderer
-        deps["pipeline"].get_view_state.return_value = ViewStates.ON_INTRO_NODE
+        fanta_info = MagicMock()
+        fanta_info.comic_book_info.get_title_str.return_value = "Story Title"
+
+        view_renderer.set_title_without_render(fanta_info)
+
+        deps["screens"].bottom_title_view.fade_in_bottom_view_title.assert_called_once()
+        deps["pipeline"].set_title.assert_called_once_with("Story Title", None)
+        deps["screens"].bottom_title_view.set_title_view.assert_called_with(fanta_info)
+        # No view-state transition: render is never called.
+        deps["pipeline"].render.assert_not_called()
+
+
+class TestRefresh:
+    def test_refresh_replays_current_request(
+        self, renderer: tuple[ViewRenderer, dict[str, Any]]
+    ) -> None:
+        view_renderer, deps = renderer
+        deps["pipeline"].current_request.return_value = ViewRequest(
+            view_state=ViewStates.ON_INTRO_NODE
+        )
 
         view_renderer.refresh()
 
-        deps["pipeline"].set_view_state.assert_called_with(
-            ViewStates.ON_INTRO_NODE, preserve_top_view=False
-        )
+        request = _rendered_request(deps)
+        assert request.view_state == ViewStates.ON_INTRO_NODE
         deps["applicator"].apply.assert_called_once()
 
-    def test_refresh_clears_fun_image_when_fun_view_visible(
+    def test_refresh_forces_fresh_fun_image_when_fun_view_visible(
         self, renderer: tuple[ViewRenderer, dict[str, Any]], mock_screens: ScreenBundle
     ) -> None:
         view_renderer, deps = renderer
@@ -198,11 +220,21 @@ class TestRefresh:
 
         view_renderer.refresh()
 
-        deps["pipeline"].reset_bottom_view_fun_image_info.assert_called_once()
+        assert deps["pipeline"].render.call_args.kwargs["force_fresh_fun_image"] is True
+
+    def test_refresh_keeps_fun_image_when_fun_view_hidden(
+        self, renderer: tuple[ViewRenderer, dict[str, Any]], mock_screens: ScreenBundle
+    ) -> None:
+        view_renderer, deps = renderer
+        mock_screens.fun_image_view.is_visible = False
+
+        view_renderer.refresh()
+
+        assert deps["pipeline"].render.call_args.kwargs["force_fresh_fun_image"] is False
 
 
 class TestThemes:
-    def test_themes_to_all_sets_pipeline_themes_none(
+    def test_themes_to_all_sends_none_themes_on_render(
         self, renderer: tuple[ViewRenderer, dict[str, Any]]
     ) -> None:
         view_renderer, deps = renderer
@@ -210,22 +242,21 @@ class TestThemes:
 
         # Verify by triggering a render and checking what was forwarded.
         view_renderer.render_state(ViewStates.ON_INTRO_NODE)
-        deps["pipeline"].set_fun_image_themes.assert_called_with(None)
+        assert _rendered_request(deps).fun_image_themes is None
 
-    def test_themes_to_custom_sets_full_theme_set(
+    def test_themes_to_custom_sends_full_theme_set_minus_discarded(
         self, renderer: tuple[ViewRenderer, dict[str, Any]]
     ) -> None:
-        view_renderer, _deps = renderer
+        view_renderer, deps = renderer
         view_renderer.bottom_view_fun_image_themes_changed(ImageThemesToUse.CUSTOM)
         view_renderer.bottom_view_alter_fun_image_themes(
             ImageThemes.FORTIES, ImageThemesChange.DISCARD
         )
 
         # The custom set initially contains all themes; FORTIES was just discarded.
-        # We can't read the renderer's private set, but we can verify behavior
-        # propagates through to the pipeline.
         view_renderer.render_state(ViewStates.ON_INTRO_NODE)
-        themes_arg = _deps["pipeline"].set_fun_image_themes.call_args.args[0]
+        themes_arg = _rendered_request(deps).fun_image_themes
+        assert themes_arg is not None
         assert ImageThemes.FORTIES not in themes_arg
 
 
@@ -274,7 +305,5 @@ class TestTitleDestinationViaRender:
 
         view_renderer.render(TitleDestination(fanta_info=fanta_info))
 
-        # TitleDestination resolves to ON_TITLE_NODE without title_str param.
-        deps["pipeline"].set_view_state.assert_called_with(
-            ViewStates.ON_TITLE_NODE, preserve_top_view=False
-        )
+        # TitleDestination resolves to ON_TITLE_NODE without a title_str param.
+        assert _rendered_request(deps).view_state == ViewStates.ON_TITLE_NODE

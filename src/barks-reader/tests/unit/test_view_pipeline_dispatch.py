@@ -24,6 +24,7 @@ from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_file_paths import ALL_TYPES, FileTypes
 from barks_reader.core.testing import FakeScheduler, ScriptedColorSource
 from barks_reader.core.view_pipeline import ImageThemes, ViewPipeline
+from barks_reader.core.view_request import ViewRequest
 
 if TYPE_CHECKING:
     from zipfile import Path as ZipPath
@@ -86,14 +87,6 @@ class TestContextAccessors:
         pipeline = _make_pipeline()
         assert pipeline.get_view_state() == ViewStates.PRE_INIT
 
-    def test_reset_bottom_view_fun_image_info_clears_cache(self) -> None:
-        pipeline = _make_pipeline()
-        pipeline._bottom_view_fun_image_info = ImageInfo(filename=Path("x.png"))
-
-        pipeline.reset_bottom_view_fun_image_info()
-
-        assert pipeline._bottom_view_fun_image_info is None
-
     def test_get_search_screen_image_info_returns_current(self) -> None:
         pipeline = _make_pipeline()
         sentinel = ImageInfo(filename=Path("preset.png"))
@@ -101,46 +94,37 @@ class TestContextAccessors:
 
         assert pipeline.get_search_screen_image_info() is sentinel
 
-    def test_set_get_current_category_roundtrip(self) -> None:
+    def test_current_request_round_trips_navigation_context(self) -> None:
+        """`render` writes the request's nav context; `current_request` reads it back.
+
+        ON_INTRO_NODE uses a fixed top image and the default fun-image titles, so
+        the nav fields are stored without needing per-context title lists.
+        """
         pipeline = _make_pipeline()
-        pipeline.set_current_category("Adventures")
-        assert pipeline.get_current_category() == "Adventures"
+        pipeline.render(
+            ViewRequest(
+                view_state=ViewStates.ON_INTRO_NODE,
+                category="Adventures",
+                year_range="1950-1959",
+                cs_year_range="CS 1948",
+                us_year_range="US 1960",
+                tag_group=TagGroups.PRIMARY_CHARACTERS,
+                tag=Tags.CLASSICS,
+                title_str="Lost in the Andes",
+            )
+        )
 
-    def test_set_get_current_tag_group_roundtrip(self) -> None:
-        pipeline = _make_pipeline()
-        pipeline.set_current_tag_group(TagGroups.PRIMARY_CHARACTERS)
-        assert pipeline.get_current_tag_group() == TagGroups.PRIMARY_CHARACTERS
-
-        pipeline.set_current_tag_group(None)
-        assert pipeline.get_current_tag_group() is None
-
-    def test_set_get_current_tag_roundtrip(self) -> None:
-        pipeline = _make_pipeline()
-        pipeline.set_current_tag(Tags.CLASSICS)
-        assert pipeline.get_current_tag() == Tags.CLASSICS
-
-        pipeline.set_current_tag(None)
-        assert pipeline.get_current_tag() is None
-
-    def test_set_get_current_year_range_roundtrip(self) -> None:
-        pipeline = _make_pipeline()
-        pipeline.set_current_year_range("1950-1959")
-        assert pipeline.get_current_year_range() == "1950-1959"
-
-    def test_set_get_current_cs_year_range_roundtrip(self) -> None:
-        pipeline = _make_pipeline()
-        pipeline.set_current_cs_year_range("CS 1948")
-        assert pipeline.get_current_cs_year_range() == "CS 1948"
-
-    def test_set_get_current_us_year_range_roundtrip(self) -> None:
-        pipeline = _make_pipeline()
-        pipeline.set_current_us_year_range("US 1960")
-        assert pipeline.get_current_us_year_range() == "US 1960"
-
-    def test_set_get_current_bottom_view_title_roundtrip(self) -> None:
-        pipeline = _make_pipeline()
-        pipeline.set_current_bottom_view_title("Lost in the Andes")
-        assert pipeline.get_current_bottom_view_title() == "Lost in the Andes"
+        request = pipeline.current_request()
+        assert request.view_state == ViewStates.ON_INTRO_NODE
+        assert request.category == "Adventures"
+        assert request.year_range == "1950-1959"
+        assert request.cs_year_range == "CS 1948"
+        assert request.us_year_range == "US 1960"
+        assert request.tag_group == TagGroups.PRIMARY_CHARACTERS
+        assert request.tag == Tags.CLASSICS
+        assert request.title_str == "Lost in the Andes"
+        # The one-shot title image file is never carried back out.
+        assert request.title_image_file is None
 
 
 # ---------------------------------------------------------------------------
@@ -555,7 +539,7 @@ class TestPublicDelegations:
         # Empty filename forces the else-branch; empty title then short-circuits.
         pipeline._bottom_view_title_image_info = ImageInfo()
 
-        pipeline.set_next_bottom_view_title_image()
+        pipeline._set_next_bottom_view_title_image()
 
         # No image was picked — image_selector was never consulted.
         _selector(pipeline).get_random_image_for_title.assert_not_called()
@@ -570,7 +554,7 @@ class TestPublicDelegations:
         collection_image = Path("all-one-pagers.png")
         _selector(pipeline).get_random_image_for_title.return_value = collection_image
 
-        pipeline.set_next_bottom_view_title_image()
+        pipeline._set_next_bottom_view_title_image()
 
         # A random image is picked from the synthetic "All One-Pagers" collection's
         # title-view types - not the individual gag image, and not the Insets directory.
@@ -594,9 +578,10 @@ class TestPublicDelegations:
 
         shown: list[Path | ZipPath | None] = []
         for title_str in (title_a, title_b, title_a):
-            pipeline.set_current_bottom_view_title(title_str)
-            pipeline.set_view_state(ViewStates.ON_TITLE_NODE)
-            image_info = pipeline.compute_snapshot().title_view.image_info
+            snapshot = pipeline.render(
+                ViewRequest(view_state=ViewStates.ON_TITLE_NODE, title_str=title_str)
+            )
+            image_info = snapshot.title_view.image_info
             assert image_info is not None
             shown.append(image_info.filename)
 
@@ -614,7 +599,7 @@ class TestPublicDelegations:
         pipeline._bottom_view_title_image_info = ImageInfo()
         _selector(pipeline).get_random_image_for_title.return_value = Path("random-title.png")
 
-        pipeline.set_next_bottom_view_title_image()
+        pipeline._set_next_bottom_view_title_image()
 
         _selector(pipeline).get_random_image_for_title.assert_called_once()
         assert pipeline._bottom_view_title_image_info.filename == Path("random-title.png")

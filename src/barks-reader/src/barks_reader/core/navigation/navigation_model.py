@@ -10,7 +10,7 @@ across `ui/tree_view_manager.py`, `ui/navigation_coordinator.py`, and
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from barks_fantagraphics.comic_book_info import NON_COMIC_TITLES
 from barks_fantagraphics.fanta_comics_info import (
@@ -25,6 +25,7 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
+from barks_reader.core.view_request import ViewRequest
 
 from .destinations import (
     AllSeriesDestination,
@@ -100,13 +101,6 @@ _SIMPLE_DESTINATION_TO_VIEW_STATE: dict[type[Destination], ViewStates] = {
 }
 
 
-_YEAR_RANGE_KIND_TO_VIEW_STATE: dict[YearRangeKind, tuple[ViewStates, str]] = {
-    YearRangeKind.CHRONO: (ViewStates.ON_YEAR_RANGE_NODE, "year_range"),
-    YearRangeKind.CS: (ViewStates.ON_CS_YEAR_RANGE_NODE, "cs_year_range"),
-    YearRangeKind.US: (ViewStates.ON_US_YEAR_RANGE_NODE, "us_year_range"),
-}
-
-
 _ARTICLE_VIEW_STATE_TO_TITLE_MAP_KEYS: set[ViewStates] = {
     ViewStates.ON_APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_NODE,
     ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,
@@ -128,36 +122,45 @@ class NavigationModel:
     """
 
     @staticmethod
-    def view_state_for(dest: Destination) -> tuple[ViewStates, dict[str, Any]]:  # noqa: PLR0911
-        """Resolve the view state and params to activate when `dest` is selected.
+    def view_state_for(dest: Destination) -> ViewRequest:  # noqa: PLR0911
+        """Resolve the `ViewRequest` to render when `dest` is selected.
 
-        The returned params dict is forwarded to `ViewStateManager.set_view_state`.
-        For year-range destinations the param value is a formatted range string
-        (matching what the tree-view node used to pass via `node.text`).
+        Only the navigation-context fields are populated here; renderer-owned
+        fields (fun-image themes, preserve-top-view, one-shot title image) are
+        layered on by the caller. For year-range destinations the value is a
+        formatted range string (matching what the tree-view node used to pass
+        via `node.text`).
         """
         simple_state = _SIMPLE_DESTINATION_TO_VIEW_STATE.get(type(dest))
         if simple_state is not None:
-            return simple_state, {}
+            return ViewRequest(view_state=simple_state)
 
         if isinstance(dest, YearRangeDestination):
-            view_state, param_name = _YEAR_RANGE_KIND_TO_VIEW_STATE[dest.kind]
             range_str = FilteredTitleLists.get_range_str((dest.start, dest.end))
-            return view_state, {param_name: range_str}
+            if dest.kind is YearRangeKind.CS:
+                return ViewRequest(
+                    view_state=ViewStates.ON_CS_YEAR_RANGE_NODE, cs_year_range=range_str
+                )
+            if dest.kind is YearRangeKind.US:
+                return ViewRequest(
+                    view_state=ViewStates.ON_US_YEAR_RANGE_NODE, us_year_range=range_str
+                )
+            return ViewRequest(view_state=ViewStates.ON_YEAR_RANGE_NODE, year_range=range_str)
 
         if isinstance(dest, SeriesDestination):
-            return _SERIES_TO_VIEW_STATE[dest.series_name], {}
+            return ViewRequest(view_state=_SERIES_TO_VIEW_STATE[dest.series_name])
 
         if isinstance(dest, CategoryDestination):
-            return ViewStates.ON_CATEGORY_NODE, {"category": dest.category}
+            return ViewRequest(view_state=ViewStates.ON_CATEGORY_NODE, category=dest.category)
 
         if isinstance(dest, TagGroupDestination):
-            return ViewStates.ON_TAG_GROUP_NODE, {"tag_group": dest.tag_group}
+            return ViewRequest(view_state=ViewStates.ON_TAG_GROUP_NODE, tag_group=dest.tag_group)
 
         if isinstance(dest, TagDestination):
-            return ViewStates.ON_TAG_NODE, {"tag": dest.tag}
+            return ViewRequest(view_state=ViewStates.ON_TAG_NODE, tag=dest.tag)
 
         if isinstance(dest, ArticleDestination):
-            return dest.view_state, {}
+            return ViewRequest(view_state=dest.view_state)
 
         msg = f"No view state mapping for destination: {type(dest).__name__}"
         raise RuntimeError(msg)

@@ -1,6 +1,6 @@
 """Immutable snapshot of the desired UI state.
 
-These dataclasses flow from BackgroundViews → SnapshotApplicator, making the
+These dataclasses flow from ViewPipeline → SnapshotApplicator, making the
 data path explicit and testable without any Kivy dependency.
 """
 
@@ -65,7 +65,7 @@ class ScreenVisibility:
 class ViewSnapshot:
     """Complete snapshot of the desired UI view state.
 
-    Produced by ``BackgroundViews.compute_snapshot()`` and consumed by
+    Produced by ``ViewPipeline.render()`` and consumed by
     ``SnapshotApplicator.apply()`` to drive all screen-widget updates.
     """
 

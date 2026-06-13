@@ -61,6 +61,7 @@ from barks_reader.core.navigation import (
     YearRangeKind,
 )
 from barks_reader.core.navigation.view_states import ViewStates
+from barks_reader.core.view_request import ViewRequest
 
 
 def _fake_fanta() -> FantaComicBookInfo:
@@ -102,15 +103,15 @@ def model() -> NavigationModel:
 def test_view_state_for_simple_destination(
     model: NavigationModel, destination: Destination, expected_state: ViewStates
 ) -> None:
-    state, params = model.view_state_for(destination)
-    assert state is expected_state
-    assert params == {}
+    request = model.view_state_for(destination)
+    assert request.view_state is expected_state
+    assert request == ViewRequest(view_state=expected_state)
 
 
 def test_view_state_for_title_destination(model: NavigationModel) -> None:
-    state, params = model.view_state_for(TitleDestination(fanta_info=_fake_fanta()))
-    assert state is ViewStates.ON_TITLE_NODE
-    assert params == {}
+    request = model.view_state_for(TitleDestination(fanta_info=_fake_fanta()))
+    assert request.view_state is ViewStates.ON_TITLE_NODE
+    assert request == ViewRequest(view_state=ViewStates.ON_TITLE_NODE)
 
 
 # --- view_state_for: series --------------------------------------------
@@ -132,9 +133,9 @@ def test_view_state_for_title_destination(model: NavigationModel) -> None:
 def test_view_state_for_series(
     model: NavigationModel, series_name: str, expected_state: ViewStates
 ) -> None:
-    state, params = model.view_state_for(SeriesDestination(series_name=series_name))
-    assert state is expected_state
-    assert params == {}
+    request = model.view_state_for(SeriesDestination(series_name=series_name))
+    assert request.view_state is expected_state
+    assert request == ViewRequest(view_state=expected_state)
 
 
 # --- view_state_for: year ranges --------------------------------------
@@ -155,30 +156,30 @@ def test_view_state_for_year_range(
     expected_param: str,
 ) -> None:
     dest = YearRangeDestination(start=1942, end=1946, kind=kind)
-    state, params = model.view_state_for(dest)
-    assert state is expected_state
-    assert params == {expected_param: FilteredTitleLists.get_range_str((1942, 1946))}
+    request = model.view_state_for(dest)
+    assert request.view_state is expected_state
+    assert getattr(request, expected_param) == FilteredTitleLists.get_range_str((1942, 1946))
 
 
 # --- view_state_for: category / tag_group / tag -----------------------
 
 
 def test_view_state_for_category(model: NavigationModel) -> None:
-    state, params = model.view_state_for(CategoryDestination(category="My Category"))
-    assert state is ViewStates.ON_CATEGORY_NODE
-    assert params == {"category": "My Category"}
+    request = model.view_state_for(CategoryDestination(category="My Category"))
+    assert request.view_state is ViewStates.ON_CATEGORY_NODE
+    assert request.category == "My Category"
 
 
 def test_view_state_for_tag_group(model: NavigationModel) -> None:
-    state, params = model.view_state_for(TagGroupDestination(tag_group=TagGroups.AFRICA))
-    assert state is ViewStates.ON_TAG_GROUP_NODE
-    assert params == {"tag_group": TagGroups.AFRICA}
+    request = model.view_state_for(TagGroupDestination(tag_group=TagGroups.AFRICA))
+    assert request.view_state is ViewStates.ON_TAG_GROUP_NODE
+    assert request.tag_group == TagGroups.AFRICA
 
 
 def test_view_state_for_tag(model: NavigationModel) -> None:
-    state, params = model.view_state_for(TagDestination(tag=Tags.AIRPLANES))
-    assert state is ViewStates.ON_TAG_NODE
-    assert params == {"tag": Tags.AIRPLANES}
+    request = model.view_state_for(TagDestination(tag=Tags.AIRPLANES))
+    assert request.view_state is ViewStates.ON_TAG_NODE
+    assert request.tag == Tags.AIRPLANES
 
 
 # --- view_state_for: article ----------------------------------------
@@ -189,9 +190,11 @@ def test_view_state_for_article_returns_carried_state(model: NavigationModel) ->
         view_state=ViewStates.ON_APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_NODE,
         article_title=Titles.RICH_TOMMASO___ON_COLORING_BARKS,
     )
-    state, params = model.view_state_for(dest)
-    assert state is ViewStates.ON_APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_NODE
-    assert params == {}
+    request = model.view_state_for(dest)
+    assert request.view_state is ViewStates.ON_APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_NODE
+    assert request == ViewRequest(
+        view_state=ViewStates.ON_APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_NODE
+    )
 
 
 # --- view_state_for: unknown destination ------------------------------

@@ -14,7 +14,6 @@ the pipeline can be tested end-to-end without Kivy.
 from __future__ import annotations
 
 from dataclasses import replace
-from enum import Enum, auto
 from typing import TYPE_CHECKING, ClassVar
 
 from barks_fantagraphics.barks_tags import (
@@ -47,6 +46,7 @@ from .navigation.view_states import ViewStates
 from .ports import CancelHandle, ColorSource, PaletteId, Scheduler
 from .reader_file_paths import ALL_TYPES, FileTypes
 from .reader_formatter import get_formatted_color
+from .view_request import ImageThemes, ViewRequest
 from .view_snapshot import (
     FunViewSnapshot,
     ScreenVisibility,
@@ -74,22 +74,6 @@ _TITLE_VIEW_IMAGE_TYPES: set[FileTypes] = {
 
 _DEBUG_FUN_IMAGE_TITLES = None
 # _DEBUG_FUN_IMAGE_TITLES = [Titles.LOST_IN_THE_ANDES]
-
-
-class ImageThemes(Enum):
-    """Tag-style filters that constrain which titles feed the fun-image view."""
-
-    AI = auto()
-    BLACK_AND_WHITE = auto()
-    CENSORSHIP = auto()
-    CLASSICS = auto()
-    FAVOURITES = auto()
-    INSETS = auto()
-    SILHOUETTES = auto()
-    SPLASHES = auto()
-    FORTIES = auto()
-    FIFTIES = auto()
-    SIXTIES = auto()
 
 
 IMAGE_THEME_TO_FILE_TYPE_MAP = {
@@ -257,99 +241,95 @@ class ViewPipeline:
 
         self._fun_image_themes: set[ImageThemes] | None = None
         self._cached_fun_titles: tuple[list[FantaComicBookInfo], set[FileTypes]] | None = None
-        self.set_fun_image_themes(None)
+        self._set_fun_image_themes(None)
 
         self._view_state = ViewStates.PRE_INIT
 
     # ------------------------------------------------------------------
-    # Context setters (formerly the seven `set_current_*` on BackgroundViews)
+    # Public interface
     # ------------------------------------------------------------------
-    def set_fun_image_themes(self, image_themes: set[ImageThemes] | None) -> None:
-        """Set the active fun-image themes; resets the cached title list."""
-        logger.debug(f"Set self._fun_image_themes = {image_themes}.")
-        self._fun_image_themes = image_themes
-        self._cached_fun_titles = self._get_fun_image_titles()
+    def render(self, request: ViewRequest, *, force_fresh_fun_image: bool = False) -> ViewSnapshot:
+        """Apply *request*, refresh all derived view fields, and return a snapshot.
+
+        This is the single entry point. It writes the request's navigation
+        context onto the internal fields, applies the fun-image theme policy,
+        transitions to `request.view_state`, and returns the resulting
+        `ViewSnapshot`. The one-shot `request.title_image_file` is consumed by
+        this call and then cleared. Pass `force_fresh_fun_image=True` (used by
+        `refresh`) to re-pick the fun-image even in states that would keep it.
+        """
+        self._current_category = request.category
+        self._current_year_range = request.year_range
+        self._current_cs_year_range = request.cs_year_range
+        self._current_us_year_range = request.us_year_range
+        self._current_tag_group = request.tag_group
+        self._current_tag = request.tag
+        self._current_bottom_view_title = request.title_str
+        if force_fresh_fun_image:
+            self._bottom_view_fun_image_info = None
+        self._set_bottom_view_title_image_file(request.title_image_file)
+        self._set_fun_image_themes(request.fun_image_themes)
+
+        logger.info(f"Updating background view state to {request.view_state.name}.")
+        self._view_state = request.view_state
+        self._update_views(preserve_top_view=request.preserve_top_view)
+
+        snapshot = self._compute_snapshot()
+        # The provided title image file is one-shot - clear it now it's been used.
+        self._set_bottom_view_title_image_file(None)
+        return snapshot
+
+    def current_request(self) -> ViewRequest:
+        """Return a `ViewRequest` describing the live navigation context.
+
+        Used by `refresh` to re-render the current view. The one-shot
+        `title_image_file` is deliberately not carried.
+        """
+        return ViewRequest(
+            view_state=self._view_state,
+            category=self._current_category,
+            year_range=self._current_year_range,
+            cs_year_range=self._current_cs_year_range,
+            us_year_range=self._current_us_year_range,
+            tag_group=self._current_tag_group,
+            tag=self._current_tag,
+            title_str=self._current_bottom_view_title,
+            fun_image_themes=self._fun_image_themes,
+        )
+
+    def set_title(self, title_str: str, title_image_file: PanelPath | None) -> None:
+        """Set the current title and pick its bottom title-view image in place.
+
+        Used for the "configure the title view without a view-state transition"
+        flow (`ViewRenderer.set_title_without_render`).
+        """
+        self._current_bottom_view_title = title_str
+        self._set_bottom_view_title_image_file(title_image_file)
+        self._set_next_bottom_view_title_image()
 
     def get_view_state(self) -> ViewStates:
         """Return the currently active view state."""
         return self._view_state
 
-    def reset_bottom_view_fun_image_info(self) -> None:
-        """Clear the cached fun-image info so the next compute pass picks fresh."""
-        self._bottom_view_fun_image_info = None
-
     def get_search_screen_image_info(self) -> ImageInfo:
         """Return the currently chosen search-screen image info."""
         return self._search_screen_image_info
 
-    def get_current_category(self) -> str:
-        """Return the currently selected tag category."""
-        return self._current_category
+    # ------------------------------------------------------------------
+    # Internal
+    # ------------------------------------------------------------------
+    def _set_fun_image_themes(self, image_themes: set[ImageThemes] | None) -> None:
+        """Set the active fun-image themes; resets the cached title list."""
+        logger.debug(f"Set self._fun_image_themes = {image_themes}.")
+        self._fun_image_themes = image_themes
+        self._cached_fun_titles = self._get_fun_image_titles()
 
-    def set_current_category(self, cat: str) -> None:
-        """Set the currently selected tag category."""
-        self._current_category = cat
-
-    def get_current_tag_group(self) -> None | TagGroups:
-        """Return the currently selected tag group."""
-        return self._current_tag_group
-
-    def set_current_tag_group(self, tag_group: None | TagGroups) -> None:
-        """Set the currently selected tag group."""
-        self._current_tag_group = tag_group
-
-    def get_current_tag(self) -> None | Tags:
-        """Return the currently selected tag."""
-        return self._current_tag
-
-    def set_current_tag(self, tag: None | Tags) -> None:
-        """Set the currently selected tag."""
-        self._current_tag = tag
-
-    def get_current_year_range(self) -> str:
-        """Return the currently selected chronological year range."""
-        return self._current_year_range
-
-    def set_current_year_range(self, year_range: str) -> None:
-        """Set the currently selected chronological year range."""
-        self._current_year_range = year_range
-
-    def get_current_cs_year_range(self) -> str:
-        """Return the currently selected CS-series year range."""
-        return self._current_cs_year_range
-
-    def set_current_cs_year_range(self, year_range: str) -> None:
-        """Set the currently selected CS-series year range."""
-        self._current_cs_year_range = year_range
-
-    def get_current_us_year_range(self) -> str:
-        """Return the currently selected US-series year range."""
-        return self._current_us_year_range
-
-    def set_current_us_year_range(self, year_range: str) -> None:
-        """Set the currently selected US-series year range."""
-        self._current_us_year_range = year_range
-
-    def get_current_bottom_view_title(self) -> str:
-        """Return the currently selected title's display string."""
-        return self._current_bottom_view_title
-
-    def set_current_bottom_view_title(self, title: str) -> None:
-        """Set the currently selected title's display string."""
-        self._current_bottom_view_title = title
-
-    def set_view_state(self, view_state: ViewStates, *, preserve_top_view: bool = False) -> None:
-        """Transition to *view_state* and refresh all derived view fields."""
-        logger.info(f"Updating background view state to {view_state.name}.")
-        self._view_state = view_state
-        self._update_views(preserve_top_view=preserve_top_view)
-
-    def compute_snapshot(self) -> ViewSnapshot:
+    def _compute_snapshot(self) -> ViewSnapshot:
         """Build an immutable snapshot of the current view state.
 
-        Must be called after `set_view_state()` (which runs `_update_views()`
-        to refresh internal fields). Reads those fields and returns a
-        `ViewSnapshot` that fully describes the desired UI.
+        Called by `render()` after `_update_views()` has refreshed internal
+        fields. Reads those fields and returns a `ViewSnapshot` that fully
+        describes the desired UI.
         """
         search_mode = _SEARCH_MODE_MAP.get(self._view_state, "")
         search_visible = self._view_state in _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES
@@ -405,7 +385,7 @@ class ViewPipeline:
             self._set_next_top_view_image()
         self._set_next_bottom_view_fun_image()
         self._set_next_search_screen_image()
-        self.set_next_bottom_view_title_image()
+        self._set_next_bottom_view_title_image()
         self._set_bottom_view_title_image_color()
 
     def _set_next_top_view_image(self) -> None:
@@ -719,7 +699,7 @@ class ViewPipeline:
     def _set_bottom_view_fun_image_color(self) -> None:
         self._bottom_view_fun_image_color = self._colors.next_color(PaletteId.FUN)
 
-    def set_next_bottom_view_title_image(self) -> None:
+    def _set_next_bottom_view_title_image(self) -> None:
         """Pick the large bottom title-view image.
 
         One-pagers always draw their large image at random from the synthetic
@@ -752,14 +732,14 @@ class ViewPipeline:
             use_only_edited_if_possible=True,
         )
         logger.debug(f'Using random title image file "{image_file}" for "{title_str}".')
-        self.set_bottom_view_title_image_file(image_file)
+        self._set_bottom_view_title_image_file(image_file)
 
     def _current_title_is_one_pager(self) -> bool:
         """Whether the current bottom-view title is a one-pager or the collection itself."""
         title = STR_TITLE_TO_ENUM.get(self._current_bottom_view_title)
         return title is not None and (title in ONE_PAGERS or is_one_pager_collection(title))
 
-    def set_bottom_view_title_image_file(self, image_file: PanelPath | None) -> None:
+    def _set_bottom_view_title_image_file(self, image_file: PanelPath | None) -> None:
         """Replace the title-view image filename, preserving the other fields."""
         self._bottom_view_title_image_info = replace(
             self._bottom_view_title_image_info, filename=image_file
