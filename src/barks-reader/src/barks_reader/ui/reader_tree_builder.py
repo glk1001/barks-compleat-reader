@@ -521,29 +521,17 @@ class ReaderTreeBuilder:
         )
         self._tree_view_manager.on_search_node_created(search_node)
 
-        for text, handler, destination in [
-            (
-                TITLE_SEARCH_NODE_TEXT,
-                self._tree_view_manager.on_title_search_node_pressed,
-                TitleSearchDestination(),
-            ),
-            (
-                TAG_SEARCH_NODE_TEXT,
-                self._tree_view_manager.on_tag_search_node_pressed,
-                TagSearchDestination(),
-            ),
-            (
-                WORD_SEARCH_NODE_TEXT,
-                self._tree_view_manager.on_word_search_node_pressed,
-                WordSearchDestination(),
-            ),
+        for text, destination in [
+            (TITLE_SEARCH_NODE_TEXT, TitleSearchDestination()),
+            (TAG_SEARCH_NODE_TEXT, TagSearchDestination()),
+            (WORD_SEARCH_NODE_TEXT, WordSearchDestination()),
         ]:
             self._create_and_add_simple_node(
                 tree,
                 text,
                 node_class=StoryGroupTreeViewNode,
                 parent_node=search_node,
-                on_press_handler=handler,
+                on_press_handler=self._tree_view_manager.set_view_state_for_node,
                 destination=destination,
             )
 
@@ -613,7 +601,7 @@ class ReaderTreeBuilder:
             tree,
             APPENDIX_STATISTICS_NODE_TEXT,
             parent_node=appendix_node,
-            on_press_handler=self._tree_view_manager.on_statistics_node_pressed,
+            on_press_handler=self._tree_view_manager.set_view_state_for_node,
             destination=StatisticsDestination(),
         )
         self._tree_view_manager.on_statistics_node_created(child_node)
@@ -628,7 +616,7 @@ class ReaderTreeBuilder:
             tree,
             INDEX_MAIN_TEXT,
             parent_node=index_node,
-            on_press_handler=self._tree_view_manager.on_main_index_node_pressed,
+            on_press_handler=self._tree_view_manager.set_view_state_for_node,
             destination=MainIndexDestination(),
         )
         self._tree_view_manager.on_main_index_node_created(child_node)
@@ -655,7 +643,7 @@ class ReaderTreeBuilder:
             tree,
             INDEX_NAMES_TEXT,
             parent_node=speech_node,
-            on_press_handler=self._tree_view_manager.on_names_index_node_pressed,
+            on_press_handler=self._tree_view_manager.set_view_state_for_node,
             destination=NamesIndexDestination(),
         )
         self._tree_view_manager.on_names_index_node_created(names_node)
@@ -664,7 +652,7 @@ class ReaderTreeBuilder:
             tree,
             INDEX_LOCATIONS_TEXT,
             parent_node=speech_node,
-            on_press_handler=self._tree_view_manager.on_locations_index_node_pressed,
+            on_press_handler=self._tree_view_manager.set_view_state_for_node,
             destination=LocationsIndexDestination(),
         )
         self._tree_view_manager.on_locations_index_node_created(locations_node)

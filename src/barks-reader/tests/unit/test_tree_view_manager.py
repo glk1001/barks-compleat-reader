@@ -12,6 +12,7 @@ from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.navigation import (
     ArticleDestination,
     IntroDestination,
+    MainIndexDestination,
     TagGroupDestination,
     TitleDestination,
 )
@@ -122,6 +123,28 @@ class TestTreeViewManager:
         tree_view_manager.setup_and_select_node(node)
 
         mock_dependencies["renderer"].render.assert_called_with(IntroDestination())
+
+    def test_set_view_state_for_node_renders_destination(
+        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        # The generic handler bound as on_press for the simple index/search/statistics
+        # nodes: it renders the node's destination (replacing ~7 boilerplate handlers).
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.destination = MainIndexDestination()
+
+        tree_view_manager.set_view_state_for_node(node)
+
+        mock_dependencies["renderer"].render.assert_called_with(MainIndexDestination())
+
+    def test_set_view_state_for_node_without_destination_raises(
+        self, tree_view_manager: TreeViewManager
+    ) -> None:
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.destination = None
+        node.get_name.return_value = "Bad Node"
+
+        with pytest.raises(RuntimeError, match="no destination"):
+            tree_view_manager.set_view_state_for_node(node)
 
     def test_deselect_and_close_open_nodes(
         self,

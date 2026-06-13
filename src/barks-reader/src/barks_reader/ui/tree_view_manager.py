@@ -193,9 +193,18 @@ class TreeViewManager:
         self.set_view_state_for_node(node)
 
     def set_view_state_for_node(self, node: ButtonTreeViewNode) -> None:
+        """Render the view for *node*'s destination.
+
+        The single generic handler for nodes whose only behavior is "show my
+        view": bound as the ``on_press`` handler for the simple index, search,
+        and statistics nodes, and also called from the expand/collapse paths.
+        Nodes with extra behavior (e.g. the speech index/words nodes) keep their
+        own handlers.
+        """
         if node.destination is None:
             msg = f"Node has no destination: '{node.get_name()}' ({type(node)})"
             raise RuntimeError(msg)
+        logger.info(f"Rendering view for node '{node.get_name()}'.")
         self._renderer.render(node.destination)
 
     def on_node_expanded(self, _tree: ReaderTreeView, node: ButtonTreeViewNode) -> None:
@@ -321,10 +330,6 @@ class TreeViewManager:
     def on_main_index_node_created(self, main_index_node: MainTreeViewNode) -> None:
         self._main_index_screen.treeview_index_node = main_index_node
 
-    def on_main_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
-        logger.info("Main index node pressed.")
-        self._renderer.render_state(ViewStates.ON_INDEX_MAIN_NODE)
-
     def on_speech_index_node_created(self, speech_index_node: MainTreeViewNode) -> None:
         self._speech_index_screen.treeview_index_node = speech_index_node
 
@@ -352,16 +357,8 @@ class TreeViewManager:
     def on_names_index_node_created(self, names_index_node: MainTreeViewNode) -> None:
         self._names_index_screen.treeview_index_node = names_index_node
 
-    def on_names_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
-        logger.info("Names index node pressed.")
-        self._renderer.render_state(ViewStates.ON_INDEX_NAMES_NODE)
-
     def on_locations_index_node_created(self, locations_index_node: MainTreeViewNode) -> None:
         self._locations_index_screen.treeview_index_node = locations_index_node
-
-    def on_locations_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
-        logger.info("Locations index node pressed.")
-        self._renderer.render_state(ViewStates.ON_INDEX_LOCATIONS_NODE)
 
     def on_statistics_node_created(self, node: ButtonTreeViewNode) -> None:
         """Handle creation of the Statistics tree node."""
@@ -371,11 +368,6 @@ class TreeViewManager:
     def statistics_node(self) -> ButtonTreeViewNode | None:
         return getattr(self, "_statistics_node", None)
 
-    def on_statistics_node_pressed(self, _node: ButtonTreeViewNode) -> None:
-        """Handle a press on the Statistics tree node."""
-        logger.info("Statistics node pressed.")
-        self._renderer.render_state(ViewStates.ON_APPENDIX_STATISTICS_NODE)
-
     def on_search_node_created(self, node: MainTreeViewNode) -> None:
         """Handle creation of the Search tree node."""
         self._search_node = node
@@ -383,15 +375,3 @@ class TreeViewManager:
     @property
     def search_node(self) -> MainTreeViewNode | None:
         return self._search_node
-
-    def on_title_search_node_pressed(self, _node: ButtonTreeViewNode) -> None:
-        logger.info("Title Search node pressed.")
-        self._renderer.render_state(ViewStates.ON_TITLE_SEARCH_NODE)
-
-    def on_tag_search_node_pressed(self, _node: ButtonTreeViewNode) -> None:
-        logger.info("Tag Search node pressed.")
-        self._renderer.render_state(ViewStates.ON_TAG_SEARCH_NODE)
-
-    def on_word_search_node_pressed(self, _node: ButtonTreeViewNode) -> None:
-        logger.info("Word Search node pressed.")
-        self._renderer.render_state(ViewStates.ON_WORD_SEARCH_NODE)
