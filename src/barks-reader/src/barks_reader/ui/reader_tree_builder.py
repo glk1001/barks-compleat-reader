@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from functools import partial
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_tags import (
@@ -279,7 +280,12 @@ class ReaderTreeBuilder:
             tree,
             parent_node,
             CS_YEAR_RANGES,
-            self._add_cs_year_range_node_gen,
+            partial(
+                self._add_series_year_range_node_gen,
+                kind=YearRangeKind.CS,
+                year_key_func=FilteredTitleLists.get_cs_year_key_from_year,
+                extra_text_func=self._get_cs_year_range_extra_text,
+            ),
         )
 
     def _populate_us_node_gen(
@@ -290,7 +296,12 @@ class ReaderTreeBuilder:
             tree,
             parent_node,
             US_YEAR_RANGES,
-            self._add_us_year_range_node_gen,
+            partial(
+                self._add_series_year_range_node_gen,
+                kind=YearRangeKind.US,
+                year_key_func=FilteredTitleLists.get_us_year_key_from_year,
+                extra_text_func=self._get_us_year_range_extra_text,
+            ),
         )
 
     @staticmethod
@@ -416,35 +427,24 @@ class ReaderTreeBuilder:
             if (i + 1) % self.BUILD_BATCH_SIZE == 0:
                 yield
 
-    def _add_cs_year_range_node_gen(
-        self, tree: ReaderTreeView, year_range: tuple[int, int], parent_node: ButtonTreeViewNode
+    def _add_series_year_range_node_gen(
+        self,
+        tree: ReaderTreeView,
+        year_range: tuple[int, int],
+        parent_node: ButtonTreeViewNode,
+        *,
+        kind: YearRangeKind,
+        year_key_func: Callable[[int], str],
+        extra_text_func: Callable[[list[FantaComicBookInfo]], str],
     ) -> Generator[None]:
+        """Add a CS/US series year-range node; the per-series specifics are bound by the caller."""
         new_node, year_range_titles = self._create_and_add_year_range_node(
             tree,
             year_range,
-            FilteredTitleLists.get_cs_year_key_from_year,
-            self._get_cs_year_range_extra_text,
+            year_key_func,
+            extra_text_func,
             parent_node,
-            kind=YearRangeKind.CS,
-        )
-
-        self._defer_node_population(
-            new_node,
-            lambda: self._add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node),
-        )
-
-        yield
-
-    def _add_us_year_range_node_gen(
-        self, tree: ReaderTreeView, year_range: tuple[int, int], parent_node: ButtonTreeViewNode
-    ) -> Generator:
-        new_node, year_range_titles = self._create_and_add_year_range_node(
-            tree,
-            year_range,
-            FilteredTitleLists.get_us_year_key_from_year,
-            self._get_us_year_range_extra_text,
-            parent_node,
-            kind=YearRangeKind.US,
+            kind=kind,
         )
 
         self._defer_node_population(

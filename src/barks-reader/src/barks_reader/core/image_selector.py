@@ -207,55 +207,6 @@ class ImageSelector:
             FIT_MODE_COVER,
         )
 
-    def get_loading_screen_random_image(
-        self,
-        title_list: list[FantaComicBookInfo],
-    ) -> PanelPath:
-        """Return a random image path for the loading screen."""
-        return self._get_random_image_file(
-            title_list,
-            {
-                FileTypes.BLACK_AND_WHITE,
-                FileTypes.AI,
-                FileTypes.CENSORSHIP,
-                FileTypes.CLOSEUP,
-                FileTypes.FAVOURITE,
-                FileTypes.INSET,
-                FileTypes.NONTITLE,
-                FileTypes.ORIGINAL_ART,
-                FileTypes.SILHOUETTE,
-                FileTypes.SPLASH,
-            },
-        )
-
-    def get_index_screen_random_image(
-        self,
-        title_list: list[FantaComicBookInfo],
-    ) -> PanelPath:
-        """Return a random image path for the index screen."""
-        return self._get_random_image_file(
-            title_list,
-            {
-                FileTypes.BLACK_AND_WHITE,
-                FileTypes.AI,
-                FileTypes.CENSORSHIP,
-                FileTypes.CLOSEUP,
-                FileTypes.FAVOURITE,
-                FileTypes.INSET,
-                FileTypes.NONTITLE,
-                FileTypes.ORIGINAL_ART,
-                FileTypes.SILHOUETTE,
-                FileTypes.SPLASH,
-            },
-        )
-
-    def _get_random_image_file(
-        self, title_list: list[FantaComicBookInfo], file_types: set[FileTypes] | None = None
-    ) -> PanelPath:
-        file = self.get_random_image(title_list, file_types=file_types).filename
-        assert file
-        return file
-
     def get_random_image_for_title(
         self, title_str: str, file_types: set[FileTypes], use_only_edited_if_possible: bool = False
     ) -> PanelPath:
