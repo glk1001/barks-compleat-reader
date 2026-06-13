@@ -424,13 +424,13 @@
       <scope name="pyarmor_gen_files" level="WARNING" enabled="false" />
       <scope name="third_party_code" level="WARNING" enabled="false" />
     </inspection_tool>
-    <inspection_tool class="SpellCheckingInspection" enabled="true" level="TYPO" enabled_by_default="true">
-      <scope name="pyarmor_gen_files" level="TYPO" enabled="false">
+    <inspection_tool class="SpellCheckingInspection" enabled="false" level="TYPO" enabled_by_default="false">
+      <scope name="pyarmor_gen_files" level="TYPO" enabled="true">
         <option name="processCode" value="true" />
         <option name="processLiterals" value="true" />
         <option name="processComments" value="true" />
       </scope>
-      <scope name="third_party_code" level="TYPO" enabled="false">
+      <scope name="third_party_code" level="TYPO" enabled="true">
         <option name="processCode" value="true" />
         <option name="processLiterals" value="true" />
         <option name="processComments" value="true" />
