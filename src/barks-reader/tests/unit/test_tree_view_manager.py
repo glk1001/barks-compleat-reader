@@ -177,11 +177,11 @@ class TestTreeViewManager:
         node.parent_node = MagicMock()
         node.parent_node.nodes = [node]  # No siblings to close
 
-        # Mock _pin_parent_position_while_populating to avoid complex scroll logic
-        with patch.object(tree_view_manager, "_pin_parent_position_while_populating") as mock_pin:
+        # Mock the scroll pinner to avoid the complex scroll-stabilization logic.
+        with patch.object(tree_view_manager._scroll_pinner, "pin_while_populating") as mock_pin:
             tree_view_manager.on_node_expanded(MagicMock(), node)
 
-            mock_pin.assert_called_with(node, run_populate=True)
+            mock_pin.assert_called_with(node, populate=node.populate_callback)
             assert node.populated is True
             mock_dependencies["renderer"].render.assert_called_with(IntroDestination())
 
@@ -199,26 +199,6 @@ class TestTreeViewManager:
         tree_view_manager._close_siblings(node)
 
         screen_mocks["tree_view"].ids.reader_tree_view.toggle_node.assert_called_with(sibling)
-
-    def test_pin_parent_position_while_populating(
-        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
-    ) -> None:
-        scroll_view = screen_mocks["tree_view"].ids.scroll_view
-        scroll_view.children = [MagicMock()]  # Container
-        scroll_view.to_window.return_value = (0, 100)
-
-        parent_node = MagicMock(spec=ButtonTreeViewNode)
-        parent_node.text = "Parent Node"
-        parent_node.to_window.return_value = (0, 200)
-        parent_node.populate_callback = MagicMock()
-
-        with patch.object(
-            barks_reader.ui.tree_view_manager.Clock, "schedule_once"
-        ) as mock_schedule:
-            tree_view_manager._pin_parent_position_while_populating(parent_node, run_populate=True)
-
-            parent_node.populate_callback.assert_called_once()
-            mock_schedule.assert_called_once()
 
     def test_on_title_row_button_pressed(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]

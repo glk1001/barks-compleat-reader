@@ -70,10 +70,10 @@ class CollapseParentOverlay(FloatLayout):
         self.is_visible = False
         # Suppress scroll-triggered visibility checks while the layout stabilizes
         # after node expansion.  Without this, intermediate scroll_y adjustments
-        # from _pin_parent_position_while_populating can produce stale coordinates
+        # from TreeScrollPinner.pin_while_populating can produce stale coordinates
         # that make a visible node look off-screen, briefly flashing the overlay.
-        # Suppression is lifted by end_suppression(), called by TreeViewManager
-        # when scroll stabilization completes.
+        # Suppression is lifted by end_suppression(), wired as the pinner's
+        # on_settled callback and invoked when scroll stabilization completes.
         self._suppress_checks = True
 
     def clear_tracking(self) -> None:
@@ -116,7 +116,7 @@ class CollapseParentOverlay(FloatLayout):
             return
 
         # Check if the tracked node's top edge is above the scroll view's visible top.
-        # Uses the same to_window pattern as TreeViewManager._pin_parent_position_while_populating.
+        # Uses the same to_window pattern as TreeScrollPinner.pin_while_populating.
         sv_top_win_y = self._scroll_view.to_window(0, self._scroll_view.top)[1]
         node_top_win_y = self._tracked_node.to_window(0, self._tracked_node.top)[1]
         self.is_visible = node_top_win_y > sv_top_win_y
