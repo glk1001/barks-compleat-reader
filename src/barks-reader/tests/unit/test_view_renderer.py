@@ -232,6 +232,22 @@ class TestRefresh:
 
         assert deps["pipeline"].render.call_args.kwargs["force_fresh_fun_image"] is False
 
+    def test_refresh_applies_current_themes_not_pipeline_stale_ones(
+        self, renderer: tuple[ViewRenderer, dict[str, Any]]
+    ) -> None:
+        # The pipeline's stored context predates the theme switch (stale = None).
+        view_renderer, deps = renderer
+        deps["pipeline"].current_request.return_value = ViewRequest(
+            view_state=ViewStates.ON_INTRO_NODE, fun_image_themes=None
+        )
+        # User switches to custom themes after the last render, without re-navigating.
+        view_renderer.bottom_view_fun_image_themes_changed(ImageThemesToUse.CUSTOM)
+
+        view_renderer.refresh()
+
+        # Refresh must stamp the renderer's CURRENT themes, not replay the stale ones.
+        assert _rendered_request(deps).fun_image_themes is not None
+
 
 class TestThemes:
     def test_themes_to_all_sends_none_themes_on_render(

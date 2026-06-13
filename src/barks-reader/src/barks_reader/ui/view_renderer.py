@@ -126,23 +126,11 @@ class ViewRenderer:
     def render(self, destination: Destination, *, preserve_top_view: bool = False) -> None:
         """Resolve *destination* via `NavigationModel` and render the resulting view state."""
         request = self._nav_model.view_state_for(destination)
-        self._dispatch(
-            replace(
-                request,
-                fun_image_themes=self._bottom_view_fun_image_themes,
-                preserve_top_view=preserve_top_view,
-            )
-        )
+        self._dispatch(replace(request, preserve_top_view=preserve_top_view))
 
     def render_state(self, view_state: ViewStates, *, preserve_top_view: bool = False) -> None:
         """Render *view_state* without any destination context (for boot / return paths)."""
-        self._dispatch(
-            ViewRequest(
-                view_state=view_state,
-                fun_image_themes=self._bottom_view_fun_image_themes,
-                preserve_top_view=preserve_top_view,
-            )
-        )
+        self._dispatch(ViewRequest(view_state=view_state, preserve_top_view=preserve_top_view))
 
     def render_title(
         self,
@@ -158,7 +146,7 @@ class ViewRenderer:
         `ON_TITLE_NODE` carrying the title.
         """
         title_str = fanta_info.comic_book_info.get_title_str()
-        title_image_file = self._fade_in_title_view(fanta_info, title_image_file)
+        title_image_file = self._fade_in_title_view(title_str, title_image_file)
         self._screens.bottom_title_view.set_title_view(fanta_info)
 
         # NOTE: Don't pick the title image here - `render` triggers exactly one pick
@@ -170,7 +158,6 @@ class ViewRenderer:
                 view_state=ViewStates.ON_TITLE_NODE,
                 title_str=title_str,
                 title_image_file=title_image_file,
-                fun_image_themes=self._bottom_view_fun_image_themes,
                 preserve_top_view=preserve_top_view,
             )
         )
@@ -186,13 +173,13 @@ class ViewRenderer:
         should prefer `render_title`, which also drives the view-state change.
         """
         title_str = fanta_info.comic_book_info.get_title_str()
-        title_image_file = self._fade_in_title_view(fanta_info, title_image_file)
+        title_image_file = self._fade_in_title_view(title_str, title_image_file)
         self._pipeline.set_title(title_str, title_image_file)
         self._screens.bottom_title_view.set_title_view(fanta_info)
 
     def _fade_in_title_view(
         self,
-        fanta_info: FantaComicBookInfo,
+        title_str: str,
         title_image_file: PanelPath | None,
     ) -> PanelPath | None:
         """Fade in the bottom-title view and resolve the edited title image file.
@@ -202,7 +189,6 @@ class ViewRenderer:
         """
         self._screens.bottom_title_view.fade_in_bottom_view_title()
 
-        title_str = fanta_info.comic_book_info.get_title_str()
         logger.debug(f'Setting title to "{title_str}". Title image file is "{title_image_file}".')
 
         if title_image_file is not None:
@@ -234,7 +220,14 @@ class ViewRenderer:
     # Internal
     # ------------------------------------------------------------------
     def _dispatch(self, request: ViewRequest, *, force_fresh_fun_image: bool = False) -> None:
-        """Render *request* through the pipeline, apply the snapshot, and notify."""
+        """Render *request* through the pipeline, apply the snapshot, and notify.
+
+        The renderer owns the fun-image theme policy, so it is stamped onto every
+        request here (single source of truth) rather than at each call site. This
+        keeps `refresh` — which replays the pipeline's stored navigation context —
+        honouring the latest theme selection.
+        """
+        request = replace(request, fun_image_themes=self._bottom_view_fun_image_themes)
         snapshot = self._pipeline.render(request, force_fresh_fun_image=force_fresh_fun_image)
         self._applicator.apply(snapshot)
         self._on_view_state_changed(request.view_state)
