@@ -26,11 +26,19 @@ class Disposition(Enum):
     EXCLUDED_ENTRY = auto()  # individually excluded, with a reason
 
 
+class Qualifier(Enum):
+    """Barks's stated contribution when an entry is not wholly his work."""
+
+    ART_ONLY = auto()
+    SCRIPT_ONLY = auto()
+    ART_AND_REWRITING_OF_SCRIPT = auto()
+
+
 @dataclass(frozen=True)
 class BibEntry:
     raw_title: str
     page_count: str
-    qualifier: str | None
+    qualifier: Qualifier | None
     is_cover: bool
     description: str
     submitted_day: int
@@ -298,7 +306,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="1",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald, his reading disrupted by the nephews, finally retreats outside into the snow",
                         submitted_day=4,
@@ -388,7 +396,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK in Christmas in Duckburg",
                         page_count="20",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald lets the nephews pick their own present, and it’s a ferris wheel. To get the money for it, the ducks go to Canada to pick up the 100-foot Christmas tree Scrooge has bought for the town square, in response to a challenge from Ollie Eiderduck. To save himself from losing his bet with Scrooge, Eiderduck sends the Beagle Boys north to shorten the tree",
                         submitted_day=6,
@@ -421,7 +429,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK in The Christmas Cha Cha",
                         page_count="16",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald practices the cha cha so that he can win the first prize in a dance contest, a silver bowl, with Daisy, and give her his half of the bowl as a Christmas gift. But Scrooge is supposed to supply the bowl, and so he enters the contest, too, with a dance teacher as his partner",
                         submitted_day=26,
@@ -500,7 +508,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="“Daisy’s Dazed Days”",
                         page_count="1 (inside front cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="A “diary entry” in rebus form",
                         submitted_day=14,
@@ -517,7 +525,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY DUCK’S DIARY The Librarian",
                         page_count="6",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Daisy goes to Scrooge’s money bin to collect two cents due on an overdue book on lion taming, and finds Scrooge trapped with a lion he was trying to tame for a quick profit",
                         submitted_day=14,
@@ -534,7 +542,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY DUCK’S DIARY The Double Date",
                         page_count="5",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Daisy and Donald double-date with Clara Cluck and Rockhead Rooster, and Rockhead and Donald hit it off too well",
                         submitted_day=14,
@@ -551,7 +559,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY DUCK’S DIARY The TV Babysitter",
                         page_count="6",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Daisy baby-sits with the nephews, using the closed-circuit television camera in their room, while Donald goes to a bowling tournament",
                         submitted_day=14,
@@ -568,7 +576,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY DUCK’S DIARY Donald’s Party",
                         page_count="7",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Daisy is wearing an evening gown she has just received in the mail when Donald invites her to a come-as-you-are party, but she goes to the party in work clothes",
                         submitted_day=29,
@@ -585,7 +593,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY DUCK’S DIARY The Beauty Queen",
                         page_count="7",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Daisy, depressed because she thinks she hasn’t won the city beauty queen contest, goes to Grandma’s farm, where two roving judges pick her to be Farm Queen",
                         submitted_day=14,
@@ -602,7 +610,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY Tight Shoes",
                         page_count="7/8",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Daisy tries on new shoes but decides her bare feet are more comfortable",
                         submitted_day=14,
@@ -619,7 +627,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY DUCK The Framed Mirror",
                         page_count="1 (inside back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Daisy tries painting a self-portrait, then settles for a mirror",
                         submitted_day=14,
@@ -636,7 +644,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY DUCK The New Girl",
                         page_count="1 (back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Daisy cheers up when rain ruins a pretty new girl’s hairdo",
                         submitted_day=14,
@@ -669,7 +677,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY DUCK “Small Fryers”",
                         page_count="1 (inside front cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Daisy’s nieces come to visit, and mess up her kitchen",
                         submitted_day=6,
@@ -686,7 +694,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY DUCK’S DIARY A Sticky Situation",
                         page_count="8",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Daisy, fed up with Donald and men in general, takes her nieces camping in the wilderness",
                         submitted_day=6,
@@ -703,7 +711,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY DUCK’S DIARY Ring Leader Roundup",
                         page_count="6",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Daisy finds a lost ring that she uses to make Donald think that she has another boyfriend, but the ring contains a midget radio used by diamond smugglers",
                         submitted_day=6,
@@ -720,7 +728,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY DUCK’S DIARY Too Much Help",
                         page_count="4",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Daisy, convinced that Grandma Duck is having trouble, takes Gladstone to her farm to bring her luck",
                         submitted_day=6,
@@ -737,7 +745,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY DUCK’S DIARY Ruling the Roost",
                         page_count="8",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="When Scrooge can’t be found, Daisy makes decisions for him, until he’s finally located stuck in a chute leading to his underground jewel vaults",
                         submitted_day=6,
@@ -754,7 +762,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY DUCK’S DIARY Daringly Different",
                         page_count="4 1/2",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Daisy tries to break out of the subdivision mold with unusual touches for her house and yard, but all of her neighbors imitate her",
                         submitted_day=6,
@@ -771,7 +779,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY DUCK False Flattery",
                         page_count="1/2",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Daisy buys a parrot that compliments her",
                         submitted_day=6,
@@ -788,7 +796,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY DUCK Friendly Enemy",
                         page_count="1",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Daisy takes up sculpting, instead of skating, at Donald’s suggestion",
                         submitted_day=6,
@@ -805,7 +813,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY DUCK Undercover Girl",
                         page_count="1 (inside back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Daisy buys a new hat that’s so big no one can see who she is",
                         submitted_day=6,
@@ -822,7 +830,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DAISY DUCK The Inventive Gentleman",
                         page_count="1 (back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Gyro comes to Daisy’s aid when she has to stand on the bus",
                         submitted_day=6,
@@ -903,7 +911,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK Finds Pirate Gold",
                         page_count="64",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Bearing a map found in Donald’s seafood restaurant, the ducks and a parrot named Old Yellow Beak set sail for an island where the pirate Henry Morgan’s treasure is buried. Unknown to them, the crew of the ship is made up of Black Pete, disguised as an old woman, and two of his rat-faced henchmen. Pete takes over the ship, but the ducks and the parrot reach the treasure island on a raft. There they dig up the treasure while Pete lies in wait",
                         submitted_day=-1,
@@ -1710,7 +1718,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="1 (inside front cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald has trouble traversing some freshly waxed floors",
                         submitted_day=17,
@@ -1746,7 +1754,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="1 (inside back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald suffers when Daisy loses her temper at sports",
                         submitted_day=17,
@@ -1763,7 +1771,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="1 (back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald restricts the nephews to one ice cream cone each at a picnic",
                         submitted_day=17,
@@ -1810,7 +1818,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="1 (inside front cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald burns the nephews’ toys when firewood runs low",
                         submitted_day=21,
@@ -1846,7 +1854,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="1 (inside back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald has trouble hiding the nephews’ Christmas presents",
                         submitted_day=21,
@@ -1863,7 +1871,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="1 (back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="The nephews receive a box of tools for Christmas",
                         submitted_day=21,
@@ -1910,7 +1918,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="1 (inside front cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald’s newspaper reading is disrupted by the nephews’ noise",
                         submitted_day=6,
@@ -1961,7 +1969,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="1 (inside back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald is a theater doorman during a kiddie matinee",
                         submitted_day=6,
@@ -1978,7 +1986,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="1 (back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald tests the ability of the nephews’ dog to fetch a stick",
                         submitted_day=6,
@@ -2260,7 +2268,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald uses a magnifying glass to inspect a hungry crocodile’s hide. (Illustrating “The Crocodile Collector.”)",
                         submitted_day=5,
@@ -2290,7 +2298,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="A ragged Donald sees himself as rich in a mirror. (Illustrating “From Rags to Riches.”)",
                         submitted_day=24,
@@ -2337,7 +2345,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="1 (inside front cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="The nephews make tree ornaments out of Donald’s golf balls.",
                         submitted_day=-1,
@@ -2373,7 +2381,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="1 (inside back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald brings his own mistletoe to win a kiss from Daisy",
                         submitted_day=24,
@@ -2390,7 +2398,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="1 (back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="The nephews write a Christmas list the size of a postage stamp",
                         submitted_day=24,
@@ -2420,7 +2428,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The ducks bounce away from gun-toting villains on bundles of raw rubber. (Illustrating “Malayalaya.”)",
                         submitted_day=8,
@@ -2450,7 +2458,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald triumphantly holds up a golden helmet and a map of Labrador. (Illustrating “The Golden Helmet.”)",
                         submitted_day=3,
@@ -2467,7 +2475,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="1 (inside front cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald has trouble getting his store windows shiny enough",
                         submitted_day=3,
@@ -2501,7 +2509,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="1 (inside back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald is angry because the nephews have lent his lawn roller",
                         submitted_day=3,
@@ -2518,7 +2526,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD’S NEPHEWS",
                         page_count="1 (back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="The nephews sell towels to the victims of an over-active park fountain",
                         submitted_day=3,
@@ -2548,7 +2556,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The ducks flee with a mail sack from a giant golden Indian. (Illustrating “The Gilded Man.”)",
                         submitted_day=21,
@@ -2646,7 +2654,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald is confronted by the nephews, in Halloween costumes, and a real witch, on a broomstick",
                         submitted_day=10,
@@ -2753,7 +2761,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The ducks ride a flying horse. (Illustrating “The Flying Horse.”)",
                         submitted_day=31,
@@ -2783,7 +2791,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="A robot laughs at Donald’s picture on a video screen. (Illustrating “Robert the Robot.”)",
                         submitted_day=28,
@@ -2813,7 +2821,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald finds a cat in his fishing creel",
                         submitted_day=9,
@@ -2843,7 +2851,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews ride in a sidecar beside Donald’s donkey",
                         submitted_day=9,
@@ -3097,7 +3105,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald is injured by a chair spring while reading a book on first aid",
                         submitted_day=6,
@@ -3178,7 +3186,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald’s hat has become a bird’s nest",
                         submitted_day=18,
@@ -3285,7 +3293,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald empties a dustpan into a stuffed pelican’s beak",
                         submitted_day=20,
@@ -3315,7 +3323,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK The Master Glasser",
                         page_count="5",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald, a master at repairing broken glass, breaks glass all over Duckburg with a huge tuning fork",
                         submitted_day=20,
@@ -3347,7 +3355,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald tosses a banana peel into a suit of armor",
                         submitted_day=21,
@@ -3377,7 +3385,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald is burned by the sun’s rays as they pass through a telescope",
                         submitted_day=22,
@@ -3454,7 +3462,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald struggles as he cooks eggs and pancakes",
                         submitted_day=27,
@@ -3484,7 +3492,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="There is a bee in Donald’s space helmet",
                         submitted_day=19,
@@ -3514,7 +3522,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald has run over the lawn sprinkler with his lawn mower",
                         submitted_day=8,
@@ -3544,7 +3552,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald’s toothpaste tube has broken",
                         submitted_day=19,
@@ -3651,7 +3659,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews “carry” Donald’s bass drum from inside",
                         submitted_day=6,
@@ -3681,7 +3689,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald, the nephews, Scrooge and Gyro are in a small rocket ship, and Donald is fending off meteors with a ray device. (Illustrating “The Incredible Golden Iceberg.”)",
                         submitted_day=23,
@@ -3711,7 +3719,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald and the nephews flee down a flight of stairs with the Beagle Boys in hot pursuit. (Illustrating “Treasure of Aztec-Land,.”)",
                         submitted_day=18,
@@ -3741,7 +3749,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald, the nephews and Scrooge rush joyfully toward the pot of gold at the end of the rainbow — unaware that Magica de Spell is hiding in it. (Illustrating “The Great Rainbow Race.”)",
                         submitted_day=23,
@@ -3771,7 +3779,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald uses a blanket to send up smoke signals from a scowling Indian’s pipe while the nephews dance on Indian drums. (Illustrating “Ambush at Thunder Mountain.”)",
                         submitted_day=22,
@@ -3803,7 +3811,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald looks startled and the nephews flee at the sight of a huge footprint. (Illustrating “The Giant of Duckburg.”)",
                         submitted_day=9,
@@ -3833,7 +3841,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK Pawns of the Loup Garou",
                         page_count="21",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="Donald is a cargo pilot with secret orders to fly a crate of tools to the North Woods; Scrooge and the nephews tag along. At the rendezvous point, a panicky man fleeing from a wolf’s howl takes Donald’s plane. The stranded ducks open the crate the man has left behind and find a half-finished gold statuette of a wolf. The statuette is stolen that night, and they track the thief to a mine where they are met by a huge wolf who stands on his rear legs",
                         submitted_day=21,
@@ -3885,7 +3893,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK Officer of the Day",
                         page_count="14",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="When Donald, as a substitute policeman, takes over after Duckburg’s regular police are felled by the flu, he is treed by the Purgatory Cherubs motorcycle gang and foiled by legal technicalities when he tries to stop the Beagle Boys from burglarizing a bank",
                         submitted_day=6,
@@ -3917,7 +3925,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK A Day in a Duck’s Life",
                         page_count="13",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="Donald’s “muscle car” is infuriating the neighbors. He horns in on the nephews’ delivery business, then gets involved in a race with another hot-car driver and winds up inside a cargo plane when his brakes go out. A hijacker forces the plane to land and steals Donald’s car",
                         submitted_day=16,
@@ -3957,7 +3965,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="A scowling Donald photographs the other ducks as they pose in a mock house front",
                         submitted_day=22,
@@ -3987,7 +3995,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald takes the nephews’ pictures; one of them aims at the “birdie” with a slingshot",
                         submitted_day=18,
@@ -4017,7 +4025,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The ducks pose together, with the nephews under a bearskin rug",
                         submitted_day=8,
@@ -4056,7 +4064,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="In the top half of the cover, Donald takes a flash picture of Scrooge, the nephews, Grandma, Daisy and Gus Goose; in the bottom half, Donald suppresses a laugh as the others stagger around, blinded",
                         submitted_day=23,
@@ -4116,7 +4124,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Five “photographs” of the ducks",
                         submitted_day=8,
@@ -4146,7 +4154,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="A group “photograph” of the ducks",
                         submitted_day=31,
@@ -4335,9 +4343,9 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK in “Toyland”",
                         page_count="8",
-                        qualifier=None,
+                        qualifier=Qualifier.ART_AND_REWRITING_OF_SCRIPT,
                         is_cover=False,
-                        description="art and rewriting of script - The ducks are invited by Santa Claus to come to the North Pole and test his toys. Donald takes his lumps when the testing begins",
+                        description="The ducks are invited by Santa Claus to come to the North Pole and test his toys. Donald takes his lumps when the testing begins",
                         submitted_day=8,
                         submitted_month=7,
                         submitted_year=1948,
@@ -4404,7 +4412,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GRANDMA DUCK’S FARM FRIENDS and the Flying Farm Hand",
                         page_count="8",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Dumbo comes to Grandma’s farm, at the nephews’ invitation, but scares the animals until the nephews hit on using him as a scarecrow",
                         submitted_day=6,
@@ -4421,7 +4429,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GRANDMA DUCK’S FARM FRIENDS and A Honey of a Hen",
                         page_count="7",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Scrooge, at Grandma’s farm to buy some produce, fakes an accident so that he can enjoy Grandma’s cooking for a few days, but he gives himself away when he sees a hen in danger from a chicken hawk",
                         submitted_day=6,
@@ -4438,7 +4446,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GRANDMA DUCK’S FARM FRIENDS and the Weather Watchers",
                         page_count="7",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Gyro invents a mechanical weather-vane for Grandma’s farm, but Grandma’s goat interferes with it, causing it to give out alarming forecasts",
                         submitted_day=6,
@@ -4455,7 +4463,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GRANDMA DUCK’S FARM FRIENDS and the Sheepish Cowboys",
                         page_count="6 7/8",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="The nephews ride on sheep when their horse runs away, but the other sheep follow their mounts. The nephews pen up the sheep in a gully, where the Big Bad Wolf finds them",
                         submitted_day=6,
@@ -4502,7 +4510,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GRANDMA DUCK Mopping Up",
                         page_count="1 (inside front cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Grandma puts down fly paper to keep Gus from tracking up her kitchen floor",
                         submitted_day=28,
@@ -4519,7 +4527,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GRANDMA DUCK’S FARM FRIENDS Touche’ Toupee’",
                         page_count="6",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="After Grandma’s horse eats some of his hay and apples, her neighbor Si Bumpkin accuses her of stealing his eggs",
                         submitted_day=15,
@@ -4536,7 +4544,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GRANDMA DUCK’S FARM FRIENDS The Snow Chaser",
                         page_count="6",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Gyro uses a “snow chaser” to vaporize snow on Grandma’s farm, but through a series of misadventures, the vaporized snow builds up in storm clouds overhead",
                         submitted_day=28,
@@ -4553,7 +4561,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GRANDMA DUCK’S FARM FRIENDS Free Ski Spree",
                         page_count="6",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Scrooge tries winter sports at Grandma’s, but has little luck at ice skating, tobogganing or skiing",
                         submitted_day=15,
@@ -4583,7 +4591,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GRANDMA DUCK’S FARM FRIENDS The Whole Herd of Help",
                         page_count="8",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Scrooge gives Grandma an elephant that he has received as a gift, and the elephant proves useful on the farm",
                         submitted_day=8,
@@ -4617,7 +4625,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GRANDMA DUCK’S FARM FRIENDS The Training Farm Fuss",
                         page_count="7",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Gladstone practices being a matador, using one of Grandma’s bulls, then heads for Mexico",
                         submitted_day=8,
@@ -4634,7 +4642,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GRANDMA DUCK’S FARM FRIENDS The Reversed Rescue",
                         page_count="7",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald flies in a helicopter to Grandma’s snowbound farm, but is shot down by the Beagle Boys, and Grandma and the nephews have to rescue him",
                         submitted_day=8,
@@ -4969,7 +4977,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GYRO GEARLOOSE The Nose Knows",
                         page_count="1 (inside front cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Gyro sends up a rocket that radios back everything it sees — and warns him of impending disaster",
                         submitted_day=31,
@@ -4986,7 +4994,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GYRO GEARLOOSE Monsterville",
                         page_count="10",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Duckburg is rebuilt to Gyro’s specifications, but his inventions eliminate so much work that the people have nothing to do",
                         submitted_day=12,
@@ -5003,7 +5011,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GYRO GEARLOOSE The Cube",
                         page_count="5",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Gyro tries to find a use for the large plastic cube with holes that he has invented",
                         submitted_day=12,
@@ -5020,7 +5028,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GYRO GEARLOOSE Mighty but Miserable",
                         page_count="7",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="A Beagle Boy forces Gyro to make a machine that will increase his intelligence, but the machine’s effects last only an hour",
                         submitted_day=12,
@@ -5037,7 +5045,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GYRO GEARLOOSE Brain-strain",
                         page_count="7",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Gyro is marooned with Donald on a rocky island when Donald’s poorly constructed boat sinks",
                         submitted_day=12,
@@ -5054,7 +5062,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GYRO GEARLOOSE The Old Timer",
                         page_count="1 (inside back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Gyro drives his self-servicing car into Donald’s service station — but only for a drink of water",
                         submitted_day=31,
@@ -5071,7 +5079,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GYRO GEARLOOSE Mechanized Mess",
                         page_count="1 (back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Gyro’s mechanized trash can panics the trash collectors",
                         submitted_day=31,
@@ -5187,7 +5195,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Peril of the Black Forest",
                         page_count="14",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="The Woodchucks and the animals of the Black Forest of Duckburg combine to hold back Scrooge’s bulldozers, which are preparing to level the forest for construction of a new city",
                         submitted_day=3,
@@ -5206,7 +5214,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="THE JUNIOR WOODCHUCKS Life Savers",
                         page_count="5",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="The Woodchucks mistake a movie company’s sinking sloop for the real thing, much to the amusement of the movie makers",
                         submitted_day=10,
@@ -5236,7 +5244,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE JUNIOR WOODCHUCKS Whale of a Good Deed",
                         page_count="17",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="A tidal wave leaves a whale stranded on the shore, and since the whale is partially on Scrooge’s land, Scrooge has him tied down, with plans to render him into whale oil",
                         submitted_day=1,
@@ -5269,7 +5277,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Let Sleeping Bones Lie",
                         page_count="14",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="The Woodchucks uncover the skeleton of a huge prehistoric beast, but the bones lie in the path of Scrooge’s highway construction crew",
                         submitted_day=16,
@@ -5289,7 +5297,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Bad Day for Troop ‘A’",
                         page_count="6",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="The nephews’ Troop A is the consistent winner in Woodchuck competition, and when a plane carrying circus performers goes down, they beat Troop K to it",
                         submitted_day=1,
@@ -5338,7 +5346,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Looter of the Lake",
                         page_count="13",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="The Woodchucks, who are filled with energy supplied by Vitamin “Zee,” go to Crystal Lake to ice skate, only to find that the ice has turned gooey. The cause is a factory that is dumping its waste into the lake, and Scrooge is the owner",
                         submitted_day=25,
@@ -5371,7 +5379,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Maple Sugar Time (How Sweet It Is!)",
                         page_count="13",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="The Woodchucks, trying to raise money for their charity fund, go to the park to gather sap for maple sugar, but are left with only a hollow tree to tap when Donald, Scrooge, and the Littlest Chickadees get to the good trees first",
                         submitted_day=11,
@@ -5391,7 +5399,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Bottled Battlers",
                         page_count="12",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="The Woodchucks are gathering up bottles from alongside the highway when Magica de Spell flies overhead on a broom and drops a bottle of formula she is going to use to cut into Scrooge’s money bin",
                         submitted_day=21,
@@ -5423,7 +5431,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Traitor in the Ranks",
                         page_count="13",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="Donald, furious at finding medals everywhere in his house, vows to get the nephews kicked out of the Woodchucks, and disguises himself as a boy who is a potential Woodchuck recruit",
                         submitted_day=26,
@@ -5442,7 +5450,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Eagle Savers",
                         page_count="12",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="Scrooge is planning to drill atop Aerie Crag, where bald eagles nest, but is halted by the Woodchucks and their leader, Senator Birdfriend",
                         submitted_day=3,
@@ -5472,7 +5480,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Hound of the Moaning Hills",
                         page_count="13",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="Dozens of people, their hair turned white from fear, are fleeing from the howls of a shadowy “giant hound,” and the Woodchuck’s leader takes them into the countryside to clear up the mystery",
                         submitted_day=3,
@@ -5489,7 +5497,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Storm Dancers",
                         page_count="12",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="Disgruntled at the thought of returning to school, the nephews decide to conjure up a heavy storm to delay classes",
                         submitted_day=4,
@@ -5519,7 +5527,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIORS WOODCHUCKS The Day the Mountain Shook",
                         page_count="13",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="Huey, Dewey and Louie are demoted to “beanheads” and left behind on the annual Woodchuck hike up Mount Greenglory. The mountain starts shaking — Scrooge is strip-mining it — and the Woodchucks are trapped when a slope is jolted loose",
                         submitted_day=4,
@@ -5540,7 +5548,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Gold of the ‘49ers",
                         page_count="12",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="The Woodchucks, whose treasury is depleted, come to the desert in search of three gold bricks lost there years ago. The nephews’ search is interrupted by a wild horse stampede, started by some unsavory mustang hunters on motorcycles",
                         submitted_day=25,
@@ -5572,7 +5580,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Duckmade Disaster",
                         page_count="13",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="Scrooge is forced to move his money bin when the Woodchucks and other protest that it is on the site of the home of Cornelius Coot, the founder of Duckburg",
                         submitted_day=30,
@@ -5604,7 +5612,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Wailing Whalers",
                         page_count="18",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="The Woodchucks have gone to sea in a rowboat to observe the migration of the whales; when their boat is capsized, they are rescued by Scrooge’s whaling ship. Huey and the Woodchucks’ leader go with Scrooge in his underwater whale-finder and while they are gone, Scrooge’s ship is attacked by renegade whalers",
                         submitted_day=30,
@@ -5634,7 +5642,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Where There’s Smoke",
                         page_count="16",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="The Woodchucks patrol the forest, watching for fires, and are drenched repeatedly with chemical goop as Donald, a sky warden, dumps a load each time he sees what he thinks is a fire from his plane",
                         submitted_day=3,
@@ -5664,7 +5672,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Be Leery of Lake Eerie",
                         page_count="16",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="The Woodchucks try to go swimming in incredibly polluted Lake Eerie, but they find it infested with two kinds of strange beast: catfish that dine on beer cans and old tires, and a dragon with skin that looks like old plastic bags",
                         submitted_day=27,
@@ -5700,7 +5708,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Teahouse of the Waggin’ Dragon",
                         page_count="17",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="The Woodchucks accompany Scrooge to Outer Monghoulia, to the Teahouse of the Waggin’ Dragon, where he buys a sackful of fortune cookies that he plans to use to scare away some pesky newsmen",
                         submitted_day=31,
@@ -5732,7 +5740,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS New Zoo Brews Ado",
                         page_count="17",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="The Woodchucks try to keep a group of abandoned wild animals from bothering the rich golfers who have pledged to give money to build cages for them",
                         submitted_day=5,
@@ -5762,7 +5770,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Music Hath Charms",
                         page_count="16",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="The nephews, racing the Littlest Chickadees to Woodtick Campground, have to contend with Donald, who plays pipes, invented by Gyro, that charm children as the Pied Piper’s pipes charmed rats",
                         submitted_day=18,
@@ -5831,7 +5839,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Hark, Hark, the Ark",
                         page_count="15",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="The Junior Woodchucks are recruited to herd wildlife from Mistyvale Forest — the site of a new airport — to their new home on Wildwood Island",
                         submitted_day=9,
@@ -5861,7 +5869,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="HUEY, DEWEY AND LOUIE THE JUNIOR WOODCHUCKS Captains Outrageous",
                         page_count="15",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="The Woodchucks give their leader a loudly ticking watch that leads them into great problems and then great success among the cod fishermen of Newfoundland",
                         submitted_day=30,
@@ -5898,7 +5906,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK Tells About Kites",
                         page_count="8",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="In a series of comic episodes, Donald teaches the nephews the rules of safe kite flying",
                         submitted_day=8,
@@ -6083,7 +6091,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="ANDY PANDA",
                         page_count="10",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Andy saves a lion tamer’s life by talking to the lions in their own language, and the circus owner rewards him with a bag of money that Andy gives to a poor family",
                         submitted_day=16,
@@ -6832,9 +6840,9 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="BARNEY BEAR AND BENNY BURRO",
                         page_count="8",
-                        qualifier=None,
+                        qualifier=Qualifier.ART_AND_REWRITING_OF_SCRIPT,
                         is_cover=False,
-                        description="art and rewriting of script - Barney is golfing when he discovers that the bottom of a lake on the course is covered with golf balls, and he tries to outwit McDuff, the Scottish manager of the course, who has forbidden him to go into the lake",
+                        description="Barney is golfing when he discovers that the bottom of a lake on the course is covered with golf balls, and he tries to outwit McDuff, the Scottish manager of the course, who has forbidden him to go into the lake",
                         submitted_day=20,
                         submitted_month=8,
                         submitted_year=1946,
@@ -6862,9 +6870,9 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="BARNEY BEAR AND BENNY BURRO",
                         page_count="8",
-                        qualifier=None,
+                        qualifier=Qualifier.ART_AND_REWRITING_OF_SCRIPT,
                         is_cover=False,
-                        description="art and rewriting of script - Barney goes to a gym to take boxing lessons so that he can whip Mooseface McElk, who refuses to keep his chickens out of Barney’s yard",
+                        description="Barney goes to a gym to take boxing lessons so that he can whip Mooseface McElk, who refuses to keep his chickens out of Barney’s yard",
                         submitted_day=20,
                         submitted_month=9,
                         submitted_year=1946,
@@ -6894,9 +6902,9 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="BARNEY BEAR AND BENNY BURRO",
                         page_count="8",
-                        qualifier=None,
+                        qualifier=Qualifier.ART_AND_REWRITING_OF_SCRIPT,
                         is_cover=False,
-                        description="art and rewriting of script - Barney goes hunting for Klepto Klippo, a thief with a price on his head, but Klippo steals Barney’s money, his rifle, his phone, his clothes, and finally even his house, with Barney and the sheriff inside",
+                        description="Barney goes hunting for Klepto Klippo, a thief with a price on his head, but Klippo steals Barney’s money, his rifle, his phone, his clothes, and finally even his house, with Barney and the sheriff inside",
                         submitted_day=12,
                         submitted_month=10,
                         submitted_year=1946,
@@ -6924,9 +6932,9 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="BARNEY BEAR AND BENNY BURRO",
                         page_count="8",
-                        qualifier=None,
+                        qualifier=Qualifier.ART_AND_REWRITING_OF_SCRIPT,
                         is_cover=False,
-                        description="art and rewriting of script - Barney’s rich, ferocious old Uncle Grizzly comes to visit, and Barney tries to set up some way to save his uncle’s life and so win his favor",
+                        description="Barney’s rich, ferocious old Uncle Grizzly comes to visit, and Barney tries to set up some way to save his uncle’s life and so win his favor",
                         submitted_day=18,
                         submitted_month=11,
                         submitted_year=1946,
@@ -6954,9 +6962,9 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="BARNEY BEAR AND BENNY BURRO",
                         page_count="8",
-                        qualifier=None,
+                        qualifier=Qualifier.ART_AND_REWRITING_OF_SCRIPT,
                         is_cover=False,
-                        description="art and rewriting of script - Barney sells his house and then cannot find another, but Benny helps out by starting a fight between Mooseface and the purchaser of Barney’s house",
+                        description="Barney sells his house and then cannot find another, but Benny helps out by starting a fight between Mooseface and the purchaser of Barney’s house",
                         submitted_day=2,
                         submitted_month=1,
                         submitted_year=1947,
@@ -7065,7 +7073,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="PORKY PIG in “Porky of the Mounties”",
                         page_count="24",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Petunia goes to Canada for the summer, and when she fails to write him for a week, Porky decides to go to a masquerade party, as a Mounted Policeman. The wind blows Porky’s hat into a boxcar, and he and Bugs are trapped inside and carried to Canada, where Porky is mistaken by Petunia’s uncle for Dauntless of the Mounties",
                         submitted_day=21,
@@ -7127,7 +7135,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK in Jungle Hi-jinks",
                         page_count="14",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="The nephews, using one of Gyro’s cast-off cameras, are hired as cameramen for an African trip by a travel film company and Donald goes along as a bus boy",
                         submitted_day=30,
@@ -7164,7 +7172,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DROOPY",
                         page_count="8 (pp. 83-90)",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="Droopy, while looking for a place to bury his bone, is chosen as the mascot for a ship headed for a tropical island in search of Bluebeard’s buried treasure",
                         submitted_day=13,
@@ -7238,7 +7246,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DROOPY",
                         page_count="8 (pp. 45-52)",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="Droopy is given a job as a fox hound, and he bumbles through the hunt until he follows the fox into the hunter’s house",
                         submitted_day=6,
@@ -7270,7 +7278,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DROOPY",
                         page_count="8 (pp. 46-53)",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="A cynical “hero” dog contrives to have Droopy carry serum to forty children through terrible weather",
                         submitted_day=19,
@@ -7642,7 +7650,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="UNCLE SCROOGE",
                         page_count="1 (inside back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Scrooge’s money bin is at the bottom of a rainbow that the nephews see",
                         submitted_day=26,
@@ -7659,7 +7667,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="UNCLE SCROOGE",
                         page_count="1 (back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Scrooge “treats” the trained fleas to a meal at the circus",
                         submitted_day=26,
@@ -7689,7 +7697,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald patches Scrooge’s coat with greenbacks",
                         submitted_day=7,
@@ -7791,7 +7799,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Scrooge plays a cash register as if it were a piano",
                         submitted_day=30,
@@ -7966,7 +7974,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="UNCLE SCROOGE",
                         page_count="1 (inside back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Scrooge digs up the beach in search of a lost nickel",
                         submitted_day=29,
@@ -8083,7 +8091,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="UNCLE SCROOGE",
                         page_count="1 (inside back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Scrooge dials a wrong number, but still gets his dime’s worth",
                         submitted_day=25,
@@ -9295,7 +9303,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Scrooge waters a money tree",
                         submitted_day=16,
@@ -9474,7 +9482,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Scrooge weighs sacks of money on a penny scale",
                         submitted_day=29,
@@ -9557,7 +9565,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Scrooge paints dollar signs on a piggy bank and a real pig",
                         submitted_day=15,
@@ -9674,7 +9682,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Scrooge carries a cash register as a valise",
                         submitted_day=20,
@@ -9791,7 +9799,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews sail paper airplanes made from currency",
                         submitted_day=23,
@@ -9925,7 +9933,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Scrooge, as a Santa collecting for charity, has a safe instead of a kettle",
                         submitted_day=10,
@@ -10006,7 +10014,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews paint dollar signs on the sleeping Scrooge’s glasses",
                         submitted_day=4,
@@ -10157,7 +10165,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Scrooge uses a magnet to retrieve coins through a grate",
                         submitted_day=1,
@@ -10238,7 +10246,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Scrooge blows a dollar sign from a bubble pipe",
                         submitted_day=1,
@@ -10522,7 +10530,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Scrooge fans himself with a handful of bills",
                         submitted_day=4,
@@ -10605,7 +10613,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Scrooge stretches to pick up a bill while obeying a “Keep Off the Grass” sign",
                         submitted_day=12,
@@ -10720,7 +10728,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Scrooge hitches a ride in an armored truck",
                         submitted_day=31,
@@ -10855,7 +10863,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Scrooge shovels money into a bank’s night deposit vault",
                         submitted_day=21,
@@ -10989,7 +10997,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Scrooge lifts bags of money as if they were barbells",
                         submitted_day=25,
@@ -11159,7 +11167,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Scrooge sleeps under a quilt patched with bills",
                         submitted_day=3,
@@ -11242,7 +11250,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Scrooge sews patches on money bags",
                         submitted_day=27,
@@ -11604,7 +11612,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Scrooge, as Santa Claus, carries a sack of money over his shoulder",
                         submitted_day=21,
@@ -11864,7 +11872,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Scrooge protests as a bird flies off with some of his paper money to use in a nest",
                         submitted_day=17,
@@ -11898,7 +11906,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="UNCLE SCROOGE <strong>The Invisible Intruder</strong>",
                         page_count="6",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Scrooge’s huge bed quivers at night, as if someone were walking on it",
                         submitted_day=26,
@@ -11962,7 +11970,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="UNCLE SCROOGE <strong>The Travel Tightwad</strong>",
                         page_count="4",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Scrooge tries to save money by switching from a chauffeur-driven car to a chauffeur-driven motor scooter",
                         submitted_day=7,
@@ -12043,7 +12051,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="UNCLE SCROOGE <strong>The Lemonade Fling</strong>",
                         page_count="5",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Scrooge has bankrolled the nephews’ lemonade stand, and to make sure they’re honest, he disguises himself and watches how they handle their money",
                         submitted_day=4,
@@ -12531,7 +12539,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="UNCLE SCROOGE Flowers Are Flowers",
                         page_count="1 (inside back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Scrooge provides Grandma Duck with a cauliflower corsage when he takes her to the opera",
                         submitted_day=1,
@@ -12840,7 +12848,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="UNCLE SCROOGE",
                         page_count="1",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Scrooge wins a laundryman’s agreement to charge him only half price for washing a coat",
                         submitted_day=21,
@@ -12857,7 +12865,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="UNCLE SCROOGE",
                         page_count="1 (inside back cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Scrooge’s incredibly long car is involved in a long-distance collision",
                         submitted_day=21,
@@ -12998,7 +13006,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="UNCLE SCROOGE",
                         page_count="1 (inside front cover)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Scrooge teaches a parrot to say that Scrooge is a fine fellow",
                         submitted_day=8,
@@ -13032,7 +13040,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="UNCLE SCROOGE",
                         page_count="1",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Scrooge winces as large figures are recited nearby",
                         submitted_day=1,
@@ -13049,7 +13057,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="UNCLE SCROOGE",
                         page_count="1",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="An office boy accepts Scrooge’s offer of “top wages.”",
                         submitted_day=21,
@@ -13495,7 +13503,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="UNCLE SCROOGE King Scrooge the First",
                         page_count="21",
-                        qualifier="script only",
+                        qualifier=Qualifier.SCRIPT_ONLY,
                         is_cover=False,
                         description="A swami who claims to be more than four thousand years old stuns the ducks into unconsciousness and transports them to the ruins of Sagbad, ancient capital of Fatcatstan. The ducks drink a potion that stimulates “memory cells in the ducks’ genes,” so that they act out events in which their ancestors participated thousands of years before",
                         submitted_day=22,
@@ -13699,7 +13707,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK in Mastering the Matterhorn",
                         page_count="8",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="The ducks climb the Matterhorn, where they find the Beagle Boys and a diamond they’ve hidden at the top of the mountain",
                         submitted_day=14,
@@ -13716,7 +13724,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Tycoon",
                         page_count="6",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Scrooge brings along no provisions except money on a wagon train heading west, but he learns that Indians prefer buttons to coins",
                         submitted_day=14,
@@ -13733,7 +13741,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GYRO GEARLOOSE and GUS GOOSE on the Dream Planet",
                         page_count="6",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Gyro and Gus find Gus’s “dream planet,” where the inhabitants are completely lazy. Gyro spoils this paradise by encouraging them to work harder to make life easier",
                         submitted_day=14,
@@ -13787,7 +13795,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK in Camp Counselor",
                         page_count="8 (pp. 102-109)",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald, humiliated in his efforts to teach the nephews and other boys woodcraft, finally fools them into believing a bearskin rug is a real bear",
                         submitted_day=27,
@@ -13804,7 +13812,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD’S GRANDMA DUCK",
                         page_count="14",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="(pp. 114-127) - art only - The nephews, visiting Grandma, have trouble adjusting to country ways, especially the quiet at night, but Grandma is not sympathetic. They find a letter from one of Grandma’s creditors and mistakenly think that she is about to lose her farm",
                         submitted_day=19,
@@ -13876,9 +13884,9 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="10 (pp. 5-14)",
-                        qualifier=None,
+                        qualifier=Qualifier.ART_AND_REWRITING_OF_SCRIPT,
                         is_cover=False,
-                        description="art and rewriting of script - Donald defends his Victory Garden against a gang of voracious crows",
+                        description="Donald defends his Victory Garden against a gang of voracious crows",
                         submitted_day=-1,
                         submitted_month=12,
                         submitted_year=1942,
@@ -15950,9 +15958,9 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="10",
-                        qualifier=None,
+                        qualifier=Qualifier.ART_AND_REWRITING_OF_SCRIPT,
                         is_cover=False,
-                        description="art and rewriting of script - Donald stuffs his head full of obscure facts so that he can win a barrel of money on a radio quiz, but he must compete with the nephews for prizes",
+                        description="Donald stuffs his head full of obscure facts so that he can win a barrel of money on a radio quiz, but he must compete with the nephews for prizes",
                         submitted_day=10,
                         submitted_month=6,
                         submitted_year=1948,
@@ -16042,9 +16050,9 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK",
                         page_count="10",
-                        qualifier=None,
+                        qualifier=Qualifier.ART_AND_REWRITING_OF_SCRIPT,
                         is_cover=False,
-                        description="art and rewriting of script - Donald guards Pizen Spring Dude Ranch during a horse-stealing scare, and buys the same horses over and over again from the wily thief",
+                        description="Donald guards Pizen Spring Dude Ranch during a horse-stealing scare, and buys the same horses over and over again from the wily thief",
                         submitted_day=9,
                         submitted_month=9,
                         submitted_year=1948,
@@ -16245,7 +16253,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald and the nephews sail on a small boat",
                         submitted_day=23,
@@ -16292,7 +16300,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald is hit by a newspaper flung from the nephews’ bicycle handlebar slingshot",
                         submitted_day=16,
@@ -16671,7 +16679,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews provide power with eggbeaters for Donald’s boat",
                         submitted_day=22,
@@ -16718,7 +16726,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald sends up a skyrocket, unaware that the nephews have tied it to his leg",
                         submitted_day=1,
@@ -16765,7 +16773,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews squirt Donald as he tries to pick their trick flower",
                         submitted_day=3,
@@ -16799,7 +16807,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="GRANDMA DUCK",
                         page_count="8",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="The two mice, Gus and Jaq, save the day when Grandma and Daisy are robbed by a phony vacuum cleaner salesman",
                         submitted_day=29,
@@ -16829,7 +16837,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews offer Donald candy while he has nails in his mouth",
                         submitted_day=5,
@@ -16876,7 +16884,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews carve a jack-o-lantern face in Donald’s pumpkin pie",
                         submitted_day=10,
@@ -16923,7 +16931,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald, dressed as a pilgrim, holds up three “turkeys” — the nephews",
                         submitted_day=10,
@@ -16972,7 +16980,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews fill their water pistols from a punch bowl",
                         submitted_day=2,
@@ -17117,7 +17125,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="One nephew brings a can of apple-sauce to his teacher, Donald",
                         submitted_day=10,
@@ -17164,7 +17172,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald swings furiously at a golf ball with a bag full of clubs, as Scrooge keeps score. <em>(May 10, 1951, or Sept. 27, 1951)</em>",
                         submitted_day=-1,
@@ -17213,7 +17221,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald is soaked as water gushes from his concertina",
                         submitted_day=27,
@@ -17309,7 +17317,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews menace Donald in the water with a phony shark fin",
                         submitted_day=3,
@@ -17358,7 +17366,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald is caught by his shirt when he pole vaults",
                         submitted_day=3,
@@ -17407,7 +17415,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews jump rope with frankfurters",
                         submitted_day=3,
@@ -17454,7 +17462,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald rolls the nephews dry in a towel",
                         submitted_day=3,
@@ -17501,7 +17509,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews construct an Erector-set ladder to a cookie jar",
                         submitted_day=31,
@@ -17550,7 +17558,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="A dog joins the nephews’ carol singing",
                         submitted_day=31,
@@ -17597,7 +17605,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews wait with first aid as Donald prepares to ski",
                         submitted_day=31,
@@ -17644,7 +17652,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews share a dunce cap in Donald’s classroom",
                         submitted_day=18,
@@ -17691,7 +17699,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald regulates the nephews’ traffic with stop and go signals",
                         submitted_day=2,
@@ -17738,7 +17746,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews paint golf balls as Easter eggs",
                         submitted_day=14,
@@ -17785,7 +17793,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald spells out “don’t touch” on a cake’s icing as the nephews watch",
                         submitted_day=2,
@@ -17832,7 +17840,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews dispense grape juice from Donald’s tuba",
                         submitted_day=2,
@@ -17879,7 +17887,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews, dressed as Scouts, prepare to awaken Donald with a trumpet blast",
                         submitted_day=6,
@@ -17926,7 +17934,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald finds that the nephews have dirtied his hand towel",
                         submitted_day=6,
@@ -17973,7 +17981,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews fish from hiding as truant officer Donald walks by",
                         submitted_day=12,
@@ -18022,7 +18030,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="A worm intervenes as Donald and Daisy bite at a Halloween apple",
                         submitted_day=6,
@@ -18069,7 +18077,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald gets the nephews to smile for the camera by holding up a candy cane",
                         submitted_day=9,
@@ -18116,7 +18124,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews sail toy ships in the tub Donald is using to soak his feet",
                         submitted_day=8,
@@ -18163,7 +18171,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald’s stamp collection blows away as the nephews rush through a door",
                         submitted_day=8,
@@ -18210,7 +18218,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews duel with pickets from the fence Donald is painting",
                         submitted_day=9,
@@ -18351,7 +18359,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald looks apprehensive as the nephews go by with a saw, hammer and drill",
                         submitted_day=31,
@@ -18498,7 +18506,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald trims the nephews’ Indian headdresses as well as a hedge",
                         submitted_day=6,
@@ -18641,7 +18649,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald hides Christmas presents in a closet, but the nephews are waiting for him",
                         submitted_day=15,
@@ -18688,7 +18696,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald oils a nephew’s violin",
                         submitted_day=29,
@@ -18784,7 +18792,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The coin Donald drops into a nephew’s piggy bank passes through a hole in the bottom",
                         submitted_day=14,
@@ -18929,7 +18937,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews use Donald’s blouse as a sail for their boat",
                         submitted_day=23,
@@ -18976,7 +18984,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews quarrel over which candy to buy from Donald",
                         submitted_day=23,
@@ -19620,7 +19628,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Plaster falls on Donald when the nephews hit a punching bag",
                         submitted_day=6,
@@ -19670,7 +19678,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews get paint all over themselves and none on the canvas",
                         submitted_day=6,
@@ -19717,7 +19725,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews startle Donald with a frog under a top hat",
                         submitted_day=29,
@@ -19982,7 +19990,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald’s ventriloquist’s dummy is a parrot",
                         submitted_day=14,
@@ -20183,7 +20191,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews are splattered with paint as they help Donald paint the ceiling",
                         submitted_day=7,
@@ -20279,7 +20287,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald holds the nephews’ dripping ice-cream cones as they gobble candy",
                         submitted_day=7,
@@ -20326,7 +20334,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald hauls the nephews to the bathtub in a large towel",
                         submitted_day=19,
@@ -20377,7 +20385,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews disturb Donald’s rest by putting up a “do not disturb” sign",
                         submitted_day=7,
@@ -20458,7 +20466,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews’ sailboats pass Donald’s chair as the bathtub overflows",
                         submitted_day=4,
@@ -20537,7 +20545,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald has gotten out of the tub to answer a phone that is ringing on television",
                         submitted_day=4,
@@ -20736,7 +20744,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews tie Donald’s fishing line to a rubber beach horse",
                         submitted_day=20,
@@ -20813,7 +20821,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews use a tree limb as a fishing pole",
                         submitted_day=1,
@@ -20862,7 +20870,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald’s single straw is no match for the nephews’ multiple straws as they drink sodas",
                         submitted_day=22,
@@ -20911,7 +20919,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="A dachshund is unsuccessful at jumping through Donald’s hoop",
                         submitted_day=2,
@@ -20958,7 +20966,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews wash dishes while they’re in the bathtub",
                         submitted_day=2,
@@ -21008,7 +21016,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald plays icicles like a xylophone while the nephews sing",
                         submitted_day=12,
@@ -21055,7 +21063,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews use umbrellas as shields, as they fight with water pistols",
                         submitted_day=2,
@@ -21134,7 +21142,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald lifts up the dirty-footed nephews with his vacuum cleaner",
                         submitted_day=31,
@@ -21183,7 +21191,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews build a play house with Donald inside",
                         submitted_day=1,
@@ -21232,7 +21240,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald has no luck fishing but the nephews attract fish with bread",
                         submitted_day=22,
@@ -21279,7 +21287,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="At the beach, the ducks head for the water wearing life preservers",
                         submitted_day=7,
@@ -21403,7 +21411,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews share a single bandage for their aching jaws as they go to the dentist",
                         submitted_day=18,
@@ -21497,7 +21505,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews use a snow shovel as a sled",
                         submitted_day=23,
@@ -21636,7 +21644,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald ducks as the nephews play with paddleballs",
                         submitted_day=25,
@@ -21750,7 +21758,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews have stacked Donald’s grill high with charcoal",
                         submitted_day=19,
@@ -21767,9 +21775,9 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK Boxed-in",
                         page_count="10",
-                        qualifier=None,
+                        qualifier=Qualifier.ART_AND_REWRITING_OF_SCRIPT,
                         is_cover=False,
-                        description="art and rewriting of script - Donald has to borrow money from the nephews to take Daisy to a box lunch social, and they try to sabotage his car on his way to the social",
+                        description="Donald has to borrow money from the nephews to take Daisy to a box lunch social, and they try to sabotage his car on his way to the social",
                         submitted_day=12,
                         submitted_month=11,
                         submitted_year=1960,
@@ -21799,9 +21807,9 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK Duck Luck",
                         page_count="10",
-                        qualifier=None,
+                        qualifier=Qualifier.ART_AND_REWRITING_OF_SCRIPT,
                         is_cover=False,
-                        description="art and rewriting of script - Donald refuses to believe a fortune cookie’s warning that he “can’t do anything right” that day — but he can’t, as Gladstone proves to him",
+                        description="Donald refuses to believe a fortune cookie’s warning that he “can’t do anything right” that day — but he can’t, as Gladstone proves to him",
                         submitted_day=28,
                         submitted_month=12,
                         submitted_year=1960,
@@ -21863,7 +21871,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald cages the nephews in two market baskets",
                         submitted_day=19,
@@ -21970,7 +21978,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="A Donald snowman seems to have thrown a snowball at Donald himself",
                         submitted_day=23,
@@ -22111,7 +22119,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews tie a Scout knot in Donald’s hose",
                         submitted_day=7,
@@ -22158,7 +22166,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews, hiding in a log, eat Donald’s picnic lunch",
                         submitted_day=21,
@@ -22437,9 +22445,9 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK A Matter of Factory",
                         page_count="10",
-                        qualifier=None,
+                        qualifier=Qualifier.ART_AND_REWRITING_OF_SCRIPT,
                         is_cover=False,
-                        description="art and rewriting of script - Scrooge, embarrassed because Donald is a nobody, makes Donald “president” of a motel, and Donald is besieged by obnoxious guests",
+                        description="Scrooge, embarrassed because Donald is a nobody, makes Donald “president” of a motel, and Donald is besieged by obnoxious guests",
                         submitted_day=7,
                         submitted_month=6,
                         submitted_year=1962,
@@ -22587,9 +22595,9 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK Gall of the Wild",
                         page_count="10",
-                        qualifier=None,
+                        qualifier=Qualifier.ART_AND_REWRITING_OF_SCRIPT,
                         is_cover=False,
-                        description="art and rewriting of script - Donald drives the nephews along the northern coast, where they try to find food on a beach after Donald loses his wallet in a berry patch",
+                        description="Donald drives the nephews along the northern coast, where they try to find food on a beach after Donald loses his wallet in a berry patch",
                         submitted_day=10,
                         submitted_month=10,
                         submitted_year=1962,
@@ -22649,7 +22657,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (part) (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald, wearing a lifeguard’s shirt, is admired by two girl ducks",
                         submitted_day=21,
@@ -22696,7 +22704,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (part) (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald rides an elephant in a parade of strange pets",
                         submitted_day=4,
@@ -22743,7 +22751,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (part) (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald, holding a toy ray gun, dances with Daisy",
                         submitted_day=8,
@@ -22790,7 +22798,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (part) (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald and the nephews throw balls at pins at a carnival booth",
                         submitted_day=1,
@@ -22837,7 +22845,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (part) (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald is startled when he looks in a mirror and sees Scrooge as his reflection",
                         submitted_day=5,
@@ -22884,7 +22892,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (part) (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="A snowball with a lighted fuse sails toward Donald",
                         submitted_day=6,
@@ -22931,7 +22939,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Top half, Donald throws a haymaker; bottom half, the Beagle Boys flee from Madam Mim",
                         submitted_day=16,
@@ -22978,7 +22986,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (part) (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald and the nephews, on a broken spar, look at an exploding ship",
                         submitted_day=31,
@@ -23149,7 +23157,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="A football has just landed in Donald’s soup, splattering him with it",
                         submitted_day=15,
@@ -23179,7 +23187,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald is wearing a mask so that he is literally “two-faced.”",
                         submitted_day=29,
@@ -23196,7 +23204,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="DONALD DUCK Delivery Dilemma",
                         page_count="10",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Scrooge signs a contract to deliver “wild rabbit eggs,” not noticing the fine print that gives his fortune to the Beagle Boys if even one egg is cracked",
                         submitted_day=25,
@@ -23226,7 +23234,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews, dressed as pilgrims, flee from an angry turkey",
                         submitted_day=16,
@@ -23303,7 +23311,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald, a logger, is high up a tree that a woodpecker is pecking from under him. (Illustrating “Timber Tycoon.”)",
                         submitted_day=9,
@@ -23333,7 +23341,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald pulls a fish out of a top hat, while an angry rabbit rises from a fish bowl",
                         submitted_day=9,
@@ -23363,7 +23371,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald and the nephews are walking a dachshund, with four leashes for one dog",
                         submitted_day=28,
@@ -23380,7 +23388,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="<strong>DONALD DUCK</strong> Monkey Business",
                         page_count="10",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=False,
                         description="Donald, an expert at tuning bells, solves a problem for Scrooge, who has one million unsaleable mechanical monkeys with clangorous cymbals",
                         submitted_day=16,
@@ -23446,7 +23454,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews ride Donald’s vacuum cleaner",
                         submitted_day=22,
@@ -23508,7 +23516,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews’ fishing lines are tangled with Donald’s, and they pull him under the boat",
                         submitted_day=15,
@@ -23538,7 +23546,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (part) (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald, dressed as an Indian, is disgusted as a turkey snuggles up to him",
                         submitted_day=25,
@@ -23568,7 +23576,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald is tangled in his Yo-Yo string, while the nephews easily handle theirs",
                         submitted_day=24,
@@ -23598,7 +23606,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald has connected the nephews’ metal bunk bed to the water pipe, and installed faucets",
                         submitted_day=26,
@@ -23628,7 +23636,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald is ready with a flyswatter as a nephew’s model plane approaches",
                         submitted_day=1,
@@ -23688,7 +23696,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald and Daisy ride together on a skateboard",
                         submitted_day=2,
@@ -23718,7 +23726,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (part) (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Daisy lifts a barbell with one finger",
                         submitted_day=28,
@@ -23778,7 +23786,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald plays a tune with drumsticks on the nephews’ helmets",
                         submitted_day=6,
@@ -23808,7 +23816,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews’ toy rocket lands in Daisy’s cake",
                         submitted_day=28,
@@ -23838,7 +23846,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Donald is frightened by the nephews’ hat-rack “ghost.”",
                         submitted_day=2,
@@ -23868,7 +23876,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Daisy and a dalmatian are both wearing spotted coats",
                         submitted_day=15,
@@ -23898,7 +23906,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews apply fingerprint powder to their piggy bank",
                         submitted_day=30,
@@ -23928,7 +23936,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews see no evil, hear no evil, speak no evil as Donald approaches an open manhole",
                         submitted_day=27,
@@ -23958,7 +23966,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Daisy has just cut off a horse’s tail and is wearing it as a ponytail",
                         submitted_day=15,
@@ -23988,7 +23996,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Smoke from the nephews’ fire collects under Donald’s umbrella",
                         submitted_day=15,
@@ -24018,7 +24026,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews’ toy rocket has just landed on Donald’s house",
                         submitted_day=25,
@@ -24048,7 +24056,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews use one of Donald’s skis as a sled",
                         submitted_day=21,
@@ -24078,7 +24086,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="Water squirts from a snowman’s “mouth” and hits Donald on the head",
                         submitted_day=11,
@@ -24108,7 +24116,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews are launching a “moon rocket” from a springboard",
                         submitted_day=15,
@@ -24138,7 +24146,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews take aim at a cuckoo clock with bow and arrow, popgun and slingshot",
                         submitted_day=9,
@@ -24168,7 +24176,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews are using a fish bowl to blow soap bubbles, with a fish in one bubble",
                         submitted_day=23,
@@ -24198,7 +24206,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="A snowman seems to have thrown a snowball that just hit Donald",
                         submitted_day=7,
@@ -24230,7 +24238,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews are using Daisy’s portable hair dryer to pop popcorn",
                         submitted_day=28,
@@ -24260,7 +24268,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="On a ship’s deck, Donald looks sick as the nephews gorge themselves on sweets",
                         submitted_day=12,
@@ -24290,7 +24298,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                     BibEntry(
                         raw_title="Front cover (art only)",
                         page_count="",
-                        qualifier="art only",
+                        qualifier=Qualifier.ART_ONLY,
                         is_cover=True,
                         description="The nephews hide with a turkey as Donald, dressed as a pilgrim, walks by",
                         submitted_day=6,

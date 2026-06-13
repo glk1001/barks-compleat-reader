@@ -111,8 +111,23 @@ ISSUE_RE = re.compile(r"^(.+?)\s+-\s+(\d+)\s+[Pp]ages?\.?$")
 ISSUE_BLOB_RE = re.compile(r"^(\d+\s*\(\d+/\d+\)|Four Color\s+\d+|\S+)\s+(.+)$")
 # Cover paragraphs: "Front cover:", "Back cover:", "Inside front/back cover:".
 COVER_RE = re.compile(r"^(?:Front|Back|Inside (?:front|back)) cover\b", re.IGNORECASE)
-# Qualifier embedded in an entry body.
-QUALIFIER_RE = re.compile(r"\b(art only|script only)\b", re.IGNORECASE)
+# Qualifier embedded in an entry body (longest alternative first).
+QUALIFIER_RE = re.compile(r"\b(art and rewriting of script|art only|script only)\b", re.IGNORECASE)
+
+
+class Qualifier(Enum):
+    """Barks's stated contribution when an entry is not wholly his work."""
+
+    ART_ONLY = auto()
+    SCRIPT_ONLY = auto()
+    ART_AND_REWRITING_OF_SCRIPT = auto()
+
+
+QUALIFIER_FROM_TEXT: dict[str, Qualifier] = {
+    "art only": Qualifier.ART_ONLY,
+    "script only": Qualifier.SCRIPT_ONLY,
+    "art and rewriting of script": Qualifier.ART_AND_REWRITING_OF_SCRIPT,
+}
 
 
 class Disposition(Enum):
@@ -137,7 +152,7 @@ class Disposition(Enum):
 class BibEntry:
     raw_title: str
     page_count: str
-    qualifier: str | None
+    qualifier: Qualifier | None
     is_cover: bool
     description: str
     submitted_day: int
@@ -329,7 +344,9 @@ def parse_tree() -> list[BibSeries]:
 
         if tag == "h1":
             name = strip_tags(first)
-            cur_series = BibSeries(h1_name=name, issue_name=SERIES_TO_ISSUE.get(bare_series_name(name)))
+            cur_series = BibSeries(
+                h1_name=name, issue_name=SERIES_TO_ISSUE.get(bare_series_name(name))
+            )
             series_list.append(cur_series)
             cur_issue = None
             cur_entry = None
@@ -346,7 +363,9 @@ def parse_tree() -> list[BibSeries]:
             official = segments[1] if len(segments) > 1 else pending_official_title
             # Record the source tag so the report can flag headers not in <h2>.
             if tag == "p":
-                header_tag = "strong" if re.match(r"\s*<strong\b", raw_inner, re.IGNORECASE) else "p"
+                header_tag = (
+                    "strong" if re.match(r"\s*<strong\b", raw_inner, re.IGNORECASE) else "p"
+                )
             else:
                 header_tag = tag
             cur_issue = BibIssue(
@@ -408,7 +427,11 @@ def parse_tree() -> list[BibSeries]:
                 date_hit = find_submission_date(unit)
                 if date_hit is not None:
                     (day, month, year, unavail), raw_date, dstart, dend = date_hit
-                    add_entry(build_entry(unit[:dstart].rstrip(" .,"), day, month, year, unavail, raw_date))
+                    add_entry(
+                        build_entry(
+                            unit[:dstart].rstrip(" .,"), day, month, year, unavail, raw_date
+                        )
+                    )
                     remainder = unit[dend:].strip(" .,")
                     if remainder:
                         cur_entry.notes.append(remainder)
@@ -479,7 +502,7 @@ def build_entry(
     stripped = strip_tags(body)
     is_cover = bool(COVER_RE.match(stripped))
     qmatch = QUALIFIER_RE.search(stripped)
-    qualifier = qmatch.group(1).lower() if qmatch else None
+    qualifier = QUALIFIER_FROM_TEXT[qmatch.group(1).lower()] if qmatch else None
     raw_title, page_count, description = split_entry_body(body, is_cover)
     return BibEntry(
         raw_title=raw_title,
@@ -513,8 +536,13 @@ def split_entry_body(body: str, is_cover: bool) -> tuple[str, str, str]:
     title = body[: m.start()].strip()
     page_count = m.group(1).strip()
     desc = re.sub(r"^[-–—.]\s*", "", body[m.end() :].lstrip())
-    # Drop a leading "art only"/"script only" qualifier from the description.
-    desc = re.sub(r"^(art only|script only)\s*[-–—.]?\s*", "", desc, flags=re.IGNORECASE)
+    # Drop a leading qualifier ("art only", "script only", ...) from the description.
+    desc = re.sub(
+        r"^(art and rewriting of script|art only|script only)\s*[-–—.]?\s*",
+        "",
+        desc,
+        flags=re.IGNORECASE,
+    )
     return (title, page_count, desc.strip())
 
 
@@ -557,9 +585,9 @@ class IssueIndex:
                     continue
                 self.by_year.setdefault((issue.issue_name, issue.issue_year), []).append(issue)
                 if issue.issue_number != -1:
-                    self.by_number.setdefault(
-                        (issue.issue_name, issue.issue_number), []
-                    ).append(issue)
+                    self.by_number.setdefault((issue.issue_name, issue.issue_number), []).append(
+                        issue
+                    )
 
 
 def issues_for(idx: IssueIndex, cbi: ComicBookInfo) -> list[BibIssue]:
@@ -592,9 +620,7 @@ def match_all(series_list: list[BibSeries]) -> list[MatchResult]:
 
     def candidates(cbi: ComicBookInfo) -> list[BibEntry]:
         # Front covers are never ComicBookInfo records, so exclude them.
-        return [
-            e for e in issue_entries(idx, cbi) if not e.is_cover and id(e) not in linked
-        ]
+        return [e for e in issue_entries(idx, cbi) if not e.is_cover and id(e) not in linked]
 
     def claim(title: Titles, entry: BibEntry, method: str) -> None:
         linked.add(id(entry))
@@ -799,6 +825,25 @@ COVER_QUALIFIER_RE = re.compile(r"^[^(]*\(([^)]*)\)")
 ILLUSTRATING_RE = re.compile(r"\(\s*Illustrating\s+[“\"](.+?)[”\"]\s*\.?\s*\)")
 
 
+class CoverQualifier(Enum):
+    """Barks's stated contribution to a cover when it is not wholly his art."""
+
+    ART_ONLY = auto()
+    PART = auto()
+    PENCIL_ROUGH_ONLY = auto()
+    IDEA_AND_PENCIL_ROUGH = auto()
+    ROUGH_PENCIL_LAYOUT_ONLY = auto()
+
+
+COVER_QUALIFIER_FROM_TEXT: dict[str, CoverQualifier] = {
+    "art only": CoverQualifier.ART_ONLY,
+    "part": CoverQualifier.PART,
+    "pencil rough only": CoverQualifier.PENCIL_ROUGH_ONLY,
+    "idea and pencil rough": CoverQualifier.IDEA_AND_PENCIL_ROUGH,
+    "rough pencil layout only": CoverQualifier.ROUGH_PENCIL_LAYOUT_ONLY,
+}
+
+
 @dataclass
 class CoverRec:
     """A registry-shaped view of one bibliography cover entry."""
@@ -811,7 +856,7 @@ class CoverRec:
     issue_year: int
     kind: str  # CoverKind member name: FRONT / INSIDE_FRONT / INSIDE_BACK / BACK
     seq: int
-    qualifier: str | None
+    qualifier: CoverQualifier | None
     description: str
     illustrates: Titles | None
 
@@ -840,11 +885,21 @@ def collect_covers(series_list: list[BibSeries], warnings: list[str]) -> list[Co
                 head = strip_tags(e.raw_title)
                 kind_m = COVER_KIND_RE.match(head)
                 if kind_m is None:
-                    warnings.append(f"{series_name} {issue.raw_issue_id}: cover kind unparsable: {head!r}")
+                    warnings.append(
+                        f"{series_name} {issue.raw_issue_id}: cover kind unparsable: {head!r}"
+                    )
                     continue
                 kind = kind_m.group(1).upper().replace(" ", "_")
                 qual_m = COVER_QUALIFIER_RE.match(head)
-                qualifier = qual_m.group(1).strip().lower() if qual_m else None
+                qualifier: CoverQualifier | None = None
+                if qual_m:
+                    qual_text = qual_m.group(1).strip().lower()
+                    qualifier = COVER_QUALIFIER_FROM_TEXT.get(qual_text)
+                    if qualifier is None:
+                        warnings.append(
+                            f"{series_name} {issue.raw_issue_id}: unknown cover "
+                            f"qualifier {qual_text!r} — add to CoverQualifier"
+                        )
 
                 illustrates: Titles | None = None
                 ill_m = ILLUSTRATING_RE.search(strip_tags(e.description))
@@ -897,7 +952,9 @@ def verify_covers(cover_recs: list[CoverRec], warnings: list[str]) -> None:
         warnings.append("barks_covers.py not generated yet — run with --emit-covers to bootstrap")
         return
 
-    by_key = {(c.series_name, c.issue_number, c.issue_year, c.kind.name, c.seq): c for c in BARKS_COVERS}
+    by_key = {
+        (c.series_name, c.issue_number, c.issue_year, c.kind.name, c.seq): c for c in BARKS_COVERS
+    }
     if len(by_key) != len(BARKS_COVERS):
         warnings.append("BARKS_COVERS contains duplicate keys")
     claimed: set[tuple] = set()
@@ -909,17 +966,25 @@ def verify_covers(cover_recs: list[CoverRec], warnings: list[str]) -> None:
         claimed.add(rec.key)
         mismatches = []
         if (cover.submitted_day, cover.submitted_month, cover.submitted_year) != (
-            rec.entry.submitted_day, rec.entry.submitted_month, rec.entry.submitted_year
+            rec.entry.submitted_day,
+            rec.entry.submitted_month,
+            rec.entry.submitted_year,
         ):
             mismatches.append("submitted date")
-        if cover.qualifier != rec.qualifier:
+        # ``cover.qualifier`` is the emitted module's CoverQualifier; ``rec``'s is
+        # this script's — distinct enum classes, so compare by member name.
+        cover_qual = cover.qualifier.name if cover.qualifier is not None else None
+        rec_qual = rec.qualifier.name if rec.qualifier is not None else None
+        if cover_qual != rec_qual:
             mismatches.append("qualifier")
         if strip_tags(cover.description) != strip_tags(rec.description):
             mismatches.append("description")
         if cover.illustrates != rec.illustrates:
             mismatches.append("illustrates")
         if mismatches:
-            warnings.append(f"cover registry: {rec.key} differs from bibliography: {', '.join(mismatches)}")
+            warnings.append(
+                f"cover registry: {rec.key} differs from bibliography: {', '.join(mismatches)}"
+            )
             continue
         rec.entry.disposition = Disposition.COVER
     for key in by_key.keys() - claimed:
@@ -952,10 +1017,20 @@ def emit_covers_module(cover_recs: list[CoverRec]) -> None:
     w("    BACK = auto()")
     w("")
     w("")
+    w("class CoverQualifier(Enum):")
+    w('    """Barks\'s stated contribution to a cover when it is not wholly his art."""')
+    w("")
+    w("    ART_ONLY = auto()")
+    w("    PART = auto()")
+    w("    PENCIL_ROUGH_ONLY = auto()")
+    w("    IDEA_AND_PENCIL_ROUGH = auto()")
+    w("    ROUGH_PENCIL_LAYOUT_ONLY = auto()")
+    w("")
+    w("")
     w("CoverKey = tuple[str, int, int, str, int]")
     w("")
     w("")
-    w('''@dataclass(frozen=True)
+    w("""@dataclass(frozen=True)
 class BarksCover:
     issue_name: Issues | None  # None for series with no Issues member (cover-only albums)
     series_name: str  # bibliography H1 series name
@@ -964,7 +1039,7 @@ class BarksCover:
     issue_year: int
     kind: CoverKind
     seq: int  # 0-based tie-breaker within (series, issue, year, kind)
-    qualifier: str | None  # e.g. "art only", "part", "pencil rough only"
+    qualifier: CoverQualifier | None  # Barks's partial-credit note, if any
     description: str
     submitted_day: int
     submitted_month: int
@@ -973,7 +1048,7 @@ class BarksCover:
 
     @property
     def key(self) -> CoverKey:
-        return (self.series_name, self.issue_number, self.issue_year, self.kind.name, self.seq)''')
+        return (self.series_name, self.issue_number, self.issue_year, self.kind.name, self.seq)""")
     w("")
     w("")
     w("BARKS_COVERS: list[BarksCover] = [")
@@ -987,7 +1062,7 @@ class BarksCover:
         w(f"        issue_year={rec.issue_year!r},")
         w(f"        kind=CoverKind.{rec.kind},")
         w(f"        seq={rec.seq!r},")
-        w(f"        qualifier={rec.qualifier!r},")
+        w(f"        qualifier={py_repr(rec.qualifier)},")
         w(f"        description={rec.description!r},")
         w(f"        submitted_day={e.submitted_day!r},")
         w(f"        submitted_month={e.submitted_month!r},")
@@ -996,8 +1071,10 @@ class BarksCover:
         w("    ),")
     w("]")
     w("")
-    w("BARKS_COVER_BY_KEY: dict[CoverKey, BarksCover] = {cover.key: cover for cover in BARKS_COVERS}")
-    w("assert len(BARKS_COVER_BY_KEY) == len(BARKS_COVERS), \"duplicate BarksCover keys\"")
+    w(
+        "BARKS_COVER_BY_KEY: dict[CoverKey, BarksCover] = {cover.key: cover for cover in BARKS_COVERS}"
+    )
+    w('assert len(BARKS_COVER_BY_KEY) == len(BARKS_COVERS), "duplicate BarksCover keys"')
     w("")
 
     OUT_COVERS_MODULE.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -1030,9 +1107,7 @@ def report(
 
     # Source-quality flag: issue headers that were tagged <strong>/<h3>/<p>
     # instead of <h2> in the EPUB (worth correcting in source.xhtml).
-    mis_tagged = [
-        (s, i) for s in series_list for i in s.issues if i.header_tag != "h2"
-    ]
+    mis_tagged = [(s, i) for s in series_list for i in s.issues if i.header_tag != "h2"]
     if mis_tagged:
         print(f"\nISSUE HEADERS NOT IN <h2> ({len(mis_tagged)}) — fix the tag in source.xhtml:")
         for s, i in mis_tagged:
@@ -1042,21 +1117,31 @@ def report(
                 f"{i.raw_issue_id!r} ({i.raw_date}) [{name}]"
             )
 
-    post1978 = [r for r in results if r.entry is None and r.method == "unmatched" and r.cbi.issue_year > 1978]
+    post1978 = [
+        r
+        for r in results
+        if r.entry is None and r.method == "unmatched" and r.cbi.issue_year > 1978
+    ]
     overridden_absent = [r for r in results if r.method == "absent"]
     unmatched = [
-        r for r in results if r.entry is None and r.method == "unmatched" and r.cbi.issue_year <= 1978
+        r
+        for r in results
+        if r.entry is None and r.method == "unmatched" and r.cbi.issue_year <= 1978
     ]
     if post1978:
         print(f"\nNOT IN BARRIER — expected, post-1978 / non-US ({len(post1978)}):")
         for r in post1978:
             cbi = r.cbi
-            print(f"  {ENUM_TO_STR_TITLE[cbi.title]}  [{cbi.issue_name.name} {cbi.issue_number} {cbi.issue_year}]")
+            print(
+                f"  {ENUM_TO_STR_TITLE[cbi.title]}  [{cbi.issue_name.name} {cbi.issue_number} {cbi.issue_year}]"
+            )
     if overridden_absent:
         print(f"\nNO BARRIER ENTRY — override-confirmed findings ({len(overridden_absent)}):")
         for r in overridden_absent:
             cbi = r.cbi
-            print(f"  {ENUM_TO_STR_TITLE[cbi.title]}  [{cbi.issue_name.name} {cbi.issue_number} {cbi.issue_year}]")
+            print(
+                f"  {ENUM_TO_STR_TITLE[cbi.title]}  [{cbi.issue_name.name} {cbi.issue_number} {cbi.issue_year}]"
+            )
 
     if unmatched:
         print(f"\nUNMATCHED ({len(unmatched)}) — need an override or a SERIES_TO_ISSUE fix:")
@@ -1122,7 +1207,9 @@ def report(
         print(f"  {name:16s}: {disp_counts.get(name, 0)}")
 
     if disposition_warnings:
-        print(f"\nDISPOSITION WARNINGS ({len(disposition_warnings)}) — fix before trusting the counts:")
+        print(
+            f"\nDISPOSITION WARNINGS ({len(disposition_warnings)}) — fix before trusting the counts:"
+        )
         for warning in disposition_warnings:
             print(f"  {warning}")
 
@@ -1138,9 +1225,7 @@ def report(
             print(f"  {count:4d}  {name}")
 
     if undisposed_stories:
-        print(
-            f"\nUNDISPOSED STORIES ({len(undisposed_stories)}) — Phase 2 add-candidates:"
-        )
+        print(f"\nUNDISPOSED STORIES ({len(undisposed_stories)}) — Phase 2 add-candidates:")
         for s, i, e in undisposed_stories:
             print(
                 f"  {bare_series_name(s.h1_name)[:28]:28s} {i.raw_issue_id:15s} "
@@ -1173,6 +1258,10 @@ def py_repr(value: object) -> str:
         return f"Titles.{value.name}"
     if isinstance(value, Issues):
         return f"Issues.{value.name}"
+    if isinstance(value, Qualifier):
+        return f"Qualifier.{value.name}"
+    if isinstance(value, CoverQualifier):
+        return f"CoverQualifier.{value.name}"
     return repr(value)
 
 
@@ -1206,11 +1295,17 @@ def emit_module(series_list: list[BibSeries]) -> None:
     REPRINT = auto()  # reprint of an earlier appearance; the original carries the link
     EXCLUDED_SECTION = auto()  # whole section out of scope (non-duck series)
     EXCLUDED_ENTRY = auto()  # individually excluded, with a reason''',
-        '''@dataclass(frozen=True)
+        '''class Qualifier(Enum):
+    """Barks's stated contribution when an entry is not wholly his work."""
+
+    ART_ONLY = auto()
+    SCRIPT_ONLY = auto()
+    ART_AND_REWRITING_OF_SCRIPT = auto()''',
+        """@dataclass(frozen=True)
 class BibEntry:
     raw_title: str
     page_count: str
-    qualifier: str | None
+    qualifier: Qualifier | None
     is_cover: bool
     description: str
     submitted_day: int
@@ -1222,8 +1317,8 @@ class BibEntry:
     title: Titles | None
     disposition: Disposition
     disposition_reason: str | None
-    cover_key: tuple[str, int, int, str, int] | None''',
-        '''@dataclass(frozen=True)
+    cover_key: tuple[str, int, int, str, int] | None""",
+        """@dataclass(frozen=True)
 class BibIssue:
     raw_issue_id: str
     issue_name: Issues | None
@@ -1234,13 +1329,13 @@ class BibIssue:
     official_title: str | None
     raw_date: str
     entries: tuple[BibEntry, ...]
-    notes: tuple[str, ...]''',
-        '''@dataclass(frozen=True)
+    notes: tuple[str, ...]""",
+        """@dataclass(frozen=True)
 class BibSeries:
     h1_name: str
     issue_name: Issues | None
     notes: tuple[str, ...]
-    issues: tuple[BibIssue, ...]''',
+    issues: tuple[BibIssue, ...]""",
     ):
         w(cls)
         w("")
@@ -1268,7 +1363,7 @@ class BibSeries:
                 w("                    BibEntry(")
                 w(f"                        raw_title={e.raw_title!r},")
                 w(f"                        page_count={e.page_count!r},")
-                w(f"                        qualifier={e.qualifier!r},")
+                w(f"                        qualifier={py_repr(e.qualifier)},")
                 w(f"                        is_cover={e.is_cover!r},")
                 w(f"                        description={e.description!r},")
                 w(f"                        submitted_day={e.submitted_day!r},")
