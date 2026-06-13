@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from contextlib import ExitStack
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
@@ -10,6 +9,7 @@ import barks_reader.ui.main_screen
 import pytest
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.ui.main_screen import MainScreen
+from barks_reader.ui.main_screen_components import MainScreenComponents
 from barks_reader.ui.screen_bundle import ScreenBundle
 from kivy.uix.screenmanager import Screen
 
@@ -43,10 +43,28 @@ def mock_dependencies() -> dict[str, Any]:
 
 
 @pytest.fixture
+def mock_components() -> MainScreenComponents:
+    """Return a bundle of mock collaborators, injected in place of the real build."""
+    return MainScreenComponents(
+        random_title_images=MagicMock(),
+        json_settings_manager=MagicMock(),
+        special_fanta_overrides=MagicMock(),
+        comic_reader_manager=MagicMock(),
+        window_helper=MagicMock(),
+        renderer=MagicMock(),
+        nav_coord=MagicMock(),
+        tree_view_manager=MagicMock(),
+        app_initializer=MagicMock(),
+        nav=MagicMock(),
+    )
+
+
+@pytest.fixture
 def main_screen(
     mock_dependencies: dict[str, MagicMock],
+    mock_components: MainScreenComponents,
 ) -> Generator[MainScreen]:
-    # Patch Kivy Screen __init__ to avoid window creation
+    # Patch Kivy Screen __init__ to avoid window creation.
     with patch.object(Screen, "__init__", autospec=True) as mock_screen_init:
 
         def side_effect(self, **kwargs) -> None:  # noqa: ANN001, ANN003
@@ -69,32 +87,18 @@ def main_screen(
 
         mock_screen_init.side_effect = side_effect
 
-        # Patch other internal initializations
-        patched_attrs = [
-            "WindowManager",
-            "ImageSelector",
-            "ReaderFilePathsResolver",
-            "SettingsManager",
-            "SpecialFantaOverrides",
-            "UserErrorHandler",
-            "ComicReaderManager",
-            "ViewPipeline",
-            "ViewRenderer",
-            "SnapshotApplicator",
-            "KivyClockScheduler",
-            "TintColorSource",
-            "NavigationModel",
-            "TreeViewManager",
-            "NavigationCoordinator",
-            "MainScreenNavigation",
-            "MainScreenWindowHelper",
-            "AppInitializer",
-            "Factory",
-            "Screen",
-        ]
-        with ExitStack() as stack:
-            for attr in patched_attrs:
-                stack.enter_context(patch.object(barks_reader.ui.main_screen, attr))
+        # The whole collaborator graph is injected as one bundle, so the only
+        # other internals to patch are the Kivy glue the constructor touches.
+        with (
+            patch.object(barks_reader.ui.main_screen, "Screen"),
+            patch.object(barks_reader.ui.main_screen, "Factory"),
+            patch.object(barks_reader.ui.main_screen, "WindowManager"),
+            patch.object(
+                barks_reader.ui.main_screen,
+                "build_main_screen_components",
+                return_value=mock_components,
+            ),
+        ):
             screen = MainScreen(**mock_dependencies)
             yield screen
 

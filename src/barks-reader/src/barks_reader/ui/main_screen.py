@@ -12,31 +12,18 @@ from kivy.properties import BooleanProperty, StringProperty  # ty: ignore[unreso
 from kivy.uix.screenmanager import Screen
 from loguru import logger
 
-from barks_reader.core.comic_book_page_info import ComicLayoutBuilder
-from barks_reader.core.image_selector import ImageInfo, ImageSelector
-from barks_reader.core.navigation import NavigationModel
+from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
-from barks_reader.core.page_info_adapters import FantagraphicsPanelSegmentsAdapter
 from barks_reader.core.reader_consts_and_types import APP_TITLE
-from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import (
     get_title_str_from_reader_icon_file,
     get_win_dimensions,
 )
-from barks_reader.core.special_overrides_handler import SpecialFantaOverrides
-from barks_reader.core.view_pipeline import ViewPipeline
 
 from .about_box import show_about_box
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
-from .adapters import KivyClockScheduler, TintColorSource
-from .app_initializer import AppInitializer
-from .comic_reader_manager import ComicReaderManager
-from .json_settings_manager import SettingsManager
-from .last_read_page_tracker import LastReadPageTracker
-from .main_screen_nav import MainScreenNavigation
-from .main_screen_window import MainScreenWindowHelper
-from .navigation_coordinator import NavigationCoordinator
+from .main_screen_components import build_main_screen_components
 from .platform_window_utils import WindowManager
 from .reader_keyboard_nav import (
     ActionBarNavMixin,
@@ -46,10 +33,7 @@ from .reader_keyboard_nav import (
 from .reader_screens import ReaderScreen
 from .reader_tree_builder import ReaderTreeBuilder
 from .settings_keyboard_nav import SettingsKeyboardNav
-from .snapshot_applicator import SnapshotApplicator
-from .tree_view_manager import TreeViewManager
-from .user_error_handler import UserErrorHandler
-from .view_renderer import ImageThemesChange, ImageThemesToUse, ViewRenderer
+from .view_renderer import ImageThemesChange, ImageThemesToUse
 
 if TYPE_CHECKING:
     from barks_fantagraphics.comics_database import ComicsDatabase
@@ -64,6 +48,7 @@ if TYPE_CHECKING:
     from .reader_screens import ScreenSwitchers
     from .screen_bundle import ScreenBundle
     from .tree_view_nodes import ReaderTreeBuilderEventDispatcher
+    from .user_error_handler import UserErrorHandler
 
 MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
@@ -101,106 +86,26 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         self._title_lists = filtered_title_lists.get_title_lists()
         self._include_one_pagers_in_chrono = filtered_title_lists.include_one_pagers_in_chrono
-        resolver = ReaderFilePathsResolver(self._reader_settings.file_paths)
-        self._random_title_images = ImageSelector(resolver, self._reader_settings)
         self.is_first_use_of_reader = self._reader_settings.is_first_use_of_reader
 
         self._action_bar = self.ids.action_bar
         self._fullscreen_button = self.ids.fullscreen_button
-        self._json_settings_manager = SettingsManager(self._reader_settings.get_user_data_path())
-        self._last_read_page_tracker = LastReadPageTracker(self._json_settings_manager)
-        self._special_fanta_overrides = SpecialFantaOverrides(self._reader_settings)
-
         self._reader_tree_events = reader_tree_events
 
-        user_error_handler = UserErrorHandler(reader_settings, screen_switchers.switch_to_settings)
-
-        panel_segments_adapter = FantagraphicsPanelSegmentsAdapter(
-            self._comics_database,
-            self._reader_settings.sys_file_paths.get_barks_reader_fantagraphics_panel_segments_root_dir(),
-        )
-        layout_builder = ComicLayoutBuilder(
-            sorted_pages_port=panel_segments_adapter,
-            required_dimensions_port=panel_segments_adapter,
-        )
-
-        self._comic_reader_manager = ComicReaderManager(
-            self._comics_database,
-            self._reader_settings,
-            self._last_read_page_tracker,
-            layout_builder,
-            self._tree_view_screen,
-            user_error_handler,
-        )
-
-        self._window_helper = MainScreenWindowHelper(
-            host_screen=self,
-            comic_reader_manager=self._comic_reader_manager,
-            action_bar=self._action_bar,
-            fullscreen_button=self._fullscreen_button,
-            fullscreen_icon=str(
-                self._reader_settings.sys_file_paths.get_barks_reader_fullscreen_icon_file()
-            ),
-            fullscreen_exit_icon=str(
-                self._reader_settings.sys_file_paths.get_barks_reader_fullscreen_exit_icon_file()
-            ),
-            main_layout=self.ids.main_layout,
-            fun_image_view_screen=self._fun_image_view_screen,
-            update_fonts=self.update_fonts,
-        )
-
-        pipeline = ViewPipeline(
-            reader_settings=self._reader_settings,
-            title_lists=self._title_lists,
-            image_selector=self._random_title_images,
-            scheduler=KivyClockScheduler(),
-            colors=TintColorSource(),
-        )
-
-        applicator = SnapshotApplicator(screens)
-
-        self._renderer = ViewRenderer(
-            reader_settings=self._reader_settings,
-            pipeline=pipeline,
-            applicator=applicator,
-            screens=screens,
-            nav_model=NavigationModel(),
-            on_view_state_changed=self._on_view_state_changed,
-        )
-
-        self._nav_coord = NavigationCoordinator(
-            reader_settings=self._reader_settings,
-            comics_database=self._comics_database,
-            renderer=self._renderer,
-            comic_reader_manager=self._comic_reader_manager,
-            bottom_title_view_screen=self._bottom_title_view_screen,
-            tree_view_screen=self._tree_view_screen,
-            screen_switchers=self._screen_switchers,
-            special_fanta_overrides=self._special_fanta_overrides,
-            user_error_handler=user_error_handler,
-            on_active_changed=self._is_active,
-        )
-
-        self._tree_view_manager = TreeViewManager(
-            self._renderer,
-            screens,
-            self._nav_coord,
-            sys_file_paths=self._reader_settings.sys_file_paths,
-        )
-
-        self._nav_coord.set_tree_view_manager(self._tree_view_manager)
+        # Assemble the collaborator graph (see main_screen_components).
+        components = build_main_screen_components(self)
+        self._random_title_images = components.random_title_images
+        self._json_settings_manager = components.json_settings_manager
+        self._special_fanta_overrides = components.special_fanta_overrides
+        self._comic_reader_manager = components.comic_reader_manager
+        self._window_helper = components.window_helper
+        self._renderer = components.renderer
+        self._nav_coord = components.nav_coord
+        self._tree_view_manager = components.tree_view_manager
+        self._app_initializer = components.app_initializer
+        self._nav = components.nav
 
         self.app_icon_filepath = str(self._random_title_images.get_random_reader_app_icon_file())
-
-        self._app_initializer = AppInitializer(
-            self._reader_settings,
-            user_error_handler,
-            self._comic_reader_manager,
-            self._json_settings_manager,
-            self._renderer,
-            self._tree_view_manager,
-            self._tree_view_screen,
-        )
 
         # X is first; icon_hitbox is last so Left from X wraps to it.
         self._setup_action_bar_nav(
@@ -213,15 +118,6 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
                 self.ids.menu_button,
                 self.ids.icon_hitbox,
             ]
-        )
-        self._nav = MainScreenNavigation(
-            screens=screens,
-            tree_view_manager=self._tree_view_manager,
-            bottom_base_view_screen=self._bottom_base_view_screen,
-            on_title_activated=self.on_title_portal_image_pressed,
-            enter_menu_mode=self._enter_menu_mode,
-            handle_menu_key=self._handle_menu_key,
-            is_in_menu_mode=lambda: self._menu_mode,
         )
         Window.bind(on_key_down=self._on_key_down)
 
