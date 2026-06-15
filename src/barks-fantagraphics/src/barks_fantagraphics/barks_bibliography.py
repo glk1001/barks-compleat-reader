@@ -438,7 +438,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="May 26, 1959",
                         date_unavailable=False,
                         notes=(
-                            "Barks: “The ‘Christmas Cha Cha’ story in D.D. Christmas Parade #26 was not my story. I did the drawings and did a great deal of rewriting and polishing on the dialogue of the script, which was sent to me by the office.” (June 9, 1968, letter to Michael Barrier)",
+                            "<em>Barks:</em> “The ‘Christmas Cha Cha’ story in D.D. Christmas Parade #26 was not my story. I did the drawings and did a great deal of rewriting and polishing on the dialogue of the script, which was sent to me by the office.” (June 9, 1968, letter to Michael Barrier)",
                             "Barks caricatured himself on a wanted poster on the thirteenth page of this story.",
                         ),
                         title=Titles.CHRISTMAS_CHA_CHA_THE,
@@ -988,7 +988,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="May 29, 1943",
                         date_unavailable=False,
                         notes=(
-                            "Barks: “In the Sept. 1943 D.D. the story ‘Too Many Pets’ was a sort of collaboration. The script was started by a writer at the Disney Studio who found himself so overloaded with work on plots for the Mickey comic strips that he had to quit ‘Too Many Pets.’ I was handed the half-outlined plot and asked to do what I could with it. I merely polished up the other writer’s gags and situations, and lengthened the tale, and lo! it didn’t look too bad for that spy-conscious era. The Disney writer was named Merrill (something-or-other) [Merrill de Maris]. He had been Walt Kelly’s partner in a story unit at Disneys. I understand he got fed up with gag writing and bought a nursery (plants and trees) and lived happily ever after.” <em>(June 9, 1968, letter to Michael Barrier)</em>",
+                            "<em>Barks:</em> “In the Sept. 1943 D.D. the story ‘Too Many Pets’ was a sort of collaboration. The script was started by a writer at the Disney Studio who found himself so overloaded with work on plots for the Mickey comic strips that he had to quit ‘Too Many Pets.’ I was handed the half-outlined plot and asked to do what I could with it. I merely polished up the other writer’s gags and situations, and lengthened the tale, and lo! it didn’t look too bad for that spy-conscious era. The Disney writer was named Merrill (something-or-other) [Merrill de Maris]. He had been Walt Kelly’s partner in a story unit at Disneys. I understand he got fed up with gag writing and bought a nursery (plants and trees) and lived happily ever after.” <em>(June 9, 1968, letter to Michael Barrier)</em>",
                         ),
                         title=Titles.TOO_MANY_PETS,
                         disposition=Disposition.MATCHED_TITLE,
@@ -1085,7 +1085,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         date_unavailable=False,
                         notes=(
                             "These pages have nine to eleven panels each; most have ten panels. According to Barks’s voucher, he was paid for thirteen pages “plus 30 panels,” which was evidently Western’s method of paying him for drawing more than eight panels per page. The vouchers for a few other stories in this crowded format carry similar notations.",
-                            "Changes: The last two panels of this story are by an artist other than Barks. In them, Donald learns that his adventures as a firebug have been only a bad dream. In Barks’s original version, Donald went to jail for accidentally burning down a courthouse.",
+                            "<em>Changes:</em> The last two panels of this story are by an artist other than Barks. In them, Donald learns that his adventures as a firebug have been only a bad dream. In Barks’s original version, Donald went to jail for accidentally burning down a courthouse.",
                         ),
                         title=Titles.FIREBUG_THE,
                         disposition=Disposition.MATCHED_TITLE,
@@ -1960,7 +1960,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         submitted_year=1949,
                         raw_date="Sept. 8, 1949",
                         date_unavailable=False,
-                        notes=("Barks: “Paid Dana Coty $30 for the idea.”",),
+                        notes=("<em>Barks:</em> “Paid Dana Coty $30 for the idea.”",),
                         title=Titles.TRAIL_OF_THE_UNICORN,
                         disposition=Disposition.MATCHED_TITLE,
                         disposition_reason=None,
@@ -2042,7 +2042,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Nov. 23, 1949",
                         date_unavailable=False,
                         notes=(
-                            "Barks: “About my ‘morgue’ of reference material. I have four files full of clippings of every sort of subject and type of drawing. Also have many years of Nat’l. Geographics, and an Encyclopedia Brittanica. The rock of gibraltar picture in ‘Ancient Persia’ and the authentic-looking background props and frescoes are from Nat’l Geo. I simplify such material, naturally.” <em>(June 9, 1966, letter to Michael Barrier)</em>",
+                            "<em>Barks:</em> “About my ‘morgue’ of reference material. I have four files full of clippings of every sort of subject and type of drawing. Also have many years of Nat’l. Geographics, and an Encyclopedia Brittanica. The rock of gibraltar picture in ‘Ancient Persia’ and the authentic-looking background props and frescoes are from Nat’l Geo. I simplify such material, naturally.” <em>(June 9, 1966, letter to Michael Barrier)</em>",
                         ),
                         title=Titles.IN_ANCIENT_PERSIA,
                         disposition=Disposition.MATCHED_TITLE,
@@ -2245,7 +2245,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         notes=(
                             "This story is set in that section of Southern California in which Barks himself lived at the time. However, few of the settings were taken from life. He has said this about the settings for his stories, and “In Old California” in particular: “No settings are taken from life. But the type of houses and terrain are recognizably local. I sometimes used ‘memory pictures’ of places I’ve seen as background locale. Notably Puget Sound, and the local deserts.” (June 1968 letter to Michael Barrier)",
                             "However, he said in the 1974 interview, “I was laying it right around San Jacinto there, where I lived. Now, this rock [the one the ducks’ car runs into, on the third page], that was just a couple of miles from where we lived. There’s a Soboba Indian reservation out there, and a road came across from San Jacinto, across a river and up here [to the rock], where it turned to go down to the Indian reservation. There were some rocks up there on the side of the hill — they weren’t exactly like that [like the one in the story], they were covered with sagebrush — and the Duck could very easily have made a miscue and run his car into one of those rocks.”",
-                            "The supporting characters are humanoid dogs; Barks said in the 1971 interview that he would have preferred to have drawn them as real humans, but for the warning he had been given when he submitted “Dangerous Disguise” for Donald Duck Four Color No. 308, 1951. (see the note to that story).",
+                            "The supporting characters are humanoid dogs; Barks said in the 1971 interview that he would have preferred to have drawn them as real humans, but for the warning he had been given when he submitted “Dangerous Disguise” for <em>Donald Duck</em> Four Color No. 308, 1951. (see the note to that story).",
                         ),
                         title=Titles.IN_OLD_CALIFORNIA,
                         disposition=Disposition.MATCHED_TITLE,
@@ -2698,7 +2698,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         date_unavailable=False,
                         notes=(
                             "This story was based on a Donald Duck cartoon, <em>Trick or Treat</em> (1952), which was directed by Jack Hannah, once Barks’s partner in the Disney story department. The story was changed extensively before publication, as detailed below. Barks has explained the reasons for the changes: “Alice Cobb, the Western editor at the time, gave me photostats of the story board sketches and asked me to adapt them to a comic book version. I believe it was sort of open end as to length. Anyway, in the part where Hazel is trying to bust into Don’s closet, I departed from the movie script and added some business with an ogre that Hazel summons. [Barks’s departures from the film’s story were actually more extensive than that, as Kim Weston explains below.] Alice Cobb deleted the extra business and didn’t pay me for the unwanted pages. She was that mad.” <em>Jan. 25, 1971, letter to Michael Barrier</em>",
-                            "Weston: “<em>Trick or Treat</em>” has the somewhat dubious distinction of the story with the greatest number of pages cut — ten and a half. More pages of art may have been drawn for it than any other Barks story (at least thirty-three and a half). It was originally a thirty-two page story that Barks had been asked to adapt from a Donald Duck cartoon of the same title.",
+                            "<em>Weston:</em> “<em>Trick or Treat</em>” has the somewhat dubious distinction of the story with the greatest number of pages cut — ten and a half. More pages of art may have been drawn for it than any other Barks story (at least thirty-three and a half). It was originally a thirty-two page story that Barks had been asked to adapt from a Donald Duck cartoon of the same title.",
                             "After the title and credits, the cartoon starts with Hazel flying over town and around the church steeple, and that is how the comic story originally opened. The original splash panel is a view of Duckburg from a graveyard, and of Hazel heading for the steeple. The bottom half of published page 2 followed immediately. This splash panel was dropped, possibly for being too gruesome, and instead of just a different splash, one and one half pages were added to the story. One reason that has been suggested for this is that since this is a <em>Donald Duck</em> comic book, the title character really ought to appear on the first page, and as originally done, Donald did not appear until page 4 and even the nephews did not appear until page 3. It appears that the caption in panel 4 of published page 2 was either added or expanded to provide a transition from the added opening sequence. The story is then intact up to published page 16 (page 15 as originally numbered) and it follows the cartoon fairly closely, though the page 4 and page 10 sequences do not appear in the cartoon, nor does the page between panel 4 of page 16 and panel 6 of page 17.",
                             "Also, at this point comes a nine-page sequence (originally numbered pages 16 to 24) in which Hazel, following Donald’s comment on published page 16 that “It’ll take more than a WITCH to get candy from Donald Duck,” transforms herself into a beautiful girl duck (1½ page), gets candy from Donald (1), reveals herself as the witch, and hops on her broom with the candy and kids (½). Donald lassoes them and retrieves the candy (½). Hazel vows revenge and conjures up her pet, a six-armed, derby-hatted ogre named Smorgasbord, better known as Smorgie the Bad (1½). She sics Smorgie on Donald (½) and Donald tries to battle him off after noting that he’s a mighty solid figment of the imagination (2). On the seventh page of this sequence, Hazel directs Smorgie to find the key, and Smorgie, while still standing at the front door, sticks his arms through half a dozen windows around the house. Smorgie finally corners Donald, and Donald gives up (½). He gives Smorgie the basket of goodies, but then paints a stick of dynamite with jam (½), and gives it as a special treat to Smorgie, who gulps it down (½). Smorgie is exploded and Donald reclaims the candy, there being nothing left of Smorgie except a derby hat (½). The story then picks up with published page 17, originally numbered page 25, where Hazel can be seen stomping on the derby hat in panel 1. This whole sequence was added by Barks and does not appear in the cartoon.",
                             "From page 17 panel 5 to page 19 panel 5 (pages 25 to 27 by the original numbering), the story follows the cartoon fairly closely. But from page 19 panel 5 to page 20 panel 1, there is a break. At this point in the cartoon, Donald grabs a rug to anchor himself and keep from being dragged around too much and Hazel sprays a cactus plant which grows in size and smacks Donald in the tail, knocking the key out. Donald catches it in his mouth and swallows it again. Then Hazel has Donald’s feet swing south towards the fire to burn the key out, as in page 19 panels 6-8.",
@@ -3332,7 +3332,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="May 20, 1959",
                         date_unavailable=False,
                         notes=(
-                            "Barks: “The ‘Master Glasser’ story was from a script sent to me from the office. As usual, I did lots of rewriting to pull the gags together.” (June 9, 1968, letter to Michael Barrier)",
+                            "<em>Barks:</em> “The ‘Master Glasser’ story was from a script sent to me from the office. As usual, I did lots of rewriting to pull the gags together.” (June 9, 1968, letter to Michael Barrier)",
                         ),
                         title=Titles.MASTER_GLASSER_THE,
                         disposition=Disposition.MATCHED_TITLE,
@@ -3902,7 +3902,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Nov. 6, 1968",
                         date_unavailable=False,
                         notes=(
-                            "Barks: “I did a 14-page Donald Duck script for Chase [Craig] a few weeks ago. He now wants me to do more scripts. I am too tired of ducks to get excited.” <em>(November 22, 1968, letter to Michael Barrier)</em> “My ‘Officer for a Day’ was a sight-gag story with poor Donald playing the helplessness of a modern policeman to his best ability. The Beagle Boys, a motorcycle gang, and a flying saucer all present unsolvable problems.” <em>(Jan. 15, 1969, letter to Michael Barrier)</em>",
+                            "<em>Barks:</em> “I did a 14-page Donald Duck script for Chase [Craig] a few weeks ago. He now wants me to do more scripts. I am too tired of ducks to get excited.” <em>(November 22, 1968, letter to Michael Barrier)</em> “My ‘Officer for a Day’ was a sight-gag story with poor Donald playing the helplessness of a modern policeman to his best ability. The Beagle Boys, a motorcycle gang, and a flying saucer all present unsolvable problems.” <em>(Jan. 15, 1969, letter to Michael Barrier)</em>",
                         ),
                         title=Titles.OFFICER_OF_THE_DAY,
                         disposition=Disposition.MATCHED_TITLE,
@@ -3934,8 +3934,8 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Feb. 16, 1970",
                         date_unavailable=False,
                         notes=(
-                            "Changes: Barks submitted a fourteen-page script. It was compressed to thirteen pages in its published form by deleting one panel (it would have been the third panel on the fourth page of the published story, showing Donald lunging for the nephews’ piggy bank and saying, “My speed career can be delayed no longer! I need this money!”) and reducing the width of a number of panels that were to have been the width of the page.",
-                            "Barks: “I’ve just turned in a 14-page Donald script to Chase [Craig]. It’s about Donald building himself a hotrod car. The kids comment that he wastes his life in such useless projects. He’ll never get ahead. The car takes everything Don can earn by a series of flukes of luck, proving the kids are right. It’s about the poorest story I ever did, but then, I’m burned out on D.D. ideas.” <em>(Feb. 20, 1970, letter to Michael Barrier)</em>",
+                            "<em>Changes:</em> Barks submitted a fourteen-page script. It was compressed to thirteen pages in its published form by deleting one panel (it would have been the third panel on the fourth page of the published story, showing Donald lunging for the nephews’ piggy bank and saying, “My speed career can be delayed no longer! I need this money!”) and reducing the width of a number of panels that were to have been the width of the page.",
+                            "<em>Barks:</em> “I’ve just turned in a 14-page Donald script to Chase [Craig]. It’s about Donald building himself a hotrod car. The kids comment that he wastes his life in such useless projects. He’ll never get ahead. The car takes everything Don can earn by a series of flukes of luck, proving the kids are right. It’s about the poorest story I ever did, but then, I’m burned out on D.D. ideas.” <em>(Feb. 20, 1970, letter to Michael Barrier)</em>",
                         ),
                         title=Titles.DAY_IN_A_DUCKS_LIFE_A,
                         disposition=Disposition.MATCHED_TITLE,
@@ -4195,7 +4195,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         page_count="10",
                         qualifier=None,
                         is_cover=False,
-                        description="Reprinted from Walt Disney’s Comics No. 32, May 1943.",
+                        description="Reprinted from <em>Walt Disney’s Comics</em> No. 32, May 1943.",
                         submitted_day=-1,
                         submitted_month=-1,
                         submitted_year=-1,
@@ -4225,7 +4225,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         page_count="10",
                         qualifier=None,
                         is_cover=False,
-                        description="Reprinted from Walt Disney’s Comics No. 35, August 1943.",
+                        description="Reprinted from <em>Walt Disney’s Comics</em> No. 35, August 1943.",
                         submitted_day=-1,
                         submitted_month=-1,
                         submitted_year=-1,
@@ -5254,7 +5254,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         date_unavailable=False,
                         notes=(
                             "<em>Changes:</em> This was written as a fourteen-page story and was expanded to seventeen pages by enlarging a number of panels.",
-                            "See Barks’s comments on “Peril of the Black Forest,” Huey, Dewey and Louie Junior Woodchucks No. 6, July 1970.",
+                            "See Barks’s comments on “Peril of the Black Forest,” <em>Huey, Dewey and Louie Junior Woodchucks</em> No. 6, July 1970.",
                         ),
                         title=Titles.WHALE_OF_A_GOOD_DEED,
                         disposition=Disposition.MATCHED_TITLE,
@@ -5331,7 +5331,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         page_count="",
                         qualifier=None,
                         is_cover=True,
-                        description="This was redrawn, by another artist, from Barks’s front cover for Walt Disney’s Comics No. 260, May 1962.",
+                        description="This was redrawn, by another artist, from Barks’s front cover for <em>Walt Disney’s Comics</em> No. 260, May 1962.",
                         submitted_day=-1,
                         submitted_month=-1,
                         submitted_year=-1,
@@ -6001,7 +6001,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Apr. 27, 1945",
                         date_unavailable=False,
                         notes=(
-                            "Barks: “Mickey Mouse and Porky Pig I barely touched. They weren’t my cup of tea.” (June 9, 1966, letter to Michael Barrier) “About how I happened to do the Mickey and Porky series in 1944 and ‘45 — I was asked to do so by the office. I wouldn’t have ventured into those characters’ field by choice.” (Feb. 20, 1970, letter to Michael Barrier)",
+                            "<em>Barks:</em> “Mickey Mouse and Porky Pig I barely touched. They weren’t my cup of tea.” (June 9, 1966, letter to Michael Barrier) “About how I happened to do the Mickey and Porky series in 1944 and ‘45 — I was asked to do so by the office. I wouldn’t have ventured into those characters’ field by choice.” (Feb. 20, 1970, letter to Michael Barrier)",
                         ),
                         title=Titles.RIDDLE_OF_THE_RED_HAT_THE,
                         disposition=Disposition.MATCHED_TITLE,
@@ -6101,7 +6101,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         date_unavailable=False,
                         notes=(
                             "These pages are three panels deep.",
-                            "Barks: “Some office staffer wrote it, maybe Eleanor Packer, who was editor of the L.A. division then.” (August 1967 letter to Michael Barrier)",
+                            "<em>Barks:</em> “Some office staffer wrote it, maybe Eleanor Packer, who was editor of the L.A. division then.” (August 1967 letter to Michael Barrier)",
                         ),
                         title=None,
                         disposition=Disposition.EXCLUDED_SECTION,
@@ -6140,7 +6140,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="June 30, 1943",
                         date_unavailable=False,
                         notes=(
-                            "Barks discussed his work for Our Gang Comics in the Comic Art interview: “The Barney Bear stories were assigned to me for no particular reason that I know of (artists were in short supply, perhaps). I had never heard of Barney Bear or Benny Burro until the office sent me a model sheet of ‘Benny, the Lonesome Burro’ and asked me to do a finished 8-page story for the MGM Our Gang No. 8. They must have liked the yarn, for they asked me to do another for Our Gang No. 9, and also sent a model sheet of a nameless dog whom I called Happy Hound. I did an 8-pager of him for Our Gang No. 9. Later I saw him in an MGM movie short as Droopy. Then I was asked for another Benny for Our Gang No. 10. Next, I was asked to combine Benny with Barney Bear into an 8-page, 8-panel format as a regular feature, starting in <em>Our Gang</em> No. 11.",
+                            "Barks discussed his work for Our Gang Comics in the Comic Art interview: “The Barney Bear stories were assigned to me for no particular reason that I know of (artists were in short supply, perhaps). I had never heard of Barney Bear or Benny Burro until the office sent me a model sheet of ‘Benny, the Lonesome Burro’ and asked me to do a finished 8-page story for the MGM <em>Our Gang</em> No. 8. They must have liked the yarn, for they asked me to do another for <em>Our Gang</em> No. 9, and also sent a model sheet of a nameless dog whom I called Happy Hound. I did an 8-pager of him for <em>Our Gang</em> No. 9. Later I saw him in an MGM movie short as Droopy. Then I was asked for another Benny for <em>Our Gang</em> No. 10. Next, I was asked to combine Benny with Barney Bear into an 8-page, 8-panel format as a regular feature, starting in <em>Our Gang</em> No. 11.",
                             "Benny is the burro from a 1942 Rudolf Ising cartoon for MGM, <em>Little Gravel Voice</em>; he has no name in that cartoon. “About the name of Benny Burro, I don’t believe I named him. My guess would be Eleanor Packer, who edited the comic books for Western in those days.” (Mar. 8, 1970, letter to Michael Barrier)",
                         ),
                         title=None,
@@ -6484,7 +6484,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Feb. 20, 1945",
                         date_unavailable=False,
                         notes=(
-                            "Changes: Barks submitted this as an eight-page story; it was reduced to six pages, of ten or eleven panels each, by rearranging and altering the panels so that more could be accommodated on a page.",
+                            "<em>Changes:</em> Barks submitted this as an eight-page story; it was reduced to six pages, of ten or eleven panels each, by rearranging and altering the panels so that more could be accommodated on a page.",
                         ),
                         title=None,
                         disposition=Disposition.EXCLUDED_SECTION,
@@ -7031,7 +7031,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Jan. 28, 1947",
                         date_unavailable=False,
                         notes=(
-                            "Barks: “I believe it was my constant griping about having too much to do that got me free of the Barneys and Bennys.” (Dec. 11, 1969, letter to Michael Barrier) Barks had more to do largely because the number of Donald Duck one-shots had been increased, from one in 1946 to three in 1947.",
+                            "<em>Barks:</em> “I believe it was my constant griping about having too much to do that got me free of the Barneys and Bennys.” (Dec. 11, 1969, letter to Michael Barrier) Barks had more to do largely because the number of Donald Duck one-shots had been increased, from one in 1946 to three in 1947.",
                         ),
                         title=None,
                         disposition=Disposition.EXCLUDED_SECTION,
@@ -7082,7 +7082,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Mar. 21, 1944",
                         date_unavailable=False,
                         notes=(
-                            "Weston: If you look carefully at the heads of Bugs Bunny, Petunia and Porky, you will occasionally see small black lines where drawings were pasted over Barks’s originals. Barks said of the story: “a few of the Porky or Petunia faces may have been reworked by the staff artists in the editorial room. All of the Bugs heads had to be redrawn, which pleased me very much. I am sure that if my Bugs had been acceptable, the office would have added that series to my work load.” (letter, August 21, 1974)",
+                            "<em>Weston:</em> If you look carefully at the heads of Bugs Bunny, Petunia and Porky, you will occasionally see small black lines where drawings were pasted over Barks’s originals. Barks said of the story: “a few of the Porky or Petunia faces may have been reworked by the staff artists in the editorial room. All of the Bugs heads had to be redrawn, which pleased me very much. I am sure that if my Bugs had been acceptable, the office would have added that series to my work load.” (letter, August 21, 1974)",
                         ),
                         title=None,
                         disposition=Disposition.EXCLUDED_SECTION,
@@ -7255,7 +7255,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Mar. 6, 1952",
                         date_unavailable=False,
                         notes=(
-                            "Barks: “The office wrote me to ask if I would do a story for Droopy. Then asked for another, and so on.” (January 15, 1969, letter to Michael Barrier) “The reason I happened to do the Droopy scripts in 1952 and 53 is that the office wrote me a note or phoned and asked me to try to write them. I never went out of my way to ask for those sorts of jobs.” (Dec. 11, 1969, letter to Michael Barrier)",
+                            "<em>Barks:</em> “The office wrote me to ask if I would do a story for Droopy. Then asked for another, and so on.” (January 15, 1969, letter to Michael Barrier) “The reason I happened to do the Droopy scripts in 1952 and 53 is that the office wrote me a note or phoned and asked me to try to write them. I never went out of my way to ask for those sorts of jobs.” (Dec. 11, 1969, letter to Michael Barrier)",
                         ),
                         title=None,
                         disposition=Disposition.EXCLUDED_SECTION,
@@ -7379,7 +7379,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         submitted_day=27,
                         submitted_month=9,
                         submitted_year=1951,
-                        raw_date="Sept. 27, 195.1",
+                        raw_date="Sept. 27, 1951",
                         date_unavailable=False,
                         notes=(),
                         title=Titles.OSOGOOD_SILVER_POLISH,
@@ -7640,7 +7640,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         date_unavailable=False,
                         notes=(
                             "First appearance of Scrooge’s “Old Number One Dime,” which is identified here only as the first dime he ever earned.",
-                            "Weston: There exists a half page cut from the second story in <em>Uncle Scrooge</em> one-shot No. 495 in which the first dime is introduced. This page came from Barks’s “scrap pile” and appears to fit in place of the published top half of page 9 of the story. So it is apparently a page that Barks discarded in his own revisions of the story. There must have been more extensive revisions than this, though, because the page is numbered as the top half of page 10. No other unpublished material from this story is known, however.",
+                            "<em>Weston:</em> There exists a half page cut from the second story in <em>Uncle Scrooge</em> one-shot No. 495 in which the first dime is introduced. This page came from Barks’s “scrap pile” and appears to fit in place of the published top half of page 9 of the story. So it is apparently a page that Barks discarded in his own revisions of the story. There must have been more extensive revisions than this, though, because the page is numbered as the top half of page 10. No other unpublished material from this story is known, however.",
                         ),
                         title=Titles.FOLLOW_THE_RAINBOW,
                         disposition=Disposition.MATCHED_TITLE,
@@ -7807,7 +7807,9 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         submitted_year=1953,
                         raw_date="July 30, 1953",
                         date_unavailable=False,
-                        notes=("Barks: “I think the idea was mine, too. No payment to prove it.”",),
+                        notes=(
+                            "<em>Barks:</em> “I think the idea was mine, too. No payment to prove it.”",
+                        ),
                         title=None,
                         disposition=Disposition.COVER,
                         disposition_reason=None,
@@ -7945,7 +7947,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         date_unavailable=False,
                         notes=(
                             "The Junior Woodchuck Guidebook is first mentioned in this story.",
-                            "Barks: “As for the ‘Shangri La’ story, which poked fun at the idea of humans living together in unselfish Utopian harmony, it started from my efforts to find a way to use one BILLION of something in a visible way. The bottle cap gag was the result.” (<em>Mar. 8, 1968, letter to Dick Blackburn</em>)",
+                            "<em>Barks:</em> “As for the ‘Shangri La’ story, which poked fun at the idea of humans living together in unselfish Utopian harmony, it started from my efforts to find a way to use one BILLION of something in a visible way. The bottle cap gag was the result.” (<em>Mar. 8, 1968, letter to Dick Blackburn</em>)",
                         ),
                         title=Titles.TRALLA_LA,
                         disposition=Disposition.MATCHED_TITLE,
@@ -8181,7 +8183,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="May 20, 1954",
                         date_unavailable=False,
                         notes=(
-                            "Weston: I suspect that the message-in-a-bottle story in <em>Uncle Scrooge</em> No. 8 was originally planned as a thirty-two-page story but that Barks was dissatisfied with it and, at various stages, edited it down to twenty-eight. I know of one and a half unpublished pages from this story which went to fans out of Barks’s “scrappile.” And in reference to another story, Barks once wrote, “I often made such cuts in my stories whenever I detected any draggy spots. Usually this sort of cutting took place before the final inking,” but not always.",
+                            "<em>Weston:</em> I suspect that the message-in-a-bottle story in <em>Uncle Scrooge</em> No. 8 was originally planned as a thirty-two-page story but that Barks was dissatisfied with it and, at various stages, edited it down to twenty-eight. I know of one and a half unpublished pages from this story which went to fans out of Barks’s “scrappile.” And in reference to another story, Barks once wrote, “I often made such cuts in my stories whenever I detected any draggy spots. Usually this sort of cutting took place before the final inking,” but not always.",
                             "There are two unfinished two-panel strips (quarter pages) that fit with page 13. I say they are unfinished because they don’t have the solid blacks inked in yet, but they are otherwise complete. So they were probably edited out by Barks fairly early, before the pages were finally finished and numbered. A good case could be made for saying that these four panels were originally the second and third lines of page 13 and that the published second line of that page was originally the bottom line, but that the dialogue was changed and it was shifted up to follow line 1 when the others were cut. This may not be what did happen, but it seems a reasonable explanation. The two strips are somewhat ambiguous in that it is not clear which comes first. One line is a flashback in which the Beagle Boy recalls, “We slithered in behind this cliff and all the boys but me went ashore for the raid!” One of the Beagle Boys pictured says, “Quiet! This’ll be a SNEAK job!” The next caption is, “They climbed the cliff! I watched ‘em! And then — And then —.” The other line has the scene back on the boat. Huey says, “WHAT?” and the Beagle Boy says, “ZOWIE! Just like that they turned to STONE!” Huey: “Yu expect us to believe THAT?” Beagle: “It’s the TRUTH! Somebody did it! Maybe MARTIANS with a RAY!” There could be more cut here, though, and this explanation may be wrong.",
                             "Two other finished half pages are known. One, numbered 16 (top), fits neatly immediately after published page 15. Donald says, “I’ll help you, Uncle Scrooge!” and one of the nephews says, “Come back here!” Donald tells the nephews they are worrying too much and convinces the two with him to come up and help Scrooge. In the fourth panel we see Huey, still down on the beach questioning the Beagle Boy. There could be another half page between this and the published top of page 16. Or it is possible that the published top could have just been added to replace this one.",
                             "The other known half page would fit in place of the bottom half of page 17 (although that implies that another half page or more was probably cut between it and published page 18). In the first two panels, Scrooge says, “Sure enough! I can HEAR the ray bouncing off me — Zing! Zing! Zing!” “That means I’m safe while I get the boys out of danger!” The other two panels on this half page are identical to panels 5 and 6 of published page 17 but redrawn and with different shading. I suspect that what is published as the bottom half of page 17 was a half page that was redrawn to replace and condense a page or more in the original version. This story, I think, had a rough gestation period and required a lot of revising. However, too many pieces of this particular puzzle are missing to say exactly what happened. I feel reasonably sure that up to three more full pages from this story exist or did exist and were probably given away to fans by Barks many years ago.",
@@ -8613,7 +8615,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="June 2, 1955",
                         date_unavailable=False,
                         notes=(
-                            "Weston: In a letter to a fan commenting about reasons why Donald was less vital in 1960 than in the old days, Barks mentioned that taboo after taboo was imposed on the scripter’s freedom. He mentioned “The Golden Fleecing,” Scrooge No. 12: “Well, I almost had to eat those 32 pages of drawings because I’d used some harpies as menaces. It seems that Harpy or Harpie is an obscure nickname for a street-walker. I managed to save the story by renaming the old girls LARKIES.” At another time Barks said that in addition to changing the names he had to redraw a page or two. There exist at least two panels of drawings from the story as originally done, panels 1 and 3 of page 16. Scrooge and Donald are sitting in a Harpy nest and five Harpies are frolicking and somersaulting in the air shouting “Whee!” and “Hee! Hee! Hee!” In the other panel four Harpies are shown and one of them is speaking. In the margins of the page are notes from the editor revising the word Harpies to Larkies in the caption and telling Barks to bring Scrooge and Donald in the nest into the foreground and show only a couple of Larkies. In the other panel Barks is advised to show a close-up on only one Larky. No changes in dialogue are made. Some panels other than the ones with Harpy-Larky name changes appear to have been relettered, for example page 9 panel 3, but these are probably to omit Harpy references.",
+                            "<em>Weston:</em> In a letter to a fan commenting about reasons why Donald was less vital in 1960 than in the old days, Barks mentioned that taboo after taboo was imposed on the scripter’s freedom. He mentioned “The Golden Fleecing,” Scrooge No. 12: “Well, I almost had to eat those 32 pages of drawings because I’d used some harpies as menaces. It seems that Harpy or Harpie is an obscure nickname for a street-walker. I managed to save the story by renaming the old girls LARKIES.” At another time Barks said that in addition to changing the names he had to redraw a page or two. There exist at least two panels of drawings from the story as originally done, panels 1 and 3 of page 16. Scrooge and Donald are sitting in a Harpy nest and five Harpies are frolicking and somersaulting in the air shouting “Whee!” and “Hee! Hee! Hee!” In the other panel four Harpies are shown and one of them is speaking. In the margins of the page are notes from the editor revising the word Harpies to Larkies in the caption and telling Barks to bring Scrooge and Donald in the nest into the foreground and show only a couple of Larkies. In the other panel Barks is advised to show a close-up on only one Larky. No changes in dialogue are made. Some panels other than the ones with Harpy-Larky name changes appear to have been relettered, for example page 9 panel 3, but these are probably to omit Harpy references.",
                             "[Barks has said that the panels on the sixteenth page had to be redrawn because the editors thought that “such behavior by the Harpies suggested insanity.” (Nov. 22, 1968, letter to Michael Barrier)] The Dell Pledge fills out the last page.",
                         ),
                         title=Titles.GOLDEN_FLEECING_THE,
@@ -8715,7 +8717,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         date_unavailable=False,
                         notes=(
                             "The February 25-March 3, 1971, issue of the Bugle-American (Milwaukee) included an article — credited to “Carl Barks” — recounting this story, in connection with the February 9, 1971, earthquake in Los Angeles, as if the story were fact. Barks was identified in an editor’s note as “a noted authority on ducks and money bins.” The cover of this issue of the Bugle-American (an underground or semi-underground newspaper) depicted Scrooge, Donald, the nephews, and the Terries and the Fermies, and was signed by “Carl Barksalike.” Barks did not write the article, and commented after I called it to his attention: “I am a bit grouchy at finding my name used as the author of a piece of childish nonsense. However, I doubt that anybody much will seriously believe that I could be that silly.” (Mar. 4, 1971, letter to Michael Barrier)",
-                            "Weston: In Uncle Scrooge No. 13, both stories were changed before publication. With this issue, an application for second-class mailing privileges was made (granted with issue No. 15). Apparently, the Post Office required that periodicals with second-class mailing privileges have at least two stories, with no single character appearing in both, and at least one page of text. That would seem to be indicated by the changes made in the issue.",
+                            "<em>Weston:</em> In <em>Uncle Scrooge</em> No. 13, both stories were changed before publication. With this issue, an application for second-class mailing privileges was made (granted with issue No. 15). Apparently, the Post Office required that periodicals with second-class mailing privileges have at least two stories, with no single character appearing in both, and at least one page of text. That would seem to be indicated by the changes made in the issue.",
                             "“Land Beneath the Ground” was originally a thirty-two page story. The first cuts are made between pages 2 and 5 with the net elimination of two pages. And there is almost certainly some redrawing and changes in text. I say this for several reasons. First, some panels look like they have been relettered, or had captions or figures added or changed. Second, the natural rhythm and flow of a Barks story is not present in these pages but disrupted in such a way that I have long had a feeling that something just wasn’t right about the story. Now I think I know why — two pages were cut from the beginning against a tight deadline. Third, I think that if Barks had fully redrawn and rewritten these pages, he could have corrected the subtle imbalances that are there.",
                             "I think that part of the cuts (probably one page) occur within or between published pages 2 and 3. It is also possible that the first cut is an unknown half page that follows published page 3. These cuts could involve consultation with the professors at the university or a gag about paying the tunnel workers or perhaps Scrooge’s preparations for his own investigation after the workers flee, but this is strictly conjecture.",
                             "There are two known unpublished half pages, numbered 5 (bottom) and 7 (top), and one would think that there should be a full page between them. Unfortunately, there are three published half pages that fit very neatly between them. This rules out a simple explanation of these cuts that would place the order as unpublished page 5 (bottom), then an unknown missing half page, published page 4 and the top of published page 5, the top of unpublished 7, and then the bottom of published page 5. It also necessitates a more complicated and less plausible explanation. The top half to published page 4 could originally have been the top half of page 5 and in cutting and revising, the panel 1 caption could have been expanded, and Donald added to the picture. The kids’ dialogue in panel 1 and all of panel 2 could have been left unchanged. The dialogue in panels 3 and 4 and Donald’s expression would have been changed. He would have been just helping Scrooge load the mine cart originally. In the half page numbered 5 (bottom), Scrooge has the supplies already loaded in the cart. Donald asks him who he plans to have accompany him down as an observer. Scrooge asks Donald if he has $500 and coerces Donald into accompanying him down, using a 1950 IOU for 50 cents that — at compound interest — now amounts to $500. This would explain the pained expression on Donald’s face in panel 1 of page 4, a face that I think was clipped from elsewhere and added here. Next would come the bottom half of published page 4 but since it does not fit neatly in its present state, major revisions would have to have been made there. I can’t think of a better explanation except that Barks numbered the 5 (bottom) half page wrong (perhaps it was 4), but I am inclined to rule out that possibility. I don’t find this explanation of the origins of what is published as page 4 very satisfying.",
@@ -8742,7 +8744,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Sept. 1, 1955",
                         date_unavailable=False,
                         notes=(
-                            "Barks: “The four-page Gyro stories for Uncle S. #13 and #14 were sent back to me for changes. In the #13 story, I’d used the nephews. Because of postal mailing laws, no characters used in other parts of the book could be used in a Gyro story. Hence the change to Mickey’s nephews. The character ‘Speedy’ in #14 was originally Donald.”",
+                            "<em>Barks:</em> “The four-page Gyro stories for Uncle S. #13 and #14 were sent back to me for changes. In the #13 story, I’d used the nephews. Because of postal mailing laws, no characters used in other parts of the book could be used in a Gyro story. Hence the change to Mickey’s nephews. The character ‘Speedy’ in #14 was originally Donald.”",
                         ),
                         title=Titles.TRAPPED_LIGHTNING,
                         disposition=Disposition.MATCHED_TITLE,
@@ -8825,7 +8827,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Feb. 24, 1955",
                         date_unavailable=False,
                         notes=(
-                            "This page was apparently intended for the inside front cover of Uncle Scrooge No. 11, Sept.-Nov. 1955 (it was accepted on the same date as the other three covers for that issue), but was displaced by a full-page presentation of the Dell Pledge to Parents.",
+                            "This page was apparently intended for the inside front cover of <em>Uncle Scrooge</em> No. 11, Sept.-Nov. 1955 (it was accepted on the same date as the other three covers for that issue), but was displaced by a full-page presentation of the Dell Pledge to Parents.",
                         ),
                         title=Titles.FAULTY_FORTUNE,
                         disposition=Disposition.MATCHED_TITLE,
@@ -8861,7 +8863,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Oct. 1, 1955",
                         date_unavailable=False,
                         notes=(
-                            "See note to “GYRO GEARLOOSE” in Uncle Scrooge No. 13, Mar.-May 1956.",
+                            "See note to “GYRO GEARLOOSE” in <em>Uncle Scrooge</em> No. 13, Mar.-May 1956.",
                         ),
                         title=Titles.INVENTOR_OF_ANYTHING,
                         disposition=Disposition.MATCHED_TITLE,
@@ -9210,7 +9212,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Dec. 8, 1955",
                         date_unavailable=False,
                         notes=(
-                            "This page was apparently intended for Uncle Scrooge No. 14, June-Aug. 1956 (it was accepted on the same date as the other covers for that issue), but was replaced on the inside front cover by a page originally intended for Uncle Scrooge No. 11, Sept.-Nov. 1955.",
+                            "This page was apparently intended for <em>Uncle Scrooge</em> No. 14, June-Aug. 1956 (it was accepted on the same date as the other covers for that issue), but was replaced on the inside front cover by a page originally intended for <em>Uncle Scrooge</em> No. 11, Sept.-Nov. 1955.",
                         ),
                         title=Titles.EARLY_TO_BUILD,
                         disposition=Disposition.MATCHED_TITLE,
@@ -9725,7 +9727,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Nov. 21, 1957",
                         date_unavailable=False,
                         notes=(
-                            "Weston: In “The Golden River,” one page was cut. Perhaps on looking over this story after he had finished it, Barks thought it could use a couple of more gags and a little less straight business, so he chopped a page of straight stuff and added a page of gags. Because the top and bottom halves of pages 4 and 5 are not perfectly aligned and because the bottom half of page 5 could logically and smoothly follow the top of page 4, I am inclined to suspect that the half-page balloon and stilt gags on those pages were added after the story had been completed. This added a page of gags here, moving up the numbering of later pages by one page. The cut page, which really doesn’t subtract anything significant from the story, and which is numbered as page 16 (panels 1-4, 6-8) and panels 1 and 2 of page 17, follows published page 16 (which would have originally been numbered page 15). In the top half of the cut page, one nephew comments, “This gets more like the fairy story every minute!” and the other nephews offer theories (accurate ones) as to where the gold comes from and goes to. Scrooge says, “I don’t care what CAUSES it! I’m going to be ready to CATCH it next time!” Panel 5 of the unpublished page has been cut out and is published as panel 1 of page 17. Panel 2 of published page 17 was drawn new to replace the other five panels. In these five panels, Scrooge says he’s cured, Donald and the kids decide they are not needed, and Scrooge suggests that they might want to get back to Duckburg, where they would have a better chance of raising the five dollars they need. This art was cut from the story by Barks and consigned to his scrap pile.",
+                            "<em>Weston:</em> In “The Golden River,” one page was cut. Perhaps on looking over this story after he had finished it, Barks thought it could use a couple of more gags and a little less straight business, so he chopped a page of straight stuff and added a page of gags. Because the top and bottom halves of pages 4 and 5 are not perfectly aligned and because the bottom half of page 5 could logically and smoothly follow the top of page 4, I am inclined to suspect that the half-page balloon and stilt gags on those pages were added after the story had been completed. This added a page of gags here, moving up the numbering of later pages by one page. The cut page, which really doesn’t subtract anything significant from the story, and which is numbered as page 16 (panels 1-4, 6-8) and panels 1 and 2 of page 17, follows published page 16 (which would have originally been numbered page 15). In the top half of the cut page, one nephew comments, “This gets more like the fairy story every minute!” and the other nephews offer theories (accurate ones) as to where the gold comes from and goes to. Scrooge says, “I don’t care what CAUSES it! I’m going to be ready to CATCH it next time!” Panel 5 of the unpublished page has been cut out and is published as panel 1 of page 17. Panel 2 of published page 17 was drawn new to replace the other five panels. In these five panels, Scrooge says he’s cured, Donald and the kids decide they are not needed, and Scrooge suggests that they might want to get back to Duckburg, where they would have a better chance of raising the five dollars they need. This art was cut from the story by Barks and consigned to his scrap pile.",
                         ),
                         title=Titles.GOLDEN_RIVER_THE,
                         disposition=Disposition.MATCHED_TITLE,
@@ -10755,7 +10757,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         date_unavailable=False,
                         notes=(
                             "Barks has explained “why I padded the Poncey de Loon story by having Uncle Scrooge tell it to Grandma. . . . I was trying to get a little variety in the opening. It seemed to me from the business involved that the reader needed to be aware that Scrooge would find the Fountain of Youth. That Fountain would have seemed awfully phony if it were dragged into the story along about page 8. Grandma was the gimmick that helped plant the fountain early.” (<em>Dec. 30, 1960, letter to Malcolm Willits</em>)",
-                            "Weston: From “That’s No Fable” there exist two panels excised from page 5 and replaced by the present panels 5 and 6 of that page. In the original, the two boys are only described; in the revision they are shown.",
+                            "<em>Weston:</em> From “That’s No Fable” there exist two panels excised from page 5 and replaced by the present panels 5 and 6 of that page. In the original, the two boys are only described; in the revision they are shown.",
                         ),
                         title=Titles.THATS_NO_FABLE,
                         disposition=Disposition.MATCHED_TITLE,
@@ -10907,7 +10909,9 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         submitted_year=1960,
                         raw_date="Sept. 3, 1960",
                         date_unavailable=False,
-                        notes=("Barks: “Got this story idea from a friend of Bill Spicer’s.”",),
+                        notes=(
+                            "<em>Barks:</em> “Got this story idea from a friend of Bill Spicer’s.”",
+                        ),
                         title=Titles.BILLIONS_IN_THE_HOLE,
                         disposition=Disposition.MATCHED_TITLE,
                         disposition_reason=None,
@@ -11023,8 +11027,8 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Dec. 10, 1960",
                         date_unavailable=False,
                         notes=(
-                            "Changes: This story was submitted as sixteen pages; two pages were dropped before publication to make room for advertisements. Barks described the cuts in these terms: “In the Valhalla story the cuts were scattered around, but totaled the equivalent of 16 panels. My chin hit my knees when I saw. . . the big half-page stupender I did of Thor and Vulcan and a nephew riding above the busiest street corner in Duckburg in the gold chariot missing. Thor’s horse’s terrified, thousands (at least) of people gaping upward in disbelief. Autos bumper to bumper, smoking, clanking. In short, I gave Vulcan something to be scared about. All wasted effort.” (<em>Mar. 24, 1961, letter to Malcolm Willits</em>)",
-                            "Barks had originally planned to do a story for Uncle Scrooge No. 34 with a plot revolving around an Aswan-type dam, but decided it would come too soon after “Pipeline to Danger” (<em>Uncle Scrooge</em> No. 30, June-Aug. 1960), another story with a Middle Eastern desert setting. “In its place I wrote a 16-pager of Uncle Scrooge and the ducks getting blown into Valhalla (a wandering small planet that strays into the earth’s shadow). This Valhalla is peopled by dog-faces named Thor, Odin, and other names common to the Norse Gods. Also Vulcan, Jupiter, Venus, and the Latin Gods names. You’ll have to read <em>Uncle Scrooge</em> #34 to see how I explain away such mythical anomalies with scientifically provable hogwash. As Louie expresses it: ‘Another of childhood’s cherished illusions reduced to so many nuts and bolts.’” (Dec. 30, 1960, letter to Willits.)",
+                            "<em>Changes:</em> This story was submitted as sixteen pages; two pages were dropped before publication to make room for advertisements. Barks described the cuts in these terms: “In the Valhalla story the cuts were scattered around, but totaled the equivalent of 16 panels. My chin hit my knees when I saw. . . the big half-page stupender I did of Thor and Vulcan and a nephew riding above the busiest street corner in Duckburg in the gold chariot missing. Thor’s horse’s terrified, thousands (at least) of people gaping upward in disbelief. Autos bumper to bumper, smoking, clanking. In short, I gave Vulcan something to be scared about. All wasted effort.” (<em>Mar. 24, 1961, letter to Malcolm Willits</em>)",
+                            "Barks had originally planned to do a story for <em>Uncle Scrooge</em> No. 34 with a plot revolving around an Aswan-type dam, but decided it would come too soon after “Pipeline to Danger” (<em>Uncle Scrooge</em> No. 30, June-Aug. 1960), another story with a Middle Eastern desert setting. “In its place I wrote a 16-pager of Uncle Scrooge and the ducks getting blown into Valhalla (a wandering small planet that strays into the earth’s shadow). This Valhalla is peopled by dog-faces named Thor, Odin, and other names common to the Norse Gods. Also Vulcan, Jupiter, Venus, and the Latin Gods names. You’ll have to read <em>Uncle Scrooge</em> #34 to see how I explain away such mythical anomalies with scientifically provable hogwash. As Louie expresses it: ‘Another of childhood’s cherished illusions reduced to so many nuts and bolts.’” (Dec. 30, 1960, letter to Willits.)",
                         ),
                         title=Titles.MYTHTIC_MYSTERY,
                         disposition=Disposition.MATCHED_TITLE,
@@ -11110,7 +11114,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Feb. 16, 1961",
                         date_unavailable=False,
                         notes=(
-                            "Barks: “<em>Scrooge</em> #35 will have no unplanned cuts. I found out about the ad stunt in time to write the book’s material to fit. The main Scrooge story will be about Alaska and the finding of nuggets. No world-beater of a story, but I needed a substitute fast for the Egyptian Aswan Dam tale which I’ve decided to junk. [See note to “Mythic Mystery” in <em>Uncle Scrooge</em> No. 34.] Have you noticed that the way the ancient statues and temples will be raised above the future level of the water is by a method fully as wacky as the one I’d vaguely planned for Uncle Scrooge? The nerve of mere humans to steal Uncle Scrooge’s stuff!” (Mar. 24, 1961, letter to Malcolm Willits)",
+                            "<em>Barks:</em> “<em>Scrooge</em> #35 will have no unplanned cuts. I found out about the ad stunt in time to write the book’s material to fit. The main Scrooge story will be about Alaska and the finding of nuggets. No world-beater of a story, but I needed a substitute fast for the Egyptian Aswan Dam tale which I’ve decided to junk. [See note to “Mythic Mystery” in <em>Uncle Scrooge</em> No. 34.] Have you noticed that the way the ancient statues and temples will be raised above the future level of the water is by a method fully as wacky as the one I’d vaguely planned for Uncle Scrooge? The nerve of mere humans to steal Uncle Scrooge’s stuff!” (Mar. 24, 1961, letter to Malcolm Willits)",
                         ),
                         title=Titles.GOLDEN_NUGGET_BOAT_THE,
                         disposition=Disposition.MATCHED_TITLE,
@@ -13926,7 +13930,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Dec. 23, 1942",
                         date_unavailable=False,
                         notes=(
-                            "The first Donald Duck story both written and drawn by Barks; see notes to “DONALD DUCK” in Walt Disney’s Comics No. 31, April 1943.",
+                            "The first Donald Duck story both written and drawn by Barks; see notes to “DONALD DUCK” in <em>Walt Disney’s Comics</em> No. 31, April 1943.",
                         ),
                         title=Titles.RABBITS_FOOT_THE,
                         disposition=Disposition.MATCHED_TITLE,
@@ -14809,7 +14813,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="June 27, 1945",
                         date_unavailable=False,
                         notes=(
-                            "<em>Cross-references:</em> At the beginning of this story, Donald refers clearly to the story in the preceding issue, Walt Disney’s Comics No. 61, October 1945.",
+                            "<em>Cross-references:</em> At the beginning of this story, Donald refers clearly to the story in the preceding issue, <em>Walt Disney’s Comics</em> No. 61, October 1945.",
                         ),
                         title=Titles.GREAT_SKI_RACE_THE,
                         disposition=Disposition.MATCHED_TITLE,
@@ -18801,7 +18805,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Oct. 14, 1954",
                         date_unavailable=False,
                         notes=(
-                            "Changes: According to Barks, “Somebody at Dell redrew Donald’s head.”",
+                            "<em>Changes:</em> According to Barks, “Somebody at Dell redrew Donald’s head.”",
                         ),
                         title=None,
                         disposition=Disposition.COVER,
@@ -20343,7 +20347,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Dec. 19, 1957",
                         date_unavailable=False,
                         notes=(
-                            "According to Barks’s vouchers, this cover was originally scheduled for the front cover of Walt Disney’s Comics No. 216, September 1958.",
+                            "According to Barks’s vouchers, this cover was originally scheduled for the front cover of <em>Walt Disney’s Comics</em> No. 216, September 1958.",
                         ),
                         title=None,
                         disposition=Disposition.COVER,
@@ -21514,7 +21518,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Apr. 23, 1959",
                         date_unavailable=False,
                         notes=(
-                            "This cover was originally scheduled for Walt Disney’s Comics No. 232, January 1960.",
+                            "This cover was originally scheduled for <em>Walt Disney’s Comics</em> No. 232, January 1960.",
                         ),
                         title=None,
                         disposition=Disposition.COVER,
@@ -21816,7 +21820,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Dec. 28, 1960",
                         date_unavailable=False,
                         notes=(
-                            "<em>Barks:</em> “This story was from the office. I rewrote it very much.” (See note to “Boxed-in,” Walt Disney’s Comics No. 250, July 1961.)",
+                            "<em>Barks:</em> “This story was from the office. I rewrote it very much.” (See note to “Boxed-in,” <em>Walt Disney’s Comics</em> No. 250, July 1961.)",
                         ),
                         title=Titles.DUCK_LUCK,
                         disposition=Disposition.MATCHED_TITLE,
@@ -22302,7 +22306,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         date_unavailable=False,
                         notes=(
                             "In the seventh panel of the fourth page, Barks included a few bars of music; Matt Rosenblatt has pointed out that the music is by Haydn, from the second movement of the “Surprise” Symphony, No. 94. Barks, questioned about this, replied, “The music from Haydn’s symphony must have been lifted from the book ‘The art of enjoying music’ by Sigmund Spaeth. I used the book for many references to musical forms and titles. Actually, I can’t read a note.” <em>(Nov. 22, 1968, letter to Michael Barrier)</em>",
-                            "Barks credits the idea for this story to Joe Cowles (see note to “The Candy Kid,” Walt Disney’s Comics No. 263, August 1962).",
+                            "Barks credits the idea for this story to Joe Cowles (see note to “The Candy Kid,” <em>Walt Disney’s Comics</em> No. 263, August 1962).",
                         ),
                         title=Titles.MASTER_WRECKER,
                         disposition=Disposition.MATCHED_TITLE,
