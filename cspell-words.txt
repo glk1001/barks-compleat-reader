@@ -75,6 +75,7 @@ notvol
 numpad
 organised
 passthroughs
+pil
 pnginfo
 ppid
 putpixel

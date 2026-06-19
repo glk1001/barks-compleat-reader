@@ -136,7 +136,7 @@ def copy_file_to_png(srce_file: Path, dest_file: Path) -> None:
 
 
 def downscale_jpg(width: int, height: int, srce_file: Path, dest_file: Path) -> None:
-    image_resized = get_downscaled_jpg(width, height, srce_file)
+    image_resized = get_downscaled_image(width, height, srce_file)
 
     image_resized.save(
         str(dest_file),
@@ -146,7 +146,25 @@ def downscale_jpg(width: int, height: int, srce_file: Path, dest_file: Path) -> 
     )
 
 
-def get_downscaled_jpg(width: int, height: int, srce_file: Path) -> PilImage:
+def downscale_png(
+    width: int,
+    height: int,
+    srce_file: Path,
+    dest_file: Path,
+    compress_level: int = SAVE_PNG_COMPRESSION,
+    quality: int = SAVE_PNG_COMPRESSION,
+) -> None:
+    image_resized = get_downscaled_image(width, height, srce_file)
+
+    image_resized.save(
+        str(dest_file),
+        optimize=True,
+        compress_level=compress_level,
+        quality=quality,
+    )
+
+
+def get_downscaled_image(width: int, height: int, srce_file: Path) -> PilImage:
     image = load_pil_image_for_reading(srce_file).convert("RGB")
 
     return ImageOps.contain(

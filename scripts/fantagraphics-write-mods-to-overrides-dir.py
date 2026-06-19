@@ -18,7 +18,7 @@ from cli_setup import init_logging
 from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
 from comic_utils.common_typer_options import LogLevelArg, VolumesArg  # noqa: TC002
 from comic_utils.pil_image_utils import (
-    get_downscaled_jpg,
+    get_downscaled_image,
     get_pil_image_as_jpg_bytes,
     load_pil_image_for_reading,
 )
@@ -96,7 +96,7 @@ def downscale_and_zip(
     orig_image = load_pil_image_for_reading(orig_srce_file)
     res_width, res_height = orig_image.size
 
-    resized_image = get_downscaled_jpg(res_width, res_height, srce_file)
+    resized_image = get_downscaled_image(res_width, res_height, srce_file)
     buffer = get_pil_image_as_jpg_bytes(resized_image)
     buffer = io.BytesIO(FERNET.encrypt(buffer.getvalue()))
     buffer.seek(0)
