@@ -9250,7 +9250,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         notes=(
                             "Barks noted on his list that he had not been credited for this story and that he should have been, in the first half of August 1956.",
                         ),
-                        title=Titles.EYES_HAVE_IT_THE,
+                        title=Titles.FISHING_MYSTERY,
                         disposition=Disposition.MATCHED_TITLE,
                         disposition_reason=None,
                         cover_key=None,
@@ -9267,7 +9267,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="May 24, 1956",
                         date_unavailable=False,
                         notes=(),
-                        title=Titles.FISHING_MYSTERY,
+                        title=Titles.EYES_HAVE_IT_THE,
                         disposition=Disposition.MATCHED_TITLE,
                         disposition_reason=None,
                         cover_key=None,

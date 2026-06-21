@@ -805,6 +805,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.WILY_RIVAL,
         Titles.FAST_AWAY_CASTAWAY,
         Titles.DUCKBURGS_DAY_OF_PERIL,
+        Titles.BUFFALOED_BY_BUFFALOES,
         Titles.GREAT_POP_UP_THE,
         Titles.MADCAP_INVENTORS,
         Titles.FINNY_FUN,
