@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import no_type_check
+from typing import cast, no_type_check
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.reader_screens
@@ -101,7 +101,9 @@ class TestReaderScreenManager:
         assert mock_sm.current == COMIC_BOOK_READER_SCREEN
 
         assert mock_reader_screens.comic_reader_screen.app_icon_filepath == "icon.png"
-        mock_reader_screens.comic_reader_screen.is_active.assert_called_with(active=True)
+
+        is_active_mock = cast("MagicMock", mock_reader_screens.comic_reader_screen.is_active)
+        is_active_mock.assert_called_with(active=True)
 
     def test_close_comic_book_reader(
         self,
@@ -112,13 +114,15 @@ class TestReaderScreenManager:
 
         reader_screen_manager._close_comic_book_reader()
 
-        mock_reader_screens.main_screen.on_comic_closed.assert_called_once()
+        on_comic_closed_mock = cast("MagicMock", mock_reader_screens.main_screen.on_comic_closed)
+        on_comic_closed_mock.assert_called_once()
 
         mock_sm = reader_screen_manager._screen_manager
         assert isinstance(mock_sm.transition, TransitionBase)
         assert mock_sm.current == MAIN_READER_SCREEN
 
-        mock_reader_screens.comic_reader_screen.is_active.assert_called_with(active=False)
+        is_active_mock = cast("MagicMock", mock_reader_screens.comic_reader_screen.is_active)
+        is_active_mock.assert_called_with(active=False)
 
     def test_switch_to_document_reader(
         self,
@@ -132,9 +136,11 @@ class TestReaderScreenManager:
 
         mock_sm = reader_screen_manager._screen_manager
         assert mock_sm.current == DOCUMENT_READER_SCREEN
-        mock_reader_screens.document_reader_screen.open_document.assert_called_with(
-            doc_dir, "Test Title"
+
+        open_document_mock = cast(
+            "MagicMock", mock_reader_screens.document_reader_screen.open_document
         )
+        open_document_mock.assert_called_with(doc_dir, "Test Title")
 
     def test_close_document_reader(
         self,
@@ -145,7 +151,10 @@ class TestReaderScreenManager:
 
         reader_screen_manager._close_document_reader()
 
-        mock_reader_screens.main_screen.on_document_reader_closed.assert_called_once()
+        on_document_reader_closed_mock = cast(
+            "MagicMock", mock_reader_screens.main_screen.on_document_reader_closed
+        )
+        on_document_reader_closed_mock.assert_called_once()
 
         mock_sm = reader_screen_manager._screen_manager
         assert isinstance(mock_sm.transition, TransitionBase)
