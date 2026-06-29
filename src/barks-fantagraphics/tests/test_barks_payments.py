@@ -1,7 +1,6 @@
 import pytest
-from barks_fantagraphics.barks_payments import (
-    validate_payment_data,
-)
+from barks_fantagraphics.barks_payments import BARKS_PAYMENTS, validate_payment_data
+from barks_fantagraphics.barks_titles import Titles
 
 
 class TestBarksPayments:
@@ -13,3 +12,11 @@ class TestBarksPayments:
             validate_payment_data()
         except AssertionError:
             pytest.fail("validate_payment_data() failed.")
+
+    def test_barks_payments_submission_order(self) -> None:
+        titles_as_list = list(Titles)
+        prev_title = -1
+        for payment_title in BARKS_PAYMENTS:
+            title = titles_as_list.index(payment_title)
+            assert prev_title < title, f"Payment order error: {payment_title.name}"
+            prev_title = title
