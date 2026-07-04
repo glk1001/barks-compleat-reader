@@ -264,7 +264,14 @@ class OKFViewer(RelativeLayout):
             self.history.append(path)
         self.back_btn.disabled = len(self.history) <= 1
         self._sync_tree_to(path)
-        page = render_page(path.read_text(encoding="utf-8"))
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as err:
+            # Tolerant consumption (SPEC §9): a page deleted or made unreadable
+            # after the tree was populated (e.g. the wiki being regenerated)
+            # degrades to an error page instead of crashing the event handler.
+            text = f"# Page unavailable\n\n`{path.name}`: {err.strerror or err}\n"
+        page = render_page(text)
         self._update_background(page.frontmatter, path)
         self.body.clear_widgets()
         self._anchors = {}

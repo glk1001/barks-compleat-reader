@@ -103,6 +103,7 @@ separator
 softbreak
 splittable
 srce
+strerror
 summarising
 sunos
 sysfs

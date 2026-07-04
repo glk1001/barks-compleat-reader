@@ -1,5 +1,5 @@
-# ruff: noqa: PLR2004, C901, PLR0912, PLR0915
-# (branchy markdown token dispatch; small magic font sizes in render_page)
+# ruff: noqa: C901, PLR0912, PLR0915
+# (branchy markdown token dispatch in render_page and _inline)
 """Kivy-free OKF render + bundle-model layer — the core of the okf_reader package.
 
 No Kivy import, no GUI. Turns an OKF page (markdown + YAML frontmatter) into
@@ -103,6 +103,18 @@ def _esc(text: str) -> str:
     return text.replace("&", "&amp;").replace("[", "&bl;").replace("]", "&br;")
 
 
+def _ref_quote(href: str) -> str:
+    """Make an href safe to embed in a Kivy ``[ref=…]`` tag.
+
+    A raw ``&``, ``[``, or ``]`` inside the tag corrupts the markup, but Kivy hands
+    the ref value back verbatim on tap, so entity-escaping (``_esc``) would break
+    navigation. Percent-encoding round-trips instead: `resolve_link` percent-decodes
+    every href. markdown-it already encodes brackets in link destinations; ``&``
+    it passes through raw. ``%`` is left alone to avoid double-encoding.
+    """
+    return href.replace("&", "%26").replace("[", "%5B").replace("]", "%5D")
+
+
 def _inline(tokens: list) -> str:
     """Render an inline token stream (a token's ``.children``) to Kivy markup."""
     out: list[str] = []
@@ -125,7 +137,7 @@ def _inline(tokens: list) -> str:
         elif tp == "code_inline":
             out.append(f"[color={CODE_COLOR}]{_esc(t.content)}[/color]")
         elif tp == "link_open":
-            href = t.attrGet("href") or ""
+            href = _ref_quote(t.attrGet("href") or "")
             out.append(f"[ref={href}][color={LINK_COLOR}][u]")
         elif tp == "link_close":
             out.append("[/u][/color][/ref]")
@@ -143,15 +155,21 @@ def _inline(tokens: list) -> str:
 
 
 def parse_frontmatter(text: str) -> tuple[dict, str]:
-    """Split a page into (frontmatter dict, body markdown)."""
-    if text.startswith("---"):
-        parts = text.split("---", 2)
-        if len(parts) >= 3:
-            try:
-                fm = yaml.safe_load(parts[1]) or {}
-            except yaml.YAMLError:
-                fm = {}
-            return (fm if isinstance(fm, dict) else {}), parts[2].strip()
+    """Split a page into (frontmatter dict, body markdown).
+
+    The delimiters must be whole ``---`` lines — a ``---`` inside a YAML value
+    (or anywhere mid-line) is not a delimiter. Malformed or non-mapping YAML
+    degrades to an empty dict (tolerant consumption, SPEC §9).
+    """
+    lines = text.splitlines()
+    if lines and lines[0].strip() == "---":
+        for i in range(1, len(lines)):
+            if lines[i].strip() == "---":
+                try:
+                    fm = yaml.safe_load("\n".join(lines[1:i])) or {}
+                except yaml.YAMLError:
+                    fm = {}
+                return (fm if isinstance(fm, dict) else {}), "\n".join(lines[i + 1 :]).strip()
     return {}, text
 
 
@@ -268,6 +286,11 @@ def render_page(text: str) -> Page:
             pending_bullet = "    " * max(indent - 1, 0) + marker
         elif tp in ("fence", "code_block"):
             blocks.append(Block(f"[color={CODE_COLOR}]{_esc(t.content.rstrip())}[/color]", 14))
+        elif tp == "html_block":
+            # Raw HTML is not rendered, but its source must not vanish either
+            # (SPEC §9 tolerance: show *something* rather than drop content) —
+            # display it like a code block.
+            blocks.append(Block(f"[color={CODE_COLOR}]{_esc(t.content.rstrip())}[/color]", 14))
         elif tp == "hr":
             blocks.append(Block("─" * 40))
         elif tp == "footnote_block_open":
@@ -319,8 +342,14 @@ RESERVED_FILES = ("index.md", "log.md")  # SPEC §3.1 — reserved, never concep
 
 
 def concept_title(path: Path) -> str:
-    """Display title for a concept file: its frontmatter ``title``, else the filename stem."""
-    fm, _ = parse_frontmatter(path.read_text(encoding="utf-8"))
+    """Display title for a concept file: its frontmatter ``title``, else the filename stem.
+
+    An unreadable file also falls back to the stem (tolerant consumption, SPEC §9).
+    """
+    try:
+        fm, _ = parse_frontmatter(path.read_text(encoding="utf-8"))
+    except OSError:
+        return path.stem
     title = fm.get("title")
     return title if isinstance(title, str) and title else path.stem
 
@@ -329,14 +358,23 @@ def dir_title(path: Path) -> str:
     """Human title for a bundle directory.
 
     The reserved ``index.md`` (SPEC §3.1) is the directory's curated listing, and its
-    first ``#`` heading names the directory — use that when present. Otherwise fall
-    back to the directory name in Title Case ("comics-and-stories" → "Comics And
-    Stories"). The line scan tolerates the root index.md's frontmatter block.
+    first ``#`` heading names the directory — use that when present. The scan skips
+    the frontmatter block (where a ``# …`` line is a YAML comment, not a heading) and
+    fenced code blocks. Otherwise — no index.md, no heading, or an unreadable file —
+    fall back to the directory name in Title Case ("comics-and-stories" → "Comics
+    And Stories").
     """
     index = path / "index.md"
     if index.is_file():
-        for line in index.read_text(encoding="utf-8").splitlines():
-            if line.startswith("# "):
+        try:
+            _, body = parse_frontmatter(index.read_text(encoding="utf-8"))
+        except OSError:
+            body = ""
+        in_fence = False
+        for line in body.splitlines():
+            if line.lstrip().startswith(("```", "~~~")):
+                in_fence = not in_fence
+            elif not in_fence and line.startswith("# "):
                 return line[2:].strip()
     return path.name.replace("-", " ").replace("_", " ").title()
 

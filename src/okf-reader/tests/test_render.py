@@ -46,6 +46,12 @@ class TestParseFrontmatter:
         assert "---" in body
         assert body.endswith("After")
 
+    def test_triple_dash_inside_value_not_a_delimiter(self) -> None:
+        """Only a whole '---' line closes the block, not a '---' inside a value."""
+        fm, body = okf.parse_frontmatter("---\ntitle: A---B\ntype: x\n---\nBody")
+        assert fm == {"title": "A---B", "type": "x"}
+        assert body == "Body"
+
 
 class TestResolveLink:
     @staticmethod
@@ -155,6 +161,18 @@ class TestRenderPage:
         assert "[ref=foo.md]" in markup
         assert f"[color={okf.LINK_COLOR}][u]text[/u]" in markup
 
+    def test_href_markup_metacharacters_percent_encoded(self, tmp_path: Path) -> None:
+        """An href with '&' is percent-encoded in [ref=…] and round-trips via resolve_link.
+
+        A raw '&' (which markdown-it passes through, unlike brackets) would corrupt
+        the Kivy markup; encoding it survives because resolve_link percent-decodes.
+        """
+        markup = okf.render_page("[text](a&b.md)").blocks[0].markup
+        assert "[ref=a%26b.md]" in markup
+        target = tmp_path / "a&b.md"
+        target.write_text("---\ntype: x\n---\nT", encoding="utf-8")
+        assert okf.resolve_link(tmp_path / "page.md", "a%26b.md", tmp_path) == target
+
     def test_special_characters_escaped(self) -> None:
         """The three Kivy-markup metacharacters are escaped in body text."""
         markup = okf.render_page("price 5 & 6 [note]").blocks[0].markup
@@ -177,6 +195,12 @@ class TestRenderPage:
         """A thematic break renders as a horizontal rule block."""
         blocks = okf.render_page("para one\n\n***\n\npara two").blocks
         assert any(set(b.markup) == {"─"} for b in blocks)
+
+    def test_html_block_shown_as_code(self) -> None:
+        """A raw HTML block is displayed code-style rather than silently dropped."""
+        blocks = okf.render_page("Before.\n\n<div>block html</div>\n\nAfter.").blocks
+        expected = f"[color={okf.CODE_COLOR}]<div>block html</div>[/color]"
+        assert [b.markup for b in blocks] == ["Before.", expected, "After."]
 
     def test_image_placeholder(self) -> None:
         """An image reference renders as an italic placeholder, never embedded."""
@@ -252,6 +276,12 @@ class TestConceptTitle:
         assert okf.concept_title(empty) == "e"
         assert okf.concept_title(null) == "n"
 
+    def test_unreadable_file_falls_back_to_stem(self, tmp_path: Path) -> None:
+        """A path that cannot be read as text (here: a directory) falls back to the stem."""
+        trap = tmp_path / "broken.md"
+        trap.mkdir()  # read_text raises IsADirectoryError, an OSError
+        assert okf.concept_title(trap) == "broken"
+
 
 class TestDirTitle:
     def test_index_md_heading_used(self, tmp_path: Path) -> None:
@@ -273,6 +303,24 @@ class TestDirTitle:
         d = tmp_path / "blum-barksian_extreme"
         d.mkdir()
         assert okf.dir_title(d) == "Blum Barksian Extreme"
+
+    def test_yaml_comment_in_frontmatter_not_a_heading(self, tmp_path: Path) -> None:
+        """A '# …' line inside the frontmatter block is a YAML comment, not the title."""
+        d = tmp_path / "real-name"
+        d.mkdir()
+        (d / "index.md").write_text(
+            "---\n# generated file\ntype: index\n---\n\n# Real Heading\n", encoding="utf-8"
+        )
+        assert okf.dir_title(d) == "Real Heading"
+
+    def test_heading_inside_code_fence_skipped(self, tmp_path: Path) -> None:
+        """A '# …' line inside a fenced code block is code, not the title."""
+        d = tmp_path / "some-dir"
+        d.mkdir()
+        (d / "index.md").write_text(
+            "```\n# not a heading\n```\n\n# The Heading\n", encoding="utf-8"
+        )
+        assert okf.dir_title(d) == "The Heading"
 
     def test_index_without_heading_falls_back(self, tmp_path: Path) -> None:
         """An index.md with no '# ' heading still falls back to the name."""
