@@ -120,6 +120,7 @@ vectorizer
 vmem
 wikilinks
 wmclass
+wmctrl
 wordclouds
 xlabel
 xorg
