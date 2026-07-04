@@ -34,7 +34,7 @@ from pathlib import Path
 
 import yaml
 from markdown_it import MarkdownIt
-from mdit_py_plugins.footnote import footnote_plugin  # ty: ignore[unresolved-import]
+from mdit_py_plugins.footnote import footnote_plugin
 
 # Colors baked into the emitted Kivy markup (hex, no leading '#'). Interaction-
 # time colors (e.g. footnote highlight) belong to the UI layer, not here.

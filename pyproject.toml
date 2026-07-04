@@ -55,6 +55,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "import-linter>=2.9",
+    "mdit-py-plugins>=0.4",  # OKF reader spike (scripts/okf_render.py); moves to a package dep on integration
     "pycrucible==0.4.0",
     "pyinstrument>=5.1.1",
     "pyspellchecker>=0.8.4",
