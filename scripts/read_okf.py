@@ -1,4 +1,4 @@
-# ruff: noqa: T201, PLC0415
+# ruff: noqa: PLC0415
 """CLI entry point that opens an OKF bundle in the standalone OKF reader.
 
 Mirrors scripts/read_comic.py: a thin typer command over a workspace package —
@@ -109,7 +109,7 @@ def main(
     bundle: Annotated[Path, typer.Argument(help="Path to the OKF bundle directory.")],
 ) -> None:
     if not bundle.is_dir():
-        print(f"error: bundle {bundle} not found")
+        typer.echo(f"error: bundle {bundle} not found", err=True)
         raise typer.Exit(code=2)
 
     _pin_window_to_primary_monitor()

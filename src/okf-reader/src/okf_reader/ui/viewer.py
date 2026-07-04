@@ -10,6 +10,7 @@ scripts/read_okf.py.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 from kivy.app import App
@@ -29,6 +30,7 @@ from okf_reader.core.render import (
     BundleDir,
     TableBlock,
     dir_title,
+    has_children,
     list_children,
     render_page,
     resolve_link,
@@ -58,6 +60,14 @@ TREE_DIR_TEXT_COLOR = (1, 1, 1, 1)
 TREE_CONCEPT_TEXT_COLOR = (1.0, 0.835, 0.29, 1.0)
 
 
+@dataclass
+class _HistoryEntry:
+    """One visited page, remembering where it was scrolled to when left (1.0 == top)."""
+
+    path: Path
+    scroll_y: float = 1.0
+
+
 class OKFViewer(RelativeLayout):
     def __init__(
         self,
@@ -67,7 +77,7 @@ class OKFViewer(RelativeLayout):
     ) -> None:
         super().__init__(**kwargs)
         self.bundle = bundle
-        self.history: list[Path] = []
+        self.history: list[_HistoryEntry] = []
         self._anchors: dict[str, str] = {}  # "fn:<label>" -> the definition block's markup
         self._syncing_tree = False  # True while _sync_tree_to selects programmatically
         self._image_provider = image_provider
@@ -150,7 +160,9 @@ class OKFViewer(RelativeLayout):
                     ),
                     parent,
                 )
-                tv.is_leaf = False  # show a disclosure triangle; real children load on open
+                # Disclosure triangle only when there is something to open (cheap
+                # existence scan); the real children still load lazily on expand.
+                tv.is_leaf = not has_children(node.path)
                 tv.bundle_path = node.path
                 tv.loaded = False
                 tv.bind(is_open=self._on_dir_open)
@@ -188,7 +200,8 @@ class OKFViewer(RelativeLayout):
     def _go_back(self) -> None:
         if len(self.history) > 1:
             self.history.pop()
-            self._show(self.history[-1], push=False)
+            entry = self.history[-1]
+            self._show(entry.path, push=False, scroll_y=entry.scroll_y)
 
     def _update_background(self, frontmatter: dict, path: Path) -> None:
         """Set the page panel's background to an image suiting the page, if any."""
@@ -264,9 +277,11 @@ class OKFViewer(RelativeLayout):
         scroll = (node_top - viewport_h + offset) / (content_h - viewport_h)
         self.tree_scroll.scroll_y = max(0.0, min(1.0, scroll))
 
-    def _show(self, path: Path, *, push: bool) -> None:
+    def _show(self, path: Path, *, push: bool, scroll_y: float = 1.0) -> None:
         if push:
-            self.history.append(path)
+            if self.history:  # remember where the outgoing page was scrolled to
+                self.history[-1].scroll_y = self.body_scroll.scroll_y
+            self.history.append(_HistoryEntry(path))
         self.back_btn.disabled = len(self.history) <= 1
         self._sync_tree_to(path)
         try:
@@ -300,7 +315,12 @@ class OKFViewer(RelativeLayout):
             if blk.anchor:
                 self._anchors[blk.anchor] = blk.markup
             self.body.add_widget(lbl)
-        self.body_scroll.scroll_y = 1
+        # Fresh pages open at the top; Back passes the offset the page was left at.
+        self.body_scroll.scroll_y = scroll_y
+        if scroll_y != 1:
+            # The labels take their texture sizes over the next frame, shifting the
+            # normalized offset; re-assert it once the layout has settled.
+            Clock.schedule_once(lambda _dt: setattr(self.body_scroll, "scroll_y", scroll_y), 0)
 
     def _table_widget(self, blk: TableBlock) -> ScrollView:
         """Build the widget for a table: monospace rows, tightly stacked, one per Label.

@@ -351,22 +351,22 @@ class TestDirTitle:
         assert okf.dir_title(d) == "Some Dir"
 
 
-class TestLoadBundleTree:
-    @staticmethod
-    def _bundle(tmp_path: Path) -> Path:
-        """Build concept/ with two leaves, a subdir, and reserved files to skip."""
-        concept = tmp_path / "concept"
-        (concept / "sub").mkdir(parents=True)
-        (concept / "alpha.md").write_text("---\ntype: x\ntitle: Alpha\n---\nA", encoding="utf-8")
-        (concept / "zeta.md").write_text("---\ntype: x\n---\nZ", encoding="utf-8")  # no title
-        (concept / "sub" / "beta.md").write_text("---\ntype: x\ntitle: Beta\n---\nB", "utf-8")
-        (concept / "index.md").write_text("# reserved", encoding="utf-8")
-        (concept / "log.md").write_text("# reserved", encoding="utf-8")
-        return concept
+def _make_concept_dir(tmp_path: Path) -> Path:
+    """Build concept/ with two leaves, a non-empty subdir, and reserved files to skip."""
+    concept = tmp_path / "concept"
+    (concept / "sub").mkdir(parents=True)
+    (concept / "alpha.md").write_text("---\ntype: x\ntitle: Alpha\n---\nA", encoding="utf-8")
+    (concept / "zeta.md").write_text("---\ntype: x\n---\nZ", encoding="utf-8")  # no title
+    (concept / "sub" / "beta.md").write_text("---\ntype: x\ntitle: Beta\n---\nB", "utf-8")
+    (concept / "index.md").write_text("# reserved", encoding="utf-8")
+    (concept / "log.md").write_text("# reserved", encoding="utf-8")
+    return concept
 
+
+class TestLoadBundleTree:
     def test_structure_order_and_reserved_skipped(self, tmp_path: Path) -> None:
         """Dirs and concepts interleave in name order; reserved files are excluded."""
-        tree = okf.load_bundle_tree(self._bundle(tmp_path))
+        tree = okf.load_bundle_tree(_make_concept_dir(tmp_path))
         assert tree.name == "concept"
         # name order of concept/: alpha.md, index.md, log.md, sub, zeta.md
         # → after skipping reserved: alpha (concept), sub (dir), zeta (concept)
@@ -382,7 +382,7 @@ class TestLoadBundleTree:
 
     def test_concept_titles_and_paths(self, tmp_path: Path) -> None:
         """Leaves carry the resolved title and the concept's file path."""
-        concept = self._bundle(tmp_path)
+        concept = _make_concept_dir(tmp_path)
         tree = okf.load_bundle_tree(concept)
         alpha, _sub, zeta = tree.children
         assert isinstance(alpha, okf.ConceptNode)
@@ -392,7 +392,7 @@ class TestLoadBundleTree:
 
     def test_nested_directory_recursed(self, tmp_path: Path) -> None:
         """Subdirectories become nested BundleDirs holding their own concepts."""
-        concept = self._bundle(tmp_path)
+        concept = _make_concept_dir(tmp_path)
         sub = okf.load_bundle_tree(concept).children[1]
         assert isinstance(sub, okf.BundleDir)
         assert sub.name == "sub"
@@ -410,21 +410,32 @@ class TestLoadBundleTree:
         assert tree.children == ()
 
 
-class TestListChildren:
-    @staticmethod
-    def _bundle(tmp_path: Path) -> Path:
-        """Build concept/ with a leaf, a non-empty subdir, and a reserved file."""
-        concept = tmp_path / "concept"
-        (concept / "sub").mkdir(parents=True)
-        (concept / "alpha.md").write_text("---\ntype: x\ntitle: Alpha\n---\nA", encoding="utf-8")
-        (concept / "zeta.md").write_text("---\ntype: x\n---\nZ", encoding="utf-8")  # no title
-        (concept / "sub" / "beta.md").write_text("---\ntype: x\ntitle: Beta\n---\nB", "utf-8")
-        (concept / "index.md").write_text("# reserved", encoding="utf-8")
-        return concept
+class TestHasChildren:
+    def test_dir_with_concepts_or_subdirs(self, tmp_path: Path) -> None:
+        """A directory with a concept or a subdirectory has children."""
+        assert okf.has_children(_make_concept_dir(tmp_path))
+        subdir_only = tmp_path / "subdir-only"
+        (subdir_only / "sub").mkdir(parents=True)
+        assert okf.has_children(subdir_only)
 
+    def test_only_reserved_and_hidden_entries_is_empty(self, tmp_path: Path) -> None:
+        """Reserved files and dot-entries don't count — nothing would be listed."""
+        d = tmp_path / "quiet"
+        (d / ".obsidian").mkdir(parents=True)
+        (d / "index.md").write_text("# reserved", encoding="utf-8")
+        (d / "log.md").write_text("# reserved", encoding="utf-8")
+        (d / "notes.txt").write_text("not a concept", encoding="utf-8")
+        assert not okf.has_children(d)
+
+    def test_non_directory_is_empty(self, tmp_path: Path) -> None:
+        """A non-directory path has no children, not an error."""
+        assert not okf.has_children(tmp_path / "nowhere")
+
+
+class TestListChildren:
     def test_one_level_only_subdirs_unexpanded(self, tmp_path: Path) -> None:
         """Children are name-ordered, interleaved, and subdirs come back unexpanded."""
-        concept = self._bundle(tmp_path)
+        concept = _make_concept_dir(tmp_path)
         kids = okf.list_children(concept)
         assert [type(c).__name__ for c in kids] == ["ConceptNode", "BundleDir", "ConceptNode"]
         sub = kids[1]
@@ -435,7 +446,7 @@ class TestListChildren:
 
     def test_reserved_skipped_and_titles_resolved(self, tmp_path: Path) -> None:
         """Reserved files are excluded; leaves carry frontmatter title or stem fallback."""
-        kids = okf.list_children(self._bundle(tmp_path))
+        kids = okf.list_children(_make_concept_dir(tmp_path))
         assert not any(getattr(c, "path", None) and c.path.name == "index.md" for c in kids)
         alpha, _sub, zeta = kids
         assert isinstance(alpha, okf.ConceptNode)
@@ -445,7 +456,7 @@ class TestListChildren:
 
     def test_descend_by_calling_again(self, tmp_path: Path) -> None:
         """Descending a subdir is a second list_children call on its path."""
-        concept = self._bundle(tmp_path)
+        concept = _make_concept_dir(tmp_path)
         sub = okf.list_children(concept)[1]
         descendants = okf.list_children(sub.path)
         assert [c.title for c in descendants if isinstance(c, okf.ConceptNode)] == ["Beta"]

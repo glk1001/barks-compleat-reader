@@ -431,6 +431,22 @@ def dir_title(path: Path) -> str:
     return path.name.replace("-", " ").replace("_", " ").title()
 
 
+def has_children(directory: Path) -> bool:
+    """Whether a bundle directory has anything `list_children` would list.
+
+    A cheap existence scan — no frontmatter reads — so a lazy consumer can decide
+    whether a directory needs an expansion affordance without paying
+    `list_children`'s per-concept file reads.
+    """
+    if not directory.is_dir():
+        return False
+    return any(
+        not child.name.startswith(".")
+        and (child.is_dir() or (child.suffix == ".md" and child.name not in RESERVED_FILES))
+        for child in directory.iterdir()
+    )
+
+
 def list_children(directory: Path) -> list[BundleDir | ConceptNode]:
     """Immediate children of a bundle directory, in name order — one level only.
 
