@@ -894,6 +894,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.HYPNO_GUN_THE,
         Titles.BACK_TO_LONG_AGO,
         Titles.LOST_PEG_LEG_MINE_THE,
+        Titles.LITTLEST_CHICKEN_THIEF_THE,
         Titles.RAVEN_MAD,
         Titles.THRIFTY_SPENDTHRIFT_THE,
         Titles.SWAMP_OF_NO_RETURN_THE,
