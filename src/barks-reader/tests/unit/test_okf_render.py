@@ -245,6 +245,59 @@ class TestLoadBundleTree:
         assert tree.children == ()
 
 
+class TestListChildren:
+    @staticmethod
+    def _bundle(tmp_path: Path) -> Path:
+        """Build concept/ with a leaf, a non-empty subdir, and a reserved file."""
+        concept = tmp_path / "concept"
+        (concept / "sub").mkdir(parents=True)
+        (concept / "alpha.md").write_text("---\ntype: x\ntitle: Alpha\n---\nA", encoding="utf-8")
+        (concept / "zeta.md").write_text("---\ntype: x\n---\nZ", encoding="utf-8")  # no title
+        (concept / "sub" / "beta.md").write_text("---\ntype: x\ntitle: Beta\n---\nB", "utf-8")
+        (concept / "index.md").write_text("# reserved", encoding="utf-8")
+        return concept
+
+    def test_one_level_only_subdirs_unexpanded(self, tmp_path: Path) -> None:
+        """Children are name-ordered, interleaved, and subdirs come back unexpanded."""
+        concept = self._bundle(tmp_path)
+        kids = okf.list_children(concept)
+        assert [type(c).__name__ for c in kids] == ["ConceptNode", "BundleDir", "ConceptNode"]
+        sub = kids[1]
+        assert isinstance(sub, okf.BundleDir)
+        assert sub.children == ()  # not recursed...
+        assert (sub.path / "beta.md").is_file()  # ...even though it has a child on disk
+
+    def test_reserved_skipped_and_titles_resolved(self, tmp_path: Path) -> None:
+        """Reserved files are excluded; leaves carry frontmatter title or stem fallback."""
+        kids = okf.list_children(self._bundle(tmp_path))
+        assert not any(getattr(c, "path", None) and c.path.name == "index.md" for c in kids)
+        alpha, _sub, zeta = kids
+        assert alpha.title == "Alpha"
+        assert zeta.title == "zeta"
+
+    def test_descend_by_calling_again(self, tmp_path: Path) -> None:
+        """Descending a subdir is a second list_children call on its path."""
+        concept = self._bundle(tmp_path)
+        sub = okf.list_children(concept)[1]
+        descendants = okf.list_children(sub.path)
+        assert [c.title for c in descendants] == ["Beta"]
+
+    def test_non_directory_returns_empty_list(self, tmp_path: Path) -> None:
+        """A non-directory path yields an empty list, not an error."""
+        f = tmp_path / "lonely.md"
+        f.write_text("---\ntype: x\n---\nB", encoding="utf-8")
+        assert okf.list_children(f) == []
+
+    def test_hidden_entries_skipped(self, tmp_path: Path) -> None:
+        """Dot-entries (e.g. .obsidian, dotfiles) are not OKF content and are skipped."""
+        root = tmp_path / "bundle"
+        (root / ".obsidian").mkdir(parents=True)
+        (root / ".secret.md").write_text("---\ntype: x\n---\nS", encoding="utf-8")
+        (root / "real.md").write_text("---\ntype: x\ntitle: Real\n---\nR", encoding="utf-8")
+        kids = okf.list_children(root)
+        assert [c.title for c in kids] == ["Real"]
+
+
 class TestEsc:
     def test_escapes_markup_metacharacters(self) -> None:
         """_esc escapes ampersand and both square brackets, and nothing else."""

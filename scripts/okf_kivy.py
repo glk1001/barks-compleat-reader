@@ -33,7 +33,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from okf_render import BundleDir, load_bundle_tree, render_page, resolve_link, selftest
+from okf_render import BundleDir, list_children, render_page, resolve_link, selftest
 
 HIGHLIGHT_COLOR = "ffe066"  # the footnote definition you just jumped to (applied at tap time)
 
@@ -54,7 +54,7 @@ def _build_app(bundle: Path):  # noqa: ANN202  (kivy types are dynamic)
             self._anchors: dict[str, Any] = {}  # "fn:<label>" -> the definition's Label widget
 
             tree_scroll = ScrollView(size_hint=(0.32, 1))
-            self.tree = TreeView(root_options={"text": "OKF concept/"}, hide_root=False)
+            self.tree = TreeView(root_options={"text": f"OKF: {bundle.name}"}, hide_root=False)
             # bind passes (treeview, selected_node); we only want the node (2nd arg)
             self.tree.bind(selected_node=lambda *args: self._on_node(args[1]))
             tree_scroll.add_widget(self.tree)
@@ -79,19 +79,31 @@ def _build_app(bundle: Path):  # noqa: ANN202  (kivy types are dynamic)
             right.add_widget(self.body_scroll)
             self.add_widget(right)
 
-            self._add_tree_nodes(load_bundle_tree(bundle / "concept").children, None)
+            # Lazy: load only the bundle's top level (all tiers) now; each directory's
+            # children are read on first expansion (see _on_dir_open). This keeps startup
+            # cheap even though the full bundle is ~900 files across ~200 dirs.
+            self._add_tree_nodes(list_children(bundle), None)
 
         def _add_tree_nodes(self, nodes, parent) -> None:  # noqa: ANN001
-            # Bind the Kivy-free bundle tree (okf_render.load_bundle_tree) to TreeView
-            # widgets; all filesystem/frontmatter work already happened in the core.
+            # Bind one level of the Kivy-free bundle model (okf_render.list_children) to
+            # TreeView widgets; the frontmatter reads for this level already happened there.
             for node in nodes:
                 if isinstance(node, BundleDir):
                     tv = self.tree.add_node(TreeViewLabel(text=f"[{node.name}]"), parent)
-                    self._add_tree_nodes(node.children, tv)
+                    tv.is_leaf = False  # show a disclosure triangle; real children load on open
+                    tv.bundle_path = node.path
+                    tv.loaded = False
+                    tv.bind(is_open=self._on_dir_open)
                 else:  # ConceptNode
                     tv = TreeViewLabel(text=node.title)
                     tv.file_path = node.path
                     self.tree.add_node(tv, parent)
+
+        def _on_dir_open(self, dir_node, is_open) -> None:  # noqa: ANN001
+            # Fires on both open and close; populate a directory's children once, lazily.
+            if is_open and not dir_node.loaded:
+                dir_node.loaded = True
+                self._add_tree_nodes(list_children(dir_node.bundle_path), dir_node)
 
         def _on_node(self, node) -> None:  # noqa: ANN001
             path = getattr(node, "file_path", None)

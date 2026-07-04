@@ -235,23 +235,41 @@ def concept_title(path: Path) -> str:
     return title if isinstance(title, str) and title else path.stem
 
 
-def load_bundle_tree(root: Path) -> BundleDir:
-    """Walk ``root`` into a Kivy-free tree of directories and concept documents.
+def list_children(directory: Path) -> list[BundleDir | ConceptNode]:
+    """Immediate children of a bundle directory, in name order — one level only.
 
-    Subdirectories become nested `BundleDir`s; non-reserved ``.md`` files become
-    `ConceptNode` leaves (``index.md``/``log.md`` are reserved — SPEC §3.1 — and
-    skipped). Directories and concepts are interleaved in name order, matching the
-    filesystem listing. A ``root`` that is not a directory yields an empty
-    `BundleDir` (tolerant consumption, SPEC §9).
+    Subdirectories come back as `BundleDir`s **unexpanded** (empty ``children``);
+    call `list_children` again on a subdir's ``path`` to descend. Non-reserved
+    ``.md`` files become `ConceptNode` leaves (``index.md``/``log.md`` are reserved
+    — SPEC §3.1 — and skipped). Frontmatter is read only for the concepts directly
+    in ``directory``, so a consumer can populate a tree lazily one level at a time.
+    A ``directory`` that is not a directory yields an empty list (SPEC §9).
     """
     children: list[BundleDir | ConceptNode] = []
-    if root.is_dir():
-        for child in sorted(root.iterdir()):
+    if directory.is_dir():
+        for child in sorted(directory.iterdir()):
+            if child.name.startswith("."):
+                continue  # skip hidden entries (e.g. .obsidian) — not OKF content
             if child.is_dir():
-                children.append(load_bundle_tree(child))
+                children.append(BundleDir(child, child.name))
             elif child.suffix == ".md" and child.name not in RESERVED_FILES:
                 children.append(ConceptNode(child, concept_title(child)))
-    return BundleDir(root, root.name, tuple(children))
+    return children
+
+
+def load_bundle_tree(root: Path) -> BundleDir:
+    """Eagerly walk ``root`` into a fully-expanded Kivy-free tree.
+
+    Like `list_children` but recursive: every subdirectory is descended and its
+    `BundleDir.children` populated. A ``root`` that is not a directory yields an
+    empty `BundleDir` (tolerant consumption, SPEC §9). Prefer `list_children` for
+    interactive/lazy consumers; use this for a whole-bundle walk (e.g. search).
+    """
+    children = tuple(
+        load_bundle_tree(child.path) if isinstance(child, BundleDir) else child
+        for child in list_children(root)
+    )
+    return BundleDir(root, root.name, children)
 
 
 # --------------------------------------------------------------------------- self-test
