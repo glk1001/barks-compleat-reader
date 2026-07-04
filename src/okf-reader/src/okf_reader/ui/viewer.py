@@ -33,6 +33,7 @@ BODY_LINE_HEIGHT = 1.25
 BODY_PADDING = (16, 8, 24, 16)  # left, top, right, bottom
 BODY_BLOCK_SPACING = 12
 POPUP_PADDING = 12
+TREE_PANEL_WIDTH = 0.28  # fraction of the window; the page panel gets the rest
 
 
 class OKFViewer(BoxLayout):
@@ -43,7 +44,7 @@ class OKFViewer(BoxLayout):
         self._anchors: dict[str, str] = {}  # "fn:<label>" -> the definition block's markup
         self._syncing_tree = False  # True while _sync_tree_to selects programmatically
 
-        self.tree_scroll = ScrollView(size_hint=(0.32, 1))
+        self.tree_scroll = ScrollView(size_hint=(TREE_PANEL_WIDTH, 1))
         self.tree = TreeView(
             root_options={"text": dir_title(bundle)},
             hide_root=False,
@@ -57,7 +58,7 @@ class OKFViewer(BoxLayout):
         self.tree_scroll.add_widget(self.tree)
         self.add_widget(self.tree_scroll)
 
-        right = BoxLayout(orientation="vertical", size_hint=(0.68, 1), spacing=4)
+        right = BoxLayout(orientation="vertical", size_hint=(1 - TREE_PANEL_WIDTH, 1), spacing=4)
         bar = BoxLayout(size_hint_y=None, height=32, spacing=6)
         self.back_btn = Button(text="< Back", size_hint_x=None, width=90, disabled=True)
         self.back_btn.bind(on_release=lambda *_: self._go_back())
