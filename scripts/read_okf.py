@@ -57,12 +57,13 @@ def _pin_window_to_primary_monitor() -> None:
     First kivy import of the process happens here, deliberately: the geometry is
     computed and written to Config before kivy can realize the window.
 
-    Two-stage pinning. The create-time Config values reliably set the *size*, but
-    the window manager is free to ignore SDL's create-time position hint and
-    place the window itself (observed: requested (2763,10), WM placed it on the
-    other monitor). So the position is re-asserted once the window is realised —
-    assigning ``Window.left``/``Window.top`` calls SDL_SetWindowPosition on the
-    live window, a post-map move most WMs honour (GNOME Wayland refuses both).
+    Unlike read_comic.py (whose KIVY_HOME ini carries known-good values), the
+    standalone launcher runs against whatever ~/.kivy/config.ini holds, so every
+    graphics setting that affects placement is set explicitly. In particular
+    ``resizable``: GNOME's Mutter clamps non-resizable windows to the focused
+    monitor and refuses to move them across, silently defeating left/top
+    (diagnosed on a two-monitor Wayland setup where a stale resizable=0 in
+    ~/.kivy/config.ini kept the window off the primary).
     """
     win_left, win_top, win_width, win_height = _primary_monitor_window_geometry()
 
@@ -70,25 +71,11 @@ def _pin_window_to_primary_monitor() -> None:
 
     # Without position=custom, Kivy's SDL2 backend ignores left/top entirely.
     Config.set("graphics", "position", "custom")  # ty: ignore[unresolved-attribute]
+    Config.set("graphics", "resizable", "1")  # ty: ignore[unresolved-attribute]
     Config.set("graphics", "left", win_left)  # ty: ignore[unresolved-attribute]
     Config.set("graphics", "top", win_top)  # ty: ignore[unresolved-attribute]
     Config.set("graphics", "width", win_width)  # ty: ignore[unresolved-attribute]
     Config.set("graphics", "height", win_height)  # ty: ignore[unresolved-attribute]
-
-    # Importing Window realizes the SDL window, so this must come after the
-    # Config.set calls above (Config feeds the window's creation parameters).
-    from kivy.core.window import Window
-
-    def _reassert_position(*_args: object) -> None:
-        Window.left = win_left
-        Window.top = win_top
-
-    # By on_draw the window is mapped, so the move sticks; unbind after one shot.
-    def _once(*args: object) -> None:
-        Window.unbind(on_draw=_once)
-        _reassert_position(*args)
-
-    Window.bind(on_draw=_once)
 
 
 @app.command(help="Open an OKF knowledge bundle in the standalone reader.")
