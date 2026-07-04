@@ -19,6 +19,7 @@ dependency), and walks a bundle directory into a `BundleDir`/`ConceptNode` tree:
 
 from __future__ import annotations
 
+import re
 import urllib.parse
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -64,11 +65,26 @@ class Block:
 
 
 @dataclass
+class TableBlock:
+    """One rendered table: rows of Kivy markup, space-padded to aligned columns.
+
+    The padding is computed from each cell's *visible* length, so the columns
+    line up only in a **monospace font** — the consumer must render the rows in
+    one (and stack them with no extra spacing). The header row (when present)
+    is wrapped in the heading color rather than bold, because bold glyphs have
+    different advances in a faked-bold monospace and would break the alignment.
+    """
+
+    rows: list[str]
+    font_size: int = 13
+
+
+@dataclass
 class Page:
     """A rendered page: parsed frontmatter plus body and footnote blocks."""
 
     frontmatter: dict
-    blocks: list[Block] = field(default_factory=list)
+    blocks: list[Block | TableBlock] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -194,17 +210,36 @@ def _footnote_block(tokens: list, start: int) -> tuple[Block, int]:
     return block, j + 1
 
 
-def _table_block(tokens: list, start: int) -> tuple[Block, int]:
-    """Render the table starting at ``tokens[start]`` (its ``table_open``) into one Block.
+_MARKUP_TAG_RE = re.compile(r"\[[^\[\]]*\]")  # a Kivy markup tag: [b], [/color], [ref=x] …
 
-    Kivy Labels have no columnar layout, so a table renders as one block of
-    pipe-separated lines: every row's cell content survives (bold for header
-    cells), just without column alignment. Consumes up to ``table_close`` —
-    like footnote definitions — so the cells' inline tokens are not re-rendered;
-    returns the block and the index just past ``table_close``.
+# A cell longer than this doesn't widen its column; it overflows its own row
+# instead (only that row loses alignment). Some scraped wiki tables carry one
+# mega-cell of flattened prose that would otherwise push every row's remaining
+# columns hundreds of characters to the right.
+TABLE_COL_WIDTH_CAP = 60
+
+
+def _visible_len(markup: str) -> int:
+    """Character count of what a Kivy-markup string displays: tags gone, entities one char."""
+    text = _MARKUP_TAG_RE.sub("", markup)
+    for entity in ("&amp;", "&bl;", "&br;"):
+        text = text.replace(entity, "x")
+    return len(text)
+
+
+def _table_block(tokens: list, start: int) -> tuple[TableBlock, int]:
+    """Render the table starting at ``tokens[start]`` (its ``table_open``) into a TableBlock.
+
+    Each row becomes one markup line with its cells space-padded to the column's
+    widest visible content (see `TableBlock` for the monospace requirement this
+    puts on the consumer); header rows are wrapped in the heading color. Consumes
+    up to ``table_close`` — like footnote definitions — so the cells' inline
+    tokens are not re-rendered; returns the block and the index just past
+    ``table_close``.
     """
-    rows: list[str] = []
+    rows: list[list[str]] = []
     cells: list[str] = []
+    header_rows = 0
     in_header = False
     j = start + 1
     n = len(tokens)
@@ -217,19 +252,36 @@ def _table_block(tokens: list, start: int) -> tuple[Block, int]:
         elif tj == "tr_open":
             cells = []
         elif tj == "inline":
-            cell = _inline(tokens[j].children or [])
-            cells.append(f"[b]{cell}[/b]" if in_header else cell)
+            cells.append(_inline(tokens[j].children or []))
         elif tj == "tr_close":
-            rows.append("  |  ".join(cells))
+            rows.append(cells)
+            header_rows += in_header
         j += 1
-    return Block("\n".join(rows), 14), j + 1
+    widths: list[int] = []
+    for row in rows:
+        for c, cell in enumerate(row):
+            length = _visible_len(cell)
+            if length > TABLE_COL_WIDTH_CAP:
+                length = 0  # outlier: overflows its own row, must not widen the column
+            if c == len(widths):
+                widths.append(length)
+            else:
+                widths[c] = max(widths[c], length)
+    lines: list[str] = []
+    for r, row in enumerate(rows):
+        padded = (cell + " " * max(widths[c] - _visible_len(cell), 0) for c, cell in enumerate(row))
+        line = "  ".join(padded).rstrip()
+        if r < header_rows:
+            line = f"[color={HEADING_COLOR}]{line}[/color]"
+        lines.append(line)
+    return TableBlock(lines), j + 1
 
 
 def render_page(text: str) -> Page:
     """Parse a page's frontmatter and render its body + footnotes to Kivy-markup blocks."""
     fm, body = parse_frontmatter(text)
     tokens = _md().parse(body)
-    blocks: list[Block] = []
+    blocks: list[Block | TableBlock] = []
     indent = 0
     pending_bullet = ""
     list_counters: list[int | None] = []  # one entry per open list, innermost last

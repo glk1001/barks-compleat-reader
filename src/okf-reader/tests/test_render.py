@@ -123,18 +123,23 @@ class TestResolveLink:
         assert okf.resolve_link(bundle / "concept" / "a.md", "sub/", bundle) is None
 
 
+def _text_blocks(page: okf.Page) -> list[okf.Block]:
+    """Return the page's plain text blocks, type-narrowed past ``TableBlock`` for ty."""
+    return [b for b in page.blocks if isinstance(b, okf.Block)]
+
+
 class TestRenderPage:
     def test_heading_markup_and_size(self) -> None:
         """A heading becomes a bold, heading-colored block sized from HEADING_SIZES."""
         page = okf.render_page("# Title")
         assert page.frontmatter == {}
-        assert page.blocks[0].markup == f"[color={okf.HEADING_COLOR}][b]Title[/b][/color]"
-        assert page.blocks[0].font_size == okf.HEADING_SIZES["h1"]
+        block = _text_blocks(page)[0]
+        assert block.markup == f"[color={okf.HEADING_COLOR}][b]Title[/b][/color]"
+        assert block.font_size == okf.HEADING_SIZES["h1"]
 
     def test_inline_emphasis_and_code(self) -> None:
         """Bold, italic, and inline code map to Kivy markup tags."""
-        page = okf.render_page("**bold** _it_ `code`")
-        markup = page.blocks[0].markup
+        markup = _text_blocks(okf.render_page("**bold** _it_ `code`"))[0].markup
         assert "[b]bold[/b]" in markup
         assert "[i]it[/i]" in markup
         assert f"[color={okf.CODE_COLOR}]code[/color]" in markup
@@ -145,19 +150,18 @@ class TestRenderPage:
             "> _LLM-owned synthesis. Do not hand-edit — regenerated on reingest."
             " See `CLAUDE.md`._\n\nReal content.\n"
         )
-        page = okf.render_page(md)
-        assert not any(okf.PROVENANCE_MARKER in b.markup for b in page.blocks)
-        assert any("Real content." in b.markup for b in page.blocks)
+        blocks = _text_blocks(okf.render_page(md))
+        assert not any(okf.PROVENANCE_MARKER in b.markup for b in blocks)
+        assert any("Real content." in b.markup for b in blocks)
 
     def test_provenance_glossary_variant_dropped(self) -> None:
         """The glossary-entry variants of the provenance note are dropped too."""
         md = "> _Glossary entry — a recurring place-name. LLM-owned._\n\nBody.\n"
-        page = okf.render_page(md)
-        assert [b.markup for b in page.blocks] == ["Body."]
+        assert [b.markup for b in _text_blocks(okf.render_page(md))] == ["Body."]
 
     def test_link_becomes_ref(self) -> None:
         """An inline link becomes a tappable [ref=…] span carrying the href."""
-        markup = okf.render_page("[text](foo.md)").blocks[0].markup
+        markup = _text_blocks(okf.render_page("[text](foo.md)"))[0].markup
         assert "[ref=foo.md]" in markup
         assert f"[color={okf.LINK_COLOR}][u]text[/u]" in markup
 
@@ -167,7 +171,7 @@ class TestRenderPage:
         A raw '&' (which markdown-it passes through, unlike brackets) would corrupt
         the Kivy markup; encoding it survives because resolve_link percent-decodes.
         """
-        markup = okf.render_page("[text](a&b.md)").blocks[0].markup
+        markup = _text_blocks(okf.render_page("[text](a&b.md)"))[0].markup
         assert "[ref=a%26b.md]" in markup
         target = tmp_path / "a&b.md"
         target.write_text("---\ntype: x\n---\nT", encoding="utf-8")
@@ -175,81 +179,98 @@ class TestRenderPage:
 
     def test_special_characters_escaped(self) -> None:
         """The three Kivy-markup metacharacters are escaped in body text."""
-        markup = okf.render_page("price 5 & 6 [note]").blocks[0].markup
+        markup = _text_blocks(okf.render_page("price 5 & 6 [note]"))[0].markup
         assert "&amp;" in markup
         assert "&bl;note&br;" in markup
         assert "[note]" not in markup  # the literal brackets must not survive
 
     def test_bullet_list_prefix(self) -> None:
         """List items are prefixed with a bullet glyph."""
-        blocks = okf.render_page("- one\n- two").blocks
+        blocks = _text_blocks(okf.render_page("- one\n- two"))
         assert any(b.markup.startswith("•  one") for b in blocks)
         assert any(b.markup.startswith("•  two") for b in blocks)
 
     def test_code_fence_block(self) -> None:
         """A fenced code block is a colored block at the code font size."""
-        blocks = okf.render_page("```\nsome_code()\n```").blocks
+        blocks = _text_blocks(okf.render_page("```\nsome_code()\n```"))
         assert any(b.markup == f"[color={okf.CODE_COLOR}]some_code()[/color]" for b in blocks)
 
     def test_thematic_break_block(self) -> None:
         """A thematic break renders as a horizontal rule block."""
-        blocks = okf.render_page("para one\n\n***\n\npara two").blocks
+        blocks = _text_blocks(okf.render_page("para one\n\n***\n\npara two"))
         assert any(set(b.markup) == {"─"} for b in blocks)
 
     def test_html_block_shown_as_code(self) -> None:
         """A raw HTML block is displayed code-style rather than silently dropped."""
-        blocks = okf.render_page("Before.\n\n<div>block html</div>\n\nAfter.").blocks
+        blocks = _text_blocks(okf.render_page("Before.\n\n<div>block html</div>\n\nAfter."))
         expected = f"[color={okf.CODE_COLOR}]<div>block html</div>[/color]"
         assert [b.markup for b in blocks] == ["Before.", expected, "After."]
 
     def test_image_placeholder(self) -> None:
         """An image reference renders as an italic placeholder, never embedded."""
-        markup = okf.render_page("![alt text](img.png)").blocks[0].markup
+        markup = _text_blocks(okf.render_page("![alt text](img.png)"))[0].markup
         assert "▨ image: alt text" in markup
 
     def test_ordered_list_numbered(self) -> None:
         """Ordered-list items keep their numbers instead of degrading to bullets."""
-        blocks = okf.render_page("1. first\n2. second").blocks
+        blocks = _text_blocks(okf.render_page("1. first\n2. second"))
         assert [b.markup for b in blocks] == ["1. first", "2. second"]
 
     def test_ordered_list_start_and_renumbering(self) -> None:
         """Numbering runs sequentially from the list's start, as CommonMark renders it."""
-        blocks = okf.render_page("3. a\n3. b").blocks  # source repeats '3.'
+        blocks = _text_blocks(okf.render_page("3. a\n3. b"))  # source repeats '3.'
         assert [b.markup for b in blocks] == ["3. a", "4. b"]
 
     def test_ordered_list_numbering_survives_nested_bullets(self) -> None:
         """A nested bullet list neither resets nor inherits the outer numbering."""
-        blocks = okf.render_page("1. a\n   - sub\n2. b").blocks
-        markups = [b.markup for b in blocks]
+        markups = [b.markup for b in _text_blocks(okf.render_page("1. a\n   - sub\n2. b"))]
         assert markups[0] == "1. a"
         assert markups[1].endswith("•  sub")
         assert markups[2] == "2. b"
 
-    def test_table_rows_and_cells_preserved(self) -> None:
-        """A table renders as one block of pipe-joined rows: bold header, all cells kept."""
+    def test_table_rows_padded_to_aligned_columns(self) -> None:
+        """A table becomes a TableBlock: colored header, cells space-padded per column.
+
+        Padding counts *visible* characters, so a cell's markup tags don't skew
+        its column ("two" aligns despite its [i]…[/i] wrapper).
+        """
         md = "| Col A | Col B |\n|-------|-------|\n| one   | *two* |\n| three | four  |\n"
         blocks = okf.render_page(md).blocks
         assert len(blocks) == 1
-        rows = blocks[0].markup.split("\n")
-        assert rows[0] == "[b]Col A[/b]  |  [b]Col B[/b]"
-        assert rows[1] == "one  |  [i]two[/i]"  # inline markup works inside cells
-        assert rows[2] == "three  |  four"
+        table = blocks[0]
+        assert isinstance(table, okf.TableBlock)
+        assert table.rows[0] == f"[color={okf.HEADING_COLOR}]Col A  Col B[/color]"
+        assert table.rows[1] == "one    [i]two[/i]"  # "one" padded to width of "three"
+        assert table.rows[2] == "three  four"
+
+    def test_table_outlier_cell_does_not_widen_column(self) -> None:
+        """A cell past TABLE_COL_WIDTH_CAP overflows its own row, not the whole column."""
+        long_cell = "L" * (okf.TABLE_COL_WIDTH_CAP + 10)
+        md = f"| A | B |\n|---|---|\n| short | x |\n| {long_cell} | y |\n"
+        table = okf.render_page(md).blocks[0]
+        assert isinstance(table, okf.TableBlock)
+        assert table.rows[1] == "short  x"  # column width set by "short", not the outlier
+        assert table.rows[2] == f"{long_cell}  y"  # the outlier row alone runs long
 
     def test_table_between_paragraphs(self) -> None:
         """Surrounding paragraphs are unaffected by the table's token consumption."""
         md = "Before.\n\n| H |\n|---|\n| cell |\n\nAfter.\n"
-        markups = [b.markup for b in okf.render_page(md).blocks]
-        assert markups == ["Before.", "[b]H[/b]\ncell", "After."]
+        page = okf.render_page(md)
+        assert [b.markup for b in _text_blocks(page)] == ["Before.", "After."]
+        table = page.blocks[1]
+        assert isinstance(table, okf.TableBlock)
+        assert table.rows == [f"[color={okf.HEADING_COLOR}]H[/color]", "cell"]
 
     def test_footnote_marker_and_definition(self) -> None:
         """A footnote yields a tappable marker, a 'Footnotes' header, and an anchored def."""
         page = okf.render_page("Here[^1] is a claim.\n\n[^1]: The supporting detail.")
-        marker = next(b.markup for b in page.blocks if "[ref=fn:1]" in b.markup)
+        blocks = _text_blocks(page)
+        marker = next(b.markup for b in blocks if "[ref=fn:1]" in b.markup)
         # Raised by [sup]; the inner [size=…] overrides [sup]'s halving of the font size.
         assert f"[sup][size={okf.FOOTNOTE_REF_SIZE}]&bl;1&br;[/size][/sup]" in marker
         footnotes_header = f"[color={okf.HEADING_COLOR}][b]Footnotes[/b][/color]"
-        assert any(b.markup == footnotes_header for b in page.blocks)  # the section header
-        defs = [b for b in page.blocks if b.anchor == "fn:1"]
+        assert any(b.markup == footnotes_header for b in blocks)  # the section header
+        defs = [b for b in blocks if b.anchor == "fn:1"]
         assert len(defs) == 1
         assert "The supporting detail." in defs[0].markup
 

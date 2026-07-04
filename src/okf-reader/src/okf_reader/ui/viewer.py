@@ -27,6 +27,7 @@ from kivy.uix.treeview import TreeView, TreeViewLabel
 from okf_reader.core.backgrounds import ImageProvider, choose_image
 from okf_reader.core.render import (
     BundleDir,
+    TableBlock,
     dir_title,
     list_children,
     render_page,
@@ -34,6 +35,10 @@ from okf_reader.core.render import (
 )
 
 BODY_LINE_HEIGHT = 1.25
+# Tables come from the core space-padded to aligned columns (see TableBlock), which
+# only lines up in a monospace face. RobotoMono ships with Kivy (regular only —
+# another reason table headers are colored, not bold).
+TABLE_FONT_NAME = "RobotoMono-Regular"
 BODY_PADDING = (16, 8, 24, 16)  # left, top, right, bottom
 BODY_BLOCK_SPACING = 12
 POPUP_PADDING = 12
@@ -276,6 +281,9 @@ class OKFViewer(RelativeLayout):
         self.body.clear_widgets()
         self._anchors = {}
         for blk in page.blocks:
+            if isinstance(blk, TableBlock):
+                self.body.add_widget(self._table_widget(blk))
+                continue
             lbl = Label(
                 text=blk.markup,
                 markup=True,
@@ -293,6 +301,35 @@ class OKFViewer(RelativeLayout):
                 self._anchors[blk.anchor] = blk.markup
             self.body.add_widget(lbl)
         self.body_scroll.scroll_y = 1
+
+    def _table_widget(self, blk: TableBlock) -> ScrollView:
+        """Build the widget for a table: monospace rows, tightly stacked, one per Label.
+
+        One Label per row (not one for the whole table) keeps each texture small —
+        a several-hundred-row table in a single Label would exceed the GPU texture
+        size limit. Each label takes its natural (texture) size so the columns'
+        space padding is preserved, and the stack sits in its own horizontal
+        ScrollView so a wide table scrolls instead of clipping.
+        """
+        stack = BoxLayout(orientation="vertical", size_hint=(None, None))
+        stack.bind(
+            minimum_height=stack.setter("height"),
+            minimum_width=stack.setter("width"),
+        )
+        for row in blk.rows:
+            lbl = Label(
+                text=row,
+                markup=True,
+                font_name=TABLE_FONT_NAME,
+                font_size=blk.font_size,
+                size_hint=(None, None),
+            )
+            lbl.bind(texture_size=lbl.setter("size"))
+            stack.add_widget(lbl)
+        scroller = ScrollView(size_hint=(1, None), do_scroll_y=False, height=0)
+        stack.bind(height=scroller.setter("height"))
+        scroller.add_widget(stack)
+        return scroller
 
     def _on_ref(self, label, ref: str) -> None:  # noqa: ANN001
         if ref.startswith("fn:"):
