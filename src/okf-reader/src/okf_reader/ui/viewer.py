@@ -40,10 +40,11 @@ POPUP_PADDING = 12
 TREE_PANEL_WIDTH = 0.28  # fraction of the window; the page panel gets the rest
 # Multiplied into the background image (Kivy Image.color) so white text stays
 # readable over it — the same darkening mechanism the Barks Reader's kv files use.
-WINDOW_BG_TINT = (0.22, 0.22, 0.22, 1)
-# Translucent black drawn over the background image behind the tree panel only,
-# softening it a touch further there than in the reading pane.
-TREE_PANEL_SCRIM = (0, 0, 0, 0.25)
+WINDOW_BG_TINT = (0.30, 0.30, 0.30, 1)
+# Translucent black drawn over the background image behind the reading pane only,
+# so the image shows more vividly behind the tree panel than under the page text.
+# Net effect: tree panel at 0.30, reading pane at ~0.22 (0.30 x (1 - 0.27)).
+PAGE_PANEL_SCRIM = (0, 0, 0, 0.27)
 
 
 class OKFViewer(RelativeLayout):
@@ -80,18 +81,18 @@ class OKFViewer(RelativeLayout):
         # bind passes (treeview, selected_node); we only want the node (2nd arg)
         self.tree.bind(selected_node=lambda *args: self._on_node(args[1]))
         self.tree_scroll.add_widget(self.tree)
-        # Scrim between the background image and the tree text (canvas.before
-        # renders under the panel's widgets), kept glued to the panel's rectangle.
-        with self.tree_scroll.canvas.before:  # ty: ignore[unresolved-attribute]
-            Color(rgba=TREE_PANEL_SCRIM)
-            self._tree_scrim = Rectangle(pos=self.tree_scroll.pos, size=self.tree_scroll.size)
-        self.tree_scroll.bind(
-            pos=lambda _inst, pos: setattr(self._tree_scrim, "pos", pos),
-            size=lambda _inst, size: setattr(self._tree_scrim, "size", size),
-        )
         content.add_widget(self.tree_scroll)
 
         right = BoxLayout(orientation="vertical", size_hint=(1 - TREE_PANEL_WIDTH, 1), spacing=4)
+        # Scrim between the background image and the page text (canvas.before
+        # renders under the panel's widgets), kept glued to the panel's rectangle.
+        with right.canvas.before:  # ty: ignore[unresolved-attribute]
+            Color(rgba=PAGE_PANEL_SCRIM)
+            self._page_scrim = Rectangle(pos=right.pos, size=right.size)
+        right.bind(
+            pos=lambda _inst, pos: setattr(self._page_scrim, "pos", pos),
+            size=lambda _inst, size: setattr(self._page_scrim, "size", size),
+        )
         bar = BoxLayout(size_hint_y=None, height=32, spacing=6)
         self.back_btn = Button(text="< Back", size_hint_x=None, width=90, disabled=True)
         self.back_btn.bind(on_release=lambda *_: self._go_back())
