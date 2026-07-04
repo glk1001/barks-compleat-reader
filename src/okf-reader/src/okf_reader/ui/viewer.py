@@ -39,7 +39,7 @@ POPUP_PADDING = 12
 TREE_PANEL_WIDTH = 0.28  # fraction of the window; the page panel gets the rest
 # Multiplied into the background image (Kivy Image.color) so white text stays
 # readable over it — the same darkening mechanism the Barks Reader's kv files use.
-WINDOW_BG_TINT = (0.28, 0.28, 0.28, 1)
+WINDOW_BG_TINT = (0.22, 0.22, 0.22, 1)
 
 
 class OKFViewer(RelativeLayout):

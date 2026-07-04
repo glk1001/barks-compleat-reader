@@ -31,6 +31,23 @@ class TestDirPerTitleImageProvider:
         images = provider.candidate_images({"title": "A Financial Fable"}, tmp_path / "p.md")
         assert [p.name for p in images] == ["094-1.png", "094-2.jpg"]
 
+    def test_title_with_filesystem_unsafe_chars_matches_stripped_dir(self, tmp_path: Path) -> None:
+        """Quotes/question marks absent from directory names still match.
+
+        The Barks panels tree drops them: 'Adventure "Down Under"' lives in
+        "Adventure Down Under", "Want to Buy an Island?" loses its "?".
+        """
+        root = tmp_path / "Favourites"
+        (root / "Adventure Down Under").mkdir(parents=True)
+        (root / "Adventure Down Under" / "panel.png").touch()
+        (root / "Want to Buy an Island").mkdir()
+        (root / "Want to Buy an Island" / "island.png").touch()
+        provider = bg.DirPerTitleImageProvider(root)
+        quoted = provider.candidate_images({"title": 'Adventure "Down Under"'}, tmp_path / "p.md")
+        assert [p.name for p in quoted] == ["panel.png"]
+        question = provider.candidate_images({"title": "Want to Buy an Island?"}, tmp_path / "p.md")
+        assert [p.name for p in question] == ["island.png"]
+
     def test_unmatched_title_falls_back_to_all_images(self, tmp_path: Path) -> None:
         """A page with no matching title directory gets the whole pool."""
         provider = bg.DirPerTitleImageProvider(_make_favourites(tmp_path))

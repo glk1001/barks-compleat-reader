@@ -44,11 +44,16 @@ class DirPerTitleImageProvider:
         """Return the title-matched images, else the all-titles fallback pool."""
         title = frontmatter.get("title")
         if isinstance(title, str) and title:
-            title_dir = self._root / title
-            if title_dir.is_dir():
-                images = _image_files(title_dir)
-                if images:
-                    return images
+            # Exact directory first, then the title minus filesystem-awkward
+            # characters — image trees drop them from directory names (e.g. the
+            # Barks panels dir for 'Adventure "Down Under"' is "Adventure Down
+            # Under", and "Want to Buy an Island?" loses its "?").
+            for name in (title, _strip_unsafe_filename_chars(title)):
+                title_dir = self._root / name
+                if title_dir.is_dir():
+                    images = _image_files(title_dir)
+                    if images:
+                        return images
         if self._all_images is None:
             self._all_images = (
                 sorted(
@@ -60,6 +65,10 @@ class DirPerTitleImageProvider:
                 else []
             )
         return self._all_images
+
+
+def _strip_unsafe_filename_chars(title: str) -> str:
+    return title.replace('"', "").replace("?", "")
 
 
 def _image_files(directory: Path) -> list[Path]:
