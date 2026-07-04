@@ -39,7 +39,7 @@ HEADING_SIZES = {"h1": 30, "h2": 24, "h3": 20, "h4": 18, "h5": 16, "h6": 16}
 # shrink so markers stay readable. Kivy pins superscript glyphs near the top of
 # the line box, so the visible "raise" is line height minus marker height —
 # this size is the only knob for both marker size and how raised it looks.
-FOOTNOTE_REF_SIZE = 12
+FOOTNOTE_REF_SIZE = 11
 
 # Paragraphs containing this marker are editorial provenance notes, not content
 # (the barks-wiki bundle opens most concepts with a blockquote along the lines of
