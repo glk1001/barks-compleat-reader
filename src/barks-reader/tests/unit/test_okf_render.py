@@ -167,6 +167,84 @@ class TestRenderPage:
         assert "The supporting detail." in defs[0].markup
 
 
+class TestConceptTitle:
+    def test_frontmatter_title_used(self, tmp_path: Path) -> None:
+        """A concept's frontmatter ``title`` is its display title."""
+        p = tmp_path / "c.md"
+        p.write_text("---\ntype: concept\ntitle: Real Title\n---\nBody", encoding="utf-8")
+        assert okf.concept_title(p) == "Real Title"
+
+    def test_missing_title_falls_back_to_stem(self, tmp_path: Path) -> None:
+        """With no ``title`` key, the filename stem is used."""
+        p = tmp_path / "my-concept.md"
+        p.write_text("---\ntype: concept\n---\nBody", encoding="utf-8")
+        assert okf.concept_title(p) == "my-concept"
+
+    def test_empty_or_null_title_falls_back_to_stem(self, tmp_path: Path) -> None:
+        """An empty or null ``title`` is ignored in favour of the stem."""
+        empty = tmp_path / "e.md"
+        empty.write_text('---\ntype: concept\ntitle: ""\n---\nBody', encoding="utf-8")
+        null = tmp_path / "n.md"
+        null.write_text("---\ntype: concept\ntitle:\n---\nBody", encoding="utf-8")
+        assert okf.concept_title(empty) == "e"
+        assert okf.concept_title(null) == "n"
+
+
+class TestLoadBundleTree:
+    @staticmethod
+    def _bundle(tmp_path: Path) -> Path:
+        """Build concept/ with two leaves, a subdir, and reserved files to skip."""
+        concept = tmp_path / "concept"
+        (concept / "sub").mkdir(parents=True)
+        (concept / "alpha.md").write_text("---\ntype: x\ntitle: Alpha\n---\nA", encoding="utf-8")
+        (concept / "zeta.md").write_text("---\ntype: x\n---\nZ", encoding="utf-8")  # no title
+        (concept / "sub" / "beta.md").write_text("---\ntype: x\ntitle: Beta\n---\nB", "utf-8")
+        (concept / "index.md").write_text("# reserved", encoding="utf-8")
+        (concept / "log.md").write_text("# reserved", encoding="utf-8")
+        return concept
+
+    def test_structure_order_and_reserved_skipped(self, tmp_path: Path) -> None:
+        """Dirs and concepts interleave in name order; reserved files are excluded."""
+        tree = okf.load_bundle_tree(self._bundle(tmp_path))
+        assert tree.name == "concept"
+        # name order of concept/: alpha.md, index.md, log.md, sub, zeta.md
+        # → after skipping reserved: alpha (concept), sub (dir), zeta (concept)
+        assert [type(c).__name__ for c in tree.children] == [
+            "ConceptNode",
+            "BundleDir",
+            "ConceptNode",
+        ]
+        assert not any(
+            isinstance(c, okf.ConceptNode) and c.path.name in okf.RESERVED_FILES
+            for c in tree.children
+        )
+
+    def test_concept_titles_and_paths(self, tmp_path: Path) -> None:
+        """Leaves carry the resolved title and the concept's file path."""
+        concept = self._bundle(tmp_path)
+        tree = okf.load_bundle_tree(concept)
+        alpha, _sub, zeta = tree.children
+        assert (alpha.title, alpha.path) == ("Alpha", concept / "alpha.md")
+        assert (zeta.title, zeta.path) == ("zeta", concept / "zeta.md")  # stem fallback
+
+    def test_nested_directory_recursed(self, tmp_path: Path) -> None:
+        """Subdirectories become nested BundleDirs holding their own concepts."""
+        concept = self._bundle(tmp_path)
+        sub = okf.load_bundle_tree(concept).children[1]
+        assert isinstance(sub, okf.BundleDir)
+        assert sub.name == "sub"
+        assert len(sub.children) == 1
+        assert sub.children[0].title == "Beta"
+
+    def test_non_directory_root_is_empty(self, tmp_path: Path) -> None:
+        """A root that is not a directory yields an empty BundleDir (no raise)."""
+        f = tmp_path / "lonely.md"
+        f.write_text("---\ntype: x\n---\nB", encoding="utf-8")
+        tree = okf.load_bundle_tree(f)
+        assert isinstance(tree, okf.BundleDir)
+        assert tree.children == ()
+
+
 class TestEsc:
     def test_escapes_markup_metacharacters(self) -> None:
         """_esc escapes ampersand and both square brackets, and nothing else."""

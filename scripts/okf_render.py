@@ -63,6 +63,23 @@ class Page:
     blocks: list[Block] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class ConceptNode:
+    """A leaf in the bundle tree: one concept document and its display title."""
+
+    path: Path
+    title: str
+
+
+@dataclass(frozen=True)
+class BundleDir:
+    """A directory node: its child directories and concept documents, in listing order."""
+
+    path: Path
+    name: str
+    children: tuple[BundleDir | ConceptNode, ...] = ()
+
+
 # --------------------------------------------------------------------------- render
 
 
@@ -204,6 +221,37 @@ def resolve_link(page_path: Path, href: str, bundle: Path) -> Path | None:
     except ValueError:
         return None
     return target if target.is_file() else None
+
+
+# --------------------------------------------------------------------------- bundle tree
+
+RESERVED_FILES = ("index.md", "log.md")  # SPEC §3.1 — reserved, never concept documents
+
+
+def concept_title(path: Path) -> str:
+    """Display title for a concept file: its frontmatter ``title``, else the filename stem."""
+    fm, _ = parse_frontmatter(path.read_text(encoding="utf-8"))
+    title = fm.get("title")
+    return title if isinstance(title, str) and title else path.stem
+
+
+def load_bundle_tree(root: Path) -> BundleDir:
+    """Walk ``root`` into a Kivy-free tree of directories and concept documents.
+
+    Subdirectories become nested `BundleDir`s; non-reserved ``.md`` files become
+    `ConceptNode` leaves (``index.md``/``log.md`` are reserved — SPEC §3.1 — and
+    skipped). Directories and concepts are interleaved in name order, matching the
+    filesystem listing. A ``root`` that is not a directory yields an empty
+    `BundleDir` (tolerant consumption, SPEC §9).
+    """
+    children: list[BundleDir | ConceptNode] = []
+    if root.is_dir():
+        for child in sorted(root.iterdir()):
+            if child.is_dir():
+                children.append(load_bundle_tree(child))
+            elif child.suffix == ".md" and child.name not in RESERVED_FILES:
+                children.append(ConceptNode(child, concept_title(child)))
+    return BundleDir(root, root.name, tuple(children))
 
 
 # --------------------------------------------------------------------------- self-test

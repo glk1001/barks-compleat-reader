@@ -33,7 +33,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from okf_render import parse_frontmatter, render_page, resolve_link, selftest
+from okf_render import BundleDir, load_bundle_tree, render_page, resolve_link, selftest
 
 HIGHLIGHT_COLOR = "ffe066"  # the footnote definition you just jumped to (applied at tap time)
 
@@ -79,21 +79,19 @@ def _build_app(bundle: Path):  # noqa: ANN202  (kivy types are dynamic)
             right.add_widget(self.body_scroll)
             self.add_widget(right)
 
-            self._populate(bundle / "concept", None)
+            self._add_tree_nodes(load_bundle_tree(bundle / "concept").children, None)
 
-        def _populate(self, path: Path, parent) -> None:  # noqa: ANN001
-            if not path.is_dir():
-                return
-            for child in sorted(path.iterdir()):
-                if child.is_dir():
-                    node = self.tree.add_node(TreeViewLabel(text=f"[{child.name}]"), parent)
-                    self._populate(child, node)
-                elif child.suffix == ".md" and child.name not in ("index.md", "log.md"):
-                    # index.md / log.md are reserved (SPEC §3.1) — not concepts.
-                    fm, _ = parse_frontmatter(child.read_text(encoding="utf-8"))
-                    node = TreeViewLabel(text=fm.get("title", child.stem))
-                    node.file_path = child
-                    self.tree.add_node(node, parent)
+        def _add_tree_nodes(self, nodes, parent) -> None:  # noqa: ANN001
+            # Bind the Kivy-free bundle tree (okf_render.load_bundle_tree) to TreeView
+            # widgets; all filesystem/frontmatter work already happened in the core.
+            for node in nodes:
+                if isinstance(node, BundleDir):
+                    tv = self.tree.add_node(TreeViewLabel(text=f"[{node.name}]"), parent)
+                    self._add_tree_nodes(node.children, tv)
+                else:  # ConceptNode
+                    tv = TreeViewLabel(text=node.title)
+                    tv.file_path = node.path
+                    self.tree.add_node(tv, parent)
 
         def _on_node(self, node) -> None:  # noqa: ANN001
             path = getattr(node, "file_path", None)
