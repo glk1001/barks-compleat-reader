@@ -47,6 +47,7 @@ fontstyle
 fontweight
 getpid
 getpixel
+graphify
 hidinput
 hitbox
 idempotently
