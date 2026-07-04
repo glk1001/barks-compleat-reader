@@ -183,6 +183,24 @@ class TestRenderPage:
         markup = okf.render_page("![alt text](img.png)").blocks[0].markup
         assert "▨ image: alt text" in markup
 
+    def test_ordered_list_numbered(self) -> None:
+        """Ordered-list items keep their numbers instead of degrading to bullets."""
+        blocks = okf.render_page("1. first\n2. second").blocks
+        assert [b.markup for b in blocks] == ["1. first", "2. second"]
+
+    def test_ordered_list_start_and_renumbering(self) -> None:
+        """Numbering runs sequentially from the list's start, as CommonMark renders it."""
+        blocks = okf.render_page("3. a\n3. b").blocks  # source repeats '3.'
+        assert [b.markup for b in blocks] == ["3. a", "4. b"]
+
+    def test_ordered_list_numbering_survives_nested_bullets(self) -> None:
+        """A nested bullet list neither resets nor inherits the outer numbering."""
+        blocks = okf.render_page("1. a\n   - sub\n2. b").blocks
+        markups = [b.markup for b in blocks]
+        assert markups[0] == "1. a"
+        assert markups[1].endswith("•  sub")
+        assert markups[2] == "2. b"
+
     def test_table_rows_and_cells_preserved(self) -> None:
         """A table renders as one block of pipe-joined rows: bold header, all cells kept."""
         md = "| Col A | Col B |\n|-------|-------|\n| one   | *two* |\n| three | four  |\n"

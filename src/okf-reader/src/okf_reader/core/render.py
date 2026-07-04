@@ -1,4 +1,4 @@
-# ruff: noqa: PLR2004, C901, PLR0912
+# ruff: noqa: PLR2004, C901, PLR0912, PLR0915
 # (branchy markdown token dispatch; small magic font sizes in render_page)
 """Kivy-free OKF render + bundle-model layer — the core of the okf_reader package.
 
@@ -214,6 +214,7 @@ def render_page(text: str) -> Page:
     blocks: list[Block] = []
     indent = 0
     pending_bullet = ""
+    list_counters: list[int | None] = []  # one entry per open list, innermost last
     i, n = 0, len(tokens)
     while i < n:
         t = tokens[i]
@@ -248,10 +249,23 @@ def render_page(text: str) -> Page:
             continue
         if tp in ("bullet_list_open", "ordered_list_open", "blockquote_open"):
             indent += 1
+            if tp == "bullet_list_open":
+                list_counters.append(None)  # None marks an unnumbered (bullet) list
+            elif tp == "ordered_list_open":
+                list_counters.append(int(t.attrGet("start") or 1))
         elif tp in ("bullet_list_close", "ordered_list_close", "blockquote_close"):
             indent = max(indent - 1, 0)
+            if tp != "blockquote_close" and list_counters:
+                list_counters.pop()
         elif tp == "list_item_open":
-            pending_bullet = "    " * max(indent - 1, 0) + "•  "
+            # Number the item from the innermost list's counter (CommonMark numbering:
+            # sequential from the list's start, whatever the source says); bullet lists
+            # carry None and keep the glyph.
+            number = list_counters[-1] if list_counters else None
+            if number is not None:
+                list_counters[-1] = number + 1
+            marker = "•  " if number is None else f"{number}. "
+            pending_bullet = "    " * max(indent - 1, 0) + marker
         elif tp in ("fence", "code_block"):
             blocks.append(Block(f"[color={CODE_COLOR}]{_esc(t.content.rstrip())}[/color]", 14))
         elif tp == "hr":
