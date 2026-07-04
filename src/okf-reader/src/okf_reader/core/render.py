@@ -155,6 +155,58 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
     return {}, text
 
 
+def _footnote_block(tokens: list, start: int) -> tuple[Block, int]:
+    """Render the footnote definition at ``tokens[start]`` (its ``footnote_open``).
+
+    The whole definition (up to its ``footnote_close``) becomes one block, tagged
+    with an anchor so a tapped [^label] marker can show it. Consuming to
+    ``footnote_close`` also stops the inner paragraph being re-rendered as a stray
+    block; returns the block and the index just past ``footnote_close``.
+    """
+    t = tokens[start]
+    label = t.meta.get("label") or str(t.meta.get("id", ""))
+    parts: list[str] = []
+    j = start + 1
+    n = len(tokens)
+    while j < n and tokens[j].type != "footnote_close":
+        if tokens[j].type == "inline":
+            parts.append(_inline(tokens[j].children or []))
+        j += 1
+    block = Block(f"[b][{_esc(label)}][/b] " + " ".join(parts), 13, anchor=f"fn:{label}")
+    return block, j + 1
+
+
+def _table_block(tokens: list, start: int) -> tuple[Block, int]:
+    """Render the table starting at ``tokens[start]`` (its ``table_open``) into one Block.
+
+    Kivy Labels have no columnar layout, so a table renders as one block of
+    pipe-separated lines: every row's cell content survives (bold for header
+    cells), just without column alignment. Consumes up to ``table_close`` —
+    like footnote definitions — so the cells' inline tokens are not re-rendered;
+    returns the block and the index just past ``table_close``.
+    """
+    rows: list[str] = []
+    cells: list[str] = []
+    in_header = False
+    j = start + 1
+    n = len(tokens)
+    while j < n and tokens[j].type != "table_close":
+        tj = tokens[j].type
+        if tj == "thead_open":
+            in_header = True
+        elif tj == "thead_close":
+            in_header = False
+        elif tj == "tr_open":
+            cells = []
+        elif tj == "inline":
+            cell = _inline(tokens[j].children or [])
+            cells.append(f"[b]{cell}[/b]" if in_header else cell)
+        elif tj == "tr_close":
+            rows.append("  |  ".join(cells))
+        j += 1
+    return Block("\n".join(rows), 14), j + 1
+
+
 def render_page(text: str) -> Page:
     """Parse a page's frontmatter and render its body + footnotes to Kivy-markup blocks."""
     fm, body = parse_frontmatter(text)
@@ -187,20 +239,12 @@ def render_page(text: str) -> Page:
             i += 3
             continue
         if tp == "footnote_open":
-            # Render the whole footnote definition (up to its footnote_close) as one block,
-            # tagged with an anchor so a tapped [^label] marker can scroll to it. Skipping to
-            # footnote_close also stops the inner paragraph being re-rendered as a stray block.
-            label = t.meta.get("label") or str(t.meta.get("id", ""))
-            parts: list[str] = []
-            j = i + 1
-            while j < n and tokens[j].type != "footnote_close":
-                if tokens[j].type == "inline":
-                    parts.append(_inline(tokens[j].children or []))
-                j += 1
-            blocks.append(
-                Block(f"[b][{_esc(label)}][/b] " + " ".join(parts), 13, anchor=f"fn:{label}")
-            )
-            i = j + 1
+            block, i = _footnote_block(tokens, i)
+            blocks.append(block)
+            continue
+        if tp == "table_open":
+            block, i = _table_block(tokens, i)
+            blocks.append(block)
             continue
         if tp in ("bullet_list_open", "ordered_list_open", "blockquote_open"):
             indent += 1

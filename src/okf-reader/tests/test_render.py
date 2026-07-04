@@ -183,6 +183,22 @@ class TestRenderPage:
         markup = okf.render_page("![alt text](img.png)").blocks[0].markup
         assert "▨ image: alt text" in markup
 
+    def test_table_rows_and_cells_preserved(self) -> None:
+        """A table renders as one block of pipe-joined rows: bold header, all cells kept."""
+        md = "| Col A | Col B |\n|-------|-------|\n| one   | *two* |\n| three | four  |\n"
+        blocks = okf.render_page(md).blocks
+        assert len(blocks) == 1
+        rows = blocks[0].markup.split("\n")
+        assert rows[0] == "[b]Col A[/b]  |  [b]Col B[/b]"
+        assert rows[1] == "one  |  [i]two[/i]"  # inline markup works inside cells
+        assert rows[2] == "three  |  four"
+
+    def test_table_between_paragraphs(self) -> None:
+        """Surrounding paragraphs are unaffected by the table's token consumption."""
+        md = "Before.\n\n| H |\n|---|\n| cell |\n\nAfter.\n"
+        markups = [b.markup for b in okf.render_page(md).blocks]
+        assert markups == ["Before.", "[b]H[/b]\ncell", "After."]
+
     def test_footnote_marker_and_definition(self) -> None:
         """A footnote yields a tappable marker, a 'Footnotes' header, and an anchored def."""
         page = okf.render_page("Here[^1] is a claim.\n\n[^1]: The supporting detail.")
