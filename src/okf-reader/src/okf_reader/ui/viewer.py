@@ -97,6 +97,15 @@ class OKFViewer(BoxLayout):
         path = getattr(node, "file_path", None)
         if path:
             self._show(Path(path), push=True)
+            return
+        # A directory: show its reserved index.md listing when it has one. Its
+        # relative links resolve against the directory (resolve_link gets the
+        # index.md as the page path), so the listing is navigable.
+        bundle_path = getattr(node, "bundle_path", None)
+        if bundle_path is not None:
+            index = Path(bundle_path) / "index.md"
+            if index.is_file():
+                self._show(index, push=True)
 
     def _go_back(self) -> None:
         if len(self.history) > 1:
