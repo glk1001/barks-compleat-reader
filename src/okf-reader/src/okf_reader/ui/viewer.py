@@ -16,11 +16,14 @@ from kivy.app import App
 from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
+from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.treeview import TreeView, TreeViewLabel
 
+from okf_reader.core.backgrounds import ImageProvider, choose_image
 from okf_reader.core.render import (
     BundleDir,
     dir_title,
@@ -34,15 +37,25 @@ BODY_PADDING = (16, 8, 24, 16)  # left, top, right, bottom
 BODY_BLOCK_SPACING = 12
 POPUP_PADDING = 12
 TREE_PANEL_WIDTH = 0.28  # fraction of the window; the page panel gets the rest
+# Multiplied into the background image (Kivy Image.color) so white text stays
+# readable over it — the same darkening mechanism the Barks Reader's kv files use.
+PAGE_BG_TINT = (0.35, 0.35, 0.35, 1)
 
 
 class OKFViewer(BoxLayout):
-    def __init__(self, bundle: Path, **kwargs) -> None:  # noqa: ANN003
+    def __init__(
+        self,
+        bundle: Path,
+        image_provider: ImageProvider | None = None,
+        **kwargs,  # noqa: ANN003
+    ) -> None:
         super().__init__(orientation="horizontal", spacing=8, padding=8, **kwargs)
         self.bundle = bundle
         self.history: list[Path] = []
         self._anchors: dict[str, str] = {}  # "fn:<label>" -> the definition block's markup
         self._syncing_tree = False  # True while _sync_tree_to selects programmatically
+        self._image_provider = image_provider
+        self._last_bg: Path | None = None
 
         self.tree_scroll = ScrollView(size_hint=(TREE_PANEL_WIDTH, 1))
         self.tree = TreeView(
@@ -58,7 +71,12 @@ class OKFViewer(BoxLayout):
         self.tree_scroll.add_widget(self.tree)
         self.add_widget(self.tree_scroll)
 
-        right = BoxLayout(orientation="vertical", size_hint=(1 - TREE_PANEL_WIDTH, 1), spacing=4)
+        # The page panel layers over a context background image (RelativeLayout
+        # children stack in add order): image below, bar+body above.
+        right_container = RelativeLayout(size_hint=(1 - TREE_PANEL_WIDTH, 1))
+        self.bg_image = Image(fit_mode="cover", color=PAGE_BG_TINT, size_hint=(1, 1))
+        right_container.add_widget(self.bg_image)
+        right = BoxLayout(orientation="vertical", size_hint=(1, 1), spacing=4)
         bar = BoxLayout(size_hint_y=None, height=32, spacing=6)
         self.back_btn = Button(text="< Back", size_hint_x=None, width=90, disabled=True)
         self.back_btn.bind(on_release=lambda *_: self._go_back())
@@ -75,7 +93,8 @@ class OKFViewer(BoxLayout):
         self.body.bind(minimum_height=self.body.setter("height"))
         self.body_scroll.add_widget(self.body)
         right.add_widget(self.body_scroll)
-        self.add_widget(right)
+        right_container.add_widget(right)
+        self.add_widget(right_container)
 
         # Lazy: load only the bundle's top level (all tiers) now; each directory's
         # children are read on first expansion (see _on_dir_open). This keeps startup
@@ -123,6 +142,15 @@ class OKFViewer(BoxLayout):
         if len(self.history) > 1:
             self.history.pop()
             self._show(self.history[-1], push=False)
+
+    def _update_background(self, frontmatter: dict, path: Path) -> None:
+        """Set the page panel's background to an image suiting the page, if any."""
+        if self._image_provider is None:
+            return
+        candidates = self._image_provider.candidate_images(frontmatter, path)
+        image = choose_image(candidates, self._last_bg)
+        self._last_bg = image
+        self.bg_image.source = str(image) if image is not None else ""
 
     def _sync_tree_to(self, path: Path) -> None:
         """Select and reveal the tree node for ``path``, expanding ancestors as needed.
@@ -195,6 +223,7 @@ class OKFViewer(BoxLayout):
         self.back_btn.disabled = len(self.history) <= 1
         self._sync_tree_to(path)
         page = render_page(path.read_text(encoding="utf-8"))
+        self._update_background(page.frontmatter, path)
         self.body.clear_widgets()
         self._anchors = {}
         for blk in page.blocks:
@@ -253,15 +282,21 @@ class OKFViewer(BoxLayout):
 
 
 class OKFApp(App):
-    def __init__(self, bundle: Path, **kwargs) -> None:  # noqa: ANN003
+    def __init__(
+        self,
+        bundle: Path,
+        image_provider: ImageProvider | None = None,
+        **kwargs,  # noqa: ANN003
+    ) -> None:
         super().__init__(**kwargs)
         self._bundle = bundle
+        self._image_provider = image_provider
 
     def build(self) -> OKFViewer:
         self.title = f"OKF Reader — {self._bundle.name}"
-        return OKFViewer(self._bundle)
+        return OKFViewer(self._bundle, image_provider=self._image_provider)
 
 
-def run(bundle: Path) -> None:
+def run(bundle: Path, image_provider: ImageProvider | None = None) -> None:
     """Launch the standalone OKF reader on ``bundle`` (blocks until the window closes)."""
-    OKFApp(bundle).run()
+    OKFApp(bundle, image_provider=image_provider).run()

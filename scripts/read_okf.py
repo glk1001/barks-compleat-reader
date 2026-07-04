@@ -21,6 +21,8 @@ imported here in the launcher only — okf_reader itself stays independent of th
 Barks reader owns the window.
 """
 
+import os
+from configparser import ConfigParser
 from pathlib import Path
 from typing import Annotated
 
@@ -29,6 +31,13 @@ import typer
 from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import SCREEN_METRICS, get_best_window_height_fit
+from dotenv import load_dotenv
+from okf_reader.core.backgrounds import DirPerTitleImageProvider
+
+load_dotenv(Path(__file__).parent.parent / ".env.runtime")
+
+BARKS_READER_SECTION = "Barks Reader"
+DEFAULT_PANELS_DIR = "~/Books/Carl Barks/Barks Panels Pngs"
 
 app = typer.Typer()
 
@@ -78,6 +87,23 @@ def _pin_window_to_primary_monitor() -> None:
     Config.set("graphics", "height", win_height)  # ty: ignore[unresolved-attribute]
 
 
+def _favourites_image_provider() -> DirPerTitleImageProvider | None:
+    """Wire the Barks 'Favourites' panels tree as the background-image source.
+
+    The panels root comes from barks-reader.ini's ``png_barks_panels_dir`` (the same
+    key the Barks Reader uses), falling back to the stock location. Backgrounds are
+    optional: no Favourites directory means the reader just runs without them.
+    """
+    panels_dir = DEFAULT_PANELS_DIR
+    config_dir = os.environ.get("BARKS_READER_CONFIG_DIR")
+    if config_dir:
+        parser = ConfigParser()
+        parser.read(Path(config_dir) / "barks-reader.ini")
+        panels_dir = parser.get(BARKS_READER_SECTION, "png_barks_panels_dir", fallback=panels_dir)
+    favourites = Path(os.path.expandvars(panels_dir)).expanduser() / "Favourites"
+    return DirPerTitleImageProvider(favourites) if favourites.is_dir() else None
+
+
 @app.command(help="Open an OKF knowledge bundle in the standalone reader.")
 def main(
     bundle: Annotated[Path, typer.Argument(help="Path to the OKF bundle directory.")],
@@ -92,7 +118,7 @@ def main(
     # be imported after _pin_window_to_primary_monitor has set the window Config.
     from okf_reader.ui.viewer import run
 
-    run(bundle)
+    run(bundle, image_provider=_favourites_image_provider())
 
 
 if __name__ == "__main__":
