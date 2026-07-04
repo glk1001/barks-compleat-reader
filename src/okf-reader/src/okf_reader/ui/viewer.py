@@ -14,6 +14,7 @@ from pathlib import Path
 
 from kivy.app import App
 from kivy.clock import Clock
+from kivy.graphics import Color, Rectangle
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.image import Image
@@ -40,6 +41,9 @@ TREE_PANEL_WIDTH = 0.28  # fraction of the window; the page panel gets the rest
 # Multiplied into the background image (Kivy Image.color) so white text stays
 # readable over it — the same darkening mechanism the Barks Reader's kv files use.
 WINDOW_BG_TINT = (0.22, 0.22, 0.22, 1)
+# Translucent black drawn over the background image behind the tree panel only,
+# softening it a touch further there than in the reading pane.
+TREE_PANEL_SCRIM = (0, 0, 0, 0.25)
 
 
 class OKFViewer(RelativeLayout):
@@ -76,6 +80,15 @@ class OKFViewer(RelativeLayout):
         # bind passes (treeview, selected_node); we only want the node (2nd arg)
         self.tree.bind(selected_node=lambda *args: self._on_node(args[1]))
         self.tree_scroll.add_widget(self.tree)
+        # Scrim between the background image and the tree text (canvas.before
+        # renders under the panel's widgets), kept glued to the panel's rectangle.
+        with self.tree_scroll.canvas.before:  # ty: ignore[unresolved-attribute]
+            Color(rgba=TREE_PANEL_SCRIM)
+            self._tree_scrim = Rectangle(pos=self.tree_scroll.pos, size=self.tree_scroll.size)
+        self.tree_scroll.bind(
+            pos=lambda _inst, pos: setattr(self._tree_scrim, "pos", pos),
+            size=lambda _inst, size: setattr(self._tree_scrim, "size", size),
+        )
         content.add_widget(self.tree_scroll)
 
         right = BoxLayout(orientation="vertical", size_hint=(1 - TREE_PANEL_WIDTH, 1), spacing=4)
