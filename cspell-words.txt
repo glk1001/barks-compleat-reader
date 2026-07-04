@@ -94,6 +94,7 @@ ryzen
 scancode
 screeninfo
 screenmanager
+sdl
 selftest
 separator
 softbreak
