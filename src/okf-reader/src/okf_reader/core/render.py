@@ -34,6 +34,9 @@ if TYPE_CHECKING:
 # time colors (e.g. footnote highlight) belong to the UI layer, not here.
 LINK_COLOR = "4ea1ff"
 CODE_COLOR = "c0a0ff"
+# The Barks Reader's title yellow (tree_view_nodes.TITLE_LABEL_COLOR) — comic
+# caption-box yellow, distinct from links (blue) and code (violet).
+HEADING_COLOR = "ffff00"
 HEADING_SIZES = {"h1": 30, "h2": 24, "h3": 20, "h4": 18, "h5": 16, "h6": 16}
 # Kivy's [sup] halves the current font size; the inner [size=…] overrides the
 # shrink so markers stay readable. Kivy pins superscript glyphs near the top of
@@ -165,7 +168,9 @@ def render_page(text: str) -> Page:
         if tp == "heading_open":
             blocks.append(
                 Block(
-                    "[b]" + _inline(tokens[i + 1].children or []) + "[/b]",
+                    f"[color={HEADING_COLOR}][b]"
+                    + _inline(tokens[i + 1].children or [])
+                    + "[/b][/color]",
                     HEADING_SIZES.get(t.tag, 16),
                 )
             )
@@ -207,7 +212,7 @@ def render_page(text: str) -> Page:
         elif tp == "hr":
             blocks.append(Block("─" * 40))
         elif tp == "footnote_block_open":
-            blocks.append(Block("[b]Footnotes[/b]", 18))
+            blocks.append(Block(f"[color={HEADING_COLOR}][b]Footnotes[/b][/color]", 18))
         i += 1
     return Page(fm, blocks)
 

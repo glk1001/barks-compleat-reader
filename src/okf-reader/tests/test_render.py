@@ -119,10 +119,10 @@ class TestResolveLink:
 
 class TestRenderPage:
     def test_heading_markup_and_size(self) -> None:
-        """A heading becomes a bold block sized from HEADING_SIZES."""
+        """A heading becomes a bold, heading-colored block sized from HEADING_SIZES."""
         page = okf.render_page("# Title")
         assert page.frontmatter == {}
-        assert page.blocks[0].markup == "[b]Title[/b]"
+        assert page.blocks[0].markup == f"[color={okf.HEADING_COLOR}][b]Title[/b][/color]"
         assert page.blocks[0].font_size == okf.HEADING_SIZES["h1"]
 
     def test_inline_emphasis_and_code(self) -> None:
@@ -189,7 +189,8 @@ class TestRenderPage:
         marker = next(b.markup for b in page.blocks if "[ref=fn:1]" in b.markup)
         # Raised by [sup]; the inner [size=…] overrides [sup]'s halving of the font size.
         assert f"[sup][size={okf.FOOTNOTE_REF_SIZE}]&bl;1&br;[/size][/sup]" in marker
-        assert any(b.markup == "[b]Footnotes[/b]" for b in page.blocks)  # the section header
+        footnotes_header = f"[color={okf.HEADING_COLOR}][b]Footnotes[/b][/color]"
+        assert any(b.markup == footnotes_header for b in page.blocks)  # the section header
         defs = [b for b in page.blocks if b.anchor == "fn:1"]
         assert len(defs) == 1
         assert "The supporting detail." in defs[0].markup
