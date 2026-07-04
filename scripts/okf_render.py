@@ -225,6 +225,12 @@ def resolve_link(page_path: Path, href: str, bundle: Path) -> Path | None:
     base = bundle if path_part.startswith("/") else page_path.parent
     target = (base / path_part.lstrip("/")).resolve()
     if target.suffix != ".md":  # only OKF concept documents are rendered as pages
+        # KNOWN LIMITATION (intentional): the bundle's source/web tier — notably the
+        # inducks mirror — links to raw scraped .html assets, not OKF concepts, so
+        # those links deliberately do not navigate. The sibling "<page>_files/index.md"
+        # is only an auto-generated asset manifest, not readable content. Making inducks
+        # useful is bundle curation (barks-wiki), not a reader fix. Revisit if/when we
+        # add "open external/asset links in the system browser".
         return None
     try:
         target.relative_to(bundle.resolve())
