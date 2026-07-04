@@ -47,6 +47,10 @@ TREE_PANEL_SCRIM = (0, 0, 0, 0.25)
 # Same magenta the Barks Reader uses for tree selection
 # (barks_reader.ui.tree_view_nodes.TREE_VIEW_NODE_SELECTED_COLOR).
 TREE_SELECTED_COLOR = (1, 0, 1, 0.8)
+# Barks Reader tree convention: group nodes bold white, titles yellow. Here:
+# directories bold white; concept pages in the page-heading gold (ffd54a).
+TREE_DIR_TEXT_COLOR = (1, 1, 1, 1)
+TREE_CONCEPT_TEXT_COLOR = (1.0, 0.835, 0.29, 1.0)
 
 
 class OKFViewer(RelativeLayout):
@@ -73,7 +77,12 @@ class OKFViewer(RelativeLayout):
 
         self.tree_scroll = ScrollView(size_hint=(TREE_PANEL_WIDTH, 1))
         self.tree = TreeView(
-            root_options={"text": dir_title(bundle), "color_selected": TREE_SELECTED_COLOR},
+            root_options={
+                "text": dir_title(bundle),
+                "bold": True,
+                "color": TREE_DIR_TEXT_COLOR,
+                "color_selected": TREE_SELECTED_COLOR,
+            },
             hide_root=False,
             # Grow with the content instead of squeezing into the viewport — a
             # ScrollView only scrolls a child that is taller than itself.
@@ -128,7 +137,12 @@ class OKFViewer(RelativeLayout):
         for node in nodes:
             if isinstance(node, BundleDir):
                 tv = self.tree.add_node(
-                    TreeViewLabel(text=node.title or node.name, color_selected=TREE_SELECTED_COLOR),
+                    TreeViewLabel(
+                        text=node.title or node.name,
+                        bold=True,
+                        color=TREE_DIR_TEXT_COLOR,
+                        color_selected=TREE_SELECTED_COLOR,
+                    ),
                     parent,
                 )
                 tv.is_leaf = False  # show a disclosure triangle; real children load on open
@@ -136,7 +150,11 @@ class OKFViewer(RelativeLayout):
                 tv.loaded = False
                 tv.bind(is_open=self._on_dir_open)
             else:  # ConceptNode
-                tv = TreeViewLabel(text=node.title, color_selected=TREE_SELECTED_COLOR)
+                tv = TreeViewLabel(
+                    text=node.title,
+                    color=TREE_CONCEPT_TEXT_COLOR,
+                    color_selected=TREE_SELECTED_COLOR,
+                )
                 tv.file_path = node.path
                 self.tree.add_node(tv, parent)
 
