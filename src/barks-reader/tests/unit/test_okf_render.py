@@ -96,15 +96,34 @@ class TestResolveLink:
         assert okf.resolve_link(bundle / "concept" / "a.md", "#section", bundle) is None
 
     def test_escape_outside_bundle_rejected(self, tmp_path: Path) -> None:
-        """A traversal that escapes the bundle root is rejected."""
+        """A .md traversal that escapes the bundle root is rejected by the bounds check."""
         bundle = self._bundle(tmp_path)
-        target = okf.resolve_link(bundle / "concept" / "a.md", "../../../../etc/passwd", bundle)
+        target = okf.resolve_link(bundle / "concept" / "a.md", "../../../../etc/secret.md", bundle)
         assert target is None
 
     def test_missing_file_is_none(self, tmp_path: Path) -> None:
         """A path inside the bundle that does not exist resolves to None."""
         bundle = self._bundle(tmp_path)
         assert okf.resolve_link(bundle / "concept" / "a.md", "sub/missing.md", bundle) is None
+
+    def test_percent_encoded_path_decoded(self, tmp_path: Path) -> None:
+        """A percent-encoded href (spaces, '#', parens) decodes to the real filename."""
+        bundle = self._bundle(tmp_path)
+        weird = bundle / "concept" / "My Note # 4 (draft).md"
+        weird.write_text("---\ntype: x\n---\nW", encoding="utf-8")
+        href = "My%20Note%20%23%204%20%28draft%29.md"  # in-path '#' is %23, not a fragment
+        assert okf.resolve_link(bundle / "concept" / "a.md", href, bundle) == weird
+
+    def test_non_markdown_target_is_none(self, tmp_path: Path) -> None:
+        """A link to a non-.md asset (e.g. scraped .html) is not a navigable concept."""
+        bundle = self._bundle(tmp_path)
+        (bundle / "concept" / "page.html").write_text("<html></html>", encoding="utf-8")
+        assert okf.resolve_link(bundle / "concept" / "a.md", "page.html", bundle) is None
+
+    def test_directory_link_is_none(self, tmp_path: Path) -> None:
+        """A link to a directory (trailing slash) is not a navigable concept."""
+        bundle = self._bundle(tmp_path)
+        assert okf.resolve_link(bundle / "concept" / "a.md", "sub/", bundle) is None
 
 
 class TestRenderPage:

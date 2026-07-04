@@ -21,7 +21,8 @@ markup** (plain strings — kivy-flavoured, but no kivy dependency):
     testable and driven by `--selftest`;
   * `resolve_link()` resolves both OKF link forms (SPEC §5): relative links
     against the page's dir, absolute `/…` links against the bundle root, both
-    bounds-checked under the bundle.
+    percent-decoded, bounds-checked under the bundle, and restricted to ``.md``
+    concept documents.
 
 Self-test:  uv run scripts/okf_render.py --selftest okf/concept/glossary/india.md
 """
@@ -29,6 +30,7 @@ Self-test:  uv run scripts/okf_render.py --selftest okf/concept/glossary/india.m
 from __future__ import annotations
 
 import sys
+import urllib.parse
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -204,18 +206,26 @@ def render_page(text: str) -> Page:
 
 
 def resolve_link(page_path: Path, href: str, bundle: Path) -> Path | None:
-    """Resolve a markdown href against the page, bounded to the bundle.
+    """Resolve a markdown href to a navigable OKF concept, bounded to the bundle.
 
     Handles both OKF link forms (SPEC §5): an **absolute** bundle-relative href
     (``/concept/x.md``) resolves against the bundle root, a **relative** href
-    against the page's directory. Returns the target file, or None for external
-    links or anything outside the bundle.
+    against the page's directory. Link targets are URLs, so the path is **percent-decoded**
+    (``%20`` → space, ``%23`` → ``#``); the heading fragment is split off the still-
+    encoded href first, so an in-path ``#`` written ``%23`` survives while a real
+    ``#anchor`` is dropped. Only ``.md`` concept documents are navigable — links to
+    other assets (``.html``, images) or directories return None, as do external
+    (scheme-bearing) links and anything outside the bundle.
     """
-    href = href.split("#", 1)[0]  # drop any heading anchor
-    if not href or "://" in href:
+    if "://" in href:  # external link (carries a scheme)
         return None
-    base = bundle if href.startswith("/") else page_path.parent
-    target = (base / href.lstrip("/")).resolve()
+    path_part = urllib.parse.unquote(href.split("#", 1)[0])  # fragment off, then decode
+    if not path_part:
+        return None
+    base = bundle if path_part.startswith("/") else page_path.parent
+    target = (base / path_part.lstrip("/")).resolve()
+    if target.suffix != ".md":  # only OKF concept documents are rendered as pages
+        return None
     try:
         target.relative_to(bundle.resolve())
     except ValueError:
