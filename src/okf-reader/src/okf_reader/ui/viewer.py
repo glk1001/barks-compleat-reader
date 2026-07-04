@@ -39,23 +39,30 @@ POPUP_PADDING = 12
 TREE_PANEL_WIDTH = 0.28  # fraction of the window; the page panel gets the rest
 # Multiplied into the background image (Kivy Image.color) so white text stays
 # readable over it — the same darkening mechanism the Barks Reader's kv files use.
-PAGE_BG_TINT = (0.35, 0.35, 0.35, 1)
+WINDOW_BG_TINT = (0.35, 0.35, 0.35, 1)
 
 
-class OKFViewer(BoxLayout):
+class OKFViewer(RelativeLayout):
     def __init__(
         self,
         bundle: Path,
         image_provider: ImageProvider | None = None,
         **kwargs,  # noqa: ANN003
     ) -> None:
-        super().__init__(orientation="horizontal", spacing=8, padding=8, **kwargs)
+        super().__init__(**kwargs)
         self.bundle = bundle
         self.history: list[Path] = []
         self._anchors: dict[str, str] = {}  # "fn:<label>" -> the definition block's markup
         self._syncing_tree = False  # True while _sync_tree_to selects programmatically
         self._image_provider = image_provider
         self._last_bg: Path | None = None
+
+        # The whole window layers over a context background image (RelativeLayout
+        # children stack in add order): image below, both panels above.
+        self.bg_image = Image(fit_mode="cover", color=WINDOW_BG_TINT, size_hint=(1, 1))
+        self.add_widget(self.bg_image)
+        content = BoxLayout(orientation="horizontal", spacing=8, padding=8, size_hint=(1, 1))
+        self.add_widget(content)
 
         self.tree_scroll = ScrollView(size_hint=(TREE_PANEL_WIDTH, 1))
         self.tree = TreeView(
@@ -69,14 +76,9 @@ class OKFViewer(BoxLayout):
         # bind passes (treeview, selected_node); we only want the node (2nd arg)
         self.tree.bind(selected_node=lambda *args: self._on_node(args[1]))
         self.tree_scroll.add_widget(self.tree)
-        self.add_widget(self.tree_scroll)
+        content.add_widget(self.tree_scroll)
 
-        # The page panel layers over a context background image (RelativeLayout
-        # children stack in add order): image below, bar+body above.
-        right_container = RelativeLayout(size_hint=(1 - TREE_PANEL_WIDTH, 1))
-        self.bg_image = Image(fit_mode="cover", color=PAGE_BG_TINT, size_hint=(1, 1))
-        right_container.add_widget(self.bg_image)
-        right = BoxLayout(orientation="vertical", size_hint=(1, 1), spacing=4)
+        right = BoxLayout(orientation="vertical", size_hint=(1 - TREE_PANEL_WIDTH, 1), spacing=4)
         bar = BoxLayout(size_hint_y=None, height=32, spacing=6)
         self.back_btn = Button(text="< Back", size_hint_x=None, width=90, disabled=True)
         self.back_btn.bind(on_release=lambda *_: self._go_back())
@@ -93,8 +95,7 @@ class OKFViewer(BoxLayout):
         self.body.bind(minimum_height=self.body.setter("height"))
         self.body_scroll.add_widget(self.body)
         right.add_widget(self.body_scroll)
-        right_container.add_widget(right)
-        self.add_widget(right_container)
+        content.add_widget(right)
 
         # Lazy: load only the bundle's top level (all tiers) now; each directory's
         # children are read on first expansion (see _on_dir_open). This keeps startup
