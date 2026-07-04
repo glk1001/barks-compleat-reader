@@ -39,7 +39,7 @@ POPUP_PADDING = 12
 TREE_PANEL_WIDTH = 0.28  # fraction of the window; the page panel gets the rest
 # Multiplied into the background image (Kivy Image.color) so white text stays
 # readable over it — the same darkening mechanism the Barks Reader's kv files use.
-WINDOW_BG_TINT = (0.35, 0.35, 0.35, 1)
+WINDOW_BG_TINT = (0.28, 0.28, 0.28, 1)
 
 
 class OKFViewer(RelativeLayout):
@@ -101,6 +101,10 @@ class OKFViewer(RelativeLayout):
         # children are read on first expansion (see _on_dir_open). This keeps startup
         # cheap even though the full bundle is ~900 files across ~200 dirs.
         self._add_tree_nodes(list_children(bundle), None)
+
+        # Startup, before any page is shown: empty frontmatter matches no title, so
+        # the provider's fallback pool supplies a random story image.
+        self._update_background({}, bundle)
 
     def _add_tree_nodes(self, nodes, parent) -> None:  # noqa: ANN001
         # Bind one level of the Kivy-free bundle model (okf_reader.core list_children)
