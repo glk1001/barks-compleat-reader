@@ -170,7 +170,23 @@ class OKFViewer(BoxLayout):
         finally:
             self._syncing_tree = False
         # Scroll on the next frame, once the freshly-expanded tree has been laid out.
-        Clock.schedule_once(lambda _dt: self.tree_scroll.scroll_to(target, padding=24), 0)
+        Clock.schedule_once(lambda _dt: self._scroll_tree_node_into_view(target), 0)
+
+    def _scroll_tree_node_into_view(self, node) -> None:  # noqa: ANN001
+        """Scroll the tree panel so ``node`` sits about a quarter of the way down.
+
+        ScrollView.scroll_to would stop as soon as the node is visible, typically
+        leaving it hugging the bottom edge; positioning it near the top keeps the
+        following siblings (what you usually scan next) on screen.
+        """
+        viewport_h = self.tree_scroll.height
+        content_h = self.tree.height
+        if content_h <= viewport_h:
+            return  # everything already visible
+        node_top = node.top - self.tree.y  # node top, measured from the tree's bottom
+        offset = 0.25 * viewport_h
+        scroll = (node_top - viewport_h + offset) / (content_h - viewport_h)
+        self.tree_scroll.scroll_y = max(0.0, min(1.0, scroll))
 
     def _show(self, path: Path, *, push: bool) -> None:
         if push:
