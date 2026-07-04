@@ -76,7 +76,7 @@ class TableBlock:
     """
 
     rows: list[str]
-    font_size: int = 13
+    font_size: int = 14
 
 
 @dataclass
