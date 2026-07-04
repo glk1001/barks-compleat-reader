@@ -1,0 +1,232 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["pyyaml>=6", "markdown-it-py>=3", "mdit-py-plugins>=0.4"]
+# ///
+# ruff: noqa: T201, PLR2004, C901, PLR0912
+# (spike: T201 prints in selftest; branchy token dispatch)
+# pyright: reportMissingImports=false
+"""Pure, Kivy-free render + model layer for the OKF reader.
+
+This is the reusable core of the OKF reader — no Kivy import, no GUI, fully
+`selftest`-able. It is the layer destined to move into `barks_reader.core`
+(which the import-linter forbids from importing Kivy); the Kivy widget layer
+lives in the sibling `okf_kivy.py` (destined for `barks_reader.ui`).
+
+It turns an OKF page (markdown + YAML frontmatter) into `Block`s of **Kivy
+markup** (plain strings — kivy-flavoured, but no kivy dependency):
+
+  * markdown is tokenised with **markdown-it-py** (+ the `footnote` plugin);
+  * `render_page()` is pure — same text in, same `Page` out — so it is unit-
+    testable and driven by `--selftest`;
+  * `resolve_link()` resolves both OKF link forms (SPEC §5): relative links
+    against the page's dir, absolute `/…` links against the bundle root, both
+    bounds-checked under the bundle.
+
+Self-test:  uv run scripts/okf_render.py --selftest okf/concept/glossary/india.md
+"""
+
+from __future__ import annotations
+
+import sys
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import yaml
+from markdown_it import MarkdownIt
+from mdit_py_plugins.footnote import footnote_plugin  # ty: ignore[unresolved-import]
+
+# Colors baked into the emitted Kivy markup (hex, no leading '#'). Interaction-
+# time colors (e.g. footnote highlight) belong to the UI layer, not here.
+LINK_COLOR = "4ea1ff"
+CODE_COLOR = "c0a0ff"
+HEADING_SIZES = {"h1": 30, "h2": 24, "h3": 20, "h4": 18, "h5": 16, "h6": 16}
+
+
+# --------------------------------------------------------------------------- model
+
+
+@dataclass
+class Block:
+    """One rendered block: a Kivy-markup string at a given font size."""
+
+    markup: str
+    font_size: int = 16
+    anchor: str | None = None  # e.g. "fn:db" — a scroll target for a tapped footnote marker
+
+
+@dataclass
+class Page:
+    """A rendered page: parsed frontmatter plus body and footnote blocks."""
+
+    frontmatter: dict
+    blocks: list[Block] = field(default_factory=list)
+
+
+# --------------------------------------------------------------------------- render
+
+
+def _md() -> MarkdownIt:
+    return MarkdownIt("commonmark").use(footnote_plugin).enable("table")
+
+
+def _esc(text: str) -> str:
+    """Escape the three characters that are special to Kivy markup."""
+    return text.replace("&", "&amp;").replace("[", "&bl;").replace("]", "&br;")
+
+
+def _inline(tokens: list) -> str:
+    """Render an inline token stream (a token's ``.children``) to Kivy markup."""
+    out: list[str] = []
+    for t in tokens:
+        tp = t.type
+        if tp == "text":
+            out.append(_esc(t.content))
+        elif tp == "softbreak":
+            out.append(" ")
+        elif tp == "hardbreak":
+            out.append("\n")
+        elif tp == "strong_open":
+            out.append("[b]")
+        elif tp == "strong_close":
+            out.append("[/b]")
+        elif tp == "em_open":
+            out.append("[i]")
+        elif tp == "em_close":
+            out.append("[/i]")
+        elif tp == "code_inline":
+            out.append(f"[color={CODE_COLOR}]{_esc(t.content)}[/color]")
+        elif tp == "link_open":
+            href = t.attrGet("href") or ""
+            out.append(f"[ref={href}][color={LINK_COLOR}][u]")
+        elif tp == "link_close":
+            out.append("[/u][/color][/ref]")
+        elif tp == "footnote_ref":
+            label = t.meta.get("label") or str(t.meta.get("id", ""))
+            sup = _esc(f"[{label}]")
+            out.append(f"[ref=fn:{label}][color={LINK_COLOR}][sup]{sup}[/sup][/color][/ref]")
+        elif tp == "image":
+            alt = t.content or t.attrGet("src") or "image"
+            out.append(f"[i]▨ image: {_esc(alt)}[/i]")
+    return "".join(out)
+
+
+def parse_frontmatter(text: str) -> tuple[dict, str]:
+    """Split a page into (frontmatter dict, body markdown)."""
+    if text.startswith("---"):
+        parts = text.split("---", 2)
+        if len(parts) >= 3:
+            try:
+                fm = yaml.safe_load(parts[1]) or {}
+            except yaml.YAMLError:
+                fm = {}
+            return (fm if isinstance(fm, dict) else {}), parts[2].strip()
+    return {}, text
+
+
+def render_page(text: str) -> Page:
+    """Parse a page's frontmatter and render its body + footnotes to Kivy-markup blocks."""
+    fm, body = parse_frontmatter(text)
+    tokens = _md().parse(body)
+    blocks: list[Block] = []
+    indent = 0
+    pending_bullet = ""
+    i, n = 0, len(tokens)
+    while i < n:
+        t = tokens[i]
+        tp = t.type
+        if tp == "heading_open":
+            blocks.append(
+                Block(
+                    "[b]" + _inline(tokens[i + 1].children or []) + "[/b]",
+                    HEADING_SIZES.get(t.tag, 16),
+                )
+            )
+            i += 3
+            continue
+        if tp == "paragraph_open":
+            base = pending_bullet or ("    " * indent if indent else "")
+            prefix = "    " * max(indent - 1, 0) + base
+            pending_bullet = ""
+            blocks.append(Block(prefix + _inline(tokens[i + 1].children or [])))
+            i += 3
+            continue
+        if tp == "footnote_open":
+            # Render the whole footnote definition (up to its footnote_close) as one block,
+            # tagged with an anchor so a tapped [^label] marker can scroll to it. Skipping to
+            # footnote_close also stops the inner paragraph being re-rendered as a stray block.
+            label = t.meta.get("label") or str(t.meta.get("id", ""))
+            parts: list[str] = []
+            j = i + 1
+            while j < n and tokens[j].type != "footnote_close":
+                if tokens[j].type == "inline":
+                    parts.append(_inline(tokens[j].children or []))
+                j += 1
+            blocks.append(
+                Block(f"[b][{_esc(label)}][/b] " + " ".join(parts), 13, anchor=f"fn:{label}")
+            )
+            i = j + 1
+            continue
+        if tp in ("bullet_list_open", "ordered_list_open", "blockquote_open"):
+            indent += 1
+        elif tp in ("bullet_list_close", "ordered_list_close", "blockquote_close"):
+            indent = max(indent - 1, 0)
+        elif tp == "list_item_open":
+            pending_bullet = "    " * max(indent - 1, 0) + "•  "
+        elif tp in ("fence", "code_block"):
+            blocks.append(Block(f"[color={CODE_COLOR}]{_esc(t.content.rstrip())}[/color]", 14))
+        elif tp == "hr":
+            blocks.append(Block("─" * 40))
+        elif tp == "footnote_block_open":
+            blocks.append(Block("[b]Footnotes[/b]", 18))
+        i += 1
+    return Page(fm, blocks)
+
+
+# --------------------------------------------------------------------------- link resolution
+
+
+def resolve_link(page_path: Path, href: str, bundle: Path) -> Path | None:
+    """Resolve a markdown href against the page, bounded to the bundle.
+
+    Handles both OKF link forms (SPEC §5): an **absolute** bundle-relative href
+    (``/concept/x.md``) resolves against the bundle root, a **relative** href
+    against the page's directory. Returns the target file, or None for external
+    links or anything outside the bundle.
+    """
+    href = href.split("#", 1)[0]  # drop any heading anchor
+    if not href or "://" in href:
+        return None
+    base = bundle if href.startswith("/") else page_path.parent
+    target = (base / href.lstrip("/")).resolve()
+    try:
+        target.relative_to(bundle.resolve())
+    except ValueError:
+        return None
+    return target if target.is_file() else None
+
+
+# --------------------------------------------------------------------------- self-test
+
+
+def selftest(path: Path) -> int:
+    """Render one page and print a summary — the render layer's kivy-free smoke test."""
+    page = render_page(path.read_text(encoding="utf-8"))
+    print(f"frontmatter: {sorted(page.frontmatter)}")
+    print(f"blocks: {len(page.blocks)}")
+    refs = sum(blk.markup.count("[ref=") for blk in page.blocks)
+    print(f"tappable refs (links + footnotes): {refs}")
+    for blk in page.blocks[:6]:
+        print(f"  ({blk.font_size:>2}) {blk.markup[:90]}")
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) >= 3 and argv[1] == "--selftest":
+        return selftest(Path(argv[2]))
+    print("usage: okf_render.py --selftest <page.md>", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

@@ -3,23 +3,25 @@
 # requires-python = ">=3.11"
 # dependencies = ["kivy>=2.3", "pyyaml>=6", "markdown-it-py>=3", "mdit-py-plugins>=0.4"]
 # ///
-# ruff: noqa: T201, PLR2004, C901, PLR0912, PLC0415
-# (spike: T201 prints; branchy token dispatch; kivy imported lazily so --selftest needs no GUI deps)
+# ruff: noqa: T201, PLC0415, C901, PLR2004
+# (spike: T201 prints; PLR2004 argv indices; kivy imported lazily inside _build_app — which
+#  nests the whole widget class, hence C901 — so this file stays importable without a display)
 # pyright: reportMissingImports=false
-"""Rudimentary Kivy reader for the OKF bundle — a reference spike, not production code.
+"""Standalone Kivy reader for an OKF bundle — a reference spike, not production code.
 
-Demonstrates the in-app integration described in
-`okf/concept/todo/integrate-wiki-into-reader-app.md`, updated for the bundle's move from
-`[[wikilinks]]` to **relative markdown links**:
+This is the **UI layer** (destined for `barks_reader.ui`). All the Kivy-free
+parsing/rendering lives in the sibling `okf_render.py` (destined for
+`barks_reader.core`); this file imports it and binds `Block`/`Page` output to
+native widgets. Keeping the split here means the eventual move into the
+`barks_reader` package is a mechanical relocation, while `okf_kivy.py` remains
+runnable as the standalone reader.
 
-  * markdown is tokenised with **markdown-it-py** (+ the `footnote` plugin) and rendered to native
-    Kivy widgets (no webview, no fragile regex) — `render_page()` is pure and `--selftest`-able;
-  * a tapped **link** resolves by **path-join** — relative `[text](rel/path.md)` against the
-    page's dir, absolute `[text](/concept/x.md)` against the bundle root (OKF SPEC §5) —
-    bounds-checked under the bundle, then loaded (a small back-stack gives Back navigation);
-  * **footnotes** `[^id]` render as a tappable superscript that scrolls to **and highlights**
-    its definition block (collected once at the foot; the highlight clears on the next jump);
-  * **image refs** (absolute Tier-1 paths, never embedded) render as a placeholder line.
+  * a tree of the bundle's concepts on the left, the rendered page on the right;
+  * a tapped **link** resolves via `okf_render.resolve_link` (relative or
+    absolute bundle-relative, OKF SPEC §5), then loads (a back-stack gives Back);
+  * **footnotes** `[^id]` scroll to **and highlight** their definition block
+    (the highlight clears on the next jump);
+  * **image refs** render as a placeholder line (real assets: a later increment).
 
 Run the GUI:   uv run scripts/okf_kivy.py [bundle-dir]
 Self-test:     uv run scripts/okf_kivy.py --selftest okf/concept/glossary/india.md
@@ -28,181 +30,12 @@ Self-test:     uv run scripts/okf_kivy.py --selftest okf/concept/glossary/india.
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import yaml
-from markdown_it import MarkdownIt
-from mdit_py_plugins.footnote import footnote_plugin  # ty: ignore[unresolved-import]
+from okf_render import parse_frontmatter, render_page, resolve_link, selftest
 
-LINK_COLOR = "4ea1ff"
-CODE_COLOR = "c0a0ff"
-HIGHLIGHT_COLOR = "ffe066"  # the footnote definition you just jumped to
-HEADING_SIZES = {"h1": 30, "h2": 24, "h3": 20, "h4": 18, "h5": 16, "h6": 16}
-
-
-# --------------------------------------------------------------------------- pure render layer
-
-
-@dataclass
-class Block:
-    """One rendered block: a Kivy-markup string at a given font size."""
-
-    markup: str
-    font_size: int = 16
-    anchor: str | None = None  # e.g. "fn:db" — a scroll target for a tapped footnote marker
-
-
-@dataclass
-class Page:
-    """A rendered page: parsed frontmatter plus body and footnote blocks."""
-
-    frontmatter: dict
-    blocks: list[Block] = field(default_factory=list)
-
-
-def _md() -> MarkdownIt:
-    return MarkdownIt("commonmark").use(footnote_plugin).enable("table")
-
-
-def _esc(text: str) -> str:
-    """Escape the three characters that are special to Kivy markup."""
-    return text.replace("&", "&amp;").replace("[", "&bl;").replace("]", "&br;")
-
-
-def _inline(tokens: list) -> str:
-    """Render an inline token stream (a token's ``.children``) to Kivy markup."""
-    out: list[str] = []
-    for t in tokens:
-        tp = t.type
-        if tp == "text":
-            out.append(_esc(t.content))
-        elif tp == "softbreak":
-            out.append(" ")
-        elif tp == "hardbreak":
-            out.append("\n")
-        elif tp == "strong_open":
-            out.append("[b]")
-        elif tp == "strong_close":
-            out.append("[/b]")
-        elif tp == "em_open":
-            out.append("[i]")
-        elif tp == "em_close":
-            out.append("[/i]")
-        elif tp == "code_inline":
-            out.append(f"[color={CODE_COLOR}]{_esc(t.content)}[/color]")
-        elif tp == "link_open":
-            href = t.attrGet("href") or ""
-            out.append(f"[ref={href}][color={LINK_COLOR}][u]")
-        elif tp == "link_close":
-            out.append("[/u][/color][/ref]")
-        elif tp == "footnote_ref":
-            label = t.meta.get("label") or str(t.meta.get("id", ""))
-            sup = _esc(f"[{label}]")
-            out.append(f"[ref=fn:{label}][color={LINK_COLOR}][sup]{sup}[/sup][/color][/ref]")
-        elif tp == "image":
-            alt = t.content or t.attrGet("src") or "image"
-            out.append(f"[i]▨ image: {_esc(alt)}[/i]")
-    return "".join(out)
-
-
-def parse_frontmatter(text: str) -> tuple[dict, str]:
-    """Split a page into (frontmatter dict, body markdown)."""
-    if text.startswith("---"):
-        parts = text.split("---", 2)
-        if len(parts) >= 3:
-            try:
-                fm = yaml.safe_load(parts[1]) or {}
-            except yaml.YAMLError:
-                fm = {}
-            return (fm if isinstance(fm, dict) else {}), parts[2].strip()
-    return {}, text
-
-
-def render_page(text: str) -> Page:
-    """Parse a page's frontmatter and render its body + footnotes to Kivy-markup blocks."""
-    fm, body = parse_frontmatter(text)
-    tokens = _md().parse(body)
-    blocks: list[Block] = []
-    indent = 0
-    pending_bullet = ""
-    i, n = 0, len(tokens)
-    while i < n:
-        t = tokens[i]
-        tp = t.type
-        if tp == "heading_open":
-            blocks.append(
-                Block(
-                    "[b]" + _inline(tokens[i + 1].children or []) + "[/b]",
-                    HEADING_SIZES.get(t.tag, 16),
-                )
-            )
-            i += 3
-            continue
-        if tp == "paragraph_open":
-            base = pending_bullet or ("    " * indent if indent else "")
-            prefix = "    " * max(indent - 1, 0) + base
-            pending_bullet = ""
-            blocks.append(Block(prefix + _inline(tokens[i + 1].children or [])))
-            i += 3
-            continue
-        if tp == "footnote_open":
-            # Render the whole footnote definition (up to its footnote_close) as one block,
-            # tagged with an anchor so a tapped [^label] marker can scroll to it. Skipping to
-            # footnote_close also stops the inner paragraph being re-rendered as a stray block.
-            label = t.meta.get("label") or str(t.meta.get("id", ""))
-            parts: list[str] = []
-            j = i + 1
-            while j < n and tokens[j].type != "footnote_close":
-                if tokens[j].type == "inline":
-                    parts.append(_inline(tokens[j].children or []))
-                j += 1
-            blocks.append(
-                Block(f"[b][{_esc(label)}][/b] " + " ".join(parts), 13, anchor=f"fn:{label}")
-            )
-            i = j + 1
-            continue
-        if tp in ("bullet_list_open", "ordered_list_open", "blockquote_open"):
-            indent += 1
-        elif tp in ("bullet_list_close", "ordered_list_close", "blockquote_close"):
-            indent = max(indent - 1, 0)
-        elif tp == "list_item_open":
-            pending_bullet = "    " * max(indent - 1, 0) + "•  "
-        elif tp in ("fence", "code_block"):
-            blocks.append(Block(f"[color={CODE_COLOR}]{_esc(t.content.rstrip())}[/color]", 14))
-        elif tp == "hr":
-            blocks.append(Block("─" * 40))
-        elif tp == "footnote_block_open":
-            blocks.append(Block("[b]Footnotes[/b]", 18))
-        i += 1
-    return Page(fm, blocks)
-
-
-# --------------------------------------------------------------------------- link resolution
-
-
-def resolve_link(page_path: Path, href: str, bundle: Path) -> Path | None:
-    """Resolve a markdown href against the page, bounded to the bundle.
-
-    Handles both OKF link forms (SPEC §5): an **absolute** bundle-relative href
-    (``/concept/x.md``) resolves against the bundle root, a **relative** href
-    against the page's directory. Returns the target file, or None for external
-    links or anything outside the bundle.
-    """
-    href = href.split("#", 1)[0]  # drop any heading anchor
-    if not href or "://" in href:
-        return None
-    base = bundle if href.startswith("/") else page_path.parent
-    target = (base / href.lstrip("/")).resolve()
-    try:
-        target.relative_to(bundle.resolve())
-    except ValueError:
-        return None
-    return target if target.is_file() else None
-
-
-# --------------------------------------------------------------------------- Kivy UI
+HIGHLIGHT_COLOR = "ffe066"  # the footnote definition you just jumped to (applied at tap time)
 
 
 def _build_app(bundle: Path):  # noqa: ANN202  (kivy types are dynamic)
@@ -331,20 +164,9 @@ def _build_app(bundle: Path):  # noqa: ANN202  (kivy types are dynamic)
     return OKFApp()
 
 
-def _selftest(path: Path) -> int:
-    page = render_page(path.read_text(encoding="utf-8"))
-    print(f"frontmatter: {sorted(page.frontmatter)}")
-    print(f"blocks: {len(page.blocks)}")
-    refs = sum(blk.markup.count("[ref=") for blk in page.blocks)
-    print(f"tappable refs (links + footnotes): {refs}")
-    for blk in page.blocks[:6]:
-        print(f"  ({blk.font_size:>2}) {blk.markup[:90]}")
-    return 0
-
-
 def main(argv: list[str]) -> int:
     if len(argv) >= 3 and argv[1] == "--selftest":
-        return _selftest(Path(argv[2]))
+        return selftest(Path(argv[2]))  # delegate to the pure layer
     bundle = Path(argv[1]) if len(argv) >= 2 else Path("okf")
     if not bundle.is_dir():
         print(f"error: bundle {bundle} not found", file=sys.stderr)
