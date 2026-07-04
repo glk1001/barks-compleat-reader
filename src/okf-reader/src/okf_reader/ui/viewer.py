@@ -44,7 +44,14 @@ class OKFViewer(BoxLayout):
         self._syncing_tree = False  # True while _sync_tree_to selects programmatically
 
         self.tree_scroll = ScrollView(size_hint=(0.32, 1))
-        self.tree = TreeView(root_options={"text": dir_title(bundle)}, hide_root=False)
+        self.tree = TreeView(
+            root_options={"text": dir_title(bundle)},
+            hide_root=False,
+            # Grow with the content instead of squeezing into the viewport — a
+            # ScrollView only scrolls a child that is taller than itself.
+            size_hint_y=None,
+        )
+        self.tree.bind(minimum_height=self.tree.setter("height"))
         # bind passes (treeview, selected_node); we only want the node (2nd arg)
         self.tree.bind(selected_node=lambda *args: self._on_node(args[1]))
         self.tree_scroll.add_widget(self.tree)
