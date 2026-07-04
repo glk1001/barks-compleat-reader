@@ -12,6 +12,7 @@ axisbelow
 bboxes
 behaviour
 blit
+blockquotes
 browsable
 bufferfmt
 bunx
@@ -66,6 +67,7 @@ lfs
 libx
 licence
 lita
+llm
 logr
 markersize
 materialises
@@ -87,6 +89,7 @@ ppid
 putpixel
 pyeof
 realised
+reingest
 relativedelta
 renderable
 returncode

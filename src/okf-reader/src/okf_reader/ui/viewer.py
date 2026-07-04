@@ -42,10 +42,7 @@ class OKFViewer(BoxLayout):
         bar = BoxLayout(size_hint_y=None, height=32, spacing=6)
         self.back_btn = Button(text="< Back", size_hint_x=None, width=90, disabled=True)
         self.back_btn.bind(on_release=lambda *_: self._go_back())
-        self.meta = Label(halign="left", valign="middle", markup=True)
-        self.meta.bind(size=self.meta.setter("text_size"))
         bar.add_widget(self.back_btn)
-        bar.add_widget(self.meta)
         right.add_widget(bar)
 
         self.body_scroll = ScrollView()
@@ -96,11 +93,6 @@ class OKFViewer(BoxLayout):
             self.history.append(path)
         self.back_btn.disabled = len(self.history) <= 1
         page = render_page(path.read_text(encoding="utf-8"))
-        fm = page.frontmatter
-        self.meta.text = (
-            f"[b]{fm.get('title', path.stem)}[/b]   [color=999999]"
-            f"{fm.get('type', '?')} · {fm.get('description', '')}[/color]"
-        )
         self.body.clear_widgets()
         self._anchors = {}
         for blk in page.blocks:

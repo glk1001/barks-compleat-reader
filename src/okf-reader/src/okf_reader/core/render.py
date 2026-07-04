@@ -36,6 +36,11 @@ LINK_COLOR = "4ea1ff"
 CODE_COLOR = "c0a0ff"
 HEADING_SIZES = {"h1": 30, "h2": 24, "h3": 20, "h4": 18, "h5": 16, "h6": 16}
 
+# Paragraphs containing this marker are editorial provenance notes, not content
+# (the barks-wiki bundle opens most concepts with a blockquote along the lines of
+# "_LLM-owned synthesis. Do not hand-edit ..._"), so render_page drops them.
+PROVENANCE_MARKER = "LLM-owned"
+
 
 # --------------------------------------------------------------------------- model
 
@@ -159,7 +164,9 @@ def render_page(text: str) -> Page:
             base = pending_bullet or ("    " * indent if indent else "")
             prefix = "    " * max(indent - 1, 0) + base
             pending_bullet = ""
-            blocks.append(Block(prefix + _inline(tokens[i + 1].children or [])))
+            markup = _inline(tokens[i + 1].children or [])
+            if PROVENANCE_MARKER not in markup:  # drop editorial provenance notes
+                blocks.append(Block(prefix + markup))
             i += 3
             continue
         if tp == "footnote_open":

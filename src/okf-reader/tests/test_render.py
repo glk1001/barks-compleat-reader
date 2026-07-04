@@ -133,6 +133,22 @@ class TestRenderPage:
         assert "[i]it[/i]" in markup
         assert f"[color={okf.CODE_COLOR}]code[/color]" in markup
 
+    def test_provenance_notes_dropped(self) -> None:
+        """Editorial provenance blockquotes (marked "LLM-owned") are not rendered."""
+        md = (
+            "> _LLM-owned synthesis. Do not hand-edit — regenerated on reingest."
+            " See `CLAUDE.md`._\n\nReal content.\n"
+        )
+        page = okf.render_page(md)
+        assert not any(okf.PROVENANCE_MARKER in b.markup for b in page.blocks)
+        assert any("Real content." in b.markup for b in page.blocks)
+
+    def test_provenance_glossary_variant_dropped(self) -> None:
+        """The glossary-entry variants of the provenance note are dropped too."""
+        md = "> _Glossary entry — a recurring place-name. LLM-owned._\n\nBody.\n"
+        page = okf.render_page(md)
+        assert [b.markup for b in page.blocks] == ["Body."]
+
     def test_link_becomes_ref(self) -> None:
         """An inline link becomes a tappable [ref=…] span carrying the href."""
         markup = okf.render_page("[text](foo.md)").blocks[0].markup
