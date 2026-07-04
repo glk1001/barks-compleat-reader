@@ -1,26 +1,17 @@
-"""Unit tests for the OKF reader's pure render layer (``scripts/okf_render.py``).
+"""Unit tests for the OKF reader's pure core (``okf_reader.core.render``).
 
 These pin the kivy-free core contract — frontmatter parsing, markdown-to-Kivy-
-markup rendering, and bundle-bounded link resolution — before the module grows.
-When ``okf_render`` moves into ``barks_reader.core``, delete the sys.path shim
-below and import from the package instead.
+markup rendering, bundle-bounded link resolution, and the bundle tree model.
 """
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-# okf_render currently lives in scripts/ as a standalone spike. Until it moves
-# into barks_reader.core, put the scripts dir on sys.path so we can import it.
-# Appended (not inserted) so this global, session-wide path entry can't shadow a
-# same-named module another test resolves earlier; okf_render is unique to scripts/.
-# TODO: replace with `from barks_reader.core.okf.render import ...` after the move.
-_SCRIPTS_DIR = Path(__file__).resolve().parents[4] / "scripts"
-if str(_SCRIPTS_DIR) not in sys.path:
-    sys.path.append(str(_SCRIPTS_DIR))
+from okf_reader.core import render as okf
 
-import okf_render as okf  # noqa: E402  (import follows the sys.path shim above)  # ty: ignore[unresolved-import]
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestParseFrontmatter:
@@ -243,6 +234,8 @@ class TestLoadBundleTree:
         concept = self._bundle(tmp_path)
         tree = okf.load_bundle_tree(concept)
         alpha, _sub, zeta = tree.children
+        assert isinstance(alpha, okf.ConceptNode)
+        assert isinstance(zeta, okf.ConceptNode)
         assert (alpha.title, alpha.path) == ("Alpha", concept / "alpha.md")
         assert (zeta.title, zeta.path) == ("zeta", concept / "zeta.md")  # stem fallback
 
@@ -253,7 +246,9 @@ class TestLoadBundleTree:
         assert isinstance(sub, okf.BundleDir)
         assert sub.name == "sub"
         assert len(sub.children) == 1
-        assert sub.children[0].title == "Beta"
+        beta = sub.children[0]
+        assert isinstance(beta, okf.ConceptNode)
+        assert beta.title == "Beta"
 
     def test_non_directory_root_is_empty(self, tmp_path: Path) -> None:
         """A root that is not a directory yields an empty BundleDir (no raise)."""
@@ -291,6 +286,8 @@ class TestListChildren:
         kids = okf.list_children(self._bundle(tmp_path))
         assert not any(getattr(c, "path", None) and c.path.name == "index.md" for c in kids)
         alpha, _sub, zeta = kids
+        assert isinstance(alpha, okf.ConceptNode)
+        assert isinstance(zeta, okf.ConceptNode)
         assert alpha.title == "Alpha"
         assert zeta.title == "zeta"
 
@@ -299,7 +296,7 @@ class TestListChildren:
         concept = self._bundle(tmp_path)
         sub = okf.list_children(concept)[1]
         descendants = okf.list_children(sub.path)
-        assert [c.title for c in descendants] == ["Beta"]
+        assert [c.title for c in descendants if isinstance(c, okf.ConceptNode)] == ["Beta"]
 
     def test_non_directory_returns_empty_list(self, tmp_path: Path) -> None:
         """A non-directory path yields an empty list, not an error."""
@@ -314,7 +311,7 @@ class TestListChildren:
         (root / ".secret.md").write_text("---\ntype: x\n---\nS", encoding="utf-8")
         (root / "real.md").write_text("---\ntype: x\ntitle: Real\n---\nR", encoding="utf-8")
         kids = okf.list_children(root)
-        assert [c.title for c in kids] == ["Real"]
+        assert [c.title for c in kids if isinstance(c, okf.ConceptNode)] == ["Real"]
 
 
 class TestEsc:

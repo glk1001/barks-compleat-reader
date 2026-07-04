@@ -1,42 +1,34 @@
-#!/usr/bin/env python3
-# /// script
-# requires-python = ">=3.11"
-# dependencies = ["pyyaml>=6", "markdown-it-py>=3", "mdit-py-plugins>=0.4"]
-# ///
-# ruff: noqa: T201, PLR2004, C901, PLR0912
-# (spike: T201 prints in selftest; branchy token dispatch)
-# pyright: reportMissingImports=false
-"""Pure, Kivy-free render + model layer for the OKF reader.
+# ruff: noqa: PLR2004, C901, PLR0912
+# (branchy markdown token dispatch; small magic font sizes in render_page)
+"""Kivy-free OKF render + bundle-model layer — the core of the okf_reader package.
 
-This is the reusable core of the OKF reader — no Kivy import, no GUI, fully
-`selftest`-able. It is the layer destined to move into `barks_reader.core`
-(which the import-linter forbids from importing Kivy); the Kivy widget layer
-lives in the sibling `okf_kivy.py` (destined for `barks_reader.ui`).
-
-It turns an OKF page (markdown + YAML frontmatter) into `Block`s of **Kivy
-markup** (plain strings — kivy-flavoured, but no kivy dependency):
+No Kivy import, no GUI. Turns an OKF page (markdown + YAML frontmatter) into
+`Block`s of **Kivy markup** (plain strings — kivy-flavoured, but no kivy
+dependency), and walks a bundle directory into a `BundleDir`/`ConceptNode` tree:
 
   * markdown is tokenised with **markdown-it-py** (+ the `footnote` plugin);
-  * `render_page()` is pure — same text in, same `Page` out — so it is unit-
-    testable and driven by `--selftest`;
+    `render_page()` is pure — same text in, same `Page` out — so it is
+    unit-testable in isolation;
   * `resolve_link()` resolves both OKF link forms (SPEC §5): relative links
     against the page's dir, absolute `/…` links against the bundle root, both
     percent-decoded, bounds-checked under the bundle, and restricted to ``.md``
-    concept documents.
-
-Self-test:  uv run scripts/okf_render.py --selftest okf/concept/glossary/india.md
+    concept documents;
+  * `list_children()` / `load_bundle_tree()` enumerate a bundle one level at a
+    time (lazy) or fully (eager), skipping reserved and hidden entries.
 """
 
 from __future__ import annotations
 
-import sys
 import urllib.parse
 from dataclasses import dataclass, field
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import yaml
 from markdown_it import MarkdownIt
 from mdit_py_plugins.footnote import footnote_plugin
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # Colors baked into the emitted Kivy markup (hex, no leading '#'). Interaction-
 # time colors (e.g. footnote highlight) belong to the UI layer, not here.
@@ -286,29 +278,3 @@ def load_bundle_tree(root: Path) -> BundleDir:
         for child in list_children(root)
     )
     return BundleDir(root, root.name, children)
-
-
-# --------------------------------------------------------------------------- self-test
-
-
-def selftest(path: Path) -> int:
-    """Render one page and print a summary — the render layer's kivy-free smoke test."""
-    page = render_page(path.read_text(encoding="utf-8"))
-    print(f"frontmatter: {sorted(page.frontmatter)}")
-    print(f"blocks: {len(page.blocks)}")
-    refs = sum(blk.markup.count("[ref=") for blk in page.blocks)
-    print(f"tappable refs (links + footnotes): {refs}")
-    for blk in page.blocks[:6]:
-        print(f"  ({blk.font_size:>2}) {blk.markup[:90]}")
-    return 0
-
-
-def main(argv: list[str]) -> int:
-    if len(argv) >= 3 and argv[1] == "--selftest":
-        return selftest(Path(argv[2]))
-    print("usage: okf_render.py --selftest <page.md>", file=sys.stderr)
-    return 2
-
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv))

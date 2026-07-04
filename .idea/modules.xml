@@ -8,6 +8,7 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/barks-kivy-ui.iml" filepath="$PROJECT_DIR$/.idea/barks-kivy-ui.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/barks-reader.iml" filepath="$PROJECT_DIR$/.idea/barks-reader.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/comic-utils.iml" filepath="$PROJECT_DIR$/.idea/comic-utils.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/okf-reader.iml" filepath="$PROJECT_DIR$/.idea/okf-reader.iml" />
     </modules>
   </component>
 </project>
