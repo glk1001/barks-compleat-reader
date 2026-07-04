@@ -35,9 +35,11 @@ if TYPE_CHECKING:
 LINK_COLOR = "4ea1ff"
 CODE_COLOR = "c0a0ff"
 HEADING_SIZES = {"h1": 30, "h2": 24, "h3": 20, "h4": 18, "h5": 16, "h6": 16}
-# Kivy's [sup] halves the current font size (and raises the baseline); the inner
-# [size=…] overrides the shrink so markers stay raised but readable.
-FOOTNOTE_REF_SIZE = 13
+# Kivy's [sup] halves the current font size; the inner [size=…] overrides the
+# shrink so markers stay readable. Kivy pins superscript glyphs near the top of
+# the line box, so the visible "raise" is line height minus marker height —
+# this size is the only knob for both marker size and how raised it looks.
+FOOTNOTE_REF_SIZE = 12
 
 # Paragraphs containing this marker are editorial provenance notes, not content
 # (the barks-wiki bundle opens most concepts with a blockquote along the lines of
