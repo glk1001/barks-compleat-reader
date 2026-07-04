@@ -35,7 +35,9 @@ if TYPE_CHECKING:
 LINK_COLOR = "4ea1ff"
 CODE_COLOR = "c0a0ff"
 HEADING_SIZES = {"h1": 30, "h2": 24, "h3": 20, "h4": 18, "h5": 16, "h6": 16}
-FOOTNOTE_REF_SIZE = 13  # explicit size: Kivy's [sup] renders too small to read
+# Kivy's [sup] halves the current font size (and raises the baseline); the inner
+# [size=…] overrides the shrink so markers stay raised but readable.
+FOOTNOTE_REF_SIZE = 13
 
 # Paragraphs containing this marker are editorial provenance notes, not content
 # (the barks-wiki bundle opens most concepts with a blockquote along the lines of
@@ -123,7 +125,7 @@ def _inline(tokens: list) -> str:
             marker = _esc(f"[{label}]")
             out.append(
                 f"[ref=fn:{label}][color={LINK_COLOR}]"
-                f"[size={FOOTNOTE_REF_SIZE}]{marker}[/size][/color][/ref]"
+                f"[sup][size={FOOTNOTE_REF_SIZE}]{marker}[/size][/sup][/color][/ref]"
             )
         elif tp == "image":
             alt = t.content or t.attrGet("src") or "image"
