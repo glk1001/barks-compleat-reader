@@ -186,7 +186,9 @@ class TestRenderPage:
     def test_footnote_marker_and_definition(self) -> None:
         """A footnote yields a tappable marker, a 'Footnotes' header, and an anchored def."""
         page = okf.render_page("Here[^1] is a claim.\n\n[^1]: The supporting detail.")
-        assert any("[ref=fn:1]" in b.markup for b in page.blocks)  # the marker
+        marker = next(b.markup for b in page.blocks if "[ref=fn:1]" in b.markup)
+        # Explicitly sized (not [sup], which Kivy renders too small to read).
+        assert f"[size={okf.FOOTNOTE_REF_SIZE}]&bl;1&br;[/size]" in marker
         assert any(b.markup == "[b]Footnotes[/b]" for b in page.blocks)  # the section header
         defs = [b for b in page.blocks if b.anchor == "fn:1"]
         assert len(defs) == 1

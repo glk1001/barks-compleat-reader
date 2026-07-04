@@ -2,26 +2,30 @@
 
 Binds the Kivy-free core (okf_reader.core.render) to native widgets: a lazily
 populated tree of the bundle's tiers on the left, the rendered page on the right.
-Links and footnotes are handled via the core's ``resolve_link`` and each page
-`Block`'s anchor. ``run(bundle)`` launches the standalone app; the CLI entry point
-is scripts/read_okf.py.
+Links resolve via the core's ``resolve_link``; tapping a footnote marker shows its
+definition (keyed by the page `Block`'s anchor) in a dismiss-on-tap popup.
+``run(bundle)`` launches the standalone app; the CLI entry point is
+scripts/read_okf.py.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.modalview import ModalView
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.treeview import TreeView, TreeViewLabel
 
 from okf_reader.core.render import BundleDir, list_children, render_page, resolve_link
 
-HIGHLIGHT_COLOR = "ffe066"  # the footnote definition you just jumped to (applied at tap time)
+BODY_LINE_HEIGHT = 1.25
+BODY_PADDING = (16, 8, 24, 16)  # left, top, right, bottom
+BODY_BLOCK_SPACING = 12
+POPUP_PADDING = 12
 
 
 class OKFViewer(BoxLayout):
@@ -29,7 +33,7 @@ class OKFViewer(BoxLayout):
         super().__init__(orientation="horizontal", spacing=8, padding=8, **kwargs)
         self.bundle = bundle
         self.history: list[Path] = []
-        self._anchors: dict[str, Any] = {}  # "fn:<label>" -> the definition's Label widget
+        self._anchors: dict[str, str] = {}  # "fn:<label>" -> the definition block's markup
 
         tree_scroll = ScrollView(size_hint=(0.32, 1))
         self.tree = TreeView(root_options={"text": f"OKF: {bundle.name}"}, hide_root=False)
@@ -46,7 +50,12 @@ class OKFViewer(BoxLayout):
         right.add_widget(bar)
 
         self.body_scroll = ScrollView()
-        self.body = BoxLayout(orientation="vertical", size_hint_y=None, spacing=8, padding=(4, 4))
+        self.body = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            spacing=BODY_BLOCK_SPACING,
+            padding=BODY_PADDING,
+        )
         self.body.bind(minimum_height=self.body.setter("height"))
         self.body_scroll.add_widget(self.body)
         right.add_widget(self.body_scroll)
@@ -100,6 +109,7 @@ class OKFViewer(BoxLayout):
                 text=blk.markup,
                 markup=True,
                 font_size=blk.font_size,
+                line_height=BODY_LINE_HEIGHT,
                 halign="left",
                 valign="top",
                 size_hint_y=None,
@@ -109,30 +119,44 @@ class OKFViewer(BoxLayout):
             lbl._page_path = path  # noqa: SLF001
             lbl.bind(on_ref_press=self._on_ref)
             if blk.anchor:
-                lbl._orig_markup = blk.markup  # noqa: SLF001  (restore target after highlight)
-                self._anchors[blk.anchor] = lbl
+                self._anchors[blk.anchor] = blk.markup
             self.body.add_widget(lbl)
         self.body_scroll.scroll_y = 1
 
     def _on_ref(self, label, ref: str) -> None:  # noqa: ANN001
         if ref.startswith("fn:"):
-            widget = self._anchors.get(ref)  # tapped [^id] → scroll to + highlight its def
-            if widget is not None:
-                self.body_scroll.scroll_to(widget, padding=10)
-                self._highlight(widget)
+            markup = self._anchors.get(ref)  # tapped [id] → its definition, in a popup
+            if markup is not None:
+                self._show_footnote_popup(markup, label._page_path)  # noqa: SLF001
             return
         target = resolve_link(label._page_path, ref, self.bundle)  # noqa: SLF001
         if target:
             self._show(target, push=True)
 
-    def _highlight(self, widget) -> None:  # noqa: ANN001
-        """Tint the jumped-to footnote definition, clearing any previous one."""
-        for w in self._anchors.values():
-            orig = getattr(w, "_orig_markup", None)
-            if orig is not None:
-                w.text = orig  # restore all defs (idempotent if tapped twice)
-        orig = getattr(widget, "_orig_markup", widget.text)
-        widget.text = f"[color={HIGHLIGHT_COLOR}]{orig}[/color]"
+    def _show_footnote_popup(self, markup: str, page_path: Path) -> None:
+        """Show a footnote definition in a tap-anywhere-to-dismiss popup bubble."""
+        popup = ModalView(size_hint=(0.75, None), height=100, auto_dismiss=True)
+        lbl = Label(
+            text=markup,
+            markup=True,
+            line_height=BODY_LINE_HEIGHT,
+            halign="left",
+            valign="middle",
+            padding=(POPUP_PADDING, POPUP_PADDING),
+        )
+        lbl.bind(width=lambda inst, w: inst.setter("text_size")(inst, (w, None)))
+        # The popup wraps its height to the rendered footnote text.
+        lbl.bind(texture_size=lambda _inst, ts: popup.setter("height")(popup, ts[1]))
+
+        def _follow_link(_lbl: Label, ref: str) -> None:
+            popup.dismiss()  # a link inside the footnote navigates like any page link
+            target = resolve_link(page_path, ref, self.bundle)
+            if target:
+                self._show(target, push=True)
+
+        lbl.bind(on_ref_press=_follow_link)
+        popup.add_widget(lbl)
+        popup.open()
 
 
 class OKFApp(App):
