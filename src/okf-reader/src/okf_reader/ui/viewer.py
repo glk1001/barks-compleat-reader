@@ -13,6 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from kivy.app import App
+from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -40,13 +41,14 @@ class OKFViewer(BoxLayout):
         self.bundle = bundle
         self.history: list[Path] = []
         self._anchors: dict[str, str] = {}  # "fn:<label>" -> the definition block's markup
+        self._syncing_tree = False  # True while _sync_tree_to selects programmatically
 
-        tree_scroll = ScrollView(size_hint=(0.32, 1))
+        self.tree_scroll = ScrollView(size_hint=(0.32, 1))
         self.tree = TreeView(root_options={"text": dir_title(bundle)}, hide_root=False)
         # bind passes (treeview, selected_node); we only want the node (2nd arg)
         self.tree.bind(selected_node=lambda *args: self._on_node(args[1]))
-        tree_scroll.add_widget(self.tree)
-        self.add_widget(tree_scroll)
+        self.tree_scroll.add_widget(self.tree)
+        self.add_widget(self.tree_scroll)
 
         right = BoxLayout(orientation="vertical", size_hint=(0.68, 1), spacing=4)
         bar = BoxLayout(size_hint_y=None, height=32, spacing=6)
@@ -94,6 +96,8 @@ class OKFViewer(BoxLayout):
             self._add_tree_nodes(list_children(dir_node.bundle_path), dir_node)
 
     def _on_node(self, node) -> None:  # noqa: ANN001
+        if self._syncing_tree:
+            return  # programmatic selection mirroring the page already on display
         path = getattr(node, "file_path", None)
         if path:
             self._show(Path(path), push=True)
@@ -112,10 +116,60 @@ class OKFViewer(BoxLayout):
             self.history.pop()
             self._show(self.history[-1], push=False)
 
+    def _sync_tree_to(self, path: Path) -> None:
+        """Select and reveal the tree node for ``path``, expanding ancestors as needed.
+
+        Keeps the tree in step with pages reached through links or Back. Walks the
+        node's ancestor directories, lazily populating and opening each (the same
+        loading path as a manual expand), then selects the node — a directory node
+        when ``path`` is an ``index.md``, the concept leaf otherwise.
+        """
+        try:
+            rel = path.resolve().relative_to(self.bundle.resolve())
+        except ValueError:
+            return
+        dir_node = None  # the directory node walked to so far (None == tree root)
+        children = self.tree.root.nodes
+        for part in rel.parts[:-1]:
+            dir_node = next(
+                (n for n in children if Path(getattr(n, "bundle_path", "")).name == part),
+                None,
+            )
+            if dir_node is None:
+                return  # not represented in the tree (e.g. hidden dir) — nothing to sync
+            if not dir_node.loaded:  # populate before opening, as a manual expand would
+                dir_node.loaded = True
+                self._add_tree_nodes(list_children(dir_node.bundle_path), dir_node)
+            if not dir_node.is_open:
+                self.tree.toggle_node(dir_node)
+            children = dir_node.nodes
+        if rel.name == "index.md":  # a directory's own page selects the directory node
+            target = dir_node if dir_node is not None else self.tree.root
+        else:
+            resolved = path.resolve()
+            target = next(
+                (
+                    n
+                    for n in children
+                    if getattr(n, "file_path", None) and Path(n.file_path).resolve() == resolved
+                ),
+                None,
+            )
+        if target is None or self.tree.selected_node is target:
+            return
+        self._syncing_tree = True
+        try:
+            self.tree.select_node(target)
+        finally:
+            self._syncing_tree = False
+        # Scroll on the next frame, once the freshly-expanded tree has been laid out.
+        Clock.schedule_once(lambda _dt: self.tree_scroll.scroll_to(target, padding=24), 0)
+
     def _show(self, path: Path, *, push: bool) -> None:
         if push:
             self.history.append(path)
         self.back_btn.disabled = len(self.history) <= 1
+        self._sync_tree_to(path)
         page = render_page(path.read_text(encoding="utf-8"))
         self.body.clear_widgets()
         self._anchors = {}
