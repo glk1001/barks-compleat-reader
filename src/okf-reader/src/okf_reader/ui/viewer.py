@@ -44,6 +44,9 @@ WINDOW_BG_TINT = (0.22, 0.22, 0.22, 1)
 # Translucent black drawn over the background image behind the tree panel only,
 # softening it a touch further there than in the reading pane.
 TREE_PANEL_SCRIM = (0, 0, 0, 0.25)
+# Same magenta the Barks Reader uses for tree selection
+# (barks_reader.ui.tree_view_nodes.TREE_VIEW_NODE_SELECTED_COLOR).
+TREE_SELECTED_COLOR = (1, 0, 1, 0.8)
 
 
 class OKFViewer(RelativeLayout):
@@ -70,7 +73,7 @@ class OKFViewer(RelativeLayout):
 
         self.tree_scroll = ScrollView(size_hint=(TREE_PANEL_WIDTH, 1))
         self.tree = TreeView(
-            root_options={"text": dir_title(bundle)},
+            root_options={"text": dir_title(bundle), "color_selected": TREE_SELECTED_COLOR},
             hide_root=False,
             # Grow with the content instead of squeezing into the viewport — a
             # ScrollView only scrolls a child that is taller than itself.
@@ -124,13 +127,16 @@ class OKFViewer(RelativeLayout):
         # to TreeView widgets; the frontmatter reads for this level already happened there.
         for node in nodes:
             if isinstance(node, BundleDir):
-                tv = self.tree.add_node(TreeViewLabel(text=node.title or node.name), parent)
+                tv = self.tree.add_node(
+                    TreeViewLabel(text=node.title or node.name, color_selected=TREE_SELECTED_COLOR),
+                    parent,
+                )
                 tv.is_leaf = False  # show a disclosure triangle; real children load on open
                 tv.bundle_path = node.path
                 tv.loaded = False
                 tv.bind(is_open=self._on_dir_open)
             else:  # ConceptNode
-                tv = TreeViewLabel(text=node.title)
+                tv = TreeViewLabel(text=node.title, color_selected=TREE_SELECTED_COLOR)
                 tv.file_path = node.path
                 self.tree.add_node(tv, parent)
 
