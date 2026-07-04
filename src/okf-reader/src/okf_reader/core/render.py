@@ -70,9 +70,13 @@ class TableBlock:
 
     The padding is computed from each cell's *visible* length, so the columns
     line up only in a **monospace font** — the consumer must render the rows in
-    one (and stack them with no extra spacing). The header row (when present)
-    is wrapped in the heading color rather than bold, because bold glyphs have
-    different advances in a faked-bold monospace and would break the alignment.
+    one (and stack them with no extra spacing). A long cell wraps at
+    `TABLE_COL_WRAP_WIDTH`, so a row may span several newline-joined lines; each
+    row must be rendered as **one** label, both to keep those lines together and
+    because a markup tag may legitimately span them. The header row (when
+    present) is wrapped in the heading color rather than bold, because bold
+    glyphs have different advances in a faked-bold monospace and would break
+    the alignment.
     """
 
     rows: list[str]
@@ -211,12 +215,51 @@ def _footnote_block(tokens: list, start: int) -> tuple[Block, int]:
 
 
 _MARKUP_TAG_RE = re.compile(r"\[[^\[\]]*\]")  # a Kivy markup tag: [b], [/color], [ref=x] …
+# One indivisible unit of a Kivy-markup string: a whole tag, a whole entity, or a
+# single character — the pieces a wrap may never split.
+_MARKUP_UNIT_RE = re.compile(r"\[[^\[\]]*\]|&amp;|&bl;|&br;|.")
 
-# A cell longer than this doesn't widen its column; it overflows its own row
-# instead (only that row loses alignment). Some scraped wiki tables carry one
-# mega-cell of flattened prose that would otherwise push every row's remaining
-# columns hundreds of characters to the right.
-TABLE_COL_WIDTH_CAP = 60
+# A cell longer than this wraps onto continuation lines within its column, so a
+# handful of long titles (or a scraped mega-cell of flattened prose) don't pad
+# every other row's column with dead space. A single unbreakable word longer
+# than this stays whole and overflows its own row only.
+TABLE_COL_WRAP_WIDTH = 40
+
+
+def _wrap_markup(markup: str, width: int) -> list[str]:
+    """Greedy word-wrap of a Kivy-markup string at ``width`` visible characters.
+
+    Breaks only at visible spaces — never inside a markup tag or entity, and a
+    single word longer than ``width`` stays whole (its line overflows). A tag
+    pair may end up spanning the returned lines; that is fine as long as the
+    consumer renders them within one label, where markup state crosses newlines.
+    """
+    words: list[tuple[str, int]] = []  # (markup, visible length)
+    current, cur_len = "", 0
+    for m in _MARKUP_UNIT_RE.finditer(markup):
+        unit = m.group()
+        if unit == " ":
+            if current:
+                words.append((current, cur_len))
+                current, cur_len = "", 0
+        else:
+            current += unit
+            cur_len += 0 if unit.startswith("[") else 1  # raw '[' only ever begins a tag
+    if current:
+        words.append((current, cur_len))
+    lines: list[str] = []
+    line, line_len = "", 0
+    for word, word_len in words:
+        if line and line_len + 1 + word_len > width:
+            lines.append(line)
+            line, line_len = word, word_len
+        elif line:
+            line, line_len = f"{line} {word}", line_len + 1 + word_len
+        else:
+            line, line_len = word, word_len
+    if line:
+        lines.append(line)
+    return lines or [""]
 
 
 def _visible_len(markup: str) -> int:
@@ -230,9 +273,10 @@ def _visible_len(markup: str) -> int:
 def _table_block(tokens: list, start: int) -> tuple[TableBlock, int]:
     """Render the table starting at ``tokens[start]`` (its ``table_open``) into a TableBlock.
 
-    Each row becomes one markup line with its cells space-padded to the column's
+    Each row becomes one markup entry with its cells space-padded to the column's
     widest visible content (see `TableBlock` for the monospace requirement this
-    puts on the consumer); header rows are wrapped in the heading color. Consumes
+    puts on the consumer); cells past `TABLE_COL_WRAP_WIDTH` wrap onto newline-joined
+    continuation lines, and header rows are wrapped in the heading color. Consumes
     up to ``table_close`` — like footnote definitions — so the cells' inline
     tokens are not re-rendered; returns the block and the index just past
     ``table_close``.
@@ -257,24 +301,42 @@ def _table_block(tokens: list, start: int) -> tuple[TableBlock, int]:
             rows.append(cells)
             header_rows += in_header
         j += 1
+    wrapped: list[list[list[str]]] = [  # rows -> cells -> the cell's wrapped lines
+        [
+            _wrap_markup(cell, TABLE_COL_WRAP_WIDTH)
+            if _visible_len(cell) > TABLE_COL_WRAP_WIDTH
+            else [cell]
+            for cell in row
+        ]
+        for row in rows
+    ]
     widths: list[int] = []
-    for row in rows:
+    for row in wrapped:
         for c, cell in enumerate(row):
-            length = _visible_len(cell)
-            if length > TABLE_COL_WIDTH_CAP:
-                length = 0  # outlier: overflows its own row, must not widen the column
-            if c == len(widths):
-                widths.append(length)
-            else:
-                widths[c] = max(widths[c], length)
-    lines: list[str] = []
-    for r, row in enumerate(rows):
-        padded = (cell + " " * max(widths[c] - _visible_len(cell), 0) for c, cell in enumerate(row))
-        line = "  ".join(padded).rstrip()
+            for cell_line in cell:
+                length = _visible_len(cell_line)
+                if length > TABLE_COL_WRAP_WIDTH:
+                    length = 0  # unbreakable word: overflows its own row only
+                if c == len(widths):
+                    widths.append(length)
+                else:
+                    widths[c] = max(widths[c], length)
+    entries: list[str] = []
+    for r, row in enumerate(wrapped):
+        height = max((len(cell) for cell in row), default=0)
+        row_lines = []
+        for i in range(height):
+            # A cell with fewer lines than the row contributes blank padding.
+            segments = ((cell[i] if i < len(cell) else "") for cell in row)
+            padded = (
+                seg + " " * max(widths[c] - _visible_len(seg), 0) for c, seg in enumerate(segments)
+            )
+            row_lines.append("  ".join(padded).rstrip())
+        entry = "\n".join(row_lines)
         if r < header_rows:
-            line = f"[color={HEADING_COLOR}]{line}[/color]"
-        lines.append(line)
-    return TableBlock(lines), j + 1
+            entry = f"[color={HEADING_COLOR}]{entry}[/color]"
+        entries.append(entry)
+    return TableBlock(entries), j + 1
 
 
 def render_page(text: str) -> Page:

@@ -243,9 +243,28 @@ class TestRenderPage:
         assert table.rows[1] == "one    [i]two[/i]"  # "one" padded to width of "three"
         assert table.rows[2] == "three  four"
 
-    def test_table_outlier_cell_does_not_widen_column(self) -> None:
-        """A cell past TABLE_COL_WIDTH_CAP overflows its own row, not the whole column."""
-        long_cell = "L" * (okf.TABLE_COL_WIDTH_CAP + 10)
+    def test_table_long_cell_wraps_within_its_column(self) -> None:
+        """A cell past TABLE_COL_WRAP_WIDTH wraps at word boundaries inside its column."""
+        a, b, c = "a" * 20, "b" * 20, "c" * 10
+        md = f"| T | N |\n|---|---|\n| {a} {b} {c} | x |\n| short | y |\n"
+        table = okf.render_page(md).blocks[0]
+        assert isinstance(table, okf.TableBlock)
+        # Column width = the widest wrapped line (31), not the unwrapped cell (52).
+        assert table.rows[1] == f"{a}{' ' * 11}  x\n{b} {c}"
+        assert table.rows[2] == f"short{' ' * 26}  y"
+
+    def test_table_wrap_never_splits_markup_tags(self) -> None:
+        """Wrapping breaks at visible spaces only; a tag pair may span the row's lines."""
+        a, b, c = "a" * 20, "b" * 20, "c" * 10
+        md = f"| T | N |\n|---|---|\n| *{a} {b} {c}* | x |\n"
+        table = okf.render_page(md).blocks[0]
+        assert isinstance(table, okf.TableBlock)
+        # [i]…[/i] spans the two lines intact; padding counts visible chars only.
+        assert table.rows[1] == f"[i]{a}{' ' * 11}  x\n{b} {c}[/i]"
+
+    def test_table_unbreakable_word_does_not_widen_column(self) -> None:
+        """A single word past TABLE_COL_WRAP_WIDTH overflows its own row, not the column."""
+        long_cell = "L" * (okf.TABLE_COL_WRAP_WIDTH + 10)
         md = f"| A | B |\n|---|---|\n| short | x |\n| {long_cell} | y |\n"
         table = okf.render_page(md).blocks[0]
         assert isinstance(table, okf.TableBlock)
