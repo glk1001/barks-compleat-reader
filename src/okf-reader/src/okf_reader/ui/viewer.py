@@ -15,7 +15,9 @@ from pathlib import Path
 
 from kivy.app import App
 from kivy.clock import Clock
+from kivy.effects.scroll import ScrollEffect
 from kivy.graphics import Color, Rectangle
+from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.image import Image
@@ -60,6 +62,26 @@ TREE_DIR_TEXT_COLOR = (1, 1, 1, 1)
 TREE_CONCEPT_TEXT_COLOR = (1.0, 0.835, 0.29, 1.0)
 
 
+def _scroll_view(**kwargs) -> ScrollView:  # noqa: ANN003
+    """Build a ScrollView with the Barks Reader's scroll behavior (tree_view_screen.kv).
+
+    ScrollEffect instead of the default DampedScrollEffect: scrolling stops dead
+    at the edges rather than rubber-banding, and ``always_overscroll=False`` stops
+    content that already fits from bouncing at all. The bar is widened from the
+    2dp default, made draggable (``scroll_type`` includes "bars"), and colored
+    like the Barks tree panel's.
+    """
+    return ScrollView(
+        always_overscroll=False,
+        effect_cls=ScrollEffect,
+        scroll_type=["bars", "content"],
+        bar_color=(0.7, 0.7, 1.0, 1),
+        bar_inactive_color=(0.7, 0.7, 0.7, 0.9),
+        bar_width=dp(12),
+        **kwargs,
+    )
+
+
 @dataclass
 class _HistoryEntry:
     """One visited page, remembering where it was scrolled to when left (1.0 == top)."""
@@ -90,7 +112,7 @@ class OKFViewer(RelativeLayout):
         content = BoxLayout(orientation="horizontal", spacing=8, padding=8, size_hint=(1, 1))
         self.add_widget(content)
 
-        self.tree_scroll = ScrollView(size_hint=(TREE_PANEL_WIDTH, 1))
+        self.tree_scroll = _scroll_view(size_hint=(TREE_PANEL_WIDTH, 1), do_scroll_x=False)
         self.tree = TreeView(
             root_options={
                 "text": dir_title(bundle),
@@ -125,7 +147,7 @@ class OKFViewer(RelativeLayout):
         bar.add_widget(self.back_btn)
         right.add_widget(bar)
 
-        self.body_scroll = ScrollView()
+        self.body_scroll = _scroll_view(do_scroll_x=False)
         self.body = BoxLayout(
             orientation="vertical",
             size_hint_y=None,
@@ -346,7 +368,7 @@ class OKFViewer(RelativeLayout):
             )
             lbl.bind(texture_size=lbl.setter("size"))
             stack.add_widget(lbl)
-        scroller = ScrollView(size_hint=(1, None), do_scroll_y=False, height=0)
+        scroller = _scroll_view(size_hint=(1, None), do_scroll_y=False, height=0)
         stack.bind(height=scroller.setter("height"))
         scroller.add_widget(stack)
         return scroller
