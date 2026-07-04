@@ -82,6 +82,9 @@ class BundleDir:
     path: Path
     name: str
     children: tuple[BundleDir | ConceptNode, ...] = ()
+    # Human display title (see dir_title). Default "" keeps hand-built instances valid;
+    # the model builders (list_children/load_bundle_tree) always fill it in.
+    title: str = ""
 
 
 # --------------------------------------------------------------------------- render
@@ -258,6 +261,22 @@ def concept_title(path: Path) -> str:
     return title if isinstance(title, str) and title else path.stem
 
 
+def dir_title(path: Path) -> str:
+    """Human title for a bundle directory.
+
+    The reserved ``index.md`` (SPEC §3.1) is the directory's curated listing, and its
+    first ``#`` heading names the directory — use that when present. Otherwise fall
+    back to the directory name in Title Case ("comics-and-stories" → "Comics And
+    Stories"). The line scan tolerates the root index.md's frontmatter block.
+    """
+    index = path / "index.md"
+    if index.is_file():
+        for line in index.read_text(encoding="utf-8").splitlines():
+            if line.startswith("# "):
+                return line[2:].strip()
+    return path.name.replace("-", " ").replace("_", " ").title()
+
+
 def list_children(directory: Path) -> list[BundleDir | ConceptNode]:
     """Immediate children of a bundle directory, in name order — one level only.
 
@@ -274,7 +293,7 @@ def list_children(directory: Path) -> list[BundleDir | ConceptNode]:
             if child.name.startswith("."):
                 continue  # skip hidden entries (e.g. .obsidian) — not OKF content
             if child.is_dir():
-                children.append(BundleDir(child, child.name))
+                children.append(BundleDir(child, child.name, title=dir_title(child)))
             elif child.suffix == ".md" and child.name not in RESERVED_FILES:
                 children.append(ConceptNode(child, concept_title(child)))
     return children
@@ -292,4 +311,4 @@ def load_bundle_tree(root: Path) -> BundleDir:
         load_bundle_tree(child.path) if isinstance(child, BundleDir) else child
         for child in list_children(root)
     )
-    return BundleDir(root, root.name, children)
+    return BundleDir(root, root.name, children, title=dir_title(root))

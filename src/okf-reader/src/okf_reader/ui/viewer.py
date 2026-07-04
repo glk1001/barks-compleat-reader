@@ -20,7 +20,13 @@ from kivy.uix.modalview import ModalView
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.treeview import TreeView, TreeViewLabel
 
-from okf_reader.core.render import BundleDir, list_children, render_page, resolve_link
+from okf_reader.core.render import (
+    BundleDir,
+    dir_title,
+    list_children,
+    render_page,
+    resolve_link,
+)
 
 BODY_LINE_HEIGHT = 1.25
 BODY_PADDING = (16, 8, 24, 16)  # left, top, right, bottom
@@ -36,7 +42,7 @@ class OKFViewer(BoxLayout):
         self._anchors: dict[str, str] = {}  # "fn:<label>" -> the definition block's markup
 
         tree_scroll = ScrollView(size_hint=(0.32, 1))
-        self.tree = TreeView(root_options={"text": f"OKF: {bundle.name}"}, hide_root=False)
+        self.tree = TreeView(root_options={"text": dir_title(bundle)}, hide_root=False)
         # bind passes (treeview, selected_node); we only want the node (2nd arg)
         self.tree.bind(selected_node=lambda *args: self._on_node(args[1]))
         tree_scroll.add_widget(self.tree)
@@ -71,7 +77,7 @@ class OKFViewer(BoxLayout):
         # to TreeView widgets; the frontmatter reads for this level already happened there.
         for node in nodes:
             if isinstance(node, BundleDir):
-                tv = self.tree.add_node(TreeViewLabel(text=f"[{node.name}]"), parent)
+                tv = self.tree.add_node(TreeViewLabel(text=node.title or node.name), parent)
                 tv.is_leaf = False  # show a disclosure triangle; real children load on open
                 tv.bundle_path = node.path
                 tv.loaded = False

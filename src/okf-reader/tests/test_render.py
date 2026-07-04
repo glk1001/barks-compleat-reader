@@ -218,6 +218,35 @@ class TestConceptTitle:
         assert okf.concept_title(null) == "n"
 
 
+class TestDirTitle:
+    def test_index_md_heading_used(self, tmp_path: Path) -> None:
+        """A directory's index.md heading is its display title."""
+        d = tmp_path / "comics-and-stories"
+        d.mkdir()
+        (d / "index.md").write_text("# Comics and Stories\n\nListing…\n", encoding="utf-8")
+        assert okf.dir_title(d) == "Comics and Stories"
+
+    def test_heading_found_after_frontmatter(self, tmp_path: Path) -> None:
+        """The bundle-root index.md may carry frontmatter before its heading."""
+        (tmp_path / "index.md").write_text(
+            '---\nokf_version: "0.1"\n---\n\n# Knowledge Bundle Root\n', encoding="utf-8"
+        )
+        assert okf.dir_title(tmp_path) == "Knowledge Bundle Root"
+
+    def test_missing_index_falls_back_to_title_case(self, tmp_path: Path) -> None:
+        """Without index.md, the kebab/underscore name is Title Cased."""
+        d = tmp_path / "blum-barksian_extreme"
+        d.mkdir()
+        assert okf.dir_title(d) == "Blum Barksian Extreme"
+
+    def test_index_without_heading_falls_back(self, tmp_path: Path) -> None:
+        """An index.md with no '# ' heading still falls back to the name."""
+        d = tmp_path / "some-dir"
+        d.mkdir()
+        (d / "index.md").write_text("just prose, no heading\n", encoding="utf-8")
+        assert okf.dir_title(d) == "Some Dir"
+
+
 class TestLoadBundleTree:
     @staticmethod
     def _bundle(tmp_path: Path) -> Path:
@@ -298,6 +327,7 @@ class TestListChildren:
         assert isinstance(sub, okf.BundleDir)
         assert sub.children == ()  # not recursed...
         assert (sub.path / "beta.md").is_file()  # ...even though it has a child on disk
+        assert sub.title == "Sub"  # no index.md → Title Cased name (see TestDirTitle)
 
     def test_reserved_skipped_and_titles_resolved(self, tmp_path: Path) -> None:
         """Reserved files are excluded; leaves carry frontmatter title or stem fallback."""
