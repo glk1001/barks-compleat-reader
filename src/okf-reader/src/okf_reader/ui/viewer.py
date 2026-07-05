@@ -202,9 +202,45 @@ class OKFViewer(RelativeLayout):
 
     def _on_dir_open(self, dir_node, is_open) -> None:  # noqa: ANN001
         # Fires on both open and close; populate a directory's children once, lazily.
-        if is_open and not dir_node.loaded:
+        if not is_open:
+            return
+        if not dir_node.loaded:
             dir_node.loaded = True
             self._add_tree_nodes(list_children(dir_node.bundle_path), dir_node)
+        self._close_other_branches(dir_node)
+
+    def _close_other_branches(self, opened) -> None:  # noqa: ANN001
+        """Close every open node outside ``opened``'s ancestor chain.
+
+        The Barks Reader's accordion rule: one open path at a time. Other
+        branches are closed depth-first (children before parents), so nothing
+        keeps a stale expanded state to spring back on its next open. Each
+        toggle re-fires _on_dir_open with is_open=False, which returns
+        immediately.
+        """
+        keep = {opened}
+        node = opened.parent_node
+        while node is not None:
+            keep.add(node)
+            node = node.parent_node
+
+        def close_subtree(node) -> None:  # noqa: ANN001
+            for child in node.nodes:
+                if child.is_open:
+                    close_subtree(child)
+                    self.tree.toggle_node(child)
+
+        def walk(parent) -> None:  # noqa: ANN001
+            for child in parent.nodes:
+                if not child.is_open:
+                    continue
+                if child in keep:
+                    walk(child)  # on the kept path: only prune its off-path branches
+                else:
+                    close_subtree(child)
+                    self.tree.toggle_node(child)
+
+        walk(self.tree.root)
 
     def _on_node(self, node) -> None:  # noqa: ANN001
         if self._syncing_tree:
