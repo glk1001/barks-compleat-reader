@@ -262,6 +262,23 @@ class TestRenderPage:
         # [i]…[/i] spans the two lines intact; padding counts visible chars only.
         assert table.rows[1] == f"[i]{a}{' ' * 11}  x\n{b} {c}[/i]"
 
+    def test_table_numeric_columns_right_justified(self) -> None:
+        """A column of plain numbers is right-justified; text columns stay left."""
+        md = "| Title | Pages |\n|---|---|\n| A Story | 8 |\n| Longer Story | -1.00 |\n"
+        table = okf.render_page(md).blocks[0]
+        assert isinstance(table, okf.TableBlock)
+        assert table.rows[0] == f"[color={okf.HEADING_COLOR}]Title{' ' * 7}  Pages[/color]"
+        assert table.rows[1] == f"A Story{' ' * 5}  {' ' * 4}8"
+        assert table.rows[2] == "Longer Story  -1.00"  # negatives count as numeric
+
+    def test_table_mixed_column_stays_left_justified(self) -> None:
+        """One non-numeric cell (e.g. a page code) keeps the whole column left-justified."""
+        md = "| Pg | X |\n|---|---|\n| 151 | a |\n| 570b | b |\n"
+        table = okf.render_page(md).blocks[0]
+        assert isinstance(table, okf.TableBlock)
+        assert table.rows[1] == "151   a"  # "151" left-justified in the 4-wide column
+        assert table.rows[2] == "570b  b"
+
     def test_table_unbreakable_word_does_not_widen_column(self) -> None:
         """A single word past TABLE_COL_WRAP_WIDTH overflows its own row, not the column."""
         long_cell = "L" * (okf.TABLE_COL_WRAP_WIDTH + 10)

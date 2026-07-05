@@ -80,7 +80,7 @@ class TableBlock:
     """
 
     rows: list[str]
-    font_size: int = 14
+    font_size: int = 13
 
 
 @dataclass
@@ -225,6 +225,11 @@ _MARKUP_UNIT_RE = re.compile(r"\[[^\[\]]*\]|&amp;|&bl;|&br;|.")
 # than this stays whole and overflows its own row only.
 TABLE_COL_WRAP_WIDTH = 40
 
+# A column whose every non-empty body cell looks like a plain number — optional
+# sign and currency mark, digits, thousands commas, an optional decimal part —
+# is right-justified, the conventional alignment for figures.
+_NUMERIC_CELL_RE = re.compile(r"-?\$?\d[\d,]*(?:\.\d+)?")
+
 
 def _wrap_markup(markup: str, width: int) -> list[str]:
     """Greedy word-wrap of a Kivy-markup string at ``width`` visible characters.
@@ -262,12 +267,15 @@ def _wrap_markup(markup: str, width: int) -> list[str]:
     return lines or [""]
 
 
-def _visible_len(markup: str) -> int:
-    """Character count of what a Kivy-markup string displays: tags gone, entities one char."""
+def _visible_text(markup: str) -> str:
+    """Return what a Kivy-markup string displays: tags stripped, entities decoded."""
     text = _MARKUP_TAG_RE.sub("", markup)
-    for entity in ("&amp;", "&bl;", "&br;"):
-        text = text.replace(entity, "x")
-    return len(text)
+    return text.replace("&amp;", "&").replace("&bl;", "[").replace("&br;", "]")
+
+
+def _visible_len(markup: str) -> int:
+    """Character count of what a Kivy-markup string displays."""
+    return len(_visible_text(markup))
 
 
 def _table_block(tokens: list, start: int) -> tuple[TableBlock, int]:
@@ -276,7 +284,8 @@ def _table_block(tokens: list, start: int) -> tuple[TableBlock, int]:
     Each row becomes one markup entry with its cells space-padded to the column's
     widest visible content (see `TableBlock` for the monospace requirement this
     puts on the consumer); cells past `TABLE_COL_WRAP_WIDTH` wrap onto newline-joined
-    continuation lines, and header rows are wrapped in the heading color. Consumes
+    continuation lines, all-number columns are right-justified, and header rows are
+    wrapped in the heading color. Consumes
     up to ``table_close`` — like footnote definitions — so the cells' inline
     tokens are not re-rendered; returns the block and the index just past
     ``table_close``.
@@ -321,6 +330,13 @@ def _table_block(tokens: list, start: int) -> tuple[TableBlock, int]:
                     widths.append(length)
                 else:
                     widths[c] = max(widths[c], length)
+    numeric_cols: list[bool] = []
+    for c in range(len(widths)):
+        body_texts = [_visible_text(row[c]).strip() for row in rows[header_rows:] if c < len(row)]
+        non_empty = [text for text in body_texts if text]
+        numeric_cols.append(
+            bool(non_empty) and all(_NUMERIC_CELL_RE.fullmatch(text) for text in non_empty)
+        )
     entries: list[str] = []
     for r, row in enumerate(wrapped):
         height = max((len(cell) for cell in row), default=0)
@@ -329,7 +345,10 @@ def _table_block(tokens: list, start: int) -> tuple[TableBlock, int]:
             # A cell with fewer lines than the row contributes blank padding.
             segments = ((cell[i] if i < len(cell) else "") for cell in row)
             padded = (
-                seg + " " * max(widths[c] - _visible_len(seg), 0) for c, seg in enumerate(segments)
+                " " * max(widths[c] - _visible_len(seg), 0) + seg
+                if numeric_cols[c]
+                else seg + " " * max(widths[c] - _visible_len(seg), 0)
+                for c, seg in enumerate(segments)
             )
             row_lines.append("  ".join(padded).rstrip())
         entry = "\n".join(row_lines)
