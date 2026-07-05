@@ -38,3 +38,4 @@ __pycache__/
 .idea/httpRequests
 .idea/caches/build_file_checksums.ser
 *.iws
+graphify-out/
