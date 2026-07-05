@@ -136,6 +136,16 @@ class TestRenderPage:
         block = _text_blocks(page)[0]
         assert block.markup == f"[color={okf.HEADING_COLOR}][b]Title[/b][/color]"
         assert block.font_size == okf.HEADING_SIZES["h1"]
+        assert block.heading  # headings start a new visual section in consumers
+
+    def test_heading_flag_set_only_on_headings(self) -> None:
+        """Paragraphs are not section starters; the Footnotes header is."""
+        page = okf.render_page("# H\n\npara[^1]\n\n[^1]: def")
+        flags = [(b.markup[:20], b.heading) for b in _text_blocks(page)]
+        assert flags[0][1]  # the h1
+        assert not flags[1][1]  # the paragraph
+        footnotes_header = next(b for b in _text_blocks(page) if "Footnotes" in b.markup)
+        assert footnotes_header.heading
 
     def test_inline_emphasis_and_code(self) -> None:
         """Bold, italic, and inline code map to Kivy markup tags."""

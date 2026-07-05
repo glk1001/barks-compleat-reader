@@ -62,6 +62,7 @@ class Block:
     markup: str
     font_size: int = 16
     anchor: str | None = None  # e.g. "fn:db" — a scroll target for a tapped footnote marker
+    heading: bool = False  # headings begin a new visual section in consumers
 
 
 @dataclass
@@ -414,6 +415,7 @@ def render_page(text: str, table_rewriter: TableRewriter | None = None) -> Page:
                     + _inline(tokens[i + 1].children or [])
                     + "[/b][/color]",
                     HEADING_SIZES.get(t.tag, 16),
+                    heading=True,
                 )
             )
             i += 3
@@ -468,7 +470,8 @@ def render_page(text: str, table_rewriter: TableRewriter | None = None) -> Page:
         elif tp == "hr":
             blocks.append(Block("─" * 40))
         elif tp == "footnote_block_open":
-            blocks.append(Block(f"[color={HEADING_COLOR}][b]Footnotes[/b][/color]", 18))
+            header = f"[color={HEADING_COLOR}][b]Footnotes[/b][/color]"
+            blocks.append(Block(header, 18, heading=True))
         i += 1
     return Page(fm, blocks)
 

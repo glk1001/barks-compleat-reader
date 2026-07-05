@@ -54,15 +54,15 @@ WINDOW_BG_TINT = (0.22, 0.22, 0.22, 1)
 # Translucent black drawn over the background image behind the tree panel only,
 # softening it a touch further there than in the reading pane.
 TREE_PANEL_SCRIM = (0, 0, 0, 0.25)
-# Translucent rounded band drawn behind each text block so body text keeps its
-# contrast over vivid background panels — the Barks Reader's BgColorLabel idiom
+# Translucent rounded band drawn behind each page *section* (a heading plus
+# everything under it, up to the next heading) so body text keeps its contrast
+# over vivid background panels — the Barks Reader's BgColorLabel idiom
 # (main_screen.kv <BackgroundColor@Widget>), in Python. The alpha is the
-# delineation-strength knob; the sizing factors make the band leak out a bit
-# past the text, as the Barks labels do.
+# delineation-strength knob.
 BLOCK_BG_COLOR = (0.01, 0.01, 0.01, 0.35)
 BLOCK_BG_RADIUS = 6  # dp
-BLOCK_BG_SIZING_X = 1.01
-BLOCK_BG_SIZING_Y = 1.06
+SECTION_PADDING = (10, 8)  # inset of a section's text from its band edge
+SECTION_BLOCK_SPACING = 8  # between blocks inside one banded section
 # Same magenta the Barks Reader uses for tree selection
 # (barks_reader.ui.tree_view_nodes.TREE_VIEW_NODE_SELECTED_COLOR).
 TREE_SELECTED_COLOR = (1, 0, 1, 0.8)
@@ -73,24 +73,16 @@ TREE_CONCEPT_TEXT_COLOR = (1.0, 0.835, 0.29, 1.0)
 
 
 def _add_text_backing(widget) -> None:  # noqa: ANN001
-    """Draw the translucent rounded band behind ``widget`` (see BLOCK_BG_COLOR).
-
-    Same geometry as the Barks kv rule: the rectangle is the widget's size
-    scaled by the sizing factors, shifted by half the overhang so the leak-out
-    is centered, and kept glued through pos/size changes.
-    """
+    """Draw the translucent rounded band behind ``widget`` (see BLOCK_BG_COLOR),
+    kept glued through pos/size changes.
+    """  # noqa: D205
     with widget.canvas.before:
         Color(rgba=BLOCK_BG_COLOR)
         rect = RoundedRectangle(radius=[dp(BLOCK_BG_RADIUS)])
 
     def sync(_widget, _value) -> None:  # noqa: ANN001
-        width = BLOCK_BG_SIZING_X * widget.width
-        height = BLOCK_BG_SIZING_Y * widget.height
-        rect.size = (width, height)
-        rect.pos = (
-            widget.x - 0.5 * (width - widget.width),
-            widget.y - 0.5 * (height - widget.height),
-        )
+        rect.pos = widget.pos
+        rect.size = widget.size
 
     widget.bind(pos=sync, size=sync)
     sync(widget, None)
@@ -389,9 +381,14 @@ class OKFViewer(RelativeLayout):
         self._update_background(page.frontmatter, path)
         self.body.clear_widgets()
         self._anchors = {}
+        # Blocks group into banded sections: each heading starts a new section
+        # box holding it and everything up to the next heading (see BLOCK_BG_COLOR).
+        section: BoxLayout | None = None
         for blk in page.blocks:
             if isinstance(blk, TableBlock):
-                self.body.add_widget(self._table_widget(blk))
+                if section is None:
+                    section = self._new_section()
+                section.add_widget(self._table_widget(blk))
                 continue
             lbl = Label(
                 text=blk.markup,
@@ -406,16 +403,30 @@ class OKFViewer(RelativeLayout):
             lbl.bind(texture_size=lambda inst, ts: inst.setter("height")(inst, ts[1]))
             lbl._page_path = path  # noqa: SLF001
             lbl.bind(on_ref_press=self._on_ref)
-            _add_text_backing(lbl)
             if blk.anchor:
                 self._anchors[blk.anchor] = blk.markup
-            self.body.add_widget(lbl)
+            if section is None or blk.heading:
+                section = self._new_section()
+            section.add_widget(lbl)
         # Fresh pages open at the top; Back passes the offset the page was left at.
         self.body_scroll.scroll_y = scroll_y
         if scroll_y != 1:
             # The labels take their texture sizes over the next frame, shifting the
             # normalized offset; re-assert it once the layout has settled.
             Clock.schedule_once(lambda _dt: setattr(self.body_scroll, "scroll_y", scroll_y), 0)
+
+    def _new_section(self) -> BoxLayout:
+        """Append and return a fresh banded section box for the next run of blocks."""
+        box = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            spacing=SECTION_BLOCK_SPACING,
+            padding=SECTION_PADDING,
+        )
+        box.bind(minimum_height=box.setter("height"))
+        _add_text_backing(box)
+        self.body.add_widget(box)
+        return box
 
     def _table_widget(self, blk: TableBlock) -> ScrollView:
         """Build the widget for a table: monospace rows, tightly stacked, one per Label.
@@ -431,7 +442,6 @@ class OKFViewer(RelativeLayout):
             minimum_height=stack.setter("height"),
             minimum_width=stack.setter("width"),
         )
-        _add_text_backing(stack)  # one band behind the whole table, not per row
         for row in blk.rows:
             lbl = Label(
                 text=row,
