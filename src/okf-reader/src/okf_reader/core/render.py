@@ -22,7 +22,7 @@ from __future__ import annotations
 import re
 import urllib.parse
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 import yaml
 from markdown_it import MarkdownIt
@@ -81,6 +81,21 @@ class TableBlock:
 
     rows: list[str]
     font_size: int = 13
+
+
+class TableRewriter(Protocol):
+    """Rewrites a parsed table before layout — the embedding app's presentation seam.
+
+    Gets the header row and body rows as lists of cell Kivy-markup strings and
+    returns replacements (e.g. an app folding a flag column into a decorated
+    title column). okf_reader itself knows nothing about any particular table.
+    """
+
+    def rewrite(
+        self, header: list[str], body: list[list[str]]
+    ) -> tuple[list[str], list[list[str]]]:
+        """Return the (header, body) to lay out in place of the parsed ones."""
+        ...
 
 
 @dataclass
@@ -280,7 +295,9 @@ def _visible_len(markup: str) -> int:
     return len(_visible_text(markup))
 
 
-def _table_block(tokens: list, start: int) -> tuple[TableBlock, int]:
+def _table_block(
+    tokens: list, start: int, rewriter: TableRewriter | None
+) -> tuple[TableBlock, int]:
     """Render the table starting at ``tokens[start]`` (its ``table_open``) into a TableBlock.
 
     Each row becomes one markup entry with its cells space-padded to the column's
@@ -312,6 +329,11 @@ def _table_block(tokens: list, start: int) -> tuple[TableBlock, int]:
             rows.append(cells)
             header_rows += in_header
         j += 1
+    # Markdown tables have exactly one header row, so the rewriter seam sees
+    # (header, body); it runs before wrapping/padding so its cells lay out normally.
+    if rewriter is not None and header_rows == 1 and rows:
+        new_header, new_body = rewriter.rewrite(rows[0], rows[1:])
+        rows = [new_header, *new_body]
     wrapped: list[list[list[str]]] = [  # rows -> cells -> the cell's wrapped lines
         [
             _wrap_markup(cell, TABLE_COL_WRAP_WIDTH)
@@ -360,7 +382,7 @@ def _table_block(tokens: list, start: int) -> tuple[TableBlock, int]:
     return TableBlock(entries), j + 1
 
 
-def render_page(text: str) -> Page:
+def render_page(text: str, table_rewriter: TableRewriter | None = None) -> Page:
     """Parse a page's frontmatter and render its body + footnotes to Kivy-markup blocks."""
     fm, body = parse_frontmatter(text)
     tokens = _md().parse(body)
@@ -397,7 +419,7 @@ def render_page(text: str) -> Page:
             blocks.append(block)
             continue
         if tp == "table_open":
-            block, i = _table_block(tokens, i)
+            block, i = _table_block(tokens, i, table_rewriter)
             blocks.append(block)
             continue
         if tp in ("bullet_list_open", "ordered_list_open", "blockquote_open"):

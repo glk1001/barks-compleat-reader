@@ -31,6 +31,7 @@ from okf_reader.core.backgrounds import ImageProvider, choose_image
 from okf_reader.core.render import (
     BundleDir,
     TableBlock,
+    TableRewriter,
     dir_title,
     has_children,
     list_children,
@@ -95,6 +96,7 @@ class OKFViewer(RelativeLayout):
         self,
         bundle: Path,
         image_provider: ImageProvider | None = None,
+        table_rewriter: TableRewriter | None = None,
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
@@ -103,6 +105,7 @@ class OKFViewer(RelativeLayout):
         self._anchors: dict[str, str] = {}  # "fn:<label>" -> the definition block's markup
         self._syncing_tree = False  # True while _sync_tree_to selects programmatically
         self._image_provider = image_provider
+        self._table_rewriter = table_rewriter
         self._last_bg: Path | None = None
 
         # The whole window layers over a context background image (RelativeLayout
@@ -313,7 +316,7 @@ class OKFViewer(RelativeLayout):
             # after the tree was populated (e.g. the wiki being regenerated)
             # degrades to an error page instead of crashing the event handler.
             text = f"# Page unavailable\n\n`{path.name}`: {err.strerror or err}\n"
-        page = render_page(text)
+        page = render_page(text, table_rewriter=self._table_rewriter)
         self._update_background(page.frontmatter, path)
         self.body.clear_widgets()
         self._anchors = {}
@@ -414,17 +417,27 @@ class OKFApp(App):
         self,
         bundle: Path,
         image_provider: ImageProvider | None = None,
+        table_rewriter: TableRewriter | None = None,
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
         self._bundle = bundle
         self._image_provider = image_provider
+        self._table_rewriter = table_rewriter
 
     def build(self) -> OKFViewer:
         self.title = f"OKF Reader — {self._bundle.name}"
-        return OKFViewer(self._bundle, image_provider=self._image_provider)
+        return OKFViewer(
+            self._bundle,
+            image_provider=self._image_provider,
+            table_rewriter=self._table_rewriter,
+        )
 
 
-def run(bundle: Path, image_provider: ImageProvider | None = None) -> None:
+def run(
+    bundle: Path,
+    image_provider: ImageProvider | None = None,
+    table_rewriter: TableRewriter | None = None,
+) -> None:
     """Launch the standalone OKF reader on ``bundle`` (blocks until the window closes)."""
-    OKFApp(bundle, image_provider=image_provider).run()
+    OKFApp(bundle, image_provider=image_provider, table_rewriter=table_rewriter).run()

@@ -28,6 +28,7 @@ from typing import Annotated
 
 import okf_reader.ui  # noqa: F401  — kivy-free: only sets KIVY_NO_ARGS for later kivy imports
 import typer
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import SCREEN_METRICS, get_best_window_height_fit
@@ -104,6 +105,48 @@ def _favourites_image_provider() -> DirPerTitleImageProvider | None:
     return DirPerTitleImageProvider(favourites) if favourites.is_dir() else None
 
 
+class BarksTableRewriter:
+    """Decorate the wiki data tables per the CLAUDE.md wiki title convention.
+
+    Non-Barks titles in a "Title" column are shown in parentheses, derived from
+    **our own** ``is_barks_title`` in ``BARKS_TITLE_INFO`` — presentation applied
+    at render time, never scraped from the wiki's markdown. Any "Barks?" flag
+    column is dropped: it carries the same fact, and its check-mark glyph does
+    not exist in the reader's monospace table font anyway. Lives in the launcher
+    (the integration layer) so okf_reader stays free of Barks knowledge.
+    """
+
+    def __init__(self) -> None:
+        self._non_barks_titles = set()
+        for cbi in BARKS_TITLE_INFO:
+            if not cbi.is_barks_title:
+                title = cbi.get_title_str()
+                self._non_barks_titles.add(title)
+                # Cells arrive Kivy-markup-escaped; match that form of a title too.
+                self._non_barks_titles.add(
+                    title.replace("&", "&amp;").replace("[", "&bl;").replace("]", "&br;")
+                )
+
+    def rewrite(
+        self, header: list[str], body: list[list[str]]
+    ) -> tuple[list[str], list[list[str]]]:
+        """Parenthesize non-Barks titles and drop a "Barks?" column, if present."""
+        if "Title" in header:
+            title_col = header.index("Title")
+            body = [
+                [
+                    f"({cell})" if c == title_col and cell in self._non_barks_titles else cell
+                    for c, cell in enumerate(row)
+                ]
+                for row in body
+            ]
+        if "Barks?" in header:
+            flag_col = header.index("Barks?")
+            header = [cell for c, cell in enumerate(header) if c != flag_col]
+            body = [[cell for c, cell in enumerate(row) if c != flag_col] for row in body]
+        return header, body
+
+
 @app.command(help="Open an OKF knowledge bundle in the standalone reader.")
 def main(
     bundle: Annotated[Path, typer.Argument(help="Path to the OKF bundle directory.")],
@@ -118,7 +161,11 @@ def main(
     # be imported after _pin_window_to_primary_monitor has set the window Config.
     from okf_reader.ui.viewer import run
 
-    run(bundle, image_provider=_favourites_image_provider())
+    run(
+        bundle,
+        image_provider=_favourites_image_provider(),
+        table_rewriter=BarksTableRewriter(),
+    )
 
 
 if __name__ == "__main__":

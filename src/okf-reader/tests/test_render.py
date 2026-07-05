@@ -279,6 +279,28 @@ class TestRenderPage:
         assert table.rows[1] == "151   a"  # "151" left-justified in the 4-wide column
         assert table.rows[2] == "570b  b"
 
+    def test_table_rewriter_transforms_before_layout(self) -> None:
+        """A TableRewriter reshapes (header, body) and the layout follows the result."""
+
+        class FoldFlagIntoTitle:
+            """Drop the 'F' column, parenthesizing 'T' cells on rows where it is empty."""
+
+            def rewrite(
+                self, header: list[str], body: list[list[str]]
+            ) -> tuple[list[str], list[list[str]]]:
+                assert header == ["T", "F"]
+                new_body = [[cell if flag else f"({cell})"] for cell, flag in body]
+                return [header[0]], new_body
+
+        md = "| T | F |\n|---|---|\n| own | x |\n| assigned |  |\n"
+        table = okf.render_page(md, table_rewriter=FoldFlagIntoTitle()).blocks[0]
+        assert isinstance(table, okf.TableBlock)
+        assert table.rows == [
+            f"[color={okf.HEADING_COLOR}]T[/color]",  # single column left; still colored
+            "own",
+            "(assigned)",
+        ]
+
     def test_table_unbreakable_word_does_not_widen_column(self) -> None:
         """A single word past TABLE_COL_WRAP_WIDTH overflows its own row, not the column."""
         long_cell = "L" * (okf.TABLE_COL_WRAP_WIDTH + 10)
