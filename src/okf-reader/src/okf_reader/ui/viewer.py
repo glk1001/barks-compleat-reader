@@ -32,7 +32,6 @@ from okf_reader.core.render import (
     BundleDir,
     TableBlock,
     TableRewriter,
-    dir_title,
     has_children,
     list_children,
     render_page,
@@ -47,7 +46,7 @@ TABLE_FONT_NAME = "RobotoMono-Regular"
 BODY_PADDING = (16, 8, 24, 16)  # left, top, right, bottom
 BODY_BLOCK_SPACING = 12
 POPUP_PADDING = 12
-TREE_PANEL_WIDTH = 0.28  # fraction of the window; the page panel gets the rest
+TREE_PANEL_WIDTH = 0.25  # fraction of the window; the page panel gets the rest
 # Multiplied into the background image (Kivy Image.color) so white text stays
 # readable over it — the same darkening mechanism the Barks Reader's kv files use.
 WINDOW_BG_TINT = (0.22, 0.22, 0.22, 1)
@@ -142,13 +141,9 @@ class OKFViewer(RelativeLayout):
 
         self.tree_scroll = _scroll_view(size_hint=(TREE_PANEL_WIDTH, 1), do_scroll_x=False)
         self.tree = TreeView(
-            root_options={
-                "text": dir_title(bundle),
-                "bold": True,
-                "color": TREE_DIR_TEXT_COLOR,
-                "color_selected": TREE_SELECTED_COLOR,
-            },
-            hide_root=False,
+            # No visible root: the bundle-root node spent an indent level (and a
+            # row) on no information; the tiers are the effective top level.
+            hide_root=True,
             # Grow with the content instead of squeezing into the viewport — a
             # ScrollView only scrolls a child that is taller than itself.
             size_hint_y=None,
@@ -326,7 +321,7 @@ class OKFViewer(RelativeLayout):
                 self.tree.toggle_node(dir_node)
             children = dir_node.nodes
         if rel.name == "index.md":  # a directory's own page selects the directory node
-            target = dir_node if dir_node is not None else self.tree.root
+            target = dir_node  # None for the bundle root's index — no visible node
         else:
             resolved = path.resolve()
             target = next(
