@@ -221,9 +221,11 @@ _MARKUP_UNIT_RE = re.compile(r"\[[^\[\]]*\]|&amp;|&bl;|&br;|.")
 
 # A cell longer than this wraps onto continuation lines within its column, so a
 # handful of long titles (or a scraped mega-cell of flattened prose) don't pad
-# every other row's column with dead space. A single unbreakable word longer
-# than this stays whole and overflows its own row only.
-TABLE_COL_WRAP_WIDTH = 40
+# every other row's column with dead space. 32 keeps the reference tables'
+# title-plus-dates layouts within a comic-page-width window (the story-title
+# columns' 90th percentile is ~25). A single unbreakable word longer than this
+# stays whole and overflows its own row only.
+TABLE_COL_WRAP_WIDTH = 32
 
 # A column whose every non-empty body cell looks like a plain number — optional
 # sign and currency mark, digits, thousands commas, an optional decimal part —
