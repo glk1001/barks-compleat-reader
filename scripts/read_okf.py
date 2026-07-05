@@ -127,6 +127,12 @@ class BarksTableRewriter:
     # page-list cell.
     _WRAP_WIDTHS: ClassVar[dict[str, int]] = {"Tag": 20, "Story": 24, "Orig. pages": 12}
 
+    # Shorter display names for headers wider than their column's values — the
+    # chronology's "Issue date" header (10 chars over 7-char YYYY-MM values)
+    # was the few characters that pushed the table past a comic-page-width
+    # window.
+    _HEADER_RENAMES: ClassVar[dict[str, str]] = {"Issue date": "Date"}
+
     def __init__(self) -> None:
         self._non_barks_titles = set()
         for cbi in BARKS_TITLE_INFO:
@@ -155,6 +161,7 @@ class BarksTableRewriter:
             flag_col = header.index("Barks?")
             header = [cell for c, cell in enumerate(header) if c != flag_col]
             body = [[cell for c, cell in enumerate(row) if c != flag_col] for row in body]
+        header = [self._HEADER_RENAMES.get(cell, cell) for cell in header]
         return header, body
 
     def wrap_widths(self, header: list[str]) -> list[int | None]:
