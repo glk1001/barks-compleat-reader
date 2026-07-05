@@ -16,7 +16,7 @@ from pathlib import Path
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.effects.scroll import ScrollEffect
-from kivy.graphics import Color, Rectangle
+from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -54,6 +54,15 @@ WINDOW_BG_TINT = (0.22, 0.22, 0.22, 1)
 # Translucent black drawn over the background image behind the tree panel only,
 # softening it a touch further there than in the reading pane.
 TREE_PANEL_SCRIM = (0, 0, 0, 0.25)
+# Translucent rounded band drawn behind each text block so body text keeps its
+# contrast over vivid background panels — the Barks Reader's BgColorLabel idiom
+# (main_screen.kv <BackgroundColor@Widget>), in Python. The alpha is the
+# delineation-strength knob; the sizing factors make the band leak out a bit
+# past the text, as the Barks labels do.
+BLOCK_BG_COLOR = (0.01, 0.01, 0.01, 0.5)
+BLOCK_BG_RADIUS = 6  # dp
+BLOCK_BG_SIZING_X = 1.01
+BLOCK_BG_SIZING_Y = 1.06
 # Same magenta the Barks Reader uses for tree selection
 # (barks_reader.ui.tree_view_nodes.TREE_VIEW_NODE_SELECTED_COLOR).
 TREE_SELECTED_COLOR = (1, 0, 1, 0.8)
@@ -61,6 +70,30 @@ TREE_SELECTED_COLOR = (1, 0, 1, 0.8)
 # directories bold white; concept pages in the page-heading gold (ffd54a).
 TREE_DIR_TEXT_COLOR = (1, 1, 1, 1)
 TREE_CONCEPT_TEXT_COLOR = (1.0, 0.835, 0.29, 1.0)
+
+
+def _add_text_backing(widget) -> None:  # noqa: ANN001
+    """Draw the translucent rounded band behind ``widget`` (see BLOCK_BG_COLOR).
+
+    Same geometry as the Barks kv rule: the rectangle is the widget's size
+    scaled by the sizing factors, shifted by half the overhang so the leak-out
+    is centered, and kept glued through pos/size changes.
+    """
+    with widget.canvas.before:
+        Color(rgba=BLOCK_BG_COLOR)
+        rect = RoundedRectangle(radius=[dp(BLOCK_BG_RADIUS)])
+
+    def sync(_widget, _value) -> None:  # noqa: ANN001
+        width = BLOCK_BG_SIZING_X * widget.width
+        height = BLOCK_BG_SIZING_Y * widget.height
+        rect.size = (width, height)
+        rect.pos = (
+            widget.x - 0.5 * (width - widget.width),
+            widget.y - 0.5 * (height - widget.height),
+        )
+
+    widget.bind(pos=sync, size=sync)
+    sync(widget, None)
 
 
 def _scroll_view(**kwargs) -> ScrollView:  # noqa: ANN003
@@ -373,6 +406,7 @@ class OKFViewer(RelativeLayout):
             lbl.bind(texture_size=lambda inst, ts: inst.setter("height")(inst, ts[1]))
             lbl._page_path = path  # noqa: SLF001
             lbl.bind(on_ref_press=self._on_ref)
+            _add_text_backing(lbl)
             if blk.anchor:
                 self._anchors[blk.anchor] = blk.markup
             self.body.add_widget(lbl)
@@ -397,6 +431,7 @@ class OKFViewer(RelativeLayout):
             minimum_height=stack.setter("height"),
             minimum_width=stack.setter("width"),
         )
+        _add_text_backing(stack)  # one band behind the whole table, not per row
         for row in blk.rows:
             lbl = Label(
                 text=row,
