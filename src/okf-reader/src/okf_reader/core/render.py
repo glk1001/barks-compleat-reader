@@ -97,6 +97,14 @@ class TableRewriter(Protocol):
         """Return the (header, body) to lay out in place of the parsed ones."""
         ...
 
+    def wrap_widths(self, header: list[str]) -> list[int | None]:
+        """Return per-column wrap-width overrides, aligned with ``header``.
+
+        ``None`` (or a list shorter than the row) leaves that column on the
+        default `TABLE_COL_WRAP_WIDTH`. Called with the *rewritten* header.
+        """
+        ...
+
 
 @dataclass
 class Page:
@@ -331,15 +339,20 @@ def _table_block(
         j += 1
     # Markdown tables have exactly one header row, so the rewriter seam sees
     # (header, body); it runs before wrapping/padding so its cells lay out normally.
+    overrides: list[int | None] = []
     if rewriter is not None and header_rows == 1 and rows:
         new_header, new_body = rewriter.rewrite(rows[0], rows[1:])
         rows = [new_header, *new_body]
+        overrides = rewriter.wrap_widths(new_header)
+    ncols = max((len(row) for row in rows), default=0)
+    col_wrap: list[int] = []
+    for c in range(ncols):
+        override = overrides[c] if c < len(overrides) else None
+        col_wrap.append(TABLE_COL_WRAP_WIDTH if override is None else override)
     wrapped: list[list[list[str]]] = [  # rows -> cells -> the cell's wrapped lines
         [
-            _wrap_markup(cell, TABLE_COL_WRAP_WIDTH)
-            if _visible_len(cell) > TABLE_COL_WRAP_WIDTH
-            else [cell]
-            for cell in row
+            _wrap_markup(cell, col_wrap[c]) if _visible_len(cell) > col_wrap[c] else [cell]
+            for c, cell in enumerate(row)
         ]
         for row in rows
     ]
@@ -348,7 +361,7 @@ def _table_block(
         for c, cell in enumerate(row):
             for cell_line in cell:
                 length = _visible_len(cell_line)
-                if length > TABLE_COL_WRAP_WIDTH:
+                if length > col_wrap[c]:
                     length = 0  # unbreakable word: overflows its own row only
                 if c == len(widths):
                     widths.append(length)

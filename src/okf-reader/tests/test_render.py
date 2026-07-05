@@ -292,6 +292,9 @@ class TestRenderPage:
                 new_body = [[cell if flag else f"({cell})"] for cell, flag in body]
                 return [header[0]], new_body
 
+            def wrap_widths(self, header: list[str]) -> list[int | None]:
+                return [None] * len(header)
+
         md = "| T | F |\n|---|---|\n| own | x |\n| assigned |  |\n"
         table = okf.render_page(md, table_rewriter=FoldFlagIntoTitle()).blocks[0]
         assert isinstance(table, okf.TableBlock)
@@ -300,6 +303,25 @@ class TestRenderPage:
             "own",
             "(assigned)",
         ]
+
+    def test_table_rewriter_per_column_wrap_override(self) -> None:
+        """A rewriter's wrap_widths override wraps a column sooner than the default."""
+
+        class NarrowFirstColumn:
+            def rewrite(
+                self, header: list[str], body: list[list[str]]
+            ) -> tuple[list[str], list[list[str]]]:
+                return header, body
+
+            def wrap_widths(self, header: list[str]) -> list[int | None]:
+                assert header == ["A", "B"]
+                return [6, None]
+
+        md = "| A | B |\n|---|---|\n| aaa bbb | x |\n"
+        table = okf.render_page(md, table_rewriter=NarrowFirstColumn()).blocks[0]
+        assert isinstance(table, okf.TableBlock)
+        # "aaa bbb" (7 visible) is under the 32 default but over the override of 6.
+        assert table.rows[1] == "aaa  x\nbbb"
 
     def test_table_unbreakable_word_does_not_widen_column(self) -> None:
         """A single word past TABLE_COL_WRAP_WIDTH overflows its own row, not the column."""

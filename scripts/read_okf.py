@@ -24,7 +24,7 @@ Barks reader owns the window.
 import os
 from configparser import ConfigParser
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 import okf_reader.ui  # noqa: F401  — kivy-free: only sets KIVY_NO_ARGS for later kivy imports
 import typer
@@ -116,6 +116,17 @@ class BarksTableRewriter:
     (the integration layer) so okf_reader stays free of Barks knowledge.
     """
 
+    # Columns holding canonical story titles, whatever the table calls them
+    # (chronology/payments/bibliography use "Title", tags "Story", covers
+    # "Illustrates").
+    _TITLE_COLUMNS = ("Title", "Story", "Illustrates")
+
+    # Tighter per-column wraps for the wide tag-vocabulary table: Tag and Story
+    # cells wrap sooner than the global default, and the mostly-empty
+    # "Orig. pages" column may not inflate to the width of its one long
+    # page-list cell.
+    _WRAP_WIDTHS: ClassVar[dict[str, int]] = {"Tag": 20, "Story": 24, "Orig. pages": 12}
+
     def __init__(self) -> None:
         self._non_barks_titles = set()
         for cbi in BARKS_TITLE_INFO:
@@ -131,11 +142,11 @@ class BarksTableRewriter:
         self, header: list[str], body: list[list[str]]
     ) -> tuple[list[str], list[list[str]]]:
         """Parenthesize non-Barks titles and drop a "Barks?" column, if present."""
-        if "Title" in header:
-            title_col = header.index("Title")
+        title_cols = {c for c, cell in enumerate(header) if cell in self._TITLE_COLUMNS}
+        if title_cols:
             body = [
                 [
-                    f"({cell})" if c == title_col and cell in self._non_barks_titles else cell
+                    f"({cell})" if c in title_cols and cell in self._non_barks_titles else cell
                     for c, cell in enumerate(row)
                 ]
                 for row in body
@@ -145,6 +156,10 @@ class BarksTableRewriter:
             header = [cell for c, cell in enumerate(header) if c != flag_col]
             body = [[cell for c, cell in enumerate(row) if c != flag_col] for row in body]
         return header, body
+
+    def wrap_widths(self, header: list[str]) -> list[int | None]:
+        """Return the per-column wrap overrides for the known wide wiki tables."""
+        return [self._WRAP_WIDTHS.get(cell) for cell in header]
 
 
 @app.command(help="Open an OKF knowledge bundle in the standalone reader.")
