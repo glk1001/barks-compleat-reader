@@ -59,7 +59,7 @@ TREE_PANEL_SCRIM = (0, 0, 0, 0.25)
 # (main_screen.kv <BackgroundColor@Widget>), in Python. The alpha is the
 # delineation-strength knob; the sizing factors make the band leak out a bit
 # past the text, as the Barks labels do.
-BLOCK_BG_COLOR = (0.01, 0.01, 0.01, 0.5)
+BLOCK_BG_COLOR = (0.01, 0.01, 0.01, 0.35)
 BLOCK_BG_RADIUS = 6  # dp
 BLOCK_BG_SIZING_X = 1.01
 BLOCK_BG_SIZING_Y = 1.06

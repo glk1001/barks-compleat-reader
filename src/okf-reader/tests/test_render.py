@@ -206,6 +206,12 @@ class TestRenderPage:
         expected = f"[color={okf.CODE_COLOR}]<div>block html</div>[/color]"
         assert [b.markup for b in blocks] == ["Before.", expected, "After."]
 
+    def test_html_comment_block_skipped(self) -> None:
+        """A pure HTML comment is author metadata, not content, and is not rendered."""
+        md = "Before.\n\n<!-- bib-notes-mined -->\n\nAfter."
+        blocks = _text_blocks(okf.render_page(md))
+        assert [b.markup for b in blocks] == ["Before.", "After."]
+
     def test_image_placeholder(self) -> None:
         """An image reference renders as an italic placeholder, never embedded."""
         markup = _text_blocks(okf.render_page("![alt text](img.png)"))[0].markup

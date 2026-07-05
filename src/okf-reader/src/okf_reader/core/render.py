@@ -459,8 +459,12 @@ def render_page(text: str, table_rewriter: TableRewriter | None = None) -> Page:
         elif tp == "html_block":
             # Raw HTML is not rendered, but its source must not vanish either
             # (SPEC §9 tolerance: show *something* rather than drop content) —
-            # display it like a code block.
-            blocks.append(Block(f"[color={CODE_COLOR}]{_esc(t.content.rstrip())}[/color]", 14))
+            # display it like a code block. Pure comments are the exception:
+            # they are author metadata (e.g. the wiki's <!-- bib-notes-mined -->
+            # markers), not content, and are skipped.
+            content = t.content.strip()
+            if not (content.startswith("<!--") and content.endswith("-->")):
+                blocks.append(Block(f"[color={CODE_COLOR}]{_esc(content)}[/color]", 14))
         elif tp == "hr":
             blocks.append(Block("─" * 40))
         elif tp == "footnote_block_open":
