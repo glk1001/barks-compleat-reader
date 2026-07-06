@@ -56,7 +56,7 @@ POPUP_PADDING = 12
 TREE_PANEL_WIDTH = 0.25  # fraction of the window; the page panel gets the rest
 # Multiplied into the background image (Kivy Image.color) so white text stays
 # readable over it — the same darkening mechanism the Barks Reader's kv files use.
-WINDOW_BG_TINT = (0.22, 0.22, 0.22, 1)
+WINDOW_BG_TINT = (0.30, 0.30, 0.30, 1)
 # Translucent black drawn over the background image behind the tree panel only,
 # softening it a touch further there than in the reading pane.
 TREE_PANEL_SCRIM = (0, 0, 0, 0.25)
@@ -65,7 +65,7 @@ TREE_PANEL_SCRIM = (0, 0, 0, 0.25)
 # over vivid background panels — the Barks Reader's BgColorLabel idiom
 # (main_screen.kv <BackgroundColor@Widget>), in Python. The alpha is the
 # delineation-strength knob.
-BLOCK_BG_COLOR = (0.01, 0.01, 0.01, 0.35)
+BLOCK_BG_COLOR = (0.01, 0.01, 0.01, 0.30)
 BLOCK_BG_RADIUS = 6  # dp
 SECTION_PADDING = (10, 8)  # inset of a section's text from its band edge
 SECTION_BLOCK_SPACING = 8  # between blocks inside one banded section
