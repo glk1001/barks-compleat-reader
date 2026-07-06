@@ -23,19 +23,23 @@ Barks reader owns the window.
 
 import os
 import re
+import subprocess
+import sys
 from configparser import ConfigParser
+from itertools import pairwise
 from pathlib import Path
 from typing import Annotated, ClassVar
 
 import okf_reader.ui  # noqa: F401  — kivy-free: only sets KIVY_NO_ARGS for later kivy imports
 import typer
-from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import SCREEN_METRICS, get_best_window_height_fit
 from dotenv import load_dotenv
+from okf_reader.core.actions import PageAction
 from okf_reader.core.backgrounds import DirPerTitleImageProvider
 from okf_reader.core.render import resolve_link
 
@@ -137,6 +141,56 @@ def _story_slug(title: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", lowered).strip("-")
 
 
+def _canonical_title(text: str) -> Titles | None:
+    """Map a display title to its Titles enum, tolerating quoted display forms.
+
+    Canonical titles are quote-free; the wiki pages show forms like
+    'Adventure "Down Under"'.
+    """
+    title_enum = STR_TITLE_TO_ENUM.get(text)
+    if title_enum is None:
+        for quote in ('"', chr(0x201C), chr(0x201D)):  # straight/curly double quotes
+            text = text.replace(quote, "")
+        title_enum = STR_TITLE_TO_ENUM.get(text.strip())
+    return title_enum
+
+
+class ReadComicActionProvider:
+    """Offer "Read Comic" on wiki story pages (an okf_reader PageActionProvider).
+
+    A page qualifies when it lives under ``concept/stories/`` and its frontmatter
+    title maps to a canonical Barks title with a Fantagraphics entry — the same
+    gate scripts/read_comic.py itself applies. The comic reader is a separate
+    Kivy app, so it launches as a subprocess; when the wiki reader is embedded
+    in the Barks Reader this becomes an in-app screen switch instead.
+    """
+
+    def __init__(self) -> None:
+        self._last_launch: subprocess.Popen | None = None
+
+    def action_for(self, frontmatter: dict, page_path: Path) -> PageAction | None:
+        """Return the "Read Comic" action for a story page, else None."""
+        if ("concept", "stories") not in pairwise(page_path.parts):
+            return None
+        title = frontmatter.get("title")
+        if not isinstance(title, str):
+            return None
+        title_enum = _canonical_title(title)
+        if title_enum is None or title_enum not in ALL_FANTA_COMIC_BOOK_INFO:
+            return None
+        canonical = ENUM_TO_STR_TITLE[title_enum]
+        return PageAction("Read Comic", lambda: self._launch(canonical))
+
+    def _launch(self, canonical_title: str) -> None:
+        if self._last_launch is not None and self._last_launch.poll() is None:
+            return  # the comic reader we launched is still open; don't stack another
+        script = Path(__file__).parent / "read_comic.py"
+        self._last_launch = subprocess.Popen(  # noqa: S603
+            [sys.executable, str(script), canonical_title],
+            cwd=Path(__file__).parent.parent,
+        )
+
+
 def _resolve_start_page(bundle: Path, arg: str) -> tuple[Path | None, str]:
     """Resolve a CLI page argument — a bundle link or a canonical story title.
 
@@ -149,15 +203,7 @@ def _resolve_start_page(bundle: Path, arg: str) -> tuple[Path | None, str]:
     target = resolve_link(bundle / "index.md", arg, bundle)
     if target is not None:
         return target, ""
-    title_enum = STR_TITLE_TO_ENUM.get(arg)
-    if title_enum is None:
-        # Canonical titles are quote-free; tolerate a quoted display form like
-        # 'Adventure "Down Under"' (how the wiki pages themselves show it).
-        double_quotes = ('"', chr(0x201C), chr(0x201D))
-        unquoted = arg
-        for quote in double_quotes:
-            unquoted = unquoted.replace(quote, "")
-        title_enum = STR_TITLE_TO_ENUM.get(unquoted.strip())
+    title_enum = _canonical_title(arg)
     if title_enum is None:
         return None, f"no bundle page or canonical story title matches {arg!r}"
     fanta_info = ALL_FANTA_COMIC_BOOK_INFO.get(title_enum)
@@ -271,6 +317,7 @@ def main(
         image_provider=_favourites_image_provider(),
         table_rewriter=BarksTableRewriter(),
         start_page=start_page,
+        action_provider=ReadComicActionProvider(),
     )
 
 

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from kivy.app import App
 from kivy.clock import Clock
@@ -26,6 +27,7 @@ from kivy.uix.modalview import ModalView
 from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.treeview import TreeView, TreeViewLabel
+from kivy.uix.widget import Widget
 
 from okf_reader.core.backgrounds import ImageProvider, choose_image
 from okf_reader.core.render import (
@@ -37,6 +39,9 @@ from okf_reader.core.render import (
     render_page,
     resolve_link,
 )
+
+if TYPE_CHECKING:
+    from okf_reader.core.actions import PageAction, PageActionProvider
 
 BODY_LINE_HEIGHT = 1.25
 # Tables come from the core space-padded to aligned columns (see TableBlock), which
@@ -122,6 +127,7 @@ class OKFViewer(RelativeLayout):
         image_provider: ImageProvider | None = None,
         table_rewriter: TableRewriter | None = None,
         start_page: Path | None = None,
+        action_provider: PageActionProvider | None = None,
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
@@ -131,6 +137,8 @@ class OKFViewer(RelativeLayout):
         self._syncing_tree = False  # True while _sync_tree_to selects programmatically
         self._image_provider = image_provider
         self._table_rewriter = table_rewriter
+        self._action_provider = action_provider
+        self._page_action: PageAction | None = None
         self._last_bg: Path | None = None
 
         # The whole window layers over a context background image (RelativeLayout
@@ -169,6 +177,12 @@ class OKFViewer(RelativeLayout):
         self.back_btn = Button(text="< Back", size_hint_x=None, width=90, disabled=True)
         self.back_btn.bind(on_release=lambda *_: self._go_back())
         bar.add_widget(self.back_btn)
+        bar.add_widget(Widget())  # stretch: pins the contextual action to the right edge
+        # The page's contextual action (see PageActionProvider), hidden until a
+        # page offers one.
+        self.action_btn = Button(size_hint_x=None, width=0, opacity=0, disabled=True)
+        self.action_btn.bind(on_release=lambda *_: self._run_page_action())
+        bar.add_widget(self.action_btn)
         right.add_widget(bar)
 
         self.body_scroll = _scroll_view(do_scroll_x=False)
@@ -282,6 +296,23 @@ class OKFViewer(RelativeLayout):
             if index.is_file():
                 self._show(index, push=True)
 
+    def _set_page_action(self, action: PageAction | None) -> None:
+        """Show the contextual bar button for ``action``, or hide it for None."""
+        self._page_action = action
+        if action is None:
+            self.action_btn.width = 0
+            self.action_btn.opacity = 0
+            self.action_btn.disabled = True
+        else:
+            self.action_btn.text = action.label
+            self.action_btn.width = dp(120)
+            self.action_btn.opacity = 1
+            self.action_btn.disabled = False
+
+    def _run_page_action(self) -> None:
+        if self._page_action is not None:
+            self._page_action.run()
+
     def _go_back(self) -> None:
         if len(self.history) > 1:
             self.history.pop()
@@ -378,6 +409,11 @@ class OKFViewer(RelativeLayout):
             text = f"# Page unavailable\n\n`{path.name}`: {err.strerror or err}\n"
         page = render_page(text, table_rewriter=self._table_rewriter)
         self._update_background(page.frontmatter, path)
+        self._set_page_action(
+            self._action_provider.action_for(page.frontmatter, path)
+            if self._action_provider is not None
+            else None
+        )
         self.body.clear_widgets()
         self._anchors = {}
         # Blocks group into banded sections: each heading starts a new section
@@ -499,6 +535,7 @@ class OKFApp(App):
         image_provider: ImageProvider | None = None,
         table_rewriter: TableRewriter | None = None,
         start_page: Path | None = None,
+        action_provider: PageActionProvider | None = None,
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
@@ -506,6 +543,7 @@ class OKFApp(App):
         self._image_provider = image_provider
         self._table_rewriter = table_rewriter
         self._start_page = start_page
+        self._action_provider = action_provider
 
     def build(self) -> OKFViewer:
         self.title = f"OKF Reader — {self._bundle.name}"
@@ -514,6 +552,7 @@ class OKFApp(App):
             image_provider=self._image_provider,
             table_rewriter=self._table_rewriter,
             start_page=self._start_page,
+            action_provider=self._action_provider,
         )
 
 
@@ -522,6 +561,7 @@ def run(
     image_provider: ImageProvider | None = None,
     table_rewriter: TableRewriter | None = None,
     start_page: Path | None = None,
+    action_provider: PageActionProvider | None = None,
 ) -> None:
     """Launch the standalone OKF reader on ``bundle`` (blocks until the window closes)."""
     OKFApp(
@@ -529,4 +569,5 @@ def run(
         image_provider=image_provider,
         table_rewriter=table_rewriter,
         start_page=start_page,
+        action_provider=action_provider,
     ).run()
