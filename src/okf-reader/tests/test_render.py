@@ -573,6 +573,80 @@ class TestListChildren:
         assert [c.title for c in kids if isinstance(c, okf.ConceptNode)] == ["Real"]
 
 
+class TestIndexLinkOrder:
+    """list_children follows the curated link order of the directory's index.md."""
+
+    @staticmethod
+    def _make_bundle_root(tmp_path: Path, index_body: str) -> Path:
+        """Build a root with three subdirs, two concepts, and the given index.md body."""
+        root = tmp_path / "bundle"
+        for name in ("assets-meta", "concept", "reference"):
+            (root / name).mkdir(parents=True)
+        (root / "alpha.md").write_text("---\ntype: x\ntitle: Alpha\n---\nA", encoding="utf-8")
+        (root / "zeta.md").write_text("---\ntype: x\ntitle: Zeta\n---\nZ", encoding="utf-8")
+        (root / "index.md").write_text(index_body, encoding="utf-8")
+        return root
+
+    def test_listed_children_keep_index_order(self, tmp_path: Path) -> None:
+        """Linked children come first, in link order; dirs and concepts alike."""
+        root = self._make_bundle_root(
+            tmp_path,
+            "# Root\n\n"
+            "* [The Wiki](concept/index.md)\n"
+            "* [Zeta](zeta.md)\n"
+            "* [Reference](reference/index.md)\n"
+            "* [Assets Meta](assets-meta/index.md)\n"
+            "* [Alpha](alpha.md)\n",
+        )
+        names = [c.path.name for c in okf.list_children(root)]
+        assert names == ["concept", "zeta.md", "reference", "assets-meta", "alpha.md"]
+
+    def test_unlisted_children_follow_in_name_order(self, tmp_path: Path) -> None:
+        """Children the index.md doesn't list trail the listed ones, alphabetically."""
+        root = self._make_bundle_root(
+            tmp_path, "# Root\n\n* [Reference](reference/index.md)\n* [Zeta](zeta.md)\n"
+        )
+        names = [c.path.name for c in okf.list_children(root)]
+        assert names == ["reference", "zeta.md", "alpha.md", "assets-meta", "concept"]
+
+    def test_prose_links_do_not_count(self, tmp_path: Path) -> None:
+        """A link in running prose is a mention, not a listing entry."""
+        root = self._make_bundle_root(
+            tmp_path,
+            "# Root\n\nSee [Zeta](zeta.md) for background.\n\n* [Reference](reference/index.md)\n",
+        )
+        names = [c.path.name for c in okf.list_children(root)]
+        assert names == ["reference", "alpha.md", "assets-meta", "concept", "zeta.md"]
+
+    def test_external_absolute_and_parent_links_ignored(self, tmp_path: Path) -> None:
+        """Scheme-bearing, absolute /… and ../ links never rank a child."""
+        root = self._make_bundle_root(
+            tmp_path,
+            "# Root\n\n"
+            "* [Ext](https://example.com/concept)\n"
+            "* [Abs](/reference/index.md)\n"
+            "* [Up](../elsewhere.md)\n"
+            "* [Zeta](zeta.md)\n",
+        )
+        names = [c.path.name for c in okf.list_children(root)]
+        assert names == ["zeta.md", "alpha.md", "assets-meta", "concept", "reference"]
+
+    def test_deep_link_ranks_its_first_segment(self, tmp_path: Path) -> None:
+        """A link into a subtree charges the immediate child it enters."""
+        root = self._make_bundle_root(
+            tmp_path, "# Root\n\n* [Story](concept/stories/lost-in-the-andes.md)\n"
+        )
+        names = [c.path.name for c in okf.list_children(root)]
+        assert names == ["concept", "alpha.md", "assets-meta", "reference", "zeta.md"]
+
+    def test_no_index_md_is_name_order(self, tmp_path: Path) -> None:
+        """Without an index.md the listing stays plain name order."""
+        root = self._make_bundle_root(tmp_path, "unused")
+        (root / "index.md").unlink()
+        names = [c.path.name for c in okf.list_children(root)]
+        assert names == ["alpha.md", "assets-meta", "concept", "reference", "zeta.md"]
+
+
 class TestEsc:
     def test_escapes_markup_metacharacters(self) -> None:
         """_esc escapes ampersand and both square brackets, and nothing else."""

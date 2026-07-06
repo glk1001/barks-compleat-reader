@@ -14,7 +14,8 @@ dependency), and walks a bundle directory into a `BundleDir`/`ConceptNode` tree:
     percent-decoded, bounds-checked under the bundle, and restricted to ``.md``
     concept documents;
   * `list_children()` / `load_bundle_tree()` enumerate a bundle one level at a
-    time (lazy) or fully (eager), skipping reserved and hidden entries.
+    time (lazy) or fully (eager), skipping reserved and hidden entries; children
+    listed in a directory's reserved ``index.md`` keep that curated order.
 """
 
 from __future__ import annotations
@@ -572,8 +573,53 @@ def has_children(directory: Path) -> bool:
     )
 
 
+def _index_link_order(directory: Path) -> dict[str, int]:
+    """Rank each immediate child by its first mention in the directory's ``index.md``.
+
+    The reserved ``index.md`` (SPEC §3.1) is the directory's *curated* listing, so
+    the order of its listed links is the author's intended child order. Only links
+    inside list items count — a link in surrounding prose is a mention, not a
+    listing entry. Each qualifying href is charged to the immediate child it enters:
+    its first path segment (``stories/x/index.md`` → ``stories``; ``good-deeds.md``
+    → itself). External (scheme-bearing), absolute ``/…`` (they name bundle-root
+    children, not necessarily ours), and parent ``..`` links are ignored. A missing
+    or unreadable index.md yields ``{}`` (tolerant consumption, SPEC §9).
+    """
+    index = directory / "index.md"
+    if not index.is_file():
+        return {}
+    try:
+        _, body = parse_frontmatter(index.read_text(encoding="utf-8"))
+    except OSError:
+        return {}
+    order: dict[str, int] = {}
+    list_depth = 0
+    for token in _md().parse(body):
+        if token.type in ("bullet_list_open", "ordered_list_open"):
+            list_depth += 1
+        elif token.type in ("bullet_list_close", "ordered_list_close"):
+            list_depth -= 1
+        elif token.type == "inline" and list_depth > 0:
+            for child in token.children or []:
+                if child.type != "link_open":
+                    continue
+                href = str(child.attrGet("href") or "")
+                if "://" in href or href.startswith("/"):
+                    continue
+                path_part = urllib.parse.unquote(href.split("#", 1)[0])
+                first_segment = path_part.split("/", 1)[0]
+                if first_segment in ("", ".", ".."):
+                    continue
+                order.setdefault(first_segment, len(order))
+    return order
+
+
 def list_children(directory: Path) -> list[BundleDir | ConceptNode]:
-    """Immediate children of a bundle directory, in name order — one level only.
+    """Immediate children of a bundle directory, in curated order — one level only.
+
+    Children linked from the directory's reserved ``index.md`` listing come first,
+    in link order (`_index_link_order`); the rest follow in name order. A directory
+    with no index.md (or one that lists nothing) is plain name order.
 
     Subdirectories come back as `BundleDir`s **unexpanded** (empty ``children``);
     call `list_children` again on a subdir's ``path`` to descend. Non-reserved
@@ -591,6 +637,10 @@ def list_children(directory: Path) -> list[BundleDir | ConceptNode]:
                 children.append(BundleDir(child, child.name, title=dir_title(child)))
             elif child.suffix == ".md" and child.name not in RESERVED_FILES:
                 children.append(ConceptNode(child, concept_title(child)))
+        rank = _index_link_order(directory)
+        # Stable sort over the name-ordered base: listed children first in listing
+        # order, unlisted ones after, still alphabetical among themselves.
+        children.sort(key=lambda child: rank.get(child.path.name, len(rank)))
     return children
 
 
