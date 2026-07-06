@@ -27,12 +27,13 @@ from barks_fantagraphics.comic_issues import Issues
 OVERRIDES: dict[Titles, tuple[Issues, int, int, int] | None] = {
     # --- title-less gag clusters, pinned by description --------------------- #
     # Four Color 178
+    Titles.FASHION_IN_FLIGHT: (Issues.FC, 178, 1947, 0),     # Donald buys a huge visor for his tiny car
+    Titles.TURN_FOR_THE_WORSE: (Issues.FC, 178, 1947, 2),    # Donald plays a joke by giving some misleading directions
     Titles.MACHINE_MIX_UP: (Issues.FC, 178, 1947, 3),        # "new modern kitchen, unhappy results"
-    Titles.FASHION_IN_FLIGHT: (Issues.FC, 178, 1947, 2),     # remaining slot
     # Four Color 199
-    Titles.GENUINE_ARTICLE_THE: (Issues.FC, 199, 1948, 4),   # "tests the authenticity of worm holes"
-    Titles.BEST_LAID_PLANS: (Issues.FC, 199, 1948, 3),       # "pretends to be sick so the nephews cook"
     Titles.SORRY_TO_BE_SAFE: (Issues.FC, 199, 1948, 1),      # "vacant lot where the nephews can play"
+    Titles.BEST_LAID_PLANS: (Issues.FC, 199, 1948, 3),       # "pretends to be sick so the nephews cook"
+    Titles.GENUINE_ARTICLE_THE: (Issues.FC, 199, 1948, 4),   # "tests the authenticity of worm holes"
     # Four Color 238
     Titles.SLIPPERY_SHINE: (Issues.FC, 238, 1949, 1),        # "freshly waxed floors"
     Titles.FRACTIOUS_FUN: (Issues.FC, 238, 1949, 3),         # "Daisy loses her temper at sports"

@@ -946,8 +946,8 @@ _TODO = (0, 0, 0)
 ONE_PAGER_LOCATIONS: dict[Titles, tuple[int, int, int]] = {
     Titles.IF_THE_HAT_FITS: (5, 123, 2),
     Titles.FASHION_IN_FLIGHT: (5, 26, 2),
-    Titles.TURN_FOR_THE_WORSE: (5, 27, 23),
-    Titles.MACHINE_MIX_UP: (5, 198, 24),
+    Titles.TURN_FOR_THE_WORSE: (5, 27, 35),
+    Titles.MACHINE_MIX_UP: (5, 198, 36),
     Titles.BIRD_WATCHING: (6, 38, 2),
     Titles.HORSESHOE_LUCK: (6, 39, 35),
     Titles.BEAN_TAKEN: (6, 102, 36),
