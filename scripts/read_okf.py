@@ -22,18 +22,22 @@ Barks reader owns the window.
 """
 
 import os
+import re
 from configparser import ConfigParser
 from pathlib import Path
 from typing import Annotated, ClassVar
 
 import okf_reader.ui  # noqa: F401  — kivy-free: only sets KIVY_NO_ARGS for later kivy imports
 import typer
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
+from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import SCREEN_METRICS, get_best_window_height_fit
 from dotenv import load_dotenv
 from okf_reader.core.backgrounds import DirPerTitleImageProvider
+from okf_reader.core.render import resolve_link
 
 load_dotenv(Path(__file__).parent.parent / ".env.runtime")
 
@@ -105,6 +109,71 @@ def _favourites_image_provider() -> DirPerTitleImageProvider | None:
     return DirPerTitleImageProvider(favourites) if favourites.is_dir() else None
 
 
+# Wiki story-page directory (under okf/concept/stories/) for each Fantagraphics
+# series name, in candidate order — Gyro Gearloose and Misc material is filed
+# across two dirs. "Extras" (introductions/appreciations) has no story pages.
+_SERIES_TO_STORY_DIRS = {
+    "Comics and Stories": ("comics-and-stories",),
+    "Donald Duck Adventures": ("donald-duck-adventures",),
+    "Donald Duck Short Stories": ("donald-duck-short-stories",),
+    "Uncle Scrooge Adventures": ("uncle-scrooge-adventures",),
+    "Uncle Scrooge Short Stories": ("uncle-scrooge-short-stories",),
+    "Gyro Gearloose": ("gyro-gearloose-stories", "misc"),
+    "Misc": ("misc", "gyro-gearloose-stories"),
+    "One Pagers": ("one-pagers",),
+}
+
+
+def _story_slug(title: str) -> str:
+    """Return a canonical title's wiki filename slug (CLAUDE.md wiki title convention).
+
+    Lowercase; apostrophes dropped (not hyphenated); every other run of
+    non-alphanumerics becomes a single hyphen; leading/trailing hyphens stripped.
+    E.g. "You Can't Guess!" -> "you-cant-guess", 'Adventure "Down Under"' ->
+    "adventure-down-under".
+    """
+    curly_apostrophe = chr(0x2019)  # U+2019 RIGHT SINGLE QUOTATION MARK
+    lowered = title.lower().replace("'", "").replace(curly_apostrophe, "")
+    return re.sub(r"[^a-z0-9]+", "-", lowered).strip("-")
+
+
+def _resolve_start_page(bundle: Path, arg: str) -> tuple[Path | None, str]:
+    """Resolve a CLI page argument — a bundle link or a canonical story title.
+
+    Returns ``(page, "")`` on success, else ``(None, reason)``. A link is anything
+    `resolve_link` accepts (bundle-relative or absolute, percent-encoded, bounded
+    to the bundle). A title joins to its story page per the CLAUDE.md wiki title
+    convention: series directory from our own ALL_FANTA_COMIC_BOOK_INFO entry,
+    filename from `_story_slug`.
+    """
+    target = resolve_link(bundle / "index.md", arg, bundle)
+    if target is not None:
+        return target, ""
+    title_enum = STR_TITLE_TO_ENUM.get(arg)
+    if title_enum is None:
+        # Canonical titles are quote-free; tolerate a quoted display form like
+        # 'Adventure "Down Under"' (how the wiki pages themselves show it).
+        double_quotes = ('"', chr(0x201C), chr(0x201D))
+        unquoted = arg
+        for quote in double_quotes:
+            unquoted = unquoted.replace(quote, "")
+        title_enum = STR_TITLE_TO_ENUM.get(unquoted.strip())
+    if title_enum is None:
+        return None, f"no bundle page or canonical story title matches {arg!r}"
+    fanta_info = ALL_FANTA_COMIC_BOOK_INFO.get(title_enum)
+    if fanta_info is None:
+        return None, f"{arg!r} is a known title but has no ALL_FANTA_COMIC_BOOK_INFO entry"
+    story_dirs = _SERIES_TO_STORY_DIRS.get(fanta_info.series_name)
+    if story_dirs is None:
+        return None, f"{arg!r} is in series {fanta_info.series_name!r}, which has no story pages"
+    slug = _story_slug(ENUM_TO_STR_TITLE[title_enum])  # slug the *canonical* form
+    for story_dir in story_dirs:
+        page = bundle / "concept" / "stories" / story_dir / f"{slug}.md"
+        if page.is_file():
+            return page, ""
+    return None, f"{arg!r} is a known story but its wiki page is not written yet"
+
+
 class BarksTableRewriter:
     """Decorate the wiki data tables per the CLAUDE.md wiki title convention.
 
@@ -172,10 +241,24 @@ class BarksTableRewriter:
 @app.command(help="Open an OKF knowledge bundle in the standalone reader.")
 def main(
     bundle: Annotated[Path, typer.Argument(help="Path to the OKF bundle directory.")],
+    page: Annotated[
+        str | None,
+        typer.Argument(
+            help='Open at this bundle link (e.g. "reference/database.md") or at a'
+            ' canonical story title (e.g. "Camera Crazy").'
+        ),
+    ] = None,
 ) -> None:
     if not bundle.is_dir():
         typer.echo(f"error: bundle {bundle} not found", err=True)
         raise typer.Exit(code=2)
+
+    start_page: Path | None = None
+    if page:
+        start_page, error = _resolve_start_page(bundle, page)
+        if start_page is None:
+            typer.echo(f"error: {error}", err=True)
+            raise typer.Exit(code=2)
 
     _pin_window_to_primary_monitor()
 
@@ -187,6 +270,7 @@ def main(
         bundle,
         image_provider=_favourites_image_provider(),
         table_rewriter=BarksTableRewriter(),
+        start_page=start_page,
     )
 
 

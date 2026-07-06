@@ -121,6 +121,7 @@ class OKFViewer(RelativeLayout):
         bundle: Path,
         image_provider: ImageProvider | None = None,
         table_rewriter: TableRewriter | None = None,
+        start_page: Path | None = None,
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
@@ -190,6 +191,9 @@ class OKFViewer(RelativeLayout):
         # Startup, before any page is shown: empty frontmatter matches no title, so
         # the provider's fallback pool supplies a random story image.
         self._update_background({}, bundle)
+
+        if start_page is not None:  # open on a caller-chosen page (tree syncs itself)
+            self._show(start_page, push=True)
 
     def _add_tree_nodes(self, nodes, parent) -> None:  # noqa: ANN001
         # Bind one level of the Kivy-free bundle model (okf_reader.core list_children)
@@ -494,12 +498,14 @@ class OKFApp(App):
         bundle: Path,
         image_provider: ImageProvider | None = None,
         table_rewriter: TableRewriter | None = None,
+        start_page: Path | None = None,
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
         self._bundle = bundle
         self._image_provider = image_provider
         self._table_rewriter = table_rewriter
+        self._start_page = start_page
 
     def build(self) -> OKFViewer:
         self.title = f"OKF Reader — {self._bundle.name}"
@@ -507,6 +513,7 @@ class OKFApp(App):
             self._bundle,
             image_provider=self._image_provider,
             table_rewriter=self._table_rewriter,
+            start_page=self._start_page,
         )
 
 
@@ -514,6 +521,12 @@ def run(
     bundle: Path,
     image_provider: ImageProvider | None = None,
     table_rewriter: TableRewriter | None = None,
+    start_page: Path | None = None,
 ) -> None:
     """Launch the standalone OKF reader on ``bundle`` (blocks until the window closes)."""
-    OKFApp(bundle, image_provider=image_provider, table_rewriter=table_rewriter).run()
+    OKFApp(
+        bundle,
+        image_provider=image_provider,
+        table_rewriter=table_rewriter,
+        start_page=start_page,
+    ).run()
