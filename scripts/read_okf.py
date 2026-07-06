@@ -46,6 +46,7 @@ from barks_reader.core.image_selector import ImageSelector
 from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
 from barks_reader.core.reader_file_paths import ALL_TYPES
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
+from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_settings import ReaderSettings
 from barks_reader.core.reader_setup import bootstrap_reader_environment
 from barks_reader.core.reader_utils import get_win_dimensions
@@ -54,8 +55,13 @@ from dotenv import load_dotenv
 from okf_reader.core.actions import PageAction
 from okf_reader.core.backgrounds import PageBackground
 from okf_reader.core.render import resolve_link
+from okf_reader.core.top_bar import TopBarSpec
 
 load_dotenv(Path(__file__).parent.parent / ".env.runtime")
+
+WIKI_TITLE = "Carl Barks Wiki"
+# The Barks screens' action-bar title green (main_screen.py ACTION_BAR_TITLE_COLOR).
+ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
 
 app = typer.Typer()
 
@@ -78,8 +84,8 @@ def _primary_monitor_window_geometry() -> tuple[int, int, int, int]:
     return win_left, win_top, win_width, win_height
 
 
-def _pin_window_to_primary_monitor() -> None:
-    """Pin the Kivy window to the primary monitor.
+def _pin_window_to_primary_monitor() -> int:
+    """Pin the Kivy window to the primary monitor; return the window height.
 
     First kivy import of the process happens here, deliberately: the geometry is
     computed and written to Config before kivy can realize the window.
@@ -103,6 +109,38 @@ def _pin_window_to_primary_monitor() -> None:
     Config.set("graphics", "top", win_top)  # ty: ignore[unresolved-attribute]
     Config.set("graphics", "width", win_width)  # ty: ignore[unresolved-attribute]
     Config.set("graphics", "height", win_height)  # ty: ignore[unresolved-attribute]
+
+    return win_height
+
+
+def _barks_top_bar_spec(reader_settings: ReaderSettings | None, win_height: int) -> TopBarSpec:
+    """Dress the okf action bar like the Barks Reader's.
+
+    The Carl Barks-font title markup (``get_action_bar_title``), the app window
+    icon, and the stock go-back icon — the same pieces the main screen's bar
+    uses. Deferred kivy import: ``FontManager`` may only be imported once the
+    window Config is decided, so this must be called after
+    ``_pin_window_to_primary_monitor``. Without a bootstrapped environment the
+    bar degrades to a plain-text title with no icons.
+    """
+    if reader_settings is None:
+        return TopBarSpec(title_markup=WIKI_TITLE, height=RAW_ACTION_BAR_SIZE_Y)
+
+    from barks_reader.ui.font_manager import FontManager
+
+    # Seeded with the window height, exactly as read_comic.py does — without it
+    # the title's [size=...] markup expands to size=0 and renders invisibly.
+    font_manager = FontManager()
+    font_manager.update_font_sizes(win_height)
+
+    sys_paths = reader_settings.sys_file_paths
+    return TopBarSpec(
+        title_markup=get_action_bar_title(font_manager, WIKI_TITLE),
+        title_color=ACTION_BAR_TITLE_COLOR,
+        icon_path=sys_paths.get_barks_reader_app_window_icon_path(),
+        back_icon_path=sys_paths.get_barks_reader_go_back_icon_file(),
+        height=RAW_ACTION_BAR_SIZE_Y,
+    )
 
 
 def _bootstrap_barks_reader() -> tuple[ReaderSettings, ComicsDatabase] | None:
@@ -397,13 +435,15 @@ def main(
     # Bootstrap the Barks reader environment before any window appears, so a
     # misconfiguration warning prints while the terminal still has the user's eye.
     barks_env = _bootstrap_barks_reader()
-    image_provider = None
+    reader_settings = None
     comics_database = None
     if barks_env is not None:
         reader_settings, comics_database = barks_env
-        image_provider = BarksPanelsImageProvider(reader_settings)
+    image_provider = (
+        BarksPanelsImageProvider(reader_settings) if reader_settings is not None else None
+    )
 
-    _pin_window_to_primary_monitor()
+    win_height = _pin_window_to_primary_monitor()
 
     # Deferred: okf_reader.ui.viewer imports kivy at module level, so it may only
     # be imported after _pin_window_to_primary_monitor has set the window Config.
@@ -415,6 +455,7 @@ def main(
         table_rewriter=BarksTableRewriter(),
         start_page=start_page,
         action_provider=ReadComicActionProvider(comics_database),
+        top_bar=_barks_top_bar_spec(reader_settings, win_height),
     )
 
 

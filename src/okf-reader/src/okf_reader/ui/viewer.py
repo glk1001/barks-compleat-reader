@@ -21,6 +21,7 @@ from kivy.core.image import Image as CoreImage
 from kivy.effects.scroll import ScrollEffect
 from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivy.metrics import dp
+from kivy.uix.actionbar import ActionButton
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.image import Image
@@ -41,6 +42,7 @@ from okf_reader.core.render import (
     render_page,
     resolve_link,
 )
+from okf_reader.core.top_bar import TopBarSpec
 
 if TYPE_CHECKING:
     from okf_reader.core.actions import PageAction, PageActionProvider
@@ -73,6 +75,13 @@ BLOCK_BG_CONTRAST_ALPHA = 0.9
 BLOCK_BG_RADIUS = 6  # dp
 SECTION_PADDING = (10, 8)  # inset of a section's text from its band edge
 SECTION_BLOCK_SPACING = 8  # between blocks inside one banded section
+# The action-bar strip across the top, mirroring the Barks Reader's kv idiom
+# (main_screen.kv / comic_book_reader.kv): a dark opaque band holding the app
+# icon, the markup heading, and the right-aligned action buttons behind a thin
+# separator. What fills it comes from the embedding app via TopBarSpec.
+TOP_BAR_BG_COLOR = (0.12, 0.12, 0.12, 1)  # standard ActionBar background color
+TOP_BAR_SEPARATOR_COLOR = (0.3, 0.3, 0.3, 1)
+TOP_BAR_ICON_WIDTH = 70  # dp, the Barks bars' icon-container width
 # Same magenta the Barks Reader uses for tree selection
 # (barks_reader.ui.tree_view_nodes.TREE_VIEW_NODE_SELECTED_COLOR).
 TREE_SELECTED_COLOR = (1, 0, 1, 0.8)
@@ -136,6 +145,7 @@ class OKFViewer(RelativeLayout):
         table_rewriter: TableRewriter | None = None,
         start_page: Path | None = None,
         action_provider: PageActionProvider | None = None,
+        top_bar: TopBarSpec | None = None,
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
@@ -150,11 +160,15 @@ class OKFViewer(RelativeLayout):
         self._band_colors: list[Color] = []  # the current page's section-band Colors
 
         # The whole window layers over a context background image (RelativeLayout
-        # children stack in add order): image below, both panels above.
+        # children stack in add order): image below, the action bar and both
+        # panels above.
         self.bg_image = Image(fit_mode="cover", color=WINDOW_BG_TINT, size_hint=(1, 1))
         self.add_widget(self.bg_image)
+        root = BoxLayout(orientation="vertical", size_hint=(1, 1))
+        self.add_widget(root)
+        root.add_widget(self._build_top_bar(top_bar if top_bar is not None else TopBarSpec()))
         content = BoxLayout(orientation="horizontal", spacing=8, padding=8, size_hint=(1, 1))
-        self.add_widget(content)
+        root.add_widget(content)
 
         self.tree_scroll = _scroll_view(size_hint=(TREE_PANEL_WIDTH, 1), do_scroll_x=False)
         self.tree = TreeView(
@@ -180,25 +194,7 @@ class OKFViewer(RelativeLayout):
         )
         content.add_widget(self.tree_scroll)
 
-        right = BoxLayout(orientation="vertical", size_hint=(1 - TREE_PANEL_WIDTH, 1), spacing=4)
-        bar = BoxLayout(size_hint_y=None, height=32, spacing=6)
-        self.back_btn = Button(text="< Back", size_hint_x=None, width=90, disabled=True)
-        self.back_btn.bind(on_release=lambda *_: self._go_back())
-        bar.add_widget(self.back_btn)
-        bar.add_widget(Widget())  # stretch: pins the right-edge buttons there
-        # Dials the section bands from their subtle default up to near-opaque
-        # (BLOCK_BG_CONTRAST_ALPHA) when the background image fights the text.
-        self.contrast_btn = ToggleButton(text="Contrast", size_hint_x=None, width=dp(90))
-        self.contrast_btn.bind(state=lambda *_: self._apply_band_alpha())
-        bar.add_widget(self.contrast_btn)
-        # The page's contextual action (see PageActionProvider), hidden until a
-        # page offers one.
-        self.action_btn = Button(size_hint_x=None, width=0, opacity=0, disabled=True)
-        self.action_btn.bind(on_release=lambda *_: self._run_page_action())
-        bar.add_widget(self.action_btn)
-        right.add_widget(bar)
-
-        self.body_scroll = _scroll_view(do_scroll_x=False)
+        self.body_scroll = _scroll_view(size_hint=(1 - TREE_PANEL_WIDTH, 1), do_scroll_x=False)
         self.body = BoxLayout(
             orientation="vertical",
             size_hint_y=None,
@@ -207,8 +203,7 @@ class OKFViewer(RelativeLayout):
         )
         self.body.bind(minimum_height=self.body.setter("height"))
         self.body_scroll.add_widget(self.body)
-        right.add_widget(self.body_scroll)
-        content.add_widget(right)
+        content.add_widget(self.body_scroll)
 
         # Lazy: load only the bundle's top level (all tiers) now; each directory's
         # children are read on first expansion (see _on_dir_open). This keeps startup
@@ -221,6 +216,98 @@ class OKFViewer(RelativeLayout):
 
         if start_page is not None:  # open on a caller-chosen page (tree syncs itself)
             self._show(start_page, push=True)
+
+    def _build_top_bar(self, spec: TopBarSpec) -> BoxLayout:
+        """Build the action-bar strip: app icon, markup heading, right-edge buttons.
+
+        A Python rendition of the Barks Reader's kv action-bar idiom. Creates
+        ``back_btn``, ``contrast_btn`` and ``action_btn`` as it goes.
+        """
+        bar = BoxLayout(
+            orientation="horizontal",
+            size_hint_y=None,
+            height=round(dp(spec.height)),
+            padding=(dp(2), 0, dp(5), 0),
+            spacing=dp(5),
+        )
+        with bar.canvas.before:  # ty: ignore[unresolved-attribute]
+            Color(rgba=TOP_BAR_BG_COLOR)
+            bar_bg = Rectangle(pos=bar.pos, size=bar.size)
+        bar.bind(
+            pos=lambda _inst, pos: setattr(bar_bg, "pos", pos),
+            size=lambda _inst, size: setattr(bar_bg, "size", size),
+        )
+
+        if spec.icon_path is not None:
+            bar.add_widget(self._build_bar_icon(spec.icon_path))
+
+        # The heading takes all the stretch space, pinning the buttons right.
+        title = Label(
+            text=spec.title_markup,
+            color=spec.title_color,
+            markup=True,
+            halign="left",
+            valign="middle",
+        )
+        title.bind(size=lambda inst, size: inst.setter("text_size")(inst, size))
+        bar.add_widget(title)
+
+        separator = Widget(size_hint_x=None, width=dp(1))
+        with separator.canvas:  # ty: ignore[invalid-context-manager]
+            Color(rgba=TOP_BAR_SEPARATOR_COLOR)
+            separator_rect = Rectangle(pos=separator.pos, size=separator.size)
+        separator.bind(
+            pos=lambda _inst, pos: setattr(separator_rect, "pos", pos),
+            size=lambda _inst, size: setattr(separator_rect, "size", size),
+        )
+        bar.add_widget(separator)
+
+        if spec.back_icon_path is not None:
+            # ActionButton is the Barks bars' BarButton base: standalone it
+            # renders as a dp(48) icon button on a flat action-item background.
+            self.back_btn = ActionButton(icon=str(spec.back_icon_path), mipmap=True, disabled=True)
+        else:
+            self.back_btn = Button(text="< Back", size_hint_x=None, width=dp(90), disabled=True)
+        self.back_btn.bind(on_release=lambda *_: self._go_back())
+        bar.add_widget(self.back_btn)
+        # Dials the section bands from their subtle default up to near-opaque
+        # (BLOCK_BG_CONTRAST_ALPHA) when the background image fights the text.
+        self.contrast_btn = ToggleButton(text="Contrast", size_hint_x=None, width=dp(90))
+        self.contrast_btn.bind(state=lambda *_: self._apply_band_alpha())
+        bar.add_widget(self.contrast_btn)
+        # The page's contextual action (see PageActionProvider), hidden until a
+        # page offers one.
+        self.action_btn = Button(size_hint_x=None, width=0, opacity=0, disabled=True)
+        self.action_btn.bind(on_release=lambda *_: self._run_page_action())
+        bar.add_widget(self.action_btn)
+        return bar
+
+    def _build_bar_icon(self, icon_path: Path) -> RelativeLayout:
+        """Build the bar's left-edge app icon: an image under a transparent hitbox.
+
+        The main-screen pattern — pressing dims the image, releasing shows the
+        bundle's home page.
+        """
+        icon_box = RelativeLayout(size_hint=(None, 1), width=dp(TOP_BAR_ICON_WIDTH))
+        icon = Image(
+            source=str(icon_path),
+            size_hint=(None, None),
+            fit_mode="contain",
+            mipmap=True,
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
+        )
+        # Slightly smaller than its container, for padding (the kv idiom).
+        icon_box.bind(
+            size=lambda _inst, size: setattr(icon, "size", (size[0] - dp(8), size[1] - dp(8)))
+        )
+        hitbox = Button(background_color=(0, 0, 0, 0), size_hint=(1, 1))
+        hitbox.bind(
+            state=lambda _inst, state: setattr(icon, "opacity", 0.5 if state == "down" else 1.0)
+        )
+        hitbox.bind(on_release=lambda *_: self._show(self.bundle / "index.md", push=True))
+        icon_box.add_widget(icon)
+        icon_box.add_widget(hitbox)
+        return icon_box
 
     def _add_tree_nodes(self, nodes, parent) -> None:  # noqa: ANN001
         # Bind one level of the Kivy-free bundle model (okf_reader.core list_children)
@@ -573,6 +660,7 @@ class OKFApp(App):
         table_rewriter: TableRewriter | None = None,
         start_page: Path | None = None,
         action_provider: PageActionProvider | None = None,
+        top_bar: TopBarSpec | None = None,
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
@@ -581,6 +669,7 @@ class OKFApp(App):
         self._table_rewriter = table_rewriter
         self._start_page = start_page
         self._action_provider = action_provider
+        self._top_bar = top_bar
 
     def build(self) -> OKFViewer:
         self.title = f"OKF Reader — {self._bundle.name}"
@@ -590,6 +679,7 @@ class OKFApp(App):
             table_rewriter=self._table_rewriter,
             start_page=self._start_page,
             action_provider=self._action_provider,
+            top_bar=self._top_bar,
         )
 
 
@@ -599,6 +689,7 @@ def run(
     table_rewriter: TableRewriter | None = None,
     start_page: Path | None = None,
     action_provider: PageActionProvider | None = None,
+    top_bar: TopBarSpec | None = None,
 ) -> None:
     """Launch the standalone OKF reader on ``bundle`` (blocks until the window closes)."""
     OKFApp(
@@ -607,4 +698,5 @@ def run(
         table_rewriter=table_rewriter,
         start_page=start_page,
         action_provider=action_provider,
+        top_bar=top_bar,
     ).run()
