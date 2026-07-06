@@ -51,13 +51,18 @@ from barks_reader.core.reader_settings import ReaderSettings
 from barks_reader.core.reader_setup import bootstrap_reader_environment
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import SCREEN_METRICS, get_best_window_height_fit
+from cli_setup import init_logging
+from comic_utils.common_typer_options import LogLevelArg
 from dotenv import load_dotenv
+from loguru import logger
 from okf_reader.core.actions import PageAction
 from okf_reader.core.backgrounds import PageBackground
 from okf_reader.core.render import resolve_link
 from okf_reader.core.top_bar import TopBarSpec
 
 load_dotenv(Path(__file__).parent.parent / ".env.runtime")
+
+APP_LOGGING_NAME = "okf"
 
 WIKI_TITLE = "Carl Barks Wiki"
 # The Barks screens' action-bar title green (main_screen.py ACTION_BAR_TITLE_COLOR).
@@ -109,6 +114,9 @@ def _pin_window_to_primary_monitor() -> int:
     Config.set("graphics", "top", win_top)  # ty: ignore[unresolved-attribute]
     Config.set("graphics", "width", win_width)  # ty: ignore[unresolved-attribute]
     Config.set("graphics", "height", win_height)  # ty: ignore[unresolved-attribute]
+    logger.info(
+        f"OKF window pinned to primary monitor: ({win_left},{win_top}) {win_width}x{win_height}."
+    )
 
     return win_height
 
@@ -159,8 +167,8 @@ def _bootstrap_barks_reader() -> tuple[ReaderSettings, ComicsDatabase] | None:
         reader_settings = ReaderSettings()
         comics_database = ComicsDatabase(for_building_comics=False)
         bootstrap_reader_environment(reader_settings, comics_database, parser, config_info)
-    except Exception as err:  # noqa: BLE001 — reading the wiki must survive this
-        typer.echo(f"warning: Barks reader environment unavailable ({err})", err=True)
+    except Exception:  # noqa: BLE001 — reading the wiki must survive this
+        logger.exception("Barks reader environment unavailable:")
         return None
     return reader_settings, comics_database
 
@@ -290,8 +298,8 @@ class ReadComicActionProvider:
         if self._comics_database is None and not self._database_unavailable:
             try:
                 self._comics_database = ComicsDatabase(for_building_comics=False)
-            except Exception as err:  # noqa: BLE001 — reading the wiki must survive this
-                typer.echo(f"warning: comics database unavailable ({err})", err=True)
+            except Exception:  # noqa: BLE001 — reading the wiki must survive this
+                logger.exception("Comics database unavailable:")
                 self._database_unavailable = True
         if self._comics_database is None:
             return False
@@ -310,7 +318,9 @@ class ReadComicActionProvider:
 
     def _launch(self, canonical_title: str) -> None:
         if self._last_launch is not None and self._last_launch.poll() is None:
-            return  # the comic reader we launched is still open; don't stack another
+            logger.info("Comic reader already open; not launching another.")
+            return
+        logger.info(f'Launching comic reader for "{canonical_title}"...')
         script = Path(__file__).parent / "read_comic.py"
         self._last_launch = subprocess.Popen(  # noqa: S603
             [sys.executable, str(script), canonical_title],
@@ -421,7 +431,10 @@ def main(
             ' canonical story title (e.g. "Camera Crazy").'
         ),
     ] = None,
+    log_level_str: LogLevelArg = "INFO",
 ) -> None:
+    init_logging(APP_LOGGING_NAME, "read-okf.log", log_level_str)
+
     if not bundle.is_dir():
         typer.echo(f"error: bundle {bundle} not found", err=True)
         raise typer.Exit(code=2)
@@ -432,6 +445,8 @@ def main(
         if start_page is None:
             typer.echo(f"error: {error}", err=True)
             raise typer.Exit(code=2)
+
+    logger.info(f'Opening OKF bundle "{bundle}"' + (f' at "{start_page}".' if start_page else "."))
 
     # Bootstrap the Barks reader environment before any window appears, so a
     # misconfiguration warning prints while the terminal still has the user's eye.
