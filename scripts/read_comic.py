@@ -219,6 +219,8 @@ def _build_cli_app_class(
             return manager
 
         def on_start(self) -> None:
+            self._set_custom_title_bar()
+
             panel_segments_adapter = FantagraphicsPanelSegmentsAdapter(
                 comics_database,
                 self.reader_settings.sys_file_paths.get_barks_reader_fantagraphics_panel_segments_root_dir(),
@@ -239,6 +241,18 @@ def _build_cli_app_class(
                 begin_page,
                 layout.page_map,
             )
+
+        def _set_custom_title_bar(self) -> None:
+            """Replace the OS window titlebar with the screen's action bar.
+
+            Mirrors ``BarksReaderApp._set_custom_title_bar``: the bar's title
+            area becomes the drag region, leaving the icon and buttons
+            clickable; the screen's own Close button is the close control.
+            """
+            assert self._screen is not None
+            Window.custom_titlebar = True
+            if not Window.set_custom_titlebar(self._screen.ids.draggable_title_bar):
+                logger.warning("Window: setting custom titlebar not allowed on this system.")
 
         def _on_comic_ready(self) -> None:
             assert self._screen is not None

@@ -51,6 +51,9 @@
 
                 # --- 2. Title Area ---
                 RelativeLayout:
+                    # As on MainScreen: scripts/read_comic.py passes this to
+                    # Window.set_custom_titlebar as the window-drag region.
+                    id: draggable_title_bar
                     # Position this layout between the icon and the right-hand buttons.
                     pos_hint: {'x': (icon_container.width + dp(5)) / max(action_bar_inner.width, 1), 'center_y': 0.5}
                     size_hint: None, 1
