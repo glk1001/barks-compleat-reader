@@ -31,7 +31,11 @@ from barks_reader.core.config_info import ConfigInfo
 from barks_reader.core.fantagraphics_volumes import MissingVolumeError
 from barks_reader.core.page_info_adapters import FantagraphicsPanelSegmentsAdapter
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE, RAW_ACTION_BAR_SIZE_Y
-from barks_reader.core.reader_settings import ReaderSettings
+from barks_reader.core.reader_settings import (
+    BARKS_READER_SECTION,
+    GOTO_FULLSCREEN_ON_COMIC_READ,
+    ReaderSettings,
+)
 from barks_reader.core.reader_setup import bootstrap_reader_environment, prepare_comic_for_reading
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import SCREEN_METRICS, get_best_window_height_fit
@@ -79,6 +83,14 @@ def main(
     parser = ConfigParser()
     parser.read(config_info.app_config_path)
 
+    # The CLI reader is a windowed companion (launched e.g. from the wiki's
+    # Read Comic button): never auto-fullscreen, whatever the shared ini says.
+    # ReaderSettings reads live from this in-memory parser and nothing in the
+    # CLI writes the ini back, so the override cannot leak into the file.
+    if not parser.has_section(BARKS_READER_SECTION):
+        parser.add_section(BARKS_READER_SECTION)
+    parser.set(BARKS_READER_SECTION, GOTO_FULLSCREEN_ON_COMIC_READ, "0")
+
     reader_settings = ReaderSettings()
     comics_database = ComicsDatabase(for_building_comics=False)
     bootstrap_reader_environment(reader_settings, comics_database, parser, config_info)
@@ -110,7 +122,7 @@ def _primary_monitor_window_geometry() -> tuple[int, int, int, int]:
     ``set_window_size`` that sizes the main app's window.
     """
     primary = SCREEN_METRICS.get_primary_screen_info()
-    margin = 20
+    margin = 60
     max_height = get_best_window_height_fit(primary.height_pixels) - margin
     win_width, content_h = get_win_dimensions(
         max_height - RAW_ACTION_BAR_SIZE_Y, primary.width_pixels
@@ -236,10 +248,10 @@ def _build_cli_app_class(
             assert self._screen is not None
             self._screen.comic_book_reader.read_comic(
                 fanta_info,
-                True,  # noqa: FBT003 — use_fantagraphics_overrides
-                image_builder,
-                begin_page,
-                layout.page_map,
+                use_fantagraphics_overrides=True,
+                comic_book_image_builder=image_builder,
+                page_to_first_goto=begin_page,
+                page_map=layout.page_map,
             )
 
         def _set_custom_title_bar(self) -> None:
