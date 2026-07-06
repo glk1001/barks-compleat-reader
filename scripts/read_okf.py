@@ -78,7 +78,7 @@ def _primary_monitor_window_geometry() -> tuple[int, int, int, int]:
     OKF window matches the comic reader's window.
     """
     primary = SCREEN_METRICS.get_primary_screen_info()
-    margin = 20
+    margin = 60
     max_height = get_best_window_height_fit(primary.height_pixels) - margin
     win_width, content_h = get_win_dimensions(
         max_height - RAW_ACTION_BAR_SIZE_Y, primary.width_pixels
