@@ -28,6 +28,7 @@ from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
 from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.treeview import TreeView, TreeViewLabel
 from kivy.uix.widget import Widget
 
@@ -66,6 +67,9 @@ TREE_PANEL_SCRIM = (0, 0, 0, 0.25)
 # (main_screen.kv <BackgroundColor@Widget>), in Python. The alpha is the
 # delineation-strength knob.
 BLOCK_BG_COLOR = (0.01, 0.01, 0.01, 0.30)
+# Band alpha while the Contrast toggle is down: near-opaque, so the text reads
+# as if on a plain dark page whatever the background image is doing.
+BLOCK_BG_CONTRAST_ALPHA = 0.9
 BLOCK_BG_RADIUS = 6  # dp
 SECTION_PADDING = (10, 8)  # inset of a section's text from its band edge
 SECTION_BLOCK_SPACING = 8  # between blocks inside one banded section
@@ -78,12 +82,13 @@ TREE_DIR_TEXT_COLOR = (1, 1, 1, 1)
 TREE_CONCEPT_TEXT_COLOR = (1.0, 0.835, 0.29, 1.0)
 
 
-def _add_text_backing(widget) -> None:  # noqa: ANN001
+def _add_text_backing(widget, alpha: float) -> Color:  # noqa: ANN001
     """Draw the translucent rounded band behind ``widget`` (see BLOCK_BG_COLOR),
-    kept glued through pos/size changes.
+    kept glued through pos/size changes. Returns the band's Color instruction so
+    the caller can retune its alpha later (the Contrast toggle).
     """  # noqa: D205
     with widget.canvas.before:
-        Color(rgba=BLOCK_BG_COLOR)
+        color = Color(rgba=(*BLOCK_BG_COLOR[:3], alpha))
         rect = RoundedRectangle(radius=[dp(BLOCK_BG_RADIUS)])
 
     def sync(_widget, _value) -> None:  # noqa: ANN001
@@ -92,6 +97,7 @@ def _add_text_backing(widget) -> None:  # noqa: ANN001
 
     widget.bind(pos=sync, size=sync)
     sync(widget, None)
+    return color
 
 
 def _scroll_view(**kwargs) -> ScrollView:  # noqa: ANN003
@@ -141,6 +147,7 @@ class OKFViewer(RelativeLayout):
         self._table_rewriter = table_rewriter
         self._action_provider = action_provider
         self._page_action: PageAction | None = None
+        self._band_colors: list[Color] = []  # the current page's section-band Colors
 
         # The whole window layers over a context background image (RelativeLayout
         # children stack in add order): image below, both panels above.
@@ -178,7 +185,12 @@ class OKFViewer(RelativeLayout):
         self.back_btn = Button(text="< Back", size_hint_x=None, width=90, disabled=True)
         self.back_btn.bind(on_release=lambda *_: self._go_back())
         bar.add_widget(self.back_btn)
-        bar.add_widget(Widget())  # stretch: pins the contextual action to the right edge
+        bar.add_widget(Widget())  # stretch: pins the right-edge buttons there
+        # Dials the section bands from their subtle default up to near-opaque
+        # (BLOCK_BG_CONTRAST_ALPHA) when the background image fights the text.
+        self.contrast_btn = ToggleButton(text="Contrast", size_hint_x=None, width=dp(90))
+        self.contrast_btn.bind(state=lambda *_: self._apply_band_alpha())
+        bar.add_widget(self.contrast_btn)
         # The page's contextual action (see PageActionProvider), hidden until a
         # page offers one.
         self.action_btn = Button(size_hint_x=None, width=0, opacity=0, disabled=True)
@@ -427,6 +439,7 @@ class OKFViewer(RelativeLayout):
             else None
         )
         self.body.clear_widgets()
+        self._band_colors.clear()  # their sections were just discarded
         self._anchors = {}
         # Blocks group into banded sections: each heading starts a new section
         # box holding it and everything up to the next heading (see BLOCK_BG_COLOR).
@@ -471,9 +484,21 @@ class OKFViewer(RelativeLayout):
             padding=SECTION_PADDING,
         )
         box.bind(minimum_height=box.setter("height"))
-        _add_text_backing(box)
+        self._band_colors.append(_add_text_backing(box, self._band_alpha()))
         self.body.add_widget(box)
         return box
+
+    def _band_alpha(self) -> float:
+        """Return the section-band alpha the Contrast toggle currently calls for."""
+        if self.contrast_btn.state == "down":
+            return BLOCK_BG_CONTRAST_ALPHA
+        return BLOCK_BG_COLOR[3]
+
+    def _apply_band_alpha(self) -> None:
+        """Retune the current page's section bands to the toggle's alpha."""
+        alpha = self._band_alpha()
+        for color in self._band_colors:
+            color.a = alpha
 
     def _table_widget(self, blk: TableBlock) -> ScrollView:
         """Build the widget for a table: monospace rows, tightly stacked, one per Label.
