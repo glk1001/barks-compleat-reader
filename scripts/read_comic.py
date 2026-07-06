@@ -11,8 +11,13 @@ from configparser import ConfigParser
 from pathlib import Path
 
 import typer
-from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book import ComicBook
+from barks_fantagraphics.comic_book_info import (
+    ONE_PAGERS,
+    get_located_one_pagers,
+    is_one_pager_located,
+)
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
@@ -51,6 +56,20 @@ def main(
     init_logging(APP_LOGGING_NAME, "read-comic.log", log_level_str)
 
     title_enum = STR_TITLE_TO_ENUM.get(title)
+
+    # One-pagers have no story ini of their own: they are bundled in the synthetic
+    # "All One-Pagers" collection, whose display pages are 1..N in
+    # get_located_one_pagers() order. Redirect to the collection, opened at the
+    # requested one-pager's page.
+    begin_page = COMIC_BEGIN_PAGE
+    if title_enum is not None and title_enum in ONE_PAGERS:
+        if not is_one_pager_located(title_enum):
+            print(f'"{title}" is a one-pager not yet located in the All One-Pagers collection.')
+            raise typer.Exit(code=2)
+        begin_page = str(get_located_one_pagers().index(title_enum) + 1)
+        title_enum = Titles.ALL_ONE_PAGERS
+        title = ENUM_TO_STR_TITLE[title_enum]  # downstream lookups use the collection
+
     fanta_info = ALL_FANTA_COMIC_BOOK_INFO.get(title_enum) if title_enum is not None else None
     if fanta_info is None:
         _print_title_not_found(title)
@@ -66,7 +85,7 @@ def main(
 
     comic = comics_database.get_comic_book(title)
 
-    _run_cli_reader(reader_settings, comics_database, fanta_info, comic)
+    _run_cli_reader(reader_settings, comics_database, fanta_info, comic, begin_page)
 
 
 def _print_title_not_found(title_str: str) -> None:
@@ -107,6 +126,7 @@ def _run_cli_reader(
     comics_database: ComicsDatabase,
     fanta_info: FantaComicBookInfo,
     comic: ComicBook,
+    begin_page: str = COMIC_BEGIN_PAGE,
 ) -> None:
     # Deferred kivy imports — must happen only after ``ConfigInfo()`` has set
     # KIVY_HOME.
@@ -125,7 +145,9 @@ def _run_cli_reader(
         f"CLI window pinned to primary monitor: ({win_left},{win_top}) {win_width}x{win_height}."
     )
 
-    app_cls = _build_cli_app_class(reader_settings, comics_database, fanta_info, comic, win_height)
+    app_cls = _build_cli_app_class(
+        reader_settings, comics_database, fanta_info, comic, win_height, begin_page
+    )
 
     try:
         app_cls().run()
@@ -140,6 +162,7 @@ def _build_cli_app_class(
     fanta_info: FantaComicBookInfo,
     comic: ComicBook,
     window_height: int,
+    begin_page: str = COMIC_BEGIN_PAGE,
 ) -> type:
     """Build the single-screen Kivy ``App`` subclass that hosts the reader.
 
@@ -213,7 +236,7 @@ def _build_cli_app_class(
                 fanta_info,
                 True,  # noqa: FBT003 — use_fantagraphics_overrides
                 image_builder,
-                COMIC_BEGIN_PAGE,
+                begin_page,
                 layout.page_map,
             )
 
