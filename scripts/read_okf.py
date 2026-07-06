@@ -34,6 +34,7 @@ import okf_reader.ui  # noqa: F401  — kivy-free: only sets KIVY_NO_ARGS for la
 import typer
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
+from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
 from barks_reader.core.reader_utils import get_win_dimensions
@@ -158,15 +159,37 @@ def _canonical_title(text: str) -> Titles | None:
 class ReadComicActionProvider:
     """Offer "Read Comic" on wiki story pages (an okf_reader PageActionProvider).
 
-    A page qualifies when it lives under ``concept/stories/`` and its frontmatter
-    title maps to a canonical Barks title with a Fantagraphics entry — the same
-    gate scripts/read_comic.py itself applies. The comic reader is a separate
-    Kivy app, so it launches as a subprocess; when the wiki reader is embedded
-    in the Barks Reader this becomes an in-app screen switch instead.
+    A page qualifies when it lives under ``concept/stories/``, its frontmatter
+    title maps to a canonical Barks title with a Fantagraphics entry, **and**
+    the comics database can serve that title — one-pagers (e.g. "Fashion in
+    Flight") have no story ini, so read_comic.py cannot open them and they get
+    no button. The comic reader is a separate Kivy app, so it launches as a
+    subprocess; when the wiki reader is embedded in the Barks Reader this
+    becomes an in-app screen switch instead.
     """
 
     def __init__(self) -> None:
         self._last_launch: subprocess.Popen | None = None
+        self._comics_database: ComicsDatabase | None = None
+        self._database_unavailable = False
+
+    def _story_in_database(self, canonical_title: str) -> bool:
+        """Whether the comics database can serve ``canonical_title`` as a comic.
+
+        The database is built lazily on the first story page viewed; if it cannot
+        be built at all (e.g. an unconfigured environment), the wiki reader keeps
+        working and simply offers no Read Comic buttons.
+        """
+        if self._comics_database is None and not self._database_unavailable:
+            try:
+                self._comics_database = ComicsDatabase(for_building_comics=False)
+            except Exception as err:  # noqa: BLE001 — reading the wiki must survive this
+                typer.echo(f"warning: comics database unavailable ({err})", err=True)
+                self._database_unavailable = True
+        if self._comics_database is None:
+            return False
+        found, _close = self._comics_database.is_story_title(canonical_title)
+        return found
 
     def action_for(self, frontmatter: dict, page_path: Path) -> PageAction | None:
         """Return the "Read Comic" action for a story page, else None."""
@@ -179,6 +202,8 @@ class ReadComicActionProvider:
         if title_enum is None or title_enum not in ALL_FANTA_COMIC_BOOK_INFO:
             return None
         canonical = ENUM_TO_STR_TITLE[title_enum]
+        if not self._story_in_database(canonical):
+            return None
         return PageAction("Read Comic", lambda: self._launch(canonical))
 
     def _launch(self, canonical_title: str) -> None:
