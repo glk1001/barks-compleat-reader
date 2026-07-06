@@ -34,6 +34,10 @@ OVERRIDES: dict[Titles, tuple[Issues, int, int, int] | None] = {
     Titles.SORRY_TO_BE_SAFE: (Issues.FC, 199, 1948, 1),      # "vacant lot where the nephews can play"
     Titles.BEST_LAID_PLANS: (Issues.FC, 199, 1948, 3),       # "pretends to be sick so the nephews cook"
     Titles.GENUINE_ARTICLE_THE: (Issues.FC, 199, 1948, 4),   # "tests the authenticity of worm holes"
+    # Four Color 203
+    Titles.JUMPING_TO_CONCLUSIONS: (Issues.FC, 203, 1948, 1),# "Donald returns the nephews’ presents"
+    Titles.TRUE_TEST_THE: (Issues.FC, 203, 1948, 3),         # "Donald tests toys to see how sturdy"
+    Titles.ORNAMENTS_ON_THE_WAY: (Issues.FC, 203, 1948, 4),  # "Donald acquires some unusual decorations"
     # Four Color 238
     Titles.SLIPPERY_SHINE: (Issues.FC, 238, 1949, 1),        # "freshly waxed floors"
     Titles.FRACTIOUS_FUN: (Issues.FC, 238, 1949, 3),         # "Daisy loses her temper at sports"
