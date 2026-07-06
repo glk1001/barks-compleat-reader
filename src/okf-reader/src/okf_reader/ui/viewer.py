@@ -242,15 +242,19 @@ class OKFViewer(RelativeLayout):
             bar.add_widget(self._build_bar_icon(spec.icon_path))
 
         # The heading takes all the stretch space, pinning the buttons right.
-        title = Label(
+        # Kept as an attribute: it doubles as the window-drag region when the
+        # app replaces the OS titlebar with this bar (see OKFApp.on_start) —
+        # the Barks Reader's draggable_title_bar arrangement, where only the
+        # title area drags and the icon/buttons stay clickable.
+        self.bar_drag_region = Label(
             text=spec.title_markup,
             color=spec.title_color,
             markup=True,
             halign="left",
             valign="middle",
         )
-        title.bind(size=lambda inst, size: inst.setter("text_size")(inst, size))
-        bar.add_widget(title)
+        self.bar_drag_region.bind(size=lambda inst, size: inst.setter("text_size")(inst, size))
+        bar.add_widget(self.bar_drag_region)
 
         separator = Widget(size_hint_x=None, width=dp(1))
         with separator.canvas:  # ty: ignore[invalid-context-manager]
@@ -261,6 +265,15 @@ class OKFViewer(RelativeLayout):
             size=lambda _inst, size: setattr(separator_rect, "size", size),
         )
         bar.add_widget(separator)
+
+        # Quit leads the button group, as on the Barks main screen. With the OS
+        # titlebar replaced by this bar, it is the window's only close control.
+        if spec.close_icon_path is not None:
+            quit_btn = ActionButton(icon=str(spec.close_icon_path), mipmap=True)
+        else:
+            quit_btn = Button(text="Quit", size_hint_x=None, width=dp(70))
+        quit_btn.bind(on_release=lambda *_: App.get_running_app().stop())
+        bar.add_widget(quit_btn)
 
         if spec.back_icon_path is not None:
             # ActionButton is the Barks bars' BarButton base: standalone it
@@ -670,10 +683,11 @@ class OKFApp(App):
         self._start_page = start_page
         self._action_provider = action_provider
         self._top_bar = top_bar
+        self._viewer: OKFViewer | None = None
 
     def build(self) -> OKFViewer:
         self.title = f"OKF Reader — {self._bundle.name}"
-        return OKFViewer(
+        self._viewer = OKFViewer(
             self._bundle,
             image_provider=self._image_provider,
             table_rewriter=self._table_rewriter,
@@ -681,6 +695,22 @@ class OKFApp(App):
             action_provider=self._action_provider,
             top_bar=self._top_bar,
         )
+        return self._viewer
+
+    def on_start(self) -> None:
+        """Replace the OS window titlebar with the viewer's action bar.
+
+        The Barks Reader convention (BarksReaderApp._set_custom_title_bar):
+        only the bar's title area becomes the drag region, so the icon and
+        buttons stay clickable. Kivy needs the realized window, hence on_start;
+        where the system disallows it, the OS titlebar simply stays.
+        """
+        from kivy.core.window import Window  # noqa: PLC0415 — needs the realized window
+
+        assert self._viewer is not None
+        Window.custom_titlebar = True
+        if not Window.set_custom_titlebar(self._viewer.bar_drag_region):
+            print("warning: custom titlebar not allowed on this system")  # noqa: T201
 
 
 def run(

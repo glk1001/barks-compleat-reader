@@ -22,12 +22,16 @@ class TopBarSpec:
 
     ``title_markup`` may carry kivy markup (font/size tags). ``height`` is in
     raw units; the UI dp-scales it. A click on the ``icon_path`` image shows
-    the bundle's home page. ``back_icon_path`` turns the Back button into an
-    icon button; without it, Back stays a text button.
+    the bundle's home page. ``back_icon_path``/``close_icon_path`` turn the
+    Back and Quit buttons into icon buttons; without them they stay text
+    buttons. Quit matters because the standalone app replaces the OS window
+    titlebar with this bar (the Barks Reader convention), so the bar carries
+    the only close control.
     """
 
     title_markup: str = "OKF Reader"
     title_color: tuple[float, float, float, float] = (1, 1, 1, 1)
     icon_path: Path | None = None
     back_icon_path: Path | None = None
+    close_icon_path: Path | None = None
     height: int = 40

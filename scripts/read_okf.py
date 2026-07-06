@@ -139,6 +139,7 @@ def _barks_top_bar_spec(reader_settings: ReaderSettings | None, win_height: int)
         title_color=ACTION_BAR_TITLE_COLOR,
         icon_path=sys_paths.get_barks_reader_app_window_icon_path(),
         back_icon_path=sys_paths.get_barks_reader_go_back_icon_file(),
+        close_icon_path=sys_paths.get_barks_reader_close_icon_file(),
         height=RAW_ACTION_BAR_SIZE_Y,
     )
 
