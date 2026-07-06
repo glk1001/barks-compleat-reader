@@ -1,16 +1,19 @@
 """Kivy-free background-image selection for the OKF reader.
 
 Mirrors the Barks Reader's pattern in miniature: a provider Protocol is the seam
-between "what images suit this page" and the UI, and a pure chooser picks one at
-random while avoiding an immediate repeat. okf_reader must stay independent of the
-Barks packages (import-linter contract), so the provider speaks only in frontmatter
-dicts and paths; an embedding app (or the launcher script) wires a root directory —
-e.g. the Barks "Favourites" panels tree — from its own configuration.
+between "what image suits this page" and the UI. The provider owns selection —
+stateful choosers (e.g. the Barks Reader's ImageSelector with its recently-used
+tracking) cannot be reduced to a candidate list. okf_reader must stay independent
+of the Barks packages (import-linter contract), so the provider speaks only in
+frontmatter dicts and paths, and hands back either a plain image file or raw
+image bytes (for sources the UI cannot open by filename, e.g. members of an
+encrypted archive).
 """
 
 from __future__ import annotations
 
 import random
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
@@ -19,11 +22,24 @@ if TYPE_CHECKING:
 IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp")
 
 
-class ImageProvider(Protocol):
-    """Source of candidate background images for a page."""
+@dataclass(frozen=True)
+class PageBackground:
+    """One background image: a plain file on disk, or in-memory image bytes.
 
-    def candidate_images(self, frontmatter: dict, page_path: Path) -> list[Path]:
-        """Return the background candidates for a page (may be empty)."""
+    Exactly one of ``path``/``data`` is set. ``ext`` (e.g. ``".png"``) tells the
+    UI how to decode ``data``; it is informational for ``path``.
+    """
+
+    ext: str
+    path: Path | None = None
+    data: bytes | None = None
+
+
+class ImageProvider(Protocol):
+    """Source of the background image for a page."""
+
+    def background_for(self, frontmatter: dict, page_path: Path) -> PageBackground | None:
+        """Return the background to show for a page, or None for no background."""
         ...
 
 
@@ -39,8 +55,15 @@ class DirPerTitleImageProvider:
     def __init__(self, root: Path) -> None:
         self._root = root
         self._all_images: list[Path] | None = None  # lazy fallback pool
+        self._last: Path | None = None
 
-    def candidate_images(self, frontmatter: dict, page_path: Path) -> list[Path]:  # noqa: ARG002
+    def background_for(self, frontmatter: dict, page_path: Path) -> PageBackground | None:
+        """Return a random title-matched (else pool) image, avoiding an immediate repeat."""
+        image = choose_image(self._candidate_images(frontmatter, page_path), self._last)
+        self._last = image
+        return None if image is None else PageBackground(ext=image.suffix, path=image)
+
+    def _candidate_images(self, frontmatter: dict, page_path: Path) -> list[Path]:  # noqa: ARG002
         """Return the title-matched images, else the all-titles fallback pool."""
         title = frontmatter.get("title")
         if isinstance(title, str) and title:

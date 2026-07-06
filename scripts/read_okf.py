@@ -11,7 +11,11 @@ the window Config has been decided (see ``_pin_window_to_primary_monitor`` and t
 deferred ``okf_reader.ui.viewer`` import in ``main``). The module-level imports
 below are all kivy-free: ``barks_reader.core`` by import-linter contract, and
 ``okf_reader.ui``'s package __init__ only sets KIVY_NO_ARGS (needed before the
-first kivy import so typer, not kivy, owns the command line).
+first kivy import so typer, not kivy, owns the command line). The
+``barks_reader.core.config_info`` import redirects KIVY_HOME to the app's config
+directory (its guard requires it to precede any kivy import), so this launcher
+reads the same known-good kivy ini as read_comic.py/main.py rather than
+``~/.kivy/config.ini``.
 
 The window is sized exactly as read_comic.py sizes the comic reader (comic-page
 aspect ratio plus the action-bar height), so the standalone OKF window matches
@@ -21,10 +25,10 @@ imported here in the launcher only — okf_reader itself stays independent of th
 Barks reader owns the window.
 """
 
-import os
 import re
 import subprocess
 import sys
+import zipfile
 from configparser import ConfigParser
 from itertools import pairwise
 from pathlib import Path
@@ -36,18 +40,22 @@ from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENU
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, is_one_pager_located
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
+from barks_reader.core.config_info import ConfigInfo
+from barks_reader.core.image_pipeline import encode_png_stream, load_pil
+from barks_reader.core.image_selector import ImageSelector
 from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
+from barks_reader.core.reader_file_paths import ALL_TYPES
+from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
+from barks_reader.core.reader_settings import ReaderSettings
+from barks_reader.core.reader_setup import bootstrap_reader_environment
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import SCREEN_METRICS, get_best_window_height_fit
 from dotenv import load_dotenv
 from okf_reader.core.actions import PageAction
-from okf_reader.core.backgrounds import DirPerTitleImageProvider
+from okf_reader.core.backgrounds import PageBackground
 from okf_reader.core.render import resolve_link
 
 load_dotenv(Path(__file__).parent.parent / ".env.runtime")
-
-BARKS_READER_SECTION = "Barks Reader"
-DEFAULT_PANELS_DIR = "~/Books/Carl Barks/Barks Panels Pngs"
 
 app = typer.Typer()
 
@@ -76,9 +84,9 @@ def _pin_window_to_primary_monitor() -> None:
     First kivy import of the process happens here, deliberately: the geometry is
     computed and written to Config before kivy can realize the window.
 
-    Unlike read_comic.py (whose KIVY_HOME ini carries known-good values), the
-    standalone launcher runs against whatever ~/.kivy/config.ini holds, so every
-    graphics setting that affects placement is set explicitly. In particular
+    KIVY_HOME points at the app's config directory (redirected by the module's
+    ``config_info`` import), but every graphics setting that affects placement
+    is still set explicitly rather than trusted from any ini. In particular
     ``resizable``: GNOME's Mutter clamps non-resizable windows to the focused
     monitor and refuses to move them across, silently defeating left/top
     (diagnosed on a two-monitor Wayland setup where a stale resizable=0 in
@@ -97,21 +105,61 @@ def _pin_window_to_primary_monitor() -> None:
     Config.set("graphics", "height", win_height)  # ty: ignore[unresolved-attribute]
 
 
-def _favourites_image_provider() -> DirPerTitleImageProvider | None:
-    """Wire the Barks 'Favourites' panels tree as the background-image source.
+def _bootstrap_barks_reader() -> tuple[ReaderSettings, ComicsDatabase] | None:
+    """Wire ``ReaderSettings`` + ``ComicsDatabase`` to the on-disk config.
 
-    The panels root comes from barks-reader.ini's ``png_barks_panels_dir`` (the same
-    key the Barks Reader uses), falling back to the stock location. Backgrounds are
-    optional: no Favourites directory means the reader just runs without them.
+    The same boot sequence as scripts/read_comic.py. Returns None if the
+    environment isn't configured (missing ini, panels source, comics dir…) —
+    reading the wiki must survive that, just without backgrounds and Read
+    Comic buttons.
     """
-    panels_dir = DEFAULT_PANELS_DIR
-    config_dir = os.environ.get("BARKS_READER_CONFIG_DIR")
-    if config_dir:
+    try:
+        config_info = ConfigInfo()
         parser = ConfigParser()
-        parser.read(Path(config_dir) / "barks-reader.ini")
-        panels_dir = parser.get(BARKS_READER_SECTION, "png_barks_panels_dir", fallback=panels_dir)
-    favourites = Path(os.path.expandvars(panels_dir)).expanduser() / "Favourites"
-    return DirPerTitleImageProvider(favourites) if favourites.is_dir() else None
+        parser.read(config_info.app_config_path)
+        reader_settings = ReaderSettings()
+        comics_database = ComicsDatabase(for_building_comics=False)
+        bootstrap_reader_environment(reader_settings, comics_database, parser, config_info)
+    except Exception as err:  # noqa: BLE001 — reading the wiki must survive this
+        typer.echo(f"warning: Barks reader environment unavailable ({err})", err=True)
+        return None
+    return reader_settings, comics_database
+
+
+class BarksPanelsImageProvider:
+    """Back wiki pages with the Barks Reader's panel imagery (an okf ImageProvider).
+
+    Wraps the app's own ``ImageSelector``: a story page draws from that title's
+    panel images across every panel directory (favourites, insets, covers,
+    splash, silhouettes, closeups, original art, B/W, AI, censorship); any other
+    page gets a random image across all Fantagraphics titles, with the
+    selector's recently-used tracking avoiding repeats. Panels may live in an
+    encrypted zip, whose members kivy cannot open by filename — those are
+    decrypted and re-encoded to PNG bytes here (``image_pipeline.load_pil`` is
+    the allow-listed decrypt path). Lives in the launcher so okf_reader stays
+    free of Barks knowledge.
+    """
+
+    def __init__(self, reader_settings: ReaderSettings) -> None:
+        self._file_paths = reader_settings.file_paths
+        self._selector = ImageSelector(ReaderFilePathsResolver(self._file_paths), reader_settings)
+        self._all_titles = list(ALL_FANTA_COMIC_BOOK_INFO.values())
+
+    def background_for(self, frontmatter: dict, page_path: Path) -> PageBackground | None:
+        """Return a title-specific image for a story page, else a random one."""
+        title_enum = _story_page_title(frontmatter, page_path)
+        if title_enum is not None:
+            panel = self._selector.get_random_image_for_title(
+                ENUM_TO_STR_TITLE[title_enum], ALL_TYPES
+            )
+        else:
+            panel = self._selector.get_random_image(self._all_titles).filename
+        if panel is None:
+            return None
+        if isinstance(panel, zipfile.Path):
+            pil = load_pil(panel, encrypted_zip=self._file_paths.barks_panels_are_encrypted)
+            return PageBackground(ext=".png", data=encode_png_stream(pil).getvalue())
+        return PageBackground(ext=panel.suffix, path=panel)
 
 
 # Wiki story-page directory (under okf/concept/stories/) for each Fantagraphics
@@ -156,6 +204,25 @@ def _canonical_title(text: str) -> Titles | None:
     return title_enum
 
 
+def _story_page_title(frontmatter: dict, page_path: Path) -> Titles | None:
+    """Return the canonical title of a wiki story page, or None for any other page.
+
+    A story page lives under ``concept/stories/`` and its frontmatter title maps
+    to a canonical Barks title with a Fantagraphics entry. The shared gate for
+    everything keyed to "the story this page is about" (Read Comic button,
+    title-specific backgrounds).
+    """
+    if ("concept", "stories") not in pairwise(page_path.parts):
+        return None
+    title = frontmatter.get("title")
+    if not isinstance(title, str):
+        return None
+    title_enum = _canonical_title(title)
+    if title_enum is None or title_enum not in ALL_FANTA_COMIC_BOOK_INFO:
+        return None
+    return title_enum
+
+
 class ReadComicActionProvider:
     """Offer "Read Comic" on wiki story pages (an okf_reader PageActionProvider).
 
@@ -169,17 +236,17 @@ class ReadComicActionProvider:
     becomes an in-app screen switch instead.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, comics_database: ComicsDatabase | None = None) -> None:
         self._last_launch: subprocess.Popen | None = None
-        self._comics_database: ComicsDatabase | None = None
+        self._comics_database = comics_database
         self._database_unavailable = False
 
     def _story_in_database(self, canonical_title: str) -> bool:
         """Whether the comics database can serve ``canonical_title`` as a comic.
 
-        The database is built lazily on the first story page viewed; if it cannot
-        be built at all (e.g. an unconfigured environment), the wiki reader keeps
-        working and simply offers no Read Comic buttons.
+        If no database was injected, one is built lazily on the first story page
+        viewed; if it cannot be built at all (e.g. an unconfigured environment),
+        the wiki reader keeps working and simply offers no Read Comic buttons.
         """
         if self._comics_database is None and not self._database_unavailable:
             try:
@@ -194,13 +261,8 @@ class ReadComicActionProvider:
 
     def action_for(self, frontmatter: dict, page_path: Path) -> PageAction | None:
         """Return the "Read Comic" action for a story page, else None."""
-        if ("concept", "stories") not in pairwise(page_path.parts):
-            return None
-        title = frontmatter.get("title")
-        if not isinstance(title, str):
-            return None
-        title_enum = _canonical_title(title)
-        if title_enum is None or title_enum not in ALL_FANTA_COMIC_BOOK_INFO:
+        title_enum = _story_page_title(frontmatter, page_path)
+        if title_enum is None:
             return None
         canonical = ENUM_TO_STR_TITLE[title_enum]
         if not (is_one_pager_located(title_enum) or self._story_in_database(canonical)):
@@ -332,6 +394,15 @@ def main(
             typer.echo(f"error: {error}", err=True)
             raise typer.Exit(code=2)
 
+    # Bootstrap the Barks reader environment before any window appears, so a
+    # misconfiguration warning prints while the terminal still has the user's eye.
+    barks_env = _bootstrap_barks_reader()
+    image_provider = None
+    comics_database = None
+    if barks_env is not None:
+        reader_settings, comics_database = barks_env
+        image_provider = BarksPanelsImageProvider(reader_settings)
+
     _pin_window_to_primary_monitor()
 
     # Deferred: okf_reader.ui.viewer imports kivy at module level, so it may only
@@ -340,10 +411,10 @@ def main(
 
     run(
         bundle,
-        image_provider=_favourites_image_provider(),
+        image_provider=image_provider,
         table_rewriter=BarksTableRewriter(),
         start_page=start_page,
-        action_provider=ReadComicActionProvider(),
+        action_provider=ReadComicActionProvider(comics_database),
     )
 
 

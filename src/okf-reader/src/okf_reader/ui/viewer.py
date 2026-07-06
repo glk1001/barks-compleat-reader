@@ -10,12 +10,14 @@ scripts/read_okf.py.
 
 from __future__ import annotations
 
+import io
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kivy.app import App
 from kivy.clock import Clock
+from kivy.core.image import Image as CoreImage
 from kivy.effects.scroll import ScrollEffect
 from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivy.metrics import dp
@@ -29,7 +31,6 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.treeview import TreeView, TreeViewLabel
 from kivy.uix.widget import Widget
 
-from okf_reader.core.backgrounds import ImageProvider, choose_image
 from okf_reader.core.render import (
     BundleDir,
     TableBlock,
@@ -42,6 +43,7 @@ from okf_reader.core.render import (
 
 if TYPE_CHECKING:
     from okf_reader.core.actions import PageAction, PageActionProvider
+    from okf_reader.core.backgrounds import ImageProvider
 
 BODY_LINE_HEIGHT = 1.25
 # Tables come from the core space-padded to aligned columns (see TableBlock), which
@@ -139,7 +141,6 @@ class OKFViewer(RelativeLayout):
         self._table_rewriter = table_rewriter
         self._action_provider = action_provider
         self._page_action: PageAction | None = None
-        self._last_bg: Path | None = None
 
         # The whole window layers over a context background image (RelativeLayout
         # children stack in add order): image below, both panels above.
@@ -320,13 +321,24 @@ class OKFViewer(RelativeLayout):
             self._show(entry.path, push=False, scroll_y=entry.scroll_y)
 
     def _update_background(self, frontmatter: dict, path: Path) -> None:
-        """Set the page panel's background to an image suiting the page, if any."""
+        """Set the page panel's background to an image suiting the page, if any.
+
+        The provider owns selection and repeat-avoidance; this method only
+        renders its answer — a plain file by filename, or in-memory bytes
+        (e.g. a decrypted archive member) decoded to a texture.
+        """
         if self._image_provider is None:
             return
-        candidates = self._image_provider.candidate_images(frontmatter, path)
-        image = choose_image(candidates, self._last_bg)
-        self._last_bg = image
-        self.bg_image.source = str(image) if image is not None else ""
+        bg = self._image_provider.background_for(frontmatter, path)
+        if bg is None:
+            self.bg_image.source = ""
+            self.bg_image.texture = None
+        elif bg.path is not None:
+            self.bg_image.source = str(bg.path)
+        else:
+            assert bg.data is not None
+            self.bg_image.source = ""  # or kivy would reload the old file over the texture
+            self.bg_image.texture = CoreImage(io.BytesIO(bg.data), ext=bg.ext.lstrip(".")).texture
 
     def _sync_tree_to(self, path: Path) -> None:
         """Select and reveal the tree node for ``path``, expanding ancestors as needed.
