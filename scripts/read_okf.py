@@ -152,13 +152,13 @@ def _barks_top_bar_spec(reader_settings: ReaderSettings | None, win_height: int)
     )
 
 
-def _bootstrap_barks_reader() -> tuple[ReaderSettings, ComicsDatabase] | None:
+def _bootstrap_barks_reader() -> tuple[ReaderSettings, ComicsDatabase, ConfigInfo] | None:
     """Wire ``ReaderSettings`` + ``ComicsDatabase`` to the on-disk config.
 
     The same boot sequence as scripts/read_comic.py. Returns None if the
     environment isn't configured (missing ini, panels source, comics dir…) —
-    reading the wiki must survive that, just without backgrounds and Read
-    Comic buttons.
+    reading the wiki must survive that, just without backgrounds, Read Comic
+    buttons, or session restore.
     """
     try:
         config_info = ConfigInfo()
@@ -170,7 +170,7 @@ def _bootstrap_barks_reader() -> tuple[ReaderSettings, ComicsDatabase] | None:
     except Exception:  # noqa: BLE001 — reading the wiki must survive this
         logger.exception("Barks reader environment unavailable:")
         return None
-    return reader_settings, comics_database
+    return reader_settings, comics_database, config_info
 
 
 class BarksPanelsImageProvider:
@@ -453,8 +453,12 @@ def main(
     barks_env = _bootstrap_barks_reader()
     reader_settings = None
     comics_database = None
+    state_path = None
     if barks_env is not None:
-        reader_settings, comics_database = barks_env
+        reader_settings, comics_database, config_info = barks_env
+        # Resume where the last session left off; the state lives beside the
+        # app's other per-user data.
+        state_path = Path(config_info.app_data_dir) / "okf-reader-session.json"
     image_provider = (
         BarksPanelsImageProvider(reader_settings) if reader_settings is not None else None
     )
@@ -472,6 +476,7 @@ def main(
         start_page=start_page,
         action_provider=ReadComicActionProvider(comics_database),
         top_bar=_barks_top_bar_spec(reader_settings, win_height),
+        state_path=state_path,
     )
 
 

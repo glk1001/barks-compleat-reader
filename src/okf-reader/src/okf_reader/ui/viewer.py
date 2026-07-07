@@ -44,6 +44,7 @@ from okf_reader.core.render import (
     render_page,
     resolve_link,
 )
+from okf_reader.core.session import load_session_state, save_session_state
 from okf_reader.core.top_bar import TopBarSpec
 
 if TYPE_CHECKING:
@@ -190,6 +191,7 @@ class OKFViewer(RelativeLayout):
         start_page: Path | None = None,
         action_provider: PageActionProvider | None = None,
         top_bar: TopBarSpec | None = None,
+        state_path: Path | None = None,
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
@@ -200,6 +202,7 @@ class OKFViewer(RelativeLayout):
         self._image_provider = image_provider
         self._table_rewriter = table_rewriter
         self._action_provider = action_provider
+        self._state_path = state_path
         self._page_action: PageAction | None = None
         self._band_colors: list[Color] = []  # the current page's section-band Colors
 
@@ -267,8 +270,15 @@ class OKFViewer(RelativeLayout):
         # the provider's fallback pool supplies a random story image.
         self._update_background({}, bundle)
 
-        if start_page is not None:  # open on a caller-chosen page (tree syncs itself)
-            self._show(start_page, push=True)
+        # A caller-chosen page wins; otherwise resume where the last session
+        # left off (page and scroll offset), when a state file says where.
+        start_scroll = 1.0
+        if start_page is None and state_path is not None:
+            saved = load_session_state(state_path, bundle)
+            if saved is not None:
+                start_page, start_scroll = saved.page, saved.scroll_y
+        if start_page is not None:  # the tree syncs itself
+            self._show(start_page, push=True, scroll_y=start_scroll)
 
     def _build_top_bar(self, spec: TopBarSpec) -> BoxLayout:
         """Build the action-bar strip: app icon, markup heading, right-edge buttons.
@@ -317,7 +327,7 @@ class OKFViewer(RelativeLayout):
             self.back_btn = ActionButton(icon=str(spec.back_icon_path), mipmap=True, disabled=True)
         else:
             self.back_btn = Button(text="< Back", size_hint_x=None, width=dp(90), disabled=True)
-        self.back_btn.bind(on_release=lambda *_: self._go_back())
+        self.back_btn.bind(on_release=lambda *_: self.go_back())
         bar.add_widget(self.back_btn)
         # Dials the section bands from their subtle default up to near-opaque
         # (BLOCK_BG_CONTRAST_ALPHA) when the background image fights the text.
@@ -338,7 +348,10 @@ class OKFViewer(RelativeLayout):
             quit_btn = ActionButton(icon=str(spec.close_icon_path), mipmap=True)
         else:
             quit_btn = Button(text="Quit", size_hint_x=None, width=dp(70))
-        quit_btn.bind(on_release=lambda *_: App.get_running_app().stop())
+        # The embedding app's leave-this-screen action, else stop the app (the
+        # standalone case, where this bar carries the window's only close control).
+        on_close = spec.on_close or (lambda: App.get_running_app().stop())
+        quit_btn.bind(on_release=lambda *_: on_close())
         bar.add_widget(quit_btn)
         return bar
 
@@ -477,11 +490,35 @@ class OKFViewer(RelativeLayout):
         if self._page_action is not None:
             self._page_action.run()
 
-    def _go_back(self) -> None:
+    def go_back(self) -> None:
+        """Navigate to the previous page (no-op at the start of the history).
+
+        Public: besides the bar's Back button, the hosting app routes its own
+        back gestures here (the standalone app binds Escape and Alt+Left).
+        """
         if len(self.history) > 1:
             self.history.pop()
             entry = self.history[-1]
             self._show(entry.path, push=False, scroll_y=entry.scroll_y)
+
+    def save_session(self) -> None:
+        """Persist the current page and scroll offset for the next launch.
+
+        A no-op without a state path or before any page has been shown. The
+        hosting app decides when — the standalone app calls this on stop.
+        """
+        if self._state_path is None or not self.history:
+            return
+        save_session_state(
+            self._state_path, self.bundle, self.history[-1].path, self.body_scroll.scroll_y
+        )
+
+    def on_touch_down(self, touch) -> bool:  # noqa: ANN001
+        """Route the mouse's back button (button 4) to Back, wherever it lands."""
+        if getattr(touch, "button", "") == "mouse4":
+            self.go_back()
+            return True
+        return super().on_touch_down(touch)
 
     def _update_background(self, frontmatter: dict, path: Path) -> None:
         """Set the page panel's background to an image suiting the page, if any.
@@ -758,6 +795,10 @@ class OKFViewer(RelativeLayout):
 
 
 class OKFApp(App):
+    # kivy Window.on_keyboard key codes
+    _KEY_ESCAPE = 27
+    _KEY_LEFT_ARROW = 276
+
     def __init__(
         self,
         bundle: Path,
@@ -766,6 +807,7 @@ class OKFApp(App):
         start_page: Path | None = None,
         action_provider: PageActionProvider | None = None,
         top_bar: TopBarSpec | None = None,
+        state_path: Path | None = None,
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
@@ -775,6 +817,7 @@ class OKFApp(App):
         self._start_page = start_page
         self._action_provider = action_provider
         self._top_bar = top_bar
+        self._state_path = state_path
         self._viewer: OKFViewer | None = None
 
     def build(self) -> OKFViewer:
@@ -786,6 +829,7 @@ class OKFApp(App):
             start_page=self._start_page,
             action_provider=self._action_provider,
             top_bar=self._top_bar,
+            state_path=self._state_path,
         )
         return self._viewer
 
@@ -796,13 +840,36 @@ class OKFApp(App):
         only the bar's title area becomes the drag region, so the icon and
         buttons stay clickable. Kivy needs the realized window, hence on_start;
         where the system disallows it, the OS titlebar simply stays.
+
+        Also binds the window's back gestures — app-level, not viewer-level,
+        because an embedding app owns its own key routing.
         """
         from kivy.core.window import Window  # noqa: PLC0415 — needs the realized window
 
         assert self._viewer is not None
+        Window.bind(on_keyboard=self._on_keyboard)
         Window.custom_titlebar = True
         if not Window.set_custom_titlebar(self._viewer.bar_drag_region):
             print("warning: custom titlebar not allowed on this system")  # noqa: T201
+
+    def on_stop(self) -> None:
+        """Remember the page (and scroll) being read, for the next launch."""
+        if self._viewer is not None:
+            self._viewer.save_session()
+
+    def _on_keyboard(self, _window, key, _scancode, _codepoint, modifiers) -> bool:  # noqa: ANN001
+        """Escape and Alt+Left navigate back, like a browser.
+
+        Escape is always consumed: kivy's default would close the window, and
+        an accidental Escape must not kill the reader (the same overshoot
+        hazard the Quit button was moved to the corner for). At the start of
+        the history both keys are a harmless no-op.
+        """
+        if key == self._KEY_ESCAPE or (key == self._KEY_LEFT_ARROW and "alt" in modifiers):
+            assert self._viewer is not None
+            self._viewer.go_back()
+            return True
+        return False
 
 
 def run(
@@ -812,6 +879,7 @@ def run(
     start_page: Path | None = None,
     action_provider: PageActionProvider | None = None,
     top_bar: TopBarSpec | None = None,
+    state_path: Path | None = None,
 ) -> None:
     """Launch the standalone OKF reader on ``bundle`` (blocks until the window closes)."""
     OKFApp(
@@ -821,4 +889,5 @@ def run(
         start_page=start_page,
         action_provider=action_provider,
         top_bar=top_bar,
+        state_path=state_path,
     ).run()

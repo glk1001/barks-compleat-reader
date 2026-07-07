@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
 
@@ -27,6 +28,10 @@ class TopBarSpec:
     buttons. Quit matters because the standalone app replaces the OS window
     titlebar with this bar (the Barks Reader convention), so the bar carries
     the only close control.
+
+    ``on_close`` is what the Quit button does: the standalone app leaves it
+    None (the viewer falls back to stopping the running app); an embedding
+    app supplies its own leave-this-screen action instead.
     """
 
     title_markup: str = "OKF Reader"
@@ -35,3 +40,4 @@ class TopBarSpec:
     back_icon_path: Path | None = None
     close_icon_path: Path | None = None
     height: int = 40
+    on_close: Callable[[], None] | None = None
