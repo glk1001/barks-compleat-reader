@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, LiteralString, override
 
 from barks_fantagraphics.comics_database import ComicsDatabase
@@ -31,6 +32,7 @@ from barks_reader.core.reader_setup import bootstrap_reader_environment
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 from barks_reader.core.screen_metrics import SCREEN_METRICS
 from barks_reader.core.settings_notifier import settings_notifier
+from barks_reader.core.wiki_integration import WIKI_SESSION_FILENAME
 
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .app_window_geometry import AppWindowGeometryHelper, WindowSizeConstraints
@@ -56,6 +58,7 @@ from .reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     DOCUMENT_READER_SCREEN,
     MAIN_READER_SCREEN,
+    WIKI_READER_SCREEN,
     ReaderScreenManager,
     ReaderScreens,
 )
@@ -69,6 +72,7 @@ from .tree_view_nodes import READER_TREE_VIEW_KV_FILE, ReaderTreeBuilderEventDis
 from .tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
 from .ui_helpers import KIVY_HELPERS_KV_FILE
 from .user_error_handler import UserErrorHandler
+from .wiki_reader import get_wiki_reader_screen
 from .x11_wm_class import force_x11_wm_class
 
 if TYPE_CHECKING:
@@ -376,10 +380,23 @@ class BarksReaderApp(App):
             self._screen_switchers.close_document_reader,
         )
 
+        logger.debug("Instantiating wiki reader screen...")
+        wiki_reader_screen = get_wiki_reader_screen(
+            WIKI_READER_SCREEN,
+            self.reader_settings,
+            self.font_manager,
+            self._comics_database,
+            self._main_screen.image_selector,
+            Path(self._config_info.app_data_dir) / WIKI_SESSION_FILENAME,
+            self._main_screen.read_comic_from_wiki,
+            self._screen_switchers.close_wiki_reader,
+        )
+
         reader_screens = ReaderScreens(
             self._main_screen,
             comic_reader_screen,
             document_reader_screen,
+            wiki_reader_screen,
         )
 
         return self._reader_screen_manager.add_screens(reader_screens)

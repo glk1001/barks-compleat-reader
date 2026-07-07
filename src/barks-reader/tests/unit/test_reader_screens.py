@@ -12,6 +12,7 @@ from barks_reader.ui.reader_screens import (
     COMIC_BOOK_READER_SCREEN,
     DOCUMENT_READER_SCREEN,
     MAIN_READER_SCREEN,
+    WIKI_READER_SCREEN,
     ReaderScreen,
     ReaderScreenManager,
     ReaderScreens,
@@ -39,11 +40,13 @@ def mock_reader_screens() -> ReaderScreens:
 
     comic_reader_screen = MagicMock(spec=ReaderScreen)
     document_reader_screen = MagicMock()
+    wiki_reader_screen = MagicMock()
 
     return ReaderScreens(
         main_screen=main_screen,
         comic_reader_screen=comic_reader_screen,
         document_reader_screen=document_reader_screen,
+        wiki_reader_screen=wiki_reader_screen,
     )
 
 
@@ -66,10 +69,11 @@ class TestReaderScreenManager:
 
         mock_sm = reader_screen_manager._screen_manager
 
-        assert mock_sm.add_widget.call_count == 3  # noqa: PLR2004
+        assert mock_sm.add_widget.call_count == 4  # noqa: PLR2004
         mock_sm.add_widget.assert_any_call(mock_reader_screens.main_screen)
         mock_sm.add_widget.assert_any_call(mock_reader_screens.comic_reader_screen)
         mock_sm.add_widget.assert_any_call(mock_reader_screens.document_reader_screen)
+        mock_sm.add_widget.assert_any_call(mock_reader_screens.wiki_reader_screen)
 
         assert mock_sm.current == MAIN_READER_SCREEN
         assert root == mock_sm
@@ -160,6 +164,67 @@ class TestReaderScreenManager:
         assert isinstance(mock_sm.transition, TransitionBase)
         assert mock_sm.current == MAIN_READER_SCREEN
 
+    def test_switch_to_wiki_reader(
+        self,
+        reader_screen_manager: ReaderScreenManager,
+        mock_reader_screens: ReaderScreens,
+    ) -> None:
+        reader_screen_manager.add_screens(mock_reader_screens)
+
+        bundle = Path("/test-bundle")
+        reader_screen_manager._switch_to_wiki_reader(bundle)
+
+        mock_sm = reader_screen_manager._screen_manager
+        assert mock_sm.current == WIKI_READER_SCREEN
+
+        open_wiki_mock = cast("MagicMock", mock_reader_screens.wiki_reader_screen.open_wiki)
+        open_wiki_mock.assert_called_with(bundle)
+
+    def test_close_wiki_reader(
+        self,
+        reader_screen_manager: ReaderScreenManager,
+        mock_reader_screens: ReaderScreens,
+    ) -> None:
+        reader_screen_manager.add_screens(mock_reader_screens)
+
+        reader_screen_manager._close_wiki_reader()
+
+        on_wiki_reader_closed_mock = cast(
+            "MagicMock", mock_reader_screens.main_screen.on_wiki_reader_closed
+        )
+        on_wiki_reader_closed_mock.assert_called_once()
+
+        mock_sm = reader_screen_manager._screen_manager
+        assert isinstance(mock_sm.transition, TransitionBase)
+        assert mock_sm.current == MAIN_READER_SCREEN
+
+    def test_comic_returns_to_originating_screen(
+        self,
+        reader_screen_manager: ReaderScreenManager,
+        mock_reader_screens: ReaderScreens,
+    ) -> None:
+        """A comic opened from the wiki screen returns there on close, not to main."""
+        reader_screen_manager.add_screens(mock_reader_screens)
+        reader_screen_manager._switch_to_wiki_reader(Path("/test-bundle"))
+
+        reader_screen_manager._switch_to_comic_book_reader()
+        reader_screen_manager._close_comic_book_reader()
+
+        mock_sm = reader_screen_manager._screen_manager
+        assert mock_sm.current == WIKI_READER_SCREEN
+
+        # The main screen is still told (it persists the last-read page), but
+        # knows not to re-activate itself.
+        on_comic_closed_mock = cast("MagicMock", mock_reader_screens.main_screen.on_comic_closed)
+        on_comic_closed_mock.assert_called_once_with(returning_to_main=False)
+
+        # A later main-screen-launched comic returns to main again.
+        mock_sm.current = MAIN_READER_SCREEN
+        reader_screen_manager._switch_to_comic_book_reader()
+        reader_screen_manager._close_comic_book_reader()
+        assert mock_sm.current == MAIN_READER_SCREEN
+        on_comic_closed_mock.assert_called_with(returning_to_main=True)
+
 
 class TestReaderScreen:
     def test_init(self) -> None:
@@ -175,4 +240,6 @@ class TestReaderScreen:
             screen = ReaderScreen()
             screen.is_active(active=True)
             screen.on_comic_closed()
+            screen.on_comic_closed(returning_to_main=False)
             screen.on_document_reader_closed()
+            screen.on_wiki_reader_closed()

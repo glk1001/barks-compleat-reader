@@ -44,6 +44,7 @@ from barks_reader.core.reader_setup import bootstrap_reader_environment
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import SCREEN_METRICS, get_best_window_height_fit
 from barks_reader.core.wiki_integration import (
+    WIKI_SESSION_FILENAME,
     WIKI_TITLE,
     BarksPanelsImageProvider,
     BarksTableRewriter,
@@ -286,8 +287,8 @@ def main(
     if barks_env is not None:
         reader_settings, comics_database, config_info = barks_env
         # Resume where the last session left off; the state lives beside the
-        # app's other per-user data.
-        state_path = Path(config_info.app_data_dir) / "okf-reader-session.json"
+        # app's other per-user data (same file as the embedded wiki screen).
+        state_path = Path(config_info.app_data_dir) / WIKI_SESSION_FILENAME
     image_provider = (
         BarksPanelsImageProvider(reader_settings) if reader_settings is not None else None
     )

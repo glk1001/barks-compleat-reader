@@ -36,11 +36,13 @@ from .settings_keyboard_nav import SettingsKeyboardNav
 from .view_renderer import ImageThemesChange, ImageThemesToUse
 
 if TYPE_CHECKING:
+    from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.comics_database import ComicsDatabase
     from kivy.uix.button import Button
     from kivy.uix.widget import Widget
 
     from barks_reader.core.filtered_title_lists import FilteredTitleLists
+    from barks_reader.core.image_selector import ImageSelector
     from barks_reader.core.reader_settings import ReaderSettings
 
     from .comic_book_reader import ComicBookReaderScreen
@@ -445,10 +447,30 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._set_no_longer_first_use()
 
     @override
-    def on_comic_closed(self) -> None:
-        self._is_active(active=True)
-        self._nav.restore_focus_after_comic()
+    def on_comic_closed(self, *, returning_to_main: bool = True) -> None:
+        if returning_to_main:
+            self._is_active(active=True)
+            self._nav.restore_focus_after_comic()
+        # Runs either way: it persists the comic's last-read page (and knows to
+        # skip the selection-coupled bookkeeping for wiki-launched comics).
         self._nav_coord.on_comic_closed()
+
+    @override
+    def on_wiki_reader_closed(self) -> None:
+        self._is_active(active=True)
+
+    def open_wiki(self, bundle: Path) -> None:
+        """Open the Carl Barks Wiki screen on ``bundle``."""
+        self._nav_coord.open_wiki(bundle)
+
+    def read_comic_from_wiki(self, title: Titles) -> bool:
+        """Open ``title`` in the comic reader, on behalf of the wiki screen."""
+        return self._nav_coord.read_comic_from_wiki(title)
+
+    @property
+    def image_selector(self) -> ImageSelector:
+        """The app-wide panel image selector (share it so no-repeat memory pools)."""
+        return self._random_title_images
 
     def _set_no_longer_first_use(self) -> None:
         if not self.is_first_use_of_reader:

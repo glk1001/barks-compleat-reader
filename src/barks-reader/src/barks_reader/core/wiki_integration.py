@@ -34,6 +34,10 @@ if TYPE_CHECKING:
 
 WIKI_TITLE = "Carl Barks Wiki"
 
+# One session file shared by the embedded wiki screen and the standalone
+# scripts/read_okf.py, so "resume where I left off" carries across both.
+WIKI_SESSION_FILENAME = "okf-reader-session.json"
+
 # Wiki story-page directory (under okf/concept/stories/) for each Fantagraphics
 # series name, in candidate order — Gyro Gearloose and Misc material is filed
 # across two dirs. "Extras" (introductions/appreciations) has no story pages.
