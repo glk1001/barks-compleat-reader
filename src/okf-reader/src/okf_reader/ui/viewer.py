@@ -22,6 +22,7 @@ from kivy.effects.scroll import ScrollEffect
 from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivy.metrics import dp
 from kivy.uix.actionbar import ActionButton
+from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.image import Image
@@ -92,6 +93,15 @@ TREE_SELECTED_COLOR = (0.306, 0.631, 1.0, 0.35)
 # directories bold white; concept pages in the page-heading gold (ffd54a).
 TREE_DIR_TEXT_COLOR = (1, 1, 1, 1)
 TREE_CONCEPT_TEXT_COLOR = (1.0, 0.835, 0.29, 1.0)
+# Tree row striping: Kivy's TreeViewNode default even_color ((.5,.5,.5,.1))
+# banded strongly enough to read as highlight state, and two-line titles make
+# the bands irregular. Keep a whisper of banding for scanning, nothing more.
+TREE_ROW_EVEN_COLOR = (1, 1, 1, 0.04)
+TREE_ROW_ODD_COLOR = (0, 0, 0, 0)
+# Cap on the reading column: past this the body column stops growing and
+# centers in its pane, keeping the measure comfortable (~90 characters at the
+# body size) on maximized windows. Wide tables scroll within it.
+BODY_MAX_WIDTH = 760  # dp
 # Hanging-indent geometry for list items and blockquote paragraphs
 # (Block.indent > 0): the marker glyph sits right-aligned in its own fixed
 # column, so a wrapped line aligns under the item's text instead of returning
@@ -207,12 +217,21 @@ class OKFViewer(RelativeLayout):
         self.body_scroll = _scroll_view(size_hint=(1 - TREE_PANEL_WIDTH, 1), do_scroll_x=False)
         self.body = BoxLayout(
             orientation="vertical",
-            size_hint_y=None,
+            size_hint=(None, None),
             spacing=BODY_BLOCK_SPACING,
             padding=BODY_PADDING,
         )
         self.body.bind(minimum_height=self.body.setter("height"))
-        self.body_scroll.add_widget(self.body)
+        # The scroll child is a full-width anchor that centers the body column,
+        # whose width is capped at BODY_MAX_WIDTH so the measure stays readable
+        # on maximized windows (below the cap the column just fills the pane).
+        body_anchor = AnchorLayout(anchor_x="center", size_hint_y=None)
+        body_anchor.add_widget(self.body)
+        self.body.bind(height=body_anchor.setter("height"))
+        self.body_scroll.bind(
+            width=lambda _inst, w: setattr(self.body, "width", min(w, dp(BODY_MAX_WIDTH)))
+        )
+        self.body_scroll.add_widget(body_anchor)
         content.add_widget(self.body_scroll)
 
         # Lazy: load only the bundle's top level (all tiers) now; each directory's
@@ -343,6 +362,8 @@ class OKFViewer(RelativeLayout):
                         bold=True,
                         color=TREE_DIR_TEXT_COLOR,
                         color_selected=TREE_SELECTED_COLOR,
+                        even_color=TREE_ROW_EVEN_COLOR,
+                        odd_color=TREE_ROW_ODD_COLOR,
                     ),
                     parent,
                 )
@@ -357,6 +378,8 @@ class OKFViewer(RelativeLayout):
                     text=node.title,
                     color=TREE_CONCEPT_TEXT_COLOR,
                     color_selected=TREE_SELECTED_COLOR,
+                    even_color=TREE_ROW_EVEN_COLOR,
+                    odd_color=TREE_ROW_ODD_COLOR,
                 )
                 tv.file_path = node.path
                 self.tree.add_node(tv, parent)
