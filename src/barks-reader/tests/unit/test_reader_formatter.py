@@ -15,26 +15,26 @@ def test_hyphenate_text() -> None:
     assert reader_formatter.INVISIBLE_BREAK in res
 
 
-# `_escape_kivy_markup` is the inlined replacement for `kivy.utils.escape_markup`.
+# `escape_kivy_markup` is the inlined replacement for `kivy.utils.escape_markup`.
 # Pin its behavior so a future "simplification" can't silently break Kivy text
 # rendering anywhere the helper is called from.
 class TestEscapeKivyMarkup:
     def test_escapes_left_bracket(self) -> None:
-        assert reader_formatter._escape_kivy_markup("[") == "&bl;"  # noqa: SLF001
+        assert reader_formatter.escape_kivy_markup("[") == "&bl;"
 
     def test_escapes_right_bracket(self) -> None:
-        assert reader_formatter._escape_kivy_markup("]") == "&br;"  # noqa: SLF001
+        assert reader_formatter.escape_kivy_markup("]") == "&br;"
 
     def test_escapes_ampersand(self) -> None:
-        assert reader_formatter._escape_kivy_markup("a & b") == "a &amp; b"  # noqa: SLF001
+        assert reader_formatter.escape_kivy_markup("a & b") == "a &amp; b"
 
     def test_escapes_ampersand_before_brackets(self) -> None:
         # If `&` weren't escaped first, the `&bl;` from the `[` escape would
         # itself get re-escaped to `&amp;bl;` — catch that ordering bug.
-        assert reader_formatter._escape_kivy_markup("&[") == "&amp;&bl;"  # noqa: SLF001
+        assert reader_formatter.escape_kivy_markup("&[") == "&amp;&bl;"
 
     def test_identity_on_plain_text(self) -> None:
-        assert reader_formatter._escape_kivy_markup("plain text") == "plain text"  # noqa: SLF001
+        assert reader_formatter.escape_kivy_markup("plain text") == "plain text"
 
 
 def test_get_bold_markup_text() -> None:
@@ -215,7 +215,7 @@ class TestReaderFormatterClass:
             == "Title[sup]*[/sup]"
         )
 
-    @patch.object(reader_formatter, "_escape_kivy_markup")
+    @patch.object(reader_formatter, "escape_kivy_markup")
     @patch.object(
         reader_formatter, reader_formatter.get_short_formatted_first_published_str.__name__
     )
@@ -252,7 +252,7 @@ class TestReaderFormatterClass:
         )
         assert "[sup]*[/sup]" in res_foot
 
-    @patch.object(reader_formatter, "_escape_kivy_markup")
+    @patch.object(reader_formatter, "escape_kivy_markup")
     @patch.object(reader_formatter, reader_formatter.get_short_submitted_day_and_month.__name__)
     def test_get_formatted_submitted_str(
         self, mock_short_sub: MagicMock, mock_escape: MagicMock

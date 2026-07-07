@@ -12,6 +12,7 @@ import okf_reader.ui or kivy (import-linter contract 1).
 
 from __future__ import annotations
 
+import hashlib
 import re
 import zipfile
 from itertools import pairwise
@@ -19,24 +20,66 @@ from typing import TYPE_CHECKING, ClassVar
 
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
-from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
+from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, SERIES_EXTRAS
 from okf_reader.core.backgrounds import PageBackground
+from okf_reader.core.top_bar import TopBarSpec
 
 from barks_reader.core.image_pipeline import encode_png_stream, load_pil
 from barks_reader.core.image_selector import ImageSelector
+from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
 from barks_reader.core.reader_file_paths import ALL_TYPES
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
+from barks_reader.core.reader_formatter import escape_kivy_markup, get_action_bar_title
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
+    from barks_reader.core.reader_formatter import FontManagerProtocol
     from barks_reader.core.reader_settings import ReaderSettings
+    from barks_reader.core.system_file_paths import SystemFilePaths
 
 WIKI_TITLE = "Carl Barks Wiki"
 
-# One session file shared by the embedded wiki screen and the standalone
-# scripts/read_okf.py, so "resume where I left off" carries across both.
-WIKI_SESSION_FILENAME = "okf-reader-session.json"
+# The Barks screens' action-bar title green (MainScreen.ACTION_BAR_TITLE_COLOR).
+_ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
+
+
+def wiki_session_path(app_data_dir: Path, bundle: Path) -> Path:
+    """Return the wiki session file for ``bundle``, under the app data dir.
+
+    One join for both hosts: the embedded wiki screen and scripts/read_okf.py
+    resume from the same file for the same bundle. The name is keyed by the
+    resolved bundle path so opening a *different* OKF bundle with the CLI can
+    never clobber the Barks wiki's resume point (the session payload itself is
+    only a bundle-relative page path).
+    """
+    digest = hashlib.sha256(str(bundle.resolve()).encode("utf-8")).hexdigest()[:12]
+    return app_data_dir / f"okf-reader-session-{digest}.json"
+
+
+def wiki_top_bar_spec(
+    font_manager: FontManagerProtocol,
+    sys_paths: SystemFilePaths,
+    on_close: Callable[[], None] | None = None,
+) -> TopBarSpec:
+    """Dress the okf viewer's bar like the Barks screens' action bars.
+
+    The one builder both hosts use: the Carl Barks-font title markup, the app
+    window icon, and the stock go-back/close icons. ``on_close`` is the Quit
+    button's action — the embedded screen passes its leave-this-screen handler;
+    the standalone launcher leaves the default (stop the app).
+    """
+    return TopBarSpec(
+        title_markup=get_action_bar_title(font_manager, WIKI_TITLE),
+        title_color=_ACTION_BAR_TITLE_COLOR,
+        icon_path=sys_paths.get_barks_reader_app_window_icon_path(),
+        back_icon_path=sys_paths.get_barks_reader_go_back_icon_file(),
+        close_icon_path=sys_paths.get_barks_reader_close_icon_file(),
+        height=RAW_ACTION_BAR_SIZE_Y,
+        on_close=on_close,
+    )
+
 
 # Wiki story-page directory (under okf/concept/stories/) for each Fantagraphics
 # series name, in candidate order — Gyro Gearloose and Misc material is filed
@@ -99,6 +142,21 @@ def story_page_title(frontmatter: dict, page_path: Path) -> Titles | None:
     return title_enum
 
 
+def tree_navigable_title(frontmatter: dict, page_path: Path) -> Titles | None:
+    """Like `story_page_title`, but only titles with a place in the main tree.
+
+    Extras (the non-comic articles) are in ``ALL_FANTA_COMIC_BOOK_INFO`` but
+    have no chronological tree position — navigating to one would fail — so the
+    wiki's "Goto Title" action gates on this instead of the plain story gate.
+    """
+    title_enum = story_page_title(frontmatter, page_path)
+    if title_enum is None:
+        return None
+    if ALL_FANTA_COMIC_BOOK_INFO[title_enum].series_name == SERIES_EXTRAS:
+        return None
+    return title_enum
+
+
 def wiki_page_for_title(bundle: Path, title_enum: Titles) -> Path | None:
     """Return a title's wiki story page in ``bundle``, or None if not written yet.
 
@@ -118,6 +176,17 @@ def wiki_page_for_title(bundle: Path, title_enum: Titles) -> Path | None:
         if page.is_file():
             return page
     return None
+
+
+def title_can_have_wiki_page(title_enum: Titles) -> bool:
+    """Whether a wiki story-page location exists for ``title_enum`` at all.
+
+    False when the title has no Fantagraphics entry or its series has no story
+    directory — `wiki_page_for_title` can never find those, as opposed to a
+    page that simply is not written yet.
+    """
+    fanta_info = ALL_FANTA_COMIC_BOOK_INFO.get(title_enum)
+    return fanta_info is not None and fanta_info.series_name in SERIES_TO_STORY_DIRS
 
 
 class BarksPanelsImageProvider:
@@ -195,10 +264,9 @@ class BarksTableRewriter:
             if not cbi.is_barks_title:
                 title = cbi.get_title_str()
                 self._non_barks_titles.add(title)
-                # Cells arrive Kivy-markup-escaped; match that form of a title too.
-                self._non_barks_titles.add(
-                    title.replace("&", "&amp;").replace("[", "&bl;").replace("]", "&br;")
-                )
+                # Cells arrive Kivy-markup-escaped (okf_reader.core.render._esc);
+                # match that form of a title too — escape_kivy_markup mirrors it.
+                self._non_barks_titles.add(escape_kivy_markup(title))
 
     def rewrite(
         self, header: list[str], body: list[list[str]]

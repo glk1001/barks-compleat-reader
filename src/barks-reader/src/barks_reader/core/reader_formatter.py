@@ -30,8 +30,12 @@ if TYPE_CHECKING:
     from .reader_colors import Color
 
 
-def _escape_kivy_markup(text: str) -> str:
-    """Escape `&`, `[`, `]` for Kivy markup. Matches `kivy.utils.escape_markup`."""
+def escape_kivy_markup(text: str) -> str:
+    """Escape `&`, `[`, `]` for Kivy markup. Matches `kivy.utils.escape_markup`.
+
+    Also byte-identical to ``okf_reader.core.render._esc`` — consumers matching
+    okf-escaped text (e.g. the wiki table rewriter) rely on that parity.
+    """
     return text.replace("&", "&amp;").replace("[", "&bl;").replace("]", "&br;")
 
 
@@ -144,8 +148,8 @@ class ReaderFormatter:
 
     @staticmethod
     def get_formatted_submitted_str(comic_book_info: ComicBookInfo, color: str) -> str:
-        left_sq_bracket = _escape_kivy_markup("[")
-        right_sq_bracket = _escape_kivy_markup("]")
+        left_sq_bracket = escape_kivy_markup("[")
+        right_sq_bracket = escape_kivy_markup("]")
 
         return (
             f" {left_sq_bracket}"

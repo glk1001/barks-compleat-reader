@@ -32,7 +32,6 @@ from barks_reader.core.reader_setup import bootstrap_reader_environment
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 from barks_reader.core.screen_metrics import SCREEN_METRICS
 from barks_reader.core.settings_notifier import settings_notifier
-from barks_reader.core.wiki_integration import WIKI_SESSION_FILENAME
 
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .app_window_geometry import AppWindowGeometryHelper, WindowSizeConstraints
@@ -72,7 +71,7 @@ from .tree_view_nodes import READER_TREE_VIEW_KV_FILE, ReaderTreeBuilderEventDis
 from .tree_view_screen import TREE_VIEW_SCREEN_KV_FILE, TreeViewScreen
 from .ui_helpers import KIVY_HELPERS_KV_FILE
 from .user_error_handler import UserErrorHandler
-from .wiki_reader import get_wiki_reader_screen
+from .wiki_reader import WikiReaderScreen, get_wiki_reader_screen
 from .x11_wm_class import force_x11_wm_class
 
 if TYPE_CHECKING:
@@ -111,6 +110,7 @@ class BarksReaderApp(App):
         self._screen_switchers = self._reader_screen_manager.screen_switchers
 
         self._main_screen: MainScreen | None = None
+        self._wiki_reader_screen: WikiReaderScreen | None = None
 
         self._window_geometry = AppWindowGeometryHelper(
             WindowSizeConstraints(
@@ -138,6 +138,18 @@ class BarksReaderApp(App):
         self._main_screen.app_closing()
         App.get_running_app().stop()
         Window.close()
+
+    @override
+    def on_stop(self) -> None:
+        """Persist state that otherwise only flushes on screen exit.
+
+        Quitting while the wiki screen is open (Quit button or window close)
+        never runs `WikiReaderScreen.close`, so save its resume point here —
+        the same guarantee the standalone okf-reader app gives via its own
+        `on_stop`.
+        """
+        if self._wiki_reader_screen is not None:
+            self._wiki_reader_screen.save_session()
 
     @override
     def display_settings(self, settings: Widget) -> bool:
@@ -386,10 +398,11 @@ class BarksReaderApp(App):
             self.reader_settings,
             self.font_manager,
             self._main_screen.image_selector,
-            Path(self._config_info.app_data_dir) / WIKI_SESSION_FILENAME,
+            Path(self._config_info.app_data_dir),
             self._main_screen.goto_title_from_wiki,
             self._screen_switchers.close_wiki_reader,
         )
+        self._wiki_reader_screen = wiki_reader_screen
 
         reader_screens = ReaderScreens(
             self._main_screen,

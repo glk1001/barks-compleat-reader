@@ -38,19 +38,20 @@ from barks_fantagraphics.comic_book_info import is_one_pager_located
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_reader.core.config_info import ConfigInfo
 from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
-from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_settings import ReaderSettings
 from barks_reader.core.reader_setup import bootstrap_reader_environment
 from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.screen_metrics import SCREEN_METRICS, get_best_window_height_fit
 from barks_reader.core.wiki_integration import (
-    WIKI_SESSION_FILENAME,
     WIKI_TITLE,
     BarksPanelsImageProvider,
     BarksTableRewriter,
     canonical_title,
     story_page_title,
+    title_can_have_wiki_page,
     wiki_page_for_title,
+    wiki_session_path,
+    wiki_top_bar_spec,
 )
 from cli_setup import init_logging
 from comic_utils.common_typer_options import LogLevelArg
@@ -63,9 +64,6 @@ from okf_reader.core.top_bar import TopBarSpec
 load_dotenv(Path(__file__).parent.parent / ".env.runtime")
 
 APP_LOGGING_NAME = "okf"
-
-# The Barks screens' action-bar title green (main_screen.py ACTION_BAR_TITLE_COLOR).
-ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
 
 app = typer.Typer()
 
@@ -123,10 +121,9 @@ def _pin_window_to_primary_monitor() -> int:
 def _barks_top_bar_spec(reader_settings: ReaderSettings | None, win_height: int) -> TopBarSpec:
     """Dress the okf action bar like the Barks Reader's.
 
-    The Carl Barks-font title markup (``get_action_bar_title``), the app window
-    icon, and the stock go-back icon — the same pieces the main screen's bar
-    uses. Deferred kivy import: ``FontManager`` may only be imported once the
-    window Config is decided, so this must be called after
+    The shared `wiki_top_bar_spec` builder, with the default ``on_close`` (stop
+    the app). Deferred kivy import: ``FontManager`` may only be imported once
+    the window Config is decided, so this must be called after
     ``_pin_window_to_primary_monitor``. Without a bootstrapped environment the
     bar degrades to a plain-text title with no icons.
     """
@@ -140,15 +137,7 @@ def _barks_top_bar_spec(reader_settings: ReaderSettings | None, win_height: int)
     font_manager = FontManager()
     font_manager.update_font_sizes(win_height)
 
-    sys_paths = reader_settings.sys_file_paths
-    return TopBarSpec(
-        title_markup=get_action_bar_title(font_manager, WIKI_TITLE),
-        title_color=ACTION_BAR_TITLE_COLOR,
-        icon_path=sys_paths.get_barks_reader_app_window_icon_path(),
-        back_icon_path=sys_paths.get_barks_reader_go_back_icon_file(),
-        close_icon_path=sys_paths.get_barks_reader_close_icon_file(),
-        height=RAW_ACTION_BAR_SIZE_Y,
-    )
+    return wiki_top_bar_spec(font_manager, reader_settings.sys_file_paths)
 
 
 def _bootstrap_barks_reader() -> tuple[ReaderSettings, ComicsDatabase, ConfigInfo] | None:
@@ -245,6 +234,8 @@ def _resolve_start_page(bundle: Path, arg: str) -> tuple[Path | None, str]:
     title_enum = canonical_title(arg)
     if title_enum is None:
         return None, f"no bundle page or canonical story title matches {arg!r}"
+    if not title_can_have_wiki_page(title_enum):
+        return None, f"{arg!r} is a known title but not one with a wiki story page"
     page = wiki_page_for_title(bundle, title_enum)
     if page is None:
         return None, f"{arg!r} is a known story but its wiki page is not written yet"
@@ -287,8 +278,11 @@ def main(
     if barks_env is not None:
         reader_settings, comics_database, config_info = barks_env
         # Resume where the last session left off; the state lives beside the
-        # app's other per-user data (same file as the embedded wiki screen).
-        state_path = Path(config_info.app_data_dir) / WIKI_SESSION_FILENAME
+        # app's other per-user data, keyed by bundle path (the same file the
+        # embedded wiki screen uses for the same bundle — and a different one
+        # for any other bundle, so reading elsewhere can't clobber the wiki's
+        # resume point).
+        state_path = wiki_session_path(Path(config_info.app_data_dir), bundle)
     image_provider = (
         BarksPanelsImageProvider(reader_settings) if reader_settings is not None else None
     )

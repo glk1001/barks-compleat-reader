@@ -314,11 +314,13 @@ class ReaderSettings:
         return self._is_valid_prebuilt_comics_dir(self.prebuilt_comics_dir)
 
     def _is_valid_wiki_bundle_dir(self, dir_path: Path) -> bool:
-        # The wiki is optional: unset is always valid; a set path must exist
-        # (so a typo gets flagged rather than silently hiding the feature).
+        # The wiki is optional: unset is always valid; a set path must be an
+        # actual bundle — the same root index.md gate as the wiki_bundle_dir
+        # property — so a typo or a non-bundle directory gets flagged rather
+        # than validating green while the wiki node silently never appears.
         if str(dir_path) == UNSET_WIKI_BUNDLE_DIR_MARKER:
             return True
-        return self._is_valid_dir(dir_path)
+        return self._is_valid_dir(dir_path) and (dir_path / "index.md").is_file()
 
     def _is_valid_png_barks_panels_dir(self, dir_path: Path) -> bool:
         return (not self._read(USE_PNG_IMAGES)) or self._is_valid_dir(dir_path)
