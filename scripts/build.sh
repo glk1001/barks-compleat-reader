@@ -99,7 +99,7 @@ uv run python <<'PYEOF'
 import re
 with open('pyproject.toml') as f:
     content = f.read()
-for pkg in ['barks-reader', 'barks-fantagraphics', 'barks-build-comic-images', 'comic-utils']:
+for pkg in ['barks-reader', 'barks-fantagraphics', 'barks-build-comic-images', 'comic-utils', 'okf-reader']:
     content = re.sub('\n    "' + pkg + '",', '', content)
 content = re.sub(r'\n\[tool\.uv\.workspace\]\n.*?(?=\n\[)', '', content, flags=re.DOTALL)
 content = re.sub(r'\n\[tool\.uv\.sources\]\n.*?(?=\n\[|\Z)', '', content, flags=re.DOTALL)
