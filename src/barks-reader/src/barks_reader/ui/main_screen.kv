@@ -159,13 +159,6 @@
                         spacing: dp(2)
 
                         BarButton:
-                            id: quit_button
-                            text: 'Quit'
-                            icon: str(sys_paths.get_barks_reader_close_icon_file())
-                            important: True
-                            on_release: app.close_app()
-
-                        BarButton:
                             id: fullscreen_button
                             text: "Fullscreen"
                             icon: str(sys_paths.get_barks_reader_fullscreen_icon_file())
@@ -200,3 +193,23 @@
                             icon: str(sys_paths.get_barks_reader_menu_dots_icon_file())
                             important: True
                             on_release: root.open_menu_dots(self)
+
+                        # Fence off the exit control: Quit sits alone in the window
+                        # corner behind a separator, so an overshoot on the working
+                        # buttons can't kill the app.
+                        Widget:
+                            size_hint_x: None
+                            width: dp(17)
+                            canvas:
+                                Color:
+                                    rgba: 0.3, 0.3, 0.3, 1
+                                Rectangle:
+                                    pos: self.center_x, self.y
+                                    size: dp(1), self.height
+
+                        BarButton:
+                            id: quit_button
+                            text: 'Quit'
+                            icon: str(sys_paths.get_barks_reader_close_icon_file())
+                            important: True
+                            on_release: app.close_app()

@@ -84,6 +84,9 @@ SECTION_BLOCK_SPACING = 8  # between blocks inside one banded section
 TOP_BAR_BG_COLOR = (0.12, 0.12, 0.12, 1)  # standard ActionBar background color
 TOP_BAR_SEPARATOR_COLOR = (0.3, 0.3, 0.3, 1)
 TOP_BAR_ICON_WIDTH = 70  # dp, the Barks bars' icon-container width
+# Width of the separator fencing the Quit button off from the working buttons:
+# the 1dp line sits centered, leaving ~8dp of dead space on each side.
+QUIT_SEPARATOR_WIDTH = 17  # dp
 # Selection band: the link blue (render.LINK_COLOR, 4ea1ff) at low alpha — an
 # accent already in the palette, translucent enough that the gold node label
 # keeps its contrast. (The Barks Reader's magenta shouted over this page's
@@ -127,6 +130,27 @@ def _add_text_backing(widget, alpha: float) -> Color:  # noqa: ANN001
     widget.bind(pos=sync, size=sync)
     sync(widget, None)
     return color
+
+
+def _bar_separator(width_dp: float = 1) -> Widget:
+    """Build a top-bar separator: a centered 1dp vertical line in a ``width_dp`` slot.
+
+    At the default width the slot is the line (the Barks bars' 1dp separator
+    idiom); a wider slot adds dead space either side of the line — used to fence
+    the Quit button off from the working buttons.
+    """
+    separator = Widget(size_hint_x=None, width=dp(width_dp))
+    with separator.canvas:  # ty: ignore[invalid-context-manager]
+        Color(rgba=TOP_BAR_SEPARATOR_COLOR)
+        line = Rectangle()
+
+    def sync(_widget, _value) -> None:  # noqa: ANN001
+        line.pos = (separator.center_x - dp(0.5), separator.y)
+        line.size = (dp(1), separator.height)
+
+    separator.bind(pos=sync, size=sync)
+    sync(separator, None)
+    return separator
 
 
 def _scroll_view(**kwargs) -> ScrollView:  # noqa: ANN003
@@ -285,24 +309,7 @@ class OKFViewer(RelativeLayout):
         self.bar_drag_region.bind(size=lambda inst, size: inst.setter("text_size")(inst, size))
         bar.add_widget(self.bar_drag_region)
 
-        separator = Widget(size_hint_x=None, width=dp(1))
-        with separator.canvas:  # ty: ignore[invalid-context-manager]
-            Color(rgba=TOP_BAR_SEPARATOR_COLOR)
-            separator_rect = Rectangle(pos=separator.pos, size=separator.size)
-        separator.bind(
-            pos=lambda _inst, pos: setattr(separator_rect, "pos", pos),
-            size=lambda _inst, size: setattr(separator_rect, "size", size),
-        )
-        bar.add_widget(separator)
-
-        # Quit leads the button group, as on the Barks main screen. With the OS
-        # titlebar replaced by this bar, it is the window's only close control.
-        if spec.close_icon_path is not None:
-            quit_btn = ActionButton(icon=str(spec.close_icon_path), mipmap=True)
-        else:
-            quit_btn = Button(text="Quit", size_hint_x=None, width=dp(70))
-        quit_btn.bind(on_release=lambda *_: App.get_running_app().stop())
-        bar.add_widget(quit_btn)
+        bar.add_widget(_bar_separator())
 
         if spec.back_icon_path is not None:
             # ActionButton is the Barks bars' BarButton base: standalone it
@@ -322,6 +329,17 @@ class OKFViewer(RelativeLayout):
         self.action_btn = Button(size_hint_x=None, width=0, opacity=0, disabled=True)
         self.action_btn.bind(on_release=lambda *_: self._run_page_action())
         bar.add_widget(self.action_btn)
+        # The exit control sits alone in the window corner (with the OS titlebar
+        # replaced by this bar, it is the window's only close control), fenced
+        # off by a separator so an overshoot on the working buttons can't kill
+        # the app.
+        bar.add_widget(_bar_separator(QUIT_SEPARATOR_WIDTH))
+        if spec.close_icon_path is not None:
+            quit_btn = ActionButton(icon=str(spec.close_icon_path), mipmap=True)
+        else:
+            quit_btn = Button(text="Quit", size_hint_x=None, width=dp(70))
+        quit_btn.bind(on_release=lambda *_: App.get_running_app().stop())
+        bar.add_widget(quit_btn)
         return bar
 
     def _build_bar_icon(self, icon_path: Path) -> RelativeLayout:
