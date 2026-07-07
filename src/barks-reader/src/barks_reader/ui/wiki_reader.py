@@ -5,16 +5,16 @@ standalone: the Barks knowledge comes from ``barks_reader.core.wiki_integration`
 (backgrounds, tables, the story-page gate) plus the app's own fonts and icons
 here. The viewer is built lazily on first open — the bundle path is a user
 setting and may be absent — and its top bar's corner button closes the screen
-(``TopBarSpec.on_close``) instead of quitting the app. Read Comic switches to
-the app's comic reader screen via the supplied ``read_title`` callback.
+(``TopBarSpec.on_close``) instead of quitting the app. A story page's
+"Goto Title" action closes the wiki and hands the title to the supplied
+``goto_title`` callback — the index screens' ``on_goto_title`` behavior:
+select the title in the main tree and set the bottom title view.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
-from barks_fantagraphics.comic_book_info import is_one_pager_located
 from loguru import logger
 from okf_reader.core.actions import PageAction
 from okf_reader.core.top_bar import TopBarSpec
@@ -36,7 +36,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from barks_fantagraphics.barks_titles import Titles
-    from barks_fantagraphics.comics_database import ComicsDatabase
 
     from barks_reader.core.image_selector import ImageSelector
     from barks_reader.core.reader_settings import ReaderSettings
@@ -47,35 +46,24 @@ if TYPE_CHECKING:
 _ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
 
 
-class _ReadComicActionProvider:
-    """Offer "Read Comic" on wiki story pages (an okf_reader PageActionProvider).
+class _GotoTitleActionProvider:
+    """Offer "Goto Title" on wiki story pages (an okf_reader PageActionProvider).
 
-    A page qualifies when the story-page gate maps it to a canonical title and
-    the comics database can serve it (or it is a located one-pager, read via
-    the "All One-Pagers" collection). Running the action hands the title to the
-    app's ``read_title`` callback, which switches to the comic reader screen.
+    A page qualifies when the story-page gate maps it to a canonical title with
+    a Fantagraphics entry — every such title has a place in the main tree.
+    Running the action hands the title to ``goto_title`` (the wiki screen's
+    close-and-navigate handler).
     """
 
-    def __init__(
-        self, comics_database: ComicsDatabase, read_title: Callable[[Titles], bool]
-    ) -> None:
-        self._comics_database = comics_database
-        self._read_title = read_title
+    def __init__(self, goto_title: Callable[[Titles], None]) -> None:
+        self._goto_title = goto_title
 
     def action_for(self, frontmatter: dict, page_path: Path) -> PageAction | None:
-        """Return the "Read Comic" action for a readable story page, else None."""
+        """Return the "Goto Title" action for a story page, else None."""
         title_enum = story_page_title(frontmatter, page_path)
         if title_enum is None:
             return None
-        found, _close = self._comics_database.is_story_title(ENUM_TO_STR_TITLE[title_enum])
-        if not (found or is_one_pager_located(title_enum)):
-            return None
-        return PageAction("Read Comic", lambda: self._run_read_title(title_enum))
-
-    def _run_read_title(self, title: Titles) -> None:
-        # PageAction.run is () -> None; a failed open already reports via the
-        # app's error handler, so the bool result has nothing to add here.
-        self._read_title(title)
+        return PageAction("Goto Title", lambda: self._goto_title(title_enum))
 
 
 class WikiReaderScreen(ReaderScreen):
@@ -85,10 +73,9 @@ class WikiReaderScreen(ReaderScreen):
         self,
         reader_settings: ReaderSettings,
         font_manager: FontManager,
-        comics_database: ComicsDatabase,
         image_selector: ImageSelector,
         session_state_path: Path,
-        read_title: Callable[[Titles], bool],
+        on_goto_title: Callable[[Titles], None],
         on_close_screen: Callable[[], None],
         **kwargs: str,
     ) -> None:
@@ -96,10 +83,9 @@ class WikiReaderScreen(ReaderScreen):
 
         self._reader_settings = reader_settings
         self._font_manager = font_manager
-        self._comics_database = comics_database
         self._image_selector = image_selector
         self._session_state_path = session_state_path
-        self._read_title = read_title
+        self._on_goto_title = on_goto_title
         self._on_close_screen = on_close_screen
 
         self._viewer: OKFViewer | None = None
@@ -120,6 +106,12 @@ class WikiReaderScreen(ReaderScreen):
             self._viewer.save_session()
         self._on_close_screen()
 
+    def _goto_title(self, title: Titles) -> None:
+        # Land the user on the main screen with the title selected in the tree
+        # and shown in the bottom title view — the reading controls live there.
+        self.close()
+        self._on_goto_title(title)
+
     def _build_viewer(self, bundle: Path) -> None:
         logger.info(f'Building wiki viewer for bundle "{bundle}".')
         if self._viewer is not None:
@@ -129,7 +121,7 @@ class WikiReaderScreen(ReaderScreen):
             bundle,
             image_provider=BarksPanelsImageProvider(self._reader_settings, self._image_selector),
             table_rewriter=BarksTableRewriter(),
-            action_provider=_ReadComicActionProvider(self._comics_database, self._read_title),
+            action_provider=_GotoTitleActionProvider(self._goto_title),
             top_bar=self._top_bar_spec(),
             state_path=self._session_state_path,
         )
@@ -160,20 +152,18 @@ def get_wiki_reader_screen(
     screen_name: str,
     reader_settings: ReaderSettings,
     font_manager: FontManager,
-    comics_database: ComicsDatabase,
     image_selector: ImageSelector,
     session_state_path: Path,
-    read_title: Callable[[Titles], bool],
+    on_goto_title: Callable[[Titles], None],
     on_close_screen: Callable[[], None],
 ) -> WikiReaderScreen:
     """Build the wiki reader screen (no kv file — the viewer renders itself)."""
     return WikiReaderScreen(
         reader_settings,
         font_manager,
-        comics_database,
         image_selector,
         session_state_path,
-        read_title,
+        on_goto_title,
         on_close_screen,
         name=screen_name,
     )

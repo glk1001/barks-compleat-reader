@@ -108,7 +108,6 @@ class NavigationCoordinator:
         self._current_fanta_info: FantaComicBookInfo | None = None
         self._read_comic_view_state: ViewStates | None = None
         self._doc_reader_close_view_state: ViewStates | None = None
-        self._comic_opened_from_wiki = False
 
     def set_tree_view_manager(self, tree_view_manager: TreeViewManager) -> None:
         """Set the TreeViewManager (deferred to break circular dependency)."""
@@ -398,54 +397,6 @@ class NavigationCoordinator:
         self._on_active_changed(False)  # noqa: FBT003
         self._screen_switchers.switch_to_wiki_reader(bundle)
 
-    def read_comic_from_wiki(self, title: Titles) -> bool:
-        """Open ``title`` in the comic reader, launched from the wiki screen.
-
-        Unlike `read_comic`, nothing here reads or writes the main screen's
-        title selection or checkboxes: the comic opens at its beginning with
-        the title's standard overrides, and `on_comic_closed` skips the
-        selection-coupled bookkeeping (the screen manager returns to the wiki).
-
-        Returns:
-            True if the comic was successfully opened, False on error.
-
-        """
-        opened = self._open_comic_for_wiki(title)
-        self._comic_opened_from_wiki = opened
-        return opened
-
-    def _open_comic_for_wiki(self, title: Titles) -> bool:
-        if title in ONE_PAGERS:
-            return self._read_one_pager_in_collection(title)
-
-        fanta_info = ALL_FANTA_COMIC_BOOK_INFO.get(title)
-        if fanta_info is None:
-            logger.error(f'No Fantagraphics entry for wiki title "{ENUM_TO_STR_TITLE[title]}".')
-            return False
-
-        # The title's standard overrides choice — what _set_use_overrides_checkbox
-        # would have preselected had the title been picked from the tree.
-        use_overrides = (
-            self._reader_settings.use_prebuilt_archives
-            or not self._special_fanta_overrides.is_title_where_overrides_are_optional(title)
-            or self._special_fanta_overrides.get_overrides_setting(title)
-        )
-        inset_file = self._special_fanta_overrides.get_inset_file(title, use_overrides)
-
-        try:
-            comic_book = self._comics_database.get_comic_book(ENUM_TO_STR_TITLE[title], inset_file)
-        except TitleNotFoundError as e:
-            logger.error(e)
-            error_info = ErrorInfo(file_volume=-1, title=STR_TITLE_TO_ENUM[e.title])
-            self._user_error_handler.handle_error(ErrorTypes.ArchiveVolumeNotAvailable, error_info)
-            return False
-
-        self._read_comic_view_state = None
-        self._comic_reader_manager.read_barks_comic_book(
-            fanta_info, comic_book, COMIC_BEGIN_PAGE, use_overrides
-        )
-        return True
-
     # === Return paths ===
 
     def on_comic_closed(self) -> None:
@@ -453,14 +404,6 @@ class NavigationCoordinator:
         if self._read_comic_view_state is not None:
             self._renderer.render_state(self._read_comic_view_state)
             self._read_comic_view_state = None
-
-        if self._comic_opened_from_wiki:
-            # The wiki launched this comic: persist its last-read page, but the
-            # main screen's selection (a different title, or none) must not have
-            # its goto-page checkbox switched to this comic's page.
-            self._comic_opened_from_wiki = False
-            self._comic_reader_manager.comic_closed()
-            return
 
         if not self._current_fanta_info:
             return

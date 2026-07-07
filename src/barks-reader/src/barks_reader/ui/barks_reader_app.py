@@ -385,10 +385,9 @@ class BarksReaderApp(App):
             WIKI_READER_SCREEN,
             self.reader_settings,
             self.font_manager,
-            self._comics_database,
             self._main_screen.image_selector,
             Path(self._config_info.app_data_dir) / WIKI_SESSION_FILENAME,
-            self._main_screen.read_comic_from_wiki,
+            self._main_screen.goto_title_from_wiki,
             self._screen_switchers.close_wiki_reader,
         )
 

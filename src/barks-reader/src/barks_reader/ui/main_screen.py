@@ -447,21 +447,22 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._set_no_longer_first_use()
 
     @override
-    def on_comic_closed(self, *, returning_to_main: bool = True) -> None:
-        if returning_to_main:
-            self._is_active(active=True)
-            self._nav.restore_focus_after_comic()
-        # Runs either way: it persists the comic's last-read page (and knows to
-        # skip the selection-coupled bookkeeping for wiki-launched comics).
+    def on_comic_closed(self) -> None:
+        self._is_active(active=True)
+        self._nav.restore_focus_after_comic()
         self._nav_coord.on_comic_closed()
 
     @override
     def on_wiki_reader_closed(self) -> None:
         self._is_active(active=True)
 
-    def read_comic_from_wiki(self, title: Titles) -> bool:
-        """Open ``title`` in the comic reader, on behalf of the wiki screen."""
-        return self._nav_coord.read_comic_from_wiki(title)
+    def goto_title_from_wiki(self, title: Titles) -> None:
+        """Select ``title`` in the tree and title view, on behalf of the wiki screen.
+
+        The index screens' ``on_goto_title`` behavior — the wiki closes itself
+        first, so the user lands here with the title's reading controls up.
+        """
+        self._nav_coord.navigate_to_chrono_title(ImageInfo(from_title=title, filename=None))
 
     @property
     def image_selector(self) -> ImageSelector:

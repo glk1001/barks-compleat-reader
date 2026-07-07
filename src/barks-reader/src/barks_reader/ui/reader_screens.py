@@ -42,13 +42,8 @@ class ReaderScreen(Screen):
     def is_active(self, active: bool) -> None:
         pass
 
-    def on_comic_closed(self, *, returning_to_main: bool = True) -> None:
-        """Handle the comic reader closing.
-
-        ``returning_to_main`` is False when the comic was launched from another
-        screen (e.g. the wiki) and control returns there — the main screen must
-        then skip re-activating itself.
-        """
+    def on_comic_closed(self) -> None:
+        pass
 
     def on_document_reader_closed(self) -> None:
         pass
@@ -104,9 +99,6 @@ class ReaderScreenManager:
     def __init__(self, open_settings: Callable) -> None:
         self._screen_manager = ScreenManager()
         self._reader_screens: ReaderScreens | None = None
-        # Where the comic reader returns on close: the screen it was opened
-        # from (the main screen usually; the wiki screen for its Read Comic).
-        self._comic_return_screen: str | None = None
 
         self.screen_switchers = ScreenSwitchers(
             open_settings,
@@ -142,8 +134,6 @@ class ReaderScreenManager:
     def _switch_to_comic_book_reader(self) -> None:
         logger.debug("Switching to comic book reader...")
 
-        self._comic_return_screen = self._screen_manager.current
-
         self._screen_manager.transition = self._get_next_reader_screen_transition()
         self._screen_manager.current = COMIC_BOOK_READER_SCREEN
 
@@ -160,9 +150,7 @@ class ReaderScreenManager:
         logger.debug("Comic book reader screen is active.")
 
     def _close_comic_book_reader(self) -> None:
-        return_screen = self._comic_return_screen or MAIN_READER_SCREEN
-        self._comic_return_screen = None
-        logger.debug(f"Closing comic and switching back to '{return_screen}'...")
+        logger.debug("Closing comic and switching back to main screen...")
 
         # Suppress aspect ratio corrections during the window restore that follows closing.
         # On Windows, the transition fires spurious resize events (DPI scaling artifacts)
@@ -172,14 +160,10 @@ class ReaderScreenManager:
             app.suppress_aspect_ratio_correction()
 
         assert self._reader_screens
-        # Always inform the main screen (it persists the last-read page); it
-        # only re-activates itself when it is the screen being returned to.
-        self._reader_screens.main_screen.on_comic_closed(
-            returning_to_main=return_screen == MAIN_READER_SCREEN
-        )
+        self._reader_screens.main_screen.on_comic_closed()
 
         self._screen_manager.transition = self._get_next_main_screen_transition()
-        self._screen_manager.current = return_screen
+        self._screen_manager.current = MAIN_READER_SCREEN
 
         logger.debug(
             f"Using screen transition '{self._screen_manager.transition.__class__.__name__}'."
@@ -187,7 +171,7 @@ class ReaderScreenManager:
 
         self._reader_screens.comic_reader_screen.is_active(active=False)
 
-        logger.info(f"'{return_screen}' screen is active.")
+        logger.info("Main screen is active.")
 
     def _switch_to_document_reader(self, doc_dir: Path, title: str) -> None:
         logger.debug(f'Switching to document reader for "{title}"...')
