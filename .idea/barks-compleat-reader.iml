@@ -7,11 +7,12 @@
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
       <excludeFolder url="file://$MODULE_DIR$/htmlcov" />
     </content>
-    <orderEntry type="jdk" jdkName="uv (barks-compleat-reader)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="barks-build-comic-images" exported="" />
     <orderEntry type="module" module-name="barks-fantagraphics" exported="" />
     <orderEntry type="module" module-name="barks-reader" exported="" />
     <orderEntry type="module" module-name="comic-utils" exported="" />
+    <orderEntry type="module" module-name="okf-reader" exported="" />
+    <orderEntry type="jdk" jdkName="uv (barks-compleat-reader)" jdkType="Python SDK" />
   </component>
 </module>

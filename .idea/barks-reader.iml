@@ -9,6 +9,7 @@
     <orderEntry type="module" module-name="barks-fantagraphics" exported="" />
     <orderEntry type="module" module-name="barks-kivy-ui" exported="" />
     <orderEntry type="module" module-name="comic-utils" exported="" />
+    <orderEntry type="module" module-name="okf-reader" exported="" />
     <orderEntry type="jdk" jdkName="uv (barks-compleat-reader)" jdkType="Python SDK" />
   </component>
 </module>
