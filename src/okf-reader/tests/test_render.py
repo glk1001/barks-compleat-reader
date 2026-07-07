@@ -194,11 +194,27 @@ class TestRenderPage:
         assert "&bl;note&br;" in markup
         assert "[note]" not in markup  # the literal brackets must not survive
 
-    def test_bullet_list_prefix(self) -> None:
-        """List items are prefixed with a bullet glyph."""
+    def test_bullet_list_marker_and_indent(self) -> None:
+        """List items carry the bullet in the marker slot, not baked into the text."""
         blocks = _text_blocks(okf.render_page("- one\n- two"))
-        assert any(b.markup.startswith("•  one") for b in blocks)
-        assert any(b.markup.startswith("•  two") for b in blocks)
+        assert [(b.marker, b.indent, b.markup) for b in blocks] == [
+            ("•", 1, "one"),
+            ("•", 1, "two"),
+        ]
+
+    def test_list_continuation_paragraph_indented_without_marker(self) -> None:
+        """A loose item's second paragraph aligns under the text: indent, no marker."""
+        blocks = _text_blocks(okf.render_page("- first para\n\n  second para\n- next"))
+        assert [(b.marker, b.indent, b.markup) for b in blocks] == [
+            ("•", 1, "first para"),
+            ("", 1, "second para"),
+            ("•", 1, "next"),
+        ]
+
+    def test_blockquote_paragraph_indented_without_marker(self) -> None:
+        """A blockquote paragraph is indented one level, with no marker glyph."""
+        blocks = _text_blocks(okf.render_page("> quoted text"))
+        assert [(b.marker, b.indent, b.markup) for b in blocks] == [("", 1, "quoted text")]
 
     def test_code_fence_block(self) -> None:
         """A fenced code block is a colored block at the code font size."""
@@ -230,19 +246,21 @@ class TestRenderPage:
     def test_ordered_list_numbered(self) -> None:
         """Ordered-list items keep their numbers instead of degrading to bullets."""
         blocks = _text_blocks(okf.render_page("1. first\n2. second"))
-        assert [b.markup for b in blocks] == ["1. first", "2. second"]
+        assert [(b.marker, b.markup) for b in blocks] == [("1.", "first"), ("2.", "second")]
 
     def test_ordered_list_start_and_renumbering(self) -> None:
         """Numbering runs sequentially from the list's start, as CommonMark renders it."""
         blocks = _text_blocks(okf.render_page("3. a\n3. b"))  # source repeats '3.'
-        assert [b.markup for b in blocks] == ["3. a", "4. b"]
+        assert [(b.marker, b.markup) for b in blocks] == [("3.", "a"), ("4.", "b")]
 
     def test_ordered_list_numbering_survives_nested_bullets(self) -> None:
         """A nested bullet list neither resets nor inherits the outer numbering."""
-        markups = [b.markup for b in _text_blocks(okf.render_page("1. a\n   - sub\n2. b"))]
-        assert markups[0] == "1. a"
-        assert markups[1].endswith("•  sub")
-        assert markups[2] == "2. b"
+        blocks = _text_blocks(okf.render_page("1. a\n   - sub\n2. b"))
+        assert [(b.marker, b.indent, b.markup) for b in blocks] == [
+            ("1.", 1, "a"),
+            ("•", 2, "sub"),
+            ("2.", 1, "b"),
+        ]
 
     def test_table_rows_padded_to_aligned_columns(self) -> None:
         """A table becomes a TableBlock: colored header, cells space-padded per column.

@@ -69,6 +69,12 @@ class Block:
     font_size: int = 16
     anchor: str | None = None  # e.g. "fn:db" — a scroll target for a tapped footnote marker
     heading: bool = False  # headings begin a new visual section in consumers
+    # List/blockquote nesting depth (0 = plain body text). A consumer renders an
+    # indented block with a hanging indent: wrapped lines align under the text,
+    # not the margin, with ``marker`` (the item's "•" / "3." glyph — empty for
+    # continuation paragraphs and blockquotes) in its own column to the left.
+    indent: int = 0
+    marker: str = ""
 
 
 @dataclass
@@ -434,12 +440,11 @@ def render_page(text: str, table_rewriter: TableRewriter | None = None) -> Page:
             i += 3
             continue
         if tp == "paragraph_open":
-            base = pending_bullet or ("    " * indent if indent else "")
-            prefix = "    " * max(indent - 1, 0) + base
+            marker = pending_bullet
             pending_bullet = ""
             markup = _inline(tokens[i + 1].children or [])
             if PROVENANCE_MARKER not in markup:  # drop editorial provenance notes
-                blocks.append(Block(prefix + markup))
+                blocks.append(Block(markup, indent=indent, marker=marker))
             i += 3
             continue
         if tp == "footnote_open":
@@ -467,8 +472,7 @@ def render_page(text: str, table_rewriter: TableRewriter | None = None) -> Page:
             number = list_counters[-1] if list_counters else None
             if number is not None:
                 list_counters[-1] = number + 1
-            marker = "•  " if number is None else f"{number}. "
-            pending_bullet = "    " * max(indent - 1, 0) + marker
+            pending_bullet = "•" if number is None else f"{number}."
         elif tp in ("fence", "code_block"):
             blocks.append(Block(f"[color={CODE_COLOR}]{_esc(t.content.rstrip())}[/color]", 14))
         elif tp == "html_block":

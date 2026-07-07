@@ -34,6 +34,7 @@ from kivy.uix.treeview import TreeView, TreeViewLabel
 from kivy.uix.widget import Widget
 
 from okf_reader.core.render import (
+    Block,
     BundleDir,
     TableBlock,
     TableRewriter,
@@ -91,6 +92,13 @@ TREE_SELECTED_COLOR = (0.306, 0.631, 1.0, 0.35)
 # directories bold white; concept pages in the page-heading gold (ffd54a).
 TREE_DIR_TEXT_COLOR = (1, 1, 1, 1)
 TREE_CONCEPT_TEXT_COLOR = (1.0, 0.835, 0.29, 1.0)
+# Hanging-indent geometry for list items and blockquote paragraphs
+# (Block.indent > 0): the marker glyph sits right-aligned in its own fixed
+# column, so a wrapped line aligns under the item's text instead of returning
+# to the margin. Deeper nesting shifts the whole row right one step per level.
+LIST_MARKER_WIDTH = 24  # dp — fits "99." at body size
+LIST_MARKER_GAP = 6  # dp, between the marker column and the text
+LIST_INDENT_STEP = 20  # dp per nesting level past the first
 
 
 def _add_text_backing(widget, alpha: float) -> Color:  # noqa: ANN001
@@ -552,24 +560,12 @@ class OKFViewer(RelativeLayout):
                     section = self._new_section()
                 section.add_widget(self._table_widget(blk))
                 continue
-            lbl = Label(
-                text=blk.markup,
-                markup=True,
-                font_size=blk.font_size,
-                line_height=BODY_LINE_HEIGHT,
-                halign="left",
-                valign="top",
-                size_hint_y=None,
-            )
-            lbl.bind(width=lambda inst, w: inst.setter("text_size")(inst, (w, None)))
-            lbl.bind(texture_size=lambda inst, ts: inst.setter("height")(inst, ts[1]))
-            lbl._page_path = path  # noqa: SLF001
-            lbl.bind(on_ref_press=self._on_ref)
+            lbl = self._body_label(blk, path)
             if blk.anchor:
                 self._anchors[blk.anchor] = blk.markup
             if section is None or blk.heading:
                 section = self._new_section()
-            section.add_widget(lbl)
+            section.add_widget(self._hanging_row(lbl, blk) if blk.indent else lbl)
         # Fresh pages open at the top; Back passes the offset the page was left at.
         self.body_scroll.scroll_y = scroll_y
         if scroll_y != 1:
@@ -589,6 +585,59 @@ class OKFViewer(RelativeLayout):
         self._band_colors.append(_add_text_backing(box, self._band_alpha()))
         self.body.add_widget(box)
         return box
+
+    def _body_label(self, blk: Block, path: Path) -> Label:
+        """Build one body block's self-sizing, ref-navigable Label."""
+        lbl = Label(
+            text=blk.markup,
+            markup=True,
+            font_size=blk.font_size,
+            line_height=BODY_LINE_HEIGHT,
+            halign="left",
+            valign="top",
+            size_hint_y=None,
+        )
+        lbl.bind(width=lambda inst, w: inst.setter("text_size")(inst, (w, None)))
+        lbl.bind(texture_size=lambda inst, ts: inst.setter("height")(inst, ts[1]))
+        lbl._page_path = path  # noqa: SLF001
+        lbl.bind(on_ref_press=self._on_ref)
+        return lbl
+
+    @staticmethod
+    def _hanging_row(lbl: Label, blk: Block) -> BoxLayout:
+        """Wrap a list-item/blockquote label in a hanging-indent row.
+
+        The marker glyph sits right-aligned in its own fixed column, so ``lbl``'s
+        wrapped lines align under the item's text instead of returning to the
+        margin (see LIST_MARKER_WIDTH). A continuation paragraph or blockquote
+        carries an empty marker and just gets the alignment. The row and marker
+        track the text label's height, which the layout resolves after this
+        returns — hence the bind rather than a one-off read.
+        """
+        row = BoxLayout(size_hint_y=None, spacing=dp(LIST_MARKER_GAP))
+        if blk.indent > 1:
+            step = dp((blk.indent - 1) * LIST_INDENT_STEP)
+            row.add_widget(Widget(size_hint=(None, None), width=step, height=1))
+        marker = Label(
+            text=blk.marker,
+            markup=True,
+            font_size=blk.font_size,
+            line_height=BODY_LINE_HEIGHT,
+            halign="right",
+            valign="top",
+            size_hint=(None, None),
+            width=dp(LIST_MARKER_WIDTH),
+        )
+        marker.bind(size=lambda inst, size: inst.setter("text_size")(inst, size))
+        row.add_widget(marker)
+        row.add_widget(lbl)
+
+        def sync_height(_lbl, height: float) -> None:  # noqa: ANN001
+            row.height = height
+            marker.height = height
+
+        lbl.bind(height=sync_height)
+        return row
 
     def _band_alpha(self) -> float:
         """Return the section-band alpha the Contrast toggle currently calls for."""
