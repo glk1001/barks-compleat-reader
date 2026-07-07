@@ -97,9 +97,21 @@ cleanup() {
 trap cleanup EXIT
 uv run python <<'PYEOF'
 import re
+import tomllib
+
+# Strip every workspace package, derived from [tool.uv.sources] so the list
+# can never drift from pyproject.toml. NOTE: a stripped package's third-party
+# deps must be mirrored in the root [project] dependencies, or the bundled
+# venv won't install them (PYTHONPATH only locates the *source* trees).
+with open('pyproject.toml', 'rb') as f:
+    workspace_pkgs = [
+        name
+        for name, source in tomllib.load(f)['tool']['uv']['sources'].items()
+        if source == {'workspace': True}
+    ]
 with open('pyproject.toml') as f:
     content = f.read()
-for pkg in ['barks-reader', 'barks-fantagraphics', 'barks-build-comic-images', 'comic-utils', 'okf-reader']:
+for pkg in workspace_pkgs:
     content = re.sub('\n    "' + pkg + '",', '', content)
 content = re.sub(r'\n\[tool\.uv\.workspace\]\n.*?(?=\n\[)', '', content, flags=re.DOTALL)
 content = re.sub(r'\n\[tool\.uv\.sources\]\n.*?(?=\n\[|\Z)', '', content, flags=re.DOTALL)
