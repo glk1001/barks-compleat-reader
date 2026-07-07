@@ -30,9 +30,10 @@ dependencies = [
     "kivy-garden==0.1.5",
     "loguru==0.7.3",
     "loguru-config==0.1.0",
-    # okf-reader's third-party deps must be mirrored here: build.sh strips the
-    # workspace packages from this file before bundling, so the bundled venv
-    # installs only what this list names (see scripts/build.sh).
+    # Every workspace package's third-party deps must be mirrored here (not
+    # just okf-reader's): build.sh strips the workspace packages from this file
+    # before bundling, so the bundled venv installs only what this list names
+    # (see scripts/build.sh).
     "markdown-it-py==4.0.0",
     "mdit-py-plugins==0.6.1",
     "numpy==2.2.6",
