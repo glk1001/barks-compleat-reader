@@ -369,6 +369,18 @@ class TestRenderPage:
         defs = [b for b in blocks if b.anchor == "fn:1"]
         assert len(defs) == 1
         assert "The supporting detail." in defs[0].markup
+        # Definitions are metadata: dimmed grey, wrapping the whole block.
+        assert defs[0].markup.startswith(f"[color={okf.FOOTNOTE_TEXT_COLOR}]")
+        assert defs[0].markup.endswith("[/color]")
+
+    def test_footnote_code_dimmed_body_code_not(self) -> None:
+        """Inline code is muted inside footnote definitions, full-color in the body."""
+        page = okf.render_page("Body `code`[^1].\n\n[^1]: See `path/to/file.py`.")
+        blocks = _text_blocks(page)
+        body = next(b.markup for b in blocks if "Body" in b.markup)
+        assert f"[color={okf.CODE_COLOR}]code[/color]" in body
+        definition = next(b.markup for b in blocks if b.anchor == "fn:1")
+        assert f"[color={okf.FOOTNOTE_CODE_COLOR}]path/to/file.py[/color]" in definition
 
 
 class TestConceptTitle:

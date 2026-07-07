@@ -82,9 +82,11 @@ SECTION_BLOCK_SPACING = 8  # between blocks inside one banded section
 TOP_BAR_BG_COLOR = (0.12, 0.12, 0.12, 1)  # standard ActionBar background color
 TOP_BAR_SEPARATOR_COLOR = (0.3, 0.3, 0.3, 1)
 TOP_BAR_ICON_WIDTH = 70  # dp, the Barks bars' icon-container width
-# Same magenta the Barks Reader uses for tree selection
-# (barks_reader.ui.tree_view_nodes.TREE_VIEW_NODE_SELECTED_COLOR).
-TREE_SELECTED_COLOR = (1, 0, 1, 0.8)
+# Selection band: the link blue (render.LINK_COLOR, 4ea1ff) at low alpha — an
+# accent already in the palette, translucent enough that the gold node label
+# keeps its contrast. (The Barks Reader's magenta shouted over this page's
+# muted grey/gold/blue scheme.)
+TREE_SELECTED_COLOR = (0.306, 0.631, 1.0, 0.35)
 # Barks Reader tree convention: group nodes bold white, titles yellow. Here:
 # directories bold white; concept pages in the page-heading gold (ffd54a).
 TREE_DIR_TEXT_COLOR = (1, 1, 1, 1)

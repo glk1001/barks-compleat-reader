@@ -46,6 +46,11 @@ HEADING_SIZES = {"h1": 30, "h2": 24, "h3": 20, "h4": 18, "h5": 16, "h6": 16}
 # the line box, so the visible "raise" is line height minus marker height —
 # this size is the only knob for both marker size and how raised it looks.
 FOOTNOTE_REF_SIZE = 11
+# Footnote definitions are provenance metadata, not content, so they render
+# dimmed: body text in a quiet grey, inline code (mostly file paths there) in a
+# muted violet. Links keep LINK_COLOR — they are the section's working parts.
+FOOTNOTE_TEXT_COLOR = "b0b0b0"
+FOOTNOTE_CODE_COLOR = "9a8fc0"
 
 # Paragraphs containing this marker are editorial provenance notes, not content
 # (the barks-wiki bundle opens most concepts with a blockquote along the lines of
@@ -160,8 +165,12 @@ def _ref_quote(href: str) -> str:
     return href.replace("&", "%26").replace("[", "%5B").replace("]", "%5D")
 
 
-def _inline(tokens: list) -> str:
-    """Render an inline token stream (a token's ``.children``) to Kivy markup."""
+def _inline(tokens: list, code_color: str = CODE_COLOR) -> str:
+    """Render an inline token stream (a token's ``.children``) to Kivy markup.
+
+    ``code_color`` recolors inline code spans only — footnote definitions pass
+    their muted variant so code there stays quiet (see FOOTNOTE_CODE_COLOR).
+    """
     out: list[str] = []
     for t in tokens:
         tp = t.type
@@ -180,7 +189,7 @@ def _inline(tokens: list) -> str:
         elif tp == "em_close":
             out.append("[/i]")
         elif tp == "code_inline":
-            out.append(f"[color={CODE_COLOR}]{_esc(t.content)}[/color]")
+            out.append(f"[color={code_color}]{_esc(t.content)}[/color]")
         elif tp == "link_open":
             href = _ref_quote(t.attrGet("href") or "")
             out.append(f"[ref={href}][color={LINK_COLOR}][u]")
@@ -233,9 +242,12 @@ def _footnote_block(tokens: list, start: int) -> tuple[Block, int]:
     n = len(tokens)
     while j < n and tokens[j].type != "footnote_close":
         if tokens[j].type == "inline":
-            parts.append(_inline(tokens[j].children or []))
+            parts.append(_inline(tokens[j].children or [], code_color=FOOTNOTE_CODE_COLOR))
         j += 1
-    block = Block(f"[b][{_esc(label)}][/b] " + " ".join(parts), 13, anchor=f"fn:{label}")
+    # Dimmed as metadata (see FOOTNOTE_TEXT_COLOR); the inner link/code color
+    # tags override the grey for their own spans.
+    markup = f"[color={FOOTNOTE_TEXT_COLOR}][b][{_esc(label)}][/b] " + " ".join(parts) + "[/color]"
+    block = Block(markup, 13, anchor=f"fn:{label}")
     return block, j + 1
 
 
