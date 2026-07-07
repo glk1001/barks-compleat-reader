@@ -13,6 +13,7 @@ source_modules =
     barks_reader.core
 forbidden_modules =
     barks_reader.ui
+    okf_reader.ui
     kivy
 
 [importlinter:contract:2]

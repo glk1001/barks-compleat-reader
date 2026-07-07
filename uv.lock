@@ -66,6 +66,7 @@ dependencies = [
     { name = "loguru" },
     { name = "loguru-config" },
     { name = "numpy" },
+    { name = "okf-reader" },
     { name = "pillow" },
     { name = "psutil" },
     { name = "pygments" },
@@ -93,7 +94,6 @@ dependencies = [
 dev = [
     { name = "import-linter" },
     { name = "matplotlib" },
-    { name = "okf-reader" },
     { name = "prek" },
     { name = "pycrucible" },
     { name = "pyinstrument" },
@@ -136,6 +136,7 @@ requires-dist = [
     { name = "loguru", specifier = "==0.7.3" },
     { name = "loguru-config", specifier = "==0.1.0" },
     { name = "numpy", specifier = "==2.2.6" },
+    { name = "okf-reader", editable = "src/okf-reader" },
     { name = "pillow", specifier = "==12.1.1" },
     { name = "psutil", specifier = ">=7.1.3" },
     { name = "pygments", specifier = "==2.19.2" },
@@ -163,7 +164,6 @@ requires-dist = [
 dev = [
     { name = "import-linter", specifier = ">=2.9" },
     { name = "matplotlib", specifier = ">=3.10" },
-    { name = "okf-reader", editable = "src/okf-reader" },
     { name = "prek", specifier = ">=0.3.8" },
     { name = "pycrucible", specifier = "==0.4.0" },
     { name = "pyinstrument", specifier = ">=5.1.1" },
@@ -215,6 +215,7 @@ dependencies = [
     { name = "barks-fantagraphics" },
     { name = "barks-kivy-ui" },
     { name = "comic-utils" },
+    { name = "okf-reader" },
 ]
 
 [package.metadata]
@@ -223,6 +224,7 @@ requires-dist = [
     { name = "barks-fantagraphics", editable = "src/barks-fantagraphics" },
     { name = "barks-kivy-ui", editable = "src/barks-kivy-ui" },
     { name = "comic-utils", editable = "src/comic-utils" },
+    { name = "okf-reader", editable = "src/okf-reader" },
 ]
 
 [[package]]

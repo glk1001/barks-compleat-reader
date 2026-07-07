@@ -7,6 +7,7 @@ dependencies = [
     "barks-build-comic-images",
     "barks-kivy-ui",
     "comic-utils",
+    "okf-reader",
 ]
 
 [build-system]
@@ -21,3 +22,4 @@ barks-fantagraphics = { workspace = true }
 barks-build-comic-images = { workspace = true }
 barks-kivy-ui = { workspace = true }
 comic-utils = { workspace = true }
+okf-reader = { workspace = true }

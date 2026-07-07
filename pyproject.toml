@@ -9,6 +9,7 @@ dependencies = [
     "barks-fantagraphics",
     "barks-build-comic-images",
     "comic-utils",
+    "okf-reader",
     "better-exceptions==0.3.3",
     "certifi==2025.8.3",
     "colorama==0.4.6 ; sys_platform == 'win32'",
@@ -55,7 +56,6 @@ dependencies = [
 [dependency-groups]
 dev = [
     "import-linter>=2.9",
-    "okf-reader",  # standalone OKF reader package; dev-installed (app does not depend on it yet)
     "pycrucible==0.4.0",
     "pyinstrument>=5.1.1",
     "pyspellchecker>=0.8.4",
