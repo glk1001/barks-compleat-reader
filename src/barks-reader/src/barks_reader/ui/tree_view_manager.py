@@ -333,6 +333,10 @@ class TreeViewManager:
     def on_speech_index_node_created(self, speech_index_node: MainTreeViewNode) -> None:
         self._speech_index_screen.treeview_index_node = speech_index_node
 
+    def on_wiki_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
+        logger.info("Wiki index node pressed.")
+        self._nav.open_wiki()
+
     def on_speech_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
         logger.info("Speech index node pressed.")
         self._renderer.render_state(ViewStates.ON_INDEX_SPEECH_NODE)

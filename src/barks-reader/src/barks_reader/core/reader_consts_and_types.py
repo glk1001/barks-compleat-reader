@@ -38,6 +38,7 @@ INDEX_SPEECH_TEXT = "Speech Bubble Index"
 INDEX_SPEECH_WORDS_TEXT = "Words"
 INDEX_NAMES_TEXT = "Names"
 INDEX_LOCATIONS_TEXT = "Locations"
+INDEX_WIKI_TEXT = "Carl Barks Wiki"
 # fmt: on
 
 CHRONO_YEAR_RANGES = [

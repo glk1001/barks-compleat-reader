@@ -53,6 +53,7 @@ from .destinations import (
     TagSearchDestination,
     TitleDestination,
     TitleSearchDestination,
+    WikiIndexDestination,
     WordSearchDestination,
     YearRangeDestination,
     YearRangeKind,
@@ -97,6 +98,7 @@ _SIMPLE_DESTINATION_TO_VIEW_STATE: dict[type[Destination], ViewStates] = {
     SpeechWordsDestination: ViewStates.ON_INDEX_SPEECH_WORDS_NODE,
     NamesIndexDestination: ViewStates.ON_INDEX_NAMES_NODE,
     LocationsIndexDestination: ViewStates.ON_INDEX_LOCATIONS_NODE,
+    WikiIndexDestination: ViewStates.ON_INDEX_WIKI_NODE,
     TitleDestination: ViewStates.ON_TITLE_NODE,
 }
 

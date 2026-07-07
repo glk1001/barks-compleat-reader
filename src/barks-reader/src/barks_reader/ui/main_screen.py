@@ -459,10 +459,6 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def on_wiki_reader_closed(self) -> None:
         self._is_active(active=True)
 
-    def open_wiki(self, bundle: Path) -> None:
-        """Open the Carl Barks Wiki screen on ``bundle``."""
-        self._nav_coord.open_wiki(bundle)
-
     def read_comic_from_wiki(self, title: Titles) -> bool:
         """Open ``title`` in the comic reader, on behalf of the wiki screen."""
         return self._nav_coord.read_comic_from_wiki(title)

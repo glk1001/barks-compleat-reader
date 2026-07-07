@@ -197,6 +197,7 @@ class ViewPipeline:
         ViewStates.ON_INDEX_SPEECH_WORDS_NODE,
         ViewStates.ON_INDEX_NAMES_NODE,
         ViewStates.ON_INDEX_LOCATIONS_NODE,
+        ViewStates.ON_INDEX_WIKI_NODE,
     }
 
     def __init__(

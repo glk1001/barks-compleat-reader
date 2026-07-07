@@ -63,6 +63,7 @@ from barks_reader.core.navigation import (
     TagGroupDestination,
     TagSearchDestination,
     TitleSearchDestination,
+    WikiIndexDestination,
     WordSearchDestination,
     YearRangeDestination,
     YearRangeKind,
@@ -86,6 +87,7 @@ from barks_reader.core.reader_consts_and_types import (
     INDEX_NODE_TEXT,
     INDEX_SPEECH_TEXT,
     INDEX_SPEECH_WORDS_TEXT,
+    INDEX_WIKI_TEXT,
     INTRO_COMPLEAT_BARKS_READER_TEXT,
     INTRO_DON_AULT_FANTA_INTRO_TEXT,
     INTRO_NODE_TEXT,
@@ -656,6 +658,17 @@ class ReaderTreeBuilder:
             destination=LocationsIndexDestination(),
         )
         self._tree_view_manager.on_locations_index_node_created(locations_node)
+
+        # Optional entry: shown only when the wiki-bundle setting resolves to a
+        # real OKF bundle. Pressing it switches to the wiki reader screen.
+        if self._reader_settings.wiki_bundle_dir is not None:
+            self._create_and_add_simple_node(
+                tree,
+                INDEX_WIKI_TEXT,
+                parent_node=index_node,
+                on_press_handler=self._tree_view_manager.on_wiki_index_node_pressed,
+                destination=WikiIndexDestination(),
+            )
 
     def _add_chrono_year_range_node(
         self, tree: ReaderTreeView, year_range: tuple[int, int], parent_node: ButtonTreeViewNode

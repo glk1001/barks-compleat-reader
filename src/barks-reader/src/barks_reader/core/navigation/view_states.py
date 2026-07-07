@@ -34,6 +34,7 @@ class ViewStates(IntEnum):
     ON_INDEX_SPEECH_WORDS_NODE = auto()
     ON_INDEX_NAMES_NODE = auto()
     ON_INDEX_LOCATIONS_NODE = auto()
+    ON_INDEX_WIKI_NODE = auto()
     ON_CHRONO_BY_YEAR_NODE = auto()
     ON_YEAR_RANGE_NODE = auto()
     ON_SERIES_NODE = auto()

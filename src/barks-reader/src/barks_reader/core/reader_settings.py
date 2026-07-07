@@ -24,6 +24,8 @@ BARKS_READER_SECTION = "Barks Reader"
 FANTA_DIR = "fanta_dir"
 UNSET_FANTA_DIR_MARKER = "<Fantagraphics Volumes Not Set>"
 PREBUILT_COMICS_DIR = "prebuilt_dir"
+WIKI_BUNDLE_DIR = "wiki_bundle_dir"
+UNSET_WIKI_BUNDLE_DIR_MARKER = "<Carl Barks Wiki Not Set>"
 PNG_BARKS_PANELS_DIR = "png_barks_panels_dir"
 USE_PNG_IMAGES = "use_png_images"
 USE_PREBUILT_COMICS = "use_prebuilt_comics"
@@ -211,6 +213,21 @@ class ReaderSettings:
         return self._read(USE_PREBUILT_COMICS)
 
     @property
+    def wiki_bundle_dir(self) -> Path | None:
+        """The configured OKF wiki bundle root, or None when unset or not a bundle.
+
+        The wiki is an optional feature: consumers (the Indexes tree node, the
+        wiki screen) simply hide it when this is None. A directory only counts
+        as a bundle when its reserved root ``index.md`` exists.
+        """
+        value = self._read(WIKI_BUNDLE_DIR)
+        if str(value) == UNSET_WIKI_BUNDLE_DIR_MARKER:
+            return None
+        if not (value / "index.md").is_file():
+            return None
+        return value
+
+    @property
     def goto_saved_node_on_start(self) -> bool:
         return self._read(GOTO_SAVED_NODE_ON_START)
 
@@ -296,6 +313,13 @@ class ReaderSettings:
             return True
         return self._is_valid_prebuilt_comics_dir(self.prebuilt_comics_dir)
 
+    def _is_valid_wiki_bundle_dir(self, dir_path: Path) -> bool:
+        # The wiki is optional: unset is always valid; a set path must exist
+        # (so a typo gets flagged rather than silently hiding the feature).
+        if str(dir_path) == UNSET_WIKI_BUNDLE_DIR_MARKER:
+            return True
+        return self._is_valid_dir(dir_path)
+
     def _is_valid_png_barks_panels_dir(self, dir_path: Path) -> bool:
         return (not self._read(USE_PNG_IMAGES)) or self._is_valid_dir(dir_path)
 
@@ -348,6 +372,17 @@ _FIELDS: tuple[FieldSpec, ...] = (
         config_default=ReaderFilePaths.get_default_prebuilt_comic_zips_dir,
         expand_vars=True,
         validator=ReaderSettings._is_valid_prebuilt_comics_dir,  # noqa: SLF001
+    ),
+    FieldSpec(
+        key=WIKI_BUNDLE_DIR,
+        title="Carl Barks Wiki Directory",
+        desc="Directory of the Carl Barks Wiki knowledge bundle (its root holds"
+        " an index.md). Optional: when not set, the wiki entry is hidden from"
+        " the Indexes tree. You need to restart the app after changing this.",
+        kind=FieldKind.LONG_PATH,
+        config_default=UNSET_WIKI_BUNDLE_DIR_MARKER,
+        expand_vars=True,
+        validator=ReaderSettings._is_valid_wiki_bundle_dir,  # noqa: SLF001
     ),
     # -- Options --
     FieldSpec(

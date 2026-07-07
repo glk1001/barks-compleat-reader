@@ -131,6 +131,11 @@ class LocationsIndexDestination(Destination):
     """The 'Locations' index child."""
 
 
+@dataclass(frozen=True, slots=True)
+class WikiIndexDestination(Destination):
+    """The 'Carl Barks Wiki' index child (opens the wiki reader screen)."""
+
+
 # --- Payload-bearing destinations ----------------------------------------
 
 

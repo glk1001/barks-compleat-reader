@@ -385,8 +385,16 @@ class NavigationCoordinator:
         self._doc_reader_close_view_state = return_view_state
         self._screen_switchers.switch_to_document_reader(doc_dir, title)
 
-    def open_wiki(self, bundle: Path) -> None:
-        """Open the Carl Barks Wiki screen on ``bundle``."""
+    def open_wiki(self) -> None:
+        """Open the Carl Barks Wiki screen on the configured bundle.
+
+        A no-op when no valid bundle is configured — normally unreachable,
+        since the wiki tree node is only built when the setting resolves.
+        """
+        bundle = self._reader_settings.wiki_bundle_dir
+        if bundle is None:
+            logger.error("Wiki requested but no valid wiki bundle is configured.")
+            return
         self._on_active_changed(False)  # noqa: FBT003
         self._screen_switchers.switch_to_wiki_reader(bundle)
 
