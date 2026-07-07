@@ -30,7 +30,7 @@ exclude = [
 ]
 
 [env]
-PYTHONPATH="src/barks-reader/src:src/barks-build-comic-images/src:src/barks-fantagraphics/src:src/comic-utils/src:src/okf-reader/src"
+PYTHONPATH="src/barks-reader/src:src/barks-build-comic-images/src:src/barks-fantagraphics/src:src/barks-kivy-ui/src:src/okf-reader/src:src/comic-utils/src"
 UV_VENV_CLEAR="1"
 UV_LINK_MODE="copy"
 UV_NO_DEV="1"
