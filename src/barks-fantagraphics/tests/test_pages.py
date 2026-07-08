@@ -495,10 +495,8 @@ class TestGetSrceAndDestPagesInOrder:
             comic, get_full_paths=True, srce_story_file_resolver=resolver
         )
 
-        assert [p.page_filename for p in pages.srce_pages] == [
-            "/srce/restored.jpg",
-            "/srce/restored.jpg",
-        ]
+        expected_srce = str(Path("/srce/restored.jpg"))
+        assert [p.page_filename for p in pages.srce_pages] == [expected_srce, expected_srce]
         assert pages.dest_pages[0].page_filename == str(Path("/dest") / "1-00.jpg")
         assert pages.dest_pages[1].page_filename == str(Path("/dest") / "2-01.jpg")
 
