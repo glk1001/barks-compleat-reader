@@ -22,6 +22,20 @@ repos:
             language: system
             types: [python]
             stages: [pre-commit]
+          - id: check-relative-imports
+            name: check relative imports
+            entry: bash scripts/check-relative-imports.sh
+            language: system
+            types: [python]
+            pass_filenames: false
+            stages: [pre-commit]
+          - id: lint-imports
+            name: lint-imports (import-linter contracts)
+            entry: uv run lint-imports
+            language: system
+            types: [python]
+            pass_filenames: false
+            stages: [pre-commit]
           - id: cspell-commit-msg
             name: cspell commit message
             entry: bunx cspell --no-must-find-files

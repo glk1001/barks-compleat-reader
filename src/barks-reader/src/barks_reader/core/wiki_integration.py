@@ -24,20 +24,20 @@ from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, SER
 from okf_reader.core.backgrounds import PageBackground
 from okf_reader.core.top_bar import TopBarSpec
 
-from barks_reader.core.image_pipeline import encode_png_stream, load_pil
-from barks_reader.core.image_selector import ImageSelector
-from barks_reader.core.reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
-from barks_reader.core.reader_file_paths import ALL_TYPES
-from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
-from barks_reader.core.reader_formatter import escape_kivy_markup, get_action_bar_title
+from .image_pipeline import encode_png_stream, load_pil
+from .image_selector import ImageSelector
+from .reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
+from .reader_file_paths import ALL_TYPES
+from .reader_file_paths_resolver import ReaderFilePathsResolver
+from .reader_formatter import escape_kivy_markup, get_action_bar_title
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-    from barks_reader.core.reader_formatter import FontManagerProtocol
-    from barks_reader.core.reader_settings import ReaderSettings
-    from barks_reader.core.system_file_paths import SystemFilePaths
+    from .reader_formatter import FontManagerProtocol
+    from .reader_settings import ReaderSettings
+    from .system_file_paths import SystemFilePaths
 
 WIKI_TITLE = "Carl Barks Wiki"
 
