@@ -131,6 +131,7 @@ SEARCH_RESULT_HEIGHT = 48  # dp — two lines: title over a dim breadcrumb
 SEARCH_RESULT_TITLE_HEX = "ffd54a"  # the concept-gold, matching the tree leaves
 SEARCH_RESULT_CRUMB_HEX = "999999"
 SEARCH_NO_MATCH_COLOR = (0.7, 0.7, 0.7, 1)
+SEARCH_ERROR_TEXT = "Search unavailable"  # shown if the index build failed
 SEARCH_CLEAR_BTN_WIDTH = 28  # dp — the "clear search" button beside the field
 SEARCH_FIELD_ROW_GAP = 4  # dp between the field and the clear button
 SEARCH_CLEAR_GLYPH_SIZE = 22  # dp — big/bold enough to read in the small button
@@ -253,7 +254,12 @@ class OKFViewer(RelativeLayout):
         # Building the index walks the whole bundle, so it is warmed off the UI
         # thread on the field's first focus (see _on_search_focus); until it is
         # ready a query shows a "Searching…" note rather than freezing the field.
-        self._search_ready = False
+        # _search_failed is set if the off-thread index build raised: search is
+        # "ready" (the field stops waiting) but disabled, showing an error note
+        # instead of hanging on "Searching…". It guards every search() call, since
+        # a failed BundleSearcher would re-raise the build on the UI thread if
+        # queried again.
+        self._search_ready = self._search_failed = False
         self._search_warming = False
         # Where Back falls through to at the root of the history: the hosting app's
         # "leave the reader" action. None (the standalone case) leaves Back a no-op
@@ -613,27 +619,42 @@ class OKFViewer(RelativeLayout):
         threading.Thread(target=self._warm_search_index, args=(warm,), daemon=True).start()
 
     def _warm_search_index(self, warm: Callable[[], None]) -> None:
-        """Worker thread: build the index, then flip readiness on the UI thread."""
-        warm()
-        Clock.schedule_once(lambda _dt: self._mark_search_ready(), 0)
+        """Worker thread: build the index, then flip readiness on the UI thread.
 
-    def _mark_search_ready(self) -> None:
-        """Mark the index ready and run any query typed while it was warming."""
+        A build failure still flips readiness (with the failed flag) so the field
+        recovers to an error note rather than hanging on "Searching…" forever; the
+        exception must not escape here or the daemon thread would die silently.
+        """
+        try:
+            warm()
+        except Exception:  # noqa: BLE001 — any build failure must surface, not hang
+            Clock.schedule_once(lambda _dt: self._mark_search_ready(failed=True), 0)
+            return
+        Clock.schedule_once(lambda _dt: self._mark_search_ready(failed=False), 0)
+
+    def _mark_search_ready(self, *, failed: bool) -> None:
+        """Mark the index ready (or failed) and refresh any query typed while warming."""
         self._search_ready = True
+        self._search_failed = failed
         if self.search_field.text.strip():
-            self._show_results(self._searcher.search(self.search_field.text))
+            if failed:
+                self._show_search_error()
+            else:
+                self._show_results(self._searcher.search(self.search_field.text))
 
     def _on_search_text(self, _field, text: str) -> None:  # noqa: ANN001
-        """Swap the left column between the tree, a wait note, and the results."""
+        """Swap the left column between the tree, a wait note, the results, or an error."""
         has_text = bool(text)
         self.search_clear_btn.opacity = 1 if has_text else 0
         self.search_clear_btn.disabled = not has_text
         if not text.strip():
             self._show_tree_panel()
-        elif self._search_ready:
-            self._show_results(self._searcher.search(text))
-        else:
+        elif not self._search_ready:
             self._show_searching()
+        elif self._search_failed:
+            self._show_search_error()
+        else:
+            self._show_results(self._searcher.search(text))
 
     def _clear_search(self) -> None:
         """Clear the search field, restoring the tree (the clear button / done searching)."""
@@ -642,7 +663,7 @@ class OKFViewer(RelativeLayout):
 
     def _on_search_enter(self, _field) -> None:  # noqa: ANN001
         """Open the top hit when the search field is submitted (Enter), once ready."""
-        if not self._search_ready:
+        if not self._search_ready or self._search_failed:
             return
         hits = self._searcher.search(self.search_field.text)
         if hits:
@@ -666,6 +687,18 @@ class OKFViewer(RelativeLayout):
         self._left_body.clear_widgets()
         self._left_body.add_widget(
             Label(text="Searching…", color=SEARCH_NO_MATCH_COLOR, valign="top", halign="center")
+        )
+
+    def _show_search_error(self) -> None:
+        """Show an error note when the index build failed (search stays disabled)."""
+        self._left_body.clear_widgets()
+        self._left_body.add_widget(
+            Label(
+                text=SEARCH_ERROR_TEXT,
+                color=SEARCH_NO_MATCH_COLOR,
+                valign="top",
+                halign="center",
+            )
         )
 
     def _show_results(self, hits: list[SearchHit]) -> None:
@@ -1207,7 +1240,8 @@ class OKFApp(App):
         an accidental Escape must not kill the reader (the same overshoot
         hazard the Quit button was moved to the corner for). While a search is
         active Escape backs out of it first; at the start of the history both
-        back keys are a harmless no-op.
+        back keys are a harmless no-op. Alt+Left is not stolen while the search
+        field owns the keyboard, so it can move the cursor within a typed query.
         """
         assert self._viewer is not None
         if key == self._KEY_F and "ctrl" in modifiers:
@@ -1219,6 +1253,8 @@ class OKFApp(App):
             self._viewer.go_back()
             return True
         if key == self._KEY_LEFT_ARROW and "alt" in modifiers:
+            if self._viewer.search_focused:
+                return False
             self._viewer.go_back()
             return True
         return False
