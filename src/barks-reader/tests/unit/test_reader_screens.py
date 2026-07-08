@@ -172,13 +172,30 @@ class TestReaderScreenManager:
         reader_screen_manager.add_screens(mock_reader_screens)
 
         bundle = Path("/test-bundle")
-        reader_screen_manager._switch_to_wiki_reader(bundle)
+        reader_screen_manager._switch_to_wiki_reader(bundle, None)
 
         mock_sm = reader_screen_manager._screen_manager
         assert mock_sm.current == WIKI_READER_SCREEN
 
         open_wiki_mock = cast("MagicMock", mock_reader_screens.wiki_reader_screen.open_wiki)
-        open_wiki_mock.assert_called_with(bundle)
+        open_wiki_mock.assert_called_with(bundle, None)
+
+    def test_switch_to_wiki_reader_with_page(
+        self,
+        reader_screen_manager: ReaderScreenManager,
+        mock_reader_screens: ReaderScreens,
+    ) -> None:
+        reader_screen_manager.add_screens(mock_reader_screens)
+
+        bundle = Path("/test-bundle")
+        page = bundle / "concept" / "stories" / "misc" / "test-story.md"
+        reader_screen_manager._switch_to_wiki_reader(bundle, page)
+
+        mock_sm = reader_screen_manager._screen_manager
+        assert mock_sm.current == WIKI_READER_SCREEN
+
+        open_wiki_mock = cast("MagicMock", mock_reader_screens.wiki_reader_screen.open_wiki)
+        open_wiki_mock.assert_called_with(bundle, page)
 
     def test_close_wiki_reader(
         self,

@@ -70,7 +70,7 @@ class ScreenSwitchers:
     switch_to_document_reader: Callable[[Path, str], None]
     close_document_reader: Callable[[], None]
 
-    switch_to_wiki_reader: Callable[[Path], None]
+    switch_to_wiki_reader: Callable[[Path, Path | None], None]
     close_wiki_reader: Callable[[], None]
 
 
@@ -195,10 +195,10 @@ class ReaderScreenManager:
         )
         logger.info("Main screen is active.")
 
-    def _switch_to_wiki_reader(self, bundle: Path) -> None:
-        logger.debug(f'Switching to wiki reader on bundle "{bundle}"...')
+    def _switch_to_wiki_reader(self, bundle: Path, page: Path | None) -> None:
+        logger.debug(f'Switching to wiki reader on bundle "{bundle}" (page = "{page}")...')
         assert self._reader_screens
-        self._reader_screens.wiki_reader_screen.open_wiki(bundle)
+        self._reader_screens.wiki_reader_screen.open_wiki(bundle, page)
 
         self._screen_manager.transition = self._get_next_reader_screen_transition()
         self._screen_manager.current = WIKI_READER_SCREEN

@@ -21,10 +21,14 @@ from barks_reader.core.image_selector import FIT_MODE_COVER
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.core.reader_formatter import LONG_TITLE_SPLITS, ReaderFormatter
 from barks_reader.core.reader_utils import title_needs_footnote
+from barks_reader.core.wiki_integration import wiki_page_for_title
 
 from .panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
 
@@ -116,6 +120,8 @@ class BottomTitleViewScreen(FloatLayout):
     title_image_fit_mode = StringProperty(FIT_MODE_COVER)
     title_image_color = ColorProperty()
 
+    wiki_button_visible = BooleanProperty(defaultvalue=False)
+
     goto_page_num = StringProperty()
     goto_page_active = BooleanProperty(default=False)
     use_overrides_active = BooleanProperty(default=True)
@@ -132,6 +138,7 @@ class BottomTitleViewScreen(FloatLayout):
         self._fanta_info: FantaComicBookInfo | None = None
         self.is_first_use_of_reader = self._reader_settings.is_first_use_of_reader
         self.on_title_portal_image_pressed_func = None
+        self.on_wiki_page_button_pressed_func: Callable[[], None] | None = None
         self.main_title_banner_texture = _make_title_banner_texture(
             self.MAIN_TITLE_BANNER_COLOR, self.MAIN_TITLE_BANNER_PEAK_ALPHA
         )
@@ -153,6 +160,7 @@ class BottomTitleViewScreen(FloatLayout):
         )
         self.main_title_footnote = "" if not add_footnote else self._get_footnote_text()
         self.title_extra_info_text = self._formatter.get_title_extra_info(fanta_info)
+        self.wiki_button_visible = self._title_has_wiki_page(fanta_info.comic_book_info.title)
 
         inset_image_source = self._reader_settings.file_paths.get_comic_inset_file(
             fanta_info.comic_book_info.title,
@@ -206,6 +214,14 @@ class BottomTitleViewScreen(FloatLayout):
     def on_title_portal_image_pressed(self) -> None:
         assert self.on_title_portal_image_pressed_func is not None
         self.on_title_portal_image_pressed_func()
+
+    def on_wiki_page_button_pressed(self) -> None:
+        assert self.on_wiki_page_button_pressed_func is not None
+        self.on_wiki_page_button_pressed_func()
+
+    def _title_has_wiki_page(self, title: Titles) -> bool:
+        bundle = self._reader_settings.wiki_bundle_dir
+        return bundle is not None and wiki_page_for_title(bundle, title) is not None
 
     def _set_title_inset_image(self, inset_image_source: PanelPath) -> None:
         timing = Timing()

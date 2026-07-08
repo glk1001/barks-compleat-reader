@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
@@ -22,6 +23,7 @@ class TestBottomTitleViewScreen:
     def setup(self) -> Generator[None, Any]:
         self.mock_settings = MagicMock()
         self.mock_settings.is_first_use_of_reader = False
+        self.mock_settings.wiki_bundle_dir = None
         self.mock_settings.file_paths.barks_panels_are_encrypted = False
         self.mock_settings.file_paths.get_comic_inset_file.return_value = "inset.png"
 
@@ -151,6 +153,46 @@ class TestBottomTitleViewScreen:
 
         self.screen.on_title_portal_image_pressed()
         mock_callback.assert_called_once()
+
+    def test_on_wiki_page_button_pressed(self) -> None:
+        mock_callback = MagicMock()
+        self.screen.on_wiki_page_button_pressed_func = mock_callback
+
+        self.screen.on_wiki_page_button_pressed()
+        mock_callback.assert_called_once()
+
+    def test_wiki_button_hidden_when_no_bundle(self) -> None:
+        mock_info = MagicMock()
+        mock_info.comic_book_info.title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
+
+        self.screen.set_title_view(mock_info)
+
+        assert not self.screen.wiki_button_visible
+
+    def test_wiki_button_visible_when_page_exists(self) -> None:
+        self.mock_settings.wiki_bundle_dir = Path("/bundle")
+        mock_info = MagicMock()
+        mock_info.comic_book_info.title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
+
+        with patch.object(
+            bottom_title_view_screen,
+            "wiki_page_for_title",
+            return_value=Path("/bundle/concept/stories/donald-duck/pirate-gold.md"),
+        ) as wiki_page_mock:
+            self.screen.set_title_view(mock_info)
+
+        wiki_page_mock.assert_called_with(Path("/bundle"), Titles.DONALD_DUCK_FINDS_PIRATE_GOLD)
+        assert self.screen.wiki_button_visible
+
+    def test_wiki_button_hidden_when_page_missing(self) -> None:
+        self.mock_settings.wiki_bundle_dir = Path("/bundle")
+        mock_info = MagicMock()
+        mock_info.comic_book_info.title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
+
+        with patch.object(bottom_title_view_screen, "wiki_page_for_title", return_value=None):
+            self.screen.set_title_view(mock_info)
+
+        assert not self.screen.wiki_button_visible
 
     def test_get_main_title_str(self) -> None:
         # Case 1: Barks title

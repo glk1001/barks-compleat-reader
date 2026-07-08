@@ -605,6 +605,20 @@ class OKFViewer(RelativeLayout):
         scroll = (node_top - viewport_h + offset) / (content_h - viewport_h)
         self.tree_scroll.scroll_y = max(0.0, min(1.0, scroll))
 
+    def show_page(self, path: Path, *, scroll_y: float = 1.0) -> None:
+        """Open ``path`` as the current page, pushing it onto the back history.
+
+        The public equivalent of following a link: the outgoing page's scroll
+        position is remembered, Back returns to it, and the tree panel syncs
+        itself to the new page.
+
+        Args:
+            path: Absolute path of the bundle page (.md) to show.
+            scroll_y: Normalized scroll offset to open at (1.0 = top).
+
+        """
+        self._show(path, push=True, scroll_y=scroll_y)
+
     def _show(self, path: Path, *, push: bool, scroll_y: float = 1.0) -> None:
         if push:
             if self.history:  # remember where the outgoing page was scrolled to

@@ -252,3 +252,53 @@ class TestNavigationCoordinator:
 
         mock_deps["renderer"].render_state.assert_called_with(ViewStates.ON_INTRO_NODE)
         assert nav_coord._doc_reader_close_view_state is None
+
+    def test_open_wiki_passes_no_page(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        bundle = Path("/bundle")
+        mock_deps["reader_settings"].wiki_bundle_dir = bundle
+
+        nav_coord.open_wiki()
+
+        mock_deps["on_active_changed"].assert_called_with(False)  # noqa: FBT003
+        mock_deps["screen_switchers"].switch_to_wiki_reader.assert_called_with(bundle, None)
+
+    def test_open_wiki_page_for_title_no_bundle_is_noop(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        mock_deps["reader_settings"].wiki_bundle_dir = None
+
+        nav_coord.open_wiki_page_for_title(Titles.LOST_IN_THE_ANDES)
+
+        mock_deps["on_active_changed"].assert_not_called()
+        mock_deps["screen_switchers"].switch_to_wiki_reader.assert_not_called()
+
+    def test_open_wiki_page_for_title_missing_page_is_noop(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        mock_deps["reader_settings"].wiki_bundle_dir = Path("/bundle")
+
+        with patch.object(
+            barks_reader.ui.navigation_coordinator, "wiki_page_for_title", return_value=None
+        ):
+            nav_coord.open_wiki_page_for_title(Titles.LOST_IN_THE_ANDES)
+
+        mock_deps["on_active_changed"].assert_not_called()
+        mock_deps["screen_switchers"].switch_to_wiki_reader.assert_not_called()
+
+    def test_open_wiki_page_for_title_opens_wiki_at_page(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        bundle = Path("/bundle")
+        page = bundle / "concept" / "stories" / "donald-duck" / "lost-in-the-andes.md"
+        mock_deps["reader_settings"].wiki_bundle_dir = bundle
+
+        with patch.object(
+            barks_reader.ui.navigation_coordinator, "wiki_page_for_title", return_value=page
+        ) as wiki_page_mock:
+            nav_coord.open_wiki_page_for_title(Titles.LOST_IN_THE_ANDES)
+
+        wiki_page_mock.assert_called_with(bundle, Titles.LOST_IN_THE_ANDES)
+        mock_deps["on_active_changed"].assert_called_with(False)  # noqa: FBT003
+        mock_deps["screen_switchers"].switch_to_wiki_reader.assert_called_with(bundle, page)

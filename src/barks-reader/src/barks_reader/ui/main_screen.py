@@ -201,6 +201,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._bottom_title_view_screen.on_title_portal_image_pressed_func = (
             self.on_title_portal_image_pressed
         )
+        self._bottom_title_view_screen.on_wiki_page_button_pressed_func = (
+            self.on_wiki_page_button_pressed
+        )
 
         self._fun_image_view_screen.ids.checkbox_all_image_types.bind(
             active=self.on_checkbox_all_image_types_changed
@@ -445,6 +448,16 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._nav.save_focus_before_comic()
         if self._nav_coord.read_comic():
             self._set_no_longer_first_use()
+
+    def on_wiki_page_button_pressed(self) -> None:
+        """Open the wiki at the current title's story page (the "Wiki Page" chip)."""
+        fanta_info = self._nav_coord.current_fanta_info
+        if fanta_info is None:
+            logger.error("Wiki page button pressed. But no title selected.")
+            return
+
+        logger.debug("Wiki page button pressed.")
+        self._nav_coord.open_wiki_page_for_title(fanta_info.comic_book_info.title)
 
     @override
     def on_comic_closed(self) -> None:

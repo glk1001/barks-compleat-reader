@@ -86,14 +86,21 @@ class WikiReaderScreen(ReaderScreen):
         self._viewer: OKFViewer | None = None
         self._bundle: Path | None = None
 
-    def open_wiki(self, bundle: Path) -> None:
+    def open_wiki(self, bundle: Path, page: Path | None = None) -> None:
         """Show the wiki, building the viewer on first open (or on a bundle change).
 
         Lazy so an unconfigured or missing bundle costs the app nothing at
         startup; a changed bundle-path setting swaps the viewer for a fresh one.
+
+        Args:
+            bundle: The wiki OKF bundle directory.
+            page: A bundle page to land on; None keeps/restores the current page.
+
         """
         if self._viewer is None or bundle != self._bundle:
-            self._build_viewer(bundle)
+            self._build_viewer(bundle, start_page=page)
+        elif page is not None:
+            self._viewer.show_page(page)
 
     def close(self) -> None:
         """Save the reading position and hand control back to the main screen."""
@@ -115,7 +122,7 @@ class WikiReaderScreen(ReaderScreen):
         self.close()
         self._on_goto_title(title)
 
-    def _build_viewer(self, bundle: Path) -> None:
+    def _build_viewer(self, bundle: Path, start_page: Path | None = None) -> None:
         logger.info(f'Building wiki viewer for bundle "{bundle}".')
         if self._viewer is not None:
             self._viewer.save_session()  # the outgoing bundle's position survives
@@ -125,6 +132,7 @@ class WikiReaderScreen(ReaderScreen):
         # (built lazily at first open, when the window height is settled).
         self._viewer = OKFViewer(
             bundle,
+            start_page=start_page,
             image_provider=BarksPanelsImageProvider(self._reader_settings, self._image_selector),
             table_rewriter=BarksTableRewriter(),
             action_provider=_GotoTitleActionProvider(self._goto_title),

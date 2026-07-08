@@ -225,6 +225,10 @@
                         Label:
                             text: "Goto page " + root.goto_page_num + ":"
                             color: (0, 1, 1, 1)
+                            # Dark halo so the cyan stays legible over bright title pages.
+                            bold: True
+                            outline_color: (0, 0, 0, 1)
+                            outline_width: dp(1.5)
                             size_hint_x: 0.8
                             font_size: fm.check_box_font_size
                             text_size: (self.width, self.height)
@@ -249,6 +253,10 @@
                             id: use_overrides_label
                             text: root.use_overrides_description
                             color: (0, 1, 1, 1)
+                            # Dark halo so the cyan stays legible over bright title pages.
+                            bold: True
+                            outline_color: (0, 0, 0, 1)
+                            outline_width: dp(1.5)
                             size_hint_x: 1
                             font_size: fm.check_box_font_size
                             text_size: (self.width, self.height)
@@ -261,4 +269,33 @@
                             size_hint_x: 0.1
                             active: not root.use_overrides_description or root.use_overrides_active
                             on_active: root.use_overrides_active = self.active
+                    # --- The Wiki Page chip ---
+                    Button:
+                        id: wiki_page_button
+                        text: "Wiki Page"
+                        font_size: fm.check_box_font_size
+                        # Cyan to match the checkbox labels below, unifying the right column.
+                        color: 0, 1, 1, 1
+                        bold: True
+                        background_color: 0, 0, 0, 0
+                        background_normal: ''
+                        size_hint: None, None
+                        width: self.texture_size[0] + (0.8 * fm.check_box_font_size)
+                        height: (1.6 * fm.check_box_font_size) if root.wiki_button_visible else 0
+                        # Right-align with the checkbox rows, above 'use_overrides_layout'
+                        x: title_portal_image_button.right - self.width
+                        y: use_overrides_layout.top + (0.2 * fm.check_box_font_size)
+                        opacity: 1 if root.wiki_button_visible else 0
+                        disabled: not root.wiki_button_visible
+                        on_press: root.on_wiki_page_button_pressed()
+
+                        canvas.before:
+                            # Solid, opaque dark chip so the (arbitrary, sometimes bright)
+                            # title-page background never bleeds through and mutes it.
+                            Color:
+                                rgba: 0.1, 0.1, 0.1, 1
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(4)]
         # --- END: bottom view title container ---

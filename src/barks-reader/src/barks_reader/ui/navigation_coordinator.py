@@ -31,6 +31,7 @@ from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_consts_and_types import CHRONO_YEAR_RANGES, COMIC_BEGIN_PAGE
 from barks_reader.core.reader_tree_view_utils import find_tree_view_title_node
+from barks_reader.core.wiki_integration import wiki_page_for_title
 
 from .user_error_handler import ErrorInfo, ErrorTypes, TitleNotInFantaInfoError
 
@@ -395,7 +396,29 @@ class NavigationCoordinator:
             logger.error("Wiki requested but no valid wiki bundle is configured.")
             return
         self._on_active_changed(False)  # noqa: FBT003
-        self._screen_switchers.switch_to_wiki_reader(bundle)
+        self._screen_switchers.switch_to_wiki_reader(bundle, None)
+
+    def open_wiki_page_for_title(self, title: Titles) -> None:
+        """Open the Carl Barks Wiki at ``title``'s story page.
+
+        A no-op when no valid bundle is configured or the title's page is not
+        written yet — normally unreachable, since the bottom title view's
+        "Wiki Page" button is only visible when both hold.
+
+        Args:
+            title: The canonical title whose wiki story page to open.
+
+        """
+        bundle = self._reader_settings.wiki_bundle_dir
+        if bundle is None:
+            logger.error("Wiki page requested but no valid wiki bundle is configured.")
+            return
+        page = wiki_page_for_title(bundle, title)
+        if page is None:
+            logger.error(f'Wiki page requested but none exists for "{ENUM_TO_STR_TITLE[title]}".')
+            return
+        self._on_active_changed(False)  # noqa: FBT003
+        self._screen_switchers.switch_to_wiki_reader(bundle, page)
 
     # === Return paths ===
 
