@@ -48,6 +48,8 @@ from okf_reader.core.session import load_session_state, save_session_state
 from okf_reader.core.top_bar import TopBarSpec
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from okf_reader.core.actions import PageAction, PageActionProvider
     from okf_reader.core.backgrounds import ImageProvider
 
@@ -192,6 +194,7 @@ class OKFViewer(RelativeLayout):
         action_provider: PageActionProvider | None = None,
         top_bar: TopBarSpec | None = None,
         state_path: Path | None = None,
+        on_exit: Callable[[], None] | None = None,
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
@@ -203,6 +206,10 @@ class OKFViewer(RelativeLayout):
         self._table_rewriter = table_rewriter
         self._action_provider = action_provider
         self._state_path = state_path
+        # Where Back falls through to at the root of the history: the hosting app's
+        # "leave the reader" action. None (the standalone case) leaves Back a no-op
+        # at the root, since the reader is the whole app.
+        self._on_exit = on_exit
         self._page_action: PageAction | None = None
         self._band_colors: list[Color] = []  # the current page's section-band Colors
 
@@ -491,15 +498,42 @@ class OKFViewer(RelativeLayout):
             self._page_action.run()
 
     def go_back(self) -> None:
-        """Navigate to the previous page (no-op at the start of the history).
+        """Navigate to the previous page, or leave the reader at the history's root.
 
         Public: besides the bar's Back button, the hosting app routes its own
-        back gestures here (the standalone app binds Escape and Alt+Left).
+        back gestures here (mouse button 4; the standalone app also binds Escape
+        and Alt+Left). At the root the ``on_exit`` seam fires when the hosting app
+        supplied one (embedded: return to the host screen); otherwise it is a
+        no-op (standalone: the reader is the whole app).
         """
         if len(self.history) > 1:
             self.history.pop()
             entry = self.history[-1]
             self._show(entry.path, push=False, scroll_y=entry.scroll_y)
+        elif self._on_exit is not None:
+            self._on_exit()
+
+    def reset_to(self, path: Path | None = None) -> None:
+        """Discard the back history, re-rooting it at ``path``.
+
+        The hosting app calls this when the reader is re-entered so that Back from
+        the landing page falls through to ``on_exit`` (leaving the reader) instead
+        of walking a previous visit's history.
+
+        Args:
+            path: The page to make the new root. None keeps the current page (and
+                its scroll offset) on screen as the root; if nothing has been shown
+                yet, the bundle's home page is used.
+
+        """
+        scroll_y = 1.0
+        if path is None:
+            if self.history:
+                path, scroll_y = self.history[-1].path, self.body_scroll.scroll_y
+            else:
+                path = self.bundle / "index.md"
+        self.history.clear()
+        self._show(path, push=True, scroll_y=scroll_y)
 
     def save_session(self) -> None:
         """Persist the current page and scroll offset for the next launch.
@@ -624,7 +658,10 @@ class OKFViewer(RelativeLayout):
             if self.history:  # remember where the outgoing page was scrolled to
                 self.history[-1].scroll_y = self.body_scroll.scroll_y
             self.history.append(_HistoryEntry(path))
-        self.back_btn.disabled = len(self.history) <= 1
+        # At the root the button stays live when Back exits the reader (on_exit set),
+        # so clicking it leaves — a unified back stack. Standalone (no on_exit) keeps
+        # it disabled at the root.
+        self.back_btn.disabled = len(self.history) <= 1 and self._on_exit is None
         self._sync_tree_to(path)
         try:
             text = path.read_text(encoding="utf-8")

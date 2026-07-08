@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from kivy.core.window import Window
 from loguru import logger
 from okf_reader.core.actions import PageAction
 from okf_reader.ui.viewer import OKFViewer
@@ -27,6 +28,7 @@ from barks_reader.core.wiki_integration import (
     wiki_top_bar_spec,
 )
 
+from .reader_keyboard_nav import KEY_LEFT, is_escape_key
 from .reader_screens import ReaderScreen
 
 if TYPE_CHECKING:
@@ -99,13 +101,41 @@ class WikiReaderScreen(ReaderScreen):
         """
         if self._viewer is None or bundle != self._bundle:
             self._build_viewer(bundle, start_page=page)
-        elif page is not None:
-            self._viewer.show_page(page)
+        else:
+            # Re-root the history at the landing page so Back from it exits the
+            # reader (via on_exit) rather than walking a previous visit's trail.
+            self._viewer.reset_to(page)
+        # Route the window's back keys here while this screen is up; unbind on close.
+        # Unbind first so a re-open without an intervening close can't double-bind.
+        Window.unbind(on_key_down=self._on_key_down)
+        Window.bind(on_key_down=self._on_key_down)
 
     def close(self) -> None:
-        """Save the reading position and hand control back to the main screen."""
+        """Save the reading position and hand control back to the main screen.
+
+        The single exit funnel: the corner Quit button, "Goto Title", and Back at
+        the history root all route here, so unbinding the keyboard here covers
+        every way out.
+        """
+        Window.unbind(on_key_down=self._on_key_down)
         self.save_session()
         self._on_close_screen()
+
+    def _on_key_down(
+        self, _window: object, key: int, _scancode: int, _codepoint: str, modifiers: list
+    ) -> bool:
+        """Send Escape and Alt+Left to the viewer's Back, consuming the key.
+
+        Escape honors the user-configured alternate Escape via ``is_escape_key``.
+        Consuming (returning True) keeps the key from leaking to the main screen's
+        handler. At the history root Back exits the reader (the viewer's on_exit).
+        """
+        if self._viewer is None:
+            return False
+        if is_escape_key(key) or (key == KEY_LEFT and "alt" in modifiers):
+            self._viewer.go_back()
+            return True
+        return False
 
     def save_session(self) -> None:
         """Persist the reading position (a no-op before the first open).
@@ -140,6 +170,7 @@ class WikiReaderScreen(ReaderScreen):
                 self._font_manager, self._reader_settings.sys_file_paths, on_close=self.close
             ),
             state_path=wiki_session_path(self._app_data_dir, bundle),
+            on_exit=self.close,
         )
         self._bundle = bundle
         self.add_widget(self._viewer)
