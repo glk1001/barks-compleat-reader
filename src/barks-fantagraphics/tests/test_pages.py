@@ -8,7 +8,13 @@ from unittest.mock import MagicMock
 import pytest
 from barks_fantagraphics.comic_book import ModifiedType
 from barks_fantagraphics.comics_consts import PageType
-from barks_fantagraphics.page_classes import CleanPage, OriginalPage
+from barks_fantagraphics.page_classes import (
+    CleanPage,
+    ComicDimensions,
+    OriginalPage,
+    RequiredDimensions,
+    SrceAndDestPages,
+)
 from barks_fantagraphics.pages import (
     EMPTY_FILENAME,
     EMPTY_IMAGE_FILEPATH,
@@ -19,11 +25,13 @@ from barks_fantagraphics.pages import (
     SrceStoryFileNotFoundError,
     SrceStoryFileResolver,
     SvgPngStoryFileResolver,
+    _get_srce_and_dest_pages_in_order,
     get_full_srce_filepath,
     get_page_mod_type,
     get_page_number_str,
     get_relative_srce_filepath,
     get_required_pages_in_order,
+    get_srce_dest_map,
 )
 
 # ---------------------------------------------------------------------------
@@ -380,3 +388,149 @@ class TestSrceDependency:
         assert sd.timestamp == 42.5
         assert sd.independent is False
         assert sd.mod_type == ModifiedType.MODIFIED
+
+
+# ---------------------------------------------------------------------------
+# _get_srce_and_dest_pages_in_order (front/body/back-matter section machine)
+# ---------------------------------------------------------------------------
+
+
+def _comic_with_pages(pages: list[OriginalPage]) -> MagicMock:
+    comic = MagicMock()
+    comic.page_images_in_order = pages
+    return comic
+
+
+class TestGetSrceAndDestPagesInOrder:
+    def test_section_and_page_numbering_across_matter_transitions(self) -> None:
+        """Front->body->back transitions each open a new dest file section.
+
+        Dest filenames are ``<section>-<page-in-section>``: front matter is
+        section 1, the first body page resets numbering into section 2, and the
+        first back-matter page opens section 3. Body page numbers restart at 1.
+        """
+        comic = _comic_with_pages(
+            [
+                OriginalPage("100", PageType.FRONT),
+                OriginalPage(TITLE_EMPTY_FILENAME, PageType.TITLE),
+                OriginalPage("101", PageType.BODY),
+                OriginalPage("102", PageType.BODY),
+                OriginalPage("103", PageType.BACK_MATTER),
+            ],
+        )
+
+        pages = _get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
+
+        dest = pages.dest_pages
+        assert [p.page_filename for p in dest] == [
+            "1-00.jpg",
+            "1-01.jpg",
+            "2-01.jpg",
+            "2-02.jpg",
+            "3-01.jpg",
+        ]
+        # Front page is number 0; body restarts at 1; back matter continues (+1).
+        assert [p.page_num for p in dest] == [0, 1, 1, 2, 3]
+        assert [p.page_type for p in dest] == [
+            PageType.FRONT,
+            PageType.TITLE,
+            PageType.BODY,
+            PageType.BODY,
+            PageType.BACK_MATTER,
+        ]
+
+    def test_srce_pages_keep_original_filenames_and_numbers(self) -> None:
+        """Source pages carry the original relative filename and original page num."""
+        comic = _comic_with_pages(
+            [
+                OriginalPage("100", PageType.FRONT),
+                OriginalPage("101", PageType.BODY),
+            ],
+        )
+
+        pages = _get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
+
+        assert [p.page_filename for p in pages.srce_pages] == ["100.jpg", "101.jpg"]
+        assert [p.page_num for p in pages.srce_pages] == [100, 101]
+
+    def test_wrong_front_matter_page_type_raises(self) -> None:
+        """A back-matter page seen while still in front matter is rejected."""
+        comic = _comic_with_pages(
+            [
+                OriginalPage("100", PageType.FRONT),
+                OriginalPage("101", PageType.BACK_MATTER),
+            ],
+        )
+
+        with pytest.raises(ValueError, match="front matter but page type is incorrect"):
+            _get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
+
+    def test_wrong_back_matter_page_type_raises(self) -> None:
+        """A front-matter page seen after the back matter has started is rejected."""
+        comic = _comic_with_pages(
+            [
+                OriginalPage("100", PageType.FRONT),
+                OriginalPage("101", PageType.BODY),
+                OriginalPage("102", PageType.BACK_MATTER),
+                OriginalPage(TITLE_EMPTY_FILENAME, PageType.TITLE),
+            ],
+        )
+
+        with pytest.raises(ValueError, match="back matter but page type is incorrect"):
+            _get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
+
+    def test_full_paths_use_resolver_and_dest_image_dir(self) -> None:
+        """With full paths, srce comes from the resolver and dest from the dest dir."""
+        comic = _comic_with_pages(
+            [
+                OriginalPage("100", PageType.FRONT),
+                OriginalPage("101", PageType.BODY),
+            ],
+        )
+        comic.get_dest_image_dir.return_value = Path("/dest")
+        resolver = MagicMock(spec=SrceStoryFileResolver)
+        resolver.get_story_file.return_value = Path("/srce/restored.jpg")
+
+        pages = _get_srce_and_dest_pages_in_order(
+            comic, get_full_paths=True, srce_story_file_resolver=resolver
+        )
+
+        assert [p.page_filename for p in pages.srce_pages] == [
+            "/srce/restored.jpg",
+            "/srce/restored.jpg",
+        ]
+        assert pages.dest_pages[0].page_filename == str(Path("/dest") / "1-00.jpg")
+        assert pages.dest_pages[1].page_filename == str(Path("/dest") / "2-01.jpg")
+
+
+# ---------------------------------------------------------------------------
+# get_srce_dest_map
+# ---------------------------------------------------------------------------
+
+
+class TestGetSrceDestMap:
+    def test_builds_dimension_and_page_map(self) -> None:
+        """The map carries dir names, bbox dimensions, and a dest->srce page map."""
+        comic = MagicMock()
+        comic.dirs.srce_dir = "/root/my-srce-dir"
+        comic.get_dest_rel_dirname.return_value = "dest-rel"
+        srce_dim = ComicDimensions(
+            min_panels_bbox_width=10,
+            max_panels_bbox_width=20,
+            min_panels_bbox_height=30,
+            max_panels_bbox_height=40,
+        )
+        required_dim = RequiredDimensions(panels_bbox_width=100, panels_bbox_height=200)
+        pages = SrceAndDestPages(
+            srce_pages=[CleanPage("/a/101.jpg", PageType.BODY, 101)],
+            dest_pages=[CleanPage("/b/2-01.jpg", PageType.BODY, 1)],
+        )
+
+        result = get_srce_dest_map(comic, srce_dim, required_dim, pages)
+
+        assert result["srce_dirname"] == "my-srce-dir"
+        assert result["dest_dirname"] == "dest-rel"
+        assert result["srce_min_panels_bbox_width"] == 10
+        assert result["dest_required_bbox_width"] == 100
+        assert result["dest_required_bbox_height"] == 200
+        assert result["pages"] == {"2-01.jpg": {"file": "101.jpg", "type": "BODY"}}

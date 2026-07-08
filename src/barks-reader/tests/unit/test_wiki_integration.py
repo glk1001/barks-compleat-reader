@@ -15,7 +15,10 @@ from barks_reader.core.wiki_integration import (
     canonical_title,
     story_page_title,
     story_slug,
+    title_can_have_wiki_page,
+    tree_navigable_title,
     wiki_page_for_title,
+    wiki_session_path,
 )
 
 if TYPE_CHECKING:
@@ -72,6 +75,44 @@ class TestStoryPageTitle:
         assert story_page_title({}, page) is None
 
 
+class TestStoryPageTitleExtras:
+    def test_extras_title_is_still_a_story_page(self, tmp_path: Path) -> None:
+        """An Extras title (in ALL_FANTA_COMIC_BOOK_INFO) still passes the plain gate."""
+        page = tmp_path / "okf" / "concept" / "stories" / "one-pagers" / "x.md"
+        assert story_page_title({"title": "All One-Pagers"}, page) == Titles.ALL_ONE_PAGERS
+
+
+class TestTreeNavigableTitle:
+    def test_non_extras_title_is_navigable(self, tmp_path: Path) -> None:
+        """A regular story title keeps its tree position, so it passes."""
+        page = tmp_path / "okf" / "concept" / "stories" / "comics-and-stories" / "x.md"
+        assert (
+            tree_navigable_title({"title": "Lost in the Andes!"}, page) == Titles.LOST_IN_THE_ANDES
+        )
+
+    def test_extras_title_is_excluded(self, tmp_path: Path) -> None:
+        """An Extras title has no chronological tree position, so it is gated out."""
+        page = tmp_path / "okf" / "concept" / "stories" / "one-pagers" / "x.md"
+        # story_page_title accepts it, tree_navigable_title must not.
+        assert story_page_title({"title": "All One-Pagers"}, page) == Titles.ALL_ONE_PAGERS
+        assert tree_navigable_title({"title": "All One-Pagers"}, page) is None
+
+    def test_non_story_page_is_none(self, tmp_path: Path) -> None:
+        """A page outside concept/stories/ is never tree-navigable."""
+        page = tmp_path / "okf" / "reference" / "x.md"
+        assert tree_navigable_title({"title": "Lost in the Andes!"}, page) is None
+
+
+class TestTitleCanHaveWikiPage:
+    def test_true_for_series_with_story_dir(self) -> None:
+        """A title whose series has a story directory can have a wiki page location."""
+        assert title_can_have_wiki_page(Titles.LOST_IN_THE_ANDES) is True
+
+    def test_false_for_extras_series(self) -> None:
+        """An Extras title has no story directory, so no page location can exist."""
+        assert title_can_have_wiki_page(Titles.ALL_ONE_PAGERS) is False
+
+
 class TestWikiPageForTitle:
     def test_reverse_join_finds_written_page(self, tmp_path: Path) -> None:
         """A written story page is found via series dir + canonical slug."""
@@ -84,6 +125,37 @@ class TestWikiPageForTitle:
     def test_unwritten_page_is_none(self, tmp_path: Path) -> None:
         """A known title whose wiki page does not exist yet yields None."""
         assert wiki_page_for_title(tmp_path, Titles.LOST_IN_THE_ANDES) is None
+
+    def test_gyro_title_found_in_fallback_misc_dir(self, tmp_path: Path) -> None:
+        """A Gyro title filed under the second candidate dir ("misc") is still found."""
+        # Gyro Gearloose story dirs are ("gyro-gearloose-stories", "misc"); the
+        # page lives only in the fallback dir, so the first candidate misses.
+        slug = story_slug(ENUM_TO_STR_TITLE[Titles.TRAPPED_LIGHTNING])
+        fallback_dir = tmp_path / "concept" / "stories" / "misc"
+        fallback_dir.mkdir(parents=True)
+        page = fallback_dir / f"{slug}.md"
+        page.write_text("X", encoding="utf-8")
+        assert wiki_page_for_title(tmp_path, Titles.TRAPPED_LIGHTNING) == page
+
+
+class TestWikiSessionPath:
+    def test_name_is_keyed_by_bundle_digest(self, tmp_path: Path) -> None:
+        """The session filename embeds a stable digest of the resolved bundle path."""
+        app_data = tmp_path / "app"
+        bundle = tmp_path / "okf-bundle"
+        session = wiki_session_path(app_data, bundle)
+        assert session.parent == app_data
+        assert session.name.startswith("okf-reader-session-")
+        assert session.suffix == ".json"
+        # Stable across calls for the same bundle.
+        assert wiki_session_path(app_data, bundle) == session
+
+    def test_different_bundles_get_different_session_files(self, tmp_path: Path) -> None:
+        """Opening a different bundle can never clobber another bundle's resume point."""
+        app_data = tmp_path / "app"
+        one = wiki_session_path(app_data, tmp_path / "bundle-a")
+        two = wiki_session_path(app_data, tmp_path / "bundle-b")
+        assert one != two
 
 
 class TestBarksTableRewriter:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -19,6 +19,8 @@ from barks_fantagraphics.whoosh_search_engine import (
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from whoosh.searching import Hit
 
 # ---------------------------------------------------------------------------
 # _is_valid_entity_term
@@ -379,3 +381,190 @@ class TestFindEntities:
         engine = SearchEngine(index_dir)
         results = engine.find_entities("location", "Duk Duk")
         assert len(results) == 0
+
+
+# ---------------------------------------------------------------------------
+# SearchEngine._collect_and_sort_results (aggregation + sorting, index-free)
+# ---------------------------------------------------------------------------
+
+
+def _hit(**overrides: str) -> dict[str, str]:
+    """Return a minimal stored-fields dict standing in for a Whoosh Hit."""
+    base = {
+        "title": "A Title",
+        "fanta_vol": "10",
+        "fanta_page": "001",
+        "comic_page": "1",
+        "content_id": "5",
+        "panel_num": "2",
+        "content_raw": "RAW",
+    }
+    base.update(overrides)
+    return base
+
+
+class TestCollectAndSortResults:
+    """Aggregation/sort of raw hits into the TitleDict, exercised without an index."""
+
+    @staticmethod
+    def _engine() -> SearchEngine:
+        # Bypass __init__ (which opens an index dir): the method under test only
+        # touches self via the static _get_entity_types helper.
+        return SearchEngine.__new__(SearchEngine)
+
+    def test_titles_sorted_and_vol_parsed_to_int(self) -> None:
+        """Titles come back in sorted order and fanta_vol is coerced to int."""
+        engine = self._engine()
+        hits = [
+            _hit(title="Beta", fanta_vol="26"),
+            _hit(title="Alpha", fanta_vol="10", fanta_page="002", content_id="3"),
+        ]
+
+        results = engine._collect_and_sort_results(cast("list[Hit]", hits), "raw")
+
+        assert list(results.keys()) == ["Alpha", "Beta"]
+        assert results["Alpha"].fanta_vol == 10
+        assert results["Beta"].fanta_vol == 26
+
+    def test_same_page_speech_grouped_and_sorted_by_group_id(self) -> None:
+        """Two hits on the same fanta_page collect into one page, sorted by group id."""
+        engine = self._engine()
+        hits = [
+            _hit(fanta_page="002", content_id="30", content_raw="LATER"),
+            _hit(fanta_page="002", content_id="4", content_raw="EARLIER"),
+        ]
+
+        results = engine._collect_and_sort_results(cast("list[Hit]", hits), "raw")
+
+        page = results["A Title"].fanta_pages["002"]
+        # Numeric sort (int("4") < int("30")), not lexicographic ("30" < "4").
+        assert [s.group_id for s in page.speech_info_list] == ["4", "30"]
+        assert page.comic_page == "1"
+
+    def test_conflicting_comic_page_for_same_fanta_page_asserts(self) -> None:
+        """The same fanta_page mapping to two comic pages is a data error (assert)."""
+        engine = self._engine()
+        hits = [
+            _hit(fanta_page="002", comic_page="1", content_id="1"),
+            _hit(fanta_page="002", comic_page="9", content_id="2"),
+        ]
+
+        with pytest.raises(AssertionError):
+            engine._collect_and_sort_results(cast("list[Hit]", hits), "raw")
+
+
+# ---------------------------------------------------------------------------
+# SearchEngine._get_alpha_split_terms (top-level split, index-free)
+# ---------------------------------------------------------------------------
+
+
+class TestGetAlphaSplitTerms:
+    @staticmethod
+    def _engine() -> SearchEngine:
+        return SearchEngine.__new__(SearchEngine)
+
+    def test_groups_by_first_letter_with_digits_under_zero(self) -> None:
+        """Consecutive runs group by first letter; all digit-initial terms key '0'."""
+        engine = self._engine()
+        result = engine._get_alpha_split_terms(["apple", "avocado", "banana", "3rd", "9lives"])
+        assert set(result.keys()) == {"a", "b", "0"}
+
+    def test_invalid_first_letter_raises(self) -> None:
+        """A term whose first char is not a letter/digit/apostrophe is rejected."""
+        engine = self._engine()
+        with pytest.raises(ValueError, match="Invalid first letter"):
+            engine._get_alpha_split_terms(["-bad-term"])
+
+
+# ---------------------------------------------------------------------------
+# SearchEngine.find_words / get_all_titles / iter_all_stored_fields (real index)
+# ---------------------------------------------------------------------------
+
+
+def _build_words_index(tmp_path: Path) -> Path:
+    from barks_fantagraphics.whoosh_punct_tokenizer import WordWithPunctTokenizer
+    from whoosh.analysis import LowercaseFilter, StopFilter
+    from whoosh.fields import ID, KEYWORD, TEXT, Schema
+    from whoosh.index import create_in
+
+    punct_analyzer = (
+        WordWithPunctTokenizer() | LowercaseFilter() | StopFilter(stoplist={"the", "a"})
+    )
+    schema = Schema(
+        title=ID(stored=True),
+        fanta_vol=ID(stored=True),
+        fanta_page=ID(stored=True),
+        comic_page=ID(stored=True),
+        content_id=ID(stored=True),
+        panel_num=ID(stored=True),
+        unstemmed=TEXT(stored=False, lang="en", analyzer=punct_analyzer),
+        content_raw=TEXT(stored=True, lang="en"),
+        entities_person=KEYWORD(stored=True, commas=True, scorable=True),
+        entities_location=KEYWORD(stored=True, commas=True, scorable=True),
+        entities_org=KEYWORD(stored=True, commas=True, scorable=True),
+        entities_work=KEYWORD(stored=True, commas=True, scorable=True),
+        entities_misc=KEYWORD(stored=True, commas=True, scorable=True),
+    )
+    index = create_in(str(tmp_path), schema)
+    writer = index.writer()
+    common = {
+        "comic_page": "1",
+        "panel_num": "1",
+        "content_raw": "RAW",
+        "entities_person": "",
+        "entities_location": "",
+        "entities_org": "",
+        "entities_work": "",
+        "entities_misc": "",
+    }
+    writer.add_document(
+        title="Alpha",
+        fanta_vol="10",
+        fanta_page="001",
+        content_id="5",
+        unstemmed="the magic voodoo spell",
+        **common,
+    )
+    writer.add_document(
+        title="Beta",
+        fanta_vol="20",
+        fanta_page="003",
+        content_id="8",
+        unstemmed="voodoo strikes again",
+        **common,
+    )
+    writer.commit()
+    return tmp_path
+
+
+class TestFindWords:
+    @pytest.fixture
+    def index_dir(self, tmp_path: Path) -> Path:
+        return _build_words_index(tmp_path)
+
+    def test_word_found_across_titles_sorted(self, index_dir: Path) -> None:
+        """A word present in two titles returns both, in sorted title order."""
+        engine = SearchEngine(index_dir)
+        results = engine.find_words("voodoo")
+        assert list(results.keys()) == ["Alpha", "Beta"]
+
+    def test_stop_word_only_query_matches_nothing(self, index_dir: Path) -> None:
+        """A query of only a stop word ("the") yields no results."""
+        engine = SearchEngine(index_dir)
+        assert len(engine.find_words("the")) == 0
+
+    def test_word_absent_returns_empty(self, index_dir: Path) -> None:
+        engine = SearchEngine(index_dir)
+        assert len(engine.find_words("nonexistentword")) == 0
+
+    def test_get_all_titles(self, index_dir: Path) -> None:
+        engine = SearchEngine(index_dir)
+        assert engine.get_all_titles() == {"Alpha", "Beta"}
+
+    def test_iter_all_stored_fields(self, index_dir: Path) -> None:
+        """Every document's stored fields are yielded (unstemmed is not stored)."""
+        engine = SearchEngine(index_dir)
+        docs = list(engine.iter_all_stored_fields())
+        assert len(docs) == 2
+        assert {d["title"] for d in docs} == {"Alpha", "Beta"}
+        assert all("unstemmed" not in d for d in docs)
