@@ -24,6 +24,7 @@ from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivy.metrics import dp
 from kivy.uix.actionbar import ActionButton
 from kivy.uix.anchorlayout import AnchorLayout
+from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.image import Image
@@ -130,6 +131,14 @@ SEARCH_RESULT_HEIGHT = 48  # dp — two lines: title over a dim breadcrumb
 SEARCH_RESULT_TITLE_HEX = "ffd54a"  # the concept-gold, matching the tree leaves
 SEARCH_RESULT_CRUMB_HEX = "999999"
 SEARCH_NO_MATCH_COLOR = (0.7, 0.7, 0.7, 1)
+SEARCH_CLEAR_BTN_WIDTH = 28  # dp — the "clear search" button beside the field
+SEARCH_FIELD_ROW_GAP = 4  # dp between the field and the clear button
+SEARCH_CLEAR_GLYPH_SIZE = 22  # dp — big/bold enough to read in the small button
+SEARCH_CLEAR_GLYPH_COLOR = (0.9, 0.9, 0.9, 1)  # light glyph on the dark (tinted) button
+# The open page's result row gets the tree's blue selection band: with the results
+# kept up (to open several pages in a row) it shows which one you are reading.
+SEARCH_RESULT_ACTIVE_COLOR = TREE_SELECTED_COLOR
+SEARCH_RESULT_INACTIVE_COLOR = (0, 0, 0, 0)
 
 
 def _add_text_backing(widget, alpha: float) -> Color:  # noqa: ANN001
@@ -153,6 +162,15 @@ def _add_text_backing(widget, alpha: float) -> Color:  # noqa: ANN001
 def _markup_escape(text: str) -> str:
     """Escape the characters special to Kivy markup, for text shown in a markup label."""
     return text.replace("&", "&amp;").replace("[", "&bl;").replace("]", "&br;")
+
+
+class _FlatButton(ButtonBehavior, Label):
+    """A clickable glyph with no button chrome.
+
+    A plain Kivy Button paints a fixed light-gray image that ignores
+    ``background_color`` (swallowing a light glyph); a Label draws only its text
+    over a transparent background, so the caller controls the backing entirely.
+    """
 
 
 def _bar_separator(width_dp: float = 1) -> Widget:
@@ -326,6 +344,10 @@ class OKFViewer(RelativeLayout):
         and the results list as its text changes (see `_on_search_text`). Assumes
         ``self.tree_scroll`` is already built.
         """
+        # Results stay up after a hit is opened (open several in a row); the open
+        # page's row is highlighted, cleared to the tree via the clear button / Escape.
+        self._result_rows: list[tuple[Path, Button]] = []
+        self._active_result_path: Path | None = None
         left = BoxLayout(
             orientation="vertical",
             size_hint=(TREE_PANEL_WIDTH, 1),
@@ -335,8 +357,6 @@ class OKFViewer(RelativeLayout):
             hint_text="Search pages…",
             multiline=False,
             write_tab=False,
-            size_hint_y=None,
-            height=dp(SEARCH_FIELD_HEIGHT),
             background_color=SEARCH_FIELD_BG,
             foreground_color=(1, 1, 1, 1),
             hint_text_color=SEARCH_HINT_COLOR,
@@ -348,7 +368,35 @@ class OKFViewer(RelativeLayout):
             on_text_validate=self._on_search_enter,
             focus=self._on_search_focus,
         )
-        left.add_widget(self.search_field)
+        # The field shares a fixed-height row with a "clear" button that shows
+        # only while there is text — a one-tap return to the tree when done searching.
+        search_row = BoxLayout(
+            size_hint_y=None,
+            height=dp(SEARCH_FIELD_HEIGHT),
+            spacing=dp(SEARCH_FIELD_ROW_GAP),
+        )
+        search_row.add_widget(self.search_field)
+        self.search_clear_btn = _FlatButton(
+            text="×",  # noqa: RUF001 — the multiplication sign renders in every font (unlike ✕)
+            font_size=dp(SEARCH_CLEAR_GLYPH_SIZE),
+            bold=True,
+            color=SEARCH_CLEAR_GLYPH_COLOR,
+            size_hint=(None, 1),
+            width=dp(SEARCH_CLEAR_BTN_WIDTH),
+            opacity=0,
+            disabled=True,
+        )
+        # A dark backing matching the field, under the transparent-background glyph.
+        with self.search_clear_btn.canvas.before:  # ty: ignore[unresolved-attribute]
+            Color(rgba=SEARCH_FIELD_BG)
+            clear_bg = Rectangle()
+        self.search_clear_btn.bind(
+            pos=lambda w, _v: setattr(clear_bg, "pos", w.pos),
+            size=lambda w, _v: setattr(clear_bg, "size", w.size),
+        )
+        self.search_clear_btn.bind(on_release=lambda *_: self._clear_search())
+        search_row.add_widget(self.search_clear_btn)
+        left.add_widget(search_row)
         self._left_body = BoxLayout(size_hint=(1, 1))
         self._left_body.add_widget(self.tree_scroll)
         left.add_widget(self._left_body)
@@ -577,12 +625,20 @@ class OKFViewer(RelativeLayout):
 
     def _on_search_text(self, _field, text: str) -> None:  # noqa: ANN001
         """Swap the left column between the tree, a wait note, and the results."""
+        has_text = bool(text)
+        self.search_clear_btn.opacity = 1 if has_text else 0
+        self.search_clear_btn.disabled = not has_text
         if not text.strip():
             self._show_tree_panel()
         elif self._search_ready:
             self._show_results(self._searcher.search(text))
         else:
             self._show_searching()
+
+    def _clear_search(self) -> None:
+        """Clear the search field, restoring the tree (the clear button / done searching)."""
+        self.search_field.text = ""
+        self.search_field.focus = False
 
     def _on_search_enter(self, _field) -> None:  # noqa: ANN001
         """Open the top hit when the search field is submitted (Enter), once ready."""
@@ -595,8 +651,15 @@ class OKFViewer(RelativeLayout):
     def _show_tree_panel(self) -> None:
         """Restore the tree to the left column's body slot (empty/cleared search)."""
         if self.tree_scroll.parent is not self._left_body:
+            self._result_rows = []
             self._left_body.clear_widgets()
             self._left_body.add_widget(self.tree_scroll)
+            # Reveal the current page's node, which was kept selected while the
+            # results hid the tree (its scroll offset can go stale while hidden).
+            if self.tree.selected_node is not None:
+                Clock.schedule_once(
+                    lambda _dt: self._scroll_tree_node_into_view(self.tree.selected_node), 0
+                )
 
     def _show_searching(self) -> None:
         """Show a wait note while the index warms (first query before it is ready)."""
@@ -617,6 +680,7 @@ class OKFViewer(RelativeLayout):
             orientation="vertical", size_hint_y=None, spacing=dp(2), padding=(0, dp(2))
         )
         column.bind(minimum_height=column.setter("height"))
+        self._result_rows = []
         if not hits:
             note = Label(
                 text="No matches",
@@ -626,9 +690,20 @@ class OKFViewer(RelativeLayout):
             )
             column.add_widget(note)
         for hit in hits:
-            column.add_widget(self._result_button(hit))
+            btn = self._result_button(hit)
+            self._result_rows.append((hit.path, btn))
+            column.add_widget(btn)
         scroll.add_widget(column)
+        self._highlight_active_result()  # mark the open page if it is in this list
         return scroll
+
+    def _highlight_active_result(self) -> None:
+        """Tint the open page's result row (a no-op when no results are showing)."""
+        for path, btn in self._result_rows:
+            active = path == self._active_result_path
+            btn.background_color = (
+                SEARCH_RESULT_ACTIVE_COLOR if active else SEARCH_RESULT_INACTIVE_COLOR
+            )
 
     def _result_button(self, hit: SearchHit) -> Button:
         """Build one result row: gold title over a dim breadcrumb, opening the page."""
@@ -646,7 +721,7 @@ class OKFViewer(RelativeLayout):
             valign="middle",
             size_hint_y=None,
             height=dp(SEARCH_RESULT_HEIGHT),
-            background_color=(0, 0, 0, 0),
+            background_color=SEARCH_RESULT_INACTIVE_COLOR,
             background_normal="",
         )
         btn.bind(width=lambda inst, w: inst.setter("text_size")(inst, (w - dp(12), None)))
@@ -654,13 +729,13 @@ class OKFViewer(RelativeLayout):
         return btn
 
     def _open_search_hit(self, hit: SearchHit) -> None:
-        """Open a picked result: clear search (restoring the tree), then show the page.
+        """Open a picked result, keeping the results list up to open several in a row.
 
-        Clearing the field swaps the tree back in via ``_on_search_text``; the
-        subsequent ``show_page`` then syncs and scrolls the tree to the page, so
-        the pick lands in its tree context.
+        The field only loses focus (so page keys work); the results stay so the
+        next hit is one tap away, with the opened row highlighted (via ``_show``).
+        The tree stays synced underneath, so clearing the search (the clear button
+        or Escape) returns to it on the last page viewed.
         """
-        self.search_field.text = ""
         self.search_field.focus = False
         self.show_page(hit.path)
 
@@ -911,6 +986,9 @@ class OKFViewer(RelativeLayout):
             # The labels take their texture sizes over the next frame, shifting the
             # normalized offset; re-assert it once the layout has settled.
             Clock.schedule_once(lambda _dt: setattr(self.body_scroll, "scroll_y", scroll_y), 0)
+        # Keep the results list's highlight on the page now showing, however reached.
+        self._active_result_path = path
+        self._highlight_active_result()
 
     def _new_section(self) -> BoxLayout:
         """Append and return a fresh banded section box for the next run of blocks."""
