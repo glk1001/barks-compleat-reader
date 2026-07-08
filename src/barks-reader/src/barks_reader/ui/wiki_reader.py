@@ -13,7 +13,7 @@ select the title in the main tree and set the bottom title view.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from kivy.core.window import Window
 from loguru import logger
@@ -55,7 +55,7 @@ class _GotoTitleActionProvider:
     def __init__(self, goto_title: Callable[[Titles], None]) -> None:
         self._goto_title = goto_title
 
-    def action_for(self, frontmatter: dict, page_path: Path) -> PageAction | None:
+    def action_for(self, frontmatter: dict[str, Any], page_path: Path) -> PageAction | None:
         """Return the "Goto Title" action for a navigable story page, else None."""
         title_enum = tree_navigable_title(frontmatter, page_path)
         if title_enum is None:
@@ -122,7 +122,7 @@ class WikiReaderScreen(ReaderScreen):
         self._on_close_screen()
 
     def _on_key_down(
-        self, _window: object, key: int, _scancode: int, _codepoint: str, modifiers: list
+        self, _window: object, key: int, _scancode: int, _codepoint: str, modifiers: list[str]
     ) -> bool:
         """Send Escape and Alt+Left to the viewer's Back, consuming the key.
 

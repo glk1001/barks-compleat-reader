@@ -10,7 +10,7 @@ nothing about any particular bundle's pages.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -28,6 +28,6 @@ class PageAction:
 class PageActionProvider(Protocol):
     """Decides whether the current page gets a contextual action."""
 
-    def action_for(self, frontmatter: dict, page_path: Path) -> PageAction | None:
+    def action_for(self, frontmatter: dict[str, Any], page_path: Path) -> PageAction | None:
         """Return the page's action, or None for no button."""
         ...

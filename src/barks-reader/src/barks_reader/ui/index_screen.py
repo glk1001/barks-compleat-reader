@@ -667,7 +667,7 @@ class IndexScreen(FloatLayout):
             self._index_image_change_event = None
 
     @abstractmethod
-    def _get_items_for_letter(self, first_letter: str) -> list:
+    def _get_items_for_letter(self, first_letter: str) -> list[IndexItem]:
         pass
 
     @abstractmethod

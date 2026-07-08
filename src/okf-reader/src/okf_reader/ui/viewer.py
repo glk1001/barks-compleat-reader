@@ -13,7 +13,7 @@ from __future__ import annotations
 import io
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from kivy.app import App
 from kivy.clock import Clock
@@ -554,7 +554,7 @@ class OKFViewer(RelativeLayout):
             return True
         return super().on_touch_down(touch)
 
-    def _update_background(self, frontmatter: dict, path: Path) -> None:
+    def _update_background(self, frontmatter: dict[str, Any], path: Path) -> None:
         """Set the page panel's background to an image suiting the page, if any.
 
         The provider owns selection and repeat-avoidance; this method only

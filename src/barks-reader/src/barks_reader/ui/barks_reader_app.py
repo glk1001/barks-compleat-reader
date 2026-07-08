@@ -471,7 +471,7 @@ class BarksReaderApp(App):
 
 
 def _dismiss_top_popup_on_alt_escape(
-    _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list
+    _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list[str]
 ) -> bool:
     """Dismiss the top Kivy Popup/ModalView when the user-configured alt Escape key fires.
 

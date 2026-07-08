@@ -96,7 +96,7 @@ class DocumentReaderScreen(ReaderScreen, ActionBarNavMixin):
         return super().on_touch_down(touch)
 
     def _on_key_down(
-        self, _window: object, key: int, _scancode: int, _codepoint: str, _modifier: list
+        self, _window: object, key: int, _scancode: int, _codepoint: str, _modifier: list[str]
     ) -> bool:
         return self._handle_reader_key(key)
 

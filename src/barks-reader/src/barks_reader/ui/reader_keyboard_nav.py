@@ -8,6 +8,7 @@ from loguru import logger
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from kivy.uix.button import Button
     from kivy.uix.widget import Widget
 
 # Kivy SDL2 key codes for navigation keys.
@@ -128,7 +129,7 @@ class ActionBarNavMixin:
     _on_action_bar_hidden_after_menu when the action bar can be hidden (e.g. fullscreen).
     """
 
-    def _setup_action_bar_nav(self, menu_buttons: list) -> None:
+    def _setup_action_bar_nav(self, menu_buttons: list[Button]) -> None:
         self._menu_mode: bool = False
         self._focused_btn_idx: int = 0
         self._last_used_btn_idx: int = 0
@@ -254,11 +255,11 @@ class DropdownNavMixin:
         self._dropdown_nav_mode: bool = False
         self._dropdown_focused_idx: int = 0
         self._dropdown_prev_focused_idx: int = 0
-        self._dropdown_buttons_cache: list = []
+        self._dropdown_buttons_cache: list[Button] = []
 
     # --- Abstract hooks ---
 
-    def _get_dropdown_buttons(self) -> list:
+    def _get_dropdown_buttons(self) -> list[Button]:
         """Return the dropdown buttons in visual top-to-bottom order."""
         return []
 

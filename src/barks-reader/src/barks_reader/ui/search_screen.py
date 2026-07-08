@@ -902,7 +902,7 @@ class SearchScreen(FloatLayout):
     def _get_active_result_rows(self) -> list[Button]:
         return list(reversed(self._active_widget(3).children))
 
-    def _get_focused_result_widget(self, rows: list) -> Button | None:
+    def _get_focused_result_widget(self, rows: list[Button]) -> Button | None:
         if not rows:
             return None
         idx = min(self._nav_focused_result_idx, len(rows) - 1)
@@ -913,7 +913,7 @@ class SearchScreen(FloatLayout):
             return children[min(sub_idx, len(children) - 1)]
         return row
 
-    def _get_all_focusable_widgets(self, rows: list) -> list:
+    def _get_all_focusable_widgets(self, rows: list[Button]) -> list[Button]:
         if self._active_mode != "Word":
             return rows
         widgets = []

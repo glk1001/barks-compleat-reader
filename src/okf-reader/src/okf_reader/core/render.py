@@ -23,7 +23,7 @@ from __future__ import annotations
 import re
 import urllib.parse
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 import yaml
 from markdown_it import MarkdownIt
@@ -31,6 +31,8 @@ from mdit_py_plugins.footnote import footnote_plugin
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from markdown_it.token import Token
 
 # Colors baked into the emitted Kivy markup (hex, no leading '#'). Interaction-
 # time colors (e.g. footnote highlight) belong to the UI layer, not here.
@@ -123,7 +125,7 @@ class TableRewriter(Protocol):
 class Page:
     """A rendered page: parsed frontmatter plus body and footnote blocks."""
 
-    frontmatter: dict
+    frontmatter: dict[str, Any]
     blocks: list[Block | TableBlock] = field(default_factory=list)
 
 
@@ -171,7 +173,7 @@ def _ref_quote(href: str) -> str:
     return href.replace("&", "%26").replace("[", "%5B").replace("]", "%5D")
 
 
-def _inline(tokens: list, code_color: str = CODE_COLOR) -> str:
+def _inline(tokens: list[Token], code_color: str = CODE_COLOR) -> str:
     """Render an inline token stream (a token's ``.children``) to Kivy markup.
 
     ``code_color`` recolors inline code spans only — footnote definitions pass
@@ -197,7 +199,7 @@ def _inline(tokens: list, code_color: str = CODE_COLOR) -> str:
         elif tp == "code_inline":
             out.append(f"[color={code_color}]{_esc(t.content)}[/color]")
         elif tp == "link_open":
-            href = _ref_quote(t.attrGet("href") or "")
+            href = _ref_quote(str(t.attrGet("href") or ""))
             out.append(f"[ref={href}][color={LINK_COLOR}][u]")
         elif tp == "link_close":
             out.append("[/u][/color][/ref]")
@@ -209,7 +211,7 @@ def _inline(tokens: list, code_color: str = CODE_COLOR) -> str:
                 f"[sup][size={FOOTNOTE_REF_SIZE}]{marker}[/size][/sup][/color][/ref]"
             )
         elif tp == "image":
-            alt = t.content or t.attrGet("src") or "image"
+            alt = str(t.content or t.attrGet("src") or "image")
             out.append(f"[i]▨ image: {_esc(alt)}[/i]")
     return "".join(out)
 
@@ -324,7 +326,7 @@ def _visible_len(markup: str) -> int:
 
 
 def _table_block(
-    tokens: list, start: int, rewriter: TableRewriter | None
+    tokens: list[Token], start: int, rewriter: TableRewriter | None
 ) -> tuple[TableBlock, int]:
     """Render the table starting at ``tokens[start]`` (its ``table_open``) into a TableBlock.
 

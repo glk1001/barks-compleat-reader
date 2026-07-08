@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 import textwrap
 from collections import defaultdict
-from typing import TYPE_CHECKING, cast, override
+from typing import TYPE_CHECKING, Any, cast, override
 
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_search import ComicSearch
@@ -415,7 +415,7 @@ class SpeechIndexScreen(IndexScreen):
         clear_focus_in_list(self._get_visible_prefix_buttons(), INDEX_NAV_FOCUS_GROUP)
 
     @override
-    def _get_items_for_letter(self, first_letter: str) -> list:
+    def _get_items_for_letter(self, first_letter: str) -> list[IndexItem]:
         return self._item_index.get(first_letter, [])
 
     @override
@@ -588,7 +588,7 @@ class SpeechIndexScreen(IndexScreen):
 
         return sub_items_layout
 
-    def _get_sub_items_data(self, item: IndexItem) -> list:
+    def _get_sub_items_data(self, item: IndexItem) -> list[tuple[Any, ...]]:
         """Retrieve and prepare the list of items to display in the sub-layout."""
         if item in self._found_words_cache:
             found_words = self._found_words_cache[item]

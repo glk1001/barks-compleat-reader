@@ -156,7 +156,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         else:
             super()._activate_focused_button()
 
-    def _get_dropdown_buttons(self) -> list:
+    def _get_dropdown_buttons(self) -> list[Button]:
         return list(reversed(self.menu_dots_dropdown.container.children))
 
     def _dismiss_dropdown(self) -> None:
@@ -259,7 +259,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         return bool(super().on_touch_down(touch))
 
     def _on_key_down(
-        self, _window: object, key: int, _scancode: int, _codepoint: str, _modifier: list
+        self, _window: object, key: int, _scancode: int, _codepoint: str, _modifier: list[str]
     ) -> bool:
         if self._settings_nav is not None:
             if self._settings_nav.handle_key(key):

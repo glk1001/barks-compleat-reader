@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -38,7 +38,7 @@ class PageBackground:
 class ImageProvider(Protocol):
     """Source of the background image for a page."""
 
-    def background_for(self, frontmatter: dict, page_path: Path) -> PageBackground | None:
+    def background_for(self, frontmatter: dict[str, Any], page_path: Path) -> PageBackground | None:
         """Return the background to show for a page, or None for no background."""
         ...
 
@@ -57,7 +57,7 @@ class DirPerTitleImageProvider:
         self._all_images: list[Path] | None = None  # lazy fallback pool
         self._last: Path | None = None
 
-    def background_for(self, frontmatter: dict, page_path: Path) -> PageBackground | None:
+    def background_for(self, frontmatter: dict[str, Any], page_path: Path) -> PageBackground | None:
         """Return a random title-matched (else pool) image, avoiding an immediate repeat."""
         image = choose_image(self._candidate_images(frontmatter, page_path), self._last)
         self._last = image

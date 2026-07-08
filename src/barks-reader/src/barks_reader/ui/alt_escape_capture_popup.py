@@ -78,7 +78,7 @@ class AltEscapeCapturePopup(Popup):
         self.dismiss()
 
     def _on_key_down(
-        self, _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list
+        self, _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list[str]
     ) -> bool:
         if self._captured:
             return False

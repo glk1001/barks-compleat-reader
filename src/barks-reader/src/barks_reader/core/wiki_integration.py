@@ -16,7 +16,7 @@ import hashlib
 import re
 import zipfile
 from itertools import pairwise
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
@@ -123,7 +123,7 @@ def canonical_title(text: str) -> Titles | None:
     return title_enum
 
 
-def story_page_title(frontmatter: dict, page_path: Path) -> Titles | None:
+def story_page_title(frontmatter: dict[str, Any], page_path: Path) -> Titles | None:
     """Return the canonical title of a wiki story page, or None for any other page.
 
     A story page lives under ``concept/stories/`` and its frontmatter title maps
@@ -142,7 +142,7 @@ def story_page_title(frontmatter: dict, page_path: Path) -> Titles | None:
     return title_enum
 
 
-def tree_navigable_title(frontmatter: dict, page_path: Path) -> Titles | None:
+def tree_navigable_title(frontmatter: dict[str, Any], page_path: Path) -> Titles | None:
     """Like `story_page_title`, but only titles with a place in the main tree.
 
     Extras (the non-comic articles) are in ``ALL_FANTA_COMIC_BOOK_INFO`` but
@@ -214,7 +214,7 @@ class BarksPanelsImageProvider:
         )
         self._all_titles = list(ALL_FANTA_COMIC_BOOK_INFO.values())
 
-    def background_for(self, frontmatter: dict, page_path: Path) -> PageBackground | None:
+    def background_for(self, frontmatter: dict[str, Any], page_path: Path) -> PageBackground | None:
         """Return a title-specific image for a story page, else a random one."""
         title_enum = story_page_title(frontmatter, page_path)
         if title_enum is not None:

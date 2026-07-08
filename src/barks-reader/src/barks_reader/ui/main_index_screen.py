@@ -138,7 +138,7 @@ class MainIndexScreen(IndexScreen):
         self._populate_alphabet_menu()
 
     @override
-    def _get_items_for_letter(self, first_letter: str) -> list:
+    def _get_items_for_letter(self, first_letter: str) -> list[IndexItem]:
         return self._item_index.get(first_letter, [])
 
     def _populate_index_for_letter(self, first_letter: str) -> None:

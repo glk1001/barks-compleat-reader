@@ -58,7 +58,7 @@ class SpeechPageGroup:
     fanta_page: str
     comic_page: str
     speech_groups: dict[str, SpeechText]
-    speech_page_json: dict
+    speech_page_json: dict[str, Any]
     ocr_prelim_groups_json_file: Path
 
     def get_panel_groups(self) -> dict[int, list[SpeechText]]:

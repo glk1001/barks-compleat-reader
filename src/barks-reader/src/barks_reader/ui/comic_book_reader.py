@@ -790,7 +790,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         else:
             super()._activate_focused_button()
 
-    def _get_dropdown_buttons(self) -> list:
+    def _get_dropdown_buttons(self) -> list[Button]:
         return self.comic_book_reader.get_goto_page_buttons()
 
     def _dismiss_dropdown(self) -> None:
@@ -863,7 +863,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._sync_double_page_button()
 
     def _on_key_down(
-        self, _window: WindowBase, key: int, _scancode: int, _codepoint: str, _modifier: list
+        self, _window: WindowBase, key: int, _scancode: int, _codepoint: str, _modifier: list[str]
     ) -> bool:
         return self._handle_reader_key(key)
 

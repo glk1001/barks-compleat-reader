@@ -7,7 +7,7 @@ import threading
 import traceback
 import zipfile
 from collections import OrderedDict
-from concurrent.futures import FIRST_COMPLETED, CancelledError, ThreadPoolExecutor, wait
+from concurrent.futures import FIRST_COMPLETED, CancelledError, Future, ThreadPoolExecutor, wait
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -446,7 +446,7 @@ class ComicBookLoader:
 
         num_loaded = 0
         load_iter = iter(self._image_load_order)
-        futures: dict = {}
+        futures: dict[Future, int] = {}
 
         # We'll keep a sliding window of futures up to prefetch_window in size.
         with ThreadPoolExecutor(max_workers=worker_count) as executor:

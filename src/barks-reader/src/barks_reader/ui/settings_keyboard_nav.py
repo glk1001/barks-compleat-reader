@@ -139,7 +139,7 @@ class _PopupKeyboardNav:
         self._popup = popup
         self._on_dismissed = on_dismissed
         content = getattr(popup, "content", None)
-        self._buttons: list = _collect_buttons(content) if content is not None else []
+        self._buttons: list[Button] = _collect_buttons(content) if content is not None else []
         self._textinput: Widget | None = (
             _find_first(content, TextInput) if content is not None else None
         )
@@ -195,13 +195,13 @@ class _PopupKeyboardNav:
         self._last_focused = btn
 
 
-def _collect_buttons(root: Widget) -> list:
-    result: list = []
+def _collect_buttons(root: Widget) -> list[Button]:
+    result: list[Button] = []
     _walk_buttons(root, result)
     return result
 
 
-def _walk_buttons(widget: Widget, out: list) -> None:
+def _walk_buttons(widget: Widget, out: list[Button]) -> None:
     for child in reversed(getattr(widget, "children", [])):
         if isinstance(child, Button):
             out.append(child)

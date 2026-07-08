@@ -10,6 +10,7 @@ import pytest
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.ui.index_screen import (
     SAVED_NODE_STATE_FIRST_LETTER_KEY,
+    IndexItem,
     IndexItemButton,
     IndexMenuButton,
     IndexScreen,
@@ -46,9 +47,12 @@ class ConcreteIndexScreen(IndexScreen):
     def _cancel_index_image_change_events(self) -> None:
         pass
 
-    def _get_items_for_letter(self, first_letter: str) -> list[str]:
+    def _get_items_for_letter(self, first_letter: str) -> list[IndexItem]:
         if first_letter == "A":
-            return ["Apple", "Ant"]
+            return [
+                IndexItem(id="Apple", display_text="Apple"),
+                IndexItem(id="Ant", display_text="Ant"),
+            ]
         return []
 
     def _populate_index_for_letter(self, first_letter: str) -> None:

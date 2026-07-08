@@ -107,7 +107,7 @@ class KivyPageViewer(App):
         key: int,
         _scancode: int,
         _codepoint: str | None,
-        _modifiers: list,
+        _modifiers: list[str],
     ) -> bool:
         if key == KEY_LEFT:
             self._go(-1)
