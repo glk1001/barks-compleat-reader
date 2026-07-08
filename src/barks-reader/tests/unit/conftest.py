@@ -47,7 +47,7 @@ def _test_imports_ui(item: pytest.Item) -> bool:
     # More precise: check the test file's own imports.
     mod_file = getattr(module, "__file__", "") or ""
     try:
-        with Path(mod_file).open() as f:
+        with Path(mod_file).open(encoding="utf-8") as f:
             source = f.read()
     except OSError:
         return False
