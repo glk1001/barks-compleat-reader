@@ -261,6 +261,12 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def _on_key_down(
         self, _window: object, key: int, _scancode: int, _codepoint: str, _modifier: list[str]
     ) -> bool:
+        # Ignore keys while another screen is on top (comic/document/wiki reader).
+        # Its own handler owns the keyboard; in particular the wiki reader's search
+        # field must receive keystrokes rather than have them drive this tree. The
+        # main-screen handler stays bound throughout, so this guard is what yields.
+        if self.manager is not None and self.manager.current != self.name:
+            return False
         if self._settings_nav is not None:
             if self._settings_nav.handle_key(key):
                 return True

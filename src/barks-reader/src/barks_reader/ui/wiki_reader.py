@@ -28,7 +28,7 @@ from barks_reader.core.wiki_integration import (
     wiki_top_bar_spec,
 )
 
-from .reader_keyboard_nav import KEY_LEFT, is_escape_key
+from .reader_keyboard_nav import KEY_ESCAPE, KEY_F, KEY_LEFT, is_escape_key
 from .reader_screens import ReaderScreen
 
 if TYPE_CHECKING:
@@ -124,15 +124,38 @@ class WikiReaderScreen(ReaderScreen):
     def _on_key_down(
         self, _window: object, key: int, _scancode: int, _codepoint: str, modifiers: list[str]
     ) -> bool:
-        """Send Escape and Alt+Left to the viewer's Back, consuming the key.
+        """Route Ctrl+F to search and Escape/Alt+Left to the viewer's Back, consuming the key.
 
-        Escape honors the user-configured alternate Escape via ``is_escape_key``.
-        Consuming (returning True) keeps the key from leaking to the main screen's
-        handler. At the history root Back exits the reader (the viewer's on_exit).
+        Escape honors the user-configured alternate Escape via ``is_escape_key``,
+        and backs out of an active search before navigating. Consuming (returning
+        True) keeps the key from leaking to the main screen's handler. At the
+        history root Back exits the reader (the viewer's on_exit).
         """
         if self._viewer is None:
             return False
-        if is_escape_key(key) or (key == KEY_LEFT and "alt" in modifiers):
+        if key == KEY_F and "ctrl" in modifiers:
+            self._viewer.focus_search()
+            return True
+        # While the search field owns the keyboard, keystrokes must reach it: only
+        # a real Escape acts (backing out of the search). The user-configurable
+        # alternate Escape is often an ordinary letter (e.g. "r") and must still
+        # type into the field, and Alt+Left must not be stolen mid-typing.
+        if self._viewer.search_focused:
+            if key == KEY_ESCAPE:
+                self._viewer.escape_search()
+                return True
+            return False
+        return self._handle_nav_key(key, modifiers)
+
+    def _handle_nav_key(self, key: int, modifiers: list[str]) -> bool:
+        """Handle a back-navigation key when the search field is not focused."""
+        assert self._viewer is not None
+        if is_escape_key(key):
+            if self._viewer.escape_search():
+                return True
+            self._viewer.go_back()
+            return True
+        if key == KEY_LEFT and "alt" in modifiers:
             self._viewer.go_back()
             return True
         return False

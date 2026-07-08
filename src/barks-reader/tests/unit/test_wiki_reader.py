@@ -8,7 +8,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_reader.ui import wiki_reader
-from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE, KEY_LEFT
+from barks_reader.ui.reader_keyboard_nav import (
+    KEY_ESCAPE,
+    KEY_F,
+    KEY_LEFT,
+    set_alt_escape_key,
+)
 from barks_reader.ui.wiki_reader import WikiReaderScreen
 from kivy.uix.screenmanager import Screen
 
@@ -83,17 +88,60 @@ class TestWikiReaderScreenOpenWiki:
         build_mock.assert_called_once_with(wiki_screen, self.BUNDLE, start_page=self.PAGE)
 
 
+@pytest.fixture(autouse=True)
+def _reset_alt_escape() -> Iterator[None]:
+    # is_escape_key reads a module-global alt-Escape key; keep tests isolated.
+    yield
+    set_alt_escape_key(0)
+
+
+def _idle_viewer() -> MagicMock:
+    """Build a mock viewer with the search field unfocused (normal navigation)."""
+    viewer = MagicMock()
+    viewer.search_focused = False
+    return viewer
+
+
 class TestWikiReaderScreenKeyboard:
     def test_escape_routes_to_go_back_and_consumes(self, wiki_screen: WikiReaderScreen) -> None:
-        wiki_screen._viewer = MagicMock()
+        wiki_screen._viewer = _idle_viewer()
+        wiki_screen._viewer.escape_search.return_value = False  # search idle
 
         consumed = wiki_screen._on_key_down(None, KEY_ESCAPE, 0, "", [])
 
         assert consumed is True
         wiki_screen._viewer.go_back.assert_called_once_with()
 
+    def test_escape_backs_out_of_active_search_before_go_back(
+        self, wiki_screen: WikiReaderScreen
+    ) -> None:
+        wiki_screen._viewer = _idle_viewer()
+        wiki_screen._viewer.escape_search.return_value = True  # an active search consumes Escape
+
+        consumed = wiki_screen._on_key_down(None, KEY_ESCAPE, 0, "", [])
+
+        assert consumed is True
+        wiki_screen._viewer.go_back.assert_not_called()
+
+    def test_ctrl_f_focuses_search_and_consumes(self, wiki_screen: WikiReaderScreen) -> None:
+        wiki_screen._viewer = _idle_viewer()
+
+        consumed = wiki_screen._on_key_down(None, KEY_F, 0, "", ["ctrl"])
+
+        assert consumed is True
+        wiki_screen._viewer.focus_search.assert_called_once_with()
+        wiki_screen._viewer.go_back.assert_not_called()
+
+    def test_f_without_ctrl_is_ignored(self, wiki_screen: WikiReaderScreen) -> None:
+        wiki_screen._viewer = _idle_viewer()
+
+        consumed = wiki_screen._on_key_down(None, KEY_F, 0, "f", [])
+
+        assert consumed is False
+        wiki_screen._viewer.focus_search.assert_not_called()
+
     def test_alt_left_routes_to_go_back_and_consumes(self, wiki_screen: WikiReaderScreen) -> None:
-        wiki_screen._viewer = MagicMock()
+        wiki_screen._viewer = _idle_viewer()
 
         consumed = wiki_screen._on_key_down(None, KEY_LEFT, 0, "", ["alt"])
 
@@ -101,7 +149,7 @@ class TestWikiReaderScreenKeyboard:
         wiki_screen._viewer.go_back.assert_called_once_with()
 
     def test_left_without_alt_is_ignored(self, wiki_screen: WikiReaderScreen) -> None:
-        wiki_screen._viewer = MagicMock()
+        wiki_screen._viewer = _idle_viewer()
 
         consumed = wiki_screen._on_key_down(None, KEY_LEFT, 0, "", [])
 
@@ -109,17 +157,81 @@ class TestWikiReaderScreenKeyboard:
         wiki_screen._viewer.go_back.assert_not_called()
 
     def test_other_key_is_ignored(self, wiki_screen: WikiReaderScreen) -> None:
-        wiki_screen._viewer = MagicMock()
+        wiki_screen._viewer = _idle_viewer()
 
         consumed = wiki_screen._on_key_down(None, ord("a"), 0, "a", [])
 
         assert consumed is False
         wiki_screen._viewer.go_back.assert_not_called()
 
+    def test_alt_escape_navigates_when_search_idle(self, wiki_screen: WikiReaderScreen) -> None:
+        """With the field unfocused, a configured alt-Escape letter backs out."""
+        set_alt_escape_key(ord("r"))
+        wiki_screen._viewer = _idle_viewer()
+        wiki_screen._viewer.escape_search.return_value = False
+
+        consumed = wiki_screen._on_key_down(None, ord("r"), 0, "r", [])
+
+        assert consumed is True
+        wiki_screen._viewer.go_back.assert_called_once_with()
+
     def test_no_viewer_is_ignored(self, wiki_screen: WikiReaderScreen) -> None:
         wiki_screen._viewer = None
 
         assert wiki_screen._on_key_down(None, KEY_ESCAPE, 0, "", []) is False
+
+
+class TestWikiReaderScreenKeyboardWhileTyping:
+    """While the search field owns the keyboard, keystrokes must reach it."""
+
+    def test_alt_escape_letter_passes_through(self, wiki_screen: WikiReaderScreen) -> None:
+        """The configured alt-Escape letter (e.g. 'r') types instead of navigating."""
+        set_alt_escape_key(ord("r"))
+        wiki_screen._viewer = MagicMock()
+        wiki_screen._viewer.search_focused = True
+
+        consumed = wiki_screen._on_key_down(None, ord("r"), 0, "r", [])
+
+        assert consumed is False
+        wiki_screen._viewer.escape_search.assert_not_called()
+        wiki_screen._viewer.go_back.assert_not_called()
+
+    def test_plain_letter_passes_through(self, wiki_screen: WikiReaderScreen) -> None:
+        wiki_screen._viewer = MagicMock()
+        wiki_screen._viewer.search_focused = True
+
+        consumed = wiki_screen._on_key_down(None, ord("a"), 0, "a", [])
+
+        assert consumed is False
+        wiki_screen._viewer.go_back.assert_not_called()
+
+    def test_alt_left_passes_through_while_typing(self, wiki_screen: WikiReaderScreen) -> None:
+        wiki_screen._viewer = MagicMock()
+        wiki_screen._viewer.search_focused = True
+
+        consumed = wiki_screen._on_key_down(None, KEY_LEFT, 0, "", ["alt"])
+
+        assert consumed is False
+        wiki_screen._viewer.go_back.assert_not_called()
+
+    def test_real_escape_backs_out_of_search(self, wiki_screen: WikiReaderScreen) -> None:
+        wiki_screen._viewer = MagicMock()
+        wiki_screen._viewer.search_focused = True
+
+        consumed = wiki_screen._on_key_down(None, KEY_ESCAPE, 0, "", [])
+
+        assert consumed is True
+        wiki_screen._viewer.escape_search.assert_called_once_with()
+        wiki_screen._viewer.go_back.assert_not_called()
+
+    def test_ctrl_f_still_focuses_while_typing(self, wiki_screen: WikiReaderScreen) -> None:
+        wiki_screen._viewer = MagicMock()
+        wiki_screen._viewer.search_focused = True
+
+        consumed = wiki_screen._on_key_down(None, KEY_F, 0, "", ["ctrl"])
+
+        assert consumed is True
+        wiki_screen._viewer.focus_search.assert_called_once_with()
 
 
 class TestWikiReaderScreenKeyBinding:

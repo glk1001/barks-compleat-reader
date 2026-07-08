@@ -108,6 +108,25 @@ class TestMainScreen:
         assert main_screen._active is True
         assert main_screen._renderer is not None
 
+    def test_on_key_down_ignored_when_not_current_screen(self, main_screen: MainScreen) -> None:
+        # While another screen (e.g. the wiki reader with its search field) is on
+        # top, the still-bound main-screen handler must yield the keyboard.
+        main_screen.name = "main"
+        main_screen.manager = MagicMock(current="wiki_reader")
+        main_screen._settings_nav = None
+
+        assert main_screen._on_key_down(None, ord("r"), 0, "r", []) is False
+        main_screen._nav.handle_key.assert_not_called()
+
+    def test_on_key_down_handled_when_current_screen(self, main_screen: MainScreen) -> None:
+        main_screen.name = "main"
+        main_screen.manager = MagicMock(current="main")
+        main_screen._settings_nav = None
+        main_screen._nav.handle_key.return_value = True
+
+        assert main_screen._on_key_down(None, ord("r"), 0, "r", []) is True
+        main_screen._nav.handle_key.assert_called_once_with(ord("r"))
+
     def test_on_action_bar_go_back(self, main_screen: MainScreen) -> None:
         with patch.object(barks_reader.ui.main_screen.Clock, "schedule_once") as mock_schedule:
             main_screen.on_action_bar_go_back()

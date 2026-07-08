@@ -11,6 +11,7 @@ scripts/read_okf.py.
 from __future__ import annotations
 
 import io
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -30,6 +31,7 @@ from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
 from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.textinput import TextInput
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.treeview import TreeView, TreeViewLabel
 from kivy.uix.widget import Widget
@@ -44,6 +46,7 @@ from okf_reader.core.render import (
     render_page,
     resolve_link,
 )
+from okf_reader.core.search import BundleSearcher
 from okf_reader.core.session import load_session_state, save_session_state
 from okf_reader.core.top_bar import TopBarSpec
 
@@ -52,6 +55,7 @@ if TYPE_CHECKING:
 
     from okf_reader.core.actions import PageAction, PageActionProvider
     from okf_reader.core.backgrounds import ImageProvider
+    from okf_reader.core.search import SearchHit, SearchProvider
 
 BODY_LINE_HEIGHT = 1.25
 # Tables come from the core space-padded to aligned columns (see TableBlock), which
@@ -115,6 +119,17 @@ BODY_MAX_WIDTH = 760  # dp
 LIST_MARKER_WIDTH = 24  # dp — fits "99." at body size
 LIST_MARKER_GAP = 6  # dp, between the marker column and the text
 LIST_INDENT_STEP = 20  # dp per nesting level past the first
+# Search field pinned atop the tree column: typing swaps the tree out for a
+# results list, clearing swaps it back (see _on_search_text). Results reuse the
+# navigation column so a pick lands in the tree via the existing show_page sync.
+SEARCH_FIELD_HEIGHT = 32  # dp
+SEARCH_FIELD_GAP = 6  # dp between the field and the tree/results below it
+SEARCH_FIELD_BG = (0.16, 0.16, 0.16, 1)
+SEARCH_HINT_COLOR = (0.7, 0.7, 0.7, 1)
+SEARCH_RESULT_HEIGHT = 48  # dp — two lines: title over a dim breadcrumb
+SEARCH_RESULT_TITLE_HEX = "ffd54a"  # the concept-gold, matching the tree leaves
+SEARCH_RESULT_CRUMB_HEX = "999999"
+SEARCH_NO_MATCH_COLOR = (0.7, 0.7, 0.7, 1)
 
 
 def _add_text_backing(widget, alpha: float) -> Color:  # noqa: ANN001
@@ -133,6 +148,11 @@ def _add_text_backing(widget, alpha: float) -> Color:  # noqa: ANN001
     widget.bind(pos=sync, size=sync)
     sync(widget, None)
     return color
+
+
+def _markup_escape(text: str) -> str:
+    """Escape the characters special to Kivy markup, for text shown in a markup label."""
+    return text.replace("&", "&amp;").replace("[", "&bl;").replace("]", "&br;")
 
 
 def _bar_separator(width_dp: float = 1) -> Widget:
@@ -195,6 +215,7 @@ class OKFViewer(RelativeLayout):
         top_bar: TopBarSpec | None = None,
         state_path: Path | None = None,
         on_exit: Callable[[], None] | None = None,
+        search_provider: SearchProvider | None = None,
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
@@ -206,6 +227,16 @@ class OKFViewer(RelativeLayout):
         self._table_rewriter = table_rewriter
         self._action_provider = action_provider
         self._state_path = state_path
+        # Title/heading search over the bundle. The built-in searcher needs no app
+        # knowledge (unlike the image/table/action providers) and builds its index
+        # lazily on the first query, so defaulting it here costs nothing up front;
+        # an embedding app may inject a different backend (e.g. full-text).
+        self._searcher: SearchProvider = search_provider or BundleSearcher(bundle)
+        # Building the index walks the whole bundle, so it is warmed off the UI
+        # thread on the field's first focus (see _on_search_focus); until it is
+        # ready a query shows a "Searching…" note rather than freezing the field.
+        self._search_ready = False
+        self._search_warming = False
         # Where Back falls through to at the root of the history: the hosting app's
         # "leave the reader" action. None (the standalone case) leaves Back a no-op
         # at the root, since the reader is the whole app.
@@ -224,7 +255,7 @@ class OKFViewer(RelativeLayout):
         content = BoxLayout(orientation="horizontal", spacing=8, padding=8, size_hint=(1, 1))
         root.add_widget(content)
 
-        self.tree_scroll = _scroll_view(size_hint=(TREE_PANEL_WIDTH, 1), do_scroll_x=False)
+        self.tree_scroll = _scroll_view(size_hint=(1, 1), do_scroll_x=False)
         self.tree = TreeView(
             # No visible root: the bundle-root node spent an indent level (and a
             # row) on no information; the tiers are the effective top level.
@@ -246,7 +277,8 @@ class OKFViewer(RelativeLayout):
             pos=lambda _inst, pos: setattr(self._tree_scrim, "pos", pos),
             size=lambda _inst, size: setattr(self._tree_scrim, "size", size),
         )
-        content.add_widget(self.tree_scroll)
+
+        content.add_widget(self._build_left_column())
 
         self.body_scroll = _scroll_view(size_hint=(1 - TREE_PANEL_WIDTH, 1), do_scroll_x=False)
         self.body = BoxLayout(
@@ -286,6 +318,41 @@ class OKFViewer(RelativeLayout):
                 start_page, start_scroll = saved.page, saved.scroll_y
         if start_page is not None:  # the tree syncs itself
             self._show(start_page, push=True, scroll_y=start_scroll)
+
+    def _build_left_column(self) -> BoxLayout:
+        """Build the left column: a search field over the tree/results body slot.
+
+        The search field swaps the body slot between ``tree_scroll`` (default)
+        and the results list as its text changes (see `_on_search_text`). Assumes
+        ``self.tree_scroll`` is already built.
+        """
+        left = BoxLayout(
+            orientation="vertical",
+            size_hint=(TREE_PANEL_WIDTH, 1),
+            spacing=dp(SEARCH_FIELD_GAP),
+        )
+        self.search_field = TextInput(
+            hint_text="Search pages…",
+            multiline=False,
+            write_tab=False,
+            size_hint_y=None,
+            height=dp(SEARCH_FIELD_HEIGHT),
+            background_color=SEARCH_FIELD_BG,
+            foreground_color=(1, 1, 1, 1),
+            hint_text_color=SEARCH_HINT_COLOR,
+            cursor_color=(1, 1, 1, 1),
+            padding=(dp(8), dp(6)),
+        )
+        self.search_field.bind(
+            text=self._on_search_text,
+            on_text_validate=self._on_search_enter,
+            focus=self._on_search_focus,
+        )
+        left.add_widget(self.search_field)
+        self._left_body = BoxLayout(size_hint=(1, 1))
+        self._left_body.add_widget(self.tree_scroll)
+        left.add_widget(self._left_body)
+        return left
 
     def _build_top_bar(self, spec: TopBarSpec) -> BoxLayout:
         """Build the action-bar strip: app icon, markup heading, right-edge buttons.
@@ -479,6 +546,149 @@ class OKFViewer(RelativeLayout):
             index = Path(bundle_path) / "index.md"
             if index.is_file():
                 self._show(index, push=True)
+
+    def _on_search_focus(self, _field, focused: bool) -> None:  # noqa: ANN001
+        """On the field's first focus, warm the search index off the UI thread.
+
+        Building the index walks the whole bundle; starting it on focus (before
+        the user has typed) keeps the field responsive and usually has results
+        ready by the first keystroke. A provider without a ``warm`` method is
+        assumed to manage its own readiness, so it is marked ready at once.
+        """
+        if not focused or self._search_warming:
+            return
+        self._search_warming = True
+        warm = getattr(self._searcher, "warm", None)
+        if warm is None:
+            self._search_ready = True
+            return
+        threading.Thread(target=self._warm_search_index, args=(warm,), daemon=True).start()
+
+    def _warm_search_index(self, warm: Callable[[], None]) -> None:
+        """Worker thread: build the index, then flip readiness on the UI thread."""
+        warm()
+        Clock.schedule_once(lambda _dt: self._mark_search_ready(), 0)
+
+    def _mark_search_ready(self) -> None:
+        """Mark the index ready and run any query typed while it was warming."""
+        self._search_ready = True
+        if self.search_field.text.strip():
+            self._show_results(self._searcher.search(self.search_field.text))
+
+    def _on_search_text(self, _field, text: str) -> None:  # noqa: ANN001
+        """Swap the left column between the tree, a wait note, and the results."""
+        if not text.strip():
+            self._show_tree_panel()
+        elif self._search_ready:
+            self._show_results(self._searcher.search(text))
+        else:
+            self._show_searching()
+
+    def _on_search_enter(self, _field) -> None:  # noqa: ANN001
+        """Open the top hit when the search field is submitted (Enter), once ready."""
+        if not self._search_ready:
+            return
+        hits = self._searcher.search(self.search_field.text)
+        if hits:
+            self._open_search_hit(hits[0])
+
+    def _show_tree_panel(self) -> None:
+        """Restore the tree to the left column's body slot (empty/cleared search)."""
+        if self.tree_scroll.parent is not self._left_body:
+            self._left_body.clear_widgets()
+            self._left_body.add_widget(self.tree_scroll)
+
+    def _show_searching(self) -> None:
+        """Show a wait note while the index warms (first query before it is ready)."""
+        self._left_body.clear_widgets()
+        self._left_body.add_widget(
+            Label(text="Searching…", color=SEARCH_NO_MATCH_COLOR, valign="top", halign="center")
+        )
+
+    def _show_results(self, hits: list[SearchHit]) -> None:
+        """Put the results list in the left column's body slot, replacing the tree."""
+        self._left_body.clear_widgets()
+        self._left_body.add_widget(self._results_widget(hits))
+
+    def _results_widget(self, hits: list[SearchHit]) -> ScrollView:
+        """Build the scrollable results list — one row per hit, or a no-match note."""
+        scroll = _scroll_view(size_hint=(1, 1), do_scroll_x=False)
+        column = BoxLayout(
+            orientation="vertical", size_hint_y=None, spacing=dp(2), padding=(0, dp(2))
+        )
+        column.bind(minimum_height=column.setter("height"))
+        if not hits:
+            note = Label(
+                text="No matches",
+                color=SEARCH_NO_MATCH_COLOR,
+                size_hint_y=None,
+                height=dp(SEARCH_RESULT_HEIGHT),
+            )
+            column.add_widget(note)
+        for hit in hits:
+            column.add_widget(self._result_button(hit))
+        scroll.add_widget(column)
+        return scroll
+
+    def _result_button(self, hit: SearchHit) -> Button:
+        """Build one result row: gold title over a dim breadcrumb, opening the page."""
+        title = _markup_escape(hit.title)
+        crumb = (
+            f"\n[size=11][color={SEARCH_RESULT_CRUMB_HEX}]"
+            f"{_markup_escape(hit.breadcrumb)}[/color][/size]"
+            if hit.breadcrumb
+            else ""
+        )
+        btn = Button(
+            text=f"[color={SEARCH_RESULT_TITLE_HEX}]{title}[/color]{crumb}",
+            markup=True,
+            halign="left",
+            valign="middle",
+            size_hint_y=None,
+            height=dp(SEARCH_RESULT_HEIGHT),
+            background_color=(0, 0, 0, 0),
+            background_normal="",
+        )
+        btn.bind(width=lambda inst, w: inst.setter("text_size")(inst, (w - dp(12), None)))
+        btn.bind(on_release=lambda *_: self._open_search_hit(hit))
+        return btn
+
+    def _open_search_hit(self, hit: SearchHit) -> None:
+        """Open a picked result: clear search (restoring the tree), then show the page.
+
+        Clearing the field swaps the tree back in via ``_on_search_text``; the
+        subsequent ``show_page`` then syncs and scrolls the tree to the page, so
+        the pick lands in its tree context.
+        """
+        self.search_field.text = ""
+        self.search_field.focus = False
+        self.show_page(hit.path)
+
+    @property
+    def search_focused(self) -> bool:
+        """Whether the search field currently owns the keyboard.
+
+        The hosting app checks this so that while the user is typing a search,
+        keystrokes reach the field instead of driving navigation (e.g. a
+        configurable alternate-Escape key that is an ordinary letter).
+        """
+        return bool(self.search_field.focus)
+
+    def focus_search(self) -> None:
+        """Focus the search field. The hosting app routes Ctrl+F here."""
+        self.search_field.focus = True
+
+    def escape_search(self) -> bool:
+        """Clear and unfocus the search field if active; report whether it consumed Escape.
+
+        The hosting app calls this before its Back handling, so Escape backs out
+        of an active search first and only navigates back once search is idle.
+        """
+        if self.search_field.text or self.search_field.focus:
+            self.search_field.text = ""
+            self.search_field.focus = False
+            return True
+        return False
 
     def _set_page_action(self, action: PageAction | None) -> None:
         """Show the contextual bar button for ``action``, or hide it for None."""
@@ -849,6 +1059,7 @@ class OKFApp(App):
     # kivy Window.on_keyboard key codes
     _KEY_ESCAPE = 27
     _KEY_LEFT_ARROW = 276
+    _KEY_F = ord("f")
 
     def __init__(
         self,
@@ -859,6 +1070,7 @@ class OKFApp(App):
         action_provider: PageActionProvider | None = None,
         top_bar: TopBarSpec | None = None,
         state_path: Path | None = None,
+        search_provider: SearchProvider | None = None,
         **kwargs,  # noqa: ANN003
     ) -> None:
         super().__init__(**kwargs)
@@ -869,6 +1081,7 @@ class OKFApp(App):
         self._action_provider = action_provider
         self._top_bar = top_bar
         self._state_path = state_path
+        self._search_provider = search_provider
         self._viewer: OKFViewer | None = None
 
     def build(self) -> OKFViewer:
@@ -881,6 +1094,7 @@ class OKFApp(App):
             action_provider=self._action_provider,
             top_bar=self._top_bar,
             state_path=self._state_path,
+            search_provider=self._search_provider,
         )
         return self._viewer
 
@@ -909,15 +1123,24 @@ class OKFApp(App):
             self._viewer.save_session()
 
     def _on_keyboard(self, _window, key, _scancode, _codepoint, modifiers) -> bool:  # noqa: ANN001
-        """Escape and Alt+Left navigate back, like a browser.
+        """Ctrl+F focuses search; Escape and Alt+Left navigate back, like a browser.
 
         Escape is always consumed: kivy's default would close the window, and
         an accidental Escape must not kill the reader (the same overshoot
-        hazard the Quit button was moved to the corner for). At the start of
-        the history both keys are a harmless no-op.
+        hazard the Quit button was moved to the corner for). While a search is
+        active Escape backs out of it first; at the start of the history both
+        back keys are a harmless no-op.
         """
-        if key == self._KEY_ESCAPE or (key == self._KEY_LEFT_ARROW and "alt" in modifiers):
-            assert self._viewer is not None
+        assert self._viewer is not None
+        if key == self._KEY_F and "ctrl" in modifiers:
+            self._viewer.focus_search()
+            return True
+        if key == self._KEY_ESCAPE:
+            if self._viewer.escape_search():
+                return True
+            self._viewer.go_back()
+            return True
+        if key == self._KEY_LEFT_ARROW and "alt" in modifiers:
             self._viewer.go_back()
             return True
         return False
@@ -931,6 +1154,7 @@ def run(
     action_provider: PageActionProvider | None = None,
     top_bar: TopBarSpec | None = None,
     state_path: Path | None = None,
+    search_provider: SearchProvider | None = None,
 ) -> None:
     """Launch the standalone OKF reader on ``bundle`` (blocks until the window closes)."""
     OKFApp(
@@ -941,4 +1165,5 @@ def run(
         action_provider=action_provider,
         top_bar=top_bar,
         state_path=state_path,
+        search_provider=search_provider,
     ).run()
