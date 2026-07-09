@@ -186,6 +186,7 @@ def _build_cli_app_class(
     """
     from barks_reader.ui.comic_book_reader import get_barks_comic_reader_screen
     from barks_reader.ui.font_manager import FontManager
+    from barks_reader.ui.platform_window_utils import WindowManager
     from barks_reader.ui.reader_screens import COMIC_BOOK_READER_SCREEN
     from kivy.app import App
     from kivy.core.window import Window
@@ -221,6 +222,7 @@ def _build_cli_app_class(
                 self.reader_settings,
                 app_icon_path,
                 self.font_manager,
+                WindowManager("Reader"),
                 self._on_comic_ready,
                 self._on_close,
             )

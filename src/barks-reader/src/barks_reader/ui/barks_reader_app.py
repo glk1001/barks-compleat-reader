@@ -50,7 +50,7 @@ from .goto_title_overlay import GOTO_TITLE_OVERLAY_KV_FILE
 from .index_screen import INDEX_SCREEN_KV_FILE
 from .main_index_screen import MainIndexScreen
 from .main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
-from .platform_window_utils import log_screen_metrics
+from .platform_window_utils import WindowManager, log_screen_metrics
 from .popup_widgets import READER_POPUPS_KV_FILE
 from .reader_keyboard_nav import get_alt_escape_key, is_escape_key, set_alt_escape_key
 from .reader_screens import (
@@ -348,6 +348,12 @@ class BarksReaderApp(App):
             self.reader_settings.sys_file_paths.get_statistics_dir()
         )
         search_screen = SearchScreen(self.reader_settings, self.font_manager)
+
+        # One shared window-mode engine + geometry store, injected into both the
+        # main screen and the comic reader so the saved windowed geometry lives in
+        # one place (no cross-screen seeding of restore geometry).
+        window_manager = WindowManager("Reader")
+
         screens = ScreenBundle(
             tree_view=tree_view_screen,
             bottom_title_view=bottom_title_view_screen,
@@ -368,6 +374,7 @@ class BarksReaderApp(App):
             screens,
             self.font_manager,
             user_error_handler,
+            window_manager,
             name=MAIN_READER_SCREEN,
         )
         assert self._main_screen is not None
@@ -380,6 +387,7 @@ class BarksReaderApp(App):
             self.reader_settings,
             self._main_screen.app_icon_filepath,
             self.font_manager,
+            window_manager,
             self._screen_switchers.switch_to_comic_book_reader,
             self._screen_switchers.close_comic_book_reader,
         )

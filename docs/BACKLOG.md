@@ -56,12 +56,16 @@ Known limitation (intentional, not a reader fix): links under the bundle's
 > pre-existing hazards below remain in the main/comic screens and want a
 > separate consolidation pass.
 
-- [ ] **Two `WindowManager` instances over one global `Window`** — `MainScreen`
-      and `ComicBookReader` each own a `WindowManager` that mutates the single
-      global `Window.fullscreen`; correctness relies on only one being active at
-      a time, with no cross-checking. Unifying them onto a single shared geometry
-      source is also what would let the (now-documented) cross-object seeding
-      above go away. Scoped plan: `docs/plans/windowmanager-unification.md`.
+- [x] **Two `WindowManager` instances over one global `Window`** (2026-07-09) —
+      unified onto a single shared `WindowManager` instance, constructed in
+      `barks_reader_app._build_screens` and injected into both `MainScreen` and
+      `ComicBookReaderScreen`. Per-transition completion callbacks moved from the
+      constructor to a `WindowModeCallbacks` bundle passed on each `goto_*` call,
+      so one manager can serve both screens. With one shared geometry store, the
+      cross-object seeding coupling is **gone**: `seed_`/`clear_windowed_restore_geometry`
+      (screen + `ComicReaderManager` passthroughs + `MainScreenWindowHelper` calls)
+      were deleted. See the design in `docs/plans/windowmanager-unification.md`.
+      Remaining: the "Duplicated / drifted toggle policy" item below (Fragility #4).
 - [x] **Cross-object window-state coupling** (2026-07-09) — investigated: it is
       *load-bearing*, not a bug. `MainScreenWindowHelper` seeds the comic reader's
       `WindowManager` with the current windowed geometry before the main screen

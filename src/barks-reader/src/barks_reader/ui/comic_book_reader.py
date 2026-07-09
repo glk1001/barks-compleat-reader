@@ -44,7 +44,7 @@ from .action_bar_helpers import (
     set_action_bar_visibility,
 )
 from .adapters import KivyClockScheduler, KivyCursor
-from .platform_window_utils import WindowManager
+from .platform_window_utils import WindowManager, WindowModeCallbacks
 from .reader_keyboard_nav import (
     ActionBarNavMixin,
     DropdownNavMixin,
@@ -719,6 +719,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         reader_settings: ReaderSettings,
         reader_app_icon_file: str,
         font_manager: FontManager,
+        window_manager: WindowManager,
         on_comic_is_ready_to_read_func: Callable[[], None],
         on_close_reader_func: Callable[[], None],
         **kwargs,  # noqa: ANN003
@@ -732,11 +733,12 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self.can_benefit_from_fullscreen = True
         self._active = False
 
-        self._window_manager = WindowManager(
-            ComicBookReaderScreen.__name__,
-            self._set_hints_for_windowed_mode,
-            self._on_finished_goto_windowed_mode,
-            self._on_finished_goto_fullscreen_mode,
+        # Shared with the main screen; the geometry store now lives in one place.
+        self._window_manager = window_manager
+        self._window_mode_callbacks = WindowModeCallbacks(
+            on_windowed_first_resize=self._set_hints_for_windowed_mode,
+            on_finished_windowed=self._on_finished_goto_windowed_mode,
+            on_finished_fullscreen=self._on_finished_goto_fullscreen_mode,
         )
 
         self._action_bar = self.ids.action_bar
@@ -888,26 +890,6 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self.comic_book_reader.close_comic_book_reader()
         self._exit_fullscreen()
 
-    def clear_windowed_restore_geometry(self) -> None:
-        """Discard the windowed geometry the main screen seeded (see below).
-
-        Called by ``MainScreenWindowHelper`` when the app returns to windowed
-        mode, so a stale seed can't later be restored.
-        """
-        self._window_manager.clear_state()
-
-    def seed_windowed_restore_geometry(self) -> None:
-        """Capture the current (windowed) geometry as this reader's restore target.
-
-        Called by ``MainScreenWindowHelper`` just before the *main* screen goes
-        fullscreen. If the user then opens a comic — entering while the window is
-        already fullscreen, so ``_was_fullscreen_on_entry`` is True — and toggles
-        it back to windowed, this reader's own ``WindowManager`` never captured
-        the pre-fullscreen size/position itself; this seed is what lets it restore
-        the window correctly. See also the seeding note in ``main_screen_window``.
-        """
-        self._window_manager.save_state_now()
-
     @property
     def _goto_fullscreen_on_comic_read(self) -> bool:
         return (
@@ -963,7 +945,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def _goto_windowed_mode(self) -> None:
         logger.info("Exiting fullscreen mode on ComicBookReaderScreen.")
 
-        self._window_manager.goto_windowed_mode()
+        self._window_manager.goto_windowed_mode(self._window_mode_callbacks)
 
     def _set_hints_for_windowed_mode(self) -> None:
         # Restore the layout properties so the screen fills the window again.
@@ -982,7 +964,7 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
     def _goto_fullscreen_mode(self) -> None:
         logger.info("Entering fullscreen mode on ComicBookReaderScreen.")
-        self._window_manager.goto_fullscreen_mode()
+        self._window_manager.goto_fullscreen_mode(self._window_mode_callbacks)
 
     def _exit_fullscreen(self) -> None:
         if not WindowManager.is_fullscreen_now() and not self._was_fullscreen_on_entry:
@@ -1080,6 +1062,7 @@ def get_barks_comic_reader_screen(
     reader_settings: ReaderSettings,
     reader_app_icon_file: str,
     font_manager: FontManager,
+    window_manager: WindowManager,
     on_comic_is_ready_to_read: Callable[[], None],
     on_close_reader: Callable[[], None],
 ) -> ReaderScreen:
@@ -1089,6 +1072,7 @@ def get_barks_comic_reader_screen(
         reader_settings,
         reader_app_icon_file,
         font_manager,
+        window_manager,
         on_comic_is_ready_to_read,
         on_close_reader,
         name=screen_name,

@@ -23,6 +23,20 @@ class FullscreenEnum(Enum):
     WINDOWED = "windowed"
 
 
+@dataclass(frozen=True, slots=True)
+class WindowModeCallbacks:
+    """The per-screen completion callbacks for one window-mode transition.
+
+    Passed to ``WindowManager.goto_fullscreen_mode`` / ``goto_windowed_mode`` on
+    each call rather than baked into the manager, so a single shared
+    ``WindowManager`` can serve multiple screens.
+    """
+
+    on_windowed_first_resize: Callable[[], None]
+    on_finished_windowed: Callable[[], None]
+    on_finished_fullscreen: Callable[[], None]
+
+
 @dataclass(slots=True)
 class WindowState:
     screen: FullscreenEnum = FullscreenEnum.WINDOWED
@@ -112,24 +126,22 @@ def _create_window_backend() -> WindowBackend:
 
 
 class WindowManager:
-    def __init__(
-        self,
-        client: str,
-        on_goto_windowed_mode_first_resize_func: Callable[[], None],
-        on_finished_goto_windowed_mode: Callable[[], None],
-        on_finished_goto_fullscreen_mode: Callable[[], None],
-    ) -> None:
+    def __init__(self, client: str) -> None:
         self._client = client
-        self._on_goto_windowed_mode_first_resize = on_goto_windowed_mode_first_resize_func
-        self._on_finished_goto_windowed_mode = on_finished_goto_windowed_mode
-        self._on_finished_goto_fullscreen_mode = on_finished_goto_fullscreen_mode
 
-        assert self._on_goto_windowed_mode_first_resize is not None
-        assert self._on_finished_goto_windowed_mode is not None
-        assert self._on_finished_goto_fullscreen_mode is not None
+        # The callbacks for the transition currently in flight. Window-mode
+        # transitions are single-in-flight on the UI thread (guarded by the
+        # ``is_fullscreen_now()`` early-returns in ``goto_*``), so stashing the
+        # active bundle here is safe across the Clock-chained internal steps.
+        self._active_callbacks: WindowModeCallbacks | None = None
 
         self._saved_window_state = WindowState()
         self._backend: WindowBackend = _create_window_backend()
+
+    @property
+    def _callbacks(self) -> WindowModeCallbacks:
+        assert self._active_callbacks is not None, "No window-mode transition in flight"
+        return self._active_callbacks
 
     @staticmethod
     def is_fullscreen_now() -> bool:
@@ -149,22 +161,26 @@ class WindowManager:
             f"pos = {self._saved_window_state.pos}"
         )
 
-    def goto_fullscreen_mode(self) -> None:
+    def goto_fullscreen_mode(self, callbacks: WindowModeCallbacks) -> None:
+        self._active_callbacks = callbacks
+
         if self.is_fullscreen_now():
-            self._on_finished_goto_fullscreen_mode()
+            self._callbacks.on_finished_fullscreen()
             return
 
         self.save_state_now()
 
         def do_fullscreen() -> None:
             Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
-            Clock.schedule_once(lambda _dt: self._on_finished_goto_fullscreen_mode(), 0)
+            Clock.schedule_once(lambda _dt: self._callbacks.on_finished_fullscreen(), 0)
 
         Clock.schedule_once(lambda _dt: do_fullscreen(), 0)
 
-    def goto_windowed_mode(self) -> None:
+    def goto_windowed_mode(self, callbacks: WindowModeCallbacks) -> None:
+        self._active_callbacks = callbacks
+
         if not self.is_fullscreen_now():
-            self._on_finished_goto_windowed_mode()
+            self._callbacks.on_finished_windowed()
             return
 
         def do_windowed() -> None:
@@ -187,8 +203,8 @@ class WindowManager:
                 f"{self._client}: No saved window state to restore "
                 f"(size = {state.size}, pos = {state.pos}); leaving current geometry."
             )
-            self._on_goto_windowed_mode_first_resize()
-            Clock.schedule_once(lambda _dt: self._on_finished_goto_windowed_mode(), 0)
+            self._callbacks.on_windowed_first_resize()
+            Clock.schedule_once(lambda _dt: self._callbacks.on_finished_windowed(), 0)
             return
 
         logger.info(
@@ -201,7 +217,7 @@ class WindowManager:
 
         self._backend.schedule_restore(
             state,
-            self._on_goto_windowed_mode_first_resize,
+            self._callbacks.on_windowed_first_resize,
             self._finish_restore,
         )
 
@@ -220,7 +236,7 @@ class WindowManager:
             f" pos = {self._saved_window_state.pos}"
         )
 
-        Clock.schedule_once(lambda _dt: self._on_finished_goto_windowed_mode(), 0)
+        Clock.schedule_once(lambda _dt: self._callbacks.on_finished_windowed(), 0)
 
 
 def log_screen_metrics() -> None:

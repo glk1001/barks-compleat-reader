@@ -16,7 +16,13 @@ if TYPE_CHECKING:
 
 @dataclass
 class HelperFixture:
-    """Wraps MainScreenWindowHelper + the patched WindowManager class mock."""
+    """Wraps MainScreenWindowHelper + the injected WindowManager + patched class.
+
+    ``mock_wm_cls`` patches the ``WindowManager`` *class* so the helper's static
+    calls (``WindowManager.is_fullscreen_now()`` etc.) are controllable. The
+    shared instance is injected separately (``helper._window_manager``); its
+    ``goto_*`` methods are what the mode-toggle tests assert on.
+    """
 
     helper: MainScreenWindowHelper
     mock_wm_cls: MagicMock
@@ -27,12 +33,9 @@ def hf() -> Generator[HelperFixture, Any]:
     with (
         patch.object(window_module, "WindowManager") as mock_wm_cls,
     ):
-        mock_wm_instance = MagicMock()
-        mock_wm_cls.return_value = mock_wm_instance
-
         h = MainScreenWindowHelper(
             host_screen=MagicMock(),
-            comic_reader_manager=MagicMock(),
+            window_manager=MagicMock(),
             action_bar=MagicMock(),
             fullscreen_button=MagicMock(),
             fullscreen_icon="fullscreen.png",
@@ -76,25 +79,27 @@ class TestExitFullscreen:
 
         hf.helper.exit_fullscreen()
 
-        hf.helper._comic_reader_manager.clear_windowed_restore_geometry.assert_not_called()  # ty: ignore[unresolved-attribute]
+        hf.helper._window_manager.goto_windowed_mode.assert_not_called()  # ty: ignore[unresolved-attribute]
 
     def test_exits_when_fullscreen(self, hf: HelperFixture) -> None:
         hf.mock_wm_cls.is_fullscreen_now.return_value = True
 
         hf.helper.exit_fullscreen()
 
-        hf.helper._comic_reader_manager.clear_windowed_restore_geometry.assert_called_once()  # ty: ignore[unresolved-attribute]
-        hf.helper._window_manager.goto_windowed_mode.assert_called_once()  # ty: ignore[unresolved-attribute]
+        hf.helper._window_manager.goto_windowed_mode.assert_called_once_with(  # ty: ignore[unresolved-attribute]
+            hf.helper._window_mode_callbacks
+        )
 
 
 class TestGotoWindowedMode:
-    def test_clears_seeded_comic_geometry_and_delegates(self, hf: HelperFixture) -> None:
-        # Returning to windowed drops the geometry seeded for the comic reader (so
-        # it can't go stale), then delegates the actual mode switch.
+    def test_delegates_with_callbacks(self, hf: HelperFixture) -> None:
+        # Returning to windowed delegates the mode switch to the shared manager,
+        # passing this screen's per-transition callback bundle.
         hf.helper._goto_windowed_mode()
 
-        hf.helper._comic_reader_manager.clear_windowed_restore_geometry.assert_called_once()  # ty: ignore[unresolved-attribute]
-        hf.helper._window_manager.goto_windowed_mode.assert_called_once()  # ty: ignore[unresolved-attribute]
+        hf.helper._window_manager.goto_windowed_mode.assert_called_once_with(  # ty: ignore[unresolved-attribute]
+            hf.helper._window_mode_callbacks
+        )
 
 
 class TestSetHintsForWindowedMode:
@@ -123,15 +128,16 @@ class TestOnFinishedGotoWindowedMode:
 
 
 class TestGotoFullscreenMode:
-    def test_seeds_comic_windowed_geometry_before_going_fullscreen(self, hf: HelperFixture) -> None:
-        # Load-bearing coupling: seed the comic reader with the current windowed
-        # geometry *before* the window goes fullscreen, so a comic opened while
-        # already fullscreen can still restore the window on a comic->windowed
-        # toggle. (See ComicBookReaderScreen.seed_windowed_restore_geometry.)
+    def test_delegates_with_callbacks(self, hf: HelperFixture) -> None:
+        # Going fullscreen delegates to the shared manager, passing this screen's
+        # per-transition callback bundle. The old cross-screen seeding of the
+        # comic reader's geometry is gone: the manager's single geometry store is
+        # now shared, so there is nothing to seed.
         hf.helper._goto_fullscreen_mode()
 
-        hf.helper._comic_reader_manager.seed_windowed_restore_geometry.assert_called_once()  # ty: ignore[unresolved-attribute]
-        hf.helper._window_manager.goto_fullscreen_mode.assert_called_once()  # ty: ignore[unresolved-attribute]
+        hf.helper._window_manager.goto_fullscreen_mode.assert_called_once_with(  # ty: ignore[unresolved-attribute]
+            hf.helper._window_mode_callbacks
+        )
 
 
 class TestOnFinishedGotoFullscreenMode:

@@ -5,6 +5,11 @@
 Tests exercise the platform-agnostic state machine (save/clear/goto_fullscreen/
 goto_windowed) without touching Win32 or a real Kivy window.  The fake backend
 records calls so assertions can verify ordering and argument passing.
+
+The per-transition completion callbacks are passed as a ``WindowModeCallbacks``
+bundle on each ``goto_*`` call (not baked into the manager), so a single shared
+``WindowManager`` can serve multiple screens.  The fixture returns the bundle
+alongside its member mocks.
 """
 
 from __future__ import annotations
@@ -17,11 +22,16 @@ from barks_reader.ui.platform_window_utils import (
     FullscreenEnum,
     KivyWindowBackend,
     WindowManager,
+    WindowModeCallbacks,
     WindowState,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+# Fixture return: the window manager, its callback bundle, then the bundle's three
+# member mocks (first-resize, finished-windowed, finished-fullscreen).
+ManagerFixture = tuple[WindowManager, WindowModeCallbacks, MagicMock, MagicMock, MagicMock]
 
 
 # ---------------------------------------------------------------------------
@@ -95,13 +105,18 @@ def manager(
     fake_window: MagicMock,
     fake_clock: MagicMock,
     backend: _FakeBackend,
-) -> tuple[WindowManager, MagicMock, MagicMock, MagicMock]:
+) -> ManagerFixture:
     monkeypatch.setattr("barks_reader.ui.platform_window_utils.Window", fake_window)
     monkeypatch.setattr("barks_reader.ui.platform_window_utils.Clock", fake_clock)
 
     on_first_resize = MagicMock()
     on_finished_windowed = MagicMock()
     on_finished_fullscreen = MagicMock()
+    callbacks = WindowModeCallbacks(
+        on_windowed_first_resize=on_first_resize,
+        on_finished_windowed=on_finished_windowed,
+        on_finished_fullscreen=on_finished_fullscreen,
+    )
 
     # Patch _create_window_backend so the constructor uses our fake.
     monkeypatch.setattr(
@@ -109,13 +124,8 @@ def manager(
         lambda: backend,
     )
 
-    wm = WindowManager(
-        client="test",
-        on_goto_windowed_mode_first_resize_func=on_first_resize,
-        on_finished_goto_windowed_mode=on_finished_windowed,
-        on_finished_goto_fullscreen_mode=on_finished_fullscreen,
-    )
-    return wm, on_first_resize, on_finished_windowed, on_finished_fullscreen
+    wm = WindowManager(client="test")
+    return wm, callbacks, on_first_resize, on_finished_windowed, on_finished_fullscreen
 
 
 # ---------------------------------------------------------------------------
@@ -126,18 +136,18 @@ def manager(
 class TestSaveAndClearState:
     def test_save_state_delegates_to_backend(
         self,
-        manager: tuple[WindowManager, MagicMock, MagicMock, MagicMock],
+        manager: ManagerFixture,
         backend: _FakeBackend,
     ) -> None:
-        wm, _, _, _ = manager
+        wm, *_ = manager
         wm.save_state_now()
         assert len(backend.saved_states) == 1
 
     def test_clear_state_resets_to_defaults(
         self,
-        manager: tuple[WindowManager, MagicMock, MagicMock, MagicMock],
+        manager: ManagerFixture,
     ) -> None:
-        wm, _, _, _ = manager
+        wm, *_ = manager
         wm.save_state_now()
         wm.clear_state()
         assert wm._saved_window_state.size == (0, 0)
@@ -147,26 +157,26 @@ class TestSaveAndClearState:
 class TestGotoFullscreenMode:
     def test_already_fullscreen_fires_callback_immediately(
         self,
-        manager: tuple[WindowManager, MagicMock, MagicMock, MagicMock],
+        manager: ManagerFixture,
         fake_window: MagicMock,
     ) -> None:
-        wm, _, _, on_finished_fullscreen = manager
+        wm, callbacks, _, _, on_finished_fullscreen = manager
         fake_window.fullscreen = True
 
-        wm.goto_fullscreen_mode()
+        wm.goto_fullscreen_mode(callbacks)
 
         on_finished_fullscreen.assert_called_once()
 
     def test_saves_state_and_enters_fullscreen(
         self,
-        manager: tuple[WindowManager, MagicMock, MagicMock, MagicMock],
+        manager: ManagerFixture,
         fake_window: MagicMock,
         backend: _FakeBackend,
     ) -> None:
-        wm, _, _, on_finished_fullscreen = manager
+        wm, callbacks, _, _, on_finished_fullscreen = manager
         fake_window.fullscreen = False
 
-        wm.goto_fullscreen_mode()
+        wm.goto_fullscreen_mode(callbacks)
 
         # Backend should have been asked to save state.
         assert len(backend.saved_states) == 1
@@ -179,29 +189,29 @@ class TestGotoFullscreenMode:
 class TestGotoWindowedMode:
     def test_already_windowed_fires_callback_immediately(
         self,
-        manager: tuple[WindowManager, MagicMock, MagicMock, MagicMock],
+        manager: ManagerFixture,
         fake_window: MagicMock,
     ) -> None:
-        wm, _, on_finished_windowed, _ = manager
+        wm, callbacks, _, on_finished_windowed, _ = manager
         fake_window.fullscreen = False
 
-        wm.goto_windowed_mode()
+        wm.goto_windowed_mode(callbacks)
 
         on_finished_windowed.assert_called_once()
 
     def test_exits_fullscreen_and_restores(
         self,
-        manager: tuple[WindowManager, MagicMock, MagicMock, MagicMock],
+        manager: ManagerFixture,
         fake_window: MagicMock,
         backend: _FakeBackend,
     ) -> None:
-        wm, on_first_resize, on_finished_windowed, _ = manager
+        wm, callbacks, on_first_resize, on_finished_windowed, _ = manager
         fake_window.fullscreen = True
 
         # First save state so there's something to restore.
         wm.save_state_now()
 
-        wm.goto_windowed_mode()
+        wm.goto_windowed_mode(callbacks)
 
         # Window should exit fullscreen.
         assert fake_window.borderless is False
@@ -214,7 +224,7 @@ class TestGotoWindowedMode:
 
     def test_exits_fullscreen_without_saved_state_skips_restore(
         self,
-        manager: tuple[WindowManager, MagicMock, MagicMock, MagicMock],
+        manager: ManagerFixture,
         fake_window: MagicMock,
         backend: _FakeBackend,
         monkeypatch: pytest.MonkeyPatch,
@@ -222,13 +232,13 @@ class TestGotoWindowedMode:
         # Regression: the app started already fullscreen, so goto_fullscreen_mode
         # skipped its save. Exiting to windowed must not assert/crash (or restore
         # the sentinel geometry) — it leaves the geometry and finishes the transition.
-        wm, on_first_resize, on_finished_windowed, _ = manager
+        wm, callbacks, on_first_resize, on_finished_windowed, _ = manager
         fake_logger = MagicMock()
         monkeypatch.setattr("barks_reader.ui.platform_window_utils.logger", fake_logger)
         fake_window.fullscreen = True
         # No save_state_now(): _saved_window_state is still the sentinel default.
 
-        wm.goto_windowed_mode()
+        wm.goto_windowed_mode(callbacks)
 
         assert fake_window.fullscreen is False
         # Geometry restore is skipped, but the windowed transition still completes.
@@ -241,10 +251,10 @@ class TestGotoWindowedMode:
 class TestStaticHelpers:
     def test_is_fullscreen_now(
         self,
-        manager: tuple[WindowManager, MagicMock, MagicMock, MagicMock],
+        manager: ManagerFixture,
         fake_window: MagicMock,
     ) -> None:
-        wm, _, _, _ = manager
+        wm, *_ = manager
         fake_window.fullscreen = True
         assert wm.is_fullscreen_now() is True
         fake_window.fullscreen = False
@@ -252,10 +262,10 @@ class TestStaticHelpers:
 
     def test_get_screen_mode_now(
         self,
-        manager: tuple[WindowManager, MagicMock, MagicMock, MagicMock],
+        manager: ManagerFixture,
         fake_window: MagicMock,
     ) -> None:
-        wm, _, _, _ = manager
+        wm, *_ = manager
         fake_window.fullscreen = False
         assert wm.get_screen_mode_now() == "windowed"
         fake_window.fullscreen = True
@@ -312,15 +322,15 @@ class TestWindowState:
 class TestRoundTrip:
     def test_save_fullscreen_windowed_round_trip(
         self,
-        manager: tuple[WindowManager, MagicMock, MagicMock, MagicMock],
+        manager: ManagerFixture,
         fake_window: MagicMock,
         backend: _FakeBackend,
     ) -> None:
-        wm, on_first_resize, on_finished_windowed, on_finished_fullscreen = manager
+        wm, callbacks, on_first_resize, on_finished_windowed, on_finished_fullscreen = manager
 
         # Start in windowed mode -> enter fullscreen.
         fake_window.fullscreen = False
-        wm.goto_fullscreen_mode()
+        wm.goto_fullscreen_mode(callbacks)
 
         assert len(backend.saved_states) == 1
         on_finished_fullscreen.assert_called_once()
@@ -328,7 +338,7 @@ class TestRoundTrip:
 
         # Now simulate Window being in fullscreen and exit back to windowed.
         fake_window.fullscreen = True
-        wm.goto_windowed_mode()
+        wm.goto_windowed_mode(callbacks)
 
         # Backend was asked to restore the previously-saved state.
         assert len(backend.restore_calls) == 1
@@ -338,15 +348,66 @@ class TestRoundTrip:
         on_first_resize.assert_called_once()
         on_finished_windowed.assert_called_once()
 
+    def test_shared_store_restores_across_screens_without_seeding(
+        self,
+        manager: ManagerFixture,
+        fake_window: MagicMock,
+        backend: _FakeBackend,
+    ) -> None:
+        # The cross-screen guarantee that lets us delete the old seeding coupling:
+        # one screen going fullscreen saves the windowed geometry, and a *different*
+        # screen's later windowed toggle restores it — because both screens share
+        # this single WindowManager instance (and thus one geometry store). Each
+        # screen passes its own callback bundle per call.
+        wm, _, _, _, _ = manager
+
+        main_finished_fullscreen = MagicMock()
+        main_finished_windowed = MagicMock()
+        main_screen_callbacks = WindowModeCallbacks(
+            on_windowed_first_resize=MagicMock(),
+            on_finished_windowed=main_finished_windowed,
+            on_finished_fullscreen=main_finished_fullscreen,
+        )
+        comic_first_resize = MagicMock()
+        comic_finished_windowed = MagicMock()
+        comic_screen_callbacks = WindowModeCallbacks(
+            on_windowed_first_resize=comic_first_resize,
+            on_finished_windowed=comic_finished_windowed,
+            on_finished_fullscreen=MagicMock(),
+        )
+
+        # Main screen goes fullscreen (captures the windowed geometry).
+        fake_window.fullscreen = False
+        wm.goto_fullscreen_mode(main_screen_callbacks)
+        main_finished_fullscreen.assert_called_once()
+
+        # Comic screen (opened while already fullscreen) toggles back to windowed —
+        # no explicit seed needed; the shared store still has the geometry.
+        fake_window.fullscreen = True
+        wm.goto_windowed_mode(comic_screen_callbacks)
+
+        assert len(backend.restore_calls) == 1
+        restored = backend.restore_calls[0]
+        assert restored.size == (1200, 1800)
+        assert restored.pos == (100, 50)
+        # The comic screen's bundle completes the transition; the main screen's
+        # windowed callbacks are untouched.
+        comic_first_resize.assert_called_once()
+        comic_finished_windowed.assert_called_once()
+        main_finished_windowed.assert_not_called()
+
 
 class TestFinishRestore:
     def test_finish_restore_logs_warning_when_state_differs(
         self,
-        manager: tuple[WindowManager, MagicMock, MagicMock, MagicMock],
+        manager: ManagerFixture,
         fake_window: MagicMock,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        wm, _, _, _ = manager
+        wm, callbacks, *_ = manager
+        # _finish_restore reads the active bundle; a goto_* call would normally set
+        # it, so seed it directly for this focused unit test.
+        wm._active_callbacks = callbacks
 
         fake_logger = MagicMock()
         monkeypatch.setattr("barks_reader.ui.platform_window_utils.logger", fake_logger)
@@ -365,11 +426,12 @@ class TestFinishRestore:
 
     def test_finish_restore_logs_info_when_state_matches(
         self,
-        manager: tuple[WindowManager, MagicMock, MagicMock, MagicMock],
+        manager: ManagerFixture,
         fake_window: MagicMock,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        wm, _, _, _ = manager
+        wm, callbacks, *_ = manager
+        wm._active_callbacks = callbacks
 
         fake_logger = MagicMock()
         monkeypatch.setattr("barks_reader.ui.platform_window_utils.logger", fake_logger)

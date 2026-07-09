@@ -75,24 +75,6 @@ class ComicReaderManager:
         assert self._comic_book_reader
         self._comic_book_reader.init_data()
 
-    def clear_windowed_restore_geometry(self) -> None:
-        """Discard the windowed geometry seeded on the reader screen.
-
-        Forwarded from ``MainScreenWindowHelper`` when the app leaves fullscreen;
-        see ``ComicBookReaderScreen.seed_windowed_restore_geometry`` for why.
-        """
-        assert self._comic_book_reader_screen
-        self._comic_book_reader_screen.clear_windowed_restore_geometry()
-
-    def seed_windowed_restore_geometry(self) -> None:
-        """Seed the reader screen with the current windowed geometry.
-
-        Forwarded from ``MainScreenWindowHelper`` before the main screen enters
-        fullscreen; see ``ComicBookReaderScreen.seed_windowed_restore_geometry``.
-        """
-        assert self._comic_book_reader_screen
-        self._comic_book_reader_screen.seed_windowed_restore_geometry()
-
     def read_article_as_comic_book(self, article_title: Titles, page_to_first_goto: str) -> None:
         """Open an article (non-comic content) in the comic reader.
 

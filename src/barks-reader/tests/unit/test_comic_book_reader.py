@@ -242,6 +242,7 @@ class TestComicBookReaderScreen:
     def screen(self) -> ComicBookReaderScreen:
         settings = MagicMock()
         font_manager = MagicMock()
+        window_manager = MagicMock()
         on_ready = MagicMock()
         on_close = MagicMock()
 
@@ -249,7 +250,6 @@ class TestComicBookReaderScreen:
         with (
             patch.object(barks_reader.ui.comic_book_reader.Builder, "load_file"),
             patch.object(barks_reader.ui.comic_book_reader, "ComicBookReader"),
-            patch.object(barks_reader.ui.comic_book_reader, "WindowManager"),
             # Mock ids property on ComicBookReaderScreen
             patch.object(ComicBookReaderScreen, "ids", new_callable=PropertyMock) as mock_ids_prop,
             # Patch FloatLayout.add_widget to avoid Kivy widget tree logic
@@ -264,7 +264,9 @@ class TestComicBookReaderScreen:
 
             mock_ids_prop.return_value = mock_ids
 
-            screen = ComicBookReaderScreen(settings, "icon.png", font_manager, on_ready, on_close)
+            screen = ComicBookReaderScreen(
+                settings, "icon.png", font_manager, window_manager, on_ready, on_close
+            )
             # Mock ids on the instance as well, just in case
             screen.ids = mock_ids
             return screen

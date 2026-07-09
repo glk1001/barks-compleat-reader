@@ -73,6 +73,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         screens: ScreenBundle,
         font_manager: FontManager,
         user_error_handler: UserErrorHandler,
+        window_manager: WindowManager,
         **kwargs: str,
     ) -> None:
         super().__init__(**kwargs)
@@ -95,7 +96,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._reader_tree_events = reader_tree_events
 
         # Assemble the collaborator graph (see main_screen_components).
-        components = build_main_screen_components(self)
+        components = build_main_screen_components(self, window_manager)
         self._random_title_images = components.random_title_images
         self._json_settings_manager = components.json_settings_manager
         self._special_fanta_overrides = components.special_fanta_overrides

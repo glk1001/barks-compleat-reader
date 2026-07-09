@@ -9,15 +9,13 @@ from loguru import logger
 from barks_reader.core.reader_utils import get_win_dimensions
 
 from .action_bar_helpers import ACTION_BAR_SIZE_Y, ActionBarVisibility, set_action_bar_visibility
-from .platform_window_utils import WindowManager
+from .platform_window_utils import WindowManager, WindowModeCallbacks
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from kivy.uix.screenmanager import Screen
     from kivy.uix.widget import Widget
-
-    from .comic_reader_manager import ComicReaderManager
 
 
 class MainScreenWindowHelper:
@@ -26,7 +24,7 @@ class MainScreenWindowHelper:
     def __init__(
         self,
         host_screen: Screen,
-        comic_reader_manager: ComicReaderManager,
+        window_manager: WindowManager,
         action_bar: Widget,
         fullscreen_button: Widget,
         fullscreen_icon: str,
@@ -36,7 +34,6 @@ class MainScreenWindowHelper:
         update_fonts: Callable[[int], None],
     ) -> None:
         self._host = host_screen
-        self._comic_reader_manager = comic_reader_manager
         self._action_bar = action_bar
         self._fullscreen_button = fullscreen_button
         self._fullscreen_icon = fullscreen_icon
@@ -45,11 +42,12 @@ class MainScreenWindowHelper:
         self._fun_image_view_screen = fun_image_view_screen
         self._update_fonts = update_fonts
 
-        self._window_manager = WindowManager(
-            "MainScreen",
-            self._set_hints_for_windowed_mode,
-            self._on_finished_goto_windowed_mode,
-            self._on_finished_goto_fullscreen_mode,
+        # Shared with the comic reader; the geometry store now lives in one place.
+        self._window_manager = window_manager
+        self._window_mode_callbacks = WindowModeCallbacks(
+            on_windowed_first_resize=self._set_hints_for_windowed_mode,
+            on_finished_windowed=self._on_finished_goto_windowed_mode,
+            on_finished_fullscreen=self._on_finished_goto_fullscreen_mode,
         )
 
     def toggle_screen_mode(self) -> None:
@@ -70,10 +68,7 @@ class MainScreenWindowHelper:
 
     def _goto_windowed_mode(self) -> None:
         logger.info("Exiting fullscreen mode on MainScreen.")
-        # Drop the windowed geometry we seeded the comic reader with on the way
-        # into fullscreen — back in windowed mode it would only go stale.
-        self._comic_reader_manager.clear_windowed_restore_geometry()
-        self._window_manager.goto_windowed_mode()
+        self._window_manager.goto_windowed_mode(self._window_mode_callbacks)
 
     def _set_hints_for_windowed_mode(self) -> None:
         self._host.size_hint = (1, 1)
@@ -87,12 +82,7 @@ class MainScreenWindowHelper:
 
     def _goto_fullscreen_mode(self) -> None:
         logger.info("Entering fullscreen mode on MainScreen.")
-        # Hand the comic reader the current windowed size/position before we go
-        # fullscreen: a comic opened while the window is already fullscreen never
-        # captures it itself, so this is what lets a later comic->windowed toggle
-        # restore the window. (See ComicBookReaderScreen.seed_windowed_restore_geometry.)
-        self._comic_reader_manager.seed_windowed_restore_geometry()
-        self._window_manager.goto_fullscreen_mode()
+        self._window_manager.goto_fullscreen_mode(self._window_mode_callbacks)
 
     def _on_finished_goto_fullscreen_mode(self) -> None:
         if not WindowManager.is_fullscreen_now():

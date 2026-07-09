@@ -42,6 +42,7 @@ from .view_renderer import ViewRenderer
 
 if TYPE_CHECKING:
     from .main_screen import MainScreen
+    from .platform_window_utils import WindowManager
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,13 +61,17 @@ class MainScreenComponents:
     nav: MainScreenNavigation
 
 
-def build_main_screen_components(host: MainScreen) -> MainScreenComponents:
+def build_main_screen_components(
+    host: MainScreen, window_manager: WindowManager
+) -> MainScreenComponents:
     """Assemble `MainScreen`'s collaborator graph around *host*.
 
     Reads the external dependencies and wired screens off *host* (already set by
-    the constructor) and returns the constructed collaborators. Side-effect-free
-    on *host* except for the deferred `nav_coord.set_tree_view_manager` wiring
-    that breaks the coordinator/tree-manager cycle.
+    the constructor) and returns the constructed collaborators. *window_manager*
+    is the single shared instance, also injected into the comic reader screen, so
+    the saved window geometry lives in one place. Side-effect-free on *host*
+    except for the deferred `nav_coord.set_tree_view_manager` wiring that breaks
+    the coordinator/tree-manager cycle.
     """
     reader_settings = host._reader_settings
     comics_database = host._comics_database
@@ -102,7 +107,7 @@ def build_main_screen_components(host: MainScreen) -> MainScreenComponents:
 
     window_helper = MainScreenWindowHelper(
         host_screen=host,
-        comic_reader_manager=comic_reader_manager,
+        window_manager=window_manager,
         action_bar=host._action_bar,
         fullscreen_button=host._fullscreen_button,
         fullscreen_icon=str(reader_settings.sys_file_paths.get_barks_reader_fullscreen_icon_file()),
