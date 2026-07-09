@@ -63,6 +63,9 @@ OVERRIDES: dict[Titles, tuple[Issues, int, int, int] | None] = {
     # Uncle Scrooge 13
     Titles.ART_OF_SECURITY_THE: (Issues.US, 13, 1956, 1),    # "paints a policeman ... to scare burglars"
     Titles.FASHION_FORECAST: (Issues.US, 13, 1956, 4),       # "spring has arrived before changing hats"
+    # Uncle Scrooge 14
+    Titles.LUNCHEON_LAMENT: (Issues.US, 14, 1956, 1),        # "Scrooge suffers stomach pains from Grandma Duck’s"
+    Titles.FAULTY_FORTUNE: (Issues.US, 14, 1956, 4),         # "Scrooge gets a deed to an inch of Texas land in a"
     # Uncle Scrooge 17
     Titles.FISHING_MYSTERY: (Issues.US, 17, 1956, 3),        # "Gyro arouses the interest of fishermen"
     Titles.EYES_HAVE_IT_THE: (Issues.US, 17, 1956, 4),       # 'Scrooge sees a “quarter”'

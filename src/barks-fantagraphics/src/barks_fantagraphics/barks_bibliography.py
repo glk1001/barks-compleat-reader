@@ -8829,7 +8829,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         notes=(
                             "This page was apparently intended for the inside front cover of <em>Uncle Scrooge</em> No. 11, Sept.-Nov. 1955 (it was accepted on the same date as the other three covers for that issue), but was displaced by a full-page presentation of the Dell Pledge to Parents.",
                         ),
-                        title=Titles.FAULTY_FORTUNE,
+                        title=Titles.LUNCHEON_LAMENT,
                         disposition=Disposition.MATCHED_TITLE,
                         disposition_reason=None,
                         cover_key=None,
@@ -8882,7 +8882,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         raw_date="Nov. 17, 1955",
                         date_unavailable=False,
                         notes=("An advertisement fills out the page.",),
-                        title=Titles.LUNCHEON_LAMENT,
+                        title=Titles.FAULTY_FORTUNE,
                         disposition=Disposition.MATCHED_TITLE,
                         disposition_reason=None,
                         cover_key=None,
