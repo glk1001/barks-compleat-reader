@@ -79,10 +79,15 @@ Known limitation (intentional, not a reader fix): links under the bundle's
       already fullscreen) it raised, and silently restored garbage under `-O`.
       Now guards via `WindowState.is_unsaved()`: skips the geometry restore and
       just finishes the windowed transition. Tested in `test_window_manager.py`.
-- [ ] **Duplicated / drifted toggle policy** — the toggle + finish-callback logic
-      is near-duplicated between `MainScreenWindowHelper` and
-      `ComicBookReaderScreen` and has already drifted; the mode strings
-      (`FullscreenEnum`, `"Fullscreen"`/`"Windowed"`) are repeated in ~3 places.
+- [x] **Duplicated / drifted toggle policy** (2026-07-09) — the toggle scaffolding
+      (`toggle_screen_mode`, the goto + scheduling logic) is extracted into a shared
+      `WindowModeController` (`platform_window_utils.py`); both `MainScreenWindowHelper`
+      and `ComicBookReaderScreen` construct one and delegate, keeping only their own
+      completion callbacks. The `"Fullscreen"`/`"Windowed"` button label + icon swap is
+      centralized in `set_fullscreen_button` (`action_bar_helpers.py`). Note: the
+      remaining `"Fullscreen"` literals in the `.kv` files are static initial values;
+      `FullscreenEnum` (the geometry-state enum) is a distinct concern, left as-is.
+      Covered by `TestWindowModeController` + `TestSetFullscreenButton`.
 
 ## Architecture / testability
 

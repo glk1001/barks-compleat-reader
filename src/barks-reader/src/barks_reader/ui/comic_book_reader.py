@@ -42,9 +42,10 @@ from .action_bar_helpers import (
     ActionBarVisibility,
     is_action_bar_visible,
     set_action_bar_visibility,
+    set_fullscreen_button,
 )
 from .adapters import KivyClockScheduler, KivyCursor
-from .platform_window_utils import WindowManager, WindowModeCallbacks
+from .platform_window_utils import WindowManager, WindowModeCallbacks, WindowModeController
 from .reader_keyboard_nav import (
     ActionBarNavMixin,
     DropdownNavMixin,
@@ -733,12 +734,17 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self.can_benefit_from_fullscreen = True
         self._active = False
 
-        # Shared with the main screen; the geometry store now lives in one place.
-        self._window_manager = window_manager
-        self._window_mode_callbacks = WindowModeCallbacks(
-            on_windowed_first_resize=self._set_hints_for_windowed_mode,
-            on_finished_windowed=self._on_finished_goto_windowed_mode,
-            on_finished_fullscreen=self._on_finished_goto_fullscreen_mode,
+        # The window-mode engine is shared with the main screen (one geometry
+        # store); this controller carries the toggle policy + this screen's
+        # completion callbacks.
+        self._mode = WindowModeController(
+            ComicBookReaderScreen.__name__,
+            window_manager,
+            WindowModeCallbacks(
+                on_windowed_first_resize=self._set_hints_for_windowed_mode,
+                on_finished_windowed=self._on_finished_goto_windowed_mode,
+                on_finished_fullscreen=self._on_finished_goto_fullscreen_mode,
+            ),
         )
 
         self._action_bar = self.ids.action_bar
@@ -900,17 +906,12 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._was_fullscreen_on_entry = WindowManager.is_fullscreen_now()
 
         if not self._was_fullscreen_on_entry and self._goto_fullscreen_on_comic_read:
-            self._goto_fullscreen_mode()
+            self._mode.goto_fullscreen()
 
         self.is_fullscreen = self._was_fullscreen_on_entry or self._goto_fullscreen_on_comic_read
 
     def toggle_screen_mode(self) -> None:
-        if WindowManager.is_fullscreen_now():
-            logger.info("Toggle screen mode to windowed mode.")
-            Clock.schedule_once(lambda _dt: self._goto_windowed_mode(), 0)
-        else:
-            logger.info("Toggle screen mode to fullscreen mode.")
-            Clock.schedule_once(lambda _dt: self._goto_fullscreen_mode(), 0)
+        self._mode.toggle()
 
     def toggle_double_page_mode(self) -> None:
         """Toggle double-page mode on/off for the current comic (does not change config)."""
@@ -942,11 +943,6 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
                 self._reader_settings.sys_file_paths.get_barks_reader_double_page_icon_file()
             )
 
-    def _goto_windowed_mode(self) -> None:
-        logger.info("Exiting fullscreen mode on ComicBookReaderScreen.")
-
-        self._window_manager.goto_windowed_mode(self._window_mode_callbacks)
-
     def _set_hints_for_windowed_mode(self) -> None:
         # Restore the layout properties so the screen fills the window again.
         self.size_hint = (1, 1)
@@ -962,10 +958,6 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._update_fullscreen_button()
         logger.info("Entered windowed mode on ComicBookReaderScreen.")
 
-    def _goto_fullscreen_mode(self) -> None:
-        logger.info("Entering fullscreen mode on ComicBookReaderScreen.")
-        self._window_manager.goto_fullscreen_mode(self._window_mode_callbacks)
-
     def _exit_fullscreen(self) -> None:
         if not WindowManager.is_fullscreen_now() and not self._was_fullscreen_on_entry:
             logger.debug("Fullscreen not on and not required.")
@@ -974,10 +966,10 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         if self._was_fullscreen_on_entry:
             logger.debug("Fullscreen is required.")
-            self._goto_fullscreen_mode()
+            self._mode.goto_fullscreen()
         else:
             logger.debug("Fullscreen not required.")
-            self._goto_windowed_mode()
+            self._mode.goto_windowed()
 
     def _on_finished_goto_fullscreen_mode(self) -> None:
         if not WindowManager.is_fullscreen_now():
@@ -1049,12 +1041,12 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._update_fullscreen_button()
 
     def _update_fullscreen_button(self) -> None:
-        if self.is_fullscreen:
-            self._fullscreen_button.text = "Windowed"
-            self._fullscreen_button.icon = self._action_bar_fullscreen_exit_icon
-        else:
-            self._fullscreen_button.text = "Fullscreen"
-            self._fullscreen_button.icon = self._action_bar_fullscreen_icon
+        set_fullscreen_button(
+            self._fullscreen_button,
+            is_fullscreen=self.is_fullscreen,
+            fullscreen_icon=self._action_bar_fullscreen_icon,
+            fullscreen_exit_icon=self._action_bar_fullscreen_exit_icon,
+        )
 
 
 def get_barks_comic_reader_screen(

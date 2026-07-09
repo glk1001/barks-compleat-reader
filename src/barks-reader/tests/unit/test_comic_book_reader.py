@@ -279,18 +279,14 @@ class TestComicBookReaderScreen:
         assert not screen._active
 
     def test_toggle_screen_mode(self, screen: ComicBookReaderScreen) -> None:
-        with (
-            patch.object(
-                barks_reader.ui.comic_book_reader.WindowManager,
-                "is_fullscreen_now",
-                return_value=True,
-            ),
-            patch.object(barks_reader.ui.comic_book_reader.Clock, "schedule_once") as mock_schedule,
-        ):
-            screen.toggle_screen_mode()
-            # Should schedule goto_windowed_mode
-            # We can't easily check the lambda, but we can check schedule_once was called
-            mock_schedule.assert_called()
+        # The toggle scaffolding lives in WindowModeController now; the screen just
+        # delegates to it. (The controller's own toggle logic is unit-tested in
+        # test_window_manager.py.)
+        screen._mode = MagicMock()
+
+        screen.toggle_screen_mode()
+
+        screen._mode.toggle.assert_called_once_with()
 
     def test_on_touch_down_top_margin(self, screen: ComicBookReaderScreen) -> None:
         touch = MagicMock()

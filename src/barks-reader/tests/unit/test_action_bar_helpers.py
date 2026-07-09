@@ -10,6 +10,7 @@ from barks_reader.ui.action_bar_helpers import (
     hide_action_bar,
     is_action_bar_visible,
     set_action_bar_visibility,
+    set_fullscreen_button,
     show_action_bar,
 )
 
@@ -55,6 +56,32 @@ class TestIsActionBarVisible:
         bar = _make_action_bar()
         bar.disabled = True
         assert is_action_bar_visible(bar) is False
+
+
+class TestSetFullscreenButton:
+    def test_fullscreen_offers_windowed_and_exit_icon(self) -> None:
+        button = MagicMock()
+        set_fullscreen_button(
+            button,
+            is_fullscreen=True,
+            fullscreen_icon="fs.png",
+            fullscreen_exit_icon="exit.png",
+        )
+
+        assert button.text == "Windowed"
+        assert button.icon == "exit.png"
+
+    def test_windowed_offers_fullscreen_and_fullscreen_icon(self) -> None:
+        button = MagicMock()
+        set_fullscreen_button(
+            button,
+            is_fullscreen=False,
+            fullscreen_icon="fs.png",
+            fullscreen_exit_icon="exit.png",
+        )
+
+        assert button.text == "Fullscreen"
+        assert button.icon == "fs.png"
 
 
 class TestConvenienceWrappers:

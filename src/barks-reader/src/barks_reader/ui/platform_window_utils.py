@@ -239,6 +239,48 @@ class WindowManager:
         Clock.schedule_once(lambda _dt: self._callbacks.on_finished_windowed(), 0)
 
 
+class WindowModeController:
+    """Per-screen fullscreen/windowed toggle scaffolding over a shared WindowManager.
+
+    Both the main screen and the comic reader drive their mode switches through
+    one of these, so the toggle policy (which direction to go, deferring the
+    switch to the next frame) lives in one place. The screen-specific completion
+    behaviour stays on the screen, delivered via the injected ``callbacks``
+    bundle; ``client`` only labels the logs.
+    """
+
+    def __init__(
+        self,
+        client: str,
+        window_manager: WindowManager,
+        callbacks: WindowModeCallbacks,
+    ) -> None:
+        self._client = client
+        self._window_manager = window_manager
+        self._callbacks = callbacks
+
+    def toggle(self) -> None:
+        """Switch to the opposite mode on the next frame."""
+        if WindowManager.is_fullscreen_now():
+            logger.info(f"{self._client}: Toggle screen mode to windowed mode.")
+            Clock.schedule_once(lambda _dt: self.goto_windowed(), 0)
+        else:
+            logger.info(f"{self._client}: Toggle screen mode to fullscreen mode.")
+            Clock.schedule_once(lambda _dt: self.goto_fullscreen(), 0)
+
+    def force_fullscreen(self) -> None:
+        """Enter fullscreen on the next frame, regardless of current mode."""
+        Clock.schedule_once(lambda _dt: self.goto_fullscreen(), 0)
+
+    def goto_fullscreen(self) -> None:
+        logger.info(f"{self._client}: Entering fullscreen mode.")
+        self._window_manager.goto_fullscreen_mode(self._callbacks)
+
+    def goto_windowed(self) -> None:
+        logger.info(f"{self._client}: Exiting fullscreen mode.")
+        self._window_manager.goto_windowed_mode(self._callbacks)
+
+
 def log_screen_metrics() -> None:
     from kivy.metrics import cm, dp, inch, sp  # noqa: PLC0415
 

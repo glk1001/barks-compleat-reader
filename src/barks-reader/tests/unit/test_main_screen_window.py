@@ -16,22 +16,24 @@ if TYPE_CHECKING:
 
 @dataclass
 class HelperFixture:
-    """Wraps MainScreenWindowHelper + the injected WindowManager + patched class.
+    """Wraps MainScreenWindowHelper + the patched WindowManager class + controller.
 
     ``mock_wm_cls`` patches the ``WindowManager`` *class* so the helper's static
-    calls (``WindowManager.is_fullscreen_now()`` etc.) are controllable. The
-    shared instance is injected separately (``helper._window_manager``); its
-    ``goto_*`` methods are what the mode-toggle tests assert on.
+    calls (``WindowManager.is_fullscreen_now()`` etc.) are controllable.
+    ``mock_controller`` is the ``WindowModeController`` the helper builds and
+    delegates its toggle/goto scaffolding to — the mode-toggle tests assert on it.
     """
 
     helper: MainScreenWindowHelper
     mock_wm_cls: MagicMock
+    mock_controller: MagicMock
 
 
 @pytest.fixture
 def hf() -> Generator[HelperFixture, Any]:
     with (
         patch.object(window_module, "WindowManager") as mock_wm_cls,
+        patch.object(window_module, "WindowModeController") as mock_controller_cls,
     ):
         h = MainScreenWindowHelper(
             host_screen=MagicMock(),
@@ -44,33 +46,23 @@ def hf() -> Generator[HelperFixture, Any]:
             fun_image_view_screen=MagicMock(),
             update_fonts=MagicMock(),
         )
-        yield HelperFixture(helper=h, mock_wm_cls=mock_wm_cls)
+        yield HelperFixture(
+            helper=h, mock_wm_cls=mock_wm_cls, mock_controller=mock_controller_cls.return_value
+        )
 
 
 class TestToggleScreenMode:
-    def test_fullscreen_to_windowed(self, hf: HelperFixture) -> None:
-        with patch.object(window_module, "Clock") as mock_clock:
-            hf.mock_wm_cls.is_fullscreen_now.return_value = True
+    def test_delegates_to_controller(self, hf: HelperFixture) -> None:
+        hf.helper.toggle_screen_mode()
 
-            hf.helper.toggle_screen_mode()
-
-            mock_clock.schedule_once.assert_called_once()
-
-    def test_windowed_to_fullscreen(self, hf: HelperFixture) -> None:
-        with patch.object(window_module, "Clock") as mock_clock:
-            hf.mock_wm_cls.is_fullscreen_now.return_value = False
-
-            hf.helper.toggle_screen_mode()
-
-            mock_clock.schedule_once.assert_called_once()
+        hf.mock_controller.toggle.assert_called_once_with()
 
 
 class TestForceFullscreen:
-    def test_schedules_fullscreen(self, hf: HelperFixture) -> None:
-        with patch.object(window_module, "Clock") as mock_clock:
-            hf.helper.force_fullscreen()
+    def test_delegates_to_controller(self, hf: HelperFixture) -> None:
+        hf.helper.force_fullscreen()
 
-            mock_clock.schedule_once.assert_called_once()
+        hf.mock_controller.force_fullscreen.assert_called_once_with()
 
 
 class TestExitFullscreen:
@@ -79,27 +71,14 @@ class TestExitFullscreen:
 
         hf.helper.exit_fullscreen()
 
-        hf.helper._window_manager.goto_windowed_mode.assert_not_called()  # ty: ignore[unresolved-attribute]
+        hf.mock_controller.goto_windowed.assert_not_called()
 
     def test_exits_when_fullscreen(self, hf: HelperFixture) -> None:
         hf.mock_wm_cls.is_fullscreen_now.return_value = True
 
         hf.helper.exit_fullscreen()
 
-        hf.helper._window_manager.goto_windowed_mode.assert_called_once_with(  # ty: ignore[unresolved-attribute]
-            hf.helper._window_mode_callbacks
-        )
-
-
-class TestGotoWindowedMode:
-    def test_delegates_with_callbacks(self, hf: HelperFixture) -> None:
-        # Returning to windowed delegates the mode switch to the shared manager,
-        # passing this screen's per-transition callback bundle.
-        hf.helper._goto_windowed_mode()
-
-        hf.helper._window_manager.goto_windowed_mode.assert_called_once_with(  # ty: ignore[unresolved-attribute]
-            hf.helper._window_mode_callbacks
-        )
+        hf.mock_controller.goto_windowed.assert_called_once_with()
 
 
 class TestSetHintsForWindowedMode:
@@ -125,19 +104,6 @@ class TestOnFinishedGotoWindowedMode:
             mock_set_vis.assert_called_once_with(
                 hf.helper._action_bar, window_module.ActionBarVisibility.VISIBLE
             )
-
-
-class TestGotoFullscreenMode:
-    def test_delegates_with_callbacks(self, hf: HelperFixture) -> None:
-        # Going fullscreen delegates to the shared manager, passing this screen's
-        # per-transition callback bundle. The old cross-screen seeding of the
-        # comic reader's geometry is gone: the manager's single geometry store is
-        # now shared, so there is nothing to seed.
-        hf.helper._goto_fullscreen_mode()
-
-        hf.helper._window_manager.goto_fullscreen_mode.assert_called_once_with(  # ty: ignore[unresolved-attribute]
-            hf.helper._window_mode_callbacks
-        )
 
 
 class TestOnFinishedGotoFullscreenMode:

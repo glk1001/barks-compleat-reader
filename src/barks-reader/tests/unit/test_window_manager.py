@@ -23,6 +23,7 @@ from barks_reader.ui.platform_window_utils import (
     KivyWindowBackend,
     WindowManager,
     WindowModeCallbacks,
+    WindowModeController,
     WindowState,
 )
 
@@ -492,3 +493,76 @@ class TestKivyWindowBackend:
         assert (fake_window.left, fake_window.top) == (50, 50)
         on_first.assert_called_once()
         on_done.assert_called_once()
+
+
+class TestWindowModeController:
+    """The per-screen toggle scaffolding over a (mocked) shared WindowManager."""
+
+    @pytest.fixture
+    def controller(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        fake_window: MagicMock,
+        fake_clock: MagicMock,
+    ) -> tuple[WindowModeController, MagicMock, WindowModeCallbacks]:
+        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Window", fake_window)
+        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Clock", fake_clock)
+        window_manager = MagicMock()
+        callbacks = WindowModeCallbacks(
+            on_windowed_first_resize=MagicMock(),
+            on_finished_windowed=MagicMock(),
+            on_finished_fullscreen=MagicMock(),
+        )
+        return WindowModeController("test", window_manager, callbacks), window_manager, callbacks
+
+    def test_goto_fullscreen_delegates_with_callbacks(
+        self, controller: tuple[WindowModeController, MagicMock, WindowModeCallbacks]
+    ) -> None:
+        ctrl, window_manager, callbacks = controller
+        ctrl.goto_fullscreen()
+        window_manager.goto_fullscreen_mode.assert_called_once_with(callbacks)
+
+    def test_goto_windowed_delegates_with_callbacks(
+        self, controller: tuple[WindowModeController, MagicMock, WindowModeCallbacks]
+    ) -> None:
+        ctrl, window_manager, callbacks = controller
+        ctrl.goto_windowed()
+        window_manager.goto_windowed_mode.assert_called_once_with(callbacks)
+
+    def test_toggle_from_windowed_goes_fullscreen(
+        self,
+        controller: tuple[WindowModeController, MagicMock, WindowModeCallbacks],
+        fake_window: MagicMock,
+    ) -> None:
+        ctrl, window_manager, callbacks = controller
+        fake_window.fullscreen = False
+
+        ctrl.toggle()  # fake_clock runs the scheduled switch immediately
+
+        window_manager.goto_fullscreen_mode.assert_called_once_with(callbacks)
+        window_manager.goto_windowed_mode.assert_not_called()
+
+    def test_toggle_from_fullscreen_goes_windowed(
+        self,
+        controller: tuple[WindowModeController, MagicMock, WindowModeCallbacks],
+        fake_window: MagicMock,
+    ) -> None:
+        ctrl, window_manager, callbacks = controller
+        fake_window.fullscreen = True
+
+        ctrl.toggle()
+
+        window_manager.goto_windowed_mode.assert_called_once_with(callbacks)
+        window_manager.goto_fullscreen_mode.assert_not_called()
+
+    def test_force_fullscreen_goes_fullscreen_even_when_already_fullscreen(
+        self,
+        controller: tuple[WindowModeController, MagicMock, WindowModeCallbacks],
+        fake_window: MagicMock,
+    ) -> None:
+        ctrl, window_manager, callbacks = controller
+        fake_window.fullscreen = True
+
+        ctrl.force_fullscreen()
+
+        window_manager.goto_fullscreen_mode.assert_called_once_with(callbacks)

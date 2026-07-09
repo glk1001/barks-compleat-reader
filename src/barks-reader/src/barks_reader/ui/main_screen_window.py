@@ -2,14 +2,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from kivy.clock import Clock
 from kivy.core.window import Window
 from loguru import logger
 
 from barks_reader.core.reader_utils import get_win_dimensions
 
-from .action_bar_helpers import ACTION_BAR_SIZE_Y, ActionBarVisibility, set_action_bar_visibility
-from .platform_window_utils import WindowManager, WindowModeCallbacks
+from .action_bar_helpers import (
+    ACTION_BAR_SIZE_Y,
+    ActionBarVisibility,
+    set_action_bar_visibility,
+    set_fullscreen_button,
+)
+from .platform_window_utils import WindowManager, WindowModeCallbacks, WindowModeController
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -42,47 +46,43 @@ class MainScreenWindowHelper:
         self._fun_image_view_screen = fun_image_view_screen
         self._update_fonts = update_fonts
 
-        # Shared with the comic reader; the geometry store now lives in one place.
-        self._window_manager = window_manager
-        self._window_mode_callbacks = WindowModeCallbacks(
-            on_windowed_first_resize=self._set_hints_for_windowed_mode,
-            on_finished_windowed=self._on_finished_goto_windowed_mode,
-            on_finished_fullscreen=self._on_finished_goto_fullscreen_mode,
+        # The window-mode engine is shared with the comic reader (one geometry
+        # store); this controller carries the toggle policy + this screen's
+        # completion callbacks.
+        self._mode = WindowModeController(
+            "MainScreen",
+            window_manager,
+            WindowModeCallbacks(
+                on_windowed_first_resize=self._set_hints_for_windowed_mode,
+                on_finished_windowed=self._on_finished_goto_windowed_mode,
+                on_finished_fullscreen=self._on_finished_goto_fullscreen_mode,
+            ),
         )
 
     def toggle_screen_mode(self) -> None:
-        if WindowManager.is_fullscreen_now():
-            logger.info("Toggle screen mode to windowed mode.")
-            Clock.schedule_once(lambda _dt: self._goto_windowed_mode(), 0)
-        else:
-            logger.info("Toggle screen mode to fullscreen mode.")
-            Clock.schedule_once(lambda _dt: self._goto_fullscreen_mode(), 0)
+        self._mode.toggle()
 
     def force_fullscreen(self) -> None:
-        Clock.schedule_once(lambda _dt: self._goto_fullscreen_mode(), 0)
+        self._mode.force_fullscreen()
 
     def exit_fullscreen(self) -> None:
         if not WindowManager.is_fullscreen_now():
             return
-        self._goto_windowed_mode()
-
-    def _goto_windowed_mode(self) -> None:
-        logger.info("Exiting fullscreen mode on MainScreen.")
-        self._window_manager.goto_windowed_mode(self._window_mode_callbacks)
+        self._mode.goto_windowed()
 
     def _set_hints_for_windowed_mode(self) -> None:
         self._host.size_hint = (1, 1)
 
     def _on_finished_goto_windowed_mode(self) -> None:
-        self._fullscreen_button.text = "Fullscreen"
-        self._fullscreen_button.icon = self._fullscreen_icon
+        set_fullscreen_button(
+            self._fullscreen_button,
+            is_fullscreen=False,
+            fullscreen_icon=self._fullscreen_icon,
+            fullscreen_exit_icon=self._fullscreen_exit_icon,
+        )
         self._update_fonts(Window.height)
         self.show_action_bar()
         logger.info("Entered windowed mode on MainScreen.")
-
-    def _goto_fullscreen_mode(self) -> None:
-        logger.info("Entering fullscreen mode on MainScreen.")
-        self._window_manager.goto_fullscreen_mode(self._window_mode_callbacks)
 
     def _on_finished_goto_fullscreen_mode(self) -> None:
         if not WindowManager.is_fullscreen_now():
@@ -100,8 +100,12 @@ class MainScreenWindowHelper:
                 f"New height too low: adjusted new fullscreen height = {self._host.height}."
             )
         self._update_fonts(Window.height)
-        self._fullscreen_button.text = "Windowed"
-        self._fullscreen_button.icon = self._fullscreen_exit_icon
+        set_fullscreen_button(
+            self._fullscreen_button,
+            is_fullscreen=True,
+            fullscreen_icon=self._fullscreen_icon,
+            fullscreen_exit_icon=self._fullscreen_exit_icon,
+        )
         logger.info("Entered fullscreen mode on MainScreen.")
 
     def on_main_layout_size_changed(self, _instance: Widget, size: tuple[int, int]) -> None:
