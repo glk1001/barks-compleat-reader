@@ -3,7 +3,7 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-07-08.
+Last updated: 2026-07-09.
 
 ---
 
@@ -47,6 +47,29 @@ Known limitation (intentional, not a reader fix): links under the bundle's
       used inconsistently. Note: "Upscayl" is a real tool, so `upscayled`
       ("processed by Upscayl") may be a deliberate coinage — confirm intent
       before flattening to `upscaled`.
+
+## Fullscreen / window management (robustness — deferred)
+
+> Surfaced while adding monitor-safe fullscreen sizing to the wiki reader
+> (`WikiReaderScreen._apply_viewer_sizing`). The wiki fix deliberately avoids
+> these patterns (no second `WindowManager`, no cross-object state reach); the
+> pre-existing hazards below remain in the main/comic screens and want a
+> separate consolidation pass.
+
+- [ ] **Two `WindowManager` instances over one global `Window`** — `MainScreen`
+      and `ComicBookReader` each own a `WindowManager` that mutates the single
+      global `Window.fullscreen`; correctness relies on only one being active at
+      a time, with no cross-checking.
+- [ ] **Cross-object window-state coupling** — `MainScreenWindowHelper`
+      writes/clears the *comic reader's* saved window state as a side effect of
+      its own fullscreen toggling (`main_screen_window.py:73,88`).
+- [ ] **Restore assertions can crash** — `restore_saved_size_and_position`
+      asserts non-sentinel size/pos (`platform_window_utils.py:168-169`); reached
+      without a prior save it raises, and silently restores garbage under `-O`.
+- [ ] **Duplicated / drifted toggle policy** — the toggle + finish-callback logic
+      is near-duplicated between `MainScreenWindowHelper` and
+      `ComicBookReaderScreen` and has already drifted; the mode strings
+      (`FullscreenEnum`, `"Fullscreen"`/`"Windowed"`) are repeated in ~3 places.
 
 ## Architecture / testability
 

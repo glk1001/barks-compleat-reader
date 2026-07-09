@@ -1,4 +1,4 @@
-# ruff: noqa: SLF001
+# ruff: noqa: SLF001, PLR2004
 
 from __future__ import annotations
 
@@ -41,6 +41,24 @@ def mock_window() -> Iterator[MagicMock]:
     # real Window singleton out of the unit tests.
     with patch.object(wiki_reader, "Window") as window:
         yield window
+
+
+@pytest.fixture(autouse=True)
+def mock_clock() -> Iterator[MagicMock]:
+    # open_wiki schedules a deferred re-apply of the viewer sizing; keep the real
+    # Kivy Clock out of the unit tests (the deferred call is asserted separately).
+    with patch.object(wiki_reader, "Clock") as clock:
+        yield clock
+
+
+@pytest.fixture(autouse=True)
+def mock_window_manager() -> Iterator[MagicMock]:
+    # _apply_viewer_sizing asks WindowManager whether the window is fullscreen;
+    # default to windowed so the real Window singleton is never touched. Tests
+    # that exercise the fullscreen path flip is_fullscreen_now.return_value.
+    with patch.object(wiki_reader, "WindowManager") as wm:
+        wm.is_fullscreen_now.return_value = False
+        yield wm
 
 
 class TestWikiReaderScreenOpenWiki:
@@ -237,23 +255,64 @@ class TestWikiReaderScreenKeyboardWhileTyping:
 class TestWikiReaderScreenKeyBinding:
     BUNDLE = Path("/bundle")
 
-    def test_open_binds_key_handler(
+    def test_open_binds_handlers(
         self, wiki_screen: WikiReaderScreen, mock_window: MagicMock
     ) -> None:
         with patch.object(WikiReaderScreen, "_build_viewer", autospec=True):
             wiki_screen.open_wiki(self.BUNDLE)
 
-        mock_window.bind.assert_called_once_with(on_key_down=wiki_screen._on_key_down)
+        mock_window.bind.assert_called_once_with(
+            on_key_down=wiki_screen._on_key_down, on_resize=wiki_screen._apply_viewer_sizing
+        )
         # Unbind first, so a re-open without an intervening close can't double-bind.
-        mock_window.unbind.assert_called_once_with(on_key_down=wiki_screen._on_key_down)
+        mock_window.unbind.assert_called_once_with(
+            on_key_down=wiki_screen._on_key_down, on_resize=wiki_screen._apply_viewer_sizing
+        )
 
-    def test_close_unbinds_key_handler(
+    def test_open_applies_viewer_sizing_immediately(
+        self, wiki_screen: WikiReaderScreen, mock_clock: MagicMock
+    ) -> None:
+        with (
+            patch.object(WikiReaderScreen, "_build_viewer", autospec=True),
+            patch.object(WikiReaderScreen, "_apply_viewer_sizing", autospec=True) as apply_mock,
+        ):
+            wiki_screen.open_wiki(self.BUNDLE)
+
+        # Applied immediately (no flash of an unsized viewer), and a deferred
+        # re-apply is scheduled for after the layout settles.
+        apply_mock.assert_called_once_with(wiki_screen)
+        assert mock_clock.schedule_once.call_count == 1
+
+    def test_open_defers_a_re_apply(
+        self, wiki_screen: WikiReaderScreen, mock_clock: MagicMock
+    ) -> None:
+        # Not patching _apply_viewer_sizing here, so the real bound method is what
+        # gets scheduled — re-pinning the strip against settled fullscreen geometry
+        # when the open-time layout was still transient.
+        with patch.object(WikiReaderScreen, "_build_viewer", autospec=True):
+            wiki_screen.open_wiki(self.BUNDLE)
+
+        mock_clock.schedule_once.assert_called_once_with(wiki_screen._apply_viewer_sizing)
+
+    def test_close_unbinds_handlers(
         self, wiki_screen: WikiReaderScreen, mock_window: MagicMock
     ) -> None:
         wiki_screen.close()
 
-        mock_window.unbind.assert_called_once_with(on_key_down=wiki_screen._on_key_down)
+        mock_window.unbind.assert_called_once_with(
+            on_key_down=wiki_screen._on_key_down, on_resize=wiki_screen._apply_viewer_sizing
+        )
         wiki_screen._on_close_screen.assert_called_once_with()
+
+    def test_close_does_not_change_window_mode(
+        self, wiki_screen: WikiReaderScreen, mock_window_manager: MagicMock
+    ) -> None:
+        # Decision: the wiki inherits the caller's window mode and never toggles
+        # it — close only unbinds handlers and saves the session.
+        wiki_screen.close()
+
+        mock_window_manager.goto_fullscreen_mode.assert_not_called()
+        mock_window_manager.goto_windowed_mode.assert_not_called()
 
 
 class TestWikiReaderScreenBuildViewer:
@@ -271,3 +330,72 @@ class TestWikiReaderScreenBuildViewer:
             wiki_screen._build_viewer(self.BUNDLE)
 
         assert viewer_cls.call_args.kwargs["on_exit"] == wiki_screen.close
+
+
+class TestWikiFullscreenViewerSize:
+    """The pure fullscreen-strip math (comic aspect, width from height)."""
+
+    def test_height_limited(self) -> None:
+        # 1080 tall, 45 top bar -> 1035 content; width = round(1035 / 1.50943) = 686.
+        assert wiki_reader.wiki_fullscreen_viewer_size(1080, 5000, 45) == (686, 1080)
+
+    def test_ignores_oversized_multi_monitor_width(self) -> None:
+        # A fullscreen Window.width that overshoots the visible monitor (spanning
+        # two screens) must not widen the strip: width stays height-derived.
+        width, _height = wiki_reader.wiki_fullscreen_viewer_size(1080, 99999, 45)
+        assert width == 686
+        assert width < 99999
+
+    def test_width_limited(self) -> None:
+        # A narrow ceiling caps the width and shrinks the content height to keep
+        # the comic aspect: 100 wide -> content height round(100 * 1.50943) = 151.
+        assert wiki_reader.wiki_fullscreen_viewer_size(2000, 100, 45) == (100, 196)
+
+
+class TestApplyViewerSizing:
+    def test_no_viewer_is_noop(
+        self, wiki_screen: WikiReaderScreen, mock_window_manager: MagicMock
+    ) -> None:
+        wiki_screen._viewer = None
+
+        wiki_screen._apply_viewer_sizing()
+
+        mock_window_manager.is_fullscreen_now.assert_not_called()
+
+    def test_fullscreen_shapes_screen_to_centred_strip(
+        self,
+        wiki_screen: WikiReaderScreen,
+        mock_window: MagicMock,
+        mock_window_manager: MagicMock,
+    ) -> None:
+        wiki_screen._viewer = MagicMock()
+        mock_window_manager.is_fullscreen_now.return_value = True
+        mock_window.height = 1080
+        mock_window.width = 3840
+
+        with patch.object(
+            wiki_reader, "wiki_fullscreen_viewer_size", return_value=(686, 1080)
+        ) as size_mock:
+            wiki_screen._apply_viewer_sizing()
+
+        # The SCREEN itself becomes the centred strip (mirroring <MainScreen>)...
+        assert tuple(wiki_screen.size_hint) == (None, None)
+        assert wiki_screen.pos_hint == {"center_x": 0.5, "center_y": 0.5}
+        assert tuple(wiki_screen.size) == (686, 1080)
+        size_mock.assert_called_once_with(1080, 3840, wiki_reader.ACTION_BAR_SIZE_Y)
+        # ...and the viewer just fills the screen (no independent sizing to race).
+        assert wiki_screen._viewer.size_hint == (1, 1)
+        assert wiki_screen._viewer.pos_hint == {}
+
+    def test_windowed_fills_manager(
+        self, wiki_screen: WikiReaderScreen, mock_window_manager: MagicMock
+    ) -> None:
+        wiki_screen._viewer = MagicMock()
+        mock_window_manager.is_fullscreen_now.return_value = False
+
+        wiki_screen._apply_viewer_sizing()
+
+        assert tuple(wiki_screen.size_hint) == (1, 1)
+        assert wiki_screen.pos_hint == {}
+        assert wiki_screen._viewer.size_hint == (1, 1)
+        assert wiki_screen._viewer.pos_hint == {}

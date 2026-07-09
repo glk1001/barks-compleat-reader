@@ -15,11 +15,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from kivy.clock import Clock
 from kivy.core.window import Window
 from loguru import logger
 from okf_reader.core.actions import PageAction
 from okf_reader.ui.viewer import OKFViewer
 
+from barks_reader.core.reader_utils import get_win_dimensions
 from barks_reader.core.wiki_integration import (
     BarksPanelsImageProvider,
     BarksTableRewriter,
@@ -28,6 +30,8 @@ from barks_reader.core.wiki_integration import (
     wiki_top_bar_spec,
 )
 
+from .action_bar_helpers import ACTION_BAR_SIZE_Y
+from .platform_window_utils import WindowManager
 from .reader_keyboard_nav import KEY_ESCAPE, KEY_F, KEY_LEFT, is_escape_key
 from .reader_screens import ReaderScreen
 
@@ -41,6 +45,31 @@ if TYPE_CHECKING:
     from barks_reader.core.reader_settings import ReaderSettings
 
     from .font_manager import FontManager
+
+
+def wiki_fullscreen_viewer_size(
+    window_height: int, window_width: int, top_bar_height: int
+) -> tuple[int, int]:
+    """Return the viewer's (width, height) as a monitor-safe fullscreen strip.
+
+    Mirrors the main/comic screens: the width comes from the window *height* (a
+    comic-aspect strip via ``get_win_dimensions``), never from ``window_width``,
+    so a multi-monitor fullscreen ``Window.width`` that overshoots the visible
+    monitor cannot push the viewer off the right edge. The top bar height is
+    carried through so the content area keeps the comic aspect while the whole
+    viewer (bar + content) still fills the window vertically.
+
+    Args:
+        window_height: The fullscreen window height, in pixels.
+        window_width: The fullscreen window width, in pixels (the clamp ceiling).
+        top_bar_height: The viewer's top action-bar height, in pixels.
+
+    Returns:
+        The (width, height) for the viewer, in pixels.
+
+    """
+    content_w, content_h = get_win_dimensions(window_height - top_bar_height, window_width)
+    return content_w, content_h + top_bar_height
 
 
 class _GotoTitleActionProvider:
@@ -105,10 +134,17 @@ class WikiReaderScreen(ReaderScreen):
             # Re-root the history at the landing page so Back from it exits the
             # reader (via on_exit) rather than walking a previous visit's trail.
             self._viewer.reset_to(page)
-        # Route the window's back keys here while this screen is up; unbind on close.
-        # Unbind first so a re-open without an intervening close can't double-bind.
-        Window.unbind(on_key_down=self._on_key_down)
-        Window.bind(on_key_down=self._on_key_down)
+        # While this screen is up, route the window's back keys here and keep the
+        # viewer sized to the window; unbind both on close. Unbind first so a
+        # re-open without an intervening close can't double-bind.
+        Window.unbind(on_key_down=self._on_key_down, on_resize=self._apply_viewer_sizing)
+        Window.bind(on_key_down=self._on_key_down, on_resize=self._apply_viewer_sizing)
+        # Size now so a wiki opened while already fullscreen is a strip on frame one,
+        # then again on the next frame: at open the host screen's layout may not have
+        # settled and no resize event follows to correct a strip centered against a
+        # transient geometry, so a deferred re-apply re-pins it once things settle.
+        self._apply_viewer_sizing()
+        Clock.schedule_once(self._apply_viewer_sizing)
 
     def close(self) -> None:
         """Save the reading position and hand control back to the main screen.
@@ -117,9 +153,40 @@ class WikiReaderScreen(ReaderScreen):
         the history root all route here, so unbinding the keyboard here covers
         every way out.
         """
-        Window.unbind(on_key_down=self._on_key_down)
+        Window.unbind(on_key_down=self._on_key_down, on_resize=self._apply_viewer_sizing)
         self.save_session()
         self._on_close_screen()
+
+    def _apply_viewer_sizing(self, *_args: object) -> None:
+        """Shape this screen to a monitor-safe centred strip in fullscreen, else fill.
+
+        Bound to the window's resize while this screen is up (and called once on
+        open). This mirrors the main screen exactly (``<MainScreen>`` sets
+        ``pos_hint`` centre + a strip size): in fullscreen *this screen* becomes a
+        comic-aspect strip whose width is derived from the window height (see
+        ``wiki_fullscreen_viewer_size``, immune to a multi-monitor ``Window.width``)
+        and is centred via ``pos_hint``; the viewer just fills the screen. Sizing
+        and centring the *screen* — not the viewer inside it — is what fixes the
+        off-centre bug: previously the viewer was centred within a screen whose own
+        size/pos still raced from full-window to strip, landing the viewer off to
+        one side. In windowed mode the app already constrains the window, so the
+        screen fills the manager. This never touches ``Window.fullscreen``: the
+        wiki inherits the caller's window mode.
+        """
+        if self._viewer is None:
+            return
+        if WindowManager.is_fullscreen_now():
+            self.size_hint = (None, None)
+            self.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+            self.size = wiki_fullscreen_viewer_size(Window.height, Window.width, ACTION_BAR_SIZE_Y)
+            self._viewer.size_hint = (1, 1)
+            self._viewer.pos_hint = {}
+        else:
+            # Fill the manager again (clearing any strip shape from a prior open).
+            self.size_hint = (1, 1)
+            self.pos_hint = {}
+            self._viewer.size_hint = (1, 1)
+            self._viewer.pos_hint = {}
 
     def _on_key_down(
         self, _window: object, key: int, _scancode: int, _codepoint: str, modifiers: list[str]
