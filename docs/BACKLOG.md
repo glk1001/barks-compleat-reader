@@ -61,7 +61,7 @@ Known limitation (intentional, not a reader fix): links under the bundle's
       global `Window.fullscreen`; correctness relies on only one being active at
       a time, with no cross-checking. Unifying them onto a single shared geometry
       source is also what would let the (now-documented) cross-object seeding
-      above go away.
+      above go away. Scoped plan: `docs/plans/windowmanager-unification.md`.
 - [x] **Cross-object window-state coupling** (2026-07-09) — investigated: it is
       *load-bearing*, not a bug. `MainScreenWindowHelper` seeds the comic reader's
       `WindowManager` with the current windowed geometry before the main screen
