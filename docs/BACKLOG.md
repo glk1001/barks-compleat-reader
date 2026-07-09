@@ -63,9 +63,11 @@ Known limitation (intentional, not a reader fix): links under the bundle's
 - [ ] **Cross-object window-state coupling** — `MainScreenWindowHelper`
       writes/clears the *comic reader's* saved window state as a side effect of
       its own fullscreen toggling (`main_screen_window.py:73,88`).
-- [ ] **Restore assertions can crash** — `restore_saved_size_and_position`
-      asserts non-sentinel size/pos (`platform_window_utils.py:168-169`); reached
-      without a prior save it raises, and silently restores garbage under `-O`.
+- [x] **Restore assertions can crash** (2026-07-09) — `restore_saved_size_and_position`
+      asserted non-sentinel size/pos; reached without a prior save (app started
+      already fullscreen) it raised, and silently restored garbage under `-O`.
+      Now guards via `WindowState.is_unsaved()`: skips the geometry restore and
+      just finishes the windowed transition. Tested in `test_window_manager.py`.
 - [ ] **Duplicated / drifted toggle policy** — the toggle + finish-callback logic
       is near-duplicated between `MainScreenWindowHelper` and
       `ComicBookReaderScreen` and has already drifted; the mode strings

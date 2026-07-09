@@ -37,6 +37,16 @@ class WindowState:
     def is_saved_state_same_as_current(self) -> bool:
         return Window.size == self.size and (Window.left, Window.top) == self.pos
 
+    def is_unsaved(self) -> bool:
+        """Return True while no geometry has been captured (still the defaults).
+
+        ``goto_fullscreen_mode`` skips its save when the window is *already*
+        fullscreen (e.g. at app start), so a later windowed restore can be
+        reached with nothing to restore. Restoring the sentinel would apply a
+        nonsense size/position, so the restore guards on this.
+        """
+        return self.size == (0, 0) or self.pos == (-1, -1)
+
     @staticmethod
     def get_current_screen_mode() -> FullscreenEnum:
         return FullscreenEnum.FULLSCREEN if Window.fullscreen else FullscreenEnum.WINDOWED
@@ -165,12 +175,24 @@ class WindowManager:
         Clock.schedule_once(lambda _dt: do_windowed(), 0)
 
     def restore_saved_size_and_position(self) -> None:
-        assert self._saved_window_state.size != (0, 0)
-        assert self._saved_window_state.pos != (-1, -1)
+        state = self._saved_window_state
+        if state.is_unsaved():
+            # Nothing was captured before going fullscreen (the app started
+            # already fullscreen, so goto_fullscreen_mode's save was skipped).
+            # Restoring the sentinel would move the window to a nonsense
+            # size/position, so leave the current geometry untouched and just
+            # finish the windowed transition: apply the windowed size hints and
+            # fire the completion callback, as the settled restore path does.
+            logger.warning(
+                f"{self._client}: No saved window state to restore "
+                f"(size = {state.size}, pos = {state.pos}); leaving current geometry."
+            )
+            self._on_goto_windowed_mode_first_resize()
+            Clock.schedule_once(lambda _dt: self._on_finished_goto_windowed_mode(), 0)
+            return
 
         logger.info(
-            f"{self._client}: Restoring window: target size = {self._saved_window_state.size}, "
-            f"pos = {self._saved_window_state.pos}"
+            f"{self._client}: Restoring window: target size = {state.size}, pos = {state.pos}"
         )
         logger.info(
             f"{self._client}: At the start of restoring window state,"
@@ -178,7 +200,7 @@ class WindowManager:
         )
 
         self._backend.schedule_restore(
-            self._saved_window_state,
+            state,
             self._on_goto_windowed_mode_first_resize,
             self._finish_restore,
         )

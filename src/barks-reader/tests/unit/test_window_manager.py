@@ -212,6 +212,31 @@ class TestGotoWindowedMode:
         on_first_resize.assert_called_once()
         on_finished_windowed.assert_called_once()
 
+    def test_exits_fullscreen_without_saved_state_skips_restore(
+        self,
+        manager: tuple[WindowManager, MagicMock, MagicMock, MagicMock],
+        fake_window: MagicMock,
+        backend: _FakeBackend,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # Regression: the app started already fullscreen, so goto_fullscreen_mode
+        # skipped its save. Exiting to windowed must not assert/crash (or restore
+        # the sentinel geometry) — it leaves the geometry and finishes the transition.
+        wm, on_first_resize, on_finished_windowed, _ = manager
+        fake_logger = MagicMock()
+        monkeypatch.setattr("barks_reader.ui.platform_window_utils.logger", fake_logger)
+        fake_window.fullscreen = True
+        # No save_state_now(): _saved_window_state is still the sentinel default.
+
+        wm.goto_windowed_mode()
+
+        assert fake_window.fullscreen is False
+        # Geometry restore is skipped, but the windowed transition still completes.
+        assert len(backend.restore_calls) == 0
+        on_first_resize.assert_called_once()
+        on_finished_windowed.assert_called_once()
+        fake_logger.warning.assert_called_once()
+
 
 class TestStaticHelpers:
     def test_is_fullscreen_now(
@@ -273,6 +298,15 @@ class TestWindowState:
         assert WindowState.get_current_screen_mode() == FullscreenEnum.WINDOWED
         fake_window.fullscreen = True
         assert WindowState.get_current_screen_mode() == FullscreenEnum.FULLSCREEN
+
+    def test_is_unsaved(self) -> None:
+        # Defaults are the sentinel -> unsaved.
+        assert WindowState().is_unsaved() is True
+        # Both captured (pos (0, 0) is a real corner, not the (-1, -1) sentinel).
+        assert WindowState(size=(800, 600), pos=(0, 0)).is_unsaved() is False
+        # Either sentinel alone still counts as unsaved.
+        assert WindowState(size=(800, 600)).is_unsaved() is True  # pos default (-1, -1)
+        assert WindowState(pos=(10, 20)).is_unsaved() is True  # size default (0, 0)
 
 
 class TestRoundTrip:
