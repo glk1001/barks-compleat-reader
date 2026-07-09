@@ -888,10 +888,24 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self.comic_book_reader.close_comic_book_reader()
         self._exit_fullscreen()
 
-    def clear_window_state(self) -> None:
+    def clear_windowed_restore_geometry(self) -> None:
+        """Discard the windowed geometry the main screen seeded (see below).
+
+        Called by ``MainScreenWindowHelper`` when the app returns to windowed
+        mode, so a stale seed can't later be restored.
+        """
         self._window_manager.clear_state()
 
-    def save_window_state_now(self) -> None:
+    def seed_windowed_restore_geometry(self) -> None:
+        """Capture the current (windowed) geometry as this reader's restore target.
+
+        Called by ``MainScreenWindowHelper`` just before the *main* screen goes
+        fullscreen. If the user then opens a comic — entering while the window is
+        already fullscreen, so ``_was_fullscreen_on_entry`` is True — and toggles
+        it back to windowed, this reader's own ``WindowManager`` never captured
+        the pre-fullscreen size/position itself; this seed is what lets it restore
+        the window correctly. See also the seeding note in ``main_screen_window``.
+        """
         self._window_manager.save_state_now()
 
     @property

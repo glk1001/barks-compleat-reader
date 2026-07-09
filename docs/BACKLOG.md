@@ -59,10 +59,17 @@ Known limitation (intentional, not a reader fix): links under the bundle's
 - [ ] **Two `WindowManager` instances over one global `Window`** — `MainScreen`
       and `ComicBookReader` each own a `WindowManager` that mutates the single
       global `Window.fullscreen`; correctness relies on only one being active at
-      a time, with no cross-checking.
-- [ ] **Cross-object window-state coupling** — `MainScreenWindowHelper`
-      writes/clears the *comic reader's* saved window state as a side effect of
-      its own fullscreen toggling (`main_screen_window.py:73,88`).
+      a time, with no cross-checking. Unifying them onto a single shared geometry
+      source is also what would let the (now-documented) cross-object seeding
+      above go away.
+- [x] **Cross-object window-state coupling** (2026-07-09) — investigated: it is
+      *load-bearing*, not a bug. `MainScreenWindowHelper` seeds the comic reader's
+      `WindowManager` with the current windowed geometry before the main screen
+      goes fullscreen, so a comic opened while the window is already fullscreen can
+      still restore the window on a comic→windowed toggle. Renamed the methods to
+      `seed_`/`clear_windowed_restore_geometry`, documented the contract at both
+      ends, and pinned it with tests. True decoupling (a single shared geometry
+      source) is folded into the WindowManager-unification item below.
 - [x] **Restore assertions can crash** (2026-07-09) — `restore_saved_size_and_position`
       asserted non-sentinel size/pos; reached without a prior save (app started
       already fullscreen) it raised, and silently restored garbage under `-O`.

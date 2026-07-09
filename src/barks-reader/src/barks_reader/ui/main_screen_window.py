@@ -70,7 +70,9 @@ class MainScreenWindowHelper:
 
     def _goto_windowed_mode(self) -> None:
         logger.info("Exiting fullscreen mode on MainScreen.")
-        self._comic_reader_manager.clear_window_state()
+        # Drop the windowed geometry we seeded the comic reader with on the way
+        # into fullscreen — back in windowed mode it would only go stale.
+        self._comic_reader_manager.clear_windowed_restore_geometry()
         self._window_manager.goto_windowed_mode()
 
     def _set_hints_for_windowed_mode(self) -> None:
@@ -85,7 +87,11 @@ class MainScreenWindowHelper:
 
     def _goto_fullscreen_mode(self) -> None:
         logger.info("Entering fullscreen mode on MainScreen.")
-        self._comic_reader_manager.save_window_state_now()
+        # Hand the comic reader the current windowed size/position before we go
+        # fullscreen: a comic opened while the window is already fullscreen never
+        # captures it itself, so this is what lets a later comic->windowed toggle
+        # restore the window. (See ComicBookReaderScreen.seed_windowed_restore_geometry.)
+        self._comic_reader_manager.seed_windowed_restore_geometry()
         self._window_manager.goto_fullscreen_mode()
 
     def _on_finished_goto_fullscreen_mode(self) -> None:

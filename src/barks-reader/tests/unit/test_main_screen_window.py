@@ -76,22 +76,24 @@ class TestExitFullscreen:
 
         hf.helper.exit_fullscreen()
 
-        hf.helper._comic_reader_manager.clear_window_state.assert_not_called()  # ty: ignore[unresolved-attribute]
+        hf.helper._comic_reader_manager.clear_windowed_restore_geometry.assert_not_called()  # ty: ignore[unresolved-attribute]
 
     def test_exits_when_fullscreen(self, hf: HelperFixture) -> None:
         hf.mock_wm_cls.is_fullscreen_now.return_value = True
 
         hf.helper.exit_fullscreen()
 
-        hf.helper._comic_reader_manager.clear_window_state.assert_called_once()  # ty: ignore[unresolved-attribute]
+        hf.helper._comic_reader_manager.clear_windowed_restore_geometry.assert_called_once()  # ty: ignore[unresolved-attribute]
         hf.helper._window_manager.goto_windowed_mode.assert_called_once()  # ty: ignore[unresolved-attribute]
 
 
 class TestGotoWindowedMode:
-    def test_clears_state_and_delegates(self, hf: HelperFixture) -> None:
+    def test_clears_seeded_comic_geometry_and_delegates(self, hf: HelperFixture) -> None:
+        # Returning to windowed drops the geometry seeded for the comic reader (so
+        # it can't go stale), then delegates the actual mode switch.
         hf.helper._goto_windowed_mode()
 
-        hf.helper._comic_reader_manager.clear_window_state.assert_called_once()  # ty: ignore[unresolved-attribute]
+        hf.helper._comic_reader_manager.clear_windowed_restore_geometry.assert_called_once()  # ty: ignore[unresolved-attribute]
         hf.helper._window_manager.goto_windowed_mode.assert_called_once()  # ty: ignore[unresolved-attribute]
 
 
@@ -121,10 +123,14 @@ class TestOnFinishedGotoWindowedMode:
 
 
 class TestGotoFullscreenMode:
-    def test_saves_state_and_delegates(self, hf: HelperFixture) -> None:
+    def test_seeds_comic_windowed_geometry_before_going_fullscreen(self, hf: HelperFixture) -> None:
+        # Load-bearing coupling: seed the comic reader with the current windowed
+        # geometry *before* the window goes fullscreen, so a comic opened while
+        # already fullscreen can still restore the window on a comic->windowed
+        # toggle. (See ComicBookReaderScreen.seed_windowed_restore_geometry.)
         hf.helper._goto_fullscreen_mode()
 
-        hf.helper._comic_reader_manager.save_window_state_now.assert_called_once()  # ty: ignore[unresolved-attribute]
+        hf.helper._comic_reader_manager.seed_windowed_restore_geometry.assert_called_once()  # ty: ignore[unresolved-attribute]
         hf.helper._window_manager.goto_fullscreen_mode.assert_called_once()  # ty: ignore[unresolved-attribute]
 
 
