@@ -137,7 +137,7 @@ BARKS_PAYMENTS = {
     Titles.TUNNEL_VISION: PaymentInfo(Titles.TUNNEL_VISION, 1, 24, 11, 1948, 30.0),
     Titles.SLEEPY_SITTERS: PaymentInfo(Titles.SLEEPY_SITTERS, 1, 24, 11, 1948, 30.0),
     Titles.SUNKEN_YACHT_THE: PaymentInfo(Titles.SUNKEN_YACHT_THE, 10, 24, 11, 1948, 225.0),
-    Titles.RACE_TO_THE_SOUTH_SEAS: PaymentInfo(Titles.RACE_TO_THE_SOUTH_SEAS, 22, 9, 12, 1948, 550.0),
+    Titles.RACE_TO_THE_SOUTH_SEAS: PaymentInfo(Titles.RACE_TO_THE_SOUTH_SEAS, 22, 15, 12, 1948, 550.0),
     Titles.MANAGING_THE_ECHO_SYSTEM: PaymentInfo(Titles.MANAGING_THE_ECHO_SYSTEM, 10, 13, 1, 1949, 250.0),
     Titles.PLENTY_OF_PETS: PaymentInfo(Titles.PLENTY_OF_PETS, 10, 27, 1, 1949, 250.0),
     Titles.VOODOO_HOODOO: PaymentInfo(Titles.VOODOO_HOODOO, 32, 3, 3, 1949, 800.0),
