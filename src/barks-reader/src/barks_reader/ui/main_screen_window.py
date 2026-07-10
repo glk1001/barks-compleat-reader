@@ -66,8 +66,12 @@ class MainScreenWindowHelper:
         self._mode.force_fullscreen()
 
     def exit_fullscreen(self) -> None:
-        if not WindowManager.is_fullscreen_now():
-            return
+        """Ensure the app is windowed.
+
+        Delegates unconditionally: if the window is already windowed the manager
+        skips the transition but still fires the completion callback, so every
+        caller gets the same single completion path.
+        """
         self._mode.goto_windowed()
 
     def _set_hints_for_windowed_mode(self) -> None:
@@ -85,7 +89,8 @@ class MainScreenWindowHelper:
         logger.info("Entered windowed mode on MainScreen.")
 
     def _on_finished_goto_fullscreen_mode(self) -> None:
-        if not WindowManager.is_fullscreen_now():
+        is_fullscreen_now = bool(WindowManager.is_fullscreen_now())
+        if not is_fullscreen_now:
             logger.error(
                 f"Finishing goto fullscreen on MainScreen but Window fullscreen"
                 f" = '{WindowManager.get_screen_mode_now()}'. "
@@ -100,9 +105,11 @@ class MainScreenWindowHelper:
                 f"New height too low: adjusted new fullscreen height = {self._host.height}."
             )
         self._update_fonts(Window.height)
+        # The actual mode, not an assumed True: if the transition failed, the
+        # button label must keep matching the real window.
         set_fullscreen_button(
             self._fullscreen_button,
-            is_fullscreen=True,
+            is_fullscreen=is_fullscreen_now,
             fullscreen_icon=self._fullscreen_icon,
             fullscreen_exit_icon=self._fullscreen_exit_icon,
         )

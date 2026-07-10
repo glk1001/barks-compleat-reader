@@ -902,12 +902,16 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         )
 
     def _update_window_mode(self) -> None:
-        self._was_fullscreen_on_entry = WindowManager.is_fullscreen_now()
+        self._was_fullscreen_on_entry = bool(WindowManager.is_fullscreen_now())
 
         if not self._was_fullscreen_on_entry and self._goto_fullscreen_on_comic_read:
             self._mode.goto_fullscreen()
 
-        self.is_fullscreen = self._was_fullscreen_on_entry or self._goto_fullscreen_on_comic_read
+        # Reflect the mode the window is actually in; if a goto was issued
+        # above, its finish callback updates this when the transition lands
+        # (setting it optimistically here would leave the UI state inverted if
+        # the transition fails).
+        self.is_fullscreen = self._was_fullscreen_on_entry
 
     def toggle_screen_mode(self) -> None:
         self._mode.toggle()
@@ -958,11 +962,10 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         logger.info("Entered windowed mode on ComicBookReaderScreen.")
 
     def _exit_fullscreen(self) -> None:
-        if not WindowManager.is_fullscreen_now() and not self._was_fullscreen_on_entry:
-            logger.debug("Fullscreen not on and not required.")
-            self._on_finished_goto_windowed_mode()
-            return
-
+        # Both branches delegate unconditionally: when the window is already in
+        # the target mode the manager skips the transition but still fires the
+        # finish callback, so the closing logic in the callbacks runs on the
+        # same single completion path either way.
         if self._was_fullscreen_on_entry:
             logger.debug("Fullscreen is required.")
             self._mode.goto_fullscreen()
@@ -971,13 +974,16 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._mode.goto_windowed()
 
     def _on_finished_goto_fullscreen_mode(self) -> None:
-        if not WindowManager.is_fullscreen_now():
+        is_fullscreen_now = bool(WindowManager.is_fullscreen_now())
+        if not is_fullscreen_now:
             logger.error(
                 f"Finishing goto fullscreen on ComicBookReaderScreen but Window fullscreen"
                 f" = '{WindowManager.get_screen_mode_now()}'. "
             )
 
-        self.is_fullscreen = True
+        # The actual mode, not an assumed True: if the transition failed, the
+        # button and action-bar state must keep matching the real window.
+        self.is_fullscreen = is_fullscreen_now
         self._update_widget_states()
         self._update_fullscreen_button()
 

@@ -22,6 +22,14 @@
 <QuitFence@BarSeparator>:
     slot_width: dp(reader_consts.RAW_QUIT_FENCE_WIDTH)
 
+# The fullscreen/windowed toggle button. These are the initial (windowed-mode)
+# label and icon; set_fullscreen_button() (action_bar_helpers.py) swaps both on
+# every completed mode transition. Each screen supplies its own on_press.
+<FullscreenBarButton@BarButton>:
+    text: "Fullscreen"
+    icon: str(sys_paths.get_barks_reader_fullscreen_icon_file())
+    important: True
+
 <ReaderActionBar>:
     drag_region: draggable_title_bar
     icon_hitbox: icon_hitbox

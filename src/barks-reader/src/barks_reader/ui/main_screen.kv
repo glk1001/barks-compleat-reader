@@ -86,11 +86,8 @@
                 on_icon_release: root.goto_reader_icon_title()
                 title_text: root.app_title
 
-                BarButton:
+                FullscreenBarButton:
                     id: fullscreen_button
-                    text: "Fullscreen"
-                    icon: str(sys_paths.get_barks_reader_fullscreen_icon_file())
-                    important: True
                     on_press: root.toggle_screen_mode()
 
                 BarButton:

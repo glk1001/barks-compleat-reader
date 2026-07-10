@@ -275,10 +275,10 @@ class WindowModeController:
     """Per-screen fullscreen/windowed toggle scaffolding over a shared WindowManager.
 
     Both the main screen and the comic reader drive their mode switches through
-    one of these, so the toggle policy (which direction to go, deferring the
-    switch to the next frame) lives in one place. The screen-specific completion
-    behaviour stays on the screen, delivered via the injected ``callbacks``
-    bundle; ``client`` only labels the logs.
+    one of these, so the toggle policy (which direction to go) lives in one
+    place. The screen-specific completion behaviour stays on the screen,
+    delivered via the injected ``callbacks`` bundle; ``client`` only labels the
+    logs.
     """
 
     def __init__(
@@ -292,17 +292,20 @@ class WindowModeController:
         self._callbacks = callbacks
 
     def toggle(self) -> None:
-        """Switch to the opposite mode on the next frame."""
+        """Switch to the opposite mode.
+
+        No deferral here: the manager already defers the actual ``Window``
+        mutation to the next frame, so an extra hop would only let the mode
+        read go stale.
+        """
         if WindowManager.is_fullscreen_now():
-            logger.info(f"{self._client}: Toggle screen mode to windowed mode.")
-            Clock.schedule_once(lambda _dt: self.goto_windowed(), 0)
+            self.goto_windowed()
         else:
-            logger.info(f"{self._client}: Toggle screen mode to fullscreen mode.")
-            Clock.schedule_once(lambda _dt: self.goto_fullscreen(), 0)
+            self.goto_fullscreen()
 
     def force_fullscreen(self) -> None:
-        """Enter fullscreen on the next frame, regardless of current mode."""
-        Clock.schedule_once(lambda _dt: self.goto_fullscreen(), 0)
+        """Enter fullscreen, regardless of current mode."""
+        self.goto_fullscreen()
 
     def goto_fullscreen(self) -> None:
         """Enter fullscreen via the shared manager, with this screen's callbacks."""

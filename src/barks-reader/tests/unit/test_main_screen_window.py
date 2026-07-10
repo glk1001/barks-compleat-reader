@@ -66,16 +66,10 @@ class TestForceFullscreen:
 
 
 class TestExitFullscreen:
-    def test_noop_when_not_fullscreen(self, hf: HelperFixture) -> None:
-        hf.mock_wm_cls.is_fullscreen_now.return_value = False
-
-        hf.helper.exit_fullscreen()
-
-        hf.mock_controller.goto_windowed.assert_not_called()
-
-    def test_exits_when_fullscreen(self, hf: HelperFixture) -> None:
-        hf.mock_wm_cls.is_fullscreen_now.return_value = True
-
+    def test_delegates_unconditionally(self, hf: HelperFixture) -> None:
+        # Even when already windowed: the manager skips the transition but
+        # still fires the completion callback, so every caller shares one
+        # completion path.
         hf.helper.exit_fullscreen()
 
         hf.mock_controller.goto_windowed.assert_called_once_with()
