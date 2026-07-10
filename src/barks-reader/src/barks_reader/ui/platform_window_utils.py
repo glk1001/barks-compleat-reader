@@ -126,22 +126,25 @@ def _create_window_backend() -> WindowBackend:
 
 
 class WindowManager:
-    def __init__(self, client: str) -> None:
-        self._client = client
+    """Owns fullscreen/windowed transitions and the saved windowed geometry.
 
-        # The callbacks for the transition currently in flight. Window-mode
-        # transitions are single-in-flight on the UI thread (guarded by the
-        # ``is_fullscreen_now()`` early-returns in ``goto_*``), so stashing the
-        # active bundle here is safe across the Clock-chained internal steps.
-        self._active_callbacks: WindowModeCallbacks | None = None
+    One instance is shared by all screens (a single geometry store). Each
+    ``goto_*`` call carries the calling screen's ``WindowModeCallbacks``, and
+    every Clock-deferred step of the transition captures that bundle by
+    closure — so a transition always completes with the callbacks of the
+    screen that started it, even if another screen starts a transition while
+    this one's chain is still in flight.
+    """
+
+    def __init__(self) -> None:
+        # Number of windowed transitions whose geometry restore has not yet
+        # settled. While non-zero the current Window geometry is transitional
+        # (typically still monitor-sized), so it must not be saved as the
+        # windowed geometry.
+        self._pending_restores = 0
 
         self._saved_window_state = WindowState()
         self._backend: WindowBackend = _create_window_backend()
-
-    @property
-    def _callbacks(self) -> WindowModeCallbacks:
-        assert self._active_callbacks is not None, "No window-mode transition in flight"
-        return self._active_callbacks
 
     @staticmethod
     def is_fullscreen_now() -> bool:
@@ -151,46 +154,67 @@ class WindowManager:
     def get_screen_mode_now() -> str:
         return WindowState.get_current_screen_mode().value
 
-    def clear_state(self) -> None:
-        self._saved_window_state = WindowState()
-
     def save_state_now(self) -> None:
         self._backend.save_state(self._saved_window_state)
         logger.info(
-            f"{self._client}: Saved window state: size = {self._saved_window_state.size}, "
+            f"Saved window state: size = {self._saved_window_state.size}, "
             f"pos = {self._saved_window_state.pos}"
         )
 
     def goto_fullscreen_mode(self, callbacks: WindowModeCallbacks) -> None:
-        self._active_callbacks = callbacks
+        """Enter fullscreen mode, saving the windowed geometry first.
 
+        Args:
+            callbacks: The calling screen's completion callbacks for this
+                transition.
+
+        """
         if self.is_fullscreen_now():
-            self._callbacks.on_finished_fullscreen()
+            callbacks.on_finished_fullscreen()
             return
 
-        self.save_state_now()
+        if self._pending_restores > 0:
+            # A windowed restore is still in flight, so the current geometry is
+            # transitional. The store already holds the real windowed geometry;
+            # saving now would overwrite it with the un-restored values.
+            logger.warning("Windowed restore still in flight; keeping saved geometry.")
+        else:
+            self.save_state_now()
 
         def do_fullscreen() -> None:
             Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
-            Clock.schedule_once(lambda _dt: self._callbacks.on_finished_fullscreen(), 0)
+            Clock.schedule_once(lambda _dt: callbacks.on_finished_fullscreen(), 0)
 
         Clock.schedule_once(lambda _dt: do_fullscreen(), 0)
 
     def goto_windowed_mode(self, callbacks: WindowModeCallbacks) -> None:
-        self._active_callbacks = callbacks
+        """Exit fullscreen and restore the saved windowed geometry.
 
+        Args:
+            callbacks: The calling screen's completion callbacks for this
+                transition.
+
+        """
         if not self.is_fullscreen_now():
-            self._callbacks.on_finished_windowed()
+            callbacks.on_finished_windowed()
             return
+
+        self._pending_restores += 1
 
         def do_windowed() -> None:
             Window.borderless = False  # safest thing to do for MS Windows
             Window.fullscreen = False
-            Clock.schedule_once(lambda _dt: self.restore_saved_size_and_position(), 0)
+            Clock.schedule_once(lambda _dt: self.restore_saved_size_and_position(callbacks), 0)
 
         Clock.schedule_once(lambda _dt: do_windowed(), 0)
 
-    def restore_saved_size_and_position(self) -> None:
+    def restore_saved_size_and_position(self, callbacks: WindowModeCallbacks) -> None:
+        """Restore the saved geometry, then finish the windowed transition.
+
+        Args:
+            callbacks: The transition's completion callbacks.
+
+        """
         state = self._saved_window_state
         if state.is_unsaved():
             # Nothing was captured before going fullscreen (the app started
@@ -200,29 +224,37 @@ class WindowManager:
             # finish the windowed transition: apply the windowed size hints and
             # fire the completion callback, as the settled restore path does.
             logger.warning(
-                f"{self._client}: No saved window state to restore "
+                f"No saved window state to restore "
                 f"(size = {state.size}, pos = {state.pos}); leaving current geometry."
             )
-            self._callbacks.on_windowed_first_resize()
-            Clock.schedule_once(lambda _dt: self._callbacks.on_finished_windowed(), 0)
+            self._pending_restores -= 1
+            callbacks.on_windowed_first_resize()
+            Clock.schedule_once(lambda _dt: callbacks.on_finished_windowed(), 0)
             return
 
+        logger.info(f"Restoring window: target size = {state.size}, pos = {state.pos}")
         logger.info(
-            f"{self._client}: Restoring window: target size = {state.size}, pos = {state.pos}"
-        )
-        logger.info(
-            f"{self._client}: At the start of restoring window state,"
+            f"At the start of restoring window state,"
             f" Window.size = {Window.size}, pos = ({Window.left}, {Window.top})."
         )
 
         self._backend.schedule_restore(
             state,
-            self._callbacks.on_windowed_first_resize,
-            self._finish_restore,
+            callbacks.on_windowed_first_resize,
+            lambda: self._finish_restore(callbacks),
         )
 
-    def _finish_restore(self) -> None:
+    def _finish_restore(self, callbacks: WindowModeCallbacks) -> None:
         """Log final state and call the windowed-mode completion callback."""
+        self._pending_restores -= 1
+
+        if self.is_fullscreen_now():
+            # A fullscreen transition interrupted this restore and owns the
+            # window now; reporting a windowed completion would leave the
+            # calling screen's mode state inverted.
+            logger.warning("Window went fullscreen during restore; skipping windowed finish.")
+            return
+
         log_func = (
             logger.info
             if self._saved_window_state.is_saved_state_same_as_current()
@@ -230,13 +262,13 @@ class WindowManager:
         )
 
         log_func(
-            f"{self._client}: Window restore complete: size = {Window.size},"
+            f"Window restore complete: size = {Window.size},"
             f" pos = ({Window.left}, {Window.top}); "
             f"Target was size = {self._saved_window_state.size},"
             f" pos = {self._saved_window_state.pos}"
         )
 
-        Clock.schedule_once(lambda _dt: self._callbacks.on_finished_windowed(), 0)
+        Clock.schedule_once(lambda _dt: callbacks.on_finished_windowed(), 0)
 
 
 class WindowModeController:
@@ -273,10 +305,12 @@ class WindowModeController:
         Clock.schedule_once(lambda _dt: self.goto_fullscreen(), 0)
 
     def goto_fullscreen(self) -> None:
+        """Enter fullscreen via the shared manager, with this screen's callbacks."""
         logger.info(f"{self._client}: Entering fullscreen mode.")
         self._window_manager.goto_fullscreen_mode(self._callbacks)
 
     def goto_windowed(self) -> None:
+        """Exit to windowed mode via the shared manager, with this screen's callbacks."""
         logger.info(f"{self._client}: Exiting fullscreen mode.")
         self._window_manager.goto_windowed_mode(self._callbacks)
 

@@ -221,7 +221,7 @@ def _build_cli_app_class(
                 self.reader_settings,
                 app_icon_path,
                 self.font_manager,
-                WindowManager("Reader"),
+                WindowManager(),
                 self._on_comic_ready,
                 self._on_close,
             )

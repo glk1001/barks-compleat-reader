@@ -356,7 +356,7 @@ class BarksReaderApp(App):
         # One shared window-mode engine + geometry store, injected into both the
         # main screen and the comic reader so the saved windowed geometry lives in
         # one place (no cross-screen seeding of restore geometry).
-        window_manager = WindowManager("Reader")
+        window_manager = WindowManager()
 
         screens = ScreenBundle(
             tree_view=tree_view_screen,
