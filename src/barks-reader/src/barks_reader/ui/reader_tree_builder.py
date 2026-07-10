@@ -76,7 +76,8 @@ class ReaderTreeBuilder:
         self.chrono_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
         self.series_nodes: dict[str, ButtonTreeViewNode] = {}
 
-        self._press_handlers: dict[PressAction, Callable] = {
+        self._press_handlers: dict[PressAction, Callable | None] = {
+            PressAction.TOGGLE_ONLY: None,
             PressAction.SET_VIEW_STATE: tree_view_manager.set_view_state_for_node,
             PressAction.OPEN_INTRO_DOC: tree_view_manager.on_intro_doc_pressed,
             PressAction.OPEN_ARTICLE: tree_view_manager.on_article_node_pressed,
@@ -87,6 +88,9 @@ class ReaderTreeBuilder:
             PressAction.OPEN_SPEECH_WORDS: tree_view_manager.on_speech_words_node_pressed,
             PressAction.OPEN_WIKI_INDEX: tree_view_manager.on_wiki_index_node_pressed,
         }
+        assert set(self._press_handlers) == set(PressAction), (
+            "every PressAction needs a press-handler entry (TOGGLE_ONLY maps to None)"
+        )
         self._registration_hooks: dict[NodeRegistration, Callable] = {
             NodeRegistration.SEARCH: tree_view_manager.on_search_node_created,
             NodeRegistration.STATISTICS: tree_view_manager.on_statistics_node_created,
@@ -128,7 +132,7 @@ class ReaderTreeBuilder:
 
         node = self._make_button_node(spec)
 
-        handler = self._press_handlers.get(spec.press_action)
+        handler = self._press_handlers[spec.press_action]
         if handler is not None:
             node.bind(on_press=handler)
 

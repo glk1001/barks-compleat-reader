@@ -195,10 +195,12 @@ class AppInitializer:
             )
             return False
         except DuplicateArchiveFilesError as e:
-            self._fanta_volumes_state = _FantaVolumesState.VOLUMES_TOO_MANY
-            self._fanta_volumes_error_info = ErrorInfo(duplicate_volumes=e.duplicates)
+            self._fanta_volumes_state = _FantaVolumesState.DUPLICATE_VOLUMES
+            self._fanta_volumes_error_info = ErrorInfo(
+                file=str(e.archive_root), duplicate_volumes=e.duplicates
+            )
             self._handle_error_ui(
-                ErrorTypes.TooManyVolumeArchiveFiles, self._fanta_volumes_error_info
+                ErrorTypes.DuplicateVolumeArchiveFiles, self._fanta_volumes_error_info
             )
             return False
         except MissingArchiveFilesError as e:

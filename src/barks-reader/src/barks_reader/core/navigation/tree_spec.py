@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, assert_never
 
 from barks_fantagraphics.barks_tags import (
     BARKS_TAG_CATEGORIES,
@@ -579,6 +579,10 @@ class _SpecBuilder:
                 specs.append(self._tag_spec(tag_or_group))
             elif isinstance(tag_or_group, TagGroups):
                 specs.append(self._tag_group_spec(tag_or_group))
+            else:
+                # Fail loudly on malformed tag data instead of silently
+                # dropping the entry from the Categories subtree.
+                assert_never(tag_or_group)
         return tuple(specs)
 
     def _tag_group_spec(self, tag_group: TagGroups) -> NodeSpec:

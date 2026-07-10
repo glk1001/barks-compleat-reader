@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
 from barks_fantagraphics.fanta_comics_info import FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER
 
+from .reader_formatter import escape_kivy_markup
 from .user_error_types import ErrorTypes
 
 if TYPE_CHECKING:
@@ -130,7 +131,9 @@ def _build_fanta_root_not_found(
     popup_title: str,
 ) -> ErrorPresentation:
     """Compose the message for a configured Fantagraphics directory that does not exist."""
-    fanta_volume_dir = textwrap.fill(str(reader_settings.fantagraphics_volumes_dir), 50)
+    fanta_volume_dir = escape_kivy_markup(
+        textwrap.fill(str(reader_settings.fantagraphics_volumes_dir), 50)
+    )
 
     text = dedent(f"""\
         In app settings, the Fantagraphics comic zips directory is
@@ -158,7 +161,7 @@ def _build_duplicate_archive_files(
     assert error_info is not None
     assert error_info.duplicate_volumes is not None
 
-    archive_file = textwrap.fill(str(error_info.file), 50)
+    archive_file = escape_kivy_markup(textwrap.fill(str(error_info.file), 50))
     text = dedent(f"""\
         There were duplicate Fantagraphics archive files in the directory:
 
@@ -235,8 +238,9 @@ def _build_cannot_show_title(
     assert len(error_info.missing_volumes) == 1
     assert error_info.title is not None
 
+    title_str = escape_kivy_markup(ENUM_TO_STR_TITLE[error_info.title])
     text = (
-        f'Cannot show the title "{ENUM_TO_STR_TITLE[error_info.title]}".\n\n'
+        f'Cannot show the title "{title_str}".\n\n'
         f"Fantagraphics volume '{error_info.missing_volumes[0]}' is missing."
     )
 
@@ -252,9 +256,14 @@ def _build_volume_not_available(
 ) -> ErrorPresentation:
     """Compose the message for a title whose volume is unavailable or not found."""
     assert error_info is not None
-    assert error_info.title is not None
 
-    cannot_show = f'Cannot show the title [b]"{ENUM_TO_STR_TITLE[error_info.title]}."[/b]'
+    if error_info.title is None:
+        # 'get_volume_not_available_error_info' produces title=None when the
+        # source image has no originating title.
+        cannot_show = "Cannot show this title."
+    else:
+        title_str = escape_kivy_markup(ENUM_TO_STR_TITLE[error_info.title])
+        cannot_show = f'Cannot show the title [b]"{title_str}."[/b]'
 
     if error_info.file_volume == -1:
         title = "Fantagraphics Volume Not Available"

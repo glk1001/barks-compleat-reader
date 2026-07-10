@@ -45,6 +45,15 @@ class TestGotoSettingsErrors:
         assert '[b]"/some/fanta/dir"[/b]' in pres.text
         assert pres.close_message == FANTA_VOLUMES_NOT_FOUND_FIX_SETTINGS_MSG
 
+    def test_fanta_root_not_found_escapes_kivy_markup(self, reader_settings: MagicMock) -> None:
+        reader_settings.fantagraphics_volumes_dir = "/dir/with [markup] & ampersand"
+
+        pres = build_error_presentation(
+            ErrorTypes.FantagraphicsVolumeRootNotFound, None, reader_settings
+        )
+
+        assert '[b]"/dir/with &bl;markup&br; &amp; ampersand"[/b]' in pres.text
+
     def test_popup_title_override(self, reader_settings: MagicMock) -> None:
         pres = build_error_presentation(
             ErrorTypes.FantagraphicsVolumeRootNotSet,
@@ -137,6 +146,20 @@ class TestNoticeErrors:
 
         assert pres.title == "Fantagraphics Volume Not Found"
         assert "Fantagraphics Volume 7" in pres.text
+
+    def test_volume_not_available_without_title(self, reader_settings: MagicMock) -> None:
+        # 'get_volume_not_available_error_info' produces title=None when the
+        # source image has no originating title.
+        error_info = ErrorInfo(file_volume=-1, title=None)
+
+        pres = build_error_presentation(
+            ErrorTypes.ArchiveVolumeNotAvailable, error_info, reader_settings
+        )
+
+        assert pres.kind is ErrorDialogKind.NOTICE
+        assert pres.title == "Fantagraphics Volume Not Available"
+        assert "Cannot show this title." in pres.text
+        assert "not available yet" in pres.text
 
 
 def test_unconfigured_error_type_raises(reader_settings: MagicMock) -> None:
