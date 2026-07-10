@@ -8,8 +8,17 @@ a wiki page path, and the table decoration from our own is_barks_title.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock
 
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+from barks_reader.core.reader_consts_and_types import (
+    ACTION_BAR_BG_COLOR,
+    ACTION_BAR_SEPARATOR_COLOR,
+    ACTION_BAR_TITLE_COLOR,
+    RAW_ACTION_BAR_ICON_WIDTH,
+    RAW_ACTION_BAR_SIZE_Y,
+    RAW_QUIT_FENCE_WIDTH,
+)
 from barks_reader.core.wiki_integration import (
     BarksTableRewriter,
     canonical_title,
@@ -19,6 +28,7 @@ from barks_reader.core.wiki_integration import (
     tree_navigable_title,
     wiki_page_for_title,
     wiki_session_path,
+    wiki_top_bar_spec,
 )
 
 if TYPE_CHECKING:
@@ -183,3 +193,19 @@ class TestBarksTableRewriter:
         """Per-column wrap overrides align positionally; unknown columns get None."""
         rewriter = BarksTableRewriter()
         assert rewriter.wrap_widths(["Tag", "Story", "Title"]) == [20, 24, None]
+
+
+class TestWikiTopBarSpec:
+    def test_routes_shared_action_bar_style(self, mock_font_manager: MagicMock) -> None:
+        """The wiki bar's style single-sources from reader_consts_and_types.
+
+        This is the anti-drift guard: the okf viewer renders whatever the spec
+        carries, so these fields must be exactly the shared kv-bar constants.
+        """
+        spec = wiki_top_bar_spec(mock_font_manager, MagicMock())
+        assert spec.title_color == ACTION_BAR_TITLE_COLOR
+        assert spec.bg_color == ACTION_BAR_BG_COLOR
+        assert spec.separator_color == ACTION_BAR_SEPARATOR_COLOR
+        assert spec.icon_width == RAW_ACTION_BAR_ICON_WIDTH
+        assert spec.quit_fence_width == RAW_QUIT_FENCE_WIDTH
+        assert spec.height == RAW_ACTION_BAR_SIZE_Y

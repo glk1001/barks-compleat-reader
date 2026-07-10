@@ -26,7 +26,14 @@ from okf_reader.core.top_bar import TopBarSpec
 
 from .image_pipeline import encode_png_stream, load_pil
 from .image_selector import ImageSelector
-from .reader_consts_and_types import RAW_ACTION_BAR_SIZE_Y
+from .reader_consts_and_types import (
+    ACTION_BAR_BG_COLOR,
+    ACTION_BAR_SEPARATOR_COLOR,
+    ACTION_BAR_TITLE_COLOR,
+    RAW_ACTION_BAR_ICON_WIDTH,
+    RAW_ACTION_BAR_SIZE_Y,
+    RAW_QUIT_FENCE_WIDTH,
+)
 from .reader_file_paths import ALL_TYPES
 from .reader_file_paths_resolver import ReaderFilePathsResolver
 from .reader_formatter import escape_kivy_markup, get_action_bar_title
@@ -40,9 +47,6 @@ if TYPE_CHECKING:
     from .system_file_paths import SystemFilePaths
 
 WIKI_TITLE = "Carl Barks Wiki"
-
-# The Barks screens' action-bar title green (MainScreen.ACTION_BAR_TITLE_COLOR).
-_ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
 
 
 def wiki_session_path(app_data_dir: Path, bundle: Path) -> Path:
@@ -66,18 +70,24 @@ def wiki_top_bar_spec(
     """Dress the okf viewer's bar like the Barks screens' action bars.
 
     The one builder both hosts use: the Carl Barks-font title markup, the app
-    window icon, and the stock go-back/close icons. ``on_close`` is the Quit
-    button's action — the embedded screen passes its leave-this-screen handler;
-    the standalone launcher leaves the default (stop the app).
+    window icon, the stock go-back/close icons, and the shared action-bar
+    style constants (reader_consts_and_types), so the wiki bar can't drift
+    from the kv bars. ``on_close`` is the Quit button's action — the embedded
+    screen passes its leave-this-screen handler; the standalone launcher
+    leaves the default (stop the app).
     """
     return TopBarSpec(
         title_markup=get_action_bar_title(font_manager, WIKI_TITLE),
-        title_color=_ACTION_BAR_TITLE_COLOR,
+        title_color=ACTION_BAR_TITLE_COLOR,
         icon_path=sys_paths.get_barks_reader_app_window_icon_path(),
         back_icon_path=sys_paths.get_barks_reader_go_back_icon_file(),
         close_icon_path=sys_paths.get_barks_reader_close_icon_file(),
         height=RAW_ACTION_BAR_SIZE_Y,
         on_close=on_close,
+        bg_color=ACTION_BAR_BG_COLOR,
+        separator_color=ACTION_BAR_SEPARATOR_COLOR,
+        icon_width=RAW_ACTION_BAR_ICON_WIDTH,
+        quit_fence_width=RAW_QUIT_FENCE_WIDTH,
     )
 
 

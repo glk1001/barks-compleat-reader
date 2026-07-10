@@ -85,16 +85,11 @@ BLOCK_BG_CONTRAST_ALPHA = 0.9
 BLOCK_BG_RADIUS = 6  # dp
 SECTION_PADDING = (10, 8)  # inset of a section's text from its band edge
 SECTION_BLOCK_SPACING = 8  # between blocks inside one banded section
-# The action-bar strip across the top, mirroring the Barks Reader's kv idiom
-# (main_screen.kv / comic_book_reader.kv): a dark opaque band holding the app
-# icon, the markup heading, and the right-aligned action buttons behind a thin
-# separator. What fills it comes from the embedding app via TopBarSpec.
-TOP_BAR_BG_COLOR = (0.12, 0.12, 0.12, 1)  # standard ActionBar background color
-TOP_BAR_SEPARATOR_COLOR = (0.3, 0.3, 0.3, 1)
-TOP_BAR_ICON_WIDTH = 70  # dp, the Barks bars' icon-container width
-# Width of the separator fencing the Quit button off from the working buttons:
-# the 1dp line sits centered, leaving ~8dp of dead space on each side.
-QUIT_SEPARATOR_WIDTH = 17  # dp
+# The action-bar strip across the top mirrors the Barks Reader's kv idiom
+# (ui/action_bar.kv): a dark opaque band holding the app icon, the markup
+# heading, and the right-aligned action buttons behind a thin separator. What
+# fills it — content and style — comes from the embedding app via TopBarSpec
+# (the style defaults live on the spec).
 # Selection band: the link blue (render.LINK_COLOR, 4ea1ff) at low alpha — an
 # accent already in the palette, translucent enough that the gold node label
 # keeps its contrast. (The Barks Reader's magenta shouted over this page's
@@ -174,7 +169,7 @@ class _FlatButton(ButtonBehavior, Label):
     """
 
 
-def _bar_separator(width_dp: float = 1) -> Widget:
+def _bar_separator(color: tuple[float, float, float, float], width_dp: float = 1) -> Widget:
     """Build a top-bar separator: a centered 1dp vertical line in a ``width_dp`` slot.
 
     At the default width the slot is the line (the Barks bars' 1dp separator
@@ -183,7 +178,7 @@ def _bar_separator(width_dp: float = 1) -> Widget:
     """
     separator = Widget(size_hint_x=None, width=dp(width_dp))
     with separator.canvas:  # ty: ignore[invalid-context-manager]
-        Color(rgba=TOP_BAR_SEPARATOR_COLOR)
+        Color(rgba=color)
         line = Rectangle()
 
     def sync(_widget, _value) -> None:  # noqa: ANN001
@@ -422,7 +417,7 @@ class OKFViewer(RelativeLayout):
             spacing=dp(5),
         )
         with bar.canvas.before:  # ty: ignore[unresolved-attribute]
-            Color(rgba=TOP_BAR_BG_COLOR)
+            Color(rgba=spec.bg_color)
             bar_bg = Rectangle(pos=bar.pos, size=bar.size)
         bar.bind(
             pos=lambda _inst, pos: setattr(bar_bg, "pos", pos),
@@ -430,7 +425,7 @@ class OKFViewer(RelativeLayout):
         )
 
         if spec.icon_path is not None:
-            bar.add_widget(self._build_bar_icon(spec.icon_path))
+            bar.add_widget(self._build_bar_icon(spec.icon_path, spec.icon_width))
 
         # The heading takes all the stretch space, pinning the buttons right.
         # Kept as an attribute: it doubles as the window-drag region when the
@@ -447,7 +442,7 @@ class OKFViewer(RelativeLayout):
         self.bar_drag_region.bind(size=lambda inst, size: inst.setter("text_size")(inst, size))
         bar.add_widget(self.bar_drag_region)
 
-        bar.add_widget(_bar_separator())
+        bar.add_widget(_bar_separator(spec.separator_color))
 
         if spec.back_icon_path is not None:
             # ActionButton is the Barks bars' BarButton base: standalone it
@@ -471,7 +466,7 @@ class OKFViewer(RelativeLayout):
         # replaced by this bar, it is the window's only close control), fenced
         # off by a separator so an overshoot on the working buttons can't kill
         # the app.
-        bar.add_widget(_bar_separator(QUIT_SEPARATOR_WIDTH))
+        bar.add_widget(_bar_separator(spec.separator_color, spec.quit_fence_width))
         if spec.close_icon_path is not None:
             quit_btn = ActionButton(icon=str(spec.close_icon_path), mipmap=True)
         else:
@@ -483,13 +478,13 @@ class OKFViewer(RelativeLayout):
         bar.add_widget(quit_btn)
         return bar
 
-    def _build_bar_icon(self, icon_path: Path) -> RelativeLayout:
+    def _build_bar_icon(self, icon_path: Path, icon_width: int) -> RelativeLayout:
         """Build the bar's left-edge app icon: an image under a transparent hitbox.
 
         The main-screen pattern — pressing dims the image, releasing shows the
         bundle's home page.
         """
-        icon_box = RelativeLayout(size_hint=(None, 1), width=dp(TOP_BAR_ICON_WIDTH))
+        icon_box = RelativeLayout(size_hint=(None, 1), width=dp(icon_width))
         icon = Image(
             source=str(icon_path),
             size_hint=(None, None),

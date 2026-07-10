@@ -1,31 +1,23 @@
 <DocumentReaderScreen>:
     pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
-    ActionBar:
+    # Shared skeleton (ui/action_bar.kv). Close is the only button, so no
+    # QuitFence — the skeleton's built-in separator suffices.
+    ReaderActionBar:
         id: doc_action_bar
         pos_hint: {"center_x": 0.5, 'top': 1}
         size_hint: None, None
         height: root.ACTION_BAR_HEIGHT
         width: doc_page.width
+        icon_source: root.app_icon_filepath
+        title_text: root.action_bar_title
 
-        ActionView:
-            use_separator: False
-
-            ActionPrevious:
-                title: root.action_bar_title
-                color: root.ACTION_BAR_TITLE_COLOR
-                markup: True
-                with_previous: False
-                app_icon: root.app_icon_filepath
-
-            ActionOverflow:
-
-            BarButton:
-                id: close_button
-                text: "Close"
-                icon: str(sys_paths.get_barks_reader_close_icon_file())
-                important: True
-                on_press: root.close()
+        BarButton:
+            id: close_button
+            text: "Close"
+            icon: str(sys_paths.get_barks_reader_close_icon_file())
+            important: True
+            on_press: root.close()
 
     BoxLayout:
         id: doc_page

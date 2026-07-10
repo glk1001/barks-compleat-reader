@@ -57,7 +57,6 @@ MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
-    ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
     app_icon_filepath = StringProperty()
     app_title = StringProperty()
 
@@ -119,7 +118,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
                 self.ids.collapse_button,
                 self.ids.change_pics_button,
                 self.ids.menu_button,
-                self.ids.icon_hitbox,
+                self.ids.action_bar.icon_hitbox,
             ]
         )
         Window.bind(on_key_down=self._on_key_down)

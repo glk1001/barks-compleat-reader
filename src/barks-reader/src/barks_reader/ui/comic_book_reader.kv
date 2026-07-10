@@ -18,132 +18,62 @@
             size_hint_y: None
             height: root.ACTION_BAR_HEIGHT
 
-            FloatLayout:
+            # Shared skeleton (ui/action_bar.kv). Its drag_region is what
+            # scripts/read_comic.py passes to Window.set_custom_titlebar as
+            # the window-drag region. The icon is not clickable here.
+            ReaderActionBar:
                 id: action_bar_inner
                 pos_hint: {'center_x': 0.5, 'top': 1}
                 size_hint: None, 1
                 width: root.action_bar_width
-                canvas.before:
-                    Color:
-                        rgba: 0.12, 0.12, 0.12, 1  # Standard ActionBar background color
-                    Rectangle:
-                        pos: self.pos
-                        size: self.size
+                icon_source: root.app_icon_filepath
+                title_text: root.action_bar_title
 
-                # --- 1. Non-Clickable Icon Area ---
-                # Use a RelativeLayout to correctly position the child Image.
-                RelativeLayout:
-                    id: icon_container
-                    # Position the icon button from the left edge.
-                    pos_hint: {'x': dp(2) / max(action_bar_inner.width, 1), 'center_y': 0.5}
-                    size_hint: None, None
-                    height: action_bar_inner.height
-                    width: dp(70)
+                BarButton:
+                    id: fullscreen_button
+                    text: "Fullscreen"
+                    icon: str(sys_paths.get_barks_reader_fullscreen_icon_file())
+                    important: True
+                    on_press: root.toggle_screen_mode()
 
-                    Image:
-                        source: root.app_icon_filepath
-                        size_hint: None, None
-                        # Make the image slightly smaller than its parent to create padding.
-                        size: (self.parent.width - dp(8), self.parent.height - dp(8))
-                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                        fit_mode: "contain"
-                        mipmap: True
+                BarButton:
+                    id: double_page_button
+                    text: "Double Page"
+                    icon: str(sys_paths.get_barks_reader_double_page_icon_file())
+                    important: True
+                    on_release: root.toggle_double_page_mode()
 
-                # --- 2. Title Area ---
-                RelativeLayout:
-                    # As on MainScreen: scripts/read_comic.py passes this to
-                    # Window.set_custom_titlebar as the window-drag region.
-                    id: draggable_title_bar
-                    # Position this layout between the icon and the right-hand buttons.
-                    pos_hint: {'x': (icon_container.width + dp(5)) / max(action_bar_inner.width, 1), 'center_y': 0.5}
-                    size_hint: None, 1
-                    width: right_buttons.x - icon_container.right
-                    Label:
-                        text: root.action_bar_title
-                        color: root.ACTION_BAR_TITLE_COLOR
-                        markup: True
-                        text_size: self.size
-                        halign: 'left'
-                        valign: 'middle'
+                BarButton:
+                    id: goto_start_button
+                    text: "Goto Start"
+                    icon: str(sys_paths.get_barks_reader_goto_start_icon_file())
+                    important: True
+                    on_release: root.comic_book_reader.goto_start_page()
 
-                # --- 3. Clickable Buttons Area ---
-                BoxLayout:
-                    id: right_buttons
-                    pos_hint: {'right': 1, 'y': 0}
-                    size_hint_x: None
-                    width: self.minimum_width
-                    padding: [dp(5), 0]
+                BarButton:
+                    id: goto_end_button
+                    text: "Goto End"
+                    icon: str(sys_paths.get_barks_reader_goto_end_icon_file())
+                    important: True
+                    on_release: root.comic_book_reader.goto_last_page()
 
-                    # A separator widget
-                    Widget:
-                        size_hint_x: None
-                        width: dp(1)
-                        canvas:
-                            Color:
-                                rgba: 0.3, 0.3, 0.3, 1
-                            Rectangle:
-                                pos: self.center_x, self.y
-                                size: self.width, self.height
+                BarButton:
+                    id: goto_page_button
+                    text: "Goto Page"
+                    icon: str(sys_paths.get_barks_reader_goto_icon_file())
+                    important: True
+                    on_release: root.comic_book_reader.goto_page()
 
-                    BoxLayout:
-                        size_hint_x: None
-                        width: self.minimum_width
-                        spacing: dp(2)
+                # Close sits alone in the window corner behind the fence, so an
+                # overshoot on the working buttons can't close the comic.
+                QuitFence:
 
-                        BarButton:
-                            id: fullscreen_button
-                            text: "Fullscreen"
-                            icon: str(sys_paths.get_barks_reader_fullscreen_icon_file())
-                            important: True
-                            on_press: root.toggle_screen_mode()
-
-                        BarButton:
-                            id: double_page_button
-                            text: "Double Page"
-                            icon: str(sys_paths.get_barks_reader_double_page_icon_file())
-                            important: True
-                            on_release: root.toggle_double_page_mode()
-
-                        BarButton:
-                            id: goto_start_button
-                            text: "Goto Start"
-                            icon: str(sys_paths.get_barks_reader_goto_start_icon_file())
-                            important: True
-                            on_release: root.comic_book_reader.goto_start_page()
-
-                        BarButton:
-                            id: goto_end_button
-                            text: "Goto End"
-                            icon: str(sys_paths.get_barks_reader_goto_end_icon_file())
-                            important: True
-                            on_release: root.comic_book_reader.goto_last_page()
-
-                        BarButton:
-                            id: goto_page_button
-                            text: "Goto Page"
-                            icon: str(sys_paths.get_barks_reader_goto_icon_file())
-                            important: True
-                            on_release: root.comic_book_reader.goto_page()
-
-                        # Fence off the exit control: Close sits alone in the window
-                        # corner behind a separator, so an overshoot on the working
-                        # buttons can't close the comic.
-                        Widget:
-                            size_hint_x: None
-                            width: dp(17)
-                            canvas:
-                                Color:
-                                    rgba: 0.3, 0.3, 0.3, 1
-                                Rectangle:
-                                    pos: self.center_x, self.y
-                                    size: dp(1), self.height
-
-                        BarButton:
-                            id: close_button
-                            text: "Close"
-                            icon: str(sys_paths.get_barks_reader_close_icon_file())
-                            important: True
-                            on_release: root.close_comic_book_reader()
+                BarButton:
+                    id: close_button
+                    text: "Close"
+                    icon: str(sys_paths.get_barks_reader_close_icon_file())
+                    important: True
+                    on_release: root.close_comic_book_reader()
 
         # Image content row — fills remaining space. The inner ComicBookReader is added here
         # from Python and will fit_mode="contain" the comic image inside this area.

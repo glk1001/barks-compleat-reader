@@ -33,6 +33,7 @@ from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 from barks_reader.core.screen_metrics import SCREEN_METRICS
 from barks_reader.core.settings_notifier import settings_notifier
 
+from .action_bar import ACTION_BAR_KV_FILE
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .app_window_geometry import AppWindowGeometryHelper, WindowSizeConstraints
 from .bottom_title_view_screen import (
@@ -262,6 +263,9 @@ class BarksReaderApp(App):
         Builder.load_string("#:set fm app.font_manager")
         Builder.load_string("#:set sys_paths app.reader_settings.sys_file_paths")
 
+        # First: defines BarButton and the ReaderActionBar rule used by the
+        # screen kv files below (and by the lazily loaded comic/document kv).
+        Builder.load_file(str(ACTION_BAR_KV_FILE))
         Builder.load_file(str(KIVY_HELPERS_KV_FILE))
         Builder.load_file(str(READER_POPUPS_KV_FILE))
         Builder.load_file(str(READER_TREE_VIEW_KV_FILE))
@@ -424,7 +428,7 @@ class BarksReaderApp(App):
     def _set_custom_title_bar(self) -> None:
         assert self._main_screen is not None
         Window.custom_titlebar = True
-        title_bar = self._main_screen.ids.draggable_title_bar
+        title_bar = self._main_screen.ids.action_bar.drag_region
         if Window.set_custom_titlebar(title_bar):
             logger.info("Window: setting custom titlebar successful")
         else:

@@ -32,6 +32,13 @@ class TopBarSpec:
     ``on_close`` is what the Quit button does: the standalone app leaves it
     None (the viewer falls back to stopping the running app); an embedding
     app supplies its own leave-this-screen action instead.
+
+    The style fields default to the bar's standalone look (mirroring the
+    Barks Reader's kv action-bar idiom): a dark opaque band, thin grey
+    separators, a fixed-width icon container, and a wide separator fencing
+    the Quit button off from the working buttons (the 1dp line sits centered,
+    leaving dead space on each side). ``icon_width``/``quit_fence_width`` are
+    raw units like ``height``; the UI dp-scales them.
     """
 
     title_markup: str = "OKF Reader"
@@ -41,3 +48,7 @@ class TopBarSpec:
     close_icon_path: Path | None = None
     height: int = 40
     on_close: Callable[[], None] | None = None
+    bg_color: tuple[float, float, float, float] = (0.12, 0.12, 0.12, 1)
+    separator_color: tuple[float, float, float, float] = (0.3, 0.3, 0.3, 1)
+    icon_width: int = 70
+    quit_fence_width: int = 17

@@ -3,7 +3,7 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-07-09.
+Last updated: 2026-07-10.
 
 ---
 
@@ -11,14 +11,22 @@ Last updated: 2026-07-09.
 
 The wiki is integrated as a top-level app screen. Remaining polish:
 
-- [ ] **In-wiki search** — find pages within the OKF bundle from the wiki screen.
+- [x] **In-wiki search** (commits 1540f77, ad28850, 1ac48bf) — wiki page search
+      (title + heading) in the OKF reader, with result-list persistence and
+      index-build failure recovery (`okf_reader/core/search.py`).
 - [ ] **Escape-back inside the wiki screen** — currently only mouse4 works while
       embedded; the app owns keyboard keys, so Escape doesn't navigate back.
 - [ ] **Async panel textures** — load large panel-background images off the UI
       thread to avoid stalls.
-- [ ] **Shared kv action-bar extraction** — the main screen, comic reader, and
-      wiki screen each define near-identical action bars; extract one shared
-      `.kv` bar.
+- [x] **Shared kv action-bar extraction** (2026-07-10) — one `ReaderActionBar`
+      skeleton (`ui/action_bar.py` + `ui/action_bar.kv`, content-redirect
+      pattern) now serves the main, comic, *and* document screens (the document
+      bar dropped its stock-Kivy `ActionBar` idiom); screens declare only their
+      own `BarButton`s. Style constants single-sourced in
+      `core/reader_consts_and_types.py`. The wiki bar (generic okf-reader,
+      Python-built) can't consume barks kv — instead its mirrored constants
+      moved onto `TopBarSpec` style fields and `wiki_top_bar_spec` passes the
+      shared values in, with tests pinning both ends against drift.
 
 Known limitation (intentional, not a reader fix): links under the bundle's
 `source/web` tier (inducks) don't navigate — they are raw scraped `.html`, not

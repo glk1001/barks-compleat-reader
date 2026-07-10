@@ -1,0 +1,100 @@
+#:import reader_consts barks_reader.core.reader_consts_and_types
+
+<BarButton@ActionButton>:
+    mipmap: True
+    draggable: False
+
+# A 1dp vertical line centered in a configurable-width slot.
+<BarSeparator@Widget>:
+    slot_width: dp(1)
+    size_hint_x: None
+    width: self.slot_width
+    canvas:
+        Color:
+            rgba: reader_consts.ACTION_BAR_SEPARATOR_COLOR
+        Rectangle:
+            pos: self.center_x, self.y
+            size: dp(1), self.height
+
+# Fence off the exit control: Quit/Close sits alone in the window corner
+# behind this separator, so an overshoot on the working buttons can't kill
+# the app.
+<QuitFence@BarSeparator>:
+    slot_width: dp(reader_consts.RAW_QUIT_FENCE_WIDTH)
+
+<ReaderActionBar>:
+    drag_region: draggable_title_bar
+    icon_hitbox: icon_hitbox
+    # Flips ReaderActionBar.add_widget into redirect mode. Safe here: although
+    # written first, kv applies root properties only after creating the rule's
+    # children, so the skeleton below is fully built before this takes effect
+    # (the same idiom as Kivy's own <Popup> _container).
+    button_container: buttons_box
+    canvas.before:
+        Color:
+            rgba: reader_consts.ACTION_BAR_BG_COLOR
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    # --- 1. Icon Area (clickable only if icon_clickable) ---
+    # Use a RelativeLayout to correctly position the child Image.
+    RelativeLayout:
+        id: icon_container
+        # Position the icon button from the left edge.
+        pos_hint: {'x': dp(2) / max(root.width, 1), 'center_y': 0.5}
+        size_hint: None, None
+        height: root.height
+        width: dp(reader_consts.RAW_ACTION_BAR_ICON_WIDTH)
+
+        Image:
+            source: root.icon_source
+            size_hint: None, None
+            # Make the image slightly smaller than its parent to create padding.
+            size: (self.parent.width - dp(8), self.parent.height - dp(8))
+            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+            fit_mode: "contain"
+            mipmap: True
+            # Link the image's opacity to the button's state for press feedback.
+            opacity: 0.5 if icon_hitbox.state == 'down' else 1.0
+
+        # A transparent button on top to capture clicks.
+        Button:
+            id: icon_hitbox
+            size_hint: 1, 1
+            pos_hint: {'x': 0, 'y': 0}
+            background_color: (0, 0, 0, 0)  # Transparent
+            background_disabled_normal: ''  # Keep the disabled state invisible too
+            disabled: not root.icon_clickable
+            on_release: root.dispatch('on_icon_release')
+
+    # --- 2. Draggable Title Area ---
+    RelativeLayout:
+        id: draggable_title_bar
+        # Position this layout between the icon and the right-hand buttons.
+        pos_hint: {'x': (icon_container.width + dp(5)) / max(root.width, 1), 'center_y': 0.5}
+        size_hint: None, 1
+        width: right_buttons.x - icon_container.right
+        Label:
+            text: root.title_text
+            color: root.title_color
+            markup: True
+            text_size: self.size
+            halign: 'left'
+            valign: 'middle'
+
+    # --- 3. Clickable Buttons Area (Not Draggable) ---
+    BoxLayout:
+        id: right_buttons
+        pos_hint: {'right': 1, 'y': 0}
+        size_hint_x: None
+        width: self.minimum_width
+        padding: [dp(5), 0]
+
+        BarSeparator:
+
+        BoxLayout:
+            id: buttons_box
+            size_hint_x: None
+            width: self.minimum_width
+            spacing: dp(2)

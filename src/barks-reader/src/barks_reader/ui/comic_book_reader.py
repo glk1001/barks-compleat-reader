@@ -704,7 +704,6 @@ class ComicBookReader(FloatLayout):
 
 
 class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
-    ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     # Opacity for an action-bar button that is greyed out (e.g. the double-page
     # toggle while reading the single-page-only one-pager collection).

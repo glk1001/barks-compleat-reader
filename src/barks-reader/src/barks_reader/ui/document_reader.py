@@ -29,7 +29,6 @@ IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 
 
 class DocumentReaderScreen(ReaderScreen, ActionBarNavMixin):
-    ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
     ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
     ASPECT_RATIO = COMIC_PAGE_ASPECT_RATIO
     action_bar_title = StringProperty()

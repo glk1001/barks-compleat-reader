@@ -184,6 +184,7 @@ def _build_cli_app_class(
     needed up-front to seed ``FontManager`` — without it, font sizes default
     to 0 and the action-bar title renders as dots.
     """
+    from barks_reader.ui.action_bar import ACTION_BAR_KV_FILE
     from barks_reader.ui.comic_book_reader import get_barks_comic_reader_screen
     from barks_reader.ui.font_manager import FontManager
     from barks_reader.ui.platform_window_utils import WindowManager
@@ -209,13 +210,11 @@ def _build_cli_app_class(
 
         def build(self) -> ScreenManager:
             # The comic_book_reader.kv references ``fm`` and ``sys_paths`` plus
-            # ``BarButton`` (defined inline in main_screen.kv). Wire them up
-            # without pulling in the full main-screen kv graph.
+            # ``BarButton``/``ReaderActionBar`` (from the shared action_bar.kv).
+            # Wire them up without pulling in the full main-screen kv graph.
             Builder.load_string("#:set fm app.font_manager")
             Builder.load_string("#:set sys_paths app.reader_settings.sys_file_paths")
-            Builder.load_string(
-                "<BarButton@ActionButton>:\n    mipmap: True\n    draggable: False\n"
-            )
+            Builder.load_file(str(ACTION_BAR_KV_FILE))
 
             self._screen = get_barks_comic_reader_screen(
                 COMIC_BOOK_READER_SCREEN,
@@ -265,7 +264,7 @@ def _build_cli_app_class(
             """
             assert self._screen is not None
             Window.custom_titlebar = True
-            if not Window.set_custom_titlebar(self._screen.ids.draggable_title_bar):
+            if not Window.set_custom_titlebar(self._screen.ids.action_bar_inner.drag_region):
                 logger.warning("Window: setting custom titlebar not allowed on this system.")
 
         def _on_comic_ready(self) -> None:
