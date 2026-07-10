@@ -11,7 +11,8 @@ from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
-from barks_reader.ui.comic_reader_manager import ComicReaderManager
+from barks_reader.core.comic_reader_manager import ComicReaderManager
+from barks_reader.core.testing import FakeScheduler
 
 
 @pytest.fixture
@@ -21,14 +22,13 @@ def mock_dependencies() -> dict[str, MagicMock]:
         "reader_settings": MagicMock(),
         "last_read_page_tracker": MagicMock(),
         "layout_builder": MagicMock(),
-        "tree_view_screen": MagicMock(),
         "user_error_handler": MagicMock(),
     }
 
 
 @pytest.fixture
 def manager(mock_dependencies: dict[str, MagicMock]) -> ComicReaderManager:
-    return ComicReaderManager(**mock_dependencies)
+    return ComicReaderManager(**mock_dependencies, scheduler=FakeScheduler())
 
 
 def _make_layout(page_map: OrderedDict[str, PageInfo], last_body_page: str = "10") -> ComicLayout:

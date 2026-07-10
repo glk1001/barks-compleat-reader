@@ -1,25 +1,33 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
-from barks_fantagraphics.comic_book import ComicBook
-from barks_fantagraphics.comics_database import ComicsDatabase
-from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, FantaComicBookInfo
-from kivy.clock import Clock
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
+from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from loguru import logger
 
-from barks_reader.core.comic_book_page_info import ComicLayout, ComicLayoutBuilder
-from barks_reader.core.fantagraphics_volumes import MissingVolumeError
-from barks_reader.core.reader_settings import ReaderSettings
-from barks_reader.core.reader_setup import prepare_comic_for_reading
-from barks_reader.core.saved_page_info import SavedPageInfo
-
-from .comic_book_reader import ComicBookReaderScreen
-from .last_read_page_tracker import LastReadPageTracker
-from .tree_view_screen import TreeViewScreen
-from .user_error_handler import ErrorInfo, ErrorTypes, UserErrorHandler
+from .fantagraphics_volumes import MissingVolumeError
+from .reader_setup import prepare_comic_for_reading
+from .user_error_types import ErrorInfo, ErrorTypes
 
 if TYPE_CHECKING:
-    from .comic_book_reader import ComicBookReader
+    from barks_fantagraphics.barks_titles import Titles
+    from barks_fantagraphics.comic_book import ComicBook
+    from barks_fantagraphics.comics_database import ComicsDatabase
+    from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+
+    from .comic_book_page_info import ComicLayout, ComicLayoutBuilder
+    from .last_read_page_tracker import LastReadPageTracker
+    from .ports import Scheduler
+    from .ports.comic_reader import (
+        ComicBookReaderPort,
+        ComicBookReaderScreenPort,
+    )
+    from .reader_settings import ReaderSettings
+    from .saved_page_info import SavedPageInfo
+    from .user_error_types import UserErrorHandlerPort
+
+_CLOSE_READER_ON_ERROR_DELAY_SECS = 1
 
 
 class ComicReaderManager:
@@ -36,8 +44,8 @@ class ComicReaderManager:
         reader_settings: ReaderSettings,
         last_read_page_tracker: LastReadPageTracker,
         layout_builder: ComicLayoutBuilder,
-        tree_view_screen: TreeViewScreen,
-        user_error_handler: UserErrorHandler,
+        user_error_handler: UserErrorHandlerPort,
+        scheduler: Scheduler,
     ) -> None:
         """Initialize the ComicReaderManager.
 
@@ -46,25 +54,27 @@ class ComicReaderManager:
             reader_settings: The application settings.
             last_read_page_tracker: Tracks and persists reading progress.
             layout_builder: Builds a ``ComicLayout`` for each comic to be read.
-            tree_view_screen: The tree view screen controller.
             user_error_handler: Handler for user-facing errors.
+            scheduler: Marshals delayed callbacks onto the UI thread.
 
         """
         self._comics_database = comics_database
         self._reader_settings = reader_settings
-        self._tree_view_screen = tree_view_screen
         self._user_error_handler = user_error_handler
+        self._scheduler = scheduler
 
         self.all_fanta_titles = ALL_FANTA_COMIC_BOOK_INFO
         self._last_read_page_tracker = last_read_page_tracker
         self._layout_builder = layout_builder
         self._layout: ComicLayout | None = None
 
-        self._comic_book_reader_screen: ComicBookReaderScreen | None = None
-        self._comic_book_reader: ComicBookReader | None = None
+        self._comic_book_reader_screen: ComicBookReaderScreenPort | None = None
+        self._comic_book_reader: ComicBookReaderPort | None = None
         self._fanta_info: FantaComicBookInfo | None = None
 
-    def set_comic_book_reader_screen(self, comic_book_reader_screen: ComicBookReaderScreen) -> None:
+    def set_comic_book_reader_screen(
+        self, comic_book_reader_screen: ComicBookReaderScreenPort
+    ) -> None:
         """Set the comic book reader screen instance."""
         self._comic_book_reader_screen = comic_book_reader_screen
         assert self._comic_book_reader_screen is not None
@@ -157,9 +167,9 @@ class ComicReaderManager:
                 ErrorTypes.MissingVolumeCannotShowTitle, error_info
             )
             assert self._comic_book_reader_screen is not None
-            Clock.schedule_once(
-                lambda _dt: self._comic_book_reader_screen.close_comic_book_reader(),  # ty:ignore[unresolved-attribute]
-                1,
+            reader_screen = self._comic_book_reader_screen
+            self._scheduler.schedule_once(
+                reader_screen.close_comic_book_reader, _CLOSE_READER_ON_ERROR_DELAY_SECS
             )
 
     def comic_closed(self) -> SavedPageInfo | None:

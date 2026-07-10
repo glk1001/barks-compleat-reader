@@ -7,6 +7,7 @@ adapters live in `ui.adapters`; in-memory adapters for tests live in
 """
 
 from .color_source import ColorSource, PaletteId
+from .comic_reader import ComicBookReaderPort, ComicBookReaderScreenPort
 from .cursor import Cursor
 from .scheduler import CancelHandle, Scheduler
 from .snapshot_sink import SnapshotSink
@@ -14,6 +15,8 @@ from .snapshot_sink import SnapshotSink
 __all__ = [
     "CancelHandle",
     "ColorSource",
+    "ComicBookReaderPort",
+    "ComicBookReaderScreenPort",
     "Cursor",
     "PaletteId",
     "Scheduler",

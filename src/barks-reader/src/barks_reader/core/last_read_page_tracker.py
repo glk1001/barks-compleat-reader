@@ -6,14 +6,13 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
-from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
+from .reader_consts_and_types import COMIC_BEGIN_PAGE
 
 if TYPE_CHECKING:
-    from barks_reader.core.comic_book_page_info import ComicLayout
-    from barks_reader.core.saved_page_info import SavedPageInfo
-
-    from .comic_book_reader import ComicBookReader
+    from .comic_book_page_info import ComicLayout
     from .json_settings_manager import SettingsManager
+    from .ports.comic_reader import ComicBookReaderPort
+    from .saved_page_info import SavedPageInfo
 
 
 class LastReadPageTracker:
@@ -39,7 +38,7 @@ class LastReadPageTracker:
         self._current_layout = layout
         self._save_enabled = save_enabled
 
-    def end(self, comic_book_reader: ComicBookReader) -> SavedPageInfo | None:
+    def end(self, comic_book_reader: ComicBookReaderPort) -> SavedPageInfo | None:
         """Persist progress for the current session if saving is enabled.
 
         Returns the saved page (with display-page-num normalised to

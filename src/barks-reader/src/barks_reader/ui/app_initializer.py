@@ -14,19 +14,19 @@ from barks_reader.core.fantagraphics_volumes import (
 )
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_settings import UNSET_FANTA_DIR_MARKER
+from barks_reader.core.user_error_types import ErrorInfo, ErrorTypes
 
 from .tree_view_nodes import BaseTreeViewNode
-from .user_error_handler import ErrorInfo, ErrorTypes
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from kivy.uix.widget import Widget
 
+    from barks_reader.core.comic_reader_manager import ComicReaderManager
+    from barks_reader.core.json_settings_manager import SettingsManager
     from barks_reader.core.reader_settings import ReaderSettings
 
-    from .comic_reader_manager import ComicReaderManager
-    from .json_settings_manager import SettingsManager
     from .reader_tree_builder import ReaderTreeBuilder
     from .tree_view_manager import TreeViewManager
     from .tree_view_screen import TreeViewScreen

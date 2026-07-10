@@ -20,7 +20,10 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from barks_reader.core.comic_book_page_info import ComicLayoutBuilder
+from barks_reader.core.comic_reader_manager import ComicReaderManager
 from barks_reader.core.image_selector import ImageSelector
+from barks_reader.core.json_settings_manager import SettingsManager
+from barks_reader.core.last_read_page_tracker import LastReadPageTracker
 from barks_reader.core.navigation import NavigationModel
 from barks_reader.core.page_info_adapters import FantagraphicsPanelSegmentsAdapter
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
@@ -29,9 +32,6 @@ from barks_reader.core.view_pipeline import ViewPipeline
 
 from .adapters import KivyClockScheduler, TintColorSource
 from .app_initializer import AppInitializer
-from .comic_reader_manager import ComicReaderManager
-from .json_settings_manager import SettingsManager
-from .last_read_page_tracker import LastReadPageTracker
 from .main_screen_nav import MainScreenNavigation
 from .main_screen_window import MainScreenWindowHelper
 from .navigation_coordinator import NavigationCoordinator
@@ -101,8 +101,8 @@ def build_main_screen_components(
         reader_settings,
         last_read_page_tracker,
         layout_builder,
-        host._tree_view_screen,
         user_error_handler,
+        scheduler=KivyClockScheduler(),
     )
 
     window_helper = MainScreenWindowHelper(

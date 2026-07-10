@@ -31,9 +31,8 @@ from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_consts_and_types import CHRONO_YEAR_RANGES, COMIC_BEGIN_PAGE
 from barks_reader.core.reader_tree_view_utils import find_tree_view_title_node
+from barks_reader.core.user_error_types import ErrorInfo, ErrorTypes, TitleNotInFantaInfoError
 from barks_reader.core.wiki_integration import wiki_page_for_title
-
-from .user_error_handler import ErrorInfo, ErrorTypes, TitleNotInFantaInfoError
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -43,12 +42,12 @@ if TYPE_CHECKING:
     from barks_fantagraphics.comics_database import ComicsDatabase
     from comic_utils.comic_consts import PanelPath
 
+    from barks_reader.core.comic_reader_manager import ComicReaderManager
     from barks_reader.core.reader_settings import ReaderSettings
+    from barks_reader.core.saved_page_info import SavedPageInfo
     from barks_reader.core.special_overrides_handler import SpecialFantaOverrides
 
     from .bottom_title_view_screen import BottomTitleViewScreen
-    from .comic_reader_manager import ComicReaderManager
-    from .json_settings_manager import SavedPageInfo
     from .reader_screens import ScreenSwitchers
     from .tree_view_manager import TreeViewManager
     from .tree_view_nodes import BaseTreeViewNode, ButtonTreeViewNode
