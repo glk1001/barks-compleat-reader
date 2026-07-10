@@ -12,7 +12,9 @@ from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
 from barks_reader.core.comic_reader_manager import ComicReaderManager
+from barks_reader.core.fantagraphics_volumes import MissingVolumeError
 from barks_reader.core.testing import FakeScheduler
+from barks_reader.core.user_error_types import ErrorTypes
 
 
 @pytest.fixture
@@ -127,6 +129,58 @@ class TestComicReaderManager:
             assert args[0] == "Title"
             assert args[1] is mock_layout
             assert kwargs["save_enabled"] is True
+
+    def test_missing_volume_reports_error_and_closes_reader(
+        self, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        scheduler = FakeScheduler()
+        manager = ComicReaderManager(**mock_dependencies, scheduler=scheduler)
+        mock_screen, mock_reader = _attach_reader_screen(manager)
+
+        mock_fanta_info = MagicMock(spec=FantaComicBookInfo)
+        mock_fanta_info.comic_book_info = MagicMock()
+        mock_fanta_info.comic_book_info.get_title_str.return_value = "Title"
+
+        mock_layout = _single_body_page_layout()
+        mock_dependencies["layout_builder"].build.return_value = mock_layout
+
+        mock_reader.read_comic.side_effect = MissingVolumeError(7, Titles.LOST_IN_THE_ANDES)
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(
+                mock_fanta_info, MagicMock(), "1", use_overrides_active=True
+            )
+
+        handle_error = mock_dependencies["user_error_handler"].handle_error
+        handle_error.assert_called_once()
+        error_type, error_info = handle_error.call_args.args
+        assert error_type is ErrorTypes.MissingVolumeCannotShowTitle
+        assert error_info.missing_volumes == [7]
+        assert error_info.title is Titles.LOST_IN_THE_ANDES
+
+        # FakeScheduler runs one-shots inline, so the deferred close happens now.
+        assert scheduler.scheduled_once_count == 1
+        mock_screen.close_comic_book_reader.assert_called_once_with()
+
+    def test_successful_read_schedules_no_close(
+        self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        mock_screen, _mock_reader = _attach_reader_screen(manager)
+
+        mock_fanta_info = MagicMock(spec=FantaComicBookInfo)
+        mock_fanta_info.comic_book_info = MagicMock()
+        mock_fanta_info.comic_book_info.get_title_str.return_value = "Title"
+
+        mock_layout = _single_body_page_layout()
+        mock_dependencies["layout_builder"].build.return_value = mock_layout
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(
+                mock_fanta_info, MagicMock(), "1", use_overrides_active=True
+            )
+
+        mock_dependencies["user_error_handler"].handle_error.assert_not_called()
+        mock_screen.close_comic_book_reader.assert_not_called()
 
     def test_comic_closed_delegates_to_tracker(
         self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
