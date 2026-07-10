@@ -467,7 +467,7 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.GOLDEN_RIVER_THE, True, Issues.US, 22, 6, 1958, 21, 11, 1957),
     ComicBookInfo(Titles.MOOLA_ON_THE_MOVE, False, Issues.US, 23, 9, 1958, 5, 12, 1957),
     ComicBookInfo(Titles.THUMBS_UP, False, Issues.US, 33, 3, 1961, 5, 12, 1957),
-    ComicBookInfo(Titles.KNOW_IT_ALL_MACHINE_THE, False, Issues.US, 22, 3, 1958, 12, 12, 1957),
+    ComicBookInfo(Titles.KNOW_IT_ALL_MACHINE_THE, False, Issues.US, 22, 6, 1958, 12, 12, 1957),
     ComicBookInfo(Titles.STRANGE_SHIPWRECKS_THE, True, Issues.US, 23, 9, 1958, 31, 12, 1957),
     ComicBookInfo(Titles.FABULOUS_TYCOON_THE, True, Issues.US, 23, 9, 1958, 9, 1, 1958),
     ComicBookInfo(Titles.GYRO_GOES_FOR_A_DIP, False, Issues.US, 23, 9, 1958, 9, 1, 1958),
