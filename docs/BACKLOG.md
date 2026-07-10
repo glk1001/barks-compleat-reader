@@ -96,6 +96,23 @@ Known limitation (intentional, not a reader fix): links under the bundle's
       remaining `"Fullscreen"` literals in the `.kv` files are static initial values;
       `FullscreenEnum` (the geometry-state enum) is a distinct concern, left as-is.
       Covered by `TestWindowModeController` + `TestSetFullscreenButton`.
+- [ ] **Double-press toggle resolves both presses the same way** — two rapid
+      presses of the fullscreen button both read the same `is_fullscreen_now()`
+      (the `Window.fullscreen` flip lands a frame after the first `goto_*`), so
+      the second press repeats the first direction instead of toggling back.
+      Narrowed on 2026-07-10 (commit d2dd27d dropped the controller's extra
+      Clock deferral) but a full fix needs in-flight *target-mode* tracking on
+      `WindowManager`, so `toggle()` can read "where we're heading" rather than
+      where the window is now. Minor UX; surfaced by the 2026-07-10 review pass.
+- [ ] **Stale backend restore still resizes the window** — if a fullscreen
+      transition interrupts a pending windowed restore, the already-scheduled
+      backend restore still fires and resizes the (now fullscreen) window.
+      Since commit 766ebec it can no longer corrupt state (the saved geometry
+      is guarded while restores are pending, and `_finish_restore` skips the
+      windowed completion), but cancelling the resize itself needs cancellation
+      support in the `WindowBackend` protocol (`schedule_restore` returning a
+      cancel handle, incl. the Win32 backend). Cosmetic; surfaced by the
+      2026-07-10 review pass.
 
 ## Architecture / testability
 
