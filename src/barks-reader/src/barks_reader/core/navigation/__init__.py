@@ -37,6 +37,13 @@ from .destinations import (
     YearRangeKind,
 )
 from .navigation_model import NavigationModel
+from .tree_spec import (
+    NodeKind,
+    NodeRegistration,
+    NodeSpec,
+    PressAction,
+    build_reader_tree_spec,
+)
 
 __all__ = [
     "AllSeriesDestination",
@@ -54,6 +61,10 @@ __all__ = [
     "MainIndexDestination",
     "NamesIndexDestination",
     "NavigationModel",
+    "NodeKind",
+    "NodeRegistration",
+    "NodeSpec",
+    "PressAction",
     "SearchDestination",
     "SeriesDestination",
     "SpeechIndexDestination",
@@ -69,4 +80,5 @@ __all__ = [
     "WordSearchDestination",
     "YearRangeDestination",
     "YearRangeKind",
+    "build_reader_tree_spec",
 ]

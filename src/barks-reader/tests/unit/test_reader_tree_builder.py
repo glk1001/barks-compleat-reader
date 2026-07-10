@@ -1,27 +1,37 @@
-# ruff: noqa: SLF001
-
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.reader_tree_builder
 import pytest
-from barks_fantagraphics.barks_tags import TagCategories, TagGroups, Tags
-from barks_fantagraphics.barks_titles import Titles
-from barks_fantagraphics.fanta_comics_info import SERIES_CS
-from barks_reader.core.navigation import TagDestination, TagGroupDestination
+from barks_fantagraphics.barks_tags import Tags
+from barks_reader.core.navigation import (
+    NodeKind,
+    NodeRegistration,
+    NodeSpec,
+    PressAction,
+    SeriesDestination,
+    TagDestination,
+    YearRangeDestination,
+    YearRangeKind,
+)
 from barks_reader.ui.reader_tree_builder import ReaderTreeBuilder
 from barks_reader.ui.tree_view_nodes import (
     MainTreeViewNode,
     StoryGroupTreeViewNode,
+    TitleTreeViewNode,
+    YearRangeTreeViewNode,
 )
 
 
 @pytest.fixture
 def mock_dependencies() -> dict[str, MagicMock]:
+    tree_view = MagicMock()
+    # add_node returns the node it was given (like the real TreeView).
+    tree_view.add_node.side_effect = lambda node, parent=None: node  # noqa: ARG005
     return {
         "reader_settings": MagicMock(),
-        "reader_tree_view": MagicMock(),
+        "reader_tree_view": tree_view,
         "reader_tree_events": MagicMock(),
         "tree_view_manager": MagicMock(),
         "title_lists": MagicMock(),
@@ -29,140 +39,155 @@ def mock_dependencies() -> dict[str, MagicMock]:
 
 
 @pytest.fixture
-def tree_builder(
-    mock_dependencies: dict[str, MagicMock],
-) -> ReaderTreeBuilder:
+def tree_builder(mock_dependencies: dict[str, MagicMock]) -> ReaderTreeBuilder:
     return ReaderTreeBuilder(**mock_dependencies, include_one_pagers_in_chrono=False)
 
 
-class TestReaderTreeBuilder:
-    def test_init(self, tree_builder: ReaderTreeBuilder) -> None:
-        assert tree_builder._reader_tree_view is not None
+def _build_with_spec(tree_builder: ReaderTreeBuilder, *specs: NodeSpec) -> None:
+    with patch.object(
+        barks_reader.ui.reader_tree_builder, "build_reader_tree_spec", return_value=specs
+    ):
+        tree_builder.build_main_screen_tree()
 
-    def test_build_main_screen_tree(
+
+class TestWalking:
+    def test_builds_widgets_for_each_spec_kind(
         self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]
     ) -> None:
-        # Mock internal build methods to verify orchestration
-        with (
-            patch.object(tree_builder, "_add_intro_node") as mock_intro,
-            patch.object(tree_builder, "_add_the_stories_node") as mock_stories,
-            patch.object(tree_builder, "_add_search_node") as mock_search,
-            patch.object(tree_builder, "_add_appendix_node") as mock_appendix,
-            patch.object(tree_builder, "_add_index_node") as mock_index,
-            patch.object(tree_builder, "_build_story_nodes") as mock_build_stories,
-        ):
-            tree_builder.build_main_screen_tree()
-
-            mock_intro.assert_called_once()
-            mock_stories.assert_called_once()
-            mock_search.assert_called_once()
-            mock_appendix.assert_called_once()
-            mock_index.assert_called_once()
-            mock_build_stories.assert_called_once()
-
-            # Verify binding
-            mock_dependencies["reader_tree_view"].bind.assert_called()
-
-    def test_build_story_nodes_structure(
-        self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]
-    ) -> None:
-        """Verify that the main structure (Chrono, Series, Categories) is created."""
-        mock_tree = mock_dependencies["reader_tree_view"]
-        mock_parent = MagicMock()
-
-        # Mock the generators to avoid deep recursion during this test
-        with (
-            patch.object(tree_builder, "_add_chrono_year_range_nodes_gen", return_value=iter([])),
-            patch.object(tree_builder, "_populate_series_node_gen", return_value=iter([])),
-            patch.object(tree_builder, "_add_category_node_gen", return_value=iter([])),
-            patch.object(tree_builder, "_finished_all_nodes") as mock_finished,
-        ):
-            tree_builder._build_story_nodes(mock_tree, mock_parent)
-
-            # Verify main nodes creation
-            # We expect calls to add_node for Chrono, Series, Categories
-            # Since we can't easily inspect the exact node instances passed to add_node without
-            # capturing them, we can check call count or arguments.
-            # add_node is called for:
-            # 1. Chrono
-            # 2. Series
-            # 3. Categories
-            # 4. Each Series sub-node (7 series)
-            # 5. Each Category sub-node (len(TagCategories))
-            assert mock_tree.add_node.call_count >= 3 + 7 + len(TagCategories)
-
-            mock_finished.assert_called_once()
-
-    def test_create_and_add_simple_node(
-        self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]
-    ) -> None:
-        mock_tree = mock_dependencies["reader_tree_view"]
-        mock_tree.add_node.side_effect = lambda n, parent=None: n  # noqa: ARG005
-        mock_parent = MagicMock()
-
-        node = tree_builder._create_and_add_simple_node(
-            mock_tree, "Test Node", MainTreeViewNode, parent_node=mock_parent
+        spec = NodeSpec(
+            kind=NodeKind.MAIN,
+            text="Root",
+            children=(
+                NodeSpec(kind=NodeKind.STORY_GROUP, text="Group"),
+                NodeSpec(
+                    kind=NodeKind.YEAR_RANGE,
+                    text="1942-1946",
+                    destination=YearRangeDestination(
+                        start=1942, end=1946, kind=YearRangeKind.CHRONO
+                    ),
+                    year_range_kind=YearRangeKind.CHRONO,
+                ),
+            ),
         )
 
-        assert isinstance(node, MainTreeViewNode)
-        assert node.text == "Test Node"
-        mock_tree.add_node.assert_called_with(node, parent=mock_parent)
+        _build_with_spec(tree_builder, spec)
 
-    def test_add_tag_node_gen(
+        added_nodes = [
+            call.args[0] for call in mock_dependencies["reader_tree_view"].add_node.call_args_list
+        ]
+        assert isinstance(added_nodes[0], MainTreeViewNode)
+        assert added_nodes[0].text == "Root"
+        assert isinstance(added_nodes[1], StoryGroupTreeViewNode)
+        assert isinstance(added_nodes[2], YearRangeTreeViewNode)
+
+        # Children are parented to the root node.
+        _, kwargs = mock_dependencies["reader_tree_view"].add_node.call_args_list[1]
+        assert kwargs["parent"] is added_nodes[0]
+
+        mock_dependencies["reader_tree_events"].finished_building.assert_called_once()
+        mock_dependencies["reader_tree_view"].bind.assert_called()
+
+    def test_press_action_binds_manager_handler(
         self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]
     ) -> None:
-        mock_tree = mock_dependencies["reader_tree_view"]
-        mock_parent = MagicMock()
-        tag = Tags.AIRPLANES
+        spec = NodeSpec(kind=NodeKind.MAIN, text="Leaf", press_action=PressAction.OPEN_ARTICLE)
 
-        # Mock _get_tagged_titles
-        with patch.object(
-            tree_builder, "_get_tagged_titles", return_value=[Titles.VICTORY_GARDEN_THE]
-        ):
-            gen = tree_builder._add_tag_node_gen(mock_tree, tag, mock_parent)
-            # Run generator
-            list(gen)
+        _build_with_spec(tree_builder, spec)
 
-            # Verify node added — tag payload now lives in `destination`, not on the widget.
-            args, _ = mock_tree.add_node.call_args
-            node = args[0]
-            assert isinstance(node, StoryGroupTreeViewNode)
-            assert node.destination == TagDestination(tag=tag)
-            assert node.populate_callback is not None
+        node = mock_dependencies["reader_tree_view"].add_node.call_args.args[0]
+        handler = mock_dependencies["tree_view_manager"].on_article_node_pressed
+        node.dispatch("on_press")
+        handler.assert_called_once_with(node)
 
-    def test_add_tag_group_node_gen(
+    def test_start_closed_sets_saved_state(
         self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]
     ) -> None:
-        mock_tree = mock_dependencies["reader_tree_view"]
-        mock_parent = MagicMock()
-        tag_group = TagGroups.AFRICA
+        spec = NodeSpec(kind=NodeKind.MAIN, text="Leaf", start_closed=True)
 
-        # Mock BARKS_TAG_GROUPS to return a simple list
-        with patch.object(
-            barks_reader.ui.reader_tree_builder, "BARKS_TAG_GROUPS", {tag_group: [Tags.AIRPLANES]}
-        ):
-            gen = tree_builder._add_tag_group_node_gen(mock_tree, tag_group, mock_parent)
-            list(gen)
+        _build_with_spec(tree_builder, spec)
 
-            # Should add the group node
-            # And then recursively add the tag node (which calls add_node again)
-            assert mock_tree.add_node.call_count >= 1
-            # First call should be the group node
-            node = mock_tree.add_node.call_args_list[0][0][0]
-            assert isinstance(node, StoryGroupTreeViewNode)
-            assert node.destination == TagGroupDestination(tag_group=tag_group)
+        node = mock_dependencies["reader_tree_view"].add_node.call_args.args[0]
+        assert node.saved_state["open"] is False
 
-    def test_populate_series_node_gen_cs(
+    def test_registration_hook_receives_created_node(
         self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]
     ) -> None:
-        mock_tree = mock_dependencies["reader_tree_view"]
-        mock_parent = MagicMock()
+        spec = NodeSpec(kind=NodeKind.MAIN, text="Search", register_as=NodeRegistration.SEARCH)
 
-        # Mock _populate_splittable_series_node_gen to verify dispatch
+        _build_with_spec(tree_builder, spec)
+
+        node = mock_dependencies["reader_tree_view"].add_node.call_args.args[0]
+        mock_dependencies["tree_view_manager"].on_search_node_created.assert_called_once_with(node)
+
+
+class TestLookupNodeCollection:
+    def test_chrono_year_range_nodes_are_indexed(self, tree_builder: ReaderTreeBuilder) -> None:
+        spec = NodeSpec(
+            kind=NodeKind.YEAR_RANGE,
+            text="1942-1946",
+            destination=YearRangeDestination(start=1942, end=1946, kind=YearRangeKind.CHRONO),
+            year_range_kind=YearRangeKind.CHRONO,
+        )
+
+        _build_with_spec(tree_builder, spec)
+
+        assert (1942, 1946) in tree_builder.chrono_year_range_nodes
+
+    def test_cs_year_range_nodes_are_not_indexed_as_chrono(
+        self, tree_builder: ReaderTreeBuilder
+    ) -> None:
+        spec = NodeSpec(
+            kind=NodeKind.YEAR_RANGE,
+            text="1942-1946",
+            destination=YearRangeDestination(start=1942, end=1946, kind=YearRangeKind.CS),
+            year_range_kind=YearRangeKind.CS,
+        )
+
+        _build_with_spec(tree_builder, spec)
+
+        assert tree_builder.chrono_year_range_nodes == {}
+
+    def test_series_nodes_are_indexed(self, tree_builder: ReaderTreeBuilder) -> None:
+        spec = NodeSpec(
+            kind=NodeKind.STORY_GROUP,
+            text="Some Series",
+            destination=SeriesDestination(series_name="Some Series"),
+        )
+
+        _build_with_spec(tree_builder, spec)
+
+        assert "Some Series" in tree_builder.series_nodes
+
+
+class TestDeferredPopulation:
+    def test_lazy_children_defer_until_populate_callback(
+        self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        fanta_info = MagicMock()
+        lazy_rows = (NodeSpec(kind=NodeKind.TITLE_ROW, fanta_info=fanta_info),)
+        spec = NodeSpec(
+            kind=NodeKind.STORY_GROUP,
+            text="Tag",
+            destination=TagDestination(tag=Tags.AIRPLANES),
+            lazy_children=lambda: lazy_rows,
+        )
+
+        _build_with_spec(tree_builder, spec)
+
+        node = mock_dependencies["reader_tree_view"].add_node.call_args.args[0]
+        assert node.populate_callback is not None
+        assert node.populated is False
+        assert node.is_leaf is False
+        # No title row created yet.
+        assert mock_dependencies["reader_tree_view"].add_node.call_count == 1
+
+        title_node = MagicMock()
         with patch.object(
-            tree_builder, "_populate_splittable_series_node_gen", return_value=iter([])
-        ) as mock_split:
-            gen = tree_builder._populate_series_node_gen(mock_tree, SERIES_CS, mock_parent)
-            list(gen)
+            TitleTreeViewNode, "create_from_fanta_info", return_value=title_node
+        ) as mock_create:
+            node.populate_callback()
 
-            mock_split.assert_called_once()
+        mock_create.assert_called_once_with(
+            fanta_info, mock_dependencies["tree_view_manager"].on_title_row_button_pressed
+        )
+        mock_dependencies["reader_tree_view"].add_node.assert_called_with(title_node, parent=node)

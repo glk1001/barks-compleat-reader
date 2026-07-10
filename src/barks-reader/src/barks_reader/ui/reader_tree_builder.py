@@ -1,120 +1,47 @@
+"""Walk the core navigation-tree spec and build the Kivy tree-view widgets.
+
+All tree *structure* (node texts, destinations, press behavior, lazy title
+rows) is composed by `core.navigation.build_reader_tree_spec`; this module
+only instantiates widgets from the specs, binds press handlers, and calls the
+`TreeViewManager` 'node created' registration hooks.
+"""
+
 from __future__ import annotations
 
-from collections.abc import Callable
-from functools import partial
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_tags import (
-    BARKS_TAG_CATEGORIES,
-    BARKS_TAG_GROUPS,
-    TagCategories,
-    TagGroups,
-    Tags,
-    get_sorted_tagged_titles,
-    special_case_personal_favourites_tag_update,
-)
-from barks_fantagraphics.barks_titles import (
-    US_1_FC_ISSUE_NUM,
-    US_2_FC_ISSUE_NUM,
-    US_3_FC_ISSUE_NUM,
-    Titles,
-)
-from barks_fantagraphics.fanta_comics_info import (
-    SERIES_CS,
-    SERIES_DDA,
-    SERIES_DDS,
-    SERIES_GG,
-    SERIES_MISC,
-    SERIES_ONE_PAGERS,
-    SERIES_USA,
-    SERIES_USS,
-    FantaComicBookInfo,
-    get_fanta_info,
-    get_num_comic_book_titles,
-)
 from comic_utils.timing import Timing
 from kivy.metrics import dp
-from kivy.uix.button import Button
 from loguru import logger
 
-from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.navigation import (
-    AllSeriesDestination,
-    AppendixDestination,
-    ArticleDestination,
-    CategoriesDestination,
-    CategoryDestination,
-    CensorshipFixesDocDestination,
-    ChronologicalDestination,
-    Destination,
-    IndexDestination,
-    IntroDestination,
-    IntroDocDestination,
-    LocationsIndexDestination,
-    MainIndexDestination,
-    NamesIndexDestination,
-    SearchDestination,
+    NodeKind,
+    NodeRegistration,
+    PressAction,
     SeriesDestination,
-    SpeechIndexDestination,
-    SpeechWordsDestination,
-    StatisticsDestination,
-    StoriesDestination,
-    TagDestination,
-    TagGroupDestination,
-    TagSearchDestination,
-    TitleSearchDestination,
-    WikiIndexDestination,
-    WordSearchDestination,
     YearRangeDestination,
     YearRangeKind,
+    build_reader_tree_spec,
 )
-from barks_reader.core.navigation.view_states import ViewStates
-from barks_reader.core.reader_consts_and_types import (
-    APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
-    APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
-    APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_TEXT,
-    APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_TEXT,
-    APPENDIX_NODE_TEXT,
-    APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_TEXT,
-    APPENDIX_STATISTICS_NODE_TEXT,
-    CATEGORIES_NODE_TEXT,
-    CHRONO_YEAR_RANGES,
-    CHRONOLOGICAL_NODE_TEXT,
-    CS_YEAR_RANGES,
-    INDEX_LOCATIONS_TEXT,
-    INDEX_MAIN_TEXT,
-    INDEX_NAMES_TEXT,
-    INDEX_NODE_TEXT,
-    INDEX_SPEECH_TEXT,
-    INDEX_SPEECH_WORDS_TEXT,
-    INDEX_WIKI_TEXT,
-    INTRO_COMPLEAT_BARKS_READER_TEXT,
-    INTRO_DON_AULT_FANTA_INTRO_TEXT,
-    INTRO_NODE_TEXT,
-    SEARCH_NODE_TEXT,
-    SERIES_NODE_TEXT,
-    TAG_SEARCH_NODE_TEXT,
-    THE_STORIES_NODE_TEXT,
-    TITLE_SEARCH_NODE_TEXT,
-    US_YEAR_RANGES,
-    WORD_SEARCH_NODE_TEXT,
-)
-from barks_reader.core.reader_formatter import (
-    get_bold_markup_text,
-    get_markup_text_with_extra,
-    get_markup_text_with_num_titles,
-)
-from barks_reader.core.reader_utils import read_title_list
 
 from .tree_view_nodes import (
     ButtonTreeViewNode,
     MainTreeViewNode,
-    ReaderTreeBuilderEventDispatcher,
-    ReaderTreeView,
     StoryGroupTreeViewNode,
     TitleTreeViewNode,
     YearRangeTreeViewNode,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+
+    from barks_reader.core.navigation import NodeSpec
+    from barks_reader.core.reader_settings import ReaderSettings
+
+    from .tree_view_manager import TreeViewManager
+    from .tree_view_nodes import ReaderTreeBuilderEventDispatcher, ReaderTreeView
 
 _YEAR_RANGE_KIND_TO_WIDTH: dict[YearRangeKind, float] = {
     YearRangeKind.CHRONO: dp(150),
@@ -122,21 +49,13 @@ _YEAR_RANGE_KIND_TO_WIDTH: dict[YearRangeKind, float] = {
     YearRangeKind.US: dp(250),
 }
 
-if TYPE_CHECKING:
-    from collections.abc import Generator
-
-    from barks_reader.core.reader_settings import ReaderSettings
-
-    from .tree_view_manager import TreeViewManager
-
-BUTTON_ON_PRESS_CALLABLE = Callable[[Button], None]
+_NODE_CLASSES: dict[NodeKind, type[ButtonTreeViewNode]] = {
+    NodeKind.MAIN: MainTreeViewNode,
+    NodeKind.STORY_GROUP: StoryGroupTreeViewNode,
+}
 
 
 class ReaderTreeBuilder:
-    # Process nodes in batches to reduce scheduling overhead and improve performance.
-    # A larger batch size is faster but makes the UI less responsive during the build.
-    BUILD_BATCH_SIZE = 50
-
     def __init__(
         self,
         reader_settings: ReaderSettings,
@@ -157,622 +76,112 @@ class ReaderTreeBuilder:
         self.chrono_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
         self.series_nodes: dict[str, ButtonTreeViewNode] = {}
 
-        self._series_names = [
-            SERIES_CS,
-            SERIES_DDA,
-            SERIES_USA,
-            SERIES_DDS,
-            SERIES_USS,
-            SERIES_GG,
-            SERIES_MISC,
-            SERIES_ONE_PAGERS,
-        ]
-
-    def _get_tagged_titles(self, tag: Tags) -> list[Titles]:
-        if tag != Tags.PERSONAL_FAVOURITES:
-            return get_sorted_tagged_titles(tag)
-
-        return self._get_favourite_titles()
-
-    def _get_favourite_titles(self) -> list[Titles]:
-        titles = read_title_list(self._reader_settings.sys_file_paths.get_favourite_titles_path())
-
-        special_case_personal_favourites_tag_update(titles)
-
-        return titles
+        self._press_handlers: dict[PressAction, Callable] = {
+            PressAction.SET_VIEW_STATE: tree_view_manager.set_view_state_for_node,
+            PressAction.OPEN_INTRO_DOC: tree_view_manager.on_intro_doc_pressed,
+            PressAction.OPEN_ARTICLE: tree_view_manager.on_article_node_pressed,
+            PressAction.OPEN_CENSORSHIP_FIXES_DOC: (
+                tree_view_manager.on_censorship_fixes_doc_pressed
+            ),
+            PressAction.OPEN_SPEECH_INDEX: tree_view_manager.on_speech_index_node_pressed,
+            PressAction.OPEN_SPEECH_WORDS: tree_view_manager.on_speech_words_node_pressed,
+            PressAction.OPEN_WIKI_INDEX: tree_view_manager.on_wiki_index_node_pressed,
+        }
+        self._registration_hooks: dict[NodeRegistration, Callable] = {
+            NodeRegistration.SEARCH: tree_view_manager.on_search_node_created,
+            NodeRegistration.STATISTICS: tree_view_manager.on_statistics_node_created,
+            NodeRegistration.MAIN_INDEX: tree_view_manager.on_main_index_node_created,
+            NodeRegistration.SPEECH_INDEX: tree_view_manager.on_speech_index_node_created,
+            NodeRegistration.SPEECH_WORDS: tree_view_manager.on_speech_words_node_created,
+            NodeRegistration.NAMES_INDEX: tree_view_manager.on_names_index_node_created,
+            NodeRegistration.LOCATIONS_INDEX: tree_view_manager.on_locations_index_node_created,
+        }
 
     def build_main_screen_tree(self) -> None:
-        """Set up and kick off the entire asynchronous tree build process."""
-        logger.debug("Building simple nodes...")
-        self._add_intro_node(self._reader_tree_view)
-        the_stories_node = self._add_the_stories_node(self._reader_tree_view)
-        self._add_search_node(self._reader_tree_view)
-        self._add_appendix_node(self._reader_tree_view)
-        self._add_index_node(self._reader_tree_view)
+        """Build the whole tree-view widget hierarchy from the core tree spec."""
+        self._tree_build_timing.restart()
 
-        logger.debug("Building title nodes...")
-        # This is the single entry point for the entire asynchronous build.
-        self._build_story_nodes(self._reader_tree_view, the_stories_node)
+        logger.debug("Building the reader tree from the navigation tree spec...")
+        specs = build_reader_tree_spec(
+            self._reader_settings,
+            self._title_lists,
+            include_one_pagers_in_chrono=self._include_one_pagers_in_chrono,
+        )
+        for spec in specs:
+            self._add_node(spec, parent=None)
 
         self._reader_tree_view.bind(minimum_height=self._reader_tree_view.setter("height"))
 
-    def _build_story_nodes(self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode) -> None:
-        self._tree_build_timing.restart()
+        elapsed_time = self._tree_build_timing.get_elapsed_time_with_unit()
+        logger.info(f"Finished loading all nodes in {elapsed_time}.")
 
-        # 1. Create main parent nodes synchronously.
-        chrono_node = self._create_and_add_simple_node(
-            tree,
-            CHRONOLOGICAL_NODE_TEXT,
-            StoryGroupTreeViewNode,
-            is_bold=True,
-            parent_node=parent_node,
-            destination=ChronologicalDestination(),
-        )
-        series_node = self._create_and_add_simple_node(
-            tree,
-            SERIES_NODE_TEXT,
-            StoryGroupTreeViewNode,
-            is_bold=True,
-            parent_node=parent_node,
-            destination=AllSeriesDestination(),
-        )
-        categories_node = self._create_and_add_simple_node(
-            tree,
-            CATEGORIES_NODE_TEXT,
-            StoryGroupTreeViewNode,
-            is_bold=True,
-            parent_node=parent_node,
-            destination=CategoriesDestination(),
-        )
+        self._reader_tree_events.finished_building()
 
-        logger.debug("Creating Chronological parent nodes and dispatching population tasks...")
-        chrono_gen = self._add_chrono_year_range_nodes_gen(tree, chrono_node)
-        self._run_generator(chrono_gen)
-
-        logger.debug("Creating Series parent nodes and dispatching population tasks...")
-        for series_name in self._series_names:
-            title_list = self._title_lists[series_name]
-            series_text = get_markup_text_with_num_titles(series_name, len(title_list))
-            new_series_node = StoryGroupTreeViewNode(
-                text=series_text, destination=SeriesDestination(series_name=series_name)
+    def _add_node(self, spec: NodeSpec, parent: ButtonTreeViewNode | None) -> None:
+        if spec.kind is NodeKind.TITLE_ROW:
+            assert spec.fanta_info is not None
+            title_node = TitleTreeViewNode.create_from_fanta_info(
+                spec.fanta_info, self._tree_view_manager.on_title_row_button_pressed
             )
-            tree.add_node(new_series_node, parent=series_node)
-            self.series_nodes[series_name] = new_series_node
+            self._reader_tree_view.add_node(title_node, parent=parent)
+            return
 
-            gen = self._populate_series_node_gen(tree, series_name, new_series_node)
-            self._run_generator(gen)
+        node = self._make_button_node(spec)
 
-        logger.debug("Creating Category parent nodes and dispatching population tasks...")
-        for category in TagCategories:
-            # We need a small wrapper generator to create the sub-parent node.
-            def category_gen_wrapper(cat_to_build: TagCategories) -> Generator[None]:
-                new_node = self._create_and_add_simple_node(
-                    tree,
-                    cat_to_build.value,
-                    StoryGroupTreeViewNode,
-                    is_bold=True,
-                    parent_node=categories_node,
-                    destination=CategoryDestination(category=cat_to_build.value),
-                )
-                yield from self._add_category_node_gen(tree, cat_to_build, new_node)
+        handler = self._press_handlers.get(spec.press_action)
+        if handler is not None:
+            node.bind(on_press=handler)
 
-            gen = category_gen_wrapper(category)
-            self._run_generator(gen)
+        node = self._reader_tree_view.add_node(node, parent=parent)
 
-        self._finished_all_nodes()
+        if spec.start_closed:
+            node.saved_state["open"] = False
 
-    # --- Population Generators ---
+        if spec.register_as is not None:
+            self._registration_hooks[spec.register_as](node)
 
-    def _populate_series_node_gen(
-        self, tree: ReaderTreeView, series_name: str, parent_node: ButtonTreeViewNode
-    ) -> Generator[None]:
-        """Populate the children of a pre-existing series node."""
-        if series_name == SERIES_CS:
-            yield from self._populate_cs_node_gen(tree, parent_node)
-        elif series_name == SERIES_USA:
-            yield from self._populate_us_node_gen(tree, parent_node)
-        else:
-            yield from self._populate_simple_series_node_gen(series_name, tree, parent_node)
+        self._collect_lookup_node(spec, node)
 
-    def _populate_cs_node_gen(
-        self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
-    ) -> Generator[None]:
-        """Populate a CS series node with its year-range children."""
-        yield from self._populate_splittable_series_node_gen(
-            tree,
-            parent_node,
-            CS_YEAR_RANGES,
-            partial(
-                self._add_series_year_range_node_gen,
-                kind=YearRangeKind.CS,
-                year_key_func=FilteredTitleLists.get_cs_year_key_from_year,
-                extra_text_func=self._get_cs_year_range_extra_text,
-            ),
-        )
+        for child_spec in spec.children:
+            self._add_node(child_spec, parent=node)
 
-    def _populate_us_node_gen(
-        self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
-    ) -> Generator[None]:
-        """Populate a US series node with its year-range children."""
-        yield from self._populate_splittable_series_node_gen(
-            tree,
-            parent_node,
-            US_YEAR_RANGES,
-            partial(
-                self._add_series_year_range_node_gen,
-                kind=YearRangeKind.US,
-                year_key_func=FilteredTitleLists.get_us_year_key_from_year,
-                extra_text_func=self._get_us_year_range_extra_text,
-            ),
-        )
+        if spec.lazy_children is not None:
+            self._defer_node_population(node, spec.lazy_children)
 
     @staticmethod
-    def _populate_splittable_series_node_gen(
-        tree: ReaderTreeView,
-        parent_node: ButtonTreeViewNode,
-        year_ranges: list[tuple[int, int]],
-        add_year_range_node_gen_func: Callable[..., Generator[None]],
-    ) -> Generator[None]:
-        """Populate a series node that is split by year ranges."""
-        for year_range in year_ranges:
-            yield from add_year_range_node_gen_func(tree, year_range, parent_node)
-
-    # --- Child Node Creation Generators ---
-
-    def _add_chrono_year_range_nodes_gen(
-        self, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
-    ) -> Generator[None]:
-        """Add all chronological year range nodes."""
-        for year_range in CHRONO_YEAR_RANGES:
-            yield from self._add_chrono_year_range_node_and_child_nodes_gen(
-                tree, year_range, parent_node
+    def _make_button_node(spec: NodeSpec) -> ButtonTreeViewNode:
+        if spec.kind is NodeKind.YEAR_RANGE:
+            assert spec.year_range_kind is not None
+            return YearRangeTreeViewNode(
+                text=spec.text,
+                destination=spec.destination,
+                NODE_WIDTH=_YEAR_RANGE_KIND_TO_WIDTH[spec.year_range_kind],
             )
 
-    def _add_chrono_year_range_node_and_child_nodes_gen(
-        self, tree: ReaderTreeView, year_range: tuple[int, int], parent_node: ButtonTreeViewNode
-    ) -> Generator[None]:
-        new_node, year_range_titles = self._add_chrono_year_range_node(
-            tree, year_range, parent_node
-        )
-        assert len(year_range_titles) == get_num_comic_book_titles(
-            year_range, include_one_pagers=self._include_one_pagers_in_chrono
-        )
+        return _NODE_CLASSES[spec.kind](text=spec.text, destination=spec.destination)
 
-        # 👇 instead of eagerly creating 100% of title children now, defer…
-        self._defer_node_population(
-            new_node,
-            lambda: self._add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node),
-        )
-
-        # keep your index for quick lookups
-        self.chrono_year_range_nodes[year_range] = new_node
-        # yield here to keep responsiveness
-        yield
-
-    def _add_category_node_gen(
-        self,
-        tree: ReaderTreeView,
-        category: TagCategories,
-        parent_node: ButtonTreeViewNode,
-    ) -> Generator[None]:
-        for tag_or_group in BARKS_TAG_CATEGORIES[category]:
-            if isinstance(tag_or_group, Tags):
-                yield from self._add_tag_node_gen(tree, tag_or_group, parent_node)
-            elif isinstance(tag_or_group, TagGroups):
-                logger.debug(
-                    f'Got tag group: "{tag_or_group.name}".'
-                    f' Adding tag group node under parent "{parent_node.text}".'
-                )
-                yield from self._add_tag_group_node_gen(tree, tag_or_group, parent_node)
-
-    def _add_tag_group_node_gen(
-        self,
-        tree: ReaderTreeView,
-        tag_group: TagGroups,
-        parent_node: ButtonTreeViewNode,
-    ) -> Generator[None]:
-        new_node = StoryGroupTreeViewNode(
-            text=get_bold_markup_text(tag_group.value),
-            destination=TagGroupDestination(tag_group=tag_group),
-        )
-        tree.add_node(new_node, parent=parent_node)
-
-        for tag in BARKS_TAG_GROUPS[tag_group]:
-            if type(tag) is TagGroups:
-                yield from self._add_tag_group_node_gen(tree, tag, new_node)
-            else:
-                yield from self._add_tag_node_gen(tree, tag, new_node)
-
-    def _add_tag_node_gen(
-        self,
-        tree: ReaderTreeView,
-        tag: Tags,
-        parent_node: ButtonTreeViewNode,
-    ) -> Generator[None]:
-        titles = self._get_tagged_titles(tag)
-        new_node = StoryGroupTreeViewNode(
-            text=get_markup_text_with_num_titles(tag.value, len(titles)),
-            destination=TagDestination(tag=tag),
-        )
-
-        tree.add_node(new_node, parent=parent_node)
-
-        # Defer creation of the tag's title rows.
-        self._defer_node_population(
-            new_node, lambda: self._add_title_nodes_gen(tree, titles, new_node)
-        )
-        yield
+    def _collect_lookup_node(self, spec: NodeSpec, node: ButtonTreeViewNode) -> None:
+        """Index the nodes the `NavigationCoordinator` needs for goto-title flows."""
+        destination = spec.destination
+        if (
+            isinstance(destination, YearRangeDestination)
+            and destination.kind is YearRangeKind.CHRONO
+        ):
+            self.chrono_year_range_nodes[(destination.start, destination.end)] = node
+        elif isinstance(destination, SeriesDestination):
+            self.series_nodes[destination.series_name] = node
 
     def _defer_node_population(
-        self, node: ButtonTreeViewNode, make_children_gen: Callable[[], Generator[None]]
+        self,
+        node: ButtonTreeViewNode,
+        make_children_specs: Callable[[], tuple[NodeSpec, ...]],
     ) -> None:
         """Defer creating *node*'s title children until the node is first expanded."""
 
         def _populate() -> None:
-            self._run_generator(make_children_gen())
+            for child_spec in make_children_specs():
+                self._add_node(child_spec, parent=node)
 
         node.populate_callback = _populate
         node.populated = False
         node.is_leaf = False
-
-    def _add_title_nodes_gen(
-        self, tree: ReaderTreeView, titles: list[Titles], parent_node: ButtonTreeViewNode
-    ) -> Generator[None]:
-        for i, title in enumerate(titles):
-            title_info = get_fanta_info(title)
-            if title_info is not None:
-                node = TitleTreeViewNode.create_from_fanta_info(
-                    title_info, self._tree_view_manager.on_title_row_button_pressed
-                )
-                tree.add_node(node, parent=parent_node)
-
-            if (i + 1) % self.BUILD_BATCH_SIZE == 0:
-                yield
-
-    def _add_series_year_range_node_gen(
-        self,
-        tree: ReaderTreeView,
-        year_range: tuple[int, int],
-        parent_node: ButtonTreeViewNode,
-        *,
-        kind: YearRangeKind,
-        year_key_func: Callable[[int], str],
-        extra_text_func: Callable[[list[FantaComicBookInfo]], str],
-    ) -> Generator[None]:
-        """Add a CS/US series year-range node; the per-series specifics are bound by the caller."""
-        new_node, year_range_titles = self._create_and_add_year_range_node(
-            tree,
-            year_range,
-            year_key_func,
-            extra_text_func,
-            parent_node,
-            kind=kind,
-        )
-
-        self._defer_node_population(
-            new_node,
-            lambda: self._add_fanta_info_story_nodes_gen(tree, year_range_titles, new_node),
-        )
-
-        yield
-
-    def _populate_simple_series_node_gen(
-        self, series_name: str, tree: ReaderTreeView, parent_node: ButtonTreeViewNode
-    ) -> Generator:
-        """Populate a simple series node with its title list."""
-        title_list = self._title_lists[series_name]
-
-        self._defer_node_population(
-            parent_node,
-            lambda: self._add_fanta_info_story_nodes_gen(tree, title_list, parent_node),
-        )
-
-        yield
-
-    def _add_fanta_info_story_nodes_gen(
-        self,
-        tree: ReaderTreeView,
-        title_info_list: list[FantaComicBookInfo],
-        parent_node: ButtonTreeViewNode,
-    ) -> Generator:
-        for i, title_info in enumerate(title_info_list):
-            node = TitleTreeViewNode.create_from_fanta_info(
-                title_info, self._tree_view_manager.on_title_row_button_pressed
-            )
-            tree.add_node(node, parent=parent_node)
-
-            if (i + 1) % self.BUILD_BATCH_SIZE == 0:
-                yield
-
-    # --- Synchronous Helper Methods ---
-
-    def _add_intro_node(self, tree: ReaderTreeView) -> None:
-        intro_node = self._create_and_add_simple_node(
-            tree, INTRO_NODE_TEXT, destination=IntroDestination()
-        )
-
-        child_node = self._create_and_add_simple_node(
-            tree,
-            INTRO_COMPLEAT_BARKS_READER_TEXT,
-            parent_node=intro_node,
-            on_press_handler=self._tree_view_manager.on_intro_doc_pressed,
-            destination=IntroDocDestination(),
-        )
-        child_node.saved_state["open"] = False
-
-        child_node = self._create_and_add_simple_node(
-            tree,
-            INTRO_DON_AULT_FANTA_INTRO_TEXT,
-            parent_node=intro_node,
-            on_press_handler=self._tree_view_manager.on_article_node_pressed,
-            destination=ArticleDestination(
-                view_state=ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,
-                article_title=Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
-            ),
-        )
-        child_node.saved_state["open"] = False
-
-    def _add_the_stories_node(self, tree: ReaderTreeView) -> MainTreeViewNode:
-        return self._create_and_add_simple_node(
-            tree, THE_STORIES_NODE_TEXT, destination=StoriesDestination()
-        )
-
-    def _add_search_node(self, tree: ReaderTreeView) -> None:
-        search_node = self._create_and_add_simple_node(
-            tree, SEARCH_NODE_TEXT, destination=SearchDestination()
-        )
-        self._tree_view_manager.on_search_node_created(search_node)
-
-        for text, destination in [
-            (TITLE_SEARCH_NODE_TEXT, TitleSearchDestination()),
-            (TAG_SEARCH_NODE_TEXT, TagSearchDestination()),
-            (WORD_SEARCH_NODE_TEXT, WordSearchDestination()),
-        ]:
-            self._create_and_add_simple_node(
-                tree,
-                text,
-                node_class=StoryGroupTreeViewNode,
-                parent_node=search_node,
-                on_press_handler=self._tree_view_manager.set_view_state_for_node,
-                destination=destination,
-            )
-
-    def _add_appendix_node(self, tree: ReaderTreeView) -> None:
-        appendix_node = self._create_and_add_simple_node(
-            tree, APPENDIX_NODE_TEXT, destination=AppendixDestination()
-        )
-
-        child_node = self._create_and_add_simple_node(
-            tree,
-            APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_TEXT,
-            parent_node=appendix_node,
-            on_press_handler=self._tree_view_manager.on_article_node_pressed,
-            destination=ArticleDestination(
-                view_state=ViewStates.ON_APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_NODE,
-                article_title=Titles.RICH_TOMMASO___ON_COLORING_BARKS,
-            ),
-        )
-        child_node.saved_state["open"] = False
-
-        child_node = self._create_and_add_simple_node(
-            tree,
-            APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
-            parent_node=appendix_node,
-            on_press_handler=self._tree_view_manager.on_article_node_pressed,
-            destination=ArticleDestination(
-                view_state=ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE,
-                article_title=Titles.DON_AULT___LIFE_AMONG_THE_DUCKS,
-            ),
-        )
-        child_node.saved_state["open"] = False
-
-        child_node = self._create_and_add_simple_node(
-            tree,
-            APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_TEXT,
-            parent_node=appendix_node,
-            on_press_handler=self._tree_view_manager.on_article_node_pressed,
-            destination=ArticleDestination(
-                view_state=ViewStates.ON_APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_NODE,
-                article_title=Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD,
-            ),
-        )
-        child_node.saved_state["open"] = False
-
-        child_node = self._create_and_add_simple_node(
-            tree,
-            APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_TEXT,
-            parent_node=appendix_node,
-            on_press_handler=self._tree_view_manager.on_article_node_pressed,
-            destination=ArticleDestination(
-                view_state=ViewStates.ON_APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_NODE,
-                article_title=Titles.GEORGE_LUCAS___AN_APPRECIATION,
-            ),
-        )
-        child_node.saved_state["open"] = False
-
-        child_node = self._create_and_add_simple_node(
-            tree,
-            APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
-            parent_node=appendix_node,
-            on_press_handler=self._tree_view_manager.on_censorship_fixes_doc_pressed,
-            destination=CensorshipFixesDocDestination(),
-        )
-        child_node.saved_state["open"] = False
-
-        child_node = self._create_and_add_simple_node(
-            tree,
-            APPENDIX_STATISTICS_NODE_TEXT,
-            parent_node=appendix_node,
-            on_press_handler=self._tree_view_manager.set_view_state_for_node,
-            destination=StatisticsDestination(),
-        )
-        self._tree_view_manager.on_statistics_node_created(child_node)
-        child_node.saved_state["open"] = False
-
-    def _add_index_node(self, tree: ReaderTreeView) -> None:
-        index_node = self._create_and_add_simple_node(
-            tree, INDEX_NODE_TEXT, destination=IndexDestination()
-        )
-
-        child_node = self._create_and_add_simple_node(
-            tree,
-            INDEX_MAIN_TEXT,
-            parent_node=index_node,
-            on_press_handler=self._tree_view_manager.set_view_state_for_node,
-            destination=MainIndexDestination(),
-        )
-        self._tree_view_manager.on_main_index_node_created(child_node)
-
-        speech_node = self._create_and_add_simple_node(
-            tree,
-            INDEX_SPEECH_TEXT,
-            parent_node=index_node,
-            on_press_handler=self._tree_view_manager.on_speech_index_node_pressed,
-            destination=SpeechIndexDestination(),
-        )
-        self._tree_view_manager.on_speech_index_node_created(speech_node)
-
-        words_node = self._create_and_add_simple_node(
-            tree,
-            INDEX_SPEECH_WORDS_TEXT,
-            parent_node=speech_node,
-            on_press_handler=self._tree_view_manager.on_speech_words_node_pressed,
-            destination=SpeechWordsDestination(),
-        )
-        self._tree_view_manager.on_speech_words_node_created(words_node)
-
-        names_node = self._create_and_add_simple_node(
-            tree,
-            INDEX_NAMES_TEXT,
-            parent_node=speech_node,
-            on_press_handler=self._tree_view_manager.set_view_state_for_node,
-            destination=NamesIndexDestination(),
-        )
-        self._tree_view_manager.on_names_index_node_created(names_node)
-
-        locations_node = self._create_and_add_simple_node(
-            tree,
-            INDEX_LOCATIONS_TEXT,
-            parent_node=speech_node,
-            on_press_handler=self._tree_view_manager.set_view_state_for_node,
-            destination=LocationsIndexDestination(),
-        )
-        self._tree_view_manager.on_locations_index_node_created(locations_node)
-
-        # Optional entry: shown only when the wiki-bundle setting resolves to a
-        # real OKF bundle. Pressing it switches to the wiki reader screen.
-        if self._reader_settings.wiki_bundle_dir is not None:
-            child_node = self._create_and_add_simple_node(
-                tree,
-                INDEX_WIKI_TEXT,
-                parent_node=index_node,
-                on_press_handler=self._tree_view_manager.on_wiki_index_node_pressed,
-                destination=WikiIndexDestination(),
-            )
-            # Like the other side-effect leaves: a saved-node restore must
-            # render the destination view, not replay the press (which would
-            # auto-open the wiki screen at startup).
-            child_node.saved_state["open"] = False
-
-    def _add_chrono_year_range_node(
-        self, tree: ReaderTreeView, year_range: tuple[int, int], parent_node: ButtonTreeViewNode
-    ) -> tuple[ButtonTreeViewNode, list[FantaComicBookInfo]]:
-        return self._create_and_add_year_range_node(
-            tree,
-            year_range,
-            str,
-            lambda title_list: str(len(title_list)),
-            parent_node,
-            kind=YearRangeKind.CHRONO,
-        )
-
-    @staticmethod
-    def _get_cs_year_range_extra_text(title_list: list[FantaComicBookInfo]) -> str:
-        first_issue = min(
-            title_list, key=lambda x: x.comic_book_info.issue_number
-        ).comic_book_info.issue_number
-        last_issue = max(
-            title_list, key=lambda x: x.comic_book_info.issue_number
-        ).comic_book_info.issue_number
-
-        return f"WDCS {first_issue}-{last_issue}"
-
-    @staticmethod
-    def _get_us_year_range_extra_text(title_list: list[FantaComicBookInfo]) -> str:
-        def get_us_issue_number(fanta_info: FantaComicBookInfo) -> int:
-            num = fanta_info.comic_book_info.issue_number
-            if num == US_1_FC_ISSUE_NUM:
-                return 1
-            if num == US_2_FC_ISSUE_NUM:
-                return 2
-            if num == US_3_FC_ISSUE_NUM:
-                return 3
-            return num
-
-        first_issue = get_us_issue_number(min(title_list, key=get_us_issue_number))
-        last_issue = get_us_issue_number(max(title_list, key=get_us_issue_number))
-
-        return f"US {first_issue}-{last_issue}"
-
-    @staticmethod
-    def _create_and_add_simple_node(
-        tree: ReaderTreeView,
-        text: str,
-        node_class: type = MainTreeViewNode,
-        is_bold: bool = False,
-        parent_node: ButtonTreeViewNode | None = None,
-        on_press_handler: BUTTON_ON_PRESS_CALLABLE | None = None,
-        destination: Destination | None = None,
-    ) -> MainTreeViewNode | StoryGroupTreeViewNode:
-        node_text = get_bold_markup_text(text) if is_bold else text
-
-        new_node = node_class(text=node_text, destination=destination)
-
-        if on_press_handler is not None:
-            new_node.bind(on_press=on_press_handler)
-
-        return tree.add_node(new_node, parent=parent_node)
-
-    def _create_and_add_year_range_node(
-        self,
-        tree: ReaderTreeView,
-        year_range: tuple[int, int],
-        get_title_key_func: Callable[[int], str],
-        get_year_range_extra_text_func: Callable[[list[FantaComicBookInfo]], str],
-        parent_node: ButtonTreeViewNode,
-        kind: YearRangeKind,
-    ) -> tuple[ButtonTreeViewNode, list[FantaComicBookInfo]]:
-        year_range_titles = []
-        for year in range(year_range[0], year_range[1] + 1):
-            year_key = get_title_key_func(year)
-            year_range_titles.extend(self._title_lists[year_key])
-
-        year_range_str = FilteredTitleLists.get_range_str(year_range)
-        year_range_extra_text = get_year_range_extra_text_func(year_range_titles)
-        year_range_text = get_markup_text_with_extra(year_range_str, year_range_extra_text)
-
-        destination = YearRangeDestination(start=year_range[0], end=year_range[1], kind=kind)
-        new_node = YearRangeTreeViewNode(
-            text=year_range_text,
-            destination=destination,
-            NODE_WIDTH=_YEAR_RANGE_KIND_TO_WIDTH[kind],
-        )
-
-        new_node = tree.add_node(new_node, parent=parent_node)
-
-        return new_node, year_range_titles
-
-    @staticmethod
-    def _run_generator(gen: Generator) -> None:
-        """Run the generator to completion *synchronously* (no Clock scheduling)."""
-        for _ in gen:
-            # We intentionally ignore intermediate yields now.
-            # This drains the generator inline, making the whole build synchronous.
-            pass
-
-    def _finished_all_nodes(self) -> None:
-        elapsed_time = self._tree_build_timing.get_elapsed_time_with_unit()
-
-        logger.info(f"Finished loading all nodes in {elapsed_time}.")
-
-        self._reader_tree_events.finished_building()
