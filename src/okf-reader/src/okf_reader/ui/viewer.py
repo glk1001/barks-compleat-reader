@@ -160,6 +160,25 @@ def _markup_escape(text: str) -> str:
     return text.replace("&", "&amp;").replace("[", "&bl;").replace("]", "&br;")
 
 
+def _ref_under(lbl: Label, wx: float, wy: float) -> str | None:
+    """Return the ``[ref=…]`` anchor under window point ``(wx, wy)`` in ``lbl``, if any.
+
+    Kivy fills ``Label.refs`` for any markup label with ref tags: anchor name ->
+    bounding boxes in texture coordinates (origin the texture's top-left, y down).
+    The texture itself always sits centered in the widget box (halign/valign act
+    *within* the texture), which is what the widget-to-texture shift relies on.
+    """
+    px, py = lbl.to_widget(wx, wy)  # window -> widget coords
+    if not lbl.collide_point(px, py):
+        return None
+    tx = px - (lbl.center_x - lbl.texture_size[0] / 2)
+    ty = (lbl.center_y + lbl.texture_size[1] / 2) - py
+    for name, boxes in lbl.refs.items():
+        if any(x1 <= tx <= x2 and y1 <= ty <= y2 for x1, y1, x2, y2 in boxes):
+            return name
+    return None
+
+
 class _FlatButton(ButtonBehavior, Label):
     """A clickable glyph with no button chrome.
 
@@ -262,6 +281,7 @@ class OKFViewer(RelativeLayout):
         self._on_exit = on_exit
         self._page_action: PageAction | None = None
         self._band_colors: list[Color] = []  # the current page's section-band Colors
+        self._init_link_hover()
 
         # The whole window layers over a context background image (RelativeLayout
         # children stack in add order): image below, the action bar and both
@@ -328,11 +348,17 @@ class OKFViewer(RelativeLayout):
         # the provider's fallback pool supplies a random story image.
         self._update_background({}, bundle)
 
-        # A caller-chosen page wins; otherwise resume where the last session
-        # left off (page and scroll offset), when a state file says where.
+        self._show_start_page(start_page)
+
+    def _show_start_page(self, start_page: Path | None) -> None:
+        """Show the opening page, if any: the caller's choice, else the saved session's.
+
+        A caller-chosen page wins; otherwise resume where the last session
+        left off (page and scroll offset), when a state file says where.
+        """
         start_scroll = 1.0
-        if start_page is None and state_path is not None:
-            saved = load_session_state(state_path, bundle)
+        if start_page is None and self._state_path is not None:
+            saved = load_session_state(self._state_path, self.bundle)
             if saved is not None:
                 start_page, start_scroll = saved.page, saved.scroll_y
         if start_page is not None:  # the tree syncs itself
@@ -1005,6 +1031,7 @@ class OKFViewer(RelativeLayout):
         )
         self.body.clear_widgets()
         self._band_colors.clear()  # their sections were just discarded
+        self._link_labels.clear()  # ditto their link labels
         self._anchors = {}
         # Blocks group into banded sections: each heading starts a new section
         # box holding it and everything up to the next heading (see BLOCK_BG_COLOR).
@@ -1013,7 +1040,7 @@ class OKFViewer(RelativeLayout):
             if isinstance(blk, TableBlock):
                 if section is None:
                     section = self._new_section()
-                section.add_widget(self._table_widget(blk))
+                section.add_widget(self._table_widget(blk, path))
                 continue
             lbl = self._body_label(blk, path)
             if blk.anchor:
@@ -1030,6 +1057,9 @@ class OKFViewer(RelativeLayout):
         # Keep the results list's highlight on the page now showing, however reached.
         self._active_result_path = path
         self._highlight_active_result()
+        # A click-navigation swaps the page under a stationary mouse; re-evaluate
+        # the cursor once the new labels' textures have settled.
+        Clock.schedule_once(lambda _dt: self._refresh_cursor(), 0)
 
     def _new_section(self) -> BoxLayout:
         """Append and return a fresh banded section box for the next run of blocks."""
@@ -1059,6 +1089,8 @@ class OKFViewer(RelativeLayout):
         lbl.bind(texture_size=lambda inst, ts: inst.setter("height")(inst, ts[1]))
         lbl._page_path = path  # noqa: SLF001
         lbl.bind(on_ref_press=self._on_ref)
+        if "[ref=" in blk.markup:
+            self._link_labels.append(lbl)
         return lbl
 
     @staticmethod
@@ -1109,14 +1141,16 @@ class OKFViewer(RelativeLayout):
         for color in self._band_colors:
             color.a = alpha
 
-    def _table_widget(self, blk: TableBlock) -> ScrollView:
+    def _table_widget(self, blk: TableBlock, path: Path) -> ScrollView:
         """Build the widget for a table: monospace rows, tightly stacked, one per Label.
 
         One Label per row (not one for the whole table) keeps each texture small —
         a several-hundred-row table in a single Label would exceed the GPU texture
         size limit. Each label takes its natural (texture) size so the columns'
         space padding is preserved, and the stack sits in its own horizontal
-        ScrollView so a wide table scrolls instead of clipping.
+        ScrollView so a wide table scrolls instead of clipping. Cells can carry
+        links (the core's ``_inline`` renders them like any other), so rows join
+        the same ref-press and hover machinery as body labels.
         """
         stack = BoxLayout(orientation="vertical", size_hint=(None, None))
         stack.bind(
@@ -1132,6 +1166,10 @@ class OKFViewer(RelativeLayout):
                 size_hint=(None, None),
             )
             lbl.bind(texture_size=lbl.setter("size"))
+            lbl._page_path = path  # noqa: SLF001
+            lbl.bind(on_ref_press=self._on_ref)
+            if "[ref=" in row:
+                self._link_labels.append(lbl)
             stack.add_widget(lbl)
         scroller = _scroll_view(size_hint=(1, None), do_scroll_y=False, height=0)
         stack.bind(height=scroller.setter("height"))
@@ -1147,6 +1185,55 @@ class OKFViewer(RelativeLayout):
         target = resolve_link(label._page_path, ref, self.bundle)  # noqa: SLF001
         if target:
             self._show(target, push=True)
+
+    def _init_link_hover(self) -> None:
+        """Set up link hover: the hand cursor whenever the mouse is over a page link.
+
+        ``_link_labels`` holds the current page's link-bearing labels — the hit-test
+        candidates (see ``_ref_under``); ``_show`` rebuilds it with the page.
+        """
+        self._link_labels: list[Label] = []
+        self._popup_link_label: Label | None = None  # an open footnote popup's label
+        self._hand_cursor = False
+        from kivy.core.window import Window  # noqa: PLC0415 — needs the realized window
+
+        Window.bind(mouse_pos=self._on_mouse_pos)
+
+    def _on_mouse_pos(self, _window: Any, pos: tuple[float, float]) -> None:  # noqa: ANN401
+        self._set_hand_cursor(self._over_link(pos))
+
+    def _over_link(self, pos: tuple[float, float]) -> bool:
+        """Return whether the window point ``pos`` is over a page link."""
+        if self.get_root_window() is None:  # viewer not on screen (e.g. wiki closed)
+            return False
+        if self._popup_link_label is not None:  # a modal popup: only its label counts
+            return _ref_under(self._popup_link_label, *pos) is not None
+        # Fast reject: outside the page pane's viewport nothing can be a link —
+        # this also blocks labels scrolled out of view, whose content-space boxes
+        # would otherwise still collide. collide_point wants parent-space coords;
+        # the scroll view's own to_widget would apply the scroll transform.
+        if not self.body_scroll.collide_point(*self.body_scroll.parent.to_widget(*pos)):
+            return False
+        return any(_ref_under(lbl, *pos) is not None for lbl in self._link_labels)
+
+    def _set_hand_cursor(self, over: bool) -> None:
+        """Flip the system cursor between hand and arrow, only on a state change.
+
+        Change-only so this never fights other cursor owners (e.g. the Barks
+        Reader's busy cursor) while the mouse just moves about.
+        """
+        if over == self._hand_cursor:
+            return
+        self._hand_cursor = over
+        from kivy.core.window import Window  # noqa: PLC0415 — needs the realized window
+
+        Window.set_system_cursor("hand" if over else "arrow")
+
+    def _refresh_cursor(self) -> None:
+        """Re-evaluate the cursor against the current mouse position (no move needed)."""
+        from kivy.core.window import Window  # noqa: PLC0415 — needs the realized window
+
+        self._set_hand_cursor(self._over_link(Window.mouse_pos))
 
     def _show_footnote_popup(self, markup: str, page_path: Path) -> None:
         """Show a footnote definition in a tap-anywhere-to-dismiss popup bubble."""
@@ -1171,6 +1258,16 @@ class OKFViewer(RelativeLayout):
 
         lbl.bind(on_ref_press=_follow_link)
         popup.add_widget(lbl)
+        # While the popup is up it is modal, so it owns link hover exclusively;
+        # dismissing hands hover back to the page (and rechecks the cursor, since
+        # dismissal itself moves no mouse).
+        self._popup_link_label = lbl
+
+        def _release_hover(_popup: ModalView) -> None:
+            self._popup_link_label = None
+            self._refresh_cursor()
+
+        popup.bind(on_dismiss=_release_hover)
         popup.open()
 
 
