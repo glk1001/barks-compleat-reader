@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from barks_fantagraphics.barks_titles import Titles
+    from kivy.uix.widget import Widget
 
     from barks_reader.core.image_selector import ImageSelector
     from barks_reader.core.reader_settings import ReaderSettings
@@ -116,6 +117,17 @@ class WikiReaderScreen(ReaderScreen):
 
         self._viewer: OKFViewer | None = None
         self._bundle: Path | None = None
+
+    @property
+    def drag_region(self) -> Widget | None:
+        """The wiki bar's draggable title area, for the custom-titlebar hit test.
+
+        None until the viewer has been built (`open_wiki`). While this screen
+        is up the window's drag region must be this widget, not the main bar's
+        (see ``set_titlebar_drag_region``): the two bars lay out differently,
+        so the main bar's region would swallow clicks on the wiki's buttons.
+        """
+        return None if self._viewer is None else self._viewer.bar_drag_region
 
     def open_wiki(self, bundle: Path, page: Path | None = None) -> None:
         """Show the wiki, building the viewer on first open (or on a bundle change).

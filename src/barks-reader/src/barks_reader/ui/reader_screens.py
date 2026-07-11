@@ -20,6 +20,8 @@ from kivy.uix.screenmanager import (
 )
 from loguru import logger
 
+from .platform_window_utils import set_titlebar_drag_region
+
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
@@ -200,6 +202,13 @@ class ReaderScreenManager:
         assert self._reader_screens
         self._reader_screens.wiki_reader_screen.open_wiki(bundle, page)
 
+        # The OS window-drag hit test keeps using whichever widget is
+        # registered — the main bar's region would swallow clicks on the
+        # wiki bar's buttons — so hand it the wiki bar's while it's up.
+        wiki_drag_region = self._reader_screens.wiki_reader_screen.drag_region
+        if wiki_drag_region is not None:
+            set_titlebar_drag_region(wiki_drag_region)
+
         self._screen_manager.transition = self._get_next_reader_screen_transition()
         self._screen_manager.current = WIKI_READER_SCREEN
 
@@ -211,6 +220,8 @@ class ReaderScreenManager:
     def _close_wiki_reader(self) -> None:
         logger.debug("Closing wiki reader and switching back to main screen...")
         assert self._reader_screens
+        # Give the window-drag hit test back to the main bar's region.
+        set_titlebar_drag_region(self._reader_screens.main_screen.ids.action_bar.drag_region)
         self._reader_screens.main_screen.on_wiki_reader_closed()
 
         self._screen_manager.transition = self._get_next_main_screen_transition()

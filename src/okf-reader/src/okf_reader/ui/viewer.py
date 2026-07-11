@@ -957,7 +957,8 @@ class OKFViewer(RelativeLayout):
 
         The public equivalent of following a link: the outgoing page's scroll
         position is remembered, Back returns to it, and the tree panel syncs
-        itself to the new page.
+        itself to the new page. Re-showing the page already on display
+        refreshes it without growing the history.
 
         Args:
             path: Absolute path of the bundle page (.md) to show.
@@ -966,11 +967,23 @@ class OKFViewer(RelativeLayout):
         """
         self._show(path, push=True, scroll_y=scroll_y)
 
+    def _push_history(self, path: Path) -> None:
+        """Append ``path`` to the back history, unless it is already on top.
+
+        Re-showing the page already on display (a self-link, a double-clicked
+        link, the home icon pressed on the home page, a search hit for the
+        current page) must not grow the stack: the duplicate would turn a
+        later Back press into a visible no-op.
+        """
+        if self.history and self.history[-1].path.resolve() == path.resolve():
+            return
+        if self.history:  # remember where the outgoing page was scrolled to
+            self.history[-1].scroll_y = self.body_scroll.scroll_y
+        self.history.append(_HistoryEntry(path))
+
     def _show(self, path: Path, *, push: bool, scroll_y: float = 1.0) -> None:
         if push:
-            if self.history:  # remember where the outgoing page was scrolled to
-                self.history[-1].scroll_y = self.body_scroll.scroll_y
-            self.history.append(_HistoryEntry(path))
+            self._push_history(path)
         # At the root the button stays live when Back exits the reader (on_exit set),
         # so clicking it leaves — a unified back stack. Standalone (no on_exit) keeps
         # it disabled at the root.

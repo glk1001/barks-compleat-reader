@@ -14,6 +14,8 @@ from barks_reader.core.screen_metrics import SCREEN_METRICS
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from kivy.uix.widget import Widget
+
 # Small timeout for non-Windows platforms to let the window system settle.
 _RESTORE_GEOMETRY_TIMEOUT = 0.05
 
@@ -110,6 +112,25 @@ class KivyWindowBackend:
             on_done()
 
         Clock.schedule_once(restore, _RESTORE_GEOMETRY_TIMEOUT)
+
+
+def set_titlebar_drag_region(drag_region: Widget) -> None:
+    """Point the OS window-drag hit test at ``drag_region``.
+
+    With the OS titlebar replaced (``Window.custom_titlebar``), SDL asks per
+    click whether the point falls inside the registered widget — using that
+    widget's live window coordinates regardless of which Screen is showing.
+    A screen whose top bar lays out differently from the registered one gets
+    phantom drag zones that swallow clicks over its own buttons, so every
+    top-level screen must register its own drag region when it takes over the
+    window, and the region must be swapped back when it leaves.
+
+    A no-op when the custom titlebar isn't active (the OS titlebar survived).
+    """
+    if not Window.custom_titlebar:
+        return
+    if not Window.set_custom_titlebar(drag_region):
+        logger.warning("Window: setting the custom-titlebar drag region failed.")
 
 
 def _create_window_backend() -> WindowBackend:
