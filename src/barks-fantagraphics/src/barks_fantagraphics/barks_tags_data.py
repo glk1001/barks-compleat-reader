@@ -395,7 +395,6 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     Tags.ARABIAN_PENINSULA: [
         Titles.MINES_OF_KING_SOLOMON_THE,
         Titles.MONEY_CHAMP_THE,
-        Titles.PIPELINE_TO_DANGER,
         Titles.CAVE_OF_ALI_BABA,
         Titles.MCDUCK_OF_ARABIA,
     ],
@@ -1068,7 +1067,11 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     Tags.PULPHEART_CLABBERHEAD: [Titles.SPOIL_THE_ROD],
     Tags.P_J_MC_BRINE: [Titles.FORBIDDEN_VALLEY],
     Tags.RUSSIA: [Titles.CITY_OF_GOLDEN_ROOFS],
-    Tags.SAHARA: [Titles.MAGIC_HOURGLASS_THE, Titles.ROCKET_RACE_AROUND_THE_WORLD],
+    Tags.SAHARA: [
+        Titles.MAGIC_HOURGLASS_THE,
+        Titles.ROCKET_RACE_AROUND_THE_WORLD,
+        Titles.PIPELINE_TO_DANGER,
+    ],
     Tags.SCOTLAND: [
         Titles.OLD_CASTLES_SECRET_THE,
         Titles.HOUND_OF_THE_WHISKERVILLES,
