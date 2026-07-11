@@ -15,6 +15,7 @@ from barks_reader.core.navigation import (
     MainIndexDestination,
     TagGroupDestination,
     TitleDestination,
+    WikiIndexDestination,
 )
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.ui.screen_bundle import ScreenBundle
@@ -161,6 +162,7 @@ class TestTreeViewManager:
     def test_go_back_to_previous_node(
         self,
         tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, MagicMock],
         screen_mocks: dict[str, MagicMock],
     ) -> None:
         mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
@@ -171,14 +173,36 @@ class TestTreeViewManager:
         tree_view_manager.go_back_to_previous_node()
         screen_mocks["tree_view"].deselect_and_close_open_nodes.assert_called()
 
-        # Case 2: Previous node exists
+        # Case 2: Ordinary previous node -> re-select it, don't touch the wiki.
         prev_node = MagicMock(spec=ButtonTreeViewNode)
+        prev_node.destination = IntroDestination()
         mock_tree.previous_selected_node = prev_node
 
         # We need to mock setup_and_select_node to avoid recursion/complexity
         with patch.object(tree_view_manager, "setup_and_select_node") as mock_setup:
             tree_view_manager.go_back_to_previous_node()
             mock_setup.assert_called_with(prev_node)
+        mock_dependencies["nav_coordinator"].open_wiki.assert_not_called()
+
+    def test_go_back_to_previous_node_reopens_wiki(
+        self,
+        tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, MagicMock],
+        screen_mocks: dict[str, MagicMock],
+    ) -> None:
+        # Back to the 'Carl Barks Wiki' node re-opens the wiki reader (which resumes
+        # its last-viewed page) instead of rendering the static index placeholder.
+        mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
+        wiki_node = MagicMock(spec=ButtonTreeViewNode)
+        wiki_node.destination = WikiIndexDestination()
+        mock_tree.previous_selected_node = wiki_node
+
+        with patch.object(tree_view_manager, "setup_and_select_node") as mock_setup:
+            tree_view_manager.go_back_to_previous_node()
+
+        screen_mocks["tree_view"].select_node.assert_called_with(wiki_node)
+        mock_dependencies["nav_coordinator"].open_wiki.assert_called_once_with()
+        mock_setup.assert_not_called()
 
     def test_on_node_collapsed(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]

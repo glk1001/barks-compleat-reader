@@ -10,6 +10,7 @@ from barks_reader.core.navigation import (
     ArticleDestination,
     NavigationModel,
     TitleDestination,
+    WikiIndexDestination,
 )
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.core.reader_consts_and_types import (
@@ -142,17 +143,24 @@ class TreeViewManager:
             self._tree_view_screen.open_node_and_all_parent_nodes(node)
 
     def go_back_to_previous_node(self) -> None:
-        if not self._tree_view_screen.ids.reader_tree_view.previous_selected_node:
+        prev_node = self._tree_view_screen.ids.reader_tree_view.previous_selected_node
+        if not prev_node:
             self.deselect_and_close_open_nodes(from_collapse_all=True)
             return
 
-        logger.info(
-            f"Going back to previous node"
-            f' "{self._tree_view_screen.ids.reader_tree_view.previous_selected_node.get_name()}".'
-        )
-        self.setup_and_select_node(
-            self._tree_view_screen.ids.reader_tree_view.previous_selected_node
-        )
+        logger.info(f'Going back to previous node "{prev_node.get_name()}".')
+
+        # The 'Carl Barks Wiki' node's static index view exists only so a saved-node
+        # restore at startup doesn't auto-launch the wiki. When Back returns to it
+        # in-session, the user means "take me back into the wiki where I left off":
+        # select the node (mirrors a fresh open's back-history) and re-open the wiki
+        # reader, which resumes its last-viewed page.
+        if isinstance(prev_node.destination, WikiIndexDestination):
+            self._tree_view_screen.select_node(prev_node)
+            self._nav.open_wiki()
+            return
+
+        self.setup_and_select_node(prev_node)
 
     def goto_node(self, node: BaseTreeViewNode, scroll_to: bool = False) -> None:
         def show_node(n: BaseTreeViewNode) -> None:
