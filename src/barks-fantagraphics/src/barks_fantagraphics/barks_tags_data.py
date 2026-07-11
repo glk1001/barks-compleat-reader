@@ -57,6 +57,7 @@ BARKS_TAG_CATEGORIES = {
         Tags.ITALY,
         Tags.ITSA_FAKA,
         Tags.KAKIMAW_COUNTRY,
+        Tags.LATIN_AMERICA,
         Tags.LIBYA,
         Tags.LABRADOR,
         Tags.MALI,
@@ -317,6 +318,7 @@ BARKS_TAG_GROUPS = {
         Tags.DUCKBURG,
         Tags.HONDORICA,
         Tags.INDIAN_OCEAN,
+        Tags.LATIN_AMERICA,
         Tags.KAKIMAW_COUNTRY,
         Tags.OLD_DEMON_TOOTH,
     ],
@@ -510,9 +512,11 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
         Titles.DARKEST_AFRICA,
         Titles.VOODOO_HOODOO,
         Titles.JUNGLE_HI_JINKS,
-        Titles.WISHING_WELL_THE,
         Titles.JUNGLE_BUNGLE,
         Titles.SO_FAR_AND_NO_SAFARI,
+    ],
+    Tags.LATIN_AMERICA: [
+        Titles.WISHING_WELL_THE,
     ],
     Tags.CHEMICAL_FORMULA: [
         Titles.MAD_CHEMIST_THE,

@@ -115,6 +115,7 @@ class Tags(Enum):
     KAKIMAW_INDIANS = "Kakimaw Indians"
     KAKIMAW_COUNTRY = "Kakimaw Country"
     LABRADOR = "labrador"
+    LATIN_AMERICA = "Latin America"
     LIBYA = "Libya"
     LITHIUM = "lithium"
     LONGHORN_TALLGRASS = "Longhorn Tallgrass"
