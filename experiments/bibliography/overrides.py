@@ -49,8 +49,9 @@ OVERRIDES: dict[Titles, tuple[Issues, int, int, int] | None] = {
     Titles.FARE_DELAY: (Issues.FC, 456, 1953, 1),            # "waits for the light before getting in a taxi"
     Titles.CHECKER_GAME_THE: (Issues.FC, 456, 1953, 5),      # "plays checkers ... with himself"
     # Four Color 495
-    Titles.ITCHING_TO_SHARE: (Issues.FC, 495, 1953, 5),      # "trained fleas to a meal"
-    Titles.FOLLOW_THE_RAINBOW: (Issues.FC, 495, 1953, 3),    # remaining slot
+    Titles.ROUND_MONEY_BIN_THE: (Issues.FC, 495, 1953, 3),   # "For safety’s sake, Scrooge has his coins changed"
+    Titles.FOLLOW_THE_RAINBOW: (Issues.FC, 495, 1953, 4),    # "Scrooge’s money bin is at the bottom of a rainbow"
+    Titles.ITCHING_TO_SHARE: (Issues.FC, 495, 1953, 5),      # 'Scrooge “treats” the trained fleas to a meal'
     # Uncle Scrooge 5
     Titles.MCDUCK_TAKES_A_DIVE: (Issues.US, 5, 1954, 3),     # "native boys risk their lives for pennies"
     Titles.SLIPPERY_SIPPER: (Issues.US, 5, 1954, 4),         # "one soda, and five straws"
