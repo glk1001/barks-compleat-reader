@@ -10,6 +10,7 @@ import pytest
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.ui.main_screen import MainScreen
 from barks_reader.ui.main_screen_components import MainScreenComponents
+from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE, KEY_LEFT
 from barks_reader.ui.screen_bundle import ScreenBundle
 from kivy.uix.screenmanager import Screen
 
@@ -127,6 +128,50 @@ class TestMainScreen:
 
         assert main_screen._on_key_down(None, ord("r"), 0, "r", []) is True
         main_screen._nav.handle_key.assert_called_once_with(ord("r"))
+
+    def test_on_key_down_yields_to_focused_text_input(self, main_screen: MainScreen) -> None:
+        # Editing a directory path in a settings popup: the focused TextInput must
+        # receive cursor/editing keys, so the handler yields (returns False) and does
+        # not drive tree/settings navigation.
+        main_screen.name = "main"
+        main_screen.manager = MagicMock(current="main")
+        main_screen._settings_nav = MagicMock()
+        with patch.object(barks_reader.ui.main_screen, "_text_input_has_focus", return_value=True):
+            assert main_screen._on_key_down(None, KEY_LEFT, 0, "", []) is False
+        main_screen._nav.handle_key.assert_not_called()
+        main_screen._settings_nav.handle_key.assert_not_called()
+
+    def test_on_key_down_escape_not_yielded_to_text_input(self, main_screen: MainScreen) -> None:
+        # Escape must still close the settings/popup even while a text field is focused.
+        main_screen.name = "main"
+        main_screen.manager = MagicMock(current="main")
+        main_screen._settings_nav = MagicMock()
+        main_screen._settings_nav.handle_key.return_value = False
+        with (
+            patch.object(barks_reader.ui.main_screen, "_text_input_has_focus", return_value=True),
+            patch.object(main_screen, "_close_settings") as mock_close,
+        ):
+            assert main_screen._on_key_down(None, KEY_ESCAPE, 0, "", []) is True
+        mock_close.assert_called_once()
+
+    def test_text_input_has_focus_reflects_keyboard_target(self) -> None:
+        from barks_reader.ui.main_screen import _text_input_has_focus  # noqa: PLC0415
+        from kivy.uix.textinput import TextInput  # noqa: PLC0415
+
+        focused = TextInput()
+        focused.focus = True
+        unfocused = TextInput()
+        unfocused.focus = False
+
+        with patch.object(barks_reader.ui.main_screen, "Window") as mock_window:
+            mock_window._system_keyboard.target = focused
+            assert _text_input_has_focus() is True
+
+            mock_window._system_keyboard.target = unfocused
+            assert _text_input_has_focus() is False
+
+            mock_window._system_keyboard.target = None
+            assert _text_input_has_focus() is False
 
     def test_on_action_bar_go_back(self, main_screen: MainScreen) -> None:
         with patch.object(barks_reader.ui.main_screen.Clock, "schedule_once") as mock_schedule:

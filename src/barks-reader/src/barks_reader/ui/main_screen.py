@@ -10,6 +10,7 @@ from kivy.core.window import Window
 from kivy.factory import Factory
 from kivy.properties import BooleanProperty, StringProperty  # ty: ignore[unresolved-import]
 from kivy.uix.screenmanager import Screen
+from kivy.uix.textinput import TextInput
 from loguru import logger
 
 from barks_reader.core.image_selector import ImageInfo
@@ -53,6 +54,18 @@ if TYPE_CHECKING:
     from .user_error_handler import UserErrorHandler
 
 MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
+
+
+def _text_input_has_focus() -> bool:
+    """Report whether a TextInput currently holds the system keyboard (e.g. settings popup).
+
+    Kivy attaches the requesting widget to ``Window._system_keyboard.target`` and clears
+    the widget's ``focus`` when it releases the keyboard, so this reflects the live focus
+    state regardless of how the popup was opened (mouse or keyboard).
+    """
+    keyboard = getattr(Window, "_system_keyboard", None)
+    target = getattr(keyboard, "target", None)
+    return isinstance(target, TextInput) and bool(getattr(target, "focus", False))
 
 
 class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
@@ -266,6 +279,13 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         # field must receive keystrokes rather than have them drive this tree. The
         # main-screen handler stays bound throughout, so this guard is what yields.
         if self.manager is not None and self.manager.current != self.name:
+            return False
+        # When a text field holds the keyboard (e.g. editing a directory path in a
+        # settings popup), let it receive cursor/editing keystrokes. Kivy binds the
+        # system keyboard to Window.on_key_down, so returning truthy here would consume
+        # the key before the focused TextInput's handler runs. Escape still falls through
+        # so the settings/popup close handling below can run.
+        if not is_escape_key(key) and _text_input_has_focus():
             return False
         if self._settings_nav is not None:
             if self._settings_nav.handle_key(key):
