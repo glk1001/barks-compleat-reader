@@ -18,6 +18,24 @@ if TYPE_CHECKING:
 type ImageLoaderCallback = Callable[[Image.Image | None, Exception | None], None]
 
 
+def load_panel_pil(panel_path: PanelPath, *, encrypted_zip: bool = True) -> Image.Image:
+    """Load a panel image synchronously (allow-listed decrypt entry point).
+
+    This module is on the compiled decryptor's caller allow-list; all panel
+    loading that may hit an encrypted zip must be initiated from here.
+
+    Args:
+        panel_path: Filesystem ``Path`` or ``zipfile.Path`` of the panel image.
+        encrypted_zip: Whether zip members are encrypted (ignored for
+            filesystem paths).
+
+    Returns:
+        The decoded PIL image.
+
+    """
+    return load_pil(panel_path, encrypted_zip=encrypted_zip)
+
+
 class PanelImageLoader:
     """Load an image in a background thread.
 
@@ -61,7 +79,7 @@ class PanelImageLoader:
     def _worker(self, panel_path: PanelPath, callback: ImageLoaderCallback) -> None:
         try:
             # Panel zipfile.Path bytes are always encrypted in this app.
-            pil = load_pil(panel_path, encrypted_zip=True)
+            pil = load_panel_pil(panel_path)
 
             if self._cancel:
                 return

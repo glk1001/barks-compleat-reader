@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_reader.core import panel_image_loader as loader_module
-from barks_reader.core.panel_image_loader import PanelImageLoader
+from barks_reader.core.panel_image_loader import PanelImageLoader, load_panel_pil
 from barks_reader.core.testing import FakeScheduler
 from PIL import Image
 
@@ -41,6 +41,26 @@ def fake_scheduler() -> FakeScheduler:
 @pytest.fixture
 def loader(fake_scheduler: FakeScheduler) -> PanelImageLoader:
     return PanelImageLoader(fake_scheduler)
+
+
+class TestLoadPanelPil:
+    def test_encrypted_by_default(self) -> None:
+        """The sync entry point defaults to encrypted-zip handling, like the worker."""
+        mock_path = MagicMock(spec=Path)
+        pil = MagicMock(spec=Image.Image)
+
+        with patch.object(loader_module, "load_pil", return_value=pil) as mock_load_pil:
+            assert load_panel_pil(mock_path) is pil
+
+        mock_load_pil.assert_called_once_with(mock_path, encrypted_zip=True)
+
+    def test_encrypted_flag_passed_through(self) -> None:
+        mock_path = MagicMock(spec=Path)
+
+        with patch.object(loader_module, "load_pil") as mock_load_pil:
+            load_panel_pil(mock_path, encrypted_zip=False)
+
+        mock_load_pil.assert_called_once_with(mock_path, encrypted_zip=False)
 
 
 class TestPanelImageLoader:

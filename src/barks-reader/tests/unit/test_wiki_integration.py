@@ -7,10 +7,12 @@ a wiki page path, and the table decoration from our own is_barks_title.
 
 from __future__ import annotations
 
+import zipfile
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+from barks_reader.core import wiki_integration
 from barks_reader.core.reader_consts_and_types import (
     ACTION_BAR_BG_COLOR,
     ACTION_BAR_SEPARATOR_COLOR,
@@ -20,6 +22,7 @@ from barks_reader.core.reader_consts_and_types import (
     RAW_QUIT_FENCE_WIDTH,
 )
 from barks_reader.core.wiki_integration import (
+    BarksPanelsImageProvider,
     BarksTableRewriter,
     canonical_title,
     story_page_title,
@@ -30,6 +33,7 @@ from barks_reader.core.wiki_integration import (
     wiki_session_path,
     wiki_top_bar_spec,
 )
+from PIL import Image
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -193,6 +197,76 @@ class TestBarksTableRewriter:
         """Per-column wrap overrides align positionally; unknown columns get None."""
         rewriter = BarksTableRewriter()
         assert rewriter.wrap_widths(["Tag", "Story", "Title"]) == [20, 24, None]
+
+
+class TestBarksPanelsImageProvider:
+    @staticmethod
+    def _make_provider(*, encrypted: bool) -> tuple[BarksPanelsImageProvider, MagicMock]:
+        settings = MagicMock()
+        settings.file_paths.barks_panels_are_encrypted = encrypted
+        selector = MagicMock()
+        return BarksPanelsImageProvider(settings, selector), selector
+
+    def test_zip_panel_decoded_via_allow_listed_loader(self, tmp_path: Path) -> None:
+        """A zip-member panel is decrypted through load_panel_pil and re-encoded to PNG.
+
+        The decrypt must go through panel_image_loader (the compiled decryptor's
+        caller allow-list), with the encrypted flag taken from the file paths.
+        """
+        zip_file = tmp_path / "panels.zip"
+        with zipfile.ZipFile(zip_file, "w") as zf:
+            zf.writestr("Favourites/x.jpg", b"encrypted-bytes")
+        panel = zipfile.Path(zip_file, "Favourites/x.jpg")
+
+        provider, selector = self._make_provider(encrypted=True)
+        selector.get_random_image.return_value.filename = panel
+
+        page = tmp_path / "okf" / "reference" / "x.md"
+        pil = Image.new("RGB", (1, 1))
+        with patch.object(wiki_integration, "load_panel_pil", return_value=pil) as mock_load:
+            bg = provider.background_for({}, page)
+
+        mock_load.assert_called_once_with(panel, encrypted_zip=True)
+        assert bg is not None
+        assert bg.ext == ".png"
+        assert bg.path is None
+        assert bg.data is not None
+        assert bg.data.startswith(b"\x89PNG")
+
+    def test_filesystem_panel_passed_through_by_path(self, tmp_path: Path) -> None:
+        """A plain filesystem panel is handed to kivy by path, never decoded here."""
+        panel = tmp_path / "panel.jpg"
+        provider, selector = self._make_provider(encrypted=False)
+        selector.get_random_image.return_value.filename = panel
+
+        with patch.object(wiki_integration, "load_panel_pil") as mock_load:
+            bg = provider.background_for({}, tmp_path / "okf" / "reference" / "x.md")
+
+        mock_load.assert_not_called()
+        assert bg is not None
+        assert bg.path == panel
+        assert bg.ext == ".jpg"
+        assert bg.data is None
+
+    def test_story_page_selects_title_specific_panel(self, tmp_path: Path) -> None:
+        """A story page draws from that title's own panels."""
+        panel = tmp_path / "panel.png"
+        provider, selector = self._make_provider(encrypted=False)
+        selector.get_random_image_for_title.return_value = panel
+
+        page = tmp_path / "okf" / "concept" / "stories" / "donald-duck-adventures" / "x.md"
+        bg = provider.background_for({"title": "Lost in the Andes!"}, page)
+
+        selector.get_random_image_for_title.assert_called_once()
+        selector.get_random_image.assert_not_called()
+        assert bg is not None
+        assert bg.path == panel
+
+    def test_no_panel_found_is_none(self, tmp_path: Path) -> None:
+        provider, selector = self._make_provider(encrypted=True)
+        selector.get_random_image.return_value.filename = None
+
+        assert provider.background_for({}, tmp_path / "okf" / "reference" / "x.md") is None
 
 
 class TestWikiTopBarSpec:
