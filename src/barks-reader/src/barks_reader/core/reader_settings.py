@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 READER_FILES_DIR = "Reader Files"  # relative to app data directory
 JPG_BARKS_PANELS_ZIP = "Barks Panels.zip"
+WIKI_BUNDLE_SUBDIR = "Carl Barks Wiki"
 
 BARKS_READER_SECTION = "Barks Reader"
 
@@ -26,6 +27,7 @@ UNSET_FANTA_DIR_MARKER = "<Fantagraphics Volumes Not Set>"
 PREBUILT_COMICS_DIR = "prebuilt_dir"
 WIKI_BUNDLE_DIR = "wiki_bundle_dir"
 UNSET_WIKI_BUNDLE_DIR_MARKER = "<Carl Barks Wiki Not Set>"
+USE_LIVE_WIKI_BUNDLE = "use_live_wiki_bundle"
 PNG_BARKS_PANELS_DIR = "png_barks_panels_dir"
 USE_PNG_IMAGES = "use_png_images"
 USE_PREBUILT_COMICS = "use_prebuilt_comics"
@@ -214,18 +216,28 @@ class ReaderSettings:
 
     @property
     def wiki_bundle_dir(self) -> Path | None:
-        """The configured OKF wiki bundle root, or None when unset or not a bundle.
+        """The OKF wiki bundle root in use, or None when unset or not a bundle.
 
-        The wiki is an optional feature: consumers (the Indexes tree node, the
-        wiki screen) simply hide it when this is None. A directory only counts
-        as a bundle when its reserved root ``index.md`` exists.
+        When ``use_live_wiki_bundle`` is on, this is the ``wiki_bundle_dir``
+        setting; otherwise it is the fixed ``reader_files_dir / "Carl Barks
+        Wiki"`` copy. The wiki is an optional feature: consumers (the Indexes
+        tree node, the wiki screen) simply hide it when this is None. A
+        directory only counts as a bundle when its reserved root ``index.md``
+        exists.
         """
-        value = self._read(WIKI_BUNDLE_DIR)
-        if str(value) == UNSET_WIKI_BUNDLE_DIR_MARKER:
+        if self._read(USE_LIVE_WIKI_BUNDLE):
+            value = self._read(WIKI_BUNDLE_DIR)
+            if str(value) == UNSET_WIKI_BUNDLE_DIR_MARKER:
+                return None
+            candidate = Path(value)
+        else:
+            candidate = self._get_bundled_wiki_bundle_dir()
+        if not (candidate / "index.md").is_file():
             return None
-        if not (value / "index.md").is_file():
-            return None
-        return value
+        return candidate
+
+    def _get_bundled_wiki_bundle_dir(self) -> Path:
+        return self.reader_files_dir / WIKI_BUNDLE_SUBDIR
 
     @property
     def goto_saved_node_on_start(self) -> bool:
@@ -318,9 +330,18 @@ class ReaderSettings:
         # actual bundle — the same root index.md gate as the wiki_bundle_dir
         # property — so a typo or a non-bundle directory gets flagged rather
         # than validating green while the wiki node silently never appears.
+        if not self._read(USE_LIVE_WIKI_BUNDLE):
+            return True
         if str(dir_path) == UNSET_WIKI_BUNDLE_DIR_MARKER:
             return True
         return self._is_valid_dir(dir_path) and (dir_path / "index.md").is_file()
+
+    def _is_valid_use_live_wiki_bundle(self, use_live_wiki_bundle: bool) -> bool:
+        # The bundled Reader Files copy is optional (the wiki just hides when
+        # it is missing), so turning the live bundle off is always valid.
+        if not use_live_wiki_bundle:
+            return True
+        return self._is_valid_wiki_bundle_dir(self._read(WIKI_BUNDLE_DIR))
 
     def _is_valid_png_barks_panels_dir(self, dir_path: Path) -> bool:
         return (not self._read(USE_PNG_IMAGES)) or self._is_valid_dir(dir_path)
@@ -379,8 +400,9 @@ _FIELDS: tuple[FieldSpec, ...] = (
         key=WIKI_BUNDLE_DIR,
         title="Carl Barks Wiki Directory",
         desc="Directory of the Carl Barks Wiki knowledge bundle (its root holds"
-        " an index.md). Optional: when not set, the wiki entry is hidden from"
-        " the Indexes tree. You need to restart the app after changing this.",
+        " an index.md). Only used when 'Use Live Wiki Bundle' is on; when not"
+        " set, the wiki entry is hidden from the Indexes tree. You need to"
+        " restart the app after changing this.",
         kind=FieldKind.LONG_PATH,
         config_default=UNSET_WIKI_BUNDLE_DIR_MARKER,
         expand_vars=True,
@@ -503,6 +525,16 @@ _FIELDS: tuple[FieldSpec, ...] = (
         kind=FieldKind.BOOL,
         config_default=0,
         validator=ReaderSettings._is_valid_use_prebuilt_archives,  # noqa: SLF001
+    ),
+    FieldSpec(
+        key=USE_LIVE_WIKI_BUNDLE,
+        title="Use Live Wiki Bundle",
+        desc="Use the 'Carl Barks Wiki Directory' setting instead of the copy"
+        " in the Reader Files folder. You need to restart the app after"
+        " changing this.",
+        kind=FieldKind.BOOL,
+        config_default=0,
+        validator=ReaderSettings._is_valid_use_live_wiki_bundle,  # noqa: SLF001
     ),
     # -- Controversial Censorship Fixes --
     FieldSpec(

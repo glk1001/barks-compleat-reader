@@ -13,6 +13,7 @@ from barks_reader.core.reader_file_paths import BarksPanelsExtType, ReaderFilePa
 from barks_reader.core.reader_settings import (
     BARKS_READER_SECTION,
     FANTA_DIR,
+    UNSET_WIKI_BUNDLE_DIR_MARKER,
     ReaderSettings,
 )
 from barks_reader.core.system_file_paths import SystemFilePaths
@@ -191,6 +192,128 @@ class TestReaderSettings:
 
         with patch.object(Path, Path.is_file.__name__, return_value=False):
             assert reader_settings._is_valid_use_png_images(use_png_images=False) is False
+
+    def test_wiki_bundle_dir_bundled(
+        self, reader_settings: ReaderSettings, mock_config: MagicMock
+    ) -> None:
+        """Test wiki_bundle_dir with use_live_wiki_bundle off (bundled copy)."""
+        mock_config.getboolean.return_value = False
+        expected_path = Path("/app/data/Reader Files/Carl Barks Wiki")
+
+        # Bundled dir is a valid bundle (root index.md exists).
+        with patch.object(Path, Path.is_file.__name__, return_value=True):
+            assert reader_settings.wiki_bundle_dir == expected_path
+
+        # Bundled dir is missing or not a bundle: wiki is hidden.
+        with patch.object(Path, Path.is_file.__name__, return_value=False):
+            assert reader_settings.wiki_bundle_dir is None
+
+    def test_wiki_bundle_dir_live(
+        self, reader_settings: ReaderSettings, mock_config: MagicMock
+    ) -> None:
+        """Test wiki_bundle_dir with use_live_wiki_bundle on (wiki_bundle_dir setting)."""
+        mock_config.getboolean.return_value = True
+
+        # Setting points at a valid bundle.
+        mock_config.get.return_value = "/wiki/bundle"
+        with (
+            patch.object(
+                reader_settings_module.os.path,
+                os.path.expandvars.__name__,
+                return_value="/wiki/bundle",
+            ),
+            patch.object(Path, Path.is_file.__name__, return_value=True),
+        ):
+            assert reader_settings.wiki_bundle_dir == Path("/wiki/bundle")
+
+        # Setting points at a non-bundle directory (no root index.md).
+        with (
+            patch.object(
+                reader_settings_module.os.path,
+                os.path.expandvars.__name__,
+                return_value="/wiki/bundle",
+            ),
+            patch.object(Path, Path.is_file.__name__, return_value=False),
+        ):
+            assert reader_settings.wiki_bundle_dir is None
+
+        # Setting is the unset marker.
+        mock_config.get.return_value = UNSET_WIKI_BUNDLE_DIR_MARKER
+        with patch.object(
+            reader_settings_module.os.path,
+            os.path.expandvars.__name__,
+            return_value=UNSET_WIKI_BUNDLE_DIR_MARKER,
+        ):
+            assert reader_settings.wiki_bundle_dir is None
+
+    def test_is_valid_wiki_bundle_dir(
+        self, reader_settings: ReaderSettings, mock_config: MagicMock
+    ) -> None:
+        """Test validation of the wiki bundle directory setting."""
+        # Case 1: use_live_wiki_bundle = False - the setting is not in use.
+        mock_config.getboolean.return_value = False
+        assert reader_settings._is_valid_wiki_bundle_dir(Path("/any/path")) is True
+
+        # Case 2: use_live_wiki_bundle = True - unset marker is valid.
+        mock_config.getboolean.return_value = True
+        assert reader_settings._is_valid_wiki_bundle_dir(Path(UNSET_WIKI_BUNDLE_DIR_MARKER)) is True
+
+        # Case 3: use_live_wiki_bundle = True - a set path must be a bundle.
+        with (
+            patch.object(Path, Path.is_dir.__name__, return_value=True),
+            patch.object(Path, Path.is_file.__name__, return_value=True),
+        ):
+            assert reader_settings._is_valid_wiki_bundle_dir(Path("/wiki/bundle")) is True
+
+        with (
+            patch.object(Path, Path.is_dir.__name__, return_value=True),
+            patch.object(Path, Path.is_file.__name__, return_value=False),
+        ):
+            assert reader_settings._is_valid_wiki_bundle_dir(Path("/wiki/bundle")) is False
+
+        with patch.object(Path, Path.is_dir.__name__, return_value=False):
+            assert reader_settings._is_valid_wiki_bundle_dir(Path("/wiki/bundle")) is False
+
+    def test_is_valid_use_live_wiki_bundle(
+        self, reader_settings: ReaderSettings, mock_config: MagicMock
+    ) -> None:
+        """Test validation of the use_live_wiki_bundle setting."""
+        # Case 1: turning it off is always valid (bundled copy is optional).
+        assert reader_settings._is_valid_use_live_wiki_bundle(use_live_wiki_bundle=False) is True
+
+        # Case 2: turning it on requires a valid (or unset) wiki_bundle_dir.
+        mock_config.getboolean.return_value = True
+        mock_config.get.return_value = "/wiki/bundle"
+        with (
+            patch.object(
+                reader_settings_module.os.path,
+                os.path.expandvars.__name__,
+                return_value="/wiki/bundle",
+            ),
+            patch.object(Path, Path.is_dir.__name__, return_value=True),
+            patch.object(Path, Path.is_file.__name__, return_value=True),
+        ):
+            assert reader_settings._is_valid_use_live_wiki_bundle(use_live_wiki_bundle=True) is True
+
+        with (
+            patch.object(
+                reader_settings_module.os.path,
+                os.path.expandvars.__name__,
+                return_value="/wiki/bundle",
+            ),
+            patch.object(Path, Path.is_dir.__name__, return_value=False),
+        ):
+            assert (
+                reader_settings._is_valid_use_live_wiki_bundle(use_live_wiki_bundle=True) is False
+            )
+
+        mock_config.get.return_value = UNSET_WIKI_BUNDLE_DIR_MARKER
+        with patch.object(
+            reader_settings_module.os.path,
+            os.path.expandvars.__name__,
+            return_value=UNSET_WIKI_BUNDLE_DIR_MARKER,
+        ):
+            assert reader_settings._is_valid_use_live_wiki_bundle(use_live_wiki_bundle=True) is True
 
     def test_get_reader_settings_json(self) -> None:
         """Test generation of reader settings JSON."""
