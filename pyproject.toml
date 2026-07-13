@@ -14,7 +14,6 @@ dependencies = [
     "certifi==2025.8.3",
     "colorama==0.4.6 ; sys_platform == 'win32'",
     "cryptography>=46.0.3",
-    "cython==3.1.4",
     "setuptools>=80",
     "distro>=1.9.0",
     "docutils==0.22",
@@ -30,10 +29,9 @@ dependencies = [
     "kivy-garden==0.1.5",
     "loguru==0.7.3",
     "loguru-config==0.1.0",
-    # Every workspace package's third-party deps must be mirrored here (not
-    # just okf-reader's): build.sh strips the workspace packages from this file
-    # before bundling, so the bundled venv installs only what this list names
-    # (see scripts/build.sh).
+    # The workspace packages' third-party deps are also listed here so the root
+    # project resolves a complete environment (uv sync), which is what Nuitka
+    # compiles the standalone executable from (see scripts/build.sh).
     "markdown-it-py==4.0.0",
     "mdit-py-plugins==0.6.1",
     "numpy==2.2.6",
@@ -62,7 +60,8 @@ dependencies = [
 [dependency-groups]
 dev = [
     "import-linter>=2.9",
-    "pycrucible==0.4.0",
+    "nuitka>=2.5",
+    "patchelf>=0.17 ; sys_platform == 'linux'",
     "pyinstrument>=5.1.1",
     "pyspellchecker>=0.8.4",
     "pytest>=8.4.2",
@@ -127,9 +126,9 @@ skip_empty = true
 omit = [
     "*/tests/*",
     "*/__init__.py",
-    # Pycrucible installer runs only inside the bundled executable
-    "*/pycrucible_pre_run_installer.py",
-    "*/pycrucible_pre_run_installer_show_message.py",
+    # First-run installer runs only inside the standalone executable
+    "*/first_run_installer.py",
+    "*/first_run_installer_show_message.py",
     # Standalone Kivy error/message popups run outside the normal app context
     "*/kivy_standalone_error_popup.py",
     "*/kivy_standalone_show_message.py",

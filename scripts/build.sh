@@ -28,6 +28,14 @@ get_git_version() {
 VERSION=$(get_git_version)
 COPYRIGHT_YEARS="2025"
 
+# Nuitka's --product-version (and the {VERSION} token in --onefile-tempdir-spec) needs a
+# numeric dotted version. Derive one from the git describe: the leading tag numbers plus
+# the commit-count. e.g. "v0.9.0.alpha.1-815-g9fce0c9-dirty" -> "0.9.0.815".
+NUMERIC_VERSION=$(echo "$VERSION" | sed -E 's/^v//; s/[^0-9.].*$//; s/\.+$//')
+COMMITS=$(echo "$VERSION" | grep -oE -- '-[0-9]+-g' | grep -oE '[0-9]+' | head -1 || true)
+[[ -n "$COMMITS" ]] && NUMERIC_VERSION="${NUMERIC_VERSION}.${COMMITS}"
+[[ -z "$NUMERIC_VERSION" ]] && NUMERIC_VERSION="0.0.0"
+
 
 echo "=================================================="
 echo "Building Barks Compleat Reader"
@@ -50,11 +58,6 @@ echo "" >> "$VERSION_FILE"
 
 echo -e "Successfully wrote version to \"${VERSION_FILE}\"."
 echo
-
-if [[ ! -f pycrucible.toml ]]; then
-    echo "${RED}ERROR: Could not find \"pycrucible.toml\".${NC}"
-    exit 1
-fi
 
 case "$(uname -s)" in
     Linux*)
@@ -81,65 +84,58 @@ case "$(uname -s)" in
         ;;
 esac
 
-echo -e "${YELLOW}Building with pycrucible for platform \"${OS}\"...${NC}"
-rm -rf ./pycrucible_payload
+echo -e "${YELLOW}Building with Nuitka for platform \"${OS}\"...${NC}"
 
-# Strip workspace config from pyproject.toml before bundling.
-# Workspace member pyproject.toml files cannot be bundled (pycrucible flat archive limitation),
-# so uv would fail trying to find them. PYTHONPATH in pycrucible.toml handles package discovery.
-cp -p pyproject.toml pyproject.toml.bundle_bak
-PYCRUCIBLE_LOG=$(mktemp)
-cleanup() {
-    mv -f pyproject.toml.bundle_bak pyproject.toml 2>/dev/null
-    [[ -f pycrucible.toml.orig ]] && mv -f pycrucible.toml.orig pycrucible.toml
-    rm -f "$PYCRUCIBLE_LOG"
-}
-trap cleanup EXIT
-uv run python <<'PYEOF'
-import re
-import tomllib
+NUITKA_OUT_DIR="build/nuitka"
+rm -rf "${NUITKA_OUT_DIR}/${EXE}.build" "${NUITKA_OUT_DIR}/${EXE}.dist" "./${EXE}"
+mkdir -p "${NUITKA_OUT_DIR}"
 
-# Strip every workspace package, derived from [tool.uv.sources] so the list
-# can never drift from pyproject.toml. NOTE: a stripped package's third-party
-# deps must be mirrored in the root [project] dependencies, or the bundled
-# venv won't install them (PYTHONPATH only locates the *source* trees).
-with open('pyproject.toml', 'rb') as f:
-    workspace_pkgs = [
-        name
-        for name, source in tomllib.load(f)['tool']['uv']['sources'].items()
-        if source == {'workspace': True}
-    ]
-with open('pyproject.toml') as f:
-    content = f.read()
-for pkg in workspace_pkgs:
-    content = re.sub('\n    "' + pkg + '",', '', content)
-content = re.sub(r'\n\[tool\.uv\.workspace\]\n.*?(?=\n\[)', '', content, flags=re.DOTALL)
-content = re.sub(r'\n\[tool\.uv\.sources\]\n.*?(?=\n\[|\Z)', '', content, flags=re.DOTALL)
-with open('pyproject.toml', 'w') as f:
-    f.write(content)
-PYEOF
-
-if [[ "${OS}" == "windows" ]]; then
-    cp -p pycrucible.toml pycrucible.toml.orig
-    sed -i '/^PYTHONPATH/s/:/;/g' pycrucible.toml
-fi
-
-uv run --frozen pycrucible --debug --embed . -o "${EXE}" > "$PYCRUCIBLE_LOG" 2>&1 || {
-    echo -e "${RED}ERROR: pycrucible failed.${NC}"
-    cat "$PYCRUCIBLE_LOG"
+# Nuitka compiles the whole app to native code and bundles Python + all dependencies
+# into a single self-contained executable (--onefile). No runtime venv/uv, no first-run
+# download. This also compiles the plain-Python get_panel_bytes module (with the embedded
+# BARKS_ZIPS_KEY) to native code, so the panel key is not shipped as readable source.
+#
+# Data files:
+#   - Kivy's data (kv lang, fonts, shaders) and each app package's bundled assets
+#     (.kv/.ttf/.db/images) are pulled in via --include-package-data.
+#   - barks_fantagraphics' INTERNAL_DATA_DIR lives outside the package in the source
+#     tree (src/barks-fantagraphics/data); map it alongside the package so the
+#     packaged-layout branch of comics_consts.INTERNAL_DATA_DIR resolves it.
+#   - cpi.db ships inside comic_utils, so --include-package-data=comic_utils covers it.
+#
+# .env.runtime is intentionally NOT bundled (it holds secrets); a compiled build reads
+# neither it nor the *_CONFIG_DIR/*_DATA_DIR env vars (see config_info.IS_COMPILED).
+uv run python -m nuitka \
+    --standalone \
+    --onefile \
+    --assume-yes-for-downloads \
+    --enable-plugin=kivy \
+    --include-package-data=kivy \
+    --include-package-data=barks_reader \
+    --include-package-data=okf_reader \
+    --include-package-data=comic_utils \
+    --include-package-data=pyuca \
+    --include-package-data=docutils \
+    --include-package=barks_reader \
+    --include-package=barks_fantagraphics \
+    --include-package=barks_build_comic_images \
+    --include-package=barks_kivy_ui \
+    --include-package=okf_reader \
+    --include-package=comic_utils \
+    --include-data-dir=src/barks-fantagraphics/data=barks_fantagraphics/data \
+    --output-dir="${NUITKA_OUT_DIR}" \
+    --output-filename="${EXE}" \
+    --product-name="Barks Reader" \
+    --product-version="${NUMERIC_VERSION}" \
+    --onefile-tempdir-spec="{CACHE_DIR}/BarksReader/{VERSION}" \
+    main.py || {
+    echo -e "${RED}ERROR: Nuitka build failed.${NC}"
     exit 1
 }
 
-# Show filtered output.
-grep -v "Debug: \[payload.embed_payload\]" "$PYCRUCIBLE_LOG" \
-    | grep -v "Debug: \[project.collect_source_files\]" \
-    | grep -v "Debug: \[main.embed_source\]"
-
-# Fail on any warnings (e.g. pycrucible silently falls back to defaults on config errors).
-if grep -qi "Warning:" "$PYCRUCIBLE_LOG"; then
-    echo -e "${RED}ERROR: pycrucible produced warnings — build may be broken.${NC}"
-    exit 1
-fi
+# Move the finished single-file executable to the repo root (where CI uploads it from).
+mv -f "${NUITKA_OUT_DIR}/${EXE}" "./${EXE}"
+echo -e "Executable written to \"./${EXE}\"."
 
 if [[ $DO_ZIPS == 1 ]]; then
   echo

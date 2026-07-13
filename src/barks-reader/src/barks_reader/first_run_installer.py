@@ -1,14 +1,12 @@
-import os
 import sys
 from configparser import ConfigParser
 from datetime import UTC, datetime
 from pathlib import Path
 from zipfile import ZipFile
 
-import psutil
 from loguru import logger
 
-from barks_reader.core.config_info import ConfigInfo
+from barks_reader.core.config_info import ConfigInfo, get_app_exe_dir
 from barks_reader.core.reader_consts_and_types import FANTAGRAPHICS_BARKS_LIBRARY
 from barks_reader.core.reader_utils import quote_and_join_with_and
 from barks_reader.ui.error_handling import handle_app_fail, handle_app_fail_with_traceback
@@ -22,8 +20,9 @@ _ZIP_DATA_INSTALLER_FILES = ["barks-reader-data-1.zip", "barks-reader-data-2.zip
 
 _EXPECTED_FANTA_VOLUMES_DIR_NAME = FANTAGRAPHICS_BARKS_LIBRARY
 
-_this_script_dir = Path(__file__).parent
-_barks_reader_exe_dir = _this_script_dir.parent.parent.parent.parent.parent
+# Directory of the running standalone executable, beside which the installer data
+# zips are shipped and into which config/data are installed.
+_barks_reader_exe_dir = get_app_exe_dir()
 _log_file = (
     _barks_reader_exe_dir
     / f"barks-reader-installer-{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.log"
@@ -52,27 +51,24 @@ def main() -> None:
     try:
         logger.add(_log_file)
 
-        parent_executable = _get_likely_executable_name()
         logger.info(
-            f"Installer script running: platform = '{PLATFORM.value}',"
+            f"Installer running: platform = '{PLATFORM.value}',"
             f' sys.executable = "{sys.executable}",'
-            f' Parent executable: "{parent_executable}",'
+            f' sys.argv[0] = "{sys.argv[0]}",'
+            f' exe dir = "{_barks_reader_exe_dir}",'
             f' Log file = "{_log_file}".'
         )
 
         config_info = ConfigInfo()
 
-        logger.info("Checking that Cython compiled module is correctly installed.")
+        logger.info("Checking that the compiled panel module is correctly installed.")
         _check_cython_compiled_module_is_correct()
 
-        # Make sure we're running in the right directory. Pycrucible has been set with the options:
-        #       extract_to_temp = false  # noqa: ERA001
-        #       delete_after_run = true  # noqa: ERA001
-        # which means the pycrucible_payload directory will be extracted at the same level as
-        # the barks-reader executable. (And deleted after use.) Make sure of this.
-
+        # The installer runs from the standalone executable and expects the data zips to sit
+        # in the same directory as the executable (``_barks_reader_exe_dir``). Confirm the
+        # executable is where we think it is before looking for those zips.
         logger.info("Checking that we are running from the correct executable.")
-        _check_barks_reader_exe_location(config_info, parent_executable)
+        _check_barks_reader_exe_location(config_info)
 
         logger.info(f'Checking for an existing app config path "{config_info.app_config_path}".')
         if config_info.app_config_path.is_file():
@@ -92,25 +88,9 @@ def main() -> None:
         _show_success_message(config_info, fanta_volumes_dir)
 
 
-def _get_likely_executable_name() -> str:
-    # noinspection PyBroadException
-    try:
-        current_pid = os.getpid()
-        p = psutil.Process(current_pid)
-        parent_uv_pid_psutil = p.ppid()
-
-        p = psutil.Process(parent_uv_pid_psutil)
-        parent_executable_pid_psutil = p.ppid()
-        process = psutil.Process(parent_executable_pid_psutil)
-
-        return process.exe()
-    except:  # noqa: E722
-        return ""
-
-
 def _show_success_message(config_info: ConfigInfo, fanta_volumes_dir: Path | None) -> None:
     from barks_reader.core.minimal_config_info import get_minimal_config_options  # noqa: PLC0415
-    from barks_reader.pycrucible_pre_run_installer_show_message import (  # noqa: PLC0415
+    from barks_reader.first_run_installer_show_message import (  # noqa: PLC0415
         show_installer_message,
     )
 
@@ -137,12 +117,12 @@ def _check_cython_compiled_module_is_correct() -> None:
         _handle_cython_compiled_module_sanity_check_failed()
 
 
-def _check_barks_reader_exe_location(config_info: ConfigInfo, parent_executable: str) -> None:
+def _check_barks_reader_exe_location(config_info: ConfigInfo) -> None:
     barks_reader_exe = _barks_reader_exe_dir / config_info.get_executable_name()
     logger.info(f'Checking for the correct executable path: "{barks_reader_exe}".')
 
     if not barks_reader_exe.is_file():
-        _handle_could_not_find_exe_error(barks_reader_exe, parent_executable)
+        _handle_could_not_find_exe_error(barks_reader_exe)
         sys.exit(1)
 
 
@@ -257,18 +237,12 @@ def _handle_cython_compiled_module_sanity_check_failed() -> None:
     )
 
 
-def _handle_could_not_find_exe_error(barks_reader_exe: Path, parent_executable: str) -> None:
+def _handle_could_not_find_exe_error(barks_reader_exe: Path) -> None:
     message = f'Could not find the Barks Reader executable:\n\n[b]"{barks_reader_exe}".[/b]'
     details = (
-        f"The Barks Reader executable should be in the parent directory of the directory"
-        f' this installer script is running from:\n\n[b]"{Path.cwd()}".[/b]'
+        f"The Barks Reader executable is expected to be found in the same directory"
+        f' the installer is running from:\n\n[b]"{_barks_reader_exe_dir}".[/b]'
     )
-    if parent_executable:
-        details += (
-            "\n\n"
-            f' But it looks like you\'re running the executable\n\n[b]"{parent_executable}"[/b]\n\n'
-            f' instead of\n\n[b]"{barks_reader_exe}".[/b]'
-        )
 
     handle_app_fail(
         _APP_TYPE,

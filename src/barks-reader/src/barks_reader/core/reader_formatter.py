@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import textwrap
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
 import pyphen
@@ -45,7 +46,13 @@ LONG_TITLE_SPLITS = {
     Titles.LOST_CROWN_OF_GENGHIS_KHAN_THE: "The Lost Crown\nof Genghis Khan!",
 }
 
-PYPHEN_DICT = pyphen.Pyphen(lang="en_US")
+# Pass a concrete dictionary file path rather than lang="en_US". pyphen's lang lookup
+# goes through importlib.resources.files(), which under a compiled (Nuitka) build returns
+# an unhashable resource object that pyphen then uses as a dict key (TypeError). Building
+# the path from pyphen.__file__ yields a real, hashable Path in both dev and the standalone
+# build, where pyphen's bundled dictionaries sit alongside the package.
+_PYPHEN_DICT_FILE = Path(pyphen.__file__).parent / "dictionaries" / "hyph_en_US.dic"
+PYPHEN_DICT = pyphen.Pyphen(filename=str(_PYPHEN_DICT_FILE))
 INVISIBLE_BREAK = "[size=0][color=00000000] [/color][/size]"
 BOLD_TAG_PATTERN = re.compile(r"\[b](.*)\[/b]")
 MARKUP_TAG_PATTERN = re.compile(r"\[/?[^]]+]")

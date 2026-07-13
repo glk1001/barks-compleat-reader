@@ -12,6 +12,10 @@ from .platform_info import IS_MACOS, PLATFORM, Platform
 
 APP_NAME = "barks-reader"
 
+# True when running from a compiled/standalone build. Nuitka defines ``__compiled__``
+# in every module it compiles, so this is False in a normal (dev/pytest) interpreter.
+IS_COMPILED = "__compiled__" in globals()
+
 BARKS_READER_INSTALLER_FAILED_FLAG_FILE = "barks-reader-installer-failed.flag"
 IOS_CONFIG_DIR = "~/Documents"
 
@@ -71,6 +75,23 @@ os.environ.setdefault("SDL_VIDEO_WAYLAND_WMCLASS", APP_NAME)
 os.environ.setdefault("SDL_VIDEO_X11_WMCLASS", APP_NAME)
 
 
+def get_app_exe_dir() -> Path:
+    """Return the directory that contains the running executable.
+
+    In a compiled/standalone (Nuitka) build this is the directory of the launched
+    binary (``sys.argv[0]``) — the directory beside which the installer data zips are
+    shipped and into which config/data are installed. In a development checkout there
+    is no bundled executable, so this returns the historical layout anchor (the parent
+    of the repository root); config/data locations then come from env vars instead.
+    """
+    if IS_COMPILED:
+        return Path(sys.argv[0]).resolve().parent
+
+    main_script_dir = Path(__file__).parent.parent.parent.parent.parent.parent
+    assert (main_script_dir / "main.py").is_file()
+    return main_script_dir.parent
+
+
 class ConfigInfo:
     """Configure the apps config directory and force Kivy to use it.
 
@@ -79,11 +100,9 @@ class ConfigInfo:
     """
 
     def __init__(self) -> None:
-        main_script_dir = Path(__file__).parent.parent.parent.parent.parent.parent
-        assert (main_script_dir / "main.py").is_file()
-        self.is_running_under_pycrucible = main_script_dir.name == "pycrucible_payload"
+        self.is_running_compiled = IS_COMPILED
 
-        self.app_dir = main_script_dir.parent
+        self.app_dir = get_app_exe_dir()
 
         self._app_name = APP_NAME
         self.app_config_dir: Path = None  # ty: ignore[invalid-assignment]
@@ -132,10 +151,10 @@ class ConfigInfo:
         return executable_name
 
     def _get_app_config_dir(self) -> Path:
-        if not self.is_running_under_pycrucible:
+        if not self.is_running_compiled:
             app_env_var = f"{self._app_name.upper().replace('-', '_')}_CONFIG_DIR"
             if app_env_var not in os.environ:
-                msg = f'Not running under pycrucible. Expected config env var "{app_env_var}".'
+                msg = f'Not a compiled standalone build. Expected config env var "{app_env_var}".'
                 raise RuntimeError(msg)
             return Path(os.environ[app_env_var])
 
@@ -162,10 +181,10 @@ class ConfigInfo:
         return config_dir
 
     def _get_app_data_dir(self) -> Path:
-        if not self.is_running_under_pycrucible:
+        if not self.is_running_compiled:
             app_env_var = f"{self._app_name.upper().replace('-', '_')}_DATA_DIR"
             if app_env_var not in os.environ:
-                msg = f'Not running under pycrucible. Expected data env var "{app_env_var}".'
+                msg = f'Not a compiled standalone build. Expected data env var "{app_env_var}".'
                 raise RuntimeError(msg)
             return Path(os.environ[app_env_var])
 
@@ -186,8 +205,8 @@ def remove_barks_reader_installer_failed_flag() -> None:
 
 
 def get_barks_reader_installer_failed_flag_file() -> Path:
-    # Put the flag file on the same level as the pycrucible executable.
-    return Path.cwd().parent / BARKS_READER_INSTALLER_FAILED_FLAG_FILE
+    # Put the flag file in the same directory as the executable.
+    return get_app_exe_dir() / BARKS_READER_INSTALLER_FAILED_FLAG_FILE
 
 
 # Make these log variables global so loguru-config can access them.

@@ -1,5 +1,10 @@
 #!/bin/bash
-# Compile the panel-key module to a native Cython extension.
+# Generate the plain-Python panel-key module from the encrypted template.
+#
+# The generated module embeds an XOR-masked copy of BARKS_ZIPS_KEY. In a standalone
+# build, Nuitka compiles this .py to native machine code (so the key/logic is not
+# shipped as readable source); in development it runs as ordinary Python.
+#
 # Run once initially, when the panel key changes, or on every CI build.
 #
 # Locally: reads BARKS_ZIPS_KEY from .env.runtime.
@@ -11,18 +16,14 @@ PACKAGE_DIR="src/comic-utils/src/comic_utils"
 MODULE_BASENAME="get_panel_bytes"
 TEMPLATE_IN="${PACKAGE_DIR}/${MODULE_BASENAME}.pyx.template.in"
 TEMPLATE_PLAINTEXT="${PACKAGE_DIR}/${MODULE_BASENAME}.pyx.template"
-PYX_FILE="${PACKAGE_DIR}/${MODULE_BASENAME}.pyx"
-C_FILE="${PACKAGE_DIR}/${MODULE_BASENAME}.c"
 PY_FILE="${PACKAGE_DIR}/${MODULE_BASENAME}.py"
 
 cleanup() {
-    rm -f "$TEMPLATE_PLAINTEXT" "$PYX_FILE" "$C_FILE"
-    # cythonize -i leaves a build/ tree with a duplicate of the compiled extension.
-    rm -rf src/comic-utils/src/build
+    rm -f "$TEMPLATE_PLAINTEXT"
 }
 trap cleanup EXIT
 
-# Clean prior build artifacts.
+# Clean prior artifacts: any previously generated module and stale Cython extensions.
 rm -f "$PY_FILE"
 rm -f "${PACKAGE_DIR}/${MODULE_BASENAME}".*.so
 rm -f "${PACKAGE_DIR}/${MODULE_BASENAME}".*.pyd
@@ -47,13 +48,14 @@ fi
 echo "Decrypting panel module template..."
 uv run scripts/fernet-crypt.py decrypt "$TEMPLATE_IN" "$TEMPLATE_PLAINTEXT"
 
-echo "Generating XOR-masked key and writing .pyx..."
-uv run python - "$TEMPLATE_PLAINTEXT" "$PYX_FILE" <<'PYEOF'
+echo "Generating XOR-masked key and writing plain-Python module..."
+uv run python - "$TEMPLATE_PLAINTEXT" "$PY_FILE" <<'PYEOF'
 import os
+import re
 import secrets
 import sys
 
-template_path, pyx_path = sys.argv[1], sys.argv[2]
+template_path, py_path = sys.argv[1], sys.argv[2]
 key = os.environ["BARKS_ZIPS_KEY"].encode("ascii")
 mask = secrets.token_bytes(len(key))
 masked = bytes(k ^ m for k, m in zip(key, mask))
@@ -64,23 +66,26 @@ with open(template_path, encoding="utf-8") as f:
 template = template.replace("{{PANEL_KEY_XOR_BYTES}}", repr(list(masked)))
 template = template.replace("{{PANEL_KEY_XOR_MASK}}", repr(list(mask)))
 
-with open(pyx_path, "w", encoding="utf-8") as f:
-    f.write(template)
+# The template is written in Cython (.pyx). Strip the Cython-only syntax so the result
+# is valid Python (Nuitka compiles it to native code; dev imports it directly). The only
+# Cython-specific constructs here are the module-level ``cdef <type> name = ...`` typed
+# declarations and the ``# cython:`` directive line.
+lines = []
+for line in template.splitlines():
+    if line.startswith("# cython:"):
+        continue
+    line = re.sub(r"^cdef (list|tuple|dict|set|str|bytes|int|float|bool|object) ", "", line)
+    lines.append(line)
+
+with open(py_path, "w", encoding="utf-8") as f:
+    f.write("\n".join(lines) + "\n")
 PYEOF
 
-echo "Compiling with Cython..."
-uv run cythonize -i -3 "$PYX_FILE"
-
-# Sanity check: verify at least one compiled artifact exists.
-if ! ls "${PACKAGE_DIR}/${MODULE_BASENAME}".*.so >/dev/null 2>&1 \
-    && ! ls "${PACKAGE_DIR}/${MODULE_BASENAME}".*.pyd >/dev/null 2>&1 \
-    && [ ! -f "${PACKAGE_DIR}/${MODULE_BASENAME}.pyd" ]; then
-    echo "Error: Cython build produced no extension module." >&2
-    exit 1
-fi
+# Sanity check: the generated module must import and expose get_decrypted_bytes.
+echo "Verifying generated module imports..."
+uv run python -c \
+    "from comic_utils.get_panel_bytes import get_decrypted_bytes; assert callable(get_decrypted_bytes)"
 
 echo ""
-echo "Done! Cython extension built in \"${PACKAGE_DIR}/\"."
-echo ""
-echo "Verify with:"
-echo "  uv run python -c 'from comic_utils.get_panel_bytes import get_decrypted_bytes; print(get_decrypted_bytes)'"
+echo "Done! Plain-Python panel module written to \"${PY_FILE}\"."
+echo "In a standalone build Nuitka compiles this to native code."

@@ -26,7 +26,10 @@ labellayout
 longpath
 modalview
 nonbody
+nuitka
+onefile
 overscroll
+patchelf
 pycrucible
 pydroid
 relativelayout

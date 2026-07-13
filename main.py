@@ -105,7 +105,7 @@ def start_logging(cfg_info: ConfigInfo, min_options: MinimalConfigOptions) -> No
     redirect_kivy_logs()
 
     logger.info("*** Starting barks reader ***")
-    logger.info(f"running_under_pycrucible = {cfg_info.is_running_under_pycrucible}")
+    logger.info(f"running_compiled_standalone = {cfg_info.is_running_compiled}")
     logger.info(f'app dir = "{cfg_info.app_dir}".')
     logger.info(f'app config path = "{cfg_info.app_config_path}".')
     logger.info(f'app_data_dir = "{cfg_info.app_data_dir}".')
@@ -274,6 +274,42 @@ def ok_to_run() -> bool:
     return False
 
 
+# argv sentinel used to re-exec this executable as the isolated first-run installer.
+# A separate process keeps the installer's one-shot Kivy success/error popup from
+# clashing with the main app's Kivy Window/App singletons (the previous packager ran
+# the installer as a distinct pre-run process; this preserves that isolation).
+FIRST_RUN_INSTALLER_ARG = "--run-first-run-installer"
+
+
+def run_first_run_installer() -> None:
+    """Run the first-run installer (unzips data, writes config, shows the popup)."""
+    from barks_reader.first_run_installer import main as installer_main
+
+    installer_main()
+
+
+def maybe_run_first_run_installer() -> None:
+    """On a standalone build's first run, run the installer in an isolated subprocess.
+
+    Skipped in a development checkout (nothing is bundled to install) and when the app
+    config already exists (already installed). Blocks until the installer subprocess
+    exits; a failed install leaves the FAILED flag that ``ok_to_run`` then detects.
+    """
+    from barks_reader.core.config_info import IS_COMPILED, ConfigInfo
+
+    if not IS_COMPILED:
+        return
+
+    if ConfigInfo().app_config_path.is_file():
+        return
+
+    import subprocess
+
+    logger.info("First run of standalone build - launching isolated installer process.")
+    # Re-exec this very executable (sys.argv[0]) with a fixed sentinel arg - not untrusted input.
+    subprocess.run([sys.argv[0], FIRST_RUN_INSTALLER_ARG], check=False)  # noqa: S603
+
+
 # This gc tweak makes a big difference. (Or did until I changed to lazy loading of main Tree.)
 # https://mkennedy.codes/posts/python-gc-settings-change-this-and-make-your-app-go-20pc-faster/
 def reset_python_gc() -> None:
@@ -310,6 +346,14 @@ def main(
 
 
 if __name__ == "__main__":
+    # When re-exec'd as the isolated installer (see maybe_run_first_run_installer),
+    # run only the installer and exit before the Typer app / main window start.
+    if len(sys.argv) >= 2 and sys.argv[1] == FIRST_RUN_INSTALLER_ARG:  # noqa: PLR2004
+        run_first_run_installer()
+        sys.exit(0)
+
+    maybe_run_first_run_installer()
+
     if not ok_to_run():
         sys.exit(1)
 

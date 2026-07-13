@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import json
 import re
 import subprocess
@@ -239,10 +240,21 @@ def get_centred_position_on_primary_monitor(win_width: int, win_height: int) -> 
 def safe_import_check(module_name: str, timeout: float = 5.0) -> bool:
     """Safely check if a Python module can be imported without crashing Python.
 
-    This spawns a sandbox subprocess to avoid segfaults from obfuscated modules.
+    In a compiled/standalone (Nuitka) build the module is compiled into the binary, so a
+    direct in-process import is the correct check. In a normal interpreter this spawns a
+    sandbox subprocess (``sys.executable -c ...``) to avoid segfaults from obfuscated
+    modules - an approach that is invalid when frozen, because ``sys.executable`` is then
+    the app binary rather than a Python interpreter.
 
     Returns True if the import succeeded, False otherwise.
     """
+    if "__compiled__" in globals():
+        try:
+            importlib.import_module(module_name)
+        except Exception:  # noqa: BLE001
+            return False
+        return True
+
     check_code = textwrap.dedent(f"""
     import importlib, json, sys
     try:

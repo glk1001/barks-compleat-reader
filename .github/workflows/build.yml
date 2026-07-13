@@ -62,7 +62,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1 libmtdev1t64
+          sudo apt-get install -y libgl1 libmtdev1t64 patchelf
 
       - name: Set macOS deployment target
         if: matrix.deploy_target
@@ -78,12 +78,12 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      - name: Build panel module (Cython, real)
+      - name: Generate panel module (real, from secret)
         if: env.BARKS_ZIPS_KEY != ''
         shell: bash
-        run: bash scripts/cythonize-panel-module.sh
+        run: bash scripts/generate-panel-module.sh
 
-      - name: Build panel module (stub fallback for fork PRs)
+      - name: Generate panel module (stub fallback for fork PRs)
         if: env.BARKS_ZIPS_KEY == ''
         shell: bash
         run: |
@@ -91,6 +91,17 @@ jobs:
           def get_decrypted_bytes(data: bytes) -> bytes | None:
               return data
           STUB
+
+      - name: Cache Nuitka build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/Nuitka
+            ~/Library/Caches/Nuitka
+            ~\AppData\Local\Nuitka\Nuitka\Cache
+          key: nuitka-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            nuitka-${{ runner.os }}-
 
       - name: Build executable
         shell: bash

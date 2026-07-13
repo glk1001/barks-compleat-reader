@@ -46,7 +46,14 @@ FANTA_VOLUME_READER_PANEL_SEGMENTS_ROOT = (
 PNG_INSET_DIR = BARKS_ROOT_DIR / "Barks Panels Pngs" / "Insets"
 PNG_INSET_EXT = PNG_FILE_EXT
 
-INTERNAL_DATA_DIR = Path(__file__).parent.parent.parent / "data"
+# The ``data`` directory lives outside the importable package in the source tree
+# (``src/barks-fantagraphics/data``), but is bundled alongside the package in a wheel
+# or a compiled/standalone (Nuitka) build (``.../barks_fantagraphics/data``). Prefer the
+# packaged location and fall back to the source-tree layout for editable installs, so the
+# path resolves identically in dev, wheels, and the standalone executable.
+_PACKAGED_DATA_DIR = Path(__file__).parent / "data"
+_SOURCE_TREE_DATA_DIR = Path(__file__).parent.parent.parent / "data"
+INTERNAL_DATA_DIR = _PACKAGED_DATA_DIR if _PACKAGED_DATA_DIR.is_dir() else _SOURCE_TREE_DATA_DIR
 assert INTERNAL_DATA_DIR.is_dir(), f'INTERNAL_DATA_DIR "{INTERNAL_DATA_DIR}" does not exist.'
 
 FONT_DIR = INTERNAL_DATA_DIR / "fonts"

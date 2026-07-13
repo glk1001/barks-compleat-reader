@@ -2,6 +2,12 @@
 .claude/
 
 # Project-specific
+build/
+# Standalone executables produced by scripts/build.sh (Nuitka onefile output).
+/barks-reader-linux
+/barks-reader-macos
+/barks-reader-macos-x64
+/barks-reader-win.exe
 src/barks-reader/src/barks_reader/_version.py
 src/comic-utils/src/comic_utils/get_panel_bytes.py
 src/comic-utils/src/comic_utils/get_panel_bytes.pyx
