@@ -121,25 +121,22 @@ class TestGetUserAppConfigDir:
 
 
 class TestInstallerFailedFlag:
-    def test_full_lifecycle(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        # The flag file lives at `Path.cwd().parent / FLAG_FILE_NAME`.
-        cwd = tmp_path / "child"
-        cwd.mkdir()
-        monkeypatch.setattr(Path, "cwd", staticmethod(lambda: cwd))
+    def test_full_lifecycle(self, tmp_path: Path) -> None:
+        # The flag file lives at `get_app_exe_dir() / FLAG_FILE_NAME`.
+        with patch.object(config_info, "get_app_exe_dir", lambda: tmp_path):
+            # Initially absent → False.
+            assert barks_reader_installer_failed() is False
 
-        # Initially absent → False.
-        assert barks_reader_installer_failed() is False
+            set_barks_reader_installer_failed_flag()
+            assert barks_reader_installer_failed() is True
+            assert get_barks_reader_installer_failed_flag_file().is_file()
 
-        set_barks_reader_installer_failed_flag()
-        assert barks_reader_installer_failed() is True
-        assert get_barks_reader_installer_failed_flag_file().is_file()
+            remove_barks_reader_installer_failed_flag()
+            assert barks_reader_installer_failed() is False
 
-        remove_barks_reader_installer_failed_flag()
-        assert barks_reader_installer_failed() is False
-
-        # Idempotent — second remove on missing file must not raise.
-        remove_barks_reader_installer_failed_flag()
-        assert barks_reader_installer_failed() is False
+            # Idempotent — second remove on missing file must not raise.
+            remove_barks_reader_installer_failed_flag()
+            assert barks_reader_installer_failed() is False
 
 
 # ---------------------------------------------------------------------------

@@ -23,8 +23,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Clean prior artifacts: any previously generated module and stale Cython extensions.
+# Clean prior artifacts: any previously generated module and stale Cython leftovers.
+# The .pyx/.c matter for security: a stale Cython-generated .c holds the masked key as
+# readable byte literals, and Nuitka's --include-package-data would bundle a .c file.
 rm -f "$PY_FILE"
+rm -f "${PACKAGE_DIR}/${MODULE_BASENAME}.pyx"
+rm -f "${PACKAGE_DIR}/${MODULE_BASENAME}.c"
 rm -f "${PACKAGE_DIR}/${MODULE_BASENAME}".*.so
 rm -f "${PACKAGE_DIR}/${MODULE_BASENAME}".*.pyd
 rm -f "${PACKAGE_DIR}/${MODULE_BASENAME}.pyd"

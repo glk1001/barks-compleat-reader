@@ -29,12 +29,18 @@ VERSION=$(get_git_version)
 COPYRIGHT_YEARS="2025"
 
 # Nuitka's --product-version (and the {VERSION} token in --onefile-tempdir-spec) needs a
-# numeric dotted version. Derive one from the git describe: the leading tag numbers plus
-# the commit-count. e.g. "v0.9.0.alpha.1-815-g9fce0c9-dirty" -> "0.9.0.815".
-NUMERIC_VERSION=$(echo "$VERSION" | sed -E 's/^v//; s/[^0-9.].*$//; s/\.+$//')
+# numeric dotted version of AT MOST 4 integer fields (Nuitka hard-fails on more). Derive
+# one from the git describe: the leading tag numbers plus the commit-count, truncated to
+# 4 fields. e.g. "v0.9.0.alpha.1-815-g9fce0c9-dirty" -> "0.9.0.815". A non-tag-shaped
+# describe (bare commit hash from an untagged clone) falls back to a 0.0.0 base.
+if [[ "$VERSION" =~ ^v?[0-9]+\. ]]; then
+    NUMERIC_VERSION=$(echo "$VERSION" | sed -E 's/^v//; s/[^0-9.].*$//; s/\.+$//')
+else
+    NUMERIC_VERSION="0.0.0"
+fi
 COMMITS=$(echo "$VERSION" | grep -oE -- '-[0-9]+-g' | grep -oE '[0-9]+' | head -1 || true)
 [[ -n "$COMMITS" ]] && NUMERIC_VERSION="${NUMERIC_VERSION}.${COMMITS}"
-[[ -z "$NUMERIC_VERSION" ]] && NUMERIC_VERSION="0.0.0"
+NUMERIC_VERSION=$(echo "$NUMERIC_VERSION" | cut -d. -f1-4)
 
 
 echo "=================================================="
@@ -87,13 +93,19 @@ esac
 echo -e "${YELLOW}Building with Nuitka for platform \"${OS}\"...${NC}"
 
 NUITKA_OUT_DIR="build/nuitka"
-rm -rf "${NUITKA_OUT_DIR}/${EXE}.build" "${NUITKA_OUT_DIR}/${EXE}.dist" "./${EXE}"
+# Work/bundle dirs are named from --output-folder-name=${EXE} (without it Nuitka would
+# name them after the compiled script, i.e. main.build/main.dist/main.app).
+rm -rf "${NUITKA_OUT_DIR}/${EXE}.build" "${NUITKA_OUT_DIR}/${EXE}.dist" \
+    "${NUITKA_OUT_DIR}/${EXE}.onefile-build" "${NUITKA_OUT_DIR}/${EXE}.app" \
+    "./${EXE}" "./${EXE}.zip"
 mkdir -p "${NUITKA_OUT_DIR}"
 
 # Nuitka compiles the whole app to native code and bundles Python + all dependencies
-# into a single self-contained executable (--onefile). No runtime venv/uv, no first-run
-# download. This also compiles the plain-Python get_panel_bytes module (with the embedded
-# BARKS_ZIPS_KEY) to native code, so the panel key is not shipped as readable source.
+# (--mode=app: a single self-extracting onefile executable on Linux/Windows, a macOS
+# .app bundle on macOS - pyobjc/Foundation, pulled in by screeninfo, requires a bundle
+# there). No runtime venv/uv, no first-run download. This also compiles the plain-Python
+# get_panel_bytes module (with the embedded BARKS_ZIPS_KEY) to native code, so the panel
+# key is not shipped as readable source.
 #
 # Data files:
 #   - Kivy's data (kv lang, fonts, shaders) and each app package's bundled assets
@@ -101,17 +113,30 @@ mkdir -p "${NUITKA_OUT_DIR}"
 #   - barks_fantagraphics' INTERNAL_DATA_DIR lives outside the package in the source
 #     tree (src/barks-fantagraphics/data); map it alongside the package so the
 #     packaged-layout branch of comics_consts.INTERNAL_DATA_DIR resolves it.
+#     (--include-package-data=barks_fantagraphics separately covers the in-package
+#     empty_page.png.)
 #   - cpi.db ships inside comic_utils, so --include-package-data=comic_utils covers it.
 #
 # .env.runtime is intentionally NOT bundled (it holds secrets); a compiled build reads
 # neither it nor the *_CONFIG_DIR/*_DATA_DIR env vars (see config_info.IS_COMPILED).
+
+# The onefile extraction-dir spec only applies where --mode=app means onefile
+# (a macOS .app bundle is standalone-layout, and Nuitka warns on the unused option).
+ONEFILE_ARGS=()
+if [[ "${OS}" != "macos" ]]; then
+    ONEFILE_ARGS+=(--onefile-tempdir-spec="{CACHE_DIR}/BarksReader/{VERSION}")
+fi
+
+NUITKA_LOG=$(mktemp)
+trap 'rm -f "$NUITKA_LOG"' EXIT
+
 uv run python -m nuitka \
-    --standalone \
-    --onefile \
+    --mode=app \
     --assume-yes-for-downloads \
     --enable-plugin=kivy \
     --include-package-data=kivy \
     --include-package-data=barks_reader \
+    --include-package-data=barks_fantagraphics \
     --include-package-data=okf_reader \
     --include-package-data=comic_utils \
     --include-package-data=pyuca \
@@ -125,17 +150,33 @@ uv run python -m nuitka \
     --include-data-dir=src/barks-fantagraphics/data=barks_fantagraphics/data \
     --output-dir="${NUITKA_OUT_DIR}" \
     --output-filename="${EXE}" \
+    --output-folder-name="${EXE}" \
     --product-name="Barks Reader" \
     --product-version="${NUMERIC_VERSION}" \
-    --onefile-tempdir-spec="{CACHE_DIR}/BarksReader/{VERSION}" \
-    main.py || {
+    "${ONEFILE_ARGS[@]}" \
+    main.py 2>&1 | tee "$NUITKA_LOG" || {
     echo -e "${RED}ERROR: Nuitka build failed.${NC}"
     exit 1
 }
 
-# Move the finished single-file executable to the repo root (where CI uploads it from).
-mv -f "${NUITKA_OUT_DIR}/${EXE}" "./${EXE}"
-echo -e "Executable written to \"./${EXE}\"."
+# Nuitka reports some real packaging degradation as warnings while still exiting 0
+# (e.g. an --include-package-data name that no longer resolves, or an empty
+# --include-data-dir). Fail the build on those specific patterns - NOT on all warnings,
+# since e.g. the kivy plugin emits a benign one every build.
+if grep -qE "No matching data file|No data files in directory|Failed to locate package directory|Did not follow import to unused" "$NUITKA_LOG"; then
+    echo -e "${RED}ERROR: Nuitka reported missing packages/data (see warnings above) — build would be broken.${NC}"
+    exit 1
+fi
+
+# Move the finished artifact to the repo root (where CI uploads it from):
+# a single-file executable on Linux/Windows, a zipped .app bundle on macOS.
+if [[ "${OS}" == "macos" ]]; then
+    ditto -c -k --keepParent "${NUITKA_OUT_DIR}/${EXE}.app" "./${EXE}.zip"
+    echo -e "App bundle written to \"./${EXE}.zip\"."
+else
+    mv -f "${NUITKA_OUT_DIR}/${EXE}" "./${EXE}"
+    echo -e "Executable written to \"./${EXE}\"."
+fi
 
 if [[ $DO_ZIPS == 1 ]]; then
   echo

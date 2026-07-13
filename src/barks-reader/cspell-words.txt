@@ -32,6 +32,7 @@ overscroll
 patchelf
 pycrucible
 pydroid
+pyobjc
 relativelayout
 rescanning
 resched

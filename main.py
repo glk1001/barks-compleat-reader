@@ -281,33 +281,33 @@ def ok_to_run() -> bool:
 FIRST_RUN_INSTALLER_ARG = "--run-first-run-installer"
 
 
-def run_first_run_installer() -> None:
-    """Run the first-run installer (unzips data, writes config, shows the popup)."""
-    from barks_reader.first_run_installer import main as installer_main
-
-    installer_main()
-
-
 def maybe_run_first_run_installer() -> None:
     """On a standalone build's first run, run the installer in an isolated subprocess.
 
     Skipped in a development checkout (nothing is bundled to install) and when the app
     config already exists (already installed). Blocks until the installer subprocess
-    exits; a failed install leaves the FAILED flag that ``ok_to_run`` then detects.
+    exits; a failed install exits the app here (and also leaves the FAILED flag that
+    ``ok_to_run`` detects, in case the failure signal is ever lost).
     """
     from barks_reader.core.config_info import IS_COMPILED, ConfigInfo
 
     if not IS_COMPILED:
         return
 
-    if ConfigInfo().app_config_path.is_file():
+    if ConfigInfo().is_app_installed():
         return
 
     import subprocess
 
     logger.info("First run of standalone build - launching isolated installer process.")
     # Re-exec this very executable (sys.argv[0]) with a fixed sentinel arg - not untrusted input.
-    subprocess.run([sys.argv[0], FIRST_RUN_INSTALLER_ARG], check=False)  # noqa: S603
+    result = subprocess.run([sys.argv[0], FIRST_RUN_INSTALLER_ARG], check=False)  # noqa: S603
+    if result.returncode != 0:
+        logger.critical(
+            f"The first-run installer failed (exit code {result.returncode})."
+            f" Not starting the Barks Reader."
+        )
+        sys.exit(1)
 
 
 # This gc tweak makes a big difference. (Or did until I changed to lazy loading of main Tree.)
@@ -348,8 +348,10 @@ def main(
 if __name__ == "__main__":
     # When re-exec'd as the isolated installer (see maybe_run_first_run_installer),
     # run only the installer and exit before the Typer app / main window start.
-    if len(sys.argv) >= 2 and sys.argv[1] == FIRST_RUN_INSTALLER_ARG:  # noqa: PLR2004
-        run_first_run_installer()
+    if sys.argv[1:2] == [FIRST_RUN_INSTALLER_ARG]:
+        from barks_reader.first_run_installer import main as installer_main
+
+        installer_main()
         sys.exit(0)
 
     maybe_run_first_run_installer()

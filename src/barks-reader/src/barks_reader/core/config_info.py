@@ -76,16 +76,23 @@ os.environ.setdefault("SDL_VIDEO_X11_WMCLASS", APP_NAME)
 
 
 def get_app_exe_dir() -> Path:
-    """Return the directory that contains the running executable.
+    """Return the app's anchor directory beside the running executable.
 
     In a compiled/standalone (Nuitka) build this is the directory of the launched
     binary (``sys.argv[0]``) — the directory beside which the installer data zips are
-    shipped and into which config/data are installed. In a development checkout there
-    is no bundled executable, so this returns the historical layout anchor (the parent
-    of the repository root); config/data locations then come from env vars instead.
+    shipped and into which config/data are installed. On macOS the binary lives inside
+    the ``.app`` bundle (``<name>.app/Contents/MacOS``), so the anchor is the directory
+    containing the bundle. In a development checkout there is no bundled executable, so
+    this returns the historical layout anchor (the parent of the repository root);
+    config/data locations then come from env vars instead.
     """
     if IS_COMPILED:
-        return Path(sys.argv[0]).resolve().parent
+        exe_path = Path(sys.argv[0]).resolve()
+        for parent in exe_path.parents:
+            if parent.suffix == ".app":
+                # macOS app bundle: anchor beside the bundle, not inside it.
+                return parent.parent
+        return exe_path.parent
 
     main_script_dir = Path(__file__).parent.parent.parent.parent.parent.parent
     assert (main_script_dir / "main.py").is_file()
@@ -119,6 +126,10 @@ class ConfigInfo:
         assert self.app_data_dir
         assert self.kivy_config_dir
         assert self.app_log_path
+
+    def is_app_installed(self) -> bool:
+        """Return True if the app config file exists (first-run install completed)."""
+        return self.app_config_path.is_file()
 
     def _setup_app_config_dir(self) -> None:
         self.app_config_dir = self._get_app_config_dir()

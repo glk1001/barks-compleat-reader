@@ -11,5 +11,11 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/barks_fantagraphics"]
 
+# Ship the external data/ dir inside the package in wheels, matching the layout the
+# standalone (Nuitka) build creates and the packaged-location branch of
+# comics_consts.INTERNAL_DATA_DIR expects.
+[tool.hatch.build.targets.wheel.force-include]
+"data" = "barks_fantagraphics/data"
+
 [tool.uv.sources]
 comic-utils = { workspace = true }

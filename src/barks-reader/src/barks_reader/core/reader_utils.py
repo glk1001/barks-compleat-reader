@@ -19,6 +19,8 @@ from comic_utils.comic_consts import ROMAN_NUMERALS
 from comic_utils.pil_image_utils import PNG_PIL_FORMAT
 from intspan import intspan
 
+from .config_info import IS_COMPILED
+
 if TYPE_CHECKING:
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.pages import CleanPage
@@ -238,17 +240,18 @@ def get_centred_position_on_primary_monitor(win_width: int, win_height: int) -> 
 
 
 def safe_import_check(module_name: str, timeout: float = 5.0) -> bool:
-    """Safely check if a Python module can be imported without crashing Python.
+    """Check whether a Python module can be imported.
 
     In a compiled/standalone (Nuitka) build the module is compiled into the binary, so a
     direct in-process import is the correct check. In a normal interpreter this spawns a
-    sandbox subprocess (``sys.executable -c ...``) to avoid segfaults from obfuscated
-    modules - an approach that is invalid when frozen, because ``sys.executable`` is then
-    the app binary rather than a Python interpreter.
+    sandbox subprocess (``sys.executable -c ...``) so a crashing import (e.g. a segfault
+    in an obfuscated extension module) cannot take down the caller - an approach that is
+    invalid when frozen, because ``sys.executable`` is then the app binary rather than a
+    Python interpreter.
 
     Returns True if the import succeeded, False otherwise.
     """
-    if "__compiled__" in globals():
+    if IS_COMPILED:
         try:
             importlib.import_module(module_name)
         except Exception:  # noqa: BLE001

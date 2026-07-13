@@ -97,17 +97,18 @@ just reader
 
 ---
 
-## Building a Standalone Executable Using Pyinstaller
-1. Install pycrucible:
+## Building a Standalone Executable Using Nuitka
+1. Install the dependencies (Nuitka is a dev dependency):
     ```
-    uv add --dev pycrucible
+    uv sync
     ```
 1. Run the build command:
     ```
-    bash script/build.sh
+    bash scripts/build.sh
     ```
-1. This will create standalone one-file executable 'barks-reader-dist' where 'dist' depends on the platform the
-   build script is run from.
+1. This will create a standalone executable in the repo root: a single-file binary on Linux
+   ('barks-reader-linux') and Windows ('barks-reader-win.exe'), and a zipped `.app` bundle on
+   macOS ('barks-reader-macos.zip' or 'barks-reader-macos-x64.zip', depending on architecture).
 
 
 ## Deployment

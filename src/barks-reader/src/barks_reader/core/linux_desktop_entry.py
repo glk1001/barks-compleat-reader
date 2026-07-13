@@ -8,7 +8,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from .config_info import APP_NAME
+from .config_info import APP_NAME, IS_COMPILED
 from .platform_info import PLATFORM, Platform
 
 _DESKTOP_ENTRY_FILENAME = f"{APP_NAME}.desktop"
@@ -137,6 +137,14 @@ def _resolve_exec_command() -> str:
     cosmetic — but the freedesktop spec requires an ``Exec=`` for application
     entries, and a sane value lets the user launch from the menu/dock.
     """
+    if IS_COMPILED:
+        # The compiled standalone binary IS the app - no interpreter/script pair (the
+        # dev-mode branch below would emit "Exec=<interpreter> <binary>" with a spurious
+        # argument that aborts the Typer CLI). Use sys.argv[0]: Nuitka onefile guarantees
+        # it is the absolute path of the launched binary, whereas sys.executable is the
+        # version-specific EXTRACTED binary inside the onefile cache dir.
+        return shlex.quote(str(Path(sys.argv[0]).resolve()))
+
     script = Path(sys.argv[0]).resolve() if sys.argv and sys.argv[0] else None
     if script and script.is_file():
         return f"{shlex.quote(sys.executable)} {shlex.quote(str(script))}"

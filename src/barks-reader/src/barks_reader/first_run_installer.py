@@ -62,16 +62,16 @@ def main() -> None:
         config_info = ConfigInfo()
 
         logger.info("Checking that the compiled panel module is correctly installed.")
-        _check_cython_compiled_module_is_correct()
+        _check_panel_module_is_correct()
 
-        # The installer runs from the standalone executable and expects the data zips to sit
-        # in the same directory as the executable (``_barks_reader_exe_dir``). Confirm the
-        # executable is where we think it is before looking for those zips.
+        # The installer expects the data zips to sit in the app anchor directory
+        # (``_barks_reader_exe_dir``: beside the executable, or beside the .app bundle on
+        # macOS). Confirm we are running from the expected executable before looking there.
         logger.info("Checking that we are running from the correct executable.")
         _check_barks_reader_exe_location(config_info)
 
         logger.info(f'Checking for an existing app config path "{config_info.app_config_path}".')
-        if config_info.app_config_path.is_file():
+        if config_info.is_app_installed():
             logger.info("Found app config path. Exiting installer - assume app already installed.")
             return
 
@@ -110,20 +110,22 @@ def _show_success_message(config_info: ConfigInfo, fanta_volumes_dir: Path | Non
     )
 
 
-def _check_cython_compiled_module_is_correct() -> None:
+def _check_panel_module_is_correct() -> None:
     from barks_reader.core.reader_utils import safe_import_check  # noqa: PLC0415
 
     if not safe_import_check("comic_utils.get_panel_bytes"):
-        _handle_cython_compiled_module_sanity_check_failed()
+        _handle_panel_module_sanity_check_failed()
 
 
 def _check_barks_reader_exe_location(config_info: ConfigInfo) -> None:
-    barks_reader_exe = _barks_reader_exe_dir / config_info.get_executable_name()
-    logger.info(f'Checking for the correct executable path: "{barks_reader_exe}".')
+    # The binary itself may live inside a macOS .app bundle, so validate the running
+    # executable's name rather than reconstructing a path under the anchor directory.
+    expected_exe_name = config_info.get_executable_name()
+    running_exe = Path(sys.argv[0]).resolve()
+    logger.info(f'Checking the running executable "{running_exe}" is named "{expected_exe_name}".')
 
-    if not barks_reader_exe.is_file():
-        _handle_could_not_find_exe_error(barks_reader_exe)
-        sys.exit(1)
+    if running_exe.name != expected_exe_name:
+        _handle_wrong_exe_error(running_exe, expected_exe_name)
 
 
 def _check_installer_zips() -> list[Path]:
@@ -218,8 +220,10 @@ def _set_installer_failed_flag() -> None:
     )
 
 
-def _handle_cython_compiled_module_sanity_check_failed() -> None:
-    message = "The Cython-protected module failed to load."
+def _handle_panel_module_sanity_check_failed() -> None:
+    _set_installer_failed_flag()
+
+    message = "The compiled panel module failed to load."
     details = (
         "A critical part of The Barks Reader has not been configured properly. This is an"
         " unexpected error and you'll need to contact The Barks Reader developer for a fix."
@@ -237,11 +241,14 @@ def _handle_cython_compiled_module_sanity_check_failed() -> None:
     )
 
 
-def _handle_could_not_find_exe_error(barks_reader_exe: Path) -> None:
-    message = f'Could not find the Barks Reader executable:\n\n[b]"{barks_reader_exe}".[/b]'
+def _handle_wrong_exe_error(running_exe: Path, expected_exe_name: str) -> None:
+    _set_installer_failed_flag()
+
+    message = f'Unexpected Barks Reader executable:\n\n[b]"{running_exe}".[/b]'
     details = (
-        f"The Barks Reader executable is expected to be found in the same directory"
-        f' the installer is running from:\n\n[b]"{_barks_reader_exe_dir}".[/b]'
+        f"The Barks Reader executable is expected to be named"
+        f' [b]"{expected_exe_name}"[/b] - it looks like the executable was renamed'
+        f" or the wrong platform's executable is being run."
     )
 
     handle_app_fail(
@@ -257,6 +264,8 @@ def _handle_could_not_find_exe_error(barks_reader_exe: Path) -> None:
 
 
 def _handle_could_not_find_data_zip_error(installer_zip: Path) -> None:
+    _set_installer_failed_flag()
+
     message = f'Could not find the Barks Reader installer zip:\n\n[b]"{installer_zip}".[/b]'
     details = (
         f"The Barks Reader installer zip should be in the same"
@@ -275,6 +284,8 @@ def _handle_could_not_find_data_zip_error(installer_zip: Path) -> None:
 
 
 def _handle_installer_exception(exc_type, exc_value, exc_traceback) -> None:  # noqa: ANN001
+    _set_installer_failed_flag()
+
     handle_app_fail_with_traceback(
         _APP_TYPE,
         _APP_NAME,

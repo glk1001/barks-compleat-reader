@@ -3,10 +3,13 @@
 
 # Project-specific
 build/
-# Standalone executables produced by scripts/build.sh (Nuitka onefile output).
+# Standalone executables produced by scripts/build.sh (Nuitka output:
+# onefile binaries on Linux/Windows, zipped .app bundles on macOS).
 /barks-reader-linux
 /barks-reader-macos
 /barks-reader-macos-x64
+/barks-reader-macos.zip
+/barks-reader-macos-x64.zip
 /barks-reader-win.exe
 src/barks-reader/src/barks_reader/_version.py
 src/comic-utils/src/comic_utils/get_panel_bytes.py

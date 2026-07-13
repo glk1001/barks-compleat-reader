@@ -5,7 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 The Compleat Barks Disney Reader is a Kivy-based Python desktop application for browsing and
-reading the Fantagraphics Carl Barks comic library. It is packaged as a single-file executable via `pycrucible`.
+reading the Fantagraphics Carl Barks comic library. It is packaged as a standalone executable
+via Nuitka (`--mode=app`): a single-file onefile binary on Linux/Windows, a zipped `.app`
+bundle on macOS.
 
 ## Commands
 
@@ -121,7 +123,7 @@ All code lives under `src/`, split into four packages managed as a **uv workspac
 | `src/barks-build-comic-images/src` | `barks_build_comic_images` | Image building utilities |
 | `src/comic-utils/src` | `comic_utils` | Shared low-level utilities (image I/O, CV, timing, etc.) |
 
-Entry point: `main.py` (root). Run `uv sync` after cloning to install all workspace packages. Note: `pycrucible.toml` still sets `PYTHONPATH` for the bundled standalone executable's runtime — that is intentional and cannot be removed. pycrucible uses a flat archive internally, so multiple `pyproject.toml` files collide on the same name and cannot be bundled. `build.sh` works around this by temporarily stripping the `[tool.uv.workspace]`, `[tool.uv.sources]`, and workspace package entries from `pyproject.toml` before running pycrucible, then restoring it. The workspace editable installs do not exist in the bundled executable context, so PYTHONPATH is the only way to locate packages within the extracted source tree.
+Entry point: `main.py` (root). Run `uv sync` after cloning to install all workspace packages. The standalone build needs no special workspace handling: Nuitka compiles `main.py` from the synced workspace `.venv`, with each app package and its data pulled in explicitly via the `--include-package`/`--include-package-data`/`--include-data-dir` flags in `scripts/build.sh` (a new package or data dir must be added there).
 
 ### Import Layering
 
