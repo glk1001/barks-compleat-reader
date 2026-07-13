@@ -120,21 +120,30 @@ mkdir -p "${NUITKA_OUT_DIR}"
 # .env.runtime is intentionally NOT bundled (it holds secrets); a compiled build reads
 # neither it nor the *_CONFIG_DIR/*_DATA_DIR env vars (see config_info.IS_COMPILED).
 
-# The onefile extraction-dir spec only applies where --mode=app means onefile
-# (a macOS .app bundle is standalone-layout, and Nuitka warns on the unused option).
-ONEFILE_ARGS=()
-if [[ "${OS}" != "macos" ]]; then
-    ONEFILE_ARGS+=(--onefile-tempdir-spec="{CACHE_DIR}/BarksReader/{VERSION}")
+# Platform-specific Nuitka args. The onefile extraction-dir spec only applies where
+# --mode=app means onefile (a macOS .app bundle is standalone-layout, and Nuitka warns
+# on the unused option); the .app bundle wants a dock icon (Nuitka warns without one).
+PLATFORM_ARGS=()
+if [[ "${OS}" == "macos" ]]; then
+    PLATFORM_ARGS+=(--macos-app-icon="assets/app-icon.icns")
+else
+    PLATFORM_ARGS+=(--onefile-tempdir-spec="{CACHE_DIR}/BarksReader/{VERSION}")
 fi
+
+format_elapsed() {
+    printf '%dm%02ds' $(($1 / 60)) $(($1 % 60))
+}
 
 NUITKA_LOG=$(mktemp)
 trap 'rm -f "$NUITKA_LOG"' EXIT
+NUITKA_START=$SECONDS
 
+# (No kivy flags needed: the kivy plugin is always enabled, and Nuitka's built-in kivy
+# package config bundles the whole kivy/data dir - adding --include-package-data=kivy
+# would only produce duplicate-data-file warnings.)
 uv run python -m nuitka \
     --mode=app \
     --assume-yes-for-downloads \
-    --enable-plugin=kivy \
-    --include-package-data=kivy \
     --include-package-data=barks_reader \
     --include-package-data=barks_fantagraphics \
     --include-package-data=okf_reader \
@@ -153,11 +162,13 @@ uv run python -m nuitka \
     --output-folder-name="${EXE}" \
     --product-name="Barks Reader" \
     --product-version="${NUMERIC_VERSION}" \
-    "${ONEFILE_ARGS[@]}" \
+    "${PLATFORM_ARGS[@]}" \
     main.py 2>&1 | tee "$NUITKA_LOG" || {
     echo -e "${RED}ERROR: Nuitka build failed.${NC}"
     exit 1
 }
+
+echo -e "Nuitka build took $(format_elapsed $((SECONDS - NUITKA_START)))."
 
 # Nuitka reports some real packaging degradation as warnings while still exiting 0
 # (e.g. an --include-package-data name that no longer resolves, or an empty
@@ -171,8 +182,10 @@ fi
 # Move the finished artifact to the repo root (where CI uploads it from):
 # a single-file executable on Linux/Windows, a zipped .app bundle on macOS.
 if [[ "${OS}" == "macos" ]]; then
+    ZIP_START=$SECONDS
     ditto -c -k --keepParent "${NUITKA_OUT_DIR}/${EXE}.app" "./${EXE}.zip"
-    echo -e "App bundle written to \"./${EXE}.zip\"."
+    echo -e "App bundle written to \"./${EXE}.zip\"" \
+        "(zip took $(format_elapsed $((SECONDS - ZIP_START))))."
 else
     mv -f "${NUITKA_OUT_DIR}/${EXE}" "./${EXE}"
     echo -e "Executable written to \"./${EXE}\"."
@@ -181,12 +194,14 @@ fi
 if [[ $DO_ZIPS == 1 ]]; then
   echo
   echo -e "${YELLOW}Creating data zips \"${DATA1_ZIP}\" and \"${DATA2_ZIP}\"...${NC}"
+  DATA_ZIPS_START=$SECONDS
   rm -f "${DATA1_ZIP}" "${DATA2_ZIP}"
   THIS_DIR=${PWD}
   pushd "${DATA_FILES_PARENT_DIR}" >/dev/null
   zip -rq "${THIS_DIR}/${DATA1_ZIP}" "${DATA_FILES_SUBDIR}" "${CONFIG_FILES_SUBDIR}" -x "${DATA_FILES_SUBDIR}/Barks Panels.zip"
   zip -rq "${THIS_DIR}/${DATA2_ZIP}" "${DATA_FILES_SUBDIR}/Barks Panels.zip"
   popd >/dev/null
+  echo -e "Data zips took $(format_elapsed $((SECONDS - DATA_ZIPS_START)))."
   echo
 fi
 
