@@ -3,7 +3,7 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-07-10.
+Last updated: 2026-07-14.
 
 ---
 
@@ -113,6 +113,32 @@ Known limitation (intentional, not a reader fix): links under the bundle's
       support in the `WindowBackend` protocol (`schedule_restore` returning a
       cancel handle, incl. the Win32 backend). Cosmetic; surfaced by the
       2026-07-10 review pass.
+
+## macOS distribution (end-user friction — investigation)
+
+> Surfaced by the Nuitka migration (2026-07-14). The macOS build ships a zipped
+> `.app` (Nuitka `--mode=app`; onefile is impossible with pyobjc in the tree,
+> and the bundle is correct for a GUI app anyway). The current install flow
+> mirrors the Linux one — `.app` in its own folder, data zips beside it,
+> Gatekeeper "Open Anyway" — which works but is un-Mac-like. See the
+> "Installing the Standalone App on macOS" section of README.md for what users
+> currently endure. Priority order if smoothing this for strangers:
+
+- [ ] **Code-signing + notarization** — the single biggest friction remover:
+      kills the Gatekeeper "Open Anyway"/`xattr` step. Needs an Apple Developer
+      ID (~US$99/yr) plus `codesign` + `notarytool` steps in `scripts/build.sh`
+      / CI. Independent of everything else.
+- [ ] **Mac-native data locations + prompting installer** — anchor compiled-mode
+      config/data in `~/Library/Application Support/barks-reader` instead of
+      beside the `.app` (macOS branch of `get_app_exe_dir()` /
+      `ConfigInfo._get_user_app_config_dir`), and have the first-run installer
+      *prompt* for the data zips (or check `~/Downloads`) rather than requiring
+      them pre-placed. Lets the `.app` live in `/Applications` like a normal
+      app. The only item that touches app code; keep Linux/Windows behavior
+      unchanged.
+- [ ] **DMG packaging** — `hdiutil` in build.sh to produce the familiar
+      drag-to-Applications disk image instead of a bare zip. Cosmetic; a few
+      lines in CI; lowest priority.
 
 ## Architecture / testability
 

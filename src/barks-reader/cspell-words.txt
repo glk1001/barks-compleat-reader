@@ -11,8 +11,10 @@ bolditalic
 borderless
 boxlayout
 btns
+codesign
 defaultvalue
 dirselect
+dmg
 etype
 filechooser
 floatlayout
@@ -26,6 +28,7 @@ labellayout
 longpath
 modalview
 nonbody
+notarytool
 nuitka
 onefile
 overscroll
@@ -48,3 +51,4 @@ usefixtures
 vkeyboard
 winfunctype
 wmod
+xattr

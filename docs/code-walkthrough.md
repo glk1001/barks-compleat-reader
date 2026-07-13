@@ -33,9 +33,10 @@ you need to know.
 ## 1. Orientation
 
 The Compleat Barks Reader is a **Kivy desktop app** for browsing and reading the
-Fantagraphics *Carl Barks Library* of Disney comics. It ships as a single-file
-executable via `pycrucible`, but for development it's a `uv` workspace of four
-Python packages (`src/…`):
+Fantagraphics *Carl Barks Library* of Disney comics. It ships as a standalone
+executable built by Nuitka (`--mode=app` in `scripts/build.sh`: a single-file
+onefile binary on Linux/Windows, a zipped `.app` bundle on macOS), but for
+development it's a `uv` workspace of four Python packages (`src/…`):
 
 | Package | Role |
 |---|---|
@@ -134,9 +135,13 @@ Numbered, in the order it actually happens:
    (`main.py:58–73`) and `threading.excepthook = handle_thread_exception`
    (`main.py:76–86`) route any crash — main thread or background thread — to a
    full-screen error renderer.
-5. **`__main__` runs** (`main.py:312`): `ok_to_run()` checks an
-   installer-failed flag file; `reset_python_gc()` raises the GC thresholds
-   (a real startup speedup, `main.py:279`); then Typer dispatches to `main()`.
+5. **`__main__` runs** (`main.py:348`). In a compiled (Nuitka) build it first
+   handles the `--run-first-run-installer` re-exec sentinel (`main.py:281`) and,
+   on a first run, blocks in `maybe_run_first_run_installer()` (`main.py:284`)
+   while an isolated subprocess unpacks the data zips — a failed install aborts
+   the launch. Then `ok_to_run()` checks the installer-failed flag file;
+   `reset_python_gc()` raises the GC thresholds (a real startup speedup); and
+   Typer dispatches to `main()`.
 6. **`main()` executes** (`main.py:290`). It builds `ConfigInfo()` (which sets
    `KIVY_HOME`, `core/config_info.py:118–120`), reads a lightweight
    `MinimalConfigOptions` from the ini *before* Kivy is up
@@ -185,10 +190,13 @@ Numbered, in the order it actually happens:
   work is driven entirely by `Clock.schedule_once` deferrals. Only `on_stop` is
   overridden (`ui/barks_reader_app.py:144`), to save the wiki resume point on
   quit.
-- **pycrucible affects path resolution.** `ConfigInfo` detects whether it's
-  running inside a pycrucible payload (`core/config_info.py:84`); in a plain dev
-  run it instead requires `BARKS_READER_CONFIG_DIR` / `BARKS_READER_DATA_DIR`
-  env vars, loaded from `.env.runtime` (`main.py:52`).
+- **Compiled-vs-dev affects path resolution.** `IS_COMPILED`
+  (`core/config_info.py:17` — Nuitka defines `__compiled__` in every module it
+  compiles) selects the strategy: a compiled build anchors config/data/installer
+  zips on the executable's directory via `get_app_exe_dir()`
+  (`core/config_info.py:78`; on macOS that's the directory *beside* the `.app`
+  bundle). A plain dev run instead requires `BARKS_READER_CONFIG_DIR` /
+  `BARKS_READER_DATA_DIR` env vars, loaded from `.env.runtime` (`main.py:52`).
 - **Fonts are bimodal.** `FontManager.update_font_sizes` switches between a
   low-res and hi-res font theme at a window-height cutoff of 1090px
   (`ui/font_manager.py:188`), and no-ops otherwise — so resize-driven font
@@ -540,8 +548,10 @@ page via `ComicBookImageBuilder.get_dest_page_image` → `resize_contain` (LANCZ
 → encode an **uncompressed** PNG (`compress_level=0`, for speed).
 
 **Decryption is the load-bearing subtlety** (and the subject of recent bug
-fixes). The decryptor is a *compiled Cython module*
-(`comic_utils/get_panel_bytes...so`) that **returns empty bytes to any caller not
+fixes). The decryptor is a *generated module* (`comic_utils/get_panel_bytes.py`,
+emitted by `scripts/generate-panel-module.sh` with an XOR-masked key; in a
+standalone build Nuitka compiles it to native code, so neither the key nor the
+logic ships as readable source) that **returns empty bytes to any caller not
 on its allow-list**. Only two modules may reach it:
 `comic_utils.pil_image_utils.load_pil_image_from_zip` and this repo's
 `barks_reader.core.panel_image_loader`. Notably, `core/image_pipeline.py` is
@@ -816,7 +826,7 @@ previous main-screen view.
 Any main-screen render asks `ImageSelector.get_random_image` (§5.4) for a panel
 file → `SnapshotApplicator` hands it to a `PanelTextureLoader` →
 `PanelImageLoader._worker` reads it on a daemon thread through the **allow-listed**
-`load_panel_pil` (§6.2), which is permitted to call the Cython decryptor → the
+`load_panel_pil` (§6.2), which is permitted to call the panel decryptor → the
 decrypted PIL image is marshaled back via the `Scheduler` port (§5.5 step 3) →
 uploaded to a texture on the UI thread. If a caller *not* on the allow-list (like
 the old wiki provider) tries the same, the decryptor returns empty bytes and the

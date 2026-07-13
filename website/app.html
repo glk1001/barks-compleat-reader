@@ -754,26 +754,25 @@
             <div class="quick-start">
                 <h3>Quick Start</h3>
                 <ol>
-                    <li>Download the executable and both data zip files from the
+                    <li>Download the executable (on macOS: the zipped app bundle) and both data zip
+                        files from the
                         <a href="#" onclick="openTab(event, 'download'); return false;"
                            style="color: #667eea; font-weight: 600;">Download tab</a></li>
                     <li>Move all three files to a folder where you have write permissions
                         (<strong>NOT <em>"C:\Program Files"</em> or <em>"/Applications"</em></strong>)</li>
-                    <li>Make the executable runnable (macOS/Linux: <code>chmod +x</code>)</li>
+                    <li>Make the executable runnable (Linux: <code>chmod +x</code>; macOS: unzip to
+                        get the <code>.app</code>)</li>
                     <li>Run the executable &mdash; first launch will handle the rest</li>
                 </ol>
             </div>
 
             <div class="first-launch-note">
                 <h4>First Launch &mdash; Please Be Patient</h4>
-                <p style="color: #b45309; font-weight: bold; margin-bottom: 10px;">⚠️ An active internet connection is
-                    strictly required for the first launch so the app can download its required Python dependencies.</p>
-                <p>Depending on the speed of your machine and your internet connection, the first launch may take
-                    a few minutes. On Windows, you will see a black console screen at first (where all logging will
-                    go). On macOS/Linux, you can launch from a terminal to see logging.
-                    Once the executable has self-extracted you will start to see activity. It may still take a while
-                    to unzip the supporting data packs. Once these are done (and providing there are no errors) you
-                    will get a welcome screen popup where you can press OK to launch the reader app.
+                <p>The app is fully self-contained &mdash; no internet connection is needed to install
+                    or run it. Depending on the speed of your machine, the first launch may take a
+                    minute or two: the executable self-extracts, then unzips the supporting data
+                    packs. Once these are done (and providing there are no errors) you will get a
+                    welcome screen popup &mdash; press OK and the reader app will start.
                     Subsequent app launches should be fairly quick.</p>
             </div>
 
@@ -872,9 +871,6 @@
                     <h4>Step 6: On First Launch</h4>
                     <p>When the application is first launched it will do further installation steps:</p>
                     <ul>
-                        <li>It will run the astral python package manager <strong>'uv'</strong> to download and install
-                            python packages required by the app,
-                        </li>
                         <li>It will unzip <strong>"barks-reader-data-1.zip"</strong> and
                             <strong>"barks-reader-data-2.zip"</strong> and copy their contents
                             to <strong>"C:\Users\YourUsername\BarksReader\Reader Files",</strong></li>
@@ -911,22 +907,27 @@
                         Download the latest macOS release from the Download tab or directly from GitHub Releases.
                         The files to download are:</p>
                     <ul>
-                        <li><strong>"barks-reader-macos"</strong></li>
+                        <li><strong>"barks-reader-macos.zip"</strong> (Apple Silicon Macs) or
+                            <strong>"barks-reader-macos-x64.zip"</strong> (Intel Macs)</li>
                         <li><strong>"barks-reader-data-1.zip"</strong></li>
                         <li><strong>"barks-reader-data-2.zip"</strong></li>
                     </ul>
                 </div>
 
                 <div class="install-step">
-                    <h4>Step 2: Move the Downloaded Files</h4>
-                    <p>Move the executable and data files to a user-writable location such as:</p>
+                    <h4>Step 2: Unzip the App and Move the Files</h4>
+                    <p>Double-click <strong>"barks-reader-macos.zip"</strong> in Finder to unzip it &mdash; you get
+                        the app bundle <strong>"barks-reader-macos.app"</strong>. (Do NOT unzip the two data zips
+                        &mdash; the app does that itself.)</p>
+                    <p>Move the <strong>.app</strong> and the two data zips into the same user-writable folder,
+                        such as:</p>
                     <ul>
                         <li><strong>"~/Applications/BarksReader"</strong> (create folder if it doesn't exist)</li>
                         <li><strong>"~/BarksReader"</strong></li>
                         <li><strong>"~/Documents"</strong></li>
                     </ul>
-                    <p>Do NOT extract to "/Applications" &mdash; the app needs write permissions.
-                        You may need to run: chmod +x barks-reader-macOS</p>
+                    <p>Do NOT put it in "/Applications" &mdash; the app installs its data and configuration into
+                        the folder <em>beside</em> the app bundle, so it needs write permissions there.</p>
                     <p>The following steps assume you've chosen <strong>"~/Applications/BarksReader"</strong>
                         as the Barks reader app directory.
                     </p>
@@ -934,9 +935,16 @@
 
                 <div class="install-step">
                     <h4>Step 3: Grant Permissions</h4>
-                    <p>Right-click (or Control-click) the application and select "Open" to bypass Gatekeeper on first
-                        run.</p>
-                    <p>You may need to go to System Preferences → Security & Privacy and click "Open Anyway".</p>
+                    <p>The app is not code-signed, so macOS quarantines the downloaded copy and will refuse to open
+                        it at first. Either:</p>
+                    <ul>
+                        <li>Try to open the app once, then go to <strong>System Settings → Privacy &
+                            Security</strong>, scroll down, and click <strong>"Open Anyway"</strong> (this is the
+                            required route on macOS 15 and newer, where right-click → Open no longer works for
+                            unsigned apps); or</li>
+                        <li>Remove the quarantine flag in Terminal:
+                            <code>xattr -dr com.apple.quarantine ~/Applications/BarksReader/barks-reader-macos.app</code></li>
+                    </ul>
                 </div>
 
                 <div class="install-step">
@@ -986,17 +994,14 @@
 
                 <div class="install-step">
                     <h4>Step 6: Run the Application</h4>
-                    <p>After granting permissions, the application will launch normally. Future launches can be done by
-                        double-clicking.</p>
+                    <p>After granting permissions, double-click <strong>"barks-reader-macos.app"</strong> and the
+                        application will launch normally. Future launches can be done by double-clicking.</p>
                 </div>
 
                 <div class="install-step">
                     <h4>Step 7: On First Launch</h4>
                     <p>When the application is first launched it will do further installation steps:</p>
                     <ul>
-                        <li>It will run the astral python package manager <strong>'uv'</strong> to download and install
-                            python packages required by the app
-                        </li>
                         <li>It will unzip <strong>"barks-reader-data-1.zip"</strong> and
                             <strong>"barks-reader-data-2.zip"</strong> and copy their contents
                             to <strong>"~/Applications/BarksReader/Reader Files"</strong></li>
@@ -1102,8 +1107,9 @@
                     <h4>Step 5: Run the Application</h4>
                     <p>Run the executable <strong>"~/opt/barks-reader/barks-reader-linux"</strong> either from a file
                         explorer or a terminal.</p>
-                    <p>Or create a desktop shortcut by creating a .desktop file in
-                        <strong>"~/.local/share/applications/"</strong>
+                    <p>On launch the app automatically installs a menu entry (a .desktop file in
+                        <strong>"~/.local/share/applications/"</strong>), so after the first run you can start it
+                        from your desktop's application menu or dock.
                     </p>
                 </div>
 
@@ -1111,9 +1117,6 @@
                     <h4>Step 6: On First Launch</h4>
                     <p>When the application is first launched it will do further installation steps:</p>
                     <ul>
-                        <li>It will run the astral python package manager <strong>'uv'</strong> to download and install
-                            python packages required by the app
-                        </li>
                         <li>It will unzip <strong>"barks-reader-data-1.zip"</strong> and
                             <strong>"barks-reader-data-2.zip"</strong> and copy their contents
                             to <strong>"~/opt/barks-reader/Reader Files/"</strong></li>
@@ -1154,7 +1157,7 @@
                 </tr>
                 <tr>
                     <td>Operating System</td>
-                    <td>Windows 10/11, macOS 10.15+, or Linux (Ubuntu 20.04+, similar)</td>
+                    <td>Windows 10/11, macOS 12+, or Linux (Ubuntu 20.04+, similar)</td>
                 </tr>
                 <tr>
                     <td>Processor</td>
@@ -1212,8 +1215,8 @@
 
             <h3>Additional Notes</h3>
             <ul>
-                <li>Internet connection required for initial setup and updates.</li>
-                <li>Some features may require additional libraries (automatically installed).</li>
+                <li>No internet connection is needed to install or run the app &mdash; it is fully
+                    self-contained (you only need one to download it).</li>
                 <li>You must supply your own DRM-free comic zips for the <strong><em>Fantagraphics Complete Carl Barks
                     Disney Library.</em></strong></li>
                 <li>Performance is hard to gauge accurately. But for example, the app works very well with Ubuntu
@@ -1236,9 +1239,8 @@
                 <div class="solution">
                     <p><strong>Solutions:</strong></p>
                     <ul>
-                        <li>Because the app downloads required Python packages via <code>uv</code> on its first run,
-                            some Antivirus software (or Windows SmartScreen) may flag it as suspicious. This is a
-                            false positive.</li>
+                        <li>Because the app is an unsigned, self-extracting executable, some Antivirus software
+                            (or Windows SmartScreen) may flag it as suspicious. This is a false positive.</li>
                         <li>In Windows SmartScreen, click "More info" and then "Run anyway".</li>
                         <li>If your Antivirus removes the executable, you may need to add an exception or exclusion
                             for your BarksReader installation folder.</li>
@@ -1269,9 +1271,12 @@
                 <div class="solution">
                     <p><strong>Solutions:</strong></p>
                     <ul>
-                        <li>Right-click the app and select "Open" instead of double-clicking</li>
-                        <li>Go to System Preferences → Security & Privacy → Click "Open Anyway"</li>
-                        <li>If still blocked, run in Terminal: <code>xattr -cr /path/to/MyApp.app</code></li>
+                        <li>Try to open the app once, then go to System Settings → Privacy & Security and click
+                            "Open Anyway" (required on macOS 15+, where right-click → Open no longer works for
+                            unsigned apps)</li>
+                        <li>On older macOS versions, right-clicking the app and selecting "Open" may be enough</li>
+                        <li>If still blocked, run in Terminal:
+                            <code>xattr -dr com.apple.quarantine /path/to/barks-reader-macos.app</code></li>
                     </ul>
                 </div>
             </div>
@@ -1391,11 +1396,20 @@
                 },
                 {
                     id: 'download-macos',
-                    name: 'macOS',
+                    name: 'macOS (Apple Silicon)',
                     icon: '🍎',
-                    executable: 'barks-reader-macos',
-                    description: 'Executable file for macOS 10.15+',
-                    note: 'You need to download the executable AND both data packs. Move them to the directory where you want the executable to live.',
+                    executable: 'barks-reader-macos.zip',
+                    description: 'Zipped app bundle for Apple Silicon Macs (macOS 12+)',
+                    note: 'You need to download the app zip AND both data packs. Unzip the app zip (only) and move the .app and the two data packs to the folder where you want the app to live.',
+                    extraInstructions: null
+                },
+                {
+                    id: 'download-macos-x64',
+                    name: 'macOS (Intel)',
+                    icon: '🍎',
+                    executable: 'barks-reader-macos-x64.zip',
+                    description: 'Zipped app bundle for Intel Macs (macOS 12+)',
+                    note: 'You need to download the app zip AND both data packs. Unzip the app zip (only) and move the .app and the two data packs to the folder where you want the app to live.',
                     extraInstructions: null
                 },
                 {

@@ -110,6 +110,31 @@ just reader
    ('barks-reader-linux') and Windows ('barks-reader-win.exe'), and a zipped `.app` bundle on
    macOS ('barks-reader-macos.zip' or 'barks-reader-macos-x64.zip', depending on architecture).
 
+## Installing the Standalone App on macOS
+
+Use 'barks-reader-macos.zip' on Apple Silicon Macs and 'barks-reader-macos-x64.zip' on Intel
+Macs.
+
+1. Unzip the download (double-click in Finder). You get `barks-reader-macos.app`. (Note: a zip
+   downloaded from a GitHub Actions run's artifacts page is wrapped in an extra zip layer, so
+   you may need to unzip twice; a file attached to a GitHub Release comes as-is.)
+1. Put the `.app` in **its own folder** (e.g. `~/BarksReader/`), not straight into
+   `/Applications`. The first-run installer looks for the data zips *beside the bundle*, and
+   also writes its `config/` directory, install log, and data there.
+1. Place `barks-reader-data-1.zip` and `barks-reader-data-2.zip` in that same folder, next to
+   the `.app`.
+1. Clear Gatekeeper — the app is unsigned, so a downloaded copy is quarantined and macOS will
+   refuse to open it. Either:
+    - try to open it once, then go to **System Settings → Privacy & Security**, scroll down
+      and click **"Open Anyway"** (required on macOS 15+, where right-click → Open no longer
+      works for unsigned apps); or
+    - remove the quarantine flag in Terminal:
+      ```
+      xattr -dr com.apple.quarantine ~/BarksReader/barks-reader-macos.app
+      ```
+1. Launch the app. The first run unpacks the data zips, writes the config, and shows a
+   success popup; subsequent launches go straight to the reader. If the install fails, the
+   log is written beside the `.app` as `barks-reader-installer-<timestamp>.log`.
 
 ## Deployment
 1. Goto 'Releases' on github (https://github.com/glk1001/barks-compleat-reader/releases/tag/v1.0.0) and edit the release:
