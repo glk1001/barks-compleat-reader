@@ -108,10 +108,14 @@ jobs:
           # The key must be unique per run: actions/cache never re-saves on an exact
           # primary-key hit, and the Nuitka/ccache object cache changes with every
           # source change. restore-keys provides the nearest previous cache.
-          key: nuitka-${{ runner.os }}-${{ hashFiles('uv.lock') }}-${{ github.run_id }}
+          # runner.arch is in the key because runner.os alone is "macOS" for BOTH mac
+          # legs - they would race for one key per run (loser's save is rejected) and
+          # cross-restore each other's useless wrong-architecture object caches.
+          key: nuitka-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('uv.lock') }}-${{ github.run_id }}
           restore-keys: |
+            nuitka-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('uv.lock') }}-
+            nuitka-${{ runner.os }}-${{ runner.arch }}-
             nuitka-${{ runner.os }}-${{ hashFiles('uv.lock') }}-
-            nuitka-${{ runner.os }}-
 
       - name: Build executable
         shell: bash
