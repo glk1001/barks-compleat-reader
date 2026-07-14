@@ -82,6 +82,8 @@ def wiki_top_bar_spec(
         title_color=ACTION_BAR_TITLE_COLOR,
         icon_path=sys_paths.get_barks_reader_app_window_icon_path(),
         back_icon_path=sys_paths.get_barks_reader_go_back_icon_file(),
+        contrast_on_icon_path=sys_paths.get_barks_reader_contrast_on_icon_file(),
+        contrast_off_icon_path=sys_paths.get_barks_reader_contrast_off_icon_file(),
         close_icon_path=sys_paths.get_barks_reader_close_icon_file(),
         height=RAW_ACTION_BAR_SIZE_Y,
         on_close=on_close,

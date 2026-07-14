@@ -19,10 +19,15 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class PageAction:
-    """One offered action: a button label and the callable it triggers."""
+    """One offered action: a button label and the callable it triggers.
+
+    ``icon_path`` renders the bar button as an icon instead of the label
+    (the label still names the action for non-visual uses).
+    """
 
     label: str
     run: Callable[[], None]
+    icon_path: Path | None = None
 
 
 class PageActionProvider(Protocol):

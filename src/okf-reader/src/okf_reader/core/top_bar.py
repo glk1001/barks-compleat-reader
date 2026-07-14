@@ -27,7 +27,11 @@ class TopBarSpec:
     Back and Quit buttons into icon buttons; without them they stay text
     buttons. Quit matters because the standalone app replaces the OS window
     titlebar with this bar (the Barks Reader convention), so the bar carries
-    the only close control.
+    the only close control. The ``contrast_*`` pair (both or neither) likewise
+    turns the Contrast toggle into an icon button: the "on" icon shows while
+    the toggle is up, the "off" icon while it is down — each depicts what
+    pressing will do. (A page action's icon rides on ``PageAction`` instead;
+    the bar only hosts that button.)
 
     ``on_close`` is what the Quit button does: the standalone app leaves it
     None (the viewer falls back to stopping the running app); an embedding
@@ -45,6 +49,8 @@ class TopBarSpec:
     title_color: tuple[float, float, float, float] = (1, 1, 1, 1)
     icon_path: Path | None = None
     back_icon_path: Path | None = None
+    contrast_on_icon_path: Path | None = None
+    contrast_off_icon_path: Path | None = None
     close_icon_path: Path | None = None
     height: int = 40
     on_close: Callable[[], None] | None = None

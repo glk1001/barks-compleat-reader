@@ -22,7 +22,7 @@ from kivy.core.image import Image as CoreImage
 from kivy.effects.scroll import ScrollEffect
 from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivy.metrics import dp
-from kivy.uix.actionbar import ActionButton
+from kivy.uix.actionbar import ActionButton, ActionToggleButton
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
@@ -135,6 +135,24 @@ SEARCH_CLEAR_GLYPH_COLOR = (0.9, 0.9, 0.9, 1)  # light glyph on the dark (tinted
 # kept up (to open several pages in a row) it shows which one you are reading.
 SEARCH_RESULT_ACTIVE_COLOR = TREE_SELECTED_COLOR
 SEARCH_RESULT_INACTIVE_COLOR = (0, 0, 0, 0)
+
+
+class _IconToggleButton(ActionToggleButton):
+    """An icon bar button that holds its down state, swapping icons with it.
+
+    The kv ActionButton style supplies the fixed dp(48) icon-button width and
+    the pressed background (the same rendering as the bar's Back/Quit buttons);
+    the icon pair shows what pressing will do — ``on_icon`` while up, ``off_icon``
+    while down.
+    """
+
+    def __init__(self, on_icon: str, off_icon: str, **kwargs) -> None:  # noqa: ANN003
+        self._on_icon = on_icon
+        self._off_icon = off_icon
+        super().__init__(icon=on_icon, mipmap=True, **kwargs)
+
+    def on_state(self, _widget: Widget, value: str) -> None:
+        self.icon = self._off_icon if value == "down" else self._on_icon
 
 
 def _add_text_backing(widget, alpha: float) -> Color:  # noqa: ANN001
@@ -433,7 +451,7 @@ class OKFViewer(RelativeLayout):
         """Build the action-bar strip: app icon, markup heading, right-edge buttons.
 
         A Python rendition of the Barks Reader's kv action-bar idiom. Creates
-        ``back_btn``, ``contrast_btn`` and ``action_btn`` as it goes.
+        ``back_btn``, ``contrast_btn`` and the page-action slot as it goes.
         """
         bar = BoxLayout(
             orientation="horizontal",
@@ -478,16 +496,27 @@ class OKFViewer(RelativeLayout):
             self.back_btn = Button(text="< Back", size_hint_x=None, width=dp(90), disabled=True)
         self.back_btn.bind(on_release=lambda *_: self.go_back())
         bar.add_widget(self.back_btn)
+
         # Dials the section bands from their subtle default up to near-opaque
         # (BLOCK_BG_CONTRAST_ALPHA) when the background image fights the text.
-        self.contrast_btn = ToggleButton(text="Contrast", size_hint_x=None, width=dp(90))
+        if spec.contrast_on_icon_path is None:
+            self.contrast_btn = ToggleButton(text="Contrast", size_hint_x=None, width=dp(90))
+        else:
+            assert spec.contrast_off_icon_path is not None
+            self.contrast_btn = _IconToggleButton(
+                str(spec.contrast_on_icon_path), str(spec.contrast_off_icon_path)
+            )
         self.contrast_btn.bind(state=lambda *_: self._apply_band_alpha())
         bar.add_widget(self.contrast_btn)
-        # The page's contextual action (see PageActionProvider), hidden until a
-        # page offers one.
-        self.action_btn = Button(size_hint_x=None, width=0, opacity=0, disabled=True)
-        self.action_btn.bind(on_release=lambda *_: self._run_page_action())
-        bar.add_widget(self.action_btn)
+
+        # The page's contextual action (see PageActionProvider): an empty
+        # fixed-width slot until a page offers one — _set_page_action fills it
+        # with a text or icon button (the two render too differently to
+        # restyle one persistent widget).
+        self.action_btn: Button | None = None
+        self._action_slot = AnchorLayout(size_hint_x=None, width=0)
+        bar.add_widget(self._action_slot)
+
         # The exit control sits alone in the window corner (with the OS titlebar
         # replaced by this bar, it is the window's only close control), fenced
         # off by a separator so an overshoot on the working buttons can't kill
@@ -497,6 +526,7 @@ class OKFViewer(RelativeLayout):
             quit_btn = ActionButton(icon=str(spec.close_icon_path), mipmap=True)
         else:
             quit_btn = Button(text="Quit", size_hint_x=None, width=dp(70))
+
         # The embedding app's leave-this-screen action, else stop the app (the
         # standalone case, where this bar carries the window's only close control).
         on_close = spec.on_close or (lambda: App.get_running_app().stop())
@@ -822,15 +852,21 @@ class OKFViewer(RelativeLayout):
     def _set_page_action(self, action: PageAction | None) -> None:
         """Show the contextual bar button for ``action``, or hide it for None."""
         self._page_action = action
+        self._action_slot.clear_widgets()
         if action is None:
-            self.action_btn.width = 0
-            self.action_btn.opacity = 0
-            self.action_btn.disabled = True
+            self.action_btn = None
+            self._action_slot.width = 0
+            return
+        if action.icon_path is not None:
+            # The kv ActionButton style pins an icon button at dp(48) wide.
+            self.action_btn = ActionButton(icon=str(action.icon_path), mipmap=True)
         else:
-            self.action_btn.text = action.label
-            self.action_btn.width = dp(120)
-            self.action_btn.opacity = 1
-            self.action_btn.disabled = False
+            self.action_btn = Button(text=action.label, size_hint_x=None, width=dp(120))
+        self.action_btn.bind(on_release=lambda *_: self._run_page_action())
+        self._action_slot.add_widget(self.action_btn)
+        # Keep the slot tracking the button (the icon style computes its own width).
+        self.action_btn.bind(width=self._action_slot.setter("width"))
+        self._action_slot.width = self.action_btn.width
 
     def _run_page_action(self) -> None:
         if self._page_action is not None:

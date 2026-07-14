@@ -29,6 +29,9 @@ class SystemFilePaths:
         self._goto_icon_path: Path | None = None
         self._goto_start_icon_path: Path | None = None
         self._goto_end_icon_path: Path | None = None
+        self._contrast_on_icon_path: Path | None = None
+        self._contrast_off_icon_path: Path | None = None
+        self._goto_title_icon_path: Path | None = None
         self._hamburger_menu_icon_path: Path | None = None
 
         self._speech_bubble_icon_path: Path | None = None
@@ -76,6 +79,9 @@ class SystemFilePaths:
         self._goto_icon_path = action_bar_icons_dir / "icon-goto.png"
         self._goto_start_icon_path = action_bar_icons_dir / "icon-goto-start.png"
         self._goto_end_icon_path = action_bar_icons_dir / "icon-goto-end.png"
+        self._contrast_on_icon_path = action_bar_icons_dir / "icon-contrast-on.png"
+        self._contrast_off_icon_path = action_bar_icons_dir / "icon-contrast-off.png"
+        self._goto_title_icon_path = action_bar_icons_dir / "icon-goto-title.png"
         self._hamburger_menu_icon_path = action_bar_icons_dir / "menu-hamburger-icon.png"
 
         self._speech_bubble_icon_path = various_files_dir / "speech-bubble-icon.png"
@@ -132,6 +138,9 @@ class SystemFilePaths:
             self._goto_icon_path,
             self._goto_start_icon_path,
             self._goto_end_icon_path,
+            self._contrast_on_icon_path,
+            self._contrast_off_icon_path,
+            self._goto_title_icon_path,
             self._hamburger_menu_icon_path,
             self._go_back_icon_path,
             self._speech_bubble_icon_path,
@@ -256,6 +265,18 @@ class SystemFilePaths:
     def get_barks_reader_goto_icon_file(self) -> Path:
         assert self._goto_icon_path
         return self._goto_icon_path
+
+    def get_barks_reader_contrast_on_icon_file(self) -> Path:
+        assert self._contrast_on_icon_path
+        return self._contrast_on_icon_path
+
+    def get_barks_reader_contrast_off_icon_file(self) -> Path:
+        assert self._contrast_off_icon_path
+        return self._contrast_off_icon_path
+
+    def get_barks_reader_goto_title_icon_file(self) -> Path:
+        assert self._goto_title_icon_path
+        return self._goto_title_icon_path
 
     def get_barks_reader_goto_start_icon_file(self) -> Path:
         assert self._goto_start_icon_path

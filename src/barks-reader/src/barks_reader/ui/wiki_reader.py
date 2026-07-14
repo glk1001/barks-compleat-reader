@@ -80,17 +80,21 @@ class _GotoTitleActionProvider:
     the main tree (`tree_navigable_title` — Extras articles are excluded; they
     have no chronological position to navigate to). Running the action hands
     the title to ``goto_title`` (the wiki screen's close-and-navigate handler).
+    ``icon_path`` renders the bar button as an icon instead of the label.
     """
 
-    def __init__(self, goto_title: Callable[[Titles], None]) -> None:
+    def __init__(self, goto_title: Callable[[Titles], None], icon_path: Path | None = None) -> None:
         self._goto_title = goto_title
+        self._icon_path = icon_path
 
     def action_for(self, frontmatter: dict[str, Any], page_path: Path) -> PageAction | None:
         """Return the "Goto Title" action for a navigable story page, else None."""
         title_enum = tree_navigable_title(frontmatter, page_path)
         if title_enum is None:
             return None
-        return PageAction("Goto Title", lambda: self._goto_title(title_enum))
+        return PageAction(
+            "Goto Title", lambda: self._goto_title(title_enum), icon_path=self._icon_path
+        )
 
 
 class WikiReaderScreen(ReaderScreen):
@@ -267,7 +271,10 @@ class WikiReaderScreen(ReaderScreen):
             start_page=start_page,
             image_provider=BarksPanelsImageProvider(self._reader_settings, self._image_selector),
             table_rewriter=BarksTableRewriter(),
-            action_provider=_GotoTitleActionProvider(self._goto_title),
+            action_provider=_GotoTitleActionProvider(
+                self._goto_title,
+                self._reader_settings.sys_file_paths.get_barks_reader_goto_title_icon_file(),
+            ),
             top_bar=wiki_top_bar_spec(
                 self._font_manager, self._reader_settings.sys_file_paths, on_close=self.close
             ),
