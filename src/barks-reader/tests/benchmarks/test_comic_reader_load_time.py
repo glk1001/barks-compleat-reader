@@ -18,6 +18,7 @@ from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.comics_utils import get_dest_comic_zip_file_stem
 from barks_reader.core.comic_book_page_info import PageInfo
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
+from barks_reader.core.testing import FakeScheduler
 from barks_reader.ui.comic_book_reader import ComicBookReader
 from kivy.uix.floatlayout import FloatLayout
 from loguru import logger
@@ -183,6 +184,10 @@ class TestComicReaderLoadTime:
             patch.object(barks_reader.ui.comic_book_reader, "get_monitors") as mock_monitors,
             patch.object(FloatLayout, "add_widget"),
             patch.object(barks_reader.ui.comic_book_reader, "Clock") as mock_reader_clock,
+            # The loader signals first/all-images-loaded via its injected Scheduler port
+            # (normally KivyClockScheduler -> kivy Clock, which never ticks without an
+            # event loop). FakeScheduler runs the callbacks inline on the loader thread.
+            patch.object(barks_reader.ui.comic_book_reader, "KivyClockScheduler", FakeScheduler),
             patch.object(Path, "open", new_callable=MagicMock) as mock_open,
         ):
             mock_monitors.return_value = [MagicMock(width=1920, height=1080)]
@@ -193,8 +198,12 @@ class TestComicReaderLoadTime:
             mock_file.read.return_value = b"empty_bytes"
             mock_open.return_value.__enter__.return_value = mock_file
 
-            reader = ComicBookReader(settings, font_manager, on_first_loaded, on_toggle)
+            reader = ComicBookReader(settings, font_manager, MagicMock(), on_toggle)
 
+            # Hook the loader's own load signals. The reader's on_comic_is_ready_to_read
+            # callback fires synchronously inside read_comic, before any image has
+            # loaded, so it cannot measure first-image latency.
+            reader._comic_book_loader._on_first_image_loaded = on_first_loaded
             reader._comic_book_loader._on_all_images_loaded = on_all_loaded
 
             with (
