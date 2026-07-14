@@ -395,7 +395,6 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     Tags.ARABIAN_PENINSULA: [
         Titles.MINES_OF_KING_SOLOMON_THE,
         Titles.MONEY_CHAMP_THE,
-        Titles.CAVE_OF_ALI_BABA,
         Titles.MCDUCK_OF_ARABIA,
     ],
     Tags.ARCTIC_OCEAN: [Titles.LUCK_OF_THE_NORTH],
@@ -1034,7 +1033,10 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     Tags.OXYGEN: [Titles.GOLDEN_HELMET_THE, Titles.TRALLA_LA, Titles.LAND_OF_THE_PYGMY_INDIANS],
     Tags.PAKISTAN: [Titles.LOST_CROWN_OF_GENGHIS_KHAN_THE],
     Tags.PEEWEEGAH_INDIANS: [Titles.LAND_OF_THE_PYGMY_INDIANS],
-    Tags.PERSIA: [Titles.IN_ANCIENT_PERSIA],
+    Tags.PERSIA: [
+        Titles.IN_ANCIENT_PERSIA,
+        Titles.CAVE_OF_ALI_BABA,
+    ],
     Tags.PERU: [Titles.LOST_IN_THE_ANDES],
     Tags.PETER_SCHILLING_FAVOURITES: [
         # This list of the Barks stories covered in Peter Schilling's book:
