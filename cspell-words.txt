@@ -37,7 +37,9 @@ dotenv
 edgecolor
 errmsg
 excepthook
+excepthooks
 executemany
+façade
 facecolor
 favourite
 favourites
@@ -48,6 +50,7 @@ fontsize
 fontstyle
 fontweight
 frontmatter
+frozensets
 getpid
 getpixel
 graphify
@@ -76,6 +79,7 @@ mdit
 mktime
 modifyitems
 monkeypatched
+monkeypatches
 motionevent
 mtdev
 nonexistentword
@@ -106,6 +110,7 @@ separator
 softbreak
 splittable
 srce
+stdlib
 strerror
 summarising
 sunos

@@ -57,6 +57,11 @@ uv run lint-imports
 bunx cspell
 ```
 
+**Run all lint/static checks plus benchmarks (ruff check+format, ty, import-linter, relative imports, cspell, benchmark compare):**
+```bash
+bash scripts/full-lint.sh
+```
+
 **Check only uncommitted files (ruff/ty/cspell):**
 ```bash
 bash scripts/git-ruff.sh
