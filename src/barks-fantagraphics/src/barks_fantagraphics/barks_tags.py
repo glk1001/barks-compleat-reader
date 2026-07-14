@@ -25,8 +25,14 @@ if TYPE_CHECKING:
 
 
 BARKS_TAG_EXTRA_ALIASES = {
+    "abduction": Tags.ABDUCTION_STORIES,
     "aeolian": Tags.AEOLIAN_ISLANDS,
+    "aliens": Tags.ALIEN_STORIES,
+    "amerind": Tags.AMERIND_STORIES,
+    "amerinds": Tags.AMERIND_STORIES,
+    "amnesia": Tags.AMNESIA_STORIES,
     "arabia": Tags.ARABIAN_PENINSULA,
+    "artifacts": Tags.ARTIFACT_STORIES,
     "arctic": Tags.ARCTIC_OCEAN,
     "argus": Tags.ARGUS_MCFIENDY,
     "azure": Tags.AZURE_BLUE,
@@ -35,10 +41,12 @@ BARKS_TAG_EXTRA_ALIASES = {
     "beakoff": Tags.CARVER_BEAKOFF,
     "benzene": Tags.BENZENE_BANZOONY,
     "bombie": Tags.BOMBIE_THE_ZOMBIE,
+    "bumrisk": Tags.ROCKJAW_BUMRISK,
     "car 313": Tags.CAR_313,
     "carver beakoff": Tags.CARVER_BEAKOFF,
     "carver": Tags.CARVER_BEAKOFF,
     "chisel": Tags.CHISEL_MC_SUE,
+    "coot": Tags.CORNELIUS_COOT,
     "cornelius": Tags.CORNELIUS_MC_COBB,
     "daisy": Tags.DAISY,
     "demon": Tags.OLD_DEMON_TOOTH,
@@ -47,10 +55,15 @@ BARKS_TAG_EXTRA_ALIASES = {
     "flintheart": Tags.FLINTHEART_GLOMGOLD,
     "foola": Tags.FOOLA_ZOOLA,
     "gearloose": Tags.GYRO_GEARLOOSE,
+    "ghosts": Tags.GHOST_STORIES,
     "giltwhiskers": Tags.J_MORGANBILT_GILTWHISKERS,
     "gladstone": Tags.GLADSTONE_GANDER,
+    "glittering goldie": Tags.GOLDIE_OGILT,
     "glomgold": Tags.FLINTHEART_GLOMGOLD,
+    "goldie": Tags.GOLDIE_OGILT,
+    "grandma": Tags.GRANDMA_DUCK,
     "gyro": Tags.GYRO_GEARLOOSE,
+    "helper": Tags.LITTLE_HELPER,
     "jones": Tags.NEIGHBOR_JONES,
     "magica": Tags.MAGICA_DE_SPELL,
     "mcbrine": Tags.P_J_MC_BRINE,
@@ -61,14 +74,19 @@ BARKS_TAG_EXTRA_ALIASES = {
     "morganbilt": Tags.J_MORGANBILT_GILTWHISKERS,
     "mount demon tooth": Tags.OLD_DEMON_TOOTH,
     "niagara": Tags.NIAGARA_FALLS,
+    "ogilt": Tags.GOLDIE_OGILT,
     "old demon tooth": Tags.OLD_DEMON_TOOTH,
+    "pete": Tags.BLACK_PETE,
     "pjmcbrine": Tags.P_J_MC_BRINE,
+    "rockjaw": Tags.ROCKJAW_BUMRISK,
     "scrooge": Tags.SCROOGE_NOT_IN_US,
     "snozzie": Tags.GENERAL_SNOZZIE,
     "south pole": Tags.ANTARCTICA,
     "spell": Tags.MAGICA_DE_SPELL,
     "teengiggle": Tags.APPLECHEEKS_TEENGIGGLE,
     "the beagle boys": Tags.BEAGLE_BOYS,
+    "utopia": Tags.UTOPIAN_STORIES,
+    "utopias": Tags.UTOPIAN_STORIES,
     "woodchucks": Tags.JUNIOR_WOODCHUCKS,
     "zombie": Tags.BOMBIE_THE_ZOMBIE,
     "zoola": Tags.FOOLA_ZOOLA,
@@ -82,6 +100,7 @@ BARKS_TAGS_ALIAS_LISTS: dict[Tags, list[str]] = {
 
 BARKS_FIRSTS_MAP: dict[Tags, Tags] = {
     Tags.FIRST_BEAGLE_BOYS: Tags.BEAGLE_BOYS,
+    Tags.FIRST_BOLIVAR: Tags.BOLIVAR,
     Tags.FIRST_CAR_313: Tags.CAR_313,
     Tags.FIRST_DAISY: Tags.DAISY,
     Tags.FIRST_DUCKBURG: Tags.DUCKBURG,
@@ -90,7 +109,7 @@ BARKS_FIRSTS_MAP: dict[Tags, Tags] = {
     Tags.FIRST_GLADSTONE: Tags.GLADSTONE_GANDER,
     Tags.FIRST_GYRO_NOT_IN_GG: Tags.GYRO_NOT_IN_GG,
     Tags.FIRST_HERBERT: Tags.HERBERT,
-    # Tags.FIRST_LITTLE_HELPER:Tags.LITTLE_HELPER,
+    Tags.FIRST_LITTLE_HELPER: Tags.LITTLE_HELPER,
     Tags.FIRST_MAGICA: Tags.MAGICA_DE_SPELL,
     # Tags.FIRST_MONEY_BIN,
     Tags.FIRST_NEIGHBOR_JONES: Tags.NEIGHBOR_JONES,
@@ -127,7 +146,6 @@ def _set_firsts_tags() -> None:
                 ]
 
     BARKS_TAGGED_TITLES[Tags.FIRST_GARE_INK] = [Titles.SOMETHIN_FISHY_HERE]
-    BARKS_TAGGED_TITLES[Tags.FIRST_LITTLE_HELPER] = [Titles.CAT_BOX_THE]
     BARKS_TAGGED_TITLES[Tags.FIRST_MONEY_BIN] = [Titles.BIG_BIN_ON_KILLMOTOR_HILL_THE]
     BARKS_TAGGED_TITLES[Tags.FIRST_NUMBER_ONE_DIME] = [Titles.ROUND_MONEY_BIN_THE]
     BARKS_TAGGED_TITLES[Tags.FIRST_REAL_NEIGHBOR_JONES] = [Titles.GOOD_NEIGHBORS]
