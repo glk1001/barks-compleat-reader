@@ -173,6 +173,7 @@ class SnapshotApplicator:
         self._screens.names_index.is_visible = vis.names_index
         self._screens.locations_index.is_visible = vis.locations_index
         self._screens.statistics.is_visible = vis.statistics
+        self._screens.history.is_visible = vis.history
 
     # ------------------------------------------------------------------
     # Search view

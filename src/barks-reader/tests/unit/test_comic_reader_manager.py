@@ -23,6 +23,7 @@ def mock_dependencies() -> dict[str, MagicMock]:
         "comics_database": MagicMock(),
         "reader_settings": MagicMock(),
         "last_read_page_tracker": MagicMock(),
+        "reading_history_tracker": MagicMock(),
         "layout_builder": MagicMock(),
         "user_error_handler": MagicMock(),
     }
@@ -102,6 +103,8 @@ class TestComicReaderManager:
             _, kwargs = tracker_begin.call_args
             assert kwargs["save_enabled"] is False
 
+            mock_dependencies["reading_history_tracker"].begin.assert_not_called()
+
     def test_read_barks_begins_tracker_with_save_enabled(
         self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:
@@ -129,6 +132,31 @@ class TestComicReaderManager:
             assert args[0] == "Title"
             assert args[1] is mock_layout
             assert kwargs["save_enabled"] is True
+
+            mock_dependencies["reading_history_tracker"].begin.assert_called_once_with("Title")
+
+    def test_read_barks_records_history_with_override_title(
+        self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        _attach_reader_screen(manager)
+
+        mock_fanta_info = MagicMock(spec=FantaComicBookInfo)
+        mock_fanta_info.comic_book_info = MagicMock()
+        mock_fanta_info.comic_book_info.get_title_str.return_value = "All One-Pagers"
+
+        mock_layout = _single_body_page_layout()
+        mock_dependencies["layout_builder"].build.return_value = mock_layout
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(
+                mock_fanta_info,
+                MagicMock(),
+                "1",
+                use_overrides_active=True,
+                history_title_str="Coffee for Two",
+            )
+
+        mock_dependencies["reading_history_tracker"].begin.assert_called_once_with("Coffee for Two")
 
     def test_missing_volume_reports_error_and_closes_reader(
         self, mock_dependencies: dict[str, MagicMock]
@@ -194,6 +222,7 @@ class TestComicReaderManager:
         result = manager.comic_closed()
 
         mock_dependencies["last_read_page_tracker"].end.assert_called_once_with(mock_reader)
+        mock_dependencies["reading_history_tracker"].end.assert_called_once_with(sentinel)
         assert result is sentinel
 
     def test_get_last_read_page_delegates_to_tracker(

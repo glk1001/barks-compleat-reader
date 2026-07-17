@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.navigation_coordinator
 import pytest
-from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.fanta_comics_info import SERIES_ONE_PAGERS
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
@@ -208,6 +208,8 @@ class TestNavigationCoordinator:
         assert call.args[0] is mock_collection_info
         assert call.args[1] is mock_comic
         assert call.args[2] == "7"
+        # History records the one-pager's own title, not the collection's.
+        assert call.kwargs["history_title_str"] == ENUM_TO_STR_TITLE[Titles.IF_THE_HAT_FITS]
 
     def test_read_comic_unlocated_one_pager_returns_false(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]

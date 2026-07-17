@@ -29,6 +29,7 @@ def mock_dependencies() -> dict[str, Any]:
         names_index=MagicMock(),
         locations_index=MagicMock(),
         statistics=MagicMock(),
+        history=MagicMock(),
         search=MagicMock(),
     )
     return {

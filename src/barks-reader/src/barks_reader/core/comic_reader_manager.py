@@ -24,6 +24,7 @@ if TYPE_CHECKING:
         ComicBookReaderScreenPort,
     )
     from .reader_settings import ReaderSettings
+    from .reading_history import ReadingHistoryTracker
     from .saved_page_info import SavedPageInfo
     from .user_error_types import UserErrorHandlerPort
 
@@ -43,6 +44,7 @@ class ComicReaderManager:
         comics_database: ComicsDatabase,
         reader_settings: ReaderSettings,
         last_read_page_tracker: LastReadPageTracker,
+        reading_history_tracker: ReadingHistoryTracker,
         layout_builder: ComicLayoutBuilder,
         user_error_handler: UserErrorHandlerPort,
         scheduler: Scheduler,
@@ -53,6 +55,7 @@ class ComicReaderManager:
             comics_database: The database of comics.
             reader_settings: The application settings.
             last_read_page_tracker: Tracks and persists reading progress.
+            reading_history_tracker: Records reading sessions to the history log.
             layout_builder: Builds a ``ComicLayout`` for each comic to be read.
             user_error_handler: Handler for user-facing errors.
             scheduler: Marshals delayed callbacks onto the UI thread.
@@ -65,6 +68,7 @@ class ComicReaderManager:
 
         self.all_fanta_titles = ALL_FANTA_COMIC_BOOK_INFO
         self._last_read_page_tracker = last_read_page_tracker
+        self._reading_history_tracker = reading_history_tracker
         self._layout_builder = layout_builder
         self._layout: ComicLayout | None = None
 
@@ -112,6 +116,7 @@ class ComicReaderManager:
         comic: ComicBook,
         page_to_first_goto: str,
         use_overrides_active: bool,
+        history_title_str: str | None = None,
     ) -> None:
         """Open a Barks comic book in the reader.
 
@@ -120,6 +125,9 @@ class ComicReaderManager:
             comic: The ComicBook object to read.
             page_to_first_goto: The page ID to navigate to initially.
             use_overrides_active: Whether to apply censorship overrides.
+            history_title_str: Title to record in the reading history when it
+                differs from the comic's own title (e.g. a one-pager read via
+                the "All One-Pagers" collection).
 
         """
         self._fanta_info = fanta_info
@@ -128,6 +136,7 @@ class ComicReaderManager:
             page_to_first_goto,
             save_last_page=True,
             use_overrides_active=use_overrides_active,
+            history_title_str=history_title_str,
         )
 
     def _read_comic_book(
@@ -137,6 +146,7 @@ class ComicReaderManager:
         *,
         save_last_page: bool,
         use_overrides_active: bool = True,
+        history_title_str: str | None = None,
     ) -> None:
         assert page_to_first_goto
         assert self._comic_book_reader
@@ -149,6 +159,9 @@ class ComicReaderManager:
 
         title_str = self._fanta_info.comic_book_info.get_title_str()
         self._last_read_page_tracker.begin(title_str, self._layout, save_enabled=save_last_page)
+        if save_last_page:
+            # `save_last_page` is only False for articles, which aren't history-worthy.
+            self._reading_history_tracker.begin(history_title_str or title_str)
 
         logger.debug(f'Load "{title_str}" and goto page "{page_to_first_goto}".')
 
@@ -175,7 +188,9 @@ class ComicReaderManager:
     def comic_closed(self) -> SavedPageInfo | None:
         """Persist the last-read page when the reader closes."""
         assert self._comic_book_reader
-        return self._last_read_page_tracker.end(self._comic_book_reader)
+        last_read_page = self._last_read_page_tracker.end(self._comic_book_reader)
+        self._reading_history_tracker.end(last_read_page)
+        return last_read_page
 
     def get_last_read_page(self, title_str: str) -> SavedPageInfo | None:
         """Retrieve the persisted last-read page for a title."""

@@ -1,4 +1,4 @@
-"""ScreenBundle: frozen dataclass grouping the 9 screen widgets that compose the main screen."""
+"""ScreenBundle: frozen dataclass grouping the 10 screen widgets that compose the main screen."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from .bottom_title_view_screen import BottomTitleViewScreen
     from .entity_index_screen import EntityIndexScreen
     from .fun_image_view_screen import FunImageViewScreen
+    from .history_screen import HistoryScreen
     from .index_screen import IndexScreen
     from .main_index_screen import MainIndexScreen
     from .search_screen import SearchScreen
@@ -32,6 +33,7 @@ class ScreenBundle:
     names_index: EntityIndexScreen
     locations_index: EntityIndexScreen
     statistics: StatisticsScreen
+    history: HistoryScreen
     search: SearchScreen
 
     @property
@@ -45,6 +47,7 @@ class ScreenBundle:
         EntityIndexScreen,
         EntityIndexScreen,
         StatisticsScreen,
+        HistoryScreen,
         SearchScreen,
     ]:
         """All screens that live in the bottom pane."""
@@ -56,6 +59,7 @@ class ScreenBundle:
             self.names_index,
             self.locations_index,
             self.statistics,
+            self.history,
             self.search,
         )
 

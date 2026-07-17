@@ -32,6 +32,7 @@ PNG_BARKS_PANELS_DIR = "png_barks_panels_dir"
 USE_PNG_IMAGES = "use_png_images"
 USE_PREBUILT_COMICS = "use_prebuilt_comics"
 GOTO_SAVED_NODE_ON_START = "goto_saved_node_on_start"
+RECORD_READING_HISTORY = "record_reading_history"
 GOTO_FULLSCREEN_ON_APP_START = "goto_fullscreen_on_app_start"
 GOTO_FULLSCREEN_ON_COMIC_READ = "goto_fullscreen_on_comic_read"
 USE_HARPIES_INSTEAD_OF_LARKIES = "use_harpies"
@@ -133,6 +134,7 @@ class ReaderSettings:
         self._app_settings_path: Path | None = None
         self._app_data_dir: Path | None = None
         self._user_data_path: Path | None = None
+        self._user_history_path: Path | None = None
         self._reader_file_paths: ReaderFilePaths = ReaderFilePaths()
         self._reader_sys_file_paths: SystemFilePaths = SystemFilePaths()
 
@@ -144,6 +146,7 @@ class ReaderSettings:
         self._app_settings_path = app_settings_path
         self._app_data_dir = app_data_dir
         self._user_data_path = app_settings_path.parent / "barks-reader.json"
+        self._user_history_path = app_settings_path.parent / "barks-reader-history.json"
 
     def get_app_settings_path(self) -> Path:
         assert self._app_settings_path
@@ -152,6 +155,10 @@ class ReaderSettings:
     def get_user_data_path(self) -> Path:
         assert self._user_data_path
         return self._user_data_path
+
+    def get_user_history_path(self) -> Path:
+        assert self._user_history_path
+        return self._user_history_path
 
     @property
     def file_paths(self) -> ReaderFilePaths:
@@ -242,6 +249,10 @@ class ReaderSettings:
     @property
     def goto_saved_node_on_start(self) -> bool:
         return self._read(GOTO_SAVED_NODE_ON_START)
+
+    @property
+    def record_reading_history(self) -> bool:
+        return self._read(RECORD_READING_HISTORY)
 
     @property
     def goto_fullscreen_on_app_start(self) -> bool:
@@ -421,6 +432,13 @@ _FIELDS: tuple[FieldSpec, ...] = (
         key=GOTO_SAVED_NODE_ON_START,
         title="Goto Last Selection on App Start",
         desc="When the app starts, goto the last selection in the tree view.",
+        kind=FieldKind.BOOL,
+        config_default=1,
+    ),
+    FieldSpec(
+        key=RECORD_READING_HISTORY,
+        title="Record Reading History",
+        desc="Record every comic you read in the Reading History view.",
         kind=FieldKind.BOOL,
         config_default=1,
     ),

@@ -93,6 +93,7 @@ class ReaderTreeBuilder:
         )
         self._registration_hooks: dict[NodeRegistration, Callable] = {
             NodeRegistration.SEARCH: tree_view_manager.on_search_node_created,
+            NodeRegistration.HISTORY: tree_view_manager.on_history_node_created,
             NodeRegistration.STATISTICS: tree_view_manager.on_statistics_node_created,
             NodeRegistration.MAIN_INDEX: tree_view_manager.on_main_index_node_created,
             NodeRegistration.SPEECH_INDEX: tree_view_manager.on_speech_index_node_created,

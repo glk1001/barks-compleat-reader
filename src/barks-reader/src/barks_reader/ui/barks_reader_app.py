@@ -48,6 +48,7 @@ from .error_handling import handle_app_fail_with_traceback
 from .font_manager import FontManager
 from .fun_image_view_screen import FUN_IMAGE_VIEW_SCREEN_KV_FILE, FunImageViewScreen
 from .goto_title_overlay import GOTO_TITLE_OVERLAY_KV_FILE
+from .history_screen import HISTORY_SCREEN_KV_FILE, HistoryScreen
 from .index_screen import INDEX_SCREEN_KV_FILE
 from .main_index_screen import MainIndexScreen
 from .main_screen import MAIN_SCREEN_KV_FILE, MainScreen  # can take ~4s on VM Window
@@ -274,6 +275,7 @@ class BarksReaderApp(App):
         Builder.load_file(str(FUN_IMAGE_VIEW_SCREEN_KV_FILE))
         Builder.load_file(str(INDEX_SCREEN_KV_FILE))
         Builder.load_file(str(STATISTICS_SCREEN_KV_FILE))
+        Builder.load_file(str(HISTORY_SCREEN_KV_FILE))
         Builder.load_file(str(SEARCH_SCREEN_KV_FILE))
         Builder.load_file(str(MAIN_SCREEN_KV_FILE))
         Builder.load_file(str(GOTO_TITLE_OVERLAY_KV_FILE))
@@ -351,6 +353,7 @@ class BarksReaderApp(App):
         statistics_screen = StatisticsScreen(
             self.reader_settings.sys_file_paths.get_statistics_dir()
         )
+        history_screen = HistoryScreen()
         search_screen = SearchScreen(self.reader_settings, self.font_manager)
 
         # One shared window-mode engine + geometry store, injected into both the
@@ -367,6 +370,7 @@ class BarksReaderApp(App):
             names_index=names_index_screen,
             locations_index=locations_index_screen,
             statistics=statistics_screen,
+            history=history_screen,
             search=search_screen,
         )
         self._main_screen = MainScreen(

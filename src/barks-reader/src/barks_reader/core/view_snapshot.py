@@ -59,6 +59,7 @@ class ScreenVisibility:
     names_index: bool = False
     locations_index: bool = False
     statistics: bool = False
+    history: bool = False
 
 
 @dataclass(frozen=True, slots=True)

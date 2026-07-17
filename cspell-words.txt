@@ -1,6 +1,6 @@
+
 # cspell global word list — words shared across all packages
 # One word per line. Case-insensitive.
-
 alnum
 apos
 arcname
@@ -39,10 +39,10 @@ errmsg
 excepthook
 excepthooks
 executemany
-façade
 facecolor
 favourite
 favourites
+façade
 fcbi
 figsize
 fillvalue
@@ -121,8 +121,10 @@ testpaths
 texels
 textbbox
 textlength
+timespec
 tobytes
 tofile
+toggleable
 tokenisation
 tokenised
 touchpads

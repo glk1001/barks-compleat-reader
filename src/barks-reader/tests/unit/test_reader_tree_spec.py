@@ -37,6 +37,7 @@ from barks_reader.core.reader_consts_and_types import (
     APPENDIX_NODE_TEXT,
     CHRONO_YEAR_RANGES,
     CS_YEAR_RANGES,
+    HISTORY_NODE_TEXT,
     INDEX_NODE_TEXT,
     INTRO_NODE_TEXT,
     SEARCH_NODE_TEXT,
@@ -84,6 +85,7 @@ class TestTopLevelStructure:
             INTRO_NODE_TEXT,
             THE_STORIES_NODE_TEXT,
             SEARCH_NODE_TEXT,
+            HISTORY_NODE_TEXT,
             APPENDIX_NODE_TEXT,
             INDEX_NODE_TEXT,
         ]
@@ -206,8 +208,15 @@ class TestSearchAppendixIndex:
         assert len(search.children) == 3
         assert all(child.press_action is PressAction.SET_VIEW_STATE for child in search.children)
 
+    def test_history_registration_and_press_action(self, specs: tuple[NodeSpec, ...]) -> None:
+        history = specs[3]
+        assert history.register_as is NodeRegistration.HISTORY
+        assert history.press_action is PressAction.SET_VIEW_STATE
+        assert history.start_closed
+        assert not history.children
+
     def test_appendix_children(self, specs: tuple[NodeSpec, ...]) -> None:
-        appendix = specs[3]
+        appendix = specs[4]
         assert len(appendix.children) == 6
         assert all(child.start_closed for child in appendix.children)
 
@@ -220,7 +229,7 @@ class TestSearchAppendixIndex:
         assert statistics.register_as is NodeRegistration.STATISTICS
 
     def test_index_without_wiki_bundle(self, specs: tuple[NodeSpec, ...]) -> None:
-        index = specs[4]
+        index = specs[5]
         assert len(index.children) == 2
 
         speech = index.children[1]
@@ -248,7 +257,7 @@ class TestSearchAppendixIndex:
                 settings, title_lists, include_one_pagers_in_chrono=False
             )
 
-        index = specs[4]
+        index = specs[5]
         assert len(index.children) == 3
         wiki = index.children[-1]
         assert wiki.press_action is PressAction.OPEN_WIKI_INDEX

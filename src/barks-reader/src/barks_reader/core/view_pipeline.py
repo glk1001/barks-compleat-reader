@@ -109,6 +109,9 @@ _BOTTOM_VIEW_LOCATIONS_INDEX_OPACITY_1_STATES = {
 _BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES = {
     ViewStates.ON_APPENDIX_STATISTICS_NODE,
 }
+_BOTTOM_VIEW_HISTORY_OPACITY_1_STATES = {
+    ViewStates.ON_HISTORY_NODE,
+}
 _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES = {
     ViewStates.ON_TITLE_SEARCH_NODE,
     ViewStates.ON_TAG_SEARCH_NODE,
@@ -122,6 +125,7 @@ _BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES = (
     - _BOTTOM_VIEW_TITLE_OPACITY_1_STATES
     - _BOTTOM_VIEW_MAIN_INDEX_OPACITY_1_STATES
     - _BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES
+    - _BOTTOM_VIEW_HISTORY_OPACITY_1_STATES
     - _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES
     - _BOTTOM_VIEW_NAMES_INDEX_OPACITY_1_STATES
     - _BOTTOM_VIEW_LOCATIONS_INDEX_OPACITY_1_STATES
@@ -358,6 +362,7 @@ class ViewPipeline:
                 names_index=self._view_state in _BOTTOM_VIEW_NAMES_INDEX_OPACITY_1_STATES,
                 locations_index=self._view_state in _BOTTOM_VIEW_LOCATIONS_INDEX_OPACITY_1_STATES,
                 statistics=self._view_state in _BOTTOM_VIEW_STATISTICS_OPACITY_1_STATES,
+                history=self._view_state in _BOTTOM_VIEW_HISTORY_OPACITY_1_STATES,
             ),
             search_view=SearchViewSnapshot(
                 is_visible=search_visible,
@@ -430,6 +435,10 @@ class ViewPipeline:
             ),
             (self._view_state == ViewStates.ON_TAG_NODE, self._set_top_view_image_for_tag),
             (self._view_state in self._SEARCH_VIEW_STATES, self._set_top_view_image_for_search),
+            (
+                self._view_state == ViewStates.ON_HISTORY_NODE,
+                lambda: self._set_top_view_image_fixed(Titles.GOOD_NEIGHBORS),
+            ),
             (
                 self._view_state in self._APPENDIX_VIEW_STATES,
                 lambda: self._set_top_view_image_fixed(Titles.FABULOUS_PHILOSOPHERS_STONE_THE),
@@ -571,6 +580,7 @@ class ViewPipeline:
             ViewStates.ON_INDEX_NAMES_NODE,
             ViewStates.ON_INDEX_LOCATIONS_NODE,
             ViewStates.ON_APPENDIX_STATISTICS_NODE,
+            ViewStates.ON_HISTORY_NODE,
             ViewStates.ON_TITLE_SEARCH_NODE,
             ViewStates.ON_TAG_SEARCH_NODE,
             ViewStates.ON_WORD_SEARCH_NODE,

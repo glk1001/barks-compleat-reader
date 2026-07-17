@@ -380,6 +380,14 @@ class TreeViewManager:
     def statistics_node(self) -> ButtonTreeViewNode | None:
         return getattr(self, "_statistics_node", None)
 
+    def on_history_node_created(self, node: ButtonTreeViewNode) -> None:
+        """Handle creation of the Reading History tree node."""
+        self._history_node = node
+
+    @property
+    def history_node(self) -> ButtonTreeViewNode | None:
+        return getattr(self, "_history_node", None)
+
     def on_search_node_created(self, node: MainTreeViewNode) -> None:
         """Handle creation of the Search tree node."""
         self._search_node = node

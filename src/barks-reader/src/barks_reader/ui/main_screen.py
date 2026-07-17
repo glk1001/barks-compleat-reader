@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM
+from barks_fantagraphics.fanta_comics_info import get_fanta_info
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -150,6 +151,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._names_index_screen = screens.names_index
         self._locations_index_screen = screens.locations_index
         self._statistics_screen = screens.statistics
+        self._history_screen = screens.history
         self._search_screen = screens.search
 
         self.ids.main_layout.add_widget(self._tree_view_screen)
@@ -202,6 +204,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         for index_screen in self._screens.index_screens:
             index_screen.on_goto_title = self._nav_coord.navigate_to_title_with_page
             index_screen.on_goto_background_title_func = self._nav_coord.navigate_to_chrono_title
+
+        self._history_screen.on_goto_title = self._on_goto_history_title
+        self._history_screen.get_background_image = self._get_history_background_image
 
         self._search_screen.on_goto_title = self._nav_coord.navigate_to_search_result
         self._search_screen.on_goto_title_with_page = self._nav_coord.navigate_to_title_with_page
@@ -377,6 +382,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def on_action_bar_change_view_images(self) -> None:
         self.app_icon_filepath = str(self._random_title_images.get_random_reader_app_icon_file())
         self._renderer.refresh()
+        if self._history_screen.is_visible:
+            self._history_screen.update_background_image()
 
     def on_action_bar_menu_dots_selected(self, _instance: Widget, value: str) -> None:
         if value == "settings":
@@ -502,6 +509,15 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         first, so the user lands here with the title's reading controls up.
         """
         self._nav_coord.navigate_to_chrono_title(ImageInfo(from_title=title, filename=None))
+
+    def _on_goto_history_title(self, title: Titles) -> None:
+        """Select ``title`` in the tree and title view, from a history row."""
+        self._nav_coord.navigate_to_chrono_title(ImageInfo(from_title=title, filename=None))
+
+    def _get_history_background_image(self, titles: list[Titles]) -> ImageInfo:
+        """Pick a random panel image from the history's titles for the backdrop."""
+        title_infos = [info for title in titles if (info := get_fanta_info(title)) is not None]
+        return self._random_title_images.get_random_image(title_infos)
 
     @property
     def image_selector(self) -> ImageSelector:

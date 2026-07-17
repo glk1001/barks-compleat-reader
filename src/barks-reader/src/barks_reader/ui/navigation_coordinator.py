@@ -365,6 +365,7 @@ class NavigationCoordinator:
             comic_book,
             str(page_num),
             self._bottom_title_view_screen.use_overrides_active,
+            history_title_str=ENUM_TO_STR_TITLE[one_pager],
         )
         return True
 

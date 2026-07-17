@@ -55,6 +55,7 @@ from barks_reader.core.reader_consts_and_types import (
     CHRONO_YEAR_RANGES,
     CHRONOLOGICAL_NODE_TEXT,
     CS_YEAR_RANGES,
+    HISTORY_NODE_TEXT,
     INDEX_LOCATIONS_TEXT,
     INDEX_MAIN_TEXT,
     INDEX_NAMES_TEXT,
@@ -88,6 +89,7 @@ from .destinations import (
     CategoryDestination,
     CensorshipFixesDocDestination,
     ChronologicalDestination,
+    HistoryDestination,
     IndexDestination,
     IntroDestination,
     IntroDocDestination,
@@ -148,6 +150,7 @@ class NodeRegistration(Enum):
     """Which 'node created' hook the walker calls with the built widget."""
 
     SEARCH = auto()
+    HISTORY = auto()
     STATISTICS = auto()
     MAIN_INDEX = auto()
     SPEECH_INDEX = auto()
@@ -194,7 +197,7 @@ def build_reader_tree_spec(
 
     Returns:
         The top-level specs in display order: Intro, The Stories, Search,
-        Appendix, Index.
+        Reading History, Appendix, Index.
 
     """
     builder = _SpecBuilder(reader_settings, title_lists, include_one_pagers_in_chrono)
@@ -202,6 +205,7 @@ def build_reader_tree_spec(
         builder.intro_spec(),
         builder.stories_spec(),
         builder.search_spec(),
+        builder.history_spec(),
         builder.appendix_spec(),
         builder.index_spec(),
     )
@@ -350,6 +354,16 @@ class _SpecBuilder:
                     press_action=PressAction.SET_VIEW_STATE,
                 ),
             ),
+        )
+
+    def history_spec(self) -> NodeSpec:
+        return NodeSpec(
+            kind=NodeKind.MAIN,
+            text=HISTORY_NODE_TEXT,
+            destination=HistoryDestination(),
+            press_action=PressAction.SET_VIEW_STATE,
+            register_as=NodeRegistration.HISTORY,
+            start_closed=True,
         )
 
     def appendix_spec(self) -> NodeSpec:

@@ -27,6 +27,7 @@ from barks_reader.core.last_read_page_tracker import LastReadPageTracker
 from barks_reader.core.navigation import NavigationModel
 from barks_reader.core.page_info_adapters import FantagraphicsPanelSegmentsAdapter
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
+from barks_reader.core.reading_history import ReadingHistoryStore, ReadingHistoryTracker
 from barks_reader.core.special_overrides_handler import SpecialFantaOverrides
 from barks_reader.core.view_pipeline import ViewPipeline
 
@@ -83,6 +84,11 @@ def build_main_screen_components(
 
     json_settings_manager = SettingsManager(reader_settings.get_user_data_path())
     last_read_page_tracker = LastReadPageTracker(json_settings_manager)
+    reading_history_store = ReadingHistoryStore(reader_settings.get_user_history_path())
+    reading_history_tracker = ReadingHistoryTracker(
+        reading_history_store, is_enabled=lambda: reader_settings.record_reading_history
+    )
+    screens.history.set_history_store(reading_history_store)
     special_fanta_overrides = SpecialFantaOverrides(reader_settings)
 
     user_error_handler = UserErrorHandler(reader_settings, screen_switchers.switch_to_settings)
@@ -100,6 +106,7 @@ def build_main_screen_components(
         comics_database,
         reader_settings,
         last_read_page_tracker,
+        reading_history_tracker,
         layout_builder,
         user_error_handler,
         scheduler=KivyClockScheduler(),

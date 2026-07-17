@@ -21,6 +21,7 @@ class ViewStates(IntEnum):
     ON_TITLE_SEARCH_NODE = auto()
     ON_TAG_SEARCH_NODE = auto()
     ON_WORD_SEARCH_NODE = auto()
+    ON_HISTORY_NODE = auto()
     ON_APPENDIX_NODE = auto()
     ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE = auto()
     ON_APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_NODE = auto()

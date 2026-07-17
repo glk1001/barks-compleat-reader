@@ -83,6 +83,7 @@ class ViewRenderer:
         screens.names_index.is_visible = False
         screens.locations_index.is_visible = False
         screens.statistics.is_visible = False
+        screens.history.is_visible = False
         screens.search.is_visible = False
 
         screens.fun_image_view.set_load_image_func(self._load_new_fun_view_image)

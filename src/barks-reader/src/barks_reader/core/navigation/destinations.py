@@ -87,6 +87,11 @@ class WordSearchDestination(Destination):
 
 
 @dataclass(frozen=True, slots=True)
+class HistoryDestination(Destination):
+    """The 'Reading History' parent node."""
+
+
+@dataclass(frozen=True, slots=True)
 class AppendixDestination(Destination):
     """The 'Appendix' parent node."""
 
