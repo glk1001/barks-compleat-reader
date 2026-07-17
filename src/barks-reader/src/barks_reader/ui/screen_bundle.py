@@ -79,14 +79,17 @@ class ScreenBundle:
         """Return True if any bottom screen is currently visible."""
         return any(s.is_visible for s in self.bottom_screens)
 
-    def get_active_nav_screen(self) -> IndexScreen | StatisticsScreen | SearchScreen | None:
+    def get_active_nav_screen(
+        self,
+    ) -> HistoryScreen | IndexScreen | StatisticsScreen | SearchScreen | None:
         """Return the first visible bottom screen that supports keyboard navigation."""
-        nav_screens: list[IndexScreen | StatisticsScreen | SearchScreen] = [
+        nav_screens: list[HistoryScreen | IndexScreen | StatisticsScreen | SearchScreen] = [
             self.main_index,
             self.speech_index,
             self.names_index,
             self.locations_index,
             self.statistics,
+            self.history,
             self.search,
         ]
         return next((s for s in nav_screens if s.is_visible), None)

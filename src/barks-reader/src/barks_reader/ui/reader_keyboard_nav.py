@@ -23,6 +23,7 @@ KEY_LEFT = 276
 KEY_NUMPAD_ENTER = 271
 KEY_PAGE_UP = 280
 KEY_PAGE_DOWN = 281
+KEY_DELETE = 127
 
 _alt_escape_key: int = 0
 

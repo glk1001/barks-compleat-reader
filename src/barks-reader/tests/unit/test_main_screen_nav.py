@@ -93,6 +93,7 @@ class TestHandleKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
         # TAB should exit bottom focus
@@ -126,6 +127,7 @@ class TestHandleTreeKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
         assert nav._handle_tree_key(KEY_TAB) is True
@@ -173,6 +175,7 @@ class TestHandleBottomKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = False
         nav._bottom_title_view_screen.is_visible = False
@@ -187,6 +190,7 @@ class TestHandleBottomKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = False
         nav._bottom_title_view_screen.is_visible = False
@@ -201,6 +205,7 @@ class TestHandleBottomKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
         assert nav._handle_bottom_key(KEY_DOWN) is True
@@ -213,6 +218,7 @@ class TestHandleBottomKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
         assert nav._handle_bottom_key(KEY_TAB) is True
@@ -224,6 +230,7 @@ class TestHandleBottomKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = True
         nav._bottom_title_view_screen.is_visible = False
@@ -240,6 +247,7 @@ class TestHandleBottomKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = False
         nav._bottom_title_view_screen.is_visible = True
@@ -339,6 +347,49 @@ class TestTreeNavActivate:
 
         # Should have entered bottom focus since screen is visible
         assert nav.is_in_bottom_focus
+
+    def test_history_node_enters_bottom_focus_when_visible(self, nav: MainScreenNavigation) -> None:
+        history_node = MagicMock()
+        nav._main_index_screen.treeview_index_node = MagicMock()
+        nav._speech_index_screen.treeview_index_node = MagicMock()
+        nav._names_index_screen.treeview_index_node = MagicMock()
+        nav._locations_index_screen.treeview_index_node = MagicMock()
+        # noinspection PyPropertyAccess
+        nav._tree_view_manager.speech_words_node = MagicMock()  # ty: ignore[invalid-assignment]
+        # noinspection PyPropertyAccess
+        nav._tree_view_manager.statistics_node = MagicMock()  # ty: ignore[invalid-assignment]
+        # noinspection PyPropertyAccess
+        nav._tree_view_manager.history_node = history_node  # ty: ignore[invalid-assignment]
+        nav._tree_view_screen.get_selected_node.return_value = history_node  # ty: ignore[unresolved-attribute]
+        nav._history_screen.is_visible = True
+
+        with patch.object(nav_module, "Clock"):
+            nav._tree_nav_activate()
+
+        assert nav.is_in_bottom_focus
+
+    def test_history_node_activates_then_enters_bottom_focus_when_hidden(
+        self, nav: MainScreenNavigation
+    ) -> None:
+        history_node = MagicMock()
+        nav._main_index_screen.treeview_index_node = MagicMock()
+        nav._speech_index_screen.treeview_index_node = MagicMock()
+        nav._names_index_screen.treeview_index_node = MagicMock()
+        nav._locations_index_screen.treeview_index_node = MagicMock()
+        # noinspection PyPropertyAccess
+        nav._tree_view_manager.speech_words_node = MagicMock()  # ty: ignore[invalid-assignment]
+        # noinspection PyPropertyAccess
+        nav._tree_view_manager.statistics_node = MagicMock()  # ty: ignore[invalid-assignment]
+        # noinspection PyPropertyAccess
+        nav._tree_view_manager.history_node = history_node  # ty: ignore[invalid-assignment]
+        nav._tree_view_screen.get_selected_node.return_value = history_node  # ty: ignore[unresolved-attribute]
+        nav._history_screen.is_visible = False
+
+        with patch.object(nav_module, "Clock") as mock_clock:
+            nav._tree_nav_activate()
+
+        nav._tree_view_manager.activate_node.assert_called_with(history_node)  # ty: ignore[unresolved-attribute]
+        mock_clock.schedule_once.assert_called_once()
 
     def test_button_node_opens_and_selects_first_child(self, nav: MainScreenNavigation) -> None:
         selected = MagicMock(spec=ButtonTreeViewNode)
@@ -463,6 +514,7 @@ class TestFocusSaveRestore:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav.enter_bottom_focus()
 
@@ -483,6 +535,7 @@ class TestEnterBottomFocus:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
         nav.enter_bottom_focus()
@@ -497,6 +550,7 @@ class TestEnterBottomFocus:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
         nav.enter_bottom_focus()
@@ -511,6 +565,7 @@ class TestGetActiveNavScreen:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
         assert nav._get_active_nav_screen() is None
@@ -521,6 +576,7 @@ class TestGetActiveNavScreen:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
         assert nav._get_active_nav_screen() is nav._speech_index_screen
@@ -591,6 +647,7 @@ class TestOnBottomScreenVisibilityChanged:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav.enter_bottom_focus()
         assert nav.is_in_bottom_focus
@@ -618,6 +675,7 @@ class TestOnBottomScreenVisibilityChanged:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav.enter_bottom_focus()
 
@@ -635,6 +693,7 @@ class TestOnBottomScreenVisibilityChanged:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav.enter_bottom_focus()
         nav._main_index_screen.is_visible = False
@@ -656,6 +715,7 @@ class TestOnBottomScreenVisibilityChanged:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav.enter_bottom_focus()
 

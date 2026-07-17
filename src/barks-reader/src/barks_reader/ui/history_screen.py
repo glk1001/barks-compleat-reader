@@ -8,6 +8,7 @@ top bar has a clear-all button (with confirmation popup).
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
@@ -40,6 +41,21 @@ from barks_reader.core.reading_history import (
 
 from .panel_texture_loader import PanelTextureLoader
 from .popup_widgets import MessagePopup
+from .reader_keyboard_nav import (
+    KEY_DELETE,
+    KEY_DOWN,
+    KEY_ENTER,
+    KEY_LEFT,
+    KEY_NUMPAD_ENTER,
+    KEY_PAGE_DOWN,
+    KEY_PAGE_UP,
+    KEY_RIGHT,
+    KEY_UP,
+    MENU_FOCUS_HIGHLIGHT_GROUP,
+    clear_focus_highlight,
+    draw_focus_highlight,
+    is_escape_key,
+)
 from .tree_view_nodes import TitleTreeViewNode
 
 if TYPE_CHECKING:
@@ -73,6 +89,24 @@ _TEXT_COLOR = (1, 1, 1, 1)
 
 _JOURNAL_VIEW = "journal"
 _TITLES_VIEW = "titles"
+
+_NAV_PAGE_STEP = 10  # Rows jumped by Page Up/Down in keyboard navigation.
+
+_NAV_MOVE_DELTAS = {
+    KEY_UP: -1,
+    KEY_DOWN: 1,
+    KEY_PAGE_UP: -_NAV_PAGE_STEP,
+    KEY_PAGE_DOWN: _NAV_PAGE_STEP,
+}
+
+
+@dataclass(frozen=True)
+class _NavRow:
+    """A keyboard-navigable history row: its widget and its two actions."""
+
+    widget: BoxLayout
+    activate: Callable[[], None]
+    delete: Callable[[], None]
 
 
 def _get_display_title(title_str: str) -> str:
@@ -111,6 +145,13 @@ class HistoryScreen(FloatLayout):
         self._texture_loader = PanelTextureLoader()
         self.on_goto_title: Callable[[Titles], None] | None = None
         self.get_background_image: Callable[[list[Titles]], ImageInfo] | None = None
+
+        # Keyboard navigation state
+        self._nav_active: bool = False
+        self._nav_on_exit_request: Callable[[], None] | None = None
+        self._nav_focused_idx: int = 0
+        self._nav_rows: list[_NavRow] = []
+        self._nav_focused_widget: BoxLayout | None = None
 
     def set_history_store(self, history_store: ReadingHistoryStore) -> None:
         """Inject the persistent event log to display."""
@@ -171,6 +212,8 @@ class HistoryScreen(FloatLayout):
 
         rows = self.ids.history_rows
         rows.clear_widgets()
+        self._nav_rows.clear()
+        self._nav_focused_widget = None
 
         events = self._history_store.get_events()
         if not events:
@@ -179,6 +222,10 @@ class HistoryScreen(FloatLayout):
             self._populate_journal(events)
         else:
             self._populate_titles(events)
+
+        if self._nav_active:
+            self._nav_focused_idx = min(self._nav_focused_idx, max(0, len(self._nav_rows) - 1))
+            self._update_nav_focus()
 
     def _populate_journal(self, events: list[ReadEvent]) -> None:
         rows = self.ids.history_rows
@@ -286,6 +333,7 @@ class HistoryScreen(FloatLayout):
         delete_button.bind(on_press=lambda _b: on_delete())
         row.add_widget(delete_button)
 
+        self._nav_rows.append(_NavRow(widget=row, activate=on_press, delete=on_delete))
         return row
 
     def _on_row_pressed(self, title_str: str) -> None:
@@ -305,6 +353,98 @@ class HistoryScreen(FloatLayout):
         assert self._history_store is not None
         self._history_store.delete_events_for_title(title_str)
         self._refresh()
+
+    # --- Keyboard navigation ---
+
+    def enter_nav_focus(self, on_exit_request: Callable[[], None]) -> None:
+        """Enter keyboard navigation mode, focusing the first history row."""
+        self._nav_on_exit_request = on_exit_request
+        self._nav_active = True
+        self._nav_focused_idx = 0
+        self._update_nav_focus()
+        logger.debug("HistoryScreen: entered nav focus.")
+
+    def exit_nav_focus(self) -> None:
+        """Exit keyboard navigation mode and clear the row highlight."""
+        if not self._nav_active:
+            return
+        self._nav_active = False
+        self._nav_on_exit_request = None
+        self._clear_nav_focus()
+        logger.debug("HistoryScreen: exited nav focus.")
+
+    def handle_key(self, key: int) -> bool:
+        """Handle a keyboard key. Return True if consumed."""
+        if not self._nav_active:
+            return False
+        if key in _NAV_MOVE_DELTAS:
+            self._move_nav_focus(_NAV_MOVE_DELTAS[key])
+        elif key == KEY_LEFT:
+            self._nav_select_view(_JOURNAL_VIEW)
+        elif key == KEY_RIGHT:
+            self._nav_select_view(_TITLES_VIEW)
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self._activate_focused_row()
+        elif key == KEY_DELETE:
+            self._delete_focused_row()
+        elif is_escape_key(key):
+            if self._nav_on_exit_request is not None:
+                self._nav_on_exit_request()
+        else:
+            return False
+        return True
+
+    def _nav_select_view(self, view: str) -> None:
+        if view == self._current_view:
+            return
+        self._nav_focused_idx = 0
+        # _select_view refreshes the rows, which redraws the focus highlight.
+        self._select_view(view)
+
+    def _move_nav_focus(self, delta: int) -> None:
+        if not self._nav_rows:
+            return
+        new_idx = max(0, min(len(self._nav_rows) - 1, self._nav_focused_idx + delta))
+        if new_idx != self._nav_focused_idx:
+            self._nav_focused_idx = new_idx
+            self._update_nav_focus()
+
+    def _activate_focused_row(self) -> None:
+        if self._nav_rows:
+            self._nav_rows[self._nav_focused_idx].activate()
+
+    def _delete_focused_row(self) -> None:
+        # The delete action refreshes the rows, which re-clamps the focus index.
+        if self._nav_rows:
+            self._nav_rows[self._nav_focused_idx].delete()
+
+    def _update_nav_focus(self) -> None:
+        self._clear_nav_focus()
+        if not self._nav_rows:
+            return
+        widget = self._nav_rows[self._nav_focused_idx].widget
+        draw_focus_highlight(widget, MENU_FOCUS_HIGHLIGHT_GROUP)
+        self._nav_focused_widget = widget
+        # Rows may not be laid out yet (fresh refresh), so scroll after the next frame.
+        Clock.schedule_once(lambda _dt: self._scroll_to_focused_row(widget), 0)
+
+    def _scroll_to_focused_row(self, widget: BoxLayout) -> None:
+        """Scroll so the focused row is visible, pinning the list top when it all fits.
+
+        ``scroll_to`` must only run when the rows overflow the viewport: with
+        undersized content its scroll math runs on a negative scrollable range
+        and shoves the whole list to the bottom of the panel.
+        """
+        scroll = self.ids.history_scroll
+        if self.ids.history_rows.height > scroll.height:
+            scroll.scroll_to(widget, padding=dp(30))
+        else:
+            scroll.scroll_y = 1.0
+
+    def _clear_nav_focus(self) -> None:
+        if self._nav_focused_widget is not None:
+            clear_focus_highlight(self._nav_focused_widget, MENU_FOCUS_HIGHLIGHT_GROUP)
+            self._nav_focused_widget = None
 
     def on_clear_pressed(self) -> None:
         """Ask for confirmation, then clear the whole history (kv callback)."""

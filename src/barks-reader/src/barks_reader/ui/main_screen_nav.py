@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
     from kivy.uix.screenmanager import Screen
 
+    from .history_screen import HistoryScreen
     from .index_screen import IndexScreen
     from .screen_bundle import ScreenBundle
     from .search_screen import SearchScreen
@@ -65,6 +66,7 @@ class MainScreenNavigation:
         self._names_index_screen = screens.names_index
         self._locations_index_screen = screens.locations_index
         self._statistics_screen = screens.statistics
+        self._history_screen = screens.history
         self._search_screen = screens.search
         self._bottom_base_view_screen = bottom_base_view_screen
         self._on_title_activated = on_title_activated
@@ -166,14 +168,17 @@ class MainScreenNavigation:
             return False
         return True
 
-    def _get_active_nav_screen(self) -> IndexScreen | StatisticsScreen | SearchScreen | None:
+    def _get_active_nav_screen(
+        self,
+    ) -> HistoryScreen | IndexScreen | StatisticsScreen | SearchScreen | None:
         """Return the currently visible bottom screen that supports keyboard navigation."""
-        screens: list[IndexScreen | StatisticsScreen | SearchScreen] = [
+        screens: list[HistoryScreen | IndexScreen | StatisticsScreen | SearchScreen] = [
             self._main_index_screen,
             self._speech_index_screen,
             self._names_index_screen,
             self._locations_index_screen,
             self._statistics_screen,
+            self._history_screen,
             self._search_screen,
         ]
         return next((s for s in screens if s.is_visible), None)
@@ -187,6 +192,7 @@ class MainScreenNavigation:
             or self._names_index_screen.is_visible
             or self._locations_index_screen.is_visible
             or self._statistics_screen.is_visible
+            or self._history_screen.is_visible
             or self._search_screen.is_visible
         )
         if not visible:
@@ -229,7 +235,11 @@ class MainScreenNavigation:
         if isinstance(node, TitleTreeViewNode):
             self._tree_view_manager.activate_node(node)
 
-    def _enter_index_bottom_focus(self, screen: IndexScreen, node: BaseTreeViewNode) -> None:
+    def _enter_nav_screen_bottom_focus(
+        self,
+        screen: HistoryScreen | IndexScreen | StatisticsScreen,
+        node: BaseTreeViewNode,
+    ) -> None:
         if screen.is_visible:
             self.enter_bottom_focus()
         else:
@@ -252,15 +262,15 @@ class MainScreenNavigation:
 
         screen = index_node_to_screen.get(id(selected))
         if screen is not None:
-            self._enter_index_bottom_focus(screen, selected)
+            self._enter_nav_screen_bottom_focus(screen, selected)
             return
 
         if selected is self._tree_view_manager.statistics_node:
-            if self._statistics_screen.is_visible:
-                self.enter_bottom_focus()
-            else:
-                self._tree_view_manager.activate_node(selected)
-                Clock.schedule_once(lambda _dt: self.enter_bottom_focus(), 0)
+            self._enter_nav_screen_bottom_focus(self._statistics_screen, selected)
+            return
+
+        if selected is self._tree_view_manager.history_node:
+            self._enter_nav_screen_bottom_focus(self._history_screen, selected)
             return
 
         was_closed = isinstance(selected, ButtonTreeViewNode) and not selected.is_open
