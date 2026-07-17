@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comic_book import (
     ComicBook,
     ComicBookDirs,
@@ -455,6 +456,39 @@ class TestGetFinalSrceStoryFile:
     def test_restorable_page_raises_when_restored_missing(self, tmp_path: Path) -> None:
         comic = _make_comic(base_dir=tmp_path)
         with (
+            patch.object(
+                type(comic),
+                "get_ini_title",
+                return_value="Some Non-Hand-Restored Title",
+            ),
+            pytest.raises(FileNotFoundError, match="Could not find restored"),
+        ):
+            comic.get_final_srce_story_file("002", PageType.BODY)
+
+    def test_one_pager_collection_falls_back_to_fixes_file(self, tmp_path: Path) -> None:
+        # An unrestored one-pager collection page uses its staged fixes file (the
+        # original scan) instead of requiring a restored file.
+        comic = _make_comic(base_dir=tmp_path)
+        fixes_file = comic.get_srce_original_fixes_image_dir() / "002.jpg"
+        fixes_file.parent.mkdir(parents=True, exist_ok=True)
+        fixes_file.touch()
+
+        with (
+            patch.object(comic.fanta_info.comic_book_info, "title", Titles.ALL_ONE_PAGERS),
+            patch.object(
+                type(comic),
+                "get_ini_title",
+                return_value="Some Non-Hand-Restored Title",
+            ),
+        ):
+            path, mod = comic.get_final_srce_story_file("002", PageType.BODY)
+        assert path == fixes_file
+        assert mod == ModifiedType.ADDED
+
+    def test_one_pager_collection_raises_when_fixes_also_missing(self, tmp_path: Path) -> None:
+        comic = _make_comic(base_dir=tmp_path)
+        with (
+            patch.object(comic.fanta_info.comic_book_info, "title", Titles.ALL_ONE_PAGERS),
             patch.object(
                 type(comic),
                 "get_ini_title",

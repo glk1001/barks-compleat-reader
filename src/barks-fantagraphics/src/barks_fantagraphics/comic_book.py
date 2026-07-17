@@ -410,6 +410,17 @@ class ComicBook:
             if srce_restored_file.is_file():
                 return srce_restored_file, ModifiedType.ORIGINAL
 
+            if is_one_pager_collection(self.fanta_info.comic_book_info.title):
+                # An unrestored one-pager legitimately has no restored file yet - fall
+                # back to its staged fixes file (the original scan).
+                logger.warning(
+                    f'No restored file "{get_abbrev_path(srce_restored_file)}" for'
+                    f" one-pager collection page {page_num} - falling back to the fixes file.",
+                )
+                srce_file, mod_type = self.get_final_srce_original_story_file(page_num, page_type)
+                if srce_file.is_file():
+                    return srce_file, mod_type
+
             msg = (
                 f'Could not find restored source file "{srce_restored_file}"'
                 f' of type "{page_type.name}"'
