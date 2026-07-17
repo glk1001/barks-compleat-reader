@@ -6,6 +6,10 @@ collection of Carl Barks' Disney comics, specifically tailored for the Fantagrap
 Built with the Kivy framework in Python, it provides a rich, cross-platform user experience with a focus on intuitive
 navigation and a visually engaging interface.
 
+> **Just want the app?** Download the standalone executable for Windows, macOS, or Linux from
+> [the project website](https://glk1001.github.io/barks-compleat-reader/website/app.html) — no
+> Python setup needed. The rest of this README is for running or building from source.
+
 ## Features
 
 - **Comprehensive Browsing**: Navigate the entire collection in multiple ways:
@@ -27,7 +31,14 @@ navigation and a visually engaging interface.
 
 ## Screenshots
 
-*(Add screenshots of the main screen, the reader, and the settings panel here to showcase the application.)*
+|                        Main Window                        |                          Reading a Story                          |
+|:---------------------------------------------------------:|:------------------------------------------------------------------:|
+| ![Main Window](website/screenshot-main-window.png)        | ![Reading a Story](website/screenshot-reading-a-story.png)          |
+|                    **Selecting a Title**                   |                             **Settings**                            |
+| ![Selecting a Title](website/screenshot-selecting-a-title.png) | ![Settings](website/screenshot-settings.png)                    |
+
+More screenshots (including the full index and speech bubble index) are on
+[the project website](https://glk1001.github.io/barks-compleat-reader/website/app.html).
 
 ---
 
@@ -137,13 +148,14 @@ Macs.
    log is written beside the `.app` as `barks-reader-installer-<timestamp>.log`.
 
 ## Deployment
-1. Goto 'Releases' on github (https://github.com/glk1001/barks-compleat-reader/releases/tag/v1.0.0) and edit the release:
-    ```
-    The Compleat Barks Disney Reader
-    ```
-1. Add the just built executable.
-1. Update release
-1. The updated release should be visible at https://glk1001.github.io/barks-compleat-reader/website/app.html
+1. Go to ['Releases' on GitHub](https://github.com/glk1001/barks-compleat-reader/releases) and
+   edit the latest release (or create a new one).
+1. Add the just-built executables, and the data zips if they have changed.
+1. Update the release. Make sure it is **not** marked as a pre-release — the website's download
+   links and version badge track the latest *full* release via GitHub's `releases/latest`
+   endpoints, which ignore pre-releases.
+1. The updated release should be downloadable at
+   https://glk1001.github.io/barks-compleat-reader/website/app.html
 
 ## License
 

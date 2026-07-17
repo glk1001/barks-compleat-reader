@@ -4,7 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Compleat Barks Disney Reader</title>
+    <meta name="description"
+          content="A free desktop app for reading your digital Fantagraphics Complete Carl Barks Disney Library — uncensored, indexed, and searchable. Windows, macOS, and Linux.">
+    <link rel="icon" href="main-header.png">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="The Compleat Barks Disney Reader">
+    <meta property="og:description"
+          content="A free desktop app for reading your digital Fantagraphics Complete Carl Barks Disney Library — uncensored, indexed, and searchable.">
+    <meta property="og:url" content="https://glk1001.github.io/barks-compleat-reader/website/app.html">
+    <meta property="og:image"
+          content="https://glk1001.github.io/barks-compleat-reader/website/screenshot-main-window.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+          rel="stylesheet">
     <style>
+        /* Golden-age comic trade dress: aged newsprint, print ink, masthead red,
+           Dell-cover yellow. Halftone dots stand in for four-color letterpress. */
+        :root {
+            --paper: #F6EED9;
+            --paper-bright: #FFFDF4;
+            --paper-dim: #EFE3C6;
+            --ink: #1F2A44;
+            --ink-soft: #3A4560;
+            --red: #C8342B;
+            --red-dark: #A02620;
+            --yellow: #EFB627;
+            --amber-ink: #92400E;
+            --sky: #2E6FA3;
+            --font-display: 'Alfa Slab One', 'Rockwell', 'Georgia', serif;
+            --font-body: 'Atkinson Hyperlegible', -apple-system, 'Segoe UI', Roboto, sans-serif;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,15 +44,14 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            /* Added a subtle halftone dot pattern over the gradient for a slight comic-book feel */
-            background-color: #667eea;
+            font-family: var(--font-body);
+            color: var(--ink);
+            background-color: var(--paper);
             background-image:
-                radial-gradient(rgba(255, 255, 255, 0.1) 2px, transparent 2px),
-                radial-gradient(rgba(255, 255, 255, 0.1) 2px, transparent 2px),
-                linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            background-size: 30px 30px, 30px 30px, 100% 100%;
-            background-position: 0 0, 15px 15px, 0 0;
+                radial-gradient(rgba(31, 42, 68, 0.06) 2px, transparent 2px),
+                radial-gradient(rgba(200, 52, 43, 0.05) 2px, transparent 2px);
+            background-size: 26px 26px, 26px 26px;
+            background-position: 0 0, 13px 13px;
             background-attachment: fixed;
             min-height: 100vh;
             padding: 40px 20px;
@@ -31,61 +62,131 @@
             margin: 0 auto;
         }
 
-        header {
-            text-align: center;
-            color: white;
-            margin-bottom: 40px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
+        a {
+            color: var(--sky);
             font-weight: 700;
         }
 
-        .subtitle {
-            font-size: 1.1rem;
-            opacity: 0.9;
+        :focus-visible {
+            outline: 3px solid var(--sky);
+            outline-offset: 2px;
+        }
+
+        /* Masthead: the one loud element on the page, styled like a golden-age
+           comic cover banner, with the release version as the corner price badge. */
+        .masthead {
+            position: relative;
+            background-color: var(--red);
+            background-image: radial-gradient(rgba(255, 255, 255, 0.13) 2px, transparent 2px);
+            background-size: 14px 14px;
+            border: 3px solid var(--ink);
+            border-radius: 4px;
+            box-shadow: 8px 8px 0 var(--ink);
+            padding: 30px 130px 26px 34px;
+            margin-bottom: 44px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .masthead-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 12px;
+            border: 3px solid var(--ink);
+            background: var(--paper-bright);
+            flex-shrink: 0;
+        }
+
+        .masthead-kicker {
+            color: var(--paper);
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .masthead h1 {
+            font-family: var(--font-display);
+            font-weight: 400;
+            color: white;
+            font-size: clamp(1.5rem, 4vw, 2.6rem);
+            line-height: 1.15;
+            text-shadow: 3px 3px 0 rgba(31, 42, 68, 0.45);
+        }
+
+        .price-badge {
+            position: absolute;
+            top: -20px;
+            right: -16px;
+            width: 108px;
+            height: 108px;
+            border-radius: 50%;
+            background: var(--yellow);
+            border: 3px solid var(--ink);
+            transform: rotate(8deg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            box-shadow: 4px 4px 0 rgba(31, 42, 68, 0.5);
+        }
+
+        .price-badge-label {
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--ink);
+        }
+
+        .price-badge #header-version {
+            font-family: var(--font-display);
+            font-size: 1.05rem;
+            color: var(--ink);
         }
 
         .main-content {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            background: var(--paper-bright);
+            border: 3px solid var(--ink);
+            border-radius: 4px;
+            box-shadow: 8px 8px 0 var(--ink);
             overflow: hidden;
         }
 
         .tabs {
             display: flex;
-            background: #f8f9fa;
-            border-bottom: 2px solid #e9ecef;
+            background: var(--paper-dim);
+            border-bottom: 3px solid var(--ink);
             overflow-x: auto;
             scrollbar-width: thin;
         }
 
         .tab {
-            padding: 18px 30px;
+            padding: 18px 28px;
             cursor: pointer;
             border: none;
             background: none;
+            font-family: var(--font-body);
             font-size: 1rem;
-            font-weight: 600;
-            color: #666;
-            transition: all 0.3s ease;
+            font-weight: 700;
+            color: var(--ink-soft);
+            transition: background 0.2s ease, color 0.2s ease;
             white-space: nowrap;
-            border-bottom: 3px solid transparent;
+            border-bottom: 4px solid transparent;
         }
 
         .tab:hover {
-            background: #e9ecef;
-            color: #333;
+            background: rgba(31, 42, 68, 0.08);
+            color: var(--ink);
         }
 
         .tab.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
-            background: white;
+            color: var(--red);
+            border-bottom-color: var(--red);
+            background: var(--paper-bright);
         }
 
         .tab-content {
@@ -112,14 +213,6 @@
             opacity: 0.15;
             z-index: 0;
             pointer-events: none;
-        }
-
-        .icon-img {
-            width: 32px;
-            height: 32px;
-            vertical-align: middle;
-            margin-right: 8px;
-            border-radius: 10px;
         }
 
         #intro::before {
@@ -185,20 +278,29 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
         h2 {
-            color: #333;
-            font-size: 2rem;
+            font-family: var(--font-display);
+            font-weight: 400;
+            color: var(--ink);
+            font-size: 1.85rem;
             margin-bottom: 20px;
         }
 
         h3 {
-            color: #444;
-            font-size: 1.5rem;
+            color: var(--ink);
+            font-size: 1.4rem;
             margin: 30px 0 15px;
         }
 
         p {
-            color: #555;
+            color: var(--ink-soft);
             line-height: 1.8;
             margin-bottom: 15px;
         }
@@ -212,30 +314,25 @@
 
         .feature-card {
             padding: 25px;
-            background: rgba(248, 249, 250, 0.7);
-            border-radius: 10px;
-            border-left: 4px solid #667eea;
+            background: rgba(239, 227, 198, 0.55);
+            border: 2px solid rgba(31, 42, 68, 0.25);
+            border-left: 5px solid var(--red);
+            border-radius: 4px;
         }
 
         .feature-card h4 {
-            color: #333;
+            color: var(--ink);
             font-size: 1.2rem;
             margin-bottom: 10px;
         }
 
         .feature-card p {
-            margin: 0;
+            margin: 0 0 10px;
             font-size: 0.95rem;
         }
 
-        .screenshot-placeholder {
-            background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
-            border-radius: 8px;
-            padding: 60px;
-            text-align: center;
-            color: #666;
-            margin: 20px 0;
-            border: 2px dashed #adb5bd;
+        .feature-card p:last-child {
+            margin-bottom: 0;
         }
 
         .platform-tabs {
@@ -247,28 +344,31 @@
 
         .platform-tab {
             padding: 10px 20px;
-            background: #e9ecef;
-            border: none;
+            background: var(--paper-dim);
+            border: 2px solid rgba(31, 42, 68, 0.35);
             border-radius: 6px;
             cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
+            font-family: var(--font-body);
+            font-weight: 700;
+            color: var(--ink);
+            transition: background 0.2s ease;
         }
 
         .platform-tab:hover {
-            background: #dee2e6;
+            background: rgba(31, 42, 68, 0.12);
         }
 
         .platform-tab.active {
-            background: #667eea;
-            color: white;
+            background: var(--yellow);
+            border-color: var(--ink);
         }
 
         .platform-content {
             display: none;
             padding: 25px;
-            background: rgba(248, 249, 250, 0.7);
-            border-radius: 8px;
+            background: rgba(239, 227, 198, 0.45);
+            border: 1px solid rgba(31, 42, 68, 0.15);
+            border-radius: 6px;
             margin-top: 20px;
         }
 
@@ -277,65 +377,76 @@
         }
 
         .install-step {
-            padding: 10px;
-            background: rgba(248, 249, 250, 0.5);
-            border-radius: 8px;
-            margin-bottom: 10px;
-            border-left: 4px solid #667eea;
+            padding: 12px 15px;
+            background: rgba(246, 238, 217, 0.6);
+            border: 1px solid rgba(31, 42, 68, 0.15);
+            border-left: 4px solid var(--red);
+            border-radius: 4px;
+            margin-bottom: 12px;
         }
 
         .install-step h4 {
-            color: #667eea;
+            color: var(--red-dark);
             margin-bottom: 10px;
         }
 
         code {
-            background: #2d3748;
-            color: #68d391;
+            background: var(--ink);
+            color: var(--yellow);
             padding: 3px 8px;
             border-radius: 4px;
             font-family: 'Courier New', monospace;
             font-size: 0.9rem;
         }
 
+        .requirements-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
         .requirements-table th {
-            background: rgba(248, 249, 250, 0.7);
-            font-weight: 600;
-            color: #333;
+            background: var(--paper-dim);
+            font-weight: 700;
+            color: var(--ink);
         }
 
         .requirements-table th,
         .requirements-table td {
             padding: 15px;
             text-align: left;
-            border-bottom: 1px solid #e9ecef;
+            border-bottom: 1px solid rgba(31, 42, 68, 0.2);
         }
 
         .requirements-table tr:hover {
-            background: rgba(248, 249, 250, 0.7);
+            background: rgba(239, 227, 198, 0.5);
         }
 
         .troubleshooting-item {
             padding: 20px;
-            background: rgba(248, 249, 250, 0.7);
-            border-radius: 8px;
+            background: rgba(239, 227, 198, 0.5);
+            border: 1px solid rgba(31, 42, 68, 0.2);
+            border-radius: 4px;
             margin-bottom: 20px;
         }
 
         .troubleshooting-item h4 {
-            color: #333;
+            color: var(--ink);
             margin-bottom: 10px;
         }
 
         .troubleshooting-item .solution {
             padding-left: 20px;
-            color: #555;
+            color: var(--ink-soft);
         }
 
         .download-card {
             padding: 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 10px;
+            background-color: var(--red);
+            background-image: radial-gradient(rgba(255, 255, 255, 0.13) 2px, transparent 2px);
+            background-size: 14px 14px;
+            border: 3px solid var(--ink);
+            border-radius: 4px;
+            box-shadow: 5px 5px 0 var(--ink);
             color: white;
             text-align: center;
             margin: 30px 0;
@@ -347,62 +458,91 @@
         }
 
         .download-card p {
-            color: rgba(255, 255, 255, 0.9);
+            color: rgba(255, 255, 255, 0.92);
             margin-bottom: 25px;
         }
 
         .download-btn-large {
             display: inline-block;
             padding: 15px 40px;
-            background: white;
-            color: #667eea;
+            background: var(--paper-bright);
+            color: var(--red-dark);
             text-decoration: none;
+            border: 2px solid var(--ink);
             border-radius: 8px;
             font-weight: 700;
             font-size: 1.1rem;
-            transition: all 0.3s ease;
+            box-shadow: 3px 3px 0 var(--ink);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
 
         .download-btn-large:hover {
-            transform: scale(1.05);
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            transform: translate(-2px, -2px);
+            box-shadow: 5px 5px 0 var(--ink);
         }
 
-        .version-info {
+        .download-btn-small {
             display: inline-block;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            margin-top: 15px;
+            padding: 10px 20px;
+            background: var(--sky);
+            color: white;
+            text-decoration: none;
+            border: 2px solid var(--ink);
+            border-radius: 6px;
+            font-weight: 700;
+            box-shadow: 2px 2px 0 var(--ink);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .download-btn-small:hover {
+            transform: translate(-1px, -1px);
+            box-shadow: 3px 3px 0 var(--ink);
+        }
+
+        .data-file-card {
+            padding: 20px;
+            background: rgba(239, 227, 198, 0.55);
+            border: 1px solid rgba(31, 42, 68, 0.2);
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .download-note {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(239, 182, 39, 0.16);
+            border-radius: 6px;
+            border-left: 4px solid var(--yellow);
         }
 
         .cta-button {
             display: inline-block;
             padding: 14px 32px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--red);
             color: white;
             text-decoration: none;
+            border: 2px solid var(--ink);
             border-radius: 8px;
+            font-family: var(--font-body);
             font-weight: 700;
             font-size: 1.05rem;
-            border: none;
             cursor: pointer;
-            transition: all 0.3s ease;
+            box-shadow: 4px 4px 0 var(--ink);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
 
         .cta-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0 var(--ink);
         }
 
-        ul {
+        ul, ol {
             margin: 15px 0;
             padding-left: 25px;
         }
 
         li {
-            color: #555;
+            color: var(--ink-soft);
             line-height: 1.8;
             margin-bottom: 8px;
         }
@@ -421,14 +561,25 @@
                 padding: 25px 20px;
             }
 
-            h1 {
-                font-size: 2rem;
+            .masthead {
+                padding: 24px 24px 20px;
+                flex-direction: column;
+                text-align: center;
+                gap: 12px;
+            }
+
+            .price-badge {
+                top: -14px;
+                right: -8px;
+                width: 84px;
+                height: 84px;
             }
 
             h2 {
                 font-size: 1.5rem;
             }
         }
+
         .screenshots-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -437,14 +588,14 @@
         }
 
         .screenshot-item {
-            background: rgba(248, 249, 250, 0.7);
-            border-radius: 8px;
+            background: rgba(239, 227, 198, 0.55);
+            border: 2px solid var(--ink);
+            border-radius: 3px;
             padding: 15px;
-            border: 2px solid #e9ecef;
         }
 
         .screenshot-item h4 {
-            color: #333;
+            color: var(--ink);
             font-size: 1rem;
             margin-bottom: 12px;
             text-align: center;
@@ -452,9 +603,9 @@
 
         .screenshot-item img {
             width: 100%;
-            border-radius: 8px;
+            border-radius: 3px;
             display: block;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 8px rgba(31, 42, 68, 0.2);
         }
 
         @media (max-width: 768px) {
@@ -464,8 +615,9 @@
         }
 
         .filename-example-table {
-            margin-top: 0px;
-            margin-bottom: 0px;
+            margin-top: 0;
+            margin-bottom: 0;
+            width: auto;
         }
 
         .filename-example-table td {
@@ -476,9 +628,10 @@
         .about-section {
             margin-top: 30px;
             padding: 25px;
-            background: rgba(248, 249, 250, 0.7);
-            border-radius: 10px;
-            border-left: 4px solid #764ba2;
+            background: rgba(239, 227, 198, 0.5);
+            border-radius: 4px;
+            border: 1px solid rgba(31, 42, 68, 0.15);
+            border-left: 4px solid var(--yellow);
         }
 
         .about-section h3 {
@@ -487,15 +640,15 @@
 
         .quick-start {
             padding: 20px;
-            background: rgba(102, 126, 234, 0.08);
-            border-radius: 10px;
-            border: 2px solid rgba(102, 126, 234, 0.2);
+            background: rgba(46, 111, 163, 0.08);
+            border-radius: 6px;
+            border: 2px solid rgba(46, 111, 163, 0.35);
             margin-bottom: 25px;
         }
 
         .quick-start h3 {
             margin-top: 0;
-            color: #667eea;
+            color: var(--sky);
         }
 
         .quick-start ol {
@@ -509,33 +662,52 @@
 
         .first-launch-note {
             padding: 20px;
-            background: rgba(255, 243, 205, 0.7);
-            border-radius: 8px;
-            border-left: 4px solid #f59e0b;
+            background: rgba(239, 182, 39, 0.16);
+            border-radius: 4px;
+            border-left: 4px solid var(--yellow);
             margin: 20px 0;
         }
 
         .first-launch-note h4 {
-            color: #b45309;
+            color: var(--amber-ink);
             margin-bottom: 10px;
+        }
+
+        .section-divider {
+            margin-top: 35px;
+            border: none;
+            border-top: 2px solid rgba(31, 42, 68, 0.25);
         }
     </style>
 </head>
 <body>
 <div class="container">
-    <header>
-        <h1><img src="main-header.png" class="icon-img" alt=""> The Compleat Barks Disney Reader</h1>
-        <p class="subtitle">Documentation and downloads &mdash; <span id="header-version"></span></p>
+    <header class="masthead">
+        <img src="main-header.png" class="masthead-icon" alt="">
+        <div>
+            <p class="masthead-kicker">Documentation &amp; Downloads</p>
+            <h1>The Compleat Barks Disney Reader</h1>
+        </div>
+        <div class="price-badge" title="Latest release">
+            <span class="price-badge-label">Latest</span>
+            <span id="header-version">release</span>
+        </div>
     </header>
 
     <div class="main-content">
-        <div class="tabs">
-            <button class="tab active" onclick="openTab(event, 'intro')">Introduction</button>
-            <button class="tab" onclick="openTab(event, 'features')">Features</button>
-            <button class="tab" onclick="openTab(event, 'download')">Download</button>
-            <button class="tab" onclick="openTab(event, 'installation')">Installation</button>
-            <button class="tab" onclick="openTab(event, 'requirements')">Requirements</button>
-            <button class="tab" onclick="openTab(event, 'troubleshooting')">Troubleshooting</button>
+        <div class="tabs" role="tablist">
+            <button class="tab active" role="tab" aria-selected="true" data-tab="intro"
+                    onclick="openTab(event, 'intro')">Introduction</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="features"
+                    onclick="openTab(event, 'features')">Features</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="download"
+                    onclick="openTab(event, 'download')">Download</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="installation"
+                    onclick="openTab(event, 'installation')">Installation</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="requirements"
+                    onclick="openTab(event, 'requirements')">Requirements</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="troubleshooting"
+                    onclick="openTab(event, 'troubleshooting')">Troubleshooting</button>
         </div>
 
         <!-- Introduction Tab -->
@@ -565,7 +737,7 @@
                     <button class="cta-button" onclick="openTab(event, 'download')">Download Now</button>
                 </p>
 
-                <hr style="margin-top: 35px; border: none; border-top: 2px solid #ddd;">
+                <hr class="section-divider">
 
                 <h2 style="margin-top: 20px;">Screenshots</h2>
             </div>
@@ -679,7 +851,7 @@
                         DRM-free '.zip' or '.cbz' format and not 'rar' format. If you have a volume in the 'rar' format
                         you just need to un-rar it, then zip it up. If you put your zips in a folder called
                         <strong>"Fantagraphics Complete Carl Barks Disney Library"</strong>, and it's on the Barks
-                        readers' search path (see the Installation tab) it will be automatically added to the readers'
+                        Reader's search path (see the Installation tab) it will be automatically added to the reader's
                         configuration. Otherwise, when you first use the app, you will have the opportunity to tell it
                         where to look for the zips.
                     </p>
@@ -722,7 +894,8 @@
         <div id="download" class="tab-content">
             <h2>Download The Compleat Barks Disney Reader</h2>
             <p>Get the latest version of <strong><em>The Compleat Barks Disney Reader</em></strong> for your platform.
-                All downloads are hosted on GitHub Releases.</p>
+                All downloads are hosted on GitHub Releases, and the links below always point to the latest
+                release.</p>
 
             <div class="platform-tabs" id="download-platform-tabs">
                 <!-- Generated by JavaScript -->
@@ -734,9 +907,8 @@
 
             <h3>Installation</h3>
             <p>
-                After downloading, head to the <a href="#" onclick="openTab(event, 'installation'); return false;"
-                                                  style="color: #667eea; font-weight: 600;">Installation tab</a> for
-                platform-specific setup instructions.
+                After downloading, head to the <a href="#" onclick="openTab(event, 'installation'); return false;">Installation
+                tab</a> for platform-specific setup instructions.
             </p>
         </div>
 
@@ -756,8 +928,7 @@
                 <ol>
                     <li>Download the executable (on macOS: the zipped app bundle) and both data zip
                         files from the
-                        <a href="#" onclick="openTab(event, 'download'); return false;"
-                           style="color: #667eea; font-weight: 600;">Download tab</a></li>
+                        <a href="#" onclick="openTab(event, 'download'); return false;">Download tab</a></li>
                     <li>Move all three files to a folder where you have write permissions
                         (<strong>NOT <em>"C:\Program Files"</em> or <em>"/Applications"</em></strong>)</li>
                     <li>Make the executable runnable (Linux: <code>chmod +x</code>; macOS: unzip to
@@ -809,92 +980,15 @@
                         <li><strong>"C:\BarksReader"</strong></li>
                         <li><strong>"C:\Users\YourUsername\Documents\BarksReader"</strong></li>
                     </ul>
-                    <p>The following steps assume you've chosen <strong>"C:\Users\YourUsername\BarksReader"</strong>
-                        as the Barks reader app directory.
-                    </p>
                 </div>
 
                 <div class="install-step">
-                    <h4>Step 3: Organise Your Fantagraphics Zips</h4>
-                    <p>Your Fantagraphics comic zips must be in a single folder and can be either '.zip' or '.cbz'
-                        files. The first part of each volumes' filename must be the volume number, from '01' to '29'.
-                        For example:</p>
-                    <table class="requirements-table filename-example-table">
-                        <tbody>
-                        <tr>
-                            <td><strong>01 - Donald Duck - Finds Pirate Gold.cbz</strong></td>
-                        </tr>
-                        <tr>
-                            <td><strong>02 - Donald Duck - Frozen Gold.zip</strong></td>
-                        </tr>
-                        <tr>
-                            <td><strong>...</strong></td>
-                        </tr>
-                        <tr>
-                            <td><strong>28 - Uncle Scrooge - 'Cave of Ali Baba'.zip</strong></td>
-                        </tr>
-                        <tr>
-                            <td><strong>29 - Donald Duck - 'The Lonely Lighthouse on Cape Quack'.cbz</strong></td>
-                        </tr>
-                        </tbody>
-                    </table>
-                    <p>See the next step for more information on making it easier for the app to automatically configure
-                        itself with your Fantagraphics zips.</p>
-                    <p> <strong>Note:</strong> The app manipulates, centers, and reorganizes comic book images, so
-                        encrypted or proprietary file formats (such as native Kindle or Comixology files) are not
-                        supported. You must have DRM-free .cbz or .zip files.</p>
-                </div>
-
-                <div class="install-step">
-                    <h4>Step 4: Optional &mdash; Move Your Fantagraphics Zips</h4>
-                    <p>If you put your Fantagraphics comic zips in a folder called <strong>"Fantagraphics Complete Carl
-                        Barks Disney Library"</strong> and make sure this folder is under one of these
-                        locations:</p>
-                    <ul>
-                        <li><strong>"C:\Users\YourUsername\BarksReader"</strong></li>
-                        <li><strong>"C:\Users\YourUsername\Documents"</strong></li>
-                        <li><strong>"C:\Users\YourUsername\Books"</strong></li>
-                    </ul>
-                    <p>then the app will automatically add this location to its configuration.</p>
-                </div>
-
-                <div class="install-step">
-                    <h4>Step 5: Run the Application</h4>
+                    <h4>Step 3: Run the Application</h4>
                     <p>Navigate to the new app folder and double-click <strong>barks-reader-win.exe</strong> to launch
                         the application.</p>
                     <p>You may need to allow the app through Windows Defender SmartScreen on first run.</p>
                     <p>You can also create a shortcut by right-clicking: <strong>barks-reader-win.exe</strong> → Send to
                         → Desktop (create shortcut) for easy access.</p>
-                </div>
-
-                <div class="install-step">
-                    <h4>Step 6: On First Launch</h4>
-                    <p>When the application is first launched it will do further installation steps:</p>
-                    <ul>
-                        <li>It will unzip <strong>"barks-reader-data-1.zip"</strong> and
-                            <strong>"barks-reader-data-2.zip"</strong> and copy their contents
-                            to <strong>"C:\Users\YourUsername\BarksReader\Reader Files",</strong></li>
-                        <li>It will create the necessary default configuration files in
-                            <strong>"C:\Users\YourUsername\BarksReader\config",</strong>
-                        </li>
-                        <li>It will search for a directory called <strong>"Fantagraphics Complete Carl Barks Disney
-                            Library"</strong> with your comic zips in the following locations:
-                            <ul>
-                                <li><strong>"C:\Users\YourUsername\BarksReader"</strong></li>
-                                <li><strong>"C:\Users\YourUsername\Documents"</strong></li>
-                                <li><strong>"C:\Users\YourUsername\Books"</strong></li>
-                            </ul>
-                        </li>
-                        <li>And finally, it will launch the actual reader app.</li>
-                        <li><strong>NOTE: It will only do the above installation steps on the first app
-                            launch.</strong></li>
-                    </ul>
-                </div>
-
-                <div class="install-step">
-                    <h4>Step 7: After the First Launch</h4>
-                    <p>The <strong>"barks-reader-data-1.zip"</strong> and <strong>"barks-reader-data-2.zip"</strong>
-                        files are no longer needed, and you can safely delete them.</p>
                 </div>
             </div>
 
@@ -928,9 +1022,6 @@
                     </ul>
                     <p>Do NOT put it in "/Applications" &mdash; the app installs its data and configuration into
                         the folder <em>beside</em> the app bundle, so it needs write permissions there.</p>
-                    <p>The following steps assume you've chosen <strong>"~/Applications/BarksReader"</strong>
-                        as the Barks reader app directory.
-                    </p>
                 </div>
 
                 <div class="install-step">
@@ -948,84 +1039,9 @@
                 </div>
 
                 <div class="install-step">
-                    <h4>Step 4: Organise Your Fantagraphics Zips</h4>
-                    <p>Your Fantagraphics comic zips must be in a single folder and can be either '.zip' or '.cbz'
-                        files. The first part of each volumes' filename must be the volume number, from '01' to '29'.
-                        For example:</p>
-                    <table class="requirements-table filename-example-table">
-                        <tbody>
-                        <tr>
-                            <td><strong>01 - Donald Duck - Finds Pirate Gold.cbz</strong></td>
-                        </tr>
-                        <tr>
-                            <td><strong>02 - Donald Duck - Frozen Gold.cbz</strong></td>
-                        </tr>
-                        <tr>
-                            <td><strong>...</strong></td>
-                        </tr>
-                        <tr>
-                            <td><strong>28 - Uncle Scrooge - 'Cave of Ali Baba'.cbz</strong></td>
-                        </tr>
-                        <tr>
-                            <td><strong>29 - Donald Duck - 'The Lonely Lighthouse on Cape Quack'.cbz</strong></td>
-                        </tr>
-                        </tbody>
-                    </table>
-                    <p>See the next step for more information on making it easier for the app to automatically configure
-                        itself with your Fantagraphics zips.</p>
-                    <p> <strong>Note:</strong> The app manipulates, centers, and reorganizes comic book images, so
-                        encrypted or proprietary file formats (such as native Kindle or Comixology files) are not
-                        supported. You must have DRM-free .cbz or .zip files.</p>
-                </div>
-
-                <div class="install-step">
-                    <h4>Step 5: Optional &mdash; Move Your Fantagraphics Zips</h4>
-                    <p>If you put your Fantagraphics comic zips in a folder called <strong>"Fantagraphics Complete Carl
-                        Barks Disney Library"</strong> and make sure this folder is under one of these
-                        locations:</p>
-                    <ul>
-                        <li><strong>"~/Applications/BarksReader"</strong></li>
-                        <li><strong>"~/BarksReader"</strong></li>
-                        <li><strong>"~/Documents"</strong></li>
-                        <li><strong>"~/Books"</strong></li>
-                    </ul>
-                    <p>then the app will automatically add this location to its configuration.</p>
-                </div>
-
-                <div class="install-step">
-                    <h4>Step 6: Run the Application</h4>
+                    <h4>Step 4: Run the Application</h4>
                     <p>After granting permissions, double-click <strong>"barks-reader-macos.app"</strong> and the
                         application will launch normally. Future launches can be done by double-clicking.</p>
-                </div>
-
-                <div class="install-step">
-                    <h4>Step 7: On First Launch</h4>
-                    <p>When the application is first launched it will do further installation steps:</p>
-                    <ul>
-                        <li>It will unzip <strong>"barks-reader-data-1.zip"</strong> and
-                            <strong>"barks-reader-data-2.zip"</strong> and copy their contents
-                            to <strong>"~/Applications/BarksReader/Reader Files"</strong></li>
-                        <li>It will create the necessary default configuration files in
-                            <strong>"~/Applications/BarksReader/config"</strong>
-                        </li>
-                        <li>It will search for a directory called <strong>"Fantagraphics Complete Carl Barks Disney
-                            Library"</strong> with your comic zips in the following locations:
-                            <ul>
-                                <li><strong>"~/Applications/BarksReader"</strong></li>
-                                <li><strong>"~/BarksReader"</strong></li>
-                                <li><strong>"~/Documents"</strong></li>
-                                <li><strong>"~/Books"</strong></li>
-                            </ul>
-                        </li>
-                        <li>And finally, it will launch the app</li>
-                        <li><strong>NOTE: It will only do the installation steps on the first app launch</strong></li>
-                    </ul>
-                </div>
-
-                <div class="install-step">
-                    <h4>Step 8: After the First Launch</h4>
-                    <p>The <strong>"barks-reader-data-1.zip"</strong> and <strong>"barks-reader-data-2.zip"</strong>
-                        files are no longer needed, and you can safely delete them.</p>
                 </div>
             </div>
 
@@ -1053,103 +1069,108 @@
                         <li>Any directory in your home folder</li>
                     </ul>
                     <p>You will need to make <strong>"barks-reader-linux"</strong> executable:
-                        <em>chmod +x barks-reader-linux</em></p>
-                    <p>The following steps assume you've chosen <strong>"~/opt/barks-reader"</strong>
-                        as the Barks reader app directory.
-                    </p>
+                        <code>chmod +x barks-reader-linux</code></p>
                 </div>
 
                 <div class="install-step">
-                    <h4>Step 3: Organise Your Fantagraphics Zips</h4>
-                    <p>Your Fantagraphics comic zips must be in a single folder and can be either '.zip' or '.cbz'
-                        files. The first part of each volumes' filename must be the volume number, from '01' to '29'.
-                        For example:</p>
-                    <table class="requirements-table filename-example-table">
-                        <tbody>
-                        <tr>
-                            <td><strong>01 - Donald Duck - Finds Pirate Gold.cbz</strong></td>
-                        </tr>
-                        <tr>
-                            <td><strong>02 - Donald Duck - Frozen Gold.cbz</strong></td>
-                        </tr>
-                        <tr>
-                            <td><strong>...</strong></td>
-                        </tr>
-                        <tr>
-                            <td><strong>28 - Uncle Scrooge - 'Cave of Ali Baba'.cbz</strong></td>
-                        </tr>
-                        <tr>
-                            <td><strong>29 - Donald Duck - 'The Lonely Lighthouse on Cape Quack'.cbz</strong></td>
-                        </tr>
-                        </tbody>
-                    </table>
-                    <p>See the next step for more information on making it easier for the app to automatically configure
-                        itself with your Fantagraphics zips.</p>
-                    <p> <strong>Note:</strong> The app manipulates, centers, and reorganizes comic book images, so
-                        encrypted or proprietary file formats (such as native Kindle or Comixology files) are not
-                        supported. You must have DRM-free .cbz or .zip files.</p>
-                </div>
-
-                <div class="install-step">
-                    <h4>Step 4: Optional &mdash; Move Your Fantagraphics Zips</h4>
-                    <p>If you put your Fantagraphics comic zips in a folder called <strong>"Fantagraphics Complete Carl
-                        Barks Disney Library"</strong> and make sure this folder is under one of these
-                        locations (you could use a symlink to do this):</p>
-                    <ul>
-                        <li><strong>"~/opt/barks-reader"</strong></li>
-                        <li><strong>"~/Documents"</strong></li>
-                        <li><strong>"~/Books"</strong></li>
-                    </ul>
-                    <p>then the app will automatically add this location to its configuration.</p>
-                </div>
-
-                <div class="install-step">
-                    <h4>Step 5: Run the Application</h4>
-                    <p>Run the executable <strong>"~/opt/barks-reader/barks-reader-linux"</strong> either from a file
+                    <h4>Step 3: Run the Application</h4>
+                    <p>Run the executable <strong>"barks-reader-linux"</strong> either from a file
                         explorer or a terminal.</p>
                     <p>On launch the app automatically installs a menu entry (a .desktop file in
                         <strong>"~/.local/share/applications/"</strong>), so after the first run you can start it
                         from your desktop's application menu or dock.
                     </p>
                 </div>
+            </div>
 
-                <div class="install-step">
-                    <h4>Step 6: On First Launch</h4>
-                    <p>When the application is first launched it will do further installation steps:</p>
-                    <ul>
-                        <li>It will unzip <strong>"barks-reader-data-1.zip"</strong> and
-                            <strong>"barks-reader-data-2.zip"</strong> and copy their contents
-                            to <strong>"~/opt/barks-reader/Reader Files/"</strong></li>
-                        <li>It will create the necessary default configuration files in
-                            <strong>"~/opt/barks-reader/config"</strong>
-                        </li>
-                        <li>It will search for a directory called <strong>"Fantagraphics Complete Carl Barks Disney
-                            Library"</strong> with your comic zips in the following locations:
-                            <ul>
-                                <li><strong>"~/opt/barks-reader"</strong></li>
-                                <li><strong>"~/Documents"</strong></li>
-                                <li><strong>"~/Books"</strong></li>
-                            </ul>
-                        </li>
-                        <li>And finally, it will run the app</li>
-                        <li><strong>NOTE: It will only do the installation steps on the first app launch</strong></li>
-                    </ul>
-                </div>
+            <h3 style="margin-top: 35px;">Your Fantagraphics Zips (All Platforms)</h3>
 
-                <div class="install-step">
-                    <h4>Step 7: After the First Launch</h4>
-                    <p>The <strong>"barks-reader-data-1.zip"</strong> and <strong>"barks-reader-data-2.zip"</strong>
-                        files are no longer needed, and you can safely delete them.</p>
-                </div>
+            <div class="install-step">
+                <h4>Organise Your Fantagraphics Zips</h4>
+                <p>Your Fantagraphics comic zips must be in a single folder and can be either '.zip' or '.cbz'
+                    files. The first part of each volume's filename must be the volume number, from '01' to '29'.
+                    For example:</p>
+                <table class="requirements-table filename-example-table">
+                    <tbody>
+                    <tr>
+                        <td><strong>01 - Donald Duck - Finds Pirate Gold.cbz</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>02 - Donald Duck - Frozen Gold.zip</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>...</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>28 - Uncle Scrooge - 'Cave of Ali Baba'.zip</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>29 - Donald Duck - 'The Lonely Lighthouse on Cape Quack'.cbz</strong></td>
+                    </tr>
+                    </tbody>
+                </table>
+                <p><strong>Note:</strong> The app manipulates, centers, and reorganizes comic book images, so
+                    encrypted or proprietary file formats (such as native Kindle or Comixology files) are not
+                    supported. You must have DRM-free .cbz or .zip files.</p>
+            </div>
+
+            <div class="install-step">
+                <h4>Optional &mdash; Help the App Find Them Automatically</h4>
+                <p>If you put your Fantagraphics comic zips in a folder called <strong>"Fantagraphics Complete Carl
+                    Barks Disney Library"</strong>, and that folder is under one of the locations the app searches,
+                    it will be automatically added to the reader's configuration. Otherwise, on first use, the app
+                    will ask you where to look. The searched locations are the app folder itself, plus:</p>
+                <table class="requirements-table">
+                    <tbody>
+                    <tr>
+                        <td><strong>Windows</strong></td>
+                        <td>"C:\Users\YourUsername\BarksReader", "...\Documents", "...\Books"</td>
+                    </tr>
+                    <tr>
+                        <td><strong>macOS</strong></td>
+                        <td>"~/Applications/BarksReader", "~/BarksReader", "~/Documents", "~/Books"</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Linux</strong></td>
+                        <td>"~/opt/barks-reader", "~/Documents", "~/Books" (a symlink works too)</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 style="margin-top: 35px;">What Happens on First Launch</h3>
+
+            <div class="install-step">
+                <h4>The First Launch Installs Everything</h4>
+                <p>When the application is first launched it will do further installation steps
+                    (on the very first launch only):</p>
+                <ul>
+                    <li>It will unzip <strong>"barks-reader-data-1.zip"</strong> and
+                        <strong>"barks-reader-data-2.zip"</strong> into a <strong>"Reader Files"</strong> folder
+                        beside the executable (on macOS: beside the .app bundle),</li>
+                    <li>It will create the necessary default configuration files in a
+                        <strong>"config"</strong> folder in the same place,</li>
+                    <li>It will search for your <strong>"Fantagraphics Complete Carl Barks Disney
+                        Library"</strong> folder in the locations listed above,</li>
+                    <li>And finally, it will launch the actual reader app.</li>
+                </ul>
+                <p>If anything goes wrong, an install log named
+                    <strong>"barks-reader-installer-&lt;timestamp&gt;.log"</strong> is written beside the
+                    executable.</p>
+            </div>
+
+            <div class="install-step">
+                <h4>After the First Launch</h4>
+                <p>The <strong>"barks-reader-data-1.zip"</strong> and <strong>"barks-reader-data-2.zip"</strong>
+                    files are no longer needed, and you can safely delete them.</p>
             </div>
         </div>
 
         <!-- Requirements Tab -->
         <div id="requirements" class="tab-content">
             <h2>System Requirements</h2>
-            <p>Ensure your system meets these requirements for optimal performance.</p>
+            <p>The app runs comfortably on most desktops and laptops from the last decade or so.</p>
 
-            <h3>Minimum Requirements</h3>
             <table class="requirements-table">
                 <tr>
                     <th>Component</th>
@@ -1157,61 +1178,33 @@
                 </tr>
                 <tr>
                     <td>Operating System</td>
-                    <td>Windows 10/11, macOS 12+, or Linux (Ubuntu 20.04+, similar)</td>
-                </tr>
-                <tr>
-                    <td>Processor</td>
-                    <td>Intel Core i3 or AMD equivalent (2.0 GHz+)</td>
+                    <td>Windows 10/11, macOS 12+ (Apple Silicon or Intel), or Linux (Ubuntu 20.04+, similar)</td>
                 </tr>
                 <tr>
                     <td>Memory (RAM)</td>
-                    <td>4 GB</td>
+                    <td>4 GB minimum, 8 GB or more recommended</td>
                 </tr>
                 <tr>
                     <td>Storage</td>
-                    <td>15 GB available space (includes app, data files, and your Fantagraphics zips)</td>
-                </tr>
-                <tr>
-                    <td>Graphics</td>
-                    <td>Integrated graphics with 512MB VRAM</td>
+                    <td>15 GB available space (includes app, ~2 GB of data files, and your Fantagraphics zips);
+                        an SSD is strongly recommended</td>
                 </tr>
                 <tr>
                     <td>Display</td>
-                    <td>1920x1080 resolution or higher</td>
+                    <td>1920x1080 or higher recommended (the app window needs at least ~900 pixels of width)</td>
+                </tr>
+                <tr>
+                    <td>Internet</td>
+                    <td>None &mdash; only needed to download the app itself</td>
                 </tr>
             </table>
 
-            <h3>Recommended Requirements</h3>
-            <table class="requirements-table">
-                <tr>
-                    <th>Component</th>
-                    <th>Requirement</th>
-                </tr>
-                <tr>
-                    <td>Operating System</td>
-                    <td>Windows 11, macOS 12+, or Ubuntu 22.04+</td>
-                </tr>
-                <tr>
-                    <td>Processor</td>
-                    <td>Preferably modern hardware with Intel Core i5/i7 or AMD Ryzen 5/7 (3.0 GHz+)</td>
-                </tr>
-                <tr>
-                    <td>Memory (RAM)</td>
-                    <td>8 GB or more</td>
-                </tr>
-                <tr>
-                    <td>Storage</td>
-                    <td>SSD with 15 GB available space (includes app, data files, and your Fantagraphics zips)</td>
-                </tr>
-                <tr>
-                    <td>Graphics</td>
-                    <td>Dedicated GPU with 2GB+ VRAM</td>
-                </tr>
-                <tr>
-                    <td>Display</td>
-                    <td>2560x1440 resolution or higher</td>
-                </tr>
-            </table>
+            <h3>Real-World Performance</h3>
+            <p>Performance is hard to gauge accurately, so here are two real data points. The app works very well
+                with Ubuntu 24.04 on an AMD Ryzen 7 5700G PC with SSDs and 16GB of RAM. A slow example is Windows 10
+                on an Intel i3-8109U PC with 8GB RAM, where the first-launch installation takes 4 minutes and
+                subsequent launches are slow &mdash; but once launched it's OK. In general: a reasonably modern CPU
+                and an SSD make the biggest difference.</p>
 
             <h3>Additional Notes</h3>
             <ul>
@@ -1219,11 +1212,6 @@
                     self-contained (you only need one to download it).</li>
                 <li>You must supply your own DRM-free comic zips for the <strong><em>Fantagraphics Complete Carl Barks
                     Disney Library.</em></strong></li>
-                <li>Performance is hard to gauge accurately. But for example, the app works very well with Ubuntu
-                    24.04 on an AMD Ryzen 7 5700G PC with SSDs and 16GB of RAM.
-                    A slow example is Windows 10 with an Intel i3-8109U PC with 8GB RAM where the installation takes
-                    4 minutes and subsequent launches are slow. Once launched it's OK.
-                </li>
             </ul>
         </div>
 
@@ -1231,8 +1219,7 @@
         <div id="troubleshooting" class="tab-content">
             <h2>Troubleshooting</h2>
             <p>Common issues and their solutions. If your problem isn't listed here, please check our
-                <a href="https://github.com/glk1001/barks-compleat-reader/issues"
-                   style="color: #667eea; font-weight: 600;">GitHub Issues page</a>.</p>
+                <a href="https://github.com/glk1001/barks-compleat-reader/issues">GitHub Issues page</a>.</p>
 
             <div class="troubleshooting-item">
                 <h4>🛡️ Antivirus or SmartScreen blocks the app</h4>
@@ -1253,15 +1240,16 @@
                 <div class="solution">
                     <p><strong>Solutions:</strong></p>
                     <ul>
-                        <li>Ensure the executable and both data zip files (<strong>"barks-reader-data-1.zip"</strong>
-                            and <strong>"barks-reader-data-2.zip"</strong>) are in the same directory
-                        </li>
-                        <li>Check that your system meets the minimum requirements</li>
-                        <li>Try running as administrator (Windows) or with elevated permissions</li>
+                        <li>On a first launch: ensure both data zip files (<strong>"barks-reader-data-1.zip"</strong>
+                            and <strong>"barks-reader-data-2.zip"</strong>) are in the same directory as the
+                            executable (on macOS: beside the .app bundle)</li>
                         <li>Check that the app directory has write permissions (do not install to <em>"C:\Program
-                            Files"</em> on Windows or <em>"/Applications"</em> on macOS)
-                        </li>
-                        <li>Reinstall from a fresh download</li>
+                            Files"</em> on Windows or <em>"/Applications"</em> on macOS)</li>
+                        <li>Don't rename the executable &mdash; the first-launch installer expects its original
+                            name</li>
+                        <li>Look for an install log named
+                            <strong>"barks-reader-installer-&lt;timestamp&gt;.log"</strong> beside the executable
+                            &mdash; it says exactly what failed</li>
                     </ul>
                 </div>
             </div>
@@ -1282,14 +1270,20 @@
             </div>
 
             <div class="troubleshooting-item">
-                <h4>⚠️ Missing data files error</h4>
+                <h4>⚠️ First launch failed or data files are missing</h4>
                 <div class="solution">
                     <p><strong>Solutions:</strong></p>
                     <ul>
-                        <li>Ensure the complete archive was downloaded (check file size ~2GB)</li>
-                        <li>Re-extract the archive &mdash; partial extraction may have occurred</li>
-                        <li>Verify data folder is in the same directory as the executable</li>
-                        <li>Check available disk space</li>
+                        <li>Make sure both data zips downloaded completely (each is roughly 1 GB &mdash; about 2 GB
+                            together) and are beside the executable, then launch again</li>
+                        <li>Check the install log
+                            (<strong>"barks-reader-installer-&lt;timestamp&gt;.log"</strong>, beside the
+                            executable) for the exact error</li>
+                        <li>If a first launch failed partway through, delete the <strong>"config"</strong> and
+                            <strong>"Reader Files"</strong> folders beside the executable, make sure both data zips
+                            are present, and launch again &mdash; the installer re-runs whenever no
+                            <strong>"config"</strong> folder exists</li>
+                        <li>Check available disk space (you'll need around 15 GB free)</li>
                     </ul>
                 </div>
             </div>
@@ -1301,22 +1295,26 @@
                     <ul>
                         <li>Close other resource-intensive applications</li>
                         <li>Ensure you meet the recommended system requirements</li>
-                        <li>Check for available system updates</li>
-                        <li>Move data files to an SSD if using HDD</li>
+                        <li>Move the app and its data files to an SSD if they're on an HDD</li>
                         <li>Ensure your Fantagraphics zips are on an SSD rather than HDD</li>
                     </ul>
                 </div>
             </div>
 
             <div class="troubleshooting-item">
-                <h4>🔄 Update issues</h4>
+                <h4>🔄 Updating to a new version</h4>
                 <div class="solution">
-                    <p><strong>Solutions:</strong></p>
+                    <p><strong>Steps:</strong></p>
                     <ul>
-                        <li>Manually download the latest version from GitHub Releases</li>
-                        <li>Backup your settings before updating</li>
-                        <li>Completely remove old version before installing new one</li>
-                        <li>Check GitHub releases page for version-specific notes</li>
+                        <li>Download the new executable from GitHub Releases and replace the old one in your
+                            BarksReader folder &mdash; your <strong>"config"</strong> and
+                            <strong>"Reader Files"</strong> folders (settings, last-read pages) are kept as-is</li>
+                        <li>The data zips are only needed again if the release notes say the data packs have
+                            changed</li>
+                        <li>For a completely fresh install: delete the <strong>"config"</strong> and
+                            <strong>"Reader Files"</strong> folders, put both data zips beside the new executable,
+                            and launch &mdash; the first-launch installer will run again</li>
+                        <li>Check the GitHub Releases page for version-specific notes</li>
                     </ul>
                 </div>
             </div>
@@ -1324,8 +1322,7 @@
             <h3>Still Having Issues?</h3>
             <p>
                 If none of these solutions work, please visit our
-                <a href="https://github.com/glk1001/barks-compleat-reader/issues"
-                   style="color: #667eea; font-weight: 600;">GitHub repository</a>
+                <a href="https://github.com/glk1001/barks-compleat-reader/issues">GitHub repository</a>
                 and create an issue with:
             </p>
             <ul>
@@ -1333,7 +1330,8 @@
                 <li>Application version</li>
                 <li>Detailed description of the problem</li>
                 <li>Steps to reproduce the issue</li>
-                <li>Any error messages or logs</li>
+                <li>Any error messages or logs (including any
+                    <strong>"barks-reader-installer-&lt;timestamp&gt;.log"</strong> file)</li>
             </ul>
         </div>
 
@@ -1349,15 +1347,15 @@
                 tabs = document.getElementsByClassName("tab");
                 for (i = 0; i < tabs.length; i++) {
                     tabs[i].classList.remove("active");
+                    tabs[i].setAttribute("aria-selected", "false");
                 }
 
                 document.getElementById(tabName).classList.add("active");
 
-                // Find and activate the correct tab button by matching the tab name
                 for (i = 0; i < tabs.length; i++) {
-                    if (tabs[i].getAttribute("onclick") &&
-                        tabs[i].getAttribute("onclick").indexOf("'" + tabName + "'") !== -1) {
+                    if (tabs[i].dataset.tab === tabName) {
                         tabs[i].classList.add("active");
+                        tabs[i].setAttribute("aria-selected", "true");
                         break;
                     }
                 }
@@ -1380,8 +1378,6 @@
                 evt.currentTarget.classList.add("active");
             }
 
-            // Download platform configuration
-            let currentReleaseVersion = "v1.0.0"; // Will be overwritten by GitHub API if successful
             const GITHUB_REPO = "glk1001/barks-compleat-reader";
 
             const downloadPlatforms =[
@@ -1391,8 +1387,7 @@
                     icon: '🪟',
                     executable: 'barks-reader-win.exe',
                     description: 'Executable file for Windows 10/11',
-                    note: 'You need to download the executable AND both data packs. Move them to the directory where you want the executable to live.',
-                    extraInstructions: null
+                    note: 'You need to download the executable AND both data packs. Move them to the directory where you want the executable to live.'
                 },
                 {
                     id: 'download-macos',
@@ -1400,8 +1395,7 @@
                     icon: '🍎',
                     executable: 'barks-reader-macos.zip',
                     description: 'Zipped app bundle for Apple Silicon Macs (macOS 12+)',
-                    note: 'You need to download the app zip AND both data packs. Unzip the app zip (only) and move the .app and the two data packs to the folder where you want the app to live.',
-                    extraInstructions: null
+                    note: 'You need to download the app zip AND both data packs. Unzip the app zip (only) and move the .app and the two data packs to the folder where you want the app to live.'
                 },
                 {
                     id: 'download-macos-x64',
@@ -1409,8 +1403,7 @@
                     icon: '🍎',
                     executable: 'barks-reader-macos-x64.zip',
                     description: 'Zipped app bundle for Intel Macs (macOS 12+)',
-                    note: 'You need to download the app zip AND both data packs. Unzip the app zip (only) and move the .app and the two data packs to the folder where you want the app to live.',
-                    extraInstructions: null
+                    note: 'You need to download the app zip AND both data packs. Unzip the app zip (only) and move the .app and the two data packs to the folder where you want the app to live.'
                 },
                 {
                     id: 'download-linux',
@@ -1418,8 +1411,7 @@
                     icon: '🐧',
                     executable: 'barks-reader-linux',
                     description: 'Executable file for Linux (Ubuntu 20.04+, similar distributions)',
-                    note: 'You need to download the executable AND both data packs. Move them to the directory where you want the executable to live.',
-                    extraInstructions: null
+                    note: 'You need to download the executable AND both data packs. Move them to the directory where you want the executable to live.'
                 }
             ];
 
@@ -1428,8 +1420,36 @@
                 { name: 'Data Pack 2', filename: 'barks-reader-data-2.zip' }
             ];
 
+            let resolvedTag = null;
+
+            async function resolveLatestTag() {
+                try {
+                    // "releases/latest" only counts full releases, so fall back to the
+                    // newest release of any kind (e.g. a pre-release) if it finds nothing.
+                    let response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+                    if (response.ok) {
+                        return (await response.json()).tag_name;
+                    }
+                    response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases`);
+                    if (response.ok) {
+                        const releases = await response.json();
+                        if (releases.length > 0) {
+                            return releases[0].tag_name;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error fetching latest release:', error);
+                }
+                return null;
+            }
+
             function generateDownloadURL(filename) {
-                return `https://github.com/${GITHUB_REPO}/releases/download/${currentReleaseVersion}/${filename}`;
+                // Tag-based URL when the API resolved one; otherwise GitHub's static
+                // "latest" permalink, which needs no API call and never goes stale
+                // (but only points at full releases, not pre-releases).
+                return resolvedTag
+                    ? `https://github.com/${GITHUB_REPO}/releases/download/${resolvedTag}/${filename}`
+                    : `https://github.com/${GITHUB_REPO}/releases/latest/download/${filename}`;
             }
 
             function createDataFilesHTML() {
@@ -1437,10 +1457,10 @@
                     <h4 style="margin-top: 30px;">Required Data Files</h4>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
                         ${dataFiles.map(file => `
-                            <div style="padding: 20px; background: rgba(248, 249, 250, 0.7); border-radius: 8px; text-align: center;">
-                                <p style="font-weight: 600; margin-bottom: 10px;">${file.name}</p>
-                                <a href="${generateDownloadURL(file.filename)}"
-                                style="display: inline-block; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; font-weight: 600;" download>
+                            <div class="data-file-card">
+                                <p style="font-weight: 700; margin-bottom: 10px;">${file.name}</p>
+                                <a href="${generateDownloadURL(file.filename)}" data-asset="${file.filename}"
+                                class="download-btn-small" download>
                                     Download ${file.name}
                                 </a>
                             </div>
@@ -1450,7 +1470,6 @@
             }
 
             function initializeDownloadTabs() {
-                // Generate platform tabs
                 const tabsHTML = downloadPlatforms.map((platform, index) => `
                     <button class="platform-tab download-platform-tab ${index === 0 ? 'active' : ''}"
                             onclick="openDownloadPlatform(event, '${platform.id}')">
@@ -1460,7 +1479,6 @@
 
                 document.getElementById('download-platform-tabs').innerHTML = tabsHTML;
 
-                // Generate platform content
                 const contentHTML = downloadPlatforms.map((platform, index) => `
                     <div id="${platform.id}" class="platform-content download-platform-content ${index === 0 ? 'active' : ''}">
                         <h3>${platform.name} Download</h3>
@@ -1469,7 +1487,7 @@
                         <div class="download-card">
                             <h3>${platform.name} Application</h3>
                             <p>${platform.description}</p>
-                            <a href="${generateDownloadURL(platform.executable)}"
+                            <a href="${generateDownloadURL(platform.executable)}" data-asset="${platform.executable}"
                             class="download-btn-large" download>
                                 Download ${platform.executable}
                             </a>
@@ -1477,9 +1495,8 @@
 
                         ${createDataFilesHTML()}
 
-                        <p style="margin-top: 20px; padding: 15px; background: rgba(255, 243, 205, 0.7); border-radius: 6px; border-left: 4px solid #f59e0b;">
+                        <p class="download-note">
                             <strong>Note:</strong> ${platform.note}
-                            ${platform.extraInstructions ? '<br>' + platform.extraInstructions : ''}
                         </p>
                     </div>
                 `).join('');
@@ -1504,23 +1521,25 @@
                 evt.currentTarget.classList.add("active");
             }
 
-            // Initialize download tabs and version display when page loads (Now with Auto-Updating GitHub API)
             document.addEventListener('DOMContentLoaded', async function() {
-                try {
-                    // Fetch the latest release data from GitHub
-                    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        currentReleaseVersion = data.tag_name; // Automatically update version, e.g., "v1.0.1"
-                    }
-                } catch (error) {
-                    console.error('Error fetching latest release:', error);
-                    // Silently fail and continue using the fallback version defined above
+                // Deep-linking: app.html#installation opens that tab directly.
+                const initialTab = window.location.hash.slice(1);
+                if (initialTab && document.querySelector(`.tab[data-tab="${initialTab}"]`)) {
+                    openTab(null, initialTab);
                 }
 
-                // Now initialize tabs with the correct version mapped into the buttons
+                // Render the download buttons straight away with "latest" permalinks,
+                // so they exist even if the GitHub API is slow or unreachable...
                 initializeDownloadTabs();
-                document.getElementById('header-version').textContent = currentReleaseVersion;
+
+                // ...then swap in tag-based URLs once the API resolves the release.
+                resolvedTag = await resolveLatestTag();
+                if (resolvedTag) {
+                    document.getElementById('header-version').textContent = resolvedTag;
+                    document.querySelectorAll('a[data-asset]').forEach(link => {
+                        link.href = generateDownloadURL(link.dataset.asset);
+                    });
+                }
             });
 
         </script>
