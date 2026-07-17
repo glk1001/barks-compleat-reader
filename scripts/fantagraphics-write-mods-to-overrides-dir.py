@@ -9,7 +9,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import typer
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
 from barks_fantagraphics.comic_book import ComicBook, ModifiedType, get_page_str
+from barks_fantagraphics.comic_book_info import (
+    ONE_PAGER_COLLECTION_PAGE_BASE,
+    get_located_one_pagers,
+    is_one_pager_collection,
+)
 from barks_fantagraphics.comics_consts import FANTA_VOLUME_OVERRIDES_ROOT
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import FANTA_OVERRIDE_ZIPS
@@ -48,6 +54,9 @@ class FileType(Enum):
 
 def get_srce_mod_files(comic: ComicBook) -> list[tuple[Path, FileType, Path]]:
     """Find all modified source files for a given comic book."""
+    if is_one_pager_collection(comic.get_title_enum()):
+        return get_one_pager_collection_mod_files(comic)
+
     srce_and_dest_pages = get_sorted_srce_and_dest_pages(comic, get_full_paths=True)
 
     return [
@@ -55,6 +64,40 @@ def get_srce_mod_files(comic: ComicBook) -> list[tuple[Path, FileType, Path]]:
         for srce in srce_and_dest_pages.srce_pages
         if get_page_mod_type(comic, srce) != ModifiedType.ORIGINAL
     ]
+
+
+def get_one_pager_collection_mod_files(comic: ComicBook) -> list[tuple[Path, FileType, Path]]:
+    """Return the "All One-Pagers" collection pages as ADDED original mod files.
+
+    Every located one-pager is baked from its staged original scan (the fixes-dir
+    symlink created by barks-stage-one-pagers), so don't enumerate through
+    ``get_sorted_srce_and_dest_pages`` - that requires restored images and
+    panel-segments files, which unrestored one-pagers legitimately don't have yet.
+    """
+    mod_files = []
+    for i, title in enumerate(get_located_one_pagers()):
+        page_num = get_page_str(ONE_PAGER_COLLECTION_PAGE_BASE + i)
+
+        fixes_file = comic.get_srce_original_fixes_story_file(page_num)
+        if not fixes_file.is_file():
+            msg = (
+                f'No staged original scan "{fixes_file}" for one-pager'
+                f' "{ENUM_TO_STR_TITLE[title]}". Run barks-stage-one-pagers first.'
+            )
+            raise FileNotFoundError(msg)
+
+        restored_file = comic.get_srce_restored_image_dir() / (page_num + PNG_FILE_EXT)
+        if not restored_file.is_file():
+            logger.warning(
+                f'No restored file for one-pager "{ENUM_TO_STR_TITLE[title]}"'
+                f' - using original scan "{fixes_file}".'
+            )
+
+        mod_files.append(
+            (fixes_file, FileType.ORIGINAL, comic.get_srce_original_story_file(page_num))
+        )
+
+    return mod_files
 
 
 def get_mod_file(comic: ComicBook, srce: CleanPage) -> tuple[Path, FileType, Path]:
