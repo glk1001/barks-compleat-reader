@@ -6,14 +6,16 @@
     <title>The Compleat Barks Disney Reader</title>
     <meta name="description"
           content="A free desktop app for reading your digital Fantagraphics Complete Carl Barks Disney Library — uncensored, indexed, and searchable. Windows, macOS, and Linux.">
-    <link rel="icon" href="main-header.png">
+    <link rel="icon" href="favicon.png">
     <meta property="og:type" content="website">
     <meta property="og:title" content="The Compleat Barks Disney Reader">
     <meta property="og:description"
           content="A free desktop app for reading your digital Fantagraphics Complete Carl Barks Disney Library — uncensored, indexed, and searchable.">
     <meta property="og:url" content="https://glk1001.github.io/barks-compleat-reader/website/app.html">
     <meta property="og:image"
-          content="https://glk1001.github.io/barks-compleat-reader/website/screenshot-main-window.png">
+          content="https://glk1001.github.io/barks-compleat-reader/website/og-card.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -132,6 +134,7 @@
             justify-content: center;
             text-align: center;
             box-shadow: 4px 4px 0 rgba(31, 42, 68, 0.5);
+            text-decoration: none;
         }
 
         .price-badge-label {
@@ -437,10 +440,6 @@
             border-bottom: 1px solid rgba(31, 42, 68, 0.2);
         }
 
-        .requirements-table tr:hover {
-            background: rgba(239, 227, 198, 0.5);
-        }
-
         .troubleshooting-item {
             padding: 20px;
             background: rgba(239, 227, 198, 0.5);
@@ -619,15 +618,17 @@
             }
         }
 
-        .filename-example-table {
-            margin-top: 0;
-            margin-bottom: 0;
-            width: auto;
+        .filename-example {
+            list-style: none;
+            margin: 15px 0;
+            padding: 0;
         }
 
-        .filename-example-table td {
-            padding-top: 3px !important;
-            padding-bottom: 3px !important;
+        .filename-example li {
+            margin: 0;
+            padding: 3px 15px;
+            border-bottom: 1px solid rgba(31, 42, 68, 0.2);
+            font-weight: 700;
         }
 
         .about-section {
@@ -693,30 +694,37 @@
             <p class="masthead-kicker">Documentation &amp; Downloads</p>
             <h1>The Compleat Barks Disney Reader</h1>
         </div>
-        <div class="price-badge" title="Latest release">
-            <span class="price-badge-label">Latest</span>
-            <span id="header-version">release</span>
-        </div>
+        <a class="price-badge" href="https://github.com/glk1001/barks-compleat-reader/releases"
+           title="Latest release">
+            <span class="price-badge-label" id="header-version-label">Latest release</span>
+            <span id="header-version"></span>
+        </a>
     </header>
 
     <div class="main-content">
-        <div class="tabs" role="tablist">
-            <button class="tab active" role="tab" aria-selected="true" data-tab="intro"
+        <div class="tabs" role="tablist" aria-label="Site sections">
+            <button class="tab active" id="tab-intro" role="tab" aria-selected="true"
+                    aria-controls="intro" tabindex="0" data-tab="intro"
                     onclick="openTab(event, 'intro')">Introduction</button>
-            <button class="tab" role="tab" aria-selected="false" data-tab="features"
+            <button class="tab" id="tab-features" role="tab" aria-selected="false"
+                    aria-controls="features" tabindex="-1" data-tab="features"
                     onclick="openTab(event, 'features')">Features</button>
-            <button class="tab" role="tab" aria-selected="false" data-tab="download"
+            <button class="tab" id="tab-download" role="tab" aria-selected="false"
+                    aria-controls="download" tabindex="-1" data-tab="download"
                     onclick="openTab(event, 'download')">Download</button>
-            <button class="tab" role="tab" aria-selected="false" data-tab="installation"
+            <button class="tab" id="tab-installation" role="tab" aria-selected="false"
+                    aria-controls="installation" tabindex="-1" data-tab="installation"
                     onclick="openTab(event, 'installation')">Installation</button>
-            <button class="tab" role="tab" aria-selected="false" data-tab="requirements"
+            <button class="tab" id="tab-requirements" role="tab" aria-selected="false"
+                    aria-controls="requirements" tabindex="-1" data-tab="requirements"
                     onclick="openTab(event, 'requirements')">Requirements</button>
-            <button class="tab" role="tab" aria-selected="false" data-tab="troubleshooting"
+            <button class="tab" id="tab-troubleshooting" role="tab" aria-selected="false"
+                    aria-controls="troubleshooting" tabindex="-1" data-tab="troubleshooting"
                     onclick="openTab(event, 'troubleshooting')">Troubleshooting</button>
         </div>
 
         <!-- Introduction Tab -->
-        <div id="intro" class="tab-content active">
+        <div id="intro" class="tab-content active" role="tabpanel" aria-labelledby="tab-intro">
             <div class="intro-hero">
                 <div class="intro-pitch">
                 <h2>Every Barks Disney story &mdash; indexed, searchable, uncensored</h2>
@@ -802,7 +810,7 @@
         </div>
 
         <!-- Features Tab -->
-        <div id="features" class="tab-content">
+        <div id="features" class="tab-content" role="tabpanel" aria-labelledby="tab-features">
             <h2>Features</h2>
             <p>Here are the main features of <em>The Compleat Barks Disney Reader.</em></p>
 
@@ -911,13 +919,13 @@
         </div>
 
         <!-- Download Tab -->
-        <div id="download" class="tab-content">
+        <div id="download" class="tab-content" role="tabpanel" aria-labelledby="tab-download">
             <h2>Download The Compleat Barks Disney Reader</h2>
             <p>Get the latest version of <em>The Compleat Barks Disney Reader</em> for your platform.
                 All downloads are hosted on GitHub Releases, and the links below always point to the latest
                 release.</p>
 
-            <div class="platform-tabs" id="download-platform-tabs">
+            <div class="platform-tabs" id="download-platform-tabs" role="tablist" aria-label="Download platform">
                 <!-- Generated by JavaScript -->
             </div>
 
@@ -933,7 +941,7 @@
         </div>
 
         <!-- Installation Tab -->
-        <div id="installation" class="tab-content">
+        <div id="installation" class="tab-content" role="tabpanel" aria-labelledby="tab-installation">
             <h2>Installation Guide</h2>
             <div class="install-intro">
                 <div>
@@ -975,13 +983,19 @@
                     Subsequent app launches should be fairly quick.</p>
             </div>
 
-            <div class="platform-tabs">
-                <button class="platform-tab active" onclick="openPlatform(event, 'windows')">🪟 Windows</button>
-                <button class="platform-tab" onclick="openPlatform(event, 'macos')">🍎 macOS</button>
-                <button class="platform-tab" onclick="openPlatform(event, 'linux')">🐧 Linux</button>
+            <div class="platform-tabs" role="tablist" aria-label="Installation platform">
+                <button class="platform-tab active" id="tab-platform-windows" role="tab"
+                        aria-selected="true" aria-controls="windows" tabindex="0"
+                        onclick="openPlatform(event, 'windows')">🪟 Windows</button>
+                <button class="platform-tab" id="tab-platform-macos" role="tab"
+                        aria-selected="false" aria-controls="macos" tabindex="-1"
+                        onclick="openPlatform(event, 'macos')">🍎 macOS</button>
+                <button class="platform-tab" id="tab-platform-linux" role="tab"
+                        aria-selected="false" aria-controls="linux" tabindex="-1"
+                        onclick="openPlatform(event, 'linux')">🐧 Linux</button>
             </div>
 
-            <div id="windows" class="platform-content active">
+            <div id="windows" class="platform-content active" role="tabpanel" aria-labelledby="tab-platform-windows">
                 <h3>Windows Installation</h3>
 
                 <div class="install-step">
@@ -1020,7 +1034,7 @@
                 </div>
             </div>
 
-            <div id="macos" class="platform-content">
+            <div id="macos" class="platform-content" role="tabpanel" aria-labelledby="tab-platform-macos">
                 <h3>macOS Installation</h3>
 
                 <div class="install-step">
@@ -1073,7 +1087,7 @@
                 </div>
             </div>
 
-            <div id="linux" class="platform-content">
+            <div id="linux" class="platform-content" role="tabpanel" aria-labelledby="tab-platform-linux">
                 <h3>Linux Installation</h3>
 
                 <div class="install-step">
@@ -1118,25 +1132,13 @@
                 <p>Your Fantagraphics comic zips must be in a single folder and can be either '.zip' or '.cbz'
                     files. The first part of each volume's filename must be the volume number, from '01' to '29'.
                     For example:</p>
-                <table class="requirements-table filename-example-table">
-                    <tbody>
-                    <tr>
-                        <td><strong>01 - Donald Duck - Finds Pirate Gold.cbz</strong></td>
-                    </tr>
-                    <tr>
-                        <td><strong>02 - Donald Duck - Frozen Gold.zip</strong></td>
-                    </tr>
-                    <tr>
-                        <td><strong>...</strong></td>
-                    </tr>
-                    <tr>
-                        <td><strong>28 - Uncle Scrooge - 'Cave of Ali Baba'.zip</strong></td>
-                    </tr>
-                    <tr>
-                        <td><strong>29 - Donald Duck - 'The Lonely Lighthouse on Cape Quack'.cbz</strong></td>
-                    </tr>
-                    </tbody>
-                </table>
+                <ul class="filename-example">
+                    <li>01 - Donald Duck - Finds Pirate Gold.cbz</li>
+                    <li>02 - Donald Duck - Frozen Gold.zip</li>
+                    <li>...</li>
+                    <li>28 - Uncle Scrooge - 'Cave of Ali Baba'.zip</li>
+                    <li>29 - Donald Duck - 'The Lonely Lighthouse on Cape Quack'.cbz</li>
+                </ul>
                 <p><strong>Note:</strong> The app manipulates, centers, and reorganizes comic book images, so
                     encrypted or proprietary file formats (such as native Kindle or Comixology files) are not
                     supported. You must have DRM-free .cbz or .zip files.</p>
@@ -1195,7 +1197,7 @@
         </div>
 
         <!-- Requirements Tab -->
-        <div id="requirements" class="tab-content">
+        <div id="requirements" class="tab-content" role="tabpanel" aria-labelledby="tab-requirements">
             <h2>System Requirements</h2>
             <p>The app runs comfortably on most desktops and laptops from the last decade or so.</p>
 
@@ -1248,7 +1250,7 @@
         </div>
 
         <!-- Troubleshooting Tab -->
-        <div id="troubleshooting" class="tab-content">
+        <div id="troubleshooting" class="tab-content" role="tabpanel" aria-labelledby="tab-troubleshooting">
             <h2>Troubleshooting</h2>
             <p>Common issues and their solutions. If your problem isn't listed here, please check our
                 <a href="https://github.com/glk1001/barks-compleat-reader/issues">GitHub Issues page</a>.</p>
@@ -1380,6 +1382,7 @@
                 for (i = 0; i < tabs.length; i++) {
                     tabs[i].classList.remove("active");
                     tabs[i].setAttribute("aria-selected", "false");
+                    tabs[i].setAttribute("tabindex", "-1");
                 }
 
                 document.getElementById(tabName).classList.add("active");
@@ -1388,26 +1391,28 @@
                     if (tabs[i].dataset.tab === tabName) {
                         tabs[i].classList.add("active");
                         tabs[i].setAttribute("aria-selected", "true");
+                        tabs[i].setAttribute("tabindex", "0");
                         break;
                     }
                 }
             }
 
             function openPlatform(evt, platformName) {
-                var i, platformContent, platformTabs;
-
-                platformContent = document.getElementsByClassName("platform-content");
-                for (i = 0; i < platformContent.length; i++) {
-                    platformContent[i].classList.remove("active");
-                }
-
-                platformTabs = document.getElementsByClassName("platform-tab");
-                for (i = 0; i < platformTabs.length; i++) {
-                    platformTabs[i].classList.remove("active");
-                }
+                // Scope to the installation tab's group - the download tab has
+                // its own platform tabs sharing these classes.
+                document.querySelectorAll(".platform-content:not(.download-platform-content)")
+                    .forEach(function (panel) { panel.classList.remove("active"); });
+                document.querySelectorAll(".platform-tab:not(.download-platform-tab)")
+                    .forEach(function (tab) {
+                        tab.classList.remove("active");
+                        tab.setAttribute("aria-selected", "false");
+                        tab.setAttribute("tabindex", "-1");
+                    });
 
                 document.getElementById(platformName).classList.add("active");
                 evt.currentTarget.classList.add("active");
+                evt.currentTarget.setAttribute("aria-selected", "true");
+                evt.currentTarget.setAttribute("tabindex", "0");
             }
 
             const GITHUB_REPO = "glk1001/barks-compleat-reader";
@@ -1504,6 +1509,9 @@
             function initializeDownloadTabs() {
                 const tabsHTML = downloadPlatforms.map((platform, index) => `
                     <button class="platform-tab download-platform-tab ${index === 0 ? 'active' : ''}"
+                            id="tab-${platform.id}" role="tab"
+                            aria-selected="${index === 0}" aria-controls="${platform.id}"
+                            tabindex="${index === 0 ? '0' : '-1'}"
                             onclick="openDownloadPlatform(event, '${platform.id}')">
                         ${platform.icon} ${platform.name}
                     </button>
@@ -1512,7 +1520,8 @@
                 document.getElementById('download-platform-tabs').innerHTML = tabsHTML;
 
                 const contentHTML = downloadPlatforms.map((platform, index) => `
-                    <div id="${platform.id}" class="platform-content download-platform-content ${index === 0 ? 'active' : ''}">
+                    <div id="${platform.id}" class="platform-content download-platform-content ${index === 0 ? 'active' : ''}"
+                         role="tabpanel" aria-labelledby="tab-${platform.id}">
                         <h3>${platform.name} Download</h3>
                         <p>Download the ${platform.name} executable and data files.</p>
 
@@ -1547,11 +1556,38 @@
                 platformTabs = document.getElementsByClassName("download-platform-tab");
                 for (i = 0; i < platformTabs.length; i++) {
                     platformTabs[i].classList.remove("active");
+                    platformTabs[i].setAttribute("aria-selected", "false");
+                    platformTabs[i].setAttribute("tabindex", "-1");
                 }
 
                 document.getElementById(platformName).classList.add("active");
                 evt.currentTarget.classList.add("active");
+                evt.currentTarget.setAttribute("aria-selected", "true");
+                evt.currentTarget.setAttribute("tabindex", "0");
             }
+
+            // Arrow-key navigation for every tablist (main and platform tabs).
+            document.addEventListener("keydown", function (e) {
+                if (["ArrowLeft", "ArrowRight", "Home", "End"].indexOf(e.key) === -1) {
+                    return;
+                }
+                const tablist = e.target.closest('[role="tablist"]');
+                if (!tablist) {
+                    return;
+                }
+                const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
+                const current = tabs.indexOf(e.target);
+                if (current === -1) {
+                    return;
+                }
+                e.preventDefault();
+                let next = e.key === "ArrowLeft" ? current - 1
+                    : e.key === "ArrowRight" ? current + 1
+                        : e.key === "Home" ? 0 : tabs.length - 1;
+                next = (next + tabs.length) % tabs.length;
+                tabs[next].focus();
+                tabs[next].click();
+            });
 
             document.addEventListener('DOMContentLoaded', async function() {
                 // Deep-linking: app.html#installation opens that tab directly.
@@ -1567,6 +1603,7 @@
                 // ...then swap in tag-based URLs once the API resolves the release.
                 resolvedTag = await resolveLatestTag();
                 if (resolvedTag) {
+                    document.getElementById('header-version-label').textContent = 'Latest';
                     document.getElementById('header-version').textContent = resolvedTag;
                     document.querySelectorAll('a[data-asset]').forEach(link => {
                         link.href = generateDownloadURL(link.dataset.asset);
