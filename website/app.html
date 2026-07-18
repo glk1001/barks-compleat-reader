@@ -297,8 +297,10 @@
         }
 
         h3 {
+            font-family: var(--font-display);
+            font-weight: 400;
             color: var(--ink);
-            font-size: 1.4rem;
+            font-size: 1.3rem;
             margin: 30px 0 15px;
         }
 
@@ -316,8 +318,15 @@
             border-top: 2px solid rgba(31, 42, 68, 0.25);
         }
 
-        .feature-section p {
+        p, li {
             max-width: 75ch;
+        }
+
+        .masthead-kicker,
+        .download-card p,
+        .data-file-card p,
+        .download-note {
+            max-width: none;
         }
 
         .feature-section--split {
@@ -712,16 +721,16 @@
                 <div class="intro-pitch">
                 <h2>Every Barks Disney story &mdash; indexed, searchable, uncensored</h2>
                 <p>
-                    <strong><em>The Compleat Barks Disney Reader</em></strong> is a multi-platform desktop app for
+                    <em>The Compleat Barks Disney Reader</em> is a multi-platform desktop app for
                     reading your digital copy of the
-                    <strong><em>Fantagraphics Complete Carl Barks Disney Library.</em></strong>
+                    <em>Fantagraphics Complete Carl Barks Disney Library.</em>
                     You supply your own Fantagraphics comic zips &mdash; the app does the rest.
                 </p>
                 <ul>
                     <li>Browse and read every story chronologically, by series, or by category</li>
-                    <li>Censorship removed: language fixes, plus <strong><em>"Silent Night,"</em></strong>
-                        <strong><em>"Good Deeds,"</em></strong> and
-                        <strong><em>"Bill Collectors"</em></strong> restored</li>
+                    <li>Censorship removed: language fixes, plus <em>Silent Night,</em>
+                        <em>Good Deeds,</em> and
+                        <em>Bill Collectors</em> restored</li>
                     <li>Title, tag, and speech bubble indexes and searches, linked straight into the
                         stories</li>
                     <li>Hundreds of favourite Barks panels as backgrounds and enhancements</li>
@@ -783,11 +792,11 @@
                 <p>
                     I have loved Barks' stories since childhood, and as I got older, I dreamt of a complete uncensored
                     Barks library. That almost happened with the CBL and CBL in color,
-                    except, sadly, for <em>"Darkest Africa"</em> and <em>"Voodoo Hoodoo."</em> The Fantagraphics
+                    except, sadly, for <em>Darkest Africa</em> and <em>Voodoo Hoodoo.</em> The Fantagraphics
                     library is pretty good (although I'm not a fan of the smaller page size). But the digital edition
                     of the library is a game-changer. This democratizes access to all Barks' Disney work and will allow
                     quality uncensored presentations in the future.
-                    My hope is <strong><em>The Compleat Barks Disney Reader</em></strong> will be a good start to this.
+                    My hope is <em>The Compleat Barks Disney Reader</em> will be a good start to this.
                 </p>
             </div>
         </div>
@@ -795,7 +804,7 @@
         <!-- Features Tab -->
         <div id="features" class="tab-content">
             <h2>Features</h2>
-            <p>Here are the main features of <strong><em>The Compleat Barks Disney Reader.</em></strong></p>
+            <p>Here are the main features of <em>The Compleat Barks Disney Reader.</em></p>
 
             <figure class="art-panel art-panel--banner">
                 <img src="features-bg.jpg" alt="">
@@ -812,17 +821,17 @@
             <div class="feature-section">
                 <h3>Censorship Removed</h3>
                 <p>Unfortunately, in later volumes, censorship started creeping into the
-                    Fantagraphics editions. <em>"Silent Night"</em> and <em>"Good Deeds"</em> were
+                    Fantagraphics editions. <em>Silent Night</em> and <em>Good Deeds</em> were
                     omitted without comment, and a page was deleted from
-                    <em>"The Bill Collectors."</em> Language was changed. These have been
-                    painstakingly restored using digitised images and text from "The Fine Art of
-                    Donald Duck" and the CBL. Hopefully, you'll find these restored pages comparable
+                    <em>The Bill Collectors.</em> Language was changed. These have been
+                    painstakingly restored using digitised images and text from <em>The Fine Art of
+                    Donald Duck</em> and the CBL. Hopefully, you'll find these restored pages comparable
                     in quality to the other uncensored stories.</p>
                 <p>Longstanding censorship has also been tackled (this may be a bit controversial
                     but can be turned off): 'Larkie' has been replaced with 'Harpie' in
-                    <em>"The Golden Fleecing,"</em> Bombie's eyes are white without pupils in
-                    <em>"Voodoo Hoodoo,"</em> and 'Theah' (and similar Southern words) have been
-                    replaced with 'Dere' in <em>"Lost in the Andes!"</em></p>
+                    <em>The Golden Fleecing,</em> Bombie's eyes are white without pupils in
+                    <em>Voodoo Hoodoo,</em> and 'Theah' (and similar Southern words) have been
+                    replaced with 'Dere' in <em>Lost in the Andes!</em></p>
             </div>
 
             <div class="feature-section feature-section--split">
@@ -904,7 +913,7 @@
         <!-- Download Tab -->
         <div id="download" class="tab-content">
             <h2>Download The Compleat Barks Disney Reader</h2>
-            <p>Get the latest version of <strong><em>The Compleat Barks Disney Reader</em></strong> for your platform.
+            <p>Get the latest version of <em>The Compleat Barks Disney Reader</em> for your platform.
                 All downloads are hosted on GitHub Releases, and the links below always point to the latest
                 release.</p>
 
@@ -929,7 +938,7 @@
             <div class="install-intro">
                 <div>
                     <p style="margin-bottom: 20px; font-size: 1.05rem;">
-                        <strong>NOTE: <em>The Compleat Barks Disney Reader</em></strong> is a <strong>Portable
+                        <strong>NOTE:</strong> <em>The Compleat Barks Disney Reader</em> is a <strong>Portable
                         Application</strong>. It does not use a traditional installer, which is why it must be
                         manually placed in a user-directory rather than system folders like 'Program Files' or
                         'Applications'.
@@ -949,7 +958,7 @@
                         files from the
                         <a href="#" onclick="openTab(event, 'download'); return false;">Download tab</a></li>
                     <li>Move all three files to a folder where you have write permissions
-                        (<strong>NOT <em>"C:\Program Files"</em> or <em>"/Applications"</em></strong>)</li>
+                        (<strong>NOT</strong> <em>"C:\Program Files"</em> or <em>"/Applications"</em>)</li>
                     <li>Make the executable runnable (Linux: <code>chmod +x</code>; macOS: unzip to
                         get the <code>.app</code>)</li>
                     <li>Run the executable &mdash; first launch will handle the rest</li>
@@ -1233,8 +1242,8 @@
             <ul>
                 <li>No internet connection is needed to install or run the app &mdash; it is fully
                     self-contained (you only need one to download it).</li>
-                <li>You must supply your own DRM-free comic zips for the <strong><em>Fantagraphics Complete Carl Barks
-                    Disney Library.</em></strong></li>
+                <li>You must supply your own DRM-free comic zips for the <em>Fantagraphics Complete Carl Barks
+                    Disney Library.</em></li>
             </ul>
         </div>
 
