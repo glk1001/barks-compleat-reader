@@ -114,9 +114,14 @@ def _reset_alt_escape() -> Iterator[None]:
 
 
 def _idle_viewer() -> MagicMock:
-    """Build a mock viewer with the search field unfocused (normal navigation)."""
+    """Build a mock viewer with the search field unfocused (normal navigation).
+
+    ``handle_key`` refuses by default (a bare MagicMock return would be truthy
+    and swallow every key before the host's own back handling).
+    """
     viewer = MagicMock()
     viewer.search_focused = False
+    viewer.handle_key.return_value = False
     return viewer
 
 
@@ -197,6 +202,81 @@ class TestWikiReaderScreenKeyboard:
         wiki_screen._viewer = None
 
         assert wiki_screen._on_key_down(None, KEY_ESCAPE, 0, "", []) is False
+
+
+class TestWikiReaderScreenKeyDelegation:
+    """Navigation keys delegate to the viewer's handle_key before back handling."""
+
+    def test_plain_key_delegates_and_consumes_when_viewer_takes_it(
+        self, wiki_screen: WikiReaderScreen
+    ) -> None:
+        key_down = 274
+        wiki_screen._viewer = _idle_viewer()
+        wiki_screen._viewer.handle_key.return_value = True
+
+        consumed = wiki_screen._on_key_down(None, key_down, 0, "", [])
+
+        assert consumed is True
+        wiki_screen._viewer.handle_key.assert_called_once_with(key_down, set())
+        wiki_screen._viewer.go_back.assert_not_called()
+
+    def test_escape_delegates_first_then_falls_through_to_go_back(
+        self, wiki_screen: WikiReaderScreen
+    ) -> None:
+        wiki_screen._viewer = _idle_viewer()
+        wiki_screen._viewer.escape_search.return_value = False
+
+        consumed = wiki_screen._on_key_down(None, KEY_ESCAPE, 0, "", [])
+
+        assert consumed is True
+        wiki_screen._viewer.handle_key.assert_called_once_with(KEY_ESCAPE, set())
+        wiki_screen._viewer.go_back.assert_called_once_with()
+
+    def test_escape_consumed_by_viewer_skips_go_back(self, wiki_screen: WikiReaderScreen) -> None:
+        """E.g. an open footnote popup or a focused link: the viewer unwinds it."""
+        wiki_screen._viewer = _idle_viewer()
+        wiki_screen._viewer.handle_key.return_value = True
+
+        consumed = wiki_screen._on_key_down(None, KEY_ESCAPE, 0, "", [])
+
+        assert consumed is True
+        wiki_screen._viewer.escape_search.assert_not_called()
+        wiki_screen._viewer.go_back.assert_not_called()
+
+    def test_alt_escape_letter_is_translated_before_delegation(
+        self, wiki_screen: WikiReaderScreen
+    ) -> None:
+        set_alt_escape_key(ord("r"))
+        wiki_screen._viewer = _idle_viewer()
+        wiki_screen._viewer.escape_search.return_value = False
+
+        wiki_screen._on_key_down(None, ord("r"), 0, "r", [])
+
+        wiki_screen._viewer.handle_key.assert_called_once_with(KEY_ESCAPE, set())
+
+    def test_ctrl_f_is_not_delegated(self, wiki_screen: WikiReaderScreen) -> None:
+        wiki_screen._viewer = _idle_viewer()
+
+        wiki_screen._on_key_down(None, KEY_F, 0, "", ["ctrl"])
+
+        wiki_screen._viewer.handle_key.assert_not_called()
+
+    def test_search_focused_key_is_not_delegated(self, wiki_screen: WikiReaderScreen) -> None:
+        wiki_screen._viewer = _idle_viewer()
+        wiki_screen._viewer.search_focused = True
+
+        wiki_screen._on_key_down(None, ord("a"), 0, "a", [])
+
+        wiki_screen._viewer.handle_key.assert_not_called()
+
+    def test_alt_left_falls_through_to_go_back(self, wiki_screen: WikiReaderScreen) -> None:
+        wiki_screen._viewer = _idle_viewer()
+
+        consumed = wiki_screen._on_key_down(None, KEY_LEFT, 0, "", ["alt"])
+
+        assert consumed is True
+        wiki_screen._viewer.handle_key.assert_called_once_with(KEY_LEFT, {"alt"})
+        wiki_screen._viewer.go_back.assert_called_once_with()
 
 
 class TestWikiReaderScreenKeyboardWhileTyping:

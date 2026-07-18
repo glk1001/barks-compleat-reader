@@ -38,6 +38,7 @@ from kivy.uix.treeview import TreeView, TreeViewLabel
 from kivy.uix.widget import Widget
 
 from okf_reader.core.render import (
+    LINK_COLOR,
     Block,
     BundleDir,
     TableBlock,
@@ -51,8 +52,39 @@ from okf_reader.core.search import BundleSearcher
 from okf_reader.core.session import load_session_state, save_session_state
 from okf_reader.core.top_bar import TopBarSpec
 
+from .focus_ring import (
+    SIDEBAR_RING_COLOR,
+    SIDEBAR_RING_GROUP,
+    clear_focus_ring,
+    draw_focus_ring,
+)
+from .keynav import (
+    KEY_DOWN,
+    KEY_END,
+    KEY_ENTER,
+    KEY_ESCAPE,
+    KEY_F,
+    KEY_HOME,
+    KEY_LEFT,
+    KEY_NUMPAD_ENTER,
+    KEY_PAGE_DOWN,
+    KEY_PAGE_UP,
+    KEY_RIGHT,
+    KEY_TAB,
+    KEY_UP,
+    LINK_FOCUS_COLOR,
+    PAGE_LINE_STEP,
+    PAGE_STEP_OVERLAP,
+    FocusRegion,
+    cycle_index,
+    enumerate_refs,
+    highlight_ref_occurrence,
+    scroll_step,
+    step_index,
+)
+
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Collection
 
     from okf_reader.core.actions import PageAction, PageActionProvider
     from okf_reader.core.backgrounds import ImageProvider
@@ -247,6 +279,13 @@ def _scroll_view(**kwargs) -> ScrollView:  # noqa: ANN003
     )
 
 
+# Navigation keys consumed as no-ops where nothing can move (an open footnote
+# popup, an empty sidebar state): they must not leak to the hosting app.
+_NAV_NOOP_KEYS = frozenset(
+    {KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_PAGE_UP, KEY_PAGE_DOWN, KEY_HOME, KEY_END}
+)
+
+
 @dataclass
 class _HistoryEntry:
     """One visited page, remembering where it was scrolled to when left (1.0 == top)."""
@@ -300,6 +339,7 @@ class OKFViewer(RelativeLayout):
         self._page_action: PageAction | None = None
         self._band_colors: list[Color] = []  # the current page's section-band Colors
         self._init_link_hover()
+        self._init_keyboard_nav()
 
         # The whole window layers over a context background image (RelativeLayout
         # children stack in add order): image below, the action bar and both
@@ -724,6 +764,8 @@ class OKFViewer(RelativeLayout):
         """Restore the tree to the left column's body slot (empty/cleared search)."""
         if self.tree_scroll.parent is not self._left_body:
             self._result_rows = []
+            self._sidebar_index = None  # the ringed row is being discarded
+            self._results_scroll = None
             self._left_body.clear_widgets()
             self._left_body.add_widget(self.tree_scroll)
             # Reveal the current page's node, which was kept selected while the
@@ -735,6 +777,7 @@ class OKFViewer(RelativeLayout):
 
     def _show_searching(self) -> None:
         """Show a wait note while the index warms (first query before it is ready)."""
+        self._sidebar_index = None
         self._left_body.clear_widgets()
         self._left_body.add_widget(
             Label(text="Searching…", color=SEARCH_NO_MATCH_COLOR, valign="top", halign="center")
@@ -742,6 +785,7 @@ class OKFViewer(RelativeLayout):
 
     def _show_search_error(self) -> None:
         """Show an error note when the index build failed (search stays disabled)."""
+        self._sidebar_index = None
         self._left_body.clear_widgets()
         self._left_body.add_widget(
             Label(
@@ -754,6 +798,7 @@ class OKFViewer(RelativeLayout):
 
     def _show_results(self, hits: list[SearchHit]) -> None:
         """Put the results list in the left column's body slot, replacing the tree."""
+        self._sidebar_index = None  # rows are rebuilt; any ringed row is discarded
         self._left_body.clear_widgets()
         self._left_body.add_widget(self._results_widget(hits))
 
@@ -778,6 +823,7 @@ class OKFViewer(RelativeLayout):
             self._result_rows.append((hit.path, btn))
             column.add_widget(btn)
         scroll.add_widget(column)
+        self._results_scroll = scroll  # keyboard nav scrolls the focused row into view
         self._highlight_active_result()  # mark the open page if it is in this list
         return scroll
 
@@ -929,6 +975,299 @@ class OKFViewer(RelativeLayout):
             return True
         return super().on_touch_down(touch)
 
+    # ------------------------------------------------------------------
+    # Keyboard navigation (see okf_reader.ui.keynav for the pure logic)
+    # ------------------------------------------------------------------
+
+    def _init_keyboard_nav(self) -> None:
+        """Initialize keyboard-navigation state (see `handle_key`).
+
+        Link focus indexes into ``_page_links``; sidebar focus is the tree's own
+        selection band in tree mode and ``_sidebar_index`` over the result rows
+        in results mode.
+        """
+        self._focus_region = FocusRegion.PAGE
+        self._page_links: list[tuple[Label, str, int]] = []  # (label, ref, occurrence-in-label)
+        self._focused_link: int | None = None
+        self._sidebar_index: int | None = None
+        self._results_scroll: ScrollView | None = None
+        self._footnote_popup: ModalView | None = None
+
+    def handle_key(self, key: int, modifiers: Collection[str] = ()) -> bool:
+        """Handle one navigation key press; return whether it was consumed.
+
+        The hosting apps delegate here from their window keyboard handlers (the
+        standalone ``OKFApp``, an embedding screen) after their own shortcut
+        handling. Keys carrying command modifiers (Ctrl/Alt/Meta) and keys typed
+        into the focused search field are refused, so host shortcuts (Ctrl+F,
+        Alt+Left) and search typing are never stolen. Escape is consumed only
+        when there is viewer-internal state to unwind (an open footnote popup, a
+        focused link); otherwise it is left to the host's back handling.
+
+        Tab toggles which pane owns the keys: the page body (scrolling and link
+        traversal) or the left sidebar (the contents tree, or the search-result
+        rows while a search is showing). Mouse interaction is deliberately not
+        tracked: a click that navigates rebuilds the page, which resets the
+        keyboard focus state anyway.
+
+        Args:
+            key: The SDL2 keycode from the window keyboard event.
+            modifiers: The event's active modifier names (e.g. ``{"ctrl"}``).
+
+        Returns:
+            True when the key was consumed.
+
+        """
+        if self.search_focused:
+            return False
+        if {"ctrl", "alt", "meta"} & set(modifiers):
+            return False
+        if self._footnote_popup is not None:
+            return self._handle_popup_key(key)
+        if key == KEY_TAB:
+            self._toggle_focus_region()
+            return True
+        if self._focus_region is FocusRegion.SIDEBAR:
+            return self._handle_sidebar_key(key)
+        return self._handle_page_key(key)
+
+    def _handle_popup_key(self, key: int) -> bool:
+        """Escape/Enter dismiss the footnote popup; nav keys are inert under it."""
+        assert self._footnote_popup is not None
+        if key in (KEY_ESCAPE, KEY_ENTER, KEY_NUMPAD_ENTER):
+            self._footnote_popup.dismiss()
+            return True
+        # Nothing may scroll or refocus under the modal.
+        return key in _NAV_NOOP_KEYS or key == KEY_TAB
+
+    def _handle_page_key(self, key: int) -> bool:
+        """Scroll the page body and cycle/follow its links."""
+        if self._handle_page_scroll_key(key):
+            return True
+        if key in (KEY_LEFT, KEY_RIGHT):
+            self._move_link_focus(1 if key == KEY_RIGHT else -1)
+            return True
+        if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            return self._follow_focused_link()
+        if key == KEY_ESCAPE and self._focused_link is not None:
+            self._clear_link_focus()
+            return True
+        return False
+
+    def _handle_page_scroll_key(self, key: int) -> bool:
+        """Handle the page-scrolling keys (Up/Down/PageUp/PageDown/Home/End)."""
+        if key in (KEY_UP, KEY_DOWN):
+            self._scroll_page_by(dp(PAGE_LINE_STEP) * (1 if key == KEY_DOWN else -1))
+        elif key in (KEY_PAGE_UP, KEY_PAGE_DOWN):
+            step = self.body_scroll.height - dp(PAGE_STEP_OVERLAP)
+            self._scroll_page_by(step if key == KEY_PAGE_DOWN else -step)
+        elif key == KEY_HOME:
+            self.body_scroll.scroll_y = 1.0
+        elif key == KEY_END:
+            fits = self.body.height <= self.body_scroll.height
+            self.body_scroll.scroll_y = 1.0 if fits else 0.0
+        else:
+            return False
+        return True
+
+    def _scroll_page_by(self, delta_px: float) -> None:
+        self.body_scroll.scroll_y = scroll_step(
+            self.body_scroll.scroll_y, self.body_scroll.height, self.body.height, delta_px
+        )
+
+    def _build_page_links(self) -> list[tuple[Label, str, int]]:
+        """Collect the page's links in document order: (label, ref, occurrence-in-label)."""
+        return [
+            (lbl, ref, i)
+            for lbl in self._link_labels
+            for i, ref in enumerate(enumerate_refs(lbl.text))
+        ]
+
+    def _move_link_focus(self, delta: int) -> None:
+        self._set_link_focus(cycle_index(self._focused_link, len(self._page_links), delta))
+
+    def _set_link_focus(self, idx: int | None) -> None:
+        """Move the gold link highlight to ``idx``, scrolling its label into view."""
+        self._restore_focused_link_markup()
+        self._focused_link = idx
+        if idx is None:
+            return
+        lbl, _ref, occurrence = self._page_links[idx]
+        lbl._orig_markup = lbl.text  # noqa: SLF001
+        lbl.text = highlight_ref_occurrence(lbl.text, occurrence, LINK_COLOR, LINK_FOCUS_COLOR)
+        if self.body.height > self.body_scroll.height:
+            self.body_scroll.scroll_to(lbl, padding=dp(24))
+
+    def _restore_focused_link_markup(self) -> None:
+        """Put the focused link's label text back to its unhighlighted markup."""
+        if self._focused_link is None:
+            return
+        lbl, _ref, _occurrence = self._page_links[self._focused_link]
+        orig = getattr(lbl, "_orig_markup", None)
+        if orig is not None:
+            lbl.text = orig
+            lbl._orig_markup = None  # noqa: SLF001
+
+    def _clear_link_focus(self) -> None:
+        self._restore_focused_link_markup()
+        self._focused_link = None
+
+    def _follow_focused_link(self) -> bool:
+        """Activate the focused link exactly as a tap would; False with no focus."""
+        if self._focused_link is None:
+            return False
+        lbl, ref, _occurrence = self._page_links[self._focused_link]
+        self._on_ref(lbl, ref)
+        return True
+
+    def _handle_sidebar_key(self, key: int) -> bool:
+        """Drive the contents tree, or the search-result rows while results show."""
+        if self._result_rows:
+            return self._handle_results_key(key)
+        if self.tree_scroll.parent is self._left_body:
+            return self._handle_tree_key(key)
+        # "Searching…" / search-error / no-match states: nothing to navigate,
+        # but the keys must not leak to the host while the sidebar owns them.
+        return key in _NAV_NOOP_KEYS or key in (KEY_ENTER, KEY_NUMPAD_ENTER)
+
+    def _handle_tree_key(self, key: int) -> bool:
+        """Walk the contents tree: the selection band is the keyboard focus."""
+        nodes = list(self.tree.iterate_open_nodes())
+        if not nodes:
+            return key in _NAV_NOOP_KEYS
+        focused = self.tree.selected_node
+        idx = nodes.index(focused) if focused in nodes else None
+        node = focused if idx is not None else None
+        if key in (KEY_UP, KEY_DOWN):
+            self._tree_move(nodes, idx, 1 if key == KEY_DOWN else -1)
+        elif key == KEY_HOME:
+            self._focus_tree_node(nodes[0])
+        elif key == KEY_END:
+            self._focus_tree_node(nodes[-1])
+        elif key == KEY_RIGHT:
+            self._tree_expand(node)
+        elif key == KEY_LEFT:
+            self._tree_collapse(node)
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self._tree_activate(node)
+        else:
+            return False
+        return True
+
+    def _tree_move(self, nodes: list, idx: int | None, delta: int) -> None:
+        """Move the focus band up or down the visible nodes (clamped, no wrap)."""
+        if idx is None:
+            new_idx = 0 if delta > 0 else len(nodes) - 1
+        else:
+            new_idx = step_index(idx, len(nodes), delta)
+        self._focus_tree_node(nodes[new_idx])
+
+    def _tree_expand(self, node) -> None:  # noqa: ANN001
+        """Open the focused directory (children load lazily), or step into an open one."""
+        if node is None or node.is_leaf:
+            return
+        if not node.is_open:
+            self.tree.toggle_node(node)  # lazy children load via _on_dir_open
+            Clock.schedule_once(lambda _dt: self._scroll_tree_node_into_view(node), 0)
+        elif node.nodes:
+            self._focus_tree_node(node.nodes[0])
+
+    def _tree_collapse(self, node) -> None:  # noqa: ANN001
+        """Close the focused directory, or move the focus band to the parent."""
+        if node is None:
+            return
+        if node.is_open and not node.is_leaf:
+            self.tree.toggle_node(node)
+        elif node.parent_node is not None and node.parent_node is not self.tree.root:
+            self._focus_tree_node(node.parent_node)
+
+    def _tree_activate(self, node) -> None:  # noqa: ANN001
+        """Open the focused node's page (expanding a closed directory first)."""
+        if node is None:
+            return
+        if not node.is_leaf and not node.is_open:
+            self.tree.toggle_node(node)
+        self._on_node(node)
+
+    def _focus_tree_node(self, node) -> None:  # noqa: ANN001
+        """Move the tree's selection band to ``node`` without navigating."""
+        self._syncing_tree = True
+        try:
+            self.tree.select_node(node)
+        finally:
+            self._syncing_tree = False
+        self._scroll_tree_node_into_view(node)
+
+    def _handle_results_key(self, key: int) -> bool:
+        """Walk the search-result rows with a drawn focus ring."""
+        count = len(self._result_rows)
+        if key in (KEY_UP, KEY_DOWN, KEY_HOME, KEY_END):
+            if key == KEY_HOME:
+                idx = 0
+            elif key == KEY_END:
+                idx = count - 1
+            elif self._sidebar_index is None:
+                idx = self._initial_result_index()
+            else:
+                idx = step_index(self._sidebar_index, count, 1 if key == KEY_DOWN else -1)
+            self._set_result_focus(idx)
+            return True
+        if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            if self._sidebar_index is not None:
+                self._result_rows[self._sidebar_index][1].trigger_action(duration=0)
+            return True
+        return key in (KEY_LEFT, KEY_RIGHT)
+
+    def _initial_result_index(self) -> int:
+        """Return the row to focus first: the open page's row when listed, else the top hit."""
+        for i, (path, _btn) in enumerate(self._result_rows):
+            if path == self._active_result_path:
+                return i
+        return 0
+
+    def _set_result_focus(self, idx: int) -> None:
+        """Move the gold ring to result row ``idx``, scrolling it into view."""
+        self._clear_result_focus()
+        self._sidebar_index = idx
+        btn = self._result_rows[idx][1]
+        draw_focus_ring(btn)
+        scroll = self._results_scroll
+        if scroll is not None and scroll.children and scroll.children[0].height > scroll.height:
+            scroll.scroll_to(btn, padding=dp(8))
+
+    def _clear_result_focus(self) -> None:
+        if self._sidebar_index is not None and self._sidebar_index < len(self._result_rows):
+            clear_focus_ring(self._result_rows[self._sidebar_index][1])
+        self._sidebar_index = None
+
+    def _toggle_focus_region(self) -> None:
+        self._set_focus_region(
+            FocusRegion.SIDEBAR if self._focus_region is FocusRegion.PAGE else FocusRegion.PAGE
+        )
+
+    def _set_focus_region(self, region: FocusRegion) -> None:
+        """Hand the navigation keys to ``region``, updating the visible indicators.
+
+        Entering the sidebar rings it in blue and seeds a focus (the active
+        result row, or the tree's selected node scrolled into view). Returning
+        to the page clears the rings and re-syncs the tree's selection band to
+        the page on display, so a focus band wandered by Up/Down snaps back to
+        reality.
+        """
+        self._focus_region = region
+        if region is FocusRegion.SIDEBAR:
+            self._clear_link_focus()
+            draw_focus_ring(self._left_body, group=SIDEBAR_RING_GROUP, color=SIDEBAR_RING_COLOR)
+            if self._result_rows:
+                self._set_result_focus(self._initial_result_index())
+            elif self.tree_scroll.parent is self._left_body and self.tree.selected_node is not None:
+                self._scroll_tree_node_into_view(self.tree.selected_node)
+        else:
+            clear_focus_ring(self._left_body, group=SIDEBAR_RING_GROUP)
+            self._clear_result_focus()
+            if self.history:
+                self._sync_tree_to(self.history[-1].path)
+
     def _update_background(self, frontmatter: dict[str, Any], path: Path) -> None:
         """Set the page panel's background to an image suiting the page, if any.
 
@@ -1068,6 +1407,7 @@ class OKFViewer(RelativeLayout):
         self.body.clear_widgets()
         self._band_colors.clear()  # their sections were just discarded
         self._link_labels.clear()  # ditto their link labels
+        self._focused_link = None  # its label was just discarded — nothing to restore
         self._anchors = {}
         # Blocks group into banded sections: each heading starts a new section
         # box holding it and everything up to the next heading (see BLOCK_BG_COLOR).
@@ -1084,6 +1424,7 @@ class OKFViewer(RelativeLayout):
             if section is None or blk.heading:
                 section = self._new_section()
             section.add_widget(self._hanging_row(lbl, blk) if blk.indent else lbl)
+        self._page_links = self._build_page_links()
         # Fresh pages open at the top; Back passes the offset the page was left at.
         self.body_scroll.scroll_y = scroll_y
         if scroll_y != 1:
@@ -1296,11 +1637,15 @@ class OKFViewer(RelativeLayout):
         popup.add_widget(lbl)
         # While the popup is up it is modal, so it owns link hover exclusively;
         # dismissing hands hover back to the page (and rechecks the cursor, since
-        # dismissal itself moves no mouse).
+        # dismissal itself moves no mouse). It also owns the keyboard — tracked
+        # so handle_key can dismiss it on Escape/Enter (the hosting app consumes
+        # window key events, so the ModalView's own Escape handling never fires).
         self._popup_link_label = lbl
+        self._footnote_popup = popup
 
         def _release_hover(_popup: ModalView) -> None:
             self._popup_link_label = None
+            self._footnote_popup = None
             self._refresh_cursor()
 
         popup.bind(on_dismiss=_release_hover)
@@ -1308,11 +1653,6 @@ class OKFViewer(RelativeLayout):
 
 
 class OKFApp(App):
-    # kivy Window.on_keyboard key codes
-    _KEY_ESCAPE = 27
-    _KEY_LEFT_ARROW = 276
-    _KEY_F = ord("f")
-
     def __init__(
         self,
         bundle: Path,
@@ -1377,23 +1717,32 @@ class OKFApp(App):
     def _on_keyboard(self, _window, key, _scancode, _codepoint, modifiers) -> bool:  # noqa: ANN001
         """Ctrl+F focuses search; Escape and Alt+Left navigate back, like a browser.
 
-        Escape is always consumed: kivy's default would close the window, and
-        an accidental Escape must not kill the reader (the same overshoot
+        Everything else defers to the viewer's own keyboard navigation
+        (``OKFViewer.handle_key``): page scrolling, link traversal, and the
+        sidebar — so the standalone reader navigates exactly like the embedded
+        one. Escape is always consumed: kivy's default would close the window,
+        and an accidental Escape must not kill the reader (the same overshoot
         hazard the Quit button was moved to the corner for). While a search is
         active Escape backs out of it first; at the start of the history both
         back keys are a harmless no-op. Alt+Left is not stolen while the search
         field owns the keyboard, so it can move the cursor within a typed query.
         """
         assert self._viewer is not None
-        if key == self._KEY_F and "ctrl" in modifiers:
+        if key == KEY_F and "ctrl" in modifiers:
             self._viewer.focus_search()
             return True
-        if key == self._KEY_ESCAPE:
-            if self._viewer.escape_search():
-                return True
-            self._viewer.go_back()
+        if self._viewer.handle_key(key, set(modifiers)):
             return True
-        if key == self._KEY_LEFT_ARROW and "alt" in modifiers:
+        return self._handle_back_key(key, modifiers)
+
+    def _handle_back_key(self, key, modifiers) -> bool:  # noqa: ANN001
+        """Handle the browser-style back keys the viewer's handle_key refused."""
+        assert self._viewer is not None
+        if key == KEY_ESCAPE:
+            if not self._viewer.escape_search():
+                self._viewer.go_back()
+            return True
+        if key == KEY_LEFT and "alt" in modifiers:
             if self._viewer.search_focused:
                 return False
             self._viewer.go_back()

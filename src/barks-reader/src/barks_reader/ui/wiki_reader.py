@@ -207,12 +207,16 @@ class WikiReaderScreen(ReaderScreen):
     def _on_key_down(
         self, _window: object, key: int, _scancode: int, _codepoint: str, modifiers: list[str]
     ) -> bool:
-        """Route Ctrl+F to search and Escape/Alt+Left to the viewer's Back, consuming the key.
+        """Route keys to the viewer: Ctrl+F, its own navigation, then Back handling.
 
         Escape honors the user-configured alternate Escape via ``is_escape_key``,
         and backs out of an active search before navigating. Consuming (returning
         True) keeps the key from leaking to the main screen's handler. At the
         history root Back exits the reader (the viewer's on_exit).
+
+        Most keys go to ``OKFViewer.handle_key`` (page scrolling, link traversal,
+        sidebar navigation, footnote-popup dismissal); what it refuses falls
+        through to the Escape/Alt+Left back handling, unchanged.
         """
         if self._viewer is None:
             return False
@@ -228,6 +232,12 @@ class WikiReaderScreen(ReaderScreen):
                 self._viewer.escape_search()
                 return True
             return False
+        # Translate the alternate Escape to the real keycode before delegating,
+        # so the viewer's own Escape handling (footnote popup, focused link) —
+        # which knows nothing of the barks-side configuration — honors it too.
+        nav_key = KEY_ESCAPE if is_escape_key(key) else key
+        if self._viewer.handle_key(nav_key, set(modifiers)):
+            return True
         return self._handle_nav_key(key, modifiers)
 
     def _handle_nav_key(self, key: int, modifiers: list[str]) -> bool:

@@ -66,6 +66,7 @@ intspan
 jpginfo
 jpgs
 keepends
+keynav
 lanczos
 lfs
 libx
@@ -130,6 +131,7 @@ tokenised
 touchpads
 unauthored
 unauthorised
+unhighlighted
 vectorizer
 vmem
 wikilinks
