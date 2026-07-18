@@ -65,15 +65,16 @@ def scroll_step(scroll_y: float, viewport_h: float, content_h: float, delta_px: 
     return max(0.0, min(1.0, scroll_y - delta_px / scrollable))
 
 
-def cycle_index(current: int | None, count: int, delta: int) -> int | None:
-    """Return the next index cycling through ``count`` items with wrap-around.
+def advance_index(current: int | None, count: int, delta: int) -> int | None:
+    """Return the next index stepping through ``count`` items, stopping at the ends.
 
     ``None`` means "no focus yet": stepping forward starts at the first item,
-    stepping backward at the last. An empty list has nothing to focus.
+    stepping backward at the last. Thereafter the index clamps — no wrap-around,
+    so reaching the last item never jumps the view back to the first.
 
     Args:
         current: The currently focused index, or None for no focus.
-        count: Number of items in the cycle.
+        count: Number of items in the list.
         delta: Steps to move (typically +1 or -1).
 
     Returns:
@@ -84,7 +85,7 @@ def cycle_index(current: int | None, count: int, delta: int) -> int | None:
         return None
     if current is None:
         return 0 if delta > 0 else count - 1
-    return (current + delta) % count
+    return step_index(current, count, delta)
 
 
 def step_index(current: int, count: int, delta: int) -> int:

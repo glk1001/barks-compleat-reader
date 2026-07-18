@@ -10,7 +10,7 @@ exact ref shapes the core renderer emits (``render._inline``).
 from __future__ import annotations
 
 from okf_reader.ui.keynav import (
-    cycle_index,
+    advance_index,
     enumerate_refs,
     highlight_ref_occurrence,
     scroll_step,
@@ -47,25 +47,25 @@ class TestScrollStep:
         assert scroll_step(0.95, viewport_h=500, content_h=1500, delta_px=-500) == 1.0
 
 
-class TestCycleIndex:
+class TestAdvanceIndex:
     def test_no_focus_forward_starts_at_first(self) -> None:
-        assert cycle_index(None, 5, 1) == 0
+        assert advance_index(None, 5, 1) == 0
 
     def test_no_focus_backward_starts_at_last(self) -> None:
-        assert cycle_index(None, 5, -1) == 4
+        assert advance_index(None, 5, -1) == 4
 
-    def test_wraps_forward(self) -> None:
-        assert cycle_index(4, 5, 1) == 0
+    def test_stops_at_last(self) -> None:
+        assert advance_index(4, 5, 1) == 4
 
-    def test_wraps_backward(self) -> None:
-        assert cycle_index(0, 5, -1) == 4
+    def test_stops_at_first(self) -> None:
+        assert advance_index(0, 5, -1) == 0
 
     def test_steps_normally(self) -> None:
-        assert cycle_index(2, 5, 1) == 3
+        assert advance_index(2, 5, 1) == 3
 
     def test_empty_has_no_focus(self) -> None:
-        assert cycle_index(None, 0, 1) is None
-        assert cycle_index(3, 0, -1) is None
+        assert advance_index(None, 0, 1) is None
+        assert advance_index(3, 0, -1) is None
 
 
 class TestStepIndex:

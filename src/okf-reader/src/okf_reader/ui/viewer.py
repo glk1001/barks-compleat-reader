@@ -76,7 +76,7 @@ from .keynav import (
     PAGE_LINE_STEP,
     PAGE_STEP_OVERLAP,
     FocusRegion,
-    cycle_index,
+    advance_index,
     enumerate_refs,
     highlight_ref_occurrence,
     scroll_step,
@@ -1084,7 +1084,7 @@ class OKFViewer(RelativeLayout):
         ]
 
     def _move_link_focus(self, delta: int) -> None:
-        self._set_link_focus(cycle_index(self._focused_link, len(self._page_links), delta))
+        self._set_link_focus(advance_index(self._focused_link, len(self._page_links), delta))
 
     def _set_link_focus(self, idx: int | None) -> None:
         """Move the gold link highlight to ``idx``, scrolling its label into view."""
