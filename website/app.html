@@ -308,34 +308,42 @@
             margin-bottom: 15px;
         }
 
-        .feature-grid {
+        .feature-section {
+            margin-top: 35px;
+        }
+
+        .feature-section + .feature-section {
+            border-top: 2px solid rgba(31, 42, 68, 0.25);
+        }
+
+        .feature-section p {
+            max-width: 75ch;
+        }
+
+        .feature-section--split {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 25px;
-            margin: 30px 0;
+            grid-template-columns: 1fr 340px;
+            gap: 34px;
+            align-items: start;
         }
 
-        .feature-card {
-            padding: 25px;
-            background: rgba(239, 227, 198, 0.55);
-            border: 2px solid rgba(31, 42, 68, 0.25);
-            border-left: 5px solid var(--red);
-            border-radius: 4px;
+        .feature-section--split .art-panel {
+            margin-top: 30px;
         }
 
-        .feature-card h4 {
-            color: var(--ink);
-            font-size: 1.2rem;
-            margin-bottom: 10px;
+        .feature-section--flip {
+            grid-template-columns: 340px 1fr;
         }
 
-        .feature-card p {
-            margin: 0 0 10px;
-            font-size: 0.95rem;
-        }
+        @media (max-width: 800px) {
+            .feature-section--split,
+            .feature-section--flip {
+                grid-template-columns: 1fr;
+            }
 
-        .feature-card p:last-child {
-            margin-bottom: 0;
+            .feature-section--flip .art-panel {
+                order: 2;
+            }
         }
 
         .platform-tabs {
@@ -793,97 +801,103 @@
                 <img src="features-bg.jpg" alt="">
             </figure>
 
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <h4>🎯 Chronological Access to All Stories</h4>
-                    <p>The table of contents is a treeview allowing you to browse titles chronologically, or by series,
-                        or category.
-                        Story ordering is done using Barks's submission dates &mdash; the dates he recorded as having
-                        submitted a story to
-                        Western Publishing. Chronological ordering is also maintained through Series and Category
-                        titles.
-                    </p>
-                </div>
+            <div class="feature-section">
+                <h3>Chronological Access to All Stories</h3>
+                <p>The table of contents is a treeview allowing you to browse titles chronologically,
+                    or by series, or category. Story ordering is done using Barks's submission dates
+                    &mdash; the dates he recorded as having submitted a story to Western Publishing.
+                    Chronological ordering is also maintained through Series and Category titles.</p>
+            </div>
 
-                <div class="feature-card">
-                    <h4>⚡ Censorship Removed</h4>
-                    <p>Unfortunately, in later volumes, censorship started creeping into the Fantagraphics editions.
-                        <em>"Silent Night"</em> and
-                        <em>"Good Deeds"</em> were omitted without comment, and a page was deleted from
-                        <em>"The Bill Collectors."</em> Language was changed.
-                        These have been painstakingly restored using digitised images and text from "The Fine Art of
-                        Donald Duck" and the CBL.
-                        Hopefully, you'll find these restored pages comparable in quality to the other uncensored
-                        stories. Longstanding censorship has also been tackled (this may be a bit controversial but
-                        can be turned off): 'Larkie' has been
-                        replaced with 'Harpie' in <em>"The Golden Fleecing,"</em> Bombie's eyes are white without
-                        pupils in <em>"Voodoo Hoodoo,"</em> and 'Theah' (and similar Southern words) have been
-                        replaced with 'Dere' in <em>"Lost in the Andes!"</em>
-                    </p>
-                </div>
+            <div class="feature-section">
+                <h3>Censorship Removed</h3>
+                <p>Unfortunately, in later volumes, censorship started creeping into the
+                    Fantagraphics editions. <em>"Silent Night"</em> and <em>"Good Deeds"</em> were
+                    omitted without comment, and a page was deleted from
+                    <em>"The Bill Collectors."</em> Language was changed. These have been
+                    painstakingly restored using digitised images and text from "The Fine Art of
+                    Donald Duck" and the CBL. Hopefully, you'll find these restored pages comparable
+                    in quality to the other uncensored stories.</p>
+                <p>Longstanding censorship has also been tackled (this may be a bit controversial
+                    but can be turned off): 'Larkie' has been replaced with 'Harpie' in
+                    <em>"The Golden Fleecing,"</em> Bombie's eyes are white without pupils in
+                    <em>"Voodoo Hoodoo,"</em> and 'Theah' (and similar Southern words) have been
+                    replaced with 'Dere' in <em>"Lost in the Andes!"</em></p>
+            </div>
 
-                <div class="feature-card">
-                    <h4>🎨 Copious Amounts of Barks Panels as Backgrounds</h4>
-                    <p>There are hundreds of individual comic panels scattered throughout the app as backgrounds or
-                        story enhancements.
-                        And there is a view where you can randomly cycle through the panels and select the story the
-                        panel comes from.
-                        Also, there are many, many AI versions of panels that give fun re-interpretations of Barks'
-                        art.
-                    </p>
-                    <p>
-                        When you click on a story title you are taken to a view with a panel from the story as a
-                        background together
-                        with the story title, first published edition, submission date, how much Barks was paid for the
-                        story, the Fantagraphics volume and year, and optionally,
-                        brief background notes to the story. There is another smaller panel image in the view that acts
-                        as a portal to the actual comic book reader for the story.
-                    </p>
+            <div class="feature-section feature-section--split">
+                <div>
+                    <h3>Copious Amounts of Barks Panels as Backgrounds</h3>
+                    <p>There are hundreds of individual comic panels scattered throughout the app as
+                        backgrounds or story enhancements. And there is a view where you can randomly
+                        cycle through the panels and select the story the panel comes from. Also,
+                        there are many, many AI versions of panels that give fun re-interpretations
+                        of Barks' art.</p>
+                    <p>When you click on a story title you are taken to a view with a panel from the
+                        story as a background together with the story title, first published edition,
+                        submission date, how much Barks was paid for the story, the Fantagraphics
+                        volume and year, and optionally, brief background notes to the story. There
+                        is another smaller panel image in the view that acts as a portal to the
+                        actual comic book reader for the story.</p>
                 </div>
+                <figure class="art-panel">
+                    <img src="screenshot-selecting-a-title.png" alt="Selecting a Title">
+                </figure>
+            </div>
 
-                <div class="feature-card">
-                    <h4>🔒 You Supply Your Fantagraphics Zips</h4>
-                    <p>All you need to do is make sure all your Fantagraphics comic zips are in a single directory and
-                        the name of each zip starts with the volume number &mdash; so '01' to '29'. The zips must be in
-                        DRM-free '.zip' or '.cbz' format and not 'rar' format. If you have a volume in the 'rar' format
-                        you just need to un-rar it, then zip it up. If you put your zips in a folder called
-                        <strong>"Fantagraphics Complete Carl Barks Disney Library"</strong>, and it's on the Barks
-                        Reader's search path (see the Installation tab) it will be automatically added to the reader's
-                        configuration. Otherwise, when you first use the app, you will have the opportunity to tell it
-                        where to look for the zips.
-                    </p>
+            <div class="feature-section">
+                <h3>You Supply Your Fantagraphics Zips</h3>
+                <p>All you need to do is make sure all your Fantagraphics comic zips are in a single
+                    directory and the name of each zip starts with the volume number &mdash; so '01'
+                    to '29'. The zips must be in DRM-free '.zip' or '.cbz' format and not 'rar'
+                    format. If you have a volume in the 'rar' format you just need to un-rar it,
+                    then zip it up.</p>
+                <p>If you put your zips in a folder called <strong>"Fantagraphics Complete Carl
+                    Barks Disney Library"</strong>, and it's on the Barks Reader's search path (see
+                    the Installation tab) it will be automatically added to the reader's
+                    configuration. Otherwise, when you first use the app, you will have the
+                    opportunity to tell it where to look for the zips.</p>
+            </div>
+
+            <div class="feature-section feature-section--split feature-section--flip">
+                <figure class="art-panel">
+                    <img src="screenshot-reading-a-story.png" alt="Reading a Story">
+                </figure>
+                <div>
+                    <h3>Fullscreen Reader</h3>
+                    <p>When you select a story through the title portal image, the comic is
+                        presented in a new window. Each comic page is centered so there is
+                        consistent positioning from page to page, and the page numbering uses the
+                        original comic page numbering not the Fantagraphics numbering. There are
+                        menu options to toggle fullscreen and double page modes, and go to beginning
+                        or end, and go to a page number. The single page fullscreen mode is very
+                        effective on a large 2-in-1 touchscreen laptop while the double page
+                        fullscreen mode looks great on a 4K TV. (You'll need a NUC-like device to
+                        drive the TV though.)</p>
                 </div>
+            </div>
 
-                <div class="feature-card">
-                    <h4>📊 Fullscreen Reader</h4>
-                    <p>When you select a story through the title portal image, the comic is presented in a new window.
-                        Each comic page is centered so there is consistent positioning from page to page, and the page
-                        numbering uses the original comic page numbering not the Fantagraphics numbering. There are
-                        menu options to toggle fullscreen and double page modes, and go to beginning or end, and go to
-                        a page number. The single page fullscreen mode is very effective on a large 2-in-1 touchscreen
-                        laptop while the double page fullscreen mode looks great on a 4K TV. (You'll need a NUC-like
-                        device to drive the TV though.)
-                    </p>
-                </div>
-
-                <div class="feature-card">
-                    <h4>💬 Titles/Tags and Speech Bubble Index</h4>
+            <div class="feature-section feature-section--split">
+                <div>
+                    <h3>Titles/Tags and Speech Bubble Index</h3>
                     <p>There are two indexes: a titles/tags index and a speech bubble index.
-                        The Titles/Tags index contains alphabetic access to all stories via title names or tags.
-                        The speech bubble index contains all words used in speech bubbles or
-                        narration boxes and sound effects and signs from all stories. All items in each index
-                        are linked to the associated page within a story so you can start reading the story
-                        directly from the link. There are also corresponding Search functions for Titles/Tags and
-                        speech bubbles.
-                    </p>
+                        The Titles/Tags index contains alphabetic access to all stories via title
+                        names or tags. The speech bubble index contains all words used in speech
+                        bubbles or narration boxes and sound effects and signs from all stories. All
+                        items in each index are linked to the associated page within a story so you
+                        can start reading the story directly from the link. There are also
+                        corresponding Search functions for Titles/Tags and speech bubbles.</p>
                 </div>
+                <figure class="art-panel">
+                    <img src="screenshot-speech-bubble-index.png" alt="Speech Bubble Index">
+                </figure>
+            </div>
 
-                <div class="feature-card">
-                    <h4>🔄 Works on Windows, macOS, and Linux</h4>
-                    <p>The app is written in Python and has been run and tested on Windows, Ubuntu, and macOS.
-                        With further work, it should be possible to get it running on Android and iPads.
-                    </p>
-                </div>
+            <div class="feature-section">
+                <h3>Works on Windows, macOS, and Linux</h3>
+                <p>The app is written in Python and has been run and tested on Windows, Ubuntu, and
+                    macOS. With further work, it should be possible to get it running on Android
+                    and iPads.</p>
             </div>
         </div>
 
