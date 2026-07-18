@@ -413,7 +413,7 @@ screen state, composed of five sub-snapshots:
 - `top_view` — the tree background image (info, opacity, color).
 - `fun_view` — the decorative bottom image (visible?, info, color).
 - `title_view` — the selected title's image (visible?, info, color).
-- `screen_visibility` — booleans for the index/statistics sub-screens.
+- `screen_visibility` — booleans for the index/statistics/history sub-screens.
 - `search_view` — search visibility + mode (Title/Tag/Word).
 
 Note the boundary discipline: `ViewSnapshot.view_state` is stored as a **raw
@@ -603,6 +603,12 @@ left is an edge), and persists a `SavedPageInfo` (`core/saved_page_info.py:14`)
 as JSON via `SettingsManager`. A finished comic is normalized back to its cover
 so next time you start fresh.
 
+The same open/close bracket also feeds the **reading-history log**:
+`_read_comic_book` calls `ReadingHistoryTracker.begin`
+(`core/comic_reader_manager.py:164`) and `comic_closed()` passes the resolved
+`SavedPageInfo` to `ReadingHistoryTracker.end` (`:192`). Section 7.5 covers the
+whole subsystem.
+
 ### 6.5 A note on "panel-by-panel" vs. "comic page"
 
 Don't confuse the two image paths. The full **comic page** display
@@ -637,13 +643,13 @@ grouped by the `ScreenBundle` dataclass (`ui/screen_bundle.py:21`) and toggled b
 an `is_visible` property — *not* by the screen manager: `TreeViewScreen`,
 `BottomTitleViewScreen`, `FunImageViewScreen`, `MainIndexScreen`,
 `SpeechIndexScreen`, two `EntityIndexScreen`s (names, locations),
-`StatisticsScreen`, `SearchScreen`.
+`StatisticsScreen`, `HistoryScreen`, `SearchScreen`.
 
 ### 7.2 The main screen layout
 
 `ui/main_screen.kv` composes a vertical `BoxLayout`: an action-bar row on top,
 and a content area filled at runtime by `_wire_screens` (`ui/main_screen.py:131`)
-— the `TreeViewScreen` plus a single wrapper `Screen` into which all eight bottom
+— the `TreeViewScreen` plus a single wrapper `Screen` into which all nine bottom
 sub-screens are stacked. Only one bottom screen shows at a time, and their
 `is_visible` flags are pushed by `SnapshotApplicator` (section 5.5).
 
@@ -694,7 +700,76 @@ overshoot can't hit it).
   pre-rendered PNG charts plus a word-cloud dropdown discovered by globbing. No
   live querying.
 
-### 7.5 How screens get their data
+### 7.5 Reading History
+
+Every comic you open is recorded to a persistent event log, browsable from a
+top-level **Reading History** tree node (between Search and Appendix). The
+feature splits cleanly along the core/ui line.
+
+**Recording (core)** — `core/reading_history.py`, Kivy-free:
+
+- `ReadEvent` (`:35`) is one reading session: title, opened/closed timestamps,
+  and the last display/body page. Events serialize to JSON.
+- `ReadingHistoryStore` (`:77`) persists the log to
+  `barks-reader-history.json` beside the app settings
+  (`ReaderSettings.get_user_history_path`, `core/reader_settings.py:159`) —
+  the JSON-store sibling of `barks-reader.json` (§8.3). It tolerates a
+  missing/corrupt file (starts empty with a logged error) and rewrites the
+  whole file on every mutation.
+- `ReadingHistoryTracker` (`:134`) brackets a session with `begin`/`end`,
+  mirroring `LastReadPageTracker`. Recording is gated by an injected
+  `is_enabled` callable — bound at the composition root to the
+  **Record Reading History** settings toggle
+  (`record_reading_history`, `core/reader_settings.py:254`) — and the clock is
+  injectable for tests.
+- The hook lives in `ComicReaderManager`: `begin` fires in `_read_comic_book`
+  (`core/comic_reader_manager.py:164`) only when `save_last_page` is true, so
+  **articles are never recorded**. A one-pager read via the "All One-Pagers"
+  collection passes `history_title_str` (`ui/navigation_coordinator.py:368`)
+  so the history records the *individual one-pager*, not the collection.
+  `end` fires from `comic_closed` (`:192`) with the same `SavedPageInfo` the
+  resume tracker just persisted (§6.4).
+- Pure derivation helpers turn the raw log into the two views:
+  `group_events_by_day` (`:218`, newest-first day groups with
+  "Today"/"Yesterday" headings) and `summarize_titles` (`:239`, per-title
+  read count + last-opened time; the last-page fields come from the most
+  recent event *that recorded a page*, so a crash-truncated session doesn't
+  hide the reading position). Formatting helpers (`:273–309`) render duration
+  ("1 hr 5 min"), open time, and "to p N" / "at p N" fragments — a finished
+  comic's position is normalized to the cover (§6.4), so only genuinely
+  mid-comic positions produce a page fragment.
+
+**Browsing (ui)** — `HistoryScreen` (`ui/history_screen.py:130`), a bottom
+sub-screen wired exactly like Statistics:
+
+- Two toggleable views over the same log: **Journal** (sessions grouped by
+  day, with time/duration/last-page columns) and **Titles** (one row per
+  title with read count and unfinished-at-page). The screen holds no cached
+  rows — it re-reads the store every time it becomes visible or is modified
+  (`on_is_visible` → `_refresh`, `:209`).
+- Clicking any cell of a row navigates to that title's tree view
+  (`on_goto_title` → `MainScreen._on_goto_history_title`); each row has a
+  delete button, and the top bar has a clear-all button behind a confirmation
+  popup (`on_clear_pressed`, `:449`).
+- The backdrop is a random panel drawn *from the history's own titles*
+  (`update_background_image`, `:166`, via the shared `ImageSelector`), and
+  refreshes with the action bar's Change Pics button.
+- Full keyboard navigation (`enter_nav_focus`/`handle_key`, `:359`/`:376`):
+  Up/Down move the row focus (Page Up/Down jump 10 rows), Left/Right switch
+  Journal/Titles, Enter opens the focused row's title, Delete removes it,
+  Esc returns focus to the tree. `MainScreenNavigation` routes Enter on the
+  tree node into the panel like it does for Statistics
+  (`ui/main_screen_nav.py:272`).
+
+**Navigation wiring** is a textbook run of the §4.4 recipe: a payload-free
+`HistoryDestination` mapped to `ViewStates.ON_HISTORY_NODE` in the dispatch
+table (`core/navigation/navigation_model.py:93`), a `history_spec` node in
+the tree spec (`core/navigation/tree_spec.py:359`), a
+`_BOTTOM_VIEW_HISTORY_OPACITY_1_STATES` set plus a fixed *Good Neighbors*
+top-view image in the pipeline (`core/view_pipeline.py:112`, `:439`), and a
+`ScreenVisibility.history` flag applied by `SnapshotApplicator`.
+
+### 7.6 How screens get their data
 
 Two channels, and it's worth keeping them straight:
 

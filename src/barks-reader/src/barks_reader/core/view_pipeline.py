@@ -437,7 +437,7 @@ class ViewPipeline:
             (self._view_state in self._SEARCH_VIEW_STATES, self._set_top_view_image_for_search),
             (
                 self._view_state == ViewStates.ON_HISTORY_NODE,
-                lambda: self._set_top_view_image_fixed(Titles.GOOD_NEIGHBORS),
+                self._set_top_view_image_for_reading_history,
             ),
             (
                 self._view_state in self._APPENDIX_VIEW_STATES,
@@ -563,6 +563,9 @@ class ViewPipeline:
 
     def _set_top_view_image_for_appendix_censorship_fixes(self) -> None:
         self._top_view_image_info = self._image_selector.get_random_censorship_fix_image()
+
+    def _set_top_view_image_for_reading_history(self) -> None:
+        self._top_view_image_info = self._image_selector.get_random_reading_history_image()
 
     def _set_top_view_image_color(self) -> None:
         self._top_view_image_color = self._colors.next_color(PaletteId.TOP_VIEW)
