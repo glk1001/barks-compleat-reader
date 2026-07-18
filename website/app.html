@@ -197,80 +197,83 @@
         }
 
         .tab-content.active {
-            display: block;
+            display: flow-root;
         }
 
-        .tab-content::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            opacity: 0.15;
-            z-index: 0;
-            pointer-events: none;
-        }
-
-        #intro::before {
-            background-image: none;
-        }
-
+        /* The art lives in panels, the way comics do it: ink border, offset
+           shadow, flat paper around. Text surfaces stay opaque. */
         .intro-hero {
-            position: relative;
-            margin: -40px -40px 0 -40px;
-            padding: 40px 40px 10px;
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 34px;
+            align-items: stretch;
         }
 
-        .intro-hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-image: url('intro-bg.png');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            opacity: 0.15;
-            z-index: 0;
-            pointer-events: none;
+        .art-panel {
+            margin: 0;
+            background: var(--paper-bright);
+            border: 3px solid var(--ink);
+            border-radius: 4px;
+            box-shadow: 6px 6px 0 var(--ink);
+            overflow: hidden;
         }
 
-        .intro-hero > * {
-            position: relative;
-            z-index: 1;
+        .art-panel img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
-        #features::before {
-            background-image: url('features-bg.jpg');
-            background-size: auto 100%;
+        .art-panel--banner {
+            margin: 25px 0 30px;
         }
 
-        #installation::before {
-            background-image: url('installation-bg.png');
+        .art-panel--spot {
+            float: right;
+            width: 300px;
+            max-width: 45%;
+            margin: 8px 0 20px 28px;
         }
 
-        #requirements::before {
-            background-image: url('requirements-bg.jpg');
+        .art-panel--spot img,
+        .install-intro .art-panel img {
+            height: auto;
         }
 
-        #troubleshooting::before {
-            background-image: url('features-bg.jpg');
-            background-size: auto 100%;
+        .install-intro {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 30px;
+            align-items: center;
+            margin-bottom: 20px;
         }
 
-        #download::before {
-            background-image: url('intro-bg.png');
+        @media (max-width: 800px) {
+            .art-panel--spot {
+                float: none;
+                width: 100%;
+                max-width: none;
+                margin: 20px 0;
+            }
+
+            .install-intro {
+                grid-template-columns: 1fr;
+            }
         }
 
-        .tab-content > * {
-            position: relative;
-            z-index: 1;
+        .art-panel--banner img {
+            aspect-ratio: 3 / 1;
+        }
+
+        @media (max-width: 900px) {
+            .intro-hero {
+                grid-template-columns: 1fr;
+            }
+
+            .intro-art {
+                max-height: 340px;
+            }
         }
 
         @keyframes fadeIn {
@@ -713,6 +716,7 @@
         <!-- Introduction Tab -->
         <div id="intro" class="tab-content active">
             <div class="intro-hero">
+                <div class="intro-pitch">
                 <h2>The Compleat Barks Disney Reader</h2>
                 <p>
                     <strong><em>The Compleat Barks Disney Reader</em></strong> is a multi-platform desktop app for
@@ -736,11 +740,15 @@
                 <p style="margin-top: 25px;">
                     <button class="cta-button" onclick="openTab(event, 'download')">Download Now</button>
                 </p>
-
-                <hr class="section-divider">
-
-                <h2 style="margin-top: 20px;">Screenshots</h2>
+                </div>
+                <figure class="art-panel intro-art">
+                    <img src="intro-bg.png" alt="">
+                </figure>
             </div>
+
+            <hr class="section-divider">
+
+            <h2 style="margin-top: 20px;">Screenshots</h2>
             <div class="screenshots-grid">
                 <div class="screenshot-item">
                     <h4>Main Window</h4>
@@ -795,6 +803,10 @@
         <div id="features" class="tab-content">
             <h2>Features</h2>
             <p>Here are the main features of <strong><em>The Compleat Barks Disney Reader.</em></strong></p>
+
+            <figure class="art-panel art-panel--banner">
+                <img src="features-bg.jpg" alt="">
+            </figure>
 
             <div class="feature-grid">
                 <div class="feature-card">
@@ -915,13 +927,21 @@
         <!-- Installation Tab -->
         <div id="installation" class="tab-content">
             <h2>Installation Guide</h2>
-            <p style="margin-bottom: 20px; font-size: 1.05rem;">
-                <strong>NOTE: <em>The Compleat Barks Disney Reader</em></strong> is a <strong>Portable
-                Application</strong>. It does not use a traditional installer, which is why it must be manually placed
-                in a user-directory rather than system folders like 'Program Files' or 'Applications'.
-            </p>
+            <div class="install-intro">
+                <div>
+                    <p style="margin-bottom: 20px; font-size: 1.05rem;">
+                        <strong>NOTE: <em>The Compleat Barks Disney Reader</em></strong> is a <strong>Portable
+                        Application</strong>. It does not use a traditional installer, which is why it must be
+                        manually placed in a user-directory rather than system folders like 'Program Files' or
+                        'Applications'.
+                    </p>
 
-            <p>Follow these platform-specific instructions to install the app on your system.</p>
+                    <p>Follow these platform-specific instructions to install the app on your system.</p>
+                </div>
+                <figure class="art-panel">
+                    <img src="installation-bg.jpg" alt="">
+                </figure>
+            </div>
 
             <div class="quick-start">
                 <h3>Quick Start</h3>
@@ -1198,6 +1218,10 @@
                     <td>None &mdash; only needed to download the app itself</td>
                 </tr>
             </table>
+
+            <figure class="art-panel art-panel--spot">
+                <img src="requirements-bg.jpg" alt="">
+            </figure>
 
             <h3>Real-World Performance</h3>
             <p>Performance is hard to gauge accurately, so here are two real data points. The app works very well
