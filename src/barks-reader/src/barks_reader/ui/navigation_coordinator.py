@@ -374,7 +374,9 @@ class NavigationCoordinator:
         self._on_active_changed(False)  # noqa: FBT003
         self._read_comic_view_state = return_view_state
 
-        page_to_first_goto = "1"
+        page_to_first_goto = (
+            "i" if article_title == Titles.RICH_TOMMASO___ON_COLORING_BARKS else "1"
+        )
         self._comic_reader_manager.read_article_as_comic_book(article_title, page_to_first_goto)
 
     def open_document(
