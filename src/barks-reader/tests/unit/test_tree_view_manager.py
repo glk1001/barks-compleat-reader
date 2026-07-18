@@ -272,6 +272,48 @@ class TestTreeViewManager:
 
         mock_dependencies["nav_coordinator"].select_title.assert_called_once()
 
+    def test_render_title_node_without_scroll(
+        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]
+    ) -> None:
+        fanta = _fake_fanta()
+        node = MagicMock(spec=TitleTreeViewNode)
+        node.destination = TitleDestination(fanta_info=fanta)
+
+        with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
+            tree_view_manager.render_title_node(node)
+
+        target = mock_dependencies["nav_coordinator"].select_title.call_args.args[0]
+        assert target.fanta_info is fanta
+        mock_clock.assert_not_called()
+
+    def test_render_title_node_with_scroll(
+        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]
+    ) -> None:
+        node = MagicMock(spec=TitleTreeViewNode)
+        node.destination = TitleDestination(fanta_info=_fake_fanta())
+
+        with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
+            tree_view_manager.render_title_node(node, scroll_to=True)
+
+        mock_dependencies["nav_coordinator"].select_title.assert_called_once()
+        mock_clock.assert_called_once()
+
+    def test_activate_node_title_selects_renders_and_scrolls(
+        self,
+        tree_view_manager: TreeViewManager,
+        mock_dependencies: dict[str, Any],
+        screen_mocks: dict[str, MagicMock],
+    ) -> None:
+        node = MagicMock(spec=TitleTreeViewNode)
+        node.destination = TitleDestination(fanta_info=_fake_fanta())
+
+        with patch.object(barks_reader.ui.tree_view_manager.Clock, "schedule_once") as mock_clock:
+            tree_view_manager.activate_node(node)
+
+        screen_mocks["tree_view"].select_node.assert_called_with(node)
+        mock_dependencies["nav_coordinator"].select_title.assert_called_once()
+        mock_clock.assert_called_once()
+
     def test_on_article_node_pressed(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
     ) -> None:

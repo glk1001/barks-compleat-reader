@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import time
 from enum import Enum, auto
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final, Protocol
 
 from kivy.clock import Clock
 from loguru import logger
@@ -38,6 +39,21 @@ if TYPE_CHECKING:
 
 _BOTTOM_FOCUS_HIGHLIGHT_GROUP = "bottom_focus_highlight"
 
+# Successive tree-move key presses closer together than this are treated as rapid
+# scrolling: the expensive title-view render is deferred until the presses settle.
+_TITLE_RENDER_DEBOUNCE_SECS: Final = 0.2
+
+
+class TriggerEvent(Protocol):
+    """A restartable one-shot timer (matches `kivy.clock.ClockEvent`)."""
+
+    def __call__(self) -> None: ...
+
+    def cancel(self) -> None: ...
+
+
+type TriggerFactory = Callable[[Callable[[float], None], float], TriggerEvent]
+
 
 class _FocusRegion(Enum):
     TREE = auto()
@@ -56,6 +72,9 @@ class MainScreenNavigation:
         enter_menu_mode: Callable[[], None],
         handle_menu_key: Callable[[int], bool],
         is_in_menu_mode: Callable[[], bool],
+        *,
+        trigger_factory: TriggerFactory | None = None,
+        now_fn: Callable[[], float] = time.monotonic,
     ) -> None:
         self._tree_view_screen = screens.tree_view
         self._tree_view_manager = tree_view_manager
@@ -77,6 +96,14 @@ class MainScreenNavigation:
         self._focus_region = _FocusRegion.TREE
         self._focus_region_before_comic: _FocusRegion | None = None
         self._auto_exited_bottom_focus = False
+
+        factory: TriggerFactory = trigger_factory or Clock.create_trigger
+        self._title_render_trigger = factory(
+            self._on_title_render_timeout, _TITLE_RENDER_DEBOUNCE_SECS
+        )
+        self._now = now_fn
+        self._last_tree_move_time = float("-inf")
+        self._pending_title_node: TitleTreeViewNode | None = None
 
     @property
     def is_in_bottom_focus(self) -> bool:
@@ -123,6 +150,7 @@ class MainScreenNavigation:
         if is_escape_key(key):
             self._enter_menu_mode()
         elif key == KEY_TAB:
+            self._flush_pending_title_render()
             self.enter_bottom_focus()
         elif key == KEY_UP:
             self._tree_nav_move(-1)
@@ -229,11 +257,35 @@ class MainScreenNavigation:
             idx = 0 if delta > 0 else len(visible) - 1
         else:
             idx = max(0, min(len(visible) - 1, visible.index(selected) + delta))
+        now = self._now()
+        rapid = (now - self._last_tree_move_time) < _TITLE_RENDER_DEBOUNCE_SECS
+        self._last_tree_move_time = now
+
         node = visible[idx]
         self._tree_view_screen.select_node(node)
         self._tree_view_screen.scroll_to_node(node)
         if isinstance(node, TitleTreeViewNode):
-            self._tree_view_manager.activate_node(node)
+            if rapid or self._pending_title_node is not None:
+                # Rapid scrolling (held key): defer the expensive title-view render
+                # until the key presses settle.
+                self._pending_title_node = node
+                self._title_render_trigger.cancel()
+                self._title_render_trigger()
+            else:
+                self._tree_view_manager.render_title_node(node)
+
+    def _on_title_render_timeout(self, _dt: float) -> None:
+        node, self._pending_title_node = self._pending_title_node, None
+        if node is not None and self._tree_view_screen.get_selected_node() is node:
+            self._tree_view_manager.render_title_node(node)
+
+    def _cancel_pending_title_render(self) -> None:
+        self._title_render_trigger.cancel()
+        self._pending_title_node = None
+
+    def _flush_pending_title_render(self) -> None:
+        self._title_render_trigger.cancel()
+        self._on_title_render_timeout(0.0)
 
     def _enter_nav_screen_bottom_focus(
         self,
@@ -247,6 +299,10 @@ class MainScreenNavigation:
             Clock.schedule_once(lambda _dt: self.enter_bottom_focus(), 0)
 
     def _tree_nav_activate(self) -> None:
+        # A pending debounced title render is superseded: for a title node,
+        # activate_node below re-renders synchronously anyway.
+        self._cancel_pending_title_render()
+
         selected = self._tree_view_screen.get_selected_node()
         if selected is None:
             return

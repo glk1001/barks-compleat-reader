@@ -5,7 +5,7 @@ from __future__ import annotations
 import threading
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -66,12 +66,11 @@ class TestLoadPanelPil:
 class TestPanelImageLoader:
     def test_init(self, fake_scheduler: FakeScheduler) -> None:
         loader = PanelImageLoader(fake_scheduler)
-        assert loader._cancel is False
-        assert loader._current_thread is None
+        assert loader._generation == 0
 
-    def test_cancel(self, loader: PanelImageLoader) -> None:
+    def test_cancel_bumps_generation(self, loader: PanelImageLoader) -> None:
         loader.cancel()
-        assert loader._cancel is True
+        assert loader._generation == 1
 
     def test_load_pil_success_invokes_callback_with_rgba_image(
         self,
@@ -159,19 +158,83 @@ class TestPanelImageLoader:
 
             assert fake_scheduler.scheduled_once_count == 0
 
-    def test_start_worker_kills_previous_thread(
+    def test_new_load_does_not_join_previous_thread(
         self, loader: PanelImageLoader, mock_callback: MagicMock
     ) -> None:
+        """A new load must never block the UI thread waiting on the previous decode."""
         mock_path = MagicMock(spec=Path)
 
         with patch.object(loader_module, threading.Thread.__name__) as mock_thread_cls:
-            mock_thread_instance = MagicMock()
-            mock_thread_cls.return_value = mock_thread_instance
+            first_thread = MagicMock()
+            mock_thread_cls.return_value = first_thread
 
             loader.load_pil(mock_path, mock_callback)
-            assert loader._current_thread == mock_thread_instance
-
             loader.load_pil(mock_path, mock_callback)
 
-            mock_thread_instance.join.assert_called_once()
-            assert loader._cancel is False  # Reset to false
+            first_thread.join.assert_not_called()
+
+    def test_stale_worker_result_dropped(
+        self, loader: PanelImageLoader, fake_scheduler: FakeScheduler
+    ) -> None:
+        """A worker superseded by a newer load must not deliver its result."""
+        mock_path = MagicMock(spec=Path)
+        workers: list[tuple[Any, tuple[Any, ...]]] = []
+
+        with (
+            patch.object(loader_module, threading.Thread.__name__) as mock_thread_cls,
+            patch.object(loader_module, "load_pil", return_value=MagicMock(spec=Image.Image)),
+            patch.object(loader_module, "convert_mode", return_value=MagicMock(spec=Image.Image)),
+        ):
+            mock_thread_cls.side_effect = lambda target, args, daemon: MagicMock(
+                start=lambda: workers.append((target, args))
+            )
+            callback_a = MagicMock()
+            callback_b = MagicMock()
+            loader.load_pil(mock_path, callback_a)
+            loader.load_pil(mock_path, callback_b)
+
+            # Run the superseded worker A after B was requested.
+            target_a, args_a = workers[0]
+            target_a(*args_a)
+            callback_a.assert_not_called()
+            assert fake_scheduler.scheduled_once_count == 0
+
+            target_b, args_b = workers[1]
+            target_b(*args_b)
+            callback_b.assert_called_once()
+
+    def test_cancel_drops_in_flight_result(
+        self, loader: PanelImageLoader, mock_callback: MagicMock, fake_scheduler: FakeScheduler
+    ) -> None:
+        mock_path = MagicMock(spec=Path)
+        workers: list[tuple[Any, tuple[Any, ...]]] = []
+
+        with (
+            patch.object(loader_module, threading.Thread.__name__) as mock_thread_cls,
+            patch.object(loader_module, "load_pil", return_value=MagicMock(spec=Image.Image)),
+            patch.object(loader_module, "convert_mode", return_value=MagicMock(spec=Image.Image)),
+        ):
+            mock_thread_cls.side_effect = lambda target, args, daemon: MagicMock(
+                start=lambda: workers.append((target, args))
+            )
+            loader.load_pil(mock_path, mock_callback)
+            loader.cancel()
+
+            target, args = workers[0]
+            target(*args)
+
+            mock_callback.assert_not_called()
+            assert fake_scheduler.scheduled_once_count == 0
+
+    def test_stale_scheduled_delivery_dropped_on_ui_thread(
+        self, loader: PanelImageLoader, mock_callback: MagicMock
+    ) -> None:
+        """A delivery scheduled just before a newer load bumped the generation is dropped."""
+        pil = MagicMock(spec=Image.Image)
+        loader._generation = 2
+
+        loader._deliver(1, mock_callback, pil, None)
+        mock_callback.assert_not_called()
+
+        loader._deliver(2, mock_callback, pil, None)
+        mock_callback.assert_called_once_with(pil, None)

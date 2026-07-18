@@ -22,7 +22,41 @@ from barks_reader.ui.screen_bundle import ScreenBundle
 from barks_reader.ui.tree_view_nodes import ButtonTreeViewNode, TitleTreeViewNode
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
+
+
+class FakeTrigger:
+    """A restartable one-shot timer that tests fire manually."""
+
+    def __init__(self) -> None:
+        self._callback: Callable[[float], None] | None = None
+        self.scheduled = False
+        self.cancel_count = 0
+
+    def set_callback(self, callback: Callable[[float], None]) -> None:
+        self._callback = callback
+
+    def __call__(self) -> None:
+        self.scheduled = True
+
+    def cancel(self) -> None:
+        self.scheduled = False
+        self.cancel_count += 1
+
+    def fire(self) -> None:
+        assert self._callback is not None
+        self.scheduled = False
+        self._callback(0.0)
+
+
+@pytest.fixture
+def fake_trigger() -> FakeTrigger:
+    return FakeTrigger()
+
+
+@pytest.fixture
+def fake_time() -> list[float]:
+    return [0.0]
 
 
 @pytest.fixture
@@ -47,11 +81,17 @@ def screens(screen_mocks: dict[str, MagicMock]) -> ScreenBundle:
 
 
 @pytest.fixture
-def nav(screens: ScreenBundle) -> Generator[MainScreenNavigation]:
+def nav(
+    screens: ScreenBundle, fake_trigger: FakeTrigger, fake_time: list[float]
+) -> Generator[MainScreenNavigation]:
     on_title_activated = MagicMock()
     enter_menu_mode = MagicMock()
     handle_menu_key = MagicMock(return_value=True)
     is_in_menu_mode = MagicMock(return_value=False)
+
+    def trigger_factory(callback: Callable[[float], None], _timeout: float) -> FakeTrigger:
+        fake_trigger.set_callback(callback)
+        return fake_trigger
 
     with (
         patch.object(nav_module, "draw_focus_highlight"),
@@ -65,6 +105,8 @@ def nav(screens: ScreenBundle) -> Generator[MainScreenNavigation]:
             enter_menu_mode=enter_menu_mode,
             handle_menu_key=handle_menu_key,
             is_in_menu_mode=is_in_menu_mode,
+            trigger_factory=trigger_factory,
+            now_fn=lambda: fake_time[0],
         )
         yield n
 
@@ -301,14 +343,117 @@ class TestTreeNavMove:
 
         nav._tree_view_screen.select_node.assert_called_with(nodes[1])  # ty: ignore[unresolved-attribute]
 
-    def test_activates_title_node(self, nav: MainScreenNavigation) -> None:
+    def test_renders_title_node_immediately_on_discrete_press(
+        self, nav: MainScreenNavigation, fake_trigger: FakeTrigger
+    ) -> None:
         title_node = MagicMock(spec=TitleTreeViewNode)
         nav._tree_view_screen.get_visible_nodes.return_value = [title_node]  # ty: ignore[unresolved-attribute]
         nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[unresolved-attribute]
 
         nav._tree_nav_move(1)
 
-        nav._tree_view_manager.activate_node.assert_called_with(title_node)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.select_node.assert_called_with(title_node)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.scroll_to_node.assert_called_with(title_node)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.render_title_node.assert_called_once_with(title_node)  # ty: ignore[unresolved-attribute]
+        assert not fake_trigger.scheduled
+
+
+class TestTitleRenderDebounce:
+    @staticmethod
+    def _setup_title_nodes(nav: MainScreenNavigation, count: int) -> list[MagicMock]:
+        """Set up title nodes with selection tracked through select_node calls."""
+        nodes = [MagicMock(spec=TitleTreeViewNode) for _ in range(count)]
+        nav._tree_view_screen.get_visible_nodes.return_value = nodes  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = None  # ty: ignore[unresolved-attribute]
+
+        def track_selection(node: MagicMock) -> None:
+            nav._tree_view_screen.get_selected_node.return_value = node  # ty: ignore[unresolved-attribute]
+
+        nav._tree_view_screen.select_node.side_effect = track_selection  # ty: ignore[unresolved-attribute]
+        return nodes
+
+    def test_rapid_press_defers_render(
+        self, nav: MainScreenNavigation, fake_trigger: FakeTrigger, fake_time: list[float]
+    ) -> None:
+        nodes = self._setup_title_nodes(nav, 3)
+
+        nav._tree_nav_move(1)  # Leading edge: renders nodes[0] immediately.
+        fake_time[0] = 0.05
+        nav._tree_nav_move(1)  # Rapid: render deferred.
+
+        nav._tree_view_manager.render_title_node.assert_called_once_with(nodes[0])  # ty: ignore[unresolved-attribute]
+        assert fake_trigger.scheduled
+        assert nav._pending_title_node is nodes[1]
+
+    def test_each_rapid_press_restarts_trigger(
+        self, nav: MainScreenNavigation, fake_trigger: FakeTrigger, fake_time: list[float]
+    ) -> None:
+        self._setup_title_nodes(nav, 4)
+
+        nav._tree_nav_move(1)
+        for i in range(3):
+            fake_time[0] += 0.05
+            nav._tree_nav_move(1)
+            assert fake_trigger.cancel_count == i + 1
+            assert fake_trigger.scheduled
+
+    def test_trigger_fire_renders_pending_node(
+        self, nav: MainScreenNavigation, fake_trigger: FakeTrigger, fake_time: list[float]
+    ) -> None:
+        nodes = self._setup_title_nodes(nav, 3)
+
+        nav._tree_nav_move(1)
+        fake_time[0] = 0.05
+        nav._tree_nav_move(1)
+        fake_trigger.fire()
+
+        nav._tree_view_manager.render_title_node.assert_called_with(nodes[1])  # ty: ignore[unresolved-attribute]
+        assert nav._pending_title_node is None
+
+    def test_trigger_fire_skips_stale_selection(
+        self, nav: MainScreenNavigation, fake_trigger: FakeTrigger, fake_time: list[float]
+    ) -> None:
+        nodes = self._setup_title_nodes(nav, 3)
+
+        nav._tree_nav_move(1)
+        fake_time[0] = 0.05
+        nav._tree_nav_move(1)
+        # Selection moved elsewhere (e.g. mouse click) before the trigger fired.
+        nav._tree_view_screen.get_selected_node.return_value = MagicMock()  # ty: ignore[unresolved-attribute]
+        fake_trigger.fire()
+
+        nav._tree_view_manager.render_title_node.assert_called_once_with(nodes[0])  # ty: ignore[unresolved-attribute]
+        assert nav._pending_title_node is None
+
+    def test_enter_cancels_pending_render(
+        self, nav: MainScreenNavigation, fake_trigger: FakeTrigger, fake_time: list[float]
+    ) -> None:
+        nodes = self._setup_title_nodes(nav, 3)
+
+        nav._tree_nav_move(1)
+        fake_time[0] = 0.05
+        nav._tree_nav_move(1)
+        nav._tree_nav_activate()
+
+        assert nav._pending_title_node is None
+        assert not fake_trigger.scheduled
+        # Enter re-renders synchronously through the activate path.
+        nav._tree_view_manager.activate_node.assert_called_once_with(nodes[1])  # ty: ignore[unresolved-attribute]
+        nav._on_title_activated.assert_called_once()  # ty: ignore[unresolved-attribute]
+
+    def test_tab_flushes_pending_render(
+        self, nav: MainScreenNavigation, fake_trigger: FakeTrigger, fake_time: list[float]
+    ) -> None:
+        nodes = self._setup_title_nodes(nav, 3)
+
+        nav._tree_nav_move(1)
+        fake_time[0] = 0.05
+        nav._tree_nav_move(1)
+        nav._handle_tree_key(KEY_TAB)
+
+        nav._tree_view_manager.render_title_node.assert_called_with(nodes[1])  # ty: ignore[unresolved-attribute]
+        assert nav._pending_title_node is None
+        assert not fake_trigger.scheduled
 
 
 class TestTreeNavActivate:

@@ -50,49 +50,56 @@ class PanelImageLoader:
 
     def __init__(self, scheduler: Scheduler) -> None:
         self._scheduler = scheduler
-        self._cancel = False
-        self._current_thread: Thread | None = None
+        # Bumped on every new load or cancel; a worker whose captured generation
+        # no longer matches is stale and must drop its result. This avoids ever
+        # blocking the UI thread waiting for a superseded decode to finish.
+        self._generation = 0
 
     def cancel(self) -> None:
         """Cancel the current load if one is in flight."""
-        self._cancel = True
+        self._generation += 1
 
     def load_pil(self, panel_path: PanelPath, callback: ImageLoaderCallback) -> None:
         """Schedule *panel_path* to be decoded; *callback* fires on the UI thread."""
         self._start_worker(panel_path, callback=callback)
 
     def _start_worker(self, panel_path: PanelPath, callback: ImageLoaderCallback) -> None:
-        # Kill the current thread.
-        if self._current_thread:
-            self._cancel = True
-            self._current_thread.join()
-
-        self._cancel = False
-        current_thread = Thread(
+        self._generation += 1
+        Thread(
             target=self._worker,
-            args=(panel_path, callback),
+            args=(panel_path, callback, self._generation),
             daemon=True,
-        )
-        current_thread.start()
-        self._current_thread = current_thread
+        ).start()
 
-    def _worker(self, panel_path: PanelPath, callback: ImageLoaderCallback) -> None:
+    def _worker(self, panel_path: PanelPath, callback: ImageLoaderCallback, gen: int) -> None:
         try:
             # Panel zipfile.Path bytes are always encrypted in this app.
             pil = load_panel_pil(panel_path)
 
-            if self._cancel:
+            if self._generation != gen:
                 return
 
             pil = convert_mode(pil, "RGBA")  # ensures reliable texture creation
 
-            if self._cancel:
+            if self._generation != gen:
                 return
 
         except Exception as e:  # noqa: BLE001
             logger.exception(f'Error loading image "{panel_path}":')
             ex = e
-            self._scheduler.schedule_once(lambda: callback(None, ex))
+            self._scheduler.schedule_once(lambda: self._deliver(gen, callback, None, ex))
             return
 
-        self._scheduler.schedule_once(lambda: callback(pil, None))
+        self._scheduler.schedule_once(lambda: self._deliver(gen, callback, pil, None))
+
+    def _deliver(
+        self,
+        gen: int,
+        callback: ImageLoaderCallback,
+        pil: Image.Image | None,
+        error: Exception | None,
+    ) -> None:
+        # Re-check on the UI thread: a stale worker may have scheduled its
+        # callback just before a newer load bumped the generation.
+        if self._generation == gen:
+            callback(pil, error)

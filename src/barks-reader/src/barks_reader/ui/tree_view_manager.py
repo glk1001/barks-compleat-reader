@@ -107,11 +107,22 @@ class TreeViewManager:
             self._handle_button_node_selection(node)
 
     def _handle_title_node_selection(self, node: TitleTreeViewNode) -> None:
+        self.render_title_node(node, scroll_to=True)
+
+    def render_title_node(self, node: TitleTreeViewNode, *, scroll_to: bool = False) -> None:
+        """Render the bottom title view for `node` without re-selecting it.
+
+        Args:
+            node: The title node whose view should be rendered.
+            scroll_to: Whether to also scroll the tree view to the node.
+
+        """
         from .navigation_coordinator import TitleTarget  # noqa: PLC0415
 
         assert isinstance(node.destination, TitleDestination)
         self._nav.select_title(TitleTarget(fanta_info=node.destination.fanta_info))
-        self.scroll_to_node(node)
+        if scroll_to:
+            self.scroll_to_node(node)
 
     def _handle_button_node_selection(self, node: ButtonTreeViewNode) -> None:
         if node.saved_state.get("open", True):
