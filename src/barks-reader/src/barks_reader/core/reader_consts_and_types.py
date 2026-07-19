@@ -6,7 +6,6 @@ RAW_ACTION_BAR_SIZE_Y = 45
 # the okf viewer's TopBarSpec (core/wiki_integration.py) so all four bars match.
 ACTION_BAR_BG_COLOR = (0.12, 0.12, 0.12, 1)  # standard ActionBar background color
 ACTION_BAR_SEPARATOR_COLOR = (0.3, 0.3, 0.3, 1)
-ACTION_BAR_TITLE_COLOR = (0.0, 1.0, 0.0, 1.0)
 RAW_ACTION_BAR_ICON_WIDTH = 70  # dp, the icon-container width
 # Width of the separator fencing the Quit button off from the working buttons:
 # the 1dp line sits centered, leaving ~8dp of dead space on each side.

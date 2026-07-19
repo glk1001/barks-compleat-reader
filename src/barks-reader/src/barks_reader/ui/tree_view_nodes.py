@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, override
+from typing import TYPE_CHECKING, Any, override
 
 from kivy.app import App
 from kivy.event import EventDispatcher
@@ -21,6 +21,7 @@ from barks_reader.core.reader_formatter import (
     ReaderFormatter,
     get_clean_text_without_extra,
 )
+from barks_reader.core.reader_palette import color_to_markup_hex, theme
 from barks_reader.core.reader_utils import title_needs_footnote
 
 if TYPE_CHECKING:
@@ -36,7 +37,6 @@ if TYPE_CHECKING:
 READER_TREE_VIEW_KV_FILE = Path(__file__).parent / "reader-tree-view.kv"
 
 TREE_VIEW_NODE_TEXT_COLOR = (1, 1, 1, 1)
-TREE_VIEW_NODE_SELECTED_COLOR = (1, 0, 1, 0.8)
 TREE_VIEW_NODE_BACKGROUND_COLOR = (0.0, 0.0, 0.0, 0.0)
 
 
@@ -98,7 +98,6 @@ class BaseTreeViewNode(TreeViewNode):
 
 class ButtonTreeViewNode(Button, BaseTreeViewNode):
     TEXT_COLOR = TREE_VIEW_NODE_TEXT_COLOR
-    SELECTED_COLOR = TREE_VIEW_NODE_SELECTED_COLOR
     BACKGROUND_COLOR = TREE_VIEW_NODE_BACKGROUND_COLOR
 
     # Has this node lazily created its children?
@@ -149,11 +148,8 @@ class YearRangeTreeViewNode(ButtonTreeViewNode):
 
 class TitleTreeViewNode(BoxLayout, BaseTreeViewNode):
     TEXT_COLOR = TREE_VIEW_NODE_TEXT_COLOR
-    SELECTED_COLOR = TREE_VIEW_NODE_SELECTED_COLOR
     BACKGROUND_COLOR = TREE_VIEW_NODE_BACKGROUND_COLOR
     ROW_BACKGROUND_COLOR = BACKGROUND_COLOR
-    EVEN_COLOR: ClassVar[list[float]] = [0, 0, 0.4, 0.4]
-    ODD_COLOR: ClassVar[list[float]] = [0, 0, 1.0, 0.4]
 
     ROW_HEIGHT = dp(30)
     NUM_LABEL_WIDTH = dp(40)
@@ -161,9 +157,7 @@ class TitleTreeViewNode(BoxLayout, BaseTreeViewNode):
     ISSUE_LABEL_WIDTH = TITLE_LABEL_WIDTH
 
     NUM_LABEL_COLOR = (1.0, 1.0, 1.0, 1.0)
-    TITLE_LABEL_COLOR = (1.0, 1.0, 0.0, 1.0)
     ISSUE_LABEL_COLOR = (1.0, 1.0, 1.0, 1.0)
-    ISSUE_LABEL_SUBMITTED_YEAR_COLOR = "#FCFABE"  # "#FFFF00"
 
     def __init__(self, fanta_info: FantaComicBookInfo, **kwargs) -> None:  # noqa: ANN003
         kwargs.setdefault("destination", TitleDestination(fanta_info=fanta_info))
@@ -201,7 +195,7 @@ class TitleTreeViewNode(BoxLayout, BaseTreeViewNode):
             fanta_info,
             add_footnote,
             sup_font_size,
-            TitleTreeViewNode.ISSUE_LABEL_SUBMITTED_YEAR_COLOR,
+            color_to_markup_hex(theme().text_secondary),
         )
         node.ids.issue_label.bind(on_press=on_press_callback)
 

@@ -1,3 +1,5 @@
+#:import reader_palette barks_reader.core.reader_palette
+
 <BottomTitleViewScreen>:
     size_hint: 1, 1
     opacity: 1 if root.is_visible else 0
@@ -71,7 +73,7 @@
                     text: root.main_title_text
                     font_name: fm.main_title_font_name
                     font_size: fm.main_title_font_size
-                    color: root.MAIN_TITLE_COLOR
+                    color: reader_palette.theme().text_title
                     outline_color: root.MAIN_TITLE_OUTLINE_COLOR
                     outline_width: dp(4)
                     bold: True
@@ -89,7 +91,7 @@
                     text: root.main_title_footnote
                     pos_hint: {'x': 0.005, 'y': 0.05}
                     font_size: fm.main_title_footnote_font_size
-                    color: root.MAIN_TITLE_FOOTNOTE_COLOR
+                    color: reader_palette.theme().text_title
                     outline_color: root.MAIN_TITLE_OUTLINE_COLOR
                     outline_width: dp(1)
                     bold: False
@@ -224,7 +226,7 @@
                         opacity: 1 if root.goto_page_num else 0
                         Label:
                             text: "Goto page " + root.goto_page_num + ":"
-                            color: (0, 1, 1, 1)
+                            color: reader_palette.theme().search_heading
                             # Dark halo so the cyan stays legible over bright title pages.
                             bold: True
                             outline_color: (0, 0, 0, 1)
@@ -252,7 +254,7 @@
                         Label:
                             id: use_overrides_label
                             text: root.use_overrides_description
-                            color: (0, 1, 1, 1)
+                            color: reader_palette.theme().search_heading
                             # Dark halo so the cyan stays legible over bright title pages.
                             bold: True
                             outline_color: (0, 0, 0, 1)
@@ -275,7 +277,7 @@
                         text: "Wiki Page"
                         font_size: fm.check_box_font_size
                         # Cyan to match the checkbox labels below, unifying the right column.
-                        color: 0, 1, 1, 1
+                        color: reader_palette.theme().search_heading
                         bold: True
                         background_color: 0, 0, 0, 0
                         background_normal: ''

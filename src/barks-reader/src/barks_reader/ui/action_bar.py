@@ -21,7 +21,7 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 )
 from kivy.uix.floatlayout import FloatLayout
 
-from barks_reader.core.reader_consts_and_types import ACTION_BAR_TITLE_COLOR
+from barks_reader.core.reader_palette import theme
 
 if TYPE_CHECKING:
     from kivy.uix.widget import Widget
@@ -43,7 +43,9 @@ class ReaderActionBar(FloatLayout):
     icon_source = StringProperty("")
     icon_clickable = BooleanProperty(defaultvalue=False)
     title_text = StringProperty("")
-    title_color = ColorProperty(ACTION_BAR_TITLE_COLOR)
+    # Default is a placeholder: __init__ resolves the active theme's app-title
+    # color (module import happens before the theme setting is read).
+    title_color = ColorProperty((1, 1, 1, 1))
     # Assigned by the kv rule; kv applies root properties only after creating
     # the rule's children, so this flips add_widget into redirect mode exactly
     # when the skeleton is complete.
@@ -54,6 +56,10 @@ class ReaderActionBar(FloatLayout):
     icon_hitbox = ObjectProperty(None)
 
     __events__ = ("on_icon_release",)
+
+    def __init__(self, **kwargs: Any) -> None:  # noqa: ANN401
+        super().__init__(**kwargs)
+        self.title_color = theme().app_title
 
     def add_widget(self, widget: Widget, *args: Any, **kwargs: Any) -> None:  # noqa: ANN401
         """Add skeleton children to self; consumer children to the buttons box."""

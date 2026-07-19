@@ -30,7 +30,6 @@ from .panel_image_loader import load_panel_pil
 from .reader_consts_and_types import (
     ACTION_BAR_BG_COLOR,
     ACTION_BAR_SEPARATOR_COLOR,
-    ACTION_BAR_TITLE_COLOR,
     RAW_ACTION_BAR_ICON_WIDTH,
     RAW_ACTION_BAR_SIZE_Y,
     RAW_QUIT_FENCE_WIDTH,
@@ -38,6 +37,7 @@ from .reader_consts_and_types import (
 from .reader_file_paths import ALL_TYPES
 from .reader_file_paths_resolver import ReaderFilePathsResolver
 from .reader_formatter import escape_kivy_markup, get_action_bar_title
+from .reader_palette import theme
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -79,7 +79,7 @@ def wiki_top_bar_spec(
     """
     return TopBarSpec(
         title_markup=get_action_bar_title(font_manager, WIKI_TITLE),
-        title_color=ACTION_BAR_TITLE_COLOR,
+        title_color=theme().app_title,
         icon_path=sys_paths.get_barks_reader_app_window_icon_path(),
         back_icon_path=sys_paths.get_barks_reader_go_back_icon_file(),
         contrast_on_icon_path=sys_paths.get_barks_reader_contrast_on_icon_file(),

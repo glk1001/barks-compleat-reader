@@ -28,6 +28,7 @@ from kivy.uix.label import Label
 from kivy.uix.togglebutton import ToggleButton
 from loguru import logger
 
+from barks_reader.core.reader_palette import theme
 from barks_reader.core.reading_history import (
     ReadEvent,
     TitleSummary,
@@ -56,7 +57,6 @@ from .reader_keyboard_nav import (
     draw_focus_highlight,
     is_escape_key,
 )
-from .tree_view_nodes import TitleTreeViewNode
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -81,10 +81,6 @@ _ROW_FONT_SIZE = 14  # dp
 _TITLE_FONT_SIZE = 16  # dp
 _HEADER_FONT_SIZE = 16  # dp
 
-# Match the story tree-view's alternating title-row and title-text colors.
-_EVEN_ROW_COLOR = TitleTreeViewNode.EVEN_COLOR
-_ODD_ROW_COLOR = TitleTreeViewNode.ODD_COLOR
-_TITLE_COLOR = TitleTreeViewNode.TITLE_LABEL_COLOR
 _TEXT_COLOR = (1, 1, 1, 1)
 
 _JOURNAL_VIEW = "journal"
@@ -297,7 +293,8 @@ class HistoryScreen(FloatLayout):
         (by ``row_index``) so they stay readable over the background image.
         """
         row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(_ROW_HEIGHT))
-        row_color = _EVEN_ROW_COLOR if row_index % 2 == 0 else _ODD_ROW_COLOR
+        # Match the story tree-view's alternating title-row and title-text colors.
+        row_color = list(theme().row_stripe_even if row_index % 2 == 0 else theme().row_stripe_odd)
 
         for markup_text, col_width in cells:
             cell = Button(
@@ -311,7 +308,7 @@ class HistoryScreen(FloatLayout):
                 background_normal="",
                 background_down="",
                 background_color=row_color,
-                color=_TITLE_COLOR if col_width is None else _TEXT_COLOR,
+                color=theme().text_title if col_width is None else _TEXT_COLOR,
             )
             if col_width is not None:
                 cell.size_hint_x = None

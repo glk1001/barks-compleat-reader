@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from barks_reader.core.reader_consts_and_types import ACTION_BAR_TITLE_COLOR
+from barks_reader.core.reader_palette import theme
 from barks_reader.ui.action_bar import ReaderActionBar
 from kivy.uix.widget import Widget
 
@@ -37,6 +37,6 @@ class TestReaderActionBarDefaults:
         """Only the main screen opts in to a clickable app icon."""
         assert not ReaderActionBar().icon_clickable
 
-    def test_title_color_defaults_to_shared_green(self) -> None:
-        """The title color single-sources from reader_consts_and_types."""
-        assert tuple(ReaderActionBar().title_color) == ACTION_BAR_TITLE_COLOR
+    def test_title_color_defaults_to_theme_app_title(self) -> None:
+        """The title color single-sources from the active color theme."""
+        assert tuple(ReaderActionBar().title_color) == theme().app_title

@@ -86,8 +86,6 @@ class BottomTitleViewScreen(FloatLayout):
 
     is_first_use_of_reader = BooleanProperty(defaultvalue=False)
 
-    MAIN_TITLE_COLOR = (1, 1, 0, 1)
-    MAIN_TITLE_FOOTNOTE_COLOR = (1, 1, 0, 1)
     # Dark text outline so the title/footnote stay legible over the busy mosaic background.
     MAIN_TITLE_OUTLINE_COLOR = (0, 0, 0, 1)
     # Soft "lower-third" gradient banner behind the main title (replaces the old flat box):

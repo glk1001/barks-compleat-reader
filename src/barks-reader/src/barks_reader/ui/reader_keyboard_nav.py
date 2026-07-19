@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 from kivy.graphics import Color, Line
 from loguru import logger
 
+from barks_reader.core.reader_palette import theme
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
@@ -71,14 +73,16 @@ def _draw_highlight(
 def draw_focus_highlight(
     widget: Widget,
     group: str,
-    color: tuple[float, float, float, float] = (1, 1, 0, 1),
+    color: tuple[float, float, float, float] | None = None,
     line_width: float = 2,
 ) -> None:
     """Draw a focus highlight that tracks the widget's geometry.
 
     The highlight redraws automatically when the widget's pos or size changes
-    (e.g. after a deferred Kivy layout pass).
+    (e.g. after a deferred Kivy layout pass). When no color is given, the
+    active theme's focus-ring color is used.
     """
+    color = theme().focus_ring if color is None else color
     # Remove any previous binding before installing a new one.
     _unbind_highlight(widget)
 
@@ -107,7 +111,7 @@ def update_focus_in_list(
     widgets: Iterable[Widget],
     focused_idx: int,
     group: str,
-    color: tuple[float, float, float, float] = (1, 1, 0, 1),
+    color: tuple[float, float, float, float] | None = None,
 ) -> None:
     """Draw a focus highlight on the widget at focused_idx, clearing all others."""
     for i, widget in enumerate(widgets):

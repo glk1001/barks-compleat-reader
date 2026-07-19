@@ -16,11 +16,11 @@ from barks_reader.core import wiki_integration
 from barks_reader.core.reader_consts_and_types import (
     ACTION_BAR_BG_COLOR,
     ACTION_BAR_SEPARATOR_COLOR,
-    ACTION_BAR_TITLE_COLOR,
     RAW_ACTION_BAR_ICON_WIDTH,
     RAW_ACTION_BAR_SIZE_Y,
     RAW_QUIT_FENCE_WIDTH,
 )
+from barks_reader.core.reader_palette import theme
 from barks_reader.core.wiki_integration import (
     BarksPanelsImageProvider,
     BarksTableRewriter,
@@ -277,7 +277,7 @@ class TestWikiTopBarSpec:
         carries, so these fields must be exactly the shared kv-bar constants.
         """
         spec = wiki_top_bar_spec(mock_font_manager, MagicMock())
-        assert spec.title_color == ACTION_BAR_TITLE_COLOR
+        assert spec.title_color == theme().app_title
         assert spec.bg_color == ACTION_BAR_BG_COLOR
         assert spec.separator_color == ACTION_BAR_SEPARATOR_COLOR
         assert spec.icon_width == RAW_ACTION_BAR_ICON_WIDTH

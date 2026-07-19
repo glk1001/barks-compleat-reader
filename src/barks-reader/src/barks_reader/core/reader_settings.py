@@ -11,6 +11,7 @@ from loguru import logger
 
 from .reader_consts_and_types import ALT_ESCAPE_KEY_SETTING, LONG_PATH_SETTING
 from .reader_file_paths import BarksPanelsExtType, ReaderFilePaths
+from .reader_palette import DEFAULT_THEME_NAME, THEME_NAMES
 from .system_file_paths import SystemFilePaths
 
 if TYPE_CHECKING:
@@ -34,6 +35,7 @@ USE_PREBUILT_COMICS = "use_prebuilt_comics"
 GOTO_SAVED_NODE_ON_START = "goto_saved_node_on_start"
 RECORD_READING_HISTORY = "record_reading_history"
 CONFIRM_QUIT = "confirm_quit"
+COLOR_THEME = "color_theme"
 GOTO_FULLSCREEN_ON_APP_START = "goto_fullscreen_on_app_start"
 GOTO_FULLSCREEN_ON_COMIC_READ = "goto_fullscreen_on_comic_read"
 USE_HARPIES_INSTEAD_OF_LARKIES = "use_harpies"
@@ -260,6 +262,10 @@ class ReaderSettings:
         return self._read(CONFIRM_QUIT)
 
     @property
+    def color_theme(self) -> str:
+        return self._read(COLOR_THEME)
+
+    @property
     def goto_fullscreen_on_app_start(self) -> bool:
         return self._read(GOTO_FULLSCREEN_ON_APP_START)
 
@@ -453,6 +459,15 @@ _FIELDS: tuple[FieldSpec, ...] = (
         desc="Ask for confirmation when the app close button is pressed.",
         kind=FieldKind.BOOL,
         config_default=1,
+    ),
+    FieldSpec(
+        key=COLOR_THEME,
+        title="Color Theme",
+        desc="Color theme for the app's accents, selection bar, and labels."
+        " You need to restart the app after changing this.",
+        kind=FieldKind.OPTIONS,
+        options=THEME_NAMES,
+        config_default=DEFAULT_THEME_NAME,
     ),
     FieldSpec(
         key=GOTO_FULLSCREEN_ON_APP_START,

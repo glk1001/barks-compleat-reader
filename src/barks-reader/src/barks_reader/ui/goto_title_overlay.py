@@ -14,6 +14,8 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 )
 from kivy.uix.floatlayout import FloatLayout
 
+from barks_reader.core.reader_palette import theme
+
 from .action_bar_helpers import ARROW_WIDTH
 from .ui_helpers import TouchExpandedButton
 
@@ -43,6 +45,8 @@ class GotoTitleOverlay(FloatLayout):
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         self.register_event_type("on_arrow_press")
         super().__init__(**kwargs)
+        if "label_color" not in kwargs:
+            self.label_color = theme().text_title
 
     def on_kv_post(self, base_widget) -> None:  # noqa: ANN001, ARG002
         if self.position == "top-right":

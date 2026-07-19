@@ -158,12 +158,13 @@ class ReaderFormatter:
         left_sq_bracket = escape_kivy_markup("[")
         right_sq_bracket = escape_kivy_markup("]")
 
+        # The year is not bolded: the story title is the row's emphasis, not the date.
         return (
             f" {left_sq_bracket}"
             f"{get_short_submitted_day_and_month(comic_book_info)}"
-            f" [b][color={color}]"
+            f" [color={color}]"
             f"{comic_book_info.submitted_year}"
-            f"[/color][/b]"
+            f"[/color]"
             f"{right_sq_bracket}"
         )
 

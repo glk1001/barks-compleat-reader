@@ -27,6 +27,7 @@ from barks_reader.core.reader_consts_and_types import (
     LONG_PATH_SETTING,
     OPTIONS_SETTING,
 )
+from barks_reader.core.reader_palette import set_active_theme
 from barks_reader.core.reader_settings import ALT_ESCAPE_KEY, BARKS_READER_SECTION
 from barks_reader.core.reader_setup import bootstrap_reader_environment
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
@@ -307,6 +308,7 @@ class BarksReaderApp(App):
         )
 
         set_alt_escape_key(self.reader_settings.get_alt_escape_key())
+        set_active_theme(self.reader_settings.color_theme)
         Window.bind(on_key_down=_dismiss_top_popup_on_alt_escape)
 
         if self.reader_settings.use_virtual_keyboard:

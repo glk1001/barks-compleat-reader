@@ -1,3 +1,5 @@
+#:import reader_palette barks_reader.core.reader_palette
+
 <_SearchResultButton>:
     background_normal: ''
     background_down: ''
@@ -7,7 +9,7 @@
         else (0.22, 0.22, 0.22, 0.4)) \
         if self.state == 'normal' \
         else (0.0, 0.4, 0.0, 0.55)
-    color: (1, 1, 0, 1)
+    color: reader_palette.theme().text_title
     size_hint_y: None
     height: dp(28)
     halign: 'left'
@@ -23,7 +25,7 @@
     background_normal: ''
     background_down: ''
     background_color: (0, 0, 0, 0)
-    color: (0.8, 1, 0.8, 1)
+    color: reader_palette.theme().text_secondary
     canvas.before:
         Color:
             rgba: self.chip_bg_color
@@ -82,7 +84,7 @@
                     text: "Title:"
                     size_hint_y: None
                     height: dp(24)
-                    color: (0.5, 1, 0.5, 1)
+                    color: reader_palette.theme().search_heading
                     halign: 'left'
                     valign: 'middle'
                     text_size: self.size
@@ -124,7 +126,7 @@
                     text: "Titles"
                     size_hint_y: None
                     height: dp(24)
-                    color: (0.5, 1, 0.5, 1)
+                    color: reader_palette.theme().search_heading
                     halign: 'left'
                     valign: 'middle'
                     text_size: self.size
@@ -165,7 +167,7 @@
                     text: "Tag:"
                     size_hint_y: None
                     height: dp(24)
-                    color: (0.5, 1, 0.5, 1)
+                    color: reader_palette.theme().search_heading
                     halign: 'left'
                     valign: 'middle'
                     text_size: self.size
@@ -220,7 +222,7 @@
                     text: "Titles"
                     size_hint_y: None
                     height: dp(24)
-                    color: (0.5, 1, 0.5, 1)
+                    color: reader_palette.theme().search_heading
                     halign: 'left'
                     valign: 'middle'
                     text_size: self.size
@@ -261,7 +263,7 @@
                     text: "Words:"
                     size_hint_y: None
                     height: dp(24)
-                    color: (0.5, 1, 0.5, 1)
+                    color: reader_palette.theme().search_heading
                     halign: 'left'
                     valign: 'middle'
                     text_size: self.size
@@ -317,7 +319,7 @@
                     text: "Titles"
                     size_hint_y: None
                     height: dp(24)
-                    color: (0.5, 1, 0.5, 1)
+                    color: reader_palette.theme().search_heading
                     halign: 'left'
                     valign: 'middle'
                     text_size: self.size

@@ -238,7 +238,7 @@ class TestReaderFormatterClass:
             fanta_info, add_footnote=False, sup_font_size=12, color="red"
         )
         # Expect structure: [i]PubDate {formatted_submitted}[/i]
-        # formatted_submitted: ESC_[SubDate [b][color=red]1950[/color][/b]ESC_]
+        # formatted_submitted: ESC_[SubDate [color=red]1950[/color]ESC_]
 
         assert "PubDate" in res
         assert "SubDate" in res
@@ -264,7 +264,7 @@ class TestReaderFormatterClass:
         info.submitted_year = 2000
 
         res = reader_formatter.ReaderFormatter.get_formatted_submitted_str(info, "blue")
-        assert res == " E[01 Jan [b][color=blue]2000[/color][/b]E]"
+        assert res == " E[01 Jan [color=blue]2000[/color]E]"
 
     @patch.object(reader_formatter, "FAN", "FAN_ICON")
     @patch.object(reader_formatter, "BARKS_PAYMENTS")

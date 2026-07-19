@@ -1,4 +1,5 @@
 #:import Factory kivy.factory.Factory
+#:import reader_palette barks_reader.core.reader_palette
 
 <ScrollableDropDown>:
     scroll_type: ['bars', 'content']
@@ -14,7 +15,7 @@
 
 <ButtonTreeViewNode>:
     color: root.TEXT_COLOR
-    color_selected: root.SELECTED_COLOR
+    color_selected: reader_palette.theme().accent_selection
     background_color: root.BACKGROUND_COLOR
     size_hint: (None, None)
     halign: "left"
@@ -45,10 +46,10 @@
 <TitleTreeViewNode>:
     orientation: "vertical"
     color: root.TEXT_COLOR
-    color_selected: root.SELECTED_COLOR
+    color_selected: reader_palette.theme().accent_selection
     background_color: root.BACKGROUND_COLOR
-    even_color:  self.EVEN_COLOR
-    odd_color:  self.ODD_COLOR
+    even_color: list(reader_palette.theme().row_stripe_even)
+    odd_color: list(reader_palette.theme().row_stripe_odd)
     spacing: 0
     size_hint_y: None
     height: dp(2 * self.ROW_HEIGHT)
@@ -62,8 +63,8 @@
             font_size: fm.tree_view_num_label_font_size
             color: root.NUM_LABEL_COLOR
             background_color: root.ROW_BACKGROUND_COLOR
-            color_selected: (1,0,1,1)
-            bg_color: (1,1,0,0.5)
+            color_selected: reader_palette.theme().accent_selection
+            bg_color: list(reader_palette.theme().text_title[:3]) + [0.5]
             bold: True
             size_hint: (None, None)
             width: root.NUM_LABEL_WIDTH
@@ -89,7 +90,7 @@
             id: title_label
             parent: root
             font_size: fm.tree_view_title_label_font_size
-            color: root.TITLE_LABEL_COLOR
+            color: reader_palette.theme().text_title
             background_color: root.ROW_BACKGROUND_COLOR
             bold: True
             mipmap: True
