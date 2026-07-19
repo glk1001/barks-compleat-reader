@@ -4,26 +4,6 @@
     size_hint: 1, 1
     opacity: 1 if root.is_visible else 0
 
-    Button:
-        id: title_show_button
-        text: ""
-        opacity: 1
-        background_color: 0,0,0,0
-        size_hint: 0.025, 0.033
-        pos_hint: {'right': 1 - 0.007, 'y': 1 - (0.033 + 0.01)}
-        on_press:
-            bottom_view_box.opacity = 0 if bottom_view_box.opacity > 0.9 else 1
-            self.opacity = 0 if bottom_view_box.opacity < 0.1 else 1
-
-        canvas.before:
-            # Add a rounded rectangle background box
-            Color:
-                rgba: 0.25, 0.25, 0.25, 0.9
-            RoundedRectangle:
-                pos: self.pos
-                size: self.size
-                radius: [dp(4)]
-
     # This is the main container for the title view.
     AnchorLayout:
         id: bottom_title_view
@@ -39,7 +19,9 @@
 
         # The background image is now a direct child, simplifying the structure.
         Image:
-            color: root.title_image_color if title_show_button.opacity > 0.9 else (1,1,1,1)
+            # Dimmed by title_image_color while the info panel is up; full
+            # brightness when the panel is toggled off, to peek at the art.
+            color: root.title_image_color if bottom_view_box.opacity > 0.9 else (1,1,1,1)
             texture: root.title_image_texture
             x: self.parent.x
             y: self.parent.y
@@ -301,3 +283,41 @@
                                 size: self.size
                                 radius: [dp(4)]
         # --- END: bottom view title container ---
+
+    # Peek toggle: hide the title-info panel to see the art behind it, then
+    # bring it back. A themed eye reflects the panel's state (open = info
+    # showing, slashed = hidden) and stays visible in BOTH states so it is
+    # always findable. Declared LAST so it draws on top of the title content
+    # (earlier it was the first child, buried under the content banner, and it
+    # also set its own opacity to 0 once the panel was hidden).
+    Button:
+        id: title_show_button
+        text: ""
+        background_color: 0, 0, 0, 0
+        size_hint: None, None
+        size: dp(26), dp(26)
+        pos_hint: {'right': 1 - 0.007, 'top': 0.988}
+        on_press:
+            bottom_view_box.opacity = 0 if bottom_view_box.opacity > 0.9 else 1
+
+        canvas.before:
+            # A subtle dark pill so the tinted glyph reads over bright art too.
+            Color:
+                rgba: 0, 0, 0, 0.35
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [dp(5)]
+
+        Image:
+            source:
+                str(sys_paths.get_eye_open_icon_file()) \
+                if bottom_view_box.opacity > 0.9 else \
+                str(sys_paths.get_eye_off_icon_file())
+            color: reader_palette.theme().icon_tint
+            fit_mode: "contain"
+            mipmap: True
+            pos: self.parent.x + dp(4), self.parent.y + dp(4)
+            size: self.parent.width - dp(8), self.parent.height - dp(8)
+            # Fainter when the panel is hidden — subtle, but still findable.
+            opacity: 0.9 if bottom_view_box.opacity > 0.9 else 0.6

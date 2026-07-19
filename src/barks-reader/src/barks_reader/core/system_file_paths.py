@@ -35,6 +35,8 @@ class SystemFilePaths:
         self._hamburger_menu_icon_path: Path | None = None
 
         self._speech_bubble_icon_path: Path | None = None
+        self._eye_open_icon_path: Path | None = None
+        self._eye_off_icon_path: Path | None = None
         self._up_arrow_path: Path | None = None
         self._down_arrow_path: Path | None = None
         self._transparent_blank_path: Path | None = None
@@ -85,6 +87,8 @@ class SystemFilePaths:
         self._hamburger_menu_icon_path = action_bar_icons_dir / "menu-hamburger-icon.png"
 
         self._speech_bubble_icon_path = various_files_dir / "speech-bubble-icon.png"
+        self._eye_open_icon_path = various_files_dir / "icon-eye-open.png"
+        self._eye_off_icon_path = various_files_dir / "icon-eye-off.png"
         self._up_arrow_path = various_files_dir / "up-arrow.png"
         self._down_arrow_path = various_files_dir / "down-arrow.png"
         self._transparent_blank_path = various_files_dir / "transparent-blank.png"
@@ -213,6 +217,14 @@ class SystemFilePaths:
     def get_speech_bubble_icon_file(self) -> Path:
         assert self._speech_bubble_icon_path
         return self._speech_bubble_icon_path
+
+    def get_eye_open_icon_file(self) -> Path:
+        assert self._eye_open_icon_path
+        return self._eye_open_icon_path
+
+    def get_eye_off_icon_file(self) -> Path:
+        assert self._eye_off_icon_path
+        return self._eye_off_icon_path
 
     def get_up_arrow_file(self) -> Path:
         assert self._up_arrow_path
