@@ -408,6 +408,11 @@ class OKFViewer(RelativeLayout):
 
         self._show_start_page(start_page)
 
+        # Open with the sidebar owning the keys (ring + banded current-page
+        # node): a visible, predictable starting focus for the 6-button remote,
+        # matching the main screen's tree-first model.
+        self._set_focus_region(FocusRegion.SIDEBAR)
+
     def _show_start_page(self, start_page: Path | None) -> None:
         """Show the opening page, if any: the caller's choice, else the saved session's.
 
@@ -955,6 +960,8 @@ class OKFViewer(RelativeLayout):
                 path = self.bundle / "index.md"
         self.history.clear()
         self._show(path, push=True, scroll_y=scroll_y)
+        # Re-entry starts over with the sidebar focused, like a fresh open.
+        self._set_focus_region(FocusRegion.SIDEBAR)
 
     def save_session(self) -> None:
         """Persist the current page and scroll offset for the next launch.
@@ -1222,15 +1229,18 @@ class OKFViewer(RelativeLayout):
         self._focus_tree_node(nodes[new_idx])
 
     def _tree_expand(self, node) -> None:  # noqa: ANN001
-        """Right in the tree: drill rightward — expand a directory, or hop to the page.
+        """Right in the tree: drill rightward — expand a directory, or cross to the page.
 
         The spatial continuum for a 6-button remote: Right keeps moving
         "rightward" — a closed directory expands, an open one steps into its
-        first child, and a page leaf (nothing left to expand) crosses over to
-        the page panel.
+        first child, and a page leaf (nothing left to expand) opens its page
+        exactly as Enter would and crosses over to the page panel to read it.
         """
-        if node is None or node.is_leaf:
+        if node is None:
             self._set_focus_region(FocusRegion.PAGE)
+            return
+        if node.is_leaf:
+            self._open_leaf_and_cross_to_page(node)
             return
         if not node.is_open:
             self.tree.toggle_node(node)  # lazy children load via _on_dir_open
@@ -1250,18 +1260,26 @@ class OKFViewer(RelativeLayout):
     def _tree_activate(self, node) -> None:  # noqa: ANN001
         """Open the focused leaf's page, or toggle a directory open/closed.
 
-        Enter on an open section closes it (the main Barks tree's convention),
-        so a reader scrolled up to the section heading can put the list away;
-        on a closed one it expands and shows the section's index listing.
+        Enter on a page leaf behaves exactly like Right: it opens the page and
+        crosses over to the page panel to read it. Enter on an open section
+        closes it (the main Barks tree's convention), so a reader scrolled up
+        to the section heading can put the list away; on a closed one it
+        expands and shows the section's index listing.
         """
         if node is None:
             return
-        if not node.is_leaf:
-            was_open = node.is_open
-            self.tree.toggle_node(node)
-            if was_open:
-                return
+        if node.is_leaf:
+            self._open_leaf_and_cross_to_page(node)
+            return
+        was_open = node.is_open
+        self.tree.toggle_node(node)
+        if not was_open:
+            self._on_node(node)
+
+    def _open_leaf_and_cross_to_page(self, node) -> None:  # noqa: ANN001
+        """Open a page leaf's page and hand the keys to the page panel."""
         self._on_node(node)
+        self._set_focus_region(FocusRegion.PAGE)
 
     def _focus_tree_node(self, node) -> None:  # noqa: ANN001
         """Move the tree's selection band to ``node`` without navigating."""
