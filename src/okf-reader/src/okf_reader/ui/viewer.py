@@ -279,6 +279,11 @@ def _scroll_view(**kwargs) -> ScrollView:  # noqa: ANN003
     )
 
 
+# Frames the sidebar reveal will wait for the tree's geometry to stop moving
+# before scrolling to the banded node anyway (a runaway backstop, ~0.5s at
+# 60fps — settling normally takes a frame or three).
+_TREE_REVEAL_MAX_FRAMES = 30
+
 # Navigation keys consumed as no-ops where nothing can move (an open footnote
 # popup, an empty sidebar state): they must not leak to the hosting app.
 _NAV_NOOP_KEYS = frozenset(
@@ -1356,7 +1361,7 @@ class OKFViewer(RelativeLayout):
             if self._result_rows:
                 self._set_result_focus(self._initial_result_index())
             elif self.tree_scroll.parent is self._left_body and self.tree.selected_node is not None:
-                self._scroll_tree_node_into_view(self.tree.selected_node)
+                self._reveal_tree_node_when_settled(self.tree.selected_node)
         else:
             clear_focus_ring(self._left_body, group=SIDEBAR_RING_GROUP)
             self._clear_result_focus()
@@ -1429,8 +1434,35 @@ class OKFViewer(RelativeLayout):
             self.tree.select_node(target)
         finally:
             self._syncing_tree = False
-        # Scroll on the next frame, once the freshly-expanded tree has been laid out.
-        Clock.schedule_once(lambda _dt: self._scroll_tree_node_into_view(target), 0)
+        # Scroll once the freshly-expanded tree has actually been laid out — a
+        # single-frame deferral is not enough after a large expansion.
+        self._reveal_tree_node_when_settled(target)
+
+    def _reveal_tree_node_when_settled(self, node) -> None:  # noqa: ANN001
+        """Scroll ``node`` into view once the tree's geometry has stopped moving.
+
+        Right after a page sync or a fresh open, a large lazy expansion (e.g.
+        the one-pagers section) and the host's deferred viewer sizing keep
+        relaying the tree out for several frames; scrolling immediately would
+        compute against node positions the layout has not yet placed and land
+        the panel at the bottom. Poll once per frame and scroll only when two consecutive
+        frames agree on the geometry (with a frame-count backstop so a
+        perpetually-animating layout cannot stall the reveal forever).
+        """
+        state: dict[str, tuple[float, float, float] | int | None] = {"last": None, "frames": 0}
+
+        def check(_dt: float) -> None:
+            geometry = (node.top, self.tree.height, self.tree_scroll.height)
+            frames = state["frames"]
+            assert isinstance(frames, int)
+            if geometry == state["last"] or frames >= _TREE_REVEAL_MAX_FRAMES:
+                self._scroll_tree_node_into_view(node)
+                return
+            state["last"] = geometry
+            state["frames"] = frames + 1
+            Clock.schedule_once(check, 0)
+
+        Clock.schedule_once(check, 0)
 
     def _scroll_tree_node_into_view(self, node) -> None:  # noqa: ANN001
         """Scroll the tree panel so ``node`` sits about a quarter of the way down.
