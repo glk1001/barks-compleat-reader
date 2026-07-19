@@ -85,6 +85,41 @@ class TestDefaultFocusIndex:
         assert screen._last_used_btn_idx == 2  # noqa: PLR2004
 
 
+class TestMenuActionByKeyboardFlag:
+    """The keyboard-activation flag must survive the deferred menu-button on_release.
+
+    A menu button's trigger_action fires on_release asynchronously (0.1s press), after
+    _exit_menu_mode has cleared _menu_mode — so the handler can't read _menu_mode to tell
+    keyboard from mouse. This flag, set at activation time, is that signal.
+    """
+
+    def test_flag_starts_false(self) -> None:
+        screen = _StubScreen([MagicMock(), MagicMock()])
+        assert screen._menu_action_by_keyboard is False
+
+    def test_keyboard_activation_sets_flag_before_menu_mode_torn_down(self) -> None:
+        buttons = [MagicMock(), MagicMock()]
+        screen = _StubScreen(buttons, default_focus_idx=1)
+        with (
+            patch.object(nav_module, "update_focus_in_list"),
+            patch.object(nav_module, "clear_focus_in_list"),
+        ):
+            screen._enter_menu_mode()
+            screen._activate_focused_button()
+
+        assert screen._menu_action_by_keyboard is True
+        assert screen._menu_mode is False  # torn down, but the flag persists
+        buttons[1].trigger_action.assert_called_once()
+
+    def test_touch_clears_flag(self) -> None:
+        screen = _StubScreen([MagicMock(), MagicMock()])
+        screen._menu_action_by_keyboard = True
+
+        screen._clear_menu_on_touch()
+
+        assert screen._menu_action_by_keyboard is False
+
+
 class TestFocusHighlightBinding:
     """Verify that draw_focus_highlight installs a pos/size binding and clear removes it."""
 

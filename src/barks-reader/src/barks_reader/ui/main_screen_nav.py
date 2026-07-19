@@ -368,9 +368,13 @@ class MainScreenNavigation:
             self._tree_view_screen.select_node(parent)
         self._tree_view_screen.scroll_to_node(parent)
 
-    def enter_bottom_focus_if_index_visible(self) -> None:
+    def enter_bottom_focus_if_index_visible(self, keyboard_initiated: bool = True) -> None:
         logger.debug(f"Current focus region: {self._focus_region}.")
         self._auto_exited_bottom_focus = False
+        if not keyboard_initiated:
+            # Mouse-driven Go Back: reveal the bottom screen but leave it without a
+            # keyboard focus border, so the ring only appears during keyboard nav.
+            return
         if self._search_screen.is_visible:
             self._focus_region = _FocusRegion.BOTTOM
             self._update_bottom_focus_highlight()

@@ -181,6 +181,21 @@ class TestMainScreen:
         main_screen._tree_view_manager.go_back_to_previous_node.assert_called_once()
         mock_schedule.assert_called_once()
 
+    @pytest.mark.parametrize("keyboard", [True, False])
+    def test_on_action_bar_go_back_forwards_keyboard_signal(
+        self, main_screen: MainScreen, keyboard: bool
+    ) -> None:
+        # The menu button's on_release runs after menu mode is already torn down, so
+        # the decision reads the activation-time flag, not the live _menu_mode: True
+        # (keyboard) restores focus on the revealed screen, False (mouse) does not.
+        main_screen._menu_action_by_keyboard = keyboard
+        with patch.object(barks_reader.ui.main_screen.Clock, "schedule_once") as mock_schedule:
+            main_screen.on_action_bar_go_back()
+
+        scheduled_callback = mock_schedule.call_args.args[0]
+        scheduled_callback(0)
+        main_screen._nav.enter_bottom_focus_if_index_visible.assert_called_once_with(keyboard)
+
     def test_on_action_bar_collapse(self, main_screen: MainScreen) -> None:
         main_screen.on_action_bar_collapse()
         main_screen._tree_view_manager.deselect_and_close_open_nodes.assert_called_once()

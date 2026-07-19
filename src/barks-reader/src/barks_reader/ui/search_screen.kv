@@ -5,10 +5,10 @@
     background_down: ''
     border: [0, 0, 0, 0]
     background_color:
-        ((0.15, 0.15, 0.15, 0.4) if self.row_index % 2 == 0 \
-        else (0.22, 0.22, 0.22, 0.4)) \
-        if self.state == 'normal' \
-        else (0.0, 0.4, 0.0, 0.55)
+        reader_palette.theme().accent_selection \
+        if (self.selected or self.state != 'normal') \
+        else (reader_palette.theme().row_stripe_even if self.row_index % 2 == 0 \
+        else reader_palette.theme().row_stripe_odd)
     color: reader_palette.theme().text_title
     size_hint_y: None
     height: dp(28)
@@ -39,6 +39,55 @@
         SmoothLine:
             rounded_rectangle: (self.x, self.y, self.width, self.height, dp(12))
             width: dp(1.5)
+
+<SearchInput@TouchAwareTextInput>:
+    multiline: False
+    font_size: fm.search_input_font_size
+    foreground_color: (1, 1, 1, 1)
+    hint_text_color: (1, 1, 1, 0.4)
+    background_color: (0.08, 0.08, 0.08, 0.82)
+    cursor_color: reader_palette.theme().focus_ring
+    cursor_width: dp(2)
+    padding: [dp(12), (self.height - self.line_height) / 2]
+
+<SearchClearButton@Button>:
+    text: "×"
+    bold: True
+    font_size: fm.search_clear_button_font_size
+    size_hint_x: None
+    width: dp(44)
+    background_normal: ''
+    background_down: ''
+    background_color: (0.18, 0.18, 0.18, 0.9)
+
+<SearchScroll@ScrollView>:
+    always_overscroll: False
+    effect_cls: 'ScrollEffect'
+    scroll_type: ['bars', 'content']
+    bar_color: (0.7, 0.7, 0.7, 0.9)
+    bar_inactive_color: (0.5, 0.5, 0.5, 0.4)
+    bar_width: dp(8)
+
+# A translucent rounded panel that frames a list area, so the screen layout
+# reads as designed even before any search results exist.
+<SearchPanel@FloatLayout>:
+    canvas.before:
+        Color:
+            rgba: 0.04, 0.04, 0.04, 0.6
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(10)]
+
+<SearchEmptyPrompt@Label>:
+    italic: True
+    font_size: fm.search_label_font_size
+    color: reader_palette.theme().text_secondary
+    halign: 'center'
+    valign: 'middle'
+    text_size: self.width - dp(40), None
+    size_hint: 1, 1
+    pos_hint: {'x': 0, 'y': 0}
 
 <SearchScreen>:
     opacity: 1 if root.is_visible else 0
@@ -73,80 +122,51 @@
             size_hint: 0.86, 1
             pos_hint: {'center_x': 0.5, 'y': 0}
             padding: [dp(40), dp(30), dp(40), dp(35)]
-            spacing: dp(8)
+            spacing: dp(12)
 
             BoxLayout:
                 orientation: 'vertical'
                 size_hint_x: 0.35
-                spacing: dp(4)
-
-                Label:
-                    text: "Title:"
-                    size_hint_y: None
-                    height: dp(24)
-                    color: reader_palette.theme().search_heading
-                    halign: 'left'
-                    valign: 'middle'
-                    text_size: self.size
-                    font_size: fm.search_label_font_size
+                spacing: dp(8)
 
                 BoxLayout:
                     orientation: 'horizontal'
                     size_hint_y: None
-                    height: dp(34)
+                    height: dp(48)
                     spacing: dp(2)
 
-                    TouchAwareTextInput:
+                    SearchInput:
                         id: title_search_input
-                        multiline: False
-                        font_size: fm.search_input_font_size
-                        foreground_color: (1, 1, 1, 1)
-                        background_color: (0.3, 0.3, 0.3, 0.8)
-                        padding: [dp(4), (self.height - self.line_height) / 2]
+                        hint_text: "Search titles…"
                         on_text: root.on_title_search_text(self.text)
 
-                    Button:
+                    SearchClearButton:
                         id: title_clear_button
-                        text: "\u00d7"
-                        bold: True
-                        font_size: fm.search_clear_button_font_size
-                        size_hint_x: None
-                        width: dp(30)
-                        background_color: (0.35, 0.35, 0.35, 1.0)
                         on_release: root.on_title_clear()
 
                 Widget:
 
-            BoxLayout:
-                orientation: 'vertical'
+            SearchPanel:
                 size_hint_x: 0.65
-                spacing: dp(4)
 
-                Label:
-                    text: "Titles"
-                    size_hint_y: None
-                    height: dp(24)
-                    color: reader_palette.theme().search_heading
-                    halign: 'left'
-                    valign: 'middle'
-                    text_size: self.size
-                    font_size: fm.search_label_font_size
+                BoxLayout:
+                    size_hint: 1, 1
+                    pos_hint: {'x': 0, 'y': 0}
+                    padding: dp(8)
 
-                ScrollView:
-                    id: title_results_scroll
-                    always_overscroll: False
-                    effect_cls: 'ScrollEffect'
-                    scroll_type: ['bars', 'content']
-                    bar_color: (0.7, 0.7, 0.7, 0.9)
-                    bar_inactive_color: (0.5, 0.5, 0.5, 0.4)
-                    bar_width: dp(8)
+                    SearchScroll:
+                        id: title_results_scroll
 
-                    BoxLayout:
-                        id: title_results_layout
-                        orientation: 'vertical'
-                        size_hint_y: None
-                        height: self.minimum_height
-                        spacing: dp(1)
+                        BoxLayout:
+                            id: title_results_layout
+                            orientation: 'vertical'
+                            size_hint_y: None
+                            height: self.minimum_height
+                            spacing: dp(1)
+
+                SearchEmptyPrompt:
+                    text: "Matching story titles will appear here"
+                    opacity: 0 if title_results_layout.children else 0.75
 
         # ---- Tag Search Content ----
         BoxLayout:
@@ -156,93 +176,69 @@
             opacity: 0
             pos_hint: {'center_x': 0.5, 'y': 0}
             padding: [dp(40), dp(30), dp(40), dp(35)]
-            spacing: dp(8)
+            spacing: dp(12)
 
             BoxLayout:
                 orientation: 'vertical'
                 size_hint_x: 0.35
-                spacing: dp(4)
-
-                Label:
-                    text: "Tag:"
-                    size_hint_y: None
-                    height: dp(24)
-                    color: reader_palette.theme().search_heading
-                    halign: 'left'
-                    valign: 'middle'
-                    text_size: self.size
-                    font_size: fm.search_label_font_size
+                spacing: dp(8)
 
                 BoxLayout:
                     orientation: 'horizontal'
                     size_hint_y: None
-                    height: dp(34)
+                    height: dp(48)
                     spacing: dp(2)
 
-                    TouchAwareTextInput:
+                    SearchInput:
                         id: tag_search_input
-                        multiline: False
-                        font_size: fm.search_input_font_size
-                        foreground_color: (1, 1, 1, 1)
-                        background_color: (0.3, 0.3, 0.3, 0.8)
-                        padding: [dp(4), (self.height - self.line_height) / 2]
+                        hint_text: "Search tags…"
                         on_text: root.on_tag_search_text(self.text)
 
-                    Button:
+                    SearchClearButton:
                         id: tag_clear_button
-                        text: "\u00d7"
-                        bold: True
-                        font_size: fm.search_clear_button_font_size
-                        size_hint_x: None
-                        width: dp(30)
-                        background_color: (0.35, 0.35, 0.35, 1.0)
                         on_release: root.on_tag_clear()
 
-                ScrollView:
-                    always_overscroll: False
-                    effect_cls: 'ScrollEffect'
-                    scroll_type: ['bars', 'content']
-                    bar_color: (0.7, 0.7, 0.7, 0.9)
-                    bar_inactive_color: (0.5, 0.5, 0.5, 0.4)
-                    bar_width: dp(8)
+                SearchPanel:
 
                     BoxLayout:
-                        id: tag_chips_layout
-                        orientation: 'vertical'
-                        size_hint_y: None
-                        height: self.minimum_height
-                        spacing: dp(4)
+                        size_hint: 1, 1
+                        pos_hint: {'x': 0, 'y': 0}
+                        padding: dp(8)
 
-            BoxLayout:
-                orientation: 'vertical'
+                        SearchScroll:
+
+                            BoxLayout:
+                                id: tag_chips_layout
+                                orientation: 'vertical'
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(4)
+
+                    SearchEmptyPrompt:
+                        text: "Matching tags will appear here"
+                        opacity: 0 if tag_chips_layout.children else 0.75
+
+            SearchPanel:
                 size_hint_x: 0.65
-                spacing: dp(4)
 
-                Label:
-                    text: "Titles"
-                    size_hint_y: None
-                    height: dp(24)
-                    color: reader_palette.theme().search_heading
-                    halign: 'left'
-                    valign: 'middle'
-                    text_size: self.size
-                    font_size: fm.search_label_font_size
+                BoxLayout:
+                    size_hint: 1, 1
+                    pos_hint: {'x': 0, 'y': 0}
+                    padding: dp(8)
 
-                ScrollView:
-                    id: tag_results_scroll
-                    always_overscroll: False
-                    effect_cls: 'ScrollEffect'
-                    scroll_type: ['bars', 'content']
-                    bar_color: (0.7, 0.7, 0.7, 0.9)
-                    bar_inactive_color: (0.5, 0.5, 0.5, 0.4)
-                    bar_width: dp(8)
+                    SearchScroll:
+                        id: tag_results_scroll
 
-                    BoxLayout:
-                        id: tag_title_results_layout
-                        orientation: 'vertical'
-                        size_hint_y: None
-                        height: self.minimum_height
-                        spacing: dp(1)
+                        BoxLayout:
+                            id: tag_title_results_layout
+                            orientation: 'vertical'
+                            size_hint_y: None
+                            height: self.minimum_height
+                            spacing: dp(1)
+
+                SearchEmptyPrompt:
+                    text: "Pick a tag to list its stories"
+                    opacity: 0 if tag_title_results_layout.children else 0.75
 
         # ---- Word Search Content ----
         BoxLayout:
@@ -252,91 +248,67 @@
             opacity: 0
             pos_hint: {'center_x': 0.5, 'y': 0}
             padding: [dp(40), dp(30), dp(40), dp(35)]
-            spacing: dp(8)
+            spacing: dp(12)
 
             BoxLayout:
                 orientation: 'vertical'
                 size_hint_x: 0.35
-                spacing: dp(4)
-
-                Label:
-                    text: "Words:"
-                    size_hint_y: None
-                    height: dp(24)
-                    color: reader_palette.theme().search_heading
-                    halign: 'left'
-                    valign: 'middle'
-                    text_size: self.size
-                    font_size: fm.search_label_font_size
+                spacing: dp(8)
 
                 BoxLayout:
                     orientation: 'horizontal'
                     size_hint_y: None
-                    height: dp(34)
+                    height: dp(48)
                     spacing: dp(2)
 
-                    TouchAwareTextInput:
+                    SearchInput:
                         id: word_search_input
-                        multiline: False
-                        font_size: fm.search_input_font_size
-                        foreground_color: (1, 1, 1, 1)
-                        background_color: (0.3, 0.3, 0.3, 0.8)
-                        padding: [dp(4), (self.height - self.line_height) / 2]
+                        hint_text: "Search words…"
                         on_text: root.on_word_search_text(self.text)
 
-                    Button:
+                    SearchClearButton:
                         id: word_clear_button
-                        text: "\u00d7"
-                        bold: True
-                        font_size: fm.search_clear_button_font_size
-                        size_hint_x: None
-                        width: dp(30)
-                        background_color: (0.35, 0.35, 0.35, 1.0)
                         on_release: root.on_word_clear()
 
-                ScrollView:
-                    id: word_chips_scroll
-                    always_overscroll: False
-                    effect_cls: 'ScrollEffect'
-                    scroll_type: ['bars', 'content']
-                    bar_color: (0.7, 0.7, 0.7, 0.9)
-                    bar_inactive_color: (0.5, 0.5, 0.5, 0.4)
-                    bar_width: dp(8)
+                SearchPanel:
 
                     BoxLayout:
-                        id: word_chips_layout
-                        orientation: 'vertical'
-                        size_hint_y: None
-                        height: self.minimum_height
-                        spacing: dp(1)
+                        size_hint: 1, 1
+                        pos_hint: {'x': 0, 'y': 0}
+                        padding: dp(8)
 
-            BoxLayout:
-                orientation: 'vertical'
+                        SearchScroll:
+                            id: word_chips_scroll
+
+                            BoxLayout:
+                                id: word_chips_layout
+                                orientation: 'vertical'
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(1)
+
+                    SearchEmptyPrompt:
+                        text: "Matching words will appear here"
+                        opacity: 0 if word_chips_layout.children else 0.75
+
+            SearchPanel:
                 size_hint_x: 0.65
-                spacing: dp(4)
 
-                Label:
-                    text: "Titles"
-                    size_hint_y: None
-                    height: dp(24)
-                    color: reader_palette.theme().search_heading
-                    halign: 'left'
-                    valign: 'middle'
-                    text_size: self.size
-                    font_size: fm.search_label_font_size
+                BoxLayout:
+                    size_hint: 1, 1
+                    pos_hint: {'x': 0, 'y': 0}
+                    padding: dp(8)
 
-                ScrollView:
-                    id: word_results_scroll
-                    always_overscroll: False
-                    effect_cls: 'ScrollEffect'
-                    scroll_type: ['bars', 'content']
-                    bar_color: (0.7, 0.7, 0.7, 0.9)
-                    bar_inactive_color: (0.5, 0.5, 0.5, 0.4)
-                    bar_width: dp(8)
+                    SearchScroll:
+                        id: word_results_scroll
 
-                    BoxLayout:
-                        id: word_results_layout
-                        orientation: 'vertical'
-                        size_hint_y: None
-                        height: self.minimum_height
-                        spacing: dp(1)
+                        BoxLayout:
+                            id: word_results_layout
+                            orientation: 'vertical'
+                            size_hint_y: None
+                            height: self.minimum_height
+                            spacing: dp(1)
+
+                SearchEmptyPrompt:
+                    text: "Pick a word to see where it is spoken"
+                    opacity: 0 if word_results_layout.children else 0.75

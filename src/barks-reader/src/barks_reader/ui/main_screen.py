@@ -411,8 +411,16 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
     def on_action_bar_go_back(self) -> None:
         logger.info("'Go back' menu item selected.")
+        # Restore keyboard focus on the revealed bottom screen only when Go Back was
+        # itself keyboard-driven. This handler runs asynchronously (the menu button's
+        # trigger_action fires on_release after a 0.1s press), by which point menu mode
+        # has already been exited — so read the flag captured at activation time, not
+        # the live _menu_mode. A mouse click clears the flag in on_touch_down first.
+        keyboard_initiated = self._menu_action_by_keyboard
         self._tree_view_manager.go_back_to_previous_node()
-        Clock.schedule_once(lambda _dt: self._nav.enter_bottom_focus_if_index_visible(), 0)
+        Clock.schedule_once(
+            lambda _dt: self._nav.enter_bottom_focus_if_index_visible(keyboard_initiated), 0
+        )
 
     def on_action_bar_collapse(self) -> None:
         self._tree_view_manager.deselect_and_close_open_nodes(from_collapse_all=True)

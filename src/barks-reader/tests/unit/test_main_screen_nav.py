@@ -768,7 +768,7 @@ class TestEnterBottomFocusIfIndexVisible:
     def test_enters_focus_when_index_visible_regardless_of_prior_focus(
         self, nav: MainScreenNavigation
     ) -> None:
-        """Go Back always restores bottom focus when an index screen is visible."""
+        """Keyboard Go Back always restores bottom focus when an index screen is visible."""
         nav._main_index_screen.is_visible = True
         nav._search_screen.is_visible = False
         nav._speech_index_screen.is_visible = False
@@ -780,6 +780,34 @@ class TestEnterBottomFocusIfIndexVisible:
         nav.enter_bottom_focus_if_index_visible()
 
         assert nav.is_in_bottom_focus
+
+    def test_mouse_initiated_does_not_restore_search_focus(self, nav: MainScreenNavigation) -> None:
+        """A mouse-driven Go Back reveals the search screen without a keyboard focus ring."""
+        nav._search_screen.is_visible = True
+        nav._main_index_screen.is_visible = False
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+
+        nav.enter_bottom_focus_if_index_visible(keyboard_initiated=False)
+
+        assert not nav.is_in_bottom_focus
+        nav._search_screen.enter_nav_focus_at_last_result.assert_not_called()  # ty: ignore[unresolved-attribute]
+
+    def test_mouse_initiated_does_not_restore_index_focus(self, nav: MainScreenNavigation) -> None:
+        """A mouse-driven Go Back reveals an index screen without a keyboard focus ring."""
+        nav._search_screen.is_visible = False
+        nav._main_index_screen.is_visible = True
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+        nav._fun_image_view_screen.is_visible = False
+        nav._bottom_title_view_screen.is_visible = False
+        nav._statistics_screen.is_visible = False
+
+        nav.enter_bottom_focus_if_index_visible(keyboard_initiated=False)
+
+        assert not nav.is_in_bottom_focus
 
 
 class TestOnBottomScreenVisibilityChanged:

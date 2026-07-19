@@ -142,6 +142,11 @@ class ActionBarNavMixin:
         self._last_used_btn_idx: int = default_focus_idx
         self._showed_action_bar_for_menu: bool = False
         self._menu_buttons = menu_buttons
+        # A menu button's on_release runs asynchronously (trigger_action defaults to a
+        # 0.1s press), by which time menu mode has been torn down. This records whether
+        # the *pending* activation was keyboard-driven so the handler can still tell
+        # keyboard from mouse. Set on keyboard activation, cleared on any pointer press.
+        self._menu_action_by_keyboard: bool = False
 
     # --- Hook overrides ---
 
@@ -231,12 +236,17 @@ class ActionBarNavMixin:
 
     def _clear_menu_on_touch(self) -> None:
         """Call from on_touch_down to exit menu mode on any mouse interaction."""
+        # A real pointer press means the next button action is mouse-driven.
+        self._menu_action_by_keyboard = False
         if self._menu_mode:
             self._exit_menu_mode()
             self._last_used_btn_idx = self._default_btn_idx
 
     def _activate_focused_button(self) -> None:
         self._last_used_btn_idx = self._focused_btn_idx
+        # Record keyboard intent now: trigger_action fires on_release asynchronously,
+        # after _exit_menu_mode below has already cleared _menu_mode.
+        self._menu_action_by_keyboard = True
         self._menu_buttons[self._focused_btn_idx].trigger_action()
         self._exit_menu_mode()
 

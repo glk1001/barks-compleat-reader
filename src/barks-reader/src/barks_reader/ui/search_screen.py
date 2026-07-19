@@ -22,6 +22,7 @@ from loguru import logger
 
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.reader_formatter import get_fitted_title_with_page_nums
+from barks_reader.core.reader_palette import theme
 from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_FUN_VIEW_TITLE_INFO
 from barks_reader.core.settings_notifier import settings_notifier
 
@@ -50,6 +51,7 @@ if TYPE_CHECKING:
     from barks_fantagraphics.whoosh_search_engine import TitleInfo
     from kivy.uix.scrollview import ScrollView
 
+    from barks_reader.core.reader_colors import Color
     from barks_reader.core.reader_settings import ReaderSettings
 
     from .font_manager import FontManager
@@ -66,27 +68,54 @@ class _SearchResultButton(Button):
     """A clickable result row in a search results list."""
 
     row_index = NumericProperty(0)
-
-
-_CHIP_BG_NORMAL = (0.2, 0.35, 0.2, 1)
-_CHIP_BG_ACTIVE = (0.25, 0.45, 0.25, 1)
-_CHIP_BG_MEMBER = (0.18, 0.30, 0.22, 1)
+    # Persistently highlights the last result the user opened (mouse or keyboard), so it
+    # stays marked when they navigate away and come back. Distinct from the keyboard
+    # focus ring, which tracks the live nav cursor.
+    selected = BooleanProperty(defaultvalue=False)
 
 
 _CHIP_BORDER_NONE = (0, 0, 0, 0)
-_CHIP_BORDER_FOCUSED = (0.5, 1, 0.5, 1)
 
-_WORD_ITEM_SELECTED_BG = (0.15, 0.35, 0.55, 0.8)
+# Theme colors must be read lazily (the active theme is set after UI modules
+# import), so chip/selection colors are functions, not module constants.
+
+
+def _chip_bg_normal() -> Color:
+    return theme().tag_chip_bg
+
+
+def _chip_bg_active() -> Color:
+    return theme().accent_selection
+
+
+def _chip_bg_member() -> Color:
+    r, g, b, a = theme().tag_chip_bg
+    return (r * 0.75, g * 0.75, b * 0.75, a)
+
+
+def _chip_border_focused() -> Color:
+    return theme().focus_ring
+
+
+def _word_item_selected_bg() -> Color:
+    return theme().accent_selection
+
+
+def _row_stripe(row_index: int) -> Color:
+    active_theme = theme()
+    return active_theme.row_stripe_even if row_index % 2 == 0 else active_theme.row_stripe_odd
 
 
 class _TagChipButton(Button):
     """A pill-shaped tag chip button for tag search results."""
 
-    chip_bg_color = ObjectProperty(_CHIP_BG_NORMAL)
+    chip_bg_color = ObjectProperty(_CHIP_BORDER_NONE)
     chip_border_color = ObjectProperty(_CHIP_BORDER_NONE)
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
+        if "chip_bg_color" not in kwargs:
+            self.chip_bg_color = _chip_bg_normal()
 
 
 class SearchScreen(FloatLayout):
@@ -170,6 +199,9 @@ class SearchScreen(FloatLayout):
         self._last_activated_result_idx: int | None = None
         self._last_activated_word_sub_focus: str = "title"
 
+        # Persistent highlight of the last-opened result row (mouse or keyboard).
+        self._selected_result_button: _SearchResultButton | None = None
+
         self._speech_bubble_popup, self._popup_nav = create_speech_bubble_popup(
             self._font_manager.speech_bubble_popup_title_font_name,
         )
@@ -196,15 +228,38 @@ class SearchScreen(FloatLayout):
 
     # --- Shared Helpers ---
 
-    @staticmethod
+    def _mark_result_selected(self, button: _SearchResultButton) -> None:
+        """Mark `button` as the last-opened result, clearing any prior highlight.
+
+        Bound into the row's on_release, so it fires for both mouse clicks and keyboard
+        activation and the highlight survives navigating away and back.
+        """
+        if self._selected_result_button is not None and self._selected_result_button is not button:
+            self._selected_result_button.selected = False
+        button.selected = True
+        self._selected_result_button = button
+        # Also drive the keyboard restore target, so a later keyboard Go Back lands its
+        # focus ring on the same row the mouse opened.
+        self._last_activated_result_idx = button.row_index
+        self._last_activated_word_sub_focus = "title"
+
     def _populate_title_results(
-        layout: BoxLayout, title_strings: list[str], on_select: Callable[[str], None]
+        self, layout: BoxLayout, title_strings: list[str], on_select: Callable[[str], None]
     ) -> None:
         layout.clear_widgets()
+        self._selected_result_button = None
         for i, title_str in enumerate(title_strings):
             btn = _SearchResultButton(text=title_str, row_index=i)
-            btn.bind(on_release=lambda _b, t=title_str: on_select(t))
+            btn.bind(
+                on_release=lambda b, t=title_str: self._on_result_row_released(b, t, on_select)
+            )
             layout.add_widget(btn)
+
+    def _on_result_row_released(
+        self, button: _SearchResultButton, title_str: str, on_select: Callable[[str], None]
+    ) -> None:
+        self._mark_result_selected(button)
+        on_select(title_str)
 
     def _on_result_goto_title(self, title_str: str) -> None:
         logger.info(f'Search: selected "{title_str}".')
@@ -285,7 +340,7 @@ class SearchScreen(FloatLayout):
         stack.bind(minimum_height=stack.setter("height"))
         for tag_str in tag_strings:
             btn = _TagChipButton(text=tag_str)
-            btn.chip_bg_color = _CHIP_BG_ACTIVE if tag_str == selected else _CHIP_BG_NORMAL
+            btn.chip_bg_color = _chip_bg_active() if tag_str == selected else _chip_bg_normal()
             btn.bind(on_release=lambda _b, t=tag_str: self._on_tag_result_selected(t))
             stack.add_widget(btn)
         return stack
@@ -308,7 +363,7 @@ class SearchScreen(FloatLayout):
                 label += " \u25b8"
             btn = _TagChipButton(text=label)
             btn.chip_bg_color = (
-                _CHIP_BG_ACTIVE if label == self._selected_member else _CHIP_BG_MEMBER
+                _chip_bg_active() if label == self._selected_member else _chip_bg_member()
             )
             btn.bind(on_release=lambda _b, m=label: self._on_member_tag_selected(m))
             stack.add_widget(btn)
@@ -341,7 +396,9 @@ class SearchScreen(FloatLayout):
 
         # Highlight the selected member chip
         for chip in self._get_member_chip_buttons():
-            chip.chip_bg_color = _CHIP_BG_ACTIVE if chip.text == member_label else _CHIP_BG_MEMBER
+            chip.chip_bg_color = (
+                _chip_bg_active() if chip.text == member_label else _chip_bg_member()
+            )
 
     def _clear_tag_title_results(self) -> None:
         self.ids.tag_title_results_layout.clear_widgets()
@@ -369,7 +426,7 @@ class SearchScreen(FloatLayout):
         words = self._get_words_matching_prefix(text)
 
         for i, word in enumerate(words):
-            btn = _SearchResultButton(text=word, row_index=i, color=(0.65, 0.8, 1, 1))
+            btn = _SearchResultButton(text=word, row_index=i, color=theme().text_secondary)
             btn.bind(on_release=lambda _b, w=word: self._on_word_chip_selected(w))
             self.ids.word_chips_layout.add_widget(btn)
 
@@ -397,12 +454,9 @@ class SearchScreen(FloatLayout):
 
         for btn in reversed(self.ids.word_chips_layout.children):
             if btn.text == word:
-                btn.background_color = _WORD_ITEM_SELECTED_BG
+                btn.background_color = _word_item_selected_bg()
             else:
-                idx = btn.row_index
-                btn.background_color = (
-                    (0.15, 0.15, 0.15, 0.4) if idx % 2 == 0 else (0.22, 0.22, 0.22, 0.4)
-                )
+                btn.background_color = _row_stripe(btn.row_index)
 
         found = self._search.find_words(word)
 
@@ -434,6 +488,7 @@ class SearchScreen(FloatLayout):
         return results
 
     def _populate_word_results_layout(self, results_layout: BoxLayout) -> None:
+        self._selected_result_button = None
         for i, (
             comic_title,
             first_page_num,
@@ -452,14 +507,13 @@ class SearchScreen(FloatLayout):
             title_btn.text_size = (title_btn.width, None)
             title_btn.bind(size=lambda inst, _val: setattr(inst, "text_size", (inst.width, None)))
             title_btn.bind(
-                on_release=lambda _b, ct=comic_title, fp=first_page_num: (
-                    self._on_word_title_selected(ct, fp)
+                on_release=lambda b, ct=comic_title, fp=first_page_num: (
+                    self._on_word_result_row_released(b, ct, fp)
                 ),
             )
             row.add_widget(title_btn)
 
-            row_bg = (0.15, 0.15, 0.15, 0.4) if i % 2 == 0 else (0.22, 0.22, 0.22, 0.4)
-            speech_btn = TitleShowSpeechButton(size_hint=(0.06, 1), background_color=row_bg)
+            speech_btn = TitleShowSpeechButton(size_hint=(0.06, 1), background_color=_row_stripe(i))
             speech_btn.bind(
                 on_release=lambda _b, ct=comic_title, tsi=title_speech_info: (
                     self._show_word_speech_bubbles(ct, tsi)
@@ -468,6 +522,12 @@ class SearchScreen(FloatLayout):
             row.add_widget(speech_btn)
 
             results_layout.add_widget(row)
+
+    def _on_word_result_row_released(
+        self, button: _SearchResultButton, title_str: str, page_to_goto: str
+    ) -> None:
+        self._mark_result_selected(button)
+        self._on_word_title_selected(title_str, page_to_goto)
 
     def _on_word_title_selected(self, title_str: str, page_to_goto: str) -> None:
         logger.info(f'Word search: navigating to "{title_str}", page {page_to_goto}.')
@@ -849,11 +909,13 @@ class SearchScreen(FloatLayout):
             is_main = id(chip) in main_chips
             if is_main:
                 is_selected = chip.text == self._selected_tag
-                chip.chip_bg_color = _CHIP_BG_ACTIVE if is_selected else _CHIP_BG_NORMAL
+                chip.chip_bg_color = _chip_bg_active() if is_selected else _chip_bg_normal()
             else:
                 is_selected = chip.text == self._selected_member
-                chip.chip_bg_color = _CHIP_BG_ACTIVE if is_selected else _CHIP_BG_MEMBER
-            chip.chip_border_color = _CHIP_BORDER_FOCUSED if i == focused_idx else _CHIP_BORDER_NONE
+                chip.chip_bg_color = _chip_bg_active() if is_selected else _chip_bg_member()
+            chip.chip_border_color = (
+                _chip_border_focused() if i == focused_idx else _CHIP_BORDER_NONE
+            )
 
     def _draw_chip_focus(self) -> None:
         chips = self._get_active_chip_buttons()
@@ -873,8 +935,8 @@ class SearchScreen(FloatLayout):
         else:
             self._update_tag_chip_colors(chips)
 
-    _CLEAR_BTN_NORMAL = (0.35, 0.35, 0.35, 1.0)
-    _CLEAR_BTN_FOCUSED = (0.0, 0.5, 0.0, 1.0)
+    # Must match the SearchClearButton background_color in search_screen.kv.
+    _CLEAR_BTN_NORMAL = (0.18, 0.18, 0.18, 0.9)
 
     def _active_widget(self, index: int):  # noqa: ANN202
         """Return the widget for the active mode at the given _MODE_WIDGETS index."""
@@ -884,7 +946,8 @@ class SearchScreen(FloatLayout):
         return self._active_widget(1)
 
     def _draw_clear_focus(self) -> None:
-        self._get_active_clear_button().background_color = self._CLEAR_BTN_FOCUSED
+        r, g, b, _a = theme().accent_selection
+        self._get_active_clear_button().background_color = (r, g, b, 1.0)
 
     def _clear_clear_focus(self) -> None:
         self._get_active_clear_button().background_color = self._CLEAR_BTN_NORMAL

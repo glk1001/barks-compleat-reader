@@ -616,7 +616,17 @@ class ViewPipeline:
     def _set_next_search_screen_image(self) -> None:
         if self._view_state not in _BOTTOM_VIEW_SEARCH_SCREEN_OPACITY_1_STATES:
             return
-        self._search_screen_image_info = self._image_selector.get_random_search_image()
+        # Avoid showing the same artwork twice: the top view (chosen just before
+        # this) draws from the same small search-image pool.
+        top_view_filename = (
+            self._top_view_image_info.filename if self._top_view_image_info else None
+        )
+        image_info = self._image_selector.get_random_search_image()
+        for _ in range(5):
+            if image_info.filename != top_view_filename:
+                break
+            image_info = self._image_selector.get_random_search_image()
+        self._search_screen_image_info = image_info
 
     def _get_next_fun_view_image_info(self) -> ImageInfo:
         if self._view_state == ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE:
