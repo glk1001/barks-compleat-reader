@@ -102,9 +102,11 @@ TREE_PANEL_WIDTH = 0.25  # fraction of the window; the page panel gets the rest
 # Multiplied into the background image (Kivy Image.color) so white text stays
 # readable over it — the same darkening mechanism the Barks Reader's kv files use.
 WINDOW_BG_TINT = (0.30, 0.30, 0.30, 1)
-# Translucent black drawn over the background image behind the tree panel only,
-# softening it a touch further there than in the reading pane.
-TREE_PANEL_SCRIM = (0, 0, 0, 0.25)
+# Translucent black drawn over the background image behind the whole sidebar
+# column (the search field and the tree), giving the tree text and the
+# search-field seam a legibility floor over a vivid background panel. Near-black,
+# so a page with no background image is unchanged (black over the plain window).
+SIDEBAR_SCRIM = (0, 0, 0, 0.30)
 # Translucent rounded band drawn behind each page *section* (a heading plus
 # everything under it, up to the next heading) so body text keeps its contrast
 # over vivid background panels — the Barks Reader's BgColorLabel idiom
@@ -114,6 +116,15 @@ BLOCK_BG_COLOR = (0.01, 0.01, 0.01, 0.30)
 # Band alpha while the Contrast toggle is down: near-opaque, so the text reads
 # as if on a plain dark page whatever the background image is doing.
 BLOCK_BG_CONTRAST_ALPHA = 0.9
+# Continuous near-black scrim behind the whole reading column (self.body), under
+# the per-section bands: it floors the inter-section gaps and the column padding
+# so a busy background panel cannot bleed bright art through the gaps the bands
+# leave between them. Near-black, so a page with no background image (the plain
+# standalone case) is unchanged. Its alpha tracks the Contrast toggle
+# (READING_PANE_SCRIM_CONTRAST_ALPHA) alongside the bands, so pressing Contrast
+# darkens the whole reading pane — the gaps included — not just the text bands.
+READING_PANE_SCRIM = (0.0, 0.0, 0.0, 0.20)
+READING_PANE_SCRIM_CONTRAST_ALPHA = 0.85
 BLOCK_BG_RADIUS = 6  # dp
 SECTION_PADDING = (10, 8)  # inset of a section's text from its band edge
 SECTION_BLOCK_SPACING = 8  # between blocks inside one banded section
@@ -360,15 +371,6 @@ class OKFViewer(RelativeLayout):
         # bind passes (treeview, selected_node); we only want the node (2nd arg)
         self.tree.bind(selected_node=lambda *args: self._on_node(args[1]))
         self.tree_scroll.add_widget(self.tree)
-        # Scrim between the background image and the tree text (canvas.before
-        # renders under the panel's widgets), kept glued to the panel's rectangle.
-        with self.tree_scroll.canvas.before:  # ty: ignore[unresolved-attribute]
-            Color(rgba=TREE_PANEL_SCRIM)
-            self._tree_scrim = Rectangle(pos=self.tree_scroll.pos, size=self.tree_scroll.size)
-        self.tree_scroll.bind(
-            pos=lambda _inst, pos: setattr(self._tree_scrim, "pos", pos),
-            size=lambda _inst, size: setattr(self._tree_scrim, "size", size),
-        )
 
         content.add_widget(self._build_left_column())
 
@@ -380,6 +382,7 @@ class OKFViewer(RelativeLayout):
             padding=BODY_PADDING,
         )
         self.body.bind(minimum_height=self.body.setter("height"))
+        self._add_reading_pane_scrim()
         # The scroll child is a full-width anchor that centers the body column,
         # whose width is capped at BODY_MAX_WIDTH so the measure stays readable
         # on maximized windows (below the cap the column just fills the pane).
@@ -437,6 +440,17 @@ class OKFViewer(RelativeLayout):
             orientation="vertical",
             size_hint=(TREE_PANEL_WIDTH, 1),
             spacing=dp(SEARCH_FIELD_GAP),
+        )
+        # Scrim over the background image behind the whole sidebar column
+        # (canvas.before renders under the column's widgets), kept glued to it, so
+        # the tree text and the search-field seam keep a legibility floor over a
+        # vivid background panel.
+        with left.canvas.before:  # ty: ignore[unresolved-attribute]
+            Color(rgba=SIDEBAR_SCRIM)
+            sidebar_scrim = Rectangle(pos=left.pos, size=left.size)
+        left.bind(
+            pos=lambda _inst, pos: setattr(sidebar_scrim, "pos", pos),
+            size=lambda _inst, size: setattr(sidebar_scrim, "size", size),
         )
         self.search_field = TextInput(
             hint_text="Search pages…",
@@ -1634,11 +1648,34 @@ class OKFViewer(RelativeLayout):
             return BLOCK_BG_CONTRAST_ALPHA
         return BLOCK_BG_COLOR[3]
 
+    def _pane_scrim_alpha(self) -> float:
+        """Return the reading-pane scrim alpha the Contrast toggle currently calls for."""
+        if self.contrast_btn.state == "down":
+            return READING_PANE_SCRIM_CONTRAST_ALPHA
+        return READING_PANE_SCRIM[3]
+
+    def _add_reading_pane_scrim(self) -> None:
+        """Draw the continuous scrim behind the reading column (see READING_PANE_SCRIM).
+
+        Spans the whole body column under the per-section bands, so the
+        inter-section gaps and the column padding keep a legibility floor over a
+        vivid background panel. Its Color is kept so the Contrast toggle can dial
+        it up alongside the bands (see _apply_band_alpha).
+        """
+        with self.body.canvas.before:
+            self._pane_scrim_color = Color(rgba=(*READING_PANE_SCRIM[:3], self._pane_scrim_alpha()))
+            rect = Rectangle(pos=self.body.pos, size=self.body.size)
+        self.body.bind(
+            pos=lambda _inst, pos: setattr(rect, "pos", pos),
+            size=lambda _inst, size: setattr(rect, "size", size),
+        )
+
     def _apply_band_alpha(self) -> None:
-        """Retune the current page's section bands to the toggle's alpha."""
+        """Retune the current page's section bands and the reading-pane scrim to the toggle."""
         alpha = self._band_alpha()
         for color in self._band_colors:
             color.a = alpha
+        self._pane_scrim_color.a = self._pane_scrim_alpha()
 
     def _table_widget(self, blk: TableBlock, path: Path) -> ScrollView:
         """Build the widget for a table: monospace rows, tightly stacked, one per Label.
