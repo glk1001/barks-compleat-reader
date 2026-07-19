@@ -86,18 +86,18 @@
                 on_icon_release: root.goto_reader_icon_title()
                 title_text: root.app_title
 
-                FullscreenBarButton:
+                ChromeFullscreenBarButton:
                     id: fullscreen_button
                     on_press: root.toggle_screen_mode()
 
-                BarButton:
+                ChromeBarButton:
                     id: go_back_button
                     text: 'Go Back'
                     icon: str(sys_paths.get_barks_reader_go_back_icon_file())
                     important: True
                     on_release: root.on_action_bar_go_back()
 
-                BarButton:
+                ChromeBarButton:
                     id: collapse_button
                     # text: 'Collapse'
                     icon: str(sys_paths.get_barks_reader_collapse_icon_file())
@@ -105,14 +105,14 @@
                     on_release: root.on_action_bar_collapse()
                     opacity: 0.5 if self.disabled else 1.0
 
-                BarButton:
+                ChromeBarButton:
                     id: change_pics_button
                     text: 'Change Pics'
                     icon: str(sys_paths.get_barks_reader_refresh_arrow_icon_file())
                     important: True
                     on_release: root.on_action_bar_change_view_images()
 
-                BarButton:
+                ChromeBarButton:
                     id: menu_button
                     text: 'Menu'
                     icon: str(sys_paths.get_barks_reader_menu_dots_icon_file())
@@ -123,7 +123,7 @@
                 # overshoot on the working buttons can't kill the app.
                 QuitFence:
 
-                BarButton:
+                ChromeBarButton:
                     id: quit_button
                     text: 'Quit'
                     icon: str(sys_paths.get_barks_reader_close_icon_file())

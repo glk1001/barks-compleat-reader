@@ -40,6 +40,10 @@ class ViewerThemeSpec:
     ``title_hex``/``crumb_hex`` the search-hit title and breadcrumb. Hex
     strings carry no leading '#'.
 
+    ``icon_tint`` multiplies the top-bar icon glyphs (Back/Contrast/page-action/
+    Quit) so they wear the app's accent; the default white is a no-op, leaving
+    the standalone bar's plain white glyphs untouched.
+
     Defaults reproduce the standalone reader exactly — an app themes only what
     it wants and inherits the rest.
     """
@@ -55,3 +59,4 @@ class ViewerThemeSpec:
     link_hex: str = "4ea1ff"
     title_hex: str = "ffd54a"
     crumb_hex: str = "999999"
+    icon_tint: Rgba = (1.0, 1.0, 1.0, 1.0)

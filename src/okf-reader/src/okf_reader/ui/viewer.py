@@ -184,6 +184,35 @@ class _IconToggleButton(ActionToggleButton):
         self.icon = self._off_icon if value == "down" else self._on_icon
 
 
+def _tint_bar_icon(button: ActionButton, tint: tuple[float, float, float, float]) -> None:
+    """Overlay a theme-tinted copy of an ActionButton's icon glyph.
+
+    The kv ActionButton style renders ``icon`` as a plain white child Image with
+    no color hook, so a light glyph cannot be recolored in place. We lay a
+    tinted copy of the same glyph over it (matching the style's dp(4) inset and
+    ``contain`` fit), tracking ``icon`` so an ``_IconToggleButton``'s state swap
+    is followed. A white tint is a no-op — the standalone bar keeps its plain
+    white glyphs.
+    """
+    if tuple(tint) == (1.0, 1.0, 1.0, 1.0):
+        return
+    overlay = Image(
+        source=button.icon,
+        color=list(tint),
+        fit_mode="contain",
+        mipmap=True,
+        size_hint=(None, None),
+    )
+
+    def _sync(*_args) -> None:  # noqa: ANN002
+        overlay.pos = (button.x + dp(4), button.y + dp(4))
+        overlay.size = (button.width - dp(8), button.height - dp(8))
+
+    button.bind(pos=_sync, size=_sync, icon=lambda _inst, value: setattr(overlay, "source", value))
+    button.add_widget(overlay)
+    _sync()
+
+
 def _add_text_backing(widget, alpha: float) -> Color:  # noqa: ANN001
     """Draw the translucent rounded band behind ``widget`` (see BLOCK_BG_COLOR),
     kept glued through pos/size changes. Returns the band's Color instruction so
@@ -546,6 +575,7 @@ class OKFViewer(RelativeLayout):
             # ActionButton is the Barks bars' BarButton base: standalone it
             # renders as a dp(48) icon button on a flat action-item background.
             self.back_btn = ActionButton(icon=str(spec.back_icon_path), mipmap=True, disabled=True)
+            _tint_bar_icon(self.back_btn, self._theme.icon_tint)
         else:
             self.back_btn = Button(text="< Back", size_hint_x=None, width=dp(90), disabled=True)
         self.back_btn.bind(on_release=lambda *_: self.go_back())
@@ -560,6 +590,7 @@ class OKFViewer(RelativeLayout):
             self.contrast_btn = _IconToggleButton(
                 str(spec.contrast_on_icon_path), str(spec.contrast_off_icon_path)
             )
+            _tint_bar_icon(self.contrast_btn, self._theme.icon_tint)
         self.contrast_btn.bind(state=lambda *_: self._apply_band_alpha())
         bar.add_widget(self.contrast_btn)
 
@@ -578,6 +609,7 @@ class OKFViewer(RelativeLayout):
         bar.add_widget(_bar_separator(spec.separator_color, spec.quit_fence_width))
         if spec.close_icon_path is not None:
             quit_btn = ActionButton(icon=str(spec.close_icon_path), mipmap=True)
+            _tint_bar_icon(quit_btn, self._theme.icon_tint)
         else:
             quit_btn = Button(text="Quit", size_hint_x=None, width=dp(70))
 
@@ -920,6 +952,7 @@ class OKFViewer(RelativeLayout):
         if action.icon_path is not None:
             # The kv ActionButton style pins an icon button at dp(48) wide.
             self.action_btn = ActionButton(icon=str(action.icon_path), mipmap=True)
+            _tint_bar_icon(self.action_btn, self._theme.icon_tint)
         else:
             self.action_btn = Button(text=action.label, size_hint_x=None, width=dp(120))
         self.action_btn.bind(on_release=lambda *_: self._run_page_action())

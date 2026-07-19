@@ -1,8 +1,28 @@
 #:import reader_consts barks_reader.core.reader_consts_and_types
+#:import reader_palette barks_reader.core.reader_palette
 
 <BarButton@ActionButton>:
     mipmap: True
     draggable: False
+
+# On-brand chrome variant: Kivy's <ActionButton> renders `icon` as a plain
+# white child Image (data/style.kv) with no color hook, so we overlay a
+# theme-tinted copy of the same glyph on top of it. Comic-reader controls keep
+# the pristine white BarButton; only app chrome uses this.
+<ChromeBarButton@BarButton>:
+    Image:
+        source: root.icon
+        color: reader_palette.theme().icon_tint
+        fit_mode: "contain"
+        opacity: 1 if (root.icon and not root.inside_group) else 0
+        mipmap: root.mipmap
+        pos: root.x + dp(4), root.y + dp(4)
+        size: root.width - dp(8), root.height - sp(8)
+
+<ChromeFullscreenBarButton@ChromeBarButton>:
+    text: "Fullscreen"
+    icon: str(sys_paths.get_barks_reader_fullscreen_icon_file())
+    important: True
 
 # A 1dp vertical line centered in a configurable-width slot.
 <BarSeparator@Widget>:

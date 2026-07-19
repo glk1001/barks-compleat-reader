@@ -43,6 +43,7 @@ class ReaderTheme:
     tag_chip_bg: Color
     focus_ring: Color
     danger: Color  # quit accents
+    icon_tint: Color  # chrome toolbar glyphs (multiply over white glyph art)
 
 
 MASTHEAD = ReaderTheme(
@@ -57,6 +58,7 @@ MASTHEAD = ReaderTheme(
     tag_chip_bg=(0.36, 0.14, 0.09, 0.6),
     focus_ring=(0.98, 0.82, 0.50, 1.0),
     danger=(0.75, 0.22, 0.17, 1.0),
+    icon_tint=(0.98, 0.82, 0.50, 1.0),  # coin gold
 )
 
 DUCKBURG = ReaderTheme(
@@ -71,6 +73,7 @@ DUCKBURG = ReaderTheme(
     tag_chip_bg=(0.12, 0.23, 0.25, 0.6),
     focus_ring=(0.98, 0.82, 0.50, 1.0),
     danger=(0.57, 0.24, 0.15, 1.0),  # brick
+    icon_tint=(0.55, 0.82, 0.82, 1.0),  # bright weathered teal — legible on the dark bar
 )
 
 FOUR_COLOR = ReaderTheme(
@@ -85,6 +88,7 @@ FOUR_COLOR = ReaderTheme(
     tag_chip_bg=(0.12, 0.21, 0.31, 0.6),
     focus_ring=(0.98, 0.82, 0.50, 1.0),
     danger=(0.75, 0.22, 0.17, 1.0),
+    icon_tint=(0.76, 0.89, 0.97, 1.0),  # pale sky blue
 )
 
 THEMES: dict[str, ReaderTheme] = {t.name: t for t in (MASTHEAD, DUCKBURG, FOUR_COLOR)}
