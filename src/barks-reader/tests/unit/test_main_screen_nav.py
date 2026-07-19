@@ -138,8 +138,8 @@ class TestHandleKey:
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
-        # TAB should exit bottom focus
-        result = nav.handle_key(KEY_TAB)
+        # Escape should exit bottom focus
+        result = nav.handle_key(KEY_ESCAPE)
         assert result is True
         assert nav._focus_region.name == "TREE"
 
@@ -160,20 +160,9 @@ class TestHandleTreeKey:
         finally:
             set_alt_escape_key(0)
 
-    def test_tab_enters_bottom_focus(self, nav: MainScreenNavigation) -> None:
-        # Make at least one bottom screen visible
-        nav._fun_image_view_screen.is_visible = True
-        nav._bottom_title_view_screen.is_visible = False
-        nav._main_index_screen.is_visible = False
-        nav._speech_index_screen.is_visible = False
-        nav._names_index_screen.is_visible = False
-        nav._locations_index_screen.is_visible = False
-        nav._statistics_screen.is_visible = False
-        nav._history_screen.is_visible = False
-        nav._search_screen.is_visible = False
-
-        assert nav._handle_tree_key(KEY_TAB) is True
-        assert nav.is_in_bottom_focus
+    def test_tab_is_unhandled(self, nav: MainScreenNavigation) -> None:
+        # Tab handling was removed; Enter enters the bottom zone instead.
+        assert nav._handle_tree_key(KEY_TAB) is False
 
     def test_up_moves_tree(self, nav: MainScreenNavigation) -> None:
         nav._tree_view_screen.get_visible_nodes.return_value = [MagicMock(), MagicMock()]  # ty: ignore[unresolved-attribute]
@@ -209,7 +198,7 @@ class TestHandleTreeKey:
 
 
 class TestHandleBottomKey:
-    def test_tab_exits_bottom_focus(self, nav: MainScreenNavigation) -> None:
+    def test_tab_no_longer_exits_bottom_focus(self, nav: MainScreenNavigation) -> None:
         nav._focus_region = nav._focus_region.__class__(2)  # BOTTOM
         # No active nav screen
         nav._main_index_screen.is_visible = False
@@ -222,8 +211,9 @@ class TestHandleBottomKey:
         nav._fun_image_view_screen.is_visible = False
         nav._bottom_title_view_screen.is_visible = False
 
-        assert nav._handle_bottom_key(KEY_TAB) is True
-        assert not nav.is_in_bottom_focus
+        # Tab is inert now; only Escape backs out of the bottom zone.
+        assert nav._handle_bottom_key(KEY_TAB) is False
+        assert nav.is_in_bottom_focus
 
     def test_escape_exits_bottom_focus(self, nav: MainScreenNavigation) -> None:
         nav._focus_region = nav._focus_region.__class__(2)
@@ -253,9 +243,10 @@ class TestHandleBottomKey:
         assert nav._handle_bottom_key(KEY_DOWN) is True
         nav._main_index_screen.handle_key.assert_called_once_with(KEY_DOWN)  # ty: ignore[unresolved-attribute]
 
-    def test_tab_on_nav_screen_exits(self, nav: MainScreenNavigation) -> None:
+    def test_tab_on_nav_screen_is_delegated(self, nav: MainScreenNavigation) -> None:
         nav._focus_region = nav._focus_region.__class__(2)
         nav._main_index_screen.is_visible = True
+        nav._main_index_screen.handle_key.return_value = False  # ty: ignore[unresolved-attribute]
         nav._speech_index_screen.is_visible = False
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
@@ -263,8 +254,10 @@ class TestHandleBottomKey:
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
-        assert nav._handle_bottom_key(KEY_TAB) is True
-        nav._main_index_screen.exit_nav_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+        # Tab is passed to the active screen like any other key, not intercepted.
+        assert nav._handle_bottom_key(KEY_TAB) is False
+        nav._main_index_screen.handle_key.assert_called_once_with(KEY_TAB)  # ty: ignore[unresolved-attribute]
+        nav._main_index_screen.exit_nav_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
 
     def test_fun_view_left_right(self, nav: MainScreenNavigation) -> None:
         nav._main_index_screen.is_visible = False
@@ -440,20 +433,6 @@ class TestTitleRenderDebounce:
         # Enter re-renders synchronously through the activate path.
         nav._tree_view_manager.activate_node.assert_called_once_with(nodes[1])  # ty: ignore[unresolved-attribute]
         nav._on_title_activated.assert_called_once()  # ty: ignore[unresolved-attribute]
-
-    def test_tab_flushes_pending_render(
-        self, nav: MainScreenNavigation, fake_trigger: FakeTrigger, fake_time: list[float]
-    ) -> None:
-        nodes = self._setup_title_nodes(nav, 3)
-
-        nav._tree_nav_move(1)
-        fake_time[0] = 0.05
-        nav._tree_nav_move(1)
-        nav._handle_tree_key(KEY_TAB)
-
-        nav._tree_view_manager.render_title_node.assert_called_with(nodes[1])  # ty: ignore[unresolved-attribute]
-        assert nav._pending_title_node is None
-        assert not fake_trigger.scheduled
 
 
 class TestTreeNavActivate:

@@ -13,7 +13,6 @@ from .reader_keyboard_nav import (
     KEY_LEFT,
     KEY_NUMPAD_ENTER,
     KEY_RIGHT,
-    KEY_TAB,
     KEY_UP,
     clear_focus_highlight,
     draw_focus_highlight,
@@ -149,9 +148,6 @@ class MainScreenNavigation:
     def _handle_tree_key(self, key: int) -> bool:
         if is_escape_key(key):
             self._enter_menu_mode()
-        elif key == KEY_TAB:
-            self._flush_pending_title_render()
-            self.enter_bottom_focus()
         elif key == KEY_UP:
             self._tree_nav_move(-1)
         elif key == KEY_DOWN:
@@ -167,11 +163,8 @@ class MainScreenNavigation:
     def _handle_bottom_key(self, key: int) -> bool:
         nav_screen = self._get_active_nav_screen()
         if nav_screen is not None:
-            if key == KEY_TAB:
-                self.exit_bottom_focus()
-                return True
             return nav_screen.handle_key(key)
-        if is_escape_key(key) or key == KEY_TAB:
+        if is_escape_key(key):
             self.exit_bottom_focus()
             return True
         if self._fun_image_view_screen.is_visible:
@@ -282,10 +275,6 @@ class MainScreenNavigation:
     def _cancel_pending_title_render(self) -> None:
         self._title_render_trigger.cancel()
         self._pending_title_node = None
-
-    def _flush_pending_title_render(self) -> None:
-        self._title_render_trigger.cancel()
-        self._on_title_render_timeout(0.0)
 
     def _enter_nav_screen_bottom_focus(
         self,
