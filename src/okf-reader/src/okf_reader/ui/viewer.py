@@ -1248,11 +1248,19 @@ class OKFViewer(RelativeLayout):
             self._focus_tree_node(node.parent_node)
 
     def _tree_activate(self, node) -> None:  # noqa: ANN001
-        """Open the focused node's page (expanding a closed directory first)."""
+        """Open the focused leaf's page, or toggle a directory open/closed.
+
+        Enter on an open section closes it (the main Barks tree's convention),
+        so a reader scrolled up to the section heading can put the list away;
+        on a closed one it expands and shows the section's index listing.
+        """
         if node is None:
             return
-        if not node.is_leaf and not node.is_open:
+        if not node.is_leaf:
+            was_open = node.is_open
             self.tree.toggle_node(node)
+            if was_open:
+                return
         self._on_node(node)
 
     def _focus_tree_node(self, node) -> None:  # noqa: ANN001
