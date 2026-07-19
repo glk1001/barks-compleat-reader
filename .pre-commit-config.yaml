@@ -36,6 +36,13 @@ repos:
             types: [python]
             pass_filenames: false
             stages: [pre-commit]
+          - id: pytest
+            name: pytest (full suite)
+            entry: uv run pytest
+            language: system
+            pass_filenames: false
+            always_run: true
+            stages: [pre-push]
           - id: cspell-commit-msg
             name: cspell commit message
             entry: bunx cspell --no-must-find-files
