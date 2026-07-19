@@ -256,7 +256,7 @@ class HistoryScreen(FloatLayout):
         return Label(
             text=f"[b]{text}[/b]",
             markup=True,
-            color=(0.0, 1.0, 0.0, 1.0),
+            color=theme().search_heading,
             font_size=dp(_HEADER_FONT_SIZE),
             halign="left",
             valign="middle",
