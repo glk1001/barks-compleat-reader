@@ -163,6 +163,9 @@ BARKS_EXTRA_INFO = {
     " So I went ahead and drew them like that, and I got called on the carpet for it."
     " They said that Donald and the Ducks just didn't look right working alongside of"
     ' human beings."[/i]',
+    Titles.BILLIONS_TO_SNEEZE_AT: "The first of Scrooge's [b][i]money swims:[/i][/b]\n"
+    '\n[i]"I like to dive around in it like a porpoise!\n'
+    'And bore through it like a gopher!"[/i]',
     Titles.OPERATION_ST_BERNARD: "The first appearance of [b][i]The Junior Woodchucks.[/i][/b]",
     Titles.PIXILATED_PARROT_THE: "The first appearance of what looks like the"
     " [b][i]Money Bin[/i][/b] but in this story is called the Safe.",

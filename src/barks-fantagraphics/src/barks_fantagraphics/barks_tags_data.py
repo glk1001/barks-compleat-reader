@@ -277,6 +277,7 @@ BARKS_TAG_GROUPS = {
         Tags.FIRST_LITTLE_HELPER,
         Tags.FIRST_MAGICA,
         Tags.FIRST_MONEY_BIN,
+        Tags.FIRST_MONEY_SWIM,
         Tags.FIRST_NEIGHBOR_JONES,
         Tags.FIRST_NUMBER_ONE_DIME,
         Tags.FIRST_PIG_VILLAIN,
@@ -1667,6 +1668,7 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
         "22",
         "23",
     ],
+    (Tags.FIRST_MONEY_SWIM, Titles.BILLIONS_TO_SNEEZE_AT): ["3"],
     (Tags.FLORIDA, Titles.CHARITABLE_CHORE_A): ["6"],
     (Tags.FOOLA_ZOOLA, Titles.VOODOO_HOODOO): [
         "6",

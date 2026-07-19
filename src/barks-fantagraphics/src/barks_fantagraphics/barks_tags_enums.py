@@ -86,6 +86,7 @@ class Tags(Enum):
     FIRST_LITTLE_HELPER = "first Little Helper appearance"
     FIRST_MAGICA = "first Magica appearance"
     FIRST_MONEY_BIN = "first Money Bin appearance"
+    FIRST_MONEY_SWIM = "first Scrooge money swim"
     FIRST_NEIGHBOR_JONES = "first Mr. Jones appearance"
     FIRST_NUMBER_ONE_DIME = "first number one dime appearance"
     FIRST_PIG_VILLAIN = "first pig villain"
