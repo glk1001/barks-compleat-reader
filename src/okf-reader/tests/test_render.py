@@ -147,6 +147,39 @@ class TestRenderPage:
         footnotes_header = next(b for b in _text_blocks(page) if "Footnotes" in b.markup)
         assert footnotes_header.heading
 
+    def test_heading_and_link_colors_default_to_module_palette(self) -> None:
+        """With no override, headings/links carry the standalone module colors."""
+        page = okf.render_page("# Title\n\n[text](foo.md)")
+        blocks = _text_blocks(page)
+        assert blocks[0].markup == f"[color={okf.HEADING_COLOR}][b]Title[/b][/color]"
+        assert f"[color={okf.LINK_COLOR}]" in blocks[1].markup
+
+    def test_heading_and_link_colors_are_themable(self) -> None:
+        """An embedding app recolors headings and links via render_page args."""
+        page = okf.render_page(
+            "# Title\n\n[text](foo.md)", heading_color="ff0000", link_color="00ff00"
+        )
+        blocks = _text_blocks(page)
+        assert blocks[0].markup == "[color=ff0000][b]Title[/b][/color]"
+        assert "[color=00ff00]" in blocks[1].markup
+        # The standalone defaults must not leak through when overridden.
+        assert okf.HEADING_COLOR not in blocks[0].markup
+        assert okf.LINK_COLOR not in blocks[1].markup
+
+    def test_table_header_and_footnote_ref_follow_theme_colors(self) -> None:
+        """Themed colors reach table headers (heading) and footnote refs (link)."""
+        table = "| Col |\n| --- |\n| v |"
+        table_block = next(
+            b
+            for b in okf.render_page(table, heading_color="abcdef").blocks
+            if isinstance(b, okf.TableBlock)
+        )
+        assert any("[color=abcdef]" in row for row in table_block.rows)
+        ref_markup = _text_blocks(okf.render_page("body[^1]\n\n[^1]: def", link_color="123456"))[
+            0
+        ].markup
+        assert "[color=123456]" in ref_markup
+
     def test_inline_emphasis_and_code(self) -> None:
         """Bold, italic, and inline code map to Kivy markup tags."""
         markup = _text_blocks(okf.render_page("**bold** _it_ `code`"))[0].markup

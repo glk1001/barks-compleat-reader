@@ -20,7 +20,7 @@ from barks_reader.core.reader_consts_and_types import (
     RAW_ACTION_BAR_SIZE_Y,
     RAW_QUIT_FENCE_WIDTH,
 )
-from barks_reader.core.reader_palette import theme
+from barks_reader.core.reader_palette import color_to_markup_hex, theme
 from barks_reader.core.wiki_integration import (
     BarksPanelsImageProvider,
     BarksTableRewriter,
@@ -31,8 +31,10 @@ from barks_reader.core.wiki_integration import (
     tree_navigable_title,
     wiki_page_for_title,
     wiki_session_path,
+    wiki_theme_spec,
     wiki_top_bar_spec,
 )
+from okf_reader.core.theme import ViewerThemeSpec
 from PIL import Image
 
 if TYPE_CHECKING:
@@ -283,3 +285,37 @@ class TestWikiTopBarSpec:
         assert spec.icon_width == RAW_ACTION_BAR_ICON_WIDTH
         assert spec.quit_fence_width == RAW_QUIT_FENCE_WIDTH
         assert spec.height == RAW_ACTION_BAR_SIZE_Y
+
+
+class TestWikiThemeSpec:
+    def test_maps_active_palette_roles_onto_the_viewer(self) -> None:
+        """The viewer spec single-sources from the app's active ReaderTheme.
+
+        Anti-drift guard: the okf viewer renders whatever the spec carries, so
+        these must be the reader_palette roles (not hardcoded okf defaults).
+        """
+        spec = wiki_theme_spec()
+        title_hex = color_to_markup_hex(theme().text_title).lstrip("#")
+        assert spec.selection == theme().accent_selection
+        assert spec.title_text == theme().text_title
+        assert spec.secondary_text == theme().text_secondary
+        assert spec.row_stripe_even == theme().row_stripe_even
+        assert spec.row_stripe_odd == theme().row_stripe_odd
+        assert spec.focus_ring == theme().focus_ring
+        assert spec.heading_hex == title_hex
+        assert spec.title_hex == title_hex
+        assert spec.crumb_hex == color_to_markup_hex(theme().text_secondary).lstrip("#")
+
+    def test_links_and_dir_text_stay_the_viewer_defaults(self) -> None:
+        """Hyperlinks keep the recognizable blue; directory rows stay white."""
+        default = ViewerThemeSpec()
+        spec = wiki_theme_spec()
+        assert spec.link_hex == default.link_hex
+        assert spec.dir_text == default.dir_text
+
+    def test_hex_fields_carry_no_leading_hash(self) -> None:
+        """render_page bakes hex straight into markup with no leading '#'."""
+        spec = wiki_theme_spec()
+        assert not spec.heading_hex.startswith("#")
+        assert not spec.title_hex.startswith("#")
+        assert not spec.crumb_hex.startswith("#")

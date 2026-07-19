@@ -19,8 +19,9 @@ FOCUS_RING_GROUP = "okf_focus_ring"
 SIDEBAR_RING_GROUP = "okf_sidebar_ring"
 # Gold — the page-heading/concept accent, marking the focused item.
 FOCUS_RING_COLOR = (1.0, 0.835, 0.29, 1.0)
-# Link blue — the "this region owns the keys" indicator around the sidebar.
-SIDEBAR_RING_COLOR = (0.306, 0.631, 1.0, 0.9)
+# The sidebar's "this region owns the keys" ring color is themable and lives on
+# `ViewerThemeSpec.focus_ring` (default: link blue); the viewer passes it into
+# `draw_focus_ring` for the sidebar group.
 
 
 def draw_focus_ring(

@@ -173,11 +173,13 @@ def _ref_quote(href: str) -> str:
     return href.replace("&", "%26").replace("[", "%5B").replace("]", "%5D")
 
 
-def _inline(tokens: list[Token], code_color: str = CODE_COLOR) -> str:
+def _inline(tokens: list[Token], code_color: str = CODE_COLOR, link_color: str = LINK_COLOR) -> str:
     """Render an inline token stream (a token's ``.children``) to Kivy markup.
 
     ``code_color`` recolors inline code spans only — footnote definitions pass
     their muted variant so code there stays quiet (see FOOTNOTE_CODE_COLOR).
+    ``link_color`` recolors hyperlinks and footnote-reference markers, so an
+    embedding app can theme them (default: the standalone LINK_COLOR).
     """
     out: list[str] = []
     for t in tokens:
@@ -200,14 +202,14 @@ def _inline(tokens: list[Token], code_color: str = CODE_COLOR) -> str:
             out.append(f"[color={code_color}]{_esc(t.content)}[/color]")
         elif tp == "link_open":
             href = _ref_quote(str(t.attrGet("href") or ""))
-            out.append(f"[ref={href}][color={LINK_COLOR}][u]")
+            out.append(f"[ref={href}][color={link_color}][u]")
         elif tp == "link_close":
             out.append("[/u][/color][/ref]")
         elif tp == "footnote_ref":
             label = t.meta.get("label") or str(t.meta.get("id", ""))
             marker = _esc(f"[{label}]")
             out.append(
-                f"[ref=fn:{label}][color={LINK_COLOR}]"
+                f"[ref=fn:{label}][color={link_color}]"
                 f"[sup][size={FOOTNOTE_REF_SIZE}]{marker}[/size][/sup][/color][/ref]"
             )
         elif tp == "image":
@@ -235,7 +237,7 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
     return {}, text
 
 
-def _footnote_block(tokens: list, start: int) -> tuple[Block, int]:
+def _footnote_block(tokens: list, start: int, link_color: str = LINK_COLOR) -> tuple[Block, int]:
     """Render the footnote definition at ``tokens[start]`` (its ``footnote_open``).
 
     The whole definition (up to its ``footnote_close``) becomes one block, tagged
@@ -250,7 +252,13 @@ def _footnote_block(tokens: list, start: int) -> tuple[Block, int]:
     n = len(tokens)
     while j < n and tokens[j].type != "footnote_close":
         if tokens[j].type == "inline":
-            parts.append(_inline(tokens[j].children or [], code_color=FOOTNOTE_CODE_COLOR))
+            parts.append(
+                _inline(
+                    tokens[j].children or [],
+                    code_color=FOOTNOTE_CODE_COLOR,
+                    link_color=link_color,
+                )
+            )
         j += 1
     # Dimmed as metadata (see FOOTNOTE_TEXT_COLOR); the inner link/code color
     # tags override the grey for their own spans.
@@ -326,7 +334,10 @@ def _visible_len(markup: str) -> int:
 
 
 def _table_block(
-    tokens: list[Token], start: int, rewriter: TableRewriter | None
+    tokens: list[Token],
+    start: int,
+    rewriter: TableRewriter | None,
+    heading_color: str = HEADING_COLOR,
 ) -> tuple[TableBlock, int]:
     """Render the table starting at ``tokens[start]`` (its ``table_open``) into a TableBlock.
 
@@ -412,13 +423,24 @@ def _table_block(
             row_lines.append("  ".join(padded).rstrip())
         entry = "\n".join(row_lines)
         if r < header_rows:
-            entry = f"[color={HEADING_COLOR}]{entry}[/color]"
+            entry = f"[color={heading_color}]{entry}[/color]"
         entries.append(entry)
     return TableBlock(entries), j + 1
 
 
-def render_page(text: str, table_rewriter: TableRewriter | None = None) -> Page:
-    """Parse a page's frontmatter and render its body + footnotes to Kivy-markup blocks."""
+def render_page(
+    text: str,
+    table_rewriter: TableRewriter | None = None,
+    heading_color: str = HEADING_COLOR,
+    link_color: str = LINK_COLOR,
+) -> Page:
+    """Parse a page's frontmatter and render its body + footnotes to Kivy-markup blocks.
+
+    ``heading_color``/``link_color`` are the Kivy-markup hex colors (no leading
+    '#') for headings/table headers and hyperlinks/footnote refs. They default
+    to the module's standalone palette; an embedding app themes them via
+    ``ViewerThemeSpec`` so the article text tracks its own palette.
+    """
     fm, body = parse_frontmatter(text)
     tokens = _md().parse(body)
     blocks: list[Block | TableBlock] = []
@@ -432,8 +454,8 @@ def render_page(text: str, table_rewriter: TableRewriter | None = None) -> Page:
         if tp == "heading_open":
             blocks.append(
                 Block(
-                    f"[color={HEADING_COLOR}][b]"
-                    + _inline(tokens[i + 1].children or [])
+                    f"[color={heading_color}][b]"
+                    + _inline(tokens[i + 1].children or [], link_color=link_color)
                     + "[/b][/color]",
                     HEADING_SIZES.get(t.tag, 16),
                     heading=True,
@@ -444,17 +466,17 @@ def render_page(text: str, table_rewriter: TableRewriter | None = None) -> Page:
         if tp == "paragraph_open":
             marker = pending_bullet
             pending_bullet = ""
-            markup = _inline(tokens[i + 1].children or [])
+            markup = _inline(tokens[i + 1].children or [], link_color=link_color)
             if PROVENANCE_MARKER not in markup:  # drop editorial provenance notes
                 blocks.append(Block(markup, indent=indent, marker=marker))
             i += 3
             continue
         if tp == "footnote_open":
-            block, i = _footnote_block(tokens, i)
+            block, i = _footnote_block(tokens, i, link_color=link_color)
             blocks.append(block)
             continue
         if tp == "table_open":
-            block, i = _table_block(tokens, i, table_rewriter)
+            block, i = _table_block(tokens, i, table_rewriter, heading_color=heading_color)
             blocks.append(block)
             continue
         if tp in ("bullet_list_open", "ordered_list_open", "blockquote_open"):

@@ -27,6 +27,7 @@ from barks_reader.core.wiki_integration import (
     BarksTableRewriter,
     tree_navigable_title,
     wiki_session_path,
+    wiki_theme_spec,
     wiki_top_bar_spec,
 )
 
@@ -288,6 +289,7 @@ class WikiReaderScreen(ReaderScreen):
             top_bar=wiki_top_bar_spec(
                 self._font_manager, self._reader_settings.sys_file_paths, on_close=self.close
             ),
+            theme=wiki_theme_spec(),
             state_path=wiki_session_path(self._app_data_dir, bundle),
             on_exit=self.close,
         )

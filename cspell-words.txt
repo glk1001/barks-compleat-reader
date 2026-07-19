@@ -104,6 +104,7 @@ reingest
 relativedelta
 renderable
 returncode
+rgba
 ryzen
 scancode
 screeninfo
@@ -125,6 +126,7 @@ testpaths
 texels
 textbbox
 textlength
+themable
 timespec
 tobytes
 tofile
@@ -135,6 +137,7 @@ touchpads
 unauthored
 unauthorised
 unhighlighted
+unthemed
 untinted
 vectorizer
 vmem

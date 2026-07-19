@@ -22,6 +22,7 @@ from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENU
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO, SERIES_EXTRAS
 from okf_reader.core.backgrounds import PageBackground
+from okf_reader.core.theme import ViewerThemeSpec
 from okf_reader.core.top_bar import TopBarSpec
 
 from .image_pipeline import encode_png_stream
@@ -37,7 +38,7 @@ from .reader_consts_and_types import (
 from .reader_file_paths import ALL_TYPES
 from .reader_file_paths_resolver import ReaderFilePathsResolver
 from .reader_formatter import escape_kivy_markup, get_action_bar_title
-from .reader_palette import theme
+from .reader_palette import color_to_markup_hex, theme
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -91,6 +92,33 @@ def wiki_top_bar_spec(
         separator_color=ACTION_BAR_SEPARATOR_COLOR,
         icon_width=RAW_ACTION_BAR_ICON_WIDTH,
         quit_fence_width=RAW_QUIT_FENCE_WIDTH,
+    )
+
+
+def wiki_theme_spec() -> ViewerThemeSpec:
+    """Color the okf viewer from the app's active palette (reader_palette.theme()).
+
+    The `ViewerThemeSpec` counterpart of `wiki_top_bar_spec`: maps the app's
+    `ReaderTheme` roles onto the viewer's themable colors so the wiki screen
+    wears the same palette as the rest of the app — selection band from
+    `accent_selection`, tree/heading/search-title gold from `text_title`, quiet
+    text from `text_secondary`, striping and focus ring from their roles.
+    Read lazily at build time (the viewer is built on first open, after the
+    theme is set). Hyperlinks keep the viewer's default blue (`link_hex`
+    unset) — links are recognizable working parts, not a themed accent. The
+    tree directory rows stay the default white (`dir_text` unset).
+    """
+    title_hex = color_to_markup_hex(theme().text_title).lstrip("#")
+    return ViewerThemeSpec(
+        selection=theme().accent_selection,
+        title_text=theme().text_title,
+        secondary_text=theme().text_secondary,
+        row_stripe_even=theme().row_stripe_even,
+        row_stripe_odd=theme().row_stripe_odd,
+        focus_ring=theme().focus_ring,
+        heading_hex=title_hex,
+        title_hex=title_hex,
+        crumb_hex=color_to_markup_hex(theme().text_secondary).lstrip("#"),
     )
 
 

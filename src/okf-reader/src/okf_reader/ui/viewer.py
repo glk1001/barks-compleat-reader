@@ -50,10 +50,10 @@ from okf_reader.core.render import (
 )
 from okf_reader.core.search import BundleSearcher
 from okf_reader.core.session import load_session_state, save_session_state
+from okf_reader.core.theme import ViewerThemeSpec
 from okf_reader.core.top_bar import TopBarSpec
 
 from .focus_ring import (
-    SIDEBAR_RING_COLOR,
     SIDEBAR_RING_GROUP,
     clear_focus_ring,
     draw_focus_ring,
@@ -122,20 +122,10 @@ SECTION_BLOCK_SPACING = 8  # between blocks inside one banded section
 # heading, and the right-aligned action buttons behind a thin separator. What
 # fills it — content and style — comes from the embedding app via TopBarSpec
 # (the style defaults live on the spec).
-# Selection band: the link blue (render.LINK_COLOR, 4ea1ff) at low alpha — an
-# accent already in the palette, translucent enough that the gold node label
-# keeps its contrast. (The Barks Reader's magenta shouted over this page's
-# muted grey/gold/blue scheme.)
-TREE_SELECTED_COLOR = (0.306, 0.631, 1.0, 0.35)
-# Barks Reader tree convention: group nodes bold white, titles yellow. Here:
-# directories bold white; concept pages in the page-heading gold (ffd54a).
-TREE_DIR_TEXT_COLOR = (1, 1, 1, 1)
-TREE_CONCEPT_TEXT_COLOR = (1.0, 0.835, 0.29, 1.0)
-# Tree row striping: Kivy's TreeViewNode default even_color ((.5,.5,.5,.1))
-# banded strongly enough to read as highlight state, and two-line titles make
-# the bands irregular. Keep a whisper of banding for scanning, nothing more.
-TREE_ROW_EVEN_COLOR = (1, 1, 1, 0.04)
-TREE_ROW_ODD_COLOR = (0, 0, 0, 0)
+# The tree selection band, row text (dir white / concept gold), striping and
+# the search-result title/breadcrumb/hint colors are themable — they live on
+# `ViewerThemeSpec` (okf_reader.core.theme), read here via `self._theme` so an
+# embedding app can recolor them; the defaults there reproduce this look.
 # Cap on the reading column: past this the body column stops growing and
 # centers in its pane, keeping the measure comfortable (~90 characters at the
 # body size) on maximized windows. Wide tables scroll within it.
@@ -153,19 +143,15 @@ LIST_INDENT_STEP = 20  # dp per nesting level past the first
 SEARCH_FIELD_HEIGHT = 32  # dp
 SEARCH_FIELD_GAP = 6  # dp between the field and the tree/results below it
 SEARCH_FIELD_BG = (0.16, 0.16, 0.16, 1)
-SEARCH_HINT_COLOR = (0.7, 0.7, 0.7, 1)
 SEARCH_RESULT_HEIGHT = 48  # dp — two lines: title over a dim breadcrumb
-SEARCH_RESULT_TITLE_HEX = "ffd54a"  # the concept-gold, matching the tree leaves
-SEARCH_RESULT_CRUMB_HEX = "999999"
-SEARCH_NO_MATCH_COLOR = (0.7, 0.7, 0.7, 1)
 SEARCH_ERROR_TEXT = "Search unavailable"  # shown if the index build failed
 SEARCH_CLEAR_BTN_WIDTH = 28  # dp — the "clear search" button beside the field
 SEARCH_FIELD_ROW_GAP = 4  # dp between the field and the clear button
 SEARCH_CLEAR_GLYPH_SIZE = 22  # dp — big/bold enough to read in the small button
 SEARCH_CLEAR_GLYPH_COLOR = (0.9, 0.9, 0.9, 1)  # light glyph on the dark (tinted) button
-# The open page's result row gets the tree's blue selection band: with the results
-# kept up (to open several pages in a row) it shows which one you are reading.
-SEARCH_RESULT_ACTIVE_COLOR = TREE_SELECTED_COLOR
+# The open page's result row gets the theme selection band (self._theme.selection):
+# with the results kept up (to open several pages in a row) it shows which one you
+# are reading. Inactive rows are transparent (unthemed).
 SEARCH_RESULT_INACTIVE_COLOR = (0, 0, 0, 0)
 
 
@@ -308,6 +294,7 @@ class OKFViewer(RelativeLayout):
         start_page: Path | None = None,
         action_provider: PageActionProvider | None = None,
         top_bar: TopBarSpec | None = None,
+        theme: ViewerThemeSpec | None = None,
         state_path: Path | None = None,
         on_exit: Callable[[], None] | None = None,
         search_provider: SearchProvider | None = None,
@@ -315,6 +302,9 @@ class OKFViewer(RelativeLayout):
     ) -> None:
         super().__init__(**kwargs)
         self.bundle = bundle
+        # Colors the embedding app may theme (tree, search, focus ring, article
+        # markup); the default reproduces the standalone reader's palette.
+        self._theme = theme if theme is not None else ViewerThemeSpec()
         self.history: list[_HistoryEntry] = []
         self._anchors: dict[str, str] = {}  # "fn:<label>" -> the definition block's markup
         self._syncing_tree = False  # True while _sync_tree_to selects programmatically
@@ -454,7 +444,7 @@ class OKFViewer(RelativeLayout):
             write_tab=False,
             background_color=SEARCH_FIELD_BG,
             foreground_color=(1, 1, 1, 1),
-            hint_text_color=SEARCH_HINT_COLOR,
+            hint_text_color=self._theme.secondary_text,
             cursor_color=(1, 1, 1, 1),
             padding=(dp(8), dp(6)),
         )
@@ -620,10 +610,10 @@ class OKFViewer(RelativeLayout):
                     TreeViewLabel(
                         text=node.title or node.name,
                         bold=True,
-                        color=TREE_DIR_TEXT_COLOR,
-                        color_selected=TREE_SELECTED_COLOR,
-                        even_color=TREE_ROW_EVEN_COLOR,
-                        odd_color=TREE_ROW_ODD_COLOR,
+                        color=self._theme.dir_text,
+                        color_selected=self._theme.selection,
+                        even_color=self._theme.row_stripe_even,
+                        odd_color=self._theme.row_stripe_odd,
                     ),
                     parent,
                 )
@@ -636,10 +626,10 @@ class OKFViewer(RelativeLayout):
             else:  # ConceptNode
                 tv = TreeViewLabel(
                     text=node.title,
-                    color=TREE_CONCEPT_TEXT_COLOR,
-                    color_selected=TREE_SELECTED_COLOR,
-                    even_color=TREE_ROW_EVEN_COLOR,
-                    odd_color=TREE_ROW_ODD_COLOR,
+                    color=self._theme.title_text,
+                    color_selected=self._theme.selection,
+                    even_color=self._theme.row_stripe_even,
+                    odd_color=self._theme.row_stripe_odd,
                 )
                 tv.file_path = node.path
                 self.tree.add_node(tv, parent)
@@ -790,7 +780,9 @@ class OKFViewer(RelativeLayout):
         self._sidebar_index = None
         self._left_body.clear_widgets()
         self._left_body.add_widget(
-            Label(text="Searching…", color=SEARCH_NO_MATCH_COLOR, valign="top", halign="center")
+            Label(
+                text="Searching…", color=self._theme.secondary_text, valign="top", halign="center"
+            )
         )
 
     def _show_search_error(self) -> None:
@@ -800,7 +792,7 @@ class OKFViewer(RelativeLayout):
         self._left_body.add_widget(
             Label(
                 text=SEARCH_ERROR_TEXT,
-                color=SEARCH_NO_MATCH_COLOR,
+                color=self._theme.secondary_text,
                 valign="top",
                 halign="center",
             )
@@ -823,7 +815,7 @@ class OKFViewer(RelativeLayout):
         if not hits:
             note = Label(
                 text="No matches",
-                color=SEARCH_NO_MATCH_COLOR,
+                color=self._theme.secondary_text,
                 size_hint_y=None,
                 height=dp(SEARCH_RESULT_HEIGHT),
             )
@@ -841,21 +833,19 @@ class OKFViewer(RelativeLayout):
         """Tint the open page's result row (a no-op when no results are showing)."""
         for path, btn in self._result_rows:
             active = path == self._active_result_path
-            btn.background_color = (
-                SEARCH_RESULT_ACTIVE_COLOR if active else SEARCH_RESULT_INACTIVE_COLOR
-            )
+            btn.background_color = self._theme.selection if active else SEARCH_RESULT_INACTIVE_COLOR
 
     def _result_button(self, hit: SearchHit) -> Button:
         """Build one result row: gold title over a dim breadcrumb, opening the page."""
         title = _markup_escape(hit.title)
         crumb = (
-            f"\n[size=11][color={SEARCH_RESULT_CRUMB_HEX}]"
+            f"\n[size=11][color={self._theme.crumb_hex}]"
             f"{_markup_escape(hit.breadcrumb)}[/color][/size]"
             if hit.breadcrumb
             else ""
         )
         btn = Button(
-            text=f"[color={SEARCH_RESULT_TITLE_HEX}]{title}[/color]{crumb}",
+            text=f"[color={self._theme.title_hex}]{title}[/color]{crumb}",
             markup=True,
             halign="left",
             valign="middle",
@@ -1357,7 +1347,7 @@ class OKFViewer(RelativeLayout):
         self._focus_region = region
         if region is FocusRegion.SIDEBAR:
             self._clear_link_focus()
-            draw_focus_ring(self._left_body, group=SIDEBAR_RING_GROUP, color=SIDEBAR_RING_COLOR)
+            draw_focus_ring(self._left_body, group=SIDEBAR_RING_GROUP, color=self._theme.focus_ring)
             if self._result_rows:
                 self._set_result_focus(self._initial_result_index())
             elif self.tree_scroll.parent is self._left_body and self.tree.selected_node is not None:
@@ -1524,7 +1514,12 @@ class OKFViewer(RelativeLayout):
             # after the tree was populated (e.g. the wiki being regenerated)
             # degrades to an error page instead of crashing the event handler.
             text = f"# Page unavailable\n\n`{path.name}`: {err.strerror or err}\n"
-        page = render_page(text, table_rewriter=self._table_rewriter)
+        page = render_page(
+            text,
+            table_rewriter=self._table_rewriter,
+            heading_color=self._theme.heading_hex,
+            link_color=self._theme.link_hex,
+        )
         self._update_background(page.frontmatter, path)
         self._set_page_action(
             self._action_provider.action_for(page.frontmatter, path)
