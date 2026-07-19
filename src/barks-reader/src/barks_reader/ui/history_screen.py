@@ -41,7 +41,7 @@ from barks_reader.core.reading_history import (
 )
 
 from .panel_texture_loader import PanelTextureLoader
-from .popup_widgets import MessagePopup
+from .popup_widgets import open_confirm_popup
 from .reader_keyboard_nav import (
     KEY_DELETE,
     KEY_DOWN,
@@ -54,8 +54,10 @@ from .reader_keyboard_nav import (
     KEY_UP,
     MENU_FOCUS_HIGHLIGHT_GROUP,
     clear_focus_highlight,
+    clear_focus_in_list,
     draw_focus_highlight,
     is_escape_key,
+    update_focus_in_list,
 )
 
 if TYPE_CHECKING:
@@ -87,6 +89,14 @@ _JOURNAL_VIEW = "journal"
 _TITLES_VIEW = "titles"
 
 _NAV_PAGE_STEP = 10  # Rows jumped by Page Up/Down in keyboard navigation.
+
+# Keyboard focus is split into two zones: the scrolling row list and the top
+# bar (the Journal/Titles tabs plus Clear History). Up from the first row moves
+# into the bar; Down from the bar returns to the list.
+_ZONE_LIST = "list"
+_ZONE_BAR = "bar"
+_BAR_JOURNAL, _BAR_TITLES, _BAR_CLEAR = 0, 1, 2
+_BAR_FOCUS_GROUP = "history_bar_focus"
 
 _NAV_MOVE_DELTAS = {
     KEY_UP: -1,
@@ -145,9 +155,11 @@ class HistoryScreen(FloatLayout):
         # Keyboard navigation state
         self._nav_active: bool = False
         self._nav_on_exit_request: Callable[[], None] | None = None
+        self._nav_zone: str = _ZONE_LIST
         self._nav_focused_idx: int = 0
         self._nav_rows: list[_NavRow] = []
         self._nav_focused_widget: BoxLayout | None = None
+        self._bar_focused_idx: int = _BAR_JOURNAL
 
     def set_history_store(self, history_store: ReadingHistoryStore) -> None:
         """Inject the persistent event log to display."""
@@ -219,7 +231,11 @@ class HistoryScreen(FloatLayout):
         else:
             self._populate_titles(events)
 
-        if self._nav_active:
+        if not self._nav_active:
+            return
+        if self._nav_zone == _ZONE_BAR:
+            self._update_bar_focus()
+        else:
             self._nav_focused_idx = min(self._nav_focused_idx, max(0, len(self._nav_rows) - 1))
             self._update_nav_focus()
 
@@ -357,46 +373,103 @@ class HistoryScreen(FloatLayout):
         """Enter keyboard navigation mode, focusing the first history row."""
         self._nav_on_exit_request = on_exit_request
         self._nav_active = True
+        self._nav_zone = _ZONE_LIST
         self._nav_focused_idx = 0
         self._update_nav_focus()
         logger.debug("HistoryScreen: entered nav focus.")
 
     def exit_nav_focus(self) -> None:
-        """Exit keyboard navigation mode and clear the row highlight."""
+        """Exit keyboard navigation mode and clear every highlight."""
         if not self._nav_active:
             return
         self._nav_active = False
         self._nav_on_exit_request = None
+        self._nav_zone = _ZONE_LIST
         self._clear_nav_focus()
+        self._clear_bar_focus()
         logger.debug("HistoryScreen: exited nav focus.")
 
     def handle_key(self, key: int) -> bool:
         """Handle a keyboard key. Return True if consumed."""
         if not self._nav_active:
             return False
-        if key in _NAV_MOVE_DELTAS:
+        if self._nav_zone == _ZONE_BAR:
+            return self._handle_bar_key(key)
+        return self._handle_list_key(key)
+
+    def _handle_list_key(self, key: int) -> bool:
+        # Up from the first row leaves the list and enters the top bar.
+        if key == KEY_UP and self._nav_focused_idx == 0:
+            self._enter_bar_zone()
+        elif key in _NAV_MOVE_DELTAS:
             self._move_nav_focus(_NAV_MOVE_DELTAS[key])
-        elif key == KEY_LEFT:
-            self._nav_select_view(_JOURNAL_VIEW)
-        elif key == KEY_RIGHT:
-            self._nav_select_view(_TITLES_VIEW)
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._activate_focused_row()
         elif key == KEY_DELETE:
             self._delete_focused_row()
         elif is_escape_key(key):
-            if self._nav_on_exit_request is not None:
-                self._nav_on_exit_request()
+            self._request_nav_exit()
         else:
             return False
         return True
 
-    def _nav_select_view(self, view: str) -> None:
-        if view == self._current_view:
-            return
+    def _handle_bar_key(self, key: int) -> bool:
+        if key == KEY_LEFT:
+            self._move_bar_focus(-1)
+        elif key == KEY_RIGHT:
+            self._move_bar_focus(1)
+        elif key == KEY_DOWN:
+            self._enter_list_zone()
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self._activate_bar_focus()
+        elif is_escape_key(key):
+            self._request_nav_exit()
+        else:
+            return False
+        return True
+
+    def _request_nav_exit(self) -> None:
+        if self._nav_on_exit_request is not None:
+            self._nav_on_exit_request()
+
+    # --- Top-bar zone (Journal | Titles | Clear History) ---
+
+    def _bar_buttons(self) -> list[Button]:
+        return [self.ids.journal_button, self.ids.titles_button, self.ids.clear_button]
+
+    def _enter_bar_zone(self) -> None:
+        self._clear_nav_focus()
+        self._nav_zone = _ZONE_BAR
+        # Land on the tab matching the current view (Clear is one step to the right).
+        self._bar_focused_idx = _BAR_JOURNAL if self._current_view == _JOURNAL_VIEW else _BAR_TITLES
+        self._update_bar_focus()
+
+    def _enter_list_zone(self) -> None:
+        self._clear_bar_focus()
+        self._nav_zone = _ZONE_LIST
         self._nav_focused_idx = 0
-        # _select_view refreshes the rows, which redraws the focus highlight.
-        self._select_view(view)
+        self._update_nav_focus()
+
+    def _move_bar_focus(self, delta: int) -> None:
+        new_idx = max(_BAR_JOURNAL, min(_BAR_CLEAR, self._bar_focused_idx + delta))
+        if new_idx != self._bar_focused_idx:
+            self._bar_focused_idx = new_idx
+            self._update_bar_focus()
+
+    def _activate_bar_focus(self) -> None:
+        if self._bar_focused_idx == _BAR_CLEAR:
+            self.on_clear_pressed()
+            return
+        view = _JOURNAL_VIEW if self._bar_focused_idx == _BAR_JOURNAL else _TITLES_VIEW
+        if view != self._current_view:
+            # _select_view refreshes the rows, which redraws the bar highlight.
+            self._select_view(view)
+
+    def _update_bar_focus(self) -> None:
+        update_focus_in_list(self._bar_buttons(), self._bar_focused_idx, _BAR_FOCUS_GROUP)
+
+    def _clear_bar_focus(self) -> None:
+        clear_focus_in_list(self._bar_buttons(), _BAR_FOCUS_GROUP)
 
     def _move_nav_focus(self, delta: int) -> None:
         if not self._nav_rows:
@@ -444,27 +517,21 @@ class HistoryScreen(FloatLayout):
             self._nav_focused_widget = None
 
     def on_clear_pressed(self) -> None:
-        """Ask for confirmation, then clear the whole history (kv callback)."""
-        popup: MessagePopup | None = None
+        """Ask for confirmation, then clear the whole history (kv callback).
+
+        Uses the shared keyboard-operable confirm popup so the dialog works with
+        a 6-button remote (Left/Right pick a button, Enter confirms, Escape stays).
+        """
 
         def do_clear() -> None:
             assert self._history_store is not None
-            assert popup is not None
             self._history_store.clear()
-            popup.dismiss()
             self._refresh()
 
-        def do_cancel() -> None:
-            assert popup is not None
-            popup.dismiss()
-
-        popup = MessagePopup(
-            text="Clear all reading history?",
-            ok_func=do_clear,
-            ok_text="Clear",
-            cancel_func=do_cancel,
-            cancel_text="Cancel",
+        open_confirm_popup(
             title="Clear Reading History",
-            msg_halign="center",
+            text="Clear all reading history?",
+            ok_text="Clear",
+            cancel_text="Cancel",
+            on_ok=do_clear,
         )
-        Clock.schedule_once(lambda _dt: popup.open(), 0)

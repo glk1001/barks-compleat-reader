@@ -7,7 +7,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_reader.ui import history_screen as history_screen_module
-from barks_reader.ui.history_screen import HistoryScreen, _NavRow
+from barks_reader.ui.history_screen import (
+    _BAR_CLEAR,
+    _BAR_JOURNAL,
+    _BAR_TITLES,
+    _ZONE_BAR,
+    _ZONE_LIST,
+    HistoryScreen,
+    _NavRow,
+)
 from barks_reader.ui.reader_keyboard_nav import (
     KEY_DELETE,
     KEY_DOWN,
@@ -35,6 +43,7 @@ def screen() -> Generator[HistoryScreen]:
         mock_ids = {
             "journal_button": MagicMock(),
             "titles_button": MagicMock(),
+            "clear_button": MagicMock(),
             "history_rows": MagicMock(),
             "history_scroll": MagicMock(),
         }
@@ -53,6 +62,8 @@ def nav_screen(screen: HistoryScreen) -> Generator[HistoryScreen]:
     with (
         patch.object(history_screen_module, "draw_focus_highlight"),
         patch.object(history_screen_module, "clear_focus_highlight"),
+        patch.object(history_screen_module, "update_focus_in_list"),
+        patch.object(history_screen_module, "clear_focus_in_list"),
         patch.object(history_screen_module, "Clock"),
     ):
         yield screen
@@ -81,14 +92,15 @@ class TestHistoryScreenNav:
         rows = _add_nav_rows(nav_screen, 3)
         nav_screen.enter_nav_focus(MagicMock())
 
-        assert nav_screen.handle_key(KEY_UP) is True
-        assert nav_screen._nav_focused_idx == 0  # clamped at top
-
         nav_screen.handle_key(KEY_DOWN)
         nav_screen.handle_key(KEY_DOWN)
         nav_screen.handle_key(KEY_DOWN)
         assert nav_screen._nav_focused_idx == 2  # clamped at bottom
         assert nav_screen._nav_focused_widget is rows[2].widget
+
+        nav_screen.handle_key(KEY_UP)
+        assert nav_screen._nav_focused_idx == 1  # moves back up within the list
+        assert nav_screen._nav_zone == _ZONE_LIST
 
     def test_page_up_down_moves_by_step(self, nav_screen: HistoryScreen) -> None:
         _add_nav_rows(nav_screen, 25)
@@ -122,29 +134,82 @@ class TestHistoryScreenNav:
 
         rows[0].delete.assert_called_once()  # ty: ignore[unresolved-attribute]
 
-    def test_left_right_switch_view(self, nav_screen: HistoryScreen) -> None:
+    def test_up_from_first_row_enters_top_bar_on_active_tab(
+        self, nav_screen: HistoryScreen
+    ) -> None:
+        _add_nav_rows(nav_screen, 2)
+        nav_screen.enter_nav_focus(MagicMock())  # list zone, first row
+
+        assert nav_screen.handle_key(KEY_UP) is True
+        assert nav_screen._nav_zone == _ZONE_BAR
+        assert nav_screen._bar_focused_idx == _BAR_JOURNAL  # lands on the active tab
+
+    def test_list_left_right_are_not_consumed(self, nav_screen: HistoryScreen) -> None:
         _add_nav_rows(nav_screen, 2)
         nav_screen.enter_nav_focus(MagicMock())
-        nav_screen._nav_focused_idx = 1
-        select_view = MagicMock()
-        nav_screen._select_view = select_view
+
+        # In the list zone Left/Right no longer switch tabs (bar-only now).
+        assert nav_screen.handle_key(KEY_LEFT) is False
+        assert nav_screen.handle_key(KEY_RIGHT) is False
+        assert nav_screen._nav_zone == _ZONE_LIST
+
+    def test_bar_left_right_move_focus_and_clamp(self, nav_screen: HistoryScreen) -> None:
+        _add_nav_rows(nav_screen, 2)
+        nav_screen.enter_nav_focus(MagicMock())
+        nav_screen.handle_key(KEY_UP)  # enter bar, on Journal (0)
 
         assert nav_screen.handle_key(KEY_RIGHT) is True
-        select_view.assert_called_once_with("titles")
-        assert nav_screen._nav_focused_idx == 0  # focus resets to the top
+        assert nav_screen._bar_focused_idx == _BAR_TITLES
+        nav_screen.handle_key(KEY_RIGHT)
+        assert nav_screen._bar_focused_idx == _BAR_CLEAR
+        nav_screen.handle_key(KEY_RIGHT)
+        assert nav_screen._bar_focused_idx == _BAR_CLEAR  # clamped at the right
 
-        nav_screen._current_view = "titles"
-        assert nav_screen.handle_key(KEY_LEFT) is True
-        select_view.assert_called_with("journal")
+        nav_screen.handle_key(KEY_LEFT)
+        nav_screen.handle_key(KEY_LEFT)
+        nav_screen.handle_key(KEY_LEFT)
+        assert nav_screen._bar_focused_idx == _BAR_JOURNAL  # clamped at the left
 
-    def test_switch_to_current_view_is_a_no_op(self, nav_screen: HistoryScreen) -> None:
+    def test_bar_down_returns_to_list(self, nav_screen: HistoryScreen) -> None:
         _add_nav_rows(nav_screen, 2)
         nav_screen.enter_nav_focus(MagicMock())
+        nav_screen.handle_key(KEY_UP)  # enter bar
+
+        assert nav_screen.handle_key(KEY_DOWN) is True
+        assert nav_screen._nav_zone == _ZONE_LIST
+        assert nav_screen._nav_focused_idx == 0
+
+    def test_bar_enter_on_clear_opens_confirm(self, nav_screen: HistoryScreen) -> None:
+        _add_nav_rows(nav_screen, 2)
+        nav_screen.enter_nav_focus(MagicMock())
+        nav_screen.handle_key(KEY_UP)  # bar, Journal
+        nav_screen.handle_key(KEY_RIGHT)  # Titles
+        nav_screen.handle_key(KEY_RIGHT)  # Clear
+        on_clear = MagicMock()
+        nav_screen.on_clear_pressed = on_clear
+
+        assert nav_screen.handle_key(KEY_ENTER) is True
+        on_clear.assert_called_once()
+
+    def test_bar_enter_on_tab_switches_view(self, nav_screen: HistoryScreen) -> None:
+        _add_nav_rows(nav_screen, 2)
+        nav_screen.enter_nav_focus(MagicMock())
+        nav_screen.handle_key(KEY_UP)  # bar, Journal (current)
+        nav_screen.handle_key(KEY_RIGHT)  # Titles
         select_view = MagicMock()
         nav_screen._select_view = select_view
 
-        assert nav_screen.handle_key(KEY_LEFT) is True  # journal is already current
+        assert nav_screen.handle_key(KEY_ENTER) is True
+        select_view.assert_called_once_with("titles")
 
+    def test_bar_enter_on_current_tab_is_a_no_op(self, nav_screen: HistoryScreen) -> None:
+        _add_nav_rows(nav_screen, 2)
+        nav_screen.enter_nav_focus(MagicMock())
+        nav_screen.handle_key(KEY_UP)  # bar, Journal (already current)
+        select_view = MagicMock()
+        nav_screen._select_view = select_view
+
+        assert nav_screen.handle_key(KEY_ENTER) is True
         select_view.assert_not_called()
 
     def test_escape_calls_exit_request(self, nav_screen: HistoryScreen) -> None:
