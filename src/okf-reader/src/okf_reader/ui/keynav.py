@@ -14,6 +14,10 @@ from __future__ import annotations
 
 import re
 from enum import Enum, auto
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 KEY_TAB = 9
 KEY_ENTER = 13
@@ -65,27 +69,48 @@ def scroll_step(scroll_y: float, viewport_h: float, content_h: float, delta_px: 
     return max(0.0, min(1.0, scroll_y - delta_px / scrollable))
 
 
-def advance_index(current: int | None, count: int, delta: int) -> int | None:
-    """Return the next index stepping through ``count`` items, stopping at the ends.
+def hybrid_link_step(
+    links: Sequence[tuple[float, float]],
+    focused: int | None,
+    viewport_h: float,
+    step_px: float,
+    delta: int,
+) -> tuple[Literal["focus", "scroll"], int | None]:
+    """Decide what an Up/Down press does on the page: focus a link, or scroll.
 
-    ``None`` means "no focus yet": stepping forward starts at the first item,
-    stepping backward at the last. Thereafter the index clamps — no wrap-around,
-    so reaching the last item never jumps the view back to the first.
+    The 10-foot hybrid model: focus walks the page's links while they are in
+    (or within one scroll step of) the viewport, and the page scrolls by a step
+    through link-free stretches. Entering from no focus picks the first (Down)
+    or last (Up) link currently visible, so focus always resumes near the view.
 
     Args:
-        current: The currently focused index, or None for no focus.
-        count: Number of items in the list.
-        delta: Steps to move (typically +1 or -1).
+        links: Each link label's (top, bottom) in viewport-relative pixels —
+            y increases downward and the viewport spans ``[0, viewport_h)`` —
+            in document order.
+        focused: Index of the currently focused link, or None.
+        viewport_h: Height of the viewport, in pixels.
+        step_px: The line-scroll step, in pixels.
+        delta: +1 for Down, -1 for Up.
 
     Returns:
-        The new index, or None when ``count`` is zero.
+        ``("focus", index)`` to move the link focus, or ``("scroll", None)`` to
+        scroll the page a step in the pressed direction.
 
     """
-    if count <= 0:
-        return None
-    if current is None:
-        return 0 if delta > 0 else count - 1
-    return step_index(current, count, delta)
+    scroll: tuple[Literal["scroll"], None] = ("scroll", None)
+    if not links:
+        return scroll
+    if focused is None:
+        visible = [i for i, (top, bottom) in enumerate(links) if bottom > 0 and top < viewport_h]
+        if not visible:
+            return scroll
+        return "focus", visible[0] if delta > 0 else visible[-1]
+    candidate = focused + (1 if delta > 0 else -1)
+    if not 0 <= candidate < len(links):
+        return scroll
+    top, bottom = links[candidate]
+    reachable = top < viewport_h + step_px if delta > 0 else bottom > -step_px
+    return ("focus", candidate) if reachable else scroll
 
 
 def step_index(current: int, count: int, delta: int) -> int:

@@ -76,9 +76,9 @@ from .keynav import (
     PAGE_LINE_STEP,
     PAGE_STEP_OVERLAP,
     FocusRegion,
-    advance_index,
     enumerate_refs,
     highlight_ref_occurrence,
+    hybrid_link_step,
     scroll_step,
     step_index,
 )
@@ -1004,11 +1004,14 @@ class OKFViewer(RelativeLayout):
         when there is viewer-internal state to unwind (an open footnote popup, a
         focused link); otherwise it is left to the host's back handling.
 
-        Tab toggles which pane owns the keys: the page body (scrolling and link
-        traversal) or the left sidebar (the contents tree, or the search-result
-        rows while a search is showing). Mouse interaction is deliberately not
-        tracked: a click that navigates rebuilds the page, which resets the
-        keyboard focus state anyway.
+        The map is built for a 6-button remote (Esc, Enter, and the arrows —
+        the 10-foot TV case): Up/Down walk the page's links and scroll its
+        link-free stretches; Left/Right move spatially between the sidebar and
+        the page (Left goes leftward, Right drills rightward); Enter activates.
+        Tab (region toggle) and PageUp/PageDown/Home/End (page scrolling) are
+        desktop extras. Mouse interaction is deliberately not tracked: a click
+        that navigates rebuilds the page, which resets the keyboard focus state
+        anyway.
 
         Args:
             key: The SDL2 keycode from the window keyboard event.
@@ -1041,24 +1044,32 @@ class OKFViewer(RelativeLayout):
         return key in _NAV_NOOP_KEYS or key == KEY_TAB
 
     def _handle_page_key(self, key: int) -> bool:
-        """Scroll the page body and cycle/follow its links."""
+        """Walk the page with Up/Down (hybrid link/scroll) and follow links with Enter.
+
+        The 10-foot model: Up/Down is the only reading control a 6-button
+        remote has, so it walks the links while they pass through the viewport
+        and scrolls through the link-free stretches (see `hybrid_link_step`).
+        Left moves leftward to the sidebar; PageUp/PageDown/Home/End are
+        desktop extras. Escape is deliberately NOT handled here: back
+        navigation must never need a second press to clear link focus first.
+        """
+        if key in (KEY_UP, KEY_DOWN):
+            self._page_line_step(1 if key == KEY_DOWN else -1)
+            return True
         if self._handle_page_scroll_key(key):
             return True
-        if key in (KEY_LEFT, KEY_RIGHT):
-            self._move_link_focus(1 if key == KEY_RIGHT else -1)
+        if key == KEY_LEFT:
+            self._set_focus_region(FocusRegion.SIDEBAR)
             return True
+        if key == KEY_RIGHT:
+            return True  # nothing further right; consumed so it cannot leak
         if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             return self._follow_focused_link()
-        if key == KEY_ESCAPE and self._focused_link is not None:
-            self._clear_link_focus()
-            return True
         return False
 
     def _handle_page_scroll_key(self, key: int) -> bool:
-        """Handle the page-scrolling keys (Up/Down/PageUp/PageDown/Home/End)."""
-        if key in (KEY_UP, KEY_DOWN):
-            self._scroll_page_by(dp(PAGE_LINE_STEP) * (1 if key == KEY_DOWN else -1))
-        elif key in (KEY_PAGE_UP, KEY_PAGE_DOWN):
+        """Handle the desktop page-scrolling extras (PageUp/PageDown/Home/End)."""
+        if key in (KEY_PAGE_UP, KEY_PAGE_DOWN):
             step = self.body_scroll.height - dp(PAGE_STEP_OVERLAP)
             self._scroll_page_by(step if key == KEY_PAGE_DOWN else -step)
         elif key == KEY_HOME:
@@ -1068,7 +1079,54 @@ class OKFViewer(RelativeLayout):
             self.body_scroll.scroll_y = 1.0 if fits else 0.0
         else:
             return False
+        self._prune_offscreen_link_focus()
         return True
+
+    def _page_line_step(self, delta: int) -> None:
+        """One Up/Down press: focus the next/previous nearby link, else scroll a step."""
+        step_px = dp(PAGE_LINE_STEP)
+        action, idx = hybrid_link_step(
+            self._link_label_geometry(),
+            self._focused_link,
+            self.body_scroll.height,
+            step_px,
+            delta,
+        )
+        if action == "focus":
+            assert idx is not None
+            self._set_link_focus(idx)
+        else:
+            self._scroll_page_by(step_px * delta)
+            self._prune_offscreen_link_focus()
+
+    def _link_label_geometry(self) -> list[tuple[float, float]]:
+        """Each page link's label (top, bottom) in viewport-relative pixels.
+
+        Viewport-relative: y grows downward from the viewport's top edge, so a
+        label spanning the top of the view has top ~0 (see `hybrid_link_step`).
+        Occurrences within one label share its geometry.
+        """
+        viewport_top = self.body_scroll.to_window(self.body_scroll.x, self.body_scroll.top)[1]
+        geometry = []
+        for lbl, _ref, _occurrence in self._page_links:
+            label_top = viewport_top - lbl.to_window(lbl.x, lbl.top)[1]
+            geometry.append((label_top, label_top + lbl.height))
+        return geometry
+
+    def _prune_offscreen_link_focus(self) -> None:
+        """Drop link focus once its label has scrolled fully out of the viewport.
+
+        This is what lets Up/Down re-acquire the first *visible* link after any
+        scrolling — focus can never sit on (and Enter can never follow) a link
+        the reader cannot see.
+        """
+        if self._focused_link is None:
+            return
+        lbl, _ref, _occurrence = self._page_links[self._focused_link]
+        viewport_top = self.body_scroll.to_window(self.body_scroll.x, self.body_scroll.top)[1]
+        label_top = viewport_top - lbl.to_window(lbl.x, lbl.top)[1]
+        if label_top + lbl.height <= 0 or label_top >= self.body_scroll.height:
+            self._clear_link_focus()
 
     def _scroll_page_by(self, delta_px: float) -> None:
         self.body_scroll.scroll_y = scroll_step(
@@ -1082,9 +1140,6 @@ class OKFViewer(RelativeLayout):
             for lbl in self._link_labels
             for i, ref in enumerate(enumerate_refs(lbl.text))
         ]
-
-    def _move_link_focus(self, delta: int) -> None:
-        self._set_link_focus(advance_index(self._focused_link, len(self._page_links), delta))
 
     def _set_link_focus(self, idx: int | None) -> None:
         """Move the gold link highlight to ``idx``, scrolling its label into view."""
@@ -1126,8 +1181,12 @@ class OKFViewer(RelativeLayout):
             return self._handle_results_key(key)
         if self.tree_scroll.parent is self._left_body:
             return self._handle_tree_key(key)
-        # "Searching…" / search-error / no-match states: nothing to navigate,
-        # but the keys must not leak to the host while the sidebar owns them.
+        # "Searching…" / search-error / no-match states: nothing to navigate —
+        # Right still crosses to the page panel, and the rest of the keys must
+        # not leak to the host while the sidebar owns them.
+        if key == KEY_RIGHT:
+            self._set_focus_region(FocusRegion.PAGE)
+            return True
         return key in _NAV_NOOP_KEYS or key in (KEY_ENTER, KEY_NUMPAD_ENTER)
 
     def _handle_tree_key(self, key: int) -> bool:
@@ -1163,8 +1222,15 @@ class OKFViewer(RelativeLayout):
         self._focus_tree_node(nodes[new_idx])
 
     def _tree_expand(self, node) -> None:  # noqa: ANN001
-        """Open the focused directory (children load lazily), or step into an open one."""
+        """Right in the tree: drill rightward — expand a directory, or hop to the page.
+
+        The spatial continuum for a 6-button remote: Right keeps moving
+        "rightward" — a closed directory expands, an open one steps into its
+        first child, and a page leaf (nothing left to expand) crosses over to
+        the page panel.
+        """
         if node is None or node.is_leaf:
+            self._set_focus_region(FocusRegion.PAGE)
             return
         if not node.is_open:
             self.tree.toggle_node(node)  # lazy children load via _on_dir_open
@@ -1216,7 +1282,10 @@ class OKFViewer(RelativeLayout):
             if self._sidebar_index is not None:
                 self._result_rows[self._sidebar_index][1].trigger_action(duration=0)
             return True
-        return key in (KEY_LEFT, KEY_RIGHT)
+        if key == KEY_RIGHT:
+            self._set_focus_region(FocusRegion.PAGE)
+            return True
+        return key == KEY_LEFT
 
     def _initial_result_index(self) -> int:
         """Return the row to focus first: the open page's row when listed, else the top hit."""
