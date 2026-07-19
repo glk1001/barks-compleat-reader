@@ -528,10 +528,10 @@ class TestPublicDelegations:
         ):
             pipeline._get_next_fun_view_image_info()
 
-        # get_random_image was called with use_random_fit_mode=True for the censorship branch.
+        # get_random_image was called with use_adaptive_fit_mode=True for the censorship branch.
         _selector(pipeline).get_random_image.assert_called_once()
         _args, kwargs = _selector(pipeline).get_random_image.call_args
-        assert kwargs.get("use_random_fit_mode") is True
+        assert kwargs.get("use_adaptive_fit_mode") is True
 
     def test_set_next_bottom_view_title_image_no_title_short_circuits(self) -> None:
         pipeline = _make_pipeline()

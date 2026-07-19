@@ -11,6 +11,7 @@ from barks_fantagraphics.barks_titles import (
     ENUM_TO_STR_TITLE,
     Titles,
 )
+from comic_utils.pil_image_utils import get_image_size
 from loguru import logger
 
 from .reader_file_paths import ALL_TYPES, EMERGENCY_INSET_FILE, FileTypes
@@ -35,6 +36,20 @@ SEARCH_TITLES = [
 
 FIT_MODE_CONTAIN = "contain"
 FIT_MODE_COVER = "cover"
+
+# Fun images fill the view edge-to-edge (cover) only when their aspect ratio
+# (width / height) falls inside this band. Images that are too tall or too wide
+# are letterboxed (contain) instead, so the whole image stays visible rather than
+# being cropped hard on its long axis.
+FIT_COVER_MIN_ASPECT_RATIO = 0.95
+FIT_COVER_MAX_ASPECT_RATIO = 1.60
+
+# Optional user-editable file (in the app config directory) listing image paths
+# that must never be cropped: each listed image is always shown letterboxed
+# (contain), whatever its aspect ratio. One posix path per line, e.g.
+# "Lost in the Andes/012-3.png"; blank lines and "#" comments are ignored, and a
+# line matches any image path ending with that "<title>/<file>" suffix.
+NEVER_CROP_FILENAME = "never-crop.txt"
 
 type PossibleFiles = list[tuple[PanelPath, FileTypes]]
 
@@ -129,6 +144,7 @@ class ImageSelector:
         self._next_reader_icon_file = 0
 
         self._CENSORED_IMAGES = self._get_censored_images()
+        self._never_crop_images = self._load_never_crop_images()
 
     def _add_last_image(self, image_filename: PanelPath) -> None:
         self._most_recently_used_images.append(image_filename)
@@ -261,7 +277,7 @@ class ImageSelector:
     def get_random_image(
         self,
         title_list: list[FantaComicBookInfo],
-        use_random_fit_mode: bool = False,
+        use_adaptive_fit_mode: bool = False,
         file_types: set[FileTypes] | None = None,
         use_only_edited_if_possible: bool = False,
     ) -> ImageInfo:
@@ -269,7 +285,9 @@ class ImageSelector:
 
         Args:
             title_list: List of FantaComicBookInfo objects to choose from.
-            use_random_fit_mode: If True, randomly choose between cover and contain fit modes.
+            use_adaptive_fit_mode: If True, pick the fit mode from the selected image's
+                aspect ratio (wide/near-square images fill edge-to-edge, tall images are
+                letterboxed). If False, always use cover fit.
             file_types: Optional set of file types to filter by. Defaults to ALL_TYPES.
             use_only_edited_if_possible: If True, prefer edited images only.
 
@@ -293,7 +311,7 @@ class ImageSelector:
                 continue
 
             image_filename, file_type_enum = selected_image
-            fit_mode = self._get_fit_mode(use_random_fit_mode)
+            fit_mode = self._get_fit_mode(use_adaptive_fit_mode, image_filename)
 
             image_filename, fit_mode = self._get_better_fitting_image_if_possible(
                 image_filename, fit_mode, file_type_enum
@@ -353,15 +371,78 @@ class ImageSelector:
 
         return random.choice(candidates)
 
-    def _get_fit_mode(self, use_random_fit_mode: bool) -> str:
-        if use_random_fit_mode:
-            return self._get_random_fit_mode()
+    def _get_fit_mode(self, use_adaptive_fit_mode: bool, image_filename: PanelPath) -> str:
+        if self._is_never_crop(image_filename):
+            return FIT_MODE_CONTAIN
+
+        if use_adaptive_fit_mode:
+            return self._get_adaptive_fit_mode(image_filename)
 
         return FIT_MODE_COVER
 
     @staticmethod
-    def _get_random_fit_mode() -> str:
-        return random.choice((FIT_MODE_COVER, FIT_MODE_CONTAIN))
+    def _get_adaptive_fit_mode(image_filename: PanelPath) -> str:
+        """Pick a fit mode from the image's aspect ratio.
+
+        Near-square and moderately wide images fill the view edge-to-edge (cover);
+        images that are too tall or too wide are letterboxed (contain) so the whole
+        image stays visible instead of being cropped hard on its long axis. Falls
+        back to contain when the dimensions cannot be read (e.g. a non-filesystem
+        path or an unreadable file).
+        """
+        if not isinstance(image_filename, Path):
+            return FIT_MODE_CONTAIN
+
+        try:
+            width, height = get_image_size(image_filename)
+        except (OSError, ValueError) as e:
+            logger.warning(f'Could not read image size for "{image_filename}": {e}. Using contain.')
+            return FIT_MODE_CONTAIN
+
+        if height <= 0:
+            return FIT_MODE_CONTAIN
+
+        aspect_ratio = width / height
+        if FIT_COVER_MIN_ASPECT_RATIO <= aspect_ratio <= FIT_COVER_MAX_ASPECT_RATIO:
+            return FIT_MODE_COVER
+        return FIT_MODE_CONTAIN
+
+    def _is_never_crop(self, image_filename: PanelPath) -> bool:
+        """Return True if this image is on the user's never-crop list."""
+        if not self._never_crop_images:
+            return False
+
+        image_posix = str(image_filename).replace("\\", "/")
+        return any(
+            image_posix == entry or image_posix.endswith(f"/{entry}")
+            for entry in self._never_crop_images
+        )
+
+    def _load_never_crop_images(self) -> frozenset[str]:
+        """Load the optional user-curated set of never-crop image path suffixes.
+
+        Reads ``NEVER_CROP_FILENAME`` from the app config directory when present.
+        Each non-blank, non-comment line is a posix "<title>/<file>" path suffix
+        matched against selected fun-image paths. Returns an empty set when the
+        file is absent or unreadable.
+        """
+        try:
+            config_file = self._reader_settings.get_app_settings_path().parent / NEVER_CROP_FILENAME
+            if not config_file.is_file():
+                return frozenset()
+            lines = config_file.read_text(encoding="utf-8").splitlines()
+        except OSError as e:
+            logger.warning(f'Could not read never-crop file "{NEVER_CROP_FILENAME}": {e}.')
+            return frozenset()
+
+        entries = frozenset(
+            cleaned.replace("\\", "/")
+            for line in lines
+            if (cleaned := line.split("#", 1)[0].strip())
+        )
+        if entries:
+            logger.debug(f"Loaded {len(entries)} never-crop image path(s).")
+        return entries
 
     def _get_better_fitting_image_if_possible(
         self, image_filename: PanelPath, fit_mode: str, file_type_enum: FileTypes

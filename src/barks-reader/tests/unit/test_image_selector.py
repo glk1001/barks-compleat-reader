@@ -71,6 +71,8 @@ def mock_settings() -> MagicMock:
     """Mock the ReaderSettings."""
     settings = MagicMock(spec=ReaderSettings)
     settings.sys_file_paths.get_reader_icon_files_dir.return_value = Path("/icons")
+    # Point the config dir at a path with no never-crop.txt so loading is a no-op.
+    settings.get_app_settings_path.return_value = Path("/nonexistent-barks-config/barks-reader.ini")
     return settings
 
 
@@ -337,10 +339,13 @@ class TestImageSelector:
         # The fallback path calls random.choice with the full possible_images list.
         mock_choice.assert_called_once_with([(only_image, FileTypes.SPLASH)])
 
-    def test_get_random_fit_mode_uses_random_choice(
-        self, image_selector: ImageSelector, fake_resolver: FakeResolver
-    ) -> None:
-        """use_random_fit_mode=True routes through random.choice for fit mode."""
+    def _adaptive_fit_mode_for_size(
+        self,
+        image_selector: ImageSelector,
+        fake_resolver: FakeResolver,
+        image_size: tuple[int, int],
+    ) -> str:
+        """Run get_random_image with adaptive fit and a mocked image size; return fit mode."""
         title_str = "Pirate Gold"
         fake_resolver.files[title_str][FileTypes.SPLASH] = [(Path("splash.png"), False)]
 
@@ -349,15 +354,125 @@ class TestImageSelector:
         with (
             patch.object(is_module, randrange.__name__, return_value=0),
             patch.object(random, random.choice.__name__) as mock_choice,
+            patch.object(is_module, is_module.get_image_size.__name__, return_value=image_size),
         ):
-            # title selection → image selection → fit mode pick.
+            # title selection → image selection (fit mode is now aspect-based, no choice).
             mock_choice.side_effect = [
                 mock_title_info,
                 (Path("splash.png"), FileTypes.SPLASH),
-                FIT_MODE_CONTAIN,
             ]
             info = image_selector.get_random_image(
-                [mock_title_info], use_random_fit_mode=True, file_types={FileTypes.SPLASH}
+                [mock_title_info], use_adaptive_fit_mode=True, file_types={FileTypes.SPLASH}
+            )
+
+        return info.fit_mode
+
+    def test_adaptive_fit_mode_wide_image_uses_cover(
+        self, image_selector: ImageSelector, fake_resolver: FakeResolver
+    ) -> None:
+        """A wide/near-square image fills the view edge-to-edge (cover)."""
+        fit_mode = self._adaptive_fit_mode_for_size(image_selector, fake_resolver, (1000, 800))
+        assert fit_mode == FIT_MODE_COVER
+
+    def test_adaptive_fit_mode_tall_image_uses_contain(
+        self, image_selector: ImageSelector, fake_resolver: FakeResolver
+    ) -> None:
+        """A tall, narrow image is letterboxed (contain) so nothing is cropped."""
+        fit_mode = self._adaptive_fit_mode_for_size(image_selector, fake_resolver, (650, 1000))
+        assert fit_mode == FIT_MODE_CONTAIN
+
+    def test_adaptive_fit_mode_very_wide_image_uses_contain(
+        self, image_selector: ImageSelector, fake_resolver: FakeResolver
+    ) -> None:
+        """A much-wider-than-high image is letterboxed (contain) instead of cropped."""
+        fit_mode = self._adaptive_fit_mode_for_size(image_selector, fake_resolver, (2000, 800))
+        assert fit_mode == FIT_MODE_CONTAIN
+
+    def test_never_crop_image_forces_contain(
+        self, image_selector: ImageSelector, fake_resolver: FakeResolver
+    ) -> None:
+        """An image on the never-crop list is letterboxed even when its aspect fits cover."""
+        title_str = "Pirate Gold"
+        fake_resolver.files[title_str][FileTypes.SPLASH] = [(Path("wide-splash.png"), False)]
+        image_selector._never_crop_images = frozenset({"wide-splash.png"})
+
+        mock_title_info = _make_title_info(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, title_str)
+
+        with (
+            patch.object(is_module, randrange.__name__, return_value=0),
+            patch.object(random, random.choice.__name__) as mock_choice,
+            # (1200, 1000) -> aspect 1.2, which would otherwise be cover.
+            patch.object(is_module, is_module.get_image_size.__name__, return_value=(1200, 1000)),
+        ):
+            mock_choice.side_effect = [
+                mock_title_info,
+                (Path("wide-splash.png"), FileTypes.SPLASH),
+            ]
+            info = image_selector.get_random_image(
+                [mock_title_info], use_adaptive_fit_mode=True, file_types={FileTypes.SPLASH}
+            )
+
+        assert info.fit_mode == FIT_MODE_CONTAIN
+
+    def test_never_crop_matches_title_dir_suffix(self, image_selector: ImageSelector) -> None:
+        """A never-crop entry matches any image path ending with that title/file suffix."""
+        image_selector._never_crop_images = frozenset({"Lost in the Andes/012-3.png"})
+
+        assert image_selector._is_never_crop(Path("/comics/Lost in the Andes/012-3.png"))
+        assert not image_selector._is_never_crop(Path("/comics/Lost in the Andes/099-9.png"))
+        # A bare name must not partial-match a longer filename.
+        image_selector._never_crop_images = frozenset({"012-3.png"})
+        assert not image_selector._is_never_crop(Path("/comics/x-012-3.png"))
+
+    def test_load_never_crop_images_parses_file(
+        self,
+        image_selector: ImageSelector,
+        mock_settings: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """The never-crop file is parsed, ignoring blank lines and # comments."""
+        (tmp_path / "never-crop.txt").write_text(
+            "# wide double-panel splash\n"
+            "Lost in the Andes/012-3.png\n"
+            "\n"
+            "  The Golden Helmet/034-1.png  # inline comment\n",
+            encoding="utf-8",
+        )
+        mock_settings.get_app_settings_path.return_value = tmp_path / "barks-reader.ini"
+
+        entries = image_selector._load_never_crop_images()
+
+        assert entries == frozenset({"Lost in the Andes/012-3.png", "The Golden Helmet/034-1.png"})
+
+    def test_load_never_crop_images_missing_file_returns_empty(
+        self,
+        image_selector: ImageSelector,
+        mock_settings: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """A missing never-crop file yields an empty set (feature simply off)."""
+        mock_settings.get_app_settings_path.return_value = tmp_path / "barks-reader.ini"
+        assert image_selector._load_never_crop_images() == frozenset()
+
+    def test_adaptive_fit_mode_unreadable_image_falls_back_to_contain(
+        self, image_selector: ImageSelector, fake_resolver: FakeResolver
+    ) -> None:
+        """If the image size cannot be read, adaptive fit falls back to contain."""
+        title_str = "Pirate Gold"
+        fake_resolver.files[title_str][FileTypes.SPLASH] = [(Path("splash.png"), False)]
+        mock_title_info = _make_title_info(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, title_str)
+
+        with (
+            patch.object(is_module, randrange.__name__, return_value=0),
+            patch.object(random, random.choice.__name__) as mock_choice,
+            patch.object(is_module, is_module.get_image_size.__name__, side_effect=OSError("boom")),
+        ):
+            mock_choice.side_effect = [
+                mock_title_info,
+                (Path("splash.png"), FileTypes.SPLASH),
+            ]
+            info = image_selector.get_random_image(
+                [mock_title_info], use_adaptive_fit_mode=True, file_types={FileTypes.SPLASH}
             )
 
         assert info.fit_mode == FIT_MODE_CONTAIN

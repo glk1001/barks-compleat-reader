@@ -68,6 +68,8 @@ jpgs
 keepends
 keynav
 lanczos
+letterbox
+letterboxed
 letterboxing
 lfs
 libx

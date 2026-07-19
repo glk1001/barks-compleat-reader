@@ -633,7 +633,9 @@ class ViewPipeline:
             fanta_title_list = self._get_fanta_title_list(
                 BARKS_TAGGED_TITLES[Tags.CENSORED_STORIES_BUT_FIXED]
             )
-            return self._image_selector.get_random_image(fanta_title_list, use_random_fit_mode=True)
+            return self._image_selector.get_random_image(
+                fanta_title_list, use_adaptive_fit_mode=True
+            )
 
         assert self._cached_fun_titles
         titles, file_types = self._cached_fun_titles
@@ -641,7 +643,7 @@ class ViewPipeline:
         return self._image_selector.get_random_image(
             titles,
             file_types=file_types,
-            use_random_fit_mode=True,
+            use_adaptive_fit_mode=True,
         )
 
     def _get_fun_image_titles(self) -> tuple[list[FantaComicBookInfo], set[FileTypes]]:

@@ -20,7 +20,7 @@ if __name__ == "__main__":
     def get_results(
         num_results: int,
         title_list: list[FantaComicBookInfo],
-        use_random_fit_mode: bool = False,
+        use_adaptive_fit_mode: bool = False,
         file_types: set[FileTypes] | None = None,
         use_only_edited_if_possible: bool = False,
     ) -> tuple[list[tuple[str, str, str]], int]:
@@ -29,7 +29,7 @@ if __name__ == "__main__":
         for _i in range(num_results):
             random_image_info = random_image_selector.get_random_image(
                 title_list,
-                use_random_fit_mode=use_random_fit_mode,
+                use_adaptive_fit_mode=use_adaptive_fit_mode,
                 file_types=file_types,
                 use_only_edited_if_possible=use_only_edited_if_possible,
             )
@@ -81,20 +81,20 @@ if __name__ == "__main__":
 
     test_title_list = all_titles
     test_file_types = None
-    test_use_random_fit_mode = True
+    test_use_adaptive_fit_mode = True
     test_edited_only = False
     print(
         f"\nGenerating {num_images} random images:"
         f" num titles={len(test_title_list)},"
         f" file_types={test_file_types},"
-        f" random_fit_mode={test_use_random_fit_mode},"
+        f" adaptive_fit_mode={test_use_adaptive_fit_mode},"
         f" edited_only={test_edited_only}"
     )
     print()
     results, max_title_len = get_results(
         num_images,
         test_title_list,
-        use_random_fit_mode=test_use_random_fit_mode,
+        use_adaptive_fit_mode=test_use_adaptive_fit_mode,
         file_types=test_file_types,
         use_only_edited_if_possible=test_edited_only,
     )
@@ -102,20 +102,20 @@ if __name__ == "__main__":
 
     test_title_list = all_titles
     test_file_types = {FileTypes.AI}
-    test_use_random_fit_mode = False
+    test_use_adaptive_fit_mode = False
     test_edited_only = True
     print(
         f"\nGenerating {num_images} random images:"
         f" num titles={len(test_title_list)},"
         f" file_types={test_file_types},"
-        f" random_fit_mode={test_use_random_fit_mode},"
+        f" adaptive_fit_mode={test_use_adaptive_fit_mode},"
         f" edited_only={test_edited_only}"
     )
     print()
     results, max_title_len = get_results(
         num_images,
         test_title_list,
-        use_random_fit_mode=test_use_random_fit_mode,
+        use_adaptive_fit_mode=test_use_adaptive_fit_mode,
         file_types=test_file_types,
         use_only_edited_if_possible=test_edited_only,
     )
@@ -123,20 +123,20 @@ if __name__ == "__main__":
 
     test_title_list = all_titles
     test_file_types = {FileTypes.INSET}
-    test_use_random_fit_mode = True
+    test_use_adaptive_fit_mode = True
     test_edited_only = True
     print(
         f"\nGenerating {num_images} random images:"
         f" num titles={len(test_title_list)},"
         f" file_types={test_file_types},"
-        f" random_fit_mode={test_use_random_fit_mode},"
+        f" adaptive_fit_mode={test_use_adaptive_fit_mode},"
         f" edited_only={test_edited_only}"
     )
     print()
     results, max_title_len = get_results(
         num_images,
         test_title_list,
-        use_random_fit_mode=test_use_random_fit_mode,
+        use_adaptive_fit_mode=test_use_adaptive_fit_mode,
         file_types=test_file_types,
         use_only_edited_if_possible=test_edited_only,
     )
@@ -145,20 +145,20 @@ if __name__ == "__main__":
     test_titles = [Titles.MAHARAJAH_DONALD, Titles.DONALD_DUCK_AND_THE_MUMMYS_RING]
     test_title_list = [ALL_FANTA_COMIC_BOOK_INFO[title] for title in test_titles]
     test_file_types = {FileTypes.AI}
-    test_use_random_fit_mode = False
+    test_use_adaptive_fit_mode = False
     test_edited_only = True
     print(
         f"\nGenerating {num_images} random images:"
         f" num titles={len(test_title_list)},"
         f" file_types={test_file_types},"
-        f" random_fit_mode={test_use_random_fit_mode},"
+        f" adaptive_fit_mode={test_use_adaptive_fit_mode},"
         f" edited_only={test_edited_only}"
     )
     print()
     results, max_title_len = get_results(
         num_images,
         test_title_list,
-        use_random_fit_mode=test_use_random_fit_mode,
+        use_adaptive_fit_mode=test_use_adaptive_fit_mode,
         file_types=test_file_types,
         use_only_edited_if_possible=test_edited_only,
     )
