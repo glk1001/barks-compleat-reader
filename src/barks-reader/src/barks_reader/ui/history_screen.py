@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Self
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM
 from barks_fantagraphics.fanta_comics_info import get_fanta_info
 from kivy.clock import Clock
+from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
@@ -81,7 +82,8 @@ _PAGE_COL_WIDTH = 80  # dp
 _COUNT_COL_WIDTH = 56  # dp
 _ROW_FONT_SIZE = 14  # dp
 _TITLE_FONT_SIZE = 16  # dp
-_HEADER_FONT_SIZE = 16  # dp
+_HEADER_FONT_SIZE = 13  # dp — a small "eyebrow" divider under the row titles (16dp)
+_HEADER_HAIRLINE_ALPHA = 0.45  # Faintness of the rule beneath each day-group header.
 
 _TEXT_COLOR = (1, 1, 1, 1)
 
@@ -122,6 +124,26 @@ def _get_display_title(title_str: str) -> str:
     if fanta_info is None:
         return title_str
     return fanta_info.comic_book_info.get_display_title()
+
+
+def _add_header_hairline(label: Label) -> None:
+    """Draw a faint full-width rule beneath a day-group header, as a divider.
+
+    The rule tracks the label's geometry (it is re-laid-out after the header is
+    added to the grid) and sits just below the centred heading text.
+    """
+    rgb = tuple(theme().search_heading[:3])
+    with label.canvas.after:  # ty: ignore[unresolved-attribute]
+        color = Color(*rgb, _HEADER_HAIRLINE_ALPHA)
+        rule = Rectangle()
+
+    def _update(*_args: object) -> None:
+        color.rgba = (*rgb, _HEADER_HAIRLINE_ALPHA)
+        rule.pos = (label.x, label.y + dp(8))
+        rule.size = (label.width, dp(1))
+
+    label.bind(pos=_update, size=_update)
+    _update()
 
 
 class HistoryViewButton(ToggleButton):
@@ -253,18 +275,20 @@ class HistoryScreen(FloatLayout):
 
     @staticmethod
     def _make_header_label(text: str) -> Label:
-        return Label(
+        label = Label(
             text=f"[b]{text}[/b]",
             markup=True,
             color=theme().search_heading,
             font_size=dp(_HEADER_FONT_SIZE),
-            halign="left",
+            halign="center",
             valign="middle",
             size_hint_y=None,
             height=dp(_HEADER_HEIGHT),
             text_size=(None, None),
             pos_hint={"x": 0},
         )
+        _add_header_hairline(label)
+        return label
 
     def _make_journal_row(self, event: ReadEvent, row_index: int) -> BoxLayout:
         return self._make_row(
