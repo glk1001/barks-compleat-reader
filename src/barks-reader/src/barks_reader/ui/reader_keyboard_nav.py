@@ -131,10 +131,11 @@ class ActionBarNavMixin:
     _on_action_bar_hidden_after_menu when the action bar can be hidden (e.g. fullscreen).
     """
 
-    def _setup_action_bar_nav(self, menu_buttons: list[Button]) -> None:
+    def _setup_action_bar_nav(self, menu_buttons: list[Button], default_focus_idx: int = 0) -> None:
         self._menu_mode: bool = False
-        self._focused_btn_idx: int = 0
-        self._last_used_btn_idx: int = 0
+        self._default_btn_idx: int = default_focus_idx
+        self._focused_btn_idx: int = default_focus_idx
+        self._last_used_btn_idx: int = default_focus_idx
         self._showed_action_bar_for_menu: bool = False
         self._menu_buttons = menu_buttons
 
@@ -228,7 +229,7 @@ class ActionBarNavMixin:
         """Call from on_touch_down to exit menu mode on any mouse interaction."""
         if self._menu_mode:
             self._exit_menu_mode()
-            self._last_used_btn_idx = 0
+            self._last_used_btn_idx = self._default_btn_idx
 
     def _activate_focused_button(self) -> None:
         self._last_used_btn_idx = self._focused_btn_idx

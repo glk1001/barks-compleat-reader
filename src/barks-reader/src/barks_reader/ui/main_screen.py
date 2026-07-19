@@ -10,6 +10,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.factory import Factory
 from kivy.properties import BooleanProperty, StringProperty  # ty: ignore[unresolved-import]
+from kivy.uix.modalview import ModalView
 from kivy.uix.screenmanager import Screen
 from kivy.uix.textinput import TextInput
 from loguru import logger
@@ -27,6 +28,7 @@ from .about_box import show_about_box
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .main_screen_components import build_main_screen_components
 from .platform_window_utils import WindowManager
+from .popup_widgets import open_confirm_popup
 from .reader_keyboard_nav import (
     ActionBarNavMixin,
     DropdownNavMixin,
@@ -67,6 +69,11 @@ def _text_input_has_focus() -> bool:
     keyboard = getattr(Window, "_system_keyboard", None)
     target = getattr(keyboard, "target", None)
     return isinstance(target, TextInput) and bool(getattr(target, "focus", False))
+
+
+def _modal_popup_is_open() -> bool:
+    """Report whether a modal popup (`ModalView`) is currently on the window."""
+    return any(isinstance(widget, ModalView) for widget in Window.children)
 
 
 class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
@@ -123,7 +130,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         self.app_icon_filepath = str(self._random_title_images.get_random_reader_app_icon_file())
 
-        # X is first; icon_hitbox is last so Left from X wraps to it.
+        # X is first; icon_hitbox is last so Left from X wraps to it. Default
+        # focus is go-back, not the X, so Escape+Enter can never quit the app.
         self._setup_action_bar_nav(
             [
                 self.ids.quit_button,
@@ -133,7 +141,8 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
                 self.ids.change_pics_button,
                 self.ids.menu_button,
                 self.ids.action_bar.icon_hitbox,
-            ]
+            ],
+            default_focus_idx=2,
         )
         Window.bind(on_key_down=self._on_key_down)
 
@@ -293,16 +302,37 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         if not is_escape_key(key) and _text_input_has_focus():
             return False
         if self._settings_nav is not None:
-            if self._settings_nav.handle_key(key):
-                return True
-            if is_escape_key(key):
-                self._close_settings()
-                return True
-            return True
+            return self._handle_settings_key(key)
+        # A modal popup (e.g. the quit confirmation) owns the keyboard. Window.bind
+        # dispatches observers in binding order, so this earlier-bound handler must
+        # yield for the popup's later-bound key handler to ever see the key.
+        if _modal_popup_is_open():
+            return False
         return self._nav.handle_key(key)
+
+    def _handle_settings_key(self, key: int) -> bool:
+        """Handle a key press while the settings panel is open (always consumed)."""
+        assert self._settings_nav is not None
+        if not self._settings_nav.handle_key(key) and is_escape_key(key):
+            self._close_settings()
+        return True
 
     def set_comic_book_reader_screen(self, comic_book_reader_screen: ComicBookReaderScreen) -> None:
         self._comic_reader_manager.set_comic_book_reader_screen(comic_book_reader_screen)
+
+    def request_quit(self) -> None:
+        """Quit the app, asking first if the confirm-quit setting is on (kv callback)."""
+        app = App.get_running_app()
+        if not self._reader_settings.confirm_quit:
+            app.close_app()
+            return
+        open_confirm_popup(
+            title="Quit",
+            text="Quit the Barks Reader?",
+            ok_text="Quit",
+            cancel_text="Stay",
+            on_ok=app.close_app,
+        )
 
     def app_closing(self) -> None:
         logger.debug("Closing app...")

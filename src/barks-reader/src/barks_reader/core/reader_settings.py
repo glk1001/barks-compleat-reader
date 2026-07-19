@@ -33,6 +33,7 @@ USE_PNG_IMAGES = "use_png_images"
 USE_PREBUILT_COMICS = "use_prebuilt_comics"
 GOTO_SAVED_NODE_ON_START = "goto_saved_node_on_start"
 RECORD_READING_HISTORY = "record_reading_history"
+CONFIRM_QUIT = "confirm_quit"
 GOTO_FULLSCREEN_ON_APP_START = "goto_fullscreen_on_app_start"
 GOTO_FULLSCREEN_ON_COMIC_READ = "goto_fullscreen_on_comic_read"
 USE_HARPIES_INSTEAD_OF_LARKIES = "use_harpies"
@@ -255,6 +256,10 @@ class ReaderSettings:
         return self._read(RECORD_READING_HISTORY)
 
     @property
+    def confirm_quit(self) -> bool:
+        return self._read(CONFIRM_QUIT)
+
+    @property
     def goto_fullscreen_on_app_start(self) -> bool:
         return self._read(GOTO_FULLSCREEN_ON_APP_START)
 
@@ -439,6 +444,13 @@ _FIELDS: tuple[FieldSpec, ...] = (
         key=RECORD_READING_HISTORY,
         title="Record Reading History",
         desc="Record every comic you read in the Reading History view.",
+        kind=FieldKind.BOOL,
+        config_default=1,
+    ),
+    FieldSpec(
+        key=CONFIRM_QUIT,
+        title="Confirm Before Quitting",
+        desc="Ask for confirmation when the app close button is pressed.",
         kind=FieldKind.BOOL,
         config_default=1,
     ),

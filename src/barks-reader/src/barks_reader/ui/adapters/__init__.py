@@ -2,10 +2,8 @@
 
 from .kivy_cursor import KivyCursor
 from .kivy_scheduler import KivyClockScheduler
-from .tint_color_source import TintColorSource
 
 __all__ = [
     "KivyClockScheduler",
     "KivyCursor",
-    "TintColorSource",
 ]

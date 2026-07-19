@@ -23,9 +23,11 @@ def _make_widget() -> MagicMock:
 class _StubScreen(ActionBarNavMixin):
     """Minimal concrete subclass for testing."""
 
-    def __init__(self, buttons: list, *, action_bar_hidden: bool = False) -> None:
+    def __init__(
+        self, buttons: list, *, action_bar_hidden: bool = False, default_focus_idx: int = 0
+    ) -> None:
         self._action_bar_hidden = action_bar_hidden
-        self._setup_action_bar_nav(buttons)
+        self._setup_action_bar_nav(buttons, default_focus_idx=default_focus_idx)
 
     def _is_action_bar_hidden(self) -> bool:
         return self._action_bar_hidden
@@ -54,6 +56,33 @@ class TestEnterMenuMode:
             # Focus is drawn immediately; the reactive binding handles
             # geometry corrections after layout.
             mock_update.assert_called_once()
+
+
+class TestDefaultFocusIndex:
+    def test_enter_menu_mode_focuses_default_button(self) -> None:
+        buttons = [MagicMock() for _ in range(4)]
+        screen = _StubScreen(buttons, default_focus_idx=2)
+
+        with patch.object(nav_module, "update_focus_in_list") as mock_update:
+            screen._enter_menu_mode()
+
+        assert screen._focused_btn_idx == 2  # noqa: PLR2004
+        mock_update.assert_called_once_with(buttons, 2, nav_module.MENU_FOCUS_HIGHLIGHT_GROUP)
+
+    def test_touch_resets_last_used_to_default(self) -> None:
+        buttons = [MagicMock() for _ in range(4)]
+        screen = _StubScreen(buttons, default_focus_idx=2)
+
+        with (
+            patch.object(nav_module, "update_focus_in_list"),
+            patch.object(nav_module, "clear_focus_in_list"),
+        ):
+            screen._enter_menu_mode()
+            screen._last_used_btn_idx = 0  # simulate the quit button being used
+            screen._enter_menu_mode()
+            screen._clear_menu_on_touch()
+
+        assert screen._last_used_btn_idx == 2  # noqa: PLR2004
 
 
 class TestFocusHighlightBinding:

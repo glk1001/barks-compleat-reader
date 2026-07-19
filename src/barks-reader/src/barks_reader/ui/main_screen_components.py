@@ -26,12 +26,14 @@ from barks_reader.core.json_settings_manager import SettingsManager
 from barks_reader.core.last_read_page_tracker import LastReadPageTracker
 from barks_reader.core.navigation import NavigationModel
 from barks_reader.core.page_info_adapters import FantagraphicsPanelSegmentsAdapter
+from barks_reader.core.reader_colors import FixedColorSource
 from barks_reader.core.reader_file_paths_resolver import ReaderFilePathsResolver
+from barks_reader.core.reader_palette import FIXED_SCRIMS
 from barks_reader.core.reading_history import ReadingHistoryStore, ReadingHistoryTracker
 from barks_reader.core.special_overrides_handler import SpecialFantaOverrides
 from barks_reader.core.view_pipeline import ViewPipeline
 
-from .adapters import KivyClockScheduler, TintColorSource
+from .adapters import KivyClockScheduler
 from .app_initializer import AppInitializer
 from .main_screen_nav import MainScreenNavigation
 from .main_screen_window import MainScreenWindowHelper
@@ -131,7 +133,7 @@ def build_main_screen_components(
         title_lists=host._title_lists,
         image_selector=random_title_images,
         scheduler=KivyClockScheduler(),
-        colors=TintColorSource(),
+        colors=FixedColorSource(FIXED_SCRIMS),
     )
     applicator = SnapshotApplicator(screens)
     renderer = ViewRenderer(

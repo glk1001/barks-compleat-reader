@@ -1,4 +1,4 @@
-"""Color-source port — abstracts the three `RandomColorTint`s used for view tinting."""
+"""Color-source port — abstracts the per-view background-image colors."""
 
 from __future__ import annotations
 
@@ -19,11 +19,11 @@ class PaletteId(Enum):
 
 @runtime_checkable
 class ColorSource(Protocol):
-    """Generates a tint color for one of the named palettes.
+    """Provides the image color for one of the named palettes.
 
-    Production wraps three `RandomColorTint` instances configured to match the
-    historical behavior of `BackgroundViews`. Test adapter
-    (`core.testing.fakes.ScriptedColorSource`) cycles through a fixed palette.
+    Production uses `FixedColorSource` with the neutral scrims from
+    `core.reader_palette`. Test adapter (`core.testing.fakes.ScriptedColorSource`)
+    cycles through a fixed palette.
     """
 
     def next_color(self, palette: PaletteId) -> Color:
