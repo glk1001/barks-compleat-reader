@@ -1,6 +1,6 @@
 
 # cspell global word list — words shared across all packages
-# One word per line. Case-insensitive.
+
 alnum
 apos
 arcname
@@ -68,6 +68,7 @@ jpgs
 keepends
 keynav
 lanczos
+letterboxing
 lfs
 libx
 licence
@@ -132,6 +133,7 @@ touchpads
 unauthored
 unauthorised
 unhighlighted
+untinted
 vectorizer
 vmem
 wikilinks
