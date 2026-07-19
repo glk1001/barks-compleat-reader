@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from .ports import PaletteId
 from .reader_colors import Color
 
-SCRIM_TOP_VIEW: Color = (0.55, 0.55, 0.55, 1.0)
+SCRIM_TOP_VIEW: Color = (0.65, 0.65, 0.65, 1.0)
 SCRIM_TITLE: Color = (0.45, 0.45, 0.45, 1.0)
 SCRIM_FUN: Color = (0.95, 0.95, 0.95, 1.0)
 

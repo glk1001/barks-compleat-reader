@@ -11,10 +11,21 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
 )
 from kivy.uix.popup import Popup
 
-from .reader_keyboard_nav import KEY_ENTER, KEY_NUMPAD_ENTER, is_escape_key
+from .reader_keyboard_nav import (
+    KEY_ENTER,
+    KEY_LEFT,
+    KEY_NUMPAD_ENTER,
+    KEY_RIGHT,
+    is_escape_key,
+    update_focus_in_list,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from kivy.uix.button import Button
+
+_CONFIRM_FOCUS_GROUP = "confirm_popup_focus"
 
 READER_POPUPS_KV_FILE = Path(__file__).parent / "reader_popups.kv"
 
@@ -30,6 +41,8 @@ class MessagePopup(Popup):
     cancel_text = StringProperty()
     # Optional background artwork shown behind the message (empty = plain popup).
     bg_image_source = StringProperty("")
+    # Multiplier on the standard message font size (e.g. 1.35 for the quit popup).
+    msg_font_scale = NumericProperty(1.0)
     ok = ObjectProperty(None, allownone=True)
     cancel = ObjectProperty(None, allownone=True)
 
@@ -65,9 +78,11 @@ def open_confirm_popup(
 ) -> MessagePopup:
     """Open a keyboard-operable confirmation popup.
 
-    While the popup is open it captures all key input: Enter confirms, Escape
-    cancels — so it works with a 6-button remote. The window key binding is
-    removed again when the popup is dismissed.
+    While the popup is open it captures all key input: Left/Right move the
+    focus ring between the two buttons (the confirming button starts focused),
+    Enter activates the focused button, and Escape always cancels — so it
+    works with a 6-button remote. The window key binding is removed again
+    when the popup is dismissed.
 
     Args:
         title: The popup window title.
@@ -81,42 +96,74 @@ def open_confirm_popup(
         The opened popup.
 
     """
-    popup: MessagePopup | None = None
-
-    def confirm() -> None:
-        assert popup is not None
-        popup.dismiss()
-        on_ok()
-
-    def cancel() -> None:
-        assert popup is not None
-        popup.dismiss()
-
-    def on_key_down(
-        _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list[str]
-    ) -> bool:
-        if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
-            confirm()
-        elif is_escape_key(key):
-            cancel()
-        # Consume every key while the popup is modal.
-        return True
-
-    def unbind_window(*_args: object) -> bool:
-        Window.unbind(on_key_down=on_key_down)
-        return False
-
     popup = MessagePopup(
         text=text,
-        ok_func=confirm,
+        ok_func=None,
         ok_text=ok_text,
-        cancel_func=cancel,
+        cancel_func=None,
         cancel_text=cancel_text,
         title=title,
         msg_halign="center",
         bg_image_source=bg_image,
+        msg_font_scale=1.35,
     )
-    Window.bind(on_key_down=on_key_down)
-    popup.bind(on_dismiss=unbind_window)
+    nav = _ConfirmPopupNav(popup, on_ok)
+    popup.ok = nav.confirm
+    popup.cancel = nav.cancel
     popup.open()
+    nav.show_focus()
     return popup
+
+
+class _ConfirmPopupNav:
+    """Keyboard driver for a two-button confirmation popup.
+
+    Owns the focus ring and the window key binding; the binding is removed
+    when the popup is dismissed.
+    """
+
+    def __init__(self, popup: MessagePopup, on_ok: Callable[[], None]) -> None:
+        self._popup = popup
+        self._on_ok = on_ok
+        self._buttons: list[Button] = [popup.ids.ok_button, popup.ids.cancel_button]
+        self._focused_idx = 0  # The confirming button starts focused.
+        Window.bind(on_key_down=self._on_key_down)
+        popup.bind(on_dismiss=self._unbind_window)
+
+    def confirm(self) -> None:
+        self._popup.dismiss()
+        self._on_ok()
+
+    def cancel(self) -> None:
+        self._popup.dismiss()
+
+    def show_focus(self) -> None:
+        update_focus_in_list(self._buttons, self._focused_idx, _CONFIRM_FOCUS_GROUP)
+
+    def _move_focus(self, delta: int) -> None:
+        self._focused_idx = (self._focused_idx + delta) % len(self._buttons)
+        self.show_focus()
+
+    def _activate_focused(self) -> None:
+        if self._focused_idx == 0:
+            self.confirm()
+        else:
+            self.cancel()
+
+    def _on_key_down(
+        self, _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list[str]
+    ) -> bool:
+        if key == KEY_RIGHT:
+            self._move_focus(1)
+        elif key == KEY_LEFT:
+            self._move_focus(-1)
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self._activate_focused()
+        elif is_escape_key(key):
+            self.cancel()
+        # Consume every key while the popup is modal.
+        return True
+
+    def _unbind_window(self, *_args: object) -> bool:
+        Window.unbind(on_key_down=self._on_key_down)
+        return False

@@ -36,7 +36,7 @@
 
             Label:
                 text: root.msg_text
-                font_size: fm.error_popup_font_size
+                font_size: root.msg_font_scale * fm.error_popup_font_size
                 background_color: (1, 1, 1, 1)
                 multiline: True
                 markup: True
@@ -57,6 +57,7 @@
                 padding: [dp(20),dp(20),dp(20),dp(20)]
 
                 Button:
+                    id: ok_button
                     disabled: not root.ok_text
                     opacity: 0 if not root.ok_text else 1
                     text: root.ok_text
@@ -68,6 +69,7 @@
                     on_press: root.ok()
 
                 Button:
+                    id: cancel_button
                     disabled: not root.cancel_text
                     opacity: 0 if not root.cancel_text else 1
                     size_hint_x: 1 if root.cancel_text else None
