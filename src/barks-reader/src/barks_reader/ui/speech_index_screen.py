@@ -297,7 +297,8 @@ class SpeechIndexScreen(IndexScreen):
         speech_btn = self._get_paired_speech_button(title_btn)
         if speech_btn:
             self._nav_focused_btn = title_btn
-            draw_focus_highlight(speech_btn, INDEX_NAV_FOCUS_GROUP, color=(1, 0.55, 0, 1))
+            draw_focus_highlight(speech_btn, INDEX_NAV_FOCUS_GROUP)
+            self._set_item_fill(speech_btn)
             self.ids.index_scroll_view.scroll_to(speech_btn)
             self._nav_saved_grid_version = self._grid_version
 

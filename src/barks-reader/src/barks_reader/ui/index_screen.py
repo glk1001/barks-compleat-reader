@@ -29,6 +29,7 @@ from loguru import logger
 
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.reader_formatter import mark_phrase_in_text
+from barks_reader.core.reader_palette import color_to_markup_hex, theme
 from barks_reader.core.user_error_types import (
     ErrorTypes,
     TitleNotInFantaInfoError,
@@ -69,9 +70,15 @@ SAVED_NODE_STATE_FIRST_LETTER_KEY = "first_letter"
 
 INDEX_NAV_FOCUS_GROUP = "index_nav_focus"
 
-SPEECH_HIGHLIGHT_COLOR = "#1A6ABB"
-SPEECH_HIGHLIGHT_START_TAG = f"[b][color={SPEECH_HIGHLIGHT_COLOR}]"
+# Matched speech terms are emphasized in the palette's selection accent, built
+# lazily (see `_speech_highlight_start_tag`) so the active theme is honoured.
 SPEECH_HIGHLIGHT_END_TAG = "[/color][/b]"
+
+
+def _speech_highlight_start_tag() -> str:
+    """Return the markup opening tag for a highlighted speech search term."""
+    return f"[b][color={color_to_markup_hex(theme().accent_selection)}]"
+
 
 _LETTER_ORDER = list("0'" + string.ascii_uppercase)
 
@@ -135,7 +142,7 @@ def show_speech_bubbles_popup(
         page_text = f"Page {page_info.comic_page}"
         text = "\n\n".join([s.speech_text for s in page_info.speech_info_list])
         text = mark_phrase_in_text(
-            search_terms, text, SPEECH_HIGHLIGHT_START_TAG, SPEECH_HIGHLIGHT_END_TAG
+            search_terms, text, _speech_highlight_start_tag(), SPEECH_HIGHLIGHT_END_TAG
         )
         text = text.replace("\u00ad", "-")
         text_box = TextBoxWithTitleAndBorder(title=page_text, content=text.strip())
@@ -230,7 +237,7 @@ class PopupKeyboardNav:
         canvas_before = entry.canvas.before  # ty: ignore[unresolved-attribute]
         canvas_before.remove_group(POPUP_NAV_FOCUS_GROUP)
         with canvas_before:
-            Color(1, 1, 0, 1, group=POPUP_NAV_FOCUS_GROUP)
+            Color(*theme().focus_ring, group=POPUP_NAV_FOCUS_GROUP)
             Line(
                 rectangle=(entry.x, entry.y, entry.width, entry.height),
                 width=3,
@@ -274,7 +281,15 @@ def create_speech_bubble_popup(
 
 
 class Theme:
-    """A central place for theme constants."""
+    """A central place for index-screen constants.
+
+    The three ``*_SELECTED`` selection bands are pulled from the active palette's
+    ``accent_selection`` at construction time. ``Theme()`` is built in
+    ``IndexScreen.__init__`` (after ``set_active_theme``), so reading ``theme()``
+    here is lazy enough; binding it at import time would freeze the default
+    palette. The menu/item bands stay translucent so the black index text over
+    the light "paper" surface remains legible.
+    """
 
     ROW_HEIGHT = dp(25)
     INDEX_ITEM_LEFT_PAD = dp(20)
@@ -282,15 +297,22 @@ class Theme:
 
     MENU_TEXT = (0, 0, 0, 1)
     MENU_BG = (0, 0, 0, 0)
-    MENU_BG_SELECTED = (0.0, 0.8, 0.0, 0.5)
 
     ITEM_TEXT = (0, 0, 0, 1)
     ITEM_BG = (0, 0, 0, 0)
-    ITEM_BG_SELECTED = (0.8, 0.8, 0.0, 0.5)
 
     TITLE_TEXT = (0, 0, 0, 1)
     TITLE_BG = (0.0, 0.0, 0.95, 0.1)
-    TITLE_BG_SELECTED = (0.85, 0.85, 0.85, 1)
+
+    def __init__(self) -> None:
+        r, g, b, _a = theme().accent_selection
+        self.MENU_BG_SELECTED = (r, g, b, 0.5)
+        self.ITEM_BG_SELECTED = (r, g, b, 0.5)
+        # The keyboard-focused item wears this fill *plus* the gold ring. Kept
+        # light (low alpha) so plenty of the paper shows through and the black
+        # index text stays crisp; the ring supplies the strong edge.
+        self.ITEM_BG_FOCUS = (r, g, b, 0.45)
+        self.TITLE_BG_SELECTED = theme().accent_selection
 
 
 # noinspection PyAbstractClass
@@ -327,6 +349,7 @@ class IndexScreen(FloatLayout):
         self._grid_version: int = 0  # Incremented on every items grid repopulation.
         self._nav_saved_grid_version: int = -1  # Version when ITEMS nav state was last saved.
         self._nav_focused_btn: Button | None = None  # Button ref for robust position restore.
+        self._nav_filled_item_btn: Button | None = None  # Item currently wearing the focus fill.
 
     def on_goto_background_title(self) -> None:
         assert self.on_goto_background_title_func is not None
@@ -595,11 +618,25 @@ class IndexScreen(FloatLayout):
         self._nav_focused_item_idx = min(self._nav_focused_item_idx, len(col_buttons) - 1)
         btn = col_buttons[self._nav_focused_item_idx]
         self._nav_focused_btn = btn
-        draw_focus_highlight(btn, INDEX_NAV_FOCUS_GROUP, color=(1, 0.55, 0, 1))
+        draw_focus_highlight(btn, INDEX_NAV_FOCUS_GROUP)
+        self._set_item_fill(btn)
         self.ids.index_scroll_view.scroll_to(btn)
         self._nav_saved_grid_version = self._grid_version
 
+    def _set_item_fill(self, btn: Button) -> None:
+        """Fill the keyboard-focused item with the selection band (clearing any prior)."""
+        self._clear_item_fill()
+        btn.background_color = self.index_theme.ITEM_BG_FOCUS
+        self._nav_filled_item_btn = btn
+
+    def _clear_item_fill(self) -> None:
+        """Restore the previously filled item's transparent background, if any."""
+        if self._nav_filled_item_btn is not None:
+            self._nav_filled_item_btn.background_color = self.index_theme.ITEM_BG
+            self._nav_filled_item_btn = None
+
     def _clear_all_item_focus(self) -> None:
+        self._clear_item_fill()
         for col_idx in range(self.num_columns):
             layout = self._get_col_layout(col_idx)
             self._clear_layout_focus(layout)
