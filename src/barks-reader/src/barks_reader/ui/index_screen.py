@@ -271,7 +271,7 @@ def create_speech_bubble_popup(
     popup = SpeechBubblesPopup(
         title_font=font_name,
         title_align="left",
-        title_color=[0, 1, 1, 1],
+        title_color=list(theme().text_title),  # themed gold (was programmer-cyan)
         size_hint=(0.7, 0.4),
         pos_hint={"x": 0.06, "y": 0.06},
     )
@@ -302,10 +302,12 @@ class Theme:
     ITEM_BG = (0, 0, 0, 0)
 
     TITLE_TEXT = (0, 0, 0, 1)
-    TITLE_BG = (0.0, 0.0, 0.95, 0.1)
 
     def __init__(self) -> None:
         r, g, b, _a = theme().accent_selection
+        # Faint accent tint behind unselected title rows on the light "paper"
+        # index (was a fixed programmer-blue).
+        self.TITLE_BG = (r, g, b, 0.1)
         self.MENU_BG_SELECTED = (r, g, b, 0.5)
         self.ITEM_BG_SELECTED = (r, g, b, 0.5)
         # The keyboard-focused item wears this fill *plus* the gold ring. Kept

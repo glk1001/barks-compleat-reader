@@ -1,3 +1,5 @@
+#:import reader_palette barks_reader.core.reader_palette
+
 <IndexMenuButton>:
     # This rule defines the style for the '0', "'", and 'A'-'Z' menu buttons
     background_normal: ''
@@ -48,8 +50,7 @@
         fit_mode: "cover"
         mipmap: True
 
-#:set POPUP_BGND_COLOR [0, 0, 1, 0.3]  # Faint blue
-#:set POPUP_BGND_COLOR_COVER [0, 0, 0.2, 1]  # Faint blue
+#:set POPUP_BGND_COLOR [0, 0, 0, 0.45]  # Neutral dim (was programmer-blue)
 
 <SpeechBubblesPopup@Popup>:
     background_color: POPUP_BGND_COLOR
@@ -72,7 +73,7 @@
 
     canvas.before:
         Color:
-            rgba: 1, 0.1, 0.1, 1  # Border color
+            rgba: reader_palette.theme().focus_ring  # Gold keyline (was programmer-red)
         Line:
             width: 2
             rounded_rectangle: (self.x, self.y, self.width, self.height, dp(10))
@@ -80,7 +81,7 @@
     Label:
         id: title_id
         text: root.title
-        color: 1, 1, 0, 1
+        color: reader_palette.theme().text_title  # was programmer-yellow
         bold: True
         padding: [dp(10), 0, dp(10), 0]
         halign: 'left'
@@ -89,7 +90,7 @@
 
         canvas.before:
             Color:
-                rgba: POPUP_BGND_COLOR_COVER  # Match the popup background
+                rgba: reader_palette.theme().accent_selection  # themed title chip (was blue)
             RoundedRectangle:
                 pos: (self.x + 0.05*self.width, self.y + 0.05*self.height)
                 size: (0.9*self.width, 0.9*self.height)
@@ -202,6 +203,7 @@
     GotoTitleOverlay:
         current_title_str: root.current_title_str
         is_active: root.current_title_str != ""
-        label_color: (0, 0, 1, 1)
+        # Dark themed accent — reads on the light "paper" index (was programmer-blue).
+        label_color: reader_palette.theme().accent_selection
         label_bg_color: (0, 0, 0, 0)
         on_arrow_press: root.on_goto_background_title()

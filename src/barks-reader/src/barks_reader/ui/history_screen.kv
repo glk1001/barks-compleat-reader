@@ -1,8 +1,10 @@
+#:import reader_palette barks_reader.core.reader_palette
+
 <HistoryViewButton>:
     background_normal: ''
     background_down: ''
     border: (0, 0, 0, 0)
-    background_color: (0.0, 0.55, 0.0, 1) if self.state == 'down' else (0.2, 0.2, 0.2, 1)
+    background_color: reader_palette.theme().accent_selection if self.state == 'down' else (0.2, 0.2, 0.2, 1)
     color: (1, 1, 1, 1)
     bold: True
     size_hint: None, 1
@@ -70,7 +72,7 @@
             background_normal: ''
             background_down: ''
             border: (0, 0, 0, 0)
-            background_color: (0.45, 0.1, 0.1, 1)
+            background_color: reader_palette.theme().danger
             color: (1, 1, 1, 1)
             font_size: dp(14)
             on_press: root.on_clear_pressed()
