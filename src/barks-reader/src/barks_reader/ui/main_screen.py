@@ -58,6 +58,13 @@ if TYPE_CHECKING:
 
 MAIN_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
+# TODO: Temporary hard-coded quit-popup artwork (per user request) — move to
+#  the reader file-paths/settings machinery later.
+_QUIT_POPUP_BG_IMAGE = (
+    "/home/greg/Books/Carl Barks/Compleat Barks Disney Reader/Reader Files/"
+    "Reader Icons/The Rabbit's Foot-1-1.png"
+)
+
 
 def _text_input_has_focus() -> bool:
     """Report whether a TextInput currently holds the system keyboard (e.g. settings popup).
@@ -332,6 +339,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             ok_text="Quit",
             cancel_text="Stay",
             on_ok=app.close_app,
+            bg_image=_QUIT_POPUP_BG_IMAGE if Path(_QUIT_POPUP_BG_IMAGE).is_file() else "",
         )
 
     def app_closing(self) -> None:

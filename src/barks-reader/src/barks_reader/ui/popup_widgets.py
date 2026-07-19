@@ -28,6 +28,8 @@ class MessagePopup(Popup):
     msg_text = StringProperty()
     ok_text = StringProperty()
     cancel_text = StringProperty()
+    # Optional background artwork shown behind the message (empty = plain popup).
+    bg_image_source = StringProperty("")
     ok = ObjectProperty(None, allownone=True)
     cancel = ObjectProperty(None, allownone=True)
 
@@ -59,6 +61,7 @@ def open_confirm_popup(
     ok_text: str,
     cancel_text: str,
     on_ok: Callable[[], None],
+    bg_image: str = "",
 ) -> MessagePopup:
     """Open a keyboard-operable confirmation popup.
 
@@ -72,6 +75,7 @@ def open_confirm_popup(
         ok_text: Label of the confirming button.
         cancel_text: Label of the cancelling button.
         on_ok: Called after dismissal when the user confirms.
+        bg_image: Optional path of artwork to show behind the message.
 
     Returns:
         The opened popup.
@@ -110,6 +114,7 @@ def open_confirm_popup(
         cancel_text=cancel_text,
         title=title,
         msg_halign="center",
+        bg_image_source=bg_image,
     )
     Window.bind(on_key_down=on_key_down)
     popup.bind(on_dismiss=unbind_window)

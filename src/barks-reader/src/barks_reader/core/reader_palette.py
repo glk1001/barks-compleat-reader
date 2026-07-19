@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from .ports import PaletteId
 from .reader_colors import Color
 
-SCRIM_TOP_VIEW: Color = (0.33, 0.33, 0.33, 1.0)
+SCRIM_TOP_VIEW: Color = (0.55, 0.55, 0.55, 1.0)
 SCRIM_TITLE: Color = (0.45, 0.45, 0.45, 1.0)
 SCRIM_FUN: Color = (0.95, 0.95, 0.95, 1.0)
 
@@ -63,7 +63,7 @@ DUCKBURG = ReaderTheme(
     name="Duckburg",
     accent_selection=(0.24, 0.42, 0.45, 0.85),  # slate teal
     app_title=(0.98, 0.82, 0.50, 1.0),  # coin gold
-    text_title=(0.97, 0.94, 0.89, 1.0),  # newsprint cream
+    text_title=(0.98, 0.82, 0.50, 1.0),  # coin gold — cream was too quiet for titles
     text_secondary=(0.78, 0.84, 0.90, 1.0),  # sky blue
     row_stripe_even=(0.05, 0.10, 0.13, 0.5),
     row_stripe_odd=(0.13, 0.20, 0.24, 0.5),
