@@ -88,8 +88,13 @@ class Win32WindowBackend:
         state: WindowState,
         on_first_resize: Callable[[], None],
         on_done: Callable[[], None],
-    ) -> None:
-        """Schedule a restore of the window to ``state``'s saved size and position."""
+    ) -> Callable[[], None]:
+        """Schedule a restore of the window to ``state``'s saved size and position.
+
+        Returns a cancel that stops whichever stage is still pending — the
+        delayed resize itself, or the Kivy-sync step between the resize and the
+        callbacks. A no-op once ``sync_and_finish`` has run.
+        """
 
         def restore(*_args) -> None:  # noqa: ANN002
             # Single atomic Win32 call to set position and size.
@@ -101,9 +106,15 @@ class Win32WindowBackend:
                 on_first_resize()
                 on_done()
 
-            Clock.schedule_once(sync_and_finish, 0)
+            nonlocal pending_event
+            pending_event = Clock.schedule_once(sync_and_finish, 0)
 
-        Clock.schedule_once(restore, _RESTORE_GEOMETRY_TIMEOUT_WIN)
+        pending_event = Clock.schedule_once(restore, _RESTORE_GEOMETRY_TIMEOUT_WIN)
+
+        def cancel() -> None:
+            pending_event.cancel()
+
+        return cancel
 
     # --- Private helpers ---
 

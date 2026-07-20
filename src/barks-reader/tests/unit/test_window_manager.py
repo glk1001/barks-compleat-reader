@@ -42,11 +42,12 @@ ManagerFixture = tuple[WindowManager, WindowModeCallbacks, MagicMock, MagicMock,
 
 
 class _FakeBackend:
-    """Records save/restore calls for test assertions."""
+    """Records save/restore/cancel calls for test assertions."""
 
     def __init__(self) -> None:
         self.saved_states: list[WindowState] = []
         self.restore_calls: list[WindowState] = []
+        self.cancel_calls = 0
 
     def save_state(self, state: WindowState) -> None:
         state.size = (1200, 1800)
@@ -59,11 +60,16 @@ class _FakeBackend:
         state: WindowState,
         on_first_resize: Callable[[], None],
         on_done: Callable[[], None],
-    ) -> None:
+    ) -> Callable[[], None]:
         self.restore_calls.append(state)
         # Simulate immediate restore completion.
         on_first_resize()
         on_done()
+
+        def cancel() -> None:
+            self.cancel_calls += 1
+
+        return cancel
 
 
 # ---------------------------------------------------------------------------
@@ -454,10 +460,18 @@ class _DeferredRestoreBackend(_FakeBackend):
         state: WindowState,
         on_first_resize: Callable[[], None],
         on_done: Callable[[], None],
-    ) -> None:
+    ) -> Callable[[], None]:
         self.restore_calls.append(state)
         self.pending_on_first_resize = on_first_resize
         self.pending_on_done = on_done
+
+        def cancel() -> None:
+            # Models ClockEvent.cancel: the pending callbacks will never fire.
+            self.cancel_calls += 1
+            self.pending_on_first_resize = None
+            self.pending_on_done = None
+
+        return cancel
 
 
 class TestInterleavedTransitions:
@@ -512,39 +526,98 @@ class TestInterleavedTransitions:
         wm.goto_fullscreen_mode(second)
         assert len(deferred_backend.saved_states) == 1
 
-    def test_interrupted_restore_does_not_finish_windowed(
+    def test_interrupting_fullscreen_cancels_the_scheduled_restore(
         self,
         deferred_manager: WindowManager,
         fake_window: MagicMock,
         deferred_backend: _DeferredRestoreBackend,
     ) -> None:
-        # Regression for the callback race: when a fullscreen transition
-        # interrupts a pending windowed restore, the stale restore must not
-        # report a windowed completion (to any screen's bundle).
+        # The fullscreen transition supersedes the pending windowed restore:
+        # the backend restore is cancelled outright, so the stale resize can
+        # never fire on the now-fullscreen window.
         wm = deferred_manager
-        main_finished_windowed = MagicMock()
-        main_callbacks = WindowModeCallbacks(MagicMock(), main_finished_windowed, MagicMock())
-        comic_finished_windowed = MagicMock()
+        main_callbacks = WindowModeCallbacks(MagicMock(), MagicMock(), MagicMock())
         comic_finished_fullscreen = MagicMock()
-        comic_callbacks = WindowModeCallbacks(
-            MagicMock(), comic_finished_windowed, comic_finished_fullscreen
-        )
+        comic_callbacks = WindowModeCallbacks(MagicMock(), MagicMock(), comic_finished_fullscreen)
 
         fake_window.fullscreen = False
         wm.goto_fullscreen_mode(main_callbacks)
         fake_window.fullscreen = True
         wm.goto_windowed_mode(main_callbacks)
-
-        # The comic screen goes fullscreen while the main screen's restore is
-        # still pending (do_fullscreen sets Window.fullscreen back to "auto").
-        wm.goto_fullscreen_mode(comic_callbacks)
-        comic_finished_fullscreen.assert_called_once()
-
-        # The stale restore now settles: neither screen may hear "windowed".
         assert deferred_backend.pending_on_done is not None
-        deferred_backend.pending_on_done()
+
+        wm.goto_fullscreen_mode(comic_callbacks)
+
+        comic_finished_fullscreen.assert_called_once()
+        assert deferred_backend.cancel_calls == 1
+        assert deferred_backend.pending_on_done is None  # the resize will never fire
+        # The cancelled transition is fully retired: a later fullscreen entry
+        # saves geometry again instead of seeing a phantom pending restore.
+        saves_before = len(deferred_backend.saved_states)
+        fake_window.fullscreen = False
+        wm.goto_fullscreen_mode(comic_callbacks)
+        assert len(deferred_backend.saved_states) == saves_before + 1
+
+    def test_stale_on_done_after_cancel_does_not_finish_windowed(
+        self,
+        deferred_manager: WindowManager,
+        fake_window: MagicMock,
+        deferred_backend: _DeferredRestoreBackend,
+    ) -> None:
+        # Belt and braces: a backend event whose resize had already fired when
+        # the cancel landed still must not report a windowed completion (to
+        # any screen's bundle) once the window is fullscreen again.
+        wm = deferred_manager
+        main_finished_windowed = MagicMock()
+        main_callbacks = WindowModeCallbacks(MagicMock(), main_finished_windowed, MagicMock())
+        comic_callbacks = WindowModeCallbacks(MagicMock(), MagicMock(), MagicMock())
+
+        fake_window.fullscreen = False
+        wm.goto_fullscreen_mode(main_callbacks)
+        fake_window.fullscreen = True
+        wm.goto_windowed_mode(main_callbacks)
+        stale_on_done = deferred_backend.pending_on_done
+        assert stale_on_done is not None
+
+        wm.goto_fullscreen_mode(comic_callbacks)  # cancels; window is fullscreen again
+
+        stale_on_done()  # the already-fired event settles anyway
         main_finished_windowed.assert_not_called()
-        comic_finished_windowed.assert_not_called()
+
+    def test_fullscreen_superseding_before_scheduling_skips_restore(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        fake_window: MagicMock,
+        backend: _FakeBackend,
+    ) -> None:
+        # The fullscreen command lands in the same frame as the windowed one,
+        # before the windowed chain reaches the backend: restore_saved sees the
+        # window heading fullscreen and retires the transition — no backend
+        # restore is ever scheduled, and no windowed callbacks fire.
+        clock = _QueuedClock()
+        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Window", fake_window)
+        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Clock", clock)
+        monkeypatch.setattr(
+            "barks_reader.ui.platform_window_utils._create_window_backend",
+            lambda: backend,
+        )
+        wm = WindowManager()
+        windowed_first_resize = MagicMock()
+        windowed_finished = MagicMock()
+        windowed_cbs = WindowModeCallbacks(windowed_first_resize, windowed_finished, MagicMock())
+        fullscreen_finished = MagicMock()
+        fullscreen_cbs = WindowModeCallbacks(MagicMock(), MagicMock(), fullscreen_finished)
+
+        fake_window.fullscreen = True
+        wm.goto_windowed_mode(windowed_cbs)
+        wm.goto_fullscreen_mode(fullscreen_cbs)  # same frame: nothing scheduled yet
+        clock.drain()
+
+        assert backend.restore_calls == []
+        windowed_first_resize.assert_not_called()
+        windowed_finished.assert_not_called()
+        fullscreen_finished.assert_called_once()
+        assert fake_window.fullscreen == "auto"
 
 
 class TestKivyWindowBackend:

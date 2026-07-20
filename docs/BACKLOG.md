@@ -121,15 +121,18 @@ Known limitation (intentional, not a reader fix): links under the bundle's
       pending flip rather than starting a second transition). Race pinned by
       `TestDoublePressToggle` in `test_window_manager.py` with a queued fake
       Clock modelling the one-frame flip delay.
-- [ ] **Stale backend restore still resizes the window** — if a fullscreen
-      transition interrupts a pending windowed restore, the already-scheduled
-      backend restore still fires and resizes the (now fullscreen) window.
-      Since commit 766ebec it can no longer corrupt state (the saved geometry
-      is guarded while restores are pending, and `_finish_restore` skips the
-      windowed completion), but cancelling the resize itself needs cancellation
-      support in the `WindowBackend` protocol (`schedule_restore` returning a
-      cancel handle, incl. the Win32 backend). Cosmetic; surfaced by the
-      2026-07-10 review pass.
+- [x] **Stale backend restore still resizes the window** (2026-07-21) —
+      `WindowBackend.schedule_restore` now returns a cancel handle (both
+      backends; Win32's covers whichever of its two stages is pending), and
+      `goto_fullscreen_mode` cancels every scheduled restore it supersedes,
+      retiring their transitions so no phantom pending-restore blocks later
+      geometry saves. A windowed transition the fullscreen command outruns
+      *before* backend scheduling retires itself via an `is_fullscreen_target`
+      check in `restore_saved_size_and_position` (which also stops the
+      no-saved-state branch firing windowed callbacks at a fullscreen window).
+      `_finish_restore`'s fullscreen guard stays as belt-and-braces for an
+      event that fired before its cancel landed. Covered in
+      `TestInterleavedTransitions`.
 
 ## macOS distribution (end-user friction — investigation)
 

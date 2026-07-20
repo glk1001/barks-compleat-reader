@@ -80,11 +80,15 @@ class WindowBackend(Protocol):
         state: WindowState,
         on_first_resize: Callable[[], None],
         on_done: Callable[[], None],
-    ) -> None:
+    ) -> Callable[[], None]:
         """Schedule a restore of the window to ``state``'s saved geometry.
 
         ``on_first_resize`` is invoked once the resize has been issued (used by callers
         to apply size hints), and ``on_done`` is invoked once the restore has settled.
+
+        Returns a zero-arg cancel: called while the restore is still pending it
+        stops the resize and its callbacks (a fullscreen transition superseding
+        the windowed one); calling it after the restore has fired is a no-op.
         """
         ...
 
@@ -104,14 +108,14 @@ class KivyWindowBackend:
         state: WindowState,
         on_first_resize: Callable[[], None],
         on_done: Callable[[], None],
-    ) -> None:
+    ) -> Callable[[], None]:
         def restore(*_args) -> None:  # noqa: ANN002
             Window.size = state.size
             Window.left, Window.top = state.pos
             on_first_resize()
             on_done()
 
-        Clock.schedule_once(restore, _RESTORE_GEOMETRY_TIMEOUT)
+        return Clock.schedule_once(restore, _RESTORE_GEOMETRY_TIMEOUT).cancel
 
 
 def set_titlebar_drag_region(drag_region: Widget) -> None:
@@ -172,6 +176,15 @@ class WindowManager:
         # overlapped transition finish without erasing a newer command's heading.
         self._target_fullscreen: bool | None = None
         self._transition_seq = 0
+
+        # Cancel handles for backend restores that are scheduled but have not
+        # fired. A fullscreen transition cancels these so a stale restore
+        # cannot resize the now-fullscreen window; a restore that completes
+        # normally removes its own entry (see restore_saved_size_and_position).
+        # Each entry is a one-element list: the holder is registered before the
+        # backend call, so a backend that completes synchronously can still
+        # find and remove it.
+        self._scheduled_restore_cancels: list[list[Callable[[], None]]] = []
 
         self._saved_window_state = WindowState()
         self._backend: WindowBackend = _create_window_backend()
@@ -235,6 +248,12 @@ class WindowManager:
             # transitional. The store already holds the real windowed geometry;
             # saving now would overwrite it with the un-restored values.
             logger.warning("Windowed restore still in flight; keeping saved geometry.")
+            # This fullscreen transition supersedes those restores: cancel any
+            # already scheduled at the backend so a stale restore cannot fire
+            # later and resize the fullscreen window. Restores not yet at the
+            # backend retire themselves via restore_saved_size_and_position's
+            # target check.
+            self._cancel_scheduled_restores()
         else:
             self.save_state_now()
 
@@ -282,6 +301,17 @@ class WindowManager:
             callbacks: The transition's completion callbacks.
 
         """
+        if self.is_fullscreen_target():
+            # A fullscreen transition superseded this windowed transition before
+            # its restore reached the backend (goto_fullscreen_mode cancels the
+            # scheduled ones, but this step can still be sitting in the Clock
+            # queue behind it). Resizing now would fight the fullscreen window,
+            # so retire the transition without a windowed completion — the same
+            # policy as _finish_restore's fullscreen guard.
+            logger.warning("Window heading fullscreen; skipping superseded restore.")
+            self._pending_restores = max(0, self._pending_restores - 1)
+            return
+
         state = self._saved_window_state
         if state.is_unsaved():
             # Nothing was captured before going fullscreen (the app started
@@ -294,7 +324,7 @@ class WindowManager:
                 f"No saved window state to restore "
                 f"(size = {state.size}, pos = {state.pos}); leaving current geometry."
             )
-            self._pending_restores -= 1
+            self._pending_restores = max(0, self._pending_restores - 1)
             callbacks.on_windowed_first_resize()
             Clock.schedule_once(lambda _dt: callbacks.on_finished_windowed(), 0)
             return
@@ -305,15 +335,38 @@ class WindowManager:
             f" Window.size = {Window.size}, pos = ({Window.left}, {Window.top})."
         )
 
-        self._backend.schedule_restore(
-            state,
-            callbacks.on_windowed_first_resize,
-            lambda: self._finish_restore(callbacks),
+        # Registered before the backend call so a synchronously-completing
+        # backend's on_done can already find (and remove) its own entry.
+        cancel_holder: list[Callable[[], None]] = []
+        self._scheduled_restore_cancels.append(cancel_holder)
+
+        def on_done() -> None:
+            if cancel_holder in self._scheduled_restore_cancels:
+                self._scheduled_restore_cancels.remove(cancel_holder)
+            self._finish_restore(callbacks)
+
+        cancel_holder.append(
+            self._backend.schedule_restore(state, callbacks.on_windowed_first_resize, on_done)
         )
+
+    def _cancel_scheduled_restores(self) -> None:
+        """Cancel every backend restore still pending; the transitions retire here.
+
+        Each cancelled restore's callbacks will never run, so its windowed
+        transition is accounted for now (the ``max`` guards against a stale
+        ``on_done`` from a backend event that had already fired by the time it
+        was cancelled — _finish_restore's fullscreen check absorbs those).
+        """
+        for cancel_holder in self._scheduled_restore_cancels:
+            if cancel_holder:
+                cancel_holder[0]()
+            self._pending_restores = max(0, self._pending_restores - 1)
+            logger.info("Cancelled a scheduled windowed restore (superseded by fullscreen).")
+        self._scheduled_restore_cancels.clear()
 
     def _finish_restore(self, callbacks: WindowModeCallbacks) -> None:
         """Log final state and call the windowed-mode completion callback."""
-        self._pending_restores -= 1
+        self._pending_restores = max(0, self._pending_restores - 1)
 
         if self.is_fullscreen_now():
             # A fullscreen transition interrupted this restore and owns the
