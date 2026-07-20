@@ -137,14 +137,18 @@ Keyboard navigation includes:
 
 ## Settings
 
-Open *Settings* from the **⋯** menu on the top action bar. Key options are:
+Open *Settings* from the **⋯** menu on the top action bar. Close it with **Escape** or the
+**✕** in the top-right corner. Settings are grouped into sections — *Folders*, *Reading*,
+*Appearance*, *Startup*, *Window*, *Controls*, *Controversial Censorship Fixes*, and
+*Advanced* — with the power-user options gathered under *Advanced* at the bottom. Key options
+are:
 
 | Setting                                       | What it does                                                   |
 |-----------------------------------------------|----------------------------------------------------------------|
 | *Fantagraphics Directory*                     | Path to the folder containing your Fantagraphics ZIP files     |
 | *Color Theme*                                 | Picks the palette for accents, selection bar, and labels (requires restart) |
 | *Double Page Mode*                            | Opens every comic in two-page view                             |
-| *Goto Last Selection on App Start*            | Resumes where you left off when the app starts                 |
+| *Go to Last Selection on App Start*           | Resumes where you left off when the app starts                 |
 | *Record Reading History*                      | Logs every comic you read to the *Reading History* view        |
 | *Confirm Before Quitting*                     | Asks for confirmation when the app close button is pressed     |
 | *Go Straight to Fullscreen on App start*      | Launches the app in fullscreen                                 |
@@ -155,6 +159,10 @@ Open *Settings* from the **⋯** menu on the top action bar. Key options are:
 | *First Use of Reader*                         | Reset this to re-run the first-launch setup (requires restart) |
 | *Log Level*                                   | Controls how much is written to the log file                   |
 | *Controversial Censorship Fixes*              | Individual toggles for some censorship fixes                   |
+
+The *Advanced* section at the bottom holds the image-source, prebuilt-comics, and Carl Barks
+Wiki folder settings, along with *Log Level* and *First Use of Reader*. Options that only take
+effect after a relaunch are marked *(Restart required.)*.
 
 Settings are saved to `"barks-reader.ini"` and `"barks-reader.json"` in the app's config directory.
 
