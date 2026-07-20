@@ -15,6 +15,10 @@ env:
 jobs:
   build:
     name: Build (${{ matrix.os }})
+    # data-v* tag pushes (data-pack releases, see scripts/upload-data-zips.sh)
+    # don't need app builds - without this guard, publishing a data release
+    # burns four platform builds and attaches nothing.
+    if: ${{ !startsWith(github.ref, 'refs/tags/data-') }}
     strategy:
       matrix:
         include:

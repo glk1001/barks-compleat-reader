@@ -170,9 +170,13 @@ Releases are assembled by CI — don't upload executables by hand.
 
 The ~1GB data packs (`barks-reader-data-1.zip`, `barks-reader-data-2.zip`) live on their own
 dedicated release (`data-v1`), not on app releases, because they rarely change. When they do
-change: upload the new zips as a `data-v2` release (marked pre-release so it can never become
-GitHub's "Latest"), then update `DATA_TAG` in `website/app.html` and the data-pack links in
-`.github/workflows/build.yml`.
+change, rebuild them (`bash scripts/build.sh --include-zips`) and run:
+```
+bash scripts/upload-data-zips.sh
+```
+It publishes the next `data-vN` release (marked pre-release so it can never become GitHub's
+"Latest") and points `DATA_TAG` in `website/app.html` and the data-pack links in
+`.github/workflows/build.yml` at the new tag — review and commit those changes.
 
 ## License
 
