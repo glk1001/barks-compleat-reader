@@ -95,6 +95,8 @@ BODY_LINE_HEIGHT = 1.25
 # only lines up in a monospace face. RobotoMono ships with Kivy (regular only —
 # another reason table headers are colored, not bold).
 TABLE_FONT_NAME = "RobotoMono-Regular"
+# Space between a table's last row and its horizontal scrollbar (see _table_widget).
+TABLE_BAR_GAP = dp(4)
 BODY_PADDING = (16, 8, 24, 16)  # left, top, right, bottom
 BODY_BLOCK_SPACING = 12
 POPUP_PADDING = 12
@@ -1741,7 +1743,19 @@ class OKFViewer(RelativeLayout):
                 self._link_labels.append(lbl)
             stack.add_widget(lbl)
         scroller = _scroll_view(size_hint=(1, None), do_scroll_y=False, height=0)
-        stack.bind(height=scroller.setter("height"))
+
+        def fit_height(*_args: object) -> None:
+            # Kivy draws the horizontal bar inside the ScrollView's bounds, so when
+            # the table overflows, reserve room below the rows — otherwise the bar
+            # covers the last row. (The bar is only drawn when the table overflows,
+            # so fitting tables get no dead strip.)
+            overflows = stack.width > scroller.width
+            scroller.height = stack.height + (
+                scroller.bar_width + TABLE_BAR_GAP if overflows else 0
+            )
+
+        stack.bind(height=fit_height, width=fit_height)
+        scroller.bind(width=fit_height)
         scroller.add_widget(stack)
         return scroller
 
