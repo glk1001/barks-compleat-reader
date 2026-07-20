@@ -111,14 +111,16 @@ Known limitation (intentional, not a reader fix): links under the bundle's
       remaining `"Fullscreen"` literals in the `.kv` files are static initial values;
       `FullscreenEnum` (the geometry-state enum) is a distinct concern, left as-is.
       Covered by `TestWindowModeController` + `TestSetFullscreenButton`.
-- [ ] **Double-press toggle resolves both presses the same way** — two rapid
-      presses of the fullscreen button both read the same `is_fullscreen_now()`
-      (the `Window.fullscreen` flip lands a frame after the first `goto_*`), so
-      the second press repeats the first direction instead of toggling back.
-      Narrowed on 2026-07-10 (commit d2dd27d dropped the controller's extra
-      Clock deferral) but a full fix needs in-flight *target-mode* tracking on
-      `WindowManager`, so `toggle()` can read "where we're heading" rather than
-      where the window is now. Minor UX; surfaced by the 2026-07-10 review pass.
+- [x] **Double-press toggle resolves both presses the same way** (2026-07-20) —
+      fixed via the scoped in-flight target-mode tracking: `WindowManager`
+      records each transition's heading (`_begin_transition`/`_end_transition`,
+      sequence-guarded so an older overlapped transition can't erase a newer
+      command's target) and exposes `is_fullscreen_target()`; `toggle()` reads
+      that instead of `is_fullscreen_now()`, and the `goto_*` guards use it too
+      (a duplicate same-direction command defers its finish callback behind the
+      pending flip rather than starting a second transition). Race pinned by
+      `TestDoublePressToggle` in `test_window_manager.py` with a queued fake
+      Clock modelling the one-frame flip delay.
 - [ ] **Stale backend restore still resizes the window** — if a fullscreen
       transition interrupts a pending windowed restore, the already-scheduled
       backend restore still fires and resizes the (now fullscreen) window.

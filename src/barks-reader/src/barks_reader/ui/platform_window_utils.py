@@ -164,12 +164,43 @@ class WindowManager:
         # windowed geometry.
         self._pending_restores = 0
 
+        # Heading of an in-flight transition (True = fullscreen), None when
+        # settled. The actual ``Window.fullscreen`` flip lands a frame after a
+        # ``goto_*`` call, so during that frame the actual state still reads as
+        # the *old* mode; anything deciding a direction (``toggle``) must ask
+        # ``is_fullscreen_target`` instead. The sequence number lets an older
+        # overlapped transition finish without erasing a newer command's heading.
+        self._target_fullscreen: bool | None = None
+        self._transition_seq = 0
+
         self._saved_window_state = WindowState()
         self._backend: WindowBackend = _create_window_backend()
 
     @staticmethod
     def is_fullscreen_now() -> bool:
         return Window.fullscreen
+
+    def is_fullscreen_target(self) -> bool:
+        """Return the mode the window is heading to.
+
+        The in-flight transition's target when one is pending, else the actual
+        current mode. This is the read ``toggle`` needs: two rapid presses must
+        resolve as "go, then come back", not twice in the first direction.
+        """
+        if self._target_fullscreen is not None:
+            return self._target_fullscreen
+        return self.is_fullscreen_now()
+
+    def _begin_transition(self, *, target_fullscreen: bool) -> int:
+        """Record a new transition's heading; returns its sequence token."""
+        self._transition_seq += 1
+        self._target_fullscreen = target_fullscreen
+        return self._transition_seq
+
+    def _end_transition(self, seq: int) -> None:
+        """Clear the heading once the window state reflects it — latest command only."""
+        if seq == self._transition_seq:
+            self._target_fullscreen = None
 
     @staticmethod
     def get_screen_mode_now() -> str:
@@ -190,8 +221,13 @@ class WindowManager:
                 transition.
 
         """
-        if self.is_fullscreen_now():
-            callbacks.on_finished_fullscreen()
+        if self.is_fullscreen_target():
+            if self.is_fullscreen_now():
+                callbacks.on_finished_fullscreen()
+            else:
+                # Already heading fullscreen: land the finish after the pending
+                # flip (Clock callbacks run FIFO) instead of starting a duplicate.
+                Clock.schedule_once(lambda _dt: callbacks.on_finished_fullscreen(), 0)
             return
 
         if self._pending_restores > 0:
@@ -202,8 +238,11 @@ class WindowManager:
         else:
             self.save_state_now()
 
+        seq = self._begin_transition(target_fullscreen=True)
+
         def do_fullscreen() -> None:
             Window.fullscreen = "auto"  # Use 'auto' for best platform behavior
+            self._end_transition(seq)
             Clock.schedule_once(lambda _dt: callbacks.on_finished_fullscreen(), 0)
 
         Clock.schedule_once(lambda _dt: do_fullscreen(), 0)
@@ -216,15 +255,22 @@ class WindowManager:
                 transition.
 
         """
-        if not self.is_fullscreen_now():
-            callbacks.on_finished_windowed()
+        if not self.is_fullscreen_target():
+            if not self.is_fullscreen_now():
+                callbacks.on_finished_windowed()
+            else:
+                # Already heading windowed: land the finish after the pending
+                # flip (Clock callbacks run FIFO) instead of starting a duplicate.
+                Clock.schedule_once(lambda _dt: callbacks.on_finished_windowed(), 0)
             return
 
         self._pending_restores += 1
+        seq = self._begin_transition(target_fullscreen=False)
 
         def do_windowed() -> None:
             Window.borderless = False  # safest thing to do for MS Windows
             Window.fullscreen = False
+            self._end_transition(seq)
             Clock.schedule_once(lambda _dt: self.restore_saved_size_and_position(callbacks), 0)
 
         Clock.schedule_once(lambda _dt: do_windowed(), 0)
@@ -315,11 +361,14 @@ class WindowModeController:
     def toggle(self) -> None:
         """Switch to the opposite mode.
 
-        No deferral here: the manager already defers the actual ``Window``
-        mutation to the next frame, so an extra hop would only let the mode
-        read go stale.
+        Reads the manager's *target* mode, not the settled one: the actual
+        ``Window.fullscreen`` flip lands a frame after a ``goto_*``, so a
+        second rapid press reading the settled state would repeat the first
+        press's direction instead of toggling back. No deferral here: the
+        manager already defers the actual ``Window`` mutation to the next
+        frame, so an extra hop would only let the mode read go stale.
         """
-        if WindowManager.is_fullscreen_now():
+        if self._window_manager.is_fullscreen_target():
             self.goto_windowed()
         else:
             self.goto_fullscreen()

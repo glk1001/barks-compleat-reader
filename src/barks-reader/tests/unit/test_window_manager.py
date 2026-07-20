@@ -629,10 +629,9 @@ class TestWindowModeController:
     def test_toggle_from_windowed_goes_fullscreen(
         self,
         controller: tuple[WindowModeController, MagicMock, WindowModeCallbacks],
-        fake_window: MagicMock,
     ) -> None:
         ctrl, window_manager, callbacks = controller
-        fake_window.fullscreen = False
+        window_manager.is_fullscreen_target.return_value = False
 
         ctrl.toggle()  # fake_clock runs the scheduled switch immediately
 
@@ -642,10 +641,9 @@ class TestWindowModeController:
     def test_toggle_from_fullscreen_goes_windowed(
         self,
         controller: tuple[WindowModeController, MagicMock, WindowModeCallbacks],
-        fake_window: MagicMock,
     ) -> None:
         ctrl, window_manager, callbacks = controller
-        fake_window.fullscreen = True
+        window_manager.is_fullscreen_target.return_value = True
 
         ctrl.toggle()
 
@@ -663,3 +661,97 @@ class TestWindowModeController:
         ctrl.force_fullscreen()
 
         window_manager.goto_fullscreen_mode.assert_called_once_with(callbacks)
+
+
+# ---------------------------------------------------------------------------
+# Double-press toggle race (the Window.fullscreen flip lands a frame late)
+# ---------------------------------------------------------------------------
+
+
+class _QueuedClock:
+    """A fake Clock that queues callbacks until drained, FIFO like Kivy's.
+
+    The gap between scheduling and draining models the frame in which
+    ``Window.fullscreen`` has not flipped yet — the double-press race window.
+    """
+
+    def __init__(self) -> None:
+        self._queue: list[Callable[[float], None]] = []
+
+    def schedule_once(self, callback: Callable[[float], None], _timeout: float = 0) -> MagicMock:
+        self._queue.append(callback)
+        return MagicMock()
+
+    def drain(self) -> None:
+        """Run queued callbacks in order, including ones they schedule."""
+        while self._queue:
+            self._queue.pop(0)(0.0)
+
+
+class TestDoublePressToggle:
+    """Two rapid presses must resolve as "go, then come back", not twice one way."""
+
+    @pytest.fixture
+    def race_setup(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        fake_window: MagicMock,
+        backend: _FakeBackend,
+    ) -> tuple[WindowModeController, WindowManager, _QueuedClock, MagicMock]:
+        clock = _QueuedClock()
+        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Window", fake_window)
+        monkeypatch.setattr("barks_reader.ui.platform_window_utils.Clock", clock)
+        monkeypatch.setattr(
+            "barks_reader.ui.platform_window_utils._create_window_backend",
+            lambda: backend,
+        )
+        wm = WindowManager()
+        callbacks = WindowModeCallbacks(
+            on_windowed_first_resize=MagicMock(),
+            on_finished_windowed=MagicMock(),
+            on_finished_fullscreen=MagicMock(),
+        )
+        return WindowModeController("test", wm, callbacks), wm, clock, fake_window
+
+    def test_double_press_from_windowed_ends_windowed(
+        self,
+        race_setup: tuple[WindowModeController, WindowManager, _QueuedClock, MagicMock],
+    ) -> None:
+        ctrl, wm, clock, fake_window = race_setup
+        fake_window.fullscreen = False
+
+        ctrl.toggle()
+        # The flip has not landed yet — this is the race window the second
+        # press used to misread.
+        assert fake_window.fullscreen is False
+        assert wm.is_fullscreen_target() is True
+        ctrl.toggle()
+
+        clock.drain()
+
+        assert not fake_window.fullscreen
+
+    def test_double_press_from_fullscreen_ends_fullscreen(
+        self,
+        race_setup: tuple[WindowModeController, WindowManager, _QueuedClock, MagicMock],
+    ) -> None:
+        ctrl, wm, clock, fake_window = race_setup
+        fake_window.fullscreen = True
+
+        ctrl.toggle()
+        assert wm.is_fullscreen_target() is False
+        ctrl.toggle()
+
+        clock.drain()
+
+        assert fake_window.fullscreen == "auto"
+
+    def test_target_mirrors_actual_state_when_settled(
+        self,
+        race_setup: tuple[WindowModeController, WindowManager, _QueuedClock, MagicMock],
+    ) -> None:
+        _ctrl, wm, _clock, fake_window = race_setup
+        fake_window.fullscreen = False
+        assert wm.is_fullscreen_target() is False
+        fake_window.fullscreen = True
+        assert wm.is_fullscreen_target() is True
