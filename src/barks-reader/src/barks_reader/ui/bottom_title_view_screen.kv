@@ -19,9 +19,18 @@
 
         # The background image is now a direct child, simplifying the structure.
         Image:
-            # Dimmed by title_image_color while the info panel is up; full
-            # brightness when the panel is toggled off, to peek at the art.
-            color: root.title_image_color if bottom_view_box.opacity > 0.9 else (1,1,1,1)
+            # Scrim (title_image_color) dims the art while the info panel is up, and
+            # full brightness (1,1,1,1) when it is toggled off, to peek at the art.
+            # Interpolate by the panel opacity so the scrim fades IN with the panel
+            # rather than snapping on at the end of the fade; the instant peek toggle
+            # (opacity set straight to 0/1) still lands on the exact endpoints.
+            color:
+                ( \
+                (1 - bottom_view_box.opacity) + bottom_view_box.opacity * root.title_image_color[0], \
+                (1 - bottom_view_box.opacity) + bottom_view_box.opacity * root.title_image_color[1], \
+                (1 - bottom_view_box.opacity) + bottom_view_box.opacity * root.title_image_color[2], \
+                (1 - bottom_view_box.opacity) + bottom_view_box.opacity * root.title_image_color[3], \
+                )
             texture: root.title_image_texture
             x: self.parent.x
             y: self.parent.y
