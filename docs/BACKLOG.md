@@ -3,7 +3,7 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-07-14.
+Last updated: 2026-07-20.
 
 ---
 
@@ -145,6 +145,13 @@ Known limitation (intentional, not a reader fix): links under the bundle's
 - [ ] **Architecture deep-dive** — run the `improve-codebase-architecture`
       exploration to find shallow modules to deepen and untested seams to
       surface across the codebase.
+- [ ] **GUI acceptance harness + deterministic dev mode** — turn the
+      remote keyboard-driving recipe (`.claude/skills/verify/SKILL.md`) into a
+      repeatable Claude-in-the-loop smoke layer. Highest-leverage first step:
+      pin the app's run-to-run variation (seeded `ImageSelector` RNG, fixed
+      window geometry, hermetic config dir, page-settled log signal) — same
+      binary, env-gated. Full design discussion:
+      `docs/plans/gui-testing-deterministic-mode.md`.
 
 ---
 
