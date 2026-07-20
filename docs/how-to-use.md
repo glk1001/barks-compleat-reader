@@ -27,8 +27,6 @@ Fantagraphics versions.
 The bar across the top of the main screen contains:
 
 - **App icon** — on the far left, clickable; go to the story associated with icon image.
-- <img src="icon-close-orig.png" alt="[b]Quit[/b]" style="position: relative; top: 3px;" width="15" height="15">
-  — closes the application.
 - <img src="icon-fullscreen-orig.png" alt="[b]Fullscreen[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — toggles between windowed and fullscreen mode.
 - <img src="icon-back-arrow-orig.png" alt="[b]Back[/b]" style="position: relative; top: 3px;" width="15" height="15">
@@ -40,20 +38,26 @@ The bar across the top of the main screen contains:
 - <img src="icon-menu-dots-too-big-black.png" alt="[b]Menu[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — opens a dropdown containing
     <strong><em>Settings,</em></strong> <strong><em>How To,</em></strong> and <strong><em>About.</em></strong>
+- <img src="icon-close-orig.png" alt="[b]Quit[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  — at the far right, set apart in the window corner; closes the application.
 
 ### Navigation Tree (left panel)
 
 The tree on the left is the primary way to find stories. Its top-level sections are:
 
 - **Introduction** — introductory articles for the *Compleat Barks Reader* project.
-- **The Stories** — all Barks stories, browsable in four ways:
+- **The Stories** — all Barks stories, browsable in three ways:
   - *Chronological* — organised by Barks' submission dates.
   - *Series* — grouped by the comic series they appeared in (Comics & Stories, Donald Duck Adventures, 
     Uncle Scrooge Adventures, etc.).
   - *Categories* — thematic groupings.
-- **Search** — find stories by title text or by tag.
-- **Appendix** — supplementary articles and extra info.
-- **Indexes** — two indexes: *alphabetic* and *speech bubbles*.
+- **Search** — find stories by *Titles*, by *Tags*, or by *Words* (speech-bubble text).
+- **Reading History** — a journal of the comics you've read, grouped by day. The Reader records
+  this automatically (it can be turned off with the *Record Reading History* setting), and the
+  history can be cleared from within the view.
+- **Appendix** — supplementary articles, a censorship-fixes summary, and reading *Statistics*.
+- **Indexes** — the *Main Index* (alphabetic) and the *Speech Bubble Index* (with *Words*, *Names*,
+  and *Locations* sub-indexes). If a Carl Barks Wiki bundle is configured, a *Wiki* index appears too.
 
 ### Top Image Area
 
@@ -73,9 +77,12 @@ publication info, and a favorite panel. Contains:
 - A **last page read** indicator (optional) — the Reader remembers where you left off, and the portal
   button takes you back there.
 - An **override toggle** (optional) — lets you turn off the censorship fix for this specific story.
-- A **partially transparent collapse button** (top right of the bottom view) that hides the
-  title info to show just the panel image. The portal button remains clickable even when
-  collapsed.
+- A **peek toggle**
+  <img src="icon-eye-peek-black.png" alt="[b]Peek[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  (top right of the bottom view) — a themed eye that hides the title info to reveal just the art
+  behind it. The eye is open while the info panel is showing and slashed once it is hidden, and it
+  stays visible in both states so you can always bring the panel back. The portal button remains
+  clickable even when the panel is hidden.
 
 **Fun View** — shown when no specific story is selected. Displays a random comic panel.
 
@@ -100,11 +107,9 @@ Open a comic by clicking its **title portal button** in the bottom comic view pa
 The reader's menu bar is hidden by default in fullscreen mode. **Click near the top of the
 screen** or use the **up arrow key** to make it appear. It contains:
 
-- <img src="icon-close-orig.png" alt="[b]Close[/b]" style="position: relative; top: 3px;" width="15" height="15">
-  — return to the main screen.
 - <img src="icon-fullscreen-orig.png" alt="[b]Fullscreen[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — toggles between windowed and fullscreen mode.
-- <img src="icon-double-page-black.png" alt="[b]Double Page[/b]" style="position: relative; top: 3px;" width="15" height="15">
+- <img src="icon-double-page-spread-black.png" alt="[b]Double Page[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — toggle double page mode.
 - <img src="icon-goto-start-orig.png" alt="[b]Go to Start[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — jump to the first page.
@@ -112,6 +117,8 @@ screen** or use the **up arrow key** to make it appear. It contains:
   — jump to the last page.
 - <img src="icon-goto-orig-2.png" alt="[b]Go to Page[/b]" style="position: relative; top: 3px;" width="15" height="15">
   — opens a page selector showing all pages in the comic.
+- <img src="icon-close-orig.png" alt="[b]Close[/b]" style="position: relative; top: 3px;" width="15" height="15">
+  — at the far right; return to the main screen.
 
 ---
 
@@ -135,12 +142,16 @@ Open *Settings* from the **⋯** menu on the top action bar. Key options are:
 | Setting                                       | What it does                                                   |
 |-----------------------------------------------|----------------------------------------------------------------|
 | *Fantagraphics Directory*                     | Path to the folder containing your Fantagraphics ZIP files     |
+| *Color Theme*                                 | Picks the palette for accents, selection bar, and labels (requires restart) |
 | *Double Page Mode*                            | Opens every comic in two-page view                             |
 | *Goto Last Selection on App Start*            | Resumes where you left off when the app starts                 |
+| *Record Reading History*                      | Logs every comic you read to the *Reading History* view        |
+| *Confirm Before Quitting*                     | Asks for confirmation when the app close button is pressed     |
 | *Go Straight to Fullscreen on App start*      | Launches the app in fullscreen                                 |
 | *Go Straight to Fullscreen for Comic Reading* | Auto-fullscreen when opening a comic                           |
 | *Show Title Info in Top View*                 | Toggles story title display above the tree                     |
 | *Show Title Info in Bottom View*              | Toggles story title display in the bottom panel                |
+| *Alternate Escape Key*                        | Extra key that behaves like Escape, for remotes without one    |
 | *First Use of Reader*                         | Reset this to re-run the first-launch setup (requires restart) |
 | *Log Level*                                   | Controls how much is written to the log file                   |
 | *Controversial Censorship Fixes*              | Individual toggles for some censorship fixes                   |
