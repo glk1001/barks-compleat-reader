@@ -244,24 +244,31 @@ class ReaderFormatter:
 def mark_phrase_in_text(phrase: str, target_text: str, start_tag: str, end_tag: str) -> str:
     r"""Find and tag a phrase in a target string.
 
-    Spaces in the phrase might be replaced by newlines (\n) or soft hyphens + newlines
-    (\u00ad\n) and this function will wrap the found phrase in start...end tags.
+    The target text is hyphenated for display, so the phrase may be broken in two ways:
+    spaces between words may become newlines (\n) or soft hyphen + newline (\u00AD\n), and
+    a single word may be hyphenated *internally* at a soft hyphen, optionally followed by a
+    newline (e.g. "Moneytubs" stored as "Money\u00ADtubs" / "Money\u00AD\ntubs"). This
+    function tolerates both and wraps the found phrase in start...end tags.
     """
     # 1. Split the original phrase into a list of words
     #    (split() handles multiple spaces automatically)
     words = phrase.split()
 
-    # 2. Escape words to ensure characters like '?', '.', or '(' don't break the regex
-    escaped_words = [re.escape(w) for w in words]
+    # 2. Within a word, a hyphenation break may sit between any two characters: a soft
+    #    hyphen (\xad == \u00AD), optionally followed by a newline where the line wrapped.
+    #    Only soft-hyphen breaks are allowed inside a word (never a bare space/newline), so
+    #    a match can't span a real word boundary. Each character is escaped so regex
+    #    metacharacters ('?', '.', '(', ...) are matched literally.
+    intra_word_break = r"(?:\xad\n?)?"
+    word_patterns = [intra_word_break.join(re.escape(ch) for ch in word) for word in words]
 
-    # 3. Create a regex pattern for the separator.
+    # 3. Create a regex pattern for the between-word separator.
     #    It matches: A literal space OR a newline OR a soft hyphen followed by newline.
     #    (?: ...) is a non-capturing group.
-    #    \xad is the hexadecimal representation of \u00AD.
     separator_pattern = r"(?: |\n|\xad\n)"
 
-    # 4. Join the words with the flexible separator
-    full_pattern = separator_pattern.join(escaped_words)
+    # 4. Join the per-word patterns with the flexible separator
+    full_pattern = separator_pattern.join(word_patterns)
 
     # 5. Perform the substitution.
     #    We wrap full_pattern in parentheses (...) to create a capturing group.

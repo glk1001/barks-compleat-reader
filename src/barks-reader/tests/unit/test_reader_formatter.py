@@ -155,6 +155,44 @@ def test_mark_phrase_in_text() -> None:
     assert res_sh == "Hello <b>Donald\xad\nDuck</b> world"
 
 
+def test_mark_phrase_in_text_word_hyphenated_internally() -> None:
+    """A single word hyphenated inside itself (soft hyphen) is still matched.
+
+    Regression: the word "Moneytubs" stored with an internal soft hyphen (and an
+    optional wrap newline) must still be highlighted.
+    """
+    func = reader_formatter.mark_phrase_in_text
+    shy = SOFT_HYPHEN
+
+    # Soft hyphen with a line break inside the word.
+    target_break = f"aboard the S.S. Money{shy}\ntubs!"
+    assert (
+        func("Moneytubs", target_break, "<b>", "</b>")
+        == f"aboard the S.S. <b>Money{shy}\ntubs</b>!"
+    )
+
+    # Soft hyphen without a following newline.
+    target_no_nl = f"aboard the S.S. Money{shy}tubs!"
+    assert (
+        func("Moneytubs", target_no_nl, "<b>", "</b>") == f"aboard the S.S. <b>Money{shy}tubs</b>!"
+    )
+
+    # Case-insensitive, matching the real speech-bubble usage (upper-case text).
+    target_upper = f"ABOARD THE S.S. MONEY{shy}TUBS!"
+    assert (
+        func("Moneytubs", target_upper, "<b>", "</b>") == f"ABOARD THE S.S. <b>MONEY{shy}TUBS</b>!"
+    )
+
+
+def test_mark_phrase_in_text_does_not_cross_word_boundaries() -> None:
+    """Intra-word breaks are soft-hyphen only, so a match can't span a real space/newline.
+
+    "cat one" wrapped at the space (its space became a newline) must not match "atone".
+    """
+    func = reader_formatter.mark_phrase_in_text
+    assert func("atone", "the cat\none day", "<b>", "</b>") == "the cat\none day"
+
+
 def test_get_fitted_title_with_page_nums() -> None:
     func = reader_formatter.get_fitted_title_with_page_nums
 
