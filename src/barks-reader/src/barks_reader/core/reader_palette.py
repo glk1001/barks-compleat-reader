@@ -36,6 +36,7 @@ class ReaderTheme:
     accent_selection: Color  # tree/selection bar
     app_title: Color  # action-bar title (also the wiki top bar)
     text_title: Color  # story-title text in tree rows and search results
+    text_display: Color  # large hero title (bottom title view) — a punchier gold
     text_secondary: Color  # issue/date lines and quiet info text
     row_stripe_even: Color
     row_stripe_odd: Color
@@ -51,6 +52,7 @@ MASTHEAD = ReaderTheme(
     accent_selection=(0.65, 0.23, 0.16, 0.85),  # Scrooge-coat red
     app_title=(0.98, 0.82, 0.50, 1.0),  # coin gold
     text_title=(0.98, 0.82, 0.50, 1.0),
+    text_display=(1.0, 0.86, 0.32, 1.0),  # brighter cover-yellow for the hero title
     text_secondary=(0.94, 0.90, 0.80, 1.0),  # newsprint cream
     row_stripe_even=(0.14, 0.08, 0.05, 0.45),
     row_stripe_odd=(0.26, 0.14, 0.10, 0.45),
@@ -66,6 +68,7 @@ DUCKBURG = ReaderTheme(
     accent_selection=(0.24, 0.42, 0.45, 0.85),  # slate teal
     app_title=(0.98, 0.82, 0.50, 1.0),  # coin gold
     text_title=(0.98, 0.82, 0.50, 1.0),  # coin gold — cream was too quiet for titles
+    text_display=(1.0, 0.86, 0.32, 1.0),  # brighter cover-yellow for the hero title
     text_secondary=(0.78, 0.84, 0.90, 1.0),  # sky blue
     row_stripe_even=(0.05, 0.10, 0.13, 0.5),
     row_stripe_odd=(0.13, 0.20, 0.24, 0.5),
@@ -81,6 +84,7 @@ FOUR_COLOR = ReaderTheme(
     accent_selection=(0.21, 0.38, 0.56, 0.85),  # print blue
     app_title=(0.97, 0.94, 0.89, 1.0),  # newsprint cream
     text_title=(0.91, 0.76, 0.44, 1.0),  # old gold
+    text_display=(1.0, 0.87, 0.42, 1.0),  # brighter old gold for the hero title
     text_secondary=(0.78, 0.84, 0.90, 1.0),  # sky blue
     row_stripe_even=(0.04, 0.07, 0.11, 0.55),
     row_stripe_odd=(0.09, 0.16, 0.22, 0.55),
