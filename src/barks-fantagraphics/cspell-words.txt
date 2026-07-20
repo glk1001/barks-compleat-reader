@@ -60,12 +60,14 @@ blabaway
 blackie
 blitzen
 blowsoutski
+bohimaton
 boing
 bolonian
 bombastro
 bombie
 bombie's
 bookdust
+boonehead
 booneheads
 boozled
 bornworthy
@@ -108,6 +110,7 @@ burkina
 butterless
 buzzbomb
 buzzbombers
+cackaruni
 calisota
 canful
 cann's
@@ -173,6 +176,7 @@ crankenshaft's
 crashwagons
 crooge
 crowes
+crowsfoot
 crunchies
 cuspidoria
 daan
@@ -181,6 +185,7 @@ daigle
 daisys
 daltons
 daly
+dancitis
 davey
 debbies
 dedust
@@ -204,6 +209,7 @@ donaldo
 donalds
 doomgurgle
 dorotea
+dryskin
 drywell
 duckburg
 duckburg's
@@ -214,6 +220,7 @@ duckfeathers
 duckmade
 duckmite
 ducko
+duckshire
 duplicatillion
 eagleclaw
 eaglenest
@@ -222,6 +229,7 @@ edgars
 edgerton
 eiprah
 eisseb
+elamduks
 ellic
 elly
 emeraldville
@@ -241,12 +249,18 @@ fakfak
 fanta
 fantagraphics
 fantasticatillion
+fantasticatillions
+fantasticatrillion
 fantasticatrillionaire
+farbakishan
+farbakistan
+fatcatstan
 fatwallet
 feebrunkle's
 felina
 felina's
 fermies
+ferocio
 fignewton
 filt
 finefellows
@@ -255,6 +269,7 @@ fishbait
 fishtrap
 fitte
 fizzlebudget
+flabbyduck
 flamboozled
 fleecem
 flie
@@ -262,6 +277,7 @@ fliegende
 flintgold
 flintheart
 flinthide
+flipism
 floodout
 floyds
 foiler
@@ -316,9 +332,11 @@ gnob
 gnossy
 gnostradamus
 gobblechin
+gobblegoths
 goldbeak
 goldflint
 goldglom
+goldopolis
 goldpursia
 goldstein
 goldwad
@@ -337,6 +355,7 @@ grufflecrow
 grufflecrow's
 gunnison
 gunsmoke
+gussie
 gyroburger
 hackensack
 hagtooth
@@ -344,6 +363,7 @@ halloweeners
 hamfat
 happi
 harpie
+hashknife
 hassan
 haugs
 heartflint
@@ -358,6 +378,7 @@ hobblin
 hogby
 hondorica
 hootless
+hopaka
 hopperful
 hoppity
 horrorstuff
@@ -374,6 +395,7 @@ iglook
 impervi
 impervium
 impossibabillion
+impossibidillion
 indo
 inflammables
 interglobal
@@ -382,6 +404,7 @@ ironheelia
 itsa
 jacinto
 jackalopes
+jackaruni
 jacksnipes
 jaild
 jambo
@@ -398,6 +421,7 @@ joltmobile
 jonesie
 jonesy
 jugneck
+jumbostan
 kaboodle
 kachoonga
 kachoongalese
@@ -406,6 +430,7 @@ kakimaws
 karp
 kelpers
 kess
+kickmiquick
 killmotor
 kimson
 kitts
@@ -429,6 +454,7 @@ looketh
 loonville
 luluduckita
 lurkey
+macaruni
 madball
 magica
 magica's
@@ -490,14 +516,18 @@ menehunes
 milktime
 missilebug
 mogulmobiles
+mollicule
+mollicule's
 moneytubs
 mongoldia
+mongolduks
 mongoosia
 monico
 monsterville
 moolamoola
 moonman
 moonmen
+mooseface
 morganbilt
 mostest
 mothley
@@ -512,6 +542,7 @@ muhen's
 multipadillion
 multiplatillion
 multipludillion
+multuplatillion
 mummys
 murphys
 mushmore
@@ -520,6 +551,7 @@ mythtic
 nacy's
 napoo
 nated
+neverwuzza
 nevvawaza
 newrich
 nhyph
@@ -532,11 +564,12 @@ nosuchium
 numa
 nutmost
 nyce
+oatie
 octeen
 octodecimadillion
 octrillions
-oilcania
 ogilt
+oilcania
 oolated
 osogood
 outfly
@@ -548,6 +581,7 @@ paddleocr
 pago
 pahlsom
 palo
+panamint
 panchita
 panchita's
 pango
@@ -587,6 +621,7 @@ polie
 poncey
 poochley
 poochley's
+poosh
 porkman
 porkmuscle
 porko
@@ -595,6 +630,7 @@ powderburns
 powderhorn
 printz
 profundo
+puckeritis
 puffhard
 puffhards
 pulpbugle
@@ -609,11 +645,15 @@ pyuca
 qparser
 quackenfuzz
 quackers
+quackfaster
+quackfaster's
 quackly
 quacko
 quackville
 quadruplatillion
 quadruplicatillion
+quintagon
+quintiplitilion
 qwak
 qwaks
 qwik
@@ -632,6 +672,8 @@ ritzmore
 riverman
 roboto
 rockdust
+rockerduck
+rockerduck's
 rockhead
 rockhound's
 rockhounds
@@ -642,6 +684,8 @@ rosengarten
 rtom
 sabertooth
 sabrejet
+sagbad
+sagbad's
 sagehen
 sagmore
 sagmore's
@@ -649,6 +693,7 @@ sailorman
 sailormen
 sairy
 salimak
+sandcats
 sandtrap
 santas
 saturnis
@@ -656,6 +701,7 @@ sayeth
 scaremout
 scarpuss
 schemings
+scillions
 scorable
 scroogeville
 scroogie
@@ -675,6 +721,7 @@ señoritas
 señors
 shacktown
 sharktooth
+shrinka
 siestaed
 silvertip
 singlehanded
@@ -686,10 +733,12 @@ skeetertown
 skinem
 skunkbreath
 skyblue
+skyfish
 skyhigh
 skyrillion
 slea
 sleepies
+sleezy
 slyrat
 slyrat's
 smackhard
@@ -739,10 +788,12 @@ sulphuria
 sulphuric
 sumh
 superest
+susiebelle
 sutter's
 swamphole
 swamphole's
 swanville
+sweetums
 swelldorf
 swiggled
 swingingdore
@@ -777,6 +828,7 @@ tralla
 transitt
 travelling
 treatem
+trepaka
 trestleman
 trillionaire
 triplicatillion
@@ -795,11 +847,13 @@ tupec
 turtlemobile
 tweeksdale
 twenny
+typefast
 ulloa
 umble
 umble's
 umbugg
 umptillion
+umtuplatillion
 unca
 unconfigured
 underdid
@@ -807,6 +861,7 @@ ungooed
 unhypnotized
 unkie
 unmilked
+unptuplatillion
 unroasted
 unsmart
 untree
@@ -818,10 +873,12 @@ utterbunk
 valhallian
 valhallians
 valiseful
+vandalcoots
 vaselino
 verdana
 verdugo
 virginny
+visigeese
 volcanovia
 volcanovian
 wagga
@@ -834,6 +891,7 @@ wdcs
 weasling
 weedpatch
 weemite
+weetums
 whambesi
 whambo
 whattisium
@@ -853,8 +911,12 @@ woodchucking
 woogie
 woom
 wormsley
+yapayapayap
+yeeker
+yellowbeak
 yellowpress
 yelly
+yimmini
 yonson
 yonson's
 yootiful
