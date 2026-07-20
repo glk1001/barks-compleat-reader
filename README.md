@@ -174,9 +174,21 @@ change, rebuild them (`bash scripts/build.sh --include-zips`) and run:
 ```
 bash scripts/upload-data-zips.sh
 ```
-It publishes the next `data-vN` release (marked pre-release so it can never become GitHub's
-"Latest") and points `DATA_TAG` in `website/app.html` and the data-pack links in
-`.github/workflows/build.yml` at the new tag — review and commit those changes.
+The script (options: `--zips-dir <dir>`, `--dry-run`, `--yes`):
+
+1. Auto-numbers the next tag from the highest existing `data-vN` release.
+1. Warns if both zips are byte-for-byte the same size as the previous data release's — a
+   sign the data didn't actually change.
+1. Uploads both zips to a **draft** release first, so a failed or partial ~2GB upload is
+   never publicly visible, and verifies the uploaded byte sizes match the local files.
+1. Publishes the release, marked pre-release so it can never become GitHub's "Latest" (the
+   website's version resolver depends on that).
+1. Points `DATA_TAG` in `website/app.html` and the data-pack links in
+   `.github/workflows/build.yml` at the new tag — review and commit those changes.
+
+Publishing a data release creates its `data-vN` tag, but that push doesn't waste CI: the
+build workflow skips app builds for `data-*` tags (they'd build four executables and attach
+nothing).
 
 ## License
 
