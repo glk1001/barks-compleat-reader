@@ -402,8 +402,8 @@ _FIELDS: tuple[FieldSpec, ...] = (
     ),
     FieldSpec(
         key=PNG_BARKS_PANELS_DIR,
-        title="Png Barks Panels Directory",
-        desc="Directory containing Barks panels png images.",
+        title="PNG Barks Panels Directory",
+        desc="Directory containing Barks panels PNG images.",
         kind=FieldKind.LONG_PATH,
         config_default=ReaderFilePaths.get_default_png_barks_panels_source,
         expand_vars=True,
@@ -423,28 +423,28 @@ _FIELDS: tuple[FieldSpec, ...] = (
         title="Carl Barks Wiki Directory",
         desc="Directory of the Carl Barks Wiki knowledge bundle (its root holds"
         " an index.md). Only used when 'Use Live Wiki Bundle' is on; when not"
-        " set, the wiki entry is hidden from the Indexes tree. You need to"
-        " restart the app after changing this.",
+        " set, the wiki entry is hidden from the Indexes tree. (Restart required.)",
         kind=FieldKind.LONG_PATH,
         config_default=UNSET_WIKI_BUNDLE_DIR_MARKER,
         expand_vars=True,
         validator=ReaderSettings._is_valid_wiki_bundle_dir,  # noqa: SLF001
     ),
-    # -- Options --
+    # -- Reading --
     FieldSpec(
         key=DOUBLE_PAGE_MODE,
         title="Double Page Mode",
         desc="Show two pages side-by-side when reading comics.",
         kind=FieldKind.BOOL,
-        section_header="Options",
+        section_header="Reading",
         config_default=0,
     ),
     FieldSpec(
-        key=GOTO_SAVED_NODE_ON_START,
-        title="Goto Last Selection on App Start",
-        desc="When the app starts, goto the last selection in the tree view.",
+        key=GOTO_FULLSCREEN_ON_COMIC_READ,
+        title="Go Straight to Fullscreen for Comic Reading",
+        desc="When you press the comic read button, go straight to fullscreen"
+        " mode to read the comic.",
         kind=FieldKind.BOOL,
-        config_default=1,
+        config_default=0,
     ),
     FieldSpec(
         key=RECORD_READING_HISTORY,
@@ -453,21 +453,38 @@ _FIELDS: tuple[FieldSpec, ...] = (
         kind=FieldKind.BOOL,
         config_default=1,
     ),
+    # -- Appearance --
     FieldSpec(
-        key=CONFIRM_QUIT,
-        title="Confirm Before Quitting",
-        desc="Ask for confirmation when the app close button is pressed.",
+        key=COLOR_THEME,
+        title="Color Theme",
+        desc="Color theme for the app's accents, selection bar, and labels. (Restart required.)",
+        kind=FieldKind.OPTIONS,
+        options=THEME_NAMES,
+        section_header="Appearance",
+        config_default=DEFAULT_THEME_NAME,
+    ),
+    FieldSpec(
+        key=SHOW_TOP_VIEW_TITLE_INFO,
+        title="Show Title Info in Top View",
+        desc="Show the title associated with the top image.",
         kind=FieldKind.BOOL,
         config_default=1,
     ),
     FieldSpec(
-        key=COLOR_THEME,
-        title="Color Theme",
-        desc="Color theme for the app's accents, selection bar, and labels."
-        " You need to restart the app after changing this.",
-        kind=FieldKind.OPTIONS,
-        options=THEME_NAMES,
-        config_default=DEFAULT_THEME_NAME,
+        key=SHOW_FUN_VIEW_TITLE_INFO,
+        title="Show Title Info in Bottom View",
+        desc="Show the title associated with the bottom image.",
+        kind=FieldKind.BOOL,
+        config_default=1,
+    ),
+    # -- Startup --
+    FieldSpec(
+        key=GOTO_SAVED_NODE_ON_START,
+        title="Go to Last Selection on App Start",
+        desc="When the app starts, go to the last selection in the tree view.",
+        kind=FieldKind.BOOL,
+        section_header="Startup",
+        config_default=1,
     ),
     FieldSpec(
         key=GOTO_FULLSCREEN_ON_APP_START,
@@ -476,68 +493,40 @@ _FIELDS: tuple[FieldSpec, ...] = (
         kind=FieldKind.BOOL,
         config_default=0,
     ),
-    FieldSpec(
-        key=GOTO_FULLSCREEN_ON_COMIC_READ,
-        title="Go Straight to Fullscreen for Comic Reading",
-        desc="When you press the comic read button, the app will go straight to"
-        " fullscreen mode to read the comic.",
-        kind=FieldKind.BOOL,
-        config_default=0,
-    ),
-    FieldSpec(
-        key=SHOW_TOP_VIEW_TITLE_INFO,
-        title="Show Title Info in Top View",
-        desc="Set this to true if you want to see the title associated with the top image.",
-        kind=FieldKind.BOOL,
-        config_default=1,
-    ),
-    FieldSpec(
-        key=SHOW_FUN_VIEW_TITLE_INFO,
-        title="Show Title Info in Bottom View",
-        desc="Set this to true if you want to see the title associated with the bottom image.",
-        kind=FieldKind.BOOL,
-        config_default=1,
-    ),
-    FieldSpec(
-        key=IS_FIRST_USE_OF_READER,
-        title="First Use of Reader",
-        desc="Set this to true if this is the first use of the Barks reader. You need"
-        " to restart the app after changing this.",
-        kind=FieldKind.BOOL,
-        config_default=1,
-    ),
-    FieldSpec(
-        key=LOG_LEVEL,
-        title="Log Level",
-        desc="Level of logging information. You need to restart the app before this takes effect.",
-        kind=FieldKind.OPTIONS,
-        options=tuple(LOG_LEVEL_OPTIONS),
-        config_default="INFO",
-    ),
+    # -- Window --
     FieldSpec(
         key=MAIN_WINDOW_HEIGHT,
         title="Main Window Height",
-        desc="Set this to height you want for the main window. The width will be"
-        " automatically calculated from this value. Set to 0 to give the best fit."
-        " You need to restart the app after changing this.",
+        desc="Height for the main window; the width is calculated automatically"
+        " from this value. Set to 0 for the best fit. (Restart required.)",
         kind=FieldKind.INT,
+        section_header="Window",
         config_default=0,
     ),
     FieldSpec(
         key=MAIN_WINDOW_LEFT,
         title="Main Window Left",
-        desc="Set this to the left position of the main window. Set to -1 to give"
-        " a good default position. You need to restart the app after changing this.",
+        desc="Left position of the main window. Set to -1 for a good default"
+        " position. (Restart required.)",
         kind=FieldKind.INT,
         config_default=-1,
     ),
     FieldSpec(
         key=MAIN_WINDOW_TOP,
         title="Main Window Top",
-        desc="Set this to the top position of the main window. Set to -1 to give"
-        " a good default position. You need to restart the app after changing this.",
+        desc="Top position of the main window. Set to -1 for a good default"
+        " position. (Restart required.)",
         kind=FieldKind.INT,
         config_default=-1,
+    ),
+    # -- Controls --
+    FieldSpec(
+        key=CONFIRM_QUIT,
+        title="Confirm Before Quitting",
+        desc="Ask for confirmation when the app close button is pressed.",
+        kind=FieldKind.BOOL,
+        section_header="Controls",
+        config_default=1,
     ),
     FieldSpec(
         key=ALT_ESCAPE_KEY,
@@ -550,16 +539,18 @@ _FIELDS: tuple[FieldSpec, ...] = (
     FieldSpec(
         key=USE_VIRTUAL_KEYBOARD,
         title="Use Virtual Keyboard",
-        desc="Always show an on-screen keyboard when tapping search fields, "
-        "even if a physical keyboard is connected. Requires app restart.",
+        desc="Always show an on-screen keyboard when tapping search fields, even"
+        " if a physical keyboard is connected. (Restart required.)",
         kind=FieldKind.BOOL,
         config_default=0,
     ),
+    # -- Advanced --
     FieldSpec(
         key=USE_PNG_IMAGES,
-        title="Use Png Images",
-        desc="Use png images where possible (needs app RESTART if changed).",
+        title="Use PNG Images",
+        desc="Use PNG images where possible. (Restart required.)",
         kind=FieldKind.BOOL,
+        section_header="Advanced",
         config_default=1,
         validator=ReaderSettings._is_valid_use_png_images,  # noqa: SLF001
     ),
@@ -574,12 +565,27 @@ _FIELDS: tuple[FieldSpec, ...] = (
     FieldSpec(
         key=USE_LIVE_WIKI_BUNDLE,
         title="Use Live Wiki Bundle",
-        desc="Use the 'Carl Barks Wiki Directory' setting instead of the copy"
-        " in the Reader Files folder. You need to restart the app after"
-        " changing this.",
+        desc="Use the 'Carl Barks Wiki Directory' setting instead of the copy in"
+        " the Reader Files folder. (Restart required.)",
         kind=FieldKind.BOOL,
         config_default=0,
         validator=ReaderSettings._is_valid_use_live_wiki_bundle,  # noqa: SLF001
+    ),
+    FieldSpec(
+        key=LOG_LEVEL,
+        title="Log Level",
+        desc="Level of logging information. (Restart required.)",
+        kind=FieldKind.OPTIONS,
+        options=tuple(LOG_LEVEL_OPTIONS),
+        config_default="INFO",
+    ),
+    FieldSpec(
+        key=IS_FIRST_USE_OF_READER,
+        title="First Use of Reader",
+        desc="Treat the next launch as a first run, re-running first-use setup."
+        " (Restart required.)",
+        kind=FieldKind.BOOL,
+        config_default=1,
     ),
     # -- Controversial Censorship Fixes --
     FieldSpec(

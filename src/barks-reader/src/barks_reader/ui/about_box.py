@@ -6,18 +6,23 @@ from kivy.uix.label import Label
 
 from barks_reader._version import COPYRIGHT_YEARS, VERSION
 from barks_reader.core.reader_consts_and_types import APP_TITLE, FANTAGRAPHICS_BARKS_LIBRARY
+from barks_reader.core.reader_palette import theme
 
 from .font_manager import FontManager
 from .kivy_standalone_show_message import show_standalone_popup
 
 ABOUT_POPUP_TITLE = "About the Barks Reader"
 
-TITLE_TEXT_COLOR = (0.0, 0.0, 0.0, 1)
-VERSION_TEXT_COLOR = (0.0, 0.0, 0.0, 1)
-OTHER_TEXT_COLOR = (0.0, 0.0, 0.0, 1)
+# Warm near-black scrim over the background art so the gold/cream text reads
+# on-brand — the same "art under a dark scrim" language as the rest of the app,
+# replacing the old white wash with black text.
+ABOUT_WRAPPER_SCRIM = (0.14, 0.12, 0.10, 0.38)
 
 
 def show_about_box(font_manager: FontManager, about_background_path: Path) -> None:
+    title_text_color = list(theme().text_display)  # bright cover-yellow hero
+    version_text_color = list(theme().app_title)  # coin gold
+    other_text_color = list(theme().text_secondary)  # newsprint cream
     # --- Main container for the About dialog ---
     content = BoxLayout(
         orientation="vertical",
@@ -29,9 +34,9 @@ def show_about_box(font_manager: FontManager, about_background_path: Path) -> No
     content.add_widget(
         Label(
             text=APP_TITLE,
-            size_hint=(1, 0.07),
+            size_hint=(1, 0.12),
             bold=True,
-            color=TITLE_TEXT_COLOR,
+            color=title_text_color,
             font_size=round(font_manager.about_box_title_font_size),
             font_name=font_manager.about_box_title_font_name,
             halign="center",
@@ -43,7 +48,7 @@ def show_about_box(font_manager: FontManager, about_background_path: Path) -> No
     content.add_widget(
         Label(
             text=f"Version {VERSION}",
-            color=VERSION_TEXT_COLOR,
+            color=version_text_color,
             bold=True,
             font_size=round(font_manager.about_box_version_font_size),
             halign="center",
@@ -70,7 +75,7 @@ def show_about_box(font_manager: FontManager, about_background_path: Path) -> No
     fan_project_text = textwrap.fill(
         textwrap.dedent(
             f"""
-        This project is a fan-made reader utility for the [/i]"{FANTAGRAPHICS_BARKS_LIBRARY}.[i]"
+        This project is a fan-made reader utility for the "{FANTAGRAPHICS_BARKS_LIBRARY}."
         It is not affiliated with, endorsed by, or sponsored by The Walt Disney Company or
         Fantagraphics Books. Donald Duck, Uncle Scrooge, and related characters are trademarks of
         The Walt Disney Company.
@@ -92,12 +97,12 @@ def show_about_box(font_manager: FontManager, about_background_path: Path) -> No
 
 [size={fan_font_size}][i]{fan_project_text}[/i][/size]
             """,
-            color=OTHER_TEXT_COLOR,
+            color=other_text_color,
             markup=True,
             font_size=font_manager.about_box_fine_print_font_size,
             halign="center",
             valign="middle",
-            size_hint=(1, 0.25),
+            size_hint=(1, 1),
         )
     )
 
@@ -110,4 +115,5 @@ def show_about_box(font_manager: FontManager, about_background_path: Path) -> No
         auto_dismiss=True,
         add_close_button=True,
         background_image_file=about_background_path,
+        wrapper_scrim=ABOUT_WRAPPER_SCRIM,
     )

@@ -7,9 +7,16 @@ from typing import Any
 
 from loguru import logger
 
+from barks_reader.core.reader_palette import theme
+
 from .reader_keyboard_nav import is_escape_key
 
 _SAME_SIZE_CUTOFF_PX = 10
+
+# Default content-wrapper scrim: a light wash over the background art. Error
+# popups render dark text on this, so it must stay light. The About box passes
+# a dark scrim instead so gold/cream text reads on-brand over the same art.
+_LIGHT_WRAPPER_SCRIM: tuple[float, float, float, float] = (1.0, 1.0, 1.0, 0.4)
 
 
 # --- Light divider line widget ---
@@ -35,8 +42,24 @@ def show_standalone_popup(  # noqa: C901, PLR0915
     auto_dismiss: bool = False,
     add_close_button: bool = True,
     background_image_file: Path | None = None,
+    wrapper_scrim: tuple[float, float, float, float] | None = None,
 ) -> None:
-    """Show a popup even if no Kivy app or event loop is running."""
+    """Show a popup even if no Kivy app or event loop is running.
+
+    Args:
+        title: Text for the popup's title bar.
+        content: The widget to place inside the popup.
+        size_hint: Popup size as a fraction of the window.
+        timeout: Auto-dismiss after this many seconds (0 = wait for the user).
+        auto_dismiss: Whether clicking outside the popup dismisses it.
+        add_close_button: Whether to show the title-bar close button.
+        background_image_file: Optional image drawn behind the content.
+        wrapper_scrim: RGBA scrim drawn over the background art behind the
+            content. Defaults to a light wash (``_LIGHT_WRAPPER_SCRIM``); pass a
+            dark scrim for popups that render light, on-brand text.
+
+    """
+    scrim = wrapper_scrim if wrapper_scrim is not None else _LIGHT_WRAPPER_SCRIM
     from kivy.app import App
     from kivy.base import EventLoop, runTouchApp, stopTouchApp
     from kivy.clock import Clock
@@ -64,10 +87,12 @@ def show_standalone_popup(  # noqa: C901, PLR0915
             Color(0, 0, 0, 0.1)
             shadow_rect = Rectangle(pos=(title_bar.x, title_bar.y - 4), size=(title_bar.width, 6))
 
-            # Gradient simulation: two stacked rectangles.
-            Color(0.12, 0.28, 0.54, 1)  # top
+            # Gradient simulation: two stacked rectangles. Warm near-black chrome
+            # so the title bar matches the app's dark chrome instead of the old
+            # programmer-blue that clashed with the gold/cream palette.
+            Color(0.10, 0.09, 0.08, 1)  # top
             top_rect = Rectangle(pos=(title_bar.x, title_bar.y + 28), size=(title_bar.width, 28))
-            Color(0.15, 0.32, 0.60, 1)  # bottom
+            Color(0.14, 0.12, 0.10, 1)  # bottom
             bottom_rect = Rectangle(pos=(title_bar.x, title_bar.y), size=(title_bar.width, 28))
 
         def update_title_bg(inst: Widget, _val) -> None:  # noqa: ANN001
@@ -83,7 +108,7 @@ def show_standalone_popup(  # noqa: C901, PLR0915
         # --- Title label ---
         title_label = Label(
             text=title,
-            color=[1, 1, 1, 1],
+            color=list(theme().app_title),
             font_size="18sp",
             bold=True,
             halign="left",
@@ -99,7 +124,7 @@ def show_standalone_popup(  # noqa: C901, PLR0915
                 size_hint=(None, 1),
                 width=44,
                 background_normal="",
-                background_color=[0.86, 0.2, 0.2, 0.5],
+                background_color=[*theme().danger[:3], 0.85],
                 color=[1, 1, 1, 1],
                 font_size="16sp",
             )
@@ -135,8 +160,8 @@ def show_standalone_popup(  # noqa: C901, PLR0915
                     radius=[12],
                 )
 
-            # White rounded background (semi-transparent) OVER the image
-            Color(1, 1, 1, 0.4)
+            # Scrim over the image (light by default; dark for on-brand popups).
+            Color(*scrim)
             wrapper_bg = RoundedRectangle(
                 pos=content_wrapper.pos, size=content_wrapper.size, radius=[12]
             )

@@ -67,7 +67,12 @@ from .reader_screens import (
 from .reader_settings_buildable import BuildableReaderSettings
 from .screen_bundle import ScreenBundle
 from .search_screen import SEARCH_SCREEN_KV_FILE, SearchScreen
-from .settings_fix import SettingAltEscapeKey, SettingLongPath, SettingOptionsWithValue
+from .settings_fix import (
+    SettingAltEscapeKey,
+    SettingLongPath,
+    SettingOptionsWithValue,
+    install_settings_theme_kv,
+)
 from .speech_index_screen import SpeechIndexScreen
 from .statistics_screen import STATISTICS_SCREEN_KV_FILE, StatisticsScreen
 from .tree_view_nodes import READER_TREE_VIEW_KV_FILE, ReaderTreeBuilderEventDispatcher
@@ -309,6 +314,7 @@ class BarksReaderApp(App):
 
         set_alt_escape_key(self.reader_settings.get_alt_escape_key())
         set_active_theme(self.reader_settings.color_theme)
+        install_settings_theme_kv()
         Window.bind(on_key_down=_dismiss_top_popup_on_alt_escape)
 
         if self.reader_settings.use_virtual_keyboard:

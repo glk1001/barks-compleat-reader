@@ -13,9 +13,23 @@ from kivy.uix.settings import SettingItem, SettingOptions
 from kivy.uix.widget import Widget
 from loguru import logger
 
+from barks_reader.core.reader_palette import Color, theme
+
 from .alt_escape_capture_popup import AltEscapeCapturePopup, keycode_to_name
 from .reader_keyboard_nav import set_alt_escape_key
 
+
+def _rgba(color: Color, alpha: float | None = None) -> str:
+    """Return an ``r, g, b, a`` KV literal for ``color`` (optionally forcing alpha)."""
+    r, g, b = color[:3]
+    a = alpha if alpha is not None else (color[3] if len(color) > 3 else 1.0)  # noqa: PLR2004
+    return f"{r}, {g}, {b}, {a}"
+
+
+# Color tokens are substituted from the active theme in ``install_settings_theme_kv``
+# (called after ``set_active_theme``), so the settings panel selection bar, file
+# chooser, and popup buttons speak the same palette as the rest of the app rather
+# than the old fixed programmer-blue.
 KV_SETTINGS_OVERRIDE = """
 <-SettingItem>:
     size_hint: .25, None
@@ -23,7 +37,7 @@ KV_SETTINGS_OVERRIDE = """
     content: content
     canvas:
         Color:
-            rgba: 47 / 255., 167 / 255., 212 / 255., self.selected_alpha
+            rgba: __SEL_RGB__, self.selected_alpha
         Rectangle:
             pos: self.x, self.y + 1
             size: self.size
@@ -85,7 +99,7 @@ KV_SETTINGS_OVERRIDE = """
 <FileListEntry>:
     canvas.before:
         Color:
-            rgba: (0.2, 0.4, 0.7, 1) if self.is_selected else (0.18, 0.18, 0.18, 1)
+            rgba: (__SEL_RGBA__) if self.is_selected else (0.18, 0.18, 0.18, 1)
         Rectangle:
             pos: self.pos
             size: self.size
@@ -95,7 +109,7 @@ KV_SETTINGS_OVERRIDE = """
     title_align: "center"
     auto_dismiss: False
     size_hint: 0.8, 0.8
-    separator_color: 0.3, 0.5, 0.8, 1
+    separator_color: __SEL_RGBA__
     title_color: 1, 1, 1, 1
 
     BoxLayout:
@@ -132,8 +146,8 @@ KV_SETTINGS_OVERRIDE = """
                 padding_y: [self.height / 2.0 - (self.line_height / 2.0) * len(self._lines), 0]
                 on_text_validate: root.select_path(self.text)
                 background_color: 0.2, 0.2, 0.2, 1
-                foreground_color: 1, 1, 0, 1
-                cursor_color: 0.3, 0.6, 0.9, 1
+                foreground_color: __TEXT_TITLE_RGBA__
+                cursor_color: __FOCUS_RGBA__
 
         # The FileChooser takes up the main space
         CustomFileChooserListView:
@@ -152,13 +166,13 @@ KV_SETTINGS_OVERRIDE = """
                 text: 'Select'
                 bold: True
                 on_release: root.select_path(path_input.text)
-                background_color: 0.3, 0.6, 0.9, 1
+                background_color: __SEL_RGBA__
                 color: 1, 1, 1, 1
 
             Button:
                 text: 'Cancel'
                 on_release: root.dismiss()
-                background_color: 0.7, 0.3, 0.3, 1
+                background_color: __DANGER_RGBA__
                 color: 1, 1, 1, 1
 """
 
@@ -214,7 +228,35 @@ class CustomFileChooserListView(FileChooserListView):
 
 # Register the custom widget before loading KV.
 Factory.register("CustomFileChooserListView", cls=CustomFileChooserListView)
-Builder.load_string(KV_SETTINGS_OVERRIDE)
+
+_settings_kv_installed = False
+
+
+def _themed_settings_kv() -> str:
+    """Return the settings KV with color tokens filled in from the active theme."""
+    t = theme()
+    sel = t.accent_selection
+    sel_rgb = f"{sel[0]}, {sel[1]}, {sel[2]}"
+    return (
+        KV_SETTINGS_OVERRIDE.replace("__SEL_RGBA__", _rgba(sel, alpha=1.0))
+        .replace("__SEL_RGB__", sel_rgb)
+        .replace("__TEXT_TITLE_RGBA__", _rgba(t.text_title, alpha=1.0))
+        .replace("__FOCUS_RGBA__", _rgba(t.focus_ring, alpha=1.0))
+        .replace("__DANGER_RGBA__", _rgba(t.danger, alpha=1.0))
+    )
+
+
+def install_settings_theme_kv() -> None:
+    """Load the settings-panel KV, themed from the active palette.
+
+    Must be called after ``set_active_theme`` and before the settings panel is
+    built. Idempotent: repeated calls are no-ops.
+    """
+    global _settings_kv_installed  # noqa: PLW0603
+    if _settings_kv_installed:
+        return
+    Builder.load_string(_themed_settings_kv())
+    _settings_kv_installed = True
 
 
 class SettingLongPathPopup(Popup):
