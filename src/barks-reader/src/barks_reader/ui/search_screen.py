@@ -704,9 +704,9 @@ class SearchScreen(FloatLayout):
         logger.debug("SearchScreen: exited nav focus.")
 
     def handle_key(self, key: int) -> bool:
-        if self._popup_nav.is_open:
-            return self._popup_nav.handle_key(key)
-
+        # While the speech-bubble popup is open it owns the keyboard directly via
+        # its own Window binding (see PopupKeyboardNav), so this handler is not
+        # reached — the modal-popup guard in main_screen yields first.
         if not self._nav_active:
             return False
 

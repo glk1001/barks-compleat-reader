@@ -12,6 +12,7 @@ from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from comic_utils.timing import Timing
 from kivy.app import App
 from kivy.clock import Clock
+from kivy.core.window import Window
 from kivy.graphics import Color, Line
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
@@ -176,6 +177,12 @@ class PopupKeyboardNav:
 
     Handles up/down/enter/escape/page-up/page-down to navigate
     TextBoxWithTitleAndBorder entries inside the popup's ScrollView.
+
+    The popup is a modal ``Popup`` (``ModalView``), so the main screen's key
+    handler yields to it (see ``_modal_popup_is_open`` in ``main_screen``). This
+    helper therefore owns its own ``Window.on_key_down`` binding while open —
+    bound after the main handler so it sees the key — mirroring the confirm
+    popup's ``_ConfirmPopupNav``.
     """
 
     def __init__(self, popup: SpeechBubblesPopup) -> None:
@@ -207,10 +214,20 @@ class PopupKeyboardNav:
 
     def _on_opened(self, *_args: object) -> None:
         self._focused_idx = 0
+        Window.bind(on_key_down=self._on_key_down)
         Clock.schedule_once(lambda _dt: self._draw_focus(), 0)
 
     def _on_dismissed(self, *_args: object) -> None:
+        Window.unbind(on_key_down=self._on_key_down)
         self._clear_focus()
+
+    def _on_key_down(
+        self, _win: object, key: int, _scancode: int, _codepoint: str, _modifiers: list[str]
+    ) -> bool:
+        self.handle_key(key)
+        # Consume every key while the popup is modal, so nothing leaks to the
+        # background tree/search widgets underneath.
+        return True
 
     def _move_focus(self, delta: int) -> None:
         entries = self._get_entries()

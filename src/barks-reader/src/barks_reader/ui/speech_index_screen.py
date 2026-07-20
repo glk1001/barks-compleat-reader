@@ -229,8 +229,9 @@ class SpeechIndexScreen(IndexScreen):
 
     @override
     def handle_key(self, key: int) -> bool:
-        if self._popup_nav.is_open:
-            return self._popup_nav.handle_key(key)
+        # The speech-bubble popup owns the keyboard directly via its own Window
+        # binding (see PopupKeyboardNav) while open, so this handler is not reached
+        # then — the modal-popup guard in main_screen yields first.
         if self._nav_panel == _IndexNavPanel.PREFIX and self._nav_active:
             return self._handle_prefix_key(key)
         return super().handle_key(key)

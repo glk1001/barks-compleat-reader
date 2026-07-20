@@ -9,11 +9,13 @@ import barks_reader.ui.index_screen
 import pytest
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.ui.index_screen import (
+    KEY_DOWN,
     SAVED_NODE_STATE_FIRST_LETTER_KEY,
     IndexItem,
     IndexItemButton,
     IndexMenuButton,
     IndexScreen,
+    PopupKeyboardNav,
 )
 from barks_reader.ui.tree_view_nodes import MainTreeViewNode
 
@@ -274,3 +276,44 @@ class TestIndexScreen:
         index_screen._current_image_info = info
         index_screen.on_goto_background_title()
         mock_func.assert_called_with(info)
+
+
+class TestPopupKeyboardNavWindowBinding:
+    """The speech-bubble popup owns the keyboard via its own Window binding.
+
+    The main screen yields to the modal popup (see `_modal_popup_is_open`), so the
+    nav helper must bind `Window.on_key_down` itself to receive keys while open.
+    """
+
+    @staticmethod
+    def _make_nav() -> PopupKeyboardNav:
+        return PopupKeyboardNav(MagicMock())
+
+    def test_on_opened_binds_window_key_handler(self) -> None:
+        nav = self._make_nav()
+        with (
+            patch.object(barks_reader.ui.index_screen, "Window") as window,
+            patch.object(barks_reader.ui.index_screen, "Clock"),
+        ):
+            nav._on_opened()
+
+        window.bind.assert_called_once_with(on_key_down=nav._on_key_down)
+
+    def test_on_dismissed_unbinds_window_key_handler(self) -> None:
+        nav = self._make_nav()
+        with (
+            patch.object(barks_reader.ui.index_screen, "Window") as window,
+            patch.object(PopupKeyboardNav, "_clear_focus"),
+        ):
+            nav._on_dismissed()
+
+        window.unbind.assert_called_once_with(on_key_down=nav._on_key_down)
+
+    def test_on_key_down_delegates_to_handle_key_and_consumes(self) -> None:
+        nav = self._make_nav()
+        with patch.object(PopupKeyboardNav, "handle_key") as handle_key:
+            consumed = nav._on_key_down(object(), KEY_DOWN, 0, "", [])
+
+        handle_key.assert_called_once_with(KEY_DOWN)
+        # Every key is consumed while the popup is modal, so nothing leaks.
+        assert consumed is True
