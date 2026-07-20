@@ -6,18 +6,47 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core import reader_formatter
-from barks_reader.core.reader_formatter import INVISIBLE_BREAK
+from barks_reader.core.reader_formatter import SOFT_HYPHEN
 
 
 def test_hyphenate_text() -> None:
     text = "hyphenation"
     res = reader_formatter.hyphenate_text(text)
-    assert reader_formatter.INVISIBLE_BREAK in res
+    assert SOFT_HYPHEN in res
+
+
+def test_hyphenate_text_skips_markup_and_paragraph_tokens() -> None:
+    text = "[i]hyphenation[/i] paragraphs\n\nhyphenation &amp; hyphenation"
+    res = reader_formatter.hyphenate_text(text)
+    assert SOFT_HYPHEN not in res.split(" ")[0]  # markup token untouched
+    assert SOFT_HYPHEN not in res.split(" ")[1]  # newline token untouched
+    assert SOFT_HYPHEN not in res.split(" ")[2]  # ampersand token untouched
+    assert SOFT_HYPHEN in res.split(" ")[3]
 
 
 # `escape_kivy_markup` is the inlined replacement for `kivy.utils.escape_markup`.
 # Pin its behavior so a future "simplification" can't silently break Kivy text
 # rendering anywhere the helper is called from.
+class TestEscapeEditorialBrackets:
+    def test_keeps_real_markup_tags(self) -> None:
+        text = "[i]Duck Man[/i] and [b]Scrooge[/b]"
+        assert reader_formatter.escape_editorial_brackets(text) == text
+
+    def test_escapes_literal_editorial_brackets(self) -> None:
+        text = "using him [actually, the second time] I established"
+        assert reader_formatter.escape_editorial_brackets(text) == (
+            "using him &bl;actually, the second time&br; I established"
+        )
+
+    def test_escapes_around_real_markup(self) -> None:
+        text = "[i]note [aside] here[/i]"
+        assert reader_formatter.escape_editorial_brackets(text) == "[i]note &bl;aside&br; here[/i]"
+
+    def test_leaves_existing_entities_untouched(self) -> None:
+        text = "the &bl;It&br; accidentally"
+        assert reader_formatter.escape_editorial_brackets(text) == text
+
+
 class TestEscapeKivyMarkup:
     def test_escapes_left_bracket(self) -> None:
         assert reader_formatter.escape_kivy_markup("[") == "&bl;"
@@ -357,7 +386,7 @@ class TestReaderFormatterClass:
         mock_extra_info.__getitem__.return_value = "Extra Info"
 
         res = reader_formatter.ReaderFormatter.get_title_extra_info(fanta_info)
-        assert res == f"Ex{INVISIBLE_BREAK}tra In{INVISIBLE_BREAK}fo"
+        assert res == f"Ex{SOFT_HYPHEN}tra In{SOFT_HYPHEN}fo"
 
         # Unknown title
         fanta_info.comic_book_info.title = "Unknown"

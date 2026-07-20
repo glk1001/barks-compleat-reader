@@ -22,6 +22,7 @@ from barks_fantagraphics.comics_utils import (
 from barks_fantagraphics.fanta_comics_info import FAN, FANTA_SOURCE_COMICS, FantaComicBookInfo
 from comic_utils.cpi_calculator import get_adjusted_usd
 
+from .hyphen_break_engine import NO_BREAK_CHARS, SOFT_HYPHEN
 from .reader_consts_and_types import CLOSE_TO_ZERO
 from .reader_utils import get_concat_page_nums_str
 
@@ -53,9 +54,32 @@ LONG_TITLE_SPLITS = {
 # build, where pyphen's bundled dictionaries sit alongside the package.
 _PYPHEN_DICT_FILE = Path(pyphen.__file__).parent / "dictionaries" / "hyph_en_US.dic"
 PYPHEN_DICT = pyphen.Pyphen(filename=str(_PYPHEN_DICT_FILE))
-INVISIBLE_BREAK = "[size=0][color=00000000] [/color][/size]"
 BOLD_TAG_PATTERN = re.compile(r"\[b](.*)\[/b]")
 MARKUP_TAG_PATTERN = re.compile(r"\[/?[^]]+]")
+
+# The only real Kivy markup tags in BARKS_EXTRA_INFO; every other square-bracket run
+# is literal editorial text (e.g. "[actually, ...]").
+_KIVY_MARKUP_TAG = re.compile(r"\[/?[bi]]")
+
+
+def escape_editorial_brackets(text: str) -> str:
+    """Escape literal square brackets that are not Kivy ``[b]``/``[i]`` markup.
+
+    ``BARKS_EXTRA_INFO`` mixes real markup with literal editorial brackets like
+    ``[actually, ...]``. Kivy renders an unknown bracket run literally, which is fine
+    alone — but the ``[ref]`` tags the hyphenation layer injects (see
+    ``barks_reader.ui.hyphen_label``) get swallowed by an unclosed literal bracket
+    under Kivy's non-greedy tag parsing. Converting literal brackets to ``&bl;``/``&br;``
+    entities keeps them visible while leaving ``[b]``/``[i]``/``[ref]`` intact.
+    """
+    parts: list[str] = []
+    last = 0
+    for match in _KIVY_MARKUP_TAG.finditer(text):
+        parts.append(text[last : match.start()].replace("[", "&bl;").replace("]", "&br;"))
+        parts.append(match.group())
+        last = match.end()
+    parts.append(text[last:].replace("[", "&bl;").replace("]", "&br;"))
+    return "".join(parts)
 
 
 class FontManagerProtocol(Protocol):
@@ -64,15 +88,20 @@ class FontManagerProtocol(Protocol):
 
 
 def hyphenate_text(text: str) -> str:
-    """Hyphenate text that Kivy can handle.
+    """Mark hyphenation points in text with soft hyphens (U+00AD).
 
-    By default, Kivy cannot reliably process soft hyphens so we need a markup trick.
+    The markers are invisible break hints only: the UI layer
+    (``barks_reader.ui.hyphen_label.HyphenatingLabel``) decides where lines actually
+    break and renders a real hyphen at exactly those points. Tokens containing Kivy
+    markup characters or newlines are passed through unmarked so a marker can never
+    land inside a markup tag or a paragraph break.
     """
-    # The Magic Trick:
-    # 1. A space allows Kivy to wrap the line.
-    # 2. [size=0] makes the space invisible and 0 width.
-    # 3. [color=00000000] is a backup to ensure it's fully transparent.
-    return " ".join(PYPHEN_DICT.inserted(word, hyphen=INVISIBLE_BREAK) for word in text.split(" "))
+    return " ".join(
+        word
+        if any(c in word for c in NO_BREAK_CHARS)
+        else PYPHEN_DICT.inserted(word, hyphen=SOFT_HYPHEN)
+        for word in text.split(" ")
+    )
 
 
 def get_bold_markup_text(text: str) -> str:
@@ -209,7 +238,7 @@ class ReaderFormatter:
         if title not in BARKS_EXTRA_INFO:
             return ""
 
-        return hyphenate_text(BARKS_EXTRA_INFO[title])
+        return hyphenate_text(escape_editorial_brackets(BARKS_EXTRA_INFO[title]))
 
 
 def mark_phrase_in_text(phrase: str, target_text: str, start_tag: str, end_tag: str) -> str:

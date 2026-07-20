@@ -23,6 +23,9 @@ from barks_reader.core.reader_formatter import LONG_TITLE_SPLITS, ReaderFormatte
 from barks_reader.core.reader_utils import title_needs_footnote
 from barks_reader.core.wiki_integration import wiki_page_for_title
 
+# HyphenatingLabel must be imported (Factory-registered) before this screen's kv
+# rule instantiates the ExtraInfoLabel dynamic class.
+from .hyphen_label import HyphenatingLabel  # noqa: F401
 from .panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:

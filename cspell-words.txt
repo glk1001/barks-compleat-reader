@@ -47,6 +47,7 @@ façade
 fcbi
 figsize
 fillvalue
+fixpoint
 fontsize
 fontstyle
 fontweight
@@ -58,6 +59,7 @@ graphify
 hardbreak
 hidinput
 hitbox
+hyphenatable
 idempotently
 importlinter
 imread
