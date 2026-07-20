@@ -6,6 +6,7 @@ from kivy.input import MotionEvent
 from kivy.lang import Builder
 from kivy.properties import ObjectProperty, StringProperty  # ty: ignore[unresolved-import]
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
 from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
@@ -174,6 +175,29 @@ KV_SETTINGS_OVERRIDE = """
                 on_release: root.dismiss()
                 background_color: __DANGER_RGBA__
                 color: 1, 1, 1, 1
+
+# Corner close affordance for the (menu-less) settings panel: the app's own
+# close glyph, theme-tinted, on a warm near-black rounded chip. Mouse users get
+# a visible Close; keyboard/remote still closes with Escape.
+<SettingsCloseButton>:
+    background_normal: ''
+    background_down: ''
+    background_color: 0, 0, 0, 0
+    canvas.before:
+        Color:
+            rgba: 0.12, 0.10, 0.08, 0.82
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(6)]
+    Image:
+        source: root.icon_source
+        color: __ICON_TINT_RGBA__
+        fit_mode: 'contain'
+        mipmap: True
+        opacity: 0.6 if root.state == 'down' else 1.0
+        pos: root.x + dp(9), root.y + dp(9)
+        size: root.width - dp(18), root.height - dp(18)
 """
 
 
@@ -226,8 +250,15 @@ class CustomFileChooserListView(FileChooserListView):
         self._update_files()
 
 
-# Register the custom widget before loading KV.
+class SettingsCloseButton(Button):
+    """Corner close affordance for the menu-less settings panel (styled in KV)."""
+
+    icon_source = StringProperty("")
+
+
+# Register the custom widgets before loading KV.
 Factory.register("CustomFileChooserListView", cls=CustomFileChooserListView)
+Factory.register("SettingsCloseButton", cls=SettingsCloseButton)
 
 _settings_kv_installed = False
 
@@ -243,6 +274,7 @@ def _themed_settings_kv() -> str:
         .replace("__TEXT_TITLE_RGBA__", _rgba(t.text_title, alpha=1.0))
         .replace("__FOCUS_RGBA__", _rgba(t.focus_ring, alpha=1.0))
         .replace("__DANGER_RGBA__", _rgba(t.danger, alpha=1.0))
+        .replace("__ICON_TINT_RGBA__", _rgba(t.icon_tint, alpha=1.0))
     )
 
 

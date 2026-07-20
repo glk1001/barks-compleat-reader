@@ -9,6 +9,7 @@ from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.factory import Factory
+from kivy.metrics import dp
 from kivy.properties import BooleanProperty, StringProperty  # ty: ignore[unresolved-import]
 from kivy.uix.modalview import ModalView
 from kivy.uix.screenmanager import Screen
@@ -154,6 +155,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         Window.bind(on_key_down=self._on_key_down)
 
         self._settings_nav: SettingsKeyboardNav | None = None
+        self._settings_close_button: Widget | None = None
         self._active = True
 
         self._set_initial_state()
@@ -391,15 +393,50 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         self._settings_nav = SettingsKeyboardNav(settings)
         settings.bind(on_close=self._on_settings_closed)
+        self._add_settings_close_button(app_window, settings)
 
         return True
 
+    def _add_settings_close_button(self, app_window: Widget, settings: Widget) -> None:
+        """Overlay a corner close button on the (menu-less) settings panel.
+
+        The no-menu settings widget has no Close button of its own, so mouse
+        users get this on-brand corner affordance; keyboard/remote still closes
+        with Escape. It is anchored to the settings panel's top-right corner.
+        """
+        close_button = Factory.SettingsCloseButton(
+            size_hint=(None, None),
+            size=(dp(40), dp(40)),
+            icon_source=str(
+                self._reader_settings.sys_file_paths.get_barks_reader_close_icon_file()
+            ),
+        )
+        close_button.bind(on_release=lambda *_: self._close_settings())
+
+        def _place(*_: object) -> None:
+            close_button.right = settings.right - dp(12)
+            close_button.top = settings.top - dp(12)
+
+        settings.bind(pos=_place, size=_place)
+        app_window.add_widget(close_button)
+        _place()
+        self._settings_close_button = close_button
+
+    def _remove_settings_close_button(self) -> None:
+        if self._settings_close_button is not None:
+            parent = self._settings_close_button.parent
+            if parent is not None:
+                parent.remove_widget(self._settings_close_button)
+            self._settings_close_button = None
+
     def _on_settings_closed(self, *_args: object) -> None:
+        self._remove_settings_close_button()
         if self._settings_nav is not None:
             self._settings_nav.reset()
             self._settings_nav = None
 
     def _close_settings(self) -> None:
+        self._remove_settings_close_button()
         if self._settings_nav is not None:
             self._settings_nav.reset()
             self._settings_nav = None
