@@ -17,4 +17,4 @@ All application-level code resides in the `src/` directory.
 *   Use `str | None` for optional types, not `Optional[str]`.
 *   All public functions must have Google-style docstrings.
 *   Code formatting is handled by `ruff`.
-*   Type checking is handled by `ty` (the gate); `pyrefly` is available as an advisory, non-gating second checker (`bash scripts/pyrefly.sh`).
+*   Type checking is gated by both `ty` and `pyrefly` (`bash scripts/pyrefly.sh`; pyrefly must be 0-new vs `pyrefly-baseline.json`).

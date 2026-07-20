@@ -1,10 +1,10 @@
-# pyrefly.toml — advisory (non-gating) second type checker.
+# pyrefly.toml — second type checker, gated alongside `ty`.
 #
-# `ty` (see ty.toml) remains the sole CI / pre-commit gate. pyrefly is an
-# additional, much faster second opinion, run on demand via `scripts/pyrefly.sh`
-# or `uv run pyrefly check`. It is tuned here — via config, not inline comments —
-# to suppress the two structural noise buckets that Kivy's untyped, compiled
-# codebase produces, so its output stays high-signal.
+# pyrefly runs in CI, pre-commit, and `scripts/full-lint.sh` (and on demand via
+# `scripts/pyrefly.sh` / `uv run pyrefly check`). It must report 0 new findings
+# vs `pyrefly-baseline.json` for the gate to pass. It is tuned here — via config,
+# not inline comments — to suppress the structural noise buckets that Kivy's
+# untyped, compiled codebase produces, so only real regressions fail the gate.
 
 # Mirror ty.toml's environment: the six uv-workspace src roots + the app venv.
 project-includes = [

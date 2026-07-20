@@ -1,15 +1,10 @@
 #!/bin/bash
-# ADVISORY, NON-GATING second-opinion type check with pyrefly.
+# On-demand pyrefly run. pyrefly is a GATE (CI, pre-commit, full-lint.sh) run
+# alongside ty; this script is the convenience entry point + baseline refresher.
 #
-# `ty` (scripts/git-ty.sh, scripts/full-lint.sh, CI) remains the sole gate.
-# pyrefly is much faster and stricter about nullability; run this on demand to
-# surface latent issues ty does not flag. Its findings are informational — they
-# are deliberately NOT part of the lint gate or pre-commit/CI, and a non-zero
-# exit here does not fail any build. Config + rationale live in pyrefly.toml.
-#
-# Current residual findings are grandfathered in pyrefly-baseline.json (wired via
-# pyrefly.toml), so a clean run reports "0 errors" and only NEW issues surface.
-# After intentionally changing that set, refresh it:
+# Residual findings are grandfathered in pyrefly-baseline.json (wired via
+# pyrefly.toml), so a clean run reports "0 errors" and only NEW issues surface
+# (and fail the gate). After intentionally changing that set, refresh it:
 #     bash scripts/pyrefly.sh --update-baseline
 
 set -uo pipefail
@@ -24,5 +19,5 @@ if [[ ! -f src/barks-reader/src/barks_reader/_version.py ]]; then
     exit 1
 fi
 
-echo "==== pyrefly (advisory — not a gate) ===="
+echo "==== pyrefly ===="
 uv run pyrefly check "$@"

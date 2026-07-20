@@ -47,12 +47,11 @@ uv run ruff format .
 uv run ty check
 ```
 
-**Type-check (pyrefly — advisory second opinion, non-gating):**
-`ty` is the gate; `pyrefly` is a much faster, stricter-on-nullability second checker run on demand.
-Its findings are informational and deliberately not part of CI or pre-commit (`full-lint.sh` runs it
-but never fails on it). Config + rationale in `pyrefly.toml`. Structural Kivy noise is suppressed via
-config; the remaining residual is grandfathered in `pyrefly-baseline.json`, so a clean run reports
-**0 new** and only regressions surface. Refresh the baseline after intentionally changing that set.
+**Type-check (pyrefly):**
+A second type checker gated alongside `ty` (CI, pre-commit, `full-lint.sh`) — faster and stricter on
+nullability. Config + rationale in `pyrefly.toml`. Structural Kivy noise is suppressed via config; the
+remaining residual is grandfathered in `pyrefly-baseline.json`, so the gate passes at **0 new** and
+only regressions fail it. Refresh the baseline after intentionally changing that set.
 ```bash
 bash scripts/pyrefly.sh                    # or: uv run pyrefly check
 bash scripts/pyrefly.sh --update-baseline  # refresh grandfathered findings
@@ -68,7 +67,7 @@ uv run lint-imports
 bunx cspell
 ```
 
-**Run all lint/static checks plus benchmarks (ruff check+format, ty, import-linter, relative imports, cspell, benchmark compare):**
+**Run all lint/static checks plus benchmarks (ruff check+format, ty, pyrefly, import-linter, relative imports, cspell, benchmark compare):**
 ```bash
 bash scripts/full-lint.sh
 ```

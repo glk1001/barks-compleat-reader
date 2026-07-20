@@ -16,6 +16,13 @@ repos:
             types: [python]
             pass_filenames: false
             stages: [pre-commit]
+          - id: pyrefly-check
+            name: pyrefly check
+            entry: uv run pyrefly check # 0 new vs pyrefly-baseline.json (see pyrefly.toml)
+            language: system
+            types: [python]
+            pass_filenames: false
+            stages: [pre-commit]
           - id: cspell
             name: cspell
             entry: bunx cspell --no-must-find-files
