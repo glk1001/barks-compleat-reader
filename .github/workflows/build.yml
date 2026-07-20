@@ -31,7 +31,7 @@ jobs:
             exe: barks-reader-win.exe
     runs-on: ${{ matrix.os }}
     permissions:
-      contents: write  # Needed to create/update releases on tag pushes.
+      contents: read
     env:
       BARKS_ZIPS_KEY: ${{ secrets.BARKS_ZIPS_KEY }}
 
@@ -130,10 +130,44 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Attach to GitHub Release (tag pushes only)
-        if: startsWith(github.ref, 'refs/tags/') && env.BARKS_ZIPS_KEY != ''
+  # On an app tag push (v*, not data-v*), assemble ONE draft release from all
+  # four build artifacts. A single job avoids the duplicate-draft race that
+  # per-matrix-leg release steps are prone to. The draft is never published
+  # automatically - review it on the Releases page and click "Publish release".
+  release:
+    name: Assemble draft release
+    needs: build
+    if: ${{ startsWith(github.ref, 'refs/tags/v') && !env.ACT }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Needed to create/update the draft release.
+    steps:
+      - name: Download built executables
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create or update draft release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ matrix.exe }}
-          fail_on_unmatched_files: true
           draft: true
+          # A semver pre-release suffix in the tag (v1.2.3-alpha.1) marks the
+          # release as a pre-release; a plain v1.2.3 becomes a full release.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          files: |
+            dist/barks-reader-linux
+            dist/barks-reader-macos.zip
+            dist/barks-reader-macos-x64.zip
+            dist/barks-reader-win.exe
+          fail_on_unmatched_files: true
+          # The ~1GB data packs rarely change, so they live on their own
+          # dedicated release (data-v*) instead of being duplicated onto
+          # every app release. Keep these links pointing at the newest one.
+          body: |
+            Download the executable for your platform (listed below), plus the two
+            data packs - needed on first install, unchanged between most releases:
+
+            - [barks-reader-data-1.zip](https://github.com/glk1001/barks-compleat-reader/releases/download/data-v1/barks-reader-data-1.zip)
+            - [barks-reader-data-2.zip](https://github.com/glk1001/barks-compleat-reader/releases/download/data-v1/barks-reader-data-2.zip)

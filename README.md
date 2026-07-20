@@ -148,14 +148,31 @@ Macs.
    log is written beside the `.app` as `barks-reader-installer-<timestamp>.log`.
 
 ## Deployment
-1. Go to ['Releases' on GitHub](https://github.com/glk1001/barks-compleat-reader/releases) and
-   edit the latest release (or create a new one).
-1. Add the just-built executables, and the data zips if they have changed.
-1. Update the release. Make sure it is **not** marked as a pre-release — the website's download
-   links and version badge track the latest *full* release via GitHub's `releases/latest`
-   endpoints, which ignore pre-releases.
-1. The updated release should be downloadable at
-   https://glk1001.github.io/barks-compleat-reader/website/app.html
+
+Releases are assembled by CI — don't upload executables by hand.
+
+1. Tag the release commit and push the tag:
+   ```
+   git tag v1.2.3-alpha.2   # or plain v1.2.3 for a full release
+   git push origin v1.2.3-alpha.2
+   ```
+1. The `Build Verification` workflow builds all four executables and assembles a **draft**
+   release for the tag: pre-release flag set automatically (any tag with a `-` suffix, e.g.
+   `-alpha.2`, is a pre-release), release notes auto-generated from commits, and links to the
+   data packs included.
+1. Update `FALLBACK_TAG` in `website/app.html` to the new tag (it's the no-API fallback for
+   the website's download links) and push.
+1. Review the draft on ['Releases' on GitHub](https://github.com/glk1001/barks-compleat-reader/releases),
+   edit the notes if needed, and click **"Publish release"**. Nothing is public until then.
+1. The release is then downloadable at
+   https://glk1001.github.io/barks-compleat-reader/website/app.html — the website tracks the
+   newest app release via the GitHub API (pre-releases included).
+
+The ~1GB data packs (`barks-reader-data-1.zip`, `barks-reader-data-2.zip`) live on their own
+dedicated release (`data-v1`), not on app releases, because they rarely change. When they do
+change: upload the new zips as a `data-v2` release (marked pre-release so it can never become
+GitHub's "Latest"), then update `DATA_TAG` in `website/app.html` and the data-pack links in
+`.github/workflows/build.yml`.
 
 ## License
 
