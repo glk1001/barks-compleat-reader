@@ -482,7 +482,7 @@ The async chain — important, because you'll see it again in section 6:
 The composition root is `build_main_screen_components()`
 (`ui/main_screen_components.py:64`) — one function that constructs and injects the
 whole graph: the `ImageSelector`, the `ViewPipeline` (with `scheduler=KivyClockScheduler()`
-and `colors=TintColorSource()` injected as ports), the `SnapshotApplicator`, and
+and `colors=FixedColorSource(FIXED_SCRIMS)` injected as ports), the `SnapshotApplicator`, and
 the `ViewRenderer` (with a `NavigationModel` and the `on_view_state_changed`
 callback). `ViewRenderer`'s entry points — `render(destination)`,
 `render_state(view_state)`, `render_title(fanta_info)`, `refresh()` — all funnel
@@ -806,15 +806,18 @@ whole point.
 |---|---|---|---|
 | `Scheduler` (`ports/scheduler.py:21`) | Marshal a callback onto the UI thread (one-shot + repeating) | `KivyClockScheduler` (`ui/adapters/kivy_scheduler.py:26`) | `FakeScheduler` |
 | `Cursor` (`ports/cursor.py:9`) | Busy/normal cursor for long loads | `KivyCursor` (`ui/adapters/kivy_cursor.py:8`) | recording |
-| `ColorSource` (`ports/color_source.py:21`) | `next_color(palette)` view tints | `TintColorSource` (`ui/adapters/tint_color_source.py:34`) | `ScriptedColorSource` |
+| `ColorSource` (`ports/color_source.py:21`) | `next_color(palette)` → background scrim per view | `FixedColorSource` (`core/reader_colors.py:15`, Kivy-free) | `ScriptedColorSource` |
 | `SnapshotSink` (`ports/snapshot_sink.py:12`) | `apply(ViewSnapshot)` | `SnapshotApplicator` (`ui/snapshot_applicator.py:35`) | `RecordingSink` |
 | `ComicBookReaderPort` (`ports/comic_reader.py:22`) | The reader widget's API | `ComicBookReader` | — |
 | `ComicBookReaderScreenPort` (`ports/comic_reader.py:54`) | The reader host screen | `ComicBookReaderScreen` | — |
 
-A nice detail: `ColorSource`'s adapter lives in `ui/adapters/`, but the
-`RandomColorTint` engine it wraps is itself Kivy-free (`core/reader_colors.py`).
-The adapter exists only to hold the palette config and satisfy the port, not to
-bridge Kivy.
+A nice detail: `ColorSource`'s production implementation is **not** a Kivy
+adapter at all — it's `FixedColorSource` in `core`, constructed at the
+composition root from the `FIXED_SCRIMS` table in `core/reader_palette.py`. It
+returns one constant neutral scrim per palette (the July-2026 design pass
+replaced the old per-navigation `RandomColorTint` hue wash), so the background
+art shows true color under a constant dim and text legibility is the same on
+every screen.
 
 ### 8.2 Dependency injection
 
@@ -828,18 +831,42 @@ always pulled in via `from .adapters import …`.
 ### 8.3 Settings
 
 - **Model** — `core/reader_settings.py`. Each setting is a declarative `FieldSpec`
-  (`:66`) — one source of truth for the Kivy schema entry, the config default,
-  and an optional validator. All specs live in `_FIELDS` (`:370`). `ReaderSettings`
-  (`:130`) exposes typed properties funneling through `_read(key)` (`:164`). It
-  stays in `core` by depending on structural `ConfigReader`/`ConfigParser`/`Settings`
-  Protocols that both Kivy's and stdlib's config parsers satisfy.
+  (`:70`) — one source of truth for the Kivy schema entry, the config default,
+  and an optional validator. All specs live in `_FIELDS` (`:392`), whose order is
+  the on-screen order and whose `section_header` fields group them into sections
+  (Folders, Reading, Appearance, Startup, Window, Controls, Controversial
+  Censorship Fixes, and **Advanced** — the power-user folder/image-source/logging
+  settings, kept last); `_get_reader_settings_json` (`:626`) emits a `title` item
+  wherever a `section_header` is set. `ReaderSettings` (`:134`) exposes typed
+  properties funneling through `_read(key)` (`:174`). It stays in `core` by
+  depending on structural `ConfigReader`/`ConfigParser`/`Settings` Protocols that
+  both Kivy's and stdlib's config parsers satisfy.
 - **Persistence — two stores.** App settings live in a Kivy-style **ini** file;
   user data / reading progress lives in a plain **JSON** store
   (`core/json_settings_manager.py`) recording the last-selected tree node and
   per-title last-read page.
 - **Kivy UI** — `ui/reader_settings_buildable.py` (`BuildableReaderSettings`
   subclasses the pure model, adding `build_config`/`build_settings`/validators)
-  plus custom widgets in `ui/settings_fix.py`.
+  plus custom widgets and on-brand styling in `ui/settings_fix.py`. The panel is
+  a menu-less `SettingsWithNoMenu` (`ui/barks_reader_app.py:113`) — no top
+  spinner/title bar (it just repeated the window title); it closes with **Escape**
+  or an overlaid corner `SettingsCloseButton` added in
+  `MainScreen.display_settings` (`ui/main_screen.py:380`). Because the no-menu
+  interface *is* the `ContentPanel` (no `.content` wrapper, no `.menu`), the
+  keyboard navigator (`ui/settings_keyboard_nav.py`) and the save-time panel
+  refresh (`reader_settings_buildable._update_settings_panel`) both fall back to
+  the interface itself, and `build_settings` no longer sizes a menu bar.
+- **On-brand theming** — `settings_fix.py` styles the whole panel from the active
+  palette. `KV_SETTINGS_OVERRIDE` carries color tokens (`__SEL_RGBA__`,
+  `__HEADING_RGBA__`, `__SWITCH_ON_RGBA__`, …) that `install_settings_theme_kv()`
+  substitutes from `theme()` (§8.4) and loads. That load is **deferred**: the KV
+  would otherwise run at module import, before `set_active_theme`, so
+  `barks_reader_app` calls it immediately after `set_active_theme` at startup.
+  Custom widgets include `SettingLongPath` (folder rows break out to full width
+  while other rows stay compact), `SettingOptionsWithValue`, `SettingAltEscapeKey`,
+  an eyebrow-styled `SettingTitle` section heading, and `ThemedSwitch` — an
+  accent-colored pill toggle replacing Kivy's default `Switch`, whose blue/grey
+  look is baked into an image atlas and can't be tinted.
 - **Change propagation** — `core/settings_notifier.py` is a Kivy-free
   `(section, key) → callbacks` registry; the singleton `settings_notifier.notify`
   fires from `BarksReaderApp.on_config_change` (`ui/barks_reader_app.py:207`),
@@ -847,8 +874,14 @@ always pulled in via `from .adapters import …`.
 
 ### 8.4 Other cross-cutting concerns
 
-- **Colors** — `core/reader_colors.py` (`RandomColorTint`, Kivy-free), reached
-  from `core` only through the `ColorSource` port.
+- **Colors & themes** — `core/reader_palette.py` owns the palette: `theme()`
+  returns the active `ReaderTheme` (accent/selection, title/heading/text colors,
+  focus ring, danger, icon tint), one of three cover-art palettes chosen by the
+  *Color Theme* setting via `set_active_theme` at startup. UI code must read
+  `theme()` **lazily** at widget-build time, never at import (the theme isn't set
+  yet then). The background-art scrims live in the same module's `FIXED_SCRIMS`
+  and reach `core` only through the `ColorSource` port, implemented by the
+  Kivy-free `FixedColorSource` (`core/reader_colors.py`).
 - **Fonts** — `ui/font_manager.py`: two font themes selected by the 1090px
   window-height cutoff (section 2.3), ~50 `NumericProperty` sizes bound in `.kv`.
 - **Errors — two subsystems, both split pure/UI.** *Recoverable user errors*:
