@@ -14,8 +14,12 @@ The wiki is integrated as a top-level app screen. Remaining polish:
 - [x] **In-wiki search** (commits 1540f77, ad28850, 1ac48bf) — wiki page search
       (title + heading) in the OKF reader, with result-list persistence and
       index-build failure recovery (`okf_reader/core/search.py`).
-- [ ] **Escape-back inside the wiki screen** — currently only mouse4 works while
-      embedded; the app owns keyboard keys, so Escape doesn't navigate back.
+- [x] **Escape-back inside the wiki screen** (commits fe1d7bc, 601dcb4) —
+      `WikiReaderScreen._on_key_down` routes window keys to the viewer and falls
+      through to back handling: Escape (and the user-configured alternate
+      Escape) backs out of an active search, then navigates back, and at the
+      history root exits to the Barks Reader; Alt+Left backs too. Pinned by the
+      escape/go-back tests in `test_wiki_reader.py`.
 - [ ] **Async panel textures** — load large panel-background images off the UI
       thread to avoid stalls.
 - [x] **Shared kv action-bar extraction** (2026-07-10) — one `ReaderActionBar`
