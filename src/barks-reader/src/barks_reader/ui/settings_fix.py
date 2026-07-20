@@ -33,7 +33,10 @@ def _rgba(color: Color, alpha: float | None = None) -> str:
 # than the old fixed programmer-blue.
 KV_SETTINGS_OVERRIDE = """
 <-SettingItem>:
-    size_hint: .25, None
+    # Non-folder rows stay compact/left (Option B) but wider than Kivy's default
+    # .25 so the label column has real room. Folder (long-path) rows override
+    # size_hint_x to 1 below to break out to full width.
+    size_hint: .62, None
     height: labellayout.texture_size[1] + dp(10)
     content: content
     canvas:
@@ -52,7 +55,7 @@ KV_SETTINGS_OVERRIDE = """
         pos: root.pos
 
         Label:
-            size_hint_x: .55
+            size_hint_x: .6
             id: labellayout
             markup: True
             text:
@@ -63,7 +66,7 @@ KV_SETTINGS_OVERRIDE = """
 
         BoxLayout:
             id: content
-            size_hint_x: .45
+            size_hint_x: .4
 
 # On-brand section heading: an uppercase "eyebrow" in the theme heading color
 # with a hairline underline, replacing Kivy's flat grey label with a fill box.
@@ -98,6 +101,8 @@ KV_SETTINGS_OVERRIDE = """
         on_active: root.value = root.values[int(args[1])]
 
 <SettingLongPath>:
+    # Folder paths break out of the compact non-folder width to full width.
+    size_hint_x: 1
     Label:
         text: root.value or ''
         font_size: '13sp'
