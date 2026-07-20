@@ -6,6 +6,7 @@ apos
 arcname
 arcnames
 argtypes
+assertable
 autotune
 autouse
 axisbelow
@@ -80,6 +81,7 @@ libx
 licence
 lita
 llm
+llvmpipe
 logr
 markersize
 materialises
@@ -139,8 +141,10 @@ toggleable
 tokenisation
 tokenised
 touchpads
+uinput
 unauthored
 unauthorised
+undrivable
 unhighlighted
 unthemed
 untinted
@@ -155,6 +159,7 @@ xlabel
 xorg
 xticklabels
 xticks
+ydotool
 ylabel
 yticklabels
 yticks
