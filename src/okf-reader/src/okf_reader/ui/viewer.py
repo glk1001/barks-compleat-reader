@@ -322,6 +322,12 @@ def _scroll_view(**kwargs) -> ScrollView:  # noqa: ANN003
 # 60fps — settling normally takes a frame or three).
 _TREE_REVEAL_MAX_FRAMES = 30
 
+# When the quarter-way placement (_scroll_tree_node_into_view) would stop this
+# close to the very top of the tree, snap to the top instead: stopping a few
+# pixels short leaves the first row clipped by a sliver, which reads as a bug —
+# about one tree row's height, so anything less than a full hidden row snaps.
+TREE_TOP_SNAP = 28  # dp
+
 # Navigation keys consumed as no-ops where nothing can move (an open footnote
 # popup, an empty sidebar state): they must not leak to the hosting app.
 _NAV_NOOP_KEYS = frozenset(
@@ -1505,10 +1511,15 @@ class OKFViewer(RelativeLayout):
         frames agree on the geometry (with a frame-count backstop so a
         perpetually-animating layout cannot stall the reveal forever).
         """
-        state: dict[str, tuple[float, float, float] | int | None] = {"last": None, "frames": 0}
+        state: dict[str, tuple[float, float, float, float] | int | None] = {
+            "last": None,
+            "frames": 0,
+        }
 
         def check(_dt: float) -> None:
-            geometry = (node.top, self.tree.height, self.tree_scroll.height)
+            # Width is watched too: the labels wrap to the tree's width, so a late
+            # panel resize reflows every row height below the wrap point.
+            geometry = (node.top, self.tree.width, self.tree.height, self.tree_scroll.height)
             frames = state["frames"]
             assert isinstance(frames, int)
             if geometry == state["last"] or frames >= _TREE_REVEAL_MAX_FRAMES:
@@ -1534,6 +1545,10 @@ class OKFViewer(RelativeLayout):
         node_top = node.top - self.tree.y  # node top, measured from the tree's bottom
         offset = 0.25 * viewport_h
         scroll = (node_top - viewport_h + offset) / (content_h - viewport_h)
+        # Snap to the very top when the placement would land within a row of it,
+        # so the first row is never left clipped by a sliver (see TREE_TOP_SNAP).
+        if (1.0 - scroll) * (content_h - viewport_h) < dp(TREE_TOP_SNAP):
+            scroll = 1.0
         self.tree_scroll.scroll_y = max(0.0, min(1.0, scroll))
 
     def show_page(self, path: Path, *, scroll_y: float = 1.0) -> None:
