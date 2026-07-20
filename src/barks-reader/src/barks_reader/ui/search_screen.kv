@@ -42,6 +42,9 @@
 
 <SearchInput@TouchAwareTextInput>:
     multiline: False
+    # Enter must not blur the input when there is nothing to focus; the
+    # on_text_validate handler blurs explicitly when it does move focus.
+    text_validate_unfocus: False
     font_size: fm.search_input_font_size
     foreground_color: (1, 1, 1, 1)
     hint_text_color: (1, 1, 1, 0.4)
@@ -139,6 +142,7 @@
                         id: title_search_input
                         hint_text: "Search titles…"
                         on_text: root.on_title_search_text(self.text)
+                        on_text_validate: root.on_search_input_enter()
 
                     SearchClearButton:
                         id: title_clear_button
@@ -193,6 +197,7 @@
                         id: tag_search_input
                         hint_text: "Search tags…"
                         on_text: root.on_tag_search_text(self.text)
+                        on_text_validate: root.on_search_input_enter()
 
                     SearchClearButton:
                         id: tag_clear_button
@@ -265,6 +270,7 @@
                         id: word_search_input
                         hint_text: "Search words…"
                         on_text: root.on_word_search_text(self.text)
+                        on_text_validate: root.on_search_input_enter()
 
                     SearchClearButton:
                         id: word_clear_button

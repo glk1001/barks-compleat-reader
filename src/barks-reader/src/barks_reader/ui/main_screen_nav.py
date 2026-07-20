@@ -86,6 +86,7 @@ class MainScreenNavigation:
         self._statistics_screen = screens.statistics
         self._history_screen = screens.history
         self._search_screen = screens.search
+        self._search_screen.on_request_nav_focus = self._claim_bottom_focus_for_search
         self._bottom_base_view_screen = bottom_base_view_screen
         self._on_title_activated = on_title_activated
         self._enter_menu_mode = enter_menu_mode
@@ -225,6 +226,21 @@ class MainScreenNavigation:
         if nav_screen is not None:
             nav_screen.enter_nav_focus(self.exit_bottom_focus)
         logger.debug("Entered bottom focus region.")
+
+    def _claim_bottom_focus_for_search(self) -> None:
+        """Move the focus region to the search screen at its own request.
+
+        Fired when Enter in a search input lands with nav inactive (mouse-click flow).
+        Mirrors `enter_bottom_focus` but skips `enter_nav_focus`, which would stomp the
+        focus state the search screen has just set up.
+        """
+        if not self._search_screen.is_visible:
+            return
+        self._auto_exited_bottom_focus = False
+        self._focus_region = _FocusRegion.BOTTOM
+        self._update_bottom_focus_highlight()
+        self._search_screen.adopt_nav_focus(self.exit_bottom_focus)
+        logger.debug("Entered bottom focus region at search screen's request.")
 
     def exit_bottom_focus(self) -> None:
         nav_screen = self._get_active_nav_screen()

@@ -178,6 +178,9 @@ class SearchScreen(FloatLayout):
 
         self._nav_active: bool = False
         self._nav_on_exit_request: Callable | None = None
+        # Set by MainScreenNavigation; lets Enter in a search input pull the app's
+        # keyboard focus to this screen when nav isn't active (mouse-click flow).
+        self.on_request_nav_focus: Callable[[], None] | None = None
         self._nav_focus_area: str = "input"  # "input", "clear", "tags", "results"
         self._nav_focused_result_idx: int = 0
         self._nav_focused_chip_idx: int = 0
@@ -628,6 +631,69 @@ class SearchScreen(FloatLayout):
             self._focus_active_input()
         logger.debug("SearchScreen: entered nav focus at last result.")
 
+    def adopt_nav_focus(self, on_exit_request: Callable) -> None:
+        """Activate nav without resetting the focus area or grabbing the input.
+
+        Unlike `enter_nav_focus`, this preserves whatever focus state the screen has
+        already set up — used when the screen itself claims focus (Enter in an input).
+        """
+        self._nav_on_exit_request = on_exit_request
+        self._nav_active = True
+        logger.debug("SearchScreen: adopted nav focus.")
+
+    def _ensure_nav_active(self) -> None:
+        if not self._nav_active and self.on_request_nav_focus:
+            self.on_request_nav_focus()
+
+    def on_search_input_enter(self) -> None:
+        """Handle Enter in a search input (kv callback).
+
+        Title mode: focus the first result row. Tag/Word modes: select the first
+        chip if none is selected yet and land focus on the chips, so Up/Down move
+        through them; Enter on a chip then moves focus right to its title list.
+        """
+        if self._active_mode in ("Tag", "Word") and self._get_active_chip_buttons():
+            self._enter_chips_from_input()
+            return
+        if self._get_active_result_rows():
+            self._focus_first_result_row()
+        # else: nothing to show — the input keeps focus, keep typing.
+
+    def _enter_chips_from_input(self) -> None:
+        chips = self._get_active_chip_buttons()
+        if not self._get_selected_chip_text():
+            # Auto-pick the first chip so its titles show without another keypress.
+            chips[0].trigger_action(duration=0)
+        self._ensure_nav_active()
+        self._blur_all_inputs()
+        self._nav_focus_area = "tags"
+        # Chips may have been rebuilt by the pick (e.g. a tag group inserting its
+        # members) — resolve the focused index once the new widgets have settled.
+        Clock.schedule_once(
+            lambda _dt: Clock.schedule_once(lambda _dt2: self._focus_selected_or_first_chip())
+        )
+
+    def _get_selected_chip_text(self) -> str:
+        if self._active_mode == "Word":
+            return self._selected_word
+        return self._selected_member or self._selected_tag
+
+    def _focus_selected_or_first_chip(self) -> None:
+        chips = self._get_active_chip_buttons()
+        if not chips:
+            return
+        target = self._get_selected_chip_text()
+        self._nav_focused_chip_idx = next((i for i, c in enumerate(chips) if c.text == target), 0)
+        self._draw_chip_focus()
+
+    def _focus_first_result_row(self) -> None:
+        if not self._get_active_result_rows():
+            return
+        self._ensure_nav_active()
+        self._blur_all_inputs()
+        self._nav_enter_results()
+        self._draw_result_focus()
+
     def exit_nav_focus(self) -> None:
         self._blur_all_inputs()
         self._clear_result_focus()
@@ -659,7 +725,9 @@ class SearchScreen(FloatLayout):
             self._blur_all_inputs()
             if self._nav_on_exit_request:
                 self._nav_on_exit_request()
-        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER, KEY_TAB, KEY_DOWN):
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self.on_search_input_enter()
+        elif key in (KEY_TAB, KEY_DOWN):
             self._blur_all_inputs()
             self._nav_to_tags_or_results()
         elif key == KEY_RIGHT:
