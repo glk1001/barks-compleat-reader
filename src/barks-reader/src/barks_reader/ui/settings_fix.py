@@ -4,7 +4,13 @@ from kivy.clock import Clock
 from kivy.factory import Factory
 from kivy.input import MotionEvent
 from kivy.lang import Builder
-from kivy.properties import ObjectProperty, StringProperty  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[unresolved-import]
+    BooleanProperty,
+    NumericProperty,
+    ObjectProperty,
+    StringProperty,
+)
+from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.filechooser import FileChooserListView
@@ -94,11 +100,34 @@ KV_SETTINGS_OVERRIDE = """
         font_size: '15sp'
 
 <SettingBoolean>:
-    Switch:
-        text: 'Boolean'
-        pos: root.pos
+    # Flexible spacers either side centre the fixed-size switch in the value
+    # column, matching the centred value labels on the other setting types.
+    Widget:
+    ThemedSwitch:
         active: bool(root.values.index(root.value)) if root.value in root.values else False
-        on_active: root.value = root.values[int(args[1])]
+        on_active: root.value = root.values[int(self.active)]
+    Widget:
+
+# On-brand toggle replacing Kivy's blue/grey atlas Switch: a pill track in the
+# theme accent when on, warm grey when off, with a warm-white knob.
+<ThemedSwitch>:
+    size_hint: None, None
+    size: dp(48), dp(26)
+    pos_hint: {'center_y': 0.5}
+    on_release: self.active = not self.active
+    knob_x: (self.x + dp(3)) if not self.active else (self.right - self.height + dp(3))
+    canvas:
+        Color:
+            rgba: (__SWITCH_ON_RGBA__) if self.active else (0.30, 0.27, 0.24, 1)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [self.height / 2.0]
+        Color:
+            rgba: 0.96, 0.94, 0.88, 1
+        Ellipse:
+            size: self.height - dp(6), self.height - dp(6)
+            pos: self.knob_x, self.y + dp(3)
 
 <SettingLongPath>:
     # Folder paths break out of the compact non-folder width to full width.
@@ -280,9 +309,21 @@ class SettingsCloseButton(Button):
     icon_source = StringProperty("")
 
 
+class ThemedSwitch(ButtonBehavior, Widget):
+    """On-brand on/off toggle used by SettingBoolean (styled in KV).
+
+    Replaces Kivy's default Switch, whose blue/grey look is baked into an image
+    atlas and cannot be themed by tinting.
+    """
+
+    active = BooleanProperty(defaultvalue=False)
+    knob_x = NumericProperty(0.0)
+
+
 # Register the custom widgets before loading KV.
 Factory.register("CustomFileChooserListView", cls=CustomFileChooserListView)
 Factory.register("SettingsCloseButton", cls=SettingsCloseButton)
+Factory.register("ThemedSwitch", cls=ThemedSwitch)
 
 _settings_kv_installed = False
 
@@ -301,6 +342,7 @@ def _themed_settings_kv() -> str:
         .replace("__ICON_TINT_RGBA__", _rgba(t.icon_tint, alpha=1.0))
         .replace("__HEADING_RGBA__", _rgba(t.app_title, alpha=1.0))
         .replace("__HEADING_RULE_RGBA__", _rgba(t.app_title, alpha=0.4))
+        .replace("__SWITCH_ON_RGBA__", _rgba(t.accent_selection, alpha=1.0))
     )
 
 
