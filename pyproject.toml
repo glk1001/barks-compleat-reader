@@ -74,6 +74,7 @@ dev = [
     "scikit-learn>=1.6",
     "wordcloud>=1.9",
     "ty>=0.0.17",
+    "pyrefly>=1.1.1",  # advisory (non-gating) second type checker; ty remains the gate
     "prek>=0.3.8",
     "sysrsync>=1.1.1",
 ]

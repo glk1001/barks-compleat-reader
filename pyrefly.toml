@@ -1,0 +1,57 @@
+# pyrefly.toml — advisory (non-gating) second type checker.
+#
+# `ty` (see ty.toml) remains the sole CI / pre-commit gate. pyrefly is an
+# additional, much faster second opinion, run on demand via `scripts/pyrefly.sh`
+# or `uv run pyrefly check`. It is tuned here — via config, not inline comments —
+# to suppress the two structural noise buckets that Kivy's untyped, compiled
+# codebase produces, so its output stays high-signal.
+
+# Mirror ty.toml's environment: the six uv-workspace src roots + the app venv.
+project-includes = [
+    "src/barks-reader/src",
+    "src/barks-fantagraphics/src",
+    "src/barks-build-comic-images/src",
+    "src/barks-kivy-ui/src",
+    "src/comic-utils/src",
+    "src/okf-reader/src",
+]
+
+search-path = [
+    "src/barks-reader/src",
+    "src/barks-fantagraphics/src",
+    "src/barks-build-comic-images/src",
+    "src/barks-kivy-ui/src",
+    "src/comic-utils/src",
+    "src/okf-reader/src",
+]
+
+project-excludes = [
+    "**/experiments/**",
+    "**/scraps/**",
+    "**/__pycache__/**",
+]
+
+python-interpreter = ".venv/bin/python"
+
+# Kivy, OpenCV and Whoosh ship as compiled modules with no stubs (no py.typed,
+# zero .pyi). ty silently treats them as Any; pyrefly needs to be told to. This
+# clears the `missing-import` cascade on Kivy's Cython `.so` modules.
+replace-imports-with-any = [
+    "kivy.properties",
+    "kivy.graphics",
+    "kivy.graphics.*",
+    "kivy._event",
+    "kivy._clock",
+    "kivy.weakproxy",
+    "cv2",
+    "whoosh",
+    "whoosh.*",
+    # Kivy annotates its `Window`/`Config` singletons as `WindowBase | None`, so
+    # every `Window.bind(...)`, `Window.size`, `Config.getint(...)` reads as an
+    # attribute access on a possibly-None value. pyrefly enforces that where ty
+    # does not, producing ~200 false positives spread across the app. These are
+    # untyped Kivy singletons regardless; treat their modules as Any (matches
+    # ty's effective stance) rather than chasing a brittle per-file rule list.
+    "kivy.core.window",
+    "kivy.config",
+]

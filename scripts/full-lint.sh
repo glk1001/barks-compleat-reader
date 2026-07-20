@@ -5,6 +5,8 @@
 # Checks: ruff check, ruff format, ty (--error-on-warning, as in CI),
 #         import-linter, relative-import check, cspell, benchmarks
 #         (compared against the machine-local baseline in .benchmarks/).
+# Plus one advisory (non-gating) check — pyrefly — that is displayed but never
+# fails the suite (see info_check below).
 
 set -uo pipefail
 
@@ -30,9 +32,21 @@ run_check() {
     fi
 }
 
+# Advisory (non-gating): run and display, but never add to failed[] — a
+# non-zero exit here does not fail the suite.
+info_check() {
+    local name="$1"
+    shift
+
+    echo
+    echo "==== ${name} ===="
+    "$@" || true
+}
+
 run_check "ruff check"            uv run ruff check .
 run_check "ruff format"           uv run ruff format --check .
 run_check "ty"                    uv run ty check --error-on-warning
+info_check "pyrefly (advisory)"   uv run pyrefly check --output-format=omit-errors
 run_check "import-linter"         uv run lint-imports
 run_check "relative-import-check" bash scripts/check-relative-imports.sh
 run_check "cspell"                bunx cspell --no-progress

@@ -47,6 +47,14 @@ uv run ruff format .
 uv run ty check
 ```
 
+**Type-check (pyrefly — advisory second opinion, non-gating):**
+`ty` is the gate; `pyrefly` is a much faster, stricter-on-nullability second checker run on demand.
+Its findings are informational and deliberately not part of CI, pre-commit, or `full-lint.sh`.
+Config + rationale in `pyrefly.toml`.
+```bash
+bash scripts/pyrefly.sh   # or: uv run pyrefly check
+```
+
 **Check import layering:**
 ```bash
 uv run lint-imports
