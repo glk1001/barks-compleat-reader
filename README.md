@@ -151,22 +151,27 @@ Macs.
 
 Releases are assembled by CI — don't upload executables by hand.
 
-1. Tag the release commit and push the tag:
+1. Update `FALLBACK_TAG` in `website/app.html` to the upcoming tag (it's the no-API fallback
+   for the website's download links) and commit, so the tagged commit is self-consistent.
+1. Tag that commit and push:
    ```
    git tag v1.2.3-alpha.2   # or plain v1.2.3 for a full release
-   git push origin v1.2.3-alpha.2
+   git push origin main v1.2.3-alpha.2
    ```
-1. The `Build Verification` workflow builds all four executables and assembles a **draft**
-   release for the tag: pre-release flag set automatically (any tag with a `-` suffix, e.g.
-   `-alpha.2`, is a pre-release), release notes auto-generated from commits, and links to the
-   data packs included.
-1. Update `FALLBACK_TAG` in `website/app.html` to the new tag (it's the no-API fallback for
-   the website's download links) and push.
-1. Review the draft on ['Releases' on GitHub](https://github.com/glk1001/barks-compleat-reader/releases),
+1. The `Build Verification` workflow builds all four executables, then its
+   `Assemble draft release` job creates a **draft** release for the tag: pre-release flag set
+   automatically (any tag with a `-` suffix, e.g. `-alpha.2`, is a pre-release), release
+   notes auto-generated from commits, and links to the data packs included. Watch it with
+   `gh run watch` or on the Actions tab.
+1. Review the draft on ['Releases' on GitHub](https://github.com/glk1001/barks-compleat-reader/releases):
+   check all four executables are attached and "Set as a pre-release" is ticked as expected,
    edit the notes if needed, and click **"Publish release"**. Nothing is public until then.
-1. The release is then downloadable at
-   https://glk1001.github.io/barks-compleat-reader/website/app.html — the website tracks the
-   newest app release via the GitHub API (pre-releases included).
+   (If something is wrong, delete the draft — `gh release delete <tag> --cleanup-tag` also
+   removes the tag — fix, and re-tag.)
+1. Verify the published result: the release page shows its "Pre-release" badge, and on
+   https://glk1001.github.io/barks-compleat-reader/website/app.html the masthead badge shows
+   the new tag and the executable buttons download from it — the website tracks the newest
+   app release via the GitHub API (pre-releases included). Old releases can stay as history.
 
 The ~1GB data packs (`barks-reader-data-1.zip`, `barks-reader-data-2.zip`) live on their own
 dedicated release (`data-v1`), not on app releases, because they rarely change. When they do
