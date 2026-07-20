@@ -321,13 +321,34 @@ class TestRenderPage:
         assert table.rows[2] == f"short{' ' * 26}  y"
 
     def test_table_wrap_never_splits_markup_tags(self) -> None:
-        """Wrapping breaks at visible spaces only; a tag pair may span the row's lines."""
+        """Wrapping breaks at visible spaces only; a split tag pair is re-balanced per line."""
         a, b, c = "a" * 20, "b" * 20, "c" * 10
         md = f"| T | N |\n|---|---|\n| *{a} {b} {c}* | x |\n"
         table = okf.render_page(md).blocks[0]
         assert isinstance(table, okf.TableBlock)
-        # [i]…[/i] spans the two lines intact; padding counts visible chars only.
-        assert table.rows[1] == f"[i]{a}{' ' * 11}  x\n{b} {c}[/i]"
+        # [i]…[/i] closes at each line's end and reopens on the next; padding
+        # counts visible chars only.
+        assert table.rows[1] == f"[i]{a}[/i]{' ' * 11}  x\n[i]{b} {c}[/i]"
+
+    def test_table_wrapped_link_cell_keeps_markup_out_of_next_column(self) -> None:
+        """A wrapped link cell must not leak its ref/color/underline across the row.
+
+        Each physical line closes the link's tags before the row's remaining
+        columns are appended, and the continuation line reopens them — otherwise
+        the still-open [u]/[color]/[ref] would style (and hit-test) every cell
+        to the row's right.
+        """
+        md = (
+            "| Vol | Title | Yrs |\n|---|---|---|\n"
+            "| 14 | [The Seven Cities of Gold and Then Some](x.md) | 1954-55 |\n"
+        )
+        table = okf.render_page(md).blocks[0]
+        assert isinstance(table, okf.TableBlock)
+        link_open = f"[ref=x.md][color={okf.LINK_COLOR}][u]"
+        assert table.rows[1] == (
+            f" 14  {link_open}The Seven Cities of Gold and[/u][/color][/ref]  1954-55\n"
+            f"     {link_open}Then Some[/u][/color][/ref]"
+        )
 
     def test_table_numeric_columns_right_justified(self) -> None:
         """A column of plain numbers is right-justified; text columns stay left."""

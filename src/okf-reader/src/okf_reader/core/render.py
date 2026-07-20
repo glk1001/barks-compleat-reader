@@ -290,9 +290,11 @@ def _wrap_markup(markup: str, width: int) -> list[str]:
     """Greedy word-wrap of a Kivy-markup string at ``width`` visible characters.
 
     Breaks only at visible spaces — never inside a markup tag or entity, and a
-    single word longer than ``width`` stays whole (its line overflows). A tag
-    pair may end up spanning the returned lines; that is fine as long as the
-    consumer renders them within one label, where markup state crosses newlines.
+    single word longer than ``width`` stays whole (its line overflows). Every
+    returned line is markup-balanced: a tag pair the break would split is closed
+    at the line's end and reopened on the next line, so a line never leaks its
+    formatting into whatever the consumer appends after it (table rows append
+    the row's remaining columns — see ``_table_block``).
     """
     words: list[tuple[str, int]] = []  # (markup, visible length)
     current, cur_len = "", 0
@@ -319,7 +321,39 @@ def _wrap_markup(markup: str, width: int) -> list[str]:
             line, line_len = word, word_len
     if line:
         lines.append(line)
-    return lines or [""]
+    return _balance_markup_lines(lines) if len(lines) > 1 else (lines or [""])
+
+
+def _tag_name(tag: str) -> str:
+    """Return a markup open-tag's name: ``[color=4ea1ff]`` → ``color``."""
+    return tag[1:-1].split("=", 1)[0]
+
+
+def _balance_markup_lines(lines: list[str]) -> list[str]:
+    """Balance each line of a split Kivy-markup string so none leaks formatting.
+
+    Tags still open at a line's end are closed there and reopened at the start
+    of the next line. ``[anchor=…]`` is Kivy's only point tag (no closer); every
+    other tag pairs with ``[/name]``.
+    """
+    open_tags: list[str] = []  # currently-open tags, outermost first
+    balanced: list[str] = []
+    for line in lines:
+        prefix = "".join(open_tags)
+        for match in _MARKUP_TAG_RE.finditer(line):
+            tag = match.group()
+            inner = tag[1:-1]
+            if inner.startswith("/"):
+                name = inner[1:]
+                for k in range(len(open_tags) - 1, -1, -1):
+                    if _tag_name(open_tags[k]) == name:
+                        del open_tags[k]
+                        break
+            elif not inner.startswith("anchor="):
+                open_tags.append(tag)
+        suffix = "".join(f"[/{_tag_name(tag)}]" for tag in reversed(open_tags))
+        balanced.append(prefix + line + suffix)
+    return balanced
 
 
 def _visible_text(markup: str) -> str:
