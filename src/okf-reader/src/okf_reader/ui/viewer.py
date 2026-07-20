@@ -105,6 +105,12 @@ TREE_PANEL_WIDTH = 0.22  # fraction of the window; the page panel gets the rest
 # rows — a step under Kivy's 15sp Label default, so the navigation column reads
 # as chrome next to the page body.
 TREE_PANEL_FONT_SIZE = 13  # sp
+# Tighter tree indents than Kivy's defaults (24/16dp), buying the deeper
+# branches text room in the narrow panel. The disclosure arrow draws 20dp left
+# of a node's x (style.kv <TreeViewNode>), so TREE_INDENT_START may not go
+# below 20 without clipping the top level's arrows at the panel edge.
+TREE_INDENT_START = 20  # dp — space before a top-level node's text
+TREE_INDENT_LEVEL = 12  # dp — extra indent per tree depth
 # Multiplied into the background image (Kivy Image.color) so white text stays
 # readable over it — the same darkening mechanism the Barks Reader's kv files use.
 WINDOW_BG_TINT = (0.30, 0.30, 0.30, 1)
@@ -401,6 +407,8 @@ class OKFViewer(RelativeLayout):
             # Grow with the content instead of squeezing into the viewport — a
             # ScrollView only scrolls a child that is taller than itself.
             size_hint_y=None,
+            indent_start=dp(TREE_INDENT_START),
+            indent_level=dp(TREE_INDENT_LEVEL),
         )
         self.tree.bind(minimum_height=self.tree.setter("height"))
         # bind passes (treeview, selected_node); we only want the node (2nd arg)
