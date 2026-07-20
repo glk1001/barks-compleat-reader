@@ -65,6 +65,25 @@ KV_SETTINGS_OVERRIDE = """
             id: content
             size_hint_x: .45
 
+# On-brand section heading: an uppercase "eyebrow" in the theme heading color
+# with a hairline underline, replacing Kivy's flat grey label with a fill box.
+<SettingTitle>:
+    text: (self.title or '').upper()
+    text_size: self.width - dp(28), None
+    size_hint_y: None
+    height: max(dp(36), self.texture_size[1] + dp(26))
+    color: __HEADING_RGBA__
+    bold: True
+    font_size: '13sp'
+    halign: 'left'
+    valign: 'middle'
+    canvas.after:
+        Color:
+            rgba: __HEADING_RULE_RGBA__
+        Rectangle:
+            pos: self.x + dp(14), self.y + dp(1)
+            size: self.width - dp(28), dp(1.5)
+
 <SettingString>:
     Label:
         text: root.value or ''
@@ -275,6 +294,8 @@ def _themed_settings_kv() -> str:
         .replace("__FOCUS_RGBA__", _rgba(t.focus_ring, alpha=1.0))
         .replace("__DANGER_RGBA__", _rgba(t.danger, alpha=1.0))
         .replace("__ICON_TINT_RGBA__", _rgba(t.icon_tint, alpha=1.0))
+        .replace("__HEADING_RGBA__", _rgba(t.app_title, alpha=1.0))
+        .replace("__HEADING_RULE_RGBA__", _rgba(t.app_title, alpha=0.4))
     )
 
 
