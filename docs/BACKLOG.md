@@ -30,6 +30,9 @@ The wiki is integrated as a top-level app screen. Remaining polish:
       can't import barks code): the viewer needs an async-friendly background
       API (texture-via-callback), after which the app-side provider can go
       off-thread via `PanelImageLoader` and drop the double decode.
+      **Priority: low** — no perceptible lag on the dev machine (Greg,
+      2026-07-20); a latent hazard for slower disks/CPUs, not a felt problem.
+      Revisit only if a real stall is observed.
 - [x] **Shared kv action-bar extraction** (2026-07-10) — one `ReaderActionBar`
       skeleton (`ui/action_bar.py` + `ui/action_bar.kv`, content-redirect
       pattern) now serves the main, comic, *and* document screens (the document
