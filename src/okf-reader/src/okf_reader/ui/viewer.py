@@ -21,7 +21,7 @@ from kivy.clock import Clock
 from kivy.core.image import Image as CoreImage
 from kivy.effects.scroll import ScrollEffect
 from kivy.graphics import Color, Rectangle, RoundedRectangle
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.uix.actionbar import ActionButton, ActionToggleButton
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.behaviors import ButtonBehavior
@@ -100,7 +100,11 @@ TABLE_BAR_GAP = dp(4)
 BODY_PADDING = (16, 8, 24, 16)  # left, top, right, bottom
 BODY_BLOCK_SPACING = 12
 POPUP_PADDING = 12
-TREE_PANEL_WIDTH = 0.25  # fraction of the window; the page panel gets the rest
+TREE_PANEL_WIDTH = 0.22  # fraction of the window; the page panel gets the rest
+# One size for all the sidebar's text — tree rows, the search field, and result
+# rows — a step under Kivy's 15sp Label default, so the navigation column reads
+# as chrome next to the page body.
+TREE_PANEL_FONT_SIZE = 13  # sp
 # Multiplied into the background image (Kivy Image.color) so white text stays
 # readable over it — the same darkening mechanism the Barks Reader's kv files use.
 WINDOW_BG_TINT = (0.30, 0.30, 0.30, 1)
@@ -485,6 +489,7 @@ class OKFViewer(RelativeLayout):
         )
         self.search_field = TextInput(
             hint_text="Search pages…",
+            font_size=sp(TREE_PANEL_FONT_SIZE),
             multiline=False,
             write_tab=False,
             background_color=SEARCH_FIELD_BG,
@@ -657,6 +662,7 @@ class OKFViewer(RelativeLayout):
                 tv = self.tree.add_node(
                     TreeViewLabel(
                         text=node.title or node.name,
+                        font_size=sp(TREE_PANEL_FONT_SIZE),
                         bold=True,
                         color=self._theme.dir_text,
                         color_selected=self._theme.selection,
@@ -674,6 +680,7 @@ class OKFViewer(RelativeLayout):
             else:  # ConceptNode
                 tv = TreeViewLabel(
                     text=node.title,
+                    font_size=sp(TREE_PANEL_FONT_SIZE),
                     color=self._theme.title_text,
                     color_selected=self._theme.selection,
                     even_color=self._theme.row_stripe_even,
@@ -863,6 +870,7 @@ class OKFViewer(RelativeLayout):
         if not hits:
             note = Label(
                 text="No matches",
+                font_size=sp(TREE_PANEL_FONT_SIZE),
                 color=self._theme.secondary_text,
                 size_hint_y=None,
                 height=dp(SEARCH_RESULT_HEIGHT),
@@ -894,6 +902,7 @@ class OKFViewer(RelativeLayout):
         )
         btn = Button(
             text=f"[color={self._theme.title_hex}]{title}[/color]{crumb}",
+            font_size=sp(TREE_PANEL_FONT_SIZE),
             markup=True,
             halign="left",
             valign="middle",
