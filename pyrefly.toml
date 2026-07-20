@@ -33,6 +33,14 @@ project-excludes = [
 
 python-interpreter = ".venv/bin/python"
 
+# Residual findings that are neither real bugs nor structurally suppressible are
+# grandfathered here, so day-to-day runs report only NEW issues (0 today). This
+# is ~90 Kivy-Optional attribute accesses (widget/app singletons Kivy populates
+# at runtime but types `X | None`), plus a handful of ambiguous union-type and
+# deferred-init annotations (several already `# ty: ignore`-ed). Refresh after
+# intentionally changing the set with:  bash scripts/pyrefly.sh --update-baseline
+baseline = "pyrefly-baseline.json"
+
 # Kivy, OpenCV and Whoosh ship as compiled modules with no stubs (no py.typed,
 # zero .pyi). ty silently treats them as Any; pyrefly needs to be told to. This
 # clears the `missing-import` cascade on Kivy's Cython `.so` modules.
@@ -55,3 +63,16 @@ replace-imports-with-any = [
     "kivy.core.window",
     "kivy.config",
 ]
+
+# Override-shape mismatches against Kivy's *compiled* base classes (Widget,
+# App, SettingItem, …). pyrefly can't see the real signatures of the .so bases,
+# so every `on_touch_down`/`on_value`/`get_application_config`/`__events__`
+# override reads as a mismatch. All are the Kivy stub gap, not real bugs;
+# disable these kinds rather than grandfather a growing list per new widget.
+# (This table must stay LAST — a TOML section header captures every key below
+# it, so any top-level key placed after it would be parsed into [errors].)
+[errors]
+bad-override = false
+bad-override-param-name = false
+bad-override-mutable-attribute = false
+inconsistent-inheritance = false

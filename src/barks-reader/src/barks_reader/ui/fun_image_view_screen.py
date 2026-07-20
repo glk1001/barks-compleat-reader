@@ -92,7 +92,7 @@ class FunImageViewScreen(BoxLayout):
     @override
     def on_touch_down(self, touch: MotionEvent) -> bool:
         if not self.is_visible or self.fun_options_enabled:
-            return super().on_touch_down(touch)
+            return bool(super().on_touch_down(touch))
 
         x_rel = round(touch.x - self.x)
         y_rel = round(touch.y - self.y)

@@ -154,7 +154,7 @@ class TouchAwareTextInput(TextInput):
     def on_touch_down(self, touch: MotionEvent) -> bool:
         """Show virtual keyboard for touch taps, suppress for mouse clicks."""
         if not self.collide_point(*touch.pos) or not Window.allow_vkeyboard:
-            return super().on_touch_down(touch)
+            return bool(super().on_touch_down(touch))
 
         last_hw_touch: float = getattr(Window, "_last_hardware_touch_time", 0.0)
         recent_touch = (time.monotonic() - last_hw_touch) < self._TOUCH_WINDOW_SECS
@@ -163,7 +163,7 @@ class TouchAwareTextInput(TextInput):
             self._use_system_keyboard_for_click(touch)
             return True
 
-        return super().on_touch_down(touch)
+        return bool(super().on_touch_down(touch))
 
     def _use_system_keyboard_for_click(self, touch: MotionEvent) -> bool:
         """Handle a real mouse click by requesting the system keyboard.
@@ -183,4 +183,4 @@ class TouchAwareTextInput(TextInput):
         Window.allow_vkeyboard = False
         result = super().on_touch_down(touch)
         Window.allow_vkeyboard = True
-        return result
+        return bool(result)

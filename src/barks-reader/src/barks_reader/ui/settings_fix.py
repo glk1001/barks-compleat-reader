@@ -288,7 +288,7 @@ class CustomFileChooserListView(FileChooserListView):
         self._allow_path_change = False
         result = super().on_touch_down(touch)
         self._allow_path_change = True
-        return result
+        return bool(result)
 
     def set_path(self, new_path: str) -> None:
         """Explicitly allow setting path programmatically."""

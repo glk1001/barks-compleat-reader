@@ -6,6 +6,11 @@
 # surface latent issues ty does not flag. Its findings are informational — they
 # are deliberately NOT part of the lint gate or pre-commit/CI, and a non-zero
 # exit here does not fail any build. Config + rationale live in pyrefly.toml.
+#
+# Current residual findings are grandfathered in pyrefly-baseline.json (wired via
+# pyrefly.toml), so a clean run reports "0 errors" and only NEW issues surface.
+# After intentionally changing that set, refresh it:
+#     bash scripts/pyrefly.sh --update-baseline
 
 set -uo pipefail
 

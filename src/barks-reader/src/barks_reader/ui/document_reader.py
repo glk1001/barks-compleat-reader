@@ -82,7 +82,7 @@ class DocumentReaderScreen(ReaderScreen, ActionBarNavMixin):
 
         # Let action bar buttons handle their own touches first.
         if self.ids.doc_action_bar.collide_point(*touch.pos):
-            return super().on_touch_down(touch)
+            return bool(super().on_touch_down(touch))
 
         if self.ids.doc_page.collide_point(*touch.pos):
             mid_x = self.ids.doc_page.center_x
@@ -92,7 +92,7 @@ class DocumentReaderScreen(ReaderScreen, ActionBarNavMixin):
                 self.next_page()
             return True
 
-        return super().on_touch_down(touch)
+        return bool(super().on_touch_down(touch))
 
     def _on_key_down(
         self, _window: object, key: int, _scancode: int, _codepoint: str, _modifier: list[str]

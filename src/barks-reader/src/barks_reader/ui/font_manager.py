@@ -176,12 +176,12 @@ class FontManager(EventDispatcher):
 
     def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         super().__init__(*args, **kwargs)
-        self.app_title_font_size = 0
+        self.app_title_font_size = 0.0
 
         self.about_box_title_font_name = str(CARL_BARKS_FONT_FILE)
-        self.about_box_title_font_size = 0
-        self.about_box_version_font_size = 0
-        self.about_box_fine_print_font_size = 0
+        self.about_box_title_font_size = 0.0
+        self.about_box_version_font_size = 0.0
+        self.about_box_fine_print_font_size = 0.0
 
         self._previous_font_group: _FontGroup = _FontGroup.NOT_SET
 

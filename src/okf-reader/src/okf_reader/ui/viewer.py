@@ -1022,7 +1022,7 @@ class OKFViewer(RelativeLayout):
         if getattr(touch, "button", "") == "mouse4":
             self.go_back()
             return True
-        return super().on_touch_down(touch)
+        return bool(super().on_touch_down(touch))
 
     # ------------------------------------------------------------------
     # Keyboard navigation (see okf_reader.ui.keynav for the pure logic)
