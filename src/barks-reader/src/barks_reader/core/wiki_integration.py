@@ -294,6 +294,20 @@ class BarksTableRewriter:
     # page-list cell.
     _WRAP_WIDTHS: ClassVar[dict[str, int]] = {"Tag": 20, "Story": 24, "Orig. pages": 12}
 
+    # Per-table wraps, keyed by the table's full (rewritten) header row — for
+    # columns whose name is too generic to narrow globally. The "in Color"
+    # series-overview table (concept/production/carl-barks-library-in-color)
+    # holds full series titles in both its Series and Wiki columns; wrapping
+    # those and the Span dates sooner fits the six-series table in the page
+    # without touching the other tables' "Series" columns (covers, colorists).
+    _TABLE_WRAP_WIDTHS: ClassVar[dict[tuple[str, ...], dict[str, int]]] = {
+        ("Series", "INDUCKS", "Issues", "Span", "Contents", "Wiki"): {
+            "Series": 22,
+            "Span": 10,
+            "Wiki": 20,
+        },
+    }
+
     # Shorter display names for headers wider than their column's values — the
     # chronology's "Issue date" header (10 chars over 7-char YYYY-MM values)
     # was the few characters that pushed the table past a comic-page-width
@@ -332,4 +346,5 @@ class BarksTableRewriter:
 
     def wrap_widths(self, header: list[str]) -> list[int | None]:
         """Return the per-column wrap overrides for the known wide wiki tables."""
-        return [self._WRAP_WIDTHS.get(cell) for cell in header]
+        per_table = self._TABLE_WRAP_WIDTHS.get(tuple(header), {})
+        return [per_table.get(cell, self._WRAP_WIDTHS.get(cell)) for cell in header]

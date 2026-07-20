@@ -200,6 +200,17 @@ class TestBarksTableRewriter:
         rewriter = BarksTableRewriter()
         assert rewriter.wrap_widths(["Tag", "Story", "Title"]) == [20, 24, None]
 
+    def test_wrap_widths_per_table_override_needs_full_header_match(self) -> None:
+        """The "in Color" overview table narrows Series/Span/Wiki.
+
+        Other tables with a "Series" column (covers, colorists) keep the
+        default width.
+        """
+        rewriter = BarksTableRewriter()
+        in_color_header = ["Series", "INDUCKS", "Issues", "Span", "Contents", "Wiki"]
+        assert rewriter.wrap_widths(in_color_header) == [22, None, None, 10, None, 20]
+        assert rewriter.wrap_widths(["Series", "Issue", "Date"]) == [None, None, None]
+
 
 class TestBarksPanelsImageProvider:
     @staticmethod
