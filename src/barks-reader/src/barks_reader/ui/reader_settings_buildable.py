@@ -97,7 +97,11 @@ class BuildableReaderSettings(ReaderSettings):
 
         logger.info("Updating panel reader settings.")
 
-        panels = self._settings.interface.content.panels
+        # InterfaceWithSpinner/Sidebar wrap a ContentPanel in `.content`;
+        # InterfaceWithNoMenu *is* the ContentPanel, so fall back to itself.
+        interface = self._settings.interface
+        content = getattr(interface, "content", None) or interface
+        panels = content.panels
 
         # This module is used by non-GUI scripts but this import pops up a window.
         from kivy.uix.settings import SettingItem  # noqa: PLC0415

@@ -13,7 +13,7 @@ from kivy.clock import Clock
 from kivy.config import Config
 from kivy.core.window import Window  # can take ~1s in VM Windows
 from kivy.lang import Builder
-from kivy.uix.settings import Settings, SettingsWithSpinner  # can take ~1s in VM Windows
+from kivy.uix.settings import Settings, SettingsWithNoMenu  # can take ~1s in VM Windows
 from loguru import logger
 from screeninfo import get_monitors
 
@@ -107,7 +107,10 @@ class BarksReaderApp(App):
         self.timing = Timing()
 
         self.title = APP_TITLE
-        self.settings_cls = SettingsWithSpinner
+        # No-menu settings: a single panel with no top spinner/title bar (the
+        # spinner just repeated the window title). Closing is via Escape, handled
+        # by SettingsKeyboardNav — the same back-out gesture as every other screen.
+        self.settings_cls = SettingsWithNoMenu
 
         self._config_info = config_info
         self._comics_database = comics_db
@@ -206,7 +209,7 @@ class BarksReaderApp(App):
 
         self.reader_settings.build_settings(settings)
         self.config.write()
-        settings.interface.menu.height = ACTION_BAR_SIZE_Y
+        # SettingsWithNoMenu has no top menu bar to size (the old spinner bar).
 
         logger.info(f"Time taken up to build settings: {self.timing.get_elapsed_time_with_unit()}.")
 

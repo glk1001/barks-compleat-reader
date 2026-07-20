@@ -105,9 +105,9 @@ class SettingsKeyboardNav:
         interface = getattr(self._settings, "interface", None)
         if interface is None:
             return None
-        content = getattr(interface, "content", None)
-        if content is None:
-            return None
+        # InterfaceWithSpinner/Sidebar wrap a ContentPanel in `.content`;
+        # InterfaceWithNoMenu *is* the ContentPanel, so fall back to itself.
+        content = getattr(interface, "content", None) or interface
         current = getattr(content, "current_panel", None)
         if current is not None:
             return current

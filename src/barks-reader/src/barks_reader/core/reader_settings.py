@@ -400,35 +400,6 @@ _FIELDS: tuple[FieldSpec, ...] = (
         config_default=UNSET_FANTA_DIR_MARKER,
         validator=ReaderSettings.is_valid_fantagraphics_volumes_dir,
     ),
-    FieldSpec(
-        key=PNG_BARKS_PANELS_DIR,
-        title="PNG Barks Panels Directory",
-        desc="Directory containing Barks panels PNG images.",
-        kind=FieldKind.LONG_PATH,
-        config_default=ReaderFilePaths.get_default_png_barks_panels_source,
-        expand_vars=True,
-        validator=ReaderSettings._is_valid_png_barks_panels_dir,  # noqa: SLF001
-    ),
-    FieldSpec(
-        key=PREBUILT_COMICS_DIR,
-        title="Prebuilt Comics Directory",
-        desc="Directory containing specially prebuilt comics.",
-        kind=FieldKind.LONG_PATH,
-        config_default=ReaderFilePaths.get_default_prebuilt_comic_zips_dir,
-        expand_vars=True,
-        validator=ReaderSettings._is_valid_prebuilt_comics_dir,  # noqa: SLF001
-    ),
-    FieldSpec(
-        key=WIKI_BUNDLE_DIR,
-        title="Carl Barks Wiki Directory",
-        desc="Directory of the Carl Barks Wiki knowledge bundle (its root holds"
-        " an index.md). Only used when 'Use Live Wiki Bundle' is on; when not"
-        " set, the wiki entry is hidden from the Indexes tree. (Restart required.)",
-        kind=FieldKind.LONG_PATH,
-        config_default=UNSET_WIKI_BUNDLE_DIR_MARKER,
-        expand_vars=True,
-        validator=ReaderSettings._is_valid_wiki_bundle_dir,  # noqa: SLF001
-    ),
     # -- Reading --
     FieldSpec(
         key=DOUBLE_PAGE_MODE,
@@ -544,49 +515,6 @@ _FIELDS: tuple[FieldSpec, ...] = (
         kind=FieldKind.BOOL,
         config_default=0,
     ),
-    # -- Advanced --
-    FieldSpec(
-        key=USE_PNG_IMAGES,
-        title="Use PNG Images",
-        desc="Use PNG images where possible. (Restart required.)",
-        kind=FieldKind.BOOL,
-        section_header="Advanced",
-        config_default=1,
-        validator=ReaderSettings._is_valid_use_png_images,  # noqa: SLF001
-    ),
-    FieldSpec(
-        key=USE_PREBUILT_COMICS,
-        title="Use Prebuilt Comics",
-        desc="Read comics from the prebuilt comics folder.",
-        kind=FieldKind.BOOL,
-        config_default=0,
-        validator=ReaderSettings._is_valid_use_prebuilt_archives,  # noqa: SLF001
-    ),
-    FieldSpec(
-        key=USE_LIVE_WIKI_BUNDLE,
-        title="Use Live Wiki Bundle",
-        desc="Use the 'Carl Barks Wiki Directory' setting instead of the copy in"
-        " the Reader Files folder. (Restart required.)",
-        kind=FieldKind.BOOL,
-        config_default=0,
-        validator=ReaderSettings._is_valid_use_live_wiki_bundle,  # noqa: SLF001
-    ),
-    FieldSpec(
-        key=LOG_LEVEL,
-        title="Log Level",
-        desc="Level of logging information. (Restart required.)",
-        kind=FieldKind.OPTIONS,
-        options=tuple(LOG_LEVEL_OPTIONS),
-        config_default="INFO",
-    ),
-    FieldSpec(
-        key=IS_FIRST_USE_OF_READER,
-        title="First Use of Reader",
-        desc="Treat the next launch as a first run, re-running first-use setup."
-        " (Restart required.)",
-        kind=FieldKind.BOOL,
-        config_default=1,
-    ),
     # -- Controversial Censorship Fixes --
     FieldSpec(
         key=USE_HARPIES_INSTEAD_OF_LARKIES,
@@ -616,6 +544,79 @@ _FIELDS: tuple[FieldSpec, ...] = (
         desc="When reading 'The Firebug', don't use the Fantagraphics ending.",
         kind=FieldKind.BOOL,
         config_default=1,
+    ),
+    # -- Advanced -- (logging, first-run, image sources, prebuilt comics, wiki
+    # bundle: for power users; kept last so everyday settings come first.)
+    FieldSpec(
+        key=LOG_LEVEL,
+        title="Log Level",
+        desc="Level of logging information. (Restart required.)",
+        kind=FieldKind.OPTIONS,
+        options=tuple(LOG_LEVEL_OPTIONS),
+        section_header="Advanced",
+        config_default="INFO",
+    ),
+    FieldSpec(
+        key=IS_FIRST_USE_OF_READER,
+        title="First Use of Reader",
+        desc="Treat the next launch as a first run, re-running first-use setup."
+        " (Restart required.)",
+        kind=FieldKind.BOOL,
+        config_default=1,
+    ),
+    FieldSpec(
+        key=USE_PNG_IMAGES,
+        title="Use PNG Images",
+        desc="Use PNG images where possible. (Restart required.)",
+        kind=FieldKind.BOOL,
+        config_default=1,
+        validator=ReaderSettings._is_valid_use_png_images,  # noqa: SLF001
+    ),
+    FieldSpec(
+        key=PNG_BARKS_PANELS_DIR,
+        title="PNG Barks Panels Directory",
+        desc="Directory containing Barks panels PNG images.",
+        kind=FieldKind.LONG_PATH,
+        config_default=ReaderFilePaths.get_default_png_barks_panels_source,
+        expand_vars=True,
+        validator=ReaderSettings._is_valid_png_barks_panels_dir,  # noqa: SLF001
+    ),
+    FieldSpec(
+        key=USE_PREBUILT_COMICS,
+        title="Use Prebuilt Comics",
+        desc="Read comics from the prebuilt comics folder.",
+        kind=FieldKind.BOOL,
+        config_default=0,
+        validator=ReaderSettings._is_valid_use_prebuilt_archives,  # noqa: SLF001
+    ),
+    FieldSpec(
+        key=PREBUILT_COMICS_DIR,
+        title="Prebuilt Comics Directory",
+        desc="Directory containing specially prebuilt comics.",
+        kind=FieldKind.LONG_PATH,
+        config_default=ReaderFilePaths.get_default_prebuilt_comic_zips_dir,
+        expand_vars=True,
+        validator=ReaderSettings._is_valid_prebuilt_comics_dir,  # noqa: SLF001
+    ),
+    FieldSpec(
+        key=USE_LIVE_WIKI_BUNDLE,
+        title="Use Live Wiki Bundle",
+        desc="Use the 'Carl Barks Wiki Directory' setting instead of the copy in"
+        " the Reader Files folder. (Restart required.)",
+        kind=FieldKind.BOOL,
+        config_default=0,
+        validator=ReaderSettings._is_valid_use_live_wiki_bundle,  # noqa: SLF001
+    ),
+    FieldSpec(
+        key=WIKI_BUNDLE_DIR,
+        title="Carl Barks Wiki Directory",
+        desc="Directory of the Carl Barks Wiki knowledge bundle (its root holds"
+        " an index.md). Only used when 'Use Live Wiki Bundle' is on; when not"
+        " set, the wiki entry is hidden from the Indexes tree. (Restart required.)",
+        kind=FieldKind.LONG_PATH,
+        config_default=UNSET_WIKI_BUNDLE_DIR_MARKER,
+        expand_vars=True,
+        validator=ReaderSettings._is_valid_wiki_bundle_dir,  # noqa: SLF001
     ),
 )
 
