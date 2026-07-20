@@ -1476,6 +1476,10 @@
                 { name: 'Data Pack 2', filename: 'barks-reader-data-2.zip' }
             ];
 
+            // Last known release tag, used until (or in case) the GitHub API
+            // resolves the current one. Update when cutting a new release.
+            const FALLBACK_TAG = 'v1.0.0-alpha.1';
+
             let resolvedTag = null;
 
             async function resolveLatestTag() {
@@ -1500,12 +1504,12 @@
             }
 
             function generateDownloadURL(filename) {
-                // Tag-based URL when the API resolved one; otherwise GitHub's static
-                // "latest" permalink, which needs no API call and never goes stale
-                // (but only points at full releases, not pre-releases).
-                return resolvedTag
-                    ? `https://github.com/${GITHUB_REPO}/releases/download/${resolvedTag}/${filename}`
-                    : `https://github.com/${GITHUB_REPO}/releases/latest/download/${filename}`;
+                // Tag-based URL when the API resolved one; otherwise the last known
+                // tag. (GitHub's "releases/latest/download" permalink is no good here:
+                // it only points at full releases, so it 404s while every release is
+                // a pre-release.)
+                const tag = resolvedTag || FALLBACK_TAG;
+                return `https://github.com/${GITHUB_REPO}/releases/download/${tag}/${filename}`;
             }
 
             function createDataFilesHTML() {
@@ -1615,9 +1619,10 @@
                     openTab(null, initialTab);
                 }
 
-                // Render the download buttons straight away with "latest" permalinks,
-                // so they exist even if the GitHub API is slow or unreachable...
+                // Render the download buttons straight away with last-known-tag
+                // links, so they work even if the GitHub API is slow or unreachable...
                 initializeDownloadTabs();
+                document.getElementById('header-version').textContent = FALLBACK_TAG;
 
                 // ...then swap in tag-based URLs once the API resolves the release.
                 resolvedTag = await resolveLatestTag();
