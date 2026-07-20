@@ -9,6 +9,7 @@ argtypes
 autotune
 autouse
 axisbelow
+baselined
 bboxes
 behaviour
 blit
