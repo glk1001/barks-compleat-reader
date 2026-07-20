@@ -20,8 +20,16 @@ The wiki is integrated as a top-level app screen. Remaining polish:
       Escape) backs out of an active search, then navigates back, and at the
       history root exits to the Barks Reader; Alt+Left backs too. Pinned by the
       escape/go-back tests in `test_wiki_reader.py`.
-- [ ] **Async panel textures** — load large panel-background images off the UI
-      thread to avoid stalls.
+- [ ] **Async panel textures** — still open (checked 2026-07-20): the wiki
+      reuses the app's image *selection* (`BarksPanelsImageProvider` wraps
+      `ImageSelector`) but not its async *loading* — `PanelTextureLoader`
+      serves five barks screens while `OKFViewer._update_background` runs
+      fully on the UI thread, worst on encrypted zips (decrypt + PIL decode +
+      PNG re-encode in `background_for`, then CoreImage decodes it *again*).
+      Blocker is the synchronous okf `ImageProvider` contract (okf-reader
+      can't import barks code): the viewer needs an async-friendly background
+      API (texture-via-callback), after which the app-side provider can go
+      off-thread via `PanelImageLoader` and drop the double decode.
 - [x] **Shared kv action-bar extraction** (2026-07-10) — one `ReaderActionBar`
       skeleton (`ui/action_bar.py` + `ui/action_bar.kv`, content-redirect
       pattern) now serves the main, comic, *and* document screens (the document
