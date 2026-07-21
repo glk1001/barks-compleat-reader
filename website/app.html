@@ -1303,6 +1303,33 @@
             </div>
 
             <div class="troubleshooting-item">
+                <h4>🦠 "Couldn't download &mdash; virus detected" (Program:Win32/Wacapew.C!ml)</h4>
+                <div class="solution">
+                    <p>Windows Defender sometimes flags the download itself, typically as
+                        <strong>Program:Win32/Wacapew.C!ml</strong>. This is a well-known false
+                        positive: the app is a compressed self-extracting executable (built with
+                        Nuitka), and Defender's machine-learning heuristic mistakes that shape for
+                        packed malware &mdash; the <em>"Program:"</em> category and <em>"!ml"</em>
+                        suffix mark it as a low-confidence guess, not a real signature match.</p>
+                    <p><strong>To unblock:</strong></p>
+                    <ul>
+                        <li>Open Windows Security → Virus &amp; threat protection →
+                            <strong>Protection history</strong>.</li>
+                        <li>Find the blocked entry (it names the download), expand it, and choose
+                            <strong>Actions → Allow</strong>.</li>
+                        <li>Download again &mdash; it should now complete.</li>
+                        <li>If Defender re-flags it, first add your BarksReader folder as an
+                            exclusion (Virus &amp; threat protection settings →
+                            <strong>Exclusions</strong> → Add a folder), then re-download into that
+                            folder.</li>
+                    </ul>
+                    <p>Only ever do this for downloads from this site or the project's own
+                        <a href="https://github.com/glk1001/barks-compleat-reader/releases">GitHub
+                        Releases page</a>.</p>
+                </div>
+            </div>
+
+            <div class="troubleshooting-item">
                 <h4>🛡️ Antivirus or SmartScreen blocks the app</h4>
                 <div class="solution">
                     <p><strong>Solutions:</strong></p>
