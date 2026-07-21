@@ -569,6 +569,55 @@ class TestPublicDelegations:
         _args, kwargs = _selector(pipeline).get_random_image.call_args
         assert kwargs.get("use_adaptive_fit_mode") is True
 
+    def test_random_titles_fun_image_uses_tag_for_character_node(self) -> None:
+        pipeline = _make_pipeline()
+        pipeline._view_state = ViewStates.ON_RANDOM_TITLES_NODE
+        pipeline._current_tag = Tags.GLADSTONE_GANDER
+        pipeline._current_year_range = ""
+
+        with patch.object(
+            vp_module, "BARKS_TAGGED_TITLES", {Tags.GLADSTONE_GANDER: [Titles.ATTIC_ANTICS]}
+        ):
+            pipeline._get_next_fun_view_image_info()
+
+        # The character node's tagged title list feeds the fun image, with NONTITLE
+        # excluded so an unrelated nontitle image can't leak in, and adaptive fit.
+        _selector(pipeline).get_random_image.assert_called_once()
+        _args, kwargs = _selector(pipeline).get_random_image.call_args
+        assert kwargs.get("use_adaptive_fit_mode") is True
+        assert kwargs.get("file_types") == ALL_TYPES - {FileTypes.NONTITLE}
+
+    def test_random_titles_fun_image_uses_year_range_for_decade_node(self) -> None:
+        pipeline = _make_pipeline()
+        pipeline._view_state = ViewStates.ON_RANDOM_TITLES_NODE
+        pipeline._current_tag = None
+        pipeline._current_year_range = "1950-1959"
+        decade_list = [_fake_fcbi(Titles.ATTIC_ANTICS)]
+        _title_lists(pipeline)["1950-1959"] = decade_list
+
+        pipeline._get_next_fun_view_image_info()
+
+        # The decade node draws from its year-range title list.
+        _selector(pipeline).get_random_image.assert_called_once()
+        args, kwargs = _selector(pipeline).get_random_image.call_args
+        assert args[0] is decade_list
+        assert kwargs.get("file_types") == ALL_TYPES - {FileTypes.NONTITLE}
+
+    def test_random_titles_fun_image_surprise_me_falls_through_to_generic_pool(self) -> None:
+        pipeline = _make_pipeline()
+        pipeline._view_state = ViewStates.ON_RANDOM_TITLES_NODE
+        pipeline._current_tag = None
+        pipeline._current_year_range = ""
+        # 'Surprise me' carries no theme, so the generic cached pool is used.
+        generic_pool = [_fake_fcbi(Titles.LOST_IN_THE_ANDES)]
+        pipeline.__dict__["_cached_fun_titles"] = (generic_pool, ALL_TYPES)
+
+        pipeline._get_next_fun_view_image_info()
+
+        _selector(pipeline).get_random_image.assert_called_once()
+        args, _kwargs = _selector(pipeline).get_random_image.call_args
+        assert args[0] is generic_pool
+
     def test_set_next_bottom_view_title_image_no_title_short_circuits(self) -> None:
         pipeline = _make_pipeline()
         pipeline._current_bottom_view_title = ""

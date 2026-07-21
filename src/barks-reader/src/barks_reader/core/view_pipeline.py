@@ -656,6 +656,13 @@ class ViewPipeline:
                 fanta_title_list, use_adaptive_fit_mode=True
             )
 
+        if self._view_state == ViewStates.ON_RANDOM_TITLES_NODE:
+            themed_image = self._get_random_titles_fun_image()
+            if themed_image is not None:
+                return themed_image
+            # 'Surprise me' carries neither a tag nor a year range - fall through
+            # to the generic fun-image pool, matching the top view's "no theme" rule.
+
         assert self._cached_fun_titles
         titles, file_types = self._cached_fun_titles
 
@@ -663,6 +670,25 @@ class ViewPipeline:
             titles,
             file_types=file_types,
             use_adaptive_fit_mode=True,
+        )
+
+    def _get_random_titles_fun_image(self) -> ImageInfo | None:
+        # Theme the bottom fun image the same way the top view is themed for
+        # 'Choose for me' nodes: character nodes carry a tag, decade nodes carry a
+        # year-range key (e.g. "1942-1949"). 'Surprise me' carries neither and
+        # returns None so the caller falls back to the generic pool.
+        if self._current_tag:
+            title_list = self._get_fanta_title_list(BARKS_TAGGED_TITLES[self._current_tag])
+        elif self._current_year_range:
+            title_list = self._title_lists[self._current_year_range]
+        else:
+            return None
+
+        # Exclude NONTITLE: with the default pool `get_random_image` may pick a
+        # nontitle image unrelated to the themed title list, breaking the theming.
+        file_types = ALL_TYPES - {FileTypes.NONTITLE}
+        return self._image_selector.get_random_image(
+            title_list, file_types=file_types, use_adaptive_fit_mode=True
         )
 
     def _get_fun_image_titles(self) -> tuple[list[FantaComicBookInfo], set[FileTypes]]:
