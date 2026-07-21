@@ -127,6 +127,13 @@ class TestCheckCorrectVolumeNumbers:
         filenames = [Path(f"{i}-vol.cbz") for i in range(1, 30)]
         archives.check_correct_volume_numbers(filenames)
 
+    def test_raises_missing_for_empty_list(self, archives: FantagraphicsVolumeArchives) -> None:
+        # An empty archive dir must not IndexError; it means every volume is missing.
+        with pytest.raises(MissingArchiveFilesError) as exc_info:
+            archives.check_correct_volume_numbers([])
+        assert 1 in exc_info.value.missing_file_vols
+        assert NUM_VOLUMES in exc_info.value.missing_file_vols
+
 
 class TestFantagraphicsArchive:
     def test_get_num_pages(self) -> None:
@@ -313,6 +320,15 @@ class TestDirectoryScanning:
 
         assert found == [tmp_path / "01-a.cbz", tmp_path / "02-b.zip"]
 
+    def test_get_all_volume_filenames_returns_empty_for_missing_root(self) -> None:
+        # An unset/vanished library dir must not raise; it scans as empty.
+        archives = FantagraphicsVolumeArchives(
+            archive_root=Path("/nonexistent/library/root"),
+            override_root=Path("/fake/overrides"),
+            volume_list=list(range(1, 30)),
+        )
+        assert archives.get_all_volume_filenames() == []
+
     def test_get_all_volume_override_archives_returns_map(self, tmp_path: Path) -> None:
         archive_root = tmp_path / "archive"
         override_root = tmp_path / "override"
@@ -487,6 +503,43 @@ class TestLoadEndToEnd:
         missing_entry = archives.get_fantagraphics_archive(2)
         assert missing_entry.is_missing is True
         assert missing_entry.fanta_volume == 2
+
+    def test_missing_volumes_still_expose_bundled_extra_pages(self, tmp_path: Path) -> None:
+        # An existing-but-empty library dir plus bundled override zips: every volume is
+        # missing, but each override zip's pages are still mapped as "extra" pages, so
+        # fully-bundled stories (the restored censored ones) remain readable.
+        archive_root = tmp_path / "archive"
+        override_root = tmp_path / "override"
+        archive_root.mkdir()  # exists but holds no library volumes
+        override_root.mkdir()
+
+        _make_override_zip(
+            override_root / "01-override.cbz",
+            image_names=["258.png", "259.png", "267.png"],
+        )
+        _make_override_zip(override_root / "03-override.cbz", image_names=["250.png", "260.png"])
+
+        archives = FantagraphicsVolumeArchives(
+            archive_root=archive_root,
+            override_root=override_root,
+            volume_list=list(range(1, NUM_VOLUMES + 1)),
+        )
+        with pytest.raises(MissingArchiveFilesError):
+            archives.load()
+
+        vol1 = archives.get_fantagraphics_archive(1)
+        assert vol1.is_missing is True
+        assert set(vol1.extra_images_page_map) == {"258", "259", "267"}
+        assert vol1.needs_real_archive_for("258") is False
+        assert vol1.needs_real_archive_for("999") is True
+
+        vol3 = archives.get_fantagraphics_archive(3)
+        assert set(vol3.extra_images_page_map) == {"250", "260"}
+
+        # A missing volume with no bundled override has no extra pages.
+        vol2 = archives.get_fantagraphics_archive(2)
+        assert vol2.extra_images_page_map == {}
+        assert vol2.needs_real_archive_for("258") is True
 
     def test_raises_page_ext_error_for_uppercase_extension(self, tmp_path: Path) -> None:
         """`_get_archive_contents` accepts case-insensitively; `load()` then rejects non-canonical exts."""  # noqa: E501

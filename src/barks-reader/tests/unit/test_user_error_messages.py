@@ -32,7 +32,8 @@ class TestGotoSettingsErrors:
 
         assert pres.kind is ErrorDialogKind.GOTO_SETTINGS
         assert pres.title == "Fantagraphics Directory Not Set"
-        assert "has\nnot been set" in pres.text
+        assert "has not been set" in pres.text
+        assert "browse" in pres.text  # the app stays usable without the library
         assert pres.close_message == FANTA_VOLUMES_NOT_SET_FIX_SETTINGS_MSG
 
     def test_fanta_root_not_found_includes_configured_dir(self, reader_settings: MagicMock) -> None:

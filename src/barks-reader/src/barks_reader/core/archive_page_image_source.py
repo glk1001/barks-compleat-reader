@@ -75,6 +75,12 @@ class ArchivePageImageSource:
 
     def open(self) -> None:
         """Open the backing ZIP archive. Must be called before :meth:`load_page_image`."""
+        if self._fanta_volume_archive is not None and self._fanta_volume_archive.is_missing:
+            # The library volume is absent; this comic is served entirely from bundled
+            # override/extra pages. There is no real archive to open (its filename is a
+            # "N-MISSING.cbz" placeholder), so leave it unopened.
+            self._archive = None
+            return
         self._archive = zipfile.ZipFile(self._archive_path, "r")
 
     def close(self) -> None:
@@ -153,9 +159,10 @@ class ArchivePageImageSource:
         return Path(self._fanta_volume_archive.archive_images_page_map[page_str]), True
 
     def _read_image(self, page_info: PageInfo, image_path: str, is_from_archive: bool) -> Image:
-        assert self._archive is not None
-
         if is_from_archive:
+            assert self._archive is not None, (
+                "Page requires the Fantagraphics library archive, but it is not available."
+            )
             return load_pil(
                 zipfile.Path(self._archive, at=str(image_path)),
                 encrypted_zip=False,

@@ -31,13 +31,14 @@ from .comic_book_loader_platform_settings import (
 )
 from .fantagraphics_volumes import (
     FantagraphicsVolumeArchives,
+    MissingArchiveFilesError,
     MissingVolumeError,
 )
-from .reader_utils import PNG_EXT_FOR_KIVY
+from .reader_utils import PNG_EXT_FOR_KIVY, is_blank_page, is_title_page
 
 if TYPE_CHECKING:
     import io
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping
 
     from .comic_book_page_info import PageInfo
     from .fantagraphics_volumes import FantagraphicsArchive
@@ -47,6 +48,24 @@ if TYPE_CHECKING:
 
 ALL_FANTA_VOLUMES = list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1))
 # ALL_FANTA_VOLUMES = [i for i in range(5, 7 + 1)]
+
+
+def _page_needs_real_archive(
+    page_info: PageInfo, fanta_volume_archive: FantagraphicsArchive
+) -> bool:
+    """Return whether a page can only be shown from the (library) volume archive.
+
+    Mirrors the source resolution in
+    :meth:`ArchivePageImageSource._get_fanta_volume_image_path`: title/blank pages and
+    override/extra images are bundled with the app, so only a page absent from both
+    override maps requires the real Fantagraphics archive.
+    """
+    if is_title_page(page_info.srce_page) or is_blank_page(
+        page_info.srce_page.page_filename, page_info.page_type
+    ):
+        return False
+    page_str = Path(page_info.srce_page.page_filename).stem
+    return fanta_volume_archive.needs_real_archive_for(page_str)
 
 
 class ComicBookLoader:
@@ -125,7 +144,15 @@ class ComicBookLoader:
                 self._sys_file_paths.get_barks_reader_fantagraphics_overrides_root_dir(),
                 ALL_FANTA_VOLUMES,
             )
-            fanta_volume_archives.load()
+            try:
+                fanta_volume_archives.load()
+            except MissingArchiveFilesError:
+                # Missing volumes are built as placeholders carrying their bundled
+                # override/extra pages, so keep the fully-built archive set (for reading
+                # the restored censored stories) before the caller records the state.
+                # Without this, a later resolve would re-init and re-raise uncaught.
+                self._fanta_volume_archives = fanta_volume_archives
+                raise
             self._fanta_volume_archives = fanta_volume_archives
 
             logger.info(f"Finished loading all volumes in {timing.get_elapsed_time_with_unit()}.")
@@ -137,15 +164,22 @@ class ComicBookLoader:
     def resolve_archive_for_comic(
         self,
         fanta_info: FantaComicBookInfo,
+        page_map: Mapping[str, PageInfo],
     ) -> tuple[Path, FantagraphicsArchive | None]:
         """Look up the archive path and volume metadata for a comic.
+
+        Args:
+            fanta_info: The comic to resolve.
+            page_map: The comic's pages, used to decide whether a missing volume can
+                still be read purely from bundled override/extra pages.
 
         Returns:
             A tuple of (*archive_path*, *fanta_volume_archive*).
             *fanta_volume_archive* is ``None`` when using prebuilt archives.
 
         Raises:
-            MissingVolumeError: If the Fantagraphics volume is not available.
+            MissingVolumeError: If the volume is absent and at least one page of the
+                comic can only come from the (missing) library archive.
 
         """
         if self._reader_settings.use_prebuilt_archives:
@@ -158,7 +192,13 @@ class ComicBookLoader:
         fanta_volume_archive = self._fanta_volume_archives.get_fantagraphics_archive(
             int(fanta_info.fantagraphics_volume[-2:])
         )
-        if fanta_volume_archive.is_missing:
+        # A missing volume can still be read if every page is bundled (a title/blank
+        # page, or an override/extra image) - e.g. the fully hand-restored censored
+        # stories. Only block when a page genuinely needs the absent library archive.
+        if fanta_volume_archive.is_missing and any(
+            _page_needs_real_archive(page_info, fanta_volume_archive)
+            for page_info in page_map.values()
+        ):
             raise MissingVolumeError(
                 get_fanta_volume_from_str(fanta_info.fantagraphics_volume),
                 fanta_info.comic_book_info.title,

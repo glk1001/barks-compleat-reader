@@ -116,6 +116,17 @@ class FantagraphicsArchive:
     def has_overrides(self) -> bool:
         return (len(self.extra_images_page_map) > 0) or (len(self.override_images_page_map) > 0)
 
+    def needs_real_archive_for(self, page_str: str) -> bool:
+        """Return whether the given page can only come from the (library) archive.
+
+        A page backed by a bundled override or extra image can be shown without the
+        user's Fantagraphics library; any other page requires the real volume archive.
+        """
+        return (
+            page_str not in self.extra_images_page_map
+            and page_str not in self.override_images_page_map
+        )
+
 
 class FantagraphicsVolumeArchives:
     """Manages the loading and validation of Fantagraphics volume archives."""
@@ -145,6 +156,14 @@ class FantagraphicsVolumeArchives:
 
     def check_correct_volume_numbers(self, archive_filenames: list[Path]) -> None:
         file_vols = sorted([self._get_fanta_volume(f) for f in archive_filenames])
+
+        # An empty archive dir (or one with no valid volume files) means every volume
+        # is missing. Route it through the normal all-missing path rather than indexing
+        # into an empty list below.
+        if not file_vols:
+            raise MissingArchiveFilesError(
+                list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)), self._archive_root
+            )
 
         # Check valid volume numbers.
         if file_vols[-1] > LAST_VOLUME_NUMBER:
@@ -181,6 +200,13 @@ class FantagraphicsVolumeArchives:
         for missing_volume in missing_volumes:
             archive_filename = Path(f"{missing_volume}-MISSING.cbz")
             override_archive_filename = override_archive_filenames.get(missing_volume, None)
+            # Even without the library archive, the bundled override zip still holds this
+            # volume's extra pages (e.g. the fully hand-restored censored stories). With no
+            # archive to compare against, every override-zip page classifies as "extra", so
+            # a story whose pages are all extra/override can still be read.
+            _override_map, extra_images_page_map = self._get_override_and_extra_images_page_maps(
+                override_archive_filename, {}
+            )
             archive_page_map = FantagraphicsArchive(
                 fanta_volume=missing_volume,
                 archive_filename=archive_filename,
@@ -190,7 +216,7 @@ class FantagraphicsVolumeArchives:
                 last_page=-1,
                 archive_images_page_map={},
                 override_images_page_map={},
-                extra_images_page_map={},
+                extra_images_page_map=extra_images_page_map,
                 override_archive_filename=override_archive_filename,
                 is_missing=True,
             )
@@ -249,7 +275,13 @@ class FantagraphicsVolumeArchives:
     def get_all_volume_filenames(self) -> list[Path]:
         """Return a list of all valid volume archive filenames in the archive root."""
         archive_files = []
-        for archive_file in self._archive_root.iterdir():
+        try:
+            archive_root_contents = list(self._archive_root.iterdir())
+        except (FileNotFoundError, NotADirectoryError):
+            # The library dir is unset/missing, or vanished after the startup is_dir()
+            # check. Treat it as empty; callers route this to the all-missing path.
+            return []
+        for archive_file in archive_root_contents:
             if archive_file.suffix.lower() not in [CBZ_FILE_EXT, ZIP_FILE_EXT]:
                 continue
 

@@ -188,6 +188,32 @@ def test_init_data_fanta_volumes(loader: ComicBookLoader, mock_reader_settings: 
         mock_archives.return_value.load.assert_called_once()
 
 
+def test_init_data_retains_archives_when_volumes_missing(
+    loader: ComicBookLoader, mock_reader_settings: MagicMock, tmp_path: Path
+) -> None:
+    """A missing-volumes load still keeps the (placeholder) archive set.
+
+    load() builds every volume - present ones plus missing placeholders carrying
+    their bundled override/extra pages - and then re-raises. The built set must be
+    retained so a later resolve reads bundled stories instead of re-init/re-raising.
+    """
+    from barks_reader.core.fantagraphics_volumes import (  # noqa: PLC0415
+        MissingArchiveFilesError,
+    )
+
+    mock_reader_settings.use_prebuilt_archives = False
+
+    with patch.object(loader_module, FantagraphicsVolumeArchives.__name__) as mock_archives:
+        built = mock_archives.return_value
+        built.load.side_effect = MissingArchiveFilesError([1, 2, 3], tmp_path)
+
+        with pytest.raises(MissingArchiveFilesError):
+            loader.init_data()
+
+        # The fully-built archive set is retained despite the raise.
+        assert loader._fanta_volume_archives is built
+
+
 def test_set_comic_and_load_success(
     loader: ComicBookLoader,
     page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
@@ -319,6 +345,16 @@ def _make_fanta_info(
     return info
 
 
+def _make_page_map(
+    *, page_filename: str = "258.jpg", page_type: PageType = PageType.BODY
+) -> OrderedDict[str, MagicMock]:
+    """Build a one-page page_map with the fields the resolve gate reads."""
+    page_info = MagicMock()
+    page_info.srce_page.page_filename = page_filename
+    page_info.page_type = page_type
+    return OrderedDict({"1": page_info})
+
+
 def test_resolve_archive_for_comic_returns_prebuilt_when_setting_enabled(
     loader: ComicBookLoader,
     mock_reader_settings: MagicMock,
@@ -335,7 +371,7 @@ def test_resolve_archive_for_comic_returns_prebuilt_when_setting_enabled(
     expected_path = comics_dir / f"{expected_stem}.cbz"
     expected_path.write_bytes(b"PK\x03\x04")  # minimal cbz placeholder
 
-    archive_path, archive = loader.resolve_archive_for_comic(fanta_info)
+    archive_path, archive = loader.resolve_archive_for_comic(fanta_info, _make_page_map())
     assert archive_path == expected_path
     assert archive is None
 
@@ -357,23 +393,24 @@ def test_resolve_archive_for_comic_returns_fanta_volume_when_not_prebuilt(
 
     fanta_info = _make_fanta_info(volume="FANTA_07")
 
-    archive_path, returned = loader.resolve_archive_for_comic(fanta_info)
+    archive_path, returned = loader.resolve_archive_for_comic(fanta_info, _make_page_map())
     fanta_volume_archives.get_fantagraphics_archive.assert_called_once_with(7)
     assert archive_path == "/fake/path/07.cbz"
     assert returned is fake_archive
 
 
-def test_resolve_archive_for_comic_raises_when_volume_is_missing(
+def test_resolve_archive_for_comic_raises_when_missing_volume_page_needs_archive(
     loader: ComicBookLoader,
     mock_reader_settings: MagicMock,
 ) -> None:
-    """is_missing volume triggers MissingVolumeError."""
+    """A missing volume raises MissingVolumeError when a page needs the real archive."""
     from barks_fantagraphics.barks_titles import Titles  # noqa: PLC0415
     from barks_reader.core.fantagraphics_volumes import MissingVolumeError  # noqa: PLC0415
 
     mock_reader_settings.use_prebuilt_archives = False
     fake_archive = MagicMock()
     fake_archive.is_missing = True
+    fake_archive.needs_real_archive_for.return_value = True  # page not bundled
 
     fanta_volume_archives = MagicMock()
     fanta_volume_archives.get_fantagraphics_archive.return_value = fake_archive
@@ -383,7 +420,30 @@ def test_resolve_archive_for_comic_raises_when_volume_is_missing(
     fanta_info.comic_book_info.title = Titles.LOST_IN_THE_ANDES
 
     with pytest.raises(MissingVolumeError):
-        loader.resolve_archive_for_comic(fanta_info)
+        loader.resolve_archive_for_comic(fanta_info, _make_page_map())
+
+
+def test_resolve_archive_for_comic_allows_missing_volume_when_all_pages_bundled(
+    loader: ComicBookLoader,
+    mock_reader_settings: MagicMock,
+) -> None:
+    """A missing volume is readable when every page is bundled (extra/override/title)."""
+    mock_reader_settings.use_prebuilt_archives = False
+    fake_archive = MagicMock()
+    fake_archive.is_missing = True
+    fake_archive.needs_real_archive_for.return_value = False  # every page bundled
+    fake_archive.has_overrides.return_value = False
+    fake_archive.archive_filename = "/fake/path/12-MISSING.cbz"
+
+    fanta_volume_archives = MagicMock()
+    fanta_volume_archives.get_fantagraphics_archive.return_value = fake_archive
+    loader._fanta_volume_archives = fanta_volume_archives
+
+    fanta_info = _make_fanta_info(volume="FANTA_12")
+
+    archive_path, returned = loader.resolve_archive_for_comic(fanta_info, _make_page_map())
+    assert archive_path == "/fake/path/12-MISSING.cbz"
+    assert returned is fake_archive
 
 
 def test_get_prebuilt_comic_path_raises_when_file_missing(

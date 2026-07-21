@@ -113,9 +113,11 @@ def _build_fanta_root_not_set(
 ) -> ErrorPresentation:
     """Compose the message for the Fantagraphics directory not being set."""
     text = dedent("""\
-        Currently, in the app settings, the Fantagraphics comic zips directory has
-        not been set. You need to go to settings and enter the zips directory, then
-        restart the app.""")
+        The Fantagraphics comic zips directory has not been set in the app settings.
+
+        You can still browse the whole library, search, read the wiki, and read the
+        hand-restored censored stories. To read the full comics, go to settings, enter
+        the zips directory, then restart the app.""")
 
     return ErrorPresentation(
         kind=ErrorDialogKind.GOTO_SETTINGS,
@@ -140,9 +142,10 @@ def _build_fanta_root_not_found(
 
             [b]"{fanta_volume_dir}"[/b]
 
-        But this directory could not be found. You need to go to
-        settings and enter the correct directory, then restart the
-        app.""")
+        But this directory could not be found. You can still browse the
+        library, search, read the wiki, and read the hand-restored
+        censored stories. To read the full comics, go to settings, enter
+        the correct directory, then restart the app.""")
 
     return ErrorPresentation(
         kind=ErrorDialogKind.GOTO_SETTINGS,

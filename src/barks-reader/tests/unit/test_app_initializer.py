@@ -94,9 +94,13 @@ class TestAppInitializer:
         ) as mock_handle_error:
             app_initializer._post_build_setup()
 
-            assert app_initializer._fanta_volumes_state == _FantaVolumesState.VOLUMES_NOT_SET
+        assert app_initializer._fanta_volumes_state == _FantaVolumesState.VOLUMES_NOT_SET
 
-            mock_handle_error.assert_called_with(ErrorTypes.FantagraphicsVolumeRootNotSet)
+        # No library: a single browsable notice is shown, not the blocking overlay path.
+        mock_dependencies["user_error_handler"].handle_error.assert_called_once()
+        notice_args, _ = mock_dependencies["user_error_handler"].handle_error.call_args
+        assert notice_args[0] == ErrorTypes.FantagraphicsVolumeRootNotSet
+        mock_handle_error.assert_not_called()
 
     def test_post_build_setup_missing_dir(
         self, app_initializer: AppInitializer, mock_dependencies: dict[str, MagicMock]
@@ -113,9 +117,13 @@ class TestAppInitializer:
         ) as mock_handle_error:
             app_initializer._post_build_setup()
 
-            assert app_initializer._fanta_volumes_state == _FantaVolumesState.ALL_VOLUMES_MISSING
+        assert app_initializer._fanta_volumes_state == _FantaVolumesState.ALL_VOLUMES_MISSING
 
-            mock_handle_error.assert_called_with(ErrorTypes.FantagraphicsVolumeRootNotFound)
+        # No library: a single browsable notice is shown, not the blocking overlay path.
+        mock_dependencies["user_error_handler"].handle_error.assert_called_once()
+        notice_args, _ = mock_dependencies["user_error_handler"].handle_error.call_args
+        assert notice_args[0] == ErrorTypes.FantagraphicsVolumeRootNotFound
+        mock_handle_error.assert_not_called()
 
     def test_post_build_setup_goto_saved_node(
         self, app_initializer: AppInitializer, mock_dependencies: dict[str, MagicMock]
@@ -144,6 +152,69 @@ class TestAppInitializer:
                 mock_node
             )
 
+    def test_post_build_setup_empty_dir_shows_single_notice(
+        self, app_initializer: AppInitializer, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        from barks_fantagraphics.fanta_comics_info import NUM_VOLUMES  # noqa: PLC0415
+        from barks_reader.core.fantagraphics_volumes import (  # noqa: PLC0415
+            MissingArchiveFilesError,
+        )
+
+        rs = mock_dependencies["reader_settings"]
+        rs.use_prebuilt_archives = False
+        rs.goto_saved_node_on_start = False
+        mock_path = MagicMock()
+        mock_path.__str__.return_value = "/some/empty/dir"
+        mock_path.is_dir.return_value = True  # exists -> base state VOLUMES_EXIST
+        rs.fantagraphics_volumes_dir = mock_path
+        # An existing-but-empty dir: every volume is missing after load().
+        all_missing = list(range(1, NUM_VOLUMES + 1))
+        mock_dependencies[
+            "comic_reader_manager"
+        ].init_comic_book_data.side_effect = MissingArchiveFilesError(
+            all_missing, Path("/some/empty/dir")
+        )
+
+        with patch.object(
+            app_initializer, AppInitializer._handle_error_ui.__name__
+        ) as mock_handle_error:
+            app_initializer._post_build_setup()
+
+        assert app_initializer._fanta_volumes_state == _FantaVolumesState.SOME_VOLUMES_MISSING
+        # A single browsable notice (RootNotFound), not the per-volume popup or overlay.
+        mock_dependencies["user_error_handler"].handle_error.assert_called_once()
+        notice_args, _ = mock_dependencies["user_error_handler"].handle_error.call_args
+        assert notice_args[0] == ErrorTypes.FantagraphicsVolumeRootNotFound
+        mock_handle_error.assert_not_called()
+
+    def test_post_build_setup_partial_library_shows_missing_popup(
+        self, app_initializer: AppInitializer, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        from barks_reader.core.fantagraphics_volumes import (  # noqa: PLC0415
+            MissingArchiveFilesError,
+        )
+
+        rs = mock_dependencies["reader_settings"]
+        rs.use_prebuilt_archives = False
+        rs.goto_saved_node_on_start = False
+        mock_path = MagicMock()
+        mock_path.__str__.return_value = "/some/dir"
+        mock_path.is_dir.return_value = True
+        rs.fantagraphics_volumes_dir = mock_path
+        # Only a couple of volumes missing: keep the informational per-volume popup.
+        mock_dependencies[
+            "comic_reader_manager"
+        ].init_comic_book_data.side_effect = MissingArchiveFilesError([2, 5], Path("/some/dir"))
+
+        with patch.object(
+            app_initializer, AppInitializer._handle_error_ui.__name__
+        ) as mock_handle_error:
+            app_initializer._post_build_setup()
+
+        assert app_initializer._fanta_volumes_state == _FantaVolumesState.SOME_VOLUMES_MISSING
+        mock_handle_error.assert_called_once_with(ErrorTypes.MissingArchiveVolumes, ANY)
+        mock_dependencies["user_error_handler"].handle_error.assert_not_called()
+
     def test_init_comic_book_data_success(
         self, app_initializer: AppInitializer, mock_dependencies: dict[str, MagicMock]
     ) -> None:
@@ -170,15 +241,19 @@ class TestAppInitializer:
         app_initializer._fanta_volumes_state = _FantaVolumesState.VOLUMES_EXIST
         assert app_initializer.is_fanta_volumes_state_ok() == (True, "")
 
-        # Case Bad
+        # No library is browsable, so reading is not blocked at the per-open gate.
         app_initializer._fanta_volumes_state = _FantaVolumesState.ALL_VOLUMES_MISSING
+        assert app_initializer.is_fanta_volumes_state_ok() == (True, "")
+
+        # Case Bad (misconfiguration that must be fixed + restart): blocks with a popup.
+        app_initializer._fanta_volumes_state = _FantaVolumesState.VOLUMES_TOO_MANY
 
         with patch.object(
             app_initializer, AppInitializer._handle_error_ui.__name__
         ) as mock_handle_error:
             ok, reason = app_initializer.is_fanta_volumes_state_ok()
             assert ok is False
-            assert reason == "Fantagraphics Directory Not Found"
+            assert reason == "Too Many Archive Files in Fantagraphics Directory"
             mock_handle_error.assert_called()
 
     def test_handle_error_ui(

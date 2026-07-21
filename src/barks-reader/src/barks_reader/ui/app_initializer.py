@@ -3,6 +3,7 @@ from __future__ import annotations
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, ClassVar
 
+from barks_fantagraphics.fanta_comics_info import NUM_VOLUMES
 from comic_utils.timing import Timing
 from kivy.clock import Clock
 from loguru import logger
@@ -44,12 +45,18 @@ class _FantaVolumesState(Enum):
     VOLUMES_NOT_NEEDED = auto()
 
 
-_READY_FANTA_VOLUMES_STATE = {
-    _FantaVolumesState.VOLUMES_EXIST,
-    _FantaVolumesState.SOME_VOLUMES_MISSING,
-    _FantaVolumesState.VOLUMES_NOT_NEEDED,
+# No usable library, but the app stays fully browsable: show a single startup notice and
+# still build the bundled override/extra pages, so the restored censored stories read.
+# (VOLUMES_EXIST / SOME_VOLUMES_MISSING / VOLUMES_NOT_NEEDED are the ordinary ready states.)
+_NO_LIBRARY_FANTA_VOLUMES_STATE = {
+    _FantaVolumesState.VOLUMES_NOT_SET,
+    _FantaVolumesState.ALL_VOLUMES_MISSING,
 }
-_BAD_FANTA_VOLUMES_STATE = set(_FantaVolumesState) - _READY_FANTA_VOLUMES_STATE
+# Misconfiguration the user must fix and restart; reading is blocked with a popup.
+_BAD_FANTA_VOLUMES_STATE = {
+    _FantaVolumesState.VOLUMES_TOO_MANY,
+    _FantaVolumesState.DUPLICATE_VOLUMES,
+}
 
 
 class AppInitializer:
@@ -115,14 +122,19 @@ class AppInitializer:
         """Handle all setup tasks that must occur after the tree is built."""
         timing = Timing()
         try:
-            self._set_post_build_fanta_volumes_state()
+            self._fanta_volumes_state = self._get_post_build_fanta_volumes_state()
             logger.debug(f"_fanta_volumes_state = {self._fanta_volumes_state}.")
 
             self._renderer.render_state(ViewStates.INITIAL)
 
-            if (self._fanta_volumes_state in _READY_FANTA_VOLUMES_STATE) and (
-                not self._init_comic_book_data()
-            ):
+            # No usable library: show one dismissible notice, but keep going so the
+            # bundled override/extra pages (e.g. the restored censored stories) still
+            # load and the whole app stays browsable.
+            no_library = self._fanta_volumes_state in _NO_LIBRARY_FANTA_VOLUMES_STATE
+            if no_library:
+                self._show_no_library_notice(self._fanta_volumes_state)
+
+            if not self._init_comic_book_data(library_notice_shown=no_library):
                 return
 
             if self._reader_settings.goto_saved_node_on_start:
@@ -165,13 +177,22 @@ class AppInitializer:
         msg = f'Unexpected fanta volumes state: "{self._fanta_volumes_state}".'
         raise RuntimeError(msg)
 
-    def _set_post_build_fanta_volumes_state(self) -> None:
-        self._fanta_volumes_state = self._get_post_build_fanta_volumes_state()
-        if self._fanta_volumes_state in _READY_FANTA_VOLUMES_STATE:
-            return
+    def _show_no_library_notice(self, state: _FantaVolumesState) -> None:
+        """Show a single notice that the Fantagraphics library isn't available.
 
-        _reason, error_type = self.get_bad_fanta_volumes_reason()
-        self._handle_error_ui(error_type)
+        The app stays fully browsable, so this deliberately does not set the persistent
+        'files not loaded' tree overlay, and fires once. ``state`` selects the wording:
+        VOLUMES_NOT_SET points at the unset setting, anything else at a directory that
+        holds no readable volumes.
+        """
+        error_type = (
+            ErrorTypes.FantagraphicsVolumeRootNotSet
+            if state is _FantaVolumesState.VOLUMES_NOT_SET
+            else ErrorTypes.FantagraphicsVolumeRootNotFound
+        )
+        # A no-op close callback: the notice is informational and must not set the
+        # persistent overlay (unlike `_handle_error_ui`).
+        self._user_error_handler.handle_error(error_type, None, lambda _msg: None)
 
     def _get_post_build_fanta_volumes_state(self) -> _FantaVolumesState:
         if self._reader_settings.use_prebuilt_archives:
@@ -182,7 +203,7 @@ class AppInitializer:
             return _FantaVolumesState.ALL_VOLUMES_MISSING
         return _FantaVolumesState.VOLUMES_EXIST
 
-    def _init_comic_book_data(self) -> bool:
+    def _init_comic_book_data(self, *, library_notice_shown: bool = False) -> bool:
         try:
             self._comic_reader_manager.init_comic_book_data()
         except TooManyArchiveFilesError as e:
@@ -206,7 +227,19 @@ class AppInitializer:
         except MissingArchiveFilesError as e:
             self._fanta_volumes_state = _FantaVolumesState.SOME_VOLUMES_MISSING
             self._fanta_volumes_error_info = ErrorInfo(missing_volumes=e.missing_file_vols)
-            self._handle_error_ui(ErrorTypes.MissingArchiveVolumes, self._fanta_volumes_error_info)
+            if library_notice_shown:
+                # The one-time no-library notice was already shown up front (unset or
+                # non-existent dir); stay quiet and don't set the persistent overlay.
+                pass
+            elif len(e.missing_file_vols) >= NUM_VOLUMES:
+                # The dir exists but holds no volumes at all: same "no library"
+                # experience - one browsable notice, no per-volume list, no overlay.
+                self._show_no_library_notice(_FantaVolumesState.ALL_VOLUMES_MISSING)
+            else:
+                # A genuinely partial library: keep the informational per-volume popup.
+                self._handle_error_ui(
+                    ErrorTypes.MissingArchiveVolumes, self._fanta_volumes_error_info
+                )
             return True
 
         return True
