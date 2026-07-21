@@ -399,23 +399,26 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         users get this on-brand corner affordance; keyboard/remote still closes
         with Escape. It is anchored to the settings panel's top-right corner.
         """
+        # Match the main action bar's quit "X": a 45dp-tall button (its glyph is
+        # inset by the shared <ChromeBarButton> geometry), so the settings X is
+        # the same size as the bar X.
         close_button = Factory.SettingsCloseButton(
             size_hint=(None, None),
-            size=(dp(48), dp(48)),
+            size=(ACTION_BAR_SIZE_Y, ACTION_BAR_SIZE_Y),
             icon_source=str(
                 self._reader_settings.sys_file_paths.get_barks_reader_close_icon_file()
             ),
         )
         close_button.bind(on_release=lambda *_: self._close_settings())
 
-        # Vertically centre the button in the panel's title bar. That bar is
-        # the SettingsPanel title Label (Kivy default style.kv): 50px tall,
-        # below the panel's 5px top padding, so its mid-line sits 30px down.
-        title_bar_mid = dp(5) + dp(50) / 2
-
+        # Sit the X on the action bar's mid-line. The settings panel covers the
+        # main screen (size = self.size, centred), so settings.top aligns with
+        # the window/action-bar top and the right inset puts the button's right
+        # edge next to where the bar's quit button sits — so on close the X barely
+        # moves. Nudged a touch further left than the bar's dp(5).
         def _place(*_: object) -> None:
-            close_button.right = settings.right - dp(12)
-            close_button.center_y = settings.top - title_bar_mid
+            close_button.right = settings.right - dp(7)
+            close_button.center_y = settings.top - ACTION_BAR_SIZE_Y / 2
 
         settings.bind(pos=_place, size=_place)
         app_window.add_widget(close_button)

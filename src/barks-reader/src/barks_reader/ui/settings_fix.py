@@ -22,6 +22,7 @@ from loguru import logger
 
 from barks_reader.core.reader_palette import Color, theme
 
+from .action_bar_helpers import ACTION_BAR_SIZE_Y
 from .alt_escape_capture_popup import AltEscapeCapturePopup, keycode_to_name
 from .reader_keyboard_nav import set_alt_escape_key
 
@@ -38,6 +39,31 @@ def _rgba(color: Color, alpha: float | None = None) -> str:
 # chooser, and popup buttons speak the same palette as the rest of the app rather
 # than the old fixed programmer-blue.
 KV_SETTINGS_OVERRIDE = """
+# Shrink the (menu-less) settings panel's title bar to the app action bar's
+# height, so the settings top bar lines up with the main action bar. This fully
+# replaces Kivy's default <SettingsPanel> rule (the ``-`` prefix discards it, so
+# the title Label is not doubled); the only change from that default is the title
+# Label height, which drops Kivy's 50px floor for the action bar height
+# (__TITLE_BAR_H__ px, substituted from ACTION_BAR_SIZE_Y).
+<-SettingsPanel>:
+    spacing: 5
+    padding: 5
+    size_hint_y: None
+    height: self.minimum_height
+    Label:
+        size_hint_y: None
+        text: root.title
+        text_size: self.width - dp(32), None
+        height: __TITLE_BAR_H__
+        color: .9, .9, .9, 1
+        bold: True
+        canvas.after:
+            Color:
+                rgba: .2, .2, .2, 1
+            Rectangle:
+                size: self.width, 1
+                pos: self.x, self.y
+
 <-SettingItem>:
     # Non-folder rows stay compact/left (Option B) but wider than Kivy's default
     # .25 so the label column has real room. Folder (long-path) rows override
@@ -230,27 +256,23 @@ KV_SETTINGS_OVERRIDE = """
                 color: 1, 1, 1, 1
 
 # Corner close affordance for the (menu-less) settings panel: the app's own
-# close glyph, theme-tinted, on a warm near-black rounded chip. Mouse users get
-# a visible Close; keyboard/remote still closes with Escape.
+# close glyph, theme-tinted, with no background chip so it reads as the same
+# bare X the main action bar shows. Its glyph geometry mirrors the action bar's
+# <ChromeBarButton> icon (dp(4)/sp(8) inset) and main_screen sizes/positions the
+# button onto the action-bar mid-line, so closing settings barely moves the X.
+# Mouse users get a visible Close; keyboard/remote still closes with Escape.
 <SettingsCloseButton>:
     background_normal: ''
     background_down: ''
     background_color: 0, 0, 0, 0
-    canvas.before:
-        Color:
-            rgba: 0.12, 0.10, 0.08, 0.82
-        RoundedRectangle:
-            pos: self.pos
-            size: self.size
-            radius: [dp(6)]
     Image:
         source: root.icon_source
         color: __ICON_TINT_RGBA__
         fit_mode: 'contain'
         mipmap: True
         opacity: 0.6 if root.state == 'down' else 1.0
-        pos: root.x + dp(9), root.y + dp(9)
-        size: root.width - dp(18), root.height - dp(18)
+        pos: root.x + dp(4), root.y + dp(4)
+        size: root.width - dp(8), root.height - sp(8)
 """
 
 
@@ -343,6 +365,7 @@ def _themed_settings_kv() -> str:
         .replace("__HEADING_RGBA__", _rgba(t.app_title, alpha=1.0))
         .replace("__HEADING_RULE_RGBA__", _rgba(t.app_title, alpha=0.4))
         .replace("__SWITCH_ON_RGBA__", _rgba(t.accent_selection, alpha=1.0))
+        .replace("__TITLE_BAR_H__", str(ACTION_BAR_SIZE_Y))
     )
 
 
