@@ -1275,6 +1275,34 @@
                 <a href="https://github.com/glk1001/barks-compleat-reader/issues">GitHub Issues page</a>.</p>
 
             <div class="troubleshooting-item">
+                <h4>⬇️ Browser won't let you download the executable ("unsafe" / "couldn't be downloaded securely")</h4>
+                <div class="solution">
+                    <p>The executable is unsigned and each new release is a brand-new file with no
+                        download reputation, so browsers flag it. This is a false positive. The
+                        "keep it anyway" option exists in every browser but is deliberately buried:</p>
+                    <ul>
+                        <li><strong>Edge:</strong> open Downloads (Ctrl+J), hover the blocked entry,
+                            click the <strong>"..."</strong> menu → <strong>Keep</strong>. In the
+                            warning dialog that follows, click <strong>"Show more"</strong> — the
+                            <strong>"Keep anyway"</strong> option is tucked away in the expanded
+                            dropdown <em>below</em> "Delete", so it's easy to miss.</li>
+                        <li><strong>Chrome:</strong> open Downloads (Ctrl+J), click the
+                            <strong>"..."</strong> on the blocked item → <strong>Keep dangerous
+                            file</strong>. If no keep option is offered (Enhanced protection mode),
+                            temporarily set Settings → Privacy and security → Security to
+                            <strong>Standard protection</strong>, re-download, then switch back.</li>
+                        <li><strong>Or skip the browser entirely:</strong> copy the download link
+                            from the Download tab, then in PowerShell:
+                            <code>curl.exe -L -o barks-reader-win.exe &lt;link&gt;</code></li>
+                    </ul>
+                    <p>If Windows Defender then quarantines the downloaded file: Windows Security →
+                        Virus &amp; threat protection → <strong>Protection history</strong> → find the
+                        entry → <strong>Restore</strong>. When you first run the app, see the
+                        SmartScreen item below.</p>
+                </div>
+            </div>
+
+            <div class="troubleshooting-item">
                 <h4>🛡️ Antivirus or SmartScreen blocks the app</h4>
                 <div class="solution">
                     <p><strong>Solutions:</strong></p>
