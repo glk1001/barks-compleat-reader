@@ -3,7 +3,7 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-07-20.
+Last updated: 2026-07-21.
 
 ---
 
@@ -133,6 +133,29 @@ Known limitation (intentional, not a reader fix): links under the bundle's
       `_finish_restore`'s fullscreen guard stays as belt-and-braces for an
       event that fired before its cancel landed. Covered in
       `TestInterleavedTransitions`.
+
+## Windows distribution (end-user friction)
+
+> Surfaced by the first tester download (2026-07-21): Defender flagged the
+> v1.0.0-alpha.2 exe mid-download as `Program:Win32/Wacapew.C!ml` — the
+> classic low-confidence ML false positive on Nuitka onefile binaries. The
+> website Troubleshooting tab documents the user-side workaround (Protection
+> history → Allow); these are the producer-side fixes.
+
+- [ ] **Submit each release exe to Microsoft as a false positive** —
+      https://www.microsoft.com/en-us/wdsi/filesubmission ("Software
+      developer"), attaching `barks-reader-win.exe` and citing: Nuitka-compiled
+      open-source Python app, repo link. Cleared verdicts ship to all Defender
+      users via cloud updates within days. Per-file-hash, so this is a
+      **per-release chore** until the exe is code-signed — candidate for a
+      step in the README Deployment checklist once it proves routine.
+      Optional aid: check/upload the exe on VirusTotal first and cite the
+      result in the submission.
+- [ ] **Windows code signing** — the real fix, same shape as the macOS item
+      below: an OV certificate still has to accrue SmartScreen reputation,
+      an EV certificate (a few hundred US$/yr) largely bypasses it
+      immediately. Would also unlock signing in CI. Decide alongside the
+      macOS signing item if the tester pool grows.
 
 ## macOS distribution (end-user friction — investigation)
 
