@@ -8,6 +8,7 @@ walks the returned specs and instantiates the tree-view widgets.
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from functools import partial
@@ -52,9 +53,13 @@ from barks_reader.core.reader_consts_and_types import (
     APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_TEXT,
     APPENDIX_STATISTICS_NODE_TEXT,
     CATEGORIES_NODE_TEXT,
+    CHOOSE_FOR_ME_NODE_TEXT,
     CHRONO_YEAR_RANGES,
     CHRONOLOGICAL_NODE_TEXT,
     CS_YEAR_RANGES,
+    FROM_THE_1940S_NODE_TEXT,
+    FROM_THE_1950S_NODE_TEXT,
+    FROM_THE_1960S_NODE_TEXT,
     HISTORY_NODE_TEXT,
     INDEX_LOCATIONS_TEXT,
     INDEX_MAIN_TEXT,
@@ -66,8 +71,11 @@ from barks_reader.core.reader_consts_and_types import (
     INTRO_COMPLEAT_BARKS_READER_TEXT,
     INTRO_DON_AULT_FANTA_INTRO_TEXT,
     INTRO_NODE_TEXT,
+    RANDOM_TITLE_YEAR_RANGES,
+    READING_NODE_TEXT,
     SEARCH_NODE_TEXT,
     SERIES_NODE_TEXT,
+    SURPRISE_ME_NODE_TEXT,
     TAG_SEARCH_NODE_TEXT,
     THE_STORIES_NODE_TEXT,
     TITLE_SEARCH_NODE_TEXT,
@@ -88,6 +96,7 @@ from .destinations import (
     CategoriesDestination,
     CategoryDestination,
     CensorshipFixesDocDestination,
+    ChooseForMeDestination,
     ChronologicalDestination,
     HistoryDestination,
     IndexDestination,
@@ -96,6 +105,8 @@ from .destinations import (
     LocationsIndexDestination,
     MainIndexDestination,
     NamesIndexDestination,
+    RandomTitlesDestination,
+    ReadingDestination,
     SearchDestination,
     SeriesDestination,
     SpeechIndexDestination,
@@ -165,7 +176,9 @@ class NodeSpec:
 
     `children` are built immediately; `lazy_children` is a zero-arg factory
     whose specs are built on the node's first expansion (title rows are
-    deferred this way to keep the startup tree build fast).
+    deferred this way to keep the startup tree build fast). With
+    `repopulate_on_expand`, the factory is instead re-run on *every*
+    expansion, replacing the previous children (the random-title nodes).
     """
 
     kind: NodeKind
@@ -178,6 +191,7 @@ class NodeSpec:
     fanta_info: FantaComicBookInfo | None = None
     children: tuple[NodeSpec, ...] = field(default=())
     lazy_children: Callable[[], tuple[NodeSpec, ...]] | None = None
+    repopulate_on_expand: bool = False
 
 
 def build_reader_tree_spec(
@@ -197,7 +211,7 @@ def build_reader_tree_spec(
 
     Returns:
         The top-level specs in display order: Intro, The Stories, Search,
-        Reading History, Appendix, Index.
+        Reading, Appendix, Index.
 
     """
     builder = _SpecBuilder(reader_settings, title_lists, include_one_pagers_in_chrono)
@@ -205,7 +219,7 @@ def build_reader_tree_spec(
         builder.intro_spec(),
         builder.stories_spec(),
         builder.search_spec(),
-        builder.history_spec(),
+        builder.reading_spec(),
         builder.appendix_spec(),
         builder.index_spec(),
     )
@@ -215,6 +229,16 @@ def _title_rows(title_infos: Iterable[FantaComicBookInfo]) -> tuple[NodeSpec, ..
     return tuple(
         NodeSpec(kind=NodeKind.TITLE_ROW, fanta_info=title_info) for title_info in title_infos
     )
+
+
+NUM_RANDOM_TITLES = 5
+
+
+def _random_title_rows(title_infos: list[FantaComicBookInfo]) -> tuple[NodeSpec, ...]:
+    """Make title rows for a fresh random sample, displayed chronologically."""
+    sample = random.sample(title_infos, min(len(title_infos), NUM_RANDOM_TITLES))
+    sample.sort(key=lambda info: info.fanta_chronological_number)
+    return _title_rows(sample)
 
 
 def _tagged_title_rows(titles: Iterable[Titles]) -> tuple[NodeSpec, ...]:
@@ -356,14 +380,49 @@ class _SpecBuilder:
             ),
         )
 
-    def history_spec(self) -> NodeSpec:
+    def reading_spec(self) -> NodeSpec:
         return NodeSpec(
             kind=NodeKind.MAIN,
-            text=HISTORY_NODE_TEXT,
-            destination=HistoryDestination(),
-            press_action=PressAction.SET_VIEW_STATE,
-            register_as=NodeRegistration.HISTORY,
-            start_closed=True,
+            text=READING_NODE_TEXT,
+            destination=ReadingDestination(),
+            children=(
+                NodeSpec(
+                    kind=NodeKind.STORY_GROUP,
+                    text=HISTORY_NODE_TEXT,
+                    destination=HistoryDestination(),
+                    press_action=PressAction.SET_VIEW_STATE,
+                    register_as=NodeRegistration.HISTORY,
+                    start_closed=True,
+                ),
+                NodeSpec(
+                    kind=NodeKind.STORY_GROUP,
+                    text=CHOOSE_FOR_ME_NODE_TEXT,
+                    destination=ChooseForMeDestination(),
+                    children=(
+                        self._random_titles_spec(SURPRISE_ME_NODE_TEXT, None),
+                        self._random_titles_spec(
+                            FROM_THE_1940S_NODE_TEXT, RANDOM_TITLE_YEAR_RANGES[0]
+                        ),
+                        self._random_titles_spec(
+                            FROM_THE_1950S_NODE_TEXT, RANDOM_TITLE_YEAR_RANGES[1]
+                        ),
+                        self._random_titles_spec(
+                            FROM_THE_1960S_NODE_TEXT, RANDOM_TITLE_YEAR_RANGES[2]
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+    def _random_titles_spec(self, text: str, year_range: tuple[int, int] | None) -> NodeSpec:
+        all_years = (CHRONO_YEAR_RANGES[0][0], CHRONO_YEAR_RANGES[-1][1])
+        title_list = self._year_range_titles(year_range or all_years, str)
+        return NodeSpec(
+            kind=NodeKind.STORY_GROUP,
+            text=text,
+            destination=RandomTitlesDestination(year_range=year_range),
+            lazy_children=partial(_random_title_rows, title_list),
+            repopulate_on_expand=True,
         )
 
     def appendix_spec(self) -> NodeSpec:

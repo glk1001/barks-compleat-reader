@@ -36,6 +36,7 @@ from barks_reader.core.navigation import (
     CategoriesDestination,
     CategoryDestination,
     CensorshipFixesDocDestination,
+    ChooseForMeDestination,
     ChronologicalDestination,
     Destination,
     HistoryDestination,
@@ -46,6 +47,8 @@ from barks_reader.core.navigation import (
     MainIndexDestination,
     NamesIndexDestination,
     NavigationModel,
+    RandomTitlesDestination,
+    ReadingDestination,
     SearchDestination,
     SeriesDestination,
     SpeechIndexDestination,
@@ -90,7 +93,9 @@ def model() -> NavigationModel:
         (TitleSearchDestination(), ViewStates.ON_TITLE_SEARCH_NODE),
         (TagSearchDestination(), ViewStates.ON_TAG_SEARCH_NODE),
         (WordSearchDestination(), ViewStates.ON_WORD_SEARCH_NODE),
+        (ReadingDestination(), ViewStates.ON_READING_NODE),
         (HistoryDestination(), ViewStates.ON_HISTORY_NODE),
+        (ChooseForMeDestination(), ViewStates.ON_CHOOSE_FOR_ME_NODE),
         (AppendixDestination(), ViewStates.ON_APPENDIX_NODE),
         (StatisticsDestination(), ViewStates.ON_APPENDIX_STATISTICS_NODE),
         (CensorshipFixesDocDestination(), ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE),
@@ -114,6 +119,23 @@ def test_view_state_for_title_destination(model: NavigationModel) -> None:
     request = model.view_state_for(TitleDestination(fanta_info=_fake_fanta()))
     assert request.view_state is ViewStates.ON_TITLE_NODE
     assert request == ViewRequest(view_state=ViewStates.ON_TITLE_NODE)
+
+
+@pytest.mark.parametrize(
+    ("year_range", "expected_range_str"),
+    [
+        (None, ""),
+        ((1942, 1949), "1942-1949"),
+        ((1950, 1959), "1950-1959"),
+        ((1960, 1971), "1960-1971"),
+    ],
+)
+def test_view_state_for_random_titles_destination(
+    model: NavigationModel, year_range: tuple[int, int] | None, expected_range_str: str
+) -> None:
+    request = model.view_state_for(RandomTitlesDestination(year_range=year_range))
+    assert request.view_state is ViewStates.ON_RANDOM_TITLES_NODE
+    assert request.year_range == expected_range_str
 
 
 # --- view_state_for: series --------------------------------------------

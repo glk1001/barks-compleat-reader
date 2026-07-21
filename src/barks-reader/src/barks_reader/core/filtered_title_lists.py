@@ -20,6 +20,7 @@ from barks_fantagraphics.fanta_comics_info import (
 from .reader_consts_and_types import (
     CHRONO_YEAR_RANGES,
     CS_YEAR_RANGES,
+    RANDOM_TITLE_YEAR_RANGES,
     US_YEAR_RANGES,
 )
 
@@ -116,6 +117,8 @@ class FilteredTitleLists:
         self.add_year_ranges(CHRONO_YEARS_KEY_PREFIX, CHRONO_YEAR_RANGES, title_lists)
         self.add_year_ranges(CS_YEARS_KEY_PREFIX, CS_YEAR_RANGES, title_lists)
         self.add_year_ranges(US_YEARS_KEY_PREFIX, US_YEAR_RANGES, title_lists)
+        # Decade keys ("1942-1949", ...) for the 'Choose for me' backdrops.
+        self.add_year_ranges(CHRONO_YEARS_KEY_PREFIX, RANDOM_TITLE_YEAR_RANGES, title_lists)
 
         return title_lists
 

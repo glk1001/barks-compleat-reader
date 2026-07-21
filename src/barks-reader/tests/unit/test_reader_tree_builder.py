@@ -191,3 +191,35 @@ class TestDeferredPopulation:
             fanta_info, mock_dependencies["tree_view_manager"].on_title_row_button_pressed
         )
         mock_dependencies["reader_tree_view"].add_node.assert_called_with(title_node, parent=node)
+
+    def test_repopulate_on_expand_flag_defaults_to_false(
+        self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        spec = NodeSpec(
+            kind=NodeKind.STORY_GROUP,
+            text="Tag",
+            destination=TagDestination(tag=Tags.AIRPLANES),
+            lazy_children=lambda: (),
+        )
+
+        _build_with_spec(tree_builder, spec)
+
+        node = mock_dependencies["reader_tree_view"].add_node.call_args.args[0]
+        assert node.repopulate_on_expand is False
+
+    def test_repopulate_on_expand_flag_is_copied_to_node(
+        self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        spec = NodeSpec(
+            kind=NodeKind.STORY_GROUP,
+            text="Surprise me",
+            lazy_children=lambda: (),
+            repopulate_on_expand=True,
+        )
+
+        _build_with_spec(tree_builder, spec)
+
+        node = mock_dependencies["reader_tree_view"].add_node.call_args.args[0]
+        assert node.repopulate_on_expand is True
+        assert node.populate_callback is not None
+        assert node.is_leaf is False

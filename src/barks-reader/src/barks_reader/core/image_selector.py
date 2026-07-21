@@ -226,7 +226,7 @@ class ImageSelector:
     def get_random_reading_history_image(self) -> ImageInfo:
         """Return a random reading history image."""
         title = Titles.CRAZY_QUIZ_SHOW_THE
-        file = Path(ENUM_TO_STR_TITLE[title]) / "129-3.png"
+        file = Path(ENUM_TO_STR_TITLE[title]) / f"129-3{self._resolver.get_file_ext()}"
 
         return ImageInfo(
             self._resolver.get_comic_favourite_files_dir() / file,

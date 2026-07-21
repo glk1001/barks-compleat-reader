@@ -104,6 +104,8 @@ class ButtonTreeViewNode(Button, BaseTreeViewNode):
     populated = BooleanProperty(defaultvalue=False)
     # A zero-arg function to create children.
     populate_callback = ObjectProperty(defaultvalue=None, allownone=True)
+    # Should expansion always rebuild the lazily-created children?
+    repopulate_on_expand = BooleanProperty(defaultvalue=False)
 
     @override
     def get_name(self) -> str:

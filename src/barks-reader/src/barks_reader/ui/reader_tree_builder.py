@@ -151,7 +151,9 @@ class ReaderTreeBuilder:
             self._add_node(child_spec, parent=node)
 
         if spec.lazy_children is not None:
-            self._defer_node_population(node, spec.lazy_children)
+            self._defer_node_population(
+                node, spec.lazy_children, repopulate_on_expand=spec.repopulate_on_expand
+            )
 
     @staticmethod
     def _make_button_node(spec: NodeSpec) -> ButtonTreeViewNode:
@@ -180,6 +182,8 @@ class ReaderTreeBuilder:
         self,
         node: ButtonTreeViewNode,
         make_children_specs: Callable[[], tuple[NodeSpec, ...]],
+        *,
+        repopulate_on_expand: bool,
     ) -> None:
         """Defer creating *node*'s title children until the node is first expanded."""
 
@@ -189,4 +193,5 @@ class ReaderTreeBuilder:
 
         node.populate_callback = _populate
         node.populated = False
+        node.repopulate_on_expand = repopulate_on_expand
         node.is_leaf = False

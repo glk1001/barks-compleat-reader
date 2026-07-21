@@ -436,8 +436,16 @@ class ViewPipeline:
             (self._view_state == ViewStates.ON_TAG_NODE, self._set_top_view_image_for_tag),
             (self._view_state in self._SEARCH_VIEW_STATES, self._set_top_view_image_for_search),
             (
-                self._view_state == ViewStates.ON_HISTORY_NODE,
+                self._view_state in {ViewStates.ON_HISTORY_NODE, ViewStates.ON_READING_NODE},
                 self._set_top_view_image_for_reading_history,
+            ),
+            (
+                self._view_state == ViewStates.ON_CHOOSE_FOR_ME_NODE,
+                self._set_top_view_image_for_stories,
+            ),
+            (
+                self._view_state == ViewStates.ON_RANDOM_TITLES_NODE,
+                self._set_top_view_image_for_random_titles,
             ),
             (
                 self._view_state in self._APPENDIX_VIEW_STATES,
@@ -567,6 +575,14 @@ class ViewPipeline:
     def _set_top_view_image_for_reading_history(self) -> None:
         self._top_view_image_info = self._image_selector.get_random_reading_history_image()
 
+    def _set_top_view_image_for_random_titles(self) -> None:
+        # 'Surprise me' has no year range; decade nodes carry one (a decade key
+        # added by FilteredTitleLists, e.g. "1942-1949").
+        if not self._current_year_range:
+            self._set_top_view_image_for_stories()
+        else:
+            self._set_top_view_image_for_year_range()
+
     def _set_top_view_image_color(self) -> None:
         self._top_view_image_color = self._colors.next_color(PaletteId.TOP_VIEW)
 
@@ -669,7 +685,7 @@ class ViewPipeline:
         for theme, year_range in {
             ImageThemes.FORTIES: (1942, 1949),
             ImageThemes.FIFTIES: (1950, 1959),
-            ImageThemes.SIXTIES: (1960, 1961),
+            ImageThemes.SIXTIES: (1960, 1980),
         }.items():
             if theme in self._fun_image_themes:
                 self._update_titles(theme_titles, year_range)

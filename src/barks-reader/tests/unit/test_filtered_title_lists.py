@@ -144,3 +144,11 @@ class TestFilteredTitleLists:
         us_range_key = "US-1951-1954"
         assert us_range_key in results
         assert "US Book A" in results[us_range_key]
+
+        # Check the 'Choose for me' decade ranges aggregate the same chrono year lists.
+        decade_key = "1942-1949"
+        assert decade_key in results
+        assert "Book A" in results[decade_key]
+        assert "Book B" in results[decade_key]
+        assert "1950-1959" in results
+        assert "1960-1971" in results

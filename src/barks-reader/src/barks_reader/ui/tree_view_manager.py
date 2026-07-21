@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from functools import partial
 from typing import TYPE_CHECKING
 
 from kivy.clock import Clock
@@ -249,7 +250,14 @@ class TreeViewManager:
             self._close_siblings(node)
 
         # 2) Lazy populate ONCE, while pinning the parent's position to avoid a jump.
-        if node.populate_callback and not node.populated:
+        #    Repopulate-on-expand nodes (the random-title nodes) instead rebuild
+        #    their children on every expansion.
+        if node.populate_callback and node.repopulate_on_expand:
+            self._scroll_pinner.pin_while_populating(
+                node, populate=partial(self._clear_and_repopulate, node)
+            )
+            node.populated = True
+        elif node.populate_callback and not node.populated:
             self._scroll_pinner.pin_while_populating(node, populate=node.populate_callback)
             node.populated = True
         else:
@@ -268,6 +276,21 @@ class TreeViewManager:
             self.set_view_state_for_node(node)
 
         # 4) NOTE: Do not call scroll_to_node() here — that causes the "snap-to-top/bottom" jump.
+
+    def _clear_and_repopulate(self, node: ButtonTreeViewNode) -> None:
+        """Remove stale lazily-created children and build a fresh set."""
+        tree = self._tree_view_screen.ids.reader_tree_view
+        for child in list(node.nodes):
+            if tree.selected_node is child:
+                tree.deselect_node()
+            if tree.previous_selected_node is child:
+                # Keep 'go back' off a soon-to-be-detached widget.
+                tree.previous_selected_node = node
+                tree.set_back_node(node)
+        for child in list(node.nodes):
+            tree.remove_node(child)
+        assert node.populate_callback is not None
+        node.populate_callback()
 
     @staticmethod
     def _has_single_title_child(node: ButtonTreeViewNode) -> bool:
@@ -392,7 +415,7 @@ class TreeViewManager:
         return getattr(self, "_statistics_node", None)
 
     def on_history_node_created(self, node: ButtonTreeViewNode) -> None:
-        """Handle creation of the Reading History tree node."""
+        """Handle creation of the History tree node."""
         self._history_node = node
 
     @property

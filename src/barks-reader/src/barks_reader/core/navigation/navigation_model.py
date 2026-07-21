@@ -34,6 +34,7 @@ from .destinations import (
     CategoriesDestination,
     CategoryDestination,
     CensorshipFixesDocDestination,
+    ChooseForMeDestination,
     ChronologicalDestination,
     Destination,
     HistoryDestination,
@@ -43,6 +44,8 @@ from .destinations import (
     LocationsIndexDestination,
     MainIndexDestination,
     NamesIndexDestination,
+    RandomTitlesDestination,
+    ReadingDestination,
     SearchDestination,
     SeriesDestination,
     SpeechIndexDestination,
@@ -90,7 +93,9 @@ _SIMPLE_DESTINATION_TO_VIEW_STATE: dict[type[Destination], ViewStates] = {
     TitleSearchDestination: ViewStates.ON_TITLE_SEARCH_NODE,
     TagSearchDestination: ViewStates.ON_TAG_SEARCH_NODE,
     WordSearchDestination: ViewStates.ON_WORD_SEARCH_NODE,
+    ReadingDestination: ViewStates.ON_READING_NODE,
     HistoryDestination: ViewStates.ON_HISTORY_NODE,
+    ChooseForMeDestination: ViewStates.ON_CHOOSE_FOR_ME_NODE,
     AppendixDestination: ViewStates.ON_APPENDIX_NODE,
     StatisticsDestination: ViewStates.ON_APPENDIX_STATISTICS_NODE,
     CensorshipFixesDocDestination: ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
@@ -126,7 +131,7 @@ class NavigationModel:
     """
 
     @staticmethod
-    def view_state_for(dest: Destination) -> ViewRequest:  # noqa: PLR0911
+    def view_state_for(dest: Destination) -> ViewRequest:  # noqa: C901, PLR0911
         """Resolve the `ViewRequest` to render when `dest` is selected.
 
         Only the navigation-context fields are populated here; renderer-owned
@@ -162,6 +167,12 @@ class NavigationModel:
 
         if isinstance(dest, TagDestination):
             return ViewRequest(view_state=ViewStates.ON_TAG_NODE, tag=dest.tag)
+
+        if isinstance(dest, RandomTitlesDestination):
+            year_range = (
+                "" if dest.year_range is None else FilteredTitleLists.get_range_str(dest.year_range)
+            )
+            return ViewRequest(view_state=ViewStates.ON_RANDOM_TITLES_NODE, year_range=year_range)
 
         if isinstance(dest, ArticleDestination):
             return ViewRequest(view_state=dest.view_state)

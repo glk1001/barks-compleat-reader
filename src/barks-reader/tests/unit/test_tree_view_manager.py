@@ -221,6 +221,7 @@ class TestTreeViewManager:
         node = MagicMock(spec=ButtonTreeViewNode)
         node.populate_callback = MagicMock()
         node.populated = False
+        node.repopulate_on_expand = False
         node.destination = IntroDestination()
         node.parent_node = MagicMock()
         node.parent_node.nodes = [node]  # No siblings to close
@@ -232,6 +233,59 @@ class TestTreeViewManager:
             mock_pin.assert_called_with(node, populate=node.populate_callback)
             assert node.populated is True
             mock_dependencies["renderer"].render.assert_called_with(IntroDestination())
+
+    def test_on_node_expanded_repopulates_flagged_node(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        # A repopulate-on-expand node (the random-title nodes) rebuilds its
+        # children on every expansion, even when already populated.
+        mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
+        old_children = [MagicMock(spec=TitleTreeViewNode) for _ in range(2)]
+        mock_tree.selected_node = None
+        mock_tree.previous_selected_node = None
+
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.populate_callback = MagicMock()
+        node.populated = True
+        node.repopulate_on_expand = True
+        node.destination = IntroDestination()
+        node.nodes = old_children
+        node.parent_node = MagicMock()
+        node.parent_node.nodes = [node]  # No siblings to close
+
+        with patch.object(tree_view_manager._scroll_pinner, "pin_while_populating") as mock_pin:
+            tree_view_manager.on_node_expanded(MagicMock(), node)
+
+        populate = mock_pin.call_args.kwargs["populate"]
+        assert populate is not node.populate_callback
+        populate()
+
+        for child in old_children:
+            mock_tree.remove_node.assert_any_call(child)
+        node.populate_callback.assert_called_once()
+
+    def test_clear_and_repopulate_detaches_selection_tracking(
+        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+    ) -> None:
+        # If a stale child is the selected or go-back node, tracking must be
+        # moved off the soon-to-be-removed widget before removal.
+        mock_tree = screen_mocks["tree_view"].ids.reader_tree_view
+        selected_child = MagicMock(spec=TitleTreeViewNode)
+        previous_child = MagicMock(spec=TitleTreeViewNode)
+        mock_tree.selected_node = selected_child
+        mock_tree.previous_selected_node = previous_child
+
+        node = MagicMock(spec=ButtonTreeViewNode)
+        node.populate_callback = MagicMock()
+        node.nodes = [selected_child, previous_child]
+
+        tree_view_manager._clear_and_repopulate(node)
+
+        mock_tree.deselect_node.assert_called_once()
+        assert mock_tree.previous_selected_node is node
+        mock_tree.set_back_node.assert_called_once_with(node)
+        assert mock_tree.remove_node.call_count == len(node.nodes)
+        node.populate_callback.assert_called_once()
 
     def test_close_siblings(
         self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]

@@ -156,3 +156,28 @@ class TestJsonStoreFormatCompatibility:
 
         assert path == ["A", "root"]
         assert state == {}
+
+
+class TestLegacyHistoryNodePathMigration:
+    def test_legacy_reading_history_path_migrates(self, tmp_path: Path) -> None:
+        """The old top-level 'Reading History' node is now 'History' under 'Reading'."""
+        store_path = tmp_path / "store.json"
+        store_path.write_text(
+            json.dumps({"AAA_Settings": {"last_selected_node": ["Reading History", "root"]}})
+        )
+
+        path, _state = SettingsManager(store_path).get_last_selected_node_path()
+
+        assert path == ["History", "Reading", "root"]
+
+    def test_other_paths_pass_through_unchanged(self, tmp_path: Path) -> None:
+        store_path = tmp_path / "store.json"
+        store_path.write_text(
+            json.dumps(
+                {"AAA_Settings": {"last_selected_node": ["Chronological", "The Stories", "root"]}}
+            )
+        )
+
+        path, _state = SettingsManager(store_path).get_last_selected_node_path()
+
+        assert path == ["Chronological", "The Stories", "root"]

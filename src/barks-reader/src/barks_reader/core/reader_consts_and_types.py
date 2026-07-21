@@ -34,7 +34,13 @@ SEARCH_NODE_TEXT = "Search"
 TITLE_SEARCH_NODE_TEXT = "Titles"
 TAG_SEARCH_NODE_TEXT = "Tags"
 WORD_SEARCH_NODE_TEXT = "Words"
-HISTORY_NODE_TEXT = "Reading History"
+READING_NODE_TEXT = "Reading"
+HISTORY_NODE_TEXT = "History"
+CHOOSE_FOR_ME_NODE_TEXT = "Choose for me"
+SURPRISE_ME_NODE_TEXT = "Surprise me"
+FROM_THE_1940S_NODE_TEXT = "From the 1940s"
+FROM_THE_1950S_NODE_TEXT = "From the 1950s"
+FROM_THE_1960S_NODE_TEXT = "From the 1960s"
 APPENDIX_NODE_TEXT = "Appendix"
 APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_TEXT = "Rich Tommaso: On Coloring Barks"
 APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT = "Don Ault: Life Among the Ducks"
@@ -72,4 +78,11 @@ US_YEAR_RANGES = [
     (1955, 1957),
     (1958, 1961),
     (1962, 1966),
+]
+# Decade buckets for the 'Choose for me' random-title nodes. The last bucket
+# absorbs the few 1970-71 submissions (mirroring CHRONO_YEAR_RANGES' final bucket).
+RANDOM_TITLE_YEAR_RANGES = [
+    (1942, 1949),
+    (1950, 1959),
+    (1960, 1971),
 ]

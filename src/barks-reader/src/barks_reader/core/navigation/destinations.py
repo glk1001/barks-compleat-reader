@@ -87,8 +87,18 @@ class WordSearchDestination(Destination):
 
 
 @dataclass(frozen=True, slots=True)
+class ReadingDestination(Destination):
+    """The 'Reading' parent node (History + Choose for me)."""
+
+
+@dataclass(frozen=True, slots=True)
 class HistoryDestination(Destination):
-    """The 'Reading History' parent node."""
+    """The 'History' node under Reading."""
+
+
+@dataclass(frozen=True, slots=True)
+class ChooseForMeDestination(Destination):
+    """The 'Choose for me' container under Reading."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -187,6 +197,17 @@ class TagDestination(Destination):
     """A single Tag container (e.g., Tags.AIRPLANES)."""
 
     tag: Tags
+
+
+@dataclass(frozen=True, slots=True)
+class RandomTitlesDestination(Destination):
+    """A 'Choose for me' filter node showing a fresh random title sample.
+
+    `year_range` is the inclusive submitted-year range, or None for all
+    titles ('Surprise me').
+    """
+
+    year_range: tuple[int, int] | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -23,6 +23,11 @@ _READER_SETTING_LAST_SELECTED_NODE = "last_selected_node"
 _READER_SETTING_LAST_SELECTED_NODE_STATE = "last_selected_node_state"
 _TITLE_SETTING_LAST_READ_PAGE = "last_read_page"
 
+# The 'Reading History' node became 'History' under a new 'Reading' parent.
+# Saved node paths are leaf-first name lists, so migrate the old leaf path.
+_LEGACY_HISTORY_NODE_PATH = ["Reading History", "root"]
+_NEW_HISTORY_NODE_PATH = ["History", "Reading", "root"]
+
 
 class SavableTreeViewNode(BaseTreeViewNodeProtocol, Protocol):
     """A tree-view node whose expansion state can be persisted."""
@@ -50,6 +55,9 @@ class SettingsManager:
         saved_node_settings = self._data[_READER_SETTINGS]
         raw_path = saved_node_settings.get(_READER_SETTING_LAST_SELECTED_NODE)
         saved_state = saved_node_settings.get(_READER_SETTING_LAST_SELECTED_NODE_STATE, {})
+
+        if raw_path == _LEGACY_HISTORY_NODE_PATH:
+            raw_path = _NEW_HISTORY_NODE_PATH
 
         return raw_path or None, saved_state
 
