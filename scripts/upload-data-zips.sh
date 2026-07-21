@@ -7,7 +7,7 @@
 # in README.md). Run this only when the data packs have actually changed.
 #
 # Expects barks-reader-data-1.zip and barks-reader-data-2.zip to already exist
-# (produced by `bash scripts/build.sh --include-zips`). Then:
+# (produced by `bash scripts/build-data-zips.sh`). Then:
 #   1. Works out the next tag (highest existing data-vN, plus one).
 #   2. Creates a DRAFT release and uploads both zips to it, so a failed or
 #      partial upload is never publicly visible.
@@ -48,7 +48,7 @@ cd "$(dirname "$0")/.."
 
 for zip in "${ZIPS_DIR}/${DATA1_ZIP}" "${ZIPS_DIR}/${DATA2_ZIP}"; do
     if [[ ! -f "$zip" ]]; then
-        echo -e "${RED}Missing \"$zip\" - run 'bash scripts/build.sh --include-zips' first," \
+        echo -e "${RED}Missing \"$zip\" - run 'bash scripts/build-data-zips.sh' first," \
             "or point --zips-dir at the directory holding the zips.${NC}" >&2
         exit 1
     fi

@@ -183,8 +183,8 @@ jobs:
           Download the executable for your platform (listed below), plus the two
           data packs - needed on first install, unchanged between most releases:
 
-          - [barks-reader-data-1.zip](https://github.com/glk1001/barks-compleat-reader/releases/download/data-v1/barks-reader-data-1.zip)
-          - [barks-reader-data-2.zip](https://github.com/glk1001/barks-compleat-reader/releases/download/data-v1/barks-reader-data-2.zip)
+          - [barks-reader-data-1.zip](https://github.com/glk1001/barks-compleat-reader/releases/download/data-v2/barks-reader-data-1.zip)
+          - [barks-reader-data-2.zip](https://github.com/glk1001/barks-compleat-reader/releases/download/data-v2/barks-reader-data-2.zip)
 
           EOF
               gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
