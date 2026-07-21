@@ -30,7 +30,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import typer
-from comic_utils.cpi_calculator import CURRENT_YEAR, get_adjusted_usd
+from comic_utils.cpi_calculator import get_adjusted_usd, get_latest_year
 from matplotlib import ticker
 from matplotlib.transforms import Bbox
 
@@ -176,9 +176,9 @@ def gen_payments_per_year(output_dir: Path) -> None:
     ax.bar(years, values, color=BAR_COLOR, zorder=3)
     _style_ax(
         ax,
-        f"Total Payments per Year ({CURRENT_YEAR} USD)",
+        f"Total Payments per Year ({get_latest_year()} USD)",
         "Year",
-        f"Payments ({CURRENT_YEAR} USD)",
+        f"Payments ({get_latest_year()} USD)",
     )
     ax.set_xticks(years)
     ax.tick_params(axis="x", rotation=45)
@@ -204,9 +204,9 @@ def gen_payment_rate(output_dir: Path) -> None:
     ax.plot(years, rates, color=ACCENT_COLOR, linewidth=2, marker="o", markersize=5, zorder=3)
     _style_ax(
         ax,
-        f"Per Page Payment Rate ({CURRENT_YEAR} USD per Page) per Year",
+        f"Per Page Payment Rate ({get_latest_year()} USD per Page) per Year",
         "Year",
-        f"{CURRENT_YEAR} USD / Page",
+        f"{get_latest_year()} USD / Page",
     )
     ax.set_xticks(years)
     ax.tick_params(axis="x", rotation=45)

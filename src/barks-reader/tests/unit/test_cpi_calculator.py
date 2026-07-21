@@ -41,13 +41,7 @@ class TestGetAdjustedUsd:
         with pytest.raises(ValueError, match="No CPI data found for year 1900"):
             get_adjusted_usd(100.0, 1900, 2025, cpi_db)
 
-    def test_is_file_bug_never_raises_file_not_found(self) -> None:
-        """Line 30 has `db_path.is_file` (missing parens) — always truthy.
-
-        FileNotFoundError is never raised even for a nonexistent path.
-        """
+    def test_missing_db_file_raises_file_not_found(self) -> None:
         bogus = Path("/nonexistent/path/cpi.db")
-        # This should raise FileNotFoundError but doesn't due to the bug.
-        # Instead, it raises an OperationalError from sqlite3 trying to open the file.
-        with pytest.raises(sqlite3.OperationalError):
+        with pytest.raises(FileNotFoundError):
             get_adjusted_usd(100.0, 1945, 2025, bogus)
