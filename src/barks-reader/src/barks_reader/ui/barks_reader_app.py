@@ -122,6 +122,7 @@ class BarksReaderApp(App):
 
         self._main_screen: MainScreen | None = None
         self._wiki_reader_screen: WikiReaderScreen | None = None
+        self._on_stop_done = False
 
         self._window_geometry = AppWindowGeometryHelper(
             WindowSizeConstraints(
@@ -144,9 +145,8 @@ class BarksReaderApp(App):
         self._window_geometry.suppress_aspect_ratio_correction(duration)
 
     def close_app(self) -> None:
-        self._window_geometry.stop_polling()
-        assert self._main_screen is not None
-        self._main_screen.app_closing()
+        # All persistence happens in on_stop, which Kivy runs on every exit
+        # path — this quit-button path and a window-manager close alike.
         App.get_running_app().stop()
         Window.close()
 
@@ -154,11 +154,20 @@ class BarksReaderApp(App):
     def on_stop(self) -> None:
         """Persist state that otherwise only flushes on screen exit.
 
-        Quitting while the wiki screen is open (Quit button or window close)
-        never runs `WikiReaderScreen.close`, so save its resume point here —
-        the same guarantee the standalone okf-reader app gives via its own
-        `on_stop`.
+        This is the one hook that runs on every exit path (Quit button or
+        window-manager close), so the last-selected node and the wiki resume
+        point are both saved here — the same guarantee the standalone
+        okf-reader app gives via its own `on_stop`.
         """
+        if self._on_stop_done:
+            return
+        self._on_stop_done = True
+
+        self._window_geometry.stop_polling()
+
+        if self._main_screen is not None:
+            self._main_screen.app_closing()
+
         if self._wiki_reader_screen is not None:
             self._wiki_reader_screen.save_session()
 

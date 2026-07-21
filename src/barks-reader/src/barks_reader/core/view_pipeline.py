@@ -707,8 +707,12 @@ class ViewPipeline:
         return [ALL_FANTA_COMIC_BOOK_INFO[title] for title in theme_titles], file_types
 
     def _update_titles(self, title_set: set[Titles], year_range: tuple[int, int]) -> None:
+        # Theme year ranges are decade buckets that may extend past the years
+        # with title lists (e.g. SIXTIES ends 1980; lists stop at 1971).
         for year in range(year_range[0], year_range[1] + 1):
-            title_set.update(info.comic_book_info.title for info in self._title_lists[str(year)])
+            title_set.update(
+                info.comic_book_info.title for info in self._title_lists.get(str(year), [])
+            )
 
     def _get_file_types_to_use(self) -> set[FileTypes]:
         if self._fun_image_themes is None:
