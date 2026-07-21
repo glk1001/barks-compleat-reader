@@ -21,7 +21,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from barks_fantagraphics.barks_tags import TagGroups, Tags
+    from barks_fantagraphics.barks_tags import TagCategories, TagGroups, Tags
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
 
@@ -204,12 +204,14 @@ class RandomTitlesDestination(Destination):
     """A 'Choose for me' filter node showing a fresh random title sample.
 
     The sample is scoped by `year_range` (inclusive submitted-year range, the
-    decade nodes) or `tag` (the 'With <character>' nodes). Both None means all
-    titles ('Surprise me').
+    decade nodes), `tag` (the 'With <character>' nodes), or `category` (the
+    'From favourites' node, aggregating every tag in the category). All None
+    means all titles ('Surprise me').
     """
 
     year_range: tuple[int, int] | None = None
     tag: Tags | None = None
+    category: TagCategories | None = None
 
 
 @dataclass(frozen=True, slots=True)

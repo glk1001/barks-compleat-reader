@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, assert_never
 
 from barks_fantagraphics.barks_tags import (
     BARKS_TAG_CATEGORIES,
+    BARKS_TAG_CATEGORIES_TITLES,
     BARKS_TAG_GROUPS,
     TagCategories,
     TagGroups,
@@ -57,6 +58,7 @@ from barks_reader.core.reader_consts_and_types import (
     CHRONO_YEAR_RANGES,
     CHRONOLOGICAL_NODE_TEXT,
     CS_YEAR_RANGES,
+    FROM_FAVOURITES_NODE_TEXT,
     FROM_THE_1940S_NODE_TEXT,
     FROM_THE_1950S_NODE_TEXT,
     FROM_THE_1960S_NODE_TEXT,
@@ -419,6 +421,9 @@ class _SpecBuilder:
                         self._random_titles_spec(
                             FROM_THE_1960S_NODE_TEXT, RANDOM_TITLE_YEAR_RANGES[2]
                         ),
+                        self._category_random_titles_spec(
+                            FROM_FAVOURITES_NODE_TEXT, TagCategories.FAVOURITES
+                        ),
                         *(
                             self._character_random_titles_spec(text, tag)
                             for text, tag in _CHARACTER_RANDOM_NODES
@@ -459,6 +464,23 @@ class _SpecBuilder:
             kind=NodeKind.STORY_GROUP,
             text=text,
             destination=RandomTitlesDestination(tag=tag),
+            lazy_children=partial(_random_title_rows, title_list),
+            repopulate_on_expand=True,
+        )
+
+    def _category_random_titles_spec(self, text: str, category: TagCategories) -> NodeSpec:
+        # A category aggregates every tag/group it contains (e.g. FAVOURITES spans
+        # Barks', EveryGeek, personal, and Peter Schilling picks). As with the
+        # character nodes, skip titles outside the Fanta collection.
+        title_list = [
+            info
+            for title in BARKS_TAG_CATEGORIES_TITLES[category]
+            if (info := get_fanta_info(title)) is not None
+        ]
+        return NodeSpec(
+            kind=NodeKind.STORY_GROUP,
+            text=text,
+            destination=RandomTitlesDestination(category=category),
             lazy_children=partial(_random_title_rows, title_list),
             repopulate_on_expand=True,
         )

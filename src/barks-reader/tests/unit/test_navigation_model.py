@@ -16,7 +16,7 @@ import barks_reader.core.navigation.destinations as _nav_destinations  # noqa: F
 import barks_reader.core.navigation.navigation_model as _nav_model_mod  # noqa: F401
 import barks_reader.core.navigation.view_states as _nav_view_states  # noqa: F401
 import pytest
-from barks_fantagraphics.barks_tags import TagGroups, Tags
+from barks_fantagraphics.barks_tags import TagCategories, TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.fanta_comics_info import (
     SERIES_CS,
@@ -146,12 +146,21 @@ def test_view_state_for_character_random_titles_destination(model: NavigationMod
     assert request.tag is Tags.SCROOGE_NOT_IN_US
 
 
+def test_view_state_for_category_random_titles_destination(model: NavigationModel) -> None:
+    request = model.view_state_for(RandomTitlesDestination(category=TagCategories.FAVOURITES))
+    assert request.view_state is ViewStates.ON_RANDOM_TITLES_NODE
+    assert request.year_range == ""
+    assert request.tag is None
+    assert request.category == TagCategories.FAVOURITES.value
+
+
 @pytest.mark.parametrize(
     ("parent", "expected"),
     [
         (RandomTitlesDestination(), True),
         (RandomTitlesDestination(year_range=(1950, 1959)), True),
         (RandomTitlesDestination(tag=Tags.SCROOGE_NOT_IN_US), True),
+        (RandomTitlesDestination(category=TagCategories.FAVOURITES), True),
         (TagDestination(tag=Tags.SCROOGE_NOT_IN_US), False),
         (SeriesDestination(series_name=SERIES_CS), False),
         (None, False),

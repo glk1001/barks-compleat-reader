@@ -172,8 +172,12 @@ class NavigationModel:
             year_range = (
                 "" if dest.year_range is None else FilteredTitleLists.get_range_str(dest.year_range)
             )
+            category = "" if dest.category is None else dest.category.value
             return ViewRequest(
-                view_state=ViewStates.ON_RANDOM_TITLES_NODE, year_range=year_range, tag=dest.tag
+                view_state=ViewStates.ON_RANDOM_TITLES_NODE,
+                year_range=year_range,
+                tag=dest.tag,
+                category=category,
             )
 
         if isinstance(dest, ArticleDestination):

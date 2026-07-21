@@ -577,12 +577,14 @@ class ViewPipeline:
 
     def _set_top_view_image_for_random_titles(self) -> None:
         # Character nodes carry a tag; decade nodes carry a year range (a decade
-        # key added by FilteredTitleLists, e.g. "1942-1949"); 'Surprise me'
-        # carries neither.
+        # key added by FilteredTitleLists, e.g. "1942-1949"); 'From favourites'
+        # carries a category; 'Surprise me' carries none of these.
         if self._current_tag:
             self._set_top_view_image_for_tag()
         elif self._current_year_range:
             self._set_top_view_image_for_year_range()
+        elif self._current_category:
+            self._set_top_view_image_for_category()
         else:
             self._set_top_view_image_for_stories()
 
@@ -675,12 +677,15 @@ class ViewPipeline:
     def _get_random_titles_fun_image(self) -> ImageInfo | None:
         # Theme the bottom fun image the same way the top view is themed for
         # 'Choose for me' nodes: character nodes carry a tag, decade nodes carry a
-        # year-range key (e.g. "1942-1949"). 'Surprise me' carries neither and
-        # returns None so the caller falls back to the generic pool.
+        # year-range key (e.g. "1942-1949"), 'From favourites' carries a category
+        # value. 'Surprise me' carries none and returns None so the caller falls
+        # back to the generic pool.
         if self._current_tag:
             title_list = self._get_fanta_title_list(BARKS_TAGGED_TITLES[self._current_tag])
         elif self._current_year_range:
             title_list = self._title_lists[self._current_year_range]
+        elif self._current_category:
+            title_list = self._title_lists[self._current_category]
         else:
             return None
 

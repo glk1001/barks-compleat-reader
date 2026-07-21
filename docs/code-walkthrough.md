@@ -296,8 +296,23 @@ Three types carry the whole model:
   payload-bearing ones that carry the domain data needed to reconstruct the
   decision: `YearRangeDestination` (start/end/kind), `SeriesDestination`,
   `CategoryDestination`, `TagGroupDestination`, `TagDestination`,
-  `TitleDestination(fanta_info=…)` (the leaf), `ArticleDestination`. Payloads
-  live on destinations, *not* on widget subclasses — that's the key design move.
+  `TitleDestination(fanta_info=…)` (the leaf), `ArticleDestination`, and
+  `RandomTitlesDestination` (the *Choose for me* filter nodes; see below).
+  Payloads live on destinations, *not* on widget subclasses — that's the key
+  design move.
+
+  **The *Choose for me* nodes** (under Reading) are a family of
+  `RandomTitlesDestination`s, each re-rolling a fresh random 5-title sample on
+  expand. The destination carries one optional *scope* that both selects the
+  sample and themes the view: `year_range` (the decade nodes), `tag` (the
+  `With <character>` nodes), or `category` (the "From favourites" node,
+  which aggregates every tag in `TagCategories.FAVOURITES` — Barks', EveryGeek,
+  personal, and Peter Schilling picks — via `BARKS_TAG_CATEGORIES_TITLES`). All
+  three unset is "Surprise me" (every title, no theme). The sample list is built
+  eagerly in the `_SpecBuilder` helper for each node
+  (`_random_titles_spec` / `_character_random_titles_spec` /
+  `_category_random_titles_spec` in `tree_spec.py`); the scope on the
+  destination exists so the pipeline can theme the backdrop to match (§5.3).
 - **`ViewStates`** (`view_states.py:13`) — a plain `IntEnum` naming every
   top-level view (`INITIAL`, `ON_TITLE_NODE`, `ON_SERIES_*`, `ON_TAG_NODE`,
   the search/index/appendix states, …). It's the single vocabulary the whole
@@ -434,7 +449,13 @@ deciding:
   (`_set_next_top_view_image`, `:392`) with `else: raise AssertionError` for an
   unhandled state — series states pick a random title from that series, index/
   intro states use a hard-coded inset, tag/category states pick from the tag's
-  titles with a fixed fallback, and so on.
+  titles with a fixed fallback, and so on. The *Choose for me* random-titles
+  state is a small router: `_set_top_view_image_for_random_titles` branches on
+  the destination's scope (§4.1) and delegates to the existing tag / year-range /
+  category handler — so the "From favourites" node reuses the category handler
+  (`_title_lists["Favourites"]`), and "Surprise me" (no scope) falls back to the
+  generic stories image. `_get_random_titles_fun_image` themes the bottom fun
+  image the same way.
 
 The **fun-image theme policy** (decade filters, "classics", file-type themes)
 lives in the pipeline, not the image selector: `_get_themed_fun_image_titles`

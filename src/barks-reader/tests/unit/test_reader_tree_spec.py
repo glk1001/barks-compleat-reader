@@ -44,6 +44,7 @@ from barks_reader.core.reader_consts_and_types import (
     CHOOSE_FOR_ME_NODE_TEXT,
     CHRONO_YEAR_RANGES,
     CS_YEAR_RANGES,
+    FROM_FAVOURITES_NODE_TEXT,
     FROM_THE_1940S_NODE_TEXT,
     FROM_THE_1950S_NODE_TEXT,
     FROM_THE_1960S_NODE_TEXT,
@@ -248,6 +249,10 @@ class TestReadingSubtree:
             (FROM_THE_1940S_NODE_TEXT, RandomTitlesDestination(RANDOM_TITLE_YEAR_RANGES[0])),
             (FROM_THE_1950S_NODE_TEXT, RandomTitlesDestination(RANDOM_TITLE_YEAR_RANGES[1])),
             (FROM_THE_1960S_NODE_TEXT, RandomTitlesDestination(RANDOM_TITLE_YEAR_RANGES[2])),
+            (
+                FROM_FAVOURITES_NODE_TEXT,
+                RandomTitlesDestination(category=TagCategories.FAVOURITES),
+            ),
             (WITH_SCROOGE_NODE_TEXT, RandomTitlesDestination(tag=Tags.SCROOGE_NOT_IN_US)),
             (WITH_GLADSTONE_NODE_TEXT, RandomTitlesDestination(tag=Tags.GLADSTONE_GANDER)),
             (WITH_GYRO_NODE_TEXT, RandomTitlesDestination(tag=Tags.GYRO_GEARLOOSE)),
