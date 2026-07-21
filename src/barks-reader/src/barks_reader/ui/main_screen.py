@@ -408,16 +408,21 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         """
         close_button = Factory.SettingsCloseButton(
             size_hint=(None, None),
-            size=(dp(40), dp(40)),
+            size=(dp(48), dp(48)),
             icon_source=str(
                 self._reader_settings.sys_file_paths.get_barks_reader_close_icon_file()
             ),
         )
         close_button.bind(on_release=lambda *_: self._close_settings())
 
+        # Vertically centre the button in the panel's title bar. That bar is
+        # the SettingsPanel title Label (Kivy default style.kv): 50px tall,
+        # below the panel's 5px top padding, so its mid-line sits 30px down.
+        title_bar_mid = dp(5) + dp(50) / 2
+
         def _place(*_: object) -> None:
             close_button.right = settings.right - dp(12)
-            close_button.top = settings.top - dp(12)
+            close_button.center_y = settings.top - title_bar_mid
 
         settings.bind(pos=_place, size=_place)
         app_window.add_widget(close_button)
