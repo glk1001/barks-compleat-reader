@@ -405,7 +405,7 @@ class NavigationCoordinator:
 
         A no-op when no valid bundle is configured or the title's page is not
         written yet — normally unreachable, since the bottom title view's
-        "Wiki Page" button is only visible when both hold.
+        "Goto wiki page" button is only visible when both hold.
 
         Args:
             title: The canonical title whose wiki story page to open.

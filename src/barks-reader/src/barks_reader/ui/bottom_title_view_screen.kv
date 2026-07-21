@@ -262,31 +262,45 @@
                             size_hint_x: 0.1
                             active: not root.use_overrides_description or root.use_overrides_active
                             on_active: root.use_overrides_active = self.active
-                    # --- The Wiki Page chip ---
+                    # --- The 'Goto wiki page' link ---
                     Button:
                         id: wiki_page_button
-                        text: "Wiki Page"
+                        text: "Goto wiki page"
                         font_size: fm.check_box_font_size
                         # Cyan to match the checkbox labels below, unifying the right column.
                         color: reader_palette.theme().search_heading
                         bold: True
+                        # A fine dark halo, like the 'Goto page n' label's, carries
+                        # legibility over the (arbitrary, sometimes bright) title page.
+                        outline_color: (0, 0, 0, 1)
+                        outline_width: dp(1.5)
                         background_color: 0, 0, 0, 0
                         background_normal: ''
                         size_hint: None, None
+                        # Pad the text so the chip has some breathing room around it.
                         width: self.texture_size[0] + (0.8 * fm.check_box_font_size)
-                        height: (1.6 * fm.check_box_font_size) if root.wiki_button_visible else 0
-                        # Right-align with the checkbox rows, above 'use_overrides_layout'
-                        x: title_portal_image_button.right - self.width
+                        height: (1.25 * fm.check_box_font_size) if root.wiki_button_visible else 0
+                        # In a stack of checkbox rows, right-align the TEXT with the
+                        # 'Goto page n:' label text below it — the labels in that BoxLayout
+                        # get 0.8/0.9 of the row width (checkbox column takes the rest), and
+                        # the centred text ends half the chip padding before self.right.
+                        # Standalone, anchor to the portal image's right edge instead.
+                        x:
+                            (goto_page_layout.x + (goto_page_layout.width * 0.8 / 0.9) \
+                            - self.width + (0.4 * fm.check_box_font_size)) \
+                            if self.in_checkbox_stack else \
+                            (title_portal_image_button.right - self.width)
                         y: use_overrides_layout.top + (0.2 * fm.check_box_font_size)
                         opacity: 1 if root.wiki_button_visible else 0
                         disabled: not root.wiki_button_visible
+                        in_checkbox_stack: bool(root.goto_page_num) or bool(root.use_overrides_description)
                         on_press: root.on_wiki_page_button_pressed()
 
                         canvas.before:
-                            # Solid, opaque dark chip so the (arbitrary, sometimes bright)
-                            # title-page background never bleeds through and mutes it.
+                            # A very light chip so the link reads as a button, not a
+                            # caption; the outlined cyan text carries legibility over it.
                             Color:
-                                rgba: 0.1, 0.1, 0.1, 1
+                                rgba: 0.85, 0.85, 0.85, 0.35
                             RoundedRectangle:
                                 pos: self.pos
                                 size: self.size

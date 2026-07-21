@@ -569,7 +569,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._set_no_longer_first_use()
 
     def on_wiki_page_button_pressed(self) -> None:
-        """Open the wiki at the current title's story page (the "Wiki Page" chip)."""
+        """Open the wiki at the current title's story page (the "Goto wiki page" chip)."""
         fanta_info = self._nav_coord.current_fanta_info
         if fanta_info is None:
             logger.error("Wiki page button pressed. But no title selected.")
