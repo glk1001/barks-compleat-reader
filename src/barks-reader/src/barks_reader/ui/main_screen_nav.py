@@ -334,28 +334,13 @@ class MainScreenNavigation:
             self._enter_nav_screen_bottom_focus(self._history_screen, selected)
             return
 
-        was_closed = isinstance(selected, ButtonTreeViewNode) and not selected.is_open
+        # Same toggle-in-place behavior as a mouse click: selection stays on the
+        # node; Down then reaches the first child of a newly opened parent.
         self._tree_view_manager.activate_node(selected)
         if isinstance(selected, TitleTreeViewNode):
             self._on_title_activated()
         elif self._search_screen.is_visible:
             Clock.schedule_once(lambda _dt: self.enter_bottom_focus(), 0)
-        elif was_closed and isinstance(selected, ButtonTreeViewNode) and selected.nodes:
-            Clock.schedule_once(lambda _dt: self._select_first_child(selected), 0)
-
-    def _select_first_child(self, parent: ButtonTreeViewNode) -> None:
-        visible = self._tree_view_screen.get_visible_nodes()
-        try:
-            parent_idx = next(i for i, n in enumerate(visible) if n is parent)
-        except StopIteration:
-            return
-        if parent_idx + 1 < len(visible):
-            child = visible[parent_idx + 1]
-            self._tree_view_screen.select_node(child)
-            if isinstance(child, TitleTreeViewNode):
-                # Selecting alone only sets the tree's selection state; activating the
-                # title node renders its info and portal button in the bottom panel.
-                self._tree_view_manager.activate_node(child)
 
     def _tree_nav_collapse_to_parent(self) -> None:
         selected = self._tree_view_screen.get_selected_node()

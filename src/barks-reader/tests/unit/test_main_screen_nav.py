@@ -515,7 +515,8 @@ class TestTreeNavActivate:
         nav._tree_view_manager.activate_node.assert_called_with(history_node)  # ty: ignore[unresolved-attribute]
         mock_clock.schedule_once.assert_called_once()
 
-    def test_button_node_opens_and_selects_first_child(self, nav: MainScreenNavigation) -> None:
+    def test_button_node_toggles_in_place(self, nav: MainScreenNavigation) -> None:
+        """Enter on a closed parent opens it but keeps selection on it (mouse parity)."""
         selected = MagicMock(spec=ButtonTreeViewNode)
         selected.is_open = False
         selected.nodes = [MagicMock()]
@@ -534,46 +535,8 @@ class TestTreeNavActivate:
             nav._tree_nav_activate()
 
         nav._tree_view_manager.activate_node.assert_called_with(selected)  # ty: ignore[unresolved-attribute]
-        mock_clock.schedule_once.assert_called_once()
-
-
-class TestSelectFirstChild:
-    def test_title_child_is_activated(self, nav: MainScreenNavigation) -> None:
-        parent = MagicMock(spec=ButtonTreeViewNode)
-        child = MagicMock(spec=TitleTreeViewNode)
-        nav._tree_view_screen.get_visible_nodes.return_value = [parent, child]  # ty: ignore[unresolved-attribute]
-
-        nav._select_first_child(parent)
-
-        nav._tree_view_screen.select_node.assert_called_with(child)  # ty: ignore[unresolved-attribute]
-        # A title child must be activated so its info + portal button render below.
-        nav._tree_view_manager.activate_node.assert_called_with(child)  # ty: ignore[unresolved-attribute]
-
-    def test_non_title_child_is_only_selected(self, nav: MainScreenNavigation) -> None:
-        parent = MagicMock(spec=ButtonTreeViewNode)
-        child = MagicMock(spec=ButtonTreeViewNode)
-        nav._tree_view_screen.get_visible_nodes.return_value = [parent, child]  # ty: ignore[unresolved-attribute]
-
-        nav._select_first_child(parent)
-
-        nav._tree_view_screen.select_node.assert_called_with(child)  # ty: ignore[unresolved-attribute]
-        nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[unresolved-attribute]
-
-    def test_parent_not_visible_does_nothing(self, nav: MainScreenNavigation) -> None:
-        parent = MagicMock(spec=ButtonTreeViewNode)
-        nav._tree_view_screen.get_visible_nodes.return_value = []  # ty: ignore[unresolved-attribute]
-
-        nav._select_first_child(parent)
-
         nav._tree_view_screen.select_node.assert_not_called()  # ty: ignore[unresolved-attribute]
-
-    def test_parent_has_no_following_node(self, nav: MainScreenNavigation) -> None:
-        parent = MagicMock(spec=ButtonTreeViewNode)
-        nav._tree_view_screen.get_visible_nodes.return_value = [parent]  # ty: ignore[unresolved-attribute]
-
-        nav._select_first_child(parent)
-
-        nav._tree_view_screen.select_node.assert_not_called()  # ty: ignore[unresolved-attribute]
+        mock_clock.schedule_once.assert_not_called()
 
 
 class TestTreeNavCollapseToParent:
