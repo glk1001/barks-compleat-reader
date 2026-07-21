@@ -37,7 +37,15 @@
             Label:
                 text: root.msg_text
                 font_size: root.msg_font_scale * fm.error_popup_font_size
-                background_color: (1, 1, 1, 1)
+                # A very light rounded panel behind the text so the message
+                # stands out against the background artwork (quit popup).
+                canvas.before:
+                    Color:
+                        rgba: (0.5, 0.5, 0.5, 0.4) if root.bg_image_source else (0, 0, 0, 0)
+                    RoundedRectangle:
+                        pos: self.center_x - self.texture_size[0] / 2 - dp(24), self.center_y - self.texture_size[1] / 2 - dp(16)
+                        size: self.texture_size[0] + dp(48), self.texture_size[1] + dp(32)
+                        radius: [dp(12)]
                 multiline: True
                 markup: True
                 bold: bool(root.bg_image_source)
