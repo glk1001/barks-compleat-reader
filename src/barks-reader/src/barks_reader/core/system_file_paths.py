@@ -2,6 +2,11 @@ from pathlib import Path
 
 from loguru import logger
 
+# The app's identity image: shown behind the quit-confirmation popup and also part
+# of the random reader-icon pool that can appear in the action-bar icon button. It
+# is a guaranteed asset, so it is validated by the required-files check.
+APP_IDENTITY_ICON_FILENAME = "The Rabbit's Foot-1-1.png"
+
 
 class SystemFilePaths:
     def __init__(self) -> None:
@@ -33,6 +38,8 @@ class SystemFilePaths:
         self._contrast_off_icon_path: Path | None = None
         self._goto_title_icon_path: Path | None = None
         self._hamburger_menu_icon_path: Path | None = None
+
+        self._app_identity_icon_path: Path | None = None
 
         self._speech_bubble_icon_path: Path | None = None
         self._eye_open_icon_path: Path | None = None
@@ -85,6 +92,8 @@ class SystemFilePaths:
         self._contrast_off_icon_path = action_bar_icons_dir / "icon-contrast-off.png"
         self._goto_title_icon_path = action_bar_icons_dir / "icon-goto-title.png"
         self._hamburger_menu_icon_path = action_bar_icons_dir / "menu-hamburger-icon.png"
+
+        self._app_identity_icon_path = reader_icon_files_dir / APP_IDENTITY_ICON_FILENAME
 
         self._speech_bubble_icon_path = various_files_dir / "speech-bubble-icon.png"
         self._eye_open_icon_path = various_files_dir / "icon-eye-open.png"
@@ -147,6 +156,7 @@ class SystemFilePaths:
             self._goto_title_icon_path,
             self._hamburger_menu_icon_path,
             self._go_back_icon_path,
+            self._app_identity_icon_path,
             self._speech_bubble_icon_path,
             self._up_arrow_path,
             self._down_arrow_path,
@@ -233,6 +243,16 @@ class SystemFilePaths:
     def get_down_arrow_file(self) -> Path:
         assert self._down_arrow_path
         return self._down_arrow_path
+
+    def get_app_identity_icon_file(self) -> Path:
+        """Return the app's identity image (see ``APP_IDENTITY_ICON_FILENAME``).
+
+        Shown behind the quit-confirmation popup and also part of the random
+        reader-icon pool. It is a guaranteed asset (validated by the required-files
+        check), so callers need not test for its presence.
+        """
+        assert self._app_identity_icon_path
+        return self._app_identity_icon_path
 
     def get_barks_reader_close_icon_file(self) -> Path:
         assert self._close_icon_path
