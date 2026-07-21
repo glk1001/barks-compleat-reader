@@ -238,6 +238,39 @@ def test_set_comic_and_load_success(
     assert loader._images[1] is not None
 
 
+def test_cursor_restored_at_first_page_ready(
+    loader: ComicBookLoader,
+    page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+    recording_cursor: RecordingCursor,
+) -> None:
+    """The busy cursor is released once the first page is readable, not at load end."""
+    page_map, load_order = page_map_and_order
+    release_last_page = threading.Event()
+
+    class GatedPageImageSource(FakePageImageSource):
+        """Blocks every page after the first until the test releases them."""
+
+        def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:
+            if page_info.page_index > 0:
+                release_last_page.wait(timeout=2.0)
+            return super().load_page_image(page_info)
+
+    loader.set_comic(GatedPageImageSource(), load_order, page_map, archive_desc="gated.cbz")
+
+    deadline = time.monotonic() + 2.0
+    while "normal" not in recording_cursor.states and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    # First page delivered, last page still gated: cursor must already be back to normal.
+    assert recording_cursor.states == ["busy", "normal"]
+
+    release_last_page.set()
+    if loader._thread:
+        loader._thread.join(timeout=2.0)
+
+    assert recording_cursor.states == ["busy", "normal", "normal"]
+
+
 def test_load_error_file_not_found(
     loader: ComicBookLoader,
     page_map_and_order: tuple[OrderedDict[str, Any], list[str]],

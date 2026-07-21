@@ -562,6 +562,10 @@ class ComicBookLoader:
                                 f"after {timing.get_elapsed_time_with_unit()}."
                             )
                             self._scheduler.schedule_once(self._on_first_image_loaded)
+                            # The comic is now readable; don't keep the busy cursor
+                            # for the rest of the background prefetch. (Scheduled
+                            # after the first-page display callback above.)
+                            self._cursor.set_normal()
 
                         # Refill window if possible.
                         if not self._stop:
