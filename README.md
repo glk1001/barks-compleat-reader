@@ -174,8 +174,9 @@ Releases are assembled by CI — don't upload executables by hand.
    app release via the GitHub API (pre-releases included). Old releases can stay as history.
 
 The ~1GB data packs (`barks-reader-data-1.zip`, `barks-reader-data-2.zip`) live on their own
-dedicated release (`data-v1`), not on app releases, because they rarely change. When they do
-change, rebuild them (`bash scripts/build.sh --include-zips`) and run:
+dedicated `data-vN` release, not on app releases, because they rarely change — the current
+tag is whatever `DATA_TAG` in `website/app.html` names. When they do change, rebuild them
+(`bash scripts/build-data-zips.sh` — no exe build needed) and run:
 ```
 bash scripts/upload-data-zips.sh
 ```
