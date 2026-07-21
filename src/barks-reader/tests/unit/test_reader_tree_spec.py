@@ -229,7 +229,7 @@ class TestReadingSubtree:
         assert all(child.kind is NodeKind.STORY_GROUP for child in reading.children)
 
     def test_history_registration_and_press_action(self, specs: tuple[NodeSpec, ...]) -> None:
-        history = specs[3].children[0]
+        history = specs[3].children[1]
         assert history.text == HISTORY_NODE_TEXT
         assert isinstance(history.destination, HistoryDestination)
         assert history.register_as is NodeRegistration.HISTORY
@@ -239,7 +239,7 @@ class TestReadingSubtree:
         assert history.lazy_children is None
 
     def test_choose_for_me_filter_nodes(self, specs: tuple[NodeSpec, ...]) -> None:
-        choose_for_me = specs[3].children[1]
+        choose_for_me = specs[3].children[0]
         assert choose_for_me.text == CHOOSE_FOR_ME_NODE_TEXT
         assert isinstance(choose_for_me.destination, ChooseForMeDestination)
 
@@ -268,7 +268,7 @@ class TestReadingSubtree:
     ) -> None:
         all_years = (CHRONO_YEAR_RANGES[0][0], CHRONO_YEAR_RANGES[-1][1])
 
-        for spec in specs[3].children[1].children:
+        for spec in specs[3].children[0].children:
             assert isinstance(spec.destination, RandomTitlesDestination)
             if spec.destination.tag is not None:
                 continue  # Character nodes are covered by the tagged-rows test.
@@ -294,7 +294,7 @@ class TestReadingSubtree:
     def test_character_random_title_rows_are_tagged(self, specs: tuple[NodeSpec, ...]) -> None:
         character_specs = [
             spec
-            for spec in specs[3].children[1].children
+            for spec in specs[3].children[0].children
             if isinstance(spec.destination, RandomTitlesDestination)
             and spec.destination.tag is not None
         ]
@@ -320,7 +320,7 @@ class TestReadingSubtree:
             assert chrono_numbers == sorted(chrono_numbers)
 
     def test_each_expansion_resamples(self, specs: tuple[NodeSpec, ...]) -> None:
-        surprise_me = specs[3].children[1].children[0]
+        surprise_me = specs[3].children[0].children[0]
         assert surprise_me.lazy_children is not None
 
         tree_spec_module = barks_reader.core.navigation.tree_spec

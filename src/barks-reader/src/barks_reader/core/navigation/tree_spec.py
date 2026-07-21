@@ -406,14 +406,6 @@ class _SpecBuilder:
             children=(
                 NodeSpec(
                     kind=NodeKind.STORY_GROUP,
-                    text=HISTORY_NODE_TEXT,
-                    destination=HistoryDestination(),
-                    press_action=PressAction.SET_VIEW_STATE,
-                    register_as=NodeRegistration.HISTORY,
-                    start_closed=True,
-                ),
-                NodeSpec(
-                    kind=NodeKind.STORY_GROUP,
                     text=CHOOSE_FOR_ME_NODE_TEXT,
                     destination=ChooseForMeDestination(),
                     children=(
@@ -432,6 +424,14 @@ class _SpecBuilder:
                             for text, tag in _CHARACTER_RANDOM_NODES
                         ),
                     ),
+                ),
+                NodeSpec(
+                    kind=NodeKind.STORY_GROUP,
+                    text=HISTORY_NODE_TEXT,
+                    destination=HistoryDestination(),
+                    press_action=PressAction.SET_VIEW_STATE,
+                    register_as=NodeRegistration.HISTORY,
+                    start_closed=True,
                 ),
             ),
         )
