@@ -49,6 +49,7 @@ fcbi
 figsize
 fillvalue
 fixpoint
+fodt
 fontsize
 fontstyle
 fontweight
@@ -150,6 +151,7 @@ unthemed
 untinted
 vectorizer
 vmem
+Wacapew
 wikilinks
 windowmanager
 wmclass

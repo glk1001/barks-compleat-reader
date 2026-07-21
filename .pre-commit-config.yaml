@@ -27,7 +27,9 @@ repos:
             name: cspell
             entry: bunx cspell --no-must-find-files
             language: system
-            types: [python]
+            # Match every file type cspell.config.yaml checks, so pre-commit
+            # catches everything CI's repo-wide run would.
+            files: \.(py|md|ini|fodt)$
             stages: [pre-commit]
           - id: check-relative-imports
             name: check relative imports
