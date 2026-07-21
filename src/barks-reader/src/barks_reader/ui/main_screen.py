@@ -138,17 +138,19 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         self.app_icon_filepath = str(self._random_title_images.get_random_reader_app_icon_file())
 
-        # X is first; icon_hitbox is last so Left from X wraps to it. Default
-        # focus is go-back, not the X, so Escape+Enter can never quit the app.
+        # Buttons in visual left-to-right order: the app icon leads and the X
+        # trails (just after the three-dots menu), matching the on-screen layout.
+        # Default focus is go-back, not the X, so Escape+Enter can never quit the
+        # app.
         self._setup_action_bar_nav(
             [
-                self.ids.quit_button,
+                self.ids.action_bar.icon_hitbox,
                 self.ids.fullscreen_button,
                 self.ids.go_back_button,
                 self.ids.collapse_button,
                 self.ids.change_pics_button,
                 self.ids.menu_button,
-                self.ids.action_bar.icon_hitbox,
+                self.ids.quit_button,
             ],
             default_focus_idx=2,
         )
