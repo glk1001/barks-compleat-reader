@@ -540,6 +540,25 @@
             border-left: 4px solid var(--yellow);
         }
 
+        /* Small version chips on the Download tab: the app tag on the red
+           download card, the data-v* tag on the Required Data Files heading. */
+        .version-tag {
+            display: inline-block;
+            padding: 1px 10px 2px;
+            border: 1.5px solid rgba(31, 42, 68, 0.45);
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: var(--ink-soft);
+            vertical-align: 2px;
+        }
+
+        .download-card .version-tag {
+            border-color: rgba(255, 255, 255, 0.55);
+            color: rgba(255, 255, 255, 0.92);
+        }
+
         ul, ol {
             margin: 15px 0;
             padding-left: 25px;
@@ -1585,7 +1604,8 @@
 
             function createDataFilesHTML() {
                 return `
-                    <h4 style="margin-top: 30px;">Required Data Files</h4>
+                    <h4 style="margin-top: 30px;">Required Data Files
+                        <span class="version-tag">${DATA_TAG}</span></h4>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
                         ${dataFiles.map(file => `
                             <div class="data-file-card">
@@ -1620,7 +1640,8 @@
                         <p>Download the ${platform.name} executable and data files.</p>
 
                         <div class="download-card">
-                            <h3>${platform.name} Application</h3>
+                            <h3>${platform.name} Application
+                                <span class="version-tag" data-app-tag>${resolvedTag || FALLBACK_TAG}</span></h3>
                             <p>${platform.description}</p>
                             <a href="${generateDownloadURL(platform.executable)}" data-asset="${platform.executable}"
                             class="btn btn--inverse btn--large" download>
@@ -1702,6 +1723,9 @@
                     document.getElementById('header-version').textContent = resolvedTag;
                     document.querySelectorAll('a[data-asset]').forEach(link => {
                         link.href = generateDownloadURL(link.dataset.asset);
+                    });
+                    document.querySelectorAll('[data-app-tag]').forEach(el => {
+                        el.textContent = resolvedTag;
                     });
                 }
             });
