@@ -203,11 +203,13 @@ class TagDestination(Destination):
 class RandomTitlesDestination(Destination):
     """A 'Choose for me' filter node showing a fresh random title sample.
 
-    `year_range` is the inclusive submitted-year range, or None for all
+    The sample is scoped by `year_range` (inclusive submitted-year range, the
+    decade nodes) or `tag` (the 'With <character>' nodes). Both None means all
     titles ('Surprise me').
     """
 
     year_range: tuple[int, int] | None = None
+    tag: Tags | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -80,6 +80,12 @@ from barks_reader.core.reader_consts_and_types import (
     THE_STORIES_NODE_TEXT,
     TITLE_SEARCH_NODE_TEXT,
     US_YEAR_RANGES,
+    WITH_BEAGLE_BOYS_NODE_TEXT,
+    WITH_DAISY_NODE_TEXT,
+    WITH_GLADSTONE_NODE_TEXT,
+    WITH_GRANDMA_DUCK_NODE_TEXT,
+    WITH_GYRO_NODE_TEXT,
+    WITH_SCROOGE_NODE_TEXT,
     WORD_SEARCH_NODE_TEXT,
 )
 from barks_reader.core.reader_formatter import (
@@ -232,6 +238,18 @@ def _title_rows(title_infos: Iterable[FantaComicBookInfo]) -> tuple[NodeSpec, ..
 
 
 NUM_RANDOM_TITLES = 5
+
+# The 'With <character>' filter nodes under 'Choose for me': node text and the
+# character's tag. Only characters with enough tagged titles (30+) to keep a
+# random 5 fresh across re-rolls.
+_CHARACTER_RANDOM_NODES: tuple[tuple[str, Tags], ...] = (
+    (WITH_SCROOGE_NODE_TEXT, Tags.SCROOGE_NOT_IN_US),
+    (WITH_GLADSTONE_NODE_TEXT, Tags.GLADSTONE_GANDER),
+    (WITH_GYRO_NODE_TEXT, Tags.GYRO_GEARLOOSE),
+    (WITH_DAISY_NODE_TEXT, Tags.DAISY),
+    (WITH_BEAGLE_BOYS_NODE_TEXT, Tags.BEAGLE_BOYS),
+    (WITH_GRANDMA_DUCK_NODE_TEXT, Tags.GRANDMA_DUCK),
+)
 
 
 def _random_title_rows(title_infos: list[FantaComicBookInfo]) -> tuple[NodeSpec, ...]:
@@ -409,6 +427,10 @@ class _SpecBuilder:
                         self._random_titles_spec(
                             FROM_THE_1960S_NODE_TEXT, RANDOM_TITLE_YEAR_RANGES[2]
                         ),
+                        *(
+                            self._character_random_titles_spec(text, tag)
+                            for text, tag in _CHARACTER_RANDOM_NODES
+                        ),
                     ),
                 ),
             ),
@@ -421,6 +443,22 @@ class _SpecBuilder:
             kind=NodeKind.STORY_GROUP,
             text=text,
             destination=RandomTitlesDestination(year_range=year_range),
+            lazy_children=partial(_random_title_rows, title_list),
+            repopulate_on_expand=True,
+        )
+
+    def _character_random_titles_spec(self, text: str, tag: Tags) -> NodeSpec:
+        # Tag lists can contain titles outside the Fanta collection — skip those,
+        # as _tagged_title_rows does.
+        title_list = [
+            info
+            for title in get_sorted_tagged_titles(tag)
+            if (info := get_fanta_info(title)) is not None
+        ]
+        return NodeSpec(
+            kind=NodeKind.STORY_GROUP,
+            text=text,
+            destination=RandomTitlesDestination(tag=tag),
             lazy_children=partial(_random_title_rows, title_list),
             repopulate_on_expand=True,
         )

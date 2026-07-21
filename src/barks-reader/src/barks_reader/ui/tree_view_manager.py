@@ -113,6 +113,9 @@ class TreeViewManager:
     def render_title_node(self, node: TitleTreeViewNode, *, scroll_to: bool = False) -> None:
         """Render the bottom title view for `node` without re-selecting it.
 
+        Titles under a 'Choose for me' node keep the themed top view
+        (character/decade backdrop) instead of re-rolling a generic image.
+
         Args:
             node: The title node whose view should be rendered.
             scroll_to: Whether to also scroll the tree view to the node.
@@ -121,7 +124,11 @@ class TreeViewManager:
         from .navigation_coordinator import TitleTarget  # noqa: PLC0415
 
         assert isinstance(node.destination, TitleDestination)
-        self._nav.select_title(TitleTarget(fanta_info=node.destination.fanta_info))
+        parent_destination = getattr(node.parent_node, "destination", None)
+        self._nav.select_title(
+            TitleTarget(fanta_info=node.destination.fanta_info),
+            preserve_top_view=self._nav_model.keep_top_view_for_title_under(parent_destination),
+        )
         if scroll_to:
             self.scroll_to_node(node)
 
@@ -341,7 +348,10 @@ class TreeViewManager:
             else None
         )
 
-        self._nav.select_title(TitleTarget(fanta_info=fanta_info, tag=tag))
+        self._nav.select_title(
+            TitleTarget(fanta_info=fanta_info, tag=tag),
+            preserve_top_view=self._nav_model.keep_top_view_for_title_under(parent_destination),
+        )
 
     def on_intro_doc_pressed(self, _button: Button) -> None:
         assert self._sys_file_paths

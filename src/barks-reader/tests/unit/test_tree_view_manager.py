@@ -7,12 +7,13 @@ from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.tree_view_manager
 import pytest
-from barks_fantagraphics.barks_tags import TagGroups
+from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.navigation import (
     ArticleDestination,
     IntroDestination,
     MainIndexDestination,
+    RandomTitlesDestination,
     TagGroupDestination,
     TitleDestination,
     WikiIndexDestination,
@@ -313,6 +314,8 @@ class TestTreeViewManager:
         tree_view_manager.on_title_row_button_pressed(button)
 
         mock_dependencies["nav_coordinator"].select_title.assert_called_once()
+        kwargs = mock_dependencies["nav_coordinator"].select_title.call_args.kwargs
+        assert kwargs["preserve_top_view"] is False
 
     def test_on_title_row_button_pressed_with_tag(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
@@ -325,6 +328,21 @@ class TestTreeViewManager:
         tree_view_manager.on_title_row_button_pressed(button)
 
         mock_dependencies["nav_coordinator"].select_title.assert_called_once()
+
+    def test_on_title_row_button_pressed_under_random_titles_keeps_top_view(
+        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        # A pick under a 'Choose for me' node keeps the themed top view
+        # (character/decade backdrop) instead of re-rolling a generic image.
+        fanta = _fake_fanta()
+        button = MagicMock()
+        button.parent.destination = TitleDestination(fanta_info=fanta)
+        button.parent.parent_node.destination = RandomTitlesDestination(tag=Tags.SCROOGE_NOT_IN_US)
+
+        tree_view_manager.on_title_row_button_pressed(button)
+
+        kwargs = mock_dependencies["nav_coordinator"].select_title.call_args.kwargs
+        assert kwargs["preserve_top_view"] is True
 
     def test_render_title_node_without_scroll(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]
@@ -339,6 +357,20 @@ class TestTreeViewManager:
         target = mock_dependencies["nav_coordinator"].select_title.call_args.args[0]
         assert target.fanta_info is fanta
         mock_clock.assert_not_called()
+
+    def test_render_title_node_under_random_titles_keeps_top_view(
+        self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]
+    ) -> None:
+        # Arrow-key navigation renders titles through render_title_node: picks
+        # under a 'Choose for me' node keep the themed top view there too.
+        node = MagicMock(spec=TitleTreeViewNode)
+        node.destination = TitleDestination(fanta_info=_fake_fanta())
+        node.parent_node.destination = RandomTitlesDestination(tag=Tags.SCROOGE_NOT_IN_US)
+
+        tree_view_manager.render_title_node(node)
+
+        kwargs = mock_dependencies["nav_coordinator"].select_title.call_args.kwargs
+        assert kwargs["preserve_top_view"] is True
 
     def test_render_title_node_with_scroll(
         self, tree_view_manager: TreeViewManager, mock_dependencies: dict[str, Any]

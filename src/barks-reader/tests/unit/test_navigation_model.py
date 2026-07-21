@@ -136,6 +136,31 @@ def test_view_state_for_random_titles_destination(
     request = model.view_state_for(RandomTitlesDestination(year_range=year_range))
     assert request.view_state is ViewStates.ON_RANDOM_TITLES_NODE
     assert request.year_range == expected_range_str
+    assert request.tag is None
+
+
+def test_view_state_for_character_random_titles_destination(model: NavigationModel) -> None:
+    request = model.view_state_for(RandomTitlesDestination(tag=Tags.SCROOGE_NOT_IN_US))
+    assert request.view_state is ViewStates.ON_RANDOM_TITLES_NODE
+    assert request.year_range == ""
+    assert request.tag is Tags.SCROOGE_NOT_IN_US
+
+
+@pytest.mark.parametrize(
+    ("parent", "expected"),
+    [
+        (RandomTitlesDestination(), True),
+        (RandomTitlesDestination(year_range=(1950, 1959)), True),
+        (RandomTitlesDestination(tag=Tags.SCROOGE_NOT_IN_US), True),
+        (TagDestination(tag=Tags.SCROOGE_NOT_IN_US), False),
+        (SeriesDestination(series_name=SERIES_CS), False),
+        (None, False),
+    ],
+)
+def test_keep_top_view_for_title_under(
+    model: NavigationModel, parent: Destination | None, expected: bool
+) -> None:
+    assert model.keep_top_view_for_title_under(parent) is expected
 
 
 # --- view_state_for: series --------------------------------------------

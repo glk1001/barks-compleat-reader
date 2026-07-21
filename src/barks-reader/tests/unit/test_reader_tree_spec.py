@@ -14,6 +14,7 @@ from barks_fantagraphics.barks_tags import (
     TagGroups,
     Tags,
     get_sorted_tagged_titles,
+    get_tag_titles,
 )
 from barks_fantagraphics.fanta_comics_info import (
     SERIES_CS,
@@ -55,6 +56,12 @@ from barks_reader.core.reader_consts_and_types import (
     SURPRISE_ME_NODE_TEXT,
     THE_STORIES_NODE_TEXT,
     US_YEAR_RANGES,
+    WITH_BEAGLE_BOYS_NODE_TEXT,
+    WITH_DAISY_NODE_TEXT,
+    WITH_GLADSTONE_NODE_TEXT,
+    WITH_GRANDMA_DUCK_NODE_TEXT,
+    WITH_GYRO_NODE_TEXT,
+    WITH_SCROOGE_NODE_TEXT,
 )
 
 if TYPE_CHECKING:
@@ -237,16 +244,22 @@ class TestReadingSubtree:
         assert isinstance(choose_for_me.destination, ChooseForMeDestination)
 
         expected = [
-            (SURPRISE_ME_NODE_TEXT, None),
-            (FROM_THE_1940S_NODE_TEXT, RANDOM_TITLE_YEAR_RANGES[0]),
-            (FROM_THE_1950S_NODE_TEXT, RANDOM_TITLE_YEAR_RANGES[1]),
-            (FROM_THE_1960S_NODE_TEXT, RANDOM_TITLE_YEAR_RANGES[2]),
+            (SURPRISE_ME_NODE_TEXT, RandomTitlesDestination()),
+            (FROM_THE_1940S_NODE_TEXT, RandomTitlesDestination(RANDOM_TITLE_YEAR_RANGES[0])),
+            (FROM_THE_1950S_NODE_TEXT, RandomTitlesDestination(RANDOM_TITLE_YEAR_RANGES[1])),
+            (FROM_THE_1960S_NODE_TEXT, RandomTitlesDestination(RANDOM_TITLE_YEAR_RANGES[2])),
+            (WITH_SCROOGE_NODE_TEXT, RandomTitlesDestination(tag=Tags.SCROOGE_NOT_IN_US)),
+            (WITH_GLADSTONE_NODE_TEXT, RandomTitlesDestination(tag=Tags.GLADSTONE_GANDER)),
+            (WITH_GYRO_NODE_TEXT, RandomTitlesDestination(tag=Tags.GYRO_GEARLOOSE)),
+            (WITH_DAISY_NODE_TEXT, RandomTitlesDestination(tag=Tags.DAISY)),
+            (WITH_BEAGLE_BOYS_NODE_TEXT, RandomTitlesDestination(tag=Tags.BEAGLE_BOYS)),
+            (WITH_GRANDMA_DUCK_NODE_TEXT, RandomTitlesDestination(tag=Tags.GRANDMA_DUCK)),
         ]
         assert len(choose_for_me.children) == len(expected)
-        for spec, (text, year_range) in zip(choose_for_me.children, expected, strict=True):
+        for spec, (text, destination) in zip(choose_for_me.children, expected, strict=True):
             assert spec.kind is NodeKind.STORY_GROUP
             assert spec.text == text
-            assert spec.destination == RandomTitlesDestination(year_range=year_range)
+            assert spec.destination == destination
             assert spec.lazy_children is not None
             assert spec.repopulate_on_expand
 
@@ -256,13 +269,16 @@ class TestReadingSubtree:
         all_years = (CHRONO_YEAR_RANGES[0][0], CHRONO_YEAR_RANGES[-1][1])
 
         for spec in specs[3].children[1].children:
+            assert isinstance(spec.destination, RandomTitlesDestination)
+            if spec.destination.tag is not None:
+                continue  # Character nodes are covered by the tagged-rows test.
+
             assert spec.lazy_children is not None
             title_rows = spec.lazy_children()
 
             assert len(title_rows) == NUM_RANDOM_TITLES
             assert all(row.kind is NodeKind.TITLE_ROW for row in title_rows)
 
-            assert isinstance(spec.destination, RandomTitlesDestination)
             year_range = spec.destination.year_range or all_years
             submitted_years = []
             chrono_numbers = []
@@ -272,6 +288,34 @@ class TestReadingSubtree:
                 chrono_numbers.append(row.fanta_info.fanta_chronological_number)
 
             assert all(year_range[0] <= year <= year_range[1] for year in submitted_years)
+            # Samples are displayed in chronological order.
+            assert chrono_numbers == sorted(chrono_numbers)
+
+    def test_character_random_title_rows_are_tagged(self, specs: tuple[NodeSpec, ...]) -> None:
+        character_specs = [
+            spec
+            for spec in specs[3].children[1].children
+            if isinstance(spec.destination, RandomTitlesDestination)
+            and spec.destination.tag is not None
+        ]
+        assert len(character_specs) == 6
+
+        for spec in character_specs:
+            assert spec.lazy_children is not None
+            title_rows = spec.lazy_children()
+
+            assert len(title_rows) == NUM_RANDOM_TITLES
+            assert all(row.kind is NodeKind.TITLE_ROW for row in title_rows)
+
+            assert isinstance(spec.destination, RandomTitlesDestination)
+            assert spec.destination.tag is not None
+            tagged_titles = get_tag_titles(spec.destination.tag)
+            chrono_numbers = []
+            for row in title_rows:
+                assert row.fanta_info is not None
+                assert row.fanta_info.comic_book_info.title in tagged_titles
+                chrono_numbers.append(row.fanta_info.fanta_chronological_number)
+
             # Samples are displayed in chronological order.
             assert chrono_numbers == sorted(chrono_numbers)
 

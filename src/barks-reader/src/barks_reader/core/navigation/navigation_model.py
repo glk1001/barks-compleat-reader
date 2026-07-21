@@ -172,7 +172,9 @@ class NavigationModel:
             year_range = (
                 "" if dest.year_range is None else FilteredTitleLists.get_range_str(dest.year_range)
             )
-            return ViewRequest(view_state=ViewStates.ON_RANDOM_TITLES_NODE, year_range=year_range)
+            return ViewRequest(
+                view_state=ViewStates.ON_RANDOM_TITLES_NODE, year_range=year_range, tag=dest.tag
+            )
 
         if isinstance(dest, ArticleDestination):
             return ViewRequest(view_state=dest.view_state)
@@ -193,6 +195,16 @@ class NavigationModel:
         if len(title_children) == 1:
             return title_children[0]
         return None
+
+    @staticmethod
+    def keep_top_view_for_title_under(parent: Destination | None) -> bool:
+        """Whether selecting a title under *parent* should keep the current top view.
+
+        The 'Choose for me' nodes theme the top view (character tag, decade, or
+        the all-titles surprise image); keep that theme up while the user
+        browses the random picks instead of re-rolling a generic image.
+        """
+        return isinstance(parent, RandomTitlesDestination)
 
     @staticmethod
     def tag_context(dest: Destination) -> Tags | TagGroups | None:

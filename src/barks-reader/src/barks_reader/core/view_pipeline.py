@@ -576,12 +576,15 @@ class ViewPipeline:
         self._top_view_image_info = self._image_selector.get_random_reading_history_image()
 
     def _set_top_view_image_for_random_titles(self) -> None:
-        # 'Surprise me' has no year range; decade nodes carry one (a decade key
-        # added by FilteredTitleLists, e.g. "1942-1949").
-        if not self._current_year_range:
-            self._set_top_view_image_for_stories()
-        else:
+        # Character nodes carry a tag; decade nodes carry a year range (a decade
+        # key added by FilteredTitleLists, e.g. "1942-1949"); 'Surprise me'
+        # carries neither.
+        if self._current_tag:
+            self._set_top_view_image_for_tag()
+        elif self._current_year_range:
             self._set_top_view_image_for_year_range()
+        else:
+            self._set_top_view_image_for_stories()
 
     def _set_top_view_image_color(self) -> None:
         self._top_view_image_color = self._colors.next_color(PaletteId.TOP_VIEW)

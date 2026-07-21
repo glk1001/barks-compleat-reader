@@ -225,6 +225,42 @@ class TestTopViewSetters:
         args, _kwargs = _selector(pipeline).get_random_image.call_args
         assert args[0] is year_titles
 
+    def test_set_top_view_image_for_random_titles_uses_tag_when_set(self) -> None:
+        # A 'With <character>' node: the backdrop comes from the character's tag.
+        pipeline = _make_pipeline()
+        pipeline._current_tag = Tags.CLASSICS
+        pipeline._current_year_range = ""
+
+        with patch.object(vp_module, "BARKS_TAGGED_TITLES", {Tags.CLASSICS: [Titles.ATTIC_ANTICS]}):
+            pipeline._set_top_view_image_for_random_titles()
+
+        _selector(pipeline).get_random_image.assert_called_once()
+
+    def test_set_top_view_image_for_random_titles_uses_year_range_when_no_tag(self) -> None:
+        pipeline = _make_pipeline()
+        pipeline._current_tag = None
+        year_titles = [MagicMock()]
+        _title_lists(pipeline)["1942-1949"] = year_titles
+        pipeline._current_year_range = "1942-1949"
+
+        pipeline._set_top_view_image_for_random_titles()
+
+        args, _kwargs = _selector(pipeline).get_random_image.call_args
+        assert args[0] is year_titles
+
+    def test_set_top_view_image_for_random_titles_falls_back_to_stories(self) -> None:
+        # 'Surprise me' carries neither tag nor year range.
+        pipeline = _make_pipeline()
+        pipeline._current_tag = None
+        pipeline._current_year_range = ""
+        all_titles = [MagicMock()]
+        _title_lists(pipeline)[vp_module.ALL_LISTS] = all_titles
+
+        pipeline._set_top_view_image_for_random_titles()
+
+        args, _kwargs = _selector(pipeline).get_random_image.call_args
+        assert args[0] is all_titles
+
     def test_set_top_view_image_for_cs_year_range_uses_good_neighbors_when_empty(self) -> None:
         pipeline = _make_pipeline()
         pipeline._current_cs_year_range = ""
