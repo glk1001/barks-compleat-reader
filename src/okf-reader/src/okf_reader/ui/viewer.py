@@ -455,10 +455,16 @@ class OKFViewer(RelativeLayout):
 
         self._show_start_page(start_page)
 
-        # Open with the sidebar owning the keys (ring + banded current-page
+        # A cold open hands the keys to the sidebar (ring + banded current-page
         # node): a visible, predictable starting focus for the 6-button remote,
-        # matching the main screen's tree-first model.
-        self._set_focus_region(FocusRegion.SIDEBAR)
+        # matching the main screen's tree-first model. But when the caller named
+        # a landing page — a "go read THIS page" entry — start in the reading
+        # pane instead, so Up/Down reads it straight away: the intent was the
+        # page, not the navigator. No link is ringed on arrival; PAGE focus
+        # leaves the hybrid Up/Down walk to acquire links as they scroll past
+        # (see _page_line_step), so the ring never lands on an arbitrary
+        # breadcrumb link.
+        self._set_focus_region(FocusRegion.PAGE if start_page is not None else FocusRegion.SIDEBAR)
 
     def _show_start_page(self, start_page: Path | None) -> None:
         """Show the opening page, if any: the caller's choice, else the saved session's.
@@ -1042,6 +1048,7 @@ class OKFViewer(RelativeLayout):
 
         """
         scroll_y = 1.0
+        caller_page = path is not None  # an explicit "go read THIS" landing page
         if path is None:
             if self.history:
                 path, scroll_y = self.history[-1].path, self.body_scroll.scroll_y
@@ -1049,8 +1056,10 @@ class OKFViewer(RelativeLayout):
                 path = self.bundle / "index.md"
         self.history.clear()
         self._show(path, push=True, scroll_y=scroll_y)
-        # Re-entry starts over with the sidebar focused, like a fresh open.
-        self._set_focus_region(FocusRegion.SIDEBAR)
+        # Re-entry starts over with the sidebar focused, like a fresh open —
+        # unless the caller named a landing page, then start in the reading pane
+        # (the same intent split as a fresh open with a start_page; see __init__).
+        self._set_focus_region(FocusRegion.PAGE if caller_page else FocusRegion.SIDEBAR)
 
     def save_session(self) -> None:
         """Persist the current page and scroll offset for the next launch.
