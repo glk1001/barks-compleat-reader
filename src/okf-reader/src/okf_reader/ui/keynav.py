@@ -43,10 +43,11 @@ PAGE_STEP_OVERLAP = 40
 
 
 class FocusRegion(Enum):
-    """Which pane owns the navigation keys: the page body or the left sidebar."""
+    """Which area owns the navigation keys: the page body, the left sidebar, or the top bar."""
 
     PAGE = auto()
     SIDEBAR = auto()
+    TOP_BAR = auto()
 
 
 def scroll_step(scroll_y: float, viewport_h: float, content_h: float, delta_px: float) -> float:

@@ -208,16 +208,18 @@ class WikiReaderScreen(ReaderScreen):
     def _on_key_down(
         self, _window: object, key: int, _scancode: int, _codepoint: str, modifiers: list[str]
     ) -> bool:
-        """Route keys to the viewer: Ctrl+F, its own navigation, then Back handling.
+        """Route keys to the viewer: Ctrl+F, its own navigation, then Alt+Left back.
 
-        Escape honors the user-configured alternate Escape via ``is_escape_key``,
-        and backs out of an active search before navigating. Consuming (returning
-        True) keeps the key from leaking to the main screen's handler. At the
-        history root Back exits the reader (the viewer's on_exit).
+        Escape honors the user-configured alternate Escape via ``is_escape_key``
+        and is handled inside the viewer: it unwinds an active search, else
+        toggles the keyboard focus up to the viewer's top bar — where Enter on
+        the Back button goes back, and at the history root exits the reader
+        (the viewer's on_exit). Consuming (returning True) keeps the key from
+        leaking to the main screen's handler.
 
         Most keys go to ``OKFViewer.handle_key`` (page scrolling, link traversal,
-        sidebar navigation, footnote-popup dismissal); what it refuses falls
-        through to the Escape/Alt+Left back handling, unchanged.
+        sidebar navigation, footnote-popup dismissal, the Escape ladder); what it
+        refuses falls through to the Alt+Left back handling, unchanged.
         """
         if self._viewer is None:
             return False
@@ -234,21 +236,17 @@ class WikiReaderScreen(ReaderScreen):
                 return True
             return False
         # Translate the alternate Escape to the real keycode before delegating,
-        # so the viewer's own Escape handling (footnote popup, focused link) —
-        # which knows nothing of the barks-side configuration — honors it too.
+        # so the viewer's own Escape handling (footnote popup, search unwind,
+        # the top-bar focus toggle) — which knows nothing of the barks-side
+        # configuration — honors it too.
         nav_key = KEY_ESCAPE if is_escape_key(key) else key
         if self._viewer.handle_key(nav_key, set(modifiers)):
             return True
         return self._handle_nav_key(key, modifiers)
 
     def _handle_nav_key(self, key: int, modifiers: list[str]) -> bool:
-        """Handle a back-navigation key when the search field is not focused."""
+        """Handle Alt+Left back-navigation when the search field is not focused."""
         assert self._viewer is not None
-        if is_escape_key(key):
-            if self._viewer.escape_search():
-                return True
-            self._viewer.go_back()
-            return True
         if key == KEY_LEFT and "alt" in modifiers:
             self._viewer.go_back()
             return True

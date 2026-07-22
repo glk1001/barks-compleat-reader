@@ -555,7 +555,9 @@ class OKFViewer(RelativeLayout):
         """Build the action-bar strip: app icon, markup heading, right-edge buttons.
 
         A Python rendition of the Barks Reader's kv action-bar idiom. Creates
-        ``back_btn``, ``contrast_btn`` and the page-action slot as it goes.
+        ``back_btn``, ``contrast_btn`` and the page-action slot as it goes,
+        recording each activatable button for the bar's keyboard focus
+        (see `_bar_nav_buttons`).
         """
         bar = BoxLayout(
             orientation="horizontal",
@@ -572,6 +574,7 @@ class OKFViewer(RelativeLayout):
             size=lambda _inst, size: setattr(bar_bg, "size", size),
         )
 
+        self._bar_home_btn: Button | None = None  # the icon's hitbox, when there is an icon
         if spec.icon_path is not None:
             bar.add_widget(self._build_bar_icon(spec.icon_path, spec.icon_width))
 
@@ -639,7 +642,23 @@ class OKFViewer(RelativeLayout):
         on_close = spec.on_close or (lambda: App.get_running_app().stop())
         quit_btn.bind(on_release=lambda *_: on_close())
         bar.add_widget(quit_btn)
+        self._quit_btn = quit_btn
         return bar
+
+    def _bar_nav_buttons(self) -> list[Widget]:
+        """Return the bar's activatable buttons in visual order, skipping absent/disabled ones.
+
+        Recomputed per key press: the page-action button comes and goes with the
+        page, and Back's disabled state follows the history.
+        """
+        candidates = [
+            self._bar_home_btn,
+            self.back_btn,
+            self.contrast_btn,
+            self.action_btn,
+            self._quit_btn,
+        ]
+        return [btn for btn in candidates if btn is not None and not btn.disabled]
 
     def _build_bar_icon(self, icon_path: Path, icon_width: int) -> RelativeLayout:
         """Build the bar's left-edge app icon: an image under a transparent hitbox.
@@ -666,6 +685,7 @@ class OKFViewer(RelativeLayout):
         hitbox.bind(on_release=lambda *_: self._show(self.bundle / "index.md", push=True))
         icon_box.add_widget(icon)
         icon_box.add_widget(hitbox)
+        self._bar_home_btn = hitbox  # the bar's keyboard focus activates the home icon via this
         return icon_box
 
     def _add_tree_nodes(self, nodes, parent) -> None:  # noqa: ANN001
@@ -968,6 +988,8 @@ class OKFViewer(RelativeLayout):
 
     def _set_page_action(self, action: PageAction | None) -> None:
         """Show the contextual bar button for ``action``, or hide it for None."""
+        if self.action_btn is not None and self._bar_focus_widget is self.action_btn:
+            self._clear_bar_focus()  # its ringed widget is being discarded with the slot
         self._page_action = action
         self._action_slot.clear_widgets()
         if action is None:
@@ -993,9 +1015,9 @@ class OKFViewer(RelativeLayout):
     def go_back(self) -> None:
         """Navigate to the previous page, or leave the reader at the history's root.
 
-        Public: besides the bar's Back button, the hosting app routes its own
-        back gestures here (mouse button 4; the standalone app also binds Escape
-        and Alt+Left). At the root the ``on_exit`` seam fires when the hosting app
+        Public: besides the bar's Back button (mouse, or Enter with the bar's
+        keyboard focus on it), the hosting app routes its own back gestures here
+        (mouse button 4, Alt+Left). At the root the ``on_exit`` seam fires when the hosting app
         supplied one (embedded: return to the host screen); otherwise it is a
         no-op (standalone: the reader is the whole app).
         """
@@ -1044,6 +1066,12 @@ class OKFViewer(RelativeLayout):
 
     def on_touch_down(self, touch) -> bool:  # noqa: ANN001
         """Route the mouse's back button (button 4) to Back, wherever it lands."""
+        if self._focus_region is FocusRegion.TOP_BAR:
+            # A pointer press takes over from the keyboard (the comic reader's
+            # menu-mode convention): drop the bar focus back down, then let the
+            # touch dispatch normally — also keeping a click-navigation from
+            # swapping the bar's buttons under a live keyboard focus.
+            self._set_focus_region(self._bar_return_region)
         if getattr(touch, "button", "") == "mouse4":
             self.go_back()
             return True
@@ -1066,6 +1094,8 @@ class OKFViewer(RelativeLayout):
         self._sidebar_index: int | None = None
         self._results_scroll: ScrollView | None = None
         self._footnote_popup: ModalView | None = None
+        self._bar_focus_widget: Widget | None = None  # the top-bar button wearing the gold ring
+        self._bar_return_region = FocusRegion.SIDEBAR  # where leaving the bar drops the focus
 
     def handle_key(self, key: int, modifiers: Collection[str] = ()) -> bool:
         """Handle one navigation key press; return whether it was consumed.
@@ -1074,18 +1104,21 @@ class OKFViewer(RelativeLayout):
         standalone ``OKFApp``, an embedding screen) after their own shortcut
         handling. Keys carrying command modifiers (Ctrl/Alt/Meta) and keys typed
         into the focused search field are refused, so host shortcuts (Ctrl+F,
-        Alt+Left) and search typing are never stolen. Escape is consumed only
-        when there is viewer-internal state to unwind (an open footnote popup, a
-        focused link); otherwise it is left to the host's back handling.
+        Alt+Left) and search typing are never stolen. Escape is otherwise always
+        consumed, unwinding one layer per press: it dismisses an open footnote
+        popup, backs out of an active search, and then toggles the keyboard
+        focus up to the top action bar and back (see `_handle_escape_key`) —
+        going back through the history is the bar's Back button (or Alt+Left,
+        or mouse button 4), not Escape.
 
         The map is built for a 6-button remote (Esc, Enter, and the arrows —
         the 10-foot TV case): Up/Down walk the page's links and scroll its
         link-free stretches; Left/Right move spatially between the sidebar and
-        the page (Left goes leftward, Right drills rightward); Enter activates.
-        Tab (region toggle) and PageUp/PageDown/Home/End (page scrolling) are
-        desktop extras. Mouse interaction is deliberately not tracked: a click
-        that navigates rebuilds the page, which resets the keyboard focus state
-        anyway.
+        the page (Left goes leftward, Right drills rightward); Enter activates;
+        Esc reaches the top bar's buttons. Tab (region toggle) and
+        PageUp/PageDown/Home/End (page scrolling) are desktop extras. Mouse
+        interaction is deliberately not tracked: a click that navigates rebuilds
+        the page, which resets the keyboard focus state anyway.
 
         Args:
             key: The SDL2 keycode from the window keyboard event.
@@ -1095,18 +1128,96 @@ class OKFViewer(RelativeLayout):
             True when the key was consumed.
 
         """
-        if self.search_focused:
-            return False
-        if {"ctrl", "alt", "meta"} & set(modifiers):
+        if self.search_focused or ({"ctrl", "alt", "meta"} & set(modifiers)):
             return False
         if self._footnote_popup is not None:
             return self._handle_popup_key(key)
+        if key == KEY_ESCAPE:
+            return self._handle_escape_key()
         if key == KEY_TAB:
             self._toggle_focus_region()
             return True
-        if self._focus_region is FocusRegion.SIDEBAR:
-            return self._handle_sidebar_key(key)
-        return self._handle_page_key(key)
+        region_handlers = {
+            FocusRegion.TOP_BAR: self._handle_bar_key,
+            FocusRegion.SIDEBAR: self._handle_sidebar_key,
+            FocusRegion.PAGE: self._handle_page_key,
+        }
+        return region_handlers[self._focus_region](key)
+
+    def _handle_escape_key(self) -> bool:
+        """One Escape press: unwind an active search, else toggle the top-bar focus.
+
+        The unwind ladder (an open footnote popup, handled before this, sits on
+        top): an active search clears back to the tree first; then Escape lifts
+        the keyboard focus to the top action bar — the 6-button remote's only
+        route to the bar's buttons (Back, Contrast, the page action, Quit) —
+        and from the bar it drops the focus back where it came from.
+        """
+        if self.escape_search():
+            return True
+        if self._focus_region is FocusRegion.TOP_BAR:
+            self._set_focus_region(self._bar_return_region)
+        else:
+            self._enter_bar_focus()
+        return True
+
+    def _enter_bar_focus(self) -> None:
+        """Lift the keyboard focus to the top bar, starting on the Back button.
+
+        Back starts focused so the remote's back gesture stays two presses
+        (Escape, Enter); when Back is disabled (the standalone reader at its
+        history root) the focus starts on the bar's first button instead.
+        """
+        buttons = self._bar_nav_buttons()
+        if not buttons:
+            return
+        self._bar_return_region = self._focus_region
+        self._set_focus_region(FocusRegion.TOP_BAR)
+        target = self.back_btn if self.back_btn in buttons else buttons[0]
+        self._set_bar_focus(target)
+
+    def _handle_bar_key(self, key: int) -> bool:
+        """Walk the top bar's buttons: Left/Right cycle, Enter activates, Down drops out.
+
+        Escape also drops out, handled centrally in `_handle_escape_key`.
+        Left/Right wrap, matching the comic reader's menu mode. Activation
+        returns the focus to the region it came from *before* triggering, so a
+        button that rebuilds the page (Back, the home icon) or closes the
+        embedding screen (Quit) never runs with the bar still focused.
+        """
+        buttons = self._bar_nav_buttons()
+        if not buttons:  # every button vanished (can't normally happen) — drop out
+            self._set_focus_region(self._bar_return_region)
+            return True
+        focused = self._bar_focus_widget
+        if key in (KEY_LEFT, KEY_RIGHT):
+            if focused in buttons:
+                idx = (buttons.index(focused) + (1 if key == KEY_RIGHT else -1)) % len(buttons)
+            else:  # the ringed button was removed/disabled under us — re-seed
+                idx = 0
+            self._set_bar_focus(buttons[idx])
+            return True
+        if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            if focused in buttons:
+                self._set_focus_region(self._bar_return_region)
+                focused.trigger_action(duration=0)
+            return True
+        if key == KEY_DOWN:
+            self._set_focus_region(self._bar_return_region)
+            return True
+        return key in _NAV_NOOP_KEYS
+
+    def _set_bar_focus(self, btn: Widget) -> None:
+        """Move the gold ring to top-bar button ``btn``."""
+        if self._bar_focus_widget is not None:
+            clear_focus_ring(self._bar_focus_widget)
+        self._bar_focus_widget = btn
+        draw_focus_ring(btn)
+
+    def _clear_bar_focus(self) -> None:
+        if self._bar_focus_widget is not None:
+            clear_focus_ring(self._bar_focus_widget)
+            self._bar_focus_widget = None
 
     def _handle_popup_key(self, key: int) -> bool:
         """Escape/Enter dismiss the footnote popup; nav keys are inert under it."""
@@ -1124,8 +1235,8 @@ class OKFViewer(RelativeLayout):
         remote has, so it walks the links while they pass through the viewport
         and scrolls through the link-free stretches (see `hybrid_link_step`).
         Left moves leftward to the sidebar; PageUp/PageDown/Home/End are
-        desktop extras. Escape is deliberately NOT handled here: back
-        navigation must never need a second press to clear link focus first.
+        desktop extras. Escape never reaches here — `handle_key` routes it to
+        the top-bar focus toggle (`_handle_escape_key`) for every region.
         """
         if key in (KEY_UP, KEY_DOWN):
             self._page_line_step(1 if key == KEY_DOWN else -1)
@@ -1403,6 +1514,9 @@ class OKFViewer(RelativeLayout):
         self._sidebar_index = None
 
     def _toggle_focus_region(self) -> None:
+        if self._focus_region is FocusRegion.TOP_BAR:  # Tab drops out of the bar, like Down
+            self._set_focus_region(self._bar_return_region)
+            return
         self._set_focus_region(
             FocusRegion.SIDEBAR if self._focus_region is FocusRegion.PAGE else FocusRegion.PAGE
         )
@@ -1411,13 +1525,19 @@ class OKFViewer(RelativeLayout):
         """Hand the navigation keys to ``region``, updating the visible indicators.
 
         Entering the sidebar rings it in blue and seeds a focus (the active
-        result row, or the tree's selected node scrolled into view). Returning
-        to the page clears the rings and re-syncs the tree's selection band to
-        the page on display, so a focus band wandered by Up/Down snaps back to
-        reality.
+        result row, or the tree's selected node scrolled into view). Entering
+        the top bar clears the pane indicators; `_set_bar_focus` then rings a
+        button in gold. Returning to the page clears the rings and re-syncs the
+        tree's selection band to the page on display, so a focus band wandered
+        by Up/Down snaps back to reality.
         """
         self._focus_region = region
-        if region is FocusRegion.SIDEBAR:
+        self._clear_bar_focus()  # a no-op unless the bar was the outgoing region
+        if region is FocusRegion.TOP_BAR:
+            self._clear_link_focus()
+            clear_focus_ring(self._left_body, group=SIDEBAR_RING_GROUP)
+            self._clear_result_focus()
+        elif region is FocusRegion.SIDEBAR:
             self._clear_link_focus()
             draw_focus_ring(self._left_body, group=SIDEBAR_RING_GROUP, color=self._theme.focus_ring)
             if self._result_rows:
@@ -1953,17 +2073,19 @@ class OKFApp(App):
             self._viewer.save_session()
 
     def _on_keyboard(self, _window, key, _scancode, _codepoint, modifiers) -> bool:  # noqa: ANN001
-        """Ctrl+F focuses search; Escape and Alt+Left navigate back, like a browser.
+        """Ctrl+F focuses search; Alt+Left navigates back; the viewer owns the rest.
 
         Everything else defers to the viewer's own keyboard navigation
-        (``OKFViewer.handle_key``): page scrolling, link traversal, and the
-        sidebar — so the standalone reader navigates exactly like the embedded
-        one. Escape is always consumed: kivy's default would close the window,
-        and an accidental Escape must not kill the reader (the same overshoot
-        hazard the Quit button was moved to the corner for). While a search is
-        active Escape backs out of it first; at the start of the history both
-        back keys are a harmless no-op. Alt+Left is not stolen while the search
-        field owns the keyboard, so it can move the cursor within a typed query.
+        (``OKFViewer.handle_key``): page scrolling, link traversal, the
+        sidebar, and Escape — which unwinds an active search, else toggles the
+        keyboard focus up to the action bar (where Enter on the Back button
+        goes back) — so the standalone reader navigates exactly like the
+        embedded one. Escape is always consumed: kivy's default would close the
+        window, and an accidental Escape must not kill the reader (the same
+        overshoot hazard the Quit button was moved to the corner for). While
+        the search field owns the keyboard the viewer refuses every key, so
+        Escape backs out of the typed search here instead, and Alt+Left is not
+        stolen, so it can move the cursor within the query.
         """
         assert self._viewer is not None
         if key == KEY_F and "ctrl" in modifiers:
@@ -1974,11 +2096,16 @@ class OKFApp(App):
         return self._handle_back_key(key, modifiers)
 
     def _handle_back_key(self, key, modifiers) -> bool:  # noqa: ANN001
-        """Handle the browser-style back keys the viewer's handle_key refused."""
+        """Handle the keys the viewer's handle_key refused.
+
+        Alt+Left goes back; Escape arrives here only while the search field
+        owns the keyboard, and backs out of the typed query.
+        """
         assert self._viewer is not None
         if key == KEY_ESCAPE:
-            if not self._viewer.escape_search():
-                self._viewer.go_back()
+            # Reached only while the search field owns the keyboard (the viewer
+            # consumes Escape otherwise); still always consumed — see above.
+            self._viewer.escape_search()
             return True
         if key == KEY_LEFT and "alt" in modifiers:
             if self._viewer.search_focused:

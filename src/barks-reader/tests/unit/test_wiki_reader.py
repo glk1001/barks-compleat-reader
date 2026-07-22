@@ -126,20 +126,27 @@ def _idle_viewer() -> MagicMock:
 
 
 class TestWikiReaderScreenKeyboard:
-    def test_escape_routes_to_go_back_and_consumes(self, wiki_screen: WikiReaderScreen) -> None:
+    def test_escape_is_owned_by_the_viewer_never_go_back(
+        self, wiki_screen: WikiReaderScreen
+    ) -> None:
+        """Escape belongs to the viewer (search unwind / top-bar focus toggle).
+
+        The host must not fall through to go_back even when handle_key refuses.
+        """
         wiki_screen._viewer = _idle_viewer()
-        wiki_screen._viewer.escape_search.return_value = False  # search idle
 
         consumed = wiki_screen._on_key_down(None, KEY_ESCAPE, 0, "", [])
 
-        assert consumed is True
-        wiki_screen._viewer.go_back.assert_called_once_with()
+        assert consumed is False
+        wiki_screen._viewer.handle_key.assert_called_once_with(KEY_ESCAPE, set())
+        wiki_screen._viewer.go_back.assert_not_called()
+        wiki_screen._viewer.escape_search.assert_not_called()
 
-    def test_escape_backs_out_of_active_search_before_go_back(
+    def test_escape_consumed_by_viewer_reports_consumed(
         self, wiki_screen: WikiReaderScreen
     ) -> None:
         wiki_screen._viewer = _idle_viewer()
-        wiki_screen._viewer.escape_search.return_value = True  # an active search consumes Escape
+        wiki_screen._viewer.handle_key.return_value = True  # the viewer's Escape ladder took it
 
         consumed = wiki_screen._on_key_down(None, KEY_ESCAPE, 0, "", [])
 
@@ -187,16 +194,19 @@ class TestWikiReaderScreenKeyboard:
         assert consumed is False
         wiki_screen._viewer.go_back.assert_not_called()
 
-    def test_alt_escape_navigates_when_search_idle(self, wiki_screen: WikiReaderScreen) -> None:
-        """With the field unfocused, a configured alt-Escape letter backs out."""
+    def test_alt_escape_acts_as_escape_when_search_idle(
+        self, wiki_screen: WikiReaderScreen
+    ) -> None:
+        """With the field unfocused, a configured alt-Escape letter is Escape."""
         set_alt_escape_key(ord("r"))
         wiki_screen._viewer = _idle_viewer()
-        wiki_screen._viewer.escape_search.return_value = False
+        wiki_screen._viewer.handle_key.return_value = True
 
         consumed = wiki_screen._on_key_down(None, ord("r"), 0, "r", [])
 
         assert consumed is True
-        wiki_screen._viewer.go_back.assert_called_once_with()
+        wiki_screen._viewer.handle_key.assert_called_once_with(KEY_ESCAPE, set())
+        wiki_screen._viewer.go_back.assert_not_called()
 
     def test_no_viewer_is_ignored(self, wiki_screen: WikiReaderScreen) -> None:
         wiki_screen._viewer = None
@@ -220,20 +230,10 @@ class TestWikiReaderScreenKeyDelegation:
         wiki_screen._viewer.handle_key.assert_called_once_with(key_down, set())
         wiki_screen._viewer.go_back.assert_not_called()
 
-    def test_escape_delegates_first_then_falls_through_to_go_back(
+    def test_escape_consumed_by_viewer_skips_back_handling(
         self, wiki_screen: WikiReaderScreen
     ) -> None:
-        wiki_screen._viewer = _idle_viewer()
-        wiki_screen._viewer.escape_search.return_value = False
-
-        consumed = wiki_screen._on_key_down(None, KEY_ESCAPE, 0, "", [])
-
-        assert consumed is True
-        wiki_screen._viewer.handle_key.assert_called_once_with(KEY_ESCAPE, set())
-        wiki_screen._viewer.go_back.assert_called_once_with()
-
-    def test_escape_consumed_by_viewer_skips_go_back(self, wiki_screen: WikiReaderScreen) -> None:
-        """E.g. an open footnote popup or a focused link: the viewer unwinds it."""
+        """E.g. an open footnote popup, an active search, the top-bar toggle."""
         wiki_screen._viewer = _idle_viewer()
         wiki_screen._viewer.handle_key.return_value = True
 
@@ -248,7 +248,6 @@ class TestWikiReaderScreenKeyDelegation:
     ) -> None:
         set_alt_escape_key(ord("r"))
         wiki_screen._viewer = _idle_viewer()
-        wiki_screen._viewer.escape_search.return_value = False
 
         wiki_screen._on_key_down(None, ord("r"), 0, "r", [])
 

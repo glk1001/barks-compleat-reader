@@ -1,6 +1,7 @@
 
 # cspell global word list — words shared across all packages
 
+activatable
 alnum
 apos
 arcname
