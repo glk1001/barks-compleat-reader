@@ -19,6 +19,8 @@ navigation and a visually engaging interface.
 - **Search**: Quickly find titles by name or stories by specific tags using the integrated search boxes.
 - **Rich User Interface**: A dynamic 'TreeView' provides easy navigation, while the main view displays context-aware
   background art and information related to the selected comic or category.
+- **Full Keyboard & Remote Navigation**: Browse, open, and read comics using just the arrow keys, Enter, and Escape —
+  designed to work from the couch with a TV remote as well as with a mouse or touchscreen.
 - **Integrated Comic Reader**: A fullscreen, touch/click-friendly reader with intuitive page navigation (click
   left/right side of the screen) and a "go to page" dropdown for jumping directly to a specific page.
 - **No Censorship**: Every attempt has been made to remove Disney and Fantagraphics censorship. This has been done

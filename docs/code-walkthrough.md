@@ -104,9 +104,9 @@ must set those env vars **before any `kivy` module loads**.
 `core/config_info.py` does this at module scope and per-`ConfigInfo`-instance,
 and it guards the invariant three ways:
 
-1. **Static guard** — `_assert_kivy_not_yet_imported()` (`core/config_info.py:35`)
+1. **Static guard** — `_assert_kivy_not_yet_imported()` (`core/config_info.py:39`)
    scans `sys.modules` for anything `kivy*` and raises `ImportError` if found.
-   It runs at import (`:59`) and again right before setting `KIVY_HOME` (`:119`).
+   It runs at import (`:63`) and again right before setting `KIVY_HOME` (`:149`).
 2. **Ordering discipline** — `main.py` imports `config_info` (line 22) *before*
    any Kivy import; the first real Kivy import is deferred inside
    `start_logging` (`main.py:92`). A header comment at `main.py:1–6` documents
@@ -126,7 +126,7 @@ Numbered, in the order it actually happens:
 1. **`main.py` imports.** A module-level `_timing = Timing()` (`main.py:16–18`)
    starts the boot stopwatch.
 2. **The import-order guard fires** as `config_info` imports (`main.py:22`),
-   setting the pre-Kivy env vars (`core/config_info.py:59–71`).
+   setting the pre-Kivy env vars (`core/config_info.py:63–71`).
 3. **Sibling core modules import** (`main.py:32–36`). Two module-level singletons
    are built right here, before Kivy: `PLATFORM` (`core/platform_info.py:46`)
    and `SCREEN_METRICS` (`core/screen_metrics.py:161`), the latter querying your
@@ -142,40 +142,40 @@ Numbered, in the order it actually happens:
    the launch. Then `ok_to_run()` checks the installer-failed flag file;
    `reset_python_gc()` raises the GC thresholds (a real startup speedup); and
    Typer dispatches to `main()`.
-6. **`main()` executes** (`main.py:290`). It builds `ConfigInfo()` (which sets
-   `KIVY_HOME`, `core/config_info.py:118–120`), reads a lightweight
+6. **`main()` executes** (`main.py:327`). It builds `ConfigInfo()` (which sets
+   `KIVY_HOME`, `core/config_info.py:149–150`), reads a lightweight
    `MinimalConfigOptions` from the ini *before* Kivy is up
    (`core/minimal_config_info.py:21`), calls `start_logging` (first Kivy import,
    `main.py:92`), computes and applies the window geometry via
    `update_window_size` → `set_window_size` (`main.py:166`, `:225`), and finally
    `call_reader_main` (`main.py:259`).
-7. **`reader_main(config_info)`** (`ui/barks_reader_app.py:539`) constructs the
-   **data layer** — `ComicsDatabase(for_building_comics=False)` (`:544`) — then
-   the Kivy app `BarksReaderApp(config_info, comics_database)` (`:553`) and calls
-   `kivy_app.run()` (`:555`). The whole thing is wrapped in a try/except that
-   renders a crash screen (`:556–558`).
-8. **`BarksReaderApp.build()`** (`ui/barks_reader_app.py:226`) is Kivy's build
-   hook. In order: apply two Kivy 2.3.1 monkeypatches (`:235–257`);
-   `_initialize_settings_and_db()` (`:259`); load every `.kv` file via `Builder`
-   (`:263–280`); `_build_screens()` (`:282`); build the tree view (`:290`);
-   `_finalize_window_setup()` (`:292`); return the root `ScreenManager`.
-9. **`_build_screens()`** (`ui/barks_reader_app.py:327`) instantiates the
+7. **`reader_main(config_info)`** (`ui/barks_reader_app.py:563`) constructs the
+   **data layer** — `ComicsDatabase(for_building_comics=False)` (`:568`) — then
+   the Kivy app `BarksReaderApp(config_info, comics_database)` (`:577`) and calls
+   `kivy_app.run()` (`:579`). The whole thing is wrapped in a try/except that
+   renders a crash screen (`:580–582`).
+8. **`BarksReaderApp.build()`** (`ui/barks_reader_app.py:245`) is Kivy's build
+   hook. In order: apply two Kivy 2.3.1 monkeypatches (`:246–277`);
+   `_initialize_settings_and_db()` (`:278`); load every `.kv` file via `Builder`
+   (`:282–300`); `_build_screens()` (`:302`); build the tree view (`:310`);
+   `_finalize_window_setup()` (`:312`); return the root `ScreenManager`.
+9. **`_build_screens()`** (`ui/barks_reader_app.py:349`) instantiates the
    `MainScreen` and all its sub-screens plus the comic/document/wiki reader
    screens, and registers the four top-level screens with the
    `ReaderScreenManager`.
-10. **`build_tree_view()`** (`ui/main_screen.py:300`) builds a `ReaderTreeBuilder`
-    and hands off to `AppInitializer.start` (`ui/app_initializer.py:99`), which
+10. **`build_tree_view()`** (`ui/main_screen.py:360`) builds a `ReaderTreeBuilder`
+    and hands off to `AppInitializer.start` (`ui/app_initializer.py:106`), which
     **defers** the actual tree construction to the next frame with
     `Clock.schedule_once(...)` — so `build()` can return fast.
-11. **`_finalize_window_setup()`** (`ui/barks_reader_app.py:437`) sets the icon,
+11. **`_finalize_window_setup()`** (`ui/barks_reader_app.py:461`) sets the icon,
     binds window move/resize to the geometry helper, performs a "wiggle" resize
-    trick to force widgets to size themselves (`:462–467`), and **schedules the
+    trick to force widgets to size themselves (`:484–490`), and **schedules the
     window to actually become visible ~2 seconds later** via `Window.show()`
-    (`:477–482`).
+    (`:501–503`).
 12. **Kivy's event loop starts.** The deferred callbacks fire: the tree finishes
-    building → `AppInitializer.on_tree_build_finished` (`ui/app_initializer.py:106`)
+    building → `AppInitializer.on_tree_build_finished` (`ui/app_initializer.py:113`)
     dismisses the loading popup, renders the initial view
-    (`render_state(ViewStates.INITIAL)`, `:121`), initializes comic data, and
+    (`render_state(ViewStates.INITIAL)`, `:128`), initializes comic data, and
     restores the last-selected node. ~2s in, `show_the_window` fires and you see
     the first frame.
 
@@ -188,7 +188,7 @@ Numbered, in the order it actually happens:
   inline at `main.py:228–240`).
 - **There is no `on_start` override.** Despite Kivy convention, the "after build"
   work is driven entirely by `Clock.schedule_once` deferrals. Only `on_stop` is
-  overridden (`ui/barks_reader_app.py:144`), to save the wiki resume point on
+  overridden (`ui/barks_reader_app.py:154`), to save the wiki resume point on
   quit.
 - **Compiled-vs-dev affects path resolution.** `IS_COMPILED`
   (`core/config_info.py:17` — Nuitka defines `__compiled__` in every module it
@@ -226,8 +226,8 @@ Everything keys off one canonical enum, `Titles` (`barks_titles.py:13`) — an
 | Per-story metadata | `ComicBookInfo` + master table `BARKS_TITLE_INFO` | `comic_book_info.py:31`, `:79` |
 | Story + series join | `FantaComicBookInfo` | `fanta_comics_info.py:76` |
 | Physical Fanta volume | `FantaBook` + registry `FANTA_SOURCE_COMICS` (29 vols) | `fanta_comics_info.py:139`, `:199` |
-| Tags / tag groups / categories | `Tags`, `TagGroups`, `TagCategories` (~200 tags, 18 groups) | `barks_tags_enums.py:11`, `:206`, `:198` |
-| Page classification | `PageType` enum + frozensets | `comics_consts.py:64` |
+| Tags / tag groups / categories | `Tags`, `TagGroups`, `TagCategories` (~200 tags, 18 groups) | `barks_tags_enums.py:11`, `:224`, `:216` |
+| Page classification | `PageType` enum + frozensets | `comics_consts.py:71` |
 | Entity types (search) | `EntityType` (PERSON/LOCATION/…) | `entity_types.py:4` |
 
 At import time, `_get_all_fanta_comic_book_info()` (`fanta_comics_info.py:91`)
@@ -261,7 +261,7 @@ injected everywhere. Key methods:
 
 Module-level helpers used pervasively: `ENUM_TO_STR_TITLE` /
 `STR_TITLE_TO_ENUM`, `get_fanta_info`, the tag API in `barks_tags.py`
-(`get_sorted_tagged_titles` `:300`, `get_tag_group_titles` `:317`, etc.).
+(`get_sorted_tagged_titles` `:320`, `get_tag_group_titles` `:337`, etc.).
 
 ### 3.4 The parenthesized-title convention
 
@@ -318,21 +318,21 @@ Three types carry the whole model:
   the search/index/appendix states, …). It's the single vocabulary the whole
   render path speaks, re-exported from `ui.view_states` for back-compat.
 - **`tree_spec.py`** — a *declarative* description of the tree, no Kivy. A
-  `NodeSpec` (`:159`) says what one node is: its `NodeKind` (which widget class),
+  `NodeSpec` (`:182`) says what one node is: its `NodeKind` (which widget class),
   its text, its `Destination`, its `PressAction` (toggle-only vs. open-a-view vs.
   a special handler), and its children. **Title rows are always lazy** — deferred
   via `lazy_children=partial(_title_rows, …)` so startup stays fast.
-  `build_reader_tree_spec(...)` (`:180`) returns the five top-level specs:
+  `build_reader_tree_spec(...)` (`:205`) returns the five top-level specs:
   Intro, The Stories, Search, Appendix, Index.
 
-**`NavigationModel`** (`navigation_model.py:117`) is the stateless policy engine.
-Its central method, `view_state_for(dest)` (`:127`), resolves a `Destination`
+**`NavigationModel`** (`navigation_model.py:124`) is the stateless policy engine.
+Its central method, `view_state_for(dest)` (`:134`), resolves a `Destination`
 into a `ViewRequest` using a dispatch table for the singletons
-(`_SIMPLE_DESTINATION_TO_VIEW_STATE`, `:81`) and `isinstance` branches for the
+(`_SIMPLE_DESTINATION_TO_VIEW_STATE`, `:85`) and `isinstance` branches for the
 payload-bearing kinds (e.g. a `YearRangeDestination` splits on its kind into the
 CHRONO/CS/US view states and formats the range string). Two more methods encode
-subtle UX rules: `auto_select_target` (`:171`, the "if a node has exactly one
-title child, jump straight to it" rule) and `tag_context` (`:185`, "which tag/
+subtle UX rules: `auto_select_target` (`:190`, the "if a node has exactly one
+title child, jump straight to it" rule) and `tag_context` (`:214`, "which tag/
 tag-group does this parent carry", used to pick the right page to jump to).
 
 ### 4.2 From spec to widgets
@@ -341,7 +341,7 @@ tag-group does this parent carry", used to pick the right page to jump to).
 Kivy widgets — it holds no tree structure itself. `build_main_screen_tree`
 (`:104`) calls `build_reader_tree_spec(...)` then `_add_node` for each top-level
 spec. `_add_node` (`:124`) maps `NodeKind` → widget class, binds the right press
-handler, and **defers lazy children** via `_defer_node_population` (`:178`),
+handler, and **defers lazy children** via `_defer_node_population` (`:181`),
 which sets a `populate_callback` that runs on first expand. The widget classes
 live in `ui/tree_view_nodes.py`: `ButtonTreeViewNode` (`:99`, container nodes,
 whose `on_press` toggles expand/collapse) and `TitleTreeViewNode` (`:150`, the
@@ -358,16 +358,16 @@ the view pipeline:
 1. Kivy fires the node's `on_press`; for toggle-only nodes this just expands/
    collapses. The *view change* is driven by the expand event, not the press.
 2. `ReaderTreeView` emits `on_node_expand`, bound to
-   `TreeViewManager.on_node_expanded` (`ui/tree_view_manager.py:218`).
+   `TreeViewManager.on_node_expanded` (`ui/tree_view_manager.py:237`).
 3. That handler closes siblings, lazily populates the node once, checks the
-   single-title-child auto-select rule (`:250`), and otherwise calls
-   `set_view_state_for_node(node)` (`:203`) → `self._renderer.render(node.destination)`.
+   single-title-child auto-select rule (`:281`), and otherwise calls
+   `set_view_state_for_node(node)` (`:222`) → `self._renderer.render(node.destination)`.
 4. `ViewRenderer.render(destination)` (`ui/view_renderer.py:126`) resolves the
    destination via `NavigationModel.view_state_for` and dispatches into the
    pipeline.
 
 **A title row (leaf → title view):**
-1. The row press lands in `TreeViewManager.on_title_row_button_pressed` (`:295`).
+1. The row press lands in `TreeViewManager.on_title_row_button_pressed` (`:336`).
    It reads the row's `TitleDestination.fanta_info`, computes the tag from the
    *parent* node via `nav_model.tag_context`, and calls
    `nav.select_title(TitleTarget(fanta_info, tag))`.
@@ -379,7 +379,7 @@ the view pipeline:
 Programmatic navigation (Back history, "goto title" from a background image, a
 search or index result) goes through `TreeViewManager.setup_and_select_node`,
 which uses the `chrono_year_range_nodes` / `series_nodes` lookups the builder
-collected (`reader_tree_builder.py:167`) to open the tree to the right node.
+collected (`reader_tree_builder.py:170`) to open the tree to the right node.
 
 ### 4.4 Extending it
 
@@ -436,17 +436,17 @@ Note the boundary discipline: `ViewSnapshot.view_state` is stored as a **raw
 
 ### 5.3 How the pipeline decides
 
-`ViewPipeline.render()` (`core/view_pipeline.py:252`) writes the request's context
+`ViewPipeline.render()` (`core/view_pipeline.py:256`) writes the request's context
 onto ~12 mutable internal fields, calls `_update_views()` to re-pick images and
 opacities, then `_compute_snapshot()` to freeze the result. Two mechanisms do the
 deciding:
 
 - **Opacity/visibility** is driven by *set membership*. Module-level constants
   like `_BOTTOM_VIEW_FUN_IMAGE_OPACITY_1_STATES` (`:96–133`) list which view
-  states show which panel; `_update_views` (`:369`) checks membership, and
-  `_compute_snapshot` (`:328`) reads it back into the snapshot.
+  states show which panel; `_update_views` (`:374`) checks membership, and
+  `_compute_snapshot` (`:332`) reads it back into the snapshot.
 - **Top-view image choice** is an ordered `(predicate, handler)` dispatch list
-  (`_set_next_top_view_image`, `:392`) with `else: raise AssertionError` for an
+  (`_set_next_top_view_image`, `:397`) with `else: raise AssertionError` for an
   unhandled state — series states pick a random title from that series, index/
   intro states use a hard-coded inset, tag/category states pick from the tag's
   titles with a fixed fallback, and so on. The *Choose for me* random-titles
@@ -459,17 +459,17 @@ deciding:
 
 The **fun-image theme policy** (decade filters, "classics", file-type themes)
 lives in the pipeline, not the image selector: `_get_themed_fun_image_titles`
-(`:637`) translates the requested `ImageThemes` into a `(title_list, file_types)`
+(`:712`) translates the requested `ImageThemes` into a `(title_list, file_types)`
 pair, cached, then handed to the selector.
 
 ### 5.4 Choosing the actual image file
 
-`ImageSelector` (`core/image_selector.py:103`) picks concrete files, delegating
-all filesystem access to an `ImageFileResolver` protocol (`:58`, production impl
-`ReaderFilePathsResolver`). Its workhorse `get_random_image` (`:250`) makes up to
+`ImageSelector` (`core/image_selector.py:118`) picks concrete files, delegating
+all filesystem access to an `ImageFileResolver` protocol (`:74`, production impl
+`ReaderFilePathsResolver`). Its workhorse `get_random_image` (`:277`) makes up to
 10 attempts to pick a title and a candidate file that isn't in a 100-entry MRU
 deque (so you don't see the same panel twice in a row), optionally upgrading the
-fit mode. The result is an `ImageInfo(filename, from_title, fit_mode)` (`:44`).
+fit mode. The result is an `ImageInfo(filename, from_title, fit_mode)` (`:60`).
 
 ### 5.5 Applying the snapshot to widgets
 
@@ -487,10 +487,10 @@ The async chain — important, because you'll see it again in section 6:
 1. `PanelTextureLoader.load_texture` (`ui/panel_texture_loader.py:34`) delegates
    the read/decode to `PanelImageLoader.load_pil`.
 2. `PanelImageLoader` (`core/panel_image_loader.py:39`) runs the heavy I/O +
-   Pillow decode on a **daemon thread** (`_worker`, `:79`), killing any in-flight
+   Pillow decode on a **daemon thread** (`_worker`, `:74`), killing any in-flight
    thread first.
 3. On completion it marshals back to the UI thread via
-   `self._scheduler.schedule_once(...)` (`:95`, `:98`) — **this is what the
+   `self._scheduler.schedule_once(...)` (`:90`, `:93`) — **this is what the
    `Scheduler` port is for**: crossing the thread boundary without importing
    Kivy's `Clock` into `core`.
 4. Back on the UI thread, `PanelTextureLoader._pil_to_texture` (`:45`) uploads
@@ -501,7 +501,7 @@ The async chain — important, because you'll see it again in section 6:
 ### 5.6 Who wires it together
 
 The composition root is `build_main_screen_components()`
-(`ui/main_screen_components.py:64`) — one function that constructs and injects the
+(`ui/main_screen_components.py:67`) — one function that constructs and injects the
 whole graph: the `ImageSelector`, the `ViewPipeline` (with `scheduler=KivyClockScheduler()`
 and `colors=FixedColorSource(FIXED_SCRIMS)` injected as ports), the `SnapshotApplicator`, and
 the `ViewRenderer` (with a `NavigationModel` and the `on_view_state_changed`
@@ -523,19 +523,19 @@ they talk through `core/ports/comic_reader.py`.
 ### 6.1 End-to-end trace
 
 1. **Trigger** — pressing the title portal image calls
-   `NavigationCoordinator._read_comic(...)` (`ui/navigation_coordinator.py:319`),
+   `NavigationCoordinator.read_comic(...)` (`ui/navigation_coordinator.py:293`),
    which deactivates the current screen and calls
    `comic_reader_manager.read_barks_comic_book(...)`.
-2. **Manager** — `ComicReaderManager.read_barks_comic_book` (`core/comic_reader_manager.py:109`)
-   → `_read_comic_book(...)` (`:126`).
+2. **Manager** — `ComicReaderManager.read_barks_comic_book` (`core/comic_reader_manager.py:113`)
+   → `_read_comic_book(...)` (`:142`).
 3. **Prep** — `prepare_comic_for_reading(...)` (`core/reader_setup.py:47`) builds
    the `ComicLayout`, chooses a decryption function based on whether panels are
    encrypted (`:60`), constructs a `ComicBookImageBuilder`, and returns
    `(layout, image_builder)`.
 4. **Resume session begins** — `LastReadPageTracker.begin(title, layout, save_enabled)`
-   (`:151`).
+   (`:161`).
 5. **Hand to the widget** — through the `ComicBookReaderPort`,
-   `comic_book_reader.read_comic(...)` (`:156`). A `MissingVolumeError` here is
+   `comic_book_reader.read_comic(...)` (`:169`). A `MissingVolumeError` here is
    caught, shown to the user, and schedules the reader to close after 1s.
 6. **Widget setup** — `ComicBookReader.read_comic()` (`ui/comic_book_reader.py:411`)
    sets up page state, double-page mode, and the page map, then
@@ -547,7 +547,7 @@ they talk through `core/ports/comic_reader.py`.
    forward, then the rest backward — so the opening page appears fastest.
 8. **First page** — when the loader thread finishes the target page it schedules
    `_first_image_loaded` on the UI thread, which sets `_current_page_index`; that
-   `NumericProperty` is bound to `_show_page` (`:329`), which pulls the decoded
+   `NumericProperty` is bound to `_show_page` (`:526`), which pulls the decoded
    PNG stream and uploads `CoreImage(stream).texture` to the `Image` widget
    (`:570`).
 
@@ -585,21 +585,21 @@ fixed by routing it through the allow-listed `panel_image_loader.load_panel_pil`
 
 ### 6.3 Threading
 
-`ComicBookLoader` (`core/comic_book_loader.py:52`) orchestrates a single
+`ComicBookLoader` (`core/comic_book_loader.py:71`) orchestrates a single
 background loader thread plus a worker pool, never touching Kivy, marshaling back
 via injected `Scheduler` + `Cursor` ports:
 
-- `set_comic()` (`:179`) stops any prior load, creates one `threading.Event` per
+- `set_comic()` (`:219`) stops any prior load, creates one `threading.Event` per
   page, and starts the daemon loader thread.
-- `_load_pages()` (`:403`) runs a `ThreadPoolExecutor` with a **dynamic sliding
+- `_load_pages()` (`:443`) runs a `ThreadPoolExecutor` with a **dynamic sliding
   prefetch window** — worker count auto-tuned to the platform, window size
   growing/shrinking with live memory pressure.
 - Futures complete out of order; each result is stored at its page-index slot and
   its Event is set. The first-displayed page triggers an early UI callback; when
   all pages finish, another callback fires.
 - The widget consumes results synchronously via
-  `get_image_ready_for_reading(idx)` (`:212`) or a double-page composite (`:224`),
-  and can block on `wait_load_event(idx, timeout)` (`:257`) for a page that isn't
+  `get_image_ready_for_reading(idx)` (`:252`) or a double-page composite (`:264`),
+  and can block on `wait_load_event(idx, timeout)` (`:297`) for a page that isn't
   loaded yet.
 
 ### 6.4 The reader widget, page manager, and resume
@@ -637,7 +637,7 @@ Don't confuse the two image paths. The full **comic page** display
 `PanelImageLoader` / `PanelTextureLoader` pair (section 5.5) loads **individual
 Barks panels/insets** — the backgrounds, title views, fun images, index
 thumbnails, and wiki backgrounds — and those panels are *always* encrypted
-(`core/panel_image_loader.py:81`).
+(`core/panel_image_loader.py:76`).
 
 ---
 
@@ -654,10 +654,10 @@ switching is an animated push/pop:
 
 | Screen | Location | Purpose |
 |---|---|---|
-| `MainScreen` | `ui/main_screen.py:58` | The always-present shell (action bar + tree + bottom pane). |
+| `MainScreen` | `ui/main_screen.py:80` | The always-present shell (action bar + tree + bottom pane). |
 | `ComicBookReaderScreen` | `ui/comic_book_reader.py:706` | Page-by-page reader. |
 | `DocumentReaderScreen` | `ui/document_reader.py:31` | Simple image-page "How To" viewer. |
-| `WikiReaderScreen` | `ui/wiki_reader.py:96` | Embedded Carl Barks Wiki (OKF viewer). |
+| `WikiReaderScreen` | `ui/wiki_reader.py:101` | Embedded Carl Barks Wiki (OKF viewer). |
 
 **Sub-screens** are plain layouts stacked inside the `MainScreen` bottom pane,
 grouped by the `ScreenBundle` dataclass (`ui/screen_bundle.py:21`) and toggled by
@@ -669,13 +669,13 @@ an `is_visible` property — *not* by the screen manager: `TreeViewScreen`,
 ### 7.2 The main screen layout
 
 `ui/main_screen.kv` composes a vertical `BoxLayout`: an action-bar row on top,
-and a content area filled at runtime by `_wire_screens` (`ui/main_screen.py:131`)
+and a content area filled at runtime by `_wire_screens` (`ui/main_screen.py:158`)
 — the `TreeViewScreen` plus a single wrapper `Screen` into which all nine bottom
 sub-screens are stacked. Only one bottom screen shows at a time, and their
 `is_visible` flags are pushed by `SnapshotApplicator` (section 5.5).
 
 The **fun view and the bottom title view** are mutually exclusive presentations
-of the same pane: the title view (with its reading controls, Wiki-Page chip,
+of the same pane: the title view (with its reading controls, the "Goto wiki page" link,
 goto-page, use-overrides checkbox) shows when a title is selected; the fun view
 (rotating decorative panels with prev/next history) is the default otherwise.
 
@@ -701,7 +701,7 @@ overshoot can't hit it).
 
 ### 7.4 The specialized screens
 
-- **Search** (`ui/search_screen.py:92`) — three mode panels (Title/Tag/Word)
+- **Search** (`ui/search_screen.py:121`) — three mode panels (Title/Tag/Word)
   swapped by opacity; all queries go through `barks_fantagraphics.comic_search.ComicSearch`
   over the reader's index dir. Selecting a result invokes injected
   `on_goto_title` / `on_goto_title_with_page` callbacks that route back into
@@ -733,7 +733,7 @@ feature splits cleanly along the core/ui line.
   and the last display/body page. Events serialize to JSON.
 - `ReadingHistoryStore` (`:77`) persists the log to
   `barks-reader-history.json` beside the app settings
-  (`ReaderSettings.get_user_history_path`, `core/reader_settings.py:159`) —
+  (`ReaderSettings.get_user_history_path`, `core/reader_settings.py:162`) —
   the JSON-store sibling of `barks-reader.json` (§8.3). It tolerates a
   missing/corrupt file (starts empty with a logged error) and rewrites the
   whole file on every mutation.
@@ -741,7 +741,7 @@ feature splits cleanly along the core/ui line.
   mirroring `LastReadPageTracker`. Recording is gated by an injected
   `is_enabled` callable — bound at the composition root to the
   **Record Reading History** settings toggle
-  (`record_reading_history`, `core/reader_settings.py:254`) — and the clock is
+  (`record_reading_history`, `core/reader_settings.py:257`) — and the clock is
   injectable for tests.
 - The hook lives in `ComicReaderManager`: `begin` fires in `_read_comic_book`
   (`core/comic_reader_manager.py:164`) only when `save_last_page` is true, so
@@ -760,34 +760,35 @@ feature splits cleanly along the core/ui line.
   comic's position is normalized to the cover (§6.4), so only genuinely
   mid-comic positions produce a page fragment.
 
-**Browsing (ui)** — `HistoryScreen` (`ui/history_screen.py:130`), a bottom
+**Browsing (ui)** — `HistoryScreen` (`ui/history_screen.py:158`), a bottom
 sub-screen wired exactly like Statistics:
 
 - Two toggleable views over the same log: **Journal** (sessions grouped by
   day, with time/duration/last-page columns) and **Titles** (one row per
   title with read count and unfinished-at-page). The screen holds no cached
   rows — it re-reads the store every time it becomes visible or is modified
-  (`on_is_visible` → `_refresh`, `:209`).
+  (`on_is_visible` → `_refresh`, `:239`).
 - Clicking any cell of a row navigates to that title's tree view
   (`on_goto_title` → `MainScreen._on_goto_history_title`); each row has a
   delete button, and the top bar has a clear-all button behind a confirmation
-  popup (`on_clear_pressed`, `:449`).
+  popup (`on_clear_pressed`, `:543`).
 - The backdrop is a random panel drawn *from the history's own titles*
-  (`update_background_image`, `:166`, via the shared `ImageSelector`), and
+  (`update_background_image`, `:196`, via the shared `ImageSelector`), and
   refreshes with the action bar's Change Pics button.
-- Full keyboard navigation (`enter_nav_focus`/`handle_key`, `:359`/`:376`):
+- Full keyboard navigation (`enter_nav_focus`/`handle_key`, `:396`/`:416`):
   Up/Down move the row focus (Page Up/Down jump 10 rows), Left/Right switch
   Journal/Titles, Enter opens the focused row's title, Delete removes it,
   Esc returns focus to the tree. `MainScreenNavigation` routes Enter on the
   tree node into the panel like it does for Statistics
-  (`ui/main_screen_nav.py:272`).
+  (`_enter_nav_screen_bottom_focus`, `ui/main_screen_nav.py:303`).
 
 **Navigation wiring** is a textbook run of the §4.4 recipe: a payload-free
 `HistoryDestination` mapped to `ViewStates.ON_HISTORY_NODE` in the dispatch
-table (`core/navigation/navigation_model.py:93`), a `history_spec` node in
-the tree spec (`core/navigation/tree_spec.py:359`), a
-`_BOTTOM_VIEW_HISTORY_OPACITY_1_STATES` set plus a fixed *Good Neighbors*
-top-view image in the pipeline (`core/view_pipeline.py:112`, `:439`), and a
+table (`core/navigation/navigation_model.py:93`), a `HistoryDestination` node in
+the tree spec (`core/navigation/tree_spec.py:436`), a
+`_BOTTOM_VIEW_HISTORY_OPACITY_1_STATES` set (`core/view_pipeline.py:113`) plus a
+random top-view image drawn from the history's own titles, dispatched at `:439` to
+`_set_top_view_image_for_reading_history` (`:575`), and a
 `ScreenVisibility.history` flag applied by `SnapshotApplicator`.
 
 ### 7.6 How screens get their data
@@ -803,7 +804,7 @@ Two channels, and it's worth keeping them straight:
   own data at construction and only receive `is_visible`.
 
 The wiring hub for all the "goto" callbacks is
-`MainScreen._bind_screen_callbacks` (`ui/main_screen.py:186`), routing every
+`MainScreen._bind_screen_callbacks` (`ui/main_screen.py:214`), routing every
 screen's navigation callback through `NavigationCoordinator`. The whole
 collaborator graph (renderer, nav coordinator, tree view manager, comic reader
 manager, window helper) is assembled once in `build_main_screen_components`,
@@ -843,7 +844,7 @@ every screen.
 ### 8.2 Dependency injection
 
 Adapters are wired into `core` by **constructor injection at one composition
-root**: `build_main_screen_components` (`ui/main_screen_components.py:64`), which
+root**: `build_main_screen_components` (`ui/main_screen_components.py:67`), which
 replaced a ~120-line inline `MainScreen.__init__`. A second, smaller composition
 site is the comic reader itself (`ui/comic_book_reader.py:319` injects
 `KivyClockScheduler()` + `KivyCursor()` into `ComicBookLoader`). Adapters are
@@ -872,7 +873,7 @@ always pulled in via `from .adapters import …`.
   a menu-less `SettingsWithNoMenu` (`ui/barks_reader_app.py:113`) — no top
   spinner/title bar (it just repeated the window title); it closes with **Escape**
   or an overlaid corner `SettingsCloseButton` added in
-  `MainScreen.display_settings` (`ui/main_screen.py:380`). Because the no-menu
+  `MainScreen.display_settings` (`ui/main_screen.py:377`). Because the no-menu
   interface *is* the `ContentPanel` (no `.content` wrapper, no `.menu`), the
   keyboard navigator (`ui/settings_keyboard_nav.py`) and the save-time panel
   refresh (`reader_settings_buildable._update_settings_panel`) both fall back to
@@ -890,7 +891,7 @@ always pulled in via `from .adapters import …`.
   look is baked into an image atlas and can't be tinted.
 - **Change propagation** — `core/settings_notifier.py` is a Kivy-free
   `(section, key) → callbacks` registry; the singleton `settings_notifier.notify`
-  fires from `BarksReaderApp.on_config_change` (`ui/barks_reader_app.py:207`),
+  fires from `BarksReaderApp.on_config_change` (`ui/barks_reader_app.py:226`),
   and screens subscribe to the changes they care about.
 
 ### 8.4 Other cross-cutting concerns
@@ -942,7 +943,7 @@ its title rows → `renderer.render(SeriesDestination)` → `NavigationModel`
 resolves `ON_SERIES_*` → pipeline paints a series background (§5.3). Click a
 title row → `on_title_row_button_pressed` → `nav.select_title` →
 `renderer.render_title` → the **bottom title view** shows with its portal image
-(§7.2). Press the portal → `NavigationCoordinator._read_comic` →
+(§7.2). Press the portal → `NavigationCoordinator.read_comic` →
 `ComicReaderManager` (§6.1) → `prepare_comic_for_reading` builds the layout →
 `ComicBookReader.read_comic` resolves the archive and starts `ComicBookLoader`
 (§6.3) → the opening page loads first (§6.1 step 7) → `_show_page` uploads its

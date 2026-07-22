@@ -74,8 +74,11 @@ The bottom half below the main tree content switches between two modes:
 publication info, and a favorite panel. Contains:
 
 - A **title portal button** (bottom right) that opens the comic reader directly.
-- A **last page read** indicator (optional) — the Reader remembers where you left off, and the portal
-  button takes you back there.
+- A **"Goto page N:" checkbox** (optional) — appears when the Reader has remembered where you left
+  off in this story; tick it to have the portal button reopen the comic at that page instead of the
+  first page.
+- A **"Goto wiki page" link** (optional) — appears when a Carl Barks Wiki bundle is configured and
+  the story has a wiki page; opens that story's page in the Wiki Reader.
 - An **override toggle** (optional) — lets you turn off the censorship fix for this specific story.
 - A **peek toggle**
   <img src="icon-eye-peek-black.png" alt="[b]Peek[/b]" style="position: relative; top: 3px;" width="15" height="15">
@@ -131,12 +134,21 @@ Keyboard navigation includes:
  
 - **Left | Right arrow keys** — things like turning pages or moving focus to the left or right.
 - **Up | Down arrow keys** — things like scrolling lists or moving focus up or down.
+- **Enter key** — activates the highlighted item. In the navigation tree, Enter opens or closes a
+  highlighted branch in place; on a highlighted **story** it moves focus down into the bottom title
+  panel (onto the title portal), and a second Enter there opens the comic reader.
 - **Esc key** — moving to a previous focus.
 
 On the bottom title panel, press **Right** to move focus into the panel; **Up | Down** then
 cycle through its widgets — the title portal, the *Goto page* and censorship-fixes
 checkboxes, the *Goto wiki page* link, and the peek eye — with **Enter** activating the
 focused one and **Esc** returning to the tree.
+
+In the **Wiki Reader** (opened by the *Goto wiki page* link or from the *Wiki* index),
+**Up | Down** read the page and step through its links while **Left | Right** move between the
+contents tree and the page. **Esc** lifts focus to the reader's top bar, where **Left | Right**
+move between its buttons and **Enter** on **Back** returns to the previous page (and at the first
+page, leaves the reader). Opening a story's wiki page lands focus straight in the reading pane.
 
 ---
 
