@@ -172,7 +172,15 @@ BARKS_EXTRA_INFO = {
     Titles.TERROR_OF_THE_BEAGLE_BOYS: "The first appearance of [b][i]The Beagle Boys.[/i][/b]"
     " And first mention of the [b][i]Money Bin.[/i][/b]",
     Titles.BIG_BIN_ON_KILLMOTOR_HILL_THE: "The first appearance of the [b][i]Money Bin.[/i][/b]",
-    Titles.ROUND_MONEY_BIN_THE: "The first appearance of [b][i]Number One Dime.[/i][/b]",
+    Titles.ROUND_MONEY_BIN_THE: "The first appearance of [b][i]Number One Dime.[/i][/b]\n\n"
+    "In 1953, a twelve-year-old fan named Richard Greenberg wrote to the studio asking permission"
+    " to form a national Beagle Boys fan club — the idea sparked by a scene in this story. A"
+    " Disney fan club for criminals, inspired by an almost-successful robbery, was anathema to"
+    ' the studio: Frank Reilly, head of its comic-strip department, wrote back that "the Beagle'
+    " Boys represent the wrong; they are the villains… We believe it would be wrong for you and"
+    " your friends to identify yourselves with wrongdoers, even though they are merely comic"
+    ' creations." Carl Buettner sent Barks copies of both letters with'
+    ' the comment, "I am considering writing Master Greenberg myself, applying for membership."',
     Titles.GLADSTONES_TERRIBLE_SECRET: "The first appearance of [b][i]Gyro Gearloose.[/i][/b]"
     " From the [i]Duck Man[/i] interview:"
     ' "I think that every cartoonist that ever ran anything in comic strips and newspapers'
