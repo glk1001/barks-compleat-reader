@@ -687,11 +687,11 @@ class TestTreeNavCollapseToParent:
 
 class TestFocusSaveRestore:
     def test_save_and_restore_tree(self, nav: MainScreenNavigation) -> None:
-        nav.save_focus_before_comic()
-        nav.restore_focus_after_comic()
+        nav.save_focus_before_reader()
+        nav.restore_focus_after_reader()
 
         assert not nav.is_in_bottom_focus
-        assert nav._focus_region_before_comic is None
+        assert nav._focus_region_before_reader is None
 
     def test_save_and_restore_bottom(self, nav: MainScreenNavigation) -> None:
         # Enter bottom focus
@@ -706,11 +706,11 @@ class TestFocusSaveRestore:
         nav._search_screen.is_visible = False
         nav.enter_bottom_focus()
 
-        nav.save_focus_before_comic()
+        nav.save_focus_before_reader()
         # Simulate leaving bottom during comic
         nav.exit_bottom_focus()
 
-        nav.restore_focus_after_comic()
+        nav.restore_focus_after_reader()
         assert nav.is_in_bottom_focus
 
 

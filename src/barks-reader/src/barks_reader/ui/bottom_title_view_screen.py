@@ -157,6 +157,7 @@ class BottomTitleViewScreen(FloatLayout):
         self._nav_active = False
         self._nav_on_exit_request: Callable[[], None] | None = None
         self._nav_focused_widget: Widget | None = None
+        self._last_nav_focused_widget: Widget | None = None
         self.main_title_banner_texture = _make_title_banner_texture(
             self.MAIN_TITLE_BANNER_COLOR, self.MAIN_TITLE_BANNER_PEAK_ALPHA
         )
@@ -167,6 +168,8 @@ class BottomTitleViewScreen(FloatLayout):
         self._special_fanta_overrides = special_fanta_overrides
 
     def set_title_view(self, fanta_info: FantaComicBookInfo) -> None:
+        # A remembered nav position belongs to the previous title's widgets.
+        self._last_nav_focused_widget = None
         self._fanta_info = fanta_info
         self.is_one_pager_title = fanta_info.comic_book_info.title in ONE_PAGERS
 
@@ -245,7 +248,11 @@ class BottomTitleViewScreen(FloatLayout):
         return self._nav_active
 
     def enter_nav_focus(self, on_exit_request: Callable[[], None]) -> None:
-        """Enter keyboard navigation mode, focusing the title portal image.
+        """Enter keyboard navigation mode.
+
+        Focus returns to the widget that was focused when nav was last exited by a
+        screen switch (e.g. coming back from the wiki reader), falling back to the
+        title portal image.
 
         Args:
             on_exit_request: Called when the user asks to leave nav focus (Escape).
@@ -253,11 +260,15 @@ class BottomTitleViewScreen(FloatLayout):
         """
         self._nav_on_exit_request = on_exit_request
         self._nav_active = True
-        self._nav_focused_widget = (
+        default = (
             self.ids.title_portal_image_button
             if self._is_panel_content_visible()
             else self.ids.title_show_button
         )
+        remembered = self._last_nav_focused_widget
+        if remembered not in self._focusable_widgets():
+            remembered = None
+        self._nav_focused_widget = remembered or default
         self._update_nav_focus()
         logger.debug("BottomTitleViewScreen: entered nav focus.")
 
@@ -265,6 +276,7 @@ class BottomTitleViewScreen(FloatLayout):
         """Exit keyboard navigation mode and clear every highlight."""
         if not self._nav_active:
             return
+        self._last_nav_focused_widget = self._nav_focused_widget
         self._nav_active = False
         self._nav_on_exit_request = None
         self._nav_focused_widget = None
@@ -356,6 +368,8 @@ class BottomTitleViewScreen(FloatLayout):
     def _request_nav_exit(self) -> None:
         if self._nav_on_exit_request is not None:
             self._nav_on_exit_request()
+        # A deliberate Escape forgets the position: the next entry starts at the portal.
+        self._last_nav_focused_widget = None
 
     def _title_has_wiki_page(self, title: Titles) -> bool:
         bundle = self._reader_settings.wiki_bundle_dir

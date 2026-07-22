@@ -94,7 +94,7 @@ class MainScreenNavigation:
         self._is_in_menu_mode = is_in_menu_mode
 
         self._focus_region = _FocusRegion.TREE
-        self._focus_region_before_comic: _FocusRegion | None = None
+        self._focus_region_before_reader: _FocusRegion | None = None
         self._auto_exited_bottom_focus = False
 
         factory: TriggerFactory = trigger_factory or Clock.create_trigger
@@ -129,15 +129,17 @@ class MainScreenNavigation:
             self._auto_exited_bottom_focus = True
             logger.debug("Auto-exited bottom focus: active screen no longer visible.")
 
-    def save_focus_before_comic(self) -> None:
-        self._focus_region_before_comic = self._focus_region
-        logger.debug(f"Saved focus before comic: {self._focus_region_before_comic}.")
+    def save_focus_before_reader(self) -> None:
+        """Save the focus region before a reader screen (comic or wiki) takes over."""
+        self._focus_region_before_reader = self._focus_region
+        logger.debug(f"Saved focus before reader screen: {self._focus_region_before_reader}.")
 
-    def restore_focus_after_comic(self) -> None:
-        logger.debug(f"Focus after comic: {self._focus_region_before_comic}.")
-        if self._focus_region_before_comic == _FocusRegion.BOTTOM:
+    def restore_focus_after_reader(self) -> None:
+        """Restore the focus region saved before a reader screen (comic or wiki) opened."""
+        logger.debug(f"Focus after reader screen: {self._focus_region_before_reader}.")
+        if self._focus_region_before_reader == _FocusRegion.BOTTOM:
             self.enter_bottom_focus()
-        self._focus_region_before_comic = None
+        self._focus_region_before_reader = None
 
     def handle_key(self, key: int) -> bool:
         if self._is_in_menu_mode():

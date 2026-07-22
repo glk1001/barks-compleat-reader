@@ -564,7 +564,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
         logger.debug("Title portal image pressed pressed.")
 
-        self._nav.save_focus_before_comic()
+        self._nav.save_focus_before_reader()
         if self._nav_coord.read_comic():
             self._set_no_longer_first_use()
 
@@ -576,17 +576,19 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             return
 
         logger.debug("Wiki page button pressed.")
+        self._nav.save_focus_before_reader()
         self._nav_coord.open_wiki_page_for_title(fanta_info.comic_book_info.title)
 
     @override
     def on_comic_closed(self) -> None:
         self._is_active(active=True)
-        self._nav.restore_focus_after_comic()
+        self._nav.restore_focus_after_reader()
         self._nav_coord.on_comic_closed()
 
     @override
     def on_wiki_reader_closed(self) -> None:
         self._is_active(active=True)
+        self._nav.restore_focus_after_reader()
 
     def goto_title_from_wiki(self, title: Titles) -> None:
         """Select ``title`` in the tree and title view, on behalf of the wiki screen.

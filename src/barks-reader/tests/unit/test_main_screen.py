@@ -231,7 +231,7 @@ class TestMainScreen:
 
         main_screen.on_title_portal_image_pressed()
 
-        main_screen._nav.save_focus_before_comic.assert_called_once()
+        main_screen._nav.save_focus_before_reader.assert_called_once()
         main_screen._nav_coord.read_comic.assert_called_once()
 
     def test_on_comic_closed_delegates_to_coordinator(self, main_screen: MainScreen) -> None:
@@ -240,7 +240,7 @@ class TestMainScreen:
         main_screen.on_comic_closed()
 
         assert main_screen._active is True
-        main_screen._nav.restore_focus_after_comic.assert_called_once()
+        main_screen._nav.restore_focus_after_reader.assert_called_once()
         main_screen._nav_coord.on_comic_closed.assert_called_once()
 
     def test_on_document_reader_closed_delegates_to_coordinator(

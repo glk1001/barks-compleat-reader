@@ -394,3 +394,52 @@ class TestBottomTitleViewNav(ScreenFixtureBase):
         assert self.screen.is_nav_active
         self.screen.exit_nav_focus()
         assert not self.screen.is_nav_active
+
+    def _focus_wiki_chip(self) -> None:
+        self.screen.enter_nav_focus(MagicMock(side_effect=self.screen.exit_nav_focus))
+        for _ in range(3):  # Portal -> goto -> overrides -> wiki chip.
+            self.screen.handle_key(KEY_UP)
+        assert self.screen._nav_focused_widget is self.screen.ids.wiki_page_button
+
+    def test_reentry_restores_last_widget_after_screen_switch_exit(self) -> None:
+        """E.g. back from the wiki reader: focus returns to the wiki chip."""
+        self._make_all_widgets_visible()
+        self._focus_wiki_chip()
+        self.screen.exit_nav_focus()  # The wiki reader taking over auto-exits nav.
+
+        self.screen.enter_nav_focus(MagicMock())
+
+        assert self.screen._nav_focused_widget is self.screen.ids.wiki_page_button
+
+    def test_escape_exit_forgets_last_widget(self) -> None:
+        self._make_all_widgets_visible()
+        self._focus_wiki_chip()
+        self.screen.handle_key(KEY_ESCAPE)  # Deliberate exit.
+
+        self.screen.enter_nav_focus(MagicMock())
+
+        assert self.screen._nav_focused_widget is self.screen.ids.title_portal_image_button
+
+    def test_reentry_falls_back_to_portal_when_last_widget_hidden(self) -> None:
+        self._make_all_widgets_visible()
+        self._focus_wiki_chip()
+        self.screen.exit_nav_focus()
+        self.screen.wiki_button_visible = False
+
+        self.screen.enter_nav_focus(MagicMock())
+
+        assert self.screen._nav_focused_widget is self.screen.ids.title_portal_image_button
+
+    def test_set_title_view_forgets_last_widget(self) -> None:
+        self._make_all_widgets_visible()
+        self._focus_wiki_chip()
+        self.screen.exit_nav_focus()
+
+        mock_info = MagicMock()
+        mock_info.comic_book_info.title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
+        self.screen.set_title_view(mock_info)
+        self._make_all_widgets_visible()
+
+        self.screen.enter_nav_focus(MagicMock())
+
+        assert self.screen._nav_focused_widget is self.screen.ids.title_portal_image_button
