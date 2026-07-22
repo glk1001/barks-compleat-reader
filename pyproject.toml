@@ -78,6 +78,7 @@ dev = [
     "prek>=0.3.8",
     "sysrsync>=1.1.1",
     "weasyprint>=69.0",
+    "zstandard>=0.25.0",
 ]
 
 [tool.pytest.ini_options]
