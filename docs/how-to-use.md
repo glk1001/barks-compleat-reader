@@ -133,6 +133,11 @@ Keyboard navigation includes:
 - **Up | Down arrow keys** — things like scrolling lists or moving focus up or down.
 - **Esc key** — moving to a previous focus.
 
+On the bottom title panel, press **Right** to move focus into the panel; **Up | Down** then
+cycle through its widgets — the title portal, the *Goto page* and censorship-fixes
+checkboxes, the *Goto wiki page* link, and the peek eye — with **Enter** activating the
+focused one and **Esc** returning to the tree.
+
 ---
 
 ## Settings

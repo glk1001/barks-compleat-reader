@@ -155,6 +155,9 @@ class MainScreenNavigation:
             self._tree_nav_move(1)
         elif key == KEY_LEFT:
             self._tree_nav_collapse_to_parent()
+        elif key == KEY_RIGHT:
+            # Move focus into the visible bottom screen (e.g. the title panel widgets).
+            self.enter_bottom_focus()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._tree_nav_activate()
         else:
@@ -165,12 +168,19 @@ class MainScreenNavigation:
         nav_screen = self._get_active_nav_screen()
         if nav_screen is not None:
             return nav_screen.handle_key(key)
+        # The fun view takes precedence when it and the title view are co-visible.
+        if not self._fun_image_view_screen.is_visible and self._bottom_title_view_screen.is_visible:
+            if not self._bottom_title_view_screen.is_nav_active:
+                # The title view can become the active bottom screen without going through
+                # enter_bottom_focus (e.g. the fun view's goto-title): activate lazily.
+                self._bottom_title_view_screen.enter_nav_focus(self.exit_bottom_focus)
+            return self._bottom_title_view_screen.handle_key(key)
         if is_escape_key(key):
             self.exit_bottom_focus()
             return True
         if self._fun_image_view_screen.is_visible:
             return self._handle_fun_view_key(key)
-        return self._bottom_title_view_screen.is_visible and self._handle_title_view_key(key)
+        return False
 
     def _handle_fun_view_key(self, key: int) -> bool:
         if key == KEY_LEFT:
@@ -179,13 +189,6 @@ class MainScreenNavigation:
             self._fun_image_view_screen.next_image()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._fun_image_view_screen.on_goto_title()
-        else:
-            return False
-        return True
-
-    def _handle_title_view_key(self, key: int) -> bool:
-        if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
-            self._on_title_activated()
         else:
             return False
         return True
@@ -225,6 +228,10 @@ class MainScreenNavigation:
         nav_screen = self._get_active_nav_screen()
         if nav_screen is not None:
             nav_screen.enter_nav_focus(self.exit_bottom_focus)
+        elif (
+            self._bottom_title_view_screen.is_visible and not self._fun_image_view_screen.is_visible
+        ):
+            self._bottom_title_view_screen.enter_nav_focus(self.exit_bottom_focus)
         logger.debug("Entered bottom focus region.")
 
     def _claim_bottom_focus_for_search(self) -> None:
@@ -246,6 +253,7 @@ class MainScreenNavigation:
         nav_screen = self._get_active_nav_screen()
         if nav_screen is not None:
             nav_screen.exit_nav_focus()
+        self._bottom_title_view_screen.exit_nav_focus()
         self._focus_region = _FocusRegion.TREE
         self._auto_exited_bottom_focus = False
         self._clear_bottom_focus_highlight()

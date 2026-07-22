@@ -11,6 +11,7 @@ from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.ui import bottom_title_view_screen
 from barks_reader.ui.bottom_title_view_screen import BottomTitleViewScreen
+from barks_reader.ui.reader_keyboard_nav import KEY_DOWN, KEY_ENTER, KEY_ESCAPE, KEY_UP
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
     from kivy.uix.widget import Widget
 
 
-class TestBottomTitleViewScreen:
+class ScreenFixtureBase:
     @pytest.fixture(autouse=True)
     def setup(self) -> Generator[None, Any]:
         self.mock_settings = MagicMock()
@@ -49,6 +50,11 @@ class TestBottomTitleViewScreen:
         self.mock_needs_footnote = self.patcher_utils.start()
         self.mock_needs_footnote.return_value = False
 
+        self.patcher_update_focus = patch.object(bottom_title_view_screen, "update_focus_in_list")
+        self.mock_update_focus = self.patcher_update_focus.start()
+        self.patcher_clear_focus = patch.object(bottom_title_view_screen, "clear_focus_in_list")
+        self.mock_clear_focus = self.patcher_clear_focus.start()
+
         # Patch FloatLayout.__init__ to inject mock ids
         self.patcher_layout = patch.object(
             bottom_title_view_screen.FloatLayout, "__init__", autospec=True
@@ -58,7 +64,13 @@ class TestBottomTitleViewScreen:
         def side_effect(instance: Widget, **_kwargs) -> None:  # noqa: ANN003
             instance.ids = MagicMock()
             instance.ids.use_overrides_checkbox = MagicMock()
+            instance.ids.use_overrides_layout = MagicMock()
+            instance.ids.goto_page_checkbox = MagicMock()
+            instance.ids.goto_page_layout = MagicMock()
+            instance.ids.wiki_page_button = MagicMock()
+            instance.ids.title_portal_image_button = MagicMock()
             instance.ids.bottom_view_box = MagicMock()
+            instance.ids.bottom_view_box.opacity = 1.0
             instance.ids.title_show_button = MagicMock()
 
         self.mock_layout_init.side_effect = side_effect
@@ -74,8 +86,12 @@ class TestBottomTitleViewScreen:
         self.patcher_formatter.stop()
         self.patcher_anim.stop()
         self.patcher_utils.stop()
+        self.patcher_update_focus.stop()
+        self.patcher_clear_focus.stop()
         self.patcher_layout.stop()
 
+
+class TestBottomTitleViewScreen(ScreenFixtureBase):
     def test_set_title_view(self) -> None:
         mock_info = MagicMock()
         mock_info.comic_book_info.title = Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
@@ -205,3 +221,176 @@ class TestBottomTitleViewScreen:
         mock_info.comic_book_info.is_barks_title = False
         mock_info.comic_book_info.get_title_from_issue_name.return_value = "Issue Title"
         assert self.screen._get_main_title_str(mock_info) == "Issue Title"
+
+
+class TestBottomTitleViewNav(ScreenFixtureBase):
+    def _make_all_widgets_visible(self) -> None:
+        self.screen.wiki_button_visible = True
+        self.screen.use_overrides_description = "Use censorship fixes"
+        self.screen.goto_page_num = "5"
+
+    def test_focusable_widgets_defaults_to_eye_and_portal(self) -> None:
+        ids = self.screen.ids
+        assert self.screen._focusable_widgets() == [
+            ids.title_show_button,
+            ids.title_portal_image_button,
+        ]
+
+    def test_focusable_widgets_all_visible_in_visual_order(self) -> None:
+        self._make_all_widgets_visible()
+        ids = self.screen.ids
+        assert self.screen._focusable_widgets() == [
+            ids.title_show_button,
+            ids.wiki_page_button,
+            ids.use_overrides_layout,
+            ids.goto_page_layout,
+            ids.title_portal_image_button,
+        ]
+
+    def test_focusable_widgets_only_eye_when_peeked(self) -> None:
+        self._make_all_widgets_visible()
+        self.screen.ids.bottom_view_box.opacity = 0
+        assert self.screen._focusable_widgets() == [self.screen.ids.title_show_button]
+
+    def test_enter_nav_focus_defaults_to_portal(self) -> None:
+        self.screen.enter_nav_focus(MagicMock())
+
+        (widgets, focused_idx, group), _ = self.mock_update_focus.call_args
+        assert widgets == self.screen._all_nav_widgets()
+        assert widgets[focused_idx] is self.screen.ids.title_portal_image_button
+        assert group == bottom_title_view_screen._NAV_FOCUS_GROUP
+
+    def test_enter_nav_focus_while_peeked_focuses_eye(self) -> None:
+        self.screen.ids.bottom_view_box.opacity = 0
+
+        self.screen.enter_nav_focus(MagicMock())
+
+        assert self.screen._nav_focused_widget is self.screen.ids.title_show_button
+
+    def test_up_cycles_through_widgets_and_wraps(self) -> None:
+        self._make_all_widgets_visible()
+        self.screen.enter_nav_focus(MagicMock())
+        ids = self.screen.ids
+
+        expected = [
+            ids.goto_page_layout,
+            ids.use_overrides_layout,
+            ids.wiki_page_button,
+            ids.title_show_button,
+            ids.title_portal_image_button,  # Wrapped back around.
+        ]
+        for widget in expected:
+            assert self.screen.handle_key(KEY_UP) is True
+            assert self.screen._nav_focused_widget is widget
+
+    def test_down_from_portal_wraps_to_eye(self) -> None:
+        self._make_all_widgets_visible()
+        self.screen.enter_nav_focus(MagicMock())
+
+        assert self.screen.handle_key(KEY_DOWN) is True
+        assert self.screen._nav_focused_widget is self.screen.ids.title_show_button
+
+    def test_up_skips_hidden_rows(self) -> None:
+        # Only the wiki chip is visible above the portal.
+        self.screen.wiki_button_visible = True
+        self.screen.enter_nav_focus(MagicMock())
+
+        self.screen.handle_key(KEY_UP)
+
+        assert self.screen._nav_focused_widget is self.screen.ids.wiki_page_button
+
+    def test_enter_on_portal_opens_comic(self) -> None:
+        callback = MagicMock()
+        self.screen.on_title_portal_image_pressed_func = callback
+        self.screen.enter_nav_focus(MagicMock())
+
+        assert self.screen.handle_key(KEY_ENTER) is True
+        callback.assert_called_once()
+
+    def test_enter_toggles_goto_page_checkbox(self) -> None:
+        self._make_all_widgets_visible()
+        self.screen.ids.goto_page_checkbox.active = True
+        self.screen.enter_nav_focus(MagicMock())
+
+        self.screen.handle_key(KEY_UP)  # Portal -> goto-page row.
+        self.screen.handle_key(KEY_ENTER)
+
+        assert self.screen.ids.goto_page_checkbox.active is False
+
+    def test_enter_toggles_use_overrides_checkbox(self) -> None:
+        self._make_all_widgets_visible()
+        self.screen.ids.use_overrides_checkbox.active = False
+        self.screen.enter_nav_focus(MagicMock())
+
+        self.screen.handle_key(KEY_UP)
+        self.screen.handle_key(KEY_UP)  # Portal -> goto-page row -> overrides row.
+        self.screen.handle_key(KEY_ENTER)
+
+        assert self.screen.ids.use_overrides_checkbox.active is True
+
+    def test_enter_on_wiki_chip_triggers_button(self) -> None:
+        self._make_all_widgets_visible()
+        self.screen.enter_nav_focus(MagicMock())
+
+        for _ in range(3):  # Portal -> goto -> overrides -> wiki chip.
+            self.screen.handle_key(KEY_UP)
+        self.screen.handle_key(KEY_ENTER)
+
+        self.screen.ids.wiki_page_button.trigger_action.assert_called_once()
+
+    def test_enter_on_eye_triggers_peek_and_keeps_focus(self) -> None:
+        self._make_all_widgets_visible()
+        self.screen.enter_nav_focus(MagicMock())
+
+        for _ in range(4):  # Portal -> goto -> overrides -> wiki -> eye.
+            self.screen.handle_key(KEY_UP)
+        assert self.screen._nav_focused_widget is self.screen.ids.title_show_button
+        self.screen.handle_key(KEY_ENTER)
+
+        self.screen.ids.title_show_button.trigger_action.assert_called_once()
+        assert self.screen._nav_focused_widget is self.screen.ids.title_show_button
+
+    def test_peek_under_focus_clamps_to_eye(self) -> None:
+        self._make_all_widgets_visible()
+        self.screen.enter_nav_focus(MagicMock())  # Focused on the portal.
+
+        # Simulate a mouse-click peek hiding the panel under the keyboard focus.
+        self.screen.ids.bottom_view_box.opacity = 0
+        self.screen.handle_key(KEY_UP)
+
+        assert self.screen._nav_focused_widget is self.screen.ids.title_show_button
+
+    def test_escape_requests_exit(self) -> None:
+        on_exit = MagicMock()
+        self.screen.enter_nav_focus(on_exit)
+
+        assert self.screen.handle_key(KEY_ESCAPE) is True
+        on_exit.assert_called_once()
+
+    def test_handle_key_inactive_returns_false(self) -> None:
+        assert self.screen.handle_key(KEY_UP) is False
+
+        self.screen.enter_nav_focus(MagicMock())
+        self.screen.exit_nav_focus()
+
+        assert self.screen.handle_key(KEY_UP) is False
+
+    def test_exit_nav_focus_clears_highlights_and_is_idempotent(self) -> None:
+        self.screen.enter_nav_focus(MagicMock())
+
+        self.screen.exit_nav_focus()
+        self.mock_clear_focus.assert_called_once()
+
+        self.screen.exit_nav_focus()  # No-op second time.
+        self.mock_clear_focus.assert_called_once()
+
+    def test_unhandled_key_returns_false(self) -> None:
+        self.screen.enter_nav_focus(MagicMock())
+        assert self.screen.handle_key(999) is False
+
+    def test_is_nav_active_property(self) -> None:
+        assert not self.screen.is_nav_active
+        self.screen.enter_nav_focus(MagicMock())
+        assert self.screen.is_nav_active
+        self.screen.exit_nav_focus()
+        assert not self.screen.is_nav_active

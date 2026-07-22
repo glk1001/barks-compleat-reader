@@ -193,6 +193,37 @@ class TestHandleTreeKey:
 
         assert nav._handle_tree_key(KEY_NUMPAD_ENTER) is True
 
+    def test_right_enters_bottom_focus_when_title_visible(self, nav: MainScreenNavigation) -> None:
+        nav._fun_image_view_screen.is_visible = False
+        nav._bottom_title_view_screen.is_visible = True
+        nav._main_index_screen.is_visible = False
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+        nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
+        nav._search_screen.is_visible = False
+
+        assert nav._handle_tree_key(KEY_RIGHT) is True
+
+        assert nav.is_in_bottom_focus
+        nav._bottom_title_view_screen.enter_nav_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+
+    def test_right_with_no_bottom_screen_stays_in_tree(self, nav: MainScreenNavigation) -> None:
+        nav._fun_image_view_screen.is_visible = False
+        nav._bottom_title_view_screen.is_visible = False
+        nav._main_index_screen.is_visible = False
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+        nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
+        nav._search_screen.is_visible = False
+
+        assert nav._handle_tree_key(KEY_RIGHT) is True
+
+        assert not nav.is_in_bottom_focus
+
     def test_unhandled_key_returns_false(self, nav: MainScreenNavigation) -> None:
         assert nav._handle_tree_key(999) is False
 
@@ -276,7 +307,7 @@ class TestHandleBottomKey:
         assert nav._handle_bottom_key(KEY_RIGHT) is True
         nav._fun_image_view_screen.next_image.assert_called_once()  # ty: ignore[unresolved-attribute]
 
-    def test_title_view_enter(self, nav: MainScreenNavigation) -> None:
+    def test_title_view_keys_delegate_to_screen(self, nav: MainScreenNavigation) -> None:
         nav._main_index_screen.is_visible = False
         nav._speech_index_screen.is_visible = False
         nav._names_index_screen.is_visible = False
@@ -286,9 +317,79 @@ class TestHandleBottomKey:
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = False
         nav._bottom_title_view_screen.is_visible = True
+        nav._bottom_title_view_screen.handle_key.return_value = True  # ty: ignore[unresolved-attribute]
 
         assert nav._handle_bottom_key(KEY_ENTER) is True
-        nav._on_title_activated.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.handle_key.assert_called_once_with(KEY_ENTER)  # ty: ignore[unresolved-attribute]
+
+    def test_title_view_escape_is_delegated_not_intercepted(
+        self, nav: MainScreenNavigation
+    ) -> None:
+        """Escape goes to the title screen (which exits via its exit-request callback)."""
+        nav._main_index_screen.is_visible = False
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+        nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
+        nav._search_screen.is_visible = False
+        nav._fun_image_view_screen.is_visible = False
+        nav._bottom_title_view_screen.is_visible = True
+        nav._bottom_title_view_screen.handle_key.return_value = True  # ty: ignore[unresolved-attribute]
+
+        assert nav._handle_bottom_key(KEY_ESCAPE) is True
+        nav._bottom_title_view_screen.handle_key.assert_called_once_with(KEY_ESCAPE)  # ty: ignore[unresolved-attribute]
+
+    def test_title_view_lazily_enters_nav_focus(self, nav: MainScreenNavigation) -> None:
+        """The fun view's goto-title lands here with BOTTOM focus but no nav entry yet."""
+        nav._main_index_screen.is_visible = False
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+        nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
+        nav._search_screen.is_visible = False
+        nav._fun_image_view_screen.is_visible = False
+        nav._bottom_title_view_screen.is_visible = True
+        nav._bottom_title_view_screen.is_nav_active = False  # ty: ignore[invalid-assignment]
+        nav._bottom_title_view_screen.handle_key.return_value = True  # ty: ignore[unresolved-attribute]
+
+        assert nav._handle_bottom_key(KEY_DOWN) is True
+        nav._bottom_title_view_screen.enter_nav_focus.assert_called_once_with(  # ty: ignore[unresolved-attribute]
+            nav.exit_bottom_focus
+        )
+        nav._bottom_title_view_screen.handle_key.assert_called_once_with(KEY_DOWN)  # ty: ignore[unresolved-attribute]
+
+    def test_title_view_not_reentered_when_nav_active(self, nav: MainScreenNavigation) -> None:
+        nav._main_index_screen.is_visible = False
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+        nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
+        nav._search_screen.is_visible = False
+        nav._fun_image_view_screen.is_visible = False
+        nav._bottom_title_view_screen.is_visible = True
+        nav._bottom_title_view_screen.is_nav_active = True  # ty: ignore[invalid-assignment]
+
+        nav._handle_bottom_key(KEY_DOWN)
+
+        nav._bottom_title_view_screen.enter_nav_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
+
+    def test_fun_view_takes_precedence_over_title_view(self, nav: MainScreenNavigation) -> None:
+        nav._main_index_screen.is_visible = False
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+        nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
+        nav._search_screen.is_visible = False
+        nav._fun_image_view_screen.is_visible = True
+        nav._bottom_title_view_screen.is_visible = True
+
+        assert nav._handle_bottom_key(KEY_LEFT) is True
+        nav._fun_image_view_screen.prev_image.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.handle_key.assert_not_called()  # ty: ignore[unresolved-attribute]
 
 
 class TestTreeNavMove:
@@ -643,6 +744,53 @@ class TestEnterBottomFocus:
         nav.enter_bottom_focus()
 
         nav._main_index_screen.enter_nav_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+
+    def test_title_view_gets_enter_nav_focus(self, nav: MainScreenNavigation) -> None:
+        nav._fun_image_view_screen.is_visible = False
+        nav._bottom_title_view_screen.is_visible = True
+        nav._main_index_screen.is_visible = False
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+        nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
+        nav._search_screen.is_visible = False
+
+        nav.enter_bottom_focus()
+
+        nav._bottom_title_view_screen.enter_nav_focus.assert_called_once_with(  # ty: ignore[unresolved-attribute]
+            nav.exit_bottom_focus
+        )
+
+    def test_title_view_not_focused_when_fun_view_visible(self, nav: MainScreenNavigation) -> None:
+        nav._fun_image_view_screen.is_visible = True
+        nav._bottom_title_view_screen.is_visible = True
+        nav._main_index_screen.is_visible = False
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+        nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
+        nav._search_screen.is_visible = False
+
+        nav.enter_bottom_focus()
+
+        nav._bottom_title_view_screen.enter_nav_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
+
+
+class TestExitBottomFocus:
+    def test_exits_title_view_nav_focus(self, nav: MainScreenNavigation) -> None:
+        nav._main_index_screen.is_visible = False
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+        nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
+        nav._search_screen.is_visible = False
+
+        nav.exit_bottom_focus()
+
+        nav._bottom_title_view_screen.exit_nav_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
 
 
 class TestGetActiveNavScreen:
