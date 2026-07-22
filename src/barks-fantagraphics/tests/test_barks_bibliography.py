@@ -175,6 +175,28 @@ def test_cover_entries_match_registry_one_to_one() -> None:
     )
 
 
+def test_cover_registry_and_bibliography_covers_are_bijective() -> None:
+    """The BARKS_COVERS registry and the bibliography's cover entries are one-to-one.
+
+    Every ``BarksCover.key`` matches exactly one ``Disposition.COVER`` entry's
+    ``cover_key`` and vice versa - no registry record without a bibliography
+    cover entry, and no cover entry without a registry record.
+    """
+    registry_keys = {cover.key for cover in BARKS_COVERS}
+    assert len(registry_keys) == len(BARKS_COVERS), "duplicate keys in BARKS_COVERS"
+
+    cover_entries = [e for e in _all_entries() if e.disposition == Disposition.COVER]
+    bib_keys = [e.cover_key for e in cover_entries]
+    assert len(bib_keys) == len(set(bib_keys)), "duplicate cover keys among bibliography entries"
+    bib_key_set = set(bib_keys)
+
+    assert bib_key_set == registry_keys, (
+        f"bibliography covers with no BARKS_COVERS record: {sorted(bib_key_set - registry_keys)}; "
+        f"BARKS_COVERS records with no bibliography cover entry: "
+        f"{sorted(registry_keys - bib_key_set)}"
+    )
+
+
 def test_cover_registry_keys_are_consistent() -> None:
     """Each registry record's key property round-trips through BARKS_COVER_BY_KEY."""
     assert len(BARKS_COVER_BY_KEY) == len(BARKS_COVERS)
