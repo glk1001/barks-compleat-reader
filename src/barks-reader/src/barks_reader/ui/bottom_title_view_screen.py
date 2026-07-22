@@ -272,6 +272,28 @@ class BottomTitleViewScreen(FloatLayout):
         self._update_nav_focus()
         logger.debug("BottomTitleViewScreen: entered nav focus.")
 
+    def enter_nav_focus_at_portal(self, on_exit_request: Callable[[], None]) -> None:
+        """Enter keyboard navigation focus landing directly on the title portal image.
+
+        Pressing Enter on a title node is a deliberate "read this title" gesture, so
+        focus always lands on the portal (the read action) — ignoring any remembered
+        position. The portal is targeted directly rather than via `enter_nav_focus`'s
+        opacity-based default: the title render that precedes this call restarts the
+        panel's fade-in from zero opacity, so `_is_panel_content_visible()` reads False
+        for the (randomly timed) duration of the fade and would send focus to the eye
+        toggle by mistake. The ring fades in with the content.
+
+        Args:
+            on_exit_request: Called when the user asks to leave nav focus (Escape).
+
+        """
+        self._nav_on_exit_request = on_exit_request
+        self._nav_active = True
+        self._last_nav_focused_widget = None
+        self._nav_focused_widget = self.ids.title_portal_image_button
+        self._update_nav_focus()
+        logger.debug("BottomTitleViewScreen: entered nav focus at portal.")
+
     def exit_nav_focus(self) -> None:
         """Exit keyboard navigation mode and clear every highlight."""
         if not self._nav_active:

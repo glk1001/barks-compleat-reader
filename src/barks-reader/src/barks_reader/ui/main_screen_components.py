@@ -180,7 +180,6 @@ def build_main_screen_components(
         screens=screens,
         tree_view_manager=tree_view_manager,
         bottom_base_view_screen=host._bottom_base_view_screen,
-        on_title_activated=host.on_title_portal_image_pressed,
         enter_menu_mode=host._enter_menu_mode,
         handle_menu_key=host._handle_menu_key,
         is_in_menu_mode=lambda: host._menu_mode,

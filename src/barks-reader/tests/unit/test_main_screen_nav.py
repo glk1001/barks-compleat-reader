@@ -84,7 +84,6 @@ def screens(screen_mocks: dict[str, MagicMock]) -> ScreenBundle:
 def nav(
     screens: ScreenBundle, fake_trigger: FakeTrigger, fake_time: list[float]
 ) -> Generator[MainScreenNavigation]:
-    on_title_activated = MagicMock()
     enter_menu_mode = MagicMock()
     handle_menu_key = MagicMock(return_value=True)
     is_in_menu_mode = MagicMock(return_value=False)
@@ -101,7 +100,6 @@ def nav(
             screens=screens,
             tree_view_manager=MagicMock(),
             bottom_base_view_screen=MagicMock(),
-            on_title_activated=on_title_activated,
             enter_menu_mode=enter_menu_mode,
             handle_menu_key=handle_menu_key,
             is_in_menu_mode=is_in_menu_mode,
@@ -533,7 +531,6 @@ class TestTitleRenderDebounce:
         assert not fake_trigger.scheduled
         # Enter re-renders synchronously through the activate path.
         nav._tree_view_manager.activate_node.assert_called_once_with(nodes[1])  # ty: ignore[unresolved-attribute]
-        nav._on_title_activated.assert_called_once()  # ty: ignore[unresolved-attribute]
 
 
 class TestTreeNavActivate:
@@ -544,15 +541,20 @@ class TestTreeNavActivate:
 
         nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[unresolved-attribute]
 
-    def test_title_node_calls_on_title_activated(self, nav: MainScreenNavigation) -> None:
+    def test_title_node_enters_panel_focus_at_portal(self, nav: MainScreenNavigation) -> None:
         selected = MagicMock(spec=TitleTreeViewNode)
         nav._tree_view_screen.get_selected_node.return_value = selected  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.is_visible = True
 
-        with patch.object(nav_module, "Clock"):
+        with patch.object(nav_module, "Clock") as mock_clock:
             nav._tree_nav_activate()
+            # Focus entry is deferred a frame; run the scheduled callback.
+            mock_clock.schedule_once.call_args[0][0](0)
 
         nav._tree_view_manager.activate_node.assert_called_with(selected)  # ty: ignore[unresolved-attribute]
-        nav._on_title_activated.assert_called_once()  # ty: ignore[unresolved-attribute]
+        # Enter lands on the portal (read action) rather than launching the reader.
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[unresolved-attribute]
+        assert nav.is_in_bottom_focus
 
     def test_index_node_enters_bottom_focus(self, nav: MainScreenNavigation) -> None:
         node = MagicMock()

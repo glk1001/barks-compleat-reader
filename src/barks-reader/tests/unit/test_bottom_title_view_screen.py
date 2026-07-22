@@ -267,6 +267,18 @@ class TestBottomTitleViewNav(ScreenFixtureBase):
 
         assert self.screen._nav_focused_widget is self.screen.ids.title_show_button
 
+    def test_enter_nav_focus_at_portal_targets_portal_during_fade(self) -> None:
+        # Enter on a title restarts the panel fade (opacity 0) and may carry a remembered
+        # widget; the read gesture must still land squarely on the portal, not the eye.
+        self.screen.ids.bottom_view_box.opacity = 0
+        self.screen._last_nav_focused_widget = self.screen.ids.wiki_page_button
+
+        self.screen.enter_nav_focus_at_portal(MagicMock())
+
+        assert self.screen._nav_focused_widget is self.screen.ids.title_portal_image_button
+        (widgets, focused_idx, _group), _ = self.mock_update_focus.call_args
+        assert widgets[focused_idx] is self.screen.ids.title_portal_image_button
+
     def test_up_cycles_through_widgets_and_wraps(self) -> None:
         self._make_all_widgets_visible()
         self.screen.enter_nav_focus(MagicMock())

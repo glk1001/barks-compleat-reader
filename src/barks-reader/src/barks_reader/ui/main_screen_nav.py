@@ -67,7 +67,6 @@ class MainScreenNavigation:
         screens: ScreenBundle,
         tree_view_manager: TreeViewManager,
         bottom_base_view_screen: Screen,
-        on_title_activated: Callable[[], None],
         enter_menu_mode: Callable[[], None],
         handle_menu_key: Callable[[int], bool],
         is_in_menu_mode: Callable[[], bool],
@@ -88,7 +87,6 @@ class MainScreenNavigation:
         self._search_screen = screens.search
         self._search_screen.on_request_nav_focus = self._claim_bottom_focus_for_search
         self._bottom_base_view_screen = bottom_base_view_screen
-        self._on_title_activated = on_title_activated
         self._enter_menu_mode = enter_menu_mode
         self._handle_menu_key = handle_menu_key
         self._is_in_menu_mode = is_in_menu_mode
@@ -348,9 +346,21 @@ class MainScreenNavigation:
         # node; Down then reaches the first child of a newly opened parent.
         self._tree_view_manager.activate_node(selected)
         if isinstance(selected, TitleTreeViewNode):
-            self._on_title_activated()
+            # Enter on a title moves focus into the bottom title panel, landing on the
+            # portal (the read action); a second Enter there opens the comic reader.
+            # Deferred a frame so the panel render from activate_node settles first.
+            Clock.schedule_once(lambda _dt: self._enter_title_view_focus_at_portal(), 0)
         elif self._search_screen.is_visible:
             Clock.schedule_once(lambda _dt: self.enter_bottom_focus(), 0)
+
+    def _enter_title_view_focus_at_portal(self) -> None:
+        """Enter bottom focus on the title panel with the portal (read action) focused."""
+        if not self._bottom_title_view_screen.is_visible:
+            return
+        self._auto_exited_bottom_focus = False
+        self._focus_region = _FocusRegion.BOTTOM
+        self._update_bottom_focus_highlight()
+        self._bottom_title_view_screen.enter_nav_focus_at_portal(self.exit_bottom_focus)
 
     def _tree_nav_collapse_to_parent(self) -> None:
         selected = self._tree_view_screen.get_selected_node()
