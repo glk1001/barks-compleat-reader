@@ -115,6 +115,17 @@ class TestNoticeErrors:
         assert pres.title == "Fantagraphics Volumes Missing"
         assert "volumes '12, 13' are missing" in pres.text
 
+    def test_many_missing_volumes_collapse_into_ranges(self, reader_settings: MagicMock) -> None:
+        # Runs of 3+ consecutive volumes collapse; a lone pair stays listed.
+        error_info = ErrorInfo(missing_volumes=[1, 2, 3, 4, 5, 6, 8, 20, 21])
+
+        pres = build_error_presentation(
+            ErrorTypes.MissingArchiveVolumes, error_info, reader_settings
+        )
+
+        assert pres.title == "Fantagraphics Volumes Missing"
+        assert "volumes '1-6, 8, 20, 21' are missing" in pres.text
+
     def test_cannot_show_title(self, reader_settings: MagicMock) -> None:
         error_info = ErrorInfo(missing_volumes=[7], title=_A_TITLE)
 

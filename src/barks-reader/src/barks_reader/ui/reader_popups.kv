@@ -51,7 +51,9 @@
                 bold: bool(root.bg_image_source)
                 outline_color: (0, 0, 0, 1)
                 outline_width: dp(1) if root.bg_image_source else 0
-                size: self.texture_size
+                # Constrain the text box to the label's size so long messages
+                # (e.g. a big missing-volumes list) wrap instead of overflowing.
+                text_size: self.size
                 halign: root.msg_halign
                 valign: 'middle'
                 size_hint: 0.7, 0.9

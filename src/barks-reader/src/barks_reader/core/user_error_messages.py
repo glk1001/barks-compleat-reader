@@ -204,6 +204,50 @@ def _build_too_many_archive_files(
     )
 
 
+# A run of this many or more consecutive volumes collapses to "first-last".
+_MIN_RUN_TO_COLLAPSE = 3
+
+
+def _format_volume_list(volumes: list[int]) -> str:
+    """Collapse a list of volume numbers into compact, comma-separated ranges.
+
+    Consecutive runs of three or more numbers become ``first-last`` (e.g.
+    ``[1, 2, 3, 4]`` -> ``"1-4"``); shorter runs are listed individually. This
+    keeps the missing-volumes notice readable when many volumes are absent.
+
+    Args:
+        volumes: The volume numbers to format (any order; sorted internally).
+
+    Returns:
+        The collapsed, comma-separated string (empty if *volumes* is empty).
+
+    """
+    if not volumes:
+        return ""
+
+    ordered = sorted(volumes)
+    parts: list[str] = []
+    run_start = ordered[0]
+    prev = ordered[0]
+
+    def _flush(start: int, end: int) -> None:
+        if end - start + 1 >= _MIN_RUN_TO_COLLAPSE:
+            parts.append(f"{start}-{end}")
+        else:
+            parts.extend(str(n) for n in range(start, end + 1))
+
+    for n in ordered[1:]:
+        if n == prev + 1:
+            prev = n
+            continue
+        _flush(run_start, prev)
+        run_start = n
+        prev = n
+    _flush(run_start, prev)
+
+    return ", ".join(parts)
+
+
 def _build_missing_volumes(
     error_info: ErrorInfo | None,
     _reader_settings: ReaderSettings,
@@ -213,7 +257,7 @@ def _build_missing_volumes(
     assert error_info is not None
     assert error_info.missing_volumes is not None
 
-    missing_volumes_str = ", ".join(map(str, error_info.missing_volumes))
+    missing_volumes_str = _format_volume_list(error_info.missing_volumes)
     if len(error_info.missing_volumes) == 1:
         title = "Fantagraphics Volume Missing"
         text = (
