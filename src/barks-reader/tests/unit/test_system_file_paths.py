@@ -36,8 +36,8 @@ class TestSystemFilePaths:
         path = sys_paths.get_barks_reader_fantagraphics_overrides_root_dir()
         assert isinstance(path, Path)
 
-    def test_get_about_background_path(self, sys_paths: SystemFilePaths) -> None:
-        path = sys_paths.get_about_background_path()
+    def test_get_app_identity_image_path(self, sys_paths: SystemFilePaths) -> None:
+        path = sys_paths.get_app_identity_image_file()
         assert isinstance(path, Path)
 
     def test_icon_getters(self, sys_paths: SystemFilePaths) -> None:

@@ -2,10 +2,9 @@ from pathlib import Path
 
 from loguru import logger
 
-# The app's identity image: shown behind the quit-confirmation popup and also part
-# of the random reader-icon pool that can appear in the action-bar icon button. It
-# is a guaranteed asset, so it is validated by the required-files check.
-APP_IDENTITY_ICON_FILENAME = "The Rabbit's Foot-1-1.png"
+# The app's identity image: shown behind the quit-confirmation popup and about
+# popup. It is a guaranteed asset, so it is validated by the required-files check.
+_APP_IDENTITY_IMAGE_FILENAME = "app-identity-image.png"
 
 
 class SystemFilePaths:
@@ -18,7 +17,6 @@ class SystemFilePaths:
         self._indexes_dir: Path | None = None
         self._error_background_path: Path | None = None
         self._success_background_path: Path | None = None
-        self._about_background_path: Path | None = None
 
         self._action_bar_icons_dir: Path | None = None
         self._close_icon_path: Path | None = None
@@ -39,7 +37,7 @@ class SystemFilePaths:
         self._goto_title_icon_path: Path | None = None
         self._hamburger_menu_icon_path: Path | None = None
 
-        self._app_identity_icon_path: Path | None = None
+        self._app_identity_image_path: Path | None = None
 
         self._speech_bubble_icon_path: Path | None = None
         self._eye_open_icon_path: Path | None = None
@@ -71,7 +69,6 @@ class SystemFilePaths:
         self._app_window_icon_path = various_files_dir / "app-icon.png"
         self._error_background_path = various_files_dir / "error-background.png"
         self._success_background_path = various_files_dir / "success-background.png"
-        self._about_background_path = various_files_dir / "about-background.png"
 
         action_bar_icons_dir = reader_icon_files_dir / "ActionBar Icons"
         self._action_bar_icons_dir = action_bar_icons_dir
@@ -93,8 +90,7 @@ class SystemFilePaths:
         self._goto_title_icon_path = action_bar_icons_dir / "icon-goto-title.png"
         self._hamburger_menu_icon_path = action_bar_icons_dir / "menu-hamburger-icon.png"
 
-        self._app_identity_icon_path = reader_icon_files_dir / APP_IDENTITY_ICON_FILENAME
-
+        self._app_identity_image_path = various_files_dir / _APP_IDENTITY_IMAGE_FILENAME
         self._speech_bubble_icon_path = various_files_dir / "speech-bubble-icon.png"
         self._eye_open_icon_path = various_files_dir / "icon-eye-open.png"
         self._eye_off_icon_path = various_files_dir / "icon-eye-off.png"
@@ -138,7 +134,6 @@ class SystemFilePaths:
             self._app_window_icon_path,
             self._error_background_path,
             self._success_background_path,
-            self._about_background_path,
             self._close_icon_path,
             self._collapse_icon_path,
             self._refresh_arrow_icon_path,
@@ -156,7 +151,7 @@ class SystemFilePaths:
             self._goto_title_icon_path,
             self._hamburger_menu_icon_path,
             self._go_back_icon_path,
-            self._app_identity_icon_path,
+            self._app_identity_image_path,
             self._speech_bubble_icon_path,
             self._up_arrow_path,
             self._down_arrow_path,
@@ -216,10 +211,6 @@ class SystemFilePaths:
         assert self._error_background_path
         return self._error_background_path
 
-    def get_about_background_path(self) -> Path:
-        assert self._about_background_path
-        return self._about_background_path
-
     def get_success_background_path(self) -> Path:
         assert self._success_background_path
         return self._success_background_path
@@ -244,15 +235,13 @@ class SystemFilePaths:
         assert self._down_arrow_path
         return self._down_arrow_path
 
-    def get_app_identity_icon_file(self) -> Path:
-        """Return the app's identity image (see ``APP_IDENTITY_ICON_FILENAME``).
+    def get_app_identity_image_file(self) -> Path:
+        """Return the app's identity image (see ``_APP_IDENTITY_IMAGE_FILENAME``).
 
-        Shown behind the quit-confirmation popup and also part of the random
-        reader-icon pool. It is a guaranteed asset (validated by the required-files
-        check), so callers need not test for its presence.
+        Shown behind the quit-confirmation popup and about popups.
         """
-        assert self._app_identity_icon_path
-        return self._app_identity_icon_path
+        assert self._app_identity_image_path
+        return self._app_identity_image_path
 
     def get_barks_reader_close_icon_file(self) -> Path:
         assert self._close_icon_path

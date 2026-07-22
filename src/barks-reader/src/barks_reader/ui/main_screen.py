@@ -336,7 +336,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             ok_text="Quit",
             cancel_text="Stay",
             on_ok=app.close_app,
-            bg_image=str(self._reader_settings.sys_file_paths.get_app_identity_icon_file()),
+            bg_image=str(self._reader_settings.sys_file_paths.get_app_identity_image_file()),
         )
 
     def app_closing(self) -> None:
@@ -489,7 +489,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
     def open_about(self) -> None:
         show_about_box(
             self._font_manager,
-            self._reader_settings.sys_file_paths.get_about_background_path(),
+            self._reader_settings.sys_file_paths.get_app_identity_image_file(),
         )
 
     def _update_action_bar_visibility(self) -> None:

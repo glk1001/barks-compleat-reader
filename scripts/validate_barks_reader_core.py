@@ -340,7 +340,7 @@ def phase2_system_file_paths(
         ("app_window_icon_path", sys_paths._app_window_icon_path),  # noqa: SLF001
         ("error_background_path", sys_paths._error_background_path),  # noqa: SLF001
         ("success_background_path", sys_paths._success_background_path),  # noqa: SLF001
-        ("about_background_path", sys_paths._about_background_path),  # noqa: SLF001
+        ("app_identity_image_path", sys_paths._app_identity_image_path),  # noqa: SLF001
         ("close_icon_path", sys_paths._close_icon_path),  # noqa: SLF001
         ("collapse_icon_path", sys_paths._collapse_icon_path),  # noqa: SLF001
         ("refresh_arrow_icon_path", sys_paths._refresh_arrow_icon_path),  # noqa: SLF001
