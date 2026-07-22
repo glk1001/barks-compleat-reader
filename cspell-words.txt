@@ -60,6 +60,7 @@ getpid
 getpixel
 graphify
 hardbreak
+headlessly
 hidinput
 hitbox
 hyphenatable
@@ -81,6 +82,7 @@ letterboxing
 lfs
 libx
 licence
+linkify
 lita
 llm
 llvmpipe
@@ -102,6 +104,7 @@ numpad
 okf
 organised
 passthroughs
+pdfs
 pil
 pnginfo
 ppid
@@ -121,6 +124,7 @@ screenmanager
 sdl
 selftest
 separator
+soffice
 softbreak
 splittable
 srce

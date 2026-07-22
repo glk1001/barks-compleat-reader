@@ -1,0 +1,96 @@
+/* Text-only theme for the how-to PDF pages (scripts/generate_how_to_pdfs.py).
+ *
+ * Pages render on a TRANSPARENT background so each PDF can be dropped into the
+ * GIMP how-to project as the text layer over the Barks background art. Every
+ * visual choice lives here — edit freely; no Python changes needed.
+ *
+ * Page size 2120x3200 px matches the existing GIMP background layers. Import
+ * the PDFs into GIMP at 96 DPI to land on exactly 2120x3200 px.
+ */
+
+@page {
+    size: 2120px 3200px;          /* portrait; == 2120x3200 px when imported at 96 DPI */
+    margin: 150px 150px 170px;    /* top/bottom  left/right */
+}
+
+html,
+body {
+    background: transparent;      /* text only — no page fill, for the GIMP overlay */
+    color: #1a1a1a;
+    font-family: "Liberation Serif", "DejaVu Serif", Georgia, serif;
+    font-size: 34px;
+    line-height: 1.5;
+}
+
+h1 {
+    text-align: center;
+    font-size: 82px;
+    line-height: 1.1;
+    margin: 0 0 46px;
+}
+
+h2 {
+    font-size: 56px;
+    margin: 44px 0 18px;
+}
+
+h3 {
+    font-size: 40px;
+    margin: 30px 0 14px;
+}
+
+p {
+    margin: 0 0 18px;
+}
+
+ul {
+    margin: 0 0 18px;
+    padding-left: 1.3em;
+}
+
+li {
+    margin: 0 0 8px;
+}
+
+/* Rules from the markdown's `---` separators. */
+hr {
+    border: none;
+    border-top: 3px solid #1a1a1a;
+    margin: 34px 0;
+}
+
+/* Inline action-bar icons. Scale them to text height so they read as glyphs,
+ * overriding the small width/height="15" attributes in the markdown. */
+img {
+    height: 1.05em;
+    width: auto;
+    vertical-align: -0.16em;
+}
+
+code {
+    font-family: "DejaVu Sans Mono", monospace;
+    font-size: 0.9em;
+}
+
+/* Settings table. */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 22px 0;
+}
+
+th,
+td {
+    text-align: left;
+    vertical-align: top;
+    padding: 10px 18px 10px 0;
+}
+
+th {
+    border-bottom: 3px solid #1a1a1a;
+    padding-bottom: 12px;
+}
+
+td {
+    border-bottom: 1px solid #b8b8b8;
+}

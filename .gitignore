@@ -3,6 +3,10 @@
 
 # Project-specific
 build/
+# Intermediate PDFs from scripts/generate_how_to_pdfs.py and generate_intro_pdf.py
+# (fed into GIMP).
+docs/how-to-pdfs/
+docs/intro-pdf/
 # Standalone executables produced by scripts/build.sh (Nuitka output:
 # onefile binaries on Linux/Windows, zipped .app bundles on macOS).
 /barks-reader-linux
