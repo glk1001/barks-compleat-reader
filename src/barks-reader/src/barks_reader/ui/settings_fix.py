@@ -4,6 +4,7 @@ from kivy.clock import Clock
 from kivy.factory import Factory
 from kivy.input import MotionEvent
 from kivy.lang import Builder
+from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     NumericProperty,
@@ -458,6 +459,21 @@ class SettingLongPath(SettingItem):
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
         self.bind(on_release=self._create_popup)
+
+    def on_kv_post(self, base_widget) -> None:  # noqa: ANN001, ARG002
+        """Hug the value to the title for this (only) long-path row.
+
+        The shared ``<-SettingItem>`` rule gives every row a 60/40 title/value
+        split, which for the short "Fantagraphics Directory" title leaves a wide
+        gap before the value and squeezes the path into 40% (so it shortens).
+        Here we shrink the title column to just fit its text/description and let
+        the value ``content`` box (the only remaining size-hinted sibling) expand
+        to fill the rest, so the path sits next to the title and stays readable.
+        """
+        label = self.ids.get("labellayout")
+        if label is not None:
+            label.size_hint_x = None
+            label.width = dp(310)
 
     def update_setting_value(self, new_path: str) -> None:
         """Update the setting with a new path value."""
