@@ -227,7 +227,7 @@ class TestComicBookReader:
         mock_render.assert_called_once_with(3, None)
         reader._comic_book_loader.cursor.set_busy.assert_not_called()
 
-    def test_show_page_shows_loading_and_polls_when_not_loaded(
+    def test_show_page_keeps_current_page_and_polls_when_not_loaded(
         self, reader: ComicBookReader
     ) -> None:
         self._stub_current_page(reader, 3)
@@ -243,7 +243,9 @@ class TestComicBookReader:
         ):
             reader._show_page(None, None)
 
-        mock_loading.assert_called_once()
+        # The current page stays on screen (no blank loading-page flash); the busy
+        # cursor + poll signal the wait instead.
+        mock_loading.assert_not_called()
         reader._comic_book_loader.cursor.set_busy.assert_called_once()
         reader._comic_book_loader.prioritize_page.assert_called_once_with(3)
         mock_sched.assert_called_once()

@@ -584,9 +584,11 @@ class ComicBookReader(FloatLayout):
             self._render_page(left_idx, right_idx)
             return
 
-        # Page not loaded yet: give feedback and wait without blocking the UI thread.
-        logger.info(f"Page index {self._current_page_index} not loaded yet; showing loading page.")
-        self._show_loading_page()
+        # Page not loaded yet: keep the current page on screen with a busy cursor
+        # (rather than flashing a blank loading page) and wait without blocking the
+        # UI thread. _render_page swaps to the new page once it is ready. The initial
+        # comic open has no current page, so read_comic shows the loading page there.
+        logger.info(f"Page index {self._current_page_index} not loaded yet; awaiting load.")
         self._comic_book_loader.cursor.set_busy()
         self._prioritize_pending(left_idx, right_idx)
         self._start_pending_poll()
