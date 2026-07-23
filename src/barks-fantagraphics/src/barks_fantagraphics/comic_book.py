@@ -17,6 +17,7 @@ from loguru import logger
 from .barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from .comic_book_info import (
     FILENAME_TO_TITLE_SPECIAL_CASE_MAP,
+    is_covers_collection,
     is_one_pager_collection,
 )
 from .comics_consts import (
@@ -410,12 +411,12 @@ class ComicBook:
             if srce_restored_file.is_file():
                 return srce_restored_file, ModifiedType.ORIGINAL
 
-            if is_one_pager_collection(self.fanta_info.comic_book_info.title):
-                # An unrestored one-pager legitimately has no restored file yet - fall
-                # back to its staged fixes file (the original scan).
+            if self._is_synthetic_collection():
+                # An unrestored collection page legitimately has no restored file yet -
+                # fall back to its staged fixes file (the original scan).
                 logger.warning(
                     f'No restored file "{get_abbrev_path(srce_restored_file)}" for'
-                    f" one-pager collection page {page_num} - falling back to the fixes file.",
+                    f" collection page {page_num} - falling back to the fixes file.",
                 )
                 srce_file, mod_type = self.get_final_srce_original_story_file(page_num, page_type)
                 if srce_file.is_file():
@@ -500,13 +501,19 @@ class ComicBook:
     def _is_edited_fixes_special_case(self, page_num: str) -> bool:
         return bool(self.fanta_book.volume == 16 and page_num == "209")  # noqa: PLR2004
 
+    def _is_synthetic_collection(self) -> bool:
+        """Return whether this comic is a synthetic collection with staged extra pages."""
+        title = self.fanta_info.comic_book_info.title
+        return is_one_pager_collection(title) or is_covers_collection(title)
+
     def _is_added_fixes_special_case(self, page_num: str, page_type: PageType) -> bool:
         if self.is_fixes_special_case_added(self.fanta_book.volume, page_num):
             return True
-        if is_one_pager_collection(self.fanta_info.comic_book_info.title):
-            # The synthetic "All One-Pagers" collection's pages are staged as FANTA_01
-            # "extra" (ADDED) fixes. Allow ADDED for them so upscayl/restore can build
-            # one-pagers that aren't already part of another comic.
+        if self._is_synthetic_collection():
+            # The synthetic collections' pages ("All One-Pagers" in FANTA_01, "All
+            # Covers" in FANTA_02) are staged as "extra" (ADDED) fixes. Allow ADDED for
+            # them so upscayl/restore can build pages that aren't already part of
+            # another comic.
             return True
         if self.get_ini_title() in CENSORED_TITLES:
             return page_type == PageType.BODY

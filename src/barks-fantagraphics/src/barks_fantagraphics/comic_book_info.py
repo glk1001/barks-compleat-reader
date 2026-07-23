@@ -762,6 +762,8 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.CAPTAINS_OUTRAGEOUS, True, Issues.HDL, 25, 3, 1974, 30, 3, 1973),
     # Synthetic "All One-Pagers" collection - bundles every one-pager into one comic.
     ComicBookInfo(Titles.ALL_ONE_PAGERS, True, Issues.EXTRAS, 1, 1, 1982, 1, 1, 1982),
+    # Synthetic "All Covers" collection - bundles every located cover into one comic.
+    ComicBookInfo(Titles.ALL_COVERS, True, Issues.EXTRAS, 2, 1, 1982, 1, 1, 1982),
     # Not comics below!
     ComicBookInfo(Titles.GEORGE_LUCAS___AN_APPRECIATION, False, Issues.EXTRAS, 1, 1, 1983, 1, 1, 1983),
     ComicBookInfo(Titles.RICH_TOMMASO___ON_COLORING_BARKS, False, Issues.EXTRAS, 1, 1, 2011, 1, 1, 2011),
@@ -1228,6 +1230,11 @@ def is_one_pager_collection(title: Titles) -> bool:
     return title == Titles.ALL_ONE_PAGERS
 
 
+def is_covers_collection(title: Titles) -> bool:
+    """Return whether a title is the synthetic "All Covers" collection."""
+    return title == Titles.ALL_COVERS
+
+
 # Page number of the first one-pager within the collection's nominal volume
 # (FANTA_01). Chosen well above any real Fantagraphics volume's page count so the
 # pre-baked "extra" pages never collide with real volume pages or fixes.
@@ -1303,6 +1310,7 @@ NON_COMIC_TITLES = [
 # of NON_COMIC_TITLES to avoid the article-routing/display semantics attached to it.)
 SYNTHETIC_TITLES = [
     Titles.ALL_ONE_PAGERS,
+    Titles.ALL_COVERS,
 ]
 
 BARKS_ISSUE_DICT: dict[str, list[Titles]] = {

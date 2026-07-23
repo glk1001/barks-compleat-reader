@@ -4,9 +4,11 @@ import io
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
+from barks_fantagraphics.barks_covers import get_cover_display_title, get_located_covers
 from barks_fantagraphics.comic_book_info import (
     get_located_one_pagers,
     get_one_pager_display_title,
+    is_covers_collection,
     is_one_pager_collection,
 )
 from barks_fantagraphics.comics_consts import PageType
@@ -58,6 +60,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from barks_build_comic_images.build_comic_images import ComicBookImageBuilder
+    from barks_fantagraphics.barks_covers import BarksCover
     from barks_fantagraphics.barks_titles import Titles
     from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
     from comic_utils.comic_consts import PanelPath
@@ -302,10 +305,13 @@ class ComicBookReader(FloatLayout):
         self._current_title_str = ""
         self.action_bar_title = ""
 
-        # When reading the "All One-Pagers" collection, the window title tracks the
-        # one-pager on the current page (updated per page turn in _show_page).
+        # When reading the "All One-Pagers" or "All Covers" collection, the window
+        # title tracks the item on the current page (updated per page turn in
+        # _show_page).
         self._is_one_pager_collection = False
         self._collection_one_pagers: list[Titles] = []
+        self._is_covers_collection = False
+        self._collection_covers: list[BarksCover] = []
 
         self._add_reader_widgets()
 
@@ -420,22 +426,24 @@ class ComicBookReader(FloatLayout):
 
         self._current_title_str = self.get_reader_comic_title(fanta_info)
 
-        # For the "All One-Pagers" collection the window title is per-page (set in
-        # _show_page); for everything else it is the comic's title, set once here.
+        # For the collections the window title is per-page (set in _show_page); for
+        # everything else it is the comic's title, set once here.
         self._is_one_pager_collection = is_one_pager_collection(fanta_info.comic_book_info.title)
         self._collection_one_pagers = (
             get_located_one_pagers() if self._is_one_pager_collection else []
         )
+        self._is_covers_collection = is_covers_collection(fanta_info.comic_book_info.title)
+        self._collection_covers = get_located_covers() if self._is_covers_collection else []
 
         self._all_loaded = False
         self._goto_page_dropdown = None
         self._page_manager.reset_current_page_index()
         self.action_bar_title = get_action_bar_title(self._font_manager, self._current_title_str)
 
-        # The "All One-Pagers" collection is always single-page: each page is a
-        # separate gag, so a two-page spread would pair unrelated one-pagers.
+        # The collections are always single-page: each page is a separate gag or
+        # cover, so a two-page spread would pair unrelated items.
         self._page_manager.double_page_mode = (
-            False if self._is_one_pager_collection else self._reader_settings.double_page_mode
+            False if self.is_single_page_only_collection else self._reader_settings.double_page_mode
         )
         self._page_manager.set_page_map(page_map, page_to_first_goto)
 
@@ -523,6 +531,19 @@ class ComicBookReader(FloatLayout):
         title = get_one_pager_display_title(one_pager)
         self.action_bar_title = get_action_bar_title(self._font_manager, title)
 
+    def _set_cover_action_bar_title(self, page_str: str) -> None:
+        """Set the window title to the cover shown on the collection's *page_str*.
+
+        Collection display pages are ``1..N`` in ``get_located_covers()`` order,
+        so page ``N`` maps to ``self._collection_covers[N - 1]``.
+        """
+        try:
+            cover = self._collection_covers[int(page_str) - 1]
+        except (ValueError, IndexError):
+            return
+        title = get_cover_display_title(cover)
+        self.action_bar_title = get_action_bar_title(self._font_manager, title)
+
     def _show_page(self, _instance: Widget | None, _value: str | None) -> None:
         """Display the image for the current_page_index."""
         if self._current_page_index == -1:
@@ -537,6 +558,8 @@ class ComicBookReader(FloatLayout):
 
         if self._is_one_pager_collection:
             self._set_one_pager_action_bar_title(page_str)
+        elif self._is_covers_collection:
+            self._set_cover_action_bar_title(page_str)
 
         display_unit = self._page_manager.get_current_display_unit()
         if display_unit is not None and self._page_manager.double_page_mode:
@@ -598,6 +621,11 @@ class ComicBookReader(FloatLayout):
         """Whether the comic currently being read is the All One-Pagers collection."""
         return self._is_one_pager_collection
 
+    @property
+    def is_single_page_only_collection(self) -> bool:
+        """Whether the current comic is a collection that is always single-page."""
+        return self._is_one_pager_collection or self._is_covers_collection
+
     def next_page(self) -> None:
         self._page_manager.next_page()
 
@@ -606,8 +634,8 @@ class ComicBookReader(FloatLayout):
 
     def toggle_double_page_mode(self) -> None:
         """Toggle double-page mode on/off for the current comic only (does not change config)."""
-        if self._is_one_pager_collection:
-            # The one-pager collection is always single-page - ignore the toggle.
+        if self.is_single_page_only_collection:
+            # The collections are always single-page - ignore the toggle.
             return
         self._page_manager.double_page_mode = not self._page_manager.double_page_mode
         self._show_page(None, None)
@@ -934,7 +962,9 @@ class ComicBookReaderScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         """
         button = self.ids.double_page_button
         button.opacity = (
-            self._GREYED_BUTTON_OPACITY if self.comic_book_reader.is_one_pager_collection else 1.0
+            self._GREYED_BUTTON_OPACITY
+            if self.comic_book_reader.is_single_page_only_collection
+            else 1.0
         )
 
         if self.comic_book_reader.double_page_mode:

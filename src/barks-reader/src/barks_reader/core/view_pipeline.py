@@ -28,6 +28,7 @@ from barks_fantagraphics.comics_utils import get_abbrev_path
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
     ALL_LISTS,
+    SERIES_COVERS,
     SERIES_CS,
     SERIES_DDA,
     SERIES_DDS,
@@ -176,6 +177,7 @@ class ViewPipeline:
         ViewStates.ON_GG_NODE: SERIES_GG,
         ViewStates.ON_MISC_NODE: SERIES_MISC,
         ViewStates.ON_ONE_PAGERS_NODE: SERIES_ONE_PAGERS,
+        ViewStates.ON_COVERS_NODE: SERIES_COVERS,
     }
 
     _SEARCH_VIEW_STATES: ClassVar[set[ViewStates]] = {

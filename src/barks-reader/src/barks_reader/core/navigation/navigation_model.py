@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 from barks_fantagraphics.comic_book_info import NON_COMIC_TITLES
 from barks_fantagraphics.fanta_comics_info import (
+    SERIES_COVERS,
     SERIES_CS,
     SERIES_DDA,
     SERIES_DDS,
@@ -79,6 +80,7 @@ _SERIES_TO_VIEW_STATE: dict[str, ViewStates] = {
     SERIES_GG: ViewStates.ON_GG_NODE,
     SERIES_MISC: ViewStates.ON_MISC_NODE,
     SERIES_ONE_PAGERS: ViewStates.ON_ONE_PAGERS_NODE,
+    SERIES_COVERS: ViewStates.ON_COVERS_NODE,
 }
 
 

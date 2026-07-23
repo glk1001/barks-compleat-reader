@@ -17,6 +17,7 @@ from barks_fantagraphics.barks_tags import (
     get_tag_titles,
 )
 from barks_fantagraphics.fanta_comics_info import (
+    SERIES_COVERS,
     SERIES_CS,
     SERIES_ONE_PAGERS,
     SERIES_USA,
@@ -160,9 +161,10 @@ class TestStoriesSubtree:
             for spec in series.children
         ]
 
-        assert len(series.children) == 8
+        assert len(series.children) == 9
         assert all(isinstance(spec.destination, SeriesDestination) for spec in series.children)
         assert SERIES_ONE_PAGERS in series_names
+        assert SERIES_COVERS in series_names
 
     def test_cs_and_us_series_split_into_year_ranges(self, specs: tuple[NodeSpec, ...]) -> None:
         series = specs[1].children[1]

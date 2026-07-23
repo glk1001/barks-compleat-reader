@@ -19,6 +19,7 @@ import pytest
 from barks_fantagraphics.barks_tags import TagCategories, TagGroups, Tags
 from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.fanta_comics_info import (
+    SERIES_COVERS,
     SERIES_CS,
     SERIES_DDA,
     SERIES_DDS,
@@ -186,6 +187,7 @@ def test_keep_top_view_for_title_under(
         (SERIES_GG, ViewStates.ON_GG_NODE),
         (SERIES_MISC, ViewStates.ON_MISC_NODE),
         (SERIES_ONE_PAGERS, ViewStates.ON_ONE_PAGERS_NODE),
+        (SERIES_COVERS, ViewStates.ON_COVERS_NODE),
     ],
 )
 def test_view_state_for_series(

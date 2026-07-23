@@ -54,6 +54,7 @@ from .fanta_series_info import (  # noqa: F401
     MARJ,
     NEA,
     RTOM,
+    SERIES_COVERS,
     SERIES_CS,
     SERIES_DDA,
     SERIES_DDS,
@@ -274,6 +275,7 @@ SERIES_INFO_START_NUMBERS: dict[str, int] = {
     SERIES_MISC: 1,
     SERIES_EXTRAS: 1,
     SERIES_ONE_PAGERS: 1,
+    SERIES_COVERS: 1,
 }
 
 US_CENSORED_TITLE_ENUMS = [Titles.SILENT_NIGHT, Titles.MILKMAN_THE]

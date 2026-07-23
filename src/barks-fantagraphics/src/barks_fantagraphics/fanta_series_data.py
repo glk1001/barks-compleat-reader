@@ -46,6 +46,7 @@ from .fanta_series_info import (
     MARJ,
     NEA,
     RTOM,
+    SERIES_COVERS,
     SERIES_CS,
     SERIES_DDA,
     SERIES_DDS,
@@ -542,3 +543,13 @@ SERIES_INFO.extend(
     )
     for title in get_located_one_pagers()
 )
+
+# --- Covers -------------------------------------------------------------------
+# The synthetic "All Covers" collection bundles every *located* cover
+# (barks_covers.COVER_LOCATIONS) into one comic. Unlike the one-pagers, the covers
+# themselves are not Titles, so the collection is the only entry; it lives in its
+# own "Covers" series so it appears as a browsable node in the reader tree.
+#
+# The collection is pre-baked into a single nominal volume (FANTA_02), kept in sync
+# with data/story-titles/All Covers.ini's source_comic.
+SERIES_INFO.append(FantaSeriesInfo(Bt.ALL_COVERS, "", SERIES_COVERS, FANTA_02))

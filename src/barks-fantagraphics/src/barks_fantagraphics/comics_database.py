@@ -9,6 +9,7 @@ from pathlib import Path
 from comic_utils.comic_consts import JPG_FILE_EXT, PNG_FILE_EXT, PanelPath
 from loguru import logger
 
+from .barks_covers import get_cover_collection_pages
 from .barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from .comic_book import (
     INTRO_AUTHOR_DEFAULT_FONT_SIZE,
@@ -23,6 +24,7 @@ from .comic_book_info import (
     get_filename_from_title_str,
     get_one_pager_collection_pages,
     get_title_str_from_filename,
+    is_covers_collection,
     is_one_pager_collection,
 )
 from .comics_consts import (
@@ -525,6 +527,10 @@ def _build_comic_book(
         # pre-baked into this (nominal FANTA_01) volume's override + segments offline;
         # ONE_PAGER_LOCATIONS drives the page list (see get_one_pager_collection_pages).
         config_page_images = get_one_pager_collection_pages()
+    elif is_covers_collection(fanta_info.comic_book_info.title):
+        # Same scheme for the "All Covers" collection, pre-baked into the nominal
+        # FANTA_02 volume's override; COVER_LOCATIONS drives the page list.
+        config_page_images = get_cover_collection_pages()
     else:
         config_page_images = [
             OriginalPage(key, PageType[config["pages"][key]])

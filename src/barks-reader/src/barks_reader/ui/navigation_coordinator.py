@@ -16,10 +16,12 @@ from barks_fantagraphics.comic_book_info import (
     ONE_PAGERS,
     ComicBookInfo,
     get_one_pager_collection_page_num,
+    is_covers_collection,
 )
 from barks_fantagraphics.comics_database import TitleNotFoundError
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
+    SERIES_COVERS,
     SERIES_EXTRAS,
     SERIES_ONE_PAGERS,
     FantaComicBookInfo,
@@ -211,6 +213,13 @@ class NavigationCoordinator:
                 msg = f"No series node found for '{SERIES_ONE_PAGERS}'."
                 raise RuntimeError(msg)
             return one_pagers_node
+
+        if is_covers_collection(title):
+            covers_node = self._series_nodes.get(SERIES_COVERS)
+            if not covers_node:
+                msg = f"No series node found for '{SERIES_COVERS}'."
+                raise RuntimeError(msg)
+            return covers_node
 
         title_year_range = self._get_year_range_from_info(title_fanta_info)
         if title_year_range is None:

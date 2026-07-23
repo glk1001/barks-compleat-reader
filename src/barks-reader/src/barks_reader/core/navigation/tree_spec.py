@@ -31,6 +31,7 @@ from barks_fantagraphics.barks_titles import (
     Titles,
 )
 from barks_fantagraphics.fanta_comics_info import (
+    SERIES_COVERS,
     SERIES_CS,
     SERIES_DDA,
     SERIES_DDS,
@@ -315,6 +316,7 @@ class _SpecBuilder:
             SERIES_GG,
             SERIES_MISC,
             SERIES_ONE_PAGERS,
+            SERIES_COVERS,
         ]
 
     # --- Top-level nodes ---

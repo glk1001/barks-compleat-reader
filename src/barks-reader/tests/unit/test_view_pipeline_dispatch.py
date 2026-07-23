@@ -148,6 +148,20 @@ class TestTopViewSetters:
         args, _kwargs = _selector(pipeline).get_random_image.call_args
         assert args[0] is cs_titles
 
+    def test_set_top_view_image_for_covers_series_picks_from_covers_title_list(self) -> None:
+        pipeline = _make_pipeline()
+        from barks_fantagraphics.fanta_comics_info import SERIES_COVERS  # noqa: PLC0415
+
+        covers_titles = [MagicMock()]
+        _title_lists(pipeline)[SERIES_COVERS] = covers_titles
+        pipeline._view_state = ViewStates.ON_COVERS_NODE
+
+        pipeline._set_top_view_image_for_series()
+
+        _selector(pipeline).get_random_image.assert_called_once()
+        args, _kwargs = _selector(pipeline).get_random_image.call_args
+        assert args[0] is covers_titles
+
     def test_set_top_view_image_for_category_uses_good_neighbors_when_empty(self) -> None:
         pipeline = _make_pipeline()
         pipeline._current_category = ""

@@ -60,6 +60,7 @@ SERIES_GG = "Gyro Gearloose"
 SERIES_MISC = "Misc"
 SERIES_EXTRAS = "Extras"
 SERIES_ONE_PAGERS = "One Pagers"
+SERIES_COVERS = "Covers"
 
 RTOM = "Rich Tommaso"
 GLEA = "Gary Leach"

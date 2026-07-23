@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from barks_fantagraphics.barks_tags import BARKS_TAG_CATEGORIES_TITLES, TagCategories
 from barks_fantagraphics.comic_book_info import is_one_pager_collection
 from barks_fantagraphics.fanta_comics_info import (
+    SERIES_COVERS,
     SERIES_CS,
     SERIES_DDA,
     SERIES_DDS,
@@ -47,6 +48,7 @@ class FilteredTitleLists:
         self.cs_years = range(CS_YEAR_RANGES[0][0], CS_YEAR_RANGES[-1][1] + 1)
         self.us_years = range(US_YEAR_RANGES[0][0], US_YEAR_RANGES[-1][1] + 1)
         self.series_names = [
+            SERIES_COVERS,
             SERIES_CS,
             SERIES_DDA,
             SERIES_DDS,

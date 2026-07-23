@@ -498,6 +498,26 @@ class TestGetFinalSrceStoryFile:
         ):
             comic.get_final_srce_story_file("002", PageType.BODY)
 
+    def test_covers_collection_falls_back_to_fixes_file(self, tmp_path: Path) -> None:
+        # The "All Covers" collection uses the same staged-fixes fallback as the
+        # one-pager collection.
+        comic = _make_comic(base_dir=tmp_path)
+        fixes_file = comic.get_srce_original_fixes_image_dir() / "002.jpg"
+        fixes_file.parent.mkdir(parents=True, exist_ok=True)
+        fixes_file.touch()
+
+        with (
+            patch.object(comic.fanta_info.comic_book_info, "title", Titles.ALL_COVERS),
+            patch.object(
+                type(comic),
+                "get_ini_title",
+                return_value="Some Non-Hand-Restored Title",
+            ),
+        ):
+            path, mod = comic.get_final_srce_story_file("002", PageType.BODY)
+        assert path == fixes_file
+        assert mod == ModifiedType.ADDED
+
     def test_restorable_page_raises_when_jpg_found(self, tmp_path: Path) -> None:
         comic = _make_comic(base_dir=tmp_path)
         jpg_file = comic.get_srce_restored_image_dir() / "002.jpg"

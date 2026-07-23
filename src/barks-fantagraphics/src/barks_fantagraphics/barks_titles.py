@@ -1,6 +1,6 @@
 from enum import CONTINUOUS, UNIQUE, IntEnum, auto, verify
 
-NUM_TITLES = 684 + 4 + 1  # +4 for articles, +1 for the All One-Pagers collection
+NUM_TITLES = 684 + 4 + 2  # +4 for articles, +2 for the All One-Pagers and All Covers collections
 
 GYRO_GEARLOOSE = "Gyro Gearloose"
 
@@ -696,6 +696,8 @@ class Titles(IntEnum):
     CAPTAINS_OUTRAGEOUS = auto()
     # Synthetic collection (not a real Barks story) - bundles every one-pager.
     ALL_ONE_PAGERS = auto()
+    # Synthetic collection (not a real Barks story) - bundles every located cover.
+    ALL_COVERS = auto()
     # Not comics below!
     GEORGE_LUCAS___AN_APPRECIATION = auto()
     RICH_TOMMASO___ON_COLORING_BARKS = auto()
