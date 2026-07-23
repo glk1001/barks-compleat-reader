@@ -12,7 +12,9 @@ from barks_fantagraphics.barks_titles import (
 from barks_fantagraphics.comic_book_info import (
     BARKS_ISSUE_DICT,
     BARKS_TITLE_INFO,
+    COVERS,
     ComicBookInfo,
+    check_cover_submitted_order,
     check_story_submitted_order,
 )
 from barks_fantagraphics.comic_issues import SHORT_ISSUE_NAME, Issues
@@ -152,6 +154,12 @@ class TestBarksInfo:
         except Exception as e:
             pytest.fail(f"get_all_comic_book_info raised an unexpected exception: {e}")
 
+    def test_cover_submitted_order(self) -> None:
+        try:
+            check_cover_submitted_order(BARKS_TITLE_INFO)
+        except Exception as e:
+            pytest.fail(f"check_cover_submitted_order raised an unexpected exception: {e}")
+
 
 class TestCheckStorySubmittedOrder:
     def test_valid_order(self) -> None:
@@ -234,3 +242,60 @@ class TestCheckStorySubmittedOrder:
                 f"check_story_submitted_order raised an unexpected exception"
                 f" with day=-1 making dates equal: {e}",
             )
+
+
+class TestCheckCoverSubmittedOrder:
+    """Unit tests for the cover-only submitted-order check.
+
+    Only entries whose title is in COVERS_SET are validated, so synthetic rows
+    use real cover titles (`COVERS[i]`) with fabricated submitted dates.
+    """
+
+    @staticmethod
+    def _cover(i: int, day: int, month: int, year: int) -> ComicBookInfo:
+        return ComicBookInfo(COVERS[i], False, Issues.FC, i + 1, 1, 1948, day, month, year)
+
+    def test_valid_ascending(self) -> None:
+        data = [
+            self._cover(0, 1, 1, 1948),
+            self._cover(1, -1, 2, 1948),  # day -1 ok
+            self._cover(2, 15, 2, 1948),
+            self._cover(3, 1, 1, 1949),
+        ]
+        check_cover_submitted_order(data)  # no raise
+
+    def test_non_cover_entries_ignored(self) -> None:
+        # A non-cover entry out of order is ignored (Titles(0) is a real story).
+        data = [
+            self._cover(0, 1, 1, 1948),
+            ComicBookInfo(Titles(0), True, Issues.FC, 1, 1, 1930, 1, 1, 1930),
+            self._cover(1, 1, 2, 1948),
+        ]
+        check_cover_submitted_order(data)  # no raise
+
+    def test_invalid_month(self) -> None:
+        with pytest.raises(Exception, match="Invalid submission month: 13"):
+            check_cover_submitted_order([self._cover(0, 1, 13, 1948)])
+
+    def test_out_of_order_date_raises(self) -> None:
+        data = [self._cover(0, 15, 2, 1948), self._cover(1, 1, 2, 1948)]
+        with pytest.raises(Exception, match="Out of order submitted date"):
+            check_cover_submitted_order(data)
+
+    def test_undated_after_dated_passes(self) -> None:
+        data = [
+            self._cover(0, 1, 1, 1948),
+            self._cover(1, 1, 2, 1948),
+            self._cover(2, -1, -1, -1),  # undated, at the end
+            self._cover(3, -1, -1, -1),
+        ]
+        check_cover_submitted_order(data)  # no raise
+
+    def test_dated_after_undated_raises(self) -> None:
+        data = [
+            self._cover(0, 1, 1, 1948),
+            self._cover(1, -1, -1, -1),  # undated
+            self._cover(2, 1, 2, 1948),  # dated cover after undated -> error
+        ]
+        with pytest.raises(Exception, match="Dated cover appears after an undated cover"):
+            check_cover_submitted_order(data)
