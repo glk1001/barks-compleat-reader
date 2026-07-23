@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import queue
 import sys
 import threading
 import traceback
@@ -98,7 +99,12 @@ class ComicBookLoader:
         self._image_loaded_events: list[threading.Event] = []
         self._image_load_order: list[str] = []
         self._page_map: OrderedDict[str, PageInfo] = OrderedDict()
+        self._index_to_key: dict[int, str] = {}
         self._images: list[None | tuple[io.BytesIO, str]] = []
+
+        # Page keys the user has navigated to that should jump the prefetch queue.
+        # Written from the UI thread (prioritize_page), drained on the loader thread.
+        self._priority_keys: queue.SimpleQueue[str] = queue.SimpleQueue()
 
         self._stop = False
         self._current_comic_desc = ""
@@ -114,6 +120,11 @@ class ComicBookLoader:
         self._thread: threading.Thread | None = None
         self._max_worker_count = autotune_worker_count()
         logger.debug(f"Using {self._max_worker_count} as max worker threads (auto-tuned).")
+
+    @property
+    def cursor(self) -> Cursor:
+        """The cursor port used to signal busy/normal state to the UI."""
+        return self._cursor
 
     @property
     def empty_page_image(self) -> bytes:
@@ -241,6 +252,8 @@ class ComicBookLoader:
         self._image_source = image_source
         self._image_load_order = image_load_order
         self._page_map = page_map
+        self._index_to_key = {page_info.page_index: key for key, page_info in page_map.items()}
+        self._priority_keys = queue.SimpleQueue()
         self._current_comic_desc = archive_desc
         self._stop = False
 
@@ -300,6 +313,21 @@ class ComicBookLoader:
             return True
         assert 0 <= page_index < len(self._images)
         return self._image_loaded_events[page_index].wait(timeout)
+
+    def prioritize_page(self, page_index: int) -> None:
+        """Ask the background loader to fetch *page_index* next.
+
+        Used when the user navigates to a page that has not been prefetched yet
+        (e.g. paging backward, where pages load last). The page jumps to the front
+        of the prefetch queue so it loads as soon as a worker slot frees up, rather
+        than in its normal load-order position. A no-op if the page is already
+        loaded or the comic is not currently loading.
+        """
+        if not self._images or self._image_loaded_events[page_index].is_set():
+            return
+        load_key = self._index_to_key.get(page_index)
+        if load_key is not None:
+            self._priority_keys.put(load_key)
 
     def close_comic(self) -> None:
         """Stop loading and release all cached images."""
@@ -486,7 +514,33 @@ class ComicBookLoader:
 
         num_loaded = 0
         load_iter = iter(self._image_load_order)
+        submitted: set[str] = set()
         futures: dict[Future, int] = {}
+
+        def next_load_key() -> str | None:
+            """Return the next page key to load, honoring user navigation requests.
+
+            Priority requests (pages the user navigated to) jump ahead of the
+            normal prefetch order. Keys already submitted or loaded are skipped so
+            every page is still submitted exactly once.
+            """
+            while True:
+                try:
+                    key = self._priority_keys.get_nowait()
+                except queue.Empty:
+                    break
+                if key in submitted:
+                    continue
+                if self._image_loaded_events[self._page_map[key].page_index].is_set():
+                    submitted.add(key)
+                    continue
+                return key
+
+            for key in load_iter:
+                if key in submitted:
+                    continue
+                return key
+            return None
 
         # We'll keep a sliding window of futures up to prefetch_window in size.
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
@@ -496,11 +550,11 @@ class ComicBookLoader:
                 nonlocal dynamic_window
                 if len(futures) >= dynamic_window:
                     return False
-                try:
-                    load_key = next(load_iter)
-                except StopIteration:
+                load_key = next_load_key()
+                if load_key is None:
                     return False
 
+                submitted.add(load_key)
                 page_info = self._page_map[load_key]
                 fut = executor.submit(load_wrapper, page_info)
                 futures[fut] = page_info.page_index

@@ -207,6 +207,95 @@ class TestComicBookReader:
             reader._comic_book_loader.set_comic.assert_called()
             reader._on_comic_is_ready_to_read.assert_called()
 
+    @staticmethod
+    def _stub_current_page(reader: ComicBookReader, page_index: int) -> None:
+        """Point the reader at a single (non-double) page for _show_page tests."""
+        reader._page_manager = MagicMock()
+        reader._page_manager.get_current_page_index.return_value = page_index
+        reader._page_manager.get_current_page_str.return_value = str(page_index)
+        reader._page_manager.get_current_display_unit.return_value = None
+        reader._is_one_pager_collection = False
+        reader._is_covers_collection = False
+
+    def test_show_page_renders_immediately_when_loaded(self, reader: ComicBookReader) -> None:
+        self._stub_current_page(reader, 3)
+        reader._all_loaded = True  # ready fast-path
+
+        with patch.object(reader, "_render_page") as mock_render:
+            reader._show_page(None, None)
+
+        mock_render.assert_called_once_with(3, None)
+        reader._comic_book_loader.cursor.set_busy.assert_not_called()
+
+    def test_show_page_shows_loading_and_polls_when_not_loaded(
+        self, reader: ComicBookReader
+    ) -> None:
+        self._stub_current_page(reader, 3)
+        reader._all_loaded = False
+        reader._comic_book_loader.wait_load_event.return_value = False  # page not ready
+
+        handle = MagicMock()
+        with (
+            patch.object(reader, "_show_loading_page") as mock_loading,
+            patch.object(
+                barks_reader.ui.comic_book_reader.Clock, "schedule_interval", return_value=handle
+            ) as mock_sched,
+        ):
+            reader._show_page(None, None)
+
+        mock_loading.assert_called_once()
+        reader._comic_book_loader.cursor.set_busy.assert_called_once()
+        reader._comic_book_loader.prioritize_page.assert_called_once_with(3)
+        mock_sched.assert_called_once()
+        assert reader._pending_poll_ev is handle
+
+    def test_start_pending_poll_does_not_double_schedule(self, reader: ComicBookReader) -> None:
+        reader._pending_poll_ev = MagicMock()  # a poll is already running
+        with patch.object(
+            barks_reader.ui.comic_book_reader.Clock, "schedule_interval"
+        ) as mock_sched:
+            reader._start_pending_poll()
+        mock_sched.assert_not_called()
+
+    def test_poll_renders_and_finishes_when_page_ready(self, reader: ComicBookReader) -> None:
+        self._stub_current_page(reader, 3)
+        reader._all_loaded = False
+        reader._pending_poll_ev = MagicMock()
+        reader._comic_book_loader.wait_load_event.return_value = True  # ready now
+
+        with patch.object(reader, "_render_page") as mock_render:
+            keep_going = reader._poll_pending_page(0.05)
+
+        assert keep_going is False
+        mock_render.assert_called_once_with(3, None)
+
+    def test_poll_keeps_waiting_when_page_not_ready(self, reader: ComicBookReader) -> None:
+        self._stub_current_page(reader, 3)
+        reader._all_loaded = False
+        reader._pending_poll_ev = MagicMock()
+        reader._comic_book_loader.wait_load_event.return_value = False  # still loading
+
+        assert reader._poll_pending_page(0.05) is True
+
+    def test_poll_stops_when_comic_closed(self, reader: ComicBookReader) -> None:
+        reader._page_manager = MagicMock()
+        reader._page_manager.get_current_page_index.return_value = -1  # closed/reset
+        reader._pending_poll_ev = MagicMock()
+
+        assert reader._poll_pending_page(0.05) is False
+        assert reader._pending_poll_ev is None
+        reader._comic_book_loader.cursor.set_normal.assert_called_once()
+
+    def test_stop_pending_poll_cancels_and_restores_cursor(self, reader: ComicBookReader) -> None:
+        handle = MagicMock()
+        reader._pending_poll_ev = handle
+
+        reader._stop_pending_poll()
+
+        handle.cancel.assert_called_once()
+        assert reader._pending_poll_ev is None
+        reader._comic_book_loader.cursor.set_normal.assert_called_once()
+
     def test_on_touch_down_navigation(self, reader: ComicBookReader) -> None:
         # Setup navigation mock
         mock_nav = reader._navigation

@@ -13,7 +13,7 @@ from barks_fantagraphics.comic_book_info import (
 )
 from barks_fantagraphics.comics_consts import PageType
 from comic_utils.timing import Timing
-from kivy.clock import Clock
+from kivy.clock import Clock, ClockEvent
 from kivy.core.image import Image as CoreImage
 from kivy.core.image import Texture
 from kivy.core.window import Window, WindowBase
@@ -72,6 +72,11 @@ if TYPE_CHECKING:
 
     from .font_manager import FontManager
 
+
+# How often, while a not-yet-loaded page is being awaited, the reader re-checks
+# whether that page has finished loading (seconds). Small enough to feel instant,
+# large enough not to burn a frame budget while the loader thread works.
+PENDING_PAGE_POLL_INTERVAL_SECS = 0.05
 
 GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT = 0.97
 GOTO_PAGE_BUTTON_HEIGHT = dp(25)
@@ -328,6 +333,9 @@ class ComicBookReader(FloatLayout):
 
         self._all_loaded = False
         self._closed = False
+        # Kivy Clock handle for the "waiting for a not-yet-loaded page" poll, or
+        # None when no page is currently being awaited. See _show_page.
+        self._pending_poll_ev: ClockEvent | None = None
         self._goto_page_dropdown: DropDown | None = None
         self._goto_page_buttons: list[Button] = []
 
@@ -435,6 +443,7 @@ class ComicBookReader(FloatLayout):
         self._is_covers_collection = is_covers_collection(fanta_info.comic_book_info.title)
         self._collection_covers = get_located_covers() if self._is_covers_collection else []
 
+        self._stop_pending_poll()
         self._all_loaded = False
         self._goto_page_dropdown = None
         self._page_manager.reset_current_page_index()
@@ -484,8 +493,8 @@ class ComicBookReader(FloatLayout):
         if self._closed:
             return
 
+        self._stop_pending_poll()
         self._comic_book_loader.stop_now()
-        self._wait_for_image_to_load(self._current_page_index)
         self._comic_book_loader.close_comic()
 
     def reset_comic_book_reader(self) -> None:
@@ -545,7 +554,15 @@ class ComicBookReader(FloatLayout):
         self.action_bar_title = get_action_bar_title(self._font_manager, title)
 
     def _show_page(self, _instance: Widget | None, _value: str | None) -> None:
-        """Display the image for the current_page_index."""
+        """Display the image for the current_page_index.
+
+        If the page is already loaded (the common case) it is drawn immediately.
+        If it has not been prefetched yet (e.g. paging backward into a large comic
+        that is still loading), the reader shows the loading page and a busy cursor,
+        asks the loader to fetch this page next, and polls on the Kivy Clock until
+        it is ready - never blocking the UI thread (which would freeze the app and
+        trigger the OS "Force Quit" dialog).
+        """
         if self._current_page_index == -1:
             logger.debug("Show page not ready: current_page_index = -1.")
             return
@@ -561,15 +578,83 @@ class ComicBookReader(FloatLayout):
         elif self._is_covers_collection:
             self._set_cover_action_bar_title(page_str)
 
+        left_idx, right_idx = self._get_current_display_indices()
+
+        if self._pages_ready(left_idx, right_idx):
+            self._render_page(left_idx, right_idx)
+            return
+
+        # Page not loaded yet: give feedback and wait without blocking the UI thread.
+        logger.info(f"Page index {self._current_page_index} not loaded yet; showing loading page.")
+        self._show_loading_page()
+        self._comic_book_loader.cursor.set_busy()
+        self._prioritize_pending(left_idx, right_idx)
+        self._start_pending_poll()
+
+    def _get_current_display_indices(self) -> tuple[int, int | None]:
+        """Return the (left, right) page indices to display for the current page.
+
+        ``right`` is ``None`` outside double-page mode (a single page).
+        """
         display_unit = self._page_manager.get_current_display_unit()
         if display_unit is not None and self._page_manager.double_page_mode:
-            left_idx = display_unit.left_page_index
-            right_idx = display_unit.right_page_index
-        else:
-            left_idx = self._current_page_index
-            right_idx = None
+            return display_unit.left_page_index, display_unit.right_page_index
+        return self._current_page_index, None
 
-        self._wait_for_image_to_load(left_idx, right_idx)
+    @staticmethod
+    def _needed_indices(left_page_index: int, right_page_index: int | None) -> list[int]:
+        """Return the page indices to display (drops the absent right page)."""
+        return [idx for idx in (left_page_index, right_page_index) if idx is not None]
+
+    def _pages_ready(self, left_page_index: int, right_page_index: int | None) -> bool:
+        """Return whether every page needed to display is loaded (non-blocking)."""
+        if self._all_loaded:
+            return True
+        return all(
+            self._comic_book_loader.wait_load_event(idx, 0)
+            for idx in self._needed_indices(left_page_index, right_page_index)
+        )
+
+    def _prioritize_pending(self, left_page_index: int, right_page_index: int | None) -> None:
+        """Ask the loader to fetch the awaited page(s) next, ahead of prefetch order."""
+        for idx in self._needed_indices(left_page_index, right_page_index):
+            self._comic_book_loader.prioritize_page(idx)
+
+    def _start_pending_poll(self) -> None:
+        """Start (once) the Clock poll that renders a page as soon as it loads."""
+        if self._pending_poll_ev is None:
+            self._pending_poll_ev = Clock.schedule_interval(
+                self._poll_pending_page, PENDING_PAGE_POLL_INTERVAL_SECS
+            )
+
+    def _stop_pending_poll(self) -> None:
+        """Cancel the pending-page poll (if any) and restore the normal cursor."""
+        if self._pending_poll_ev is not None:
+            self._pending_poll_ev.cancel()
+            self._pending_poll_ev = None
+            self._comic_book_loader.cursor.set_normal()
+
+    def _poll_pending_page(self, _dt: float) -> bool:
+        """Clock callback: render the current page once it has finished loading.
+
+        Always re-reads the *current* page index, so if the user keeps paging while
+        waiting, the latest target wins. Returns ``False`` to unschedule once the
+        page is shown (or the comic has been closed), ``True`` to keep polling.
+        """
+        if self._current_page_index == -1:
+            self._stop_pending_poll()
+            return False
+
+        left_idx, right_idx = self._get_current_display_indices()
+        if not self._pages_ready(left_idx, right_idx):
+            return True
+
+        self._render_page(left_idx, right_idx)
+        return False
+
+    def _render_page(self, left_page_index: int, right_page_index: int | None) -> None:
+        """Draw the given (already-loaded) page(s) into the comic image widget."""
+        self._stop_pending_poll()
 
         timing = Timing()
 
@@ -580,15 +665,15 @@ class ComicBookReader(FloatLayout):
             self._comic_image.source = ""  # Clear previous source
             self._comic_image.reload()  # Ensure reload if source was same BytesIO object
 
-            if right_idx is not None:
+            if right_page_index is not None:
                 image_stream, image_ext = (
                     self._comic_book_loader.get_double_page_image_ready_for_reading(
-                        left_idx, right_idx
+                        left_page_index, right_page_index
                     )
                 )
             else:
                 image_stream, image_ext = self._comic_book_loader.get_image_ready_for_reading(
-                    left_idx
+                    left_page_index
                 )
             self._comic_image.texture = CoreImage(image_stream, ext=image_ext).texture
         except Exception:  # noqa: BLE001
@@ -639,18 +724,6 @@ class ComicBookReader(FloatLayout):
             return
         self._page_manager.double_page_mode = not self._page_manager.double_page_mode
         self._show_page(None, None)
-
-    def _wait_for_image_to_load(
-        self, left_page_index: int, right_page_index: int | None = None
-    ) -> None:
-        if self._all_loaded:
-            return
-
-        for idx in filter(None.__ne__, [left_page_index, right_page_index]):
-            logger.info(f"Waiting for image with index {idx} to finish loading.")
-            while not self._comic_book_loader.wait_load_event(idx, 2):
-                logger.info(f"Still waiting for image with index {idx} to finish loading.")
-            logger.info(f"Finished waiting for image with index {idx} to load.")
 
     def goto_page(self) -> None:
         """Go to user requested page."""

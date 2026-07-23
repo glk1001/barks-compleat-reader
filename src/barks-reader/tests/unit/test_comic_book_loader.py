@@ -271,6 +271,95 @@ def test_cursor_restored_at_first_page_ready(
     assert recording_cursor.states == ["busy", "normal", "normal"]
 
 
+class OrderRecordingSource:
+    """Records the order pages are loaded, gating one page until released."""
+
+    def __init__(
+        self, block_index: int, started: threading.Event, release: threading.Event
+    ) -> None:
+        self.load_order: list[int] = []
+        self._block_index = block_index
+        self._started = started
+        self._release = release
+        self.opened = False
+
+    def open(self) -> None:
+        self.opened = True
+
+    def close(self) -> None:
+        pass
+
+    def load_page_image(self, page_info: PageInfo) -> tuple[io.BytesIO, str]:
+        idx = page_info.page_index
+        if idx == self._block_index:
+            self._started.set()
+            self._release.wait(timeout=2.0)
+        self.load_order.append(idx)
+        return io.BytesIO(b"fake_png_data"), ".png"
+
+    @staticmethod
+    def get_image_info_str(page_info: PageInfo) -> str:  # noqa: ARG004
+        return "fake_image"
+
+
+def _make_indexed_page_map(count: int) -> tuple[OrderedDict[str, Any], list[str]]:
+    """Build a `count`-page map keyed "0".."N-1" with a natural forward load order."""
+    page_map: OrderedDict[str, Any] = OrderedDict()
+    for i in range(count):
+        page = MagicMock()
+        page.page_index = i
+        page.srce_page.page_filename = f"page_{i}.png"
+        page.page_type = PageType.BODY
+        page_map[str(i)] = page
+    return page_map, [str(i) for i in range(count)]
+
+
+def test_prioritize_page_loads_navigated_page_before_later_pages(
+    loader: ComicBookLoader,
+) -> None:
+    """A prioritized (navigated-to) page loads ahead of its normal load-order slot.
+
+    With a single worker and a 2-page prefetch window, page 0 is gated while the
+    test asks the loader to prioritize page 4. Once page 0 is released, page 4 must
+    be fetched before pages 2 and 3, which would otherwise load first.
+    """
+    page_map, load_order = _make_indexed_page_map(5)
+    started = threading.Event()
+    release = threading.Event()
+    source = OrderRecordingSource(block_index=0, started=started, release=release)
+
+    loader.set_comic(source, load_order, page_map, archive_desc="prioritize.cbz")
+
+    assert started.wait(2.0)  # page 0 is loading -> the initial window has been primed
+    loader.prioritize_page(4)
+    release.set()
+
+    assert loader._thread is not None
+    loader._thread.join(timeout=2.0)
+
+    order = source.load_order
+    assert set(order) == {0, 1, 2, 3, 4}  # every page still loaded exactly once
+    assert order.index(4) < order.index(2)
+    assert order.index(4) < order.index(3)
+
+
+def test_prioritize_page_is_noop_when_page_already_loaded(
+    loader: ComicBookLoader,
+    page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
+) -> None:
+    """Prioritizing an already-loaded page enqueues nothing."""
+    page_map, load_order = page_map_and_order
+    source = FakePageImageSource()
+
+    loader.set_comic(source, load_order, page_map, archive_desc="test.cbz")
+    if loader._thread:
+        loader._thread.join(timeout=2.0)
+
+    assert loader._priority_keys.empty()
+    loader.prioritize_page(0)  # already loaded
+    assert loader._priority_keys.empty()
+
+
 def test_load_error_file_not_found(
     loader: ComicBookLoader,
     page_map_and_order: tuple[OrderedDict[str, Any], list[str]],
