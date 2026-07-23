@@ -38,6 +38,14 @@ repos:
             types: [python]
             pass_filenames: false
             stages: [pre-commit]
+          - id: check-kv-imports
+            name: check .kv imports resolve
+            entry: uv run scripts/check_kv_imports.py
+            language: system
+            # A Python rename can dangle a .kv "#: import"; run on both file types.
+            files: \.(kv|py)$
+            pass_filenames: false
+            stages: [pre-commit]
           - id: lint-imports
             name: lint-imports (import-linter contracts)
             entry: uv run lint-imports

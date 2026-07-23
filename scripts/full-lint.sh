@@ -4,8 +4,8 @@
 #
 # Checks: ruff check, ruff format, ty (--error-on-warning, as in CI), pyrefly
 #         (0 new vs pyrefly-baseline.json), import-linter, relative-import check,
-#         cspell, benchmarks (compared against the machine-local baseline in
-#         .benchmarks/).
+#         kv-import check (.kv "#: import" directives resolve), cspell, benchmarks
+#         (compared against the machine-local baseline in .benchmarks/).
 
 set -uo pipefail
 
@@ -37,6 +37,7 @@ run_check "ty"                    uv run ty check --error-on-warning
 run_check "pyrefly"               uv run pyrefly check --progress-bar=no
 run_check "import-linter"         uv run lint-imports
 run_check "relative-import-check" bash scripts/check-relative-imports.sh
+run_check "kv-imports"            uv run scripts/check_kv_imports.py
 run_check "cspell"                bunx cspell --no-progress
 run_check "benchmarks"            bash scripts/run_benchmark.sh
 
