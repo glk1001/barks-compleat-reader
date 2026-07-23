@@ -9,11 +9,17 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import typer
+from barks_fantagraphics.barks_covers import (
+    COVER_COLLECTION_PAGE_BASE,
+    get_cover_title,
+    get_located_covers,
+)
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
 from barks_fantagraphics.comic_book import ComicBook, ModifiedType, get_page_str
 from barks_fantagraphics.comic_book_info import (
     ONE_PAGER_COLLECTION_PAGE_BASE,
     get_located_one_pagers,
+    is_covers_collection,
     is_one_pager_collection,
 )
 from barks_fantagraphics.comics_consts import FANTA_VOLUME_OVERRIDES_ROOT
@@ -57,6 +63,9 @@ def get_srce_mod_files(comic: ComicBook) -> list[tuple[Path, FileType, Path]]:
     if is_one_pager_collection(comic.get_title_enum()):
         return get_one_pager_collection_mod_files(comic)
 
+    if is_covers_collection(comic.get_title_enum()):
+        return get_cover_collection_mod_files(comic)
+
     srce_and_dest_pages = get_sorted_srce_and_dest_pages(comic, get_full_paths=True)
 
     return [
@@ -92,6 +101,35 @@ def get_one_pager_collection_mod_files(comic: ComicBook) -> list[tuple[Path, Fil
                 f'No restored file for one-pager "{ENUM_TO_STR_TITLE[title]}"'
                 f' - using original scan "{fixes_file}".'
             )
+
+        mod_files.append(
+            (fixes_file, FileType.ORIGINAL, comic.get_srce_original_story_file(page_num))
+        )
+
+    return mod_files
+
+
+def get_cover_collection_mod_files(comic: ComicBook) -> list[tuple[Path, FileType, Path]]:
+    """Return the "All Covers" collection pages as ADDED original mod files.
+
+    Every located cover is baked from its staged original scan (the fixes-dir
+    symlink created by barks-stage-covers). Covers are ``PageType.COVER`` - never
+    restored or panel-processed - so don't enumerate through
+    ``get_sorted_srce_and_dest_pages``, which needs panel-segments files and panel
+    dimensions that an all-cover page set has none of (it would divide by an empty
+    panel list).
+    """
+    mod_files = []
+    for i, cover in enumerate(get_located_covers()):
+        page_num = get_page_str(COVER_COLLECTION_PAGE_BASE + i)
+
+        fixes_file = comic.get_srce_original_fixes_story_file(page_num)
+        if not fixes_file.is_file():
+            msg = (
+                f'No staged original scan "{fixes_file}" for cover'
+                f' "{ENUM_TO_STR_TITLE[get_cover_title(cover)]}". Run barks-stage-covers first.'
+            )
+            raise FileNotFoundError(msg)
 
         mod_files.append(
             (fixes_file, FileType.ORIGINAL, comic.get_srce_original_story_file(page_num))

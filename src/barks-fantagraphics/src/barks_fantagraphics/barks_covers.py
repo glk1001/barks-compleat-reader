@@ -4277,20 +4277,22 @@ COVER_COLLECTION_PAGE_BASE = 500
 
 
 def get_cover_collection_pages() -> list[OriginalPage]:
-    """Return the body pages making up the "All Covers" collection.
+    """Return the pages making up the "All Covers" collection.
 
-    One `BODY` page per *located* cover, in bibliography order. The pages are
-    pre-baked offline as "extra" images in the collection's nominal volume
-    (FANTA_02) override, numbered sequentially from `COVER_COLLECTION_PAGE_BASE`
-    so they never collide with that volume's real pages. The offline staging
-    script must use this same numbering.
+    One `COVER` page per *located* cover, in bibliography order. Covers are
+    full-page images with no panels, so they use `PageType.COVER` (rendered
+    full-page with black bars, never cropped to panel bounds like a `BODY` page).
+    The pages are pre-baked offline as "extra" images in the collection's nominal
+    volume (FANTA_02) override, numbered sequentially from
+    `COVER_COLLECTION_PAGE_BASE` so they never collide with that volume's real
+    pages. The offline staging script must use this same numbering.
 
     Returns:
         Ordered `OriginalPage` list; empty until cover locations are authored.
 
     """
     return [
-        OriginalPage(f"{COVER_COLLECTION_PAGE_BASE + i:03d}", PageType.BODY)
+        OriginalPage(f"{COVER_COLLECTION_PAGE_BASE + i:03d}", PageType.COVER)
         for i, _cover in enumerate(get_located_covers())
     ]
 

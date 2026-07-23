@@ -61,6 +61,13 @@ def get_required_panels_bbox_width_height(
         if p.page_type not in PAGES_WITHOUT_PANELS
     ]
 
+    if not panel_sizes:
+        # Every page is a full-page image with no panels (e.g. the "All Covers"
+        # collection). There are no panel dimensions to compute, and a
+        # PAGES_WITHOUT_PANELS page's dest bbox is the whole page (it ignores these
+        # dimensions), so return the unset defaults rather than dividing by nothing.
+        return ComicDimensions(), RequiredDimensions()
+
     stats = compute_box_size_stats(panel_sizes, PANELS_BBOX_HEIGHT_SIMILARITY_MARGIN)
     assert stats.avg_width > 0
     assert stats.avg_height > 0

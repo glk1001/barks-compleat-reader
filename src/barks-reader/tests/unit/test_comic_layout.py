@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.page_classes import (
     CleanPage,
@@ -198,9 +199,14 @@ def _srce_dest(
     return SrceAndDestPages(srce_pages=srce, dest_pages=dest)
 
 
-def _comic(solo_page_keys: set[str] | None = None) -> object:
-    """Minimal ComicBook stub — only solo_page_keys is read by _build_page_map."""
-    return SimpleNamespace(solo_page_keys=solo_page_keys or set())
+def _comic(solo_page_keys: set[str] | None = None, title: Titles | None = None) -> object:
+    """Minimal ComicBook stub — _build_page_map reads solo_page_keys and the title."""
+    return SimpleNamespace(
+        solo_page_keys=solo_page_keys or set(),
+        fanta_info=SimpleNamespace(
+            comic_book_info=SimpleNamespace(title=title or Titles.DONALD_DUCK_FINDS_PIRATE_GOLD)
+        ),
+    )
 
 
 class FakeSortedPagesPort:
@@ -272,6 +278,39 @@ class TestBuildPageMap:
         assert list(layout.page_map.keys()) == ["1", "2"]
         # No roman numerals were generated.
         assert "i" not in layout.page_map
+
+    def test_covers_collection_numbers_cover_pages_as_body(self) -> None:
+        # COVER pages are normally front matter (roman), but the All Covers
+        # collection is all covers and each is a numbered entry, so they get 1..N
+        # (the deep-link from a cover node navigates to "1".."N").
+        pages = _srce_dest(
+            [
+                ("500.jpg", PageType.COVER),
+                ("501.jpg", PageType.COVER),
+                ("502.jpg", PageType.COVER),
+            ]
+        )
+        port = FakeSortedPagesPort(pages)
+        builder = ComicLayoutBuilder(sorted_pages_port=port)
+
+        layout = builder.build(_comic(title=Titles.ALL_COVERS))  # ty: ignore[invalid-argument-type]
+
+        assert list(layout.page_map.keys()) == ["1", "2", "3"]
+        assert layout.last_body_page == "3"
+
+    def test_non_covers_comic_still_numbers_covers_as_front_matter(self) -> None:
+        pages = _srce_dest(
+            [
+                ("cover.jpg", PageType.COVER),
+                ("body1.jpg", PageType.BODY),
+            ]
+        )
+        port = FakeSortedPagesPort(pages)
+        builder = ComicLayoutBuilder(sorted_pages_port=port)
+
+        layout = builder.build(_comic())  # ty: ignore[invalid-argument-type]
+
+        assert list(layout.page_map.keys()) == ["i", "1"]
 
     def test_tracks_last_body_page_excluding_back_matter(self) -> None:
         pages = _srce_dest(

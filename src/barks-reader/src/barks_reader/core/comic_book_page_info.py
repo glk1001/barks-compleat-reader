@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from barks_fantagraphics.comic_book_info import is_covers_collection
 from barks_fantagraphics.comics_consts import SOLO_PAGE_TYPES, PageType
 from barks_fantagraphics.pages import FRONT_MATTER_PAGES, ROMAN_NUMERALS
 
@@ -156,17 +157,23 @@ def _build_page_map(
     body_start_page_num = -1
     orig_page_num = 0 if srce_and_dest_pages.srce_pages[0].page_type == PageType.FRONT else 1
 
+    # The "All Covers" collection is all COVER pages (a COVER is normally front
+    # matter), but each cover is a numbered entry, so number them 1..N like body
+    # pages - the deep-link from a cover node navigates to "1".."N".
+    is_covers = is_covers_collection(comic.fanta_info.comic_book_info.title)
+
     for index, (srce_page, dest_page) in enumerate(
         zip(srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, strict=False)
     ):
-        if dest_page.page_type not in FRONT_MATTER_PAGES and body_start_page_num == -1:
+        page_starts_body = is_covers or dest_page.page_type not in FRONT_MATTER_PAGES
+        if page_starts_body and body_start_page_num == -1:
             body_start_page_num = orig_page_num
 
         if body_start_page_num == -1:
             display_page_num = "0" if orig_page_num == 0 else ROMAN_NUMERALS[orig_page_num]
         else:
             display_page_num = str(orig_page_num - body_start_page_num + 1)
-            if dest_page.page_type == PageType.BODY:
+            if is_covers or dest_page.page_type == PageType.BODY:
                 last_body_page = display_page_num
 
         page_key = Path(srce_page.page_filename).stem

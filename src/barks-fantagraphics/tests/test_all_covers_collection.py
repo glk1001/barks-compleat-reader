@@ -130,9 +130,10 @@ class TestCoversCollection:
 
         base = bc.COVER_COLLECTION_PAGE_BASE
         pages = get_cover_collection_pages()
+        # Covers are full-page images, so they use COVER (never cropped to panels).
         assert [(p.page_filenames, p.page_type) for p in pages] == [
-            (f"{base:03d}", PageType.BODY),
-            (f"{base + 1:03d}", PageType.BODY),
+            (f"{base:03d}", PageType.COVER),
+            (f"{base + 1:03d}", PageType.COVER),
         ]
 
     def test_collection_pages_cover_all_located_covers(self) -> None:
@@ -143,10 +144,10 @@ class TestCoversCollection:
         comic = ComicsDatabase(for_building_comics=False).get_comic_book("All Covers")
         assert comic.config_page_images == get_cover_collection_pages()
 
-    def test_collection_allows_added_body_pages(self) -> None:
-        """The collection's BODY pages may be ADDED fixes (staged FANTA_02 extras)."""
+    def test_collection_allows_added_cover_pages(self) -> None:
+        """The collection's COVER pages may be ADDED fixes (staged FANTA_02 extras)."""
         comic = ComicsDatabase(for_building_comics=False).get_comic_book("All Covers")
-        assert comic._is_added_fixes_special_case("500", PageType.BODY) is True  # noqa: SLF001
+        assert comic._is_added_fixes_special_case("500", PageType.COVER) is True  # noqa: SLF001
 
 
 class TestCoverDisplayTitle:

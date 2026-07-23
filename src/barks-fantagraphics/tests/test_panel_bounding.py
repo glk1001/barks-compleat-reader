@@ -184,6 +184,16 @@ class TestGetRequiredPanelsBboxWidthHeight:
         # Only the body page contributes
         assert srce_dim.max_panels_bbox_width == 1000
 
+    def test_all_pages_without_panels_returns_defaults(self) -> None:
+        # A collection of full-page images only (e.g. "All Covers") has no panel
+        # pages, so there is nothing to compute - return the unset defaults rather
+        # than dividing by an empty list.
+        pages = [CleanPage("500.jpg", PageType.COVER), CleanPage("501.jpg", PageType.COVER)]
+        srce_dim, required_dim = get_required_panels_bbox_width_height(pages, 3200, 20)
+
+        assert srce_dim == ComicDimensions()
+        assert required_dim == RequiredDimensions()
+
 
 # ---------------------------------------------------------------------------
 # set_srce_panel_bounding_boxes
