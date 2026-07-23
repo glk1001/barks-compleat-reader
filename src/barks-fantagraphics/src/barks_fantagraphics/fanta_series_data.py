@@ -1,6 +1,7 @@
 # ruff: noqa: E501, ERA001
 from __future__ import annotations
 
+from .barks_covers import COVER_LOCATIONS, get_cover_title, get_located_covers
 from .barks_titles import Titles as Bt
 from .comic_book_info import ONE_PAGER_LOCATIONS, get_located_one_pagers
 from .fanta_series_info import (
@@ -544,12 +545,22 @@ SERIES_INFO.extend(
     for title in get_located_one_pagers()
 )
 
-# --- Covers -------------------------------------------------------------------
-# The synthetic "All Covers" collection bundles every *located* cover
-# (barks_covers.COVER_LOCATIONS) into one comic. Unlike the one-pagers, the covers
-# themselves are not Titles, so the collection is the only entry; it lives in its
-# own "Covers" series so it appears as a browsable node in the reader tree.
+# --- Covers (generated from COVER_LOCATIONS) ----------------------------------
+# The "Covers" series is derived from the authored location table in barks_covers
+# rather than listed by hand here. Each *located* cover gets an entry in its real
+# Fantagraphics volume, plus the synthetic "All Covers" collection container (in
+# SERIES_EXTRAS, like "All One-Pagers"). Covers without an authored location are
+# skipped until their location is filled in.
 #
 # The collection is pre-baked into a single nominal volume (FANTA_02), kept in sync
 # with data/story-titles/All Covers.ini's source_comic.
-SERIES_INFO.append(FantaSeriesInfo(Bt.ALL_COVERS, "", SERIES_COVERS, FANTA_02))
+SERIES_INFO.append(FantaSeriesInfo(Bt.ALL_COVERS, "", SERIES_EXTRAS, FANTA_02))
+SERIES_INFO.extend(
+    FantaSeriesInfo(
+        get_cover_title(cover),
+        "",
+        SERIES_COVERS,
+        get_fanta_volume_str(COVER_LOCATIONS[cover.key][0]),
+    )
+    for cover in get_located_covers()
+)

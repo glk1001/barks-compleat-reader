@@ -2,6 +2,7 @@ from collections import Counter
 
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
+    SERIES_COVERS,
     SERIES_ONE_PAGERS,
 )
 from barks_fantagraphics.fanta_series_data import SERIES_INFO
@@ -24,21 +25,23 @@ class TestSeriesInfo:
         assert len(ALL_FANTA_COMIC_BOOK_INFO) == len(SERIES_INFO)
 
     def test_chronological_numbers_are_contiguous(self) -> None:
-        """Tests that the two chronological sequences are gap-free and start at 1.
+        """Tests that the three chronological sequences are gap-free and start at 1.
 
-        Non one-pager titles and one-pager titles are numbered independently; each
+        Regular titles, one-pagers, and covers are numbered independently; each
         sequence must be exactly 1..N with no gaps or duplicates.
         """
+        own_sequence_series = (SERIES_ONE_PAGERS, SERIES_COVERS)
         main_numbers = sorted(
             info.fanta_chronological_number
             for info in ALL_FANTA_COMIC_BOOK_INFO.values()
-            if info.series_name != SERIES_ONE_PAGERS
+            if info.series_name not in own_sequence_series
         )
         assert main_numbers == list(range(1, len(main_numbers) + 1))
 
-        one_pager_numbers = sorted(
-            info.fanta_chronological_number
-            for info in ALL_FANTA_COMIC_BOOK_INFO.values()
-            if info.series_name == SERIES_ONE_PAGERS
-        )
-        assert one_pager_numbers == list(range(1, len(one_pager_numbers) + 1))
+        for series_name in own_sequence_series:
+            series_numbers = sorted(
+                info.fanta_chronological_number
+                for info in ALL_FANTA_COMIC_BOOK_INFO.values()
+                if info.series_name == series_name
+            )
+            assert series_numbers == list(range(1, len(series_numbers) + 1))

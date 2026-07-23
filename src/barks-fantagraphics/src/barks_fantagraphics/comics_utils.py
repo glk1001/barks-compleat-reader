@@ -210,6 +210,9 @@ def get_short_formatted_first_published_str(comic_book_info: ComicBookInfo) -> s
 
 
 def get_short_formatted_submitted_date(comic_book_info: ComicBookInfo) -> str:
+    if comic_book_info.submitted_month == -1:
+        # No recorded submitted date (e.g. some covers).
+        return "Unknown"
     if comic_book_info.submitted_day == -1:
         return (
             f"{MONTH_AS_SHORT_STR[comic_book_info.submitted_month]}"
@@ -224,6 +227,9 @@ def get_short_formatted_submitted_date(comic_book_info: ComicBookInfo) -> str:
 
 
 def get_long_formatted_submitted_date(comic_book_info: ComicBookInfo) -> str:
+    if comic_book_info.submitted_month == -1:
+        # No recorded submitted date (e.g. some covers).
+        return "Unknown"
     if comic_book_info.submitted_day == -1:
         return (
             f"{MONTH_AS_LONG_STR[comic_book_info.submitted_month]} {comic_book_info.submitted_year}"

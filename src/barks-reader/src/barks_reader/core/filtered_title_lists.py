@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from barks_fantagraphics.barks_tags import BARKS_TAG_CATEGORIES_TITLES, TagCategories
-from barks_fantagraphics.comic_book_info import is_one_pager_collection
+from barks_fantagraphics.comic_book_info import is_covers_collection, is_one_pager_collection
 from barks_fantagraphics.fanta_comics_info import (
     SERIES_COVERS,
     SERIES_CS,
@@ -85,18 +85,24 @@ class FilteredTitleLists:
 
         exclude_one_pagers = not self.include_one_pagers_in_chrono
         for year in self.chrono_years:
+            # Covers sit outside the story chronology, so they never appear in the
+            # year lists (their submitted years would otherwise pull them in).
             filters[str(year)] = lambda info, y=year: (
                 info.comic_book_info.submitted_year == y
+                and info.series_name != SERIES_COVERS
                 and not (exclude_one_pagers and info.series_name == SERIES_ONE_PAGERS)
             )
 
         for name in self.series_names:
-            # The synthetic "All One-Pagers" collection is reached only by selecting a
-            # one-pager, never as a series node of its own. It lives in SERIES_EXTRAS
-            # (which has no node here), so this guard is belt-and-suspenders: it keeps
-            # the collection out should it ever be reclassified into a listed series.
+            # The synthetic "All One-Pagers"/"All Covers" collections are reached only
+            # by selecting a one-pager/cover, never as a series node of their own. They
+            # live in SERIES_EXTRAS (which has no node here), so this guard is
+            # belt-and-suspenders: it keeps the collections out should they ever be
+            # reclassified into a listed series.
             filters[name] = lambda info, n=name: (
-                info.series_name == n and not is_one_pager_collection(info.comic_book_info.title)
+                info.series_name == n
+                and not is_one_pager_collection(info.comic_book_info.title)
+                and not is_covers_collection(info.comic_book_info.title)
             )
 
         for year in self.cs_years:

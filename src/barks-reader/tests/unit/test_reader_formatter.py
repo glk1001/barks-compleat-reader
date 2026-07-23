@@ -333,6 +333,14 @@ class TestReaderFormatterClass:
         res = reader_formatter.ReaderFormatter.get_formatted_submitted_str(info, "blue")
         assert res == " E[01 Jan [color=blue]2000[/color]E]"
 
+    def test_get_formatted_submitted_str_unknown_date_is_empty(self) -> None:
+        """A wholly unrecorded submitted date (e.g. some covers) omits the bracket."""
+        info = MagicMock()
+        info.submitted_month = -1
+
+        res = reader_formatter.ReaderFormatter.get_formatted_submitted_str(info, "blue")
+        assert res == ""
+
     @patch.object(reader_formatter, "FAN", "FAN_ICON")
     @patch.object(reader_formatter, "BARKS_PAYMENTS")
     @patch.object(reader_formatter, "FANTA_SOURCE_COMICS")

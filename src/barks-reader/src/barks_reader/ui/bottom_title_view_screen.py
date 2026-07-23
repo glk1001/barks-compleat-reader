@@ -4,7 +4,12 @@ import random
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.comic_book_info import ONE_PAGERS, get_one_pager_display_title
+from barks_fantagraphics.barks_covers import COVER_BY_TITLE, get_cover_display_title
+from barks_fantagraphics.comic_book_info import (
+    COVERS_SET,
+    ONE_PAGERS,
+    get_one_pager_display_title,
+)
 from comic_utils.timing import Timing
 from kivy.animation import Animation
 from kivy.graphics.texture import Texture  # ty: ignore[unresolved-import]
@@ -171,7 +176,12 @@ class BottomTitleViewScreen(FloatLayout):
         # A remembered nav position belongs to the previous title's widgets.
         self._last_nav_focused_widget = None
         self._fanta_info = fanta_info
-        self.is_one_pager_title = fanta_info.comic_book_info.title in ONE_PAGERS
+        # Covers share the one-pagers' compact title-panel styling (the .kv keys
+        # off this property), since both are single pages read via a collection.
+        self.is_one_pager_title = (
+            fanta_info.comic_book_info.title in ONE_PAGERS
+            or fanta_info.comic_book_info.title in COVERS_SET
+        )
 
         title_text = self._get_main_title_str(fanta_info)
         add_footnote = title_needs_footnote(fanta_info)
@@ -420,6 +430,11 @@ class BottomTitleViewScreen(FloatLayout):
         # "All One-Pagers" collection rather than as a standalone comic.
         if comic_book_info.title in ONE_PAGERS:
             return get_one_pager_display_title(comic_book_info.title)
+
+        # Covers similarly show their issue plus cover date, e.g.
+        # "Uncle Scrooge #7 (Sep 1954)".
+        if comic_book_info.title in COVERS_SET:
+            return get_cover_display_title(COVER_BY_TITLE[comic_book_info.title])
 
         if comic_book_info.is_barks_title:
             if comic_book_info.title in LONG_TITLE_SPLITS:

@@ -174,6 +174,15 @@ class TestDateFormatting:
         assert "Jun" in result
         assert "1950" in result
 
+    def test_short_formatted_submitted_date_unknown(self) -> None:
+        """A wholly unrecorded submitted date (e.g. some covers) formats as Unknown."""
+        info = self._make_comic_info(submitted_day=-1, submitted_month=-1, submitted_year=-1)
+        assert get_short_formatted_submitted_date(info) == "Unknown"
+
+    def test_long_formatted_submitted_date_unknown(self) -> None:
+        info = self._make_comic_info(submitted_day=-1, submitted_month=-1, submitted_year=-1)
+        assert get_long_formatted_submitted_date(info) == "Unknown"
+
     def test_long_formatted_submitted_date_with_day(self) -> None:
         info = self._make_comic_info(submitted_day=1, submitted_month=12, submitted_year=1947)
         result = get_long_formatted_submitted_date(info)

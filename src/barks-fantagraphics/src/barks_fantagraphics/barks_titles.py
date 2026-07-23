@@ -1,6 +1,6 @@
 from enum import CONTINUOUS, UNIQUE, IntEnum, auto, verify
 
-NUM_TITLES = 684 + 4 + 2  # +4 for articles, +2 for the All One-Pagers and All Covers collections
+NUM_TITLES = 684 + 264 + 4 + 2  # +264 covers, +4 articles, +2 synthetic collections
 
 GYRO_GEARLOOSE = "Gyro Gearloose"
 
@@ -694,6 +694,271 @@ class Titles(IntEnum):
     PHANTOM_JOKER_THE = auto()
     HARK_HARK_THE_ARK = auto()
     CAPTAINS_OUTRAGEOUS = auto()
+    # Covers (assigned titles; see barks_covers.py).
+    DAISY_AND_DONALD_25_COVER = auto()
+    FOUR_COLOR_189_COVER = auto()
+    FOUR_COLOR_199_COVER = auto()
+    FOUR_COLOR_203_COVER = auto()
+    FOUR_COLOR_223_COVER = auto()
+    FOUR_COLOR_238_COVER = auto()
+    FOUR_COLOR_256_COVER = auto()
+    FOUR_COLOR_263_COVER = auto()
+    FOUR_COLOR_275_COVER = auto()
+    FOUR_COLOR_282_COVER = auto()
+    FOUR_COLOR_348_COVER = auto()
+    FOUR_COLOR_356_COVER = auto()
+    FOUR_COLOR_367_COVER = auto()
+    FOUR_COLOR_394_COVER = auto()
+    FOUR_COLOR_408_COVER = auto()
+    FOUR_COLOR_422_COVER = auto()
+    DONALD_DUCK_26_COVER = auto()
+    DONALD_DUCK_27_COVER = auto()
+    DONALD_DUCK_28_COVER = auto()
+    DONALD_DUCK_29_COVER = auto()
+    DONALD_DUCK_30_COVER = auto()
+    DONALD_DUCK_35_COVER = auto()
+    DONALD_DUCK_44_COVER = auto()
+    DONALD_DUCK_46_COVER = auto()
+    DONALD_DUCK_52_COVER = auto()
+    DONALD_DUCK_55_COVER = auto()
+    DONALD_DUCK_57_COVER = auto()
+    DONALD_DUCK_65_COVER = auto()
+    DONALD_DUCK_70_COVER = auto()
+    DONALD_DUCK_71_COVER = auto()
+    DONALD_DUCK_72_COVER = auto()
+    DONALD_DUCK_73_COVER = auto()
+    DONALD_DUCK_77_COVER = auto()
+    DONALD_DUCK_78_COVER = auto()
+    DONALD_DUCK_79_COVER = auto()
+    DONALD_DUCK_80_COVER = auto()
+    DONALD_DUCK_83_COVER = auto()
+    DONALD_DUCK_101_COVER = auto()
+    DONALD_DUCK_103_COVER = auto()
+    DONALD_DUCK_105_COVER = auto()
+    DONALD_DUCK_106_COVER = auto()
+    DONALD_DUCK_111_COVER = auto()
+    DONALD_DUCK_126_COVER = auto()
+    FOUR_COLOR_1099_COVER = auto()
+    FOUR_COLOR_1140_COVER = auto()
+    FOUR_COLOR_1239_COVER = auto()
+    DONALD_DUCK_ALBUM_1_COVER = auto()
+    DONALD_DUCK_ALBUM_1_BACK_COVER = auto()
+    FOUR_COLOR_353_COVER = auto()
+    FOUR_COLOR_450_COVER = auto()
+    FOUR_COLOR_1073_COVER = auto()
+    FOUR_COLOR_1047_COVER = auto()
+    FOUR_COLOR_1047_INSIDE_FRONT_COVER = auto()
+    FOUR_COLOR_1095_COVER = auto()
+    FOUR_COLOR_1184_COVER = auto()
+    FOUR_COLOR_1267_COVER = auto()
+    GYRO_GEARLOOSE_1_COVER = auto()
+    HUEY_DEWEY_AND_LOUIE_JUNIOR_WOODCHUCKS_9_COVER = auto()
+    MERRY_CHRISTMAS_39_COVER = auto()
+    UNCLE_DONALD_AND_HIS_NEPHEWS_FAMILY_FUN_1_COVER = auto()
+    FOUR_COLOR_386_COVER = auto()
+    FOUR_COLOR_456_COVER = auto()
+    FOUR_COLOR_495_COVER = auto()
+    UNCLE_SCROOGE_4_COVER = auto()
+    UNCLE_SCROOGE_5_COVER = auto()
+    UNCLE_SCROOGE_6_COVER = auto()
+    UNCLE_SCROOGE_7_COVER = auto()
+    UNCLE_SCROOGE_8_COVER = auto()
+    UNCLE_SCROOGE_9_COVER = auto()
+    UNCLE_SCROOGE_10_COVER = auto()
+    UNCLE_SCROOGE_11_COVER = auto()
+    UNCLE_SCROOGE_12_COVER = auto()
+    UNCLE_SCROOGE_13_COVER = auto()
+    UNCLE_SCROOGE_14_COVER = auto()
+    UNCLE_SCROOGE_15_COVER = auto()
+    UNCLE_SCROOGE_16_COVER = auto()
+    UNCLE_SCROOGE_16_BACK_COVER = auto()
+    UNCLE_SCROOGE_17_COVER = auto()
+    UNCLE_SCROOGE_18_COVER = auto()
+    UNCLE_SCROOGE_19_COVER = auto()
+    UNCLE_SCROOGE_20_COVER = auto()
+    UNCLE_SCROOGE_21_COVER = auto()
+    UNCLE_SCROOGE_22_COVER = auto()
+    UNCLE_SCROOGE_23_COVER = auto()
+    UNCLE_SCROOGE_24_COVER = auto()
+    UNCLE_SCROOGE_25_COVER = auto()
+    UNCLE_SCROOGE_26_COVER = auto()
+    UNCLE_SCROOGE_27_COVER = auto()
+    UNCLE_SCROOGE_28_COVER = auto()
+    UNCLE_SCROOGE_29_COVER = auto()
+    UNCLE_SCROOGE_30_COVER = auto()
+    UNCLE_SCROOGE_31_COVER = auto()
+    UNCLE_SCROOGE_32_COVER = auto()
+    UNCLE_SCROOGE_33_COVER = auto()
+    UNCLE_SCROOGE_34_COVER = auto()
+    UNCLE_SCROOGE_35_COVER = auto()
+    UNCLE_SCROOGE_36_COVER = auto()
+    UNCLE_SCROOGE_37_COVER = auto()
+    UNCLE_SCROOGE_39_COVER = auto()
+    UNCLE_SCROOGE_40_COVER = auto()
+    UNCLE_SCROOGE_40_BACK_COVER = auto()
+    UNCLE_SCROOGE_43_COVER = auto()
+    UNCLE_SCROOGE_44_COVER = auto()
+    UNCLE_SCROOGE_45_COVER = auto()
+    UNCLE_SCROOGE_46_COVER = auto()
+    UNCLE_SCROOGE_47_COVER = auto()
+    UNCLE_SCROOGE_48_COVER = auto()
+    UNCLE_SCROOGE_49_COVER = auto()
+    UNCLE_SCROOGE_50_COVER = auto()
+    UNCLE_SCROOGE_51_COVER = auto()
+    UNCLE_SCROOGE_52_COVER = auto()
+    UNCLE_SCROOGE_53_COVER = auto()
+    UNCLE_SCROOGE_54_COVER = auto()
+    UNCLE_SCROOGE_55_COVER = auto()
+    UNCLE_SCROOGE_56_COVER = auto()
+    UNCLE_SCROOGE_56_INSIDE_FRONT_COVER = auto()
+    UNCLE_SCROOGE_57_COVER = auto()
+    UNCLE_SCROOGE_58_COVER = auto()
+    UNCLE_SCROOGE_59_COVER = auto()
+    UNCLE_SCROOGE_60_COVER = auto()
+    UNCLE_SCROOGE_61_COVER = auto()
+    UNCLE_SCROOGE_62_COVER = auto()
+    UNCLE_SCROOGE_63_COVER = auto()
+    UNCLE_SCROOGE_64_COVER = auto()
+    UNCLE_SCROOGE_65_COVER = auto()
+    UNCLE_SCROOGE_66_COVER = auto()
+    UNCLE_SCROOGE_68_COVER = auto()
+    UNCLE_SCROOGE_69_COVER = auto()
+    UNCLE_SCROOGE_70_COVER = auto()
+    UNCLE_SCROOGE_71_COVER = auto()
+    COMICS_AND_STORIES_95_COVER = auto()
+    COMICS_AND_STORIES_96_COVER = auto()
+    COMICS_AND_STORIES_104_COVER = auto()
+    COMICS_AND_STORIES_108_COVER = auto()
+    COMICS_AND_STORIES_109_COVER = auto()
+    COMICS_AND_STORIES_130_COVER = auto()
+    COMICS_AND_STORIES_131_COVER = auto()
+    COMICS_AND_STORIES_132_COVER = auto()
+    COMICS_AND_STORIES_133_COVER = auto()
+    COMICS_AND_STORIES_134_COVER = auto()
+    COMICS_AND_STORIES_135_COVER = auto()
+    COMICS_AND_STORIES_136_COVER = auto()
+    COMICS_AND_STORIES_137_COVER = auto()
+    COMICS_AND_STORIES_138_COVER = auto()
+    COMICS_AND_STORIES_139_COVER = auto()
+    COMICS_AND_STORIES_140_COVER = auto()
+    COMICS_AND_STORIES_141_COVER = auto()
+    COMICS_AND_STORIES_142_COVER = auto()
+    COMICS_AND_STORIES_143_COVER = auto()
+    COMICS_AND_STORIES_144_COVER = auto()
+    COMICS_AND_STORIES_145_COVER = auto()
+    COMICS_AND_STORIES_146_COVER = auto()
+    COMICS_AND_STORIES_147_COVER = auto()
+    COMICS_AND_STORIES_148_COVER = auto()
+    COMICS_AND_STORIES_149_COVER = auto()
+    COMICS_AND_STORIES_150_COVER = auto()
+    COMICS_AND_STORIES_151_COVER = auto()
+    COMICS_AND_STORIES_152_COVER = auto()
+    COMICS_AND_STORIES_153_COVER = auto()
+    COMICS_AND_STORIES_154_COVER = auto()
+    COMICS_AND_STORIES_155_COVER = auto()
+    COMICS_AND_STORIES_156_COVER = auto()
+    COMICS_AND_STORIES_157_COVER = auto()
+    COMICS_AND_STORIES_158_COVER = auto()
+    COMICS_AND_STORIES_159_COVER = auto()
+    COMICS_AND_STORIES_160_COVER = auto()
+    COMICS_AND_STORIES_161_COVER = auto()
+    COMICS_AND_STORIES_162_COVER = auto()
+    COMICS_AND_STORIES_163_COVER = auto()
+    COMICS_AND_STORIES_164_COVER = auto()
+    COMICS_AND_STORIES_165_COVER = auto()
+    COMICS_AND_STORIES_166_COVER = auto()
+    COMICS_AND_STORIES_167_COVER = auto()
+    COMICS_AND_STORIES_168_COVER = auto()
+    COMICS_AND_STORIES_169_COVER = auto()
+    COMICS_AND_STORIES_170_COVER = auto()
+    COMICS_AND_STORIES_171_COVER = auto()
+    COMICS_AND_STORIES_172_COVER = auto()
+    COMICS_AND_STORIES_173_COVER = auto()
+    COMICS_AND_STORIES_174_COVER = auto()
+    COMICS_AND_STORIES_175_COVER = auto()
+    COMICS_AND_STORIES_176_COVER = auto()
+    COMICS_AND_STORIES_177_COVER = auto()
+    COMICS_AND_STORIES_178_COVER = auto()
+    COMICS_AND_STORIES_183_COVER = auto()
+    COMICS_AND_STORIES_198_COVER = auto()
+    COMICS_AND_STORIES_199_COVER = auto()
+    COMICS_AND_STORIES_200_COVER = auto()
+    COMICS_AND_STORIES_204_COVER = auto()
+    COMICS_AND_STORIES_206_COVER = auto()
+    COMICS_AND_STORIES_207_COVER = auto()
+    COMICS_AND_STORIES_208_COVER = auto()
+    COMICS_AND_STORIES_209_COVER = auto()
+    COMICS_AND_STORIES_212_COVER = auto()
+    COMICS_AND_STORIES_213_COVER = auto()
+    COMICS_AND_STORIES_214_COVER = auto()
+    COMICS_AND_STORIES_215_COVER = auto()
+    COMICS_AND_STORIES_216_COVER = auto()
+    COMICS_AND_STORIES_218_COVER = auto()
+    COMICS_AND_STORIES_220_COVER = auto()
+    COMICS_AND_STORIES_226_COVER = auto()
+    COMICS_AND_STORIES_228_COVER = auto()
+    COMICS_AND_STORIES_229_COVER = auto()
+    COMICS_AND_STORIES_230_COVER = auto()
+    COMICS_AND_STORIES_231_COVER = auto()
+    COMICS_AND_STORIES_232_COVER = auto()
+    COMICS_AND_STORIES_233_COVER = auto()
+    COMICS_AND_STORIES_235_COVER = auto()
+    COMICS_AND_STORIES_236_COVER = auto()
+    COMICS_AND_STORIES_237_COVER = auto()
+    COMICS_AND_STORIES_238_COVER = auto()
+    COMICS_AND_STORIES_240_COVER = auto()
+    COMICS_AND_STORIES_241_COVER = auto()
+    COMICS_AND_STORIES_242_COVER = auto()
+    COMICS_AND_STORIES_243_COVER = auto()
+    COMICS_AND_STORIES_247_COVER = auto()
+    COMICS_AND_STORIES_250_COVER = auto()
+    COMICS_AND_STORIES_253_COVER = auto()
+    COMICS_AND_STORIES_256_COVER = auto()
+    COMICS_AND_STORIES_260_COVER = auto()
+    COMICS_AND_STORIES_261_COVER = auto()
+    COMICS_AND_STORIES_276_COVER = auto()
+    COMICS_AND_STORIES_277_COVER = auto()
+    COMICS_AND_STORIES_278_COVER = auto()
+    COMICS_AND_STORIES_279_COVER = auto()
+    COMICS_AND_STORIES_280_COVER = auto()
+    COMICS_AND_STORIES_281_COVER = auto()
+    COMICS_AND_STORIES_282_COVER = auto()
+    COMICS_AND_STORIES_283_COVER = auto()
+    COMICS_AND_STORIES_288_COVER = auto()
+    COMICS_AND_STORIES_289_COVER = auto()
+    COMICS_AND_STORIES_290_COVER = auto()
+    COMICS_AND_STORIES_291_COVER = auto()
+    COMICS_AND_STORIES_292_COVER = auto()
+    COMICS_AND_STORIES_295_COVER = auto()
+    COMICS_AND_STORIES_296_COVER = auto()
+    COMICS_AND_STORIES_297_COVER = auto()
+    COMICS_AND_STORIES_298_COVER = auto()
+    COMICS_AND_STORIES_301_COVER = auto()
+    COMICS_AND_STORIES_303_COVER = auto()
+    COMICS_AND_STORIES_304_COVER = auto()
+    COMICS_AND_STORIES_306_COVER = auto()
+    COMICS_AND_STORIES_307_COVER = auto()
+    COMICS_AND_STORIES_309_COVER = auto()
+    COMICS_AND_STORIES_310_COVER = auto()
+    COMICS_AND_STORIES_313_COVER = auto()
+    COMICS_AND_STORIES_314_COVER = auto()
+    COMICS_AND_STORIES_315_COVER = auto()
+    COMICS_AND_STORIES_316_COVER = auto()
+    COMICS_AND_STORIES_319_COVER = auto()
+    COMICS_AND_STORIES_321_COVER = auto()
+    COMICS_AND_STORIES_322_COVER = auto()
+    COMICS_AND_STORIES_324_COVER = auto()
+    COMICS_AND_STORIES_326_COVER = auto()
+    COMICS_AND_STORIES_328_COVER = auto()
+    COMICS_AND_STORIES_329_COVER = auto()
+    COMICS_AND_STORIES_331_COVER = auto()
+    COMICS_AND_STORIES_332_COVER = auto()
+    COMICS_AND_STORIES_334_COVER = auto()
+    COMICS_AND_STORIES_341_COVER = auto()
+    COMICS_AND_STORIES_342_COVER = auto()
+    COMICS_AND_STORIES_350_COVER = auto()
+    COMICS_AND_STORIES_351_COVER = auto()
+    COMICS_AND_STORIES_405_COVER = auto()
     # Synthetic collection (not a real Barks story) - bundles every one-pager.
     ALL_ONE_PAGERS = auto()
     # Synthetic collection (not a real Barks story) - bundles every located cover.
@@ -739,6 +1004,271 @@ _SMALL_WORDS = frozenset(
 # Titles whose human-readable form cannot be derived algorithmically from the enum name
 # (apostrophes, hyphens, punctuation, non-standard casing, etc.).
 _TITLE_OVERRIDES: dict[str, str] = {
+    # Covers - the '#<issue>' part cannot be derived from the enum name.
+    "DAISY_AND_DONALD_25_COVER": "Daisy And Donald #25 Cover",
+    "FOUR_COLOR_189_COVER": "Four Color #189 Cover",
+    "FOUR_COLOR_199_COVER": "Four Color #199 Cover",
+    "FOUR_COLOR_203_COVER": "Four Color #203 Cover",
+    "FOUR_COLOR_223_COVER": "Four Color #223 Cover",
+    "FOUR_COLOR_238_COVER": "Four Color #238 Cover",
+    "FOUR_COLOR_256_COVER": "Four Color #256 Cover",
+    "FOUR_COLOR_263_COVER": "Four Color #263 Cover",
+    "FOUR_COLOR_275_COVER": "Four Color #275 Cover",
+    "FOUR_COLOR_282_COVER": "Four Color #282 Cover",
+    "FOUR_COLOR_348_COVER": "Four Color #348 Cover",
+    "FOUR_COLOR_356_COVER": "Four Color #356 Cover",
+    "FOUR_COLOR_367_COVER": "Four Color #367 Cover",
+    "FOUR_COLOR_394_COVER": "Four Color #394 Cover",
+    "FOUR_COLOR_408_COVER": "Four Color #408 Cover",
+    "FOUR_COLOR_422_COVER": "Four Color #422 Cover",
+    "DONALD_DUCK_26_COVER": "Donald Duck #26 Cover",
+    "DONALD_DUCK_27_COVER": "Donald Duck #27 Cover",
+    "DONALD_DUCK_28_COVER": "Donald Duck #28 Cover",
+    "DONALD_DUCK_29_COVER": "Donald Duck #29 Cover",
+    "DONALD_DUCK_30_COVER": "Donald Duck #30 Cover",
+    "DONALD_DUCK_35_COVER": "Donald Duck #35 Cover",
+    "DONALD_DUCK_44_COVER": "Donald Duck #44 Cover",
+    "DONALD_DUCK_46_COVER": "Donald Duck #46 Cover",
+    "DONALD_DUCK_52_COVER": "Donald Duck #52 Cover",
+    "DONALD_DUCK_55_COVER": "Donald Duck #55 Cover",
+    "DONALD_DUCK_57_COVER": "Donald Duck #57 Cover",
+    "DONALD_DUCK_65_COVER": "Donald Duck #65 Cover",
+    "DONALD_DUCK_70_COVER": "Donald Duck #70 Cover",
+    "DONALD_DUCK_71_COVER": "Donald Duck #71 Cover",
+    "DONALD_DUCK_72_COVER": "Donald Duck #72 Cover",
+    "DONALD_DUCK_73_COVER": "Donald Duck #73 Cover",
+    "DONALD_DUCK_77_COVER": "Donald Duck #77 Cover",
+    "DONALD_DUCK_78_COVER": "Donald Duck #78 Cover",
+    "DONALD_DUCK_79_COVER": "Donald Duck #79 Cover",
+    "DONALD_DUCK_80_COVER": "Donald Duck #80 Cover",
+    "DONALD_DUCK_83_COVER": "Donald Duck #83 Cover",
+    "DONALD_DUCK_101_COVER": "Donald Duck #101 Cover",
+    "DONALD_DUCK_103_COVER": "Donald Duck #103 Cover",
+    "DONALD_DUCK_105_COVER": "Donald Duck #105 Cover",
+    "DONALD_DUCK_106_COVER": "Donald Duck #106 Cover",
+    "DONALD_DUCK_111_COVER": "Donald Duck #111 Cover",
+    "DONALD_DUCK_126_COVER": "Donald Duck #126 Cover",
+    "FOUR_COLOR_1099_COVER": "Four Color #1099 Cover",
+    "FOUR_COLOR_1140_COVER": "Four Color #1140 Cover",
+    "FOUR_COLOR_1239_COVER": "Four Color #1239 Cover",
+    "DONALD_DUCK_ALBUM_1_COVER": "Donald Duck Album #1 Cover",
+    "DONALD_DUCK_ALBUM_1_BACK_COVER": "Donald Duck Album #1 Back Cover",
+    "FOUR_COLOR_353_COVER": "Four Color #353 Cover",
+    "FOUR_COLOR_450_COVER": "Four Color #450 Cover",
+    "FOUR_COLOR_1073_COVER": "Four Color #1073 Cover",
+    "FOUR_COLOR_1047_COVER": "Four Color #1047 Cover",
+    "FOUR_COLOR_1047_INSIDE_FRONT_COVER": "Four Color #1047 Inside Front Cover",
+    "FOUR_COLOR_1095_COVER": "Four Color #1095 Cover",
+    "FOUR_COLOR_1184_COVER": "Four Color #1184 Cover",
+    "FOUR_COLOR_1267_COVER": "Four Color #1267 Cover",
+    "GYRO_GEARLOOSE_1_COVER": "Gyro Gearloose #1 Cover",
+    "HUEY_DEWEY_AND_LOUIE_JUNIOR_WOODCHUCKS_9_COVER": "Huey, Dewey and Louie Junior Woodchucks #9 Cover",  # noqa: E501
+    "MERRY_CHRISTMAS_39_COVER": "Merry Christmas #39 Cover",
+    "UNCLE_DONALD_AND_HIS_NEPHEWS_FAMILY_FUN_1_COVER": "Uncle Donald And His Nephews Family Fun #1 Cover",  # noqa: E501
+    "FOUR_COLOR_386_COVER": "Four Color #386 Cover",
+    "FOUR_COLOR_456_COVER": "Four Color #456 Cover",
+    "FOUR_COLOR_495_COVER": "Four Color #495 Cover",
+    "UNCLE_SCROOGE_4_COVER": "Uncle Scrooge #4 Cover",
+    "UNCLE_SCROOGE_5_COVER": "Uncle Scrooge #5 Cover",
+    "UNCLE_SCROOGE_6_COVER": "Uncle Scrooge #6 Cover",
+    "UNCLE_SCROOGE_7_COVER": "Uncle Scrooge #7 Cover",
+    "UNCLE_SCROOGE_8_COVER": "Uncle Scrooge #8 Cover",
+    "UNCLE_SCROOGE_9_COVER": "Uncle Scrooge #9 Cover",
+    "UNCLE_SCROOGE_10_COVER": "Uncle Scrooge #10 Cover",
+    "UNCLE_SCROOGE_11_COVER": "Uncle Scrooge #11 Cover",
+    "UNCLE_SCROOGE_12_COVER": "Uncle Scrooge #12 Cover",
+    "UNCLE_SCROOGE_13_COVER": "Uncle Scrooge #13 Cover",
+    "UNCLE_SCROOGE_14_COVER": "Uncle Scrooge #14 Cover",
+    "UNCLE_SCROOGE_15_COVER": "Uncle Scrooge #15 Cover",
+    "UNCLE_SCROOGE_16_COVER": "Uncle Scrooge #16 Cover",
+    "UNCLE_SCROOGE_16_BACK_COVER": "Uncle Scrooge #16 Back Cover",
+    "UNCLE_SCROOGE_17_COVER": "Uncle Scrooge #17 Cover",
+    "UNCLE_SCROOGE_18_COVER": "Uncle Scrooge #18 Cover",
+    "UNCLE_SCROOGE_19_COVER": "Uncle Scrooge #19 Cover",
+    "UNCLE_SCROOGE_20_COVER": "Uncle Scrooge #20 Cover",
+    "UNCLE_SCROOGE_21_COVER": "Uncle Scrooge #21 Cover",
+    "UNCLE_SCROOGE_22_COVER": "Uncle Scrooge #22 Cover",
+    "UNCLE_SCROOGE_23_COVER": "Uncle Scrooge #23 Cover",
+    "UNCLE_SCROOGE_24_COVER": "Uncle Scrooge #24 Cover",
+    "UNCLE_SCROOGE_25_COVER": "Uncle Scrooge #25 Cover",
+    "UNCLE_SCROOGE_26_COVER": "Uncle Scrooge #26 Cover",
+    "UNCLE_SCROOGE_27_COVER": "Uncle Scrooge #27 Cover",
+    "UNCLE_SCROOGE_28_COVER": "Uncle Scrooge #28 Cover",
+    "UNCLE_SCROOGE_29_COVER": "Uncle Scrooge #29 Cover",
+    "UNCLE_SCROOGE_30_COVER": "Uncle Scrooge #30 Cover",
+    "UNCLE_SCROOGE_31_COVER": "Uncle Scrooge #31 Cover",
+    "UNCLE_SCROOGE_32_COVER": "Uncle Scrooge #32 Cover",
+    "UNCLE_SCROOGE_33_COVER": "Uncle Scrooge #33 Cover",
+    "UNCLE_SCROOGE_34_COVER": "Uncle Scrooge #34 Cover",
+    "UNCLE_SCROOGE_35_COVER": "Uncle Scrooge #35 Cover",
+    "UNCLE_SCROOGE_36_COVER": "Uncle Scrooge #36 Cover",
+    "UNCLE_SCROOGE_37_COVER": "Uncle Scrooge #37 Cover",
+    "UNCLE_SCROOGE_39_COVER": "Uncle Scrooge #39 Cover",
+    "UNCLE_SCROOGE_40_COVER": "Uncle Scrooge #40 Cover",
+    "UNCLE_SCROOGE_40_BACK_COVER": "Uncle Scrooge #40 Back Cover",
+    "UNCLE_SCROOGE_43_COVER": "Uncle Scrooge #43 Cover",
+    "UNCLE_SCROOGE_44_COVER": "Uncle Scrooge #44 Cover",
+    "UNCLE_SCROOGE_45_COVER": "Uncle Scrooge #45 Cover",
+    "UNCLE_SCROOGE_46_COVER": "Uncle Scrooge #46 Cover",
+    "UNCLE_SCROOGE_47_COVER": "Uncle Scrooge #47 Cover",
+    "UNCLE_SCROOGE_48_COVER": "Uncle Scrooge #48 Cover",
+    "UNCLE_SCROOGE_49_COVER": "Uncle Scrooge #49 Cover",
+    "UNCLE_SCROOGE_50_COVER": "Uncle Scrooge #50 Cover",
+    "UNCLE_SCROOGE_51_COVER": "Uncle Scrooge #51 Cover",
+    "UNCLE_SCROOGE_52_COVER": "Uncle Scrooge #52 Cover",
+    "UNCLE_SCROOGE_53_COVER": "Uncle Scrooge #53 Cover",
+    "UNCLE_SCROOGE_54_COVER": "Uncle Scrooge #54 Cover",
+    "UNCLE_SCROOGE_55_COVER": "Uncle Scrooge #55 Cover",
+    "UNCLE_SCROOGE_56_COVER": "Uncle Scrooge #56 Cover",
+    "UNCLE_SCROOGE_56_INSIDE_FRONT_COVER": "Uncle Scrooge #56 Inside Front Cover",
+    "UNCLE_SCROOGE_57_COVER": "Uncle Scrooge #57 Cover",
+    "UNCLE_SCROOGE_58_COVER": "Uncle Scrooge #58 Cover",
+    "UNCLE_SCROOGE_59_COVER": "Uncle Scrooge #59 Cover",
+    "UNCLE_SCROOGE_60_COVER": "Uncle Scrooge #60 Cover",
+    "UNCLE_SCROOGE_61_COVER": "Uncle Scrooge #61 Cover",
+    "UNCLE_SCROOGE_62_COVER": "Uncle Scrooge #62 Cover",
+    "UNCLE_SCROOGE_63_COVER": "Uncle Scrooge #63 Cover",
+    "UNCLE_SCROOGE_64_COVER": "Uncle Scrooge #64 Cover",
+    "UNCLE_SCROOGE_65_COVER": "Uncle Scrooge #65 Cover",
+    "UNCLE_SCROOGE_66_COVER": "Uncle Scrooge #66 Cover",
+    "UNCLE_SCROOGE_68_COVER": "Uncle Scrooge #68 Cover",
+    "UNCLE_SCROOGE_69_COVER": "Uncle Scrooge #69 Cover",
+    "UNCLE_SCROOGE_70_COVER": "Uncle Scrooge #70 Cover",
+    "UNCLE_SCROOGE_71_COVER": "Uncle Scrooge #71 Cover",
+    "COMICS_AND_STORIES_95_COVER": "Comics and Stories #95 Cover",
+    "COMICS_AND_STORIES_96_COVER": "Comics and Stories #96 Cover",
+    "COMICS_AND_STORIES_104_COVER": "Comics and Stories #104 Cover",
+    "COMICS_AND_STORIES_108_COVER": "Comics and Stories #108 Cover",
+    "COMICS_AND_STORIES_109_COVER": "Comics and Stories #109 Cover",
+    "COMICS_AND_STORIES_130_COVER": "Comics and Stories #130 Cover",
+    "COMICS_AND_STORIES_131_COVER": "Comics and Stories #131 Cover",
+    "COMICS_AND_STORIES_132_COVER": "Comics and Stories #132 Cover",
+    "COMICS_AND_STORIES_133_COVER": "Comics and Stories #133 Cover",
+    "COMICS_AND_STORIES_134_COVER": "Comics and Stories #134 Cover",
+    "COMICS_AND_STORIES_135_COVER": "Comics and Stories #135 Cover",
+    "COMICS_AND_STORIES_136_COVER": "Comics and Stories #136 Cover",
+    "COMICS_AND_STORIES_137_COVER": "Comics and Stories #137 Cover",
+    "COMICS_AND_STORIES_138_COVER": "Comics and Stories #138 Cover",
+    "COMICS_AND_STORIES_139_COVER": "Comics and Stories #139 Cover",
+    "COMICS_AND_STORIES_140_COVER": "Comics and Stories #140 Cover",
+    "COMICS_AND_STORIES_141_COVER": "Comics and Stories #141 Cover",
+    "COMICS_AND_STORIES_142_COVER": "Comics and Stories #142 Cover",
+    "COMICS_AND_STORIES_143_COVER": "Comics and Stories #143 Cover",
+    "COMICS_AND_STORIES_144_COVER": "Comics and Stories #144 Cover",
+    "COMICS_AND_STORIES_145_COVER": "Comics and Stories #145 Cover",
+    "COMICS_AND_STORIES_146_COVER": "Comics and Stories #146 Cover",
+    "COMICS_AND_STORIES_147_COVER": "Comics and Stories #147 Cover",
+    "COMICS_AND_STORIES_148_COVER": "Comics and Stories #148 Cover",
+    "COMICS_AND_STORIES_149_COVER": "Comics and Stories #149 Cover",
+    "COMICS_AND_STORIES_150_COVER": "Comics and Stories #150 Cover",
+    "COMICS_AND_STORIES_151_COVER": "Comics and Stories #151 Cover",
+    "COMICS_AND_STORIES_152_COVER": "Comics and Stories #152 Cover",
+    "COMICS_AND_STORIES_153_COVER": "Comics and Stories #153 Cover",
+    "COMICS_AND_STORIES_154_COVER": "Comics and Stories #154 Cover",
+    "COMICS_AND_STORIES_155_COVER": "Comics and Stories #155 Cover",
+    "COMICS_AND_STORIES_156_COVER": "Comics and Stories #156 Cover",
+    "COMICS_AND_STORIES_157_COVER": "Comics and Stories #157 Cover",
+    "COMICS_AND_STORIES_158_COVER": "Comics and Stories #158 Cover",
+    "COMICS_AND_STORIES_159_COVER": "Comics and Stories #159 Cover",
+    "COMICS_AND_STORIES_160_COVER": "Comics and Stories #160 Cover",
+    "COMICS_AND_STORIES_161_COVER": "Comics and Stories #161 Cover",
+    "COMICS_AND_STORIES_162_COVER": "Comics and Stories #162 Cover",
+    "COMICS_AND_STORIES_163_COVER": "Comics and Stories #163 Cover",
+    "COMICS_AND_STORIES_164_COVER": "Comics and Stories #164 Cover",
+    "COMICS_AND_STORIES_165_COVER": "Comics and Stories #165 Cover",
+    "COMICS_AND_STORIES_166_COVER": "Comics and Stories #166 Cover",
+    "COMICS_AND_STORIES_167_COVER": "Comics and Stories #167 Cover",
+    "COMICS_AND_STORIES_168_COVER": "Comics and Stories #168 Cover",
+    "COMICS_AND_STORIES_169_COVER": "Comics and Stories #169 Cover",
+    "COMICS_AND_STORIES_170_COVER": "Comics and Stories #170 Cover",
+    "COMICS_AND_STORIES_171_COVER": "Comics and Stories #171 Cover",
+    "COMICS_AND_STORIES_172_COVER": "Comics and Stories #172 Cover",
+    "COMICS_AND_STORIES_173_COVER": "Comics and Stories #173 Cover",
+    "COMICS_AND_STORIES_174_COVER": "Comics and Stories #174 Cover",
+    "COMICS_AND_STORIES_175_COVER": "Comics and Stories #175 Cover",
+    "COMICS_AND_STORIES_176_COVER": "Comics and Stories #176 Cover",
+    "COMICS_AND_STORIES_177_COVER": "Comics and Stories #177 Cover",
+    "COMICS_AND_STORIES_178_COVER": "Comics and Stories #178 Cover",
+    "COMICS_AND_STORIES_183_COVER": "Comics and Stories #183 Cover",
+    "COMICS_AND_STORIES_198_COVER": "Comics and Stories #198 Cover",
+    "COMICS_AND_STORIES_199_COVER": "Comics and Stories #199 Cover",
+    "COMICS_AND_STORIES_200_COVER": "Comics and Stories #200 Cover",
+    "COMICS_AND_STORIES_204_COVER": "Comics and Stories #204 Cover",
+    "COMICS_AND_STORIES_206_COVER": "Comics and Stories #206 Cover",
+    "COMICS_AND_STORIES_207_COVER": "Comics and Stories #207 Cover",
+    "COMICS_AND_STORIES_208_COVER": "Comics and Stories #208 Cover",
+    "COMICS_AND_STORIES_209_COVER": "Comics and Stories #209 Cover",
+    "COMICS_AND_STORIES_212_COVER": "Comics and Stories #212 Cover",
+    "COMICS_AND_STORIES_213_COVER": "Comics and Stories #213 Cover",
+    "COMICS_AND_STORIES_214_COVER": "Comics and Stories #214 Cover",
+    "COMICS_AND_STORIES_215_COVER": "Comics and Stories #215 Cover",
+    "COMICS_AND_STORIES_216_COVER": "Comics and Stories #216 Cover",
+    "COMICS_AND_STORIES_218_COVER": "Comics and Stories #218 Cover",
+    "COMICS_AND_STORIES_220_COVER": "Comics and Stories #220 Cover",
+    "COMICS_AND_STORIES_226_COVER": "Comics and Stories #226 Cover",
+    "COMICS_AND_STORIES_228_COVER": "Comics and Stories #228 Cover",
+    "COMICS_AND_STORIES_229_COVER": "Comics and Stories #229 Cover",
+    "COMICS_AND_STORIES_230_COVER": "Comics and Stories #230 Cover",
+    "COMICS_AND_STORIES_231_COVER": "Comics and Stories #231 Cover",
+    "COMICS_AND_STORIES_232_COVER": "Comics and Stories #232 Cover",
+    "COMICS_AND_STORIES_233_COVER": "Comics and Stories #233 Cover",
+    "COMICS_AND_STORIES_235_COVER": "Comics and Stories #235 Cover",
+    "COMICS_AND_STORIES_236_COVER": "Comics and Stories #236 Cover",
+    "COMICS_AND_STORIES_237_COVER": "Comics and Stories #237 Cover",
+    "COMICS_AND_STORIES_238_COVER": "Comics and Stories #238 Cover",
+    "COMICS_AND_STORIES_240_COVER": "Comics and Stories #240 Cover",
+    "COMICS_AND_STORIES_241_COVER": "Comics and Stories #241 Cover",
+    "COMICS_AND_STORIES_242_COVER": "Comics and Stories #242 Cover",
+    "COMICS_AND_STORIES_243_COVER": "Comics and Stories #243 Cover",
+    "COMICS_AND_STORIES_247_COVER": "Comics and Stories #247 Cover",
+    "COMICS_AND_STORIES_250_COVER": "Comics and Stories #250 Cover",
+    "COMICS_AND_STORIES_253_COVER": "Comics and Stories #253 Cover",
+    "COMICS_AND_STORIES_256_COVER": "Comics and Stories #256 Cover",
+    "COMICS_AND_STORIES_260_COVER": "Comics and Stories #260 Cover",
+    "COMICS_AND_STORIES_261_COVER": "Comics and Stories #261 Cover",
+    "COMICS_AND_STORIES_276_COVER": "Comics and Stories #276 Cover",
+    "COMICS_AND_STORIES_277_COVER": "Comics and Stories #277 Cover",
+    "COMICS_AND_STORIES_278_COVER": "Comics and Stories #278 Cover",
+    "COMICS_AND_STORIES_279_COVER": "Comics and Stories #279 Cover",
+    "COMICS_AND_STORIES_280_COVER": "Comics and Stories #280 Cover",
+    "COMICS_AND_STORIES_281_COVER": "Comics and Stories #281 Cover",
+    "COMICS_AND_STORIES_282_COVER": "Comics and Stories #282 Cover",
+    "COMICS_AND_STORIES_283_COVER": "Comics and Stories #283 Cover",
+    "COMICS_AND_STORIES_288_COVER": "Comics and Stories #288 Cover",
+    "COMICS_AND_STORIES_289_COVER": "Comics and Stories #289 Cover",
+    "COMICS_AND_STORIES_290_COVER": "Comics and Stories #290 Cover",
+    "COMICS_AND_STORIES_291_COVER": "Comics and Stories #291 Cover",
+    "COMICS_AND_STORIES_292_COVER": "Comics and Stories #292 Cover",
+    "COMICS_AND_STORIES_295_COVER": "Comics and Stories #295 Cover",
+    "COMICS_AND_STORIES_296_COVER": "Comics and Stories #296 Cover",
+    "COMICS_AND_STORIES_297_COVER": "Comics and Stories #297 Cover",
+    "COMICS_AND_STORIES_298_COVER": "Comics and Stories #298 Cover",
+    "COMICS_AND_STORIES_301_COVER": "Comics and Stories #301 Cover",
+    "COMICS_AND_STORIES_303_COVER": "Comics and Stories #303 Cover",
+    "COMICS_AND_STORIES_304_COVER": "Comics and Stories #304 Cover",
+    "COMICS_AND_STORIES_306_COVER": "Comics and Stories #306 Cover",
+    "COMICS_AND_STORIES_307_COVER": "Comics and Stories #307 Cover",
+    "COMICS_AND_STORIES_309_COVER": "Comics and Stories #309 Cover",
+    "COMICS_AND_STORIES_310_COVER": "Comics and Stories #310 Cover",
+    "COMICS_AND_STORIES_313_COVER": "Comics and Stories #313 Cover",
+    "COMICS_AND_STORIES_314_COVER": "Comics and Stories #314 Cover",
+    "COMICS_AND_STORIES_315_COVER": "Comics and Stories #315 Cover",
+    "COMICS_AND_STORIES_316_COVER": "Comics and Stories #316 Cover",
+    "COMICS_AND_STORIES_319_COVER": "Comics and Stories #319 Cover",
+    "COMICS_AND_STORIES_321_COVER": "Comics and Stories #321 Cover",
+    "COMICS_AND_STORIES_322_COVER": "Comics and Stories #322 Cover",
+    "COMICS_AND_STORIES_324_COVER": "Comics and Stories #324 Cover",
+    "COMICS_AND_STORIES_326_COVER": "Comics and Stories #326 Cover",
+    "COMICS_AND_STORIES_328_COVER": "Comics and Stories #328 Cover",
+    "COMICS_AND_STORIES_329_COVER": "Comics and Stories #329 Cover",
+    "COMICS_AND_STORIES_331_COVER": "Comics and Stories #331 Cover",
+    "COMICS_AND_STORIES_332_COVER": "Comics and Stories #332 Cover",
+    "COMICS_AND_STORIES_334_COVER": "Comics and Stories #334 Cover",
+    "COMICS_AND_STORIES_341_COVER": "Comics and Stories #341 Cover",
+    "COMICS_AND_STORIES_342_COVER": "Comics and Stories #342 Cover",
+    "COMICS_AND_STORIES_350_COVER": "Comics and Stories #350 Cover",
+    "COMICS_AND_STORIES_351_COVER": "Comics and Stories #351 Cover",
+    "COMICS_AND_STORIES_405_COVER": "Comics and Stories #405 Cover",
     "ALL_CHOKED_UP": "All Choked Up",
     "ALL_ONE_PAGERS": "All One-Pagers",
     "BACK_TO_LONG_AGO": "Back to Long Ago!",

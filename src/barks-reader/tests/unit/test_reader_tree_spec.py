@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import barks_reader.core.navigation.tree_spec
 import pytest
+from barks_fantagraphics.barks_covers import get_located_covers
 from barks_fantagraphics.barks_tags import (
     BARKS_TAG_CATEGORIES,
     BARKS_TAG_GROUPS,
@@ -195,6 +196,13 @@ class TestStoriesSubtree:
         title_rows = one_pagers.lazy_children()
         assert len(title_rows) > 0
         assert all(row.kind is NodeKind.TITLE_ROW for row in title_rows)
+
+        covers = by_name[SERIES_COVERS]
+        assert covers.children == ()
+        assert covers.lazy_children is not None
+        cover_rows = covers.lazy_children()
+        assert len(cover_rows) == len(get_located_covers())
+        assert all(row.kind is NodeKind.TITLE_ROW for row in cover_rows)
 
     def test_categories_cover_all_tag_categories(self, specs: tuple[NodeSpec, ...]) -> None:
         categories = specs[1].children[2]

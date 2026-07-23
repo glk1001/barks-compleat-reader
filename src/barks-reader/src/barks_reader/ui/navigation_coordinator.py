@@ -9,14 +9,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
+from barks_fantagraphics.barks_covers import get_cover_collection_page_num
 from barks_fantagraphics.barks_tags import BARKS_TAGGED_PAGES, TagGroups, Tags
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book_info import (
+    COVERS_SET,
     NON_COMIC_TITLES,
     ONE_PAGERS,
     ComicBookInfo,
     get_one_pager_collection_page_num,
-    is_covers_collection,
 )
 from barks_fantagraphics.comics_database import TitleNotFoundError
 from barks_fantagraphics.fanta_comics_info import (
@@ -214,7 +215,7 @@ class NavigationCoordinator:
                 raise RuntimeError(msg)
             return one_pagers_node
 
-        if is_covers_collection(title):
+        if title in COVERS_SET:
             covers_node = self._series_nodes.get(SERIES_COVERS)
             if not covers_node:
                 msg = f"No series node found for '{SERIES_COVERS}'."
@@ -307,11 +308,17 @@ class NavigationCoordinator:
 
         """
         assert self._current_fanta_info is not None
-        if self._current_fanta_info.comic_book_info.title in ONE_PAGERS:
+        title = self._current_fanta_info.comic_book_info.title
+        if title in ONE_PAGERS:
             # One-pagers have no comic of their own - read them as a page within
             # the pre-baked "All One-Pagers" collection.
-            return self._read_one_pager_in_collection(
-                self._current_fanta_info.comic_book_info.title
+            return self._read_title_in_collection(
+                title, Titles.ALL_ONE_PAGERS, get_one_pager_collection_page_num(title)
+            )
+        if title in COVERS_SET:
+            # Same for covers: each is a page within the "All Covers" collection.
+            return self._read_title_in_collection(
+                title, Titles.ALL_COVERS, get_cover_collection_page_num(title)
             )
 
         try:
@@ -333,33 +340,34 @@ class NavigationCoordinator:
         )
         return True
 
-    def _read_one_pager_in_collection(self, one_pager: Titles) -> bool:
-        """Open the "All One-Pagers" collection at the selected one-pager's page.
+    def _read_title_in_collection(
+        self, title: Titles, collection: Titles, page_num: int | None
+    ) -> bool:
+        """Open a synthetic collection at the selected member title's page.
 
-        One-pagers are not standalone comics; each is a body page in the collection.
-        Opens the collection comic (FANTA_01) and jumps to this one-pager's 1-based
-        position within it.
+        One-pagers and covers are not standalone comics; each is a body page in
+        its collection ("All One-Pagers"/"All Covers"). Opens the collection
+        comic and jumps to the member's 1-based position within it.
 
         Args:
-            one_pager: The selected one-pager title.
+            title: The selected member title (a one-pager or cover).
+            collection: The collection title to open.
+            page_num: The member's 1-based page position, or None if unlocated.
 
         Returns:
             True if the collection was opened, False on error.
 
         """
-        page_num = get_one_pager_collection_page_num(one_pager)
-        collection_info = get_fanta_info(Titles.ALL_ONE_PAGERS)
+        collection_info = get_fanta_info(collection)
         if page_num is None or collection_info is None:
             logger.error(
-                f'Cannot open one-pager "{ENUM_TO_STR_TITLE[one_pager]}":'
-                " it is not present in the All One-Pagers collection."
+                f'Cannot open "{ENUM_TO_STR_TITLE[title]}":'
+                f' it is not present in the "{ENUM_TO_STR_TITLE[collection]}" collection.'
             )
             return False
 
         try:
-            comic_book = self._comics_database.get_comic_book(
-                ENUM_TO_STR_TITLE[Titles.ALL_ONE_PAGERS]
-            )
+            comic_book = self._comics_database.get_comic_book(ENUM_TO_STR_TITLE[collection])
         except TitleNotFoundError as e:
             logger.error(e)
             error_info = ErrorInfo(file_volume=-1, title=STR_TITLE_TO_ENUM[e.title])
@@ -374,7 +382,7 @@ class NavigationCoordinator:
             comic_book,
             str(page_num),
             self._bottom_title_view_screen.use_overrides_active,
-            history_title_str=ENUM_TO_STR_TITLE[one_pager],
+            history_title_str=ENUM_TO_STR_TITLE[title],
         )
         return True
 

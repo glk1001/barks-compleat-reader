@@ -98,6 +98,7 @@ def _get_all_fanta_comic_book_info() -> FantaComicBookInfoDict:
 
     fanta_chronological_number = 1
     one_pager_chronological_number = 1
+    cover_chronological_number = 1
     for title_info in chrono_sorted_series_info:
         # if title not in SERIES_INFO:
         #     logger.debug(f'Title "{title}" not in SERIES_INFO.')
@@ -112,6 +113,11 @@ def _get_all_fanta_comic_book_info() -> FantaComicBookInfoDict:
         if title_info.series_name == SERIES_ONE_PAGERS:
             chrono_num = one_pager_chronological_number
             one_pager_chronological_number += 1
+        elif title_info.series_name == SERIES_COVERS:
+            # Covers get the same treatment as one-pagers: their own ordering,
+            # so they never shift the regular comics' chronological numbers.
+            chrono_num = cover_chronological_number
+            cover_chronological_number += 1
         else:
             chrono_num = fanta_chronological_number
             fanta_chronological_number += 1
@@ -337,6 +343,7 @@ def get_num_comic_book_titles(
             for info in ALL_FANTA_COMIC_BOOK_INFO.values()
             if year_range[0] <= info.comic_book_info.submitted_year <= year_range[1]
             and (include_one_pagers or info.series_name != SERIES_ONE_PAGERS)
+            and info.series_name != SERIES_COVERS
         ]
     )
 

@@ -7,10 +7,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
 import pyphen
+from barks_fantagraphics.barks_covers import COVER_BY_TITLE, get_cover_location
 from barks_fantagraphics.barks_extra_info import BARKS_EXTRA_INFO
 from barks_fantagraphics.barks_payments import BARKS_PAYMENTS, PaymentInfo
 from barks_fantagraphics.barks_titles import Titles
-from barks_fantagraphics.comic_book_info import ONE_PAGERS, get_one_pager_fanta_page
+from barks_fantagraphics.comic_book_info import COVERS_SET, ONE_PAGERS, get_one_pager_fanta_page
 from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
 from barks_fantagraphics.comics_consts import CARL_BARKS_FONT_FILE
 from barks_fantagraphics.comics_utils import (
@@ -184,6 +185,10 @@ class ReaderFormatter:
 
     @staticmethod
     def get_formatted_submitted_str(comic_book_info: ComicBookInfo, color: str) -> str:
+        if comic_book_info.submitted_month == -1:
+            # No recorded submitted date (e.g. some covers) - omit the bracket.
+            return ""
+
         left_sq_bracket = escape_kivy_markup("[")
         right_sq_bracket = escape_kivy_markup("]")
 
@@ -213,8 +218,11 @@ class ReaderFormatter:
         title = fanta_info.comic_book_info.title
         source = f"{FAN} CBDL, Vol {fanta_book.volume}, {fanta_book.year}"
         fanta_page = get_one_pager_fanta_page(title) if title in ONE_PAGERS else None
+        if fanta_page is None and title in COVERS_SET:
+            cover_location = get_cover_location(COVER_BY_TITLE[title])
+            fanta_page = None if cover_location is None else cover_location[1]
         if fanta_page is not None:
-            # One-pagers also show the page within the Fantagraphics volume.
+            # One-pagers and covers also show the page within the Fantagraphics volume.
             source += f", p. {fanta_page}"
         payment_info = BARKS_PAYMENTS.get(fanta_info.comic_book_info.title, None)
 

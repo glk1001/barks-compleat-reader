@@ -12,7 +12,7 @@ from enum import Enum, auto
 
 from comic_utils.comic_consts import MONTH_AS_SHORT_STR
 
-from .barks_titles import Titles
+from .barks_titles import STR_TITLE_TO_ENUM, Titles
 from .comic_issues import ISSUE_NAME, Issues
 from .comics_consts import PageType
 from .page_classes import OriginalPage
@@ -4301,6 +4301,79 @@ _COVER_KIND_SUFFIX = {
     CoverKind.INSIDE_BACK: ", inside back",
     CoverKind.BACK: ", back",
 }
+
+_COVER_KIND_TITLE_WORD = {
+    CoverKind.FRONT: "Cover",
+    CoverKind.INSIDE_FRONT: "Inside Front Cover",
+    CoverKind.INSIDE_BACK: "Inside Back Cover",
+    CoverKind.BACK: "Back Cover",
+}
+
+
+def _get_cover_issue_str(cover: BarksCover) -> str:
+    if cover.issue_name is not None:
+        issue = ISSUE_NAME[cover.issue_name]
+    else:
+        issue = " ".join(word.capitalize() for word in cover.series_name.split())
+    if cover.issue_number != -1:
+        issue += f" #{cover.issue_number}"
+    return issue
+
+
+def get_cover_title_str(cover: BarksCover) -> str:
+    """Return a cover's synthesized canonical title string.
+
+    Covers have no real titles, so each gets an assigned one - e.g.
+    "Uncle Scrooge #7 Cover", or "Uncle Scrooge #16 Back Cover" for a non-front
+    cover. This string is the cover's `Titles` identity (see `get_cover_title`);
+    it is unique across `BARKS_COVERS`.
+
+    Args:
+        cover: The cover record.
+
+    Returns:
+        The canonical title string.
+
+    """
+    return f"{_get_cover_issue_str(cover)} {_COVER_KIND_TITLE_WORD[cover.kind]}"
+
+
+def get_cover_title(cover: BarksCover) -> Titles:
+    """Return the `Titles` member for a cover.
+
+    Args:
+        cover: The cover record.
+
+    Returns:
+        The cover's `Titles` member (resolved via its synthesized title string).
+
+    """
+    return STR_TITLE_TO_ENUM[get_cover_title_str(cover)]
+
+
+COVER_BY_TITLE: dict[Titles, BarksCover] = {get_cover_title(cover): cover for cover in BARKS_COVERS}
+assert len(COVER_BY_TITLE) == len(BARKS_COVERS), "duplicate cover titles"
+
+
+def get_cover_collection_page_num(title: Titles) -> int | None:
+    """Return a cover's 1-based page position within the "All Covers" collection.
+
+    Used to deep-link a cover's tree node to its page in the collection.
+
+    Args:
+        title: The cover title.
+
+    Returns:
+        The 1-based page number, or None if the cover has no authored location.
+
+    """
+    cover = COVER_BY_TITLE.get(title)
+    if cover is None:
+        return None
+    located = get_located_covers()
+    if cover not in located:
+        return None
+    return located.index(cover) + 1
 
 
 def get_cover_display_title(cover: BarksCover) -> str:

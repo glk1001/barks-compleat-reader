@@ -211,6 +211,43 @@ class TestNavigationCoordinator:
         # History records the one-pager's own title, not the collection's.
         assert call.kwargs["history_title_str"] == ENUM_TO_STR_TITLE[Titles.IF_THE_HAT_FITS]
 
+    def test_read_comic_cover_opens_collection_at_its_page(
+        self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
+    ) -> None:
+        """Selecting a cover opens the All Covers collection at the cover's page."""
+        mock_fanta_info = MagicMock()
+        mock_fanta_info.comic_book_info.title = Titles.FOUR_COLOR_189_COVER  # a cover
+        nav_coord._current_fanta_info = mock_fanta_info
+        mock_deps["bottom_title_view_screen"].use_overrides_active = False
+
+        mock_collection_info = MagicMock()
+        mock_comic = MagicMock()
+        mock_deps["comics_database"].get_comic_book.return_value = mock_comic
+
+        with (
+            patch.object(
+                barks_reader.ui.navigation_coordinator,
+                "get_cover_collection_page_num",
+                return_value=3,
+            ),
+            patch.object(
+                barks_reader.ui.navigation_coordinator,
+                "get_fanta_info",
+                return_value=mock_collection_info,
+            ),
+        ):
+            result = nav_coord.read_comic()
+
+        assert result is True
+        manager = mock_deps["comic_reader_manager"]
+        manager.read_barks_comic_book.assert_called_once()
+        call = manager.read_barks_comic_book.call_args
+        assert call.args[0] is mock_collection_info
+        assert call.args[1] is mock_comic
+        assert call.args[2] == "3"
+        # History records the cover's own title, not the collection's.
+        assert call.kwargs["history_title_str"] == ENUM_TO_STR_TITLE[Titles.FOUR_COLOR_189_COVER]
+
     def test_read_comic_unlocated_one_pager_returns_false(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:

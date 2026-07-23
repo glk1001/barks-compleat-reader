@@ -16,9 +16,9 @@ from barks_fantagraphics.barks_bibliography import (
     BibSeries,
     Disposition,
 )
-from barks_fantagraphics.barks_covers import BARKS_COVER_BY_KEY, BARKS_COVERS
+from barks_fantagraphics.barks_covers import BARKS_COVER_BY_KEY, BARKS_COVERS, get_cover_title
 from barks_fantagraphics.barks_titles import Titles
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, COVERS_SET
 
 # Barrier's bibliography ends with issues bearing 1978 cover dates.
 LAST_BIBLIOGRAPHY_YEAR = 1978
@@ -28,7 +28,8 @@ MIN_ENTRIES = 900
 
 # Curated titles with no counterpart in Barrier's 1978 bibliography: later
 # reprints/originals (post-1978) and a few documented findings (see
-# experiments/bibliography/overrides.py).
+# experiments/bibliography/overrides.py). Cover titles are included: each cover
+# entry carries its cover's title (and its cover_key - see the cover tests below).
 EXPECTED_WITHOUT_BIB_ENTRY: frozenset[Titles] = frozenset(
     {
         Titles.SILENT_NIGHT,
@@ -66,10 +67,19 @@ def test_every_curated_title_maps_or_is_documented() -> None:
 
 
 def test_mapped_entries_have_descriptions() -> None:
-    """A matched entry carries descriptive text and is never a front cover."""
-    for entry in TITLE_TO_BIB_ENTRY.values():
-        assert not entry.is_cover
+    """A matched entry carries descriptive text; only cover titles map to covers."""
+    for title, entry in TITLE_TO_BIB_ENTRY.items():
+        assert entry.is_cover == (title in COVERS_SET)
         assert entry.description or entry.notes
+
+
+def test_cover_entries_carry_their_cover_title() -> None:
+    """A cover entry's title and cover_key identify the same BARKS_COVERS record."""
+    for entry in _all_entries():
+        if entry.cover_key is not None:
+            assert entry.title is get_cover_title(BARKS_COVER_BY_KEY[entry.cover_key])
+        else:
+            assert entry.title not in COVERS_SET
 
 
 def _all_entries() -> list[BibEntry]:
@@ -80,17 +90,20 @@ def test_every_entry_has_exactly_one_disposition() -> None:
     """Zero undisposed entries - the permanent one-to-one invariant."""
     for entry in _all_entries():
         assert isinstance(entry.disposition, Disposition)
-        # The disposition's payload fields agree with the disposition kind.
-        assert (entry.disposition == Disposition.MATCHED_TITLE) == (entry.title is not None)
+        # The disposition's payload fields agree with the disposition kind:
+        # matched stories and covers both carry a title; only covers a cover_key.
+        title_dispositions = (Disposition.MATCHED_TITLE, Disposition.COVER)
+        assert (entry.disposition in title_dispositions) == (entry.title is not None)
         assert (entry.disposition == Disposition.COVER) == (entry.cover_key is not None)
         if entry.disposition in (Disposition.EXCLUDED_SECTION, Disposition.EXCLUDED_ENTRY):
             assert entry.disposition_reason
 
 
 def test_matched_story_entries_have_unique_titles() -> None:
-    """Story/gag entry <-> Titles member is one-to-one."""
+    """Story/gag entry <-> Titles member is one-to-one (covers indexed separately)."""
     matched = [e for e in _all_entries() if e.disposition == Disposition.MATCHED_TITLE]
-    assert len(matched) == len(TITLE_TO_BIB_ENTRY)
+    story_titles = [t for t in TITLE_TO_BIB_ENTRY if t not in COVERS_SET]
+    assert len(matched) == len(story_titles)
 
 
 _MONTH_SPAN_RE = re.compile(r"([A-Za-z]{3,9})\.?\s*-\s*([A-Za-z]{3,9})\.?")

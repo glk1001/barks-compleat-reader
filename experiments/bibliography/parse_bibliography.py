@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
 
+from barks_fantagraphics.barks_covers import BARKS_COVER_BY_KEY, get_cover_title
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, ComicBookInfo
 from barks_fantagraphics.comic_issues import Issues
@@ -1372,7 +1373,13 @@ class BibSeries:
                 w(f"                        raw_date={e.raw_date!r},")
                 w(f"                        date_unavailable={e.date_unavailable!r},")
                 w(f"                        notes={tuple(e.notes)!r},")
-                w(f"                        title={py_repr(e.title)},")
+                if e.cover_key is not None:
+                    # Covers are Titles now: carry the cover's title so the entry
+                    # enters TITLE_TO_BIB_ENTRY (identity stays the cover_key).
+                    cover_title = get_cover_title(BARKS_COVER_BY_KEY[e.cover_key])
+                    w(f"                        title=Titles.{cover_title.name},")
+                else:
+                    w(f"                        title={py_repr(e.title)},")
                 if e.disposition is None:
                     msg = f"entry {e.raw_title!r} has no disposition - cannot emit"
                     raise ValueError(msg)

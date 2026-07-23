@@ -4,20 +4,32 @@ import pytest
 from barks_fantagraphics import barks_covers as bc
 from barks_fantagraphics.barks_covers import (
     BARKS_COVERS,
+    COVER_BY_TITLE,
     BarksCover,
     CoverKind,
+    get_cover_collection_page_num,
     get_cover_collection_pages,
     get_cover_display_title,
+    get_cover_title,
+    get_cover_title_str,
     get_located_covers,
 )
-from barks_fantagraphics.barks_titles import Titles
-from barks_fantagraphics.comic_book_info import SYNTHETIC_TITLES, is_covers_collection
+from barks_fantagraphics.barks_payments import BARKS_PAYMENTS
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+from barks_fantagraphics.comic_book_info import (
+    BARKS_TITLE_INFO,
+    COVERS,
+    COVERS_SET,
+    SYNTHETIC_TITLES,
+    is_covers_collection,
+)
 from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.comics_database import ComicsDatabase
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
     SERIES_COVERS,
+    SERIES_EXTRAS,
     get_fanta_info,
 )
 
@@ -42,14 +54,61 @@ def _make_cover(**overrides: object) -> BarksCover:
     return BarksCover(**fields)
 
 
+class TestCoverTitles:
+    def test_every_cover_has_a_unique_title(self) -> None:
+        titles = [get_cover_title(cover) for cover in BARKS_COVERS]
+        assert len(set(titles)) == len(BARKS_COVERS)
+        assert set(titles) == COVERS_SET
+
+    def test_cover_title_round_trips(self) -> None:
+        for cover in BARKS_COVERS:
+            title = get_cover_title(cover)
+            assert ENUM_TO_STR_TITLE[title] == get_cover_title_str(cover)
+            assert COVER_BY_TITLE[title] is cover
+
+    def test_cover_titles_are_assigned_titles(self) -> None:
+        """Cover titles are assigned (not Barks's own), so they display parenthesised."""
+        by_title = {info.title: info for info in BARKS_TITLE_INFO}
+        for title in COVERS:
+            assert by_title[title].is_barks_title is False
+
+    def test_every_cover_has_a_placeholder_payment(self) -> None:
+        for title in COVERS:
+            payment = BARKS_PAYMENTS[title]
+            assert payment.num_pages == 1
+            assert payment.payment == -1.0
+
+    def test_collection_page_num(self) -> None:
+        located = get_located_covers()
+        assert get_cover_collection_page_num(get_cover_title(located[0])) == 1
+        assert get_cover_collection_page_num(get_cover_title(located[-1])) == len(located)
+        # An unlocated cover has no collection page.
+        unlocated = next(c for c in BARKS_COVERS if c not in located)
+        assert get_cover_collection_page_num(get_cover_title(unlocated)) is None
+
+
 class TestCoversCollection:
-    def test_collection_is_in_covers_series(self) -> None:
-        # The collection is the single title of its own "Covers" series (so it gets a
-        # browsable tree node), nominally in FANTA_02.
+    def test_collection_is_in_extras_series(self) -> None:
+        # The collection itself is an "Extra" in FANTA_02 (like "All One-Pagers" in
+        # FANTA_01); its constituent covers are in the "Covers" series.
         info = get_fanta_info(Titles.ALL_COVERS)
         assert info is not None
-        assert info.series_name == SERIES_COVERS
+        assert info.series_name == SERIES_EXTRAS
         assert info.fantagraphics_volume == "FANTA_02"
+
+    def test_located_covers_are_in_covers_series(self) -> None:
+        located = get_located_covers()
+        assert located, "No located covers to check."
+        for cover in located:
+            info = get_fanta_info(get_cover_title(cover))
+            assert info is not None, f"No fanta info for located cover: {cover.key}."
+            assert info.series_name == SERIES_COVERS
+
+    def test_unlocated_covers_are_not_in_series(self) -> None:
+        located = set(get_located_covers())
+        for cover in BARKS_COVERS:
+            if cover not in located:
+                assert get_fanta_info(get_cover_title(cover)) is None
 
     def test_is_covers_collection(self) -> None:
         assert is_covers_collection(Titles.ALL_COVERS)

@@ -23,7 +23,12 @@ from barks_fantagraphics.barks_tags import (
     Tags,
 )
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
-from barks_fantagraphics.comic_book_info import ONE_PAGERS, is_one_pager_collection
+from barks_fantagraphics.comic_book_info import (
+    COVERS_SET,
+    ONE_PAGERS,
+    is_covers_collection,
+    is_one_pager_collection,
+)
 from barks_fantagraphics.comics_utils import get_abbrev_path
 from barks_fantagraphics.fanta_comics_info import (
     ALL_FANTA_COMIC_BOOK_INFO,
@@ -795,6 +800,10 @@ class ViewPipeline:
             self._set_bottom_view_title_image_for(ENUM_TO_STR_TITLE[Titles.ALL_ONE_PAGERS])
             return
 
+        if self._current_title_is_cover():
+            self._set_bottom_view_title_image_for(ENUM_TO_STR_TITLE[Titles.ALL_COVERS])
+            return
+
         if self._bottom_view_title_image_info.filename:
             logger.debug(
                 f'Using provided title image file "{self._bottom_view_title_image_info.filename}".'
@@ -820,6 +829,11 @@ class ViewPipeline:
         """Whether the current bottom-view title is a one-pager or the collection itself."""
         title = STR_TITLE_TO_ENUM.get(self._current_bottom_view_title)
         return title is not None and (title in ONE_PAGERS or is_one_pager_collection(title))
+
+    def _current_title_is_cover(self) -> bool:
+        """Whether the current bottom-view title is a cover or the collection itself."""
+        title = STR_TITLE_TO_ENUM.get(self._current_bottom_view_title)
+        return title is not None and (title in COVERS_SET or is_covers_collection(title))
 
     def _set_bottom_view_title_image_file(self, image_file: PanelPath | None) -> None:
         """Replace the title-view image filename, preserving the other fields."""
