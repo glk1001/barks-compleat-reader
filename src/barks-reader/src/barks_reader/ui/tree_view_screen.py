@@ -18,6 +18,7 @@ from barks_reader.core.reader_settings import BARKS_READER_SECTION, SHOW_TOP_VIE
 from barks_reader.core.reader_tree_view_utils import find_and_expand_node_by_path
 from barks_reader.core.settings_notifier import settings_notifier
 
+from .reader_keyboard_nav import clear_focus_highlight, draw_focus_highlight
 from .tree_view_nodes import BaseTreeViewNode
 
 if TYPE_CHECKING:
@@ -28,6 +29,8 @@ if TYPE_CHECKING:
     from .tree_view_nodes import ButtonTreeViewNode
 
 TREE_VIEW_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
+
+_TOP_GOTO_FOCUS_GROUP = "top_goto_focus"
 
 
 class TreeViewScreen(BoxLayout):
@@ -61,6 +64,30 @@ class TreeViewScreen(BoxLayout):
 
     def set_title(self, title: Titles | None) -> None:
         self.current_title_str = "" if title is None else ENUM_TO_STR_TITLE[title]
+
+    # --- Top-view "Goto Title" keyboard nav ---
+    # A thin API driven by MainScreenNavigation: the top-view goto arrow is a focus
+    # sub-stop of the tree region, reached by Up from the first tree node.
+
+    @property
+    def is_top_goto_active(self) -> bool:
+        """Whether the top-view goto arrow can be activated (a real title is present).
+
+        Gates keyboard entry; independent of the ``show_current_title`` label setting.
+        """
+        return self.current_title_str != ""
+
+    def enter_top_goto_focus(self) -> None:
+        """Draw the keyboard focus ring on the top-view goto arrow button."""
+        draw_focus_highlight(self.ids.goto_title_overlay.goto_button, _TOP_GOTO_FOCUS_GROUP)
+
+    def exit_top_goto_focus(self) -> None:
+        """Clear the keyboard focus ring from the top-view goto arrow button."""
+        clear_focus_highlight(self.ids.goto_title_overlay.goto_button, _TOP_GOTO_FOCUS_GROUP)
+
+    def activate_top_goto(self) -> None:
+        """Fire the top-view goto arrow (runs the kv-wired ``on_goto_title``)."""
+        self.ids.goto_title_overlay.dispatch("on_arrow_press")
 
     def get_selected_node(self) -> BaseTreeViewNode | None:
         return self.ids.reader_tree_view.selected_node

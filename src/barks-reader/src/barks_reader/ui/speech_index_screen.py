@@ -753,6 +753,10 @@ class SpeechIndexScreen(IndexScreen):
         def goto_title() -> None:
             assert self.on_goto_title is not None
             self.on_goto_title(image_info, page_to_goto)
+            # The popup owned the keyboard, so this goto skipped the main screen's normal
+            # key hand-off; land focus on the title portal (the read action) explicitly.
+            if self.on_after_popup_goto_title is not None:
+                self.on_after_popup_goto_title()
 
         Clock.schedule_once(lambda _dt: goto_title(), 0.01)
 

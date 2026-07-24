@@ -56,8 +56,10 @@
             id: collapse_parent_overlay
 
         GotoTitleOverlay:
+            id: goto_title_overlay
             current_title_str: root.current_title_str
             show_title: root.show_current_title
+            is_active: root.current_title_str != ""
             arrow_direction: "down"
             position: "top-right"
             label_opacity: 0.3

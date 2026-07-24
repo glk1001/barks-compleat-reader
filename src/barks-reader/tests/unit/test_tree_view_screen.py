@@ -35,6 +35,7 @@ def tree_view_screen(mock_settings: MagicMock) -> Generator[TreeViewScreen]:
             self.ids = MagicMock()
             self.ids.reader_tree_view = MagicMock()
             self.ids.scroll_view = MagicMock()
+            self.ids.goto_title_overlay = MagicMock()
 
         mock_init.side_effect = side_effect
 
@@ -57,6 +58,38 @@ class TestTreeViewScreen:
         # Test with Title
         tree_view_screen.set_title(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD)
         assert tree_view_screen.current_title_str != ""
+
+    def test_is_top_goto_active_tracks_title(self, tree_view_screen: TreeViewScreen) -> None:
+        tree_view_screen.set_title(None)
+        assert tree_view_screen.is_top_goto_active is False
+
+        tree_view_screen.set_title(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD)
+        assert tree_view_screen.is_top_goto_active is True
+
+    def test_enter_top_goto_focus_draws_ring(self, tree_view_screen: TreeViewScreen) -> None:
+        with patch.object(tree_view_screen_module, "draw_focus_highlight") as mock_draw:
+            tree_view_screen.enter_top_goto_focus()
+
+        mock_draw.assert_called_once_with(
+            tree_view_screen.ids.goto_title_overlay.goto_button,
+            tree_view_screen_module._TOP_GOTO_FOCUS_GROUP,
+        )
+
+    def test_exit_top_goto_focus_clears_ring(self, tree_view_screen: TreeViewScreen) -> None:
+        with patch.object(tree_view_screen_module, "clear_focus_highlight") as mock_clear:
+            tree_view_screen.exit_top_goto_focus()
+
+        mock_clear.assert_called_once_with(
+            tree_view_screen.ids.goto_title_overlay.goto_button,
+            tree_view_screen_module._TOP_GOTO_FOCUS_GROUP,
+        )
+
+    def test_activate_top_goto_dispatches_arrow_press(
+        self, tree_view_screen: TreeViewScreen
+    ) -> None:
+        tree_view_screen.activate_top_goto()
+
+        tree_view_screen.ids.goto_title_overlay.dispatch.assert_called_once_with("on_arrow_press")
 
     def test_get_selected_node(self, tree_view_screen: TreeViewScreen) -> None:
         mock_node = MagicMock()

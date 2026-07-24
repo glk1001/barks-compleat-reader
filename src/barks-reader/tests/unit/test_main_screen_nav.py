@@ -288,7 +288,7 @@ class TestHandleBottomKey:
         nav._main_index_screen.handle_key.assert_called_once_with(KEY_TAB)  # ty: ignore[unresolved-attribute]
         nav._main_index_screen.exit_nav_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
 
-    def test_fun_view_left_right(self, nav: MainScreenNavigation) -> None:
+    def test_fun_view_keys_delegate_to_screen(self, nav: MainScreenNavigation) -> None:
         nav._main_index_screen.is_visible = False
         nav._speech_index_screen.is_visible = False
         nav._names_index_screen.is_visible = False
@@ -298,12 +298,10 @@ class TestHandleBottomKey:
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = True
         nav._bottom_title_view_screen.is_visible = False
+        nav._fun_image_view_screen.handle_key.return_value = True  # ty: ignore[unresolved-attribute]
 
         assert nav._handle_bottom_key(KEY_LEFT) is True
-        nav._fun_image_view_screen.prev_image.assert_called_once()  # ty: ignore[unresolved-attribute]
-
-        assert nav._handle_bottom_key(KEY_RIGHT) is True
-        nav._fun_image_view_screen.next_image.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._fun_image_view_screen.handle_key.assert_called_once_with(KEY_LEFT)  # ty: ignore[unresolved-attribute]
 
     def test_title_view_keys_delegate_to_screen(self, nav: MainScreenNavigation) -> None:
         nav._main_index_screen.is_visible = False
@@ -384,9 +382,10 @@ class TestHandleBottomKey:
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = True
         nav._bottom_title_view_screen.is_visible = True
+        nav._fun_image_view_screen.handle_key.return_value = True  # ty: ignore[unresolved-attribute]
 
         assert nav._handle_bottom_key(KEY_LEFT) is True
-        nav._fun_image_view_screen.prev_image.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._fun_image_view_screen.handle_key.assert_called_once_with(KEY_LEFT)  # ty: ignore[unresolved-attribute]
         nav._bottom_title_view_screen.handle_key.assert_not_called()  # ty: ignore[unresolved-attribute]
 
 
@@ -1100,16 +1099,6 @@ class TestTitleViewFocusHandoff:
 
         nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[unresolved-attribute]
 
-    def test_fun_view_enter_schedules_handoff(self, nav: MainScreenNavigation) -> None:
-        nav._get_active_nav_screen = MagicMock(return_value=None)  # ty: ignore[invalid-assignment]
-        nav._fun_image_view_screen.is_visible = True
-        nav._bottom_title_view_screen.is_visible = False
-
-        with patch.object(nav_module, "Clock") as mock_clock:
-            assert nav._handle_bottom_key(KEY_ENTER) is True
-            nav._fun_image_view_screen.on_goto_title.assert_called_once()  # ty: ignore[unresolved-attribute]
-            mock_clock.schedule_once.assert_called_once()
-
 
 class TestWikiGotoTitleFocus:
     """The wiki's "Goto Title" button lands focus on the portal, when in bottom focus.
@@ -1138,3 +1127,170 @@ class TestWikiGotoTitleFocus:
 
         mock_clock.schedule_once.assert_not_called()
         nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[unresolved-attribute]
+
+
+class TestIconGotoTitleFocus:
+    """The action-bar app icon deliberately navigates, so it always focuses the portal.
+
+    Unlike the passive wiki/popup hand-offs (gated on prior bottom focus), pressing the
+    icon forces keyboard focus onto the portal whatever the previous focus region.
+    """
+
+    def test_forces_portal_from_tree_focus(self, nav: MainScreenNavigation) -> None:
+        nav._focus_region = nav._focus_region.__class__(1)  # TREE (mouse context)
+        nav._bottom_title_view_screen.is_visible = True
+
+        with patch.object(nav_module, "Clock") as mock_clock:
+            nav.focus_title_portal_after_icon_goto()
+            # The portal focus is deferred a frame so the title render settles first.
+            mock_clock.schedule_once.call_args[0][0](0)
+
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[unresolved-attribute]
+
+    def test_no_op_when_title_view_not_visible(self, nav: MainScreenNavigation) -> None:
+        nav._bottom_title_view_screen.is_visible = False
+
+        with patch.object(nav_module, "Clock") as mock_clock:
+            nav.focus_title_portal_after_icon_goto()
+            mock_clock.schedule_once.call_args[0][0](0)
+
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[unresolved-attribute]
+
+
+class TestTopGotoFocus:
+    """The top-view goto arrow is a keyboard focus sub-stop of the TREE region."""
+
+    def test_up_on_first_node_with_title_enters_top_goto(self, nav: MainScreenNavigation) -> None:
+        first, second = MagicMock(), MagicMock()
+        nav._tree_view_screen.get_visible_nodes.return_value = [first, second]  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = first  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.is_top_goto_active = True  # ty: ignore[invalid-assignment]
+
+        assert nav._handle_tree_key(KEY_UP) is True
+
+        assert nav._top_goto_focused is True
+        nav._tree_view_screen.enter_top_goto_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.select_node.assert_not_called()  # ty: ignore[unresolved-attribute]
+
+    def test_up_on_first_node_without_title_stays_in_tree(self, nav: MainScreenNavigation) -> None:
+        first, second = MagicMock(), MagicMock()
+        nav._tree_view_screen.get_visible_nodes.return_value = [first, second]  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = first  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.is_top_goto_active = False  # ty: ignore[invalid-assignment]
+
+        assert nav._handle_tree_key(KEY_UP) is True
+
+        assert nav._top_goto_focused is False
+        nav._tree_view_screen.enter_top_goto_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
+        # The normal (clamped) move keeps the selection on the first node.
+        nav._tree_view_screen.select_node.assert_called_once_with(first)  # ty: ignore[unresolved-attribute]
+
+    def test_up_on_non_first_node_moves_tree(self, nav: MainScreenNavigation) -> None:
+        first, second = MagicMock(), MagicMock()
+        nav._tree_view_screen.get_visible_nodes.return_value = [first, second]  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = second  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.is_top_goto_active = True  # ty: ignore[invalid-assignment]
+
+        assert nav._handle_tree_key(KEY_UP) is True
+
+        assert nav._top_goto_focused is False
+        nav._tree_view_screen.enter_top_goto_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.select_node.assert_called_once_with(first)  # ty: ignore[unresolved-attribute]
+
+    def test_enter_on_arrow_activates_and_exits(self, nav: MainScreenNavigation) -> None:
+        nav._top_goto_focused = True
+
+        assert nav._handle_tree_key(KEY_ENTER) is True
+
+        nav._tree_view_screen.activate_top_goto.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+        assert nav._top_goto_focused is False
+
+    def test_down_on_arrow_returns_to_tree(self, nav: MainScreenNavigation) -> None:
+        nav._top_goto_focused = True
+
+        assert nav._handle_tree_key(KEY_DOWN) is True
+
+        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.activate_top_goto.assert_not_called()  # ty: ignore[unresolved-attribute]
+        assert nav._top_goto_focused is False
+
+    def test_escape_on_arrow_returns_to_tree_not_menu(self, nav: MainScreenNavigation) -> None:
+        nav._top_goto_focused = True
+
+        assert nav._handle_tree_key(KEY_ESCAPE) is True
+
+        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._enter_menu_mode.assert_not_called()  # ty: ignore[unresolved-attribute]
+        assert nav._top_goto_focused is False
+
+    def test_sideways_keys_on_arrow_are_swallowed(self, nav: MainScreenNavigation) -> None:
+        nav._top_goto_focused = True
+
+        for key in (KEY_UP, KEY_LEFT, KEY_RIGHT):
+            assert nav._handle_tree_key(key) is True
+
+        nav._tree_view_screen.activate_top_goto.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.exit_top_goto_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
+        assert nav._top_goto_focused is True
+
+    def test_save_focus_before_reader_clears_arrow(self, nav: MainScreenNavigation) -> None:
+        nav._top_goto_focused = True
+
+        nav.save_focus_before_reader()
+
+        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+        assert nav._top_goto_focused is False
+
+
+class TestFunViewBottomFocus:
+    """The fun view owns its keyboard nav; the nav layer just enters/exits/delegates."""
+
+    @staticmethod
+    def _hide_nav_screens(nav: MainScreenNavigation) -> None:
+        nav._main_index_screen.is_visible = False
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+        nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
+        nav._search_screen.is_visible = False
+
+    def test_enter_bottom_focus_enters_fun_nav(self, nav: MainScreenNavigation) -> None:
+        self._hide_nav_screens(nav)
+        nav._fun_image_view_screen.is_visible = True
+        nav._bottom_title_view_screen.is_visible = False
+
+        nav.enter_bottom_focus()
+
+        assert nav.is_in_bottom_focus
+        nav._fun_image_view_screen.enter_nav_focus.assert_called_once_with(  # ty: ignore[unresolved-attribute]
+            nav.exit_bottom_focus
+        )
+
+    def test_fun_nav_takes_precedence_over_title_view(self, nav: MainScreenNavigation) -> None:
+        self._hide_nav_screens(nav)
+        nav._fun_image_view_screen.is_visible = True
+        nav._bottom_title_view_screen.is_visible = True
+
+        nav.enter_bottom_focus()
+
+        nav._fun_image_view_screen.enter_nav_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
+        nav._bottom_title_view_screen.enter_nav_focus.assert_not_called()  # ty: ignore[unresolved-attribute]
+
+    def test_bottom_key_delegates_to_fun_handle_key(self, nav: MainScreenNavigation) -> None:
+        nav._focus_region = nav._focus_region.__class__(2)  # BOTTOM
+        self._hide_nav_screens(nav)
+        nav._fun_image_view_screen.is_visible = True
+        nav._bottom_title_view_screen.is_visible = False
+        nav._fun_image_view_screen.handle_key.return_value = True  # ty: ignore[unresolved-attribute]
+
+        assert nav._handle_bottom_key(KEY_UP) is True
+        nav._fun_image_view_screen.handle_key.assert_called_once_with(KEY_UP)  # ty: ignore[unresolved-attribute]
+
+    def test_exit_bottom_focus_exits_fun_nav(self, nav: MainScreenNavigation) -> None:
+        self._hide_nav_screens(nav)
+
+        nav.exit_bottom_focus()
+
+        nav._fun_image_view_screen.exit_nav_focus.assert_called_once()  # ty: ignore[unresolved-attribute]

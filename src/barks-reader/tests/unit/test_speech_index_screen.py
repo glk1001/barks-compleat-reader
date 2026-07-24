@@ -75,6 +75,7 @@ def speech_index_screen(
             screen.treeview_index_node = MagicMock()
             screen.treeview_index_node.saved_state = {}
             screen._alphabet_buttons = {}
+            screen.on_after_popup_goto_title = None
 
             yield screen
 
@@ -166,7 +167,9 @@ class TestSpeechIndexScreen:
 
     def test_handle_title_from_bubble_press(self, speech_index_screen: SpeechIndexScreen) -> None:
         mock_callback = MagicMock()
+        mock_after_goto = MagicMock()
         speech_index_screen.on_goto_title = mock_callback
+        speech_index_screen.on_after_popup_goto_title = mock_after_goto
 
         with patch.object(Clock, "schedule_once") as mock_schedule:
             speech_index_screen._handle_title_from_bubble_press(
@@ -180,3 +183,5 @@ class TestSpeechIndexScreen:
             args[0](0)
 
             mock_callback.assert_called()
+            # The popup goto must also request the title-portal focus hand-off.
+            mock_after_goto.assert_called_once()

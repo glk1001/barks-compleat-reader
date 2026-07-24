@@ -351,6 +351,10 @@ class IndexScreen(FloatLayout):
         self._user_error_handler: UserErrorHandler | None = None
         self.on_goto_background_title_func: Callable[[ImageInfo], None] | None = None
         self.on_goto_title: Callable[[ImageInfo, str], None] | None = None
+        # Called right after a popup-driven goto-title (e.g. the speech-bubble browser)
+        # to hand keyboard focus to the title portal. The popup owns the keyboard while
+        # open, so such a goto bypasses the main screen's normal key hand-off path.
+        self.on_after_popup_goto_title: Callable[[], None] | None = None
 
         self.treeview_index_node: MainTreeViewNode | None = None
 

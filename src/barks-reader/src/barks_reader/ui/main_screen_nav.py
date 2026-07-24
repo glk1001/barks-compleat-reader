@@ -94,6 +94,8 @@ class MainScreenNavigation:
         self._focus_region = _FocusRegion.TREE
         self._focus_region_before_reader: _FocusRegion | None = None
         self._auto_exited_bottom_focus = False
+        # Sub-stop of the TREE region: focus parked on the top-view goto arrow.
+        self._top_goto_focused = False
 
         factory: TriggerFactory = trigger_factory or Clock.create_trigger
         self._title_render_trigger = factory(
@@ -129,6 +131,10 @@ class MainScreenNavigation:
 
     def save_focus_before_reader(self) -> None:
         """Save the focus region before a reader screen (comic or wiki) takes over."""
+        # The top-goto arrow is a TREE sub-mode; clear its ring so it isn't stranded on
+        # the hidden tree screen while the reader is open (region restores to the tree).
+        if self._top_goto_focused:
+            self._exit_top_goto_focus()
         self._focus_region_before_reader = self._focus_region
         logger.debug(f"Saved focus before reader screen: {self._focus_region_before_reader}.")
 
@@ -147,10 +153,18 @@ class MainScreenNavigation:
         return self._handle_tree_key(key)
 
     def _handle_tree_key(self, key: int) -> bool:
+        if self._top_goto_focused:
+            return self._handle_top_goto_key(key)
         if is_escape_key(key):
             self._enter_menu_mode()
         elif key == KEY_UP:
-            self._tree_nav_move(-1)
+            # Up from the first tree node lands on the top-view goto arrow (when it has
+            # a title); otherwise the normal move (which selects the last node when
+            # nothing is selected) is preserved.
+            if self._at_first_tree_node() and self._tree_view_screen.is_top_goto_active:
+                self._enter_top_goto_focus()
+            else:
+                self._tree_nav_move(-1)
         elif key == KEY_DOWN:
             self._tree_nav_move(1)
         elif key == KEY_LEFT:
@@ -163,6 +177,48 @@ class MainScreenNavigation:
         else:
             return False
         return True
+
+    # --- Top-view goto arrow (a focus sub-stop of the TREE region) ---
+
+    def _at_first_tree_node(self) -> bool:
+        """Return whether a node is selected and it is the first visible tree node."""
+        selected = self._tree_view_screen.get_selected_node()
+        if selected is None:
+            return False
+        visible = self._tree_view_screen.get_visible_nodes()
+        return bool(visible) and selected is visible[0]
+
+    def _handle_top_goto_key(self, key: int) -> bool:
+        """Handle keys while focus is parked on the top-view goto arrow.
+
+        Enter fires it. Down or Escape returns to the tree (Escape here is a
+        within-region "back", mirroring the index items->alphabet edge, so it does not
+        open the menu). The arrow is a single button, so Up/Left/Right are swallowed.
+        """
+        if key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self._activate_top_goto()
+        elif key == KEY_DOWN or is_escape_key(key):
+            self._exit_top_goto_focus()
+        elif key in (KEY_UP, KEY_LEFT, KEY_RIGHT):
+            pass  # Single button: nowhere to move.
+        else:
+            return False
+        return True
+
+    def _enter_top_goto_focus(self) -> None:
+        self._top_goto_focused = True
+        self._tree_view_screen.enter_top_goto_focus()
+
+    def _exit_top_goto_focus(self) -> None:
+        self._top_goto_focused = False
+        self._tree_view_screen.exit_top_goto_focus()
+
+    def _activate_top_goto(self) -> None:
+        # Clear the ring first, then fire. Activation flows through on_goto_title ->
+        # _on_goto_top_view_title, which itself lands portal focus, so don't schedule
+        # a portal hand-off here (that would double up).
+        self._exit_top_goto_focus()
+        self._tree_view_screen.activate_top_goto()
 
     def _handle_bottom_key(self, key: int) -> bool:
         nav_screen = self._get_active_nav_screen()
@@ -186,22 +242,11 @@ class MainScreenNavigation:
             self.exit_bottom_focus()
             return True
         if self._fun_image_view_screen.is_visible:
-            return self._handle_fun_view_key(key)
+            # The fun view owns its own keyboard nav (arrow, filter button, and the
+            # image-type options menu). A goto from it lands portal focus via
+            # _on_goto_fun_view_title, so no hand-off is scheduled here.
+            return self._fun_image_view_screen.handle_key(key)
         return False
-
-    def _handle_fun_view_key(self, key: int) -> bool:
-        if key == KEY_LEFT:
-            self._fun_image_view_screen.prev_image()
-        elif key == KEY_RIGHT:
-            self._fun_image_view_screen.next_image()
-        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
-            self._fun_image_view_screen.on_goto_title()
-            # If the goto swaps the fun view out for the title view, land focus on the
-            # portal (the hand-off no-ops while the fun view stays co-visible).
-            self._schedule_title_view_focus_handoff(None)
-        else:
-            return False
-        return True
 
     def _get_active_nav_screen(
         self,
@@ -238,9 +283,11 @@ class MainScreenNavigation:
         nav_screen = self._get_active_nav_screen()
         if nav_screen is not None:
             nav_screen.enter_nav_focus(self.exit_bottom_focus)
-        elif (
-            self._bottom_title_view_screen.is_visible and not self._fun_image_view_screen.is_visible
-        ):
+        elif self._fun_image_view_screen.is_visible:
+            # The fun view owns its keyboard nav (and keeps precedence over the title
+            # view); entering it shows the focus ring on its first actionable control.
+            self._fun_image_view_screen.enter_nav_focus(self.exit_bottom_focus)
+        elif self._bottom_title_view_screen.is_visible:
             self._bottom_title_view_screen.enter_nav_focus(self.exit_bottom_focus)
         logger.debug("Entered bottom focus region.")
 
@@ -264,6 +311,7 @@ class MainScreenNavigation:
         if nav_screen is not None:
             nav_screen.exit_nav_focus()
         self._bottom_title_view_screen.exit_nav_focus()
+        self._fun_image_view_screen.exit_nav_focus()
         self._focus_region = _FocusRegion.TREE
         self._auto_exited_bottom_focus = False
         self._clear_bottom_focus_highlight()
@@ -395,6 +443,28 @@ class MainScreenNavigation:
         if self._focus_region != _FocusRegion.BOTTOM:
             return
         Clock.schedule_once(lambda _dt: self._enter_title_view_focus_at_portal(), 0)
+
+    def focus_title_portal_after_icon_goto(self) -> None:
+        """Land keyboard focus on the title portal after the action-bar app-icon goto.
+
+        Pressing the app icon deliberately navigates to its title, so — unlike the
+        passive goto hand-offs that only fire when already in bottom (keyboard) focus —
+        always hand focus to the portal (the read action), whatever the prior focus
+        region. Deferred a frame so the title view's swap-in settles first.
+        """
+        Clock.schedule_once(lambda _dt: self._enter_title_view_focus_at_portal(), 0)
+
+    def focus_title_portal_after_popup_goto(self, index_screen: IndexScreen) -> None:
+        """Land keyboard focus on the title portal after a popup-driven goto-title.
+
+        A speech-bubble popup owns the keyboard while open, so selecting a bubble
+        navigates to its title without passing through ``_handle_bottom_key`` — the
+        path that normally hands keyboard focus to the portal. Re-use that hand-off
+        here (exiting the index screen's own focus) so a popup goto lands on the read
+        action just like a keyboard goto from the index grid. No-ops unless we were in
+        bottom (keyboard) focus, matching every other goto-title hand-off.
+        """
+        self._schedule_title_view_focus_handoff(index_screen)
 
     def _schedule_title_view_focus_handoff(
         self, prev_nav_screen: HistoryScreen | IndexScreen | StatisticsScreen | SearchScreen | None

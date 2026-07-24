@@ -174,6 +174,7 @@
             Widget:
 
         Button:
+            id: fun_options_button
             text: ''
             pos_hint:
                 {'x': (0.5 - 0.025) if root.fun_options_enabled else 0.007, \
@@ -215,6 +216,7 @@
                 mipmap: True
 
         Button:
+            id: clear_all_button
             text: 'clear\nall'
             pos: checkbox_custom_image_types.x, custom_options_box.y + custom_options_box.height - self.height - dp(1)
             size_hint: None, None

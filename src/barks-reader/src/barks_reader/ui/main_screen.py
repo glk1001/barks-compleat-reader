@@ -217,6 +217,9 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         for index_screen in self._screens.index_screens:
             index_screen.on_goto_title = self._nav_coord.navigate_to_title_with_page
             index_screen.on_goto_background_title_func = self._nav_coord.navigate_to_chrono_title
+            index_screen.on_after_popup_goto_title = lambda scr=index_screen: (
+                self._nav.focus_title_portal_after_popup_goto(scr)
+            )
 
         self._history_screen.on_goto_title = self._on_goto_history_title
         self._history_screen.get_background_image = self._get_history_background_image
@@ -513,10 +516,16 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self.app_title = get_action_bar_title(self._font_manager, APP_TITLE)
 
     def _on_goto_top_view_title(self) -> None:
+        # Deliberate goto (mouse click or keyboard activation of the top-view arrow):
+        # land focus on the title portal, like the app icon.
         self._nav_coord.navigate_to_chrono_title(self._renderer.get_top_view_image_info())
+        self._nav.focus_title_portal_after_icon_goto()
 
     def _on_goto_fun_view_title(self) -> None:
+        # Covers the fun view's mouse-click goto; the keyboard path also hands off to the
+        # portal via _handle_fun_view_key, and the two are idempotent.
         self._nav_coord.navigate_to_chrono_title(self._renderer.get_bottom_view_fun_image_info())
+        self._nav.focus_title_portal_after_icon_goto()
 
     def goto_reader_icon_title(self) -> None:
         logger.debug(f'App reader icon "{self.app_icon_filepath}" pressed.')
@@ -530,6 +539,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         title = STR_TITLE_TO_ENUM[title_str]
         image_info = ImageInfo(icon_path, title)
         self._nav_coord.navigate_to_chrono_title(image_info)
+        self._nav.focus_title_portal_after_icon_goto()
 
     @override
     def on_document_reader_closed(self) -> None:
