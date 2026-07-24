@@ -1401,7 +1401,10 @@ def _title_case_segment(segment: str) -> str:
 
 def _title_name_from_enum(title: Titles) -> str:
     """Derive the human-readable title string from a Titles enum member name."""
-    name = title.name
+    # `str(...)` collapses `title.name` from a ~960-member `Literal[...]` union (one literal per
+    # enum member) down to plain `str`. Without it, ty evaluates every downstream string op
+    # (slicing, `+`, `.split`) element-wise across that union, taking ~30s to check this file.
+    name = str(title.name)
     if name in _TITLE_OVERRIDES:
         return _TITLE_OVERRIDES[name]
 
