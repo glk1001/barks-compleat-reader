@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 
 import barks_reader.core.navigation.tree_spec
 import pytest
-from barks_fantagraphics.barks_covers import get_located_covers
 from barks_fantagraphics.barks_tags import (
     BARKS_TAG_CATEGORIES,
     BARKS_TAG_GROUPS,
@@ -20,6 +19,7 @@ from barks_fantagraphics.barks_tags import (
 from barks_fantagraphics.fanta_comics_info import (
     SERIES_COVERS,
     SERIES_CS,
+    SERIES_DDA,
     SERIES_ONE_PAGERS,
     SERIES_USA,
     get_num_comic_book_titles,
@@ -45,6 +45,7 @@ from barks_reader.core.reader_consts_and_types import (
     APPENDIX_NODE_TEXT,
     CHOOSE_FOR_ME_NODE_TEXT,
     CHRONO_YEAR_RANGES,
+    COVER_YEAR_RANGES,
     CS_YEAR_RANGES,
     FROM_FAVOURITES_NODE_TEXT,
     FROM_THE_1940S_NODE_TEXT,
@@ -53,6 +54,7 @@ from barks_reader.core.reader_consts_and_types import (
     HISTORY_NODE_TEXT,
     INDEX_NODE_TEXT,
     INTRO_NODE_TEXT,
+    ONE_PAGER_YEAR_RANGES,
     RANDOM_TITLE_YEAR_RANGES,
     READING_NODE_TEXT,
     SEARCH_NODE_TEXT,
@@ -183,7 +185,9 @@ class TestStoriesSubtree:
         assert len(us_spec.children) == len(US_YEAR_RANGES)
         assert all(child.year_range_kind is YearRangeKind.US for child in us_spec.children)
 
-    def test_simple_series_defer_their_title_rows(self, specs: tuple[NodeSpec, ...]) -> None:
+    def test_one_pager_and_cover_series_split_into_year_ranges(
+        self, specs: tuple[NodeSpec, ...]
+    ) -> None:
         series = specs[1].children[1]
         by_name = {
             spec.destination.series_name: spec  # ty: ignore[unresolved-attribute]
@@ -191,18 +195,67 @@ class TestStoriesSubtree:
         }
 
         one_pagers = by_name[SERIES_ONE_PAGERS]
-        assert one_pagers.children == ()
-        assert one_pagers.lazy_children is not None
-        title_rows = one_pagers.lazy_children()
-        assert len(title_rows) > 0
-        assert all(row.kind is NodeKind.TITLE_ROW for row in title_rows)
+        assert one_pagers.lazy_children is None
+        assert len(one_pagers.children) == len(ONE_PAGER_YEAR_RANGES)
+        assert all(
+            child.year_range_kind is YearRangeKind.ONE_PAGER for child in one_pagers.children
+        )
+        for year_range, child in zip(ONE_PAGER_YEAR_RANGES, one_pagers.children, strict=True):
+            assert child.destination == YearRangeDestination(
+                start=year_range[0], end=year_range[1], kind=YearRangeKind.ONE_PAGER
+            )
+            assert child.lazy_children is not None
+            assert all(row.kind is NodeKind.TITLE_ROW for row in child.lazy_children())
 
         covers = by_name[SERIES_COVERS]
-        assert covers.children == ()
-        assert covers.lazy_children is not None
-        cover_rows = covers.lazy_children()
-        assert len(cover_rows) == len(get_located_covers())
-        assert all(row.kind is NodeKind.TITLE_ROW for row in cover_rows)
+        assert covers.lazy_children is None
+        assert len(covers.children) == len(COVER_YEAR_RANGES)
+        assert all(child.year_range_kind is YearRangeKind.COVER for child in covers.children)
+
+    def test_one_pager_and_cover_groups_hold_every_title(
+        self, specs: tuple[NodeSpec, ...], title_lists: dict[str, list[FantaComicBookInfo]]
+    ) -> None:
+        """The year-range groups partition the whole series — nothing is dropped.
+
+        In particular the 6 undated covers (submitted_year == -1) fold into the
+        final Covers group rather than vanishing.
+        """
+        series = specs[1].children[1]
+        by_name = {
+            spec.destination.series_name: spec  # ty: ignore[unresolved-attribute]
+            for spec in series.children
+        }
+
+        def group_rows(group: NodeSpec) -> tuple[NodeSpec, ...]:
+            assert group.lazy_children is not None
+            return group.lazy_children()
+
+        for series_name in (SERIES_ONE_PAGERS, SERIES_COVERS):
+            node = by_name[series_name]
+            grouped = sum(len(group_rows(child)) for child in node.children)
+            assert grouped == len(title_lists[series_name])
+
+        final_cover_group = by_name[SERIES_COVERS].children[-1]
+        undated = [
+            row
+            for row in group_rows(final_cover_group)
+            if row.fanta_info is not None and row.fanta_info.comic_book_info.submitted_year == -1
+        ]
+        assert len(undated) == 6
+
+    def test_simple_series_defer_their_title_rows(self, specs: tuple[NodeSpec, ...]) -> None:
+        series = specs[1].children[1]
+        by_name = {
+            spec.destination.series_name: spec  # ty: ignore[unresolved-attribute]
+            for spec in series.children
+        }
+
+        dda = by_name[SERIES_DDA]
+        assert dda.children == ()
+        assert dda.lazy_children is not None
+        title_rows = dda.lazy_children()
+        assert len(title_rows) > 0
+        assert all(row.kind is NodeKind.TITLE_ROW for row in title_rows)
 
     def test_categories_cover_all_tag_categories(self, specs: tuple[NodeSpec, ...]) -> None:
         categories = specs[1].children[2]

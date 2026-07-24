@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, patch
 import barks_reader.ui.navigation_coordinator
 import pytest
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
-from barks_fantagraphics.fanta_comics_info import SERIES_ONE_PAGERS
 from barks_reader.core.image_selector import ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.ui.navigation_coordinator import NavigationCoordinator, TitleTarget
@@ -84,18 +83,19 @@ class TestNavigationCoordinator:
                 mock_fanta_info, title_image_file=image_info.filename
             )
 
-    def test_navigate_to_chrono_title_one_pager_navigates_one_pagers_series_node(
+    def test_navigate_to_chrono_title_one_pager_navigates_year_range_node(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
     ) -> None:
-        """One-pagers navigate the tree via the One Pagers series node, not a year range."""
+        """One-pagers navigate to the year-range group under the One Pagers node."""
         tree_manager = MagicMock()
         nav_coord.set_tree_view_manager(tree_manager)
         image_info = ImageInfo(filename=Path("img.png"), from_title=Titles.IF_THE_HAT_FITS)
         mock_fanta_info = MagicMock()
+        mock_fanta_info.comic_book_info.submitted_year = 1948  # -> (1946, 1952) group
 
-        mock_one_pagers_node = MagicMock()
-        mock_one_pagers_node.nodes = []
-        nav_coord.set_series_nodes({SERIES_ONE_PAGERS: mock_one_pagers_node})
+        mock_year_node = MagicMock()
+        mock_year_node.nodes = []
+        nav_coord.set_one_pager_year_range_nodes({(1946, 1952): mock_year_node})
 
         mock_title_node = MagicMock()
         with (
@@ -112,13 +112,78 @@ class TestNavigationCoordinator:
         ):
             nav_coord.navigate_to_chrono_title(image_info)
 
-        # Title view shown AND the One Pagers series node is opened and navigated to.
+        # Title view shown AND the correct year-range group is opened and navigated to.
         mock_deps["renderer"].render_title.assert_called_with(
             mock_fanta_info, title_image_file=image_info.filename
         )
-        mock_one_pagers_node.ensure_populated.assert_called_once()
-        tree_manager.open_node_and_parent_nodes.assert_called_once_with(mock_one_pagers_node)
+        mock_year_node.ensure_populated.assert_called_once()
+        tree_manager.open_node_and_parent_nodes.assert_called_once_with(mock_year_node)
         tree_manager.goto_node.assert_called_once_with(mock_title_node, scroll_to=True)
+
+    def test_navigate_to_chrono_title_cover_navigates_year_range_node(
+        self, nav_coord: NavigationCoordinator
+    ) -> None:
+        """Covers navigate to the year-range group under the Covers node."""
+        tree_manager = MagicMock()
+        nav_coord.set_tree_view_manager(tree_manager)
+        image_info = ImageInfo(
+            filename=Path("img.png"), from_title=Titles.COMICS_AND_STORIES_104_COVER
+        )
+        mock_fanta_info = MagicMock()
+        mock_fanta_info.comic_book_info.submitted_year = 1953  # -> (1953, 1955) group
+
+        mock_year_node = MagicMock()
+        mock_year_node.nodes = []
+        nav_coord.set_cover_year_range_nodes({(1953, 1955): mock_year_node})
+
+        mock_title_node = MagicMock()
+        with (
+            patch.object(
+                barks_reader.ui.navigation_coordinator,
+                "get_fanta_info",
+                return_value=mock_fanta_info,
+            ),
+            patch.object(
+                barks_reader.ui.navigation_coordinator,
+                "find_tree_view_title_node",
+                return_value=mock_title_node,
+            ),
+        ):
+            nav_coord.navigate_to_chrono_title(image_info)
+
+        mock_year_node.ensure_populated.assert_called_once()
+        tree_manager.open_node_and_parent_nodes.assert_called_once_with(mock_year_node)
+        tree_manager.goto_node.assert_called_once_with(mock_title_node, scroll_to=True)
+
+    def test_navigate_to_chrono_title_undated_cover_folds_into_final_group(
+        self, nav_coord: NavigationCoordinator
+    ) -> None:
+        """An undated cover (submitted_year == -1) resolves to the final Covers group."""
+        tree_manager = MagicMock()
+        nav_coord.set_tree_view_manager(tree_manager)
+        image_info = ImageInfo(filename=Path("img.png"), from_title=Titles.UNCLE_SCROOGE_6_COVER)
+        mock_fanta_info = MagicMock()
+        mock_fanta_info.comic_book_info.submitted_year = -1  # undated -> final group
+
+        mock_year_node = MagicMock()
+        mock_year_node.nodes = []
+        nav_coord.set_cover_year_range_nodes({(1960, 1965): mock_year_node})
+
+        with (
+            patch.object(
+                barks_reader.ui.navigation_coordinator,
+                "get_fanta_info",
+                return_value=mock_fanta_info,
+            ),
+            patch.object(
+                barks_reader.ui.navigation_coordinator,
+                "find_tree_view_title_node",
+                return_value=MagicMock(),
+            ),
+        ):
+            nav_coord.navigate_to_chrono_title(image_info)
+
+        tree_manager.open_node_and_parent_nodes.assert_called_once_with(mock_year_node)
 
     def test_navigate_to_chrono_title_preserves_back_node(
         self, nav_coord: NavigationCoordinator, mock_deps: dict[str, MagicMock]
@@ -208,6 +273,8 @@ class TestNavigationCoordinator:
         assert call.args[0] is mock_collection_info
         assert call.args[1] is mock_comic
         assert call.args[2] == "7"
+        # Opens only page 7's year-range group (the first one-pager group).
+        assert call.kwargs["collection_page_range"] == (1, 43)
         # History records the one-pager's own title, not the collection's.
         assert call.kwargs["history_title_str"] == ENUM_TO_STR_TITLE[Titles.IF_THE_HAT_FITS]
 
@@ -245,6 +312,8 @@ class TestNavigationCoordinator:
         assert call.args[0] is mock_collection_info
         assert call.args[1] is mock_comic
         assert call.args[2] == "3"
+        # Opens only page 3's year-range group (the first cover group).
+        assert call.kwargs["collection_page_range"] == (1, 52)
         # History records the cover's own title, not the collection's.
         assert call.kwargs["history_title_str"] == ENUM_TO_STR_TITLE[Titles.FOUR_COLOR_189_COVER]
 

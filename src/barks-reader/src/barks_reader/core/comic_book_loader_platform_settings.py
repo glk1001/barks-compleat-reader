@@ -49,6 +49,17 @@ class PrefetchTuning:
     def stop_mem_trace() -> None:
         tracemalloc.stop()
 
+    @staticmethod
+    def get_traced_peak_mib() -> float:
+        """Peak Python-traced allocation since ``start_mem_trace`` (MiB).
+
+        Call before ``stop_mem_trace``; returns 0.0 if tracing is not active.
+        """
+        if not tracemalloc.is_tracing():
+            return 0.0
+        _current, peak = tracemalloc.get_traced_memory()
+        return peak / (1024 * 1024)
+
     def get_initial_dynamic_window(self) -> int:
         return min(self.base_max_window, self._num_pages)
 

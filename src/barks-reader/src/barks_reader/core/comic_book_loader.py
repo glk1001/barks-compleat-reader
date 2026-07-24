@@ -12,6 +12,7 @@ from concurrent.futures import FIRST_COMPLETED, CancelledError, Future, ThreadPo
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import psutil
 from barks_build_comic_images.build_comic_images import build_double_page_image
 from barks_fantagraphics.comics_utils import get_dest_comic_zip_file_stem
 from barks_fantagraphics.fanta_comics_info import (
@@ -404,11 +405,36 @@ class ComicBookLoader:
         for _ in range(len(self._page_map)):
             self._image_loaded_events.append(threading.Event())
 
+    @staticmethod
+    def _process_rss_mib() -> float:
+        """Return this process's current resident set size (RSS), in MiB."""
+        return psutil.Process().memory_info().rss / (1024 * 1024)
+
+    def _log_retained_image_memory(self, rss_before_mib: float) -> None:
+        """Log how much RAM the fully-loaded comic's retained pages occupy.
+
+        Every loaded page is kept in ``self._images`` as encoded, window-resized
+        bytes until ``close_comic``. This reports the aggregate so the cost of large
+        collections (e.g. the 186-page "All Covers") is visible in the logs.
+        """
+        sizes = [entry[0].getbuffer().nbytes for entry in self._images if entry is not None]
+        loaded = len(sizes)
+        total_mib = sum(sizes) / (1024 * 1024)
+        avg_kib = (sum(sizes) / loaded / 1024) if loaded else 0.0
+        max_kib = (max(sizes) / 1024) if sizes else 0.0
+        rss_now = self._process_rss_mib()
+        logger.info(
+            f"[mem] Retained pages: {loaded} pages hold {total_mib:.1f} MiB "
+            f"(avg {avg_kib:.0f} KiB/page, max {max_kib:.0f} KiB). "
+            f"Process RSS {rss_now:.0f} MiB (+{rss_now - rss_before_mib:.0f} MiB since load start)."
+        )
+
     def _load_comic_in_thread(self) -> None:
         logger.debug(f'Load comic: "{self._current_comic_desc}"')
 
         load_error = False
         load_warning_only = False
+        rss_before_mib = self._process_rss_mib()
         self._cursor.set_busy()
 
         try:
@@ -432,6 +458,7 @@ class ComicBookLoader:
                 assert num_loaded == len(self._page_map)
                 assert all(ev.is_set() for ev in self._image_loaded_events)
                 logger.info(f'Loaded {num_loaded} images from "{self._current_comic_desc}".')
+                self._log_retained_image_memory(rss_before_mib)
 
                 self._scheduler.schedule_once(self._on_all_images_loaded)
 
@@ -634,6 +661,10 @@ class ComicBookLoader:
 
             finally:
                 executor.shutdown(cancel_futures=True)
+                logger.info(
+                    f"[mem] Peak Python-traced allocation during load: "
+                    f"{tuning.get_traced_peak_mib():.1f} MiB."
+                )
                 tuning.stop_mem_trace()
                 logger.debug("Platform-aware comic loading executor shut down.")
 

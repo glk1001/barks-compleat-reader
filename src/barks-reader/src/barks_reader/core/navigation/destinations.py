@@ -160,6 +160,8 @@ class YearRangeKind(StrEnum):
     CHRONO = "chrono"
     CS = "cs"
     US = "us"
+    ONE_PAGER = "one_pager"
+    COVER = "cover"
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -28,6 +28,36 @@ class PageInfo:
     srce_page: CleanPage
     dest_page: CleanPage
     is_solo: bool = False
+
+
+def slice_page_map(
+    page_map: OrderedDict[str, PageInfo], first_page_num: int, last_page_num: int
+) -> OrderedDict[str, PageInfo]:
+    """Return the sub-map of pages whose global number is in ``[first, last]``.
+
+    Used to open only a contiguous slice of a large synthetic collection (a
+    year-range group of "All Covers" / "All One-Pagers") without loading the
+    whole thing. ``page_index`` is renumbered ``0..n-1`` so the slice satisfies
+    the reader's contiguity requirement, while ``display_page_num`` (the map key
+    and the global position each page maps back to a title through) is kept
+    unchanged.
+
+    Args:
+        page_map: The full collection page map, keyed by global 1-based
+            ``display_page_num``.
+        first_page_num: Inclusive first global page number to keep.
+        last_page_num: Inclusive last global page number to keep.
+
+    Returns:
+        A new ``OrderedDict`` with only the selected pages, ``page_index``
+        renumbered from 0, preserving order and keys.
+
+    """
+    sliced: OrderedDict[str, PageInfo] = OrderedDict()
+    for display_page_num, page_info in page_map.items():
+        if first_page_num <= int(display_page_num) <= last_page_num:
+            sliced[display_page_num] = replace(page_info, page_index=len(sliced))
+    return sliced
 
 
 class ComicLayout:
@@ -117,6 +147,21 @@ class ComicLayout:
             elif right is not None:
                 last_read = right
         return self.to_saved(last_read)
+
+
+def slice_comic_layout(layout: ComicLayout, first_page_num: int, last_page_num: int) -> ComicLayout:
+    """Return a layout holding only pages ``[first, last]`` of a collection.
+
+    Used to open a year-range group of a large single-page-only collection ("All
+    Covers"/"All One-Pagers") instead of the whole thing. Both the reader and the
+    last-read-page tracker consume this one layout, so slicing here keeps their
+    page indices consistent. Those collections are all body/cover pages, so the
+    slice's last body page is simply its last page.
+    """
+    sliced_map = slice_page_map(layout.page_map, first_page_num, last_page_num)
+    assert sliced_map, f"empty collection slice for page range [{first_page_num}, {last_page_num}]"
+    last_body_page = next(reversed(sliced_map))
+    return ComicLayout(sliced_map, last_body_page)
 
 
 class ComicLayoutBuilder:

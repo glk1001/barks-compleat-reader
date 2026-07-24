@@ -8,7 +8,7 @@ only instantiates widgets from the specs, binds press handlers, and calls the
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from comic_utils.timing import Timing
 from kivy.metrics import dp
@@ -47,6 +47,8 @@ _YEAR_RANGE_KIND_TO_WIDTH: dict[YearRangeKind, float] = {
     YearRangeKind.CHRONO: dp(150),
     YearRangeKind.CS: dp(250),
     YearRangeKind.US: dp(250),
+    YearRangeKind.ONE_PAGER: dp(150),
+    YearRangeKind.COVER: dp(150),
 }
 
 _NODE_CLASSES: dict[NodeKind, type[ButtonTreeViewNode]] = {
@@ -74,6 +76,8 @@ class ReaderTreeBuilder:
         self._include_one_pagers_in_chrono = include_one_pagers_in_chrono
         self._tree_build_timing = Timing()
         self.chrono_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
+        self.one_pager_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
+        self.cover_year_range_nodes: dict[tuple[int, int], ButtonTreeViewNode] = {}
         self.series_nodes: dict[str, ButtonTreeViewNode] = {}
 
         self._press_handlers: dict[PressAction, Callable | None] = {
@@ -167,14 +171,20 @@ class ReaderTreeBuilder:
 
         return _NODE_CLASSES[spec.kind](text=spec.text, destination=spec.destination)
 
+    _YEAR_RANGE_KIND_TO_LOOKUP: ClassVar[dict[YearRangeKind, str]] = {
+        YearRangeKind.CHRONO: "chrono_year_range_nodes",
+        YearRangeKind.ONE_PAGER: "one_pager_year_range_nodes",
+        YearRangeKind.COVER: "cover_year_range_nodes",
+    }
+
     def _collect_lookup_node(self, spec: NodeSpec, node: ButtonTreeViewNode) -> None:
         """Index the nodes the `NavigationCoordinator` needs for goto-title flows."""
         destination = spec.destination
-        if (
-            isinstance(destination, YearRangeDestination)
-            and destination.kind is YearRangeKind.CHRONO
-        ):
-            self.chrono_year_range_nodes[(destination.start, destination.end)] = node
+        if isinstance(destination, YearRangeDestination):
+            lookup_attr = self._YEAR_RANGE_KIND_TO_LOOKUP.get(destination.kind)
+            if lookup_attr is not None:
+                lookup: dict[tuple[int, int], ButtonTreeViewNode] = getattr(self, lookup_attr)
+                lookup[(destination.start, destination.end)] = node
         elif isinstance(destination, SeriesDestination):
             self.series_nodes[destination.series_name] = node
 

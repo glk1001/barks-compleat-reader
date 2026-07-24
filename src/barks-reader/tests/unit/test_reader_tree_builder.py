@@ -147,6 +147,32 @@ class TestLookupNodeCollection:
 
         assert tree_builder.chrono_year_range_nodes == {}
 
+    def test_one_pager_year_range_nodes_are_indexed(self, tree_builder: ReaderTreeBuilder) -> None:
+        spec = NodeSpec(
+            kind=NodeKind.YEAR_RANGE,
+            text="1946-1952",
+            destination=YearRangeDestination(start=1946, end=1952, kind=YearRangeKind.ONE_PAGER),
+            year_range_kind=YearRangeKind.ONE_PAGER,
+        )
+
+        _build_with_spec(tree_builder, spec)
+
+        assert (1946, 1952) in tree_builder.one_pager_year_range_nodes
+        assert tree_builder.chrono_year_range_nodes == {}
+
+    def test_cover_year_range_nodes_are_indexed(self, tree_builder: ReaderTreeBuilder) -> None:
+        spec = NodeSpec(
+            kind=NodeKind.YEAR_RANGE,
+            text="1960-1965",
+            destination=YearRangeDestination(start=1960, end=1965, kind=YearRangeKind.COVER),
+            year_range_kind=YearRangeKind.COVER,
+        )
+
+        _build_with_spec(tree_builder, spec)
+
+        assert (1960, 1965) in tree_builder.cover_year_range_nodes
+        assert tree_builder.chrono_year_range_nodes == {}
+
     def test_series_nodes_are_indexed(self, tree_builder: ReaderTreeBuilder) -> None:
         spec = NodeSpec(
             kind=NodeKind.STORY_GROUP,

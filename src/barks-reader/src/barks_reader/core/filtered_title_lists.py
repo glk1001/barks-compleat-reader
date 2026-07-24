@@ -20,7 +20,9 @@ from barks_fantagraphics.fanta_comics_info import (
 
 from .reader_consts_and_types import (
     CHRONO_YEAR_RANGES,
+    COVER_YEAR_RANGES,
     CS_YEAR_RANGES,
+    ONE_PAGER_YEAR_RANGES,
     RANDOM_TITLE_YEAR_RANGES,
     US_YEAR_RANGES,
 )
@@ -31,6 +33,8 @@ if TYPE_CHECKING:
 CHRONO_YEARS_KEY_PREFIX = ""
 CS_YEARS_KEY_PREFIX = "CS-"
 US_YEARS_KEY_PREFIX = "US-"
+ONE_PAGER_YEARS_KEY_PREFIX = "OP-"
+COVER_YEARS_KEY_PREFIX = "CV-"
 
 # Whether one-pagers (the "One Pagers" series, including the synthetic
 # "All One-Pagers" collection) appear in the chronological year nodes. They are
@@ -47,6 +51,8 @@ class FilteredTitleLists:
         self.chrono_years = range(CHRONO_YEAR_RANGES[0][0], CHRONO_YEAR_RANGES[-1][1] + 1)
         self.cs_years = range(CS_YEAR_RANGES[0][0], CS_YEAR_RANGES[-1][1] + 1)
         self.us_years = range(US_YEAR_RANGES[0][0], US_YEAR_RANGES[-1][1] + 1)
+        self.one_pager_years = range(ONE_PAGER_YEAR_RANGES[0][0], ONE_PAGER_YEAR_RANGES[-1][1] + 1)
+        self.cover_years = range(COVER_YEAR_RANGES[0][0], COVER_YEAR_RANGES[-1][1] + 1)
         self.series_names = [
             SERIES_COVERS,
             SERIES_CS,
@@ -79,6 +85,14 @@ class FilteredTitleLists:
     @staticmethod
     def get_us_year_range_key_from_range(year_range_str: str) -> str:
         return f"{US_YEARS_KEY_PREFIX}{year_range_str}"
+
+    @staticmethod
+    def get_one_pager_year_key_from_year(year: int) -> str:
+        return f"{ONE_PAGER_YEARS_KEY_PREFIX}{year}"
+
+    @staticmethod
+    def get_cover_year_key_from_year(year: int) -> str:
+        return f"{COVER_YEARS_KEY_PREFIX}{year}"
 
     def get_title_lists(self) -> dict[str, list[FantaComicBookInfo]]:
         filters: dict[str, Callable[[FantaComicBookInfo], bool]] = {}
@@ -114,6 +128,32 @@ class FilteredTitleLists:
             filters[self.get_us_year_key_from_year(year)] = lambda info, y=year: (
                 (info.series_name == SERIES_USA) and (info.comic_book_info.submitted_year == y)
             )
+
+        for year in self.one_pager_years:
+            filters[self.get_one_pager_year_key_from_year(year)] = lambda info, y=year: (
+                (info.series_name == SERIES_ONE_PAGERS)
+                and (info.comic_book_info.submitted_year == y)
+            )
+
+        # Some covers are undated (submitted_year == -1). Fold them into the final
+        # cover bucket so no cover is dropped from the tree: the last year's filter
+        # also matches any cover whose submitted year is outside the bucketed range.
+        cover_years = set(self.cover_years)
+        last_cover_year = COVER_YEAR_RANGES[-1][1]
+        for year in self.cover_years:
+            if year == last_cover_year:
+                filters[self.get_cover_year_key_from_year(year)] = lambda info, y=year: (
+                    (info.series_name == SERIES_COVERS)
+                    and (
+                        (info.comic_book_info.submitted_year == y)
+                        or (info.comic_book_info.submitted_year not in cover_years)
+                    )
+                )
+            else:
+                filters[self.get_cover_year_key_from_year(year)] = lambda info, y=year: (
+                    (info.series_name == SERIES_COVERS)
+                    and (info.comic_book_info.submitted_year == y)
+                )
 
         for category in self.categories:
             filters[category.value] = lambda info, c=category: (

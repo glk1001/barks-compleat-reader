@@ -4,7 +4,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from barks_fantagraphics.barks_tags import TagCategories
 from barks_fantagraphics.fanta_comics_info import (
+    SERIES_COVERS,
     SERIES_CS,
+    SERIES_ONE_PAGERS,
     SERIES_USA,
 )
 from barks_reader.core import filtered_title_lists as ftl_module
@@ -24,6 +26,8 @@ class TestFilteredTitleLists:
         assert self.filtered_lists.get_cs_year_range_key_from_range("1940-1945") == "CS-1940-1945"
         assert self.filtered_lists.get_us_year_key_from_year(1955) == "US-1955"
         assert self.filtered_lists.get_us_year_range_key_from_range("1950-1955") == "US-1950-1955"
+        assert self.filtered_lists.get_one_pager_year_key_from_year(1948) == "OP-1948"
+        assert self.filtered_lists.get_cover_year_key_from_year(1953) == "CV-1953"
 
     @patch.object(ftl_module, get_filtered_title_lists.__name__)
     def test_get_title_lists_creates_correct_filters(
@@ -57,6 +61,10 @@ class TestFilteredTitleLists:
         # Check for CS and US specific ranges
         assert "CS-1947" in filters
         assert "US-1955" in filters
+
+        # Check for one-pager and cover per-year keys
+        assert "OP-1948" in filters
+        assert "CV-1953" in filters
 
         # Check for categories
         assert TagCategories.CHARACTERS.value in filters
@@ -104,6 +112,44 @@ class TestFilteredTitleLists:
 
         mock_info.series_name = "Other"
         assert not us_filter(mock_info)
+
+    @patch.object(ftl_module, get_filtered_title_lists.__name__)
+    def test_one_pager_and_cover_year_filters(
+        self, mock_get_filtered_title_lists: MagicMock
+    ) -> None:
+        """One-pager/cover per-year filters, incl. the undated-cover fold into the final year."""
+        mock_get_filtered_title_lists.return_value = defaultdict(list)
+        self.filtered_lists.get_title_lists()
+        filters = mock_get_filtered_title_lists.call_args.args[0]
+
+        mock_info = MagicMock()
+        mock_info.comic_book_info = MagicMock()
+
+        # One-pager year filter matches only its own year.
+        op_filter = filters["OP-1948"]
+        mock_info.series_name = SERIES_ONE_PAGERS
+        mock_info.comic_book_info.submitted_year = 1948
+        assert op_filter(mock_info)
+        mock_info.comic_book_info.submitted_year = 1949
+        assert not op_filter(mock_info)
+
+        # Cover year filter (non-final year) matches only that year, not undated covers.
+        cv_filter = filters["CV-1953"]
+        mock_info.series_name = SERIES_COVERS
+        mock_info.comic_book_info.submitted_year = 1953
+        assert cv_filter(mock_info)
+        mock_info.comic_book_info.submitted_year = -1
+        assert not cv_filter(mock_info)
+
+        # The final cover year folds in undated/out-of-range covers.
+        cv_final_filter = filters["CV-1965"]
+        mock_info.series_name = SERIES_COVERS
+        mock_info.comic_book_info.submitted_year = 1965
+        assert cv_final_filter(mock_info)
+        mock_info.comic_book_info.submitted_year = -1
+        assert cv_final_filter(mock_info)
+        mock_info.series_name = "Other"
+        assert not cv_final_filter(mock_info)
 
     @patch.object(ftl_module, get_filtered_title_lists.__name__)
     def test_add_year_ranges_aggregation(self, mock_get_filtered_title_lists: MagicMock) -> None:

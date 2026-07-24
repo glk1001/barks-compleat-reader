@@ -86,6 +86,20 @@ US_YEAR_RANGES = [
     (1958, 1961),
     (1962, 1966),
 ]
+# Year buckets for the One Pagers and Covers series nodes, chosen so each group
+# holds ~40-50 titles. Undated covers (submitted_year == -1) fold into the final
+# COVER bucket (see FilteredTitleLists.get_title_lists).
+ONE_PAGER_YEAR_RANGES = [
+    (1946, 1952),
+    (1953, 1956),
+    (1957, 1962),
+]
+COVER_YEAR_RANGES = [
+    (1948, 1952),
+    (1953, 1955),
+    (1956, 1959),
+    (1960, 1965),
+]
 # Decade buckets for the 'Choose for me' random-title nodes. The last bucket
 # absorbs the few 1970-71 submissions (mirroring CHRONO_YEAR_RANGES' final bucket).
 RANDOM_TITLE_YEAR_RANGES = [

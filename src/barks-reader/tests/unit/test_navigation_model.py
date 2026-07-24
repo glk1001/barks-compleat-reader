@@ -221,6 +221,27 @@ def test_view_state_for_year_range(
     assert getattr(request, expected_param) == FilteredTitleLists.get_range_str((1942, 1946))
 
 
+@pytest.mark.parametrize(
+    ("kind", "expected_state"),
+    [
+        (YearRangeKind.ONE_PAGER, ViewStates.ON_ONE_PAGERS_NODE),
+        (YearRangeKind.COVER, ViewStates.ON_COVERS_NODE),
+    ],
+)
+def test_view_state_for_one_pager_and_cover_year_range_reuses_series_state(
+    model: NavigationModel,
+    kind: YearRangeKind,
+    expected_state: ViewStates,
+) -> None:
+    """One-pager/cover year groups reuse the parent series view state (no range param)."""
+    dest = YearRangeDestination(start=1946, end=1952, kind=kind)
+    request = model.view_state_for(dest)
+    assert request.view_state is expected_state
+    assert request.year_range == ""
+    assert request.cs_year_range == ""
+    assert request.us_year_range == ""
+
+
 # --- view_state_for: category / tag_group / tag -----------------------
 
 

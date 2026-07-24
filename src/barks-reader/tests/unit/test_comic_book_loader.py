@@ -113,6 +113,7 @@ def mock_tuning() -> Generator[None]:
         tuning = MagicMock()
         tuning.get_initial_dynamic_window.return_value = 2
         tuning.get_new_dynamic_window.return_value = (50.0, 2)
+        tuning.get_traced_peak_mib.return_value = 12.5
         mock_get.return_value = tuning
         yield
 

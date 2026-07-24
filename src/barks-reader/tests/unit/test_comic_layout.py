@@ -12,7 +12,13 @@ from barks_fantagraphics.page_classes import (
     RequiredDimensions,
     SrceAndDestPages,
 )
-from barks_reader.core.comic_book_page_info import ComicLayout, ComicLayoutBuilder, PageInfo
+from barks_reader.core.comic_book_page_info import (
+    ComicLayout,
+    ComicLayoutBuilder,
+    PageInfo,
+    slice_comic_layout,
+    slice_page_map,
+)
 from barks_reader.core.display_unit import DisplayUnit
 from barks_reader.core.reader_consts_and_types import FIRST_BODY_PAGE
 
@@ -172,6 +178,48 @@ class TestResolveLastRead:
         saved = layout.to_saved(p5)
 
         assert saved.last_body_page == "20"
+
+
+class TestSlicePageMap:
+    def test_keeps_only_pages_in_range_and_renumbers_index(self) -> None:
+        pages = [_page(i, str(i + 1)) for i in range(10)]  # global "1".."10", index 0..9
+        page_map = OrderedDict((p.display_page_num, p) for p in pages)
+
+        sliced = slice_page_map(page_map, 4, 7)
+
+        # display_page_num (the key) stays global; page_index renumbered from 0.
+        assert list(sliced.keys()) == ["4", "5", "6", "7"]
+        assert [p.page_index for p in sliced.values()] == [0, 1, 2, 3]
+        # Other fields carried through unchanged.
+        assert sliced["4"].display_page_num == "4"
+
+    def test_full_range_is_a_faithful_renumbered_copy(self) -> None:
+        pages = [_page(i, str(i + 1)) for i in range(3)]
+        page_map = OrderedDict((p.display_page_num, p) for p in pages)
+
+        sliced = slice_page_map(page_map, 1, 3)
+
+        assert list(sliced.keys()) == ["1", "2", "3"]
+        assert [p.page_index for p in sliced.values()] == [0, 1, 2]
+
+
+class TestSliceComicLayout:
+    def test_builds_consistent_sliced_layout(self) -> None:
+        pages = [_page(i, str(i + 1), is_solo=True) for i in range(10)]
+        layout = _layout(pages, last_body_page="10")
+
+        sliced = slice_comic_layout(layout, 4, 7)
+
+        assert list(sliced.page_map.keys()) == ["4", "5", "6", "7"]
+        # last_body_page is the slice's last page.
+        assert sliced.last_body_page == "7"
+        # Goto by the still-global display num resolves to the slice-local index.
+        assert sliced.page_by_display("4").page_index == 0
+        page_at_index_0 = sliced.page_by_index(0)
+        assert page_at_index_0 is not None
+        assert page_at_index_0.display_page_num == "4"
+        # Contiguous 0..n-1 (satisfies the reader's set_page_map assertion).
+        assert [p.page_index for p in sliced.page_map.values()] == [0, 1, 2, 3]
 
 
 # ------------------------------------------------------------------

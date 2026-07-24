@@ -57,6 +57,7 @@ fontstyle
 fontweight
 frontmatter
 frozensets
+getbuffer
 getpid
 getpixel
 graphify
@@ -97,6 +98,7 @@ monkeypatched
 monkeypatches
 motionevent
 mtdev
+nbytes
 nonexistentword
 normalised
 normalises

@@ -156,6 +156,12 @@ class NavigationModel:
                 return ViewRequest(
                     view_state=ViewStates.ON_US_YEAR_RANGE_NODE, us_year_range=range_str
                 )
+            # One-pager / cover year-range groups reuse their parent series' top-view
+            # background rather than theming per range.
+            if dest.kind is YearRangeKind.ONE_PAGER:
+                return ViewRequest(view_state=ViewStates.ON_ONE_PAGERS_NODE)
+            if dest.kind is YearRangeKind.COVER:
+                return ViewRequest(view_state=ViewStates.ON_COVERS_NODE)
             return ViewRequest(view_state=ViewStates.ON_YEAR_RANGE_NODE, year_range=range_str)
 
         if isinstance(dest, SeriesDestination):

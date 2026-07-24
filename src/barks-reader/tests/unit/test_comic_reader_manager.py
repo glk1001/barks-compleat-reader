@@ -59,6 +59,21 @@ def _single_body_page_layout() -> ComicLayout:
     return _make_layout(OrderedDict([("1", page_info_obj)]), last_body_page="1")
 
 
+def _multi_body_page_layout(count: int) -> ComicLayout:
+    """Return a layout with body pages "1".."count" (page_index 0..count-1)."""
+    page_map: OrderedDict[str, PageInfo] = OrderedDict()
+    for i in range(count):
+        page_map[str(i + 1)] = PageInfo(
+            page_index=i,
+            display_page_num=str(i + 1),
+            page_type=PageType.BODY,
+            srce_page=MagicMock(),
+            dest_page=MagicMock(),
+            is_solo=True,
+        )
+    return _make_layout(page_map, last_body_page=str(count))
+
+
 class TestComicReaderManager:
     def test_set_comic_book_reader_screen(self, manager: ComicReaderManager) -> None:
         mock_screen, mock_reader = _attach_reader_screen(manager)
@@ -134,6 +149,59 @@ class TestComicReaderManager:
             assert kwargs["save_enabled"] is True
 
             mock_dependencies["reading_history_tracker"].begin.assert_called_once_with("Title")
+
+    def test_collection_page_range_slices_the_layout(
+        self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        _mock_screen, mock_reader = _attach_reader_screen(manager)
+
+        mock_fanta_info = MagicMock(spec=FantaComicBookInfo)
+        mock_fanta_info.comic_book_info = MagicMock()
+        mock_fanta_info.comic_book_info.get_title_str.return_value = "All Covers"
+
+        # Full collection layout has pages "1".."10"; open only the "4".."7" group.
+        mock_dependencies["layout_builder"].build.return_value = _multi_body_page_layout(10)
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(
+                mock_fanta_info,
+                MagicMock(),
+                "5",  # goto a member inside the group (still a global key)
+                use_overrides_active=True,
+                collection_page_range=(4, 7),
+            )
+
+        # read_comic receives the sliced map (global keys, page_index renumbered from 0).
+        args, _ = mock_reader.read_comic.call_args
+        sliced_page_map = args[4]
+        assert list(sliced_page_map.keys()) == ["4", "5", "6", "7"]
+        assert [p.page_index for p in sliced_page_map.values()] == [0, 1, 2, 3]
+        # Goto key "5" is still present and resolvable in the slice.
+        assert "5" in sliced_page_map
+
+        # The last-read-page tracker gets the same sliced layout (consistent indices).
+        tracker_args, _ = mock_dependencies["last_read_page_tracker"].begin.call_args
+        assert list(tracker_args[1].page_map.keys()) == ["4", "5", "6", "7"]
+
+    def test_no_collection_page_range_passes_full_layout(
+        self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        _mock_screen, mock_reader = _attach_reader_screen(manager)
+
+        mock_fanta_info = MagicMock(spec=FantaComicBookInfo)
+        mock_fanta_info.comic_book_info = MagicMock()
+        mock_fanta_info.comic_book_info.get_title_str.return_value = "Title"
+
+        full_layout = _multi_body_page_layout(10)
+        mock_dependencies["layout_builder"].build.return_value = full_layout
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(
+                mock_fanta_info, MagicMock(), "1", use_overrides_active=True
+            )
+
+        args, _ = mock_reader.read_comic.call_args
+        assert args[4] is full_layout.page_map
 
     def test_read_barks_records_history_with_override_title(
         self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]

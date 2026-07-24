@@ -58,6 +58,7 @@ from barks_reader.core.reader_consts_and_types import (
     CHOOSE_FOR_ME_NODE_TEXT,
     CHRONO_YEAR_RANGES,
     CHRONOLOGICAL_NODE_TEXT,
+    COVER_YEAR_RANGES,
     CS_YEAR_RANGES,
     FROM_FAVOURITES_NODE_TEXT,
     FROM_THE_1940S_NODE_TEXT,
@@ -74,6 +75,7 @@ from barks_reader.core.reader_consts_and_types import (
     INTRO_COMPLEAT_BARKS_READER_TEXT,
     INTRO_DON_AULT_FANTA_INTRO_TEXT,
     INTRO_NODE_TEXT,
+    ONE_PAGER_YEAR_RANGES,
     RANDOM_TITLE_YEAR_RANGES,
     READING_NODE_TEXT,
     SEARCH_NODE_TEXT,
@@ -277,6 +279,11 @@ def _get_cs_year_range_extra_text(title_list: list[FantaComicBookInfo]) -> str:
     ).comic_book_info.issue_number
 
     return f"WDCS {first_issue}-{last_issue}"
+
+
+def _get_count_extra_text(title_list: list[FantaComicBookInfo]) -> str:
+    """Extra label text for one-pager/cover year ranges: just the title count."""
+    return str(len(title_list))
 
 
 def _get_us_year_range_extra_text(title_list: list[FantaComicBookInfo]) -> str:
@@ -647,11 +654,71 @@ class _SpecBuilder:
                 ),
             )
 
+        if series_name == SERIES_ONE_PAGERS:
+            return self._year_range_series_spec(
+                text,
+                destination,
+                title_list,
+                year_ranges=ONE_PAGER_YEAR_RANGES,
+                kind=YearRangeKind.ONE_PAGER,
+                year_key_func=FilteredTitleLists.get_one_pager_year_key_from_year,
+            )
+
+        if series_name == SERIES_COVERS:
+            return self._year_range_series_spec(
+                text,
+                destination,
+                title_list,
+                year_ranges=COVER_YEAR_RANGES,
+                kind=YearRangeKind.COVER,
+                year_key_func=FilteredTitleLists.get_cover_year_key_from_year,
+            )
+
         return NodeSpec(
             kind=NodeKind.STORY_GROUP,
             text=text,
             destination=destination,
             lazy_children=partial(_title_rows, title_list),
+        )
+
+    def _year_range_series_spec(
+        self,
+        text: str,
+        destination: SeriesDestination,
+        title_list: list[FantaComicBookInfo],
+        *,
+        year_ranges: list[tuple[int, int]],
+        kind: YearRangeKind,
+        year_key_func: Callable[[int], str],
+    ) -> NodeSpec:
+        """Build a series node split into year-range groups (One Pagers / Covers).
+
+        Unlike CS/US, these groups reuse their parent series' background and label
+        themselves with a plain title count. The assert guards against a title
+        falling outside every range (e.g. an undated cover) and silently vanishing.
+        """
+        children: list[NodeSpec] = []
+        grouped_count = 0
+        for year_range in year_ranges:
+            year_range_titles = self._year_range_titles(year_range, year_key_func)
+            grouped_count += len(year_range_titles)
+            children.append(
+                self._year_range_spec(
+                    year_range,
+                    year_range_titles,
+                    extra_text=_get_count_extra_text(year_range_titles),
+                    kind=kind,
+                )
+            )
+        assert grouped_count == len(title_list), (
+            f"{kind} year-range groups hold {grouped_count} titles"
+            f" but the series has {len(title_list)}"
+        )
+        return NodeSpec(
+            kind=NodeKind.STORY_GROUP,
+            text=text,
+            destination=destination,
+            children=tuple(children),
         )
 
     def _series_year_range_spec(

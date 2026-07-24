@@ -6,6 +6,7 @@ from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from loguru import logger
 
+from .comic_book_page_info import slice_comic_layout
 from .fantagraphics_volumes import MissingVolumeError
 from .reader_setup import prepare_comic_for_reading
 from .user_error_types import ErrorInfo, ErrorTypes
@@ -117,6 +118,7 @@ class ComicReaderManager:
         page_to_first_goto: str,
         use_overrides_active: bool,
         history_title_str: str | None = None,
+        collection_page_range: tuple[int, int] | None = None,
     ) -> None:
         """Open a Barks comic book in the reader.
 
@@ -128,6 +130,10 @@ class ComicReaderManager:
             history_title_str: Title to record in the reading history when it
                 differs from the comic's own title (e.g. a one-pager read via
                 the "All One-Pagers" collection).
+            collection_page_range: For the large single-page-only collections
+                ("All One-Pagers"/"All Covers"), the inclusive 1-based page range
+                of the member's year-range group. Only that slice is opened, so
+                the loader holds ~40-55 pages instead of the whole collection.
 
         """
         self._fanta_info = fanta_info
@@ -137,6 +143,7 @@ class ComicReaderManager:
             save_last_page=True,
             use_overrides_active=use_overrides_active,
             history_title_str=history_title_str,
+            collection_page_range=collection_page_range,
         )
 
     def _read_comic_book(
@@ -147,6 +154,7 @@ class ComicReaderManager:
         save_last_page: bool,
         use_overrides_active: bool = True,
         history_title_str: str | None = None,
+        collection_page_range: tuple[int, int] | None = None,
     ) -> None:
         assert page_to_first_goto
         assert self._comic_book_reader
@@ -156,6 +164,9 @@ class ComicReaderManager:
         self._layout, comic_book_image_builder = prepare_comic_for_reading(
             comic, self._reader_settings, self._layout_builder
         )
+        if collection_page_range is not None:
+            # Open only the member's year-range group, not the whole collection.
+            self._layout = slice_comic_layout(self._layout, *collection_page_range)
 
         title_str = self._fanta_info.comic_book_info.get_title_str()
         self._last_read_page_tracker.begin(title_str, self._layout, save_enabled=save_last_page)
