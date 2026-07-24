@@ -1109,3 +1109,32 @@ class TestTitleViewFocusHandoff:
             assert nav._handle_bottom_key(KEY_ENTER) is True
             nav._fun_image_view_screen.on_goto_title.assert_called_once()  # ty: ignore[unresolved-attribute]
             mock_clock.schedule_once.assert_called_once()
+
+
+class TestWikiGotoTitleFocus:
+    """The wiki's "Goto Title" button lands focus on the portal, when in bottom focus.
+
+    A plain wiki close restores bottom focus onto the "Goto wiki page" button before
+    this runs; choosing a comic overrides that to the portal, but only in a keyboard
+    (bottom-focus) context.
+    """
+
+    def test_forces_portal_when_in_bottom_focus(self, nav: MainScreenNavigation) -> None:
+        nav._focus_region = nav._focus_region.__class__(2)  # BOTTOM (restored by close)
+        nav._bottom_title_view_screen.is_visible = True
+
+        with patch.object(nav_module, "Clock") as mock_clock:
+            nav.focus_title_view_portal_after_wiki_goto()
+            # The portal focus is deferred a frame so the title render settles first.
+            mock_clock.schedule_once.call_args[0][0](0)
+
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[unresolved-attribute]
+
+    def test_no_op_outside_bottom_focus(self, nav: MainScreenNavigation) -> None:
+        nav._focus_region = nav._focus_region.__class__(1)  # TREE (mouse/tree context)
+
+        with patch.object(nav_module, "Clock") as mock_clock:
+            nav.focus_title_view_portal_after_wiki_goto()
+
+        mock_clock.schedule_once.assert_not_called()
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[unresolved-attribute]

@@ -596,9 +596,12 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         """Select ``title`` in the tree and title view, on behalf of the wiki screen.
 
         The index screens' ``on_goto_title`` behavior — the wiki closes itself
-        first, so the user lands here with the title's reading controls up.
+        first, so the user lands here with the title's reading controls up. Unlike a
+        plain wiki close (which keeps focus on the "Goto wiki page" button), choosing
+        a comic here lands keyboard focus on the title portal (the read action).
         """
         self._nav_coord.navigate_to_chrono_title(ImageInfo(from_title=title, filename=None))
+        self._nav.focus_title_view_portal_after_wiki_goto()
 
     def _on_goto_history_title(self, title: Titles) -> None:
         """Select ``title`` in the tree and title view, from a history row."""

@@ -170,8 +170,10 @@ class MainScreenNavigation:
             handled = nav_screen.handle_key(key)
             # A key that navigated to a title (index/history/search result activation)
             # swaps this nav screen out for the title view; hand keyboard focus to the
-            # title portal so it doesn't vanish inside the panel.
-            self._schedule_title_view_focus_handoff(nav_screen)
+            # title portal so it doesn't vanish inside the panel. Only worth scheduling
+            # when the key actually did something — an unhandled key never swaps screens.
+            if handled:
+                self._schedule_title_view_focus_handoff(nav_screen)
             return handled
         # The fun view takes precedence when it and the title view are co-visible.
         if not self._fun_image_view_screen.is_visible and self._bottom_title_view_screen.is_visible:
@@ -379,6 +381,20 @@ class MainScreenNavigation:
         self._focus_region = _FocusRegion.BOTTOM
         self._update_bottom_focus_highlight()
         self._bottom_title_view_screen.enter_nav_focus_at_portal(self.exit_bottom_focus)
+
+    def focus_title_view_portal_after_wiki_goto(self) -> None:
+        """Land keyboard focus on the title portal after the wiki's "Goto Title" button.
+
+        The wiki reader closes first — restoring bottom focus onto the previous title's
+        wiki-page button — and then navigates here. Only when that restore left us in
+        bottom focus (a keyboard context) do we override it, forcing focus onto the
+        portal (the read action) for the chosen comic once its render settles a frame
+        later. A normal wiki close (no goto) never reaches here, so it keeps landing on
+        the "Goto wiki page" button as before.
+        """
+        if self._focus_region != _FocusRegion.BOTTOM:
+            return
+        Clock.schedule_once(lambda _dt: self._enter_title_view_focus_at_portal(), 0)
 
     def _schedule_title_view_focus_handoff(
         self, prev_nav_screen: HistoryScreen | IndexScreen | StatisticsScreen | SearchScreen | None
