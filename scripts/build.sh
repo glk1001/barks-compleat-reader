@@ -9,6 +9,17 @@ else
   declare -r DO_ZIPS=0
 fi
 
+# Guard: the plain-Python panel module is a generated, gitignored artifact that Nuitka
+# compiles to native code (with the embedded BARKS_ZIPS_KEY). It is NOT regenerated here
+# - CI runs scripts/generate-panel-module.sh as a separate step first. Fail fast with a
+# clear message rather than deep inside the Nuitka run if it is missing.
+PANEL_MODULE="src/comic-utils/src/comic_utils/get_panel_bytes.py"
+if [[ ! -f "$PANEL_MODULE" ]]; then
+    echo "ERROR: generated panel module \"$PANEL_MODULE\" not found." >&2
+    echo "       Run 'bash scripts/generate-panel-module.sh' first (needs BARKS_ZIPS_KEY)." >&2
+    exit 1
+fi
+
 VERSION_FILE="src/barks-reader/src/barks_reader/_version.py"
 
 # --- Get version from git ---
