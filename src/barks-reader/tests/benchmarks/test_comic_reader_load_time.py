@@ -208,7 +208,6 @@ class TestComicReaderLoadTime:
 
             with (
                 patch.object(reader, "_show_page", MagicMock()),
-                patch.object(reader, "_wait_for_image_to_load", MagicMock()),
                 patch.object(reader, "_load_error", MagicMock()),
             ):
                 yield reader, first_image_loaded, all_images_loaded
