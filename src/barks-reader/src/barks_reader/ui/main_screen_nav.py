@@ -312,8 +312,10 @@ class MainScreenNavigation:
             Clock.schedule_once(lambda _dt: self.enter_bottom_focus(), 0)
 
     def _tree_nav_activate(self) -> None:
-        # A pending debounced title render is superseded: for a title node,
-        # activate_node below re-renders synchronously anyway.
+        # A still-pending debounced render means the bottom title view has not yet
+        # caught up to the selected node. Capture that before cancelling, so the title
+        # branch below knows whether the bottom view actually needs a (re-)render.
+        title_render_pending = self._pending_title_node is not None
         self._cancel_pending_title_render()
 
         selected = self._tree_view_screen.get_selected_node()
@@ -342,15 +344,23 @@ class MainScreenNavigation:
             self._enter_nav_screen_bottom_focus(self._history_screen, selected)
             return
 
+        if isinstance(selected, TitleTreeViewNode):
+            # The bottom title view already reflects the selected title from tree
+            # navigation, so re-rendering it here would needlessly re-roll the top-view
+            # image — a jarring flash after Enter. Only render when a debounced render
+            # was still pending, i.e. the bottom view is genuinely behind the selection.
+            if title_render_pending:
+                self._tree_view_manager.render_title_node(selected, scroll_to=True)
+            # Enter on a title moves focus into the bottom title panel, landing on the
+            # portal (the read action); a second Enter there opens the comic reader.
+            # Deferred a frame so any pending panel render settles first.
+            Clock.schedule_once(lambda _dt: self._enter_title_view_focus_at_portal(), 0)
+            return
+
         # Same toggle-in-place behavior as a mouse click: selection stays on the
         # node; Down then reaches the first child of a newly opened parent.
         self._tree_view_manager.activate_node(selected)
-        if isinstance(selected, TitleTreeViewNode):
-            # Enter on a title moves focus into the bottom title panel, landing on the
-            # portal (the read action); a second Enter there opens the comic reader.
-            # Deferred a frame so the panel render from activate_node settles first.
-            Clock.schedule_once(lambda _dt: self._enter_title_view_focus_at_portal(), 0)
-        elif self._search_screen.is_visible:
+        if self._search_screen.is_visible:
             Clock.schedule_once(lambda _dt: self.enter_bottom_focus(), 0)
 
     def _enter_title_view_focus_at_portal(self) -> None:

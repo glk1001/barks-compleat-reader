@@ -529,8 +529,10 @@ class TestTitleRenderDebounce:
 
         assert nav._pending_title_node is None
         assert not fake_trigger.scheduled
-        # Enter re-renders synchronously through the activate path.
-        nav._tree_view_manager.activate_node.assert_called_once_with(nodes[1])  # ty: ignore[unresolved-attribute]
+        # The bottom view was behind (a debounced render was pending), so Enter
+        # renders the pending node synchronously rather than leaving it stale.
+        nav._tree_view_manager.render_title_node.assert_called_with(nodes[1], scroll_to=True)  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[unresolved-attribute]
 
 
 class TestTreeNavActivate:
@@ -551,7 +553,10 @@ class TestTreeNavActivate:
             # Focus entry is deferred a frame; run the scheduled callback.
             mock_clock.schedule_once.call_args[0][0](0)
 
-        nav._tree_view_manager.activate_node.assert_called_with(selected)  # ty: ignore[unresolved-attribute]
+        # The bottom title view already shows this title (no pending render), so Enter
+        # does not re-render it — that avoided the jarring top-view re-roll flash.
+        nav._tree_view_manager.render_title_node.assert_not_called()  # ty: ignore[unresolved-attribute]
+        nav._tree_view_manager.activate_node.assert_not_called()  # ty: ignore[unresolved-attribute]
         # Enter lands on the portal (read action) rather than launching the reader.
         nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[unresolved-attribute]
         assert nav.is_in_bottom_focus
