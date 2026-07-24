@@ -992,3 +992,120 @@ class TestOnBottomScreenVisibilityChanged:
         nav.exit_bottom_focus()
 
         assert not nav.was_bottom_focus_auto_exited
+
+
+class TestTitleViewFocusHandoff:
+    """Hand keyboard focus to the title portal after a nav screen goes to a title.
+
+    Covers the index/history/search result activation and fun-view goto paths: once
+    the title view replaces the nav screen, focus lands on the portal (read action).
+    """
+
+    @staticmethod
+    def _in_bottom_focus(nav: MainScreenNavigation) -> None:
+        nav._focus_region = nav._focus_region.__class__(2)  # BOTTOM
+
+    def test_hands_off_to_portal_when_title_view_replaces_nav_screen(
+        self, nav: MainScreenNavigation
+    ) -> None:
+        self._in_bottom_focus(nav)
+        nav._fun_image_view_screen.is_visible = False
+        nav._bottom_title_view_screen.is_visible = True
+        nav._bottom_title_view_screen.is_nav_active = False  # ty: ignore[invalid-assignment]
+        prev = MagicMock()
+
+        nav._handoff_focus_to_title_view(prev)
+
+        # The old nav screen's ring is cleared; focus lands on the portal.
+        prev.exit_nav_focus.assert_called_once_with()
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[unresolved-attribute]
+        assert nav.is_in_bottom_focus
+
+    def test_no_handoff_when_title_view_not_visible(self, nav: MainScreenNavigation) -> None:
+        # Ordinary in-screen navigation: no goto happened, title view stays hidden.
+        self._in_bottom_focus(nav)
+        nav._fun_image_view_screen.is_visible = False
+        nav._bottom_title_view_screen.is_visible = False
+        prev = MagicMock()
+
+        nav._handoff_focus_to_title_view(prev)
+
+        prev.exit_nav_focus.assert_not_called()
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[unresolved-attribute]
+
+    def test_no_handoff_while_fun_view_co_visible(self, nav: MainScreenNavigation) -> None:
+        # The fun view keeps key precedence while co-visible with the title view.
+        self._in_bottom_focus(nav)
+        nav._fun_image_view_screen.is_visible = True
+        nav._bottom_title_view_screen.is_visible = True
+        nav._bottom_title_view_screen.is_nav_active = False  # ty: ignore[invalid-assignment]
+
+        nav._handoff_focus_to_title_view(None)
+
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[unresolved-attribute]
+
+    def test_no_double_handoff_when_already_nav_active(self, nav: MainScreenNavigation) -> None:
+        # A burst of keys can schedule several hand-offs; only the first takes effect.
+        self._in_bottom_focus(nav)
+        nav._fun_image_view_screen.is_visible = False
+        nav._bottom_title_view_screen.is_visible = True
+        nav._bottom_title_view_screen.is_nav_active = True  # ty: ignore[invalid-assignment]
+
+        nav._handoff_focus_to_title_view(MagicMock())
+
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[unresolved-attribute]
+
+    def test_no_handoff_outside_bottom_focus(self, nav: MainScreenNavigation) -> None:
+        nav._focus_region = nav._focus_region.__class__(1)  # TREE
+        nav._fun_image_view_screen.is_visible = False
+        nav._bottom_title_view_screen.is_visible = True
+        nav._bottom_title_view_screen.is_nav_active = False  # ty: ignore[invalid-assignment]
+
+        nav._handoff_focus_to_title_view(MagicMock())
+
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[unresolved-attribute]
+
+    def test_fun_view_path_hands_off_without_clearing_a_nav_screen(
+        self, nav: MainScreenNavigation
+    ) -> None:
+        # The fun view has no nav-screen ring to clear, so prev is None.
+        self._in_bottom_focus(nav)
+        nav._fun_image_view_screen.is_visible = False
+        nav._bottom_title_view_screen.is_visible = True
+        nav._bottom_title_view_screen.is_nav_active = False  # ty: ignore[invalid-assignment]
+
+        nav._handoff_focus_to_title_view(None)
+
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[unresolved-attribute]
+
+    def test_nav_screen_key_schedules_handoff(self, nav: MainScreenNavigation) -> None:
+        nav._main_index_screen.is_visible = True
+        nav._main_index_screen.handle_key.return_value = True  # ty: ignore[unresolved-attribute]
+        nav._speech_index_screen.is_visible = False
+        nav._names_index_screen.is_visible = False
+        nav._locations_index_screen.is_visible = False
+        nav._statistics_screen.is_visible = False
+        nav._history_screen.is_visible = False
+        nav._search_screen.is_visible = False
+
+        with patch.object(nav_module, "Clock") as mock_clock:
+            assert nav._handle_bottom_key(KEY_ENTER) is True
+            # Run the deferred hand-off as if a title goto swapped the index out.
+            nav._main_index_screen.is_visible = False
+            nav._bottom_title_view_screen.is_visible = True
+            nav._bottom_title_view_screen.is_nav_active = False  # ty: ignore[invalid-assignment]
+            nav._fun_image_view_screen.is_visible = False
+            self._in_bottom_focus(nav)
+            mock_clock.schedule_once.call_args[0][0](0)
+
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_called_once()  # ty: ignore[unresolved-attribute]
+
+    def test_fun_view_enter_schedules_handoff(self, nav: MainScreenNavigation) -> None:
+        nav._get_active_nav_screen = MagicMock(return_value=None)  # ty: ignore[invalid-assignment]
+        nav._fun_image_view_screen.is_visible = True
+        nav._bottom_title_view_screen.is_visible = False
+
+        with patch.object(nav_module, "Clock") as mock_clock:
+            assert nav._handle_bottom_key(KEY_ENTER) is True
+            nav._fun_image_view_screen.on_goto_title.assert_called_once()  # ty: ignore[unresolved-attribute]
+            mock_clock.schedule_once.assert_called_once()

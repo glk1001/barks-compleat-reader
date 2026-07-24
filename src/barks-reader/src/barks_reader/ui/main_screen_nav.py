@@ -167,7 +167,12 @@ class MainScreenNavigation:
     def _handle_bottom_key(self, key: int) -> bool:
         nav_screen = self._get_active_nav_screen()
         if nav_screen is not None:
-            return nav_screen.handle_key(key)
+            handled = nav_screen.handle_key(key)
+            # A key that navigated to a title (index/history/search result activation)
+            # swaps this nav screen out for the title view; hand keyboard focus to the
+            # title portal so it doesn't vanish inside the panel.
+            self._schedule_title_view_focus_handoff(nav_screen)
+            return handled
         # The fun view takes precedence when it and the title view are co-visible.
         if not self._fun_image_view_screen.is_visible and self._bottom_title_view_screen.is_visible:
             if not self._bottom_title_view_screen.is_nav_active:
@@ -189,6 +194,9 @@ class MainScreenNavigation:
             self._fun_image_view_screen.next_image()
         elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
             self._fun_image_view_screen.on_goto_title()
+            # If the goto swaps the fun view out for the title view, land focus on the
+            # portal (the hand-off no-ops while the fun view stays co-visible).
+            self._schedule_title_view_focus_handoff(None)
         else:
             return False
         return True
@@ -371,6 +379,40 @@ class MainScreenNavigation:
         self._focus_region = _FocusRegion.BOTTOM
         self._update_bottom_focus_highlight()
         self._bottom_title_view_screen.enter_nav_focus_at_portal(self.exit_bottom_focus)
+
+    def _schedule_title_view_focus_handoff(
+        self, prev_nav_screen: HistoryScreen | IndexScreen | StatisticsScreen | SearchScreen | None
+    ) -> None:
+        """Defer a hand-off of keyboard focus to the title portal after a goto-title.
+
+        A bottom nav screen (index/history/search) or the fun view can navigate to a
+        title, swapping itself out for the title view. Focus should then land on the
+        portal (the read action) rather than vanishing inside the freshly rendered
+        panel. Deferred a frame so the screen-swap visibility settles first; the
+        hand-off itself no-ops unless the title view is now the sole visible bottom
+        screen, so ordinary in-screen navigation keys are unaffected.
+
+        Args:
+            prev_nav_screen: The nav screen that handled the key (its focus ring is
+                cleared on hand-off), or None when the fun view handled it.
+
+        """
+        Clock.schedule_once(lambda _dt: self._handoff_focus_to_title_view(prev_nav_screen), 0)
+
+    def _handoff_focus_to_title_view(
+        self, prev_nav_screen: HistoryScreen | IndexScreen | StatisticsScreen | SearchScreen | None
+    ) -> None:
+        if self._focus_region != _FocusRegion.BOTTOM:
+            return
+        # Only hand off once the title view is the sole visible bottom screen — i.e. a
+        # goto-title actually happened. The fun view keeps key precedence while co-visible.
+        if self._fun_image_view_screen.is_visible or not self._bottom_title_view_screen.is_visible:
+            return
+        if self._bottom_title_view_screen.is_nav_active:
+            return  # Already handed off (e.g. an earlier key in a burst got here first).
+        if prev_nav_screen is not None:
+            prev_nav_screen.exit_nav_focus()
+        self._enter_title_view_focus_at_portal()
 
     def _tree_nav_collapse_to_parent(self) -> None:
         selected = self._tree_view_screen.get_selected_node()
