@@ -129,15 +129,29 @@ class FilteredTitleLists:
                 (info.series_name == SERIES_USA) and (info.comic_book_info.submitted_year == y)
             )
 
+        # One-pagers and covers fold any out-of-range/undated submitted year into
+        # their final bucket so no title is dropped from the tree (which would trip
+        # the count assert in tree_spec) and every member matches the goto/collection
+        # grouping, which folds the same way (collection_page_groups.year_range_group).
+        # Covers have undated (submitted_year == -1) entries; one-pagers currently
+        # do not, but fold for symmetry and to stay robust to future data.
+        one_pager_years = set(self.one_pager_years)
+        last_one_pager_year = ONE_PAGER_YEAR_RANGES[-1][1]
         for year in self.one_pager_years:
-            filters[self.get_one_pager_year_key_from_year(year)] = lambda info, y=year: (
-                (info.series_name == SERIES_ONE_PAGERS)
-                and (info.comic_book_info.submitted_year == y)
-            )
+            if year == last_one_pager_year:
+                filters[self.get_one_pager_year_key_from_year(year)] = lambda info, y=year: (
+                    (info.series_name == SERIES_ONE_PAGERS)
+                    and (
+                        (info.comic_book_info.submitted_year == y)
+                        or (info.comic_book_info.submitted_year not in one_pager_years)
+                    )
+                )
+            else:
+                filters[self.get_one_pager_year_key_from_year(year)] = lambda info, y=year: (
+                    (info.series_name == SERIES_ONE_PAGERS)
+                    and (info.comic_book_info.submitted_year == y)
+                )
 
-        # Some covers are undated (submitted_year == -1). Fold them into the final
-        # cover bucket so no cover is dropped from the tree: the last year's filter
-        # also matches any cover whose submitted year is outside the bucketed range.
         cover_years = set(self.cover_years)
         last_cover_year = COVER_YEAR_RANGES[-1][1]
         for year in self.cover_years:

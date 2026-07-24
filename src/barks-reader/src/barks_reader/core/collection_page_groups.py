@@ -52,7 +52,13 @@ def _group_ranges(
 
     *located_titles* is the collection's page order (position 1..N). The ranges
     must tile ``1..N`` exactly (asserted), so no member can silently fall outside
-    every group.
+    every group. Contiguity is a hard requirement of the caller, not a nicety: a
+    group is opened as a single contiguous page *slice* (``slice_comic_layout``),
+    which is only possible when its members occupy a contiguous run of positions.
+    This holds because the located list is chronological and the year ranges
+    partition it (undated members fold into the final group and, being latest,
+    sort last). If a future data/ordering change violates that, the assert fires
+    loudly rather than letting the slice silently open the wrong pages.
     """
     first_last: dict[int, tuple[int, int]] = {}
     for position, title in enumerate(located_titles, start=1):

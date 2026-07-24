@@ -125,13 +125,25 @@ class TestFilteredTitleLists:
         mock_info = MagicMock()
         mock_info.comic_book_info = MagicMock()
 
-        # One-pager year filter matches only its own year.
+        # One-pager year filter (non-final year) matches only that year.
         op_filter = filters["OP-1948"]
         mock_info.series_name = SERIES_ONE_PAGERS
         mock_info.comic_book_info.submitted_year = 1948
         assert op_filter(mock_info)
         mock_info.comic_book_info.submitted_year = 1949
         assert not op_filter(mock_info)
+        mock_info.comic_book_info.submitted_year = -1
+        assert not op_filter(mock_info)
+
+        # The final one-pager year folds in out-of-range/undated one-pagers.
+        op_final_filter = filters["OP-1962"]
+        mock_info.series_name = SERIES_ONE_PAGERS
+        mock_info.comic_book_info.submitted_year = 1962
+        assert op_final_filter(mock_info)
+        mock_info.comic_book_info.submitted_year = 1900
+        assert op_final_filter(mock_info)
+        mock_info.series_name = "Other"
+        assert not op_final_filter(mock_info)
 
         # Cover year filter (non-final year) matches only that year, not undated covers.
         cv_filter = filters["CV-1953"]
