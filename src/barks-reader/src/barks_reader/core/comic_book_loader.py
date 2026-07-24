@@ -253,6 +253,9 @@ class ComicBookLoader:
         self._image_load_order = image_load_order
         self._page_map = page_map
         self._index_to_key = {page_info.page_index: key for key, page_info in page_map.items()}
+        # Safe to swap the queue: set_comic and prioritize_page both run on the UI
+        # thread, and the stop_now() above has joined the old loader thread (the only
+        # reader of _priority_keys), so nothing can be draining or writing it here.
         self._priority_keys = queue.SimpleQueue()
         self._current_comic_desc = archive_desc
         self._stop = False

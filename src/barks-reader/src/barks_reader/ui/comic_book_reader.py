@@ -589,7 +589,6 @@ class ComicBookReader(FloatLayout):
         # UI thread. _render_page swaps to the new page once it is ready. The initial
         # comic open has no current page, so read_comic shows the loading page there.
         logger.info(f"Page index {self._current_page_index} not loaded yet; awaiting load.")
-        self._comic_book_loader.cursor.set_busy()
         self._prioritize_pending(left_idx, right_idx)
         self._start_pending_poll()
 
@@ -623,8 +622,15 @@ class ComicBookReader(FloatLayout):
             self._comic_book_loader.prioritize_page(idx)
 
     def _start_pending_poll(self) -> None:
-        """Start (once) the Clock poll that renders a page as soon as it loads."""
+        """Start (once) the Clock poll that renders a page as soon as it loads.
+
+        Sets the busy cursor here, under the same ``is None`` guard, so each
+        ``set_busy`` is paired one-to-one with the single ``set_normal`` in
+        ``_stop_pending_poll`` - the cursor stays balanced no matter how many
+        times ``_show_page`` re-enters the not-ready branch while awaiting.
+        """
         if self._pending_poll_ev is None:
+            self._comic_book_loader.cursor.set_busy()
             self._pending_poll_ev = Clock.schedule_interval(
                 self._poll_pending_page, PENDING_PAGE_POLL_INTERVAL_SECS
             )
