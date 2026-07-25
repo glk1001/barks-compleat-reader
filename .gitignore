@@ -52,3 +52,9 @@ __pycache__/
 .idea/caches/build_file_checksums.ser
 *.iws
 graphify-out/
+
+# mutmut mutation-testing workspace
+mutants/
+.mutmut-cache
+mutmut-stats.json
+/src/barks-reader/setup.cfg

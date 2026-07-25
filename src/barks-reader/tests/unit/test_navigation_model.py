@@ -138,6 +138,7 @@ def test_view_state_for_random_titles_destination(
     assert request.view_state is ViewStates.ON_RANDOM_TITLES_NODE
     assert request.year_range == expected_range_str
     assert request.tag is None
+    assert request.category == ""
 
 
 def test_view_state_for_character_random_titles_destination(model: NavigationModel) -> None:

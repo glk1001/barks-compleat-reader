@@ -23,3 +23,7 @@ barks-build-comic-images = { workspace = true }
 barks-kivy-ui = { workspace = true }
 comic-utils = { workspace = true }
 okf-reader = { workspace = true }
+
+# Mutation testing (mutmut) is configured dynamically by scripts/mutmut.sh, which
+# generates a throwaway setup.cfg here at runtime (selecting only the Kivy-free
+# unit tests as the baseline). Nothing to configure in this file — see that script.
