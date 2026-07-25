@@ -7,6 +7,7 @@ a wiki page path, and the table decoration from our own is_barks_title.
 
 from __future__ import annotations
 
+import re
 import zipfile
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
@@ -34,6 +35,8 @@ from barks_reader.core.wiki_integration import (
     wiki_theme_spec,
     wiki_top_bar_spec,
 )
+from hypothesis import given
+from hypothesis import strategies as st
 from okf_reader.core.theme import ViewerThemeSpec
 from PIL import Image
 
@@ -55,6 +58,28 @@ class TestStorySlug:
         """Quotes and spaces become one hyphen; leading/trailing hyphens stripped."""
         assert story_slug('Adventure "Down Under"') == "adventure-down-under"
         assert story_slug("Ten-Dollar Dither") == "ten-dollar-dither"
+
+    # Property-based checks: invariants the slug must hold for *any* title string,
+    # not just the hand-picked examples above. Hypothesis searches for counter-
+    # examples (unicode, control chars, empty, all-punctuation, ...).
+
+    @given(st.text())
+    def test_output_is_always_slug_safe(self, title: str) -> None:
+        """The slug only ever contains lowercase ASCII letters, digits, and hyphens."""
+        assert re.fullmatch(r"[a-z0-9-]*", story_slug(title)) is not None
+
+    @given(st.text())
+    def test_hyphens_are_collapsed_and_trimmed(self, title: str) -> None:
+        """No run of hyphens survives, and none cling to either end."""
+        slug = story_slug(title)
+        assert "--" not in slug
+        assert slug == slug.strip("-")
+
+    @given(st.text())
+    def test_slug_is_idempotent(self, title: str) -> None:
+        """Re-slugging an already-slugged title is a no-op — a stable join key."""
+        slug = story_slug(title)
+        assert story_slug(slug) == slug
 
 
 class TestCanonicalTitle:

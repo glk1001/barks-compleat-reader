@@ -3,7 +3,7 @@
 Enhancement ideas grouped by area. Checkboxes track status. This is a living
 document; add items as they surface and tick them off as they land.
 
-Last updated: 2026-07-21.
+Last updated: 2026-07-25.
 
 ---
 
@@ -195,6 +195,44 @@ Known limitation (intentional, not a reader fix): links under the bundle's
       window geometry, hermetic config dir, page-settled log signal) — same
       binary, env-gated. Full design discussion:
       `docs/plans/gui-testing-deterministic-mode.md`.
+
+## Testing (property-based & mutation)
+
+> Infra landed: Hypothesis dev/ci settings profiles (root `conftest.py`), the
+> first property tests on `story_slug` (`test_wiki_integration.py`), and mutmut
+> mutation testing (`scripts/mutmut.sh`, backlog in `docs/mutation-testing.md`).
+> Remaining is broadening property-based coverage and burning down the mutmut
+> survivors — the two reinforce each other: properties assert *behaviour*, so
+> they kill far more mutants than example tests.
+
+- [ ] **Shared Hypothesis strategies** (`tests/strategies.py`) — reusable
+      `@st.composite` builders for the domain types so property tests can reach
+      past plain strings: `titles()` (`st.sampled_from(list(Titles))`),
+      `year_ranges()` (ordered pairs in the Barks span), `fanta_info()` /
+      `comic_book_info()` via `st.builds(...)`, page/panel specs, `intspan`
+      page ranges. This is the main investment; everything below draws on it.
+- [ ] **Round-trip property tests** — the easy, high-value wins after strategies
+      exist: `hyphen_break_engine` (`build_markup(parse_marked_text(x))` round-
+      trips; joining hyphenated parts reconstructs the word), the year-range
+      `get_range_str` format/parse round-trip, `reader_formatter`, comic-layout
+      math, `cpi_calculator` (monotonic/bounded inflation).
+- [ ] **Stateful testing pilot** — a Hypothesis `RuleBasedStateMachine` that
+      generates *sequences* of operations and checks invariants after each.
+      Start with `reading_history` / `last_read_page_tracker` ("current page
+      always in bounds", "no visited entry lost"), then `NavigationModel`
+      ("every reachable destination resolves to a valid ViewState") and
+      `reader_settings` / `json_settings_manager` (save→load round-trip).
+- [ ] **Burn down the mutmut survivor backlog** — 1523 survivors + 436 no-test
+      mutants (`docs/mutation-testing.md`), heaviest in `comic_book_loader`,
+      `navigation.tree_spec`, `view_pipeline`, `system_file_paths`. Triage with
+      `mutmut show`, ignore the low-value ones (log/error strings), harden the
+      assertions that matter — property tests above are the main lever.
+
+> Gotchas when writing more property tests: `@given` doesn't compose with
+> function-scoped pytest fixtures (build inputs in-test or via `st.data()`);
+> slow tests need `@settings(deadline=None)`; keep property tests in the
+> Kivy-free `core` / `barks_fantagraphics` layer (same reason mutmut avoids the
+> UI).
 
 ---
 

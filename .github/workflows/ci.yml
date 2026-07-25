@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  # Reproducible, timing-tolerant Hypothesis runs (see root conftest.py).
+  HYPOTHESIS_PROFILE: ci
+
 jobs:
   lint:
     name: Lint

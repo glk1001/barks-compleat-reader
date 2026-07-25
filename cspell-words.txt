@@ -176,3 +176,6 @@ yticks
 zinfo
 zorder
 mutmut
+conftest
+derandomize
+replayable

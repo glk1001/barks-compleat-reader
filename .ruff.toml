@@ -15,3 +15,5 @@ ignore = [
 
 [lint.per-file-ignores]
 "scripts/*" = ["INP001"]
+# Root pytest conftest: loaded by pytest, not imported as a package module.
+"conftest.py" = ["INP001"]
