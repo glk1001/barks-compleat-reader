@@ -1,6 +1,7 @@
 
 # cspell global word list — words shared across all packages
 
+acpi
 activatable
 alnum
 apos
@@ -32,6 +33,7 @@ colorfmt
 compresslevel
 configfile
 consolelog
+cpufreq
 cpus
 cythonize
 dateutil
@@ -123,7 +125,9 @@ passthroughs
 pdfs
 pil
 pnginfo
+powersave
 ppid
+pstate
 putpixel
 pyeof
 rasterised
