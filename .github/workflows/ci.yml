@@ -77,6 +77,12 @@ jobs:
       - name: Check import layering
         run: uv run lint-imports
 
+      - name: Check dependencies (deptry)
+        run: uv run deptry .
+
+      - name: Check dead code (vulture)
+        run: uv run vulture
+
   spell-check:
     name: Spell Check
     runs-on: ubuntu-latest

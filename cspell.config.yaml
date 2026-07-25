@@ -17,6 +17,8 @@ ignorePaths:
   - "**/get_panel_bytes.py"
   # Generated verbatim from Michael Barrier's bibliography (proper nouns, OCR typos).
   - "**/barks_bibliography.py"
+  # Vulture whitelist: bare identifiers, not prose.
+  - "**/vulture_whitelist.py"
 
 # Enable Python built-in dictionary plus word lists (global and per-package)
 dictionaryDefinitions:

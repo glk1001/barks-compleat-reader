@@ -53,6 +53,23 @@ repos:
             types: [python]
             pass_filenames: false
             stages: [pre-commit]
+          - id: deptry
+            name: deptry (unused/missing/misplaced dependencies)
+            entry: uv run deptry .
+            language: system
+            # Depends on both the source imports and the dependency declarations.
+            files: \.(py|toml)$
+            pass_filenames: false
+            stages: [pre-commit]
+          - id: vulture
+            name: vulture (dead code)
+            entry: uv run vulture
+            language: system
+            # Whole-program analysis: reads all paths from [tool.vulture], so a
+            # deletion elsewhere can revive a finding regardless of the staged file.
+            types: [python]
+            pass_filenames: false
+            stages: [pre-commit]
           - id: pytest
             name: pytest (full suite)
             entry: uv run pytest

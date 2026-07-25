@@ -8,6 +8,7 @@ dependencies = [
     "barks-reader",
     "barks-fantagraphics",
     "barks-build-comic-images",
+    "barks-kivy-ui",
     "comic-utils",
     "okf-reader",
     "better-exceptions==0.3.3",
@@ -79,6 +80,8 @@ dev = [
     "sysrsync>=1.1.1",
     "weasyprint>=69.0",
     "zstandard>=0.25.0",
+    "deptry>=0.25.1",
+    "vulture>=2.16",
 ]
 
 [tool.pytest.ini_options]
@@ -136,3 +139,75 @@ omit = [
     "*/kivy_standalone_error_popup.py",
     "*/kivy_standalone_show_message.py",
 ]
+
+[tool.deptry]
+# deptry runs against the *root* pyproject because that is the complete dependency
+# set Nuitka compiles the standalone bundle from (see the note on [project.dependencies]).
+# Only the shipped application source is analysed; the dev-only trees below legitimately
+# use local sys.path modules and dev dependencies (matplotlib, weasyprint, sysrsync, ...).
+extend_exclude = [
+    "experiments",
+    "scripts",
+    ".*scraps.*",
+    ".*/tests/.*",
+    ".*/benchmarks/.*",
+]
+
+[tool.deptry.per_rule_ignores]
+# DEP001 (imported but not declared): cv2/opencv is imported by comic_utils.cv_image_utils,
+# which is shared cross-repo (barks-ocr, barks-comic-building) and is not part of the reader's
+# runtime path — declaring opencv here would only bloat the bundle.
+DEP001 = ["cv2"]
+# DEP002 (declared but not imported): every entry below is intentionally pinned even though
+# nothing imports it directly, so deptry cannot see the usage:
+#   - cryptography: used by the Cython-compiled comic_utils.get_panel_bytes Fernet decrypter;
+#     its .pyi stub hides the runtime `from cryptography.fernet import Fernet` from deptry.
+#   - certifi/idna/urllib3/six/pytz/tzdata: transitive runtime deps pinned for a complete bundle.
+#   - colorama/kivy-deps-*/pyobjc-*/pypiwin32/pywin32/win32-setctime: platform runtime deps
+#     loaded by Kivy/loguru on Windows/macOS (import-gated behind sys_platform markers).
+#   - better-exceptions/pygments/setuptools/filetype/numpy: activated/consumed at runtime or by
+#     the build pipeline, not via a direct top-level import in the reader.
+#   - docutils/docutils-stubs/types-docutils: docutils runtime + type-check-only stub packages.
+DEP002 = [
+    "better-exceptions",
+    "certifi",
+    "colorama",
+    "cryptography",
+    "docutils",
+    "docutils-stubs",
+    "filetype",
+    "idna",
+    "kivy-deps-angle",
+    "kivy-deps-glew",
+    "kivy-deps-sdl2",
+    "kivy-garden",
+    "numpy",
+    "pygments",
+    "pyobjc-core",
+    "pyobjc-framework-cocoa",
+    "pypiwin32",
+    "pytz",
+    "pywin32",
+    "setuptools",
+    "six",
+    "types-docutils",
+    "tzdata",
+    "urllib3",
+    "win32-setctime",
+]
+
+[tool.vulture]
+# Dead-code detection, gating at min_confidence 80 (lower levels are dominated by
+# Kivy property/handler false positives). Known false positives that vulture cannot
+# resolve statically live in vulture_whitelist.py — see that file before adding to it.
+paths = [
+    "src/barks-reader/src",
+    "src/barks-fantagraphics/src",
+    "src/barks-build-comic-images/src",
+    "src/barks-kivy-ui/src",
+    "src/comic-utils/src",
+    "src/okf-reader/src",
+    "vulture_whitelist.py",
+]
+min_confidence = 80
+sort_by_size = true

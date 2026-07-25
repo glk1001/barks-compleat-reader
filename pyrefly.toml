@@ -29,6 +29,8 @@ project-excludes = [
     "**/experiments/**",
     "**/scraps/**",
     "**/__pycache__/**",
+    # Vulture whitelist: bare undefined names by design (see the file header).
+    "**/vulture_whitelist.py",
 ]
 
 python-interpreter = ".venv/bin/python"
