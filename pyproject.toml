@@ -85,6 +85,7 @@ dev = [
     "deptry>=0.25.1",
     "vulture>=2.16",
     "mutmut>=3.6.0",
+    "diff-cover>=10.4.1",
 ]
 
 [tool.pytest.ini_options]
@@ -125,6 +126,9 @@ okf-reader = { workspace = true }
 source = [
     "src/barks-reader/src/barks_reader",
     "src/barks-fantagraphics/src/barks_fantagraphics",
+    "src/barks-build-comic-images/src/barks_build_comic_images",
+    "src/comic-utils/src/comic_utils",
+    "src/okf-reader/src/okf_reader",
 ]
 branch = true
 

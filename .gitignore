@@ -58,3 +58,4 @@ mutants/
 .mutmut-cache
 mutmut-stats.json
 /src/barks-reader/setup.cfg
+/coverage.xml
