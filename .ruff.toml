@@ -8,16 +8,10 @@ exclude = [
 ]
 
 [lint]
+# CPY001 and PLR0917 are ignored family-wide in .ruff-base.toml - the sibling repos
+# extend it and hit the same two rules for the same reasons.
 ignore = [
-    # Copyright headers: this repo has none, no LICENSE file, and ships a compiled
-    # binary rather than source. Stabilized out of preview in ruff 0.16.0, so
-    # `select = ["ALL"]` started demanding a header on all 339 files.
-    "CPY001",
     "PLR0913",
-    # Sibling of PLR0913 (also stabilized in ruff 0.16.0): the hits are dependency-
-    # injection constructors, which legitimately take many collaborators. Tracked as
-    # keyword-only debt in docs/BACKLOG.md rather than enforced as a gate.
-    "PLR0917",
     "TD002",
 ]
 

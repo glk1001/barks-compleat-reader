@@ -11,4 +11,14 @@ ignore = [
     "G004",  # logging f-string
     "S101", "S311",  # assert, random
     "TD003",  # missing issue link in todo
+    # Stabilized out of preview in ruff 0.16.0, so `select = ["ALL"]` started
+    # flagging them across every repo extending this file.
+    "CPY001",  # copyright headers: no repo in the family has one, or a LICENSE file
+    "PLR0917",  # too many positional args: sibling of PLR0913; see the note below
 ]
+
+# Note on PLR0917: the hits are dependency-injection constructors, where many
+# collaborators is the pattern these repos chose - so the rule's implied fix
+# (bundle params into config objects) is the wrong one. The right fix is a bare
+# `*` making them keyword-only, tracked as debt in the reader's docs/BACKLOG.md
+# rather than enforced here.
