@@ -17,7 +17,6 @@ dependencies = [
     "click>=8.3.3",
     "colorama==0.4.6 ; sys_platform == 'win32'",
     "cryptography>=48.0.1",
-    "setuptools>=83.0.0",
     "distro>=1.9.0",
     "docutils==0.22",
     "docutils-stubs==0.0.22",
@@ -64,6 +63,9 @@ dependencies = [
 dev = [
     "import-linter>=2.9",
     "nuitka>=2.5",
+    # Build-time only: Nuitka imports setuptools.build_meta and
+    # setuptools.command.egg_info at module scope. Never shipped in the bundle.
+    "setuptools>=83.0.0",
     "patchelf>=0.17 ; sys_platform == 'linux'",
     "pyinstrument>=5.1.1",
     "pyspellchecker>=0.8.4",
@@ -174,7 +176,7 @@ DEP001 = ["cv2"]
 #   - certifi/click/idna/urllib3/six/pytz/tzdata: transitive runtime deps pinned for a complete bundle.
 #   - colorama/kivy-deps-*/pyobjc-*/pypiwin32/pywin32/win32-setctime: platform runtime deps
 #     loaded by Kivy/loguru on Windows/macOS (import-gated behind sys_platform markers).
-#   - better-exceptions/pygments/setuptools/filetype/numpy: activated/consumed at runtime or by
+#   - better-exceptions/pygments/filetype/numpy: activated/consumed at runtime or by
 #     the build pipeline, not via a direct top-level import in the reader.
 #   - docutils/docutils-stubs/types-docutils: docutils runtime + type-check-only stub packages.
 DEP002 = [
@@ -198,7 +200,6 @@ DEP002 = [
     "pypiwin32",
     "pytz",
     "pywin32",
-    "setuptools",
     "six",
     "types-docutils",
     "tzdata",
