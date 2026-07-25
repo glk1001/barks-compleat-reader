@@ -188,6 +188,22 @@ Known limitation (intentional, not a reader fix): links under the bundle's
 - [ ] **Architecture deep-dive** — run the `improve-codebase-architecture`
       exploration to find shallow modules to deepen and untested seams to
       surface across the codebase.
+- [ ] **Make wide signatures keyword-only** — 49 functions take more than 5
+      positional params (PLR0917, surfaced when ruff 0.16.0 stabilized the rule;
+      now ignored in `.ruff.toml` alongside PLR0913). The rule's implied fix —
+      bundling params into config objects — is the *wrong* one here: the hits are
+      overwhelmingly dependency-injection constructors, and many collaborators is
+      the pattern we chose. The right fix is a bare `*` in the signature, making
+      them keyword-only at zero design cost. Do it incrementally, worst first:
+      the 14 signatures with 8+ positional params, i.e. `NavigationCoordinator`
+      (10), `show_error_popup` (10), `OKFViewer` (10, okf-reader),
+      `MainScreen` (9), `MainScreenWindowHelper` (9),
+      `scripts/make_one_pager_mosaic.py` (9). Then fix any positional call sites
+      the `*` breaks. Most already pass by keyword (`NavigationCoordinator` is
+      all-keyword in both prod and tests), but `MainScreen` is constructed
+      positionally with 9 args at `barks_reader_app.py:396` — the concrete
+      transposition hazard, and the best place to start.
+      Re-list current hits with `uv run ruff check . --select PLR0917`.
 - [ ] **GUI acceptance harness + deterministic dev mode** — turn the
       remote keyboard-driving recipe (`.claude/skills/verify/SKILL.md`) into a
       repeatable Claude-in-the-loop smoke layer. Highest-leverage first step:

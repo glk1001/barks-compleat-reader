@@ -101,7 +101,7 @@ class ComicBookLoader:
         self._image_load_order: list[str] = []
         self._page_map: OrderedDict[str, PageInfo] = OrderedDict()
         self._index_to_key: dict[int, str] = {}
-        self._images: list[None | tuple[io.BytesIO, str]] = []
+        self._images: list[tuple[io.BytesIO, str] | None] = []
 
         # Page keys the user has navigated to that should jump the prefetch queue.
         # Written from the UI thread (prioritize_page), drained on the loader thread.

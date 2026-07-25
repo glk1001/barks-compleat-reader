@@ -1729,7 +1729,7 @@ FRAGMENTS_TO_SUPPRESS: frozenset[str] = frozenset(
         "crepe",  # Crepe Suzettes
         "daniel",  # Daniel Boone
         "debbies",  # Junior Sub-teen-age Debbies Club
-        "disney"  # Walt Disney
+        "disney",  # Walt Disney
         "disney's",  # Walt Disney's
         "donna",  # Donna Duck
         "du",  # Hu Du
@@ -1773,7 +1773,7 @@ FRAGMENTS_TO_SUPPRESS: frozenset[str] = frozenset(
         "thrushwhistle",  # Thrushwhistle Glen
         "treatem",  # Treatem Nyce
         "tryle",  # Tryle N. Error
-        "walt"  # Walt Disney
+        "walt",  # Walt Disney
         "wat",  # Tangkor Wat
         "whambo",  # Whambo Jambo
         "william",  # William Tell

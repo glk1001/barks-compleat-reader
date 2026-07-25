@@ -1,17 +1,32 @@
 repos:
-      - repo: https://github.com/astral-sh/ruff-pre-commit
-        rev: v0.14.2 # Use the latest stable Ruff version
-        hooks:
-          - id: ruff-check # Runs the linter
-            stages: [pre-commit]
-#            args: [--fix] # Automatically fixes fixable issues
-          - id: ruff-format # Applies formatting
-            stages: [pre-commit]
+      # Every gate runs the tools from the uv-synced venv, so the versions pinned in
+      # pyproject.toml are the single source of truth. Previously ruff came from the
+      # astral-sh/ruff-pre-commit repo in its own isolated env, which drifted two
+      # minor versions behind the ruff that gates CI - so ruff findings could pass
+      # pre-commit and then fail CI.
       - repo: local
         hooks:
+          - id: ruff-check
+            name: ruff check
+            entry: uv run ruff check . # add --fix to auto-fix fixable issues
+            language: system
+            types: [python]
+            pass_filenames: false
+            stages: [pre-commit]
+          - id: ruff-format
+            name: ruff format
+            # Applies formatting (as the old hook did); pre-commit then fails on the
+            # modified files, so you re-stage. CI's `--check` run passes afterwards.
+            entry: uv run ruff format .
+            language: system
+            types: [python]
+            pass_filenames: false
+            stages: [pre-commit]
           - id: ty-check
             name: ty check
-            entry: uv run ty check . # or python -m ty check if you don't use uv
+            # --error-on-warning matches CI. Without it a ty panic exits 0, so a run
+            # that analyzed only part of the project would look like a pass.
+            entry: uv run ty check . --error-on-warning
             language: system
             types: [python]
             pass_filenames: false

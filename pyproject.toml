@@ -70,7 +70,11 @@ dev = [
     "pyinstrument>=5.1.1",
     "pyspellchecker>=0.8.4",
     "pytest>=8.4.2",
-    "ruff>=0.15.4",
+    # Pinned: with `select = ["ALL"]` in .ruff-base.toml, a ruff release that
+    # stabilizes rules out of preview is a change to our lint policy, not just a
+    # bump (0.16.0 added 388 errors across CPY001/PLR0917). Bump deliberately, and
+    # keep .pre-commit-config.yaml on this same venv copy so both gates agree.
+    "ruff==0.16.0",
     "pytest-benchmark>=5.2.3",
     "pytest-cov>=7.0.0",
     "pytest-mock>=3.15.1",
@@ -78,7 +82,12 @@ dev = [
     "matplotlib>=3.10",
     "scikit-learn>=1.6",
     "wordcloud>=1.9",
-    "ty>=0.0.17",
+    # Pinned: 0.0.62 introduced a flaky salsa panic ("assertion failed:
+    # provisional_status.is_provisional()") that aborts up to 39 files on roughly
+    # 1 in 3 full-project runs, which would flake the CI/pre-commit gate. Bisected
+    # over 6 runs each: 0.0.61 clean, 0.0.62 and 0.0.63 both affected. Unpin once
+    # upstream fixes it.
+    "ty==0.0.61",
     "pyrefly>=1.1.1",  # advisory (non-gating) second type checker; ty remains the gate
     "prek>=0.3.8",
     "sysrsync>=1.1.1",

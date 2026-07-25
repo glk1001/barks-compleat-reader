@@ -199,7 +199,8 @@ def test_cover_registry_and_bibliography_covers_are_bijective() -> None:
     assert len(registry_keys) == len(BARKS_COVERS), "duplicate keys in BARKS_COVERS"
 
     cover_entries = [e for e in _all_entries() if e.disposition == Disposition.COVER]
-    bib_keys = [e.cover_key for e in cover_entries]
+    bib_keys = [key for e in cover_entries if (key := e.cover_key) is not None]
+    assert len(bib_keys) == len(cover_entries), "cover entry with no cover_key"
     assert len(bib_keys) == len(set(bib_keys)), "duplicate cover keys among bibliography entries"
     bib_key_set = set(bib_keys)
 
