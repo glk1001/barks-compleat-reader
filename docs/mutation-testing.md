@@ -217,7 +217,7 @@ these modules were left alone, as before.
 | `reading_history` | 17 | **10** | done |
 | `reader_file_paths` | 37 | **21** | done |
 | `comic_book_loader` | 184 | 155 | **partial** |
-| `view_pipeline` | 148 | 112 | **partial** |
+| `view_pipeline` | 148 | 112 | **superseded** — see the `view_pipeline` pass below |
 | **total** | **535** | **332** | |
 
 **The six "done" modules went 203 → 65**, and that 65 is the usual floor: `__init__`
@@ -427,19 +427,117 @@ it means deciding the fake's rounding contract rather than adding an assertion, 
 left alone deliberately — **not** because it cannot be killed. Worth revisiting if a test
 ever needs a sub-second interval.
 
+## `view_pipeline` pass (2026-07-26) — one of the two plumbing leftovers
+
+The larger of the two modules the plumbing pass left unfinished, swept on its own:
+**429 mutants, 111 → 23 survivors** (315 → 404 killed, **94.6%** of checked mutants). The
+2 🫥 no-covering-test mutants were left alone, as before. **All 23 remaining are triaged as
+unkillable** (table below), so this module is done.
+
+| Module (`barks_reader.core.*`) | Before | After |
+|---|---:|---:|
+| `view_pipeline` | 111 | **23** |
+
+The plumbing pass predicted "no single lever like the `__init__` snapshot" here, and that
+the remainder was "spread thin across ~20 small image-selection methods". That was right
+about the shape and wrong about the lever: the methods are thin, but they are all reached
+through **one ordered dispatch**, and the dispatch is what needed pinning.
+
+### An ordered dispatch is blind to per-handler tests
+
+`_set_next_top_view_image` is a list of `(predicate, handler)` pairs walked in order until
+one matches. 16 of the 111 lived there, and 9 of those were a predicate's `==` flipped to
+`!=`. **A per-handler test cannot see that flip**: invert one predicate and an *earlier*
+entry matches instead, the handler still runs, an image still appears, and every existing
+"this handler picks from that list" test still passes. The eleven `_set_top_view_image_for_*`
+tests were each individually correct and collectively blind.
+
+The fix is the round-3 tree-snapshot pattern applied to a dispatch: stub **every** image
+source to a separately identifiable filename (`inset:<TITLE>`, `random:<list marker>`,
+`search`, `censor`, `history`), then drive all 47 `ViewStates` through and compare the whole
+`ImageInfo` against a literal state → image table. One parametrised test killed 30 mutants
+across the dispatch, `_set_top_view_image_fixed`, both year-range key helpers and both tag
+lookups — and a set-equality assertion that the table's keys *are* `set(ViewStates)` means a
+new state cannot be added without landing in it. Generalising: **when control flow is an
+ordered table, test the table, not its rows.**
+
+### What else worked
+
+1. **A distinguishing stub beats a fixed return value.** Every existing helper returned the
+   same `ImageInfo` for every call, which is why `args[0] is cs_titles`-style assertions were
+   the only thing available. A `side_effect` that *derives* the return value from the argument
+   (`lambda title_list: ImageInfo(Path(f"random:{title_list[0]}"))`) turns "which list did it
+   reach for" into an ordinary value comparison, and makes the whole-object compare possible.
+2. **A counted retry loop is pinned by its call count.** `_set_next_search_screen_image`
+   rerolls up to five times to avoid showing the top view's artwork twice. Three cases —
+   distinct on the first pick, duplicate then fresh, duplicate forever — pin the loop bound
+   (`call_count == 7`: one for the top view, one initial pick, five rerolls), the comparison
+   direction, and that `break` is not `return`. Only the third case can see `range(5)` vs
+   `range(6)`.
+3. **Assert the *other* falsy value.** `render(force_fresh_fun_image=True)` sets the fun image
+   to `None`; the mutant sets it to `""`. Both are falsy, so every downstream branch agrees —
+   the difference only surfaces in a state that *keeps* the cleared value (`ON_TITLE_NODE`
+   never picks a fun image), where it reaches the snapshot verbatim. `is None`, not `not`.
+4. **Give the scripted colour source a distinct sequence per palette.** All three
+   `next_color(PaletteId.X)` → `next_color(None)` mutants died at once to one render asserting
+   three different colours, because `ScriptedColorSource` falls back to `default` for an
+   unknown palette. A single shared palette cannot tell the three call sites apart.
+5. **Set iteration order is not a test fixture.** `_get_file_types_to_use`'s `continue` →
+   `break` is only observable when an unmapped theme is iterated *before* a mapped one, and
+   `set` iteration over enum members is id-hash ordered — different every run. Assigning a
+   **list** to `_fun_image_themes` (the code only iterates it and tests membership) makes the
+   order deterministic; a set-based test would have been flaky, not durable.
+
+### Real gaps this found
+
+- **`ON_HISTORY_NODE` had no test at all.** `ScreenVisibility.history` could be dropped from
+  the snapshot entirely and nothing would fail — the reading-history screen would simply never
+  appear. `get_random_reading_history_image` was likewise unstubbed in every helper, so the
+  history *and* `ON_READING_NODE` top images were both uncovered.
+- **The whole covers redirect was untested.** One-pagers had `_current_title_is_one_pager`
+  covered; `_current_title_is_cover` — the identical guard that sends a cover's large image to
+  the "All Covers" collection — had nothing, all 7 of its mutants alive. Seeing the full
+  expression needs three cases: a member of `COVERS_SET`, the synthetic `ALL_COVERS` title
+  (which is *not* in the set, so only `is_covers_collection` sees it), and a title that is
+  neither.
+- `preserve_top_view` and `force_fresh_fun_image` — both of `render`'s behavioural flags — had
+  no test, so either could have been ignored outright.
+- `_set_next_search_screen_image`'s anti-repeat loop had no test.
+- `_get_random_titles_fun_image`'s category branch ('From favourites') had no test; only the
+  tag and year-range branches did.
+- `_update_titles`' year loop had no direct test, so both endpoints of every decade bucket
+  were free to move by one.
+
+### Not a gap, but worth knowing
+
+`_bottom_view_fun_image_opacity` and `_bottom_view_title_opacity` are floats that **nothing
+reads as a float**: `_compute_snapshot` reduces each to `> 0.0`, and the only other reader is
+a log line. Their `0.5`/`1.0` mutants are therefore invisible to any snapshot assertion. They
+are pinned directly instead (a private-field assertion) rather than refactored to booleans,
+but they are two-thirds dead. The *top* view's opacity is different — it reaches the snapshot
+as a real float.
+
+### Known-equivalent survivors from the `view_pipeline` pass (2026-07-26)
+
+| Mutant | Count | Why it is not worth killing |
+|---|---:|---|
+| Log wording and `logger.x(None)` across nine methods | 20 | Same as every previous round. Includes all four `XX…XX`/case mutants of `"No bottom view title set."`, which is a `logger.debug` and nothing else. |
+| `__init__`'s `_fun_image_themes = None` and `_cached_fun_titles = None` → `""` | 2 | Both are overwritten by the `self._set_fun_image_themes(None)` two lines below, still inside `__init__`. No code path exists between the assignment and the overwrite. |
+| `_set_top_view_image_fixed`'s trailing `FIT_MODE_COVER` argument dropped | 1 | `FIT_MODE_COVER` **is** `ImageInfo.fit_mode`'s own default, value for value. Passing it is documentation, not behaviour. (The sibling mutant that changes it to `None` does die.) |
+
 ## Survivors by module (backlog, most-survivors first)
 
 "Before" counts are from the 2026-07-25 full run and are inflated wherever a module
 memoises (see trap 2). **Every module on this list has now been swept**, so the arrows are
-the whole story; the two `comic_book_loader` / `view_pipeline` entries are the only ones
-still carrying real, killable gaps (see the plumbing pass above). Everything else is at its
-triaged floor.
+the whole story; `comic_book_loader` is the only entry
+still carrying real, killable gaps (see the plumbing pass above); `view_pipeline` was finished
+in its own pass. Everything else is at its triaged floor.
 
 | Module (`barks_reader.core.*`) | Survivors |
 |---|---:|
 | `comic_book_loader` | 185 → 155 |
 | `navigation.tree_spec` | 184 → 1 |
-| `view_pipeline` | 148 → 112 |
+| `view_pipeline` | 148 → 23 |
 | `system_file_paths` | 131 → 41 |
 | `comic_book_loader_platform_settings` | 110 → 26 |
 | `image_selector` | 104 → 35 |
@@ -573,8 +671,10 @@ pinned by a test, but it is a genuine unguarded edge if a caller ever shrinks th
 
 - `436` mutants had **no covering test** at all (🫥) — these live in code paths the
   Kivy-free unit tests never reach (often only exercised via UI-touching tests).
-- With the backlog table swept, the only remaining killable clusters are
-  `comic_book_loader` (155) and `view_pipeline` (112). Both need a test-harness build
-  rather than assertion tweaks — see the plumbing pass for why.
+- With the backlog table swept, the only remaining killable cluster is
+  `comic_book_loader` (155). It needs a test-harness build — a deterministic executor,
+  stop flag and future-completion order — rather than assertion tweaks; see the plumbing
+  pass for why. `view_pipeline` needed no such harness in the end (see its own pass): its
+  lever was the ordered top-view dispatch, not the threading.
 - Already addressed: the `None`-category branch in `navigation_model.view_state_for`
   (one real gap this run surfaced) now has an assertion; that survivor is killed.

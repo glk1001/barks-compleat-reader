@@ -201,3 +201,8 @@ mutmut
 conftest
 derandomize
 replayable
+behavioural
+colours
+generalising
+unstubbed
+behaviours

@@ -282,18 +282,33 @@ Known limitation (intentional, not a reader fix): links under the bundle's
         a dead `SettingsNotifier._on_change` field. The transferable trap:
         `pytest.raises(match=...)` is a *search*, so mutmut's `XX…XX` string
         mutants pass tests that look like exact matches — anchor with `^…$`.
-      **Remaining work is `comic_book_loader` and `view_pipeline`** — 267
-      survivors, only ~77 of them log wording, so most are real gaps. They were
-      left partial for structural reasons, not effort: `comic_book_loader`'s two
-      big clusters are a prefetch loop and its error handling on a worker thread,
-      which need a deterministic executor harness (scripted `ThreadPoolExecutor`,
-      stop flag, future-completion order) rather than better assertions;
-      `view_pipeline`'s remainder is spread across ~20 small image-selection
-      methods each needing its own per-view-state case. The five patterns that do
-      the work when there *is* a lever — structural snapshots (including of
-      constructed initial state), exact tables for literal tables, scripted clocks
-      for benchmarks, and `assert_called_once_with` wherever the return value is a
-      mock — are written up in the doc.
+      - **`view_pipeline` pass** (2026-07-26): **111→23** over 429 mutants
+        (94.6% of checked mutants killed) — **done**, all 23 triaged (20 log
+        wording, 2 `__init__` values overwritten within `__init__`, 1 argument
+        that duplicates the dataclass default). The plumbing pass called this one
+        "spread thin across ~20 methods with no single lever"; the shape was right
+        but the lever existed. All those methods hang off **one ordered
+        `(predicate, handler)` dispatch**, and an ordered dispatch is invisible to
+        per-handler tests: flip a predicate's `==` to `!=` and an earlier entry
+        matches instead, so the handler still runs and every existing test still
+        passes. Stubbing each image source to a distinguishable filename and
+        comparing all 47 `ViewStates` against a literal state→image table killed 30
+        at once. **Generalise: when control flow is an ordered table, test the
+        table, not its rows.** No source changes were needed, but it found several
+        untested behaviours — the whole covers→"All Covers" redirect, the
+        `ON_HISTORY_NODE` visibility flag, both of `render`'s flags
+        (`preserve_top_view`, `force_fresh_fun_image`), and the search screen's
+        anti-repeat reroll loop.
+      **Remaining work is `comic_book_loader`** — 155 survivors, only ~40 of them
+      log wording, so most are real gaps. It was left partial for structural
+      reasons, not effort: its two big clusters are a prefetch loop and its error
+      handling on a worker thread, which need a deterministic executor harness
+      (scripted `ThreadPoolExecutor`, stop flag, future-completion order) rather
+      than better assertions. The patterns that do the work when there *is* a lever
+      — structural snapshots (including of constructed initial state and of an
+      ordered dispatch), exact tables for literal tables, scripted clocks for
+      benchmarks, and `assert_called_once_with` wherever the return value is a mock
+      — are written up in the doc.
 
 > Gotchas when writing more property tests: `@given` doesn't compose with
 > function-scoped pytest fixtures (build inputs in-test or via `st.data()`);

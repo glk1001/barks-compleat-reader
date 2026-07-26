@@ -13,10 +13,11 @@ from unittest.mock import MagicMock
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.image_selector import FIT_MODE_COVER, ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
+from barks_reader.core.ports import PaletteId
 from barks_reader.core.reader_file_paths import ALL_TYPES
 from barks_reader.core.testing import FakeScheduler, ScriptedColorSource
 from barks_reader.core.view_pipeline import ViewPipeline
-from barks_reader.core.view_request import ViewRequest
+from barks_reader.core.view_request import ImageThemes, ViewRequest
 from barks_reader.core.view_snapshot import (
     FunViewSnapshot,
     ScreenVisibility,
@@ -25,6 +26,11 @@ from barks_reader.core.view_snapshot import (
     TopViewSnapshot,
     ViewSnapshot,
 )
+
+
+def _selector(pipeline: ViewPipeline) -> MagicMock:
+    """Return the pipeline's image_selector as a MagicMock for assertion access."""
+    return pipeline.__dict__["_image_selector"]
 
 
 def _make_pipeline() -> ViewPipeline:
@@ -42,6 +48,12 @@ def _make_pipeline() -> ViewPipeline:
     image_selector.get_random_censorship_fix_image.return_value = ImageInfo(
         filename=Path("censor.png")
     )
+    image_selector.get_random_reading_history_image.return_value = ImageInfo(
+        filename=Path("history.png")
+    )
+    image_selector.get_random_image_for_title.return_value = Path("title.png")
+    # Theme expansion iterates this; a MagicMock return value is not iterable.
+    reader_settings.file_paths.get_file_type_titles.return_value = []
 
     title_lists = {
         "All": [MagicMock()],
@@ -262,3 +274,176 @@ class TestFreshPipelineState:
         titles, file_types = cached
         assert titles == pipeline._title_lists["All"]  # noqa: SLF001
         assert file_types == ALL_TYPES
+
+    def test_the_search_screen_image_starts_empty(self) -> None:
+        """Never visible until a search state renders, so the snapshot cannot see it."""
+        pipeline = _make_pipeline()
+
+        assert pipeline.get_search_screen_image_info() == ImageInfo()
+
+
+# ---------------------------------------------------------------------------
+# Screen visibility, opacity, and per-palette colors
+# ---------------------------------------------------------------------------
+
+
+class TestScreenVisibility:
+    def test_history_state_shows_the_history_screen(self) -> None:
+        """The history flag is the only `ScreenVisibility` field with no other cover."""
+        pipeline = _make_pipeline()
+        snap = pipeline.render(ViewRequest(view_state=ViewStates.ON_HISTORY_NODE))
+
+        assert snap.screen_visibility == ScreenVisibility(history=True)
+        assert snap.fun_view.is_visible is False
+
+    def test_speech_words_state_shares_the_speech_screen(self) -> None:
+        pipeline = _make_pipeline()
+        snap = pipeline.render(ViewRequest(view_state=ViewStates.ON_INDEX_SPEECH_WORDS_NODE))
+
+        assert snap.screen_visibility == ScreenVisibility(speech_index=True)
+
+
+class TestViewOpacities:
+    """The opacity fields the snapshot only exposes as `is_visible` booleans."""
+
+    def test_pre_init_uses_half_opacity_for_both_views(self) -> None:
+        pipeline = _make_pipeline()
+        snap = pipeline.render(ViewRequest(view_state=ViewStates.PRE_INIT))
+
+        assert snap.top_view.image_opacity == 0.5  # noqa: PLR2004
+        assert pipeline._bottom_view_fun_image_opacity == 0.5  # noqa: PLR2004, SLF001
+        assert pipeline._bottom_view_title_opacity == 0.0  # noqa: SLF001
+
+    def test_a_fun_image_state_is_fully_opaque(self) -> None:
+        pipeline = _make_pipeline()
+        pipeline.render(ViewRequest(view_state=ViewStates.ON_INTRO_NODE))
+
+        assert pipeline._bottom_view_fun_image_opacity == 1.0  # noqa: SLF001
+        assert pipeline._bottom_view_title_opacity == 0.0  # noqa: SLF001
+
+    def test_a_title_state_is_fully_opaque(self) -> None:
+        pipeline = _make_pipeline()
+        pipeline.render(ViewRequest(view_state=ViewStates.ON_TITLE_NODE, title_str="Some Title"))
+
+        assert pipeline._bottom_view_title_opacity == 1.0  # noqa: SLF001
+        assert pipeline._bottom_view_fun_image_opacity == 0.0  # noqa: SLF001
+
+
+class TestPerPaletteColors:
+    """Each view must draw its tint from its own palette, not a shared one."""
+
+    def test_each_view_takes_its_color_from_its_own_palette(self) -> None:
+        top = (0.1, 0.1, 0.1, 1.0)
+        fun = (0.2, 0.2, 0.2, 1.0)
+        title = (0.3, 0.3, 0.3, 1.0)
+        pipeline = _make_pipeline()
+        pipeline._colors = ScriptedColorSource(  # noqa: SLF001
+            palettes={PaletteId.TOP_VIEW: [top], PaletteId.FUN: [fun], PaletteId.TITLE: [title]},
+            default=(9.0, 9.0, 9.0, 9.0),
+        )
+
+        snap = pipeline.render(ViewRequest(view_state=ViewStates.ON_INTRO_NODE))
+
+        assert snap.top_view.image_color == top
+        assert snap.fun_view.image_color == fun
+        assert snap.title_view.image_color == title
+
+
+# ---------------------------------------------------------------------------
+# `render`'s two flags
+# ---------------------------------------------------------------------------
+
+
+class TestRenderFlags:
+    def test_initial_state_keeps_its_fun_image_across_renders(self) -> None:
+        """Re-entering INITIAL must not re-roll the startup fun image."""
+        pipeline = _make_pipeline()
+        picks = iter([ImageInfo(filename=Path(f"fun{n}.png")) for n in range(1, 5)])
+        _selector(pipeline).get_random_image.side_effect = lambda *_args, **_kw: next(picks)
+
+        first = pipeline.render(ViewRequest(view_state=ViewStates.INITIAL))
+        second = pipeline.render(ViewRequest(view_state=ViewStates.INITIAL))
+
+        # A fun image *is* picked the first time...
+        assert first.fun_view.image_info == ImageInfo(filename=Path("fun1.png"))
+        # ...and kept the second, because `render` does not force a fresh one.
+        assert second.fun_view.image_info == ImageInfo(filename=Path("fun1.png"))
+
+    def test_non_initial_states_re_roll_the_fun_image_every_render(self) -> None:
+        pipeline = _make_pipeline()
+        picks = iter([ImageInfo(filename=Path(f"fun{n}.png")) for n in range(1, 5)])
+        _selector(pipeline).get_random_image.side_effect = lambda *_args, **_kw: next(picks)
+
+        first = pipeline.render(ViewRequest(view_state=ViewStates.ON_INTRO_NODE))
+        second = pipeline.render(ViewRequest(view_state=ViewStates.ON_INTRO_NODE))
+
+        assert first.fun_view.image_info == ImageInfo(filename=Path("fun1.png"))
+        assert second.fun_view.image_info == ImageInfo(filename=Path("fun2.png"))
+
+    def test_force_fresh_fun_image_clears_the_image_in_a_no_fun_state(self) -> None:
+        """The cleared field must end up as `None`, not some other falsy value.
+
+        `ON_TITLE_NODE` never picks a fun image, so whatever `force_fresh` left
+        behind is exactly what the snapshot carries.
+        """
+        pipeline = _make_pipeline()
+        pipeline.render(ViewRequest(view_state=ViewStates.ON_INTRO_NODE))
+
+        snap = pipeline.render(
+            ViewRequest(view_state=ViewStates.ON_TITLE_NODE, title_str="Some Title"),
+            force_fresh_fun_image=True,
+        )
+
+        assert snap.fun_view.image_info is None
+
+    def test_preserve_top_view_keeps_the_current_top_image(self) -> None:
+        pipeline = _make_pipeline()
+        picks = iter([ImageInfo(filename=Path(f"top{n}.png")) for n in range(1, 5)])
+        _selector(pipeline).get_random_image.side_effect = lambda *_args, **_kw: next(picks)
+
+        first = pipeline.render(ViewRequest(view_state=ViewStates.ON_THE_STORIES_NODE))
+        second = pipeline.render(
+            ViewRequest(view_state=ViewStates.ON_THE_STORIES_NODE, preserve_top_view=True)
+        )
+
+        assert first.top_view.image_info == ImageInfo(filename=Path("top1.png"))
+        assert second.top_view.image_info == ImageInfo(filename=Path("top1.png"))
+
+    def test_update_views_picks_a_new_top_image_by_default(self) -> None:
+        """The `preserve_top_view` default is off — a plain refresh re-rolls the top."""
+        pipeline = _make_pipeline()
+        pipeline._view_state = ViewStates.ON_THE_STORIES_NODE  # noqa: SLF001
+        pipeline._top_view_image_info = ImageInfo()  # noqa: SLF001
+
+        pipeline._update_views()  # noqa: SLF001
+
+        assert pipeline._top_view_image_info.filename == Path("random.png")  # noqa: SLF001
+
+    def test_render_keeps_the_provided_title_image_file(self) -> None:
+        pipeline = _make_pipeline()
+        provided = Path("provided.png")
+
+        snap = pipeline.render(
+            ViewRequest(
+                view_state=ViewStates.ON_TITLE_NODE,
+                title_str="Lost in the Andes!",
+                title_image_file=provided,
+            )
+        )
+
+        assert snap.title_view.image_info is not None
+        assert snap.title_view.image_info.filename == provided
+        _selector(pipeline).get_random_image_for_title.assert_not_called()
+
+    def test_render_stores_the_requested_fun_image_themes(self) -> None:
+        pipeline = _make_pipeline()
+
+        pipeline.render(
+            ViewRequest(
+                view_state=ViewStates.ON_INTRO_NODE,
+                fun_image_themes={ImageThemes.SPLASHES},
+            )
+        )
+
+        assert pipeline._fun_image_themes == {ImageThemes.SPLASHES}  # noqa: SLF001
+        assert pipeline.current_request().fun_image_themes == {ImageThemes.SPLASHES}

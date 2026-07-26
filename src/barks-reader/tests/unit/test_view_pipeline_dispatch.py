@@ -14,9 +14,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
+import pytest
 from barks_fantagraphics.barks_tags import TagGroups, Tags
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
-from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, ONE_PAGERS
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO, COVERS_SET, ONE_PAGERS
 from barks_fantagraphics.fanta_comics_info import ALL_LISTS
 from barks_reader.core import view_pipeline as vp_module
 from barks_reader.core.image_selector import FIT_MODE_COVER, ImageInfo
@@ -694,11 +695,317 @@ class TestPublicDelegations:
 
     def test_set_next_bottom_view_title_image_non_one_pager_uses_random(self) -> None:
         pipeline = _make_pipeline()
-        pipeline._current_bottom_view_title = "Lost in the Andes"
+        # A real title, so `STR_TITLE_TO_ENUM` resolves it and the one-pager and
+        # cover guards are both exercised against a known non-member.
+        pipeline._current_bottom_view_title = ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
         pipeline._bottom_view_title_image_info = ImageInfo()
         _selector(pipeline).get_random_image_for_title.return_value = Path("random-title.png")
 
         pipeline._set_next_bottom_view_title_image()
 
-        _selector(pipeline).get_random_image_for_title.assert_called_once()
+        # The title's own image — not the one-pager or cover collection's.
+        _selector(pipeline).get_random_image_for_title.assert_called_once_with(
+            ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES],
+            vp_module._TITLE_VIEW_IMAGE_TYPES,
+            use_only_edited_if_possible=True,
+        )
         assert pipeline._bottom_view_title_image_info.filename == Path("random-title.png")
+
+
+# ---------------------------------------------------------------------------
+# E. The cover / one-pager collection redirects
+# ---------------------------------------------------------------------------
+
+
+class TestCollectionTitleRedirects:
+    """One-pagers and covers draw their large image from their collection.
+
+    Both guards are `title is not None and (title in <SET> or is_<x>_collection(title))`,
+    so three cases are needed to see the whole expression: a member of the set,
+    the synthetic collection title itself, and a title that is neither.
+    """
+
+    def _redirect_target(self, pipeline: ViewPipeline, title_str: str) -> str:
+        pipeline._current_bottom_view_title = title_str
+        # A provided file must lose to a collection redirect, so set one.
+        pipeline._bottom_view_title_image_info = ImageInfo(filename=Path("provided.png"))
+        _selector(pipeline).get_random_image_for_title.return_value = Path("picked.png")
+
+        pipeline._set_next_bottom_view_title_image()
+
+        picker = _selector(pipeline).get_random_image_for_title
+        picker.assert_called_once()
+        assert pipeline._bottom_view_title_image_info.filename == Path("picked.png")
+        assert picker.call_args.args[1:] == (vp_module._TITLE_VIEW_IMAGE_TYPES,)
+        assert picker.call_args.kwargs == {"use_only_edited_if_possible": True}
+        return picker.call_args.args[0]
+
+    def test_a_cover_redirects_to_the_all_covers_collection(self) -> None:
+        pipeline = _make_pipeline()
+        cover_str = ENUM_TO_STR_TITLE[next(iter(sorted(COVERS_SET, key=lambda t: t.name)))]
+
+        assert self._redirect_target(pipeline, cover_str) == ENUM_TO_STR_TITLE[Titles.ALL_COVERS]
+
+    def test_the_covers_collection_itself_redirects_to_itself(self) -> None:
+        """`ALL_COVERS` is not *in* `COVERS_SET`, so only `is_covers_collection` sees it."""
+        pipeline = _make_pipeline()
+        all_covers = ENUM_TO_STR_TITLE[Titles.ALL_COVERS]
+
+        assert self._redirect_target(pipeline, all_covers) == all_covers
+
+    def test_the_one_pagers_collection_itself_redirects_to_itself(self) -> None:
+        """Likewise `ALL_ONE_PAGERS` is not in `ONE_PAGERS`."""
+        pipeline = _make_pipeline()
+        all_one_pagers = ENUM_TO_STR_TITLE[Titles.ALL_ONE_PAGERS]
+
+        assert self._redirect_target(pipeline, all_one_pagers) == all_one_pagers
+
+    def test_an_ordinary_title_keeps_a_provided_image(self) -> None:
+        """Neither guard fires, so the explicitly provided file survives."""
+        pipeline = _make_pipeline()
+        pipeline._current_bottom_view_title = ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]
+        pipeline._bottom_view_title_image_info = ImageInfo(filename=Path("provided.png"))
+
+        pipeline._set_next_bottom_view_title_image()
+
+        _selector(pipeline).get_random_image_for_title.assert_not_called()
+        assert pipeline._bottom_view_title_image_info.filename == Path("provided.png")
+
+
+# ---------------------------------------------------------------------------
+# F. The search-screen image and its anti-repeat reroll
+# ---------------------------------------------------------------------------
+
+
+def _search_pipeline(picks: list[str]) -> ViewPipeline:
+    """Create a pipeline in a search state whose search images follow *picks* in order."""
+    pipeline = _make_pipeline()
+    sequence = iter(picks)
+    _selector(pipeline).get_random_search_image.side_effect = lambda: ImageInfo(
+        filename=Path(next(sequence))
+    )
+    pipeline._view_state = ViewStates.ON_TITLE_SEARCH_NODE
+    return pipeline
+
+
+class TestSearchScreenImage:
+    """The search screen must not show the same artwork as the top view.
+
+    Both draw from the same small pool, so `_set_next_search_screen_image`
+    rerolls up to five times before giving up. The top view is chosen first and
+    consumes the first pick.
+    """
+
+    def test_a_different_first_pick_is_used_straight_away(self) -> None:
+        pipeline = _search_pipeline(["top.png", "other.png"])
+        pipeline._set_next_top_view_image()
+
+        pipeline._set_next_search_screen_image()
+
+        assert pipeline.get_search_screen_image_info().filename == Path("other.png")
+        assert _selector(pipeline).get_random_search_image.call_count == 2  # noqa: PLR2004
+
+    def test_a_pick_matching_the_top_view_is_rerolled(self) -> None:
+        pipeline = _search_pipeline(["dup.png", "dup.png", "fresh.png"])
+        pipeline._set_next_top_view_image()
+
+        pipeline._set_next_search_screen_image()
+
+        assert pipeline.get_search_screen_image_info().filename == Path("fresh.png")
+        assert _selector(pipeline).get_random_search_image.call_count == 3  # noqa: PLR2004
+
+    def test_the_reroll_gives_up_after_five_attempts(self) -> None:
+        pipeline = _search_pipeline(["dup.png"] * 20)
+        pipeline._set_next_top_view_image()
+
+        pipeline._set_next_search_screen_image()
+
+        # One pick for the top view, one initial pick, then five rerolls.
+        assert _selector(pipeline).get_random_search_image.call_count == 7  # noqa: PLR2004
+        assert pipeline.get_search_screen_image_info().filename == Path("dup.png")
+
+    def test_a_non_search_state_leaves_the_search_image_alone(self) -> None:
+        pipeline = _make_pipeline()
+        sentinel = ImageInfo(filename=Path("kept.png"))
+        pipeline._search_screen_image_info = sentinel
+        pipeline._view_state = ViewStates.ON_INTRO_NODE
+
+        pipeline._set_next_search_screen_image()
+
+        assert pipeline.get_search_screen_image_info() is sentinel
+        _selector(pipeline).get_random_search_image.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# G. Fun-image selection arguments
+# ---------------------------------------------------------------------------
+
+
+class TestFunImageSelectionArguments:
+    """The fun image's *arguments* are the whole behaviour — the return is a mock."""
+
+    def test_censorship_fixes_draws_from_the_fixed_stories_tag(self) -> None:
+        pipeline = _make_pipeline()
+        pipeline._view_state = ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE
+        fanta = _fake_fcbi(Titles.ATTIC_ANTICS)
+
+        from barks_fantagraphics import fanta_comics_info as fci_module  # noqa: PLC0415
+
+        with (
+            patch.object(
+                vp_module,
+                "BARKS_TAGGED_TITLES",
+                {Tags.CENSORED_STORIES_BUT_FIXED: [Titles.ATTIC_ANTICS]},
+            ),
+            patch.object(fci_module, "get_fanta_info", return_value=fanta),
+        ):
+            pipeline._get_next_fun_view_image_info()
+
+        # No `file_types` here: the censorship pool is already narrow.
+        _selector(pipeline).get_random_image.assert_called_once_with(
+            [fanta], use_adaptive_fit_mode=True
+        )
+
+    def test_the_generic_pool_passes_its_cached_titles_and_file_types(self) -> None:
+        pipeline = _make_pipeline()
+        pipeline._view_state = ViewStates.ON_INTRO_NODE
+        pool = [_fake_fcbi(Titles.LOST_IN_THE_ANDES)]
+        pipeline.__dict__["_cached_fun_titles"] = (pool, {FileTypes.SPLASH})
+
+        pipeline._get_next_fun_view_image_info()
+
+        _selector(pipeline).get_random_image.assert_called_once_with(
+            pool,
+            file_types={FileTypes.SPLASH},
+            use_adaptive_fit_mode=True,
+        )
+
+    def test_random_titles_tag_branch_passes_the_tagged_title_list(self) -> None:
+        pipeline = _make_pipeline()
+        pipeline._view_state = ViewStates.ON_RANDOM_TITLES_NODE
+        pipeline._current_tag = Tags.GLADSTONE_GANDER
+        fanta = _fake_fcbi(Titles.ATTIC_ANTICS)
+
+        from barks_fantagraphics import fanta_comics_info as fci_module  # noqa: PLC0415
+
+        with (
+            patch.object(
+                vp_module, "BARKS_TAGGED_TITLES", {Tags.GLADSTONE_GANDER: [Titles.ATTIC_ANTICS]}
+            ),
+            patch.object(fci_module, "get_fanta_info", return_value=fanta),
+        ):
+            pipeline._get_next_fun_view_image_info()
+
+        _selector(pipeline).get_random_image.assert_called_once_with(
+            [fanta],
+            file_types=ALL_TYPES - {FileTypes.NONTITLE},
+            use_adaptive_fit_mode=True,
+        )
+
+    def test_random_titles_category_branch_passes_the_category_title_list(self) -> None:
+        """'From favourites' carries a category, and no tag or year range."""
+        pipeline = _make_pipeline()
+        pipeline._view_state = ViewStates.ON_RANDOM_TITLES_NODE
+        pipeline._current_tag = None
+        pipeline._current_year_range = ""
+        pipeline._current_category = "Favourites"
+        cat_list = [_fake_fcbi(Titles.ATTIC_ANTICS)]
+        _title_lists(pipeline)["Favourites"] = cat_list
+
+        pipeline._get_next_fun_view_image_info()
+
+        _selector(pipeline).get_random_image.assert_called_once_with(
+            cat_list,
+            file_types=ALL_TYPES - {FileTypes.NONTITLE},
+            use_adaptive_fit_mode=True,
+        )
+
+
+# ---------------------------------------------------------------------------
+# H. Decade-theme year boundaries
+# ---------------------------------------------------------------------------
+
+
+def _named_fcbi(marker: str) -> MagicMock:
+    """Build a `FantaComicBookInfo` stub whose `title` is a plain, printable marker."""
+    m = MagicMock()
+    m.comic_book_info.title = marker
+    return m
+
+
+class TestDecadeThemeBoundaries:
+    @pytest.mark.parametrize(
+        ("theme", "expected_range"),
+        [
+            (ImageThemes.FORTIES, (1942, 1949)),
+            (ImageThemes.FIFTIES, (1950, 1959)),
+            # The sixties bucket runs past the last year with titles (1971).
+            (ImageThemes.SIXTIES, (1960, 1980)),
+        ],
+    )
+    def test_each_decade_theme_spans_its_exact_years(
+        self, theme: ImageThemes, expected_range: tuple[int, int]
+    ) -> None:
+        pipeline = _make_pipeline()
+        pipeline._fun_image_themes = {theme}
+        _settings(pipeline).file_paths.get_file_type_titles.return_value = set()
+        recorded: list[tuple[int, int]] = []
+
+        with patch.object(
+            ViewPipeline,
+            "_update_titles",
+            side_effect=lambda _titles, year_range: recorded.append(year_range),
+        ):
+            pipeline._get_themed_fun_image_titles()
+
+        assert recorded == [expected_range]
+
+    def test_update_titles_includes_both_endpoints_and_nothing_outside(self) -> None:
+        pipeline = _make_pipeline()
+        for year in range(1940, 1953):
+            _title_lists(pipeline)[str(year)] = [_named_fcbi(f"t{year}")]
+        collected: set[str] = set()
+
+        pipeline._update_titles(collected, (1942, 1949))  # ty: ignore[invalid-argument-type]
+
+        assert collected == {f"t{year}" for year in range(1942, 1950)}
+
+    def test_update_titles_tolerates_years_with_no_title_list(self) -> None:
+        """Decade buckets run past the years that have lists; missing years are skipped."""
+        pipeline = _make_pipeline()
+        _title_lists(pipeline)["1971"] = [_named_fcbi("t1971")]
+        collected: set[str] = set()
+
+        pipeline._update_titles(collected, (1970, 1980))  # ty: ignore[invalid-argument-type]
+
+        assert collected == {"t1971"}
+
+    def test_file_type_titles_are_filtered_by_the_accumulated_theme_titles(self) -> None:
+        """The enum title set is projected to strings before it reaches the resolver."""
+        pipeline = _make_pipeline()
+        pipeline._fun_image_themes = {ImageThemes.CLASSICS, ImageThemes.SPLASHES}
+        _settings(pipeline).file_paths.get_file_type_titles.return_value = []
+
+        with patch.object(
+            vp_module, "BARKS_TAGGED_TITLES", {Tags.CLASSICS: [Titles.LOST_IN_THE_ANDES]}
+        ):
+            _titles, file_types = pipeline._get_themed_fun_image_titles()
+
+        # SPLASHES maps to a file type; CLASSICS only seeds the title set.
+        assert file_types == {FileTypes.SPLASH}
+        _settings(pipeline).file_paths.get_file_type_titles.assert_called_once_with(
+            FileTypes.SPLASH, {ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES]}
+        )
+
+    def test_an_unmapped_theme_is_skipped_not_a_stop(self) -> None:
+        """A theme with no file type must not hide the mapped themes after it."""
+        pipeline = _make_pipeline()
+        # A list, not a set: the skip is only observable when an unmapped theme is
+        # iterated before a mapped one, and set order over enum members is not
+        # stable across runs.
+        pipeline._fun_image_themes = [  # ty: ignore[invalid-assignment]
+            ImageThemes.CLASSICS,
+            ImageThemes.SPLASHES,
+        ]
+
+        assert pipeline._get_file_types_to_use() == {FileTypes.SPLASH}
