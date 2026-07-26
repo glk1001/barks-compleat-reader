@@ -245,7 +245,12 @@ class TestComicReaderLoadTime:
             run_load_and_wait,
             setup=setup,
             teardown=teardown,
-            rounds=10,
+            # Time-to-first-page is heavy-left-tailed: the worker and the scheduler
+            # callback occasionally line up (~0.24s) against a usual ~0.40s, so the
+            # `min` this is gated on is a tail draw, not a floor. At 10 rounds it
+            # moved ~1.75x between runs on an otherwise idle machine and tripped the
+            # 20% comparison roughly 2 runs in 5. More rounds let the min converge.
+            rounds=50,
             iterations=1,
         )
 

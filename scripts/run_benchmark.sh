@@ -23,6 +23,12 @@ fi
 compare_name="${latest_baseline%.json}"
 echo "Comparing against baseline: ${compare_name}"
 
+# Gate on the median, not the min. `min` is a tail draw, and time-to-first-page is
+# heavy-left-tailed - the worker thread and the scheduler callback occasionally line
+# up much faster than usual. Comparing one recorded tail sample against another made
+# this flap: measured over six back-to-back runs at 50 rounds, the min varied by 5.1%
+# (CoV) while the median varied by 0.9%. More rounds does not fix min - min-of-N only
+# reaches further into the tail as N grows - but it does settle the median.
 uv run pytest src/barks-reader/tests/benchmarks/ \
     --benchmark-compare="${compare_name}" \
-    --benchmark-compare-fail=min:20%
+    --benchmark-compare-fail=median:20%
