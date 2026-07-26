@@ -8,10 +8,17 @@ Line coverage can't see these; that's the whole point of running mutmut.
 ## How to run
 
 ```bash
-bash scripts/mutmut.sh                            # mutate all of core/
-bash scripts/mutmut.sh '*/core/navigation/*'      # scope to a subpackage
+bash scripts/mutmut.sh --changed                  # only core/ modules you have touched
+bash scripts/mutmut.sh --changed HEAD~3           # ...plus everything since a ref
 bash scripts/mutmut.sh '*/core/reader_utils.py'   # one module
+bash scripts/mutmut.sh '*/core/navigation/*'      # a subpackage
+bash scripts/mutmut.sh                            # all of core/ (~6000 mutants, slow)
 ```
+
+`--changed` is the everyday mode and the one to reach for by default. With no ref it
+scopes to your working tree (staged, unstaged and untracked); pass a ref to also
+include commits since then. One module is a minute or two — fast enough to run while
+the code is still fresh — against many minutes for a full sweep.
 
 The wrapper runs mutmut from `src/barks-reader/` (the layout mutmut's import
 shadowing expects) and selects only the **Kivy-free** unit tests as the baseline —
@@ -26,6 +33,28 @@ uv run mutmut show <mutant-name>
 
 It is **not** a CI/pre-commit gate — it reruns the test suite per mutant and takes
 minutes. Treat it as an on-demand test-quality probe.
+
+## Working practice
+
+The survivor table below is a **snapshot, not a live scoreboard** — mutant numbering
+shifts as soon as code moves, so don't try to keep it current. Going forward:
+
+- **Run `--changed` when you write or rework pure-logic `core` code.** That is where
+  the value is: catching a decorative test while you still remember the function.
+- **Sweep the whole of `core/` occasionally** (a couple of times a year, or after a
+  big refactor) to see whether anything drifted. Read the per-module counts, act on
+  the one or two that look wrong, ignore the rest.
+- **Leave settled modules alone.** `collection_page_groups` is at 0; it needs nothing
+  until someone touches it.
+- **Stop around ~90%+ on a pure-logic module.** Equivalent mutants make 100%
+  unreachable, and the last stretch is where tests turn brittle — pinning log wording
+  and defensive branches costs more in false failures than it buys.
+- **Record equivalents** (see the table further down) so the next round skips them.
+  Triage is the expensive part of mutation testing; fixing usually isn't.
+
+The 436 🫥 *no covering test* mutants are a **separate problem** and won't move no
+matter how many survivors get killed — they are code the Kivy-free suite never
+reaches. That is the GUI acceptance-harness item in `docs/BACKLOG.md`, not this one.
 
 ## Two traps that produce fake numbers
 

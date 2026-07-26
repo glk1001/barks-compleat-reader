@@ -19,14 +19,66 @@
 #   bash scripts/mutmut.sh                             # mutate all of core/
 #   bash scripts/mutmut.sh '*/core/navigation/*'      # scope to a subpackage
 #   bash scripts/mutmut.sh '*/core/navigation/navigation_model.py'   # one module
+#   bash scripts/mutmut.sh --changed                   # only core/ modules you have touched
+#   bash scripts/mutmut.sh --changed HEAD~3            # ...plus everything since a ref
+#
+# --changed is the everyday mode: a full core/ sweep is ~6000 mutants and many
+# minutes, but one module is a minute or two, which is fast enough to run while the
+# code is still fresh in your head. With no ref it scopes to your working tree
+# (staged, unstaged and untracked); pass a ref to also include commits since then.
+#
 # Inspect afterwards (from src/barks-reader):
 #   uv run mutmut results | grep survived
 #   uv run mutmut show <mutant-name>
+# Two traps that make survivor counts lie (property tests in classes, functools.cache):
+# see docs/mutation-testing.md before believing a number.
 
 set -euo pipefail
-cd "$(dirname "$0")/../src/barks-reader"
 
-only_mutate="${1:-*/core/*}"
+repo_root=$(git rev-parse --show-toplevel)
+core_rel="src/barks-reader/src/barks_reader/core"
+
+# Core modules touched in the working tree, plus (if a base ref is given) any
+# touched by commits since it. Deleted files are dropped - there is nothing left to
+# mutate - as is anything outside core/, which is all this wrapper mutates.
+changed_core_globs() {
+    local base="${1:-}"
+    {
+        git -C "${repo_root}" diff --name-only HEAD -- "${core_rel}"
+        git -C "${repo_root}" ls-files --others --exclude-standard -- "${core_rel}"
+        if [[ -n "${base}" ]]; then
+            git -C "${repo_root}" diff --name-only "${base}" -- "${core_rel}"
+        fi
+    } | sort -u | while read -r path; do
+        [[ -n "${path}" && "${path}" == *.py && -f "${repo_root}/${path}" ]] || continue
+        printf '%s\n' "${path/#"${core_rel}"\//*/core/}"
+    done
+}
+
+if [[ "${1:-}" == "--changed" ]]; then
+    shift
+    base=""
+    if [[ $# -gt 0 && "$1" != -* ]]; then
+        base="$1"
+        shift
+    fi
+    globs=$(changed_core_globs "${base}")
+    if [[ -z "${globs}" ]]; then
+        echo "mutmut: no changed files under ${core_rel} — nothing to mutate."
+        echo "        (pass a base ref, e.g. 'bash scripts/mutmut.sh --changed HEAD~1')"
+        exit 0
+    fi
+    echo "mutmut: --changed selected $(printf '%s\n' "${globs}" | grep -c .) module(s):"
+    printf '  %s\n' ${globs}
+    # configparser reads a multi-line value only when the continuation lines are
+    # indented, so every glob after the first gets four spaces.
+    only_mutate=$(printf '%s\n' "${globs}" | sed -e '2,$s/^/    /')
+else
+    only_mutate="${1:-*/core/*}"
+    [[ $# -gt 0 ]] && shift || true
+fi
+
+cd "${repo_root}/src/barks-reader"
 
 # Kivy-free unit tests only — UI tests fail in mutmut's sandbox and abort the run.
 selection=$(cd tests/unit && for f in test_*.py; do
@@ -44,9 +96,9 @@ pytest_add_cli_args_test_selection =
 ${selection}
 EOF
 
-echo "mutmut: mutating '${only_mutate}' against $(echo "${selection}" | grep -c .) Kivy-free test files"
+echo "mutmut: mutating against $(echo "${selection}" | grep -c .) Kivy-free test files"
 rm -rf mutants
-uv run mutmut run "${@:2}" || true   # mutmut exits non-zero when mutants survive
+uv run mutmut run "$@" || true   # mutmut exits non-zero when mutants survive
 
 echo
 echo "==== survivors by module ===="
