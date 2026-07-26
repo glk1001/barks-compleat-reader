@@ -238,13 +238,21 @@ Known limitation (intentional, not a reader fix): links under the bundle's
       always in bounds", "no visited entry lost"), then `NavigationModel`
       ("every reachable destination resolves to a valid ViewState") and
       `reader_settings` / `json_settings_manager` (save→load round-trip).
-- [ ] **Burn down the mutmut survivor backlog** — started at ~1523 survivors +
-      436 no-test mutants (`docs/mutation-testing.md`). Triage with `mutmut show`,
-      ignore the low-value ones (log/error strings), harden the assertions that
-      matter — property tests above are the main lever. **Treat 1523 as an upper
-      bound**: any module using `functools.cache` reports false survivors (see
-      below), and both passes so far showed the real number is lower.
-      Done so far, all triaged down to equivalents-only:
+- [x] **Burn down the mutmut survivor backlog** — **DONE (2026-07-26)**: ~1523 →
+      363 survivors across all 37 modules, every remainder triaged as not worth
+      killing (log/message wording, recorded equivalents, dead code, and
+      `comic_book_loader`'s timing-only scheduling mutants). No known killable gap
+      is left in `core/`. Ten modules are at zero. Full write-up, per-pass tables and
+      equivalence tables in `docs/mutation-testing.md`.
+      **Note the 363 is derived** — a sum of seven separately-scoped runs, not one
+      measurement; see the full-sweep item below. The 436 no-test mutants are
+      untouched by this and belong to the GUI acceptance-harness item above.
+      Five real bugs came out of it: a `dedent` that silently did nothing once the
+      interpolated path wrapped, a dead `SettingsNotifier._on_change` field, an
+      unreachable `story_page_title` branch, and two swallowed-error bugs in
+      `comic_book_loader` (archive-open errors escaping the loader thread, and the
+      *unexpected* `IndexError` never reported).
+      The passes, all triaged down to equivalents-only:
       - **Pure-logic pass** (2026-07-26, two rounds): `collection_page_groups`
         (53→0), `reader_utils` (50→4), `filtered_title_lists` (22→1),
         `hyphen_break_engine` (19→6), `reader_formatter` (56→9) — **200→20**.
@@ -329,6 +337,18 @@ Known limitation (intentional, not a reader fix): links under the bundle's
       exception × state, moving arithmetic out of log lines, and
       `assert_called_once_with` wherever the return value is a mock — are written up
       in the doc.
+- [ ] **Run a full `core/` mutmut sweep** (~6000 mutants, 15–20 min) —
+      `bash scripts/mutmut.sh`. The burn-down's headline "363 survivors" is
+      **derived**: it sums the per-module "after" counts from seven separately-scoped
+      runs taken at different times, so it does not account for mutants added or
+      removed by the source changes made along the way. One sweep replaces it with a
+      real measurement, refreshes the per-module table in `docs/mutation-testing.md`
+      (whose last measured totals are from 2026-07-25), and re-checks the 🫥 no-test
+      count now that the suite has grown. Expect ~94% of checked mutants killed if
+      the derivation is right — a materially lower number means something drifted, so
+      read the per-module counts before assuming the burn-down held.
+      Not urgent, and **not a gate**: it is a periodic health check, the "sweep the
+      whole of `core/` occasionally" item from the doc's working-practice section.
 
 > Gotchas when writing more property tests: `@given` doesn't compose with
 > function-scoped pytest fixtures (build inputs in-test or via `st.data()`);

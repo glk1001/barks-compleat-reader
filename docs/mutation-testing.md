@@ -97,7 +97,34 @@ enum members are copied through untouched — `PLATFORM = _get_platform()`,
 risk lives in a literal table therefore scores well without that table being tested at
 all; a mutation score is evidence about the *code paths*, not the data.
 
-## Latest full run — `core/` (2026-07-25)
+## Where things stand
+
+**The burn-down is finished.** All 37 modules on the backlog table below have been swept
+and every remaining survivor is triaged as not worth killing — log/message wording,
+recorded equivalents, dead code, or (in `comic_book_loader`) scheduling mutants that
+change timing but never the result. **There is no known killable gap left in `core/`.**
+
+| | survivors |
+|---|---:|
+| 2026-07-25 full run | 1523 |
+| after the seven passes below | **363** |
+
+Ten modules are at zero. The largest remainders are `comic_book_loader` (97, of which 78
+are log wording), `system_file_paths` (41, of which 40 are one `__init__` equivalence
+class), `image_selector` (35), `comic_book_loader_platform_settings` (26) and
+`view_pipeline` (23).
+
+> **The 363 is derived, not measured.** It is the sum of the per-module "after" counts
+> from seven separately-scoped runs taken at different times, so it does not account for
+> mutants added or removed by the source changes made along the way. Deriving from the
+> 2026-07-25 totals puts the score at roughly **94%** of checked mutants killed
+> (≈5272/5635), against 73% before. A full `core/` sweep is on the backlog to replace both
+> figures with a single real measurement.
+
+### Baseline: the last measured full run — `core/` (2026-07-25)
+
+Kept as the historical starting point. **These numbers are superseded** by the passes
+below; do not read them as current.
 
 | Outcome | Count |
 |---|---:|
@@ -107,14 +134,13 @@ all; a mutation score is evidence about the *code paths*, not the data.
 | ⏰ timeout | 3 |
 | **total mutants** | **6074** |
 
-Mutation score ≈ **73%** of checked mutants killed. For contrast, the deliberately
-pure-and-well-tested `navigation.navigation_model` scores 60/61 (its one survivor is
-a cosmetic error-message string, not worth a test).
+Mutation score ≈ **73%** of checked mutants killed at that point. For contrast, the
+deliberately pure-and-well-tested `navigation.navigation_model` scored 60/61 (its one
+survivor was a cosmetic error-message string, since killed).
 
 Many survivors are expected low value — log/error-message strings, defensive
-branches, `__repr__`-ish formatting. The number to act on is far smaller than 1523;
-use the per-module counts below to pick where thin **assertions** cluster, then
-`mutmut show` each candidate and decide.
+branches, `__repr__`-ish formatting. The number to act on was always far smaller than
+1523; the per-module counts below are where the thin **assertions** clustered.
 
 ## Pure-logic pass (2026-07-26)
 
