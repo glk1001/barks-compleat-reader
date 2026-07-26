@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
@@ -25,14 +25,17 @@ def mock_file_paths() -> MagicMock:
 class TestReaderFilePathsResolver:
     def test_resolve_cover(self, mock_file_paths: MagicMock) -> None:
         cover_path = Path("cover.png")
-        mock_file_paths.FILE_TYPE_FILE_GETTERS = {
-            FileTypes.COVER: MagicMock(return_value=cover_path)
-        }
+        getter = MagicMock(return_value=cover_path)
+        mock_file_paths.FILE_TYPE_FILE_GETTERS = {FileTypes.COVER: getter}
         resolver = ReaderFilePathsResolver(mock_file_paths)
 
         result = resolver.resolve("Title", FileTypes.COVER, prefer_edited=False)
 
         assert result == [(cover_path, False)]
+        getter.assert_called_once_with(
+            "Title",
+            False,  # noqa: FBT003
+        )
 
     def test_resolve_cover_not_found(self, mock_file_paths: MagicMock) -> None:
         mock_file_paths.FILE_TYPE_FILE_GETTERS = {FileTypes.COVER: MagicMock(return_value=None)}
@@ -44,13 +47,17 @@ class TestReaderFilePathsResolver:
 
     def test_resolve_list_type(self, mock_file_paths: MagicMock) -> None:
         files = [Path("splash1.png"), Path("splash2.png")]
-        mock_file_paths.FILE_TYPE_FILE_GETTERS = {FileTypes.SPLASH: MagicMock(return_value=files)}
+        getter = MagicMock(return_value=files)
+        mock_file_paths.FILE_TYPE_FILE_GETTERS = {FileTypes.SPLASH: getter}
         resolver = ReaderFilePathsResolver(mock_file_paths)
 
         result = resolver.resolve("Title", FileTypes.SPLASH, prefer_edited=True)
 
-        assert len(result) == 2  # noqa: PLR2004
-        assert all(is_edited for _, is_edited in result)
+        assert result == [(files[0], True), (files[1], True)]
+        getter.assert_called_once_with(
+            "Title",
+            True,  # noqa: FBT003
+        )
 
     def test_resolve_unknown_category(self, mock_file_paths: MagicMock) -> None:
         mock_file_paths.FILE_TYPE_FILE_GETTERS = {}
@@ -88,6 +95,7 @@ class TestReaderFilePathsResolver:
         result = resolver.get_edited_version_if_possible(Path("original.png"))
 
         assert result == (Path("edited.png"), True)
+        mock_file_paths.get_edited_version_if_possible.assert_called_once_with(Path("original.png"))
 
     def test_get_file_type_titles(self, mock_file_paths: MagicMock) -> None:
         mock_file_paths.FILE_TYPE_FILE_GETTERS = {}
@@ -96,6 +104,20 @@ class TestReaderFilePathsResolver:
         result = resolver.get_file_type_titles(FileTypes.SPLASH)
 
         assert result == ["Title A", "Title B"]
+        mock_file_paths.get_file_type_titles.assert_called_once_with(FileTypes.SPLASH, None)
+
+    def test_get_file_type_titles_passes_the_allowed_titles_through(
+        self, mock_file_paths: MagicMock
+    ) -> None:
+        # A non-default 'allowed_titles' is the only way to tell it apart from
+        # the parameter being dropped or replaced by its own default.
+        mock_file_paths.FILE_TYPE_FILE_GETTERS = {}
+        resolver = ReaderFilePathsResolver(mock_file_paths)
+
+        result = resolver.get_file_type_titles(FileTypes.SPLASH, {"Title A"})
+
+        assert result == ["Title A", "Title B"]
+        mock_file_paths.get_file_type_titles.assert_called_once_with(FileTypes.SPLASH, {"Title A"})
 
     def test_resolve_list_type_empty(self, mock_file_paths: MagicMock) -> None:
         mock_file_paths.FILE_TYPE_FILE_GETTERS = {FileTypes.SPLASH: MagicMock(return_value=[])}
@@ -171,6 +193,19 @@ class TestResolveAllTitleImageFiles:
         # Splash: the shared path is flagged True (from the edited list) and
         # must NOT appear again with False; splash_plain appears with False.
         assert result[FileTypes.SPLASH] == {(splash_shared, True), (splash_plain, False)}
+
+        # Each category is asked for the requested title, twice: once preferring
+        # edited files and once not. The `prefer_edited=False` pass is invisible in
+        # the result (the flag is rewritten to False either way), so the call itself
+        # is the only place the argument can be checked.
+        assert cover_getter.call_args_list == [
+            call("Title X", True),  # noqa: FBT003
+            call("Title X", False),  # noqa: FBT003
+        ]
+        assert splash_getter.call_args_list == [
+            call("Title X", True),  # noqa: FBT003
+            call("Title X", False),  # noqa: FBT003
+        ]
 
     def test_skips_categories_with_no_files(self) -> None:
         fp = MagicMock()

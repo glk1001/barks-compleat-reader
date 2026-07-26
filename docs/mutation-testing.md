@@ -319,10 +319,121 @@ When a mutant looks obviously covered, check whether the *example* can see it.
   entry, and nothing stopped the `or` becoming `and`, which would hand the wiki a title
   with no comic to open and no panels to draw backgrounds from.
 
+## Small-module tail pass (2026-07-26) — the last 17 backlog modules
+
+Everything below `reading_history` in the backlog table, swept together: **1129 mutants,
+99 → 28 survivors** (935 killed, **97.1%** of checked mutants). This finishes the backlog
+table — no module on it is unswept now.
+
+| Module (`barks_reader.core.*`) | Before | After |
+|---|---:|---:|
+| `user_error_messages` | 12 | **0** |
+| `comic_book_page_info` | 12 | 2 |
+| `reader_file_paths_resolver` | 10 | **0** |
+| `image_pipeline` | 10 | **0** |
+| `last_read_page_tracker` | 9 | 6 |
+| `special_overrides_handler` | 8 | **0** |
+| `json_settings_manager` | 8 | 7 |
+| `reader_tree_view_utils` | 5 | 5 |
+| `panel_image_loader` | 5 | 1 |
+| `testing.fakes` | 4 | 2 |
+| `page_info_adapters` | 4 | 2 |
+| `minimal_config_info` | 4 | 3 |
+| `reader_palette` | 2 | **0** |
+| `config_info` | 2 | **0** |
+| `comic_book_info` | 2 | **0** |
+| `settings_notifier` | 1 | **0** |
+| `navigation.navigation_model` | 1 | **0** |
+| **total** | **99** | **28** |
+
+**Nine modules went to zero, and all 28 remaining are triaged** (table below): 11 log
+wording, 5 `encoding=` codec equivalents, 5 unobservable `__init__` defaults, 4 inert
+`typing.cast` type strings, 2 falsy `strict=` equivalents, and 1 that is genuinely
+killable but deliberately deferred. This is the resting state for these modules.
+
+`reader_palette` had **no test file at all** — `color_to_markup_hex` was only exercised by
+`test_wiki_integration`, which computed its expectation by calling the same function, so
+the assertion was a tautology. A direct scale-to-byte table plus the theme-selection
+fallback took it to 0.
+
+### What worked
+
+1. **`pytest.raises(match=...)` is a *search*, so `XX…XX` mutants walk straight through
+   it.** Three separate error-message mutants survived tests that looked like they
+   covered them exactly — `match="RequiredDimensionsPort was not wired"` happily matches
+   `"XXRequiredDimensionsPort was not wiredXX"`. Anchoring with `^…$` kills them for free.
+   The same trap applies to `assert "..." in text`: `_build_volume_not_available`'s
+   `"Cannot show this title."` survived an `in` check for exactly that string. **Worth
+   sweeping other test files for.**
+2. **A collaborator's return value can hide a flag that never reached it.** Every
+   `special_overrides_handler` survivor of the form `_get_special_inset_file(std, None)`
+   lived because the fixture never created the `-no-overrides` variant on disk — with the
+   file absent, both branches fall back to the same path. Creating the *other* file is
+   what makes the forwarded flag observable. Same shape as the round-4 "check whether the
+   example can see it" note.
+3. **Keyword defaults need a call that passes no keywords.** `image_pipeline.load_pil`'s
+   `encrypted_zip=False` / `use_ext_hint=False` and `encode_png_stream`'s
+   `compress_level=0` all survived because every existing test passed them explicitly. One
+   call with no keywords, patching the collaborator, kills the lot.
+4. **Assert the whole `PageInfo`, not a field.** `_build_page_map`'s four
+   positional-argument mutants died to one whole-dataclass comparison — and only because
+   the srce and dest pages in the fixture differ in *both* filename and type. Identical
+   stand-ins cannot catch a transposition.
+5. **A monotonic counter's step size is observable even when its values are not.**
+   `PanelImageLoader._generation += 1` mutating to `-= 1` is not cosmetic: `cancel()` still
+   adds 1, so load→cancel→load lands back on a generation a worker already captured and
+   that stale worker delivers its superseded image. Asserting the step is exactly +1 (as
+   the existing `cancel` test already does) covers it.
+
+### Real gaps this found
+
+- **`user_error_messages` dialogs were mis-indented for long directory paths.**
+  `_build_fanta_root_not_found` and `_build_duplicate_archive_files` interpolated a
+  `textwrap.fill`-wrapped path into a `dedent(f"""…""")`. The wrapped continuation line has
+  no indentation of its own, which drops the common prefix `dedent` computes to `""` — so
+  **`dedent` silently did nothing** and every line of the dialog rendered with its source
+  indentation in the Kivy label. It only bites above 50 columns, which is why no test saw
+  it. Both now dedent the template *before* substituting.
+- `SettingsNotifier._on_change` was a **dead field** — assigned in `__init__` and never
+  read anywhere in the app. Deleted.
+- `ComicLayout.resolve_last_read`'s three-way `and` had no case where all three conjuncts
+  mattered: every double-page test sat on an edge page, where left and right resolve to the
+  same saved position, so both the display unit and the mode could have been dropped
+  unnoticed. Mid-body with a full pair is the only shape that sees it.
+- `comic_book_page_info` had no test for a **front-matter-only** comic (`last_body_page`
+  keeping its initial `""`), and `_format_volume_list` none for an empty list or a run of
+  exactly three — the boundary that distinguishes `>=` from `>`.
+
+### Known-equivalent survivors from the small-module tail pass (2026-07-26)
+
+| Mutant | Count | Why it is not worth killing |
+|---|---:|---|
+| Log wording and `logger.x(None)` across seven modules | 11 | Same as every previous round. |
+| `read_text`/`write_text` `encoding="utf-8"` → `"UTF-8"` / `None` / dropped | 5 | Codec alias, or the platform default which is UTF-8 everywhere the app runs. Already recorded twice. |
+| `__init__` `None` → `""` (`page_info_adapters` ×2, `last_read_page_tracker` ×2) and `False` → `None` ×1 | 5 | All five are read only through a falsy test or an identity comparison against a real object, and every one is overwritten before any code path can distinguish them. `_cached is None` is unreachable on its own: `_cached_for` and `_cached` are assigned together, so the first disjunct always decides. |
+| `cast("list[TitleTreeViewNodeProtocol]", …)` → `None` / case-changed / `XX…XX` | 4 | `typing.cast` returns its second argument untouched; the type string is inert at runtime. No test can observe it — it is not even read. |
+| `zip(..., strict=False)` → `strict=None` / dropped | 2 | Both are falsy, and `False` is `zip`'s own default. Only `strict=True` differs, and that mutant dies. |
+| `FakeScheduler.schedule_once`'s `timeout_secs: float = 0` → `1` | 1 | The parameter is unused (`# noqa: ARG002`) — the fake runs the callback inline. |
+
+### Killable but deferred: `FakeScheduler.advance`'s `//` (1)
+
+`advance__mutmut_6` turns `int(secs // interval.period_secs)` into `int(secs / …)`. **This
+is not an equivalent mutant** — the two disagree for fractional periods, where binary
+floating point bites: `1.0 // 0.1` is `9.0`, so `advance(1.0)` on a `0.1`s interval fires
+**nine** times, one short of the `floor(secs / period)` its own docstring promises.
+
+Nothing is broken today: every caller uses an integral period, where the two agree. Killing
+it means deciding the fake's rounding contract rather than adding an assertion, so it is
+left alone deliberately — **not** because it cannot be killed. Worth revisiting if a test
+ever needs a sub-second interval.
+
 ## Survivors by module (backlog, most-survivors first)
 
-Counts below are from the 2026-07-25 full run and are **stale for the five modules in
-the table above**. They are also inflated wherever a module memoises (see trap 2).
+"Before" counts are from the 2026-07-25 full run and are inflated wherever a module
+memoises (see trap 2). **Every module on this list has now been swept**, so the arrows are
+the whole story; the two `comic_book_loader` / `view_pipeline` entries are the only ones
+still carrying real, killable gaps (see the plumbing pass above). Everything else is at its
+triaged floor.
 
 | Module (`barks_reader.core.*`) | Survivors |
 |---|---:|
@@ -346,23 +457,23 @@ the table above**. They are also inflated wherever a module memoises (see trap 2
 | `comic_reader_manager` | 22 → 9 |
 | `hyphen_break_engine` | 19 → 6 |
 | `reading_history` | 17 → 10 |
-| `user_error_messages` | 12 |
-| `comic_book_page_info` | 12 |
-| `reader_file_paths_resolver` | 10 |
-| `image_pipeline` | 10 |
-| `last_read_page_tracker` | 9 |
-| `special_overrides_handler` | 8 |
-| `json_settings_manager` | 8 |
-| `reader_tree_view_utils` | 5 |
-| `panel_image_loader` | 5 |
-| `testing.fakes` | 4 |
-| `page_info_adapters` | 4 |
-| `minimal_config_info` | 4 |
-| `reader_palette` | 2 |
-| `navigation.navigation_model` | 2 |
-| `config_info` | 2 |
-| `comic_book_info` | 2 |
-| `settings_notifier` | 1 |
+| `user_error_messages` | 12 → 0 |
+| `comic_book_page_info` | 12 → 2 |
+| `reader_file_paths_resolver` | 10 → 0 |
+| `image_pipeline` | 10 → 0 |
+| `last_read_page_tracker` | 9 → 6 |
+| `special_overrides_handler` | 8 → 0 |
+| `json_settings_manager` | 8 → 7 |
+| `reader_tree_view_utils` | 5 → 5 |
+| `panel_image_loader` | 5 → 1 |
+| `testing.fakes` | 4 → 2 |
+| `page_info_adapters` | 4 → 2 |
+| `minimal_config_info` | 4 → 3 |
+| `reader_palette` | 2 → 0 |
+| `navigation.navigation_model` | 2 → 0 |
+| `config_info` | 2 → 0 |
+| `comic_book_info` | 2 → 0 |
+| `settings_notifier` | 1 → 0 |
 
 ## Known-equivalent survivors (triaged — do not re-triage)
 
@@ -462,8 +573,8 @@ pinned by a test, but it is a genuine unguarded edge if a caller ever shrinks th
 
 - `436` mutants had **no covering test** at all (🫥) — these live in code paths the
   Kivy-free unit tests never reach (often only exercised via UI-touching tests).
-- The top clusters — `comic_book_loader`, `navigation.tree_spec`, `view_pipeline`,
-  `system_file_paths`, `comic_book_loader_platform_settings`, `image_selector` — are
-  the highest-leverage places to harden assertions.
+- With the backlog table swept, the only remaining killable clusters are
+  `comic_book_loader` (155) and `view_pipeline` (112). Both need a test-harness build
+  rather than assertion tweaks — see the plumbing pass for why.
 - Already addressed: the `None`-category branch in `navigation_model.view_state_for`
   (one real gap this run surfaced) now has an assertion; that survivor is killed.

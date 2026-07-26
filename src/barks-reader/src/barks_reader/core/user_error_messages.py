@@ -137,7 +137,11 @@ def _build_fanta_root_not_found(
         textwrap.fill(str(reader_settings.fantagraphics_volumes_dir), 50)
     )
 
-    text = dedent(f"""\
+    # Dedent the template *before* substituting: `fanta_volume_dir` is wrapped, so
+    # for a directory over 50 columns it contributes a continuation line with no
+    # indentation of its own. Inside an f-string that drops the common prefix to ""
+    # and `dedent` silently no-ops, leaving the whole dialog indented on screen.
+    text = dedent("""\
         In app settings, the Fantagraphics comic zips directory is
 
             [b]"{fanta_volume_dir}"[/b]
@@ -145,7 +149,7 @@ def _build_fanta_root_not_found(
         But this directory could not be found. You can still browse the
         library, search, read the wiki, and read the hand-restored
         censored stories. To read the full comics, go to settings, enter
-        the correct directory, then restart the app.""")
+        the correct directory, then restart the app.""").format(fanta_volume_dir=fanta_volume_dir)
 
     return ErrorPresentation(
         kind=ErrorDialogKind.GOTO_SETTINGS,
@@ -165,14 +169,20 @@ def _build_duplicate_archive_files(
     assert error_info.duplicate_volumes is not None
 
     archive_file = escape_kivy_markup(textwrap.fill(str(error_info.file), 50))
-    text = dedent(f"""\
+    # Dedent before substituting - see the note in '_build_fanta_root_not_found'.
+    text = dedent("""\
         There were duplicate Fantagraphics archive files in the directory:
 
             [b]"{archive_file}"[/b]
 
-        The duplicate volumes are {", ".join(map(str, error_info.duplicate_volumes))}. You need to
+        The duplicate volumes are {duplicate_volumes}. You need to
         make sure the archives are prefixed with the numbers
-        {FIRST_VOLUME_NUMBER:02d} to {LAST_VOLUME_NUMBER:02d} inclusive, without duplicates, then restart the app.""")  # noqa: E501
+        {first_volume:02d} to {last_volume:02d} inclusive, without duplicates, then restart the app.""").format(  # noqa: E501
+        archive_file=archive_file,
+        duplicate_volumes=", ".join(map(str, error_info.duplicate_volumes)),
+        first_volume=FIRST_VOLUME_NUMBER,
+        last_volume=LAST_VOLUME_NUMBER,
+    )
 
     return ErrorPresentation(
         kind=ErrorDialogKind.FATAL_CONFIG,

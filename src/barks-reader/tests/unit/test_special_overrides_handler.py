@@ -54,10 +54,14 @@ class TestGetSpecialInsetFile:
 
 class TestGetDescription:
     def test_returns_configured_description(self) -> None:
+        # These four strings are the settings-screen checkbox labels, so the whole
+        # table is pinned rather than a sample of it.
         settings = MagicMock()
         handler = SpecialFantaOverrides(settings)
         assert handler.get_description(Titles.FIREBUG_THE) == "Use GLK alternate ending"
         assert handler.get_description(Titles.LOST_IN_THE_ANDES) == "Use 'dere' instead of 'theah'"
+        assert handler.get_description(Titles.VOODOO_HOODOO) == "Use blank eyeballs for Bombie"
+        assert handler.get_description(Titles.GOLDEN_FLEECING_THE) == "Use 'Harpies' not 'Larkies'"
 
 
 class TestGetOverridesSetting:
@@ -79,6 +83,9 @@ class TestGetInsetFile:
     ) -> None:
         std = tmp_path / "inset.png"
         std.touch()
+        # The no-overrides variant exists too: without it on disk both branches
+        # fall back to 'std' and the flag being forwarded is unobservable.
+        (tmp_path / "inset-no-overrides.png").touch()
 
         settings = MagicMock()
         settings.file_paths.get_comic_inset_file.return_value = std
@@ -110,6 +117,9 @@ class TestGetTitlePageInsetFile:
     def test_uses_edited_std_file_when_overrides_enabled(self, tmp_path: Path) -> None:
         std = tmp_path / "inset.png"
         std.touch()
+        # See the note in TestGetInsetFile: the variant has to exist for the
+        # forwarded flag to make a difference.
+        (tmp_path / "inset-no-overrides.png").touch()
 
         settings = MagicMock()
         settings.file_paths.get_comic_inset_file.return_value = std

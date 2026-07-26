@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 from barks_reader.core.comic_book_info import ComicTitleInfo, get_all_comic_titles
 
@@ -56,6 +56,30 @@ class TestGetAllComicTitles:
         _, longest = get_all_comic_titles(db, ["ABCDE", "ABCD"])
 
         assert longest == "(ABCD)"
+
+    def test_ties_keep_the_first_longest_title(self) -> None:
+        # Strictly longer wins, so an equal-length later title must not displace
+        # the incumbent - the boundary that tells `>` from `>=`.
+        db = MagicMock()
+        db.get_comic_book.side_effect = [
+            _make_mock_comic(is_barks=True, chrono_num=1),
+            _make_mock_comic(is_barks=True, chrono_num=2),
+        ]
+
+        _, longest = get_all_comic_titles(db, ["Zebra", "Mango"])
+
+        assert longest == "Zebra"
+
+    def test_each_title_is_looked_up_in_the_database(self) -> None:
+        db = MagicMock()
+        db.get_comic_book.side_effect = [
+            _make_mock_comic(is_barks=True, chrono_num=1),
+            _make_mock_comic(is_barks=True, chrono_num=2),
+        ]
+
+        get_all_comic_titles(db, ["First Title", "Second Title"])
+
+        assert db.get_comic_book.call_args_list == [call("First Title"), call("Second Title")]
 
     def test_empty_title_list(self) -> None:
         db = MagicMock()

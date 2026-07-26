@@ -69,6 +69,35 @@ class TestEnd:
         assert result.display_page_num == "5"
         mock_settings_manager.save_last_read_page.assert_called_with("My Title", result)
 
+    def test_double_page_mid_body_saves_the_right_page(
+        self, tracker: LastReadPageTracker, mock_settings_manager: MagicMock
+    ) -> None:
+        """Both the display unit and the mode reach the layout.
+
+        Mid-body with a full pair is the only shape where they matter: at an edge
+        page the position resets to the beginning whichever page is chosen, so a
+        dropped unit or mode would go unnoticed.
+        """
+        reader = MagicMock()
+        reader.get_last_read_page.return_value = "5"
+        reader.double_page_mode = True
+        reader.get_current_display_unit.return_value = DisplayUnit(
+            left_page_index=4, right_page_index=5
+        )
+
+        layout = _make_layout(
+            OrderedDict([("5", _body_page(4, "5")), ("6", _body_page(5, "6"))]),
+            last_body_page="10",
+        )
+        tracker.begin("My Title", layout, save_enabled=True)
+
+        result = tracker.end(reader)
+
+        assert result is not None
+        # Furthest progress — the right page of the pair.
+        assert result.display_page_num == "6"
+        mock_settings_manager.save_last_read_page.assert_called_once_with("My Title", result)
+
     def test_returns_none_when_reader_has_no_last_page(
         self, tracker: LastReadPageTracker, mock_settings_manager: MagicMock
     ) -> None:
@@ -169,6 +198,7 @@ class TestGetLastReadPage:
 
         assert result is saved
         assert result.display_page_num == "6"
+        mock_settings_manager.get_last_read_page.assert_called_once_with("Title")
 
     def test_resets_finished_comic_to_begin(
         self, tracker: LastReadPageTracker, mock_settings_manager: MagicMock

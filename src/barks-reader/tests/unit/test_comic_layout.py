@@ -163,6 +163,26 @@ class TestResolveLastRead:
 
         assert saved.display_page_num == "10"
 
+    def test_single_page_mode_ignores_a_full_pair(self) -> None:
+        # All three conjuncts must hold before the left/right preference runs.
+        # With a full pair available but double-page mode off, the current page
+        # wins - anything else means the pair logic leaked into single-page mode.
+        p3 = _page(2, "3")
+        p4 = _page(3, "4")
+        layout = _layout([p3, p4], last_body_page="10")
+
+        saved = layout.resolve_last_read("3", DisplayUnit(2, 3), double_page_mode=False)
+
+        assert saved.display_page_num == "3"
+
+    def test_double_page_mode_without_a_unit_returns_current(self) -> None:
+        p3 = _page(2, "3")
+        layout = _layout([p3], last_body_page="10")
+
+        saved = layout.resolve_last_read("3", None, double_page_mode=True)
+
+        assert saved.display_page_num == "3"
+
     def test_double_page_solo_unit_returns_current(self) -> None:
         p1 = _page(0, "1")
         layout = _layout([p1], last_body_page="10")
@@ -393,6 +413,68 @@ class TestBuildPageMap:
         assert layout.page_map["1"].is_solo is False
         assert layout.page_map["2"].is_solo is True
 
+    def test_front_matter_only_comic_has_no_last_body_page(self) -> None:
+        # Nothing ever starts the body, so last_body_page keeps its initial "".
+        pages = _srce_dest(
+            [
+                ("title.jpg", PageType.TITLE),
+                ("cover.jpg", PageType.COVER),
+            ]
+        )
+        port = FakeSortedPagesPort(pages)
+        builder = ComicLayoutBuilder(sorted_pages_port=port)
+
+        layout = builder.build(_comic())  # ty: ignore[invalid-argument-type]
+
+        assert list(layout.page_map.keys()) == ["i", "ii"]
+        assert layout.last_body_page == ""
+
+    def test_builds_every_page_info_field_from_the_matching_srce_and_dest_page(self) -> None:
+        # srce and dest differ in both filename and type, so a transposed or
+        # dropped argument cannot hide behind an identical stand-in.
+        srce = [
+            CleanPage(page_filename="srce-1.jpg", page_type=PageType.BODY),
+            CleanPage(page_filename="srce-2.jpg", page_type=PageType.BODY),
+        ]
+        dest = [
+            CleanPage(page_filename="dest-1.png", page_type=PageType.BODY),
+            CleanPage(page_filename="dest-2.png", page_type=PageType.BACK_MATTER),
+        ]
+        port = FakeSortedPagesPort(SrceAndDestPages(srce_pages=srce, dest_pages=dest))
+        builder = ComicLayoutBuilder(sorted_pages_port=port)
+
+        layout = builder.build(_comic())  # ty: ignore[invalid-argument-type]
+
+        assert layout.page_map["1"] == PageInfo(
+            page_index=0,
+            display_page_num="1",
+            page_type=PageType.BODY,
+            srce_page=srce[0],
+            dest_page=dest[0],
+            is_solo=False,
+        )
+        assert layout.page_map["2"] == PageInfo(
+            page_index=1,
+            display_page_num="2",
+            # The page type comes from the *dest* page.
+            page_type=PageType.BACK_MATTER,
+            srce_page=srce[1],
+            dest_page=dest[1],
+            is_solo=True,
+        )
+
+    def test_extra_srce_pages_are_dropped_rather_than_raising(self) -> None:
+        # The zip is deliberately non-strict: a srce list longer than the dest
+        # list truncates to the dest pages instead of failing the whole open.
+        srce = [CleanPage(page_filename=f"srce-{i}.jpg", page_type=PageType.BODY) for i in range(3)]
+        dest = [CleanPage(page_filename="dest-1.png", page_type=PageType.BODY)]
+        port = FakeSortedPagesPort(SrceAndDestPages(srce_pages=srce, dest_pages=dest))
+        builder = ComicLayoutBuilder(sorted_pages_port=port)
+
+        layout = builder.build(_comic())  # ty: ignore[invalid-argument-type]
+
+        assert list(layout.page_map.keys()) == ["1"]
+
     def test_marks_solo_for_comic_solo_keys(self) -> None:
         pages = _srce_dest(
             [
@@ -424,7 +506,9 @@ class TestComicLayoutBuilder:
         port = FakeSortedPagesPort(_srce_dest([("p.jpg", PageType.BODY)]))
         builder = ComicLayoutBuilder(sorted_pages_port=port, required_dimensions_port=None)
 
-        with pytest.raises(RuntimeError, match="RequiredDimensionsPort was not wired"):
+        # Anchored: an unanchored `match` is a search, so it would also accept a
+        # message with extra text spliced around it.
+        with pytest.raises(RuntimeError, match=r"^RequiredDimensionsPort was not wired$"):
             builder.get_required_dimensions(MagicMock())
 
     def test_get_required_dimensions_delegates_to_port(self) -> None:

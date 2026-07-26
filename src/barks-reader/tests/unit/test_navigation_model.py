@@ -286,7 +286,11 @@ def test_view_state_for_unknown_destination_raises(model: NavigationModel) -> No
     class UnregisteredDestination(Destination):
         pass
 
-    with pytest.raises(RuntimeError, match="No view state mapping"):
+    # The offending destination class is named, so the message points at what to
+    # register rather than just saying something is missing.
+    with pytest.raises(
+        RuntimeError, match=r"^No view state mapping for destination: UnregisteredDestination$"
+    ):
         model.view_state_for(UnregisteredDestination())
 
 

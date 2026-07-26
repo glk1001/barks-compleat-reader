@@ -63,6 +63,11 @@ class TestLastSelectedNode:
 
         # An empty saved path reads back as 'no selection'.
         assert SettingsManager(store_path).get_last_selected_node_path() == (None, {})
+        # On disk it is an empty list, not a null: the format has to stay loadable
+        # by the kivy JsonStore layout this module replaced.
+        assert json.loads(store_path.read_text(encoding="utf-8")) == {
+            "AAA_Settings": {"last_selected_node": [], "last_selected_node_state": {}}
+        }
 
     def test_node_path_and_state_round_trip_through_disk(self, tmp_path: Path) -> None:
         store_path = tmp_path / "store.json"

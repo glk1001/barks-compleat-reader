@@ -72,6 +72,29 @@ class TestPanelImageLoader:
         loader.cancel()
         assert loader._generation == 1
 
+    def test_start_worker_bumps_generation_by_one_on_a_daemon_thread(
+        self, loader: PanelImageLoader, mock_callback: MagicMock
+    ) -> None:
+        """Starting a load steps the generation by exactly +1, on a daemon thread.
+
+        The step has to match `cancel()`'s: `cancel` then `load` must not be able
+        to land back on a generation a worker already captured, or that stale
+        worker would deliver its superseded image. And the thread must be a daemon
+        - a live decode otherwise keeps the interpreter alive at quit.
+        """
+        mock_path = MagicMock(spec=Path)
+
+        with patch.object(loader_module, threading.Thread.__name__) as mock_thread_cls:
+            loader.load_pil(mock_path, mock_callback)
+
+        assert loader._generation == 1
+        mock_thread_cls.assert_called_once_with(
+            target=loader._worker,
+            args=(mock_path, mock_callback, 1),
+            daemon=True,
+        )
+        mock_thread_cls.return_value.start.assert_called_once_with()
+
     def test_load_pil_success_invokes_callback_with_rgba_image(
         self,
         loader: PanelImageLoader,

@@ -7,7 +7,6 @@ class SettingsNotifier:
 
     def __init__(self) -> None:
         self._callbacks: dict[tuple[str, str], list[Callable[[], None]]] = defaultdict(list)
-        self._on_change: Callable[[], None] | None = None
 
     def register_callback(
         self,

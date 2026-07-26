@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
+from barks_reader.core import system_file_paths
 from barks_reader.core.minimal_config_info import (
     MinimalConfigOptions,
     get_minimal_config_options,
@@ -79,6 +80,31 @@ class TestGetMinimalConfigOptions:
         assert opts.log_level == "DEBUG"
         assert opts.error_background_path == various / "error-background.png"
         assert opts.success_background_path == various / "success-background.png"
+
+    def test_defers_the_asset_check_to_the_two_backgrounds_it_needs(self, tmp_path: Path) -> None:
+        """The reader-files dir is set without its full required-files check.
+
+        This runs before the splash window exists, and only two assets matter
+        here, so the constructor-time check is deliberately skipped and just
+        those two are checked explicitly. Asking for the full check would make an
+        otherwise-fine install fall back to default window geometry.
+        """
+        various = _make_reader_files_tree(tmp_path)
+        ini = tmp_path / "app.ini"
+        _write_ini(ini)
+
+        with patch.object(system_file_paths, "SystemFilePaths") as mock_sys_paths_cls:
+            sys_paths = mock_sys_paths_cls.return_value
+            sys_paths.get_error_background_path.return_value = various / "error-background.png"
+            sys_paths.get_success_background_path.return_value = various / "success-background.png"
+
+            get_minimal_config_options(_make_cfg_info(tmp_path, ini))
+
+        sys_paths.set_barks_reader_files_dir.assert_called_once()
+        assert sys_paths.set_barks_reader_files_dir.call_args.kwargs == {"check_files": False}
+        sys_paths.check_files.assert_called_once_with(
+            [various / "error-background.png", various / "success-background.png"]
+        )
 
     def test_returns_defaults_when_ini_missing(self, tmp_path: Path) -> None:
         # No INI file and no reader-files tree; loader must not raise.

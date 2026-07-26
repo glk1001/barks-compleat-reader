@@ -50,6 +50,38 @@ class TestFakeSchedulerAdvance:
         # First tick fires, callback cancels — no further ticks.
         assert fire_count[0] == 1
 
+    def test_an_already_cancelled_interval_is_skipped_not_a_stopping_point(self) -> None:
+        """A cancelled interval must be stepped over, leaving later ones to fire."""
+        scheduler = FakeScheduler()
+        fire_count = [0]
+
+        cancelled = scheduler.schedule_interval(lambda: None, 1.0)
+        cancelled.cancel()
+        scheduler.schedule_interval(lambda: fire_count.__setitem__(0, fire_count[0] + 1), 1.0)
+
+        scheduler.advance(3.0)
+
+        assert fire_count[0] == 3  # noqa: PLR2004
+
+    def test_self_cancelling_callback_does_not_stop_the_other_intervals(self) -> None:
+        """Self-cancelling ends that interval's ticks only, not the whole advance."""
+        scheduler = FakeScheduler()
+        first_count = [0]
+        second_count = [0]
+        handle: list[object] = []  # late binding
+
+        def self_cancelling() -> None:
+            first_count[0] += 1
+            handle[0].cancel()  # ty: ignore[unresolved-attribute]
+
+        handle.append(scheduler.schedule_interval(self_cancelling, 1.0))
+        scheduler.schedule_interval(lambda: second_count.__setitem__(0, second_count[0] + 1), 1.0)
+
+        scheduler.advance(3.0)
+
+        assert first_count[0] == 1
+        assert second_count[0] == 3  # noqa: PLR2004
+
     def test_advance_fires_uncancelled_interval_the_expected_number_of_times(self) -> None:
         """An uncancelled interval fires floor(secs/period) times."""
         scheduler = FakeScheduler()

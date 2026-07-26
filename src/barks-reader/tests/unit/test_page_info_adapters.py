@@ -67,6 +67,9 @@ class TestFantagraphicsPanelSegmentsAdapter:
         ) as mock_helper:
             adapter.get_sorted_pages(comic)
 
+        # The comic itself is the sole positional argument.
+        assert mock_helper.call_args.args == (comic,)
+
         kwargs = mock_helper.call_args.kwargs
         assert kwargs["get_full_paths"] is False
         assert kwargs["check_srce_page_timestamps"] is False

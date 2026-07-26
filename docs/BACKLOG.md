@@ -269,6 +269,19 @@ Known limitation (intentional, not a reader fix): links under the bundle's
         and also killed the pre-flight check, aborting any run scoped to that
         module. Recorded as trap 3 in the doc; **check it before believing any
         survivor count from a module whose tests touch `os.environ`.**
+      - **Small-module tail pass** (2026-07-26): the last 17 backlog modules
+        swept together — **99→28** over 1129 mutants (97.1% of checked mutants
+        killed). Nine went to zero (`user_error_messages`,
+        `reader_file_paths_resolver`, `image_pipeline`,
+        `special_overrides_handler`, `reader_palette`, `config_info`,
+        `comic_book_info`, `settings_notifier`, `navigation.navigation_model`);
+        all 28 remaining are triaged in the doc. **This finishes the backlog
+        table** — no module on it is unswept. Two source fixes came out of it: a
+        `dedent` that silently did nothing once the interpolated path wrapped (so
+        long Fantagraphics directories rendered every dialog line indented), and
+        a dead `SettingsNotifier._on_change` field. The transferable trap:
+        `pytest.raises(match=...)` is a *search*, so mutmut's `XX…XX` string
+        mutants pass tests that look like exact matches — anchor with `^…$`.
       **Remaining work is `comic_book_loader` and `view_pipeline`** — 267
       survivors, only ~77 of them log wording, so most are real gaps. They were
       left partial for structural reasons, not effort: `comic_book_loader`'s two

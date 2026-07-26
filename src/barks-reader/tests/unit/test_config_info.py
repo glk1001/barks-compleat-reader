@@ -59,6 +59,27 @@ class TestAssertKivyNotYetImported:
         ):
             _assert_kivy_not_yet_imported()
 
+    def test_error_lists_the_first_five_loaded_kivy_modules_alphabetically(self) -> None:
+        # The listing is capped so the message stays readable when the whole of
+        # kivy is already loaded; six modules is the smallest input that shows
+        # both the cap and the separator.
+        clean = {k: v for k, v in sys.modules.items() if k != "kivy" and not k.startswith("kivy.")}
+        for name in ("uix", "core", "graphics", "app", "clock", "base"):
+            clean[f"kivy.{name}"] = ModuleType(f"kivy.{name}")
+
+        with (
+            _NOT_UNDER_PYTEST,
+            patch.dict(sys.modules, clean, clear=True),
+            pytest.raises(ImportError) as exc_info,
+        ):
+            _assert_kivy_not_yet_imported()
+
+        assert (
+            "Already-loaded kivy modules: "
+            "kivy.app, kivy.base, kivy.clock, kivy.core, kivy.graphics. "
+        ) in str(exc_info.value)
+        assert "kivy.uix" not in str(exc_info.value)
+
     def test_skipped_under_pytest(self) -> None:
         """Guard should be a no-op when running under pytest."""
         fake_modules = {**sys.modules, "kivy": ModuleType("kivy")}
