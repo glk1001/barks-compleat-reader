@@ -124,6 +124,66 @@ Round 1 covered all five modules: 967 mutants, 914 killed (**94.5%**). Note the
 that module's real starting point was better than the table ever showed; it now has
 direct tests for `_group_ranges` / `_assert_tiling`, which previously had none.
 
+## Big-cluster pass (2026-07-26)
+
+The five heaviest remaining clusters after the pure-logic pass, swept together:
+**1851 mutants, 598 → 117 survivors (1232 → 1721 killed, 93.6% of checked mutants).**
+
+| Module (`barks_reader.core.*`) | Before | After |
+|---|---:|---:|
+| `navigation.tree_spec` | 184 | **1** |
+| `system_file_paths` | 131 | 41 |
+| `comic_book_loader_platform_settings` | 110 | 26 |
+| `image_selector` | 104 | 35 |
+| `fantagraphics_volumes` | 69 | 14 |
+| **total** | **598** | **117** |
+
+Of the 117 left: **40** are the `system_file_paths.__init__` equivalents below, **23** are
+log wording, and the rest are the equivalents listed in the triage table. These modules are
+at their practical floor.
+
+### What worked (and generalises to the modules still on the backlog)
+
+1. **Snapshot the whole built structure, not one field at a time.** `tree_spec` was 184
+   survivors of exactly one shape: a `NodeSpec` field or a helper argument that no test
+   ever read. Rendering each subtree to one line per node — kind, text, destination,
+   press action, registration, `start_closed`, laziness — and comparing against a literal
+   killed 112 of them in five tests. The renderer prints enums by **name**, never `repr`,
+   so `auto()` renumbering doesn't churn the snapshot. Where a subtree is too big to
+   snapshot (Categories: ~350 nodes), the same effect comes from asserting the *relation*
+   instead: every node's text must equal what its own destination implies.
+2. **A table of literals deserves a table of assertions.** `system_file_paths` is ~50
+   hand-typed path fragments; its tests only asserted `isinstance(path, Path)`. One
+   parametrised getter → exact-relative-path table killed all 88 path mutants, and
+   building a real asset tree *from that same table* pinned the required-files check to
+   it. A `test_every_getter_is_covered` set-comparison keeps the table honest.
+3. **Script the clock to make a benchmark deterministic.** `autotune_worker_count` had 71
+   survivors because the only test stubbed the whole benchmark and asserted
+   `result in {1,2,3,4}`. Feeding `perf_counter` a fixed sequence makes the chosen worker
+   count exactly predictable, so the `min`, the 8% smoothing band and its tie-break
+   direction all become assertable. Two details did the work: a **non-zero start time**
+   (otherwise `end - t0` and `end + t0` agree) and one candidate sitting **exactly** on
+   `best * 1.08` (otherwise `<` and `<=` agree). Recording `ThreadPoolExecutor`'s
+   `max_workers` pinned the candidate list and the CPU cap for free.
+4. **Assert call arguments whenever the return value is a mock.** Same lesson as round 2,
+   and it accounts for most of the `image_selector` and `fantagraphics_volumes` kills:
+   `_get_fallback_image_info`, `get_search_image_for_title` and friends are just a few
+   positional arguments threaded into a frozen dataclass, so they need the whole
+   `ImageInfo` compared plus `assert_called_once_with` on the resolver.
+5. **Test boundaries *on* the boundary.** Nearly every comparison survivor died to a case
+   sitting exactly on the threshold: aspect ratio exactly `0.95`/`1.60`, memory exactly at
+   the watermark, `cpu_count` exactly 2/4, RAM exactly 4/8 GiB, override count exactly
+   `NUM_VOLUMES`, page number exactly 0, volume number exactly `LAST_VOLUME_NUMBER`.
+
+### Real gaps this found (not just weak assertions)
+
+- `tree_spec`'s `include_one_pagers_in_chrono=True` path had **no test at all** — only the
+  default was ever exercised.
+- `_check_image_names` accepts a zero-based first page, but nothing covered it, so the
+  `first < 0` guard was free to become `first <= 0` and reject valid archives.
+- Year-range groups' lazy title rows were never invoked for CS/US, so the `partial` could
+  have closed over the wrong list unnoticed.
+
 ## Survivors by module (backlog, most-survivors first)
 
 Counts below are from the 2026-07-25 full run and are **stale for the five modules in
@@ -132,12 +192,12 @@ the table above**. They are also inflated wherever a module memoises (see trap 2
 | Module (`barks_reader.core.*`) | Survivors |
 |---|---:|
 | `comic_book_loader` | 185 |
-| `navigation.tree_spec` | 184 |
+| `navigation.tree_spec` | 184 → 1 |
 | `view_pipeline` | 148 |
-| `system_file_paths` | 131 |
-| `comic_book_loader_platform_settings` | 110 |
-| `image_selector` | 104 |
-| `fantagraphics_volumes` | 69 |
+| `system_file_paths` | 131 → 41 |
+| `comic_book_loader_platform_settings` | 110 → 26 |
+| `image_selector` | 104 → 35 |
+| `fantagraphics_volumes` | 69 → 14 |
 | `archive_page_image_source` | 59 |
 | `reader_formatter` | 56 → 9 |
 | `collection_page_groups` | 53 → 0 |
@@ -183,6 +243,35 @@ assertion, so writing a test for it would only add brittleness.
 | `reader_formatter.get_formatted_payment_info` | `datetime.now(UTC)` → `datetime.now(None)`; only the `.year` is used. |
 | `reader_formatter.escape_editorial_brackets` (`last = None`) | `text[None:n]` slices identically to `text[0:n]`. |
 | `reader_formatter.get_fitted_title_with_page_nums` ×5 | The `len_combined` bookkeeping after an `"A "`/`"The "` trim is unobservable: that branch only runs when the trim alone makes it fit, so every later `>` test is False regardless of the value. The second `>` → `>=` is likewise unreachable, since at equality `max_title_len == len(title_str)` and `textwrap.shorten` is a no-op. |
+
+### Known-equivalent survivors from the big-cluster pass (2026-07-26)
+
+The 117 left after that pass, all triaged. Nothing here is a missing assertion.
+
+| Mutant | Count | Why it is not worth killing |
+|---|---:|---|
+| `system_file_paths.__init__` (`None` → `""`) | 40 | Every field is overwritten by `set_barks_reader_files_dir` before any getter runs, and each getter guards with a bare `assert`, which `""` fails exactly as `None` does. No test can tell them apart. |
+| Log wording and `logger.x(None)` across all five modules | 23 | Pinning log strings buys nothing and breaks on every reword. Includes all 11 in `_get_system_profile`, whose entire body below the cache check is one `logger.debug`. |
+| `dict.get(k, )` / `.get(k, None)` where `""` was the default | 8 | The value compared against is always a `PanelPath`/`Path`, so it can never equal `""`, `None` **or** mutmut's `"XX"` sentinel. The default is unobservable. |
+| `zipfile.ZipFile(p, "r")` → `ZipFile(p)` | 3 | `"r"` **is** the default. Same equivalence already recorded for `reader_utils.get_paths_from_zip`. |
+| `os.cpu_count() or 1` → `or 2` | 2 | Only reachable when `cpu_count()` returns `None`; both 1 and 2 satisfy the `<= 2` branch that immediately follows, which returns 1 either way. |
+| `get_new_dynamic_window`'s `if new_window != dynamic_window` guard | 4 | Guards a `logger.debug` only; the returned window is computed before it. |
+| `line.split("#", 1)` → `split("#")` / `split("#", 2)` | 2 | Only `[0]` is used, and the text before the *first* `#` is identical at any `maxsplit >= 1` (or none). |
+| `read_text(encoding="utf-8")` → `"UTF-8"` / `None` | 2 | `"UTF-8"` is the same codec by alias; `None` picks the platform default, which is UTF-8 everywhere the app runs. |
+| `PrefetchTuning.__init__`'s `self._worker_count = None` | 1 | `_worker_count` is stored and never read — `base_max_window` uses the local parameter. Dead field. |
+| `ImageSelector.__init__`'s `self._never_crop_images = None` | 1 | `_is_never_crop` short-circuits on any falsy value, so `None` and `frozenset()` behave identically. |
+| `get_random_image_for_title`'s empty-filename assert | 2 | A tripwire that cannot fire: the mutations leave it passing (`str(None)` is `"None"`, not `""`). |
+| `_tag_or_group_specs`'s `assert_never(None)` | 1 | Defensive branch for malformed tag data; unreachable while `BARKS_TAG_CATEGORIES` holds only `Tags`/`TagGroups`. |
+| `get_all_volume_override_archives`'s `continue` → `break` | 1 | Needs an unparseable filename to be iterated *before* a valid one, but `Path.iterdir()` order is filesystem-defined — a test that relies on it would be flaky, not durable. |
+| Remainder (`load`'s page-count log arithmetic, error-message-only `archive_root=None`, misc) | 27 | Message/log-only text, or arguments whose only effect is on a string nobody asserts. |
+
+### Dead code, not a test gap: the override extension check (2)
+
+`_get_override_and_extra_images_page_maps` does `assert ext in [JPG_FILE_EXT, PNG_FILE_EXT]`
+and *then* `if ext not in _VALID_IMAGE_EXTENSION: raise PageExtError(...)`. Since
+`_VALID_IMAGE_EXTENSION` is `[PNG_FILE_EXT, JPG_FILE_EXT]` — the same two members — the
+assert already guarantees the `if` is False. The `msg = ...` and `raise` inside it are
+unreachable; **don't try to kill these two.**
 
 ### Dead code, not a test gap: `BreakRefinement`'s cycle backstop (6)
 

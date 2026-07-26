@@ -238,22 +238,28 @@ Known limitation (intentional, not a reader fix): links under the bundle's
       always in bounds", "no visited entry lost"), then `NavigationModel`
       ("every reachable destination resolves to a valid ViewState") and
       `reader_settings` / `json_settings_manager` (save→load round-trip).
-- [ ] **Burn down the mutmut survivor backlog** — ~1523 survivors + 436 no-test
-      mutants (`docs/mutation-testing.md`), heaviest in `comic_book_loader`,
-      `navigation.tree_spec`, `view_pipeline`, `system_file_paths`. Triage with
-      `mutmut show`, ignore the low-value ones (log/error strings), harden the
-      assertions that matter — property tests above are the main lever.
-      **Treat 1523 as an upper bound**: any module using `functools.cache`
-      reports false survivors (see below), and the pure-logic pass showed the
-      real number is lower. Done so far (2026-07-26, two rounds): the five
-      pure-logic modules `collection_page_groups` (53→0), `reader_utils` (50→4),
-      `filtered_title_lists` (22→1), `hyphen_break_engine` (19→6) and
-      `reader_formatter` (56→9) — **200→20**. All 20 leftovers are triaged as
-      unkillable (14 equivalent mutants, 6 in `observe`'s provably-unreachable
-      cycle backstop), so those five modules are **done**, not paused.
-      Next target: pick from `comic_book_loader`, `navigation.tree_spec`,
-      `view_pipeline`, `system_file_paths` — but expect a lower real-gap ratio
-      there, since they are path/IO/threading plumbing rather than pure logic.
+- [ ] **Burn down the mutmut survivor backlog** — started at ~1523 survivors +
+      436 no-test mutants (`docs/mutation-testing.md`). Triage with `mutmut show`,
+      ignore the low-value ones (log/error strings), harden the assertions that
+      matter — property tests above are the main lever. **Treat 1523 as an upper
+      bound**: any module using `functools.cache` reports false survivors (see
+      below), and both passes so far showed the real number is lower.
+      Done so far, all triaged down to equivalents-only:
+      - **Pure-logic pass** (2026-07-26, two rounds): `collection_page_groups`
+        (53→0), `reader_utils` (50→4), `filtered_title_lists` (22→1),
+        `hyphen_break_engine` (19→6), `reader_formatter` (56→9) — **200→20**.
+      - **Big-cluster pass** (2026-07-26): `navigation.tree_spec` (184→1),
+        `system_file_paths` (131→41), `comic_book_loader_platform_settings`
+        (110→26), `image_selector` (104→35), `fantagraphics_volumes` (69→14) —
+        **598→117** over 1851 mutants (93.6% of checked mutants killed). Of the
+        117, 40 are one equivalence class in `system_file_paths.__init__` and 23
+        are log wording; the rest are itemised as equivalents in the doc.
+      Next target: `comic_book_loader` (185), `view_pipeline` (148),
+      `archive_page_image_source` (59) — but expect a lower real-gap ratio there,
+      since they are IO/threading plumbing rather than pure logic. The four
+      patterns that did the work last time (structural snapshots, exact tables for
+      literal tables, scripted clocks for benchmarks, `assert_called_once_with`
+      wherever the return value is a mock) are written up in the doc.
 
 > Gotchas when writing more property tests: `@given` doesn't compose with
 > function-scoped pytest fixtures (build inputs in-test or via `st.data()`);

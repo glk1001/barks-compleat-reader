@@ -5,7 +5,11 @@ from pathlib import Path
 
 import pytest
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
-from barks_fantagraphics.fanta_comics_info import NUM_VOLUMES
+from barks_fantagraphics.fanta_comics_info import (
+    FIRST_VOLUME_NUMBER,
+    LAST_VOLUME_NUMBER,
+    NUM_VOLUMES,
+)
 from barks_reader.core.fantagraphics_volumes import (
     DuplicateArchiveFilesError,
     FantagraphicsArchive,
@@ -97,6 +101,14 @@ class TestCheckImageNames:
             ["page1.png", "page2.png", "page3.png"], first=1, last=3, img_ext=".png"
         )
 
+    def test_accepts_a_zero_based_first_page(self, archives: FantagraphicsVolumeArchives) -> None:
+        """Page 0 is legal — only a *negative* first page is rejected.
+
+        Volumes whose images start at 000 exist (see `_get_archive_image_page_map`'s
+        `page_inc`), so the guard must be `< 0`, not `<= 0`.
+        """
+        archives._check_image_names(["page0.png", "page1.png"], first=0, last=1, img_ext=".png")
+
 
 class TestCheckCorrectVolumeNumbers:
     def test_raises_too_many_for_volume_exceeding_max(
@@ -104,24 +116,38 @@ class TestCheckCorrectVolumeNumbers:
     ) -> None:
         # Create filenames with a volume number > LAST_VOLUME_NUMBER (29)
         filenames = [Path(f"{i}-vol.cbz") for i in range(1, 30)] + [Path("999-extra.cbz")]
-        with pytest.raises(TooManyArchiveFilesError):
+        with pytest.raises(TooManyArchiveFilesError) as exc_info:
             archives.check_correct_volume_numbers(filenames)
+
+        # The error reports how many files were actually seen against the expected
+        # count, and where — all three are what the user needs to fix it.
+        assert exc_info.value.num_archive_files == len(filenames)
+        assert exc_info.value.num_volumes == NUM_VOLUMES
+        assert exc_info.value.archive_root == archives._archive_root
+
+    def test_last_volume_number_is_accepted(self, archives: FantagraphicsVolumeArchives) -> None:
+        """The valid range is inclusive of `LAST_VOLUME_NUMBER`."""
+        filenames = [Path(f"{i}-vol.cbz") for i in range(FIRST_VOLUME_NUMBER, NUM_VOLUMES + 1)]
+        # No exception expected — and volume 29 must not read as "too many".
+        archives.check_correct_volume_numbers(filenames)
 
     def test_raises_duplicate_for_repeated_volumes(
         self, archives: FantagraphicsVolumeArchives
     ) -> None:
         filenames = [Path(f"{i}-vol.cbz") for i in range(1, 30)]
         filenames.append(Path("5-duplicate.cbz"))
-        with pytest.raises(DuplicateArchiveFilesError):
+        with pytest.raises(DuplicateArchiveFilesError) as exc_info:
             archives.check_correct_volume_numbers(filenames)
+
+        assert exc_info.value.duplicates == [5]
+        assert exc_info.value.archive_root == archives._archive_root
 
     def test_raises_missing_for_gaps(self, archives: FantagraphicsVolumeArchives) -> None:
         # Missing volumes 15 and 20
         filenames = [Path(f"{i}-vol.cbz") for i in range(1, 30) if i not in (15, 20)]
         with pytest.raises(MissingArchiveFilesError) as exc_info:
             archives.check_correct_volume_numbers(filenames)
-        assert 15 in exc_info.value.missing_file_vols
-        assert 20 in exc_info.value.missing_file_vols
+        assert exc_info.value.missing_file_vols == [15, 20]
 
     def test_passes_for_complete_set(self, archives: FantagraphicsVolumeArchives) -> None:
         filenames = [Path(f"{i}-vol.cbz") for i in range(1, 30)]
@@ -131,8 +157,11 @@ class TestCheckCorrectVolumeNumbers:
         # An empty archive dir must not IndexError; it means every volume is missing.
         with pytest.raises(MissingArchiveFilesError) as exc_info:
             archives.check_correct_volume_numbers([])
-        assert 1 in exc_info.value.missing_file_vols
-        assert NUM_VOLUMES in exc_info.value.missing_file_vols
+
+        # Every volume in the valid range, exactly once — not an off-by-one slice.
+        assert exc_info.value.missing_file_vols == list(
+            range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)
+        )
 
 
 class TestFantagraphicsArchive:
@@ -245,6 +274,31 @@ class TestExceptionMessages:
         assert err.missing_vol == 14
         assert err.title is title
 
+    def test_missing_archive_files_error_keeps_the_volume_list(self) -> None:
+        err = MissingArchiveFilesError([7, 12], Path("/archives"))
+        assert err.missing_file_vols == [7, 12]
+
+    def test_too_many_archive_files_error(self) -> None:
+        root = Path("/archives")
+        err = TooManyArchiveFilesError(num_archive_files=31, num_volumes=29, archive_root=root)
+
+        assert str(err) == (
+            f'There are too many archive files in "{root}".There are 31 but there should be 29.'
+        )
+        assert err.num_archive_files == 31
+        assert err.num_volumes == 29
+        assert err.archive_root == root
+
+    def test_duplicate_archive_files_error(self) -> None:
+        root = Path("/archives")
+        err = DuplicateArchiveFilesError([7, 12], root)
+
+        assert str(err) == (
+            f'There are duplicate volume files in "{root}".The duplicate volumes are 7, 12.'
+        )
+        assert err.duplicates == [7, 12]
+        assert err.archive_root == root
+
     def test_not_enough_override_dirs_error_message(self) -> None:
         root = Path("/over")
         err = NotEnoughOverrideDirsError(
@@ -299,6 +353,16 @@ class TestCheckArchivesAndOverrides:
         too_many = {i: Path(f"{i}-ov.cbz") for i in range(1, NUM_VOLUMES + 2)}
         with pytest.raises(TooManyOverrideDirsError):
             archives.check_archives_and_overrides(archive_filenames, too_many)
+
+    def test_one_override_per_volume_is_allowed(
+        self, archives: FantagraphicsVolumeArchives
+    ) -> None:
+        """The limit is `> NUM_VOLUMES`: exactly one override per volume is fine."""
+        archive_filenames = [Path(f"{i}-v.cbz") for i in range(1, 30)]
+        exactly_enough = {i: Path(f"{i}-ov.cbz") for i in range(1, NUM_VOLUMES + 1)}
+
+        # No exception expected.
+        archives.check_archives_and_overrides(archive_filenames, exactly_enough)
 
 
 class TestDirectoryScanning:
@@ -475,6 +539,121 @@ class TestLoadEndToEnd:
             assert entry.first_page == 1
             assert entry.last_page == 2
 
+    def test_loaded_archive_carries_every_field(self, tmp_path: Path) -> None:
+        """The whole `FantagraphicsArchive` for one volume, field by field.
+
+        `load()` threads a dozen values into the dataclass positionally; checking only
+        a couple of them leaves the rest free to be wrong (or `None`).
+        """
+        archive_root = tmp_path / "archive"
+        override_root = tmp_path / "override"
+        archive_root.mkdir()
+        override_root.mkdir()
+
+        for vol in range(1, NUM_VOLUMES + 1):
+            _make_volume_zip(
+                archive_root / f"{vol:02d}-vol.cbz",
+                image_names=["page001.png", "page002.png", "page003.png"],
+            )
+        # Volume 2 gets an override zip: one page that shadows an archive page, and one
+        # that doesn't exist in the archive at all.
+        override = _make_override_zip(
+            override_root / "02-override.cbz", image_names=["002.png", "500.png"]
+        )
+
+        archives = FantagraphicsVolumeArchives(
+            archive_root=archive_root,
+            override_root=override_root,
+            volume_list=list(range(1, NUM_VOLUMES + 1)),
+        )
+        archives.load()
+
+        entry = archives.get_fantagraphics_archive(2)
+        assert entry.fanta_volume == 2
+        assert entry.archive_filename == archive_root / "02-vol.cbz"
+        assert entry.archive_image_subdir == Path("images")
+        assert entry.image_ext == ".png"
+        assert entry.first_page == 1
+        assert entry.last_page == 3
+        assert entry.archive_images_page_map == {
+            "001": Path("images/page001.png"),
+            "002": Path("images/page002.png"),
+            "003": Path("images/page003.png"),
+        }
+        assert entry.override_images_page_map == {"002": Path("002.png")}
+        assert entry.extra_images_page_map == {"500": Path("500.png")}
+        assert entry.override_archive_filename == override
+        assert entry.is_missing is False
+        assert entry.get_num_pages() == 3
+
+        # A volume with no override zip gets empty maps and no override filename.
+        plain = archives.get_fantagraphics_archive(1)
+        assert plain.override_archive_filename is None
+        assert plain.override_images_page_map == {}
+        assert plain.extra_images_page_map == {}
+        assert plain.has_overrides() is False
+
+    def test_missing_volume_placeholder_carries_every_field(self, tmp_path: Path) -> None:
+        archive_root = tmp_path / "archive"
+        override_root = tmp_path / "override"
+        archive_root.mkdir()
+        override_root.mkdir()
+
+        for vol in range(1, NUM_VOLUMES + 1):
+            if vol == 2:
+                continue
+            _make_volume_zip(
+                archive_root / f"{vol:02d}-vol.cbz", image_names=["page001.png", "page002.png"]
+            )
+
+        archives = FantagraphicsVolumeArchives(
+            archive_root=archive_root,
+            override_root=override_root,
+            volume_list=list(range(1, NUM_VOLUMES + 1)),
+        )
+        with pytest.raises(MissingArchiveFilesError):
+            archives.load()
+
+        entry = archives.get_fantagraphics_archive(2)
+        assert entry.fanta_volume == 2
+        assert entry.archive_filename == Path("2-MISSING.cbz")
+        assert entry.archive_image_subdir is None
+        assert entry.image_ext == ""
+        # The sentinel page range: -1/-1, so `get_num_pages()` reports 1 page.
+        assert entry.first_page == -1
+        assert entry.last_page == -1
+        assert entry.archive_images_page_map == {}
+        assert entry.override_images_page_map == {}
+        assert entry.override_archive_filename is None
+        assert entry.is_missing is True
+
+    def test_archives_are_processed_in_volume_order(self, tmp_path: Path) -> None:
+        """Sorted by volume *number*, not by filename.
+
+        Unpadded names sort lexically as 1, 10, 11, ... 2 — so a missing sort key shows
+        up as a scrambled processing order.
+        """
+        archive_root = tmp_path / "archive"
+        override_root = tmp_path / "override"
+        archive_root.mkdir()
+        override_root.mkdir()
+
+        for vol in range(1, NUM_VOLUMES + 1):
+            _make_volume_zip(
+                archive_root / f"{vol}-vol.cbz", image_names=["page001.png", "page002.png"]
+            )
+
+        archives = FantagraphicsVolumeArchives(
+            archive_root=archive_root,
+            override_root=override_root,
+            volume_list=list(range(1, NUM_VOLUMES + 1)),
+        )
+        archives.load()
+
+        assert list(archives._fantagraphics_archive_dict) == list(
+            range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)
+        )
+
     def test_marks_missing_volumes_and_then_raises(self, tmp_path: Path) -> None:
         archive_root = tmp_path / "archive"
         override_root = tmp_path / "override"
@@ -564,3 +743,151 @@ class TestLoadEndToEnd:
 
         with pytest.raises(PageExtError, match="expecting extension to be in"):
             archives.load()
+
+
+class TestErrorsIdentifyTheArchiveRoot:
+    """Every validation error names the directory the user has to go and fix."""
+
+    def test_missing_volumes_error_names_the_root(
+        self, archives: FantagraphicsVolumeArchives
+    ) -> None:
+        filenames = [Path(f"{i}-vol.cbz") for i in range(1, 30) if i != 15]
+        with pytest.raises(MissingArchiveFilesError) as exc_info:
+            archives.check_correct_volume_numbers(filenames)
+
+        assert str(archives._archive_root) in str(exc_info.value)
+
+    def test_empty_archive_dir_error_names_the_root(
+        self, archives: FantagraphicsVolumeArchives
+    ) -> None:
+        with pytest.raises(MissingArchiveFilesError) as exc_info:
+            archives.check_correct_volume_numbers([])
+
+        assert str(archives._archive_root) in str(exc_info.value)
+
+    def test_too_many_override_dirs_error_names_the_root_and_counts(
+        self, archives: FantagraphicsVolumeArchives
+    ) -> None:
+        archive_filenames = [Path(f"{i}-v.cbz") for i in range(1, 30)]
+        too_many = {i: Path(f"{i}-ov.cbz") for i in range(1, NUM_VOLUMES + 2)}
+
+        with pytest.raises(TooManyOverrideDirsError) as exc_info:
+            archives.check_archives_and_overrides(archive_filenames, too_many)
+
+        msg = str(exc_info.value)
+        assert str(archives._archive_root) in msg
+        assert f"There are {NUM_VOLUMES + 1} but there should be {NUM_VOLUMES}." in msg
+
+
+class TestVolumeRangeEdges:
+    def test_a_missing_last_volume_is_reported(self, archives: FantagraphicsVolumeArchives) -> None:
+        """The full-volume set must run to `LAST_VOLUME_NUMBER` inclusive.
+
+        A short range would silently accept a library missing its final volume.
+        """
+        filenames = [Path(f"{i}-vol.cbz") for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER)]
+        with pytest.raises(MissingArchiveFilesError) as exc_info:
+            archives.check_correct_volume_numbers(filenames)
+
+        assert exc_info.value.missing_file_vols == [LAST_VOLUME_NUMBER]
+
+    def test_an_override_for_the_last_volume_is_accepted(self, tmp_path: Path) -> None:
+        override_root = tmp_path / "override"
+        override_root.mkdir()
+        last = _make_override_zip(
+            override_root / f"{LAST_VOLUME_NUMBER}-override.cbz", image_names=["001.png"]
+        )
+
+        archives = FantagraphicsVolumeArchives(
+            archive_root=tmp_path / "archive",
+            override_root=override_root,
+            volume_list=list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)),
+        )
+
+        assert archives.get_all_volume_override_archives() == {LAST_VOLUME_NUMBER: last}
+
+    def test_a_non_volume_file_is_skipped_without_ending_the_scan(self, tmp_path: Path) -> None:
+        """An unparseable name must not hide the override files after it."""
+        override_root = tmp_path / "override"
+        override_root.mkdir()
+        # "README..." sorts before the numbered zips on most filesystems, and has no
+        # leading digits, so `_get_fanta_volume` raises ValueError for it.
+        (override_root / "README.txt").write_text("not a volume")
+        first = _make_override_zip(override_root / "01-override.cbz", image_names=["001.png"])
+        second = _make_override_zip(override_root / "02-override.cbz", image_names=["001.png"])
+
+        archives = FantagraphicsVolumeArchives(
+            archive_root=tmp_path / "archive",
+            override_root=override_root,
+            volume_list=[1, 2],
+        )
+
+        assert archives.get_all_volume_override_archives() == {1: first, 2: second}
+
+
+class TestArchiveContentsEdges:
+    def test_an_archive_with_no_images_yields_an_empty_relative_subdir(
+        self, tmp_path: Path
+    ) -> None:
+        """The subdir starts as `Path()`, not `None` — callers join onto it."""
+        archive = tmp_path / "01-vol.cbz"
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr("notes.txt", b"no images here")
+
+        subdir, filenames = FantagraphicsVolumeArchives._get_archive_contents(archive)
+
+        assert subdir == Path()
+        assert filenames == []
+
+
+class TestLoadErrorMessages:
+    @staticmethod
+    def _single_volume_archives(tmp_path: Path, image_names: list[str]):  # noqa: ANN205
+        archive_root = tmp_path / "archive"
+        override_root = tmp_path / "override"
+        archive_root.mkdir()
+        override_root.mkdir()
+        _make_volume_zip(archive_root / "01-vol.cbz", image_names=image_names)
+
+        archives = FantagraphicsVolumeArchives(
+            archive_root=archive_root, override_root=override_root, volume_list=[1]
+        )
+        # Suppress missing-volume validation so the load reaches the per-image checks.
+        archives.check_correct_volume_numbers = lambda _filenames: None  # ty: ignore[invalid-assignment]
+        return archives
+
+    def test_page_ext_error_names_the_offending_first_image(self, tmp_path: Path) -> None:
+        archives = self._single_volume_archives(tmp_path, ["page001.PNG", "page002.PNG"])
+
+        with pytest.raises(PageExtError) as exc_info:
+            archives.load()
+
+        assert "page001.PNG" in str(exc_info.value)
+
+    def test_the_expected_extension_comes_from_the_first_image(self, tmp_path: Path) -> None:
+        """A mixed-extension archive is judged against page 1's extension."""
+        archives = self._single_volume_archives(tmp_path, ["page001.png", "page002.jpg"])
+
+        with pytest.raises(RuntimeError) as exc_info:
+            archives.load()
+
+        assert 'expecting extension ".png" but got ".jpg"' in str(exc_info.value)
+
+
+def test_missing_volume_records_its_override_archive(tmp_path: Path) -> None:
+    """A missing volume still remembers which bundled override zip serves it."""
+    archive_root = tmp_path / "archive"
+    override_root = tmp_path / "override"
+    archive_root.mkdir()
+    override_root.mkdir()
+    override = _make_override_zip(override_root / "01-override.cbz", image_names=["258.png"])
+
+    archives = FantagraphicsVolumeArchives(
+        archive_root=archive_root,
+        override_root=override_root,
+        volume_list=list(range(1, NUM_VOLUMES + 1)),
+    )
+    with pytest.raises(MissingArchiveFilesError):
+        archives.load()
+
+    assert archives.get_fantagraphics_archive(1).override_archive_filename == override

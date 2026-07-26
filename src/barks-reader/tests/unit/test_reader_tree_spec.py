@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import dataclasses
+from enum import Enum
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -16,6 +18,11 @@ from barks_fantagraphics.barks_tags import (
     get_sorted_tagged_titles,
     get_tag_titles,
 )
+from barks_fantagraphics.barks_titles import (
+    US_1_FC_ISSUE_NUM,
+    US_2_FC_ISSUE_NUM,
+    US_3_FC_ISSUE_NUM,
+)
 from barks_fantagraphics.fanta_comics_info import (
     SERIES_COVERS,
     SERIES_CS,
@@ -26,6 +33,7 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
 from barks_reader.core.navigation import (
+    CategoryDestination,
     ChooseForMeDestination,
     HistoryDestination,
     NodeKind,
@@ -34,13 +42,16 @@ from barks_reader.core.navigation import (
     PressAction,
     RandomTitlesDestination,
     ReadingDestination,
-    SeriesDestination,
     TagDestination,
-    YearRangeDestination,
-    YearRangeKind,
+    TagGroupDestination,
     build_reader_tree_spec,
 )
-from barks_reader.core.navigation.tree_spec import NUM_RANDOM_TITLES
+from barks_reader.core.navigation.tree_spec import (
+    NUM_RANDOM_TITLES,
+    _get_count_extra_text,
+    _get_cs_year_range_extra_text,
+    _get_us_year_range_extra_text,
+)
 from barks_reader.core.reader_consts_and_types import (
     APPENDIX_NODE_TEXT,
     CHOOSE_FOR_ME_NODE_TEXT,
@@ -103,6 +114,165 @@ def specs(
         )
 
 
+# --- Structural snapshots -------------------------------------------------------
+#
+# The hand-written subtrees (everything except the generated year-range/series/tag
+# rows) are compared field-by-field against a rendered snapshot rather than by
+# spot-checking one attribute at a time. Every `NodeSpec` field is a hand-typed
+# literal, so a wrong destination, a dropped `start_closed`, or a swapped
+# registration hook is invisible to a partial assertion but changes what the tree
+# actually navigates to.
+
+
+def _render_value(value: object) -> str:
+    # Enums render by name: their `auto()` values shift whenever a member is
+    # inserted, and a snapshot must not churn on that.
+    if isinstance(value, Enum):
+        return f"{type(value).__name__}.{value.name}"
+    return repr(value)
+
+
+def _render_destination(destination: object) -> str:
+    if destination is None:
+        return "None"
+    fields = ", ".join(
+        f"{field.name}={_render_value(getattr(destination, field.name))}"
+        for field in dataclasses.fields(destination)  # ty: ignore[invalid-argument-type]
+    )
+    return f"{type(destination).__name__}({fields})"
+
+
+def _summarise(spec: NodeSpec, depth: int = 0, max_depth: int | None = None) -> list[str]:
+    """Render `spec` and its children as one indented line per node."""
+    lines = [
+        "  " * depth
+        + " ".join(
+            [
+                spec.kind.name,
+                f"text={spec.text!r}",
+                f"dest={_render_destination(spec.destination)}",
+                f"press={spec.press_action.name}",
+                f"register={spec.register_as.name if spec.register_as else None}",
+                f"closed={spec.start_closed}",
+                f"yrk={spec.year_range_kind.name if spec.year_range_kind else None}",
+                f"lazy={spec.lazy_children is not None}",
+                f"repopulate={spec.repopulate_on_expand}",
+            ]
+        )
+    ]
+    if max_depth is None or depth < max_depth:
+        for child in spec.children:
+            lines.extend(_summarise(child, depth + 1, max_depth))
+    return lines
+
+
+def _assert_snapshot(spec: NodeSpec, expected: str, max_depth: int | None = None) -> None:
+    assert _summarise(spec, max_depth=max_depth) == expected.strip("\n").split("\n")
+
+
+_INTRO_SNAPSHOT = """
+MAIN text='Introduction' dest=IntroDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
+  MAIN text='The Compleat Barks Disney Reader' dest=IntroDocDestination() press=OPEN_INTRO_DOC register=None closed=True yrk=None lazy=False repopulate=False
+  MAIN text='Don Ault: Fantagraphics Introduction' dest=ArticleDestination(view_state=ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE, article_title=Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION) press=OPEN_ARTICLE register=None closed=True yrk=None lazy=False repopulate=False
+"""  # noqa: E501
+
+# Depth-limited: the three group headers are hand-written, everything below them is
+# generated and covered by `TestStoriesSubtree`.
+_STORIES_SNAPSHOT = """
+MAIN text='The Stories' dest=StoriesDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
+  STORY_GROUP text='[b]Chronological[/b]' dest=ChronologicalDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
+  STORY_GROUP text='[b]Series[/b]' dest=AllSeriesDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
+  STORY_GROUP text='[b]Categories[/b]' dest=CategoriesDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
+"""  # noqa: E501
+
+_SEARCH_SNAPSHOT = """
+MAIN text='Search' dest=SearchDestination() press=TOGGLE_ONLY register=SEARCH closed=False yrk=None lazy=False repopulate=False
+  STORY_GROUP text='Titles' dest=TitleSearchDestination() press=SET_VIEW_STATE register=None closed=False yrk=None lazy=False repopulate=False
+  STORY_GROUP text='Tags' dest=TagSearchDestination() press=SET_VIEW_STATE register=None closed=False yrk=None lazy=False repopulate=False
+  STORY_GROUP text='Words' dest=WordSearchDestination() press=SET_VIEW_STATE register=None closed=False yrk=None lazy=False repopulate=False
+"""  # noqa: E501
+
+_APPENDIX_SNAPSHOT = """
+MAIN text='Appendix' dest=AppendixDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
+  MAIN text='Rich Tommaso: On Coloring Barks' dest=ArticleDestination(view_state=ViewStates.ON_APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_NODE, article_title=Titles.RICH_TOMMASO___ON_COLORING_BARKS) press=OPEN_ARTICLE register=None closed=True yrk=None lazy=False repopulate=False
+  MAIN text='Don Ault: Life Among the Ducks' dest=ArticleDestination(view_state=ViewStates.ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE, article_title=Titles.DON_AULT___LIFE_AMONG_THE_DUCKS) press=OPEN_ARTICLE register=None closed=True yrk=None lazy=False repopulate=False
+  MAIN text='Maggie Thompson: Comics Readers Find...' dest=ArticleDestination(view_state=ViewStates.ON_APPENDIX_MAGGIE_THOMPSON_COMICS_READERS_FIND_COMIC_BOOK_GOLD_NODE, article_title=Titles.MAGGIE_THOMPSON___COMICS_READERS_FIND_COMIC_BOOK_GOLD) press=OPEN_ARTICLE register=None closed=True yrk=None lazy=False repopulate=False
+  MAIN text='George Lucas: An Appreciation' dest=ArticleDestination(view_state=ViewStates.ON_APPENDIX_GEORGE_LUCAS_AN_APPRECIATION_NODE, article_title=Titles.GEORGE_LUCAS___AN_APPRECIATION) press=OPEN_ARTICLE register=None closed=True yrk=None lazy=False repopulate=False
+  MAIN text='Censorship Fixes and Other Changes' dest=CensorshipFixesDocDestination() press=OPEN_CENSORSHIP_FIXES_DOC register=None closed=True yrk=None lazy=False repopulate=False
+  MAIN text='Statistics' dest=StatisticsDestination() press=SET_VIEW_STATE register=STATISTICS closed=True yrk=None lazy=False repopulate=False
+"""  # noqa: E501
+
+_INDEX_SNAPSHOT = """
+MAIN text='Indexes' dest=IndexDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
+  MAIN text='Main Index' dest=MainIndexDestination() press=SET_VIEW_STATE register=MAIN_INDEX closed=False yrk=None lazy=False repopulate=False
+  MAIN text='Speech Bubble Index' dest=SpeechIndexDestination() press=OPEN_SPEECH_INDEX register=SPEECH_INDEX closed=False yrk=None lazy=False repopulate=False
+    MAIN text='Words' dest=SpeechWordsDestination() press=OPEN_SPEECH_WORDS register=SPEECH_WORDS closed=False yrk=None lazy=False repopulate=False
+    MAIN text='Names' dest=NamesIndexDestination() press=SET_VIEW_STATE register=NAMES_INDEX closed=False yrk=None lazy=False repopulate=False
+    MAIN text='Locations' dest=LocationsIndexDestination() press=SET_VIEW_STATE register=LOCATIONS_INDEX closed=False yrk=None lazy=False repopulate=False
+"""  # noqa: E501
+
+# The generated year-range subtrees. Their labels are assembled from the range string,
+# a per-kind "extra text" (issue span for CS/US, plain count for one-pagers/covers/
+# chrono) and the markup helpers — none of which a count-only assertion can see.
+_CHRONO_SNAPSHOT = """
+STORY_GROUP text='[b]Chronological[/b]' dest=ChronologicalDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
+  YEAR_RANGE text='[b]1942-1946[/b] [i](65)[/i]' dest=YearRangeDestination(start=1942, end=1946, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
+  YEAR_RANGE text='[b]1947-1950[/b] [i](68)[/i]' dest=YearRangeDestination(start=1947, end=1950, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
+  YEAR_RANGE text='[b]1951-1954[/b] [i](74)[/i]' dest=YearRangeDestination(start=1951, end=1954, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
+  YEAR_RANGE text='[b]1955-1957[/b] [i](76)[/i]' dest=YearRangeDestination(start=1955, end=1957, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
+  YEAR_RANGE text='[b]1958-1961[/b] [i](138)[/i]' dest=YearRangeDestination(start=1958, end=1961, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
+  YEAR_RANGE text='[b]1962-1971[/b] [i](20)[/i]' dest=YearRangeDestination(start=1962, end=1971, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
+"""  # noqa: E501
+
+_SERIES_SNAPSHOT = """
+STORY_GROUP text='[b]Series[/b]' dest=AllSeriesDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
+  STORY_GROUP text='[b]Comics and Stories[/b] [i](227)[/i]' dest=SeriesDestination(series_name='Comics and Stories') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
+    YEAR_RANGE text='[b]1942-1946[/b] [i](WDCS 31-79)[/i]' dest=YearRangeDestination(start=1942, end=1946, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False yrk=CS lazy=True repopulate=False
+    YEAR_RANGE text='[b]1947-1950[/b] [i](WDCS 80-130)[/i]' dest=YearRangeDestination(start=1947, end=1950, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False yrk=CS lazy=True repopulate=False
+    YEAR_RANGE text='[b]1951-1954[/b] [i](WDCS 131-179)[/i]' dest=YearRangeDestination(start=1951, end=1954, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False yrk=CS lazy=True repopulate=False
+    YEAR_RANGE text='[b]1955-1957[/b] [i](WDCS 180-217)[/i]' dest=YearRangeDestination(start=1955, end=1957, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False yrk=CS lazy=True repopulate=False
+    YEAR_RANGE text='[b]1958-1961[/b] [i](WDCS 218-263)[/i]' dest=YearRangeDestination(start=1958, end=1961, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False yrk=CS lazy=True repopulate=False
+    YEAR_RANGE text='[b]1962-1966[/b] [i](WDCS 264-265)[/i]' dest=YearRangeDestination(start=1962, end=1966, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False yrk=CS lazy=True repopulate=False
+  STORY_GROUP text='[b]Donald Duck Adventures[/b] [i](39)[/i]' dest=SeriesDestination(series_name='Donald Duck Adventures') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
+  STORY_GROUP text='[b]Uncle Scrooge Adventures[/b] [i](41)[/i]' dest=SeriesDestination(series_name='Uncle Scrooge Adventures') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
+    YEAR_RANGE text='[b]1951-1954[/b] [i](US 1-10)[/i]' dest=YearRangeDestination(start=1951, end=1954, kind=YearRangeKind.US) press=TOGGLE_ONLY register=None closed=False yrk=US lazy=True repopulate=False
+    YEAR_RANGE text='[b]1955-1957[/b] [i](US 11-23)[/i]' dest=YearRangeDestination(start=1955, end=1957, kind=YearRangeKind.US) press=TOGGLE_ONLY register=None closed=False yrk=US lazy=True repopulate=False
+    YEAR_RANGE text='[b]1958-1961[/b] [i](US 24-38)[/i]' dest=YearRangeDestination(start=1958, end=1961, kind=YearRangeKind.US) press=TOGGLE_ONLY register=None closed=False yrk=US lazy=True repopulate=False
+    YEAR_RANGE text='[b]1962-1966[/b] [i](US 39-40)[/i]' dest=YearRangeDestination(start=1962, end=1966, kind=YearRangeKind.US) press=TOGGLE_ONLY register=None closed=False yrk=US lazy=True repopulate=False
+  STORY_GROUP text='[b]Donald Duck Short Stories[/b] [i](14)[/i]' dest=SeriesDestination(series_name='Donald Duck Short Stories') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
+  STORY_GROUP text='[b]Uncle Scrooge Short Stories[/b] [i](28)[/i]' dest=SeriesDestination(series_name='Uncle Scrooge Short Stories') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
+  STORY_GROUP text='[b]Gyro Gearloose[/b] [i](41)[/i]' dest=SeriesDestination(series_name='Gyro Gearloose') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
+  STORY_GROUP text='[b]Misc[/b] [i](51)[/i]' dest=SeriesDestination(series_name='Misc') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
+  STORY_GROUP text='[b]One Pagers[/b] [i](128)[/i]' dest=SeriesDestination(series_name='One Pagers') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
+    YEAR_RANGE text='[b]1946-1952[/b] [i](43)[/i]' dest=YearRangeDestination(start=1946, end=1952, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False yrk=ONE_PAGER lazy=True repopulate=False
+    YEAR_RANGE text='[b]1953-1956[/b] [i](49)[/i]' dest=YearRangeDestination(start=1953, end=1956, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False yrk=ONE_PAGER lazy=True repopulate=False
+    YEAR_RANGE text='[b]1957-1962[/b] [i](36)[/i]' dest=YearRangeDestination(start=1957, end=1962, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False yrk=ONE_PAGER lazy=True repopulate=False
+  STORY_GROUP text='[b]Covers[/b] [i](186)[/i]' dest=SeriesDestination(series_name='Covers') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
+    YEAR_RANGE text='[b]1948-1952[/b] [i](52)[/i]' dest=YearRangeDestination(start=1948, end=1952, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False yrk=COVER lazy=True repopulate=False
+    YEAR_RANGE text='[b]1953-1955[/b] [i](38)[/i]' dest=YearRangeDestination(start=1953, end=1955, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False yrk=COVER lazy=True repopulate=False
+    YEAR_RANGE text='[b]1956-1959[/b] [i](55)[/i]' dest=YearRangeDestination(start=1956, end=1959, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False yrk=COVER lazy=True repopulate=False
+    YEAR_RANGE text='[b]1960-1965[/b] [i](41)[/i]' dest=YearRangeDestination(start=1960, end=1965, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False yrk=COVER lazy=True repopulate=False
+"""  # noqa: E501
+
+_FAVOURITES_CATEGORY_SNAPSHOT = """
+STORY_GROUP text='[b]Favourites[/b]' dest=CategoryDestination(category='Favourites') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
+  STORY_GROUP text="[b]Barks' Picks[/b] [i](15)[/i]" dest=TagDestination(tag=Tags.BARKS_FAVOURITES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
+  STORY_GROUP text='[b]everygeek.net[/b] [i](7)[/i]' dest=TagDestination(tag=Tags.EVERY_GEEK_FAVOURITES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
+  STORY_GROUP text='[b]My Picks[/b] [i](0)[/i]' dest=TagDestination(tag=Tags.PERSONAL_FAVOURITES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
+  STORY_GROUP text='[b]Peter Schilling[/b] [i](13)[/i]' dest=TagDestination(tag=Tags.PETER_SCHILLING_FAVOURITES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
+  STORY_GROUP text='[b]Wiki Notable Stories[/b] [i](22)[/i]' dest=TagDestination(tag=Tags.WIKI_NOTABLE_STORIES) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
+  STORY_GROUP text='[b]The Classics[/b] [i](16)[/i]' dest=TagDestination(tag=Tags.CLASSICS) press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
+"""  # noqa: E501
+
+# The wiki entry is appended only when the bundle setting resolves; it must start
+# closed so a saved-node restore renders the destination instead of replaying the
+# press (which would auto-open the wiki screen at startup).
+_WIKI_INDEX_ENTRY = (
+    "  MAIN text='Carl Barks Wiki' dest=WikiIndexDestination() press=OPEN_WIKI_INDEX"
+    " register=None closed=True yrk=None lazy=False repopulate=False"
+)
+
+
 class TestTopLevelStructure:
     def test_top_level_nodes_in_display_order(self, specs: tuple[NodeSpec, ...]) -> None:
         assert [spec.text for spec in specs] == [
@@ -115,14 +285,11 @@ class TestTopLevelStructure:
         ]
         assert all(spec.kind is NodeKind.MAIN for spec in specs)
 
-    def test_intro_children_are_press_leaves_starting_closed(
-        self, specs: tuple[NodeSpec, ...]
-    ) -> None:
-        intro = specs[0]
-        assert len(intro.children) == 2
-        assert intro.children[0].press_action is PressAction.OPEN_INTRO_DOC
-        assert intro.children[1].press_action is PressAction.OPEN_ARTICLE
-        assert all(child.start_closed for child in intro.children)
+    def test_intro_subtree(self, specs: tuple[NodeSpec, ...]) -> None:
+        _assert_snapshot(specs[0], _INTRO_SNAPSHOT)
+
+    def test_stories_group_headers(self, specs: tuple[NodeSpec, ...]) -> None:
+        _assert_snapshot(specs[1], _STORIES_SNAPSHOT, max_depth=1)
 
 
 class TestStoriesSubtree:
@@ -132,16 +299,8 @@ class TestStoriesSubtree:
         assert all(child.kind is NodeKind.STORY_GROUP for child in stories.children)
 
     def test_chrono_year_ranges(self, specs: tuple[NodeSpec, ...]) -> None:
-        chrono = specs[1].children[0]
-        assert len(chrono.children) == len(CHRONO_YEAR_RANGES)
-
-        for year_range, spec in zip(CHRONO_YEAR_RANGES, chrono.children, strict=True):
-            assert spec.kind is NodeKind.YEAR_RANGE
-            assert spec.destination == YearRangeDestination(
-                start=year_range[0], end=year_range[1], kind=YearRangeKind.CHRONO
-            )
-            assert spec.year_range_kind is YearRangeKind.CHRONO
-            assert spec.lazy_children is not None
+        _assert_snapshot(specs[1].children[0], _CHRONO_SNAPSHOT)
+        assert len(specs[1].children[0].children) == len(CHRONO_YEAR_RANGES)
 
     def test_chrono_lazy_title_rows_match_expected_counts(
         self, specs: tuple[NodeSpec, ...]
@@ -157,60 +316,53 @@ class TestStoriesSubtree:
         assert all(row.kind is NodeKind.TITLE_ROW for row in title_rows)
         assert all(row.fanta_info is not None for row in title_rows)
 
-    def test_series_nodes(self, specs: tuple[NodeSpec, ...]) -> None:
-        series = specs[1].children[1]
-        series_names = [
-            spec.destination.series_name  # ty: ignore[unresolved-attribute]
-            for spec in series.children
-        ]
+    def test_series_subtree(self, specs: tuple[NodeSpec, ...]) -> None:
+        _assert_snapshot(specs[1].children[1], _SERIES_SNAPSHOT)
 
-        assert len(series.children) == 9
-        assert all(isinstance(spec.destination, SeriesDestination) for spec in series.children)
-        assert SERIES_ONE_PAGERS in series_names
-        assert SERIES_COVERS in series_names
-
-    def test_cs_and_us_series_split_into_year_ranges(self, specs: tuple[NodeSpec, ...]) -> None:
-        series = specs[1].children[1]
-        by_name = {
-            spec.destination.series_name: spec  # ty: ignore[unresolved-attribute]
-            for spec in series.children
-        }
-
-        cs_spec = by_name[SERIES_CS]
-        assert len(cs_spec.children) == len(CS_YEAR_RANGES)
-        assert all(child.year_range_kind is YearRangeKind.CS for child in cs_spec.children)
-        assert all("WDCS" in child.text for child in cs_spec.children)
-
-        us_spec = by_name[SERIES_USA]
-        assert len(us_spec.children) == len(US_YEAR_RANGES)
-        assert all(child.year_range_kind is YearRangeKind.US for child in us_spec.children)
-
-    def test_one_pager_and_cover_series_split_into_year_ranges(
+    def test_series_subtree_matches_the_configured_year_ranges(
         self, specs: tuple[NodeSpec, ...]
     ) -> None:
-        series = specs[1].children[1]
+        """The snapshot above is a literal; check it still tracks the range constants."""
         by_name = {
             spec.destination.series_name: spec  # ty: ignore[unresolved-attribute]
-            for spec in series.children
+            for spec in specs[1].children[1].children
         }
 
-        one_pagers = by_name[SERIES_ONE_PAGERS]
-        assert one_pagers.lazy_children is None
-        assert len(one_pagers.children) == len(ONE_PAGER_YEAR_RANGES)
-        assert all(
-            child.year_range_kind is YearRangeKind.ONE_PAGER for child in one_pagers.children
-        )
-        for year_range, child in zip(ONE_PAGER_YEAR_RANGES, one_pagers.children, strict=True):
-            assert child.destination == YearRangeDestination(
-                start=year_range[0], end=year_range[1], kind=YearRangeKind.ONE_PAGER
-            )
-            assert child.lazy_children is not None
-            assert all(row.kind is NodeKind.TITLE_ROW for row in child.lazy_children())
+        assert len(by_name) == 9
+        assert len(by_name[SERIES_CS].children) == len(CS_YEAR_RANGES)
+        assert len(by_name[SERIES_USA].children) == len(US_YEAR_RANGES)
+        assert len(by_name[SERIES_ONE_PAGERS].children) == len(ONE_PAGER_YEAR_RANGES)
+        assert len(by_name[SERIES_COVERS].children) == len(COVER_YEAR_RANGES)
 
-        covers = by_name[SERIES_COVERS]
-        assert covers.lazy_children is None
-        assert len(covers.children) == len(COVER_YEAR_RANGES)
-        assert all(child.year_range_kind is YearRangeKind.COVER for child in covers.children)
+    @pytest.mark.parametrize(
+        "series_name",
+        [SERIES_ONE_PAGERS, SERIES_COVERS, SERIES_CS, SERIES_USA],
+        ids=["one_pagers", "covers", "cs", "us"],
+    )
+    def test_year_range_groups_defer_real_title_rows(
+        self, specs: tuple[NodeSpec, ...], series_name: str
+    ) -> None:
+        """Each year-range group carries its own titles into its lazy rows.
+
+        The rows are built by a `partial` closed over the range's title list, so the
+        wrong list (or none at all) only shows up when the node is actually expanded.
+        """
+        by_name = {
+            spec.destination.series_name: spec  # ty: ignore[unresolved-attribute]
+            for spec in specs[1].children[1].children
+        }
+        series = by_name[series_name]
+
+        assert series.lazy_children is None
+        total_rows = 0
+        for child in series.children:
+            assert child.lazy_children is not None
+            rows = child.lazy_children()
+            assert all(row.kind is NodeKind.TITLE_ROW for row in rows)
+            assert all(row.fanta_info is not None for row in rows)
+            total_rows += len(rows)
+
+        assert total_rows > 0
 
     def test_one_pager_and_cover_groups_hold_every_title(
         self, specs: tuple[NodeSpec, ...], title_lists: dict[str, list[FantaComicBookInfo]]
@@ -260,6 +412,61 @@ class TestStoriesSubtree:
     def test_categories_cover_all_tag_categories(self, specs: tuple[NodeSpec, ...]) -> None:
         categories = specs[1].children[2]
         assert len(categories.children) == len(TagCategories)
+
+    def test_favourites_category_subtree(self, specs: tuple[NodeSpec, ...]) -> None:
+        """One category in full, to pin the category → tag nesting and label format."""
+        favourites = next(
+            spec
+            for spec in specs[1].children[2].children
+            if spec.destination == CategoryDestination(category=TagCategories.FAVOURITES.value)
+        )
+        _assert_snapshot(favourites, _FAVOURITES_CATEGORY_SNAPSHOT)
+
+    def test_every_category_node_matches_its_destination(self, specs: tuple[NodeSpec, ...]) -> None:
+        """Every node in the Categories subtree is labelled from its own destination.
+
+        The subtree is far too large to snapshot, but each node's text is derived
+        mechanically from its destination, so the relationship can be asserted for all
+        of them at once — which is what pins the markup helpers and their arguments.
+        """
+        categories = specs[1].children[2]
+        seen = {"category": 0, "group": 0, "tag": 0}
+
+        def check(spec: NodeSpec) -> None:
+            assert spec.kind is NodeKind.STORY_GROUP
+            destination = spec.destination
+
+            if isinstance(destination, CategoryDestination):
+                seen["category"] += 1
+                assert spec.text == f"[b]{destination.category}[/b]"
+                assert spec.lazy_children is None
+            elif isinstance(destination, TagGroupDestination):
+                seen["group"] += 1
+                assert spec.text == f"[b]{destination.tag_group.value}[/b]"
+                assert spec.lazy_children is None
+                # A group node is only useful if it holds the group's tags.
+                assert len(spec.children) == len(BARKS_TAG_GROUPS[destination.tag_group])
+            elif isinstance(destination, TagDestination):
+                seen["tag"] += 1
+                # Favourites are patched to an empty list by the `specs` fixture.
+                num_titles = (
+                    0
+                    if destination.tag is Tags.PERSONAL_FAVOURITES
+                    else len(get_sorted_tagged_titles(destination.tag))
+                )
+                assert spec.text == f"[b]{destination.tag.value}[/b] [i]({num_titles})[/i]"
+                assert spec.lazy_children is not None
+            else:
+                pytest.fail(f"unexpected destination in Categories subtree: {destination!r}")
+
+            for child in spec.children:
+                check(child)
+
+        for category in categories.children:
+            check(category)
+
+        # The traversal actually reached all three node kinds.
+        assert all(count > 0 for count in seen.values()), seen
 
     def test_tag_specs_have_destinations_and_lazy_rows(self, specs: tuple[NodeSpec, ...]) -> None:
         categories = specs[1].children[2]
@@ -402,36 +609,14 @@ class TestReadingSubtree:
 
 
 class TestSearchAppendixIndex:
-    def test_search_registration_and_children(self, specs: tuple[NodeSpec, ...]) -> None:
-        search = specs[2]
-        assert search.register_as is NodeRegistration.SEARCH
-        assert len(search.children) == 3
-        assert all(child.press_action is PressAction.SET_VIEW_STATE for child in search.children)
+    def test_search_subtree(self, specs: tuple[NodeSpec, ...]) -> None:
+        _assert_snapshot(specs[2], _SEARCH_SNAPSHOT)
 
-    def test_appendix_children(self, specs: tuple[NodeSpec, ...]) -> None:
-        appendix = specs[4]
-        assert len(appendix.children) == 6
-        assert all(child.start_closed for child in appendix.children)
-
-        press_actions = [child.press_action for child in appendix.children]
-        assert press_actions.count(PressAction.OPEN_ARTICLE) == 4
-        assert press_actions.count(PressAction.OPEN_CENSORSHIP_FIXES_DOC) == 1
-
-        statistics = appendix.children[-1]
-        assert statistics.press_action is PressAction.SET_VIEW_STATE
-        assert statistics.register_as is NodeRegistration.STATISTICS
+    def test_appendix_subtree(self, specs: tuple[NodeSpec, ...]) -> None:
+        _assert_snapshot(specs[4], _APPENDIX_SNAPSHOT)
 
     def test_index_without_wiki_bundle(self, specs: tuple[NodeSpec, ...]) -> None:
-        index = specs[5]
-        assert len(index.children) == 2
-
-        speech = index.children[1]
-        assert speech.register_as is NodeRegistration.SPEECH_INDEX
-        assert [child.register_as for child in speech.children] == [
-            NodeRegistration.SPEECH_WORDS,
-            NodeRegistration.NAMES_INDEX,
-            NodeRegistration.LOCATIONS_INDEX,
-        ]
+        _assert_snapshot(specs[5], _INDEX_SNAPSHOT)
 
     def test_index_with_wiki_bundle(self, title_lists: dict[str, list[FantaComicBookInfo]]) -> None:
         settings = MagicMock()
@@ -450,11 +635,125 @@ class TestSearchAppendixIndex:
                 settings, title_lists, include_one_pagers_in_chrono=False
             )
 
-        index = specs[5]
-        assert len(index.children) == 3
-        wiki = index.children[-1]
-        assert wiki.press_action is PressAction.OPEN_WIKI_INDEX
-        assert wiki.start_closed
+        # Same tree as without the bundle, plus the wiki entry appended last.
+        _assert_snapshot(specs[5], _INDEX_SNAPSHOT + _WIKI_INDEX_ENTRY + "\n")
+
+
+def _info_with_issue(issue_number: int) -> MagicMock:
+    info = MagicMock()
+    info.comic_book_info.issue_number = issue_number
+    return info
+
+
+class TestYearRangeExtraText:
+    """The per-kind label suffix. Pure functions over the range's title list."""
+
+    def test_cs_extra_text_spans_first_to_last_issue(self) -> None:
+        titles = [_info_with_issue(n) for n in (95, 31, 79)]
+        assert _get_cs_year_range_extra_text(titles) == "WDCS 31-95"  # ty: ignore[invalid-argument-type]
+
+    def test_count_extra_text_is_the_title_count(self) -> None:
+        assert _get_count_extra_text([_info_with_issue(1)] * 43) == "43"
+        assert _get_count_extra_text([]) == "0"
+
+    def test_us_extra_text_spans_first_to_last_issue(self) -> None:
+        titles = [_info_with_issue(n) for n in (24, 11, 38)]
+        assert _get_us_year_range_extra_text(titles) == "US 11-38"  # ty: ignore[invalid-argument-type]
+
+    @pytest.mark.parametrize(
+        ("fc_issue_num", "expected_us_number"),
+        [
+            pytest.param(US_1_FC_ISSUE_NUM, 1, id="us_1"),
+            pytest.param(US_2_FC_ISSUE_NUM, 2, id="us_2"),
+            pytest.param(US_3_FC_ISSUE_NUM, 3, id="us_3"),
+        ],
+    )
+    def test_us_extra_text_remaps_the_four_color_issues(
+        self, fc_issue_num: int, expected_us_number: int
+    ) -> None:
+        """The first three Uncle Scrooges shipped as Four Color issues.
+
+        Their real issue numbers are in the hundreds, so without the remap they would
+        sort last and the label would read e.g. 'US 4-386' instead of 'US 1-4'.
+        """
+        titles = [_info_with_issue(fc_issue_num), _info_with_issue(4)]
+        assert _get_us_year_range_extra_text(titles) == f"US {expected_us_number}-4"  # ty: ignore[invalid-argument-type]
+
+
+def test_random_titles_sample_from_the_whole_chronological_span(
+    reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+) -> None:
+    """'Surprise me' draws from every chronological year range, not a subset."""
+    with (
+        patch.object(barks_reader.core.navigation.tree_spec, "read_title_list", return_value=[]),
+        patch.object(
+            barks_reader.core.navigation.tree_spec,
+            "special_case_personal_favourites_tag_update",
+        ),
+        patch.object(
+            barks_reader.core.navigation.tree_spec.random, "sample", return_value=[]
+        ) as mock_sample,
+    ):
+        specs = build_reader_tree_spec(
+            reader_settings, title_lists, include_one_pagers_in_chrono=False
+        )
+        surprise_me = specs[3].children[0].children[0]
+        assert surprise_me.lazy_children is not None
+        surprise_me.lazy_children()
+
+    expected_pool = sum(
+        len(title_lists[str(year)])
+        for year in range(CHRONO_YEAR_RANGES[0][0], CHRONO_YEAR_RANGES[-1][1] + 1)
+    )
+    pool = mock_sample.call_args.args[0]
+    assert len(pool) == expected_pool
+
+
+def test_chrono_includes_one_pagers_when_asked() -> None:
+    """The other half of the `include_one_pagers_in_chrono` switch.
+
+    The flag has to reach `get_num_comic_book_titles` for the chronological node's
+    row-count assert to agree with title lists built the same way — and the resulting
+    year ranges genuinely hold more titles than the default build does.
+    """
+    settings = MagicMock()
+    settings.wiki_bundle_dir = None
+    with_one_pagers = FilteredTitleLists(include_one_pagers_in_chrono=True).get_title_lists()
+
+    with (
+        patch.object(barks_reader.core.navigation.tree_spec, "read_title_list", return_value=[]),
+        patch.object(
+            barks_reader.core.navigation.tree_spec,
+            "special_case_personal_favourites_tag_update",
+        ),
+    ):
+        specs = build_reader_tree_spec(settings, with_one_pagers, include_one_pagers_in_chrono=True)
+
+    chrono = specs[1].children[0]
+    for year_range, spec in zip(CHRONO_YEAR_RANGES, chrono.children, strict=True):
+        assert spec.lazy_children is not None
+        assert len(spec.lazy_children()) == get_num_comic_book_titles(
+            year_range, include_one_pagers=True
+        )
+
+
+def test_one_pagers_are_excluded_from_chrono_by_default(
+    reader_settings: MagicMock, title_lists: dict[str, list[FantaComicBookInfo]]
+) -> None:
+    """`title_lists` here was built with one-pagers excluded.
+
+    The chronological node asserts its row count against `get_num_comic_book_titles`,
+    so a default of `True` would trip that assert rather than build the tree.
+    """
+    with (
+        patch.object(barks_reader.core.navigation.tree_spec, "read_title_list", return_value=[]),
+        patch.object(
+            barks_reader.core.navigation.tree_spec,
+            "special_case_personal_favourites_tag_update",
+        ),
+    ):
+        # No exception expected.
+        build_reader_tree_spec(reader_settings, title_lists)
 
 
 def test_favourites_tag_uses_the_favourites_file(
@@ -472,7 +771,10 @@ def test_favourites_tag_uses_the_favourites_file(
         build_reader_tree_spec(reader_settings, title_lists, include_one_pagers_in_chrono=False)
 
     if Tags.PERSONAL_FAVOURITES in _all_category_tags():
-        mock_read.assert_called_once()
+        # Read from the configured favourites file specifically — not some other path.
+        mock_read.assert_called_once_with(
+            reader_settings.sys_file_paths.get_favourite_titles_path.return_value
+        )
         mock_special_case.assert_called_once_with([])
 
 
