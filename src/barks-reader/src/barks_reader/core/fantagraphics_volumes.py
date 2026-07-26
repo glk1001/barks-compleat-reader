@@ -381,7 +381,6 @@ class FantagraphicsVolumeArchives:
                 file = Path(filename)
                 page = file.stem
                 ext = file.suffix
-                assert ext in [JPG_FILE_EXT, PNG_FILE_EXT]
                 if ext not in _VALID_IMAGE_EXTENSION:
                     msg = (
                         f'For image "{file}" in "{override_archive_filename}",'

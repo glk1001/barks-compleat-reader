@@ -891,3 +891,17 @@ def test_missing_volume_records_its_override_archive(tmp_path: Path) -> None:
         archives.load()
 
     assert archives.get_fantagraphics_archive(1).override_archive_filename == override
+
+
+def test_an_override_zip_with_a_foreign_image_type_is_rejected(tmp_path: Path) -> None:
+    """Override zips may only hold png/jpg pages.
+
+    The check used to sit behind an `assert` over the same two extensions, which made
+    it unreachable; it is a live guard now.
+    """
+    override = tmp_path / "01-override.cbz"
+    with zipfile.ZipFile(override, "w") as zf:
+        zf.writestr("258.gif", b"GIF89a")
+
+    with pytest.raises(PageExtError, match="expecting extension to be in"):
+        FantagraphicsVolumeArchives._get_override_and_extra_images_page_maps(override, {})

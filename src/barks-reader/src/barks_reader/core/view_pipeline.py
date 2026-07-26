@@ -1,4 +1,3 @@
-# ruff: noqa: ERA001
 """Kivy-free view-rendering pipeline.
 
 `ViewPipeline` owns the navigation-context state, the view-state → image
@@ -77,10 +76,6 @@ _TOP_VIEW_IMAGE_TYPES: set[FileTypes] = {
 _TITLE_VIEW_IMAGE_TYPES: set[FileTypes] = {
     t for t in FileTypes if t not in [FileTypes.INSET, FileTypes.ORIGINAL_ART]
 }
-
-_DEBUG_FUN_IMAGE_TITLES = None
-# _DEBUG_FUN_IMAGE_TITLES = [Titles.LOST_IN_THE_ANDES]
-
 
 IMAGE_THEME_TO_FILE_TYPE_MAP = {
     ImageThemes.AI: FileTypes.AI,
@@ -704,13 +699,6 @@ class ViewPipeline:
         )
 
     def _get_fun_image_titles(self) -> tuple[list[FantaComicBookInfo], set[FileTypes]]:
-        if _DEBUG_FUN_IMAGE_TITLES:
-            return [
-                t
-                for t in self._title_lists[ALL_LISTS]
-                if t.comic_book_info.title in _DEBUG_FUN_IMAGE_TITLES
-            ], self._get_file_types_to_use()
-
         if not self._fun_image_themes:
             return self._title_lists[ALL_LISTS], self._get_file_types_to_use()
 

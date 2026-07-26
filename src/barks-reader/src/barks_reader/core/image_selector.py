@@ -269,7 +269,6 @@ class ImageSelector:
             selected_image_info = random.choice(possible_images)
 
         image_filename = selected_image_info[0]
-        assert str(image_filename) != "", f"Empty image filename for title '{title_str}'"
         self._last_title_image[title_str] = image_filename
 
         return image_filename

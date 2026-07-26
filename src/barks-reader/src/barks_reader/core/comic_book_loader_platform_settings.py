@@ -37,7 +37,6 @@ class PrefetchTuning:
         self.prefetch_max_factor: float = prefetch_max_factor
         self.memory_low_water_mib: float = memory_low_water_mib
         self.memory_high_water_mib: float = memory_high_water_mib
-        self._worker_count = worker_count
         self._num_pages = num_pages
         self.base_max_window = max(self.prefetch_min, int(worker_count * self.prefetch_max_factor))
 
@@ -173,7 +172,7 @@ def get_prefetch_tuning(worker_count: int, num_pages: int) -> PrefetchTuning:
         mem_low = 250.0
         mem_high = 450.0
 
-    _PREFETCH_TUNING = PrefetchTuning(
+    tuning = PrefetchTuning(
         prefetch_min=prefetch_min,
         prefetch_max_factor=prefetch_max_factor,
         memory_low_water_mib=mem_low,
@@ -181,33 +180,33 @@ def get_prefetch_tuning(worker_count: int, num_pages: int) -> PrefetchTuning:
         worker_count=worker_count,
         num_pages=num_pages,
     )
-    assert _PREFETCH_TUNING is not None
-    _PREFETCH_TUNING.base_max_window = max(prefetch_min, int(worker_count * prefetch_max_factor))
+    _PREFETCH_TUNING = tuning
 
     logger.debug(
         f"Prefetch tuning: min={prefetch_min}, max_factor={prefetch_max_factor},"
         f" mem_low={mem_low} MiB, mem_high={mem_high} MiB."
     )
 
-    return _PREFETCH_TUNING
+    return tuning
 
 
 def _get_system_profile() -> SystemProfile:
     global _SYSTEM_PROFILE  # noqa: PLW0603
-    if _SYSTEM_PROFILE is None:
-        _SYSTEM_PROFILE = PrefetchTuning.detect_system_profile()
-    assert _SYSTEM_PROFILE is not None
+    profile = _SYSTEM_PROFILE
+    if profile is None:
+        profile = PrefetchTuning.detect_system_profile()
+        _SYSTEM_PROFILE = profile
     logger.debug(
         "System profile detected: cpu_count={cpu}, ram_gb={ram}, "
         "low={low}, mid={mid}, high={high}".format(
-            cpu=_SYSTEM_PROFILE.cpu_count,
-            ram=f"{_SYSTEM_PROFILE.ram_gb:.1f}" if _SYSTEM_PROFILE.ram_gb else "unknown",
-            low=_SYSTEM_PROFILE.is_low_end,
-            mid=_SYSTEM_PROFILE.is_mid_range,
-            high=_SYSTEM_PROFILE.is_high_end,
+            cpu=profile.cpu_count,
+            ram=f"{profile.ram_gb:.1f}" if profile.ram_gb else "unknown",
+            low=profile.is_low_end,
+            mid=profile.is_mid_range,
+            high=profile.is_high_end,
         )
     )
-    return _SYSTEM_PROFILE
+    return profile
 
 
 # We store the result so the autotuner only runs once per process.
