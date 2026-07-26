@@ -463,17 +463,41 @@ class TestDerivedUserPaths:
         assert reader_settings.get_user_history_path() == Path("/app/barks-reader-history.json")
 
 
+def _fs_is_case_insensitive(tmp_path: Path) -> bool:
+    """Report whether `tmp_path` lives on a case-insensitive filesystem (macOS, Windows)."""
+    probe = tmp_path / "Case-probe.tmp"
+    probe.write_text("")
+    try:
+        return (tmp_path / "case-probe.tmp").exists()
+    finally:
+        probe.unlink()
+
+
 class TestWikiBundleIndexGate:
-    def test_a_directory_without_a_lowercase_index_md_is_not_a_bundle(
+    def test_a_directory_without_an_index_md_is_not_a_bundle(
         self, reader_settings: ReaderSettings, mock_config: MagicMock, tmp_path: Path
     ) -> None:
-        """The bundle is detected by its root `index.md` — the name is case-sensitive."""
+        """The bundle is detected by its root `index.md`, not by any other markdown file."""
+        mock_config.getboolean.return_value = True
+        bundle = tmp_path / "wiki"
+        bundle.mkdir()
+        (bundle / "readme.md").write_text("not the right name")
+
+        assert reader_settings._is_valid_wiki_bundle_dir(bundle) is False
+
+        (bundle / "index.md").write_text("# Wiki")
+        assert reader_settings._is_valid_wiki_bundle_dir(bundle) is True
+
+    def test_the_index_md_name_is_case_sensitive(
+        self, reader_settings: ReaderSettings, mock_config: MagicMock, tmp_path: Path
+    ) -> None:
+        """`INDEX.MD` is not `index.md` — only meaningful on a case-sensitive filesystem."""
+        if _fs_is_case_insensitive(tmp_path):
+            pytest.skip("case-insensitive filesystem: INDEX.MD and index.md are the same file")
+
         mock_config.getboolean.return_value = True
         bundle = tmp_path / "wiki"
         bundle.mkdir()
         (bundle / "INDEX.MD").write_text("not the right name")
 
         assert reader_settings._is_valid_wiki_bundle_dir(bundle) is False
-
-        (bundle / "index.md").write_text("# Wiki")
-        assert reader_settings._is_valid_wiki_bundle_dir(bundle) is True
