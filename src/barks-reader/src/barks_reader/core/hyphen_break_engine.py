@@ -306,8 +306,17 @@ class BreakRefinement:
         )
         hyphens = target - disabled
 
+        # Cycle backstop: kill every gap still in play and finish hyphen-less there.
+        #
+        # Believed unreachable, and kept as belt-and-braces rather than load-bearing:
+        # closing a cycle needs some gap to flip membership twice, but the second flip
+        # takes its toggle count to TOGGLE_LIMIT and disables it, which changes
+        # `disabled` — so the (hyphens, disabled) pair can never actually repeat. The
+        # toggle limit always fires first. An exhaustive search over every adversarial
+        # ref-box oracle for one-, two- and three-gap texts never reaches this branch.
+        # Its mutmut survivors are therefore dead-code artefacts, not test gaps; see
+        # docs/mutation-testing.md before trying to kill them.
         if (hyphens, disabled) in self._seen:
-            # Cycle backstop: kill every gap still in play and finish hyphen-less there.
             disabled = disabled | (hyphens ^ self._hyphens)
             hyphens = hyphens - disabled
 

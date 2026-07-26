@@ -37,22 +37,37 @@ set -euo pipefail
 
 repo_root=$(git rev-parse --show-toplevel)
 core_rel="src/barks-reader/src/barks_reader/core"
+tests_rel="src/barks-reader/tests/unit"
 
-# Core modules touched in the working tree, plus (if a base ref is given) any
-# touched by commits since it. Deleted files are dropped - there is nothing left to
-# mutate - as is anything outside core/, which is all this wrapper mutates.
+# Core modules touched in the working tree, plus (if a base ref is given) any touched
+# by commits since it. Deleted files are dropped - there is nothing left to mutate.
+#
+# Changed *tests* count too, mapped back via the tests/unit/test_<module>.py naming
+# convention. Hardening a test without touching its module is the single most common
+# reason to run mutmut at all, and scoping on source changes alone would find nothing
+# to do in exactly that case.
 changed_core_globs() {
     local base="${1:-}"
     {
-        git -C "${repo_root}" diff --name-only HEAD -- "${core_rel}"
-        git -C "${repo_root}" ls-files --others --exclude-standard -- "${core_rel}"
+        git -C "${repo_root}" diff --name-only HEAD -- "${core_rel}" "${tests_rel}"
+        git -C "${repo_root}" ls-files --others --exclude-standard -- "${core_rel}" "${tests_rel}"
         if [[ -n "${base}" ]]; then
-            git -C "${repo_root}" diff --name-only "${base}" -- "${core_rel}"
+            git -C "${repo_root}" diff --name-only "${base}" -- "${core_rel}" "${tests_rel}"
         fi
     } | sort -u | while read -r path; do
-        [[ -n "${path}" && "${path}" == *.py && -f "${repo_root}/${path}" ]] || continue
-        printf '%s\n' "${path/#"${core_rel}"\//*/core/}"
-    done
+        [[ -n "${path}" && "${path}" == *.py ]] || continue
+        case "${path}" in
+            "${core_rel}"/*)
+                [[ -f "${repo_root}/${path}" ]] || continue
+                printf '%s\n' "${path/#"${core_rel}"\//*/core/}"
+                ;;
+            "${tests_rel}"/test_*.py)
+                local module="${path##*/test_}"
+                # Only a top-level core module; nested ones have no naming convention.
+                [[ -f "${repo_root}/${core_rel}/${module}" ]] && printf '*/core/%s\n' "${module}"
+                ;;
+        esac
+    done | sort -u
 }
 
 if [[ "${1:-}" == "--changed" ]]; then

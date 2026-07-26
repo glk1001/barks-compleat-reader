@@ -100,21 +100,28 @@ use the per-module counts below to pick where thin **assertions** cluster, then
 
 ## Pure-logic pass (2026-07-26)
 
-Five Kivy-free modules re-run and burned down. Two of the five accounted for most of
-the win; the leftovers are catalogued under "Known-equivalent survivors" below.
+Five Kivy-free modules burned down over two rounds. Round 1 swept all five; round 2
+went back for the two clusters it had deferred (`get_title_info` and `observe`).
 
-| Module (`barks_reader.core.*`) | Before | After |
-|---|---:|---:|
-| `collection_page_groups` | 53 | **0** |
-| `reader_utils` | 50 | **4** |
-| `filtered_title_lists` | 22 | **1** |
-| `hyphen_break_engine` | 19 | **12** |
-| `reader_formatter` | 56 | **36** |
-| **total** | **200** | **53** |
+| Module (`barks_reader.core.*`) | Before | Round 1 | Round 2 |
+|---|---:|---:|---:|
+| `collection_page_groups` | 53 | **0** | 0 |
+| `reader_utils` | 50 | **4** | 4 |
+| `filtered_title_lists` | 22 | **1** | 1 |
+| `hyphen_break_engine` | 19 | 12 | **6** |
+| `reader_formatter` | 56 | 36 | **9** |
+| **total** | **200** | **53** | **20** |
 
-967 mutants over those five modules, 914 killed — **94.5%** for the scoped set. Note
-the `collection_page_groups` "before" of 53 was entirely the `@cache` artefact above,
-so that module's real starting point was better than the table ever showed; it now has
+Round 2 re-ran only the two modules it targeted (487 mutants, 472 killed — **48 → 15**
+for that pair); the other three carry forward untouched.
+
+**Every one of the 20 remaining survivors is triaged as unkillable** — 14 equivalent
+mutants and 6 dead-code artefacts, both listed below. There is no known real gap left
+in these five modules, so this is the resting state, not a paused burn-down.
+
+Round 1 covered all five modules: 967 mutants, 914 killed (**94.5%**). Note the
+`collection_page_groups` "before" of 53 was entirely the `@cache` artefact above, so
+that module's real starting point was better than the table ever showed; it now has
 direct tests for `_group_ranges` / `_assert_tiling`, which previously had none.
 
 ## Survivors by module (backlog, most-survivors first)
@@ -132,7 +139,7 @@ the table above**. They are also inflated wherever a module memoises (see trap 2
 | `image_selector` | 104 |
 | `fantagraphics_volumes` | 69 |
 | `archive_page_image_source` | 59 |
-| `reader_formatter` | 56 → 36 |
+| `reader_formatter` | 56 → 9 |
 | `collection_page_groups` | 53 → 0 |
 | `reader_utils` | 50 → 4 |
 | `platform_info` | 45 |
@@ -142,7 +149,7 @@ the table above**. They are also inflated wherever a module memoises (see trap 2
 | `screen_metrics` | 27 |
 | `filtered_title_lists` | 22 → 1 |
 | `comic_reader_manager` | 22 |
-| `hyphen_break_engine` | 19 → 12 |
+| `hyphen_break_engine` | 19 → 6 |
 | `reading_history` | 17 |
 | `user_error_messages` | 12 |
 | `comic_book_page_info` | 12 |
@@ -177,15 +184,38 @@ assertion, so writing a test for it would only add brittleness.
 | `reader_formatter.escape_editorial_brackets` (`last = None`) | `text[None:n]` slices identically to `text[0:n]`. |
 | `reader_formatter.get_fitted_title_with_page_nums` ×5 | The `len_combined` bookkeeping after an `"A "`/`"The "` trim is unobservable: that branch only runs when the trim alone makes it fit, so every later `>` test is False regardless of the value. The second `>` → `>=` is likewise unreachable, since at equality `max_title_len == len(title_str)` and `textwrap.shorten` is a no-op. |
 
-Still genuinely open (deferred, not equivalent):
+### Dead code, not a test gap: `BreakRefinement`'s cycle backstop (6)
 
-- `hyphen_break_engine.BreakRefinement.observe` (12) — the toggle-counting and
-  cycle-backstop paths. The single-gap cases are masked by the backstop producing the
-  same end state; killing these needs a ≥2-gap fixture where the toggle-disable and
-  the backstop diverge. Worth doing, but fiddly.
-- `reader_formatter.ReaderFormatter.get_title_info` (24) — a long f-string builder
-  with a cover/one-pager `fanta_page` branch and a payment branch. Mostly needs richer
-  fixtures rather than cleverness.
+`observe__mutmut_27..31` and `_33` all mutate the `if (hyphens, disabled) in
+self._seen:` branch (or the `_seen.add` that only matters if that branch fires). **The
+branch is unreachable.** Closing a cycle requires some gap to flip membership twice,
+but the second flip takes its toggle count to `TOGGLE_LIMIT` and disables the gap,
+which changes `disabled` — so the state pair can never actually repeat. The toggle
+limit always fires first.
+
+Verified by exhaustive search: for one-, two- and three-gap texts, every possible
+adversarial ref-box oracle was explored to `MAX_ITERS` depth (the adversary may report
+*any* subset of still-enabled gaps as breaking, which is strictly more freedom than a
+real text renderer has) and the branch never executed. The block is kept as
+belt-and-braces and commented as such in the source; **don't try to kill these six.**
+
+### Killed in round 2 (2026-07-26)
+
+`get_title_info` (24) and the toggle-counting half of `observe` (5), plus
+`fallback_broken_words`, `get_issue_info`, `get_formatted_submitted_str` and
+`get_title_extra_info` (1 each). Two patterns did nearly all the work, and both
+generalise to the modules still on the backlog:
+
+1. **Compare the whole output, not a fragment.** `get_title_info` is built entirely
+   from mocked collaborators, so `assert "Payslip:" in res` could not see line order,
+   labels, spacing, or the `+=` that appends the footnote marker rather than replacing
+   the issue info. One full-string comparison killed most of the cluster.
+2. **Assert what the collaborator was *called with*.** When a function's output is a
+   mock's return value, the only way to pin which arguments it received is
+   `assert_called_once_with` — every `f(None)` mutant survives otherwise. Relatedly,
+   patch a **real dict** rather than a `MagicMock` when the code does a lookup: a
+   mock's `__contains__`/`__getitem__` answer identically for any key, so they cannot
+   distinguish "looked up the title" from "looked up anything".
 
 **Latent rough edge found on the way:** `get_fitted_title_with_page_nums` raises
 `ValueError` from `textwrap.shorten` when only 1-2 characters are left for the title

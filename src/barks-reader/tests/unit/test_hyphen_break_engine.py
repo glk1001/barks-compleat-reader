@@ -242,6 +242,41 @@ class TestBreakRefinement:
         # After merging, the narrower word no longer breaks -> verification fails.
         assert not refinement.verify_final(self.refs_for(refinement.final_markup(), {}))
 
+    def test_one_gap_is_disabled_while_another_keeps_its_hyphen(self) -> None:
+        """Two gaps, only one of them unstable: disabling it must not disturb the other.
+
+        The single-gap case can't show this - there, the toggle-disable and the cycle
+        backstop happen to land on the same end state, so either could be doing the
+        work. With a second, stably-breaking gap the two diverge, and the pass count
+        pins *when* the disable happens rather than merely that it eventually does.
+        """
+        refinement = BreakRefinement(f"a{SHY}b c{SHY}d")  # gaps 0 and 2
+        statuses = []
+
+        # Pass 1: both words wrap -> both gaps get a hyphen (each toggles once).
+        statuses.append(
+            refinement.observe(self.refs_for(refinement.markup(), {ref(1): 1, ref(3): 1}))
+        )
+        assert refinement.markup() == (
+            f"[ref={ref(0)}]a-[/ref][ref={ref(1)}]b[/ref] "
+            f"[ref={ref(2)}]c-[/ref][ref={ref(3)}]d[/ref]"
+        )
+
+        # Pass 2: "ab"'s hyphen no longer fits so its break moves away (second toggle
+        # -> gap 0 disabled and merged), while "cd" still breaks and keeps its hyphen.
+        statuses.append(refinement.observe(self.refs_for(refinement.markup(), {ref(3): 1})))
+        assert refinement.markup() == f"ab [ref={ref(2)}]c-[/ref][ref={ref(3)}]d[/ref]"
+
+        # Pass 3: nothing left in play -> stable.
+        statuses.append(refinement.observe(self.refs_for(refinement.markup(), {ref(3): 1})))
+
+        assert statuses == [
+            RefinementStatus.CONTINUE,
+            RefinementStatus.CONTINUE,
+            RefinementStatus.STABLE,
+        ]
+        assert refinement.final_markup() == f"ab [ref={ref(2)}]c-[/ref][ref={ref(3)}]d[/ref]"
+
     def test_oscillating_gap_is_disabled(self) -> None:
         refinement = BreakRefinement(f"hy{SHY}phen")
 
@@ -294,6 +329,18 @@ class TestBreakRefinement:
         # In the fallback render "hyphen" wraps (gap 0 breaks) but "abcd" does not.
         refs = self.refs_for(refinement.fallback_markup(), {ref(1): 1})
         assert refinement.fallback_broken_words(refs) == ["hyphen"]
+
+    def test_fallback_broken_words_does_not_blame_the_preceding_word(self) -> None:
+        """Only the word that actually wrapped is named, not its neighbour.
+
+        Each token owns a contiguous span of gap ids, so a span computed one too wide
+        would reach into the *next* token's gaps and report an innocent word. Breaking
+        the second token is what exposes that; breaking the first cannot.
+        """
+        refinement = BreakRefinement(f"hy{SHY}phen ab{SHY}cd")
+        # "abcd" wraps (gap 2 breaks); "hyphen" sits entirely on one line.
+        refs = self.refs_for(refinement.fallback_markup(), {ref(3): 1})
+        assert refinement.fallback_broken_words(refs) == ["abcd"]
 
     def test_fallback_broken_words_empty_when_nothing_wraps(self) -> None:
         refinement = BreakRefinement(f"hy{SHY}phen")

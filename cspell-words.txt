@@ -7,6 +7,7 @@ apos
 arcname
 arcnames
 argtypes
+artefacts
 assertable
 autotune
 autouse
@@ -57,6 +58,7 @@ fontstyle
 fontweight
 frontmatter
 frozensets
+generalise
 getbuffer
 getpid
 getpixel
@@ -100,6 +102,7 @@ monkeypatches
 motionevent
 mtdev
 nbytes
+neighbour
 nonexistentword
 normalised
 normalises
@@ -118,6 +121,7 @@ pyeof
 rasterised
 realised
 reingest
+Relatedly
 relativedelta
 renderable
 returncode
@@ -158,6 +162,7 @@ unauthored
 unauthorised
 undrivable
 unhighlighted
+unkillable
 unrunnable
 unthemed
 untinted

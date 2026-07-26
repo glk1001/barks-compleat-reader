@@ -245,13 +245,15 @@ Known limitation (intentional, not a reader fix): links under the bundle's
       assertions that matter — property tests above are the main lever.
       **Treat 1523 as an upper bound**: any module using `functools.cache`
       reports false survivors (see below), and the pure-logic pass showed the
-      real number is lower. Done so far (2026-07-26): the five pure-logic modules
-      `collection_page_groups` (53→0), `reader_utils` (50→4),
-      `filtered_title_lists` (22→1), `hyphen_break_engine` (19→12) and
-      `reader_formatter` (56→36) — **200→53**, 94.5% of their 967 mutants killed.
-      Remaining there: `get_title_info`'s fixtures and `BreakRefinement.observe`'s
-      toggle/backstop paths; everything else is triaged as equivalent and listed
-      in the doc.
+      real number is lower. Done so far (2026-07-26, two rounds): the five
+      pure-logic modules `collection_page_groups` (53→0), `reader_utils` (50→4),
+      `filtered_title_lists` (22→1), `hyphen_break_engine` (19→6) and
+      `reader_formatter` (56→9) — **200→20**. All 20 leftovers are triaged as
+      unkillable (14 equivalent mutants, 6 in `observe`'s provably-unreachable
+      cycle backstop), so those five modules are **done**, not paused.
+      Next target: pick from `comic_book_loader`, `navigation.tree_spec`,
+      `view_pipeline`, `system_file_paths` — but expect a lower real-gap ratio
+      there, since they are path/IO/threading plumbing rather than pure logic.
 
 > Gotchas when writing more property tests: `@given` doesn't compose with
 > function-scoped pytest fixtures (build inputs in-test or via `st.data()`);

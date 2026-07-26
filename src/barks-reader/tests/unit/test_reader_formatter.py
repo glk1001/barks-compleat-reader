@@ -380,17 +380,17 @@ class TestReaderFormatterClass:
         # Expect structure: [i]PubDate {formatted_submitted}[/i]
         # formatted_submitted: ESC_[SubDate [color=red]1950[/color]ESC_]
 
-        assert "PubDate" in res
-        assert "SubDate" in res
-        assert "1950" in res
-        assert "[color=red]" in res
-        assert "[sup]*[/sup]" not in res
+        assert res == "[i]PubDate ESC_[SubDate [color=red]1950[/color]ESC_][/i]"
+        # Both date helpers read the ComicBookInfo, not the FantaComicBookInfo wrapper.
+        mock_short_pub.assert_called_once_with(fanta_info.comic_book_info)
 
         # Test with footnote
         res_foot = reader_formatter.ReaderFormatter.get_issue_info(
             fanta_info, add_footnote=True, sup_font_size=12, color="red"
         )
-        assert "[sup]*[/sup]" in res_foot
+        assert res_foot == (
+            "[i]PubDate ESC_[SubDate [color=red]1950[/color]ESC_][size=12][sup]*[/sup][/i]"
+        )
 
     @patch.object(reader_formatter, "escape_kivy_markup")
     @patch.object(reader_formatter, reader_formatter.get_short_submitted_day_and_month.__name__)
@@ -405,6 +405,7 @@ class TestReaderFormatterClass:
 
         res = reader_formatter.ReaderFormatter.get_formatted_submitted_str(info, "blue")
         assert res == " E[01 Jan [color=blue]2000[/color]E]"
+        mock_short_sub.assert_called_once_with(info)
 
     def test_get_formatted_submitted_str_unknown_date_is_empty(self) -> None:
         """A wholly unrecorded submitted date (e.g. some covers) omits the bracket."""
@@ -495,21 +496,214 @@ class TestReaderFormatterClass:
 
         res = self.formatter.get_title_info(fanta_info, 50, add_footnote=False)
         assert "FAN_ICON CBDL, Vol 5, 2013, p. 123" in res
+        mock_fanta_page.assert_called_once_with(Titles.IF_THE_HAT_FITS)
 
-    @patch.object(reader_formatter, "BARKS_EXTRA_INFO")
-    def test_get_title_extra_info(self, mock_extra_info: MagicMock) -> None:
+    @patch.object(reader_formatter, "FAN", "FAN_ICON")
+    @patch.object(reader_formatter, "BARKS_PAYMENTS")
+    @patch.object(reader_formatter, "FANTA_SOURCE_COMICS")
+    @patch.object(reader_formatter, reader_formatter.get_formatted_first_published_str.__name__)
+    @patch.object(reader_formatter, reader_formatter.get_long_formatted_submitted_date.__name__)
+    @patch.object(reader_formatter, reader_formatter.get_formatted_payment_info.__name__)
+    def test_get_title_info_exact_layout_and_delegation(
+        self,
+        mock_get_payment: MagicMock,
+        mock_long_sub: MagicMock,
+        mock_fmt_pub: MagicMock,
+        mock_fanta_source: MagicMock,
+        mock_barks_payments: MagicMock,
+    ) -> None:
+        """Pin the whole three-line block, plus what each collaborator is asked for.
+
+        Every part of this string is a mocked collaborator's return value, so the
+        assertions split in two: the literal layout (labels, spacing, markup, line
+        order) is pinned by comparing the whole result, and the *inputs* handed to
+        each collaborator are pinned by the call assertions - a membership check on
+        the output can't see either.
+        """
+        fanta_info = MagicMock()
+        fanta_info.comic_book_info.title = "MyTitle"
+        fanta_info.fantagraphics_volume = 1
+
+        mock_fmt_pub.return_value = "IssueInfo"
+        mock_long_sub.return_value = "SubmittedInfo"
+        mock_vol = MagicMock()
+        mock_vol.volume = "V1"
+        mock_vol.year = "2000"
+        mock_fanta_source.__getitem__.return_value = mock_vol
+        mock_barks_payments.get.return_value = None
+
+        res = self.formatter.get_title_info(fanta_info, 50, add_footnote=False)
+
+        assert res == (
+            "[i]1st Issue:[/i]   [b]IssueInfo[/b]\n"
+            "[i]Submitted:[/i] [b]SubmittedInfo[/b]\n"
+            "[i]Source:[/i]       [b]FAN_ICON CBDL, Vol V1, 2000[/b]"
+        )
+        mock_fmt_pub.assert_called_once_with(
+            fanta_info.comic_book_info,
+            self.formatter._title_info_issue_name,  # noqa: SLF001
+            50,
+        )
+        mock_long_sub.assert_called_once_with(fanta_info.comic_book_info)
+        mock_fanta_source.__getitem__.assert_called_once_with(1)
+        mock_barks_payments.get.assert_called_once_with(fanta_info.comic_book_info.title, None)
+        mock_get_payment.assert_not_called()
+
+    @patch.object(reader_formatter, "FAN", "FAN_ICON")
+    @patch.object(reader_formatter, "BARKS_PAYMENTS")
+    @patch.object(reader_formatter, "FANTA_SOURCE_COMICS")
+    @patch.object(reader_formatter, reader_formatter.get_formatted_first_published_str.__name__)
+    @patch.object(reader_formatter, reader_formatter.get_long_formatted_submitted_date.__name__)
+    @patch.object(reader_formatter, reader_formatter.get_formatted_payment_info.__name__)
+    def test_get_title_info_payslip_line_and_footnote(
+        self,
+        mock_get_payment: MagicMock,
+        mock_long_sub: MagicMock,
+        mock_fmt_pub: MagicMock,
+        mock_fanta_source: MagicMock,
+        mock_barks_payments: MagicMock,
+    ) -> None:
+        """A paid title gains a fourth line, and the footnote marker sizes off the font."""
+        fanta_info = MagicMock()
+        fanta_info.comic_book_info.title = "MyTitle"
+        fanta_info.fantagraphics_volume = 1
+
+        mock_fmt_pub.return_value = "IssueInfo"
+        mock_long_sub.return_value = "SubmittedInfo"
+        mock_vol = MagicMock()
+        mock_vol.volume = "V1"
+        mock_vol.year = "2000"
+        mock_fanta_source.__getitem__.return_value = mock_vol
+
+        payment = MagicMock()
+        payment.payment = 100.0
+        mock_barks_payments.get.return_value = payment
+        mock_get_payment.return_value = "$100"
+
+        res = self.formatter.get_title_info(fanta_info, 50, add_footnote=True)
+
+        # title_info_font_size is 10 (see setup), so the marker is round(1.5 * 10) = 15,
+        # and it is *appended* to the issue info rather than replacing it.
+        assert res == (
+            "[i]1st Issue:[/i]   [b]IssueInfo[size=15][sup]*[/sup][/size][/b]\n"
+            "[i]Submitted:[/i] [b]SubmittedInfo[/b]\n"
+            "[i]Payslip:[/i]      [b]$100[/b]\n"
+            "[i]Source:[/i]       [b]FAN_ICON CBDL, Vol V1, 2000[/b]"
+        )
+        mock_get_payment.assert_called_once_with(payment)
+
+    @patch.object(reader_formatter, "BARKS_PAYMENTS")
+    @patch.object(reader_formatter, "FANTA_SOURCE_COMICS")
+    @patch.object(reader_formatter, reader_formatter.get_formatted_first_published_str.__name__)
+    @patch.object(reader_formatter, reader_formatter.get_long_formatted_submitted_date.__name__)
+    @patch.object(reader_formatter, reader_formatter.get_formatted_payment_info.__name__)
+    def test_get_title_info_zero_payment_still_shows_a_payslip(
+        self,
+        mock_get_payment: MagicMock,
+        mock_long_sub: MagicMock,
+        mock_fmt_pub: MagicMock,
+        mock_fanta_source: MagicMock,
+        mock_barks_payments: MagicMock,
+    ) -> None:
+        """The suppression threshold is strict: a payment *at* CLOSE_TO_ZERO still shows.
+
+        Only a recorded payment strictly below it (i.e. effectively nothing) drops the
+        line, so this pins which side of the boundary is "paid".
+        """
+        fanta_info = MagicMock()
+        fanta_info.comic_book_info.title = "MyTitle"
+        mock_fmt_pub.return_value = "IssueInfo"
+        mock_long_sub.return_value = "SubmittedInfo"
+        mock_get_payment.return_value = "$0"
+        mock_fanta_source.__getitem__.return_value = MagicMock(volume="V1", year="2000")
+
+        payment = MagicMock()
+        payment.payment = reader_formatter.CLOSE_TO_ZERO
+        mock_barks_payments.get.return_value = payment
+        assert "Payslip:" in self.formatter.get_title_info(fanta_info, 50, add_footnote=False)
+
+        payment.payment = reader_formatter.CLOSE_TO_ZERO / 2
+        mock_barks_payments.get.return_value = payment
+        assert "Payslip:" not in self.formatter.get_title_info(fanta_info, 50, add_footnote=False)
+
+    @patch.object(reader_formatter, "FAN", "FAN_ICON")
+    @patch.object(reader_formatter, "BARKS_PAYMENTS")
+    @patch.object(reader_formatter, "FANTA_SOURCE_COMICS")
+    @patch.object(reader_formatter, reader_formatter.get_formatted_first_published_str.__name__)
+    @patch.object(reader_formatter, reader_formatter.get_long_formatted_submitted_date.__name__)
+    @patch.object(reader_formatter, reader_formatter.get_cover_location.__name__)
+    def test_get_title_info_cover_source_carries_its_volume_page(
+        self,
+        mock_cover_location: MagicMock,
+        mock_long_sub: MagicMock,
+        mock_fmt_pub: MagicMock,
+        mock_fanta_source: MagicMock,
+        mock_barks_payments: MagicMock,
+    ) -> None:
+        """Covers take the same ", p. N" suffix as one-pagers, via get_cover_location."""
+        cover_title = next(iter(reader_formatter.COVERS_SET))
+        fanta_info = MagicMock()
+        fanta_info.comic_book_info.title = cover_title
+        fanta_info.fantagraphics_volume = 6
+
+        mock_fmt_pub.return_value = "IssueInfo"
+        mock_long_sub.return_value = "SubmittedInfo"
+        mock_vol = MagicMock()
+        mock_vol.volume = 6
+        mock_vol.year = 2014
+        mock_fanta_source.__getitem__.return_value = mock_vol
+        mock_barks_payments.get.return_value = None
+        mock_cover_location.return_value = (6, 209)
+
+        res = self.formatter.get_title_info(fanta_info, 50, add_footnote=False)
+
+        assert res.endswith("[i]Source:[/i]       [b]FAN_ICON CBDL, Vol 6, 2014, p. 209[/b]")
+        mock_cover_location.assert_called_once_with(reader_formatter.COVER_BY_TITLE[cover_title])
+
+    @patch.object(reader_formatter, "FAN", "FAN_ICON")
+    @patch.object(reader_formatter, "BARKS_PAYMENTS")
+    @patch.object(reader_formatter, "FANTA_SOURCE_COMICS")
+    @patch.object(reader_formatter, reader_formatter.get_formatted_first_published_str.__name__)
+    @patch.object(reader_formatter, reader_formatter.get_long_formatted_submitted_date.__name__)
+    @patch.object(reader_formatter, reader_formatter.get_cover_location.__name__)
+    def test_get_title_info_cover_with_unknown_location_omits_the_page(
+        self,
+        mock_cover_location: MagicMock,
+        mock_long_sub: MagicMock,
+        mock_fmt_pub: MagicMock,
+        mock_fanta_source: MagicMock,
+        mock_barks_payments: MagicMock,
+    ) -> None:
+        """An unlocated cover degrades to a plain Source line rather than "p. None"."""
+        fanta_info = MagicMock()
+        fanta_info.comic_book_info.title = next(iter(reader_formatter.COVERS_SET))
+        fanta_info.fantagraphics_volume = 6
+
+        mock_fmt_pub.return_value = "IssueInfo"
+        mock_long_sub.return_value = "SubmittedInfo"
+        mock_vol = MagicMock()
+        mock_vol.volume = 6
+        mock_vol.year = 2014
+        mock_fanta_source.__getitem__.return_value = mock_vol
+        mock_barks_payments.get.return_value = None
+        mock_cover_location.return_value = None
+
+        res = self.formatter.get_title_info(fanta_info, 50, add_footnote=False)
+
+        assert res.endswith("[i]Source:[/i]       [b]FAN_ICON CBDL, Vol 6, 2014[/b]")
+
+    # A real dict, not a MagicMock: a mock's __contains__/__getitem__ answer the same
+    # for any key, so it can't tell "looked the title up" from "looked anything up".
+    @patch.object(reader_formatter, "BARKS_EXTRA_INFO", {"KnownTitle": "Extra Info"})
+    def test_get_title_extra_info(self) -> None:
         fanta_info = MagicMock()
         fanta_info.comic_book_info.title = "KnownTitle"
-
-        mock_extra_info.__contains__.return_value = True
-        mock_extra_info.__getitem__.return_value = "Extra Info"
 
         res = reader_formatter.ReaderFormatter.get_title_extra_info(fanta_info)
         assert res == f"Ex{SOFT_HYPHEN}tra In{SOFT_HYPHEN}fo"
 
         # Unknown title
         fanta_info.comic_book_info.title = "Unknown"
-        mock_extra_info.__contains__.side_effect = lambda k: k == "KnownTitle"
 
         res = reader_formatter.ReaderFormatter.get_title_extra_info(fanta_info)
         assert res == ""
