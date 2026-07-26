@@ -283,7 +283,7 @@ class TestExceptionMessages:
         err = TooManyArchiveFilesError(num_archive_files=31, num_volumes=29, archive_root=root)
 
         assert str(err) == (
-            f'There are too many archive files in "{root}".There are 31 but there should be 29.'
+            f'There are too many archive files in "{root}". There are 31 but there should be 29.'
         )
         assert err.num_archive_files == 31
         assert err.num_volumes == 29
@@ -294,7 +294,7 @@ class TestExceptionMessages:
         err = DuplicateArchiveFilesError([7, 12], root)
 
         assert str(err) == (
-            f'There are duplicate volume files in "{root}".The duplicate volumes are 7, 12.'
+            f'There are duplicate volume files in "{root}". The duplicate volumes are 7, 12.'
         )
         assert err.duplicates == [7, 12]
         assert err.archive_root == root
@@ -776,7 +776,7 @@ class TestErrorsIdentifyTheArchiveRoot:
 
         msg = str(exc_info.value)
         assert str(archives._archive_root) in msg
-        assert f"There are {NUM_VOLUMES + 1} but there should be {NUM_VOLUMES}." in msg
+        assert f" There are {NUM_VOLUMES + 1} but there should be {NUM_VOLUMES}." in msg
 
 
 class TestVolumeRangeEdges:

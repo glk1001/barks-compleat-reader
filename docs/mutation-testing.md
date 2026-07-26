@@ -244,7 +244,10 @@ the round-3 "assert what the collaborator was called with" pattern, again.
   no test checked that the section and key actually reached the accessor.
 - `ReaderFilePaths.get_comic_cover_file` hardcodes `.jpg` for the plain cover but uses the
   *configured* extension for the edited one. That asymmetry was undocumented and untested;
-  it is now pinned (and is worth a look — it may be a latent bug for PNG panel sets).
+  it is now pinned. **It is correct, not a bug** — checked against the real panel set,
+  where `Covers/` holds 82 `.jpg` and 0 `.png`, while `Covers/edited/` holds 14 `.png` and
+  0 `.jpg`. That is what `MOSTLY_PNG` means: the scanned covers stay JPEG, only
+  hand-edited replacements are PNG.
 - `_page_needs_real_archive` — the gate deciding whether a comic is still readable with
   its volume archive missing — had no direct test.
 

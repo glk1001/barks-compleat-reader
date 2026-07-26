@@ -351,7 +351,12 @@ class TestEditedFilesAreOptIn:
     def test_cover_lookup_defaults_to_the_plain_file(
         self, paths: ReaderFilePaths, panels_dir: Path
     ) -> None:
-        """Covers are always jpg; only the *edited* copy follows the configured ext."""
+        """Covers are always jpg; only the *edited* copy follows the configured ext.
+
+        Deliberate, and what `MOSTLY_PNG` means: the scanned covers stay JPEG and only
+        hand-edited replacements are PNG. (The shipped panel set has 82 jpg / 0 png in
+        `Covers/` and 0 jpg / 14 png in `Covers/edited/`.)
+        """
         title = "Some Title"
         main = panels_dir / "Covers" / f"{title}.jpg"
         edited_dir = panels_dir / "Covers" / EDITED_SUBDIR
