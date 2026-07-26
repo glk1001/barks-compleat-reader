@@ -50,6 +50,11 @@ uv run mutmut run "${@:2}" || true   # mutmut exits non-zero when mutants surviv
 
 echo
 echo "==== survivors by module ===="
-uv run mutmut results 2>/dev/null | grep ': survived' \
-    | sed -E 's/.*barks_reader\.core\.//; s/\.x.?ǁ.*//' \
+# mutmut names mutants <module>.x_<func>__mutmut_N for plain functions and
+# <module>.xǁ<Class>ǁ<method>__mutmut_N for methods. Strip from whichever marker
+# appears so BOTH forms collapse to the module name - an earlier version only
+# handled the ǁ form, which silently under-reported this summary.
+survivors=$(uv run mutmut results 2>/dev/null | grep ': survived')
+printf '%s\n' "${survivors}" | sed -E 's/.*barks_reader\.core\.//; s/\.(x_|xǁ).*//' \
     | sort | uniq -c | sort -rn
+echo "  total survivors: $(printf '%s\n' "${survivors}" | grep -c .)"

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.comic_issues import ISSUE_NAME, Issues
 from barks_reader.core import reader_formatter
 from barks_reader.core.reader_formatter import SOFT_HYPHEN
 
@@ -262,6 +263,55 @@ def test_get_fitted_title_with_page_nums() -> None:
     assert res == "Very..., 1,..."
 
 
+class TestGetFittedTitleWithPageNumsBoundaries:
+    """The exact thresholds of the three-stage shortening, one case per boundary.
+
+    Stages, in order: drop a leading "A "/"The " when that alone is enough, abbreviate
+    a long page list to "<first>,...", then truncate the title with an ellipsis.
+    """
+
+    @staticmethod
+    def _fit(title: str, page_nums: list[str], max_len: int) -> str:
+        return reader_formatter.get_fitted_title_with_page_nums(title, page_nums, max_len)[1]
+
+    def test_exact_fit_keeps_the_leading_article(self) -> None:
+        """At exactly max_len nothing is over-long, so "A " must survive."""
+        assert self._fit("A Title", ["1", "2", "3", "4", "5"], 12) == "A Title, 1-5"
+
+    def test_article_trim_only_when_it_alone_would_fit(self) -> None:
+        """An excess of 3 is more than "A " (2 chars) can recover, so it is not dropped."""
+        assert self._fit("A Title", ["7"], 7) == "A..., 7"
+
+    def test_the_trim_only_when_it_alone_would_fit(self) -> None:
+        """Likewise an excess of 5 is more than "The " (4 chars) can recover."""
+        assert self._fit("The Very Long Title", ["7"], 17) == "The Very..., 7"
+
+    def test_three_page_nums_are_not_abbreviated(self) -> None:
+        """The page list is only collapsed past three entries; three stay in full."""
+        assert self._fit("Long Title Here", ["1", "5", "9"], 18) == "Long..., 1,5,9"
+
+    def test_title_truncation_uses_the_abbreviated_page_length(self) -> None:
+        """After collapsing the page list the combined length is recomputed from it."""
+        assert (
+            self._fit("Very Long Title Here", ["1", "2", "9", "10"], 25)
+            == "Very Long Title..., 1,..."
+        )
+
+    def test_no_room_left_for_the_title_leaves_it_untruncated(self) -> None:
+        """With zero chars to spare the title is returned whole rather than truncated."""
+        assert self._fit("My Title", ["7"], 3) == "My Title, 7"
+
+    def test_room_for_less_than_the_ellipsis_is_rejected(self) -> None:
+        """Pins a rough edge: 1-2 spare chars can't hold "..." and textwrap raises.
+
+        Callers size max_title_with_pages_len from window geometry, so this is not
+        reachable in practice - but the boundary is exactly one char away from the
+        untruncated case above, so it is worth having nailed down.
+        """
+        with pytest.raises(ValueError, match="placeholder too large"):
+            self._fit("My Title", ["7"], 4)
+
+
 class TestReaderFormatterClass:
     @pytest.fixture(autouse=True)
     def setup(self) -> None:
@@ -272,6 +322,29 @@ class TestReaderFormatterClass:
     def test_init(self) -> None:
         # Check if issue names are updated in the instance
         assert "Comics & Stories" in self.formatter._title_info_issue_name  # noqa: SLF001
+
+    def test_init_overrides_exactly_the_four_long_issue_names(self) -> None:
+        """The title-info panel is narrow, so four issue names get shorter labels.
+
+        Pinning both the replacements and the fact that nothing else moves - the copy
+        must stay aligned with ISSUE_NAME, which is indexed by the Issues enum value.
+        """
+        names = self.formatter._title_info_issue_name  # noqa: SLF001
+        assert names[Issues.CS] == "Comics & Stories"
+        assert names[Issues.MC] == "March of Comics"
+        assert names[Issues.USGTD] == "US Goes to Disneyland"
+        assert names[Issues.HDL] == "HDL Junior Woodchucks"
+
+        overridden = {
+            issue
+            for issue, (original, shortened) in enumerate(zip(ISSUE_NAME, names, strict=True))
+            if original != shortened
+        }
+        assert overridden == {Issues.CS, Issues.MC, Issues.USGTD, Issues.HDL}
+
+    def test_init_does_not_mutate_the_shared_issue_name_list(self) -> None:
+        """ISSUE_NAME is module-global; the formatter must work on its own copy."""
+        assert ISSUE_NAME[Issues.CS] == "Comics and Stories"
 
     def test_get_main_title(self) -> None:
         assert (

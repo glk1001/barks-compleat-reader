@@ -27,6 +27,29 @@ uv run mutmut show <mutant-name>
 It is **not** a CI/pre-commit gate — it reruns the test suite per mutant and takes
 minutes. Treat it as an on-demand test-quality probe.
 
+## Two traps that produce fake numbers
+
+mutmut calls `pytest.main()` **many times in one process**. Two consequences bite:
+
+1. **`@given` property tests must be module-level, never test-class methods.** A
+   class-scoped `@given` sees a fresh test-class instance on each in-process run and
+   trips Hypothesis's `HealthCheck.differing_executors` from the second run onwards.
+   That fails the baseline "clean test" step and **aborts the whole mutation run** —
+   which is exactly what happened between commits `2fc4fee` and this one, leaving
+   mutmut unrunnable. Module-level `@given` has no `self`, so the check cannot fire.
+
+2. **`functools.cache` hides mutants.** A memoised result computed under mutant *N*
+   is still cached when mutant *N+1* runs, so the mutated body never executes and the
+   mutant is reported as a **false survivor**. This is what made all 53
+   `collection_page_groups` survivors bogus: `_assert_tiling__mutmut_5` inverts an
+   assert that a passing test *does* cover, yet "survived". Any test covering a
+   `@cache`d entry point needs a `cache_clear()` autouse fixture (see
+   `test_collection_page_groups.py`) — otherwise the survivor counts for that module
+   are meaningless.
+
+When triaging, prefer `uv run mutmut results` over the wrapper's summary if you need
+raw mutant names; the summary collapses them to module counts.
+
 ## Latest full run — `core/` (2026-07-25)
 
 | Outcome | Count |
@@ -46,7 +69,29 @@ branches, `__repr__`-ish formatting. The number to act on is far smaller than 15
 use the per-module counts below to pick where thin **assertions** cluster, then
 `mutmut show` each candidate and decide.
 
+## Pure-logic pass (2026-07-26)
+
+Five Kivy-free modules re-run and burned down. Two of the five accounted for most of
+the win; the leftovers are catalogued under "Known-equivalent survivors" below.
+
+| Module (`barks_reader.core.*`) | Before | After |
+|---|---:|---:|
+| `collection_page_groups` | 53 | **0** |
+| `reader_utils` | 50 | **4** |
+| `filtered_title_lists` | 22 | **1** |
+| `hyphen_break_engine` | 19 | **12** |
+| `reader_formatter` | 56 | **36** |
+| **total** | **200** | **53** |
+
+967 mutants over those five modules, 914 killed — **94.5%** for the scoped set. Note
+the `collection_page_groups` "before" of 53 was entirely the `@cache` artefact above,
+so that module's real starting point was better than the table ever showed; it now has
+direct tests for `_group_ranges` / `_assert_tiling`, which previously had none.
+
 ## Survivors by module (backlog, most-survivors first)
+
+Counts below are from the 2026-07-25 full run and are **stale for the five modules in
+the table above**. They are also inflated wherever a module memoises (see trap 2).
 
 | Module (`barks_reader.core.*`) | Survivors |
 |---|---:|
@@ -58,17 +103,17 @@ use the per-module counts below to pick where thin **assertions** cluster, then
 | `image_selector` | 104 |
 | `fantagraphics_volumes` | 69 |
 | `archive_page_image_source` | 59 |
-| `reader_formatter` | 56 |
-| `collection_page_groups` | 53 |
-| `reader_utils` | 50 |
+| `reader_formatter` | 56 → 36 |
+| `collection_page_groups` | 53 → 0 |
+| `reader_utils` | 50 → 4 |
 | `platform_info` | 45 |
 | `wiki_integration` | 44 |
 | `reader_settings` | 41 |
 | `reader_file_paths` | 37 |
 | `screen_metrics` | 27 |
-| `filtered_title_lists` | 22 |
+| `filtered_title_lists` | 22 → 1 |
 | `comic_reader_manager` | 22 |
-| `hyphen_break_engine` | 19 |
+| `hyphen_break_engine` | 19 → 12 |
 | `reading_history` | 17 |
 | `user_error_messages` | 12 |
 | `comic_book_page_info` | 12 |
@@ -87,6 +132,36 @@ use the per-module counts below to pick where thin **assertions** cluster, then
 | `config_info` | 2 |
 | `comic_book_info` | 2 |
 | `settings_notifier` | 1 |
+
+## Known-equivalent survivors (triaged — do not re-triage)
+
+Deliberately left alive in the five modules above. Each was checked; none is a missing
+assertion, so writing a test for it would only add brittleness.
+
+| Mutant | Why it is not worth killing |
+|---|---|
+| `reader_utils.get_paths_from_directory` ×2 | `.replace("\\", "/")` is a Windows-only path; unreachable on Linux/macOS. |
+| `reader_utils.get_paths_from_zip` (mode arg) | `ZipFile(p, "r")` → `ZipFile(p)`; `"r"` **is** the default. Truly equivalent. |
+| `reader_utils.read_text_paragraphs` (`rstrip(" ")` charset) | Distinguishing it needs a line ending in the literal `X` mutmut injects. |
+| `reader_formatter.mark_phrase_in_text` ×2 | `\xad` → `\xAD` in a regex — same character, same pattern. |
+| `reader_formatter.get_formatted_payment_info` | `datetime.now(UTC)` → `datetime.now(None)`; only the `.year` is used. |
+| `reader_formatter.escape_editorial_brackets` (`last = None`) | `text[None:n]` slices identically to `text[0:n]`. |
+| `reader_formatter.get_fitted_title_with_page_nums` ×5 | The `len_combined` bookkeeping after an `"A "`/`"The "` trim is unobservable: that branch only runs when the trim alone makes it fit, so every later `>` test is False regardless of the value. The second `>` → `>=` is likewise unreachable, since at equality `max_title_len == len(title_str)` and `textwrap.shorten` is a no-op. |
+
+Still genuinely open (deferred, not equivalent):
+
+- `hyphen_break_engine.BreakRefinement.observe` (12) — the toggle-counting and
+  cycle-backstop paths. The single-gap cases are masked by the backstop producing the
+  same end state; killing these needs a ≥2-gap fixture where the toggle-disable and
+  the backstop diverge. Worth doing, but fiddly.
+- `reader_formatter.ReaderFormatter.get_title_info` (24) — a long f-string builder
+  with a cover/one-pager `fanta_page` branch and a payment branch. Mostly needs richer
+  fixtures rather than cleverness.
+
+**Latent rough edge found on the way:** `get_fitted_title_with_page_nums` raises
+`ValueError` from `textwrap.shorten` when only 1-2 characters are left for the title
+(the placeholder `"..."` doesn't fit). Not reachable from real window geometry, and now
+pinned by a test, but it is a genuine unguarded edge if a caller ever shrinks that far.
 
 ## Notes
 

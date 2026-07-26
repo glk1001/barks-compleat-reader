@@ -92,6 +92,7 @@ logr
 markersize
 materialises
 mdit
+memoises
 mktime
 modifyitems
 monkeypatched
@@ -104,6 +105,7 @@ normalised
 normalises
 notvol
 numpad
+nums
 okf
 organised
 passthroughs
@@ -150,11 +152,13 @@ toggleable
 tokenisation
 tokenised
 touchpads
+triaging
 uinput
 unauthored
 unauthorised
 undrivable
 unhighlighted
+unrunnable
 unthemed
 untinted
 vectorizer

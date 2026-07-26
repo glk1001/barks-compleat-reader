@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from barks_reader.core.hyphen_break_engine import (
+    MAX_ITERS,
     REF_PREFIX,
     SOFT_HYPHEN,
     Box,
@@ -97,6 +98,20 @@ class TestBuildMarkup:
         markup = build_markup(parsed, frozenset({0}), EMPTY)
         assert markup == f"[ref={ref(0)}]e-[/ref][ref={ref(1)}]mail[/ref]"
 
+    def test_single_fragment_token_does_not_stop_later_tokens(self) -> None:
+        """A plain word is skipped, not treated as the end of the text."""
+        parsed = parse_marked_text(f"plain hy{SHY}phen")
+        assert build_markup(parsed, EMPTY, EMPTY) == (
+            f"plain [ref={ref(1)}]hy[/ref][ref={ref(2)}]phen[/ref]"
+        )
+
+    def test_hyphen_goes_to_the_run_left_of_the_breaking_gap(self) -> None:
+        """With three runs, only the gap named in `hyphens` gets the dash."""
+        parsed = parse_marked_text(f"hy{SHY}phen{SHY}ation")
+        assert build_markup(parsed, frozenset({1}), EMPTY) == (
+            f"[ref={ref(0)}]hy[/ref][ref={ref(1)}]phen-[/ref][ref={ref(2)}]ation[/ref]"
+        )
+
 
 class TestComputeBreaks:
     def test_same_line_is_no_break(self) -> None:
@@ -137,6 +152,29 @@ class TestComputeBreaks:
         parsed = parse_marked_text(f"hy{SHY}phen")
         # Gap 0 disabled: the merged run needs no partner ref, so nothing to detect.
         assert compute_breaks(parsed, frozenset({0}), {}) == EMPTY
+
+    def test_single_fragment_token_does_not_stop_the_scan(self) -> None:
+        """A plain word before a hyphenatable one must not end the break scan."""
+        parsed = parse_marked_text(f"plain hy{SHY}phen")
+        refs = {ref(1): boxes_on_line(0), ref(2): boxes_on_line(1)}
+        assert compute_breaks(parsed, EMPTY, refs) == frozenset({1})
+
+    def test_y_difference_equal_to_the_tolerance_is_the_same_line(self) -> None:
+        """The tolerance is exclusive: a gap exactly at it is sub-pixel noise, not a break."""
+        parsed = parse_marked_text(f"hy{SHY}phen")
+        refs: dict[str, list[Box]] = {
+            ref(0): [(0.0, 0.0, 9.0, 19.0)],
+            ref(1): [(10.0, 0.5, 19.0, 19.5)],
+        }
+        assert compute_breaks(parsed, EMPTY, refs) == EMPTY
+
+    def test_y_difference_just_over_the_tolerance_is_a_break(self) -> None:
+        parsed = parse_marked_text(f"hy{SHY}phen")
+        refs: dict[str, list[Box]] = {
+            ref(0): [(0.0, 0.0, 9.0, 19.0)],
+            ref(1): [(10.0, 0.6, 19.0, 19.6)],
+        }
+        assert compute_breaks(parsed, EMPTY, refs) == frozenset({0})
 
 
 class TestBreakRefinement:
@@ -240,6 +278,9 @@ class TestBreakRefinement:
             passes += 1
             assert passes <= 20, "refinement failed to terminate"
         assert status is RefinementStatus.FAILED
+        # The cap is counted from zero and checked inclusively, so an unstable text
+        # costs exactly MAX_ITERS renders - no more, and no fewer.
+        assert passes == MAX_ITERS
         assert "-" not in refinement.fallback_markup()
 
     def test_fallback_markup_has_break_points_but_no_hyphens(self) -> None:

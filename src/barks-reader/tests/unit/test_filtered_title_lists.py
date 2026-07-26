@@ -2,7 +2,8 @@ from collections import defaultdict
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_fantagraphics.barks_tags import TagCategories
+from barks_fantagraphics.barks_tags import BARKS_TAG_CATEGORIES_TITLES, TagCategories
+from barks_fantagraphics.barks_titles import Titles
 from barks_fantagraphics.fanta_comics_info import (
     SERIES_COVERS,
     SERIES_CS,
@@ -18,6 +19,43 @@ class TestFilteredTitleLists:
     def setup(self) -> None:
         """Set up a new FilteredTitleLists instance for each test."""
         self.filtered_lists = FilteredTitleLists()
+
+    @pytest.mark.parametrize("include_one_pagers", [True, False])
+    @patch.object(ftl_module, get_filtered_title_lists.__name__)
+    def test_include_one_pagers_in_chrono_flag_is_honoured(
+        self, mock_get_filtered_title_lists: MagicMock, *, include_one_pagers: bool
+    ) -> None:
+        """The constructor flag decides whether one-pagers interleave into the year lists.
+
+        They stay reachable under the One Pagers series node either way; this only
+        controls the chronological nodes.
+        """
+        mock_get_filtered_title_lists.return_value = defaultdict(list)
+        FilteredTitleLists(include_one_pagers_in_chrono=include_one_pagers).get_title_lists()
+        filters = mock_get_filtered_title_lists.call_args.args[0]
+
+        mock_info = MagicMock()
+        mock_info.comic_book_info = MagicMock()
+        mock_info.comic_book_info.submitted_year = 1951
+        mock_info.series_name = SERIES_ONE_PAGERS
+        assert bool(filters["1951"](mock_info)) is include_one_pagers
+
+    def test_year_spans_are_the_inclusive_union_of_their_ranges(self) -> None:
+        """Each per-year span runs from the first range's start to the last range's end.
+
+        The end is inclusive: a tree node exists for every year covered by the ranges,
+        so an off-by-one here silently drops (or invents) a whole year node.
+        """
+        spans = {
+            "chrono": (self.filtered_lists.chrono_years, ftl_module.CHRONO_YEAR_RANGES),
+            "cs": (self.filtered_lists.cs_years, ftl_module.CS_YEAR_RANGES),
+            "us": (self.filtered_lists.us_years, ftl_module.US_YEAR_RANGES),
+            "one_pager": (self.filtered_lists.one_pager_years, ftl_module.ONE_PAGER_YEAR_RANGES),
+            "cover": (self.filtered_lists.cover_years, ftl_module.COVER_YEAR_RANGES),
+        }
+        for name, (years, ranges) in spans.items():
+            assert years[0] == ranges[0][0], f"{name} span starts late"
+            assert years[-1] == ranges[-1][1], f"{name} span ends wrong"
 
     def test_static_key_generators(self) -> None:
         """Test the static helper methods for generating dictionary keys."""
@@ -112,6 +150,55 @@ class TestFilteredTitleLists:
 
         mock_info.series_name = "Other"
         assert not us_filter(mock_info)
+
+    @patch.object(ftl_module, get_filtered_title_lists.__name__)
+    def test_series_filters_exclude_the_synthetic_collections(
+        self, mock_get_filtered_title_lists: MagicMock
+    ) -> None:
+        """The synthetic collections never appear as members of their own series.
+
+        They are reached by selecting a one-pager/cover, so a series filter must reject
+        them even when the series name matches.
+        """
+        mock_get_filtered_title_lists.return_value = defaultdict(list)
+        self.filtered_lists.get_title_lists()
+        filters = mock_get_filtered_title_lists.call_args.args[0]
+
+        mock_info = MagicMock()
+        mock_info.comic_book_info = MagicMock()
+
+        one_pagers_filter = filters[SERIES_ONE_PAGERS]
+        mock_info.series_name = SERIES_ONE_PAGERS
+        mock_info.comic_book_info.title = Titles.ALL_ONE_PAGERS
+        assert not one_pagers_filter(mock_info)
+        mock_info.comic_book_info.title = Titles.GOOD_DEEDS
+        assert one_pagers_filter(mock_info)
+
+        covers_filter = filters[SERIES_COVERS]
+        mock_info.series_name = SERIES_COVERS
+        mock_info.comic_book_info.title = Titles.ALL_COVERS
+        assert not covers_filter(mock_info)
+        mock_info.comic_book_info.title = Titles.GOOD_DEEDS
+        assert covers_filter(mock_info)
+
+    @patch.object(ftl_module, get_filtered_title_lists.__name__)
+    def test_category_filters_select_that_category_s_titles(
+        self, mock_get_filtered_title_lists: MagicMock
+    ) -> None:
+        """A tag-category filter admits exactly the titles tagged into that category."""
+        mock_get_filtered_title_lists.return_value = defaultdict(list)
+        self.filtered_lists.get_title_lists()
+        filters = mock_get_filtered_title_lists.call_args.args[0]
+
+        characters_filter = filters[TagCategories.CHARACTERS.value]
+        tagged = next(iter(BARKS_TAG_CATEGORIES_TITLES[TagCategories.CHARACTERS]))
+
+        mock_info = MagicMock()
+        mock_info.comic_book_info = MagicMock()
+        mock_info.comic_book_info.title = tagged
+        assert characters_filter(mock_info)
+        mock_info.comic_book_info.title = Titles.ALL_COVERS
+        assert not characters_filter(mock_info)
 
     @patch.object(ftl_module, get_filtered_title_lists.__name__)
     def test_one_pager_and_cover_year_filters(
@@ -210,3 +297,30 @@ class TestFilteredTitleLists:
         assert "Book B" in results[decade_key]
         assert "1950-1959" in results
         assert "1960-1971" in results
+
+    @patch.object(ftl_module, get_filtered_title_lists.__name__)
+    def test_add_year_ranges_takes_exactly_its_own_years(
+        self, mock_get_filtered_title_lists: MagicMock
+    ) -> None:
+        """A range aggregates its first..last year inclusive, and nothing outside it.
+
+        The first chrono range is 1942-1946 and the second 1947-1950, so a title in
+        1946 belongs only to the first and one in 1947 only to the second. Both ends
+        are one year away from a neighbouring range, which is what makes the inclusive
+        bound worth pinning.
+        """
+        ret_dict = defaultdict(list)
+        ret_dict.update(
+            {
+                "1942": ["First Year"],
+                "1946": ["Last Year Of Range One"],
+                "1947": ["First Year Of Range Two"],
+                "1950": ["Last Year Of Range Two"],
+            }
+        )
+        mock_get_filtered_title_lists.return_value = ret_dict
+
+        results = self.filtered_lists.get_title_lists()
+
+        assert results["1942-1946"] == ["First Year", "Last Year Of Range One"]
+        assert results["1947-1950"] == ["First Year Of Range Two", "Last Year Of Range Two"]

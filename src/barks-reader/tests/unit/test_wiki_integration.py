@@ -59,27 +59,37 @@ class TestStorySlug:
         assert story_slug('Adventure "Down Under"') == "adventure-down-under"
         assert story_slug("Ten-Dollar Dither") == "ten-dollar-dither"
 
-    # Property-based checks: invariants the slug must hold for *any* title string,
-    # not just the hand-picked examples above. Hypothesis searches for counter-
-    # examples (unicode, control chars, empty, all-punctuation, ...).
 
-    @given(st.text())
-    def test_output_is_always_slug_safe(self, title: str) -> None:
-        """The slug only ever contains lowercase ASCII letters, digits, and hyphens."""
-        assert re.fullmatch(r"[a-z0-9-]*", story_slug(title)) is not None
+# Property-based checks: invariants the slug must hold for *any* title string, not
+# just the hand-picked examples above. Hypothesis searches for counter-examples
+# (unicode, control chars, empty, all-punctuation, ...).
+#
+# These live at module level, deliberately *not* as methods of TestStorySlug: mutmut
+# calls pytest.main() many times in one process, and a class-scoped @given sees a
+# fresh test-class instance each time, tripping HealthCheck.differing_executors from
+# the second run on — which aborts the whole mutation run. Module-level @given has no
+# `self`, so the check can never fire. Keep future property tests module-level too.
 
-    @given(st.text())
-    def test_hyphens_are_collapsed_and_trimmed(self, title: str) -> None:
-        """No run of hyphens survives, and none cling to either end."""
-        slug = story_slug(title)
-        assert "--" not in slug
-        assert slug == slug.strip("-")
 
-    @given(st.text())
-    def test_slug_is_idempotent(self, title: str) -> None:
-        """Re-slugging an already-slugged title is a no-op — a stable join key."""
-        slug = story_slug(title)
-        assert story_slug(slug) == slug
+@given(st.text())
+def test_slug_output_is_always_slug_safe(title: str) -> None:
+    """The slug only ever contains lowercase ASCII letters, digits, and hyphens."""
+    assert re.fullmatch(r"[a-z0-9-]*", story_slug(title)) is not None
+
+
+@given(st.text())
+def test_slug_hyphens_are_collapsed_and_trimmed(title: str) -> None:
+    """No run of hyphens survives, and none cling to either end."""
+    slug = story_slug(title)
+    assert "--" not in slug
+    assert slug == slug.strip("-")
+
+
+@given(st.text())
+def test_slug_is_idempotent(title: str) -> None:
+    """Re-slugging an already-slugged title is a no-op — a stable join key."""
+    slug = story_slug(title)
+    assert story_slug(slug) == slug
 
 
 class TestCanonicalTitle:

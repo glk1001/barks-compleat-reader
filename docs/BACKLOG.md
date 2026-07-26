@@ -238,17 +238,33 @@ Known limitation (intentional, not a reader fix): links under the bundle's
       always in bounds", "no visited entry lost"), then `NavigationModel`
       ("every reachable destination resolves to a valid ViewState") and
       `reader_settings` / `json_settings_manager` (save→load round-trip).
-- [ ] **Burn down the mutmut survivor backlog** — 1523 survivors + 436 no-test
+- [ ] **Burn down the mutmut survivor backlog** — ~1523 survivors + 436 no-test
       mutants (`docs/mutation-testing.md`), heaviest in `comic_book_loader`,
       `navigation.tree_spec`, `view_pipeline`, `system_file_paths`. Triage with
       `mutmut show`, ignore the low-value ones (log/error strings), harden the
       assertions that matter — property tests above are the main lever.
+      **Treat 1523 as an upper bound**: any module using `functools.cache`
+      reports false survivors (see below), and the pure-logic pass showed the
+      real number is lower. Done so far (2026-07-26): the five pure-logic modules
+      `collection_page_groups` (53→0), `reader_utils` (50→4),
+      `filtered_title_lists` (22→1), `hyphen_break_engine` (19→12) and
+      `reader_formatter` (56→36) — **200→53**, 94.5% of their 967 mutants killed.
+      Remaining there: `get_title_info`'s fixtures and `BreakRefinement.observe`'s
+      toggle/backstop paths; everything else is triaged as equivalent and listed
+      in the doc.
 
 > Gotchas when writing more property tests: `@given` doesn't compose with
 > function-scoped pytest fixtures (build inputs in-test or via `st.data()`);
 > slow tests need `@settings(deadline=None)`; keep property tests in the
 > Kivy-free `core` / `barks_fantagraphics` layer (same reason mutmut avoids the
-> UI).
+> UI). **Keep `@given` tests at module level, never as test-class methods** — a
+> class-scoped one trips Hypothesis's `differing_executors` health check under
+> mutmut and aborts the entire mutation run.
+>
+> Gotcha when reading mutmut output: `functools.cache` makes mutants look like
+> survivors (the memoised value outlives the mutant that produced it), so any
+> test covering a cached entry point needs a `cache_clear()` autouse fixture
+> before its survivor count means anything.
 
 ---
 

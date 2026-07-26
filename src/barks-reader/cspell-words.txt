@@ -27,6 +27,7 @@ kivy
 labellayout
 longpath
 modalview
+neighbouring
 nonbody
 notarytool
 nuitka
@@ -40,6 +41,7 @@ relativelayout
 rescanning
 resched
 scrollview
+segfaulting
 setdefaults
 settingitem
 swaptransition
@@ -47,6 +49,7 @@ syskeyboard
 tfidf
 titlebar
 togglebutton
+unflipped
 usefixtures
 vkeyboard
 winfunctype

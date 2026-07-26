@@ -63,6 +63,14 @@ class TestReaderUtils:
         assert result_h == round(max_w * COMIC_PAGE_ASPECT_RATIO)
         assert result_h < content_h
 
+    def test_get_win_dimensions_at_exactly_max_width(self) -> None:
+        """A derived width of exactly max_width still counts as fitting (<=, not <)."""
+        content_h = 1000
+        exact_w = get_win_width_from_height(content_h)
+        width, result_h = get_win_dimensions(content_h, exact_w)
+        assert width == exact_w
+        assert result_h == content_h
+
     def test_get_title_str_from_reader_icon_file(self) -> None:
         """Test extracting title from icon filename."""
         # Case 1: Standard format
@@ -77,6 +85,14 @@ class TestReaderUtils:
         # The regex is r'(-\d+)+$'. If not found, split returns [original_string]
         p3 = Path("JustTitle.png")
         assert get_title_str_from_reader_icon_file(p3) == "JustTitle"
+
+    def test_get_title_str_from_reader_icon_file_strips_flipped_suffix(self) -> None:
+        """A "-flipped" variant resolves to the same title as its unflipped twin."""
+        assert get_title_str_from_reader_icon_file(Path("My-Title-1-1-flipped.png")) == "My-Title"
+        # Only a *trailing* "-flipped" is a variant marker; elsewhere it is part of the title.
+        assert (
+            get_title_str_from_reader_icon_file(Path("-flipped-Title-2-1.png")) == "-flipped-Title"
+        )
 
     def test_title_needs_footnote(self) -> None:
         """Test footnote requirement logic."""
@@ -105,6 +121,20 @@ class TestReaderUtils:
             assert prob_rand_less_equal(60) is True
             # 50 < 40 -> False
             assert prob_rand_less_equal(40) is False
+
+    def test_prob_rand_less_equal_draws_from_1_to_100_inclusive(self) -> None:
+        """The draw is 1..100, so percent=100 is always true and percent=0 never is."""
+        with patch.object(utils_module, randrange.__name__) as mock_rand:
+            mock_rand.return_value = 50
+            prob_rand_less_equal(60)
+            mock_rand.assert_called_with(1, 101)
+
+    def test_prob_rand_less_equal_is_strict_at_the_boundary(self) -> None:
+        """Despite the name, the comparison is strict: draw == percent is False."""
+        with patch.object(utils_module, randrange.__name__) as mock_rand:
+            mock_rand.return_value = 50
+            assert prob_rand_less_equal(50) is False
+            assert prob_rand_less_equal(51) is True
 
     def test_get_rand_int(self) -> None:
         """Test random integer generation."""
@@ -148,6 +178,16 @@ class TestReaderUtils:
         files_rec = get_all_files_in_dir(d, recurse=True)
         assert len(files_rec) == 3  # noqa: PLR2004
 
+    def test_get_all_files_in_dir_does_not_recurse_by_default(self, tmp_path: Path) -> None:
+        """Omitting `recurse` must behave like recurse=False, not silently walk the tree."""
+        d = tmp_path / "subdir"
+        d.mkdir()
+        (d / "f1.txt").touch()
+        (d / "sub_sub").mkdir()
+        (d / "sub_sub" / "f2.txt").touch()
+
+        assert [p.name for p in get_all_files_in_dir(d)] == ["f1.txt"]
+
     def test_read_text_paragraphs(self, tmp_path: Path) -> None:
         """Test reading and formatting text paragraphs."""
         f = tmp_path / "test.txt"
@@ -162,6 +202,31 @@ class TestReaderUtils:
         assert "Line 1 Line 2" in res
         assert "\n\n" in res
         assert res.endswith("Line 3")
+
+    def test_read_text_paragraphs_exact_output(self, tmp_path: Path) -> None:
+        r"""Pin the whole transform, not just fragments of it.
+
+        Per line: newlines become spaces so wrapped source lines rejoin into one
+        paragraph, a blank line becomes a real paragraph break, and a line ending in a
+        backslash keeps its newline (the backslash itself is dropped) - that is the
+        only way to force a hard break inside a paragraph.
+        """
+        f = tmp_path / "test.txt"
+        f.write_text(
+            "Line 1\n"
+            "  Indented\n"  # leading whitespace is preserved (only trailing is stripped)
+            "\n"  # blank line -> paragraph break
+            "a\n"  # a two-character line still joins
+            "ab\\cd\n"  # a backslash mid-line is not a continuation marker
+            "x\\y\n"  # nor is one in the second-to-last position
+            "Hard break\\\n"  # trailing backslash -> keep the newline, drop the backslash
+            "Next",
+            encoding="utf-8",
+        )
+
+        # Per source line, in order: "Line 1 ", "  Indented ", a paragraph break, "a ",
+        # "ab\cd ", "x\y ", "Hard break" plus its kept newline, then "Next".
+        assert read_text_paragraphs(f) == "Line 1   Indented \n\na ab\\cd x\\y Hard break\nNext"
 
     def test_read_title_list(self, tmp_path: Path) -> None:
         """Test reading title list from file."""
@@ -212,8 +277,8 @@ class TestReaderUtils:
             zf.writestr("root.png", "content")
 
         paths = get_paths_from_zip(z_path)
-        assert "folder/file" in paths
-        assert "root" in paths
+        # Exact set: the "folder/" directory entry must be skipped, not listed as "folder".
+        assert paths == {"folder/file", "root"}
 
     def test_get_concat_page_nums_str(self) -> None:
         """Test page number concatenation string generation."""
@@ -323,6 +388,15 @@ class TestReaderUtils:
         with patch.object(utils_module, "ROMAN_NUMERALS_SET", {"i", "ii"}):
             assert get_concat_page_nums_str(["ii", "i"]) == "i,ii"
 
+    def test_get_concat_page_nums_str_multiple_romans_then_arabic(self) -> None:
+        """Several roman pages are comma-joined among themselves before the arabic run."""
+        with (
+            patch.object(utils_module, intspan.__name__) as mock_intspan,
+            patch.object(utils_module, "ROMAN_NUMERALS_SET", {"i", "ii", "iii"}),
+        ):
+            mock_intspan.return_value = "1-3"
+            assert get_concat_page_nums_str(["iii", "i", "ii", "1", "2", "3"]) == "i,ii,iii,1-3"
+
     def test_safe_import_check_handles_malformed_json(self) -> None:
         """Subprocess returning success but malformed stdout falls back to False."""
         with patch.object(utils_module.subprocess, subprocess.run.__name__) as mock_run:
@@ -332,3 +406,49 @@ class TestReaderUtils:
             mock_run.return_value = mock_proc
 
             assert safe_import_check("anything") is False
+
+    def test_safe_import_check_json_without_ok_key_is_false(self) -> None:
+        """Well-formed JSON that omits "ok" must not be read as success."""
+        with patch.object(utils_module.subprocess, subprocess.run.__name__) as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = '{"err": "boom"}'
+            mock_run.return_value = mock_proc
+
+            assert safe_import_check("anything") is False
+
+    def test_safe_import_check_sandbox_subprocess_contract(self) -> None:
+        """Pin how the sandbox subprocess is spawned - each kwarg here carries weight.
+
+        A crashing import (e.g. a segfaulting extension module) must not take down the
+        caller, so the check runs out-of-process: `check=False` keeps a non-zero exit
+        from raising, `capture_output`/`text` are what make stdout parseable, and the
+        timeout stops a hung import blocking startup forever.
+        """
+        with patch.object(utils_module.subprocess, subprocess.run.__name__) as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = '{"ok": true}'
+            mock_run.return_value = mock_proc
+
+            assert safe_import_check("some_module") is True
+
+        args, kwargs = mock_run.call_args
+        assert args[0][:2] == [sys.executable, "-c"]
+        assert "some_module" in args[0][2]
+        assert kwargs == {
+            "check": False,
+            "capture_output": True,
+            "text": True,
+            "timeout": 5.0,
+        }
+
+    def test_safe_import_check_when_compiled_imports_in_process(self) -> None:
+        """In a Nuitka build sys.executable is the app binary, so import directly."""
+        with (
+            patch.object(utils_module, "IS_COMPILED", True),  # noqa: FBT003
+            patch.object(utils_module.subprocess, subprocess.run.__name__) as mock_run,
+        ):
+            assert safe_import_check("json") is True
+            assert safe_import_check("no_such_module_anywhere_xyz") is False
+            mock_run.assert_not_called()
