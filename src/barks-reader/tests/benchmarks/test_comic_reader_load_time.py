@@ -245,12 +245,16 @@ class TestComicReaderLoadTime:
             run_load_and_wait,
             setup=setup,
             teardown=teardown,
-            # Time-to-first-page is heavy-left-tailed: the worker and the scheduler
-            # callback occasionally line up (~0.24s) against a usual ~0.40s, so the
-            # `min` this is gated on is a tail draw, not a floor. At 10 rounds it
-            # moved ~1.75x between runs on an otherwise idle machine and tripped the
-            # 20% comparison roughly 2 runs in 5. More rounds let the min converge.
-            rounds=50,
+            # Time-to-first-page is bimodal: the worker thread and the scheduler
+            # callback occasionally line up (~0.26s) against a usual ~0.40s. At 10
+            # rounds the median landed in either mode and swung 0.29-0.43 between
+            # runs; the gate (median, see run_benchmark.sh) then flapped. 25 rounds
+            # is enough for the mixture to average out - measured over five runs the
+            # median held 0.390-0.412, a ~2% CoV against a 20% threshold. 50 rounds
+            # only tightens that to ~0.9% and costs another ~10s, so it is not worth
+            # it. Re-record the baseline if you change this: the median shifts a
+            # little with the round count, so baseline and gate must match.
+            rounds=25,
             iterations=1,
         )
 
