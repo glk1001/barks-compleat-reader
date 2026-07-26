@@ -254,12 +254,24 @@ Known limitation (intentional, not a reader fix): links under the bundle's
         **598→117** over 1851 mutants (93.6% of checked mutants killed). Of the
         117, 40 are one equivalence class in `system_file_paths.__init__` and 23
         are log wording; the rest are itemised as equivalents in the doc.
-      Next target: `comic_book_loader` (185), `view_pipeline` (148),
-      `archive_page_image_source` (59) — but expect a lower real-gap ratio there,
-      since they are IO/threading plumbing rather than pure logic. The four
-      patterns that did the work last time (structural snapshots, exact tables for
-      literal tables, scripted clocks for benchmarks, `assert_called_once_with`
-      wherever the return value is a mock) are written up in the doc.
+      - **Plumbing pass** (2026-07-26): `reader_settings` (41→6),
+        `archive_page_image_source` (59→11), `screen_metrics` (27→8),
+        `comic_reader_manager` (22→9), `reading_history` (17→10),
+        `reader_file_paths` (37→21) — those six are **done** (203→65, the usual
+        equivalents-and-log-wording floor). `comic_book_loader` (184→155) and
+        `view_pipeline` (148→112) were only **partially** burned down.
+      **Remaining work is `comic_book_loader` and `view_pipeline`** — 267
+      survivors, only ~77 of them log wording, so most are real gaps. They were
+      left partial for structural reasons, not effort: `comic_book_loader`'s two
+      big clusters are a prefetch loop and its error handling on a worker thread,
+      which need a deterministic executor harness (scripted `ThreadPoolExecutor`,
+      stop flag, future-completion order) rather than better assertions;
+      `view_pipeline`'s remainder is spread across ~20 small image-selection
+      methods each needing its own per-view-state case. The five patterns that do
+      the work when there *is* a lever — structural snapshots (including of
+      constructed initial state), exact tables for literal tables, scripted clocks
+      for benchmarks, and `assert_called_once_with` wherever the return value is a
+      mock — are written up in the doc.
 
 > Gotchas when writing more property tests: `@given` doesn't compose with
 > function-scoped pytest fixtures (build inputs in-test or via `st.data()`);

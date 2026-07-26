@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
@@ -300,3 +301,76 @@ class TestFormatting:
 
     def test_format_event_page_no_page(self) -> None:
         assert format_event_page(_make_event()) == ""
+
+
+class TestStoreOnDiskFormat:
+    """The JSON file is the store's own persistence format across app restarts."""
+
+    def test_written_file_has_the_versioned_envelope(self, tmp_path: Path) -> None:
+        store_path = tmp_path / "history.json"
+        store = ReadingHistoryStore(store_path)
+        store.add_event(_make_event(closed_at=datetime(2026, 7, 17, 15, 0)))
+
+        written = json.loads(store_path.read_text(encoding="utf-8"))
+
+        assert written == {
+            "version": 1,
+            "events": [
+                {
+                    "id": "abc123",
+                    "title": "Lost in the Andes!",
+                    "opened_at": "2026-07-17T14:30:00",
+                    "closed_at": "2026-07-17T15:00:00",
+                    "last_display_page": "",
+                    "last_body_page": "",
+                }
+            ],
+        }
+
+    def test_the_file_is_written_indented(self, tmp_path: Path) -> None:
+        """Indented so the history stays hand-inspectable and diffs readably."""
+        store_path = tmp_path / "history.json"
+        ReadingHistoryStore(store_path).add_event(_make_event())
+
+        text = store_path.read_text(encoding="utf-8")
+
+        assert "\n" in text
+        assert '\n    "version": 1,' in text
+
+
+class TestTrackerSessionIdentity:
+    def test_each_session_gets_its_own_generated_event_id(self, tmp_path: Path) -> None:
+        """The id is generated per session, not left blank or shared."""
+        store = ReadingHistoryStore(tmp_path / "history.json")
+        tracker = ReadingHistoryTracker(
+            store,
+            is_enabled=lambda: True,
+            now=_FixedClock(*[datetime(2026, 7, 17, 14, h) for h in range(4)]),
+        )
+
+        tracker.begin("Lost in the Andes!")
+        tracker.end(None)
+        tracker.begin("Lost in the Andes!")
+        tracker.end(None)
+
+        ids = [event.event_id for event in store.get_events()]
+        assert all(ids), "an event was stored without an id"
+        assert len(set(ids)) == 2  # noqa: PLR2004
+
+    def test_ending_twice_is_a_no_op(self, tmp_path: Path) -> None:
+        """`end` clears the open session, so a second close has nothing to write."""
+        store = ReadingHistoryStore(tmp_path / "history.json")
+        tracker = ReadingHistoryTracker(
+            store,
+            is_enabled=lambda: True,
+            now=_FixedClock(datetime(2026, 7, 17, 14, 0), datetime(2026, 7, 17, 14, 25)),
+        )
+
+        tracker.begin("Lost in the Andes!")
+        tracker.end(None)
+        # A second close must not raise, and must not touch the stored event.
+        tracker.end(None)
+
+        events = store.get_events()
+        assert len(events) == 1
+        assert events[0].closed_at == datetime(2026, 7, 17, 14, 25)

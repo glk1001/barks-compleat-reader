@@ -7,9 +7,10 @@ from unittest.mock import MagicMock, patch
 
 import barks_reader.core.reader_setup
 import pytest
-from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.fanta_comics_info import FantaComicBookInfo
+from barks_reader.core import comic_reader_manager as comic_reader_manager_module
 from barks_reader.core.comic_book_page_info import ComicLayout, PageInfo
 from barks_reader.core.comic_reader_manager import ComicReaderManager
 from barks_reader.core.fantagraphics_volumes import MissingVolumeError
@@ -305,3 +306,142 @@ class TestComicReaderManager:
             "My Title"
         )
         assert result is sentinel
+
+
+class TestArticleReading:
+    def test_the_article_is_looked_up_by_its_own_title(
+        self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        """The database is keyed by title string, so the wrong key opens the wrong book."""
+        _attach_reader_screen(manager)
+        mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
+        article = Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_article_as_comic_book(article, "1")
+
+        mock_dependencies["comics_database"].get_comic_book.assert_called_once_with(
+            ENUM_TO_STR_TITLE[article]
+        )
+
+    def test_the_looked_up_comic_is_the_one_prepared(
+        self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        _attach_reader_screen(manager)
+        comic = MagicMock()
+        mock_dependencies["comics_database"].get_comic_book.return_value = comic
+        mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
+
+        with (
+            patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"),
+            patch.object(
+                comic_reader_manager_module,
+                "prepare_comic_for_reading",
+                return_value=(_single_body_page_layout(), MagicMock()),
+            ) as mock_prepare,
+        ):
+            manager.read_article_as_comic_book(Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, "1")
+
+        mock_prepare.assert_called_once_with(
+            comic,
+            mock_dependencies["reader_settings"],
+            mock_dependencies["layout_builder"],
+        )
+
+    def test_fullscreen_is_suppressed_while_the_article_is_opening(
+        self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        """Articles are text, so the reader must not offer fullscreen for them.
+
+        The flag is restored afterwards, so its value has to be captured mid-read.
+        """
+        mock_screen, mock_reader = _attach_reader_screen(manager)
+        mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
+        seen: list[bool] = []
+        mock_reader.read_comic.side_effect = lambda *_a, **_k: seen.append(
+            mock_screen.can_benefit_from_fullscreen
+        )
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_article_as_comic_book(Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, "1")
+
+        assert seen == [False]
+        assert mock_screen.can_benefit_from_fullscreen is True
+
+    def test_fullscreen_is_restored_even_when_the_read_fails(
+        self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        mock_screen, mock_reader = _attach_reader_screen(manager)
+        mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
+        mock_reader.read_comic.side_effect = RuntimeError("boom")
+
+        with (
+            patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"),
+            pytest.raises(RuntimeError),
+        ):
+            manager.read_article_as_comic_book(Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, "1")
+
+        assert mock_screen.can_benefit_from_fullscreen is True
+
+    def test_articles_are_read_with_overrides_active(
+        self, manager: ComicReaderManager, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        """Articles take `_read_comic_book`'s default, which applies overrides."""
+        _attach_reader_screen(manager)
+        _, mock_reader = _attach_reader_screen(manager)
+        mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_article_as_comic_book(Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION, "1")
+
+        assert mock_reader.read_comic.call_args.args[1] is True
+
+
+class TestBarksReadingPassesThrough:
+    @pytest.mark.parametrize("use_overrides", [True, False], ids=["on", "off"])
+    def test_the_override_setting_reaches_the_reader(
+        self,
+        manager: ComicReaderManager,
+        mock_dependencies: dict[str, MagicMock],
+        use_overrides: bool,
+    ) -> None:
+        _, mock_reader = _attach_reader_screen(manager)
+        mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
+        fanta_info = MagicMock(spec=FantaComicBookInfo)
+        fanta_info.comic_book_info = MagicMock()
+        fanta_info.comic_book_info.get_title_str.return_value = "Title"
+
+        with patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"):
+            manager.read_barks_comic_book(
+                fanta_info, MagicMock(), "1", use_overrides_active=use_overrides
+            )
+
+        assert mock_reader.read_comic.call_args.args[1] is use_overrides
+
+
+class TestErrorCloseDelay:
+    def test_the_reader_closes_after_the_configured_delay(
+        self, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        """The delay lets the user read the error popup before the reader vanishes."""
+        scheduler = FakeScheduler()
+        manager = ComicReaderManager(**mock_dependencies, scheduler=scheduler)
+        mock_screen, mock_reader = _attach_reader_screen(manager)
+        mock_dependencies["layout_builder"].build.return_value = _single_body_page_layout()
+
+        fanta_info = MagicMock(spec=FantaComicBookInfo)
+        fanta_info.comic_book_info = MagicMock()
+        fanta_info.comic_book_info.get_title_str.return_value = "Title"
+        mock_reader.read_comic.side_effect = MissingVolumeError(7, Titles.LOST_IN_THE_ANDES)
+
+        with (
+            patch.object(barks_reader.core.reader_setup, "ComicBookImageBuilder"),
+            patch.object(scheduler, "schedule_once", wraps=scheduler.schedule_once) as spy,
+        ):
+            manager.read_barks_comic_book(fanta_info, MagicMock(), "1", use_overrides_active=True)
+
+        spy.assert_called_once_with(
+            mock_screen.close_comic_book_reader,
+            comic_reader_manager_module._CLOSE_READER_ON_ERROR_DELAY_SECS,
+        )
+        assert comic_reader_manager_module._CLOSE_READER_ON_ERROR_DELAY_SECS > 0

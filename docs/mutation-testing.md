@@ -184,6 +184,70 @@ at their practical floor.
 - Year-range groups' lazy title rows were never invoked for CS/US, so the `partial` could
   have closed over the wrong list unnoticed.
 
+## Plumbing pass (2026-07-26) — partially done
+
+The remaining backlog clusters, swept together: **1700 mutants, 535 → 332 survivors**
+(1042 → 1245 killed, 78.9% of checked mutants). The 123 🫥 no-covering-test mutants in
+these modules were left alone, as before.
+
+| Module (`barks_reader.core.*`) | Before | After | State |
+|---|---:|---:|---|
+| `reader_settings` | 41 | **6** | done |
+| `archive_page_image_source` | 59 | **11** | done |
+| `screen_metrics` | 27 | **8** | done |
+| `comic_reader_manager` | 22 | **9** | done |
+| `reading_history` | 17 | **10** | done |
+| `reader_file_paths` | 37 | **21** | done |
+| `comic_book_loader` | 184 | 155 | **partial** |
+| `view_pipeline` | 148 | 112 | **partial** |
+| **total** | **535** | **332** | |
+
+**The six "done" modules went 203 → 65**, and that 65 is the usual floor: `__init__`
+`None` → `""` equivalents, log wording, and the `encoding`/`mode`-default equivalences
+already recorded from earlier rounds.
+
+**`comic_book_loader` and `view_pipeline` are not finished.** Together they hold 267 of
+the 332, of which only ~77 are log/message wording — the rest are real, killable gaps.
+This is what the backlog predicted for IO/threading plumbing, and the reason is
+structural rather than a lack of effort:
+
+- `comic_book_loader`'s two biggest clusters (`_load_pages` 31, `_load_comic_in_thread`
+  28, non-log) are a prefetch loop and its error handling running on a worker thread.
+  Killing those mutants means driving the executor deterministically — scripting the
+  `ThreadPoolExecutor`, the stop flag, and the future-completion order — which is a
+  test-harness build, not an assertion tweak.
+- `view_pipeline`'s remainder is spread thin across ~20 small image-selection methods
+  (`_set_next_top_view_image` 16 is the largest), each needing its own per-view-state
+  case. There is no single lever like the `__init__` snapshot that took 148 → 112.
+
+What *did* work here was the same four patterns as the previous round, plus one new one:
+
+**Assert the whole constructed initial state.** `ViewPipeline.__init__` had 38 survivors —
+every colour, opacity and context field set once and never asserted. One
+`_compute_snapshot()` comparison against a literal `ViewSnapshot` on a freshly built
+pipeline killed 36 of them. Same shape as the round-3 tree snapshot: a wrong initial
+value is a one-frame flash of the wrong background at startup, which no per-state render
+test can see.
+
+`ArchivePageImageSource` (59 → 11) was the clearest win: 35 of its survivors were in
+`_read_image`, whose entire job is choosing *which* loader to call and with what flags
+(`encrypted_zip`, `use_ext_hint`, the extension hint for placeholder pages). Patching
+`load_pil`/`decode_pil` and asserting the call arguments killed the cluster outright —
+the round-3 "assert what the collaborator was called with" pattern, again.
+
+### Real gaps this found
+
+- `ReaderSettings._is_valid_wiki_bundle_dir` matches the bundle's root `index.md`
+  case-sensitively, but nothing covered the name at all — the gate was free to accept
+  `INDEX.MD` and then silently never show the wiki node.
+- `read_setting_from_config` dispatches per field kind to `getboolean`/`getint`/`get`;
+  no test checked that the section and key actually reached the accessor.
+- `ReaderFilePaths.get_comic_cover_file` hardcodes `.jpg` for the plain cover but uses the
+  *configured* extension for the edited one. That asymmetry was undocumented and untested;
+  it is now pinned (and is worth a look — it may be a latent bug for PNG panel sets).
+- `_page_needs_real_archive` — the gate deciding whether a comic is still readable with
+  its volume archive missing — had no direct test.
+
 ## Survivors by module (backlog, most-survivors first)
 
 Counts below are from the 2026-07-25 full run and are **stale for the five modules in
@@ -191,26 +255,26 @@ the table above**. They are also inflated wherever a module memoises (see trap 2
 
 | Module (`barks_reader.core.*`) | Survivors |
 |---|---:|
-| `comic_book_loader` | 185 |
+| `comic_book_loader` | 185 → 155 |
 | `navigation.tree_spec` | 184 → 1 |
-| `view_pipeline` | 148 |
+| `view_pipeline` | 148 → 112 |
 | `system_file_paths` | 131 → 41 |
 | `comic_book_loader_platform_settings` | 110 → 26 |
 | `image_selector` | 104 → 35 |
 | `fantagraphics_volumes` | 69 → 14 |
-| `archive_page_image_source` | 59 |
+| `archive_page_image_source` | 59 → 11 |
 | `reader_formatter` | 56 → 9 |
 | `collection_page_groups` | 53 → 0 |
 | `reader_utils` | 50 → 4 |
 | `platform_info` | 45 |
 | `wiki_integration` | 44 |
-| `reader_settings` | 41 |
-| `reader_file_paths` | 37 |
-| `screen_metrics` | 27 |
+| `reader_settings` | 41 → 6 |
+| `reader_file_paths` | 37 → 21 |
+| `screen_metrics` | 27 → 8 |
 | `filtered_title_lists` | 22 → 1 |
-| `comic_reader_manager` | 22 |
+| `comic_reader_manager` | 22 → 9 |
 | `hyphen_break_engine` | 19 → 6 |
-| `reading_history` | 17 |
+| `reading_history` | 17 → 10 |
 | `user_error_messages` | 12 |
 | `comic_book_page_info` | 12 |
 | `reader_file_paths_resolver` | 10 |

@@ -75,12 +75,14 @@ imread
 imshow
 inducks
 inkscape
+inspectable
 intspan
 itemised
 jpginfo
 jpgs
 keepends
 keynav
+killable
 lanczos
 letterbox
 letterboxed
@@ -97,7 +99,9 @@ markersize
 materialise
 materialises
 mdit
+mebibytes
 memoises
+millimetre
 mktime
 modifyitems
 monkeypatched

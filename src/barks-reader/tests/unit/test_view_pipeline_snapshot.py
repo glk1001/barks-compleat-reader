@@ -13,11 +13,15 @@ from unittest.mock import MagicMock
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.image_selector import FIT_MODE_COVER, ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
+from barks_reader.core.reader_file_paths import ALL_TYPES
 from barks_reader.core.testing import FakeScheduler, ScriptedColorSource
 from barks_reader.core.view_pipeline import ViewPipeline
 from barks_reader.core.view_request import ViewRequest
 from barks_reader.core.view_snapshot import (
+    FunViewSnapshot,
     ScreenVisibility,
+    SearchViewSnapshot,
+    TitleViewSnapshot,
     TopViewSnapshot,
     ViewSnapshot,
 )
@@ -192,3 +196,69 @@ class TestRenderSnapshot:
         assert request.title_str == "Some Title"
         # The one-shot title image file is never carried back out.
         assert request.title_image_file is None
+
+
+class TestFreshPipelineState:
+    """The state a pipeline starts in, before any `render` call.
+
+    Every field is set once in `__init__` and then only ever overwritten by a
+    render; a wrong initial value shows up as a one-frame flash of the wrong
+    background at startup, which no per-state render test can see.
+    """
+
+    def test_initial_snapshot(self) -> None:
+        snap = _make_pipeline()._compute_snapshot()  # noqa: SLF001
+
+        assert snap == ViewSnapshot(
+            view_state=ViewStates.PRE_INIT,
+            top_view=TopViewSnapshot(
+                image_info=ImageInfo(),
+                image_opacity=0.0,
+                image_color=(0, 0, 0, 0),
+            ),
+            fun_view=FunViewSnapshot(
+                is_visible=False,
+                image_info=None,
+                image_color=(0, 0, 0, 0),
+            ),
+            title_view=TitleViewSnapshot(
+                is_visible=False,
+                image_info=ImageInfo(),
+                image_color=(0, 0, 0, 0),
+            ),
+            screen_visibility=ScreenVisibility(),
+            search_view=SearchViewSnapshot(is_visible=False, mode="", image_info=None),
+        )
+
+    def test_no_navigation_context_is_set(self) -> None:
+        pipeline = _make_pipeline()
+
+        assert pipeline._current_year_range == ""  # noqa: SLF001
+        assert pipeline._current_cs_year_range == ""  # noqa: SLF001
+        assert pipeline._current_us_year_range == ""  # noqa: SLF001
+        assert pipeline._current_category == ""  # noqa: SLF001
+        assert pipeline._current_bottom_view_title == ""  # noqa: SLF001
+        assert pipeline._current_tag is None  # noqa: SLF001
+        assert pipeline._current_tag_group is None  # noqa: SLF001
+
+    def test_no_rotation_timers_are_running(self) -> None:
+        """Timers are armed by `render`, not by construction."""
+        pipeline = _make_pipeline()
+
+        assert pipeline._top_view_change_event is None  # noqa: SLF001
+        assert pipeline._bottom_view_change_fun_image_event is None  # noqa: SLF001
+
+    def test_the_fun_title_pool_is_primed_with_no_theme_filter(self) -> None:
+        """`__init__` calls `_set_fun_image_themes(None)`, so the pool is ready.
+
+        No theme filter means every title and every image type — so the first fun
+        image needs no extra work at startup.
+        """
+        pipeline = _make_pipeline()
+
+        assert pipeline._fun_image_themes is None  # noqa: SLF001
+        cached = pipeline._cached_fun_titles  # noqa: SLF001
+        assert cached is not None
+        titles, file_types = cached
+        assert titles == pipeline._title_lists["All"]  # noqa: SLF001
+        assert file_types == ALL_TYPES

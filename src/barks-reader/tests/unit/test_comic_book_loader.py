@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import threading
 import time
+import zipfile
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
@@ -606,3 +607,158 @@ def test_get_double_page_image_ready_for_reading_composes_two_pages(
     out_image = Image.open(io.BytesIO(data))
     assert out_image.width == 100  # noqa: PLR2004
     assert out_image.height == 80  # noqa: PLR2004
+
+
+# ---------------------------------------------------------------------------
+# _page_needs_real_archive - the missing-volume readability gate
+# ---------------------------------------------------------------------------
+
+
+def _page(filename: str, page_type: PageType = PageType.BODY) -> MagicMock:
+    page_info = MagicMock()
+    page_info.srce_page.page_filename = filename
+    page_info.srce_page.page_type = page_type
+    page_info.page_type = page_type
+    return page_info
+
+
+class TestPageNeedsRealArchive:
+    """Decides whether a comic is still readable with its volume archive absent."""
+
+    def test_a_title_page_is_bundled(self) -> None:
+        archive = MagicMock()
+        archive.needs_real_archive_for.return_value = True
+
+        assert (
+            loader_module._page_needs_real_archive(_page("empty_page.jpg", PageType.TITLE), archive)
+            is False
+        )
+        archive.needs_real_archive_for.assert_not_called()
+
+    def test_a_blank_page_is_bundled(self) -> None:
+        """Same placeholder filename, any page type other than TITLE."""
+        archive = MagicMock()
+        archive.needs_real_archive_for.return_value = True
+
+        assert (
+            loader_module._page_needs_real_archive(_page("empty_page.jpg", PageType.BODY), archive)
+            is False
+        )
+        archive.needs_real_archive_for.assert_not_called()
+
+    def test_a_real_page_is_looked_up_by_its_page_number(self) -> None:
+        """The archive's page maps are keyed by the filename stem, not the filename."""
+        archive = MagicMock()
+        archive.needs_real_archive_for.return_value = True
+
+        result = loader_module._page_needs_real_archive(_page("258.jpg"), archive)
+
+        archive.needs_real_archive_for.assert_called_once_with("258")
+        assert result is True
+
+    def test_a_bundled_override_page_does_not_need_the_archive(self) -> None:
+        archive = MagicMock()
+        archive.needs_real_archive_for.return_value = False
+
+        assert loader_module._page_needs_real_archive(_page("258.jpg"), archive) is False
+
+
+class TestOverrideArchiveOpening:
+    def test_the_override_zip_is_opened_for_reading(
+        self, loader: ComicBookLoader, mock_reader_settings: MagicMock, tmp_path: Path
+    ) -> None:
+        """A volume with overrides gets its bundled zip opened and attached."""
+        mock_reader_settings.use_prebuilt_archives = False
+        override_zip = tmp_path / "07-overrides.zip"
+        with zipfile.ZipFile(override_zip, "w") as zf:
+            zf.writestr("258.png", b"x")
+
+        fake_archive = MagicMock()
+        fake_archive.is_missing = False
+        fake_archive.has_overrides.return_value = True
+        fake_archive.override_archive_filename = override_zip
+        fake_archive.archive_filename = tmp_path / "07.cbz"
+
+        archives = MagicMock()
+        archives.get_fantagraphics_archive.return_value = fake_archive
+        loader._fanta_volume_archives = archives
+
+        loader.resolve_archive_for_comic(_make_fanta_info(volume="FANTA_07"), _make_page_map())
+
+        opened = fake_archive.override_archive
+        assert isinstance(opened, zipfile.ZipFile)
+        assert opened.filename == str(override_zip)
+        assert opened.namelist() == ["258.png"]
+        opened.close()
+
+    def test_no_override_zip_is_opened_when_the_volume_has_none(
+        self, loader: ComicBookLoader, mock_reader_settings: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_reader_settings.use_prebuilt_archives = False
+        fake_archive = MagicMock()
+        fake_archive.is_missing = False
+        fake_archive.has_overrides.return_value = False
+        fake_archive.archive_filename = tmp_path / "07.cbz"
+        fake_archive.override_archive = None
+
+        archives = MagicMock()
+        archives.get_fantagraphics_archive.return_value = fake_archive
+        loader._fanta_volume_archives = archives
+
+        loader.resolve_archive_for_comic(_make_fanta_info(volume="FANTA_07"), _make_page_map())
+
+        assert fake_archive.override_archive is None
+
+
+class TestLoaderInitialState:
+    def test_a_fresh_loader_holds_no_comic(self, loader: ComicBookLoader) -> None:
+        """Nothing is loaded until `set_comic`, and loading is *not* pre-stopped."""
+        assert loader._stop is False
+        assert loader._current_comic_desc == ""
+        assert loader._image_source is None
+        assert loader._images == []
+        assert loader._image_load_order == []
+        assert loader._index_to_key == {}
+        assert loader._page_map == OrderedDict()
+        assert loader._priority_keys.empty()
+        assert loader._fanta_volume_archives is None
+
+    def test_the_window_size_is_kept_for_page_resizing(self, loader: ComicBookLoader) -> None:
+        assert loader._max_window_width == 800  # noqa: PLR2004
+        assert loader._max_window_height == 600  # noqa: PLR2004
+
+    def test_closing_without_a_comic_is_a_no_op(self, loader: ComicBookLoader) -> None:
+        loader.close_comic()
+
+        assert loader._current_comic_desc == ""
+        assert loader._stop is False
+
+
+class TestResidentMemoryReading:
+    def test_rss_is_reported_in_mebibytes(self) -> None:
+        process = MagicMock()
+        process.memory_info.return_value.rss = 150 * 1024 * 1024
+
+        with patch.object(loader_module.psutil, "Process", return_value=process):
+            assert ComicBookLoader._process_rss_mib() == 150.0  # noqa: PLR2004
+
+
+class TestCachedImageAccess:
+    def test_the_stream_is_rewound_before_it_is_handed_out(self, loader: ComicBookLoader) -> None:
+        """A page can be displayed twice; the second read must not start mid-stream."""
+        stream = io.BytesIO(b"png-bytes")
+        stream.seek(5)
+        loader._images = [(stream, ".png")]
+
+        returned, ext = loader.get_image_ready_for_reading(0)
+
+        assert returned.tell() == 0
+        assert returned.read() == b"png-bytes"
+        assert ext == ".png"
+
+    def test_an_out_of_range_page_index_is_rejected(self, loader: ComicBookLoader) -> None:
+        """The bound is exclusive: index == len is one past the last page."""
+        loader._images = [(io.BytesIO(b"x"), ".png")]
+
+        with pytest.raises(AssertionError):
+            loader.get_image_ready_for_reading(1)
