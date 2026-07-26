@@ -7,12 +7,15 @@ a wiki page path, and the table decoration from our own is_barks_title.
 
 from __future__ import annotations
 
+import hashlib
 import re
 import zipfile
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
+from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_reader.core import wiki_integration
 from barks_reader.core.reader_consts_and_types import (
     ACTION_BAR_BG_COLOR,
@@ -21,8 +24,11 @@ from barks_reader.core.reader_consts_and_types import (
     RAW_ACTION_BAR_SIZE_Y,
     RAW_QUIT_FENCE_WIDTH,
 )
+from barks_reader.core.reader_file_paths import ALL_TYPES
+from barks_reader.core.reader_formatter import escape_kivy_markup, get_action_bar_title
 from barks_reader.core.reader_palette import color_to_markup_hex, theme
 from barks_reader.core.wiki_integration import (
+    WIKI_TITLE,
     BarksPanelsImageProvider,
     BarksTableRewriter,
     canonical_title,
@@ -53,6 +59,15 @@ class TestStorySlug:
         """A typographic apostrophe (U+2019) behaves like a straight one."""
         title = f"Ten Cents{chr(0x2019)} Worth of Trouble"
         assert story_slug(title) == "ten-cents-worth-of-trouble"
+
+    def test_curly_apostrophe_dropped_mid_word(self) -> None:
+        """Word-internal is where dropping and hyphenating actually differ.
+
+        After a trailing apostrophe the following space collapses the hyphen
+        anyway, so "Ten Cents' Worth" cannot tell the two apart — "Don't" can.
+        """
+        assert story_slug(f"Don{chr(0x2019)}t Give Up") == "dont-give-up"
+        assert story_slug("Don't Give Up") == "dont-give-up"
 
     def test_non_alphanumerics_collapse_to_single_hyphen(self) -> None:
         """Quotes and spaces become one hyphen; leading/trailing hyphens stripped."""
@@ -125,6 +140,19 @@ class TestStoryPageTitle:
         assert story_page_title({"title": "Not a Barks Story"}, page) is None
         assert story_page_title({}, page) is None
 
+    def test_canonical_title_without_a_fantagraphics_entry_is_none(self, tmp_path: Path) -> None:
+        """Both halves of the gate matter: a real Titles member can still miss.
+
+        Most of the Titles enum (192 of them) is outside the Fantagraphics
+        collection — those have no comic to open and no backgrounds to draw
+        from, so they are not story pages either.
+        """
+        outside = next(t for t in Titles if t not in ALL_FANTA_COMIC_BOOK_INFO)
+        title_str = ENUM_TO_STR_TITLE[outside]
+        assert canonical_title(title_str) is outside  # a real canonical title...
+        page = tmp_path / "okf" / "concept" / "stories" / "misc" / "x.md"
+        assert story_page_title({"title": title_str}, page) is None  # ...still gated out
+
 
 class TestStoryPageTitleExtras:
     def test_extras_title_is_still_a_story_page(self, tmp_path: Path) -> None:
@@ -195,11 +223,20 @@ class TestWikiSessionPath:
         app_data = tmp_path / "app"
         bundle = tmp_path / "okf-bundle"
         session = wiki_session_path(app_data, bundle)
-        assert session.parent == app_data
-        assert session.name.startswith("okf-reader-session-")
-        assert session.suffix == ".json"
+        digest = hashlib.sha256(str(bundle.resolve()).encode("utf-8")).hexdigest()[:12]
+        # The whole name, so the digest length is pinned too: a longer slice
+        # would still start with the right characters.
+        assert session == app_data / f"okf-reader-session-{digest}.json"
         # Stable across calls for the same bundle.
         assert wiki_session_path(app_data, bundle) == session
+
+    def test_digest_is_of_the_resolved_path(self, tmp_path: Path) -> None:
+        """Two spellings of one bundle path share a session file."""
+        app_data = tmp_path / "app"
+        bundle = tmp_path / "okf-bundle"
+        bundle.mkdir()
+        indirect = tmp_path / "sub" / ".." / "okf-bundle"
+        assert wiki_session_path(app_data, indirect) == wiki_session_path(app_data, bundle)
 
     def test_different_bundles_get_different_session_files(self, tmp_path: Path) -> None:
         """Opening a different bundle can never clobber another bundle's resume point."""
@@ -210,10 +247,26 @@ class TestWikiSessionPath:
 
 
 class TestBarksTableRewriter:
+    def test_non_barks_set_is_built_from_our_own_title_info(self) -> None:
+        """Both the plain and the kivy-escaped spelling of every non-Barks title.
+
+        Cells reach `rewrite` already escaped by okf_reader's renderer, so the
+        set has to hold that form too. Today no non-Barks title contains `&[]`,
+        so the escaped spelling is a duplicate — asserting the whole set is what
+        keeps that line honest if one ever does.
+        """
+        rewriter = BarksTableRewriter()
+        expected = set()
+        for cbi in BARKS_TITLE_INFO:
+            if not cbi.is_barks_title:
+                expected.add(cbi.get_title_str())
+                expected.add(escape_kivy_markup(cbi.get_title_str()))
+        assert rewriter._non_barks_titles == expected  # noqa: SLF001
+
     def test_non_barks_title_parenthesized(self) -> None:
         """A non-Barks title in a Title column gains parentheses; Barks titles don't."""
         rewriter = BarksTableRewriter()
-        non_barks = next(iter(rewriter._non_barks_titles))  # noqa: SLF001
+        non_barks = next(c.get_title_str() for c in BARKS_TITLE_INFO if not c.is_barks_title)
         header, body = rewriter.rewrite(
             ["Title", "Date"], [[non_barks, "1944-06"], ["Lost in the Andes!", "1948-12"]]
         )
@@ -297,7 +350,7 @@ class TestBarksPanelsImageProvider:
         assert bg.data is None
 
     def test_story_page_selects_title_specific_panel(self, tmp_path: Path) -> None:
-        """A story page draws from that title's own panels."""
+        """A story page draws from that title's own panels, across every panel type."""
         panel = tmp_path / "panel.png"
         provider, selector = self._make_provider(encrypted=False)
         selector.get_random_image_for_title.return_value = panel
@@ -305,10 +358,52 @@ class TestBarksPanelsImageProvider:
         page = tmp_path / "okf" / "concept" / "stories" / "donald-duck-adventures" / "x.md"
         bg = provider.background_for({"title": "Lost in the Andes!"}, page)
 
-        selector.get_random_image_for_title.assert_called_once()
+        # The selector takes the *canonical string* title, not the enum, and is
+        # asked for every panel directory — the only way to see either is the
+        # call args, since the panel itself is just the mock's return value.
+        selector.get_random_image_for_title.assert_called_once_with(
+            ENUM_TO_STR_TITLE[Titles.LOST_IN_THE_ANDES], ALL_TYPES
+        )
         selector.get_random_image.assert_not_called()
         assert bg is not None
         assert bg.path == panel
+
+    def test_non_story_page_draws_from_the_whole_collection(self, tmp_path: Path) -> None:
+        """Any other page gets a random panel from every Fantagraphics title."""
+        panel = tmp_path / "panel.png"
+        provider, selector = self._make_provider(encrypted=False)
+        selector.get_random_image.return_value.filename = panel
+
+        provider.background_for({}, tmp_path / "okf" / "reference" / "x.md")
+
+        selector.get_random_image.assert_called_once_with(list(ALL_FANTA_COMIC_BOOK_INFO.values()))
+        selector.get_random_image_for_title.assert_not_called()
+
+    def test_default_selector_is_built_over_the_settings_file_paths(self) -> None:
+        """Standalone use (no selector passed) builds one from the reader settings.
+
+        The embedded host passes its own selector so the wiki shares its
+        no-repeat memory; the launcher relies on this branch instead.
+        """
+        settings = MagicMock()
+        with (
+            patch.object(wiki_integration, "ImageSelector") as mock_selector_cls,
+            patch.object(wiki_integration, "ReaderFilePathsResolver") as mock_resolver_cls,
+        ):
+            provider = BarksPanelsImageProvider(settings)
+
+        mock_resolver_cls.assert_called_once_with(settings.file_paths)
+        mock_selector_cls.assert_called_once_with(mock_resolver_cls.return_value, settings)
+        assert provider._selector is mock_selector_cls.return_value  # noqa: SLF001
+
+    def test_supplied_selector_is_used_as_is(self) -> None:
+        """Passing a selector must not build a second one."""
+        selector = MagicMock()
+        with patch.object(wiki_integration, "ImageSelector") as mock_selector_cls:
+            provider = BarksPanelsImageProvider(MagicMock(), selector)
+
+        mock_selector_cls.assert_not_called()
+        assert provider._selector is selector  # noqa: SLF001
 
     def test_no_panel_found_is_none(self, tmp_path: Path) -> None:
         provider, selector = self._make_provider(encrypted=True)
@@ -332,6 +427,41 @@ class TestWikiTopBarSpec:
         assert spec.quit_fence_width == RAW_QUIT_FENCE_WIDTH
         assert spec.height == RAW_ACTION_BAR_SIZE_Y
 
+    def test_title_is_the_wiki_name_in_the_carl_barks_font(
+        self, mock_font_manager: MagicMock
+    ) -> None:
+        """The bar title is markup, not a plain string — same builder as the kv bars."""
+        spec = wiki_top_bar_spec(mock_font_manager, MagicMock())
+        assert spec.title_markup == get_action_bar_title(mock_font_manager, WIKI_TITLE)
+        assert WIKI_TITLE in spec.title_markup
+
+    def test_every_icon_comes_from_its_own_system_path(self, mock_font_manager: MagicMock) -> None:
+        """Each icon slot is wired to the matching SystemFilePaths getter.
+
+        Five same-shaped `Path | None` fields sitting next to each other is
+        exactly where a transposition hides, and the viewer would just show the
+        wrong picture.
+        """
+        sys_paths = MagicMock()
+        spec = wiki_top_bar_spec(mock_font_manager, sys_paths)
+        assert spec.icon_path is sys_paths.get_barks_reader_app_window_icon_path.return_value
+        assert spec.back_icon_path is sys_paths.get_barks_reader_go_back_icon_file.return_value
+        assert (
+            spec.contrast_on_icon_path
+            is sys_paths.get_barks_reader_contrast_on_icon_file.return_value
+        )
+        assert (
+            spec.contrast_off_icon_path
+            is sys_paths.get_barks_reader_contrast_off_icon_file.return_value
+        )
+        assert spec.close_icon_path is sys_paths.get_barks_reader_close_icon_file.return_value
+
+    def test_on_close_is_routed_and_defaults_to_none(self, mock_font_manager: MagicMock) -> None:
+        """The embedded screen's leave handler; the standalone launcher passes none."""
+        on_close = MagicMock()
+        assert wiki_top_bar_spec(mock_font_manager, MagicMock(), on_close).on_close is on_close
+        assert wiki_top_bar_spec(mock_font_manager, MagicMock()).on_close is None
+
 
 class TestWikiThemeSpec:
     def test_maps_active_palette_roles_onto_the_viewer(self) -> None:
@@ -351,6 +481,7 @@ class TestWikiThemeSpec:
         assert spec.heading_hex == title_hex
         assert spec.title_hex == title_hex
         assert spec.crumb_hex == color_to_markup_hex(theme().text_secondary).lstrip("#")
+        assert spec.icon_tint == theme().icon_tint
 
     def test_links_and_dir_text_stay_the_viewer_defaults(self) -> None:
         """Hyperlinks keep the recognizable blue; directory rows stay white."""

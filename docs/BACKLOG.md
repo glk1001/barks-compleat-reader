@@ -260,6 +260,15 @@ Known limitation (intentional, not a reader fix): links under the bundle's
         `reader_file_paths` (37→21) — those six are **done** (203→65, the usual
         equivalents-and-log-wording floor). `comic_book_loader` (184→155) and
         `view_pipeline` (148→112) were only **partially** burned down.
+      - **Never-swept pass** (2026-07-26): `platform_info` (45→3) and
+        `wiki_integration` (44→10) — the two largest modules no round had
+        touched, both now **done** with all 13 remaining triaged as equivalent.
+        `platform_info`'s 45 were **entirely fake**: its tests used
+        `patch.dict(os.environ, ..., clear=True)`, which strips mutmut's own
+        `MUTANT_UNDER_TEST` so the trampoline always ran the original body —
+        and also killed the pre-flight check, aborting any run scoped to that
+        module. Recorded as trap 3 in the doc; **check it before believing any
+        survivor count from a module whose tests touch `os.environ`.**
       **Remaining work is `comic_book_loader` and `view_pipeline`** — 267
       survivors, only ~77 of them log wording, so most are real gaps. They were
       left partial for structural reasons, not effort: `comic_book_loader`'s two

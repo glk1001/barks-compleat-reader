@@ -56,9 +56,10 @@ The 436 🫥 *no covering test* mutants are a **separate problem** and won't mov
 matter how many survivors get killed — they are code the Kivy-free suite never
 reaches. That is the GUI acceptance-harness item in `docs/BACKLOG.md`, not this one.
 
-## Two traps that produce fake numbers
+## Three traps that produce fake numbers
 
-mutmut calls `pytest.main()` **many times in one process**. Two consequences bite:
+The first two follow from mutmut calling `pytest.main()` **many times in one process**;
+the third from how it decides which mutant is live.
 
 1. **`@given` property tests must be module-level, never test-class methods.** A
    class-scoped `@given` sees a fresh test-class instance on each in-process run and
@@ -76,8 +77,25 @@ mutmut calls `pytest.main()` **many times in one process**. Two consequences bit
    `test_collection_page_groups.py`) — otherwise the survivor counts for that module
    are meaningless.
 
+3. **`patch.dict(os.environ, ..., clear=True)` disarms mutmut entirely.** mutmut
+   picks the live mutant by reading `os.environ["MUTANT_UNDER_TEST"]` in a trampoline
+   on **every call** to a mutated function. Clearing the environment removes that
+   variable, so the trampoline falls back to the *original* body and every mutant in
+   the function is a **false survivor**. That is the whole of `platform_info`'s 45:
+   with the clear removed it went to 3. Worse, the same clear defeats mutmut's
+   pre-flight "force the tests to fail" check, so a run scoped to only that module
+   dies with `FAILED: Unable to force test failures` and produces no results at all.
+   Isolate by copying the real environment minus the keys under test (see
+   `platform_env` in `test_platform_info.py`), never by clearing it.
+
 When triaging, prefer `uv run mutmut results` over the wrapper's summary if you need
 raw mutant names; the summary collapses them to module counts.
+
+**mutmut only mutates function bodies.** Module-level constants, class attributes and
+enum members are copied through untouched — `PLATFORM = _get_platform()`,
+`IS_MACOS = ...` and all seven `Platform` values generate zero mutants. A module whose
+risk lives in a literal table therefore scores well without that table being tested at
+all; a mutation score is evidence about the *code paths*, not the data.
 
 ## Latest full run — `core/` (2026-07-25)
 
@@ -251,6 +269,56 @@ the round-3 "assert what the collaborator was called with" pattern, again.
 - `_page_needs_real_archive` — the gate deciding whether a comic is still readable with
   its volume archive missing — had no direct test.
 
+## Never-swept pass (2026-07-26) — `platform_info` + `wiki_integration`
+
+The two largest modules no earlier round had touched: **286 mutants, 89 → 13
+survivors**, and every one of the 13 is triaged as equivalent (listed below). Both
+modules are **done**.
+
+| Module (`barks_reader.core.*`) | Before | After |
+|---|---:|---:|
+| `platform_info` | 45 | **3** |
+| `wiki_integration` | 44 | **10** |
+| **total** | **89** | **13** |
+
+`platform_info`'s 45 were **all fake** — trap 3 above, `patch.dict(os.environ, ...,
+clear=True)` stripping mutmut's own `MUTANT_UNDER_TEST`. The existing tests already
+covered every branch; they simply could not be seen. Fixing the isolation dropped it to
+3 without any new branch coverage, and the module then aborted no more runs. **Any
+survivor count for a module whose tests touch `os.environ` is suspect until the clear is
+ruled out.** The new cases added on top (exact matching of `"ios"`/`"android"`/`"win32"`/
+`"darwin"` rather than prefixes, environment-beats-`sys.platform` precedence) are worth
+having but killed nothing extra.
+
+`wiki_integration`'s 44 were real, and three patterns took 34 of them:
+
+1. **Same-shaped adjacent fields need one assertion each.** `wiki_top_bar_spec` passes
+   five `Path | None` icon slots straight through to `TopBarSpec`; 17 of the module's
+   survivors were in that one call. Asserting each field `is` the matching
+   `sys_paths.get_*` mock's `return_value` kills the whole cluster and is exactly the
+   transposition guard the shape calls for.
+2. **`assert_called_once_with`, again.** `background_for`'s panel is just the selector
+   mock's return value, so the arguments — the *canonical string* title (not the enum)
+   and `ALL_TYPES` — were unobservable until asserted directly. Same for the whole-
+   collection branch and `self._all_titles`.
+3. **Construct the object the other way too.** `BarksPanelsImageProvider.__init__`'s
+   default-selector branch (`image_selector or ImageSelector(...)`) was never taken by a
+   test: every case passed a selector. Patching `ImageSelector`/`ReaderFilePathsResolver`
+   and asserting the construction arguments killed 6.
+
+Also worth keeping in mind for future rounds: **a mutant can survive because the test
+data cannot distinguish it.** `story_slug`'s curly-apostrophe mutants lived through a
+`"Ten Cents’ Worth"` test because the following space collapses the hyphen either way —
+only a word-internal apostrophe (`"Don’t"`) tells "dropped" from "hyphenated" apart.
+When a mutant looks obviously covered, check whether the *example* can see it.
+
+### Real gap this found
+
+- `story_page_title`'s `title_enum is None or title_enum not in ALL_FANTA_COMIC_BOOK_INFO`
+  had no case for the second half: 192 of the `Titles` members have no Fantagraphics
+  entry, and nothing stopped the `or` becoming `and`, which would hand the wiki a title
+  with no comic to open and no panels to draw backgrounds from.
+
 ## Survivors by module (backlog, most-survivors first)
 
 Counts below are from the 2026-07-25 full run and are **stale for the five modules in
@@ -269,8 +337,8 @@ the table above**. They are also inflated wherever a module memoises (see trap 2
 | `reader_formatter` | 56 → 9 |
 | `collection_page_groups` | 53 → 0 |
 | `reader_utils` | 50 → 4 |
-| `platform_info` | 45 |
-| `wiki_integration` | 44 |
+| `platform_info` | 45 → 3 |
+| `wiki_integration` | 44 → 10 |
 | `reader_settings` | 41 → 6 |
 | `reader_file_paths` | 37 → 21 |
 | `screen_metrics` | 27 → 8 |
@@ -331,6 +399,18 @@ The 117 left after that pass, all triaged. Nothing here is a missing assertion.
 | `_tag_or_group_specs`'s `assert_never(None)` | 1 | Defensive branch for malformed tag data; unreachable while `BARKS_TAG_CATEGORIES` holds only `Tags`/`TagGroups`. |
 | `get_all_volume_override_archives`'s `continue` → `break` | 1 | Needs an unparseable filename to be iterated *before* a valid one, but `Path.iterdir()` order is filesystem-defined — a test that relies on it would be flaky, not durable. |
 | Remainder (`load`'s page-count log arithmetic, error-message-only `archive_root=None`, misc) | 27 | Message/log-only text, or arguments whose only effect is on a string nobody asserts. |
+
+### Known-equivalent survivors from the never-swept pass (2026-07-26)
+
+The 13 left in `platform_info` and `wiki_integration`, all triaged.
+
+| Mutant | Count | Why it is not worth killing |
+|---|---:|---|
+| `_get_platform`'s `os.environ.get("KIVY_BUILD", "")` default | 3 | The value is only ever compared against `"ios"` and `"android"`, so `""`, `None`, a missing default and mutmut's `"XXXX"` are all the same non-match. |
+| `wiki_top_bar_spec`'s `bg_color`/`separator_color`/`icon_width`/`quit_fence_width` kwargs removed | 4 | `TopBarSpec`'s own defaults **are** those four Barks constants, value for value (checked: `(0.12,0.12,0.12,1)`, `(0.3,0.3,0.3,1)`, `70`, `17`) — okf\_reader's bar was written to mirror the kv idiom. Passing them explicitly is the anti-drift guard: it keeps the app's look pinned to *our* constants if either side ever changes. Not removable, not killable. (`height` differs — 45 vs 40 — and that mutant does die.) |
+| `.lstrip("#")` → `.lstrip("XX#XX")` ×3 | 3 | The strip set becomes `{X, #}`; `color_to_markup_hex` emits lowercase hex, so `X` can never match. Same for `story_slug`'s `.strip("-")` → `.strip("XX-XX")`. |
+| `encode("utf-8")` → `"UTF-8"` | 1 | Codec alias. Already recorded from the big-cluster pass. |
+| `canonical_title`'s first `STR_TITLE_TO_ENUM.get(text)` → `None` / `.get(None)` | 2 | The quote-stripping fallback repeats the lookup, and **no canonical title contains a double quote** (checked against `STR_TITLE_TO_ENUM`), so for every real input the fallback returns exactly what the first lookup would have. Skipping it costs a dict lookup and changes nothing observable. |
 
 ### Dead code, not a test gap: the override extension check (2)
 
