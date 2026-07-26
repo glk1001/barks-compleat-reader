@@ -299,16 +299,36 @@ Known limitation (intentional, not a reader fix): links under the bundle's
         `ON_HISTORY_NODE` visibility flag, both of `render`'s flags
         (`preserve_top_view`, `force_fresh_fun_image`), and the search screen's
         anti-repeat reroll loop.
-      **Remaining work is `comic_book_loader`** — 155 survivors, only ~40 of them
-      log wording, so most are real gaps. It was left partial for structural
-      reasons, not effort: its two big clusters are a prefetch loop and its error
-      handling on a worker thread, which need a deterministic executor harness
-      (scripted `ThreadPoolExecutor`, stop flag, future-completion order) rather
-      than better assertions. The patterns that do the work when there *is* a lever
-      — structural snapshots (including of constructed initial state and of an
-      ordered dispatch), exact tables for literal tables, scripted clocks for
-      benchmarks, and `assert_called_once_with` wherever the return value is a mock
-      — are written up in the doc.
+      - **`comic_book_loader` pass** (2026-07-26): **156→97** over 407 mutants
+        (75.8% of checked mutants killed) — **done**, all 97 triaged. The lowest
+        score of any finished module, and honestly so: **78 of the 97 are log or
+        exception-message wording**, because this module narrates a whole background
+        load. Of the rest, 14 are prefetch-scheduling mutants that are *timing-only*
+        — the shared `load_iter` resumes where it left off and `submitted` enforces
+        exactly-once, so `continue`→`break` costs one submission slot for one round
+        and self-heals; pinning them would mean asserting a thread schedule. **Two
+        real bugs came out of it, both "the error never reaches the user":**
+        `image_source.open()` sat outside the guarded block, so a missing or
+        truncated volume raised straight out of the loader thread — no
+        `on_load_error`, no dialog, just a comic stuck loading; and the `IndexError`
+        handler set `load_error` only in its `else`, so the *unexpected* index error
+        (the one worth surfacing) was logged and silently swallowed. The second was
+        found by a new test failing against the first fix. Also extracted
+        `_retained_image_stats()` out of the `[mem]` log line, taking that cluster
+        15→1 without pinning any wording.
+      **The mutmut backlog is finished.** Every module has been swept and every
+      remaining survivor triaged. Worth noting for future rounds: *neither* of the
+      two modules predicted to "need a test-harness build" actually did.
+      `view_pipeline`'s lever was its ordered dispatch and `comic_book_loader`'s was
+      its untested error matrix; in both cases the predicted blocker (threading,
+      scheduling) turned out to be the part that genuinely cannot be asserted
+      without brittleness, while the real gaps sat in plain sequential code beside
+      it. The patterns that do the work — structural snapshots (of constructed
+      initial state and of an ordered dispatch), exact tables for literal tables,
+      scripted clocks for benchmarks, error matrices parametrised over
+      exception × state, moving arithmetic out of log lines, and
+      `assert_called_once_with` wherever the return value is a mock — are written up
+      in the doc.
 
 > Gotchas when writing more property tests: `@given` doesn't compose with
 > function-scoped pytest fixtures (build inputs in-test or via `st.data()`);

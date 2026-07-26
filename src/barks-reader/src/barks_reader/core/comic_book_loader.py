@@ -9,6 +9,7 @@ import traceback
 import zipfile
 from collections import OrderedDict
 from concurrent.futures import FIRST_COMPLETED, CancelledError, Future, ThreadPoolExecutor, wait
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -50,6 +51,18 @@ if TYPE_CHECKING:
 
 ALL_FANTA_VOLUMES = list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1))
 # ALL_FANTA_VOLUMES = [i for i in range(5, 7 + 1)]
+
+
+@dataclass(frozen=True, slots=True)
+class RetainedImageStats:
+    """How much memory the loader's cached page images currently hold."""
+
+    loaded: int
+    total_mib: float
+    avg_kib: float
+    max_kib: float
+    rss_now_mib: float
+    rss_growth_mib: float
 
 
 def _page_needs_real_archive(
@@ -410,23 +423,45 @@ class ComicBookLoader:
         """Return this process's current resident set size (RSS), in MiB."""
         return psutil.Process().memory_info().rss / (1024 * 1024)
 
-    def _log_retained_image_memory(self, rss_before_mib: float) -> None:
-        """Log how much RAM the fully-loaded comic's retained pages occupy.
+    def _retained_image_stats(self, rss_before_mib: float) -> RetainedImageStats:
+        """Measure how much RAM the currently-cached page images occupy.
 
         Every loaded page is kept in ``self._images`` as encoded, window-resized
-        bytes until ``close_comic``. This reports the aggregate so the cost of large
-        collections (e.g. the 186-page "All Covers") is visible in the logs.
+        bytes until ``close_comic``, so this is the aggregate cost of holding a
+        whole comic open. Split out from the logging so the unit arithmetic is
+        assertable without pinning the log wording.
+
+        Args:
+            rss_before_mib: Process RSS sampled before the load started.
+
+        Returns:
+            The page count, totals and the RSS growth since *rss_before_mib*.
+
         """
         sizes = [entry[0].getbuffer().nbytes for entry in self._images if entry is not None]
         loaded = len(sizes)
-        total_mib = sum(sizes) / (1024 * 1024)
-        avg_kib = (sum(sizes) / loaded / 1024) if loaded else 0.0
-        max_kib = (max(sizes) / 1024) if sizes else 0.0
         rss_now = self._process_rss_mib()
+        return RetainedImageStats(
+            loaded=loaded,
+            total_mib=sum(sizes) / (1024 * 1024),
+            avg_kib=(sum(sizes) / loaded / 1024) if loaded else 0.0,
+            max_kib=(max(sizes) / 1024) if sizes else 0.0,
+            rss_now_mib=rss_now,
+            rss_growth_mib=rss_now - rss_before_mib,
+        )
+
+    def _log_retained_image_memory(self, rss_before_mib: float) -> None:
+        """Log how much RAM the fully-loaded comic's retained pages occupy.
+
+        Makes the cost of large collections (e.g. the 186-page "All Covers")
+        visible in the logs.
+        """
+        stats = self._retained_image_stats(rss_before_mib)
         logger.info(
-            f"[mem] Retained pages: {loaded} pages hold {total_mib:.1f} MiB "
-            f"(avg {avg_kib:.0f} KiB/page, max {max_kib:.0f} KiB). "
-            f"Process RSS {rss_now:.0f} MiB (+{rss_now - rss_before_mib:.0f} MiB since load start)."
+            f"[mem] Retained pages: {stats.loaded} pages hold {stats.total_mib:.1f} MiB "
+            f"(avg {stats.avg_kib:.0f} KiB/page, max {stats.max_kib:.0f} KiB). "
+            f"Process RSS {stats.rss_now_mib:.0f} MiB "
+            f"(+{stats.rss_growth_mib:.0f} MiB since load start)."
         )
 
     def _load_comic_in_thread(self) -> None:
@@ -441,11 +476,17 @@ class ComicBookLoader:
             self._images = [None for _i in range(len(self._page_map))]
 
             assert self._image_source is not None
-            if hasattr(self._image_source, "open"):
-                self._image_source.open()  # ty: ignore[call-non-callable]
 
             # noinspection PyBroadException
             try:
+                # Opening is inside the try: it is where the archive is actually
+                # touched, so a missing or truncated volume raises FileNotFoundError
+                # or BadZipFile here. Outside, those escaped the loader thread
+                # entirely - no error callback, no dialog, just a comic that never
+                # loaded.
+                if hasattr(self._image_source, "open"):
+                    self._image_source.open()  # ty: ignore[call-non-callable]
+
                 num_loaded = self._load_pages()
 
                 if self._stop:
@@ -474,6 +515,11 @@ class ComicBookLoader:
                 )
                 load_error = True
             except IndexError:
+                # Either way the load failed and the caller must hear about it;
+                # only the severity differs. Setting load_error in the stop branch
+                # alone meant the *unexpected* index error - the one worth
+                # surfacing - was logged and then silently swallowed.
+                load_error = True
                 if not self._stop:
                     logger.exception(
                         f'Unexpected index error reading comic: stop = "{self._stop}".'
@@ -483,7 +529,6 @@ class ComicBookLoader:
                         f'Index error reading comic: probably because stop = "{self._stop}".'
                     )
                     load_warning_only = True
-                    load_error = True
             except Exception:  # noqa: BLE001
                 _, _, tb = sys.exc_info()
                 tb_info = traceback.extract_tb(tb)

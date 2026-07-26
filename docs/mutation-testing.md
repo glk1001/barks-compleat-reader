@@ -216,7 +216,7 @@ these modules were left alone, as before.
 | `comic_reader_manager` | 22 | **9** | done |
 | `reading_history` | 17 | **10** | done |
 | `reader_file_paths` | 37 | **21** | done |
-| `comic_book_loader` | 184 | 155 | **partial** |
+| `comic_book_loader` | 184 | 155 | **superseded** — see the `comic_book_loader` pass below |
 | `view_pipeline` | 148 | 112 | **superseded** — see the `view_pipeline` pass below |
 | **total** | **535** | **332** | |
 
@@ -525,17 +525,120 @@ as a real float.
 | `__init__`'s `_fun_image_themes = None` and `_cached_fun_titles = None` → `""` | 2 | Both are overwritten by the `self._set_fun_image_themes(None)` two lines below, still inside `__init__`. No code path exists between the assignment and the overwrite. |
 | `_set_top_view_image_fixed`'s trailing `FIT_MODE_COVER` argument dropped | 1 | `FIT_MODE_COVER` **is** `ImageInfo.fit_mode`'s own default, value for value. Passing it is documentation, not behaviour. (The sibling mutant that changes it to `None` does die.) |
 
+## `comic_book_loader` pass (2026-07-26) — the last backlog cluster
+
+The final module carrying killable gaps: **407 mutants, 156 → 97 survivors** (234 → 304
+killed, 75.8% of checked mutants). The 6 🫥 no-covering-test mutants were left alone. All 97
+remaining are triaged below, and **this finishes the backlog** — no module on it has real
+killable gaps left.
+
+| Module (`barks_reader.core.*`) | Before | After |
+|---|---:|---:|
+| `comic_book_loader` | 156 | **97** |
+
+The score is the lowest of any completed module, and that is the honest number rather than a
+stopping point: **78 of the 97 are log or exception-message wording** — this module logs more
+than any other in `core`, at every stage of a background load. Of the remaining 19, 17 are
+scheduling-only (below) and 2 are already-recorded equivalences.
+
+### Two real bugs, both "the error never reaches the user"
+
+The reason this module resisted testing was not the threading; it was that **the error paths
+had no tests at all**, and both were broken.
+
+1. **`image_source.open()` sat outside the guarded block.** That call is where the archive is
+   first touched, so a missing or truncated volume raises `FileNotFoundError` / `BadZipFile`
+   right there. Outside the `try`, those escaped the loader thread entirely: the `finally`
+   ran (cursor restored) but `load_error` was still `False`, so **no `on_load_error`, no
+   dialog — just a comic stuck loading forever** and a traceback on stderr nobody sees.
+   Moving the call inside the `try` fixes it and makes the two handlers below it reachable
+   for the first time.
+2. **`IndexError` set `load_error` only in its `else`.** The handler distinguishes "index
+   error while stopping" (expected, warning-only) from "unexpected index error". Only the
+   *expected* branch set `load_error = True`, so the **unexpected** one — the one actually
+   worth surfacing — was logged and then silently swallowed. Hoisting the assignment above
+   the `if` fixes it; the warning-only distinction is preserved.
+
+Both were found by writing the error matrix, not by reading the code: the second surfaced as
+a *failing new test* asserting the behaviour the first fix had just made reachable.
+
+### Why the handlers were unreachable, and how to test them anyway
+
+`_load_pages` wraps every worker exception as `raise CancelledError(e) from e`, so nothing a
+page loader raises can ever reach `except FileNotFoundError` / `except zipfile.BadZipFile` /
+`except KeyError` in `_load_comic_in_thread`. Combined with bug 1 above, those three handlers
+had **no reachable trigger at all** — which is exactly why their mutants survived. The fix
+made `open()` a real trigger; the rest are covered by patching `_load_pages` to raise
+directly, which tests the handler contract without pretending the path is reachable from a
+worker.
+
+### The prefetch bookkeeping is scheduling-only, not untested
+
+14 survivors sit in `next_load_key` / `submit_next` — `continue` → `break`, `>=` → `>`,
+`return False` → `return True`. They look like classic untested control flow. They are not
+killable, and the reason is worth recording because it is easy to get wrong (**I initially
+mis-triaged these as killable and wrote two tests that killed nothing**):
+
+- **`load_iter` is a shared iterator whose position persists across calls.** Turning the
+  skip-already-submitted `continue` into a `break` does not drop that page — the iterator has
+  already advanced past it, so the *next* `next_load_key()` call resumes at the following key
+  and every page is still submitted exactly once. The mutant costs one submission opportunity
+  in one round and self-heals.
+- The same holds for the window arithmetic: `>=` vs `>` changes how many loads are in flight,
+  never which pages get loaded. Correctness here is independent of the schedule by design —
+  the loop runs until `futures` is empty and `submitted` guarantees exactly-once.
+
+So these are **timing mutants**: observable only as latency, not as a wrong result. Pinning
+them would require asserting a submission *schedule*, which is precisely the brittle,
+thread-timing-dependent test the module should not have. Verified by applying the `break`
+mutation to the real source and running the suite — 70 passed.
+
+Two more in the same family: `executor.shutdown(cancel_futures=True/False)` runs in a
+`finally` where every future is already done or cancelled.
+
+### What worked
+
+1. **Test the error matrix as a matrix.** One parametrised case per exception kind × stop
+   state, each asserting `on_load_error` was called with the right *severity* flag, killed
+   the whole `_load_comic_in_thread` cluster and found bug 2. Naming the flag
+   (`GENUINE_FAILURE` / `WARNING_ONLY`) at the call sites makes the asymmetry legible — and
+   satisfies ruff's boolean-positional rule for free.
+2. **Extract arithmetic out of a log line to make it assertable.** `_log_retained_image_memory`
+   held 15 survivors, all unit conversions feeding one `logger.info`. Splitting out
+   `_retained_image_stats()` → a frozen `RetainedImageStats` dropped it to 1 (the format
+   string) with plain value assertions, and no prior round's "don't pin log wording" rule had
+   to bend. **Generalises: when a mutant cluster is arithmetic that only a log reads, move the
+   arithmetic, don't test the log.**
+3. **Don't count threads you didn't create.** Asserting the loader thread is a daemon by
+   patching `threading.Thread` and counting calls fails — `ThreadPoolExecutor` builds threads
+   too. Read `loader._thread.daemon` directly.
+4. **A mocked thread needs a scripted `is_alive`.** `stop_now` calls it once to decide whether
+   to join and again to decide whether to log a timeout; a fixed `False` skips the join
+   entirely and a fixed `True` reports a hang. `side_effect=[True, False]` is the real
+   sequence.
+
+### Known-equivalent survivors from the `comic_book_loader` pass (2026-07-26)
+
+| Mutant | Count | Why it is not worth killing |
+|---|---:|---|
+| Log and exception-message wording across ten methods | 78 | Same as every previous round. This module narrates a whole background load, so the share is higher than usual — it is the bulk of the remaining count, not a hidden gap. |
+| Prefetch scheduling: `next_load_key` / `submit_next` `continue`→`break`, `>=`→`>`, inverted `return` | 14 | Timing-only. The shared `load_iter` resumes where it left off and `submitted` enforces exactly-once, so every page still loads; only the in-flight count for one round changes. See above. |
+| `executor.shutdown(cancel_futures=True)` → `False` / `None` | 2 | Runs in a `finally` after the loop has drained or cancelled every future. Nothing is left to cancel. |
+| `_get_prebuilt_comic_path`'s `ValueError` branch | 1 | Dead code: the path is built as `stem + CBZ_FILE_EXT`, so `comic_path.suffix` is *always* `.cbz` and the `not in [CBZ, ZIP]` guard can never be true. |
+| `_load_comic_in_thread`'s `load_error = False` → `None` | 1 | Only ever read as `if load_error:`. Both are falsy, and every path that matters assigns `True`. |
+| `zipfile.ZipFile(p, "r")` → `ZipFile(p)` | 1 | `"r"` **is** the default. Already recorded twice in earlier rounds. |
+
 ## Survivors by module (backlog, most-survivors first)
 
 "Before" counts are from the 2026-07-25 full run and are inflated wherever a module
 memoises (see trap 2). **Every module on this list has now been swept**, so the arrows are
-the whole story; `comic_book_loader` is the only entry
-still carrying real, killable gaps (see the plumbing pass above); `view_pipeline` was finished
-in its own pass. Everything else is at its triaged floor.
+the whole story; Both `comic_book_loader` and
+`view_pipeline` were finished in their own passes after that. **Every module is now at its
+triaged floor** — nothing on this table has a known killable gap left.
 
 | Module (`barks_reader.core.*`) | Survivors |
 |---|---:|
-| `comic_book_loader` | 185 → 155 |
+| `comic_book_loader` | 185 → 97 |
 | `navigation.tree_spec` | 184 → 1 |
 | `view_pipeline` | 148 → 23 |
 | `system_file_paths` | 131 → 41 |
@@ -671,10 +774,11 @@ pinned by a test, but it is a genuine unguarded edge if a caller ever shrinks th
 
 - `436` mutants had **no covering test** at all (🫥) — these live in code paths the
   Kivy-free unit tests never reach (often only exercised via UI-touching tests).
-- With the backlog table swept, the only remaining killable cluster is
-  `comic_book_loader` (155). It needs a test-harness build — a deterministic executor,
-  stop flag and future-completion order — rather than assertion tweaks; see the plumbing
-  pass for why. `view_pipeline` needed no such harness in the end (see its own pass): its
-  lever was the ordered top-view dispatch, not the threading.
+- **The backlog is finished.** Every module has been swept and every remaining survivor is
+  triaged. Neither of the two "needs a test-harness build" modules actually did:
+  `view_pipeline`'s lever was its ordered top-view dispatch, and `comic_book_loader`'s was its
+  untested error matrix (which hid two real bugs). In both cases the predicted blocker —
+  threading, scheduling — turned out to be the part that genuinely *cannot* be asserted
+  without brittleness, while the real gaps sat in plain sequential code beside it.
 - Already addressed: the `None`-category branch in `navigation_model.view_state_for`
   (one real gap this run surfaced) now has an assertion; that survivor is killed.

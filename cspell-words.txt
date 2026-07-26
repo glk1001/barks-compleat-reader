@@ -206,3 +206,7 @@ colours
 generalising
 unstubbed
 behaviours
+kibibytes
+autotuned
+refetched
+excinfo
