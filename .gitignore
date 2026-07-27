@@ -1,8 +1,13 @@
-# Claude Code. Local by default (settings, installed third-party skills), except
-# the verify skill, which documents this repo's own GUI test harness and so
-# belongs with the code it drives. Git will not descend into an excluded
-# directory, so each parent level has to be re-included for the negation to work.
+# Claude Code. Project config is shared: the hooks and permissions in
+# settings.json, the project instructions, and the verify skill (which documents
+# this repo's own GUI test harness). Machine-local state stays out -
+# settings.local.json is a per-machine permission allowlist - as do skills
+# installed from elsewhere, which belong to their upstream, not to us.
+# Git will not descend into an excluded directory, so each parent level has to
+# be re-included for a negation to reach the files below it.
 .claude/*
+!.claude/CLAUDE.md
+!.claude/settings.json
 !.claude/skills/
 .claude/skills/*
 !.claude/skills/verify/
