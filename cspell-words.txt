@@ -229,3 +229,8 @@ kibibytes
 autotuned
 refetched
 excinfo
+magick
+ydotoold
+xrandr
+screencopy
+pixmaps
