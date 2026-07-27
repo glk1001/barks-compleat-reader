@@ -81,6 +81,54 @@ measures the ratio once from a full-desktop capture and restates the monitor
 table in capture pixels. Verified only in its no-op form (scale 1.0); the
 scaled path is reasoned, not tested.
 
+## Capture resolution — rotate a 4K panel to portrait
+
+What limits quality is the **viewport height**, because a comic page is portrait
+and a screen is landscape: the reader scales the page to fit vertically, so the
+captured page height is roughly the screen height. Spread view does not change
+this — two pages side by side still do not run out of width, which is why a
+split half comes out about 1045×1440 on a 2560×1440 panel rather than being
+width-limited.
+
+Kindle's stored page for these volumes is about **2175×3000**. (That aspect,
+0.725, matches the captured cover's 1048/1440 = 0.728 to within half a percent,
+so the two corroborate each other.) Against that source:
+
+| Setup | Captured page | Linear vs source | Pixels vs source |
+|---|---|---|---|
+| 2560×1440 landscape | ~1045 × 1440 | 48% | 23% |
+| 4K landscape (3840×2160) | ~1565 × 2160 | 72% | 52% |
+| **4K portrait (2160×3840)** | ~2160 × 2979 | **99%** | **99%** |
+
+Rotated to portrait the page becomes **width**-limited instead, and 2160 px of
+screen width against 2175 px of source width is very nearly a coincidence — the
+capture lands essentially 1:1. Landscape 4K still discards about half the
+pixels; a 1440p panel keeps under a quarter.
+
+Two things to get right:
+
+- **Leave room for the reader's own margins.** Kindle uses about 96% of the
+  window for content, the rest being the gutter, so expect nearer 2070×2855 —
+  around 95% linear, roughly 270 DPI on a 10.5-inch page. Still effectively
+  native.
+- **Run the display at 100% scale, not 200%.** This is the one that can quietly
+  cost everything. At 200% the CSS viewport is only 1080 px wide, and whether
+  the reader then serves a full-resolution asset for the doubled device pixel
+  ratio or simply scales up a smaller one is not predictable. At 100% it is asked
+  for the page at the full 2160 and there is no ambiguity. The script itself
+  copes either way (it detects scaling and works in capture pixels) — what is at
+  stake is the resolution the *reader* hands over.
+
+After rotating: re-run `--calibrate` (the divisor is a pointer property and
+should not change with rotation, but it is a 20-second check), and note that
+`--split-spreads` becomes unnecessary because a portrait viewport shows single
+pages — the ink test sees portrait and leaves them whole, so it is harmless to
+leave on. `--pages` then equals the real page count rather than about half it.
+
+Screen capture cannot beat the source: at 1:1 you are faithfully recording a
+rendered image, compression artefacts included, with one resampling step on the
+way. Portrait 4K is simply as close as this method gets.
+
 ## Things that do not work — do not retry these
 
 | Approach | Why it fails here |
