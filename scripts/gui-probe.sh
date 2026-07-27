@@ -14,6 +14,7 @@
 # read straight off a screenshot are the coordinates to click.
 #
 # Usage:
+#   scripts/gui-probe.sh doctor           # check this machine has what it needs
 #   scripts/gui-probe.sh start            # Xephyr + app, waits until ready
 #   scripts/gui-probe.sh shot out.png     # fresh full-screen capture
 #   scripts/gui-probe.sh click 840 74     # click at screenshot coordinates
@@ -45,6 +46,16 @@ READY_MARKER="Received the 'on_finished_building_event'"
 
 WINDOW_NAME="Compleat Barks Disney Reader"
 
+# Tool -> Debian/Ubuntu package providing it.
+declare -A TOOL_PKGS=(
+    [Xephyr]=xserver-xephyr
+    [xte]=xautomation
+    [xdpyinfo]=x11-utils
+    [xwininfo]=x11-utils
+    [import]=imagemagick
+    [convert]=imagemagick
+)
+
 die() {
     echo "gui-probe: $*" >&2
     exit 1
@@ -62,9 +73,103 @@ require_running() {
     kill -0 "$(cat "$XEPHYR_PID_FILE")" 2>/dev/null || die "Xephyr died; see $XEPHYR_LOG"
 }
 
+# Check everything a fresh machine needs. Tools and secrets are hard failures;
+# a missing data directory only limits what can be verified, so it warns.
+cmd_doctor() {
+    local fail=0 warn=0 missing_pkgs=()
+
+    echo "== host display =="
+    if [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]]; then
+        echo "  OK   graphical session (Xephyr needs one to open its window in)"
+    else
+        echo "  FAIL no DISPLAY or WAYLAND_DISPLAY - run this from a desktop session"
+        fail=1
+    fi
+
+    echo "== tools =="
+    local tool
+    for tool in Xephyr xte xdpyinfo xwininfo import convert uv; do
+        if command -v "$tool" >/dev/null; then
+            echo "  OK   $tool"
+        else
+            echo "  FAIL $tool"
+            fail=1
+            [[ -n "${TOOL_PKGS[$tool]:-}" ]] && missing_pkgs+=("${TOOL_PKGS[$tool]}")
+        fi
+    done
+
+    echo "== repo =="
+    if [[ -f "$REPO_ROOT/.env.runtime" ]]; then
+        echo "  OK   .env.runtime"
+        local var
+        for var in BARKS_ZIPS_KEY BARKS_READER_CONFIG_DIR BARKS_READER_DATA_DIR; do
+            if grep -q "^$var=" "$REPO_ROOT/.env.runtime"; then
+                echo "  OK   $var"
+            else
+                echo "  FAIL $var not set in .env.runtime"
+                fail=1
+            fi
+        done
+    else
+        echo "  FAIL .env.runtime - gitignored (it holds BARKS_ZIPS_KEY), copy it from a working machine"
+        fail=1
+    fi
+    if [[ -d "$REPO_ROOT/.venv" ]]; then
+        echo "  OK   .venv"
+    else
+        echo "  FAIL .venv - run 'uv sync'"
+        fail=1
+    fi
+
+    echo "== app data =="
+    local ini
+    ini="$(dirname "$(config_file)")/barks-reader.ini"
+    if [[ -f "$ini" ]]; then
+        echo "  OK   $ini"
+        # Every *_dir setting, checked generically. Several are absolute paths
+        # baked in on whichever machine wrote them, so they routinely need
+        # editing after copying the config to a new machine.
+        local key path
+        while IFS='=' read -r key path; do
+            key="${key//[[:space:]]/}"
+            path="${path#"${path%%[![:space:]]*}"}"
+            path="${path//\$\{HOME\}/$HOME}"
+            if [[ -d "$path" ]]; then
+                echo "  OK   $key"
+            else
+                echo "  WARN $key -> $path (missing; edit $ini)"
+                warn=1
+            fi
+        done < <(grep -E '^[a-z_]+_dir[[:space:]]*=' "$ini" || true)
+    else
+        echo "  WARN $ini not found - the app will write a default on first run"
+        warn=1
+    fi
+
+    if [[ ${#missing_pkgs[@]} -gt 0 ]]; then
+        # shellcheck disable=SC2207
+        local uniq=($(printf '%s\n' "${missing_pkgs[@]}" | sort -u))
+        echo
+        echo "Install the missing tools with:"
+        echo "  sudo apt install ${uniq[*]}"
+    fi
+
+    echo
+    if [[ $fail -ne 0 ]]; then
+        echo "doctor: NOT ready - fix the FAIL items above."
+        return 1
+    fi
+    if [[ $warn -ne 0 ]]; then
+        echo "doctor: ready, but some data dirs are missing (see WARN)."
+    else
+        echo "doctor: ready."
+    fi
+}
+
 cmd_start() {
     for tool in Xephyr xte import; do
-        command -v "$tool" >/dev/null || die "missing required tool: $tool"
+        command -v "$tool" >/dev/null ||
+            die "missing required tool: $tool (run 'gui-probe.sh doctor')"
     done
     [[ -f "$XEPHYR_PID_FILE" ]] && kill -0 "$(cat "$XEPHYR_PID_FILE")" 2>/dev/null &&
         die "already running (stop it first)"
@@ -218,6 +323,7 @@ cmd_wait() {
 }
 
 case "${1:-}" in
+doctor) shift && cmd_doctor "$@" ;;
 start) shift && cmd_start "$@" ;;
 stop) shift && cmd_stop "$@" ;;
 shot) shift && cmd_shot "$@" ;;
