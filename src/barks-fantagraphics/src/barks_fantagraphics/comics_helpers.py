@@ -9,6 +9,7 @@ from PIL import Image, ImageDraw, ImageFont
 from .barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM
 from .comic_book import get_page_str
 from .comic_book_info import (
+    COVERS_SET,
     ONE_PAGER_LOCATIONS,
     ONE_PAGERS,
     get_one_pager_fanta_vol_and_page,
@@ -149,6 +150,11 @@ def get_title_from_volume_page(
         title_enum = STR_TITLE_TO_ENUM[title[0]]
         if title_enum in ONE_PAGERS:
             logger.debug(f'Skipping one-pager title "{title[0]}".')
+            continue
+        if title_enum in COVERS_SET:
+            # Covers have no ini file, so 'get_comic_book' can't resolve them. They're
+            # also excluded from RESTORABLE_PAGE_TYPES, so no page here can be a cover.
+            logger.debug(f'Skipping cover title "{title[0]}".')
             continue
         comic_book = comics_database.get_comic_book(title[0])
         srce_and_dest_pages = get_sorted_srce_and_dest_pages(

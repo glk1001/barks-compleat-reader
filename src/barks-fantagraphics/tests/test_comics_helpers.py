@@ -332,6 +332,24 @@ class TestGetTitleFromVolumePage:
         assert title == ""
         assert page_num == -1
 
+    def test_cover_titles_are_skipped(self) -> None:
+        # Covers sit in a volume's title list but have no ini file, so calling
+        # 'get_comic_book' on one raises TitleNotFoundError. They must be skipped.
+        db = _make_db()
+        titles = [("Comics and Stories #178 Cover", MagicMock()), (self.TITLE_A, MagicMock())]
+        db.get_all_titles_in_fantagraphics_volumes.return_value = titles
+        db.get_comic_book.return_value = MagicMock()
+        srce_dest = _make_srce_dest_pages(["page-001"], [3])
+
+        with patch.object(
+            comics_helpers_module, "get_sorted_srce_and_dest_pages", return_value=srce_dest
+        ):
+            title, page_num = get_title_from_volume_page(db, 17, "page-001")
+
+        assert title == self.TITLE_A
+        assert page_num == 3
+        db.get_comic_book.assert_called_once_with(self.TITLE_A)
+
     def test_one_pager_numeric_page_short_circuits(self) -> None:
         # "If the Hat Fits" is a one-pager at volume 5, fanta page 123 -> comic page 2.
         db = _make_db()
