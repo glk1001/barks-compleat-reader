@@ -124,20 +124,38 @@ in portrait produced a genuinely sharper render. The reader lays the page out at
 roughly 77–80% of viewport width (77% for one page in portrait, 80% for two in
 landscape), and the asset kept up at 1110 px.
 
-That means **1100 px is not a ceiling, it is just what a 1440-px viewport asks
-for**, and a 4K panel would plausibly render ~1536 px per page in landscape or
-~1660 in portrait. Whether Amazon's asset actually supplies that detail is
-**untested** — the honest answer needs one of:
+**There is no fixed asset: the reader requests a page image rendered to fit the
+current viewport.** Confirmed by reading the intrinsic size of the image element
+itself at two window sizes — paste this into the devtools console (type
+`allow pasting` first if Firefox refuses):
 
-1. Firefox devtools, Network tab, filter to images, reload a page and read off
-   the dimensions of the page image actually downloaded. That is definitive: if
-   it fetches ~1200 px wide whatever the window size, that is the ceiling; if it
-   scales with the viewport, a bigger display pays.
-2. Zoom in **and reload**, so the reader re-requests assets at the new device
-   pixel ratio, then re-probe and re-run the sharpness test above.
+```js
+$$('img').map(i=>i.naturalWidth+'x'+i.naturalHeight)
+```
 
-An earlier version of this file asserted a measured ceiling of ~1100 px and that
-no display would beat it. That was an overreach from the zoom test alone.
+| Viewport | Intrinsic image size |
+|---|---|
+| 2506 px wide window | 2506 × 1146 |
+| 2560 px fullscreen | 2560 × 1190 |
+
+It tracks the viewport exactly. So **more screen really does buy more genuine
+pixels**, up to whatever master Amazon holds (reportedly ~2175×3000 per page),
+and a 4K panel is worth having:
+
+| Setup | Captured page | vs now |
+|---|---|---|
+| 1440p landscape (today) | ~1024 × 1414 | — |
+| 4K landscape | ~1566 × 2160 | 1.5× linear, 2.3× pixels |
+| 4K portrait, single page | ~2160 × 2980 | ~2× linear, near the master |
+
+Zoom remains useless — it only re-renders the image already fetched, which is
+why the `--dpr 3` screenshot scored 0.008 against the 1× render's 0.051. The
+gain comes from viewport pixels, not from magnification.
+
+This file previously claimed a fixed ~1100 px ceiling that no display could
+beat. That was wrong: it drew a general conclusion from a zoom test, which cannot see a
+re-fetch. Check the intrinsic size with the snippet above before believing any
+claim about the ceiling, including this one.
 
 Portrait does still force **single-page** rather than spread view, which is a
 layout convenience — but note the reader needs a reload or an F11 toggle after
