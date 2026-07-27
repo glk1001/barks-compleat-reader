@@ -71,3 +71,6 @@ mutmut-stats.json
 /src/barks-reader/setup.cfg
 /coverage.xml
 /.hypothesis/
+
+# Local Android-emulator experiment: source and 2.7 GB of pulled data, kept out of git.
+/experiments/android-kindle-docker/
