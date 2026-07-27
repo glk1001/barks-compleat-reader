@@ -118,19 +118,25 @@ The `--dpr 3` result is the clearest: Firefox re-drew the page at triple
 resolution and found nothing extra to draw, because the *fetched image* was
 already the limit. The gain comes from viewport pixels, never from magnifying.
 
-What the page actually measures, captured:
+**The short edge of the panel sets the resolution, whatever the orientation.**
+In landscape the reader shows a spread, so the limit is screen *height*; in
+portrait it shows one page, so the limit is screen *width*. On the same panel
+that is the same 1440 px either way — which is why rotating gains almost
+nothing. Rotation moves no pixels into existence.
 
-| Setup | Captured page | vs 1440p landscape |
-|---|---|---|
-| 1440p landscape (spread) | 1024 × 1414 | — |
-| 1440p portrait (single page) | 1110 × 1528 | +8% linear |
-| 4K landscape (spread) | ~1566 × 2160 | 1.5× linear, 2.3× pixels |
-| 4K portrait (single page) | ~2160 × 2980 | ~2× linear |
+| Setup | Constraining edge | Captured page | vs 1440p landscape |
+|---|---|---|---|
+| 1440p landscape (spread) | 1440 height, 98% used | 1024 × 1414 | — |
+| 1440p portrait (single page) | 1440 width, 77% used | 1110 × 1528 | +8% linear |
+| 4K landscape (spread) | 2160 height | ~1537 × 2120 | 1.5× linear, 2.2× pixels |
+| 4K portrait (single page) | 2160 width | ~1663 × 2294 | 1.6× linear, 2.6× pixels |
 
 The 4K rows are projections from the viewport-tracking behaviour above, not
-measurements. Portrait 4K would land near the ~2175×3000 master, i.e. close to
-native. Portrait on a 1440p panel gains only 8%, because a 1440-wide viewport
-showing one page is barely more than half a 2560-wide viewport showing two.
+measurements, and they carry the measured fill factors forward (98% of the
+constraining edge in landscape, 77% in portrait). So **buy pixels, not
+rotation**: a 4K panel is worth roughly 1.5×, and turning it on its side adds
+only the same 8% seen here. Neither reaches the ~2175 px master, so the Android
+app's downloaded images remain the higher-quality source.
 
 Two claims in earlier versions of this file were wrong in opposite directions:
 first that portrait 4K would be near-native (right answer, wrong reasoning —
