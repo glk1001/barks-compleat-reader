@@ -107,27 +107,37 @@ than the Android Kindle app**. The ~2175×3000 "hi-def" figure describes what th
 app downloads to external storage, not what the web reader delivers — the web
 reader tops out near 1100 px wide in every configuration tried.
 
-**The ceiling has been measured: about 1100 px wide, and zooming does not raise
-it.** Zooming makes the reader render the page larger, but the extra pixels are
-interpolated, not new detail. Tested by halving each image and re-enlarging it —
+**Zooming does not help, but a bigger viewport probably does.** Two different
+things, easily conflated. Measured by halving each image and re-enlarging it —
 a round trip that costs an upscaled image almost nothing and a genuinely
 detailed one a great deal:
 
-| Image | half-then-double RMSE | reading |
+| Render | half-then-double RMSE | reading |
 |---|---|---|
-| page at normal zoom, landscape capture | 0.070, 0.072 | genuine detail |
-| zoomed capture | 0.018 | mostly interpolated |
+| landscape, 1024 px wide | 0.075 | genuine detail |
+| portrait, 1110 px wide | 0.060 | genuine detail, not an upscale of the 1024 |
+| zoomed with no reload | 0.018 | interpolated |
 | control: known 2× upscale | 0.009 | pure upscale |
 
-The zoomed capture lands far nearer the upscale control than the normal-zoom ones,
-so the reader is enlarging the same asset it already served. **Captures taken on
-an ordinary 1440p panel are therefore already at this reader's native
-resolution**, and no display, rotation, zoom level or tiling scheme will beat
-them. The only measurable gain anywhere in this is the 8% from portrait.
+So CSS zoom merely stretches the asset already fetched — but the *wider* layout
+in portrait produced a genuinely sharper render. The reader lays the page out at
+roughly 77–80% of viewport width (77% for one page in portrait, 80% for two in
+landscape), and the asset kept up at 1110 px.
 
-The genuinely high-resolution page images (~2175×3000) live in the Android
-Kindle app's downloaded files, not in the web reader — a different source, not a
-higher-quality route to the same one.
+That means **1100 px is not a ceiling, it is just what a 1440-px viewport asks
+for**, and a 4K panel would plausibly render ~1536 px per page in landscape or
+~1660 in portrait. Whether Amazon's asset actually supplies that detail is
+**untested** — the honest answer needs one of:
+
+1. Firefox devtools, Network tab, filter to images, reload a page and read off
+   the dimensions of the page image actually downloaded. That is definitive: if
+   it fetches ~1200 px wide whatever the window size, that is the ceiling; if it
+   scales with the viewport, a bigger display pays.
+2. Zoom in **and reload**, so the reader re-requests assets at the new device
+   pixel ratio, then re-probe and re-run the sharpness test above.
+
+An earlier version of this file asserted a measured ceiling of ~1100 px and that
+no display would beat it. That was an overreach from the zoom test alone.
 
 Portrait does still force **single-page** rather than spread view, which is a
 layout convenience — but note the reader needs a reload or an F11 toggle after
