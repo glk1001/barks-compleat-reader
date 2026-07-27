@@ -444,14 +444,28 @@ class MainScreenNavigation:
             return
         Clock.schedule_once(lambda _dt: self._enter_title_view_focus_at_portal(), 0)
 
-    def focus_title_portal_after_icon_goto(self) -> None:
-        """Land keyboard focus on the title portal after the action-bar app-icon goto.
+    def focus_title_portal_after_goto(self, *, keyboard_initiated: bool) -> None:
+        """Land keyboard focus on the title portal after a deliberate goto-title.
 
-        Pressing the app icon deliberately navigates to its title, so — unlike the
+        Covers the action-bar app icon and the top-view/fun-view goto arrows, each of
+        which can be fired by the keyboard or by the mouse.
+
+        A keyboard activation deliberately navigates to the title, so — unlike the
         passive goto hand-offs that only fire when already in bottom (keyboard) focus —
-        always hand focus to the portal (the read action), whatever the prior focus
+        it always hands focus to the portal (the read action), whatever the prior focus
         region. Deferred a frame so the title view's swap-in settles first.
+
+        A mouse click means mouse mode: the title view is revealed with no keyboard
+        focus ring, and any ring a previous keyboard context left behind is dropped.
         """
+        if not keyboard_initiated:
+            if self._focus_region == _FocusRegion.BOTTOM:
+                # The fun view's arrow lives inside the bottom panel, so the click never
+                # reached MainScreen's "touch outside the panel" exit; drop focus here.
+                self.exit_bottom_focus()
+            if self._top_goto_focused:
+                self._exit_top_goto_focus()
+            return
         Clock.schedule_once(lambda _dt: self._enter_title_view_focus_at_portal(), 0)
 
     def focus_title_portal_after_popup_goto(self, index_screen: IndexScreen) -> None:

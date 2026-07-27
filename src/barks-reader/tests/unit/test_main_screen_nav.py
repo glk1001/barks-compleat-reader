@@ -1129,11 +1129,12 @@ class TestWikiGotoTitleFocus:
         nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[unresolved-attribute]
 
 
-class TestIconGotoTitleFocus:
-    """The action-bar app icon deliberately navigates, so it always focuses the portal.
+class TestDeliberateGotoTitleFocus:
+    """A deliberate goto (app icon, top-view arrow, fun-view arrow) splits by input mode.
 
-    Unlike the passive wiki/popup hand-offs (gated on prior bottom focus), pressing the
-    icon forces keyboard focus onto the portal whatever the previous focus region.
+    Fired from the keyboard it forces focus onto the portal whatever the previous focus
+    region — unlike the passive wiki/popup hand-offs, which are gated on prior bottom
+    focus. Fired by the mouse it must leave the app in mouse mode: no focus ring at all.
     """
 
     def test_forces_portal_from_tree_focus(self, nav: MainScreenNavigation) -> None:
@@ -1141,7 +1142,7 @@ class TestIconGotoTitleFocus:
         nav._bottom_title_view_screen.is_visible = True
 
         with patch.object(nav_module, "Clock") as mock_clock:
-            nav.focus_title_portal_after_icon_goto()
+            nav.focus_title_portal_after_goto(keyboard_initiated=True)
             # The portal focus is deferred a frame so the title render settles first.
             mock_clock.schedule_once.call_args[0][0](0)
 
@@ -1151,10 +1152,42 @@ class TestIconGotoTitleFocus:
         nav._bottom_title_view_screen.is_visible = False
 
         with patch.object(nav_module, "Clock") as mock_clock:
-            nav.focus_title_portal_after_icon_goto()
+            nav.focus_title_portal_after_goto(keyboard_initiated=True)
             mock_clock.schedule_once.call_args[0][0](0)
 
         nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[unresolved-attribute]
+
+    def test_mouse_goto_never_focuses_the_portal(self, nav: MainScreenNavigation) -> None:
+        nav._focus_region = nav._focus_region.__class__(1)  # TREE (mouse context)
+        nav._bottom_title_view_screen.is_visible = True
+
+        with patch.object(nav_module, "Clock") as mock_clock:
+            nav.focus_title_portal_after_goto(keyboard_initiated=False)
+
+        mock_clock.schedule_once.assert_not_called()
+        nav._bottom_title_view_screen.enter_nav_focus_at_portal.assert_not_called()  # ty: ignore[unresolved-attribute]
+
+    def test_mouse_goto_drops_bottom_focus(self, nav: MainScreenNavigation) -> None:
+        """A click on the fun view's arrow lands inside the bottom panel.
+
+        MainScreen's on_touch_down only exits bottom focus for touches *outside* the
+        panel, so the mouse branch has to drop the keyboard ring itself.
+        """
+        nav.enter_bottom_focus()
+        assert nav.is_in_bottom_focus is True
+
+        nav.focus_title_portal_after_goto(keyboard_initiated=False)
+
+        assert nav.is_in_bottom_focus is False
+        nav._fun_image_view_screen.exit_nav_focus.assert_called()  # ty: ignore[unresolved-attribute]
+
+    def test_mouse_goto_drops_the_top_goto_ring(self, nav: MainScreenNavigation) -> None:
+        nav._top_goto_focused = True
+
+        nav.focus_title_portal_after_goto(keyboard_initiated=False)
+
+        assert nav._top_goto_focused is False
+        nav._tree_view_screen.exit_top_goto_focus.assert_called_once()  # ty: ignore[unresolved-attribute]
 
 
 class TestTopGotoFocus:

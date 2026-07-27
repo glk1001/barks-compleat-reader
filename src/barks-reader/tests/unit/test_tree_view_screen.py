@@ -84,12 +84,23 @@ class TestTreeViewScreen:
             tree_view_screen_module._TOP_GOTO_FOCUS_GROUP,
         )
 
-    def test_activate_top_goto_dispatches_arrow_press(
-        self, tree_view_screen: TreeViewScreen
-    ) -> None:
+    def test_activate_top_goto_flags_the_keyboard(self, tree_view_screen: TreeViewScreen) -> None:
+        mock_goto = MagicMock()
+        tree_view_screen.on_goto_title = mock_goto
+
         tree_view_screen.activate_top_goto()
 
-        tree_view_screen.ids.goto_title_overlay.dispatch.assert_called_once_with("on_arrow_press")
+        # The pointer path (the overlay's on_arrow_press) is left untouched, so the
+        # handler can keep a mouse click in mouse mode.
+        mock_goto.assert_called_once_with(from_keyboard=True)
+        tree_view_screen.ids.goto_title_overlay.dispatch.assert_not_called()
+
+    def test_activate_top_goto_without_callback_is_a_no_op(
+        self, tree_view_screen: TreeViewScreen
+    ) -> None:
+        tree_view_screen.on_goto_title = None
+
+        tree_view_screen.activate_top_goto()  # must not raise
 
     def test_get_selected_node(self, tree_view_screen: TreeViewScreen) -> None:
         mock_node = MagicMock()

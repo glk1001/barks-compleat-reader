@@ -48,7 +48,9 @@ class TreeViewScreen(BoxLayout):
 
     def __init__(self, reader_settings: ReaderSettings, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
-        self.on_goto_title: Callable[[], None] | None = None
+        # Takes a ``from_keyboard`` keyword (defaulted by the handler) so it can tell the
+        # kv-wired pointer press from a keyboard activation. See activate_top_goto.
+        self.on_goto_title: Callable[..., None] | None = None
         self._reader_settings = reader_settings
         self.show_current_title = self._reader_settings.show_top_view_title_info
 
@@ -86,8 +88,15 @@ class TreeViewScreen(BoxLayout):
         clear_focus_highlight(self.ids.goto_title_overlay.goto_button, _TOP_GOTO_FOCUS_GROUP)
 
     def activate_top_goto(self) -> None:
-        """Fire the top-view goto arrow (runs the kv-wired ``on_goto_title``)."""
-        self.ids.goto_title_overlay.dispatch("on_arrow_press")
+        """Fire the top-view goto arrow from the keyboard.
+
+        Calls the kv-wired ``on_goto_title`` directly, flagged as a keyboard
+        activation, rather than dispatching the overlay's ``on_arrow_press`` — that
+        event is the pointer path, and the handler must tell the two apart to keep a
+        mouse click in mouse mode.
+        """
+        if self.on_goto_title is not None:
+            self.on_goto_title(from_keyboard=True)
 
     def get_selected_node(self) -> BaseTreeViewNode | None:
         return self.ids.reader_tree_view.selected_node

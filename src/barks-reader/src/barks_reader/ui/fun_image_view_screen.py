@@ -97,7 +97,9 @@ class FunImageViewScreen(BoxLayout):
         self._current_history_index = -1
         self._navigation = ReaderNavigation(self.MAX_WINDOW_WIDTH, 0.54, 0.98)
 
-        self.on_goto_title_func: Callable[[], None] | None = None
+        # Takes a ``from_keyboard`` keyword so the handler can tell an Enter on the
+        # focused arrow from a mouse click on it. See on_goto_title.
+        self.on_goto_title_func: Callable[..., None] | None = None
         self.fun_view_from_title = True
         self._reader_settings = reader_settings
         self.show_current_title = self._reader_settings.show_fun_view_title_info
@@ -216,9 +218,15 @@ class FunImageViewScreen(BoxLayout):
         self.goto_title_button_active = self.fun_view_from_title
         logger.debug(f'Set fun view title to "{self.current_title_str}".')
 
-    def on_goto_title(self) -> None:
+    def on_goto_title(self, *, from_keyboard: bool = False) -> None:
+        """Fire the goto-title arrow.
+
+        The kv-wired ``on_arrow_press`` is the pointer path and leaves ``from_keyboard``
+        at its default, so the handler can keep a mouse click in mouse mode rather than
+        landing the app in keyboard nav.
+        """
         assert self.on_goto_title_func is not None
-        self.on_goto_title_func()
+        self.on_goto_title_func(from_keyboard=from_keyboard)
 
     # --- Keyboard navigation -------------------------------------------------
     # Focus moves between the goto arrow (top-right) and the filter button
@@ -290,7 +298,7 @@ class FunImageViewScreen(BoxLayout):
     def _activate_button_focus(self) -> None:
         if self._nav_focus == _FunFocus.ARROW:
             if self.goto_title_button_active:
-                self.on_goto_title()
+                self.on_goto_title(from_keyboard=True)
         else:  # FILTER: open the options menu and move focus into it.
             self.fun_options_button_pressed()
             self._nav_focus = _FunFocus.MENU

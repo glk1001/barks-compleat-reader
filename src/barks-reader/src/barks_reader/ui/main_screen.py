@@ -515,20 +515,26 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._font_manager.update_font_sizes(height)
         self.app_title = get_action_bar_title(self._font_manager, APP_TITLE)
 
-    def _on_goto_top_view_title(self) -> None:
-        # Deliberate goto (mouse click or keyboard activation of the top-view arrow):
-        # land focus on the title portal, like the app icon.
+    def _on_goto_top_view_title(self, *, from_keyboard: bool = False) -> None:
+        # Deliberate goto: a keyboard activation of the top-view arrow lands focus on the
+        # title portal, like the app icon. A mouse click only navigates — it must leave
+        # the app in mouse mode rather than dropping the user into keyboard nav.
         self._nav_coord.navigate_to_chrono_title(self._renderer.get_top_view_image_info())
-        self._nav.focus_title_portal_after_icon_goto()
+        self._nav.focus_title_portal_after_goto(keyboard_initiated=from_keyboard)
 
-    def _on_goto_fun_view_title(self) -> None:
-        # Covers the fun view's mouse-click goto; the keyboard path also hands off to the
-        # portal via _handle_fun_view_key, and the two are idempotent.
+    def _on_goto_fun_view_title(self, *, from_keyboard: bool = False) -> None:
+        # Same keyboard/mouse split as the top-view arrow above.
         self._nav_coord.navigate_to_chrono_title(self._renderer.get_bottom_view_fun_image_info())
-        self._nav.focus_title_portal_after_icon_goto()
+        self._nav.focus_title_portal_after_goto(keyboard_initiated=from_keyboard)
 
     def goto_reader_icon_title(self) -> None:
         logger.debug(f'App reader icon "{self.app_icon_filepath}" pressed.')
+
+        # The icon's on_release fires asynchronously (trigger_action), by which time menu
+        # mode has been torn down, so read the recorded intent instead of the live
+        # _menu_mode — same pattern as on_action_bar_go_back. A mouse click clears the
+        # flag in on_touch_down first, keeping a clicked goto in mouse mode.
+        keyboard_initiated = self._menu_action_by_keyboard
 
         icon_path = Path(self.app_icon_filepath)
         title_str = get_title_str_from_reader_icon_file(icon_path)
@@ -539,7 +545,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         title = STR_TITLE_TO_ENUM[title_str]
         image_info = ImageInfo(icon_path, title)
         self._nav_coord.navigate_to_chrono_title(image_info)
-        self._nav.focus_title_portal_after_icon_goto()
+        self._nav.focus_title_portal_after_goto(keyboard_initiated=keyboard_initiated)
 
     @override
     def on_document_reader_closed(self) -> None:
