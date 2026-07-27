@@ -98,6 +98,13 @@ cmd_doctor() {
         fi
     done
 
+    echo "== optional =="
+    if command -v xdotool >/dev/null; then
+        echo "  OK   xdotool (pointer queries and chord keys on the nested display)"
+    else
+        echo "  --   xdotool absent (optional: 'sudo apt install xdotool')"
+    fi
+
     echo "== repo =="
     if [[ -f "$REPO_ROOT/.env.runtime" ]]; then
         echo "  OK   .env.runtime"

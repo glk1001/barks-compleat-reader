@@ -63,6 +63,7 @@ frozensets
 generalise
 generalises
 getbuffer
+getmouselocation
 getpid
 getpixel
 graphify
@@ -110,6 +111,8 @@ modifyitems
 monkeypatched
 monkeypatches
 motionevent
+mouseclick
+mousemove
 mtdev
 nbytes
 neighbour
@@ -142,6 +145,7 @@ returncode
 rgba
 ryzen
 scancode
+scancodes
 screeninfo
 screenmanager
 sdl
@@ -194,6 +198,8 @@ windowmanager
 wmclass
 wmctrl
 wordclouds
+xautomation
+xdotool
 xdpyinfo
 Xephyr
 xlabel

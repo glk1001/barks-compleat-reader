@@ -1,5 +1,11 @@
-# Claude Code
-.claude/
+# Claude Code. Local by default (settings, installed third-party skills), except
+# the verify skill, which documents this repo's own GUI test harness and so
+# belongs with the code it drives. Git will not descend into an excluded
+# directory, so each parent level has to be re-included for the negation to work.
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/verify/
 
 # Project-specific
 build/
