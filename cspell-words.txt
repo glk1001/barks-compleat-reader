@@ -234,3 +234,4 @@ ydotoold
 xrandr
 screencopy
 pixmaps
+RMSE

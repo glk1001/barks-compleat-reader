@@ -107,14 +107,27 @@ than the Android Kindle app**. The ~2175×3000 "hi-def" figure describes what th
 app downloads to external storage, not what the web reader delivers — the web
 reader tops out near 1100 px wide in every configuration tried.
 
-Before spending money or effort on a display, settle the ceiling:
+**The ceiling has been measured: about 1100 px wide, and zooming does not raise
+it.** Zooming makes the reader render the page larger, but the extra pixels are
+interpolated, not new detail. Tested by halving each image and re-enlarging it —
+a round trip that costs an upscaled image almost nothing and a genuinely
+detailed one a great deal:
 
-1. Zoom the page — the reader's own control, or Ctrl+`+` in Firefox.
-2. Re-run `--probe` and look at the saved image.
-3. If the page renders larger **and stays crisp**, a bigger asset exists and is
-   worth chasing (probably via tiling and stitching, which this script does not
-   do). If it only softens, ~1100 px is the ceiling and no screen configuration
-   will beat what a 1440p panel already captures.
+| Image | half-then-double RMSE | reading |
+|---|---|---|
+| page at normal zoom, landscape capture | 0.070, 0.072 | genuine detail |
+| zoomed capture | 0.018 | mostly interpolated |
+| control: known 2× upscale | 0.009 | pure upscale |
+
+The zoomed capture lands far nearer the upscale control than the normal-zoom ones,
+so the reader is enlarging the same asset it already served. **Captures taken on
+an ordinary 1440p panel are therefore already at this reader's native
+resolution**, and no display, rotation, zoom level or tiling scheme will beat
+them. The only measurable gain anywhere in this is the 8% from portrait.
+
+The genuinely high-resolution page images (~2175×3000) live in the Android
+Kindle app's downloaded files, not in the web reader — a different source, not a
+higher-quality route to the same one.
 
 Portrait does still force **single-page** rather than spread view, which is a
 layout convenience — but note the reader needs a reload or an F11 toggle after
