@@ -81,52 +81,12 @@ measures the ratio once from a full-desktop capture and restates the monitor
 table in capture pixels. Verified only in its no-op form (scale 1.0); the
 scaled path is reasoned, not tested.
 
-## Capture resolution — a bigger screen buys almost nothing
+## Capture resolution — the reader sizes its image to the viewport
 
-**Kindle Cloud Reader does not fit the page to the viewport.** It renders at a
-capped size and pads the rest with white, so handing it more screen does not
-hand you more page. This was measured, not assumed — rotating a 2560×1440 panel
-to portrait and re-probing:
-
-| Viewport | Rendered page | Gain |
-|---|---|---|
-| 2560×1440 landscape | 1024 × 1414 | — |
-| 1440×2560 portrait | 1110 × 1528 | +8% linear, +17% pixels |
-
-In the portrait case the page used only 77% of the window's width and 60% of its
-height. Geometry would have predicted a page about twice that size; the reader
-simply does not scale up.
-
-So **do not expect a 4K panel, rotated or not, to be worth much here.** The
-earlier version of this section predicted a near-native ~2070×2855 from portrait
-4K by assuming fit-to-viewport behaviour. That prediction was wrong and has been
-removed rather than left to mislead.
-
-A corollary worth noting: Cloud Reader appears to serve **smaller page assets
-than the Android Kindle app**. The ~2175×3000 "hi-def" figure describes what the
-app downloads to external storage, not what the web reader delivers — the web
-reader tops out near 1100 px wide in every configuration tried.
-
-**Zooming does not help, but a bigger viewport probably does.** Two different
-things, easily conflated. Measured by halving each image and re-enlarging it —
-a round trip that costs an upscaled image almost nothing and a genuinely
-detailed one a great deal:
-
-| Render | half-then-double RMSE | reading |
-|---|---|---|
-| landscape, 1024 px wide | 0.075 | genuine detail |
-| portrait, 1110 px wide | 0.060 | genuine detail, not an upscale of the 1024 |
-| zoomed with no reload | 0.018 | interpolated |
-| control: known 2× upscale | 0.009 | pure upscale |
-
-So CSS zoom merely stretches the asset already fetched — but the *wider* layout
-in portrait produced a genuinely sharper render. The reader lays the page out at
-roughly 77–80% of viewport width (77% for one page in portrait, 80% for two in
-landscape), and the asset kept up at 1110 px.
-
-**There is no fixed asset: the reader requests a page image rendered to fit the
-current viewport.** Confirmed by reading the intrinsic size of the image element
-itself at two window sizes — paste this into the devtools console (type
+**There is no fixed page asset.** Kindle Cloud Reader asks the server for a page
+image rendered to fit the current viewport, so a bigger window really does yield
+more genuine pixels. Confirmed by reading the intrinsic size of the image
+element at two window sizes — paste into the devtools console (type
 `allow pasting` first if Firefox refuses):
 
 ```js
@@ -138,24 +98,45 @@ $$('img').map(i=>i.naturalWidth+'x'+i.naturalHeight)
 | 2506 px wide window | 2506 × 1146 |
 | 2560 px fullscreen | 2560 × 1190 |
 
-It tracks the viewport exactly. So **more screen really does buy more genuine
-pixels**, up to whatever master Amazon holds (reportedly ~2175×3000 per page),
-and a 4K panel is worth having:
+It follows the viewport exactly. Run that check first on any new machine — it
+answers the resolution question in one line, and is worth more than any of the
+reasoning below.
 
-| Setup | Captured page | vs now |
+**Zoom does not help.** It only re-draws the image already fetched. Measured by
+halving an image and re-enlarging it, a round trip that costs an enlarged image
+almost nothing and a genuinely detailed one a great deal:
+
+| Render | half-then-double RMSE | reading |
 |---|---|---|
-| 1440p landscape (today) | ~1024 × 1414 | — |
-| 4K landscape | ~1566 × 2160 | 1.5× linear, 2.3× pixels |
-| 4K portrait, single page | ~2160 × 2980 | ~2× linear, near the master |
+| landscape, 1024 px wide | 0.075 | genuine detail |
+| portrait, 1110 px wide | 0.060 | genuine detail, not an enlargement of the 1024 |
+| zoomed with no reload | 0.018 | interpolated |
+| `:screenshot --dpr 3` | 0.008 | interpolated |
+| control: known 2× enlargement | 0.009 | pure enlargement |
 
-Zoom remains useless — it only re-renders the image already fetched, which is
-why the `--dpr 3` screenshot scored 0.008 against the 1× render's 0.051. The
-gain comes from viewport pixels, not from magnification.
+The `--dpr 3` result is the clearest: Firefox re-drew the page at triple
+resolution and found nothing extra to draw, because the *fetched image* was
+already the limit. The gain comes from viewport pixels, never from magnifying.
 
-This file previously claimed a fixed ~1100 px ceiling that no display could
-beat. That was wrong: it drew a general conclusion from a zoom test, which cannot see a
-re-fetch. Check the intrinsic size with the snippet above before believing any
-claim about the ceiling, including this one.
+What the page actually measures, captured:
+
+| Setup | Captured page | vs 1440p landscape |
+|---|---|---|
+| 1440p landscape (spread) | 1024 × 1414 | — |
+| 1440p portrait (single page) | 1110 × 1528 | +8% linear |
+| 4K landscape (spread) | ~1566 × 2160 | 1.5× linear, 2.3× pixels |
+| 4K portrait (single page) | ~2160 × 2980 | ~2× linear |
+
+The 4K rows are projections from the viewport-tracking behaviour above, not
+measurements. Portrait 4K would land near the ~2175×3000 master, i.e. close to
+native. Portrait on a 1440p panel gains only 8%, because a 1440-wide viewport
+showing one page is barely more than half a 2560-wide viewport showing two.
+
+Two claims in earlier versions of this file were wrong in opposite directions:
+first that portrait 4K would be near-native (right answer, wrong reasoning —
+assumed fit-to-viewport without checking), then that ~1100 px was a hard ceiling
+no display could beat (drawn from a zoom test, which cannot detect a re-fetch).
+Trust the console snippet, not the prose.
 
 Portrait does still force **single-page** rather than spread view, which is a
 layout convenience — but note the reader needs a reload or an F11 toggle after
