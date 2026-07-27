@@ -542,6 +542,12 @@ Press F11 in Firefox, or re-run with REQUIRE_FULLSCREEN=0 to capture the window 
 else
     echo "Switch to Firefox now -- starting in ${SWITCH_DELAY}s..."
     sleep "$SWITCH_DELAY"
+    # Take a real window capture: RAW_GEOM is otherwise left over from the
+    # whole-desktop grab in detect_display_scale, and the click targets below
+    # would be sized against the DESKTOP rather than the window -- landing off
+    # the window entirely on a multi-monitor box.
+    capture_raw "$OUTPUT_DIR/.geom.png" || die "no screenshot; is anything focused?"
+    rm -f "$OUTPUT_DIR/.geom.png"
 fi
 
 WIN_W=${RAW_GEOM%x*}; WIN_H=${RAW_GEOM#*x}
