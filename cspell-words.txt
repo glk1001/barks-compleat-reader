@@ -84,6 +84,7 @@ jpginfo
 jpgs
 keepends
 keynav
+keysym
 killable
 lanczos
 letterbox
@@ -124,6 +125,7 @@ parametrised
 passthroughs
 pdfs
 pil
+pixmap
 pnginfo
 powersave
 ppid
@@ -145,6 +147,7 @@ screenmanager
 sdl
 selftest
 separator
+setsid
 soffice
 softbreak
 splittable
@@ -191,10 +194,16 @@ windowmanager
 wmclass
 wmctrl
 wordclouds
+xdpyinfo
+Xephyr
 xlabel
 xorg
+xte
+XTEST
 xticklabels
 xticks
+xwd
+xwininfo
 ydotool
 ylabel
 yticklabels

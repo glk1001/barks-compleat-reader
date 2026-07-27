@@ -208,10 +208,12 @@ class MainScreenNavigation:
     def _enter_top_goto_focus(self) -> None:
         self._top_goto_focused = True
         self._tree_view_screen.enter_top_goto_focus()
+        logger.debug("Entered top-view goto arrow focus.")
 
     def _exit_top_goto_focus(self) -> None:
         self._top_goto_focused = False
         self._tree_view_screen.exit_top_goto_focus()
+        logger.debug("Exited top-view goto arrow focus.")
 
     def _activate_top_goto(self) -> None:
         # Clear the ring first, then fire. Activation flows through on_goto_title ->
@@ -424,11 +426,13 @@ class MainScreenNavigation:
     def _enter_title_view_focus_at_portal(self) -> None:
         """Enter bottom focus on the title panel with the portal (read action) focused."""
         if not self._bottom_title_view_screen.is_visible:
+            logger.debug("Title portal focus skipped: the title view is not visible.")
             return
         self._auto_exited_bottom_focus = False
         self._focus_region = _FocusRegion.BOTTOM
         self._update_bottom_focus_highlight()
         self._bottom_title_view_screen.enter_nav_focus_at_portal(self.exit_bottom_focus)
+        logger.debug("Entered bottom focus region at the title portal.")
 
     def focus_title_view_portal_after_wiki_goto(self) -> None:
         """Land keyboard focus on the title portal after the wiki's "Goto Title" button.
@@ -459,6 +463,7 @@ class MainScreenNavigation:
         focus ring, and any ring a previous keyboard context left behind is dropped.
         """
         if not keyboard_initiated:
+            logger.debug("Mouse-initiated goto-title: staying in mouse mode.")
             if self._focus_region == _FocusRegion.BOTTOM:
                 # The fun view's arrow lives inside the bottom panel, so the click never
                 # reached MainScreen's "touch outside the panel" exit; drop focus here.
@@ -466,6 +471,7 @@ class MainScreenNavigation:
             if self._top_goto_focused:
                 self._exit_top_goto_focus()
             return
+        logger.debug("Keyboard-initiated goto-title: handing focus to the title portal.")
         Clock.schedule_once(lambda _dt: self._enter_title_view_focus_at_portal(), 0)
 
     def focus_title_portal_after_popup_goto(self, index_screen: IndexScreen) -> None:
