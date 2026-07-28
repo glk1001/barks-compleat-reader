@@ -23,13 +23,14 @@ from pathlib import Path
 import pytest
 from barks_fantagraphics.comic_book_info import (
     ONE_PAGER_COLLECTION_PAGE_BASE,
+    ONE_PAGER_COLLECTION_VOLUME,
     get_located_one_pagers,
 )
 from barks_fantagraphics.comics_consts import FANTA_VOLUME_OVERRIDES_ROOT
 from barks_fantagraphics.fanta_comics_info import FANTA_OVERRIDE_ZIPS
 
 # The collection's nominal volume - its pages live as "extra" images here.
-COLLECTION_VOLUME = 1
+COLLECTION_VOLUME = ONE_PAGER_COLLECTION_VOLUME
 
 JPG_EXT = ".jpg"
 # The stored image bytes are Fernet ciphertext, which always begins with this.

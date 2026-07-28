@@ -6,7 +6,7 @@ from pathlib import Path
 
 from comic_utils.comic_consts import DEC, JAN, PanelPath
 
-from .barks_covers import BARKS_COVERS, get_cover_title
+from .barks_covers import BARKS_COVERS, get_cover_collection_pages, get_cover_title
 from .barks_titles import (
     ENUM_TO_STR_TITLE,
     GYRO_GEARLOOSE,
@@ -1552,6 +1552,40 @@ def get_one_pager_collection_page_num(title: Titles) -> int | None:
     if title not in located:
         return None
     return located.index(title) + 1
+
+
+# Nominal Fantagraphics volumes the synthetic collections are built as. Their staged
+# "extra" pages live in these volumes' fixes dirs (read-write) rather than the
+# read-only original dirs, so offline staging needs no permission changes.
+ONE_PAGER_COLLECTION_VOLUME = 1
+COVER_COLLECTION_VOLUME = 2
+
+
+def get_collection_page_nums(volume: int) -> frozenset[int]:
+    """Return the staged synthetic-collection page numbers for a Fantagraphics volume.
+
+    The "All One-Pagers" (FANTA_01) and "All Covers" (FANTA_02) collections are staged
+    as "extra" pages in their nominal volume's fixes dir, numbered from the relevant
+    collection page base. The numbers are read back off the collection page lists
+    rather than recomputed from the base, so this can never disagree with the pages
+    that are actually built. Authoring a new one-pager or cover location extends the
+    returned set automatically.
+
+    Args:
+        volume: Fantagraphics volume number.
+
+    Returns:
+        The staged page numbers, empty for volumes that host no collection.
+
+    """
+    if volume == ONE_PAGER_COLLECTION_VOLUME:
+        pages = get_one_pager_collection_pages()
+    elif volume == COVER_COLLECTION_VOLUME:
+        pages = get_cover_collection_pages()
+    else:
+        return frozenset()
+
+    return frozenset(int(page.page_filenames) for page in pages)
 
 
 USEFUL_TITLES = {
