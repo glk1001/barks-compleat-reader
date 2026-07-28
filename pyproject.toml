@@ -83,11 +83,12 @@ dev = [
     "scikit-learn>=1.6",
     "wordcloud>=1.9",
     # Pinned: 0.0.62 introduced a flaky salsa panic ("assertion failed:
-    # provisional_status.is_provisional()") that aborts up to 39 files on roughly
+    # provisional_status.is_provisional()") that aborted up to 39 files on roughly
     # 1 in 3 full-project runs, which would flake the CI/pre-commit gate. Bisected
-    # over 6 runs each: 0.0.61 clean, 0.0.62 and 0.0.63 both affected. Unpin once
-    # upstream fixes it.
-    "ty==0.0.61",
+    # over 6 runs each: 0.0.61 clean, 0.0.62 and 0.0.63 both affected. 0.0.64 fixes
+    # it: 17 consecutive clean full-project runs here. ty is beta with 1.0 targeted
+    # for 2026, so stay pinned until it stabilizes.
+    "ty==0.0.64",
     "pyrefly>=1.1.1",  # advisory (non-gating) second type checker; ty remains the gate
     "prek>=0.3.8",
     "sysrsync>=1.1.1",
