@@ -217,7 +217,7 @@ MAIN text='Indexes' dest=IndexDestination() press=TOGGLE_ONLY register=None clos
 _CHRONO_SNAPSHOT = """
 STORY_GROUP text='[b]Chronological[/b]' dest=ChronologicalDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
   YEAR_RANGE text='[b]1942-1946[/b] [i](65)[/i]' dest=YearRangeDestination(start=1942, end=1946, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
-  YEAR_RANGE text='[b]1947-1950[/b] [i](68)[/i]' dest=YearRangeDestination(start=1947, end=1950, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
+  YEAR_RANGE text='[b]1947-1950[/b] [i](70)[/i]' dest=YearRangeDestination(start=1947, end=1950, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
   YEAR_RANGE text='[b]1951-1954[/b] [i](74)[/i]' dest=YearRangeDestination(start=1951, end=1954, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
   YEAR_RANGE text='[b]1955-1957[/b] [i](76)[/i]' dest=YearRangeDestination(start=1955, end=1957, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
   YEAR_RANGE text='[b]1958-1961[/b] [i](138)[/i]' dest=YearRangeDestination(start=1958, end=1961, kind=YearRangeKind.CHRONO) press=TOGGLE_ONLY register=None closed=False yrk=CHRONO lazy=True repopulate=False
@@ -242,7 +242,7 @@ STORY_GROUP text='[b]Series[/b]' dest=AllSeriesDestination() press=TOGGLE_ONLY r
   STORY_GROUP text='[b]Donald Duck Short Stories[/b] [i](14)[/i]' dest=SeriesDestination(series_name='Donald Duck Short Stories') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
   STORY_GROUP text='[b]Uncle Scrooge Short Stories[/b] [i](28)[/i]' dest=SeriesDestination(series_name='Uncle Scrooge Short Stories') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
   STORY_GROUP text='[b]Gyro Gearloose[/b] [i](41)[/i]' dest=SeriesDestination(series_name='Gyro Gearloose') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
-  STORY_GROUP text='[b]Misc[/b] [i](51)[/i]' dest=SeriesDestination(series_name='Misc') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
+  STORY_GROUP text='[b]Misc[/b] [i](53)[/i]' dest=SeriesDestination(series_name='Misc') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
   STORY_GROUP text='[b]One Pagers[/b] [i](128)[/i]' dest=SeriesDestination(series_name='One Pagers') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
     YEAR_RANGE text='[b]1946-1952[/b] [i](43)[/i]' dest=YearRangeDestination(start=1946, end=1952, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False yrk=ONE_PAGER lazy=True repopulate=False
     YEAR_RANGE text='[b]1953-1956[/b] [i](49)[/i]' dest=YearRangeDestination(start=1953, end=1956, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False yrk=ONE_PAGER lazy=True repopulate=False
