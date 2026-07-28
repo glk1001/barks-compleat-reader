@@ -114,7 +114,7 @@ def get_page_number_str(page: CleanPage, page_number: int) -> str:
     if page.page_type == PageType.FRONT:
         assert page_number == 0
         return ""
-    if page.page_type not in FRONT_MATTER_PAGES:
+    if page.page_type not in FRONT_MATTER_PAGES or page.use_arabic_page_num:
         return str(page_number)
 
     assert page_number in ROMAN_NUMERALS
@@ -179,6 +179,11 @@ def _get_srce_and_dest_pages_in_order(
 ) -> SrceAndDestPages:
     required_pages = get_required_pages_in_order(comic.page_images_in_order)
 
+    # The synthetic collections are hundreds of COVER pages long. COVER is front
+    # matter, which is numbered with roman numerals, and those only run to "x" - so
+    # number these as an ordinary book instead.
+    use_arabic_page_num = comic.is_synthetic_collection()
+
     srce_page_list = []
     dest_page_list = []
 
@@ -225,12 +230,15 @@ def _get_srce_and_dest_pages_in_order(
             srce_file = get_relative_srce_filepath(page)
             dest_file = file_num_str + DEST_FILE_EXT
 
-        srce_page_list.append(CleanPage(srce_file, page.page_type, page.page_num))
+        srce_page_list.append(
+            CleanPage(srce_file, page.page_type, page.page_num, use_arabic_page_num),
+        )
         dest_page_list.append(
             CleanPage(
                 dest_file,
                 page.page_type,
                 page_num,
+                use_arabic_page_num,
             ),
         )
 

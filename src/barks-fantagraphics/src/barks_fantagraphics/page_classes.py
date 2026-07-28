@@ -16,11 +16,16 @@ class CleanPage:
         page_filename: str,
         page_type: PageType,
         page_num: int = -1,
+        use_arabic_page_num: bool = False,
     ) -> None:
         self.page_filename = page_filename
         self.page_type = page_type
         self.page_num: int = page_num
         self.panels_bbox: BoundingBox = BoundingBox()
+        # Front-matter pages normally take roman numerals, which only run to "x". The
+        # synthetic collections are hundreds of cover pages long, so they are numbered
+        # as an ordinary book instead.
+        self.use_arabic_page_num = use_arabic_page_num
 
 
 @dataclass(frozen=True, slots=True)
