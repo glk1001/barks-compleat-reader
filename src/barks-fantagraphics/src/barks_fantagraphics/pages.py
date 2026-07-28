@@ -108,17 +108,43 @@ def get_page_num_str(page: CleanPage) -> str:
     return get_page_number_str(page, page.page_num)
 
 
+def get_front_matter_page_num_str(page: CleanPage, ordinal: int) -> str:
+    """Render a front-matter page's position as its displayed page number.
+
+    Front matter is numbered with roman numerals, except in the synthetic
+    collections, which are hundreds of pages long and so are numbered as an
+    ordinary book (see `CleanPage.use_arabic_page_num`).
+
+    This is the one place that rule lives. Callers differ in *which* ordinal they
+    pass - `get_page_number_str` uses the page's own number, while the metadata
+    file numbers by position - so they are not interchangeable, but they must
+    agree on roman-versus-arabic.
+
+    Args:
+        page: The page being numbered.
+        ordinal: Its position within the front matter, counting from one.
+
+    Returns:
+        The displayed page number.
+
+    """
+    if page.use_arabic_page_num:
+        return str(ordinal)
+
+    assert ordinal in ROMAN_NUMERALS
+    return ROMAN_NUMERALS[ordinal]
+
+
 def get_page_number_str(page: CleanPage, page_number: int) -> str:
     if page.page_type in [PageType.PAINTING_NO_BORDER, PageType.BACK_PAINTING_NO_BORDER]:
         return ""
     if page.page_type == PageType.FRONT:
         assert page_number == 0
         return ""
-    if page.page_type not in FRONT_MATTER_PAGES or page.use_arabic_page_num:
+    if page.page_type not in FRONT_MATTER_PAGES:
         return str(page_number)
 
-    assert page_number in ROMAN_NUMERALS
-    return ROMAN_NUMERALS[page_number]
+    return get_front_matter_page_num_str(page, page_number)
 
 
 def get_sorted_srce_and_dest_pages(
