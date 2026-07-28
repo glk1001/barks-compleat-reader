@@ -137,6 +137,7 @@ putpixel
 pyeof
 rasterised
 realised
+recognise
 reingest
 Relatedly
 relativedelta

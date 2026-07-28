@@ -3,6 +3,8 @@ name = "barks-compleat-reader"
 version = "0.0.0"  # Virtual package - real version is written to _version.py by scripts/build.sh
 description = "Kivy app to navigate and read the Fantagraphics Barks library."
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENCE", "NOTICE"]
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "barks-reader",
