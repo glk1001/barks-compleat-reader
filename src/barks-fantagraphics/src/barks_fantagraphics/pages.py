@@ -428,6 +428,12 @@ def get_restored_srce_dependencies(comic: ComicBook, srce_page: CleanPage) -> li
         )
         panel_bounds_file = comic.get_final_fixes_panel_bounds_file(srce_page.page_num)
         if panel_bounds_file:
+            # Independent, because the chain is linear and this dependency is not: the
+            # panel segments are computed from the bounds override *and* the restored
+            # page. Putting it in the chain would make the restored page compare against
+            # it instead of against the segments, which masks a real inverted-segments
+            # fault whenever the override is the newest of the three. The segments are
+            # graded against it by `stale_panel_segments` in the integrity checker.
             underlying_files.append(
                 SrceDependency(
                     panel_bounds_file,
