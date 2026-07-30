@@ -62,6 +62,14 @@ __pycache__/
 .idea/$CACHE_FILE$
 .idea/httpRequests
 .idea/caches/build_file_checksums.ser
+
+# Per-user IDE state, not project config: a plugin identifier tied to this
+# install, per-user editor preferences, and the user-scoped spellcheck
+# dictionary (the shared one is .idea/dictionaries/project.xml).
+.idea/material_theme_project_new.xml
+.idea/csv-plugin.xml
+.idea/csv-editor.xml
+.idea/dictionaries/greg.xml
 *.iws
 graphify-out/
 
