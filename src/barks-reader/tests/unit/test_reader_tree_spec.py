@@ -23,6 +23,7 @@ from barks_fantagraphics.barks_titles import (
     US_2_FC_ISSUE_NUM,
     US_3_FC_ISSUE_NUM,
 )
+from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.fanta_comics_info import (
     SERIES_COVERS,
     SERIES_CS,
@@ -234,7 +235,7 @@ STORY_GROUP text='[b]Series[/b]' dest=AllSeriesDestination() press=TOGGLE_ONLY r
     YEAR_RANGE text='[b]1958-1961[/b] [i](WDCS 218-263)[/i]' dest=YearRangeDestination(start=1958, end=1961, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False yrk=CS lazy=True repopulate=False
     YEAR_RANGE text='[b]1962-1966[/b] [i](WDCS 264-265)[/i]' dest=YearRangeDestination(start=1962, end=1966, kind=YearRangeKind.CS) press=TOGGLE_ONLY register=None closed=False yrk=CS lazy=True repopulate=False
   STORY_GROUP text='[b]Donald Duck Adventures[/b] [i](39)[/i]' dest=SeriesDestination(series_name='Donald Duck Adventures') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
-  STORY_GROUP text='[b]Uncle Scrooge Adventures[/b] [i](41)[/i]' dest=SeriesDestination(series_name='Uncle Scrooge Adventures') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
+  STORY_GROUP text='[b]Uncle Scrooge Adventures[/b] [i](43)[/i]' dest=SeriesDestination(series_name='Uncle Scrooge Adventures') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
     YEAR_RANGE text='[b]1951-1954[/b] [i](US 1-10)[/i]' dest=YearRangeDestination(start=1951, end=1954, kind=YearRangeKind.US) press=TOGGLE_ONLY register=None closed=False yrk=US lazy=True repopulate=False
     YEAR_RANGE text='[b]1955-1957[/b] [i](US 11-23)[/i]' dest=YearRangeDestination(start=1955, end=1957, kind=YearRangeKind.US) press=TOGGLE_ONLY register=None closed=False yrk=US lazy=True repopulate=False
     YEAR_RANGE text='[b]1958-1961[/b] [i](US 24-38)[/i]' dest=YearRangeDestination(start=1958, end=1961, kind=YearRangeKind.US) press=TOGGLE_ONLY register=None closed=False yrk=US lazy=True repopulate=False
@@ -242,7 +243,7 @@ STORY_GROUP text='[b]Series[/b]' dest=AllSeriesDestination() press=TOGGLE_ONLY r
   STORY_GROUP text='[b]Donald Duck Short Stories[/b] [i](14)[/i]' dest=SeriesDestination(series_name='Donald Duck Short Stories') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
   STORY_GROUP text='[b]Uncle Scrooge Short Stories[/b] [i](28)[/i]' dest=SeriesDestination(series_name='Uncle Scrooge Short Stories') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
   STORY_GROUP text='[b]Gyro Gearloose[/b] [i](41)[/i]' dest=SeriesDestination(series_name='Gyro Gearloose') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
-  STORY_GROUP text='[b]Misc[/b] [i](53)[/i]' dest=SeriesDestination(series_name='Misc') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
+  STORY_GROUP text='[b]Misc[/b] [i](51)[/i]' dest=SeriesDestination(series_name='Misc') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=True repopulate=False
   STORY_GROUP text='[b]One Pagers[/b] [i](128)[/i]' dest=SeriesDestination(series_name='One Pagers') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
     YEAR_RANGE text='[b]1946-1952[/b] [i](43)[/i]' dest=YearRangeDestination(start=1946, end=1952, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False yrk=ONE_PAGER lazy=True repopulate=False
     YEAR_RANGE text='[b]1953-1956[/b] [i](49)[/i]' dest=YearRangeDestination(start=1953, end=1956, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False yrk=ONE_PAGER lazy=True repopulate=False
@@ -639,9 +640,10 @@ class TestSearchAppendixIndex:
         _assert_snapshot(specs[5], _INDEX_SNAPSHOT + _WIKI_INDEX_ENTRY + "\n")
 
 
-def _info_with_issue(issue_number: int) -> MagicMock:
+def _info_with_issue(issue_number: int, issue_name: Issues = Issues.US) -> MagicMock:
     info = MagicMock()
     info.comic_book_info.issue_number = issue_number
+    info.comic_book_info.issue_name = issue_name
     return info
 
 
@@ -649,8 +651,20 @@ class TestYearRangeExtraText:
     """The per-kind label suffix. Pure functions over the range's title list."""
 
     def test_cs_extra_text_spans_first_to_last_issue(self) -> None:
-        titles = [_info_with_issue(n) for n in (95, 31, 79)]
+        titles = [_info_with_issue(n, Issues.CS) for n in (95, 31, 79)]
         assert _get_cs_year_range_extra_text(titles) == "WDCS 31-95"  # ty: ignore[invalid-argument-type]
+
+    def test_cs_extra_text_ignores_non_wdcs_issues(self) -> None:
+        """The Comics and Stories series admits only numbered WDCS issues.
+
+        `test_comics_and_stories_series_is_all_wdcs` enforces that on the data; the
+        filter here stops a stray from quietly widening the label if one ever slips in.
+        """
+        titles = [_info_with_issue(31, Issues.CS), _info_with_issue(1, Issues.FG)]
+        assert _get_cs_year_range_extra_text(titles) == "WDCS 31-31"  # ty: ignore[invalid-argument-type]
+
+    def test_cs_extra_text_is_empty_without_a_wdcs_issue(self) -> None:
+        assert _get_cs_year_range_extra_text([_info_with_issue(1, Issues.FG)]) == ""
 
     def test_count_extra_text_is_the_title_count(self) -> None:
         assert _get_count_extra_text([_info_with_issue(1)] * 43) == "43"
@@ -676,8 +690,27 @@ class TestYearRangeExtraText:
         Their real issue numbers are in the hundreds, so without the remap they would
         sort last and the label would read e.g. 'US 4-386' instead of 'US 1-4'.
         """
-        titles = [_info_with_issue(fc_issue_num), _info_with_issue(4)]
+        titles = [_info_with_issue(fc_issue_num, Issues.FC), _info_with_issue(4)]
         assert _get_us_year_range_extra_text(titles) == f"US {expected_us_number}-4"  # ty: ignore[invalid-argument-type]
+
+    def test_us_extra_text_ignores_dell_giants(self) -> None:
+        """Some Uncle Scrooge Adventures ran in Dell Giants, not in a numbered Uncle Scrooge.
+
+        'The Fantastic River Race' (Uncle Scrooge Goes to Disneyland) and 'The Forbidium
+        Money Bin' (Disneyland Birthday Party) are both issue #1 of their own one-shot, so
+        counting them would drag the lower bound of every range they fall in down to 1.
+        """
+        titles = [
+            _info_with_issue(11),
+            _info_with_issue(1, Issues.USGTD),
+            _info_with_issue(1, Issues.DIBP),
+            _info_with_issue(23),
+        ]
+        assert _get_us_year_range_extra_text(titles) == "US 11-23"  # ty: ignore[invalid-argument-type]
+
+    def test_us_extra_text_is_empty_without_a_numbered_issue(self) -> None:
+        titles = [_info_with_issue(1, Issues.USGTD)]
+        assert _get_us_year_range_extra_text(titles) == ""  # ty: ignore[invalid-argument-type]
 
 
 def test_random_titles_sample_from_the_whole_chronological_span(

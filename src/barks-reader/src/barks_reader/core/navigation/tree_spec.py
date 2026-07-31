@@ -30,6 +30,7 @@ from barks_fantagraphics.barks_titles import (
     US_3_FC_ISSUE_NUM,
     Titles,
 )
+from barks_fantagraphics.comic_issues import Issues
 from barks_fantagraphics.fanta_comics_info import (
     SERIES_COVERS,
     SERIES_CS,
@@ -271,14 +272,19 @@ def _tagged_title_rows(titles: Iterable[Titles]) -> tuple[NodeSpec, ...]:
 
 
 def _get_cs_year_range_extra_text(title_list: list[FantaComicBookInfo]) -> str:
-    first_issue = min(
-        title_list, key=lambda x: x.comic_book_info.issue_number
-    ).comic_book_info.issue_number
-    last_issue = max(
-        title_list, key=lambda x: x.comic_book_info.issue_number
-    ).comic_book_info.issue_number
+    # Every Comics and Stories title ran in a numbered WDCS issue -- unlike the Uncle
+    # Scrooge series there are no Dell Giants here, so this filter should never drop
+    # anything. It is here so that a stray non-WDCS title cannot silently corrupt the
+    # label; `test_comics_and_stories_series_is_all_wdcs` fails loudly if one appears.
+    issue_numbers = [
+        info.comic_book_info.issue_number
+        for info in title_list
+        if info.comic_book_info.issue_name is Issues.CS
+    ]
+    if not issue_numbers:
+        return ""
 
-    return f"WDCS {first_issue}-{last_issue}"
+    return f"WDCS {min(issue_numbers)}-{max(issue_numbers)}"
 
 
 def _get_count_extra_text(title_list: list[FantaComicBookInfo]) -> str:
@@ -286,21 +292,46 @@ def _get_count_extra_text(title_list: list[FantaComicBookInfo]) -> str:
     return str(len(title_list))
 
 
+# US 1-3 shipped as Four Color issues, so they carry an 'FC' issue name and an issue number
+# in the hundreds. They are matched by that number rather than by their issue name.
+_US_ISSUE_NUM_FOR_FC_ISSUE_NUM = {
+    US_1_FC_ISSUE_NUM: 1,
+    US_2_FC_ISSUE_NUM: 2,
+    US_3_FC_ISSUE_NUM: 3,
+}
+
+
+def _get_us_issue_number(fanta_info: FantaComicBookInfo) -> int | None:
+    """Return the Uncle Scrooge issue number a title appeared in.
+
+    Args:
+        fanta_info: The title to look up.
+
+    Returns:
+        The Uncle Scrooge issue number, or ``None`` if the title did not run in one.
+
+    """
+    comic_book_info = fanta_info.comic_book_info
+    if comic_book_info.issue_name is Issues.US:
+        return comic_book_info.issue_number
+
+    return _US_ISSUE_NUM_FOR_FC_ISSUE_NUM.get(comic_book_info.issue_number)
+
+
 def _get_us_year_range_extra_text(title_list: list[FantaComicBookInfo]) -> str:
-    def get_us_issue_number(fanta_info: FantaComicBookInfo) -> int:
-        num = fanta_info.comic_book_info.issue_number
-        if num == US_1_FC_ISSUE_NUM:
-            return 1
-        if num == US_2_FC_ISSUE_NUM:
-            return 2
-        if num == US_3_FC_ISSUE_NUM:
-            return 3
-        return num
+    # Some Uncle Scrooge Adventures ran in Dell Giants ('Uncle Scrooge Goes to Disneyland',
+    # 'Disneyland Birthday Party') rather than in a numbered Uncle Scrooge. Those carry
+    # their own issue #1, which would drag the lower bound of the range down to 1, so
+    # only titles with a real Uncle Scrooge issue number count towards the label.
+    issue_numbers = [
+        issue_number
+        for issue_number in (_get_us_issue_number(info) for info in title_list)
+        if issue_number is not None
+    ]
+    if not issue_numbers:
+        return ""
 
-    first_issue = get_us_issue_number(min(title_list, key=get_us_issue_number))
-    last_issue = get_us_issue_number(max(title_list, key=get_us_issue_number))
-
-    return f"US {first_issue}-{last_issue}"
+    return f"US {min(issue_numbers)}-{max(issue_numbers)}"
 
 
 class _SpecBuilder:
