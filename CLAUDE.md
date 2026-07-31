@@ -43,6 +43,15 @@ bash scripts/git-ty.sh
 bash scripts/git-cspell.sh
 ```
 
+**Bump the pinned toolchain (monthly):**
+`ruff` and `ty` are `==`-pinned in `pyproject.toml` (a `select = ["ALL"]` ruff release
+changes our lint policy; ty is a 0.0.x beta that has shipped a flaky panic). This moves
+them forward on a branch, re-locks, and runs every gate — it never commits or pushes.
+Full rationale and triage steps in `docs/toolchain-bump.md`.
+```bash
+bash scripts/bump-toolchain.sh
+```
+
 **Build standalone executable:**
 ```bash
 bash scripts/build.sh
