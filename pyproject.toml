@@ -76,7 +76,7 @@ dev = [
     # stabilizes rules out of preview is a change to our lint policy, not just a
     # bump (0.16.0 added 388 errors across CPY001/PLR0917). Bump deliberately, and
     # keep .pre-commit-config.yaml on this same venv copy so both gates agree.
-    "ruff==0.16.0",
+    "ruff==0.16.1",
     "pytest-benchmark>=5.2.3",
     "pytest-cov>=7.0.0",
     "pytest-mock>=3.15.1",
@@ -90,7 +90,7 @@ dev = [
     # over 6 runs each: 0.0.61 clean, 0.0.62 and 0.0.63 both affected. 0.0.64 fixes
     # it: 17 consecutive clean full-project runs here. ty is beta with 1.0 targeted
     # for 2026, so stay pinned until it stabilizes.
-    "ty==0.0.64",
+    "ty==0.0.65",
     # Second type checker, and a GATE alongside ty (CI, pre-commit, full-lint.sh).
     # Passes at 0 new findings vs pyrefly-baseline.json (wired via pyrefly.toml), so a
     # release that adds rules can fail the gate. Unlike ruff/ty it is deliberately left
