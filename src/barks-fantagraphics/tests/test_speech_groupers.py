@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
+from barks_fantagraphics import speech_groupers as speech_groupers_module
 from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.comics_consts import PageType
 from barks_fantagraphics.speech_groupers import (
     OCR_TYPE_DICT,
     OcrTypes,
+    SpeechGroups,
     SpeechPageGroup,
     SpeechText,
     _get_speech_text_list,
@@ -529,3 +532,183 @@ class TestGetSpeechPageGroup:
         assert result.comic_page == "1"
         assert "1" in result.speech_groups
         assert result.speech_groups["1"].ai_text == "Quack!"
+
+
+# ---------------------------------------------------------------------------
+# SpeechGroups._get_srce_page_to_dest_page_map
+# ---------------------------------------------------------------------------
+
+
+def _make_srce_dest_pages(
+    page_stems: list[str], page_types: list[PageType] | None = None
+) -> MagicMock:
+    types = page_types or [PageType.BODY] * len(page_stems)
+    result = MagicMock()
+    result.srce_pages = [
+        MagicMock(page_filename=f"/some/dir/{stem}.png", page_type=ptype)
+        for stem, ptype in zip(page_stems, types, strict=True)
+    ]
+    result.dest_pages = [MagicMock(page_num=i) for i, _ in enumerate(page_stems)]
+    return result
+
+
+def _make_comic(fixes_files: dict[str, Path]) -> MagicMock:
+    """Make a comic whose get_srce_original_fixes_story_file returns the given paths."""
+    comic = MagicMock()
+    comic.get_srce_original_fixes_story_file.side_effect = lambda page: fixes_files.get(
+        page, Path("/no/such/fixes/file.png")
+    )
+    return comic
+
+
+class TestGetSrcePageToDestPageMap:
+    def test_symlinked_source_page_is_excluded(self, tmp_path: Path) -> None:
+        """A one-pager reprinted from another volume is not this title's OCR work."""
+        target = tmp_path / "other-volume-page.png"  # type: ignore[operator]
+        target.write_text("art")
+        symlinked = tmp_path / "500.png"  # type: ignore[operator]
+        symlinked.symlink_to(target)
+        real = tmp_path / "001.png"  # type: ignore[operator]
+        real.write_text("art")
+
+        comic = _make_comic({"001": real, "500": symlinked})
+        srce_dest = _make_srce_dest_pages(["001", "500"])
+
+        with patch.object(
+            speech_groupers_module, "get_sorted_srce_and_dest_pages", return_value=srce_dest
+        ):
+            result = SpeechGroups._get_srce_page_to_dest_page_map(comic)  # noqa: SLF001
+
+        assert list(result) == ["001"]
+
+    def test_non_restorable_page_types_are_excluded(self, tmp_path: Path) -> None:
+        real = tmp_path / "001.png"  # type: ignore[operator]
+        real.write_text("art")
+        comic = _make_comic({"001": real, "002": real})
+        srce_dest = _make_srce_dest_pages(["001", "002"], [PageType.BODY, PageType.COVER])
+
+        with patch.object(
+            speech_groupers_module, "get_sorted_srce_and_dest_pages", return_value=srce_dest
+        ):
+            result = SpeechGroups._get_srce_page_to_dest_page_map(comic)  # noqa: SLF001
+
+        assert list(result) == ["001"]
+
+    def test_missing_fixes_file_is_kept(self) -> None:
+        """A page with no fixes file at all is ordinary OCR work."""
+        comic = _make_comic({})
+        srce_dest = _make_srce_dest_pages(["001"])
+
+        with patch.object(
+            speech_groupers_module, "get_sorted_srce_and_dest_pages", return_value=srce_dest
+        ):
+            result = SpeechGroups._get_srce_page_to_dest_page_map(comic)  # noqa: SLF001
+
+        assert list(result) == ["001"]
+
+
+# ---------------------------------------------------------------------------
+# SpeechGroups.get_speech_page_groups / get_missing_prelim_pages
+# ---------------------------------------------------------------------------
+
+
+def _make_speech_groups(
+    tmp_path: Path, pages: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> SpeechGroups:
+    """Make a SpeechGroups over `pages` (srce -> dest), with tmp_path as the prelim dir."""
+    db = MagicMock()
+    db.get_fanta_volume_int_for.return_value = 1
+    db.get_fantagraphics_restored_ocr_prelim_volume_dir.return_value = tmp_path
+    db.get_comic_book_for.return_value = MagicMock()
+
+    monkeypatch.setattr(
+        SpeechGroups, "_get_srce_page_to_dest_page_map", staticmethod(lambda _comic: pages)
+    )
+    return SpeechGroups(db)
+
+
+def _write_prelim(tmp_path: Path, page: str, ocr_type: OcrTypes, text: str = "Quack!") -> Path:
+    json_file = tmp_path / f"{page}-{ocr_type}-gemini-prelim-groups.json"  # type: ignore[operator]
+    json_file.write_text(json.dumps(_make_json_content({"1": _make_group_entry(ai_text=text)})))
+    return json_file
+
+
+class TestGetSpeechPageGroups:
+    def test_loads_both_engines_for_each_page(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        speech_groups = _make_speech_groups(tmp_path, {"001": "1"}, monkeypatch)
+        for ocr_type in OcrTypes:
+            _write_prelim(tmp_path, "001", ocr_type)
+
+        result = speech_groups.get_speech_page_groups(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD)
+
+        assert [g.ocr_index for g in result] == [OcrTypes.EASYOCR, OcrTypes.PADDLEOCR]
+        assert all(g.fanta_page == "001" for g in result)
+
+    def test_missing_file_raises_by_default(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The default must stay loud: a gap in the OCR data is a defect."""
+        speech_groups = _make_speech_groups(tmp_path, {"001": "1"}, monkeypatch)
+
+        with pytest.raises(ValueError, match="Error reading ocr_prelim_groups"):
+            speech_groups.get_speech_page_groups(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD)
+
+    def test_missing_file_skipped_when_opted_in(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        speech_groups = _make_speech_groups(tmp_path, {"001": "1", "002": "2"}, monkeypatch)
+        for ocr_type in OcrTypes:
+            _write_prelim(tmp_path, "001", ocr_type)
+        _write_prelim(tmp_path, "002", OcrTypes.EASYOCR)
+
+        result = speech_groups.get_speech_page_groups(
+            Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, skip_missing=True
+        )
+
+        assert [(g.fanta_page, g.ocr_index) for g in result] == [
+            ("001", OcrTypes.EASYOCR),
+            ("001", OcrTypes.PADDLEOCR),
+            ("002", OcrTypes.EASYOCR),
+        ]
+
+    def test_malformed_file_still_raises_when_opted_in(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """skip_missing tolerates an absent file, never an unreadable one."""
+        speech_groups = _make_speech_groups(tmp_path, {"001": "1"}, monkeypatch)
+        for ocr_type in OcrTypes:
+            bad = tmp_path / f"001-{ocr_type}-gemini-prelim-groups.json"  # type: ignore[operator]
+            bad.write_text("{not json")
+
+        with pytest.raises(ValueError, match="Error reading ocr_prelim_groups"):
+            speech_groups.get_speech_page_groups(
+                Titles.DONALD_DUCK_FINDS_PIRATE_GOLD, skip_missing=True
+            )
+
+
+class TestGetMissingPrelimPages:
+    def test_reports_only_the_absent_files(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        speech_groups = _make_speech_groups(tmp_path, {"001": "1", "002": "2"}, monkeypatch)
+        for ocr_type in OcrTypes:
+            _write_prelim(tmp_path, "001", ocr_type)
+        _write_prelim(tmp_path, "002", OcrTypes.EASYOCR)
+
+        result = speech_groups.get_missing_prelim_pages(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD)
+
+        assert len(result) == 1
+        assert result[0].fanta_page == "002"
+        assert result[0].ocr_index == OcrTypes.PADDLEOCR
+        assert result[0].json_file.name == "002-paddleocr-gemini-prelim-groups.json"
+
+    def test_empty_when_nothing_is_missing(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        speech_groups = _make_speech_groups(tmp_path, {"001": "1"}, monkeypatch)
+        for ocr_type in OcrTypes:
+            _write_prelim(tmp_path, "001", ocr_type)
+
+        assert speech_groups.get_missing_prelim_pages(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD) == []

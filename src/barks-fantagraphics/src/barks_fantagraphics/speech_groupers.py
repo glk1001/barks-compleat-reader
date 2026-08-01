@@ -1,9 +1,12 @@
 import json
+from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import StrEnum
 from itertools import groupby
 from pathlib import Path
 from typing import Any
+
+from loguru import logger
 
 from .barks_titles import Titles
 from .comic_book import ComicBook
@@ -104,24 +107,82 @@ class SpeechPageGroup:
 
 
 @dataclass(frozen=True, slots=True)
+class MissingPrelimPage:
+    """A page/engine whose prelim OCR JSON file does not exist."""
+
+    fanta_page: str
+    ocr_index: OcrTypes
+    json_file: Path
+
+
+@dataclass(frozen=True, slots=True)
 class SpeechGroups:
     _comics_database: ComicsDatabase
 
     # TODO: Have a way to get with/with json and ocr file.
-    def get_speech_page_groups(self, title: Titles) -> list[SpeechPageGroup]:
+    def get_speech_page_groups(
+        self, title: Titles, *, skip_missing: bool = False
+    ) -> list[SpeechPageGroup]:
+        """Load every page/engine of a title.
+
+        Args:
+            title: The title to load.
+            skip_missing: When True, a page whose prelim OCR JSON file does not
+                exist is warned about and left out instead of aborting the whole
+                title. Only an absent file is tolerated — an unreadable or
+                malformed one still raises. Default False so that a gap in the
+                OCR data stays loud for callers that cannot survive one, such as
+                the search-index builders.
+
+        Returns:
+            The loaded page groups, two per page when both engines are present.
+
+        """
         volume = self._comics_database.get_fanta_volume_int_for(title)
-        comic = self._comics_database.get_comic_book_for(title)
-        srce_dest_map = self._get_srce_page_to_dest_page_map(comic)
 
         speech_page_groups: list[SpeechPageGroup] = []
-        for srce_page, dest_page in srce_dest_map.items():
-            for ocr_index in OcrTypes:
-                speech_page_group = get_speech_page_group(
+        for srce_page, dest_page, ocr_index, json_file in self._iter_prelim_pages(title):
+            if skip_missing and not json_file.is_file():
+                logger.warning(f'No prelim OCR file - skipping page: "{json_file}".')
+                continue
+            speech_page_groups.append(
+                get_speech_page_group(
                     self._comics_database, volume, title, ocr_index, srce_page, dest_page
                 )
-                speech_page_groups.append(speech_page_group)
+            )
 
         return speech_page_groups
+
+    def get_missing_prelim_pages(self, title: Titles) -> list[MissingPrelimPage]:
+        """Return the title's pages that have no prelim OCR JSON file.
+
+        These are gaps in the OCR data rather than pages to be ignored: pages
+        excluded by ``_get_srce_page_to_dest_page_map`` never appear here.
+
+        Args:
+            title: The title to check.
+
+        Returns:
+            One entry per missing page/engine, in page then engine order.
+
+        """
+        return [
+            MissingPrelimPage(srce_page, ocr_index, json_file)
+            for srce_page, _dest_page, ocr_index, json_file in self._iter_prelim_pages(title)
+            if not json_file.is_file()
+        ]
+
+    def _iter_prelim_pages(self, title: Titles) -> Iterator[tuple[str, str, OcrTypes, Path]]:
+        """Yield (srce_page, dest_page, ocr_index, prelim_json_file) for a title."""
+        volume = self._comics_database.get_fanta_volume_int_for(title)
+        comic = self._comics_database.get_comic_book_for(title)
+
+        for srce_page, dest_page in self._get_srce_page_to_dest_page_map(comic).items():
+            for ocr_index in OcrTypes:
+                json_file = get_ocr_prelim_groups_json_file(
+                    self._comics_database, volume, srce_page, ocr_index
+                )
+                yield srce_page, dest_page, ocr_index, json_file
 
     @staticmethod
     def _get_srce_page_to_dest_page_map(comic: ComicBook) -> dict[str, str]:
@@ -133,9 +194,34 @@ class SpeechGroups:
         ):
             if srce.page_type not in RESTORABLE_PAGE_TYPES:
                 continue
-            srce_dest_map[Path(srce.page_filename).stem] = get_page_num_str(dest)
+            srce_page = Path(srce.page_filename).stem
+            # A one-pager reprinted from another volume: its source image is a
+            # symlink to that volume's page, which is where the OCR lives. Never
+            # OCR work here, so not a gap either.
+            if comic.get_srce_original_fixes_story_file(srce_page).is_symlink():
+                continue
+            srce_dest_map[srce_page] = get_page_num_str(dest)
 
         return srce_dest_map
+
+
+def get_ocr_prelim_groups_json_file(
+    comics_database: ComicsDatabase, volume: int, srce_page: str, ocr_index: OcrTypes
+) -> Path:
+    """Return the path of one page/engine's prelim OCR groups JSON file.
+
+    Args:
+        comics_database: The comics database, used to locate the volume's dir.
+        volume: The Fantagraphics volume number.
+        srce_page: The source page number, e.g. "078".
+        ocr_index: Which OCR engine's file to name.
+
+    Returns:
+        The file's path, whether or not it exists.
+
+    """
+    ocr_prelim_dir = comics_database.get_fantagraphics_restored_ocr_prelim_volume_dir(volume)
+    return ocr_prelim_dir / get_ocr_prelim_groups_json_filename(srce_page, ocr_index)
 
 
 def get_speech_page_group(
@@ -146,9 +232,8 @@ def get_speech_page_group(
     srce_page: str,
     dest_page: str,
 ) -> SpeechPageGroup:
-    ocr_prelim_dir = comics_database.get_fantagraphics_restored_ocr_prelim_volume_dir(volume)
-    ocr_prelim_groups_json_file = ocr_prelim_dir / get_ocr_prelim_groups_json_filename(
-        srce_page, ocr_index
+    ocr_prelim_groups_json_file = get_ocr_prelim_groups_json_file(
+        comics_database, volume, srce_page, ocr_index
     )
     speech_groups, speech_groups_json = _get_speech_text_list(ocr_prelim_groups_json_file)
 
