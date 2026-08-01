@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -486,7 +487,7 @@ class TestSaveSpeechPageGroupJson:
         saved = json.loads(f.read_text())
         assert saved == json_data
 
-    def test_backup_file_gets_original_renamed(self, tmp_path: Path) -> None:
+    def test_backup_file_gets_the_previous_content(self, tmp_path: Path) -> None:
         json_data = _make_json_content()
         original = tmp_path / "original.json"  # type: ignore[operator]
         original.write_text(json.dumps({"old": True}))
@@ -499,6 +500,43 @@ class TestSaveSpeechPageGroupJson:
         assert json.loads(backup.read_text()) == {"old": True}
         saved = json.loads(original.read_text())
         assert saved == json_data
+
+    def test_backup_works_across_a_filesystem_boundary(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The backup dir may be on another disk, so this must not use rename().
+
+        In practice Prelim-backups is a symlink to a second drive, and a
+        rename() there raises OSError(EXDEV) on every save.
+        """
+        json_data = _make_json_content()
+        original = tmp_path / "original.json"  # type: ignore[operator]
+        original.write_text(json.dumps({"old": True}))
+        backup = tmp_path / "backup" / "original.json"  # type: ignore[operator]
+        spg = _make_speech_page_group(speech_page_json=json_data, json_file=original)
+
+        def _refuse_cross_device(*_args: object, **_kwargs: object) -> None:
+            msg = "Invalid cross-device link"
+            raise OSError(errno.EXDEV, msg)
+
+        monkeypatch.setattr(Path, "rename", _refuse_cross_device)
+
+        _save_speech_page_group_json(spg, to_file=original, backup_file=backup)
+
+        assert json.loads(backup.read_text()) == {"old": True}
+        assert json.loads(original.read_text()) == json_data
+
+    def test_missing_original_still_writes(self, tmp_path: Path) -> None:
+        """A first save has nothing to back up and must not fail trying."""
+        json_data = _make_json_content()
+        original = tmp_path / "brand-new.json"  # type: ignore[operator]
+        backup = tmp_path / "backup" / "brand-new.json"  # type: ignore[operator]
+        spg = _make_speech_page_group(speech_page_json=json_data, json_file=original)
+
+        _save_speech_page_group_json(spg, to_file=original, backup_file=backup)
+
+        assert not backup.exists()
+        assert json.loads(original.read_text()) == json_data
 
 
 # ---------------------------------------------------------------------------

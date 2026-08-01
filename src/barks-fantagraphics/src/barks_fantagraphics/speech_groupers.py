@@ -1,4 +1,5 @@
 import json
+import shutil
 from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import StrEnum
@@ -325,8 +326,14 @@ def _save_speech_page_group_json(
     if to_file is None:
         to_file = speech_page_group.ocr_prelim_groups_json_file
     assert to_file is not None
-    if backup_file:
+    if backup_file and to_file.is_file():
+        # Copy rather than rename. A rename cannot cross a filesystem boundary,
+        # and the backup directory may well be on another disk — it is a symlink
+        # to the 2 TB drive here, which made every editor save raise
+        # "Invalid cross-device link". Copying is also safer in its own right:
+        # the original stays in place until the new content is written, whereas
+        # a rename moves it away first and loses it if the write then fails.
         backup_file.parent.mkdir(parents=True, exist_ok=True)
-        to_file.rename(backup_file)
+        shutil.copy2(to_file, backup_file)
     with to_file.open("w") as f:
         json.dump(speech_page_json, f, indent=4)

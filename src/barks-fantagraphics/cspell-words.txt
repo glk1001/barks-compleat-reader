@@ -1,6 +1,5 @@
 # cspell word list for barks-fantagraphics package
 # One word per line. Case-insensitive.
-
 abie
 abie's
 aeetes's
@@ -239,6 +238,7 @@ endchar
 englin
 eski
 everygeek
+exdev
 extinctus
 extinctuses
 extroverten
