@@ -24,6 +24,7 @@ from barks_fantagraphics.speech_groupers import (
     _save_speech_page_group_json,
     get_speech_page_group,
 )
+from barks_fantagraphics.speech_markup import strip_markup
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -37,11 +38,13 @@ def _make_speech_text(
     ai_text: str | None = None,
     stype: str = "balloon",
 ) -> SpeechText:
+    resolved = ai_text if ai_text is not None else raw_ai_text
     return SpeechText(
         group_id=group_id,
         panel_num=panel_num,
         raw_ai_text=raw_ai_text,
-        ai_text=ai_text if ai_text is not None else raw_ai_text,
+        ai_text=strip_markup(resolved),
+        ai_text_markup=resolved,
         type=stype,
         text_box=[(0, 0), (100, 100)],
     )
@@ -176,6 +179,32 @@ class TestGetSpeechTextList:
 
         assert speech_groups["1"].ai_text == "hyph-nated"
         assert speech_groups["1"].raw_ai_text == "hyph-\nnated"
+
+    def test_ai_text_strips_emphasis_markup(self, tmp_path: Path) -> None:
+        """The default view is plain, so a consumer that ignores emphasis is correct."""
+        f = tmp_path / "groups.json"  # type: ignore[operator]
+        f.write_text(
+            json.dumps(_make_json_content({"1": _make_group_entry(ai_text="A [b]SUCCESS[/b]!")}))
+        )
+
+        speech_groups, _ = _get_speech_text_list(f)
+
+        assert speech_groups["1"].ai_text == "A SUCCESS!"
+        assert speech_groups["1"].ai_text_markup == "A [b]SUCCESS[/b]!"
+        assert speech_groups["1"].raw_ai_text == "A [b]SUCCESS[/b]!"
+
+    def test_ai_text_unescapes_literal_brackets(self, tmp_path: Path) -> None:
+        """Gemini's own bracketed annotations survive the round trip."""
+        f = tmp_path / "groups.json"  # type: ignore[operator]
+        f.write_text(
+            json.dumps(
+                _make_json_content({"1": _make_group_entry(ai_text="&bl;Chinese Characters&br;")})
+            )
+        )
+
+        speech_groups, _ = _get_speech_text_list(f)
+
+        assert speech_groups["1"].ai_text == "[Chinese Characters]"
 
     def test_soft_hyphen_newline_removed(self, tmp_path: Path) -> None:
         f = tmp_path / "groups.json"  # type: ignore[operator]
@@ -458,6 +487,35 @@ class TestSaveSpeechPageGroup:
         _save_speech_page_group(spg, to_file=f, backup_file=None)
 
         assert json_data["groups"]["1"]["ai_text"] == "Updated"
+
+    def test_emphasis_only_edit_is_still_saved(self, tmp_path: Path) -> None:
+        """Saving must stay markup-sensitive, or an emphasis edit is silently lost."""
+        groups = {"1": _make_speech_text("1", raw_ai_text="A [b]SUCCESS[/b]!")}
+        json_data = _make_json_content({"1": _make_group_entry(ai_text="A SUCCESS!")})
+        f = tmp_path / "out.json"  # type: ignore[operator]
+        spg = _make_speech_page_group(speech_groups=groups, speech_page_json=json_data, json_file=f)
+
+        assert _save_speech_page_group(spg, to_file=f, backup_file=None) is True
+        assert json.loads(f.read_text())["groups"]["1"]["ai_text"] == "A [b]SUCCESS[/b]!"
+
+
+class TestGroupsWithTextChanges:
+    """The correction-rate metric must not count emphasis edits as text changes."""
+
+    def test_emphasis_only_edit_is_not_a_text_change(self) -> None:
+        groups = {"1": _make_speech_text("1", raw_ai_text="A [b]SUCCESS[/b]!")}
+        json_data = _make_json_content({"1": _make_group_entry(ai_text="A SUCCESS!")})
+        spg = _make_speech_page_group(speech_groups=groups, speech_page_json=json_data)
+
+        assert spg.has_group_changed() is True
+        assert spg.groups_with_text_changes() == []
+
+    def test_real_text_change_is_reported(self) -> None:
+        groups = {"1": _make_speech_text("1", raw_ai_text="A [b]FAILURE[/b]!")}
+        json_data = _make_json_content({"1": _make_group_entry(ai_text="A SUCCESS!")})
+        spg = _make_speech_page_group(speech_groups=groups, speech_page_json=json_data)
+
+        assert spg.groups_with_text_changes() == ["1"]
 
 
 # ---------------------------------------------------------------------------

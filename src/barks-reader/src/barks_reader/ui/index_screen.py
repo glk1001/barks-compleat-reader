@@ -141,7 +141,12 @@ def show_speech_bubbles_popup(
 
     for page_info in title_speech_info.fanta_pages.values():
         page_text = f"Page {page_info.comic_page}"
-        text = "\n\n".join([s.speech_text for s in page_info.speech_info_list])
+        # The marked-up view. This widget already renders Kivy markup for the
+        # search highlight below, so the lettering's own [b]/[i] comes for free.
+        # Caveat: a search phrase straddling an emphasis boundary -- "really
+        # sharp", where only SHARP is bold -- will not highlight, because the
+        # matcher sees the tags sitting between the words.
+        text = "\n\n".join([s.speech_text_markup for s in page_info.speech_info_list])
         text = mark_phrase_in_text(
             search_terms, text, _speech_highlight_start_tag(), SPEECH_HIGHLIGHT_END_TAG
         )

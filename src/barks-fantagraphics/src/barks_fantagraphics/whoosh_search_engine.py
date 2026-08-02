@@ -16,6 +16,7 @@ from whoosh.searching import Hit
 from .comics_database import ComicsDatabase
 from .entity_types import EntityType
 from .speech_groupers import OcrTypes, SpeechGroups
+from .speech_markup import strip_markup
 from .whoosh_barks_terms import (
     ALL_CAPS,
     BARKSIAN_ENTITY_TYPE_MAP,
@@ -106,9 +107,19 @@ def _is_valid_entity_term(term: str) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class SpeechInfo:
+    """One matching speech group in a search result.
+
+    ``speech_text`` is plain and ``speech_text_markup`` carries the ``[b]``/``[i]``
+    emphasis tags, the same split as ``SpeechText`` and for the same reason: a
+    caller that has not heard of emphasis gets correct text from the obvious
+    attribute.  Only the reader's bubble list, which renders Kivy markup, wants
+    the other one.
+    """
+
     group_id: str
     panel_num: int
     speech_text: str
+    speech_text_markup: str
     entity_types: tuple[str, ...] = ()
 
 
@@ -166,11 +177,14 @@ class SearchEngine:
 
             fanta_page = hit["fanta_page"]
             comic_page = hit["comic_page"]
+            # The stored `content_raw` carries markup; what was indexed did not.
+            stored_text = hit["content_raw"]
             speech_info = SpeechInfo(
-                hit["content_id"],
-                int(hit["panel_num"]),
-                hit["content_raw"],
-                self._get_entity_types(hit, search_words),
+                group_id=hit["content_id"],
+                panel_num=int(hit["panel_num"]),
+                speech_text=strip_markup(stored_text),
+                speech_text_markup=stored_text,
+                entity_types=self._get_entity_types(hit, search_words),
             )
 
             if fanta_page not in prelim_results[comic_title].fanta_pages:
@@ -458,7 +472,14 @@ class SearchEngineCreator(SearchEngine):
                         content_id=group_id,
                         panel_num=str(speech_text.panel_num),
                         unstemmed=speech_text.ai_text,
-                        content_raw=speech_text.raw_ai_text,
+                        # Indexed stripped, stored marked up. Whoosh's
+                        # `_stored_<field>` convention lets one field do both, so
+                        # a search for "saboteurs" still matches a group lettered
+                        # "[b]SABOTEURS[/b]" while the reader gets the tags back
+                        # to render. Indexing the marked-up form instead would
+                        # put "b" and split words into the lexicon.
+                        content_raw=strip_markup(speech_text.raw_ai_text),
+                        _stored_content_raw=speech_text.raw_ai_text,
                         **entity_kwargs,
                     )
 

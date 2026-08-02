@@ -21,6 +21,7 @@ from barks_fantagraphics.comics_utils import (
     get_short_submitted_day_and_month,
 )
 from barks_fantagraphics.fanta_comics_info import FAN, FANTA_SOURCE_COMICS, FantaComicBookInfo
+from barks_fantagraphics.speech_markup import transform_lettering_only
 from comic_utils.cpi_calculator import get_adjusted_usd
 
 from .hyphen_break_engine import NO_BREAK_CHARS, SOFT_HYPHEN
@@ -278,14 +279,25 @@ def mark_phrase_in_text(phrase: str, target_text: str, start_tag: str, end_tag: 
     # 4. Join the per-word patterns with the flexible separator
     full_pattern = separator_pattern.join(word_patterns)
 
-    # 5. Perform the substitution.
+    # 5. Perform the substitution, but only on the comic's own lettering.
     #    We wrap full_pattern in parentheses (...) to create a capturing group.
     #    We replace it with 'start_tag\1end_tag', where \1 puts back exactly what was found.
-    result = re.sub(
-        f"({full_pattern})", rf"{start_tag}\1{end_tag}", target_text, flags=re.IGNORECASE
+    #
+    #    The target may carry emphasis markup ("[b]SHARP[/b]") and escape
+    #    sequences ("&amp;"), and substituting over the whole string reaches
+    #    inside them: searching for "b" would wrap the b in "[b]", and "amp" the
+    #    amp in "&amp;", each producing a tag Kivy cannot parse -- so the reader
+    #    would show broken text instead of the line.
+    #
+    #    The cost is that a phrase cannot match across a tag, so "really sharp"
+    #    against "REALLY [b]SHARP[/b]" is simply not highlighted. A missed
+    #    highlight is visible and harmless; a mangled tag is neither.
+    return transform_lettering_only(
+        target_text,
+        lambda segment: re.sub(
+            f"({full_pattern})", rf"{start_tag}\1{end_tag}", segment, flags=re.IGNORECASE
+        ),
     )
-
-    return result  # noqa: RET504
 
 
 TITLE_PAGE_NUM_SEPARATOR_STR = ", "

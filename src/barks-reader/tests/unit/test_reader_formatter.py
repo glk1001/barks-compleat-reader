@@ -194,6 +194,36 @@ def test_mark_phrase_in_text_does_not_cross_word_boundaries() -> None:
     assert func("atone", "the cat\none day", "<b>", "</b>") == "the cat\none day"
 
 
+def test_mark_phrase_in_text_highlights_inside_emphasis() -> None:
+    """A word that is bold in the art still gets highlighted, tags kept around it."""
+    func = reader_formatter.mark_phrase_in_text
+    assert func("sharp", "REALLY [b]SHARP[/b]", "<m>", "</m>") == "REALLY [b]<m>SHARP</m>[/b]"
+
+
+def test_mark_phrase_in_text_never_marks_inside_markup() -> None:
+    """The search must not reach into a tag or an escape sequence.
+
+    Wrapping the "b" of "[b]" or the "amp" of "&amp;" produces a tag Kivy cannot
+    parse, so the reader would show broken text instead of the line. Both are
+    search terms a user could plausibly type.
+    """
+    func = reader_formatter.mark_phrase_in_text
+    assert func("b", "REALLY [b]SHARP[/b]", "<m>", "</m>") == "REALLY [b]SHARP[/b]"
+    assert func("amp", "GOLDSTEIN &amp; CO.", "<m>", "</m>") == "GOLDSTEIN &amp; CO."
+    assert func("bl", "&bl;Chinese Characters&br;", "<m>", "</m>") == "&bl;Chinese Characters&br;"
+
+
+def test_mark_phrase_in_text_phrase_does_not_span_a_tag() -> None:
+    """The accepted cost of confining the match to lettering: a missed highlight.
+
+    Highlighting "really sharp" across the tag would mean mapping offsets over
+    the markup, which is exactly what inline markup was adopted to avoid. A
+    missing highlight is visible and harmless; a mangled tag is neither.
+    """
+    func = reader_formatter.mark_phrase_in_text
+    assert func("really sharp", "REALLY [b]SHARP[/b]", "<m>", "</m>") == "REALLY [b]SHARP[/b]"
+
+
 def test_get_fitted_title_with_page_nums() -> None:
     func = reader_formatter.get_fitted_title_with_page_nums
 

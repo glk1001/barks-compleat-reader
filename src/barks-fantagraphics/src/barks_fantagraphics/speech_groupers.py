@@ -15,6 +15,7 @@ from .comics_consts import RESTORABLE_PAGE_TYPES
 from .comics_database import ComicsDatabase
 from .ocr_file_paths import get_ocr_prelim_groups_json_filename
 from .pages import get_page_num_str, get_sorted_srce_and_dest_pages
+from .speech_markup import same_text_ignoring_markup, strip_markup
 
 
 class OcrTypes(StrEnum):
@@ -27,12 +28,95 @@ OCR_TYPE_DICT = {0: OcrTypes.EASYOCR, 1: OcrTypes.PADDLEOCR}
 
 @dataclass(frozen=True, slots=True)
 class SpeechText:
+    """One OCR speech group's text and geometry.
+
+    Three views of the text, and picking the wrong one is the trap this class
+    exists to close:
+
+    - ``raw_ai_text`` -- byte-for-byte what is on disk, emphasis markup and soft
+      hyphens included.  This is the editable copy; saving writes it back.
+    - ``ai_text`` -- **plain text**, with emphasis markup stripped and hyphenated
+      line breaks joined.  The default, and what every consumer wants unless it
+      is rendering: the search index, the entity tagger, width-fit measurement.
+    - ``ai_text_markup`` -- joined like ``ai_text`` but with ``[b]``/``[i]`` tags
+      left in, for the reader, which renders Kivy markup natively.
+
+    ``ai_text`` is the stripped one deliberately.  A consumer that has never
+    heard of emphasis gets correct text by doing the obvious thing, and only a
+    caller that actively wants tags can get them.
+    """
+
     group_id: str
     panel_num: int
     raw_ai_text: str
     ai_text: str
+    ai_text_markup: str
     type: str
     text_box: list[tuple[int | float, int | float]]
+
+    @classmethod
+    def from_stored(
+        cls,
+        group_id: str,
+        panel_num: int,
+        stored_text: str,
+        type_: str,
+        text_box: list[tuple[int | float, int | float]],
+    ) -> "SpeechText":
+        """Build from the text as stored on disk, deriving the other two views.
+
+        The only place the relationship between the three is defined, so that a
+        caller cannot construct a group whose ``ai_text`` disagrees with its
+        ``ai_text_markup``.
+
+        Args:
+            group_id: The group's key in the page JSON.
+            panel_num: Panel number, or -1 when unplaced.
+            stored_text: The group's ``ai_text`` value as read from disk.
+            type_: The group's ``type`` field.
+            text_box: The group's four corner points.
+
+        Returns:
+            A ``SpeechText`` with all three text views consistent.
+
+        """
+        joined = (
+            stored_text.replace("-\n", "-")
+            .replace("\u00ad\n", "")  # soft hyphen
+            .replace("\u200b\n", "")  # zero-width space
+        )
+        return cls(
+            group_id=group_id,
+            panel_num=panel_num,
+            raw_ai_text=stored_text,
+            ai_text=strip_markup(joined),
+            ai_text_markup=joined,
+            type=type_,
+            text_box=text_box,
+        )
+
+    def with_stored_text(self, stored_text: str) -> "SpeechText":
+        """Return a copy carrying new text, with the derived views recomputed.
+
+        The editor rewrites text as the user types.  Using ``dataclasses.replace``
+        to set ``raw_ai_text`` alone would leave ``ai_text`` holding the text from
+        before the edit, which is the sort of quiet inconsistency the three views
+        are meant to prevent.
+
+        Args:
+            stored_text: The new text, in its on-disk form.
+
+        Returns:
+            A new ``SpeechText`` with all three views consistent.
+
+        """
+        return SpeechText.from_stored(
+            group_id=self.group_id,
+            panel_num=self.panel_num,
+            stored_text=stored_text,
+            type_=self.type,
+            text_box=self.text_box,
+        )
 
 
 # Vertical bucket size (px) for spatial sorting — bubbles whose min_y values
@@ -75,6 +159,22 @@ class SpeechPageGroup:
 
     def has_group_changed(self) -> bool:
         return _has_speech_page_group_changed(self)
+
+    def groups_with_text_changes(self) -> list[str]:
+        """Group ids whose *plain text* differs from disk, ignoring emphasis edits.
+
+        ``has_group_changed`` answers "is there anything to save", and must stay
+        sensitive to markup or an emphasis edit would be silently dropped.  This
+        answers the different question "did the words change", which is what the
+        correction-rate measurement counts.  Re-running the vision pass and
+        changing only which words are bold must not register as a text
+        correction against the 1.5% baseline.
+
+        Returns:
+            The ids of groups whose stripped text differs from what is on disk.
+
+        """
+        return _groups_with_text_changes(self)
 
     def save_group(self, to_file: Path | None = None, backup_file: Path | None = None) -> bool:
         return _save_speech_page_group(self, to_file, backup_file)
@@ -261,18 +361,14 @@ def _get_speech_text_list(
 
     speech_groups = {}
     for group_id, group in ocr_prelim_group["groups"].items():
-        raw_ai_text = group["ai_text"]
-        ai_text = raw_ai_text.replace("-\n", "-").replace("\u00ad\n", "").replace("\u200b\n", "")
-
         if _is_page_number(group):
             continue
 
-        speech_groups[group_id] = SpeechText(
+        speech_groups[group_id] = SpeechText.from_stored(
             group_id=group_id,
             panel_num=group["panel_num"],
-            raw_ai_text=raw_ai_text,
-            ai_text=ai_text,
-            type=group["type"],
+            stored_text=group["ai_text"],
+            type_=group["type"],
             text_box=group["text_box"],
         )
 
@@ -295,6 +391,15 @@ def _has_speech_page_group_changed(speech_page_group: SpeechPageGroup) -> bool:
             break
 
     return changed
+
+
+def _groups_with_text_changes(speech_page_group: SpeechPageGroup) -> list[str]:
+    stored = speech_page_group.speech_page_json["groups"]
+    return [
+        group_id
+        for group_id, speech_text in speech_page_group.speech_groups.items()
+        if not same_text_ignoring_markup(speech_text.raw_ai_text, stored[group_id]["ai_text"])
+    ]
 
 
 def _save_speech_page_group(
