@@ -1,7 +1,7 @@
 import json
 import shutil
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from itertools import groupby
 from pathlib import Path
@@ -189,6 +189,12 @@ class SpeechPageGroup:
         produce the same ordering for the same page.  Groups with panel_num == -1
         sort last.
 
+        ``speech_groups`` is rekeyed to the new ids in the same step.  It used
+        to be left behind under the old ids, and ``save_group()`` — which looks
+        up the page JSON by ``speech_groups``' keys — would then write one
+        group's text over another's, or KeyError on ids the renumber had
+        retired.
+
         Returns True if ordering or numbering changed.
         """
         groups = self.speech_page_json.get("groups", {})
@@ -202,6 +208,22 @@ class SpeechPageGroup:
         new_values = [v for _, v in sorted_items]
         if old_keys == expected_keys and old_values == new_values:
             return False
+
+        # speech_groups is a subset of the JSON groups (page numbers are
+        # excluded at load), so walk the JSON order and carry over what exists.
+        rekeyed: dict[str, SpeechText] = {}
+        for i, (old_id, _) in enumerate(sorted_items):
+            speech_text = self.speech_groups.get(old_id)
+            if speech_text is not None:
+                rekeyed[str(i)] = replace(speech_text, group_id=str(i))
+        if len(rekeyed) != len(self.speech_groups):
+            msg = "speech_groups holds ids not present in the page JSON; cannot renumber."
+            raise ValueError(msg)
+
+        # The dataclass is frozen, so the field cannot be rebound — but the
+        # dict can be rebuilt in place. The two views must move together.
+        self.speech_groups.clear()
+        self.speech_groups.update(rekeyed)
 
         self.speech_page_json["groups"] = renumbered
         return True

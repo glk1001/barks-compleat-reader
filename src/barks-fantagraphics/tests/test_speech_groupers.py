@@ -422,6 +422,77 @@ class TestRenumberGroups:
         with pytest.raises(ValueError, match="empty text_box"):
             spg.renumber_groups()
 
+    def test_rekeys_speech_groups_on_reorder(self) -> None:
+        json_data = _make_json_content(
+            {
+                "0": _make_group_entry(panel_num=2, ai_text="B"),
+                "1": _make_group_entry(panel_num=1, ai_text="A"),
+            }
+        )
+        speech_groups = {
+            "0": _make_speech_text(group_id="0", panel_num=2, raw_ai_text="B"),
+            "1": _make_speech_text(group_id="1", panel_num=1, raw_ai_text="A"),
+        }
+        spg = _make_speech_page_group(speech_groups=speech_groups, speech_page_json=json_data)
+
+        assert spg.renumber_groups() is True
+        assert list(spg.speech_groups.keys()) == ["0", "1"]
+        assert spg.speech_groups["0"].raw_ai_text == "A"
+        assert spg.speech_groups["0"].group_id == "0"
+        assert spg.speech_groups["1"].raw_ai_text == "B"
+        assert spg.speech_groups["1"].group_id == "1"
+
+    def test_rekeys_speech_groups_skipping_page_number_groups(self) -> None:
+        # The page-number group is in the JSON but excluded from speech_groups
+        # at load; the rekey must tolerate the gap.
+        json_data = _make_json_content(
+            {
+                "0": _make_group_entry(panel_num=-1, ai_text="7", notes="Page number"),
+                "1": _make_group_entry(panel_num=1, ai_text="A"),
+            }
+        )
+        speech_groups = {"1": _make_speech_text(group_id="1", panel_num=1, raw_ai_text="A")}
+        spg = _make_speech_page_group(speech_groups=speech_groups, speech_page_json=json_data)
+
+        assert spg.renumber_groups() is True
+        # The real group sorts first, the page number (panel -1) last.
+        assert json_data["groups"]["0"]["ai_text"] == "A"
+        assert list(spg.speech_groups.keys()) == ["0"]
+        assert spg.speech_groups["0"].raw_ai_text == "A"
+
+    def test_save_group_after_renumber_writes_to_right_groups(self, tmp_path: Path) -> None:
+        # The regression: save_group() looks the JSON up by speech_groups' keys,
+        # and before the rekey a renumber left those keys pointing at whatever
+        # group inherited the old id — an edit then landed in the wrong balloon.
+        json_data = _make_json_content(
+            {
+                "0": _make_group_entry(panel_num=2, ai_text="B"),
+                "1": _make_group_entry(panel_num=1, ai_text="A"),
+            }
+        )
+        speech_groups = {
+            "0": _make_speech_text(group_id="0", panel_num=2, raw_ai_text="B"),
+            "1": _make_speech_text(group_id="1", panel_num=1, raw_ai_text="A"),
+        }
+        spg = _make_speech_page_group(speech_groups=speech_groups, speech_page_json=json_data)
+
+        assert spg.renumber_groups() is True
+        spg.speech_groups["0"] = spg.speech_groups["0"].with_stored_text("A edited")
+
+        assert spg.save_group(to_file=tmp_path / "out.json") is True
+        assert json_data["groups"]["0"]["ai_text"] == "A edited"
+        assert json_data["groups"]["1"]["ai_text"] == "B"
+
+    def test_stale_speech_groups_id_raises_value_error(self) -> None:
+        # "5" forces a renumber; the orphaned "9" must fail loudly rather than
+        # be silently dropped from speech_groups.
+        json_data = _make_json_content({"5": _make_group_entry(panel_num=2, ai_text="B")})
+        speech_groups = {"9": _make_speech_text(group_id="9", panel_num=1, raw_ai_text="orphan")}
+        spg = _make_speech_page_group(speech_groups=speech_groups, speech_page_json=json_data)
+
+        with pytest.raises(ValueError, match="not present in the page JSON"):
+            spg.renumber_groups()
+
 
 # ---------------------------------------------------------------------------
 # _has_speech_page_group_changed
