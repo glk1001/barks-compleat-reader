@@ -608,6 +608,37 @@ class TestIsAddedFixesSpecialCase:
             assert not comic._is_added_fixes_special_case("999", PageType.COVER)
 
 
+class TestIsHandRestored:
+    def test_vol4_page_227_is_hand_restored(self) -> None:
+        comic = _make_comic(volume=4)
+        assert comic.is_hand_restored("227")
+
+    def test_another_page_of_the_same_volume_is_not(self) -> None:
+        comic = _make_comic(volume=4)
+        assert not comic.is_hand_restored("226")
+
+    def test_the_same_page_number_in_another_volume_is_not(self) -> None:
+        """The pair is the key, not the page number on its own."""
+        comic = _make_comic(volume=5)
+        assert not comic.is_hand_restored("227")
+
+    def test_every_page_of_a_hand_restored_title_is(self) -> None:
+        comic = _make_comic(volume=1)
+        with patch.object(type(comic), "get_ini_title", return_value="Good Deeds"):
+            assert comic.is_hand_restored("258")
+            assert comic.is_hand_restored("267")
+
+    def test_a_censored_title_that_is_not_hand_restored_is_not(self) -> None:
+        """CENSORED_TITLES is a longer list than HAND_RESTORED_TITLES."""
+        comic = _make_comic(volume=1)
+        with patch.object(type(comic), "get_ini_title", return_value="The Milkman"):
+            assert not comic.is_hand_restored("258")
+
+    def test_an_ordinary_title_is_not(self) -> None:
+        comic = _make_comic(volume=1)
+        assert not comic.is_hand_restored("001")
+
+
 # ---------------------------------------------------------------------------
 # get_comic_title / get_comic_issue_title / get_title_with_issue_num
 # ---------------------------------------------------------------------------

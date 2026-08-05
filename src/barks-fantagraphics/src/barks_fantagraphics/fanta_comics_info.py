@@ -289,6 +289,19 @@ US_CENSORED_TITLES = [ENUM_TO_STR_TITLE[t] for t in US_CENSORED_TITLE_ENUMS]
 _CENSORED_TITLE_ENUMS = (Titles.GOOD_DEEDS, Titles.SILENT_NIGHT, Titles.MILKMAN_THE)
 CENSORED_TITLES = [ENUM_TO_STR_TITLE[t] for t in _CENSORED_TITLE_ENUMS]
 HAND_RESTORED_TITLES = [ENUM_TO_STR_TITLE[t] for t in (Titles.GOOD_DEEDS, Titles.SILENT_NIGHT)]
+
+# (volume, page_num) pairs whose restored page was made by hand rather than by the restore
+# pipeline. HAND_RESTORED_TITLES names whole titles the build reads out of the fixes tree;
+# these are ordinary pages of ordinary titles whose file in the restored tree is itself the
+# hand work, so re-running cannot make it again.
+#
+# Declared rather than detected, because the only trace on disk is an absence - the page
+# carries no restore recipe - and that is also what an interrupted write leaves behind.
+HAND_RESTORED_PAGES: frozenset[tuple[int, str]] = frozenset(
+    {
+        (4, "227"),  # Restored "The Bill Collectors", by hand, Feb 2025
+    }
+)
 SILENT_NIGHT_PUBLICATION_ISSUE = "Gemstone's Christmas Parade, No.3, 2005"
 
 ALL_LISTS = "All"

@@ -43,6 +43,7 @@ from .comics_utils import (
 )
 from .fanta_comics_info import (
     CENSORED_TITLES,
+    HAND_RESTORED_PAGES,
     HAND_RESTORED_TITLES,
     FantaBook,
     FantaComicBookInfo,
@@ -497,6 +498,29 @@ class ComicBook:
     @staticmethod
     def is_fixes_special_case_added(volume: int, page_num: str) -> bool:
         return (volume, page_num) in _FIXES_SPECIAL_CASES_ADDED
+
+    def is_hand_restored(self, page_num: str) -> bool:
+        """Return whether this page's restored file was made by hand, not by the pipeline.
+
+        True for every page of a hand-restored title, whose pages the build takes from the
+        fixes tree rather than the restored one, and for the individually declared pages in
+        `HAND_RESTORED_PAGES`, whose restored file is itself the hand work.
+
+        Such a page carries no restore recipe, so every recipe test calls it stale. Acting
+        on that would either redo work whose output nothing reads, or overwrite a page that
+        no re-run can make again.
+
+        Args:
+            page_num: The page, as it appears in a filename ("227").
+
+        Returns:
+            True if the upscale and restore must leave this page alone.
+
+        """
+        return (
+            self.get_ini_title() in HAND_RESTORED_TITLES
+            or (self.fanta_book.volume, page_num) in HAND_RESTORED_PAGES
+        )
 
     def _is_edited_fixes_special_case(self, page_num: str) -> bool:
         return bool(self.fanta_book.volume == 16 and page_num == "209")  # noqa: PLR2004
