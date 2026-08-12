@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import string
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
@@ -11,7 +12,8 @@ import barks_reader.ui.speech_index_screen
 import pytest
 from barks_fantagraphics.entity_types import EntityType
 from barks_reader.ui.entity_index_screen import EntityIndexScreen
-from barks_reader.ui.index_screen import IndexItem
+from barks_reader.ui.index_screen import IndexItem, _IndexNavPanel
+from barks_reader.ui.reader_keyboard_nav import KEY_DOWN, KEY_UP
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterator
@@ -137,6 +139,54 @@ class TestEntityIndexScreen:
         items = person_index_screen._get_items_for_letter("D")
         assert len(items) == 2  # noqa: PLR2004
         assert all(isinstance(i, IndexItem) for i in items)
+
+    def test_alphabet_letters_are_a_to_z_only(self, person_index_screen: EntityIndexScreen) -> None:
+        assert person_index_screen._get_alphabet_letters() == string.ascii_uppercase
+        assert person_index_screen._letter_order == string.ascii_uppercase
+
+    @pytest.mark.parametrize(
+        ("selected_letter", "key", "expected_letter"),
+        [
+            ("A", KEY_UP, "Z"),  # Up from the top wraps to the bottom.
+            ("Z", KEY_DOWN, "A"),  # Down from the bottom wraps to the top.
+            ("D", KEY_DOWN, "E"),
+            ("D", KEY_UP, "C"),
+        ],
+    )
+    def test_letter_focus_wraps_within_the_screens_own_alphabet(
+        self,
+        person_index_screen: EntityIndexScreen,
+        selected_letter: str,
+        key: int,
+        expected_letter: str,
+    ) -> None:
+        """Wrapping must stay inside A-Z.
+
+        The entity indexes register no "0" or "'" buttons, so an alphabet order that
+        includes them wraps onto a letter with no button and raises KeyError.
+        """
+        person_index_screen._alphabet_buttons = {
+            letter: MagicMock(text=letter) for letter in string.ascii_uppercase
+        }
+        person_index_screen._nav_active = False
+        person_index_screen._nav_panel = _IndexNavPanel.ALPHABET
+        person_index_screen._nav_focused_letter_idx = 0
+        person_index_screen._nav_focused_btn = None
+        person_index_screen._grid_version = 0
+        person_index_screen._nav_saved_grid_version = -1
+        person_index_screen._selected_letter_button = person_index_screen._alphabet_buttons[
+            selected_letter
+        ]
+
+        with (
+            patch.object(person_index_screen, "on_letter_press") as mock_press,
+            patch.object(person_index_screen, "_clear_letter_focus"),
+            patch.object(person_index_screen, "_draw_letter_focus"),
+        ):
+            person_index_screen.enter_nav_focus(MagicMock())
+            person_index_screen._handle_alphabet_key(key)
+
+        mock_press.assert_called_once_with(person_index_screen._alphabet_buttons[expected_letter])
 
     def test_non_alpha_term_raises(
         self,

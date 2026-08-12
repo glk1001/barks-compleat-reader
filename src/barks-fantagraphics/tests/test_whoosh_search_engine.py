@@ -441,16 +441,41 @@ class TestCollectAndSortResults:
         assert [s.group_id for s in page.speech_info_list] == ["4", "30"]
         assert page.comic_page == "1"
 
-    def test_conflicting_comic_page_for_same_fanta_page_asserts(self) -> None:
-        """The same fanta_page mapping to two comic pages is a data error (assert)."""
+    def test_conflicting_comic_page_for_same_fanta_page_raises(self) -> None:
+        """The same fanta_page mapping to two comic pages is a data error.
+
+        Raised explicitly rather than asserted, so it survives ``python -O``.
+        """
         engine = self._engine()
         hits = [
             _hit(fanta_page="002", comic_page="1", content_id="1"),
             _hit(fanta_page="002", comic_page="9", content_id="2"),
         ]
 
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError, match="maps to both comic page"):
             engine._collect_and_sort_results(cast("list[Hit]", hits), "raw")
+
+    def test_non_numeric_group_id_does_not_crash_the_sort(self) -> None:
+        """A malformed group id must not take down the whole search."""
+        engine = self._engine()
+        hits = [
+            _hit(fanta_page="002", comic_page="1", content_id="2"),
+            _hit(fanta_page="002", comic_page="1", content_id="not-a-number"),
+            _hit(fanta_page="002", comic_page="1", content_id="1"),
+        ]
+
+        results = engine._collect_and_sort_results(cast("list[Hit]", hits), "raw")
+
+        group_ids = [s.group_id for s in results["A Title"].fanta_pages["002"].speech_info_list]
+        assert group_ids == ["1", "2", "not-a-number"]
+
+    def test_result_is_a_plain_dict_not_a_defaultdict(self) -> None:
+        """A missing title must raise KeyError, not silently insert a phantom entry."""
+        engine = self._engine()
+        results = engine._collect_and_sort_results(cast("list[Hit]", [_hit()]), "raw")
+
+        with pytest.raises(KeyError):
+            _ = results["No Such Title"]
 
 
 # ---------------------------------------------------------------------------

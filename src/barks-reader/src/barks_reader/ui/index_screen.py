@@ -81,8 +81,6 @@ def _speech_highlight_start_tag() -> str:
     return f"[b][color={color_to_markup_hex(theme().accent_selection)}]"
 
 
-_LETTER_ORDER = list("0'" + string.ascii_uppercase)
-
 _PAGE_SCROLL_STEP = 0.2
 
 
@@ -436,8 +434,8 @@ class IndexScreen(FloatLayout):
         # Start focus on the currently selected letter.
         if self._selected_letter_button:
             letter = self._selected_letter_button.text
-            if letter in _LETTER_ORDER:
-                self._nav_focused_letter_idx = _LETTER_ORDER.index(letter)
+            if letter in self._letter_order:
+                self._nav_focused_letter_idx = self._letter_order.index(letter)
         self._draw_letter_focus()
 
     def exit_nav_focus(self) -> None:
@@ -480,13 +478,16 @@ class IndexScreen(FloatLayout):
 
     def _move_letter_focus(self, delta: int) -> None:
         self._clear_letter_focus()
-        self._nav_focused_letter_idx = (self._nav_focused_letter_idx + delta) % len(_LETTER_ORDER)
+        letter_order = self._letter_order
+        self._nav_focused_letter_idx = (self._nav_focused_letter_idx + delta) % len(letter_order)
         self._select_focused_letter()
         self._draw_letter_focus()
 
     def _select_focused_letter(self) -> None:
-        letter = _LETTER_ORDER[self._nav_focused_letter_idx]
-        self.on_letter_press(self._alphabet_buttons[letter])
+        letter = self._letter_order[self._nav_focused_letter_idx]
+        button = self._alphabet_buttons.get(letter)
+        if button is not None:
+            self.on_letter_press(button)
 
     def _enter_items_panel(self) -> None:
         col_buttons = self._get_col_buttons(0)
@@ -631,7 +632,7 @@ class IndexScreen(FloatLayout):
     # --- Focus drawing helpers ---
 
     def _draw_letter_focus(self) -> None:
-        letter = _LETTER_ORDER[self._nav_focused_letter_idx]
+        letter = self._letter_order[self._nav_focused_letter_idx]
         btn = self._alphabet_buttons.get(letter)
         if btn:
             draw_focus_highlight(btn, INDEX_NAV_FOCUS_GROUP)
@@ -717,6 +718,16 @@ class IndexScreen(FloatLayout):
         Subclasses can override this to restrict the menu (e.g. A-Z only).
         """
         return "0" + "'" + string.ascii_uppercase
+
+    @property
+    def _letter_order(self) -> str:
+        """The keyboard-navigation order of the side alphabet menu.
+
+        Derived from ``_get_alphabet_letters`` so it always matches the buttons that
+        actually exist. A fixed module-level order would wrap onto letters a subclass
+        never created (e.g. the entity indexes are A-Z only).
+        """
+        return self._get_alphabet_letters()
 
     @abstractmethod
     def _new_index_image(self) -> None:

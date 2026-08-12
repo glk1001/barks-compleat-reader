@@ -122,6 +122,40 @@ class TestSpeechIndexScreen:
 
             mock_populate_grid.assert_called_with("A")
 
+    def test_populate_index_for_letter_builds_the_grid_exactly_once(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        """Selecting a prefix already populates the grid.
+
+        A second call from _populate_index_for_letter would rebuild every widget and
+        kick off a second background-image load that cancels the first.
+        """
+        with (
+            patch.object(barks_reader.ui.speech_index_screen, "IndexMenuButton") as mock_btn_cls,
+            patch.object(speech_index_screen, "_populate_index_grid") as mock_populate_grid,
+        ):
+            mock_btn_cls.side_effect = lambda text: MagicMock(text=text)
+
+            speech_index_screen._populate_index_for_letter("A")
+
+            mock_populate_grid.assert_called_once_with("A")
+
+    def test_populate_top_alphabet_split_menu_clears_stale_prefix_buttons(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        """Prefix buttons from a previously visited letter must not be retained."""
+        with (
+            patch.object(barks_reader.ui.speech_index_screen, "IndexMenuButton") as mock_btn_cls,
+            patch.object(speech_index_screen, "_populate_index_grid"),
+        ):
+            mock_btn_cls.side_effect = lambda text: MagicMock(text=text)
+
+            speech_index_screen._populate_top_alphabet_split_menu("A")
+            assert set(speech_index_screen._prefix_buttons) == {"apple", "ant"}
+
+            speech_index_screen._populate_top_alphabet_split_menu("B")
+            assert set(speech_index_screen._prefix_buttons) == {"banana"}
+
     def test_find_words(self, speech_index_screen: SpeechIndexScreen) -> None:
         speech_index_screen._find_words("test")
         speech_index_screen._search.find_words.assert_called_with("test")

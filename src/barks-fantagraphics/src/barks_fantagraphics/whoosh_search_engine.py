@@ -1,5 +1,6 @@
 import heapq
 import json
+import sys
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
@@ -11,6 +12,7 @@ from whoosh.analysis import STOP_WORDS, LowercaseFilter, StopFilter
 from whoosh.fields import ID, KEYWORD, TEXT, Schema
 from whoosh.index import create_in, open_dir
 from whoosh.qparser import QueryParser
+from whoosh.query import Query
 from whoosh.searching import Hit
 
 from .comics_database import ComicsDatabase
@@ -33,6 +35,11 @@ from .whoosh_punct_tokenizer import WordWithPunctTokenizer
 COLLATOR = Collator()
 
 SUB_ALPHA_SPLIT_SIZE = 56
+
+# Whoosh truncates at this many hits. A common word legitimately appears on more pages
+# than this, so the cap is set above the largest realistic result set rather than at a
+# round number that would silently drop matches.
+_SEARCH_RESULT_LIMIT = 100_000
 
 MY_STOP_WORDS = STOP_WORDS.union(["oh"])
 
@@ -138,6 +145,17 @@ class TitleInfo:
 type TitleDict = dict[str, TitleInfo]
 
 
+def _speech_sort_key(speech_info: SpeechInfo) -> tuple[int, str]:
+    """Order speech groups on a page numerically, tolerating non-numeric group ids.
+
+    Group ids are numeric strings in a well-formed index. A malformed one must not
+    take down the whole search, so it sorts after the numbered groups by its text.
+    """
+    if speech_info.group_id.isdigit():
+        return (int(speech_info.group_id), "")
+    return (sys.maxsize, speech_info.group_id)
+
+
 class SearchEngine:
     def __init__(self, index_dir: Path) -> None:
         self._index = open_dir(index_dir)
@@ -159,13 +177,17 @@ class SearchEngine:
 
     @staticmethod
     def _get_entity_types(hit: Hit, search_words: str) -> tuple[str, ...]:
-        words_lower = [w.lower() for w in search_words.split()]
+        # Match whole words, not substrings: a substring test makes short query tokens
+        # ("or", "a") match unrelated entity names.
+        words_lower = {w.lower() for w in search_words.split()}
         types = []
         for entity_type in ENTITY_TYPES:
             field_value = hit.get(f"entities_{entity_type}", "")
             if field_value:
-                entity_names = [n.strip().lower() for n in field_value.split(",")]
-                if any(w in name for w in words_lower for name in entity_names):
+                name_words = {
+                    word for name in field_value.split(",") for word in name.strip().lower().split()
+                }
+                if words_lower & name_words:
                     types.append(entity_type)
         return tuple(types)
 
@@ -192,25 +214,41 @@ class SearchEngine:
                     comic_page, [speech_info]
                 )
             else:
-                assert prelim_results[comic_title].fanta_pages[fanta_page].comic_page == comic_page
-                prelim_results[comic_title].fanta_pages[fanta_page].speech_info_list.append(
-                    speech_info
-                )
+                existing_page = prelim_results[comic_title].fanta_pages[fanta_page]
+                if existing_page.comic_page != comic_page:
+                    msg = (
+                        f'Index inconsistency for "{comic_title}": fanta page {fanta_page}'
+                        f" maps to both comic page {existing_page.comic_page} and {comic_page}."
+                    )
+                    raise ValueError(msg)
+                existing_page.speech_info_list.append(speech_info)
 
-        title_results = defaultdict(TitleInfo)
+        title_results: TitleDict = {}
         for title in sorted(prelim_results.keys()):
-            title_results[title].fanta_vol = prelim_results[title].fanta_vol
+            title_info = TitleInfo(fanta_vol=prelim_results[title].fanta_vol)
             for fanta_page in sorted(prelim_results[title].fanta_pages.keys()):
                 page_info = prelim_results[title].fanta_pages[fanta_page]
-                page_info.speech_info_list.sort(key=lambda x: int(x.group_id))
-                title_results[title].fanta_pages[fanta_page] = page_info
+                page_info.speech_info_list.sort(key=_speech_sort_key)
+                title_info.fanta_pages[fanta_page] = page_info
+            title_results[title] = title_info
 
         return title_results
 
+    def _parse_literal(self, field_name: str, text: str) -> Query:
+        """Parse ``text`` as a literal phrase rather than a query expression.
+
+        Every caller passes a term taken from the index or a name chosen from a list,
+        never hand-written Whoosh syntax. Quoting keeps characters that the parser
+        would otherwise treat as operators -- the index holds terms like
+        ``500,000,000...`` -- from being reinterpreted or raising.
+        """
+        escaped = text.replace("\\", "\\\\").replace('"', '\\"')
+        return QueryParser(field_name, self._index.schema).parse(f'"{escaped}"')
+
     def find_words(self, search_words: str) -> TitleDict:
         with self._index.searcher() as searcher:
-            query = QueryParser("unstemmed", self._index.schema).parse(search_words, debug=False)
-            results = searcher.search(query, limit=1000)
+            query = self._parse_literal("unstemmed", search_words)
+            results = searcher.search(query, limit=_SEARCH_RESULT_LIMIT)
             return self._collect_and_sort_results(results, search_words)
 
     def iter_all_stored_fields(self) -> Iterator[dict[str, str]]:
@@ -224,20 +262,29 @@ class SearchEngine:
             return {t.decode("utf-8") for t in reader.lexicon("title")}
 
     def get_cleaned_terms(self) -> list[str]:
+        if not self._cleaned_terms_path.exists():
+            msg = (
+                f"Index sidecar file is missing: {self._cleaned_terms_path}."
+                " The search index needs rebuilding."
+            )
+            raise FileNotFoundError(msg)
         return json.loads(self._cleaned_terms_path.read_text())
 
     def get_cleaned_alpha_split_terms(self) -> dict[str, dict[str, list[str]]]:
+        if not self._cleaned_alpha_split_terms_path.exists():
+            msg = (
+                f"Index sidecar file is missing: {self._cleaned_alpha_split_terms_path}."
+                " The search index needs rebuilding."
+            )
+            raise FileNotFoundError(msg)
         return json.loads(self._cleaned_alpha_split_terms_path.read_text())
 
     def find_entities(self, entity_type: str, entity_name: str) -> TitleDict:
-        field_name = f"entities_{entity_type}"
-        # noinspection GrazieInspection,GrazieInspectionRunner
+        # The name is quoted so multi-word names (e.g. "Duk Duk") match as a single
+        # token in the comma-separated KEYWORD field.
         with self._index.searcher() as searcher:
-            # Quote the entity name so multi-word names (e.g. "Duk Duk") match
-            # as a single token in the comma-separated KEYWORD field.
-            quoted_name = f'"{entity_name}"'
-            query = QueryParser(field_name, self._index.schema).parse(quoted_name)
-            results = searcher.search(query, limit=1000)
+            query = self._parse_literal(f"entities_{entity_type}", entity_name)
+            results = searcher.search(query, limit=_SEARCH_RESULT_LIMIT)
             return self._collect_and_sort_results(results, entity_name)
 
     def get_entity_terms(self, entity_type: str) -> list[str]:
@@ -314,8 +361,6 @@ class SearchEngine:
     def _get_similar_size_alpha_groups(
         self, alpha_unstemmed_terms: dict[str, dict[str, list[str]]]
     ) -> dict[str, dict[str, list[str]]]:
-        assert alpha_unstemmed_terms
-
         similar_size_alpha_terms = {}
         for first_letter, sub_alpha_lists in alpha_unstemmed_terms.items():
             similar_size_alpha_terms[first_letter] = self._get_similar_size_sub_alpha_groups(
@@ -328,8 +373,6 @@ class SearchEngine:
     def _get_similar_size_sub_alpha_groups(
         sub_alpha_lists: dict[str, list[str]],
     ) -> dict[str, list[str]]:
-        assert sub_alpha_lists
-
         similar_size_sub_alpha_terms = defaultdict(list)
         current_size = 0
         current_prefix = ""

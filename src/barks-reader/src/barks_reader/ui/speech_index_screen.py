@@ -72,6 +72,18 @@ INDEX_IMAGE_CHANGE_SECONDS = 15
 
 SAVED_NODE_STATE_PREFIX_KEY = "prefix"
 
+# Search results are cached so re-opening a word is instant, but each entry can hold
+# every speech bubble of every matching title, so the caches are capped rather than
+# left to grow for the lifetime of the app.
+_SEARCH_CACHE_MAX_ENTRIES = 64
+
+
+def _store_bounded[K, V](cache: dict[K, V], key: K, value: V) -> None:
+    """Insert into a bounded cache, evicting the oldest entry when it is full."""
+    if len(cache) >= _SEARCH_CACHE_MAX_ENTRIES:
+        del cache[next(iter(cache))]
+    cache[key] = value
+
 
 class _SpeechIndexTitleItemButton(Button):
     background_color_normal = ColorProperty((0, 0, 0, 0))
@@ -92,7 +104,9 @@ class _SpeechIndexTitleItemButton(Button):
         self.valign = "middle"
         self.gap_fill = dp(3)
 
-        self.bind(pos=self.update_canvas, size=self.update_canvas)
+        # `state` matters as much as pos/size: update_canvas picks the fill from it,
+        # so without this binding the pressed band never repaints.
+        self.bind(pos=self.update_canvas, size=self.update_canvas, state=self.update_canvas)
 
     def update_canvas(self, *_args) -> None:  # noqa: ANN002
         canvas = cast("Canvas", self.canvas)
@@ -136,8 +150,10 @@ class SpeechIndexScreen(IndexScreen):
         self._random_title_images = ImageSelector(resolver, reader_settings)
         self._texture_loader = PanelTextureLoader()
         self._found_words_cache: dict[IndexItem, TitleDict] = {}
-        # Separate cache for background image word searches — never used for click results.
-        self._background_words_cache: dict[str, TitleDict] = {}
+        # The background image only needs to know *which* titles match, so this cache
+        # holds title strings rather than full TitleDicts. Keeping the latter would pin
+        # every speech bubble of every match in memory for the app's lifetime.
+        self._background_titles_cache: dict[IndexItem, list[str]] = {}
 
         # Map from base word (lowercase) → sorted list of (EntityType, canonical) pairs.
         # Built from CONTEXT_SENSITIVE_WORDS so ambiguous words expand into typed index entries.
@@ -166,9 +182,21 @@ class SpeechIndexScreen(IndexScreen):
     def _find_words(self, index_terms: str) -> TitleDict:
         return self._search.find_words(index_terms)
 
+    def _find_words_for_item(self, item: IndexItem) -> TitleDict:
+        """Resolve one index item to the titles it appears in.
+
+        Context-sensitive words (see ``CONTEXT_SENSITIVE_WORDS``) expand into typed
+        entity entries, which must be looked up by entity rather than as plain words.
+        Both the click path and the background image go through here so they can never
+        disagree about what an item means.
+        """
+        if item.entity_type is not None:
+            return self._search.find_entities(str(item.entity_type), str(item.id))
+        return self._find_words(str(item.id))
+
     def _populate_index_for_letter(self, first_letter: str) -> None:
+        # Selecting a prefix populates the grid, so there is no second grid call here.
         self._populate_top_alphabet_split_menu(first_letter)
-        self._populate_index_grid(first_letter)
 
     def _populate_top_alphabet_split_menu(self, first_letter: str) -> None:
         """Create the top sub alphabet split buttons across the top."""
@@ -176,6 +204,7 @@ class SpeechIndexScreen(IndexScreen):
 
         alphabet_top_split_layout: GridLayout = self.ids.alphabet_top_split_layout
         alphabet_top_split_layout.clear_widgets()
+        self._prefix_buttons.clear()
 
         for prefix in first_letter_split_terms:
             button = IndexMenuButton(text=prefix)
@@ -436,14 +465,16 @@ class SpeechIndexScreen(IndexScreen):
         if not index_terms:
             return
         rand_item = random.choice(index_terms)
-        rand_id = str(rand_item.id)
 
-        if rand_id not in self._background_words_cache:
-            self._background_words_cache[rand_id] = self._find_words(rand_id)
-        found = self._background_words_cache[rand_id]
+        title_strs = self._background_titles_cache.get(rand_item)
+        if title_strs is None:
+            title_strs = list(self._find_words_for_item(rand_item))
+            _store_bounded(self._background_titles_cache, rand_item, title_strs)
 
         found_titles = [
-            ALL_FANTA_COMIC_BOOK_INFO[STR_TITLE_TO_ENUM[title_str]] for title_str in found
+            ALL_FANTA_COMIC_BOOK_INFO[STR_TITLE_TO_ENUM[title_str]]
+            for title_str in title_strs
+            if title_str in STR_TITLE_TO_ENUM
         ]
         image_info = self._random_title_images.get_random_image(found_titles)
 
@@ -592,14 +623,11 @@ class SpeechIndexScreen(IndexScreen):
 
     def _get_sub_items_data(self, item: IndexItem) -> list[tuple[Any, ...]]:
         """Retrieve and prepare the list of items to display in the sub-layout."""
-        if item in self._found_words_cache:
-            found_words = self._found_words_cache[item]
-        elif item.entity_type is not None:
-            found_words = self._search.find_entities(str(item.entity_type), str(item.id))
-            self._found_words_cache[item] = found_words
-        else:
-            found_words = self._find_words(str(item.id))
-            self._found_words_cache[item] = found_words
+        found_words = self._found_words_cache.get(item)
+        if found_words is None:
+            found_words = self._find_words_for_item(item)
+            _store_bounded(self._found_words_cache, item, found_words)
+
         sub_items_to_display = []
         for comic_title, title_speech_info in found_words.items():
             page_num_list = [page.comic_page for page in title_speech_info.fanta_pages.values()]

@@ -46,8 +46,8 @@ class SearchResult:
         mode: Which search mode produced this result.
         titles: Matching comic title enums (TITLE and TAG modes).
         title_strings: Display-ready title strings parallel to ``titles``.
-        title_dict: Full-text match details with page/speech info (WORD and
-            ENTITY modes).
+        title_dict: Full-text match details with page/speech info (WORD mode,
+            and entity searches via ``search_entity``).
         matched_tags: Tags or tag groups matching the query (TAG mode).
         matched_tag_or_group: The resolved tag or tag group (after
             ``resolve_tag``).
@@ -60,6 +60,11 @@ class SearchResult:
     title_dict: TitleDict = field(default_factory=dict)
     matched_tags: list[Tags | TagGroups] = field(default_factory=list)
     matched_tag_or_group: Tags | TagGroups | None = None
+
+
+def _unique_preserving_order(titles: list[Titles]) -> list[Titles]:
+    """Drop repeated titles, keeping the first occurrence of each."""
+    return list(dict.fromkeys(titles))
 
 
 class ComicSearch:
@@ -95,6 +100,9 @@ class ComicSearch:
         Returns:
             A ``SearchResult`` with the appropriate fields populated.
 
+        Raises:
+            ValueError: If ``mode`` is not a recognized ``SearchMode``.
+
         """
         if not query:
             return SearchResult(mode=mode)
@@ -106,6 +114,9 @@ class ComicSearch:
                 return self._search_tags(query)
             case SearchMode.WORD:
                 return self._search_words(query)
+            case _:
+                msg = f"Unhandled search mode: {mode!r}."
+                raise ValueError(msg)
 
     def search_entity(self, entity_type: str, entity_name: str) -> SearchResult:
         """Search for comics containing a specific named entity.
@@ -235,12 +246,13 @@ class ComicSearch:
         ts = self._get_title_search()
         titles = ts.get_titles_matching_prefix(query)
         min_chars = 2
-        if len(query) > min_chars:
+        if len(query) > min_chars and not titles:
+            # Fall back through progressively looser matches. Each fallback runs only
+            # when the previous one found nothing, so the results never need merging.
+            # `get_titles_from_issue_num` hands back a shared list, so copy before use.
+            titles = list(ts.get_titles_from_issue_num(query))
             if not titles:
-                titles = ts.get_titles_from_issue_num(query)
-            if not titles:
-                seen = set(titles)
-                titles.extend(t for t in ts.get_titles_containing(query) if t not in seen)
+                titles = _unique_preserving_order(ts.get_titles_containing(query))
         return SearchResult(
             mode=SearchMode.TITLE,
             titles=titles,
