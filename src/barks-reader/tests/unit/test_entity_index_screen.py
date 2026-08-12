@@ -110,13 +110,14 @@ class TestEntityIndexScreen:
         self, person_index_screen: EntityIndexScreen
     ) -> None:
         """_populate_index_for_letter should call _populate_index_grid directly."""
-        with (
-            patch.object(person_index_screen, "_populate_index_grid") as mock_grid,
-            patch.object(person_index_screen, "_populate_top_alphabet_split_menu") as mock_prefix,
-        ):
+        # The prefix bar is opt-in, so the entity screens do not merely skip the
+        # menu -- they never inherit it in the first place.
+        assert not hasattr(EntityIndexScreen, "_populate_top_alphabet_split_menu")
+        assert not person_index_screen.has_prefix_bar
+
+        with patch.object(person_index_screen, "_populate_index_grid") as mock_grid:
             person_index_screen._populate_index_for_letter("D")
             mock_grid.assert_called_once_with("D")
-            mock_prefix.assert_not_called()
 
     def test_on_right_from_alphabet_enters_items(
         self, person_index_screen: EntityIndexScreen

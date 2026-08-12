@@ -51,7 +51,7 @@ def main_index_screen(
             screen.index_theme = MagicMock()
             screen._font_manager = mock_font_manager
             screen._random_title_images = mock_random_images_cls.return_value
-            screen._image_loader = mock_loader_cls.return_value
+            screen._texture_loader = mock_loader_cls.return_value
             screen._alphabet_buttons = {}
             screen.treeview_index_node = MagicMock()
             screen.treeview_index_node.saved_state = {}
@@ -63,7 +63,7 @@ class TestMainIndexScreen:
     def test_init(self, main_index_screen: MainIndexScreen) -> None:
         assert main_index_screen._font_manager is not None
         assert main_index_screen._random_title_images is not None
-        assert main_index_screen._image_loader is not None
+        assert main_index_screen._texture_loader is not None
 
     def test_get_items_for_letter(self, main_index_screen: MainIndexScreen) -> None:
         # Clear the index built during init so we can test with controlled data

@@ -21,10 +21,7 @@ from kivy.clock import Clock
 from kivy.graphics import Canvas, Color, Rectangle
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
-    BooleanProperty,
     ColorProperty,
-    ObjectProperty,
-    StringProperty,
 )
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -38,8 +35,6 @@ from .index_screen import IndexItem, IndexItemButton, IndexScreen
 from .panel_texture_loader import PanelTextureLoader
 
 if TYPE_CHECKING:
-    from kivy.core.image import Texture
-
     from barks_reader.core.reader_settings import ReaderSettings
 
     from .font_manager import FontManager
@@ -109,9 +104,7 @@ class TitleHierarchy:
 class MainIndexScreen(IndexScreen):
     """A widget that displays an A-Z index of comic titles and tags."""
 
-    is_visible = BooleanProperty(defaultvalue=False)
-    image_texture = ObjectProperty()
-    current_title_str = StringProperty()
+    index_image_change_seconds = INDEX_IMAGE_CHANGE_SECONDS
 
     def __init__(
         self,
@@ -127,7 +120,7 @@ class MainIndexScreen(IndexScreen):
         self._user_error_handler = user_error_handler
         resolver = ReaderFilePathsResolver(reader_settings.file_paths)
         self._random_title_images = ImageSelector(resolver, reader_settings)
-        self._image_loader = PanelTextureLoader()
+        self._texture_loader = PanelTextureLoader()
         self._cached_all_titles_for_letter: list[FantaComicBookInfo] = []
         self._cached_hierarchies: dict[Titles, TitleHierarchy] = {}
 
@@ -184,18 +177,11 @@ class MainIndexScreen(IndexScreen):
         self._item_index[first_letter].append(IndexItem(tag, tag_name))
 
     @override
-    def _new_index_image(self) -> None:
+    def _reset_background_image_caches(self) -> None:
         self._cached_all_titles_for_letter = []
         self._cached_hierarchies = {}
 
-        self._cancel_index_image_change_events()
-
-        self._next_background_image()
-
-        self._index_image_change_event = Clock.schedule_interval(
-            lambda _dt: self._next_background_image(), INDEX_IMAGE_CHANGE_SECONDS
-        )
-
+    @override
     def _next_background_image(self) -> None:
         if not self._cached_all_titles_for_letter:
             letter = self._selected_letter_button.text
@@ -204,25 +190,11 @@ class MainIndexScreen(IndexScreen):
             )
 
         image_info = self._random_title_images.get_random_image(self._cached_all_titles_for_letter)
-        # TODO: Get rid of this hack!!
-        if image_info.from_title is None or image_info.from_title == Titles.GOOD_NEIGHBORS:
-            self.current_title_str = ""
-            self._current_image_info = None
-        else:
-            self._current_image_info = image_info
-            hierarchy = self._cached_hierarchies[image_info.from_title]
-            self.current_title_str = hierarchy.get_title_with_hierarchy()
+        self._set_background_image(image_info)
 
-        timing = Timing()
-
-        def on_ready(tex: Texture | None, err: Exception) -> None:
-            if err:
-                raise RuntimeError(err)
-
-            self.image_texture = tex
-            logger.debug(f"Time taken to set index image: {timing.get_elapsed_time_with_unit()}.")
-
-        self._image_loader.load_texture(image_info.filename, on_ready)
+    @override
+    def _get_background_title_str(self, title: Titles) -> str:
+        return self._cached_hierarchies[title].get_title_with_hierarchy()
 
     def _get_all_titles_for_letter(
         self, letter: str
@@ -293,7 +265,7 @@ class MainIndexScreen(IndexScreen):
         logger.debug(f"Adding sub-items for {item_id.name}")
 
         sub_items_layout = self._get_sub_item_layout(item_id)
-        self._insert_sub_items_layout(sub_items_layout)
+        self._insert_tag_sub_items_layout(sub_items_layout)
 
     def _get_sub_item_layout(self, item_id: Tags | TagGroups) -> BoxLayout:
         # The new padding is the parent button's padding plus an indent step.
@@ -308,7 +280,7 @@ class MainIndexScreen(IndexScreen):
             sub_items_to_display = [
                 (
                     title,
-                    *self._get_indexable_title_with_page_nums(title, item_id),
+                    *self._get_tagged_title_with_page_nums(title, item_id),
                 )
                 for title in BARKS_TAGGED_TITLES[item_id]
             ]
@@ -357,7 +329,7 @@ class MainIndexScreen(IndexScreen):
 
         return sub_items_layout
 
-    def _insert_sub_items_layout(self, sub_items_layout: BoxLayout) -> None:
+    def _insert_tag_sub_items_layout(self, sub_items_layout: BoxLayout) -> None:
         button = self._open_tag_button
         assert button is not None
         target_layout = button.parent
@@ -366,30 +338,16 @@ class MainIndexScreen(IndexScreen):
         sub_items_layout.owner_button = self._open_tag_button  # Tag the layout with its owner
         self._open_tag_widgets.append(sub_items_layout)
 
-    def _on_index_item_press(self, button: Button, item: IndexItem) -> None:
-        """Handle a press on an individual index item."""
-        logger.info(f"Index item pressed: {item}")
-
-        # If a title is clicked, it's a terminal action. Handle it and do not change the UI.
+    @override
+    def _handle_terminal_item(self, button: Button, item: IndexItem) -> bool:
+        # A title is a terminal action: handle it and leave the UI alone.
         if type(item.id) is Titles:
             self._handle_title(button, item)
-            return
+            return True
+        return False
 
-        # --- State Machine for Cleanup and Expansion ---
-        is_collapse, level_of_click = self._get_level_of_click_for_collapse(button)
-        if is_collapse:
-            logger.debug("Action: Collapse")
-            self._handle_collapse(level_of_click)
-            return
-
-        # --- This is an Expand action (top-level, drill-down, or lateral) ---
-        logger.debug("Action: Expand/Switch")
-        self._handle_expand_or_switch(button)
-
-        # --- Handle the actual press ---
-        self._handle_press(button, item)
-
-    def _handle_press(self, button: Button, item: IndexItem) -> None:
+    @override
+    def _handle_item_expansion(self, button: Button, item: IndexItem) -> None:
         if type(item.id) is Tags:
             self._handle_tag(button, item)
         elif type(item.id) is TagGroups:
@@ -423,7 +381,7 @@ class MainIndexScreen(IndexScreen):
         self._open_tag_item = item
         Clock.schedule_once(self._add_sub_items, 0)
 
-    def _get_indexable_title_with_page_nums(self, title: Titles, tag: Tags) -> tuple[str, str]:
+    def _get_tagged_title_with_page_nums(self, title: Titles, tag: Tags) -> tuple[str, str]:
         """Return the first page to goto, and the sortable title with page numbers."""
         if (tag, title) not in BARKS_TAGGED_PAGES:
             return "", self._get_indexable_title(title)

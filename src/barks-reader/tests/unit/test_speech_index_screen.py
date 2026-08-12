@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.index_screen
@@ -196,7 +196,7 @@ class TestSpeechIndexScreen:
                 speech_index_screen._next_background_image()
 
                 # Verify
-                speech_index_screen._texture_loader.load_texture.assert_called()
+                cast("MagicMock", speech_index_screen._texture_loader).load_texture.assert_called()
                 assert speech_index_screen.current_title_str != ""
 
     def test_handle_title_from_bubble_press(self, speech_index_screen: SpeechIndexScreen) -> None:

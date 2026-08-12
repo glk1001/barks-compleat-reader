@@ -167,6 +167,9 @@
         pos: dp(45), 0
         padding: dp(0)
         spacing: dp(2)
+        # Only the Words index has a prefix bar; the others never populate it.
+        opacity: 1 if root.has_prefix_bar else 0
+        disabled: not root.has_prefix_bar
 
     ScrollView:
         id: index_scroll_view

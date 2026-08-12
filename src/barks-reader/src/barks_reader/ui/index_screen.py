@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import string
 import textwrap
 from abc import abstractmethod
@@ -19,6 +20,7 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     NumericProperty,
     ObjectProperty,
+    StringProperty,
 )
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -58,8 +60,10 @@ if TYPE_CHECKING:
     from barks_fantagraphics.barks_tags import TagGroups, Tags
     from barks_fantagraphics.entity_types import EntityType
     from barks_fantagraphics.whoosh_search_engine import TitleInfo
+    from kivy.core.image import Texture
     from kivy.uix.widget import Widget
 
+    from .panel_texture_loader import PanelTextureLoader
     from .tree_view_nodes import MainTreeViewNode
     from .user_error_handler import UserErrorHandler
 
@@ -82,6 +86,8 @@ def _speech_highlight_start_tag() -> str:
 
 
 _PAGE_SCROLL_STEP = 0.2
+
+_THREE_COLUMNS = 3
 
 
 class _IndexNavPanel(Enum):
@@ -350,6 +356,21 @@ class IndexScreen(FloatLayout):
     index_theme = ObjectProperty()
     _selected_letter_button = ObjectProperty(None, allownone=True)
     num_columns = NumericProperty(2)
+    # The <IndexScreen> kv rule binds all three, so they belong to the base class
+    # even though only subclasses set them.
+    is_visible = BooleanProperty(defaultvalue=False)
+    image_texture = ObjectProperty()
+    current_title_str = StringProperty()
+    # Opt-in prefix bar above the items grid (the word index only).
+    has_prefix_bar = BooleanProperty(defaultvalue=False)
+
+    # How often the background image rotates. Subclasses override.
+    index_image_change_seconds: float = 5
+
+    # Supplied by each subclass's __init__; declared here for the shared background
+    # image machinery. Not assigned in this constructor -- the screen test fixtures
+    # patch IndexScreen.__init__ out entirely and inject collaborators afterwards.
+    _texture_loader: PanelTextureLoader
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
@@ -459,7 +480,15 @@ class IndexScreen(FloatLayout):
         """Handle a key press. Returns True if consumed, False to propagate."""
         if not self._nav_active:
             return False
-        if self._nav_panel == _IndexNavPanel.ALPHABET:
+        return self._handle_panel_key(self._nav_panel, key)
+
+    def _handle_panel_key(self, panel: _IndexNavPanel, key: int) -> bool:
+        """Dispatch a key to the focused panel's handler.
+
+        Subclasses with an extra panel (the word index's prefix bar) extend this
+        rather than intercepting ``handle_key``.
+        """
+        if panel is _IndexNavPanel.ALPHABET:
             return self._handle_alphabet_key(key)
         return self._handle_items_key(key)
 
@@ -674,8 +703,7 @@ class IndexScreen(FloatLayout):
 
     def _clear_all_item_focus(self) -> None:
         self._clear_item_fill()
-        for col_idx in range(self.num_columns):
-            layout = self._get_col_layout(col_idx)
+        for layout in self._get_col_layouts():
             self._clear_layout_focus(layout)
 
     def _clear_layout_focus(self, widget: Widget) -> None:
@@ -691,14 +719,37 @@ class IndexScreen(FloatLayout):
         self._collect_buttons(layout, result)
         return result
 
+    def _split_items(self, items: list[IndexItem]) -> list[list[IndexItem]]:
+        """Deal items into the columns, filling each with its share of what is left.
+
+        Taking ``ceil(remaining / columns_left)`` each time reproduces the original
+        per-column-count formulas exactly, without branching on the column count.
+        """
+        columns: list[list[IndexItem]] = []
+        start = 0
+        for col_idx in range(self.num_columns):
+            columns_left = self.num_columns - col_idx
+            take = math.ceil((len(items) - start) / columns_left)
+            columns.append(items[start : start + take])
+            start += take
+        return columns
+
+    def _get_col_layouts(self) -> list[Widget]:
+        """Return the item columns, left to right.
+
+        The kv rule always defines three; the middle one is collapsed to zero width
+        and disabled in 2-column mode, so it is simply left out here.
+        """
+        if self.num_columns == _THREE_COLUMNS:
+            return [
+                self.ids.left_column_layout,
+                self.ids.middle_column_layout,
+                self.ids.right_column_layout,
+            ]
+        return [self.ids.left_column_layout, self.ids.right_column_layout]
+
     def _get_col_layout(self, col_idx: int) -> Widget:
-        if self.num_columns == 2:  # noqa: PLR2004
-            return [self.ids.left_column_layout, self.ids.right_column_layout][col_idx]
-        return [
-            self.ids.left_column_layout,
-            self.ids.middle_column_layout,
-            self.ids.right_column_layout,
-        ][col_idx]
+        return self._get_col_layouts()[col_idx]
 
     def _collect_buttons(self, widget: Widget, result: list[Button]) -> None:
         for child in reversed(widget.children):
@@ -737,13 +788,60 @@ class IndexScreen(FloatLayout):
         """
         return self._get_alphabet_letters()
 
-    @abstractmethod
     def _new_index_image(self) -> None:
-        pass
+        """Show a fresh background image and restart the rotation timer."""
+        self._reset_background_image_caches()
+        self._cancel_index_image_change_events()
+
+        self._next_background_image()
+
+        self._index_image_change_event = Clock.schedule_interval(
+            lambda _dt: self._next_background_image(), self.index_image_change_seconds
+        )
+
+    def _reset_background_image_caches(self) -> None:
+        """Drop any per-letter caches feeding the background image. Optional hook."""
+
+    @abstractmethod
+    def _next_background_image(self) -> None:
+        """Pick the next background image and hand it to ``_set_background_image``."""
+
+    def _set_background_image(self, image_info: ImageInfo) -> None:
+        """Load ``image_info`` as the background and label it with its title."""
+        # TODO: Get rid of this hack!!
+        if image_info.from_title is None or image_info.from_title == Titles.GOOD_NEIGHBORS:
+            self._current_image_info = None
+            self.current_title_str = ""
+        else:
+            self._current_image_info = image_info
+            self.current_title_str = self._get_background_title_str(image_info.from_title)
+
+        if image_info.filename is None:
+            self.image_texture = None
+            return
+
+        timing = Timing()
+
+        def on_ready(tex: Texture | None, err: Exception | None) -> None:
+            if err:
+                raise RuntimeError(err)
+
+            self.image_texture = tex
+            logger.debug(f"Time taken to set index image: {timing.get_elapsed_time_with_unit()}.")
+
+        self._texture_loader.load_texture(image_info.filename, on_ready)
+
+    def _get_background_title_str(self, title: Titles) -> str:
+        """Return the caption for the current background image."""
+        return ENUM_TO_STR_TITLE[title]
 
     @abstractmethod
     def _create_index_button(self, item: Any) -> IndexItemButton:  # noqa: ANN401
         pass
+
+    @abstractmethod
+    def _get_no_items_button(self, letter: str) -> IndexItemButton:
+        """Return the placeholder button shown when a letter has no items."""
 
     def _cancel_index_image_change_events(self) -> None:
         if self._index_image_change_event:
@@ -795,33 +893,11 @@ class IndexScreen(FloatLayout):
             left_index_column.add_widget(self._get_no_items_button(letter))
             return
 
-        # Populate the columns
-        num_items = len(items_for_letter)
-
-        if self.num_columns == 3:  # noqa: PLR2004
-            split1 = (num_items + 2) // 3
-            split2 = split1 + (num_items - split1 + 1) // 2
-
-            left_index_items = items_for_letter[:split1]
-            middle_index_items = items_for_letter[split1:split2]
-            right_index_items = items_for_letter[split2:]
-
-            for item in left_index_items:
-                left_index_column.add_widget(self._create_index_button(item))
-            for item in middle_index_items:
-                middle_index_column.add_widget(self._create_index_button(item))
-            for item in right_index_items:
-                right_index_column.add_widget(self._create_index_button(item))
-        else:
-            split_point = (num_items + 1) // 2
-            left_index_items = items_for_letter[:split_point]
-            right_index_items = items_for_letter[split_point:]
-
-            for item in left_index_items:
-                left_index_column.add_widget(self._create_index_button(item))
-
-            for item in right_index_items:
-                right_index_column.add_widget(self._create_index_button(item))
+        for column, column_items in zip(
+            self._get_col_layouts(), self._split_items(items_for_letter), strict=True
+        ):
+            for item in column_items:
+                column.add_widget(self._create_index_button(item))
 
         self.ids.index_scroll_view.scroll_y = 1
 
@@ -894,6 +970,35 @@ class IndexScreen(FloatLayout):
                 if widget.parent:
                     widget.parent.remove_widget(widget)
                 self._open_tag_widgets.remove(widget)
+
+    def _on_index_item_press(self, button: Button, item: IndexItem) -> None:
+        """Handle a press on an individual index item."""
+        logger.info(f"Index item pressed: {item}")
+
+        if self._handle_terminal_item(button, item):
+            return
+
+        # --- State Machine for Cleanup and Expansion ---
+        is_collapse, level_of_click = self._get_level_of_click_for_collapse(button)
+        if is_collapse:
+            logger.debug("Action: Collapse")
+            self._handle_collapse(level_of_click)
+            return
+
+        # --- This is an Expand action (top-level, drill-down, or lateral) ---
+        logger.debug("Action: Expand/Switch")
+        self._handle_expand_or_switch(button)
+
+        self._handle_item_expansion(button, item)
+
+    def _handle_terminal_item(self, button: Button, item: IndexItem) -> bool:
+        """Handle an item that has no sub-items. Return True if it was handled."""
+        del button, item
+        return False
+
+    @abstractmethod
+    def _handle_item_expansion(self, button: Button, item: IndexItem) -> None:
+        """Expand an item into its sub-items below ``button``."""
 
     def _get_level_of_click_for_collapse(self, button: Button) -> tuple[bool, int]:
         for i, container in enumerate(self._open_tag_widgets):

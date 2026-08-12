@@ -5,7 +5,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, override
 
 from .index_screen import IndexItem
-from .speech_index_screen import SpeechIndexScreen, shorten_if_necessary
+from .speech_index_screen import SpeechSubItemsIndexScreen, shorten_if_necessary
 
 if TYPE_CHECKING:
     from barks_fantagraphics.entity_types import EntityType
@@ -17,12 +17,11 @@ if TYPE_CHECKING:
     from .user_error_handler import UserErrorHandler
 
 
-class EntityIndexScreen(SpeechIndexScreen):
+class EntityIndexScreen(SpeechSubItemsIndexScreen):
     """An index screen for entity types (persons, locations, etc.).
 
-    Unlike the Words (SpeechIndexScreen) index, entity indexes skip the top
-    prefix submenu and go straight from the side A-Z alphabet to the items grid
-    (like MainIndexScreen).
+    There are few enough names or places per letter to list them directly, so this
+    has no prefix bar and goes straight from the side A-Z alphabet to the items grid.
     """
 
     def __init__(
@@ -51,10 +50,6 @@ class EntityIndexScreen(SpeechIndexScreen):
             letter = ch.upper()
             self._item_index[letter].append(IndexItem(t, shorten_if_necessary(t)))
 
-        # Hide the top prefix bar (widget defined in the .kv file).
-        self.ids.alphabet_top_split_layout.height = 0
-        self.ids.alphabet_top_split_layout.opacity = 0
-
     @override
     def _get_alphabet_letters(self) -> str:
         """Return only A-Z for entity indexes (no digits or apostrophes)."""
@@ -64,37 +59,9 @@ class EntityIndexScreen(SpeechIndexScreen):
     def _find_words(self, index_terms: str) -> TitleDict:
         return self._search.find_entities(self._entity_type, index_terms)
 
-    # --- Skip the prefix layer: go straight from alphabet to items grid ---
-
-    @override
-    def _populate_index_for_letter(self, first_letter: str) -> None:
-        # Skip _populate_top_alphabet_split_menu; go directly to the grid.
-        self._populate_index_grid(first_letter)
-
-    # --- Keyboard nav: restore IndexScreen base behavior (skip PREFIX panel) ---
-
-    @override
-    def handle_key(self, key: int) -> bool:
-        # Bypass SpeechIndexScreen's PREFIX interception; use IndexScreen logic.
-        if self._popup_nav.is_open:
-            return self._popup_nav.handle_key(key)
-        return super(SpeechIndexScreen, self).handle_key(key)
-
-    @override
-    def _on_right_from_alphabet(self) -> None:
-        self._enter_items_panel()
-
-    @override
-    def _on_back_from_items(self) -> None:
-        self._enter_alphabet_panel()
-
     @override
     def _on_up_from_first_item(self) -> None:
+        # Unlike the main index, which stays put, Up from the top row goes back to
+        # the A-Z menu -- there is no prefix bar in between to land on.
         self._clear_all_item_focus()
         self._enter_alphabet_panel()
-
-    @override
-    def exit_nav_focus(self) -> None:
-        # Skip SpeechIndexScreen's prefix cleanup.
-        self._nav_on_speech_btn = False
-        super(SpeechIndexScreen, self).exit_nav_focus()

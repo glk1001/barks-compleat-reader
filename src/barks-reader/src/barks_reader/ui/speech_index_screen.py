@@ -6,21 +6,18 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any, cast, override
 
 from barks_fantagraphics.alpha_split import MAX_PREFIX_BUTTONS_PER_LETTER
-from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
+from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_search import ComicSearch
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
 from barks_fantagraphics.whoosh_barks_terms import CONTEXT_SENSITIVE_WORDS
-from comic_utils.timing import Timing
 from kivy.clock import Clock
 from kivy.graphics import Canvas, Color, Rectangle
 from kivy.metrics import dp
 from kivy.properties import (  # ty: ignore[unresolved-import]
-    BooleanProperty,
     ColorProperty,
     ListProperty,
     NumericProperty,
     ObjectProperty,
-    StringProperty,
 )
 from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
@@ -60,7 +57,6 @@ from .reader_keyboard_nav import (
 if TYPE_CHECKING:
     from barks_fantagraphics.entity_types import EntityType
     from barks_fantagraphics.whoosh_search_engine import TitleDict, TitleInfo
-    from kivy.core.image import Texture
 
     from barks_reader.core.reader_settings import ReaderSettings
 
@@ -125,13 +121,16 @@ class _SpeechIndexTitleItemButton(Button):
             )
 
 
-class SpeechIndexScreen(IndexScreen):
-    """A widget that displays an A-Z index of speech bubble texts."""
+class SpeechSubItemsIndexScreen(IndexScreen):
+    """An index whose items expand into the titles and speech bubbles they appear in.
 
-    _selected_prefix_button = ObjectProperty(None, allownone=True)
-    is_visible = BooleanProperty(defaultvalue=False)
-    image_texture = ObjectProperty()
-    current_title_str = StringProperty()
+    Holds everything the word index and the entity indexes share: the search engine,
+    the three-column grid, the title sub-item rows with their speech buttons, and the
+    speech-bubble popup. It has the base ALPHABET -> ITEMS navigation; the prefix bar
+    is added by ``SpeechIndexScreen`` alone.
+    """
+
+    index_image_change_seconds = INDEX_IMAGE_CHANGE_SECONDS
 
     def __init__(
         self,
@@ -156,22 +155,9 @@ class SpeechIndexScreen(IndexScreen):
         # every speech bubble of every match in memory for the app's lifetime.
         self._background_titles_cache: dict[IndexItem, list[str]] = {}
 
-        # Map from base word (lowercase) → sorted list of (EntityType, canonical) pairs.
-        # Built from CONTEXT_SENSITIVE_WORDS so ambiguous words expand into typed index entries.
-        self._context_entity_map: dict[str, list[tuple[EntityType, str]]] = {}
-        for word, (fallback_type, fallback_canonical, rules) in CONTEXT_SENSITIVE_WORDS.items():
-            entries: list[tuple[EntityType, str]] = [(fallback_type, fallback_canonical)]
-            for _pat, etype, canon in rules:
-                entries.append((etype, canon))
-            entries.sort(key=lambda x: x[1].lower())
-            self._context_entity_map[word] = entries
-
         self._open_tag_item: IndexItem | None = None
         self._item_index: dict[str, list[IndexItem]] = defaultdict(list)
 
-        self._cleaned_alpha_split_terms = self._search.get_alpha_split_terms()
-        self._prefix_buttons: dict[str, Button] = {}
-        self._nav_focused_prefix_idx: int = 0
         self._nav_on_speech_btn: bool = False
 
         self._populate_alphabet_menu()
@@ -195,72 +181,8 @@ class SpeechIndexScreen(IndexScreen):
             return self._search.find_entities(str(item.entity_type), str(item.id))
         return self._find_words(str(item.id))
 
+    @override
     def _populate_index_for_letter(self, first_letter: str) -> None:
-        # Selecting a prefix populates the grid, so there is no second grid call here.
-        self._populate_top_alphabet_split_menu(first_letter)
-
-    def _populate_top_alphabet_split_menu(self, first_letter: str) -> None:
-        """Create the top sub alphabet split buttons across the top."""
-        first_letter_split_terms = self._cleaned_alpha_split_terms[first_letter.lower()]
-
-        if len(first_letter_split_terms) > MAX_PREFIX_BUTTONS_PER_LETTER:
-            # The bar is a fixed single row, so anything past the last slot is
-            # unreachable. The split is meant to prevent this.
-            logger.warning(
-                f"Letter '{first_letter}' needs {len(first_letter_split_terms)} prefix"
-                f" buttons but the bar holds {MAX_PREFIX_BUTTONS_PER_LETTER}."
-            )
-
-        alphabet_top_split_layout: GridLayout = self.ids.alphabet_top_split_layout
-        alphabet_top_split_layout.clear_widgets()
-        self._prefix_buttons.clear()
-
-        for prefix in first_letter_split_terms:
-            button = IndexPrefixButton(text=prefix)
-            button.bind(on_release=self.on_letter_prefix_press)
-            self._prefix_buttons[prefix] = button
-            alphabet_top_split_layout.add_widget(button)
-
-        # Which 'prefix' to show first.
-        assert self.treeview_index_node is not None
-        if SAVED_NODE_STATE_PREFIX_KEY not in self.treeview_index_node.saved_state:
-            first_prefix = next(iter(first_letter_split_terms))
-        else:
-            first_prefix = self.treeview_index_node.saved_state[SAVED_NODE_STATE_PREFIX_KEY]
-            if first_prefix not in first_letter_split_terms:
-                logger.warning(f'Invalid restored prefix: "{first_prefix}".')
-                first_prefix = next(iter(first_letter_split_terms))
-
-        self.on_letter_prefix_press(self._prefix_buttons[first_prefix])
-
-    def on_letter_prefix_press(self, button: Button) -> None:
-        prefix = button.text
-        logger.debug(f"Pressed prefix button: '{prefix}.")
-        assert self.treeview_index_node is not None
-        self.treeview_index_node.saved_state[SAVED_NODE_STATE_PREFIX_KEY] = prefix
-
-        if self._selected_prefix_button and self._selected_prefix_button != button:
-            self._selected_prefix_button.is_selected = False
-        button.is_selected = True
-        self._selected_prefix_button = button
-
-        first_letter = "0" if "0" <= prefix <= "9" else prefix[0].upper()
-        terms = self._cleaned_alpha_split_terms[first_letter.lower()][prefix]
-        items: list[IndexItem] = []
-        for t in terms:
-            if t.lower() in self._context_entity_map:
-                for entity_type, canonical in self._context_entity_map[t.lower()]:
-                    items.append(
-                        IndexItem(
-                            id=canonical,
-                            display_text=shorten_if_necessary(canonical),
-                            entity_type=entity_type,
-                        )
-                    )
-            else:
-                items.append(IndexItem(t, shorten_if_necessary(t)))
-        self._item_index[first_letter] = items
-
         self._populate_index_grid(first_letter)
 
     # --- Keyboard navigation overrides ---
@@ -268,30 +190,16 @@ class SpeechIndexScreen(IndexScreen):
     @override
     def handle_key(self, key: int) -> bool:
         # The speech-bubble popup owns the keyboard directly via its own Window
-        # binding (see PopupKeyboardNav) while open, so this handler is not reached
-        # then — the modal-popup guard in main_screen yields first.
-        if self._nav_panel == _IndexNavPanel.PREFIX and self._nav_active:
-            return self._handle_prefix_key(key)
+        # binding (see PopupKeyboardNav) while open, so this handler is normally not
+        # reached then — the modal-popup guard in main_screen yields first.
+        if self._popup_nav.is_open:
+            return self._popup_nav.handle_key(key)
         return super().handle_key(key)
 
     @override
     def exit_nav_focus(self) -> None:
         self._nav_on_speech_btn = False
-        self._clear_prefix_focus()
         super().exit_nav_focus()
-
-    @override
-    def _on_right_from_alphabet(self) -> None:
-        self._enter_prefix_panel()
-
-    @override
-    def _on_back_from_items(self) -> None:
-        self._enter_prefix_panel()
-
-    @override
-    def _on_up_from_first_item(self) -> None:
-        self._clear_all_item_focus()
-        self._enter_prefix_panel()
 
     @override
     def _enter_items_panel(self) -> None:
@@ -386,88 +294,11 @@ class SpeechIndexScreen(IndexScreen):
                     return True
         return super()._handle_items_key(key)
 
-    def _enter_prefix_panel(self) -> None:
-        self._clear_all_item_focus()
-        self._clear_letter_focus()
-        self._nav_panel = _IndexNavPanel.PREFIX
-        # Focus the currently selected prefix.
-        visible = self._get_visible_prefix_buttons()
-        if self._selected_prefix_button and self._selected_prefix_button in visible:
-            self._nav_focused_prefix_idx = visible.index(self._selected_prefix_button)
-        else:
-            self._nav_focused_prefix_idx = 0
-        self._draw_prefix_focus()
-
-    def _handle_prefix_key(self, key: int) -> bool:
-        visible = self._get_visible_prefix_buttons()
-        if not visible:
-            return False
-        idx = self._nav_focused_prefix_idx
-        if key == KEY_LEFT:
-            if idx == 0:
-                self._clear_prefix_focus()
-                self._enter_alphabet_panel()
-            else:
-                self._clear_prefix_focus()
-                self._nav_focused_prefix_idx = idx - 1
-                self._select_focused_prefix(visible)
-                self._draw_prefix_focus()
-        elif key == KEY_RIGHT:
-            if idx >= len(visible) - 1:
-                self._clear_prefix_focus()
-                self._enter_items_panel()
-            else:
-                self._clear_prefix_focus()
-                self._nav_focused_prefix_idx = idx + 1
-                self._select_focused_prefix(visible)
-                self._draw_prefix_focus()
-        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
-            self._select_focused_prefix(visible)
-            self._clear_prefix_focus()
-            Clock.schedule_once(lambda _dt: self._enter_items_panel(), 0)
-        elif key == KEY_DOWN:
-            self._clear_prefix_focus()
-            self._enter_items_panel()
-        elif is_escape_key(key):
-            self._clear_prefix_focus()
-            self._enter_alphabet_panel()
-        else:
-            return False
-        return True
-
-    def _select_focused_prefix(self, visible: list[Button]) -> None:
-        btn = visible[self._nav_focused_prefix_idx]
-        self.on_letter_prefix_press(btn)
-
-    def _get_visible_prefix_buttons(self) -> list[Button]:
-        """Return the currently displayed prefix buttons in left-to-right order."""
-        layout = self.ids.alphabet_top_split_layout
-        return list(reversed(layout.children))
-
-    def _draw_prefix_focus(self) -> None:
-        visible = self._get_visible_prefix_buttons()
-        if not visible:
-            return
-        self._nav_focused_prefix_idx = min(self._nav_focused_prefix_idx, len(visible) - 1)
-        draw_focus_highlight(visible[self._nav_focused_prefix_idx], INDEX_NAV_FOCUS_GROUP)
-
-    def _clear_prefix_focus(self) -> None:
-        clear_focus_in_list(self._get_visible_prefix_buttons(), INDEX_NAV_FOCUS_GROUP)
-
     @override
     def _get_items_for_letter(self, first_letter: str) -> list[IndexItem]:
         return self._item_index.get(first_letter, [])
 
     @override
-    def _new_index_image(self) -> None:
-        self._cancel_index_image_change_events()
-
-        self._next_background_image()
-
-        self._index_image_change_event = Clock.schedule_interval(
-            lambda _dt: self._next_background_image(), INDEX_IMAGE_CHANGE_SECONDS
-        )
-
     def _next_background_image(self) -> None:
         first_letter = self._selected_letter_button.text
         index_terms = self._item_index[first_letter]
@@ -486,25 +317,7 @@ class SpeechIndexScreen(IndexScreen):
             if title_str in STR_TITLE_TO_ENUM
         ]
         image_info = self._random_title_images.get_random_image(found_titles)
-
-        # TODO: Get rid of this hack!!
-        if image_info.from_title is None or image_info.from_title == Titles.GOOD_NEIGHBORS:
-            self._current_image_info = None
-            self.current_title_str = ""
-        else:
-            self._current_image_info = image_info
-            self.current_title_str = ENUM_TO_STR_TITLE[image_info.from_title]
-
-        timing = Timing()
-
-        def on_ready(tex: Texture | None, err: Exception) -> None:
-            if err:
-                raise RuntimeError(err)
-
-            self.image_texture = tex
-            logger.debug(f"Time taken to set index image: {timing.get_elapsed_time_with_unit()}.")
-
-        self._texture_loader.load_texture(image_info.filename, on_ready)
+        self._set_background_image(image_info)
 
     @override
     def _create_index_button(self, item: IndexItem) -> IndexItemButton:
@@ -537,7 +350,7 @@ class SpeechIndexScreen(IndexScreen):
         logger.debug(f'Adding title sub-items for "{item.id}".')
 
         sub_items_layout = self._get_title_sub_items_layout(item)
-        self._insert_sub_items_layout(sub_items_layout)
+        self._insert_title_sub_items_layout(sub_items_layout)
 
     def _get_title_sub_items_layout(self, item: IndexItem) -> GridLayout:
         index_term: str = item.id  # ty: ignore[invalid-assignment]
@@ -644,7 +457,7 @@ class SpeechIndexScreen(IndexScreen):
             sub_items_to_display.append(
                 (
                     comic_title,
-                    *self._get_indexable_title_with_page_nums(comic_title, page_num_list),
+                    *self._get_speech_title_with_page_nums(comic_title, page_num_list),
                     title_speech_info,
                 )
             )
@@ -653,7 +466,7 @@ class SpeechIndexScreen(IndexScreen):
 
         return sub_items_to_display
 
-    def _insert_sub_items_layout(self, sub_items_layout: GridLayout) -> None:
+    def _insert_title_sub_items_layout(self, sub_items_layout: GridLayout) -> None:
         button = self._open_tag_button
         assert button is not None
         target_layout = button.parent
@@ -741,27 +554,15 @@ class SpeechIndexScreen(IndexScreen):
 
             covered_width += column.width
 
-    def _on_index_item_press(self, button: Button, item: IndexItem) -> None:
-        """Handle a press on an individual index item."""
-        logger.info(f"Index item pressed: '{item}'.")
-
+    @override
+    def _handle_terminal_item(self, button: Button, item: IndexItem) -> bool:
+        # Word/entity items are never titles; a title only ever appears as a sub-item.
+        del button
         assert type(item.id) is not Titles
+        return False
 
-        # --- State Machine for Cleanup and Expansion ---
-        is_collapse, level_of_click = self._get_level_of_click_for_collapse(button)
-        if is_collapse:
-            logger.debug("Action: Collapse")
-            self._handle_collapse(level_of_click)
-            return
-
-        # --- This is an Expand action (top-level, drill-down, or lateral) ---
-        logger.debug("Action: Expand/Switch")
-        self._handle_expand_or_switch(button)
-
-        # --- Handle the actual press ---
-        self._handle_index_item_press(button, item)
-
-    def _handle_index_item_press(self, button: Button, item: IndexItem) -> None:
+    @override
+    def _handle_item_expansion(self, button: Button, item: IndexItem) -> None:
         logger.info(f'Handling index term: "{item.id}".')
 
         self._open_tag_button = button
@@ -797,7 +598,7 @@ class SpeechIndexScreen(IndexScreen):
 
         Clock.schedule_once(lambda _dt: goto_title(), 0.01)
 
-    def _get_indexable_title_with_page_nums(
+    def _get_speech_title_with_page_nums(
         self, title_str: str, page_nums: list[str]
     ) -> tuple[str, str]:
         first_page_num, title_str = get_fitted_title_with_page_nums(
@@ -807,6 +608,205 @@ class SpeechIndexScreen(IndexScreen):
         title_str = self._get_sortable_string(title_str)
 
         return first_page_num, title_str
+
+
+class SpeechIndexScreen(SpeechSubItemsIndexScreen):
+    """The Words index: an A-Z index of every word spoken in the comics.
+
+    Adds the prefix bar to ``SpeechSubItemsIndexScreen``, because a single letter
+    holds far too many words for one grid. Navigation therefore runs
+    ALPHABET -> PREFIX -> ITEMS rather than the base ALPHABET -> ITEMS.
+    """
+
+    _selected_prefix_button = ObjectProperty(None, allownone=True)
+
+    def __init__(
+        self,
+        reader_settings: ReaderSettings,
+        font_manager: FontManager,
+        user_error_handler: UserErrorHandler,
+        **kwargs,  # noqa: ANN003
+    ) -> None:
+        super().__init__(reader_settings, font_manager, user_error_handler, **kwargs)
+
+        self.has_prefix_bar = True
+
+        # Map from base word (lowercase) → sorted list of (EntityType, canonical) pairs.
+        # Built from CONTEXT_SENSITIVE_WORDS so ambiguous words expand into typed index entries.
+        self._context_entity_map: dict[str, list[tuple[EntityType, str]]] = {}
+        for word, (fallback_type, fallback_canonical, rules) in CONTEXT_SENSITIVE_WORDS.items():
+            entries: list[tuple[EntityType, str]] = [(fallback_type, fallback_canonical)]
+            for _pat, etype, canon in rules:
+                entries.append((etype, canon))
+            entries.sort(key=lambda x: x[1].lower())
+            self._context_entity_map[word] = entries
+
+        self._cleaned_alpha_split_terms = self._search.get_alpha_split_terms()
+        self._prefix_buttons: dict[str, Button] = {}
+        self._nav_focused_prefix_idx: int = 0
+
+    @override
+    def _populate_index_for_letter(self, first_letter: str) -> None:
+        # Selecting a prefix populates the grid, so there is no second grid call here.
+        self._populate_top_alphabet_split_menu(first_letter)
+
+    def _populate_top_alphabet_split_menu(self, first_letter: str) -> None:
+        """Create the top sub alphabet split buttons across the top."""
+        first_letter_split_terms = self._cleaned_alpha_split_terms[first_letter.lower()]
+
+        if len(first_letter_split_terms) > MAX_PREFIX_BUTTONS_PER_LETTER:
+            # The bar is a fixed single row, so anything past the last slot is
+            # unreachable. The split is meant to prevent this.
+            logger.warning(
+                f"Letter '{first_letter}' needs {len(first_letter_split_terms)} prefix"
+                f" buttons but the bar holds {MAX_PREFIX_BUTTONS_PER_LETTER}."
+            )
+
+        alphabet_top_split_layout: GridLayout = self.ids.alphabet_top_split_layout
+        alphabet_top_split_layout.clear_widgets()
+        self._prefix_buttons.clear()
+
+        for prefix in first_letter_split_terms:
+            button = IndexPrefixButton(text=prefix)
+            button.bind(on_release=self.on_letter_prefix_press)
+            self._prefix_buttons[prefix] = button
+            alphabet_top_split_layout.add_widget(button)
+
+        # Which 'prefix' to show first.
+        assert self.treeview_index_node is not None
+        if SAVED_NODE_STATE_PREFIX_KEY not in self.treeview_index_node.saved_state:
+            first_prefix = next(iter(first_letter_split_terms))
+        else:
+            first_prefix = self.treeview_index_node.saved_state[SAVED_NODE_STATE_PREFIX_KEY]
+            if first_prefix not in first_letter_split_terms:
+                logger.warning(f'Invalid restored prefix: "{first_prefix}".')
+                first_prefix = next(iter(first_letter_split_terms))
+
+        self.on_letter_prefix_press(self._prefix_buttons[first_prefix])
+
+    def on_letter_prefix_press(self, button: Button) -> None:
+        prefix = button.text
+        logger.debug(f"Pressed prefix button: '{prefix}.")
+        assert self.treeview_index_node is not None
+        self.treeview_index_node.saved_state[SAVED_NODE_STATE_PREFIX_KEY] = prefix
+
+        if self._selected_prefix_button and self._selected_prefix_button != button:
+            self._selected_prefix_button.is_selected = False
+        button.is_selected = True
+        self._selected_prefix_button = button
+
+        first_letter = "0" if "0" <= prefix <= "9" else prefix[0].upper()
+        terms = self._cleaned_alpha_split_terms[first_letter.lower()][prefix]
+        items: list[IndexItem] = []
+        for t in terms:
+            if t.lower() in self._context_entity_map:
+                for entity_type, canonical in self._context_entity_map[t.lower()]:
+                    items.append(
+                        IndexItem(
+                            id=canonical,
+                            display_text=shorten_if_necessary(canonical),
+                            entity_type=entity_type,
+                        )
+                    )
+            else:
+                items.append(IndexItem(t, shorten_if_necessary(t)))
+        self._item_index[first_letter] = items
+
+        self._populate_index_grid(first_letter)
+
+    # --- Prefix panel navigation ---
+
+    @override
+    def _handle_panel_key(self, panel: _IndexNavPanel, key: int) -> bool:
+        if panel is _IndexNavPanel.PREFIX:
+            return self._handle_prefix_key(key)
+        return super()._handle_panel_key(panel, key)
+
+    @override
+    def exit_nav_focus(self) -> None:
+        self._clear_prefix_focus()
+        super().exit_nav_focus()
+
+    @override
+    def _on_right_from_alphabet(self) -> None:
+        self._enter_prefix_panel()
+
+    @override
+    def _on_back_from_items(self) -> None:
+        self._enter_prefix_panel()
+
+    @override
+    def _on_up_from_first_item(self) -> None:
+        self._clear_all_item_focus()
+        self._enter_prefix_panel()
+
+    def _enter_prefix_panel(self) -> None:
+        self._clear_all_item_focus()
+        self._clear_letter_focus()
+        self._nav_panel = _IndexNavPanel.PREFIX
+        # Focus the currently selected prefix.
+        visible = self._get_visible_prefix_buttons()
+        if self._selected_prefix_button and self._selected_prefix_button in visible:
+            self._nav_focused_prefix_idx = visible.index(self._selected_prefix_button)
+        else:
+            self._nav_focused_prefix_idx = 0
+        self._draw_prefix_focus()
+
+    def _handle_prefix_key(self, key: int) -> bool:
+        visible = self._get_visible_prefix_buttons()
+        if not visible:
+            return False
+        idx = self._nav_focused_prefix_idx
+        if key == KEY_LEFT:
+            if idx == 0:
+                self._clear_prefix_focus()
+                self._enter_alphabet_panel()
+            else:
+                self._clear_prefix_focus()
+                self._nav_focused_prefix_idx = idx - 1
+                self._select_focused_prefix(visible)
+                self._draw_prefix_focus()
+        elif key == KEY_RIGHT:
+            if idx >= len(visible) - 1:
+                self._clear_prefix_focus()
+                self._enter_items_panel()
+            else:
+                self._clear_prefix_focus()
+                self._nav_focused_prefix_idx = idx + 1
+                self._select_focused_prefix(visible)
+                self._draw_prefix_focus()
+        elif key in (KEY_ENTER, KEY_NUMPAD_ENTER):
+            self._select_focused_prefix(visible)
+            self._clear_prefix_focus()
+            Clock.schedule_once(lambda _dt: self._enter_items_panel(), 0)
+        elif key == KEY_DOWN:
+            self._clear_prefix_focus()
+            self._enter_items_panel()
+        elif is_escape_key(key):
+            self._clear_prefix_focus()
+            self._enter_alphabet_panel()
+        else:
+            return False
+        return True
+
+    def _select_focused_prefix(self, visible: list[Button]) -> None:
+        btn = visible[self._nav_focused_prefix_idx]
+        self.on_letter_prefix_press(btn)
+
+    def _get_visible_prefix_buttons(self) -> list[Button]:
+        """Return the currently displayed prefix buttons in left-to-right order."""
+        layout = self.ids.alphabet_top_split_layout
+        return list(reversed(layout.children))
+
+    def _draw_prefix_focus(self) -> None:
+        visible = self._get_visible_prefix_buttons()
+        if not visible:
+            return
+        self._nav_focused_prefix_idx = min(self._nav_focused_prefix_idx, len(visible) - 1)
+        draw_focus_highlight(visible[self._nav_focused_prefix_idx], INDEX_NAV_FOCUS_GROUP)
+
+    def _clear_prefix_focus(self) -> None:
+        clear_focus_in_list(self._get_visible_prefix_buttons(), INDEX_NAV_FOCUS_GROUP)
 
 
 def shorten_if_necessary(text: str) -> str:

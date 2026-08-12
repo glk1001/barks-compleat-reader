@@ -39,8 +39,7 @@ class ConcreteIndexScreen(IndexScreen):
         btn.text = str(item)
         return btn
 
-    @staticmethod
-    def _get_no_items_button(letter: str) -> IndexItemButton:
+    def _get_no_items_button(self, letter: str) -> IndexItemButton:
         # Return a mock instead of a real widget
         btn = MagicMock(spec=IndexItemButton)
         btn.text = f"*** No index items for '{letter}' ***"
