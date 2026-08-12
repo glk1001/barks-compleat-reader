@@ -14,6 +14,7 @@ from barks_fantagraphics.whoosh_search_engine import (
     _filter_entities_to_curated,
     _is_valid_entity_term,
     _normalize_entity_names,
+    build_index_schema,
 )
 
 if TYPE_CHECKING:
@@ -249,30 +250,11 @@ class TestFindEntities:
     @pytest.fixture
     def index_dir(self, tmp_path: Path) -> Path:
         """Create a temporary Whoosh index with a test document."""
-        from barks_fantagraphics.whoosh_punct_tokenizer import WordWithPunctTokenizer
-        from whoosh.analysis import LowercaseFilter, StopFilter
-        from whoosh.fields import ID, KEYWORD, TEXT, Schema
         from whoosh.index import create_in
 
-        punct_analyzer = (
-            WordWithPunctTokenizer() | LowercaseFilter() | StopFilter(stoplist={"the", "a"})
-        )
-        schema = Schema(
-            title=ID(stored=True),
-            fanta_vol=ID(stored=True),
-            fanta_page=ID(stored=True),
-            comic_page=ID(stored=True),
-            content_id=ID(stored=True),
-            panel_num=ID(stored=True),
-            unstemmed=TEXT(stored=False, lang="en", analyzer=punct_analyzer),
-            content_raw=TEXT(stored=True, lang="en"),
-            entities_person=KEYWORD(stored=True, commas=True, scorable=True),
-            entities_location=KEYWORD(stored=True, commas=True, scorable=True),
-            entities_org=KEYWORD(stored=True, commas=True, scorable=True),
-            entities_work=KEYWORD(stored=True, commas=True, scorable=True),
-            entities_misc=KEYWORD(stored=True, commas=True, scorable=True),
-        )
-        index = create_in(str(tmp_path), schema)
+        # The production schema, so a field change cannot leave this test
+        # passing against a stale hand-copied duplicate.
+        index = create_in(str(tmp_path), build_index_schema())
         writer = index.writer()
         writer.add_document(
             title="Bongo on the Congo",
@@ -415,30 +397,11 @@ class TestCollectAndSortResults:
 
 
 def _build_words_index(tmp_path: Path) -> Path:
-    from barks_fantagraphics.whoosh_punct_tokenizer import WordWithPunctTokenizer
-    from whoosh.analysis import LowercaseFilter, StopFilter
-    from whoosh.fields import ID, KEYWORD, TEXT, Schema
     from whoosh.index import create_in
 
-    punct_analyzer = (
-        WordWithPunctTokenizer() | LowercaseFilter() | StopFilter(stoplist={"the", "a"})
-    )
-    schema = Schema(
-        title=ID(stored=True),
-        fanta_vol=ID(stored=True),
-        fanta_page=ID(stored=True),
-        comic_page=ID(stored=True),
-        content_id=ID(stored=True),
-        panel_num=ID(stored=True),
-        unstemmed=TEXT(stored=False, lang="en", analyzer=punct_analyzer),
-        content_raw=TEXT(stored=True, lang="en"),
-        entities_person=KEYWORD(stored=True, commas=True, scorable=True),
-        entities_location=KEYWORD(stored=True, commas=True, scorable=True),
-        entities_org=KEYWORD(stored=True, commas=True, scorable=True),
-        entities_work=KEYWORD(stored=True, commas=True, scorable=True),
-        entities_misc=KEYWORD(stored=True, commas=True, scorable=True),
-    )
-    index = create_in(str(tmp_path), schema)
+    # The production schema, so a field change cannot leave this test passing
+    # against a stale hand-copied duplicate.
+    index = create_in(str(tmp_path), build_index_schema())
     writer = index.writer()
     common = {
         "comic_page": "1",

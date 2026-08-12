@@ -144,6 +144,33 @@ class TitleInfo:
 type TitleDict = dict[str, TitleInfo]
 
 
+def build_index_schema() -> Schema:
+    """Return the Whoosh schema for the speech index.
+
+    Shared by the index builder and by tests, so a schema change cannot leave a
+    hand-copied duplicate silently passing against the old field set.
+    """
+    # For keeping apostrophes and hyphens within words
+    punct_analyzer = (
+        WordWithPunctTokenizer() | LowercaseFilter() | StopFilter(stoplist=MY_STOP_WORDS)
+    )
+    entity_fields = {
+        f"entities_{entity_type}": KEYWORD(stored=True, commas=True, scorable=True)
+        for entity_type in ENTITY_TYPES
+    }
+    return Schema(
+        title=ID(stored=True),
+        fanta_vol=ID(stored=True),
+        fanta_page=ID(stored=True),
+        comic_page=ID(stored=True),
+        content_id=ID(stored=True),
+        panel_num=ID(stored=True),
+        unstemmed=TEXT(stored=False, lang="en", analyzer=punct_analyzer),
+        content_raw=TEXT(stored=True, lang="en"),
+        **entity_fields,
+    )
+
+
 def _speech_sort_key(speech_info: SpeechInfo) -> tuple[int, str]:
     """Order speech groups on a page numerically, tolerating non-numeric group ids.
 
@@ -313,28 +340,10 @@ class SearchEngineCreator(SearchEngine):
         self._comics_database = comics_database
         self._ocr_index_to_use = ocr_index_to_use
 
-        # For keeping apostrophes and hyphens within words
-        punct_analyzer = (
-            WordWithPunctTokenizer() | LowercaseFilter() | StopFilter(stoplist=MY_STOP_WORDS)
-        )
-        schema = Schema(
-            title=ID(stored=True),
-            fanta_vol=ID(stored=True),
-            fanta_page=ID(stored=True),
-            comic_page=ID(stored=True),
-            content_id=ID(stored=True),
-            panel_num=ID(stored=True),
-            unstemmed=TEXT(stored=False, lang="en", analyzer=punct_analyzer),
-            content_raw=TEXT(stored=True, lang="en"),
-            entities_person=KEYWORD(stored=True, commas=True, scorable=True),
-            entities_location=KEYWORD(stored=True, commas=True, scorable=True),
-            entities_org=KEYWORD(stored=True, commas=True, scorable=True),
-            entities_work=KEYWORD(stored=True, commas=True, scorable=True),
-            entities_misc=KEYWORD(stored=True, commas=True, scorable=True),
-        )
         index_dir.mkdir(parents=True, exist_ok=True)
-        self._index = create_in(index_dir, schema)
+        create_in(index_dir, build_index_schema())
 
+        # Opens the index just created; sets up self._index and the sidecar paths.
         super().__init__(index_dir)
 
     def get_search_engine(self) -> SearchEngine:

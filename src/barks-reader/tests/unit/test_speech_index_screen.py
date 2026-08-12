@@ -11,8 +11,24 @@ import barks_reader.ui.speech_index_screen
 import pytest
 from barks_fantagraphics.barks_titles import Titles
 from barks_reader.core.image_selector import ImageInfo
-from barks_reader.ui.index_screen import IndexItem
-from barks_reader.ui.speech_index_screen import SpeechIndexScreen
+from barks_reader.ui.index_screen import (
+    IndexItem,
+    TitleShowSpeechButton,
+    _IndexNavPanel,
+)
+from barks_reader.ui.reader_keyboard_nav import (
+    KEY_DOWN,
+    KEY_ENTER,
+    KEY_ESCAPE,
+    KEY_LEFT,
+    KEY_PAGE_DOWN,
+    KEY_RIGHT,
+    KEY_UP,
+)
+from barks_reader.ui.speech_index_screen import (
+    SpeechIndexScreen,
+    _SpeechIndexTitleItemButton,
+)
 from kivy.clock import Clock
 
 if TYPE_CHECKING:
@@ -219,3 +235,176 @@ class TestSpeechIndexScreen:
             mock_callback.assert_called()
             # The popup goto must also request the title-portal focus hand-off.
             mock_after_goto.assert_called_once()
+
+
+class TestSpeechButtonKeyboardNav:
+    """The speech button is a sub-panel of a title row, reached with Right."""
+
+    @staticmethod
+    def _title_row(screen: SpeechIndexScreen) -> tuple[MagicMock, MagicMock]:
+        """Build a title button paired with its speech button, as the grid lays them out."""
+        title_btn = MagicMock(spec=_SpeechIndexTitleItemButton)
+        speech_btn = MagicMock(spec=TitleShowSpeechButton)
+        parent = MagicMock()
+        # Kivy's children list runs bottom-to-top, so the speech button sits at
+        # the index just below its title button.
+        parent.children = [speech_btn, title_btn]
+        title_btn.parent = parent
+        screen._nav_focused_col = 0
+        screen._nav_focused_item_idx = 0
+        return title_btn, speech_btn
+
+    def test_pairs_a_title_button_with_its_speech_button(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        title_btn, speech_btn = self._title_row(speech_index_screen)
+
+        assert speech_index_screen._get_paired_speech_button(title_btn) is speech_btn
+
+    def test_a_plain_button_has_no_paired_speech_button(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        assert speech_index_screen._get_paired_speech_button(MagicMock()) is None
+
+    def test_orphan_title_button_has_no_paired_speech_button(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        title_btn = MagicMock(spec=_SpeechIndexTitleItemButton)
+        title_btn.parent = None
+
+        assert speech_index_screen._get_paired_speech_button(title_btn) is None
+
+    def test_speech_buttons_are_not_reachable_with_up_down(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        """Up/Down walks title rows; the speech button is entered sideways instead."""
+        title_btn, speech_btn = self._title_row(speech_index_screen)
+        with patch.object(
+            barks_reader.ui.index_screen.IndexScreen,
+            "_get_col_buttons",
+            return_value=[speech_btn, title_btn],
+        ):
+            assert speech_index_screen._get_col_buttons(0) == [title_btn]
+
+    def test_right_from_a_title_row_enters_the_speech_button(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        title_btn, _ = self._title_row(speech_index_screen)
+        with (
+            patch.object(speech_index_screen, "_get_col_buttons", return_value=[title_btn]),
+            patch.object(speech_index_screen, "_clear_all_item_focus"),
+            patch.object(speech_index_screen, "_draw_item_focus"),
+        ):
+            consumed = speech_index_screen._handle_items_key(KEY_RIGHT)
+
+        assert consumed is True
+        assert speech_index_screen._nav_on_speech_btn is True
+
+    @pytest.mark.parametrize("key", [KEY_UP, KEY_DOWN, KEY_LEFT])
+    def test_leaving_the_speech_button_returns_focus_to_its_title_row(
+        self, speech_index_screen: SpeechIndexScreen, key: int
+    ) -> None:
+        speech_index_screen._nav_on_speech_btn = True
+        with (
+            patch.object(speech_index_screen, "_clear_all_item_focus"),
+            patch.object(speech_index_screen, "_draw_item_focus"),
+        ):
+            consumed = speech_index_screen._handle_items_key(key)
+
+        assert consumed is True
+        assert speech_index_screen._nav_on_speech_btn is False
+
+    def test_enter_on_the_speech_button_opens_the_popup(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        title_btn, speech_btn = self._title_row(speech_index_screen)
+        speech_index_screen._nav_on_speech_btn = True
+        with patch.object(speech_index_screen, "_get_col_buttons", return_value=[title_btn]):
+            consumed = speech_index_screen._handle_items_key(KEY_ENTER)
+
+        assert consumed is True
+        speech_btn.trigger_action.assert_called_once_with(duration=0)
+
+    def test_escape_from_the_speech_button_backs_out_to_the_prefix_bar(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        speech_index_screen._nav_on_speech_btn = True
+        with patch.object(speech_index_screen, "_on_back_from_items") as back:
+            consumed = speech_index_screen._handle_items_key(KEY_ESCAPE)
+
+        assert consumed is True
+        assert speech_index_screen._nav_on_speech_btn is False
+        back.assert_called_once()
+
+
+class TestPrefixPanelNav:
+    @staticmethod
+    def _visible(screen: SpeechIndexScreen, count: int) -> list[MagicMock]:
+        buttons = [MagicMock(text=f"p{n}") for n in range(count)]
+        screen.ids.alphabet_top_split_layout.children = list(reversed(buttons))
+        return buttons
+
+    def test_left_from_the_first_prefix_goes_back_to_the_alphabet(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        self._visible(speech_index_screen, 3)
+        speech_index_screen._nav_focused_prefix_idx = 0
+        with (
+            patch.object(speech_index_screen, "_clear_prefix_focus"),
+            patch.object(speech_index_screen, "_enter_alphabet_panel") as alphabet,
+        ):
+            assert speech_index_screen._handle_prefix_key(KEY_LEFT) is True
+
+        alphabet.assert_called_once()
+
+    def test_right_from_the_last_prefix_drops_into_the_items_grid(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        buttons = self._visible(speech_index_screen, 3)
+        speech_index_screen._nav_focused_prefix_idx = len(buttons) - 1
+        with (
+            patch.object(speech_index_screen, "_clear_prefix_focus"),
+            patch.object(speech_index_screen, "_enter_items_panel") as items,
+        ):
+            assert speech_index_screen._handle_prefix_key(KEY_RIGHT) is True
+
+        items.assert_called_once()
+
+    def test_moving_along_the_bar_selects_as_it_goes(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        buttons = self._visible(speech_index_screen, 3)
+        speech_index_screen._nav_focused_prefix_idx = 0
+        with (
+            patch.object(speech_index_screen, "_clear_prefix_focus"),
+            patch.object(speech_index_screen, "_draw_prefix_focus"),
+            patch.object(speech_index_screen, "on_letter_prefix_press") as press,
+        ):
+            assert speech_index_screen._handle_prefix_key(KEY_RIGHT) is True
+
+        assert speech_index_screen._nav_focused_prefix_idx == 1
+        press.assert_called_once_with(buttons[1])
+
+    def test_down_drops_into_the_items_grid(self, speech_index_screen: SpeechIndexScreen) -> None:
+        self._visible(speech_index_screen, 3)
+        with (
+            patch.object(speech_index_screen, "_clear_prefix_focus"),
+            patch.object(speech_index_screen, "_enter_items_panel") as items,
+        ):
+            assert speech_index_screen._handle_prefix_key(KEY_DOWN) is True
+
+        items.assert_called_once()
+
+    def test_an_unhandled_key_is_not_consumed(self, speech_index_screen: SpeechIndexScreen) -> None:
+        self._visible(speech_index_screen, 3)
+
+        assert speech_index_screen._handle_prefix_key(KEY_PAGE_DOWN) is False
+
+    def test_prefix_panel_keys_are_dispatched_from_the_panel_seam(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        """PREFIX is an added dispatch case, not an override of handle_key."""
+        with patch.object(speech_index_screen, "_handle_prefix_key") as prefix_key:
+            speech_index_screen._handle_panel_key(_IndexNavPanel.PREFIX, KEY_LEFT)
+
+        prefix_key.assert_called_once_with(KEY_LEFT)

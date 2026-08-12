@@ -1,8 +1,8 @@
-# ruff: noqa: SLF001
+# ruff: noqa: PLR2004, SLF001
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock, patch
 
 import barks_reader.ui.index_screen
@@ -21,6 +21,8 @@ from barks_reader.ui.tree_view_nodes import MainTreeViewNode
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+    from kivy.uix.button import Button
 
 
 # Create a concrete implementation for testing
@@ -118,7 +120,7 @@ class TestIndexScreen:
 
         # Check if buttons were added to alphabet_side_layout
         # 0 + ' + A-Z = 28 buttons
-        assert index_screen.ids.alphabet_side_layout.add_widget.call_count == 28  # noqa: PLR2004
+        assert index_screen.ids.alphabet_side_layout.add_widget.call_count == 28
         assert "A" in index_screen._alphabet_buttons
         assert "Z" in index_screen._alphabet_buttons
         assert "0" in index_screen._alphabet_buttons
@@ -242,7 +244,7 @@ class TestIndexScreen:
             index_screen._resync_item_focus(btn_b, old_count=2)
 
             # Focus should land on new_sub (btn_b is at index 1, so first sub-item is 2).
-            assert index_screen._nav_focused_item_idx == 2  # noqa: PLR2004
+            assert index_screen._nav_focused_item_idx == 2
 
     def test_resync_item_focus_collapse(self, index_screen: ConcreteIndexScreen) -> None:
         """Collapse: count unchanged or decreased, focus stays on the parent button."""
@@ -316,3 +318,169 @@ class TestPopupKeyboardNavWindowBinding:
         handle_key.assert_called_once_with(KEY_DOWN)
         # Every key is consumed while the popup is modal, so nothing leaks.
         assert consumed is True
+
+
+class _FakeWidget:
+    """Minimal stand-in for a Kivy widget in the expand/collapse state machine."""
+
+    def __init__(self, parent: _FakeWidget | None = None, owner_button: object = None) -> None:
+        self.parent = parent
+        self.owner_button = owner_button
+
+    def remove_widget(self, widget: _FakeWidget) -> None:
+        widget.parent = None
+
+
+class TestSplitItems:
+    """The column split must keep dealing items exactly as it always has."""
+
+    @staticmethod
+    def _old_three_column_bounds(num: int) -> list[tuple[int, int]]:
+        split1 = (num + 2) // 3
+        split2 = split1 + (num - split1 + 1) // 2
+        return [(0, split1), (split1, split2), (split2, num)]
+
+    @staticmethod
+    def _old_two_column_bounds(num: int) -> list[tuple[int, int]]:
+        split_point = (num + 1) // 2
+        return [(0, split_point), (split_point, num)]
+
+    @pytest.mark.parametrize("num_columns", [2, 3])
+    @pytest.mark.parametrize("num_items", range(21))
+    def test_matches_the_original_formulas(
+        self, index_screen: ConcreteIndexScreen, num_columns: int, num_items: int
+    ) -> None:
+        index_screen.num_columns = num_columns
+        items = [IndexItem(id=f"i{n}", display_text=f"i{n}") for n in range(num_items)]
+
+        columns = index_screen._split_items(items)
+
+        expected_bounds = (
+            self._old_three_column_bounds(num_items)
+            if num_columns == 3
+            else self._old_two_column_bounds(num_items)
+        )
+        assert columns == [items[start:end] for start, end in expected_bounds]
+
+    @pytest.mark.parametrize("num_columns", [2, 3])
+    def test_deals_every_item_exactly_once(
+        self, index_screen: ConcreteIndexScreen, num_columns: int
+    ) -> None:
+        index_screen.num_columns = num_columns
+        items = [IndexItem(id=f"i{n}", display_text=f"i{n}") for n in range(17)]
+
+        columns = index_screen._split_items(items)
+
+        assert len(columns) == num_columns
+        assert [item for column in columns for item in column] == items
+
+
+class TestExpansionStateMachine:
+    def test_clicking_the_owning_button_again_is_a_collapse(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        button = MagicMock()
+        container = _FakeWidget(owner_button=button)
+        index_screen._open_tag_widgets = [container]
+
+        is_collapse, level = index_screen._get_level_of_click_for_collapse(button)
+
+        assert is_collapse is True
+        assert level == 0
+
+    def test_clicking_a_different_button_is_not_a_collapse(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        container = _FakeWidget(owner_button=MagicMock())
+        index_screen._open_tag_widgets = [container]
+
+        is_collapse, level = index_screen._get_level_of_click_for_collapse(MagicMock())
+
+        assert is_collapse is False
+        assert level == -1
+
+    def test_collapse_closes_the_level_and_everything_below_it(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        parent = _FakeWidget()
+        outer, middle, inner = (_FakeWidget(parent=parent) for _ in range(3))
+        index_screen._open_tag_widgets = [outer, middle, inner]
+
+        index_screen._handle_collapse(1)
+
+        assert index_screen._open_tag_widgets == [outer]
+        assert middle.parent is None
+        assert inner.parent is None
+        assert outer.parent is parent
+
+    def test_switching_to_a_top_level_item_closes_everything(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        parent = _FakeWidget()
+        outer, inner = (_FakeWidget(parent=parent) for _ in range(2))
+        index_screen._open_tag_widgets = [outer, inner]
+        # A button that is not inside any open container.
+        unrelated_button = _FakeWidget(parent=_FakeWidget())
+
+        index_screen._handle_expand_or_switch(cast("Button", unrelated_button))
+
+        assert index_screen._open_tag_widgets == []
+
+    def test_drilling_down_keeps_the_containers_above_the_click(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        parent = _FakeWidget()
+        outer = _FakeWidget(parent=parent)
+        inner = _FakeWidget(parent=parent)
+        index_screen._open_tag_widgets = [outer, inner]
+        # A button living inside the outer container.
+        button_in_outer = _FakeWidget(parent=outer)
+
+        index_screen._handle_expand_or_switch(cast("Button", button_in_outer))
+
+        assert index_screen._open_tag_widgets == [outer]
+        assert inner.parent is None
+
+
+class TestOnIndexItemPress:
+    def test_terminal_item_short_circuits_before_any_expansion(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        item = IndexItem(id="Apple", display_text="Apple")
+        with (
+            patch.object(ConcreteIndexScreen, "_handle_terminal_item", return_value=True),
+            patch.object(ConcreteIndexScreen, "_handle_expand_or_switch") as expand,
+            patch.object(ConcreteIndexScreen, "_handle_item_expansion") as expansion,
+        ):
+            index_screen._on_index_item_press(MagicMock(), item)
+
+        expand.assert_not_called()
+        expansion.assert_not_called()
+
+    def test_collapse_short_circuits_before_expansion(
+        self, index_screen: ConcreteIndexScreen
+    ) -> None:
+        item = IndexItem(id="Apple", display_text="Apple")
+        with (
+            patch.object(
+                ConcreteIndexScreen, "_get_level_of_click_for_collapse", return_value=(True, 0)
+            ),
+            patch.object(ConcreteIndexScreen, "_handle_collapse") as collapse,
+            patch.object(ConcreteIndexScreen, "_handle_item_expansion") as expansion,
+        ):
+            index_screen._on_index_item_press(MagicMock(), item)
+
+        collapse.assert_called_once_with(0)
+        expansion.assert_not_called()
+
+    def test_expand_cleans_up_then_expands(self, index_screen: ConcreteIndexScreen) -> None:
+        item = IndexItem(id="Apple", display_text="Apple")
+        button = MagicMock()
+        with (
+            patch.object(ConcreteIndexScreen, "_handle_expand_or_switch") as expand,
+            patch.object(ConcreteIndexScreen, "_handle_item_expansion") as expansion,
+        ):
+            index_screen._on_index_item_press(button, item)
+
+        expand.assert_called_once_with(button)
+        expansion.assert_called_once_with(button, item)
