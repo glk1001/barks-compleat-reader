@@ -8,7 +8,6 @@ from unittest.mock import MagicMock
 import pytest
 from barks_fantagraphics.entity_types import EntityType
 from barks_fantagraphics.whoosh_search_engine import (
-    SUB_ALPHA_SPLIT_SIZE,
     SearchEngine,
     SearchEngineCreator,
     _build_curated_entity_sets,
@@ -189,74 +188,6 @@ class TestGetEntityTypes:
         hit = self._make_hit({"entities_person": ""})
         result = SearchEngine._get_entity_types(hit, "donald")
         assert EntityType.PERSON not in result
-
-
-# ---------------------------------------------------------------------------
-# SearchEngine._get_sub_alpha_split_terms (static)
-# ---------------------------------------------------------------------------
-
-
-class TestGetSubAlphaSplitTerms:
-    def test_empty_returns_empty(self) -> None:
-        assert SearchEngine._get_sub_alpha_split_terms([]) == {}
-
-    def test_groups_by_two_char_prefix(self) -> None:
-        terms = ["apple", "apricot", "banana"]
-        result = SearchEngine._get_sub_alpha_split_terms(terms)
-        assert "ap" in result
-        assert "ba" in result
-        assert "apple" in result["ap"]
-        assert "apricot" in result["ap"]
-        assert "banana" in result["ba"]
-
-    def test_digit_prefix_uses_one_char(self) -> None:
-        terms = ["007", "042", "100"]
-        result = SearchEngine._get_sub_alpha_split_terms(terms)
-        # digit prefix_len=1, so first char "0" is the group key
-        assert "0" in result
-        assert "007" in result["0"]
-        assert "042" in result["0"]
-
-    def test_single_term(self) -> None:
-        result = SearchEngine._get_sub_alpha_split_terms(["hello"])
-        assert "he" in result
-        assert result["he"] == ["hello"]
-
-
-# ---------------------------------------------------------------------------
-# SearchEngine._get_similar_size_sub_alpha_groups (static)
-# ---------------------------------------------------------------------------
-
-
-class TestGetSimilarSizeSubAlphaGroups:
-    def test_small_groups_merged(self) -> None:
-        # Each sub-alpha group is small (< SUB_ALPHA_SPLIT_SIZE), should merge
-        sub = {
-            "aa": ["a1"] * 10,
-            "ab": ["b1"] * 10,
-        }
-        result = SearchEngine._get_similar_size_sub_alpha_groups(sub)
-        # Both groups together < threshold, so they merge under first prefix
-        assert "aa" in result
-        assert len(result["aa"]) == 20
-
-    def test_large_group_starts_new_key(self) -> None:
-        # First group exceeds threshold alone, next group starts a new key
-        big = ["x"] * (SUB_ALPHA_SPLIT_SIZE + 1)
-        sub = {
-            "aa": big,
-            "ab": ["y"],
-        }
-        result = SearchEngine._get_similar_size_sub_alpha_groups(sub)
-        # "aa" exceeds threshold → "ab" becomes a new key
-        assert "ab" in result
-        assert result["ab"] == ["y"]
-
-    def test_single_group_preserved(self) -> None:
-        sub = {"aa": ["term1", "term2"]}
-        result = SearchEngine._get_similar_size_sub_alpha_groups(sub)
-        assert "aa" in result
-        assert result["aa"] == ["term1", "term2"]
 
 
 # ---------------------------------------------------------------------------
@@ -476,29 +407,6 @@ class TestCollectAndSortResults:
 
         with pytest.raises(KeyError):
             _ = results["No Such Title"]
-
-
-# ---------------------------------------------------------------------------
-# SearchEngine._get_alpha_split_terms (top-level split, index-free)
-# ---------------------------------------------------------------------------
-
-
-class TestGetAlphaSplitTerms:
-    @staticmethod
-    def _engine() -> SearchEngine:
-        return SearchEngine.__new__(SearchEngine)
-
-    def test_groups_by_first_letter_with_digits_under_zero(self) -> None:
-        """Consecutive runs group by first letter; all digit-initial terms key '0'."""
-        engine = self._engine()
-        result = engine._get_alpha_split_terms(["apple", "avocado", "banana", "3rd", "9lives"])
-        assert set(result.keys()) == {"a", "b", "0"}
-
-    def test_invalid_first_letter_raises(self) -> None:
-        """A term whose first char is not a letter/digit/apostrophe is rejected."""
-        engine = self._engine()
-        with pytest.raises(ValueError, match="Invalid first letter"):
-            engine._get_alpha_split_terms(["-bad-term"])
 
 
 # ---------------------------------------------------------------------------

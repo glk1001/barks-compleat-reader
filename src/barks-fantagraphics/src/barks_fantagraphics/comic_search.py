@@ -17,6 +17,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from typing import TYPE_CHECKING
 
+from .alpha_split import split_alpha_terms
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -65,6 +67,24 @@ class SearchResult:
 def _unique_preserving_order(titles: list[Titles]) -> list[Titles]:
     """Drop repeated titles, keeping the first occurrence of each."""
     return list(dict.fromkeys(titles))
+
+
+# The reader builds one ComicSearch per screen, all over the same index. Caching by
+# index directory means the term list is read and split once rather than per screen.
+_ALPHA_SPLIT_CACHE: dict[Path, AlphaSplitTerms] = {}
+
+
+def _split_terms_for_index(index_dir: Path, engine: FullTextSearchPort) -> AlphaSplitTerms:
+    cached = _ALPHA_SPLIT_CACHE.get(index_dir)
+    if cached is None:
+        cached = split_alpha_terms(engine.get_cleaned_terms())
+        _ALPHA_SPLIT_CACHE[index_dir] = cached
+    return cached
+
+
+def clear_alpha_split_cache() -> None:
+    """Discard the cached term splits, e.g. after the index has been rebuilt."""
+    _ALPHA_SPLIT_CACHE.clear()
 
 
 class ComicSearch:
@@ -183,8 +203,14 @@ class ComicSearch:
     # ------------------------------------------------------------------
 
     def get_alpha_split_terms(self) -> AlphaSplitTerms:
-        """Return the alphabetically-split word term index for A-Z browsing."""
-        return self._get_full_text().get_cleaned_alpha_split_terms()
+        """Return the alphabetically-split word term index for A-Z browsing.
+
+        Computed here from the flat term list rather than read from the index's
+        precomputed sidecar, so how the index is presented stays a reader concern and
+        does not need an index rebuild to change. The result is shared between every
+        ``ComicSearch`` over the same index directory.
+        """
+        return _split_terms_for_index(self._index_dir, self._get_full_text())
 
     def get_alpha_split_entity_terms(self, entity_type: str) -> AlphaSplitTerms:
         """Return alphabetically-split entity terms for the given type."""

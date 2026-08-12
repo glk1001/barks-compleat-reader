@@ -5,6 +5,7 @@ import textwrap
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, cast, override
 
+from barks_fantagraphics.alpha_split import MAX_PREFIX_BUTTONS_PER_LETTER
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_search import ComicSearch
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
@@ -36,7 +37,7 @@ from .index_screen import (
     MAX_TITLE_AND_PAGES_LEN,
     IndexItem,
     IndexItemButton,
-    IndexMenuButton,
+    IndexPrefixButton,
     IndexScreen,
     TitleShowSpeechButton,
     _IndexNavPanel,
@@ -202,12 +203,20 @@ class SpeechIndexScreen(IndexScreen):
         """Create the top sub alphabet split buttons across the top."""
         first_letter_split_terms = self._cleaned_alpha_split_terms[first_letter.lower()]
 
+        if len(first_letter_split_terms) > MAX_PREFIX_BUTTONS_PER_LETTER:
+            # The bar is a fixed single row, so anything past the last slot is
+            # unreachable. The split is meant to prevent this.
+            logger.warning(
+                f"Letter '{first_letter}' needs {len(first_letter_split_terms)} prefix"
+                f" buttons but the bar holds {MAX_PREFIX_BUTTONS_PER_LETTER}."
+            )
+
         alphabet_top_split_layout: GridLayout = self.ids.alphabet_top_split_layout
         alphabet_top_split_layout.clear_widgets()
         self._prefix_buttons.clear()
 
         for prefix in first_letter_split_terms:
-            button = IndexMenuButton(text=prefix)
+            button = IndexPrefixButton(text=prefix)
             button.bind(on_release=self.on_letter_prefix_press)
             self._prefix_buttons[prefix] = button
             alphabet_top_split_layout.add_widget(button)

@@ -96,6 +96,14 @@ class IndexMenuButton(Button):
     is_selected = BooleanProperty(defaultvalue=False)
 
 
+class IndexPrefixButton(IndexMenuButton):
+    """A prefix-bar button, styled in the .kv file.
+
+    Separate from ``IndexMenuButton`` because it carries a range label ("sho-shy")
+    rather than a single character, so it needs a smaller font and text wrapping.
+    """
+
+
 class IndexItemButton(Button):
     """A custom button for the index items, styled in the .kv file."""
 

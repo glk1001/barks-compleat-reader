@@ -86,8 +86,8 @@ class TestSpeechIndexScreen:
         assert speech_index_screen._cleaned_alpha_split_terms is not None
 
     def test_populate_top_alphabet_split_menu(self, speech_index_screen: SpeechIndexScreen) -> None:
-        # Mock IndexMenuButton
-        with patch.object(barks_reader.ui.speech_index_screen, "IndexMenuButton") as mock_btn_cls:
+        # Mock IndexPrefixButton
+        with patch.object(barks_reader.ui.speech_index_screen, "IndexPrefixButton") as mock_btn_cls:
             mock_btn = MagicMock()
             mock_btn.text = "apple"
             mock_btn_cls.return_value = mock_btn
@@ -131,7 +131,7 @@ class TestSpeechIndexScreen:
         kick off a second background-image load that cancels the first.
         """
         with (
-            patch.object(barks_reader.ui.speech_index_screen, "IndexMenuButton") as mock_btn_cls,
+            patch.object(barks_reader.ui.speech_index_screen, "IndexPrefixButton") as mock_btn_cls,
             patch.object(speech_index_screen, "_populate_index_grid") as mock_populate_grid,
         ):
             mock_btn_cls.side_effect = lambda text: MagicMock(text=text)
@@ -145,7 +145,7 @@ class TestSpeechIndexScreen:
     ) -> None:
         """Prefix buttons from a previously visited letter must not be retained."""
         with (
-            patch.object(barks_reader.ui.speech_index_screen, "IndexMenuButton") as mock_btn_cls,
+            patch.object(barks_reader.ui.speech_index_screen, "IndexPrefixButton") as mock_btn_cls,
             patch.object(speech_index_screen, "_populate_index_grid"),
         ):
             mock_btn_cls.side_effect = lambda text: MagicMock(text=text)

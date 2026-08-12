@@ -16,6 +16,16 @@
             rectangle: self.x + dp(1), self.y + dp(1), self.width - dp(2), self.height - dp(2)
             width: dp(0.5)
 
+<IndexPrefixButton>:
+    # Prefix-bar buttons carry a range label ("sho-shy"), not a single character,
+    # so they need a smaller font and text fitted to the button width.
+    font_size: fm.index_menu_font_size * 0.7
+    text_size: self.width - dp(4), self.height
+    halign: 'center'
+    valign: 'middle'
+    shorten: True
+    shorten_from: 'right'
+
 <IndexItemButton>:
     # This rule defines the style for the index item buttons
     background_normal: ''
@@ -143,10 +153,15 @@
 
     GridLayout:
         id: alphabet_top_split_layout
+        # Fixed column count so prefix buttons line up from one letter to the next.
+        # The split guarantees no letter needs more than this many buttons.
         cols: 20
         rows: 1
-        col_default_width: dp(40)
-        col_force_default: True
+        # Columns divide the available width rather than being a fixed dp, so a range
+        # label ("chea-chew") has room that a single-character menu button never needed.
+        size_hint: None, None
+        width: max(dp(400), root.width - dp(50))
+        height: dp(24)
         row_default_height: dp(24)
         row_force_default: True
         pos: dp(45), 0
