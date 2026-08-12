@@ -42,7 +42,7 @@ _MIN_PREFIX_LEN = 2
 _MAX_PREFIX_LEN = 16
 
 # Longest prefix shown on a button; the bar's columns are narrow.
-_MAX_LABEL_PART_LEN = 4
+_MAX_LABEL_PART_LEN = 3
 
 # Digits all collapse into a single "0" letter group.
 _DIGIT_GROUP_KEY = "0"

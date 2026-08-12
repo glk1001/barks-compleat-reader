@@ -65,9 +65,9 @@ class TestBucketLabel:
         ("bucket", "expected"),
         [
             (["show", "shy"], "sho-shy"),
-            (["shoe", "show"], "shoe-show"),
+            (["shoe", "show"], "sho"),
             (["car", "cast"], "car-cas"),
-            (["chea", "chew"], "chea-chew"),
+            (["chea", "chew"], "che"),
             (["ant"], "ant"),
             (["a"], "a"),
         ],
@@ -83,7 +83,7 @@ class TestBucketLabel:
     def test_label_parts_are_length_capped(self) -> None:
         """A narrow button cannot show a whole long word."""
         label = bucket_label(["antidisestablishmentarian", "antidisestablishmentarianism"])
-        assert label == "anti"
+        assert label == "ant"
 
     def test_differing_ends_give_a_range(self) -> None:
         assert bucket_label(["cash", "chip", "cove"]) == "ca-co"

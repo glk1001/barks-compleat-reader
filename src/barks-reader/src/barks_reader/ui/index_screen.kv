@@ -17,10 +17,12 @@
             width: dp(0.5)
 
 <IndexPrefixButton>:
-    # Prefix-bar buttons carry a range label ("sho-shy"), not a single character,
-    # so they need a smaller font and text fitted to the button width.
-    font_size: fm.index_menu_font_size * 0.7
-    text_size: self.width - dp(4), self.height
+    # Prefix-bar buttons carry a range label ("sho-shy"), not a single character.
+    # Twenty of them share the bar's width, so the label only fits unbolded at a
+    # fraction of the A-Z menu's size; `shorten` is the safety net on narrow windows.
+    font_size: fm.index_menu_font_size * 0.55
+    bold: False
+    text_size: self.width - dp(2), self.height
     halign: 'center'
     valign: 'middle'
     shorten: True
