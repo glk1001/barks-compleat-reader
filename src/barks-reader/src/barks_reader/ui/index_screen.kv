@@ -166,7 +166,8 @@
         height: dp(24)
         row_default_height: dp(24)
         row_force_default: True
-        pos: dp(45), 0
+        # Sits along the top of the index, directly above the items it filters.
+        pos: root.x + dp(45), root.top - self.height
         padding: dp(0)
         spacing: dp(2)
         # Only the Words index has a prefix bar; the others never populate it.
@@ -187,8 +188,12 @@
         bar_width: dp(12)
 
         size_hint: None, None
-        size: root.width - alphabet_side_layout.width - dp(15), 0.91 * root.height
-        pos_hint: {'right': 1, 'top': 0.95}
+        width: root.width - alphabet_side_layout.width - dp(15)
+        # Starts below the prefix bar when there is one, so the two can never overlap
+        # however short the window gets; the gap left at the bottom is the goto overlay's.
+        height: (alphabet_top_split_layout.y - dp(4) if root.has_prefix_bar else root.top - 0.05 * root.height) - (root.y + 0.04 * root.height)
+        pos_hint: {'right': 1}
+        y: root.y + 0.04 * root.height
 
         FloatLayout:
             size_hint_y: None
