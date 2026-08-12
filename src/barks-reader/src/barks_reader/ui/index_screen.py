@@ -363,6 +363,11 @@ class IndexScreen(FloatLayout):
     current_title_str = StringProperty()
     # Opt-in prefix bar above the items grid (the word index only).
     has_prefix_bar = BooleanProperty(defaultvalue=False)
+    # The vertical extent the items grid may occupy, bound in the .kv rule. Named
+    # edges rather than one expression inside the ScrollView, because where the top
+    # sits depends on whether the prefix bar is there.
+    items_area_top = NumericProperty()
+    items_area_bottom = NumericProperty()
 
     # How often the background image rotates. Subclasses override.
     index_image_change_seconds: float = 5
