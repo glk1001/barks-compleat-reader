@@ -106,8 +106,14 @@ class IndexPrefixButton(IndexMenuButton):
     """A prefix-bar button, styled in the .kv file.
 
     Separate from ``IndexMenuButton`` because it carries a range label ("sho-shy")
-    rather than a single character, so it needs a smaller font and text wrapping.
+    rather than a single character, so it needs its own font size and stacks the
+    range over two lines.
+
+    ``text`` is therefore presentation only -- the range broken across two lines;
+    ``prefix`` is the bucket key the saved node state and the term lookup use.
     """
+
+    prefix = StringProperty("")
 
 
 class IndexItemButton(Button):

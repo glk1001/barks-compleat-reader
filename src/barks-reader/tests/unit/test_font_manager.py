@@ -83,6 +83,7 @@ def test_apply_font_theme_mapping(font_manager: FontManager) -> None:  # noqa: P
     mock_theme.title_info = 12
     mock_theme.title_extra_info = 13
     mock_theme.index_menu = 14
+    mock_theme.index_prefix = 37
     mock_theme.main_index_item = 16
     mock_theme.speech_index_item = 15
     mock_theme.index_title_item = 16
@@ -114,6 +115,7 @@ def test_apply_font_theme_mapping(font_manager: FontManager) -> None:  # noqa: P
     assert font_manager.title_info_font_size == 12
     assert font_manager.title_extra_info_font_size == 13
     assert font_manager.index_menu_font_size == 14
+    assert font_manager.index_prefix_font_size == 37
     assert font_manager.main_index_item_font_size == 16
     assert font_manager.speech_index_item_font_size == 15
     assert font_manager.index_title_item_font_size == 16

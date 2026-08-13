@@ -167,6 +167,37 @@ def split_letter_terms(
     return buckets
 
 
+def bucket_label_parts(bucket: list[str]) -> tuple[str, str]:
+    """Return the two ends of a bucket's range label.
+
+    Separate from :func:`bucket_label` because a caller that wants to lay the range
+    out itself -- the reader stacks it over two lines -- cannot recover the ends by
+    splitting the joined label: a part may itself contain a hyphen ("s-e"), and a
+    part may be a single character ("s-sa", "2-21").
+
+    Args:
+        bucket: A non-empty bucket of terms in display order.
+
+    Returns:
+        ``(start, end)``, equal when both ends of the bucket share a prefix.
+
+    Raises:
+        ValueError: If the bucket is empty.
+
+    """
+    if not bucket:
+        msg = "Cannot label an empty bucket."
+        raise ValueError(msg)
+
+    first, last = bucket[0].lower(), bucket[-1].lower()
+    shared = 0
+    while shared < min(len(first), len(last)) and first[shared] == last[shared]:
+        shared += 1
+
+    length = min(max(_MIN_PREFIX_LEN, shared + 1), _MAX_LABEL_PART_LEN)
+    return _trim_label_part(first[:length]), _trim_label_part(last[:length])
+
+
 def bucket_label(bucket: list[str]) -> str:
     """Return the prefix-button label for a bucket.
 
@@ -183,17 +214,7 @@ def bucket_label(bucket: list[str]) -> str:
         ValueError: If the bucket is empty.
 
     """
-    if not bucket:
-        msg = "Cannot label an empty bucket."
-        raise ValueError(msg)
-
-    first, last = bucket[0].lower(), bucket[-1].lower()
-    shared = 0
-    while shared < min(len(first), len(last)) and first[shared] == last[shared]:
-        shared += 1
-
-    length = min(max(_MIN_PREFIX_LEN, shared + 1), _MAX_LABEL_PART_LEN)
-    start, end = _trim_label_part(first[:length]), _trim_label_part(last[:length])
+    start, end = bucket_label_parts(bucket)
     return start if start == end else f"{start}-{end}"
 
 

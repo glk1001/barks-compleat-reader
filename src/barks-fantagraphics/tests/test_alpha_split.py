@@ -9,6 +9,7 @@ from barks_fantagraphics.alpha_split import (
     MAX_PREFIX_BUTTONS_PER_LETTER,
     PREFERRED_BUCKET_SIZE,
     bucket_label,
+    bucket_label_parts,
     first_letter_key,
     group_by_first_letter,
     split_alpha_terms,
@@ -91,6 +92,45 @@ class TestBucketLabel:
     def test_empty_bucket_raises(self) -> None:
         with pytest.raises(ValueError, match="empty bucket"):
             bucket_label([])
+
+
+class TestBucketLabelParts:
+    """The reader lays the range out itself, so it needs the ends, not the joined label."""
+
+    @pytest.mark.parametrize(
+        ("bucket", "expected"),
+        [
+            (["show", "shy"], ("sho", "shy")),
+            (["shoe", "show"], ("sho", "sho")),
+            (["ant"], ("ant", "ant")),
+        ],
+    )
+    def test_parts(self, bucket: list[str], expected: tuple[str, str]) -> None:
+        assert bucket_label_parts(bucket) == expected
+
+    @pytest.mark.parametrize(
+        "bucket",
+        [
+            ["show", "shy"],
+            ["shoe", "show"],
+            ["sh-boom", "shless"],
+            ["c-note", "cargo"],
+            ["a"],
+            ["cash", "chip", "cove"],
+        ],
+    )
+    def test_the_parts_are_what_the_label_is_built_from(self, bucket: list[str]) -> None:
+        start, end = bucket_label_parts(bucket)
+        expected = start if start == end else f"{start}-{end}"
+        assert bucket_label(bucket) == expected
+
+    def test_a_part_may_hold_the_separator(self) -> None:
+        """Why the ends cannot be recovered by splitting the label on its hyphen."""
+        assert bucket_label_parts(["s", "sap"]) == ("s", "sa")
+
+    def test_empty_bucket_raises(self) -> None:
+        with pytest.raises(ValueError, match="empty bucket"):
+            bucket_label_parts([])
 
 
 class TestSplitLetterTerms:

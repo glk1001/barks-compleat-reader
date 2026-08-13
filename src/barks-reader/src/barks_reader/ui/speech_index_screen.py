@@ -5,7 +5,7 @@ import textwrap
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, cast, override
 
-from barks_fantagraphics.alpha_split import MAX_PREFIX_BUTTONS_PER_LETTER
+from barks_fantagraphics.alpha_split import MAX_PREFIX_BUTTONS_PER_LETTER, bucket_label_parts
 from barks_fantagraphics.barks_titles import STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_search import ComicSearch
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
@@ -642,7 +642,7 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
             self._context_entity_map[word] = entries
 
         self._cleaned_alpha_split_terms = self._search.get_alpha_split_terms()
-        self._prefix_buttons: dict[str, Button] = {}
+        self._prefix_buttons: dict[str, IndexPrefixButton] = {}
         self._nav_focused_prefix_idx: int = 0
 
     @override
@@ -666,8 +666,8 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
         alphabet_top_split_layout.clear_widgets()
         self._prefix_buttons.clear()
 
-        for prefix in first_letter_split_terms:
-            button = IndexPrefixButton(text=prefix)
+        for prefix, terms in first_letter_split_terms.items():
+            button = IndexPrefixButton(prefix=prefix, text=stacked_prefix_label(prefix, terms))
             button.bind(on_release=self.on_letter_prefix_press)
             self._prefix_buttons[prefix] = button
             alphabet_top_split_layout.add_widget(button)
@@ -684,8 +684,8 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
 
         self.on_letter_prefix_press(self._prefix_buttons[first_prefix])
 
-    def on_letter_prefix_press(self, button: Button) -> None:
-        prefix = button.text
+    def on_letter_prefix_press(self, button: IndexPrefixButton) -> None:
+        prefix = button.prefix
         logger.debug(f"Pressed prefix button: '{prefix}.")
         assert self.treeview_index_node is not None
         self.treeview_index_node.saved_state[SAVED_NODE_STATE_PREFIX_KEY] = prefix
@@ -789,14 +789,14 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
             return False
         return True
 
-    def _select_focused_prefix(self, visible: list[Button]) -> None:
+    def _select_focused_prefix(self, visible: list[IndexPrefixButton]) -> None:
         btn = visible[self._nav_focused_prefix_idx]
         self.on_letter_prefix_press(btn)
 
-    def _get_visible_prefix_buttons(self) -> list[Button]:
+    def _get_visible_prefix_buttons(self) -> list[IndexPrefixButton]:
         """Return the currently displayed prefix buttons in left-to-right order."""
         layout = self.ids.alphabet_top_split_layout
-        return list(reversed(layout.children))
+        return cast("list[IndexPrefixButton]", list(reversed(layout.children)))
 
     def _draw_prefix_focus(self) -> None:
         visible = self._get_visible_prefix_buttons()
@@ -807,6 +807,28 @@ class SpeechIndexScreen(SpeechSubItemsIndexScreen):
 
     def _clear_prefix_focus(self) -> None:
         clear_focus_in_list(self._get_visible_prefix_buttons(), INDEX_NAV_FOCUS_GROUP)
+
+
+def stacked_prefix_label(prefix: str, terms: list[str]) -> str:
+    """Return the prefix button's display text, with the range stacked over two lines.
+
+    Twenty buttons share the bar's width, so "sho-shy" on one line only fits at a size
+    that is hard to read. Stacked, each line is at most three characters and the label
+    can render at nearly the A-Z menu's size.
+
+    Args:
+        prefix: The bucket's canonical label, as used everywhere else as its key.
+        terms: The bucket's terms, in display order.
+
+    Returns:
+        The two ends of the range separated by a newline, or ``prefix`` unchanged when
+        the bucket has a single-prefix label or its ends no longer rejoin to ``prefix``.
+
+    """
+    start, end = bucket_label_parts(terms)
+    if start == end or f"{start}-{end}" != prefix:
+        return prefix
+    return f"{start}\n{end}"
 
 
 def shorten_if_necessary(text: str) -> str:

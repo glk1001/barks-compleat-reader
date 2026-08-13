@@ -28,6 +28,7 @@ from barks_reader.ui.reader_keyboard_nav import (
 from barks_reader.ui.speech_index_screen import (
     SpeechIndexScreen,
     _SpeechIndexTitleItemButton,
+    stacked_prefix_label,
 )
 from kivy.clock import Clock
 
@@ -105,7 +106,7 @@ class TestSpeechIndexScreen:
         # Mock IndexPrefixButton
         with patch.object(barks_reader.ui.speech_index_screen, "IndexPrefixButton") as mock_btn_cls:
             mock_btn = MagicMock()
-            mock_btn.text = "apple"
+            mock_btn.prefix = "apple"
             mock_btn_cls.return_value = mock_btn
 
             # Mock _populate_index_grid to prevent further chain execution
@@ -121,7 +122,7 @@ class TestSpeechIndexScreen:
     def test_on_letter_prefix_press(self, speech_index_screen: SpeechIndexScreen) -> None:
         # Setup
         mock_button = MagicMock()
-        mock_button.text = "ant"
+        mock_button.prefix = "ant"
 
         # Mock _populate_index_grid to verify it's called
         with patch.object(speech_index_screen, "_populate_index_grid") as mock_populate_grid:
@@ -150,7 +151,7 @@ class TestSpeechIndexScreen:
             patch.object(barks_reader.ui.speech_index_screen, "IndexPrefixButton") as mock_btn_cls,
             patch.object(speech_index_screen, "_populate_index_grid") as mock_populate_grid,
         ):
-            mock_btn_cls.side_effect = lambda text: MagicMock(text=text)
+            mock_btn_cls.side_effect = lambda prefix, text: MagicMock(prefix=prefix, text=text)
 
             speech_index_screen._populate_index_for_letter("A")
 
@@ -164,13 +165,36 @@ class TestSpeechIndexScreen:
             patch.object(barks_reader.ui.speech_index_screen, "IndexPrefixButton") as mock_btn_cls,
             patch.object(speech_index_screen, "_populate_index_grid"),
         ):
-            mock_btn_cls.side_effect = lambda text: MagicMock(text=text)
+            mock_btn_cls.side_effect = lambda prefix, text: MagicMock(prefix=prefix, text=text)
 
             speech_index_screen._populate_top_alphabet_split_menu("A")
             assert set(speech_index_screen._prefix_buttons) == {"apple", "ant"}
 
             speech_index_screen._populate_top_alphabet_split_menu("B")
             assert set(speech_index_screen._prefix_buttons) == {"banana"}
+
+    def test_prefix_buttons_keep_the_canonical_prefix_off_their_display_text(
+        self, speech_index_screen: SpeechIndexScreen
+    ) -> None:
+        """The bar shows a stacked range but everything else is keyed by the prefix."""
+        speech_index_screen._cleaned_alpha_split_terms = {
+            "s": {
+                "sho-shy": ["shop", "shy"],
+                "ska": ["skate", "skating"],
+            }
+        }
+        with (
+            patch.object(barks_reader.ui.speech_index_screen, "IndexPrefixButton") as mock_btn_cls,
+            patch.object(speech_index_screen, "_populate_index_grid"),
+        ):
+            mock_btn_cls.side_effect = lambda prefix, text: MagicMock(prefix=prefix, text=text)
+
+            speech_index_screen._populate_top_alphabet_split_menu("S")
+
+            assert set(speech_index_screen._prefix_buttons) == {"sho-shy", "ska"}
+            assert speech_index_screen._prefix_buttons["sho-shy"].text == "sho\nshy"
+            # A single-prefix bucket has no range to stack, so it stays on one line.
+            assert speech_index_screen._prefix_buttons["ska"].text == "ska"
 
     def test_find_words(self, speech_index_screen: SpeechIndexScreen) -> None:
         speech_index_screen._find_words("test")
@@ -408,3 +432,19 @@ class TestPrefixPanelNav:
             speech_index_screen._handle_panel_key(_IndexNavPanel.PREFIX, KEY_LEFT)
 
         prefix_key.assert_called_once_with(KEY_LEFT)
+
+
+class TestStackedPrefixLabel:
+    def test_a_range_is_stacked_over_two_lines(self) -> None:
+        assert stacked_prefix_label("sho-shy", ["shop", "shy"]) == "sho\nshy"
+
+    def test_a_single_prefix_label_stays_on_one_line(self) -> None:
+        assert stacked_prefix_label("ska", ["skate", "skating"]) == "ska"
+
+    def test_a_part_may_hold_the_separator_itself(self) -> None:
+        """A label like "s-sa" runs "s" to "sa", so the ends cannot come from a split."""
+        assert stacked_prefix_label("s-sa", ["s", "sap"]) == "s\nsa"
+
+    def test_ends_that_no_longer_rejoin_fall_back_to_the_prefix(self) -> None:
+        """Colliding labels are merged upstream; never show a label for the wrong span."""
+        assert stacked_prefix_label("sho-shy", ["about", "zebra"]) == "sho-shy"

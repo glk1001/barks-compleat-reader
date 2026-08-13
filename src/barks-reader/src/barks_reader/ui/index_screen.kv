@@ -17,16 +17,16 @@
             width: dp(0.5)
 
 <IndexPrefixButton>:
-    # Prefix-bar buttons carry a range label ("sho-shy"), not a single character.
-    # Twenty of them share the bar's width, so the label only fits unbolded at a
-    # fraction of the A-Z menu's size; `shorten` is the safety net on narrow windows.
-    font_size: fm.index_menu_font_size * 0.55
-    bold: False
+    # Prefix-bar buttons carry a range label ("sho-shy"), not a single character, and
+    # twenty of them share the bar's width. On one line that leaves about 46px for
+    # seven characters; stacked -- "sho" over "shy" -- each line is three characters
+    # and the label reads at nearly the A-Z menu's size. The stacking is done in
+    # `stacked_prefix_label`; `text` is display only, `prefix` is the bucket key.
+    font_size: fm.index_prefix_font_size
     text_size: self.width - dp(2), self.height
     halign: 'center'
     valign: 'middle'
-    shorten: True
-    shorten_from: 'right'
+    line_height: 0.95
 
 <IndexItemButton>:
     # This rule defines the style for the index item buttons
@@ -168,8 +168,10 @@
         # label ("chea-chew") has room that a single-character menu button never needed.
         size_hint: None, None
         width: max(dp(400), root.width - dp(50))
-        height: dp(24)
-        row_default_height: dp(24)
+        # Tall enough for the two stacked lines of a range label, so it tracks the
+        # font theme rather than pinning a height the low-res fonts would overflow.
+        height: fm.index_prefix_font_size * 2.7
+        row_default_height: self.height
         row_force_default: True
         # Sits along the top of the index, directly above the items it filters.
         pos: root.x + dp(45), root.top - self.height
