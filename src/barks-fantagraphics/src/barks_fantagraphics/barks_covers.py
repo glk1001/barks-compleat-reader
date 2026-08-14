@@ -4219,8 +4219,15 @@ COVER_LOCATIONS: dict[CoverKey, tuple[int, int]] = {
     ("WALT DISNEY’S COMICS AND STORIES", 303, 1965, "FRONT", 0): (29, 195),  # page offset extrapolated - verify
     ("WALT DISNEY’S COMICS AND STORIES", 304, 1966, "FRONT", 0): (29, 197),  # page offset extrapolated - verify
     ("WALT DISNEY’S COMICS AND STORIES", 306, 1966, "FRONT", 0): (29, 199),  # page offset extrapolated - verify
+#    ("WALT DISNEY’S COMICS AND STORIES", 355, 1970, "FRONT", 0): (30, 212),  # Larry Mayer redrawn version  # noqa: RUF003
     ("DONALD DUCK", 105, 1966, "FRONT", 0): (29, 201),  # page offset extrapolated - verify
     ("DONALD DUCK", 106, 1966, "FRONT", 0): (29, 203),  # page offset extrapolated - verify
+    ("UNCLE SCROOGE", 43, 1963, "FRONT", 0): (30, 223),
+    ("UNCLE SCROOGE", 44, 1963, "FRONT", 0): (30, 229),
+    ("UNCLE SCROOGE", 45, 1963, "FRONT", 0): (30, 231),
+    ("UNCLE SCROOGE", 46, 1963, "FRONT", 0): (30, 219),
+    ("UNCLE SCROOGE", 47, 1964, "FRONT", 0): (30, 232),
+    ("UNCLE SCROOGE", 48, 1964, "FRONT", 0): (30, 235),
 }
 # fmt: on
 
