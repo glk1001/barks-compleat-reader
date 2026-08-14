@@ -47,8 +47,8 @@ PLAYLISTS: tuple[Playlist, ...] = (
         playlist_id=BRAVERY_PLAYLIST_ID,
         heading="The Bravery Stories",
         intro=(
-            "These are stories where bravery is a key plot element."
-            " It might be real bravery, accidental bravery or the opposite of bravery."
+            "[i]The stories where bravery is a key plot element."
+            " It might be real bravery, accidental bravery or the opposite of bravery.[/i]"
         ),
         titles=(
             Titles.CHRISTMAS_ON_BEAR_MOUNTAIN,
