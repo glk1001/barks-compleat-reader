@@ -645,6 +645,7 @@ BARKS_TAGGED_TITLES: dict[Tags, list[Titles]] = {
     Tags.CARBON: [Titles.TWENTY_FOUR_CARAT_MOON_THE],
     Tags.CARVER_BEAKOFF: [Titles.FIREBUG_THE],
     Tags.CAR_313: [
+        Titles.GOOD_NEIGHBORS,
         Titles.DONALDS_MONSTER_KITE,
         Titles.MAD_CHEMIST_THE,
         Titles.RIP_VAN_DONALD,
@@ -1558,6 +1559,7 @@ BARKS_TAGGED_PAGES: dict[tuple[Tags, Titles], list[str]] = {
     (Tags.CANADA, Titles.FROZEN_GOLD): ["4"],
     (Tags.CARBON, Titles.TWENTY_FOUR_CARAT_MOON_THE): ["19"],
     (Tags.CARVER_BEAKOFF, Titles.FIREBUG_THE): ["13"],
+    (Tags.CAR_313, Titles.GOOD_NEIGHBORS): ["9"],
     (Tags.CAR_313, Titles.DONALDS_MONSTER_KITE): ["7", "8", "9", "10"],
     (Tags.CAR_313, Titles.MAD_CHEMIST_THE): ["2", "3", "5", "6"],
     (Tags.CAR_313, Titles.RIP_VAN_DONALD): ["6", "7", "8", "9", "10"],

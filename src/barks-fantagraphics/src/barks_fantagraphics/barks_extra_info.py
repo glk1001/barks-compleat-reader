@@ -34,7 +34,8 @@ BARKS_EXTRA_INFO = {
     Titles.GOOD_DEEDS: "The first appearance of [b][i]Neighbor Jones.[/i][/b]"
     " (Mr. Jones in this story.)",
     Titles.GOOD_NEIGHBORS: "The first real appearance of [b][i]Neighbor Jones[/i][/b]"
-    " – the one we all know!",
+    " – the one we all know!"
+    " And the first appearance of [b][i]Car 313[/i][/b] in a Barks story.",
     Titles.THREE_DIRTY_LITTLE_DUCKS: "The first appearance of [b][i]Herbert[/i][/b]"
     " and [b][i]Bolivar[/i][/b] the dog."
     "\n\nAnd the first Barks Duck story drawn in a four tier layout.",
@@ -61,7 +62,6 @@ BARKS_EXTRA_INFO = {
     " from the last panel of WDCS #62. But there is also the option of choosing the Fantagraphics"
     " ending by Geoffrey Blum and Daan Jippes.",
     Titles.SMUGSNORKLE_SQUATTIE_THE: "Last appearance of [b][i]Herbert[/i][/b].",
-    Titles.MAD_CHEMIST_THE: "The first appearance of [b][i]Car 313.[/i][/b]",
     Titles.HIGH_WIRE_DAREDEVILS: "First mention of [b][i]Duckburg.[/i][/b]"
     " (Last panel of last page.)",
     Titles.TURKEY_RAFFLE: 'On page 4, a can of "Barks Dog Soup" is shown in Donald\'s kitchen'
