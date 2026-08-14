@@ -601,7 +601,7 @@ class Titles(IntEnum):
     WISHFUL_EXCESS = auto()
     SIDEWALK_OF_THE_MIND = auto()
     NO_BARGAIN = auto()
-    UP_AND_AT_IT = auto()
+    UP_AND_AT_IT = auto()  # Called "Gold Magnet" in Fantagraphics Volume 30
     GALL_OF_THE_WILD = auto()
     ZERO_HERO = auto()
     BEACH_BOY = auto()

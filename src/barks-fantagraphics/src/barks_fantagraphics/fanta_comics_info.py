@@ -48,6 +48,7 @@ from .fanta_series_info import (  # noqa: F401
     FANTA_27,
     FANTA_28,
     FANTA_29,
+    FANTA_30,
     GER,
     GLEA,
     JRC,
@@ -157,6 +158,7 @@ CB = "Carl Barks"
 SRC_SALEM = "(Salem-Empire)"
 SRC_DIGI = "(Digital-Empire)"
 SRC_BEAN = "(Bean-Empire)"
+SRC_COMIC_WFX = "(Comic-Wfx)"
 
 FANTAGRAPHICS = "Fantagraphics"
 FANTAGRAPHICS_DIRNAME = FANTAGRAPHICS + "-original"
@@ -202,6 +204,7 @@ VOLUME_26 = f"{CB} Vol. 26 - {US} - The Golden Nugget Boat {SRC_SALEM}"
 VOLUME_27 = f"{CB} Vol. 27 - {DD} - Duck Luck {SRC_SALEM}"
 VOLUME_28 = f"{CB} Vol. 28 - {US} - Cave of Ali Baba {SRC_SALEM}"
 VOLUME_29 = f"{CB} Vol. 29 - {DD} - The Lonely Lighthouse on Cape Quack {SRC_SALEM}"
+VOLUME_30 = f"{CB} Vol. 30 - {US} - Lost Beneath the Sea {SRC_COMIC_WFX}"
 
 FANTA_SOURCE_COMICS = {
     f"{get_fanta_volume_str(1)}": FantaBook(VOLUME_01, FAN, 1, 2025, 250),
@@ -233,6 +236,7 @@ FANTA_SOURCE_COMICS = {
     f"{get_fanta_volume_str(27)}": FantaBook(VOLUME_27, FAN, 27, 2022, 209),
     f"{get_fanta_volume_str(28)}": FantaBook(VOLUME_28, FAN, 28, 2023, 206),
     f"{get_fanta_volume_str(29)}": FantaBook(VOLUME_29, FAN, 29, 2025, 218),
+    f"{get_fanta_volume_str(30)}": FantaBook(VOLUME_30, FAN, 30, 2026, 250),
 }
 
 FANTA_OVERRIDE_ZIPS = {
@@ -265,6 +269,7 @@ FANTA_OVERRIDE_ZIPS = {
     27: "27 - Donald Duck - 'Duck Luck'.cbz",
     28: "28 - Uncle Scrooge - 'Cave of Ali Baba'.cbz",
     29: "29 - Donald Duck - The Lonely Lighthouse on Cape.cbz",
+    30: "30 - Uncle Scrooge - Lost Beneath the Sea.cbz",
 }
 
 FIRST_VOLUME_NUMBER = 1

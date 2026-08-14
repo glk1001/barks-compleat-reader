@@ -68,11 +68,11 @@ class TestYearRangeGroup:
 class TestGroupRanges:
     def test_cover_group_ranges_tile_the_collection(self) -> None:
         ranges = get_cover_collection_group_ranges()
-        assert ranges == [(1, 52), (53, 90), (91, 145), (146, 186)]
+        assert ranges == [(1, 52), (53, 90), (91, 145), (146, 192)]
 
     def test_one_pager_group_ranges_tile_the_collection(self) -> None:
         ranges = get_one_pager_collection_group_ranges()
-        assert ranges == [(1, 43), (44, 92), (93, 128)]
+        assert ranges == [(1, 43), (44, 92), (93, 133)]
 
 
 class TestGroupRangesOnSyntheticData:
@@ -170,10 +170,10 @@ class TestGetCollectionGroupPageRange:
 
     def test_undated_cover_folds_into_final_group(self) -> None:
         # The 6 undated covers sort last (pages 181-186) and fold into the final group.
-        assert get_collection_group_page_range(Titles.ALL_COVERS, 186) == (146, 186)
+        assert get_collection_group_page_range(Titles.ALL_COVERS, 186) == (146, 192)
 
     def test_one_pager_group(self) -> None:
-        assert get_collection_group_page_range(Titles.ALL_ONE_PAGERS, 100) == (93, 128)
+        assert get_collection_group_page_range(Titles.ALL_ONE_PAGERS, 100) == (93, 133)
 
     def test_unsupported_collection_raises(self) -> None:
         with pytest.raises(ValueError, match="Not a grouped collection"):
