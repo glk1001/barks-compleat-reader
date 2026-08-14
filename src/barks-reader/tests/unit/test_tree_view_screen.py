@@ -195,6 +195,62 @@ class TestTreeViewScreen:
         # Verify reset tracking
         tree_view_screen.ids.reader_tree_view.reset_selection_tracking.assert_called_once()
 
+    def test_get_visible_nodes_walks_open_nodes_in_display_order(
+        self, tree_view_screen: TreeViewScreen
+    ) -> None:
+        # root -> open_parent (open) -> leaf
+        #      -> closed_parent (closed, its child must not appear)
+        leaf = MagicMock(spec=BaseTreeViewNode)
+        leaf.is_open = False
+        leaf.nodes = []
+        leaf.no_selection = False
+
+        open_parent = MagicMock(spec=BaseTreeViewNode)
+        open_parent.is_open = True
+        open_parent.nodes = [leaf]
+        open_parent.no_selection = False
+
+        hidden = MagicMock(spec=BaseTreeViewNode)
+        hidden.is_open = False
+        hidden.nodes = []
+        hidden.no_selection = False
+
+        closed_parent = MagicMock(spec=BaseTreeViewNode)
+        closed_parent.is_open = False
+        closed_parent.nodes = [hidden]
+        closed_parent.no_selection = False
+
+        root = MagicMock(spec=BaseTreeViewNode)
+        root.nodes = [open_parent, closed_parent]
+        tree_view_screen.ids.reader_tree_view.root = root
+
+        assert tree_view_screen.get_visible_nodes() == [open_parent, leaf, closed_parent]
+
+    def test_get_visible_nodes_skips_non_selectable_nodes(
+        self, tree_view_screen: TreeViewScreen
+    ) -> None:
+        """Keyboard navigation must never land on a playlist's intro paragraph."""
+        intro = MagicMock(spec=BaseTreeViewNode)
+        intro.is_open = False
+        intro.nodes = []
+        intro.no_selection = True
+
+        title_row = MagicMock(spec=BaseTreeViewNode)
+        title_row.is_open = False
+        title_row.nodes = []
+        title_row.no_selection = False
+
+        playlist = MagicMock(spec=BaseTreeViewNode)
+        playlist.is_open = True
+        playlist.nodes = [intro, title_row]
+        playlist.no_selection = False
+
+        root = MagicMock(spec=BaseTreeViewNode)
+        root.nodes = [playlist]
+        tree_view_screen.ids.reader_tree_view.root = root
+
+        assert tree_view_screen.get_visible_nodes() == [playlist, title_row]
+
     def test_on_change_show_current_title(
         self, tree_view_screen: TreeViewScreen, mock_settings: MagicMock
     ) -> None:

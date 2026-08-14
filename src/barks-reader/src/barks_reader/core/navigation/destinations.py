@@ -102,6 +102,11 @@ class ChooseForMeDestination(Destination):
 
 
 @dataclass(frozen=True, slots=True)
+class PlaylistsDestination(Destination):
+    """The 'Playlists' container under Reading (parent of every curated playlist)."""
+
+
+@dataclass(frozen=True, slots=True)
 class AppendixDestination(Destination):
     """The 'Appendix' parent node."""
 
@@ -214,6 +219,17 @@ class RandomTitlesDestination(Destination):
     year_range: tuple[int, int] | None = None
     tag: Tags | None = None
     category: TagCategories | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PlaylistDestination(Destination):
+    """A single curated playlist under 'Playlists'.
+
+    Carries the playlist's stable id rather than the `Playlist` itself so that
+    `ViewRequest` — which the view pipeline consumes — stays a bag of plain values.
+    """
+
+    playlist_id: str
 
 
 @dataclass(frozen=True, slots=True)

@@ -26,6 +26,7 @@ from barks_reader.core.navigation import (
 
 from .tree_view_nodes import (
     ButtonTreeViewNode,
+    IntroTextTreeViewNode,
     MainTreeViewNode,
     StoryGroupTreeViewNode,
     TitleTreeViewNode,
@@ -133,6 +134,11 @@ class ReaderTreeBuilder:
                 spec.fanta_info, self._tree_view_manager.on_title_row_button_pressed
             )
             self._reader_tree_view.add_node(title_node, parent=parent)
+            return
+
+        if spec.kind is NodeKind.INTRO_TEXT:
+            intro_node = IntroTextTreeViewNode(source_text=spec.text)
+            self._reader_tree_view.add_node(intro_node, parent=parent)
             return
 
         node = self._make_button_node(spec)

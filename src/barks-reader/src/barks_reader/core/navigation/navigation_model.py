@@ -45,6 +45,8 @@ from .destinations import (
     LocationsIndexDestination,
     MainIndexDestination,
     NamesIndexDestination,
+    PlaylistDestination,
+    PlaylistsDestination,
     RandomTitlesDestination,
     ReadingDestination,
     SearchDestination,
@@ -98,6 +100,7 @@ _SIMPLE_DESTINATION_TO_VIEW_STATE: dict[type[Destination], ViewStates] = {
     ReadingDestination: ViewStates.ON_READING_NODE,
     HistoryDestination: ViewStates.ON_HISTORY_NODE,
     ChooseForMeDestination: ViewStates.ON_CHOOSE_FOR_ME_NODE,
+    PlaylistsDestination: ViewStates.ON_PLAYLISTS_NODE,
     AppendixDestination: ViewStates.ON_APPENDIX_NODE,
     StatisticsDestination: ViewStates.ON_APPENDIX_STATISTICS_NODE,
     CensorshipFixesDocDestination: ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE,
@@ -133,7 +136,7 @@ class NavigationModel:
     """
 
     @staticmethod
-    def view_state_for(dest: Destination) -> ViewRequest:  # noqa: C901, PLR0911
+    def view_state_for(dest: Destination) -> ViewRequest:  # noqa: PLR0911
         """Resolve the `ViewRequest` to render when `dest` is selected.
 
         Only the navigation-context fields are populated here; renderer-owned
@@ -147,22 +150,7 @@ class NavigationModel:
             return ViewRequest(view_state=simple_state)
 
         if isinstance(dest, YearRangeDestination):
-            range_str = FilteredTitleLists.get_range_str((dest.start, dest.end))
-            if dest.kind is YearRangeKind.CS:
-                return ViewRequest(
-                    view_state=ViewStates.ON_CS_YEAR_RANGE_NODE, cs_year_range=range_str
-                )
-            if dest.kind is YearRangeKind.US:
-                return ViewRequest(
-                    view_state=ViewStates.ON_US_YEAR_RANGE_NODE, us_year_range=range_str
-                )
-            # One-pager / cover year-range groups reuse their parent series' top-view
-            # background rather than theming per range.
-            if dest.kind is YearRangeKind.ONE_PAGER:
-                return ViewRequest(view_state=ViewStates.ON_ONE_PAGERS_NODE)
-            if dest.kind is YearRangeKind.COVER:
-                return ViewRequest(view_state=ViewStates.ON_COVERS_NODE)
-            return ViewRequest(view_state=ViewStates.ON_YEAR_RANGE_NODE, year_range=range_str)
+            return NavigationModel._year_range_view_state_for(dest)
 
         if isinstance(dest, SeriesDestination):
             return ViewRequest(view_state=_SERIES_TO_VIEW_STATE[dest.series_name])
@@ -188,11 +176,30 @@ class NavigationModel:
                 category=category,
             )
 
+        if isinstance(dest, PlaylistDestination):
+            return ViewRequest(view_state=ViewStates.ON_PLAYLIST_NODE, playlist_id=dest.playlist_id)
+
         if isinstance(dest, ArticleDestination):
             return ViewRequest(view_state=dest.view_state)
 
         msg = f"No view state mapping for destination: {type(dest).__name__}"
         raise RuntimeError(msg)
+
+    @staticmethod
+    def _year_range_view_state_for(dest: YearRangeDestination) -> ViewRequest:
+        """Resolve the `ViewRequest` for a year-range container node."""
+        range_str = FilteredTitleLists.get_range_str((dest.start, dest.end))
+        if dest.kind is YearRangeKind.CS:
+            return ViewRequest(view_state=ViewStates.ON_CS_YEAR_RANGE_NODE, cs_year_range=range_str)
+        if dest.kind is YearRangeKind.US:
+            return ViewRequest(view_state=ViewStates.ON_US_YEAR_RANGE_NODE, us_year_range=range_str)
+        # One-pager / cover year-range groups reuse their parent series' top-view
+        # background rather than theming per range.
+        if dest.kind is YearRangeKind.ONE_PAGER:
+            return ViewRequest(view_state=ViewStates.ON_ONE_PAGERS_NODE)
+        if dest.kind is YearRangeKind.COVER:
+            return ViewRequest(view_state=ViewStates.ON_COVERS_NODE)
+        return ViewRequest(view_state=ViewStates.ON_YEAR_RANGE_NODE, year_range=range_str)
 
     @staticmethod
     def auto_select_target(
@@ -213,10 +220,11 @@ class NavigationModel:
         """Whether selecting a title under *parent* should keep the current top view.
 
         The 'Choose for me' nodes theme the top view (character tag, decade, or
-        the all-titles surprise image); keep that theme up while the user
-        browses the random picks instead of re-rolling a generic image.
+        the all-titles surprise image) and a playlist themes it from its own
+        titles; keep that theme up while the user browses the list instead of
+        re-rolling a generic image.
         """
-        return isinstance(parent, RandomTitlesDestination)
+        return isinstance(parent, RandomTitlesDestination | PlaylistDestination)
 
     @staticmethod
     def tag_context(dest: Destination) -> Tags | TagGroups | None:

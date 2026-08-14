@@ -48,6 +48,7 @@ from loguru import logger
 from .filtered_title_lists import FilteredTitleLists
 from .image_selector import FIT_MODE_COVER, ImageInfo, ImageSelector
 from .navigation.view_states import ViewStates
+from .playlists import PLAYLISTS_BY_ID
 from .ports import CancelHandle, ColorSource, PaletteId, Scheduler
 from .reader_file_paths import ALL_TYPES, FileTypes
 from .reader_formatter import get_formatted_color
@@ -242,6 +243,7 @@ class ViewPipeline:
         self._current_category = ""
         self._current_tag_group: TagGroups | None = None
         self._current_tag: Tags | None = None
+        self._current_playlist_id = ""
         self._current_bottom_view_title = ""
 
         self._search_screen_image_info: ImageInfo = ImageInfo()
@@ -271,6 +273,7 @@ class ViewPipeline:
         self._current_us_year_range = request.us_year_range
         self._current_tag_group = request.tag_group
         self._current_tag = request.tag
+        self._current_playlist_id = request.playlist_id
         self._current_bottom_view_title = request.title_str
         if force_fresh_fun_image:
             self._bottom_view_fun_image_info = None
@@ -300,6 +303,7 @@ class ViewPipeline:
             us_year_range=self._current_us_year_range,
             tag_group=self._current_tag_group,
             tag=self._current_tag,
+            playlist_id=self._current_playlist_id,
             title_str=self._current_bottom_view_title,
             fun_image_themes=self._fun_image_themes,
         )
@@ -450,6 +454,14 @@ class ViewPipeline:
                 self._set_top_view_image_for_random_titles,
             ),
             (
+                self._view_state == ViewStates.ON_PLAYLISTS_NODE,
+                self._set_top_view_image_for_stories,
+            ),
+            (
+                self._view_state == ViewStates.ON_PLAYLIST_NODE,
+                self._set_top_view_image_for_playlist,
+            ),
+            (
                 self._view_state in self._APPENDIX_VIEW_STATES,
                 lambda: self._set_top_view_image_fixed(Titles.FABULOUS_PHILOSOPHERS_STONE_THE),
             ),
@@ -533,6 +545,16 @@ class ViewPipeline:
             self._current_tag,
             lambda tag: self._get_fanta_title_list(BARKS_TAGGED_TITLES[tag]),
         )
+
+    def _set_top_view_image_for_playlist(self) -> None:
+        logger.debug(f"Current playlist: '{self._current_playlist_id}'.")
+        self._set_top_view_image_from_titles_or_fixed(
+            self._current_playlist_id,
+            self._get_playlist_fanta_title_list,
+        )
+
+    def _get_playlist_fanta_title_list(self, playlist_id: str) -> list[FantaComicBookInfo]:
+        return self._get_fanta_title_list(list(PLAYLISTS_BY_ID[playlist_id].titles))
 
     def _set_top_view_image_for_year_range(self) -> None:
         logger.debug(f"Year range: '{self._current_year_range}'.")
@@ -667,6 +689,11 @@ class ViewPipeline:
             # 'Surprise me' carries neither a tag nor a year range - fall through
             # to the generic fun-image pool, matching the top view's "no theme" rule.
 
+        if self._view_state == ViewStates.ON_PLAYLIST_NODE and self._current_playlist_id:
+            return self._get_themed_image(
+                self._get_playlist_fanta_title_list(self._current_playlist_id)
+            )
+
         assert self._cached_fun_titles
         titles, file_types = self._cached_fun_titles
 
@@ -691,8 +718,14 @@ class ViewPipeline:
         else:
             return None
 
-        # Exclude NONTITLE: with the default pool `get_random_image` may pick a
-        # nontitle image unrelated to the themed title list, breaking the theming.
+        return self._get_themed_image(title_list)
+
+    def _get_themed_image(self, title_list: list[FantaComicBookInfo]) -> ImageInfo:
+        """Pick a fun image constrained to *title_list*.
+
+        Excludes NONTITLE: with the default pool `get_random_image` may pick a
+        nontitle image unrelated to the themed title list, breaking the theming.
+        """
         file_types = ALL_TYPES - {FileTypes.NONTITLE}
         return self._image_selector.get_random_image(
             title_list, file_types=file_types, use_adaptive_fit_mode=True

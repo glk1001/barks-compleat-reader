@@ -159,12 +159,17 @@ class TreeViewScreen(BoxLayout):
         return count
 
     def get_visible_nodes(self) -> list[BaseTreeViewNode]:
-        """Return all currently visible (open) nodes in display order."""
+        """Return all currently visible (open), selectable nodes in display order.
+
+        Nodes flagged `no_selection` (the playlist intro paragraphs) are skipped:
+        this list drives keyboard navigation, which must never land on a node the
+        tree view refuses to select.
+        """
         nodes: list[BaseTreeViewNode] = []
 
         def collect(parent: BaseTreeViewNode) -> None:
             for child in parent.nodes:
-                if isinstance(child, BaseTreeViewNode):
+                if isinstance(child, BaseTreeViewNode) and not child.no_selection:
                     nodes.append(child)
                     if child.is_open:
                         collect(child)

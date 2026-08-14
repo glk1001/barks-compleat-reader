@@ -40,6 +40,7 @@ from barks_reader.core import view_pipeline as vp_module
 from barks_reader.core.filtered_title_lists import CS_YEARS_KEY_PREFIX, US_YEARS_KEY_PREFIX
 from barks_reader.core.image_selector import FIT_MODE_COVER, ImageInfo
 from barks_reader.core.navigation.view_states import ViewStates
+from barks_reader.core.playlists import PLAYLISTS
 from barks_reader.core.testing import FakeScheduler, ScriptedColorSource
 from barks_reader.core.view_pipeline import ViewPipeline
 
@@ -57,6 +58,10 @@ _TAG_GROUP = TagGroups.PRIMARY_CHARACTERS
 # One title per tag lookup, so the two fanta lists stay distinguishable.
 _TAG_TITLE = Titles.ATTIC_ANTICS
 _TAG_GROUP_TITLE = Titles.BACK_TO_LONG_AGO
+# Real playlist data: the image comes from the playlist's own title list, whose
+# first entry carries the marker through the stubbed selector.
+_PLAYLIST = PLAYLISTS[0]
+_PLAYLIST_FIRST_TITLE = _PLAYLIST.titles[0]
 
 _SERIES_KEY_FOR_STATE: dict[ViewStates, str] = {
     ViewStates.ON_CS_NODE: SERIES_CS,
@@ -127,6 +132,7 @@ _EXPECTED_TOP_VIEW_IMAGE: dict[ViewStates, ImageInfo] = {
     ViewStates.ON_CATEGORIES_NODE: _random_from(f"list:{ALL_LISTS}"),
     ViewStates.ON_TITLE_NODE: _random_from(f"list:{ALL_LISTS}"),
     ViewStates.ON_CHOOSE_FOR_ME_NODE: _random_from(f"list:{ALL_LISTS}"),
+    ViewStates.ON_PLAYLISTS_NODE: _random_from(f"list:{ALL_LISTS}"),
     # Context-driven pools.
     ViewStates.ON_YEAR_RANGE_NODE: _random_from(f"list:{_YEAR_RANGE}"),
     ViewStates.ON_CS_YEAR_RANGE_NODE: _random_from(f"list:{CS_YEARS_KEY_PREFIX}{_CS_YEAR_RANGE}"),
@@ -136,6 +142,8 @@ _EXPECTED_TOP_VIEW_IMAGE: dict[ViewStates, ImageInfo] = {
     ViewStates.ON_TAG_GROUP_NODE: _random_from(f"fanta:{_TAG_GROUP_TITLE.name}"),
     # 'Choose for me' children: a tag beats a year range beats a category.
     ViewStates.ON_RANDOM_TITLES_NODE: _random_from(f"fanta:{_TAG_TITLE.name}"),
+    # A playlist themes its top view from its own (first) title.
+    ViewStates.ON_PLAYLIST_NODE: _random_from(f"fanta:{_PLAYLIST_FIRST_TITLE.name}"),
     # Dedicated selector calls.
     ViewStates.ON_SEARCH_NODE: ImageInfo(Path("search")),
     ViewStates.ON_TITLE_SEARCH_NODE: ImageInfo(Path("search")),
@@ -198,6 +206,7 @@ def _make_dispatch_pipeline() -> ViewPipeline:
     pipeline._current_us_year_range = _US_YEAR_RANGE
     pipeline._current_tag = _TAG
     pipeline._current_tag_group = _TAG_GROUP
+    pipeline._current_playlist_id = _PLAYLIST.playlist_id
     return pipeline
 
 

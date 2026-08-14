@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import barks_reader.ui.reader_tree_builder
 import pytest
 from barks_fantagraphics.barks_tags import Tags
+from barks_reader.core.hyphen_break_engine import SOFT_HYPHEN
 from barks_reader.core.navigation import (
     NodeKind,
     NodeRegistration,
@@ -15,8 +16,10 @@ from barks_reader.core.navigation import (
     YearRangeDestination,
     YearRangeKind,
 )
+from barks_reader.core.reader_formatter import hyphenate_text
 from barks_reader.ui.reader_tree_builder import ReaderTreeBuilder
 from barks_reader.ui.tree_view_nodes import (
+    IntroTextTreeViewNode,
     MainTreeViewNode,
     StoryGroupTreeViewNode,
     TitleTreeViewNode,
@@ -86,6 +89,22 @@ class TestWalking:
 
         mock_dependencies["reader_tree_events"].finished_building.assert_called_once()
         mock_dependencies["reader_tree_view"].bind.assert_called()
+
+    def test_intro_text_spec_builds_a_non_selectable_prose_node(
+        self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]
+    ) -> None:
+        # The spec carries soft-hyphen-marked prose, exactly as the tree spec builds it.
+        intro_text = hyphenate_text("A brave introduction.")
+        assert SOFT_HYPHEN in intro_text
+        spec = NodeSpec(kind=NodeKind.INTRO_TEXT, text=intro_text)
+
+        _build_with_spec(tree_builder, spec)
+
+        node = mock_dependencies["reader_tree_view"].add_node.call_args.args[0]
+        assert isinstance(node, IntroTextTreeViewNode)
+        assert node.source_text == intro_text
+        assert node.no_selection
+        assert node.destination is None
 
     def test_press_action_binds_manager_handler(
         self, tree_builder: ReaderTreeBuilder, mock_dependencies: dict[str, MagicMock]

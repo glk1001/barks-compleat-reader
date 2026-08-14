@@ -43,6 +43,26 @@
     orientation: "horizontal"
     spacing: 0
 
+<IntroTextTreeViewNode>:
+    orientation: "vertical"
+    size_hint: (None, None)
+    width: root.NODE_WIDTH
+    height: intro_label.height
+
+    HyphenatingLabel:
+        id: intro_label
+        source_text: root.source_text
+        font_size: fm.tree_view_playlist_intro_font_size
+        color: reader_palette.theme().text_secondary
+        multiline: True
+        markup: True
+        mipmap: True
+        size_hint: (None, None)
+        width: root.NODE_WIDTH
+        height: self.texture_size[1]
+        text_size: (self.width, None)
+        halign: "justify"
+
 <TitleTreeViewNode>:
     orientation: "vertical"
     color: root.TEXT_COLOR

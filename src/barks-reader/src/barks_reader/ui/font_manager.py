@@ -160,6 +160,7 @@ class FontManager(EventDispatcher):
     tree_view_num_label_font_size = NumericProperty()
     tree_view_title_label_font_size = NumericProperty()
     tree_view_issue_label_font_size = NumericProperty()
+    tree_view_playlist_intro_font_size = NumericProperty()
     tree_view_title_search_label_font_size = NumericProperty()
     tree_view_title_search_box_font_size = NumericProperty()
     tree_view_title_spinner_font_size = NumericProperty()
@@ -252,6 +253,8 @@ class FontManager(EventDispatcher):
         self.tree_view_num_label_font_size = theme.default
         self.tree_view_title_label_font_size = theme.default
         self.tree_view_issue_label_font_size = theme.default
+        # Prose, not a tree label: sized like the bottom view's extra-info paragraph.
+        self.tree_view_playlist_intro_font_size = theme.title_extra_info
         self.tree_view_title_search_label_font_size = theme.default
         self.tree_view_title_search_box_font_size = theme.default
         self.tree_view_title_spinner_font_size = theme.default

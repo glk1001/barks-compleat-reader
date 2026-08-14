@@ -48,6 +48,8 @@ from barks_reader.core.navigation import (
     MainIndexDestination,
     NamesIndexDestination,
     NavigationModel,
+    PlaylistDestination,
+    PlaylistsDestination,
     RandomTitlesDestination,
     ReadingDestination,
     SearchDestination,
@@ -97,6 +99,7 @@ def model() -> NavigationModel:
         (ReadingDestination(), ViewStates.ON_READING_NODE),
         (HistoryDestination(), ViewStates.ON_HISTORY_NODE),
         (ChooseForMeDestination(), ViewStates.ON_CHOOSE_FOR_ME_NODE),
+        (PlaylistsDestination(), ViewStates.ON_PLAYLISTS_NODE),
         (AppendixDestination(), ViewStates.ON_APPENDIX_NODE),
         (StatisticsDestination(), ViewStates.ON_APPENDIX_STATISTICS_NODE),
         (CensorshipFixesDocDestination(), ViewStates.ON_APPENDIX_CENSORSHIP_FIXES_NODE),
@@ -156,10 +159,18 @@ def test_view_state_for_category_random_titles_destination(model: NavigationMode
     assert request.category == TagCategories.FAVOURITES.value
 
 
+def test_view_state_for_playlist_destination(model: NavigationModel) -> None:
+    request = model.view_state_for(PlaylistDestination(playlist_id="bravery"))
+    assert request.view_state is ViewStates.ON_PLAYLIST_NODE
+    assert request.playlist_id == "bravery"
+
+
 @pytest.mark.parametrize(
     ("parent", "expected"),
     [
         (RandomTitlesDestination(), True),
+        (PlaylistDestination(playlist_id="bravery"), True),
+        (PlaylistsDestination(), False),
         (RandomTitlesDestination(year_range=(1950, 1959)), True),
         (RandomTitlesDestination(tag=Tags.SCROOGE_NOT_IN_US), True),
         (RandomTitlesDestination(category=TagCategories.FAVOURITES), True),

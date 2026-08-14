@@ -58,6 +58,7 @@ class ViewRequest:
     us_year_range: str = ""
     tag_group: TagGroups | None = None
     tag: Tags | None = None
+    playlist_id: str = ""
     title_str: str = ""
     fun_image_themes: set[ImageThemes] | None = None
     title_image_file: PanelPath | None = None

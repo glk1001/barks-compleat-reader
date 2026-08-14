@@ -10,6 +10,7 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     NumericProperty,
     ObjectProperty,
+    StringProperty,
 )
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -23,6 +24,10 @@ from barks_reader.core.reader_formatter import (
 )
 from barks_reader.core.reader_palette import color_to_markup_hex, theme
 from barks_reader.core.reader_utils import title_needs_footnote
+
+# HyphenatingLabel must be imported (Factory-registered) before reader-tree-view.kv's
+# IntroTextTreeViewNode rule instantiates it.
+from .hyphen_label import HyphenatingLabel  # noqa: F401
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -146,6 +151,30 @@ class YearRangeTreeViewNode(ButtonTreeViewNode):
     # NumericProperty so callers can pass a wider NODE_WIDTH=dp(250) for CS/US ranges.
     NODE_WIDTH = NumericProperty(dp(150))
     NODE_HEIGHT = NumericProperty(dp(30))
+
+
+class IntroTextTreeViewNode(BoxLayout, BaseTreeViewNode):
+    """A non-selectable prose row: a playlist's introductory paragraph.
+
+    Holds a single justified, hyphenated label styled like the bottom title
+    view's extra-info text. The node's height tracks the label's texture height;
+    Kivy's `TreeView` binds each node's `size` to its layout trigger, so a reflow
+    (e.g. a window resize) re-lays out the tree by itself.
+    """
+
+    # Matches TitleTreeViewNode's NUM_LABEL_WIDTH + spacer + TITLE_LABEL_WIDTH so
+    # the paragraph lines up with the title rows underneath it.
+    NODE_WIDTH = dp(450)
+
+    source_text = StringProperty("")
+
+    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+        super().__init__(**kwargs)
+        self.no_selection = True
+
+    @override
+    def get_name(self) -> str:
+        return "<playlist-intro>"
 
 
 class TitleTreeViewNode(BoxLayout, BaseTreeViewNode):

@@ -25,6 +25,8 @@ class ViewStates(IntEnum):
     ON_HISTORY_NODE = auto()
     ON_CHOOSE_FOR_ME_NODE = auto()
     ON_RANDOM_TITLES_NODE = auto()
+    ON_PLAYLISTS_NODE = auto()
+    ON_PLAYLIST_NODE = auto()
     ON_APPENDIX_NODE = auto()
     ON_APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_NODE = auto()
     ON_APPENDIX_RICH_TOMMASO_ON_COLORING_BARKS_NODE = auto()

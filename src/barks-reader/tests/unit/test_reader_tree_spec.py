@@ -33,6 +33,7 @@ from barks_fantagraphics.fanta_comics_info import (
     get_num_comic_book_titles,
 )
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
+from barks_reader.core.hyphen_break_engine import SOFT_HYPHEN
 from barks_reader.core.navigation import (
     CategoryDestination,
     ChooseForMeDestination,
@@ -40,6 +41,8 @@ from barks_reader.core.navigation import (
     NodeKind,
     NodeRegistration,
     NodeSpec,
+    PlaylistDestination,
+    PlaylistsDestination,
     PressAction,
     RandomTitlesDestination,
     ReadingDestination,
@@ -53,6 +56,7 @@ from barks_reader.core.navigation.tree_spec import (
     _get_cs_year_range_extra_text,
     _get_us_year_range_extra_text,
 )
+from barks_reader.core.playlists import PLAYLISTS
 from barks_reader.core.reader_consts_and_types import (
     APPENDIX_NODE_TEXT,
     CHOOSE_FOR_ME_NODE_TEXT,
@@ -67,6 +71,7 @@ from barks_reader.core.reader_consts_and_types import (
     INDEX_NODE_TEXT,
     INTRO_NODE_TEXT,
     ONE_PAGER_YEAR_RANGES,
+    PLAYLISTS_NODE_TEXT,
     RANDOM_TITLE_YEAR_RANGES,
     READING_NODE_TEXT,
     SEARCH_NODE_TEXT,
@@ -493,15 +498,21 @@ class TestStoriesSubtree:
 
 
 class TestReadingSubtree:
-    def test_reading_has_history_and_choose_for_me(self, specs: tuple[NodeSpec, ...]) -> None:
+    def test_reading_has_choose_for_me_playlists_and_history(
+        self, specs: tuple[NodeSpec, ...]
+    ) -> None:
         reading = specs[3]
         assert reading.text == READING_NODE_TEXT
         assert isinstance(reading.destination, ReadingDestination)
-        assert len(reading.children) == 2
         assert all(child.kind is NodeKind.STORY_GROUP for child in reading.children)
+        assert [child.text for child in reading.children] == [
+            CHOOSE_FOR_ME_NODE_TEXT,
+            PLAYLISTS_NODE_TEXT,
+            HISTORY_NODE_TEXT,
+        ]
 
     def test_history_registration_and_press_action(self, specs: tuple[NodeSpec, ...]) -> None:
-        history = specs[3].children[1]
+        history = specs[3].children[2]
         assert history.text == HISTORY_NODE_TEXT
         assert isinstance(history.destination, HistoryDestination)
         assert history.register_as is NodeRegistration.HISTORY
@@ -607,6 +618,50 @@ class TestReadingSubtree:
             surprise_me.lazy_children()
 
         assert mock_sample.call_count == 2
+
+
+class TestPlaylistsSubtree:
+    def test_playlists_node_has_one_child_per_playlist(self, specs: tuple[NodeSpec, ...]) -> None:
+        playlists = specs[3].children[1]
+        assert playlists.text == PLAYLISTS_NODE_TEXT
+        assert isinstance(playlists.destination, PlaylistsDestination)
+        assert len(playlists.children) == len(PLAYLISTS)
+
+        for spec, playlist in zip(playlists.children, PLAYLISTS, strict=True):
+            assert spec.kind is NodeKind.STORY_GROUP
+            assert spec.destination == PlaylistDestination(playlist_id=playlist.playlist_id)
+            assert playlist.heading in spec.text
+            assert str(len(playlist.titles)) in spec.text
+            # Playlists are fixed lists, so they populate once and stay put.
+            assert spec.lazy_children is not None
+            assert not spec.repopulate_on_expand
+
+    def test_playlist_rows_start_with_the_hyphenated_intro(
+        self, specs: tuple[NodeSpec, ...]
+    ) -> None:
+        for spec, playlist in zip(specs[3].children[1].children, PLAYLISTS, strict=True):
+            assert spec.lazy_children is not None
+            intro_row = spec.lazy_children()[0]
+
+            assert intro_row.kind is NodeKind.INTRO_TEXT
+            assert intro_row.destination is None
+            assert intro_row.fanta_info is None
+            assert intro_row.text.replace(SOFT_HYPHEN, "") == playlist.intro
+            assert SOFT_HYPHEN in intro_row.text
+
+    def test_playlist_titles_keep_their_curated_order(self, specs: tuple[NodeSpec, ...]) -> None:
+        for spec, playlist in zip(specs[3].children[1].children, PLAYLISTS, strict=True):
+            assert spec.lazy_children is not None
+            title_rows = spec.lazy_children()[1:]
+
+            assert all(row.kind is NodeKind.TITLE_ROW for row in title_rows)
+            titles = []
+            for row in title_rows:
+                assert row.fanta_info is not None
+                titles.append(row.fanta_info.comic_book_info.title)
+
+            # Deliberately NOT sorted: the author's order is the display order.
+            assert titles == list(playlist.titles)
 
 
 class TestSearchAppendixIndex:

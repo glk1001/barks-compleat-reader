@@ -47,6 +47,7 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 
 from barks_reader.core.filtered_title_lists import FilteredTitleLists
+from barks_reader.core.playlists import PLAYLISTS, Playlist, get_playlist_title_infos
 from barks_reader.core.reader_consts_and_types import (
     APPENDIX_CENSORSHIP_FIXES_NODE_TEXT,
     APPENDIX_DON_AULT_LIFE_AMONG_DUCKS_TEXT,
@@ -77,6 +78,7 @@ from barks_reader.core.reader_consts_and_types import (
     INTRO_DON_AULT_FANTA_INTRO_TEXT,
     INTRO_NODE_TEXT,
     ONE_PAGER_YEAR_RANGES,
+    PLAYLISTS_NODE_TEXT,
     RANDOM_TITLE_YEAR_RANGES,
     READING_NODE_TEXT,
     SEARCH_NODE_TEXT,
@@ -95,9 +97,11 @@ from barks_reader.core.reader_consts_and_types import (
     WORD_SEARCH_NODE_TEXT,
 )
 from barks_reader.core.reader_formatter import (
+    escape_editorial_brackets,
     get_bold_markup_text,
     get_markup_text_with_extra,
     get_markup_text_with_num_titles,
+    hyphenate_text,
 )
 from barks_reader.core.reader_utils import read_title_list
 
@@ -117,6 +121,8 @@ from .destinations import (
     LocationsIndexDestination,
     MainIndexDestination,
     NamesIndexDestination,
+    PlaylistDestination,
+    PlaylistsDestination,
     RandomTitlesDestination,
     ReadingDestination,
     SearchDestination,
@@ -145,12 +151,17 @@ if TYPE_CHECKING:
 
 
 class NodeKind(Enum):
-    """Which tree-view widget class the walker instantiates."""
+    """Which tree-view widget class the walker instantiates.
+
+    `INTRO_TEXT` is a non-selectable prose row (a playlist's introduction); its
+    already-hyphenated paragraph is carried in `NodeSpec.text`.
+    """
 
     MAIN = auto()
     STORY_GROUP = auto()
     YEAR_RANGE = auto()
     TITLE_ROW = auto()
+    INTRO_TEXT = auto()
 
 
 class PressAction(Enum):
@@ -263,6 +274,16 @@ def _random_title_rows(title_infos: list[FantaComicBookInfo]) -> tuple[NodeSpec,
     sample = random.sample(title_infos, min(len(title_infos), NUM_RANDOM_TITLES))
     sample.sort(key=lambda info: info.fanta_chronological_number)
     return _title_rows(sample)
+
+
+def _playlist_rows(intro_text: str, title_infos: list[FantaComicBookInfo]) -> tuple[NodeSpec, ...]:
+    """Make a playlist's children: its intro paragraph, then its titles.
+
+    The titles keep the curated order they were written in — unlike every other
+    title list in the tree, they are deliberately not sorted.
+    """
+    intro_row = NodeSpec(kind=NodeKind.INTRO_TEXT, text=intro_text)
+    return (intro_row, *_title_rows(title_infos))
 
 
 def _tagged_title_rows(titles: Iterable[Titles]) -> tuple[NodeSpec, ...]:
@@ -470,6 +491,7 @@ class _SpecBuilder:
                         ),
                     ),
                 ),
+                self._playlists_spec(),
                 NodeSpec(
                     kind=NodeKind.STORY_GROUP,
                     text=HISTORY_NODE_TEXT,
@@ -479,6 +501,28 @@ class _SpecBuilder:
                     start_closed=True,
                 ),
             ),
+        )
+
+    def _playlists_spec(self) -> NodeSpec:
+        return NodeSpec(
+            kind=NodeKind.STORY_GROUP,
+            text=PLAYLISTS_NODE_TEXT,
+            destination=PlaylistsDestination(),
+            children=tuple(self._playlist_spec(playlist) for playlist in PLAYLISTS),
+        )
+
+    @staticmethod
+    def _playlist_spec(playlist: Playlist) -> NodeSpec:
+        # Resolve the titles and hyphenate the intro here rather than inside the
+        # lazy factory, so a curated title that is not in the Fanta collection
+        # fails at startup rather than on the node's first expansion.
+        title_infos = get_playlist_title_infos(playlist)
+        intro_text = hyphenate_text(escape_editorial_brackets(playlist.intro))
+        return NodeSpec(
+            kind=NodeKind.STORY_GROUP,
+            text=get_markup_text_with_num_titles(playlist.heading, len(title_infos)),
+            destination=PlaylistDestination(playlist_id=playlist.playlist_id),
+            lazy_children=partial(_playlist_rows, intro_text, title_infos),
         )
 
     def _random_titles_spec(self, text: str, year_range: tuple[int, int] | None) -> NodeSpec:
