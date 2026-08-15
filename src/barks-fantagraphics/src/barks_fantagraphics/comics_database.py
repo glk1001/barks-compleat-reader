@@ -585,6 +585,20 @@ def make_all_fantagraphics_directories(db: "ComicsDatabase") -> None:
     FANTA_VOLUME_OVERRIDES_ROOT.mkdir(parents=True, exist_ok=True)
 
     for volume in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1):
+        # A volume with no original scans has nothing to derive from, so making its
+        # derived dirs anyway would dress a misspelled VOLUME_nn up as a real volume:
+        # eleven plausible empty dirs appear, the directory-structure check passes, and
+        # every source lookup silently misses because the originals are under the name
+        # that was actually meant. Skip the volume and say so instead.
+        original_dir = db.get_fantagraphics_volume_dir(volume)
+        if not original_dir.is_dir():
+            logger.error(
+                f"No Fantagraphics original dir for volume {volume} - not making its"
+                f' directories: "{original_dir}". Check the volume\'s VOLUME_nn constant'
+                f" names its actual directory on disk."
+            )
+            continue
+
         # Create these directories if they're already not there.
         _make_vol_dir(db.get_fantagraphics_upscayled_volume_image_dir(volume))
         _make_vol_dir(db.get_fantagraphics_restored_volume_image_dir(volume))
