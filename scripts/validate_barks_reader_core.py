@@ -37,7 +37,7 @@ from barks_fantagraphics.fanta_comics_info import (
     get_fanta_volume_from_str,
 )
 from barks_fantagraphics.page_classes import CleanPage
-from barks_fantagraphics.pages import _get_srce_and_dest_pages_in_order
+from barks_fantagraphics.pages import get_srce_and_dest_pages_in_order
 from barks_reader.core.fantagraphics_volumes import (
     DuplicateArchiveFilesError,
     FantagraphicsArchive,
@@ -1714,7 +1714,7 @@ def check_one_title_load(
     # list without doing the JSON I/O the public ``get_sorted_srce_and_dest_pages_*``
     # variants would. Phase 9 does that I/O itself, error-collected.
     try:
-        srce_and_dest_pages = _get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
+        srce_and_dest_pages = get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
     except Exception as exc:  # noqa: BLE001
         counts.load_failed += 1
         phase.add(

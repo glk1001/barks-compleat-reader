@@ -25,12 +25,12 @@ from barks_fantagraphics.pages import (
     SrceStoryFileNotFoundError,
     SrceStoryFileResolver,
     SvgPngStoryFileResolver,
-    _get_srce_and_dest_pages_in_order,
     get_full_srce_filepath,
     get_page_mod_type,
     get_page_number_str,
     get_relative_srce_filepath,
     get_required_pages_in_order,
+    get_srce_and_dest_pages_in_order,
     get_srce_dest_map,
 )
 
@@ -391,7 +391,7 @@ class TestSrceDependency:
 
 
 # ---------------------------------------------------------------------------
-# _get_srce_and_dest_pages_in_order (front/body/back-matter section machine)
+# get_srce_and_dest_pages_in_order (front/body/back-matter section machine)
 # ---------------------------------------------------------------------------
 
 
@@ -419,7 +419,7 @@ class TestGetSrceAndDestPagesInOrder:
             ],
         )
 
-        pages = _get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
+        pages = get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
 
         dest = pages.dest_pages
         assert [p.page_filename for p in dest] == [
@@ -448,7 +448,7 @@ class TestGetSrceAndDestPagesInOrder:
             ],
         )
 
-        pages = _get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
+        pages = get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
 
         assert [p.page_filename for p in pages.srce_pages] == ["100.jpg", "101.jpg"]
         assert [p.page_num for p in pages.srce_pages] == [100, 101]
@@ -463,7 +463,7 @@ class TestGetSrceAndDestPagesInOrder:
         )
 
         with pytest.raises(ValueError, match="front matter but page type is incorrect"):
-            _get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
+            get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
 
     def test_wrong_back_matter_page_type_raises(self) -> None:
         """A front-matter page seen after the back matter has started is rejected."""
@@ -477,7 +477,7 @@ class TestGetSrceAndDestPagesInOrder:
         )
 
         with pytest.raises(ValueError, match="back matter but page type is incorrect"):
-            _get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
+            get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
 
     def test_full_paths_use_resolver_and_dest_image_dir(self) -> None:
         """With full paths, srce comes from the resolver and dest from the dest dir."""
@@ -491,7 +491,7 @@ class TestGetSrceAndDestPagesInOrder:
         resolver = MagicMock(spec=SrceStoryFileResolver)
         resolver.get_story_file.return_value = Path("/srce/restored.jpg")
 
-        pages = _get_srce_and_dest_pages_in_order(
+        pages = get_srce_and_dest_pages_in_order(
             comic, get_full_paths=True, srce_story_file_resolver=resolver
         )
 

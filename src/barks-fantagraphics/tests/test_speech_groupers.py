@@ -742,7 +742,7 @@ class TestGetSrcePageToDestPageMap:
         srce_dest = _make_srce_dest_pages(["001", "500"])
 
         with patch.object(
-            speech_groupers_module, "get_sorted_srce_and_dest_pages", return_value=srce_dest
+            speech_groupers_module, "get_srce_and_dest_pages_in_order", return_value=srce_dest
         ):
             result = SpeechGroups._get_srce_page_to_dest_page_map(comic)  # noqa: SLF001
 
@@ -755,7 +755,7 @@ class TestGetSrcePageToDestPageMap:
         srce_dest = _make_srce_dest_pages(["001", "002"], [PageType.BODY, PageType.COVER])
 
         with patch.object(
-            speech_groupers_module, "get_sorted_srce_and_dest_pages", return_value=srce_dest
+            speech_groupers_module, "get_srce_and_dest_pages_in_order", return_value=srce_dest
         ):
             result = SpeechGroups._get_srce_page_to_dest_page_map(comic)  # noqa: SLF001
 
@@ -767,7 +767,7 @@ class TestGetSrcePageToDestPageMap:
         srce_dest = _make_srce_dest_pages(["001"])
 
         with patch.object(
-            speech_groupers_module, "get_sorted_srce_and_dest_pages", return_value=srce_dest
+            speech_groupers_module, "get_srce_and_dest_pages_in_order", return_value=srce_dest
         ):
             result = SpeechGroups._get_srce_page_to_dest_page_map(comic)  # noqa: SLF001
 

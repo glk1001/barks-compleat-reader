@@ -173,7 +173,7 @@ def get_sorted_srce_and_dest_pages_with_dimensions(
     if get_srce_panel_segments_file is None:
         get_srce_panel_segments_file = comic.get_srce_panel_segments_file
 
-    srce_and_dest_pages = _get_srce_and_dest_pages_in_order(
+    srce_and_dest_pages = get_srce_and_dest_pages_in_order(
         comic, get_full_paths, srce_story_file_resolver
     )
 
@@ -198,11 +198,24 @@ def get_sorted_srce_and_dest_pages_with_dimensions(
     return srce_and_dest_pages, srce_dim, required_dim
 
 
-def _get_srce_and_dest_pages_in_order(
+def get_srce_and_dest_pages_in_order(
     comic: ComicBook,
     get_full_paths: bool,
     srce_story_file_resolver: SrceStoryFileResolver | None = None,
 ) -> SrceAndDestPages:
+    """Return the srce and dest page lists, without loading any panel geometry.
+
+    ``get_sorted_srce_and_dest_pages`` wraps this and then reads every page's
+    panel-segments file to size the dest pages. That makes it the wrong call
+    for a caller that only wants to know which source page maps to which dest
+    page: it requires a segments file to exist for every page and to be no
+    older than its image, neither of which the mapping depends on.
+
+    That is not hypothetical. The synthetic "All One-Pagers" collection is 133
+    pages of reprints, and its pages legitimately have no segments file at all
+    -- the one-pagers are not in any title, so nothing ever segmented them.
+    Callers that only need the mapping use this instead and are unaffected.
+    """
     required_pages = get_required_pages_in_order(comic.page_images_in_order)
 
     # The synthetic collections are hundreds of COVER pages long. COVER is front

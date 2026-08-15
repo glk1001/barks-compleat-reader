@@ -14,7 +14,7 @@ from .comic_book import ComicBook
 from .comics_consts import RESTORABLE_PAGE_TYPES
 from .comics_database import ComicsDatabase
 from .ocr_file_paths import get_ocr_prelim_groups_json_filename
-from .pages import get_page_num_str, get_sorted_srce_and_dest_pages
+from .pages import get_page_num_str, get_srce_and_dest_pages_in_order
 from .speech_markup import same_text_ignoring_markup, strip_markup
 
 
@@ -311,7 +311,15 @@ class SpeechGroups:
     def _get_srce_page_to_dest_page_map(comic: ComicBook) -> dict[str, str]:
         srce_dest_map = {}
 
-        srce_and_dest_pages = get_sorted_srce_and_dest_pages(comic, get_full_paths=True)
+        # Deliberately the geometry-free variant. This wants the page mapping
+        # and nothing else, and `get_sorted_srce_and_dest_pages` would first
+        # demand a panel-segments file for every page, no older than its image.
+        # The one-pager skip below discards all 133 pages of the synthetic
+        # "All One-Pagers" collection -- whose pages have no segments file, and
+        # should not -- but it only runs *after* the page list is built, so
+        # loading the geometry here failed the whole title before the skip
+        # could reach it.
+        srce_and_dest_pages = get_srce_and_dest_pages_in_order(comic, get_full_paths=True)
         for srce, dest in zip(
             srce_and_dest_pages.srce_pages, srce_and_dest_pages.dest_pages, strict=True
         ):
