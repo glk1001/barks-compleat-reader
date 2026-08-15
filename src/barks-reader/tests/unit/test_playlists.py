@@ -62,6 +62,7 @@ def test_the_bravery_stories_playlist() -> None:
         Titles.KNIGHT_IN_SHINING_ARMOR,
         Titles.SHERIFF_OF_BULLET_VALLEY,
         Titles.VACATION_TIME,
+        Titles.DONALD_DUCKS_WORST_NIGHTMARE,
         Titles.ROSCOE_THE_ROBOT,
     )
 
