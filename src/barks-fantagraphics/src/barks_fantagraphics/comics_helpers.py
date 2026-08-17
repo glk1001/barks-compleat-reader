@@ -157,9 +157,7 @@ def get_title_from_volume_page(
             logger.debug(f'Skipping cover title "{title[0]}".')
             continue
         comic_book = comics_database.get_comic_book(title[0])
-        srce_and_dest_pages = get_sorted_srce_and_dest_pages(
-            comic_book, get_full_paths=False, check_srce_page_timestamps=False
-        )
+        srce_and_dest_pages = get_sorted_srce_and_dest_pages(comic_book, get_full_paths=False)
         srce_pages = [Path(p.page_filename).stem for p in srce_and_dest_pages.srce_pages]
         if page in srce_pages:
             page_index = srce_pages.index(page)

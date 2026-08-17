@@ -150,17 +150,9 @@ def get_page_number_str(page: CleanPage, page_number: int) -> str:
 def get_sorted_srce_and_dest_pages(
     comic: ComicBook,
     get_full_paths: bool,
-    get_srce_panel_segments_file: Callable[[str], Path] | None = None,
-    check_srce_page_timestamps: bool = True,
     srce_story_file_resolver: SrceStoryFileResolver | None = None,
 ) -> SrceAndDestPages:
-    return get_sorted_srce_and_dest_pages_with_dimensions(
-        comic,
-        get_full_paths,
-        get_srce_panel_segments_file,
-        check_srce_page_timestamps,
-        srce_story_file_resolver,
-    )[0]
+    return get_srce_and_dest_pages_in_order(comic, get_full_paths, srce_story_file_resolver)
 
 
 def get_sorted_srce_and_dest_pages_with_dimensions(
