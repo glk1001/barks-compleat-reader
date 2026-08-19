@@ -107,7 +107,7 @@ def read_censorship_fixes(file: Path = CENSORSHIP_FIXES_CSV) -> list[CensorshipF
 
     Raises:
         CensorshipFixesError: If the file is missing, its header is not the expected one,
-            or a row's volume is not a number.
+            or a row is the wrong width or does not start with a volume number.
 
     """
     if not file.is_file():
@@ -125,6 +125,16 @@ def read_censorship_fixes(file: Path = CENSORSHIP_FIXES_CSV) -> list[CensorshipF
         for line_num, row in enumerate(reader, start=2):
             if not row:
                 continue
+            if len(row) != len(CENSORSHIP_FIXES_HEADER):
+                # Every caller guards on CensorshipFixesError alone, so a hand-added row
+                # with a column missing - or a stray unquoted comma splitting one in two -
+                # has to be reported here rather than left to raise TypeError out of the
+                # dataclass and past every handler.
+                msg = (
+                    f"Expected {len(CENSORSHIP_FIXES_HEADER)} columns on line {line_num} of"
+                    f' "{file}", found {len(row)}: {row}.'
+                )
+                raise CensorshipFixesError(msg)
             volume, *rest = row
             if not volume.isdigit():
                 msg = f'Volume is not a number on line {line_num} of "{file}": "{volume}".'
@@ -276,6 +286,10 @@ def story_page_offsets_disagree(page_pairs: list[tuple[str, str]]) -> bool:
     Collectors` is exactly that, and its rows are right. So one extra offset is allowed
     per folio the story carries.
 
+    Distinct folios, not folio rows: several panels of one restored page each get their
+    own row, and counting those would widen the allowance a page at a time until it
+    covered a genuinely mis-numbered row.
+
     Args:
         page_pairs: One story's `(comic_page, fanta_page)` cells.
 
@@ -283,8 +297,10 @@ def story_page_offsets_disagree(page_pairs: list[tuple[str, str]]) -> bool:
         True if the rows cannot all be describing the same story.
 
     """
-    folios = sum(
-        1 for _comic_page, fanta_page in page_pairs if fanta_page and not fanta_page.isdigit()
-    )
+    folios = {
+        fanta_page
+        for _comic_page, fanta_page in page_pairs
+        if fanta_page and not fanta_page.isdigit()
+    }
 
-    return len(story_page_offsets(page_pairs)) > 1 + folios
+    return len(story_page_offsets(page_pairs)) > 1 + len(folios)
