@@ -381,7 +381,11 @@ def get_restored_srce_dependencies(comic: ComicBook, srce_page: CleanPage) -> li
             SrceDependency(comic.ini_file, get_timestamp(comic.ini_file), independent=True),
             SrceDependency(
                 comic.intro_inset_file,
-                get_timestamp(comic.intro_inset_file),
+                # A volume whose insets have not been drawn yet is an ordinary
+                # not-yet-done state, not an unreadable comic, so it must not raise out
+                # of a report. -1 is the same not-on-disk sentinel the panel segments
+                # below use, and `fold_max` and `on_disk_chain` both already drop it.
+                get_timestamp(comic.intro_inset_file) if comic.intro_inset_file.is_file() else -1,
                 independent=True,
             ),
         ]
