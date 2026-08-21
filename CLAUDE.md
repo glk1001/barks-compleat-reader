@@ -11,6 +11,17 @@ bundle on macOS.
 
 ## Commands
 
+**First-time setup (after cloning, and after any `git lfs install`):**
+```bash
+uv run pre-commit install
+```
+`default_install_hook_types` in `.pre-commit-config.yaml` makes that one command write all three
+hook types. Without it, `pre-commit install` writes only `.git/hooks/pre-commit` and the pre-push
+(full-suite pytest) and commit-msg (cspell) gates are silently absent — the failure mode is a green
+commit and a red CI. `git lfs install` also claims the `pre-push` slot, so re-run this after it;
+pre-commit preserves the LFS hook as `pre-push.legacy` and chains to it. To verify,
+`.git/hooks/pre-push` should name `--hook-type=pre-push`, not `git lfs pre-push`.
+
 **Run benchmarks** (excluded from the default test run):
 ```bash
 bash scripts/run_benchmark.sh
