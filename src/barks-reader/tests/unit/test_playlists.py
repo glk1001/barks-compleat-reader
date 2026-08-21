@@ -58,10 +58,11 @@ def test_the_bravery_stories_playlist() -> None:
 
     assert bravery.heading == "The Bravery Stories"
     assert bravery.titles == (
-        Titles.CHRISTMAS_ON_BEAR_MOUNTAIN,
-        Titles.KNIGHT_IN_SHINING_ARMOR,
+        Titles.SWIMMING_SWINDLERS,
         Titles.SHERIFF_OF_BULLET_VALLEY,
         Titles.VACATION_TIME,
+        Titles.KNIGHT_IN_SHINING_ARMOR,
+        Titles.CHRISTMAS_ON_BEAR_MOUNTAIN,
         Titles.DONALD_DUCKS_WORST_NIGHTMARE,
         Titles.BACK_TO_THE_KLONDIKE,
         Titles.ROSCOE_THE_ROBOT,
