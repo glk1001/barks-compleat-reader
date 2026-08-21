@@ -99,6 +99,29 @@ repos:
             pass_filenames: false
             always_run: true
             stages: [pre-push]
+          - id: check-censorship-csv
+            name: censorship-fixes CSV matches the fixes trees
+            # The data is here (barks-fantagraphics/data) but the checker is in the
+            # sibling barks-comic-building repo, hence --project: this runs that
+            # repo's console script out of its own synced venv, not ours. --offline
+            # so a push never waits on the network to resolve it, and `env -u
+            # VIRTUAL_ENV` because pre-commit exports *our* venv, which uv then warns
+            # it is ignoring - a warning on every push that means nothing is wrong.
+            entry: >-
+              env -u VIRTUAL_ENV
+              uv run --offline
+              --project ../barks-comic-building
+              barks-check-build --log-level SUCCESS --censorship-only
+            language: system
+            pass_filenames: false
+            # always_run, not files: [censorship-fixes.csv]. The check compares the CSV
+            # against the story tables and the on-disk fixes trees, so an edit to
+            # comic_book_info.py or a restaged page can invalidate a row the CSV commit
+            # never touched. It takes about a second.
+            always_run: true
+            # Pre-push, not pre-commit: it reads the machine-local comics trees under
+            # ~/Books, which a commit should not depend on and CI does not have.
+            stages: [pre-push]
           - id: cspell-commit-msg
             name: cspell commit message
             entry: bunx cspell --no-must-find-files
