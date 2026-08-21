@@ -45,7 +45,7 @@ def archives() -> FantagraphicsVolumeArchives:
     return FantagraphicsVolumeArchives(
         archive_root=Path("/fake/archives"),
         override_root=Path("/fake/overrides"),
-        volume_list=list(range(1, 30)),
+        volume_list=list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)),
     )
 
 
@@ -114,8 +114,10 @@ class TestCheckCorrectVolumeNumbers:
     def test_raises_too_many_for_volume_exceeding_max(
         self, archives: FantagraphicsVolumeArchives
     ) -> None:
-        # Create filenames with a volume number > LAST_VOLUME_NUMBER (29)
-        filenames = [Path(f"{i}-vol.cbz") for i in range(1, 30)] + [Path("999-extra.cbz")]
+        # Create filenames with a volume number > LAST_VOLUME_NUMBER.
+        filenames = [
+            Path(f"{i}-vol.cbz") for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)
+        ] + [Path("999-extra.cbz")]
         with pytest.raises(TooManyArchiveFilesError) as exc_info:
             archives.check_correct_volume_numbers(filenames)
 
@@ -128,13 +130,15 @@ class TestCheckCorrectVolumeNumbers:
     def test_last_volume_number_is_accepted(self, archives: FantagraphicsVolumeArchives) -> None:
         """The valid range is inclusive of `LAST_VOLUME_NUMBER`."""
         filenames = [Path(f"{i}-vol.cbz") for i in range(FIRST_VOLUME_NUMBER, NUM_VOLUMES + 1)]
-        # No exception expected — and volume 29 must not read as "too many".
+        # No exception expected — and the last volume must not read as "too many".
         archives.check_correct_volume_numbers(filenames)
 
     def test_raises_duplicate_for_repeated_volumes(
         self, archives: FantagraphicsVolumeArchives
     ) -> None:
-        filenames = [Path(f"{i}-vol.cbz") for i in range(1, 30)]
+        filenames = [
+            Path(f"{i}-vol.cbz") for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)
+        ]
         filenames.append(Path("5-duplicate.cbz"))
         with pytest.raises(DuplicateArchiveFilesError) as exc_info:
             archives.check_correct_volume_numbers(filenames)
@@ -144,13 +148,19 @@ class TestCheckCorrectVolumeNumbers:
 
     def test_raises_missing_for_gaps(self, archives: FantagraphicsVolumeArchives) -> None:
         # Missing volumes 15 and 20
-        filenames = [Path(f"{i}-vol.cbz") for i in range(1, 30) if i not in (15, 20)]
+        filenames = [
+            Path(f"{i}-vol.cbz")
+            for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)
+            if i not in (15, 20)
+        ]
         with pytest.raises(MissingArchiveFilesError) as exc_info:
             archives.check_correct_volume_numbers(filenames)
         assert exc_info.value.missing_file_vols == [15, 20]
 
     def test_passes_for_complete_set(self, archives: FantagraphicsVolumeArchives) -> None:
-        filenames = [Path(f"{i}-vol.cbz") for i in range(1, 30)]
+        filenames = [
+            Path(f"{i}-vol.cbz") for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)
+        ]
         archives.check_correct_volume_numbers(filenames)
 
     def test_raises_missing_for_empty_list(self, archives: FantagraphicsVolumeArchives) -> None:
@@ -349,7 +359,9 @@ class TestAccessors:
 
 class TestCheckArchivesAndOverrides:
     def test_raises_too_many_override_dirs(self, archives: FantagraphicsVolumeArchives) -> None:
-        archive_filenames = [Path(f"{i}-v.cbz") for i in range(1, 30)]
+        archive_filenames = [
+            Path(f"{i}-v.cbz") for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)
+        ]
         too_many = {i: Path(f"{i}-ov.cbz") for i in range(1, NUM_VOLUMES + 2)}
         with pytest.raises(TooManyOverrideDirsError):
             archives.check_archives_and_overrides(archive_filenames, too_many)
@@ -358,7 +370,9 @@ class TestCheckArchivesAndOverrides:
         self, archives: FantagraphicsVolumeArchives
     ) -> None:
         """The limit is `> NUM_VOLUMES`: exactly one override per volume is fine."""
-        archive_filenames = [Path(f"{i}-v.cbz") for i in range(1, 30)]
+        archive_filenames = [
+            Path(f"{i}-v.cbz") for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)
+        ]
         exactly_enough = {i: Path(f"{i}-ov.cbz") for i in range(1, NUM_VOLUMES + 1)}
 
         # No exception expected.
@@ -389,7 +403,7 @@ class TestDirectoryScanning:
         archives = FantagraphicsVolumeArchives(
             archive_root=Path("/nonexistent/library/root"),
             override_root=Path("/fake/overrides"),
-            volume_list=list(range(1, 30)),
+            volume_list=list(range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)),
         )
         assert archives.get_all_volume_filenames() == []
 
@@ -751,7 +765,11 @@ class TestErrorsIdentifyTheArchiveRoot:
     def test_missing_volumes_error_names_the_root(
         self, archives: FantagraphicsVolumeArchives
     ) -> None:
-        filenames = [Path(f"{i}-vol.cbz") for i in range(1, 30) if i != 15]
+        filenames = [
+            Path(f"{i}-vol.cbz")
+            for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)
+            if i != 15
+        ]
         with pytest.raises(MissingArchiveFilesError) as exc_info:
             archives.check_correct_volume_numbers(filenames)
 
@@ -768,7 +786,9 @@ class TestErrorsIdentifyTheArchiveRoot:
     def test_too_many_override_dirs_error_names_the_root_and_counts(
         self, archives: FantagraphicsVolumeArchives
     ) -> None:
-        archive_filenames = [Path(f"{i}-v.cbz") for i in range(1, 30)]
+        archive_filenames = [
+            Path(f"{i}-v.cbz") for i in range(FIRST_VOLUME_NUMBER, LAST_VOLUME_NUMBER + 1)
+        ]
         too_many = {i: Path(f"{i}-ov.cbz") for i in range(1, NUM_VOLUMES + 2)}
 
         with pytest.raises(TooManyOverrideDirsError) as exc_info:
