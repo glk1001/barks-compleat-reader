@@ -174,6 +174,58 @@ def get_downscaled_image(width: int, height: int, srce_file: Path) -> PilImage:
     )
 
 
+def downscale_to_exact_size(width: int, height: int, srce_file: Path, dest_file: Path) -> None:
+    """Resize an image to an exact size, saving it in the format its name gives.
+
+    Unlike `downscale_jpg` and `downscale_png`, the source aspect ratio is not kept: the
+    result is exactly `width` x `height`. Use this when the target size is a chosen
+    standard that the source aspect would only land near.
+
+    Args:
+        width: The target width.
+        height: The target height.
+        srce_file: The image to resize.
+        dest_file: Where the resized image is written. Its extension picks the format.
+
+    Raises:
+        ValueError: If `dest_file` does not have a supported image extension.
+
+    """
+    image = load_pil_image_for_reading(srce_file)
+    image_resized = image.resize((width, height), Image.Resampling.LANCZOS)
+
+    save_pil_image(image_resized, dest_file)
+
+
+def save_pil_image(pil_image: PilImage, dest_file: Path) -> None:
+    """Save an image in the format its destination name gives.
+
+    Args:
+        pil_image: The image to save.
+        dest_file: Where the image is written. Its extension picks the format.
+
+    Raises:
+        ValueError: If `dest_file` does not have a supported image extension.
+
+    """
+    if _get_pil_format_from_ext(dest_file.suffix) == JPEG_PIL_FORMAT:
+        pil_image.convert("RGB").save(
+            str(dest_file),
+            format=JPEG_PIL_FORMAT,
+            optimize=True,
+            compress_level=SAVE_JPG_COMPRESS_LEVEL,
+            quality=SAVE_JPG_QUALITY,
+        )
+    else:
+        pil_image.save(
+            str(dest_file),
+            format=PNG_PIL_FORMAT,
+            optimize=True,
+            compress_level=SAVE_PNG_COMPRESSION,
+            quality=SAVE_PNG_COMPRESSION,
+        )
+
+
 def add_jpg_metadata(jpg_file: Path, metadata: dict[str, str]) -> None:
     pil_image = Image.open(str(jpg_file), "r")
 
