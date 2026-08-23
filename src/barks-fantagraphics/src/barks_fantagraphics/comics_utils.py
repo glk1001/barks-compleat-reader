@@ -59,6 +59,13 @@ def get_submitted_date(title_and_info: tuple[str, FantaComicBookInfo]) -> date:
         if fanta_info.comic_book_info.submitted_day == -1
         else fanta_info.comic_book_info.submitted_day
     )
+    if fanta_info.comic_book_info.submitted_month == -1:
+        msg = f'Invalid submitted month -1, for title "{title_and_info[0]}".'
+        raise ValueError(msg)
+    if fanta_info.comic_book_info.submitted_year == -1:
+        msg = f'Invalid submitted year -1, for title "{title_and_info[0]}".'
+        raise ValueError(msg)
+
     return date(
         fanta_info.comic_book_info.submitted_year,
         fanta_info.comic_book_info.submitted_month,

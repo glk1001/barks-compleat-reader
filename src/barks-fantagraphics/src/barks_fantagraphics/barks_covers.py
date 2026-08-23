@@ -3910,9 +3910,9 @@ BARKS_COVERS: list[BarksCover] = [
         seq=0,
         qualifier=None,
         description="Scrooge scrubs bills on a washboard. <em>(Not listed.)</em>",
-        submitted_day=-1,
-        submitted_month=-1,
-        submitted_year=-1,
+        submitted_day=29,  # GLK guessed submission date
+        submitted_month=10,
+        submitted_year=1953,
         illustrates=None,
     ),
     BarksCover(
@@ -3955,9 +3955,9 @@ BARKS_COVERS: list[BarksCover] = [
         seq=0,
         qualifier=None,
         description="The nephews have all the bed covers on a cold night. (Not listed.)",
-        submitted_day=-1,
-        submitted_month=-1,
-        submitted_year=-1,
+        submitted_day=10,  # GLK guessed submission date
+        submitted_month=5,
+        submitted_year=1951,
         illustrates=None,
     ),
     BarksCover(
@@ -3970,9 +3970,9 @@ BARKS_COVERS: list[BarksCover] = [
         seq=0,
         qualifier=None,
         description="A snow-covered sidewalk separates Donald from Daisy. (Not listed.)",
-        submitted_day=-1,
-        submitted_month=-1,
-        submitted_year=-1,
+        submitted_day=10,  # GLK guessed submission date
+        submitted_month=5,
+        submitted_year=1951,
         illustrates=None,
     ),
     BarksCover(
@@ -3985,9 +3985,9 @@ BARKS_COVERS: list[BarksCover] = [
         seq=0,
         qualifier=CoverQualifier.ART_ONLY,
         description="Donald swings furiously at a golf ball with a bag full of clubs, as Scrooge keeps score. <em>(May 10, 1951, or Sept. 27, 1951)</em>",
-        submitted_day=-1,
-        submitted_month=-1,
-        submitted_year=-1,
+        submitted_day=27,  # GLK guessed submission date
+        submitted_month=9,
+        submitted_year=1951,
         illustrates=None,
     ),
     BarksCover(
@@ -4000,9 +4000,9 @@ BARKS_COVERS: list[BarksCover] = [
         seq=0,
         qualifier=None,
         description="Donald feeds pigeons — and the nephews — popcorn. (Not listed.)",
-        submitted_day=-1,
-        submitted_month=-1,
-        submitted_year=-1,
+        submitted_day=27,  # GLK guessed submission date
+        submitted_month=9,
+        submitted_year=1951,
         illustrates=None,
     ),
     BarksCover(

@@ -1020,13 +1020,18 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.DAISY_AND_DONALD_25_COVER, False, Issues.EXTRAS, 25, 8, 1977, -1, -1, -1),
     ComicBookInfo(Titles.DONALD_DUCK_ALBUM_1_BACK_COVER, False, Issues.EXTRAS, 1, 8, 1963, -1, -1, -1),
     ComicBookInfo(Titles.HUEY_DEWEY_AND_LOUIE_JUNIOR_WOODCHUCKS_9_COVER, False, Issues.HDL, 9, 4, 1971, -1, -1, -1),
-    ComicBookInfo(Titles.UNCLE_SCROOGE_6_COVER, False, Issues.US, 6, 6, 1954, -1, -1, -1),
+    # Submitted date for US #6 cover is a guess - just used the same as the story submission date.
+    ComicBookInfo(Titles.UNCLE_SCROOGE_6_COVER, False, Issues.US, 6, 6, 1954, 29, 10, 1953),
     ComicBookInfo(Titles.UNCLE_SCROOGE_16_COVER, False, Issues.US, 16, 12, 1957, -1, -1, -1),
     ComicBookInfo(Titles.UNCLE_SCROOGE_40_BACK_COVER, False, Issues.US, 40, 1, 1963, -1, -1, -1),
-    ComicBookInfo(Titles.COMICS_AND_STORIES_137_COVER, False, Issues.CS, 137, 2, 1952, -1, -1, -1),
-    ComicBookInfo(Titles.COMICS_AND_STORIES_138_COVER, False, Issues.CS, 138, 3, 1952, -1, -1, -1),
-    ComicBookInfo(Titles.COMICS_AND_STORIES_140_COVER, False, Issues.CS, 140, 5, 1952, -1, -1, -1),
-    ComicBookInfo(Titles.COMICS_AND_STORIES_142_COVER, False, Issues.CS, 142, 7, 1952, -1, -1, -1),
+    # Submitted date for #137 cover is a guess (Barrier offers 10-May-1951 or 27-Sep-1951)
+    ComicBookInfo(Titles.COMICS_AND_STORIES_137_COVER, False, Issues.CS, 137, 2, 1952, 10, 5, 1951),
+    # Submitted date for #138 cover is a guess (Barrier offers 10-May-1951 or 27-Sep-1951)
+    ComicBookInfo(Titles.COMICS_AND_STORIES_138_COVER, False, Issues.CS, 138, 3, 1952, 10, 5, 1951),
+    # Submitted date for #140 cover is a guess (Barrier offers 10-May-1951 or 27-Sep-1951)
+    ComicBookInfo(Titles.COMICS_AND_STORIES_140_COVER, False, Issues.CS, 140, 5, 1952, 27, 9, 1951),
+    # Submitted date for #142 cover is a guess (Barrier offers 10-May-1951 or 27-Sep-1951)
+    ComicBookInfo(Titles.COMICS_AND_STORIES_142_COVER, False, Issues.CS, 142, 7, 1952, 27, 9, 1951),
     ComicBookInfo(Titles.COMICS_AND_STORIES_405_COVER, False, Issues.CS, 405, 6, 1974, -1, -1, -1),
     # Synthetic "All One-Pagers" collection - bundles every one-pager into one comic.
     ComicBookInfo(Titles.ALL_ONE_PAGERS, True, Issues.EXTRAS, 1, 1, 1982, 1, 1, 1982),
