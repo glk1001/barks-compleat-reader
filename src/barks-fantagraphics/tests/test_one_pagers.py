@@ -86,9 +86,9 @@ class TestOnePagerOrdering:
         # BARKS_TITLE_INFO is chronological and gated by check_story_submitted_order, so it
         # is the reference *order*. It is not a reference for *membership*: ONE_PAGERS is
         # itself the definition of which titles are one-pagers, so the reference is filtered
-        # by it and the two sets are equal by construction. Deleting a located entry is
-        # caught by test_locations_keys_are_one_pagers; deleting an unlocated one is not
-        # caught anywhere - don't add a set assertion here and think it covers that.
+        # by it and the two sets are equal by construction - a set assertion here would be
+        # vacuous, never able to fail. Membership is covered instead by the NUM_ONE_PAGERS
+        # count assert in comic_book_info.py and by test_locations_keys_are_one_pagers.
         reference = [info.title for info in BARKS_TITLE_INFO if info.title in set(ONE_PAGERS)]
         drift = [
             f"{ENUM_TO_STR_TITLE[a]!r} at index {i} where {ENUM_TO_STR_TITLE[b]!r} is expected"

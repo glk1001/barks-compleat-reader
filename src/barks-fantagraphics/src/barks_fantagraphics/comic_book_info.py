@@ -1206,6 +1206,15 @@ ONE_PAGERS = [
     Titles.WASTED_WORDS,
 ]
 
+# ONE_PAGERS is the only definition of which titles are one-pagers, so nothing else can
+# be cross-checked against it to notice an entry going missing: TestOnePagerOrdering
+# derives its reference order by filtering BARKS_TITLE_INFO *through* this list, and
+# ONE_PAGER_LOCATIONS only covers the located ones. This count is that missing
+# independent check - bump it deliberately when a one-pager is genuinely added.
+NUM_ONE_PAGERS = 155
+assert len(ONE_PAGERS) == NUM_ONE_PAGERS, f"{len(ONE_PAGERS)} != {NUM_ONE_PAGERS}"
+assert len(set(ONE_PAGERS)) == NUM_ONE_PAGERS, "ONE_PAGERS has a duplicate entry"
+
 # Every cover title, in BARKS_COVERS (submitted-date) order. Covers are assigned
 # titles synthesized from their issue (see barks_covers.get_cover_title_str); like
 # one-pagers they sit outside the main chronological story sequence, so the main
