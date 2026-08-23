@@ -7,6 +7,7 @@ from barks_fantagraphics.barks_covers import (
     COVER_BY_TITLE,
     BarksCover,
     CoverKind,
+    cover_submitted_sort_key,
     get_cover_collection_page_num,
     get_cover_collection_pages,
     get_cover_display_title,
@@ -85,6 +86,46 @@ class TestCoverTitles:
         # An unlocated cover has no collection page.
         unlocated = next(c for c in BARKS_COVERS if c not in located)
         assert get_cover_collection_page_num(get_cover_title(unlocated)) is None
+
+
+class TestCoverOrdering:
+    """`BARKS_COVERS` list order is load-bearing, not cosmetic.
+
+    It is the canonical submitted-date order that `get_located_covers`, the "All
+    Covers" collection page numbering, and the reader's year-range page groups all
+    read positionally. `check_cover_submitted_order` validates the *derived*
+    `BARKS_TITLE_INFO`, which can stay in order while the source list drifts out of
+    it - so these two assertions guard the source list itself.
+    """
+
+    def test_covers_are_in_submitted_date_order(self) -> None:
+        # Editing a cover's submitted date without moving its entry breaks the
+        # positional reads above. Repair with experiments/covers/reorder_barks_covers.py.
+        keys = [cover_submitted_sort_key(cover) for cover in BARKS_COVERS]
+        out_of_order = [
+            f"{get_cover_title_str(BARKS_COVERS[i])} ({keys[i]})"
+            f" sorts before {get_cover_title_str(BARKS_COVERS[i - 1])} ({keys[i - 1]})"
+            for i in range(1, len(keys))
+            if keys[i] < keys[i - 1]
+        ]
+        assert not out_of_order, "BARKS_COVERS is not in submitted-date order: " + "; ".join(
+            out_of_order
+        )
+
+    def test_cover_order_matches_the_titles_enum(self) -> None:
+        # The derived blocks are emitted in BARKS_COVERS order, so the cover members
+        # of Titles must ascend in step with it. Repair by re-running
+        # reorder_barks_covers.py then emit_cover_titles.py.
+        cover_titles = [get_cover_title(cover) for cover in BARKS_COVERS]
+        drift = [
+            f"{get_cover_title_str(BARKS_COVERS[i])} at list index {i}"
+            f" but enum position {int(cover_titles[i])}"
+            for i in range(1, len(cover_titles))
+            if cover_titles[i] < cover_titles[i - 1]
+        ]
+        assert not drift, "BARKS_COVERS and the Titles cover block are out of step: " + "; ".join(
+            drift
+        )
 
 
 class TestCoversCollection:

@@ -2,7 +2,7 @@
 
 import pytest
 from barks_fantagraphics import comic_book_info as cbi
-from barks_fantagraphics.barks_titles import Titles
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from barks_fantagraphics.comic_book_info import (
     BARKS_TITLE_INFO,
     ONE_PAGER_LOCATIONS,
@@ -23,6 +23,89 @@ from barks_fantagraphics.fanta_comics_info import (
     SERIES_ONE_PAGERS,
     get_fanta_info,
 )
+
+
+def _submitted_key(title: Titles) -> tuple[int, int, int]:
+    info = BARKS_TITLE_INFO[title]
+    return (
+        info.submitted_year if info.submitted_year != -1 else 9999,
+        info.submitted_month if info.submitted_month != -1 else 99,
+        info.submitted_day if info.submitted_day != -1 else 99,
+    )
+
+
+def _inversions(titles: list[Titles]) -> list[tuple[Titles, Titles]]:
+    """Adjacent ``(earlier_entry, later_entry)`` pairs whose submitted dates go backwards."""
+    return [
+        (titles[i - 1], titles[i])
+        for i in range(1, len(titles))
+        if _submitted_key(titles[i]) < _submitted_key(titles[i - 1])
+    ]
+
+
+def _describe(pair: tuple[Titles, Titles]) -> str:
+    prev, title = pair
+    return (
+        f"{ENUM_TO_STR_TITLE[title]!r} {_submitted_key(title)}"
+        f" placed after {ENUM_TO_STR_TITLE[prev]!r} {_submitted_key(prev)}"
+    )
+
+
+# Cap on how many drifted entries a failure message lists before summarising.
+_MAX_LISTED_DRIFT = 5
+
+_REORDER_HINT = (
+    " Move the entry to its chronological slot in ONE_PAGERS (comic_book_info.py) - the"
+    " one-pager subsequence of BARKS_TITLE_INFO is the reference order, and"
+    " experiments/one_pagers/reorder_one_pagers.py rewrites the list to it. Then re-run"
+    " barks-stage-one-pagers: the collection's pre-baked page numbering follows this list,"
+    " so moving an entry leaves the staged scans on the wrong pages."
+)
+
+
+class TestOnePagerOrdering:
+    """`ONE_PAGERS` list order is the "All One-Pagers" collection's page order.
+
+    It is a *separate hand-maintained list*, not a slice of `BARKS_TITLE_INFO`, so
+    `check_story_submitted_order` cannot see it and the two can drift apart - which they
+    did, until the list was reordered to match. These two assertions are what keep them
+    together: without them a stray entry surfaces only as an opaque page-number mismatch
+    in the reader's collection tests, or not at all when it stays inside a year-range group.
+    """
+
+    def test_one_pagers_are_in_submitted_date_order(self) -> None:
+        inverted = _inversions(ONE_PAGERS)
+        assert not inverted, (
+            "ONE_PAGERS is not in submitted-date order: "
+            + "; ".join(_describe(pair) for pair in inverted)
+            + "."
+            + _REORDER_HINT
+        )
+
+    def test_one_pagers_match_the_barks_title_info_order(self) -> None:
+        # BARKS_TITLE_INFO is chronological and gated by check_story_submitted_order, so it
+        # is the reference *order*. It is not a reference for *membership*: ONE_PAGERS is
+        # itself the definition of which titles are one-pagers, so the reference is filtered
+        # by it and the two sets are equal by construction. Deleting a located entry is
+        # caught by test_locations_keys_are_one_pagers; deleting an unlocated one is not
+        # caught anywhere - don't add a set assertion here and think it covers that.
+        reference = [info.title for info in BARKS_TITLE_INFO if info.title in set(ONE_PAGERS)]
+        drift = [
+            f"{ENUM_TO_STR_TITLE[a]!r} at index {i} where {ENUM_TO_STR_TITLE[b]!r} is expected"
+            for i, (a, b) in enumerate(zip(ONE_PAGERS, reference, strict=True))
+            if a != b
+        ]
+        assert not drift, (
+            "ONE_PAGERS is out of step with BARKS_TITLE_INFO: "
+            + "; ".join(drift[:_MAX_LISTED_DRIFT])
+            + (
+                f" (+{len(drift) - _MAX_LISTED_DRIFT} more)"
+                if len(drift) > _MAX_LISTED_DRIFT
+                else ""
+            )
+            + "."
+            + _REORDER_HINT
+        )
 
 
 class TestOnePagerLocations:

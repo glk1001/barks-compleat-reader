@@ -45,8 +45,32 @@ def _submitted_year(title: Titles) -> int:
     return ALL_FANTA_COMIC_BOOK_INFO[title].comic_book_info.submitted_year
 
 
+# Appended to a tiling-assert failure. Non-tiling has exactly one cause in practice -
+# the located list stopped being chronological - so the message names that cause, the
+# test that pinpoints it, and the repair, rather than leaving a bare page-number
+# mismatch for the reader to work backwards from.
+_COVER_TILING_HINT = (
+    " BARKS_COVERS is not in submitted-date order - a cover's submitted date was edited"
+    " in barks_covers.py without moving its list entry. Run TestCoverOrdering in"
+    " barks-fantagraphics/tests/test_all_covers_collection.py to see which covers, then"
+    " repair with experiments/covers/reorder_barks_covers.py. Reordering renumbers the"
+    " collection's pre-baked pages, so barks-stage-covers must be re-run afterwards. Do NOT"
+    " update the expected page numbers in test_collection_page_groups.py: they are derived"
+    " from this order and come back on their own once it is fixed."
+)
+_ONE_PAGER_TILING_HINT = (
+    " The ONE_PAGERS list in comic_book_info.py is not in submitted-date order. Note it is"
+    " a separate hand-maintained list, NOT a slice of BARKS_TITLE_INFO: check_story_submitted_order"
+    " validates BARKS_TITLE_INFO and cannot see ONE_PAGERS, so the two can drift apart. The"
+    " one-pager subsequence of BARKS_TITLE_INFO is the reference order to restore. Reordering"
+    " ONE_PAGERS renumbers the collection's pre-baked pages, so barks-stage-one-pagers must be"
+    " re-run afterwards. Do NOT update the expected page numbers in test_collection_page_groups.py:"
+    " they are derived."
+)
+
+
 def _group_ranges(
-    located_titles: list[Titles], year_ranges: list[tuple[int, int]]
+    located_titles: list[Titles], year_ranges: list[tuple[int, int]], hint: str = ""
 ) -> list[tuple[int, int]]:
     """Contiguous 1-based ``(first, last)`` page ranges, one per non-empty group.
 
@@ -59,6 +83,9 @@ def _group_ranges(
     partition it (undated members fold into the final group and, being latest,
     sort last). If a future data/ordering change violates that, the assert fires
     loudly rather than letting the slice silently open the wrong pages.
+
+    *hint* is appended to a tiling failure to name the ordering source to repair
+    (see ``_COVER_TILING_HINT`` / ``_ONE_PAGER_TILING_HINT``).
     """
     first_last: dict[int, tuple[int, int]] = {}
     for position, title in enumerate(located_titles, start=1):
@@ -67,17 +94,17 @@ def _group_ranges(
         first_last[group] = (min(low, position), max(high, position))
 
     ranges = [first_last[group] for group in sorted(first_last)]
-    _assert_tiling(ranges, len(located_titles))
+    _assert_tiling(ranges, len(located_titles), hint)
     return ranges
 
 
-def _assert_tiling(ranges: list[tuple[int, int]], total: int) -> None:
+def _assert_tiling(ranges: list[tuple[int, int]], total: int, hint: str = "") -> None:
     assert ranges, "no collection page groups"
-    assert ranges[0][0] == 1, f"groups must start at page 1, got {ranges[0][0]}"
-    assert ranges[-1][1] == total, f"groups must end at page {total}, got {ranges[-1][1]}"
+    assert ranges[0][0] == 1, f"groups must start at page 1, got {ranges[0][0]}.{hint}"
+    assert ranges[-1][1] == total, f"groups must end at page {total}, got {ranges[-1][1]}.{hint}"
     for (_, prev_end), (start, _) in pairwise(ranges):
         assert start == prev_end + 1, (
-            f"collection page groups are not contiguous: {prev_end} -> {start}"
+            f"collection page groups are not contiguous: {prev_end} -> {start}.{hint}"
         )
 
 
@@ -86,13 +113,15 @@ def get_cover_collection_group_ranges() -> list[tuple[int, int]]:
     """Contiguous page ranges of the cover collection's year-range groups."""
     title_by_cover = {cover: title for title, cover in COVER_BY_TITLE.items()}
     located = [title_by_cover[cover] for cover in get_located_covers()]
-    return _group_ranges(located, COVER_YEAR_RANGES)
+    return _group_ranges(located, COVER_YEAR_RANGES, _COVER_TILING_HINT)
 
 
 @cache
 def get_one_pager_collection_group_ranges() -> list[tuple[int, int]]:
     """Contiguous page ranges of the one-pager collection's year-range groups."""
-    return _group_ranges(list(get_located_one_pagers()), ONE_PAGER_YEAR_RANGES)
+    return _group_ranges(
+        list(get_located_one_pagers()), ONE_PAGER_YEAR_RANGES, _ONE_PAGER_TILING_HINT
+    )
 
 
 def get_collection_group_page_range(collection_title: Titles, page_num: int) -> tuple[int, int]:

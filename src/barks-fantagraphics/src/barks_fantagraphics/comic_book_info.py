@@ -786,12 +786,20 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.COMICS_AND_STORIES_133_COVER, False, Issues.CS, 133, 10, 1951, 5, 5, 1951),
     ComicBookInfo(Titles.COMICS_AND_STORIES_134_COVER, False, Issues.CS, 134, 11, 1951, 10, 5, 1951),
     ComicBookInfo(Titles.COMICS_AND_STORIES_135_COVER, False, Issues.CS, 135, 12, 1951, 10, 5, 1951),
+    # Submitted date for #137 cover is a guess (Barrier offers 10-May-1951 or 27-Sep-1951)
+    ComicBookInfo(Titles.COMICS_AND_STORIES_137_COVER, False, Issues.CS, 137, 2, 1952, 10, 5, 1951),
+    # Submitted date for #138 cover is a guess (Barrier offers 10-May-1951 or 27-Sep-1951)
+    ComicBookInfo(Titles.COMICS_AND_STORIES_138_COVER, False, Issues.CS, 138, 3, 1952, 10, 5, 1951),
     ComicBookInfo(Titles.COMICS_AND_STORIES_139_COVER, False, Issues.CS, 139, 4, 1952, 10, 5, 1951),
     ComicBookInfo(Titles.FOUR_COLOR_356_COVER, False, Issues.FC, 356, 11, 1951, 24, 5, 1951),
     ComicBookInfo(Titles.FOUR_COLOR_367_COVER, False, Issues.FC, 367, 1, 1952, 24, 5, 1951),
     ComicBookInfo(Titles.COMICS_AND_STORIES_136_COVER, False, Issues.CS, 136, 1, 1952, 2, 8, 1951),
     ComicBookInfo(Titles.FOUR_COLOR_386_COVER, False, Issues.FC, 386, 3, 1952, 27, 9, 1951),
+    # Submitted date for #140 cover is a guess (Barrier offers 10-May-1951 or 27-Sep-1951)
+    ComicBookInfo(Titles.COMICS_AND_STORIES_140_COVER, False, Issues.CS, 140, 5, 1952, 27, 9, 1951),
     ComicBookInfo(Titles.COMICS_AND_STORIES_141_COVER, False, Issues.CS, 141, 6, 1952, 27, 9, 1951),
+    # Submitted date for #142 cover is a guess (Barrier offers 10-May-1951 or 27-Sep-1951)
+    ComicBookInfo(Titles.COMICS_AND_STORIES_142_COVER, False, Issues.CS, 142, 7, 1952, 27, 9, 1951),
     ComicBookInfo(Titles.FOUR_COLOR_394_COVER, False, Issues.FC, 394, 5, 1952, 8, 11, 1951),
     ComicBookInfo(Titles.FOUR_COLOR_408_COVER, False, Issues.FC, 408, 7, 1952, 3, 1, 1952),
     ComicBookInfo(Titles.COMICS_AND_STORIES_143_COVER, False, Issues.CS, 143, 8, 1952, 3, 1, 1952),
@@ -830,6 +838,8 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.UNCLE_SCROOGE_7_COVER, False, Issues.US, 7, 9, 1954, 8, 10, 1953),
     ComicBookInfo(Titles.UNCLE_SCROOGE_8_COVER, False, Issues.US, 8, 12, 1955, 8, 10, 1953),
     ComicBookInfo(Titles.UNCLE_SCROOGE_9_COVER, False, Issues.US, 9, 3, 1955, 8, 10, 1953),
+    # Submitted date for US #6 cover is a guess - just used the same as the story submission date.
+    ComicBookInfo(Titles.UNCLE_SCROOGE_6_COVER, False, Issues.US, 6, 6, 1954, 29, 10, 1953),
     ComicBookInfo(Titles.COMICS_AND_STORIES_163_COVER, False, Issues.CS, 163, 4, 1954, 6, 11, 1953),
     ComicBookInfo(Titles.COMICS_AND_STORIES_166_COVER, False, Issues.CS, 166, 7, 1954, 6, 11, 1953),
     ComicBookInfo(Titles.COMICS_AND_STORIES_168_COVER, False, Issues.CS, 168, 9, 1954, 6, 11, 1953),
@@ -1020,18 +1030,8 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.DAISY_AND_DONALD_25_COVER, False, Issues.EXTRAS, 25, 8, 1977, -1, -1, -1),
     ComicBookInfo(Titles.DONALD_DUCK_ALBUM_1_BACK_COVER, False, Issues.EXTRAS, 1, 8, 1963, -1, -1, -1),
     ComicBookInfo(Titles.HUEY_DEWEY_AND_LOUIE_JUNIOR_WOODCHUCKS_9_COVER, False, Issues.HDL, 9, 4, 1971, -1, -1, -1),
-    # Submitted date for US #6 cover is a guess - just used the same as the story submission date.
-    ComicBookInfo(Titles.UNCLE_SCROOGE_6_COVER, False, Issues.US, 6, 6, 1954, 29, 10, 1953),
     ComicBookInfo(Titles.UNCLE_SCROOGE_16_COVER, False, Issues.US, 16, 12, 1957, -1, -1, -1),
     ComicBookInfo(Titles.UNCLE_SCROOGE_40_BACK_COVER, False, Issues.US, 40, 1, 1963, -1, -1, -1),
-    # Submitted date for #137 cover is a guess (Barrier offers 10-May-1951 or 27-Sep-1951)
-    ComicBookInfo(Titles.COMICS_AND_STORIES_137_COVER, False, Issues.CS, 137, 2, 1952, 10, 5, 1951),
-    # Submitted date for #138 cover is a guess (Barrier offers 10-May-1951 or 27-Sep-1951)
-    ComicBookInfo(Titles.COMICS_AND_STORIES_138_COVER, False, Issues.CS, 138, 3, 1952, 10, 5, 1951),
-    # Submitted date for #140 cover is a guess (Barrier offers 10-May-1951 or 27-Sep-1951)
-    ComicBookInfo(Titles.COMICS_AND_STORIES_140_COVER, False, Issues.CS, 140, 5, 1952, 27, 9, 1951),
-    # Submitted date for #142 cover is a guess (Barrier offers 10-May-1951 or 27-Sep-1951)
-    ComicBookInfo(Titles.COMICS_AND_STORIES_142_COVER, False, Issues.CS, 142, 7, 1952, 27, 9, 1951),
     ComicBookInfo(Titles.COMICS_AND_STORIES_405_COVER, False, Issues.CS, 405, 6, 1974, -1, -1, -1),
     # Synthetic "All One-Pagers" collection - bundles every one-pager into one comic.
     ComicBookInfo(Titles.ALL_ONE_PAGERS, True, Issues.EXTRAS, 1, 1, 1982, 1, 1, 1982),
@@ -1068,10 +1068,10 @@ ONE_PAGERS = [
     Titles.SLIPPERY_SHINE,
     Titles.FRACTIOUS_FUN,
     Titles.KING_SIZE_CONE,
-    Titles.NO_NOISE_IS_GOOD_NOISE,
     Titles.TOASTY_TOYS,
     Titles.NO_PLACE_TO_HIDE,
     Titles.TIED_DOWN_TOOLS,
+    Titles.NO_NOISE_IS_GOOD_NOISE,
     Titles.NOISE_NULLIFIER,
     Titles.MATINEE_MADNESS,
     Titles.FETCHING_PRICE_A,
@@ -1118,6 +1118,7 @@ ONE_PAGERS = [
     Titles.REMEMBER_THIS,
     Titles.DEEP_DECISION,
     Titles.SMASH_SUCCESS,
+    Titles.LUNCHEON_LAMENT,
     Titles.COME_AS_YOU_ARE,
     Titles.ROUNDABOUT_HANDOUT,
     Titles.WATT_AN_OCCASION,
@@ -1126,7 +1127,6 @@ ONE_PAGERS = [
     Titles.ART_OF_SECURITY_THE,
     Titles.FASHION_FORECAST,
     Titles.MUSH,
-    Titles.LUNCHEON_LAMENT,
     Titles.GOLD_RUSH,
     Titles.FIREFLIES_ARE_FREE,
     Titles.EARLY_TO_BUILD,
@@ -1152,6 +1152,7 @@ ONE_PAGERS = [
     Titles.THAT_SINKING_FEELING,
     Titles.BALMY_SWAMI_THE,
     Titles.WINDY_STORY_THE,
+    Titles.ALL_CHOKED_UP,
     Titles.MOOLA_ON_THE_MOVE,
     Titles.THUMBS_UP,
     Titles.BILL_WIND,
@@ -1161,7 +1162,6 @@ ONE_PAGERS = [
     Titles.KITTY_GO_ROUND,
     Titles.POOR_LOSER,
     Titles.CRAWLS_FOR_CASH,
-    Titles.ALL_CHOKED_UP,
     Titles.BIRD_CAMERA_THE,
     Titles.ODD_ORDER_THE,
     Titles.MONEY_HAT_THE,
@@ -1193,8 +1193,8 @@ ONE_PAGERS = [
     Titles.UP_AND_AT_IT,
     Titles.FIREMAN_SCROOGE,
     Titles.SAVED_BY_THE_BAG,
-    Titles.TICKING_DETECTOR,
     Titles.IT_HAPPENED_ONE_WINTER,
+    Titles.TICKING_DETECTOR,
     Titles.LOCK_OUT_THE,
     Titles.BIGGER_THE_BEGGAR_THE,
     Titles.PLUMMETING_WITH_PRECISION,
@@ -1430,6 +1430,10 @@ def is_one_pager_located(title: Titles) -> bool:
 
 def get_located_one_pagers() -> list[Titles]:
     """Return one-pagers with an authored location, in chronological order.
+
+    `ONE_PAGERS` is submitted-date ordered, gated by `TestOnePagerOrdering`. Its
+    positions drive the collection's pre-baked page numbering, so reordering it
+    requires re-running barks-stage-one-pagers.
 
     Returns:
         The located one-pager titles, ordered as in `ONE_PAGERS`.

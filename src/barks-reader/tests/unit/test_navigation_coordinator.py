@@ -312,8 +312,10 @@ class TestNavigationCoordinator:
         assert call.args[0] is mock_collection_info
         assert call.args[1] is mock_comic
         assert call.args[2] == "3"
-        # Opens only page 3's year-range group (the first cover group).
-        assert call.kwargs["collection_page_range"] == (1, 52)
+        # Opens only page 3's year-range group (the first cover group). Derived from
+        # BARKS_COVERS order - see TestGroupRanges in test_collection_page_groups.py
+        # before editing this number.
+        assert call.kwargs["collection_page_range"] == (1, 56)
         # History records the cover's own title, not the collection's.
         assert call.kwargs["history_title_str"] == ENUM_TO_STR_TITLE[Titles.FOUR_COLOR_189_COVER]
 

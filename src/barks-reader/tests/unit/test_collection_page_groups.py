@@ -66,9 +66,21 @@ class TestYearRangeGroup:
 
 
 class TestGroupRanges:
+    """Snapshots of the real collections' page groups.
+
+    Every number below is *derived* from the located lists' chronological order, so
+    a mismatch is never a bug in this file. It means one of two things:
+
+    * ``TestCoverOrdering`` (barks-fantagraphics/tests/test_all_covers_collection.py)
+      also fails - the source order is broken. Repair that; these numbers return by
+      themselves. Do not edit them.
+    * ``TestCoverOrdering`` passes - cover/one-pager data legitimately changed, so
+      the groups legitimately moved. Update these to whatever the run reports.
+    """
+
     def test_cover_group_ranges_tile_the_collection(self) -> None:
         ranges = get_cover_collection_group_ranges()
-        assert ranges == [(1, 52), (53, 90), (91, 145), (146, 192)]
+        assert ranges == [(1, 56), (57, 95), (96, 150), (151, 192)]
 
     def test_one_pager_group_ranges_tile_the_collection(self) -> None:
         ranges = get_one_pager_collection_group_ranges()
@@ -161,16 +173,18 @@ class TestAssertTiling:
 
 
 class TestGetCollectionGroupPageRange:
+    """Derived page numbers - see ``TestGroupRanges`` before editing any of them."""
+
     def test_cover_in_middle_group(self) -> None:
-        # A cover in the 1953-1955 bucket (pages 53-90).
-        assert get_collection_group_page_range(Titles.ALL_COVERS, 70) == (53, 90)
+        # A cover in the 1953-1955 bucket (pages 57-95).
+        assert get_collection_group_page_range(Titles.ALL_COVERS, 70) == (57, 95)
 
     def test_cover_first_group(self) -> None:
-        assert get_collection_group_page_range(Titles.ALL_COVERS, 1) == (1, 52)
+        assert get_collection_group_page_range(Titles.ALL_COVERS, 1) == (1, 56)
 
     def test_undated_cover_folds_into_final_group(self) -> None:
-        # The 6 undated covers sort last (pages 181-186) and fold into the final group.
-        assert get_collection_group_page_range(Titles.ALL_COVERS, 186) == (146, 192)
+        # The 1 undated cover sorts last (page 192) and folds into the final group.
+        assert get_collection_group_page_range(Titles.ALL_COVERS, 192) == (151, 192)
 
     def test_one_pager_group(self) -> None:
         assert get_collection_group_page_range(Titles.ALL_ONE_PAGERS, 100) == (93, 133)
