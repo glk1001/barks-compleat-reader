@@ -224,6 +224,38 @@ def parse_month_token(token: str) -> int:
     return MONTHS.get(token.lower().rstrip(".")[:3], -1)
 
 
+MONTH_SPAN_RE = re.compile(r"([A-Za-z]{3,9})\.?\s*-\s*([A-Za-z]{3,9})\.?")
+
+
+def curated_cover_year(raw_date: str, issue_year: int) -> int:
+    """The cover year implied by an issue date whose month span crosses a year.
+
+    Dell dated its quarterly issues with a month span and a single printed year
+    ("Dec.-Feb. 1957"); that year belongs to the span's *end* month, so the
+    issue was really on sale from December of the year before. ``comic_book_info``
+    dates such an issue by its start month, and a cover must agree with the
+    stories printed behind it - so return the printed year minus one. Two forms
+    already carry the start year and are returned unchanged: a bracketed code
+    date ("Dec.-Feb. 1961 [(November) 1960]"), which ``parse_issue_date`` reads
+    in preference, and a two-year span ("Dec. 1953-Feb. 1954").
+
+    Args:
+        raw_date: The issue header's date text, as printed by Barrier.
+        issue_year: The year ``parse_issue_date`` read out of it.
+
+    Returns:
+        The year the cover registry and ``comic_book_info`` date the issue by.
+
+    """
+    if "[" in raw_date or len(re.findall(r"19\d{2}", raw_date)) != 1:
+        return issue_year
+    span = MONTH_SPAN_RE.search(raw_date)
+    if span is None:
+        return issue_year
+    start, end = (parse_month_token(token) for token in span.groups())
+    return issue_year - 1 if start > end > 0 else issue_year
+
+
 def parse_submission_date(paren_text: str) -> tuple[int, int, int, bool] | None:
     """Return (day, month, year, unavailable) for a strict submission date."""
     # Drop any inline tags and bracketed annotations, e.g.
@@ -918,10 +950,13 @@ def collect_covers(series_list: list[BibSeries], warnings: list[str]) -> list[Co
                             f"(Illustrating {raw!r}) — add to ILLUSTRATES_OVERRIDES"
                         )
 
-                seq_key = (series_name, issue.issue_number, issue.issue_year, kind)
+                # A cover is dated like the stories behind it, by the start of
+                # Barrier's cover-date span - not by his printed end year.
+                cover_year = curated_cover_year(issue.raw_date, issue.issue_year)
+                seq_key = (series_name, issue.issue_number, cover_year, kind)
                 seq = seqs.get(seq_key, 0)
                 seqs[seq_key] = seq + 1
-                e.cover_key = (series_name, issue.issue_number, issue.issue_year, kind, seq)
+                e.cover_key = (series_name, issue.issue_number, cover_year, kind, seq)
                 recs.append(
                     CoverRec(
                         entry=e,
@@ -929,7 +964,7 @@ def collect_covers(series_list: list[BibSeries], warnings: list[str]) -> list[Co
                         issue_name=issue.issue_name,
                         issue_number=issue.issue_number,
                         issue_month=issue.issue_month,
-                        issue_year=issue.issue_year,
+                        issue_year=cover_year,
                         kind=kind,
                         seq=seq,
                         qualifier=qualifier,

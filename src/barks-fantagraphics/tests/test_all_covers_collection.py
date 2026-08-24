@@ -73,11 +73,18 @@ class TestCoverTitles:
         for title in COVERS:
             assert by_title[title].is_barks_title is False
 
-    def test_every_cover_has_a_placeholder_payment(self) -> None:
+    def test_every_cover_has_a_single_page_payment_record(self) -> None:
+        """A cover is paid as one page, with the fee usually unrecorded.
+
+        Barrier's bibliography prices stories, not covers, so a cover's fee is
+        the -1.0 placeholder unless a separate source (cbarks.dk) records the
+        real amount - a positive figure the reader then shows on the payslip.
+        Zero is not a fee: it would read as "Barks worked for nothing".
+        """
         for title in COVERS:
             payment = BARKS_PAYMENTS[title]
             assert payment.num_pages == 1
-            assert payment.payment == -1.0
+            assert payment.payment == -1.0 or payment.payment > 0.0, title.name
 
     def test_collection_page_num(self) -> None:
         located = get_located_covers()

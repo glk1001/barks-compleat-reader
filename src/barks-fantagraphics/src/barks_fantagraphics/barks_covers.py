@@ -980,7 +980,7 @@ BARKS_COVERS: list[BarksCover] = [
         series_name="UNCLE SCROOGE",
         issue_number=4,
         issue_month=12,
-        issue_year=1954,
+        issue_year=1953,
         kind=CoverKind.FRONT,
         seq=0,
         qualifier=CoverQualifier.ART_ONLY,
@@ -1085,7 +1085,7 @@ BARKS_COVERS: list[BarksCover] = [
         series_name="UNCLE SCROOGE",
         issue_number=8,
         issue_month=12,
-        issue_year=1955,
+        issue_year=1954,
         kind=CoverKind.FRONT,
         seq=0,
         qualifier=None,
@@ -1385,7 +1385,7 @@ BARKS_COVERS: list[BarksCover] = [
         series_name="UNCLE SCROOGE",
         issue_number=12,
         issue_month=12,
-        issue_year=1956,
+        issue_year=1955,
         kind=CoverKind.FRONT,
         seq=0,
         qualifier=None,
@@ -1475,7 +1475,7 @@ BARKS_COVERS: list[BarksCover] = [
         series_name="UNCLE SCROOGE",
         issue_number=16,
         issue_month=12,
-        issue_year=1957,
+        issue_year=1956,
         kind=CoverKind.FRONT,
         seq=0,
         qualifier=None,
@@ -1505,7 +1505,7 @@ BARKS_COVERS: list[BarksCover] = [
         series_name="UNCLE SCROOGE",
         issue_number=16,
         issue_month=12,
-        issue_year=1957,
+        issue_year=1956,
         kind=CoverKind.BACK,
         seq=0,
         qualifier=None,
@@ -1715,7 +1715,7 @@ BARKS_COVERS: list[BarksCover] = [
         series_name="UNCLE SCROOGE",
         issue_number=20,
         issue_month=12,
-        issue_year=1958,
+        issue_year=1957,
         kind=CoverKind.FRONT,
         seq=0,
         qualifier=CoverQualifier.ART_ONLY,
@@ -1805,7 +1805,7 @@ BARKS_COVERS: list[BarksCover] = [
         series_name="UNCLE SCROOGE",
         issue_number=24,
         issue_month=12,
-        issue_year=1959,
+        issue_year=1958,
         kind=CoverKind.FRONT,
         seq=0,
         qualifier=CoverQualifier.ART_ONLY,
@@ -2105,7 +2105,7 @@ BARKS_COVERS: list[BarksCover] = [
         series_name="GYRO GEARLOOSE",
         issue_number=1047,
         issue_month=11,
-        issue_year=1960,
+        issue_year=1959,
         kind=CoverKind.FRONT,
         seq=0,
         qualifier=None,
@@ -2120,7 +2120,7 @@ BARKS_COVERS: list[BarksCover] = [
         series_name="GYRO GEARLOOSE",
         issue_number=1047,
         issue_month=11,
-        issue_year=1960,
+        issue_year=1959,
         kind=CoverKind.INSIDE_FRONT,
         seq=0,
         qualifier=None,
@@ -2180,7 +2180,7 @@ BARKS_COVERS: list[BarksCover] = [
         series_name="UNCLE SCROOGE",
         issue_number=28,
         issue_month=12,
-        issue_year=1960,
+        issue_year=1959,
         kind=CoverKind.FRONT,
         seq=0,
         qualifier=None,
@@ -2225,7 +2225,7 @@ BARKS_COVERS: list[BarksCover] = [
         series_name="UNCLE SCROOGE",
         issue_number=32,
         issue_month=12,
-        issue_year=1961,
+        issue_year=1960,
         kind=CoverKind.FRONT,
         seq=0,
         qualifier=CoverQualifier.ART_ONLY,
@@ -2525,7 +2525,7 @@ BARKS_COVERS: list[BarksCover] = [
         series_name="UNCLE SCROOGE",
         issue_number=36,
         issue_month=12,
-        issue_year=1962,
+        issue_year=1961,
         kind=CoverKind.FRONT,
         seq=0,
         qualifier=CoverQualifier.ART_ONLY,
@@ -4073,7 +4073,7 @@ COVER_LOCATIONS: dict[CoverKey, tuple[int, int]] = {
     ("UNCLE SCROOGE", 386, 1952, "FRONT", 0): (12, 223),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 456, 1953, "FRONT", 0): (12, 227),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 495, 1953, "FRONT", 0): (12, 231),  # page offset extrapolated - verify
-    ("UNCLE SCROOGE", 4, 1954, "FRONT", 0): (12, 235),  # page offset extrapolated - verify
+    ("UNCLE SCROOGE", 4, 1953, "FRONT", 0): (12, 235),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 5, 1954, "FRONT", 0): (12, 239),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 6, 1954, "FRONT", 0): (12, 243),  # page offset extrapolated - verify
     ("DONALD DUCK", 394, 1952, "FRONT", 0): (13, 189),  # page offset extrapolated - verify
@@ -4098,11 +4098,11 @@ COVER_LOCATIONS: dict[CoverKey, tuple[int, int]] = {
     ("WALT DISNEY’S COMICS AND STORIES", 158, 1953, "FRONT", 0): (13, 208),  # page offset extrapolated - verify
     ("DONALD DUCK", 26, 1952, "FRONT", 0): (13, 209),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 7, 1954, "FRONT", 0): (14, 215),  # page offset extrapolated - verify
-    ("UNCLE SCROOGE", 8, 1955, "FRONT", 0): (14, 217),  # page offset extrapolated - verify
+    ("UNCLE SCROOGE", 8, 1954, "FRONT", 0): (14, 217),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 9, 1955, "FRONT", 0): (14, 219),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 10, 1955, "FRONT", 0): (14, 221),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 11, 1955, "FRONT", 0): (14, 225),  # page offset extrapolated - verify
-    ("UNCLE SCROOGE", 12, 1956, "FRONT", 0): (14, 229),  # page offset extrapolated - verify
+    ("UNCLE SCROOGE", 12, 1955, "FRONT", 0): (14, 229),  # page offset extrapolated - verify
     ("WALT DISNEY’S COMICS AND STORIES", 159, 1953, "FRONT", 0): (15, 205),  # page offset extrapolated - verify
     ("WALT DISNEY’S COMICS AND STORIES", 160, 1954, "FRONT", 0): (15, 206),  # page offset extrapolated - verify
     ("WALT DISNEY’S COMICS AND STORIES", 161, 1954, "FRONT", 0): (15, 207),  # page offset extrapolated - verify; also reprinted in vol 30 p204
@@ -4126,7 +4126,7 @@ COVER_LOCATIONS: dict[CoverKey, tuple[int, int]] = {
     ("UNCLE SCROOGE", 13, 1956, "FRONT", 0): (16, 211),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 14, 1956, "FRONT", 0): (16, 215),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 15, 1956, "FRONT", 0): (16, 219),  # page offset extrapolated - verify
-    ("UNCLE SCROOGE", 16, 1957, "FRONT", 0): (16, 221),  # page offset extrapolated - verify
+    ("UNCLE SCROOGE", 16, 1956, "FRONT", 0): (16, 221),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 17, 1957, "FRONT", 0): (16, 223),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 18, 1957, "FRONT", 0): (16, 227),  # page offset extrapolated - verify
     ("WALT DISNEY’S COMICS AND STORIES", 178, 1955, "FRONT", 0): (17, 180),  # page offset extrapolated - verify
@@ -4150,7 +4150,7 @@ COVER_LOCATIONS: dict[CoverKey, tuple[int, int]] = {
     ("WALT DISNEY’S COMICS AND STORIES", 215, 1958, "FRONT", 0): (19, 188),  # page offset extrapolated - verify
     ("WALT DISNEY’S COMICS AND STORIES", 216, 1958, "FRONT", 0): (19, 190),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 19, 1957, "FRONT", 0): (20, 187),  # page offset extrapolated - verify
-    ("UNCLE SCROOGE", 20, 1958, "FRONT", 0): (20, 188),  # page offset extrapolated - verify
+    ("UNCLE SCROOGE", 20, 1957, "FRONT", 0): (20, 188),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 21, 1958, "FRONT", 0): (20, 190),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 22, 1958, "FRONT", 0): (20, 192),  # page offset extrapolated - verify
     ("WALT DISNEY’S COMICS AND STORIES", 218, 1958, "FRONT", 0): (21, 180),  # page offset extrapolated - verify
@@ -4158,7 +4158,7 @@ COVER_LOCATIONS: dict[CoverKey, tuple[int, int]] = {
     ("DONALD DUCK", 65, 1959, "FRONT", 0): (21, 188),  # page offset extrapolated - verify
     ("WALT DISNEY’S COMICS AND STORIES", 226, 1959, "FRONT", 0): (21, 192),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 23, 1958, "FRONT", 0): (22, 188),  # page offset extrapolated - verify
-    ("UNCLE SCROOGE", 24, 1959, "FRONT", 0): (22, 189),  # page offset extrapolated - verify
+    ("UNCLE SCROOGE", 24, 1958, "FRONT", 0): (22, 189),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 25, 1959, "FRONT", 0): (22, 191),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 26, 1959, "FRONT", 0): (22, 193),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 27, 1959, "FRONT", 0): (22, 195),  # page offset extrapolated - verify
@@ -4170,11 +4170,11 @@ COVER_LOCATIONS: dict[CoverKey, tuple[int, int]] = {
     ("WALT DISNEY’S COMICS AND STORIES", 233, 1960, "FRONT", 0): (23, 186),  # page offset extrapolated - verify
     ("GRANDMA DUCK’S FARM FRIENDS", 1073, 1960, "FRONT", 0): (23, 188),  # page offset extrapolated - verify
     ("WALT DISNEY’S COMICS AND STORIES", 235, 1960, "FRONT", 0): (23, 190),  # page offset extrapolated - verify
-    ("UNCLE SCROOGE", 28, 1960, "FRONT", 0): (24, 186),  # page offset extrapolated - verify
+    ("UNCLE SCROOGE", 28, 1959, "FRONT", 0): (24, 186),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 29, 1960, "FRONT", 0): (24, 187),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 30, 1960, "FRONT", 0): (24, 189),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 31, 1960, "FRONT", 0): (24, 191),  # page offset extrapolated - verify
-    ("GYRO GEARLOOSE", 1047, 1960, "FRONT", 0): (24, 193),  # page offset extrapolated - verify
+    ("GYRO GEARLOOSE", 1047, 1959, "FRONT", 0): (24, 193),  # page offset extrapolated - verify
     ("DONALD DUCK", 70, 1960, "FRONT", 0): (25, 178),  # page offset extrapolated - verify
     ("WALT DISNEY’S COMICS AND STORIES", 236, 1960, "FRONT", 0): (25, 179),  # page offset extrapolated - verify
     ("DONALD DUCK", 71, 1960, "FRONT", 0): (25, 180),  # page offset extrapolated - verify
@@ -4188,11 +4188,11 @@ COVER_LOCATIONS: dict[CoverKey, tuple[int, int]] = {
     ("DONALD DUCK ALBUM", 1140, 1960, "FRONT", 0): (25, 188),  # page offset extrapolated - verify
     ("WALT DISNEY’S COMICS AND STORIES", 242, 1960, "FRONT", 0): (25, 189),  # page offset extrapolated - verify
     ("WALT DISNEY’S COMICS AND STORIES", 243, 1960, "FRONT", 0): (25, 191),  # page offset extrapolated - verify
-    ("UNCLE SCROOGE", 32, 1961, "FRONT", 0): (26, 185),  # page offset extrapolated - verify
+    ("UNCLE SCROOGE", 32, 1960, "FRONT", 0): (26, 185),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 33, 1961, "FRONT", 0): (26, 186),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 34, 1961, "FRONT", 0): (26, 188),  # page offset extrapolated - verify
     ("UNCLE SCROOGE", 35, 1961, "FRONT", 0): (26, 190),  # page offset extrapolated - verify
-    ("UNCLE SCROOGE", 36, 1962, "FRONT", 0): (26, 192),  # page offset extrapolated - verify
+    ("UNCLE SCROOGE", 36, 1961, "FRONT", 0): (26, 192),  # page offset extrapolated - verify
     ("GYRO GEARLOOSE", 1095, 1960, "FRONT", 0): (26, 194),  # page offset extrapolated - verify
     ("WALT DISNEY’S COMICS AND STORIES", 247, 1961, "FRONT", 0): (27, 173),  # page offset extrapolated - verify
     ("DONALD DUCK", 77, 1961, "FRONT", 0): (27, 174),  # page offset extrapolated - verify

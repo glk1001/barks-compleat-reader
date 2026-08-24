@@ -4691,7 +4691,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         title=Titles.FOUR_COLOR_1047_COVER,
                         disposition=Disposition.COVER,
                         disposition_reason=None,
-                        cover_key=("GYRO GEARLOOSE", 1047, 1960, "FRONT", 0),
+                        cover_key=("GYRO GEARLOOSE", 1047, 1959, "FRONT", 0),
                     ),
                     BibEntry(
                         raw_title="Inside front cover",
@@ -4708,7 +4708,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         title=Titles.FOUR_COLOR_1047_INSIDE_FRONT_COVER,
                         disposition=Disposition.COVER,
                         disposition_reason=None,
-                        cover_key=("GYRO GEARLOOSE", 1047, 1960, "INSIDE_FRONT", 0),
+                        cover_key=("GYRO GEARLOOSE", 1047, 1959, "INSIDE_FRONT", 0),
                     ),
                     BibEntry(
                         raw_title="GYRO GEARLOOSE The Gab-muffer",
@@ -7709,7 +7709,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         title=Titles.UNCLE_SCROOGE_4_COVER,
                         disposition=Disposition.COVER,
                         disposition_reason=None,
-                        cover_key=("UNCLE SCROOGE", 4, 1954, "FRONT", 0),
+                        cover_key=("UNCLE SCROOGE", 4, 1953, "FRONT", 0),
                     ),
                     BibEntry(
                         raw_title="UNCLE SCROOGE",
@@ -8152,7 +8152,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         title=Titles.UNCLE_SCROOGE_8_COVER,
                         disposition=Disposition.COVER,
                         disposition_reason=None,
-                        cover_key=("UNCLE SCROOGE", 8, 1955, "FRONT", 0),
+                        cover_key=("UNCLE SCROOGE", 8, 1954, "FRONT", 0),
                     ),
                     BibEntry(
                         raw_title="UNCLE SCROOGE",
@@ -8584,7 +8584,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         title=Titles.UNCLE_SCROOGE_12_COVER,
                         disposition=Disposition.COVER,
                         disposition_reason=None,
-                        cover_key=("UNCLE SCROOGE", 12, 1956, "FRONT", 0),
+                        cover_key=("UNCLE SCROOGE", 12, 1955, "FRONT", 0),
                     ),
                     BibEntry(
                         raw_title="UNCLE SCROOGE",
@@ -9066,7 +9066,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         title=Titles.UNCLE_SCROOGE_16_COVER,
                         disposition=Disposition.COVER,
                         disposition_reason=None,
-                        cover_key=("UNCLE SCROOGE", 16, 1957, "FRONT", 0),
+                        cover_key=("UNCLE SCROOGE", 16, 1956, "FRONT", 0),
                     ),
                     BibEntry(
                         raw_title="UNCLE SCROOGE",
@@ -9168,7 +9168,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         title=Titles.UNCLE_SCROOGE_16_BACK_COVER,
                         disposition=Disposition.COVER,
                         disposition_reason=None,
-                        cover_key=("UNCLE SCROOGE", 16, 1957, "BACK", 0),
+                        cover_key=("UNCLE SCROOGE", 16, 1956, "BACK", 0),
                     ),
                 ),
                 notes=(),
@@ -9496,7 +9496,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         title=Titles.UNCLE_SCROOGE_20_COVER,
                         disposition=Disposition.COVER,
                         disposition_reason=None,
-                        cover_key=("UNCLE SCROOGE", 20, 1958, "FRONT", 0),
+                        cover_key=("UNCLE SCROOGE", 20, 1957, "FRONT", 0),
                     ),
                     BibEntry(
                         raw_title="UNCLE SCROOGE in City of Golden Roofs",
@@ -9947,7 +9947,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         title=Titles.UNCLE_SCROOGE_24_COVER,
                         disposition=Disposition.COVER,
                         disposition_reason=None,
-                        cover_key=("UNCLE SCROOGE", 24, 1959, "FRONT", 0),
+                        cover_key=("UNCLE SCROOGE", 24, 1958, "FRONT", 0),
                     ),
                     BibEntry(
                         raw_title="UNCLE SCROOGE and The Twenty-four Carat Moon",
@@ -10360,7 +10360,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         title=Titles.UNCLE_SCROOGE_28_COVER,
                         disposition=Disposition.COVER,
                         disposition_reason=None,
-                        cover_key=("UNCLE SCROOGE", 28, 1960, "FRONT", 0),
+                        cover_key=("UNCLE SCROOGE", 28, 1959, "FRONT", 0),
                     ),
                     BibEntry(
                         raw_title="UNCLE SCROOGE and the “Paul Bunyan” Machine",
@@ -10742,7 +10742,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         title=Titles.UNCLE_SCROOGE_32_COVER,
                         disposition=Disposition.COVER,
                         disposition_reason=None,
-                        cover_key=("UNCLE SCROOGE", 32, 1961, "FRONT", 0),
+                        cover_key=("UNCLE SCROOGE", 32, 1960, "FRONT", 0),
                     ),
                     BibEntry(
                         raw_title="UNCLE SCROOGE That’s No Fable!",
@@ -11183,7 +11183,7 @@ BIBLIOGRAPHY: list[BibSeries] = [
                         title=Titles.UNCLE_SCROOGE_36_COVER,
                         disposition=Disposition.COVER,
                         disposition_reason=None,
-                        cover_key=("UNCLE SCROOGE", 36, 1962, "FRONT", 0),
+                        cover_key=("UNCLE SCROOGE", 36, 1961, "FRONT", 0),
                     ),
                     BibEntry(
                         raw_title="UNCLE SCROOGE The Midas Touch",
