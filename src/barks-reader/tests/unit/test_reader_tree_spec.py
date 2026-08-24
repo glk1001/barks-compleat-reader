@@ -255,9 +255,9 @@ STORY_GROUP text='[b]Series[/b]' dest=AllSeriesDestination() press=TOGGLE_ONLY r
     YEAR_RANGE text='[b]1957-1962[/b] [i](41)[/i]' dest=YearRangeDestination(start=1957, end=1962, kind=YearRangeKind.ONE_PAGER) press=TOGGLE_ONLY register=None closed=False yrk=ONE_PAGER lazy=True repopulate=False
   STORY_GROUP text='[b]Covers[/b] [i](192)[/i]' dest=SeriesDestination(series_name='Covers') press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
     YEAR_RANGE text='[b]1948-1952[/b] [i](56)[/i]' dest=YearRangeDestination(start=1948, end=1952, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False yrk=COVER lazy=True repopulate=False
-    YEAR_RANGE text='[b]1953-1955[/b] [i](39)[/i]' dest=YearRangeDestination(start=1953, end=1955, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False yrk=COVER lazy=True repopulate=False
+    YEAR_RANGE text='[b]1953-1955[/b] [i](40)[/i]' dest=YearRangeDestination(start=1953, end=1955, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False yrk=COVER lazy=True repopulate=False
     YEAR_RANGE text='[b]1956-1959[/b] [i](55)[/i]' dest=YearRangeDestination(start=1956, end=1959, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False yrk=COVER lazy=True repopulate=False
-    YEAR_RANGE text='[b]1960-1965[/b] [i](42)[/i]' dest=YearRangeDestination(start=1960, end=1965, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False yrk=COVER lazy=True repopulate=False
+    YEAR_RANGE text='[b]1960-1965[/b] [i](41)[/i]' dest=YearRangeDestination(start=1960, end=1965, kind=YearRangeKind.COVER) press=TOGGLE_ONLY register=None closed=False yrk=COVER lazy=True repopulate=False
 """  # noqa: E501
 
 _FAVOURITES_CATEGORY_SNAPSHOT = """
@@ -373,11 +373,7 @@ class TestStoriesSubtree:
     def test_one_pager_and_cover_groups_hold_every_title(
         self, specs: tuple[NodeSpec, ...], title_lists: dict[str, list[FantaComicBookInfo]]
     ) -> None:
-        """The year-range groups partition the whole series — nothing is dropped.
-
-        In particular the 6 undated covers (submitted_year == -1) fold into the
-        final Covers group rather than vanishing.
-        """
+        """The year-range groups partition the whole series — nothing is dropped."""
         series = specs[1].children[1]
         by_name = {
             spec.destination.series_name: spec  # ty: ignore[unresolved-attribute]
@@ -401,7 +397,7 @@ class TestStoriesSubtree:
         ]
         # Derived from BARKS_COVERS order - see TestGroupRanges in
         # test_collection_page_groups.py before editing this count.
-        assert len(undated) == 1
+        assert len(undated) == 0
 
     def test_simple_series_defer_their_title_rows(self, specs: tuple[NodeSpec, ...]) -> None:
         series = specs[1].children[1]

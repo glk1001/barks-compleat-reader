@@ -80,7 +80,7 @@ class TestGroupRanges:
 
     def test_cover_group_ranges_tile_the_collection(self) -> None:
         ranges = get_cover_collection_group_ranges()
-        assert ranges == [(1, 56), (57, 95), (96, 150), (151, 192)]
+        assert ranges == [(1, 56), (57, 96), (97, 151), (152, 192)]
 
     def test_one_pager_group_ranges_tile_the_collection(self) -> None:
         ranges = get_one_pager_collection_group_ranges()
@@ -176,15 +176,15 @@ class TestGetCollectionGroupPageRange:
     """Derived page numbers - see ``TestGroupRanges`` before editing any of them."""
 
     def test_cover_in_middle_group(self) -> None:
-        # A cover in the 1953-1955 bucket (pages 57-95).
-        assert get_collection_group_page_range(Titles.ALL_COVERS, 70) == (57, 95)
+        # A cover in the 1953-1955 bucket (pages 57-96).
+        assert get_collection_group_page_range(Titles.ALL_COVERS, 70) == (57, 96)
 
     def test_cover_first_group(self) -> None:
         assert get_collection_group_page_range(Titles.ALL_COVERS, 1) == (1, 56)
 
     def test_undated_cover_folds_into_final_group(self) -> None:
-        # The 1 undated cover sorts last (page 192) and folds into the final group.
-        assert get_collection_group_page_range(Titles.ALL_COVERS, 192) == (151, 192)
+        # There are 0 undated covers.
+        assert get_collection_group_page_range(Titles.ALL_COVERS, 192) == (152, 192)
 
     def test_one_pager_group(self) -> None:
         assert get_collection_group_page_range(Titles.ALL_ONE_PAGERS, 100) == (93, 133)

@@ -789,6 +789,7 @@ class Titles(IntEnum):
     UNCLE_SCROOGE_13_COVER = auto()
     DONALD_DUCK_46_COVER = auto()
     UNCLE_SCROOGE_15_COVER = auto()
+    UNCLE_SCROOGE_16_COVER = auto()
     UNCLE_SCROOGE_14_COVER = auto()
     UNCLE_SCROOGE_16_BACK_COVER = auto()
     UNCLE_SCROOGE_17_COVER = auto()
@@ -956,7 +957,6 @@ class Titles(IntEnum):
     DAISY_AND_DONALD_25_COVER = auto()
     DONALD_DUCK_ALBUM_1_BACK_COVER = auto()
     HUEY_DEWEY_AND_LOUIE_JUNIOR_WOODCHUCKS_9_COVER = auto()
-    UNCLE_SCROOGE_16_COVER = auto()
     UNCLE_SCROOGE_40_BACK_COVER = auto()
     COMICS_AND_STORIES_405_COVER = auto()
     # Synthetic collection (not a real Barks story) - bundles every one-pager.

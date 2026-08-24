@@ -863,6 +863,8 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.UNCLE_SCROOGE_13_COVER, False, Issues.US, 13, 3, 1956, 1, 9, 1955),
     ComicBookInfo(Titles.DONALD_DUCK_46_COVER, False, Issues.DD, 46, 3, 1956, 15, 9, 1955),
     ComicBookInfo(Titles.UNCLE_SCROOGE_15_COVER, False, Issues.US, 15, 9, 1956, 15, 9, 1955),
+    # US #16 Cover submission dates guess - using cbarks.dk payment accepted date.
+    ComicBookInfo(Titles.UNCLE_SCROOGE_16_COVER, False, Issues.US, 16, 12, 1957, 17, 11, 1955),
     ComicBookInfo(Titles.UNCLE_SCROOGE_14_COVER, False, Issues.US, 14, 6, 1956, 8, 12, 1955),
     ComicBookInfo(Titles.UNCLE_SCROOGE_16_BACK_COVER, False, Issues.US, 16, 12, 1957, 24, 5, 1956),
     ComicBookInfo(Titles.UNCLE_SCROOGE_17_COVER, False, Issues.US, 17, 3, 1957, 16, 8, 1956),
@@ -1030,7 +1032,6 @@ BARKS_TITLE_INFO: list[ComicBookInfo] = [
     ComicBookInfo(Titles.DAISY_AND_DONALD_25_COVER, False, Issues.EXTRAS, 25, 8, 1977, -1, -1, -1),
     ComicBookInfo(Titles.DONALD_DUCK_ALBUM_1_BACK_COVER, False, Issues.EXTRAS, 1, 8, 1963, -1, -1, -1),
     ComicBookInfo(Titles.HUEY_DEWEY_AND_LOUIE_JUNIOR_WOODCHUCKS_9_COVER, False, Issues.HDL, 9, 4, 1971, -1, -1, -1),
-    ComicBookInfo(Titles.UNCLE_SCROOGE_16_COVER, False, Issues.US, 16, 12, 1957, -1, -1, -1),
     ComicBookInfo(Titles.UNCLE_SCROOGE_40_BACK_COVER, False, Issues.US, 40, 1, 1963, -1, -1, -1),
     ComicBookInfo(Titles.COMICS_AND_STORIES_405_COVER, False, Issues.CS, 405, 6, 1974, -1, -1, -1),
     # Synthetic "All One-Pagers" collection - bundles every one-pager into one comic.
