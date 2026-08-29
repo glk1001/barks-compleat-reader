@@ -9,6 +9,8 @@ from comic_utils.comic_consts import (
     CBZ_FILE_EXT,
     JPG_FILE_EXT,
     JSON_FILE_EXT,
+    OVERALL_BOUNDS_ONLY_SUFFIX,
+    PANEL_ORDER_SUFFIX,
     PNG_FILE_EXT,
     SVG_FILE_EXT,
 )
@@ -577,6 +579,20 @@ class ComicBook:
             return panels_bounds_file
 
         return None
+
+    def get_final_fixes_overall_panel_bounds_file(self, page_num: int) -> Path | None:
+        """Return the page's "NNN-overall-bounds-only.jpg" fix, or None when there is none."""
+        overall_bounds_file = self.get_srce_original_fixes_bounded_dir() / (
+            get_page_str(page_num) + OVERALL_BOUNDS_ONLY_SUFFIX + JPG_FILE_EXT
+        )
+        return overall_bounds_file if overall_bounds_file.is_file() else None
+
+    def get_final_fixes_panel_order_file(self, page_num: int) -> Path | None:
+        """Return the page's "NNN-panel-order.json" fix, or None when there is none."""
+        panel_order_file = self.get_srce_original_fixes_bounded_dir() / (
+            get_page_str(page_num) + PANEL_ORDER_SUFFIX + JSON_FILE_EXT
+        )
+        return panel_order_file if panel_order_file.is_file() else None
 
     # TODO: Should dest stuff be elsewhere??
     @staticmethod

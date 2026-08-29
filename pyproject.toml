@@ -115,6 +115,7 @@ testpaths = [
     "src/barks-fantagraphics/tests",
     "src/barks-build-comic-images/tests",
     "src/okf-reader/tests",
+    "src/comic-utils/tests",
 ]
 addopts = """
     --import-mode=importlib

@@ -5,8 +5,20 @@ from typing import Any
 from loguru import logger
 from PIL.Image import Image
 
-from .comic_consts import JPG_FILE_EXT, PNG_FILE_EXT
-from .panel_segmentation import KumikoPanelSegmentation, get_min_max_panel_values
+from .comic_consts import (
+    JPG_FILE_EXT,
+    JSON_FILE_EXT,
+    OVERALL_BOUNDS_ONLY_SUFFIX,
+    PANEL_ORDER_SUFFIX,
+    PNG_FILE_EXT,
+)
+from .panel_segmentation import (
+    KumikoPanelSegmentation,
+    apply_panel_order_override,
+    get_min_max_panel_values,
+    read_panel_order_override,
+    sort_panels_in_reading_order,
+)
 from .pil_image_utils import load_pil_image_for_reading
 
 
@@ -41,7 +53,9 @@ class BoundingBoxProcessor:
             )
             srce_overall_bounded_image = load_pil_image_for_reading(overall_bounds_override_file)
 
-        bounds_segment_info = self._get_segment_info(srce_bounded_image, srce_file)
+        panel_order = self.get_panel_order_override(srce_bounded_override_dir, srce_file)
+
+        bounds_segment_info = self._get_segment_info(srce_bounded_image, srce_file, panel_order)
 
         if srce_overall_bounded_image:
             overall_bounds_segment_info = self._get_segment_info(
@@ -51,10 +65,20 @@ class BoundingBoxProcessor:
 
         return bounds_segment_info
 
-    def _get_segment_info(self, srce_bounded_image: Image, srce_file: Path) -> dict[str, Any]:
+    def _get_segment_info(
+        self, srce_bounded_image: Image, srce_file: Path, panel_order: list[int] | None = None
+    ) -> dict[str, Any]:
         srce_bounded_image = srce_bounded_image.convert("RGB")
 
         segment_info = self._kumiko.get_panels_segment_info(srce_bounded_image, srce_file)
+
+        # The panel index is the public panel number, so we own the order - kumiko's is
+        # only a heuristic and reads jogged tiers column-wise.
+        panels = sort_panels_in_reading_order(segment_info["panels"])
+        if panel_order is not None:
+            logger.warning(f'Applying panel order override {panel_order} to "{srce_file}".')
+            panels = apply_panel_order_override(panels, panel_order)
+        segment_info["panels"] = panels
 
         segment_info["overall_bounds"] = get_min_max_panel_values(segment_info)
 
@@ -71,7 +95,7 @@ class BoundingBoxProcessor:
 
         bounds_override_file = srce_bounded_override_dir / (Path(srce_file).stem + JPG_FILE_EXT)
         overall_bounds_override_file = srce_bounded_override_dir / (
-            Path(srce_file).stem + "-overall-bounds-only" + JPG_FILE_EXT
+            Path(srce_file).stem + OVERALL_BOUNDS_ONLY_SUFFIX + JPG_FILE_EXT
         )
 
         if overall_bounds_override_file.is_file() and not bounds_override_file.is_file():
@@ -82,6 +106,27 @@ class BoundingBoxProcessor:
             raise RuntimeError(msg)
 
         return bounds_override_file, overall_bounds_override_file
+
+    @staticmethod
+    def get_panel_order_override(
+        srce_bounded_override_dir: Path, srce_file: Path
+    ) -> list[int] | None:
+        """Return the page's hand-chosen panel order, or None when there is no override file.
+
+        Args:
+            srce_bounded_override_dir: The "bounded" fixes dir.
+            srce_file: The page whose stem names the override.
+
+        Returns:
+            The 1-based panel numbers in the wanted order, or None.
+
+        """
+        order_file = srce_bounded_override_dir / (
+            srce_file.stem + PANEL_ORDER_SUFFIX + JSON_FILE_EXT
+        )
+        if not order_file.is_file():
+            return None
+        return read_panel_order_override(order_file)
 
     @staticmethod
     def save_panels_segment_info(segment_info_filename: Path, segment_info: dict[str, Any]) -> None:

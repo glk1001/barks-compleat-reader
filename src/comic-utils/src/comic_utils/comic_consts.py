@@ -13,6 +13,10 @@ SVG_FILE_EXT = ".svg"
 JSON_FILE_EXT = ".json"
 TEXT_FILE_EXT = ".txt"
 
+# Hand-made panel bounds fixes live in the "bounded" fixes dir as "NNN.jpg" plus these variants.
+OVERALL_BOUNDS_ONLY_SUFFIX = "-overall-bounds-only"
+PANEL_ORDER_SUFFIX = "-panel-order"
+
 JAN = 1
 FEB = 2
 MAR = 3
