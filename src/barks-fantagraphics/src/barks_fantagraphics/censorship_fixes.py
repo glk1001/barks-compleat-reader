@@ -16,8 +16,9 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from .barks_titles import ENUM_TO_STR_TITLE
-from .comic_book_info import COVERS_SET
+from .barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM
+from .comic_book import get_page_str
+from .comic_book_info import COVERS_SET, get_one_pager_fanta_vol_and_page
 from .comics_consts import INTERNAL_DATA_DIR, PageType
 from .comics_database import ComicsDatabase
 from .pages import get_page_num_str, get_srce_and_dest_pages_in_order
@@ -43,6 +44,13 @@ TITLE_ALIASES = {
     "The Mummy’s Ring": "Donald Duck and the Mummy's Ring",  # noqa: RUF001
     "Race to the South Seas": "Race to the South Seas!",
 }
+
+
+# The `Comic_page` of a one-pager's only page. A one-pager has no `.ini` of its own -
+# it exists as a member of the `All One-Pagers` collection - so its pages cannot be read
+# out of the database the way `censorship_story_pages` reads every other story's. It does
+# not need to be: a story of one page has exactly one comic page, and it is the first.
+ONE_PAGER_COMIC_PAGE = "1"
 
 
 class CensorshipFixesError(Exception):
@@ -165,11 +173,46 @@ def censorship_fix_pages(rows: list[CensorshipFixRow]) -> dict[int, set[str]]:
     return pages
 
 
+def one_pager_location(story: str) -> tuple[int, int] | None:
+    """Return the Fantagraphics ``(volume, page)`` of the located one-pager `story` names.
+
+    The database is built from the `.ini` files, and a one-pager has none: it is a member
+    of the `All One-Pagers` collection rather than a book of its own, so it is absent from
+    `is_story_title` and `get_comic_book` alike. `ONE_PAGER_LOCATIONS` is where a
+    one-pager's volume and page are authored, and it is the only place they exist.
+
+    The collection cannot answer this instead. It stages the one-pager as a page of
+    volume `FANTA_01` under its own numbering, but a fix is made to the scan where it
+    actually lives - `Diner Dilemma` is page 072 of volume 14, staged as page 557 of the
+    collection - and the CSV names the former.
+
+    Args:
+        story: The `Story` cell as written in the CSV.
+
+    Returns:
+        The volume and page, or None when the cell is not a located one-pager - which
+        includes every ordinary story title, and a one-pager whose location is still an
+        unauthored placeholder.
+
+    """
+    title = STR_TITLE_TO_ENUM.get(story)
+    if title is None:
+        return None
+
+    volume, page = get_one_pager_fanta_vol_and_page(title)
+    if volume is None or page is None:
+        return None
+
+    return volume, page
+
+
 def resolve_censorship_story(comics_database: ComicsDatabase, story: str) -> str:
     """Resolve a `Story` cell to its canonical database title.
 
     Handles the CSV's padded issue strings ("WDCS  34"), issue strings that match both a
-    story and that issue's cover, and the story names that predate a title's spelling.
+    story and that issue's cover, the story names that predate a title's spelling, and
+    the one-pagers, which are real titles the database does not hold - see
+    `one_pager_location`.
 
     Args:
         comics_database: The comics database.
@@ -197,6 +240,11 @@ def resolve_censorship_story(comics_database: ComicsDatabase, story: str) -> str
 
     is_title, closest = comics_database.is_story_title(story)
     if is_title:
+        return story
+
+    # Last, so that the database always wins: this is the fallback for the titles it
+    # cannot hold, not a second opinion on the ones it can.
+    if one_pager_location(story) is not None:
         return story
 
     msg = f'Story "{story}" is not a known title or issue. Closest match: "{closest}".'
@@ -229,6 +277,12 @@ def censorship_story_pages(comics_database: ComicsDatabase, title: str) -> Censo
     stems are not contiguous - `The Bill Collectors` maps page 3 to `227` and page 4
     to `195`.
 
+    A one-pager is read from `ONE_PAGER_LOCATIONS` instead, because it has no `.ini` for
+    `get_comic_book` to open. Its one page is a numbered BODY page like any other story's
+    - `ONE_PAGER_COMIC_PAGE` - rather than an unnumbered one: a row against it then reads
+    exactly like the rest of the CSV, and `barks-ocr-censorship-csv` can derive its
+    columns, which it refuses to do for a story with no BODY pages at all.
+
     Args:
         comics_database: The comics database.
         title: The canonical database title.
@@ -237,6 +291,17 @@ def censorship_story_pages(comics_database: ComicsDatabase, title: str) -> Censo
         The story's volume and its numbered and unnumbered pages.
 
     """
+    # Guarded by the database rather than tried first, so that one rule governs both
+    # functions: the location table is the fallback for a title the database cannot
+    # hold, never a second opinion on one it can.
+    if not comics_database.is_story_title(title)[0]:
+        location = one_pager_location(title)
+        if location is not None:
+            volume, page = location
+            return CensorshipStoryPages(
+                volume, {ONE_PAGER_COMIC_PAGE: get_page_str(page)}, frozenset()
+            )
+
     comic = comics_database.get_comic_book(title)
     srce_and_dest = get_srce_and_dest_pages_in_order(comic, get_full_paths=False)
 
