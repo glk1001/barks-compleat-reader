@@ -186,11 +186,29 @@ def downscale_and_zip(
 
 
 def just_zip(srce_file: Path, override_archive: zipfile.ZipFile, arcname: Path) -> None:
-    logger.debug(f'Zip "{srce_file}" to jpg "{arcname}" in zip...')
-    with srce_file.open("rb") as f:
-        original = f.read()
+    """Encrypt a source page into the override archive as a JPEG.
 
-    buffer = io.BytesIO(FERNET.encrypt(original))
+    Every page in an override archive is a ``.jpg``: the downscale path forces it,
+    and the pre-baked collection pages are guarded on it. A staged original scan is
+    not always one - a page re-baked after a fix is typically a PNG - so anything
+    that is not already a JPEG is converted here. Storing it verbatim instead left
+    a lone ``.png`` page in the archive, named after its source rather than its
+    role.
+
+    The convert to RGB is required, not cosmetic: a staged PNG may carry an alpha
+    channel (557.png does), and JPEG cannot hold one.
+    """
+    arcname = arcname.with_suffix(JPG_FILE_EXT)
+
+    if srce_file.suffix == JPG_FILE_EXT:
+        logger.debug(f'Zip "{srce_file}" to jpg "{arcname}" in zip...')
+        payload = srce_file.read_bytes()
+    else:
+        logger.info(f'Convert "{srce_file}" to jpg "{arcname}" in zip...')
+        image = load_pil_image_for_reading(srce_file).convert("RGB")
+        payload = get_pil_image_as_jpg_bytes(image).getvalue()
+
+    buffer = io.BytesIO(FERNET.encrypt(payload))
     buffer.seek(0)
 
     override_archive.writestr(make_zip_info(arcname, srce_file), buffer.read())
