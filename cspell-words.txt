@@ -24,6 +24,7 @@ bufferfmt
 bunx
 capsys
 catchable
+cbz
 cbzs
 chrono
 ciphertext
