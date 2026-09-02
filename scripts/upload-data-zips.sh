@@ -9,12 +9,13 @@
 # Expects barks-reader-data-1.zip and barks-reader-data-2.zip to already exist
 # (produced by `bash scripts/build-data-zips.sh`). Then:
 #   1. Works out the next tag (highest existing data-vN, plus one).
-#   2. Creates a DRAFT release and uploads both zips to it, so a failed or
-#      partial upload is never publicly visible.
-#   3. Verifies the uploaded byte sizes match the local files.
-#   4. Publishes the release, marked pre-release so it can never become
+#   2. Hashes both zips into SHA256SUMS.txt.
+#   3. Creates a DRAFT release and uploads both zips plus the checksums to it,
+#      so a failed or partial upload is never publicly visible.
+#   4. Verifies the uploaded byte sizes match the local files.
+#   5. Publishes the release, marked pre-release so it can never become
 #      GitHub's "Latest" (the website's version resolver depends on that).
-#   5. Points DATA_TAG in website/app.html and the data-pack links in
+#   6. Points DATA_TAG in website/app.html and the data-pack links in
 #      .github/workflows/build.yml at the new tag - review and commit those.
 #
 # Usage: bash scripts/upload-data-zips.sh [--zips-dir <dir>] [--yes] [--dry-run]
@@ -24,6 +25,9 @@ set -eo pipefail
 REPO="glk1001/barks-compleat-reader"
 DATA1_ZIP="barks-reader-data-1.zip"
 DATA2_ZIP="barks-reader-data-2.zip"
+# These packs are ~1.2GB each, and a size check cannot see a flipped byte - only a
+# truncation. Publish real hashes so a bad copy is identifiable as a bad copy.
+CHECKSUMS_FILE="SHA256SUMS.txt"
 WEBSITE_FILE="website/app.html"
 WORKFLOW_FILE=".github/workflows/build.yml"
 
@@ -58,6 +62,15 @@ file_size() {
     # stat's size flag differs between GNU (-c%s) and BSD/macOS (-f%z).
     stat -c%s "$1" 2>/dev/null || stat -f%z "$1"
 }
+sha256_of() {
+    # sha256sum is GNU; macOS ships shasum instead.
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | cut -d" " -f1
+    else
+        shasum -a 256 "$1" | cut -d" " -f1
+    fi
+}
+
 SIZE1=$(file_size "${ZIPS_DIR}/${DATA1_ZIP}")
 SIZE2=$(file_size "${ZIPS_DIR}/${DATA2_ZIP}")
 
@@ -80,8 +93,9 @@ echo "  ${ZIPS_DIR}/${DATA2_ZIP} ($((SIZE2 / 1024 / 1024)) MB)"
 # Uploading unchanged zips is almost always a mistake - the whole point of
 # data-v* releases is that a new one means the data actually changed.
 if [[ -n "$OLD_TAG" ]]; then
+    # Only the zips: the checksums file is expected to differ every release.
     OLD_SIZES=$(gh release view "$OLD_TAG" --repo "$REPO" --json assets \
-        -q '.assets[] | "\(.name) \(.size)"' | sort)
+        -q '.assets[] | select(.name | endswith(".zip")) | "\(.name) \(.size)"' | sort)
     NEW_SIZES=$(printf '%s %s\n%s %s\n' \
         "$DATA1_ZIP" "$SIZE1" "$DATA2_ZIP" "$SIZE2" | sort)
     if [[ "$OLD_SIZES" == "$NEW_SIZES" ]]; then
@@ -100,6 +114,17 @@ if [[ $ASSUME_YES != 1 ]]; then
     [[ "$answer" == "y" || "$answer" == "Y" ]] || { echo "Aborted."; exit 1; }
 fi
 
+# --- Checksums ---
+# Written with bare filenames, in sha256sum's own format, so a user who downloads
+# all three assets into one directory can run "sha256sum -c SHA256SUMS.txt".
+echo -e "${YELLOW}Hashing both zips (~2GB, takes a moment)...${NC}"
+printf '%s  %s\n%s  %s\n' \
+    "$(sha256_of "${ZIPS_DIR}/${DATA1_ZIP}")" "$DATA1_ZIP" \
+    "$(sha256_of "${ZIPS_DIR}/${DATA2_ZIP}")" "$DATA2_ZIP" \
+    > "${ZIPS_DIR}/${CHECKSUMS_FILE}"
+cat "${ZIPS_DIR}/${CHECKSUMS_FILE}"
+SIZE_SUMS=$(file_size "${ZIPS_DIR}/${CHECKSUMS_FILE}")
+
 # --- Create draft, upload, verify, publish ---
 echo -e "${YELLOW}Creating draft release ${NEW_TAG}...${NC}"
 gh release create "$NEW_TAG" --repo "$REPO" --target main --draft --prerelease \
@@ -109,16 +134,19 @@ gh release create "$NEW_TAG" --repo "$REPO" --target main --draft --prerelease \
 Download **both** zips and place them beside the app executable before first launch (see the [installation guide](https://glk1001.github.io/barks-compleat-reader/website/app.html#installation)).
 
 - ${DATA1_ZIP}
-- ${DATA2_ZIP}"
+- ${DATA2_ZIP}
+
+\`${CHECKSUMS_FILE}\` lists the SHA-256 of both zips. A download of this size can truncate silently, so if the reader reports a bad or empty archive, check the zips against it first (`sha256sum -c ${CHECKSUMS_FILE}`)."
 
 echo -e "${YELLOW}Uploading both zips (this is ~2GB - be patient)...${NC}"
 gh release upload "$NEW_TAG" --repo "$REPO" \
-    "${ZIPS_DIR}/${DATA1_ZIP}" "${ZIPS_DIR}/${DATA2_ZIP}"
+    "${ZIPS_DIR}/${DATA1_ZIP}" "${ZIPS_DIR}/${DATA2_ZIP}" "${ZIPS_DIR}/${CHECKSUMS_FILE}"
 
 echo -e "${YELLOW}Verifying uploaded sizes...${NC}"
 UPLOADED=$(gh release view "$NEW_TAG" --repo "$REPO" --json assets \
     -q '.assets[] | "\(.name) \(.size)"' | sort)
-EXPECTED=$(printf '%s %s\n%s %s\n' "$DATA1_ZIP" "$SIZE1" "$DATA2_ZIP" "$SIZE2" | sort)
+EXPECTED=$(printf '%s %s\n%s %s\n%s %s\n' \
+    "$DATA1_ZIP" "$SIZE1" "$DATA2_ZIP" "$SIZE2" "$CHECKSUMS_FILE" "$SIZE_SUMS" | sort)
 if [[ "$UPLOADED" != "$EXPECTED" ]]; then
     echo -e "${RED}Uploaded assets don't match the local files:${NC}" >&2
     diff <(echo "$EXPECTED") <(echo "$UPLOADED") >&2 || true
