@@ -17,6 +17,7 @@ from pathlib import Path
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, STR_TITLE_TO_ENUM, Titles
 from barks_fantagraphics.comic_book import ComicBook
 from barks_fantagraphics.comic_book_info import (
+    COVERS_SET,
     NON_COMIC_TITLES,
     ONE_PAGERS,
     get_filename_from_title,
@@ -785,6 +786,7 @@ def _validate_title_files(
 
     is_article = title in NON_COMIC_TITLES
     is_one_pager = title in ONE_PAGERS
+    is_cover = title in COVERS_SET
     encrypted = file_paths.barks_panels_are_encrypted
     inset_ext = file_paths.get_inset_file_ext()
 
@@ -797,7 +799,11 @@ def _validate_title_files(
     # still ship is the inset thumbnail shown in the tree, and only when the one-pager
     # has a valid location (and therefore appears in the collection). The synthetic
     # collection itself has no inset of its own, so it is exempt too.
-    if is_one_pager_collection(title):
+    #
+    # Covers are read the same way - as a page within the "All Covers" collection -
+    # but unlike one-pagers they ship no inset either: the tree falls back to the
+    # emergency inset for them, so they are exempt outright.
+    if is_one_pager_collection(title) or is_cover:
         inset_required = False
     elif is_one_pager:
         inset_required = is_one_pager_located(title)
@@ -879,10 +885,10 @@ def _validate_title_files(
         phase, ctx, title_str, file_paths.get_comic_splash_files_dir(), encrypted, label="splash"
     )
 
-    # One-pagers carry no Closeups/Favourites/Silhouettes/Splash files of their own
-    # (their large images are drawn from the "All One-Pagers" collection), so the
-    # required-panel-file rule does not apply to them.
-    if not is_article and not is_one_pager and not counts.has_required_panel_file:
+    # One-pagers and covers carry no Closeups/Favourites/Silhouettes/Splash files of
+    # their own (their large images are drawn from the "All One-Pagers" / "All Covers"
+    # collection), so the required-panel-file rule does not apply to them.
+    if not is_article and not is_one_pager and not is_cover and not counts.has_required_panel_file:
         phase.add(
             f"Title:{title_str} kind=no_panel_files"
             f" reason=no_files_in_(Closeups|Favourites|Silhouettes|Splash)"
@@ -1153,10 +1159,10 @@ def phase7_prebuilt_cbzs(collector: ErrorCollector, cfg_info: ConfigInfo) -> Non
         return
 
     for title, fanta_info in ALL_FANTA_COMIC_BOOK_INFO.items():
-        if title in ONE_PAGERS:
-            # Individual one-pagers have no prebuilt CBZ of their own — they are read
-            # as a page within the "All One-Pagers" collection, whose CBZ is checked
-            # like any other title.
+        if title in ONE_PAGERS or title in COVERS_SET:
+            # Individual one-pagers and covers have no prebuilt CBZ of their own — they
+            # are read as a page within the "All One-Pagers" / "All Covers" collection,
+            # whose CBZ is checked like any other title.
             continue
         title_str = ENUM_TO_STR_TITLE[title]
         phase.items_checked += 1
@@ -1497,14 +1503,16 @@ def phase9_per_title_load(
     counts = _Phase9Counts()
     filter_set = set(titles_filter) if titles_filter is not None else None
 
-    # Individual one-pagers have no standalone comic to load: they are read as a page
-    # within the "All One-Pagers" collection, which is itself loaded here as a normal
-    # title — so their source pages and panel-segments JSONs are validated through it.
+    # Individual one-pagers and covers have no standalone comic to load: they are read
+    # as a page within the "All One-Pagers" / "All Covers" collection, which is itself
+    # loaded here as a normal title — so their source pages and panel-segments JSONs
+    # are validated through it.
     candidates = [
         (ENUM_TO_STR_TITLE[title], fanta_info)
         for title, fanta_info in ALL_FANTA_COMIC_BOOK_INFO.items()
         if (filter_set is None or ENUM_TO_STR_TITLE[title] in filter_set)
         and title not in ONE_PAGERS
+        and title not in COVERS_SET
     ]
     total = len(candidates)
     progress_step = 5
