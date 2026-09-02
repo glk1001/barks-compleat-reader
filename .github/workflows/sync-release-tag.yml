@@ -1,0 +1,71 @@
+name: Sync website release tag
+
+# website/app.html resolves the current app release from the GitHub API, but falls
+# back to a hardcoded FALLBACK_TAG whenever that call does not answer - unauthenticated
+# callers get 60 requests an hour per IP, so the fallback is a reachable path on a
+# public page, and a stale one 404s every download link.
+#
+# Keeping it correct by hand is the same trap the data-pack links had. This bumps it
+# automatically, on `published` rather than on the draft the build workflow assembles:
+# the site must only ever name a release that someone can actually download.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write  # Commits the bumped constant back to main.
+
+# A second publish while this is mid-push would race for the same line.
+concurrency:
+  group: sync-release-tag
+  cancel-in-progress: false
+
+jobs:
+  update-fallback-tag:
+    name: Point FALLBACK_TAG at the published release
+    # The ~1GB data packs publish through this same event (data-v*), and must never
+    # become the app's fallback tag. The shell re-checks with the stricter shape the
+    # website itself uses (/^v\d/), which a GitHub expression cannot express.
+    if: ${{ startsWith(github.event.release.tag_name, 'v') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The site is served from main, not from the tag, so main is what needs
+          # the new value - the tag's own copy is never read by anything.
+          ref: main
+
+      - name: Rewrite FALLBACK_TAG
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          if [[ ! "${TAG}" =~ ^v[0-9] ]]; then
+              echo "Not an app release tag: ${TAG} - nothing to do."
+              exit 0
+          fi
+          # Anchored on the constant's own name so the neighbouring DATA_TAG,
+          # which tracks a different release series, is left alone.
+          perl -pi -e "s|const FALLBACK_TAG = 'v[^']*'|const FALLBACK_TAG = '${TAG}'|" \
+              website/app.html
+          grep -n "const FALLBACK_TAG" website/app.html
+
+      - name: Commit and push if it changed
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          # Re-publishing the release that is already named here is a no-op, and
+          # `git commit` fails on an empty diff - so check before committing.
+          if git diff --quiet -- website/app.html; then
+              echo "FALLBACK_TAG already at ${TAG} - nothing to commit."
+              exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add website/app.html
+          git commit -m "chore(website): point the fallback tag at ${TAG}
+
+          Published release ${TAG}; bumped automatically by the sync-release-tag
+          workflow so the site never falls back to a tag that is no longer current."
+          git push origin main
