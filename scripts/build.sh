@@ -33,6 +33,12 @@ get_git_version() {
 
 VERSION=$(get_git_version)
 COPYRIGHT_YEARS="2025"
+# Windows stamps these into the exe's version resource, and shows them in the file
+# properties and in the SmartScreen prompt. An unsigned binary with a blank publisher
+# and no description is itself a heuristic signal, so they are worth setting even
+# though only Windows displays them. Holder per NOTICE.
+COMPANY_NAME="Greg Kay"
+FILE_DESCRIPTION="The Compleat Barks Disney Reader"
 
 # Nuitka's --product-version (and the {VERSION} token in --onefile-tempdir-spec) needs a
 # numeric dotted version of AT MOST 4 integer fields (Nuitka hard-fails on more). Derive
@@ -134,6 +140,12 @@ if [[ "${OS}" == "macos" ]]; then
     PLATFORM_ARGS+=(--macos-app-icon="assets/app-icon.icns")
 else
     PLATFORM_ARGS+=(--onefile-tempdir-spec="{CACHE_DIR}/BarksReader/{VERSION}")
+    # Windows carries its icon in the exe's version resource (assets/app-icon.ico is
+    # generated from the same .icns master). Linux has no equivalent and Nuitka warns
+    # on the unused option, so keep it to the Windows leg.
+    if [[ "${OS}" == "windows" ]]; then
+        PLATFORM_ARGS+=(--windows-icon-from-ico="assets/app-icon.ico")
+    fi
 fi
 
 format_elapsed() {
@@ -168,6 +180,10 @@ uv run python -m nuitka \
     --output-folder-name="${EXE}" \
     --product-name="Barks Reader" \
     --product-version="${NUMERIC_VERSION}" \
+    --file-version="${NUMERIC_VERSION}" \
+    --file-description="${FILE_DESCRIPTION}" \
+    --company-name="${COMPANY_NAME}" \
+    --copyright="Copyright (c) ${COPYRIGHT_YEARS} ${COMPANY_NAME}" \
     "${PLATFORM_ARGS[@]}" \
     main.py 2>&1 | tee "$NUITKA_LOG" || {
     echo -e "${RED}ERROR: Nuitka build failed.${NC}"

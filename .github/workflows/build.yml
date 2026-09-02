@@ -155,6 +155,22 @@ jobs:
           path: dist
           merge-multiple: true
 
+      # Published so a user can verify a download that antivirus interfered with,
+      # and so a truncated or tampered asset is detectable without re-running CI.
+      - name: Generate SHA256 checksums
+        if: ${{ !env.ACT }}
+        run: |
+          # Named explicitly rather than globbed: a glob would hash SHA256SUMS.txt
+          # itself if the step ever re-ran over a populated dist, and naming them
+          # makes sha256sum fail loudly if a build leg went missing.
+          cd dist
+          sha256sum \
+              barks-reader-linux \
+              barks-reader-macos.zip \
+              barks-reader-macos-x64.zip \
+              barks-reader-win.exe > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
       - name: Generate release notes against the previous app release
         if: ${{ !env.ACT }}
         env:
@@ -206,5 +222,6 @@ jobs:
             dist/barks-reader-macos.zip
             dist/barks-reader-macos-x64.zip
             dist/barks-reader-win.exe
+            dist/SHA256SUMS.txt
           fail_on_unmatched_files: true
           body_path: release-notes.md
