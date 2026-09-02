@@ -12,6 +12,7 @@ from barks_fantagraphics.fanta_comics_info import (
 )
 from barks_reader.core.fantagraphics_volumes import (
     DuplicateArchiveFilesError,
+    EmptyArchiveError,
     FantagraphicsArchive,
     FantagraphicsVolumeArchives,
     MissingArchiveFilesError,
@@ -875,6 +876,22 @@ class TestLoadErrorMessages:
         # Suppress missing-volume validation so the load reaches the per-image checks.
         archives.check_correct_volume_numbers = lambda _filenames: None  # ty: ignore[invalid-assignment]
         return archives
+
+    def test_an_archive_with_no_images_names_the_file(self, tmp_path: Path) -> None:
+        """A truncated/partial volume copy must say which file, not raise IndexError.
+
+        This is a real field failure: a volume that copied across to another machine
+        as an empty zip surfaced only as "IndexError: list index out of range" from
+        the load loop, naming neither the volume nor the cause.
+        """
+        archives = self._single_volume_archives(tmp_path, [])
+
+        with pytest.raises(EmptyArchiveError) as exc_info:
+            archives.load()
+
+        message = str(exc_info.value)
+        assert "01-vol.cbz" in message
+        assert "contains no page images" in message
 
     def test_page_ext_error_names_the_offending_first_image(self, tmp_path: Path) -> None:
         archives = self._single_volume_archives(tmp_path, ["page001.PNG", "page002.PNG"])

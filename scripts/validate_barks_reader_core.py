@@ -41,6 +41,7 @@ from barks_fantagraphics.page_classes import CleanPage
 from barks_fantagraphics.pages import get_srce_and_dest_pages_in_order
 from barks_reader.core.fantagraphics_volumes import (
     DuplicateArchiveFilesError,
+    EmptyArchiveError,
     FantagraphicsArchive,
     FantagraphicsVolumeArchives,
     MissingArchiveFilesError,
@@ -1088,7 +1089,14 @@ def _process_archive_filenames(
             archive = _process_one_archive(
                 archives_mgr, fanta_volume, archive_filename, override_archive_filename
             )
-        except (PageNumError, PageExtError, RuntimeError, ValueError, OSError) as exc:
+        except (
+            EmptyArchiveError,
+            PageNumError,
+            PageExtError,
+            RuntimeError,
+            ValueError,
+            OSError,
+        ) as exc:
             state.error_volumes.add(fanta_volume)
             phase.add(f"Volume {fanta_volume}: {type(exc).__name__}: {exc}")
             continue
@@ -1103,6 +1111,8 @@ def _process_one_archive(
 ) -> FantagraphicsArchive:
     """Replicate the per-archive body of :meth:`FantagraphicsVolumeArchives.load`."""
     image_subdir, image_filenames = archives_mgr._get_archive_contents(archive_filename)  # noqa: SLF001
+    if not image_filenames:
+        raise EmptyArchiveError(archive_filename)
     image_ext = Path(image_filenames[0]).suffix
     if image_ext not in (JPG_FILE_EXT, PNG_FILE_EXT):
         msg = f'Unexpected image extension "{image_ext}" in {archive_filename}'

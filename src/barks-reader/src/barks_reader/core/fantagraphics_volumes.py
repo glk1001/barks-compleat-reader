@@ -93,6 +93,18 @@ class PageExtError(Exception):
     pass
 
 
+class EmptyArchiveError(Exception):
+    """A volume archive that opened cleanly but holds no page images."""
+
+    def __init__(self, archive_filename: Path) -> None:
+        exts = ", ".join(_VALID_IMAGE_EXTENSION)
+        super().__init__(
+            f'Fantagraphics archive "{archive_filename}" contains no page images'
+            f" (looked for {exts}). The file is most likely empty, truncated or a"
+            f" partial copy - replace it from the library and retry."
+        )
+
+
 @dataclass(slots=True)
 class FantagraphicsArchive:
     """Represents a single Fantagraphics volume archive and its metadata."""
@@ -229,6 +241,11 @@ class FantagraphicsVolumeArchives:
             override_archive_filename = override_archive_filenames.get(fanta_volume, None)
 
             archive_image_subdir, image_filenames = self._get_archive_contents(archive_filename)
+            # Every check below indexes [0] or [-1]. An archive with no images is a
+            # real field failure (a truncated copy), so name the file rather than
+            # letting it surface as a bare IndexError from the next line.
+            if not image_filenames:
+                raise EmptyArchiveError(archive_filename)
             image_ext = Path(image_filenames[0]).suffix
             if image_ext not in _VALID_IMAGE_EXTENSION:
                 msg = (
