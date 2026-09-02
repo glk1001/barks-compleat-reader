@@ -53,7 +53,7 @@ jobs:
       - name: Generate stubs for gitignored modules
         run: |
           cat > src/barks-reader/src/barks_reader/_version.py <<'STUB'
-          COPYRIGHT_YEARS = "2025"
+          COPYRIGHT_YEARS = "2025-2026"
           VERSION = "ci"
           STUB
 
@@ -135,7 +135,7 @@ jobs:
         shell: bash
         run: |
           cat > src/barks-reader/src/barks_reader/_version.py <<'STUB'
-          COPYRIGHT_YEARS = "2025"
+          COPYRIGHT_YEARS = "2025-2026"
           VERSION = "ci"
           STUB
           cat > src/comic-utils/src/comic_utils/get_panel_bytes.py <<'STUB'
@@ -186,7 +186,7 @@ jobs:
         shell: bash
         run: |
           cat > src/barks-reader/src/barks_reader/_version.py <<'STUB'
-          COPYRIGHT_YEARS = "2025"
+          COPYRIGHT_YEARS = "2025-2026"
           VERSION = "ci"
           STUB
           cat > src/comic-utils/src/comic_utils/get_panel_bytes.py <<'STUB'

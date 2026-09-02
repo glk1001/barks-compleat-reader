@@ -32,7 +32,7 @@ get_git_version() {
 }
 
 VERSION=$(get_git_version)
-COPYRIGHT_YEARS="2025"
+COPYRIGHT_YEARS="2025-2026"
 # Windows stamps these into the exe's version resource, and shows them in the file
 # properties and in the SmartScreen prompt. An unsigned binary with a blank publisher
 # and no description is itself a heuristic signal, so they are worth setting even
