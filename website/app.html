@@ -414,12 +414,17 @@
         }
 
         code {
-            background: var(--ink);
-            color: var(--yellow);
+            /* Ink on bright paper (~14.5:1) - the old yellow-on-navy chip read as dull
+               against the paper-toned page, especially for long commands. */
+            background: var(--paper-bright);
+            color: var(--ink);
+            border: 1px solid rgba(31, 42, 68, 0.35);
             padding: 3px 8px;
             border-radius: 4px;
-            font-family: 'Courier New', monospace;
+            font-family: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
             font-size: 0.9rem;
+            font-weight: 600;
+            overflow-wrap: anywhere;
         }
 
         .requirements-table {
