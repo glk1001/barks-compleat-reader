@@ -145,8 +145,9 @@ Use 'barks-reader-win.exe'.
    `C:\Users\<you>\BarksReader`), **not** `C:\Program Files`. The app writes its
    `config/` directory, install log and unpacked data *beside the executable*, so it needs
    write access there.
-1. Place `barks-reader-data-1.zip` and `barks-reader-data-2.zip` in that same folder, next
-   to the `.exe`. Don't unzip them — the app does that itself.
+1. Place `barks-reader-data-1.barkspack` and `barks-reader-data-2.barkspack` in that same folder, next
+   to the `.exe`. They are zip archives under another name; don't unzip them — the app does
+   that itself.
 1. Launch the app. The first run unpacks the data zips, writes the config, and shows a
    success popup; subsequent launches go straight to the reader.
 
@@ -161,8 +162,10 @@ Macs.
 1. Put the `.app` in **its own folder** (e.g. `~/BarksReader/`), not straight into
    `/Applications`. The first-run installer looks for the data zips *beside the bundle*, and
    also writes its `config/` directory, install log, and data there.
-1. Place `barks-reader-data-1.zip` and `barks-reader-data-2.zip` in that same folder, next to
-   the `.app`.
+1. Place `barks-reader-data-1.barkspack` and `barks-reader-data-2.barkspack` in that same folder, next to
+   the `.app`. Don't unzip them. (The `.barkspack` extension exists so Safari's "Open safe
+   files" setting leaves them alone; a `.zip` would be auto-expanded into a folder the
+   installer can't use.)
 1. Clear Gatekeeper — the app is unsigned, so a downloaded copy is quarantined and macOS will
    refuse to open it. Either:
     - try to open it once, then go to **System Settings → Privacy & Security**, scroll down
@@ -202,7 +205,7 @@ Releases are assembled by CI — don't upload executables by hand.
    the new tag and the executable buttons download from it — the website tracks the newest
    app release via the GitHub API (pre-releases included). Old releases can stay as history.
 
-The ~1GB data packs (`barks-reader-data-1.zip`, `barks-reader-data-2.zip`) live on their own
+The ~1GB data packs (`barks-reader-data-1.barkspack`, `barks-reader-data-2.barkspack`) live on their own
 dedicated `data-vN` release, not on app releases, because they rarely change — the current
 tag is whatever `DATA_TAG` in `website/app.html` names. When they do change, rebuild them
 (`bash scripts/build-data-zips.sh` — no exe build needed) and run:

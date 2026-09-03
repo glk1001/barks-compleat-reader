@@ -6,7 +6,7 @@
 # release instead of being duplicated onto every app release (see "Deployment"
 # in README.md). Run this only when the data packs have actually changed.
 #
-# Expects barks-reader-data-1.zip and barks-reader-data-2.zip to already exist
+# Expects barks-reader-data-1.barkspack and barks-reader-data-2.barkspack to already exist
 # (produced by `bash scripts/build-data-zips.sh`). Then:
 #   1. Works out the next tag (highest existing data-vN, plus one).
 #   2. Hashes both zips into SHA256SUMS.txt.
@@ -23,8 +23,8 @@
 set -eo pipefail
 
 REPO="glk1001/barks-compleat-reader"
-DATA1_ZIP="barks-reader-data-1.zip"
-DATA2_ZIP="barks-reader-data-2.zip"
+DATA1_ZIP="barks-reader-data-1.barkspack"
+DATA2_ZIP="barks-reader-data-2.barkspack"
 # These packs are ~1.2GB each, and a size check cannot see a flipped byte - only a
 # truncation. Publish real hashes so a bad copy is identifiable as a bad copy.
 CHECKSUMS_FILE="SHA256SUMS.txt"
@@ -93,11 +93,12 @@ echo "  ${ZIPS_DIR}/${DATA2_ZIP} ($((SIZE2 / 1024 / 1024)) MB)"
 # Uploading unchanged zips is almost always a mistake - the whole point of
 # data-v* releases is that a new one means the data actually changed.
 if [[ -n "$OLD_TAG" ]]; then
-    # Only the zips: the checksums file is expected to differ every release.
+    # Only the packs, and by size alone: the checksums file differs every release, and
+    # comparing by name would miss a pack that was merely renamed (as when the extension
+    # changed from .zip to .barkspack).
     OLD_SIZES=$(gh release view "$OLD_TAG" --repo "$REPO" --json assets \
-        -q '.assets[] | select(.name | endswith(".zip")) | "\(.name) \(.size)"' | sort)
-    NEW_SIZES=$(printf '%s %s\n%s %s\n' \
-        "$DATA1_ZIP" "$SIZE1" "$DATA2_ZIP" "$SIZE2" | sort)
+        -q '.assets[] | select(.name | startswith("barks-reader-data-")) | .size' | sort -n)
+    NEW_SIZES=$(printf '%s\n%s\n' "$SIZE1" "$SIZE2" | sort -n)
     if [[ "$OLD_SIZES" == "$NEW_SIZES" ]]; then
         echo -e "${YELLOW}WARNING: both zips are byte-for-byte the same SIZE as the ones on" \
             "${OLD_TAG} - are you sure the data packs have changed?${NC}"
@@ -131,12 +132,12 @@ gh release create "$NEW_TAG" --repo "$REPO" --target main --draft --prerelease \
     --title "Barks Reader Data Packs (v$((LAST_N + 1)))" \
     --notes "The two data packs required by every Barks Reader release. They rarely change, so they live on this dedicated release instead of being duplicated onto each app release.
 
-Download **both** zips and place them beside the app executable before first launch (see the [installation guide](https://glk1001.github.io/barks-compleat-reader/website/app.html#installation)).
+Download **both** packs and place them beside the app executable before first launch (see the [installation guide](https://glk1001.github.io/barks-compleat-reader/website/app.html#installation)). They are ordinary zip archives with a \`.barkspack\` extension so that browsers (Safari in particular) do not unpack them on download - leave them as they are, the app unpacks them itself.
 
 - ${DATA1_ZIP}
 - ${DATA2_ZIP}
 
-\`${CHECKSUMS_FILE}\` lists the SHA-256 of both zips. A download of this size can truncate silently, so if the reader reports a bad or empty archive, check the zips against it first (`sha256sum -c ${CHECKSUMS_FILE}`)."
+\`${CHECKSUMS_FILE}\` lists the SHA-256 of both packs. A download of this size can truncate silently, so if the reader reports a bad or empty archive, check the packs against it first (`sha256sum -c ${CHECKSUMS_FILE}`)."
 
 echo -e "${YELLOW}Uploading both zips (this is ~2GB - be patient)...${NC}"
 gh release upload "$NEW_TAG" --repo "$REPO" \

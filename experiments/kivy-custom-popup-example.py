@@ -212,7 +212,7 @@ if __name__ == "__main__":
         title="Installation Complete",
         content=_InstallerSuccessContent(
             fanta_volumes_dir="/home/greg/Documents/Fantagraphics",
-            data_zips=["barks-reader-data-1.zip", "barks-reader-data-2.zip"],
+            data_zips=["barks-reader-data-1.barkspack", "barks-reader-data-2.barkspack"],
             app_config_dir="/home/greg/.config/barks-reader/",
             app_log_path="/home/greg/.local/share/barks-reader/logs/",
         ),

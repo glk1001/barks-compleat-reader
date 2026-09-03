@@ -12,8 +12,11 @@ cd "$(dirname "$0")/.."
 DATA_FILES_PARENT_DIR="${HOME}/Books/Carl Barks/Compleat Barks Disney Reader"
 CONFIG_FILES_SUBDIR="Configs"
 DATA_FILES_SUBDIR="Reader Files"
-DATA1_ZIP="barks-reader-data-1.zip"
-DATA2_ZIP="barks-reader-data-2.zip"
+# Plain zip archives with a non-".zip" extension: Safari auto-expands ".zip" downloads
+# (a "safe" type), leaving users with a folder instead of the pack the installer
+# wants. An extension no app claims is left alone on every platform.
+DATA1_ZIP="barks-reader-data-1.barkspack"
+DATA2_ZIP="barks-reader-data-2.barkspack"
 
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'

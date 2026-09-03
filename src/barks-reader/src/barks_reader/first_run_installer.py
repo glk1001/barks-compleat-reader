@@ -16,12 +16,16 @@ _APP_NAME = "Barks Reader Installation"
 
 _ZIP_CONFIGS_SUBDIR = "Configs/"
 _ZIP_READER_FILES_SUBDIR = "Reader Files/"
-_ZIP_DATA_INSTALLER_FILES = ["barks-reader-data-1.zip", "barks-reader-data-2.zip"]
+# The data packs are plain zip archives. They deliberately do NOT carry a ".zip"
+# extension: Safari auto-expands "safe" downloads (zip among them), which leaves the
+# user with a folder instead of the pack the installer expects. An extension no app
+# claims is left alone on every platform.
+_ZIP_DATA_INSTALLER_FILES = ["barks-reader-data-1.barkspack", "barks-reader-data-2.barkspack"]
 
 _EXPECTED_FANTA_VOLUMES_DIR_NAME = FANTAGRAPHICS_BARKS_LIBRARY
 
 _CONFIG_UNREADABLE_DETAILS = (
-    "The config file was just extracted from the installer zip, so it should be"
+    "The config file was just extracted from the installer data pack, so it should be"
     " readable. Check the file exists and is not empty, then delete the"
     ' "config" directory and run the installer again.'
 )
@@ -253,16 +257,15 @@ def _extract_subdir(installer_zip: Path, subdir: str, extract_to_dir: Path) -> i
         if num_extracted == 0:
             top_level = sorted({m.filename.split("/")[0] for m in installer_files.infolist()})
             msg = (
-                f'The installer zip has no "{subdir}" folder at its top level:'
+                f'The installer data pack has no "{subdir}" folder at its top level:'
                 f'\n\n[b]"{installer_zip}".[/b]'
             )
             details = (
-                f'Expected a top-level "{subdir}" folder but the zip contains'
+                f'Expected a top-level "{subdir}" folder but the data pack contains'
                 f" {quote_and_join_with_and(top_level)}.\n\nThis usually means the data"
-                f" zip was unzipped and then re-zipped (Safari unzips downloads by default),"
-                f" which puts everything inside an extra folder. Download the original zip"
-                f' again, or re-zip from inside the unzipped folder so that "{subdir}"'
-                f" is at the top level."
+                f" pack was unzipped and then re-zipped, which puts everything inside an"
+                f" extra folder. Download the original data pack again, or re-zip from"
+                f' inside the unzipped folder so that "{subdir}" is at the top level.'
             )
             raise InstallerDataError(msg, details)
 
@@ -344,9 +347,9 @@ def _handle_wrong_exe_error(running_exe: Path, expected_exe_name: str) -> None:
 def _handle_could_not_find_data_zip_error(installer_zip: Path) -> None:
     _set_installer_failed_flag()
 
-    message = f'Could not find the Barks Reader installer zip:\n\n[b]"{installer_zip}".[/b]'
+    message = f'Could not find the Barks Reader data pack:\n\n[b]"{installer_zip}".[/b]'
     details = (
-        f"The Barks Reader installer zip should be in the same"
+        f"The Barks Reader data pack should be in the same"
         f' directory as the Barks Reader executable:\n\n[b]"{_barks_reader_exe_dir}".[/b]'
     )
     handle_app_fail(

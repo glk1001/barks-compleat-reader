@@ -157,7 +157,7 @@ def _get_installer_success_content(  # noqa: C901
             self._add_info_text(
                 content_box,
                 "The main Barks Reader app will now start. Once you're happy "
-                "the app is working properly, you can delete the installer zips:",
+                "the app is working properly, you can delete the installer data packs:",
             )
             if data_zips:
                 self._add_paths_box(content_box, data_zips)
@@ -297,7 +297,7 @@ if __name__ == "__main__":
         fanta_volumes_dir=Path(
             "~/Documents/Fantagraphics Complete Carl Barks Disney Library"
         ).expanduser(),
-        data_zips=[Path("barks-reader-data-1.zip"), Path("barks-reader-data-2.zip")],
+        data_zips=[Path("barks-reader-data-1.barkspack"), Path("barks-reader-data-2.barkspack")],
         app_config_dir=Path("~/opt/barks-reader/barks-reader.ini").expanduser(),
         app_log_path=Path("~/opt/barks-reader/config/kivy/logs/barks-reader.log").expanduser(),
         background_image_file=Path(

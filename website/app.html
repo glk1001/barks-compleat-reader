@@ -1043,8 +1043,8 @@
                         The files to download are:</p>
                     <ul>
                         <li><strong>"barks-reader-win.exe"</strong></li>
-                        <li><strong>"barks-reader-data-1.zip"</strong></li>
-                        <li><strong>"barks-reader-data-2.zip"</strong></li>
+                        <li><strong>"barks-reader-data-1.barkspack"</strong></li>
+                        <li><strong>"barks-reader-data-2.barkspack"</strong></li>
                     </ul>
                 </div>
 
@@ -1107,8 +1107,8 @@
                     <ul>
                         <li><strong>"barks-reader-macos.zip"</strong> (Apple Silicon Macs) or
                             <strong>"barks-reader-macos-x64.zip"</strong> (Intel Macs)</li>
-                        <li><strong>"barks-reader-data-1.zip"</strong></li>
-                        <li><strong>"barks-reader-data-2.zip"</strong></li>
+                        <li><strong>"barks-reader-data-1.barkspack"</strong></li>
+                        <li><strong>"barks-reader-data-2.barkspack"</strong></li>
                     </ul>
                 </div>
 
@@ -1159,8 +1159,8 @@
                         The files to download are:</p>
                     <ul>
                         <li><strong>"barks-reader-linux"</strong></li>
-                        <li><strong>"barks-reader-data-1.zip"</strong></li>
-                        <li><strong>"barks-reader-data-2.zip"</strong></li>
+                        <li><strong>"barks-reader-data-1.barkspack"</strong></li>
+                        <li><strong>"barks-reader-data-2.barkspack"</strong></li>
                     </ul>
                 </div>
 
@@ -1237,8 +1237,8 @@
                 <p>When the application is first launched it will do further installation steps
                     (on the very first launch only):</p>
                 <ul>
-                    <li>It will unzip <strong>"barks-reader-data-1.zip"</strong> and
-                        <strong>"barks-reader-data-2.zip"</strong> into a <strong>"Reader Files"</strong> folder
+                    <li>It will unpack <strong>"barks-reader-data-1.barkspack"</strong> and
+                        <strong>"barks-reader-data-2.barkspack"</strong> into a <strong>"Reader Files"</strong> folder
                         beside the executable (on macOS: beside the .app bundle),</li>
                     <li>It will create the necessary default configuration files in a
                         <strong>"config"</strong> folder in the same place,</li>
@@ -1253,7 +1253,7 @@
 
             <div class="install-step">
                 <h4>After the First Launch</h4>
-                <p>The <strong>"barks-reader-data-1.zip"</strong> and <strong>"barks-reader-data-2.zip"</strong>
+                <p>The <strong>"barks-reader-data-1.barkspack"</strong> and <strong>"barks-reader-data-2.barkspack"</strong>
                     files are no longer needed, and you can safely delete them.</p>
             </div>
         </div>
@@ -1391,8 +1391,8 @@
                 <div class="solution">
                     <p><strong>Solutions:</strong></p>
                     <ul>
-                        <li>On a first launch: ensure both data zip files (<strong>"barks-reader-data-1.zip"</strong>
-                            and <strong>"barks-reader-data-2.zip"</strong>) are in the same directory as the
+                        <li>On a first launch: ensure both data packs (<strong>"barks-reader-data-1.barkspack"</strong>
+                            and <strong>"barks-reader-data-2.barkspack"</strong>) are in the same directory as the
                             executable (on macOS: beside the .app bundle)</li>
                         <li>Check that the app directory has write permissions (do not install to <em>"C:\Program
                             Files"</em> on Windows or <em>"/Applications"</em> on macOS)</li>
@@ -1570,8 +1570,8 @@
             ];
 
             const dataFiles =[
-                { name: 'Data Pack 1', filename: 'barks-reader-data-1.zip' },
-                { name: 'Data Pack 2', filename: 'barks-reader-data-2.zip' }
+                { name: 'Data Pack 1', filename: 'barks-reader-data-1.barkspack' },
+                { name: 'Data Pack 2', filename: 'barks-reader-data-2.barkspack' }
             ];
 
             // Last known release tag, used until (or in case) the GitHub API
