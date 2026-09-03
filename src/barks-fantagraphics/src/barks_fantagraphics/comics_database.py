@@ -62,6 +62,7 @@ from .fanta_comics_info import (
     get_fanta_volume_from_str,
     get_fanta_volume_str,
 )
+from .ocr_file_paths import get_ocr_prelim_dir
 from .page_classes import OriginalPage
 
 
@@ -699,7 +700,9 @@ def get_fanta_restored_ocr_prelim_volume_dir(
 
 @functools.cache
 def get_fanta_restored_ocr_prelim_root_dir(fanta_restored_ocr_root_dir: Path) -> Path:
-    return fanta_restored_ocr_root_dir / "Prelim"
+    # Defer to the one lookup that knows about the BARKS_OCR_PRELIM_DIR override, so
+    # this and ocr_file_paths.OCR_PRELIM_DIR can never name different trees.
+    return get_ocr_prelim_dir(fanta_restored_ocr_root_dir)
 
 
 @functools.cache
