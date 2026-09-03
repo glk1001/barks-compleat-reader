@@ -27,6 +27,10 @@ docs/intro-pdf/
 /barks-reader-macos.zip
 /barks-reader-macos-x64.zip
 /barks-reader-win.exe
+# Data packs and their checksums produced by scripts/build-data-zips.sh and
+# scripts/upload-data-zips.sh (published to the data-vN release, never committed).
+/barks-reader-data-*.barkspack
+/SHA256SUMS.txt
 src/barks-reader/src/barks_reader/_version.py
 src/comic-utils/src/comic_utils/get_panel_bytes.py
 src/comic-utils/src/comic_utils/get_panel_bytes.pyx
