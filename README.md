@@ -148,7 +148,7 @@ Use 'barks-reader-win.exe'.
 1. Place `barks-reader-data-1.barkspack` and `barks-reader-data-2.barkspack` in that same folder, next
    to the `.exe`. They are zip archives under another name; don't unzip them — the app does
    that itself.
-1. Launch the app. The first run unpacks the data zips, writes the config, and shows a
+1. Launch the app. The first run unpacks the data packs, writes the config, and shows a
    success popup; subsequent launches go straight to the reader.
 
 ## Installing the Standalone App on macOS
@@ -160,7 +160,7 @@ Macs.
    downloaded from a GitHub Actions run's artifacts page is wrapped in an extra zip layer, so
    you may need to unzip twice; a file attached to a GitHub Release comes as-is.)
 1. Put the `.app` in **its own folder** (e.g. `~/BarksReader/`), not straight into
-   `/Applications`. The first-run installer looks for the data zips *beside the bundle*, and
+   `/Applications`. The first-run installer looks for the data packs *beside the bundle*, and
    also writes its `config/` directory, install log, and data there.
 1. Place `barks-reader-data-1.barkspack` and `barks-reader-data-2.barkspack` in that same folder, next to
    the `.app`. Don't unzip them. (The `.barkspack` extension exists so Safari's "Open safe
@@ -175,7 +175,7 @@ Macs.
       ```
       xattr -dr com.apple.quarantine ~/BarksReader/barks-reader-macos.app
       ```
-1. Launch the app. The first run unpacks the data zips, writes the config, and shows a
+1. Launch the app. The first run unpacks the data packs, writes the config, and shows a
    success popup; subsequent launches go straight to the reader. If the install fails, the
    log is written beside the `.app` as `barks-reader-installer-<timestamp>.log`.
 

@@ -1000,7 +1000,7 @@
             <div class="quick-start">
                 <h3>Quick Start</h3>
                 <ol>
-                    <li>Download the executable (on macOS: the zipped app bundle) and both data zip
+                    <li>Download the executable (on macOS: the zipped app bundle) and both data pack
                         files from the
                         <a href="#" onclick="openTab(event, 'download'); return false;">Download tab</a></li>
                     <li>Move all three files to a folder where you have write permissions
@@ -1046,10 +1046,30 @@
                         <li><strong>"barks-reader-data-1.barkspack"</strong></li>
                         <li><strong>"barks-reader-data-2.barkspack"</strong></li>
                     </ul>
+                    <p>Windows will very likely interrupt the <strong>.exe</strong> download &mdash; see the
+                        next step.</p>
                 </div>
 
                 <div class="install-step">
-                    <h4>Step 2: Move the Downloaded Files</h4>
+                    <h4>Step 2: Clear the Download Warning</h4>
+                    <p>The app is not code-signed, and every release is a brand-new file with no download
+                        reputation, so Windows treats it as suspicious. This is a false positive. Either the
+                        browser refuses the file as "unsafe", or Windows Defender reports a virus (typically
+                        <strong>Program:Win32/Wacapew.C!ml</strong>). If it was Defender, the browser's
+                        <strong>"Keep anyway"</strong> will appear to do nothing &mdash; the file was
+                        already quarantined, so there is nothing left to keep. Clear it in
+                        <strong>Windows Security → Virus &amp; threat protection → Protection
+                        history</strong> → find the entry → <strong>Actions → Allow</strong>, then
+                        download again.
+                        <a href="#" onclick="openTab(event, 'troubleshooting'); return false;">Per-browser
+                        steps, and what to do if Defender re-flags it →</a></p>
+                    <p>Only do this for downloads from this site or the project's own
+                        <a href="https://github.com/glk1001/barks-compleat-reader/releases">GitHub Releases
+                        page</a>.</p>
+                </div>
+
+                <div class="install-step">
+                    <h4>Step 3: Move the Downloaded Files</h4>
                     <strong>IMPORTANT: Do NOT extract to <i>"C:\Program Files"</i> &mdash; the application needs write
                         access to create its runtime environment.</strong><br/><br/>
                     <p>
@@ -1063,34 +1083,12 @@
                 </div>
 
                 <div class="install-step">
-                    <h4>Step 3: Clear the Security Warning</h4>
-                    <p>The app is not code-signed, and every release is a brand-new file with no download
-                        reputation, so Windows treats it as suspicious. This is a false positive. It can
-                        stop you at two separate points, and they need different fixes:</p>
-                    <ul>
-                        <li><strong>While downloading</strong> &mdash; either the browser refuses the file as
-                            "unsafe", or Windows Defender reports a virus (typically
-                            <strong>Program:Win32/Wacapew.C!ml</strong>). If it was Defender, the browser's
-                            <strong>"Keep anyway"</strong> will appear to do nothing &mdash; the file was
-                            already quarantined, so there is nothing left to keep. Clear it in
-                            <strong>Windows Security → Virus &amp; threat protection → Protection
-                            history</strong> → find the entry → <strong>Actions → Allow</strong>, then
-                            download again.
-                            <a href="#" onclick="openTab(event, 'troubleshooting'); return false;">Per-browser
-                            steps, and what to do if Defender re-flags it →</a></li>
-                        <li><strong>On first run</strong> &mdash; a blue SmartScreen dialog says "Windows
-                            protected your PC". Click <strong>"More info"</strong>, then
-                            <strong>"Run anyway"</strong>.</li>
-                    </ul>
-                    <p>Only do this for downloads from this site or the project's own
-                        <a href="https://github.com/glk1001/barks-compleat-reader/releases">GitHub Releases
-                        page</a>.</p>
-                </div>
-
-                <div class="install-step">
                     <h4>Step 4: Run the Application</h4>
                     <p>Navigate to the new app folder and double-click <strong>barks-reader-win.exe</strong> to launch
                         the application.</p>
+                    <p>On the first run only, a blue SmartScreen dialog says "Windows protected your PC" &mdash;
+                        the same missing-reputation false positive as in Step 2. Click
+                        <strong>"More info"</strong>, then <strong>"Run anyway"</strong>.</p>
                     <p>You can also create a shortcut by right-clicking: <strong>barks-reader-win.exe</strong> → Send to
                         → Desktop (create shortcut) for easy access.</p>
                 </div>
@@ -1115,9 +1113,10 @@
                 <div class="install-step">
                     <h4>Step 2: Unzip the App and Move the Files</h4>
                     <p>Double-click <strong>"barks-reader-macos.zip"</strong> in Finder to unzip it &mdash; you get
-                        the app bundle <strong>"barks-reader-macos.app"</strong>. (Do NOT unzip the two data zips
-                        &mdash; the app does that itself.)</p>
-                    <p>Move the <strong>.app</strong> and the two data zips into the same user-writable folder,
+                        the app bundle <strong>"barks-reader-macos.app"</strong>. (Leave the two
+                        <strong>.barkspack</strong> data packs as they are &mdash; they are zip archives under
+                        another name so that Safari won't unpack them, and the app unpacks them itself.)</p>
+                    <p>Move the <strong>.app</strong> and the two data packs into the same user-writable folder,
                         such as:</p>
                     <ul>
                         <li><strong>"~/Applications/BarksReader"</strong> (create folder if it doesn't exist)</li>
@@ -1425,13 +1424,13 @@
                 <div class="solution">
                     <p><strong>Solutions:</strong></p>
                     <ul>
-                        <li>Make sure both data zips downloaded completely (each is roughly 1 GB &mdash; about 2 GB
+                        <li>Make sure both data packs downloaded completely (each is roughly 1 GB &mdash; about 2 GB
                             together) and are beside the executable, then launch again</li>
                         <li>Check the install log
                             (<strong>"barks-reader-installer-&lt;timestamp&gt;.log"</strong>, beside the
                             executable) for the exact error</li>
                         <li>If a first launch failed partway through, delete the <strong>"config"</strong> and
-                            <strong>"Reader Files"</strong> folders beside the executable, make sure both data zips
+                            <strong>"Reader Files"</strong> folders beside the executable, make sure both data packs
                             are present, and launch again &mdash; the installer re-runs whenever no
                             <strong>"config"</strong> folder exists</li>
                         <li>Check available disk space (you'll need around 15 GB free)</li>
@@ -1460,10 +1459,10 @@
                         <li>Download the new executable from GitHub Releases and replace the old one in your
                             BarksReader folder &mdash; your <strong>"config"</strong> and
                             <strong>"Reader Files"</strong> folders (settings, last-read pages) are kept as-is</li>
-                        <li>The data zips are only needed again if the release notes say the data packs have
+                        <li>The data packs are only needed again if the release notes say the data packs have
                             changed</li>
                         <li>For a completely fresh install: delete the <strong>"config"</strong> and
-                            <strong>"Reader Files"</strong> folders, put both data zips beside the new executable,
+                            <strong>"Reader Files"</strong> folders, put both data packs beside the new executable,
                             and launch &mdash; the first-launch installer will run again</li>
                         <li>Check the GitHub Releases page for version-specific notes</li>
                     </ul>
