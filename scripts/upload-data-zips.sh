@@ -16,7 +16,12 @@
 #   5. Publishes the release, marked pre-release so it can never become
 #      GitHub's "Latest" (the website's version resolver depends on that).
 #   6. Points DATA_TAG in website/app.html and the data-pack links in
-#      .github/workflows/build.yml at the new tag - review and commit those.
+#      .github/workflows/build.yml at the new tag, and prints the exact commit and
+#      push commands. It never commits or pushes itself.
+#
+# Refuses to run with uncommitted changes to tracked files: the tag bump must land
+# as its own commit, and a bump that is not pushed leaves the live website pointing at the
+# old release while its download buttons already name the new pack files (404s).
 #
 # Usage: bash scripts/upload-data-zips.sh [--zips-dir <dir>] [--yes] [--dry-run]
 
@@ -49,6 +54,18 @@ while [[ $# -gt 0 ]]; do
 done
 
 cd "$(dirname "$0")/.."
+
+# --- Refuse a dirty tree ---
+# Untracked files are fine (the packs and SHA256SUMS.txt sit in the repo root); only
+# modifications to tracked files matter, because step 6 edits two tracked files and
+# that edit has to be the only thing in the resulting commit.
+DIRTY=$(git status --porcelain --untracked-files=no)
+if [[ -n "$DIRTY" ]]; then
+    echo -e "${RED}Uncommitted changes to tracked files - commit or stash them first:${NC}" >&2
+    echo "$DIRTY" >&2
+    exit 1
+fi
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
 for zip in "${ZIPS_DIR}/${DATA1_ZIP}" "${ZIPS_DIR}/${DATA2_ZIP}"; do
     if [[ ! -f "$zip" ]]; then
@@ -168,5 +185,10 @@ echo -e "${GREEN}=================================================="
 echo -e "Done: https://github.com/${REPO}/releases/tag/${NEW_TAG}"
 echo -e "==================================================${NC}"
 echo -e "Updated DATA_TAG in ${WEBSITE_FILE} and the data-pack links in ${WORKFLOW_FILE}."
-echo -e "Review and commit those changes (git diff), then consider deleting the"
-echo -e "old ${OLD_TAG:-data-v?} release once nothing links to it."
+echo
+echo -e "${YELLOW}The live website now 404s on the data-pack buttons until this is pushed:${NC}"
+echo -e "  git add ${WEBSITE_FILE} ${WORKFLOW_FILE}"
+echo -e "  git commit -m 'chore(release): point the data-pack links at ${NEW_TAG}'"
+echo -e "  git push origin ${BRANCH}"
+echo
+echo -e "Then consider deleting the old ${OLD_TAG:-data-v?} release once nothing links to it."

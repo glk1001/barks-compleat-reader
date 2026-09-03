@@ -222,7 +222,12 @@ The script (options: `--zips-dir <dir>`, `--dry-run`, `--yes`):
 1. Publishes the release, marked pre-release so it can never become GitHub's "Latest" (the
    website's version resolver depends on that).
 1. Points `DATA_TAG` in `website/app.html` and the data-pack links in
-   `.github/workflows/build.yml` at the new tag — review and commit those changes.
+   `.github/workflows/build.yml` at the new tag, and prints the exact commit and push
+   commands. **Push them straight away**: until that lands, the live website's data-pack
+   buttons name the new pack files under the old tag and 404.
+
+It refuses to start with uncommitted changes to tracked files, so the tag bump is always
+its own commit.
 
 Publishing a data release creates its `data-vN` tag, but that push doesn't waste CI: the
 build workflow skips app builds for `data-*` tags (they'd build four executables and attach
