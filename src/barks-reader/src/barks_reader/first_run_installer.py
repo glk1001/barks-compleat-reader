@@ -20,6 +20,12 @@ _ZIP_DATA_INSTALLER_FILES = ["barks-reader-data-1.zip", "barks-reader-data-2.zip
 
 _EXPECTED_FANTA_VOLUMES_DIR_NAME = FANTAGRAPHICS_BARKS_LIBRARY
 
+_CONFIG_UNREADABLE_DETAILS = (
+    "The config file was just extracted from the installer zip, so it should be"
+    " readable. Check the file exists and is not empty, then delete the"
+    ' "config" directory and run the installer again.'
+)
+
 # Directory of the running standalone executable, beside which the installer data
 # zips are shipped and into which config/data are installed.
 _barks_reader_exe_dir = get_app_exe_dir()
@@ -36,6 +42,20 @@ def _handle_uncaught_exception(exc_type, exc_value, exc_traceback) -> None:  # n
 
 
 sys.excepthook = _handle_uncaught_exception
+
+
+class InstallerDataError(Exception):
+    """The installer data on disk is not what the installer expects.
+
+    Raised for problems a user can fix themselves (a re-zipped data pack, an unreadable
+    config), as opposed to programming errors. ``main`` shows ``message`` and ``details``
+    in the installer's error popup instead of a raw traceback.
+    """
+
+    def __init__(self, message: str, details: str) -> None:
+        super().__init__(message)
+        self.message = message
+        self.details = details
 
 
 def main() -> None:
@@ -81,6 +101,9 @@ def main() -> None:
         fanta_volumes_dir = _run_installer(config_info, installer_zip_paths)
         logger.info("Finished installing config and data files.")
 
+    except InstallerDataError as e:
+        logger.error(f"An installer data error occurred: {e.message} {e.details}")
+        _handle_installer_data_error(e)
     except Exception:  # noqa: BLE001
         logger.exception("An installer error occurred:")
         _handle_installer_exception(*sys.exc_info())
@@ -177,8 +200,21 @@ def _configure_fanta_volumes_for_platform(config_info: ConfigInfo) -> Path | Non
         return None
     logger.info(f'Found Fantagraphics volumes directory at "{fanta_volumes_dir}".')
 
+    # ConfigParser.read silently skips a file it cannot open, so check its result.
     barks_config = ConfigParser()
-    barks_config.read(config_info.app_config_path)
+    files_read = barks_config.read(config_info.app_config_path)
+    if not files_read:
+        msg = (
+            f"Could not read the newly installed Barks Reader config:"
+            f'\n\n[b]"{config_info.app_config_path}".[/b]'
+        )
+        raise InstallerDataError(msg, _CONFIG_UNREADABLE_DETAILS)
+    if not barks_config.has_section(BARKS_READER_SECTION):
+        msg = (
+            f'The newly installed Barks Reader config has no "[{BARKS_READER_SECTION}]"'
+            f' section:\n\n[b]"{config_info.app_config_path}".[/b]'
+        )
+        raise InstallerDataError(msg, _CONFIG_UNREADABLE_DETAILS)
 
     barks_config.set(BARKS_READER_SECTION, FANTA_DIR, str(fanta_volumes_dir))
     with config_info.app_config_path.open("w") as configfile:
@@ -188,12 +224,20 @@ def _configure_fanta_volumes_for_platform(config_info: ConfigInfo) -> Path | Non
     return fanta_volumes_dir
 
 
-def _extract_subdir(installer_zip: Path, subdir: str, extract_to_dir: Path) -> None:
+def _extract_subdir(installer_zip: Path, subdir: str, extract_to_dir: Path) -> int:
+    """Extract every file under ``subdir`` in ``installer_zip`` into ``extract_to_dir``.
+
+    Returns the number of files extracted. Raises ``InstallerDataError`` if no zip entry
+    starts with ``subdir`` - the usual cause is a data pack that was unzipped and
+    re-zipped (e.g. by Safari + Finder), which nests the contents one folder deeper.
+    """
+    num_extracted = 0
     with ZipFile(installer_zip, "r") as installer_files:
         for member in installer_files.infolist():
             # TODO: Does this work with Windows????
             if member.is_dir() or not member.filename.startswith(subdir):
                 continue
+            num_extracted += 1
 
             # Create the new path by stripping the subdir prefix.
             relative_path = member.filename.removeprefix(subdir)
@@ -206,6 +250,25 @@ def _extract_subdir(installer_zip: Path, subdir: str, extract_to_dir: Path) -> N
             with installer_files.open(member) as source, target_path.open("wb") as target:
                 target.write(source.read())
 
+        if num_extracted == 0:
+            top_level = sorted({m.filename.split("/")[0] for m in installer_files.infolist()})
+            msg = (
+                f'The installer zip has no "{subdir}" folder at its top level:'
+                f'\n\n[b]"{installer_zip}".[/b]'
+            )
+            details = (
+                f'Expected a top-level "{subdir}" folder but the zip contains'
+                f" {quote_and_join_with_and(top_level)}.\n\nThis usually means the data"
+                f" zip was unzipped and then re-zipped (Safari unzips downloads by default),"
+                f" which puts everything inside an extra folder. Download the original zip"
+                f' again, or re-zip from inside the unzipped folder so that "{subdir}"'
+                f" is at the top level."
+            )
+            raise InstallerDataError(msg, details)
+
+    logger.info(f'Extracted {num_extracted} files from "{subdir}" to "{extract_to_dir}".')
+    return num_extracted
+
 
 def _set_installer_failed_flag() -> None:
     from barks_reader.core.config_info import (  # noqa: PLC0415
@@ -217,6 +280,21 @@ def _set_installer_failed_flag() -> None:
     logger.warning(
         f"Set Barks Reader installer FAILED flag file:"
         f' "{get_barks_reader_installer_failed_flag_file()}".'
+    )
+
+
+def _handle_installer_data_error(error: InstallerDataError) -> None:
+    _set_installer_failed_flag()
+
+    handle_app_fail(
+        _APP_TYPE,
+        _APP_NAME,
+        error.message,
+        error.details,
+        str(_log_file),
+        log_the_error=False,
+        background_image_file=None,
+        show_details=True,
     )
 
 
