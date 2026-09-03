@@ -156,9 +156,12 @@ Use 'barks-reader-win.exe'.
 Use 'barks-reader-macos.zip' on Apple Silicon Macs and 'barks-reader-macos-x64.zip' on Intel
 Macs.
 
-1. Unzip the download (double-click in Finder). You get `barks-reader-macos.app`. (Note: a zip
-   downloaded from a GitHub Actions run's artifacts page is wrapped in an extra zip layer, so
-   you may need to unzip twice; a file attached to a GitHub Release comes as-is.)
+1. Get the app bundle `barks-reader-macos.app`. Safari unzips downloads automatically by
+   default, so it is probably already in your Downloads folder beside the zip. If you only
+   have the zip (other browsers, or Safari with "Open safe files" turned off), double-click
+   it in Finder. (Note: a zip downloaded from a GitHub Actions run's artifacts page is
+   wrapped in an extra zip layer, so you may need to unzip twice; a file attached to a
+   GitHub Release comes as-is.)
 1. Put the `.app` in **its own folder** (e.g. `~/BarksReader/`), not straight into
    `/Applications`. The first-run installer looks for the data packs *beside the bundle*, and
    also writes its `config/` directory, install log, and data there.
