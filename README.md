@@ -123,6 +123,33 @@ just reader
    ('barks-reader-linux') and Windows ('barks-reader-win.exe'), and a zipped `.app` bundle on
    macOS ('barks-reader-macos.zip' or 'barks-reader-macos-x64.zip', depending on architecture).
 
+## Installing the Standalone App on Windows
+
+Use 'barks-reader-win.exe'.
+
+1. Windows will probably block the download. The app is unsigned and every release is a
+   brand-new file with no download reputation, so this is a false positive — but it can
+   stop you at two separate points, and they need different fixes:
+    - **While downloading** — either the browser refuses the file as "unsafe", or Defender
+      reports a virus (typically `Program:Win32/Wacapew.C!ml`). If it was Defender, the
+      browser's **"Keep anyway"** appears to do nothing, because the file is already
+      quarantined and there is nothing left to keep. Clear it in **Windows Security →
+      Virus & threat protection → Protection history** → find the entry → **Actions →
+      Allow**, then download again. To skip the browser's own check entirely:
+      ```
+      curl.exe -L -o barks-reader-win.exe <link>
+      ```
+    - **On first run** — SmartScreen shows "Windows protected your PC". Click
+      **"More info"**, then **"Run anyway"**.
+1. Put the `.exe` in **its own folder** that you can write to (e.g.
+   `C:\Users\<you>\BarksReader`), **not** `C:\Program Files`. The app writes its
+   `config/` directory, install log and unpacked data *beside the executable*, so it needs
+   write access there.
+1. Place `barks-reader-data-1.zip` and `barks-reader-data-2.zip` in that same folder, next
+   to the `.exe`. Don't unzip them — the app does that itself.
+1. Launch the app. The first run unpacks the data zips, writes the config, and shows a
+   success popup; subsequent launches go straight to the reader.
+
 ## Installing the Standalone App on macOS
 
 Use 'barks-reader-macos.zip' on Apple Silicon Macs and 'barks-reader-macos-x64.zip' on Intel

@@ -1063,10 +1063,34 @@
                 </div>
 
                 <div class="install-step">
-                    <h4>Step 3: Run the Application</h4>
+                    <h4>Step 3: Clear the Security Warning</h4>
+                    <p>The app is not code-signed, and every release is a brand-new file with no download
+                        reputation, so Windows treats it as suspicious. This is a false positive. It can
+                        stop you at two separate points, and they need different fixes:</p>
+                    <ul>
+                        <li><strong>While downloading</strong> &mdash; either the browser refuses the file as
+                            "unsafe", or Windows Defender reports a virus (typically
+                            <strong>Program:Win32/Wacapew.C!ml</strong>). If it was Defender, the browser's
+                            <strong>"Keep anyway"</strong> will appear to do nothing &mdash; the file was
+                            already quarantined, so there is nothing left to keep. Clear it in
+                            <strong>Windows Security → Virus &amp; threat protection → Protection
+                            history</strong> → find the entry → <strong>Actions → Allow</strong>, then
+                            download again.
+                            <a href="#" onclick="openTab(event, 'troubleshooting'); return false;">Per-browser
+                            steps, and what to do if Defender re-flags it →</a></li>
+                        <li><strong>On first run</strong> &mdash; a blue SmartScreen dialog says "Windows
+                            protected your PC". Click <strong>"More info"</strong>, then
+                            <strong>"Run anyway"</strong>.</li>
+                    </ul>
+                    <p>Only do this for downloads from this site or the project's own
+                        <a href="https://github.com/glk1001/barks-compleat-reader/releases">GitHub Releases
+                        page</a>.</p>
+                </div>
+
+                <div class="install-step">
+                    <h4>Step 4: Run the Application</h4>
                     <p>Navigate to the new app folder and double-click <strong>barks-reader-win.exe</strong> to launch
                         the application.</p>
-                    <p>You may need to allow the app through Windows Defender SmartScreen on first run.</p>
                     <p>You can also create a shortcut by right-clicking: <strong>barks-reader-win.exe</strong> → Send to
                         → Desktop (create shortcut) for easy access.</p>
                 </div>
