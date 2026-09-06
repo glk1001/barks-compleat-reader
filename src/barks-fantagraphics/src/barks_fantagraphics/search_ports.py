@@ -10,6 +10,7 @@ No Whoosh imports in this module.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
@@ -18,6 +19,34 @@ if TYPE_CHECKING:
     from .whoosh_search_engine import TitleDict
 
 type AlphaSplitTerms = dict[str, dict[str, list[str]]]
+
+
+class SearchIndexUnavailableError(Exception):
+    """No usable full-text index at the given location.
+
+    Raised instead of the underlying engine's own error so that callers can
+    degrade gracefully without importing Whoosh.
+    """
+
+
+@dataclass(frozen=True, slots=True)
+class CorpusTextTotals:
+    """Corpus-wide totals from a single pass over the indexed speech.
+
+    Attributes:
+        num_text_entities: Indexed speech groups - balloons, captions, sound effects.
+        num_words: Whitespace-delimited words across all indexed speech text.
+        num_titles: Distinct story titles present in the index.
+        num_pages: Distinct ``(volume, page)`` pairs that carry indexed text.
+        num_panels: Distinct ``(volume, page, panel)`` triples that carry indexed text.
+
+    """
+
+    num_text_entities: int
+    num_words: int
+    num_titles: int
+    num_pages: int
+    num_panels: int
 
 
 @runtime_checkable
@@ -50,6 +79,10 @@ class FullTextSearchPort(Protocol):
 
     def get_alpha_split_entity_terms(self, entity_type: str) -> AlphaSplitTerms:
         """Return entity terms grouped alphabetically."""
+        ...
+
+    def get_corpus_text_totals(self) -> CorpusTextTotals:
+        """Aggregate corpus-wide totals in one pass over the whole index."""
         ...
 
 

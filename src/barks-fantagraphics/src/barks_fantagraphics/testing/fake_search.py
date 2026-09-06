@@ -15,6 +15,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from barks_fantagraphics.search_ports import CorpusTextTotals
+
 if TYPE_CHECKING:
     from barks_fantagraphics.search_ports import AlphaSplitTerms
     from barks_fantagraphics.whoosh_search_engine import TitleDict
@@ -31,6 +33,9 @@ class InMemoryFullTextSearch:
     cleaned_alpha_split_terms: AlphaSplitTerms = field(default_factory=dict)
     entity_terms: dict[str, list[str]] = field(default_factory=dict)
     alpha_split_entity_terms: dict[str, AlphaSplitTerms] = field(default_factory=dict)
+    corpus_text_totals: CorpusTextTotals = field(
+        default_factory=lambda: CorpusTextTotals(0, 0, 0, 0, 0)
+    )
 
     def find_words(self, search_words: str) -> TitleDict:
         """Return canned results for the given query, or empty dict."""
@@ -59,3 +64,7 @@ class InMemoryFullTextSearch:
     def get_alpha_split_entity_terms(self, entity_type: str) -> AlphaSplitTerms:
         """Return the configured alpha-split entity terms for the given type."""
         return self.alpha_split_entity_terms.get(entity_type, {})
+
+    def get_corpus_text_totals(self) -> CorpusTextTotals:
+        """Return the configured corpus totals."""
+        return self.corpus_text_totals

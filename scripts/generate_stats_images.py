@@ -39,12 +39,9 @@ mpl.use("Agg")  # headless backend - no display required
 # -- barks_fantagraphics imports ---------------------------------------------
 from barks_fantagraphics.barks_payments import BARKS_PAYMENTS
 from barks_fantagraphics.barks_tags import (
-    BARKS_TAG_CATEGORIES,
-    BARKS_TAG_GROUPS,
     BARKS_TAGGED_TITLES,
     TagCategories,
-    TagGroups,
-    Tags,
+    get_all_tags_in_tag_category,
 )
 from barks_fantagraphics.comic_book_info import BARKS_TITLE_INFO
 from barks_fantagraphics.fanta_comics_info import ALL_FANTA_COMIC_BOOK_INFO
@@ -96,27 +93,6 @@ def _style_ax(ax: plt.Axes, title: str, x_label: str = "", y_label: str = "") ->
     ax.set_axisbelow(True)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-
-
-def _get_all_tags_in_category(category: TagCategories) -> list[Tags]:
-    """Recursively flatten a tag category into individual Tags (no TagGroups)."""
-    result: list[Tags] = []
-    for item in BARKS_TAG_CATEGORIES[category]:
-        if isinstance(item, Tags):
-            result.append(item)
-        elif isinstance(item, TagGroups):
-            result.extend(_flatten_tag_group(item))
-    return result
-
-
-def _flatten_tag_group(group: TagGroups) -> list[Tags]:
-    result: list[Tags] = []
-    for item in BARKS_TAG_GROUPS[group]:
-        if isinstance(item, Tags):
-            result.append(item)
-        elif isinstance(item, TagGroups):
-            result.extend(_flatten_tag_group(item))
-    return result
 
 
 # -- Chart generators --------------------------------------------------------
@@ -253,7 +229,7 @@ def gen_stories_per_series(output_dir: Path) -> None:
 
 def gen_top_characters(output_dir: Path, top_n: int = 20) -> None:
     """Bar chart: top N characters by story appearance count."""
-    char_tags = _get_all_tags_in_category(TagCategories.CHARACTERS)
+    char_tags = get_all_tags_in_tag_category(TagCategories.CHARACTERS)
     counts: dict[str, int] = {}
     for tag in char_tags:
         titles = BARKS_TAGGED_TITLES.get(tag, [])
@@ -281,7 +257,7 @@ def gen_top_characters(output_dir: Path, top_n: int = 20) -> None:
 
 def gen_top_locations(output_dir: Path, top_n: int = 20) -> None:
     """Bar chart: top N locations by story appearance count."""
-    place_tags = _get_all_tags_in_category(TagCategories.PLACES)
+    place_tags = get_all_tags_in_tag_category(TagCategories.PLACES)
     counts: dict[str, int] = {}
     for tag in place_tags:
         titles = BARKS_TAGGED_TITLES.get(tag, [])

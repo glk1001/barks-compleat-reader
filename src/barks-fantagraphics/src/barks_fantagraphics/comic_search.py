@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
     from .barks_tags import TagGroups, Tags
     from .barks_titles import Titles
-    from .search_ports import AlphaSplitTerms, FullTextSearchPort
+    from .search_ports import AlphaSplitTerms, CorpusTextTotals, FullTextSearchPort
     from .title_search import BarksTitleSearch
     from .whoosh_search_engine import TitleDict
 
@@ -216,6 +216,14 @@ class ComicSearch:
         """Return alphabetically-split entity terms for the given type."""
         return self._get_full_text().get_alpha_split_entity_terms(entity_type)
 
+    def get_cleaned_terms(self) -> list[str]:
+        """Return the cleaned, display-ready corpus word list."""
+        return self._get_full_text().get_cleaned_terms()
+
+    def get_corpus_text_totals(self) -> CorpusTextTotals:
+        """Aggregate corpus-wide text totals in one pass over the whole index."""
+        return self._get_full_text().get_corpus_text_totals()
+
     def get_entity_terms(self, entity_type: str) -> list[str]:
         """Return the flat entity term list for the given type."""
         return self._get_full_text().get_entity_terms(entity_type)
@@ -262,9 +270,16 @@ class ComicSearch:
 
     def _get_full_text(self) -> FullTextSearchPort:
         if self._full_text is None:
+            from whoosh.index import EmptyIndexError  # noqa: PLC0415
+
+            from .search_ports import SearchIndexUnavailableError  # noqa: PLC0415
             from .whoosh_search_engine import SearchEngine  # noqa: PLC0415
 
-            self._full_text = SearchEngine(self._index_dir)
+            try:
+                self._full_text = SearchEngine(self._index_dir)
+            except (EmptyIndexError, OSError) as exc:
+                msg = f'No usable search index in "{self._index_dir}".'
+                raise SearchIndexUnavailableError(msg) from exc
         assert self._full_text is not None
         return self._full_text
 

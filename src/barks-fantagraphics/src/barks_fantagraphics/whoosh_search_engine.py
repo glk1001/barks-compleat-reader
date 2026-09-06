@@ -18,6 +18,7 @@ from whoosh.searching import Hit
 from .alpha_split import split_alpha_terms
 from .comics_database import ComicsDatabase
 from .entity_types import EntityType
+from .search_ports import CorpusTextTotals
 from .speech_groupers import OcrTypes, SpeechGroups
 from .speech_markup import strip_markup
 from .whoosh_barks_terms import (
@@ -286,6 +287,29 @@ class SearchEngine:
     def get_all_titles(self) -> set[str]:
         with self._index.reader() as reader:
             return {t.decode("utf-8") for t in reader.lexicon("title")}
+
+    def get_corpus_text_totals(self) -> CorpusTextTotals:
+        """Aggregate corpus-wide totals in one pass over the whole index."""
+        num_text_entities = 0
+        num_words = 0
+        titles: set[str] = set()
+        pages: set[tuple[str, str]] = set()
+        panels: set[tuple[str, str, str]] = set()
+
+        for fields in self.iter_all_stored_fields():
+            num_text_entities += 1
+            num_words += len(fields["content_raw"].split())
+            titles.add(fields["title"])
+            pages.add((fields["fanta_vol"], fields["fanta_page"]))
+            panels.add((fields["fanta_vol"], fields["fanta_page"], fields["panel_num"]))
+
+        return CorpusTextTotals(
+            num_text_entities=num_text_entities,
+            num_words=num_words,
+            num_titles=len(titles),
+            num_pages=len(pages),
+            num_panels=len(panels),
+        )
 
     def get_cleaned_terms(self) -> list[str]:
         if not self._cleaned_terms_path.exists():

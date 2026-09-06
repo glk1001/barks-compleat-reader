@@ -1,6 +1,6 @@
 """Tests for search_ports protocols and the InMemoryFullTextSearch fake."""
 
-from barks_fantagraphics.search_ports import FullTextSearchPort
+from barks_fantagraphics.search_ports import CorpusTextTotals, FullTextSearchPort
 from barks_fantagraphics.testing.fake_search import InMemoryFullTextSearch
 from barks_fantagraphics.whoosh_search_engine import TitleInfo
 
@@ -42,6 +42,13 @@ class TestInMemoryFullTextSearch:
         assert fake.get_alpha_split_entity_terms("person") == alpha
         assert fake.get_alpha_split_entity_terms("location") == {}
 
+    def test_get_corpus_text_totals(self) -> None:
+        totals = CorpusTextTotals(
+            num_text_entities=3, num_words=10, num_titles=2, num_pages=2, num_panels=3
+        )
+        fake = InMemoryFullTextSearch(corpus_text_totals=totals)
+        assert fake.get_corpus_text_totals() == totals
+
     def test_get_all_titles(self) -> None:
         fake = InMemoryFullTextSearch(all_titles={"Title A", "Title B"})
         assert fake.get_all_titles() == {"Title A", "Title B"}
@@ -55,3 +62,4 @@ class TestInMemoryFullTextSearch:
         assert fake.get_cleaned_alpha_split_terms() == {}
         assert fake.get_entity_terms("person") == []
         assert fake.get_alpha_split_entity_terms("person") == {}
+        assert fake.get_corpus_text_totals() == CorpusTextTotals(0, 0, 0, 0, 0)

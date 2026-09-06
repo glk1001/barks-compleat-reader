@@ -313,7 +313,7 @@ def _validate_places() -> None:
     for group in places_groups:
         places_tags.update(get_all_tags_in_tag_group(group))
 
-    symmetric_diff = places_tags ^ _get_all_tags_in_tag_category(TagCategories.PLACES)
+    symmetric_diff = places_tags ^ get_all_tags_in_tag_category(TagCategories.PLACES)
     assert len(symmetric_diff) == 0, f"Non-empty diff: '{symmetric_diff}'"
 
 
@@ -378,7 +378,7 @@ def _get_titles_for_tags_or_groups(items_list: Sequence[Tags | TagGroups]) -> se
     return collected_titles
 
 
-def _get_all_tags_in_tag_category(tag_category: TagCategories) -> set[Tags]:
+def get_all_tags_in_tag_category(tag_category: TagCategories) -> set[Tags]:
     """Recursively collect all unique tags for a tag category."""
     tags = set()
     for tag_or_group in BARKS_TAG_CATEGORIES[tag_category]:
