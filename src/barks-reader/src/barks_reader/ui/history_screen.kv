@@ -84,6 +84,13 @@
         height: root.height - dp(42)
         pos_hint: {'x': 0, 'y': 0}
         do_scroll_x: False
+        # 'bars' is what makes the scrollbar draggable; with the default
+        # ['content'] it renders but ignores the mouse.
+        scroll_type: ['bars', 'content']
+        always_overscroll: False
+        effect_cls: 'ScrollEffect'
+        bar_color: (0.7, 0.7, 0.7, 0.9)
+        bar_inactive_color: (0.5, 0.5, 0.5, 0.4)
         bar_width: dp(8)
 
         GridLayout:
