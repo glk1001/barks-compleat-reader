@@ -298,7 +298,9 @@ class SearchEngine:
 
         for fields in self.iter_all_stored_fields():
             num_text_entities += 1
-            num_words += len(fields["content_raw"].split())
+            # The stored `content_raw` carries markup, so strip it before counting:
+            # "[b] SABOTEURS [/b]" is one word of lettering, not three.
+            num_words += len(strip_markup(fields["content_raw"]).split())
             titles.add(fields["title"])
             pages.add((fields["fanta_vol"], fields["fanta_page"]))
             panels.add((fields["fanta_vol"], fields["fanta_page"], fields["panel_num"]))

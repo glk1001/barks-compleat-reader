@@ -7,6 +7,8 @@ from unittest.mock import MagicMock
 
 import pytest
 from barks_fantagraphics.entity_types import EntityType
+from barks_fantagraphics.search_ports import CorpusTextTotals
+from barks_fantagraphics.speech_markup import strip_markup
 from barks_fantagraphics.whoosh_search_engine import (
     SearchEngine,
     SearchEngineCreator,
@@ -464,3 +466,73 @@ class TestFindWords:
         assert len(docs) == 2
         assert {d["title"] for d in docs} == {"Alpha", "Beta"}
         assert all("unstemmed" not in d for d in docs)
+
+
+# ---------------------------------------------------------------------------
+# SearchEngine.get_corpus_text_totals
+# ---------------------------------------------------------------------------
+
+
+class TestGetCorpusTextTotals:
+    @pytest.fixture
+    def index_dir(self, tmp_path: Path) -> Path:
+        """Build a small index shaped the way the real writer shapes one.
+
+        `content_raw` is indexed stripped and stored marked up (Whoosh's
+        `_stored_<field>` convention), so a totals pass that forgets to strip
+        counts the markup as words.
+        """
+        from whoosh.index import create_in
+
+        index = create_in(str(tmp_path), build_index_schema())
+        writer = index.writer()
+        common = {
+            "entities_person": "",
+            "entities_location": "",
+            "entities_org": "",
+            "entities_work": "",
+            "entities_misc": "",
+        }
+
+        def add(title: str, vol: str, page: str, panel: str, raw: str, group: str) -> None:
+            writer.add_document(
+                title=title,
+                fanta_vol=vol,
+                fanta_page=page,
+                comic_page="1",
+                content_id=group,
+                panel_num=panel,
+                unstemmed=strip_markup(raw),
+                content_raw=strip_markup(raw),
+                _stored_content_raw=raw,
+                **common,
+            )
+
+        # Two groups share a page and a panel; the third is a second page.
+        add("Alpha", "10", "001", "1", "[b] ONE TWO [/b]", "1")
+        add("Alpha", "10", "001", "1", "THREE", "2")
+        add("Alpha", "10", "002", "3", "FOUR FIVE", "3")
+        add("Beta", "20", "001", "1", "SIX", "4")
+        writer.commit()
+        return tmp_path
+
+    def test_totals_over_the_whole_index(self, index_dir: Path) -> None:
+        totals = SearchEngine(index_dir).get_corpus_text_totals()
+
+        assert totals.num_text_entities == 4
+        assert totals.num_titles == 2
+        assert totals.num_pages == 3
+        assert totals.num_panels == 3
+
+    def test_words_are_counted_without_markup(self, index_dir: Path) -> None:
+        """A bracketed emphasis tag is markup, not two extra words."""
+        assert SearchEngine(index_dir).get_corpus_text_totals().num_words == 6
+
+    def test_empty_index_totals_are_zero(self, tmp_path: Path) -> None:
+        from whoosh.index import create_in
+
+        create_in(str(tmp_path), build_index_schema())
+
+        totals = SearchEngine(tmp_path).get_corpus_text_totals()
+
+        assert totals == CorpusTextTotals(0, 0, 0, 0, 0)
