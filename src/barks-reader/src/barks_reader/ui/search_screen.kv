@@ -63,14 +63,6 @@
     background_down: ''
     background_color: (0.18, 0.18, 0.18, 0.9)
 
-<SearchScroll@ScrollView>:
-    always_overscroll: False
-    effect_cls: 'ScrollEffect'
-    scroll_type: ['bars', 'content']
-    bar_color: (0.7, 0.7, 0.7, 0.9)
-    bar_inactive_color: (0.5, 0.5, 0.5, 0.4)
-    bar_width: dp(8)
-
 # A translucent rounded panel that frames a list area, so the screen layout
 # reads as designed even before any search results exist.
 <SearchPanel@FloatLayout>:
@@ -158,7 +150,7 @@
                     pos_hint: {'x': 0, 'y': 0}
                     padding: dp(8)
 
-                    SearchScroll:
+                    ReaderScrollView:
                         id: title_results_scroll
 
                         BoxLayout:
@@ -210,7 +202,7 @@
                         pos_hint: {'x': 0, 'y': 0}
                         padding: dp(8)
 
-                        SearchScroll:
+                        ReaderScrollView:
 
                             BoxLayout:
                                 id: tag_chips_layout
@@ -231,7 +223,7 @@
                     pos_hint: {'x': 0, 'y': 0}
                     padding: dp(8)
 
-                    SearchScroll:
+                    ReaderScrollView:
                         id: tag_results_scroll
 
                         BoxLayout:
@@ -283,7 +275,7 @@
                         pos_hint: {'x': 0, 'y': 0}
                         padding: dp(8)
 
-                        SearchScroll:
+                        ReaderScrollView:
                             id: word_chips_scroll
 
                             BoxLayout:
@@ -305,7 +297,7 @@
                     pos_hint: {'x': 0, 'y': 0}
                     padding: dp(8)
 
-                    SearchScroll:
+                    ReaderScrollView:
                         id: word_results_scroll
 
                         BoxLayout:

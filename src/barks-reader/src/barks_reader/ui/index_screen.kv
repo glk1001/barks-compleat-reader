@@ -181,14 +181,8 @@
         opacity: 1 if root.has_prefix_bar else 0
         disabled: not root.has_prefix_bar
 
-    ScrollView:
+    ReaderScrollView:
         id: index_scroll_view
-
-        do_scroll_x: False
-        do_scroll_y: True
-        always_overscroll: False
-        effect_cls: "ScrollEffect"
-        scroll_type: ["bars", "content"]
 
         bar_color: (0.5, 0.5, 0.8, 1)
         bar_inactive_color: (0.6, 0.6, 0.6, 1)

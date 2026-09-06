@@ -1,3 +1,17 @@
+# The shared scroll-pane look. `scroll_type` is the load-bearing line: 'bars' is
+# what makes the scrollbar draggable, and with Kivy's default ['content'] the bar
+# renders but ignores the mouse. Screens wanting a different bar keep this class
+# and override just the bar properties.
+<ReaderScrollView@ScrollView>:
+    do_scroll_x: False
+    scroll_type: ['bars', 'content']
+    always_overscroll: False
+    effect_cls: 'ScrollEffect'
+    bar_color: (0.7, 0.7, 0.7, 0.9)
+    bar_inactive_color: (0.5, 0.5, 0.5, 0.4)
+    bar_width: dp(8)
+
+
 <TouchExpandedButton>:
     opacity: 1 if self.is_active else 0
     disabled: not self.is_active
