@@ -236,7 +236,9 @@ def gen_top_characters(output_dir: Path, top_n: int = 20) -> None:
         if titles:
             counts[tag.value] = len(titles)
 
-    sorted_items = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)[:top_n]
+    # Tag categories arrive as unordered sets, so ties must break on the name to keep
+    # the generated image identical from run to run.
+    sorted_items = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:top_n]
     if not sorted_items:
         print("  No character data found; skipping top_characters.png")
         return
@@ -264,7 +266,9 @@ def gen_top_locations(output_dir: Path, top_n: int = 20) -> None:
         if titles:
             counts[tag.value] = len(titles)
 
-    sorted_items = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)[:top_n]
+    # Tag categories arrive as unordered sets, so ties must break on the name to keep
+    # the generated image identical from run to run.
+    sorted_items = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:top_n]
     if not sorted_items:
         print("  No location data found; skipping top_locations.png")
         return

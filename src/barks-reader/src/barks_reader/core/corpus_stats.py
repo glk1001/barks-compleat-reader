@@ -137,7 +137,7 @@ def compute_static_stats() -> CorpusStats:
         sections=(
             _corpus_section(stories),
             _attribution_section(stories),
-            _length_section(story_pages, total_pages),
+            _length_section(story_pages, total_pages, len(stories)),
             _payment_section(adjusted_total, paid_records),
             _cast_section(),
         ),
@@ -163,9 +163,11 @@ def compute_text_stats(indexes_dir: Path) -> StatSection | None:
 
     search = ComicSearch(indexes_dir)
     try:
-        totals = search.get_corpus_text_totals()
+        # Cheap sidecar reads first: they are what fails on a partial index, and
+        # there is no point paying for the full-index scan only to bail out.
         distinct_words = len(search.get_cleaned_terms())
         num_person_names = len(search.get_entity_terms(EntityType.PERSON))
+        totals = search.get_corpus_text_totals()
     except (SearchIndexUnavailableError, OSError, ValueError):
         # No index, a partial index, or missing term sidecars. The page is still
         # worth showing without this section.
@@ -231,7 +233,9 @@ def _attribution_section(stories: list[ComicBookInfo]) -> StatSection:
     )
 
 
-def _length_section(story_pages: dict[Titles, int], total_pages: int) -> StatSection:
+def _length_section(
+    story_pages: dict[Titles, int], total_pages: int, num_stories: int
+) -> StatSection:
     """Build the story-length distribution section."""
     num_one_page = sum(1 for pages in story_pages.values() if pages == 1)
     num_short = sum(1 for pages in story_pages.values() if 1 < pages <= _SHORT_STORY_MAX_PAGES)
@@ -239,6 +243,19 @@ def _length_section(story_pages: dict[Titles, int], total_pages: int) -> StatSec
 
     longest_title, longest_pages = max(story_pages.items(), key=lambda item: item[1])
     mean_pages = total_pages / len(story_pages)
+
+    # The payment ledger is the only per-story page source, and it covers every
+    # story today. If that ever stops being true, say so rather than quietly
+    # counting fewer stories here than the "Stories" row two sections above.
+    num_counted = len(story_pages)
+    footnote = (
+        None
+        if num_counted == num_stories
+        else (
+            f"Page figures cover {num_counted:,} of {num_stories:,} stories;"
+            " the rest are absent from the payment ledger."
+        )
+    )
 
     return StatSection(
         heading="Length",
@@ -253,6 +270,7 @@ def _length_section(story_pages: dict[Titles, int], total_pages: int) -> StatSec
                 f"{ENUM_TO_STR_TITLE[longest_title]}, {longest_pages} pages",
             ),
         ),
+        footnote=footnote,
     )
 
 
@@ -290,13 +308,15 @@ def _cast_section() -> StatSection:
         )
     ]
 
-    top_tag, top_count = max(
+    # The tag category is an unordered set, so a tie has to break on the name or the
+    # winner changes between runs.
+    top_tag, top_count = min(
         (
             (tag, len(titles))
             for tag in get_all_tags_in_tag_category(TagCategories.CHARACTERS)
             if (titles := BARKS_TAGGED_TITLES.get(tag))
         ),
-        key=lambda item: item[1],
+        key=lambda item: (-item[1], item[0].value),
     )
     rows.append(StatRow("Most-tagged character", f"{top_tag.value}, {top_count} stories"))
 
@@ -309,7 +329,11 @@ def _num_tags_with_stories(category: TagCategories) -> int:
 
 
 def _story_page_counts(stories: list[ComicBookInfo]) -> dict[Titles, int]:
-    """Map each story to its page count from the payment ledger."""
+    """Map each story to its page count from the payment ledger.
+
+    Stories with no ledger record are omitted rather than counted as zero pages;
+    ``_length_section`` footnotes the shortfall when there is one.
+    """
     return {
         info.title: BARKS_PAYMENTS[info.title].num_pages
         for info in stories
