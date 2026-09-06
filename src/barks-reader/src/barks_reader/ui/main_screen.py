@@ -164,6 +164,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._names_index_screen = screens.names_index
         self._locations_index_screen = screens.locations_index
         self._statistics_screen = screens.statistics
+        self._corpus_stats_screen = screens.corpus_stats
         self._history_screen = screens.history
         self._search_screen = screens.search
 

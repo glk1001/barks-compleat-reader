@@ -50,6 +50,7 @@ def mock_screens() -> ScreenBundle:
         names_index=MagicMock(),
         locations_index=MagicMock(),
         statistics=MagicMock(),
+        corpus_stats=MagicMock(),
         history=MagicMock(),
         search=MagicMock(),
     )

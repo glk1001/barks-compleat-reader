@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
     from kivy.uix.screenmanager import Screen
 
+    from .corpus_stats_screen import CorpusStatsScreen
     from .history_screen import HistoryScreen
     from .index_screen import IndexScreen
     from .screen_bundle import ScreenBundle
@@ -83,6 +84,7 @@ class MainScreenNavigation:
         self._names_index_screen = screens.names_index
         self._locations_index_screen = screens.locations_index
         self._statistics_screen = screens.statistics
+        self._corpus_stats_screen = screens.corpus_stats
         self._history_screen = screens.history
         self._search_screen = screens.search
         self._search_screen.on_request_nav_focus = self._claim_bottom_focus_for_search
@@ -252,14 +254,17 @@ class MainScreenNavigation:
 
     def _get_active_nav_screen(
         self,
-    ) -> HistoryScreen | IndexScreen | StatisticsScreen | SearchScreen | None:
+    ) -> HistoryScreen | IndexScreen | StatisticsScreen | CorpusStatsScreen | SearchScreen | None:
         """Return the currently visible bottom screen that supports keyboard navigation."""
-        screens: list[HistoryScreen | IndexScreen | StatisticsScreen | SearchScreen] = [
+        screens: list[
+            HistoryScreen | IndexScreen | StatisticsScreen | CorpusStatsScreen | SearchScreen
+        ] = [
             self._main_index_screen,
             self._speech_index_screen,
             self._names_index_screen,
             self._locations_index_screen,
             self._statistics_screen,
+            self._corpus_stats_screen,
             self._history_screen,
             self._search_screen,
         ]
@@ -274,6 +279,7 @@ class MainScreenNavigation:
             or self._names_index_screen.is_visible
             or self._locations_index_screen.is_visible
             or self._statistics_screen.is_visible
+            or self._corpus_stats_screen.is_visible
             or self._history_screen.is_visible
             or self._search_screen.is_visible
         )
@@ -362,7 +368,7 @@ class MainScreenNavigation:
 
     def _enter_nav_screen_bottom_focus(
         self,
-        screen: HistoryScreen | IndexScreen | StatisticsScreen,
+        screen: HistoryScreen | IndexScreen | StatisticsScreen | CorpusStatsScreen,
         node: BaseTreeViewNode,
     ) -> None:
         if screen.is_visible:
@@ -398,6 +404,10 @@ class MainScreenNavigation:
 
         if selected is self._tree_view_manager.statistics_node:
             self._enter_nav_screen_bottom_focus(self._statistics_screen, selected)
+            return
+
+        if selected is self._tree_view_manager.corpus_stats_node:
+            self._enter_nav_screen_bottom_focus(self._corpus_stats_screen, selected)
             return
 
         if selected is self._tree_view_manager.history_node:

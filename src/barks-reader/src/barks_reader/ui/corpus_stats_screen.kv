@@ -1,0 +1,34 @@
+#:import reader_palette barks_reader.core.reader_palette
+
+<CorpusStatsScreen>:
+    opacity: 1 if root.is_visible else 0
+    size_hint: (1, 1) if root.is_visible else (0, 0)
+
+    canvas.before:
+        Color:
+            rgba: 0.08, 0.08, 0.08, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    ScrollView:
+        id: corpus_stats_scroll
+        size_hint: 1, 1
+        pos_hint: {'x': 0, 'y': 0}
+        do_scroll_x: False
+        # 'bars' is what makes the scrollbar draggable; with the default
+        # ['content'] it renders but ignores the mouse.
+        scroll_type: ['bars', 'content']
+        always_overscroll: False
+        effect_cls: 'ScrollEffect'
+        bar_color: (0.7, 0.7, 0.7, 0.9)
+        bar_inactive_color: (0.5, 0.5, 0.5, 0.4)
+        bar_width: dp(8)
+
+        GridLayout:
+            id: corpus_stats_rows
+            cols: 1
+            size_hint_y: None
+            height: self.minimum_height
+            padding: dp(18), dp(12)
+            spacing: dp(2)

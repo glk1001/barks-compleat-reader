@@ -83,6 +83,7 @@ class ViewRenderer:
         screens.names_index.is_visible = False
         screens.locations_index.is_visible = False
         screens.statistics.is_visible = False
+        screens.corpus_stats.is_visible = False
         screens.history.is_visible = False
         screens.search.is_visible = False
 

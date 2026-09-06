@@ -47,6 +47,11 @@ class IntroDocDestination(Destination):
 
 
 @dataclass(frozen=True, slots=True)
+class CorpusStatsDestination(Destination):
+    """The Introduction's 'By the Numbers' corpus statistics page."""
+
+
+@dataclass(frozen=True, slots=True)
 class StoriesDestination(Destination):
     """The 'The Stories' parent node."""
 

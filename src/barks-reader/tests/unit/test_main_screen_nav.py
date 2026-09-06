@@ -70,6 +70,7 @@ def screen_mocks() -> dict[str, MagicMock]:
         "names_index": MagicMock(),
         "locations_index": MagicMock(),
         "statistics": MagicMock(),
+        "corpus_stats": MagicMock(),
         "history": MagicMock(),
         "search": MagicMock(),
     }
@@ -133,6 +134,7 @@ class TestHandleKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
@@ -199,6 +201,7 @@ class TestHandleTreeKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
@@ -215,6 +218,7 @@ class TestHandleTreeKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
@@ -235,6 +239,7 @@ class TestHandleBottomKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = False
@@ -251,6 +256,7 @@ class TestHandleBottomKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = False
@@ -266,6 +272,7 @@ class TestHandleBottomKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
@@ -280,6 +287,7 @@ class TestHandleBottomKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
@@ -294,6 +302,7 @@ class TestHandleBottomKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = True
@@ -309,6 +318,7 @@ class TestHandleBottomKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = False
@@ -327,6 +337,7 @@ class TestHandleBottomKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = False
@@ -343,6 +354,7 @@ class TestHandleBottomKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = False
@@ -362,6 +374,7 @@ class TestHandleBottomKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = False
@@ -378,6 +391,7 @@ class TestHandleBottomKey:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav._fun_image_view_screen.is_visible = True
@@ -708,6 +722,7 @@ class TestFocusSaveRestore:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav.enter_bottom_focus()
@@ -729,6 +744,7 @@ class TestEnterBottomFocus:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
@@ -744,6 +760,7 @@ class TestEnterBottomFocus:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
@@ -759,6 +776,7 @@ class TestEnterBottomFocus:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
@@ -776,6 +794,7 @@ class TestEnterBottomFocus:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
@@ -791,6 +810,7 @@ class TestExitBottomFocus:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
@@ -806,6 +826,7 @@ class TestGetActiveNavScreen:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
@@ -817,6 +838,7 @@ class TestGetActiveNavScreen:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
@@ -845,6 +867,7 @@ class TestEnterBottomFocusIfIndexVisible:
         nav._fun_image_view_screen.is_visible = False
         nav._bottom_title_view_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
 
         nav.enter_bottom_focus_if_index_visible()
 
@@ -900,6 +923,7 @@ class TestEnterBottomFocusIfIndexVisible:
         nav._fun_image_view_screen.is_visible = False
         nav._bottom_title_view_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
 
         nav.enter_bottom_focus_if_index_visible(keyboard_initiated=False)
 
@@ -916,6 +940,7 @@ class TestOnBottomScreenVisibilityChanged:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav.enter_bottom_focus()
@@ -944,6 +969,7 @@ class TestOnBottomScreenVisibilityChanged:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav.enter_bottom_focus()
@@ -962,6 +988,7 @@ class TestOnBottomScreenVisibilityChanged:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav.enter_bottom_focus()
@@ -984,6 +1011,7 @@ class TestOnBottomScreenVisibilityChanged:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
         nav.enter_bottom_focus()
@@ -1084,6 +1112,7 @@ class TestTitleViewFocusHandoff:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 
@@ -1286,6 +1315,7 @@ class TestFunViewBottomFocus:
         nav._names_index_screen.is_visible = False
         nav._locations_index_screen.is_visible = False
         nav._statistics_screen.is_visible = False
+        nav._corpus_stats_screen.is_visible = False
         nav._history_screen.is_visible = False
         nav._search_screen.is_visible = False
 

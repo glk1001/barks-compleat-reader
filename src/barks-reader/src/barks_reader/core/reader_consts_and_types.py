@@ -26,6 +26,7 @@ CLOSE_TO_ZERO = 0.001
 INTRO_NODE_TEXT = "Introduction"
 INTRO_COMPLEAT_BARKS_READER_TEXT = "The Compleat Barks Disney Reader"
 INTRO_DON_AULT_FANTA_INTRO_TEXT = "Don Ault: Fantagraphics Introduction"
+INTRO_BY_THE_NUMBERS_TEXT = "By the Numbers"
 THE_STORIES_NODE_TEXT = "The Stories"
 CHRONOLOGICAL_NODE_TEXT = "Chronological"
 SERIES_NODE_TEXT = "Series"

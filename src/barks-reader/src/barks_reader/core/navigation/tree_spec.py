@@ -74,6 +74,7 @@ from barks_reader.core.reader_consts_and_types import (
     INDEX_SPEECH_TEXT,
     INDEX_SPEECH_WORDS_TEXT,
     INDEX_WIKI_TEXT,
+    INTRO_BY_THE_NUMBERS_TEXT,
     INTRO_COMPLEAT_BARKS_READER_TEXT,
     INTRO_DON_AULT_FANTA_INTRO_TEXT,
     INTRO_NODE_TEXT,
@@ -114,6 +115,7 @@ from .destinations import (
     CensorshipFixesDocDestination,
     ChooseForMeDestination,
     ChronologicalDestination,
+    CorpusStatsDestination,
     HistoryDestination,
     IndexDestination,
     IntroDestination,
@@ -186,6 +188,7 @@ class NodeRegistration(Enum):
     SEARCH = auto()
     HISTORY = auto()
     STATISTICS = auto()
+    CORPUS_STATS = auto()
     MAIN_INDEX = auto()
     SPEECH_INDEX = auto()
     SPEECH_WORDS = auto()
@@ -397,6 +400,14 @@ class _SpecBuilder:
                     INTRO_DON_AULT_FANTA_INTRO_TEXT,
                     ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE,
                     Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION,
+                ),
+                NodeSpec(
+                    kind=NodeKind.MAIN,
+                    text=INTRO_BY_THE_NUMBERS_TEXT,
+                    destination=CorpusStatsDestination(),
+                    press_action=PressAction.SET_VIEW_STATE,
+                    register_as=NodeRegistration.CORPUS_STATS,
+                    start_closed=True,
                 ),
             ),
         )

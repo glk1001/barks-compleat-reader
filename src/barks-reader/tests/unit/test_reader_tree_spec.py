@@ -180,6 +180,7 @@ _INTRO_SNAPSHOT = """
 MAIN text='Introduction' dest=IntroDestination() press=TOGGLE_ONLY register=None closed=False yrk=None lazy=False repopulate=False
   MAIN text='The Compleat Barks Disney Reader' dest=IntroDocDestination() press=OPEN_INTRO_DOC register=None closed=True yrk=None lazy=False repopulate=False
   MAIN text='Don Ault: Fantagraphics Introduction' dest=ArticleDestination(view_state=ViewStates.ON_INTRO_DON_AULT_FANTA_INTRO_NODE, article_title=Titles.DON_AULT___FANTAGRAPHICS_INTRODUCTION) press=OPEN_ARTICLE register=None closed=True yrk=None lazy=False repopulate=False
+  MAIN text='By the Numbers' dest=CorpusStatsDestination() press=SET_VIEW_STATE register=CORPUS_STATS closed=True yrk=None lazy=False repopulate=False
 """  # noqa: E501
 
 # Depth-limited: the three group headers are hand-written, everything below them is

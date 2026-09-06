@@ -81,6 +81,7 @@ inducks
 inkscape
 inspectable
 intspan
+italicised
 itemised
 jpginfo
 jpgs

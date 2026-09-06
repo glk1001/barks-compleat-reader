@@ -71,6 +71,7 @@ class TreeViewManager:
         self._speech_words_node: ButtonTreeViewNode | None = None
 
         self._statistics_node: ButtonTreeViewNode | None = None
+        self._corpus_stats_node: ButtonTreeViewNode | None = None
 
         self._tree_view_screen.setup_collapse_overlay(self._on_collapse_overlay_pressed)
 
@@ -423,6 +424,14 @@ class TreeViewManager:
     @property
     def statistics_node(self) -> ButtonTreeViewNode | None:
         return getattr(self, "_statistics_node", None)
+
+    def on_corpus_stats_node_created(self, node: ButtonTreeViewNode) -> None:
+        """Handle creation of the Introduction's "By the Numbers" tree node."""
+        self._corpus_stats_node = node
+
+    @property
+    def corpus_stats_node(self) -> ButtonTreeViewNode | None:
+        return getattr(self, "_corpus_stats_node", None)
 
     def on_history_node_created(self, node: ButtonTreeViewNode) -> None:
         """Handle creation of the History tree node."""
