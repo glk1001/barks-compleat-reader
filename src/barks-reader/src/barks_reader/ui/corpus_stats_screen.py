@@ -41,6 +41,9 @@ from .reader_keyboard_nav import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from kivy.uix.scrollview import ScrollView
+    from kivy.uix.widget import Widget
+
     from barks_reader.core.corpus_stats import CorpusStats, StatSection
 
 CORPUS_STATS_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
@@ -239,9 +242,31 @@ class CorpusStatsScreen(FloatLayout):
 
         def _apply(_dt: float) -> None:
             self._text_section = section
-            self._rebuild()
+            self._append_text_section(section)
 
         Clock.schedule_once(_apply, 0)
+
+    def _append_text_section(self, section: StatSection) -> None:
+        """Add the late section without moving the page under the reader.
+
+        The section always lands last, so it can be appended rather than
+        rebuilt. Appending still grows the content, and ``scroll_y`` is a
+        *fraction* of the scrollable distance, so the same fraction points
+        somewhere else once the content is taller - hence the offset dance.
+        """
+        if self._stats is None:
+            # The page was never built, so there is nothing to append to; the
+            # cached section will be picked up by the next `_rebuild`.
+            return
+
+        scroll = self.ids.corpus_stats_scroll
+        rows = self.ids.corpus_stats_rows
+        offset = _scroll_offset_from_top(scroll, rows)
+
+        self._add_section(section)
+
+        # Restore after Kivy has relaid the grid out and `minimum_height` is current.
+        Clock.schedule_once(lambda _dt: _set_scroll_offset_from_top(scroll, rows, offset), 0)
 
     # --- Keyboard navigation ---------------------------------------------
 
@@ -279,6 +304,25 @@ class CorpusStatsScreen(FloatLayout):
     def _scroll_by(self, fraction: float) -> None:
         scroll = self.ids.corpus_stats_scroll
         scroll.scroll_y = min(1.0, max(0.0, scroll.scroll_y + fraction))
+
+
+def _scroll_offset_from_top(scroll: ScrollView, content: Widget) -> float:
+    """Return how far the view is scrolled from the top, in pixels."""
+    return (1.0 - scroll.scroll_y) * _scrollable_distance(scroll, content)
+
+
+def _set_scroll_offset_from_top(scroll: ScrollView, content: Widget, offset: float) -> None:
+    """Scroll the view to ``offset`` pixels from the top, clamped to the content."""
+    distance = _scrollable_distance(scroll, content)
+    if distance <= 0:
+        scroll.scroll_y = 1.0
+        return
+    scroll.scroll_y = min(1.0, max(0.0, 1.0 - (offset / distance)))
+
+
+def _scrollable_distance(scroll: ScrollView, content: Widget) -> float:
+    """Return the pixels of content that lie outside the viewport."""
+    return max(0.0, content.height - scroll.height)
 
 
 def _fill_background(widget: BoxLayout, rgba: list[float]) -> None:

@@ -75,6 +75,11 @@ def screen(tmp_path: Path) -> Iterator[CorpusStatsScreen]:
         patch.object(corpus_stats_screen_module, "theme", return_value=_FakeTheme()),
     ):
         mock_ids = {"corpus_stats_rows": MagicMock(), "corpus_stats_scroll": MagicMock()}
+        # Geometry the scroll arithmetic reads: a 500px viewport onto 1000px of
+        # content, parked at the top. MagicMock attributes are not numbers.
+        mock_ids["corpus_stats_scroll"].height = 500.0
+        mock_ids["corpus_stats_scroll"].scroll_y = 1.0
+        mock_ids["corpus_stats_rows"].height = 1000.0
 
         def side_effect(instance: CorpusStatsScreen, **_kwargs: object) -> None:
             instance.ids = mock_ids
@@ -178,6 +183,61 @@ class TestBackgroundTextScan:
             mock_clock.schedule_once.call_args.args[0](0)
 
         assert screen._text_section is _TEXT_SECTION
+        # Appended, not rebuilt: the page is not cleared a second time.
+        screen.ids["corpus_stats_rows"].clear_widgets.assert_called_once()
+
+    def test_the_reader_keeps_their_place_when_the_section_lands(
+        self, screen: CorpusStatsScreen
+    ) -> None:
+        """`scroll_y` is a fraction, so growing the content has to be compensated."""
+        with (
+            patch.object(corpus_stats_screen_module, "compute_static_stats", return_value=_STATS),
+            patch.object(corpus_stats_screen_module, "threading"),
+        ):
+            screen.on_is_visible(None, visible=True)
+
+        scroll = screen.ids["corpus_stats_scroll"]
+        rows = screen.ids["corpus_stats_rows"]
+        scroll.scroll_y = 0.5  # 250px down a 500px scrollable distance
+
+        with (
+            patch.object(
+                corpus_stats_screen_module, "compute_text_stats", return_value=_TEXT_SECTION
+            ),
+            patch.object(corpus_stats_screen_module, "Clock") as mock_clock,
+        ):
+            screen._scan_text_stats()
+            mock_clock.schedule_once.call_args_list[0].args[0](0)
+            # Kivy relays the grid out before the restore callback runs.
+            rows.height = 1500.0
+            mock_clock.schedule_once.call_args_list[1].args[0](0)
+
+        # Still 250px from the top, now over a 1000px scrollable distance.
+        assert scroll.scroll_y == pytest.approx(0.75)
+
+    def test_a_page_with_nothing_to_scroll_is_left_at_the_top(
+        self, screen: CorpusStatsScreen
+    ) -> None:
+        with (
+            patch.object(corpus_stats_screen_module, "compute_static_stats", return_value=_STATS),
+            patch.object(corpus_stats_screen_module, "threading"),
+        ):
+            screen.on_is_visible(None, visible=True)
+
+        scroll = screen.ids["corpus_stats_scroll"]
+        screen.ids["corpus_stats_rows"].height = 100.0  # shorter than the viewport
+
+        with (
+            patch.object(
+                corpus_stats_screen_module, "compute_text_stats", return_value=_TEXT_SECTION
+            ),
+            patch.object(corpus_stats_screen_module, "Clock") as mock_clock,
+        ):
+            screen._scan_text_stats()
+            mock_clock.schedule_once.call_args_list[0].args[0](0)
+            mock_clock.schedule_once.call_args_list[1].args[0](0)
+
+        assert scroll.scroll_y == 1.0
 
     def test_no_index_leaves_the_page_alone(self, screen: CorpusStatsScreen) -> None:
         with (
