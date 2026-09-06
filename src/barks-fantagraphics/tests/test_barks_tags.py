@@ -20,6 +20,7 @@ from barks_fantagraphics.barks_tags import (
     TagGroups,
     Tags,
     Titles,
+    get_all_tags_in_tag_category,
     get_sorted_tagged_titles,
 )
 
@@ -255,3 +256,33 @@ def test_barks_tag_categories_dict() -> None:
     assert BARKS_TAG_CATEGORIES_DICT["Things"] == TagCategories.THINGS
     with pytest.raises(KeyError):
         _ = BARKS_TAG_CATEGORIES_DICT["NON_EXISTENT"]
+
+
+class TestGetAllTagsInTagCategory:
+    """The category flattener is public API, shared with the sibling repos."""
+
+    def test_direct_tags_and_group_members_are_both_returned(self) -> None:
+        places = get_all_tags_in_tag_category(TagCategories.PLACES)
+
+        assert Tags.ANDES in places  # listed directly under PLACES
+        assert Tags.ALGERIA in places  # reached through TagGroups.AFRICA
+        assert all(isinstance(tag, Tags) for tag in places)
+
+    def test_nested_groups_are_flattened_and_deduplicated(self) -> None:
+        """A group inside a group contributes its tags, and a repeat adds nothing."""
+        categories = {TagCategories.THINGS: [Tags.FIRE, TagGroups.CHEMISTRY]}
+        groups = {
+            TagGroups.CHEMISTRY: [Tags.FIRE, TagGroups.CHEMICAL_NAMES],
+            TagGroups.CHEMICAL_NAMES: [Tags.SQUARE_EGGS],
+        }
+
+        with patch.dict(barks_tags.BARKS_TAG_CATEGORIES, categories, clear=True):
+            with patch.dict(barks_tags.BARKS_TAG_GROUPS, groups, clear=True):
+                assert get_all_tags_in_tag_category(TagCategories.THINGS) == {
+                    Tags.FIRE,
+                    Tags.SQUARE_EGGS,
+                }
+
+    def test_an_empty_category_returns_an_empty_set(self) -> None:
+        with patch.dict(barks_tags.BARKS_TAG_CATEGORIES, {TagCategories.THINGS: []}, clear=True):
+            assert get_all_tags_in_tag_category(TagCategories.THINGS) == set()

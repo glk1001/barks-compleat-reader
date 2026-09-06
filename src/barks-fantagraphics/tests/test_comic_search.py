@@ -13,6 +13,10 @@ from barks_fantagraphics.comic_search import (
     SearchResult,
     clear_alpha_split_cache,
 )
+from barks_fantagraphics.search_ports import (
+    CorpusTextTotals,
+    SearchIndexUnavailableError,
+)
 from barks_fantagraphics.testing.fake_search import InMemoryFullTextSearch
 from barks_fantagraphics.title_search import BARKS_ISSUE_DICT
 from barks_fantagraphics.whoosh_search_engine import TitleInfo
@@ -174,6 +178,26 @@ class TestPassThroughs:
         fake = InMemoryFullTextSearch(entity_terms={"person": ["Scrooge", "Donald"]})
 
         assert _search_with(fake).get_entity_terms("person") == ["Scrooge", "Donald"]
+
+    def test_get_cleaned_terms(self) -> None:
+        fake = InMemoryFullTextSearch(cleaned_terms=["ant", "bee"])
+
+        assert _search_with(fake).get_cleaned_terms() == ["ant", "bee"]
+
+    def test_get_corpus_text_totals(self) -> None:
+        totals = CorpusTextTotals(
+            num_text_entities=4, num_words=6, num_titles=2, num_pages=3, num_panels=3
+        )
+        fake = InMemoryFullTextSearch(corpus_text_totals=totals)
+
+        assert _search_with(fake).get_corpus_text_totals() == totals
+
+    def test_missing_index_raises_search_index_unavailable(self) -> None:
+        """Callers get one search-specific error, not a raw Whoosh/OS error."""
+        search = ComicSearch(Path("does-not-exist"))
+
+        with pytest.raises(SearchIndexUnavailableError):
+            search.get_corpus_text_totals()
 
     def test_full_text_engine_is_not_built_for_title_only_searches(self) -> None:
         """Title/tag callers must pay no Whoosh or disk cost."""
