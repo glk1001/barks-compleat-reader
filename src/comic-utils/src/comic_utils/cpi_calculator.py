@@ -1,6 +1,8 @@
 import sqlite3
+from collections.abc import Mapping
 from functools import lru_cache
 from pathlib import Path
+from types import MappingProxyType
 
 CPI_DATABASE_PATH = Path(__file__).parent / "cpi.db"
 
@@ -9,7 +11,7 @@ DEFAULT_SERIES_ID = "CUUR0000SA0"
 
 
 @lru_cache(maxsize=8)
-def _avg_cpi_by_year(db_path: Path, series_id: str) -> dict[int, float]:
+def _avg_cpi_by_year(db_path: Path, series_id: str) -> Mapping[int, float]:
     """Return the average CPI for every year of a series, in one query.
 
     ``indexes`` holds 1.7M unindexed rows, so a per-year lookup costs a full
@@ -23,7 +25,9 @@ def _avg_cpi_by_year(db_path: Path, series_id: str) -> dict[int, float]:
         series_id: The CPI series to read.
 
     Returns:
-        Year to average index value. Empty if the series has no rows.
+        Year to average index value, read-only: the cache hands the same object
+        to every caller, so it must not be mutable. Empty if the series has no
+        rows.
 
     Raises:
         FileNotFoundError: If ``db_path`` does not exist.
@@ -42,7 +46,7 @@ def _avg_cpi_by_year(db_path: Path, series_id: str) -> dict[int, float]:
     finally:
         conn.close()
 
-    return {year: value for year, value in rows if value is not None}
+    return MappingProxyType({year: value for year, value in rows if value is not None})
 
 
 def get_latest_year(

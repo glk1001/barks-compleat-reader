@@ -1,5 +1,6 @@
 import sqlite3
 from pathlib import Path
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -85,6 +86,22 @@ class TestYearTableCaching:
 
         assert cpi_calculator._avg_cpi_by_year(cpi_db, "CUUR0000SA0")  # noqa: SLF001
         assert cpi_calculator._avg_cpi_by_year(cpi_db, "NOPE") == {}  # noqa: SLF001
+
+        # Two separate reads: neither series was served from the other's entry.
+        info = cpi_calculator._avg_cpi_by_year.cache_info()  # noqa: SLF001
+        assert (info.misses, info.hits) == (2, 0)
+
+        cpi_calculator._avg_cpi_by_year(cpi_db, "CUUR0000SA0")  # noqa: SLF001
+        assert cpi_calculator._avg_cpi_by_year.cache_info().hits == 1  # noqa: SLF001
+
+    def test_the_shared_table_cannot_be_mutated_by_a_caller(self, cpi_db: Path) -> None:
+        """Every caller gets the one cached object, so it must be read-only."""
+        cpi_calculator._avg_cpi_by_year.cache_clear()  # noqa: SLF001
+
+        table = cpi_calculator._avg_cpi_by_year(cpi_db, "CUUR0000SA0")  # noqa: SLF001
+
+        with pytest.raises(TypeError):
+            cast("dict[int, float]", table)[1900] = 1.0
 
     def test_a_year_average_spans_its_monthly_rows(self, tmp_path: Path) -> None:
         db_path = tmp_path / "monthly.db"
