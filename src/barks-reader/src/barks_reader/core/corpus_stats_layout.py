@@ -67,15 +67,18 @@ class PageMetrics:
 
 
 DESIGN = PageMetrics(
-    # Type sizes, each taken from the LOW_RES_FONTS role that plays the same part.
-    headline=34.0,  # = LOW_RES_FONTS.main_title, opened up for a display line
-    standfirst=16.0,  # = LOW_RES_FONTS.title_info
-    heading=20.0,  # = LOW_RES_FONTS.text_block_heading
-    # The body size, set by the *width* constraint rather than a FontManager role:
-    # the longest label and its value must sit side by side in one column. At the
-    # reference width that lands at 341px of 360px, so there is no room to go up.
-    row=22.0,
-    footnote=14.0,  # = LOW_RES_FONTS.about_box_fine_print
+    # Type sizes. These started as the LOW_RES_FONTS roles that play the same part
+    # elsewhere in the app, then came down a notch: at the sizes the two-column
+    # layout allows, matching the app's roles exactly read heavier than the rest of
+    # the reader. They keep the app's proportions, a step down in absolute size.
+    headline=30.0,
+    standfirst=14.0,
+    heading=18.0,
+    # The body size has a hard ceiling as well as a look: the longest label and its
+    # value must sit side by side in one column. At the reference width, 22.0 already
+    # measured 341px of the 360px available, so this can come down but not up.
+    row=19.0,
+    footnote=12.0,
     # Vertical rhythm.
     headline_height=60.0,
     standfirst_height=34.0,

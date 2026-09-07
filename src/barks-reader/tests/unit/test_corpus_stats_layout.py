@@ -158,15 +158,36 @@ class TestRowsFitTheColumnWidth:
 
 class TestDesignMatchesTheAppScale:
     # The page sets its own type sizes rather than reading FontManager, so nothing
-    # stops the two drifting apart. Pin the roles that were copied across.
-    def test_design_sizes_track_the_font_manager_roles(self) -> None:
+    # stops the two drifting apart. These sizes sit a deliberate notch below the
+    # app's equivalent roles, so pin the band rather than equality: a tweak stays
+    # legal, a wholesale drift into a different scale does not.
+    _MAX_DRIFT = 0.35
+    _MIN_READABLE_FOOTNOTE = 12.0
+
+    def test_design_sizes_stay_in_the_apps_ballpark(self) -> None:
         from barks_reader.ui.font_manager import LOW_RES_FONTS  # noqa: PLC0415
         from kivy.metrics import sp  # noqa: PLC0415
 
         one_sp = sp(1)
-        assert layout.DESIGN.standfirst == pytest.approx(LOW_RES_FONTS.title_info / one_sp)
-        assert layout.DESIGN.heading == pytest.approx(LOW_RES_FONTS.text_block_heading / one_sp)
-        assert layout.DESIGN.footnote == pytest.approx(LOW_RES_FONTS.about_box_fine_print / one_sp)
+        for ours, theirs in (
+            (layout.DESIGN.standfirst, LOW_RES_FONTS.title_info),
+            (layout.DESIGN.heading, LOW_RES_FONTS.text_block_heading),
+            (layout.DESIGN.footnote, LOW_RES_FONTS.about_box_fine_print),
+        ):
+            role = theirs / one_sp
+            assert abs(ours - role) / role < self._MAX_DRIFT
+
+    def test_the_type_hierarchy_holds(self) -> None:
+        # Section headings are deliberately not the largest thing in their column -
+        # they are set apart by weight and the accent colour, and sit just under the
+        # body size. What must hold is the display line above and fine print below.
+        assert layout.DESIGN.headline > layout.DESIGN.row > layout.DESIGN.footnote
+        assert layout.DESIGN.heading < layout.DESIGN.row
+
+    def test_the_footnote_stays_readable(self) -> None:
+        # These lines carry the page's caveats. They may be fine print; they may not
+        # become the sort of fine print nobody can read from a sofa.
+        assert layout.DESIGN.footnote >= self._MIN_READABLE_FOOTNOTE
 
 
 class TestTextSectionShape:
