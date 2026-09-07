@@ -159,6 +159,7 @@ soffice
 softbreak
 splittable
 srce
+standfirst
 stdlib
 strerror
 summarise

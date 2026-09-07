@@ -1,9 +1,10 @@
 """Corpus-wide statistics for the Introduction "By the Numbers" page.
 
 Aggregates the whole Barks Disney corpus from ``barks_fantagraphics`` into a
-flat, presentation-ready structure: a hero band of headline figures plus grouped
-label/value rows. This module is Kivy-free and does no widget work - the screen
-in ``barks_reader.ui.corpus_stats_screen`` only renders what it returns.
+flat, presentation-ready structure: a two-line opening plus grouped label/value
+rows, some of which carry their share of a section's whole. This module is
+Kivy-free and does no widget work - the screen in
+``barks_reader.ui.corpus_stats_screen`` only renders what it returns.
 
 Two figures here are easy to get wrong, so they are computed deliberately:
 
@@ -68,10 +69,24 @@ _UNKNOWN = -1
 
 @dataclass(frozen=True, slots=True)
 class StatRow:
-    """A single label/value line in a statistics section."""
+    """A single label/value line in a statistics section.
+
+    Args:
+        label: The left-hand description.
+        value: The right-hand figure, already formatted.
+        share: This row's fraction of its section's whole, in ``[0.0, 1.0]``, or
+            ``None`` when the row is not part of one. Only set it where every
+            other row of the group is a slice of the same total - the screen
+            draws it as a bar, and a lone bar has nothing to be read against.
+        prose: True when the value is a name or phrase rather than a figure, so
+            it needs its own line instead of a right-aligned column.
+
+    """
 
     label: str
     value: str
+    share: float | None = None
+    prose: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,18 +99,24 @@ class StatSection:
 
 
 @dataclass(frozen=True, slots=True)
-class HeroStat:
-    """One oversized headline figure in the band at the top of the page."""
+class Opening:
+    """The two lines the page opens with.
 
-    value: str
-    caption: str
+    Deliberately not a band of headline figures: every number big enough to
+    headline is already a row further down, so a band of them would only repeat
+    itself. These two lines instead say the one thing no row says - the shape of
+    a whole working life - and hand the reader a rate to judge the rest by.
+    """
+
+    headline: str
+    standfirst: str
 
 
 @dataclass(frozen=True, slots=True)
 class CorpusStats:
     """Everything the "By the Numbers" page renders."""
 
-    hero: tuple[HeroStat, ...]
+    opening: Opening
     sections: tuple[StatSection, ...]
 
 
@@ -117,7 +138,7 @@ def compute_static_stats() -> CorpusStats:
     enough to call on the UI thread.
 
     Returns:
-        The hero band and the five always-available sections.
+        The opening lines and the five always-available sections.
 
     """
     stories = get_stories()
@@ -125,21 +146,30 @@ def compute_static_stats() -> CorpusStats:
     total_pages = sum(story_pages.values())
     paid_records = _paid_records()
     adjusted_total = _adjusted_payment_total(paid_records)
-
-    hero = (
-        HeroStat(f"{len(stories):,}", "stories"),
-        HeroStat(f"{total_pages:,}", "story pages"),
-        HeroStat(_compact_usd(adjusted_total), f"in {get_latest_year()} dollars"),
-    )
+    paid_pages = sum(payment.num_pages for payment in paid_records)
 
     return CorpusStats(
-        hero=hero,
+        opening=_opening(stories, total_pages, adjusted_total / paid_pages),
         sections=(
             _corpus_section(stories),
             _attribution_section(stories),
             _length_section(story_pages, total_pages, len(stories)),
-            _payment_section(adjusted_total, paid_records),
+            _payment_section(adjusted_total, paid_records, paid_pages),
             _cast_section(),
+        ),
+    )
+
+
+def _opening(stories: list[ComicBookInfo], total_pages: int, adjusted_per_page: float) -> Opening:
+    """Build the page's opening lines from the span, the page count and the rate."""
+    submitted_years = [info.submitted_year for info in stories]
+
+    return Opening(
+        # An en dash, not a hyphen: this is a span of years, and the headline is
+        # set in the hand-lettered display face, which has the glyph.
+        headline=f"{len(stories):,} stories, {min(submitted_years)}–{max(submitted_years)}",  # noqa: RUF001
+        standfirst=(
+            f"{total_pages:,} pages, at what would today average ${adjusted_per_page:,.0f} a page."
         ),
     )
 
@@ -155,7 +185,7 @@ def compute_text_stats(indexes_dir: Path) -> StatSection | None:
         indexes_dir: The Barks Reader ``Indexes`` directory.
 
     Returns:
-        The "The Words" section, or ``None`` if no usable index is installed.
+        The "The words" section, or ``None`` if no usable index is installed.
 
     """
     if not indexes_dir.is_dir():
@@ -174,7 +204,7 @@ def compute_text_stats(indexes_dir: Path) -> StatSection | None:
         return None
 
     rows = (
-        StatRow("Text entities", f"{totals.num_text_entities:,}"),
+        StatRow("Balloons, captions and sound effects", f"{totals.num_text_entities:,}"),
         StatRow("Words spoken", f"{totals.num_words:,}"),
         StatRow("Distinct words", f"{distinct_words:,}"),
         StatRow("Panels with dialogue", f"{totals.num_panels:,}"),
@@ -187,7 +217,7 @@ def compute_text_stats(indexes_dir: Path) -> StatSection | None:
         f"Text figures cover {totals.num_titles:,} of {num_stories:,} stories currently indexed."
     )
 
-    return StatSection(heading="The Words", rows=rows, footnote=footnote)
+    return StatSection(heading="The words", rows=rows, footnote=footnote)
 
 
 def _corpus_section(stories: list[ComicBookInfo]) -> StatSection:
@@ -195,13 +225,14 @@ def _corpus_section(stories: list[ComicBookInfo]) -> StatSection:
     submitted_years = [info.submitted_year for info in stories]
 
     return StatSection(
-        heading="The Corpus",
+        heading="The corpus",
         rows=(
             StatRow("Stories", f"{len(stories):,}"),
             StatRow("One-pagers", f"{len(ONE_PAGERS):,}"),
             StatRow("Covers", f"{len(COVERS_SET):,}"),
             StatRow("Fantagraphics volumes", f"{len(FANTA_SOURCE_COMICS):,}"),
-            StatRow("Submitted to Western", f"{min(submitted_years)} - {max(submitted_years)}"),
+            # En dashes throughout, to match the span in the opening headline.
+            StatRow("Submitted to Western", f"{min(submitted_years)}–{max(submitted_years)}"),  # noqa: RUF001
         ),
     )
 
@@ -217,17 +248,22 @@ def _attribution_section(stories: list[ComicBookInfo]) -> StatSection:
         num_with_entry += 1
         counts[entry.qualifier] = counts.get(entry.qualifier, 0) + 1
 
+    # Every story falls into exactly one of these five buckets, so each one is a
+    # slice of the same whole and carries a share.
+    def _row(label: str, count: int) -> StatRow:
+        return StatRow(label, f"{count:,}", share=count / len(stories))
+
     return StatSection(
-        heading="Barks's Hand",
+        heading="Barks's hand",
         rows=(
-            StatRow("Script and art", f"{counts.get(None, 0):,}"),
-            StatRow("Art only", f"{counts.get(Qualifier.ART_ONLY, 0):,}"),
-            StatRow("Script only", f"{counts.get(Qualifier.SCRIPT_ONLY, 0):,}"),
-            StatRow(
+            _row("Script and art", counts.get(None, 0)),
+            _row("Art only", counts.get(Qualifier.ART_ONLY, 0)),
+            _row("Script only", counts.get(Qualifier.SCRIPT_ONLY, 0)),
+            _row(
                 "Art and rewritten script",
-                f"{counts.get(Qualifier.ART_AND_REWRITING_OF_SCRIPT, 0):,}",
+                counts.get(Qualifier.ART_AND_REWRITING_OF_SCRIPT, 0),
             ),
-            StatRow("Not in Barrier's bibliography", f"{len(stories) - num_with_entry:,}"),
+            _row("Not in Barrier's bibliography", len(stories) - num_with_entry),
         ),
         footnote="Attribution as stated in Michael Barrier's bibliography.",
     )
@@ -257,27 +293,34 @@ def _length_section(
         )
     )
 
+    # The three length bands partition the counted stories; the rows after them
+    # are totals and a single named story, so they are not slices of anything.
+    def _band(label: str, count: int) -> StatRow:
+        return StatRow(label, f"{count:,}", share=count / num_counted)
+
     return StatSection(
         heading="Length",
         rows=(
-            StatRow("One page", f"{num_one_page:,}"),
-            StatRow(f"Short (2 - {_SHORT_STORY_MAX_PAGES} pages)", f"{num_short:,}"),
-            StatRow(f"Long ({_SHORT_STORY_MAX_PAGES + 1}+ pages)", f"{num_long:,}"),
+            _band("One page", num_one_page),
+            _band(f"Short (2–{_SHORT_STORY_MAX_PAGES} pages)", num_short),  # noqa: RUF001
+            _band(f"Long ({_SHORT_STORY_MAX_PAGES + 1}+ pages)", num_long),
             StatRow("Story pages", f"{total_pages:,}"),
             StatRow("Mean pages per story", f"{mean_pages:.1f}"),
             StatRow(
                 "Longest story",
                 f"{ENUM_TO_STR_TITLE[longest_title]}, {longest_pages} pages",
+                prose=True,
             ),
         ),
         footnote=footnote,
     )
 
 
-def _payment_section(adjusted_total: float, paid_records: list[PaymentInfo]) -> StatSection:
+def _payment_section(
+    adjusted_total: float, paid_records: list[PaymentInfo], paid_pages: int
+) -> StatSection:
     """Build the what-Barks-was-paid section."""
     nominal_total = sum(payment.payment for payment in paid_records)
-    paid_pages = sum(payment.num_pages for payment in paid_records)
     latest_year = get_latest_year()
 
     return StatSection(
@@ -318,9 +361,11 @@ def _cast_section() -> StatSection:
         ),
         key=lambda item: (-item[1], item[0].value),
     )
-    rows.append(StatRow("Most-tagged character", f"{top_tag.value}, {top_count} stories"))
+    rows.append(
+        StatRow("Most-tagged character", f"{top_tag.value}, {top_count} stories", prose=True)
+    )
 
-    return StatSection(heading="The Cast", rows=tuple(rows))
+    return StatSection(heading="The cast", rows=tuple(rows))
 
 
 def _num_tags_with_stories(category: TagCategories) -> int:
@@ -371,14 +416,3 @@ def _adjusted_payment_total(paid_records: list[PaymentInfo]) -> float:
         get_adjusted_usd(payment.payment, payment.accepted_year, latest_year)
         for payment in paid_records
     )
-
-
-def _compact_usd(amount: float) -> str:
-    """Format a dollar amount for the hero band, e.g. ``$2.67M``."""
-    million = 1_000_000
-    thousand = 1_000
-    if amount >= million:
-        return f"${amount / million:.2f}M"
-    if amount >= thousand:
-        return f"${amount / thousand:.0f}K"
-    return f"${amount:,.0f}"

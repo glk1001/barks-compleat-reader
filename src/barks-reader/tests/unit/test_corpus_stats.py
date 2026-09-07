@@ -59,20 +59,19 @@ class TestStorySelection:
         assert set(ONE_PAGERS) <= story_titles
 
 
-class TestHeroBand:
-    def test_three_headline_figures(self, stats: CorpusStats) -> None:
-        assert len(stats.hero) == 3
+class TestOpening:
+    def test_headline_gives_the_count_and_the_span(self, stats: CorpusStats) -> None:
+        assert stats.opening.headline == "683 stories, 1942\u20131973"
 
-    def test_story_count_leads(self, stats: CorpusStats) -> None:
-        assert stats.hero[0].value == "683"
-        assert stats.hero[0].caption == "stories"
+    def test_standfirst_gives_the_pages_and_the_rate(self, stats: CorpusStats) -> None:
+        assert stats.opening.standfirst.startswith("6,591 pages,")
+        assert stats.opening.standfirst.endswith("a page.")
 
-    def test_page_count_is_thousands_separated(self, stats: CorpusStats) -> None:
-        assert stats.hero[1].value == "6,591"
-
-    def test_money_is_compact(self, stats: CorpusStats) -> None:
-        assert stats.hero[2].value.startswith("$")
-        assert stats.hero[2].value.endswith("M")
+    def test_standfirst_rate_matches_the_payment_row(self, stats: CorpusStats) -> None:
+        # The opening hands the reader a rate to judge the rest of the page by,
+        # so it has to be the same rate the Payment section reports.
+        per_page = _value(stats, "Payment", "Per page, 2026 dollars")
+        assert per_page in stats.opening.standfirst
 
 
 class TestCorpusSection:
@@ -83,11 +82,11 @@ class TestCorpusSection:
             ("One-pagers", "155"),
             ("Covers", "264"),
             ("Fantagraphics volumes", "30"),
-            ("Submitted to Western", "1942 - 1973"),
+            ("Submitted to Western", "1942–1973"),  # noqa: RUF001
         ],
     )
     def test_row(self, stats: CorpusStats, label: str, expected: str) -> None:
-        assert _value(stats, "The Corpus", label) == expected
+        assert _value(stats, "The corpus", label) == expected
 
 
 class TestAttributionSection:
@@ -104,10 +103,10 @@ class TestAttributionSection:
         ],
     )
     def test_row(self, stats: CorpusStats, label: str, expected: str) -> None:
-        assert _value(stats, "Barks's Hand", label) == expected
+        assert _value(stats, "Barks's hand", label) == expected
 
     def test_rows_account_for_every_story(self, stats: CorpusStats) -> None:
-        total = sum(int(row.value.replace(",", "")) for row in _section(stats, "Barks's Hand").rows)
+        total = sum(int(row.value.replace(",", "")) for row in _section(stats, "Barks's hand").rows)
         assert total == _NUM_STORIES
 
     def test_is_barks_title_would_have_given_a_different_answer(self) -> None:
@@ -121,7 +120,7 @@ class TestLengthSection:
         ("label", "expected"),
         [
             ("One page", "161"),
-            ("Short (2 - 15 pages)", "403"),
+            ("Short (2–15 pages)", "403"),  # noqa: RUF001
             ("Long (16+ pages)", "119"),
             ("Story pages", "6,591"),
             ("Mean pages per story", "9.7"),
@@ -132,7 +131,7 @@ class TestLengthSection:
         assert _value(stats, "Length", label) == expected
 
     def test_bands_partition_the_stories(self, stats: CorpusStats) -> None:
-        bands = ("One page", "Short (2 - 15 pages)", "Long (16+ pages)")
+        bands = ("One page", "Short (2–15 pages)", "Long (16+ pages)")  # noqa: RUF001
         total = sum(int(_value(stats, "Length", label).replace(",", "")) for label in bands)
         assert total == _NUM_STORIES
 
@@ -189,7 +188,7 @@ class TestCastSection:
         ],
     )
     def test_row(self, stats: CorpusStats, label: str, expected: str) -> None:
-        assert _value(stats, "The Cast", label) == expected
+        assert _value(stats, "The cast", label) == expected
 
 
 class TestTextStats:
@@ -211,12 +210,50 @@ class TestTextStats:
 class TestStructure:
     def test_five_always_available_sections(self, stats: CorpusStats) -> None:
         assert [s.heading for s in stats.sections] == [
-            "The Corpus",
-            "Barks's Hand",
+            "The corpus",
+            "Barks's hand",
             "Length",
             "Payment",
-            "The Cast",
+            "The cast",
         ]
+
+    def test_shares_are_set_only_where_the_rows_partition_a_whole(self, stats: CorpusStats) -> None:
+        # A bar is only readable against its siblings, so a share belongs on a
+        # group whose rows are all slices of one total - and nowhere else.
+        with_shares = {
+            section.heading
+            for section in stats.sections
+            if any(row.share is not None for row in section.rows)
+        }
+        assert with_shares == {"Barks's hand", "Length"}
+
+    def test_attribution_shares_cover_the_whole_corpus(self, stats: CorpusStats) -> None:
+        rows = _section(stats, "Barks's hand").rows
+        shares = [row.share for row in rows if row.share is not None]
+        assert len(shares) == len(rows)
+        assert sum(shares) == pytest.approx(1.0)
+
+    def test_length_band_shares_cover_the_whole_corpus(self, stats: CorpusStats) -> None:
+        banded = [row.share for row in _section(stats, "Length").rows if row.share is not None]
+        assert len(banded) == 3
+        assert sum(banded) == pytest.approx(1.0)
+
+    def test_every_share_is_a_fraction(self, stats: CorpusStats) -> None:
+        for section in stats.sections:
+            for row in section.rows:
+                if row.share is not None:
+                    assert 0.0 <= row.share <= 1.0
+
+    def test_named_values_are_marked_as_prose(self, stats: CorpusStats) -> None:
+        # These two carry a story title and a character name; everything else on
+        # the page is a figure that belongs in the right-hand column.
+        prose = {
+            (section.heading, row.label)
+            for section in stats.sections
+            for row in section.rows
+            if row.prose
+        }
+        assert prose == {("Length", "Longest story"), ("The cast", "Most-tagged character")}
 
     def test_every_row_has_a_label_and_a_value(self, stats: CorpusStats) -> None:
         for section in stats.sections:

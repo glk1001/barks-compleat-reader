@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
-from barks_reader.core.corpus_stats import CorpusStats, HeroStat, StatRow, StatSection
+from barks_reader.core.corpus_stats import CorpusStats, Opening, StatRow, StatSection
 from barks_reader.ui import corpus_stats_screen as corpus_stats_screen_module
 from barks_reader.ui.corpus_stats_screen import CorpusStatsScreen
 from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE, KEY_LEFT
@@ -22,9 +22,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 _STATS = CorpusStats(
-    hero=(HeroStat("683", "stories"), HeroStat("6,591", "story pages")),
+    opening=Opening(headline="683 stories, 1942-1973", standfirst="6,591 pages."),
     sections=(
-        StatSection(heading="The Corpus", rows=(StatRow("Stories", "683"),)),
+        StatSection(heading="The corpus", rows=(StatRow("Stories", "683"),)),
         StatSection(
             heading="Payment",
             rows=(StatRow("Total paid", "$216,894"), StatRow("Paid pages", "6,250")),
@@ -34,7 +34,7 @@ _STATS = CorpusStats(
 )
 
 _TEXT_SECTION = StatSection(
-    heading="The Words",
+    heading="The words",
     rows=(StatRow("Words spoken", "574,699"),),
     footnote="Covers 407 of 683 stories.",
 )
@@ -56,10 +56,10 @@ def _fake_font_manager() -> MagicMock:
     font_manager = MagicMock()
     for name in (
         "main_title_font_size",
-        "search_label_font_size",
+        "title_info_font_size",
         "text_block_heading_font_size",
         "main_index_item_font_size",
-        "main_title_footnote_font_size",
+        "about_box_fine_print_font_size",
     ):
         setattr(font_manager, name, 14.0)
     return font_manager
@@ -70,8 +70,7 @@ def screen(tmp_path: Path) -> Iterator[CorpusStatsScreen]:
     with (
         patch.object(FloatLayout, "__init__", autospec=True) as mock_layout_init,
         patch.object(corpus_stats_screen_module, "dp", side_effect=lambda x: x),
-        patch.object(corpus_stats_screen_module, "_fill_background"),
-        patch.object(corpus_stats_screen_module, "_add_heading_hairline"),
+        patch.object(corpus_stats_screen_module, "_add_share_bar"),
         patch.object(corpus_stats_screen_module, "theme", return_value=_FakeTheme()),
     ):
         mock_ids = {"corpus_stats_rows": MagicMock(), "corpus_stats_scroll": MagicMock()}
@@ -127,7 +126,7 @@ class TestRowConstruction:
     def _widgets(self, screen: CorpusStatsScreen) -> list:
         return [c.args[0] for c in screen.ids["corpus_stats_rows"].add_widget.call_args_list]
 
-    def test_widget_count_covers_hero_headings_rows_and_footnotes(
+    def test_widget_count_covers_opening_headings_rows_and_footnotes(
         self, screen: CorpusStatsScreen
     ) -> None:
         with (
@@ -136,21 +135,41 @@ class TestRowConstruction:
         ):
             screen.on_is_visible(None, visible=True)
 
-        # 1 hero band + per section: 1 heading + N rows + optional footnote + 1 gap.
-        # Section 1: 1 + 1 + 0 + 1 = 3. Section 2: 1 + 2 + 1 + 1 = 5.
-        assert len(self._widgets(screen)) == 1 + 3 + 5
+        # The opening contributes a headline, a standfirst and a trailing gap.
+        # Each section contributes a heading, its rows, any footnote, and a gap:
+        # three widgets for the first section and five for the second.
+        assert len(self._widgets(screen)) == 3 + 3 + 5
 
-    def test_headings_are_upper_cased(self, screen: CorpusStatsScreen) -> None:
-        heading = screen._make_heading("The Corpus")
-        assert heading.text == "[b]THE CORPUS[/b]"
+    def test_headings_are_set_as_written(self, screen: CorpusStatsScreen) -> None:
+        heading = screen._make_heading("The corpus")
+        assert heading.text == "[b]The corpus[/b]"
 
     def test_footnote_is_italicised(self, screen: CorpusStatsScreen) -> None:
         footnote = screen._make_footnote("From 564 of 947 records.")
         assert footnote.text == "[i]From 564 of 947 records.[/i]"
 
     def test_row_has_a_label_cell_and_a_value_cell(self, screen: CorpusStatsScreen) -> None:
-        row = screen._make_row("Stories", "683", 0)
+        row = screen._make_row(StatRow("Stories", "683"))
         assert len(row.children) == 2
+
+    def test_a_row_without_a_share_gets_no_bar(self, screen: CorpusStatsScreen) -> None:
+        with patch.object(corpus_stats_screen_module, "_add_share_bar") as mock_bar:
+            screen._make_row(StatRow("Stories", "683"))
+        mock_bar.assert_not_called()
+
+    def test_a_row_with_a_share_gets_a_bar(self, screen: CorpusStatsScreen) -> None:
+        with patch.object(corpus_stats_screen_module, "_add_share_bar") as mock_bar:
+            row = screen._make_row(StatRow("Script and art", "561", share=0.82))
+        mock_bar.assert_called_once_with(row, 0.82)
+
+    def test_a_prose_row_stacks_its_label_above_its_value(self, screen: CorpusStatsScreen) -> None:
+        row = screen._make_row(StatRow("Longest story", "Pirate Gold, 64 pages", prose=True))
+        assert row.orientation == "vertical"
+        # Kivy lists children back to front, so the value was added last.
+        value, label = row.children
+        assert label.text == "Longest story"
+        assert value.text == "[b]Pirate Gold, 64 pages[/b]"
+        assert value.halign == "left"
 
     def test_value_cell_is_bold_and_right_aligned(self, screen: CorpusStatsScreen) -> None:
         cell = screen._make_cell("683", _COLOR, "right", bold=True)

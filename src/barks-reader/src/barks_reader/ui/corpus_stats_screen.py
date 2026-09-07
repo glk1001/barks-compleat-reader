@@ -1,8 +1,16 @@
 """The Introduction "By the Numbers" screen: the whole corpus as a fact sheet.
 
-A hero band of three headline figures over grouped, striped label/value rows.
-All of the arithmetic lives in ``barks_reader.core.corpus_stats``; this module
-only turns its ``CorpusStats`` into widgets.
+Two opening lines over grouped label/value rows. All of the arithmetic lives in
+``barks_reader.core.corpus_stats``; this module only turns its ``CorpusStats``
+into widgets.
+
+The one piece of ornament on the page is load-bearing. Rows that are slices of
+the same whole - the five attribution buckets, the three length bands - carry a
+``share``, and it is drawn as a bar behind the row. Nothing else gets one, so
+the presence of a bar is itself the signal that a group adds up to something,
+and its absence marks a total, a rate or a named story. That replaces the plain
+zebra striping this page used to have, which cost the same to draw and said
+nothing.
 
 The dialogue section is filled in a beat late: everything else is instant, but
 the word counts need a full pass over the Whoosh speech index, so that runs on a
@@ -44,22 +52,33 @@ if TYPE_CHECKING:
     from kivy.uix.scrollview import ScrollView
     from kivy.uix.widget import Widget
 
-    from barks_reader.core.corpus_stats import CorpusStats, StatSection
+    from barks_reader.core.corpus_stats import CorpusStats, Opening, StatRow, StatSection
 
 CORPUS_STATS_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
 # The same face the index screens use: a plain, tabular-friendly sans.
 _FONT_NAME = FontManager.main_index_item_font_name
 
-_HERO_HEIGHT = 92
-_HERO_CAPTION_HEIGHT = 26
-_HEADING_HEIGHT = 34
-_ROW_HEIGHT = 26
-_FOOTNOTE_HEIGHT = 24
-_SECTION_GAP = 10
+# The app's own hand-lettered face, used once, for the opening line.
+_DISPLAY_FONT_NAME = FontManager.main_title_font_name
 
-_HAIRLINE_ALPHA = 0.35
+_HEADLINE_HEIGHT = 54
+_STANDFIRST_HEIGHT = 30
+_OPENING_GAP = 16
+_HEADING_HEIGHT = 38
+_ROW_HEIGHT = 28
+_PROSE_LABEL_HEIGHT = 22
+_PROSE_ROW_HEIGHT = 52
+_FOOTNOTE_HEIGHT = 28
+_SECTION_GAP = 12
+
 _ROW_SIDE_PADDING = 14
+
+# The share bar: an unfilled track the width of the row, and the row's own slice
+# filled over it. The track is what makes a one-percent slice read as "almost
+# none of it" rather than as a rendering artefact.
+_BAR_TRACK_ALPHA = 0.45
+_BAR_FILL_ALPHA = 1.0
 
 # One arrow press moves the view by this fraction of the scrollable height; a
 # page key moves by this much again. Tuned so a remote's cursor keys walk the
@@ -69,7 +88,7 @@ _PAGE_SCROLL_STEP = 0.4
 
 
 class CorpusStatsScreen(FloatLayout):
-    """Screen showing corpus-wide statistics as a hero band plus grouped rows.
+    """Screen showing corpus-wide statistics as an opening plus grouped rows.
 
     Args:
         indexes_dir: The Barks Reader ``Indexes`` directory, used for the
@@ -109,82 +128,106 @@ class CorpusStatsScreen(FloatLayout):
         rows = self.ids.corpus_stats_rows
         rows.clear_widgets()
 
-        self._add_hero_band(self._stats.hero)
+        self._add_opening(self._stats.opening)
         sections = list(self._stats.sections)
         if self._text_section is not None:
             sections.append(self._text_section)
         for section in sections:
             self._add_section(section)
 
-    def _add_hero_band(self, hero_stats: tuple) -> None:
-        band = BoxLayout(
-            orientation="horizontal", size_hint_y=None, height=dp(_HERO_HEIGHT), spacing=dp(4)
-        )
-        for stat in hero_stats:
-            cell = BoxLayout(orientation="vertical")
-            cell.add_widget(
-                Label(
-                    text=f"[b]{stat.value}[/b]",
-                    markup=True,
-                    color=theme().text_display,
-                    font_name=_FONT_NAME,
-                    font_size=self._font_manager.main_title_font_size,
-                    halign="center",
-                    valign="bottom",
-                )
-            )
-            cell.add_widget(
-                Label(
-                    text=stat.caption,
-                    color=theme().text_secondary,
-                    font_name=_FONT_NAME,
-                    font_size=self._font_manager.search_label_font_size,
-                    halign="center",
-                    valign="top",
-                    size_hint_y=None,
-                    height=dp(_HERO_CAPTION_HEIGHT),
-                )
-            )
-            band.add_widget(cell)
+    def _add_opening(self, opening: Opening) -> None:
+        """Add the two lines the page opens with."""
+        rows = self.ids.corpus_stats_rows
 
-        self.ids.corpus_stats_rows.add_widget(band)
+        rows.add_widget(
+            self._make_line(
+                opening.headline,
+                color=theme().text_display,
+                font_name=_DISPLAY_FONT_NAME,
+                font_size=self._font_manager.main_title_font_size,
+                height=dp(_HEADLINE_HEIGHT),
+                valign="bottom",
+            )
+        )
+        rows.add_widget(
+            self._make_line(
+                opening.standfirst,
+                color=theme().text_secondary,
+                font_name=_FONT_NAME,
+                font_size=self._font_manager.title_info_font_size,
+                height=dp(_STANDFIRST_HEIGHT),
+                valign="top",
+            )
+        )
+        rows.add_widget(BoxLayout(size_hint_y=None, height=dp(_OPENING_GAP)))
 
     def _add_section(self, section: StatSection) -> None:
         rows = self.ids.corpus_stats_rows
         rows.add_widget(self._make_heading(section.heading))
-        for row_index, stat_row in enumerate(section.rows):
-            rows.add_widget(self._make_row(stat_row.label, stat_row.value, row_index))
+        for stat_row in section.rows:
+            rows.add_widget(self._make_row(stat_row))
         if section.footnote:
             rows.add_widget(self._make_footnote(section.footnote))
         rows.add_widget(BoxLayout(size_hint_y=None, height=dp(_SECTION_GAP)))
 
     def _make_heading(self, text: str) -> Label:
-        label = Label(
-            text=f"[b]{text.upper()}[/b]",
-            markup=True,
+        """Build a section heading.
+
+        Set as written rather than upper-cased, and with no rule beneath it: the
+        weight, the colour and the space above already separate it from the rows.
+        """
+        return self._make_line(
+            text,
             color=theme().search_heading,
             font_name=_FONT_NAME,
             font_size=self._font_manager.text_block_heading_font_size,
-            halign="left",
-            valign="bottom",
-            size_hint_y=None,
             height=dp(_HEADING_HEIGHT),
+            valign="bottom",
+            bold=True,
         )
-        label.bind(size=lambda w, _s: setattr(w, "text_size", (w.width - dp(4), w.height)))
-        _add_heading_hairline(label)
-        return label
 
-    def _make_row(self, label_text: str, value_text: str, row_index: int) -> BoxLayout:
-        """Build one striped label/value line."""
+    def _make_row(self, stat_row: StatRow) -> BoxLayout:
+        """Build one statistics line, in whichever of the two shapes it needs."""
+        if stat_row.prose:
+            return self._make_prose_row(stat_row)
+
         row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(_ROW_HEIGHT))
-        stripe = list(theme().row_stripe_even if row_index % 2 == 0 else theme().row_stripe_odd)
-        _fill_background(row, stripe)
+        if stat_row.share is not None:
+            _add_share_bar(row, stat_row.share)
 
-        row.add_widget(self._make_cell(label_text, theme().text_secondary, "left", bold=False))
-        row.add_widget(self._make_cell(value_text, theme().text_title, "right", bold=True))
+        row.add_widget(self._make_cell(stat_row.label, theme().text_secondary, "left", bold=False))
+        row.add_widget(self._make_cell(stat_row.value, theme().text_title, "right", bold=True))
         return row
 
-    def _make_cell(self, text: str, color: tuple, halign: str, *, bold: bool) -> Label:
+    def _make_prose_row(self, stat_row: StatRow) -> BoxLayout:
+        """Build a row whose value is a name, stacked so it reads as one.
+
+        A story title or a character name squeezed into the right-hand figure
+        column reads as a number that failed to be a number, and is the first
+        thing to be truncated. Given its own line it reads as what it is.
+        """
+        box = BoxLayout(orientation="vertical", size_hint_y=None, height=dp(_PROSE_ROW_HEIGHT))
+        box.add_widget(
+            self._make_cell(
+                stat_row.label,
+                theme().text_secondary,
+                "left",
+                bold=False,
+                height=dp(_PROSE_LABEL_HEIGHT),
+            )
+        )
+        box.add_widget(self._make_cell(stat_row.value, theme().text_title, "left", bold=True))
+        return box
+
+    def _make_cell(
+        self,
+        text: str,
+        color: tuple,
+        halign: str,
+        *,
+        bold: bool,
+        height: float | None = None,
+    ) -> Label:
         label = Label(
             text=f"[b]{text}[/b]" if bold else text,
             markup=True,
@@ -196,22 +239,60 @@ class CorpusStatsScreen(FloatLayout):
             shorten=True,
             shorten_from="right",
         )
+        if height is not None:
+            label.size_hint_y = None
+            label.height = height
         label.bind(
             size=lambda w, _s: setattr(w, "text_size", (w.width - dp(_ROW_SIDE_PADDING), w.height))
         )
         return label
 
     def _make_footnote(self, text: str) -> Label:
-        label = Label(
-            text=f"[i]{text}[/i]",
-            markup=True,
+        """Build a section's caveat line.
+
+        Sized as fine print rather than as the smallest type in the app: these
+        lines are where the page admits what it does not know, and a caveat
+        nobody can read across a room is not a caveat.
+        """
+        return self._make_line(
+            text,
             color=theme().text_secondary,
             font_name=_FONT_NAME,
-            font_size=self._font_manager.main_title_footnote_font_size,
-            halign="left",
-            valign="middle",
-            size_hint_y=None,
+            font_size=self._font_manager.about_box_fine_print_font_size,
             height=dp(_FOOTNOTE_HEIGHT),
+            valign="middle",
+            italic=True,
+        )
+
+    def _make_line(
+        self,
+        text: str,
+        *,
+        color: tuple,
+        font_name: str,
+        font_size: float,
+        height: float,
+        valign: str,
+        bold: bool = False,
+        italic: bool = False,
+    ) -> Label:
+        """Build a full-width, left-aligned line of text."""
+        markup_text = text
+        if bold:
+            markup_text = f"[b]{markup_text}[/b]"
+        if italic:
+            markup_text = f"[i]{markup_text}[/i]"
+
+        label = Label(
+            text=markup_text,
+            markup=True,
+            color=color,
+            font_name=font_name,
+            font_size=font_size,
+            halign="left",
+            valign=valign,
+            size_hint_y=None,
+            height=height,
         )
         label.bind(
             size=lambda w, _s: setattr(w, "text_size", (w.width - dp(_ROW_SIDE_PADDING), w.height))
@@ -325,34 +406,33 @@ def _scrollable_distance(scroll: ScrollView, content: Widget) -> float:
     return max(0.0, content.height - scroll.height)
 
 
-def _fill_background(widget: BoxLayout, rgba: list[float]) -> None:
-    """Paint a flat background behind a row that tracks its geometry."""
-    canvas = widget.canvas
+def _add_share_bar(row: BoxLayout, share: float) -> None:
+    """Draw a row's share of its section's whole as a bar behind it.
+
+    Args:
+        row: The row widget to paint behind.
+        share: The fraction of the whole, in ``[0.0, 1.0]``.
+
+    """
+    track_rgb = tuple(theme().row_stripe_even[:3])
+    fill_rgb = tuple(theme().row_stripe_odd[:3])
+    fraction = min(1.0, max(0.0, share))
+
+    canvas = row.canvas
     assert canvas is not None  # Kivy populates this on widget construction.
     with canvas.before:
-        color = Color(*rgba)
-        rect = Rectangle(pos=widget.pos, size=widget.size)
+        track_color = Color(*track_rgb, _BAR_TRACK_ALPHA)
+        track = Rectangle()
+        fill_color = Color(*fill_rgb, _BAR_FILL_ALPHA)
+        fill = Rectangle()
 
     def _update(*_args: object) -> None:
-        color.rgba = rgba
-        rect.pos = widget.pos
-        rect.size = widget.size
+        track_color.rgba = (*track_rgb, _BAR_TRACK_ALPHA)
+        track.pos = row.pos
+        track.size = row.size
+        fill_color.rgba = (*fill_rgb, _BAR_FILL_ALPHA)
+        fill.pos = row.pos
+        fill.size = (row.width * fraction, row.height)
 
-    widget.bind(pos=_update, size=_update)
-
-
-def _add_heading_hairline(label: Label) -> None:
-    """Draw a faint rule beneath a section heading, as a divider."""
-    rgb = tuple(theme().search_heading[:3])
-    canvas = label.canvas
-    assert canvas is not None  # Kivy populates this on widget construction.
-    with canvas.after:
-        color = Color(*rgb, _HAIRLINE_ALPHA)
-        rule = Rectangle()
-
-    def _update(*_args: object) -> None:
-        color.rgba = (*rgb, _HAIRLINE_ALPHA)
-        rule.pos = (label.x, label.y + dp(4))
-        rule.size = (label.width, dp(1))
-
-    label.bind(pos=_update, size=_update)
+    _update()
+    row.bind(pos=_update, size=_update)
