@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
+    from .corpus_stats_screen import CorpusStatsScreen
     from .document_reader import DocumentReaderScreen
     from .wiki_reader import WikiReaderScreen
 
@@ -33,6 +34,7 @@ MAIN_READER_SCREEN = "main_screen"
 COMIC_BOOK_READER_SCREEN = "comic_book_reader"
 DOCUMENT_READER_SCREEN = "document_reader"
 WIKI_READER_SCREEN = "wiki_reader"
+CORPUS_STATS_SCREEN = "corpus_stats"
 
 
 class ReaderScreen(Screen):
@@ -53,6 +55,9 @@ class ReaderScreen(Screen):
     def on_wiki_reader_closed(self) -> None:
         pass
 
+    def on_corpus_stats_closed(self) -> None:
+        pass
+
 
 @dataclass(frozen=True, slots=True)
 class ReaderScreens:
@@ -60,6 +65,7 @@ class ReaderScreens:
     comic_reader_screen: ReaderScreen
     document_reader_screen: DocumentReaderScreen
     wiki_reader_screen: WikiReaderScreen
+    corpus_stats_screen: CorpusStatsScreen
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +80,9 @@ class ScreenSwitchers:
 
     switch_to_wiki_reader: Callable[[Path, Path | None], None]
     close_wiki_reader: Callable[[], None]
+
+    switch_to_corpus_stats: Callable[[], None]
+    close_corpus_stats: Callable[[], None]
 
 
 class ReaderScreenManager:
@@ -103,13 +112,15 @@ class ReaderScreenManager:
         self._reader_screens: ReaderScreens | None = None
 
         self.screen_switchers = ScreenSwitchers(
-            open_settings,
-            self._switch_to_comic_book_reader,
-            self._close_comic_book_reader,
-            self._switch_to_document_reader,
-            self._close_document_reader,
-            self._switch_to_wiki_reader,
-            self._close_wiki_reader,
+            switch_to_settings=open_settings,
+            switch_to_comic_book_reader=self._switch_to_comic_book_reader,
+            close_comic_book_reader=self._close_comic_book_reader,
+            switch_to_document_reader=self._switch_to_document_reader,
+            close_document_reader=self._close_document_reader,
+            switch_to_wiki_reader=self._switch_to_wiki_reader,
+            close_wiki_reader=self._close_wiki_reader,
+            switch_to_corpus_stats=self._switch_to_corpus_stats,
+            close_corpus_stats=self._close_corpus_stats,
         )
 
     def add_screens(self, reader_screens: ReaderScreens) -> ScreenManager:
@@ -122,6 +133,7 @@ class ReaderScreenManager:
         root.add_widget(self._reader_screens.comic_reader_screen)
         root.add_widget(self._reader_screens.document_reader_screen)
         root.add_widget(self._reader_screens.wiki_reader_screen)
+        root.add_widget(self._reader_screens.corpus_stats_screen)
 
         root.current = MAIN_READER_SCREEN
 
@@ -195,6 +207,25 @@ class ReaderScreenManager:
         logger.debug(
             f"Using screen transition '{self._screen_manager.transition.__class__.__name__}'."
         )
+        logger.info("Main screen is active.")
+
+    def _switch_to_corpus_stats(self) -> None:
+        logger.debug("Switching to the By the Numbers page...")
+        assert self._reader_screens
+        self._reader_screens.corpus_stats_screen.app_icon_filepath = (
+            self._reader_screens.main_screen.app_icon_filepath
+        )
+        self._reader_screens.corpus_stats_screen.open()
+        self._screen_manager.current = CORPUS_STATS_SCREEN
+
+    def _close_corpus_stats(self) -> None:
+        logger.debug("Closing the By the Numbers page and switching back to main screen...")
+        assert self._reader_screens
+        self._reader_screens.main_screen.on_corpus_stats_closed()
+
+        self._screen_manager.transition = self._get_next_main_screen_transition()
+        self._screen_manager.current = MAIN_READER_SCREEN
+
         logger.info("Main screen is active.")
 
     def _switch_to_wiki_reader(self, bundle: Path, page: Path | None) -> None:

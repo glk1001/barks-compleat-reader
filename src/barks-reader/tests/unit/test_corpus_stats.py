@@ -70,7 +70,7 @@ class TestOpening:
     def test_standfirst_rate_matches_the_payment_row(self, stats: CorpusStats) -> None:
         # The opening hands the reader a rate to judge the rest of the page by,
         # so it has to be the same rate the Payment section reports.
-        per_page = _value(stats, "Payment", "Per page, 2026 dollars")
+        per_page = _value(stats, "Payment", "Per page")
         assert per_page in stats.opening.standfirst
 
 
@@ -81,7 +81,7 @@ class TestCorpusSection:
             ("Stories", "683"),
             ("One-pagers", "155"),
             ("Covers", "264"),
-            ("Fantagraphics volumes", "30"),
+            ("Volumes", "30"),
             ("Submitted to Western", "1942–1973"),  # noqa: RUF001
         ],
     )
@@ -98,8 +98,8 @@ class TestAttributionSection:
             ("Script and art", "561"),
             ("Art only", "80"),
             ("Script only", "27"),
-            ("Art and rewritten script", "8"),
-            ("Not in Barrier's bibliography", "7"),
+            ("Art, script rewritten", "8"),
+            ("Not in the bibliography", "7"),
         ],
     )
     def test_row(self, stats: CorpusStats, label: str, expected: str) -> None:
@@ -123,7 +123,7 @@ class TestLengthSection:
             ("Short (2–15 pages)", "403"),  # noqa: RUF001
             ("Long (16+ pages)", "119"),
             ("Story pages", "6,591"),
-            ("Mean pages per story", "9.7"),
+            ("Mean pages", "9.7"),
             ("Longest story", "Donald Duck Finds Pirate Gold, 64 pages"),
         ],
     )
@@ -164,7 +164,7 @@ class TestPaymentSection:
         [
             ("Total paid", "$216,894"),
             ("Paid pages", "6,250"),
-            ("Largest single payment", "$1,200"),
+            ("Largest payment", "$1,200"),
         ],
     )
     def test_row(self, stats: CorpusStats, label: str, expected: str) -> None:

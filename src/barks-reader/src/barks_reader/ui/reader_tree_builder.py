@@ -92,6 +92,7 @@ class ReaderTreeBuilder:
             PressAction.OPEN_SPEECH_INDEX: tree_view_manager.on_speech_index_node_pressed,
             PressAction.OPEN_SPEECH_WORDS: tree_view_manager.on_speech_words_node_pressed,
             PressAction.OPEN_WIKI_INDEX: tree_view_manager.on_wiki_index_node_pressed,
+            PressAction.OPEN_CORPUS_STATS: tree_view_manager.on_corpus_stats_node_pressed,
         }
         assert set(self._press_handlers) == set(PressAction), (
             "every PressAction needs a press-handler entry (TOGGLE_ONLY maps to None)"
@@ -100,7 +101,6 @@ class ReaderTreeBuilder:
             NodeRegistration.SEARCH: tree_view_manager.on_search_node_created,
             NodeRegistration.HISTORY: tree_view_manager.on_history_node_created,
             NodeRegistration.STATISTICS: tree_view_manager.on_statistics_node_created,
-            NodeRegistration.CORPUS_STATS: tree_view_manager.on_corpus_stats_node_created,
             NodeRegistration.MAIN_INDEX: tree_view_manager.on_main_index_node_created,
             NodeRegistration.SPEECH_INDEX: tree_view_manager.on_speech_index_node_created,
             NodeRegistration.SPEECH_WORDS: tree_view_manager.on_speech_words_node_created,

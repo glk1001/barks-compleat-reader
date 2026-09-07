@@ -180,6 +180,7 @@ class PressAction(Enum):
     OPEN_SPEECH_INDEX = auto()
     OPEN_SPEECH_WORDS = auto()
     OPEN_WIKI_INDEX = auto()
+    OPEN_CORPUS_STATS = auto()
 
 
 class NodeRegistration(Enum):
@@ -188,7 +189,6 @@ class NodeRegistration(Enum):
     SEARCH = auto()
     HISTORY = auto()
     STATISTICS = auto()
-    CORPUS_STATS = auto()
     MAIN_INDEX = auto()
     SPEECH_INDEX = auto()
     SPEECH_WORDS = auto()
@@ -405,8 +405,11 @@ class _SpecBuilder:
                     kind=NodeKind.MAIN,
                     text=INTRO_BY_THE_NUMBERS_TEXT,
                     destination=CorpusStatsDestination(),
-                    press_action=PressAction.SET_VIEW_STATE,
-                    register_as=NodeRegistration.CORPUS_STATS,
+                    press_action=PressAction.OPEN_CORPUS_STATS,
+                    # `start_closed` is load-bearing, as it is for the wiki node
+                    # below: a saved-node restore onto a closed node renders the
+                    # destination's view state instead of replaying the press, so
+                    # the full-window page does not spring open at start-up.
                     start_closed=True,
                 ),
             ),

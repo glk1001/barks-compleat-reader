@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .bottom_title_view_screen import BottomTitleViewScreen
-    from .corpus_stats_screen import CorpusStatsScreen
     from .entity_index_screen import EntityIndexScreen
     from .fun_image_view_screen import FunImageViewScreen
     from .history_screen import HistoryScreen
@@ -34,7 +33,6 @@ class ScreenBundle:
     names_index: EntityIndexScreen
     locations_index: EntityIndexScreen
     statistics: StatisticsScreen
-    corpus_stats: CorpusStatsScreen
     history: HistoryScreen
     search: SearchScreen
 
@@ -49,7 +47,6 @@ class ScreenBundle:
         EntityIndexScreen,
         EntityIndexScreen,
         StatisticsScreen,
-        CorpusStatsScreen,
         HistoryScreen,
         SearchScreen,
     ]:
@@ -62,7 +59,6 @@ class ScreenBundle:
             self.names_index,
             self.locations_index,
             self.statistics,
-            self.corpus_stats,
             self.history,
             self.search,
         )
@@ -85,17 +81,14 @@ class ScreenBundle:
 
     def get_active_nav_screen(
         self,
-    ) -> HistoryScreen | IndexScreen | StatisticsScreen | CorpusStatsScreen | SearchScreen | None:
+    ) -> HistoryScreen | IndexScreen | StatisticsScreen | SearchScreen | None:
         """Return the first visible bottom screen that supports keyboard navigation."""
-        nav_screens: list[
-            HistoryScreen | IndexScreen | StatisticsScreen | CorpusStatsScreen | SearchScreen
-        ] = [
+        nav_screens: list[HistoryScreen | IndexScreen | StatisticsScreen | SearchScreen] = [
             self.main_index,
             self.speech_index,
             self.names_index,
             self.locations_index,
             self.statistics,
-            self.corpus_stats,
             self.history,
             self.search,
         ]

@@ -41,12 +41,14 @@ def mock_reader_screens() -> ReaderScreens:
     comic_reader_screen = MagicMock(spec=ReaderScreen)
     document_reader_screen = MagicMock()
     wiki_reader_screen = MagicMock()
+    corpus_stats_screen = MagicMock()
 
     return ReaderScreens(
         main_screen=main_screen,
         comic_reader_screen=comic_reader_screen,
         document_reader_screen=document_reader_screen,
         wiki_reader_screen=wiki_reader_screen,
+        corpus_stats_screen=corpus_stats_screen,
     )
 
 
@@ -69,11 +71,12 @@ class TestReaderScreenManager:
 
         mock_sm = reader_screen_manager._screen_manager
 
-        assert mock_sm.add_widget.call_count == 4  # noqa: PLR2004
+        assert mock_sm.add_widget.call_count == 5  # noqa: PLR2004
         mock_sm.add_widget.assert_any_call(mock_reader_screens.main_screen)
         mock_sm.add_widget.assert_any_call(mock_reader_screens.comic_reader_screen)
         mock_sm.add_widget.assert_any_call(mock_reader_screens.document_reader_screen)
         mock_sm.add_widget.assert_any_call(mock_reader_screens.wiki_reader_screen)
+        mock_sm.add_widget.assert_any_call(mock_reader_screens.corpus_stats_screen)
 
         assert mock_sm.current == MAIN_READER_SCREEN
         assert root == mock_sm

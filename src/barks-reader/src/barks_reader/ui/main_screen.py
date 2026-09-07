@@ -164,7 +164,6 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         self._names_index_screen = screens.names_index
         self._locations_index_screen = screens.locations_index
         self._statistics_screen = screens.statistics
-        self._corpus_stats_screen = screens.corpus_stats
         self._history_screen = screens.history
         self._search_screen = screens.search
 
@@ -606,6 +605,11 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
 
     @override
     def on_wiki_reader_closed(self) -> None:
+        self._is_active(active=True)
+        self._nav.restore_focus_after_reader()
+
+    @override
+    def on_corpus_stats_closed(self) -> None:
         self._is_active(active=True)
         self._nav.restore_focus_after_reader()
 

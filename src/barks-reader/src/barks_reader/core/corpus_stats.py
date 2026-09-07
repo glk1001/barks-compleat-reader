@@ -99,6 +99,23 @@ class StatSection:
 
 
 @dataclass(frozen=True, slots=True)
+class SectionShape:
+    """How much room a section needs, known before its figures are.
+
+    The page reserves space for the dialogue section up front so that the late
+    background scan fills it in place instead of reflowing a fixed-height page.
+    """
+
+    num_rows: int
+    footnote_lines: int
+
+
+# The shape of the section `compute_text_stats` returns. Pinned by a test, since a
+# row added there without updating this would silently overflow the page.
+TEXT_SECTION_SHAPE = SectionShape(num_rows=6, footnote_lines=2)
+
+
+@dataclass(frozen=True, slots=True)
 class Opening:
     """The two lines the page opens with.
 
@@ -204,17 +221,19 @@ def compute_text_stats(indexes_dir: Path) -> StatSection | None:
         return None
 
     rows = (
-        StatRow("Balloons, captions and sound effects", f"{totals.num_text_entities:,}"),
+        StatRow("Balloons and captions", f"{totals.num_text_entities:,}"),
         StatRow("Words spoken", f"{totals.num_words:,}"),
         StatRow("Distinct words", f"{distinct_words:,}"),
-        StatRow("Panels with dialogue", f"{totals.num_panels:,}"),
-        StatRow("Pages with dialogue", f"{totals.num_pages:,}"),
-        StatRow("Person names in dialogue", f"{num_person_names:,}"),
+        StatRow("Panels with text", f"{totals.num_panels:,}"),
+        StatRow("Pages with text", f"{totals.num_pages:,}"),
+        StatRow("Person names", f"{num_person_names:,}"),
     )
 
     num_stories = len(get_stories())
+    # The first row counts sound effects too; the label has no room to say so.
     footnote = (
-        f"Text figures cover {totals.num_titles:,} of {num_stories:,} stories currently indexed."
+        "Balloons include captions and sound effects."
+        f" Text figures cover {totals.num_titles:,} of {num_stories:,} stories currently indexed."
     )
 
     return StatSection(heading="The words", rows=rows, footnote=footnote)
@@ -230,7 +249,7 @@ def _corpus_section(stories: list[ComicBookInfo]) -> StatSection:
             StatRow("Stories", f"{len(stories):,}"),
             StatRow("One-pagers", f"{len(ONE_PAGERS):,}"),
             StatRow("Covers", f"{len(COVERS_SET):,}"),
-            StatRow("Fantagraphics volumes", f"{len(FANTA_SOURCE_COMICS):,}"),
+            StatRow("Volumes", f"{len(FANTA_SOURCE_COMICS):,}"),
             # En dashes throughout, to match the span in the opening headline.
             StatRow("Submitted to Western", f"{min(submitted_years)}–{max(submitted_years)}"),  # noqa: RUF001
         ),
@@ -259,11 +278,8 @@ def _attribution_section(stories: list[ComicBookInfo]) -> StatSection:
             _row("Script and art", counts.get(None, 0)),
             _row("Art only", counts.get(Qualifier.ART_ONLY, 0)),
             _row("Script only", counts.get(Qualifier.SCRIPT_ONLY, 0)),
-            _row(
-                "Art and rewritten script",
-                counts.get(Qualifier.ART_AND_REWRITING_OF_SCRIPT, 0),
-            ),
-            _row("Not in Barrier's bibliography", len(stories) - num_with_entry),
+            _row("Art, script rewritten", counts.get(Qualifier.ART_AND_REWRITING_OF_SCRIPT, 0)),
+            _row("Not in the bibliography", len(stories) - num_with_entry),
         ),
         footnote="Attribution as stated in Michael Barrier's bibliography.",
     )
@@ -305,7 +321,7 @@ def _length_section(
             _band(f"Short (2–{_SHORT_STORY_MAX_PAGES} pages)", num_short),  # noqa: RUF001
             _band(f"Long ({_SHORT_STORY_MAX_PAGES + 1}+ pages)", num_long),
             StatRow("Story pages", f"{total_pages:,}"),
-            StatRow("Mean pages per story", f"{mean_pages:.1f}"),
+            StatRow("Mean pages", f"{mean_pages:.1f}"),
             StatRow(
                 "Longest story",
                 f"{ENUM_TO_STR_TITLE[longest_title]}, {longest_pages} pages",
@@ -328,9 +344,9 @@ def _payment_section(
         rows=(
             StatRow("Total paid", f"${nominal_total:,.0f}"),
             StatRow(f"In {latest_year} dollars", f"${adjusted_total:,.0f}"),
-            StatRow(f"Per page, {latest_year} dollars", f"${adjusted_total / paid_pages:,.0f}"),
+            StatRow("Per page", f"${adjusted_total / paid_pages:,.0f}"),
             StatRow("Paid pages", f"{paid_pages:,}"),
-            StatRow("Largest single payment", f"${max(p.payment for p in paid_records):,.0f}"),
+            StatRow("Largest payment", f"${max(p.payment for p in paid_records):,.0f}"),
         ),
         footnote=(
             f"From the {len(paid_records):,} of {len(BARKS_PAYMENTS):,} payment records with a"

@@ -34,7 +34,6 @@ def _make_screen_mocks() -> dict[str, MagicMock]:
         "names_index": MagicMock(),
         "locations_index": MagicMock(),
         "statistics": MagicMock(),
-        "corpus_stats": MagicMock(),
         "history": MagicMock(),
         "search": MagicMock(),
     }

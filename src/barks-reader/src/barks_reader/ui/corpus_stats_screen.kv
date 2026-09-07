@@ -1,23 +1,64 @@
+#:import reader_palette barks_reader.core.reader_palette
+
+# The page box is the document reader's, so the fact sheet is shaped like the
+# Introduction pages it sits beside: a comic page, centred, with the action bar
+# reserved out of the top. Everything inside it is sized in Python, from one
+# scale factor - see core/corpus_stats_layout.py.
 <CorpusStatsScreen>:
-    opacity: 1 if root.is_visible else 0
-    size_hint: (1, 1) if root.is_visible else (0, 0)
+    pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
     canvas.before:
         Color:
-            rgba: 0.08, 0.08, 0.08, 1
+            rgba: 0.03, 0.03, 0.03, 1
         Rectangle:
             pos: self.pos
             size: self.size
 
-    ReaderScrollView:
-        id: corpus_stats_scroll
-        size_hint: 1, 1
-        pos_hint: {'x': 0, 'y': 0}
+    BoxLayout:
+        id: stats_page
+        orientation: "vertical"
+        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+        size_hint: None, None
+        width: min((root.height - stats_action_bar.height) / root.ASPECT_RATIO, root.width)
+        height: self.width * root.ASPECT_RATIO + stats_action_bar.height
 
-        GridLayout:
-            id: corpus_stats_rows
-            cols: 1
+        canvas.before:
+            Color:
+                rgba: 0.08, 0.08, 0.08, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        BoxLayout:
+            id: stats_opening
+            orientation: "vertical"
             size_hint_y: None
-            height: self.minimum_height
-            padding: dp(20), dp(16)
-            spacing: dp(3)
+
+        BoxLayout:
+            id: stats_columns
+            orientation: "horizontal"
+
+            BoxLayout:
+                id: stats_left
+                orientation: "vertical"
+
+            BoxLayout:
+                id: stats_right
+                orientation: "vertical"
+
+    # Declared after the page so the page's ground cannot paint over it.
+    ReaderActionBar:
+        id: stats_action_bar
+        pos_hint: {"center_x": 0.5, 'top': 1}
+        size_hint: None, None
+        height: root.ACTION_BAR_HEIGHT
+        width: stats_page.width
+        icon_source: root.app_icon_filepath
+        title_text: root.action_bar_title
+
+        ChromeBarButton:
+            id: close_button
+            text: "Close"
+            icon: str(sys_paths.get_barks_reader_close_icon_file())
+            important: True
+            on_press: root.close()

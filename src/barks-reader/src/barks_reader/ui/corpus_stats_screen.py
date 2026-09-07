@@ -1,21 +1,25 @@
-"""The Introduction "By the Numbers" screen: the whole corpus as a fact sheet.
+"""The Introduction "By the Numbers" screen: the whole corpus on one page.
 
-Two opening lines over grouped label/value rows. All of the arithmetic lives in
-``barks_reader.core.corpus_stats``; this module only turns its ``CorpusStats``
-into widgets.
+A full-window screen shaped like a comic page, sitting beside the other two
+Introduction pages (the Compleat Barks Reader document and the Don Ault article),
+which are also full-window and also do not scroll. Two opening lines run the width
+of the page; below them the six sections are split into two columns.
 
-The one piece of ornament on the page is load-bearing. Rows that are slices of
-the same whole - the five attribution buckets, the three length bands - carry a
-``share``, and it is drawn as a bar behind the row. Nothing else gets one, so
-the presence of a bar is itself the signal that a group adds up to something,
-and its absence marks a total, a rate or a named story. That replaces the plain
-zebra striping this page used to have, which cost the same to draw and said
-nothing.
+Nothing here scrolls, so the fit is arithmetic rather than negotiated: every size
+is a constant from ``core.corpus_stats_layout`` multiplied by one scale factor
+derived from the page width. That module is Kivy-free and carries the test that
+proves the content fits.
 
-The dialogue section is filled in a beat late: everything else is instant, but
-the word counts need a full pass over the Whoosh speech index, so that runs on a
-background thread and appends its section when it lands. The result is cached,
-so the scan happens at most once per app run.
+The one piece of ornament is load-bearing. Rows that are slices of the same whole -
+the five attribution buckets, the three length bands - carry a ``share``, drawn as
+a bar behind the row. Nothing else gets one, so the presence of a bar signals that
+a group adds up to something, and its absence marks a total, a rate or a named
+story.
+
+The dialogue section is filled in a beat late: the word counts need a full pass
+over the Whoosh speech index, so that runs on a background thread. Its slot is
+reserved at full height from the start, because a page that cannot scroll must not
+reflow when the scan lands.
 """
 
 from __future__ import annotations
@@ -25,32 +29,33 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kivy.clock import Clock
+from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
-from kivy.metrics import dp
-from kivy.properties import BooleanProperty  # ty: ignore[unresolved-import]
+from kivy.lang import Builder
+from kivy.properties import StringProperty  # ty: ignore[unresolved-import]
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
+from kivy.uix.widget import Widget
 from loguru import logger
 
-from barks_reader.core.corpus_stats import compute_static_stats, compute_text_stats
-from barks_reader.core.reader_palette import theme
-
-from .font_manager import FontManager
-from .reader_keyboard_nav import (
-    KEY_DOWN,
-    KEY_LEFT,
-    KEY_PAGE_DOWN,
-    KEY_PAGE_UP,
-    KEY_UP,
-    is_escape_key,
+from barks_reader.core import corpus_stats_layout as layout
+from barks_reader.core.corpus_stats import (
+    TEXT_SECTION_SHAPE,
+    compute_static_stats,
+    compute_text_stats,
 )
+from barks_reader.core.reader_consts_and_types import INTRO_BY_THE_NUMBERS_TEXT
+from barks_reader.core.reader_formatter import get_action_bar_title
+from barks_reader.core.reader_palette import theme
+from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
+
+from .action_bar_helpers import ACTION_BAR_SIZE_Y
+from .font_manager import FontManager
+from .reader_keyboard_nav import KEY_LEFT, KEY_UP, ActionBarNavMixin, is_escape_key
+from .reader_screens import ReaderScreen
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from kivy.uix.scrollview import ScrollView
-    from kivy.uix.widget import Widget
+    from collections.abc import Callable, Sequence
 
     from barks_reader.core.corpus_stats import CorpusStats, Opening, StatRow, StatSection
 
@@ -62,170 +67,267 @@ _FONT_NAME = FontManager.main_index_item_font_name
 # The app's own hand-lettered face, used once, for the opening line.
 _DISPLAY_FONT_NAME = FontManager.main_title_font_name
 
-_HEADLINE_HEIGHT = 54
-_STANDFIRST_HEIGHT = 30
-_OPENING_GAP = 16
-_HEADING_HEIGHT = 38
-_ROW_HEIGHT = 28
-_PROSE_LABEL_HEIGHT = 22
-_PROSE_ROW_HEIGHT = 52
-_FOOTNOTE_HEIGHT = 28
-_SECTION_GAP = 12
-
-_ROW_SIDE_PADDING = 14
-
 # The share bar: an unfilled track the width of the row, and the row's own slice
-# filled over it. The track is what makes a one-percent slice read as "almost
-# none of it" rather than as a rendering artefact.
+# filled over it. The track is what makes a one-percent slice read as "almost none
+# of it" rather than as a rendering artefact.
 _BAR_TRACK_ALPHA = 0.45
 _BAR_FILL_ALPHA = 1.0
 
-# One arrow press moves the view by this fraction of the scrollable height; a
-# page key moves by this much again. Tuned so a remote's cursor keys walk the
-# page at a readable pace rather than jumping it.
-_SCROLL_STEP = 0.08
-_PAGE_SCROLL_STEP = 0.4
 
-
-class CorpusStatsScreen(FloatLayout):
-    """Screen showing corpus-wide statistics as an opening plus grouped rows.
+class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
+    """Full-window page showing corpus-wide statistics in two columns.
 
     Args:
-        indexes_dir: The Barks Reader ``Indexes`` directory, used for the
-            dialogue statistics. The section is omitted if it holds no index.
-        font_manager: Supplies the resolution-appropriate font family.
+        indexes_dir: The Barks Reader ``Indexes`` directory, used for the dialogue
+            statistics. That section is left empty if it holds no index.
+        font_manager: Supplies the action bar's title size. The page body sizes
+            itself; see the module docstring.
+        on_close_screen: Called to hand the window back to the main screen.
 
     """
 
-    is_visible = BooleanProperty(defaultvalue=False)
+    ACTION_BAR_HEIGHT = ACTION_BAR_SIZE_Y
+    ASPECT_RATIO = COMIC_PAGE_ASPECT_RATIO
+    action_bar_title = StringProperty()
+    app_icon_filepath = StringProperty()
 
-    def __init__(self, indexes_dir: Path, font_manager: FontManager, **kwargs) -> None:  # noqa: ANN003
+    def __init__(
+        self,
+        indexes_dir: Path,
+        font_manager: FontManager,
+        on_close_screen: Callable[[], None],
+        **kwargs: str,
+    ) -> None:
         super().__init__(**kwargs)
+
         self._indexes_dir = indexes_dir
         self._font_manager = font_manager
+        self._on_close_screen = on_close_screen
         self._stats: CorpusStats | None = None
         self._text_section: StatSection | None = None
         self._text_scan_started = False
-        self._nav_active = False
-        self._nav_on_exit_request: Callable | None = None
 
-    def on_is_visible(self, _instance: object, visible: bool) -> None:
-        """Build the page the first time it is shown, then keep it."""
-        if not visible or self._stats is not None:
-            return
+        self._setup_action_bar_nav([self.ids.close_button])
 
-        self._stats = compute_static_stats()
+        # A resize drag would otherwise rebuild the page on every frame.
+        self._rebuild_trigger = Clock.create_trigger(lambda _dt: self._rebuild(), 0)
+        self.ids.stats_page.bind(width=lambda *_args: self._rebuild_trigger())
+
+    # --- Lifecycle -------------------------------------------------------
+
+    def open(self) -> None:
+        """Show the page, computing the statistics the first time."""
+        self.action_bar_title = get_action_bar_title(self._font_manager, INTRO_BY_THE_NUMBERS_TEXT)
+        if self._stats is None:
+            self._stats = compute_static_stats()
         self._rebuild()
         self._start_text_scan()
+
+        # Unbind first: re-opening without a close in between would double-bind.
+        Window.unbind(on_key_down=self._on_key_down)
+        Window.bind(on_key_down=self._on_key_down)
+
+    def close(self) -> None:
+        """Hand the window back to the main screen."""
+        if self._menu_mode:
+            self._exit_menu_mode()
+        Window.unbind(on_key_down=self._on_key_down)
+        self._on_close_screen()
 
     # --- Content ---------------------------------------------------------
 
     def _rebuild(self) -> None:
-        """Repopulate the row list from the cached stats."""
+        """Lay the whole page out at the current scale."""
         if self._stats is None:
             return
 
-        rows = self.ids.corpus_stats_rows
-        rows.clear_widgets()
+        page = self.ids.stats_page
+        scale = layout.scale_for(page.width)
+        pad = layout.PAGE_PADDING_FRACTION * page.width
 
-        self._add_opening(self._stats.opening)
-        sections = list(self._stats.sections)
-        if self._text_section is not None:
-            sections.append(self._text_section)
-        for section in sections:
-            self._add_section(section)
+        page.padding = [pad, self.ACTION_BAR_HEIGHT + pad, pad, pad]
+        self.ids.stats_columns.spacing = layout.COLUMN_GUTTER_FRACTION * page.width
 
-    def _add_opening(self, opening: Opening) -> None:
-        """Add the two lines the page opens with."""
-        rows = self.ids.corpus_stats_rows
+        self._build_opening(self._stats.opening, scale)
 
-        rows.add_widget(
-            self._make_line(
+        left, right = layout.split_columns(self._stats.sections)
+        self._build_column(self.ids.stats_left, left, scale)
+        self._build_column(self.ids.stats_right, right, scale, words_slot=True)
+
+    def _build_opening(self, opening: Opening, scale: float) -> None:
+        box = self.ids.stats_opening
+        box.clear_widgets()
+        box.height = layout.opening_height() * scale
+
+        box.add_widget(
+            self._line(
                 opening.headline,
                 color=theme().text_display,
                 font_name=_DISPLAY_FONT_NAME,
-                font_size=self._font_manager.main_title_font_size,
-                height=dp(_HEADLINE_HEIGHT),
+                font_size=layout.DESIGN.headline * scale,
+                height=layout.DESIGN.headline_height * scale,
                 valign="bottom",
             )
         )
-        rows.add_widget(
-            self._make_line(
+        box.add_widget(
+            self._line(
                 opening.standfirst,
                 color=theme().text_secondary,
                 font_name=_FONT_NAME,
-                font_size=self._font_manager.title_info_font_size,
-                height=dp(_STANDFIRST_HEIGHT),
+                font_size=layout.DESIGN.standfirst * scale,
+                height=layout.DESIGN.standfirst_height * scale,
                 valign="top",
             )
         )
-        rows.add_widget(BoxLayout(size_hint_y=None, height=dp(_OPENING_GAP)))
+        box.add_widget(Widget(size_hint_y=None, height=layout.DESIGN.opening_gap * scale))
 
-    def _add_section(self, section: StatSection) -> None:
-        rows = self.ids.corpus_stats_rows
-        rows.add_widget(self._make_heading(section.heading))
+    def _build_column(
+        self,
+        column: BoxLayout,
+        sections: Sequence[StatSection],
+        scale: float,
+        *,
+        words_slot: bool = False,
+    ) -> None:
+        column.clear_widgets()
+        for section in sections:
+            column.add_widget(self._build_section(section, scale))
+            column.add_widget(Widget(size_hint_y=None, height=layout.DESIGN.section_gap * scale))
+
+        if words_slot:
+            column.add_widget(self._build_words_slot(scale))
+            column.add_widget(Widget(size_hint_y=None, height=layout.DESIGN.section_gap * scale))
+
+        # Everything stacks from the top; this soaks up whatever is left over.
+        column.add_widget(Widget())
+
+    def _build_words_slot(self, scale: float) -> BoxLayout:
+        """Build the dialogue section's slot at its full declared height.
+
+        The slot is the same height whether or not the background scan has landed,
+        so a page that cannot scroll never reflows under the reader.
+        """
+        slot = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            height=layout.reserved_height(TEXT_SECTION_SHAPE) * scale,
+        )
+        if self._text_section is not None:
+            self._fill_section(slot, self._text_section, scale)
+        else:
+            slot.add_widget(self._heading("The words", scale))
+            slot.add_widget(Widget())
+        return slot
+
+    def _build_section(self, section: StatSection, scale: float) -> BoxLayout:
+        box = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            height=layout.section_height(section) * scale,
+        )
+        self._fill_section(box, section, scale)
+        return box
+
+    def _fill_section(self, box: BoxLayout, section: StatSection, scale: float) -> None:
+        box.add_widget(self._heading(section.heading, scale))
         for stat_row in section.rows:
-            rows.add_widget(self._make_row(stat_row))
+            box.add_widget(self._row(stat_row, scale))
         if section.footnote:
-            rows.add_widget(self._make_footnote(section.footnote))
-        rows.add_widget(BoxLayout(size_hint_y=None, height=dp(_SECTION_GAP)))
+            box.add_widget(self._footnote(section.footnote, scale))
 
-    def _make_heading(self, text: str) -> Label:
+    def _heading(self, text: str, scale: float) -> Label:
         """Build a section heading.
 
         Set as written rather than upper-cased, and with no rule beneath it: the
         weight, the colour and the space above already separate it from the rows.
         """
-        return self._make_line(
+        return self._line(
             text,
             color=theme().search_heading,
             font_name=_FONT_NAME,
-            font_size=self._font_manager.text_block_heading_font_size,
-            height=dp(_HEADING_HEIGHT),
+            font_size=layout.DESIGN.heading * scale,
+            height=layout.DESIGN.heading_height * scale,
             valign="bottom",
             bold=True,
         )
 
-    def _make_row(self, stat_row: StatRow) -> BoxLayout:
+    def _row(self, stat_row: StatRow, scale: float) -> BoxLayout:
         """Build one statistics line, in whichever of the two shapes it needs."""
         if stat_row.prose:
-            return self._make_prose_row(stat_row)
+            return self._prose_row(stat_row, scale)
 
-        row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(_ROW_HEIGHT))
+        row = BoxLayout(
+            orientation="horizontal",
+            size_hint_y=None,
+            height=layout.DESIGN.row_height * scale,
+            spacing=layout.DESIGN.label_value_gap * scale,
+        )
         if stat_row.share is not None:
             _add_share_bar(row, stat_row.share)
 
-        row.add_widget(self._make_cell(stat_row.label, theme().text_secondary, "left", bold=False))
-        row.add_widget(self._make_cell(stat_row.value, theme().text_title, "right", bold=True))
+        row.add_widget(self._label_cell(stat_row.label, scale))
+        row.add_widget(self._value_cell(stat_row.value, scale))
         return row
 
-    def _make_prose_row(self, stat_row: StatRow) -> BoxLayout:
+    def _label_cell(self, text: str, scale: float) -> Label:
+        """Build the left-hand label, which takes whatever the value leaves."""
+        label = self._cell(text, theme().text_secondary, "left", scale)
+        # Cut with an ellipsis rather than wrap. A label too wide for its column
+        # would otherwise wrap to a second line the row has no height to show, and
+        # go silently missing. The real width constraint is tested in the layout
+        # module; this is the visible failure mode if it is ever violated.
+        label.shorten = True
+        label.shorten_from = "right"
+        label.bind(size=lambda w, _s: setattr(w, "text_size", (w.width, w.height)))
+        return label
+
+    def _value_cell(self, text: str, scale: float) -> Label:
+        """Build the right-hand figure, sized to its own text.
+
+        The value takes exactly the width it needs so the label can have the rest;
+        splitting the row evenly would leave the longer labels too little room.
+        """
+        value = self._cell(text, theme().text_title, "right", scale, bold=True)
+        value.size_hint_x = None
+        value.bind(texture_size=lambda w, size: setattr(w, "width", size[0]))
+        return value
+
+    def _prose_row(self, stat_row: StatRow, scale: float) -> BoxLayout:
         """Build a row whose value is a name, stacked so it reads as one.
 
-        A story title or a character name squeezed into the right-hand figure
-        column reads as a number that failed to be a number, and is the first
-        thing to be truncated. Given its own line it reads as what it is.
+        A story title squeezed into the right-hand figure column reads as a number
+        that failed to be a number, and is the first thing to be truncated. Given
+        its own lines it reads as what it is.
         """
-        box = BoxLayout(orientation="vertical", size_hint_y=None, height=dp(_PROSE_ROW_HEIGHT))
-        box.add_widget(
-            self._make_cell(
-                stat_row.label,
-                theme().text_secondary,
-                "left",
-                bold=False,
-                height=dp(_PROSE_LABEL_HEIGHT),
-            )
+        box = BoxLayout(
+            orientation="vertical",
+            size_hint_y=None,
+            height=layout.DESIGN.row_height * layout.PROSE_ROW_HEIGHT_UNITS * scale,
         )
-        box.add_widget(self._make_cell(stat_row.value, theme().text_title, "left", bold=True))
+        label = self._cell(
+            stat_row.label,
+            theme().text_secondary,
+            "left",
+            scale,
+            height=layout.DESIGN.row_height * scale,
+        )
+        label.bind(size=lambda w, _s: setattr(w, "text_size", (w.width, w.height)))
+        box.add_widget(label)
+
+        value = self._cell(stat_row.value, theme().text_title, "left", scale, bold=True)
+        value.valign = "top"
+        value.bind(size=lambda w, _s: setattr(w, "text_size", (w.width, w.height)))
+        box.add_widget(value)
         return box
 
-    def _make_cell(
+    def _cell(
         self,
         text: str,
         color: tuple,
         halign: str,
+        scale: float,
         *,
-        bold: bool,
+        bold: bool = False,
         height: float | None = None,
     ) -> Label:
         label = Label(
@@ -233,38 +335,33 @@ class CorpusStatsScreen(FloatLayout):
             markup=True,
             color=color,
             font_name=_FONT_NAME,
-            font_size=self._font_manager.main_index_item_font_size,
+            font_size=layout.DESIGN.row * scale,
             halign=halign,
             valign="middle",
-            shorten=True,
-            shorten_from="right",
         )
         if height is not None:
             label.size_hint_y = None
             label.height = height
-        label.bind(
-            size=lambda w, _s: setattr(w, "text_size", (w.width - dp(_ROW_SIDE_PADDING), w.height))
-        )
         return label
 
-    def _make_footnote(self, text: str) -> Label:
+    def _footnote(self, text: str, scale: float) -> Label:
         """Build a section's caveat line.
 
-        Sized as fine print rather than as the smallest type in the app: these
-        lines are where the page admits what it does not know, and a caveat
-        nobody can read across a room is not a caveat.
+        Sized as fine print rather than as the smallest type on the page: these
+        lines are where the page admits what it does not know, and a caveat nobody
+        can read across a room is not a caveat.
         """
-        return self._make_line(
+        return self._line(
             text,
             color=theme().text_secondary,
             font_name=_FONT_NAME,
-            font_size=self._font_manager.about_box_fine_print_font_size,
-            height=dp(_FOOTNOTE_HEIGHT),
+            font_size=layout.DESIGN.footnote * scale,
+            height=2.0 * layout.DESIGN.footnote_line_height * scale,
             valign="middle",
             italic=True,
         )
 
-    def _make_line(
+    def _line(
         self,
         text: str,
         *,
@@ -294,9 +391,7 @@ class CorpusStatsScreen(FloatLayout):
             size_hint_y=None,
             height=height,
         )
-        label.bind(
-            size=lambda w, _s: setattr(w, "text_size", (w.width - dp(_ROW_SIDE_PADDING), w.height))
-        )
+        label.bind(size=lambda w, _s: setattr(w, "text_size", (w.width, w.height)))
         return label
 
     # --- Background text scan --------------------------------------------
@@ -313,97 +408,52 @@ class CorpusStatsScreen(FloatLayout):
             section = compute_text_stats(self._indexes_dir)
         except Exception:  # noqa: BLE001
             # A background thread must not take the app down, and the page is
-            # perfectly usable without this one section.
+            # perfectly usable with that one section left empty.
             logger.exception("CorpusStats: dialogue statistics scan failed.")
             return
 
         if section is None:
-            logger.info("CorpusStats: no speech index; omitting the dialogue statistics.")
+            logger.info("CorpusStats: no speech index; leaving the dialogue section empty.")
             return
 
         def _apply(_dt: float) -> None:
             self._text_section = section
-            self._append_text_section(section)
+            self._rebuild()
 
         Clock.schedule_once(_apply, 0)
 
-    def _append_text_section(self, section: StatSection) -> None:
-        """Add the late section without moving the page under the reader.
+    # --- Keyboard --------------------------------------------------------
 
-        The section always lands last, so it can be appended rather than
-        rebuilt. Appending still grows the content, and ``scroll_y`` is a
-        *fraction* of the scrollable distance, so the same fraction points
-        somewhere else once the content is taller - hence the offset dance.
+    def _on_key_down(
+        self, _window: object, key: int, _scancode: int, _codepoint: str, _modifier: list[str]
+    ) -> bool:
+        return self._handle_reader_key(key)
+
+    def _handle_reading_key(self, key: int) -> bool:
+        """Handle a key while not in the action bar.
+
+        Deliberately different from the readers this screen otherwise copies: they
+        map Escape to the action-bar menu because they have pages to turn, but this
+        page has neither, and Escape that did not leave would be a regression on the
+        bottom-panel version. Up still reaches the Close button for a remote.
         """
-        if self._stats is None:
-            # The page was never built, so there is nothing to append to; the
-            # cached section will be picked up by the next `_rebuild`.
-            return
-
-        scroll = self.ids.corpus_stats_scroll
-        rows = self.ids.corpus_stats_rows
-        offset = _scroll_offset_from_top(scroll, rows)
-
-        self._add_section(section)
-
-        # Restore after Kivy has relaid the grid out and `minimum_height` is current.
-        Clock.schedule_once(lambda _dt: _set_scroll_offset_from_top(scroll, rows, offset), 0)
-
-    # --- Keyboard navigation ---------------------------------------------
-
-    def enter_nav_focus(self, on_exit_request: Callable) -> None:
-        """Enter keyboard navigation mode. The page scrolls; it has no controls."""
-        self._nav_on_exit_request = on_exit_request
-        self._nav_active = True
-        logger.debug("CorpusStatsScreen: entered nav focus.")
-
-    def exit_nav_focus(self) -> None:
-        """Leave keyboard navigation mode."""
-        self._nav_active = False
-        logger.debug("CorpusStatsScreen: exited nav focus.")
-
-    def handle_key(self, key: int) -> bool:
-        """Handle a keyboard key. Return True if consumed."""
-        if not self._nav_active:
-            return False
-
-        if key == KEY_UP:
-            self._scroll_by(_SCROLL_STEP)
-        elif key == KEY_DOWN:
-            self._scroll_by(-_SCROLL_STEP)
-        elif key == KEY_PAGE_UP:
-            self._scroll_by(_PAGE_SCROLL_STEP)
-        elif key == KEY_PAGE_DOWN:
-            self._scroll_by(-_PAGE_SCROLL_STEP)
-        elif is_escape_key(key) or key == KEY_LEFT:
-            if self._nav_on_exit_request:
-                self._nav_on_exit_request()
+        if is_escape_key(key) or key == KEY_LEFT:
+            self.close()
+        elif key == KEY_UP:
+            self._enter_menu_mode()
         else:
             return False
         return True
 
-    def _scroll_by(self, fraction: float) -> None:
-        scroll = self.ids.corpus_stats_scroll
-        scroll.scroll_y = min(1.0, max(0.0, scroll.scroll_y + fraction))
+    def _reading_next_page(self) -> None:
+        """No-op: the fact sheet is a single page."""
 
+    def _reading_prev_page(self) -> None:
+        """No-op: the fact sheet is a single page."""
 
-def _scroll_offset_from_top(scroll: ScrollView, content: Widget) -> float:
-    """Return how far the view is scrolled from the top, in pixels."""
-    return (1.0 - scroll.scroll_y) * _scrollable_distance(scroll, content)
-
-
-def _set_scroll_offset_from_top(scroll: ScrollView, content: Widget, offset: float) -> None:
-    """Scroll the view to ``offset`` pixels from the top, clamped to the content."""
-    distance = _scrollable_distance(scroll, content)
-    if distance <= 0:
-        scroll.scroll_y = 1.0
-        return
-    scroll.scroll_y = min(1.0, max(0.0, 1.0 - (offset / distance)))
-
-
-def _scrollable_distance(scroll: ScrollView, content: Widget) -> float:
-    """Return the pixels of content that lie outside the viewport."""
-    return max(0.0, content.height - scroll.height)
+    def on_touch_down(self, touch: object) -> bool:
+        self._clear_menu_on_touch()
+        return bool(super().on_touch_down(touch))
 
 
 def _add_share_bar(row: BoxLayout, share: float) -> None:
@@ -436,3 +486,20 @@ def _add_share_bar(row: BoxLayout, share: float) -> None:
 
     _update()
     row.bind(pos=_update, size=_update)
+
+
+def get_corpus_stats_screen(
+    screen_name: str,
+    indexes_dir: Path,
+    font_manager: FontManager,
+    on_close_screen: Callable[[], None],
+) -> CorpusStatsScreen:
+    """Load the page's kv and build the screen."""
+    Builder.load_file(str(CORPUS_STATS_SCREEN_KV_FILE))
+
+    return CorpusStatsScreen(
+        indexes_dir,
+        font_manager,
+        on_close_screen,
+        name=screen_name,
+    )

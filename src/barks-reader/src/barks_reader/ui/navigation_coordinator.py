@@ -456,6 +456,11 @@ class NavigationCoordinator:
         self._on_active_changed(False)  # noqa: FBT003
         self._screen_switchers.switch_to_wiki_reader(bundle, None)
 
+    def open_corpus_stats(self) -> None:
+        """Open the Introduction's "By the Numbers" page as a full-window screen."""
+        self._on_active_changed(False)  # noqa: FBT003
+        self._screen_switchers.switch_to_corpus_stats()
+
     def open_wiki_page_for_title(self, title: Titles) -> None:
         """Open the Carl Barks Wiki at ``title``'s story page.
 

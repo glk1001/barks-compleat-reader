@@ -43,7 +43,7 @@ from .bottom_title_view_screen import (
 )
 from .collapse_parent_overlay import COLLAPSE_PARENT_OVERLAY_KV_FILE
 from .comic_book_reader import get_barks_comic_reader_screen
-from .corpus_stats_screen import CORPUS_STATS_SCREEN_KV_FILE, CorpusStatsScreen
+from .corpus_stats_screen import get_corpus_stats_screen
 from .document_reader import get_document_reader_screen
 from .entity_index_screen import EntityIndexScreen
 from .error_handling import handle_app_fail_with_traceback
@@ -59,6 +59,7 @@ from .popup_widgets import READER_POPUPS_KV_FILE
 from .reader_keyboard_nav import get_alt_escape_key, is_escape_key, set_alt_escape_key
 from .reader_screens import (
     COMIC_BOOK_READER_SCREEN,
+    CORPUS_STATS_SCREEN,
     DOCUMENT_READER_SCREEN,
     MAIN_READER_SCREEN,
     WIKI_READER_SCREEN,
@@ -294,7 +295,6 @@ class BarksReaderApp(App):
         Builder.load_file(str(FUN_IMAGE_VIEW_SCREEN_KV_FILE))
         Builder.load_file(str(INDEX_SCREEN_KV_FILE))
         Builder.load_file(str(STATISTICS_SCREEN_KV_FILE))
-        Builder.load_file(str(CORPUS_STATS_SCREEN_KV_FILE))
         Builder.load_file(str(HISTORY_SCREEN_KV_FILE))
         Builder.load_file(str(SEARCH_SCREEN_KV_FILE))
         Builder.load_file(str(MAIN_SCREEN_KV_FILE))
@@ -375,10 +375,6 @@ class BarksReaderApp(App):
         statistics_screen = StatisticsScreen(
             self.reader_settings.sys_file_paths.get_statistics_dir()
         )
-        corpus_stats_screen = CorpusStatsScreen(
-            self.reader_settings.sys_file_paths.get_barks_reader_indexes_dir(),
-            self.font_manager,
-        )
         history_screen = HistoryScreen()
         search_screen = SearchScreen(self.reader_settings, self.font_manager)
 
@@ -396,7 +392,6 @@ class BarksReaderApp(App):
             names_index=names_index_screen,
             locations_index=locations_index_screen,
             statistics=statistics_screen,
-            corpus_stats=corpus_stats_screen,
             history=history_screen,
             search=search_screen,
         )
@@ -447,11 +442,20 @@ class BarksReaderApp(App):
         )
         self._wiki_reader_screen = wiki_reader_screen
 
+        logger.debug('Instantiating the "By the Numbers" screen...')
+        corpus_stats_screen = get_corpus_stats_screen(
+            CORPUS_STATS_SCREEN,
+            self.reader_settings.sys_file_paths.get_barks_reader_indexes_dir(),
+            self.font_manager,
+            self._screen_switchers.close_corpus_stats,
+        )
+
         reader_screens = ReaderScreens(
             self._main_screen,
             comic_reader_screen,
             document_reader_screen,
             wiki_reader_screen,
+            corpus_stats_screen,
         )
 
         return self._reader_screen_manager.add_screens(reader_screens)

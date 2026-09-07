@@ -9,6 +9,7 @@ from loguru import logger
 
 from barks_reader.core.navigation import (
     ArticleDestination,
+    CorpusStatsDestination,
     NavigationModel,
     TitleDestination,
     WikiIndexDestination,
@@ -28,7 +29,7 @@ from .tree_view_nodes import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
     from kivy.uix.button import Button
 
@@ -39,6 +40,14 @@ if TYPE_CHECKING:
     from .screen_bundle import ScreenBundle
     from .tree_view_nodes import ReaderTreeView
     from .view_renderer import ViewRenderer
+
+
+# Destinations whose node opens a full-window screen. Back onto one of these means
+# "take me back in", not "show me the static view the node falls back to".
+_REOPEN_ON_BACK: dict[type, Callable[[NavigationCoordinator], None]] = {
+    WikiIndexDestination: lambda nav: nav.open_wiki(),
+    CorpusStatsDestination: lambda nav: nav.open_corpus_stats(),
+}
 
 
 class TreeViewManager:
@@ -71,7 +80,6 @@ class TreeViewManager:
         self._speech_words_node: ButtonTreeViewNode | None = None
 
         self._statistics_node: ButtonTreeViewNode | None = None
-        self._corpus_stats_node: ButtonTreeViewNode | None = None
 
         self._tree_view_screen.setup_collapse_overlay(self._on_collapse_overlay_pressed)
 
@@ -170,14 +178,14 @@ class TreeViewManager:
 
         logger.info(f'Going back to previous node "{prev_node.get_name()}".')
 
-        # The 'Carl Barks Wiki' node's static index view exists only so a saved-node
-        # restore at startup doesn't auto-launch the wiki. When Back returns to it
-        # in-session, the user means "take me back into the wiki where I left off":
-        # select the node (mirrors a fresh open's back-history) and re-open the wiki
-        # reader, which resumes its last-viewed page.
-        if isinstance(prev_node.destination, WikiIndexDestination):
+        # These nodes' static views exist only so a saved-node restore at startup
+        # doesn't auto-launch a full-window screen. When Back returns to one
+        # in-session, the user means "take me back in": select the node (mirrors a
+        # fresh open's back-history) and re-open the screen.
+        reopen = _REOPEN_ON_BACK.get(type(prev_node.destination))
+        if reopen is not None:
             self._tree_view_screen.select_node(prev_node)
-            self._nav.open_wiki()
+            reopen(self._nav)
             return
 
         self.setup_and_select_node(prev_node)
@@ -390,6 +398,10 @@ class TreeViewManager:
         logger.info("Wiki index node pressed.")
         self._nav.open_wiki()
 
+    def on_corpus_stats_node_pressed(self, _node: ButtonTreeViewNode) -> None:
+        logger.info('"By the Numbers" node pressed.')
+        self._nav.open_corpus_stats()
+
     def on_speech_index_node_pressed(self, _node: ButtonTreeViewNode) -> None:
         logger.info("Speech index node pressed.")
         self._renderer.render_state(ViewStates.ON_INDEX_SPEECH_NODE)
@@ -424,14 +436,6 @@ class TreeViewManager:
     @property
     def statistics_node(self) -> ButtonTreeViewNode | None:
         return getattr(self, "_statistics_node", None)
-
-    def on_corpus_stats_node_created(self, node: ButtonTreeViewNode) -> None:
-        """Handle creation of the Introduction's "By the Numbers" tree node."""
-        self._corpus_stats_node = node
-
-    @property
-    def corpus_stats_node(self) -> ButtonTreeViewNode | None:
-        return getattr(self, "_corpus_stats_node", None)
 
     def on_history_node_created(self, node: ButtonTreeViewNode) -> None:
         """Handle creation of the History tree node."""
