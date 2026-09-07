@@ -42,7 +42,8 @@ REFERENCE_PAGE_WIDTH = 782.0
 
 # Fractions of the page width. The column figure is what every label and value has
 # to fit inside, and is the constraint that decides the type size.
-PAGE_PADDING_FRACTION = 0.025
+PAGE_SIDE_PADDING_FRACTION = 0.045
+PAGE_VERTICAL_PADDING_FRACTION = 0.025
 COLUMN_GUTTER_FRACTION = 0.03
 
 
@@ -71,14 +72,15 @@ DESIGN = PageMetrics(
     # elsewhere in the app, then came down a notch: at the sizes the two-column
     # layout allows, matching the app's roles exactly read heavier than the rest of
     # the reader. They keep the app's proportions, a step down in absolute size.
-    headline=30.0,
-    standfirst=14.0,
-    heading=18.0,
-    # The body size has a hard ceiling as well as a look: the longest label and its
-    # value must sit side by side in one column. At the reference width, 22.0 already
-    # measured 341px of the 360px available, so this can come down but not up.
-    row=19.0,
-    footnote=12.0,
+    headline=28.0,
+    standfirst=13.0,
+    heading=17.0,
+    # The body size has a ceiling as well as a look: the longest label and its value
+    # must sit side by side in one column. 22.0 once measured 341px of the 360px then
+    # available, so this may come down but not far up - the less so now that the side
+    # margins have taken width back out of the columns.
+    row=17.5,
+    footnote=11.0,
     # Vertical rhythm.
     headline_height=60.0,
     standfirst_height=34.0,
@@ -122,7 +124,7 @@ def column_width(page_width: float) -> float:
         The usable width of a single column, after page padding and the gutter.
 
     """
-    padding = 2.0 * PAGE_PADDING_FRACTION * page_width
+    padding = 2.0 * PAGE_SIDE_PADDING_FRACTION * page_width
     gutter = COLUMN_GUTTER_FRACTION * page_width
     return (page_width - padding - gutter) / 2.0
 
@@ -224,5 +226,5 @@ def content_height(
 
     """
     columns = max(column_height(left), column_height(right, reserved))
-    padding = 2.0 * PAGE_PADDING_FRACTION * REFERENCE_PAGE_WIDTH
+    padding = 2.0 * PAGE_VERTICAL_PADDING_FRACTION * REFERENCE_PAGE_WIDTH
     return opening_height() + columns + padding

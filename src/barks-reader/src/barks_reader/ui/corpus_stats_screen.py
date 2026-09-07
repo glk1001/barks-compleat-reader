@@ -143,9 +143,15 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
 
         page = self.ids.stats_page
         scale = layout.scale_for(page.width)
-        pad = layout.PAGE_PADDING_FRACTION * page.width
+        side_pad = layout.PAGE_SIDE_PADDING_FRACTION * page.width
+        vertical_pad = layout.PAGE_VERTICAL_PADDING_FRACTION * page.width
 
-        page.padding = [pad, self.ACTION_BAR_HEIGHT + pad, pad, pad]
+        page.padding = [
+            side_pad,
+            self.ACTION_BAR_HEIGHT + vertical_pad,
+            side_pad,
+            vertical_pad,
+        ]
         self.ids.stats_columns.spacing = layout.COLUMN_GUTTER_FRACTION * page.width
 
         self._build_opening(self._stats.opening, scale)

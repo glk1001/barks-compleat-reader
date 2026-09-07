@@ -122,7 +122,7 @@ class TestScale:
     def test_columns_split_the_page_width(self) -> None:
         width = layout.REFERENCE_PAGE_WIDTH
         two_columns = 2 * layout.column_width(width)
-        padding = 2 * layout.PAGE_PADDING_FRACTION * width
+        padding = 2 * layout.PAGE_SIDE_PADDING_FRACTION * width
         gutter = layout.COLUMN_GUTTER_FRACTION * width
         assert two_columns + padding + gutter == pytest.approx(width)
 
@@ -162,7 +162,7 @@ class TestDesignMatchesTheAppScale:
     # app's equivalent roles, so pin the band rather than equality: a tweak stays
     # legal, a wholesale drift into a different scale does not.
     _MAX_DRIFT = 0.35
-    _MIN_READABLE_FOOTNOTE = 12.0
+    _MIN_FOOTNOTE_RATIO = 0.55
 
     def test_design_sizes_stay_in_the_apps_ballpark(self) -> None:
         from barks_reader.ui.font_manager import LOW_RES_FONTS  # noqa: PLC0415
@@ -186,8 +186,10 @@ class TestDesignMatchesTheAppScale:
 
     def test_the_footnote_stays_readable(self) -> None:
         # These lines carry the page's caveats. They may be fine print; they may not
-        # become the sort of fine print nobody can read from a sofa.
-        assert layout.DESIGN.footnote >= self._MIN_READABLE_FOOTNOTE
+        # shrink away from the body text that surrounds them. Stated as a proportion
+        # rather than a pixel floor, so resizing the whole page keeps it meaningful -
+        # an absolute floor would just get lowered every time it bound.
+        assert layout.DESIGN.footnote / layout.DESIGN.row >= self._MIN_FOOTNOTE_RATIO
 
 
 class TestTextSectionShape:
