@@ -8,7 +8,9 @@ or kivy are skipped when the environment variable KIVY_HEADLESS_CI is set.
 from __future__ import annotations
 
 import os
+import sqlite3
 import sys
+from itertools import pairwise
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -25,6 +27,54 @@ def mock_font_manager() -> MagicMock:
 @pytest.fixture
 def mock_user_error_handler() -> MagicMock:
     return MagicMock()
+
+
+# The shipped cpi.db is a 65 MB git-lfs object. A bare checkout - CI's, or a clone
+# without `git lfs install` - gets the pointer file instead, so no test may depend
+# on the real database. This stand-in is shaped like the real table at the years the
+# payment ledger spans (values read off the real one), and covers the same year
+# range, so the figures built on it behave like the shipped ones: the same
+# "in 2026 dollars" labels, and inflation multiples of the same order.
+_CPI_ANCHORS: tuple[tuple[int, float], ...] = (
+    (1913, 9.88),
+    (1942, 16.33),
+    (1950, 24.07),
+    (1966, 32.45),
+    (1973, 44.40),
+    (2026, 330.72),
+)
+
+
+def _interpolated_cpi(year: int) -> float:
+    """Interpolate the CPI linearly between the two anchor years around ``year``."""
+    for (y0, v0), (y1, v1) in pairwise(_CPI_ANCHORS):
+        if y0 <= year <= y1:
+            return v0 + (v1 - v0) * (year - y0) / (y1 - y0)
+    msg = f"year {year} is outside the fixture's range"
+    raise ValueError(msg)
+
+
+@pytest.fixture(scope="session")
+def cpi_db(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Build a small CPI database to stand in for the git-lfs one, one row per year."""
+    db_path = tmp_path_factory.mktemp("cpi") / "cpi.db"
+    first_year, last_year = _CPI_ANCHORS[0][0], _CPI_ANCHORS[-1][0]
+
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute("CREATE TABLE indexes (year INTEGER, series TEXT, value REAL)")
+        conn.executemany(
+            "INSERT INTO indexes VALUES (?, ?, ?)",
+            [
+                (year, "CUUR0000SA0", _interpolated_cpi(year))
+                for year in range(first_year, last_year + 1)
+            ],
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return db_path
 
 
 _UI_IMPORT_PREFIXES = ("barks_reader.ui", "kivy.uix", "kivy.core.window")

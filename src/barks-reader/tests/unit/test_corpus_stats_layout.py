@@ -44,8 +44,8 @@ def text_section(tmp_path: Path) -> StatSection:
 
 
 @pytest.fixture(scope="module")
-def columns() -> tuple[list[StatSection], list[StatSection]]:
-    left, right = layout.split_columns(compute_static_stats().sections)
+def columns(cpi_db: Path) -> tuple[list[StatSection], list[StatSection]]:
+    left, right = layout.split_columns(compute_static_stats(cpi_db).sections)
     return list(left), list(right)
 
 
@@ -137,8 +137,8 @@ class TestRowsFitTheColumnWidth:
     # writing a label the way it reads in prose.
     _MAX_ROW_CHARS = 32
 
-    def test_every_row_fits_its_column(self) -> None:
-        sections = list(compute_static_stats().sections)
+    def test_every_row_fits_its_column(self, cpi_db: Path) -> None:
+        sections = list(compute_static_stats(cpi_db).sections)
         too_long = [
             (section.heading, row.label, row.value)
             for section in sections
