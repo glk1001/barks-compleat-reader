@@ -94,6 +94,30 @@ class TestReadingHistoryStore:
         store.update_event(_make_event(event_id="unknown"))
         assert store.get_events() == []
 
+    def test_revision_starts_at_zero_and_bumps_on_every_mutation(self, tmp_path: Path) -> None:
+        store = ReadingHistoryStore(tmp_path / "history.json")
+        assert store.revision == 0
+
+        store.add_event(_make_event(event_id="e1"))
+        after_add = store.revision
+        assert after_add > 0
+
+        store.delete_event("e1")
+        after_delete = store.revision
+        assert after_delete > after_add
+
+        store.clear()
+        assert store.revision > after_delete
+
+    def test_revision_is_unchanged_by_a_read(self, tmp_path: Path) -> None:
+        store = ReadingHistoryStore(tmp_path / "history.json")
+        store.add_event(_make_event(event_id="e1"))
+        before = store.revision
+
+        store.get_events()
+
+        assert store.revision == before
+
     def test_delete_event(self, tmp_path: Path) -> None:
         store = ReadingHistoryStore(tmp_path / "history.json")
         keep = _make_event(event_id="keep")

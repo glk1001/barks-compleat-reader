@@ -86,6 +86,7 @@ class ReadingHistoryStore:
         """
         self._store_path = store_path
         self._events: list[ReadEvent] = []
+        self._revision = 0
 
         if store_path.exists() and (contents := store_path.read_text(encoding="utf-8").strip()):
             try:
@@ -93,7 +94,13 @@ class ReadingHistoryStore:
             except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
                 logger.error(f'History: Could not load "{store_path}": {e}. Starting empty.')
 
+    @property
+    def revision(self) -> int:
+        """A counter bumped on every mutation, so views can detect staleness cheaply."""
+        return self._revision
+
     def _sync(self) -> None:
+        self._revision += 1
         json_data = {"version": _STORE_VERSION, "events": [e.to_json() for e in self._events]}
         self._store_path.write_text(json.dumps(json_data, indent=4), encoding="utf-8")
 

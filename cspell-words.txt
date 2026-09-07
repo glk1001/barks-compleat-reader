@@ -242,3 +242,6 @@ pixmaps
 RMSE
 deptry
 barkspack
+screenful
+restripe
+restripes

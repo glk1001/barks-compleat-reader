@@ -4,12 +4,20 @@ Two toggleable views over the same event log: "Journal" (sessions grouped by
 day, newest first) and "Titles" (one row per title with a read count). Rows
 navigate to the title's tree view; each row also has a delete button, and the
 top bar has a clear-all button (with confirmation popup).
+
+Building rows is by far the most expensive thing this screen does (roughly
+1 ms per row, against a fraction of a millisecond for all the derivation put
+together), so three things keep a long log responsive: each view's widgets are
+built once and cached until the store changes, the first screenful is built up
+front with the rest filled in a chunk per frame, and a delete patches the live
+rows instead of rebuilding them.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
@@ -22,6 +30,7 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
     BooleanProperty,
     ObjectProperty,
 )
+from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
@@ -65,7 +74,9 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from barks_fantagraphics.barks_titles import Titles
+    from kivy.clock import ClockEvent
     from kivy.core.image import Texture
+    from kivy.uix.widget import Widget
 
     from barks_reader.core.image_selector import ImageInfo
     from barks_reader.core.reading_history import ReadingHistoryStore
@@ -84,11 +95,23 @@ _ROW_FONT_SIZE = 14  # dp
 _TITLE_FONT_SIZE = 16  # dp
 _HEADER_FONT_SIZE = 13  # dp — a small "eyebrow" divider under the row titles (16dp)
 _HEADER_HAIRLINE_ALPHA = 0.45  # Faintness of the rule beneath each day-group header.
+_CELL_PADDING = 10  # dp — gap between a cell's text box and its right edge.
 
 _TEXT_COLOR = (1, 1, 1, 1)
+_DELETE_COLOR = (0.8, 0.35, 0.35, 1)
 
 _JOURNAL_VIEW = "journal"
 _TITLES_VIEW = "titles"
+
+_NO_EVENTS_TEXT = "No comics read yet."
+
+# Rows built before the first frame is drawn: enough to fill a 4K viewport, so
+# the page never appears part-empty. The rest arrive a chunk per frame, keeping
+# the app responsive to keys and scrolling while a long log fills in. A row
+# costs roughly 2 ms, so a chunk of 12 is about 25 ms of work per frame - short
+# enough to stay interactive, long enough to finish a 300-entry log in ~0.5 s.
+_FIRST_CHUNK_ITEMS = 50
+_CHUNK_ITEMS = 12
 
 _NAV_PAGE_STEP = 10  # Rows jumped by Page Up/Down in keyboard navigation.
 
@@ -108,6 +131,35 @@ _NAV_MOVE_DELTAS = {
 }
 
 
+class _HistoryRow(ButtonBehavior, BoxLayout):
+    """One history row: a whole-row button whose cells are plain labels.
+
+    Making the row itself the touch target means one clickable widget per row
+    instead of one per cell, and the alternating stripe is a single rectangle
+    on the row rather than a background on every cell — so re-striping after a
+    delete touches one canvas instruction instead of five widgets.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(orientation="horizontal", size_hint_y=None, height=dp(_ROW_HEIGHT))
+        # pyrefly: ignore[missing-attribute]  # Kivy sets `canvas` in Widget.__init__.
+        with self.canvas.before:  # ty: ignore[unresolved-attribute]
+            self._stripe_color = Color(*theme().row_stripe_even)
+            self._stripe_rect = Rectangle()
+        self.bind(pos=self._update_stripe, size=self._update_stripe)
+
+    def _update_stripe(self, *_args: object) -> None:
+        self._stripe_rect.pos = self.pos
+        self._stripe_rect.size = self.size
+
+    def set_stripe(self, row_index: int) -> None:
+        """Apply the alternating row color for this position within its group."""
+        palette = theme()
+        self._stripe_color.rgba = (
+            palette.row_stripe_even if row_index % 2 == 0 else palette.row_stripe_odd
+        )
+
+
 @dataclass(frozen=True)
 class _NavRow:
     """A keyboard-navigable history row: its widget and its two actions."""
@@ -115,6 +167,19 @@ class _NavRow:
     widget: BoxLayout
     activate: Callable[[], None]
     delete: Callable[[], None]
+    group: str = ""  # The day heading in the journal view; "" in the titles view.
+    key: str = ""  # Event id (journal) or title (titles) — what a delete removes.
+
+
+@dataclass
+class _BuiltView:
+    """One view's built widgets, reusable until the store's revision moves on."""
+
+    view: str
+    revision: object
+    widgets: list[Widget] = field(default_factory=list)
+    nav_rows: list[_NavRow] = field(default_factory=list)
+    headers: dict[str, Label] = field(default_factory=dict)
 
 
 def _get_display_title(title_str: str) -> str:
@@ -124,6 +189,11 @@ def _get_display_title(title_str: str) -> str:
     if fanta_info is None:
         return title_str
     return fanta_info.comic_book_info.get_display_title()
+
+
+def _fit_text_to_cell(cell: Label, _size: tuple[float, float]) -> None:
+    """Keep a flexible cell's text box in step with its width."""
+    cell.text_size = (cell.width - dp(_CELL_PADDING), cell.height)
 
 
 def _add_header_hairline(label: Label) -> None:
@@ -159,8 +229,9 @@ class HistoryScreen(FloatLayout):
     """Screen that shows the reading-history event log.
 
     The store is injected after construction via `set_history_store`. The
-    screen re-reads the store every time it becomes visible or is modified,
-    so it never holds stale rows.
+    screen re-reads the store every time it becomes visible or is modified, so
+    it never holds stale rows — but it reuses the widgets it already built when
+    the store has not changed since.
     """
 
     is_visible = BooleanProperty(defaultvalue=False)
@@ -173,6 +244,12 @@ class HistoryScreen(FloatLayout):
         self._texture_loader = PanelTextureLoader()
         self.on_goto_title: Callable[[Titles], None] | None = None
         self.get_background_image: Callable[[list[Titles]], ImageInfo] | None = None
+
+        # Built-view cache and the state of an in-progress chunked build.
+        self._view_cache: dict[str, _BuiltView] = {}
+        self._building: _BuiltView | None = None
+        self._build_event: ClockEvent | None = None
+        self._pending_items: list[Callable[[], Widget]] = []
 
         # Keyboard navigation state
         self._nav_active: bool = False
@@ -236,42 +313,116 @@ class HistoryScreen(FloatLayout):
         self.ids.titles_button.state = "down" if view == _TITLES_VIEW else "normal"
         self._refresh()
 
+    # --- Building and caching the rows ---
+
     def _refresh(self) -> None:
+        """Show the current view, reusing its widgets when the store is unchanged."""
         if self._history_store is None:
             return
 
+        self._cancel_pending_build()
+
+        revision = self._history_store.revision
+        built = self._view_cache.get(self._current_view)
+        if built is not None and built.revision == revision:
+            self._mount(built)
+        else:
+            self._start_build(revision)
+
+    def _mount(self, built: _BuiltView) -> None:
+        """Re-attach an already-built view's widgets to the scrolling grid."""
         rows = self.ids.history_rows
         rows.clear_widgets()
-        self._nav_rows.clear()
+        self._nav_rows = built.nav_rows
         self._nav_focused_widget = None
+        for widget in built.widgets:
+            rows.add_widget(widget)
+        self._restore_nav_focus()
+
+    def _start_build(self, revision: object) -> None:
+        """Build the current view: the first screenful now, the rest per frame."""
+        assert self._history_store is not None
+
+        self.ids.history_rows.clear_widgets()
+        self._nav_rows = []
+        self._nav_focused_widget = None
+
+        built = _BuiltView(view=self._current_view, revision=revision, nav_rows=self._nav_rows)
+        self._view_cache[self._current_view] = built
+        self._building = built
 
         events = self._history_store.get_events()
         if not events:
-            rows.add_widget(self._make_header_label("No comics read yet."))
+            self._pending_items = [partial(self._make_header_label, _NO_EVENTS_TEXT)]
         elif self._current_view == _JOURNAL_VIEW:
-            self._populate_journal(events)
+            self._pending_items = self._journal_items(events)
         else:
-            self._populate_titles(events)
+            self._pending_items = self._titles_items(events)
 
-        if not self._nav_active:
-            return
-        if self._nav_zone == _ZONE_BAR:
-            self._update_bar_focus()
-        else:
-            self._nav_focused_idx = min(self._nav_focused_idx, max(0, len(self._nav_rows) - 1))
-            self._update_nav_focus()
+        self._add_items(_FIRST_CHUNK_ITEMS)
+        if self._building is not None:
+            # Still filling in: show the focus ring on the rows that exist now.
+            self._restore_nav_focus()
 
-    def _populate_journal(self, events: list[ReadEvent]) -> None:
+    def _add_items(self, count: int) -> None:
+        """Build and attach the next ``count`` items, then schedule or finish."""
+        assert self._building is not None
+
         rows = self.ids.history_rows
+        chunk = self._pending_items[:count]
+        self._pending_items = self._pending_items[count:]
+        for make_widget in chunk:
+            widget = make_widget()
+            self._building.widgets.append(widget)
+            rows.add_widget(widget)
+
+        if self._pending_items:
+            self._build_event = Clock.schedule_once(self._build_next_chunk, 0)
+        else:
+            self._finish_build()
+
+    def _build_next_chunk(self, _dt: float) -> None:
+        self._build_event = None
+        self._add_items(_CHUNK_ITEMS)
+
+    def _finish_build(self) -> None:
+        self._build_event = None
+        self._building = None
+        self._restore_nav_focus()
+
+    def _cancel_pending_build(self) -> None:
+        """Abandon a part-finished build so it is never cached as complete."""
+        if self._build_event is not None:
+            self._build_event.cancel()
+            self._build_event = None
+        if self._building is not None:
+            self._view_cache.pop(self._building.view, None)
+            self._building = None
+        self._pending_items = []
+
+    def _journal_items(self, events: list[ReadEvent]) -> list[Callable[[], Widget]]:
+        items: list[Callable[[], Widget]] = []
         for day_group in group_events_by_day(events, datetime.now().date()):  # noqa: DTZ005
-            rows.add_widget(self._make_header_label(day_group.heading))
-            for row_index, event in enumerate(day_group.events):
-                rows.add_widget(self._make_journal_row(event, row_index))
+            heading = day_group.heading
+            items.append(partial(self._make_group_header, heading))
+            items.extend(
+                partial(self._make_journal_row, event, row_index, heading)
+                for row_index, event in enumerate(day_group.events)
+            )
+        return items
 
-    def _populate_titles(self, events: list[ReadEvent]) -> None:
-        rows = self.ids.history_rows
-        for row_index, summary in enumerate(summarize_titles(events)):
-            rows.add_widget(self._make_titles_row(summary, row_index))
+    def _titles_items(self, events: list[ReadEvent]) -> list[Callable[[], Widget]]:
+        return [
+            partial(self._make_titles_row, summary, row_index)
+            for row_index, summary in enumerate(summarize_titles(events))
+        ]
+
+    def _make_group_header(self, heading: str) -> Label:
+        """Build a day heading and register it, so an emptied day loses its header."""
+        label = self._make_header_label(heading)
+        assert self._building is not None
+        self._building.headers[heading] = label
+        return label
 
     @staticmethod
     def _make_header_label(text: str) -> Label:
@@ -290,7 +441,7 @@ class HistoryScreen(FloatLayout):
         _add_header_hairline(label)
         return label
 
-    def _make_journal_row(self, event: ReadEvent, row_index: int) -> BoxLayout:
+    def _make_journal_row(self, event: ReadEvent, row_index: int, heading: str) -> _HistoryRow:
         return self._make_row(
             cells=(
                 (f"[color=bbbbbb]{format_event_time(event)}[/color]", _TIME_COL_WIDTH),
@@ -299,11 +450,13 @@ class HistoryScreen(FloatLayout):
                 (f"[color=aaaaaa]{format_event_page(event)}[/color]", _PAGE_COL_WIDTH),
             ),
             row_index=row_index,
+            group=heading,
+            key=event.event_id,
             on_press=lambda: self._on_row_pressed(event.title_str),
             on_delete=lambda: self._on_delete_event(event.event_id),
         )
 
-    def _make_titles_row(self, summary: TitleSummary, row_index: int) -> BoxLayout:
+    def _make_titles_row(self, summary: TitleSummary, row_index: int) -> _HistoryRow:
         return self._make_row(
             cells=(
                 (f"[b]{_get_display_title(summary.title_str)}[/b]", None),
@@ -315,6 +468,8 @@ class HistoryScreen(FloatLayout):
                 (f"[color=aaaaaa]x{summary.read_count}[/color]", _COUNT_COL_WIDTH),
             ),
             row_index=row_index,
+            group="",
+            key=summary.title_str,
             on_press=lambda: self._on_row_pressed(summary.title_str),
             on_delete=lambda: self._on_delete_title(summary.title_str),
         )
@@ -323,21 +478,25 @@ class HistoryScreen(FloatLayout):
         self,
         cells: tuple[tuple[str, int | None], ...],
         row_index: int,
+        group: str,
+        key: str,
         on_press: Callable[[], None],
         on_delete: Callable[[], None],
-    ) -> BoxLayout:
+    ) -> _HistoryRow:
         """Build one clickable row from ``(markup_text, column_dp_width)`` cells.
 
-        A ``None`` width marks the flexible (title) column. Every cell presses
-        through to ``on_press`` so the whole row is clickable. Rows are striped
-        (by ``row_index``) so they stay readable over the background image.
+        A ``None`` width marks the flexible (title) column, and it is the only
+        cell whose ``text_size`` has to track its width — the fixed columns get
+        theirs once, up front. The row itself is the button, so the whole row is
+        clickable; the delete button sits inside it and consumes its own touch,
+        which stops the row's press from firing too.
         """
-        row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(_ROW_HEIGHT))
-        # Match the story tree-view's alternating title-row and title-text colors.
-        row_color = list(theme().row_stripe_even if row_index % 2 == 0 else theme().row_stripe_odd)
+        row = _HistoryRow()
+        row.set_stripe(row_index)
+        title_color = theme().text_title
 
         for markup_text, col_width in cells:
-            cell = Button(
+            cell = Label(
                 text=markup_text,
                 markup=True,
                 halign="left",
@@ -345,16 +504,14 @@ class HistoryScreen(FloatLayout):
                 # The flexible column is the title - give it slightly larger,
                 # tree-view-yellow type.
                 font_size=dp(_TITLE_FONT_SIZE if col_width is None else _ROW_FONT_SIZE),
-                background_normal="",
-                background_down="",
-                background_color=row_color,
-                color=theme().text_title if col_width is None else _TEXT_COLOR,
+                color=title_color if col_width is None else _TEXT_COLOR,
             )
-            if col_width is not None:
+            if col_width is None:
+                cell.bind(size=_fit_text_to_cell)
+            else:
                 cell.size_hint_x = None
                 cell.width = dp(col_width)
-            cell.bind(size=lambda b, _s: setattr(b, "text_size", (b.width - dp(10), b.height)))
-            cell.bind(on_press=lambda _b: on_press())
+                cell.text_size = (dp(col_width) - dp(_CELL_PADDING), dp(_ROW_HEIGHT))
             row.add_widget(cell)
 
         delete_button = Button(
@@ -364,13 +521,16 @@ class HistoryScreen(FloatLayout):
             font_size=dp(_ROW_FONT_SIZE),
             background_normal="",
             background_down="",
-            background_color=row_color,
-            color=(0.8, 0.35, 0.35, 1),
+            background_color=(0, 0, 0, 0),  # Transparent: the row's stripe shows through.
+            color=_DELETE_COLOR,
         )
         delete_button.bind(on_press=lambda _b: on_delete())
         row.add_widget(delete_button)
+        row.bind(on_press=lambda _r: on_press())
 
-        self._nav_rows.append(_NavRow(widget=row, activate=on_press, delete=on_delete))
+        self._nav_rows.append(
+            _NavRow(widget=row, activate=on_press, delete=on_delete, group=group, key=key)
+        )
         return row
 
     def _on_row_pressed(self, title_str: str) -> None:
@@ -384,12 +544,68 @@ class HistoryScreen(FloatLayout):
     def _on_delete_event(self, event_id: str) -> None:
         assert self._history_store is not None
         self._history_store.delete_event(event_id)
-        self._refresh()
+        self._drop_rows({event_id})
 
     def _on_delete_title(self, title_str: str) -> None:
         assert self._history_store is not None
         self._history_store.delete_events_for_title(title_str)
-        self._refresh()
+        self._drop_rows({title_str})
+
+    def _drop_rows(self, keys: set[str]) -> None:
+        """Remove just the deleted rows from the live view, instead of rebuilding it.
+
+        Rebuilding costs about a millisecond per row, so deleting one entry used
+        to redraw the entire log. The other view's cached widgets no longer match
+        the store, so they are dropped and rebuilt on demand.
+        """
+        assert self._history_store is not None
+
+        built = self._view_cache.get(self._current_view)
+        if built is None or self._building is not None:
+            # Never built, or still filling in: a plain refresh is the safe path.
+            self._refresh()
+            return
+
+        rows = self.ids.history_rows
+        for nav_row in [r for r in built.nav_rows if r.key in keys]:
+            rows.remove_widget(nav_row.widget)
+            built.widgets.remove(nav_row.widget)
+        # Slice-assigned: built.nav_rows is the same list object as self._nav_rows.
+        built.nav_rows[:] = [r for r in built.nav_rows if r.key not in keys]
+
+        live_groups = {r.group for r in built.nav_rows}
+        for heading in [h for h in built.headers if h not in live_groups]:
+            header = built.headers.pop(heading)
+            rows.remove_widget(header)
+            built.widgets.remove(header)
+
+        self._restripe(built.nav_rows)
+
+        if not built.nav_rows:
+            empty = self._make_header_label(_NO_EVENTS_TEXT)
+            built.widgets.append(empty)
+            rows.add_widget(empty)
+
+        built.revision = self._history_store.revision
+        other_view = _TITLES_VIEW if self._current_view == _JOURNAL_VIEW else _JOURNAL_VIEW
+        self._view_cache.pop(other_view, None)
+
+        self._restore_nav_focus()
+
+    @staticmethod
+    def _restripe(nav_rows: list[_NavRow]) -> None:
+        """Re-apply the alternating row colors after rows were removed.
+
+        The stripe index restarts at each group boundary, matching the journal's
+        per-day numbering; the titles view is one unnamed group, so it runs on.
+        """
+        group: str | None = None
+        row_index = 0
+        for nav_row in nav_rows:
+            if nav_row.group != group:
+                group, row_index = nav_row.group, 0
+            nav_row.widget.set_stripe(row_index)
+            row_index += 1
 
     # --- Keyboard navigation ---
 
@@ -412,6 +628,16 @@ class HistoryScreen(FloatLayout):
         self._clear_nav_focus()
         self._clear_bar_focus()
         logger.debug("HistoryScreen: exited nav focus.")
+
+    def _restore_nav_focus(self) -> None:
+        """Redraw the focus ring after the rows underneath it changed."""
+        if not self._nav_active:
+            return
+        if self._nav_zone == _ZONE_BAR:
+            self._update_bar_focus()
+        else:
+            self._nav_focused_idx = min(self._nav_focused_idx, max(0, len(self._nav_rows) - 1))
+            self._update_nav_focus()
 
     def handle_key(self, key: int) -> bool:
         """Handle a keyboard key. Return True if consumed."""
@@ -508,7 +734,7 @@ class HistoryScreen(FloatLayout):
             self._nav_rows[self._nav_focused_idx].activate()
 
     def _delete_focused_row(self) -> None:
-        # The delete action refreshes the rows, which re-clamps the focus index.
+        # The delete action drops the row, which re-clamps the focus index.
         if self._nav_rows:
             self._nav_rows[self._nav_focused_idx].delete()
 
