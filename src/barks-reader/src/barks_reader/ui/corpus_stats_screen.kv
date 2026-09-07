@@ -14,14 +14,14 @@
             pos: self.pos
             size: self.size
 
-    BoxLayout:
+    FloatLayout:
         id: stats_page
-        orientation: "vertical"
         pos_hint: {"center_x": 0.5, "center_y": 0.5}
         size_hint: None, None
         width: min((root.height - stats_action_bar.height) / root.ASPECT_RATIO, root.width)
         height: self.width * root.ASPECT_RATIO + stats_action_bar.height
 
+        # The ground the art sits on, and what shows when there is no art.
         canvas.before:
             Color:
                 rgba: 0.08, 0.08, 0.08, 1
@@ -29,22 +29,49 @@
                 pos: self.pos
                 size: self.size
 
+        Image:
+            source: root.background_source
+            fit_mode: "cover"
+            mipmap: True
+            color: root.background_scrim
+            size_hint: 1, 1
+            pos_hint: {"x": 0, "y": 0}
+
+        # A veil between the art and the figures. This page is a dense fact
+        # sheet, so the art has to sit well back or the numbers stop being
+        # readable; the veil is what buys that, not the scrim alone.
+        Widget:
+            size_hint: 1, 1
+            pos_hint: {"x": 0, "y": 0}
+            canvas:
+                Color:
+                    rgba: root.background_veil
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+
         BoxLayout:
-            id: stats_opening
+            id: stats_body
             orientation: "vertical"
-            size_hint_y: None
-
-        BoxLayout:
-            id: stats_columns
-            orientation: "horizontal"
+            size_hint: 1, 1
+            pos_hint: {"x": 0, "y": 0}
 
             BoxLayout:
-                id: stats_left
+                id: stats_opening
                 orientation: "vertical"
+                size_hint_y: None
 
             BoxLayout:
-                id: stats_right
-                orientation: "vertical"
+                id: stats_columns
+                orientation: "horizontal"
+
+                BoxLayout:
+                    id: stats_left
+                    orientation: "vertical"
+
+                BoxLayout:
+                    id: stats_right
+                    orientation: "vertical"
 
     # Declared after the page so the page's ground cannot paint over it.
     ReaderActionBar:

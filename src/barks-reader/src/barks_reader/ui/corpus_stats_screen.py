@@ -28,11 +28,15 @@ import threading
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from barks_fantagraphics.barks_titles import Titles
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
 from kivy.lang import Builder
-from kivy.properties import StringProperty  # ty: ignore[unresolved-import]
+from kivy.properties import (  # ty: ignore[unresolved-import]
+    ListProperty,
+    StringProperty,
+)
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.widget import Widget
@@ -58,6 +62,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
     from barks_reader.core.corpus_stats import CorpusStats, Opening, StatRow, StatSection
+    from barks_reader.core.image_selector import ImageSelector
 
 CORPUS_STATS_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
@@ -66,6 +71,22 @@ _FONT_NAME = FontManager.main_index_item_font_name
 
 # The app's own hand-lettered face, used once, for the opening line.
 _DISPLAY_FONT_NAME = FontManager.main_title_font_name
+
+# --- Background art -----------------------------------------------------------
+#
+# PLACEHOLDER. The image has not been chosen yet; this is the inset the
+# Introduction already uses behind its tree, so the page looks deliberate in the
+# meantime and belongs to its own section. To change it, change this one title -
+# nothing else here knows which picture it is.
+_BACKGROUND_TITLE = Titles.ADVENTURE_DOWN_UNDER
+
+# Two dials, because a dense fact sheet needs the art much further back than a
+# picture-led screen does. The scrim is a grey multiply on the art itself (the
+# convention the rest of the app uses - grey dims without shifting hue); the veil
+# is the page ground laid over the top. Raise the veil alpha if a busier or
+# lighter picture makes the figures harder to read.
+_BACKGROUND_SCRIM = (0.5, 0.5, 0.5, 1.0)
+_BACKGROUND_VEIL = (0.08, 0.08, 0.08, 0.88)
 
 # The share bar: an unfilled track the width of the row, and the row's own slice
 # filled over it. The track is what makes a one-percent slice read as "almost none
@@ -90,11 +111,15 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
     ASPECT_RATIO = COMIC_PAGE_ASPECT_RATIO
     action_bar_title = StringProperty()
     app_icon_filepath = StringProperty()
+    background_source = StringProperty()
+    background_scrim = ListProperty(_BACKGROUND_SCRIM)
+    background_veil = ListProperty(_BACKGROUND_VEIL)
 
     def __init__(
         self,
         indexes_dir: Path,
         font_manager: FontManager,
+        image_selector: ImageSelector,
         on_close_screen: Callable[[], None],
         **kwargs: str,
     ) -> None:
@@ -102,6 +127,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
 
         self._indexes_dir = indexes_dir
         self._font_manager = font_manager
+        self._image_selector = image_selector
         self._on_close_screen = on_close_screen
         self._stats: CorpusStats | None = None
         self._text_section: StatSection | None = None
@@ -120,6 +146,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         self.action_bar_title = get_action_bar_title(self._font_manager, INTRO_BY_THE_NUMBERS_TEXT)
         if self._stats is None:
             self._stats = compute_static_stats()
+        self._set_background()
         self._rebuild()
         self._start_text_scan()
 
@@ -134,6 +161,32 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         Window.unbind(on_key_down=self._on_key_down)
         self._on_close_screen()
 
+    def _set_background(self) -> None:
+        """Point the page at its background art, or leave it on the plain ground.
+
+        A missing or unreadable picture is not worth failing the page for, so an
+        unresolved path just leaves `background_source` empty and the ground shows
+        through.
+        """
+        try:
+            # Resolves the title's inset, which is the same picture the tree shows
+            # behind the Introduction; the method is named for its first caller.
+            image = self._image_selector.get_search_image_for_title(_BACKGROUND_TITLE)
+        except (OSError, ValueError, KeyError):
+            logger.exception("CorpusStats: could not resolve the background image.")
+            return
+
+        if image.filename is None:
+            logger.warning("CorpusStats: no background image for the placeholder title.")
+            return
+
+        path = Path(str(image.filename))
+        if not path.is_file():
+            logger.warning(f'CorpusStats: background image not found: "{path}".')
+            return
+
+        self.background_source = str(path)
+
     # --- Content ---------------------------------------------------------
 
     def _rebuild(self) -> None:
@@ -146,7 +199,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         side_pad = layout.PAGE_SIDE_PADDING_FRACTION * page.width
         vertical_pad = layout.PAGE_VERTICAL_PADDING_FRACTION * page.width
 
-        page.padding = [
+        self.ids.stats_body.padding = [
             side_pad,
             self.ACTION_BAR_HEIGHT + vertical_pad,
             side_pad,
@@ -498,6 +551,7 @@ def get_corpus_stats_screen(
     screen_name: str,
     indexes_dir: Path,
     font_manager: FontManager,
+    image_selector: ImageSelector,
     on_close_screen: Callable[[], None],
 ) -> CorpusStatsScreen:
     """Load the page's kv and build the screen."""
@@ -506,6 +560,7 @@ def get_corpus_stats_screen(
     return CorpusStatsScreen(
         indexes_dir,
         font_manager,
+        image_selector,
         on_close_screen,
         name=screen_name,
     )

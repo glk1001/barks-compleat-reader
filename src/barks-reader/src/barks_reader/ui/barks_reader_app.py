@@ -447,6 +447,7 @@ class BarksReaderApp(App):
             CORPUS_STATS_SCREEN,
             self.reader_settings.sys_file_paths.get_barks_reader_indexes_dir(),
             self.font_manager,
+            self._main_screen.image_selector,
             self._screen_switchers.close_corpus_stats,
         )
 
