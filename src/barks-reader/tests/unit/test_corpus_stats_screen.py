@@ -8,7 +8,7 @@ Kivy internals are patched out (the base screen's ``__init__`` injects a fake
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, create_autospec, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from barks_reader.core.corpus_stats import (
@@ -18,7 +18,6 @@ from barks_reader.core.corpus_stats import (
     StatRow,
     StatSection,
 )
-from barks_reader.core.image_selector import ImageInfo, ImageSelector
 from barks_reader.ui import corpus_stats_screen as corpus_stats_screen_module
 from barks_reader.ui.corpus_stats_screen import CorpusStatsScreen
 from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
@@ -106,7 +105,7 @@ def screen(tmp_path: Path) -> Iterator[CorpusStatsScreen]:
         built = CorpusStatsScreen(
             indexes_dir=tmp_path,
             font_manager=MagicMock(),
-            image_selector=create_autospec(ImageSelector, instance=True),
+            background_path=tmp_path / "by-the-numbers-background.jpg",
             on_close_screen=MagicMock(),
         )
         built._menu_mode = False
@@ -238,32 +237,18 @@ class TestTheReservedDialogueSlot:
 
 
 class TestBackgroundArt:
-    def test_a_real_image_becomes_the_background(
-        self, screen: CorpusStatsScreen, tmp_path: Path
-    ) -> None:
-        art = tmp_path / "backdrop.png"
-        art.write_bytes(b"not really a png, but it is a file")
-        screen._image_selector.get_search_image_for_title.return_value = ImageInfo(art)
+    def test_a_real_image_becomes_the_background(self, screen: CorpusStatsScreen) -> None:
+        screen._background_path.write_bytes(b"not really a jpg, but it is a file")
 
         screen._set_background()
 
-        assert screen.background_source == str(art)
+        assert screen.background_source == str(screen._background_path)
 
-    def test_a_missing_image_leaves_the_plain_ground(
-        self, screen: CorpusStatsScreen, tmp_path: Path
-    ) -> None:
-        # The page is worth showing without its art, so an absent file is not an
-        # error - it just leaves the source empty and the dark ground visible.
-        screen._image_selector.get_search_image_for_title.return_value = ImageInfo(
-            tmp_path / "gone.png"
-        )
-
-        screen._set_background()
-
-        assert screen.background_source == ""
-
-    def test_a_failing_lookup_does_not_take_the_page_down(self, screen: CorpusStatsScreen) -> None:
-        screen._image_selector.get_search_image_for_title.side_effect = OSError("no data dir")
+    def test_a_missing_image_leaves_the_plain_ground(self, screen: CorpusStatsScreen) -> None:
+        # The required-files check normally catches this at start-up, but it can be
+        # skipped, and the page is worth showing without its art - so an absent file
+        # leaves the source empty and the dark ground visible rather than raising.
+        assert not screen._background_path.exists()
 
         screen._set_background()
 

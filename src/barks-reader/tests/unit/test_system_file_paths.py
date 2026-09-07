@@ -43,6 +43,7 @@ _EXPECTED_PATHS: tuple[tuple[str, str], ...] = (
     ("get_transparent_blank_file", "Various/transparent-blank.png"),
     ("get_empty_page_file", "Various/empty-page.jpg"),
     ("get_favourite_titles_path", "Various/favourite-titles.txt"),
+    ("get_by_the_numbers_background_path", "Various/by-the-numbers-background.jpg"),
     # Action-bar icons.
     ("get_barks_reader_close_icon_file", "Reader Icons/ActionBar Icons/icon-close.png"),
     (

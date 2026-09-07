@@ -363,6 +363,10 @@ def phase2_system_file_paths(
         ("transparent_blank_path", sys_paths._transparent_blank_path),  # noqa: SLF001
         ("empty_page_path", sys_paths._empty_page_path),  # noqa: SLF001
         ("favourite_titles_path", sys_paths._favourite_titles_path),  # noqa: SLF001
+        (
+            "by_the_numbers_background_path",
+            sys_paths._by_the_numbers_background_path,  # noqa: SLF001
+        ),
     ]
     for label, file_path in files_to_check:
         assert file_path is not None

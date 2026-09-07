@@ -28,7 +28,6 @@ import threading
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from barks_fantagraphics.barks_titles import Titles
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
@@ -62,7 +61,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
     from barks_reader.core.corpus_stats import CorpusStats, Opening, StatRow, StatSection
-    from barks_reader.core.image_selector import ImageSelector
 
 CORPUS_STATS_SCREEN_KV_FILE = Path(__file__).with_suffix(".kv")
 
@@ -74,19 +72,16 @@ _DISPLAY_FONT_NAME = FontManager.main_title_font_name
 
 # --- Background art -----------------------------------------------------------
 #
-# PLACEHOLDER. The image has not been chosen yet; this is the inset the
-# Introduction already uses behind its tree, so the page looks deliberate in the
-# meantime and belongs to its own section. To change it, change this one title -
-# nothing else here knows which picture it is.
-_BACKGROUND_TITLE = Titles.ADVENTURE_DOWN_UNDER
-
+# The picture itself is a Reader Files asset, resolved by `SystemFilePaths` and
+# handed in; this screen only knows how far back to push it.
+#
 # Two dials, because a dense fact sheet needs the art much further back than a
 # picture-led screen does. The scrim is a grey multiply on the art itself (the
 # convention the rest of the app uses - grey dims without shifting hue); the veil
 # is the page ground laid over the top. Raise the veil alpha if a busier or
 # lighter picture makes the figures harder to read.
 _BACKGROUND_SCRIM = (0.55, 0.55, 0.55, 1.0)
-_BACKGROUND_VEIL = (0.08, 0.08, 0.08, 0.83)
+_BACKGROUND_VEIL = (0.08, 0.08, 0.08, 0.55)
 
 # The share bar: an unfilled track the width of the row, and the row's own slice
 # filled over it. The track is what makes a one-percent slice read as "almost none
@@ -103,6 +98,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
             statistics. That section is left empty if it holds no index.
         font_manager: Supplies the action bar's title size. The page body sizes
             itself; see the module docstring.
+        background_path: The art shown behind the page, from the Reader Files.
         on_close_screen: Called to hand the window back to the main screen.
 
     """
@@ -119,7 +115,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         self,
         indexes_dir: Path,
         font_manager: FontManager,
-        image_selector: ImageSelector,
+        background_path: Path,
         on_close_screen: Callable[[], None],
         **kwargs: str,
     ) -> None:
@@ -127,7 +123,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
 
         self._indexes_dir = indexes_dir
         self._font_manager = font_manager
-        self._image_selector = image_selector
+        self._background_path = background_path
         self._on_close_screen = on_close_screen
         self._stats: CorpusStats | None = None
         self._text_section: StatSection | None = None
@@ -168,24 +164,15 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         unresolved path just leaves `background_source` empty and the ground shows
         through.
         """
-        try:
-            # Resolves the title's inset, which is the same picture the tree shows
-            # behind the Introduction; the method is named for its first caller.
-            image = self._image_selector.get_search_image_for_title(_BACKGROUND_TITLE)
-        except (OSError, ValueError, KeyError):
-            logger.exception("CorpusStats: could not resolve the background image.")
+        # The start-up required-files check normally guarantees this, but it can be
+        # skipped (`set_barks_reader_files_dir(check_files=False)`), and the page is
+        # perfectly readable on its plain ground - so a missing file is a warning
+        # rather than a crash.
+        if not self._background_path.is_file():
+            logger.warning(f'CorpusStats: background image not found: "{self._background_path}".')
             return
 
-        if image.filename is None:
-            logger.warning("CorpusStats: no background image for the placeholder title.")
-            return
-
-        path = Path(str(image.filename))
-        if not path.is_file():
-            logger.warning(f'CorpusStats: background image not found: "{path}".')
-            return
-
-        self.background_source = str(path)
+        self.background_source = str(self._background_path)
 
     # --- Content ---------------------------------------------------------
 
@@ -552,7 +539,7 @@ def get_corpus_stats_screen(
     screen_name: str,
     indexes_dir: Path,
     font_manager: FontManager,
-    image_selector: ImageSelector,
+    background_path: Path,
     on_close_screen: Callable[[], None],
 ) -> CorpusStatsScreen:
     """Load the page's kv and build the screen."""
@@ -561,7 +548,7 @@ def get_corpus_stats_screen(
     return CorpusStatsScreen(
         indexes_dir,
         font_manager,
-        image_selector,
+        background_path,
         on_close_screen,
         name=screen_name,
     )

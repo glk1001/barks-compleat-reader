@@ -47,6 +47,7 @@ class SystemFilePaths:
         self._transparent_blank_path: Path | None = None
         self._empty_page_path: Path | None = None
         self._favourite_titles_path: Path | None = None
+        self._by_the_numbers_background_path: Path | None = None
 
         self._intro_doc_dir: Path | None = None
         self._censorship_fixes_doc_dir: Path | None = None
@@ -99,6 +100,7 @@ class SystemFilePaths:
         self._transparent_blank_path = various_files_dir / "transparent-blank.png"
         self._empty_page_path = various_files_dir / "empty-page.jpg"
         self._favourite_titles_path = various_files_dir / "favourite-titles.txt"
+        self._by_the_numbers_background_path = various_files_dir / "by-the-numbers-background.jpg"
 
         documents_dir = various_files_dir / "documents"
         self._intro_doc_dir = documents_dir / "intro-to-barks-reader"
@@ -158,6 +160,7 @@ class SystemFilePaths:
             self._transparent_blank_path,
             self._empty_page_path,
             self._favourite_titles_path,
+            self._by_the_numbers_background_path,
         ]
         self.check_files(files_to_check)
 
@@ -334,3 +337,8 @@ class SystemFilePaths:
     def get_favourite_titles_path(self) -> Path:
         assert self._favourite_titles_path
         return self._favourite_titles_path
+
+    def get_by_the_numbers_background_path(self) -> Path:
+        """Return the art shown behind the Introduction's "By the Numbers" page."""
+        assert self._by_the_numbers_background_path
+        return self._by_the_numbers_background_path
