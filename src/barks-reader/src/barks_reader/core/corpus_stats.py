@@ -262,7 +262,7 @@ def _corpus_section(stories: list[ComicBookInfo]) -> StatSection:
             StatRow("Stories", f"{len(stories):,}"),
             StatRow("One-pagers", f"{len(ONE_PAGERS):,}"),
             StatRow("Covers", f"{len(COVERS_SET):,}"),
-            StatRow("Volumes", f"{len(FANTA_SOURCE_COMICS):,}"),
+            StatRow("Fantagraphics Volumes", f"{len(FANTA_SOURCE_COMICS):,}"),
             # En dashes throughout, to match the span in the opening headline.
             StatRow("Submitted to Western", f"{min(submitted_years)}–{max(submitted_years)}"),  # noqa: RUF001
         ),

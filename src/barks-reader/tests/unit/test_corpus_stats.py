@@ -93,7 +93,7 @@ class TestCorpusSection:
             ("Stories", "683"),
             ("One-pagers", "155"),
             ("Covers", "264"),
-            ("Volumes", "30"),
+            ("Fantagraphics Volumes", "30"),
             ("Submitted to Western", "1942–1973"),  # noqa: RUF001
         ],
     )
