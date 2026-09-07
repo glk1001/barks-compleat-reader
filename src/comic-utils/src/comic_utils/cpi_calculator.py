@@ -9,6 +9,50 @@ CPI_DATABASE_PATH = Path(__file__).parent / "cpi.db"
 # CPI series used by default: All items in U.S. city average, all urban consumers.
 DEFAULT_SERIES_ID = "CUUR0000SA0"
 
+# Every SQLite file opens with this 16-byte header.
+_SQLITE_MAGIC = b"SQLite format 3\x00"
+
+# cpi.db is stored in git-lfs. A clone without `git lfs install` (or a CI checkout
+# without `lfs: true`) gets the pointer file in its place - a few lines of text
+# beginning like this, at exactly the path the database should be.
+_LFS_POINTER_PREFIX = b"version https://git-lfs.github.com/spec/"
+
+
+class CpiDatabaseUnavailableError(FileNotFoundError):
+    """The file at the database path is not the CPI database.
+
+    A subclass of ``FileNotFoundError`` so that existing handlers keep working:
+    the real database is, in effect, not there.
+    """
+
+
+def _check_is_sqlite(db_path: Path) -> None:
+    """Raise a clear error if the file at ``db_path`` is not a SQLite database.
+
+    SQLite's own complaint - "file is not a database" - says nothing about why, and
+    the common cause here is a git-lfs pointer standing in for the real file. Name
+    that case, with the command that fixes it.
+
+    Raises:
+        CpiDatabaseUnavailableError: If the file is a git-lfs pointer or is
+            otherwise not a SQLite database.
+
+    """
+    with db_path.open("rb") as f:
+        head = f.read(max(len(_SQLITE_MAGIC), len(_LFS_POINTER_PREFIX)))
+
+    if head.startswith(_SQLITE_MAGIC):
+        return
+
+    if head.startswith(_LFS_POINTER_PREFIX):
+        msg = (
+            f'"{db_path}" is a git-lfs pointer, not the CPI database.'
+            " Run `git lfs install` and `git lfs pull` to fetch it."
+        )
+    else:
+        msg = f'"{db_path}" is not a SQLite database.'
+    raise CpiDatabaseUnavailableError(msg)
+
 
 @lru_cache(maxsize=8)
 def _avg_cpi_by_year(db_path: Path, series_id: str) -> Mapping[int, float]:
@@ -31,11 +75,14 @@ def _avg_cpi_by_year(db_path: Path, series_id: str) -> Mapping[int, float]:
 
     Raises:
         FileNotFoundError: If ``db_path`` does not exist.
+        CpiDatabaseUnavailableError: If the file there is not the database - in
+            practice, a git-lfs pointer that was never resolved.
 
     """
     if not db_path.is_file():
         msg = f'Database not found at: "{db_path}"'
         raise FileNotFoundError(msg)
+    _check_is_sqlite(db_path)
 
     conn = sqlite3.connect(db_path)
     try:
