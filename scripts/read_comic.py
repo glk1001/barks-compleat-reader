@@ -153,6 +153,14 @@ def _run_cli_reader(
     Config.set("graphics", "top", win_top)  # ty: ignore[unresolved-attribute]
     Config.set("graphics", "width", win_width)  # ty: ignore[unresolved-attribute]
     Config.set("graphics", "height", win_height)  # ty: ignore[unresolved-attribute]
+    # With the OS title bar replaced (Window.set_custom_titlebar), Kivy's SDL hit-test
+    # turns any press within `custom_titlebar_border` px of ANY window edge into a
+    # window-resize drag while `resizable` is on (which it must be: Mutter clamps
+    # non-resizable windows to the focused monitor). Those presses never reach Kivy,
+    # so the outer pixels of every scrollbar flush with the right edge were dead.
+    # The callback reads this key live on each press; 0 disables the band. Edge-drag
+    # resizing is given up deliberately (title-bar drag and programmatic resizes stay).
+    Config.set("graphics", "custom_titlebar_border", "0")  # ty: ignore[unresolved-attribute]
     logger.info(
         f"CLI window pinned to primary monitor: ({win_left},{win_top}) {win_width}x{win_height}."
     )

@@ -489,6 +489,9 @@ class BarksReaderApp(App):
         # correction converge unreliably, causing erratic resize oscillations whenever the
         # user drags the window border.  Locking the window prevents that entirely while
         # still allowing programmatic resizes (monitor changes, comic open/close).
+        # NOTE: Kivy 2.3.1's Window has no `resizable` property, so this only sets a stray
+        # Python attribute. Edge-drag resizing is actually disabled everywhere by the
+        # `custom_titlebar_border = 0` Config line in main.py.
         if PLATFORM == Platform.WIN:
             Window.resizable = False
 
