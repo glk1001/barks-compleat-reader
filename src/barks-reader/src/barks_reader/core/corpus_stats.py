@@ -66,6 +66,13 @@ _SHORT_STORY_MAX_PAGES = 12
 # The payment ledger's "not known" sentinel, used for both amount and date.
 _UNKNOWN = -1
 
+# Barks retired in 1966. A handful of payments land after it - reprint and script
+# work in 1969-71, 13 records worth about $14,000 in current dollars - and the
+# per-year average excludes them, so its numerator and denominator cover the same
+# span. Dividing the whole ledger by his working years would spread money he
+# earned in 1971 across years that ended in 1966.
+_RETIREMENT_YEAR = 1966
+
 
 @dataclass(frozen=True, slots=True)
 class StatRow:
@@ -357,9 +364,9 @@ def _length_section(
     return StatSection(
         heading="Length",
         rows=(
-            _band("One page", num_one_page),
             _band(f"Short (2–{_SHORT_STORY_MAX_PAGES} pages)", num_short),  # noqa: RUF001
             _band(f"Long ({_SHORT_STORY_MAX_PAGES + 1}+ pages)", num_long),
+            _band("One page", num_one_page),
             StatRow("Story pages", f"{total_pages:,}"),
             StatRow("Mean pages", f"{mean_pages:.1f}"),
             StatRow(
@@ -381,18 +388,24 @@ def _payment_section(
     nominal_total = sum(payment.payment for payment in paid_records)
     latest_year = get_latest_year()
 
+    working = [p for p in paid_records if p.accepted_year <= _RETIREMENT_YEAR]
+    first_year = min(p.accepted_year for p in working)
+    num_working_years = _RETIREMENT_YEAR - first_year + 1
+    per_year = _adjusted_payment_total(working) / num_working_years
+
     return StatSection(
         heading="Payment",
         rows=(
             StatRow("Total paid", f"${nominal_total:,.0f}"),
             StatRow(f"In {latest_year} dollars", f"${adjusted_total:,.0f}"),
-            StatRow("Per page", f"${adjusted_total / paid_pages:,.0f}"),
+            StatRow(f"Per page ({latest_year} dollars)", f"${adjusted_total / paid_pages:,.0f}"),
+            StatRow(f"Per year ({latest_year} dollars)", f"${per_year:,.0f}"),
             StatRow("Paid pages", f"{paid_pages:,}"),
-            StatRow("Largest payment", f"${max(p.payment for p in paid_records):,.0f}"),
         ),
         footnote=(
-            f"From the {len(paid_records):,} of {len(BARKS_PAYMENTS):,} payment records with a"
-            " recorded amount; the rest, mostly covers, have none."
+            f"From the {len(paid_records):,} of {len(BARKS_PAYMENTS):,} payment records with an"
+            f" amount; the rest, mostly covers, have none. Yearly average runs"
+            f" {first_year}-{_RETIREMENT_YEAR}."
         ),
     )
 

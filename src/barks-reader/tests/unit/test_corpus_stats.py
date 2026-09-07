@@ -40,6 +40,15 @@ def _section(stats: CorpusStats, heading: str) -> StatSection:
     return next(s for s in stats.sections if s.heading == heading)
 
 
+def _payment_value_starting(stats: CorpusStats, prefix: str) -> str:
+    """Return the Payment row whose label starts with `prefix`.
+
+    The rate rows are labelled with the current CPI year, so matching on a prefix
+    keeps these tests from needing an edit every time that year rolls over.
+    """
+    return next(r.value for r in _section(stats, "Payment").rows if r.label.startswith(prefix))
+
+
 def _value(stats: CorpusStats, heading: str, label: str) -> str:
     return next(r.value for r in _section(stats, heading).rows if r.label == label)
 
@@ -70,7 +79,7 @@ class TestOpening:
     def test_standfirst_rate_matches_the_payment_row(self, stats: CorpusStats) -> None:
         # The opening hands the reader a rate to judge the rest of the page by,
         # so it has to be the same rate the Payment section reports.
-        per_page = _value(stats, "Payment", "Per page")
+        per_page = _payment_value_starting(stats, "Per page")
         assert per_page in stats.opening.standfirst
 
 
@@ -193,11 +202,39 @@ class TestPaymentSection:
         [
             ("Total paid", "$216,894"),
             ("Paid pages", "6,250"),
-            ("Largest payment", "$1,200"),
         ],
     )
     def test_row(self, stats: CorpusStats, label: str, expected: str) -> None:
         assert _value(stats, "Payment", label) == expected
+
+    def test_per_year_averages_only_the_working_years(self, stats: CorpusStats) -> None:
+        # Numerator and denominator have to cover the same span. Payments carry on
+        # into 1971 (reprint and script work), and counting that money against
+        # years that ended in 1966 would overstate the average.
+        from barks_reader.core.corpus_stats import _RETIREMENT_YEAR  # noqa: PLC0415
+
+        working = [p for p in _paid_records() if p.accepted_year <= _RETIREMENT_YEAR]
+        first_year = min(p.accepted_year for p in working)
+        expected = _adjusted_payment_total(working) / (_RETIREMENT_YEAR - first_year + 1)
+
+        assert _payment_value_starting(stats, "Per year") == f"${expected:,.0f}"
+
+    def test_per_year_is_lower_than_averaging_the_whole_ledger(self, stats: CorpusStats) -> None:
+        # The guard for the mistake above: if the later payments crept back into
+        # the numerator the figure would rise, so pin the direction.
+        from barks_reader.core.corpus_stats import _RETIREMENT_YEAR  # noqa: PLC0415
+
+        paid = _paid_records()
+        first_year = min(p.accepted_year for p in paid)
+        naive = _adjusted_payment_total(paid) / (_RETIREMENT_YEAR - first_year + 1)
+
+        reported = float(_payment_value_starting(stats, "Per year").lstrip("$").replace(",", ""))
+        assert reported < naive
+
+    def test_footnote_states_the_averaged_years(self, stats: CorpusStats) -> None:
+        footnote = _section(stats, "Payment").footnote
+        assert footnote is not None
+        assert "1942-1966" in footnote
 
     def test_footnote_states_the_coverage(self, stats: CorpusStats) -> None:
         footnote = _section(stats, "Payment").footnote
