@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 from typing import TYPE_CHECKING
 
 import pytest
@@ -7,6 +8,7 @@ from barks_reader.core.reader_palette import (
     DEFAULT_THEME_NAME,
     THEME_NAMES,
     THEMES,
+    ReaderTheme,
     color_to_markup_hex,
     set_active_theme,
     theme,
@@ -60,3 +62,21 @@ class TestActiveTheme:
         set_active_theme("Not A Theme")
 
         assert theme() is THEMES[DEFAULT_THEME_NAME]
+
+
+class TestThemeColorFields:
+    @pytest.mark.parametrize("named_theme", THEMES.values(), ids=lambda t: t.name)
+    def test_every_color_field_is_a_unit_rgba(self, named_theme: ReaderTheme) -> None:
+        """Every non-name field is an RGBA 4-tuple with all components in [0, 1]."""
+        for field in dataclasses.fields(ReaderTheme):
+            if field.name == "name":
+                continue
+            color = getattr(named_theme, field.name)
+            assert len(color) == 4, field.name  # noqa: PLR2004
+            assert all(0.0 <= c <= 1.0 for c in color), field.name
+
+    @pytest.mark.parametrize("named_theme", THEMES.values(), ids=lambda t: t.name)
+    def test_idle_scrollbar_is_quieter_than_the_active_one(self, named_theme: ReaderTheme) -> None:
+        """The scrollbar fades when idle: same hue, lower alpha."""
+        assert named_theme.scrollbar[:3] == named_theme.scrollbar_inactive[:3]
+        assert named_theme.scrollbar_inactive[3] < named_theme.scrollbar[3]

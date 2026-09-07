@@ -482,6 +482,8 @@ class TestWikiThemeSpec:
         assert spec.title_hex == title_hex
         assert spec.crumb_hex == color_to_markup_hex(theme().text_secondary).lstrip("#")
         assert spec.icon_tint == theme().icon_tint
+        assert spec.scrollbar == theme().scrollbar
+        assert spec.scrollbar_inactive == theme().scrollbar_inactive
 
     def test_links_and_dir_text_stay_the_viewer_defaults(self) -> None:
         """Hyperlinks keep the recognizable blue; directory rows stay white."""

@@ -47,6 +47,7 @@ def _get_installer_success_content(  # noqa: C901
     log_path: Path,
 ) -> Any:  # noqa: ANN401
     # Delay Kivy imports until instantiation
+    from barks_kivy_ui.scrolling import ReaderScrollView
     from kivy.graphics import Color, RoundedRectangle
     from kivy.graphics.texture import Texture  # ty: ignore[unresolved-import]
     from kivy.metrics import dp, sp
@@ -54,7 +55,6 @@ def _get_installer_success_content(  # noqa: C901
     from kivy.uix.boxlayout import BoxLayout
     from kivy.uix.button import Button
     from kivy.uix.label import Label
-    from kivy.uix.scrollview import ScrollView
     from kivy.uix.widget import Widget
 
     banner_header_font_size = sp(19)
@@ -98,7 +98,7 @@ def _get_installer_success_content(  # noqa: C901
             self.bind(pos=self._update_bg, size=self._update_bg)
 
             # === SCROLL AREA =====================================================
-            scroll_view = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=False)
+            scroll_view = ReaderScrollView(size_hint=(1, 1), do_scroll_y=False)
             content_box = BoxLayout(
                 orientation="vertical",
                 padding=[25, 20],

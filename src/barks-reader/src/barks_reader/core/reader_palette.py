@@ -45,6 +45,8 @@ class ReaderTheme:
     focus_ring: Color
     danger: Color  # quit accents
     icon_tint: Color  # chrome toolbar glyphs (multiply over white glyph art)
+    scrollbar: Color  # scroll-bar handle while scrolling
+    scrollbar_inactive: Color  # idle scroll-bar handle
 
 
 MASTHEAD = ReaderTheme(
@@ -61,6 +63,8 @@ MASTHEAD = ReaderTheme(
     focus_ring=(0.98, 0.82, 0.50, 1.0),
     danger=(0.75, 0.22, 0.17, 1.0),
     icon_tint=(0.98, 0.82, 0.50, 1.0),  # coin gold
+    scrollbar=(0.82, 0.71, 0.50, 0.9),  # old gold, as search_heading
+    scrollbar_inactive=(0.82, 0.71, 0.50, 0.4),
 )
 
 DUCKBURG = ReaderTheme(
@@ -77,6 +81,8 @@ DUCKBURG = ReaderTheme(
     focus_ring=(0.98, 0.82, 0.50, 1.0),
     danger=(0.57, 0.24, 0.15, 1.0),  # brick
     icon_tint=(0.55, 0.82, 0.82, 1.0),  # bright weathered teal — legible on the dark bar
+    scrollbar=(0.56, 0.65, 0.66, 0.9),  # weathered slate, as search_heading
+    scrollbar_inactive=(0.56, 0.65, 0.66, 0.4),
 )
 
 FOUR_COLOR = ReaderTheme(
@@ -93,6 +99,8 @@ FOUR_COLOR = ReaderTheme(
     focus_ring=(0.98, 0.82, 0.50, 1.0),
     danger=(0.75, 0.22, 0.17, 1.0),
     icon_tint=(0.76, 0.89, 0.97, 1.0),  # pale sky blue
+    scrollbar=(0.76, 0.89, 0.97, 0.9),  # pale sky, as search_heading
+    scrollbar_inactive=(0.76, 0.89, 0.97, 0.4),
 )
 
 THEMES: dict[str, ReaderTheme] = {t.name: t for t in (MASTHEAD, DUCKBURG, FOUR_COLOR)}

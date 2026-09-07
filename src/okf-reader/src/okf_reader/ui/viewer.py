@@ -297,21 +297,21 @@ def _bar_separator(color: tuple[float, float, float, float], width_dp: float = 1
     return separator
 
 
-def _scroll_view(**kwargs) -> ScrollView:  # noqa: ANN003
-    """Build a ScrollView with the Barks Reader's scroll behavior (tree_view_screen.kv).
+def _scroll_view(theme: ViewerThemeSpec, **kwargs) -> ScrollView:  # noqa: ANN003
+    """Build a ScrollView with the Barks Reader's scroll behavior (barks_kivy_ui.scrolling).
 
     ScrollEffect instead of the default DampedScrollEffect: scrolling stops dead
     at the edges rather than rubber-banding, and ``always_overscroll=False`` stops
     content that already fits from bouncing at all. The bar is widened from the
     2dp default, made draggable (``scroll_type`` includes "bars"), and colored
-    like the Barks tree panel's.
+    from the embedding app's theme spec.
     """
     return ScrollView(
         always_overscroll=False,
         effect_cls=ScrollEffect,
         scroll_type=["bars", "content"],
-        bar_color=(0.7, 0.7, 1.0, 1),
-        bar_inactive_color=(0.7, 0.7, 0.7, 0.9),
+        bar_color=theme.scrollbar,
+        bar_inactive_color=theme.scrollbar_inactive,
         bar_width=dp(12),
         **kwargs,
     )
@@ -405,7 +405,7 @@ class OKFViewer(RelativeLayout):
         content = BoxLayout(orientation="horizontal", spacing=8, padding=8, size_hint=(1, 1))
         root.add_widget(content)
 
-        self.tree_scroll = _scroll_view(size_hint=(1, 1), do_scroll_x=False)
+        self.tree_scroll = _scroll_view(self._theme, size_hint=(1, 1), do_scroll_x=False)
         self.tree = TreeView(
             # No visible root: the bundle-root node spent an indent level (and a
             # row) on no information; the tiers are the effective top level.
@@ -423,7 +423,9 @@ class OKFViewer(RelativeLayout):
 
         content.add_widget(self._build_left_column())
 
-        self.body_scroll = _scroll_view(size_hint=(1 - TREE_PANEL_WIDTH, 1), do_scroll_x=False)
+        self.body_scroll = _scroll_view(
+            self._theme, size_hint=(1 - TREE_PANEL_WIDTH, 1), do_scroll_x=False
+        )
         self.body = BoxLayout(
             orientation="vertical",
             size_hint=(None, None),
@@ -901,7 +903,7 @@ class OKFViewer(RelativeLayout):
 
     def _results_widget(self, hits: list[SearchHit]) -> ScrollView:
         """Build the scrollable results list — one row per hit, or a no-match note."""
-        scroll = _scroll_view(size_hint=(1, 1), do_scroll_x=False)
+        scroll = _scroll_view(self._theme, size_hint=(1, 1), do_scroll_x=False)
         column = BoxLayout(
             orientation="vertical", size_hint_y=None, spacing=dp(2), padding=(0, dp(2))
         )
@@ -1903,7 +1905,7 @@ class OKFViewer(RelativeLayout):
             if "[ref=" in row:
                 self._link_labels.append(lbl)
             stack.add_widget(lbl)
-        scroller = _scroll_view(size_hint=(1, None), do_scroll_y=False, height=0)
+        scroller = _scroll_view(self._theme, size_hint=(1, None), do_scroll_y=False, height=0)
 
         def fit_height(*_args: object) -> None:
             # Kivy draws the horizontal bar inside the ScrollView's bounds, so when

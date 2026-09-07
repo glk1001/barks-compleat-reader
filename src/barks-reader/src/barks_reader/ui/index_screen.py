@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Self
 
 from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
+from barks_kivy_ui.scrolling import ReaderScrollView
 from comic_utils.timing import Timing
 from kivy.app import App
 from kivy.clock import Clock
@@ -175,14 +176,7 @@ def show_speech_bubbles_popup(
         )
         text_boxes.add_widget(text_box)
 
-    scroll_view = ScrollView(
-        always_overscroll=False,
-        effect_cls="ScrollEffect",
-        scroll_type=["bars", "content"],
-        bar_color=(0.8, 0.8, 0.8, 1),
-        bar_inactive_color=(0.8, 0.8, 0.8, 0.8),
-        bar_width=dp(8),
-    )
+    scroll_view = ReaderScrollView()
     scroll_view.add_widget(text_boxes)
 
     popup.title = f"[b][i]{title_str}  \u2014  [/i]'{search_terms}'[/b]"

@@ -120,6 +120,8 @@ def wiki_theme_spec() -> ViewerThemeSpec:
         title_hex=title_hex,
         crumb_hex=color_to_markup_hex(theme().text_secondary).lstrip("#"),
         icon_tint=theme().icon_tint,
+        scrollbar=theme().scrollbar,
+        scrollbar_inactive=theme().scrollbar_inactive,
     )
 
 

@@ -32,18 +32,8 @@
             Widget:
                 size_hint_y: 0.02
 
-            ScrollView:
+            ReaderScrollView:
                 id: scroll_view
-
-                do_scroll_x: False
-                do_scroll_y: True
-                always_overscroll: False
-                effect_cls: "ScrollEffect"
-                scroll_type: ["bars", "content"]
-
-                bar_color: (0.7, 0.7, 1.0, 1)
-                bar_inactive_color: (0.7, 0.7, 0.7, 0.9)
-                bar_width: dp(12)
 
                 ReaderTreeView:
                     id: reader_tree_view

@@ -44,6 +44,10 @@ class ViewerThemeSpec:
     Quit) so they wear the app's accent; the default white is a no-op, leaving
     the standalone bar's plain white glyphs untouched.
 
+    ``scrollbar``/``scrollbar_inactive`` colour the scroll-bar handle of every
+    scroll pane (tree, body, search results, wide tables) while scrolling and
+    at rest.
+
     Defaults reproduce the standalone reader exactly — an app themes only what
     it wants and inherits the rest.
     """
@@ -60,3 +64,5 @@ class ViewerThemeSpec:
     title_hex: str = "ffd54a"
     crumb_hex: str = "999999"
     icon_tint: Rgba = (1.0, 1.0, 1.0, 1.0)
+    scrollbar: Rgba = (0.7, 0.7, 1.0, 1.0)
+    scrollbar_inactive: Rgba = (0.7, 0.7, 0.7, 0.9)

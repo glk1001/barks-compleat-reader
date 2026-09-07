@@ -38,7 +38,7 @@ def screen(statistics_dir: Path) -> Generator[StatisticsScreen]:
     with (
         patch.object(FloatLayout, "__init__", autospec=True) as mock_layout_init,
         patch.object(statistics_screen_module, "StatMenuButton", spec=True) as mock_stat_button_cls,
-        patch.object(statistics_screen_module, "DropDown") as mock_dropdown_cls,
+        patch.object(statistics_screen_module, "ReaderDropDown") as mock_dropdown_cls,
         patch.object(statistics_screen_module, "Button"),
         patch.object(statistics_screen_module, "dp", side_effect=lambda x: x),
     ):

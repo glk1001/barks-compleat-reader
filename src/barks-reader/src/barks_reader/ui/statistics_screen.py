@@ -10,11 +10,11 @@ if TYPE_CHECKING:
 
 import re
 
+from barks_kivy_ui.scrolling import ReaderDropDown
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.properties import BooleanProperty  # ty: ignore[unresolved-import]
 from kivy.uix.button import Button
-from kivy.uix.dropdown import DropDown
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.togglebutton import ToggleButton
 from loguru import logger
@@ -112,7 +112,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
         self._stat_buttons.append(word_stat_btn)
         self._word_stat_button = word_stat_btn
 
-        self._word_stat_dropdown = DropDown(auto_width=False, width=dp(160))
+        self._word_stat_dropdown = ReaderDropDown(auto_width=False, width=dp(160))
         items = [
             ("Most Frequent", "most_frequent.png"),
             *_discover_wordclouds(self._statistics_dir),

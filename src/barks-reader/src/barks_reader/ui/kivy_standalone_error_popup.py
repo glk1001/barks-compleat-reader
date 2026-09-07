@@ -83,6 +83,7 @@ def _get_error_content(  # noqa: C901
     details: str = "",
     show_details: bool = False,
 ) -> Any:  # noqa: ANN401
+    from barks_kivy_ui.scrolling import ReaderScrollView
     from kivy.clock import Clock
     from kivy.core.clipboard import Clipboard
     from kivy.graphics import Color, Rectangle, RoundedRectangle
@@ -90,7 +91,6 @@ def _get_error_content(  # noqa: C901
     from kivy.uix.boxlayout import BoxLayout
     from kivy.uix.button import Button
     from kivy.uix.label import Label
-    from kivy.uix.scrollview import ScrollView
     from kivy.uix.widget import Widget
 
     from barks_reader.core.reader_formatter import get_text_with_markup_stripped
@@ -178,7 +178,7 @@ def _get_error_content(  # noqa: C901
             self.padding = [20, 10, 20, 20]
 
             # --- Scrollable content ---
-            self.scroll_view = ScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=True)
+            self.scroll_view = ReaderScrollView(size_hint=(1, 1))
             scroll_content = BoxLayout(
                 orientation="vertical",
                 size_hint_y=None,

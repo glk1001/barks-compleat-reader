@@ -274,6 +274,18 @@ KV_SETTINGS_OVERRIDE = """
         opacity: 0.6 if root.state == 'down' else 1.0
         pos: root.x + dp(4), root.y + dp(4)
         size: root.width - dp(8), root.height - sp(8)
+
+# The settings panel's scroll pane (InterfaceWithNoMenu is a ContentPanel, a
+# ScrollView) wears the shared scroll-pane look. ContentPanel is Kivy's own class,
+# so this mirrors barks_kivy_ui.scrolling rather than inheriting it; Kivy's default
+# <ContentPanel> rule sets none of these, so this additive rule has no conflicts.
+<ContentPanel>:
+    scroll_type: ['bars', 'content']
+    always_overscroll: False
+    effect_cls: 'ScrollEffect'
+    bar_width: dp(12)
+    bar_color: __SCROLLBAR_RGBA__
+    bar_inactive_color: __SCROLLBAR_INACTIVE_RGBA__
 """
 
 
@@ -366,6 +378,8 @@ def _themed_settings_kv() -> str:
         .replace("__HEADING_RGBA__", _rgba(t.app_title, alpha=1.0))
         .replace("__HEADING_RULE_RGBA__", _rgba(t.app_title, alpha=0.4))
         .replace("__SWITCH_ON_RGBA__", _rgba(t.accent_selection, alpha=1.0))
+        .replace("__SCROLLBAR_RGBA__", _rgba(t.scrollbar))
+        .replace("__SCROLLBAR_INACTIVE_RGBA__", _rgba(t.scrollbar_inactive))
         .replace("__TITLE_BAR_H__", str(ACTION_BAR_SIZE_Y))
     )
 

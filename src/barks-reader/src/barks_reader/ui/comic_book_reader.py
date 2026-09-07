@@ -12,6 +12,7 @@ from barks_fantagraphics.comic_book_info import (
     is_one_pager_collection,
 )
 from barks_fantagraphics.comics_consts import PageType
+from barks_kivy_ui.scrolling import ReaderDropDown
 from comic_utils.timing import Timing
 from kivy.clock import Clock, ClockEvent
 from kivy.core.image import Image as CoreImage
@@ -26,7 +27,6 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
     StringProperty,
 )
 from kivy.uix.button import Button
-from kivy.uix.dropdown import DropDown
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
 from loguru import logger
@@ -336,7 +336,7 @@ class ComicBookReader(FloatLayout):
         # Kivy Clock handle for the "waiting for a not-yet-loaded page" poll, or
         # None when no page is currently being awaited. See _show_page.
         self._pending_poll_ev: ClockEvent | None = None
-        self._goto_page_dropdown: DropDown | None = None
+        self._goto_page_dropdown: ReaderDropDown | None = None
         self._goto_page_buttons: list[Button] = []
 
         # Bind property changes to update the display
@@ -790,7 +790,7 @@ class ComicBookReader(FloatLayout):
         max_dropdown_height = round(GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT * self.height)
         logger.debug(f"Creating goto page dropdown. max_dropdown_height = {max_dropdown_height}.")
 
-        self._goto_page_dropdown = DropDown(
+        self._goto_page_dropdown = ReaderDropDown(
             auto_dismiss=True,
             dismiss_on_select=True,
             on_select=self.on_page_selected,
