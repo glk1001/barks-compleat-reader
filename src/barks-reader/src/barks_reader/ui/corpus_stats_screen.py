@@ -85,8 +85,8 @@ _BACKGROUND_TITLE = Titles.ADVENTURE_DOWN_UNDER
 # convention the rest of the app uses - grey dims without shifting hue); the veil
 # is the page ground laid over the top. Raise the veil alpha if a busier or
 # lighter picture makes the figures harder to read.
-_BACKGROUND_SCRIM = (0.5, 0.5, 0.5, 1.0)
-_BACKGROUND_VEIL = (0.08, 0.08, 0.08, 0.88)
+_BACKGROUND_SCRIM = (0.55, 0.55, 0.55, 1.0)
+_BACKGROUND_VEIL = (0.08, 0.08, 0.08, 0.83)
 
 # The share bar: an unfilled track the width of the row, and the row's own slice
 # filled over it. The track is what makes a one-percent slice read as "almost none
