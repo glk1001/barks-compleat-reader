@@ -61,7 +61,7 @@ _NON_STORY_TITLES: frozenset[Titles] = frozenset(
 
 # Page-count bands. A one-page gag and a 32-page adventure are different animals;
 # these are the two cuts that separate them.
-_SHORT_STORY_MAX_PAGES = 15
+_SHORT_STORY_MAX_PAGES = 12
 
 # The payment ledger's "not known" sentinel, used for both amount and date.
 _UNKNOWN = -1

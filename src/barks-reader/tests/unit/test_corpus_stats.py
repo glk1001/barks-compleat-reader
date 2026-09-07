@@ -120,8 +120,8 @@ class TestLengthSection:
         ("label", "expected"),
         [
             ("One page", "161"),
-            ("Short (2–15 pages)", "403"),  # noqa: RUF001
-            ("Long (16+ pages)", "119"),
+            ("Short (2–12 pages)", "384"),  # noqa: RUF001
+            ("Long (13+ pages)", "138"),
             ("Story pages", "6,591"),
             ("Mean pages", "9.7"),
             ("Longest (script and art)", "Vacation Time, 33 pages"),
@@ -131,7 +131,7 @@ class TestLengthSection:
         assert _value(stats, "Length", label) == expected
 
     def test_bands_partition_the_stories(self, stats: CorpusStats) -> None:
-        bands = ("One page", "Short (2–15 pages)", "Long (16+ pages)")  # noqa: RUF001
+        bands = ("One page", "Short (2–12 pages)", "Long (13+ pages)")  # noqa: RUF001
         total = sum(int(_value(stats, "Length", label).replace(",", "")) for label in bands)
         assert total == _NUM_STORIES
 
