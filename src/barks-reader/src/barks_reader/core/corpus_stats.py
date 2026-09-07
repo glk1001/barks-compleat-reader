@@ -164,13 +164,14 @@ def compute_static_stats() -> CorpusStats:
     paid_records = _paid_records()
     adjusted_total = _adjusted_payment_total(paid_records)
     paid_pages = sum(payment.num_pages for payment in paid_records)
+    script_and_art = _script_and_art_titles(stories)
 
     return CorpusStats(
         opening=_opening(stories, total_pages, adjusted_total / paid_pages),
         sections=(
             _corpus_section(stories),
             _attribution_section(stories),
-            _length_section(story_pages, total_pages, len(stories)),
+            _length_section(story_pages, total_pages, len(stories), script_and_art),
             _payment_section(adjusted_total, paid_records, paid_pages),
             _cast_section(),
         ),
@@ -256,6 +257,26 @@ def _corpus_section(stories: list[ComicBookInfo]) -> StatSection:
     )
 
 
+def _script_and_art_titles(stories: list[ComicBookInfo]) -> frozenset[Titles]:
+    """Return the stories Barks both wrote and drew.
+
+    An unqualified entry in Barrier's bibliography means the whole story is his;
+    every other entry carries a `Qualifier` saying which half was not.
+
+    Args:
+        stories: The corpus stories to filter.
+
+    Returns:
+        The titles with an unqualified bibliography entry.
+
+    """
+    return frozenset(
+        info.title
+        for info in stories
+        if (entry := TITLE_TO_BIB_ENTRY.get(info.title)) is not None and entry.qualifier is None
+    )
+
+
 def _attribution_section(stories: list[ComicBookInfo]) -> StatSection:
     """Build the "how much of this is Barks" section from Barrier's bibliography."""
     counts: dict[Qualifier | None, int] = {}
@@ -286,14 +307,33 @@ def _attribution_section(stories: list[ComicBookInfo]) -> StatSection:
 
 
 def _length_section(
-    story_pages: dict[Titles, int], total_pages: int, num_stories: int
+    story_pages: dict[Titles, int],
+    total_pages: int,
+    num_stories: int,
+    script_and_art: frozenset[Titles],
 ) -> StatSection:
-    """Build the story-length distribution section."""
+    """Build the story-length distribution section.
+
+    Args:
+        story_pages: Page count per story, from the payment ledger.
+        total_pages: The sum of those page counts.
+        num_stories: The corpus story count, for the shortfall footnote.
+        script_and_art: The stories Barks both wrote and drew, which is the set
+            the longest-story row is drawn from.
+
+    """
     num_one_page = sum(1 for pages in story_pages.values() if pages == 1)
     num_short = sum(1 for pages in story_pages.values() if 1 < pages <= _SHORT_STORY_MAX_PAGES)
     num_long = sum(1 for pages in story_pages.values() if pages > _SHORT_STORY_MAX_PAGES)
 
-    longest_title, longest_pages = max(story_pages.items(), key=lambda item: item[1])
+    # Drawn from the stories that are wholly Barks's, so the row is a fact about
+    # his own longest work. The corpus's longest story overall is a 64-page one he
+    # drew to someone else's script, which is a different claim.
+    longest_title, longest_pages = min(
+        ((title, pages) for title, pages in story_pages.items() if title in script_and_art),
+        # Longest first, then alphabetical, so a tie cannot vary between runs.
+        key=lambda item: (-item[1], ENUM_TO_STR_TITLE[item[0]]),
+    )
     mean_pages = total_pages / len(story_pages)
 
     # The payment ledger is the only per-story page source, and it covers every
@@ -323,7 +363,9 @@ def _length_section(
             StatRow("Story pages", f"{total_pages:,}"),
             StatRow("Mean pages", f"{mean_pages:.1f}"),
             StatRow(
-                "Longest story",
+                # Qualified deliberately: the corpus holds a longer story that
+                # Barks drew but did not write.
+                "Longest (script and art)",
                 f"{ENUM_TO_STR_TITLE[longest_title]}, {longest_pages} pages",
                 prose=True,
             ),

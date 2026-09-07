@@ -124,7 +124,7 @@ class TestLengthSection:
             ("Long (16+ pages)", "119"),
             ("Story pages", "6,591"),
             ("Mean pages", "9.7"),
-            ("Longest story", "Donald Duck Finds Pirate Gold, 64 pages"),
+            ("Longest (script and art)", "Vacation Time, 33 pages"),
         ],
     )
     def test_row(self, stats: CorpusStats, label: str, expected: str) -> None:
@@ -134,6 +134,35 @@ class TestLengthSection:
         bands = ("One page", "Short (2–15 pages)", "Long (16+ pages)")  # noqa: RUF001
         total = sum(int(_value(stats, "Length", label).replace(",", "")) for label in bands)
         assert total == _NUM_STORIES
+
+
+class TestLongestScriptAndArtStory:
+    def test_it_excludes_a_longer_story_barks_only_drew(self, stats: CorpusStats) -> None:
+        # "Donald Duck Finds Pirate Gold" is 64 pages - nearly twice the winner -
+        # but Barks drew it to someone else's script, so it must not appear here.
+        value = _value(stats, "Length", "Longest (script and art)")
+        assert "Pirate Gold" not in value
+        assert value == "Vacation Time, 33 pages"
+
+    def test_the_winner_really_is_unqualified_in_the_bibliography(self) -> None:
+        from barks_fantagraphics.barks_bibliography import TITLE_TO_BIB_ENTRY  # noqa: PLC0415
+        from barks_fantagraphics.barks_titles import Titles  # noqa: PLC0415
+
+        assert TITLE_TO_BIB_ENTRY[Titles.VACATION_TIME].qualifier is None
+
+    def test_no_longer_script_and_art_story_was_passed_over(self, stats: CorpusStats) -> None:
+        from barks_fantagraphics.barks_bibliography import TITLE_TO_BIB_ENTRY  # noqa: PLC0415
+        from barks_fantagraphics.barks_payments import BARKS_PAYMENTS  # noqa: PLC0415
+        from barks_reader.core.corpus_stats import get_stories  # noqa: PLC0415
+
+        longest = max(
+            BARKS_PAYMENTS[info.title].num_pages
+            for info in get_stories()
+            if info.title in BARKS_PAYMENTS
+            and (entry := TITLE_TO_BIB_ENTRY.get(info.title)) is not None
+            and entry.qualifier is None
+        )
+        assert _value(stats, "Length", "Longest (script and art)").endswith(f"{longest} pages")
 
 
 class TestPaymentSection:
@@ -253,7 +282,10 @@ class TestStructure:
             for row in section.rows
             if row.prose
         }
-        assert prose == {("Length", "Longest story"), ("The cast", "Most-tagged character")}
+        assert prose == {
+            ("Length", "Longest (script and art)"),
+            ("The cast", "Most-tagged character"),
+        }
 
     def test_every_row_has_a_label_and_a_value(self, stats: CorpusStats) -> None:
         for section in stats.sections:
