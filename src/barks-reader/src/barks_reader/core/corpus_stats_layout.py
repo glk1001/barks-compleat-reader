@@ -58,6 +58,7 @@ class PageMetrics:
     footnote: float
 
     headline_height: float
+    headline_gap: float
     standfirst_height: float
     opening_gap: float
     heading_height: float
@@ -83,6 +84,9 @@ DESIGN = PageMetrics(
     footnote=11.0,
     # Vertical rhythm.
     headline_height=60.0,
+    # Air between the display line and the line under it, so the two read as a
+    # headline and its standfirst rather than one stacked block.
+    headline_gap=8.0,
     standfirst_height=34.0,
     opening_gap=16.0,
     heading_height=44.0,
@@ -151,8 +155,10 @@ def split_columns(
 
 
 def opening_height() -> float:
-    """Return the height of the two opening lines plus the gap beneath them."""
-    return DESIGN.headline_height + DESIGN.standfirst_height + DESIGN.opening_gap
+    """Return the height of the two opening lines, their gap, and the gap beneath."""
+    return (
+        DESIGN.headline_height + DESIGN.headline_gap + DESIGN.standfirst_height + DESIGN.opening_gap
+    )
 
 
 def section_height(section: StatSection) -> float:

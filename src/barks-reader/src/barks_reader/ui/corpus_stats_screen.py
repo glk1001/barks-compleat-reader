@@ -228,6 +228,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
                 valign="bottom",
             )
         )
+        box.add_widget(Widget(size_hint_y=None, height=layout.DESIGN.headline_gap * scale))
         box.add_widget(
             self._line(
                 opening.standfirst,

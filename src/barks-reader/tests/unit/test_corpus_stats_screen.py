@@ -177,8 +177,15 @@ class TestTwoColumns:
 
     def test_the_opening_spans_the_page(self, screen: CorpusStatsScreen) -> None:
         _open(screen)
-        # Headline, standfirst and the gap beneath them.
-        assert len(screen.ids["stats_opening"].children) == 3
+        # Headline, the gap under it, standfirst, and the gap beneath them both.
+        assert len(screen.ids["stats_opening"].children) == 4
+
+    def test_the_headline_is_separated_from_the_standfirst(self, screen: CorpusStatsScreen) -> None:
+        _open(screen)
+        headline, gap, standfirst, _trailing = screen.ids["stats_opening"].children
+        assert headline.text.startswith("683 stories")
+        assert gap.height == corpus_stats_screen_module.layout.DESIGN.headline_gap
+        assert standfirst.text.startswith("6,591 pages")
 
     def test_the_columns_are_gutter_spaced(self, screen: CorpusStatsScreen) -> None:
         _open(screen)
