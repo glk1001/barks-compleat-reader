@@ -1,0 +1,66 @@
+History page is slow to load
+Scrollbar doesn't work if you grab on its right pixels
+
+
+Check JW first pages for indicia
+Vol 27, 121 remove indicia
+Vol 27, 134 remove indicia
+Vol 27, 146 remove indicia
+Vol 25, 138 remove indicia
+Vol 25, 124 remove indicia
+
+Vol 13, 144, panel 4 beak not colored
+Vol 13, 128, panel 2 should be split
+Vol 13, 52, panel 4 red cap should be green
+Vol 13, 62, 1 should be two panels
+Vol 13, 45, 4 should be red cap Huey
+Vol 12, 86 panel 4 too big
+Vol 12, 71 panel 3 should be green cap
+Vol 12, 46 panel 3 num error
+Vol 12, 28+- Huey/Louie error
+Vol 11, 129 panel 8, should be blue - see 130
+Vol 11, 87, panel 4 cap should be blue
+Vol 11, 68, panel 8 missed cuffs
+Vol 10, 85 panel 6 caps not colored
+Vol 10, 174, panel 6 should be green cap
+vol 9, 78, panel 5 cap error - should be dewey
+vol 9, 87, panel 7 should be red cap
+vol 9, 91, panel 2 should be red cap with camera
+Vol 9, 92 red cap
+vol 9, 18, panel 1 cap not colored
+    And vol 9, 21
+    9, 21, female parrot wrong color
+    9,26,3 caps not colored
+Vol 8, 184, two green caps
+Vol 8, 183, panel 1
+Vol 8, 172, panel 1 no color cap
+Vol 8, 122 Louie yellow->green
+Vol 8, 102 - Green cap -> blue cap
+Vol 7 040 panel 5 cap swap
+Vol 6 119 Dewey red cap error
+Vol 6 15 Scrooge collar color - should be brown?
+Vol 6 57 Dialogue issue
+Vol 4 110 Honest Huey error (Huey is red costume and referring to himself?)
+Vol 4 123 Green->Blue every panel
+Vol 4 148-5 Named nephews colors wrong
+
+Playin' Hookey Vol 3. 115 panel 2 redo inset
+Fix mush panels - last page of Land Beneath
+Check Vol 16 restored-upscayled/062.png
+Is Chisel McSue the same as Azure Blue?
+Maybe make censorship separate issue
+Fix ragged CBL wiki entry
+Check titles - Maybe look first page 'walt disney'
+Brittle mastery playlist
+Validation needs to check panel segments
+Kids in aussie hats last page Adv Down Under
+Ali baba painting
+Check atom bomb panels
+Validate vols 1-29 cover all FANTA info
+Add more screenshots - tv and laptop use
+Use Calgary Eyeopener for life guard
+Note: scalp = haircut (Pony Express)
+Add non-Barks script to extra info
+Setup barksian vocab
+Error popup in fullscreen goes wide (jet)
+
