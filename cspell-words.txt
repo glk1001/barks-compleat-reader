@@ -2,6 +2,7 @@
 # cspell global word list — words shared across all packages
 
 acpi
+actioned
 activatable
 alnum
 apos

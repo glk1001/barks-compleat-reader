@@ -1,4 +1,3 @@
-History page is slow to load
 Scrollbar doesn't work if you grab on its right pixels
 
 
@@ -39,7 +38,6 @@ Vol 8, 102 - Green cap -> blue cap
 Vol 7 040 panel 5 cap swap
 Vol 6 119 Dewey red cap error
 Vol 6 15 Scrooge collar color - should be brown?
-Vol 6 57 Dialogue issue
 Vol 4 110 Honest Huey error (Huey is red costume and referring to himself?)
 Vol 4 123 Green->Blue every panel
 Vol 4 148-5 Named nephews colors wrong
