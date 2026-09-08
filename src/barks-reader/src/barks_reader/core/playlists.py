@@ -41,6 +41,8 @@ class Playlist:
 
 
 BRAVERY_PLAYLIST_ID = "bravery"
+BRITTLE_MASTERY_PLAYLIST_ID = "brittle_mastery"
+PERSISTENCE_PLAYLIST_ID = "persistence"
 
 PLAYLISTS: tuple[Playlist, ...] = (
     Playlist(
@@ -59,6 +61,38 @@ PLAYLISTS: tuple[Playlist, ...] = (
             Titles.DONALD_DUCKS_WORST_NIGHTMARE,
             Titles.BACK_TO_THE_KLONDIKE,
             Titles.ROSCOE_THE_ROBOT,
+        ),
+    ),
+    Playlist(
+        playlist_id=BRITTLE_MASTERY_PLAYLIST_ID,
+        heading="The Brittle Mastery Stories",
+        intro=(
+            "[i]Stories where Donald is an unbelievably brilliant master craftsman. But"
+            "\u2014arrogance\u2014or jealously bring him crashing down. The first three titles are"
+            " not the true 'Brittle Mastery' stories but rather stories where Donald is very, very"
+            " good at something. The final five titles are truly brittle mastery.[/i]"
+        ),
+        titles=(
+            Titles.MASTER_ICE_FISHER,
+            Titles.NO_SUCH_VARMINT,
+            Titles.SMOKE_WRITER_IN_THE_SKY,
+            Titles.MASTER_RAINMAKER_THE,
+            Titles.MASTER_GLASSER_THE,
+            Titles.MASTER_MOVER_THE,
+            # Titles.SPARE_THAT_HAIR,
+            # Titles.BEAUTY_BUSINESS_THE,
+        ),
+    ),
+    Playlist(
+        playlist_id=PERSISTENCE_PLAYLIST_ID,
+        heading="The Persistence Stories",
+        intro=("[i]Stories where Donald will not give up. Mostly with good results.[/i]"),
+        titles=(
+            Titles.SILENT_NIGHT,
+            Titles.TEN_DOLLAR_DITHER,
+            Titles.OLYMPIC_HOPEFUL_THE,
+            Titles.HYPNO_GUN_THE,
+            Titles.BIG_TOP_BEDLAM,
         ),
     ),
 )
