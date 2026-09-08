@@ -8,11 +8,16 @@ Vol 27, 146 remove indicia
 Vol 25, 138 remove indicia
 Vol 25, 124 remove indicia
 
+Vol 15, 142, panel 2 '!'
+Vol 15, 108, panel 3 Louie should be in front
+Vol 15, 098, panel 7 letter 'H'
+Vol 15, 090, panel 4 letter 'A'
 Vol 13, 144, panel 4 beak not colored
 Vol 13, 128, panel 2 should be split
 Vol 13, 52, panel 4 red cap should be green
 Vol 13, 62, 1 should be two panels
 Vol 13, 45, 4 should be red cap Huey
+Vol 12, 193 panel 6 num error
 Vol 12, 86 panel 4 too big
 Vol 12, 71 panel 3 should be green cap
 Vol 12, 46 panel 3 num error
@@ -42,6 +47,7 @@ Vol 6 13 Scrooge collar color should not cover neck
 Vol 4 110 Honest Huey error (Huey is red costume and referring to himself?)
 Vol 4 123 Green->Blue every panel
 Vol 4 148-5 Named nephews colors wrong
+Vol 3 168-2 Uncolored cap (fanta p. 159, comic 3)
 
 Playin' Hookey Vol 3. 115 panel 2 redo inset
 Fix mush panels - last page of Land Beneath
