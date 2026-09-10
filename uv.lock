@@ -186,7 +186,7 @@ dev = [
     { name = "patchelf", marker = "sys_platform == 'linux'", specifier = ">=0.17" },
     { name = "prek", specifier = ">=0.3.8" },
     { name = "pyinstrument", specifier = ">=5.1.1" },
-    { name = "pyrefly", specifier = ">=1.1.1" },
+    { name = "pyrefly", specifier = ">=1.2.0" },
     { name = "pyspellchecker", specifier = ">=0.8.4" },
     { name = "pytest", specifier = ">=8.4.2" },
     { name = "pytest-benchmark", specifier = ">=5.2.3" },

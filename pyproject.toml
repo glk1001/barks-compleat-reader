@@ -96,7 +96,7 @@ dev = [
     # release that adds rules can fail the gate. Unlike ruff/ty it is deliberately left
     # unpinned: it is 1.x with real semver, and the baseline absorbs a bump's fallout
     # into one reviewable file rather than a wall of errors.
-    "pyrefly>=1.1.1",
+    "pyrefly>=1.2.0",
     "prek>=0.3.8",
     "sysrsync>=1.1.1",
     "weasyprint>=69.0",
