@@ -20,6 +20,13 @@ ignorePaths:
   # Vulture whitelist: bare identifiers, not prose.
   - "**/vulture_whitelist.py"
 
+# GitHub Security Advisory IDs (GHSA-xxxx-xxxx-xxxx). The three segments are random
+# hash fragments, never prose, and a new one arrives with every advisory - so match
+# them by shape rather than growing cspell-words.txt a dead word at a time. Cited in
+# dependency-bump commit messages, which the commit-msg hook spell-checks.
+ignoreRegExpList:
+  - "GHSA-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}"
+
 # Enable Python built-in dictionary plus word lists (global and per-package)
 dictionaryDefinitions:
   - name: project
