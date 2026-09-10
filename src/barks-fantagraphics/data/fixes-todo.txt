@@ -1,6 +1,3 @@
-Scrollbar doesn't work if you grab on its right pixels
-
-
 Check JW first pages for indicia
 Vol 27, 121 remove indicia
 Vol 27, 134 remove indicia
@@ -8,10 +5,20 @@ Vol 27, 146 remove indicia
 Vol 25, 138 remove indicia
 Vol 25, 124 remove indicia
 
+Vol 15, 192, panel 1 num error
+Vol 15, 186, panel 1: Colorist error: should be red cap
 Vol 15, 142, panel 2 '!'
 Vol 15, 108, panel 3 Louie should be in front
 Vol 15, 098, panel 7 letter 'H'
 Vol 15, 090, panel 4 letter 'A'
+Vol 14, 136, panel 1: fix title
+Vol 14, 132, panel 7, 81: lemon eyes
+Vol 14, 113, panel 1: 'E'
+Vol 14, 110, panel 1: fix title
+Vol 14, 095, panel 7: Colorist error: should be Dewey carrying cheese
+Vol 14, 083, panel 5 uncolored cap should be red
+Vol 14, 054, panel 3 cap should be green - and keeps going see 055
+Vol 14, 040, panel 8 text glitch
 Vol 13, 144, panel 4 beak not colored
 Vol 13, 128, panel 2 should be split
 Vol 13, 52, panel 4 red cap should be green
@@ -25,6 +32,7 @@ Vol 12, 28+- Huey/Louie error
 Vol 11, 129 panel 8, should be blue - see 130
 Vol 11, 87, panel 4 cap should be blue
 Vol 11, 68, panel 8 missed cuffs
+Vol 10, fix all panel num issues
 Vol 10, 85 panel 6 caps not colored
 Vol 10, 174, panel 6 should be green cap
 vol 9, 78, panel 5 cap error - should be dewey
@@ -42,6 +50,7 @@ Vol 8, 122 Louie yellow->green
 Vol 8, 102 - Green cap -> blue cap
 Vol 7 040 panel 5 cap swap
 Vol 6 119 Dewey red cap error
+Vol 6 154 panel 6: it is possible to have diamond. Maye backfill others
 Vol 6 15 Scrooge collar color - should be brown?
 Vol 6 13 Scrooge collar color should not cover neck
 Vol 4 110 Honest Huey error (Huey is red costume and referring to himself?)
