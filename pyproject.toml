@@ -90,7 +90,7 @@ dev = [
     # over 6 runs each: 0.0.61 clean, 0.0.62 and 0.0.63 both affected. 0.0.64 fixes
     # it: 17 consecutive clean full-project runs here. ty is beta with 1.0 targeted
     # for 2026, so stay pinned until it stabilizes.
-    "ty==0.0.78",
+    "ty==0.0.80",
     # Second type checker, and a GATE alongside ty (CI, pre-commit, full-lint.sh).
     # Passes at 0 new findings vs pyrefly-baseline.json (wired via pyrefly.toml), so a
     # release that adds rules can fail the gate. Unlike ruff/ty it is deliberately left
