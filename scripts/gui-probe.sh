@@ -23,6 +23,7 @@
 #   scripts/gui-probe.sh wait 'Goto title' 10
 #   scripts/gui-probe.sh settle           # block until rendering has stopped
 #   scripts/gui-probe.sh log              # print the app log path
+#   scripts/gui-probe.sh config           # print the app config (json) path
 #   scripts/gui-probe.sh tail 20          # last N app log lines
 #   scripts/gui-probe.sh stop             # kill both, restore the user config
 #
@@ -340,6 +341,7 @@ type) shift && cmd_type "$@" ;;
 wait) shift && cmd_wait "$@" ;;
 settle) shift && cmd_settle "$@" ;;
 log) echo "$APP_LOG" ;;
+config) config_file ;;
 tail) tail -n "${2:-20}" "$APP_LOG" ;;
 *)
     sed -n '/^# Usage:/,/^# Env overrides/p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'
