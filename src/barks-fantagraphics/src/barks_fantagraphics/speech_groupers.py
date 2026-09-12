@@ -10,7 +10,8 @@ from typing import Any
 from loguru import logger
 
 from .barks_titles import Titles
-from .comic_book import ComicBook
+from .comic_book import ComicBook, get_page_str
+from .comic_book_info import get_one_pager_fanta_vol_and_page, get_one_pager_issue_page
 from .comics_consts import RESTORABLE_PAGE_TYPES
 from .comics_database import ComicsDatabase
 from .ocr_file_paths import get_ocr_prelim_groups_json_filename
@@ -297,15 +298,46 @@ class SpeechGroups:
 
     def _iter_prelim_pages(self, title: Titles) -> Iterator[tuple[str, str, OcrTypes, Path]]:
         """Yield (srce_page, dest_page, ocr_index, prelim_json_file) for a title."""
-        volume = self._comics_database.get_fanta_volume_int_for(title)
-        comic = self._comics_database.get_comic_book_for(title)
+        located = self._one_pager_volume_and_pages(title)
+        if located is None:
+            volume = self._comics_database.get_fanta_volume_int_for(title)
+            comic = self._comics_database.get_comic_book_for(title)
+            srce_to_dest = self._get_srce_page_to_dest_page_map(comic)
+        else:
+            volume, srce_to_dest = located
 
-        for srce_page, dest_page in self._get_srce_page_to_dest_page_map(comic).items():
+        for srce_page, dest_page in srce_to_dest.items():
             for ocr_index in OcrTypes:
                 json_file = get_ocr_prelim_groups_json_file(
                     self._comics_database, volume, srce_page, ocr_index
                 )
                 yield srce_page, dest_page, ocr_index, json_file
+
+    @staticmethod
+    def _one_pager_volume_and_pages(title: Titles) -> tuple[int, dict[str, str]] | None:
+        """Return a located one-pager's volume and its single srce->dest page map.
+
+        One-pagers have no ``.ini``, so ``get_comic_book_for`` cannot resolve them
+        and the ordinary route raises ``TitleNotFoundError`` -- which is why a
+        one-pager could not be prepped at all. Nothing here needs a ``ComicBook``:
+        ``ONE_PAGER_LOCATIONS`` already holds the host volume and page, and the
+        prelim OCR path is built from volume and page alone.
+
+        Returns None for anything that is not a *located* one-pager, so every other
+        title -- and the errors an unlocated one raises -- is unchanged.
+        """
+        volume, fanta_page = get_one_pager_fanta_vol_and_page(title)
+        if volume is None or fanta_page is None:
+            return None
+
+        srce_page = get_page_str(fanta_page)
+        # `comic_page` means the page within the originally published comic
+        # everywhere else, and for a one-pager that is its issue page. Where that
+        # is not recorded, fall back to the Fantagraphics page rather than invent
+        # a number.
+        issue_page = get_one_pager_issue_page(title)
+        dest_page = get_page_str(issue_page) if issue_page is not None else srce_page
+        return volume, {srce_page: dest_page}
 
     @staticmethod
     def _get_srce_page_to_dest_page_map(comic: ComicBook) -> dict[str, str]:

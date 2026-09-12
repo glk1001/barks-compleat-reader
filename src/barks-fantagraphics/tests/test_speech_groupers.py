@@ -879,3 +879,64 @@ class TestGetMissingPrelimPages:
             _write_prelim(tmp_path, "001", ocr_type)
 
         assert speech_groups.get_missing_prelim_pages(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD) == []
+
+
+# ---------------------------------------------------------------------------
+# SpeechGroups one-pager resolution
+# ---------------------------------------------------------------------------
+
+
+class TestOnePagerPages:
+    """A one-pager has no `.ini`, so it must resolve without a ComicBook."""
+
+    @staticmethod
+    def _locate(monkeypatch: pytest.MonkeyPatch, vol: int, page: int, issue: int | None) -> None:
+        monkeypatch.setattr(
+            speech_groupers_module,
+            "get_one_pager_fanta_vol_and_page",
+            lambda _title: (vol, page),
+        )
+        monkeypatch.setattr(
+            speech_groupers_module, "get_one_pager_issue_page", lambda _title: issue
+        )
+
+    def test_loads_the_single_page_without_a_comic_book(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._locate(monkeypatch, 5, 123, 2)
+        db = MagicMock()
+        db.get_fantagraphics_restored_ocr_prelim_volume_dir.return_value = tmp_path
+        for ocr_type in OcrTypes:
+            _write_prelim(tmp_path, "123", ocr_type)
+
+        result = SpeechGroups(db).get_speech_page_groups(Titles.IF_THE_HAT_FITS)
+
+        assert [g.ocr_index for g in result] == [OcrTypes.EASYOCR, OcrTypes.PADDLEOCR]
+        assert all(g.fanta_page == "123" for g in result)
+        # The issue page is what `comic_page` means everywhere else.
+        assert all(g.comic_page == "002" for g in result)
+        db.get_comic_book_for.assert_not_called()
+
+    def test_unrecorded_issue_page_falls_back_to_the_fanta_page(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._locate(monkeypatch, 5, 26, None)
+
+        result = SpeechGroups._one_pager_volume_and_pages(  # noqa: SLF001
+            Titles.FASHION_IN_FLIGHT
+        )
+
+        assert result == (5, {"026": "026"})
+
+    def test_returns_none_for_an_ordinary_title(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            speech_groupers_module,
+            "get_one_pager_fanta_vol_and_page",
+            lambda _title: (None, None),
+        )
+
+        result = SpeechGroups._one_pager_volume_and_pages(  # noqa: SLF001
+            Titles.DONALD_DUCK_FINDS_PIRATE_GOLD
+        )
+
+        assert result is None

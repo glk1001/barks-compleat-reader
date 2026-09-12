@@ -328,6 +328,45 @@ class TestGetPagePanelBoxes:
         assert isinstance(result.pages["001"], PagePanelBoxes)
 
 
+class TestGetPagePanelBoxesOnePager:
+    """A one-pager has no `.ini`, so it must resolve without a ComicBook."""
+
+    def test_uses_the_host_volume_segments_dir(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            panel_boxes_module,
+            "get_one_pager_fanta_vol_and_page",
+            lambda _title: (5, 123),
+        )
+        panel_file = tmp_path / "123.json"  # type: ignore[operator]
+        panel_file.write_text(_make_panel_segments_json())
+
+        db = MagicMock()
+        db.get_fantagraphics_panel_segments_volume_dir.return_value = tmp_path
+        tpb = TitlePanelBoxes(_comics_database=db)
+
+        result = tpb.get_page_panel_boxes(Titles.IF_THE_HAT_FITS)
+
+        assert result.volume == 5
+        assert list(result.pages) == ["123"]
+        db.get_fantagraphics_panel_segments_volume_dir.assert_called_once_with(5)
+        db.get_comic_book_for.assert_not_called()
+
+    def test_ordinary_title_is_left_to_the_comic_book_route(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            panel_boxes_module,
+            "get_one_pager_fanta_vol_and_page",
+            lambda _title: (None, None),
+        )
+
+        result = TitlePanelBoxes._one_pager_volume_and_page(Titles.DONALD_DUCK_FINDS_PIRATE_GOLD)
+
+        assert result is None
+
+
 # ---------------------------------------------------------------------------
 # check_page_panel_boxes
 # ---------------------------------------------------------------------------
