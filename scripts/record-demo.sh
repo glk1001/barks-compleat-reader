@@ -98,7 +98,10 @@ POSTER_BEAT=browse_tree
 #       BARKS_TAGGED_TITLES[Tags.CENSORED_STORIES_BUT_FIXED], key=lambda t: order[t])])"
 CENSORED_PICKS=(GOOD_DEEDS SILENT_NIGHT BILL_COLLECTORS_THE LOST_IN_THE_ANDES)
 
-# Seconds to dwell on each opened story's first page.
+# How many pages to read from each opened story, counting the page it opens on.
+# 2 means the cued page plus one turn; 1 means open and close without turning.
+PAGES_PER_PICK=2
+# Seconds to dwell on each page of an opened story.
 PICK_DWELL=2.5
 # Pace of a single Down while walking the tree on camera.
 WALK_PAUSE=0.45
@@ -182,6 +185,14 @@ open_selected_title() {
     hold 0.6
     key_then_wait "All images loaded" 30 Return
     hold "$PICK_DWELL"
+    # Right is next-page. Wait on the bare "Showed page" marker rather than a
+    # page number: each story opens on its own cued page, so the number differs
+    # per pick and key_then_wait only needs a NEW render, not a specific one.
+    local i
+    for ((i = 1; i < PAGES_PER_PICK; i++)); do
+        key_then_wait "Showed page" 15 Right
+        hold "$PICK_DWELL"
+    done
     probe key Escape # reader menu mode; Go Back is focused by default
     hold 0.4
     key_then_wait "Main screen is active" 15 Return
