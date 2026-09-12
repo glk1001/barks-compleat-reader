@@ -18,7 +18,9 @@
 #   1. Append its name to BEATS (order here is the order on screen).
 #   2. Define NODE_<name> - the tree node to boot onto, leaf-to-root, as the
 #      JSON array the app stores in AAA_Settings.last_selected_node.
-#   3. Define beat_<name> - the keystrokes, using probe/hold/pause below.
+#   3. Define beat_<name> - the keystrokes, using probe/hold/wait_for below.
+#   Optionally define setup_<name>, which runs after the app is up but BEFORE
+#   the recording starts, for navigation that should not appear on screen.
 #   Keep anything that must play without a cut inside a single beat.
 #
 # Assumes
@@ -65,7 +67,13 @@ GOP=60
 
 # ---------------------------------------------------------------- the beats --
 
-BEATS=(browse_tree)
+BEATS=(browse_tree open_comic)
+
+# Take the poster frame from the end of this beat rather than the end of the
+# whole video: the browse view carries the app's chrome, tree and title card,
+# which says "this is a reader app" better than a bare comic page does. Empty
+# means the last frame of the finished video.
+POSTER_BEAT=browse_tree
 
 NODE_browse_tree='["1947-1950", "Comics and Stories", "Series", "The Stories", "root"]'
 beat_browse_tree() {
@@ -82,6 +90,37 @@ beat_browse_tree() {
     hold 2.2
 }
 
+NODE_open_comic="$NODE_browse_tree"
+setup_open_comic() {
+    # Land on the title browse_tree settles on, off camera, so this beat opens
+    # already on the title view and reads as a continuation of the cut before
+    # it. Driving here rather than booting straight onto the title node is
+    # deliberate: last_selected_node for a leaf title did not restore in
+    # testing (the app came up with nothing selected), whereas the range node
+    # plus four Downs is exactly what the previous beat already does.
+    probe key Down Down Down Down
+    probe settle
+}
+beat_open_comic() {
+    hold 0.8
+    probe key Return # focus the title view's read portal
+    hold 0.7
+    probe key Return # open the comic
+    wait_for "All images loaded" 30
+    hold 2.0
+    turn_page 1
+    turn_page 2
+    hold 0.8
+}
+
+# Right is next-page in the reader (reader_keyboard_nav._handle_reading_key).
+# Waiting on the render keeps the dwell honest when a page loads slowly.
+turn_page() {
+    probe key Right
+    wait_for "Showed page $1" 15
+    hold 2.2
+}
+
 # --------------------------------------------------------- beat primitives --
 
 # Inject keys on the nested display.
@@ -94,6 +133,13 @@ probe() {
 # loudly instead of silently recording the wrong screen.
 hold() {
     sleep "$1"
+}
+
+# Block until the app log shows a state was reached. Unlike `hold`, this fails
+# the run instead of recording whatever happened to be on screen.
+wait_for() {
+    "$PROBE" wait "$1" "${2:-15}" >/dev/null ||
+        die "beat stalled: never saw /$1/ in the app log"
 }
 
 die() {
@@ -136,10 +182,12 @@ has_beat() {
 command -v ffmpeg >/dev/null || die "ffmpeg not found (sudo apt install ffmpeg)"
 [[ -x "$PROBE" ]] || die "missing $PROBE"
 
+FF_PID=""
 CONFIG_JSON="$("$PROBE" config)"
 MY_BACKUP="$(mktemp -t barks-demo-config.XXXXXX.json)"
 
 cleanup() {
+    [[ -n "$FF_PID" ]] && kill -INT "$FF_PID" 2>/dev/null && wait "$FF_PID" 2>/dev/null
     "$PROBE" stop >/dev/null 2>&1 || true
     # gui-probe restores its own backup, which is the file we edited; put the
     # user's original back on top of it.
@@ -192,10 +240,14 @@ app_region() {
 
 record_beat() {
     local name="$1" node_var="NODE_$1" clip="$WORK_DIR/$1.mp4"
-    local w h x y region ff_pid
+    local w h x y region
 
     echo "record-demo: [$name] booting"
     boot_at "${!node_var}"
+    if declare -F "setup_$name" >/dev/null; then
+        echo "record-demo: [$name] setup"
+        "setup_$name"
+    fi
     region="$(app_region)" || exit 1
     read -r w h x y <<<"$region"
 
@@ -205,15 +257,16 @@ record_beat() {
         -video_size "${w}x${h}" -i "${DPY}+${x},${y}" \
         -c:v libx264 -preset slow -crf "$CRF" -g "$GOP" \
         -pix_fmt yuv420p -an "$clip" &
-    ff_pid=$!
+    FF_PID=$!
 
     sleep 0.5 # let the first frames land before anything moves
     "beat_$name"
 
     # SIGINT makes ffmpeg stop cleanly and write the trailer; killing it outright
     # leaves an unplayable file.
-    kill -INT "$ff_pid"
-    wait "$ff_pid" || true
+    kill -INT "$FF_PID"
+    wait "$FF_PID" || true
+    FF_PID=""
 
     "$PROBE" stop >/dev/null
     echo "record-demo: [$name] $(du -h "$clip" | cut -f1)"
@@ -262,7 +315,10 @@ poster="$OUT_DIR/demo-poster.jpg"
 # playing before the whole file has arrived.
 ffmpeg -y -loglevel error -f concat -safe 0 -i "$list_file" \
     -c copy -movflags +faststart "$final"
-ffmpeg -y -loglevel error -sseof -0.5 -i "$final" -update 1 -q:v 4 "$poster"
+poster_src="$final"
+[[ -n "$POSTER_BEAT" && -s "$WORK_DIR/$POSTER_BEAT.mp4" ]] &&
+    poster_src="$WORK_DIR/$POSTER_BEAT.mp4"
+ffmpeg -y -loglevel error -sseof -0.5 -i "$poster_src" -update 1 -q:v 4 "$poster"
 
 dur="$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$final")"
 echo
