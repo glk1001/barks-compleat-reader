@@ -96,7 +96,7 @@ POSTER_BEAT=browse_tree
 #   order = {t: i for i, t in enumerate(Titles)}
 #   print([t.name for t in sorted(
 #       BARKS_TAGGED_TITLES[Tags.CENSORED_STORIES_BUT_FIXED], key=lambda t: order[t])])"
-CENSORED_PICKS=(FROZEN_GOLD LOST_IN_THE_ANDES BACK_TO_THE_KLONDIKE)
+CENSORED_PICKS=(GOOD_DEEDS SILENT_NIGHT BILL_COLLECTORS_THE LOST_IN_THE_ANDES)
 
 # Seconds to dwell on each opened story's first page.
 PICK_DWELL=2.5
