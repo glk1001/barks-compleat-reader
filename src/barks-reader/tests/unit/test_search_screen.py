@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from typing import ClassVar, cast
 from unittest.mock import MagicMock, patch
 
+from barks_fantagraphics.alpha_split import split_alpha_terms
 from barks_reader.ui import search_screen
 from barks_reader.ui.search_screen import SearchScreen, _SearchResultButton
 
@@ -59,12 +60,16 @@ class TestMarkResultSelected:
 
 
 class TestGetWordsMatchingPrefix:
+    # Bucket keys are the prefix *ranges* `split_alpha_terms` produces for the
+    # A-Z button bar, not two-character prefixes. A fixture keyed by "do"/"da"
+    # passes even when the lookup indexes straight to `letter_group[query[:2]]`,
+    # which is how a word search that matched nothing at all shipped green.
     TERMS: ClassVar[dict] = {
         "d": {
-            "do": ["don", "Don Gaspar", "Don Quixote", "done", "Donna Duck"],
-            "da": ["dance", "Daniel Boone"],
+            "do-don": ["don", "Don Gaspar", "Don Quixote", "done", "Donna Duck"],
+            "da-dan": ["dance", "Daniel Boone"],
         },
-        "q": {"qu": ["quixote"]},
+        "q": {"qu-qui": ["quixote"]},
     }
 
     def _match(self, text: str) -> list[str]:
@@ -97,6 +102,28 @@ class TestGetWordsMatchingPrefix:
 
     def test_different_letter_group(self) -> None:
         assert self._match("qu") == ["quixote"]
+
+    def test_matches_against_real_bucket_labels(self) -> None:
+        """Regression: the matcher must work on what `split_alpha_terms` really returns.
+
+        The screen gets its terms from `ComicSearch.get_alpha_split_terms`, which
+        computes the split rather than reading the index's two-character sidecar.
+        Building the fixture through the same function keeps this test honest if
+        the bucket labelling ever changes again.
+        """
+        terms = ["egg", "eggbeater", "egghead", "eggs", "eggshell"]
+        terms += ["eel", "elbow", "ember", "end", "eye"]
+        screen = _make_screen(split_alpha_terms(sorted(terms)))
+
+        assert screen._get_words_matching_prefix("eggs") == ["eggs", "eggshell"]
+        assert screen._get_words_matching_prefix("eggnog") == []
+        assert screen._get_words_matching_prefix("egg") == [
+            "egg",
+            "eggbeater",
+            "egghead",
+            "eggs",
+            "eggshell",
+        ]
 
 
 class TestSearchInputEnter:

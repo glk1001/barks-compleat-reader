@@ -438,14 +438,15 @@ class SearchScreen(FloatLayout):
 
     def _get_words_matching_prefix(self, text: str) -> list[str]:
         query = text.lower()
-        first_char = query[0]
-        letter_group = self._word_terms.get(first_char, {})
+        letter_group = self._word_terms.get(query[0], {})
 
-        min_prefix_len = 2
-        if len(query) >= min_prefix_len:
-            candidates = letter_group.get(query[:min_prefix_len], [])
-        else:
-            candidates = [w for group in letter_group.values() for w in group]
+        # Scan every bucket in the letter group rather than indexing straight to
+        # one. `split_alpha_terms` labels its buckets with the prefix *ranges*
+        # the A-Z button bar displays ("eg-ej"), not with a fixed two-character
+        # prefix, so a `letter_group[query[:2]]` lookup misses every time and the
+        # word search silently returns nothing for any query of two or more
+        # characters. A letter group is a couple of thousand terms at most.
+        candidates = [word for bucket in letter_group.values() for word in bucket]
 
         matching = [w for w in candidates if w.lower().startswith(query)]
         matching.sort()
