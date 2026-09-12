@@ -67,7 +67,16 @@ GOP=60
 
 # ---------------------------------------------------------------- the beats --
 
+# Every beat that gets recorded, in canonical order.
 BEATS=(browse_tree open_comic censored_stories)
+
+# What gets stitched, and from which beats. A beat can appear in more than one
+# output; it is only ever recorded once. The short hero loop is what autoplays
+# at the top of the intro tab; the walkthrough is the linked long-form tour.
+declare -A OUTPUTS=(
+    [demo.mp4]="browse_tree open_comic"
+    [walkthrough.mp4]="browse_tree open_comic censored_stories"
+)
 
 # Take the poster frame from the end of this beat rather than the end of the
 # whole video: the browse view carries the app's chrome, tree and title card,
@@ -103,6 +112,17 @@ CENSORED_PICKS=(GOOD_DEEDS SILENT_NIGHT BILL_COLLECTORS_THE LOST_IN_THE_ANDES)
 PAGES_PER_PICK=2
 # Seconds to dwell on each page of an opened story.
 PICK_DWELL=2.5
+
+# Caption burned into the bottom of each beat. A walkthrough this long is
+# unreadable silent - the viewer can see what happens but not why - and a
+# caption keeps the whole thing regenerable in a way a voice-over would not.
+# Keep them short and free of ':' and \''' (ffmpeg drawtext metacharacters).
+LABEL_browse_tree="Every Barks Disney story, in order"
+LABEL_open_comic="Open any story and read it"
+LABEL_censored_stories="Browse by theme - censored stories, restored"
+
+FONT=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
+CAPTION_SIZE=30
 # Pace of a single Down while walking the tree on camera.
 WALK_PAUSE=0.45
 
@@ -215,6 +235,20 @@ probe() {
 # loudly instead of silently recording the wrong screen.
 hold() {
     sleep "$1"
+}
+
+# Type into a focused text box one character at a time.
+#
+# `gui-probe type` sends the whole string through `xte str`, and the app's
+# search-as-you-type handler drops most of it - "square egg" arrived as "squa".
+# Per-character with a gap is both reliable and a more natural pace on video.
+type_slowly() {
+    local text="$1" i ch
+    for ((i = 0; i < ${#text}; i++)); do
+        ch="${text:i:1}"
+        "$PROBE" type "$ch" >/dev/null
+        sleep "${TYPE_PAUSE:-0.4}"
+    done
 }
 
 # The node the app last logged as selected. Title nodes log their enum name
@@ -398,9 +432,16 @@ record_beat() {
     read -r w h x y <<<"$region"
 
     echo "record-demo: [$name] recording ${w}x${h} at +${x}+${y}"
+    # The caption is burned in at record time, not at stitch time, because the
+    # stitch is a stream copy - there is no re-encode later to draw it into.
+    local label_var="LABEL_$name" vf=()
+    if [[ -n "${!label_var:-}" ]]; then
+        vf=(-vf "drawtext=fontfile=$FONT:text='${!label_var}':fontcolor=white:fontsize=$CAPTION_SIZE:box=1:boxcolor=black@0.6:boxborderw=16:x=(w-text_w)/2:y=h-th-36")
+    fi
     ffmpeg -y -loglevel error -nostdin \
         -f x11grab -framerate "$FPS" -draw_mouse 0 \
         -video_size "${w}x${h}" -i "${DPY}+${x},${y}" \
+        "${vf[@]+"${vf[@]}"}" \
         -c:v libx264 -preset slow -crf "$CRF" -g "$GOP" \
         -pix_fmt yuv420p -an "$clip" &
     FF_PID=$!
@@ -442,33 +483,44 @@ done
 
 # ------------------------------------------------------------------ stitch --
 
-missing=()
-list_file="$WORK_DIR/concat.txt"
-: >"$list_file"
-for b in "${BEATS[@]}"; do
-    if [[ -s "$WORK_DIR/$b.mp4" ]]; then
-        echo "file '$WORK_DIR/$b.mp4'" >>"$list_file"
-    else
-        missing+=("$b")
+# One concat per output. Beats are shared between outputs and recorded once.
+stitch_output() {
+    local out_name="$1" beat_list="$2"
+    local final="$OUT_DIR/$out_name"
+    local list_file="$WORK_DIR/concat-${out_name%.mp4}.txt"
+    local missing=() b
+
+    : >"$list_file"
+    for b in $beat_list; do
+        if [[ -s "$WORK_DIR/$b.mp4" ]]; then
+            echo "file '$WORK_DIR/$b.mp4'" >>"$list_file"
+        else
+            missing+=("$b")
+        fi
+    done
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        die "$out_name: no clip for ${missing[*]} - record them first, or drop them from OUTPUTS"
     fi
+
+    # Stream copy: the beats already share an encode, so this re-muxes without
+    # re-compressing. +faststart puts the index first so the browser can start
+    # playing before the whole file has arrived.
+    ffmpeg -y -loglevel error -f concat -safe 0 -i "$list_file" \
+        -c copy -movflags +faststart "$final"
+
+    local dur
+    dur="$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$final")"
+    echo "record-demo: $final  ($(du -h "$final" | cut -f1), ${dur%.*}s)"
+}
+
+echo
+for out_name in "${!OUTPUTS[@]}"; do
+    stitch_output "$out_name" "${OUTPUTS[$out_name]}"
 done
-[[ ${#missing[@]} -gt 0 ]] &&
-    die "no clip for: ${missing[*]} - run without --only/--from, or record them first"
 
-final="$OUT_DIR/demo.mp4"
 poster="$OUT_DIR/demo-poster.jpg"
-
-# Stream copy: the beats already share an encode, so this re-muxes without
-# re-compressing. +faststart puts the index first so the browser can start
-# playing before the whole file has arrived.
-ffmpeg -y -loglevel error -f concat -safe 0 -i "$list_file" \
-    -c copy -movflags +faststart "$final"
-poster_src="$final"
+poster_src="$OUT_DIR/demo.mp4"
 [[ -n "$POSTER_BEAT" && -s "$WORK_DIR/$POSTER_BEAT.mp4" ]] &&
     poster_src="$WORK_DIR/$POSTER_BEAT.mp4"
 ffmpeg -y -loglevel error -sseof -0.5 -i "$poster_src" -update 1 -q:v 4 "$poster"
-
-dur="$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$final")"
-echo
-echo "record-demo: $final  ($(du -h "$final" | cut -f1), ${dur%.*}s)"
 echo "record-demo: $poster ($(du -h "$poster" | cut -f1))"
