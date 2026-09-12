@@ -67,13 +67,41 @@ GOP=60
 
 # ---------------------------------------------------------------- the beats --
 
-BEATS=(browse_tree open_comic)
+BEATS=(browse_tree open_comic censored_stories)
 
 # Take the poster frame from the end of this beat rather than the end of the
 # whole video: the browse view carries the app's chrome, tree and title card,
 # which says "this is a reader app" better than a bare comic page does. Empty
 # means the last frame of the finished video.
 POSTER_BEAT=browse_tree
+
+# Stories the censored_stories beat opens, named by the app's title enum - the
+# name the app logs in "New selected node". Change this list to change the demo;
+# nothing else needs touching.
+#
+# They must be listed in TREE order, which is chronological, because the beat
+# only ever walks downward. The node holds these seventeen, in this order:
+#
+#   GOOD_DEEDS FROZEN_GOLD ICEBOX_ROBBER_THE FIREBUG_THE SILENT_NIGHT
+#   TERROR_OF_THE_RIVER_THE SWIMMING_SWINDLERS BILL_COLLECTORS_THE
+#   GOLDEN_CHRISTMAS_TREE_THE LOST_IN_THE_ANDES VOODOO_HOODOO TRICK_OR_TREAT
+#   BACK_TO_THE_KLONDIKE GOLDEN_FLEECING_THE LAND_BENEATH_THE_GROUND
+#   LOVELORN_FIREMAN_THE BONGO_ON_THE_CONGO
+#
+# To regenerate that list after a tag change:
+#   uv run python -c "
+#   from barks_fantagraphics.barks_tags import BARKS_TAGGED_TITLES
+#   from barks_fantagraphics.barks_tags_enums import Tags
+#   from barks_fantagraphics.barks_titles import Titles
+#   order = {t: i for i, t in enumerate(Titles)}
+#   print([t.name for t in sorted(
+#       BARKS_TAGGED_TITLES[Tags.CENSORED_STORIES_BUT_FIXED], key=lambda t: order[t])])"
+CENSORED_PICKS=(FROZEN_GOLD LOST_IN_THE_ANDES BACK_TO_THE_KLONDIKE)
+
+# Seconds to dwell on each opened story's first page.
+PICK_DWELL=2.5
+# Pace of a single Down while walking the tree on camera.
+WALK_PAUSE=0.45
 
 NODE_browse_tree='["1947-1950", "Comics and Stories", "Series", "The Stories", "root"]'
 beat_browse_tree() {
@@ -116,9 +144,52 @@ beat_open_comic() {
 # Right is next-page in the reader (reader_keyboard_nav._handle_reading_key).
 # Waiting on the render keeps the dwell honest when a page loads slowly.
 turn_page() {
-    probe key Right
-    wait_for "Showed page $1" 15
+    key_then_wait "Showed page $1" 15 Right
     hold 2.2
+}
+
+NODE_censored_stories='["The Stories", "root"]'
+beat_censored_stories() {
+    # Drill down The Stories > Categories > Themes > censored but fixed stories,
+    # then open each configured pick. The drill-down stays on camera: the
+    # thematic indexes are the point of the beat, not just the stories.
+    hold 1.0
+    open_branch Categories
+    open_branch Themes
+    open_branch "censored but fixed stories"
+    hold 1.0
+
+    local title
+    for title in "${CENSORED_PICKS[@]}"; do
+        select_node "$title"
+        hold 0.8
+        open_selected_title
+    done
+}
+
+# Walk down to a collapsed node and expand it.
+open_branch() {
+    select_node "$1"
+    hold 0.3
+    probe key Return
+    probe settle
+    hold 0.4
+}
+
+# Open the selected title, dwell on its first page, and come back to the tree.
+open_selected_title() {
+    probe key Return # focus the title view read portal
+    hold 0.6
+    key_then_wait "All images loaded" 30 Return
+    hold "$PICK_DWELL"
+    probe key Escape # reader menu mode; Go Back is focused by default
+    hold 0.4
+    key_then_wait "Main screen is active" 15 Return
+    hold 0.5
+    # Closing the reader leaves focus in the bottom region, where Down does
+    # nothing to the tree. Escape hands it back (main_screen_nav:243).
+    probe key Escape
+    probe settle
 }
 
 # --------------------------------------------------------- beat primitives --
@@ -133,6 +204,63 @@ probe() {
 # loudly instead of silently recording the wrong screen.
 hold() {
     sleep "$1"
+}
+
+# The node the app last logged as selected. Title nodes log their enum name
+# (FROZEN_GOLD), category nodes their text ("Themes").
+current_node() {
+    grep -oP '(?<=New selected node: ")[^"]+' "$APP_LOG" | tail -1
+}
+
+# Walk the tree downward until `want` is the selected node. Name-driven rather
+# than a counted run of Downs, so a title added upstream shifts the walk instead
+# of silently landing the demo on the wrong story. Only ever goes down, so picks
+# have to be in tree order.
+select_node() {
+    local want="$1" max="${2:-60}" i cur prev stalled=0
+    cur="$(current_node)"
+    for ((i = 0; i < max; i++)); do
+        [[ "$cur" == "$want" ]] && return 0
+        prev="$cur"
+        probe key Down
+        sleep "$WALK_PAUSE"
+        cur="$(current_node)"
+        if [[ "$cur" == "$prev" ]]; then
+            # One swallowed keypress during a render is normal; two in a row
+            # means the selection cannot move any further down.
+            stalled=$((stalled + 1))
+            if [[ $stalled -ge 2 ]]; then
+                die "tree stopped at \"$cur\" before reaching \"$want\" - is it above the current position, or in another branch?"
+            fi
+        else
+            stalled=0
+        fi
+    done
+    die "never reached node \"$want\" in $max steps"
+}
+
+# How many times `pattern` has appeared in the log so far.
+match_count() {
+    grep -cE "$1" "$APP_LOG" 2>/dev/null || true
+}
+
+# Press keys, then block until a NEW occurrence of `pattern` lands. gui-probe's
+# own `wait` greps the whole log, so a marker that fires once per comic matches
+# the previous comic and returns instantly - which would cut away from a story
+# before it had drawn.
+key_then_wait() {
+    local pattern="$1" timeout="$2"
+    shift 2
+    local before waited=0
+    before="$(match_count "$pattern")"
+    probe key "$@"
+    while [[ "$(match_count "$pattern")" -le "$before" ]]; do
+        sleep 0.5
+        waited=$((waited + 1))
+        if [[ $((waited / 2)) -ge $timeout ]]; then
+            die "beat stalled: no new /$pattern/ in the app log after ${timeout}s"
+        fi
+    done
 }
 
 # Block until the app log shows a state was reached. Unlike `hold`, this fails
@@ -184,11 +312,18 @@ command -v ffmpeg >/dev/null || die "ffmpeg not found (sudo apt install ffmpeg)"
 
 FF_PID=""
 CONFIG_JSON="$("$PROBE" config)"
+APP_LOG="$("$PROBE" log)"
 MY_BACKUP="$(mktemp -t barks-demo-config.XXXXXX.json)"
 
 cleanup() {
-    [[ -n "$FF_PID" ]] && kill -INT "$FF_PID" 2>/dev/null && wait "$FF_PID" 2>/dev/null
-    "$PROBE" stop >/dev/null 2>&1 || true
+    # No `set -e` in here: a failure part way through would skip the config
+    # restore below and leave the user's saved node pointing at a beat's start.
+    set +e
+    if [[ -n "$FF_PID" ]]; then
+        kill -INT "$FF_PID" 2>/dev/null
+        wait "$FF_PID" 2>/dev/null
+    fi
+    "$PROBE" stop >/dev/null 2>&1
     # gui-probe restores its own backup, which is the file we edited; put the
     # user's original back on top of it.
     [[ -s "$MY_BACKUP" ]] && cp "$MY_BACKUP" "$CONFIG_JSON"
@@ -282,7 +417,9 @@ elif [[ -n "$FROM" ]]; then
     started=0
     for b in "${BEATS[@]}"; do
         [[ "$b" == "$FROM" ]] && started=1
-        [[ $started -eq 1 ]] && to_record+=("$b")
+        if [[ $started -eq 1 ]]; then
+            to_record+=("$b")
+        fi
     done
 else
     to_record=("${BEATS[@]}")
