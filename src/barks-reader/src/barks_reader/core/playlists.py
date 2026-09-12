@@ -43,6 +43,7 @@ class Playlist:
 BRAVERY_PLAYLIST_ID = "bravery"
 BRITTLE_MASTERY_PLAYLIST_ID = "brittle_mastery"
 PERSISTENCE_PLAYLIST_ID = "persistence"
+PARENTING_PLAYLIST_ID = "parenting"
 
 PLAYLISTS: tuple[Playlist, ...] = (
     Playlist(
@@ -93,6 +94,20 @@ PLAYLISTS: tuple[Playlist, ...] = (
             Titles.OLYMPIC_HOPEFUL_THE,
             Titles.HYPNO_GUN_THE,
             Titles.BIG_TOP_BEDLAM,
+            Titles.THREE_UN_DUCKS,
+        ),
+    ),
+    Playlist(
+        playlist_id=PARENTING_PLAYLIST_ID,
+        heading="The Parenting Stories",
+        intro=("\u201c[i]Ah! We parents! ... What [b]rich[/b] rewards we reap![/i]\u201d"),
+        titles=(
+            Titles.BEE_BUMBLES,
+            Titles.TAMING_THE_RAPIDS,
+            Titles.THREE_UN_DUCKS,
+            Titles.MASTERS_OF_MELODY_THE,
+            Titles.SPOIL_THE_ROD,
+            Titles.HOUSEBOAT_HOLIDAY,
         ),
     ),
 )
