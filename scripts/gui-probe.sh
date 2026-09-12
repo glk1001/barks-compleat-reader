@@ -40,6 +40,10 @@ XEPHYR_LOG="$RUN_DIR/xephyr.log"
 XEPHYR_PID_FILE="$RUN_DIR/xephyr.pid"
 APP_PID_FILE="$RUN_DIR/app.pid"
 CONFIG_BACKUP="$RUN_DIR/barks-reader.json.bak"
+# The reading history is a separate store the app appends to on every comic
+# open, so a probe session that opens comics permanently edits the user's
+# reading journal unless it is saved and put back alongside the config.
+HISTORY_BACKUP="$RUN_DIR/barks-reader-history.json.bak"
 
 # The tree build finishing and the loading popup being dismissed is the last
 # thing that happens before the app is interactive.
@@ -60,6 +64,10 @@ declare -A TOOL_PKGS=(
 die() {
     echo "gui-probe: $*" >&2
     exit 1
+}
+
+history_file() {
+    echo "$(dirname "$(config_file)")/barks-reader-history.json"
 }
 
 config_file() {
@@ -189,6 +197,9 @@ cmd_start() {
     local cfg
     cfg="$(config_file)"
     [[ -f "$cfg" ]] && cp "$cfg" "$CONFIG_BACKUP"
+    local hist
+    hist="$(history_file)"
+    [[ -f "$hist" ]] && cp "$hist" "$HISTORY_BACKUP"
 
     # Detach fully (stdin included). A background child that still holds the
     # caller's stdin/stdout keeps the calling shell's pipeline open, so `start`
@@ -255,6 +266,12 @@ cmd_stop() {
     if [[ -f "$CONFIG_BACKUP" ]]; then
         cp "$CONFIG_BACKUP" "$cfg"
         echo "gui-probe: restored $cfg"
+    fi
+    local hist
+    hist="$(history_file)"
+    if [[ -f "$HISTORY_BACKUP" ]]; then
+        cp "$HISTORY_BACKUP" "$hist"
+        echo "gui-probe: restored $hist"
     fi
     rm -f "$XEPHYR_PID_FILE" "$APP_PID_FILE"
     echo "gui-probe: stopped"
