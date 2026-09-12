@@ -427,6 +427,10 @@ class SearchScreen(FloatLayout):
             return
 
         words = self._get_words_matching_prefix(text)
+        # A query that matches nothing otherwise looks exactly like a query that
+        # never ran: the only word-search log line fires on picking a chip, so a
+        # search returning zero leaves no trace at all.
+        logger.debug(f'Word search: "{text}" matched {len(words)} words.')
 
         for i, word in enumerate(words):
             btn = _SearchResultButton(text=word, row_index=i, color=theme().text_secondary)
