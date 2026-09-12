@@ -17,7 +17,12 @@
 # To add a beat
 #   1. Append its name to BEATS (order here is the order on screen).
 #   2. Define NODE_<name> - the tree node to boot onto, leaf-to-root, as the
-#      JSON array the app stores in AAA_Settings.last_selected_node.
+#      JSON array the app stores in AAA_Settings.last_selected_node. Leaf
+#      stories go in by enum name (LOST_IN_THE_ANDES), not display title, and
+#      the chain has to be exact - the app selects nothing if it is not. The
+#      surest way to get one is to navigate there by hand once and read back
+#      what the app saved. Booting expands the path, so the node's children are
+#      already on screen and a beat can walk straight into them.
 #   3. Define beat_<name> - the keystrokes, using probe/hold/wait_for below.
 #   Optionally define setup_<name>, which runs after the app is up but BEFORE
 #   the recording starts, for navigation that should not appear on screen.
@@ -37,7 +42,7 @@
 #   scripts/record-demo.sh                  # all beats -> website/demo.mp4
 #   scripts/record-demo.sh --list
 #   scripts/record-demo.sh --only browse_tree
-#   scripts/record-demo.sh --from open_title
+#   scripts/record-demo.sh --from read_story
 #   scripts/record-demo.sh --stitch         # rebuild from cached beats, no app
 #   scripts/record-demo.sh --out /tmp/preview
 #   scripts/record-demo.sh --clean          # drop cached beat clips first
@@ -68,14 +73,25 @@ GOP=60
 # ---------------------------------------------------------------- the beats --
 
 # Every beat that gets recorded, in canonical order.
-BEATS=(browse_tree open_comic censored_stories)
+BEATS=(
+    browse_tree
+    series_view
+    search_story
+    search_words
+    open_comic
+    read_story
+    wiki_jump
+    speech_index
+    censored_stories
+    history
+)
 
 # What gets stitched, and from which beats. A beat can appear in more than one
 # output; it is only ever recorded once. The short hero loop is what autoplays
 # at the top of the intro tab; the walkthrough is the linked long-form tour.
 declare -A OUTPUTS=(
     [demo.mp4]="browse_tree open_comic"
-    [walkthrough.mp4]="browse_tree open_comic censored_stories"
+    [walkthrough.mp4]="browse_tree series_view search_story search_words read_story wiki_jump speech_index censored_stories history"
 )
 
 # Take the poster frame from the end of this beat rather than the end of the
@@ -113,13 +129,29 @@ PAGES_PER_PICK=2
 # Seconds to dwell on each page of an opened story.
 PICK_DWELL=2.5
 
+# What the two search beats type. Keep them short - every character is typed
+# with a visible pause, so a long query makes for a slow beat.
+SEARCH_TITLE_QUERY="gold"
+SEARCH_WORD_QUERY="egg"
+
+# The story the read_story beat opens. Must be in the censored-but-fixed node,
+# same as CENSORED_PICKS, because that is the branch its setup walks.
+READ_STORY_PICK=LOST_IN_THE_ANDES
+
 # Caption burned into the bottom of each beat. A walkthrough this long is
 # unreadable silent - the viewer can see what happens but not why - and a
 # caption keeps the whole thing regenerable in a way a voice-over would not.
 # Keep them short and free of ':' and \''' (ffmpeg drawtext metacharacters).
 LABEL_browse_tree="Every Barks Disney story, in order"
+LABEL_series_view="Or by the series they ran in"
+LABEL_search_story="Find a story by name"
+LABEL_search_words="Search every word the characters speak"
 LABEL_open_comic="Open any story and read it"
+LABEL_read_story="Two-page spreads, the way it was printed"
+LABEL_wiki_jump="Every story linked to the Carl Barks Wiki"
+LABEL_speech_index="A full speech-bubble index, A to Z"
 LABEL_censored_stories="Browse by theme - censored stories, restored"
+LABEL_history="Pick up where you left off"
 
 FONT=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
 CAPTION_SIZE=30
@@ -145,10 +177,9 @@ NODE_open_comic="$NODE_browse_tree"
 setup_open_comic() {
     # Land on the title browse_tree settles on, off camera, so this beat opens
     # already on the title view and reads as a continuation of the cut before
-    # it. Driving here rather than booting straight onto the title node is
-    # deliberate: last_selected_node for a leaf title did not restore in
-    # testing (the app came up with nothing selected), whereas the range node
-    # plus four Downs is exactly what the previous beat already does.
+    # it. It could boot straight onto the title node instead - leaf titles are
+    # stored under their enum name, as NODE_wiki_jump does - but repeating the
+    # previous beat's four Downs is what makes the two cuts line up.
     probe key Down Down Down Down
     probe settle
 }
@@ -221,6 +252,133 @@ open_selected_title() {
     # nothing to the tree. Escape hands it back (main_screen_nav:243).
     probe key Escape
     probe settle
+}
+
+NODE_series_view='["Series", "The Stories", "root"]'
+beat_series_view() {
+    # Booting here has already expanded Series, so the three series are on
+    # screen and this only has to walk into them.
+    hold 1.2
+    select_node "Comics and Stories"
+    hold 0.9
+    select_node "Donald Duck Adventures"
+    hold 0.9
+    select_node "Uncle Scrooge Adventures"
+    hold 1.0
+    probe key Return # expand it to show the volumes
+    probe settle
+    hold 2.0
+}
+
+NODE_search_story='["Titles", "Search", "root"]'
+beat_search_story() {
+    hold 1.0
+    probe key Return # open the title search and focus its box
+    probe settle
+    hold 0.6
+    type_slowly "$SEARCH_TITLE_QUERY"
+    probe settle
+    hold 1.2
+    probe key Down # move focus from the box into the result list
+    probe settle
+    hold 0.8
+    probe key Return # jump the tree to that story
+    probe settle
+    hold 2.5
+}
+
+NODE_search_words='["Words", "Search", "root"]'
+beat_search_words() {
+    hold 1.0
+    probe key Return
+    probe settle
+    hold 0.6
+    type_slowly "$SEARCH_WORD_QUERY"
+    probe settle
+    hold 1.5
+    probe key Down # focus the first matching word chip
+    probe settle
+    hold 0.6
+    key_then_wait "Word search: selected chip" 15 Return
+    hold 3.5 # the list of every story the word is spoken in
+}
+
+NODE_read_story="$NODE_censored_stories"
+setup_read_story() {
+    # Off camera: reach the story this beat reads, so the recording opens on it.
+    open_branch Categories
+    open_branch Themes
+    open_branch "censored but fixed stories"
+    select_node "$READ_STORY_PICK"
+}
+beat_read_story() {
+    hold 1.0
+    probe settle
+    probe key Return # focus the title view read portal
+    hold 0.6
+    key_then_wait "All images loaded" 30 Return
+    hold "$PICK_DWELL"
+    key_then_wait "Showed page" 15 Right
+    hold "$PICK_DWELL"
+    # Reader action bar order is fullscreen, double page, start, end, goto, close,
+    # and menu mode opens focused on close - so two Rights wrap round to the
+    # double-page button. Fullscreen is deliberately not shown: with no window
+    # manager on the nested display it resizes the window, and the recorder is
+    # grabbing a fixed region.
+    probe key Escape
+    hold 0.5
+    probe key Right
+    hold 0.4
+    probe key Right
+    hold 0.4
+    probe key Return
+    probe settle
+    hold 3.5
+}
+
+NODE_wiki_jump='["LOST_IN_THE_ANDES", "censored but fixed stories", "Themes", "Categories", "The Stories", "root"]'
+beat_wiki_jump() {
+    hold 1.5
+    # Right enters the title view at its first nav widget; the wiki button is
+    # always the second when a story has a wiki page, so one Down reaches it
+    # whatever else the title view is showing.
+    probe key Right
+    probe settle
+    hold 0.5
+    probe key Down
+    probe settle
+    hold 0.8
+    key_then_wait "Wiki reader screen is active" 30 Return
+    hold 2.5
+    local i
+    for ((i = 0; i < 3; i++)); do
+        probe key Down
+        hold 0.9
+    done
+    hold 1.0
+}
+
+NODE_speech_index='["Speech Bubble Index", "Indexes", "root"]'
+beat_speech_index() {
+    hold 1.2
+    probe key Return # open the index screen
+    probe settle
+    hold 2.5
+    # Walk the A-Z letters; each one repopulates the word grid.
+    local i
+    for ((i = 0; i < 3; i++)); do
+        key_then_wait "Populated index page for letter" 15 Down
+        hold 1.6
+    done
+    hold 1.0
+}
+
+NODE_history='["History", "Reading", "root"]'
+beat_history() {
+    hold 1.2
+    probe key Return # open the reading journal
+    probe settle
+    hold 4.0
 }
 
 # --------------------------------------------------------- beat primitives --
