@@ -104,6 +104,13 @@ TYPE_PAUSE = 0.4  # pace of a single character into a search box
 # "this is a reader app" better than a bare comic page does.
 POSTER_BEAT = "browse_tree"
 
+# Where browse_tree goes once it has opened the tree, and how far down into that
+# range's title list it walks. open_comic's setup repeats the same number of
+# steps so the cut between the two beats lands on the same story - they share
+# this constant rather than each carrying their own count.
+BROWSE_RANGE = "1947-1950"
+BROWSE_TITLE_STEPS = 7
+
 # What the two search beats type. Keep them short - every character is typed with
 # a visible pause, so a long query makes for a slow beat.
 SEARCH_TITLE_QUERY = "gold"
@@ -440,17 +447,42 @@ class Driver:
 # ---------------------------------------------------------------- the beats --
 
 
+def _setup_browse_tree(d: Driver) -> None:
+    # Booting expands the whole chain down to the node, including the node
+    # itself, so there is no start node that gives a closed tree. One Left
+    # collapses The Stories again, off camera, leaving every top-level node shut
+    # and the selection still on it - so the beat's first move on screen is the
+    # tree opening.
+    d.key("Left")
+    d.settle()
+
+
 @beat(
     "browse_tree",
-    node=["1947-1950", "Chronological", "The Stories", "root"],
+    node=["The Stories", "root"],
     label="Every Barks Disney story, in order",
+    setup=_setup_browse_tree,
 )
 def browse_tree(d: Driver) -> None:
-    # Arrow down the chronological list and settle on a title, letting the bottom
-    # panel render its title view. Keyboard only: this doubles as the
-    # 10-foot/remote story, and it keeps the pointer out of the frame.
+    # Open the tree a level at a time, then arrow down the chronological list and
+    # settle on a title, letting the bottom panel render its title view. Keyboard
+    # only: this doubles as the 10-foot/remote story, and it keeps the pointer
+    # out of the frame.
     d.hold(1.2)
-    for _ in range(7):
+    d.key("Return")  # open The Stories
+    d.settle()
+    d.hold(0.8)
+    d.select_node("Chronological")
+    d.hold(0.6)
+    d.key("Return")  # open it, showing the year ranges
+    d.settle()
+    d.hold(0.8)
+    d.select_node(BROWSE_RANGE)
+    d.hold(0.6)
+    d.key("Return")  # open the range, showing its stories
+    d.settle()
+    d.hold(1.0)
+    for _ in range(BROWSE_TITLE_STEPS):
         d.key("Down")
         d.hold(0.75)
     d.settle()
@@ -463,13 +495,13 @@ def _setup_open_comic(d: Driver) -> None:
     # It could boot straight onto the title node instead - leaf titles are stored
     # under their enum name, as wiki_jump does - but repeating the previous
     # beat's Downs is what makes the two cuts line up, so the counts must match.
-    d.key(*["Down"] * 7)
+    d.key(*["Down"] * BROWSE_TITLE_STEPS)
     d.settle()
 
 
 @beat(
     "open_comic",
-    node=["1947-1950", "Chronological", "The Stories", "root"],
+    node=[BROWSE_RANGE, "Chronological", "The Stories", "root"],
     label="Open any story and read it",
     setup=_setup_open_comic,
 )

@@ -158,6 +158,22 @@ class TestSelectNode:
             driver.select_node("Nowhere")
 
 
+class TestCutAlignment:
+    """browse_tree and open_comic must land on the same story, or the cut jumps."""
+
+    def test_open_comic_setup_walks_the_shared_number_of_steps(self) -> None:
+        driver = _stub_driver()
+        setup = find_beat("open_comic").setup
+        assert setup is not None, "open_comic needs a setup to line its cut up"
+        with patch.object(Driver, "key") as key, patch.object(Driver, "settle"):
+            setup(driver)
+        downs = [k for call in key.call_args_list for k in call.args]
+        assert downs == ["Down"] * record_demo.BROWSE_TITLE_STEPS
+
+    def test_open_comic_starts_in_the_range_browse_tree_opens(self) -> None:
+        assert find_beat("open_comic").node[0] == record_demo.BROWSE_RANGE
+
+
 class TestReadPages:
     """Every beat that reads a comic turns exactly `pages - 1` times."""
 
