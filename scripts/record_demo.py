@@ -70,7 +70,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -1205,6 +1205,67 @@ def duration_of(path: Path) -> float:
     return float(output) if output else 0.0
 
 
+@dataclass(frozen=True)
+class Chapter:
+    """Where one beat falls in a stitched video, in seconds from its start."""
+
+    beat: str
+    title: str
+    start: float
+    end: float
+
+
+def chapter_list(beats: Sequence[str], work_dir: Path) -> list[Chapter]:
+    """Describe where each beat falls in the stitched video.
+
+    Generated rather than written down: the times move whenever a beat's pacing
+    changes or it is re-recorded, and a hand-maintained list would be wrong the
+    first time someone changed a dwell - silently, since nothing would check it.
+
+    Args:
+        beats: The beats making up the video, in order.
+        work_dir: Where the cached beat clips live.
+
+    Returns:
+        One entry per beat, with its caption as the chapter title and its start
+        and end in seconds from the beginning of the video.
+
+    """
+    chapters: list[Chapter] = []
+    start = 0.0
+    for name in beats:
+        length = duration_of(work_dir / f"{name}.mp4")
+        chapters.append(
+            Chapter(
+                beat=name,
+                title=find_beat(name).label or name,
+                start=round(start, 2),
+                end=round(start + length, 2),
+            )
+        )
+        start += length
+    return chapters
+
+
+def write_chapters(video: Path, beats: Sequence[str], work_dir: Path) -> Path:
+    """Write the chapter manifest beside its video, and check it lines up."""
+    chapters = chapter_list(beats, work_dir)
+    manifest = video.with_name(f"{video.stem}-chapters.json")
+    manifest.write_text(json.dumps([asdict(c) for c in chapters], indent=2) + "\n")
+
+    # The concat is a stream copy, so the parts should add up to the whole. If
+    # they ever do not, every chapter after the drift points at the wrong moment.
+    total = duration_of(video)
+    last_end = chapters[-1].end if chapters else 0.0
+    drift = abs(total - last_end)
+    if drift > 0.5:  # noqa: PLR2004
+        say(
+            f"record-demo: WARNING {manifest.name} ends at {last_end:.1f}s"
+            f" but {video.name} runs {total:.1f}s"
+        )
+    return manifest
+
+
 def stitch(name: str, beats: Sequence[str], out_dir: Path, work_dir: Path) -> Path:
     """Concatenate cached beat clips into one output video.
 
@@ -1241,7 +1302,11 @@ def stitch(name: str, beats: Sequence[str], out_dir: Path, work_dir: Path) -> Pa
             str(final),
         ],
     )
-    say(f"record-demo: {final}  ({_human_size(final)}, {duration_of(final):.0f}s)")
+    manifest = write_chapters(final, beats, work_dir)
+    say(
+        f"record-demo: {final}  ({_human_size(final)}, {duration_of(final):.0f}s,"
+        f" {len(beats)} chapters -> {manifest.name})"
+    )
     return final
 
 

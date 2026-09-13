@@ -245,6 +245,59 @@
             max-height: 560px;
         }
 
+        /* The walkthrough player and its chapter buttons. */
+        .tour {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 26px;
+            align-items: start;
+            margin: 0 0 30px;
+        }
+
+        .tour__frame {
+            background: var(--ink);
+            border: 3px solid var(--ink);
+            border-radius: 4px;
+            box-shadow: 6px 6px 0 var(--ink);
+            overflow: hidden;
+        }
+
+        .tour__frame video {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .tour__now {
+            margin: 10px 0 0;
+            font-style: italic;
+            min-height: 1.4em;
+        }
+
+        .chapter-link {
+            display: inline-block;
+            margin: 10px 12px 0 0;
+            padding: 7px 14px;
+            border: 2px solid var(--ink);
+            border-radius: 4px;
+            background: var(--paper-bright);
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .chapter-link:hover,
+        .chapter-link:focus-visible {
+            background: var(--accent, #c0392b);
+            color: #fff;
+        }
+
+        @media (max-width: 800px) {
+            .tour {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .art-panel--banner {
             margin: 25px 0 30px;
         }
@@ -866,6 +919,22 @@
             <h2>Features</h2>
             <p>Here are the main features of <em>The Compleat Barks Disney Reader.</em></p>
 
+            <div class="tour" id="tour">
+                <div class="tour__frame">
+                    <video id="tour-video" poster="demo-poster.jpg" preload="none"
+                           width="782" height="1224" controls playsinline
+                           aria-label="A tour of the reader, in chapters"></video>
+                </div>
+                <div>
+                    <h3 style="margin-top: 0;">Watch the tour</h3>
+                    <p>Three and a half minutes through the whole reader. Play it end to end, or
+                        jump to the part you care about &mdash; the buttons beside each feature
+                        below start the tour at that chapter.</p>
+                    <button class="chapter-link" data-chapter="*">&#9654; Play the full tour</button>
+                    <p class="tour__now" id="tour-now"></p>
+                </div>
+            </div>
+
             <figure class="art-panel art-panel--banner">
                 <img src="features-bg.jpg" alt="" width="1800" height="600" loading="lazy">
             </figure>
@@ -876,6 +945,8 @@
                     or by series, or category. Story ordering is done using Barks's submission dates
                     &mdash; the dates he recorded as having submitted a story to Western Publishing.
                     Chronological ordering is also maintained through Series and Category titles.</p>
+                <button class="chapter-link" data-chapter="browse_tree">&#9654; Watch this</button>
+                <button class="chapter-link" data-chapter="series_view">&#9654; By series</button>
             </div>
 
             <div class="feature-section">
@@ -892,6 +963,7 @@
                     <em>The Golden Fleecing,</em> Bombie's eyes are white without pupils in
                     <em>Voodoo Hoodoo,</em> and 'Theah' (and similar Southern words) have been
                     replaced with 'Dere' in <em>Lost in the Andes!</em></p>
+                <button class="chapter-link" data-chapter="censored_stories">&#9654; Watch this</button>
             </div>
 
             <div class="feature-section feature-section--split">
@@ -956,6 +1028,9 @@
                         items in each index are linked to the associated page within a story so you
                         can start reading the story directly from the link. There are also
                         corresponding Search functions for Titles/Tags and speech bubbles.</p>
+                    <button class="chapter-link" data-chapter="search_story">&#9654; Search by name</button>
+                    <button class="chapter-link" data-chapter="search_words">&#9654; Search spoken words</button>
+                    <button class="chapter-link" data-chapter="speech_index">&#9654; The index</button>
                 </div>
                 <figure class="art-panel">
                     <img src="screenshot-speech-bubble-index.png" alt="Speech Bubble Index" width="874" height="1365" loading="lazy">
@@ -976,6 +1051,7 @@
                     <p>The wiki is linked into the rest of the app: it opens from the Indexes
                         section of the table of contents, and from any wiki story page you can jump
                         straight to that title in the reader and start reading.</p>
+                    <button class="chapter-link" data-chapter="wiki_jump">&#9654; Watch this</button>
                 </div>
             </div>
 
@@ -1761,6 +1837,85 @@
                 tabs[next].focus();
                 tabs[next].click();
             });
+
+            // The walkthrough is one file; a chapter is a time range within it, read
+            // from a manifest the recorder writes when it stitches the video. The
+            // times move whenever a beat is retimed, so they are never written here.
+            //
+            // The video carries preload="none": nothing is fetched until someone
+            // picks a chapter, and the browser then range-requests from the seek
+            // point rather than pulling the whole file.
+            (function () {
+                const video = document.getElementById('tour-video');
+                const now = document.getElementById('tour-now');
+                const buttons = document.querySelectorAll('[data-chapter]');
+                if (!video || !buttons.length) {
+                    return;
+                }
+
+                const SOURCE = 'walkthrough.mp4';
+                let chapters = {};
+                let stopAt = null;
+
+                // Until the manifest arrives a button would seek nowhere, so they
+                // stay disabled rather than doing nothing when clicked.
+                buttons.forEach(b => { b.disabled = true; });
+
+                fetch('walkthrough-chapters.json')
+                    .then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status))))
+                    .then(list => {
+                        list.forEach(c => { chapters[c.beat] = c; });
+                        buttons.forEach(b => {
+                            const key = b.dataset.chapter;
+                            // A button for a chapter that no longer exists is hidden,
+                            // not left dead: beats come and go.
+                            if (key === '*' || chapters[key]) {
+                                b.disabled = false;
+                            } else {
+                                b.hidden = true;
+                            }
+                        });
+                    })
+                    .catch(() => {
+                        // No manifest: fall back to plain playback of the whole file.
+                        buttons.forEach(b => {
+                            b.disabled = b.dataset.chapter !== '*';
+                            b.hidden = b.dataset.chapter !== '*';
+                        });
+                        const all = document.querySelector('[data-chapter="*"]');
+                        if (all) { all.hidden = false; all.disabled = false; }
+                    });
+
+                function play(from, until, label) {
+                    if (!video.src) { video.src = SOURCE; }
+                    stopAt = until;
+                    now.textContent = label || '';
+                    const start = () => {
+                        video.currentTime = from;
+                        video.play();
+                    };
+                    if (video.readyState >= 1) { start(); }
+                    else { video.addEventListener('loadedmetadata', start, { once: true }); }
+                    video.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+
+                video.addEventListener('timeupdate', () => {
+                    if (stopAt !== null && video.currentTime >= stopAt) {
+                        video.pause();
+                        stopAt = null;
+                    }
+                });
+
+                buttons.forEach(b => b.addEventListener('click', () => {
+                    const key = b.dataset.chapter;
+                    if (key === '*') {
+                        play(0, null, '');
+                        return;
+                    }
+                    const c = chapters[key];
+                    if (c) { play(c.start, c.end, c.title); }
+                }));
+            })();
 
             // A hero that plays by itself is exactly what "prefers reduced motion"
             // is asking us not to do, and no CSS can stop an autoplaying video -

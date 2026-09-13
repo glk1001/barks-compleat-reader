@@ -1,0 +1,56 @@
+[
+  {
+    "beat": "browse_tree",
+    "title": "Every Barks Disney story, in order",
+    "start": 0.0,
+    "end": 22.57
+  },
+  {
+    "beat": "series_view",
+    "title": "Or by the series they ran in",
+    "start": 22.57,
+    "end": 33.63
+  },
+  {
+    "beat": "search_story",
+    "title": "Find a story by name",
+    "start": 33.63,
+    "end": 58.7
+  },
+  {
+    "beat": "search_words",
+    "title": "Search every word the characters speak",
+    "start": 58.7,
+    "end": 72.27
+  },
+  {
+    "beat": "read_story",
+    "title": "Skip to any page, or read two-up as printed",
+    "start": 72.27,
+    "end": 106.83
+  },
+  {
+    "beat": "wiki_jump",
+    "title": "Every story linked to the Carl Barks Wiki",
+    "start": 106.83,
+    "end": 121.4
+  },
+  {
+    "beat": "speech_index",
+    "title": "A full speech-bubble index, A to Z",
+    "start": 121.4,
+    "end": 134.47
+  },
+  {
+    "beat": "censored_stories",
+    "title": "By category - censored stories, restored",
+    "start": 134.47,
+    "end": 210.07
+  },
+  {
+    "beat": "history",
+    "title": "Pick up where you left off",
+    "start": 210.07,
+    "end": 217.63
+  }
+]
