@@ -226,6 +226,20 @@ OPEN_COMIC_PICK = Pick(pages=4, dwell=1.5)
 # them lands exactly. Must exist in READ_STORY_PICK's story, or the jump ends up
 # somewhere else - loudly, since the landing is checked against the log.
 READ_STORY_GOTO_PAGE = 18
+
+# How many Ups wiki_jump takes from the read portal to reach the wiki button.
+#
+# The title view's nav widgets run title-show, wiki, overrides, goto-page,
+# portal, and the middle three only appear when they have something to show.
+# Entering at the portal and walking up therefore depends on what is between:
+# two Ups is right when the goto-page row is there and the overrides row is not,
+# which is the case for a story that has a cued last-read page.
+#
+# That makes this beat depend on the user's own config - clear the cue for
+# NODE_wiki_jump's story and the walk lands on the wrong widget. It fails loudly
+# rather than filming the wrong thing, because the Enter that follows is checked
+# against the log.
+WIKI_UPS_FROM_PORTAL = 2
 GOTO_LIST_DWELL = 1.5  # time the open page list stays on screen before stepping
 GOTO_STEP_PAUSE = 0.12  # pace of a single step through the page list
 
@@ -851,14 +865,20 @@ def read_story(d: Driver) -> None:
 )
 def wiki_jump(d: Driver) -> None:
     d.hold(1.5)
-    # Right enters the title view at its first nav widget; the wiki button is
-    # always the second when a story has a wiki page, so one Down reaches it
-    # whatever else the title view is showing. (Enter enters at the last widget,
-    # the read portal, instead.)
-    d.key("Right")
+    # Enter enters the title view at its last nav widget, the read portal, and
+    # the wiki button is WIKI_UPS_FROM_PORTAL above it.
+    #
+    # Do not be tempted to enter at the first widget with Right and walk down
+    # instead: that route reads better but wedges the app. It logs "entered nav
+    # focus" and then stops responding to the keyboard entirely, sitting at
+    # around 58% CPU with nothing further in the log, so the beat times out
+    # waiting for a button press that never happened.
+    d.key("Return")
     d.settle()
     d.hold(0.5)
-    d.key("Down")
+    for _ in range(WIKI_UPS_FROM_PORTAL):
+        d.key("Up")
+        d.hold(0.3)
     d.settle()
     d.hold(0.8)
     d.key_then_wait("Wiki reader screen is active", 30, "Return")
