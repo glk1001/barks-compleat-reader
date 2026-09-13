@@ -242,16 +242,20 @@
 
         .intro-demo video {
             object-fit: contain;
-            max-height: 560px;
+            max-height: 780px;
         }
 
         /* The walkthrough player and its chapter buttons. */
         .tour {
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            gap: 26px;
-            align-items: start;
             margin: 0 0 30px;
+        }
+
+        /* The capture is 782px wide. Anything narrower than that scales the
+           app's own text down with it, so the player is given native size and
+           centred rather than squeezed into a column beside the copy. */
+        .tour__frame {
+            max-width: 782px;
+            margin: 16px auto 0;
         }
 
         .tour__frame {
@@ -260,6 +264,13 @@
             border-radius: 4px;
             box-shadow: 6px 6px 0 var(--ink);
             overflow: hidden;
+        }
+
+        .tour__hint {
+            margin: 8px 0 0;
+            text-align: center;
+            font-size: 0.9em;
+            opacity: 0.75;
         }
 
         .tour__frame video {
@@ -349,7 +360,7 @@
             }
 
             .intro-demo video {
-                max-height: 420px;
+                max-height: 560px;
             }
         }
 
@@ -920,19 +931,19 @@
             <p>Here are the main features of <em>The Compleat Barks Disney Reader.</em></p>
 
             <div class="tour" id="tour">
+                <h3 style="margin-top: 0;">Watch the tour</h3>
+                <p>Three and a half minutes through the whole reader. Play it end to end, or
+                    jump to the part you care about &mdash; the buttons beside each feature
+                    below start the tour at that chapter.</p>
+                <button class="chapter-link" data-chapter="*">&#9654; Play the full tour</button>
+                <p class="tour__now" id="tour-now"></p>
                 <div class="tour__frame">
                     <video id="tour-video" poster="demo-poster.jpg" preload="none"
                            width="782" height="1224" controls playsinline
                            aria-label="A tour of the reader, in chapters"></video>
                 </div>
-                <div>
-                    <h3 style="margin-top: 0;">Watch the tour</h3>
-                    <p>Three and a half minutes through the whole reader. Play it end to end, or
-                        jump to the part you care about &mdash; the buttons beside each feature
-                        below start the tour at that chapter.</p>
-                    <button class="chapter-link" data-chapter="*">&#9654; Play the full tour</button>
-                    <p class="tour__now" id="tour-now"></p>
-                </div>
+                <p class="tour__hint">Use the player&rsquo;s fullscreen button to fill the
+                    screen &mdash; the reader&rsquo;s own text is small at this size.</p>
             </div>
 
             <figure class="art-panel art-panel--banner">
