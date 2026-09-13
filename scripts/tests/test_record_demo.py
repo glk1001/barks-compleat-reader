@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 
 EXPECTED_REGION = (782, 1224, 59, 10)
 EXPECTED_DOWNS = 2
+THREE_TURNS, FOUR_RESTS = 3, 4
 ODD_HEIGHT, EVEN_HEIGHT = 1225, 1224
 EVEN_WIDTH = 782
 
@@ -155,6 +156,35 @@ class TestSelectNode:
             pytest.raises(BeatError, match='tree stopped at "Bottom"'),
         ):
             driver.select_node("Nowhere")
+
+
+class TestReadPages:
+    """Every beat that reads a comic turns exactly `pages - 1` times."""
+
+    @staticmethod
+    def _turns_for(pages: int) -> int:
+        driver = _stub_driver()
+        with (
+            patch.object(Driver, "key_then_wait") as turn,
+            patch.object(Driver, "hold"),
+        ):
+            driver.read_pages(Pick("X", pages=pages, dwell=0))
+        return turn.call_count
+
+    def test_one_page_never_turns(self) -> None:
+        assert self._turns_for(1) == 0
+
+    def test_turns_one_less_than_the_page_count(self) -> None:
+        assert self._turns_for(4) == THREE_TURNS
+
+    def test_rests_on_every_page(self) -> None:
+        driver = _stub_driver()
+        with (
+            patch.object(Driver, "key_then_wait"),
+            patch.object(Driver, "hold") as rest,
+        ):
+            driver.read_pages(Pick("X", pages=4, dwell=1.5))
+        assert rest.call_count == FOUR_RESTS
 
 
 class TestKeyThenWait:

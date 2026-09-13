@@ -115,14 +115,15 @@ class Pick:
     """A story a beat opens, with its own pacing.
 
     Args:
-        title: The app's title enum, as logged in "New selected node".
+        title: The app's title enum, as logged in "New selected node". Empty for
+            a beat that reaches its comic positionally rather than by name.
         pages: Pages to show, counting the one it opens on. 1 opens and closes
             without turning.
         dwell: Seconds to rest on each of those pages.
 
     """
 
-    title: str
+    title: str = ""
     pages: int = 2
     dwell: float = 2.5
 
@@ -155,6 +156,10 @@ CENSORED_PICKS = (
 # The story read_story opens. Must be in the censored-but-fixed node, because
 # that is the branch its setup walks.
 READ_STORY_PICK = Pick("LOST_IN_THE_ANDES", pages=2, dwell=2.5)
+
+# open_comic reaches its story by walking, not by name, so this sets only its
+# pacing: five pages means the one it opens on plus four turns.
+OPEN_COMIC_PICK = Pick(pages=5, dwell=2.2)
 
 # What gets stitched, and from which beats. A beat can appear in more than one
 # output; it is only ever recorded once. The short hero loop is the one that plays
@@ -396,6 +401,18 @@ class Driver:
         self.settle()
         self.hold(0.4)
 
+    def read_pages(self, pick: Pick) -> None:
+        """Rest on the page the comic opened at, then turn through the rest.
+
+        Waits on the bare "Showed page" marker rather than a page number: a story
+        opens on whatever page the user cued, so the number is not known here,
+        and `key_then_wait` only needs a new render rather than a specific one.
+        """
+        self.hold(pick.dwell)
+        for _ in range(pick.pages - 1):
+            self.key_then_wait("Showed page", 15, "Right")
+            self.hold(pick.dwell)
+
     def open_story(self, pick: Pick) -> None:
         """Open the selected title, read `pick.pages` pages, and return to the tree.
 
@@ -409,12 +426,7 @@ class Driver:
         self.key("Return")  # focus the title view read portal
         self.hold(0.6)
         self.key_then_wait("All images loaded", 30, "Return")
-        self.hold(pick.dwell)
-        # Wait on the bare "Showed page" marker rather than a page number: each
-        # story opens on its own cued page, so the number differs per pick.
-        for _ in range(pick.pages - 1):
-            self.key_then_wait("Showed page", 15, "Right")
-            self.hold(pick.dwell)
+        self.read_pages(pick)
         self.key("Escape")  # reader menu mode; Go Back is focused by default
         self.hold(0.4)
         self.key_then_wait("Main screen is active", 15, "Return")
@@ -467,11 +479,8 @@ def open_comic(d: Driver) -> None:
     d.hold(0.7)
     d.key("Return")  # open the comic
     d.wait_for("All images loaded", 30)
-    d.hold(2.0)
     # Right is next-page in the reader (reader_keyboard_nav._handle_reading_key).
-    for page in (1, 2, 3, 4):
-        d.key_then_wait(f"Showed page {page}", 15, "Right")
-        d.hold(2.2)
+    d.read_pages(OPEN_COMIC_PICK)
     d.hold(0.8)
 
 
@@ -556,9 +565,7 @@ def read_story(d: Driver) -> None:
     d.key("Return")  # focus the title view read portal
     d.hold(0.6)
     d.key_then_wait("All images loaded", 30, "Return")
-    d.hold(READ_STORY_PICK.dwell)
-    d.key_then_wait("Showed page", 15, "Right")
-    d.hold(READ_STORY_PICK.dwell)
+    d.read_pages(READ_STORY_PICK)
     # Reader action bar order is fullscreen, double page, start, end, goto, close,
     # and menu mode opens focused on close - so two Rights wrap round to the
     # double-page button. Fullscreen is deliberately not shown: with no window
