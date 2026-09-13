@@ -133,7 +133,21 @@ RANDOM_SEED: int | None = 20260913
 
 # What the two search beats type. Keep them short - every character is typed with
 # a visible pause, so a long query makes for a slow beat.
-SEARCH_TITLE_QUERY = "gold"
+SEARCH_TITLE_QUERY = "vacation"
+# Which result row to take, counting from 1, and where the rows sit on the
+# nested display.
+#
+# The rows are clicked rather than keyed. There is no keyboard path that
+# survives: the search box keeps the keyboard, so Down moves the text cursor
+# instead of the selection, and whether a press reaches the list at all varies
+# run to run. Clicking is exact here - the nested display has no compositor and
+# no HiDPI scaling, so a screenshot pixel is the pixel to click - and the beat
+# still checks by name which story it landed on, so a layout change fails the
+# run instead of quietly demonstrating a different comic.
+SEARCH_TITLE_RESULT = 2
+SEARCH_RESULT_X = 450
+SEARCH_RESULT_TOP_Y = 695  # centre of the first row
+SEARCH_RESULT_ROW_H = 30
 SEARCH_WORD_QUERY = "egg"
 
 
@@ -176,13 +190,17 @@ class Pick:
 CENSORED_PICKS = (
     Pick("GOOD_DEEDS"),
     Pick("SILENT_NIGHT"),
-    Pick("BILL_COLLECTORS_THE"),
-    Pick("GOLDEN_FLEECING_THE"),
+    Pick("BILL_COLLECTORS_THE", pages=1),
+    Pick("GOLDEN_FLEECING_THE", pages=1),
 )
 
 # The story read_story opens. Must be in the censored-but-fixed node, because
 # that is the branch its setup walks.
 READ_STORY_PICK = Pick("LOST_IN_THE_ANDES", pages=2, dwell=2.5)
+
+# The story search_story finds, and how much of it to read. Its title must be
+# what SEARCH_TITLE_RESULT actually lands on.
+SEARCH_TITLE_PICK = Pick("VACATION_TIME", pages=1, dwell=3.0)
 
 # open_comic reaches its story by walking, not by name, so this sets only its
 # pacing: five pages means the one it opens on plus four turns.
@@ -337,6 +355,10 @@ class Driver:
         """Inject one or more X11 key names, e.g. ``Down``, ``Return``, ``Escape``."""
         self._run(["key", *keys])
 
+    def click(self, x: int, y: int) -> None:
+        """Click at a screenshot pixel on the nested display."""
+        self._run(["click", str(x), str(y)])
+
     def settle(self) -> None:
         """Block until the app has stopped writing to its log, i.e. stopped drawing."""
         self._run(["settle"])
@@ -435,6 +457,20 @@ class Driver:
         """
         before = self.match_count(pattern)
         self.key(*keys)
+        self._await_new(pattern, timeout, before)
+
+    def click_then_wait(self, pattern: str, timeout: float, x: int, y: int) -> None:
+        """Click, then block until a NEW occurrence of `pattern` is logged.
+
+        Raises:
+            BeatError: If no new match arrives within `timeout` seconds.
+
+        """
+        before = self.match_count(pattern)
+        self.click(x, y)
+        self._await_new(pattern, timeout, before)
+
+    def _await_new(self, pattern: str, timeout: float, before: int) -> None:
         deadline = time.monotonic() + timeout
         while self.match_count(pattern) <= before:
             if time.monotonic() > deadline:
@@ -516,6 +552,19 @@ class Driver:
             self.hold(0.4)
         self.key("Return")
         self._menu_focus = name
+
+    def go_back(self) -> None:
+        """Press Go Back on the main screen's action bar, from the tree.
+
+        The main screen has its own action-bar menu, whose focus starts on
+        go-back (main_screen.py sets default_focus_idx=2, deliberately, so that
+        Escape then Enter can never hit the quit button). No beat moves that
+        focus, so unlike the reader's menu this needs no tracking - but the same
+        stickiness would apply if one ever did.
+        """
+        self.key("Escape")  # main screen menu mode, focused on go-back
+        self.hold(0.6)
+        self.key("Return")
 
     def close_reader(self) -> None:
         """Shut the comic reader through its menu, and wait for the main screen."""
@@ -699,6 +748,8 @@ def series_view(d: Driver) -> None:
     label="Find a story by name",
 )
 def search_story(d: Driver) -> None:
+    # A whole round trip: search, pick a result, read a page of it, and come
+    # back to the search still holding the query.
     d.hold(1.0)
     d.key("Return")  # open the title search and focus its box
     d.settle()
@@ -706,10 +757,21 @@ def search_story(d: Driver) -> None:
     d.type_slowly(SEARCH_TITLE_QUERY)
     d.settle()
     d.hold(1.2)
-    d.key("Down")  # move focus from the box into the result list
+
+    row_y = SEARCH_RESULT_TOP_Y + (SEARCH_TITLE_RESULT - 1) * SEARCH_RESULT_ROW_H
+    d.click_then_wait(f'Goto title: "{SEARCH_TITLE_PICK.title}"', 15, SEARCH_RESULT_X, row_y)
+    d.hold(2.5)
+
+    # A goto-title hands focus straight to the read portal, so one Enter opens
+    # the comic - unlike the other beats, which have to focus the portal first.
+    d.key_then_wait("All images loaded", 30, "Return")
+    d.read_pages(SEARCH_TITLE_PICK)
+    d.close_reader()
+    d.hold(1.0)
+    d.key("Escape")  # leave the bottom focus region for the tree
     d.settle()
-    d.hold(0.8)
-    d.key("Return")  # jump the tree to that story
+    d.go_back()
+    d.wait_for("SearchScreen mode set to 'Title'", 15)
     d.settle()
     d.hold(2.5)
 
