@@ -11,6 +11,9 @@ arcnames
 argtypes
 artefacts
 assertable
+autoplay
+autoplaying
+autoplays
 autotune
 autouse
 axisbelow
@@ -142,6 +145,7 @@ passthroughs
 pdfs
 pil
 pixmap
+playsinline
 pnginfo
 powersave
 ppid

@@ -228,6 +228,23 @@
             object-fit: cover;
         }
 
+        .art-panel video {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* The app's window is portrait, so the demo is letterboxed onto the ink
+           rather than cropped to the panel the way the flat art is. */
+        .intro-demo {
+            background: var(--ink);
+        }
+
+        .intro-demo video {
+            object-fit: contain;
+            max-height: 560px;
+        }
+
         .art-panel--banner {
             margin: 25px 0 30px;
         }
@@ -276,6 +293,10 @@
 
             .intro-art {
                 max-height: 340px;
+            }
+
+            .intro-demo video {
+                max-height: 420px;
             }
         }
 
@@ -776,8 +797,13 @@
                     <button class="btn btn--primary btn--large" onclick="openTab(event, 'download')">Go to Downloads</button>
                 </p>
                 </div>
-                <figure class="art-panel intro-art">
-                    <img src="intro-bg.png" alt="" width="845" height="776">
+                <figure class="art-panel intro-art intro-demo">
+                    <video id="demo-video" src="demo.mp4" poster="demo-poster.jpg"
+                           width="782" height="1224"
+                           autoplay muted loop playsinline preload="metadata"
+                           aria-label="The reader in use: opening the story tree, choosing a
+                                       story, and reading it">
+                    </video>
                 </figure>
             </div>
 
@@ -1735,6 +1761,19 @@
                 tabs[next].focus();
                 tabs[next].click();
             });
+
+            // A hero that plays by itself is exactly what "prefers reduced motion"
+            // is asking us not to do, and no CSS can stop an autoplaying video -
+            // so hand those visitors a paused poster with controls instead.
+            (function () {
+                const demo = document.getElementById('demo-video');
+                if (demo && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                    demo.removeAttribute('autoplay');
+                    demo.removeAttribute('loop');
+                    demo.controls = true;
+                    demo.pause();
+                }
+            })();
 
             document.addEventListener('DOMContentLoaded', async function() {
                 // Deep-linking: app.html#installation opens that tab directly.
