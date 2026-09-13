@@ -175,6 +175,13 @@ READ_STORY_PICK = Pick("LOST_IN_THE_ANDES", pages=2, dwell=2.5)
 # pacing: five pages means the one it opens on plus four turns.
 OPEN_COMIC_PICK = Pick(pages=5, dwell=2.2)
 
+# The body page open_comic then jumps to through the goto-page dropdown, to show
+# that the reader can skip about rather than only turn. Must exist in the story
+# it lands on, or the jump lands somewhere else and the beat fails.
+GOTO_PAGE = 18
+GOTO_LIST_DWELL = 1.5  # time the open page list stays on screen before stepping
+GOTO_STEP_PAUSE = 0.12  # pace of a single step down the page list
+
 # What gets stitched, and from which beats. A beat can appear in more than one
 # output; it is only ever recorded once. The short hero loop is the one that plays
 # by itself at the top of the intro tab; the walkthrough is the linked tour.
@@ -427,6 +434,34 @@ class Driver:
             self.key_then_wait("Showed page", 15, "Right")
             self.hold(pick.dwell)
 
+    def goto_page(self, target: int, current: int) -> None:
+        """Jump to a body page through the reader's goto-page dropdown.
+
+        Menu mode opens focused on the close button and goto-page is the one
+        before it, so a single Left reaches it. The dropdown then opens focused
+        on the *current* page and lists the body pages in order, so the number of
+        steps is just the difference between the two page numbers - the
+        non-body entries in front of page 1 do not come into it.
+
+        Args:
+            target: The body page to land on.
+            current: The body page the reader is showing now.
+
+        """
+        self.key("Escape")  # reader menu mode, focused on close
+        self.hold(0.5)
+        self.key("Left")  # ... and goto-page is the button before it
+        self.hold(0.5)
+        self.key("Return")  # open the page list
+        self.settle()
+        self.hold(GOTO_LIST_DWELL)
+        step = "Down" if target > current else "Up"
+        for _ in range(abs(target - current)):
+            self.key(step)
+            self.hold(GOTO_STEP_PAUSE)
+        self.hold(0.6)
+        self.key_then_wait(f"Showed page {target}", 15, "Return")
+
     def open_story(self, pick: Pick) -> None:
         """Open the selected title, read `pick.pages` pages, and return to the tree.
 
@@ -520,7 +555,10 @@ def open_comic(d: Driver) -> None:
     d.wait_for("All images loaded", 30)
     # Right is next-page in the reader (reader_keyboard_nav._handle_reading_key).
     d.read_pages(OPEN_COMIC_PICK)
-    d.hold(0.8)
+    # read_pages opens on the cover and turns, so the reader is showing one page
+    # less than the count it was given.
+    d.goto_page(GOTO_PAGE, OPEN_COMIC_PICK.pages - 1)
+    d.hold(2.5)
 
 
 @beat(

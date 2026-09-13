@@ -203,6 +203,45 @@ class TestReadPages:
         assert rest.call_count == FOUR_RESTS
 
 
+class TestGotoPage:
+    """Steps through the page list are the difference between two page numbers."""
+
+    @staticmethod
+    def _steps(target: int, current: int) -> list[str]:
+        driver = _stub_driver()
+        with (
+            patch.object(Driver, "key") as key,
+            patch.object(Driver, "key_then_wait"),
+            patch.object(Driver, "settle"),
+            patch.object(Driver, "hold"),
+        ):
+            driver.goto_page(target, current)
+        pressed = [k for call in key.call_args_list for k in call.args]
+        return pressed[2:]  # past the Escape and Left that reach the button
+
+    def test_steps_down_to_a_later_page(self) -> None:
+        steps = self._steps(18, 4)
+        assert steps == ["Return", *["Down"] * 14]
+
+    def test_steps_up_to_an_earlier_page(self) -> None:
+        steps = self._steps(2, 5)
+        assert steps == ["Return", *["Up"] * 3]
+
+    def test_no_steps_when_already_there(self) -> None:
+        assert self._steps(7, 7) == ["Return"]
+
+    def test_waits_for_the_page_it_asked_for(self) -> None:
+        driver = _stub_driver()
+        with (
+            patch.object(Driver, "key"),
+            patch.object(Driver, "key_then_wait") as wait,
+            patch.object(Driver, "settle"),
+            patch.object(Driver, "hold"),
+        ):
+            driver.goto_page(18, 4)
+        assert wait.call_args.args[0] == "Showed page 18"
+
+
 class TestKeyThenWait:
     def test_waits_for_a_new_match_not_an_old_one(self) -> None:
         """Regression: the marker fires once per comic, so an old match must not count.
