@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -10,12 +11,14 @@ from unittest.mock import patch
 import pytest
 from barks_reader.core import config_info
 from barks_reader.core.config_info import (
+    RANDOM_SEED_ENV_VAR,
     ConfigInfo,
     _assert_kivy_not_yet_imported,
     _find_dir_under_directory,
     barks_reader_installer_failed,
     get_barks_reader_installer_failed_flag_file,
     remove_barks_reader_installer_failed_flag,
+    seed_random_from_env,
     set_barks_reader_installer_failed_flag,
 )
 from barks_reader.core.platform_info import Platform
@@ -181,3 +184,44 @@ class TestFindDirUnderDirectory:
         (tmp_path / "beta").mkdir()
 
         assert _find_dir_under_directory(tmp_path, "nope") == []
+
+
+# ---------------------------------------------------------------------------
+# seed_random_from_env
+# ---------------------------------------------------------------------------
+
+
+class TestSeedRandomFromEnv:
+    """Opt-in determinism: unset, the app keeps picking different art each run."""
+
+    @staticmethod
+    def _sample() -> list[float]:
+        return [random.random() for _ in range(5)]
+
+    def test_unset_does_not_seed(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv(RANDOM_SEED_ENV_VAR, raising=False)
+        assert seed_random_from_env() is None
+
+    def test_same_seed_gives_the_same_sequence(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv(RANDOM_SEED_ENV_VAR, "1234")
+        assert seed_random_from_env() == 1234  # noqa: PLR2004
+        first = self._sample()
+        seed_random_from_env()
+        assert self._sample() == first
+
+    def test_different_seeds_give_different_sequences(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv(RANDOM_SEED_ENV_VAR, "1")
+        seed_random_from_env()
+        first = self._sample()
+        monkeypatch.setenv(RANDOM_SEED_ENV_VAR, "2")
+        seed_random_from_env()
+        assert self._sample() != first
+
+    def test_a_non_number_is_ignored_rather_than_fatal(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A typo in the variable must not stop the app starting."""
+        monkeypatch.setenv(RANDOM_SEED_ENV_VAR, "banana")
+        assert seed_random_from_env() is None

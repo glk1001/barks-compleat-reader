@@ -47,6 +47,7 @@ dateutil
 decryptor
 dedup
 dejavu
+delenv
 docstrings
 dotenv
 edgecolor

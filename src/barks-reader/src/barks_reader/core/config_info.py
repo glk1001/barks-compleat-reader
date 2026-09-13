@@ -2,6 +2,7 @@
 # ruff: noqa: ERA001
 
 import os
+import random
 import sys
 from pathlib import Path
 
@@ -17,6 +18,7 @@ APP_NAME = "barks-reader"
 IS_COMPILED = "__compiled__" in globals()
 
 BARKS_READER_INSTALLER_FAILED_FLAG_FILE = "barks-reader-installer-failed.flag"
+RANDOM_SEED_ENV_VAR = "BARKS_READER_RANDOM_SEED"
 IOS_CONFIG_DIR = "~/Documents"
 
 LINUX_FANTA_VOLUMES_SEARCH_PATH = ["~/opt/barks-reader", "~/Documents", "~/Books"]
@@ -200,6 +202,37 @@ class ConfigInfo:
             return Path(os.environ[app_env_var])
 
         return self.app_dir
+
+
+def seed_random_from_env() -> int | None:
+    """Pin the global random sequence when BARKS_READER_RANDOM_SEED is set.
+
+    The reader picks its backgrounds, insets and fun images with the global
+    ``random`` module, so every launch looks different. That is the point in
+    normal use, but it makes a scripted run unrepeatable: the same keystrokes
+    produce different pictures every time, so a re-recorded demo clip never
+    matches the one it replaces and two runs cannot be compared.
+
+    With the variable unset - the normal case - nothing is seeded and the app
+    behaves exactly as before.
+
+    Returns:
+        The seed that was applied, or None if the variable was unset or not a
+        whole number.
+
+    """
+    raw = os.environ.get(RANDOM_SEED_ENV_VAR)
+    if raw is None:
+        return None
+    try:
+        seed = int(raw)
+    except ValueError:
+        logger.warning(f'Ignoring {RANDOM_SEED_ENV_VAR}="{raw}": expected a whole number.')
+        return None
+
+    random.seed(seed)
+    logger.info(f"Random seed pinned to {seed} by {RANDOM_SEED_ENV_VAR}.")
+    return seed
 
 
 def barks_reader_installer_failed() -> bool:

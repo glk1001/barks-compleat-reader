@@ -27,6 +27,7 @@ from barks_reader.core.config_info import (
     get_log_level,
     get_log_path,
     log_level,
+    seed_random_from_env,
     setup_loguru,
 )
 from barks_reader.core.minimal_config_info import MinimalConfigOptions, get_minimal_config_options
@@ -345,6 +346,9 @@ def main(
     config_info.error_background_path = minimal_options.error_background_path
 
     start_logging(config_info, minimal_options)
+
+    # Before anything picks an image: opt-in, and a no-op unless the env var is set.
+    seed_random_from_env()
 
     update_window_size(win_height, win_left, win_top, minimal_options)
 
