@@ -129,7 +129,7 @@ SETUP_PACE = 0.25
 # same backgrounds and insets as the one it replaces and two runs can be compared
 # frame for frame. Any fixed number does; it only has to be the same every time.
 # Set to None to let the app pick freshly, as it does for a normal user.
-RANDOM_SEED: int | None = 20260913
+RANDOM_SEED: int | None = 20260914
 
 # What the two search beats type. Keep them short - every character is typed with
 # a visible pause, so a long query makes for a slow beat.
@@ -200,7 +200,7 @@ READ_STORY_PICK = Pick("LOST_IN_THE_ANDES", pages=2, dwell=2.5)
 
 # The story search_story finds, and how much of it to read. Its title must be
 # what SEARCH_TITLE_RESULT actually lands on.
-SEARCH_TITLE_PICK = Pick("VACATION_TIME", pages=1, dwell=3.0)
+SEARCH_TITLE_PICK = Pick("VACATION_TIME", pages=3, dwell=1.0)
 
 # open_comic reaches its story by walking, not by name, so this sets only its
 # pacing: five pages means the one it opens on plus four turns.
