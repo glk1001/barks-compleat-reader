@@ -113,6 +113,7 @@ linkify
 lita
 llm
 llvmpipe
+loadedmetadata
 logr
 markersize
 materialise
@@ -150,6 +151,7 @@ playsinline
 pnginfo
 powersave
 ppid
+preload
 pstate
 putpixel
 pyeof
@@ -168,6 +170,7 @@ scancodes
 screeninfo
 screenmanager
 sdl
+seeked
 selftest
 separator
 setsid

@@ -1877,27 +1877,47 @@
                         });
                     })
                     .catch(() => {
-                        // No manifest: fall back to plain playback of the whole file.
+                        // No manifest - most often the page opened from the file
+                        // system, where fetch is blocked. Full playback still works,
+                        // and the chapter buttons say why they are gone rather than
+                        // vanishing without explanation.
                         buttons.forEach(b => {
                             b.disabled = b.dataset.chapter !== '*';
                             b.hidden = b.dataset.chapter !== '*';
                         });
                         const all = document.querySelector('[data-chapter="*"]');
                         if (all) { all.hidden = false; all.disabled = false; }
+                        now.textContent = 'Chapter list unavailable - open this page over http'
+                            + ' rather than from a file to jump to chapters.';
                     });
 
                 function play(from, until, label) {
                     if (!video.src) { video.src = SOURCE; }
                     stopAt = until;
                     now.textContent = label || '';
-                    const start = () => {
-                        video.currentTime = from;
-                        video.play();
-                    };
-                    if (video.readyState >= 1) { start(); }
-                    else { video.addEventListener('loadedmetadata', start, { once: true }); }
+
+                    // Order matters. With preload="none" nothing is fetched until
+                    // play() is called, so waiting for loadedmetadata before playing
+                    // waits for an event that will never arrive. Arm the seek first,
+                    // then play: play() starts the load, loadedmetadata follows, and
+                    // the seek lands on it.
+                    const seek = () => { video.currentTime = from; };
+                    if (video.readyState >= 1) { seek(); }
+                    else { video.addEventListener('loadedmetadata', seek, { once: true }); }
+
+                    const started = video.play();
+                    if (started && started.catch) {
+                        started.catch(() => {
+                            now.textContent = 'Could not start the video - press play.';
+                        });
+                    }
                     video.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
+
+                // Say so rather than sitting there doing nothing.
+                video.addEventListener('error', () => {
+                    now.textContent = 'The tour video could not be loaded (' + SOURCE + ').';
+                });
 
                 video.addEventListener('timeupdate', () => {
                     if (stopAt !== null && video.currentTime >= stopAt) {
