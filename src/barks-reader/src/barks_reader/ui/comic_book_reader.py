@@ -78,6 +78,13 @@ if TYPE_CHECKING:
 # large enough not to burn a frame budget while the loader thread works.
 PENDING_PAGE_POLL_INTERVAL_SECS = 0.05
 
+# How long opening a comic will hold the *calling* screen up, waiting for page one to
+# be drawn, before switching to the reader anyway and showing the blank loading page.
+# A warm local archive reaches the first page in well under a second, so this timeout
+# is the failure path - a cold volume, a slow disk, a load that errors out - and not
+# the common one. Without it, a comic that never loads would never switch at all.
+FIRST_PAGE_REVEAL_TIMEOUT_SECS = 2.0
+
 GOTO_PAGE_DROPDOWN_FRAC_OF_HEIGHT = 0.97
 GOTO_PAGE_BUTTON_HEIGHT = dp(25)
 GOTO_PAGE_BUTTON_BODY_COLOR = (0, 1, 1, 1)
@@ -336,6 +343,10 @@ class ComicBookReader(FloatLayout):
         # Kivy Clock handle for the "waiting for a not-yet-loaded page" poll, or
         # None when no page is currently being awaited. See _show_page.
         self._pending_poll_ev: ClockEvent | None = None
+        # Kivy Clock handle for the reveal timeout armed while page one loads, and the
+        # "not yet revealed" flag in one: it is None both before a comic is opened and
+        # once the reader screen has been shown. See _arm_reveal.
+        self._reveal_ev: ClockEvent | None = None
         self._goto_page_dropdown: ReaderDropDown | None = None
         self._goto_page_buttons: list[Button] = []
 
@@ -480,8 +491,13 @@ class ComicBookReader(FloatLayout):
 
         self._closed = False
 
-        self._on_comic_is_ready_to_read()
-        Clock.schedule_once(lambda _dt: self._show_loading_page(), 0)
+        # Wipe the outgoing comic's page before anyone can see the reader, then wait for
+        # page one instead of switching to it now: _render_page reveals the screen as soon
+        # as it has drawn, so the screen transition uncovers the comic itself rather than
+        # a blank page. This clear must be immediate, not scheduled - a page that loads
+        # inside the frame would be wiped by a clear arriving after it.
+        self._show_loading_page()
+        self._arm_reveal()
 
     @staticmethod
     def get_reader_comic_title(fanta_info: FantaComicBookInfo) -> str:
@@ -493,6 +509,9 @@ class ComicBookReader(FloatLayout):
         if self._closed:
             return
 
+        # A comic abandoned before page one drew (a load error) must not go on to
+        # reveal an empty reader when its timeout fires.
+        self._cancel_reveal()
         self._stop_pending_poll()
         self._comic_book_loader.stop_now()
         self._comic_book_loader.close_comic()
@@ -642,6 +661,44 @@ class ComicBookReader(FloatLayout):
             self._pending_poll_ev = None
             self._comic_book_loader.cursor.set_normal()
 
+    def _arm_reveal(self) -> None:
+        """Hold the reader screen back until page one is drawn, or the wait times out.
+
+        The calling screen stays up meanwhile, which is the point of the exercise: the
+        loader has already set a busy cursor for this window, so the wait is signposted,
+        and the screen transition that follows then uncovers the comic itself instead of
+        a blank page.
+        """
+        self._cancel_reveal()
+        self._reveal_ev = Clock.schedule_once(
+            self._reveal_on_timeout, FIRST_PAGE_REVEAL_TIMEOUT_SECS
+        )
+
+    def _cancel_reveal(self) -> None:
+        """Drop any pending reveal, so the reader screen will not be switched to."""
+        if self._reveal_ev is not None:
+            self._reveal_ev.cancel()
+            self._reveal_ev = None
+
+    def _reveal_on_timeout(self, _dt: float) -> None:
+        """Switch to the reader anyway, on the loading page, when page one is too slow."""
+        logger.warning(
+            f"Page one was not drawn within {FIRST_PAGE_REVEAL_TIMEOUT_SECS}s;"
+            f" showing the reader on the loading page."
+        )
+        self._reveal_reader()
+
+    def _reveal_reader(self) -> None:
+        """Switch to the comic reader screen - once only, for the comic just opened.
+
+        ``_reveal_ev`` doubles as the guard: it is non-None only between ``_arm_reveal``
+        and the reveal, so the ``_render_page`` call on every later page turn is a no-op.
+        """
+        if self._reveal_ev is None:
+            return
+        self._cancel_reveal()
+        self._on_comic_is_ready_to_read()
+
     def _poll_pending_page(self, _dt: float) -> bool:
         """Clock callback: render the current page once it has finished loading.
 
@@ -691,6 +748,9 @@ class ComicBookReader(FloatLayout):
         logger.info(
             f"Showed page {self._current_page_index} in {timing.get_elapsed_time_with_unit()}."
         )
+
+        # Page one of a newly opened comic is what the reader screen was held back for.
+        self._reveal_reader()
 
     def _hide_action_bar_if_fullscreen(self) -> None:
         if WindowManager.is_fullscreen_now():

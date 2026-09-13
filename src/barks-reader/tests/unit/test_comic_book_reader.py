@@ -12,6 +12,7 @@ from barks_fantagraphics.comics_consts import PageType
 from barks_reader.core.comic_book_page_info import PageInfo
 from barks_reader.core.reader_consts_and_types import COMIC_BEGIN_PAGE
 from barks_reader.ui.comic_book_reader import (
+    FIRST_PAGE_REVEAL_TIMEOUT_SECS,
     ComicBookReader,
     ComicBookReaderScreen,
     _ComicPageManager,
@@ -205,7 +206,10 @@ class TestComicBookReader:
 
             assert reader._current_title_str == "Title"
             reader._comic_book_loader.set_comic.assert_called()
-            reader._on_comic_is_ready_to_read.assert_called()
+            # The reader screen is held back until page one draws, so opening a comic
+            # arms the reveal rather than switching to a blank page.
+            reader._on_comic_is_ready_to_read.assert_not_called()
+            assert reader._reveal_ev is not None
 
     @staticmethod
     def _stub_current_page(reader: ComicBookReader, page_index: int) -> None:
@@ -216,6 +220,49 @@ class TestComicBookReader:
         reader._page_manager.get_current_display_unit.return_value = None
         reader._is_one_pager_collection = False
         reader._is_covers_collection = False
+
+    def test_first_page_drawn_reveals_the_reader_screen(self, reader: ComicBookReader) -> None:
+        self._stub_current_page(reader, 0)
+        with patch.object(barks_reader.ui.comic_book_reader.Clock, "schedule_once"):
+            reader._arm_reveal()
+
+        reader._render_page(0, None)
+
+        reader._on_comic_is_ready_to_read.assert_called_once()
+        assert reader._reveal_ev is None
+
+    def test_later_page_turns_do_not_switch_screen_again(self, reader: ComicBookReader) -> None:
+        self._stub_current_page(reader, 5)
+        assert reader._reveal_ev is None  # nothing armed: the comic is already showing
+
+        reader._render_page(5, None)
+
+        reader._on_comic_is_ready_to_read.assert_not_called()
+
+    def test_reveal_times_out_onto_the_loading_page(self, reader: ComicBookReader) -> None:
+        with patch.object(
+            barks_reader.ui.comic_book_reader.Clock, "schedule_once"
+        ) as mock_schedule:
+            reader._arm_reveal()
+            on_timeout, delay = mock_schedule.call_args[0]
+
+        assert delay == FIRST_PAGE_REVEAL_TIMEOUT_SECS
+        on_timeout(0.0)
+
+        reader._on_comic_is_ready_to_read.assert_called_once()
+
+    def test_closing_before_the_first_page_cancels_the_reveal(
+        self, reader: ComicBookReader
+    ) -> None:
+        """A comic abandoned mid-load must not switch to an empty reader afterwards."""
+        reader._closed = False
+        with patch.object(barks_reader.ui.comic_book_reader.Clock, "schedule_once"):
+            reader._arm_reveal()
+
+        reader.close_comic_book_reader()
+
+        assert reader._reveal_ev is None
+        reader._on_comic_is_ready_to_read.assert_not_called()
 
     def test_show_page_renders_immediately_when_loaded(self, reader: ComicBookReader) -> None:
         self._stub_current_page(reader, 3)
