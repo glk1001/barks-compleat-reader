@@ -10,7 +10,7 @@ import pytest
 from barks_reader.core.navigation.view_states import ViewStates
 from barks_reader.ui.main_screen import MainScreen
 from barks_reader.ui.main_screen_components import MainScreenComponents
-from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE, KEY_LEFT
+from barks_reader.ui.reader_keyboard_nav import KEY_ESCAPE, KEY_LEFT, set_alt_escape_key
 from barks_reader.ui.screen_bundle import ScreenBundle
 from kivy.uix.screenmanager import Screen
 
@@ -153,6 +153,48 @@ class TestMainScreen:
             patch.object(main_screen, "_close_settings") as mock_close,
         ):
             assert main_screen._on_key_down(None, KEY_ESCAPE, 0, "", []) is True
+        mock_close.assert_called_once()
+
+    def test_alt_escape_letter_reaches_a_focused_text_input(self, main_screen: MainScreen) -> None:
+        """The alternate Escape is an ordinary letter on a keyboard.
+
+        With it set to "r" (the default 114), typing "airline" into a search box used
+        to swallow the "r" and exit the box instead. A press carrying a character is
+        text, so the handler must yield to the field.
+        """
+        main_screen.name = "main"
+        main_screen.manager = MagicMock(current="main")
+        main_screen._settings_nav = MagicMock()
+        set_alt_escape_key(ord("r"))
+        try:
+            with patch.object(
+                barks_reader.ui.main_screen, "_text_input_has_focus", return_value=True
+            ):
+                assert main_screen._on_key_down(None, ord("r"), 0, "r", []) is False
+        finally:
+            set_alt_escape_key(0)
+        main_screen._nav.handle_key.assert_not_called()
+        main_screen._settings_nav.handle_key.assert_not_called()
+
+    def test_alt_escape_without_a_character_still_escapes_a_text_input(
+        self, main_screen: MainScreen
+    ) -> None:
+        """A remote sends the bare keycode with no character, so it must still escape."""
+        main_screen.name = "main"
+        main_screen.manager = MagicMock(current="main")
+        main_screen._settings_nav = MagicMock()
+        main_screen._settings_nav.handle_key.return_value = False
+        set_alt_escape_key(ord("r"))
+        try:
+            with (
+                patch.object(
+                    barks_reader.ui.main_screen, "_text_input_has_focus", return_value=True
+                ),
+                patch.object(main_screen, "_close_settings") as mock_close,
+            ):
+                assert main_screen._on_key_down(None, ord("r"), 0, "", []) is True
+        finally:
+            set_alt_escape_key(0)
         mock_close.assert_called_once()
 
     def test_text_input_has_focus_reflects_keyboard_target(self) -> None:

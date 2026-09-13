@@ -34,6 +34,7 @@ from .reader_keyboard_nav import (
     ActionBarNavMixin,
     DropdownNavMixin,
     is_escape_key,
+    is_escape_key_for_text_input,
 )
 from .reader_screens import ReaderScreen
 from .reader_tree_builder import ReaderTreeBuilder
@@ -293,7 +294,7 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         return bool(super().on_touch_down(touch))
 
     def _on_key_down(
-        self, _window: object, key: int, _scancode: int, _codepoint: str, _modifier: list[str]
+        self, _window: object, key: int, _scancode: int, codepoint: str, _modifier: list[str]
     ) -> bool:
         # Ignore keys while another screen is on top (comic/document/wiki reader).
         # Its own handler owns the keyboard; in particular the wiki reader's search
@@ -306,7 +307,10 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         # system keyboard to Window.on_key_down, so returning truthy here would consume
         # the key before the focused TextInput's handler runs. Escape still falls through
         # so the settings/popup close handling below can run.
-        if not is_escape_key(key) and _text_input_has_focus():
+        # Escape still falls through, but only a press that produced no character: the
+        # alternate Escape keycode is an ordinary letter on a keyboard, and typing it
+        # into the field must reach the field. See is_escape_key_for_text_input.
+        if _text_input_has_focus() and not is_escape_key_for_text_input(key, codepoint):
             return False
         if self._settings_nav is not None:
             return self._handle_settings_key(key)

@@ -47,6 +47,29 @@ def is_escape_key(key: int) -> bool:
     return key == KEY_ESCAPE or (_alt_escape_key != 0 and key == _alt_escape_key)
 
 
+def is_escape_key_for_text_input(key: int, codepoint: str | None) -> bool:
+    """Return True if `key` should act as Escape while a text field holds the keyboard.
+
+    Real Escape always does. The alternate Escape is a bare keycode captured from a
+    remote, and the very same keycode is an ordinary letter on a keyboard - the default
+    114 is "r". A press carrying a printable character is therefore text the field
+    should receive, not a request to leave it: without this, anyone whose alternate
+    Escape is a letter cannot type a word containing it into any search box. The letter
+    is swallowed and the box is exited instead.
+
+    Only the text-input case is narrowed. Everywhere else the alternate Escape keeps
+    working exactly as before, so a remote loses nothing outside a focused field.
+
+    Args:
+        key: The keycode.
+        codepoint: The character the press produced, if any.
+
+    """
+    if key == KEY_ESCAPE:
+        return True
+    return is_escape_key(key) and not codepoint
+
+
 MENU_FOCUS_HIGHLIGHT_GROUP = "menu_focus_highlight"
 
 
