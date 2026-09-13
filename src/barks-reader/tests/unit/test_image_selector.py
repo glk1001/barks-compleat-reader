@@ -893,7 +893,40 @@ class TestPossibleFilesForTitle:
             "A Title", {FileTypes.SPLASH}, use_only_edited_if_possible=True
         )
 
-        assert sorted(str(f) for f, _t in possible) == ["edited-a.png", "edited-b.png"]
+        assert [str(f) for f, _t in possible] == ["edited-a.png", "edited-b.png"]
+
+    def test_candidate_order_is_stable_not_set_order(self, image_selector: ImageSelector) -> None:
+        """Candidates come back sorted, so a pinned random seed reproduces a run.
+
+        The inputs are sets that hash through `str` (`Enum.__hash__` is `hash(name)`,
+        `Path` hashes its string form), and Python randomizes string hashing per
+        process. Without sorting, this list is ordered differently in every app
+        invocation and `random.choice` lands on a different file each time despite
+        the seed.
+        """
+        image_selector._title_image_files["A Title"] = {
+            FileTypes.SPLASH: {(Path("s-b.png"), True), (Path("s-a.png"), True)},
+            FileTypes.COVER: {(Path("c-b.png"), True), (Path("c-a.png"), True)},
+            FileTypes.AI: {(Path("ai.png"), True)},
+        }
+
+        possible = image_selector._get_possible_files_for_title(
+            "A Title",
+            {FileTypes.SPLASH, FileTypes.COVER, FileTypes.AI},
+            use_only_edited_if_possible=False,
+        )
+
+        # File types ascend by enum value, and each type's files sort by path.
+        assert [ft for _f, ft in possible] == sorted(
+            (ft for _f, ft in possible), key=lambda ft: ft.value
+        )
+        assert [str(f) for f, _t in possible] == [
+            "ai.png",
+            "c-a.png",
+            "c-b.png",
+            "s-a.png",
+            "s-b.png",
+        ]
 
 
 class TestMruAndIconCycling:

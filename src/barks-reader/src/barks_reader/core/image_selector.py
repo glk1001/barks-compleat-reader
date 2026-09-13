@@ -459,12 +459,29 @@ class ImageSelector:
     def _get_possible_files_for_title(
         self, title_str: str, file_types: set[FileTypes], use_only_edited_if_possible: bool
     ) -> PossibleFiles:
+        """Return this title's candidate images, in a stable order.
+
+        Both sources here are sets, and both hash through `str`: `FileTypes` because
+        `Enum.__hash__` is `hash(self._name_)`, and `PanelPath` because `Path` hashes
+        its string form. Python randomizes string hashing per process, so iterating
+        them raw builds this list in a different order in every app invocation.
+
+        Callers pick from the list with `random.choice`, so that ordering decides what
+        a given draw actually returns: a pinned `BARKS_READER_RANDOM_SEED` would fix
+        which *index* is chosen but not which file sits at it, and two seeded runs
+        would still show different images. Sorting is what makes the seed mean
+        something. It costs nothing when unseeded - the choice is random either way.
+        """
         possible_files: list[tuple[PanelPath, FileTypes]] = []
 
         title_files = self._title_image_files.get(title_str, {})
-        for file_type in file_types:
+        for file_type in sorted(file_types, key=lambda ft: ft.value):
             if file_type in title_files:
-                for filename, is_edited in title_files[file_type]:
+                # str() the path: PanelPath spans Path and zipfile.Path, which do not
+                # order against each other.
+                for filename, is_edited in sorted(
+                    title_files[file_type], key=lambda entry: str(entry[0])
+                ):
                     if use_only_edited_if_possible and not is_edited:
                         continue
                     possible_files.append((filename, file_type))

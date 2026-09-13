@@ -156,6 +156,7 @@ preload
 pstate
 putpixel
 pyeof
+PYTHONHASHSEED
 rasterised
 realised
 recognise
