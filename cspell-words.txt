@@ -67,6 +67,7 @@ figsize
 fillvalue
 fixpoint
 fodt
+focusable
 fontcolor
 fontfile
 fontsize

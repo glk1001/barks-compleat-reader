@@ -267,6 +267,48 @@ class TestBottomTitleViewNav(ScreenFixtureBase):
 
         assert self.screen._nav_focused_widget is self.screen.ids.title_show_button
 
+    def test_panel_counts_as_visible_while_the_fade_runs(self) -> None:
+        """A fade in progress must not read as "the user peeked the panel away".
+
+        Opacity is the panel's only state, and the fade animates it up from 0 - so
+        mid-fade the raw opacity says hidden. Focus would then land on the eye toggle,
+        and an Enter after a mouse-driven goto-title would toggle the panel instead of
+        opening the comic.
+        """
+        self.screen.fade_in_bottom_view_title()
+        self.screen.ids.bottom_view_box.opacity = 0  # still early in the fade
+
+        assert self.screen._is_panel_content_visible()
+        assert self.screen.ids.title_portal_image_button in self.screen._focusable_widgets()
+
+        self.screen.enter_nav_focus(MagicMock())
+
+        assert self.screen._nav_focused_widget is self.screen.ids.title_portal_image_button
+
+    def test_panel_reads_as_peeked_once_the_fade_has_finished(self) -> None:
+        """With no fade running, opacity alone decides again - so the eye still works."""
+        self.screen.fade_in_bottom_view_title()
+        handler = self.mock_anim.bind.call_args.kwargs["on_complete"]
+        handler(self.mock_anim, self.screen.ids.bottom_view_box)  # fade completes
+
+        self.screen.ids.bottom_view_box.opacity = 0  # now a deliberate peek-away
+
+        assert not self.screen._is_panel_content_visible()
+        assert self.screen._focusable_widgets() == [self.screen.ids.title_show_button]
+
+    def test_an_earlier_fade_finishing_does_not_clear_a_later_one(self) -> None:
+        """Kivy's cancel() fires no on_complete, so a stale finish must not win."""
+        self.screen.fade_in_bottom_view_title()
+        stale = self.screen._panel_fade_anim
+        self.mock_anim_cls.return_value = later = MagicMock()
+        self.screen.fade_in_bottom_view_title()
+        assert self.screen._panel_fade_anim is later
+
+        self.screen._on_panel_fade_finished(stale, self.screen.ids.bottom_view_box)
+
+        assert self.screen._panel_fade_anim is later
+        assert self.screen._is_panel_content_visible()
+
     def test_enter_nav_focus_at_portal_targets_portal_during_fade(self) -> None:
         # Enter on a title restarts the panel fade (opacity 0) and may carry a remembered
         # widget; the read gesture must still land squarely on the portal, not the eye.

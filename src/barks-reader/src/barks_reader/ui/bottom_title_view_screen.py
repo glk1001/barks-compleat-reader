@@ -163,6 +163,10 @@ class BottomTitleViewScreen(FloatLayout):
         self._nav_on_exit_request: Callable[[], None] | None = None
         self._nav_focused_widget: Widget | None = None
         self._last_nav_focused_widget: Widget | None = None
+        # The title fade-in currently running, or None. Held as the animation
+        # itself rather than a flag so an earlier fade finishing cannot clear a
+        # later one that is still going. See _is_panel_content_visible.
+        self._panel_fade_anim: Animation | None = None
         self.main_title_banner_texture = _make_title_banner_texture(
             self.MAIN_TITLE_BANNER_COLOR, self.MAIN_TITLE_BANNER_PEAK_ALPHA
         )
@@ -227,8 +231,18 @@ class BottomTitleViewScreen(FloatLayout):
         anim = Animation(
             opacity=1, duration=self._get_title_portal_opening_animation_duration_secs()
         )
+        anim.bind(on_complete=self._on_panel_fade_finished)
         anim.start(self.ids.bottom_view_box)
+        # Recorded after start(), so this is the animation that actually ended up
+        # running. Kivy's start() only stops its own instance and cancel() does not
+        # fire on_complete, so the guard in _on_panel_fade_finished does the rest.
+        self._panel_fade_anim = anim
         self.ids.title_show_button.opacity = 1
+
+    def _on_panel_fade_finished(self, anim: Animation, _widget: Widget) -> None:
+        """Forget a finished fade, so opacity alone decides visibility again."""
+        if anim is self._panel_fade_anim:
+            self._panel_fade_anim = None
 
     @staticmethod
     def _get_title_portal_opening_animation_duration_secs() -> int:
@@ -359,6 +373,22 @@ class BottomTitleViewScreen(FloatLayout):
         return widgets
 
     def _is_panel_content_visible(self) -> bool:
+        """Return whether the panel content counts as on screen, for keyboard nav.
+
+        Opacity is the panel's only state: the eye toggle peeks the content away by
+        setting ``bottom_view_box.opacity`` to 0 (in the kv rule), and the title
+        fade-in animates that same property up from 0 over a random 0-4s. Opacity
+        alone therefore cannot tell "the user hid this" from "this is still arriving",
+        and mid-fade it reads as hidden - which left only the eye toggle focusable, so
+        an Enter after a *mouse*-driven goto-title toggled the panel instead of opening
+        the comic. (A keyboard goto-title is unaffected: it routes through
+        ``enter_nav_focus_at_portal``, which targets the portal outright.)
+
+        A fade in progress counts as visible: the content is on its way in, and the
+        focus ring fades in with it.
+        """
+        if self._panel_fade_anim is not None:
+            return True
         return self.ids.bottom_view_box.opacity > _PANEL_VISIBLE_OPACITY
 
     def _move_nav_focus(self, delta: int) -> None:
