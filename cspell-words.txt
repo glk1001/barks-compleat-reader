@@ -166,6 +166,9 @@ sdl
 selftest
 separator
 setsid
+shadowcolor
+shadowx
+shadowy
 soffice
 softbreak
 splittable

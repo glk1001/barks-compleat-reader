@@ -95,6 +95,13 @@ GOP = 60
 
 FONT = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf")
 CAPTION_SIZE = 30
+# The app's own text_display colour - the "brighter cover-yellow" it uses for
+# hero titles - so the caption reads as part of the product rather than an
+# overlay on it. See reader_palette.py.
+CAPTION_COLOR = "0xFFDB52"
+CAPTION_BOX_ALPHA = 0.85
+CAPTION_BOX_PAD = 18
+CAPTION_SHADOW = 2
 
 WALK_PAUSE = 0.45  # pace of a single Down while walking the tree on camera
 TYPE_PAUSE = 0.4  # pace of a single character into a search box
@@ -885,9 +892,12 @@ class Recorder:
             video_filter = [
                 "-vf",
                 (
-                    f"drawtext=fontfile={FONT}:textfile={caption}:fontcolor=white:"
-                    f"fontsize={CAPTION_SIZE}:box=1:boxcolor=black@0.6:boxborderw=16:"
-                    f"x=(w-text_w)/2:y=h-th-36"
+                    f"drawtext=fontfile={FONT}:textfile={caption}:"
+                    f"fontcolor={CAPTION_COLOR}:fontsize={CAPTION_SIZE}:"
+                    f"box=1:boxcolor=black@{CAPTION_BOX_ALPHA}:"
+                    f"boxborderw={CAPTION_BOX_PAD}:"
+                    f"shadowcolor=black@0.9:shadowx={CAPTION_SHADOW}:"
+                    f"shadowy={CAPTION_SHADOW}:x=(w-text_w)/2:y=h-th-36"
                 ),
             ]
         return subprocess.Popen(  # noqa: S603  (fixed argv, absolute path, no shell)
