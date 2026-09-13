@@ -108,8 +108,9 @@ CAPTION_SHADOW = 2
 # How far the caption sits above the bottom of the frame. It has to clear the
 # browser's own control bar, which the player draws across the bottom of the
 # video once something is playing - at 36 the bar sat right on top of the one
-# piece of text explaining what is on screen.
-CAPTION_BOTTOM = 96
+# piece of text explaining what is on screen. 96 cleared it with room to spare,
+# so this sits lower again while keeping a 36px margin over the value that failed.
+CAPTION_BOTTOM = 72
 
 WALK_PAUSE = 0.45  # pace of a single Down while walking the tree on camera
 TYPE_PAUSE = 0.4  # pace of a single character into a search box
@@ -798,10 +799,18 @@ def search_story(d: Driver) -> None:
 
     row_y = SEARCH_RESULT_TOP_Y + (SEARCH_TITLE_RESULT - 1) * SEARCH_RESULT_ROW_H
     d.click_then_wait(f'Goto title: "{SEARCH_TITLE_PICK.title}"', 15, SEARCH_RESULT_X, row_y)
-    d.hold(2.5)
+    # Let the title view finish fading before the Enter below. Only a *key*-driven
+    # goto-title is handed to enter_nav_focus_at_portal; picking the result with the
+    # mouse schedules no hand-off, so that Enter lazily enters nav focus instead
+    # (main_screen_nav:241) and takes its default from _is_panel_content_visible() -
+    # which reads the very opacity the fade is still animating. Pressed early, focus
+    # lands on the eye toggle, the Enter toggles that, and no comic ever opens. At
+    # hold(2.5) this beat was winning the race on luck and lost it as soon as a
+    # different fade duration came up.
+    d.hold(TITLE_FADE_SECS)
 
-    # A goto-title hands focus straight to the read portal, so one Enter opens
-    # the comic - unlike the other beats, which have to focus the portal first.
+    # Focus defaults to the read portal now the panel is up, so one Enter opens the
+    # comic - unlike the other beats, which have to focus the portal first.
     d.key_then_wait("All images loaded", 30, "Return")
     d.read_pages(SEARCH_TITLE_PICK)
     d.close_reader()
