@@ -33,3 +33,11 @@ view-width height:
 act-ci:
     act -P ubuntu-latest=catthehacker/ubuntu:act-latest -P macos-latest=catthehacker/ubuntu:act-latest -P windows-latest=catthehacker/ubuntu:act-latest |& tee /tmp/act-output.log
 
+# `serve` is used rather than `python3 -m http.server` because that one ignores
+# Range requests, so a browser cannot seek into a video and the walkthrough's
+# chapter buttons appear to hang. GitHub Pages does support ranges, so this only
+# bites locally. Note `serve` drops the .html: /app.html redirects to /app.
+
+# Serve the website locally, for checking the demo videos and their chapters
+serve-website port="8080":
+    bunx --bun serve "{{source_dir()}}/website" --listen {{port}}
