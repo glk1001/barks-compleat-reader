@@ -111,6 +111,7 @@ dev = [
 [tool.pytest.ini_options]
 minversion = "6.0"
 testpaths = [
+    "scripts/tests",
     "src/barks-reader/tests/unit",
     "src/barks-fantagraphics/tests",
     "src/barks-build-comic-images/tests",

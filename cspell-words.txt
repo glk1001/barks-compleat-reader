@@ -20,6 +20,8 @@ behaviour
 bijective
 blit
 blockquotes
+boxborderw
+boxcolor
 browsable
 bufferfmt
 bunx
@@ -41,6 +43,7 @@ cythonize
 dateutil
 decryptor
 dedup
+dejavu
 docstrings
 dotenv
 edgecolor
@@ -49,14 +52,18 @@ excepthook
 excepthooks
 executemany
 facecolor
+faststart
 favourite
 favourites
 façade
 fcbi
+ffprobe
 figsize
 fillvalue
 fixpoint
 fodt
+fontcolor
+fontfile
 fontsize
 fontstyle
 fontweight
@@ -95,6 +102,7 @@ letterbox
 letterboxed
 letterboxing
 lfs
+libfreetype
 libx
 licence
 linkify
@@ -116,12 +124,14 @@ monkeypatches
 motionevent
 mouseclick
 mousemove
+movflags
 mtdev
 nbytes
 neighbour
 nonexistentword
 normalised
 normalises
+nostdin
 notvol
 numpad
 nums
@@ -160,6 +170,7 @@ soffice
 softbreak
 splittable
 srce
+sseof
 standfirst
 stdlib
 strerror
