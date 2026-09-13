@@ -255,12 +255,16 @@
            centred rather than squeezed into a column beside the copy. */
         .tour__frame {
             max-width: 782px;
-            margin: 26px auto 0;
-            padding: 12px 0;
+            margin: 34px auto 0;
+            padding: 14px;
         }
 
         .tour__frame {
-            background: var(--ink);
+            /* Paper behind the video, not ink: the mat has to contrast with the
+               picture to read as space at all, and the tour opens on a dark
+               frame. This is how the site's other art panels are built - ink
+               border, flat paper around. */
+            background: var(--paper-bright);
             border: 3px solid var(--ink);
             border-radius: 4px;
             box-shadow: 6px 6px 0 var(--ink);
