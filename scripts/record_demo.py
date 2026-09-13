@@ -170,7 +170,20 @@ SEARCH_TITLE_RESULT = 2
 SEARCH_RESULT_X = 450
 SEARCH_RESULT_TOP_Y = 695  # centre of the first row
 SEARCH_RESULT_ROW_H = 30
-SEARCH_WORD_QUERY = "egg"
+SEARCH_WORD_QUERY = "airline"
+# The story the word beat opens the speech bubbles for, spelled as the app logs it.
+# Word results are sorted by title, so the pick is a row index into that list.
+SEARCH_WORD_PICK = "Adventure Down Under"
+SEARCH_WORD_RESULT = 1
+# The word-results geometry, in screenshot pixels: every row ends in a speech
+# balloon that opens just that story's matching bubbles.
+SEARCH_WORD_BALLOON_X = 728
+SEARCH_WORD_RESULT_TOP_Y = 697  # centre of the first row
+SEARCH_WORD_ROW_H = 29
+# The bubble to press in the popup - the first one, page 1's "WE'LL FLY! THE AIRLINE
+# TICKET OFFICE IS ON THE NEXT STREET!". Pressing it goes to that page of the story.
+SEARCH_WORD_BUBBLE_X = 232
+SEARCH_WORD_BUBBLE_Y = 843
 
 
 @dataclass(frozen=True)
@@ -602,6 +615,21 @@ class Driver:
         self.hold(0.6)
         self.key("Return")
 
+    def go_back_then_wait(self, pattern: str, timeout: float = 15) -> None:
+        """Press Go Back, then block until a NEW occurrence of `pattern` is logged.
+
+        The counting form, for the same reason as `key_then_wait`: the screen a beat
+        goes back to logged its mode on the way in, so a plain `wait_for` matches that
+        older line and returns before anything has moved.
+
+        Raises:
+            BeatError: If no new match arrives within `timeout` seconds.
+
+        """
+        before = self.match_count(pattern)
+        self.go_back()
+        self._await_new(pattern, timeout, before)
+
     def close_reader(self) -> None:
         """Shut the comic reader through its menu, and wait for the main screen."""
         count = len(self._MENU_BUTTONS)
@@ -829,6 +857,8 @@ def search_story(d: Driver) -> None:
     label="Search every word the characters speak",
 )
 def search_words(d: Driver) -> None:
+    # A whole round trip, like search_story: find a spoken word, open one story's
+    # matching speech bubbles, jump from a bubble into that story, and come back.
     d.hold(1.0)
     d.key("Return")
     d.settle()
@@ -840,7 +870,31 @@ def search_words(d: Driver) -> None:
     d.settle()
     d.hold(0.6)
     d.key_then_wait("Word search: selected chip", 15, "Return")
-    d.hold(3.5)  # the list of every story the word is spoken in
+    d.hold(3.0)  # the list of every story the word is spoken in
+
+    row_y = SEARCH_WORD_RESULT_TOP_Y + (SEARCH_WORD_RESULT - 1) * SEARCH_WORD_ROW_H
+    d.click_then_wait(
+        f'Show speech bubbles for: "{SEARCH_WORD_PICK}"', 15, SEARCH_WORD_BALLOON_X, row_y
+    )
+    d.hold(3.5)  # every line the word is spoken in, with the word picked out
+
+    # A bubble goes to its story at the page that line is on.
+    d.click_then_wait(
+        f'Word search bubble press: "{SEARCH_WORD_PICK}"',
+        15,
+        SEARCH_WORD_BUBBLE_X,
+        SEARCH_WORD_BUBBLE_Y,
+    )
+    d.settle()
+    d.hold(3.0)  # the title view for the story the bubble came from
+
+    # The bubble press lands focus in the title panel, so hand it back before the
+    # action bar's Go Back can be reached - the same two-step search_story needs.
+    d.key("Escape")
+    d.settle()
+    d.go_back_then_wait("SearchScreen mode set to 'Word'", 15)
+    d.settle()
+    d.hold(2.5)  # back on the search, query and results still there
 
 
 def _setup_read_story(d: Driver) -> None:
