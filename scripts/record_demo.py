@@ -80,6 +80,9 @@ if TYPE_CHECKING:
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PROBE = REPO_ROOT / "scripts" / "gui-probe.sh"
 DISPLAY = os.environ.get("BARKS_PROBE_DISPLAY", ":2")
+# The app reads this on startup and seeds its random module from it; gui-probe
+# launches the app as a child, so setting it here is enough to reach it.
+RANDOM_SEED_ENV_VAR = "BARKS_READER_RANDOM_SEED"
 
 DEFAULT_OUT_DIR = REPO_ROOT / "website"
 WORK_DIR = REPO_ROOT / "build" / "demo-beats"
@@ -117,6 +120,16 @@ POSTER_BEAT = "browse_tree"
 # this constant rather than each carrying their own count.
 BROWSE_RANGE = "1947-1950"
 BROWSE_TITLE_STEPS = 7
+# How much of browse_tree's on-camera pacing the off-camera replay keeps. The
+# dwells are pacing only, so shortening them cannot change where the tree ends
+# up - but they are not zero, because the app drops keys pressed at full speed.
+SETUP_PACE = 0.25
+
+# Pins the app's random image choices, so a re-recorded beat comes back with the
+# same backgrounds and insets as the one it replaces and two runs can be compared
+# frame for frame. Any fixed number does; it only has to be the same every time.
+# Set to None to let the app pick freshly, as it does for a normal user.
+RANDOM_SEED: int | None = 20260913
 
 # What the two search beats type. Keep them short - every character is typed with
 # a visible pause, so a long query makes for a slow beat.
@@ -164,7 +177,7 @@ CENSORED_PICKS = (
     Pick("GOOD_DEEDS"),
     Pick("SILENT_NIGHT"),
     Pick("BILL_COLLECTORS_THE"),
-    Pick("LOST_IN_THE_ANDES"),
+    Pick("GOLDEN_FLEECING_THE"),
 )
 
 # The story read_story opens. Must be in the censored-but-fixed node, because
@@ -173,14 +186,20 @@ READ_STORY_PICK = Pick("LOST_IN_THE_ANDES", pages=2, dwell=2.5)
 
 # open_comic reaches its story by walking, not by name, so this sets only its
 # pacing: five pages means the one it opens on plus four turns.
-OPEN_COMIC_PICK = Pick(pages=5, dwell=2.2)
+OPEN_COMIC_PICK = Pick(pages=4, dwell=1.5)
 
-# The body page open_comic then jumps to through the goto-page dropdown, to show
-# that the reader can skip about rather than only turn. Must exist in the story
-# it lands on, or the jump lands somewhere else and the beat fails.
-GOTO_PAGE = 18
+# The page read_story jumps to through the goto-page dropdown, to show that the
+# reader skips about rather than only turning forward.
+#
+# This is the reader's page *index* - what the app logs as "Showed page N" - and
+# not the printed page number: the index counts the cover and the front matter,
+# so it runs ahead of what is printed on the page. The dropdown lists pages in
+# that same index order, which is why stepping by the difference between two of
+# them lands exactly. Must exist in READ_STORY_PICK's story, or the jump ends up
+# somewhere else - loudly, since the landing is checked against the log.
+READ_STORY_GOTO_PAGE = 18
 GOTO_LIST_DWELL = 1.5  # time the open page list stays on screen before stepping
-GOTO_STEP_PAUSE = 0.12  # pace of a single step down the page list
+GOTO_STEP_PAUSE = 0.12  # pace of a single step through the page list
 
 # What gets stitched, and from which beats. A beat can appear in more than one
 # output; it is only ever recorded once. The short hero loop is the one that plays
@@ -280,6 +299,7 @@ class Driver:
     """
 
     _NODE_RE = re.compile(r'New selected node: "([^"]+)"')
+    _PAGE_RE = re.compile(r"Showed page (\d+)")
 
     def __init__(self, probe: Path = PROBE) -> None:
         self._probe = probe
@@ -337,6 +357,16 @@ class Driver:
         """
         matches = self._NODE_RE.findall(self._log.read_text(errors="replace"))
         return matches[-1] if matches else ""
+
+    def current_page(self) -> int:
+        """Return the body page the reader last rendered, per the app log.
+
+        Read rather than calculated: a story opens on whatever page the user
+        cued in their config, so the caller cannot know where the reader is
+        without assuming that cue.
+        """
+        matches = self._PAGE_RE.findall(self._log.read_text(errors="replace"))
+        return int(matches[-1]) if matches else 0
 
     def match_count(self, pattern: str) -> int:
         """Return how many log lines have matched `pattern` so far."""
@@ -434,7 +464,7 @@ class Driver:
             self.key_then_wait("Showed page", 15, "Right")
             self.hold(pick.dwell)
 
-    def goto_page(self, target: int, current: int) -> None:
+    def goto_page(self, target: int) -> None:
         """Jump to a body page through the reader's goto-page dropdown.
 
         Menu mode opens focused on the close button and goto-page is the one
@@ -445,9 +475,9 @@ class Driver:
 
         Args:
             target: The body page to land on.
-            current: The body page the reader is showing now.
 
         """
+        current = self.current_page()
         self.key("Escape")  # reader menu mode, focused on close
         self.hold(0.5)
         self.key("Left")  # ... and goto-page is the button before it
@@ -489,14 +519,54 @@ class Driver:
 # ---------------------------------------------------------------- the beats --
 
 
-def _setup_browse_tree(d: Driver) -> None:
-    # Booting expands the whole chain down to the node, including the node
-    # itself, so there is no start node that gives a closed tree. One Left
-    # collapses The Stories again, off camera, leaving every top-level node shut
-    # and the selection still on it - so the beat's first move on screen is the
-    # tree opening.
+def _collapse_tree(d: Driver) -> None:
+    """Shut the tree back to its top level.
+
+    Booting expands the whole chain down to the node, including the node itself,
+    so there is no start node that gives a closed tree. One Left collapses The
+    Stories again, leaving every top-level node shut and the selection still on
+    it.
+    """
     d.key("Left")
     d.settle()
+
+
+def _open_tree_to_title(d: Driver, pace: float = 1.0) -> None:
+    """Open the tree from closed down to the story the demo reads.
+
+    browse_tree plays this on camera and open_comic's setup replays it off
+    camera, and they must run the same keys in the same order: where the tree
+    is scrolled comes from how it was opened, not just from which node ends up
+    selected. Reaching the same story a different way - by booting with the path
+    already expanded, say - leaves the list sitting at a different offset, and
+    the cut between the two beats jumps even though both are on the right story.
+
+    Args:
+        d: The driver.
+        pace: Scales the dwells, so the replay can get through this quickly.
+
+    """
+    d.key("Return")  # open The Stories
+    d.settle()
+    d.hold(0.6 * pace)
+    d.select_node("Chronological")
+    d.hold(0.5 * pace)
+    d.key("Return")  # open it, showing the year ranges
+    d.settle()
+    d.hold(0.7 * pace)
+    d.select_node(BROWSE_RANGE)
+    d.hold(0.5 * pace)
+    d.key("Return")  # open the range, showing its stories
+    d.settle()
+    d.hold(1.0 * pace)
+    for _ in range(BROWSE_TITLE_STEPS):
+        d.key("Down")
+        d.hold(0.7 * pace)
+    d.settle()
+
+
+def _setup_browse_tree(d: Driver) -> None:
+    _collapse_tree(d)
 
 
 @beat(
@@ -511,53 +581,33 @@ def browse_tree(d: Driver) -> None:
     # only: this doubles as the 10-foot/remote story, and it keeps the pointer
     # out of the frame.
     d.hold(1.2)
-    d.key("Return")  # open The Stories
-    d.settle()
-    d.hold(0.8)
-    d.select_node("Chronological")
-    d.hold(0.6)
-    d.key("Return")  # open it, showing the year ranges
-    d.settle()
-    d.hold(0.8)
-    d.select_node(BROWSE_RANGE)
-    d.hold(0.6)
-    d.key("Return")  # open the range, showing its stories
-    d.settle()
+    _open_tree_to_title(d)
     d.hold(1.0)
-    for _ in range(BROWSE_TITLE_STEPS):
-        d.key("Down")
-        d.hold(0.75)
-    d.settle()
-    d.hold(2.2)
 
 
 def _setup_open_comic(d: Driver) -> None:
-    # Land on the title browse_tree settles on, off camera, so this beat opens
-    # already on the title view and reads as a continuation of the cut before it.
-    # It could boot straight onto the title node instead - leaf titles are stored
-    # under their enum name, as wiki_jump does - but repeating the previous
-    # beat's Downs is what makes the two cuts line up, so the counts must match.
-    d.key(*["Down"] * BROWSE_TITLE_STEPS)
-    d.settle()
+    # Replay browse_tree exactly, off camera, so this beat opens on the tree the
+    # previous one left behind - same story selected AND same scroll offset, so
+    # the cut between them does not jump. Booting straight onto the range would
+    # reach the same story with the list sitting somewhere else.
+    _collapse_tree(d)
+    _open_tree_to_title(d, pace=SETUP_PACE)
 
 
 @beat(
     "open_comic",
-    node=[BROWSE_RANGE, "Chronological", "The Stories", "root"],
+    node=["The Stories", "root"],
     label="Open any story and read it",
     setup=_setup_open_comic,
 )
 def open_comic(d: Driver) -> None:
-    d.hold(0.8)
+    d.hold(0.0)
     d.key("Return")  # focus the title view's read portal
-    d.hold(0.7)
+    d.hold(0.0)
     d.key("Return")  # open the comic
     d.wait_for("All images loaded", 30)
     # Right is next-page in the reader (reader_keyboard_nav._handle_reading_key).
     d.read_pages(OPEN_COMIC_PICK)
-    # read_pages opens on the cover and turns, so the reader is showing one page
-    # less than the count it was given.
-    d.goto_page(GOTO_PAGE, OPEN_COMIC_PICK.pages - 1)
     d.hold(2.5)
 
 
@@ -633,7 +683,7 @@ def _setup_read_story(d: Driver) -> None:
 @beat(
     "read_story",
     node=["The Stories", "root"],
-    label="Two-page spreads, the way it was printed",
+    label="Skip to any page, or read two-up as printed",
     setup=_setup_read_story,
 )
 def read_story(d: Driver) -> None:
@@ -643,6 +693,9 @@ def read_story(d: Driver) -> None:
     d.hold(0.6)
     d.key_then_wait("All images loaded", 30, "Return")
     d.read_pages(READ_STORY_PICK)
+    # Skip to a page rather than turning to it, showing the page list on the way.
+    d.goto_page(READ_STORY_GOTO_PAGE)
+    d.hold(1.0)
     # Reader action bar order is fullscreen, double page, start, end, goto, close,
     # and menu mode opens focused on close - so two Rights wrap round to the
     # double-page button. Fullscreen is deliberately not shown: with no window
@@ -711,7 +764,7 @@ def speech_index(d: Driver) -> None:
 @beat(
     "censored_stories",
     node=["The Stories", "root"],
-    label="Browse by theme - censored stories, restored",
+    label="By category - censored stories, restored",
 )
 def censored_stories(d: Driver) -> None:
     # Drill down The Stories > Categories > Themes > censored but fixed stories,
@@ -874,6 +927,10 @@ class Recorder:
         config = json.loads(self._config.read_text())
         config.setdefault("AAA_Settings", {})["last_selected_node"] = list(node)
         self._config.write_text(json.dumps(config, indent=2))
+        if RANDOM_SEED is None:
+            os.environ.pop(RANDOM_SEED_ENV_VAR, None)
+        else:
+            os.environ[RANDOM_SEED_ENV_VAR] = str(RANDOM_SEED)
         self._probe("start")
 
     def app_region(self) -> tuple[int, int, int, int]:

@@ -161,17 +161,40 @@ class TestSelectNode:
 class TestCutAlignment:
     """browse_tree and open_comic must land on the same story, or the cut jumps."""
 
-    def test_open_comic_setup_walks_the_shared_number_of_steps(self) -> None:
-        driver = _stub_driver()
-        setup = find_beat("open_comic").setup
-        assert setup is not None, "open_comic needs a setup to line its cut up"
-        with patch.object(Driver, "key") as key, patch.object(Driver, "settle"):
-            setup(driver)
-        downs = [k for call in key.call_args_list for k in call.args]
-        assert downs == ["Down"] * record_demo.BROWSE_TITLE_STEPS
+    def test_open_comic_setup_replays_the_same_keys_as_browse_tree(self) -> None:
+        """Same keys in the same order, or the tree ends up scrolled differently.
 
-    def test_open_comic_starts_in_the_range_browse_tree_opens(self) -> None:
-        assert find_beat("open_comic").node[0] == record_demo.BROWSE_RANGE
+        browse_tree does its collapse in its setup and the rest in its body;
+        open_comic does both in its setup, so the two are compared end to end.
+        """
+        browse, opener = find_beat("browse_tree"), find_beat("open_comic")
+        assert browse.setup is not None
+        assert opener.setup is not None, "open_comic needs a setup to line its cut up"
+        browse_keys = self._keys_of(browse.setup) + self._keys_of(browse.body)
+        assert self._keys_of(opener.setup) == browse_keys
+
+    def test_both_beats_start_from_the_same_node(self) -> None:
+        assert find_beat("open_comic").node == find_beat("browse_tree").node
+
+    def test_the_replay_walks_the_shared_number_of_steps(self) -> None:
+        setup = find_beat("open_comic").setup
+        assert setup is not None
+        downs = [k for k in self._keys_of(setup) if k == "Down"]
+        assert len(downs) == record_demo.BROWSE_TITLE_STEPS
+
+    @staticmethod
+    def _keys_of(run: object) -> list[str]:
+        """Every key a beat or setup presses, in order."""
+        driver = _stub_driver()
+        moves = iter(["Chronological", record_demo.BROWSE_RANGE])
+        with (
+            patch.object(Driver, "key") as key,
+            patch.object(Driver, "settle"),
+            patch.object(Driver, "hold"),
+            patch.object(Driver, "select_node", side_effect=lambda _n: next(moves, None)),
+        ):
+            run(driver)  # ty: ignore[call-non-callable]
+        return [k for call in key.call_args_list for k in call.args]
 
 
 class TestReadPages:
@@ -214,8 +237,9 @@ class TestGotoPage:
             patch.object(Driver, "key_then_wait"),
             patch.object(Driver, "settle"),
             patch.object(Driver, "hold"),
+            patch.object(Driver, "current_page", return_value=current),
         ):
-            driver.goto_page(target, current)
+            driver.goto_page(target)
         pressed = [k for call in key.call_args_list for k in call.args]
         return pressed[2:]  # past the Escape and Left that reach the button
 
@@ -237,9 +261,28 @@ class TestGotoPage:
             patch.object(Driver, "key_then_wait") as wait,
             patch.object(Driver, "settle"),
             patch.object(Driver, "hold"),
+            patch.object(Driver, "current_page", return_value=4),
         ):
-            driver.goto_page(18, 4)
+            driver.goto_page(18)
         assert wait.call_args.args[0] == "Showed page 18"
+
+    def test_reads_where_it_is_rather_than_being_told(self) -> None:
+        """The reader opens on whatever page the user cued, so it has to look."""
+        driver = _stub_driver()
+        with (
+            patch.object(Driver, "key") as key,
+            patch.object(Driver, "key_then_wait"),
+            patch.object(Driver, "settle"),
+            patch.object(Driver, "hold"),
+            patch.object(Driver, "current_page", return_value=29) as where,
+        ):
+            driver.goto_page(31)
+        where.assert_called_once()
+        assert [k for call in key.call_args_list for k in call.args][2:] == [
+            "Return",
+            "Down",
+            "Down",
+        ]
 
 
 class TestKeyThenWait:
