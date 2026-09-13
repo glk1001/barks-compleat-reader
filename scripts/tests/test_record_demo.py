@@ -6,7 +6,7 @@ recording to check is exercised against a stub driver instead.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -24,9 +24,6 @@ from record_demo import (
     parse_geometry,
     select_beats,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 EXPECTED_REGION = (782, 1224, 59, 10)
 EXPECTED_DOWNS = 2
@@ -226,12 +223,69 @@ class TestReadPages:
         assert rest.call_count == FOUR_RESTS
 
 
+class TestPressMenuButton:
+    """Menu focus is sticky, so a second press must account for the first."""
+
+    @staticmethod
+    def _presses(driver: Driver, name: str) -> list[str]:
+        with (
+            patch.object(Driver, "key") as key,
+            patch.object(Driver, "hold"),
+        ):
+            driver.press_menu_button(name)
+        return [k for call in key.call_args_list for k in call.args]
+
+    def test_walks_forward_from_the_default(self) -> None:
+        """Close -> fullscreen -> double_page is two Rights on a fresh reader."""
+        driver = _stub_driver()
+        driver._menu_focus = "close"  # noqa: SLF001
+        assert self._presses(driver, "double_page") == ["Escape", "Right", "Right", "Return"]
+
+    def test_takes_the_short_way_round(self) -> None:
+        """goto_page is one Left back from close, not five Rights forward."""
+        driver = _stub_driver()
+        driver._menu_focus = "close"  # noqa: SLF001
+        assert self._presses(driver, "goto_page") == ["Escape", "Left", "Return"]
+
+    def test_a_second_press_starts_where_the_first_left_off(self) -> None:
+        """Regression: after a goto-page, two Rights reach fullscreen, not double-page.
+
+        Fullscreen resizes the window on the nested display, so this silently
+        wrecked the rest of the recording rather than merely showing the wrong
+        thing.
+        """
+        driver = _stub_driver()
+        driver._menu_focus = "close"  # noqa: SLF001
+        self._presses(driver, "goto_page")
+        presses = self._presses(driver, "double_page")
+        assert "Escape" in presses
+        assert presses.count("Right") == THREE_TURNS
+        assert "Left" not in presses
+
+    def test_no_movement_when_already_there(self) -> None:
+        driver = _stub_driver()
+        driver._menu_focus = "close"  # noqa: SLF001
+        assert self._presses(driver, "close") == ["Escape", "Return"]
+
+    def test_an_unknown_button_raises(self) -> None:
+        driver = _stub_driver()
+        driver._menu_focus = "close"  # noqa: SLF001
+        with pytest.raises(BeatError, match="no such menu button"):
+            self._presses(driver, "nope")
+
+    def test_fullscreen_is_never_pressed_by_a_beat(self) -> None:
+        """It resizes the window, and the recorder grabs a fixed region."""
+        source = Path(record_demo.__file__).read_text()
+        assert 'press_menu_button("fullscreen")' not in source
+
+
 class TestGotoPage:
     """Steps through the page list are the difference between two page numbers."""
 
     @staticmethod
     def _steps(target: int, current: int) -> list[str]:
         driver = _stub_driver()
+        driver._menu_focus = "close"  # noqa: SLF001
         with (
             patch.object(Driver, "key") as key,
             patch.object(Driver, "key_then_wait"),
@@ -241,7 +295,7 @@ class TestGotoPage:
         ):
             driver.goto_page(target)
         pressed = [k for call in key.call_args_list for k in call.args]
-        return pressed[2:]  # past the Escape and Left that reach the button
+        return pressed[2:]  # past the Escape and Left that open the page list
 
     def test_steps_down_to_a_later_page(self) -> None:
         steps = self._steps(18, 4)
@@ -263,6 +317,7 @@ class TestGotoPage:
             patch.object(Driver, "hold"),
             patch.object(Driver, "current_page", return_value=4),
         ):
+            driver._menu_focus = "close"  # noqa: SLF001
             driver.goto_page(18)
         assert wait.call_args.args[0] == "Showed page 18"
 
@@ -276,6 +331,7 @@ class TestGotoPage:
             patch.object(Driver, "hold"),
             patch.object(Driver, "current_page", return_value=29) as where,
         ):
+            driver._menu_focus = "close"  # noqa: SLF001
             driver.goto_page(31)
         where.assert_called_once()
         assert [k for call in key.call_args_list for k in call.args][2:] == [

@@ -301,9 +301,23 @@ class Driver:
     _NODE_RE = re.compile(r'New selected node: "([^"]+)"')
     _PAGE_RE = re.compile(r"Showed page (\d+)")
 
+    # The reader's action-bar menu, in the order it is navigated - which is the
+    # order comic_book_reader.py passes to _setup_action_bar_nav, NOT the order
+    # the buttons appear in the .kv file. Focus starts on the first of these.
+    _MENU_BUTTONS = (
+        "close",
+        "fullscreen",
+        "double_page",
+        "goto_start",
+        "goto_end",
+        "goto_page",
+    )
+
     def __init__(self, probe: Path = PROBE) -> None:
         self._probe = probe
         self._log = Path(self._run(["log"]).strip())
+        # Menu focus is sticky, so the driver has to remember where it left it.
+        self._menu_focus = self._MENU_BUTTONS[0]
 
     def _run(self, args: Sequence[str]) -> str:
         result = subprocess.run(  # noqa: S603  (fixed argv, no shell)
@@ -464,25 +478,75 @@ class Driver:
             self.key_then_wait("Showed page", 15, "Right")
             self.hold(pick.dwell)
 
+    def press_menu_button(self, name: str) -> None:
+        """Open the reader's action-bar menu and activate one button by name.
+
+        Menu mode does not reopen on a fixed button: ``_enter_menu_mode`` restores
+        ``_last_used_btn_idx``, so it comes back focused on whatever was activated
+        last. A fixed run of arrow presses is therefore only right the first time
+        - after a goto-page, the same two Rights that used to reach double-page
+        reach fullscreen instead, which on a nested display with no window
+        manager resizes the window out from under the recorder.
+
+        Tracking the last activation here is what makes the second press land
+        where it says. Nothing else drives the app, so this stays in step.
+
+        Args:
+            name: One of `_MENU_BUTTONS`.
+
+        Raises:
+            BeatError: If `name` is not a menu button.
+
+        """
+        if name not in self._MENU_BUTTONS:
+            msg = f"no such menu button: {name} (have: {', '.join(self._MENU_BUTTONS)})"
+            raise BeatError(msg)
+
+        count = len(self._MENU_BUTTONS)
+        here = self._MENU_BUTTONS.index(self._menu_focus)
+        there = self._MENU_BUTTONS.index(name)
+        forward = (there - here) % count
+        backward = (here - there) % count
+
+        self.key("Escape")  # reader menu mode
+        self.hold(0.5)
+        step, presses = ("Right", forward) if forward <= backward else ("Left", backward)
+        for _ in range(presses):
+            self.key(step)
+            self.hold(0.4)
+        self.key("Return")
+        self._menu_focus = name
+
+    def close_reader(self) -> None:
+        """Shut the comic reader through its menu, and wait for the main screen."""
+        count = len(self._MENU_BUTTONS)
+        here = self._MENU_BUTTONS.index(self._menu_focus)
+        there = self._MENU_BUTTONS.index("close")
+        forward, backward = (there - here) % count, (here - there) % count
+
+        self.key("Escape")
+        self.hold(0.4)
+        step, presses = ("Right", forward) if forward <= backward else ("Left", backward)
+        for _ in range(presses):
+            self.key(step)
+            self.hold(0.4)
+        self.key_then_wait("Main screen is active", 15, "Return")
+        self._menu_focus = "close"
+
     def goto_page(self, target: int) -> None:
         """Jump to a body page through the reader's goto-page dropdown.
 
-        Menu mode opens focused on the close button and goto-page is the one
-        before it, so a single Left reaches it. The dropdown then opens focused
-        on the *current* page and lists the body pages in order, so the number of
-        steps is just the difference between the two page numbers - the
-        non-body entries in front of page 1 do not come into it.
+        The dropdown opens focused on the *current* page and lists the pages in
+        index order, so the number of steps is just the difference between the
+        two page numbers - the non-body entries in front of page 1 do not come
+        into it.
 
         Args:
             target: The body page to land on.
 
         """
         current = self.current_page()
-        self.key("Escape")  # reader menu mode, focused on close
-        self.hold(0.5)
-        self.key("Left")  # ... and goto-page is the button before it
-        self.hold(0.5)
-        self.key("Return")  # open the page list
+        self.press_menu_button("goto_page")  # opens the page list
         self.settle()
         self.hold(GOTO_LIST_DWELL)
         step = "Down" if target > current else "Up"
@@ -506,9 +570,7 @@ class Driver:
         self.hold(0.6)
         self.key_then_wait("All images loaded", 30, "Return")
         self.read_pages(pick)
-        self.key("Escape")  # reader menu mode; Go Back is focused by default
-        self.hold(0.4)
-        self.key_then_wait("Main screen is active", 15, "Return")
+        self.close_reader()
         self.hold(0.5)
         # Closing the reader leaves focus in the bottom region, where Down does
         # nothing to the tree. Escape hands it back (main_screen_nav:243).
@@ -696,18 +758,9 @@ def read_story(d: Driver) -> None:
     # Skip to a page rather than turning to it, showing the page list on the way.
     d.goto_page(READ_STORY_GOTO_PAGE)
     d.hold(1.0)
-    # Reader action bar order is fullscreen, double page, start, end, goto, close,
-    # and menu mode opens focused on close - so two Rights wrap round to the
-    # double-page button. Fullscreen is deliberately not shown: with no window
-    # manager on the nested display it resizes the window, and the recorder is
-    # grabbing a fixed region.
-    d.key("Escape")
-    d.hold(0.5)
-    d.key("Right")
-    d.hold(0.4)
-    d.key("Right")
-    d.hold(0.4)
-    d.key("Return")
+    # Fullscreen is deliberately never pressed: with no window manager on the
+    # nested display it resizes the window, and the recorder grabs a fixed region.
+    d.press_menu_button("double_page")
     d.settle()
     d.hold(3.5)
 
