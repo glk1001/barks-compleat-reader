@@ -139,7 +139,7 @@ SETUP_PACE = 0.25
 # same backgrounds and insets as the one it replaces and two runs can be compared
 # frame for frame. Any fixed number does; it only has to be the same every time.
 # Set to None to let the app pick freshly, as it does for a normal user.
-RANDOM_SEED: int | None = 20260914
+RANDOM_SEED: int | None = 20260915
 
 # What the two search beats type. Keep them short - every character is typed with
 # a visible pause, so a long query makes for a slow beat.
