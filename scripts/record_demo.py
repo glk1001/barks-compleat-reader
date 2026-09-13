@@ -105,6 +105,11 @@ CAPTION_COLOR = "0xFFDB52"
 CAPTION_BOX_ALPHA = 0.85
 CAPTION_BOX_PAD = 18
 CAPTION_SHADOW = 2
+# How far the caption sits above the bottom of the frame. It has to clear the
+# browser's own control bar, which the player draws across the bottom of the
+# video once something is playing - at 36 the bar sat right on top of the one
+# piece of text explaining what is on screen.
+CAPTION_BOTTOM = 96
 
 WALK_PAUSE = 0.45  # pace of a single Down while walking the tree on camera
 TYPE_PAUSE = 0.4  # pace of a single character into a search box
@@ -1112,7 +1117,7 @@ class Recorder:
                     f"box=1:boxcolor=black@{CAPTION_BOX_ALPHA}:"
                     f"boxborderw={CAPTION_BOX_PAD}:"
                     f"shadowcolor=black@0.9:shadowx={CAPTION_SHADOW}:"
-                    f"shadowy={CAPTION_SHADOW}:x=(w-text_w)/2:y=h-th-36"
+                    f"shadowy={CAPTION_SHADOW}:x=(w-text_w)/2:y=h-th-{CAPTION_BOTTOM}"
                 ),
             ]
         return subprocess.Popen(  # noqa: S603  (fixed argv, absolute path, no shell)

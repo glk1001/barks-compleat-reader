@@ -945,11 +945,12 @@
                 <div class="tour__frame">
                     <video id="tour-video" src="walkthrough.mp4"
                            poster="walkthrough-poster.jpg" preload="none"
-                           width="782" height="1224" controls playsinline
+                           width="782" height="1224" playsinline
                            aria-label="A tour of the reader, in chapters"></video>
                 </div>
-                <p class="tour__hint">Use the player&rsquo;s fullscreen button to fill the
-                    screen &mdash; the reader&rsquo;s own text is small at this size.</p>
+                <p class="tour__hint">Click the picture to play. Once it is running, the
+                    player&rsquo;s fullscreen button fills the screen &mdash; the
+                    reader&rsquo;s own text is small at this size.</p>
             </div>
 
             <figure class="art-panel art-panel--banner">
@@ -1930,6 +1931,19 @@
                     }
                     video.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
+
+                // No controls while it sits on the poster - the scrubber over a
+                // still frame is clutter, and there is nothing to scrub yet. They
+                // arrive once something is playing, which is also when the
+                // fullscreen button becomes worth having.
+                video.addEventListener('play', () => { video.controls = true; });
+
+                // With no controls there is no play button either, so the poster
+                // itself starts the tour. Once the controls are up the browser
+                // handles clicks on the video, so this steps aside.
+                video.addEventListener('click', () => {
+                    if (!video.controls) { play(0, null, ''); }
+                });
 
                 // Say so rather than sitting there doing nothing.
                 video.addEventListener('error', () => {
