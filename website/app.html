@@ -255,7 +255,8 @@
            centred rather than squeezed into a column beside the copy. */
         .tour__frame {
             max-width: 782px;
-            margin: 16px auto 0;
+            margin: 26px auto 0;
+            padding: 12px 0;
         }
 
         .tour__frame {
@@ -267,7 +268,7 @@
         }
 
         .tour__hint {
-            margin: 8px 0 0;
+            margin: 14px 0 30px;
             text-align: center;
             font-size: 0.9em;
             opacity: 0.75;
@@ -938,7 +939,8 @@
                 <button class="chapter-link" data-chapter="*">&#9654; Play the full tour</button>
                 <p class="tour__now" id="tour-now"></p>
                 <div class="tour__frame">
-                    <video id="tour-video" poster="demo-poster.jpg" preload="none"
+                    <video id="tour-video" src="walkthrough.mp4"
+                           poster="walkthrough-poster.jpg" preload="none"
                            width="782" height="1224" controls playsinline
                            aria-label="A tour of the reader, in chapters"></video>
                 </div>

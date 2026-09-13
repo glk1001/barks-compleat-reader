@@ -109,10 +109,15 @@ CAPTION_SHADOW = 2
 WALK_PAUSE = 0.45  # pace of a single Down while walking the tree on camera
 TYPE_PAUSE = 0.4  # pace of a single character into a search box
 
-# Poster frame comes from the end of this beat rather than the end of a video:
-# the browse view carries the app's chrome, tree and title card, which says
-# "this is a reader app" better than a bare comic page does.
+# Where each output's poster frame comes from. A beat name takes that beat's
+# resting frame; "first" takes the video's own opening frame.
+#
+# The hero plays by itself, so its still barely shows and wants to be composed -
+# browse_tree's resting frame has the tree, a title card and the app's chrome.
+# The tour is click-to-play, so its poster is the frame it will start from:
+# anything else makes the player look like it jumped when play is pressed.
 POSTER_BEAT = "browse_tree"
+POSTERS = {"demo.mp4": POSTER_BEAT, "walkthrough.mp4": "first"}
 
 # Where browse_tree goes once it has opened the tree, and how far down into that
 # range's title list it walks. open_comic's setup repeats the same number of
@@ -1310,16 +1315,22 @@ def stitch(name: str, beats: Sequence[str], out_dir: Path, work_dir: Path) -> Pa
     return final
 
 
-def write_poster(out_dir: Path, work_dir: Path) -> None:
-    """Write the poster frame beside the videos, from POSTER_BEAT's resting frame."""
-    source = work_dir / f"{POSTER_BEAT}.mp4"
-    if not source.is_file():
-        source = out_dir / "demo.mp4"
+def write_poster(video: Path, work_dir: Path) -> None:
+    """Write a poster frame beside one output video, per POSTERS."""
+    want = POSTERS.get(video.name, "first")
+    poster = video.with_name(f"{video.stem}-poster.jpg")
+
+    if want == "first":
+        source, seek = video, ["-i", str(video)]
+    else:
+        clip = work_dir / f"{want}.mp4"
+        source = clip if clip.is_file() else video
+        seek = ["-sseof", "-0.5", "-i", str(source)]
     if not source.is_file():
         return
-    poster = out_dir / "demo-poster.jpg"
-    _run_ffmpeg(["-sseof", "-0.5", "-i", str(source), "-update", "1", "-q:v", "4", str(poster)])
-    say(f"record-demo: {poster} ({_human_size(poster)})")
+
+    _run_ffmpeg([*seek, "-update", "1", "-frames:v", "1", "-q:v", "4", str(poster)])
+    say(f"record-demo: {poster.name} ({_human_size(poster)}, from {want})")
 
 
 # ---------------------------------------------------------------------- CLI --
@@ -1378,8 +1389,7 @@ def build_outputs(only: str | None, out_dir: Path) -> None:
         # clip for some other output does not block previewing this one.
         if only and output != only:
             continue
-        stitch(output, beats, out_dir, WORK_DIR)
-    write_poster(out_dir, WORK_DIR)
+        write_poster(stitch(output, beats, out_dir, WORK_DIR), WORK_DIR)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
