@@ -42,6 +42,7 @@ configfile
 consolelog
 cpufreq
 cpus
+currentTime
 cythonize
 dateutil
 decryptor
@@ -198,6 +199,7 @@ textbbox
 textlength
 themable
 timespec
+timeupdate
 tobytes
 tofile
 toggleable

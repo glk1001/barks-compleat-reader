@@ -1930,11 +1930,23 @@
                     now.textContent = 'The tour video could not be loaded (' + SOURCE + ').';
                 });
 
+                // timeupdate only fires a few times a second, so stopping on
+                // currentTime >= end lands a frame or two into the NEXT chapter:
+                // the viewer is left looking at the start of something else
+                // instead of the end of what they asked for. Stop just short, and
+                // clamp back if the event still arrived late. Every beat ends on a
+                // deliberate pause, so the frame landed on is a held one.
+                const END_LEAD = 0.3;
+
                 video.addEventListener('timeupdate', () => {
-                    if (stopAt !== null && video.currentTime >= stopAt) {
-                        video.pause();
-                        stopAt = null;
+                    if (stopAt === null || video.currentTime < stopAt - END_LEAD) {
+                        return;
                     }
+                    video.pause();
+                    if (video.currentTime > stopAt - 0.1) {
+                        video.currentTime = Math.max(0, stopAt - 0.1);
+                    }
+                    stopAt = null;
                 });
 
                 buttons.forEach(b => b.addEventListener('click', () => {
