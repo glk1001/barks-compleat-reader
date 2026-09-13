@@ -21,36 +21,36 @@
     "beat": "search_words",
     "title": "Search every word the characters speak",
     "start": 61.2,
-    "end": 91.77
+    "end": 96.77
   },
   {
     "beat": "read_story",
     "title": "Skip to any page, or read two-up as printed",
-    "start": 91.77,
-    "end": 126.33
+    "start": 96.77,
+    "end": 131.33
   },
   {
     "beat": "wiki_jump",
     "title": "Every story linked to the Carl Barks Wiki",
-    "start": 126.33,
-    "end": 141.4
+    "start": 131.33,
+    "end": 146.4
   },
   {
     "beat": "speech_index",
     "title": "A full speech-bubble index, A to Z",
-    "start": 141.4,
-    "end": 154.47
+    "start": 146.4,
+    "end": 159.47
   },
   {
     "beat": "censored_stories",
     "title": "By category - censored stories, restored",
-    "start": 154.47,
-    "end": 230.07
+    "start": 159.47,
+    "end": 235.07
   },
   {
     "beat": "history",
     "title": "Pick up where you left off",
-    "start": 230.07,
-    "end": 237.63
+    "start": 235.07,
+    "end": 242.63
   }
 ]

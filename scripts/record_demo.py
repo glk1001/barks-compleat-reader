@@ -237,6 +237,10 @@ READ_STORY_PICK = Pick("LOST_IN_THE_ANDES", pages=2, dwell=2.5)
 # what SEARCH_TITLE_RESULT actually lands on.
 SEARCH_TITLE_PICK = Pick("VACATION_TIME", pages=3, dwell=1.0)
 
+# How much of the story to read once the bubble has landed on it. Only `pages` and
+# `dwell` are used here - the beat reaches the comic through the bubble, not by name.
+SEARCH_WORD_READ = Pick(pages=4, dwell=1.0)
+
 # open_comic reaches its story by walking, not by name, so this sets only its
 # pacing: five pages means the one it opens on plus four turns.
 OPEN_COMIC_PICK = Pick(pages=4, dwell=1.5)
@@ -862,15 +866,15 @@ def search_words(d: Driver) -> None:
     d.hold(1.0)
     d.key("Return")
     d.settle()
-    d.hold(0.6)
+    d.hold(0.5)
     d.type_slowly(SEARCH_WORD_QUERY)
     d.settle()
-    d.hold(1.5)
+    d.hold(0.1)
     d.key("Down")  # focus the first matching word chip
     d.settle()
-    d.hold(0.6)
+    d.hold(0.1)
     d.key_then_wait("Word search: selected chip", 15, "Return")
-    d.hold(3.0)  # the list of every story the word is spoken in
+    d.hold(2.0)  # the list of every story the word is spoken in
 
     row_y = SEARCH_WORD_RESULT_TOP_Y + (SEARCH_WORD_RESULT - 1) * SEARCH_WORD_ROW_H
     d.click_then_wait(
@@ -888,7 +892,17 @@ def search_words(d: Driver) -> None:
     d.settle()
     d.hold(3.0)  # the title view for the story the bubble came from
 
-    # The bubble press lands focus in the title panel, so hand it back before the
+    # Straight on into the story. Only the index screens hand focus to the read portal
+    # after a popup goto (main_screen._bind_screen_callbacks wires
+    # on_after_popup_goto_title for those alone), so this Enter is what enters the title
+    # panel's nav focus - and it lands on the portal, which is what ced49f7's sibling
+    # 63b4a42 made true while the panel is still fading in.
+    d.key_then_wait("All images loaded", 30, "Return")
+    d.read_pages(SEARCH_WORD_READ)
+    d.close_reader()
+    d.hold(1.0)
+
+    # Closing the reader leaves focus in the bottom region, so hand it back before the
     # action bar's Go Back can be reached - the same two-step search_story needs.
     d.key("Escape")
     d.settle()
