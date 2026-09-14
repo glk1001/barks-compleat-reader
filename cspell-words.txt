@@ -167,6 +167,7 @@ PYTHONHASHSEED
 rasterised
 realised
 recognise
+recognised
 reingest
 Relatedly
 relativedelta
@@ -226,6 +227,7 @@ unindexed
 unkillable
 unpadded
 unparseable
+unrecognised
 unrunnable
 unthemed
 untinted
