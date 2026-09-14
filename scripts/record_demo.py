@@ -138,6 +138,14 @@ TYPE_PAUSE = 0.4  # pace of a single character into a search box
 POSTER_BEAT = "browse_tree"
 POSTERS = {"demo.mp4": POSTER_BEAT, "walkthrough.mp4": "first"}
 
+# ffmpeg's JPEG quality for the posters, where lower is better. These are the only
+# part of the recording that stays in git - the videos go to a release - so they are
+# worth keeping small, and they are what the page paints before either video has
+# arrived. 8 rather than 4 takes the pair from 324K to 200K with nothing visible in
+# it: compared at 1:1 on the tree's small italic text, the hardest thing either
+# poster contains, the two are indistinguishable.
+POSTER_QUALITY = 8
+
 # How hard each output is squeezed after stitching. An output not listed here is
 # published exactly as recorded.
 #
@@ -1585,7 +1593,7 @@ def write_poster(video: Path, work_dir: Path) -> None:
     if not source.is_file():
         return
 
-    _run_ffmpeg([*seek, "-update", "1", "-frames:v", "1", "-q:v", "4", str(poster)])
+    _run_ffmpeg([*seek, "-update", "1", "-frames:v", "1", "-q:v", str(POSTER_QUALITY), str(poster)])
     say(f"record-demo: {poster.name} ({_human_size(poster)}, from {want})")
 
 
