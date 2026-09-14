@@ -15,10 +15,16 @@ env:
 jobs:
   build:
     name: Build (${{ matrix.os }})
-    # data-v* tag pushes (data-pack releases, see scripts/upload-data-zips.sh)
-    # don't need app builds - without this guard, publishing a data release
-    # burns four platform builds and attaches nothing.
-    if: ${{ !startsWith(github.ref, 'refs/tags/data-') }}
+    # Only app-release tags need app builds. The other tags in this repo carry
+    # assets, not code: data-v* for the data packs (scripts/upload-data-zips.sh)
+    # and website-assets for the site's videos (scripts/upload-website-videos.sh).
+    # Without this guard, publishing either burns four platform builds and attaches
+    # nothing. Stated as "any tag that is not v*" rather than a list, so the next
+    # asset tag someone adds is covered without remembering to come back here.
+    # Branch pushes and pull requests are not tags, so they build as before.
+    if: >-
+      ${{ !startsWith(github.ref, 'refs/tags/')
+      || startsWith(github.ref, 'refs/tags/v') }}
     strategy:
       matrix:
         include:
