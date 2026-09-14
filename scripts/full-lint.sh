@@ -8,7 +8,8 @@
 #         vulture_whitelist.py), relative-import check, kv-import check (.kv
 #         "#: import" directives resolve), cspell, benchmarks (compared against the
 #         machine-local baseline in .benchmarks/).
-# Non-gating: uv audit (dependency CVEs) warns but never fails the build.
+# Non-gating: uv audit (dependency CVEs) and the wiki story-order check both warn
+#             but never fail the build.
 
 set -uo pipefail
 
@@ -38,6 +39,10 @@ run_check() {
 # Non-gating check: run it and surface the result, but never fail the build.
 # Used for uv audit, whose advisory DB changes daily (a new upstream CVE could
 # turn a passing tree red with no local change), so it warns rather than blocks.
+# The wiki story-order check is here for the same reason: its subject is the
+# sibling barks-wiki bundle, so a commit in another repo could redden a tree that
+# has not changed. That repo gates its own ordering; this is only the local
+# heads-up, and it says so and passes when the bundle is not there at all.
 run_warn() {
     local name="$1"
     shift
@@ -60,6 +65,7 @@ run_warn  "uv audit"              uv audit --preview-features audit-command
 run_check "relative-import-check" bash scripts/check-relative-imports.sh
 run_check "kv-imports"            uv run scripts/check_kv_imports.py
 run_check "cspell"                bunx cspell --no-progress
+run_warn  "wiki story order"      uv run scripts/check_wiki_story_order.py --quiet
 run_check "benchmarks"            bash scripts/run_benchmark.sh
 
 echo

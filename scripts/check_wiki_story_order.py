@@ -26,8 +26,12 @@ Usage:
     scripts/check_wiki_story_order.py                  # the sibling bundle
     scripts/check_wiki_story_order.py --bundle DIR
     scripts/check_wiki_story_order.py --show-order     # also print the fixed order
+    scripts/check_wiki_story_order.py --quiet          # only the verdict, unless bad
 
-Exits 1 when anything is out of order, 0 when every index is clean.
+Exits 1 when anything is out of order and 0 when every index is clean. A bundle
+that is not there at all is also 0, said out loud rather than passed silently: the
+sibling repo is not part of this checkout, so most machines and all of CI have
+nothing to check.
 """
 
 from __future__ import annotations
@@ -96,8 +100,11 @@ def inversions(entries: list[Entry]) -> list[tuple[Entry, Entry]]:
     return [(a, b) for a, b in itertools.pairwise(entries) if b.rank < a.rank]
 
 
-def report(bundle: Path, *, show_order: bool) -> int:
+def report(bundle: Path, *, show_order: bool = False, quiet: bool = False) -> int:
     """Print a report for every story index under `bundle`. Returns an exit code."""
+    if not bundle.is_dir():
+        say(f"no wiki bundle at {bundle} - nothing to check")
+        return 0
     indexes = sorted(bundle.glob(STORIES_GLOB))
     if not indexes:
         say(f"no story indexes under {bundle}")
@@ -109,6 +116,8 @@ def report(bundle: Path, *, show_order: bool) -> int:
         entries, unknown = linked_entries(index, ranks)
         bad = inversions(entries)
         total_bad += len(bad)
+        if quiet and not bad:
+            continue
         name = index.parent.name
         note = f", {len(unknown)} unrecognised" if unknown else ""
         say(f"\n{name}  ({len(entries)} story links{note})")
@@ -136,8 +145,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--show-order", action="store_true", help="also print each index's corrected link order"
     )
+    parser.add_argument(
+        "--quiet", action="store_true", help="print only the verdict, unless something is wrong"
+    )
     args = parser.parse_args(argv)
-    return report(args.bundle, show_order=args.show_order)
+    return report(args.bundle, show_order=args.show_order, quiet=args.quiet)
 
 
 if __name__ == "__main__":

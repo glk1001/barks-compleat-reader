@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from check_wiki_story_order import Entry, inversions, linked_entries, slugify
+from check_wiki_story_order import Entry, inversions, linked_entries, report, slugify
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -72,3 +72,34 @@ class TestLinkedEntries:
 
         assert [e.slug for e in found] == ["beta", "alpha"]  # listed order, not sorted
         assert unknown == ["mystery"]
+
+
+class TestReport:
+    """The exit codes full-lint.sh leans on."""
+
+    @staticmethod
+    def _bundle(tmp_path: Path, *slugs: str) -> Path:
+        index = tmp_path / "concept" / "stories" / "donald-duck-adventures" / "index.md"
+        index.parent.mkdir(parents=True)
+        index.write_text(
+            "".join(f"- [{s}]({s}.md)\n" for s in slugs),
+            encoding="utf-8",
+        )
+        return tmp_path
+
+    def test_absent_bundle_is_not_a_failure(self, tmp_path: Path) -> None:
+        """Most checkouts have no sibling wiki repo, and CI never does."""
+        assert report(tmp_path / "nowhere", quiet=True) == 0
+
+    def test_bundle_present_but_empty_is_suspicious(self, tmp_path: Path) -> None:
+        assert report(tmp_path, quiet=True) == 2
+
+    def test_out_of_order_fails(self, tmp_path: Path) -> None:
+        # The real case: The Golden Christmas Tree was submitted before Lost in
+        # the Andes, so listing it second is the wrong way round.
+        bundle = self._bundle(tmp_path, "lost-in-the-andes", "the-golden-christmas-tree")
+        assert report(bundle, quiet=True) == 1
+
+    def test_in_order_passes(self, tmp_path: Path) -> None:
+        bundle = self._bundle(tmp_path, "the-golden-christmas-tree", "lost-in-the-andes")
+        assert report(bundle, quiet=True) == 0

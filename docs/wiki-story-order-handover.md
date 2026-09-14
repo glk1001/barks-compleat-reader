@@ -78,6 +78,18 @@ to over time.
 so the ordering probably wants fixing there rather than in 8 hand-edited indexes.
 That has not been examined in any detail — it was found by name, not read.
 
+## Who checks what
+
+`barks-wiki` gates its own ordering — that is where the data and the generator
+live, and where a failure is actionable.
+
+This repo keeps the same check in `scripts/full-lint.sh` as a **non-gating**
+warning, for the same reason `uv audit` is non-gating there: its subject sits
+outside this checkout, so a commit in another repo could otherwise redden a tree
+that has not changed. It names itself in the summary and the lint still passes.
+It also passes, saying so, when the bundle is not present at all — which is most
+checkouts and all of CI, since no workflow here checks out `barks-wiki`.
+
 ## Re-running the check
 
 Committed here as a diagnostic (it never writes to the bundle):
