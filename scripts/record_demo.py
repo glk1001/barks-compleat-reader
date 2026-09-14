@@ -268,6 +268,11 @@ CENSORED_PICKS = (
 # that is the branch its setup walks.
 READ_STORY_PICK = Pick("LOST_IN_THE_ANDES", pages=2, dwell=2.5)
 
+# The story series_view walks the series list down to, and how much of it to read
+# once it is open. It opens on whatever page the config has cued for it, the same
+# as every other beat that opens a story.
+SERIES_PICK = Pick("LOST_IN_THE_ANDES", pages=2, dwell=1.5)
+
 # The story search_story finds, and how much of it to read. Its title must be
 # what SEARCH_TITLE_RESULT actually lands on.
 SEARCH_TITLE_PICK = Pick("VACATION_TIME", pages=3, dwell=1.0)
@@ -306,7 +311,7 @@ OPEN_COMIC_PICK = Pick(pages=4, dwell=1.5)
 # that same index order, which is why stepping by the difference between two of
 # them lands exactly. Must exist in READ_STORY_PICK's story, or the jump ends up
 # somewhere else - loudly, since the landing is checked against the log.
-READ_STORY_GOTO_PAGE = 18
+READ_STORY_GOTO_PAGE = 25
 
 # How many Ups wiki_jump takes from the read portal to reach the wiki button.
 #
@@ -346,12 +351,12 @@ OUTPUTS: dict[str, tuple[str, ...]] = {
     "walkthrough.mp4": (
         "browse_tree",
         "series_view",
+        "read_story",
         "search_story",
         "search_words",
-        "read_story",
+        "censored_stories",
         "wiki_jump",
         "speech_index",
-        "censored_stories",
         "reading",
     ),
 }
@@ -877,18 +882,23 @@ def open_comic(d: Driver) -> None:
     label="Or by the series they ran in",
 )
 def series_view(d: Driver) -> None:
-    # Booting here has already expanded Series, so the three series are on screen
-    # and this only has to walk into them.
-    d.hold(1.2)
-    d.select_node("Comics and Stories")
-    d.hold(0.9)
-    d.select_node("Donald Duck Adventures")
-    d.hold(0.9)
-    d.select_node("Uncle Scrooge Adventures")
+    # Booting here has already expanded Series, so the three series are on screen and
+    # this only has to walk into them.
     d.hold(1.0)
-    d.key("Return")  # expand it to show the volumes
+    d.select_node("Comics and Stories")
+    d.hold(1.0)
+    d.select_node("Donald Duck Adventures")
+    d.hold(1.0)
+    d.key("Return")  # expand it: a series lists its stories directly, no volumes
     d.settle()
-    d.hold(2.0)
+    d.hold(1.0)
+
+    # Walking the list down to one story is the point of the beat - it is what shows
+    # the series in order. Name-driven rather than a counted run of Downs, so a title
+    # added upstream shifts the walk instead of landing this on the wrong story.
+    d.select_node(SERIES_PICK.title)
+    d.hold(1.0)
+    d.open_story(SERIES_PICK)
 
 
 @beat(

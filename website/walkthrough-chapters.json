@@ -9,48 +9,48 @@
     "beat": "series_view",
     "title": "Or by the series they ran in",
     "start": 22.57,
-    "end": 33.13
-  },
-  {
-    "beat": "search_story",
-    "title": "Find a story by name",
-    "start": 33.13,
-    "end": 61.2
-  },
-  {
-    "beat": "search_words",
-    "title": "Search every word the characters speak",
-    "start": 61.2,
-    "end": 96.77
+    "end": 55.63
   },
   {
     "beat": "read_story",
     "title": "Skip to any page, or read two-up as printed",
-    "start": 96.77,
-    "end": 131.33
+    "start": 55.63,
+    "end": 86.7
   },
   {
-    "beat": "wiki_jump",
-    "title": "Every story linked to the Carl Barks Wiki",
-    "start": 131.33,
-    "end": 165.4
+    "beat": "search_story",
+    "title": "Find a story by name",
+    "start": 86.7,
+    "end": 114.77
   },
   {
-    "beat": "speech_index",
-    "title": "A full speech-bubble index, A to Z",
-    "start": 165.4,
-    "end": 178.47
+    "beat": "search_words",
+    "title": "Search every word the characters speak",
+    "start": 114.77,
+    "end": 150.33
   },
   {
     "beat": "censored_stories",
     "title": "By category - censored stories, restored",
-    "start": 178.47,
-    "end": 254.07
+    "start": 150.33,
+    "end": 225.93
+  },
+  {
+    "beat": "wiki_jump",
+    "title": "Every story linked to the Carl Barks Wiki",
+    "start": 225.93,
+    "end": 260.0
+  },
+  {
+    "beat": "speech_index",
+    "title": "A full speech-bubble index, A to Z",
+    "start": 260.0,
+    "end": 273.07
   },
   {
     "beat": "reading",
     "title": "Choose for me, playlists, and your history",
-    "start": 254.07,
-    "end": 305.63
+    "start": 273.07,
+    "end": 324.63
   }
 ]
