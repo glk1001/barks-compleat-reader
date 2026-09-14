@@ -5,6 +5,7 @@ acpi
 actioned
 activatable
 alnum
+Andrae
 apos
 arcname
 arcnames
@@ -37,6 +38,7 @@ ciphertext
 clickthrough
 codepoint
 colorfmt
+Comixology
 compresslevel
 configfile
 consolelog
@@ -49,6 +51,7 @@ decryptor
 dedup
 dejavu
 delenv
+digitised
 docstrings
 dotenv
 edgecolor
@@ -75,6 +78,7 @@ fontstyle
 fontweight
 frontmatter
 frozensets
+Funnybooks
 generalise
 generalises
 getbuffer
@@ -86,6 +90,7 @@ hardbreak
 headlessly
 hidinput
 hitbox
+Hyperlegible
 hyphenatable
 idempotently
 importlinter
@@ -143,6 +148,7 @@ notvol
 numpad
 nums
 okf
+organise
 organised
 parametrised
 passthroughs
@@ -165,6 +171,7 @@ reingest
 Relatedly
 relativedelta
 renderable
+retimed
 returncode
 rgba
 ryzen
@@ -195,6 +202,7 @@ synthesised
 sysfs
 syspath
 sysrsync
+tabcontent
 testpaths
 texels
 textbbox
