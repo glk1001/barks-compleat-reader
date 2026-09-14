@@ -255,7 +255,7 @@
            centred rather than squeezed into a column beside the copy. */
         .tour__frame {
             max-width: 782px;
-            margin: 34px auto 0;
+            margin: 14px auto 0;
             padding: 14px;
         }
 
@@ -280,8 +280,17 @@
 
         .tour__frame video {
             display: block;
-            width: 100%;
+            /* Native width where there is room, but never so tall that the bottom of
+               the picture falls off the window: a chapter scrolls the label to the top,
+               and anything below the fold from there is simply not seen. The 120px is
+               everything else in that column - the scroll margin, the label, the gap,
+               and this frame's own padding and border - plus a little air.
+               width:auto with both caps keeps the aspect ratio while it shrinks. */
+            width: auto;
             height: auto;
+            max-width: 100%;
+            max-height: calc(100vh - 120px);
+            margin-inline: auto;
         }
 
         .tour__now {
@@ -290,7 +299,7 @@
             min-height: 1.4em;
             /* Starting a chapter scrolls this line to the top of the window, so
                leave it a little air rather than butting it against the edge. */
-            scroll-margin-top: 18px;
+            scroll-margin-top: 12px;
         }
 
         /* Given something to say it becomes the player's label, not a stray line of
