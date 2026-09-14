@@ -269,6 +269,16 @@ READ_STORY_GOTO_PAGE = 18
 # rather than filming the wrong thing, because the Enter that follows is checked
 # against the log.
 WIKI_UPS_FROM_PORTAL = 2
+# Once in the wiki, how far down its sidebar to move from the story it opened on,
+# and the enum name of the title that lands on. The beat waits on that name, so if
+# the wiki's own ordering shifts underneath it the beat fails rather than quietly
+# filming a different story.
+WIKI_SIDEBAR_STEPS = 2
+WIKI_SIDEBAR_PICK = "GOLDEN_CHRISTMAS_TREE_THE"
+# Escape lifts the wiki's keyboard focus to its top bar, landing on Back. The button
+# that hands the story back to the reader is this far to its right; the bar runs
+# Back, contrast, goto-title, quit.
+WIKI_BAR_RIGHTS_TO_GOTO = 2
 GOTO_LIST_DWELL = 1.5  # time the open page list stays on screen before stepping
 GOTO_STEP_PAUSE = 0.12  # pace of a single step through the page list
 
@@ -978,6 +988,34 @@ def wiki_jump(d: Driver) -> None:
         d.key("Down")  # scroll the page
         d.hold(0.9)
     d.hold(1.0)
+
+    # The wiki is a whole bundle, not one page: Left moves the focus off the page and
+    # into the sidebar of titles, where Down walks them and Enter opens one.
+    d.key("Left")
+    d.settle()
+    d.hold(1.0)
+    for _ in range(WIKI_SIDEBAR_STEPS):
+        d.key("Down")
+        d.hold(0.6)
+    d.settle()
+    d.hold(0.8)
+    d.key("Return")
+    d.settle()
+    d.hold(3.0)  # the wiki page for the story picked out of the sidebar
+
+    # And back out again the way a remote would: Escape lifts focus to the top bar on
+    # Back, Right walks along it to the goto-title button, Enter takes that story into
+    # the reader. Nothing in the viewer writes to the log, so the waiting above is on
+    # settle and the clock - but the landing is checked, by name, on the reader side.
+    d.key("Escape")
+    d.hold(0.8)
+    for _ in range(WIKI_BAR_RIGHTS_TO_GOTO):
+        d.key("Right")
+        d.hold(0.5)
+    d.hold(0.6)
+    d.key_then_wait(f'New selected node: "{WIKI_SIDEBAR_PICK}"', 20, "Return")
+    d.settle()
+    d.hold(2.5)  # the reader, now on the story the wiki sent it to
 
 
 @beat(
