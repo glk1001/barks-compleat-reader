@@ -288,6 +288,23 @@
             margin: 10px 0 0;
             font-style: italic;
             min-height: 1.4em;
+            /* Starting a chapter scrolls this line to the top of the window, so
+               leave it a little air rather than butting it against the edge. */
+            scroll-margin-top: 18px;
+        }
+
+        /* Given something to say it becomes the player's label, not a stray line of
+           italics above a very large picture. :not(:empty) so the bare minimum
+           height still holds the space open when nothing is playing, without an
+           empty box sitting there. */
+        .tour__now:not(:empty) {
+            display: inline-block;
+            padding: 6px 14px;
+            border: 2px solid var(--ink);
+            border-radius: 4px;
+            background: var(--paper-bright);
+            font-style: normal;
+            font-weight: 700;
         }
 
         .chapter-link {
@@ -1915,7 +1932,7 @@
                 function play(from, until, label) {
                     if (!video.src) { video.src = SOURCE; }
                     stopAt = until;
-                    now.textContent = label || '';
+                    now.textContent = label ? 'Now playing: ' + label : '';
 
                     // Order matters. With preload="none" nothing is fetched until
                     // play() is called, so waiting for loadedmetadata before playing
@@ -1932,7 +1949,12 @@
                             now.textContent = 'Could not start the video - press play.';
                         });
                     }
-                    video.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Scroll to the label, not the middle of the picture. The player is
+                    // taller than most browser windows, so centring it puts both the label
+                    // above it and the caption burned into its bottom edge off screen.
+                    // Aligning the label to the top instead keeps what is playing in view
+                    // with the picture starting directly beneath it.
+                    (now || video).scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
 
                 // No controls while it sits on the poster - the scrubber over a
