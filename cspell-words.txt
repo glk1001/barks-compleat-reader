@@ -44,6 +44,7 @@ configfile
 consolelog
 cpufreq
 cpus
+CRF
 currentTime
 cythonize
 dateutil
