@@ -139,6 +139,7 @@ mouseclick
 mousemove
 movflags
 mtdev
+navigations
 nbytes
 neighbour
 nonexistentword
@@ -197,6 +198,7 @@ sseof
 standfirst
 stdlib
 strerror
+subresources
 summarise
 summarising
 sunos

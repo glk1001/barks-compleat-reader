@@ -236,6 +236,25 @@ Publishing a data release creates its `data-vN` tag, but that push doesn't waste
 build workflow skips app builds for `data-*` tags (they'd build four executables and attach
 nothing).
 
+The website's tour video (`website/walkthrough.mp4`, ~12MB) is not in the repository either,
+but for the opposite reason to the data packs: it is re-recorded whenever the app changes,
+and none of that history is ever wanted back. It lives on a `website-assets` release under a
+**fixed** tag, re-uploaded in place, so the URL on the page never changes and a re-recording
+needs no commit at all:
+```
+bash scripts/upload-tour-video.sh
+```
+The script (options: `--video <file>`, `--dry-run`, `--yes`) creates the release on first
+use, refuses to upload if `TOUR_TAG` in `website/app.html` names a different tag or if
+`walkthrough-chapters.json` has drifted from the video's length (which would put every
+chapter button out of step), and verifies the uploaded byte size afterwards.
+
+The video's poster and chapter manifest *do* stay in git — a few KB each, and the page needs
+the poster immediately for layout. A release asset plays inline despite GitHub serving it as
+`application/octet-stream; Content-Disposition: attachment`: that header governs navigations
+and downloads, not media subresources, and Range requests are honoured so chapter seeking
+works.
+
 ## License
 
 Licensed under the [Apache License, Version 2.0](LICENCE).

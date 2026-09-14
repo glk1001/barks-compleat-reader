@@ -969,7 +969,9 @@
                 <button class="chapter-link" data-chapter="*">&#9654; Play the full tour</button>
                 <p class="tour__now" id="tour-now"></p>
                 <div class="tour__frame">
-                    <video id="tour-video" src="walkthrough.mp4"
+                    <!-- No src: the JS sets it from the release URL on first play, so
+                         the video is never fetched just by opening the page. -->
+                    <video id="tour-video"
                            poster="walkthrough-poster.jpg" preload="none"
                            width="782" height="1224" playsinline
                            aria-label="A tour of the reader, in chapters"></video>
@@ -1752,6 +1754,13 @@
             // release. Bump when the data packs are re-issued.
             const DATA_TAG = 'data-v4';
 
+            // The tour video is not in the repository. It is ~12MB and is re-recorded
+            // whenever the app changes, so keeping it in git would leave a permanent
+            // copy behind every time. It lives on a release instead, under a fixed tag
+            // that is re-uploaded in place - so this URL never has to change, and a
+            // re-recording needs no commit at all. See scripts/upload-tour-video.sh.
+            const TOUR_TAG = 'website-assets';
+
             let resolvedTag = null;
 
             function isAppTag(tag) {
@@ -1912,7 +1921,9 @@
                     return;
                 }
 
-                const SOURCE = 'walkthrough.mp4';
+                const SOURCE =
+                    `https://github.com/${GITHUB_REPO}/releases/download/${TOUR_TAG}`
+                    + '/walkthrough.mp4';
                 let chapters = {};
                 let stopAt = null;
 

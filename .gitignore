@@ -87,3 +87,10 @@ mutmut-stats.json
 
 # Local Android-emulator experiment: source and 2.7 GB of pulled data, kept out of git.
 /experiments/android-kindle-docker/
+
+# The tour video is published to a GitHub release rather than committed: it is
+# ~12MB and is re-recorded whenever the app changes, and none of that history is
+# ever wanted back. scripts/upload-tour-video.sh publishes it, and website/app.html
+# plays it from there. Its poster and chapter manifest DO stay in git - they are a
+# few KB, and the page needs the poster immediately for layout.
+website/walkthrough.mp4
