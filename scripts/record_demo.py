@@ -331,6 +331,10 @@ WIKI_SIDEBAR_PICK = "VOODOO_HOODOO"
 # that hands the story back to the reader is this far to its right; the bar runs
 # Back, contrast, goto-title, quit.
 WIKI_BAR_RIGHTS_TO_GOTO = 2
+
+# The playlist the Reading beat opens. Playlists are themed runs of stories, each
+# with its own blurb; this is the first of them.
+READING_PLAYLIST = "The Bravery Stories"
 GOTO_LIST_DWELL = 1.5  # time the open page list stays on screen before stepping
 GOTO_STEP_PAUSE = 0.12  # pace of a single step through the page list
 
@@ -348,7 +352,7 @@ OUTPUTS: dict[str, tuple[str, ...]] = {
         "wiki_jump",
         "speech_index",
         "censored_stories",
-        "history",
+        "reading",
     ),
 }
 
@@ -806,6 +810,18 @@ def _open_tree_to_title(d: Driver, pace: float = 1.0) -> None:
     d.settle()
 
 
+def _collapse_back(d: Driver) -> None:
+    """Shut the open node and step back out to its parent.
+
+    Left on an expanded node collapses it; Left again leaves it for the parent,
+    collapsed. Two presses is the whole "back" gesture on this tree.
+    """
+    for _ in range(2):
+        d.key("Left")
+        d.settle()
+    d.hold(0.8)
+
+
 def _setup_browse_tree(d: Driver) -> None:
     _collapse_tree(d)
 
@@ -1108,13 +1124,53 @@ def censored_stories(d: Driver) -> None:
 
 
 @beat(
-    "history",
-    node=["History", "Reading", "root"],
-    label="Pick up where you left off",
+    "reading",
+    node=["Reading", "root"],
+    label="Choose for me, playlists, and your history",
 )
-def history(d: Driver) -> None:
+def reading(d: Driver) -> None:
+    """Walk the three ways the Reading node hands you something to read.
+
+    Booting expands the path to the node, so Reading's three children are already
+    on screen and this opens straight into them.
+
+    Nothing under here writes to the log beyond the tree's own "New selected node",
+    so the waits are select_node (which is name-driven, and fails rather than
+    landing somewhere else) plus settle and the clock.
+    """
+    d.hold(1.5)
+
+    # "Choose for me" is a dozen ways to be handed a story; Surprise me deals five
+    # from across the whole run.
+    d.open_branch("Choose for me")
+    d.hold(0.8)
+    d.open_branch("Surprise me")
+    d.hold(4.0)
+    _collapse_back(d)
+
+    # Playlists are themed runs, each carrying its own description.
+    d.open_branch("Playlists")
     d.hold(1.2)
-    d.key("Return")  # open the reading journal
+    d.open_branch(READING_PLAYLIST)
+    d.hold(4.5)
+    _collapse_back(d)
+
+    # And the history itself: the journal, then the same log counted by title.
+    d.open_branch("History")
+    d.hold(3.0)
+    # Up off the first row enters the top bar, landing on the tab for the view that
+    # is showing (history_screen._enter_bar_zone); Right steps along it, Enter
+    # activates. So this picks Journal deliberately before moving on to Titles.
+    d.key("Up")
+    d.settle()
+    d.hold(0.8)
+    d.key("Return")
+    d.settle()
+    d.hold(2.0)
+    d.key("Right")
+    d.settle()
+    d.hold(0.7)
+    d.key("Return")
     d.settle()
     d.hold(4.0)
 
