@@ -88,9 +88,12 @@ mutmut-stats.json
 # Local Android-emulator experiment: source and 2.7 GB of pulled data, kept out of git.
 /experiments/android-kindle-docker/
 
-# The tour video is published to a GitHub release rather than committed: it is
-# ~12MB and is re-recorded whenever the app changes, and none of that history is
-# ever wanted back. scripts/upload-tour-video.sh publishes it, and website/app.html
-# plays it from there. Its poster and chapter manifest DO stay in git - they are a
-# few KB, and the page needs the poster immediately for layout.
+# The website's videos are published to a GitHub release rather than committed:
+# both are re-recorded whenever the app changes, and none of that history is ever
+# wanted back. The hero is the smaller file but it autoplays on the landing tab,
+# so serving it from the release keeps the heaviest repeat fetch off Pages too.
+# scripts/upload-website-videos.sh publishes them, and website/app.html plays them
+# from there. Their posters and the chapter manifests DO stay in git - a few KB
+# each, and the page needs the posters immediately for layout.
+website/demo.mp4
 website/walkthrough.mp4

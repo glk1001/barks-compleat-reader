@@ -893,7 +893,9 @@
                 </p>
                 </div>
                 <figure class="art-panel intro-art intro-demo">
-                    <video id="demo-video" src="demo.mp4" poster="demo-poster.jpg"
+                    <!-- No src: set from the release URL once the reduced-motion
+                         decision below has been made. -->
+                    <video id="demo-video" poster="demo-poster.jpg"
                            width="782" height="1224"
                            autoplay muted loop playsinline preload="metadata"
                            aria-label="The reader in use: opening the story tree, choosing a
@@ -1754,12 +1756,17 @@
             // release. Bump when the data packs are re-issued.
             const DATA_TAG = 'data-v4';
 
-            // The tour video is not in the repository. It is ~12MB and is re-recorded
-            // whenever the app changes, so keeping it in git would leave a permanent
-            // copy behind every time. It lives on a release instead, under a fixed tag
-            // that is re-uploaded in place - so this URL never has to change, and a
-            // re-recording needs no commit at all. See scripts/upload-tour-video.sh.
-            const TOUR_TAG = 'website-assets';
+            // Neither video is in the repository. Both are re-recorded whenever the
+            // app changes, so keeping them in git would leave a permanent copy behind
+            // every time - and the hero autoplays on this tab, so it is also the
+            // heaviest thing most visitors ever fetch. They live on a release instead,
+            // under a fixed tag that is re-uploaded in place, so these URLs never have
+            // to change and a re-recording needs no commit at all. Built here rather
+            // than written into the markup so the tag has one definition.
+            // See scripts/upload-website-videos.sh.
+            const VIDEO_TAG = 'website-assets';
+            const releaseVideo = name =>
+                `https://github.com/${GITHUB_REPO}/releases/download/${VIDEO_TAG}/${name}`;
 
             let resolvedTag = null;
 
@@ -1921,9 +1928,7 @@
                     return;
                 }
 
-                const SOURCE =
-                    `https://github.com/${GITHUB_REPO}/releases/download/${TOUR_TAG}`
-                    + '/walkthrough.mp4';
+                const SOURCE = releaseVideo('walkthrough.mp4');
                 let chapters = {};
                 let stopAt = null;
 
@@ -2042,12 +2047,16 @@
             // so hand those visitors a paused poster with controls instead.
             (function () {
                 const demo = document.getElementById('demo-video');
-                if (demo && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                if (!demo) { return; }
+                if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                     demo.removeAttribute('autoplay');
                     demo.removeAttribute('loop');
                     demo.controls = true;
-                    demo.pause();
                 }
+                // Last, and the reason the markup carries no src: nothing is fetched or
+                // started until the decision above is made, so there is no autoplaying
+                // video to have to pause back down again.
+                demo.src = releaseVideo('demo.mp4');
             })();
 
             document.addEventListener('DOMContentLoaded', async function() {

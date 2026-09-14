@@ -236,21 +236,23 @@ Publishing a data release creates its `data-vN` tag, but that push doesn't waste
 build workflow skips app builds for `data-*` tags (they'd build four executables and attach
 nothing).
 
-The website's tour video (`website/walkthrough.mp4`, ~12MB) is not in the repository either,
-but for the opposite reason to the data packs: it is re-recorded whenever the app changes,
-and none of that history is ever wanted back. It lives on a `website-assets` release under a
-**fixed** tag, re-uploaded in place, so the URL on the page never changes and a re-recording
-needs no commit at all:
+The website's two videos (`website/demo.mp4` ~3MB, `website/walkthrough.mp4` ~12MB) are not
+in the repository either, but for the opposite reason to the data packs: both are re-recorded
+whenever the app changes, and none of that history is ever wanted back. The hero is the
+smaller file but it autoplays on the landing tab, which makes it the heaviest thing most
+visitors ever fetch — so serving it from the release keeps that off Pages as well. They live
+on a `website-assets` release under a **fixed** tag, re-uploaded in place, so the URLs on the
+page never change and a re-recording needs no commit at all:
 ```
-bash scripts/upload-tour-video.sh
+bash scripts/upload-website-videos.sh
 ```
-The script (options: `--video <file>`, `--dry-run`, `--yes`) creates the release on first
-use, refuses to upload if `TOUR_TAG` in `website/app.html` names a different tag or if
-`walkthrough-chapters.json` has drifted from the video's length (which would put every
-chapter button out of step), and verifies the uploaded byte size afterwards.
+The script (options: `--only <file>`, `--dry-run`, `--yes`) creates the release on first use,
+refuses to upload if `VIDEO_TAG` in `website/app.html` names a different tag or if a chapter
+manifest has drifted from its video's length (which would put every chapter button out of
+step), and verifies the uploaded byte sizes afterwards.
 
-The video's poster and chapter manifest *do* stay in git — a few KB each, and the page needs
-the poster immediately for layout. A release asset plays inline despite GitHub serving it as
+The posters and chapter manifests *do* stay in git — a few KB each, and the page needs the
+posters immediately for layout. A release asset plays inline despite GitHub serving it as
 `application/octet-stream; Content-Disposition: attachment`: that header governs navigations
 and downloads, not media subresources, and Range requests are honoured so chapter seeking
 works.
