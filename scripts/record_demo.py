@@ -274,7 +274,7 @@ WIKI_UPS_FROM_PORTAL = 2
 # the wiki's own ordering shifts underneath it the beat fails rather than quietly
 # filming a different story.
 WIKI_SIDEBAR_STEPS = 2
-WIKI_SIDEBAR_PICK = "GOLDEN_CHRISTMAS_TREE_THE"
+WIKI_SIDEBAR_PICK = "VOODOO_HOODOO"
 # Escape lifts the wiki's keyboard focus to its top bar, landing on Back. The button
 # that hands the story back to the reader is this far to its right; the bar runs
 # Back, contrast, goto-title, quit.
