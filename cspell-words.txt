@@ -145,6 +145,7 @@ neighbour
 nonexistentword
 normalised
 normalises
+noscript
 nostdin
 notvol
 numpad

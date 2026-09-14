@@ -67,12 +67,25 @@ file_size() {
     stat -c%s "$1" 2>/dev/null || stat -f%z "$1"
 }
 
-# The page builds both URLs from VIDEO_TAG, so a tag that has drifted from this
-# script would upload to one place and play from another.
+# The page builds both player URLs from VIDEO_TAG, so a tag that has drifted from
+# this script would upload to one place and play from another.
 PAGE_TAG=$(grep -oE "const VIDEO_TAG = '[^']+'" "$WEBSITE_FILE" | cut -d"'" -f2)
 if [[ "$PAGE_TAG" != "$TAG" ]]; then
     echo -e "${RED}${WEBSITE_FILE} plays its videos from tag \"${PAGE_TAG}\"," \
         "but this script uploads to \"${TAG}\".${NC}" >&2
+    exit 1
+fi
+
+# The noscript fallbacks cannot use that constant - they are markup, not script - so
+# they spell the URL out and can drift from it on their own. Anything built from a
+# JS variable still reads as "${...}" here and is skipped, so this only sees the
+# literal ones.
+WRONG_TAG_URLS=$(grep -oE "releases/download/[A-Za-z0-9._-]+/" "$WEBSITE_FILE" \
+    | grep -v "^releases/download/${TAG}/$" | sort -u || true)
+if [[ -n "$WRONG_TAG_URLS" ]]; then
+    echo -e "${RED}${WEBSITE_FILE} spells out release URLs on another tag:${NC}" >&2
+    echo "$WRONG_TAG_URLS" >&2
+    echo -e "${RED}They would 404 once this uploads to \"${TAG}\".${NC}" >&2
     exit 1
 fi
 

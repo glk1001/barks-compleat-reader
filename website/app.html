@@ -271,6 +271,15 @@
             overflow: hidden;
         }
 
+        /* Both videos take their src from JS (they are served from a release, and the
+           tag has one definition), so with scripting off there is a poster and nothing
+           else. Say so, and hand over a link that still works. */
+        .noscript-note {
+            margin: 12px 0 0;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
         .tour__hint {
             margin: 14px 0 30px;
             text-align: center;
@@ -902,6 +911,10 @@
                                        story, and reading it">
                     </video>
                 </figure>
+                <noscript>
+                    <p class="noscript-note">The demo needs JavaScript to play here &mdash;
+                        <a href="https://github.com/glk1001/barks-compleat-reader/releases/download/website-assets/demo.mp4">watch it directly</a> instead.</p>
+                </noscript>
             </div>
 
             <hr class="section-divider">
@@ -980,6 +993,11 @@
                 </div>
                 <p class="tour__hint">Click the picture to play. Once it is running, the
                     player&rsquo;s fullscreen button fills the screen.</p>
+                <noscript>
+                    <p class="noscript-note">The chapter buttons and the player both need
+                        JavaScript &mdash; <a href="https://github.com/glk1001/barks-compleat-reader/releases/download/website-assets/walkthrough.mp4">watch the whole
+                        tour directly</a> instead.</p>
+                </noscript>
             </div>
 
             <figure class="art-panel art-panel--banner">
@@ -1043,7 +1061,7 @@
                     <h3>You Supply Your Fantagraphics Zips</h3>
                     <p>All you need to do is make sure all your Fantagraphics comic zips are in a single
                         directory and the name of each zip starts with the volume number &mdash; so '01'
-                        to '29'. The zips must be in DRM-free '.zip' or '.cbz' format and not 'rar'
+                        to '30'. The zips must be in DRM-free '.zip' or '.cbz' format and not 'rar'
                         format. If you have a volume in the 'rar' format you just need to un-rar it,
                         then zip it up.</p>
                     <p>If you put your zips in a folder called <strong>"Fantagraphics Complete Carl
@@ -1053,7 +1071,7 @@
                         opportunity to tell it where to look for the zips.</p>
                 </div>
                 <figure class="art-panel">
-                    <img src="fantagraphics-library-bg.png" alt="The Fantagraphics Carl Barks Library" width="714" height="400" loading="lazy">
+                    <img src="fantagraphics-library-bg.jpg" alt="The Fantagraphics Carl Barks Library" width="714" height="400" loading="lazy">
                 </figure>
             </div>
 
@@ -1389,7 +1407,7 @@
             <div class="install-step">
                 <h4>Organise Your Fantagraphics Zips</h4>
                 <p>Your Fantagraphics comic zips must be in a single folder and can be either '.zip' or '.cbz'
-                    files. The first part of each volume's filename must be the volume number, from '01' to '29'.
+                    files. The first part of each volume's filename must be the volume number, from '01' to '30'.
                     For example:</p>
                 <ul class="filename-example">
                     <li>01 - Donald Duck - Finds Pirate Gold.cbz</li>
