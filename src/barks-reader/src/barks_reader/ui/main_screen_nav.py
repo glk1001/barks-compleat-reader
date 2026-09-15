@@ -240,14 +240,18 @@ class MainScreenNavigation:
                 # enter_bottom_focus (e.g. the fun view's goto-title): activate lazily.
                 self._bottom_title_view_screen.enter_nav_focus(self.exit_bottom_focus)
             return self._bottom_title_view_screen.handle_key(key)
+        # The fun view owns its own keyboard nav (arrow, filter button, and the
+        # image-type options menu), Escape included: with its options menu open,
+        # Escape closes the menu, and only at the top level does it ask to leave
+        # (through the exit request it was entered with). It has to see the key
+        # BEFORE the bare-Escape fallback below, or the menu could never be closed
+        # from the keyboard. A goto from it lands portal focus via
+        # _on_goto_fun_view_title, so no hand-off is scheduled here.
+        if self._fun_image_view_screen.is_visible and self._fun_image_view_screen.handle_key(key):
+            return True
         if is_escape_key(key):
             self.exit_bottom_focus()
             return True
-        if self._fun_image_view_screen.is_visible:
-            # The fun view owns its own keyboard nav (arrow, filter button, and the
-            # image-type options menu). A goto from it lands portal focus via
-            # _on_goto_fun_view_title, so no hand-off is scheduled here.
-            return self._fun_image_view_screen.handle_key(key)
         return False
 
     def _get_active_nav_screen(
