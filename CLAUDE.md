@@ -27,6 +27,12 @@ pre-commit preserves the LFS hook as `pre-push.legacy` and chains to it. To veri
 bash scripts/run_benchmark.sh
 ```
 
+**Run the GUI path tests** (excluded from the default test run; boots the real app on
+the nested Xephyr display via `scripts/gui-probe.sh`, driven by `scripts/gui_driver.py`):
+```bash
+bash scripts/run_gui_tests.sh
+```
+
 **Type-check (pyrefly):**
 A second type checker gated alongside `ty` (CI, pre-commit, `full-lint.sh`) — faster and stricter on
 nullability. Config + rationale in `pyrefly.toml`. Structural Kivy noise is suppressed via config; the

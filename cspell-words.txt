@@ -91,6 +91,7 @@ hardbreak
 headlessly
 hidinput
 hitbox
+hookwrapper
 Hyperlegible
 hyphenatable
 idempotently
@@ -123,6 +124,7 @@ llm
 llvmpipe
 loadedmetadata
 logr
+makereport
 markersize
 materialise
 materialises

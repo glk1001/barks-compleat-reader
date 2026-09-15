@@ -61,6 +61,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 # The recorder is a sibling script, not an installed module, so the path above has
 # to be in place before it can be imported.
+import gui_driver as gd  # noqa: E402
 import record_demo as rd  # noqa: E402
 
 # The search screen, leaf-to-root, as the app stores it in `last_selected_node`.
@@ -108,10 +109,10 @@ def run_trial(delay: float, seed: int, config: Path, backup: Path) -> Trial:
         What the trial observed.
 
     """
-    rd.boot_app_at(SEARCH_NODE, config=config, seed=seed, template=backup)
+    gd.boot_app_at(SEARCH_NODE, config=config, seed=seed, template=backup, cues=rd.PINNED_CUES)
     try:
-        driver = rd.Driver()
-        log = Path(rd.probe("log").strip())
+        driver = gd.Driver()
+        log = Path(gd.probe("log").strip())
 
         driver.hold(0.5)
         driver.key("Return")  # focus the search box
@@ -137,7 +138,7 @@ def run_trial(delay: float, seed: int, config: Path, backup: Path) -> Trial:
             opened=COMIC_OPENED_MARKER in text,
         )
     finally:
-        rd.probe("stop")
+        gd.probe("stop")
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -158,7 +159,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     """Run the trials and report. Returns a process exit code."""
     args = parse_args(argv)
-    config = Path(rd.probe("config").strip())
+    config = Path(gd.probe("config").strip())
 
     with tempfile.TemporaryDirectory(prefix="repro-search-enter-") as tmp:
         backup = Path(tmp) / "barks-reader.json.bak"

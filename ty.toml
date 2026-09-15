@@ -1,6 +1,8 @@
 [environment]
 python = "./.venv"
-root = ["."]
+# scripts/ holds standalone modules (gui_driver, record_demo) imported by their
+# tests via sys.path, so it is a first-party root too.
+root = [".", "scripts"]
 
 [src]
 exclude = [
