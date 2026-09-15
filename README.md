@@ -236,7 +236,7 @@ Publishing a data release creates its `data-vN` tag, but that push doesn't waste
 build workflow skips app builds for `data-*` tags (they'd build four executables and attach
 nothing).
 
-The website's two videos (`website/demo.mp4` ~3MB, `website/walkthrough.mp4` ~12MB) are not
+The website's two videos (`website/demo.mp4` ~3MB, `website/walkthrough.mp4` ~29MB) are not
 in the repository either, but for the opposite reason to the data packs: both are re-recorded
 whenever the app changes, and none of that history is ever wanted back. The hero is the
 smaller file but it autoplays on the landing tab, which makes it the heaviest thing most

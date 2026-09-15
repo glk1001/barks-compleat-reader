@@ -95,20 +95,6 @@ WORK_DIR = REPO_ROOT / "build" / "demo-beats"
 FPS = 30
 CRF = 30
 GOP = 60
-# How far the published running time may drift from the stitched one before the
-# squeeze is refused.
-#
-# Resampling to a lower rate rounds the tail up to a whole frame at the new rate, so
-# a clean re-encode is a frame or two longer and nothing is wrong: measured at 15fps,
-# 261.633s becomes 261.733s. That is the end of the file moving, not the boundaries -
-# the timestamps of the frames that survive do not shift. Checked by pulling a frame
-# a second into each of the nine chapters from both files: every one is the same
-# frame, differing only by compression noise.
-#
-# So this is loose enough for frame rounding and tight enough to catch a truncated or
-# doubled encode, which would be out by seconds rather than milliseconds.
-COMPRESS_DRIFT_TOLERANCE_SECS = 0.5
-
 FONT = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf")
 CAPTION_SIZE = 30
 # The app's own text_display colour - the "brighter cover-yellow" it uses for
@@ -145,20 +131,6 @@ POSTERS = {"demo.mp4": POSTER_BEAT, "walkthrough.mp4": "first"}
 # it: compared at 1:1 on the tree's small italic text, the hardest thing either
 # poster contains, the two are indistinguishable.
 POSTER_QUALITY = 8
-
-# How hard each output is squeezed after stitching. An output not listed here is
-# published exactly as recorded.
-#
-# Only the walkthrough is listed. It is the one big enough to matter, and the one
-# that has to arrive before a chapter can be seeked into. demo.mp4 is left alone
-# deliberately: it autoplays as the hero, where 30fps reads as smoother, and at
-# around 3MB it was never the problem.
-#
-# CRF 34 at 15fps halves the file (23M -> 12M measured on a 4m22s walkthrough) and
-# does not show: this material is mostly long static holds, so x264 spends its bits
-# on the few frames that actually move. Compared at 2x magnification on comic
-# lettering - the most demanding thing in the video - the two are indistinguishable.
-COMPRESS: dict[str, Compression] = {}  # populated below, once Compression exists
 
 # Where browse_tree goes once it has opened the tree, and how far down into that
 # range's title list it walks. open_comic's setup repeats the same number of
@@ -277,22 +249,6 @@ SERIES_PICK = Pick("LOST_IN_THE_ANDES", pages=2, dwell=1.5)
 # what SEARCH_TITLE_RESULT actually lands on.
 SEARCH_TITLE_PICK = Pick("VACATION_TIME", pages=3, dwell=1.0)
 
-
-@dataclass(frozen=True)
-class Compression:
-    """How hard one stitched output is squeezed before publishing.
-
-    Args:
-        crf: x264 quality, higher being smaller.
-        fps: The frame rate to resample to.
-
-    """
-
-    crf: int
-    fps: int
-
-
-COMPRESS["walkthrough.mp4"] = Compression(crf=34, fps=15)
 
 # How much of the story to read once the bubble has landed on it. Only `pages` and
 # `dwell` are used here - the beat reaches the comic through the bubble, not by name.
@@ -1587,64 +1543,6 @@ def stitch(name: str, beats: Sequence[str], out_dir: Path, work_dir: Path) -> Pa
     return final
 
 
-def compress(video: Path) -> None:
-    """Re-encode one stitched output smaller, per COMPRESS. A no-op for the rest.
-
-    Recording keeps CRF 30 masters, which are what a beat is re-cut from, and the
-    stitch is a stream copy - so this is the only generation loss in the chain, and
-    it runs once, from a good master.
-
-    Raises:
-        BeatError: If the re-encode moved the running time. The chapter manifest is
-            derived from the beat clips, so a shifted duration here would slide every
-            boundary out from under it; the stitched file is left in place instead.
-
-    """
-    how = COMPRESS.get(video.name)
-    if how is None:
-        return
-
-    was = _human_size(video)
-    before = duration_of(video)
-    smaller = video.with_name(f"{video.stem}-compressed.mp4")
-    _run_ffmpeg(
-        [
-            "-i",
-            str(video),
-            "-c:v",
-            "libx264",
-            "-preset",
-            "slow",
-            "-crf",
-            str(how.crf),
-            "-r",
-            str(how.fps),
-            "-g",
-            str(GOP),
-            "-pix_fmt",
-            "yuv420p",
-            "-movflags",
-            "+faststart",
-            str(smaller),
-        ]
-    )
-
-    after = duration_of(smaller)
-    if abs(after - before) > COMPRESS_DRIFT_TOLERANCE_SECS:
-        smaller.unlink(missing_ok=True)
-        msg = (
-            f"{video.name}: re-encoding moved the running time {before:.3f}s -> {after:.3f}s,"
-            f" which would slide every chapter boundary; kept the stitched file"
-        )
-        raise BeatError(msg)
-
-    smaller.replace(video)
-    say(
-        f"record-demo: {video.name} squeezed {was} -> {_human_size(video)}"
-        f" (crf {how.crf}, {how.fps}fps)"
-    )
-
-
 def write_poster(video: Path, work_dir: Path) -> None:
     """Write a poster frame beside one output video, per POSTERS."""
     want = POSTERS.get(video.name, "first")
@@ -1719,10 +1617,7 @@ def build_outputs(only: str | None, out_dir: Path) -> None:
         # clip for some other output does not block previewing this one.
         if only and output != only:
             continue
-        final = stitch(output, beats, out_dir, WORK_DIR)
-        # Poster first, so it is cut from the master rather than the squeezed copy.
-        write_poster(final, WORK_DIR)
-        compress(final)
+        write_poster(stitch(output, beats, out_dir, WORK_DIR), WORK_DIR)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
