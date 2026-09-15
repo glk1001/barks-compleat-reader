@@ -10,6 +10,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# The app sizes its window from the nested screen, and every pixel coordinate
+# in the suite was measured at this size; the harness refuses to click at any
+# other. Pinned here rather than left to the probe's default so the two cannot
+# drift apart.
+export BARKS_PROBE_SCREEN=900x1300
+
 bash "${SCRIPT_DIR}/gui-probe.sh" doctor >/dev/null || {
     echo "run_gui_tests: this machine is not ready - see: bash scripts/gui-probe.sh doctor" >&2
     exit 1

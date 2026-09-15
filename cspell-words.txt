@@ -79,6 +79,7 @@ fontstyle
 fontweight
 frontmatter
 frozensets
+funcargs
 Funnybooks
 generalise
 generalises
@@ -144,6 +145,7 @@ mtdev
 navigations
 nbytes
 neighbour
+nodeid
 nonexistentword
 normalised
 normalises

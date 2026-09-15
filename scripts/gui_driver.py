@@ -32,6 +32,10 @@ DISPLAY = os.environ.get("BARKS_PROBE_DISPLAY", ":2")
 # The app reads this on startup and seeds its random module from it; gui-probe
 # launches the app as a child, so setting it here is enough to reach it.
 RANDOM_SEED_ENV_VAR = "BARKS_READER_RANDOM_SEED"
+# Where the app keeps its config (.ini, barks-reader.json, reading history, Kivy
+# home). Exported before a boot it wins over .env.runtime, for the app and for
+# gui-probe.sh alike, which is how a run is pointed at a scratch profile.
+CONFIG_DIR_ENV_VAR = "BARKS_READER_CONFIG_DIR"
 
 # ------------------------------------------------------------------ pacing --
 
@@ -42,6 +46,8 @@ WALK_PAUSE = 0.45  # a single Down while walking the tree
 TYPE_PAUSE = 0.4  # a single character into a search box
 GOTO_LIST_DWELL = 1.5  # time the open page list stays up before stepping
 GOTO_STEP_PAUSE = 0.12  # a single step through the page list
+MENU_OPEN_PAUSE = 0.6  # after Escape opens an action-bar menu, before moving in it
+MENU_STEP_PAUSE = 0.4  # a single Left/Right along an action bar
 
 
 @dataclass(frozen=True)
@@ -122,12 +128,30 @@ class Driver:
         "goto_end",
         "goto_page",
     )
+    # The main screen's action bar, in the order main_screen.py passes to
+    # _setup_action_bar_nav. Its menu opens on go_back (default_focus_idx=2,
+    # deliberately, so that Escape then Enter can never hit the quit button).
+    _MAIN_MENU_BUTTONS = (
+        "icon",
+        "fullscreen",
+        "go_back",
+        "collapse",
+        "change_pics",
+        "menu",
+        "quit",
+    )
+    _MAIN_MENU_DEFAULT = "go_back"
+
+    # Menu focus is sticky on both bars, so the driver remembers where it left
+    # each. Class-level defaults so a stub driver (no __init__) still has them.
+    _menu_focus: str = _MENU_BUTTONS[0]
+    _main_menu_focus: str = _MAIN_MENU_DEFAULT
 
     def __init__(self, probe_script: Path = PROBE) -> None:
         self._probe = probe_script
         self._log = Path(self._run(["log"]).strip())
-        # Menu focus is sticky, so the driver has to remember where it left it.
         self._menu_focus = self._MENU_BUTTONS[0]
+        self._main_menu_focus = self._MAIN_MENU_DEFAULT
 
     def _run(self, args: Sequence[str]) -> str:
         return probe(*args, script=self._probe)
@@ -144,6 +168,29 @@ class Driver:
     def click(self, x: int, y: int) -> None:
         """Click at a screenshot pixel on the nested display."""
         self._run(["click", str(x), str(y)])
+
+    def shot(self, path: Path) -> Path:
+        """Capture the nested display to a PNG at `path` and return it."""
+        self._run(["shot", str(path)])
+        return path
+
+    _GEOMETRY_RE = re.compile(r"(\d+)x(\d+)\+(\d+)\+(\d+)")
+
+    def window_geometry(self) -> tuple[int, int, int, int]:
+        """Return the app window's ``(width, height, x, y)`` on the nested display.
+
+        Raises:
+            DriverError: If the probe cannot find the window, or prints something
+                that is not a geometry.
+
+        """
+        text = self._run(["geometry"]).strip()
+        found = self._GEOMETRY_RE.fullmatch(text)
+        if not found:
+            msg = f"gui-probe geometry printed {text!r}, not WxH+X+Y"
+            raise DriverError(msg)
+        width, height, pos_x, pos_y = (int(g) for g in found.groups())
+        return width, height, pos_x, pos_y
 
     def settle(self) -> None:
         """Block until the app has stopped writing to its log, i.e. stopped drawing."""
@@ -283,6 +330,25 @@ class Driver:
                 raise DriverError(msg)
             time.sleep(0.25)
 
+    def expect_no_new(self, pattern: str, window: float = 2.0) -> None:
+        """Assert that no NEW occurrence of `pattern` is logged for `window` seconds.
+
+        The one sanctioned wait on the clock, for negatives only - "the quit
+        fence must not quit", "Escape in the reader must not close it". Call it
+        right after the action; it counts from now.
+
+        Raises:
+            DriverError: If a new match appears within the window.
+
+        """
+        before = self.match_count(pattern)
+        deadline = time.monotonic() + window
+        while time.monotonic() < deadline:
+            if self.match_count(pattern) > before:
+                msg = f"unexpected new /{pattern}/ in the app log within {window}s"
+                raise DriverError(msg)
+            time.sleep(0.25)
+
     def wait_for(self, pattern: str, timeout: float = 15) -> None:
         """Block until `pattern` appears anywhere in the app log.
 
@@ -340,23 +406,52 @@ class Driver:
             DriverError: If `name` is not a menu button.
 
         """
-        if name not in self._MENU_BUTTONS:
-            msg = f"no such menu button: {name} (have: {', '.join(self._MENU_BUTTONS)})"
+        self._walk_bar_to(self._MENU_BUTTONS, self._menu_focus, name)
+        self._menu_focus = name
+
+    def _walk_bar_to(self, buttons: Sequence[str], here_name: str, name: str) -> None:
+        """Escape into an action-bar menu and walk its focus from one button to another.
+
+        Takes the shorter way round: both bars wrap.
+
+        Raises:
+            DriverError: If `name` is not one of `buttons`.
+
+        """
+        if name not in buttons:
+            msg = f"no such menu button: {name} (have: {', '.join(buttons)})"
             raise DriverError(msg)
 
-        count = len(self._MENU_BUTTONS)
-        here = self._MENU_BUTTONS.index(self._menu_focus)
-        there = self._MENU_BUTTONS.index(name)
+        count = len(buttons)
+        here = buttons.index(here_name)
+        there = buttons.index(name)
         forward = (there - here) % count
         backward = (here - there) % count
 
-        self.key("Escape")  # reader menu mode
-        self.hold(0.5)
+        self.key("Escape")  # menu mode
+        self.hold(MENU_OPEN_PAUSE)
         step, presses = ("Right", forward) if forward <= backward else ("Left", backward)
         for _ in range(presses):
             self.key(step)
-            self.hold(0.4)
-        self._menu_focus = name
+            self.hold(MENU_STEP_PAUSE)
+
+    def main_menu_button(self, name: str) -> None:
+        """Open the main screen's action-bar menu and activate one button by name.
+
+        Sticky like the reader's menu: the bar reopens on whatever was activated
+        last, and this tracks that. Nothing else drives the app, so it stays in
+        step.
+
+        Args:
+            name: One of `_MAIN_MENU_BUTTONS`.
+
+        Raises:
+            DriverError: If `name` is not a main-screen button.
+
+        """
+        self._walk_bar_to(self._MAIN_MENU_BUTTONS, self._main_menu_focus, name)
+        self._main_menu_focus = name
+        self.key("Return")
 
     def press_menu_button(self, name: str) -> None:
         """Open the reader's action-bar menu and activate one button by name.
@@ -372,17 +467,8 @@ class Driver:
         self.key("Return")
 
     def go_back(self) -> None:
-        """Press Go Back on the main screen's action bar, from the tree.
-
-        The main screen has its own action-bar menu, whose focus starts on
-        go-back (main_screen.py sets default_focus_idx=2, deliberately, so that
-        Escape then Enter can never hit the quit button). No beat moves that
-        focus, so unlike the reader's menu this needs no tracking - but the same
-        stickiness would apply if one ever did.
-        """
-        self.key("Escape")  # main screen menu mode, focused on go-back
-        self.hold(0.6)
-        self.key("Return")
+        """Press Go Back on the main screen's action bar, from the tree."""
+        self.main_menu_button("go_back")
 
     def go_back_then_wait(self, pattern: str, timeout: float = 15) -> None:
         """Press Go Back, then block until a NEW occurrence of `pattern` is logged.
@@ -454,7 +540,8 @@ class Driver:
 def boot_app_at(
     node: Sequence[str],
     *,
-    config: Path,
+    config: Path | None = None,
+    config_dir: Path | None = None,
     seed: int | None = None,
     template: Path | None = None,
     cues: Mapping[str, dict[str, int | str] | None] | None = None,
@@ -463,7 +550,12 @@ def boot_app_at(
 
     Args:
         node: The tree node to boot onto, leaf-to-root.
-        config: The app's ``barks-reader.json``, which is rewritten.
+        config: The app's ``barks-reader.json``, which is rewritten. Defaults to
+            the one inside `config_dir`; one of the two must be given.
+        config_dir: A whole config directory to boot from (``barks-reader.ini``,
+            ``barks-reader.json``, history, Kivy home). Exported as the app's
+            config-dir env var so both the app and gui-probe.sh use it - the way
+            a test run keeps its hands off the user's real profile.
         seed: Value for the app's random seed, or None to leave it unpinned.
         template: Read the settings from here instead of from `config`, for a
             caller that keeps a pristine copy and rebuilds `config` each boot.
@@ -473,8 +565,15 @@ def boot_app_at(
 
     Raises:
         DriverError: If the probe could not start the app.
+        ValueError: If neither `config` nor `config_dir` is given.
 
     """
+    if config_dir is not None:
+        os.environ[CONFIG_DIR_ENV_VAR] = str(config_dir)
+        config = config or config_dir / "barks-reader.json"
+    if config is None:
+        msg = "boot_app_at needs config= or config_dir="
+        raise ValueError(msg)
     settings = json.loads((template or config).read_text())
     settings.setdefault("AAA_Settings", {})["last_selected_node"] = list(node)
     for title, cue in (cues or {}).items():

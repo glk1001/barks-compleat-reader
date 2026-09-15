@@ -9,14 +9,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from barks_gui import reader, tree
 from gui_driver import Pick
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
-
-    from gui_driver import Driver
-
-    Boot = Callable[[Sequence[str]], Driver]
+    from barks_gui.harness import AppBoot
 
 # The chronological range browse walks into, and the story it reads there.
 BROWSE_RANGE = "1947-1950"
@@ -29,20 +26,22 @@ SERIES_GOTO_PAGE = 12
 # How many letters of the speech-bubble index to step through.
 INDEX_LETTERS = 3
 
-# Reading a story opens on its front page (the cue is pinned to none), so two pages
-# means the front and one turn.
+# Stories the tests open by name, pinned to "no cue" so each opens at its front
+# page with no goto-page row, whatever the canned profile says.
+CUES: dict[str, dict[str, int | str] | None] = {
+    "The Ghost of the Grotto": None,
+    "Lost in the Andes!": None,
+}
+
+# Reading a story opens on its front page, so two pages means the front and one turn.
 READ = Pick(pages=2, dwell=0.0)
 
 
-def test_browse_tree_to_a_story_and_read_it(boot: Boot) -> None:
+def test_browse_tree_to_a_story_and_read_it(boot: AppBoot) -> None:
     """The Stories > Chronological > a range > a title, opened and read."""
-    d = boot(["The Stories", "root"])
-    d.key("Left")  # booting expands the chain; start from a closed tree
-    d.settle()
-
-    d.open_branch("The Stories")
-    d.open_branch("Chronological")
-    d.open_branch(BROWSE_RANGE)
+    d = boot(["The Stories", "root"], cues=CUES)
+    tree.collapse_all(d)
+    tree.open_path(d, "The Stories", "Chronological", BROWSE_RANGE)
     d.select_node(BROWSE_STORY)
     assert d.current_node() == BROWSE_STORY
 
@@ -50,18 +49,15 @@ def test_browse_tree_to_a_story_and_read_it(boot: Boot) -> None:
     assert d.current_page() >= 1, "a page must have turned before the reader closed"
 
 
-def test_series_story_goto_page_and_double_page(boot: Boot) -> None:
+def test_series_story_goto_page_and_double_page(boot: AppBoot) -> None:
     """Series > Donald Duck Adventures > a story: jump to a page, then two-up, then close."""
-    d = boot(["Series", "The Stories", "root"])
+    d = boot(["Series", "The Stories", "root"], cues=CUES)
     d.select_node("Comics and Stories")
     d.select_node("Donald Duck Adventures")
     d.open_branch("Donald Duck Adventures")
     d.select_node(SERIES_STORY)
 
-    d.settle()
-    d.key("Return")  # focus the title view's read portal
-    d.hold(0.6)
-    d.key_then_wait("All images loaded", 30, "Return")
+    reader.open_selected_story(d)
     d.read_pages(READ)
 
     d.goto_page(SERIES_GOTO_PAGE)
@@ -72,7 +68,7 @@ def test_series_story_goto_page_and_double_page(boot: Boot) -> None:
     d.close_reader()
 
 
-def test_speech_index_steps_through_letters(boot: Boot) -> None:
+def test_speech_index_steps_through_letters(boot: AppBoot) -> None:
     """Indexes > Speech Bubble Index opens, and each Down repopulates the grid."""
     d = boot(["Speech Bubble Index", "Indexes", "root"])
     d.key("Return")

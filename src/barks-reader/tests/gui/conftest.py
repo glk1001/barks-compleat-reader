@@ -1,19 +1,20 @@
-"""Fixtures for the GUI path tests: a booted app per test, and the config put back.
+"""Fixtures for the GUI path tests: a scratch profile and a booted app per test.
 
 These boot the real app on the nested Xephyr display through ``scripts/gui-probe.sh``
 and drive it with ``scripts/gui_driver.py``, so they are not part of the default
 ``uv run pytest`` run (this directory is outside ``testpaths``, like the benchmarks).
 Run them with ``bash scripts/run_gui_tests.sh``.
 
-Each test boots the app onto the node it asks for and gets a Driver. Booting is
-the fixed cost - a few seconds on a desktop (the speech-index test boots, opens
-the index and steps three letters in 7s) - so a test that can reach its second
-screen from its first should still do so rather than ask for another boot, but
-one boot per screen family is affordable.
+The user's real profile is never booted from. Once per session it is copied to a
+template with a few settings pinned (``barks_gui.harness.INI_OVERRIDES``); every
+test gets its own copy of that template plus canned ``barks-reader.json`` and
+reading-history files, and the app is pointed at it through the config-dir env
+var. The session's teardown proves the live profile came through untouched.
 
-The app rewrites its config on exit and the boot rewrites it before, so the
-user's ``barks-reader.json`` is copied once per session and restored after every
-test, on top of the probe's own restore.
+Each test boots the app onto the node it asks for and gets a Driver. Booting is
+the fixed cost - a few seconds on a desktop - so a test that can reach its second
+screen from its first should do so rather than ask for another boot; one boot per
+test is asserted.
 """
 
 from __future__ import annotations
@@ -21,114 +22,103 @@ from __future__ import annotations
 import os
 import shutil
 import sys
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
-if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator, Sequence
-
-REPO_ROOT = Path(__file__).resolve().parents[4]
+GUI_DIR = Path(__file__).resolve().parent
+REPO_ROOT = GUI_DIR.parents[3]
 SCRIPTS_DIR = REPO_ROOT / "scripts"
-if str(SCRIPTS_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS_DIR))
+for _path in (SCRIPTS_DIR, GUI_DIR):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
 
-# The driver is a sibling script, not an installed module, so the path above has
-# to be in place before it can be imported.
+# The driver is a sibling script and the harness a package beside this file,
+# neither installed, so the paths above have to be in place before either import.
 import gui_driver as gd  # noqa: E402
+from barks_gui import harness  # noqa: E402
 
-# Pins the app's random draws, so backgrounds and the title-view fade are the
-# same every run. Any fixed number does.
-SEED = 1
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
-# Stories the tests open by name. Pinned to "no cue" so each opens at its front
-# page with no goto-page row, whatever this machine's reading history says.
-CUES: dict[str, dict[str, int | str] | None] = {
-    "The Ghost of the Grotto": None,
-    "Lost in the Andes!": None,
-}
+# The live files a run must leave byte-identical.
+WATCHED_LIVE_FILES = ("barks-reader.json", "barks-reader-history.json", "barks-reader.ini")
 
 
 @dataclass(frozen=True)
-class AppConfig:
-    """The app's live config and the session's pristine copy of it."""
+class LiveProfile:
+    """The user's real config directory and what its watched files held at session start."""
 
-    live: Path
-    pristine: Path
-
-    def restore(self) -> None:
-        shutil.copy2(self.pristine, self.live)
+    dir: Path
+    snapshot: dict[str, bytes]
 
 
 @pytest.fixture(scope="session")
-def app_config() -> Iterator[AppConfig]:
-    """Back up the user's config for the session and put it back at the end."""
+def live_profile() -> Iterator[LiveProfile]:
+    """Locate the live profile, snapshot it, and prove afterwards that it is untouched."""
     if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
         pytest.skip("no graphical session for the nested display to open in")
-    live = Path(gd.probe("config").strip())
-    if not live.is_file():
-        pytest.skip(f"app config not found: {live}")
-    handle, name = tempfile.mkstemp(prefix="barks-gui-tests-config.", suffix=".json")
-    os.close(handle)
-    config = AppConfig(live=live, pristine=Path(name))
-    shutil.copy2(live, config.pristine)
-    try:
-        yield config
-    finally:
-        config.restore()
-        config.pristine.unlink(missing_ok=True)
+    live = Path(gd.probe("config").strip()).parent
+    if not (live / "barks-reader.ini").is_file():
+        pytest.skip(f"app config not found in {live}")
+    snapshot = {n: (live / n).read_bytes() for n in WATCHED_LIVE_FILES if (live / n).is_file()}
+    yield LiveProfile(dir=live, snapshot=snapshot)
+    changed = [n for n, data in snapshot.items() if (live / n).read_bytes() != data]
+    assert not changed, f"the GUI tests changed the live profile: {changed} in {live}"
+
+
+@pytest.fixture(scope="session")
+def scratch_template(live_profile: LiveProfile, tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Build the pinned copy of the live profile that every test's scratch dir starts from."""
+    return harness.build_template(live_profile.dir, tmp_path_factory.mktemp("config-template"))
 
 
 @pytest.fixture
-def boot(app_config: AppConfig) -> Iterator[Callable[[Sequence[str]], gd.Driver]]:
-    """Boot the app onto a node and hand back a Driver; stop it afterwards.
+def boot(
+    scratch_template: Path, tmp_path: Path, request: pytest.FixtureRequest
+) -> Iterator[harness.AppBoot]:
+    """Give the test its own scratch profile and a one-shot app app_boot; stop it afterwards.
 
     Usage::
 
-        def test_something(boot):
+        def test_something(boot: AppBoot) -> None:
             d = boot(["Reading", "root"])
             ...
+            # after the teardown, boot.scratch holds what the app persisted
 
-    The teardown stops the app whether the test passed or not, then restores
-    the config the session started with over whatever the app wrote on exit.
     """
-    booted = False
-
-    def _boot(node: Sequence[str]) -> gd.Driver:
-        nonlocal booted
-        assert not booted, "one boot per test - navigate from where you are instead"
-        gd.boot_app_at(node, config=app_config.live, seed=SEED, cues=CUES)
-        booted = True
-        return gd.Driver()
-
+    scratch = tmp_path / "config"
+    shutil.copytree(scratch_template, scratch)
+    for name in ("barks-reader.json", "barks-reader-history.json"):
+        shutil.copy2(harness.FIXTURES_DIR / name, scratch / name)
+    app_boot = harness.AppBoot(scratch=scratch, nodeid=request.node.nodeid)
     try:
-        yield _boot
+        yield app_boot
     finally:
-        if booted:
-            try:
-                gd.probe("stop")
-            except gd.DriverError as exc:
-                print(f"gui-tests: WARNING {exc}")  # noqa: T201
-        # The probe's own restore only undoes what the app wrote on exit, not
-        # what the boot wrote before it; the session copy is the pristine one.
-        app_config.restore()
+        app_boot.stop()
 
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]) -> Iterator[None]:
-    """On a failure, append the tail of the app log to the report.
+    """On a failure, save the screenshot and logs and put the log tail in the report.
 
     The log is the oracle every wait reads, so its last lines are the first thing
-    to look at when a wait timed out - and they are gone once the next test boots.
+    to look at when a wait timed out - and the app is still up here, since the
+    call-phase report is made before the fixtures tear down.
     """
     outcome = yield
     report = outcome.get_result()  # ty: ignore[unresolved-attribute]
-    if call.when == "call" and report.failed:
-        try:
-            tail = gd.probe("tail", "40")
-        except gd.DriverError as exc:
-            tail = str(exc)
-        item.add_report_section("call", "app log tail", tail)
+    if call.when != "call" or not report.failed:
+        return
+    try:
+        tail = gd.probe("tail", "40")
+    except gd.DriverError as exc:
+        tail = str(exc)
+    item.add_report_section("call", "app log tail", tail)
+    funcargs: dict[str, object] = getattr(item, "funcargs", {})
+    app_boot = funcargs.get("boot")
+    if isinstance(app_boot, harness.AppBoot):
+        saved = app_boot.save_failure_artifacts()
+        item.add_report_section("call", "gui artifacts", "\n".join(str(p) for p in saved))

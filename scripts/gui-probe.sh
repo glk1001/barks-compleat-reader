@@ -17,6 +17,7 @@
 #   scripts/gui-probe.sh doctor           # check this machine has what it needs
 #   scripts/gui-probe.sh start            # Xephyr + app, waits until ready
 #   scripts/gui-probe.sh shot out.png     # fresh full-screen capture
+#   scripts/gui-probe.sh geometry         # app window WxH+X+Y on the nested display
 #   scripts/gui-probe.sh click 840 74     # click at screenshot coordinates
 #   scripts/gui-probe.sh key Down Down Return
 #   scripts/gui-probe.sh type "pirate gold"
@@ -27,7 +28,9 @@
 #   scripts/gui-probe.sh tail 20          # last N app log lines
 #   scripts/gui-probe.sh stop             # kill both, restore the user config
 #
-# Env overrides: BARKS_PROBE_DISPLAY (:2), BARKS_PROBE_SCREEN (900x1300).
+# Env overrides: BARKS_PROBE_DISPLAY (:2), BARKS_PROBE_SCREEN (900x1300),
+# BARKS_READER_CONFIG_DIR (the profile to boot from, as for the app itself),
+# BARKS_PROBE_NO_RESTORE=1 (do not back up and restore that profile around a run).
 
 set -euo pipefail
 
@@ -71,10 +74,21 @@ history_file() {
 }
 
 config_file() {
-    local dir
-    dir="$(grep -oP '(?<=^BARKS_READER_CONFIG_DIR=").*(?="$)' "$REPO_ROOT/.env.runtime" 2>/dev/null || true)"
+    # An exported BARKS_READER_CONFIG_DIR wins, exactly as it does for the app
+    # (main.py loads .env.runtime without overriding the environment), so a
+    # harness can point a whole run at a scratch config dir.
+    local dir="${BARKS_READER_CONFIG_DIR:-}"
+    if [[ -z "$dir" ]]; then
+        dir="$(grep -oP '(?<=^BARKS_READER_CONFIG_DIR=").*(?="$)' "$REPO_ROOT/.env.runtime" 2>/dev/null || true)"
+    fi
     dir="${dir/\$\{HOME\}/$HOME}"
     echo "${dir:-$HOME/opt/barks-reader/config}/barks-reader.json"
+}
+
+# The app window's geometry on the nested display as WxH+X+Y, or nothing.
+app_geometry() {
+    DISPLAY="$DPY" xwininfo -root -children |
+        grep -F "$WINDOW_NAME" | grep -oP '\d+x\d+\+\d+\+\d+' | head -1 || true
 }
 
 require_running() {
@@ -193,13 +207,17 @@ cmd_start() {
     mkdir -p "$RUN_DIR"
     : >"$APP_LOG"
 
-    # The app rewrites its config on exit; keep the user's copy intact.
-    local cfg
-    cfg="$(config_file)"
-    [[ -f "$cfg" ]] && cp "$cfg" "$CONFIG_BACKUP"
-    local hist
-    hist="$(history_file)"
-    [[ -f "$hist" ]] && cp "$hist" "$HISTORY_BACKUP"
+    # The app rewrites its config on exit; keep the user's copy intact. A
+    # harness booting from a throwaway profile sets BARKS_PROBE_NO_RESTORE=1
+    # instead, so that what the app wrote on exit is still there to assert on.
+    if [[ -z "${BARKS_PROBE_NO_RESTORE:-}" ]]; then
+        local cfg
+        cfg="$(config_file)"
+        [[ -f "$cfg" ]] && cp "$cfg" "$CONFIG_BACKUP"
+        local hist
+        hist="$(history_file)"
+        [[ -f "$hist" ]] && cp "$hist" "$HISTORY_BACKUP"
+    fi
 
     # Detach fully (stdin included). A background child that still holds the
     # caller's stdin/stdout keeps the calling shell's pipeline open, so `start`
@@ -235,8 +253,7 @@ cmd_start() {
 
 park_pointer() {
     local geom w h
-    geom="$(DISPLAY="$DPY" xwininfo -root -children |
-        grep -F "$WINDOW_NAME" | grep -oP '\d+x\d+\+\d+\+\d+' | head -1 || true)"
+    geom="$(app_geometry)"
     if [[ -n "$geom" ]]; then
         w="${geom%%x*}"
         h="${geom#*x}"
@@ -294,6 +311,16 @@ cmd_stop() {
     rm -f "$CONFIG_BACKUP" "$HISTORY_BACKUP"
     rm -f "$XEPHYR_PID_FILE" "$APP_PID_FILE"
     echo "gui-probe: stopped"
+}
+
+# Print the app window's geometry (WxH+X+Y). Pixel-driven callers check this
+# against the size their coordinates were measured at before clicking.
+cmd_geometry() {
+    require_running
+    local geom
+    geom="$(app_geometry)"
+    [[ -n "$geom" ]] || die "app window ($WINDOW_NAME) not found on $DPY"
+    echo "$geom"
 }
 
 cmd_shot() {
@@ -371,6 +398,7 @@ doctor) shift && cmd_doctor "$@" ;;
 start) shift && cmd_start "$@" ;;
 stop) shift && cmd_stop "$@" ;;
 shot) shift && cmd_shot "$@" ;;
+geometry) shift && cmd_geometry "$@" ;;
 click) shift && cmd_click "$@" ;;
 key) shift && cmd_key "$@" ;;
 type) shift && cmd_type "$@" ;;

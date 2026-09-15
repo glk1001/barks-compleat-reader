@@ -151,6 +151,46 @@ class TestPressMenuButton:
             self._presses(driver, "nope")
 
 
+class TestMainMenuButton:
+    """The main screen's bar is sticky too, and opens on go_back."""
+
+    @staticmethod
+    def _presses(driver: Driver, name: str) -> list[str]:
+        with (
+            patch.object(Driver, "key") as key,
+            patch.object(Driver, "hold"),
+        ):
+            driver.main_menu_button(name)
+        return [k for call in key.call_args_list for k in call.args]
+
+    def test_go_back_is_the_default_focus(self) -> None:
+        driver = _stub_driver()
+        assert self._presses(driver, "go_back") == ["Escape", "Return"]
+
+    def test_quit_is_the_short_way_round(self) -> None:
+        """Quit is three Lefts back from go_back, not four Rights forward."""
+        driver = _stub_driver()
+        assert self._presses(driver, "quit") == ["Escape", "Left", "Left", "Left", "Return"]
+
+    def test_a_second_press_starts_where_the_first_left_off(self) -> None:
+        driver = _stub_driver()
+        self._presses(driver, "menu")  # three Rights from go_back
+        assert self._presses(driver, "collapse") == ["Escape", "Left", "Left", "Return"]
+
+    def test_go_back_uses_it(self) -> None:
+        driver = _stub_driver()
+        with (
+            patch.object(Driver, "main_menu_button") as press,
+        ):
+            driver.go_back()
+        press.assert_called_once_with("go_back")
+
+    def test_an_unknown_button_raises(self) -> None:
+        driver = _stub_driver()
+        with pytest.raises(DriverError, match="no such menu button"):
+            self._presses(driver, "nope")
+
+
 class TestCloseReader:
     """close_reader shares press_menu_button's walk, so it starts from the same focus."""
 
@@ -341,3 +381,58 @@ class TestBootAppAt:
         with patch.object(gui_driver, "probe"):
             boot_app_at(["root"], config=config, seed=None)
         assert gui_driver.RANDOM_SEED_ENV_VAR not in gui_driver.os.environ
+
+
+class TestExpectNoNew:
+    """The one clock wait, for negatives: a new match within the window is a failure."""
+
+    def test_passes_when_nothing_new_arrives(self) -> None:
+        driver = _stub_driver()
+        with (
+            patch.object(Driver, "match_count", return_value=2),
+            patch.object(gui_driver.time, "sleep"),
+            patch.object(gui_driver.time, "monotonic", side_effect=[0.0, 0.5, 1.0, 3.0]),
+        ):
+            driver.expect_no_new("Closing app", 2.0)
+
+    def test_raises_on_a_new_match(self) -> None:
+        driver = _stub_driver()
+        counts = iter([2, 3])
+        with (
+            patch.object(Driver, "match_count", side_effect=lambda _p: next(counts)),
+            patch.object(gui_driver.time, "sleep"),
+            patch.object(gui_driver.time, "monotonic", return_value=0.0),
+            pytest.raises(DriverError, match="unexpected new"),
+        ):
+            driver.expect_no_new("Closing app", 2.0)
+
+
+class TestWindowGeometry:
+    def test_parses_the_probe_output(self) -> None:
+        driver = _stub_driver()
+        with patch.object(Driver, "_run", return_value="782x1224+59+10\n"):
+            assert driver.window_geometry() == (782, 1224, 59, 10)
+
+    def test_rejects_anything_else(self) -> None:
+        driver = _stub_driver()
+        with (
+            patch.object(Driver, "_run", return_value="gui-probe: not running\n"),
+            pytest.raises(DriverError, match="not WxH"),
+        ):
+            driver.window_geometry()
+
+
+class TestBootFromConfigDir:
+    def test_exports_the_dir_and_uses_its_json(self, tmp_path: Path) -> None:
+        (tmp_path / "barks-reader.json").write_text("{}")
+        with patch.object(gui_driver, "probe") as start:
+            boot_app_at(["root"], config_dir=tmp_path)
+        assert gui_driver.os.environ[gui_driver.CONFIG_DIR_ENV_VAR] == str(tmp_path)
+        written = json.loads((tmp_path / "barks-reader.json").read_text())
+        assert written["AAA_Settings"]["last_selected_node"] == ["root"]
+        start.assert_called_once_with("start")
+        gui_driver.os.environ.pop(gui_driver.CONFIG_DIR_ENV_VAR)
+
+    def test_needs_one_of_config_or_config_dir(self) -> None:
+        with pytest.raises(ValueError, match="config="):
+            boot_app_at(["root"])
