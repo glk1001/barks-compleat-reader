@@ -957,9 +957,8 @@ def search_words(d: Driver) -> None:
 
 def _setup_read_story(d: Driver) -> None:
     # Off camera: reach the story this beat reads, so the recording opens on it.
-    d.open_branch("Categories")
-    d.open_branch("Themes")
-    d.open_branch("censored but fixed stories")
+    d.open_branch("Series")
+    d.open_branch("Donald Duck Adventures")
     d.select_node(READ_STORY_PICK.title)
 
 
