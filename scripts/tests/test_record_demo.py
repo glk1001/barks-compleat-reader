@@ -6,23 +6,33 @@ recording to check is exercised against a stub driver instead.
 
 from __future__ import annotations
 
+import json
+import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 import record_demo
+from barks_fantagraphics.barks_titles import ENUM_TO_STR_TITLE, Titles
 from record_demo import (
     OUTPUTS,
     POSTER_BEAT,
+    Beat,
     BeatError,
     Driver,
     Pick,
+    Recorder,
     beat_names,
+    boot_app_at,
+    check_same_encode,
     even,
     find_beat,
     missing_clips,
+    parse_args,
     parse_geometry,
+    probe,
     select_beats,
+    validate,
 )
 
 EXPECTED_REGION = (782, 1224, 59, 10)
@@ -279,6 +289,24 @@ class TestPressMenuButton:
         assert 'press_menu_button("fullscreen")' not in source
 
 
+class TestCloseReader:
+    """close_reader shares press_menu_button's walk, so it starts from the same focus."""
+
+    def test_walks_from_where_the_last_press_left_the_menu(self) -> None:
+        """After a goto-page, close is one Right on, not a fresh count from the start."""
+        driver = _stub_driver()
+        driver._menu_focus = "goto_page"  # noqa: SLF001
+        with (
+            patch.object(Driver, "key") as key,
+            patch.object(Driver, "key_then_wait") as wait,
+            patch.object(Driver, "hold"),
+        ):
+            driver.close_reader()
+        assert [k for call in key.call_args_list for k in call.args] == ["Escape", "Right"]
+        assert wait.call_args.args == ("Main screen is active", 15, "Return")
+        assert driver._menu_focus == "close"  # noqa: SLF001
+
+
 class TestGotoPage:
     """Steps through the page list are the difference between two page numbers."""
 
@@ -319,7 +347,8 @@ class TestGotoPage:
         ):
             driver._menu_focus = "close"  # noqa: SLF001
             driver.goto_page(18)
-        assert wait.call_args.args[0] == "Showed page 18"
+        # Anchored past the number: "Showed page 3" is a prefix of "Showed page 34".
+        assert wait.call_args.args[0] == "Showed page 18 in "
 
     def test_reads_where_it_is_rather_than_being_told(self) -> None:
         """The reader opens on whatever page the user cued, so it has to look."""
@@ -367,3 +396,165 @@ class TestKeyThenWait:
             pytest.raises(BeatError, match="beat stalled"),
         ):
             driver.key_then_wait("Showed page", 0, "Right")
+
+
+class TestProbe:
+    """Every probe call goes through one helper, which refuses to hide a failure."""
+
+    def test_returns_stdout_on_success(self) -> None:
+        done = subprocess.CompletedProcess(["x"], 0, stdout="/run/user/1/app.log\n", stderr="")
+        with patch.object(record_demo.subprocess, "run", return_value=done):
+            assert probe("log") == "/run/user/1/app.log\n"
+
+    def test_raises_with_stderr_on_failure(self) -> None:
+        """Regression: a failed `start` returned normally and the stale app was driven."""
+        failed = subprocess.CompletedProcess(
+            ["x"], 1, stdout="", stderr="gui-probe: already running (stop it first)\n"
+        )
+        with (
+            patch.object(record_demo.subprocess, "run", return_value=failed),
+            pytest.raises(BeatError, match="already running"),
+        ):
+            probe("start")
+
+
+class TestBootAppAt:
+    """Each boot pins the node, the cues and the seed, then starts the app."""
+
+    def test_writes_node_and_pinned_cues(self, tmp_path: Path) -> None:
+        config = tmp_path / "barks-reader.json"
+        config.write_text(json.dumps({"AAA_Settings": {"x": 1}, "Voodoo Hoodoo": {"a": 1}}))
+        cues: dict[str, dict[str, int | str] | None] = {
+            "Lost in the Andes!": {"page_index": 34},
+            "Voodoo Hoodoo": None,
+        }
+        with patch.object(record_demo, "probe") as start:
+            boot_app_at(["Reading", "root"], config=config, seed=7, cues=cues)
+        written = json.loads(config.read_text())
+        assert written["AAA_Settings"] == {"x": 1, "last_selected_node": ["Reading", "root"]}
+        assert written["Lost in the Andes!"] == {"last_read_page": {"page_index": 34}}
+        assert "Voodoo Hoodoo" not in written
+        assert record_demo.os.environ[record_demo.RANDOM_SEED_ENV_VAR] == "7"
+        start.assert_called_once_with("start")
+
+    def test_reads_from_the_template_when_given(self, tmp_path: Path) -> None:
+        config, template = tmp_path / "cfg.json", tmp_path / "pristine.json"
+        config.write_text(json.dumps({"stale": True}))
+        template.write_text(json.dumps({"fresh": True}))
+        with patch.object(record_demo, "probe"):
+            boot_app_at(["root"], config=config, seed=None, template=template, cues={})
+        written = json.loads(config.read_text())
+        assert "fresh" in written
+        assert "stale" not in written
+
+    def test_every_named_pick_has_a_pinned_cue(self) -> None:
+        """A story a beat opens by name must be pinned, or the demo depends on the machine."""
+        named = [
+            record_demo.READ_STORY_PICK.title,
+            record_demo.SERIES_PICK.title,
+            record_demo.SEARCH_TITLE_PICK.title,
+            record_demo.WIKI_SIDEBAR_PICK,
+            *(p.title for p in record_demo.CENSORED_PICKS),
+        ]
+        for enum_name in named:
+            display = ENUM_TO_STR_TITLE[Titles[enum_name]]
+            assert display in record_demo.PINNED_CUES, f"{enum_name} ({display}) is not pinned"
+        assert record_demo.SEARCH_WORD_PICK in record_demo.PINNED_CUES
+
+
+class TestRecordClipHandling:
+    """A clip only gets its final name once the beat ran and ffmpeg stopped cleanly."""
+
+    @staticmethod
+    def _recorder(tmp_path: Path) -> Recorder:
+        recorder = Recorder.__new__(Recorder)
+        recorder.work_dir = tmp_path
+        recorder._ffmpeg = None  # noqa: SLF001
+        return recorder
+
+    def _record(self, tmp_path: Path, body: object, failure: str | None = None) -> Path | None:
+        recorder = self._recorder(tmp_path)
+        item = Beat(name="b", node=["root"], body=body)  # ty: ignore[invalid-argument-type]
+
+        def fake_start(partial: Path, *_a: object) -> None:
+            partial.write_bytes(b"mp4")
+
+        with (
+            patch.object(Recorder, "boot_at"),
+            patch.object(Recorder, "app_region", return_value=(10, 10, 0, 0)),
+            patch.object(Recorder, "_start_ffmpeg", side_effect=fake_start),
+            patch.object(Recorder, "_check_ffmpeg_running"),
+            patch.object(Recorder, "_stop_ffmpeg", return_value=failure),
+            patch.object(record_demo, "Driver"),
+            patch.object(record_demo, "probe"),
+            patch.object(record_demo.time, "sleep"),
+        ):
+            return recorder.record(item)
+
+    def test_a_finished_beat_takes_the_final_name(self, tmp_path: Path) -> None:
+        clip = self._record(tmp_path, lambda _d: None)
+        assert clip == tmp_path / "b.mp4"
+        assert clip.is_file()
+        assert not (tmp_path / "b.partial.mp4").exists()
+
+    def test_a_failed_beat_leaves_no_cached_clip(self, tmp_path: Path) -> None:
+        """Regression: a truncated clip was cached and stitched by the next --stitch."""
+
+        def body(_d: Driver) -> None:
+            msg = "beat stalled"
+            raise BeatError(msg)
+
+        with pytest.raises(BeatError, match="beat stalled"):
+            self._record(tmp_path, body)
+        assert missing_clips(["b"], tmp_path) == ["b"]
+        assert (tmp_path / "b.partial.mp4").is_file(), "the partial stays for inspection"
+
+    def test_a_failed_recorder_is_an_error_not_a_clip(self, tmp_path: Path) -> None:
+        with pytest.raises(BeatError, match=r"\[b\] ffmpeg died"):
+            self._record(tmp_path, lambda _d: None, failure="ffmpeg died")
+        assert missing_clips(["b"], tmp_path) == ["b"]
+
+
+class TestCheckSameEncode:
+    """A stream-copy concat of mismatched clips succeeds silently, so check first."""
+
+    def test_passes_when_every_clip_matches(self, tmp_path: Path) -> None:
+        with patch.object(record_demo, "stream_signature", return_value="h264,782,1224,yuv420p"):
+            check_same_encode(["a", "b"], tmp_path)
+
+    def test_names_the_odd_one_out(self, tmp_path: Path) -> None:
+        sizes = {"a": "h264,782,1224,yuv420p", "b": "h264,640,1000,yuv420p"}
+        with (
+            patch.object(record_demo, "stream_signature", side_effect=lambda p: sizes[p.stem]),
+            pytest.raises(BeatError, match=r"b: h264,640,1000"),
+        ):
+            check_same_encode(["a", "b"], tmp_path)
+
+
+class TestValidate:
+    """Flag combinations that could only fail after the recording had been done."""
+
+    @staticmethod
+    def _validate(*argv: str) -> None:
+        validate(parse_args(list(argv)))
+
+    def test_plain_runs_pass(self) -> None:
+        self._validate()
+        self._validate("--clean")
+        self._validate("--only", "browse_tree", "--output", "demo.mp4")
+
+    @pytest.mark.parametrize(
+        "argv",
+        [
+            ("--clean", "--only", "browse_tree"),
+            ("--clean", "--from", "reading"),
+            ("--clean", "--stitch"),
+        ],
+    )
+    def test_clean_cannot_go_with_a_selector(self, argv: tuple[str, ...]) -> None:
+        with pytest.raises(BeatError, match="--clean"):
+            self._validate(*argv)
+
+    def test_only_must_be_in_the_requested_output(self) -> None:
+        with pytest.raises(BeatError, match="does not contain reading"):
+            self._validate("--only", "reading", "--output", "demo.mp4")

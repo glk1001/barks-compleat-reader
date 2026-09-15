@@ -48,10 +48,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
-import os
 import shutil
-import subprocess
 import sys
 import tempfile
 import time
@@ -97,13 +94,6 @@ class Trial:
     opened: bool
 
 
-def probe(*args: str) -> str:
-    """Run `gui-probe.sh` with `args` and return its stdout."""
-    return subprocess.run(  # noqa: S603  (fixed argv, no shell)
-        [str(rd.PROBE), *args], capture_output=True, text=True, check=True
-    ).stdout
-
-
 def run_trial(delay: float, seed: int, config: Path, backup: Path) -> Trial:
     """Boot the app, click a search result, press Enter after `delay`, and report.
 
@@ -118,15 +108,10 @@ def run_trial(delay: float, seed: int, config: Path, backup: Path) -> Trial:
         What the trial observed.
 
     """
-    settings = json.loads(backup.read_text())
-    settings.setdefault("AAA_Settings", {})["last_selected_node"] = list(SEARCH_NODE)
-    config.write_text(json.dumps(settings, indent=2))
-    os.environ[rd.RANDOM_SEED_ENV_VAR] = str(seed)
-
-    probe("start")
+    rd.boot_app_at(SEARCH_NODE, config=config, seed=seed, template=backup)
     try:
         driver = rd.Driver()
-        log = Path(probe("log").strip())
+        log = Path(rd.probe("log").strip())
 
         driver.hold(0.5)
         driver.key("Return")  # focus the search box
@@ -152,7 +137,7 @@ def run_trial(delay: float, seed: int, config: Path, backup: Path) -> Trial:
             opened=COMIC_OPENED_MARKER in text,
         )
     finally:
-        probe("stop")
+        rd.probe("stop")
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -173,7 +158,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     """Run the trials and report. Returns a process exit code."""
     args = parse_args(argv)
-    config = Path(probe("config").strip())
+    config = Path(rd.probe("config").strip())
 
     with tempfile.TemporaryDirectory(prefix="repro-search-enter-") as tmp:
         backup = Path(tmp) / "barks-reader.json.bak"

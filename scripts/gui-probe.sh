@@ -249,17 +249,32 @@ park_pointer() {
     fi
 }
 
+# Terminate a setsid process group and wait for its leader to exit, escalating
+# to SIGKILL after `max_secs`. Waiting on the pid rather than a fixed sleep is
+# what lets the app finish writing its config on the way out, and what stops a
+# `start` issued straight after a `stop` from finding the old Xephyr still up.
+stop_group() {
+    local pid="$1" max_secs="${2:-10}" waited=0
+    kill -TERM -- "-$pid" 2>/dev/null || true
+    while kill -0 "$pid" 2>/dev/null; do
+        sleep 0.25
+        waited=$((waited + 1))
+        if [[ $((waited / 4)) -ge $max_secs ]]; then
+            kill -KILL -- "-$pid" 2>/dev/null || true
+            break
+        fi
+    done
+}
+
 cmd_stop() {
     # setsid made each child its own process-group leader, so a negative pid
     # takes the whole group (uv wrapper plus the python process it execs).
     if [[ -f "$APP_PID_FILE" ]]; then
-        kill -TERM -- "-$(cat "$APP_PID_FILE")" 2>/dev/null || true
-        sleep 2
+        stop_group "$(cat "$APP_PID_FILE")"
     fi
     if [[ -f "$XEPHYR_PID_FILE" ]]; then
-        kill -TERM -- "-$(cat "$XEPHYR_PID_FILE")" 2>/dev/null || true
+        stop_group "$(cat "$XEPHYR_PID_FILE")"
     fi
-    sleep 1
 
     local cfg
     cfg="$(config_file)"
@@ -273,6 +288,10 @@ cmd_stop() {
         cp "$HISTORY_BACKUP" "$hist"
         echo "gui-probe: restored $hist"
     fi
+    # The backups are spent once applied. `start` takes a fresh pair; one left
+    # here would be re-applied by every later `stop`, on top of whatever the
+    # caller (record_demo restores its own pristine copy) had since put back.
+    rm -f "$CONFIG_BACKUP" "$HISTORY_BACKUP"
     rm -f "$XEPHYR_PID_FILE" "$APP_PID_FILE"
     echo "gui-probe: stopped"
 }

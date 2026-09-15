@@ -41,8 +41,13 @@ same as the gui-probe script it drives.
 
 The app rewrites its config on exit, so this backs up ``barks-reader.json``
 before touching ``last_selected_node`` and restores it on any exit, including a
-failure or a Ctrl-C. It never writes to ``barks-reader.ini``. The probe looks
-after the reading-history file.
+failure, a Ctrl-C, and a SIGTERM/SIGHUP (the terminal closing). The backup's path is
+printed at the start of a run in case even that fails. It never writes to
+``barks-reader.ini``. The probe looks after the reading-history file.
+
+Each boot also pins the last-read-page cues the beats depend on (``PINNED_CUES``), so
+a re-record opens every story on the same page as the clips it replaces, on any
+machine.
 
 Usage:
     scripts/record_demo.py                       # every beat, every output
@@ -52,7 +57,7 @@ Usage:
     scripts/record_demo.py --stitch              # rebuild from cached beats
     scripts/record_demo.py --output demo.mp4     # build just this one
     scripts/record_demo.py --out /tmp/preview
-    scripts/record_demo.py --clean               # drop cached clips first
+    scripts/record_demo.py --clean               # drop cached clips, record everything
 
 Env overrides: BARKS_PROBE_DISPLAY (:2), BARKS_PROBE_SCREEN (900x1300) - both are
 passed straight through to gui-probe.sh.
@@ -75,7 +80,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Sequence
+    from collections.abc import Callable, Iterable, Mapping, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PROBE = REPO_ROOT / "scripts" / "gui-probe.sh"
@@ -151,7 +156,9 @@ SETUP_PACE = 0.25
 # through. Measured on a clip recorded without this wait, the panel was still
 # settling 1.4s in. That makes the cut from the beat before jump in opacity even
 # when both are on the same story and, since the seed was fixed, the same artwork.
-# Covers the worst case with a little margin; there is nothing to wait on but time.
+# RANDOM_SEED pins the fade's duration too (it draws from the same seeded random
+# module as the artwork), but this still covers the worst case with a little margin
+# so it stays right with the seed set to None. There is nothing to wait on but time.
 TITLE_FADE_SECS = 4.5
 
 # Pins the app's random image choices, so a re-recorded beat comes back with the
@@ -255,7 +262,7 @@ SEARCH_TITLE_PICK = Pick("VACATION_TIME", pages=3, dwell=1.0)
 SEARCH_WORD_READ = Pick(pages=4, dwell=1.0)
 
 # open_comic reaches its story by walking, not by name, so this sets only its
-# pacing: five pages means the one it opens on plus four turns.
+# pacing: four pages means the one it opens on plus three turns.
 OPEN_COMIC_PICK = Pick(pages=4, dwell=1.5)
 
 # The page read_story jumps to through the goto-page dropdown, to show that the
@@ -296,6 +303,80 @@ WIKI_BAR_RIGHTS_TO_GOTO = 2
 # The playlist the Reading beat opens. Playlists are themed runs of stories, each
 # with its own blurb; this is the first of them.
 READING_PLAYLIST = "The Bravery Stories"
+
+# The last-read page the config cues for each story a beat opens, in the form the
+# app writes it (json_settings_manager.save_last_read_page). Keyed by the DISPLAY
+# title, which is the config's key - not the enum name the tree node uses.
+#
+# Where a story opens, and whether its title view shows the goto-page row at all,
+# comes from this cue: the row is hidden when there is no cue or the cued page is
+# "0" (navigation_coordinator._set_goto_page_checkbox). WIKI_UPS_FROM_PORTAL counts
+# on that row being there, goto_page() steps from the cued page, and every
+# read_pages() rests on it first. Left to the live config, a re-record differed
+# from machine to machine and from one reading session to the next, so boot_at
+# merges these over the config before every boot. None pins "no cue", which is
+# what the sidebar story wiki_jump lands on had when the clips were shot.
+#
+# To re-pin after deliberately reading a story to a new page, copy its entry out
+# of barks-reader.json (`scripts/gui-probe.sh config` prints the path).
+PINNED_CUES: dict[str, dict[str, int | str] | None] = {
+    # read_story, series_view, wiki_jump: body page 29, so the goto-page row shows.
+    "Lost in the Andes!": {
+        "page_index": 34,
+        "display_page_num": "29",
+        "page_type": "BODY",
+        "last_body_page": "32",
+    },
+    # search_story (SEARCH_TITLE_PICK).
+    "Vacation Time": {
+        "page_index": 35,
+        "display_page_num": "34",
+        "page_type": "BLANK_PAGE",
+        "last_body_page": "33",
+    },
+    # search_words (SEARCH_WORD_PICK): the bubble picks the page, but the title
+    # view it passes through is drawn from this.
+    "Adventure Down Under": {
+        "page_index": 0,
+        "display_page_num": "0",
+        "page_type": "FRONT",
+        "last_body_page": "25",
+    },
+    # browse_tree / open_comic: the story BROWSE_TITLE_STEPS lands on. No goto row.
+    "The Ghost of the Grotto": {
+        "page_index": 0,
+        "display_page_num": "0",
+        "page_type": "FRONT",
+        "last_body_page": "26",
+    },
+    # censored_stories (CENSORED_PICKS), in tree order.
+    "Good Deeds": {
+        "page_index": 7,
+        "display_page_num": "7",
+        "page_type": "BODY",
+        "last_body_page": "10",
+    },
+    "Silent Night": {
+        "page_index": 0,
+        "display_page_num": "i",
+        "page_type": "TITLE",
+        "last_body_page": "10",
+    },
+    "The Bill Collectors": {
+        "page_index": 3,
+        "display_page_num": "3",
+        "page_type": "BODY",
+        "last_body_page": "10",
+    },
+    "The Golden Fleecing": {
+        "page_index": 28,
+        "display_page_num": "24",
+        "page_type": "BODY",
+        "last_body_page": "32",
+    },
+    # wiki_jump (WIKI_SIDEBAR_PICK): never read, so no cue.
+    "Voodoo Hoodoo": None,
+}
 GOTO_LIST_DWELL = 1.5  # time the open page list stays on screen before stepping
 GOTO_STEP_PAUSE = 0.12  # pace of a single step through the page list
 
@@ -325,6 +406,38 @@ def say(message: str = "") -> None:
 
 class BeatError(RuntimeError):
     """A beat could not reach a state it needed, so the run must not continue."""
+
+
+def probe(*args: str, script: Path = PROBE) -> str:
+    """Run one ``gui-probe.sh`` command and return its stdout.
+
+    The one place the probe is called from, so a failure is never dropped: a
+    ``start`` that died (a stale Xephyr still up, the app never becoming ready)
+    used to return normally, and the beat was then driven against a half-booted
+    or leftover app and a wrong clip cached with no error.
+
+    Args:
+        *args: The probe subcommand and its arguments.
+        script: The probe script to run.
+
+    Returns:
+        The command's stdout.
+
+    Raises:
+        BeatError: If the probe exits non-zero, with what it wrote to stderr.
+
+    """
+    result = subprocess.run(  # noqa: S603  (fixed argv, no shell)
+        [str(script), *args],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip() or "no output"
+        msg = f"gui-probe {' '.join(args)} failed (exit {result.returncode}): {detail}"
+        raise BeatError(msg)
+    return result.stdout
 
 
 # ------------------------------------------------------------ beat registry --
@@ -411,20 +524,14 @@ class Driver:
         "goto_page",
     )
 
-    def __init__(self, probe: Path = PROBE) -> None:
-        self._probe = probe
+    def __init__(self, probe_script: Path = PROBE) -> None:
+        self._probe = probe_script
         self._log = Path(self._run(["log"]).strip())
         # Menu focus is sticky, so the driver has to remember where it left it.
         self._menu_focus = self._MENU_BUTTONS[0]
 
     def _run(self, args: Sequence[str]) -> str:
-        result = subprocess.run(  # noqa: S603  (fixed argv, no shell)
-            [str(self._probe), *args],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        return result.stdout
+        return probe(*args, script=self._probe)
 
     @property
     def log_path(self) -> Path:
@@ -594,8 +701,8 @@ class Driver:
             self.key_then_wait("Showed page", 15, "Right")
             self.hold(pick.dwell)
 
-    def press_menu_button(self, name: str) -> None:
-        """Open the reader's action-bar menu and activate one button by name.
+    def _walk_menu_to(self, name: str) -> None:
+        """Open the reader's action-bar menu and move its focus to one button.
 
         Menu mode does not reopen on a fixed button: ``_enter_menu_mode`` restores
         ``_last_used_btn_idx``, so it comes back focused on whatever was activated
@@ -605,7 +712,8 @@ class Driver:
         manager resizes the window out from under the recorder.
 
         Tracking the last activation here is what makes the second press land
-        where it says. Nothing else drives the app, so this stays in step.
+        where it says. Nothing else drives the app, so this stays in step. The
+        caller presses Return, so it can wait on whatever that button logs.
 
         Args:
             name: One of `_MENU_BUTTONS`.
@@ -630,8 +738,20 @@ class Driver:
         for _ in range(presses):
             self.key(step)
             self.hold(0.4)
-        self.key("Return")
         self._menu_focus = name
+
+    def press_menu_button(self, name: str) -> None:
+        """Open the reader's action-bar menu and activate one button by name.
+
+        Args:
+            name: One of `_MENU_BUTTONS`.
+
+        Raises:
+            BeatError: If `name` is not a menu button.
+
+        """
+        self._walk_menu_to(name)
+        self.key("Return")
 
     def go_back(self) -> None:
         """Press Go Back on the main screen's action bar, from the tree.
@@ -663,19 +783,8 @@ class Driver:
 
     def close_reader(self) -> None:
         """Shut the comic reader through its menu, and wait for the main screen."""
-        count = len(self._MENU_BUTTONS)
-        here = self._MENU_BUTTONS.index(self._menu_focus)
-        there = self._MENU_BUTTONS.index("close")
-        forward, backward = (there - here) % count, (here - there) % count
-
-        self.key("Escape")
-        self.hold(0.4)
-        step, presses = ("Right", forward) if forward <= backward else ("Left", backward)
-        for _ in range(presses):
-            self.key(step)
-            self.hold(0.4)
+        self._walk_menu_to("close")
         self.key_then_wait("Main screen is active", 15, "Return")
-        self._menu_focus = "close"
 
     def goto_page(self, target: int) -> None:
         """Jump to a body page through the reader's goto-page dropdown.
@@ -698,7 +807,10 @@ class Driver:
             self.key(step)
             self.hold(GOTO_STEP_PAUSE)
         self.hold(0.6)
-        self.key_then_wait(f"Showed page {target}", 15, "Return")
+        # Anchored on the log line's next word: a bare "Showed page 3" is a prefix
+        # of "Showed page 34", so a dropped key landing anywhere in the thirties
+        # would have passed for page 3.
+        self.key_then_wait(f"Showed page {target} in ", 15, "Return")
 
     def open_story(self, pick: Pick) -> None:
         """Open the selected title, read `pick.pages` pages, and return to the tree.
@@ -794,10 +906,12 @@ def _setup_browse_tree(d: Driver) -> None:
     setup=_setup_browse_tree,
 )
 def browse_tree(d: Driver) -> None:
-    # Open the tree a level at a time, then arrow down the chronological list and
-    # settle on a title, letting the bottom panel render its title view. Keyboard
-    # only: this doubles as the 10-foot/remote story, and it keeps the pointer
-    # out of the frame.
+    """Open the tree a level at a time and walk down to a story.
+
+    Arrows down the chronological list and settles on a title, letting the bottom
+    panel render its title view. Keyboard only: this doubles as the 10-foot/remote
+    story, and it keeps the pointer out of the frame.
+    """
     d.hold(1.2)
     _open_tree_to_title(d)
     d.hold(1.0)
@@ -822,9 +936,8 @@ def _setup_open_comic(d: Driver) -> None:
     setup=_setup_open_comic,
 )
 def open_comic(d: Driver) -> None:
-    d.hold(0.0)
+    """Open the story browse_tree stopped on and turn a few of its pages."""
     d.key("Return")  # focus the title view's read portal
-    d.hold(0.0)
     d.key("Return")  # open the comic
     d.wait_for("All images loaded", 30)
     # Right is next-page in the reader (reader_keyboard_nav._handle_reading_key).
@@ -838,8 +951,11 @@ def open_comic(d: Driver) -> None:
     label="Or by the series they ran in",
 )
 def series_view(d: Driver) -> None:
-    # Booting here has already expanded Series, so the three series are on screen and
-    # this only has to walk into them.
+    """Walk into a series, down its story list, and read a page or two.
+
+    Booting here has already expanded Series, so the three series are on screen and
+    this only has to walk into them.
+    """
     d.hold(1.0)
     d.select_node("Comics and Stories")
     d.hold(1.0)
@@ -863,8 +979,10 @@ def series_view(d: Driver) -> None:
     label="Find a story by name",
 )
 def search_story(d: Driver) -> None:
-    # A whole round trip: search, pick a result, read a page of it, and come
-    # back to the search still holding the query.
+    """Search titles, pick a result, read a page of it, and come back.
+
+    A whole round trip, ending on the search still holding the query.
+    """
     d.hold(1.0)
     d.key("Return")  # open the title search and focus its box
     d.settle()
@@ -874,7 +992,9 @@ def search_story(d: Driver) -> None:
     d.hold(1.2)
 
     row_y = SEARCH_RESULT_TOP_Y + (SEARCH_TITLE_RESULT - 1) * SEARCH_RESULT_ROW_H
-    d.click_then_wait(f'Goto title: "{SEARCH_TITLE_PICK.title}"', 15, SEARCH_RESULT_X, row_y)
+    d.click_then_wait(
+        f'Goto title: "{re.escape(SEARCH_TITLE_PICK.title)}"', 15, SEARCH_RESULT_X, row_y
+    )
     # Let the title view finish fading before the Enter below. Only a *key*-driven
     # goto-title is handed to enter_nav_focus_at_portal; picking the result with the
     # mouse schedules no hand-off, so that Enter lazily enters nav focus instead
@@ -893,8 +1013,9 @@ def search_story(d: Driver) -> None:
     d.hold(1.0)
     d.key("Escape")  # leave the bottom focus region for the tree
     d.settle()
-    d.go_back()
-    d.wait_for("SearchScreen mode set to 'Title'", 15)
+    # The counting form: the search logged this same mode line when the beat booted
+    # onto it, so a plain wait_for would return before the Go Back had landed.
+    d.go_back_then_wait("SearchScreen mode set to 'Title'", 15)
     d.settle()
     d.hold(2.5)
 
@@ -905,8 +1026,10 @@ def search_story(d: Driver) -> None:
     label="Search every word the characters speak",
 )
 def search_words(d: Driver) -> None:
-    # A whole round trip, like search_story: find a spoken word, open one story's
-    # matching speech bubbles, jump from a bubble into that story, and come back.
+    """Find a spoken word, open one story's bubbles, jump in from one, and come back.
+
+    A whole round trip, like search_story.
+    """
     d.hold(1.0)
     d.key("Return")
     d.settle()
@@ -922,13 +1045,16 @@ def search_words(d: Driver) -> None:
 
     row_y = SEARCH_WORD_RESULT_TOP_Y + (SEARCH_WORD_RESULT - 1) * SEARCH_WORD_ROW_H
     d.click_then_wait(
-        f'Show speech bubbles for: "{SEARCH_WORD_PICK}"', 15, SEARCH_WORD_BALLOON_X, row_y
+        f'Show speech bubbles for: "{re.escape(SEARCH_WORD_PICK)}"',
+        15,
+        SEARCH_WORD_BALLOON_X,
+        row_y,
     )
     d.hold(3.5)  # every line the word is spoken in, with the word picked out
 
     # A bubble goes to its story at the page that line is on.
     d.click_then_wait(
-        f'Word search bubble press: "{SEARCH_WORD_PICK}"',
+        f'Word search bubble press: "{re.escape(SEARCH_WORD_PICK)}"',
         15,
         SEARCH_WORD_BUBBLE_X,
         SEARCH_WORD_BUBBLE_Y,
@@ -969,6 +1095,7 @@ def _setup_read_story(d: Driver) -> None:
     setup=_setup_read_story,
 )
 def read_story(d: Driver) -> None:
+    """Read a story, skip to a page through the page list, and go two-up."""
     d.hold(1.0)
     d.settle()
     d.key("Return")  # focus the title view read portal
@@ -998,6 +1125,7 @@ def read_story(d: Driver) -> None:
     label="Every story linked to the Carl Barks Wiki",
 )
 def wiki_jump(d: Driver) -> None:
+    """Open a story's wiki page, browse the wiki, and come back into the reader."""
     d.hold(1.5)
     # Enter enters the title view at its last nav widget, the read portal, and
     # the wiki button is WIKI_UPS_FROM_PORTAL above it.
@@ -1046,7 +1174,7 @@ def wiki_jump(d: Driver) -> None:
         d.key("Right")
         d.hold(0.5)
     d.hold(0.6)
-    d.key_then_wait(f'New selected node: "{WIKI_SIDEBAR_PICK}"', 20, "Return")
+    d.key_then_wait(f'New selected node: "{re.escape(WIKI_SIDEBAR_PICK)}"', 20, "Return")
     d.settle()
     d.hold(2.5)  # the reader, now on the story the wiki sent it to
 
@@ -1057,6 +1185,7 @@ def wiki_jump(d: Driver) -> None:
     label="A full speech-bubble index, A to Z",
 )
 def speech_index(d: Driver) -> None:
+    """Open the speech-bubble index and step through a few of its letters."""
     d.hold(1.2)
     d.key("Return")  # open the index screen
     d.settle()
@@ -1074,9 +1203,11 @@ def speech_index(d: Driver) -> None:
     label="By category - censored stories, restored",
 )
 def censored_stories(d: Driver) -> None:
-    # Drill down The Stories > Categories > Themes > censored but fixed stories,
-    # then open each configured pick. The drill-down stays on camera: the
-    # thematic indexes are the point of the beat, not just the stories.
+    """Drill down to the censored-but-fixed theme and open each configured pick.
+
+    The Stories > Categories > Themes > censored but fixed stories, on camera: the
+    thematic indexes are the point of the beat, not just the stories.
+    """
     d.hold(1.0)
     d.open_branch("Categories")
     d.open_branch("Themes")
@@ -1207,6 +1338,44 @@ def missing_clips(beats: Iterable[str], work_dir: Path) -> list[str]:
     return [b for b in beats if not (work_dir / f"{b}.mp4").is_file()]
 
 
+def boot_app_at(
+    node: Sequence[str],
+    *,
+    config: Path,
+    seed: int | None = RANDOM_SEED,
+    template: Path | None = None,
+    cues: Mapping[str, dict[str, int | str] | None] = PINNED_CUES,
+) -> None:
+    """Point the app's config at `node`, pin the cues and the seed, and start it.
+
+    Args:
+        node: The tree node to boot onto, leaf-to-root.
+        config: The app's ``barks-reader.json``, which is rewritten.
+        seed: Value for the app's random seed, or None to leave it unpinned.
+        template: Read the settings from here instead of from `config`, for a
+            caller that keeps a pristine copy and rebuilds `config` each boot.
+        cues: Last-read-page cues to merge in, keyed by display title; a None
+            value removes that story's cue.
+
+    Raises:
+        BeatError: If the probe could not start the app.
+
+    """
+    settings = json.loads((template or config).read_text())
+    settings.setdefault("AAA_Settings", {})["last_selected_node"] = list(node)
+    for title, cue in cues.items():
+        if cue is None:
+            settings.pop(title, None)
+        else:
+            settings[title] = {"last_read_page": dict(cue)}
+    config.write_text(json.dumps(settings, indent=2))
+    if seed is None:
+        os.environ.pop(RANDOM_SEED_ENV_VAR, None)
+    else:
+        os.environ[RANDOM_SEED_ENV_VAR] = str(seed)
+    probe("start")
+
+
 # ------------------------------------------------------------- the recorder --
 
 
@@ -1215,11 +1384,13 @@ class Recorder:
 
     WINDOW_NAME = "Compleat Barks Disney Reader"
 
+    FFMPEG_STOP_TIMEOUT = 30
+
     def __init__(self, out_dir: Path, work_dir: Path = WORK_DIR) -> None:
         self.out_dir = out_dir
         self.work_dir = work_dir
         self._ffmpeg: subprocess.Popen[bytes] | None = None
-        self._config = Path(self._probe("config").strip())
+        self._config = Path(probe("config").strip())
         if not self._config.is_file():
             msg = f"app config not found: {self._config}"
             raise BeatError(msg)
@@ -1227,16 +1398,9 @@ class Recorder:
         os.close(handle)
         self._backup = Path(backup)
         shutil.copy2(self._config, self._backup)
-
-    @staticmethod
-    def _probe(*args: str) -> str:
-        result = subprocess.run(  # noqa: S603  (fixed argv, no shell)
-            [str(PROBE), *args],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        return result.stdout
+        # Named up front so that if the process is killed outright, the user knows
+        # where the pristine copy is.
+        say(f"record-demo: config backed up to {self._backup}")
 
     def close(self) -> None:
         """Stop everything and restore the user's config.
@@ -1246,24 +1410,60 @@ class Recorder:
         """
         if self._ffmpeg is not None:
             self._stop_ffmpeg()
-        self._probe("stop")
-        # gui-probe restores its own backup, which is the file we edited; put the
-        # user's original back on top of it.
+        try:
+            probe("stop")
+        except BeatError as exc:
+            say(f"record-demo: WARNING {exc}")
+        # gui-probe restores its own backup, which is the file we edited (and
+        # deletes it, so a later manual `gui-probe.sh stop` cannot re-apply it);
+        # put the user's original back on top.
         if self._backup.is_file():
             shutil.copy2(self._backup, self._config)
             self._backup.unlink(missing_ok=True)
 
-    def _stop_ffmpeg(self) -> None:
-        # SIGINT makes ffmpeg stop cleanly and write the trailer; killing it
-        # outright leaves an unplayable file.
+    def _check_ffmpeg_running(self) -> None:
+        """Fail now if the recorder has already exited, rather than after the beat.
+
+        Raises:
+            BeatError: With ffmpeg's stderr, if it is no longer running.
+
+        """
+        if self._ffmpeg is not None and self._ffmpeg.poll() is not None:
+            msg = self._stop_ffmpeg() or "ffmpeg exited before recording started"
+            raise BeatError(msg)
+
+    def _stop_ffmpeg(self) -> str | None:
+        """Stop the recorder cleanly and say why it failed, if it did.
+
+        SIGINT makes ffmpeg stop cleanly and write the trailer; killing it outright
+        leaves an unplayable file. ffmpeg answers that SIGINT with exit status 255
+        even after a clean stop, so the failure signs are an exit before it was
+        asked for one, any other non-zero status, or not stopping at all.
+
+        Returns:
+            A description of the failure, or None if the clip was written cleanly.
+
+        """
         process, self._ffmpeg = self._ffmpeg, None
         if process is None:
-            return
-        process.send_signal(signal.SIGINT)
+            return None
+        died_early = process.poll() is not None
+        if not died_early:
+            process.send_signal(signal.SIGINT)
         try:
-            process.wait(timeout=30)
+            _, err = process.communicate(timeout=self.FFMPEG_STOP_TIMEOUT)
         except subprocess.TimeoutExpired:
             process.kill()
+            process.communicate()
+            return f"ffmpeg did not stop within {self.FFMPEG_STOP_TIMEOUT}s and was killed"
+        stderr = err.decode(errors="replace").strip() if err else ""
+        if died_early:
+            return f"ffmpeg exited during the beat (status {process.returncode}): {stderr}"
+        if process.returncode not in (0, 255):
+            return f"ffmpeg failed (status {process.returncode}): {stderr}"
+        if stderr:
+            say(f"record-demo: ffmpeg: {stderr}")
+        return None
 
     def boot_at(self, node: Sequence[str]) -> None:
         """Start the app with its tree selection set to `node`.
@@ -1271,14 +1471,7 @@ class Recorder:
         Each beat opens on a known screen instead of inheriting wherever the
         previous beat left the selection.
         """
-        config = json.loads(self._config.read_text())
-        config.setdefault("AAA_Settings", {})["last_selected_node"] = list(node)
-        self._config.write_text(json.dumps(config, indent=2))
-        if RANDOM_SEED is None:
-            os.environ.pop(RANDOM_SEED_ENV_VAR, None)
-        else:
-            os.environ[RANDOM_SEED_ENV_VAR] = str(RANDOM_SEED)
-        self._probe("start")
+        boot_app_at(node, config=self._config)
 
     def app_region(self) -> tuple[int, int, int, int]:
         """Return the app window's x11grab region on the nested display.
@@ -1296,8 +1489,20 @@ class Recorder:
         return parse_geometry(output, self.WINDOW_NAME)
 
     def record(self, item: Beat) -> Path:
-        """Record one beat to its cached clip and return the path."""
+        """Record one beat to its cached clip and return the path.
+
+        The clip is written under a ``.partial.mp4`` name and only takes its final
+        name once the beat has run to the end and ffmpeg has stopped cleanly. A
+        beat that fails part way therefore leaves nothing the cache would mistake
+        for a finished clip - the partial stays behind for inspection, and a
+        later ``--stitch`` or ``--from`` records the beat again.
+
+        Raises:
+            BeatError: If the beat failed, or ffmpeg did not record it cleanly.
+
+        """
         clip = self.work_dir / f"{item.name}.mp4"
+        partial = self.work_dir / f"{item.name}.partial.mp4"
         say(f"record-demo: [{item.name}] booting")
         self.boot_at(item.node)
         driver = Driver()
@@ -1308,13 +1513,24 @@ class Recorder:
         width, height, pos_x, pos_y = self.app_region()
         say(f"record-demo: [{item.name}] recording {width}x{height} at +{pos_x}+{pos_y}")
         with _caption_file(item.label) as caption:
-            self._ffmpeg = self._start_ffmpeg(clip, width, height, pos_x, pos_y, caption)
-            time.sleep(0.5)  # let the first frames land before anything moves
+            self._ffmpeg = self._start_ffmpeg(partial, width, height, pos_x, pos_y, caption)
             try:
+                time.sleep(0.5)  # let the first frames land before anything moves
+                self._check_ffmpeg_running()
                 item.body(driver)
-            finally:
+            except BaseException:
                 self._stop_ffmpeg()
-        self._probe("stop")
+                say(f"record-demo: [{item.name}] failed; partial clip left at {partial}")
+                raise
+            failure = self._stop_ffmpeg()
+        if failure is not None:
+            msg = f"[{item.name}] {failure}"
+            raise BeatError(msg)
+        if not partial.is_file():
+            msg = f"[{item.name}] ffmpeg stopped cleanly but wrote no clip at {partial}"
+            raise BeatError(msg)
+        partial.replace(clip)
+        probe("stop")
         say(f"record-demo: [{item.name}] {_human_size(clip)}")
         return clip
 
@@ -1373,6 +1589,7 @@ class Recorder:
                 "-an",
                 str(clip),
             ],
+            stderr=subprocess.PIPE,  # read back by _stop_ffmpeg, for the error report
         )
 
 
@@ -1415,6 +1632,51 @@ def _run_ffmpeg(args: Sequence[str]) -> None:
         ["/usr/bin/ffmpeg", "-y", "-loglevel", "error", *args],
         check=True,
     )
+
+
+def stream_signature(path: Path) -> str:
+    """Return a clip's codec, size and pixel format, as one comparable string."""
+    return subprocess.run(  # noqa: S603  (fixed argv, no shell)
+        [
+            "/usr/bin/ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=codec_name,width,height,pix_fmt",
+            "-of",
+            "csv=p=0",
+            str(path),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+
+
+def check_same_encode(beats: Sequence[str], work_dir: Path) -> None:
+    """Refuse to stitch clips that do not share one encode.
+
+    The concat is a stream copy, so ffmpeg never looks at what it is joining: two
+    clips of different sizes concatenate without a word, the container declares
+    the first clip's size throughout, and browsers stall or jump at the splice.
+    That is easy to reach - ``--only`` mixes a fresh clip with cached ones, and the
+    window is sized to the nested screen at boot, so a changed BARKS_PROBE_SCREEN
+    between recordings does it.
+
+    Raises:
+        BeatError: If any two clips differ in codec, size or pixel format.
+
+    """
+    signatures = {b: stream_signature(work_dir / f"{b}.mp4") for b in beats}
+    if len(set(signatures.values())) > 1:
+        detail = "\n".join(f"  {b}: {s or 'unreadable'}" for b, s in signatures.items())
+        msg = (
+            "cached clips do not share one encode, so they cannot be stitched -"
+            f" re-record the odd ones out:\n{detail}"
+        )
+        raise BeatError(msg)
 
 
 def duration_of(path: Path) -> float:
@@ -1506,7 +1768,8 @@ def stitch(name: str, beats: Sequence[str], out_dir: Path, work_dir: Path) -> Pa
     playing before the whole file has arrived.
 
     Raises:
-        BeatError: If any of the named beats has no cached clip.
+        BeatError: If any of the named beats has no cached clip, or the clips do
+            not share one encode.
 
     """
     absent = missing_clips(beats, work_dir)
@@ -1515,6 +1778,7 @@ def stitch(name: str, beats: Sequence[str], out_dir: Path, work_dir: Path) -> Pa
             f"{name}: no clip for {' '.join(absent)} - record them first, or drop them from OUTPUTS"
         )
         raise BeatError(msg)
+    check_same_encode(beats, work_dir)
 
     list_file = work_dir / f"concat-{Path(name).stem}.txt"
     list_file.write_text("".join(f"file '{work_dir / f'{b}.mp4'}'\n" for b in beats))
@@ -1575,15 +1839,19 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output", metavar="FILE", help="build just this output video")
     parser.add_argument("--out", metavar="DIR", type=Path, help="write videos here")
     parser.add_argument("--stitch", action="store_true", help="rebuild from cached clips only")
-    parser.add_argument("--clean", action="store_true", help="drop cached clips first")
+    parser.add_argument(
+        "--clean", action="store_true", help="drop every cached clip first (full runs only)"
+    )
     return parser.parse_args(argv)
 
 
 def validate(args: argparse.Namespace) -> None:
-    """Check that the command line names things that exist.
+    """Check that the command line names things that exist and fit together.
 
     Raises:
-        BeatError: If an output, a beat, or the probe script is missing.
+        BeatError: If an output, a beat, or the probe script is missing; if
+            ``--clean`` is combined with a selector; or if ``--only`` names a
+            beat the requested ``--output`` does not contain.
 
     """
     if args.output and args.output not in OUTPUTS:
@@ -1592,9 +1860,28 @@ def validate(args: argparse.Namespace) -> None:
     for name in (args.only, args.start_from):
         if name:
             find_beat(name)
+    # A selector re-records its beats whether or not they are cached, so --clean
+    # adds nothing to it - and it would empty the cache the stitch then needs,
+    # failing only after the recording had been done.
+    if args.clean and (args.only or args.start_from or args.stitch):
+        msg = (
+            "--clean records everything from scratch; it cannot go with --only, --from or --stitch"
+        )
+        raise BeatError(msg)
+    if args.only and args.output and args.only not in OUTPUTS[args.output]:
+        msg = f"{args.output} does not contain {args.only}, so recording it would change nothing"
+        raise BeatError(msg)
     if not PROBE.is_file():
         msg = f"missing {PROBE}"
         raise BeatError(msg)
+
+
+def _raise_on_signal(signal_number: int, _frame: object) -> None:
+    # Turned into an exception so record_all's finally runs and the config goes
+    # back: a plain SIGTERM or SIGHUP (the terminal closing) would otherwise end
+    # the process with the config still pointing at a beat's node.
+    msg = f"stopped by {signal.Signals(signal_number).name}"
+    raise BeatError(msg)
 
 
 def record_all(names: Sequence[str], out_dir: Path) -> None:
@@ -1602,11 +1889,14 @@ def record_all(names: Sequence[str], out_dir: Path) -> None:
     if not names:
         return
     recorder = Recorder(out_dir)
+    previous = {s: signal.signal(s, _raise_on_signal) for s in (signal.SIGTERM, signal.SIGHUP)}
     try:
         for name in names:
             recorder.record(find_beat(name))
     finally:
         recorder.close()
+        for signal_number, handler in previous.items():
+            signal.signal(signal_number, handler)
 
 
 def build_outputs(only: str | None, out_dir: Path) -> None:
