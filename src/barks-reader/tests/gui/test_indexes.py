@@ -11,6 +11,10 @@ if TYPE_CHECKING:
 
 PANEL_PAUSE = 0.4  # between a panel move (Right into items, Up to the bar) and the next key
 ITEMS_DOWN = 2
+INDEX_LETTERS = 3
+LETTERS = 26
+POPULATED_OR_EMPTY = r"Populated index page for letter '.'(: no items| in )"
+EMPTY_LETTER = r"Populated index page for letter '.': no items\."
 
 
 def test_main_index_builds_and_opens_an_item(boot: AppBoot) -> None:
@@ -34,6 +38,28 @@ def test_main_index_letters_repopulate(boot: AppBoot) -> None:
     d.settle()
     d.key_then_wait("Populated index page for letter 'B'", 15, "Down")
     d.key_then_wait("Populated index page for letter 'C'", 15, "Down")
+
+
+def test_speech_index_letters_repopulate(boot: AppBoot) -> None:
+    """Indexes > Speech Bubble Index opens, and each Down repopulates the grid."""
+    d = boot(nodes.SPEECH_INDEX)
+    d.key("Return")
+    d.settle()
+    for _ in range(INDEX_LETTERS):
+        d.key_then_wait("Populated index page for letter", 15, "Down")
+
+
+def test_a_letter_with_no_items_says_so(boot: AppBoot) -> None:
+    """Walking the alphabet finds a letter with nothing under it, and it is logged as such."""
+    d = boot(nodes.MAIN_INDEX)
+    d.key("Return")
+    d.settle()
+    for _ in range(LETTERS):
+        d.key_then_wait(POPULATED_OR_EMPTY, 15, "Down")
+        if d.match_count(EMPTY_LETTER):
+            return
+    msg = "every letter of the main index has items"
+    raise AssertionError(msg)
 
 
 def test_speech_index_prefix_bar_and_bubbles(boot: AppBoot) -> None:

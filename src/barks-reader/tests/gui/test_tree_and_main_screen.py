@@ -69,3 +69,28 @@ def test_collapse_button_shuts_the_whole_tree(boot: AppBoot) -> None:
     d = boot(nodes.GHOST_OF_THE_GROTTO)
     with d.expect(r"Node collapsed( but not allowing state change)?: 'The Stories'"):
         d.main_menu_button("collapse")
+
+
+CHANGE_PICS_TRIES = 6
+
+
+def test_up_on_the_first_node_reaches_the_top_goto_arrow(boot: AppBoot) -> None:
+    """Up from the first tree node enters the top view's goto arrow, once it has a story.
+
+    The arrow is live only while the top image comes from a story; Change Pics
+    draws new images (seeded, so the draw is finite) until it does.
+    """
+    d = boot(nodes.INTRODUCTION)
+    for _ in range(CHANGE_PICS_TRIES):
+        before = d.match_count("Entered top-view goto arrow focus.")
+        d.key("Up")
+        d.hold(MENU_STEP_PAUSE)
+        if d.match_count("Entered top-view goto arrow focus.") > before:
+            break
+        d.main_menu_button("change_pics")
+        d.settle()
+    else:
+        msg = f"the top image never came from a story after {CHANGE_PICS_TRIES} Change Pics"
+        raise AssertionError(msg)
+    with d.expect("Goto title:"), d.expect("Entered bottom focus region at the title portal."):
+        d.key("Return")

@@ -16,7 +16,16 @@
 >   only its opening, since `show_standalone_popup` returns nothing to bind a dismiss
 >   to. `Driver.wait_title_fade()` replaces the 4.5s holds in the recorder and the
 >   search test. Full GUI run on the marker build: 33 passed.
-> - M3 blocked families: next.
+> - M3 blocked families: DONE. 56 GUI tests, 12m46s, all green; `test_gui_paths.py`
+>   migrated and deleted. Deviations: E3 (tag group in the main index) dropped for
+>   want of a stable target; the wiki-node test does not assert the landing page,
+>   because the node resumes the page saved in the data-dir session file; the intro
+>   document has one page, so the censorship document carries the page-turn test.
+>   Learned: wait patterns are regexes, so a log line with parentheses must be
+>   `re.escape`d; gate on `Screen '<name>' entered.` before sending keys to a screen
+>   that just opened, or a fast Escape closes it mid-transition; the search box swallows
+>   every key but Return and Escape, so Return (not Down) leaves it for the results.
+> - M4 docs: next.
 
 ## Context
 

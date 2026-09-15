@@ -58,3 +58,42 @@ def test_word_search_bubble_opens_the_story_at_its_page(boot: AppBoot) -> None:
     d.key("Escape")
     d.settle()
     d.go_back_then_wait("SearchScreen mode set to 'Word'", 15)
+
+
+NO_MATCH_QUERY = "zzzz"
+CLEAR_QUERY = "vac"
+CLEAR_PAUSE = 0.4
+
+
+def test_a_query_with_no_matches_reports_zero_results(boot: AppBoot) -> None:
+    d = boot(nodes.TITLE_SEARCH)
+    with d.expect(f"Search results: 0 titles for '{NO_MATCH_QUERY}'."):
+        search.type_query(d, NO_MATCH_QUERY)
+
+
+def test_the_clear_button_empties_the_search(boot: AppBoot) -> None:
+    """Return in the box focuses the first result; from there Left is the clear button.
+
+    While the box holds the keyboard the main screen yields every key but Escape
+    to it, so Return (the box's own validate) is the only way out by keyboard.
+    """
+    d = boot(nodes.TITLE_SEARCH)
+    search.type_query(d, CLEAR_QUERY)
+    d.key("Return")  # the first result row
+    d.hold(CLEAR_PAUSE)
+    d.key("Left")  # the clear (x) button
+    d.hold(CLEAR_PAUSE)
+    d.key_then_wait("Search cleared: title.", 15, "Return")
+
+
+TAG_QUERY = "scrooge"
+CHIP_PAUSE = 0.5
+
+
+def test_tag_search_by_keyboard_picks_a_tag_then_a_member(boot: AppBoot) -> None:
+    """Return in the box lands on the first chip; Return there selects it and shows its members."""
+    d = boot(nodes.TAG_SEARCH)
+    search.type_query(d, TAG_QUERY)
+    d.key("Return")  # the chips
+    d.hold(CHIP_PAUSE)
+    d.key_then_wait(r"Tag search: selected (tag|member)", 15, "Return")

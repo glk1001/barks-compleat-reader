@@ -68,3 +68,11 @@ def test_unchecking_the_goto_page_row_opens_at_the_front(boot: AppBoot) -> None:
     d.wait_for("Showed page")
     assert d.current_page() < nodes.LOST_IN_THE_ANDES_PAGE
     d.close_reader()
+
+
+def test_the_fade_is_logged_from_start_to_finish(boot: AppBoot) -> None:
+    """Both ends of the random-length fade are logged, so nothing waits on the clock."""
+    d = boot(nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)
+    d.wait_title_fade()
+    assert d.match_count(r"Title view fade started: \d+s\.") >= 1
+    assert d.match_count("Title view fade finished.") >= 1

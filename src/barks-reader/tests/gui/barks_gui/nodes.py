@@ -25,6 +25,15 @@ TITLE_SEARCH = ["Titles", "Search", "root"]
 TAG_SEARCH = ["Tags", "Search", "root"]
 WORD_SEARCH = ["Words", "Search", "root"]
 INTRODUCTION = ["Introduction", "root"]
+ONE_PAGERS = ["One Pagers", "Series", "The Stories", "root"]
+APPENDIX = ["Appendix", "root"]
+# Full-screen leaves (documents, By the Numbers, the wiki) are not boot nodes: a
+# restore opens them straight away, so a test selects them from their parent.
+INTRO_DOCUMENT = "The Compleat Barks Disney Reader"
+CENSORSHIP_DOCUMENT = "Censorship Fixes and Other Changes"
+BY_THE_NUMBERS = "By the Numbers"
+WIKI_NODE = "Carl Barks Wiki"
+INDEXES = ["Indexes", "root"]
 # An article under Introduction. Not a boot node: restoring a saved article node
 # opens its reader straight away, so a test reaches it from INTRODUCTION instead.
 FANTA_INTRO_ARTICLE = "Don Ault: Fantagraphics Introduction"

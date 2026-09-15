@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from barks_gui import nodes, reader
+from barks_gui import nodes, reader, tree
 from gui_driver import Pick
 
 if TYPE_CHECKING:
@@ -14,6 +14,10 @@ if TYPE_CHECKING:
 
 CANNED_EVENTS = 6
 TURNS_BEFORE_GOTO_START = 2
+BROWSE_RANGE = "1947-1950"
+GOTO_PAGE = 12
+GOTO_PAGE_BACK = 3
+READ = Pick(pages=2, dwell=0.0)
 
 
 def _open_ghost_of_the_grotto(boot: AppBoot) -> Driver:
@@ -21,6 +25,59 @@ def _open_ghost_of_the_grotto(boot: AppBoot) -> Driver:
     reader.open_selected_story(d)
     d.wait_for("Showed page")
     return d
+
+
+def test_browse_the_tree_to_a_story_and_read_it(boot: AppBoot) -> None:
+    """The Stories > Chronological > a range > a title, opened, read, and closed."""
+    d = boot(nodes.THE_STORIES, cues=nodes.NO_CUES)
+    tree.collapse_all(d)
+    tree.open_path(d, "The Stories", "Chronological", BROWSE_RANGE)
+    d.select_node(nodes.GHOST_OF_THE_GROTTO[0])
+    assert d.current_node() == nodes.GHOST_OF_THE_GROTTO[0]
+    d.open_story(Pick(nodes.GHOST_OF_THE_GROTTO[0], pages=READ.pages, dwell=READ.dwell))
+    assert d.current_page() >= 1, "a page must have turned before the reader closed"
+
+
+def test_series_story_goto_page_and_double_page(boot: AppBoot) -> None:
+    """Series > Donald Duck Adventures > a story: jump to a page, go two-up, close."""
+    d = boot(nodes.SERIES, cues=nodes.NO_CUES)
+    d.select_node("Comics and Stories")
+    d.select_node("Donald Duck Adventures")
+    d.open_branch("Donald Duck Adventures")
+    d.select_node(nodes.LOST_IN_THE_ANDES[0])
+    reader.open_selected_story(d)
+    d.read_pages(READ)
+
+    with d.expect("Goto page dropdown opened."), d.expect("Goto page selected:"):
+        d.goto_page(GOTO_PAGE)
+    assert d.current_page() == GOTO_PAGE
+
+    with d.expect("Double page mode toggled: True."), d.expect("Showed page"):
+        d.press_menu_button("double_page")
+    d.close_reader()
+
+
+def test_reopening_the_goto_dropdown_steps_back_up(boot: AppBoot) -> None:
+    """A second goto reopens the (cached) dropdown and can step Up to an earlier page."""
+    d = _open_ghost_of_the_grotto(boot)
+    d.goto_page(GOTO_PAGE)
+    with d.expect("Goto page dropdown opened."), d.expect("Goto page selected:"):
+        d.goto_page(GOTO_PAGE_BACK)
+    assert d.current_page() == GOTO_PAGE_BACK
+    d.close_reader()
+
+
+def test_one_pagers_ignore_double_page(boot: AppBoot) -> None:
+    """A one-pager collection is always single-page: the toggle says so and does nothing."""
+    d = boot(nodes.ONE_PAGERS)
+    d.key_then_wait(r'New selected node: "19\d\d-19\d\d"', 15, "Down")
+    d.key_then_wait("Node expanded:", 15, "Return")
+    d.key_then_wait("New selected node", 15, "Down")  # the range's first one-pager
+    reader.open_selected_story(d)
+    with d.expect("Double page toggle ignored: single-page collection."):
+        d.press_menu_button("double_page")
+    d.expect_no_new("Showed page", 1.0)
+    d.close_reader()
 
 
 def test_left_on_the_first_page_stays_put(boot: AppBoot) -> None:
