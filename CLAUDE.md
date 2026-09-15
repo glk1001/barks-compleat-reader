@@ -123,6 +123,11 @@ subclass. Adding a new navigable target = add a `Destination` subclass + registe
 - Unit tests are in `src/barks-reader/tests/unit/` and `src/barks-fantagraphics/tests/`.
   Benchmarks are in `src/barks-reader/tests/benchmarks/` and are excluded from the default `uv run pytest` run.
 - Use `pytest` fixtures and `patch.object(module, ClassName)` style mocking — **not** string-path patching like `patch("barks_reader.core.module.ClassName")`.
+- GUI path tests are in `src/barks-reader/tests/gui/` (outside `testpaths`; run with
+  `bash scripts/run_gui_tests.sh`). They boot the real app from a scratch profile and wait
+  only on lines the app logs, so a screen's log markers are part of its contract: when a
+  user-visible transition gets no log line, add one (with a `loguru_sink` unit test) rather
+  than a sleep. Plan and status: `docs/plans/gui-test-suite.md`.
 
 ## Code Style
 

@@ -1,7 +1,8 @@
 # Plan: GUI testing via remote driving + a deterministic dev mode
 
-> Status: **discussion only** — nothing built, no commitment. Saved 2026-07-20
-> so the idea and its design constraints survive across sessions/machines.
+> Status: **largely built** as of 2026-09-15 — see "What was built" at the end.
+> Written 2026-07-20 as discussion only, so the idea and its design constraints
+> survive across sessions/machines; kept for the reasoning.
 
 ## Context
 
@@ -105,3 +106,34 @@ runner screenshots on signal, not on sleep.
   focused-TextInput key swallowing) — those need unit tests regardless.
 - Machine-bound (real display, ydotool setup) unless rung 3 is built.
 - Slow (~12s launch + settle waits); cannot run while the machine is in use.
+
+## What was built (2026-09-15)
+
+The plan and its milestone log live in `docs/plans/gui-test-suite.md`; the suite is
+`src/barks-reader/tests/gui/`, run by `bash scripts/run_gui_tests.sh`, on the driver
+`scripts/gui_driver.py` that the demo recorder shares. Against the ladder above:
+
+- **Rung 1, scenario runner: built**, but as pytest tests rather than data files, and
+  with the app's log as the oracle instead of Claude's eyes. Screenshots are kept for
+  failures (and on demand with `BARKS_GUI_SHOTS=1`), not judged.
+- **Rung 2, deterministic dev mode: built** for all four sources, each
+  env-gated, same binary:
+  1. random art — `BARKS_READER_RANDOM_SEED` (pinned per boot);
+  2. window geometry — no new env var was needed: with `main_window_height=0` the
+     window follows the nested screen, which the runner pins at 900x1300 (782x1225
+     window), and pixel tests fence on the measured size;
+  3. mutable state — `BARKS_READER_CONFIG_DIR` at a per-test scratch copy of the
+     profile, with `BARKS_PROBE_NO_RESTORE=1` so the app's exit writes survive to be
+     asserted on;
+  4. timing — not an animation kill-switch but log markers: the title-view fade logs
+     both ends, `ReaderScreen.on_enter` marks a finished transition, and
+     `okf_reader.ui.trace` logs the wiki viewer's page shown, focus region, back and
+     "tree settled" through Kivy's logger.
+- **Rung 3, in-process autopilot: not built.** Still machine-bound (Xephyr, the real
+  data dirs, the LFS `cpi.db`), so the suite never runs in CI.
+
+The "mouse-only flows" limit narrowed: search result rows and word balloons are
+clicked by pixel behind the geometry fence, and the search box turns out to hand
+Return to the results. The suite found one real bug on its first day (Escape never
+reached the fun view's options menu, fixed in 0feb4d4).
+

@@ -25,7 +25,7 @@
 >   `re.escape`d; gate on `Screen '<name>' entered.` before sending keys to a screen
 >   that just opened, or a fast Escape closes it mid-transition; the search box swallows
 >   every key but Return and Escape, so Return (not Down) leaves it for the results.
-> - M4 docs: next.
+> - M4 docs: DONE. All milestones complete.
 
 ## Context
 
