@@ -281,12 +281,14 @@ class SearchScreen(FloatLayout):
         title_enums, title_strings = self._get_titles_matching(text)
         self._populate_title_results(results_layout, title_strings, self._on_result_goto_title)
         self._update_background_from_results(title_enums)
+        logger.debug(f"Search results: {len(title_strings)} titles for '{text}'.")
 
     def _get_titles_matching(self, value: str) -> tuple[list[Titles], list[str]]:
         result = self._search.search(value, SearchMode.TITLE)
         return result.titles, result.title_strings
 
     def on_title_clear(self) -> None:
+        logger.debug("Search cleared: title.")
         self._cancel_image_change_event()
         self.ids.title_search_input.text = ""
         self.ids.title_search_input.focus = True
@@ -408,6 +410,7 @@ class SearchScreen(FloatLayout):
         self._tag_titles = []
 
     def on_tag_clear(self) -> None:
+        logger.debug("Search cleared: tag.")
         self._cancel_image_change_event()
         self.ids.tag_search_input.text = ""
         self.ids.tag_chips_layout.clear_widgets()
@@ -496,6 +499,7 @@ class SearchScreen(FloatLayout):
         return results
 
     def _populate_word_results_layout(self, results_layout: BoxLayout) -> None:
+        logger.debug(f"Search results: {len(self._word_search_results)} word rows.")
         self._selected_result_button = None
         for i, (
             comic_title,
@@ -567,6 +571,7 @@ class SearchScreen(FloatLayout):
             self.on_goto_title_with_page(image_info, page_to_goto)
 
     def on_word_clear(self) -> None:
+        logger.debug("Search cleared: word.")
         self._cancel_image_change_event()
         self.ids.word_search_input.text = ""
         self.ids.word_chips_layout.clear_widgets()

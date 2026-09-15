@@ -789,8 +789,10 @@ class ComicBookReader(FloatLayout):
         """Toggle double-page mode on/off for the current comic only (does not change config)."""
         if self.is_single_page_only_collection:
             # The collections are always single-page - ignore the toggle.
+            logger.debug("Double page toggle ignored: single-page collection.")
             return
         self._page_manager.double_page_mode = not self._page_manager.double_page_mode
+        logger.info(f"Double page mode toggled: {self._page_manager.double_page_mode}.")
         self._show_page(None, None)
 
     def goto_page(self) -> None:
@@ -816,8 +818,10 @@ class ComicBookReader(FloatLayout):
         self._goto_page_dropdown.open(self._goto_page_widget)
         if selected_button:
             self._goto_page_dropdown.scroll_to(selected_button)
+        logger.debug("Goto page dropdown opened.")
 
     def on_page_selected(self, _instance: Widget, page: str) -> None:
+        logger.info(f'Goto page selected: "{page}".')
         self._page_manager.set_current_page_index_from_str(page)
         self._hide_action_bar_if_fullscreen()
 

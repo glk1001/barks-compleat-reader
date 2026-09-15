@@ -144,6 +144,18 @@ class TestBottomTitleViewScreen(ScreenFixtureBase):
         self.mock_anim.start.assert_called_with(self.screen.ids.bottom_view_box)
         assert self.screen.ids.title_show_button.opacity == 1
 
+    def test_fade_logs_its_start_and_its_finish(self, loguru_sink: list[str]) -> None:
+        """The finish line is the only signal the panel is fully drawn.
+
+        Only the animation that actually ran may fire it, never a stale one.
+        """
+        self.screen.fade_in_bottom_view_title()
+        assert any(m.startswith("Title view fade started: ") for m in loguru_sink)
+        self.screen._on_panel_fade_finished(MagicMock(), MagicMock())  # a stale animation
+        assert "Title view fade finished." not in loguru_sink
+        self.screen._on_panel_fade_finished(self.screen._panel_fade_anim, MagicMock())
+        assert "Title view fade finished." in loguru_sink
+
     def test_set_goto_page_state(self) -> None:
         # Active with page
         self.screen.set_goto_page_state("5", active=True)

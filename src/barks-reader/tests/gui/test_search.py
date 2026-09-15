@@ -19,11 +19,6 @@ WORD_QUERY = "airline"
 WORD_RESULT_ROW = 1
 WORD_RESULT_NAME = "Adventure Down Under"
 
-# The title view fades in over a random 0-4s and logs nothing when it finishes; a
-# result picked with the mouse hands focus to the portal only once the panel is
-# up, so the Enter that opens the comic has to wait it out. M2 adds the marker.
-TITLE_FADE_SECS = 4.5
-
 CUES: dict[str, nodes.Cue] = {TITLE_RESULT_NAME: None, WORD_RESULT_NAME: None}
 READ = Pick(pages=2, dwell=0.0)
 
@@ -34,7 +29,9 @@ def test_title_search_finds_and_opens_a_story(boot: AppBoot) -> None:
     search.type_query(d, TITLE_QUERY)
     with d.expect(f'Search: selected "{TITLE_RESULT_NAME}"'):
         search.click_title_result(boot, d, TITLE_RESULT_ROW, TITLE_RESULT)
-    d.hold(TITLE_FADE_SECS)
+    # A result picked with the mouse hands focus to the portal only once the panel
+    # has faded in, so the Enter that opens the comic waits for the fade's end.
+    d.wait_title_fade()
 
     d.key_then_wait("All images loaded", 30, "Return")
     d.read_pages(READ)

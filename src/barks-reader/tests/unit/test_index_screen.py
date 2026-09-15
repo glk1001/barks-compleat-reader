@@ -484,3 +484,12 @@ class TestOnIndexItemPress:
 
         expand.assert_called_once_with(button)
         expansion.assert_called_once_with(button, item)
+
+
+class TestIndexScreenMarkers:
+    def test_an_empty_letter_logs_no_items(
+        self, index_screen: ConcreteIndexScreen, loguru_sink: list[str]
+    ) -> None:
+        """The populated line fires for a letter with items; an empty letter says so instead."""
+        index_screen._populate_index_grid("B")
+        assert "Populated index page for letter 'B': no items." in loguru_sink

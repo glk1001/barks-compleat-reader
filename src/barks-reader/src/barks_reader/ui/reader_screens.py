@@ -43,6 +43,15 @@ class ReaderScreen(Screen):
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         super().__init__(**kwargs)
 
+    # Kivy fires these when a screen transition completes, so they mark the
+    # moment a screen is really on show - the "... is active" lines above the
+    # switches are logged when the (random, animated) transition starts.
+    def on_enter(self, *_args: object) -> None:
+        logger.debug(f"Screen '{self.name}' entered.")
+
+    def on_leave(self, *_args: object) -> None:
+        logger.debug(f"Screen '{self.name}' left.")
+
     def is_active(self, active: bool) -> None:
         pass
 
@@ -185,7 +194,7 @@ class ReaderScreenManager:
 
         self._reader_screens.comic_reader_screen.is_active(active=False)
 
-        logger.info("Main screen is active.")
+        logger.info("Main screen is active (from comic reader).")
 
     def _switch_to_document_reader(self, doc_dir: Path, title: str) -> None:
         logger.debug(f'Switching to document reader for "{title}"...')
@@ -195,6 +204,7 @@ class ReaderScreenManager:
         )
         self._reader_screens.document_reader_screen.open_document(doc_dir, title)
         self._screen_manager.current = DOCUMENT_READER_SCREEN
+        logger.info(f'Document reader screen is active: "{title}".')
 
     def _close_document_reader(self) -> None:
         logger.debug("Closing document reader and switching back to main screen...")
@@ -207,7 +217,7 @@ class ReaderScreenManager:
         logger.debug(
             f"Using screen transition '{self._screen_manager.transition.__class__.__name__}'."
         )
-        logger.info("Main screen is active.")
+        logger.info("Main screen is active (from document reader).")
 
     def _switch_to_corpus_stats(self) -> None:
         logger.debug("Switching to the By the Numbers page...")
@@ -217,6 +227,7 @@ class ReaderScreenManager:
         )
         self._reader_screens.corpus_stats_screen.open()
         self._screen_manager.current = CORPUS_STATS_SCREEN
+        logger.info("By the Numbers screen is active.")
 
     def _close_corpus_stats(self) -> None:
         logger.debug("Closing the By the Numbers page and switching back to main screen...")
@@ -226,7 +237,7 @@ class ReaderScreenManager:
         self._screen_manager.transition = self._get_next_main_screen_transition()
         self._screen_manager.current = MAIN_READER_SCREEN
 
-        logger.info("Main screen is active.")
+        logger.info("Main screen is active (from By the Numbers).")
 
     def _switch_to_wiki_reader(self, bundle: Path, page: Path | None) -> None:
         logger.debug(f'Switching to wiki reader on bundle "{bundle}" (page = "{page}")...')
@@ -261,4 +272,4 @@ class ReaderScreenManager:
         logger.debug(
             f"Using screen transition '{self._screen_manager.transition.__class__.__name__}'."
         )
-        logger.info("Main screen is active.")
+        logger.info("Main screen is active (from wiki reader).")

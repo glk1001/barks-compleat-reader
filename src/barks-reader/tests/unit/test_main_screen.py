@@ -294,3 +294,39 @@ class TestMainScreen:
 
         assert main_screen._active is True
         main_screen._nav_coord.on_document_closed.assert_called_once()
+
+
+class TestMainScreenMarkers:
+    """Quit and settings-close log lines, the oracles the GUI path tests wait on."""
+
+    def test_quit_without_confirmation_closes_and_logs(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
+        main_screen._reader_settings.confirm_quit = False
+        with patch.object(barks_reader.ui.main_screen, "App") as app_cls:
+            main_screen.request_quit()
+        app_cls.get_running_app.return_value.close_app.assert_called_once()
+        assert "Quit requested: no confirmation needed." in loguru_sink
+
+    def test_quit_with_confirmation_asks_and_logs(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
+        main_screen._reader_settings.confirm_quit = True
+        with (
+            patch.object(barks_reader.ui.main_screen, "App") as app_cls,
+            patch.object(barks_reader.ui.main_screen, "open_confirm_popup") as ask,
+        ):
+            main_screen.request_quit()
+        ask.assert_called_once()
+        app_cls.get_running_app.return_value.close_app.assert_not_called()
+        assert "Quit requested: asking for confirmation." in loguru_sink
+
+    def test_both_ways_out_of_settings_log_the_close(
+        self, main_screen: MainScreen, loguru_sink: list[str]
+    ) -> None:
+        main_screen._settings_nav = None
+        main_screen._settings_close_button = None
+        main_screen._on_settings_closed()
+        with patch.object(barks_reader.ui.main_screen, "App"):
+            main_screen._close_settings()
+        assert loguru_sink.count("Settings closed.") == len(("close button", "Escape"))

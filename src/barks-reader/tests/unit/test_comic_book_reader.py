@@ -374,6 +374,41 @@ class TestComicBookReader:
         reader.on_touch_down(touch)
         reader._page_manager.prev_page.assert_called()
 
+    # --- log markers: double page and goto page, for the GUI path tests to wait on ---
+
+    @staticmethod
+    def _bare_reader(reader: ComicBookReader) -> ComicBookReader:
+        reader._page_manager = MagicMock(double_page_mode=False)
+        reader._is_one_pager_collection = False
+        reader._is_covers_collection = False
+        return reader
+
+    def test_double_page_toggle_logs_the_new_mode(
+        self, reader: ComicBookReader, loguru_sink: list[str]
+    ) -> None:
+        reader = self._bare_reader(reader)
+        with patch.object(reader, "_show_page"):
+            reader.toggle_double_page_mode()
+        assert "Double page mode toggled: True." in loguru_sink
+
+    def test_double_page_toggle_is_ignored_for_single_page_collections(
+        self, reader: ComicBookReader, loguru_sink: list[str]
+    ) -> None:
+        reader = self._bare_reader(reader)
+        reader._is_one_pager_collection = True
+        with patch.object(reader, "_show_page") as show:
+            reader.toggle_double_page_mode()
+        show.assert_not_called()
+        assert "Double page toggle ignored: single-page collection." in loguru_sink
+
+    def test_selecting_a_page_logs_it(
+        self, reader: ComicBookReader, loguru_sink: list[str]
+    ) -> None:
+        reader = self._bare_reader(reader)
+        with patch.object(reader, "_hide_action_bar_if_fullscreen"):
+            reader.on_page_selected(MagicMock(), "12")
+        assert 'Goto page selected: "12".' in loguru_sink
+
 
 class TestComicBookReaderScreen:
     @pytest.fixture

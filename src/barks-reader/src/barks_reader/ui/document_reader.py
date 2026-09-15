@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from kivy.core.window import Window
 from kivy.lang import Builder
 from kivy.properties import StringProperty  # ty: ignore[unresolved-import]
+from loguru import logger
 
 from barks_reader.core.reader_formatter import get_action_bar_title
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
@@ -57,13 +58,19 @@ class DocumentReaderScreen(ReaderScreen, ActionBarNavMixin):
             p for p in doc_dir.iterdir() if p.suffix.lower() in IMAGE_EXTENSIONS
         )
         self._current_page_index = 0
+        logger.info(f'Document reader opened "{title}" with {len(self._page_paths)} pages.')
         self._update_page_source()
 
         Window.bind(on_key_down=self._on_key_down)
 
     def _update_page_source(self) -> None:
         if self._page_paths:
-            self.page_source = str(self._page_paths[self._current_page_index])
+            page = self._page_paths[self._current_page_index]
+            self.page_source = str(page)
+            logger.debug(
+                f"Document page {self._current_page_index + 1}/{len(self._page_paths)}: "
+                f'"{page.name}".'
+            )
         else:
             self.page_source = ""
 
@@ -106,6 +113,7 @@ class DocumentReaderScreen(ReaderScreen, ActionBarNavMixin):
         self.prev_page()
 
     def close(self) -> None:
+        logger.debug("Document reader closing.")
         if self._menu_mode:
             self._exit_menu_mode()
         Window.unbind(on_key_down=self._on_key_down)

@@ -307,6 +307,7 @@ class TreeViewManager:
             tree.remove_node(child)
         assert node.populate_callback is not None
         node.populate_callback()
+        logger.info(f"Repopulated '{node.get_name()}' with {len(node.nodes)} children.")
 
     @staticmethod
     def _has_single_title_child(node: ButtonTreeViewNode) -> bool:

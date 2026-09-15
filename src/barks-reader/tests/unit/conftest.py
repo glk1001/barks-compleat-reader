@@ -12,9 +12,14 @@ import sqlite3
 import sys
 from itertools import pairwise
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
+from loguru import logger
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 _HEADLESS_CI = os.environ.get("KIVY_HEADLESS_CI", "") == "1"
 
@@ -22,6 +27,26 @@ _HEADLESS_CI = os.environ.get("KIVY_HEADLESS_CI", "") == "1"
 @pytest.fixture
 def mock_font_manager() -> MagicMock:
     return MagicMock()
+
+
+@pytest.fixture
+def loguru_sink() -> Generator[list[str]]:
+    """Collect every loguru message emitted during the test, DEBUG and up.
+
+    The app's log is the oracle the GUI path tests wait on, so the lines that
+    mark a transition are part of a screen's contract; a test asserts that one
+    was emitted with ``assert "..." in loguru_sink``.
+    """
+    records: list[str] = []
+    handle = logger.add(
+        lambda message: records.append(str(message).rstrip("\n")),
+        level="DEBUG",
+        format="{message}",
+    )
+    try:
+        yield records
+    finally:
+        logger.remove(handle)
 
 
 @pytest.fixture

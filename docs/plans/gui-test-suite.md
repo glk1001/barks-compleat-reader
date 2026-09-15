@@ -10,7 +10,13 @@
 >   `use_prebuilt_comics=0` because the row is hidden for prebuilt comics; the window
 >   is 782x1225 (the recorder rounds to 1224 for the encoder). Found and fixed one app
 >   bug on the way: Escape never reached the fun view's options menu (0feb4d4).
-> - M2 app markers: next.
+> - M2 app markers: DONE. Every marker in the list below landed with a unit test
+>   (`loguru_sink` fixture in the unit conftest; `okf_reader.ui.trace` logs through
+>   Kivy's logger, tested with a logging handler). One deviation: the About box logs
+>   only its opening, since `show_standalone_popup` returns nothing to bind a dismiss
+>   to. `Driver.wait_title_fade()` replaces the 4.5s holds in the recorder and the
+>   search test. Full GUI run on the marker build: 33 passed.
+> - M3 blocked families: next.
 
 ## Context
 

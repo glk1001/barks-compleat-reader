@@ -228,11 +228,11 @@ class BottomTitleViewScreen(FloatLayout):
 
     def fade_in_bottom_view_title(self) -> None:
         self.ids.bottom_view_box.opacity = 0
-        anim = Animation(
-            opacity=1, duration=self._get_title_portal_opening_animation_duration_secs()
-        )
+        duration = self._get_title_portal_opening_animation_duration_secs()
+        anim = Animation(opacity=1, duration=duration)
         anim.bind(on_complete=self._on_panel_fade_finished)
         anim.start(self.ids.bottom_view_box)
+        logger.debug(f"Title view fade started: {duration}s.")
         # Recorded after start(), so this is the animation that actually ended up
         # running. Kivy's start() only stops its own instance and cancel() does not
         # fire on_complete, so the guard in _on_panel_fade_finished does the rest.
@@ -243,6 +243,9 @@ class BottomTitleViewScreen(FloatLayout):
         """Forget a finished fade, so opacity alone decides visibility again."""
         if anim is self._panel_fade_anim:
             self._panel_fade_anim = None
+            # The one signal that the panel is fully drawn: nothing else is logged
+            # while it animates, and the duration is random.
+            logger.debug("Title view fade finished.")
 
     @staticmethod
     def _get_title_portal_opening_animation_duration_secs() -> int:

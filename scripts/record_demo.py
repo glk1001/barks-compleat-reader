@@ -145,19 +145,6 @@ BROWSE_TITLE_STEPS = 7
 # up - but they are not zero, because the app drops keys pressed at full speed.
 SETUP_PACE = 0.25
 
-# How long a setup that ends on a title view waits before the camera rolls.
-# The bottom title view fades in over a random 0-4s (the app's
-# TITLE_PORTAL_OPENING_ANIMATION_MAX_DURATION_SECS), and nothing is written to the
-# log while it animates - so settle(), which waits on the log, returns with the fade
-# still running and the beat opens on a part-transparent panel with the tree showing
-# through. Measured on a clip recorded without this wait, the panel was still
-# settling 1.4s in. That makes the cut from the beat before jump in opacity even
-# when both are on the same story and, since the seed was fixed, the same artwork.
-# RANDOM_SEED pins the fade's duration too (it draws from the same seeded random
-# module as the artwork), but this still covers the worst case with a little margin
-# so it stays right with the seed set to None. There is nothing to wait on but time.
-TITLE_FADE_SECS = 4.5
-
 # Pins the app's random image choices, so a re-recorded beat comes back with the
 # same backgrounds and insets as the one it replaces and two runs can be compared
 # frame for frame. Any fixed number does; it only has to be the same every time.
@@ -536,8 +523,9 @@ def _setup_open_comic(d: Driver) -> None:
     _collapse_tree(d)
     _open_tree_to_title(d, pace=SETUP_PACE)
     # Let the title view finish fading in, so this beat opens on the same fully
-    # drawn panel browse_tree ended on rather than mid-fade.
-    d.hold(TITLE_FADE_SECS)
+    # drawn panel browse_tree ended on rather than mid-fade. The fade runs a random
+    # 0-4s; the app logs both its ends, so this waits on the log, not the clock.
+    d.wait_title_fade()
 
 
 @beat(
@@ -613,8 +601,8 @@ def search_story(d: Driver) -> None:
     # which reads the very opacity the fade is still animating. Pressed early, focus
     # lands on the eye toggle, the Enter toggles that, and no comic ever opens. At
     # hold(2.5) this beat was winning the race on luck and lost it as soon as a
-    # different fade duration came up.
-    d.hold(TITLE_FADE_SECS)
+    # different fade duration came up; now the app logs the fade's end.
+    d.wait_title_fade()
 
     # Focus defaults to the read portal now the panel is up, so one Enter opens the
     # comic - unlike the other beats, which have to focus the portal first.

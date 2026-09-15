@@ -3,6 +3,7 @@ from pathlib import Path
 
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
+from loguru import logger
 
 from barks_reader._version import COPYRIGHT_YEARS, VERSION
 from barks_reader.core.reader_consts_and_types import APP_TITLE, FANTAGRAPHICS_BARKS_LIBRARY
@@ -107,6 +108,7 @@ def show_about_box(font_manager: FontManager, about_background_path: Path) -> No
     )
 
     # --- Give the content to the popup ---
+    logger.debug("About box opened.")
     show_standalone_popup(
         title=ABOUT_POPUP_TITLE,
         content=content,

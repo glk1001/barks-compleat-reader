@@ -325,6 +325,47 @@ class TestExpect:
             pass
 
 
+class TestWaitTitleFade:
+    """Waits until the finished count catches up with the started count."""
+
+    def test_returns_at_once_when_nothing_is_fading(self) -> None:
+        driver = _stub_driver()
+        with (
+            patch.object(Driver, "match_count", return_value=2),
+            patch.object(gui_driver.time, "sleep") as sleep,
+        ):
+            driver.wait_title_fade()
+        sleep.assert_not_called()
+
+    def test_waits_for_the_running_fade(self) -> None:
+        driver = _stub_driver()
+        counts = {Driver.FADE_STARTED: 3, Driver.FADE_FINISHED: 2}
+
+        def count(pattern: str) -> int:
+            value = counts[pattern]
+            if pattern == Driver.FADE_FINISHED:
+                counts[pattern] += 1  # the next look sees it finished
+            return value
+
+        with (
+            patch.object(Driver, "match_count", side_effect=count),
+            patch.object(gui_driver.time, "sleep") as sleep,
+        ):
+            driver.wait_title_fade()
+        sleep.assert_called_once()
+
+    def test_raises_when_a_fade_never_finishes(self) -> None:
+        driver = _stub_driver()
+        counts = {Driver.FADE_STARTED: 1, Driver.FADE_FINISHED: 0}
+        with (
+            patch.object(Driver, "match_count", side_effect=lambda p: counts[p]),
+            patch.object(gui_driver.time, "sleep"),
+            patch.object(gui_driver.time, "monotonic", side_effect=[0.0, 20.0]),
+            pytest.raises(DriverError, match="never finished"),
+        ):
+            driver.wait_title_fade(timeout=10)
+
+
 class TestProbe:
     """Every probe call goes through one helper, which refuses to hide a failure."""
 

@@ -168,6 +168,7 @@ class TestCutAlignment:
             patch.object(Driver, "key") as key,
             patch.object(Driver, "settle"),
             patch.object(Driver, "hold"),
+            patch.object(Driver, "wait_title_fade"),
             patch.object(Driver, "select_node", side_effect=lambda _n: next(moves, None)),
         ):
             run(driver)  # ty: ignore[call-non-callable]

@@ -52,6 +52,7 @@ from okf_reader.core.search import BundleSearcher
 from okf_reader.core.session import load_session_state, save_session_state
 from okf_reader.core.theme import ViewerThemeSpec
 from okf_reader.core.top_bar import TopBarSpec
+from okf_reader.ui import trace
 
 from .focus_ring import (
     SIDEBAR_RING_GROUP,
@@ -1018,6 +1019,7 @@ class OKFViewer(RelativeLayout):
 
     def _run_page_action(self) -> None:
         if self._page_action is not None:
+            trace.page_action(self._page_action.label)
             self._page_action.run()
 
     def go_back(self) -> None:
@@ -1032,8 +1034,10 @@ class OKFViewer(RelativeLayout):
         if len(self.history) > 1:
             self.history.pop()
             entry = self.history[-1]
+            trace.back_to(self.bundle, entry.path)
             self._show(entry.path, push=False, scroll_y=entry.scroll_y)
         elif self._on_exit is not None:
+            trace.back_exit()
             self._on_exit()
 
     def reset_to(self, path: Path | None = None) -> None:
@@ -1543,6 +1547,7 @@ class OKFViewer(RelativeLayout):
         by Up/Down snaps back to reality.
         """
         self._focus_region = region
+        trace.focus_region(region.name)
         self._clear_bar_focus()  # a no-op unless the bar was the outgoing region
         if region is FocusRegion.TOP_BAR:
             self._clear_link_focus()
@@ -1654,6 +1659,7 @@ class OKFViewer(RelativeLayout):
             frames = state["frames"]
             assert isinstance(frames, int)
             if geometry == state["last"] or frames >= _TREE_REVEAL_MAX_FRAMES:
+                trace.tree_settled(node.text, frames)
                 self._scroll_tree_node_into_view(node)
                 return
             state["last"] = geometry
@@ -1771,6 +1777,7 @@ class OKFViewer(RelativeLayout):
         # A click-navigation swaps the page under a stationary mouse; re-evaluate
         # the cursor once the new labels' textures have settled.
         Clock.schedule_once(lambda _dt: self._refresh_cursor(), 0)
+        trace.page_shown(self.bundle, path, len(self.history))
 
     def _new_section(self) -> BoxLayout:
         """Append and return a fresh banded section box for the next run of blocks."""

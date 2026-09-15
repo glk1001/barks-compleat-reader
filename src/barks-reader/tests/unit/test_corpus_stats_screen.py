@@ -352,3 +352,12 @@ class TestLifecycle:
             screen.close()
         mock_window.unbind.assert_called_once()
         screen._on_close_screen.assert_called_once()
+
+
+class TestCorpusStatsMarkers:
+    def test_open_and_close_log(self, screen: CorpusStatsScreen, loguru_sink: list[str]) -> None:
+        _open(screen)
+        assert "CorpusStats: opened." in loguru_sink
+        with patch.object(corpus_stats_screen_module, "Window"):
+            screen.close()
+        assert "CorpusStats: closing." in loguru_sink

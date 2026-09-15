@@ -335,8 +335,10 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
         """Quit the app, asking first if the confirm-quit setting is on (kv callback)."""
         app = App.get_running_app()
         if not self._reader_settings.confirm_quit:
+            logger.info("Quit requested: no confirmation needed.")
             app.close_app()
             return
+        logger.info("Quit requested: asking for confirmation.")
         open_confirm_popup(
             title="Quit",
             text="Quit the Barks Reader?",
@@ -442,17 +444,20 @@ class MainScreen(ReaderScreen, DropdownNavMixin, ActionBarNavMixin):
             self._settings_close_button = None
 
     def _on_settings_closed(self, *_args: object) -> None:
-        self._remove_settings_close_button()
-        if self._settings_nav is not None:
-            self._settings_nav.reset()
-            self._settings_nav = None
+        self._teardown_settings()
 
     def _close_settings(self) -> None:
+        self._teardown_settings()
+        App.get_running_app().close_settings()
+
+    def _teardown_settings(self) -> None:
+        # Both ways out of the settings panel (its close button, or Escape) funnel
+        # here; Kivy's close_settings() itself announces nothing.
         self._remove_settings_close_button()
         if self._settings_nav is not None:
             self._settings_nav.reset()
             self._settings_nav = None
-        App.get_running_app().close_settings()
+        logger.debug("Settings closed.")
 
     def _on_view_state_changed(self, view_state: ViewStates) -> None:
         self.ids.collapse_button.disabled = view_state == ViewStates.INITIAL

@@ -896,6 +896,7 @@ class IndexScreen(FloatLayout):
         items_for_letter = self._get_items_for_letter(letter)
         if not items_for_letter:
             left_index_column.add_widget(self._get_no_items_button(letter))
+            logger.debug(f"Populated index page for letter '{letter}': no items.")
             return
 
         for column, column_items in zip(

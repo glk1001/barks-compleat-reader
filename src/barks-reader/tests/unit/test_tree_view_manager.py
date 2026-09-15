@@ -236,7 +236,10 @@ class TestTreeViewManager:
             mock_dependencies["renderer"].render.assert_called_with(IntroDestination())
 
     def test_on_node_expanded_repopulates_flagged_node(
-        self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]
+        self,
+        tree_view_manager: TreeViewManager,
+        screen_mocks: dict[str, MagicMock],
+        loguru_sink: list[str],
     ) -> None:
         # A repopulate-on-expand node (the random-title nodes) rebuilds its
         # children on every expansion, even when already populated.
@@ -264,6 +267,7 @@ class TestTreeViewManager:
         for child in old_children:
             mock_tree.remove_node.assert_any_call(child)
         node.populate_callback.assert_called_once()
+        assert any(m.startswith("Repopulated '") for m in loguru_sink)
 
     def test_clear_and_repopulate_detaches_selection_tracking(
         self, tree_view_manager: TreeViewManager, screen_mocks: dict[str, MagicMock]

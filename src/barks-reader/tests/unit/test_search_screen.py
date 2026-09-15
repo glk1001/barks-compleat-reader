@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import ClassVar, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 from unittest.mock import MagicMock, patch
 
+import pytest
 from barks_fantagraphics.alpha_split import split_alpha_terms
 from barks_reader.ui import search_screen
 from barks_reader.ui.search_screen import SearchScreen, _SearchResultButton
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 def _make_screen(word_terms: dict) -> SearchScreen:
@@ -251,3 +255,47 @@ class TestAdoptNavFocus:
         assert screen._nav_active is True
         assert screen._nav_on_exit_request is exit_cb
         assert screen._nav_focus_area == "results"
+
+
+class TestSearchMarkers:
+    """Result counts and clears are logged, so a no-match search is observable."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        """Return a bare screen with its Kivy ids and image-change timer stubbed at class level.
+
+        A screen made without __init__ has no property storage, so `ids` cannot
+        be assigned on the instance; shadowing the descriptor on the class does.
+        """
+        with (
+            patch.object(SearchScreen, "ids", MagicMock()),
+            patch.object(SearchScreen, "_cancel_image_change_event"),
+        ):
+            yield _make_bare_screen()
+
+    def test_title_results_are_counted(self, screen: SearchScreen, loguru_sink: list[str]) -> None:
+        screen._search = MagicMock()
+        screen._search.search.return_value = SimpleNamespace(
+            titles=[], title_strings=["Vacation Time", "Vacation Misery"]
+        )
+        with (
+            patch.object(screen, "_populate_title_results"),
+            patch.object(screen, "_update_background_from_results"),
+        ):
+            screen.on_title_search_text("vac")
+        assert "Search results: 2 titles for 'vac'." in loguru_sink
+
+    def test_word_results_are_counted(self, screen: SearchScreen, loguru_sink: list[str]) -> None:
+        screen._word_search_results = []
+        screen._populate_word_results_layout(MagicMock())
+        assert "Search results: 0 word rows." in loguru_sink
+
+    def test_each_clear_button_logs(self, screen: SearchScreen, loguru_sink: list[str]) -> None:
+        screen._tag_chip_strings = ["x"]
+        screen._selected_member = "y"
+        screen._clear_tag_title_results = MagicMock()
+        screen.on_title_clear()
+        screen.on_tag_clear()
+        screen.on_word_clear()
+        for kind in ("title", "tag", "word"):
+            assert f"Search cleared: {kind}." in loguru_sink

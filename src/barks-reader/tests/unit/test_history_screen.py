@@ -20,6 +20,7 @@ from barks_reader.ui.history_screen import (
     _ZONE_BAR,
     _ZONE_LIST,
     HistoryScreen,
+    _BuiltView,
     _NavRow,
 )
 from barks_reader.ui.reader_keyboard_nav import (
@@ -515,3 +516,42 @@ class TestHistoryScreenIncrementalDelete:
             screen._build_next_chunk(0)
 
         assert [r.key for r in screen._nav_rows] == ["e4", "e3", "e1"]
+
+
+class TestHistoryMarkers:
+    """The lines a GUI test waits on: view selected, view built, row deleted, cleared."""
+
+    def test_selecting_a_view_logs_it(self, screen: HistoryScreen, loguru_sink: list[str]) -> None:
+        screen._history_store = None  # nothing to build; the selection alone is logged
+        screen._select_view(_TITLES_VIEW)
+        assert f"History: selected '{_TITLES_VIEW}' view." in loguru_sink
+
+    def test_finishing_a_build_logs_the_row_count(
+        self, screen: HistoryScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._building = _BuiltView(
+            view=_JOURNAL_VIEW, revision=1, nav_rows=[MagicMock(), MagicMock()]
+        )
+        with patch.object(screen, "_restore_nav_focus"):
+            screen._finish_build()
+        assert f"History: built '{_JOURNAL_VIEW}' view with 2 rows." in loguru_sink
+
+    def test_deleting_logs_the_event_or_title(
+        self, screen: HistoryScreen, loguru_sink: list[str]
+    ) -> None:
+        screen._history_store = MagicMock()
+        with patch.object(screen, "_drop_rows"):
+            screen._on_delete_event("e1")
+            screen._on_delete_title("Vacation Time")
+        assert 'History: deleted event "e1".' in loguru_sink
+        assert 'History: deleted title "Vacation Time".' in loguru_sink
+
+    def test_confirmed_clear_logs(self, screen: HistoryScreen, loguru_sink: list[str]) -> None:
+        screen._history_store = MagicMock()
+        with (
+            patch.object(history_screen_module, "open_confirm_popup") as ask,
+            patch.object(screen, "_refresh"),
+        ):
+            screen.on_clear_pressed()
+            ask.call_args.kwargs["on_ok"]()
+        assert "History: cleared." in loguru_sink

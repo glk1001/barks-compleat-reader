@@ -308,6 +308,7 @@ class HistoryScreen(FloatLayout):
         self._select_view(_TITLES_VIEW)
 
     def _select_view(self, view: str) -> None:
+        logger.debug(f"History: selected '{view}' view.")
         self._current_view = view
         self.ids.journal_button.state = "down" if view == _JOURNAL_VIEW else "normal"
         self.ids.titles_button.state = "down" if view == _TITLES_VIEW else "normal"
@@ -338,6 +339,9 @@ class HistoryScreen(FloatLayout):
         for widget in built.widgets:
             rows.add_widget(widget)
         self._restore_nav_focus()
+        logger.debug(
+            f"History: mounted cached '{built.view}' view with {len(built.nav_rows)} rows."
+        )
 
     def _start_build(self, revision: object) -> None:
         """Build the current view: the first screenful now, the rest per frame."""
@@ -386,9 +390,12 @@ class HistoryScreen(FloatLayout):
         self._add_items(_CHUNK_ITEMS)
 
     def _finish_build(self) -> None:
+        built = self._building
         self._build_event = None
         self._building = None
         self._restore_nav_focus()
+        if built is not None:
+            logger.debug(f"History: built '{built.view}' view with {len(built.nav_rows)} rows.")
 
     def _cancel_pending_build(self) -> None:
         """Abandon a part-finished build so it is never cached as complete."""
@@ -543,11 +550,13 @@ class HistoryScreen(FloatLayout):
 
     def _on_delete_event(self, event_id: str) -> None:
         assert self._history_store is not None
+        logger.info(f'History: deleted event "{event_id}".')
         self._history_store.delete_event(event_id)
         self._drop_rows({event_id})
 
     def _on_delete_title(self, title_str: str) -> None:
         assert self._history_store is not None
+        logger.info(f'History: deleted title "{title_str}".')
         self._history_store.delete_events_for_title(title_str)
         self._drop_rows({title_str})
 
@@ -775,6 +784,7 @@ class HistoryScreen(FloatLayout):
 
         def do_clear() -> None:
             assert self._history_store is not None
+            logger.info("History: cleared.")
             self._history_store.clear()
             self._refresh()
 

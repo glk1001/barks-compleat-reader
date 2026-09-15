@@ -149,9 +149,11 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         # Unbind first: re-opening without a close in between would double-bind.
         Window.unbind(on_key_down=self._on_key_down)
         Window.bind(on_key_down=self._on_key_down)
+        logger.info("CorpusStats: opened.")
 
     def close(self) -> None:
         """Hand the window back to the main screen."""
+        logger.info("CorpusStats: closing.")
         if self._menu_mode:
             self._exit_menu_mode()
         Window.unbind(on_key_down=self._on_key_down)
@@ -466,6 +468,7 @@ class CorpusStatsScreen(ReaderScreen, ActionBarNavMixin):
         def _apply(_dt: float) -> None:
             self._text_section = section
             self._rebuild()
+            logger.info("CorpusStats: dialogue statistics applied.")
 
         Clock.schedule_once(_apply, 0)
 

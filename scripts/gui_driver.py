@@ -330,6 +330,27 @@ class Driver:
                 raise DriverError(msg)
             time.sleep(0.25)
 
+    FADE_STARTED = "Title view fade started"
+    FADE_FINISHED = "Title view fade finished"
+
+    def wait_title_fade(self, timeout: float = 10) -> None:
+        """Block until every title-view fade that has started has also finished.
+
+        The panel fades in over a random 0-4s and the app logs both ends, so
+        this waits on the log rather than the worst case. Counting both sides
+        means it is safe whether the fade is still running or already over.
+
+        Raises:
+            DriverError: If a started fade has not finished within `timeout`.
+
+        """
+        deadline = time.monotonic() + timeout
+        while self.match_count(self.FADE_FINISHED) < self.match_count(self.FADE_STARTED):
+            if time.monotonic() > deadline:
+                msg = f"beat stalled: a title view fade never finished within {timeout}s"
+                raise DriverError(msg)
+            time.sleep(0.25)
+
     def expect_no_new(self, pattern: str, window: float = 2.0) -> None:
         """Assert that no NEW occurrence of `pattern` is logged for `window` seconds.
 

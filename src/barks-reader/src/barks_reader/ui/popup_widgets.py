@@ -10,6 +10,7 @@ from kivy.properties import (  # ty: ignore[unresolved-import]
     StringProperty,
 )
 from kivy.uix.popup import Popup
+from loguru import logger
 
 from .reader_keyboard_nav import (
     KEY_ENTER,
@@ -107,11 +108,12 @@ def open_confirm_popup(
         bg_image_source=bg_image,
         msg_font_scale=1.35,
     )
-    nav = _ConfirmPopupNav(popup, on_ok)
+    nav = _ConfirmPopupNav(popup, on_ok, title)
     popup.ok = nav.confirm
     popup.cancel = nav.cancel
     popup.open()
     nav.show_focus()
+    logger.debug(f'Confirm popup opened: "{title}".')
     return popup
 
 
@@ -122,19 +124,22 @@ class _ConfirmPopupNav:
     when the popup is dismissed.
     """
 
-    def __init__(self, popup: MessagePopup, on_ok: Callable[[], None]) -> None:
+    def __init__(self, popup: MessagePopup, on_ok: Callable[[], None], title: str = "") -> None:
         self._popup = popup
         self._on_ok = on_ok
+        self._title = title
         self._buttons: list[Button] = [popup.ids.ok_button, popup.ids.cancel_button]
         self._focused_idx = 0  # The confirming button starts focused.
         Window.bind(on_key_down=self._on_key_down)
         popup.bind(on_dismiss=self._unbind_window)
 
     def confirm(self) -> None:
+        logger.info(f'Confirm popup "{self._title}": confirmed.')
         self._popup.dismiss()
         self._on_ok()
 
     def cancel(self) -> None:
+        logger.info(f'Confirm popup "{self._title}": cancelled.')
         self._popup.dismiss()
 
     def show_focus(self) -> None:

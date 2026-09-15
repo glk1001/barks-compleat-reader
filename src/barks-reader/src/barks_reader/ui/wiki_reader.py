@@ -162,6 +162,7 @@ class WikiReaderScreen(ReaderScreen):
         # transient geometry, so a deferred re-apply re-pins it once things settle.
         self._apply_viewer_sizing()
         Clock.schedule_once(self._apply_viewer_sizing)
+        logger.info(f'Wiki reader opened (page = "{page}").')
 
     def close(self) -> None:
         """Save the reading position and hand control back to the main screen.
@@ -170,6 +171,7 @@ class WikiReaderScreen(ReaderScreen):
         the history root all route here, so unbinding the keyboard here covers
         every way out.
         """
+        logger.debug("Wiki reader closing.")
         Window.unbind(on_key_down=self._on_key_down, on_resize=self._apply_viewer_sizing)
         self.save_session()
         self._on_close_screen()
@@ -265,6 +267,7 @@ class WikiReaderScreen(ReaderScreen):
         # Land the user on the main screen with the title selected in the tree
         # and shown in the bottom title view — the reading controls live there.
         self.close()
+        logger.info(f'Wiki goto title: "{title.name}".')
         self._on_goto_title(title)
 
     def _build_viewer(self, bundle: Path, start_page: Path | None = None) -> None:
