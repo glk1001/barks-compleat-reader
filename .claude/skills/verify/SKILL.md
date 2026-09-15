@@ -82,7 +82,9 @@ scripts/gui-probe.sh stop                   # kills both, restores the user's co
 during a check never leaves the user's saved node changed. **Always `stop`**,
 even when the check failed.
 
-Screen size defaults to 900x1300; override with `BARKS_PROBE_SCREEN=1200x1300`.
+Screen size defaults to 900x1300; override with `BARKS_PROBE_SCREEN=1200x1300`. The
+Xephyr window opens at the top-left of the second (non-primary) monitor; move it with
+`scripts/gui-probe.sh start X,Y` (host pixels) or `BARKS_PROBE_ORIGIN=X,Y`.
 Display defaults to `:2` (`BARKS_PROBE_DISPLAY`).
 
 ## Read the log, not just the pixels

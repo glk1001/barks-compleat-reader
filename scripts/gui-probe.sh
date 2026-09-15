@@ -15,7 +15,9 @@
 #
 # Usage:
 #   scripts/gui-probe.sh doctor           # check this machine has what it needs
-#   scripts/gui-probe.sh start            # Xephyr + app, waits until ready
+#   scripts/gui-probe.sh start [X,Y]      # Xephyr + app, waits until ready; the
+#                                         # window opens at host pixel X,Y (default:
+#                                         # the top-left of the second monitor)
 #   scripts/gui-probe.sh shot out.png     # fresh full-screen capture
 #   scripts/gui-probe.sh geometry         # app window WxH+X+Y on the nested display
 #   scripts/gui-probe.sh click 840 74     # click at screenshot coordinates
@@ -29,6 +31,7 @@
 #   scripts/gui-probe.sh stop             # kill both, restore the user config
 #
 # Env overrides: BARKS_PROBE_DISPLAY (:2), BARKS_PROBE_SCREEN (900x1300),
+# BARKS_PROBE_ORIGIN (X,Y where the Xephyr window opens; `start X,Y` beats it),
 # BARKS_READER_CONFIG_DIR (the profile to boot from, as for the app itself),
 # BARKS_PROBE_NO_RESTORE=1 (do not back up and restore that profile around a run).
 
@@ -37,6 +40,10 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DPY="${BARKS_PROBE_DISPLAY:-:2}"
 SCREEN="${BARKS_PROBE_SCREEN:-900x1300}"
+# Where the Xephyr window opens on the host display, as "X,Y" in host pixels.
+# Empty means the top-left of the second (non-primary) monitor, so the probe
+# stays off the screen being worked on. `start X,Y` overrides both.
+ORIGIN="${BARKS_PROBE_ORIGIN:-}"
 RUN_DIR="${XDG_RUNTIME_DIR:-/tmp}/barks-gui-probe"
 APP_LOG="$RUN_DIR/app.log"
 XEPHYR_LOG="$RUN_DIR/xephyr.log"
@@ -67,6 +74,28 @@ declare -A TOOL_PKGS=(
 die() {
     echo "gui-probe: $*" >&2
     exit 1
+}
+
+# The host-pixel origin of the second monitor, "X,Y". xrandr lists monitors as
+# " 1: +HDMI-1 2560/600x1440/330+0+0  HDMI-1", the primary marked "+*"; take the
+# first non-primary, else the first, else 0,0 (no xrandr, or one monitor).
+second_monitor_origin() {
+    local line
+    line="$(xrandr --listmonitors 2>/dev/null | grep -E '^ *[0-9]+: \+[^*]' | head -1 || true)"
+    [[ -z "$line" ]] && line="$(xrandr --listmonitors 2>/dev/null | grep -E '^ *[0-9]+:' | head -1 || true)"
+    if [[ "$line" =~ \+(-?[0-9]+)\+(-?[0-9]+) ]]; then
+        echo "${BASH_REMATCH[1]},${BASH_REMATCH[2]}"
+    else
+        echo "0,0"
+    fi
+}
+
+# Turn "X,Y" into Xephyr's "+X+Y" screen offset, or die on anything else.
+screen_offset() {
+    local origin="$1"
+    [[ "$origin" =~ ^(-?[0-9]+),(-?[0-9]+)$ ]] ||
+        die "start position must be X,Y in host pixels, got '$origin'"
+    echo "+${BASH_REMATCH[1]}+${BASH_REMATCH[2]}"
 }
 
 history_file() {
@@ -197,6 +226,9 @@ cmd_doctor() {
 }
 
 cmd_start() {
+    local origin="${1:-${ORIGIN:-$(second_monitor_origin)}}"
+    local offset
+    offset="$(screen_offset "$origin")"
     for tool in Xephyr xte import; do
         command -v "$tool" >/dev/null ||
             die "missing required tool: $tool (run 'gui-probe.sh doctor')"
@@ -222,7 +254,8 @@ cmd_start() {
     # Detach fully (stdin included). A background child that still holds the
     # caller's stdin/stdout keeps the calling shell's pipeline open, so `start`
     # would appear to hang until the app exits.
-    setsid Xephyr "$DPY" -screen "$SCREEN" -resizeable -title "barks-gui-probe" \
+    # The +X+Y offset is where the host window opens; Mutter honours it.
+    setsid Xephyr "$DPY" -screen "${SCREEN}${offset}" -resizeable -title "barks-gui-probe" \
         </dev/null >"$XEPHYR_LOG" 2>&1 &
     echo $! >"$XEPHYR_PID_FILE"
     disown
@@ -233,7 +266,7 @@ cmd_start() {
         waited=$((waited + 1))
         [[ $waited -gt 20 ]] && die "Xephyr did not come up; see $XEPHYR_LOG"
     done
-    echo "gui-probe: Xephyr up on $DPY ($SCREEN)"
+    echo "gui-probe: Xephyr up on $DPY ($SCREEN at $origin)"
 
     setsid env DISPLAY="$DPY" uv run --directory "$REPO_ROOT" main.py \
         </dev/null >>"$APP_LOG" 2>&1 &
