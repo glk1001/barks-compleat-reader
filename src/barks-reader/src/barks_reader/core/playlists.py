@@ -108,6 +108,7 @@ PLAYLISTS: tuple[Playlist, ...] = (
             Titles.MASTERS_OF_MELODY_THE,
             Titles.SPOIL_THE_ROD,
             Titles.HOUSEBOAT_HOLIDAY,
+            Titles.CAMPING_CONFUSION,
         ),
     ),
 )
