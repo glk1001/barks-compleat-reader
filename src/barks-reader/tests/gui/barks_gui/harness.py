@@ -60,8 +60,9 @@ COPIED_KIVY_DIR = "kivy"  # Kivy home: config.ini, icon/, mods/; logs/ is skippe
 PROBE_NO_RESTORE_ENV_VAR = "BARKS_PROBE_NO_RESTORE"
 
 # The app window at the pinned nested screen (BARKS_PROBE_SCREEN=900x1300), as
-# measured. Every pixel coordinate in the suite assumes it.
-EXPECTED_WINDOW = (782, 1224)
+# measured. Every pixel coordinate in the suite assumes it. (The demo recorder
+# reports 1224: it rounds the height down to even for the video encoder.)
+EXPECTED_WINDOW = (782, 1225)
 
 
 def build_template(live_dir: Path, template: Path) -> Path:

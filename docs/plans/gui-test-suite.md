@@ -1,8 +1,16 @@
 # Plan: a comprehensive GUI path test suite for the Barks Reader
 
-> Status: **approved 2026-09-15**, in progress. Milestone M0 (harness) first; each
-> milestone is committed green on its own. Saved here so the plan survives across
-> machines and sessions.
+> Status: **approved 2026-09-15**, in progress; each milestone is committed green on
+> its own. Saved here so the plan survives across machines and sessions.
+>
+> - M0 harness: DONE (526d1f6). The helper package is `barks_gui/`, not `screens/`.
+> - M1 strong-oracle families: DONE (33 GUI tests, 7m37s). Deviations from the matrix:
+>   A7 (top goto arrow) and E3 (tag group) deferred to M3; I6 (Word dropdown) landed
+>   early inside the statistics test; the overrides-row test boots with
+>   `use_prebuilt_comics=0` because the row is hidden for prebuilt comics; the window
+>   is 782x1225 (the recorder rounds to 1224 for the encoder). Found and fixed one app
+>   bug on the way: Escape never reached the fun view's options menu (0feb4d4).
+> - M2 app markers: next.
 
 ## Context
 
