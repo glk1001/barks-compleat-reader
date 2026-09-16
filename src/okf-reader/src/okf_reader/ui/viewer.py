@@ -1476,6 +1476,7 @@ class OKFViewer(RelativeLayout):
         finally:
             self._syncing_tree = False
         self._scroll_tree_node_into_view(node)
+        trace.tree_focus(getattr(node, "text", ""))
 
     def _handle_results_key(self, key: int) -> bool:
         """Walk the search-result rows with a drawn focus ring."""

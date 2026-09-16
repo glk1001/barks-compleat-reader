@@ -1218,6 +1218,19 @@ class TestTopGotoFocus:
         # The normal (clamped) move keeps the selection on the first node.
         nav._tree_view_screen.select_node.assert_called_once_with(first)  # ty: ignore[unresolved-attribute]
 
+    def test_up_on_first_node_without_title_is_logged(
+        self, nav: MainScreenNavigation, loguru_sink: list[str]
+    ) -> None:
+        """A driver waiting on Up's outcome needs a line whether or not the arrow is live."""
+        first = MagicMock()
+        nav._tree_view_screen.get_visible_nodes.return_value = [first]  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.get_selected_node.return_value = first  # ty: ignore[unresolved-attribute]
+        nav._tree_view_screen.is_top_goto_active = False  # ty: ignore[invalid-assignment]
+
+        nav._handle_tree_key(KEY_UP)
+
+        assert "Top-view goto arrow inactive: Up stays on the first node." in loguru_sink
+
     def test_up_on_non_first_node_moves_tree(self, nav: MainScreenNavigation) -> None:
         first, second = MagicMock(), MagicMock()
         nav._tree_view_screen.get_visible_nodes.return_value = [first, second]  # ty: ignore[unresolved-attribute]

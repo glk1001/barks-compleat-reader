@@ -20,6 +20,7 @@ from kivy.uix.togglebutton import ToggleButton
 from loguru import logger
 
 from .reader_keyboard_nav import (
+    DROPDOWN_DISMISSED_LOG,
     KEY_ENTER,
     KEY_LEFT,
     KEY_NUMPAD_ENTER,
@@ -183,6 +184,7 @@ class StatisticsScreen(FloatLayout, DropdownNavMixin):
 
     def _on_dropdown_dismissed(self, _dropdown: Widget | None) -> None:
         """Override to match Kivy's on_dismiss callback signature (no ActionBarNavMixin)."""
+        logger.debug(DROPDOWN_DISMISSED_LOG)
         if self._dropdown_nav_mode:
             self._exit_dropdown_nav()
             logger.debug("StatisticsScreen: exited dropdown nav.")

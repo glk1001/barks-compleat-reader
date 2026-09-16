@@ -161,8 +161,13 @@ class MainScreenNavigation:
             # Up from the first tree node lands on the top-view goto arrow (when it has
             # a title); otherwise the normal move (which selects the last node when
             # nothing is selected) is preserved.
-            if self._at_first_tree_node() and self._tree_view_screen.is_top_goto_active:
-                self._enter_top_goto_focus()
+            if self._at_first_tree_node():
+                if self._tree_view_screen.is_top_goto_active:
+                    self._enter_top_goto_focus()
+                else:
+                    # Logged so a driver waiting on Up's outcome has a line either way.
+                    logger.debug("Top-view goto arrow inactive: Up stays on the first node.")
+                    self._tree_nav_move(-1)
             else:
                 self._tree_nav_move(-1)
         elif key == KEY_DOWN:

@@ -41,6 +41,7 @@ from .reader_keyboard_nav import (
     KEY_UP,
     clear_focus_in_list,
     is_escape_key,
+    log_nav_focus,
     update_focus_in_list,
 )
 from .touch_keyboard import TouchAwareTextInput  # noqa: F401  # used in .kv
@@ -50,6 +51,7 @@ if TYPE_CHECKING:
 
     from barks_fantagraphics.whoosh_search_engine import TitleInfo
     from kivy.uix.scrollview import ScrollView
+    from kivy.uix.widget import Widget
 
     from barks_reader.core.reader_colors import Color
     from barks_reader.core.reader_settings import ReaderSettings
@@ -655,6 +657,15 @@ class SearchScreen(FloatLayout):
         if not self._nav_active and self.on_request_nav_focus:
             self.on_request_nav_focus()
 
+    def on_search_input_focus(self, _text_input: Widget, focused: bool) -> None:
+        """Log a search box taking or losing the keyboard (kv callback).
+
+        A box takes the keyboard a moment after focus is asked for, and the GUI
+        path tests type into it only once this line says it has.
+        """
+        state = "focused" if focused else "unfocused"
+        logger.debug(f"SearchScreen: {self._active_mode} search box {state}.")
+
     def on_search_input_enter(self) -> None:
         """Handle Enter in a search input (kv callback).
 
@@ -994,6 +1005,9 @@ class SearchScreen(FloatLayout):
             chip.chip_border_color = (
                 _chip_border_focused() if i == focused_idx else _CHIP_BORDER_NONE
             )
+        # Tag chips show focus by border colour, not a drawn ring, so log it here.
+        if focused_idx is not None and 0 <= focused_idx < len(chips):
+            log_nav_focus(chips[focused_idx])
 
     def _draw_chip_focus(self) -> None:
         chips = self._get_active_chip_buttons()
@@ -1025,7 +1039,9 @@ class SearchScreen(FloatLayout):
 
     def _draw_clear_focus(self) -> None:
         r, g, b, _a = theme().accent_selection
-        self._get_active_clear_button().background_color = (r, g, b, 1.0)
+        clear_button = self._get_active_clear_button()
+        clear_button.background_color = (r, g, b, 1.0)
+        log_nav_focus(clear_button)  # shown by fill colour, not a drawn ring
 
     def _clear_clear_focus(self) -> None:
         self._get_active_clear_button().background_color = self._CLEAR_BTN_NORMAL

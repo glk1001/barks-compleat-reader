@@ -299,3 +299,51 @@ class TestSearchMarkers:
         screen.on_word_clear()
         for kind in ("title", "tag", "word"):
             assert f"Search cleared: {kind}." in loguru_sink
+
+
+class TestNavFocusMarkers:
+    """Focus shown by colour rather than a drawn ring still logs, as does the search box."""
+
+    @pytest.fixture
+    def screen(self) -> Iterator[SearchScreen]:
+        with (
+            patch.object(SearchScreen, "ids", MagicMock()),
+            patch.object(SearchScreen, "_cancel_image_change_event"),
+        ):
+            bare = _make_bare_screen()
+            bare._active_mode = "Title"
+            bare._selected_tag = ""
+            bare._selected_member = ""
+            yield bare
+
+    def test_the_search_box_logs_taking_and_losing_focus(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        screen.on_search_input_focus(MagicMock(), focused=True)
+        screen.on_search_input_focus(MagicMock(), focused=False)
+        assert "SearchScreen: Title search box focused." in loguru_sink
+        assert "SearchScreen: Title search box unfocused." in loguru_sink
+
+    def test_the_clear_button_logs_its_focus(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        clear_button = MagicMock()
+        clear_button.text = "x"
+        with patch.object(screen, "_get_active_clear_button", return_value=clear_button):
+            screen._draw_clear_focus()
+        assert 'Nav focus on MagicMock "x".' in loguru_sink
+
+    def test_a_focused_tag_chip_logs(self, screen: SearchScreen, loguru_sink: list[str]) -> None:
+        chips = [MagicMock(), MagicMock()]
+        chips[1].text = "Scrooge"
+        with patch.object(screen, "_get_main_tag_chip_buttons", return_value=chips):
+            screen._update_tag_chip_colors(cast("list", chips), focused_idx=1)
+        assert 'Nav focus on MagicMock "Scrooge".' in loguru_sink
+
+    def test_redrawing_chips_without_a_focus_logs_nothing(
+        self, screen: SearchScreen, loguru_sink: list[str]
+    ) -> None:
+        chips = [MagicMock()]
+        with patch.object(screen, "_get_main_tag_chip_buttons", return_value=chips):
+            screen._update_tag_chip_colors(cast("list", chips))
+        assert not [line for line in loguru_sink if line.startswith("Nav focus on")]

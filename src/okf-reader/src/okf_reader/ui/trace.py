@@ -36,6 +36,24 @@ def focus_region(name: str) -> None:
     Logger.debug(f"{PREFIX}: Focus region {name}.")
 
 
+def focus_ring(widget_name: str) -> None:
+    """Log that the keyboard focus ring has been drawn on `widget_name`.
+
+    Fires once per focus move within a region (a top-bar button, a sidebar
+    result row), so a test can step the focus and wait on each step.
+    """
+    Logger.debug(f"{PREFIX}: Focus ring on {widget_name}.")
+
+
+def tree_focus(node_text: str) -> None:
+    """Log that the sidebar tree's selection band moved to `node_text`.
+
+    The tree shows keyboard focus as its selection band, not a drawn ring, so
+    this is the sidebar's counterpart to `focus_ring` while the tree is showing.
+    """
+    Logger.debug(f"{PREFIX}: Sidebar focus on tree node '{node_text}'.")
+
+
 def back_to(bundle: Path, path: Path) -> None:
     """Log that Back popped the history and is showing `path` again."""
     Logger.info(f"{PREFIX}: Back to '{_rel(bundle, path)}'.")

@@ -32,3 +32,10 @@ class TestConfirmPopupNav:
         assert 'Confirm popup "Clear Reading History": cancelled.' in loguru_sink
         popup.dismiss.assert_called_once()
         on_ok.assert_not_called()
+
+    def test_dismissal_is_logged(self, loguru_sink: list[str]) -> None:
+        """The popup owns the keys until it has gone, so a driver waits on this line."""
+        nav, _popup = _nav(MagicMock(), "Clear Reading History")
+        with patch.object(popup_widgets, "Window"):
+            nav._unbind_window()  # noqa: SLF001
+        assert 'Confirm popup "Clear Reading History": closed.' in loguru_sink

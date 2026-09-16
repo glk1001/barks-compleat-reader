@@ -509,3 +509,15 @@ class TestBottomTitleViewNav(ScreenFixtureBase):
         self.screen.enter_nav_focus(MagicMock())
 
         assert self.screen._nav_focused_widget is self.screen.ids.title_portal_image_button
+
+
+class TestGotoPageToggleLog(ScreenFixtureBase):
+    """Toggling the goto-page row from the keyboard logs the new state."""
+
+    def test_return_on_the_goto_page_row_logs_the_toggle(self, loguru_sink: list[str]) -> None:
+        ids = self.screen.ids
+        ids.goto_page_checkbox.active = True
+        self.screen._nav_focused_widget = ids.goto_page_layout
+        self.screen._activate_focused_widget()
+        assert ids.goto_page_checkbox.active is False
+        assert "Goto page checkbox toggled: active = False." in loguru_sink

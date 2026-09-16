@@ -411,6 +411,7 @@ class BottomTitleViewScreen(FloatLayout):
             self.on_title_portal_image_pressed()
         elif widget is ids.goto_page_layout:
             ids.goto_page_checkbox.active = not ids.goto_page_checkbox.active
+            logger.debug(f"Goto page checkbox toggled: active = {ids.goto_page_checkbox.active}.")
         elif widget is ids.use_overrides_layout:
             ids.use_overrides_checkbox.active = not ids.use_overrides_checkbox.active
         elif widget is ids.wiki_page_button:

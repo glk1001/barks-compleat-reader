@@ -135,6 +135,7 @@
                         hint_text: "Search titles…"
                         on_text: root.on_title_search_text(self.text)
                         on_text_validate: root.on_search_input_enter()
+                        on_focus: root.on_search_input_focus(self, self.focus)
 
                     SearchClearButton:
                         id: title_clear_button
@@ -190,6 +191,7 @@
                         hint_text: "Search tags…"
                         on_text: root.on_tag_search_text(self.text)
                         on_text_validate: root.on_search_input_enter()
+                        on_focus: root.on_search_input_focus(self, self.focus)
 
                     SearchClearButton:
                         id: tag_clear_button
@@ -263,6 +265,7 @@
                         hint_text: "Search words…"
                         on_text: root.on_word_search_text(self.text)
                         on_text_validate: root.on_search_input_enter()
+                        on_focus: root.on_search_input_focus(self, self.focus)
 
                     SearchClearButton:
                         id: word_clear_button

@@ -171,4 +171,6 @@ class _ConfirmPopupNav:
 
     def _unbind_window(self, *_args: object) -> bool:
         Window.unbind(on_key_down=self._on_key_down)
+        # The popup owns the keys until it has gone; a driver waits on this line.
+        logger.debug(f'Confirm popup "{self._title}": closed.')
         return False

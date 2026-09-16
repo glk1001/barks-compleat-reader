@@ -51,12 +51,16 @@ def test_a_page_outside_the_bundle_falls_back_to_its_name(kivy_log: list[str]) -
 
 def test_the_navigation_markers(kivy_log: list[str]) -> None:
     trace.focus_region("SIDEBAR")
+    trace.focus_ring('ActionButton "Back"')
+    trace.tree_focus("The Firebug")
     trace.back_to(BUNDLE, BUNDLE / "index.md")
     trace.back_exit()
     trace.tree_settled("The Firebug", 2)
     trace.page_action("Read comic")
     assert kivy_log == [
         "OKFViewer: Focus region SIDEBAR.",
+        'OKFViewer: Focus ring on ActionButton "Back".',
+        "OKFViewer: Sidebar focus on tree node 'The Firebug'.",
         "OKFViewer: Back to 'index.md'.",
         "OKFViewer: Back at history root; exiting.",
         "OKFViewer: Tree settled on 'The Firebug' after 2 frames.",
