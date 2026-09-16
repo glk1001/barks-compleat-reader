@@ -26,6 +26,12 @@
 >   that just opened, or a fast Escape closes it mid-transition; the search box swallows
 >   every key but Return and Escape, so Return (not Down) leaves it for the results.
 > - M4 docs: DONE. All milestones complete.
+> - Afterwards (2026-09-16): headless mode on Xvfb (`--headless`), parallel workers
+>   (one probe run directory per display; pytest worker gw<k> gets display :2+k), and a
+>   pacing study. Headless four-way: 56 tests in ~3m08s; visible serial at the same
+>   pacing: 10m29s (was 12m46s). Key gap 0.15s / settle 500ms adopted; 0.05s/300ms flaked
+>   and gained nothing. Kivy DropDowns eat an Escape until their deferred dismissal
+>   runs, hence `DROPDOWN_DISMISS_PAUSE` after every dropdown pick.
 
 ## Context
 

@@ -35,6 +35,7 @@
 # BARKS_PROBE_ORIGIN (X,Y where the Xephyr window opens; `start X,Y` beats it),
 # BARKS_PROBE_HEADLESS=1 (run on Xvfb instead of Xephyr: no host window, no
 # graphical session needed; the app draws through Mesa's software renderer),
+# BARKS_PROBE_KEY_GAP (seconds after each injected key, default 0.4),
 # BARKS_READER_CONFIG_DIR (the profile to boot from, as for the app itself),
 # BARKS_PROBE_NO_RESTORE=1 (do not back up and restore that profile around a run).
 
@@ -52,7 +53,13 @@ ORIGIN="${BARKS_PROBE_ORIGIN:-}"
 HEADLESS="${BARKS_PROBE_HEADLESS:-}"
 XSERVER="Xephyr"
 [[ -n "$HEADLESS" ]] && XSERVER="Xvfb"
-RUN_DIR="${XDG_RUNTIME_DIR:-/tmp}/barks-gui-probe"
+# One run directory per display, so several probes (parallel test workers on
+# :2, :3, ...) never share a log, a pid file or a backup.
+RUN_DIR="${XDG_RUNTIME_DIR:-/tmp}/barks-gui-probe-${DPY#:}"
+# The pause after every injected key. The app drops keys pressed while it is
+# rendering, so this is a floor the driver's own pacing sits on top of; the GUI
+# test harness lowers it (BARKS_PROBE_KEY_GAP) to what a pacing study found safe.
+KEY_GAP="${BARKS_PROBE_KEY_GAP:-0.4}"
 APP_LOG="$RUN_DIR/app.log"
 XEPHYR_LOG="$RUN_DIR/xephyr.log"
 XEPHYR_PID_FILE="$RUN_DIR/xephyr.pid"
@@ -421,7 +428,7 @@ cmd_key() {
     local k
     for k in "$@"; do
         xte -x "$DPY" "key $k" >/dev/null
-        sleep 0.4
+        sleep "$KEY_GAP"
     done
 }
 

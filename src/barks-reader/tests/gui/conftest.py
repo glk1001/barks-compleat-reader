@@ -45,6 +45,22 @@ if TYPE_CHECKING:
 
 # The live files a run must leave byte-identical.
 WATCHED_LIVE_FILES = ("barks-reader.json", "barks-reader-history.json", "barks-reader.ini")
+DISPLAY_ENV_VAR = "BARKS_PROBE_DISPLAY"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def probe_display(request: pytest.FixtureRequest) -> str:
+    """Give this pytest process its own nested display, so parallel workers never collide.
+
+    Under pytest-xdist each worker gets the base display plus its worker number
+    (gw0 -> :2, gw1 -> :3, ...); a plain run keeps the base. The probe reads the
+    variable on every call, and keeps a run directory per display.
+    """
+    worker_input = getattr(request.config, "workerinput", None) or {}
+    worker_id = worker_input.get("workerid", "master")
+    display = harness.display_for_worker(worker_id, os.environ.get(DISPLAY_ENV_VAR, ":2"))
+    os.environ[DISPLAY_ENV_VAR] = display
+    return display
 
 
 @dataclass(frozen=True)

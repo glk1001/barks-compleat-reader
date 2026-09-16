@@ -248,6 +248,8 @@ windowmanager
 wmclass
 wmctrl
 wordclouds
+workerid
+workerinput
 xautomation
 xdotool
 xdpyinfo

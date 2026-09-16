@@ -48,6 +48,13 @@ GOTO_LIST_DWELL = 1.5  # time the open page list stays up before stepping
 GOTO_STEP_PAUSE = 0.12  # a single step through the page list
 MENU_OPEN_PAUSE = 0.6  # after Escape opens an action-bar menu, before moving in it
 MENU_STEP_PAUSE = 0.4  # a single Left/Right along an action bar
+# After picking from a Kivy DropDown (goto page, the dots menu, word clouds).
+# The dropdown dismisses itself a frame or more later and, until it has, still
+# owns the window's keys and eats an Escape - with the dropdown's own handler
+# bound after the screen's, it runs first. Under load a frame can be long.
+DROPDOWN_DISMISS_PAUSE = 0.3
+# How long the app log must stay unchanged for settle() to call the app idle.
+SETTLE_QUIET_MS = 1000
 
 
 @dataclass(frozen=True)
@@ -147,8 +154,11 @@ class Driver:
     _menu_focus: str = _MENU_BUTTONS[0]
     _main_menu_focus: str = _MAIN_MENU_DEFAULT
 
-    def __init__(self, probe_script: Path = PROBE) -> None:
+    def __init__(
+        self, probe_script: Path = PROBE, *, settle_quiet_ms: int = SETTLE_QUIET_MS
+    ) -> None:
         self._probe = probe_script
+        self._settle_quiet_ms = settle_quiet_ms
         self._log = Path(self._run(["log"]).strip())
         self._menu_focus = self._MENU_BUTTONS[0]
         self._main_menu_focus = self._MAIN_MENU_DEFAULT
@@ -194,7 +204,7 @@ class Driver:
 
     def settle(self) -> None:
         """Block until the app has stopped writing to its log, i.e. stopped drawing."""
-        self._run(["settle"])
+        self._run(["settle", str(self._settle_quiet_ms)])
 
     @staticmethod
     def hold(seconds: float) -> None:
@@ -535,6 +545,7 @@ class Driver:
         # of "Showed page 34", so a dropped key landing anywhere in the thirties
         # would have passed for page 3.
         self.key_then_wait(f"Showed page {target} in ", 15, "Return")
+        self.hold(DROPDOWN_DISMISS_PAUSE)
 
     def open_story(self, pick: Pick) -> None:
         """Open the selected title, read `pick.pages` pages, and return to the tree.

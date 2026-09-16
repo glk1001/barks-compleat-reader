@@ -6,6 +6,7 @@ import re
 from typing import TYPE_CHECKING
 
 from barks_gui import nodes
+from gui_driver import DROPDOWN_DISMISS_PAUSE
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
@@ -35,6 +36,8 @@ def test_statistics_tabs_and_the_word_dropdown(boot: AppBoot) -> None:
     d.hold(TAB_PAUSE)
     with d.expect("StatisticsScreen: exited dropdown nav."), d.expect("Statistics: loading image"):
         d.key("Return")
+    d.settle()
+    d.hold(DROPDOWN_DISMISS_PAUSE)  # the word-cloud dropdown still eats keys while dismissing
     d.key_then_wait("StatisticsScreen: exited nav focus.", 15, "Escape")
 
 

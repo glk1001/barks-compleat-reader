@@ -87,7 +87,9 @@ Xephyr window opens at the top-left of the second (non-primary) monitor; move it
 `scripts/gui-probe.sh start X,Y` (host pixels) or `BARKS_PROBE_ORIGIN=X,Y`. With
 `BARKS_PROBE_HEADLESS=1` the probe runs on Xvfb instead: no window, no desktop session
 needed (over ssh, from cron), software OpenGL; screenshots still work, you just cannot
-watch. `apt install xvfb`.
+watch. `apt install xvfb`. The probe keeps one run directory per display
+(`$XDG_RUNTIME_DIR/barks-gui-probe-<n>`), so several can run at once on :2, :3, ...;
+`scripts/gui-probe.sh log` prints the current one's log path.
 Display defaults to `:2` (`BARKS_PROBE_DISPLAY`).
 
 ## Read the log, not just the pixels

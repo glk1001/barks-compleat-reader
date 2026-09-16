@@ -35,6 +35,20 @@ ARTIFACTS_ROOT = REPO_ROOT / "build" / "gui-tests"
 # same every run. Any fixed number does.
 SEED = 1
 
+# Test-speed pacing. The probe's default key gap (0.4s) and settle window (1s)
+# are camera pacing inherited from the demo recorder; the driver adds its own
+# functional pauses on top, so these can come down. Set by a pacing study on
+# 2026-09-16: 0.15s/500ms stayed green across consecutive full runs, headless
+# (four workers) and visible; 0.05s/300ms flaked once (a word-search bubble's
+# Return raced the title view) and was no faster, the wall time being bound by
+# boot and teardown. Raise these if a test starts dropping keys.
+# BARKS_GUI_KEY_GAP and BARKS_GUI_SETTLE_MS override them for a pacing run.
+KEY_GAP_SECS = float(os.environ.get("BARKS_GUI_KEY_GAP", "0.15"))
+SETTLE_QUIET_MS = int(os.environ.get("BARKS_GUI_SETTLE_MS", "500"))
+PROBE_KEY_GAP_ENV_VAR = "BARKS_PROBE_KEY_GAP"
+# Set by the runner so every parallel worker writes into one artifacts directory.
+RUN_STAMP_ENV_VAR = "BARKS_GUI_RUN_STAMP"
+
 INI_SECTION = "Barks Reader"
 # What the scratch profile pins, whatever the live ini says. Everything else -
 # the data directories above all - is copied from the live ini verbatim.
@@ -119,9 +133,22 @@ def read_ini_value(ini: Path, key: str) -> str:
 def artifacts_dir() -> Path:
     """Return this run's artifacts directory, created on first use."""
     if _RUN.dir is None:
-        _RUN.dir = ARTIFACTS_ROOT / datetime.now().strftime("%Y%m%d-%H%M%S")  # noqa: DTZ005
+        stamp = os.environ.get(RUN_STAMP_ENV_VAR) or datetime.now().strftime("%Y%m%d-%H%M%S")  # noqa: DTZ005
+        _RUN.dir = ARTIFACTS_ROOT / stamp
         _RUN.dir.mkdir(parents=True, exist_ok=True)
     return _RUN.dir
+
+
+def display_for_worker(worker_id: str, base_display: str) -> str:
+    """Return the X display a pytest worker owns: ``:N`` for the main process, ``:N+k`` for ``gwk``.
+
+    Each parallel worker drives its own X server, and the probe keeps one run
+    directory per display, so workers never share a log or an app.
+    """
+    base = int(base_display.lstrip(":") or "2")
+    if worker_id.startswith("gw") and worker_id[2:].isdigit():
+        return f":{base + int(worker_id[2:])}"
+    return f":{base}"
 
 
 def artifact_name(nodeid: str, suffix: str) -> str:
@@ -196,8 +223,9 @@ class AppBoot:
                 '{"version": 1, "events": []}\n'
             )
         os.environ[PROBE_NO_RESTORE_ENV_VAR] = "1"
+        os.environ[PROBE_KEY_GAP_ENV_VAR] = str(KEY_GAP_SECS)
         gd.boot_app_at(node, config_dir=self.scratch, seed=SEED, cues=cues)
-        self.driver = gd.Driver()
+        self.driver = gd.Driver(settle_quiet_ms=SETTLE_QUIET_MS)
         self.geometry = self.driver.window_geometry()
         return self.driver
 
@@ -247,6 +275,7 @@ class AppBoot:
             print(f"gui-tests: WARNING {exc}")  # noqa: T201
         os.environ.pop(gd.CONFIG_DIR_ENV_VAR, None)
         os.environ.pop(PROBE_NO_RESTORE_ENV_VAR, None)
+        os.environ.pop(PROBE_KEY_GAP_ENV_VAR, None)
 
 
 def require_geometry(boot: AppBoot) -> None:
