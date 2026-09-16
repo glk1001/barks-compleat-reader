@@ -22,7 +22,7 @@ commit and a red CI. `git lfs install` also claims the `pre-push` slot, so re-ru
 pre-commit preserves the LFS hook as `pre-push.legacy` and chains to it. To verify,
 `.git/hooks/pre-push` should name `--hook-type=pre-push`, not `git lfs pre-push`.
 
-**Run benchmarks** (excluded from the default test run):
+**Run benchmarks** (excluded from the default test run; `--quiet` for just the tables):
 ```bash
 bash scripts/run_benchmark.sh
 ```

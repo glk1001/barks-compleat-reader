@@ -67,16 +67,8 @@ bash "${SCRIPT_DIR}/gui-probe.sh" doctor >/dev/null || {
 # benchmarks, so drop that one warning by its message.
 export PYTHONWARNINGS="${PYTHONWARNINGS:+$PYTHONWARNINGS,}ignore:Benchmarks are automatically disabled"
 cmd=(uv run pytest src/barks-reader/tests/gui/ "${parallel[@]}" "$@")
-
-# The command as you would type it: only words with spaces get quotes.
-show_cmd() {
-    local word out=""
-    for word in "$@"; do
-        [[ "$word" == *" "* ]] && word="'$word'"
-        out+="$word "
-    done
-    echo "+ ${out% }"
-}
+# shellcheck source=scripts/_show_cmd.sh
+source "${SCRIPT_DIR}/_show_cmd.sh"
 if [[ -z "$quiet" ]]; then
     # Per-test lines and every duration: the durations say whether a boot-per-test
     # stays tolerable, so they are the point of a hands-on run.

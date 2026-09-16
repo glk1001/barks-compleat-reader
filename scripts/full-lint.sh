@@ -71,7 +71,7 @@ run_check "relative-import-check" bash scripts/check-relative-imports.sh
 run_check "kv-imports"            uv run scripts/check_kv_imports.py
 run_check "cspell"                bunx cspell --no-progress
 run_warn  "wiki story order"      uv run scripts/check_wiki_story_order.py --quiet
-run_check "benchmarks"            bash scripts/run_benchmark.sh
+run_check "benchmarks"            bash scripts/run_benchmark.sh --quiet
 if [[ "${WITH_GUI_TEST}" == "yes" ]]; then
   run_check "gui test"            bash scripts/run_gui_tests.sh --headless --quiet
 fi
