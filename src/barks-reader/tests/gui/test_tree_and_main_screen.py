@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from barks_gui import nodes
-from gui_driver import MENU_OPEN_PAUSE, MENU_STEP_PAUSE
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
@@ -45,12 +45,8 @@ def test_series_covers_expands_into_year_ranges(boot: AppBoot) -> None:
 def test_menu_mode_wraps_both_ways(boot: AppBoot) -> None:
     """The action-bar menu opens on Go Back and wraps at both ends."""
     d = boot(nodes.GHOST_OF_THE_GROTTO)
-    d.key_then_wait("Entered menu mode.", 15, "Escape")
-    d.hold(MENU_OPEN_PAUSE)
-    for step in ("Left", "Right"):
-        for _ in range(WRAP_STEPS):
-            d.key(step)
-            d.hold(MENU_STEP_PAUSE)
+    d.key_then_wait(d.MENU_ENTERED, 15, "Escape")
+    d.move_focus(*["Left"] * WRAP_STEPS, *["Right"] * WRAP_STEPS)
     d.key_then_wait("'Go back' menu item selected.", 15, "Return")
 
 
@@ -72,6 +68,9 @@ def test_collapse_button_shuts_the_whole_tree(boot: AppBoot) -> None:
 
 
 CHANGE_PICS_TRIES = 6
+# Up on the first node logs one line or the other, depending on the top image.
+ARROW_FOCUSED = "Entered top-view goto arrow focus."
+UP_OUTCOME = rf"{re.escape(ARROW_FOCUSED)}|Top-view goto arrow inactive"
 
 
 def test_up_on_the_first_node_reaches_the_top_goto_arrow(boot: AppBoot) -> None:
@@ -82,10 +81,9 @@ def test_up_on_the_first_node_reaches_the_top_goto_arrow(boot: AppBoot) -> None:
     """
     d = boot(nodes.INTRODUCTION)
     for _ in range(CHANGE_PICS_TRIES):
-        before = d.match_count("Entered top-view goto arrow focus.")
-        d.key("Up")
-        d.hold(MENU_STEP_PAUSE)
-        if d.match_count("Entered top-view goto arrow focus.") > before:
+        before = d.match_count(ARROW_FOCUSED)
+        d.key_then_wait(UP_OUTCOME, 15, "Up")
+        if d.match_count(ARROW_FOCUSED) > before:
             break
         d.main_menu_button("change_pics")
         d.settle()

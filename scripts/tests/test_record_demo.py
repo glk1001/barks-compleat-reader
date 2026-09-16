@@ -7,6 +7,7 @@ logic is covered in test_gui_driver.py.
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
@@ -146,6 +147,8 @@ def keys_of(
         moves = iter(["Chronological", record_demo.BROWSE_RANGE])
         with (
             patch.object(Driver, "key") as key,
+            patch.object(Driver, "key_then_wait", side_effect=lambda _p, _t, *k: key(*k)),
+            patch.object(Driver, "expect", return_value=nullcontext()),
             patch.object(Driver, "settle"),
             patch.object(Driver, "hold"),
             patch.object(Driver, "wait_title_fade"),

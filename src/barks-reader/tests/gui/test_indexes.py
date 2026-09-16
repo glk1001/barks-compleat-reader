@@ -9,7 +9,6 @@ from barks_gui import nodes
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
 
-PANEL_PAUSE = 0.4  # between a panel move (Right into items, Up to the bar) and the next key
 ITEMS_DOWN = 2
 INDEX_LETTERS = 3
 LETTERS = 26
@@ -24,11 +23,8 @@ def test_main_index_builds_and_opens_an_item(boot: AppBoot) -> None:
     d.wait_for("Populated index page for letter 'A'")
     d.key("Return")  # index nodes hand focus straight into their screen
     d.settle()
-    d.key("Right")  # alphabet panel -> items
-    d.hold(PANEL_PAUSE)
-    for _ in range(ITEMS_DOWN):
-        d.key("Down")
-        d.hold(PANEL_PAUSE)
+    d.move_focus("Right")  # alphabet panel -> items
+    d.move_focus(*["Down"] * ITEMS_DOWN)
     d.key_then_wait("Index item pressed:", 15, "Return")
 
 
@@ -67,16 +63,15 @@ def test_speech_index_prefix_bar_and_bubbles(boot: AppBoot) -> None:
     d = boot(nodes.SPEECH_INDEX)
     d.key("Return")
     d.settle()
-    d.key("Right")  # alphabet -> prefix bar
-    d.hold(PANEL_PAUSE)
-    d.key_then_wait("Pressed prefix button:", 15, "Return")  # selects it, enters the items
-    d.hold(PANEL_PAUSE)
-    d.key_then_wait("Handling index term:", 15, "Return")  # expands the term's titles
-    d.hold(PANEL_PAUSE)
-    d.key("Down")  # first title under the term
-    d.hold(PANEL_PAUSE)
-    d.key("Right")  # its speech button
-    d.hold(PANEL_PAUSE)
+    d.move_focus("Right")  # alphabet -> prefix bar
+    # Return selects the prefix and, a frame later, lands focus in its items.
+    with d.expect("Pressed prefix button:"), d.expect(d.FOCUS_MOVED):
+        d.key("Return")
+    # Return expands the term's titles and re-lands focus once they are in.
+    with d.expect("Handling index term:"), d.expect(d.FOCUS_MOVED):
+        d.key("Return")
+    d.move_focus("Down")  # first title under the term
+    d.move_focus("Right")  # its speech button
     d.key_then_wait('Show speech bubbles for: ".*" and index terms', 15, "Return")
     d.key("Escape")  # close the popup
     d.settle()
@@ -88,13 +83,11 @@ def test_names_and_locations_indexes_open_items(boot: AppBoot) -> None:
     d.key("Return")
     d.settle()
     d.key_then_wait("Populated index page for letter", 15, "Down")
-    d.key("Right")
-    d.hold(PANEL_PAUSE)
+    d.move_focus("Right")
     d.key_then_wait("Index item pressed:", 15, "Return")
     # Over to Locations through the tree. In the items panel Escape only goes back
     # to the letters; the second Escape leaves the index, and Down is the sibling.
-    d.key("Escape")
-    d.hold(PANEL_PAUSE)
+    d.move_focus("Escape")
     d.key_then_wait("Exited bottom focus region.", 15, "Escape")
     d.key_then_wait('New selected node: "Locations"', 15, "Down")
     d.key("Return")

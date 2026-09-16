@@ -28,7 +28,6 @@ WIKI_ENTERED = "Screen 'wiki_reader' entered."  # the transition has finished
 MAIN_FROM_WIKI = re.escape("Main screen is active (from wiki reader).")
 SHOWED_PAGE = "OKFViewer: Showed page"
 TOP_BAR = "OKFViewer: Focus region TOP_BAR."
-BAR_PAUSE = 0.5
 SIDEBAR_STEPS = 2
 # On the top bar Escape lands on Back; the goto-title button is this far right
 # (the bar runs Back, contrast, goto-title, quit).
@@ -85,9 +84,7 @@ def test_wiki_from_a_story_chip_sidebar_back_and_goto_title(wiki_boot: AppBoot) 
     """A story's wiki chip opens its page; the sidebar walks to another; Back; goto title."""
     d = wiki_boot(nodes.LOST_IN_THE_ANDES, cues=nodes.NO_CUES, ini=PREBUILT_COMICS)
     d.focus_portal()
-    for _ in range(UPS_TO_WIKI_CHIP):
-        d.key("Up")
-        d.hold(BAR_PAUSE)
+    d.move_focus(*["Up"] * UPS_TO_WIKI_CHIP)
     with (
         d.expect("Wiki page button pressed."),
         d.expect(WIKI_ACTIVE, 30),
@@ -97,9 +94,7 @@ def test_wiki_from_a_story_chip_sidebar_back_and_goto_title(wiki_boot: AppBoot) 
         d.key("Return")
 
     d.key_then_wait("OKFViewer: Focus region SIDEBAR.", 15, "Left")
-    for _ in range(SIDEBAR_STEPS):
-        d.key("Down")
-        d.hold(BAR_PAUSE)
+    d.move_focus(*["Down"] * SIDEBAR_STEPS, pattern=d.WIKI_FOCUS_MOVED)
     d.key_then_wait(SHOWED_PAGE, 30, "Return")  # the story picked out of the sidebar
     assert d.match_count(SHOWED_PAGE) >= TWO_PAGES
 
@@ -107,9 +102,7 @@ def test_wiki_from_a_story_chip_sidebar_back_and_goto_title(wiki_boot: AppBoot) 
     d.key_then_wait("OKFViewer: Back to '.*lost-in-the-andes.md'", 30, "Return")
 
     d.key_then_wait(TOP_BAR, 15, "Escape")
-    for _ in range(BAR_RIGHTS_TO_GOTO):
-        d.key("Right")
-        d.hold(BAR_PAUSE)
+    d.move_focus(*["Right"] * BAR_RIGHTS_TO_GOTO, pattern=d.WIKI_FOCUS_MOVED)
     with (
         d.expect(r'Wiki goto title: "[A-Z_]+"'),
         d.expect(MAIN_FROM_WIKI),

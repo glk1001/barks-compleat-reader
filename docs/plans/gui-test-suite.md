@@ -38,6 +38,15 @@
 >   wiki viewer opens its home page when there is no session (a fresh profile showed an
 >   empty pane). One unexplained flake remains on file: after the word-search bubble
 >   goto, a Return was once swallowed under four-way load and could not be reproduced
+> - Later still (2026-09-16): every fixed `hold()` pause in the suite went. The app now
+>   logs each keyboard focus move (`Nav focus on <widget>`, from `draw_focus_highlight`,
+>   with the wiki's `OKFViewer: Focus ring on` / `Sidebar focus on` counterparts), every
+>   dropdown dismissal (`Dropdown dismissed.`), the confirm popup closing, the search box
+>   taking the keyboard, the goto-page row toggling, and Up on the first node when the
+>   top arrow is inactive. `Driver.move_focus` steps and waits on those; the harness
+>   builds `Driver(paced=False)`, and the camera gaps apply only to the recorder's paced
+>   driver. `DROPDOWN_DISMISS_PAUSE` is gone. Headless four-way: 56 tests in ~2m50s over
+>   three consecutive green runs (was ~3m10s); wall time is bound by boot and teardown.
 >   by hand; the probe now timestamps every injected key (`input.log`, collected with
 >   failure artifacts) and the main screen logs a key it yields to a focused text
 >   field, so the next occurrence will say where the key went.

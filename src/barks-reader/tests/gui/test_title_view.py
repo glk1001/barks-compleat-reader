@@ -14,7 +14,6 @@ from barks_gui import nodes
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
 
-ROW_PAUSE = 0.3  # between an Up/Down along the ring and the next key
 ANDES_WITH_CUE = {nodes.LOST_IN_THE_ANDES_TITLE: nodes.LOST_IN_THE_ANDES_CUE}
 
 
@@ -34,8 +33,7 @@ def test_overrides_row_toggles(boot: AppBoot) -> None:
     """
     d = boot(nodes.THE_FIREBUG, cues=nodes.NO_CUES, ini={"use_prebuilt_comics": "0"})
     d.focus_portal()
-    d.key("Up")
-    d.hold(ROW_PAUSE)
+    d.move_focus("Up")
     d.key_then_wait("Use overrides checkbox changed: use_overrides = False", 15, "Return")
     d.key_then_wait("Use overrides checkbox changed: use_overrides = True", 15, "Return")
 
@@ -52,12 +50,9 @@ def test_unchecking_the_goto_page_row_opens_at_the_front(boot: AppBoot) -> None:
     """Up from the portal is the goto-page row; unchecked, the story opens at the front."""
     d = boot(nodes.LOST_IN_THE_ANDES, cues=ANDES_WITH_CUE)
     d.focus_portal()
-    d.key("Up")  # the goto-page row sits right above the portal
-    d.hold(ROW_PAUSE)
-    d.key("Return")  # uncheck it
-    d.hold(ROW_PAUSE)
-    d.key("Down")  # back to the portal
-    d.hold(ROW_PAUSE)
+    d.move_focus("Up")  # the goto-page row sits right above the portal
+    d.key_then_wait("Goto page checkbox toggled: active = False.", 15, "Return")
+    d.move_focus("Down")  # back to the portal
     d.key_then_wait("All images loaded", 30, "Return")
     d.wait_for("Showed page")
     assert d.current_page() < nodes.LOST_IN_THE_ANDES_PAGE

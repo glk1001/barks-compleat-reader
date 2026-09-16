@@ -39,20 +39,21 @@ CONFIG_DIR_ENV_VAR = "BARKS_READER_CONFIG_DIR"
 
 # ------------------------------------------------------------------ pacing --
 
-# Gaps between injected events. They read well on camera, but they are not only
+# Gaps between injected events. The tree walk and the typing gaps are not only
 # camera pacing: at full speed the app drops keys pressed while it is rendering,
-# so a driver that sends faster than this lands somewhere else.
+# so a driver that sends faster than this lands somewhere else. The menu and
+# page-list gaps are camera pacing alone: each of those moves is waited on
+# through the app's log (every focus move logs itself) and the gap is added
+# afterwards, only when the driver was built `paced` (the demo recorder).
 WALK_PAUSE = 0.45  # a single Down while walking the tree
 TYPE_PAUSE = 0.4  # a single character into a search box
 GOTO_LIST_DWELL = 1.5  # time the open page list stays up before stepping
 GOTO_STEP_PAUSE = 0.12  # a single step through the page list
+GOTO_PICK_PAUSE = 0.6  # on the chosen page entry, before picking it
 MENU_OPEN_PAUSE = 0.6  # after Escape opens an action-bar menu, before moving in it
 MENU_STEP_PAUSE = 0.4  # a single Left/Right along an action bar
-# After picking from a Kivy DropDown (goto page, the dots menu, word clouds).
-# The dropdown dismisses itself a frame or more later and, until it has, still
-# owns the window's keys and eats an Escape - with the dropdown's own handler
-# bound after the screen's, it runs first. Under load a frame can be long.
-DROPDOWN_DISMISS_PAUSE = 0.3
+BRANCH_OPEN_PAUSE = 0.4  # after a tree node expands, before moving on
+READER_CLOSED_PAUSE = 0.5  # after the reader closes, before leaving the bottom region
 # How long the app log must stay unchanged for settle() to call the app idle.
 SETTLE_QUIET_MS = 1000
 
@@ -153,12 +154,35 @@ class Driver:
     # each. Class-level defaults so a stub driver (no __init__) still has them.
     _menu_focus: str = _MENU_BUTTONS[0]
     _main_menu_focus: str = _MAIN_MENU_DEFAULT
+    _paced: bool = True
+
+    # Log lines the app writes for keyboard focus moves and dropdowns, which every
+    # menu walk and dropdown step here waits on (reader_keyboard_nav, okf trace).
+    FOCUS_MOVED = "Nav focus on"
+    # A ring on a bar button or result row, or the tree's selection band moving.
+    WIKI_FOCUS_MOVED = r"OKFViewer: (Focus ring on|Sidebar focus on)"
+    DROPDOWN_DISMISSED = "Dropdown dismissed."
+    MENU_ENTERED = "Entered menu mode."
 
     def __init__(
-        self, probe_script: Path = PROBE, *, settle_quiet_ms: int = SETTLE_QUIET_MS
+        self,
+        probe_script: Path = PROBE,
+        *,
+        settle_quiet_ms: int = SETTLE_QUIET_MS,
+        paced: bool = True,
     ) -> None:
+        """Attach to the running app through the probe.
+
+        Args:
+            probe_script: The gui-probe script to drive the app through.
+            settle_quiet_ms: How long the log must stay quiet for `settle`.
+            paced: Keep the camera gaps after each log-driven move (the demo
+                recorder). The GUI tests pass False and run on the log alone.
+
+        """
         self._probe = probe_script
         self._settle_quiet_ms = settle_quiet_ms
+        self._paced = paced
         self._log = Path(self._run(["log"]).strip())
         self._menu_focus = self._MENU_BUTTONS[0]
         self._main_menu_focus = self._MAIN_MENU_DEFAULT
@@ -215,6 +239,11 @@ class Driver:
         recording the wrong screen.
         """
         time.sleep(seconds)
+
+    def _pace(self, seconds: float) -> None:
+        """Dwell for the camera, when this driver is paced; nothing otherwise."""
+        if self._paced:
+            self.hold(seconds)
 
     def type_slowly(self, text: str) -> None:
         """Type into a focused text box one character at a time.
@@ -403,15 +432,38 @@ class Driver:
                 raise DriverError(msg)
             time.sleep(0.25)
 
+    def move_focus(self, *keys: str, pattern: str | None = None, timeout: float = 15) -> None:
+        """Press each key in turn, waiting for the focus ring to land after every one.
+
+        For moves within a screen - along an action bar, a tab row, a ring of
+        widgets, a dropdown's items - which the app marks by drawing the focus
+        ring on the new widget, and logs as it does. Waiting on that line is
+        what lets keys go out as fast as the app takes them.
+
+        Args:
+            keys: X11 key names, pressed one at a time.
+            pattern: The log line to wait for after each; the Barks Reader's
+                focus line by default, `WIKI_FOCUS_MOVED` inside the wiki.
+            timeout: Seconds to allow each move.
+
+        """
+        pattern = self.FOCUS_MOVED if pattern is None else pattern
+        for key in keys:
+            self.key_then_wait(pattern, timeout, key)
+
     # -- composite moves ----------------------------------------------------
 
     def open_branch(self, name: str) -> None:
-        """Walk down to a collapsed node and expand it."""
+        """Walk down to a collapsed node and expand it, and let its children lay out.
+
+        The expansion is logged before the new children have been drawn, and a
+        Down sent into that layout pass is swallowed, so this also waits for the
+        log to go quiet (under four parallel workers the pass can take a while).
+        """
         self.select_node(name)
-        self.hold(0.3)
-        self.key("Return")
+        self.key_then_wait(f"Node expanded: '{name}'", 15, "Return")
         self.settle()
-        self.hold(0.4)
+        self._pace(BRANCH_OPEN_PAUSE)
 
     def read_pages(self, pick: Pick) -> None:
         """Rest on the page the comic opened at, then turn through the rest.
@@ -468,12 +520,12 @@ class Driver:
         forward = (there - here) % count
         backward = (here - there) % count
 
-        self.key("Escape")  # menu mode
-        self.hold(MENU_OPEN_PAUSE)
+        self.key_then_wait(self.MENU_ENTERED, 15, "Escape")
+        self._pace(MENU_OPEN_PAUSE)
         step, presses = ("Right", forward) if forward <= backward else ("Left", backward)
         for _ in range(presses):
-            self.key(step)
-            self.hold(MENU_STEP_PAUSE)
+            self.move_focus(step)
+            self._pace(MENU_STEP_PAUSE)
 
     def main_menu_button(self, name: str) -> None:
         """Open the main screen's action-bar menu and activate one button by name.
@@ -492,6 +544,19 @@ class Driver:
         self._walk_bar_to(self._MAIN_MENU_BUTTONS, self._main_menu_focus, name)
         self._main_menu_focus = name
         self.key("Return")
+
+    def main_menu_button_then_wait(self, name: str, pattern: str, timeout: float = 15) -> None:
+        """Activate a main-screen button and wait for a NEW `pattern` from the press itself.
+
+        For a button whose effect logs a line the walk to it also logs - the dots
+        menu, whose opening lands the focus ring on its first entry just as each
+        step of the walk landed it on a bar button. Counting from after the walk
+        keeps the wait on the press.
+        """
+        self._walk_bar_to(self._MAIN_MENU_BUTTONS, self._main_menu_focus, name)
+        self._main_menu_focus = name
+        with self.expect(pattern, timeout):
+            self.key("Return")
 
     def press_menu_button(self, name: str) -> None:
         """Open the reader's action-bar menu and activate one button by name.
@@ -542,19 +607,23 @@ class Driver:
 
         """
         current = self.current_page()
-        self.press_menu_button("goto_page")  # opens the page list
-        self.settle()
-        self.hold(GOTO_LIST_DWELL)
+        self._walk_menu_to("goto_page")
+        # Opening the list puts the focus ring on the current page's entry.
+        with self.expect("Goto page dropdown opened."), self.expect(self.FOCUS_MOVED):
+            self.key("Return")
+        self._pace(GOTO_LIST_DWELL)
         step = "Down" if target > current else "Up"
         for _ in range(abs(target - current)):
-            self.key(step)
-            self.hold(GOTO_STEP_PAUSE)
-        self.hold(0.6)
+            self.move_focus(step)
+            self._pace(GOTO_STEP_PAUSE)
+        self._pace(GOTO_PICK_PAUSE)
         # Anchored on the log line's next word: a bare "Showed page 3" is a prefix
         # of "Showed page 34", so a dropped key landing anywhere in the thirties
-        # would have passed for page 3.
-        self.key_then_wait(f"Showed page {target} in ", 15, "Return")
-        self.hold(DROPDOWN_DISMISS_PAUSE)
+        # would have passed for page 3. The dropdown dismisses itself a frame or
+        # more after the pick and owns the window's keys until it has, so the
+        # next key is held back until it says so.
+        with self.expect(f"Showed page {target} in "), self.expect(self.DROPDOWN_DISMISSED):
+            self.key("Return")
 
     def focus_portal(self) -> None:
         """Put nav focus on the selected title's read portal, once its view has faded in.
@@ -583,11 +652,10 @@ class Driver:
         self.open_selected_story()
         self.read_pages(pick)
         self.close_reader()
-        self.hold(0.5)
+        self._pace(READER_CLOSED_PAUSE)
         # Closing the reader leaves focus in the bottom region, where Down does
         # nothing to the tree. Escape hands it back (main_screen_nav:243).
-        self.key("Escape")
-        self.settle()
+        self.key_then_wait("Exited bottom focus region.", 15, "Escape")
 
 
 def boot_app_at(

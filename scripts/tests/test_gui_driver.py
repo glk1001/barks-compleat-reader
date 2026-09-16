@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from contextlib import nullcontext
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -99,6 +100,7 @@ class TestPressMenuButton:
     def _presses(driver: Driver, name: str, keys_pressed: KeysPressed) -> list[str]:
         with (
             patch.object(Driver, "key") as key,
+            patch.object(Driver, "key_then_wait", side_effect=lambda _p, _t, *k: key(*k)),
             patch.object(Driver, "hold"),
         ):
             driver.press_menu_button(name)
@@ -153,6 +155,7 @@ class TestMainMenuButton:
     def _presses(driver: Driver, name: str, keys_pressed: KeysPressed) -> list[str]:
         with (
             patch.object(Driver, "key") as key,
+            patch.object(Driver, "key_then_wait", side_effect=lambda _p, _t, *k: key(*k)),
             patch.object(Driver, "hold"),
         ):
             driver.main_menu_button(name)
@@ -208,11 +211,11 @@ class TestCloseReader:
         stub_driver._menu_focus = "goto_page"  # noqa: SLF001
         with (
             patch.object(Driver, "key") as key,
-            patch.object(Driver, "key_then_wait") as wait,
+            patch.object(Driver, "key_then_wait", side_effect=lambda _p, _t, *k: key(*k)) as wait,
             patch.object(Driver, "hold"),
         ):
             stub_driver.close_reader()
-        assert keys_pressed(key) == ["Escape", "Right"]
+        assert keys_pressed(key) == ["Escape", "Right", "Return"]
         assert wait.call_args.args == ("Main screen is active", 15, "Return")
         assert stub_driver._menu_focus == "close"  # noqa: SLF001
 
@@ -224,43 +227,46 @@ class TestGotoPage:
     def _steps(driver: Driver, target: int, current: int, keys_pressed: KeysPressed) -> list[str]:
         with (
             patch.object(Driver, "key") as key,
-            patch.object(Driver, "key_then_wait"),
-            patch.object(Driver, "settle"),
+            patch.object(Driver, "key_then_wait", side_effect=lambda _p, _t, *k: key(*k)),
+            patch.object(Driver, "expect", return_value=nullcontext()),
             patch.object(Driver, "hold"),
             patch.object(Driver, "current_page", return_value=current),
         ):
             driver.goto_page(target)
         pressed = keys_pressed(key)
-        return pressed[2:]  # past the Escape and Left that open the page list
+        return pressed[2:]  # past the Escape and Left that walk to the goto button
 
     def test_steps_down_to_a_later_page(
         self, stub_driver: Driver, keys_pressed: KeysPressed
     ) -> None:
         steps = self._steps(stub_driver, 18, 4, keys_pressed)
-        assert steps == ["Return", *["Down"] * 14]
+        assert steps == ["Return", *["Down"] * 14, "Return"]  # open, step, pick
 
     def test_steps_up_to_an_earlier_page(
         self, stub_driver: Driver, keys_pressed: KeysPressed
     ) -> None:
         steps = self._steps(stub_driver, 2, 5, keys_pressed)
-        assert steps == ["Return", *["Up"] * 3]
+        assert steps == ["Return", *["Up"] * 3, "Return"]
 
     def test_no_steps_when_already_there(
         self, stub_driver: Driver, keys_pressed: KeysPressed
     ) -> None:
-        assert self._steps(stub_driver, 7, 7, keys_pressed) == ["Return"]
+        assert self._steps(stub_driver, 7, 7, keys_pressed) == ["Return", "Return"]  # open, pick
 
     def test_waits_for_the_page_it_asked_for(self, stub_driver: Driver) -> None:
         with (
             patch.object(Driver, "key"),
-            patch.object(Driver, "key_then_wait") as wait,
-            patch.object(Driver, "settle"),
+            patch.object(Driver, "key_then_wait"),
+            patch.object(Driver, "expect", return_value=nullcontext()) as expect,
             patch.object(Driver, "hold"),
             patch.object(Driver, "current_page", return_value=4),
         ):
             stub_driver.goto_page(18)
+        waited_on = [call.args[0] for call in expect.call_args_list]
         # Anchored past the number: "Showed page 3" is a prefix of "Showed page 34".
-        assert wait.call_args.args[0] == "Showed page 18 in "
+        assert "Showed page 18 in " in waited_on
+        # The pick's Return is held until the dropdown has let go of the keys.
+        assert waited_on[-1] == Driver.DROPDOWN_DISMISSED
 
     def test_reads_where_it_is_rather_than_being_told(
         self, stub_driver: Driver, keys_pressed: KeysPressed
@@ -268,18 +274,14 @@ class TestGotoPage:
         """The reader opens on whatever page the user cued, so it has to look."""
         with (
             patch.object(Driver, "key") as key,
-            patch.object(Driver, "key_then_wait"),
-            patch.object(Driver, "settle"),
+            patch.object(Driver, "key_then_wait", side_effect=lambda _p, _t, *k: key(*k)),
+            patch.object(Driver, "expect", return_value=nullcontext()),
             patch.object(Driver, "hold"),
             patch.object(Driver, "current_page", return_value=29) as where,
         ):
             stub_driver.goto_page(31)
         where.assert_called_once()
-        assert keys_pressed(key)[2:] == [
-            "Return",
-            "Down",
-            "Down",
-        ]
+        assert keys_pressed(key)[2:] == ["Return", "Down", "Down", "Return"]
 
 
 class TestExpect:
@@ -517,9 +519,7 @@ class TestOpenStory:
         order: list[str] = []
         with (
             patch.object(Driver, "wait_title_fade", side_effect=lambda: order.append("fade")),
-            patch.object(
-                Driver, "key_then_wait", side_effect=lambda p, _t, *_k: order.append(p[:24])
-            ),
+            patch.object(Driver, "key_then_wait", side_effect=lambda p, _t, *_k: order.append(p)),
             patch.object(Driver, "read_pages"),
             patch.object(Driver, "close_reader"),
             patch.object(Driver, "hold"),
@@ -527,4 +527,56 @@ class TestOpenStory:
             patch.object(Driver, "settle"),
         ):
             stub_driver.open_story(Pick("X", pages=1, dwell=0))
-        assert order == ["fade", "BottomTitleViewScreen: e", "All images loaded"]
+        assert order == [
+            "fade",
+            Driver.ENTERED_AT_PORTAL,
+            "All images loaded",
+            "Exited bottom focus region.",
+        ]
+
+
+class TestMoveFocus:
+    """Every step within a screen waits for the focus ring to land, not for the clock."""
+
+    def test_each_key_waits_for_the_focus_line(self, stub_driver: Driver) -> None:
+        with patch.object(Driver, "key_then_wait") as wait:
+            stub_driver.move_focus("Right", "Right", "Down")
+        assert [c.args for c in wait.call_args_list] == [
+            (Driver.FOCUS_MOVED, 15, "Right"),
+            (Driver.FOCUS_MOVED, 15, "Right"),
+            (Driver.FOCUS_MOVED, 15, "Down"),
+        ]
+
+    def test_the_wiki_has_its_own_focus_line(self, stub_driver: Driver) -> None:
+        with patch.object(Driver, "key_then_wait") as wait:
+            stub_driver.move_focus("Down", pattern=Driver.WIKI_FOCUS_MOVED, timeout=5)
+        assert wait.call_args.args == (Driver.WIKI_FOCUS_MOVED, 5, "Down")
+
+
+class TestPacing:
+    """Camera gaps apply only to a paced driver; the tests' driver runs on the log alone."""
+
+    def test_a_paced_driver_holds(self, stub_driver: Driver) -> None:
+        with patch.object(Driver, "hold") as hold:
+            stub_driver._pace(0.4)  # noqa: SLF001
+        hold.assert_called_once_with(0.4)
+
+    def test_a_driver_that_is_not_paced_does_not(self, stub_driver: Driver) -> None:
+        stub_driver._paced = False  # noqa: SLF001
+        with patch.object(Driver, "hold") as hold:
+            stub_driver._pace(0.4)  # noqa: SLF001
+        hold.assert_not_called()
+
+    def test_a_menu_walk_waits_on_menu_mode_then_each_focus(self, stub_driver: Driver) -> None:
+        stub_driver._paced = False  # noqa: SLF001
+        with (
+            patch.object(Driver, "key_then_wait") as wait,
+            patch.object(Driver, "hold") as hold,
+        ):
+            stub_driver._walk_menu_to("double_page")  # noqa: SLF001
+        assert [c.args for c in wait.call_args_list] == [
+            (Driver.MENU_ENTERED, 15, "Escape"),
+            (Driver.FOCUS_MOVED, 15, "Right"),
+            (Driver.FOCUS_MOVED, 15, "Right"),
+        ]
+        hold.assert_not_called()

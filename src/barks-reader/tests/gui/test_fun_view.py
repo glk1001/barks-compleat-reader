@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
     from gui_driver import Driver
 
-FUN_PAUSE = 0.4
 A_TITLED_IMAGE = r'Set fun view title to "[^"]+"'
 CHANGE_PICS_TRIES = 6
 
@@ -50,9 +49,12 @@ def test_left_and_right_step_through_shown_images(boot: AppBoot) -> None:
 def test_options_menu_opens_and_escape_closes_it(boot: AppBoot) -> None:
     d = boot(nodes.THE_STORIES)
     d.key_then_wait("Entered bottom focus region.", 15, "Right")
-    d.key_then_wait("Fun view options button pressed. New state is 'True'", 15, "Return")
-    d.settle()
-    d.hold(FUN_PAUSE)  # let the menu lay out before it can take a key
+    # Opening the menu moves the focus ring into it; only then can it take a key.
+    with (
+        d.expect("Fun view options button pressed. New state is 'True'"),
+        d.expect(d.FOCUS_MOVED),
+    ):
+        d.key("Return")
     d.key_then_wait("Fun view options button pressed. New state is 'False'", 15, "Escape")
 
 
@@ -60,7 +62,6 @@ def test_goto_arrow_jumps_to_the_pictured_story(boot: AppBoot) -> None:
     d = boot(nodes.THE_STORIES)
     _change_pics_until_a_story_image(d)
     d.key_then_wait("Entered bottom focus region.", 15, "Right")
-    d.key("Down")  # the goto arrow, active for a story image
-    d.hold(FUN_PAUSE)
+    d.move_focus("Down")  # the goto arrow, active for a story image
     with d.expect("Goto title:"), d.expect("Entered bottom focus region at the title portal."):
         d.key("Return")

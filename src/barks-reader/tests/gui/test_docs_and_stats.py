@@ -6,13 +6,10 @@ import re
 from typing import TYPE_CHECKING
 
 from barks_gui import nodes
-from gui_driver import DROPDOWN_DISMISS_PAUSE
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
     from gui_driver import Driver
-
-TAB_PAUSE = 0.4
 
 
 def test_statistics_tabs_and_the_word_dropdown(boot: AppBoot) -> None:
@@ -23,21 +20,20 @@ def test_statistics_tabs_and_the_word_dropdown(boot: AppBoot) -> None:
     """
     d = boot(nodes.STATISTICS)
     d.key_then_wait("StatisticsScreen: entered nav focus.", 15, "Right")
-    d.key("Right")  # second tab
-    d.hold(TAB_PAUSE)
+    d.move_focus("Right")  # second tab
     d.key_then_wait("Statistics: loading image", 15, "Return")
-    d.key("Left")  # back to the first
-    d.hold(TAB_PAUSE)
+    d.move_focus("Left")  # back to the first
     d.key_then_wait("Statistics: loading image", 15, "Return")
-    d.key("Left")  # wraps to the last tab, Word Statistics
-    d.hold(TAB_PAUSE)
+    d.move_focus("Left")  # wraps to the last tab, Word Statistics
     d.key_then_wait("StatisticsScreen: entered dropdown nav.", 15, "Return")
-    d.key("Down")
-    d.hold(TAB_PAUSE)
-    with d.expect("StatisticsScreen: exited dropdown nav."), d.expect("Statistics: loading image"):
+    d.move_focus("Down")
+    # The dropdown still eats keys until it has dismissed itself, so wait for that too.
+    with (
+        d.expect("StatisticsScreen: exited dropdown nav."),
+        d.expect("Statistics: loading image"),
+        d.expect(d.DROPDOWN_DISMISSED),
+    ):
         d.key("Return")
-    d.settle()
-    d.hold(DROPDOWN_DISMISS_PAUSE)  # the word-cloud dropdown still eats keys while dismissing
     d.key_then_wait("StatisticsScreen: exited nav focus.", 15, "Escape")
 
 
@@ -50,7 +46,6 @@ def test_an_article_opens_in_the_comic_reader(boot: AppBoot) -> None:
     d.close_reader()
 
 
-PAGE_PAUSE = 0.4
 # Parentheses in a log line must be escaped: wait patterns are regexes.
 MAIN_FROM_DOCUMENT = re.escape("Main screen is active (from document reader).")
 MAIN_FROM_NUMBERS = re.escape("Main screen is active (from By the Numbers).")
@@ -72,8 +67,7 @@ def _open_document(d: Driver, name: str) -> None:
 
 def _close_document(d: Driver) -> None:
     """Escape opens the document reader's menu on Close; Return presses it."""
-    d.key_then_wait("Entered menu mode.", 15, "Escape")
-    d.hold(PAGE_PAUSE)
+    d.key_then_wait(d.MENU_ENTERED, 15, "Escape")
     with d.expect("Document reader closing."), d.expect(MAIN_FROM_DOCUMENT):
         d.key("Return")
 
@@ -110,7 +104,6 @@ def test_by_the_numbers_opens_and_closes_two_ways(boot: AppBoot) -> None:
 
     with d.expect("CorpusStats: opened."), d.expect(NUMBERS_ENTERED):
         d.key("Return")  # the node is still selected
-    d.key_then_wait("Entered menu mode.", 15, "Up")
-    d.hold(PAGE_PAUSE)
+    d.key_then_wait(d.MENU_ENTERED, 15, "Up")
     with d.expect("CorpusStats: closing."), d.expect(MAIN_FROM_NUMBERS):
         d.key("Return")

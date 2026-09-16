@@ -231,7 +231,8 @@ class AppBoot:
         os.environ[PROBE_KEY_GAP_ENV_VAR] = str(KEY_GAP_SECS)
         self._started = True
         gd.boot_app_at(node, config_dir=self.scratch, seed=SEED, cues=cues)
-        self.driver = gd.Driver(settle_quiet_ms=SETTLE_QUIET_MS)
+        # Not paced: every move waits on the app's log, none on the camera clock.
+        self.driver = gd.Driver(settle_quiet_ms=SETTLE_QUIET_MS, paced=False)
         self.geometry = self.driver.window_geometry()
         return self.driver
 

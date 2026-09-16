@@ -62,7 +62,6 @@ def test_word_search_bubble_opens_the_story_at_its_page(boot: AppBoot) -> None:
 
 NO_MATCH_QUERY = "zzzz"
 CLEAR_QUERY = "vac"
-CLEAR_PAUSE = 0.4
 
 
 def test_a_query_with_no_matches_reports_zero_results(boot: AppBoot) -> None:
@@ -79,21 +78,17 @@ def test_the_clear_button_empties_the_search(boot: AppBoot) -> None:
     """
     d = boot(nodes.TITLE_SEARCH)
     search.type_query(d, CLEAR_QUERY)
-    d.key("Return")  # the first result row
-    d.hold(CLEAR_PAUSE)
-    d.key("Left")  # the clear (x) button
-    d.hold(CLEAR_PAUSE)
+    d.key_then_wait(d.FOCUS_MOVED, 15, "Return")  # the first result row
+    d.move_focus("Left")  # the clear (x) button
     d.key_then_wait("Search cleared: title.", 15, "Return")
 
 
 TAG_QUERY = "scrooge"
-CHIP_PAUSE = 0.5
 
 
 def test_tag_search_by_keyboard_picks_a_tag_then_a_member(boot: AppBoot) -> None:
     """Return in the box lands on the first chip; Return there selects it and shows its members."""
     d = boot(nodes.TAG_SEARCH)
     search.type_query(d, TAG_QUERY)
-    d.key("Return")  # the chips
-    d.hold(CHIP_PAUSE)
+    d.key_then_wait(d.FOCUS_MOVED, 15, "Return")  # the chips
     d.key_then_wait(r"Tag search: selected (tag|member)", 15, "Return")

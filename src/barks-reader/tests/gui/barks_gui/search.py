@@ -20,7 +20,8 @@ from gui_driver import Driver
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
 
-SEARCH_BOX_PAUSE = 0.6  # after Return focuses the search box, before typing
+# The box takes the keyboard a moment after Return asks for it, and logs when it has.
+SEARCH_BOX_FOCUSED = r"SearchScreen: \w+ search box focused\."
 
 # Title results: one row per match, top row first.
 TITLE_RESULT_X = 450
@@ -38,9 +39,7 @@ WORD_BUBBLE_Y = 843
 
 def type_query(d: Driver, query: str) -> None:
     """Focus the search box from the tree node and type a query into it."""
-    d.key("Return")
-    d.settle()
-    d.hold(SEARCH_BOX_PAUSE)
+    d.key_then_wait(SEARCH_BOX_FOCUSED, 15, "Return")
     d.type_slowly(query)
     d.settle()
 
