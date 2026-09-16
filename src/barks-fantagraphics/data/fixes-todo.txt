@@ -5,10 +5,16 @@ Vol 27, 146 remove indicia
 Vol 25, 138 remove indicia
 Vol 25, 124 remove indicia
 
+Vol 18, 036, panel 7 Colorist error: should be blue cap
+Vol 18, 035, panel 7 Colorist error: should be blue cap
+Vol 17, 148, panel 3 Colorist error: swap red and green
+Vol 17, 122, panel 1 blue cap should be red
 Vol 17, 103, is Bernie tagged?
 Vol 17, 083, blue uniform in front of Johnny
 Vol 17, 083, panel 2 blue head
 Vol 17, 069, panel 3 two red caps
+Vol 16, 070+, maybe add pound symbols?
+Vol 16, 017, panel 8 Colorist error: should be red cap
 Vol 15, 192, panel 1 num error
 Vol 15, 186, panel 1: Colorist error: should be red cap
 Vol 15, 142, panel 2 '!'
