@@ -48,9 +48,10 @@ bash scripts/pyrefly.sh --update-baseline  # refresh grandfathered findings
 bunx cspell
 ```
 
-**Run all lint/static checks plus benchmarks (ruff check+format, ty, pyrefly, import-linter, relative imports, cspell, benchmark compare):**
+**Run all lint/static checks plus benchmarks (ruff check+format, ty, pyrefly, import-linter, relative imports, cspell, benchmark compare; add `--with-gui-test` to also run the GUI path tests headless, quietly):**
 ```bash
 bash scripts/full-lint.sh
+bash scripts/full-lint.sh --with-gui-test
 ```
 
 **Check only uncommitted files (ruff/ty/cspell):**

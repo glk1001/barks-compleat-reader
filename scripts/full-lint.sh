@@ -22,6 +22,11 @@ if [[ ! -f src/barks-reader/src/barks_reader/_version.py ]]; then
     exit 1
 fi
 
+if [[ "${1:-}" != "--with-gui-test" ]]; then
+  declare -r WITH_GUI_TEST=""
+else
+  declare -r WITH_GUI_TEST="yes"
+fi
 declare -a failed=()
 declare -a warned=()
 
@@ -67,6 +72,9 @@ run_check "kv-imports"            uv run scripts/check_kv_imports.py
 run_check "cspell"                bunx cspell --no-progress
 run_warn  "wiki story order"      uv run scripts/check_wiki_story_order.py --quiet
 run_check "benchmarks"            bash scripts/run_benchmark.sh
+if [[ "${WITH_GUI_TEST}" == "yes" ]]; then
+  run_check "gui test"            bash scripts/run_gui_tests.sh --headless --quiet
+fi
 
 echo
 echo "===================="
