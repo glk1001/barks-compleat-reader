@@ -44,10 +44,14 @@ echo "Comparing against baseline: ${compare_name}"
 # A benchmark must never run under parallel workers, and with pytest-xdist
 # merely installed its plugin makes pytest-benchmark warn on every run: keep
 # it out of this session altogether.
+# Rows within a table are sorted by name, not (the default) by the fastest
+# minimum, so the baseline is always the top row and NOW the bottom one; by
+# minimum the two swapped places depending on which run happened to win.
 cmd=(
     uv run pytest src/barks-reader/tests/benchmarks/ -p no:xdist
     --benchmark-compare="${compare_name}"
     --benchmark-compare-fail=median:20%
+    --benchmark-sort=name
     "$@"
 )
 if [[ -z "$quiet" ]]; then
