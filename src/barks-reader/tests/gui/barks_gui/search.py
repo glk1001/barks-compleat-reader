@@ -15,10 +15,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from barks_gui.harness import require_geometry
+from gui_driver import Driver
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
-    from gui_driver import Driver
 
 SEARCH_BOX_PAUSE = 0.6  # after Return focuses the search box, before typing
 
@@ -46,10 +46,16 @@ def type_query(d: Driver, query: str) -> None:
 
 
 def click_title_result(boot: AppBoot, d: Driver, row: int, title_enum: str) -> None:
-    """Click title-result `row` (counting from 1) and wait for the goto to that title."""
+    """Click title-result `row` (counting from 1) and wait for the goto to that title.
+
+    Returns once the title view's fade has started, so a `wait_title_fade`
+    after this waits on the fade the click caused and not on an earlier one
+    already finished in the log.
+    """
     require_geometry(boot)
     y = TITLE_RESULT_TOP_Y + (row - 1) * TITLE_RESULT_ROW_H
-    d.click_then_wait(f'Goto title: "{title_enum}"', 15, TITLE_RESULT_X, y)
+    with d.expect(Driver.FADE_STARTED, 15):
+        d.click_then_wait(f'Goto title: "{title_enum}"', 15, TITLE_RESULT_X, y)
 
 
 def click_word_balloon(boot: AppBoot, d: Driver, row: int, title: str) -> None:
@@ -60,6 +66,11 @@ def click_word_balloon(boot: AppBoot, d: Driver, row: int, title: str) -> None:
 
 
 def click_first_bubble(boot: AppBoot, d: Driver, title: str) -> None:
-    """Click the first bubble in the popup and wait for the goto it triggers."""
+    """Click the first bubble in the popup and wait for the goto it triggers.
+
+    The bubble press is logged some 250ms before the story's title view starts
+    to fade in, so this also waits for that start (see `click_title_result`).
+    """
     require_geometry(boot)
-    d.click_then_wait(f'Word search bubble press: "{title}"', 15, WORD_BUBBLE_X, WORD_BUBBLE_Y)
+    with d.expect(Driver.FADE_STARTED, 15):
+        d.click_then_wait(f'Word search bubble press: "{title}"', 15, WORD_BUBBLE_X, WORD_BUBBLE_Y)

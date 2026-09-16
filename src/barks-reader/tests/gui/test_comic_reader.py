@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from barks_gui import nodes, reader, tree
+from barks_gui import nodes, tree
 from gui_driver import Pick
 
 if TYPE_CHECKING:
@@ -22,7 +22,7 @@ READ = Pick(pages=2, dwell=0.0)
 
 def _open_ghost_of_the_grotto(boot: AppBoot) -> Driver:
     d = boot(nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)
-    reader.open_selected_story(d)
+    d.open_selected_story()
     d.wait_for("Showed page")
     return d
 
@@ -45,7 +45,7 @@ def test_series_story_goto_page_and_double_page(boot: AppBoot) -> None:
     d.select_node("Donald Duck Adventures")
     d.open_branch("Donald Duck Adventures")
     d.select_node(nodes.LOST_IN_THE_ANDES[0])
-    reader.open_selected_story(d)
+    d.open_selected_story()
     d.read_pages(READ)
 
     with d.expect("Goto page dropdown opened."), d.expect("Goto page selected:"):
@@ -73,7 +73,7 @@ def test_one_pagers_ignore_double_page(boot: AppBoot) -> None:
     d.key_then_wait(r'New selected node: "19\d\d-19\d\d"', 15, "Down")
     d.key_then_wait("Node expanded:", 15, "Return")
     d.key_then_wait("New selected node", 15, "Down")  # the range's first one-pager
-    reader.open_selected_story(d)
+    d.open_selected_story()
     with d.expect("Double page toggle ignored: single-page collection."):
         d.press_menu_button("double_page")
     d.expect_no_new("Showed page", 1.0)

@@ -56,6 +56,7 @@ MAIN_FROM_DOCUMENT = re.escape("Main screen is active (from document reader).")
 MAIN_FROM_NUMBERS = re.escape("Main screen is active (from By the Numbers).")
 DOCUMENT_ENTERED = "Screen 'document_reader' entered."
 NUMBERS_ENTERED = "Screen 'corpus_stats' entered."
+MAIN_ENTERED = "Screen 'main_screen' entered."
 
 
 def _open_document(d: Driver, name: str) -> None:
@@ -101,9 +102,11 @@ def test_by_the_numbers_opens_and_closes_two_ways(boot: AppBoot) -> None:
         d.expect(NUMBERS_ENTERED),
     ):
         d.key("Return")
-    with d.expect("CorpusStats: closing."), d.expect(MAIN_FROM_NUMBERS):
+    # MAIN_FROM_NUMBERS is logged as the transition starts; the main screen's
+    # entered line, once it ends. That line is already in the log from boot, so
+    # only a NEW one counts - the plain wait_for would return at once.
+    with d.expect("CorpusStats: closing."), d.expect(MAIN_FROM_NUMBERS), d.expect(MAIN_ENTERED):
         d.key("Escape")
-    d.wait_for("Screen 'main_screen' entered.")
 
     with d.expect("CorpusStats: opened."), d.expect(NUMBERS_ENTERED):
         d.key("Return")  # the node is still selected

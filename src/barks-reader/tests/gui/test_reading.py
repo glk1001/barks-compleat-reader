@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from barks_gui import nodes, reader
+from barks_gui import nodes
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
@@ -39,5 +39,5 @@ def test_a_character_pick_opens_a_story(boot: AppBoot) -> None:
     d.select_node("With Scrooge")
     d.key_then_wait(f"Repopulated 'With Scrooge' with {RANDOM_PICKS} children.", 15, "Return")
     d.key_then_wait("New selected node", 15, "Down")  # the first of the five
-    reader.open_selected_story(d)
+    d.open_selected_story()
     d.close_reader()

@@ -1,6 +1,10 @@
 """The Carl Barks Wiki: opened from its node and from a story's chip, browsed, left.
 
-Skipped when the profile has no wiki bundle configured. The wiki viewer logs
+Skipped when the profile points at no live wiki bundle. With the live bundle
+off the app reads the copy under its Reader Files folder, which the harness
+cannot see from the ini, so the tests run and fail if it is missing (the wiki
+node is then absent) - a data gap to fix, not a reason to test less. The
+wiki viewer logs
 through Kivy's logger, so its lines carry a ``kivy:`` prefix in the app log;
 the patterns below are substrings of them.
 """
@@ -8,6 +12,7 @@ the patterns below are substrings of them.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -29,15 +34,29 @@ SIDEBAR_STEPS = 2
 # (the bar runs Back, contrast, goto-title, quit).
 BAR_RIGHTS_TO_GOTO = 2
 # Up from the read portal, with no cue and prebuilt comics (no goto-page row,
-# no overrides row), is the wiki chip.
+# no overrides row), is the wiki chip. The chip test pins use_prebuilt_comics
+# for that: Lost in the Andes has an optional override, and with the volumes
+# in use the overrides row would sit between the portal and the chip.
 UPS_TO_WIKI_CHIP = 1
+PREBUILT_COMICS = {"use_prebuilt_comics": "1"}
+# What the app writes for an unset wiki directory (reader_settings
+# UNSET_WIKI_BUNDLE_DIR_MARKER); the key is never empty in an app-written ini.
+UNSET_WIKI_DIR = "<Carl Barks Wiki Not Set>"
 TWO_PAGES = 2
 
 
 @pytest.fixture
 def wiki_boot(boot: AppBoot) -> AppBoot:
-    if not harness.read_ini_value(boot.scratch / "barks-reader.ini", "wiki_bundle_dir").strip():
-        pytest.skip("no wiki bundle configured in the profile")
+    """Return the boot, or skip when the profile's live wiki setting points at no bundle."""
+    ini = boot.scratch / "barks-reader.ini"
+    if harness.read_ini_value(ini, "use_live_wiki_bundle").strip() != "0":
+        # The app accepts the marker, a bundle root (its index.md is the gate),
+        # or, when not set, anything at all - the latter two are checked below.
+        wiki_dir = harness.read_ini_value(ini, "wiki_bundle_dir").strip()
+        if wiki_dir in {"", UNSET_WIKI_DIR}:
+            pytest.skip("no live wiki bundle configured in the profile")
+        if not (Path(wiki_dir).expanduser() / "index.md").is_file():
+            pytest.skip(f"the profile's wiki directory is not a bundle: {wiki_dir}")
     return boot
 
 
@@ -64,9 +83,8 @@ def test_wiki_opens_from_its_node_and_back_leaves_it(wiki_boot: AppBoot) -> None
 
 def test_wiki_from_a_story_chip_sidebar_back_and_goto_title(wiki_boot: AppBoot) -> None:
     """A story's wiki chip opens its page; the sidebar walks to another; Back; goto title."""
-    d = wiki_boot(nodes.LOST_IN_THE_ANDES, cues=nodes.NO_CUES)
-    d.wait_title_fade()
-    d.key_then_wait("BottomTitleViewScreen: entered nav focus at portal.", 15, "Return")
+    d = wiki_boot(nodes.LOST_IN_THE_ANDES, cues=nodes.NO_CUES, ini=PREBUILT_COMICS)
+    d.focus_portal()
     for _ in range(UPS_TO_WIKI_CHIP):
         d.key("Up")
         d.hold(BAR_PAUSE)

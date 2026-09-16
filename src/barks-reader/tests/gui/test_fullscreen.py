@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from barks_gui import nodes, reader
+from barks_gui import nodes
 
 if TYPE_CHECKING:
     from barks_gui.harness import AppBoot
@@ -18,7 +18,7 @@ FULLSCREEN_TIMEOUT = 20
 
 def test_reader_fullscreen_round_trip(boot: AppBoot) -> None:
     d = boot(nodes.GHOST_OF_THE_GROTTO, cues=nodes.NO_CUES)
-    reader.open_selected_story(d)
+    d.open_selected_story()
     before = d.window_geometry()
     with d.expect("Entered fullscreen mode on ComicBookReaderScreen.", FULLSCREEN_TIMEOUT):
         d.press_menu_button("fullscreen")

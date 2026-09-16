@@ -350,8 +350,10 @@ class Driver:
         The panel fades in over a random 0-4s and the app logs both ends, so
         this waits on the log rather than the worst case. Only the latest fade
         counts: walking the tree starts a fade per title and each is superseded
-        by the next, and a superseded fade never logs a finish. Safe whether the
-        latest fade is still running, already over, or there has been none.
+        by the next, and a superseded fade never logs a finish. Returns at
+        once when the latest fade is already over, and blocks while it runs -
+        or until one has started at all, so a caller that has just triggered a
+        fade may call this before its start line has landed.
 
         Raises:
             DriverError: If the latest fade has not finished within `timeout`.
@@ -554,18 +556,31 @@ class Driver:
         self.key_then_wait(f"Showed page {target} in ", 15, "Return")
         self.hold(DROPDOWN_DISMISS_PAUSE)
 
-    def open_story(self, pick: Pick) -> None:
-        """Open the selected title, read `pick.pages` pages, and return to the tree.
+    def focus_portal(self) -> None:
+        """Put nav focus on the selected title's read portal, once its view has faded in.
+
+        Return enters the title view at the portal, but not while the panel is
+        still fading in: then it re-enters the view instead, so this waits for
+        the fade and then for the app to confirm where focus landed.
+        """
+        self.wait_title_fade()
+        self.key_then_wait(self.ENTERED_AT_PORTAL, 15, "Return")
+
+    def open_selected_story(self) -> None:
+        """Open the title selected in the tree and wait for its images to load.
 
         The comic opens on the page cued in the user's config: a saved last-read
         page inside the body puts a ticked "Goto page N" on the title view and the
         read portal honours it. That checkbox appears only once the title view has
-        finished rendering, so settle first - pressing Enter early on a heavy title
-        view opens the story at the cover instead, silently.
+        finished rendering, so `focus_portal` waits first - pressing Enter early
+        on a heavy title view opens the story at the cover instead, silently.
         """
-        self.wait_title_fade()
-        self.key_then_wait(self.ENTERED_AT_PORTAL, 15, "Return")  # focus the read portal
+        self.focus_portal()
         self.key_then_wait("All images loaded", 30, "Return")
+
+    def open_story(self, pick: Pick) -> None:
+        """Open the selected title, read `pick.pages` pages, and return to the tree."""
+        self.open_selected_story()
         self.read_pages(pick)
         self.close_reader()
         self.hold(0.5)
