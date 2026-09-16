@@ -95,6 +95,15 @@ die() {
     exit 1
 }
 
+# A failed `start` that has already written pid files must not leave the X
+# server and half-booted app behind: the next `start` would refuse with
+# "already running", and a test harness booting once per test would then fail
+# every remaining test the same way.
+abort_start() {
+    cmd_stop >&2 || true
+    die "$@"
+}
+
 # The host-pixel origin of the second monitor, "X,Y". xrandr lists monitors as
 # " 1: +HDMI-1 2560/600x1440/330+0+0  HDMI-1", the primary marked "+*"; take the
 # first non-primary, else the first, else 0,0 (no xrandr, or one monitor).
@@ -291,7 +300,7 @@ cmd_start() {
     until DISPLAY="$DPY" xdpyinfo >/dev/null 2>&1; do
         sleep 0.5
         waited=$((waited + 1))
-        [[ $waited -gt 20 ]] && die "$XSERVER did not come up; see $XEPHYR_LOG"
+        [[ $waited -gt 20 ]] && abort_start "$XSERVER did not come up; see $XEPHYR_LOG"
     done
     if [[ -n "$HEADLESS" ]]; then
         echo "gui-probe: Xvfb up on $DPY ($SCREEN, headless)"
@@ -305,7 +314,7 @@ cmd_start() {
     disown
 
     echo "gui-probe: waiting for the app to become interactive..."
-    cmd_wait "$READY_MARKER" 120 || die "app never became ready; see $APP_LOG"
+    cmd_wait "$READY_MARKER" 120 || abort_start "app never became ready; see $APP_LOG"
     # The marker fires when the tree is built, ~1s before the first paint finishes.
     cmd_settle 1000 30
 

@@ -79,7 +79,9 @@ fi
 show_cmd "${cmd[@]}" -q --tb=short
 # Keep failures (their name, the short traceback's E lines) and the summary
 # line, which in -q mode has no bars; pipefail hands pytest's status through.
-if ! "${cmd[@]}" -q --tb=short | grep -E "^(FAILED|ERROR) |^E  |[0-9]+ (passed|failed|error)"; then
+# "skipped" is kept so a run that skipped everything says so rather than
+# printing nothing.
+if ! "${cmd[@]}" -q --tb=short | grep -E "^(FAILED|ERROR) |^E  |[0-9]+ (passed|failed|error|skipped)"; then
     echo "run_gui_tests: artifacts in build/gui-tests/${BARKS_GUI_RUN_STAMP}" >&2
     exit 1
 fi

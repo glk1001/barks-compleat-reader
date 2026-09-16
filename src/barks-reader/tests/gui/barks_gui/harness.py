@@ -186,11 +186,16 @@ class AppBoot:
     driver: gd.Driver | None = None
     geometry: tuple[int, int, int, int] | None = None
     _shots: list[Path] = field(default_factory=list)
+    # Set before the probe is asked to start, not after the Driver exists: a
+    # boot that fails part-way (the app never logs its ready line, say) has
+    # still left an X server and pid files behind that `stop` must clear, or
+    # every later test on this worker dies with "already running".
+    _started: bool = False
 
     @property
     def booted(self) -> bool:
-        """Whether the app has been started for this test."""
-        return self.driver is not None
+        """Whether a boot has been attempted for this test."""
+        return self._started
 
     def __call__(
         self,
@@ -224,6 +229,7 @@ class AppBoot:
             )
         os.environ[PROBE_NO_RESTORE_ENV_VAR] = "1"
         os.environ[PROBE_KEY_GAP_ENV_VAR] = str(KEY_GAP_SECS)
+        self._started = True
         gd.boot_app_at(node, config_dir=self.scratch, seed=SEED, cues=cues)
         self.driver = gd.Driver(settle_quiet_ms=SETTLE_QUIET_MS)
         self.geometry = self.driver.window_geometry()
@@ -273,8 +279,8 @@ class AppBoot:
         return saved
 
     def stop(self) -> None:
-        """Stop the app if it was booted, never raising."""
-        if self.driver is None:
+        """Stop the app if a boot was attempted, never raising."""
+        if not self._started:
             return
         try:
             gd.probe("stop")

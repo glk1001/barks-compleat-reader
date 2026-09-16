@@ -46,6 +46,7 @@ if TYPE_CHECKING:
 # The live files a run must leave byte-identical.
 WATCHED_LIVE_FILES = ("barks-reader.json", "barks-reader-history.json", "barks-reader.ini")
 DISPLAY_ENV_VAR = "BARKS_PROBE_DISPLAY"
+HEADLESS_ENV_VAR = "BARKS_PROBE_HEADLESS"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -74,7 +75,10 @@ class LiveProfile:
 @pytest.fixture(scope="session")
 def live_profile() -> Iterator[LiveProfile]:
     """Locate the live profile, snapshot it, and prove afterwards that it is untouched."""
-    if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
+    # Xephyr opens a window on the host display; Xvfb needs none (the same
+    # rule gui-probe.sh's doctor applies).
+    headless = bool(os.environ.get(HEADLESS_ENV_VAR))
+    if not headless and not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
         pytest.skip("no graphical session for the nested display to open in")
     live = Path(gd.probe("config").strip()).parent
     if not (live / "barks-reader.ini").is_file():
