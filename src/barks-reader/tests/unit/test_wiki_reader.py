@@ -30,7 +30,7 @@ def wiki_screen() -> WikiReaderScreen:
             reader_settings=MagicMock(),
             font_manager=MagicMock(),
             image_selector=MagicMock(),
-            app_data_dir=Path("/app-data"),
+            profile_dir=Path("/profile"),
             on_goto_title=MagicMock(),
             on_close_screen=MagicMock(),
         )

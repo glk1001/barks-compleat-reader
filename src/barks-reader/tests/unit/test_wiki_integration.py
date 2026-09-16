@@ -32,6 +32,7 @@ from barks_reader.core.wiki_integration import (
     BarksPanelsImageProvider,
     BarksTableRewriter,
     canonical_title,
+    migrate_wiki_session,
     story_page_title,
     story_slug,
     title_can_have_wiki_page,
@@ -498,3 +499,35 @@ class TestWikiThemeSpec:
         assert not spec.heading_hex.startswith("#")
         assert not spec.title_hex.startswith("#")
         assert not spec.crumb_hex.startswith("#")
+
+
+class TestMigrateWikiSession:
+    """The one-time copy of a session file from beside the app data into the profile."""
+
+    def test_copies_a_legacy_file_the_profile_lacks(self, tmp_path: Path) -> None:
+        legacy_dir, profile_dir, bundle = tmp_path / "data", tmp_path / "profile", tmp_path / "okf"
+        legacy_dir.mkdir()
+        legacy = wiki_session_path(legacy_dir, bundle)
+        legacy.write_text('{"page": "index.md"}')
+
+        moved = migrate_wiki_session(legacy_dir, profile_dir, bundle)
+
+        assert moved == wiki_session_path(profile_dir, bundle)
+        assert moved.read_text() == '{"page": "index.md"}'
+        assert legacy.is_file(), "copied, not moved: a throwaway profile must not take it away"
+
+    def test_leaves_an_existing_profile_session_alone(self, tmp_path: Path) -> None:
+        legacy_dir, profile_dir, bundle = tmp_path / "data", tmp_path / "profile", tmp_path / "okf"
+        legacy_dir.mkdir()
+        profile_dir.mkdir()
+        wiki_session_path(legacy_dir, bundle).write_text("old")
+        wiki_session_path(profile_dir, bundle).write_text("current")
+
+        assert migrate_wiki_session(legacy_dir, profile_dir, bundle) is None
+        assert wiki_session_path(profile_dir, bundle).read_text() == "current"
+
+    def test_nothing_to_copy_is_a_no_op(self, tmp_path: Path) -> None:
+        assert (
+            migrate_wiki_session(tmp_path / "data", tmp_path / "profile", tmp_path / "okf") is None
+        )
+        assert not (tmp_path / "profile").exists()

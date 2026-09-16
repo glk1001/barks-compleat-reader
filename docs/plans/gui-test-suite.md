@@ -19,7 +19,7 @@
 > - M3 blocked families: DONE. 56 GUI tests, 12m46s, all green; `test_gui_paths.py`
 >   migrated and deleted. Deviations: E3 (tag group in the main index) dropped for
 >   want of a stable target; the wiki-node test does not assert the landing page,
->   because the node resumes the page saved in the data-dir session file; the intro
+>   because the node resumes the page saved in the wiki session file; the intro
 >   document has one page, so the censorship document carries the page-turn test.
 >   Learned: wait patterns are regexes, so a log line with parentheses must be
 >   `re.escape`d; gate on `Screen '<name>' entered.` before sending keys to a screen
@@ -82,8 +82,9 @@ a defect in its oracle.
   logging inside its `anim is self._panel_fade_anim` guard removes every 4.5s hold.
 - `open_confirm_popup` + `_ConfirmPopupNav` (`ui/popup_widgets.py:70-138`) is the single
   funnel for quit confirm and clear-history confirm.
-- The wiki resume file lives in the data dir, not the config dir; wiki tests must boot via
-  node or chip, which re-roots history, and never depend on it.
+- The wiki resume file lived in the data dir when this was written; it moved into the
+  profile on 2026-09-16, so a scratch-profile boot now has none unless a test writes one.
+  Wiki tests boot via node or chip, which re-roots history, and never depend on it.
 - History DELETE deletes a row with no confirmation (`ui/history_screen.py:658`); Clear
   confirms. Both are safe only because the suite runs on a scratch history file.
 

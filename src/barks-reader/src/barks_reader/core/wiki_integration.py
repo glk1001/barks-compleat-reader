@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import shutil
 import zipfile
 from itertools import pairwise
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -51,17 +52,42 @@ if TYPE_CHECKING:
 WIKI_TITLE = "Carl Barks Wiki"
 
 
-def wiki_session_path(app_data_dir: Path, bundle: Path) -> Path:
-    """Return the wiki session file for ``bundle``, under the app data dir.
+def wiki_session_path(profile_dir: Path, bundle: Path) -> Path:
+    """Return the wiki session file for ``bundle``, in the user's profile directory.
 
-    One join for both hosts: the embedded wiki screen and scripts/read_okf.py
-    resume from the same file for the same bundle. The name is keyed by the
-    resolved bundle path so opening a *different* OKF bundle with the CLI can
-    never clobber the Barks wiki's resume point (the session payload itself is
-    only a bundle-relative page path).
+    It lives with the rest of the reader's per-user state (settings, last node,
+    last-read pages, reading history), so whatever backs up, restores or
+    substitutes the profile covers the wiki's resume point too. One join for
+    both hosts: the embedded wiki screen and scripts/read_okf.py resume from the
+    same file for the same bundle. The name is keyed by the resolved bundle path
+    so opening a *different* OKF bundle with the CLI can never clobber the Barks
+    wiki's resume point (the session payload itself is only a bundle-relative
+    page path).
     """
     digest = hashlib.sha256(str(bundle.resolve()).encode("utf-8")).hexdigest()[:12]
-    return app_data_dir / f"okf-reader-session-{digest}.json"
+    return profile_dir / f"okf-reader-session-{digest}.json"
+
+
+def migrate_wiki_session(legacy_dir: Path, profile_dir: Path, bundle: Path) -> Path | None:
+    """Copy a session file left in the old location (the app data dir) into the profile.
+
+    A one-time bridge for profiles from before the file moved: the copy happens
+    only when the profile has no session for ``bundle`` yet and the legacy file
+    exists. Copied rather than moved, so a throwaway profile (a test run's) can
+    never carry the real resume point away with it; the legacy file is simply
+    left behind.
+
+    Returns:
+        The profile path the session was copied to, or None when nothing was copied.
+
+    """
+    target = wiki_session_path(profile_dir, bundle)
+    legacy = wiki_session_path(legacy_dir, bundle)
+    if target.exists() or not legacy.is_file():
+        return None
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(legacy, target)
+    return target
 
 
 def wiki_top_bar_spec(

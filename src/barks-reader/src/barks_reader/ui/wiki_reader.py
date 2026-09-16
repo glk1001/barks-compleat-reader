@@ -106,7 +106,7 @@ class WikiReaderScreen(ReaderScreen):
         reader_settings: ReaderSettings,
         font_manager: FontManager,
         image_selector: ImageSelector,
-        app_data_dir: Path,
+        profile_dir: Path,
         on_goto_title: Callable[[Titles], None],
         on_close_screen: Callable[[], None],
         **kwargs: str,
@@ -116,7 +116,7 @@ class WikiReaderScreen(ReaderScreen):
         self._reader_settings = reader_settings
         self._font_manager = font_manager
         self._image_selector = image_selector
-        self._app_data_dir = app_data_dir
+        self._profile_dir = profile_dir
         self._on_goto_title = on_goto_title
         self._on_close_screen = on_close_screen
 
@@ -291,7 +291,7 @@ class WikiReaderScreen(ReaderScreen):
                 self._font_manager, self._reader_settings.sys_file_paths, on_close=self.close
             ),
             theme=wiki_theme_spec(),
-            state_path=wiki_session_path(self._app_data_dir, bundle),
+            state_path=wiki_session_path(self._profile_dir, bundle),
             on_exit=self.close,
         )
         self._bundle = bundle
@@ -303,7 +303,7 @@ def get_wiki_reader_screen(
     reader_settings: ReaderSettings,
     font_manager: FontManager,
     image_selector: ImageSelector,
-    app_data_dir: Path,
+    profile_dir: Path,
     on_goto_title: Callable[[Titles], None],
     on_close_screen: Callable[[], None],
 ) -> WikiReaderScreen:
@@ -312,7 +312,7 @@ def get_wiki_reader_screen(
         reader_settings,
         font_manager,
         image_selector,
-        app_data_dir,
+        profile_dir,
         on_goto_title,
         on_close_screen,
         name=screen_name,

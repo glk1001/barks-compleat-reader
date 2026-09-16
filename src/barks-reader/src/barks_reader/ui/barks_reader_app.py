@@ -33,6 +33,7 @@ from barks_reader.core.reader_setup import bootstrap_reader_environment
 from barks_reader.core.reader_utils import COMIC_PAGE_ASPECT_RATIO
 from barks_reader.core.screen_metrics import SCREEN_METRICS
 from barks_reader.core.settings_notifier import settings_notifier
+from barks_reader.core.wiki_integration import migrate_wiki_session
 
 from .action_bar import ACTION_BAR_KV_FILE
 from .action_bar_helpers import ACTION_BAR_SIZE_Y
@@ -431,12 +432,21 @@ class BarksReaderApp(App):
         )
 
         logger.debug("Instantiating wiki reader screen...")
+        profile_dir = Path(self._config_info.app_config_dir)
+        bundle = self.reader_settings.wiki_bundle_dir
+        if bundle is not None:
+            # The wiki's resume point used to live beside the app data.
+            migrated = migrate_wiki_session(
+                Path(self._config_info.app_data_dir), profile_dir, bundle
+            )
+            if migrated is not None:
+                logger.info(f'Copied the wiki session into the profile: "{migrated}".')
         wiki_reader_screen = get_wiki_reader_screen(
             WIKI_READER_SCREEN,
             self.reader_settings,
             self.font_manager,
             self._main_screen.image_selector,
-            Path(self._config_info.app_data_dir),
+            profile_dir,
             self._main_screen.goto_title_from_wiki,
             self._screen_switchers.close_wiki_reader,
         )

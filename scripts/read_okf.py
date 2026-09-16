@@ -47,6 +47,7 @@ from barks_reader.core.wiki_integration import (
     BarksPanelsImageProvider,
     BarksTableRewriter,
     canonical_title,
+    migrate_wiki_session,
     story_page_title,
     title_can_have_wiki_page,
     wiki_page_for_title,
@@ -285,12 +286,14 @@ def main(
     state_path = None
     if barks_env is not None:
         reader_settings, comics_database, config_info = barks_env
-        # Resume where the last session left off; the state lives beside the
-        # app's other per-user data, keyed by bundle path (the same file the
-        # embedded wiki screen uses for the same bundle — and a different one
-        # for any other bundle, so reading elsewhere can't clobber the wiki's
-        # resume point).
-        state_path = wiki_session_path(Path(config_info.app_data_dir), bundle)
+        # Resume where the last session left off; the state lives in the app's
+        # profile with its other per-user state, keyed by bundle path (the same
+        # file the embedded wiki screen uses for the same bundle — and a
+        # different one for any other bundle, so reading elsewhere can't clobber
+        # the wiki's resume point). Older profiles kept it beside the app data.
+        profile_dir = Path(config_info.app_config_dir)
+        migrate_wiki_session(Path(config_info.app_data_dir), profile_dir, bundle)
+        state_path = wiki_session_path(profile_dir, bundle)
     image_provider = (
         BarksPanelsImageProvider(reader_settings) if reader_settings is not None else None
     )

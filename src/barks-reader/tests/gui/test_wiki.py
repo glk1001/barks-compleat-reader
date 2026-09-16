@@ -51,8 +51,9 @@ def _leave_by_back_at_root(d: Driver) -> None:
 def test_wiki_opens_from_its_node_and_back_leaves_it(wiki_boot: AppBoot) -> None:
     """Open the wiki from its node, then leave it with Back at the history root.
 
-    The node resumes wherever the wiki was last left (a session file in the data
-    dir), so the landing page is not asserted: only that a page showed.
+    The node resumes wherever the wiki was last left (a session file in the
+    profile, absent in a fresh scratch one), so the landing page is not asserted:
+    only that a page showed.
     """
     d = wiki_boot(nodes.INDEXES)
     d.select_node(nodes.WIKI_NODE)
