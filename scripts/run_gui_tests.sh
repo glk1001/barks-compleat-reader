@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Run the GUI path tests against the real app on the nested Xephyr display.
+# Run the GUI path tests against the real app on the nested Xephyr display, or
+# headless on Xvfb with --headless (or BARKS_PROBE_HEADLESS=1): no window, no
+# graphical session needed, software OpenGL.
 #
 # They live outside pytest's testpaths (like the benchmarks) because each test
 # boots the real app, which needs a graphical session, Xephyr, xte and the
@@ -15,6 +17,11 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # other. Pinned here rather than left to the probe's default so the two cannot
 # drift apart.
 export BARKS_PROBE_SCREEN=900x1300
+
+if [[ "${1:-}" == "--headless" ]]; then
+    export BARKS_PROBE_HEADLESS=1
+    shift
+fi
 
 bash "${SCRIPT_DIR}/gui-probe.sh" doctor >/dev/null || {
     echo "run_gui_tests: this machine is not ready - see: bash scripts/gui-probe.sh doctor" >&2

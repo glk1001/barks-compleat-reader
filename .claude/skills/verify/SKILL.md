@@ -84,7 +84,10 @@ even when the check failed.
 
 Screen size defaults to 900x1300; override with `BARKS_PROBE_SCREEN=1200x1300`. The
 Xephyr window opens at the top-left of the second (non-primary) monitor; move it with
-`scripts/gui-probe.sh start X,Y` (host pixels) or `BARKS_PROBE_ORIGIN=X,Y`.
+`scripts/gui-probe.sh start X,Y` (host pixels) or `BARKS_PROBE_ORIGIN=X,Y`. With
+`BARKS_PROBE_HEADLESS=1` the probe runs on Xvfb instead: no window, no desktop session
+needed (over ssh, from cron), software OpenGL; screenshots still work, you just cannot
+watch. `apt install xvfb`.
 Display defaults to `:2` (`BARKS_PROBE_DISPLAY`).
 
 ## Read the log, not just the pixels

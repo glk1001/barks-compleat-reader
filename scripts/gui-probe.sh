@@ -18,6 +18,7 @@
 #   scripts/gui-probe.sh start [X,Y]      # Xephyr + app, waits until ready; the
 #                                         # window opens at host pixel X,Y (default:
 #                                         # the top-left of the second monitor)
+#   BARKS_PROBE_HEADLESS=1 scripts/gui-probe.sh start   # same, on an invisible Xvfb
 #   scripts/gui-probe.sh shot out.png     # fresh full-screen capture
 #   scripts/gui-probe.sh geometry         # app window WxH+X+Y on the nested display
 #   scripts/gui-probe.sh click 840 74     # click at screenshot coordinates
@@ -32,6 +33,8 @@
 #
 # Env overrides: BARKS_PROBE_DISPLAY (:2), BARKS_PROBE_SCREEN (900x1300),
 # BARKS_PROBE_ORIGIN (X,Y where the Xephyr window opens; `start X,Y` beats it),
+# BARKS_PROBE_HEADLESS=1 (run on Xvfb instead of Xephyr: no host window, no
+# graphical session needed; the app draws through Mesa's software renderer),
 # BARKS_READER_CONFIG_DIR (the profile to boot from, as for the app itself),
 # BARKS_PROBE_NO_RESTORE=1 (do not back up and restore that profile around a run).
 
@@ -44,6 +47,11 @@ SCREEN="${BARKS_PROBE_SCREEN:-900x1300}"
 # Empty means the top-left of the second (non-primary) monitor, so the probe
 # stays off the screen being worked on. `start X,Y` overrides both.
 ORIGIN="${BARKS_PROBE_ORIGIN:-}"
+# Headless: Xvfb is the same kind of X server as Xephyr minus the host window,
+# so every other command here (xte, xwininfo, import) works on it unchanged.
+HEADLESS="${BARKS_PROBE_HEADLESS:-}"
+XSERVER="Xephyr"
+[[ -n "$HEADLESS" ]] && XSERVER="Xvfb"
 RUN_DIR="${XDG_RUNTIME_DIR:-/tmp}/barks-gui-probe"
 APP_LOG="$RUN_DIR/app.log"
 XEPHYR_LOG="$RUN_DIR/xephyr.log"
@@ -64,6 +72,7 @@ WINDOW_NAME="Compleat Barks Disney Reader"
 # Tool -> Debian/Ubuntu package providing it.
 declare -A TOOL_PKGS=(
     [Xephyr]=xserver-xephyr
+    [Xvfb]=xvfb
     [xte]=xautomation
     [xdpyinfo]=x11-utils
     [xwininfo]=x11-utils
@@ -122,7 +131,7 @@ app_geometry() {
 
 require_running() {
     [[ -f "$XEPHYR_PID_FILE" ]] || die "not started - run 'gui-probe.sh start' first"
-    kill -0 "$(cat "$XEPHYR_PID_FILE")" 2>/dev/null || die "Xephyr died; see $XEPHYR_LOG"
+    kill -0 "$(cat "$XEPHYR_PID_FILE")" 2>/dev/null || die "$XSERVER died; see $XEPHYR_LOG"
 }
 
 # Check everything a fresh machine needs. Tools and secrets are hard failures;
@@ -131,16 +140,18 @@ cmd_doctor() {
     local fail=0 warn=0 missing_pkgs=()
 
     echo "== host display =="
-    if [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]]; then
+    if [[ -n "$HEADLESS" ]]; then
+        echo "  OK   headless (Xvfb needs no host display)"
+    elif [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]]; then
         echo "  OK   graphical session (Xephyr needs one to open its window in)"
     else
-        echo "  FAIL no DISPLAY or WAYLAND_DISPLAY - run this from a desktop session"
+        echo "  FAIL no DISPLAY or WAYLAND_DISPLAY - run from a desktop session, or headless"
         fail=1
     fi
 
     echo "== tools =="
     local tool
-    for tool in Xephyr xte xdpyinfo xwininfo import convert uv; do
+    for tool in "$XSERVER" xte xdpyinfo xwininfo import convert uv; do
         if command -v "$tool" >/dev/null; then
             echo "  OK   $tool"
         else
@@ -229,7 +240,7 @@ cmd_start() {
     local origin="${1:-${ORIGIN:-$(second_monitor_origin)}}"
     local offset
     offset="$(screen_offset "$origin")"
-    for tool in Xephyr xte import; do
+    for tool in "$XSERVER" xte import; do
         command -v "$tool" >/dev/null ||
             die "missing required tool: $tool (run 'gui-probe.sh doctor')"
     done
@@ -254,9 +265,14 @@ cmd_start() {
     # Detach fully (stdin included). A background child that still holds the
     # caller's stdin/stdout keeps the calling shell's pipeline open, so `start`
     # would appear to hang until the app exits.
-    # The +X+Y offset is where the host window opens; Mutter honours it.
-    setsid Xephyr "$DPY" -screen "${SCREEN}${offset}" -resizeable -title "barks-gui-probe" \
-        </dev/null >"$XEPHYR_LOG" 2>&1 &
+    if [[ -n "$HEADLESS" ]]; then
+        # Colour depth 24 gives Mesa a GLX visual the app's window can use.
+        setsid Xvfb "$DPY" -screen 0 "${SCREEN}x24" </dev/null >"$XEPHYR_LOG" 2>&1 &
+    else
+        # The +X+Y offset is where the host window opens; Mutter honours it.
+        setsid Xephyr "$DPY" -screen "${SCREEN}${offset}" -resizeable -title "barks-gui-probe" \
+            </dev/null >"$XEPHYR_LOG" 2>&1 &
+    fi
     echo $! >"$XEPHYR_PID_FILE"
     disown
 
@@ -264,9 +280,13 @@ cmd_start() {
     until DISPLAY="$DPY" xdpyinfo >/dev/null 2>&1; do
         sleep 0.5
         waited=$((waited + 1))
-        [[ $waited -gt 20 ]] && die "Xephyr did not come up; see $XEPHYR_LOG"
+        [[ $waited -gt 20 ]] && die "$XSERVER did not come up; see $XEPHYR_LOG"
     done
-    echo "gui-probe: Xephyr up on $DPY ($SCREEN at $origin)"
+    if [[ -n "$HEADLESS" ]]; then
+        echo "gui-probe: Xvfb up on $DPY ($SCREEN, headless)"
+    else
+        echo "gui-probe: Xephyr up on $DPY ($SCREEN at $origin)"
+    fi
 
     setsid env DISPLAY="$DPY" uv run --directory "$REPO_ROOT" main.py \
         </dev/null >>"$APP_LOG" 2>&1 &

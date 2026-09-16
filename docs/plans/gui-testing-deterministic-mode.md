@@ -129,8 +129,10 @@ The plan and its milestone log live in `docs/plans/gui-test-suite.md`; the suite
      both ends, `ReaderScreen.on_enter` marks a finished transition, and
      `okf_reader.ui.trace` logs the wiki viewer's page shown, focus region, back and
      "tree settled" through Kivy's logger.
-- **Rung 3, in-process autopilot: not built.** Still machine-bound (Xephyr, the real
-  data dirs, the LFS `cpi.db`), so the suite never runs in CI.
+- **Rung 3, in-process autopilot: not built**, and no longer needed for headless
+  running: `BARKS_PROBE_HEADLESS=1` swaps Xephyr for Xvfb (software OpenGL), so the
+  suite runs with no window and no desktop session. Still machine-bound by data (the
+  real data dirs, the LFS `cpi.db`, `.env.runtime`), so it never runs in CI.
 
 The "mouse-only flows" limit narrowed: search result rows and word balloons are
 clicked by pixel behind the geometry fence, and the search box turns out to hand
