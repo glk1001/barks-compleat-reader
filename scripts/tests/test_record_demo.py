@@ -8,7 +8,8 @@ logic is covered in test_gui_driver.py.
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
+from typing import TYPE_CHECKING
+from unittest.mock import MagicMock, patch
 
 import pytest
 import record_demo
@@ -31,6 +32,11 @@ from record_demo import (
     validate,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    KeysPressed = Callable[[MagicMock], list[str]]
+
 EXPECTED_REGION = (782, 1224, 59, 10)
 ODD_HEIGHT, EVEN_HEIGHT = 1225, 1224
 EVEN_WIDTH = 782
@@ -42,12 +48,6 @@ XWININFO = """xwininfo: Window id: 0x2e0 (the root window) (has no name)
      0x200007 "Compleat Barks Disney Reader": ("barks-reader" "barks-reader")  \
 782x1225+59+10  +59+10
 """
-
-
-def _stub_driver() -> Driver:
-    """Return a Driver with no probe attached, for exercising beat logic against."""
-    with patch.object(Driver, "__init__", lambda _self, *_a, **_kw: None):
-        return Driver()
 
 
 class TestEven:
@@ -135,34 +135,14 @@ class TestBeatRegistry:
         assert record_demo.SEARCH_WORD_PICK in record_demo.PINNED_CUES
 
 
-class TestCutAlignment:
-    """browse_tree and open_comic must land on the same story, or the cut jumps."""
+@pytest.fixture
+def keys_of(
+    new_stub_driver: Callable[[], Driver], keys_pressed: KeysPressed
+) -> Callable[[object], list[str]]:
+    """Every key a beat or setup presses, in order, each run on a fresh driver."""
 
-    def test_open_comic_setup_replays_the_same_keys_as_browse_tree(self) -> None:
-        """Same keys in the same order, or the tree ends up scrolled differently.
-
-        browse_tree does its collapse in its setup and the rest in its body;
-        open_comic does both in its setup, so the two are compared end to end.
-        """
-        browse, opener = find_beat("browse_tree"), find_beat("open_comic")
-        assert browse.setup is not None
-        assert opener.setup is not None, "open_comic needs a setup to line its cut up"
-        browse_keys = self._keys_of(browse.setup) + self._keys_of(browse.body)
-        assert self._keys_of(opener.setup) == browse_keys
-
-    def test_both_beats_start_from_the_same_node(self) -> None:
-        assert find_beat("open_comic").node == find_beat("browse_tree").node
-
-    def test_the_replay_walks_the_shared_number_of_steps(self) -> None:
-        setup = find_beat("open_comic").setup
-        assert setup is not None
-        downs = [k for k in self._keys_of(setup) if k == "Down"]
-        assert len(downs) == record_demo.BROWSE_TITLE_STEPS
-
-    @staticmethod
     def _keys_of(run: object) -> list[str]:
-        """Every key a beat or setup presses, in order."""
-        driver = _stub_driver()
+        driver = new_stub_driver()
         moves = iter(["Chronological", record_demo.BROWSE_RANGE])
         with (
             patch.object(Driver, "key") as key,
@@ -172,7 +152,37 @@ class TestCutAlignment:
             patch.object(Driver, "select_node", side_effect=lambda _n: next(moves, None)),
         ):
             run(driver)  # ty: ignore[call-non-callable]
-        return [k for call in key.call_args_list for k in call.args]
+        return keys_pressed(key)
+
+    return _keys_of
+
+
+class TestCutAlignment:
+    """browse_tree and open_comic must land on the same story, or the cut jumps."""
+
+    def test_open_comic_setup_replays_the_same_keys_as_browse_tree(
+        self, keys_of: Callable[[object], list[str]]
+    ) -> None:
+        """Same keys in the same order, or the tree ends up scrolled differently.
+
+        browse_tree does its collapse in its setup and the rest in its body;
+        open_comic does both in its setup, so the two are compared end to end.
+        """
+        browse, opener = find_beat("browse_tree"), find_beat("open_comic")
+        assert browse.setup is not None
+        assert opener.setup is not None, "open_comic needs a setup to line its cut up"
+        assert keys_of(opener.setup) == keys_of(browse.setup) + keys_of(browse.body)
+
+    def test_both_beats_start_from_the_same_node(self) -> None:
+        assert find_beat("open_comic").node == find_beat("browse_tree").node
+
+    def test_the_replay_walks_the_shared_number_of_steps(
+        self, keys_of: Callable[[object], list[str]]
+    ) -> None:
+        setup = find_beat("open_comic").setup
+        assert setup is not None
+        downs = [k for k in keys_of(setup) if k == "Down"]
+        assert len(downs) == record_demo.BROWSE_TITLE_STEPS
 
 
 class TestRecordClipHandling:

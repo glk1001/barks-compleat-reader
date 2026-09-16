@@ -16,16 +16,13 @@ import pytest
 from gui_driver import Driver, DriverError, Pick, boot_app_at, probe
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
+
+    KeysPressed = Callable[[MagicMock], list[str]]
 
 EXPECTED_DOWNS = 2
 THREE_TURNS, FOUR_RESTS = 3, 4
-
-
-def _stub_driver() -> Driver:
-    """Return a Driver with no probe attached, for exercising its own logic."""
-    with patch.object(Driver, "__init__", lambda _self, *_a, **_kw: None):
-        return Driver()
 
 
 class TestPick:
@@ -39,44 +36,40 @@ class TestPick:
 
 
 class TestSelectNode:
-    def test_stops_as_soon_as_the_node_is_current(self) -> None:
-        driver = _stub_driver()
+    def test_stops_as_soon_as_the_node_is_current(self, stub_driver: Driver) -> None:
         with (
             patch.object(Driver, "current_node", return_value="Themes"),
             patch.object(Driver, "key") as key,
         ):
-            driver.select_node("Themes")
+            stub_driver.select_node("Themes")
         key.assert_not_called()
 
-    def test_walks_down_until_it_arrives(self) -> None:
-        driver = _stub_driver()
+    def test_walks_down_until_it_arrives(self, stub_driver: Driver) -> None:
         reads = iter(["Categories", "Search", "Themes"])
         with (
             patch.object(Driver, "current_node", side_effect=lambda: next(reads)),
             patch.object(Driver, "key") as key,
             patch.object(gui_driver.time, "sleep"),
         ):
-            driver.select_node("Themes")
+            stub_driver.select_node("Themes")
         assert key.call_count == EXPECTED_DOWNS
 
-    def test_raises_when_the_tree_stops_moving(self) -> None:
+    def test_raises_when_the_tree_stops_moving(self, stub_driver: Driver) -> None:
         """Two identical reads in a row means the selection cannot go further down."""
-        driver = _stub_driver()
         with (
             patch.object(Driver, "current_node", return_value="Bottom"),
             patch.object(Driver, "key"),
             patch.object(gui_driver.time, "sleep"),
             pytest.raises(DriverError, match='tree stopped at "Bottom"'),
         ):
-            driver.select_node("Nowhere")
+            stub_driver.select_node("Nowhere")
 
 
 class TestReadPages:
     """Every caller that reads a comic turns exactly `pages - 1` times."""
 
     @staticmethod
-    def _turns_for(pages: int) -> int:
-        driver = _stub_driver()
+    def _turns_for(driver: Driver, pages: int) -> int:
         with (
             patch.object(Driver, "key_then_wait") as turn,
             patch.object(Driver, "hold"),
@@ -84,19 +77,18 @@ class TestReadPages:
             driver.read_pages(Pick("X", pages=pages, dwell=0))
         return turn.call_count
 
-    def test_one_page_never_turns(self) -> None:
-        assert self._turns_for(1) == 0
+    def test_one_page_never_turns(self, stub_driver: Driver) -> None:
+        assert self._turns_for(stub_driver, 1) == 0
 
-    def test_turns_one_less_than_the_page_count(self) -> None:
-        assert self._turns_for(4) == THREE_TURNS
+    def test_turns_one_less_than_the_page_count(self, stub_driver: Driver) -> None:
+        assert self._turns_for(stub_driver, 4) == THREE_TURNS
 
-    def test_rests_on_every_page(self) -> None:
-        driver = _stub_driver()
+    def test_rests_on_every_page(self, stub_driver: Driver) -> None:
         with (
             patch.object(Driver, "key_then_wait"),
             patch.object(Driver, "hold") as rest,
         ):
-            driver.read_pages(Pick("X", pages=4, dwell=1.5))
+            stub_driver.read_pages(Pick("X", pages=4, dwell=1.5))
         assert rest.call_count == FOUR_RESTS
 
 
@@ -104,118 +96,132 @@ class TestPressMenuButton:
     """Menu focus is sticky, so a second press must account for the first."""
 
     @staticmethod
-    def _presses(driver: Driver, name: str) -> list[str]:
+    def _presses(driver: Driver, name: str, keys_pressed: KeysPressed) -> list[str]:
         with (
             patch.object(Driver, "key") as key,
             patch.object(Driver, "hold"),
         ):
             driver.press_menu_button(name)
-        return [k for call in key.call_args_list for k in call.args]
+        return keys_pressed(key)
 
-    def test_walks_forward_from_the_default(self) -> None:
+    def test_walks_forward_from_the_default(
+        self, stub_driver: Driver, keys_pressed: KeysPressed
+    ) -> None:
         """Close -> fullscreen -> double_page is two Rights on a fresh reader."""
-        driver = _stub_driver()
-        driver._menu_focus = "close"  # noqa: SLF001
-        assert self._presses(driver, "double_page") == ["Escape", "Right", "Right", "Return"]
+        assert self._presses(stub_driver, "double_page", keys_pressed) == [
+            "Escape",
+            "Right",
+            "Right",
+            "Return",
+        ]
 
-    def test_takes_the_short_way_round(self) -> None:
+    def test_takes_the_short_way_round(
+        self, stub_driver: Driver, keys_pressed: KeysPressed
+    ) -> None:
         """goto_page is one Left back from close, not five Rights forward."""
-        driver = _stub_driver()
-        driver._menu_focus = "close"  # noqa: SLF001
-        assert self._presses(driver, "goto_page") == ["Escape", "Left", "Return"]
+        assert self._presses(stub_driver, "goto_page", keys_pressed) == ["Escape", "Left", "Return"]
 
-    def test_a_second_press_starts_where_the_first_left_off(self) -> None:
+    def test_a_second_press_starts_where_the_first_left_off(
+        self, stub_driver: Driver, keys_pressed: KeysPressed
+    ) -> None:
         """Regression: after a goto-page, two Rights reach fullscreen, not double-page.
 
         Fullscreen resizes the window on the nested display, so this silently
         wrecked the rest of a recording rather than merely showing the wrong
         thing.
         """
-        driver = _stub_driver()
-        driver._menu_focus = "close"  # noqa: SLF001
-        self._presses(driver, "goto_page")
-        presses = self._presses(driver, "double_page")
+        self._presses(stub_driver, "goto_page", keys_pressed)
+        presses = self._presses(stub_driver, "double_page", keys_pressed)
         assert "Escape" in presses
         assert presses.count("Right") == THREE_TURNS
         assert "Left" not in presses
 
-    def test_no_movement_when_already_there(self) -> None:
-        driver = _stub_driver()
-        driver._menu_focus = "close"  # noqa: SLF001
-        assert self._presses(driver, "close") == ["Escape", "Return"]
+    def test_no_movement_when_already_there(
+        self, stub_driver: Driver, keys_pressed: KeysPressed
+    ) -> None:
+        assert self._presses(stub_driver, "close", keys_pressed) == ["Escape", "Return"]
 
-    def test_an_unknown_button_raises(self) -> None:
-        driver = _stub_driver()
-        driver._menu_focus = "close"  # noqa: SLF001
+    def test_an_unknown_button_raises(self, stub_driver: Driver, keys_pressed: KeysPressed) -> None:
         with pytest.raises(DriverError, match="no such menu button"):
-            self._presses(driver, "nope")
+            self._presses(stub_driver, "nope", keys_pressed)
 
 
 class TestMainMenuButton:
     """The main screen's bar is sticky too, and opens on go_back."""
 
     @staticmethod
-    def _presses(driver: Driver, name: str) -> list[str]:
+    def _presses(driver: Driver, name: str, keys_pressed: KeysPressed) -> list[str]:
         with (
             patch.object(Driver, "key") as key,
             patch.object(Driver, "hold"),
         ):
             driver.main_menu_button(name)
-        return [k for call in key.call_args_list for k in call.args]
+        return keys_pressed(key)
 
-    def test_go_back_is_the_default_focus(self) -> None:
-        driver = _stub_driver()
-        assert self._presses(driver, "go_back") == ["Escape", "Return"]
+    def test_go_back_is_the_default_focus(
+        self, stub_driver: Driver, keys_pressed: KeysPressed
+    ) -> None:
+        assert self._presses(stub_driver, "go_back", keys_pressed) == ["Escape", "Return"]
 
-    def test_quit_is_the_short_way_round(self) -> None:
+    def test_quit_is_the_short_way_round(
+        self, stub_driver: Driver, keys_pressed: KeysPressed
+    ) -> None:
         """Quit is three Lefts back from go_back, not four Rights forward."""
-        driver = _stub_driver()
-        assert self._presses(driver, "quit") == ["Escape", "Left", "Left", "Left", "Return"]
+        assert self._presses(stub_driver, "quit", keys_pressed) == [
+            "Escape",
+            "Left",
+            "Left",
+            "Left",
+            "Return",
+        ]
 
-    def test_a_second_press_starts_where_the_first_left_off(self) -> None:
-        driver = _stub_driver()
-        self._presses(driver, "menu")  # three Rights from go_back
-        assert self._presses(driver, "collapse") == ["Escape", "Left", "Left", "Return"]
+    def test_a_second_press_starts_where_the_first_left_off(
+        self, stub_driver: Driver, keys_pressed: KeysPressed
+    ) -> None:
+        self._presses(stub_driver, "menu", keys_pressed)  # three Rights from go_back
+        assert self._presses(stub_driver, "collapse", keys_pressed) == [
+            "Escape",
+            "Left",
+            "Left",
+            "Return",
+        ]
 
-    def test_go_back_uses_it(self) -> None:
-        driver = _stub_driver()
+    def test_go_back_uses_it(self, stub_driver: Driver) -> None:
         with (
             patch.object(Driver, "main_menu_button") as press,
         ):
-            driver.go_back()
+            stub_driver.go_back()
         press.assert_called_once_with("go_back")
 
-    def test_an_unknown_button_raises(self) -> None:
-        driver = _stub_driver()
+    def test_an_unknown_button_raises(self, stub_driver: Driver, keys_pressed: KeysPressed) -> None:
         with pytest.raises(DriverError, match="no such menu button"):
-            self._presses(driver, "nope")
+            self._presses(stub_driver, "nope", keys_pressed)
 
 
 class TestCloseReader:
     """close_reader shares press_menu_button's walk, so it starts from the same focus."""
 
-    def test_walks_from_where_the_last_press_left_the_menu(self) -> None:
+    def test_walks_from_where_the_last_press_left_the_menu(
+        self, stub_driver: Driver, keys_pressed: KeysPressed
+    ) -> None:
         """After a goto-page, close is one Right on, not a fresh count from the start."""
-        driver = _stub_driver()
-        driver._menu_focus = "goto_page"  # noqa: SLF001
+        stub_driver._menu_focus = "goto_page"  # noqa: SLF001
         with (
             patch.object(Driver, "key") as key,
             patch.object(Driver, "key_then_wait") as wait,
             patch.object(Driver, "hold"),
         ):
-            driver.close_reader()
-        assert [k for call in key.call_args_list for k in call.args] == ["Escape", "Right"]
+            stub_driver.close_reader()
+        assert keys_pressed(key) == ["Escape", "Right"]
         assert wait.call_args.args == ("Main screen is active", 15, "Return")
-        assert driver._menu_focus == "close"  # noqa: SLF001
+        assert stub_driver._menu_focus == "close"  # noqa: SLF001
 
 
 class TestGotoPage:
     """Steps through the page list are the difference between two page numbers."""
 
     @staticmethod
-    def _steps(target: int, current: int) -> list[str]:
-        driver = _stub_driver()
-        driver._menu_focus = "close"  # noqa: SLF001
+    def _steps(driver: Driver, target: int, current: int, keys_pressed: KeysPressed) -> list[str]:
         with (
             patch.object(Driver, "key") as key,
             patch.object(Driver, "key_then_wait"),
@@ -224,22 +230,27 @@ class TestGotoPage:
             patch.object(Driver, "current_page", return_value=current),
         ):
             driver.goto_page(target)
-        pressed = [k for call in key.call_args_list for k in call.args]
+        pressed = keys_pressed(key)
         return pressed[2:]  # past the Escape and Left that open the page list
 
-    def test_steps_down_to_a_later_page(self) -> None:
-        steps = self._steps(18, 4)
+    def test_steps_down_to_a_later_page(
+        self, stub_driver: Driver, keys_pressed: KeysPressed
+    ) -> None:
+        steps = self._steps(stub_driver, 18, 4, keys_pressed)
         assert steps == ["Return", *["Down"] * 14]
 
-    def test_steps_up_to_an_earlier_page(self) -> None:
-        steps = self._steps(2, 5)
+    def test_steps_up_to_an_earlier_page(
+        self, stub_driver: Driver, keys_pressed: KeysPressed
+    ) -> None:
+        steps = self._steps(stub_driver, 2, 5, keys_pressed)
         assert steps == ["Return", *["Up"] * 3]
 
-    def test_no_steps_when_already_there(self) -> None:
-        assert self._steps(7, 7) == ["Return"]
+    def test_no_steps_when_already_there(
+        self, stub_driver: Driver, keys_pressed: KeysPressed
+    ) -> None:
+        assert self._steps(stub_driver, 7, 7, keys_pressed) == ["Return"]
 
-    def test_waits_for_the_page_it_asked_for(self) -> None:
-        driver = _stub_driver()
+    def test_waits_for_the_page_it_asked_for(self, stub_driver: Driver) -> None:
         with (
             patch.object(Driver, "key"),
             patch.object(Driver, "key_then_wait") as wait,
@@ -247,14 +258,14 @@ class TestGotoPage:
             patch.object(Driver, "hold"),
             patch.object(Driver, "current_page", return_value=4),
         ):
-            driver._menu_focus = "close"  # noqa: SLF001
-            driver.goto_page(18)
+            stub_driver.goto_page(18)
         # Anchored past the number: "Showed page 3" is a prefix of "Showed page 34".
         assert wait.call_args.args[0] == "Showed page 18 in "
 
-    def test_reads_where_it_is_rather_than_being_told(self) -> None:
+    def test_reads_where_it_is_rather_than_being_told(
+        self, stub_driver: Driver, keys_pressed: KeysPressed
+    ) -> None:
         """The reader opens on whatever page the user cued, so it has to look."""
-        driver = _stub_driver()
         with (
             patch.object(Driver, "key") as key,
             patch.object(Driver, "key_then_wait"),
@@ -262,10 +273,9 @@ class TestGotoPage:
             patch.object(Driver, "hold"),
             patch.object(Driver, "current_page", return_value=29) as where,
         ):
-            driver._menu_focus = "close"  # noqa: SLF001
-            driver.goto_page(31)
+            stub_driver.goto_page(31)
         where.assert_called_once()
-        assert [k for call in key.call_args_list for k in call.args][2:] == [
+        assert keys_pressed(key)[2:] == [
             "Return",
             "Down",
             "Down",
@@ -275,52 +285,48 @@ class TestGotoPage:
 class TestExpect:
     """expect() is the one wait every *_then_wait move is built on."""
 
-    def test_waits_for_a_new_match_not_an_old_one(self) -> None:
+    def test_waits_for_a_new_match_not_an_old_one(self, stub_driver: Driver) -> None:
         """Regression: the marker fires once per comic, so an old match must not count.
 
         `gui-probe wait` greps the whole log and would return instantly on the
         previous story's line, carrying on before this one had drawn.
         """
-        driver = _stub_driver()
         counts = iter([1, 1, 2])
         with (
             patch.object(Driver, "match_count", side_effect=lambda _p: next(counts)),
             patch.object(Driver, "key") as key,
             patch.object(gui_driver.time, "sleep"),
         ):
-            driver.key_then_wait("All images loaded", 30, "Return")
+            stub_driver.key_then_wait("All images loaded", 30, "Return")
         key.assert_called_once_with("Return")
 
-    def test_raises_when_the_marker_never_arrives(self) -> None:
-        driver = _stub_driver()
+    def test_raises_when_the_marker_never_arrives(self, stub_driver: Driver) -> None:
         with (
             patch.object(Driver, "match_count", return_value=3),
             patch.object(Driver, "key"),
             patch.object(gui_driver.time, "sleep"),
             pytest.raises(DriverError, match="beat stalled"),
         ):
-            driver.key_then_wait("Showed page", 0, "Right")
+            stub_driver.key_then_wait("Showed page", 0, "Right")
 
-    def test_wraps_any_block(self) -> None:
+    def test_wraps_any_block(self, stub_driver: Driver) -> None:
         """A composite move inside the block counts, not just a single key."""
-        driver = _stub_driver()
         counts = iter([0, 1])
         ran: list[str] = []
         with (
             patch.object(Driver, "match_count", side_effect=lambda _p: next(counts)),
             patch.object(gui_driver.time, "sleep"),
-            driver.expect("Main screen is active", 5),
+            stub_driver.expect("Main screen is active", 5),
         ):
             ran.append("moved")
         assert ran == ["moved"]
 
-    def test_the_block_is_not_blamed_for_an_old_match(self) -> None:
-        driver = _stub_driver()
+    def test_the_block_is_not_blamed_for_an_old_match(self, stub_driver: Driver) -> None:
         with (
             patch.object(Driver, "match_count", return_value=1),
             patch.object(gui_driver.time, "sleep"),
             pytest.raises(DriverError, match="beat stalled"),
-            driver.expect("already there", 0),
+            stub_driver.expect("already there", 0),
         ):
             pass
 
@@ -329,52 +335,63 @@ class TestWaitTitleFade:
     """Waits until the latest fade to start has logged its finish."""
 
     @staticmethod
-    def _log(*lines: str) -> str:
-        return "\n".join(lines) + "\n"
+    def _with_log(driver: Driver, *lines: str) -> Driver:
+        """Give the stub an app log holding `lines`, for the real predicate to read."""
+        driver._log = MagicMock(read_text=lambda **_kw: "".join(f"{n}\n" for n in lines))  # noqa: SLF001
+        return driver
 
-    def test_returns_at_once_when_the_latest_fade_is_over(self) -> None:
-        driver = _stub_driver()
-        text = self._log("Title view fade started: 2s.", "Title view fade finished.")
-        with (
-            patch.object(Driver, "_latest_fade_finished", wraps=lambda: True),
-            patch.object(gui_driver.time, "sleep") as sleep,
-        ):
-            driver.wait_title_fade()
+    def test_returns_at_once_when_the_latest_fade_is_over(self, stub_driver: Driver) -> None:
+        self._with_log(stub_driver, "Title view fade started: 2s.", "Title view fade finished.")
+        with patch.object(gui_driver.time, "sleep") as sleep:
+            stub_driver.wait_title_fade()
         sleep.assert_not_called()
-        assert text.rfind(Driver.FADE_FINISHED) > text.rfind(Driver.FADE_STARTED)
 
-    def test_superseded_fades_do_not_count(self) -> None:
+    def test_an_empty_log_is_an_unfinished_fade(self, stub_driver: Driver) -> None:
+        """A caller that has just triggered a fade may ask before its start line lands."""
+        self._with_log(stub_driver)
+        assert stub_driver._latest_fade_finished() is False  # noqa: SLF001
+
+    def test_a_started_fade_is_unfinished(self, stub_driver: Driver) -> None:
+        self._with_log(stub_driver, "Title view fade started: 2s.")
+        assert stub_driver._latest_fade_finished() is False  # noqa: SLF001
+
+    def test_an_earlier_finish_does_not_count_for_a_new_start(self, stub_driver: Driver) -> None:
+        self._with_log(
+            stub_driver,
+            "Title view fade started: 1s.",
+            "Title view fade finished.",
+            "Title view fade started: 2s.",
+        )
+        assert stub_driver._latest_fade_finished() is False  # noqa: SLF001
+
+    def test_superseded_fades_do_not_count(self, stub_driver: Driver) -> None:
         """Regression: walking several titles starts a fade each; only the last finishes."""
-        driver = _stub_driver()
-        log = MagicMock()
-        log.read_text.return_value = self._log(
+        self._with_log(
+            stub_driver,
             "Title view fade started: 3s.",
             "Title view fade started: 1s.",
             "Title view fade started: 2s.",
             "Title view fade finished.",
         )
-        driver._log = log  # noqa: SLF001
-        assert driver._latest_fade_finished() is True  # noqa: SLF001
+        assert stub_driver._latest_fade_finished() is True  # noqa: SLF001
 
-    def test_waits_while_the_latest_fade_runs(self) -> None:
-        driver = _stub_driver()
+    def test_waits_while_the_latest_fade_runs(self, stub_driver: Driver) -> None:
         states = iter([False, False, True])
         with (
             patch.object(Driver, "_latest_fade_finished", side_effect=lambda: next(states)),
             patch.object(gui_driver.time, "sleep") as sleep,
         ):
-            driver.wait_title_fade()
+            stub_driver.wait_title_fade()
         assert sleep.call_count == 2  # noqa: PLR2004
 
-    def test_raises_when_the_latest_fade_never_finishes(self) -> None:
-        driver = _stub_driver()
+    def test_raises_when_the_latest_fade_never_finishes(self, stub_driver: Driver) -> None:
         with (
             patch.object(Driver, "_latest_fade_finished", return_value=False),
             patch.object(gui_driver.time, "sleep"),
             patch.object(gui_driver.time, "monotonic", side_effect=[0.0, 20.0]),
             pytest.raises(DriverError, match="never finished"),
         ):
-            driver.wait_title_fade(timeout=10)
+            stub_driver.wait_title_fade(timeout=10)
 
 
 class TestProbe:
@@ -400,7 +417,10 @@ class TestProbe:
 class TestBootAppAt:
     """Each boot pins the node, the cues and the seed, then starts the app."""
 
-    def test_writes_node_and_pinned_cues(self, tmp_path: Path) -> None:
+    def test_writes_node_and_pinned_cues(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv(gui_driver.RANDOM_SEED_ENV_VAR, raising=False)  # restored after
         config = tmp_path / "barks-reader.json"
         config.write_text(json.dumps({"AAA_Settings": {"x": 1}, "Voodoo Hoodoo": {"a": 1}}))
         cues: dict[str, dict[str, int | str] | None] = {
@@ -426,10 +446,12 @@ class TestBootAppAt:
         assert "fresh" in written
         assert "stale" not in written
 
-    def test_no_seed_clears_the_env_var(self, tmp_path: Path) -> None:
+    def test_no_seed_clears_the_env_var(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         config = tmp_path / "cfg.json"
         config.write_text("{}")
-        gui_driver.os.environ[gui_driver.RANDOM_SEED_ENV_VAR] = "5"
+        monkeypatch.setenv(gui_driver.RANDOM_SEED_ENV_VAR, "5")
         with patch.object(gui_driver, "probe"):
             boot_app_at(["root"], config=config, seed=None)
         assert gui_driver.RANDOM_SEED_ENV_VAR not in gui_driver.os.environ
@@ -438,17 +460,15 @@ class TestBootAppAt:
 class TestExpectNoNew:
     """The one clock wait, for negatives: a new match within the window is a failure."""
 
-    def test_passes_when_nothing_new_arrives(self) -> None:
-        driver = _stub_driver()
+    def test_passes_when_nothing_new_arrives(self, stub_driver: Driver) -> None:
         with (
             patch.object(Driver, "match_count", return_value=2),
             patch.object(gui_driver.time, "sleep"),
             patch.object(gui_driver.time, "monotonic", side_effect=[0.0, 0.5, 1.0, 3.0]),
         ):
-            driver.expect_no_new("Closing app", 2.0)
+            stub_driver.expect_no_new("Closing app", 2.0)
 
-    def test_raises_on_a_new_match(self) -> None:
-        driver = _stub_driver()
+    def test_raises_on_a_new_match(self, stub_driver: Driver) -> None:
         counts = iter([2, 3])
         with (
             patch.object(Driver, "match_count", side_effect=lambda _p: next(counts)),
@@ -456,26 +476,27 @@ class TestExpectNoNew:
             patch.object(gui_driver.time, "monotonic", return_value=0.0),
             pytest.raises(DriverError, match="unexpected new"),
         ):
-            driver.expect_no_new("Closing app", 2.0)
+            stub_driver.expect_no_new("Closing app", 2.0)
 
 
 class TestWindowGeometry:
-    def test_parses_the_probe_output(self) -> None:
-        driver = _stub_driver()
+    def test_parses_the_probe_output(self, stub_driver: Driver) -> None:
         with patch.object(Driver, "_run", return_value="782x1224+59+10\n"):
-            assert driver.window_geometry() == (782, 1224, 59, 10)
+            assert stub_driver.window_geometry() == (782, 1224, 59, 10)
 
-    def test_rejects_anything_else(self) -> None:
-        driver = _stub_driver()
+    def test_rejects_anything_else(self, stub_driver: Driver) -> None:
         with (
             patch.object(Driver, "_run", return_value="gui-probe: not running\n"),
             pytest.raises(DriverError, match="not WxH"),
         ):
-            driver.window_geometry()
+            stub_driver.window_geometry()
 
 
 class TestBootFromConfigDir:
-    def test_exports_the_dir_and_uses_its_json(self, tmp_path: Path) -> None:
+    def test_exports_the_dir_and_uses_its_json(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv(gui_driver.CONFIG_DIR_ENV_VAR, raising=False)  # restored after
         (tmp_path / "barks-reader.json").write_text("{}")
         with patch.object(gui_driver, "probe") as start:
             boot_app_at(["root"], config_dir=tmp_path)
@@ -483,7 +504,6 @@ class TestBootFromConfigDir:
         written = json.loads((tmp_path / "barks-reader.json").read_text())
         assert written["AAA_Settings"]["last_selected_node"] == ["root"]
         start.assert_called_once_with("start")
-        gui_driver.os.environ.pop(gui_driver.CONFIG_DIR_ENV_VAR)
 
     def test_needs_one_of_config_or_config_dir(self) -> None:
         with pytest.raises(ValueError, match="config="):
@@ -493,8 +513,7 @@ class TestBootFromConfigDir:
 class TestOpenStory:
     """Opening a story waits for the fade and confirms the portal before pressing it."""
 
-    def test_waits_then_confirms_each_step(self) -> None:
-        driver = _stub_driver()
+    def test_waits_then_confirms_each_step(self, stub_driver: Driver) -> None:
         order: list[str] = []
         with (
             patch.object(Driver, "wait_title_fade", side_effect=lambda: order.append("fade")),
@@ -507,5 +526,5 @@ class TestOpenStory:
             patch.object(Driver, "key"),
             patch.object(Driver, "settle"),
         ):
-            driver.open_story(Pick("X", pages=1, dwell=0))
+            stub_driver.open_story(Pick("X", pages=1, dwell=0))
         assert order == ["fade", "BottomTitleViewScreen: e", "All images loaded"]
